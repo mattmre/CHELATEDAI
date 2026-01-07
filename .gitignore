@@ -1,0 +1,44 @@
+﻿# Python
+__pycache__/
+*.py[cod]
+*.class
+*.so
+.Python
+env/
+venv/
+ENV/
+*.egg-info/
+dist/
+build/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project specific
+*.backup
+adapter_weights.pt
+demo_log.jsonl
+chelation_debug.jsonl
+checkpoints/
+db_*/
+*.log
+
+# Keep manual results for reference
+!manual_results.txt
+
+# Temp files
+*.tmp
+temp_*
