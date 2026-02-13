@@ -168,16 +168,16 @@ class AntigravityEngine:
             # Reduced concurrency (10 -> 2) for stability and to avoid overwhelming Ollama
             with ThreadPoolExecutor(max_workers=2) as executor:
                 futures = [executor.submit(_get_embedding, i, txt) for i, txt in enumerate(texts)]
-                for future in futures:
+                for idx, future in enumerate(futures):
                     try:
-                        i, emb = future.result(timeout=30)  # 30 second timeout per embedding
-                        embeddings[i] = emb
+                        _, emb = future.result(timeout=30)  # 30 second timeout per embedding
+                        embeddings[idx] = emb
                     except TimeoutError:
-                        print(f"WARNING: Embedding timeout for document {i}, using zero vector")
-                        embeddings[i] = np.zeros(self.vector_size)
+                        print(f"WARNING: Embedding timeout for document {idx}, using zero vector")
+                        embeddings[idx] = np.zeros(self.vector_size)
                     except Exception as e:
-                        print(f"ERROR: Embedding failed for document {i}: {e}")
-                        embeddings[i] = np.zeros(self.vector_size)
+                        print(f"ERROR: Embedding failed for document {idx}: {e}")
+                        embeddings[idx] = np.zeros(self.vector_size)
 
             return np.array(embeddings)
             
