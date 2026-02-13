@@ -350,7 +350,7 @@ if __name__ == "__main__":
         pass
 
     # Check what was restored
-    restored_data = torch.load(adapter_path)
+    restored_data = torch.load(adapter_path, weights_only=True)
     print(f"\nAdapter data after failed experiment: {restored_data}")
 
     # List checkpoints

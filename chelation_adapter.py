@@ -52,7 +52,7 @@ class ChelationAdapter(nn.Module):
     def load(self, path):
         if os.path.exists(path):
             try:
-                self.load_state_dict(torch.load(path))
+                self.load_state_dict(torch.load(path, weights_only=True))
                 return True
             except RuntimeError as e:
                 print(f"Warning: Failed to load adapter weights (Dimension Mismatch?): {e}")
