@@ -170,8 +170,8 @@ class AntigravityEngine:
                 futures = [executor.submit(_get_embedding, i, txt) for i, txt in enumerate(texts)]
                 for idx, future in enumerate(futures):
                     try:
-                        i, emb = future.result(timeout=30)  # 30 second timeout per embedding
-                        embeddings[i] = emb
+                        _, emb = future.result(timeout=30)  # 30 second timeout per embedding
+                        embeddings[idx] = emb
                     except TimeoutError:
                         print(f"WARNING: Embedding timeout for document {idx}, using zero vector")
                         embeddings[idx] = np.zeros(self.vector_size)
