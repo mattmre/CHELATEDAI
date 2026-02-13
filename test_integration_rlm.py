@@ -192,6 +192,24 @@ class TestIntegrationRLM(unittest.TestCase):
         )
 
     # ------------------------------------------------------------------
+    # Test 3b: Sedimentation with epochs=0 edge case
+    # ------------------------------------------------------------------
+    def test_sedimentation_epochs_zero_does_not_crash(self):
+        """Sedimentation with epochs=0 should not crash (UnboundLocalError guard)."""
+        for i in range(5):
+            self.engine.chelation_log[i] = [
+                np.random.randn(self.engine.vector_size) for _ in range(3)
+            ]
+
+        # epochs=0 means the training loop body never executes.
+        # Previously this caused UnboundLocalError on `loss.item()`.
+        self.engine.run_sedimentation_cycle(
+            threshold=1, learning_rate=0.001, epochs=0
+        )
+        # Should complete without error; log should still be cleared.
+        self.assertEqual(len(self.engine.chelation_log), 0)
+
+    # ------------------------------------------------------------------
     # Test 4: Decomposition trace completeness
     # ------------------------------------------------------------------
     def test_decomposition_trace_completeness(self):

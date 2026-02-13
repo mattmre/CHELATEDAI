@@ -409,17 +409,17 @@ class AntigravityEngine:
         criterion = torch.nn.MSELoss()
         
         self.adapter.train()
+        final_loss = 0.0
         for epoch in range(epochs):
             optimizer.zero_grad()
             outputs = self.adapter(input_tensor)
             loss = criterion(outputs, target_tensor)
             loss.backward()
             optimizer.step()
-            
+            final_loss = loss.item()
+
             if epoch % (epochs // 2 or 1) == 0:
-                self.logger.log_training_epoch(epoch=epoch+1, total_epochs=epochs, loss=loss.item())
-                
-        final_loss = loss.item()
+                self.logger.log_training_epoch(epoch=epoch+1, total_epochs=epochs, loss=final_loss)
         self.adapter.eval()
         self.adapter.save(self.adapter_path)
         self.logger.log_checkpoint("save", self.adapter_path)
