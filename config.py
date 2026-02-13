@@ -61,6 +61,12 @@ class ChelationConfig:
         }
     }
 
+    # Collection name
+    DEFAULT_COLLECTION_NAME = "antigravity_stage8"
+
+    # Ollama context window hint
+    OLLAMA_NUM_CTX = 4096
+
     # ===== Retrieval Configuration =====
     SCOUT_K = 50  # Neighborhood size for variance calculation
     TOP_K = 10  # Number of results to return
@@ -71,6 +77,7 @@ class ChelationConfig:
     DEFAULT_EPOCHS = 10
     DEFAULT_COLLAPSE_THRESHOLD = 3  # Min frequency to trigger sedimentation
     ADAPTER_HIDDEN_DIM_RATIO = 0.5  # hidden_dim = input_dim * ratio
+    HOMEOSTATIC_PUSH_MAGNITUDE = 0.1  # Adapter push magnitude for sedimentation target vectors
 
     # Adapter training tuning by dataset size
     ADAPTER_PRESETS = {
