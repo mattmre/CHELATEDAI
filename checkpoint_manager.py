@@ -319,7 +319,7 @@ if __name__ == "__main__":
     adapter_path = temp_dir / "adapter.pt"
 
     # Create dummy adapter file
-    torch.save({"data": "initial"}, adapter_path)
+    torch.save({"weight": torch.zeros(10)}, adapter_path)
 
     # Create checkpoint manager
     checkpoint_mgr = CheckpointManager(temp_dir / "checkpoints")
@@ -335,7 +335,7 @@ if __name__ == "__main__":
     print("\n--- Success Case ---")
     with SafeTrainingContext(checkpoint_mgr, adapter_path, "experiment_1") as ctx:
         # Simulate training
-        torch.save({"data": "trained"}, adapter_path)
+        torch.save({"weight": torch.ones(10)}, adapter_path)
         ctx.mark_success()  # Mark as successful
 
     # Safe training context (failure case)
@@ -343,14 +343,14 @@ if __name__ == "__main__":
     try:
         with SafeTrainingContext(checkpoint_mgr, adapter_path, "experiment_2") as ctx:
             # Simulate training
-            torch.save({"data": "bad_training"}, adapter_path)
+            torch.save({"weight": torch.full((10,), -1.0)}, adapter_path)
             # Don't mark success, or raise exception
             raise ValueError("Training failed!")
     except ValueError:
         pass
 
     # Check what was restored
-    restored_data = torch.load(adapter_path)
+    restored_data = torch.load(adapter_path, weights_only=True)
     print(f"\nAdapter data after failed experiment: {restored_data}")
 
     # List checkpoints
