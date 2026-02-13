@@ -7,6 +7,7 @@ from collections import defaultdict
 import torch
 import torch.optim as optim
 from chelation_adapter import ChelationAdapter
+from chelation_logger import get_logger
 
 class AntigravityEngine:
     def __init__(self, qdrant_location=":memory:", chelation_p=80, model_name='ollama:nomic-embed-text', use_centering=False, use_quantization=False):
@@ -17,6 +18,7 @@ class AntigravityEngine:
         use_centering: If True, uses 'Spectral Chelation' (Centering).
         use_quantization: If True, enables INT8 Scalar Quantization (Layer 3).
         """
+        self.logger = get_logger()
         self.chelation_p = chelation_p
         self.use_centering = use_centering
         self.use_quantization = use_quantization
@@ -31,7 +33,7 @@ class AntigravityEngine:
             self.mode = "ollama"
             self.model_name = model_name.replace("ollama:", "")
             self.ollama_url = "http://localhost:11434/api/embeddings"
-            print(f"Initializing Antigravity Engine (Ollama Mode: {self.model_name})...")
+            self.logger.log_event("init", f"Initializing Antigravity Engine (Ollama Mode: {self.model_name})")
             # We assume the model is valid/pulled.
             self.vector_size = 768 # Default start to prevent crash in embed()
             try:
@@ -39,37 +41,37 @@ class AntigravityEngine:
                 self.requests = requests
                 test_vec = self.embed("test")[0]
                 self.vector_size = len(test_vec)
-                print(f"Connected to Ollama. Vector Size: {self.vector_size}")
+                self.logger.log_event("init", f"Connected to Ollama. Vector Size: {self.vector_size}")
             except ImportError as e:
                 raise ImportError(f"'requests' library required for Ollama mode. Install with: pip install requests") from e
             except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
                 raise ConnectionError(f"Failed to connect to Ollama at {self.ollama_url}. Make sure Docker container is running!") from e
             except Exception as e:
-                print(f"WARNING: Ollama connection test failed: {e}")
-                print("Vector size will be validated on first real embedding call.")
+                self.logger.log_error("connection", f"Ollama connection test failed: {e}", exception=e)
+                self.logger.log_event("init", "Vector size will be validated on first real embedding call", level="WARNING")
                 # Keep default 768 as fallback
         else:
             # Local/Torch Mode
             self.mode = "local"
-            print(f"Initializing Antigravity Engine (Local Mode: {model_name})...")
+            self.logger.log_event("init", f"Initializing Antigravity Engine (Local Mode: {model_name})")
             from sentence_transformers import SentenceTransformer
             import torch
             
             device = 'cuda' if torch.cuda.is_available() else 'cpu'
-            print(f"Device Selected: {device}")
+            self.logger.log_event("init", f"Device selected: {device}")
             
             # Load model
             self.local_model = SentenceTransformer(model_name, device=device, trust_remote_code=True)
             self.vector_size = self.local_model.get_sentence_embedding_dimension()
-            print(f"Model loaded on {self.local_model.device}. Vector Size: {self.vector_size}")
+            self.logger.log_event("init", f"Model loaded on {self.local_model.device}. Vector Size: {self.vector_size}")
             
         # Initialize Dynamic Adapter
-        print("Initializing Dynamic Chelation Adapter...")
+        self.logger.log_event("init", "Initializing Dynamic Chelation Adapter")
         self.adapter = ChelationAdapter(input_dim=self.vector_size)
         if self.adapter.load(self.adapter_path):
-            print(f"Loaded existing adapter weights from {self.adapter_path}")
+            self.logger.log_event("init", f"Loaded existing adapter weights from {self.adapter_path}")
         else:
-            print("Created new adapter (Identity initialization).")
+            self.logger.log_event("init", "Created new adapter (Identity initialization)")
         
         # Initialize Qdrant
         if qdrant_location == ":memory:" or qdrant_location.startswith("http"):
@@ -83,7 +85,7 @@ class AntigravityEngine:
         from qdrant_client import models
         quant_config = None
         if self.use_quantization:
-            print("!!! ADAPTIVE QUANTIZATION ENABLED (INT8) !!!")
+            self.logger.log_event("init", "Adaptive quantization enabled (INT8)")
             quant_config = models.ScalarQuantization(
                 scalar=models.ScalarQuantizationConfig(
                     type=models.ScalarType.INT8,
@@ -94,7 +96,7 @@ class AntigravityEngine:
         
         # Create collection if not exists (Enable Persistence)
         if self.qdrant.collection_exists(self.collection_name):
-            print(f"Loaded existing collection '{self.collection_name}'.")
+            self.logger.log_event("init", f"Loaded existing collection '{self.collection_name}'")
         else:
             self.qdrant.create_collection(
                 collection_name=self.collection_name,
@@ -133,16 +135,16 @@ class AntigravityEngine:
                             # Return None to trigger retry logic with truncation
                             return None
                     except self.requests.exceptions.Timeout:
-                        print(f"Ollama timeout for doc {i}")
+                        self.logger.log_event("embedding", f"Ollama timeout for doc {i}", level="WARNING")
                         return None
                     except self.requests.exceptions.ConnectionError:
-                        print(f"Ollama connection lost for doc {i}")
+                        self.logger.log_event("embedding", f"Ollama connection lost for doc {i}", level="WARNING")
                         return None
                     except KeyError as e:
-                        print(f"Ollama response missing 'embedding' key for doc {i}: {e}")
+                        self.logger.log_event("embedding", f"Ollama response missing 'embedding' key for doc {i}: {e}", level="WARNING")
                         return None
                     except Exception as e:
-                        print(f"Ollama unexpected error for doc {i}: {e}")
+                        self.logger.log_error("embedding", f"Ollama unexpected error for doc {i}: {e}")
                         return None
                 
                 # 1. Try with reasonable limit (6000 chars ~ 1500 tokens)
@@ -159,7 +161,7 @@ class AntigravityEngine:
                      emb = attempt(txt[:500])
 
                 if emb is None:
-                    print(f"Failed to embed doc {i} after retries.")
+                    self.logger.log_error("embedding", f"Failed to embed doc {i} after retries")
                     return i, np.zeros(self.vector_size)
                     
                 return i, emb
@@ -173,10 +175,10 @@ class AntigravityEngine:
                         i, emb = future.result(timeout=30)  # 30 second timeout per embedding
                         embeddings[i] = emb
                     except TimeoutError:
-                        print(f"WARNING: Embedding timeout for document {i}, using zero vector")
+                        self.logger.log_event("embedding", f"Embedding timeout for document {i}, using zero vector", level="WARNING")
                         embeddings[i] = np.zeros(self.vector_size)
                     except Exception as e:
-                        print(f"ERROR: Embedding failed for document {i}: {e}")
+                        self.logger.log_error("embedding", f"Embedding failed for document {i}: {e}")
                         embeddings[i] = np.zeros(self.vector_size)
 
             return np.array(embeddings)
@@ -193,7 +195,7 @@ class AntigravityEngine:
 
     def ingest(self, text_corpus, payloads=None):
         """Ingests real-world documents into Qdrant."""
-        print(f"Ingesting {len(text_corpus)} documents...")
+        self.logger.log_event("ingestion", f"Ingesting {len(text_corpus)} documents")
         
         batch_size = 100
         total_batches = (len(text_corpus) + batch_size - 1) // batch_size
@@ -215,9 +217,9 @@ class AntigravityEngine:
                 for j in range(len(batch_texts))
             ]
             self.qdrant.upsert(collection_name=self.collection_name, points=points)
-            print(f"Ingested batch {i+1}/{total_batches} ({batch_size*(i+1)} docs)")
+            self.logger.log_event("ingestion", f"Ingested batch {i+1}/{total_batches}", level="DEBUG")
             
-        print("Ingestion Complete.")
+        self.logger.log_event("ingestion", "Ingestion complete")
 
     def _gravity_sensor(self, query_vec, top_k=50):
         """Phase 1: Detects Local Curvature (Entropy) around the query."""
@@ -354,14 +356,14 @@ class AntigravityEngine:
         2. Trains the Adapter to push these vectors AWAY from the noise centers.
         3. Persists the improved model weights.
         """
-        print(f"\n--- RUNNING SEDIMENTATION CYCLE (Threshold={threshold}, LR={learning_rate}, ALL_MODES_ACTIVE) ---")
+        self.logger.log_training_start(num_samples=0, learning_rate=learning_rate, epochs=epochs, threshold=threshold)
         
         # Filter for frequent collapsers
         targets = {k: v for k, v in self.chelation_log.items() if len(v) >= threshold}
-        print(f"Identifying collapsing nodes... Found {len(targets)} candidates.")
+        self.logger.log_event("sedimentation", f"Identifying collapsing nodes... Found {len(targets)} candidates")
         
         if not targets:
-            print("Brain is stable. No sedimentation needed.")
+            self.logger.log_event("sedimentation", "Brain is stable. No sedimentation needed")
             return
 
         # --- PREPARE TRAINING DATA ---
@@ -377,7 +379,7 @@ class AntigravityEngine:
         training_targets = []
         ordered_ids = [] # To map outputs back to IDs for update
         
-        print("Fetching training data from Qdrant...")
+        self.logger.log_event("sedimentation", "Fetching training data from Qdrant", level="DEBUG")
         
         for i in range(0, len(batch_ids), chunk_size):
             chunk = batch_ids[i:i+chunk_size]
@@ -410,7 +412,7 @@ class AntigravityEngine:
         target_tensor = torch.tensor(np.array(training_targets), dtype=torch.float32)
         
         # --- TRAINING LOOP ---
-        print(f"Training Adapter on {len(training_inputs)} samples for {epochs} epochs...")
+        self.logger.log_training_start(num_samples=len(training_inputs), learning_rate=learning_rate, epochs=epochs, threshold=threshold)
         optimizer = optim.Adam(self.adapter.parameters(), lr=learning_rate)
         criterion = torch.nn.MSELoss()
         
@@ -423,14 +425,14 @@ class AntigravityEngine:
             optimizer.step()
             
             if epoch % (epochs // 2 or 1) == 0:
-                print(f"Epoch {epoch+1}/{epochs} Loss: {loss.item():.6f}")
+                self.logger.log_training_epoch(epoch=epoch+1, total_epochs=epochs, loss=loss.item())
                 
         self.adapter.eval()
         self.adapter.save(self.adapter_path)
-        print("Adapter weights saved.")
+        self.logger.log_event("sedimentation", "Adapter weights saved")
         
         # --- UPDATE QDRANT ---
-        print("Syncing updated vectors to Qdrant...")
+        self.logger.log_event("sedimentation", "Syncing updated vectors to Qdrant", level="DEBUG")
         
         with torch.no_grad():
              new_vectors_np = self.adapter(input_tensor).numpy()
@@ -470,49 +472,18 @@ class AntigravityEngine:
                     )
                     total_updates += len(batch_points)
             except ValueError as e:
-                print(f"ERROR: Invalid vector data in batch {i//chunk_size}: {e}")
+                self.logger.log_error("sedimentation", f"Invalid vector data in batch {i//chunk_size}", exception=e)
                 failed_updates += len(chunk_ids)
             except Exception as e:
-                print(f"ERROR: Update batch {i//chunk_size} failed: {e}")
+                self.logger.log_error("sedimentation", f"Update batch {i//chunk_size} failed", exception=e)
                 failed_updates += len(chunk_ids)
                 
         if failed_updates > 0:
-            print(f"Sedimentation Complete with ERRORS. Adapter trained on {len(training_inputs)} events. Updated {total_updates} vectors, {failed_updates} failed.")
+            self.logger.log_training_complete(final_loss=loss.item(), vectors_updated=total_updates, vectors_failed=failed_updates)
         else:
-            print(f"Sedimentation Complete. Adapter trained on {len(training_inputs)} events. Updated {total_updates} vectors in DB.")
+            self.logger.log_training_complete(final_loss=loss.item(), vectors_updated=total_updates, vectors_failed=0)
         self.chelation_log.clear()
-        print("--- SLEEP CYCLE COMPLETE ---")
-
-    def _log_event(self, query_text, variance, action, top_ids):
-        """
-        Logs chelation events to a JSONL file for analysis and debugging.
-
-        Args:
-            query_text (str): The query text
-            variance (float): Global variance metric
-            action (str): Decision made ('FAST', 'CHELATE', 'CHELATE_ALWAYS')
-            top_ids (list): List of top document IDs returned
-        """
-        import json
-        import time
-
-        event = {
-            "timestamp": time.time(),
-            "query_snippet": query_text[:50] if isinstance(query_text, str) else str(query_text)[:50],
-            "global_variance": float(variance),
-            "action": action,  # 'FAST', 'CHELATE', or 'CHELATE_ALWAYS'
-            "top_10_ids": [str(d) for d in top_ids[:10]]
-        }
-
-        try:
-            with open(self.event_log_path, "a", encoding="utf-8") as f:
-                f.write(json.dumps(event) + "\n")
-        except IOError as e:
-            print(f"ERROR: Failed to write event log to {self.event_log_path}: {e}")
-        except TypeError as e:
-            print(f"ERROR: Invalid data type in event log: {e}")
-        except Exception as e:
-            print(f"ERROR: Unexpected logging failure: {e}")
+        self.logger.log_event("sedimentation", "Sleep cycle complete")
 
     def run_inference(self, query_text):
         """Full Navigational Loop (returns IDs)."""
@@ -566,12 +537,9 @@ class AntigravityEngine:
              chel_top, center_of_mass = self._spectral_chelation_ranking(q_vec, local_vectors, std_top)
              final_top_ids = chel_top
         
-        # Log Event
-        self._log_event(query_text, global_variance, action, final_top_ids)
-        
         # Format Return
         chel_top_10 = final_top_ids[:10]
-        
+
         # Impact: Jaccard
         s1 = set(std_top[:10])
         s2 = set(chel_top_10)
@@ -579,6 +547,15 @@ class AntigravityEngine:
             jaccard = 1.0
         else:
             jaccard = len(s1.intersection(s2)) / len(s1.union(s2))
-            
+
+        # Log Event (after jaccard so we can include it)
+        self.logger.log_query(
+            query_text=query_text,
+            variance=global_variance,
+            action=action,
+            top_ids=final_top_ids,
+            jaccard=jaccard
+        )
+
         # Return signature: std_top_10, chel_top_10, mask (dummy), jaccard
         return std_top[:10], chel_top_10, mask, jaccard
