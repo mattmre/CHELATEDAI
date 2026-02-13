@@ -8,9 +8,10 @@ automatic rollback behavior without requiring external services.
 import unittest
 import tempfile
 import shutil
-import time
 import torch
 from pathlib import Path
+from unittest.mock import patch
+from datetime import datetime
 
 from checkpoint_manager import CheckpointManager, SafeTrainingContext
 
@@ -232,12 +233,14 @@ class TestCheckpointManagerDelete(unittest.TestCase):
         result = self.manager.delete_checkpoint("no_such_checkpoint")
         self.assertFalse(result)
 
-    def test_delete_updates_latest_checkpoint_pointer(self):
+    @patch("checkpoint_manager.datetime")
+    def test_delete_updates_latest_checkpoint_pointer(self, mock_dt):
         """When the latest checkpoint is deleted, the pointer updates to the
         previous checkpoint (or None if no checkpoints remain)."""
+        mock_dt.now.return_value = datetime(2026, 1, 1, 0, 0, 0)
+        mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
         id1 = self.manager.create_checkpoint("first", self.adapter_path)
-        # Small delay to guarantee different timestamp in the ID
-        time.sleep(0.01)
+        mock_dt.now.return_value = datetime(2026, 1, 1, 0, 0, 1)
         id2 = self.manager.create_checkpoint("second", self.adapter_path)
         self.assertEqual(self.manager.metadata["latest_checkpoint"], id2)
         # Delete latest; pointer should fall back to first
@@ -261,14 +264,15 @@ class TestCheckpointManagerCleanup(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.temp_dir)
 
-    def test_cleanup_keeps_only_n_most_recent(self):
+    @patch("checkpoint_manager.datetime")
+    def test_cleanup_keeps_only_n_most_recent(self, mock_dt):
         """cleanup_old_checkpoints removes oldest checkpoints, keeping only N."""
+        mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
         ids = []
         for i in range(5):
+            mock_dt.now.return_value = datetime(2026, 1, 1, 0, 0, i)
             cp_id = self.manager.create_checkpoint(f"cp_{i}", self.adapter_path)
             ids.append(cp_id)
-            # Small sleep to get distinct timestamps
-            time.sleep(0.01)
         self.assertEqual(len(self.manager.list_checkpoints()), 5)
         self.manager.cleanup_old_checkpoints(keep_last_n=2)
         remaining = self.manager.list_checkpoints()

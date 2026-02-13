@@ -7,9 +7,8 @@ Run: python -m pytest test_benchmark_rlm.py -v
 
 import sys
 import unittest
-from unittest.mock import MagicMock, patch, PropertyMock
+from unittest.mock import MagicMock
 import math
-import numpy as np
 
 # Mock mteb if not installed (benchmark_rlm imports it at module level)
 if 'mteb' not in sys.modules:
