@@ -21,10 +21,10 @@ class AntigravityEngine:
         self.chelation_p = chelation_p
         self.use_centering = use_centering
         self.use_quantization = use_quantization
-        self.event_log_path = str(ChelationConfig.EVENT_LOG_PATH)
+        self.event_log_path = ChelationConfig.EVENT_LOG_PATH
         self.chelation_log = defaultdict(list)
         self.chelation_threshold = ChelationConfig.DEFAULT_CHELATION_THRESHOLD
-        self.adapter_path = str(ChelationConfig.ADAPTER_WEIGHTS_PATH)
+        self.adapter_path = ChelationConfig.ADAPTER_WEIGHTS_PATH
 
         
         if model_name.startswith("ollama:"):
@@ -148,7 +148,7 @@ class AntigravityEngine:
                 
                 # Try truncation levels from OLLAMA_TRUNCATION_LIMITS
                 for limit in ChelationConfig.OLLAMA_TRUNCATION_LIMITS:
-                    current_text = txt[:limit] if len(txt) > limit else txt
+                    current_text = txt[:limit]
                     emb = attempt(current_text)
                     if emb is not None:
                         break
