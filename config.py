@@ -33,6 +33,7 @@ class ChelationConfig:
     OLLAMA_URL = "http://localhost:11434/api/embeddings"
     OLLAMA_TIMEOUT = 30  # seconds per request
     OLLAMA_MAX_WORKERS = 2  # Concurrent requests to avoid overwhelming server
+    OLLAMA_NUM_CTX = 4096  # Context window hint for Ollama
 
     # Truncation strategy for long documents (Ollama mode)
     OLLAMA_TRUNCATION_LIMITS = [6000, 2000, 500]  # chars, tried in order
@@ -62,6 +63,7 @@ class ChelationConfig:
     }
 
     # ===== Retrieval Configuration =====
+    COLLECTION_NAME = "antigravity_stage8"
     SCOUT_K = 50  # Neighborhood size for variance calculation
     TOP_K = 10  # Number of results to return
     BATCH_SIZE = 100  # Documents per ingestion batch
@@ -71,6 +73,7 @@ class ChelationConfig:
     DEFAULT_EPOCHS = 10
     DEFAULT_COLLAPSE_THRESHOLD = 3  # Min frequency to trigger sedimentation
     ADAPTER_HIDDEN_DIM_RATIO = 0.5  # hidden_dim = input_dim * ratio
+    HOMEOSTATIC_PUSH_MAGNITUDE = 0.1  # Push factor for noise center correction
 
     # Adapter training tuning by dataset size
     ADAPTER_PRESETS = {
@@ -107,6 +110,47 @@ class ChelationConfig:
     LOG_ENCODING = "utf-8"
     LOG_QUERY_SNIPPET_LENGTH = 50
 
+    # ===== RLM (Recursive Language Model) Presets =====
+    RLM_PRESETS = {
+        "shallow": {
+            "max_depth": 1,
+            "aggregation": "union",
+            "strategy": "length_based",
+            "description": "Single-level decomposition, union aggregation"
+        },
+        "balanced": {
+            "max_depth": 3,
+            "aggregation": "rrf",
+            "strategy": "complexity_based",
+            "description": "Three-level decomposition, reciprocal rank fusion"
+        },
+        "deep": {
+            "max_depth": 5,
+            "aggregation": "rrf",
+            "strategy": "llm_decided",
+            "description": "Deep decomposition, LLM-guided splitting"
+        }
+    }
+
+    # ===== Sedimentation Presets =====
+    SEDIMENTATION_PRESETS = {
+        "flat": {
+            "cluster_depth": 0,
+            "min_cluster_size": 1,
+            "description": "No clustering, standard sedimentation"
+        },
+        "moderate": {
+            "cluster_depth": 2,
+            "min_cluster_size": 5,
+            "description": "Two-level staging for moderate datasets"
+        },
+        "deep": {
+            "cluster_depth": 4,
+            "min_cluster_size": 3,
+            "description": "Deep clustering for large collapse event sets"
+        }
+    }
+
     # ===== Validation & Safety =====
     MIN_CHELATION_P = 0
     MAX_CHELATION_P = 100
@@ -114,6 +158,8 @@ class ChelationConfig:
     MAX_LEARNING_RATE = 1.0
     MIN_EPOCHS = 1
     MAX_EPOCHS = 100
+    MIN_MAX_DEPTH = 1
+    MAX_MAX_DEPTH = 10
 
     @classmethod
     def validate_chelation_p(cls, value: float) -> float:
@@ -140,6 +186,14 @@ class ChelationConfig:
         return value
 
     @classmethod
+    def validate_max_depth(cls, value: int) -> int:
+        """Validate and clamp max_depth to valid range [1, 10]."""
+        if not cls.MIN_MAX_DEPTH <= value <= cls.MAX_MAX_DEPTH:
+            print(f"WARNING: max_depth={value} out of range [{cls.MIN_MAX_DEPTH}, {cls.MAX_MAX_DEPTH}], clamping.")
+            return max(cls.MIN_MAX_DEPTH, min(cls.MAX_MAX_DEPTH, value))
+        return value
+
+    @classmethod
     def get_preset(cls, preset_name: str, preset_type: str = "chelation") -> Dict[str, Any]:
         """
         Get predefined configuration preset.
@@ -154,7 +208,16 @@ class ChelationConfig:
         Raises:
             ValueError: If preset not found
         """
-        presets = cls.CHELATION_PRESETS if preset_type == "chelation" else cls.ADAPTER_PRESETS
+        preset_map = {
+            "chelation": cls.CHELATION_PRESETS,
+            "adapter": cls.ADAPTER_PRESETS,
+            "rlm": cls.RLM_PRESETS,
+            "sedimentation": cls.SEDIMENTATION_PRESETS,
+        }
+        presets = preset_map.get(preset_type)
+        if presets is None:
+            available_types = ", ".join(preset_map.keys())
+            raise ValueError(f"Preset type '{preset_type}' not found. Available: {available_types}")
 
         if preset_name not in presets:
             available = ", ".join(presets.keys())

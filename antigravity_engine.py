@@ -7,9 +7,10 @@ from collections import defaultdict
 import torch
 import torch.optim as optim
 from chelation_adapter import ChelationAdapter
+from config import ChelationConfig
 
 class AntigravityEngine:
-    def __init__(self, qdrant_location=":memory:", chelation_p=80, model_name='ollama:nomic-embed-text', use_centering=False, use_quantization=False):
+    def __init__(self, qdrant_location=":memory:", chelation_p=ChelationConfig.DEFAULT_CHELATION_P, model_name='ollama:nomic-embed-text', use_centering=False, use_quantization=False):
         """
         Stage 8 Engine: Docker/Ollama Integration.
         
@@ -20,20 +21,20 @@ class AntigravityEngine:
         self.chelation_p = chelation_p
         self.use_centering = use_centering
         self.use_quantization = use_quantization
-        self.event_log_path = "chelation_events.jsonl"
+        self.event_log_path = str(ChelationConfig.EVENT_LOG_PATH)
         self.chelation_log = defaultdict(list)
-        self.chelation_threshold = 0.0004 # Tuned to observed SciFact variance mean
-        self.adapter_path = "adapter_weights.pt"
+        self.chelation_threshold = ChelationConfig.DEFAULT_CHELATION_THRESHOLD
+        self.adapter_path = str(ChelationConfig.ADAPTER_WEIGHTS_PATH)
 
         
         if model_name.startswith("ollama:"):
             # Ollama Mode
             self.mode = "ollama"
             self.model_name = model_name.replace("ollama:", "")
-            self.ollama_url = "http://localhost:11434/api/embeddings"
+            self.ollama_url = ChelationConfig.OLLAMA_URL
             print(f"Initializing Antigravity Engine (Ollama Mode: {self.model_name})...")
             # We assume the model is valid/pulled.
-            self.vector_size = 768 # Default start to prevent crash in embed()
+            self.vector_size = ChelationConfig.DEFAULT_VECTOR_SIZE # Default start to prevent crash in embed()
             try:
                 import requests
                 self.requests = requests
@@ -77,7 +78,7 @@ class AntigravityEngine:
         else:
              # Assume local path
              self.qdrant = QdrantClient(path=qdrant_location)
-        self.collection_name = "antigravity_stage8"
+        self.collection_name = ChelationConfig.COLLECTION_NAME
         
         # Configure Quantization
         from qdrant_client import models
@@ -122,9 +123,9 @@ class AntigravityEngine:
                             json={
                                 "model": self.model_name,
                                 "prompt": t,
-                                "options": {"num_ctx": 4096}  # Hint larger context if possible
+                                "options": {"num_ctx": ChelationConfig.OLLAMA_NUM_CTX}  # Hint larger context if possible
                             },
-                            timeout=30  # 30 second timeout per request
+                            timeout=ChelationConfig.OLLAMA_TIMEOUT
                         )
                         if res.status_code == 200:
                             return res.json()["embedding"]
@@ -145,18 +146,19 @@ class AntigravityEngine:
                         print(f"Ollama unexpected error for doc {i}: {e}")
                         return None
                 
-                # 1. Try with reasonable limit (6000 chars ~ 1500 tokens)
-                current_text = txt[:6000] if len(txt) > 6000 else txt
+                # 1. Try with reasonable limit (chars ~ tokens/4)
+                limits = ChelationConfig.OLLAMA_TRUNCATION_LIMITS
+                current_text = txt[:limits[0]] if len(txt) > limits[0] else txt
                 emb = attempt(current_text)
-                
-                # 2. Retry with Aggressive Truncation (2000 chars ~ 500 tokens)
+
+                # 2. Retry with Aggressive Truncation
                 if emb is None:
                     # print(f"DEBUG: Retrying doc {i} with aggressive truncation...")
-                    emb = attempt(txt[:2000])
-                
-                # 3. Retry with Extreme Truncation (500 chars)
+                    emb = attempt(txt[:limits[1]])
+
+                # 3. Retry with Extreme Truncation
                 if emb is None:
-                     emb = attempt(txt[:500])
+                     emb = attempt(txt[:limits[2]])
 
                 if emb is None:
                     print(f"Failed to embed doc {i} after retries.")
@@ -166,11 +168,11 @@ class AntigravityEngine:
 
             from concurrent.futures import ThreadPoolExecutor, TimeoutError
             # Reduced concurrency (10 -> 2) for stability and to avoid overwhelming Ollama
-            with ThreadPoolExecutor(max_workers=2) as executor:
+            with ThreadPoolExecutor(max_workers=ChelationConfig.OLLAMA_MAX_WORKERS) as executor:
                 futures = [executor.submit(_get_embedding, i, txt) for i, txt in enumerate(texts)]
                 for future in futures:
                     try:
-                        i, emb = future.result(timeout=30)  # 30 second timeout per embedding
+                        i, emb = future.result(timeout=ChelationConfig.OLLAMA_TIMEOUT)
                         embeddings[i] = emb
                     except TimeoutError:
                         print(f"WARNING: Embedding timeout for document {i}, using zero vector")
@@ -195,7 +197,7 @@ class AntigravityEngine:
         """Ingests real-world documents into Qdrant."""
         print(f"Ingesting {len(text_corpus)} documents...")
         
-        batch_size = 100
+        batch_size = ChelationConfig.BATCH_SIZE
         total_batches = (len(text_corpus) + batch_size - 1) // batch_size
         
         for i in range(total_batches):
@@ -219,7 +221,7 @@ class AntigravityEngine:
             
         print("Ingestion Complete.")
 
-    def _gravity_sensor(self, query_vec, top_k=50):
+    def _gravity_sensor(self, query_vec, top_k=ChelationConfig.SCOUT_K):
         """Phase 1: Detects Local Curvature (Entropy) around the query."""
         # Use query_points instead of search
         search_result = self.qdrant.query_points(
@@ -268,7 +270,7 @@ class AntigravityEngine:
         scout_results = self.qdrant.query_points(
             collection_name=self.collection_name,
             query=q_vec,
-            limit=50 
+            limit=ChelationConfig.SCOUT_K
         ).points
         
         if not scout_results:
@@ -344,7 +346,7 @@ class AntigravityEngine:
         sorted_ids = [s[0] for s in scores]
         return sorted_ids, center_of_mass
 
-    def run_sedimentation_cycle(self, threshold=3, learning_rate=0.001, epochs=10):
+    def run_sedimentation_cycle(self, threshold=ChelationConfig.DEFAULT_COLLAPSE_THRESHOLD, learning_rate=ChelationConfig.DEFAULT_LEARNING_RATE, epochs=ChelationConfig.DEFAULT_EPOCHS):
         """
         [State 2: Sleep Cycle]
         DYNAMIC UPDATE: Trains the Adapter using the collected chelation events.
@@ -372,7 +374,7 @@ class AntigravityEngine:
         batch_ids = list(targets.keys())
         
         # --- PREPARE DATA WITH ID TRACKING ---
-        chunk_size = 100
+        chunk_size = ChelationConfig.CHUNK_SIZE
         training_inputs = []
         training_targets = []
         ordered_ids = [] # To map outputs back to IDs for update
@@ -396,7 +398,7 @@ class AntigravityEngine:
                 avg_noise = np.mean(noise_vectors, axis=0)
                 diff = current_vec - avg_noise
                 diff_norm = diff / (np.linalg.norm(diff) + 1e-9)
-                target_vec = current_vec + (diff_norm * 0.1) # Moderate push
+                target_vec = current_vec + (diff_norm * ChelationConfig.HOMEOSTATIC_PUSH_MAGNITUDE) # Moderate push
                 target_vec = target_vec / np.linalg.norm(target_vec)
                 
                 training_inputs.append(current_vec)
@@ -498,14 +500,14 @@ class AntigravityEngine:
 
         event = {
             "timestamp": time.time(),
-            "query_snippet": query_text[:50] if isinstance(query_text, str) else str(query_text)[:50],
+            "query_snippet": query_text[:ChelationConfig.LOG_QUERY_SNIPPET_LENGTH] if isinstance(query_text, str) else str(query_text)[:ChelationConfig.LOG_QUERY_SNIPPET_LENGTH],
             "global_variance": float(variance),
             "action": action,  # 'FAST', 'CHELATE', or 'CHELATE_ALWAYS'
             "top_10_ids": [str(d) for d in top_ids[:10]]
         }
 
         try:
-            with open(self.event_log_path, "a", encoding="utf-8") as f:
+            with open(self.event_log_path, "a", encoding=ChelationConfig.LOG_ENCODING) as f:
                 f.write(json.dumps(event) + "\n")
         except IOError as e:
             print(f"ERROR: Failed to write event log to {self.event_log_path}: {e}")
@@ -521,7 +523,7 @@ class AntigravityEngine:
         q_vec = self.embed(query_text)[0]
         
         # B. Standard Retrieval (Scout Step)
-        scout_limit = 50
+        scout_limit = ChelationConfig.SCOUT_K
         std_results = self.qdrant.query_points(
             collection_name=self.collection_name,
             query=q_vec,
