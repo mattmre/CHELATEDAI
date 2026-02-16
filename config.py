@@ -41,6 +41,15 @@ class ChelationConfig:
     # Core chelation parameters
     DEFAULT_CHELATION_P = 85  # Percentile threshold for dimension selection (0-100)
     DEFAULT_CHELATION_THRESHOLD = 0.0004  # Variance threshold for adaptive triggering
+    
+    # ===== Adaptive Threshold Configuration =====
+    # Adaptive threshold tuning (opt-in feature)
+    ADAPTIVE_THRESHOLD_ENABLED = False  # Disabled by default for backward compatibility
+    ADAPTIVE_THRESHOLD_PERCENTILE = 75  # Target percentile of observed variances
+    ADAPTIVE_THRESHOLD_WINDOW = 100  # Number of recent variance samples to track
+    ADAPTIVE_THRESHOLD_MIN_SAMPLES = 20  # Minimum samples before adaptive adjustment
+    ADAPTIVE_THRESHOLD_MIN = 0.0001  # Safety lower bound for threshold
+    ADAPTIVE_THRESHOLD_MAX = 0.01  # Safety upper bound for threshold
 
     # Chelation tuning guidelines by use case
     CHELATION_PRESETS = {
@@ -118,6 +127,13 @@ class ChelationConfig:
     # ===== Memory Management =====
     MAX_BATCH_MEMORY_MB = 512  # Target max memory per batch
     CHUNK_SIZE = 100  # Qdrant update chunk size
+    
+    # Streaming ingestion parameters
+    STREAMING_BATCH_SIZE = 100  # Documents per batch for streaming ingestion
+    STREAMING_PROGRESS_INTERVAL = 10  # Log progress every N batches
+    
+    # Chelation log memory management
+    CHELATION_LOG_MAX_ENTRIES_PER_DOC = 1000  # Max entries per document in chelation log
 
     # ===== Quantization Settings =====
     QUANTIZATION_TYPE = "INT8"  # Qdrant scalar quantization
@@ -178,6 +194,30 @@ class ChelationConfig:
         if not 0.0 <= value <= 1.0:
             print(f"WARNING: teacher_weight={value} out of range [0.0, 1.0], clamping.")
             return max(0.0, min(1.0, value))
+        return value
+    
+    @classmethod
+    def validate_adaptive_percentile(cls, value: float) -> float:
+        """Validate and clamp adaptive threshold percentile to [0, 100]."""
+        if not 0.0 <= value <= 100.0:
+            print(f"WARNING: adaptive_percentile={value} out of range [0.0, 100.0], clamping.")
+            return max(0.0, min(100.0, value))
+        return value
+    
+    @classmethod
+    def validate_adaptive_window(cls, value: int) -> int:
+        """Validate adaptive threshold window size."""
+        if value < 1:
+            print(f"WARNING: adaptive_window={value} must be >= 1, using 1.")
+            return 1
+        return value
+    
+    @classmethod
+    def validate_adaptive_min_samples(cls, value: int) -> int:
+        """Validate adaptive threshold minimum samples."""
+        if value < 1:
+            print(f"WARNING: adaptive_min_samples={value} must be >= 1, using 1.")
+            return 1
         return value
 
     @classmethod

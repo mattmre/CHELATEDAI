@@ -32,6 +32,15 @@ class AntigravityEngine:
         self.adapter_path = ChelationConfig.ADAPTER_WEIGHTS_PATH
         self.logger = get_logger()
         
+        # Adaptive threshold state (disabled by default for backward compatibility)
+        self._adaptive_threshold_enabled = False
+        self._adaptive_threshold_percentile = ChelationConfig.ADAPTIVE_THRESHOLD_PERCENTILE
+        self._adaptive_threshold_window = ChelationConfig.ADAPTIVE_THRESHOLD_WINDOW
+        self._adaptive_threshold_min_samples = ChelationConfig.ADAPTIVE_THRESHOLD_MIN_SAMPLES
+        self._adaptive_threshold_min = ChelationConfig.ADAPTIVE_THRESHOLD_MIN
+        self._adaptive_threshold_max = ChelationConfig.ADAPTIVE_THRESHOLD_MAX
+        self._variance_history = []  # Stores recent variance observations
+        
         # Validate and store training configuration
         self.training_mode = ChelationConfig.validate_training_mode(training_mode)
         self.teacher_weight = ChelationConfig.validate_teacher_weight(teacher_weight)
@@ -235,6 +244,122 @@ class AntigravityEngine:
             
         self.logger.log_event("ingestion_complete", "Ingestion Complete")
 
+    def ingest_streaming(self, texts_iterable, payloads_iterable=None, batch_size=None, start_id=0):
+        """
+        Ingest documents from iterables without loading full corpus into memory.
+        
+        Processes documents in batches, embedding and upserting incrementally.
+        Suitable for large datasets that don't fit in memory.
+        
+        Args:
+            texts_iterable: Iterable of text documents (e.g., generator, list, etc.)
+            payloads_iterable: Optional iterable of payload dicts, aligned with texts
+            batch_size: Documents per batch (defaults to config STREAMING_BATCH_SIZE)
+            start_id: Starting document ID (default 0)
+            
+        Returns:
+            Dict with ingestion statistics: {
+                'total_docs': int,
+                'total_batches': int,
+                'start_id': int,
+                'end_id': int
+            }
+        """
+        if batch_size is None:
+            batch_size = ChelationConfig.STREAMING_BATCH_SIZE
+        
+        progress_interval = ChelationConfig.STREAMING_PROGRESS_INTERVAL
+        
+        self.logger.log_event(
+            "streaming_ingestion_start",
+            "Starting streaming ingestion",
+            batch_size=batch_size,
+            start_id=start_id
+        )
+        
+        total_docs = 0
+        total_batches = 0
+        current_id = start_id
+        
+        # Convert to iterators to support both lists and generators
+        texts_iter = iter(texts_iterable)
+        payloads_iter = iter(payloads_iterable) if payloads_iterable is not None else None
+        
+        while True:
+            # Collect batch
+            batch_texts = []
+            batch_payloads = []
+            
+            for _ in range(batch_size):
+                try:
+                    text = next(texts_iter)
+                    batch_texts.append(text)
+                    
+                    if payloads_iter is not None:
+                        try:
+                            payload = next(payloads_iter)
+                            batch_payloads.append(payload)
+                        except StopIteration:
+                            # Payload iterator exhausted, use empty dict
+                            batch_payloads.append({})
+                    else:
+                        batch_payloads.append({})
+                        
+                except StopIteration:
+                    # Text iterator exhausted
+                    break
+            
+            # Check if we have any documents to process
+            if not batch_texts:
+                break
+            
+            # Embed batch
+            embeddings = self.embed(batch_texts)
+            
+            # Upsert to Qdrant
+            points = [
+                PointStruct(
+                    id=current_id + j,
+                    vector=embeddings[j],
+                    payload={"text": batch_texts[j], **batch_payloads[j]}
+                )
+                for j in range(len(batch_texts))
+            ]
+            self.qdrant.upsert(collection_name=self.collection_name, points=points)
+            
+            # Update counters
+            batch_doc_count = len(batch_texts)
+            total_docs += batch_doc_count
+            total_batches += 1
+            current_id += batch_doc_count
+            
+            # Log progress periodically
+            if total_batches % progress_interval == 0:
+                self.logger.log_event(
+                    "streaming_ingestion_progress",
+                    f"Processed {total_batches} batches, {total_docs} documents",
+                    level="DEBUG",
+                    batch_num=total_batches,
+                    total_docs=total_docs
+                )
+        
+        # Log completion
+        self.logger.log_event(
+            "streaming_ingestion_complete",
+            f"Streaming ingestion complete: {total_docs} documents in {total_batches} batches",
+            total_docs=total_docs,
+            total_batches=total_batches,
+            start_id=start_id,
+            end_id=current_id - 1
+        )
+        
+        return {
+            'total_docs': total_docs,
+            'total_batches': total_batches,
+            'start_id': start_id,
+            'end_id': current_id - 1
+        }
+
     def _gravity_sensor(self, query_vec, top_k=ChelationConfig.SCOUT_K):
         """Phase 1: Detects Local Curvature (Entropy) around the query."""
         # Use query_points instead of search
@@ -313,6 +438,131 @@ class AntigravityEngine:
         # 4. Apply Mask
         q_chelated = q_vec * mask
         return q_chelated
+    
+    def enable_adaptive_threshold(
+        self,
+        percentile: float = None,
+        window: int = None,
+        min_samples: int = None,
+        min_bound: float = None,
+        max_bound: float = None
+    ):
+        """
+        Enable adaptive threshold tuning.
+        
+        When enabled, the chelation threshold will automatically adjust based on
+        observed variance distribution during inference.
+        
+        Args:
+            percentile: Target percentile of observed variances (default: 75)
+            window: Number of recent variance samples to track (default: 100)
+            min_samples: Minimum samples before adaptive adjustment (default: 20)
+            min_bound: Safety lower bound for threshold (default: 0.0001)
+            max_bound: Safety upper bound for threshold (default: 0.01)
+        """
+        self._adaptive_threshold_enabled = True
+        
+        if percentile is not None:
+            self._adaptive_threshold_percentile = ChelationConfig.validate_adaptive_percentile(percentile)
+        if window is not None:
+            self._adaptive_threshold_window = ChelationConfig.validate_adaptive_window(window)
+        if min_samples is not None:
+            self._adaptive_threshold_min_samples = ChelationConfig.validate_adaptive_min_samples(min_samples)
+        if min_bound is not None:
+            self._adaptive_threshold_min = min_bound
+        if max_bound is not None:
+            self._adaptive_threshold_max = max_bound
+        
+        self.logger.log_event(
+            "adaptive_threshold_enabled",
+            "Adaptive threshold tuning enabled",
+            percentile=self._adaptive_threshold_percentile,
+            window=self._adaptive_threshold_window,
+            min_samples=self._adaptive_threshold_min_samples,
+            min_bound=self._adaptive_threshold_min,
+            max_bound=self._adaptive_threshold_max
+        )
+    
+    def disable_adaptive_threshold(self):
+        """
+        Disable adaptive threshold tuning.
+        
+        Resets the threshold to the configured default and clears variance history.
+        """
+        self._adaptive_threshold_enabled = False
+        self.chelation_threshold = ChelationConfig.DEFAULT_CHELATION_THRESHOLD
+        self._variance_history.clear()
+        
+        self.logger.log_event(
+            "adaptive_threshold_disabled",
+            "Adaptive threshold tuning disabled",
+            threshold_reset_to=self.chelation_threshold
+        )
+    
+    def get_threshold_stats(self):
+        """
+        Get current adaptive threshold statistics.
+        
+        Returns:
+            dict: Statistics including enabled status, current threshold, and history stats
+        """
+        stats = {
+            "enabled": self._adaptive_threshold_enabled,
+            "current_threshold": self.chelation_threshold,
+            "percentile": self._adaptive_threshold_percentile,
+            "window": self._adaptive_threshold_window,
+            "min_samples": self._adaptive_threshold_min_samples,
+            "min_bound": self._adaptive_threshold_min,
+            "max_bound": self._adaptive_threshold_max,
+            "variance_samples_count": len(self._variance_history)
+        }
+        
+        if self._variance_history:
+            stats["variance_min"] = float(np.min(self._variance_history))
+            stats["variance_max"] = float(np.max(self._variance_history))
+            stats["variance_mean"] = float(np.mean(self._variance_history))
+            stats["variance_median"] = float(np.median(self._variance_history))
+        
+        return stats
+    
+    def _update_adaptive_threshold(self, global_variance: float):
+        """
+        Internal helper to update threshold based on observed variance.
+        
+        Called during inference when adaptive mode is enabled.
+        
+        Args:
+            global_variance: Current query's global variance value
+        """
+        if not self._adaptive_threshold_enabled:
+            return
+        
+        # Add to history
+        self._variance_history.append(global_variance)
+        
+        # Trim to window size
+        if len(self._variance_history) > self._adaptive_threshold_window:
+            self._variance_history = self._variance_history[-self._adaptive_threshold_window:]
+        
+        # Update threshold if we have enough samples
+        if len(self._variance_history) >= self._adaptive_threshold_min_samples:
+            new_threshold = np.percentile(self._variance_history, self._adaptive_threshold_percentile)
+            
+            # Clamp to safety bounds
+            new_threshold = max(self._adaptive_threshold_min, min(self._adaptive_threshold_max, new_threshold))
+            
+            # Only log if threshold changed significantly
+            if abs(new_threshold - self.chelation_threshold) > 1e-6:
+                old_threshold = self.chelation_threshold
+                self.chelation_threshold = new_threshold
+                self.logger.log_event(
+                    "adaptive_threshold_update",
+                    f"Threshold adjusted: {old_threshold:.6f} -> {new_threshold:.6f}",
+                    old_threshold=old_threshold,
+                    new_threshold=new_threshold,
+                    samples_used=len(self._variance_history),
+                    level="DEBUG"
+                )
 
     def _cosine_similarity_manual(self, vec1, vec2):
         """Calculates Cosine Similarity manually."""
@@ -340,8 +590,13 @@ class AntigravityEngine:
         # [HOMEOSTATIC LOGGING]
         # Record that these documents participated in a cluster with this 'Noise Center'
         # We only log if this is a "dense" cluster (checking variance is done in caller, so assume yes)
+        max_entries = ChelationConfig.CHELATION_LOG_MAX_ENTRIES_PER_DOC
         for doc_id in local_ids:
             self.chelation_log[doc_id].append(center_of_mass)
+            # Cap log size to prevent unbounded memory growth
+            if len(self.chelation_log[doc_id]) > max_entries:
+                # Keep most recent entries
+                self.chelation_log[doc_id] = self.chelation_log[doc_id][-max_entries:]
         
         # 2. Shift Reference Frame
         # V_new = V_old - mu
@@ -830,6 +1085,9 @@ class AntigravityEngine:
         # Let's use simple mean variance for now as "K"
         dim_variances = np.var(local_cluster_np, axis=0)
         global_variance = np.mean(dim_variances)
+        
+        # Update adaptive threshold if enabled
+        self._update_adaptive_threshold(global_variance)
         
         final_top_ids = std_top
         mask = np.ones(self.vector_size)
