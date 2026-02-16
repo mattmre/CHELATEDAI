@@ -33,6 +33,7 @@ class ChelationConfig:
     OLLAMA_URL = "http://localhost:11434/api/embeddings"
     OLLAMA_TIMEOUT = 30  # seconds per request
     OLLAMA_MAX_WORKERS = 2  # Concurrent requests to avoid overwhelming server
+    OLLAMA_INPUT_MAX_CHARS = 10000  # Hard safety cap before truncation retries
 
     # Truncation strategy for long documents (Ollama mode)
     OLLAMA_TRUNCATION_LIMITS = [6000, 2000, 500]  # chars, tried in order

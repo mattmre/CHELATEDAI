@@ -24,6 +24,8 @@ from urllib.parse import parse_qs, urlparse
 
 # Global configuration
 LOG_FILE_PATH = "chelation_events.jsonl"
+DASHBOARD_TOKEN = os.getenv("CHELATED_DASHBOARD_TOKEN", "").strip()
+DASHBOARD_CORS_ORIGIN = os.getenv("CHELATED_DASHBOARD_CORS_ORIGIN", "").strip()
 
 
 def get_inline_dashboard_html():
@@ -625,6 +627,10 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         parsed_path = urlparse(self.path)
         path = parsed_path.path
         query_params = parse_qs(parsed_path.query)
+
+        if path.startswith("/api/") and not self._is_api_authorized():
+            self.send_error_response(401, "Unauthorized")
+            return
         
         # API endpoints
         if path == "/api/events":
@@ -637,6 +643,18 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         else:
             # Serve static files
             super().do_GET()
+
+    def _is_api_authorized(self) -> bool:
+        """Validate API access token when dashboard token auth is configured."""
+        if not DASHBOARD_TOKEN:
+            return True
+        auth_header = ""
+        if hasattr(self, "headers") and self.headers is not None:
+            auth_header = self.headers.get("Authorization", "")
+        if not auth_header.startswith("Bearer "):
+            return False
+        token = auth_header.split(" ", 1)[1].strip()
+        return token == DASHBOARD_TOKEN
     
     def handle_api_events(self, query_params: Dict[str, List[str]]):
         """
@@ -733,7 +751,10 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         self.send_response(status_code)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(response_bytes)))
-        self.send_header("Access-Control-Allow-Origin", "*")
+        if DASHBOARD_CORS_ORIGIN:
+            self.send_header("Access-Control-Allow-Origin", DASHBOARD_CORS_ORIGIN)
+        elif not DASHBOARD_TOKEN:
+            self.send_header("Access-Control-Allow-Origin", "*")
         self.end_headers()
         self.wfile.write(response_bytes)
     
@@ -747,7 +768,12 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         print(f"[{timestamp}] {format % args}")
 
 
-def run_server(host: str = "localhost", port: int = 8080, log_file: str = LOG_FILE_PATH):
+def _is_loopback_host(host: str) -> bool:
+    """Return True if host is loopback/local-only."""
+    return host in {"localhost", "127.0.0.1", "::1"}
+
+
+def run_server(host: str = "127.0.0.1", port: int = 8080, log_file: str = LOG_FILE_PATH):
     """
     Run the dashboard HTTP server.
 
@@ -758,6 +784,11 @@ def run_server(host: str = "localhost", port: int = 8080, log_file: str = LOG_FI
     """
     global LOG_FILE_PATH
     LOG_FILE_PATH = log_file
+
+    if not _is_loopback_host(host) and not DASHBOARD_TOKEN:
+        raise ValueError(
+            "Refusing non-local dashboard bind without CHELATED_DASHBOARD_TOKEN."
+        )
     
     server_address = (host, port)
     httpd = HTTPServer(server_address, DashboardHandler)
@@ -766,6 +797,7 @@ def run_server(host: str = "localhost", port: int = 8080, log_file: str = LOG_FI
     print(f"  Host: {host}")
     print(f"  Port: {port}")
     print(f"  Log file: {log_file}")
+    print(f"  Token auth: {'enabled' if DASHBOARD_TOKEN else 'disabled'}")
     print(f"  Dashboard URL: http://{host}:{port}/dashboard/")
     print(f"\nAPI Endpoints:")
     print(f"  GET http://{host}:{port}/api/events?limit=N")
@@ -788,8 +820,8 @@ def main():
     )
     parser.add_argument(
         "--host",
-        default="localhost",
-        help="Host address to bind to (default: localhost)"
+        default="127.0.0.1",
+        help="Host address to bind to (default: 127.0.0.1)"
     )
     parser.add_argument(
         "--port",

@@ -73,6 +73,14 @@ class TestAdaptiveThresholdDisabled(unittest.TestCase):
         self.assertEqual(stats['variance_samples_count'], 0)
         self.assertNotIn('variance_min', stats)
 
+    def test_sanitize_ollama_text_applies_length_and_control_char_rules(self):
+        """Ollama text sanitization should truncate and strip control chars."""
+        raw = ("a" * (ChelationConfig.OLLAMA_INPUT_MAX_CHARS + 10)) + "\x00\x01"
+        cleaned = self.engine._sanitize_ollama_text(raw, doc_index=0)
+        self.assertLessEqual(len(cleaned), ChelationConfig.OLLAMA_INPUT_MAX_CHARS)
+        self.assertNotIn("\x00", cleaned)
+        self.assertNotIn("\x01", cleaned)
+
 
 class TestAdaptiveThresholdEnableDisable(unittest.TestCase):
     """Test enabling and disabling adaptive threshold mode."""

@@ -119,7 +119,8 @@ class CheckpointManager:
     def restore_checkpoint(
         self,
         checkpoint_id: Optional[str] = None,
-        target_adapter_path: Optional[Path] = None
+        target_adapter_path: Optional[Path] = None,
+        allow_hash_mismatch: bool = False
     ) -> bool:
         """
         Restore from a checkpoint.
@@ -127,6 +128,7 @@ class CheckpointManager:
         Args:
             checkpoint_id: ID of checkpoint to restore (default: latest)
             target_adapter_path: Where to restore adapter weights
+            allow_hash_mismatch: If True, restore even when checkpoint hash mismatch is detected.
 
         Returns:
             True if successful, False otherwise
@@ -160,7 +162,10 @@ class CheckpointManager:
             # Verify integrity
             current_hash = self._compute_file_hash(adapter_checkpoint)
             if current_hash != checkpoint_meta["adapter_hash"]:
-                print("WARNING: Checkpoint file hash mismatch, may be corrupted")
+                if not allow_hash_mismatch:
+                    print("ERROR: Checkpoint file hash mismatch. Refusing restore.")
+                    return False
+                print("WARNING: Checkpoint file hash mismatch, restoring due to allow_hash_mismatch=True")
 
             # Copy back
             try:

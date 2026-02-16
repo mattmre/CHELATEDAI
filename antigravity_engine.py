@@ -4,6 +4,7 @@ from openai import OpenAI
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams, PointStruct
 from collections import defaultdict
+from threading import Lock
 import torch
 import torch.optim as optim
 from chelation_adapter import ChelationAdapter
@@ -40,6 +41,7 @@ class AntigravityEngine:
         self._adaptive_threshold_min = ChelationConfig.ADAPTIVE_THRESHOLD_MIN
         self._adaptive_threshold_max = ChelationConfig.ADAPTIVE_THRESHOLD_MAX
         self._variance_history = []  # Stores recent variance observations
+        self._adaptive_threshold_lock = Lock()
         
         # Validate and store training configuration
         self.training_mode = ChelationConfig.validate_training_mode(training_mode)
@@ -134,6 +136,25 @@ class AntigravityEngine:
                 quantization_config=quant_config
             )
 
+    def _sanitize_ollama_text(self, text, doc_index=None):
+        """Sanitize embedding input text for Ollama requests."""
+        if not isinstance(text, str):
+            text = str(text)
+
+        if len(text) > ChelationConfig.OLLAMA_INPUT_MAX_CHARS:
+            self.logger.log_event(
+                "embedding_input_truncated",
+                f"Input text exceeded max length ({ChelationConfig.OLLAMA_INPUT_MAX_CHARS}), truncating.",
+                level="DEBUG",
+                doc_index=doc_index,
+                original_length=len(text),
+                truncated_length=ChelationConfig.OLLAMA_INPUT_MAX_CHARS,
+            )
+            text = text[:ChelationConfig.OLLAMA_INPUT_MAX_CHARS]
+
+        # Replace non-printable control chars (except whitespace controls) to reduce API surprises.
+        return "".join(c if (c.isprintable() or c in "\n\r\t") else " " for c in text)
+
     def embed(self, texts):
         """Get Embeddings (Ollama or Local)."""
         if isinstance(texts, str):
@@ -146,6 +167,8 @@ class AntigravityEngine:
             embeddings = [None] * len(texts)
             
             def _get_embedding(i, txt):
+                txt = self._sanitize_ollama_text(txt, doc_index=i)
+
                 # Helper to attempt embedding
                 def attempt(t):
                     try:
@@ -460,27 +483,34 @@ class AntigravityEngine:
             min_bound: Safety lower bound for threshold (default: 0.0001)
             max_bound: Safety upper bound for threshold (default: 0.01)
         """
-        self._adaptive_threshold_enabled = True
-        
-        if percentile is not None:
-            self._adaptive_threshold_percentile = ChelationConfig.validate_adaptive_percentile(percentile)
-        if window is not None:
-            self._adaptive_threshold_window = ChelationConfig.validate_adaptive_window(window)
-        if min_samples is not None:
-            self._adaptive_threshold_min_samples = ChelationConfig.validate_adaptive_min_samples(min_samples)
-        if min_bound is not None:
-            self._adaptive_threshold_min = min_bound
-        if max_bound is not None:
-            self._adaptive_threshold_max = max_bound
+        with self._adaptive_threshold_lock:
+            self._adaptive_threshold_enabled = True
+            
+            if percentile is not None:
+                self._adaptive_threshold_percentile = ChelationConfig.validate_adaptive_percentile(percentile)
+            if window is not None:
+                self._adaptive_threshold_window = ChelationConfig.validate_adaptive_window(window)
+            if min_samples is not None:
+                self._adaptive_threshold_min_samples = ChelationConfig.validate_adaptive_min_samples(min_samples)
+            if min_bound is not None:
+                self._adaptive_threshold_min = min_bound
+            if max_bound is not None:
+                self._adaptive_threshold_max = max_bound
+
+            percentile_val = self._adaptive_threshold_percentile
+            window_val = self._adaptive_threshold_window
+            min_samples_val = self._adaptive_threshold_min_samples
+            min_bound_val = self._adaptive_threshold_min
+            max_bound_val = self._adaptive_threshold_max
         
         self.logger.log_event(
             "adaptive_threshold_enabled",
             "Adaptive threshold tuning enabled",
-            percentile=self._adaptive_threshold_percentile,
-            window=self._adaptive_threshold_window,
-            min_samples=self._adaptive_threshold_min_samples,
-            min_bound=self._adaptive_threshold_min,
-            max_bound=self._adaptive_threshold_max
+            percentile=percentile_val,
+            window=window_val,
+            min_samples=min_samples_val,
+            min_bound=min_bound_val,
+            max_bound=max_bound_val
         )
     
     def disable_adaptive_threshold(self):
@@ -489,9 +519,10 @@ class AntigravityEngine:
         
         Resets the threshold to the configured default and clears variance history.
         """
-        self._adaptive_threshold_enabled = False
-        self.chelation_threshold = ChelationConfig.DEFAULT_CHELATION_THRESHOLD
-        self._variance_history.clear()
+        with self._adaptive_threshold_lock:
+            self._adaptive_threshold_enabled = False
+            self.chelation_threshold = ChelationConfig.DEFAULT_CHELATION_THRESHOLD
+            self._variance_history.clear()
         
         self.logger.log_event(
             "adaptive_threshold_disabled",
@@ -506,22 +537,24 @@ class AntigravityEngine:
         Returns:
             dict: Statistics including enabled status, current threshold, and history stats
         """
-        stats = {
-            "enabled": self._adaptive_threshold_enabled,
-            "current_threshold": self.chelation_threshold,
-            "percentile": self._adaptive_threshold_percentile,
-            "window": self._adaptive_threshold_window,
-            "min_samples": self._adaptive_threshold_min_samples,
-            "min_bound": self._adaptive_threshold_min,
-            "max_bound": self._adaptive_threshold_max,
-            "variance_samples_count": len(self._variance_history)
-        }
+        with self._adaptive_threshold_lock:
+            variance_history = list(self._variance_history)
+            stats = {
+                "enabled": self._adaptive_threshold_enabled,
+                "current_threshold": self.chelation_threshold,
+                "percentile": self._adaptive_threshold_percentile,
+                "window": self._adaptive_threshold_window,
+                "min_samples": self._adaptive_threshold_min_samples,
+                "min_bound": self._adaptive_threshold_min,
+                "max_bound": self._adaptive_threshold_max,
+                "variance_samples_count": len(variance_history)
+            }
         
-        if self._variance_history:
-            stats["variance_min"] = float(np.min(self._variance_history))
-            stats["variance_max"] = float(np.max(self._variance_history))
-            stats["variance_mean"] = float(np.mean(self._variance_history))
-            stats["variance_median"] = float(np.median(self._variance_history))
+        if variance_history:
+            stats["variance_min"] = float(np.min(variance_history))
+            stats["variance_max"] = float(np.max(variance_history))
+            stats["variance_mean"] = float(np.mean(variance_history))
+            stats["variance_median"] = float(np.median(variance_history))
         
         return stats
     
@@ -536,33 +569,46 @@ class AntigravityEngine:
         """
         if not self._adaptive_threshold_enabled:
             return
-        
-        # Add to history
-        self._variance_history.append(global_variance)
-        
-        # Trim to window size
-        if len(self._variance_history) > self._adaptive_threshold_window:
-            self._variance_history = self._variance_history[-self._adaptive_threshold_window:]
-        
-        # Update threshold if we have enough samples
-        if len(self._variance_history) >= self._adaptive_threshold_min_samples:
-            new_threshold = np.percentile(self._variance_history, self._adaptive_threshold_percentile)
-            
-            # Clamp to safety bounds
-            new_threshold = max(self._adaptive_threshold_min, min(self._adaptive_threshold_max, new_threshold))
-            
-            # Only log if threshold changed significantly
-            if abs(new_threshold - self.chelation_threshold) > 1e-6:
-                old_threshold = self.chelation_threshold
-                self.chelation_threshold = new_threshold
-                self.logger.log_event(
-                    "adaptive_threshold_update",
-                    f"Threshold adjusted: {old_threshold:.6f} -> {new_threshold:.6f}",
-                    old_threshold=old_threshold,
-                    new_threshold=new_threshold,
-                    samples_used=len(self._variance_history),
-                    level="DEBUG"
+
+        old_threshold = None
+        new_threshold = None
+        samples_used = 0
+        with self._adaptive_threshold_lock:
+            if not self._adaptive_threshold_enabled:
+                return
+
+            # Add to history
+            self._variance_history.append(global_variance)
+
+            # Trim to window size
+            if len(self._variance_history) > self._adaptive_threshold_window:
+                self._variance_history = self._variance_history[-self._adaptive_threshold_window:]
+
+            # Update threshold if we have enough samples
+            if len(self._variance_history) >= self._adaptive_threshold_min_samples:
+                candidate_threshold = np.percentile(self._variance_history, self._adaptive_threshold_percentile)
+
+                # Clamp to safety bounds
+                candidate_threshold = max(
+                    self._adaptive_threshold_min,
+                    min(self._adaptive_threshold_max, candidate_threshold)
                 )
+
+                if abs(candidate_threshold - self.chelation_threshold) > 1e-6:
+                    old_threshold = self.chelation_threshold
+                    self.chelation_threshold = candidate_threshold
+                    new_threshold = candidate_threshold
+                    samples_used = len(self._variance_history)
+
+        if old_threshold is not None and new_threshold is not None:
+            self.logger.log_event(
+                "adaptive_threshold_update",
+                f"Threshold adjusted: {old_threshold:.6f} -> {new_threshold:.6f}",
+                old_threshold=old_threshold,
+                new_threshold=new_threshold,
+                samples_used=samples_used,
+                level="DEBUG"
+            )
 
     def _cosine_similarity_manual(self, vec1, vec2):
         """Calculates Cosine Similarity manually."""
@@ -1088,6 +1134,9 @@ class AntigravityEngine:
         
         # Update adaptive threshold if enabled
         self._update_adaptive_threshold(global_variance)
+
+        with self._adaptive_threshold_lock:
+            active_threshold = self.chelation_threshold
         
         final_top_ids = std_top
         mask = np.ones(self.vector_size)
@@ -1095,7 +1144,7 @@ class AntigravityEngine:
         
         if self.use_quantization:
              # Adaptive Logic: Chelate if High Variance OR Forced
-             if global_variance > self.chelation_threshold or self.use_centering:
+             if global_variance > active_threshold or self.use_centering:
                   # STAGE 6: Spectral Chelation (Precision Path)
                   action = "CHELATE"
                   # This method now handles the `chelation_log` update implicitly

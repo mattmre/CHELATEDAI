@@ -15,6 +15,10 @@ from urllib.parse import urlencode
 # Import the module under test
 import dashboard_server
 
+# Normalize auth defaults for deterministic tests
+dashboard_server.DASHBOARD_TOKEN = ""
+dashboard_server.DASHBOARD_CORS_ORIGIN = ""
+
 
 class TestLoadEvents(unittest.TestCase):
     """Test the load_events function."""
@@ -216,6 +220,11 @@ class TestDashboardHandler(unittest.TestCase):
 
     def setUp(self):
         """Set up test fixtures."""
+        self._old_dashboard_token = dashboard_server.DASHBOARD_TOKEN
+        self._old_dashboard_cors = dashboard_server.DASHBOARD_CORS_ORIGIN
+        dashboard_server.DASHBOARD_TOKEN = ""
+        dashboard_server.DASHBOARD_CORS_ORIGIN = ""
+
         # Create temporary log file
         self.temp_file = tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.jsonl')
         self.temp_file_path = self.temp_file.name
@@ -237,11 +246,14 @@ class TestDashboardHandler(unittest.TestCase):
         """Clean up temporary files."""
         if os.path.exists(self.temp_file_path):
             os.unlink(self.temp_file_path)
+        dashboard_server.DASHBOARD_TOKEN = self._old_dashboard_token
+        dashboard_server.DASHBOARD_CORS_ORIGIN = self._old_dashboard_cors
 
     def _make_handler(self):
         """Create a handler instance without socketserver initialization."""
         handler = dashboard_server.DashboardHandler.__new__(dashboard_server.DashboardHandler)
         handler.wfile = BytesIO()
+        handler.headers = {}
         handler.send_response = MagicMock()
         handler.send_header = MagicMock()
         handler.end_headers = MagicMock()
@@ -386,6 +398,62 @@ class TestIntegration(unittest.TestCase):
             
         finally:
             os.unlink(temp_file.name)
+
+
+class TestDashboardSecurity(unittest.TestCase):
+    """Security-oriented behavior tests."""
+
+    def setUp(self):
+        self._old_dashboard_token = dashboard_server.DASHBOARD_TOKEN
+        self._old_dashboard_cors = dashboard_server.DASHBOARD_CORS_ORIGIN
+        dashboard_server.DASHBOARD_TOKEN = ""
+        dashboard_server.DASHBOARD_CORS_ORIGIN = ""
+
+    def tearDown(self):
+        dashboard_server.DASHBOARD_TOKEN = self._old_dashboard_token
+        dashboard_server.DASHBOARD_CORS_ORIGIN = self._old_dashboard_cors
+
+    def _make_handler(self):
+        handler = dashboard_server.DashboardHandler.__new__(dashboard_server.DashboardHandler)
+        handler.wfile = BytesIO()
+        handler.headers = {}
+        handler.send_response = MagicMock()
+        handler.send_header = MagicMock()
+        handler.end_headers = MagicMock()
+        return handler
+
+    def test_do_get_blocks_api_without_token_header(self):
+        """API requests should be blocked when token auth is enabled and header is missing."""
+        dashboard_server.DASHBOARD_TOKEN = "secret-token"
+        handler = self._make_handler()
+        handler.path = "/api/summary"
+        handler.handle_api_summary = MagicMock()
+        handler.send_error_response = MagicMock()
+
+        handler.do_GET()
+
+        handler.send_error_response.assert_called_once_with(401, "Unauthorized")
+        handler.handle_api_summary.assert_not_called()
+
+    def test_do_get_allows_api_with_valid_token_header(self):
+        """API requests should pass through when a valid bearer token is provided."""
+        dashboard_server.DASHBOARD_TOKEN = "secret-token"
+        handler = self._make_handler()
+        handler.headers = {"Authorization": "Bearer secret-token"}
+        handler.path = "/api/summary"
+        handler.handle_api_summary = MagicMock()
+        handler.send_error_response = MagicMock()
+
+        handler.do_GET()
+
+        handler.handle_api_summary.assert_called_once()
+        handler.send_error_response.assert_not_called()
+
+    def test_run_server_rejects_non_local_bind_without_token(self):
+        """Server should refuse non-local host bind unless token auth is configured."""
+        dashboard_server.DASHBOARD_TOKEN = ""
+        with self.assertRaises(ValueError):
+            dashboard_server.run_server(host="0.0.0.0", port=8080, log_file="chelation_events.jsonl")
 
 
 if __name__ == "__main__":

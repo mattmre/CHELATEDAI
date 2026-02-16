@@ -150,10 +150,8 @@ class TestCheckpointManagerRestore(unittest.TestCase):
         result = self.manager.restore_checkpoint(checkpoint_id="nonexistent_id")
         self.assertFalse(result)
 
-    def test_restore_with_hash_mismatch_still_restores(self):
-        """When the checkpoint file hash has changed (simulating corruption), the
-        restore still proceeds (prints a warning). This documents current behavior
-        that finding F-018 will tighten later."""
+    def test_restore_with_hash_mismatch_blocks_by_default(self):
+        """Hash mismatch should fail restore by default."""
         cp_id = self.manager.create_checkpoint("snap", self.adapter_path)
         # Tamper with the checkpoint file to cause a hash mismatch
         checkpoint_file = Path(self.manager.list_checkpoints()[-1]["adapter_path"])
@@ -161,9 +159,22 @@ class TestCheckpointManagerRestore(unittest.TestCase):
         # Overwrite original adapter
         torch.save({"weight": torch.zeros(5)}, self.adapter_path)
         result = self.manager.restore_checkpoint(checkpoint_id=cp_id)
-        # Current behavior: still restores despite mismatch
+        self.assertFalse(result)
+        # Adapter should remain unchanged because restore was blocked.
+        restored = torch.load(self.adapter_path, weights_only=True)
+        self.assertTrue(torch.equal(restored["weight"], torch.zeros(5)))
+
+    def test_restore_with_hash_mismatch_can_be_forced(self):
+        """Hash mismatch can be overridden for emergency restore."""
+        cp_id = self.manager.create_checkpoint("snap", self.adapter_path)
+        checkpoint_file = Path(self.manager.list_checkpoints()[-1]["adapter_path"])
+        torch.save({"weight": torch.ones(10)}, checkpoint_file)
+        torch.save({"weight": torch.zeros(5)}, self.adapter_path)
+        result = self.manager.restore_checkpoint(
+            checkpoint_id=cp_id,
+            allow_hash_mismatch=True
+        )
         self.assertTrue(result)
-        # The restored file should match the tampered checkpoint (not the original)
         restored = torch.load(self.adapter_path, weights_only=True)
         self.assertTrue(torch.equal(restored["weight"], torch.ones(10)))
 
