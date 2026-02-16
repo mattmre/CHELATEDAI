@@ -50,11 +50,36 @@ print(f"Top Results: {chel_ids}")
 engine.run_sedimentation_cycle(threshold=3, learning_rate=0.01, epochs=10)
 ```
 
+### Phase 4 Features (Memory-Efficient)
+
+```python
+# Streaming ingestion for large datasets (avoids loading all into memory)
+def document_generator():
+    for i in range(100000):
+        yield f"Document {i} content..."
+
+stats = engine.ingest_streaming(document_generator(), batch_size=100)
+print(f"Ingested {stats['total_docs']} documents")
+
+# Enable adaptive threshold tuning (auto-adjusts based on query patterns)
+engine.enable_adaptive_threshold(percentile=75, window=100)
+
+# Multi-task benchmarking
+# python benchmark_multitask.py --tasks mini --epochs 2 --max-queries 50
+
+# Dashboard visualization
+# python dashboard_server.py --port 8080
+```
+
 ### Run Tests
 
 ```bash
-# Unit tests
+# Unit tests (Phase 1-3)
 python test_unit_core.py
+
+# Phase 4 tests
+python -m pytest test_adaptive_threshold.py test_memory_optimization.py \
+    test_benchmark_multitask.py test_dashboard_server.py -v
 
 # Integration tests
 python test_dynamic_adaptation.py
@@ -62,6 +87,7 @@ python test_longitudinal_adaptation.py
 
 # Benchmarks (requires MTEB)
 python benchmark_evolution.py --task SciFact --lr 0.5
+python benchmark_multitask.py --tasks mini --epochs 2 --max-queries 50
 ```
 
 ## Architecture
@@ -226,11 +252,15 @@ CHELATEDAI/
 - ✅ Performance metrics tracking
 - ✅ Comprehensive unit tests (21 tests passing)
 
-### Phase 4: Next Steps
-- [ ] Memory optimization for large datasets
-- [ ] Adaptive threshold tuning
-- [ ] Additional MTEB task benchmarks
-- [ ] Web dashboard for log visualization
+### Phase 4: Memory Optimization & Adaptive Controls (Completed)
+- ✅ Streaming ingestion for large datasets (`ingest_streaming()`)
+- ✅ Chelation log capping (automatic memory management)
+- ✅ Adaptive threshold tuning (runtime optimization)
+- ✅ Multi-task benchmarking framework (`benchmark_multitask.py`)
+- ✅ Web dashboard for log visualization (`dashboard_server.py`)
+- ✅ 234 tests passing, 1 warning (expected)
+
+See `docs/phase4-experiment-protocol.md` for detailed usage instructions.
 
 ## Troubleshooting
 
