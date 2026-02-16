@@ -78,6 +78,20 @@ class ChelationConfig:
     DEFAULT_COLLAPSE_THRESHOLD = 3  # Min frequency to trigger sedimentation
     ADAPTER_HIDDEN_DIM_RATIO = 0.5  # hidden_dim = input_dim * ratio
     HOMEOSTATIC_PUSH_MAGNITUDE = 0.1  # Adapter push magnitude for sedimentation target vectors
+    
+    # ===== Teacher Distillation Configuration =====
+    # Training mode: 'baseline', 'offline', 'hybrid'
+    DEFAULT_TRAINING_MODE = "baseline"
+    
+    # Teacher model for distillation (local sentence-transformers model)
+    DEFAULT_TEACHER_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
+    
+    # Teacher weight for hybrid mode (0.0 = homeostatic only, 1.0 = teacher only)
+    DEFAULT_TEACHER_WEIGHT = 0.5
+    
+    # Offline distillation epochs
+    DEFAULT_OFFLINE_EPOCHS = 15
+    DEFAULT_OFFLINE_LEARNING_RATE = 0.005
 
     # Adapter training tuning by dataset size
     ADAPTER_PRESETS = {
@@ -141,9 +155,29 @@ class ChelationConfig:
     @classmethod
     def validate_epochs(cls, value: int) -> int:
         """Validate and clamp epochs to valid range."""
+        if value < 0:
+            print(f"WARNING: epochs={value} is negative, using 0 (skip training).")
+            return 0
         if not cls.MIN_EPOCHS <= value <= cls.MAX_EPOCHS:
             print(f"WARNING: epochs={value} out of range [{cls.MIN_EPOCHS}, {cls.MAX_EPOCHS}], clamping.")
             return max(cls.MIN_EPOCHS, min(cls.MAX_EPOCHS, value))
+        return value
+    
+    @classmethod
+    def validate_training_mode(cls, value: str) -> str:
+        """Validate training mode."""
+        valid_modes = ["baseline", "offline", "hybrid"]
+        if value not in valid_modes:
+            print(f"WARNING: training_mode='{value}' invalid. Valid options: {valid_modes}. Using 'baseline'.")
+            return "baseline"
+        return value
+    
+    @classmethod
+    def validate_teacher_weight(cls, value: float) -> float:
+        """Validate and clamp teacher_weight to [0.0, 1.0]."""
+        if not 0.0 <= value <= 1.0:
+            print(f"WARNING: teacher_weight={value} out of range [0.0, 1.0], clamping.")
+            return max(0.0, min(1.0, value))
         return value
 
     @classmethod

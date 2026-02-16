@@ -9,15 +9,20 @@ import torch.optim as optim
 from chelation_adapter import ChelationAdapter
 from config import ChelationConfig
 from chelation_logger import get_logger
+from typing import Optional
+from teacher_distillation import TeacherDistillationHelper, create_distillation_helper
 
 class AntigravityEngine:
-    def __init__(self, qdrant_location=":memory:", chelation_p=ChelationConfig.DEFAULT_CHELATION_P, model_name='ollama:nomic-embed-text', use_centering=False, use_quantization=False):
+    def __init__(self, qdrant_location=":memory:", chelation_p=ChelationConfig.DEFAULT_CHELATION_P, model_name='ollama:nomic-embed-text', use_centering=False, use_quantization=False, training_mode: str = "baseline", teacher_model_name: Optional[str] = None, teacher_weight: float = 0.5):
         """
-        Stage 8 Engine: Docker/Ollama Integration.
+        Stage 8 Engine: Docker/Ollama Integration + Teacher Distillation.
         
         chelation_p: The 'K-Knob'.
         use_centering: If True, uses 'Spectral Chelation' (Centering).
         use_quantization: If True, enables INT8 Scalar Quantization (Layer 3).
+        training_mode: 'baseline', 'offline', or 'hybrid' - controls sedimentation behavior.
+        teacher_model_name: Optional teacher model for distillation (local sentence-transformers).
+        teacher_weight: Weight for teacher guidance in hybrid mode (0.0-1.0).
         """
         self.chelation_p = chelation_p
         self.use_centering = use_centering
@@ -26,6 +31,23 @@ class AntigravityEngine:
         self.chelation_threshold = ChelationConfig.DEFAULT_CHELATION_THRESHOLD
         self.adapter_path = ChelationConfig.ADAPTER_WEIGHTS_PATH
         self.logger = get_logger()
+        
+        # Validate and store training configuration
+        self.training_mode = ChelationConfig.validate_training_mode(training_mode)
+        self.teacher_weight = ChelationConfig.validate_teacher_weight(teacher_weight)
+        
+        # Initialize teacher distillation helper (lazy loading)
+        self.teacher_helper = None
+        if self.training_mode in ["offline", "hybrid"]:
+            teacher_model = teacher_model_name or ChelationConfig.DEFAULT_TEACHER_MODEL
+            self.teacher_helper = create_distillation_helper(teacher_model)
+            self.logger.log_event(
+                "distillation_config",
+                f"Training mode: {self.training_mode}, Teacher weight: {self.teacher_weight}",
+                training_mode=self.training_mode,
+                teacher_weight=self.teacher_weight,
+                teacher_model=teacher_model
+            )
 
         if model_name.startswith("ollama:"):
             # Ollama Mode
@@ -343,12 +365,31 @@ class AntigravityEngine:
         [State 2: Sleep Cycle]
         DYNAMIC UPDATE: Trains the Adapter using the collected chelation events.
         
-        The 'Sleep Cycle' now does two things:
+        Supports multiple training modes:
+        - baseline: Original homeostatic training (push away from noise centers)
+        - offline: Teacher-guided training (align with teacher embeddings)
+        - hybrid: Blend homeostatic and teacher guidance
+        
+        The 'Sleep Cycle' now does:
         1. Identifies vectors that were prone to 'semantic noise' (collapsing).
-        2. Trains the Adapter to push these vectors AWAY from the noise centers.
+        2. Trains the Adapter to push these vectors AWAY from the noise centers (baseline)
+           OR align with teacher embeddings (offline) OR blend both (hybrid).
         3. Persists the improved model weights.
         """
-        self.logger.log_event("sedimentation_start", f"Running sedimentation cycle (Threshold={threshold}, LR={learning_rate})", threshold=threshold, learning_rate=learning_rate, epochs=epochs)
+        self.logger.log_event(
+            "sedimentation_start",
+            f"Running sedimentation cycle (Mode={self.training_mode}, Threshold={threshold}, LR={learning_rate})",
+            threshold=threshold,
+            learning_rate=learning_rate,
+            epochs=epochs,
+            training_mode=self.training_mode
+        )
+        
+        # Handle epochs=0 gracefully (skip training)
+        if epochs == 0:
+            self.logger.log_event("training_skipped", "Epochs=0, skipping training cycle")
+            self.chelation_log.clear()  # Still clear the log even if no training
+            return
         
         # Filter for frequent collapsers
         targets = {k: v for k, v in self.chelation_log.items() if len(v) >= threshold}
@@ -359,17 +400,13 @@ class AntigravityEngine:
             return
 
         # --- PREPARE TRAINING DATA ---
-        # input: The current vector of the collapsing node
-        # target: The vector pushed away from the noise center
-        # Loss: MSE(Adapter(input), target)
-        
         batch_ids = list(targets.keys())
         
-        # --- PREPARE DATA WITH ID TRACKING ---
         chunk_size = ChelationConfig.CHUNK_SIZE
         training_inputs = []
         training_targets = []
-        ordered_ids = [] # To map outputs back to IDs for update
+        ordered_ids = []
+        training_texts = []  # For teacher distillation
         
         self.logger.log_event("training_preparation", "Fetching training data from Qdrant", level="DEBUG")
         
@@ -386,22 +423,100 @@ class AntigravityEngine:
                 noise_vectors = targets[point.id]
                 current_vec = np.array(point.vector)
                 
-                # Calculate Target
-                avg_noise = np.mean(noise_vectors, axis=0)
-                diff = current_vec - avg_noise
-                diff_norm = diff / (np.linalg.norm(diff) + 1e-9)
-                target_vec = current_vec + (diff_norm * ChelationConfig.HOMEOSTATIC_PUSH_MAGNITUDE)
-                target_vec = target_vec / np.linalg.norm(target_vec)
-                
+                # Store input
                 training_inputs.append(current_vec)
-                training_targets.append(target_vec)
+                
+                # Get text for teacher distillation modes
+                text = point.payload.get("text", "")
+                training_texts.append(text)
+                
+                # Calculate Target based on mode
+                if self.training_mode == "baseline":
+                    # Original homeostatic push
+                    avg_noise = np.mean(noise_vectors, axis=0)
+                    diff = current_vec - avg_noise
+                    diff_norm = diff / (np.linalg.norm(diff) + 1e-9)
+                    target_vec = current_vec + (diff_norm * ChelationConfig.HOMEOSTATIC_PUSH_MAGNITUDE)
+                    target_vec = target_vec / (np.linalg.norm(target_vec) + 1e-9)
+                    training_targets.append(target_vec)
+                    
+                elif self.training_mode == "offline":
+                    # Pure teacher guidance - defer to batch processing
+                    # For now, use current vec as placeholder (will be replaced)
+                    training_targets.append(current_vec)
+                    
+                elif self.training_mode == "hybrid":
+                    # Blend homeostatic + teacher - defer to batch processing
+                    # Calculate homeostatic target first
+                    avg_noise = np.mean(noise_vectors, axis=0)
+                    diff = current_vec - avg_noise
+                    diff_norm = diff / (np.linalg.norm(diff) + 1e-9)
+                    homeostatic_target = current_vec + (diff_norm * ChelationConfig.HOMEOSTATIC_PUSH_MAGNITUDE)
+                    homeostatic_target = homeostatic_target / (np.linalg.norm(homeostatic_target) + 1e-9)
+                    training_targets.append(homeostatic_target)  # Will be blended later
                 
         if not training_inputs:
             return
+        
+        # Convert to numpy arrays
+        input_array = np.array(training_inputs)
+        target_array = np.array(training_targets)
+        
+        # Apply teacher distillation if needed
+        if self.training_mode == "offline" and self.teacher_helper:
+            self.logger.log_event("distillation_teacher_targets", "Generating pure teacher targets")
+            try:
+                target_array = self.teacher_helper.generate_distillation_targets(
+                    texts=training_texts,
+                    current_embeddings=input_array,
+                    teacher_weight=1.0  # Pure teacher
+                )
+            except Exception as e:
+                self.logger.log_error(
+                    "distillation_failed",
+                    "Teacher target generation failed, falling back to baseline",
+                    exception=e
+                )
+                # Fallback to baseline targets (already computed)
+                pass
+        
+        elif self.training_mode == "hybrid" and self.teacher_helper:
+            self.logger.log_event(
+                "distillation_hybrid_targets",
+                f"Blending homeostatic and teacher targets (teacher_weight={self.teacher_weight})"
+            )
+            try:
+                # target_array currently contains homeostatic targets
+                homeostatic_targets = target_array.copy()
+                
+                # Get teacher embeddings
+                teacher_embeds = self.teacher_helper.get_teacher_embeddings(training_texts)
+                
+                if teacher_embeds.shape == homeostatic_targets.shape:
+                    # Blend: target = (1 - alpha) * homeostatic + alpha * teacher
+                    alpha = self.teacher_weight
+                    blended = (1 - alpha) * homeostatic_targets + alpha * teacher_embeds
+                    # Normalize
+                    norms = np.linalg.norm(blended, axis=1, keepdims=True)
+                    norms = np.maximum(norms, 1e-9)
+                    target_array = blended / norms
+                else:
+                    self.logger.log_error(
+                        "hybrid_shape_mismatch",
+                        f"Shape mismatch: homeostatic {homeostatic_targets.shape} vs teacher {teacher_embeds.shape}",
+                        homeostatic_shape=homeostatic_targets.shape,
+                        teacher_shape=teacher_embeds.shape
+                    )
+            except Exception as e:
+                self.logger.log_error(
+                    "hybrid_blend_failed",
+                    "Hybrid blending failed, using homeostatic only",
+                    exception=e
+                )
 
         # Normalize Data
-        input_tensor = torch.tensor(np.array(training_inputs), dtype=torch.float32)
-        target_tensor = torch.tensor(np.array(training_targets), dtype=torch.float32)
+        input_tensor = torch.tensor(input_array, dtype=torch.float32)
+        target_tensor = torch.tensor(target_array, dtype=torch.float32)
         
         # --- TRAINING LOOP ---
         self.logger.log_training_start(num_samples=len(training_inputs), learning_rate=learning_rate, epochs=epochs, threshold=threshold)
@@ -418,7 +533,7 @@ class AntigravityEngine:
             optimizer.step()
             final_loss = loss.item()
 
-            if epoch % (epochs // 2 or 1) == 0:
+            if epoch % max(1, epochs // 2) == 0:
                 self.logger.log_training_epoch(epoch=epoch+1, total_epochs=epochs, loss=final_loss)
         self.adapter.eval()
         self.adapter.save(self.adapter_path)
@@ -473,6 +588,218 @@ class AntigravityEngine:
                 
         self.logger.log_training_complete(final_loss=final_loss, vectors_updated=total_updates, vectors_failed=failed_updates)
         self.chelation_log.clear()
+    
+    def run_offline_distillation(self, batch_size: int = 100, learning_rate: float = None, epochs: int = None):
+        """
+        Run explicit offline teacher distillation on the entire corpus.
+        
+        This method trains the adapter to align ALL corpus embeddings with teacher embeddings,
+        independent of query-time chelation events. Useful for pre-training or warm-starting
+        the adapter with teacher knowledge.
+        
+        Args:
+            batch_size: Number of documents to process per batch
+            learning_rate: Optional learning rate (uses config default if None)
+            epochs: Optional epoch count (uses config default if None)
+        """
+        if self.teacher_helper is None:
+            self.logger.log_error(
+                "offline_distillation_unavailable",
+                "Teacher helper not initialized. Set training_mode='offline' or 'hybrid' during engine init.",
+                training_mode=self.training_mode
+            )
+            return
+        
+        lr = learning_rate or ChelationConfig.DEFAULT_OFFLINE_LEARNING_RATE
+        ep = epochs or ChelationConfig.DEFAULT_OFFLINE_EPOCHS
+        
+        if ep == 0:
+            self.logger.log_event("offline_distillation_skipped", "Epochs=0, skipping offline distillation")
+            return
+        
+        self.logger.log_event(
+            "offline_distillation_start",
+            f"Starting offline distillation (LR={lr}, Epochs={ep}, Batch={batch_size})",
+            learning_rate=lr,
+            epochs=ep,
+            batch_size=batch_size
+        )
+        
+        # Check dimension compatibility
+        if not self.teacher_helper.check_dimension_compatibility(self.vector_size):
+            self.logger.log_error(
+                "offline_distillation_dimension_mismatch",
+                f"Teacher dimension mismatch. Cannot proceed with offline distillation.",
+                teacher_dim=self.teacher_helper.teacher_dim,
+                student_dim=self.vector_size
+            )
+            return
+        
+        # Fetch all corpus IDs
+        try:
+            scroll_result = self.qdrant.scroll(
+                collection_name=self.collection_name,
+                limit=10000,  # Reasonable limit per scroll
+                with_vectors=False,
+                with_payload=True
+            )
+            all_points = scroll_result[0]
+            
+            if not all_points:
+                self.logger.log_event("offline_distillation_empty", "No documents in corpus, nothing to distill")
+                return
+            
+            self.logger.log_event(
+                "offline_distillation_corpus",
+                f"Found {len(all_points)} documents in corpus",
+                corpus_size=len(all_points)
+            )
+        except Exception as e:
+            self.logger.log_error(
+                "offline_distillation_scroll_failed",
+                "Failed to retrieve corpus for offline distillation",
+                exception=e
+            )
+            return
+        
+        # Process in batches
+        training_inputs = []
+        training_targets = []
+        ordered_ids = []
+        
+        for i in range(0, len(all_points), batch_size):
+            batch_points = all_points[i:i+batch_size]
+            batch_ids = [p.id for p in batch_points]
+            batch_texts = [p.payload.get("text", "") for p in batch_points]
+            
+            # Retrieve vectors for this batch
+            try:
+                points_with_vectors = self.qdrant.retrieve(
+                    collection_name=self.collection_name,
+                    ids=batch_ids,
+                    with_vectors=True
+                )
+                
+                current_vecs = [np.array(p.vector) for p in points_with_vectors]
+                
+                # Generate teacher targets
+                target_vecs = self.teacher_helper.generate_distillation_targets(
+                    texts=batch_texts,
+                    current_embeddings=np.array(current_vecs),
+                    teacher_weight=1.0  # Pure teacher guidance for offline mode
+                )
+                
+                training_inputs.extend(current_vecs)
+                training_targets.extend(target_vecs)
+                ordered_ids.extend(batch_ids)
+                
+                self.logger.log_event(
+                    "offline_distillation_batch",
+                    f"Processed batch {i//batch_size + 1}",
+                    level="DEBUG",
+                    batch_num=i//batch_size + 1,
+                    batch_size=len(batch_ids)
+                )
+                
+            except Exception as e:
+                self.logger.log_error(
+                    "offline_distillation_batch_failed",
+                    f"Failed to process batch {i//batch_size + 1}",
+                    exception=e,
+                    batch_num=i//batch_size + 1
+                )
+                continue
+        
+        if not training_inputs:
+            self.logger.log_event("offline_distillation_no_data", "No training data generated")
+            return
+        
+        # Convert to tensors
+        input_tensor = torch.tensor(np.array(training_inputs), dtype=torch.float32)
+        target_tensor = torch.tensor(np.array(training_targets), dtype=torch.float32)
+        
+        # Train adapter
+        self.logger.log_training_start(
+            num_samples=len(training_inputs),
+            learning_rate=lr,
+            epochs=ep,
+            threshold=0
+        )
+        
+        optimizer = optim.Adam(self.adapter.parameters(), lr=lr)
+        criterion = torch.nn.MSELoss()
+        
+        self.adapter.train()
+        final_loss = 0.0
+        
+        for epoch in range(ep):
+            optimizer.zero_grad()
+            outputs = self.adapter(input_tensor)
+            loss = criterion(outputs, target_tensor)
+            loss.backward()
+            optimizer.step()
+            final_loss = loss.item()
+            
+            if epoch % max(1, ep // 2) == 0:
+                self.logger.log_training_epoch(epoch=epoch+1, total_epochs=ep, loss=final_loss)
+        
+        self.adapter.eval()
+        self.adapter.save(self.adapter_path)
+        self.logger.log_checkpoint("save", self.adapter_path)
+        
+        # Update vectors in Qdrant
+        self.logger.log_event("offline_distillation_update", "Updating corpus vectors in Qdrant")
+        
+        with torch.no_grad():
+            new_vectors_np = self.adapter(input_tensor).numpy()
+        
+        chunk_size = ChelationConfig.CHUNK_SIZE
+        total_updates = 0
+        failed_updates = 0
+        
+        for i in range(0, len(ordered_ids), chunk_size):
+            chunk_ids = ordered_ids[i:i+chunk_size]
+            chunk_vectors = new_vectors_np[i:i+chunk_size]
+            
+            try:
+                existing_points = self.qdrant.retrieve(
+                    collection_name=self.collection_name,
+                    ids=chunk_ids,
+                    with_vectors=False
+                )
+                payload_map = {p.id: p.payload for p in existing_points}
+                
+                batch_points = []
+                for j, doc_id in enumerate(chunk_ids):
+                    vec = chunk_vectors[j].tolist()
+                    pay = payload_map.get(doc_id, {})
+                    
+                    batch_points.append(PointStruct(
+                        id=doc_id,
+                        vector=vec,
+                        payload=pay
+                    ))
+                
+                if batch_points:
+                    self.qdrant.upsert(
+                        collection_name=self.collection_name,
+                        points=batch_points
+                    )
+                    total_updates += len(batch_points)
+            except Exception as e:
+                self.logger.log_error(
+                    "offline_distillation_update_failed",
+                    f"Failed to update batch {i//chunk_size}",
+                    exception=e,
+                    batch_num=i//chunk_size
+                )
+                failed_updates += len(chunk_ids)
+        
+        self.logger.log_training_complete(
+            final_loss=final_loss,
+            vectors_updated=total_updates,
+            vectors_failed=failed_updates
+        )
 
     def run_inference(self, query_text):
         """Full Navigational Loop (returns IDs)."""
