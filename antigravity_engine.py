@@ -220,9 +220,9 @@ class AntigravityEngine:
 
                 if emb is None:
                     self.logger.log_error("embedding_failed", f"Failed to embed doc {i} after retries", doc_index=i)
-                    return i, np.zeros(self.vector_size)
+                    return i, np.zeros(self.vector_size, dtype=np.float32)
                     
-                return i, emb
+                return i, np.array(emb, dtype=np.float32)
 
             from concurrent.futures import ThreadPoolExecutor, TimeoutError
             with ThreadPoolExecutor(max_workers=ChelationConfig.OLLAMA_MAX_WORKERS) as executor:
@@ -233,12 +233,12 @@ class AntigravityEngine:
                         embeddings[idx] = emb
                     except TimeoutError:
                         self.logger.log_error("timeout", f"Embedding timeout for document {idx}, using zero vector", doc_index=idx)
-                        embeddings[idx] = np.zeros(self.vector_size)
+                        embeddings[idx] = np.zeros(self.vector_size, dtype=np.float32)
                     except Exception as e:
                         self.logger.log_error("embedding", f"Embedding failed for document {idx}", exception=e, doc_index=idx)
-                        embeddings[idx] = np.zeros(self.vector_size)
+                        embeddings[idx] = np.zeros(self.vector_size, dtype=np.float32)
 
-            return np.array(embeddings)
+            return np.array(embeddings, dtype=np.float32)
             
         elif self.mode == "local":
             raw_embeddings = self.local_model.encode(texts, convert_to_numpy=True, show_progress_bar=False)

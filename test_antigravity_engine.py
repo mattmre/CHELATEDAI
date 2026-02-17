@@ -69,7 +69,56 @@ class TestAntigravityEngine(unittest.TestCase):
             engine = AntigravityEngine(qdrant_location=":memory:", model_name="ollama:nomic-embed-text")
             result = engine.embed(["query"])
             self.assertEqual(result.shape, (1, 768))
+            self.assertEqual(result.dtype, np.float32)
             self.assertTrue(np.allclose(result, np.zeros((1, 768))))
+        self.st_patcher.start()
+
+    def test_embed_ollama_mode_returns_float32(self):
+        """F-035: Verify Ollama mode returns float32 dtype, not object dtype."""
+        self.st_patcher.stop()
+        with patch("antigravity_engine.requests") as mock_requests, patch("antigravity_engine.REQUESTS_AVAILABLE", True):
+            mock_requests.exceptions = requests.exceptions
+            # Simulate Ollama returning a Python list
+            mock_response = MagicMock()
+            mock_response.status_code = 200
+            mock_response.json.return_value = {"embedding": [0.1] * 768}
+            mock_requests.post.return_value = mock_response
+            
+            engine = AntigravityEngine(qdrant_location=":memory:", model_name="ollama:nomic-embed-text")
+            result = engine.embed(["test query"])
+            
+            self.assertEqual(result.shape, (1, 768))
+            self.assertEqual(result.dtype, np.float32)
+            self.assertIsInstance(result, np.ndarray)
+        self.st_patcher.start()
+
+    def test_embed_ollama_mode_mixed_success_failure_consistent_dtype(self):
+        """F-035: Verify mixed success/fallback returns consistent shape/dtype."""
+        self.st_patcher.stop()
+        with patch("antigravity_engine.requests") as mock_requests, patch("antigravity_engine.REQUESTS_AVAILABLE", True):
+            mock_requests.exceptions = requests.exceptions
+
+            def side_effect_fn(*args, **kwargs):
+                prompt = kwargs.get("json", {}).get("prompt", "")
+                if prompt in ("test", "success query"):
+                    mock_response = MagicMock()
+                    mock_response.status_code = 200
+                    mock_response.json.return_value = {"embedding": [0.5] * 768}
+                    return mock_response
+                raise requests.exceptions.Timeout("timeout")
+            
+            mock_requests.post.side_effect = side_effect_fn
+            
+            engine = AntigravityEngine(qdrant_location=":memory:", model_name="ollama:nomic-embed-text")
+            result = engine.embed(["success query", "timeout query"])
+            
+            # Should be consistent shape and dtype
+            self.assertEqual(result.shape, (2, 768))
+            self.assertEqual(result.dtype, np.float32)
+            
+            # First should be non-zero, second should be zero fallback
+            self.assertFalse(np.allclose(result[0], 0))
+            self.assertTrue(np.allclose(result[1], 0))
         self.st_patcher.start()
 
     def test_chelate_toxicity_mask_shape(self):
