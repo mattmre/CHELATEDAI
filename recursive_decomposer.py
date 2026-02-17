@@ -143,7 +143,17 @@ class OllamaDecomposer(BaseDecomposer):
     LLM-backed decomposer using Ollama's generate API.
 
     Falls back to atomic (no decomposition) on any failure.
+    
+    Security features (F-021):
+    - Query sanitization (control chars, whitespace normalization, length cap)
+    - Sub-query count limiting
+    - Lexical overlap validation between sub-queries and original query
     """
+
+    # F-021: Guardrail constants
+    MAX_QUERY_LENGTH = 2000
+    MAX_SUBQUERY_COUNT = 8
+    MIN_OVERLAP_RATIO = 0.2  # At least 20% token overlap required
 
     def __init__(self, model="llama3.2", ollama_url=None, timeout=None):
         self.model = model
@@ -194,21 +204,90 @@ class OllamaDecomposer(BaseDecomposer):
     def is_base_case(self, query: str, context: Optional[Dict] = None) -> bool:
         """Simple length-based check."""
         return len(query) < 30
+    
+    def _sanitize_query(self, query: str) -> str:
+        """
+        Sanitize query text to prevent prompt injection (F-021).
+        
+        - Strip control characters (newlines, tabs, form feeds, etc.)
+        - Normalize whitespace (collapse multiple spaces to one)
+        - Apply length cap
+        
+        Returns: sanitized query string
+        """
+        # Strip control characters (ASCII 0-31 and 127)
+        sanitized = ''.join(c if ord(c) >= 32 and ord(c) != 127 else ' ' for c in query)
+        
+        # Normalize whitespace: collapse multiple spaces/tabs into single space
+        sanitized = ' '.join(sanitized.split())
+        
+        # Apply length cap
+        if len(sanitized) > self.MAX_QUERY_LENGTH:
+            sanitized = sanitized[:self.MAX_QUERY_LENGTH]
+        
+        return sanitized
+    
+    def _compute_token_overlap(self, original: str, sub_query: str) -> float:
+        """
+        Compute lexical overlap ratio between original query and sub-query (F-021).
+        
+        Returns: ratio of sub-query tokens that appear in original query (0.0 to 1.0)
+        """
+        # Tokenize on alphanumeric word boundaries to avoid punctuation mismatch.
+        original_tokens = set(re.findall(r"[a-z0-9]+", original.lower()))
+        sub_tokens = re.findall(r"[a-z0-9]+", sub_query.lower())
+        
+        if not sub_tokens:
+            return 0.0
+        
+        # Count how many sub-query tokens appear in original
+        overlap_count = sum(1 for token in sub_tokens if token in original_tokens)
+        return overlap_count / len(sub_tokens)
+    
+    def _validate_sub_queries(self, original: str, sub_queries: List[str]) -> List[str]:
+        """
+        Validate sub-queries are related to original query (F-021).
+        
+        Filters out sub-queries with insufficient lexical overlap.
+        Falls back to [original] if all candidates are removed.
+        
+        Returns: validated sub-query list
+        """
+        validated = []
+        
+        for sq in sub_queries:
+            overlap = self._compute_token_overlap(original, sq)
+            if overlap >= self.MIN_OVERLAP_RATIO:
+                validated.append(sq)
+        
+        # Fallback: if validation removed everything, return original
+        if not validated:
+            return [original]
+        
+        return validated
 
     def decompose(self, query: str, context: Optional[Dict] = None) -> List[str]:
         """
         Ask Ollama to decompose the query into sub-queries.
 
         On any failure (connection, timeout, parse), returns [query] unchanged.
+        
+        Security features (F-021):
+        - Sanitizes query before interpolation into prompt
+        - Limits returned sub-query count
+        - Validates sub-queries are related to original query
         """
         if self.requests is None:
             return [query]
+        
+        # F-021: Sanitize query before interpolating into prompt
+        sanitized_query = self._sanitize_query(query)
 
         prompt = (
             "Break the following search query into simpler independent sub-queries. "
             "Return ONLY a numbered list of sub-queries, one per line. "
             "If the query is already simple and atomic, return just the original query.\n\n"
-            f"Query: {query}\n\n"
+            f"Query: {sanitized_query}\n\n"
             "Sub-queries:"
         )
 
@@ -228,9 +307,16 @@ class OllamaDecomposer(BaseDecomposer):
 
             text = response.json().get("response", "")
             sub_queries = self._parse_response(text)
-
+            
+            # F-021: Limit sub-query count
+            if len(sub_queries) > self.MAX_SUBQUERY_COUNT:
+                sub_queries = sub_queries[:self.MAX_SUBQUERY_COUNT]
+            
+            # F-021: Validate sub-queries are related to original
             if len(sub_queries) > 1:
-                return sub_queries
+                validated = self._validate_sub_queries(query, sub_queries)
+                return validated
+            
             return [query]
 
         except (RequestException, Timeout, ConnectionError, ValueError, KeyError):
