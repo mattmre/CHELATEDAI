@@ -721,13 +721,23 @@ class AntigravityEngine:
         centered_query = query_vec - center_of_mass
         centered_candidates = local_np - center_of_mass
         
-        # 3. Recalculate Similarities
-        scores = []
-        for i in range(len(centered_candidates)):
-            score = self._cosine_similarity_manual(centered_query, centered_candidates[i])
-            scores.append((local_ids[i], score))
-            
-        # Sort by score descending
+        # 3. Recalculate Similarities (vectorized)
+        # Compute norms
+        query_norm = np.linalg.norm(centered_query)
+        candidate_norms = np.linalg.norm(centered_candidates, axis=1)
+        
+        # Compute dot products: shape (n_candidates,)
+        dots = np.dot(centered_candidates, centered_query)
+        
+        # Compute cosine similarities, handling zero norms
+        # Where either norm is zero, keep score at 0.0
+        denominators = query_norm * candidate_norms
+        scores_vec = np.zeros(len(local_ids), dtype=np.float64)
+        valid = denominators != 0
+        scores_vec[valid] = dots[valid] / denominators[valid]
+        
+        # Pair with IDs and sort
+        scores = [(local_ids[i], scores_vec[i]) for i in range(len(local_ids))]
         scores.sort(key=lambda x: x[1], reverse=True)
         
         sorted_ids = [s[0] for s in scores]
