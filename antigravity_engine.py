@@ -279,6 +279,51 @@ class AntigravityEngine:
             # Embed
             embeddings = self.embed(batch_texts)
             
+            # F-025: Validate embed() output before PointStruct/upsert
+            # Check 1: Empty result on non-empty batch
+            if len(batch_texts) > 0 and len(embeddings) == 0:
+                self.logger.log_error(
+                    "embed_validation",
+                    f"Batch {i+1}/{total_batches}: embed returned empty for non-empty batch (size={len(batch_texts)})",
+                    batch_num=i+1,
+                    batch_size=len(batch_texts)
+                )
+                continue
+            
+            embeddings = np.asarray(embeddings)
+            
+            # Check 2: Shape must be 2D [batch, dim]
+            if embeddings.ndim != 2:
+                self.logger.log_error(
+                    "embed_validation",
+                    f"Batch {i+1}/{total_batches}: embed output is not 2D (shape={embeddings.shape})",
+                    batch_num=i+1,
+                    shape=embeddings.shape
+                )
+                continue
+            
+            # Check 3: Number of embeddings must match number of texts
+            if embeddings.shape[0] != len(batch_texts):
+                self.logger.log_error(
+                    "embed_validation",
+                    f"Batch {i+1}/{total_batches}: embedding count mismatch (texts={len(batch_texts)}, embeddings={embeddings.shape[0]})",
+                    batch_num=i+1,
+                    text_count=len(batch_texts),
+                    embedding_count=embeddings.shape[0]
+                )
+                continue
+            
+            # Check 4: Embedding dimension must match vector_size
+            if embeddings.shape[1] != self.vector_size:
+                self.logger.log_error(
+                    "embed_validation",
+                    f"Batch {i+1}/{total_batches}: dimension mismatch (expected={self.vector_size}, got={embeddings.shape[1]})",
+                    batch_num=i+1,
+                    expected_dim=self.vector_size,
+                    actual_dim=embeddings.shape[1]
+                )
+                continue
+            
             # Upsert to Qdrant
             points = [
                 PointStruct(

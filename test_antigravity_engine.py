@@ -178,6 +178,110 @@ class TestAntigravityEngine(unittest.TestCase):
         engine.ingest([])
         self.mock_qdrant.upsert.assert_not_called()
 
+    def test_ingest_empty_embed_result_on_nonempty_batch_skips_upsert(self):
+        """F-025: Empty embed result on non-empty batch should not call upsert."""
+        engine = self._make_engine()
+        # Mock embed to return empty array for non-empty batch
+        engine.embed = MagicMock(return_value=np.array([]))
+        texts = ["doc1", "doc2", "doc3"]
+        
+        engine.ingest(texts)
+        
+        # Should log error and skip upsert
+        self.mock_qdrant.upsert.assert_not_called()
+        # Verify error was logged
+        self.mock_logger.log_error.assert_called()
+        error_call = self.mock_logger.log_error.call_args
+        self.assertEqual(error_call[0][0], "embed_validation")
+        self.assertIn("empty", error_call[0][1].lower())
+
+    def test_ingest_dimension_mismatch_skips_upsert(self):
+        """F-025: Dimension mismatch should not call upsert."""
+        engine = self._make_engine()
+        # Mock embed to return wrong dimension (512 instead of 768)
+        engine.embed = MagicMock(return_value=np.random.randn(3, 512).astype(np.float32))
+        texts = ["doc1", "doc2", "doc3"]
+        
+        engine.ingest(texts)
+        
+        # Should log error and skip upsert
+        self.mock_qdrant.upsert.assert_not_called()
+        # Verify error was logged with dimension info
+        self.mock_logger.log_error.assert_called()
+        error_call = self.mock_logger.log_error.call_args
+        self.assertEqual(error_call[0][0], "embed_validation")
+        self.assertIn("dimension mismatch", error_call[0][1].lower())
+
+    def test_ingest_malformed_shape_1d_skips_upsert(self):
+        """F-025: 1D shape (not 2D [batch, dim]) should not call upsert."""
+        engine = self._make_engine()
+        # Mock embed to return 1D array instead of 2D
+        engine.embed = MagicMock(return_value=np.random.randn(768).astype(np.float32))
+        texts = ["doc1"]
+        
+        engine.ingest(texts)
+        
+        # Should log error and skip upsert
+        self.mock_qdrant.upsert.assert_not_called()
+        # Verify error was logged with shape info
+        self.mock_logger.log_error.assert_called()
+        error_call = self.mock_logger.log_error.call_args
+        self.assertEqual(error_call[0][0], "embed_validation")
+        self.assertIn("not 2d", error_call[0][1].lower())
+
+    def test_ingest_malformed_shape_3d_skips_upsert(self):
+        """F-025: 3D shape should not call upsert."""
+        engine = self._make_engine()
+        # Mock embed to return 3D array
+        engine.embed = MagicMock(return_value=np.random.randn(2, 3, 768).astype(np.float32))
+        texts = ["doc1", "doc2"]
+        
+        engine.ingest(texts)
+        
+        # Should log error and skip upsert
+        self.mock_qdrant.upsert.assert_not_called()
+        # Verify error was logged
+        self.mock_logger.log_error.assert_called()
+        error_call = self.mock_logger.log_error.call_args
+        self.assertEqual(error_call[0][0], "embed_validation")
+        self.assertIn("not 2d", error_call[0][1].lower())
+
+    def test_ingest_count_mismatch_skips_upsert(self):
+        """F-025: Embedding count != text count should not call upsert."""
+        engine = self._make_engine()
+        # Mock embed to return wrong number of embeddings (2 instead of 3)
+        engine.embed = MagicMock(return_value=np.random.randn(2, 768).astype(np.float32))
+        texts = ["doc1", "doc2", "doc3"]
+        
+        engine.ingest(texts)
+        
+        # Should log error and skip upsert
+        self.mock_qdrant.upsert.assert_not_called()
+        # Verify error was logged with counts
+        self.mock_logger.log_error.assert_called()
+        error_call = self.mock_logger.log_error.call_args
+        self.assertEqual(error_call[0][0], "embed_validation")
+        self.assertIn("mismatch", error_call[0][1].lower())
+
+    def test_ingest_valid_embeddings_still_work(self):
+        """F-025: Verify valid embeddings still pass through successfully."""
+        engine = self._make_engine()
+        # Mock embed to return valid embeddings
+        engine.embed = MagicMock(return_value=np.random.randn(3, 768).astype(np.float32))
+        texts = ["doc1", "doc2", "doc3"]
+        payloads = [{"k": 1}, {"k": 2}, {"k": 3}]
+        
+        engine.ingest(texts, payloads)
+        
+        # Should successfully upsert
+        self.mock_qdrant.upsert.assert_called_once()
+        points = self.mock_qdrant.upsert.call_args.kwargs["points"]
+        self.assertEqual(len(points), 3)
+        # Should not log any validation errors
+        for call in self.mock_logger.log_error.call_args_list:
+            if call[0][0] == "embed_validation":
+                self.fail("Should not log embed_validation error for valid embeddings")
+
     def test_checkpoint_manager_initialized(self):
         """F-043: Verify CheckpointManager is initialized during engine construction."""
         with patch("antigravity_engine.CheckpointManager") as mock_cm_cls:
