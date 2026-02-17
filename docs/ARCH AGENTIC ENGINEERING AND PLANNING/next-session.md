@@ -20,7 +20,7 @@ Purpose: Minimal context to resume the workflow in short sessions.
 ## Cycle ID
 - AEP-2026-02-13 (continuing)
 
-## Completed (Sessions 2-8)
+## Completed (Sessions 2-9)
 - F-001 RESOLVED: `torch.load` security fix (PR #8, merged)
 - F-002 RESOLVED: benchmark_rlm tests -- 39 tests (PR #11, merged)
 - F-003 RESOLVED: checkpoint_manager tests -- 27 tests (PR #11, merged)
@@ -61,20 +61,25 @@ Purpose: Minimal context to resume the workflow in short sessions.
 - F-027 RESOLVED: `get_chelated_vector()` now uses `query_points(..., with_vectors=True)` without redundant retrieve round-trip
 - F-028 RESOLVED: `_spectral_chelation_ranking()` cosine scoring vectorized with zero-denominator guards
 - F-039 RESOLVED: explicit `AntigravityEngine.close()` + context manager lifecycle for Qdrant cleanup
+- F-040 RESOLVED: payload optimization controls for text storage and query payload fetch behavior
+- F-041 RESOLVED: benchmark helper deduplication via shared `benchmark_utils.py`
+- F-042 RESOLVED: `HierarchicalSedimentationEngine` relocated to `sedimentation.py` with compatibility re-export
+- F-044 RESOLVED: vector-store dependency inversion boundary via `VectorStore` + `QdrantVectorStore`
+- F-045 RESOLVED: embedding backend abstraction via `embedding_backend.py`
 
 ## Backlog State
 - **Total findings:** 55
-- **Resolved:** 40
-- **Remaining:** 15
-- **Current local test count:** 438 passing (1 warning)
+- **Resolved:** 45
+- **Remaining:** 10
+- **Current local test count:** 467 passing (1 warning)
 
 ## Top Findings To Resolve (Next 5)
 
-1. **F-040** -- Avoid storing full document text in Qdrant payload where not required
-2. **F-041** -- Remove benchmark duplication between `benchmark_rlm.py` and `benchmark_evolution.py`
-3. **F-042** -- Relocate `HierarchicalSedimentationEngine` to a dedicated module
-4. **F-044** -- Add dependency inversion boundary for vector store access
-5. **F-045** -- Extract embedding mode branching behind backend abstraction
+1. **F-046** -- Decompose `AntigravityEngine` god object into focused components
+2. **F-047** -- Initialize `invert_chelation` explicitly instead of `hasattr` guard
+3. **F-048** -- Replace raw `KeyError` in tracker update path with explicit validation error
+4. **F-049** -- Fix nested falsy payload lookup behavior in benchmark helper logic
+5. **F-050** -- Standardize benchmark ID handling to avoid UUID/int mismatch risk
 
 ## Dependency Notes
 - F-031 is NOW UNBLOCKED (F-011 resolved)
@@ -108,12 +113,11 @@ Purpose: Minimal context to resume the workflow in short sessions.
 - PR #43 -- `pr/session8-tracking-docs` -> `pr/f039-qdrant-close-lifecycle` (Session 8 docs, stacked)
 
 ## Hand-off Notes
-- Session 8 delivered 5 additional resolved findings (F-025/F-026/F-027/F-028/F-039) with full regression pass.
+- Session 9 delivered 5 additional resolved findings (F-040/F-041/F-042/F-044/F-045) with full regression pass.
 - Agentic orchestration used fresh role agents per phase (research -> architecture -> implementer per finding), with cleanup of non-essential generated artifacts after each agent run.
 - Research + architecture artifacts were added for this tranche and linked for next-session continuity.
-- Session 8 stacked PRs were opened as #38 -> #43 in-chain after push.
-- A first and second post-open handoff refresh pass were completed to reduce context drift before next implementation cycle.
-- Session log: `docs/ARCH AGENTIC ENGINEERING AND PLANNING/session-log-2026-02-17-impl-8.md`
+- Session 9 branch/PR stack prepared for per-finding review flow.
+- Session log: `docs/ARCH AGENTIC ENGINEERING AND PLANNING/session-log-2026-02-17-impl-9.md`
 - Backlog: `docs/ARCH AGENTIC ENGINEERING AND PLANNING/backlog-2026-02-13.md`
-- Research artifact: `docs/ARCH AGENTIC ENGINEERING AND PLANNING/research-2026-02-17-f025-f039-implementation.md`
-- Architecture artifact: `docs/ARCH AGENTIC ENGINEERING AND PLANNING/architecture-2026-02-17-f025-f039-remediation.md`
+- Research artifact: `docs/ARCH AGENTIC ENGINEERING AND PLANNING/research-2026-02-17-f040-f045-implementation.md`
+- Architecture artifact: `docs/ARCH AGENTIC ENGINEERING AND PLANNING/architecture-2026-02-17-f040-f045-remediation.md`
