@@ -697,7 +697,7 @@ class TestHierarchicalSedimentationEdgeCases(unittest.TestCase):
         from unittest.mock import MagicMock, patch
         from recursive_decomposer import HierarchicalSedimentationEngine
         
-        with patch("recursive_decomposer.get_logger") as mock_logger:
+        with patch("sedimentation.get_logger") as mock_logger:
             mock_logger.return_value.log_event = MagicMock()
             
             mock_engine = MagicMock()
@@ -750,7 +750,7 @@ class TestHierarchicalSedimentationIntegration(unittest.TestCase):
         from unittest.mock import MagicMock, patch
         from recursive_decomposer import HierarchicalSedimentationEngine
         
-        with patch("recursive_decomposer.CheckpointManager") as mock_cm_cls:
+        with patch("sedimentation.CheckpointManager") as mock_cm_cls:
             mock_cm = MagicMock()
             mock_cm_cls.return_value = mock_cm
             
@@ -769,8 +769,8 @@ class TestHierarchicalSedimentationIntegration(unittest.TestCase):
         import numpy as np
         import torch
         
-        with patch("recursive_decomposer.SafeTrainingContext") as mock_stc_cls, \
-             patch("recursive_decomposer.sync_vectors_to_qdrant") as mock_sync:
+        with patch("sedimentation.SafeTrainingContext") as mock_stc_cls, \
+             patch("sedimentation.sync_vectors_to_qdrant") as mock_sync:
             
             mock_stc = MagicMock()
             mock_stc.__enter__ = MagicMock(return_value=mock_stc)
