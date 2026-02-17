@@ -529,6 +529,38 @@ class TestChelationLogger(unittest.TestCase):
         self.assertEqual(event["list_field"], [1, 2, 3])
         self.assertEqual(event["dict_field"], {"key": "value"})
 
+    def test_all_log_lines_are_valid_json(self):
+        """Test that all non-empty log lines are valid JSON (F-032 validation)."""
+        logger = ChelationLogger(
+            log_path=self.temp_log_path,
+            console_level="ERROR",
+            file_level="DEBUG"
+        )
+
+        # Log various events to create multiple log lines
+        logger.log_event("test1", "First event", level="INFO")
+        logger.log_event("test2", "Second event", level="DEBUG", extra_field="value")
+        logger.log_error("error_type", "Error message", retry=3)
+        logger.log_performance("operation_test", 1.23, batch_size=50)
+
+        # Read file and verify every non-empty line is valid JSON
+        with open(self.temp_log_path, 'r', encoding='utf-8') as f:
+            for line_num, line in enumerate(f, start=1):
+                line = line.strip()
+                if not line:  # Skip empty lines
+                    continue
+                
+                # Every non-empty line must be valid JSON
+                try:
+                    event = json.loads(line)
+                    # Additionally verify it has expected structure
+                    self.assertIn("timestamp", event, f"Line {line_num} missing timestamp")
+                    self.assertIn("event_type", event, f"Line {line_num} missing event_type")
+                    self.assertIn("level", event, f"Line {line_num} missing level")
+                    self.assertIn("message", event, f"Line {line_num} missing message")
+                except json.JSONDecodeError as e:
+                    self.fail(f"Line {line_num} is not valid JSON: {line}\nError: {e}")
+
 
 class TestOperationContextStandalone(unittest.TestCase):
     """Test OperationContext as standalone functionality."""

@@ -33,7 +33,7 @@ class ChelationLogger:
         Args:
             log_path: Path to log file (default: chelation_debug.jsonl)
             console_level: Logging level for console output
-            file_level: Logging level for file output
+            file_level: (Unused - kept for backward compatibility)
         """
         self.log_path = log_path or Path("chelation_debug.jsonl")
         self.start_time = time.time()
@@ -54,10 +54,8 @@ class ChelationLogger:
         console_handler.setFormatter(console_formatter)
         self.logger.addHandler(console_handler)
 
-        # File handler (JSON formatted)
-        file_handler = logging.FileHandler(self.log_path, encoding='utf-8')
-        file_handler.setLevel(getattr(logging, file_level.upper()))
-        self.logger.addHandler(file_handler)
+        # Note: File writes are handled by log_event's JSON line path (lines 92-94)
+        # No FileHandler needed to avoid duplicate writes
 
     def log_event(
         self,
