@@ -658,6 +658,12 @@ class AEPOrchestrator:
                 total_remediated += 1
 
             # Tier gate: do not advance until tier is complete or all remaining are blocked/deferred
+            # F-038: Enforce no-skip tier gate - stop advancing if current tier has BLOCKED findings
+            tier_has_blocked = any(f.status == FindingStatus.BLOCKED for f in tier_findings)
+            if tier_has_blocked:
+                # Stop processing further tiers - blocked findings must be resolved first
+                break
+
             if self.tracker.is_tier_complete(severity):
                 tiers_completed.append(severity.name)
 
@@ -854,3 +860,4 @@ if __name__ == "__main__":
     print(f"By severity: {summary['by_severity']}")
     print(f"By status: {summary['by_status']}")
     print(f"\n{summary['markdown_tracker']}")
+

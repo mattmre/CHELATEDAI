@@ -417,6 +417,134 @@ class TestAEPOrchestrator(unittest.TestCase):
             FindingStatus.BLOCKED,
         )
 
+    def test_tier_gate_stops_on_blocked_findings(self):
+        """F-038: Tier gate stops advancing when current tier has BLOCKED findings."""
+        # Create findings across multiple tiers
+        f_crit1 = make_finding(finding_id="GATE-C1", severity=Severity.CRITICAL)
+        f_crit2 = make_finding(
+            finding_id="GATE-C2",
+            severity=Severity.CRITICAL,
+            dependencies=["GATE-HIGH"],  # Depends on HIGH tier finding
+        )
+        f_high = make_finding(finding_id="GATE-HIGH", severity=Severity.HIGH)
+        f_med = make_finding(finding_id="GATE-MED", severity=Severity.MEDIUM)
+        f_low = make_finding(finding_id="GATE-LOW", severity=Severity.LOW)
+
+        for f in [f_crit1, f_crit2, f_high, f_med, f_low]:
+            self.orchestrator.tracker.add_finding(f)
+
+        remediation_order = []
+
+        def mock_remediate(finding):
+            remediation_order.append(finding.finding_id)
+            return {"pr_branch": f"fix/{finding.finding_id}"}
+
+        # Run remediation - GATE-C2 will be blocked because GATE-HIGH is not terminal
+        result = self.orchestrator.tiered_remediation(
+            [f_crit1, f_crit2, f_high, f_med, f_low],
+            remediate_fn=mock_remediate,
+        )
+
+        # GATE-C1 should be remediated (no dependencies)
+        self.assertIn("GATE-C1", remediation_order)
+        
+        # GATE-C2 should be blocked
+        self.assertIn("GATE-C2", result["blocked"])
+        self.assertEqual(
+            self.orchestrator.tracker.findings["GATE-C2"].status,
+            FindingStatus.BLOCKED,
+        )
+
+        # Critical: Because CRITICAL tier has blocked finding, should NOT advance
+        # to HIGH, MEDIUM, or LOW tiers
+        self.assertNotIn("GATE-HIGH", remediation_order)
+        self.assertNotIn("GATE-MED", remediation_order)
+        self.assertNotIn("GATE-LOW", remediation_order)
+
+        # Verify tier completion: only CRITICAL should be attempted (but not completed)
+        # Since GATE-C2 is BLOCKED, CRITICAL tier is NOT complete
+        self.assertNotIn("CRITICAL", result["tiers_completed"])
+        self.assertNotIn("HIGH", result["tiers_completed"])
+        self.assertNotIn("MEDIUM", result["tiers_completed"])
+        self.assertNotIn("LOW", result["tiers_completed"])
+
+    def test_tier_gate_continues_when_no_blocked_findings(self):
+        """F-038: Tier gate continues advancing when tiers have no BLOCKED findings."""
+        # Create findings that will all be successfully remediated
+        f_crit = make_finding(finding_id="CONT-C1", severity=Severity.CRITICAL)
+        f_high = make_finding(finding_id="CONT-H1", severity=Severity.HIGH)
+        f_med = make_finding(finding_id="CONT-M1", severity=Severity.MEDIUM)
+        f_low = make_finding(finding_id="CONT-L1", severity=Severity.LOW)
+
+        for f in [f_crit, f_high, f_med, f_low]:
+            self.orchestrator.tracker.add_finding(f)
+
+        remediation_order = []
+
+        def mock_remediate(finding):
+            remediation_order.append(finding.finding_id)
+            return {"pr_branch": f"fix/{finding.finding_id}"}
+
+        # Run remediation - all should be remediated in tier order
+        result = self.orchestrator.tiered_remediation(
+            [f_crit, f_high, f_med, f_low],
+            remediate_fn=mock_remediate,
+        )
+
+        # All findings should be remediated in proper tier order
+        self.assertEqual(len(remediation_order), 4)
+        self.assertEqual(remediation_order[0], "CONT-C1")
+        self.assertEqual(remediation_order[1], "CONT-H1")
+        self.assertEqual(remediation_order[2], "CONT-M1")
+        self.assertEqual(remediation_order[3], "CONT-L1")
+
+        # All tiers should be completed
+        self.assertIn("CRITICAL", result["tiers_completed"])
+        self.assertIn("HIGH", result["tiers_completed"])
+        self.assertIn("MEDIUM", result["tiers_completed"])
+        self.assertIn("LOW", result["tiers_completed"])
+
+        # No findings should be blocked
+        self.assertEqual(len(result["blocked"]), 0)
+        self.assertEqual(result["total_remediated"], 4)
+
+    def test_tier_gate_with_deferred_findings(self):
+        """F-038: Tier gate allows advancement when tier only has terminal states (including DEFERRED)."""
+        # Create a CRITICAL finding that we'll mark as DEFERRED
+        f_crit_deferred = make_finding(finding_id="DEF-C1", severity=Severity.CRITICAL)
+        f_high = make_finding(finding_id="DEF-H1", severity=Severity.HIGH)
+
+        self.orchestrator.tracker.add_finding(f_crit_deferred)
+        self.orchestrator.tracker.add_finding(f_high)
+        
+        # Mark CRITICAL finding as DEFERRED before remediation
+        self.orchestrator.tracker.update_status("DEF-C1", FindingStatus.DEFERRED)
+
+        remediation_order = []
+
+        def mock_remediate(finding):
+            remediation_order.append(finding.finding_id)
+            return {"pr_branch": f"fix/{finding.finding_id}"}
+
+        # Run remediation
+        result = self.orchestrator.tiered_remediation(
+            [f_crit_deferred, f_high],
+            remediate_fn=mock_remediate,
+        )
+
+        # DEFERRED finding should not be remediated
+        self.assertNotIn("DEF-C1", remediation_order)
+        
+        # HIGH tier should still be processed since CRITICAL has no BLOCKED findings
+        self.assertIn("DEF-H1", remediation_order)
+
+        # CRITICAL tier should be complete (DEFERRED is terminal)
+        self.assertIn("CRITICAL", result["tiers_completed"])
+        self.assertIn("HIGH", result["tiers_completed"])
+
+        # No findings should be blocked
+        self.assertEqual(len(result["blocked"]), 0)
+
     def test_full_cycle(self):
         """run_full_cycle processes findings through all 7 phases."""
         raw = [
@@ -520,7 +648,6 @@ class TestAEPOrchestrator(unittest.TestCase):
         calls = [str(call) for call in _mock_logger.log_error.call_args_list]
         error_logged = any("failing-agent" in str(call) for call in calls)
         self.assertTrue(error_logged, "Expected error to be logged for failing agent")
-
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
