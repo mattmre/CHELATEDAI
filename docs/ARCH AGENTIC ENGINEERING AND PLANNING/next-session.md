@@ -6,7 +6,7 @@ Purpose: Minimal context to resume the workflow in short sessions.
 - Confirm scope lock (PR range, dates).
 - Confirm latest refinement report location.
 - Check tracker date and carryover items.
-- Confirm stacked PR merge order and status for PR #25 -> #36.
+- Confirm stacked PR merge order and status for PR #25 -> #37.
 - Reconfirm no new tracked deltas outside the stacked PR chain before opening new remediation work.
 - Update `docs/ARCH AGENTIC ENGINEERING AND PLANNING/tracker-pointer.md`.
 - Update `docs/ARCH AGENTIC ENGINEERING AND PLANNING/backlog-index.md` and `docs/ARCH AGENTIC ENGINEERING AND PLANNING/tracker-index.md`.
@@ -94,12 +94,13 @@ Purpose: Minimal context to resume the workflow in short sessions.
 - PR #34 -- `pr/f023-zero-norm-target-guard` -> `pr/f022-callback-safety-controls` (F-023, stacked)
 - PR #35 -- `pr/f024-adapter-1d-input` -> `pr/f023-zero-norm-target-guard` (F-024, stacked)
 - PR #36 -- `pr/session6-tracking-docs` -> `pr/f024-adapter-1d-input` (session 6 tracking docs, stacked)
+- PR #37 -- `pr/session7-closeout-refresh` -> `pr/session6-tracking-docs` (session 7 closeout docs, stacked)
 
 ## Hand-off Notes
 - Session 6 delivered 5 additional resolved findings (F-020/F-021/F-022/F-023/F-024) with full regression pass
 - Added focused coverage for URL validation, prompt guardrails, callback safety controls, zero-norm sedimentation handling, and adapter 1D tensor behavior
 - Agentic workflow maintained with fresh sub-agents per finding and cleanup of non-essential generated artifacts
-- Session 7 closeout refresh re-audited PR/worktree state and reconfirmed no extra remediation PR requirement.
+- Session 7 closeout refresh (#37) re-audited PR/worktree state and reconfirmed no extra remediation PR requirement.
 - Session 7 performed a second handoff refresh pass to reduce context drift before next implementation tranche.
 - Session log: `docs/ARCH AGENTIC ENGINEERING AND PLANNING/session-log-2026-02-17-impl-7.md`
 - Backlog: `docs/ARCH AGENTIC ENGINEERING AND PLANNING/backlog-2026-02-13.md`
