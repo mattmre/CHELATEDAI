@@ -72,4 +72,5 @@ Mode: Agent-orchestrated implementation with fresh sub-agents per finding
 - Tracker pointer updated to this session log.
 - Next-session priorities moved to the next unresolved tranche.
 - Research + architecture artifacts saved for continuity.
-- PR preparation recorded for per-finding review branches (`F-020`..`F-024`).
+- Stacked PR chain opened for review:
+  - #31 (F-020), #32 (F-021), #33 (F-022), #34 (F-023), #35 (F-024), #36 (Session 6 docs).

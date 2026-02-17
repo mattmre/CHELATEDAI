@@ -88,11 +88,12 @@ Purpose: Minimal context to resume the workflow in short sessions.
 - PR #28 -- `pr/f034-logger-singleton-warnings` -> `pr/f036-hierarchical-edge-cases` (F-034, stacked)
 - PR #29 -- `pr/f029-parallel-sibling-retrieval` -> `pr/f034-logger-singleton-warnings` (F-029, stacked)
 - PR #30 -- `pr/session5-tracking-docs` -> `pr/f029-parallel-sibling-retrieval` (session 5 tracking docs, stacked)
-- PR #31 -- `pr/f020-qdrant-location-validation` -> `pr/session5-tracking-docs` (F-020, stacked/planned)
-- PR #32 -- `pr/f021-ollama-prompt-guardrails` -> `pr/f020-qdrant-location-validation` (F-021, stacked/planned)
-- PR #33 -- `pr/f022-callback-safety-controls` -> `pr/f021-ollama-prompt-guardrails` (F-022, stacked/planned)
-- PR #34 -- `pr/f023-zero-norm-target-guard` -> `pr/f022-callback-safety-controls` (F-023, stacked/planned)
-- PR #35 -- `pr/f024-adapter-1d-input` -> `pr/f023-zero-norm-target-guard` (F-024, stacked/planned)
+- PR #31 -- `pr/f020-qdrant-location-validation` -> `pr/session5-tracking-docs` (F-020, stacked)
+- PR #32 -- `pr/f021-ollama-prompt-guardrails` -> `pr/f020-qdrant-location-validation` (F-021, stacked)
+- PR #33 -- `pr/f022-callback-safety-controls` -> `pr/f021-ollama-prompt-guardrails` (F-022, stacked)
+- PR #34 -- `pr/f023-zero-norm-target-guard` -> `pr/f022-callback-safety-controls` (F-023, stacked)
+- PR #35 -- `pr/f024-adapter-1d-input` -> `pr/f023-zero-norm-target-guard` (F-024, stacked)
+- PR #36 -- `pr/session6-tracking-docs` -> `pr/f024-adapter-1d-input` (session 6 tracking docs, stacked)
 
 ## Hand-off Notes
 - Session 6 delivered 5 additional resolved findings (F-020/F-021/F-022/F-023/F-024) with full regression pass
