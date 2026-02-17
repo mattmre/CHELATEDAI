@@ -397,6 +397,8 @@ class TestAntigravityEngine(unittest.TestCase):
         self.mock_qdrant.query_points.assert_called_once()
         call_kwargs = self.mock_qdrant.query_points.call_args.kwargs
         self.assertEqual(call_kwargs["with_vectors"], True)
+        # F-040: Verify with_payload uses config default (False for optimization)
+        self.assertIn("with_payload", call_kwargs)
         
         # Verify result is numpy array with correct shape
         self.assertIsInstance(result, np.ndarray)
@@ -707,6 +709,90 @@ class TestAntigravityEngine(unittest.TestCase):
             
             # Verify close was still called
             mock_qdrant.close.assert_called_once()
+
+    def test_payload_optimization_default_stores_text(self):
+        """F-040: Verify default behavior stores full text in payload (backward compatibility)."""
+        engine = self._make_engine()
+        
+        # Mock upsert to capture what was stored
+        captured_points = []
+        def capture_upsert(collection_name, points):
+            captured_points.extend(points)
+        self.mock_qdrant.upsert = MagicMock(side_effect=capture_upsert)
+        
+        # Ingest some documents
+        texts = ["Document 1", "Document 2", "Document 3"]
+        payloads = [{"meta": "a"}, {"meta": "b"}, {"meta": "c"}]
+        engine.ingest(texts, payloads)
+        
+        # Verify text was stored in payload
+        self.assertEqual(len(captured_points), 3)
+        for i, point in enumerate(captured_points):
+            self.assertIn("text", point.payload)
+            self.assertEqual(point.payload["text"], texts[i])
+            self.assertEqual(point.payload["meta"], payloads[i]["meta"])
+
+    def test_payload_optimization_omit_text_when_disabled(self):
+        """F-040: Verify text is omitted from payload when store_full_text_payload=False."""
+        engine = self._make_engine(store_full_text_payload=False)
+        
+        # Mock upsert to capture what was stored
+        captured_points = []
+        def capture_upsert(collection_name, points):
+            captured_points.extend(points)
+        self.mock_qdrant.upsert = MagicMock(side_effect=capture_upsert)
+        
+        # Ingest some documents
+        texts = ["Document 1", "Document 2", "Document 3"]
+        payloads = [{"meta": "a"}, {"meta": "b"}, {"meta": "c"}]
+        engine.ingest(texts, payloads)
+        
+        # Verify text was NOT stored in payload, but metadata was
+        self.assertEqual(len(captured_points), 3)
+        for i, point in enumerate(captured_points):
+            self.assertNotIn("text", point.payload)
+            self.assertEqual(point.payload["meta"], payloads[i]["meta"])
+
+    def test_payload_optimization_query_points_uses_config_flag(self):
+        """F-040: Verify query_points calls use FETCH_PAYLOAD_ON_QUERY config."""
+        engine = self._make_engine()
+        
+        # Mock query_points
+        mock_hit = SimpleNamespace(id=1, vector=np.random.randn(768).tolist(), score=0.9)
+        self.mock_qdrant.query_points.return_value = SimpleNamespace(points=[mock_hit])
+        
+        # Call _gravity_sensor (which uses query_points internally)
+        query_vec = np.random.randn(768)
+        result = engine._gravity_sensor(query_vec)
+        
+        # Verify query_points was called with with_payload from config
+        self.mock_qdrant.query_points.assert_called_once()
+        call_kwargs = self.mock_qdrant.query_points.call_args.kwargs
+        self.assertIn("with_payload", call_kwargs)
+        # Should use config default (False for optimization)
+        from config import ChelationConfig
+        self.assertEqual(call_kwargs["with_payload"], ChelationConfig.FETCH_PAYLOAD_ON_QUERY)
+
+    def test_payload_optimization_streaming_ingestion_respects_flag(self):
+        """F-040: Verify ingest_streaming respects store_full_text_payload flag."""
+        engine = self._make_engine(store_full_text_payload=False)
+        
+        # Mock upsert to capture what was stored
+        captured_points = []
+        def capture_upsert(collection_name, points):
+            captured_points.extend(points)
+        self.mock_qdrant.upsert = MagicMock(side_effect=capture_upsert)
+        
+        # Streaming ingestion
+        texts = [f"Doc {i}" for i in range(5)]
+        payloads = [{"idx": i} for i in range(5)]
+        engine.ingest_streaming(texts, payloads, batch_size=2)
+        
+        # Verify text was NOT stored in payload
+        self.assertEqual(len(captured_points), 5)
+        for i, point in enumerate(captured_points):
+            self.assertNotIn("text", point.payload)
+            self.assertEqual(point.payload["idx"], i)
 
 
 if __name__ == "__main__":

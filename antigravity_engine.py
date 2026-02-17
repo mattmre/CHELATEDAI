@@ -26,7 +26,7 @@ except ImportError:
     REQUESTS_AVAILABLE = False
 
 class AntigravityEngine:
-    def __init__(self, qdrant_location=":memory:", chelation_p=ChelationConfig.DEFAULT_CHELATION_P, model_name='ollama:nomic-embed-text', use_centering=False, use_quantization=False, training_mode: str = "baseline", teacher_model_name: Optional[str] = None, teacher_weight: float = 0.5):
+    def __init__(self, qdrant_location=":memory:", chelation_p=ChelationConfig.DEFAULT_CHELATION_P, model_name='ollama:nomic-embed-text', use_centering=False, use_quantization=False, training_mode: str = "baseline", teacher_model_name: Optional[str] = None, teacher_weight: float = 0.5, store_full_text_payload: Optional[bool] = None):
         """
         Stage 8 Engine: Docker/Ollama Integration + Teacher Distillation.
         
@@ -36,6 +36,7 @@ class AntigravityEngine:
         training_mode: 'baseline', 'offline', or 'hybrid' - controls sedimentation behavior.
         teacher_model_name: Optional teacher model for distillation (local sentence-transformers).
         teacher_weight: Weight for teacher guidance in hybrid mode (0.0-1.0).
+        store_full_text_payload: If True, store full text in Qdrant payload (default: config default for backward compatibility).
         """
         self.chelation_p = chelation_p
         self.use_centering = use_centering
@@ -44,6 +45,9 @@ class AntigravityEngine:
         self.chelation_threshold = ChelationConfig.DEFAULT_CHELATION_THRESHOLD
         self.adapter_path = ChelationConfig.ADAPTER_WEIGHTS_PATH
         self.logger = get_logger()
+        
+        # F-040: Payload optimization control (default to config for backward compatibility)
+        self.store_full_text_payload = store_full_text_payload if store_full_text_payload is not None else ChelationConfig.STORE_FULL_TEXT_PAYLOAD
         
         # Adaptive threshold state (disabled by default for backward compatibility)
         self._adaptive_threshold_enabled = False
@@ -324,12 +328,12 @@ class AntigravityEngine:
                 )
                 continue
             
-            # Upsert to Qdrant
+            # F-040: Build payload conditionally based on store_full_text_payload flag
             points = [
                 PointStruct(
                     id=i*batch_size + j,
                     vector=embeddings[j],
-                    payload={"text": batch_texts[j], **batch_payloads[j]}
+                    payload=({"text": batch_texts[j], **batch_payloads[j]} if self.store_full_text_payload else batch_payloads[j])
                 )
                 for j in range(len(batch_texts))
             ]
@@ -410,12 +414,12 @@ class AntigravityEngine:
             # Embed batch
             embeddings = self.embed(batch_texts)
             
-            # Upsert to Qdrant
+            # F-040: Build payload conditionally based on store_full_text_payload flag
             points = [
                 PointStruct(
                     id=current_id + j,
                     vector=embeddings[j],
-                    payload={"text": batch_texts[j], **batch_payloads[j]}
+                    payload=({"text": batch_texts[j], **batch_payloads[j]} if self.store_full_text_payload else batch_payloads[j])
                 )
                 for j in range(len(batch_texts))
             ]
@@ -457,12 +461,13 @@ class AntigravityEngine:
     def _gravity_sensor(self, query_vec, top_k=ChelationConfig.SCOUT_K):
         """Phase 1: Detects Local Curvature (Entropy) around the query."""
         try:
-            # Use query_points instead of search
+            # F-040: Use with_payload=False since we only need vectors here
             search_result = self.qdrant.query_points(
                 collection_name=self.collection_name,
                 query=query_vec,
                 limit=top_k,
-                with_vectors=True 
+                with_vectors=True,
+                with_payload=ChelationConfig.FETCH_PAYLOAD_ON_QUERY
             ).points
             
             if not search_result:
@@ -505,11 +510,13 @@ class AntigravityEngine:
             # 2. Gravity Sensor (Scout)
             # We need to find the local cluster in the EXISTING corpus.
             # This assumes the corpus has been ingested.
+            # F-040: Use with_payload=False since we only need vectors here
             scout_results = self.qdrant.query_points(
                 collection_name=self.collection_name,
                 query=q_vec,
                 limit=ChelationConfig.SCOUT_K,
-                with_vectors=True
+                with_vectors=True,
+                with_payload=ChelationConfig.FETCH_PAYLOAD_ON_QUERY
             ).points
             
             if not scout_results:
@@ -1180,11 +1187,13 @@ class AntigravityEngine:
         try:
             # B. Standard Retrieval (Scout Step)
             scout_limit = ChelationConfig.SCOUT_K
+            # F-040: Use with_payload=False since we only need vectors here
             std_results = self.qdrant.query_points(
                 collection_name=self.collection_name,
                 query=q_vec,
                 limit=scout_limit,
-                with_vectors=True # Important for Centering
+                with_vectors=True, # Important for Centering
+                with_payload=ChelationConfig.FETCH_PAYLOAD_ON_QUERY
             ).points
             
             std_top = [hit.id for hit in std_results]

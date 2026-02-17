@@ -150,6 +150,11 @@ class ChelationConfig:
     SCOUT_K = 50  # Neighborhood size for variance calculation
     TOP_K = 10  # Number of results to return
     BATCH_SIZE = 100  # Documents per ingestion batch
+    
+    # ===== Payload Optimization (F-040) =====
+    # Control whether to store/fetch full document text in Qdrant payload
+    STORE_FULL_TEXT_PAYLOAD = True  # Store text in payload during ingestion (default: True for backward compatibility)
+    FETCH_PAYLOAD_ON_QUERY = False  # Fetch payload during query operations where not needed (default: False for optimization)
 
     # ===== Adapter Training Configuration =====
     DEFAULT_LEARNING_RATE = 0.001  # Conservative by default

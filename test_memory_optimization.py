@@ -104,12 +104,13 @@ class TestStreamingIngestion(unittest.TestCase):
         self.assertEqual(result['total_docs'], 100)
         self.assertEqual(result['total_batches'], 4)
         
-        # Check that empty payloads were used
+        # F-040: Check that payloads respect store_full_text_payload flag (default: True)
         for call_args in self.engine.qdrant.upsert.call_args_list:
             points = call_args[1]['points']
             for point in points:
-                # Should have text in payload but no extra fields
-                self.assertIn('text', point.payload)
+                # Default should have text in payload (backward compatibility)
+                if self.engine.store_full_text_payload:
+                    self.assertIn('text', point.payload)
 
     def test_ingest_streaming_custom_start_id(self):
         """Test streaming ingestion with custom start ID."""
