@@ -6,7 +6,7 @@ Purpose: Minimal context to resume the workflow in short sessions.
 - Confirm scope lock (PR range, dates).
 - Confirm latest refinement report location.
 - Check tracker date and carryover items.
-- Confirm stacked PR merge order/status for PR #25 -> #37 and local Session 8 branch stack (`pr/f025-ingest-validation` -> `pr/f039-qdrant-close-lifecycle`).
+- Confirm stacked PR merge order/status for PR #25 -> #43 and verify base/head chain alignment before starting new code work.
 - Reconfirm no new tracked deltas outside the stacked PR chain before opening new remediation work.
 - Update `docs/ARCH AGENTIC ENGINEERING AND PLANNING/tracker-pointer.md`.
 - Update `docs/ARCH AGENTIC ENGINEERING AND PLANNING/backlog-index.md` and `docs/ARCH AGENTIC ENGINEERING AND PLANNING/tracker-index.md`.
@@ -14,7 +14,7 @@ Purpose: Minimal context to resume the workflow in short sessions.
 
 ## Session Objectives
 - Primary goal: Execute next Low-priority remediation tranche (performance and architecture backlog cleanup)
-- Secondary goal: Convert local Session 8 stacked branches into opened remote PRs when push is available
+- Secondary goal: Drive review/merge progression for Session 8 stacked PRs (#38 -> #43)
 - Keep tracker/session log in sync with implementation progress
 
 ## Cycle ID
@@ -100,18 +100,19 @@ Purpose: Minimal context to resume the workflow in short sessions.
 - PR #35 -- `pr/f024-adapter-1d-input` -> `pr/f023-zero-norm-target-guard` (F-024, stacked)
 - PR #36 -- `pr/session6-tracking-docs` -> `pr/f024-adapter-1d-input` (session 6 tracking docs, stacked)
 - PR #37 -- `pr/session7-closeout-refresh` -> `pr/session6-tracking-docs` (session 7 closeout docs, stacked)
-- Local PR-ready stack (push/open pending from current runtime):
-  - `pr/f025-ingest-validation` (b414829) -> `pr/session7-closeout-refresh`
-  - `pr/f026-rollback-exception` (a23dd23) -> `pr/f025-ingest-validation`
-  - `pr/f027-chelated-roundtrip` (ba0f18b) -> `pr/f026-rollback-exception`
-  - `pr/f028-spectral-vectorization` (bc461e7) -> `pr/f027-chelated-roundtrip`
-  - `pr/f039-qdrant-close-lifecycle` (c72e322) -> `pr/f028-spectral-vectorization`
+- PR #38 -- `pr/f025-ingest-validation` -> `pr/session7-closeout-refresh` (F-025, stacked)
+- PR #39 -- `pr/f026-rollback-exception` -> `pr/f025-ingest-validation` (F-026, stacked)
+- PR #40 -- `pr/f027-chelated-roundtrip` -> `pr/f026-rollback-exception` (F-027, stacked)
+- PR #41 -- `pr/f028-spectral-vectorization` -> `pr/f027-chelated-roundtrip` (F-028, stacked)
+- PR #42 -- `pr/f039-qdrant-close-lifecycle` -> `pr/f028-spectral-vectorization` (F-039, stacked)
+- PR #43 -- `pr/session8-tracking-docs` -> `pr/f039-qdrant-close-lifecycle` (Session 8 docs, stacked)
 
 ## Hand-off Notes
 - Session 8 delivered 5 additional resolved findings (F-025/F-026/F-027/F-028/F-039) with full regression pass.
 - Agentic orchestration used fresh role agents per phase (research -> architecture -> implementer per finding), with cleanup of non-essential generated artifacts after each agent run.
 - Research + architecture artifacts were added for this tranche and linked for next-session continuity.
-- Local stacked PR-ready branches were created and committed end-to-end for each finding; remote PR opening is pending push/open in a network-enabled step.
+- Session 8 stacked PRs were opened as #38 -> #43 in-chain after push.
+- A first and second post-open handoff refresh pass were completed to reduce context drift before next implementation cycle.
 - Session log: `docs/ARCH AGENTIC ENGINEERING AND PLANNING/session-log-2026-02-17-impl-8.md`
 - Backlog: `docs/ARCH AGENTIC ENGINEERING AND PLANNING/backlog-2026-02-13.md`
 - Research artifact: `docs/ARCH AGENTIC ENGINEERING AND PLANNING/research-2026-02-17-f025-f039-implementation.md`
