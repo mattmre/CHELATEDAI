@@ -6,7 +6,7 @@ Purpose: Minimal context to resume the workflow in short sessions.
 - Confirm scope lock (PR range, dates).
 - Confirm latest refinement report location.
 - Check tracker date and carryover items.
-- Confirm stacked PR merge order and status for PR #25 -> #30.
+- Confirm stacked PR merge order and status for PR #25 -> #35.
 - Reconfirm no new tracked deltas outside the stacked PR chain before opening new remediation work.
 - Update `docs/ARCH AGENTIC ENGINEERING AND PLANNING/tracker-pointer.md`.
 - Update `docs/ARCH AGENTIC ENGINEERING AND PLANNING/backlog-index.md` and `docs/ARCH AGENTIC ENGINEERING AND PLANNING/tracker-index.md`.
@@ -15,12 +15,12 @@ Purpose: Minimal context to resume the workflow in short sessions.
 ## Session Objectives
 - Primary goal: Execute the next Medium-priority remediation tranche (performance, reliability, and test gaps)
 - Secondary goal: Keep the tracker/session log in sync with implementation progress
-- If blocked, targeted unblock: callback sandboxing constraints for F-022
+- If blocked, targeted unblock: ingestion validation + rollback robustness constraints (F-025/F-026)
 
 ## Cycle ID
 - AEP-2026-02-13 (continuing)
 
-## Completed (Sessions 2-5)
+## Completed (Sessions 2-6)
 - F-001 RESOLVED: `torch.load` security fix (PR #8, merged)
 - F-002 RESOLVED: benchmark_rlm tests -- 39 tests (PR #11, merged)
 - F-003 RESOLVED: checkpoint_manager tests -- 27 tests (PR #11, merged)
@@ -51,20 +51,25 @@ Purpose: Minimal context to resume the workflow in short sessions.
 - F-036 RESOLVED: added hierarchical sedimentation edge-case coverage
 - F-037 RESOLVED: added orchestrator callback integration-path coverage
 - F-038 RESOLVED: tier gate now enforces no-skip behavior when blockers exist
+- F-020 RESOLVED: Qdrant URL/location validation + `None` safety checks
+- F-021 RESOLVED: prompt guardrails in `OllamaDecomposer` (sanitize/cap/relevance filter)
+- F-022 RESOLVED: callback timeout/exception safety for remediation/verification hooks
+- F-023 RESOLVED: explicit zero-norm guards in shared sedimentation target normalization
+- F-024 RESOLVED: `ChelationAdapter.forward()` now supports robust 1D input behavior
 
 ## Backlog State
 - **Total findings:** 55
-- **Resolved:** 30
-- **Remaining:** 25
-- **Current local test count:** 383 passing (1 warning)
+- **Resolved:** 35
+- **Remaining:** 20
+- **Current local test count:** 416 passing (1 warning)
 
 ## Top Findings To Resolve (Next 5)
 
-1. **F-020** -- Validate Qdrant URL/location inputs and handle `None` safely
-2. **F-021** -- Add guardrails against prompt injection in `OllamaDecomposer`
-3. **F-022** -- Add callback safety controls for `remediate_fn` / `verify_fn`
-4. **F-023** -- Guard against zero-norm division in sedimentation target normalization
-5. **F-024** -- Handle 1D adapter input robustly in `ChelationAdapter.forward()`
+1. **F-025** -- Validate embedding dimensions/empty ingest behavior in `ingest()`
+2. **F-026** -- Prevent rollback masking original exception in `SafeTrainingContext`
+3. **F-027** -- Remove redundant Qdrant round-trip in `get_chelated_vector()`
+4. **F-028** -- Vectorize cosine loop in `_spectral_chelation_ranking()`
+5. **F-039** -- Add explicit Qdrant resource cleanup lifecycle (`close()` semantics)
 
 ## Dependency Notes
 - F-031 is NOW UNBLOCKED (F-011 resolved)
@@ -83,12 +88,16 @@ Purpose: Minimal context to resume the workflow in short sessions.
 - PR #28 -- `pr/f034-logger-singleton-warnings` -> `pr/f036-hierarchical-edge-cases` (F-034, stacked)
 - PR #29 -- `pr/f029-parallel-sibling-retrieval` -> `pr/f034-logger-singleton-warnings` (F-029, stacked)
 - PR #30 -- `pr/session5-tracking-docs` -> `pr/f029-parallel-sibling-retrieval` (session 5 tracking docs, stacked)
+- PR #31 -- `pr/f020-qdrant-location-validation` -> `pr/session5-tracking-docs` (F-020, stacked/planned)
+- PR #32 -- `pr/f021-ollama-prompt-guardrails` -> `pr/f020-qdrant-location-validation` (F-021, stacked/planned)
+- PR #33 -- `pr/f022-callback-safety-controls` -> `pr/f021-ollama-prompt-guardrails` (F-022, stacked/planned)
+- PR #34 -- `pr/f023-zero-norm-target-guard` -> `pr/f022-callback-safety-controls` (F-023, stacked/planned)
+- PR #35 -- `pr/f024-adapter-1d-input` -> `pr/f023-zero-norm-target-guard` (F-024, stacked/planned)
 
 ## Hand-off Notes
-- Session 5 delivered 5 additional resolved findings (F-029/F-034/F-036/F-037/F-038) with full regression pass
-- Added focused coverage for tier-gate invariant, callback integration paths, logger singleton mismatch warnings, hierarchical sedimentation edge cases, and recursive sibling parallelization
-- Final closeout check confirmed all tracked Session 5 work is committed and covered by PRs #25-#30
-- Second-pass closeout refresh reconfirmed no additional tracked work and no extra PR requirement.
-- Session log: `docs/ARCH AGENTIC ENGINEERING AND PLANNING/session-log-2026-02-17-impl-5.md`
+- Session 6 delivered 5 additional resolved findings (F-020/F-021/F-022/F-023/F-024) with full regression pass
+- Added focused coverage for URL validation, prompt guardrails, callback safety controls, zero-norm sedimentation handling, and adapter 1D tensor behavior
+- Agentic workflow maintained with fresh sub-agents per finding and cleanup of non-essential generated artifacts
+- Session log: `docs/ARCH AGENTIC ENGINEERING AND PLANNING/session-log-2026-02-17-impl-6.md`
 - Backlog: `docs/ARCH AGENTIC ENGINEERING AND PLANNING/backlog-2026-02-13.md`
-- Research artifact: `docs/ARCH AGENTIC ENGINEERING AND PLANNING/research-2026-02-17-f029-f034-f036-f037-f038-implementation.md`
+- Research artifact: `docs/ARCH AGENTIC ENGINEERING AND PLANNING/research-2026-02-17-f020-f024-implementation.md`
