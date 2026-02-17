@@ -621,5 +621,90 @@ class TestAggregation(unittest.TestCase):
         self.assertIn(1.0, scores)
 
 
+class TestHierarchicalSedimentationIntegration(unittest.TestCase):
+    """Test CheckpointManager integration with HierarchicalSedimentationEngine (F-043)."""
+
+    def test_checkpoint_manager_initialized(self):
+        """F-043: Verify CheckpointManager is initialized during engine construction."""
+        from unittest.mock import MagicMock, patch
+        from recursive_decomposer import HierarchicalSedimentationEngine
+        
+        with patch("recursive_decomposer.CheckpointManager") as mock_cm_cls:
+            mock_cm = MagicMock()
+            mock_cm_cls.return_value = mock_cm
+            
+            mock_engine = MagicMock()
+            h_engine = HierarchicalSedimentationEngine(mock_engine)
+            
+            # Verify CheckpointManager was instantiated
+            mock_cm_cls.assert_called_once()
+            self.assertIsNotNone(h_engine.checkpoint_manager)
+            self.assertEqual(h_engine.checkpoint_manager, mock_cm)
+
+    def test_hierarchical_sedimentation_uses_safe_training_context(self):
+        """F-043: Verify run_hierarchical_sedimentation uses SafeTrainingContext."""
+        from unittest.mock import MagicMock, patch
+        from recursive_decomposer import HierarchicalSedimentationEngine
+        import numpy as np
+        import torch
+        
+        with patch("recursive_decomposer.SafeTrainingContext") as mock_stc_cls, \
+             patch("recursive_decomposer.sync_vectors_to_qdrant") as mock_sync:
+            
+            mock_stc = MagicMock()
+            mock_stc.__enter__ = MagicMock(return_value=mock_stc)
+            mock_stc.__exit__ = MagicMock(return_value=False)
+            mock_stc_cls.return_value = mock_stc
+            
+            # Mock sync to return success (no failures)
+            mock_sync.return_value = (10, 0)
+            
+            # Create mock engine with required attributes
+            mock_engine = MagicMock()
+            mock_engine.chelation_log = {
+                f"doc{i}": [np.random.randn(768) for _ in range(3)]
+                for i in range(10)
+            }
+            mock_engine.adapter_path = "test_adapter.pt"
+            mock_engine.collection_name = "test_collection"
+            
+            # Mock adapter
+            mock_adapter = MagicMock()
+            mock_adapter.train = MagicMock()
+            mock_adapter.eval = MagicMock()
+            mock_adapter.save = MagicMock()
+            train_param = torch.nn.Parameter(torch.tensor(1.0))
+            mock_adapter.parameters = MagicMock(return_value=[train_param])
+            mock_adapter.side_effect = lambda x: x * train_param
+            mock_engine.adapter = mock_adapter
+            
+            # Mock Qdrant retrieve
+            mock_points = []
+            for i in range(10):
+                point = MagicMock()
+                point.id = f"doc{i}"
+                point.vector = np.random.randn(768).tolist()
+                point.payload = {"text": f"test{i}"}
+                mock_points.append(point)
+            
+            mock_engine.qdrant.retrieve.return_value = mock_points
+            
+            # Create hierarchical engine
+            h_engine = HierarchicalSedimentationEngine(mock_engine)
+            
+            # Run hierarchical sedimentation
+            h_engine.run_hierarchical_sedimentation(threshold=3, learning_rate=0.001, epochs=2)
+            
+            # Verify SafeTrainingContext was created with checkpoint manager
+            mock_stc_cls.assert_called_once()
+            call_args = mock_stc_cls.call_args
+            self.assertEqual(call_args[0][0], h_engine.checkpoint_manager)
+            self.assertEqual(call_args[0][1], mock_engine.adapter_path)
+            self.assertIn("hierarchical_sedimentation", call_args[0][2])
+            
+            # Verify mark_success was called (since failed_updates=0)
+            mock_stc.mark_success.assert_called_once()
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

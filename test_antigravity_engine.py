@@ -8,6 +8,7 @@ from unittest.mock import MagicMock, patch
 
 import numpy as np
 import requests
+import torch
 
 from antigravity_engine import AntigravityEngine
 
@@ -176,6 +177,69 @@ class TestAntigravityEngine(unittest.TestCase):
         engine.embed = MagicMock(return_value=np.array([]))
         engine.ingest([])
         self.mock_qdrant.upsert.assert_not_called()
+
+    def test_checkpoint_manager_initialized(self):
+        """F-043: Verify CheckpointManager is initialized during engine construction."""
+        with patch("antigravity_engine.CheckpointManager") as mock_cm_cls:
+            mock_cm = MagicMock()
+            mock_cm_cls.return_value = mock_cm
+            
+            engine = self._make_engine()
+            
+            # Verify CheckpointManager was instantiated
+            mock_cm_cls.assert_called_once()
+            self.assertIsNotNone(engine.checkpoint_manager)
+            self.assertEqual(engine.checkpoint_manager, mock_cm)
+
+    def test_sedimentation_uses_safe_training_context(self):
+        """F-043: Verify run_sedimentation_cycle uses SafeTrainingContext."""
+        with patch("antigravity_engine.SafeTrainingContext") as mock_stc_cls, \
+             patch("antigravity_engine.sync_vectors_to_qdrant") as mock_sync:
+            
+            mock_stc = MagicMock()
+            mock_stc.__enter__ = MagicMock(return_value=mock_stc)
+            mock_stc.__exit__ = MagicMock(return_value=False)
+            mock_stc_cls.return_value = mock_stc
+            
+            # Mock sync to return success (no failures)
+            mock_sync.return_value = (5, 0)
+
+            engine = self._make_engine()
+            train_param = torch.nn.Parameter(torch.tensor(1.0))
+            self.mock_adapter.parameters.return_value = [train_param]
+            self.mock_adapter.side_effect = lambda x: x * train_param
+
+            # Simulate chelation log with targets
+            engine.chelation_log = {
+                "doc1": [np.random.randn(768) for _ in range(3)],
+                "doc2": [np.random.randn(768) for _ in range(3)],
+            }
+            
+            # Mock Qdrant retrieve
+            mock_point1 = MagicMock()
+            mock_point1.id = "doc1"
+            mock_point1.vector = np.random.randn(768).tolist()
+            mock_point1.payload = {"text": "test1"}
+            
+            mock_point2 = MagicMock()
+            mock_point2.id = "doc2"
+            mock_point2.vector = np.random.randn(768).tolist()
+            mock_point2.payload = {"text": "test2"}
+            
+            self.mock_qdrant.retrieve.return_value = [mock_point1, mock_point2]
+            
+            # Run sedimentation
+            engine.run_sedimentation_cycle(threshold=3, learning_rate=0.001, epochs=1)
+            
+            # Verify SafeTrainingContext was created with checkpoint manager
+            mock_stc_cls.assert_called_once()
+            call_args = mock_stc_cls.call_args
+            self.assertEqual(call_args[0][0], engine.checkpoint_manager)
+            self.assertEqual(call_args[0][1], engine.adapter_path)
+            self.assertIn("sedimentation_cycle", call_args[0][2])
+            
+            # Verify mark_success was called (since failed_updates=0)
+            mock_stc.mark_success.assert_called_once()
 
 
 if __name__ == "__main__":
