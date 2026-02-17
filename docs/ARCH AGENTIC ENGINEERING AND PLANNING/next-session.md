@@ -75,6 +75,12 @@ Purpose: Minimal context to resume the workflow in short sessions.
 - PR #22 -- `pr/f031-payload-cache` -> `pr/f035-embedding-types` (F-031 + sedimentation safety core, stacked)
 - PR #23 -- `pr/f033-parallel-revalidation` -> `pr/f031-payload-cache` (F-033, stacked)
 - PR #24 -- `pr/f043-checkpoint-tests-docs` -> `pr/f033-parallel-revalidation` (F-043 tests/docs + session tracking)
+- PR #25 -- `pr/f038-tier-gate-no-skip` -> `pr/f043-checkpoint-tests-docs` (F-038, stacked)
+- PR #26 -- `pr/f037-callback-integration-tests` -> `pr/f038-tier-gate-no-skip` (F-037, stacked)
+- PR #27 -- `pr/f036-hierarchical-edge-cases` -> `pr/f037-callback-integration-tests` (F-036, stacked)
+- PR #28 -- `pr/f034-logger-singleton-warnings` -> `pr/f036-hierarchical-edge-cases` (F-034, stacked)
+- PR #29 -- `pr/f029-parallel-sibling-retrieval` -> `pr/f034-logger-singleton-warnings` (F-029, stacked)
+- PR #30 -- `pr/session5-tracking-docs` -> `pr/f029-parallel-sibling-retrieval` (session 5 tracking docs, stacked)
 
 ## Hand-off Notes
 - Session 5 delivered 5 additional resolved findings (F-029/F-034/F-036/F-037/F-038) with full regression pass
