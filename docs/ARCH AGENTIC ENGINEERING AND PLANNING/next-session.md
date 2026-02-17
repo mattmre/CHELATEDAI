@@ -13,12 +13,12 @@ Purpose: Minimal context to resume the workflow in short sessions.
 ## Session Objectives
 - Primary goal: Execute the next Medium-priority remediation tranche (performance, reliability, and test gaps)
 - Secondary goal: Keep the tracker/session log in sync with implementation progress
-- If blocked, targeted unblock: Tier gate behavior for F-038 and callback-path testing strategy for F-037
+- If blocked, targeted unblock: callback sandboxing constraints for F-022
 
 ## Cycle ID
 - AEP-2026-02-13 (continuing)
 
-## Completed (Sessions 2-4)
+## Completed (Sessions 2-5)
 - F-001 RESOLVED: `torch.load` security fix (PR #8, merged)
 - F-002 RESOLVED: benchmark_rlm tests -- 39 tests (PR #11, merged)
 - F-003 RESOLVED: checkpoint_manager tests -- 27 tests (PR #11, merged)
@@ -44,20 +44,25 @@ Purpose: Minimal context to resume the workflow in short sessions.
 - F-033 RESOLVED: `parallel_revalidation()` now executes finding pipelines in parallel with error logging
 - F-035 RESOLVED: Ollama embedding output normalization enforces float32 array consistency
 - F-043 RESOLVED: CheckpointManager + SafeTrainingContext wired into both sedimentation workflows
+- F-029 RESOLVED: sibling recursive retrieval now runs in parallel with thread-pool execution
+- F-034 RESOLVED: logger singleton now warns on explicit configuration mismatch after initialization
+- F-036 RESOLVED: added hierarchical sedimentation edge-case coverage
+- F-037 RESOLVED: added orchestrator callback integration-path coverage
+- F-038 RESOLVED: tier gate now enforces no-skip behavior when blockers exist
 
 ## Backlog State
 - **Total findings:** 55
-- **Resolved:** 25
-- **Remaining:** 30
-- **Current local test count:** 357 passing (1 warning)
+- **Resolved:** 30
+- **Remaining:** 25
+- **Current local test count:** 383 passing (1 warning)
 
 ## Top Findings To Resolve (Next 5)
 
-1. **F-029** -- Parallelize sibling sub-query retrieval in recursive engine
-2. **F-034** -- Clarify/fix logger singleton configuration behavior
-3. **F-036** -- Add edge-case coverage for `HierarchicalSedimentationEngine`
-4. **F-037** -- Add tests for orchestrator callback integration paths
-5. **F-038** -- Enforce no-skip invariant at tier gate when blockers exist
+1. **F-020** -- Validate Qdrant URL/location inputs and handle `None` safely
+2. **F-021** -- Add guardrails against prompt injection in `OllamaDecomposer`
+3. **F-022** -- Add callback safety controls for `remediate_fn` / `verify_fn`
+4. **F-023** -- Guard against zero-norm division in sedimentation target normalization
+5. **F-024** -- Handle 1D adapter input robustly in `ChelationAdapter.forward()`
 
 ## Dependency Notes
 - F-031 is NOW UNBLOCKED (F-011 resolved)
@@ -72,10 +77,8 @@ Purpose: Minimal context to resume the workflow in short sessions.
 - PR #24 -- `pr/f043-checkpoint-tests-docs` -> `pr/f033-parallel-revalidation` (F-043 tests/docs + session tracking)
 
 ## Hand-off Notes
-- Session 4 delivered 5 additional resolved findings (F-031/F-032/F-033/F-035/F-043) with full regression pass
-- Shared sedimentation helpers now support optional payload reuse to avoid duplicate retrievals
-- Sedimentation and hierarchical sedimentation now run under safe checkpoint contexts
-- Expanded focused coverage across logger, engine, sedimentation trainer, orchestrator, and recursive decomposer tests
-- Session log: `docs/ARCH AGENTIC ENGINEERING AND PLANNING/session-log-2026-02-17-impl-4.md`
+- Session 5 delivered 5 additional resolved findings (F-029/F-034/F-036/F-037/F-038) with full regression pass
+- Added focused coverage for tier-gate invariant, callback integration paths, logger singleton mismatch warnings, hierarchical sedimentation edge cases, and recursive sibling parallelization
+- Session log: `docs/ARCH AGENTIC ENGINEERING AND PLANNING/session-log-2026-02-17-impl-5.md`
 - Backlog: `docs/ARCH AGENTIC ENGINEERING AND PLANNING/backlog-2026-02-13.md`
-- Research artifact: `docs/ARCH AGENTIC ENGINEERING AND PLANNING/research-2026-02-17-f031-f032-f033-f035-f043-implementation.md`
+- Research artifact: `docs/ARCH AGENTIC ENGINEERING AND PLANNING/research-2026-02-17-f029-f034-f036-f037-f038-implementation.md`
