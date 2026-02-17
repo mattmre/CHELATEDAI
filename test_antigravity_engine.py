@@ -64,7 +64,7 @@ class TestAntigravityEngine(unittest.TestCase):
 
     def test_embed_ollama_mode_timeout_fallback(self):
         self.st_patcher.stop()
-        with patch("antigravity_engine.requests") as mock_requests, patch("antigravity_engine.REQUESTS_AVAILABLE", True):
+        with patch("embedding_backend.requests") as mock_requests, patch("embedding_backend.REQUESTS_AVAILABLE", True):
             mock_requests.exceptions = requests.exceptions
             mock_requests.post.side_effect = requests.exceptions.Timeout("timeout")
             engine = AntigravityEngine(qdrant_location=":memory:", model_name="ollama:nomic-embed-text")
@@ -77,7 +77,7 @@ class TestAntigravityEngine(unittest.TestCase):
     def test_embed_ollama_mode_returns_float32(self):
         """F-035: Verify Ollama mode returns float32 dtype, not object dtype."""
         self.st_patcher.stop()
-        with patch("antigravity_engine.requests") as mock_requests, patch("antigravity_engine.REQUESTS_AVAILABLE", True):
+        with patch("embedding_backend.requests") as mock_requests, patch("embedding_backend.REQUESTS_AVAILABLE", True):
             mock_requests.exceptions = requests.exceptions
             # Simulate Ollama returning a Python list
             mock_response = MagicMock()
@@ -96,7 +96,7 @@ class TestAntigravityEngine(unittest.TestCase):
     def test_embed_ollama_mode_mixed_success_failure_consistent_dtype(self):
         """F-035: Verify mixed success/fallback returns consistent shape/dtype."""
         self.st_patcher.stop()
-        with patch("antigravity_engine.requests") as mock_requests, patch("antigravity_engine.REQUESTS_AVAILABLE", True):
+        with patch("embedding_backend.requests") as mock_requests, patch("embedding_backend.REQUESTS_AVAILABLE", True):
             mock_requests.exceptions = requests.exceptions
 
             def side_effect_fn(*args, **kwargs):

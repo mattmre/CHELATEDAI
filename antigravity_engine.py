@@ -16,14 +16,7 @@ from teacher_distillation import TeacherDistillationHelper, create_distillation_
 from sedimentation_trainer import compute_homeostatic_target, sync_vectors_to_qdrant
 from checkpoint_manager import CheckpointManager, SafeTrainingContext
 from urllib.parse import urlparse
-
-# Safe import for requests (used in Ollama mode)
-try:
-    import requests
-    REQUESTS_AVAILABLE = True
-except ImportError:
-    requests = None
-    REQUESTS_AVAILABLE = False
+from embedding_backend import create_embedding_backend
 
 class AntigravityEngine:
     def __init__(self, qdrant_location=":memory:", chelation_p=ChelationConfig.DEFAULT_CHELATION_P, model_name='ollama:nomic-embed-text', use_centering=False, use_quantization=False, training_mode: str = "baseline", teacher_model_name: Optional[str] = None, teacher_weight: float = 0.5, store_full_text_payload: Optional[bool] = None):
@@ -76,43 +69,16 @@ class AntigravityEngine:
                 teacher_model=teacher_model
             )
 
-        if model_name.startswith("ollama:"):
-            # Ollama Mode
-            self.mode = "ollama"
-            self.model_name = model_name.replace("ollama:", "")
+        # Initialize embedding backend (F-045: Extract embedding mode branching)
+        self.logger.log_event("initialization", f"Initializing Antigravity Engine with model: {model_name}", model_name=model_name)
+        self.embedding_backend = create_embedding_backend(model_name, self.logger)
+        self.vector_size = self.embedding_backend.vector_size
+        
+        # Store mode and model_name for backward compatibility
+        self.mode = "ollama" if model_name.startswith("ollama:") else "local"
+        self.model_name = model_name.replace("ollama:", "") if model_name.startswith("ollama:") else model_name
+        if self.mode == "ollama":
             self.ollama_url = ChelationConfig.OLLAMA_URL
-            self.logger.log_event("initialization", f"Initializing Antigravity Engine (Ollama Mode: {self.model_name})", mode="ollama", model_name=self.model_name)
-            
-            # Check for requests availability
-            if not REQUESTS_AVAILABLE:
-                raise ImportError(f"'requests' library required for Ollama mode. Install with: pip install requests")
-            
-            # We assume the model is valid/pulled.
-            self.vector_size = ChelationConfig.DEFAULT_VECTOR_SIZE
-            try:
-                test_vec = self.embed("test")[0]
-                self.vector_size = len(test_vec)
-                self.logger.log_event("initialization", f"Connected to Ollama. Vector Size: {self.vector_size}", vector_size=self.vector_size)
-            except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
-                raise ConnectionError(f"Failed to connect to Ollama at {self.ollama_url}. Make sure Docker container is running!") from e
-            except (requests.exceptions.RequestException, KeyError, ValueError, TypeError, IndexError) as e:
-                self.logger.log_error("connection", f"Ollama connection test failed: {e}", exception=e)
-                self.logger.log_event("initialization", "Vector size will be validated on first real embedding call", level="WARNING")
-                # Keep default 768 as fallback
-        else:
-            # Local/Torch Mode
-            self.mode = "local"
-            self.logger.log_event("initialization", f"Initializing Antigravity Engine (Local Mode: {model_name})", mode="local", model_name=model_name)
-            from sentence_transformers import SentenceTransformer
-            import torch
-            
-            device = 'cuda' if torch.cuda.is_available() else 'cpu'
-            self.logger.log_event("initialization", f"Device Selected: {device}", device=device)
-            
-            # Load model
-            self.local_model = SentenceTransformer(model_name, device=device)
-            self.vector_size = self.local_model.get_sentence_embedding_dimension()
-            self.logger.log_event("initialization", f"Model loaded. Vector Size: {self.vector_size}", device=str(self.local_model.device), vector_size=self.vector_size)
             
         # Initialize Dynamic Adapter
         self.logger.log_event("adapter_init", "Initializing Dynamic Chelation Adapter")
@@ -166,108 +132,37 @@ class AntigravityEngine:
         self.checkpoint_manager = CheckpointManager()
         self.logger.log_event("checkpoint_manager_init", "CheckpointManager initialized for safe training")
 
-    def _sanitize_ollama_text(self, text, doc_index=None):
-        """Sanitize embedding input text for Ollama requests."""
-        if not isinstance(text, str):
-            text = str(text)
-
-        if len(text) > ChelationConfig.OLLAMA_INPUT_MAX_CHARS:
-            self.logger.log_event(
-                "embedding_input_truncated",
-                f"Input text exceeded max length ({ChelationConfig.OLLAMA_INPUT_MAX_CHARS}), truncating.",
-                level="DEBUG",
-                doc_index=doc_index,
-                original_length=len(text),
-                truncated_length=ChelationConfig.OLLAMA_INPUT_MAX_CHARS,
-            )
-            text = text[:ChelationConfig.OLLAMA_INPUT_MAX_CHARS]
-
-        # Replace non-printable control chars (except whitespace controls) to reduce API surprises.
-        return "".join(c if (c.isprintable() or c in "\n\r\t") else " " for c in text)
-
     def embed(self, texts):
-        """Get Embeddings (Ollama or Local)."""
+        """Get Embeddings via backend abstraction."""
         if isinstance(texts, str):
             texts = [texts]
         
         if not texts:
             return np.array([])
-            
-        if self.mode == "ollama":
-            embeddings = [None] * len(texts)
-            
-            def _get_embedding(i, txt):
-                txt = self._sanitize_ollama_text(txt, doc_index=i)
-
-                # Helper to attempt embedding
-                def attempt(t):
-                    try:
-                        res = requests.post(
-                            self.ollama_url,
-                            json={
-                                "model": self.model_name,
-                                "prompt": t,
-                                "options": {"num_ctx": ChelationConfig.OLLAMA_NUM_CTX}
-                            },
-                            timeout=ChelationConfig.OLLAMA_TIMEOUT
-                        )
-                        if res.status_code == 200:
-                            return res.json()["embedding"]
-                        else:
-                            # 500 error usually means context limit or model error
-                            # Return None to trigger retry logic with truncation
-                            return None
-                    except requests.exceptions.Timeout:
-                        self.logger.log_error("timeout", f"Ollama timeout for doc {i}", doc_index=i)
-                        return None
-                    except requests.exceptions.ConnectionError:
-                        self.logger.log_error("connection", f"Ollama connection lost for doc {i}", doc_index=i)
-                        return None
-                    except KeyError as e:
-                        self.logger.log_error("api_response", f"Ollama response missing 'embedding' key for doc {i}", exception=e, doc_index=i)
-                        return None
-                    except Exception as e:
-                        self.logger.log_error("embedding", f"Ollama unexpected error for doc {i}", exception=e, doc_index=i)
-                        return None
-                
-                # Try truncation levels from OLLAMA_TRUNCATION_LIMITS
-                for limit in ChelationConfig.OLLAMA_TRUNCATION_LIMITS:
-                    current_text = txt[:limit]
-                    emb = attempt(current_text)
-                    if emb is not None:
-                        break
-
-                if emb is None:
-                    self.logger.log_error("embedding_failed", f"Failed to embed doc {i} after retries", doc_index=i)
-                    return i, np.zeros(self.vector_size, dtype=np.float32)
-                    
-                return i, np.array(emb, dtype=np.float32)
-
-            from concurrent.futures import ThreadPoolExecutor, TimeoutError
-            with ThreadPoolExecutor(max_workers=ChelationConfig.OLLAMA_MAX_WORKERS) as executor:
-                futures = [executor.submit(_get_embedding, i, txt) for i, txt in enumerate(texts)]
-                for idx, future in enumerate(futures):
-                    try:
-                        _, emb = future.result(timeout=ChelationConfig.OLLAMA_TIMEOUT)
-                        embeddings[idx] = emb
-                    except TimeoutError:
-                        self.logger.log_error("timeout", f"Embedding timeout for document {idx}, using zero vector", doc_index=idx)
-                        embeddings[idx] = np.zeros(self.vector_size, dtype=np.float32)
-                    except Exception as e:
-                        self.logger.log_error("embedding", f"Embedding failed for document {idx}", exception=e, doc_index=idx)
-                        embeddings[idx] = np.zeros(self.vector_size, dtype=np.float32)
-
-            return np.array(embeddings, dtype=np.float32)
-            
-        elif self.mode == "local":
-            raw_embeddings = self.local_model.encode(texts, convert_to_numpy=True, show_progress_bar=False)
-            
-            # PASS THROUGH ADAPTER
-            # We need to convert to torch tensor, pass through, then back to numpy
+        
+        # Get raw embeddings from backend
+        raw_embeddings = self.embedding_backend.embed_raw(texts)
+        
+        # For local mode, pass through adapter
+        if self.mode == "local":
             with torch.no_grad():
                 tensor_inputs = torch.tensor(raw_embeddings, dtype=torch.float32)
                 adapted_embeddings = self.adapter(tensor_inputs)
                 return adapted_embeddings.numpy()
+        else:
+            # Ollama mode - return raw embeddings directly (no adapter)
+            return raw_embeddings
+
+    def _sanitize_ollama_text(self, text, doc_index=None):
+        """Backward-compatible Ollama text sanitizer API."""
+        if hasattr(self.embedding_backend, "_sanitize_text"):
+            return self.embedding_backend._sanitize_text(text, doc_index=doc_index)
+
+        if not isinstance(text, str):
+            text = str(text)
+        if len(text) > ChelationConfig.OLLAMA_INPUT_MAX_CHARS:
+            text = text[:ChelationConfig.OLLAMA_INPUT_MAX_CHARS]
+        return "".join(c if (c.isprintable() or c in "\n\r\t") else " " for c in text)
 
     def ingest(self, text_corpus, payloads=None):
         """Ingests real-world documents into Qdrant."""
