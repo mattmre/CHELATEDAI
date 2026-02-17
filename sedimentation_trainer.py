@@ -37,7 +37,8 @@ def compute_homeostatic_target(current_vec: np.ndarray, noise_vectors: List[np.n
 
 
 def sync_vectors_to_qdrant(qdrant: Any, collection_name: str, ordered_ids: List,
-                           new_vectors_np: np.ndarray, chunk_size: int, logger: Any) -> tuple:
+                           new_vectors_np: np.ndarray, chunk_size: int, logger: Any,
+                           payload_map: dict = None) -> tuple:
     """
     Synchronize updated vectors to Qdrant in batches, preserving existing payloads.
     
@@ -51,6 +52,8 @@ def sync_vectors_to_qdrant(qdrant: Any, collection_name: str, ordered_ids: List,
         new_vectors_np: NumPy array of new vectors (N, D)
         chunk_size: Batch size for updates
         logger: ChelationLogger instance for event logging
+        payload_map: Optional dict mapping doc IDs to payloads. If provided,
+                    skips qdrant.retrieve for payload lookup (F-031 optimization)
     
     Returns:
         Tuple of (total_updates, failed_updates) counts
@@ -63,18 +66,22 @@ def sync_vectors_to_qdrant(qdrant: Any, collection_name: str, ordered_ids: List,
         chunk_vectors = new_vectors_np[i:i + chunk_size]
         
         # Fetch existing points to get payloads (preserve metadata)
+        # Skip retrieve if payload_map was provided (F-031 optimization)
         try:
-            existing_points = qdrant.retrieve(
-                collection_name=collection_name,
-                ids=chunk_ids,
-                with_vectors=False
-            )
-            payload_map = {p.id: p.payload for p in existing_points}
+            if payload_map is None:
+                existing_points = qdrant.retrieve(
+                    collection_name=collection_name,
+                    ids=chunk_ids,
+                    with_vectors=False
+                )
+                chunk_payload_map = {p.id: p.payload for p in existing_points}
+            else:
+                chunk_payload_map = payload_map
             
             batch_points = []
             for j, doc_id in enumerate(chunk_ids):
                 vec = chunk_vectors[j].tolist()
-                pay = payload_map.get(doc_id, {})
+                pay = chunk_payload_map.get(doc_id, {})
                 batch_points.append(PointStruct(
                     id=doc_id,
                     vector=vec,

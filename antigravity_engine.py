@@ -14,6 +14,7 @@ from chelation_logger import get_logger
 from typing import Optional
 from teacher_distillation import TeacherDistillationHelper, create_distillation_helper
 from sedimentation_trainer import compute_homeostatic_target, sync_vectors_to_qdrant
+from checkpoint_manager import CheckpointManager, SafeTrainingContext
 
 # Safe import for requests (used in Ollama mode)
 try:
@@ -146,6 +147,10 @@ class AntigravityEngine:
                 vectors_config=VectorParams(size=self.vector_size, distance=Distance.COSINE),
                 quantization_config=quant_config
             )
+        
+        # Initialize checkpoint manager for safe training (F-043)
+        self.checkpoint_manager = CheckpointManager()
+        self.logger.log_event("checkpoint_manager_init", "CheckpointManager initialized for safe training")
 
     def _sanitize_ollama_text(self, text, doc_index=None):
         """Sanitize embedding input text for Ollama requests."""
@@ -727,6 +732,7 @@ class AntigravityEngine:
         training_targets = []
         ordered_ids = []
         training_texts = []  # For teacher distillation
+        payload_map = {}  # F-031: Cache payloads during initial retrieve
         
         self.logger.log_event("training_preparation", "Fetching training data from Qdrant", level="DEBUG")
         
@@ -749,6 +755,9 @@ class AntigravityEngine:
                 # Get text for teacher distillation modes
                 text = point.payload.get("text", "")
                 training_texts.append(text)
+                
+                # F-031: Cache payload for later sync
+                payload_map[point.id] = point.payload
                 
                 # Calculate Target based on mode
                 if self.training_mode == "baseline":
@@ -834,39 +843,61 @@ class AntigravityEngine:
         input_tensor = torch.tensor(input_array, dtype=torch.float32)
         target_tensor = torch.tensor(target_array, dtype=torch.float32)
         
-        # --- TRAINING LOOP ---
+        # --- TRAINING LOOP (wrapped in SafeTrainingContext for F-043) ---
         self.logger.log_training_start(num_samples=len(training_inputs), learning_rate=learning_rate, epochs=epochs, threshold=threshold)
-        optimizer = optim.Adam(self.adapter.parameters(), lr=learning_rate)
-        criterion = torch.nn.MSELoss()
         
-        self.adapter.train()
-        final_loss = 0.0
-        for epoch in range(epochs):
-            optimizer.zero_grad()
-            outputs = self.adapter(input_tensor)
-            loss = criterion(outputs, target_tensor)
-            loss.backward()
-            optimizer.step()
-            final_loss = loss.item()
+        with SafeTrainingContext(
+            self.checkpoint_manager,
+            self.adapter_path,
+            f"sedimentation_cycle_threshold_{threshold}"
+        ) as training_ctx:
+            optimizer = optim.Adam(self.adapter.parameters(), lr=learning_rate)
+            criterion = torch.nn.MSELoss()
+            
+            self.adapter.train()
+            final_loss = 0.0
+            for epoch in range(epochs):
+                optimizer.zero_grad()
+                outputs = self.adapter(input_tensor)
+                loss = criterion(outputs, target_tensor)
+                loss.backward()
+                optimizer.step()
+                final_loss = loss.item()
 
-            if epoch % max(1, epochs // 2) == 0:
-                self.logger.log_training_epoch(epoch=epoch+1, total_epochs=epochs, loss=final_loss)
-        self.adapter.eval()
-        self.adapter.save(self.adapter_path)
-        self.logger.log_checkpoint("save", self.adapter_path)
-        
-        # --- UPDATE QDRANT ---
-        self.logger.log_event("vector_update", "Syncing updated vectors to Qdrant")
-        
-        with torch.no_grad():
-             new_vectors_np = self.adapter(input_tensor).numpy()
-             
-        # Batch Update Logic using shared helper
-        total_updates, failed_updates = sync_vectors_to_qdrant(
-            self.qdrant, self.collection_name, ordered_ids, 
-            new_vectors_np, chunk_size, self.logger
-        )
-                
+                if epoch % max(1, epochs // 2) == 0:
+                    self.logger.log_training_epoch(epoch=epoch+1, total_epochs=epochs, loss=final_loss)
+            self.adapter.eval()
+            self.adapter.save(self.adapter_path)
+            self.logger.log_checkpoint("save", self.adapter_path)
+            
+            # --- UPDATE QDRANT ---
+            self.logger.log_event("vector_update", "Syncing updated vectors to Qdrant")
+            
+            with torch.no_grad():
+                 new_vectors_np = self.adapter(input_tensor).numpy()
+                 
+            # Batch Update Logic using shared helper (F-031: pass cached payload_map)
+            total_updates, failed_updates = sync_vectors_to_qdrant(
+                self.qdrant, self.collection_name, ordered_ids, 
+                new_vectors_np, chunk_size, self.logger, payload_map
+            )
+            
+            # Mark success only if no failed vector updates (F-043)
+            if failed_updates == 0:
+                training_ctx.mark_success()
+                self.logger.log_event(
+                    "sedimentation_success",
+                    f"Training cycle completed successfully. Updated {total_updates} vectors.",
+                    vectors_updated=total_updates
+                )
+            else:
+                self.logger.log_error(
+                    "sedimentation_partial_failure",
+                    f"Training completed but {failed_updates} vector updates failed. Rolling back.",
+                    vectors_updated=total_updates,
+                    vectors_failed=failed_updates
+                )
+                    
         self.logger.log_training_complete(final_loss=final_loss, vectors_updated=total_updates, vectors_failed=failed_updates)
         self.chelation_log.clear()
     

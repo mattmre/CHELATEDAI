@@ -24,6 +24,7 @@ from collections import defaultdict
 from config import ChelationConfig
 from chelation_logger import ChelationLogger, get_logger
 from sedimentation_trainer import compute_homeostatic_target, sync_vectors_to_qdrant
+from checkpoint_manager import CheckpointManager, SafeTrainingContext
 
 # Try to import requests exceptions for type-safe exception handling
 try:
@@ -493,6 +494,8 @@ class HierarchicalSedimentationEngine:
         """
         self.engine = engine
         self.logger = get_logger()
+        # Initialize checkpoint manager for safe training (F-043)
+        self.checkpoint_manager = CheckpointManager()
 
     def run_hierarchical_sedimentation(self, threshold=3, learning_rate=0.001, epochs=10):
         """
@@ -524,6 +527,7 @@ class HierarchicalSedimentationEngine:
         chunk_size = 100
         all_vectors = []
         all_ids = []
+        payload_map = {}  # F-031: Cache payloads during initial retrieve
 
         for i in range(0, len(batch_ids), chunk_size):
             chunk = batch_ids[i:i + chunk_size]
@@ -535,6 +539,8 @@ class HierarchicalSedimentationEngine:
             for point in points:
                 all_ids.append(point.id)
                 all_vectors.append(np.array(point.vector))
+                # F-031: Cache payload for later sync
+                payload_map[point.id] = point.payload
 
         if not all_vectors:
             print("No vectors retrieved. Skipping.")
@@ -578,68 +584,90 @@ class HierarchicalSedimentationEngine:
             n_clusters=len(clusters),
         )
 
-        # --- Phase 1: Per-cluster training (local corrections) ---
+        # --- Phase 1 & 2: Training wrapped in SafeTrainingContext (F-043) ---
         print(f"Phase 1: Per-cluster training ({len(clusters)} clusters, {cluster_epochs} epochs)...")
-        optimizer = optim.Adam(self.engine.adapter.parameters(), lr=learning_rate)
-        criterion = torch.nn.MSELoss()
+        
+        with SafeTrainingContext(
+            self.checkpoint_manager,
+            self.engine.adapter_path,
+            f"hierarchical_sedimentation_threshold_{threshold}"
+        ) as training_ctx:
+            optimizer = optim.Adam(self.engine.adapter.parameters(), lr=learning_rate)
+            criterion = torch.nn.MSELoss()
 
-        self.engine.adapter.train()
+            self.engine.adapter.train()
 
-        for cluster_idx, (cluster_vecs, cluster_indices) in enumerate(clusters):
-            if len(cluster_indices) == 0:
-                continue
+            for cluster_idx, (cluster_vecs, cluster_indices) in enumerate(clusters):
+                if len(cluster_indices) == 0:
+                    continue
 
-            cluster_input = input_tensor[cluster_indices]
-            cluster_target = target_tensor[cluster_indices]
+                cluster_input = input_tensor[cluster_indices]
+                cluster_target = target_tensor[cluster_indices]
 
-            for epoch in range(cluster_epochs):
-                optimizer.zero_grad()
-                outputs = self.engine.adapter(cluster_input)
-                loss = criterion(outputs, cluster_target)
+                for epoch in range(cluster_epochs):
+                    optimizer.zero_grad()
+                    outputs = self.engine.adapter(cluster_input)
+                    loss = criterion(outputs, cluster_target)
+                    loss.backward()
+                    optimizer.step()
+
+                self.logger.log_event(
+                    "cluster_training",
+                    f"Cluster {cluster_idx}: {len(cluster_indices)} samples, final loss {loss.item():.6f}",
+                    level="DEBUG",
+                    cluster_idx=cluster_idx,
+                    cluster_size=len(cluster_indices),
+                    final_loss=loss.item(),
+                )
+
+            # --- Phase 2: Global refinement (cross-cluster coherence) ---
+            print(f"Phase 2: Global refinement ({global_epochs} epochs, LR={learning_rate * 0.1:.6f})...")
+            global_optimizer = optim.Adam(self.engine.adapter.parameters(), lr=learning_rate * 0.1)
+
+            for epoch in range(global_epochs):
+                global_optimizer.zero_grad()
+                outputs = self.engine.adapter(input_tensor)
+                loss = criterion(outputs, target_tensor)
                 loss.backward()
-                optimizer.step()
+                global_optimizer.step()
 
-            self.logger.log_event(
-                "cluster_training",
-                f"Cluster {cluster_idx}: {len(cluster_indices)} samples, final loss {loss.item():.6f}",
-                level="DEBUG",
-                cluster_idx=cluster_idx,
-                cluster_size=len(cluster_indices),
-                final_loss=loss.item(),
+                if epoch % max(1, global_epochs // 2) == 0:
+                    self.logger.log_training_epoch(epoch + 1, global_epochs, loss.item())
+
+            self.engine.adapter.eval()
+            final_loss = loss.item() if global_epochs > 0 else 0.0
+
+            # Save adapter
+            self.engine.adapter.save(self.engine.adapter_path)
+            print("Adapter weights saved.")
+
+            # Update Qdrant with adapted vectors
+            print("Syncing updated vectors to Qdrant...")
+
+            with torch.no_grad():
+                new_vectors_np = self.engine.adapter(input_tensor).numpy()
+
+            # Use shared helper for Qdrant sync (F-031: pass cached payload_map)
+            total_updates, failed_updates = sync_vectors_to_qdrant(
+                self.engine.qdrant, self.engine.collection_name, ordered_ids,
+                new_vectors_np, chunk_size, self.logger, payload_map
             )
-
-        # --- Phase 2: Global refinement (cross-cluster coherence) ---
-        print(f"Phase 2: Global refinement ({global_epochs} epochs, LR={learning_rate * 0.1:.6f})...")
-        global_optimizer = optim.Adam(self.engine.adapter.parameters(), lr=learning_rate * 0.1)
-
-        for epoch in range(global_epochs):
-            global_optimizer.zero_grad()
-            outputs = self.engine.adapter(input_tensor)
-            loss = criterion(outputs, target_tensor)
-            loss.backward()
-            global_optimizer.step()
-
-            if epoch % max(1, global_epochs // 2) == 0:
-                self.logger.log_training_epoch(epoch + 1, global_epochs, loss.item())
-
-        self.engine.adapter.eval()
-        final_loss = loss.item() if global_epochs > 0 else 0.0
-
-        # Save adapter
-        self.engine.adapter.save(self.engine.adapter_path)
-        print("Adapter weights saved.")
-
-        # Update Qdrant with adapted vectors
-        print("Syncing updated vectors to Qdrant...")
-
-        with torch.no_grad():
-            new_vectors_np = self.engine.adapter(input_tensor).numpy()
-
-        # Use shared helper for Qdrant sync
-        total_updates, failed_updates = sync_vectors_to_qdrant(
-            self.engine.qdrant, self.engine.collection_name, ordered_ids,
-            new_vectors_np, chunk_size, self.logger
-        )
+            
+            # Mark success only if no failed vector updates (F-043)
+            if failed_updates == 0:
+                training_ctx.mark_success()
+                self.logger.log_event(
+                    "hierarchical_sedimentation_success",
+                    f"Hierarchical training completed successfully. Updated {total_updates} vectors.",
+                    vectors_updated=total_updates
+                )
+            else:
+                self.logger.log_error(
+                    "hierarchical_sedimentation_partial_failure",
+                    f"Training completed but {failed_updates} vector updates failed. Rolling back.",
+                    vectors_updated=total_updates,
+                    vectors_failed=failed_updates
+                )
 
         self.logger.log_training_complete(
             final_loss=final_loss,

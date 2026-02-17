@@ -305,6 +305,104 @@ class TestSyncVectorsToQdrant(unittest.TestCase):
         self.assertEqual(failed, 0)
         mock_qdrant.retrieve.assert_not_called()
         mock_qdrant.upsert.assert_not_called()
+    
+    def test_payload_map_provided_skips_retrieve(self):
+        """Test F-031: providing payload_map skips qdrant.retrieve."""
+        mock_qdrant = Mock()
+        mock_logger = Mock()
+        
+        # Prepare test data
+        ordered_ids = ["doc1", "doc2"]
+        new_vectors = np.array([[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]])
+        payload_map = {
+            "doc1": {"text": "cached1"},
+            "doc2": {"text": "cached2"}
+        }
+        
+        # Capture upsert calls
+        upserted_points = []
+        def capture_upsert(collection_name, points):
+            upserted_points.extend(points)
+        mock_qdrant.upsert.side_effect = capture_upsert
+        
+        total, failed = sync_vectors_to_qdrant(
+            mock_qdrant, "test_collection", ordered_ids,
+            new_vectors, chunk_size=10, logger=mock_logger,
+            payload_map=payload_map
+        )
+        
+        # Should NOT call retrieve when payload_map is provided
+        mock_qdrant.retrieve.assert_not_called()
+        
+        # Should call upsert once with all points
+        self.assertEqual(mock_qdrant.upsert.call_count, 1)
+        self.assertEqual(total, 2)
+        self.assertEqual(failed, 0)
+        
+        # Verify payloads from provided map were used
+        self.assertEqual(len(upserted_points), 2)
+        self.assertEqual(upserted_points[0].payload, {"text": "cached1"})
+        self.assertEqual(upserted_points[1].payload, {"text": "cached2"})
+    
+    def test_no_payload_map_preserves_existing_behavior(self):
+        """Test F-031: no payload_map calls retrieve as before."""
+        mock_qdrant = Mock()
+        mock_logger = Mock()
+        
+        # Mock retrieve response
+        def mock_retrieve(collection_name, ids, with_vectors):
+            points = []
+            for doc_id in ids:
+                point = Mock()
+                point.id = doc_id
+                point.payload = {"text": f"retrieved_{doc_id}"}
+                points.append(point)
+            return points
+        
+        mock_qdrant.retrieve.side_effect = mock_retrieve
+        mock_qdrant.upsert.return_value = None
+        
+        ordered_ids = ["doc1", "doc2"]
+        new_vectors = np.array([[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]])
+        
+        # Call WITHOUT payload_map
+        total, failed = sync_vectors_to_qdrant(
+            mock_qdrant, "test_collection", ordered_ids,
+            new_vectors, chunk_size=10, logger=mock_logger
+        )
+        
+        # SHOULD call retrieve when payload_map is NOT provided
+        mock_qdrant.retrieve.assert_called_once()
+        self.assertEqual(total, 2)
+        self.assertEqual(failed, 0)
+    
+    def test_payload_map_chunking(self):
+        """Test F-031: payload_map works correctly with multiple chunks."""
+        mock_qdrant = Mock()
+        mock_logger = Mock()
+        
+        # Create test data with multiple chunks
+        n_docs = 25
+        ordered_ids = [f"doc{i}" for i in range(n_docs)]
+        new_vectors = np.random.rand(n_docs, 384)
+        payload_map = {f"doc{i}": {"text": f"cached{i}"} for i in range(n_docs)}
+        
+        mock_qdrant.upsert.return_value = None
+        
+        chunk_size = 10
+        total, failed = sync_vectors_to_qdrant(
+            mock_qdrant, "test_collection", ordered_ids,
+            new_vectors, chunk_size=chunk_size, logger=mock_logger,
+            payload_map=payload_map
+        )
+        
+        # Should NOT call retrieve at all
+        mock_qdrant.retrieve.assert_not_called()
+        
+        # Should call upsert 3 times (10 + 10 + 5)
+        self.assertEqual(mock_qdrant.upsert.call_count, 3)
+        self.assertEqual(total, n_docs)
+        self.assertEqual(failed, 0)
 
 
 if __name__ == "__main__":
