@@ -627,6 +627,87 @@ class TestAntigravityEngine(unittest.TestCase):
             self.assertEqual(len(engine.chelation_log[doc_id]), 1)
             np.testing.assert_array_almost_equal(engine.chelation_log[doc_id][0], center)
 
+    def test_close_calls_qdrant_close(self):
+        """F-039: Verify close() calls qdrant.close() when client is present."""
+        engine = self._make_engine()
+        
+        # Verify qdrant client exists
+        self.assertIsNotNone(engine.qdrant)
+        
+        # Call close
+        engine.close()
+        
+        # Verify qdrant.close() was called
+        self.mock_qdrant.close.assert_called_once()
+        
+        # Verify qdrant is set to None
+        self.assertIsNone(engine.qdrant)
+
+    def test_close_idempotent(self):
+        """F-039: Verify close() is safe to call multiple times (idempotent)."""
+        engine = self._make_engine()
+        
+        # Call close multiple times
+        engine.close()
+        engine.close()
+        engine.close()
+        
+        # Should only call qdrant.close() once (first time)
+        self.mock_qdrant.close.assert_called_once()
+        
+        # Verify qdrant remains None after multiple calls
+        self.assertIsNone(engine.qdrant)
+
+    def test_close_handles_qdrant_close_error(self):
+        """F-039: Verify close() handles errors from qdrant.close() gracefully."""
+        engine = self._make_engine()
+        
+        # Make qdrant.close() raise an exception
+        self.mock_qdrant.close.side_effect = RuntimeError("Qdrant close error")
+        
+        # close() should not raise - should log error instead
+        engine.close()
+        
+        # Verify error was logged
+        self.mock_logger.log_error.assert_called()
+        error_call = self.mock_logger.log_error.call_args
+        self.assertEqual(error_call[0][0], "resource_cleanup")
+        self.assertIn("Error closing Qdrant client", error_call[0][1])
+        
+        # Verify qdrant is set to None even on error
+        self.assertIsNone(engine.qdrant)
+
+    def test_context_manager_calls_close(self):
+        """F-039: Verify context manager invokes close() on exit."""
+        with patch("antigravity_engine.QdrantClient") as mock_qdrant_cls:
+            mock_qdrant = MagicMock()
+            mock_qdrant_cls.return_value = mock_qdrant
+            
+            with AntigravityEngine(qdrant_location=":memory:", model_name="all-MiniLM-L6-v2") as engine:
+                # Verify engine is returned
+                self.assertIsNotNone(engine)
+                self.assertIsNotNone(engine.qdrant)
+            
+            # After context exit, close should have been called
+            mock_qdrant.close.assert_called_once()
+
+    def test_context_manager_does_not_suppress_exceptions(self):
+        """F-039: Verify context manager does not suppress exceptions."""
+        with patch("antigravity_engine.QdrantClient") as mock_qdrant_cls:
+            mock_qdrant = MagicMock()
+            mock_qdrant_cls.return_value = mock_qdrant
+            
+            with self.assertRaises(ValueError) as context:
+                with AntigravityEngine(qdrant_location=":memory:", model_name="all-MiniLM-L6-v2") as engine:
+                    # Raise an exception inside the context
+                    raise ValueError("Test exception")
+            
+            # Verify exception propagated
+            self.assertEqual(str(context.exception), "Test exception")
+            
+            # Verify close was still called
+            mock_qdrant.close.assert_called_once()
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

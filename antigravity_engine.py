@@ -1249,3 +1249,25 @@ class AntigravityEngine:
         except (ResponseHandlingException, UnexpectedResponse) as e:
             self.logger.log_error("qdrant", f"Qdrant error in run_inference: {e}", exception=e)
             return [], [], np.ones(self.vector_size), 0.0
+
+    def close(self):
+        """
+        Close Qdrant client and release resources.
+        Safe to call multiple times (idempotent).
+        """
+        if self.qdrant is not None:
+            try:
+                self.qdrant.close()
+            except Exception as e:
+                self.logger.log_error("resource_cleanup", f"Error closing Qdrant client: {e}", exception=e)
+            finally:
+                self.qdrant = None
+
+    def __enter__(self):
+        """Context manager entry."""
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Context manager exit - close resources, do not suppress exceptions."""
+        self.close()
+        return False  # Do not suppress exceptions
