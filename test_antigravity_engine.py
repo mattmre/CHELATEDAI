@@ -381,6 +381,114 @@ class TestAntigravityEngine(unittest.TestCase):
         engine = self._make_engine()
         self.mock_qdrant_cls.assert_called_with(location=":memory:")
 
+    def test_get_chelated_vector_uses_with_vectors_true(self):
+        """F-027: Verify get_chelated_vector uses query_points with with_vectors=True."""
+        engine = self._make_engine()
+        
+        # Mock scout results with vectors
+        mock_hit1 = SimpleNamespace(id=1, vector=np.random.randn(768).tolist(), score=0.9)
+        mock_hit2 = SimpleNamespace(id=2, vector=np.random.randn(768).tolist(), score=0.8)
+        self.mock_qdrant.query_points.return_value = SimpleNamespace(points=[mock_hit1, mock_hit2])
+        
+        # Call get_chelated_vector
+        result = engine.get_chelated_vector("test query")
+        
+        # Verify query_points was called with with_vectors=True
+        self.mock_qdrant.query_points.assert_called_once()
+        call_kwargs = self.mock_qdrant.query_points.call_args.kwargs
+        self.assertEqual(call_kwargs["with_vectors"], True)
+        
+        # Verify result is numpy array with correct shape
+        self.assertIsInstance(result, np.ndarray)
+        self.assertEqual(result.shape, (768,))
+
+    def test_get_chelated_vector_does_not_call_retrieve(self):
+        """F-027: Verify get_chelated_vector does NOT call retrieve() in happy path."""
+        engine = self._make_engine()
+        
+        # Mock scout results with vectors
+        mock_hit1 = SimpleNamespace(id=1, vector=np.random.randn(768).tolist(), score=0.9)
+        mock_hit2 = SimpleNamespace(id=2, vector=np.random.randn(768).tolist(), score=0.8)
+        self.mock_qdrant.query_points.return_value = SimpleNamespace(points=[mock_hit1, mock_hit2])
+        
+        # Call get_chelated_vector
+        result = engine.get_chelated_vector("test query")
+        
+        # Verify retrieve was NOT called
+        self.mock_qdrant.retrieve.assert_not_called()
+        
+        # Verify result is valid
+        self.assertIsInstance(result, np.ndarray)
+        self.assertEqual(result.shape, (768,))
+
+    def test_get_chelated_vector_fallback_empty_results(self):
+        """F-027: Verify get_chelated_vector falls back to raw query vector when no results."""
+        engine = self._make_engine()
+        
+        # Mock empty scout results
+        self.mock_qdrant.query_points.return_value = SimpleNamespace(points=[])
+        
+        # Mock embed to return a specific vector
+        expected_vec = np.random.randn(768).astype(np.float32)
+        engine.embed = MagicMock(return_value=np.array([expected_vec]))
+        
+        # Call get_chelated_vector
+        result = engine.get_chelated_vector("test query")
+        
+        # Verify fallback returns raw query vector
+        np.testing.assert_array_equal(result, expected_vec)
+        
+        # Verify retrieve was not called
+        self.mock_qdrant.retrieve.assert_not_called()
+
+    def test_get_chelated_vector_fallback_no_vectors(self):
+        """F-027: Verify get_chelated_vector falls back when scout results have no vectors."""
+        engine = self._make_engine()
+        
+        # Mock scout results without vectors (all None)
+        mock_hit1 = SimpleNamespace(id=1, vector=None, score=0.9)
+        mock_hit2 = SimpleNamespace(id=2, vector=None, score=0.8)
+        self.mock_qdrant.query_points.return_value = SimpleNamespace(points=[mock_hit1, mock_hit2])
+        
+        # Mock embed to return a specific vector
+        expected_vec = np.random.randn(768).astype(np.float32)
+        engine.embed = MagicMock(return_value=np.array([expected_vec]))
+        
+        # Call get_chelated_vector
+        result = engine.get_chelated_vector("test query")
+        
+        # Verify fallback returns raw query vector
+        np.testing.assert_array_equal(result, expected_vec)
+        
+        # Verify retrieve was not called
+        self.mock_qdrant.retrieve.assert_not_called()
+
+    def test_get_chelated_vector_error_handling_unchanged(self):
+        """F-027: Verify get_chelated_vector error handling behavior unchanged."""
+        engine = self._make_engine()
+        
+        # Import exception types
+        from qdrant_client.http.exceptions import ResponseHandlingException
+        
+        # Mock query_points to raise Qdrant exception
+        self.mock_qdrant.query_points.side_effect = ResponseHandlingException("test error")
+        
+        # Mock embed to return a specific vector
+        expected_vec = np.random.randn(768).astype(np.float32)
+        engine.embed = MagicMock(return_value=np.array([expected_vec]))
+        
+        # Call get_chelated_vector
+        result = engine.get_chelated_vector("test query")
+        
+        # Verify fallback returns raw query vector on error
+        np.testing.assert_array_equal(result, expected_vec)
+        
+        # Verify error was logged
+        self.mock_logger.log_error.assert_called()
+        error_call = self.mock_logger.log_error.call_args
+        self.assertEqual(error_call[0][0], "qdrant")
+        self.assertIn("Qdrant error in get_chelated_vector", error_call[0][1])
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

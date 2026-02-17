@@ -508,23 +508,16 @@ class AntigravityEngine:
             scout_results = self.qdrant.query_points(
                 collection_name=self.collection_name,
                 query=q_vec,
-                limit=ChelationConfig.SCOUT_K
+                limit=ChelationConfig.SCOUT_K,
+                with_vectors=True
             ).points
             
             if not scout_results:
                 # Fallback if index empty
                 return q_vec
-                
-            local_cluster_ids = [hit.id for hit in scout_results]
             
-            # We need the actual VECTORS of the local cluster to calculate variance.
-            # Qdrant: retrieve points by ID.
-            points = self.qdrant.retrieve(
-                collection_name=self.collection_name,
-                ids=local_cluster_ids,
-                with_vectors=True
-            )
-            local_vectors = [p.vector for p in points]
+            # Extract vectors directly from scout_results (F-027: eliminated redundant retrieve())
+            local_vectors = [hit.vector for hit in scout_results if hit.vector is not None]
             
             if not local_vectors:
                 return q_vec
