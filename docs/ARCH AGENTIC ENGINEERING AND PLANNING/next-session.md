@@ -65,7 +65,11 @@ Purpose: Minimal context to resume the workflow in short sessions.
 - F-016 and F-019 dependency on structured logging are resolved
 
 ## Open PRs
-- PR #19 -- `feature/aep-cycle-remediation-20260216` -> `feature/phase4-docs-20260216` (contains Session 3 findings + docs updates)
+- PR #20 -- `pr/f032-logger-single-write` -> `feature/aep-cycle-remediation-20260216` (F-032)
+- PR #21 -- `pr/f035-embedding-types` -> `pr/f032-logger-single-write` (F-035, stacked)
+- PR #22 -- `pr/f031-payload-cache` -> `pr/f035-embedding-types` (F-031 + sedimentation safety core, stacked)
+- PR #23 -- `pr/f033-parallel-revalidation` -> `pr/f031-payload-cache` (F-033, stacked)
+- PR #24 -- `pr/f043-checkpoint-tests-docs` -> `pr/f033-parallel-revalidation` (F-043 tests/docs + session tracking)
 
 ## Hand-off Notes
 - Session 4 delivered 5 additional resolved findings (F-031/F-032/F-033/F-035/F-043) with full regression pass
