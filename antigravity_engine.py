@@ -15,8 +15,8 @@ from typing import Optional
 from teacher_distillation import TeacherDistillationHelper, create_distillation_helper
 from sedimentation_trainer import compute_homeostatic_target, sync_vectors_to_qdrant
 from checkpoint_manager import CheckpointManager, SafeTrainingContext
-from urllib.parse import urlparse
 from embedding_backend import create_embedding_backend
+from vector_store import create_vector_store
 
 class AntigravityEngine:
     def __init__(self, qdrant_location=":memory:", chelation_p=ChelationConfig.DEFAULT_CHELATION_P, model_name='ollama:nomic-embed-text', use_centering=False, use_quantization=False, training_mode: str = "baseline", teacher_model_name: Optional[str] = None, teacher_weight: float = 0.5, store_full_text_payload: Optional[bool] = None):
@@ -88,21 +88,17 @@ class AntigravityEngine:
         else:
             self.logger.log_event("adapter_init", "Created new adapter (Identity initialization)")
         
-        # Initialize Qdrant with validation (F-020)
-        if qdrant_location is None:
-            raise ValueError("qdrant_location cannot be None")
+        # Initialize Vector Store with validation (F-044: Vector Store Abstraction)
+        # Create vector store abstraction (uses Qdrant backend)
+        self._vector_store = create_vector_store(
+            location=qdrant_location,
+            backend="qdrant",
+            client_cls=QdrantClient,
+        )
         
-        # Determine if URL or local path
-        if qdrant_location == ":memory:" or qdrant_location.startswith("http://") or qdrant_location.startswith("https://"):
-            # Validate URL format if it's HTTP/HTTPS
-            if qdrant_location.startswith("http://") or qdrant_location.startswith("https://"):
-                parsed = urlparse(qdrant_location)
-                if not parsed.hostname:
-                    raise ValueError(f"Invalid Qdrant URL: missing hostname in '{qdrant_location}'")
-            self.qdrant = QdrantClient(location=qdrant_location)
-        else:
-            # Assume local path
-            self.qdrant = QdrantClient(path=qdrant_location)
+        # Backward compatibility: keep engine.qdrant access path.
+        self.qdrant = self._vector_store
+        
         self.collection_name = ChelationConfig.DEFAULT_COLLECTION_NAME
         
         # Configure Quantization
@@ -1155,17 +1151,15 @@ class AntigravityEngine:
             return [], [], np.ones(self.vector_size), 0.0
 
     def close(self):
-        """
-        Close Qdrant client and release resources.
-        Safe to call multiple times (idempotent).
-        """
-        if self.qdrant is not None:
+        """Close vector store and release resources (idempotent)."""
+        if self._vector_store is not None:
             try:
-                self.qdrant.close()
+                self._vector_store.close()
             except Exception as e:
                 self.logger.log_error("resource_cleanup", f"Error closing Qdrant client: {e}", exception=e)
             finally:
-                self.qdrant = None
+                self._vector_store = None
+                self.qdrant = None  # Clear backward compatibility reference
 
     def __enter__(self):
         """Context manager entry."""
