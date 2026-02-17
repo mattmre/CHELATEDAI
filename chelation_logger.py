@@ -7,6 +7,7 @@ Provides JSON-formatted logging with performance metrics and debugging info.
 import json
 import logging
 import time
+import warnings
 from pathlib import Path
 from typing import Dict, Any, Optional
 from datetime import datetime
@@ -338,6 +339,7 @@ class OperationContext:
 
 # Global logger instance
 _global_logger = None
+_global_logger_config = None
 
 
 def get_logger(
@@ -345,18 +347,52 @@ def get_logger(
     console_level: str = "INFO"
 ) -> ChelationLogger:
     """
-    Get or create global logger instance.
+    Get or create global logger instance (singleton pattern).
+    
+    Warns if called with explicit configuration that differs from 
+    the existing singleton's configuration. Only explicit non-default
+    values trigger warnings to avoid noise from common usage patterns.
 
     Args:
         log_path: Path to log file (only used on first call)
         console_level: Console logging level (only used on first call)
 
     Returns:
-        ChelationLogger instance
+        ChelationLogger instance (singleton)
     """
-    global _global_logger
+    global _global_logger, _global_logger_config
+    
     if _global_logger is None:
+        # First initialization - create logger and record config
         _global_logger = ChelationLogger(log_path, console_level)
+        _global_logger_config = {
+            'log_path': log_path,
+            'console_level': console_level
+        }
+    else:
+        # Logger already exists - check for configuration mismatches
+        # Only warn if explicit non-default values differ from existing config
+        
+        # Check log_path: warn if explicitly provided and differs
+        if log_path is not None and log_path != _global_logger_config['log_path']:
+            warnings.warn(
+                f"Logger already initialized with log_path={_global_logger_config['log_path']}. "
+                f"Ignoring new log_path={log_path}. "
+                f"Subsequent calls to get_logger() return the existing singleton instance.",
+                UserWarning,
+                stacklevel=2
+            )
+        
+        # Check console_level: warn if explicitly provided and non-default and differs
+        if console_level != "INFO" and console_level != _global_logger_config['console_level']:
+            warnings.warn(
+                f"Logger already initialized with console_level={_global_logger_config['console_level']}. "
+                f"Ignoring new console_level={console_level}. "
+                f"Subsequent calls to get_logger() return the existing singleton instance.",
+                UserWarning,
+                stacklevel=2
+            )
+    
     return _global_logger
 
 

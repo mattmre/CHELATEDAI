@@ -6,6 +6,7 @@ Tests structured logging functionality including:
 - Error logging with exception metadata
 - OperationContext timing and error handling
 - Logger singleton behavior
+- Singleton configuration warnings (F-034)
 """
 
 import json
@@ -13,6 +14,7 @@ import logging
 import unittest
 import tempfile
 import time
+import warnings
 from pathlib import Path
 from datetime import datetime
 
@@ -42,8 +44,9 @@ class TestChelationLogger(unittest.TestCase):
         self.temp_dir = tempfile.mkdtemp()
         self.temp_log_path = Path(self.temp_dir) / "test_log.jsonl"
         
-        # Reset global logger to ensure test isolation
+        # Reset global logger and config to ensure test isolation
         chelation_logger._global_logger = None
+        chelation_logger._global_logger_config = None
 
     def tearDown(self):
         """Clean up test fixtures."""
@@ -53,8 +56,9 @@ class TestChelationLogger(unittest.TestCase):
         if Path(self.temp_dir).exists():
             shutil.rmtree(self.temp_dir)
         
-        # Reset global logger
+        # Reset global logger and config
         chelation_logger._global_logger = None
+        chelation_logger._global_logger_config = None
 
     def _read_json_events(self, log_path):
         """
@@ -319,10 +323,12 @@ class TestChelationLogger(unittest.TestCase):
         self.assertIsInstance(logger1, ChelationLogger)
         
         # Second call returns same instance
-        logger2 = get_logger(
-            log_path=Path(self.temp_dir) / "different.jsonl",  # Different path
-            console_level="DEBUG"  # Different level
-        )
+        with warnings.catch_warnings(record=True):
+            warnings.simplefilter("always")
+            logger2 = get_logger(
+                log_path=Path(self.temp_dir) / "different.jsonl",  # Different path
+                console_level="DEBUG"  # Different level
+            )
         
         # Should be the exact same object
         self.assertIs(logger1, logger2)
@@ -335,6 +341,7 @@ class TestChelationLogger(unittest.TestCase):
         """Test that get_logger uses configuration from first call only."""
         # Reset global logger
         chelation_logger._global_logger = None
+        chelation_logger._global_logger_config = None
         
         # First call with specific configuration
         logger1 = get_logger(
@@ -347,10 +354,12 @@ class TestChelationLogger(unittest.TestCase):
         
         # Get logger again with different path
         different_path = Path(self.temp_dir) / "ignored.jsonl"
-        logger2 = get_logger(
-            log_path=different_path,
-            console_level="DEBUG"
-        )
+        with warnings.catch_warnings(record=True):
+            warnings.simplefilter("always")
+            logger2 = get_logger(
+                log_path=different_path,
+                console_level="DEBUG"
+            )
         
         # Log another event
         logger2.log_event("test", "Second event", level="INFO")
@@ -571,6 +580,7 @@ class TestOperationContextStandalone(unittest.TestCase):
         self.temp_dir = tempfile.mkdtemp()
         self.temp_log_path = Path(self.temp_dir) / "test_log.jsonl"
         chelation_logger._global_logger = None
+        chelation_logger._global_logger_config = None
 
     def tearDown(self):
         """Clean up test fixtures."""
@@ -579,6 +589,7 @@ class TestOperationContextStandalone(unittest.TestCase):
         if Path(self.temp_dir).exists():
             shutil.rmtree(self.temp_dir)
         chelation_logger._global_logger = None
+        chelation_logger._global_logger_config = None
 
     def test_operation_context_initialization(self):
         """Test OperationContext initialization."""
@@ -614,6 +625,7 @@ class TestLoggerMethods(unittest.TestCase):
         self.temp_dir = tempfile.mkdtemp()
         self.temp_log_path = Path(self.temp_dir) / "test_log.jsonl"
         chelation_logger._global_logger = None
+        chelation_logger._global_logger_config = None
 
     def tearDown(self):
         """Clean up test fixtures."""
@@ -622,6 +634,7 @@ class TestLoggerMethods(unittest.TestCase):
         if Path(self.temp_dir).exists():
             shutil.rmtree(self.temp_dir)
         chelation_logger._global_logger = None
+        chelation_logger._global_logger_config = None
 
     def _read_json_events(self, log_path):
         """Read JSON events from log file."""
@@ -680,6 +693,174 @@ class TestLoggerMethods(unittest.TestCase):
         self.assertEqual(event["event_type"], "checkpoint")
         self.assertEqual(event["checkpoint_type"], "save")
         self.assertEqual(event["epoch"], 5)
+
+
+class TestSingletonConfigurationWarnings(unittest.TestCase):
+    """Test singleton configuration warning behavior (F-034)."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        _close_chelatedai_handlers()
+        self.temp_dir = tempfile.mkdtemp()
+        self.temp_log_path = Path(self.temp_dir) / "test_log.jsonl"
+        chelation_logger._global_logger = None
+        chelation_logger._global_logger_config = None
+
+    def tearDown(self):
+        """Clean up test fixtures."""
+        _close_chelatedai_handlers()
+        import shutil
+        if Path(self.temp_dir).exists():
+            shutil.rmtree(self.temp_dir)
+        chelation_logger._global_logger = None
+        chelation_logger._global_logger_config = None
+
+    def test_warn_on_different_explicit_log_path(self):
+        """Test warning when get_logger() called with different explicit log_path."""
+        # First call with explicit log_path
+        logger1 = get_logger(log_path=self.temp_log_path)
+        
+        # Second call with different explicit log_path should warn
+        different_path = Path(self.temp_dir) / "different.jsonl"
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            logger2 = get_logger(log_path=different_path)
+            
+            # Should have triggered a warning
+            self.assertEqual(len(w), 1)
+            self.assertTrue(issubclass(w[0].category, UserWarning))
+            self.assertIn("log_path", str(w[0].message))
+            self.assertIn(str(self.temp_log_path), str(w[0].message))
+            self.assertIn(str(different_path), str(w[0].message))
+        
+        # Should still return same singleton instance
+        self.assertIs(logger1, logger2)
+
+    def test_warn_on_different_explicit_non_default_console_level(self):
+        """Test warning when get_logger() called with different explicit non-default console_level."""
+        # First call with explicit non-default console_level
+        logger1 = get_logger(console_level="DEBUG")
+        
+        # Second call with different explicit non-default console_level should warn
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            logger2 = get_logger(console_level="ERROR")
+            
+            # Should have triggered a warning
+            self.assertEqual(len(w), 1)
+            self.assertTrue(issubclass(w[0].category, UserWarning))
+            self.assertIn("console_level", str(w[0].message))
+            self.assertIn("DEBUG", str(w[0].message))
+            self.assertIn("ERROR", str(w[0].message))
+        
+        # Should still return same singleton instance
+        self.assertIs(logger1, logger2)
+
+    def test_no_warn_on_default_console_level_calls(self):
+        """Test no warning when subsequent calls use default console_level."""
+        # First call with explicit non-default console_level
+        logger1 = get_logger(console_level="DEBUG")
+        
+        # Second call with default console_level (INFO) should NOT warn
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            logger2 = get_logger(console_level="INFO")
+            
+            # Should NOT have triggered a warning
+            self.assertEqual(len(w), 0)
+        
+        # Should still return same singleton instance
+        self.assertIs(logger1, logger2)
+
+    def test_no_warn_on_no_args_calls(self):
+        """Test no warning when subsequent calls have no explicit arguments."""
+        # First call with explicit configuration
+        logger1 = get_logger(log_path=self.temp_log_path, console_level="ERROR")
+        
+        # Second call with no arguments should NOT warn
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            logger2 = get_logger()
+            
+            # Should NOT have triggered a warning
+            self.assertEqual(len(w), 0)
+        
+        # Should still return same singleton instance
+        self.assertIs(logger1, logger2)
+
+    def test_no_warn_on_matching_configuration(self):
+        """Test no warning when subsequent calls match initial configuration."""
+        # First call with explicit configuration
+        logger1 = get_logger(log_path=self.temp_log_path, console_level="DEBUG")
+        
+        # Second call with same configuration should NOT warn
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            logger2 = get_logger(log_path=self.temp_log_path, console_level="DEBUG")
+            
+            # Should NOT have triggered a warning
+            self.assertEqual(len(w), 0)
+        
+        # Should still return same singleton instance
+        self.assertIs(logger1, logger2)
+
+    def test_warn_on_both_log_path_and_console_level_mismatch(self):
+        """Test warnings when both log_path and console_level differ."""
+        # First call with explicit configuration
+        logger1 = get_logger(log_path=self.temp_log_path, console_level="DEBUG")
+        
+        # Second call with different configuration should warn twice
+        different_path = Path(self.temp_dir) / "different.jsonl"
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            logger2 = get_logger(log_path=different_path, console_level="ERROR")
+            
+            # Should have triggered two warnings
+            self.assertEqual(len(w), 2)
+            
+            # Check that both warnings are present
+            warning_messages = [str(warning.message) for warning in w]
+            has_log_path_warning = any("log_path" in msg for msg in warning_messages)
+            has_console_level_warning = any("console_level" in msg for msg in warning_messages)
+            
+            self.assertTrue(has_log_path_warning, "Expected log_path warning")
+            self.assertTrue(has_console_level_warning, "Expected console_level warning")
+        
+        # Should still return same singleton instance
+        self.assertIs(logger1, logger2)
+
+    def test_singleton_behavior_unchanged(self):
+        """Test that singleton behavior is unchanged despite warnings."""
+        # Create logger with initial config
+        logger1 = get_logger(log_path=self.temp_log_path, console_level="DEBUG")
+        logger1.log_event("test", "Event from logger1", level="INFO")
+        
+        # Get logger again with different config (will warn but return same instance)
+        different_path = Path(self.temp_dir) / "ignored.jsonl"
+        with warnings.catch_warnings(record=True):
+            warnings.simplefilter("always")
+            logger2 = get_logger(log_path=different_path, console_level="ERROR")
+        
+        # Log with second reference
+        logger2.log_event("test", "Event from logger2", level="INFO")
+        
+        # Both events should be in the FIRST log path
+        events = []
+        with open(self.temp_log_path, 'r', encoding='utf-8') as f:
+            for line in f:
+                line = line.strip()
+                if line:
+                    try:
+                        events.append(json.loads(line))
+                    except json.JSONDecodeError:
+                        pass
+        
+        self.assertEqual(len(events), 2)
+        self.assertEqual(events[0]["message"], "Event from logger1")
+        self.assertEqual(events[1]["message"], "Event from logger2")
+        
+        # The different_path file should not exist
+        self.assertFalse(different_path.exists())
 
 
 if __name__ == "__main__":
