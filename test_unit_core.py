@@ -135,6 +135,58 @@ class TestChelationAdapter(unittest.TestCase):
             self.adapter.load(str(traversal_path))
         self.assertIn("traversal", str(cm.exception).lower())
 
+    def test_1d_input_returns_1d_output(self):
+        """Test that 1D input returns 1D output of same shape (F-024)."""
+        input_1d = torch.randn(self.input_dim)
+        
+        output = self.adapter(input_1d)
+        
+        # Output should be 1D with same shape
+        self.assertEqual(output.dim(), 1)
+        self.assertEqual(output.shape, input_1d.shape)
+        self.assertEqual(output.dtype, torch.float32)
+
+    def test_1d_output_normalized(self):
+        """Test that 1D output is properly normalized (F-024)."""
+        input_1d = torch.randn(self.input_dim)
+        
+        output = self.adapter(input_1d)
+        
+        # Output should be L2 normalized
+        norm = torch.norm(output, p=2)
+        self.assertTrue(torch.allclose(norm, torch.tensor(1.0), atol=1e-5),
+                       f"1D output not normalized: norm = {norm:.6f}")
+
+    def test_1d_matches_2d_batch_behavior(self):
+        """Test that 1D input behavior matches corresponding 2D single-batch (F-024)."""
+        input_1d = torch.randn(self.input_dim)
+        
+        # Run as 1D
+        output_1d = self.adapter(input_1d)
+        
+        # Run same input as 2D batch of 1
+        input_2d = input_1d.unsqueeze(0)
+        output_2d = self.adapter(input_2d)
+        output_2d_squeezed = output_2d.squeeze(0)
+        
+        # Results should match
+        self.assertTrue(torch.allclose(output_1d, output_2d_squeezed, atol=1e-6),
+                       f"1D and 2D behavior mismatch: max diff = {(output_1d - output_2d_squeezed).abs().max():.6e}")
+
+    def test_invalid_rank_raises_error(self):
+        """Test that invalid tensor ranks raise ValueError (F-024)."""
+        # 0D tensor (scalar)
+        input_0d = torch.tensor(3.14)
+        with self.assertRaises(ValueError) as cm:
+            self.adapter(input_0d)
+        self.assertIn("1D or 2D", str(cm.exception))
+        
+        # 3D tensor
+        input_3d = torch.randn(2, 3, self.input_dim)
+        with self.assertRaises(ValueError) as cm:
+            self.adapter(input_3d)
+        self.assertIn("1D or 2D", str(cm.exception))
+
 
 class TestChelationConfig(unittest.TestCase):
     """Test the configuration management system."""
