@@ -60,10 +60,11 @@ Purpose: Minimal context to resume the workflow in short sessions.
 - F-016 and F-019 dependency on structured logging are resolved
 
 ## Open PRs
-- None (all merged)
+- PR #19 -- `feature/aep-cycle-remediation-20260216` -> `feature/phase4-docs-20260216` (contains Session 3 findings + docs updates)
 
 ## Hand-off Notes
 - Session 3 delivered 13 additional resolved findings with full regression pass
+- Latest remediation commit pushed: `44144f5`
 - Shared sedimentation helpers now live in `sedimentation_trainer.py` and are used by both engine paths
 - Added new focused test suites: `test_chelation_logger.py`, `test_antigravity_engine.py`, `test_sedimentation_trainer.py`
 - Session log: `docs/ARCH AGENTIC ENGINEERING AND PLANNING/session-log-2026-02-17-impl-3.md`
