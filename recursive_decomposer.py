@@ -20,6 +20,7 @@ from dataclasses import dataclass, field
 from typing import List, Dict, Any, Optional, Tuple
 from abc import ABC, abstractmethod
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from config import ChelationConfig
 from chelation_logger import ChelationLogger, get_logger
@@ -347,14 +348,22 @@ class RecursiveRetrievalEngine:
             self._retrieve_for_node(node)
             return
 
+        # Create child nodes for all sibling sub-queries
+        children = []
         for sq in sub_queries:
             child = DecompositionNode(
                 query=sq,
                 depth=node.depth + 1,
                 parent_id=node.node_id,
             )
+            children.append(child)
             node.children.append(child)
-            self._recurse(child)
+        
+        # Parallelize sibling sub-query recursion (F-029)
+        with ThreadPoolExecutor(max_workers=min(len(children), 4)) as executor:
+            futures = [executor.submit(self._recurse, child) for child in children]
+            for future in as_completed(futures):
+                future.result()
 
     def _retrieve_for_node(self, node: DecompositionNode):
         """Run retrieval on a leaf node via AntigravityEngine."""

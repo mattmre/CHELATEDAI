@@ -827,5 +827,75 @@ class TestHierarchicalSedimentationIntegration(unittest.TestCase):
             mock_stc.mark_success.assert_called_once()
 
 
+class TestSiblingParallelization(unittest.TestCase):
+    """Test sibling parallelization behavior (Finding F-029)."""
+
+    class TwoSiblingDecomposer:
+        """Deterministic decomposer that creates two sibling leaves from root."""
+
+        def is_base_case(self, query):
+            return query.startswith("leaf-")
+
+        def decompose(self, query):
+            if query == "root-query":
+                return ["leaf-a", "leaf-b"]
+            return [query]
+
+    @patch("recursive_decomposer.get_logger")
+    def test_sibling_leaf_retrieval_runs_concurrently(self, mock_get_logger):
+        """F-029: Two sibling leaves should run concurrently, not sequentially."""
+        mock_get_logger.return_value.log_event = lambda *a, **kw: None
+
+        class SlowEngine:
+            def __init__(self):
+                self.call_count = 0
+
+            def run_inference(self, query):
+                self.call_count += 1
+                time.sleep(0.25)
+                base = 1 if query.endswith("a") else 10
+                results = [base, base + 1, base + 2]
+                return results, results, None, 1.0
+
+        slow_engine = SlowEngine()
+        engine = RecursiveRetrievalEngine(
+            engine=slow_engine,
+            decomposer=self.TwoSiblingDecomposer(),
+            aggregation_strategy="rrf",
+            max_depth=3,
+            top_k=10,
+        )
+
+        trace = engine.run_recursive_inference("root-query")
+
+        # Sequential would be ~0.50s (2 * 0.25s). Parallel should be clearly below that.
+        self.assertLess(trace.elapsed_seconds, 0.45)
+        self.assertEqual(trace.total_retrieval_calls, 2)
+        self.assertEqual(slow_engine.call_count, 2)
+        self.assertGreater(len(trace.final_results), 0)
+
+    @patch("recursive_decomposer.get_logger")
+    def test_parallel_sibling_exception_propagates(self, mock_get_logger):
+        """F-029: Exceptions inside sibling tasks must propagate via future.result()."""
+        mock_get_logger.return_value.log_event = lambda *a, **kw: None
+
+        class FailingEngine:
+            def run_inference(self, query):
+                if query == "leaf-b":
+                    raise RuntimeError("parallel sibling failure")
+                return [1, 2, 3], [1, 2, 3], None, 1.0
+
+        engine = RecursiveRetrievalEngine(
+            engine=FailingEngine(),
+            decomposer=self.TwoSiblingDecomposer(),
+            aggregation_strategy="rrf",
+            max_depth=3,
+            top_k=10,
+        )
+
+        with self.assertRaises(RuntimeError):
+            engine.run_recursive_inference("root-query")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
