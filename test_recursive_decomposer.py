@@ -621,6 +621,127 @@ class TestAggregation(unittest.TestCase):
         self.assertIn(1.0, scores)
 
 
+class TestHierarchicalSedimentationEdgeCases(unittest.TestCase):
+    """Test edge cases for HierarchicalSedimentationEngine (F-036)."""
+
+    def test_simple_partition_single_vector(self):
+        """F-036: _simple_partition handles single vector without crash."""
+        from unittest.mock import MagicMock
+        from recursive_decomposer import HierarchicalSedimentationEngine
+        import numpy as np
+        
+        mock_engine = MagicMock()
+        h_engine = HierarchicalSedimentationEngine(mock_engine)
+        
+        # Single vector case
+        vectors = np.array([[1.0, 2.0, 3.0]])
+        doc_ids = [0]
+        n_clusters = 2
+        
+        # Should return single cluster without crash
+        result = h_engine._simple_partition(vectors, doc_ids, n_clusters)
+        
+        self.assertEqual(len(result), 1)
+        self.assertEqual(len(result[0][1]), 1)  # Single doc_id
+        np.testing.assert_array_equal(result[0][0], vectors)
+
+    def test_simple_partition_identical_vectors(self):
+        """F-036: _simple_partition handles identical vectors (zero variance)."""
+        from unittest.mock import MagicMock
+        from recursive_decomposer import HierarchicalSedimentationEngine
+        import numpy as np
+        
+        mock_engine = MagicMock()
+        h_engine = HierarchicalSedimentationEngine(mock_engine)
+        
+        # All identical vectors (zero variance)
+        vectors = np.array([[1.0, 2.0, 3.0]] * 5)
+        doc_ids = list(range(5))
+        n_clusters = 3
+        
+        # Should handle gracefully (may return single cluster due to no variance)
+        result = h_engine._simple_partition(vectors, doc_ids, n_clusters)
+        
+        # Should not crash, all vectors accounted for
+        total_docs = sum(len(cluster_ids) for _, cluster_ids in result)
+        self.assertEqual(total_docs, 5)
+        self.assertGreater(len(result), 0)
+
+    def test_simple_partition_n_clusters_edge_cases(self):
+        """F-036: _simple_partition handles edge values for n_clusters."""
+        from unittest.mock import MagicMock
+        from recursive_decomposer import HierarchicalSedimentationEngine
+        import numpy as np
+        
+        mock_engine = MagicMock()
+        h_engine = HierarchicalSedimentationEngine(mock_engine)
+        
+        vectors = np.random.randn(5, 10)
+        doc_ids = list(range(5))
+        
+        # n_clusters = 0 should return single cluster
+        result_zero = h_engine._simple_partition(vectors, doc_ids, 0)
+        self.assertEqual(len(result_zero), 1)
+        
+        # n_clusters = 1 should return single cluster
+        result_one = h_engine._simple_partition(vectors, doc_ids, 1)
+        self.assertEqual(len(result_one), 1)
+        
+        # n_clusters > n_vectors should still work
+        result_large = h_engine._simple_partition(vectors, doc_ids, 10)
+        total_docs = sum(len(cluster_ids) for _, cluster_ids in result_large)
+        self.assertEqual(total_docs, 5)
+
+    def test_sedimentation_empty_chelation_log(self):
+        """F-036: run_hierarchical_sedimentation handles empty chelation log."""
+        from unittest.mock import MagicMock, patch
+        from recursive_decomposer import HierarchicalSedimentationEngine
+        
+        with patch("recursive_decomposer.get_logger") as mock_logger:
+            mock_logger.return_value.log_event = MagicMock()
+            
+            mock_engine = MagicMock()
+            mock_engine.chelation_log = {}  # Empty log
+            
+            h_engine = HierarchicalSedimentationEngine(mock_engine)
+            
+            # Should complete without crash, logging "No targets"
+            h_engine.run_hierarchical_sedimentation(threshold=3)
+            
+            # Verify log_event was called with appropriate message
+            mock_logger.return_value.log_event.assert_called()
+            call_args = mock_logger.return_value.log_event.call_args
+            self.assertIn("hierarchical_sedimentation", call_args[0])
+
+    def test_simple_partition_all_left_or_all_right(self):
+        """F-036: _simple_partition handles case where median splits all to one side."""
+        from unittest.mock import MagicMock
+        from recursive_decomposer import HierarchicalSedimentationEngine
+        import numpy as np
+        
+        mock_engine = MagicMock()
+        h_engine = HierarchicalSedimentationEngine(mock_engine)
+        
+        # Create vectors where all values on highest variance dim are equal
+        # This forces median to equal all values, causing all to go to one side
+        vectors = np.array([
+            [1.0, 5.0, 3.0],
+            [1.0, 6.0, 3.0],
+            [1.0, 7.0, 3.0],
+            [1.0, 8.0, 3.0],
+        ])
+        doc_ids = list(range(4))
+        n_clusters = 2
+        
+        # Should return single cluster due to edge case handling
+        result = h_engine._simple_partition(vectors, doc_ids, n_clusters)
+        
+        # Should not crash, all vectors accounted for
+        total_docs = sum(len(cluster_ids) for _, cluster_ids in result)
+        self.assertEqual(total_docs, 4)
+        self.assertGreater(len(result), 0)
+
+
 class TestHierarchicalSedimentationIntegration(unittest.TestCase):
     """Test CheckpointManager integration with HierarchicalSedimentationEngine (F-043)."""
 
