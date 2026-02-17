@@ -6,21 +6,21 @@ Purpose: Minimal context to resume the workflow in short sessions.
 - Confirm scope lock (PR range, dates).
 - Confirm latest refinement report location.
 - Check tracker date and carryover items.
-- Confirm stacked PR merge order and status for PR #25 -> #37.
+- Confirm stacked PR merge order/status for PR #25 -> #37 and local Session 8 branch stack (`pr/f025-ingest-validation` -> `pr/f039-qdrant-close-lifecycle`).
 - Reconfirm no new tracked deltas outside the stacked PR chain before opening new remediation work.
 - Update `docs/ARCH AGENTIC ENGINEERING AND PLANNING/tracker-pointer.md`.
 - Update `docs/ARCH AGENTIC ENGINEERING AND PLANNING/backlog-index.md` and `docs/ARCH AGENTIC ENGINEERING AND PLANNING/tracker-index.md`.
 - If starting a new cycle, follow the Cycle Start Checklist in `docs/ARCH AGENTIC ENGINEERING AND PLANNING/orchestrator-briefing.md`.
 
 ## Session Objectives
-- Primary goal: Execute the next Medium-priority remediation tranche (performance, reliability, and test gaps)
-- Secondary goal: Keep the tracker/session log in sync with implementation progress
-- If blocked, targeted unblock: ingestion validation + rollback robustness constraints (F-025/F-026)
+- Primary goal: Execute next Low-priority remediation tranche (performance and architecture backlog cleanup)
+- Secondary goal: Convert local Session 8 stacked branches into opened remote PRs when push is available
+- Keep tracker/session log in sync with implementation progress
 
 ## Cycle ID
 - AEP-2026-02-13 (continuing)
 
-## Completed (Sessions 2-7)
+## Completed (Sessions 2-8)
 - F-001 RESOLVED: `torch.load` security fix (PR #8, merged)
 - F-002 RESOLVED: benchmark_rlm tests -- 39 tests (PR #11, merged)
 - F-003 RESOLVED: checkpoint_manager tests -- 27 tests (PR #11, merged)
@@ -56,20 +56,25 @@ Purpose: Minimal context to resume the workflow in short sessions.
 - F-022 RESOLVED: callback timeout/exception safety for remediation/verification hooks
 - F-023 RESOLVED: explicit zero-norm guards in shared sedimentation target normalization
 - F-024 RESOLVED: `ChelationAdapter.forward()` now supports robust 1D input behavior
+- F-025 RESOLVED: `ingest()` now validates empty/malformed/dimension-mismatch embedding batches before upsert
+- F-026 RESOLVED: `SafeTrainingContext` rollback exceptions no longer mask original operation failures
+- F-027 RESOLVED: `get_chelated_vector()` now uses `query_points(..., with_vectors=True)` without redundant retrieve round-trip
+- F-028 RESOLVED: `_spectral_chelation_ranking()` cosine scoring vectorized with zero-denominator guards
+- F-039 RESOLVED: explicit `AntigravityEngine.close()` + context manager lifecycle for Qdrant cleanup
 
 ## Backlog State
 - **Total findings:** 55
-- **Resolved:** 35
-- **Remaining:** 20
-- **Current local test count:** 416 passing (1 warning)
+- **Resolved:** 40
+- **Remaining:** 15
+- **Current local test count:** 438 passing (1 warning)
 
 ## Top Findings To Resolve (Next 5)
 
-1. **F-025** -- Validate embedding dimensions/empty ingest behavior in `ingest()`
-2. **F-026** -- Prevent rollback masking original exception in `SafeTrainingContext`
-3. **F-027** -- Remove redundant Qdrant round-trip in `get_chelated_vector()`
-4. **F-028** -- Vectorize cosine loop in `_spectral_chelation_ranking()`
-5. **F-039** -- Add explicit Qdrant resource cleanup lifecycle (`close()` semantics)
+1. **F-040** -- Avoid storing full document text in Qdrant payload where not required
+2. **F-041** -- Remove benchmark duplication between `benchmark_rlm.py` and `benchmark_evolution.py`
+3. **F-042** -- Relocate `HierarchicalSedimentationEngine` to a dedicated module
+4. **F-044** -- Add dependency inversion boundary for vector store access
+5. **F-045** -- Extract embedding mode branching behind backend abstraction
 
 ## Dependency Notes
 - F-031 is NOW UNBLOCKED (F-011 resolved)
@@ -95,13 +100,19 @@ Purpose: Minimal context to resume the workflow in short sessions.
 - PR #35 -- `pr/f024-adapter-1d-input` -> `pr/f023-zero-norm-target-guard` (F-024, stacked)
 - PR #36 -- `pr/session6-tracking-docs` -> `pr/f024-adapter-1d-input` (session 6 tracking docs, stacked)
 - PR #37 -- `pr/session7-closeout-refresh` -> `pr/session6-tracking-docs` (session 7 closeout docs, stacked)
+- Local PR-ready stack (push/open pending from current runtime):
+  - `pr/f025-ingest-validation` (b414829) -> `pr/session7-closeout-refresh`
+  - `pr/f026-rollback-exception` (a23dd23) -> `pr/f025-ingest-validation`
+  - `pr/f027-chelated-roundtrip` (ba0f18b) -> `pr/f026-rollback-exception`
+  - `pr/f028-spectral-vectorization` (bc461e7) -> `pr/f027-chelated-roundtrip`
+  - `pr/f039-qdrant-close-lifecycle` (c72e322) -> `pr/f028-spectral-vectorization`
 
 ## Hand-off Notes
-- Session 6 delivered 5 additional resolved findings (F-020/F-021/F-022/F-023/F-024) with full regression pass
-- Added focused coverage for URL validation, prompt guardrails, callback safety controls, zero-norm sedimentation handling, and adapter 1D tensor behavior
-- Agentic workflow maintained with fresh sub-agents per finding and cleanup of non-essential generated artifacts
-- Session 7 closeout refresh (#37) re-audited PR/worktree state and reconfirmed no extra remediation PR requirement.
-- Session 7 performed a second handoff refresh pass to reduce context drift before next implementation tranche.
-- Session log: `docs/ARCH AGENTIC ENGINEERING AND PLANNING/session-log-2026-02-17-impl-7.md`
+- Session 8 delivered 5 additional resolved findings (F-025/F-026/F-027/F-028/F-039) with full regression pass.
+- Agentic orchestration used fresh role agents per phase (research -> architecture -> implementer per finding), with cleanup of non-essential generated artifacts after each agent run.
+- Research + architecture artifacts were added for this tranche and linked for next-session continuity.
+- Local stacked PR-ready branches were created and committed end-to-end for each finding; remote PR opening is pending push/open in a network-enabled step.
+- Session log: `docs/ARCH AGENTIC ENGINEERING AND PLANNING/session-log-2026-02-17-impl-8.md`
 - Backlog: `docs/ARCH AGENTIC ENGINEERING AND PLANNING/backlog-2026-02-13.md`
-- Research artifact: `docs/ARCH AGENTIC ENGINEERING AND PLANNING/research-2026-02-17-f020-f024-implementation.md`
+- Research artifact: `docs/ARCH AGENTIC ENGINEERING AND PLANNING/research-2026-02-17-f025-f039-implementation.md`
+- Architecture artifact: `docs/ARCH AGENTIC ENGINEERING AND PLANNING/architecture-2026-02-17-f025-f039-remediation.md`

@@ -5,7 +5,7 @@ Purpose: Track master backlog files across cycles.
 ## Index
 | cycle-id | cycle start date | scope lock | PR range | owner | status | closed date | link |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| AEP-2026-02-13 | 2026-02-13 | Full codebase | #5, #8, #9, #10, #11 | Claude Opus 4.6 | IN PROGRESS (35/55 resolved) | -- | [backlog-2026-02-13.md](backlog-2026-02-13.md) |
+| AEP-2026-02-13 | 2026-02-13 | Full codebase | #5, #8, #9, #10, #11 | Claude Opus 4.6 | IN PROGRESS (40/55 resolved) | -- | [backlog-2026-02-13.md](backlog-2026-02-13.md) |
 
 ## Session Logs
 | session | date | findings resolved | tests added | link |
@@ -17,3 +17,4 @@ Purpose: Track master backlog files across cycles.
 | Session 5 | 2026-02-17 | F-029, F-034, F-036, F-037, F-038 (5 total) | +26 | [session-log-2026-02-17-impl-5.md](session-log-2026-02-17-impl-5.md) |
 | Session 6 | 2026-02-17 | F-020, F-021, F-022, F-023, F-024 (5 total) | +33 | [session-log-2026-02-17-impl-6.md](session-log-2026-02-17-impl-6.md) |
 | Session 7 | 2026-02-17 | Closeout refresh + next-session prep (0 findings) | +0 | [session-log-2026-02-17-impl-7.md](session-log-2026-02-17-impl-7.md) |
+| Session 8 | 2026-02-17 | F-025, F-026, F-027, F-028, F-039 (5 total) | +22 | [session-log-2026-02-17-impl-8.md](session-log-2026-02-17-impl-8.md) |
