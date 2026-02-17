@@ -50,8 +50,8 @@ class TestComputeHomeostaticTarget(unittest.TestCase):
         # Should be unit vector
         self.assertAlmostEqual(np.linalg.norm(result), 1.0, places=6)
     
-    def test_zero_division_handling(self):
-        """Test that zero division is handled with epsilon."""
+    def test_zero_norm_diff_edge_case(self):
+        """F-023: Test zero-norm diff (current_vec equals avg_noise)."""
         # Edge case: current_vec equals avg_noise
         current_vec = np.array([1.0, 1.0, 1.0])
         noise_vectors = [
@@ -60,11 +60,69 @@ class TestComputeHomeostaticTarget(unittest.TestCase):
         ]
         push_magnitude = 0.1
         
-        # Should not raise error due to epsilon in normalization
+        # Should not raise error and return normalized current_vec
         result = compute_homeostatic_target(current_vec, noise_vectors, push_magnitude)
         
-        # Result should still be normalized (though direction is arbitrary)
+        # Result should be normalized
         self.assertAlmostEqual(np.linalg.norm(result), 1.0, places=6)
+        # Result should be finite
+        self.assertFalse(np.any(np.isnan(result)))
+        self.assertFalse(np.any(np.isinf(result)))
+        # Should return normalized version of current_vec
+        expected = current_vec / np.linalg.norm(current_vec)
+        np.testing.assert_allclose(result, expected, atol=1e-6)
+    
+    def test_all_zeros_current_vec(self):
+        """F-023: Test when current_vec is all zeros."""
+        current_vec = np.zeros(3)
+        noise_vectors = [
+            np.array([1.0, 0.0, 0.0]),
+            np.array([0.0, 1.0, 0.0])
+        ]
+        push_magnitude = 0.1
+        
+        result = compute_homeostatic_target(current_vec, noise_vectors, push_magnitude)
+        
+        # Result should be normalized
+        self.assertAlmostEqual(np.linalg.norm(result), 1.0, places=6)
+        # Result should be finite
+        self.assertFalse(np.any(np.isnan(result)))
+        self.assertFalse(np.any(np.isinf(result)))
+    
+    def test_both_zeros_edge_case(self):
+        """F-023: Test when both current_vec and avg_noise are zeros."""
+        current_vec = np.zeros(5)
+        noise_vectors = [
+            np.zeros(5),
+            np.zeros(5)
+        ]
+        push_magnitude = 0.1
+        
+        result = compute_homeostatic_target(current_vec, noise_vectors, push_magnitude)
+        
+        # Result should be normalized
+        self.assertAlmostEqual(np.linalg.norm(result), 1.0, places=6)
+        # Result should be finite
+        self.assertFalse(np.any(np.isnan(result)))
+        self.assertFalse(np.any(np.isinf(result)))
+        # Should return unit vector in first dimension
+        expected = np.zeros(5)
+        expected[0] = 1.0
+        np.testing.assert_allclose(result, expected, atol=1e-6)
+    
+    def test_zero_norm_target_edge_case(self):
+        """F-023: Test when homeostatic_target norm becomes zero."""
+        # Construct case where push creates zero target (unlikely but possible)
+        current_vec = np.array([1e-12, 0.0, 0.0])
+        noise_vectors = [np.array([1.0, 0.0, 0.0])]
+        # Large negative push could collapse to near-zero
+        push_magnitude = -1e12
+        
+        result = compute_homeostatic_target(current_vec, noise_vectors, push_magnitude)
+        
+        # Result should be normalized
+        self.assertAlmostEqual(np.linalg.norm(result), 1.0, places=6)
+        # Result should be finite
         self.assertFalse(np.any(np.isnan(result)))
         self.assertFalse(np.any(np.isinf(result)))
     

@@ -27,13 +27,43 @@ def compute_homeostatic_target(current_vec: np.ndarray, noise_vectors: List[np.n
     
     Returns:
         Normalized target vector (1D numpy array)
+    
+    Note:
+        F-023: Explicit zero-norm guards ensure deterministic finite outputs for edge cases:
+        - current_vec equals avg_noise (diff norm 0)
+        - current_vec is all zeros
+        - homeostatic_target norm is 0
     """
     avg_noise = np.mean(noise_vectors, axis=0)
     diff = current_vec - avg_noise
-    diff_norm = diff / (np.linalg.norm(diff) + 1e-9)
+    diff_norm_value = np.linalg.norm(diff)
+    
+    # F-023: Guard against zero-norm diff (current_vec == avg_noise)
+    if diff_norm_value < 1e-10:
+        # No clear push direction; return normalized current_vec or fallback to unit vector
+        current_norm = np.linalg.norm(current_vec)
+        if current_norm < 1e-10:
+            # Both current and diff are zero; return unit vector in first dimension
+            result = np.zeros_like(current_vec)
+            result[0] = 1.0
+            return result
+        return current_vec / current_norm
+    
+    diff_norm = diff / diff_norm_value
     homeostatic_target = current_vec + (diff_norm * push_magnitude)
-    homeostatic_target = homeostatic_target / (np.linalg.norm(homeostatic_target) + 1e-9)
-    return homeostatic_target
+    target_norm = np.linalg.norm(homeostatic_target)
+    
+    # F-023: Guard against zero-norm target
+    if target_norm < 1e-10:
+        # Target collapsed to zero; return normalized current_vec or fallback
+        current_norm = np.linalg.norm(current_vec)
+        if current_norm < 1e-10:
+            result = np.zeros_like(current_vec)
+            result[0] = 1.0
+            return result
+        return current_vec / current_norm
+    
+    return homeostatic_target / target_norm
 
 
 def sync_vectors_to_qdrant(qdrant: Any, collection_name: str, ordered_ids: List,
