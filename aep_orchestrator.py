@@ -21,6 +21,7 @@ from typing import List, Dict, Any, Optional, Callable, Tuple
 from datetime import datetime, date
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import json
+import threading
 import uuid
 
 from chelation_logger import ChelationLogger, get_logger
@@ -146,6 +147,74 @@ class VerificationResult:
     passed: bool
     timestamp: str = field(default_factory=lambda: datetime.utcnow().isoformat())
     agent: str = ""
+
+
+# =============================================================================
+# Callback Safety Wrapper (F-022)
+# =============================================================================
+
+def _safe_callback_wrapper(
+    callback: Callable,
+    callback_name: str,
+    finding: Finding,
+    logger: ChelationLogger,
+    timeout_seconds: float = 30.0,
+) -> Tuple[Optional[Any], Optional[str]]:
+    """
+    Execute a callback with timeout and exception safety.
+    
+    Windows-compatible implementation using a daemon thread join timeout.
+    
+    Args:
+        callback: The callback function to execute
+        callback_name: Name for logging (e.g., "remediate_fn", "verify_fn")
+        finding: The finding to pass to the callback
+        logger: Logger instance for error logging
+        timeout_seconds: Maximum execution time
+        
+    Returns:
+        Tuple of (result, error_message). If successful, (result, None).
+        If timeout/exception, (None, error_message).
+    """
+    result_container = [None]
+    exception_container = [None]
+    
+    def _run_callback():
+        try:
+            result_container[0] = callback(finding)
+        except Exception as e:
+            exception_container[0] = e
+    
+    thread = threading.Thread(target=_run_callback, daemon=True)
+    thread.start()
+    thread.join(timeout=timeout_seconds)
+    
+    if thread.is_alive():
+        # Timeout occurred
+        error_msg = f"{callback_name} timeout after {timeout_seconds}s for finding {finding.finding_id}"
+        logger.log_error(
+            "callback_timeout",
+            error_msg,
+            finding_id=finding.finding_id,
+            callback=callback_name,
+            timeout_seconds=timeout_seconds,
+        )
+        return None, error_msg
+    
+    if exception_container[0] is not None:
+        # Exception occurred
+        exc = exception_container[0]
+        error_msg = f"{callback_name} exception for finding {finding.finding_id}: {type(exc).__name__}: {str(exc)}"
+        logger.log_error(
+            "callback_exception",
+            error_msg,
+            exception=exc,
+            finding_id=finding.finding_id,
+            callback=callback_name,
+        )
+        return None, error_msg
+    
+    return result_container[0], None
 
 
 # =============================================================================
@@ -431,6 +500,7 @@ class AEPOrchestrator:
         ]
         self.scope_lock_record: Optional[ScopeLock] = None
         self.logger = get_logger()
+        self.callback_timeout_seconds = 30.0
 
     # ----- Phase 1: Scope Lock -----
 
@@ -640,7 +710,22 @@ class AEPOrchestrator:
                 self.tracker.update_status(finding.finding_id, FindingStatus.IN_PROGRESS)
 
                 if remediate_fn is not None:
-                    result = remediate_fn(finding)
+                    # F-022: Execute remediate_fn with timeout and exception safety
+                    result, error = _safe_callback_wrapper(
+                        remediate_fn,
+                        "remediate_fn",
+                        finding,
+                        self.logger,
+                        timeout_seconds=self.callback_timeout_seconds,
+                    )
+                    
+                    if error is not None:
+                        # Callback timeout or exception - mark finding as BLOCKED
+                        self.tracker.update_status(finding.finding_id, FindingStatus.BLOCKED)
+                        blocked_ids.append(finding.finding_id)
+                        continue
+                    
+                    # Validate return type
                     if isinstance(result, dict):
                         kwargs = {}
                         if "pr_branch" in result:
@@ -651,6 +736,14 @@ class AEPOrchestrator:
                             finding.finding_id, FindingStatus.MERGED, **kwargs
                         )
                     else:
+                        # F-022: Non-dict returns still allow merge but log warning
+                        if result is not None:
+                            self.logger.log_event(
+                                "remediate_warning",
+                                f"remediate_fn returned non-dict type for {finding.finding_id}: {type(result).__name__}",
+                                finding_id=finding.finding_id,
+                                return_type=type(result).__name__,
+                            )
                         self.tracker.update_status(finding.finding_id, FindingStatus.MERGED)
                 else:
                     self.tracker.update_status(finding.finding_id, FindingStatus.MERGED)
@@ -706,10 +799,31 @@ class AEPOrchestrator:
                 results.append(vr)
 
             if verify_fn is not None:
-                custom_vr = verify_fn(finding)
+                # F-022: Execute verify_fn with timeout and exception safety
+                custom_vr, error = _safe_callback_wrapper(
+                    verify_fn,
+                    "verify_fn",
+                    finding,
+                    self.logger,
+                    timeout_seconds=self.callback_timeout_seconds,
+                )
+                
+                if error is not None:
+                    # Callback timeout or exception - skip custom result, continue
+                    continue
+                
+                # F-022: Validate return type - only VerificationResult is accepted
                 if isinstance(custom_vr, VerificationResult):
                     self.tracker.add_verification(custom_vr)
                     results.append(custom_vr)
+                elif custom_vr is not None:
+                    # Invalid return type - log warning and ignore
+                    self.logger.log_event(
+                        "verify_warning",
+                        f"verify_fn returned non-VerificationResult type for {finding.finding_id}: {type(custom_vr).__name__}",
+                        finding_id=finding.finding_id,
+                        return_type=type(custom_vr).__name__,
+                    )
 
         self.logger.log_event(
             "verification",

@@ -884,6 +884,166 @@ class TestAEPOrchestrator(unittest.TestCase):
         ]
         self.assertEqual(len(custom_verifications), 2)
 
+    # =============================================================================
+    # F-022: Callback Safety Controls
+    # =============================================================================
+
+    def test_remediate_fn_exception_does_not_crash(self):
+        """F-022: remediate_fn exception should not crash; finding should become BLOCKED."""
+        f = make_finding(finding_id="REM-EXC-001", severity=Severity.CRITICAL)
+        self.orchestrator.tracker.add_finding(f)
+        
+        def remediate_raises(finding):
+            raise ValueError("Intentional remediate exception")
+        
+        result = self.orchestrator.tiered_remediation(
+            [f],
+            remediate_fn=remediate_raises,
+        )
+        
+        # Finding should be BLOCKED due to exception
+        finding = self.orchestrator.tracker.findings["REM-EXC-001"]
+        self.assertEqual(finding.status, FindingStatus.BLOCKED)
+        
+        # Should be in blocked list
+        self.assertIn("REM-EXC-001", result["blocked"])
+        
+        # Should not be counted as remediated
+        self.assertEqual(result["total_remediated"], 0)
+        
+        # Error should be logged
+        self.assertTrue(_mock_logger.log_error.called)
+        error_calls = [str(call) for call in _mock_logger.log_error.call_args_list]
+        error_logged = any("remediate_fn" in str(call) and "REM-EXC-001" in str(call) for call in error_calls)
+        self.assertTrue(error_logged, "Expected remediate_fn exception to be logged")
+
+    def test_remediate_fn_timeout_blocks_finding(self):
+        """F-022: remediate_fn timeout should mark finding as BLOCKED."""
+        f = make_finding(finding_id="REM-TIME-001", severity=Severity.HIGH)
+        self.orchestrator.tracker.add_finding(f)
+        self.orchestrator.callback_timeout_seconds = 0.01
+        
+        def remediate_hangs(finding):
+            import time
+            time.sleep(0.1)  # Intentionally exceed configured callback timeout
+            return {"pr_branch": "never-reached"}
+        
+        result = self.orchestrator.tiered_remediation(
+            [f],
+            remediate_fn=remediate_hangs,
+        )
+        
+        # Finding should be BLOCKED due to timeout
+        finding = self.orchestrator.tracker.findings["REM-TIME-001"]
+        self.assertEqual(finding.status, FindingStatus.BLOCKED)
+        
+        # Should be in blocked list
+        self.assertIn("REM-TIME-001", result["blocked"])
+        
+        # Should not be counted as remediated
+        self.assertEqual(result["total_remediated"], 0)
+        
+        # Error should be logged
+        self.assertTrue(_mock_logger.log_error.called)
+        error_calls = [str(call) for call in _mock_logger.log_error.call_args_list]
+        timeout_logged = any("timeout" in str(call).lower() and "REM-TIME-001" in str(call) for call in error_calls)
+        self.assertTrue(timeout_logged, "Expected remediate_fn timeout to be logged")
+
+    def test_verify_fn_exception_does_not_crash(self):
+        """F-022: verify_fn exception should not crash verification phase."""
+        f = make_finding(finding_id="VER-EXC-001", severity=Severity.MEDIUM)
+        self.orchestrator.tracker.add_finding(f)
+        self.orchestrator.tracker.update_status("VER-EXC-001", FindingStatus.MERGED)
+        
+        def verify_raises(finding):
+            raise RuntimeError("Intentional verify exception")
+        
+        # Should not raise exception
+        results = self.orchestrator.verification(verify_fn=verify_raises)
+        
+        # Should have results from 4 default agents (exception skipped custom)
+        self.assertEqual(len(results), 4)
+        
+        # Error should be logged
+        self.assertTrue(_mock_logger.log_error.called)
+        error_calls = [str(call) for call in _mock_logger.log_error.call_args_list]
+        error_logged = any("verify_fn" in str(call) and "VER-EXC-001" in str(call) for call in error_calls)
+        self.assertTrue(error_logged, "Expected verify_fn exception to be logged")
+
+    def test_verify_fn_timeout_does_not_crash(self):
+        """F-022: verify_fn timeout should not crash verification phase."""
+        f = make_finding(finding_id="VER-TIME-001", severity=Severity.LOW)
+        self.orchestrator.tracker.add_finding(f)
+        self.orchestrator.tracker.update_status("VER-TIME-001", FindingStatus.MERGED)
+        self.orchestrator.callback_timeout_seconds = 0.01
+        
+        def verify_hangs(finding):
+            import time
+            time.sleep(0.1)  # Intentionally exceed configured callback timeout
+            return VerificationResult(
+                finding_id=finding.finding_id,
+                command="never_reached",
+                output="never",
+                passed=True,
+                agent="never",
+            )
+        
+        # Should not raise exception or hang
+        results = self.orchestrator.verification(verify_fn=verify_hangs)
+        
+        # Should have results from 4 default agents (timeout skipped custom)
+        self.assertEqual(len(results), 4)
+        
+        # Error should be logged
+        self.assertTrue(_mock_logger.log_error.called)
+        error_calls = [str(call) for call in _mock_logger.log_error.call_args_list]
+        timeout_logged = any("timeout" in str(call).lower() and "VER-TIME-001" in str(call) for call in error_calls)
+        self.assertTrue(timeout_logged, "Expected verify_fn timeout to be logged")
+
+    def test_remediate_fn_non_dict_with_value_logs_warning(self):
+        """F-022: remediate_fn returning non-dict non-None should log warning but still merge."""
+        f = make_finding(finding_id="REM-WARN-001", severity=Severity.CRITICAL)
+        self.orchestrator.tracker.add_finding(f)
+        
+        def remediate_returns_int(finding):
+            return 42  # Invalid return type
+        
+        result = self.orchestrator.tiered_remediation(
+            [f],
+            remediate_fn=remediate_returns_int,
+        )
+        
+        # Finding should still be MERGED
+        finding = self.orchestrator.tracker.findings["REM-WARN-001"]
+        self.assertEqual(finding.status, FindingStatus.MERGED)
+        self.assertEqual(result["total_remediated"], 1)
+        
+        # Warning should be logged via log_event
+        self.assertTrue(_mock_logger.log_event.called)
+        event_calls = [str(call) for call in _mock_logger.log_event.call_args_list]
+        warning_logged = any("remediate_warning" in str(call) and "REM-WARN-001" in str(call) for call in event_calls)
+        self.assertTrue(warning_logged, "Expected warning for non-dict return")
+
+    def test_verify_fn_non_verification_result_logs_warning(self):
+        """F-022: verify_fn returning non-VerificationResult non-None should log warning."""
+        f = make_finding(finding_id="VER-WARN-001", severity=Severity.HIGH)
+        self.orchestrator.tracker.add_finding(f)
+        self.orchestrator.tracker.update_status("VER-WARN-001", FindingStatus.MERGED)
+        
+        def verify_returns_dict(finding):
+            return {"invalid": "return"}  # Wrong return type
+        
+        results = self.orchestrator.verification(verify_fn=verify_returns_dict)
+        
+        # Should have 4 default agent results (invalid custom ignored)
+        self.assertEqual(len(results), 4)
+        
+        # Warning should be logged via log_event
+        self.assertTrue(_mock_logger.log_event.called)
+        event_calls = [str(call) for call in _mock_logger.log_event.call_args_list]
+        warning_logged = any("verify_warning" in str(call) and "VER-WARN-001" in str(call) for call in event_calls)
+        self.assertTrue(warning_logged, "Expected warning for non-VerificationResult return")
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
