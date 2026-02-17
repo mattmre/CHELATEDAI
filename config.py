@@ -5,9 +5,78 @@ Centralized configuration management for hyperparameters, paths, and system sett
 """
 
 import os
+import re
 from pathlib import Path
 from typing import Optional, Dict, Any
 import json
+
+
+# ===== Security Utilities =====
+
+def validate_safe_path(path: Path, base_dir: Optional[Path] = None, allow_absolute: bool = True) -> Path:
+    """
+    Validate that a path is safe from path traversal attacks.
+    
+    Args:
+        path: Path to validate
+        base_dir: Optional base directory to restrict paths to
+        allow_absolute: If False, reject absolute paths (default: True for backwards compatibility)
+    
+    Returns:
+        Resolved safe path
+        
+    Raises:
+        ValueError: If path contains traversal attempts or is outside base_dir
+    """
+    # Convert to Path object
+    path = Path(path)
+    
+    # Check for path traversal components before resolution
+    parts = path.parts
+    if '..' in parts:
+        raise ValueError(f"Path traversal detected: path contains '..' components")
+    
+    # Resolve to absolute path
+    try:
+        resolved_path = path.resolve()
+    except (OSError, RuntimeError) as e:
+        raise ValueError(f"Invalid path: {e}")
+    
+    # If base_dir specified, ensure resolved path is within it
+    if base_dir is not None:
+        base_dir = Path(base_dir).resolve()
+        try:
+            resolved_path.relative_to(base_dir)
+        except ValueError:
+            raise ValueError(f"Path escapes base directory: {path} not under {base_dir}")
+    
+    return resolved_path
+
+
+def sanitize_name(name: str, pattern: str = r'^[a-zA-Z0-9_-]+$') -> str:
+    """
+    Sanitize a name using allowlist pattern.
+    
+    Args:
+        name: Name to sanitize
+        pattern: Regex pattern for allowed characters (default: alphanumeric, underscore, hyphen)
+    
+    Returns:
+        Sanitized name
+        
+    Raises:
+        ValueError: If name doesn't match allowed pattern
+    """
+    if not name:
+        raise ValueError("Name cannot be empty")
+    
+    if not re.match(pattern, name):
+        raise ValueError(
+            f"Invalid name: '{name}' contains disallowed characters. "
+            f"Only alphanumeric, underscore, and hyphen allowed."
+        )
+    
+    return name
 
 
 class ChelationConfig:
@@ -255,7 +324,9 @@ class ChelationConfig:
         Returns:
             Configuration dictionary
         """
-        config_path = Path(config_path)
+        # Validate path for traversal attacks
+        config_path = validate_safe_path(Path(config_path))
+        
         if not config_path.exists():
             raise FileNotFoundError(f"Configuration file not found: {config_path}")
 
@@ -273,7 +344,8 @@ class ChelationConfig:
             config: Configuration dictionary
             config_path: Path to save JSON config
         """
-        config_path = Path(config_path)
+        # Validate path for traversal attacks
+        config_path = validate_safe_path(Path(config_path))
         config_path.parent.mkdir(parents=True, exist_ok=True)
 
         with open(config_path, 'w', encoding='utf-8') as f:

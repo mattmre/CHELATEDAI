@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Dict, Any, Optional
 from datetime import datetime
 import hashlib
+from config import validate_safe_path, sanitize_name
 
 
 class CheckpointManager:
@@ -82,6 +83,12 @@ class CheckpointManager:
         Returns:
             Checkpoint ID
         """
+        # Sanitize checkpoint name to prevent injection attacks
+        name = sanitize_name(name)
+        
+        # Validate adapter path
+        adapter_path = validate_safe_path(Path(adapter_path))
+        
         timestamp = datetime.now().isoformat()
         checkpoint_id = f"{name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
 
@@ -119,8 +126,7 @@ class CheckpointManager:
     def restore_checkpoint(
         self,
         checkpoint_id: Optional[str] = None,
-        target_adapter_path: Optional[Path] = None,
-        allow_hash_mismatch: bool = False
+        target_adapter_path: Optional[Path] = None
     ) -> bool:
         """
         Restore from a checkpoint.
@@ -128,7 +134,6 @@ class CheckpointManager:
         Args:
             checkpoint_id: ID of checkpoint to restore (default: latest)
             target_adapter_path: Where to restore adapter weights
-            allow_hash_mismatch: If True, restore even when checkpoint hash mismatch is detected.
 
         Returns:
             True if successful, False otherwise
@@ -158,14 +163,15 @@ class CheckpointManager:
             # Determine target path
             if target_adapter_path is None:
                 target_adapter_path = Path(checkpoint_meta["original_adapter_path"])
+            
+            # Validate target path
+            target_adapter_path = validate_safe_path(target_adapter_path)
 
             # Verify integrity
             current_hash = self._compute_file_hash(adapter_checkpoint)
             if current_hash != checkpoint_meta["adapter_hash"]:
-                if not allow_hash_mismatch:
-                    print("ERROR: Checkpoint file hash mismatch. Refusing restore.")
-                    return False
-                print("WARNING: Checkpoint file hash mismatch, restoring due to allow_hash_mismatch=True")
+                print("ERROR: Checkpoint file hash mismatch. Refusing restore.")
+                return False
 
             # Copy back
             try:

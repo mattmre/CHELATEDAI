@@ -2,6 +2,8 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import os
+from pathlib import Path
+from config import validate_safe_path
 
 class ChelationAdapter(nn.Module):
     """
@@ -47,9 +49,13 @@ class ChelationAdapter(nn.Module):
         return out
     
     def save(self, path):
+        # Validate path for traversal attacks
+        path = validate_safe_path(Path(path))
         torch.save(self.state_dict(), path)
         
     def load(self, path):
+        # Validate path for traversal attacks
+        path = validate_safe_path(Path(path))
         if os.path.exists(path):
             try:
                 self.load_state_dict(torch.load(path, weights_only=True))

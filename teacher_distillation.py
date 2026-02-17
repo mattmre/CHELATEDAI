@@ -60,8 +60,7 @@ class TeacherDistillationHelper:
             
             self.teacher_model = SentenceTransformer(
                 self.teacher_model_name,
-                device=device,
-                trust_remote_code=True
+                device=device
             )
             self.teacher_dim = self.teacher_model.get_sentence_embedding_dimension()
             

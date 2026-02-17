@@ -92,6 +92,30 @@ class TestCheckpointManagerCreate(unittest.TestCase):
         self.assertEqual(meta["learning_rate"], 0.01)
         self.assertEqual(meta["epochs"], 5)
 
+    def test_create_checkpoint_rejects_invalid_name(self):
+        """Creating a checkpoint with disallowed characters in the name raises ValueError."""
+        # Names with path traversal
+        with self.assertRaises(ValueError) as cm:
+            self.manager.create_checkpoint("../evil", self.adapter_path)
+        self.assertIn("Invalid name", str(cm.exception))
+
+        # Names with slashes
+        with self.assertRaises(ValueError) as cm:
+            self.manager.create_checkpoint("bad/name", self.adapter_path)
+        self.assertIn("Invalid name", str(cm.exception))
+
+        # Names with special characters
+        with self.assertRaises(ValueError) as cm:
+            self.manager.create_checkpoint("bad@name!", self.adapter_path)
+        self.assertIn("Invalid name", str(cm.exception))
+
+    def test_create_checkpoint_accepts_valid_name(self):
+        """Creating a checkpoint with valid characters succeeds."""
+        # Alphanumeric with underscore and hyphen are allowed
+        cp_id = self.manager.create_checkpoint("valid_name-123", self.adapter_path)
+        self.assertIsInstance(cp_id, str)
+        self.assertTrue(cp_id.startswith("valid_name-123_"))
+
 
 class TestCheckpointManagerRestore(unittest.TestCase):
     """Test CheckpointManager.restore_checkpoint."""
@@ -151,7 +175,7 @@ class TestCheckpointManagerRestore(unittest.TestCase):
         self.assertFalse(result)
 
     def test_restore_with_hash_mismatch_blocks_by_default(self):
-        """Hash mismatch should fail restore by default."""
+        """Hash mismatch should always fail restore (no override)."""
         cp_id = self.manager.create_checkpoint("snap", self.adapter_path)
         # Tamper with the checkpoint file to cause a hash mismatch
         checkpoint_file = Path(self.manager.list_checkpoints()[-1]["adapter_path"])
@@ -164,19 +188,13 @@ class TestCheckpointManagerRestore(unittest.TestCase):
         restored = torch.load(self.adapter_path, weights_only=True)
         self.assertTrue(torch.equal(restored["weight"], torch.zeros(5)))
 
-    def test_restore_with_hash_mismatch_can_be_forced(self):
-        """Hash mismatch can be overridden for emergency restore."""
+    def test_restore_validates_target_path(self):
+        """Restoring with a path traversal target path raises ValueError."""
         cp_id = self.manager.create_checkpoint("snap", self.adapter_path)
-        checkpoint_file = Path(self.manager.list_checkpoints()[-1]["adapter_path"])
-        torch.save({"weight": torch.ones(10)}, checkpoint_file)
-        torch.save({"weight": torch.zeros(5)}, self.adapter_path)
-        result = self.manager.restore_checkpoint(
-            checkpoint_id=cp_id,
-            allow_hash_mismatch=True
-        )
-        self.assertTrue(result)
-        restored = torch.load(self.adapter_path, weights_only=True)
-        self.assertTrue(torch.equal(restored["weight"], torch.ones(10)))
+        evil_target = self.temp_dir / ".." / "evil_restore.pt"
+        with self.assertRaises(ValueError) as cm:
+            self.manager.restore_checkpoint(checkpoint_id=cp_id, target_adapter_path=evil_target)
+        self.assertIn("traversal", str(cm.exception).lower())
 
 
 class TestCheckpointManagerList(unittest.TestCase):

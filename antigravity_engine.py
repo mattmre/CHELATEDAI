@@ -3,6 +3,7 @@ import numpy as np
 from openai import OpenAI
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams, PointStruct
+from qdrant_client.http.exceptions import ResponseHandlingException, UnexpectedResponse
 from collections import defaultdict
 from threading import Lock
 import torch
@@ -12,6 +13,15 @@ from config import ChelationConfig
 from chelation_logger import get_logger
 from typing import Optional
 from teacher_distillation import TeacherDistillationHelper, create_distillation_helper
+from sedimentation_trainer import compute_homeostatic_target, sync_vectors_to_qdrant
+
+# Safe import for requests (used in Ollama mode)
+try:
+    import requests
+    REQUESTS_AVAILABLE = True
+except ImportError:
+    requests = None
+    REQUESTS_AVAILABLE = False
 
 class AntigravityEngine:
     def __init__(self, qdrant_location=":memory:", chelation_p=ChelationConfig.DEFAULT_CHELATION_P, model_name='ollama:nomic-embed-text', use_centering=False, use_quantization=False, training_mode: str = "baseline", teacher_model_name: Optional[str] = None, teacher_weight: float = 0.5):
@@ -66,19 +76,20 @@ class AntigravityEngine:
             self.model_name = model_name.replace("ollama:", "")
             self.ollama_url = ChelationConfig.OLLAMA_URL
             self.logger.log_event("initialization", f"Initializing Antigravity Engine (Ollama Mode: {self.model_name})", mode="ollama", model_name=self.model_name)
+            
+            # Check for requests availability
+            if not REQUESTS_AVAILABLE:
+                raise ImportError(f"'requests' library required for Ollama mode. Install with: pip install requests")
+            
             # We assume the model is valid/pulled.
             self.vector_size = ChelationConfig.DEFAULT_VECTOR_SIZE
             try:
-                import requests
-                self.requests = requests
                 test_vec = self.embed("test")[0]
                 self.vector_size = len(test_vec)
                 self.logger.log_event("initialization", f"Connected to Ollama. Vector Size: {self.vector_size}", vector_size=self.vector_size)
-            except ImportError as e:
-                raise ImportError(f"'requests' library required for Ollama mode. Install with: pip install requests") from e
             except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
                 raise ConnectionError(f"Failed to connect to Ollama at {self.ollama_url}. Make sure Docker container is running!") from e
-            except Exception as e:
+            except (requests.exceptions.RequestException, KeyError, ValueError, TypeError, IndexError) as e:
                 self.logger.log_error("connection", f"Ollama connection test failed: {e}", exception=e)
                 self.logger.log_event("initialization", "Vector size will be validated on first real embedding call", level="WARNING")
                 # Keep default 768 as fallback
@@ -93,7 +104,7 @@ class AntigravityEngine:
             self.logger.log_event("initialization", f"Device Selected: {device}", device=device)
             
             # Load model
-            self.local_model = SentenceTransformer(model_name, device=device, trust_remote_code=True)
+            self.local_model = SentenceTransformer(model_name, device=device)
             self.vector_size = self.local_model.get_sentence_embedding_dimension()
             self.logger.log_event("initialization", f"Model loaded. Vector Size: {self.vector_size}", device=str(self.local_model.device), vector_size=self.vector_size)
             
@@ -172,7 +183,7 @@ class AntigravityEngine:
                 # Helper to attempt embedding
                 def attempt(t):
                     try:
-                        res = self.requests.post(
+                        res = requests.post(
                             self.ollama_url,
                             json={
                                 "model": self.model_name,
@@ -187,10 +198,10 @@ class AntigravityEngine:
                             # 500 error usually means context limit or model error
                             # Return None to trigger retry logic with truncation
                             return None
-                    except self.requests.exceptions.Timeout:
+                    except requests.exceptions.Timeout:
                         self.logger.log_error("timeout", f"Ollama timeout for doc {i}", doc_index=i)
                         return None
-                    except self.requests.exceptions.ConnectionError:
+                    except requests.exceptions.ConnectionError:
                         self.logger.log_error("connection", f"Ollama connection lost for doc {i}", doc_index=i)
                         return None
                     except KeyError as e:
@@ -385,19 +396,23 @@ class AntigravityEngine:
 
     def _gravity_sensor(self, query_vec, top_k=ChelationConfig.SCOUT_K):
         """Phase 1: Detects Local Curvature (Entropy) around the query."""
-        # Use query_points instead of search
-        search_result = self.qdrant.query_points(
-            collection_name=self.collection_name,
-            query=query_vec,
-            limit=top_k,
-            with_vectors=True 
-        ).points
-        
-        if not search_result:
-            return np.array([])
+        try:
+            # Use query_points instead of search
+            search_result = self.qdrant.query_points(
+                collection_name=self.collection_name,
+                query=query_vec,
+                limit=top_k,
+                with_vectors=True 
+            ).points
             
-        vectors = [hit.vector for hit in search_result]
-        return np.array(vectors)
+            if not search_result:
+                return np.array([])
+                
+            vectors = [hit.vector for hit in search_result]
+            return np.array(vectors)
+        except (ResponseHandlingException, UnexpectedResponse) as e:
+            self.logger.log_error("qdrant", f"Qdrant error in _gravity_sensor: {e}", exception=e)
+            return np.array([])
 
     def _chelate_toxicity(self, local_cluster):
         """Phase 2: The Antigravity Mechanism (Binding Toxic Dimensions)."""
@@ -426,41 +441,45 @@ class AntigravityEngine:
         # 1. Embed Query
         q_vec = self.embed(query_text)[0]
         
-        # 2. Gravity Sensor (Scout)
-        # We need to find the local cluster in the EXISTING corpus.
-        # This assumes the corpus has been ingested.
-        scout_results = self.qdrant.query_points(
-            collection_name=self.collection_name,
-            query=q_vec,
-            limit=ChelationConfig.SCOUT_K
-        ).points
-        
-        if not scout_results:
-            # Fallback if index empty
-            return q_vec
+        try:
+            # 2. Gravity Sensor (Scout)
+            # We need to find the local cluster in the EXISTING corpus.
+            # This assumes the corpus has been ingested.
+            scout_results = self.qdrant.query_points(
+                collection_name=self.collection_name,
+                query=q_vec,
+                limit=ChelationConfig.SCOUT_K
+            ).points
             
-        local_cluster_ids = [hit.id for hit in scout_results]
-        
-        # We need the actual VECTORS of the local cluster to calculate variance.
-        # Qdrant: retrieve points by ID.
-        points = self.qdrant.retrieve(
-            collection_name=self.collection_name,
-            ids=local_cluster_ids,
-            with_vectors=True
-        )
-        local_vectors = [p.vector for p in points]
-        
-        if not local_vectors:
-            return q_vec
+            if not scout_results:
+                # Fallback if index empty
+                return q_vec
+                
+            local_cluster_ids = [hit.id for hit in scout_results]
             
-        local_cluster_np = np.array(local_vectors)
-        
-        # 3. Chelate
-        mask = self._chelate_toxicity(local_cluster_np)
-        
-        # 4. Apply Mask
-        q_chelated = q_vec * mask
-        return q_chelated
+            # We need the actual VECTORS of the local cluster to calculate variance.
+            # Qdrant: retrieve points by ID.
+            points = self.qdrant.retrieve(
+                collection_name=self.collection_name,
+                ids=local_cluster_ids,
+                with_vectors=True
+            )
+            local_vectors = [p.vector for p in points]
+            
+            if not local_vectors:
+                return q_vec
+                
+            local_cluster_np = np.array(local_vectors)
+            
+            # 3. Chelate
+            mask = self._chelate_toxicity(local_cluster_np)
+            
+            # 4. Apply Mask
+            q_chelated = q_vec * mask
+            return q_chelated
+        except (ResponseHandlingException, UnexpectedResponse) as e:
+            self.logger.log_error("qdrant", f"Qdrant error in get_chelated_vector: {e}", exception=e)
+            return q_vec
     
     def enable_adaptive_threshold(
         self,
@@ -733,12 +752,10 @@ class AntigravityEngine:
                 
                 # Calculate Target based on mode
                 if self.training_mode == "baseline":
-                    # Original homeostatic push
-                    avg_noise = np.mean(noise_vectors, axis=0)
-                    diff = current_vec - avg_noise
-                    diff_norm = diff / (np.linalg.norm(diff) + 1e-9)
-                    target_vec = current_vec + (diff_norm * ChelationConfig.HOMEOSTATIC_PUSH_MAGNITUDE)
-                    target_vec = target_vec / (np.linalg.norm(target_vec) + 1e-9)
+                    # Original homeostatic push using shared helper
+                    target_vec = compute_homeostatic_target(
+                        current_vec, noise_vectors, ChelationConfig.HOMEOSTATIC_PUSH_MAGNITUDE
+                    )
                     training_targets.append(target_vec)
                     
                 elif self.training_mode == "offline":
@@ -748,12 +765,10 @@ class AntigravityEngine:
                     
                 elif self.training_mode == "hybrid":
                     # Blend homeostatic + teacher - defer to batch processing
-                    # Calculate homeostatic target first
-                    avg_noise = np.mean(noise_vectors, axis=0)
-                    diff = current_vec - avg_noise
-                    diff_norm = diff / (np.linalg.norm(diff) + 1e-9)
-                    homeostatic_target = current_vec + (diff_norm * ChelationConfig.HOMEOSTATIC_PUSH_MAGNITUDE)
-                    homeostatic_target = homeostatic_target / (np.linalg.norm(homeostatic_target) + 1e-9)
+                    # Calculate homeostatic target first using shared helper
+                    homeostatic_target = compute_homeostatic_target(
+                        current_vec, noise_vectors, ChelationConfig.HOMEOSTATIC_PUSH_MAGNITUDE
+                    )
                     training_targets.append(homeostatic_target)  # Will be blended later
                 
         if not training_inputs:
@@ -846,46 +861,11 @@ class AntigravityEngine:
         with torch.no_grad():
              new_vectors_np = self.adapter(input_tensor).numpy()
              
-        # Batch Update Logic
-        total_updates = 0
-        failed_updates = 0
-
-        for i in range(0, len(ordered_ids), chunk_size):
-            chunk_ids = ordered_ids[i:i+chunk_size]
-            chunk_vectors = new_vectors_np[i:i+chunk_size]
-
-            # Fetch existing points to get payloads (preserve metadata)
-            try:
-                existing_points = self.qdrant.retrieve(
-                    collection_name=self.collection_name,
-                    ids=chunk_ids,
-                    with_vectors=False
-                )
-                payload_map = {p.id: p.payload for p in existing_points}
-
-                batch_points = []
-                for j, doc_id in enumerate(chunk_ids):
-                    vec = chunk_vectors[j].tolist()
-                    pay = payload_map.get(doc_id, {})
-
-                    batch_points.append(PointStruct(
-                        id=doc_id,
-                        vector=vec,
-                        payload=pay
-                    ))
-
-                if batch_points:
-                    self.qdrant.upsert(
-                        collection_name=self.collection_name,
-                        points=batch_points
-                    )
-                    total_updates += len(batch_points)
-            except ValueError as e:
-                self.logger.log_error("database_update", f"Invalid vector data in batch {i//chunk_size}", exception=e, batch_num=i//chunk_size)
-                failed_updates += len(chunk_ids)
-            except Exception as e:
-                self.logger.log_error("database_update", f"Update batch {i//chunk_size} failed", exception=e, batch_num=i//chunk_size)
-                failed_updates += len(chunk_ids)
+        # Batch Update Logic using shared helper
+        total_updates, failed_updates = sync_vectors_to_qdrant(
+            self.qdrant, self.collection_name, ordered_ids, 
+            new_vectors_np, chunk_size, self.logger
+        )
                 
         self.logger.log_training_complete(final_loss=final_loss, vectors_updated=total_updates, vectors_failed=failed_updates)
         self.chelation_log.clear()
@@ -1108,71 +1088,75 @@ class AntigravityEngine:
         # A. Embed
         q_vec = self.embed(query_text)[0]
         
-        # B. Standard Retrieval (Scout Step)
-        scout_limit = ChelationConfig.SCOUT_K
-        std_results = self.qdrant.query_points(
-            collection_name=self.collection_name,
-            query=q_vec,
-            limit=scout_limit,
-            with_vectors=True # Important for Centering
-        ).points
-        
-        std_top = [hit.id for hit in std_results]
-        
-        if not std_results:
-             return [], [], np.ones(self.vector_size), 0.0
-
-        # C. Processing Logic
-        local_vectors = [hit.vector for hit in std_results]
-        local_cluster_np = np.array(local_vectors)
-        
-        # Calculate Global Variance (Entropy Metric)
-        # Sum of variances of all dimensions? Or just mean variance?
-        # Let's use simple mean variance for now as "K"
-        dim_variances = np.var(local_cluster_np, axis=0)
-        global_variance = np.mean(dim_variances)
-        
-        # Update adaptive threshold if enabled
-        self._update_adaptive_threshold(global_variance)
-
-        with self._adaptive_threshold_lock:
-            active_threshold = self.chelation_threshold
-        
-        final_top_ids = std_top
-        mask = np.ones(self.vector_size)
-        action = "FAST"
-        
-        if self.use_quantization:
-             # Adaptive Logic: Chelate if High Variance OR Forced
-             if global_variance > active_threshold or self.use_centering:
-                  # STAGE 6: Spectral Chelation (Precision Path)
-                  action = "CHELATE"
-                  # This method now handles the `chelation_log` update implicitly
-                  chel_top, center_of_mass = self._spectral_chelation_ranking(q_vec, local_vectors, std_top)
-                  final_top_ids = chel_top
-             else:
-                  # Variance is Low -> Trust the Quantized Scout (Fast)
-                  action = "FAST"
-                  final_top_ids = std_top
-        elif self.use_centering:
-             # If quantization is off but centering is on, always chelate (Old verification path)
-             action = "CHELATE_ALWAYS"
-             chel_top, center_of_mass = self._spectral_chelation_ranking(q_vec, local_vectors, std_top)
-             final_top_ids = chel_top
-        
-        # Format Return
-        chel_top_10 = final_top_ids[:10]
-
-        # Impact: Jaccard
-        s1 = set(std_top[:10])
-        s2 = set(chel_top_10)
-        if len(s1) == 0 and len(s2) == 0:
-            jaccard = 1.0
-        else:
-            jaccard = len(s1.intersection(s2)) / len(s1.union(s2))
-
-        # Log Event
-        self.logger.log_query(query_text=query_text, variance=global_variance, action=action, top_ids=final_top_ids, jaccard=jaccard)
-
-        # Return signature: std_top_10, chel_top_10, mask (dummy), jaccard
-        return std_top[:10], chel_top_10, mask, jaccard
+        try:
+            # B. Standard Retrieval (Scout Step)
+            scout_limit = ChelationConfig.SCOUT_K
+            std_results = self.qdrant.query_points(
+                collection_name=self.collection_name,
+                query=q_vec,
+                limit=scout_limit,
+                with_vectors=True # Important for Centering
+            ).points
+            
+            std_top = [hit.id for hit in std_results]
+            
+            if not std_results:
+                 return [], [], np.ones(self.vector_size), 0.0
+    
+            # C. Processing Logic
+            local_vectors = [hit.vector for hit in std_results]
+            local_cluster_np = np.array(local_vectors)
+            
+            # Calculate Global Variance (Entropy Metric)
+            # Sum of variances of all dimensions? Or just mean variance?
+            # Let's use simple mean variance for now as "K"
+            dim_variances = np.var(local_cluster_np, axis=0)
+            global_variance = np.mean(dim_variances)
+            
+            # Update adaptive threshold if enabled
+            self._update_adaptive_threshold(global_variance)
+    
+            with self._adaptive_threshold_lock:
+                active_threshold = self.chelation_threshold
+            
+            final_top_ids = std_top
+            mask = np.ones(self.vector_size)
+            action = "FAST"
+            
+            if self.use_quantization:
+                 # Adaptive Logic: Chelate if High Variance OR Forced
+                 if global_variance > active_threshold or self.use_centering:
+                      # STAGE 6: Spectral Chelation (Precision Path)
+                      action = "CHELATE"
+                      # This method now handles the `chelation_log` update implicitly
+                      chel_top, center_of_mass = self._spectral_chelation_ranking(q_vec, local_vectors, std_top)
+                      final_top_ids = chel_top
+                 else:
+                      # Variance is Low -> Trust the Quantized Scout (Fast)
+                      action = "FAST"
+                      final_top_ids = std_top
+            elif self.use_centering:
+                 # If quantization is off but centering is on, always chelate (Old verification path)
+                 action = "CHELATE_ALWAYS"
+                 chel_top, center_of_mass = self._spectral_chelation_ranking(q_vec, local_vectors, std_top)
+                 final_top_ids = chel_top
+            
+            # Format Return
+            chel_top_10 = final_top_ids[:10]
+    
+            # Impact: Jaccard
+            s1 = set(std_top[:10])
+            s2 = set(chel_top_10)
+            if len(s1) == 0 and len(s2) == 0:
+                jaccard = 1.0
+            else:
+                jaccard = len(s1.intersection(s2)) / len(s1.union(s2))
+    
+            # Log Event
+            self.logger.log_query(query_text=query_text, variance=global_variance, action=action, top_ids=final_top_ids, jaccard=jaccard)
+    
+            # Return signature: std_top_10, chel_top_10, mask (dummy), jaccard
+            return std_top[:10], chel_top_10, mask, jaccard
+        except (ResponseHandlingException, UnexpectedResponse) as e:
+            self.logger.log_error("qdrant", f"Qdrant error in run_inference: {e}", exception=e)
+            return [], [], np.ones(self.vector_size), 0.0

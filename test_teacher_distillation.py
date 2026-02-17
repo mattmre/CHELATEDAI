@@ -60,8 +60,7 @@ class TestTeacherDistillationHelper(unittest.TestCase):
         self.assertEqual(self.helper.teacher_dim, 384)
         mock_st_class.assert_called_once_with(
             "test-model",
-            device="cpu",
-            trust_remote_code=True
+            device="cpu"
         )
 
         # Second call should not reload

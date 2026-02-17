@@ -121,6 +121,20 @@ class TestChelationAdapter(unittest.TestCase):
         success = self.adapter.load(str(save_path))
         self.assertFalse(success)
 
+    def test_save_path_traversal_blocked(self):
+        """Test that path traversal attempts are blocked in save()."""
+        traversal_path = self.temp_dir / ".." / "escaping_adapter.pt"
+        with self.assertRaises(ValueError) as cm:
+            self.adapter.save(str(traversal_path))
+        self.assertIn("traversal", str(cm.exception).lower())
+
+    def test_load_path_traversal_blocked(self):
+        """Test that path traversal attempts are blocked in load()."""
+        traversal_path = self.temp_dir / ".." / "malicious.pt"
+        with self.assertRaises(ValueError) as cm:
+            self.adapter.load(str(traversal_path))
+        self.assertIn("traversal", str(cm.exception).lower())
+
 
 class TestChelationConfig(unittest.TestCase):
     """Test the configuration management system."""
@@ -210,6 +224,30 @@ class TestChelationConfig(unittest.TestCase):
             loaded_config = ChelationConfig.load_from_file(config_path)
             self.assertEqual(loaded_config, config)
 
+        finally:
+            shutil.rmtree(temp_dir, ignore_errors=True)
+
+    def test_config_load_path_traversal_blocked(self):
+        """Test that path traversal is blocked in load_from_file."""
+        temp_dir = Path(tempfile.mkdtemp())
+        try:
+            # Attempt path traversal
+            traversal_path = temp_dir / ".." / "evil_config.json"
+            with self.assertRaises(ValueError) as cm:
+                ChelationConfig.load_from_file(traversal_path)
+            self.assertIn("traversal", str(cm.exception).lower())
+        finally:
+            shutil.rmtree(temp_dir, ignore_errors=True)
+
+    def test_config_save_path_traversal_blocked(self):
+        """Test that path traversal is blocked in save_to_file."""
+        temp_dir = Path(tempfile.mkdtemp())
+        try:
+            config = {"test": "data"}
+            traversal_path = temp_dir / ".." / "evil_config.json"
+            with self.assertRaises(ValueError) as cm:
+                ChelationConfig.save_to_file(config, traversal_path)
+            self.assertIn("traversal", str(cm.exception).lower())
         finally:
             shutil.rmtree(temp_dir, ignore_errors=True)
 

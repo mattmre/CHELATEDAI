@@ -9,10 +9,14 @@ import unittest
 import numpy as np
 from unittest.mock import Mock, MagicMock, patch
 from collections import namedtuple
+from httpx import Headers
 
 # Import components to test
 from antigravity_engine import AntigravityEngine
 from config import ChelationConfig
+
+# Import Qdrant exceptions for testing
+from qdrant_client.http.exceptions import ResponseHandlingException, UnexpectedResponse
 
 
 # Mock types for Qdrant responses
@@ -410,6 +414,140 @@ class TestAdaptiveThresholdStats(unittest.TestCase):
         
         for key in expected_keys:
             self.assertIn(key, stats)
+
+
+class TestQdrantErrorHandling(unittest.TestCase):
+    """Test Qdrant error handling in inference path (Finding F-007)."""
+
+    def setUp(self):
+        """Set up test fixtures with mocked dependencies."""
+        with patch('antigravity_engine.QdrantClient') as mock_qdrant, \
+             patch('antigravity_engine.get_logger') as mock_logger, \
+             patch('antigravity_engine.ChelationAdapter'), \
+             patch('sentence_transformers.SentenceTransformer') as mock_st:
+            mock_model = Mock()
+            mock_model.get_sentence_embedding_dimension.return_value = 768
+            mock_model.encode.side_effect = lambda texts, **kwargs: np.random.randn(len(texts), 768)
+            mock_model.device = "cpu"
+            mock_st.return_value = mock_model
+
+            self.engine = AntigravityEngine(
+                qdrant_location=":memory:",
+                model_name="all-MiniLM-L6-v2"
+            )
+            self.mock_qdrant = mock_qdrant.return_value
+            self.mock_logger = mock_logger.return_value
+
+    def test_gravity_sensor_handles_response_handling_exception(self):
+        """Test _gravity_sensor returns empty array on ResponseHandlingException."""
+        # Configure mock to raise ResponseHandlingException
+        self.mock_qdrant.query_points.side_effect = ResponseHandlingException("Connection error")
+        
+        # Call _gravity_sensor
+        query_vec = np.random.randn(self.engine.vector_size).tolist()
+        result = self.engine._gravity_sensor(query_vec)
+        
+        # Assert fallback behavior: empty array
+        self.assertEqual(result.shape, (0,))
+        self.assertTrue(isinstance(result, np.ndarray))
+        
+        # Verify logger was called with correct signature
+        self.mock_logger.log_error.assert_called_once()
+        call_args = self.mock_logger.log_error.call_args
+        self.assertEqual(call_args[0][0], "qdrant")  # error_type
+        self.assertIn("Qdrant error in _gravity_sensor", call_args[0][1])  # message
+
+    def test_gravity_sensor_handles_unexpected_response(self):
+        """Test _gravity_sensor returns empty array on UnexpectedResponse."""
+        # Configure mock to raise UnexpectedResponse
+        self.mock_qdrant.query_points.side_effect = UnexpectedResponse(
+            500, "Internal Server Error", b"{}", Headers({})
+        )
+        
+        # Call _gravity_sensor
+        query_vec = np.random.randn(self.engine.vector_size).tolist()
+        result = self.engine._gravity_sensor(query_vec)
+        
+        # Assert fallback behavior: empty array
+        self.assertEqual(result.shape, (0,))
+        
+        # Verify logger was called
+        self.mock_logger.log_error.assert_called_once()
+
+    def test_get_chelated_vector_handles_qdrant_error(self):
+        """Test get_chelated_vector returns original query vector on Qdrant error."""
+        # Mock embed to return a predictable vector
+        test_vector = np.random.randn(self.engine.vector_size)
+        self.engine.embed = Mock(return_value=[test_vector])
+        
+        # Configure mock to raise ResponseHandlingException
+        self.mock_qdrant.query_points.side_effect = ResponseHandlingException("Connection error")
+        
+        # Call get_chelated_vector
+        result = self.engine.get_chelated_vector("test query")
+        
+        # Assert fallback behavior: returns original query vector
+        np.testing.assert_array_equal(result, test_vector)
+        
+        # Verify logger was called with correct signature
+        self.mock_logger.log_error.assert_called_once()
+        call_args = self.mock_logger.log_error.call_args
+        self.assertEqual(call_args[0][0], "qdrant")  # error_type
+        self.assertIn("Qdrant error in get_chelated_vector", call_args[0][1])  # message
+
+    def test_run_inference_handles_qdrant_error(self):
+        """Test run_inference returns empty results on Qdrant error."""
+        # Mock embed to return a vector
+        test_vector = np.random.randn(self.engine.vector_size).tolist()
+        self.engine.embed = Mock(return_value=[test_vector])
+        
+        # Configure mock to raise UnexpectedResponse
+        self.mock_qdrant.query_points.side_effect = UnexpectedResponse(
+            500, "Internal Server Error", b"{}", Headers({})
+        )
+        
+        # Call run_inference
+        std_top, chel_top, mask, jaccard = self.engine.run_inference("test query")
+        
+        # Assert fallback behavior: empty results structure
+        self.assertEqual(std_top, [])
+        self.assertEqual(chel_top, [])
+        self.assertEqual(jaccard, 0.0)
+        # Mask should be all ones (identity)
+        np.testing.assert_array_equal(mask, np.ones(self.engine.vector_size))
+        
+        # Verify logger was called with correct signature
+        self.mock_logger.log_error.assert_called_once()
+        call_args = self.mock_logger.log_error.call_args
+        self.assertEqual(call_args[0][0], "qdrant")  # error_type
+        self.assertIn("Qdrant error in run_inference", call_args[0][1])  # message
+
+    def test_success_path_unchanged(self):
+        """Test that success path behavior is unchanged after error handling."""
+        # Mock embed
+        test_vector = np.random.randn(self.engine.vector_size).tolist()
+        self.engine.embed = Mock(return_value=[test_vector])
+        
+        # Mock successful Qdrant response
+        mock_vectors = [np.random.randn(self.engine.vector_size).tolist() for _ in range(10)]
+        mock_points = [
+            MockPoint(id=i, vector=v, score=0.9)
+            for i, v in enumerate(mock_vectors)
+        ]
+        mock_result = MockQueryResult(points=mock_points)
+        self.mock_qdrant.query_points.return_value = mock_result
+        
+        # Call run_inference
+        std_top, chel_top, mask, jaccard = self.engine.run_inference("test query")
+        
+        # Assert success behavior: non-empty results
+        self.assertGreater(len(std_top), 0)
+        self.assertGreater(len(chel_top), 0)
+        self.assertGreaterEqual(jaccard, 0.0)
+        self.assertLessEqual(jaccard, 1.0)
+        
+        # Verify logger error was NOT called
+        self.mock_logger.log_error.assert_not_called()
 
 
 if __name__ == '__main__':
