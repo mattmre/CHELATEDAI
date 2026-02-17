@@ -437,5 +437,61 @@ class TestSafeTrainingContextFailureNoSuccess(unittest.TestCase):
         self.assertTrue(torch.equal(loaded["weight"], new_tensor))
 
 
+class TestSafeTrainingContextRollbackExceptions(unittest.TestCase):
+    """Test SafeTrainingContext exception handling during rollback (F-026)."""
+
+    def setUp(self):
+        self.temp_dir = Path(tempfile.mkdtemp())
+        self.checkpoint_dir = self.temp_dir / "checkpoints"
+        self.adapter_path = self.temp_dir / "adapter_weights.pt"
+        self.original_tensor = torch.randn(10)
+        torch.save({"weight": self.original_tensor}, self.adapter_path)
+        self.manager = CheckpointManager(self.checkpoint_dir)
+
+    def tearDown(self):
+        shutil.rmtree(self.temp_dir)
+
+    def test_original_exception_preserved_when_rollback_raises(self):
+        """When operation raises and rollback also raises, the original exception
+        is preserved (not masked by rollback exception)."""
+        # Patch restore_checkpoint to raise
+        original_restore = self.manager.restore_checkpoint
+        def mock_restore(*args, **kwargs):
+            raise IOError("Simulated rollback failure")
+        self.manager.restore_checkpoint = mock_restore
+        
+        try:
+            with SafeTrainingContext(self.manager, self.adapter_path, "fail_both") as ctx:
+                torch.save({"weight": torch.ones(10)}, self.adapter_path)
+                raise ValueError("Original training error")
+        except ValueError as e:
+            # Should get the original ValueError, not IOError
+            self.assertIn("Original training error", str(e))
+        except IOError:
+            self.fail("Rollback exception masked the original exception")
+        finally:
+            self.manager.restore_checkpoint = original_restore
+
+    def test_rollback_exception_raised_when_no_original_exception(self):
+        """When there's no original exception (exit without mark_success) but rollback
+        raises, the rollback exception should propagate."""
+        # Patch restore_checkpoint to raise
+        original_restore = self.manager.restore_checkpoint
+        def mock_restore(*args, **kwargs):
+            raise IOError("Simulated rollback failure")
+        self.manager.restore_checkpoint = mock_restore
+        
+        try:
+            with SafeTrainingContext(self.manager, self.adapter_path, "rollback_fail") as ctx:
+                torch.save({"weight": torch.ones(10)}, self.adapter_path)
+                # Not calling mark_success, but no exception either
+            self.fail("Expected IOError from rollback to propagate")
+        except IOError as e:
+            # Should get the rollback IOError
+            self.assertIn("Simulated rollback failure", str(e))
+        finally:
+            self.manager.restore_checkpoint = original_restore
+
+
 if __name__ == "__main__":
     unittest.main()

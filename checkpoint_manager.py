@@ -307,10 +307,21 @@ class SafeTrainingContext:
         if exc_type is not None or not self.success:
             if self.auto_rollback:
                 print(f"Operation failed or not marked successful, rolling back to checkpoint {self.checkpoint_id}")
-                self.checkpoint_manager.restore_checkpoint(
-                    checkpoint_id=self.checkpoint_id,
-                    target_adapter_path=self.adapter_path
-                )
+                try:
+                    self.checkpoint_manager.restore_checkpoint(
+                        checkpoint_id=self.checkpoint_id,
+                        target_adapter_path=self.adapter_path
+                    )
+                except Exception as rollback_error:
+                    # Log rollback failure explicitly
+                    print(f"ERROR: Rollback failed: {rollback_error}")
+                    # If there was an original exception, preserve it (don't mask)
+                    if exc_type is not None:
+                        print(f"WARNING: Original exception preserved despite rollback failure")
+                        return False  # Re-raise original exception
+                    else:
+                        # No original exception, propagate rollback error
+                        raise rollback_error
             else:
                 print("Operation failed but auto_rollback disabled")
         else:
