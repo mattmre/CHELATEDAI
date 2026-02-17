@@ -649,5 +649,241 @@ class TestAEPOrchestrator(unittest.TestCase):
         error_logged = any("failing-agent" in str(call) for call in calls)
         self.assertTrue(error_logged, "Expected error to be logged for failing agent")
 
+    def test_remediate_fn_non_dict_return_behavior(self):
+        """F-037: remediate_fn that returns non-dict should still mark finding as MERGED."""
+        f = make_finding(finding_id="REM-NONDICT-001", severity=Severity.HIGH)
+        self.orchestrator.tracker.add_finding(f)
+        
+        # remediate_fn returns None
+        def remediate_none(finding):
+            return None
+        
+        result = self.orchestrator.tiered_remediation(
+            [f],
+            remediate_fn=remediate_none,
+        )
+        
+        # Finding should still be marked as MERGED even though return was None
+        self.assertEqual(
+            self.orchestrator.tracker.findings["REM-NONDICT-001"].status,
+            FindingStatus.MERGED,
+        )
+        self.assertEqual(result["total_remediated"], 1)
+        
+    def test_remediate_fn_non_dict_return_string(self):
+        """F-037: remediate_fn returning string should still mark as MERGED without pr_branch/commit_hash."""
+        f = make_finding(finding_id="REM-STR-001", severity=Severity.CRITICAL)
+        self.orchestrator.tracker.add_finding(f)
+        
+        # remediate_fn returns a string
+        def remediate_string(finding):
+            return "some_string_value"
+        
+        result = self.orchestrator.tiered_remediation(
+            [f],
+            remediate_fn=remediate_string,
+        )
+        
+        # Finding should be MERGED, but pr_branch/commit_hash should remain empty
+        finding = self.orchestrator.tracker.findings["REM-STR-001"]
+        self.assertEqual(finding.status, FindingStatus.MERGED)
+        self.assertEqual(finding.pr_branch, "")
+        self.assertEqual(finding.commit_hash, "")
+        self.assertEqual(result["total_remediated"], 1)
+
+    def test_remediate_fn_dict_with_partial_keys(self):
+        """F-037: remediate_fn returning dict with only pr_branch should work correctly."""
+        f = make_finding(finding_id="REM-PARTIAL-001", severity=Severity.MEDIUM)
+        self.orchestrator.tracker.add_finding(f)
+        
+        # remediate_fn returns dict with only pr_branch
+        def remediate_partial(finding):
+            return {"pr_branch": "fix/test-branch"}
+        
+        result = self.orchestrator.tiered_remediation(
+            [f],
+            remediate_fn=remediate_partial,
+        )
+        
+        # Finding should be MERGED with pr_branch set but no commit_hash
+        finding = self.orchestrator.tracker.findings["REM-PARTIAL-001"]
+        self.assertEqual(finding.status, FindingStatus.MERGED)
+        self.assertEqual(finding.pr_branch, "fix/test-branch")
+        self.assertEqual(finding.commit_hash, "")
+        self.assertEqual(result["total_remediated"], 1)
+
+    def test_verify_fn_non_verification_result_return(self):
+        """F-037: verify_fn returning non-VerificationResult should not be added to results."""
+        f = make_finding(finding_id="VER-NONVR-001", severity=Severity.HIGH)
+        self.orchestrator.tracker.add_finding(f)
+        self.orchestrator.tracker.update_status("VER-NONVR-001", FindingStatus.MERGED)
+        
+        # verify_fn returns None
+        def verify_none(finding):
+            return None
+        
+        results = self.orchestrator.verification(verify_fn=verify_none)
+        
+        # Should have results from 4 default agents, but not from verify_fn
+        self.assertEqual(len(results), 4)
+        # All should be from default agents, none with agent="custom"
+        agent_names = [r.agent for r in results]
+        self.assertNotIn("custom", agent_names)
+        
+    def test_verify_fn_returns_verification_result(self):
+        """F-037: verify_fn returning VerificationResult should be added to results."""
+        f = make_finding(finding_id="VER-VR-001", severity=Severity.CRITICAL)
+        self.orchestrator.tracker.add_finding(f)
+        self.orchestrator.tracker.update_status("VER-VR-001", FindingStatus.MERGED)
+        
+        # verify_fn returns a proper VerificationResult
+        def verify_custom(finding):
+            return VerificationResult(
+                finding_id=finding.finding_id,
+                command="custom_test.sh",
+                output="Custom verification passed",
+                passed=True,
+                agent="custom-verifier",
+            )
+        
+        results = self.orchestrator.verification(verify_fn=verify_custom)
+        
+        # Should have 4 default agents + 1 custom = 5 results
+        self.assertEqual(len(results), 5)
+        agent_names = [r.agent for r in results]
+        self.assertIn("custom-verifier", agent_names)
+        
+        # Custom result should have correct properties
+        custom_results = [r for r in results if r.agent == "custom-verifier"]
+        self.assertEqual(len(custom_results), 1)
+        self.assertTrue(custom_results[0].passed)
+        self.assertEqual(custom_results[0].command, "custom_test.sh")
+
+    def test_verify_fn_returns_string(self):
+        """F-037: verify_fn returning string should not break verification phase."""
+        f = make_finding(finding_id="VER-STR-001", severity=Severity.MEDIUM)
+        self.orchestrator.tracker.add_finding(f)
+        self.orchestrator.tracker.update_status("VER-STR-001", FindingStatus.MERGED)
+        
+        # verify_fn returns a string
+        def verify_string(finding):
+            return "verification completed"
+        
+        results = self.orchestrator.verification(verify_fn=verify_string)
+        
+        # Should have 4 default agents, string return is ignored
+        self.assertEqual(len(results), 4)
+
+    def test_run_full_cycle_passes_remediate_fn(self):
+        """F-037: run_full_cycle should pass remediate_fn to tiered_remediation."""
+        raw = [
+            {"title": "Test finding", "severity": "HIGH", "impact": "test", "effort": "S"}
+        ]
+        
+        remediate_calls = []
+        
+        def track_remediate(finding):
+            remediate_calls.append(finding.finding_id)
+            return {"pr_branch": "fix/test"}
+        
+        summary = self.orchestrator.run_full_cycle(
+            raw_findings=raw,
+            pr_range="PR#100",
+            pr_number=100,
+            remediate_fn=track_remediate,
+        )
+        
+        # remediate_fn should have been called for the finding
+        self.assertEqual(len(remediate_calls), 1)
+        # The finding should have pr_branch set
+        findings = list(self.orchestrator.tracker.findings.values())
+        self.assertEqual(len(findings), 1)
+        self.assertEqual(findings[0].pr_branch, "fix/test")
+
+    def test_run_full_cycle_passes_verify_fn(self):
+        """F-037: run_full_cycle should pass verify_fn to verification phase."""
+        raw = [
+            {"title": "Test finding", "severity": "CRITICAL", "impact": "test", "effort": "S"}
+        ]
+        
+        verify_calls = []
+        
+        def track_verify(finding):
+            verify_calls.append(finding.finding_id)
+            return VerificationResult(
+                finding_id=finding.finding_id,
+                command="custom_verify",
+                output="verified",
+                passed=True,
+                agent="tracker",
+            )
+        
+        summary = self.orchestrator.run_full_cycle(
+            raw_findings=raw,
+            pr_range="PR#200",
+            pr_number=200,
+            verify_fn=track_verify,
+        )
+        
+        # verify_fn should have been called for the merged finding
+        self.assertEqual(len(verify_calls), 1)
+        # Check that verification log includes the custom verification
+        verifications = self.orchestrator.tracker.verification_log
+        agent_names = [v.agent for v in verifications]
+        self.assertIn("tracker", agent_names)
+
+    def test_run_full_cycle_with_both_callbacks(self):
+        """F-037: run_full_cycle with both remediate_fn and verify_fn should work correctly."""
+        raw = [
+            {"title": "Critical bug", "severity": "CRITICAL", "impact": "crash", "effort": "M"},
+            {"title": "Minor issue", "severity": "LOW", "impact": "style", "effort": "S"},
+        ]
+        
+        remediate_tracking = []
+        verify_tracking = []
+        
+        def custom_remediate(finding):
+            remediate_tracking.append(finding.finding_id)
+            return {
+                "pr_branch": f"fix/{finding.finding_id}",
+                "commit_hash": f"abc{finding.finding_id[-3:]}",
+            }
+        
+        def custom_verify(finding):
+            verify_tracking.append(finding.finding_id)
+            return VerificationResult(
+                finding_id=finding.finding_id,
+                command=f"test_{finding.finding_id}",
+                output="all tests passed",
+                passed=True,
+                agent="custom-both",
+            )
+        
+        summary = self.orchestrator.run_full_cycle(
+            raw_findings=raw,
+            pr_range="PR#300-PR#301",
+            pr_number=300,
+            remediate_fn=custom_remediate,
+            verify_fn=custom_verify,
+        )
+        
+        # Both callbacks should have been called for both findings
+        self.assertEqual(len(remediate_tracking), 2)
+        self.assertEqual(len(verify_tracking), 2)
+        
+        # Check findings have pr_branch and commit_hash set
+        findings = list(self.orchestrator.tracker.findings.values())
+        for f in findings:
+            self.assertTrue(f.pr_branch.startswith("fix/"))
+            self.assertTrue(f.commit_hash.startswith("abc"))
+        
+        # Verify custom verifications are in log
+        custom_verifications = [
+            v for v in self.orchestrator.tracker.verification_log
+            if v.agent == "custom-both"
+        ]
+        self.assertEqual(len(custom_verifications), 2)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
