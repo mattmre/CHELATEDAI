@@ -241,6 +241,42 @@ class TestAntigravityEngine(unittest.TestCase):
             # Verify mark_success was called (since failed_updates=0)
             mock_stc.mark_success.assert_called_once()
 
+    def test_qdrant_location_none_rejected(self):
+        """F-020: Verify None qdrant_location raises ValueError."""
+        with self.assertRaises(ValueError) as context:
+            AntigravityEngine(qdrant_location=None, model_name="all-MiniLM-L6-v2")
+        self.assertIn("cannot be None", str(context.exception))
+
+    def test_qdrant_location_malformed_url_rejected(self):
+        """F-020: Verify malformed URL missing hostname raises ValueError."""
+        with self.assertRaises(ValueError) as context:
+            AntigravityEngine(qdrant_location="http://", model_name="all-MiniLM-L6-v2")
+        self.assertIn("Invalid Qdrant URL", str(context.exception))
+        self.assertIn("missing hostname", str(context.exception))
+
+    def test_qdrant_location_valid_url_accepted(self):
+        """F-020: Verify valid HTTP/HTTPS URL is accepted with location= parameter."""
+        # Test HTTP URL
+        engine = AntigravityEngine(qdrant_location="http://localhost:6333", model_name="all-MiniLM-L6-v2")
+        self.mock_qdrant_cls.assert_called_with(location="http://localhost:6333")
+        
+        # Reset mock
+        self.mock_qdrant_cls.reset_mock()
+        
+        # Test HTTPS URL
+        engine = AntigravityEngine(qdrant_location="https://example.com:6333", model_name="all-MiniLM-L6-v2")
+        self.mock_qdrant_cls.assert_called_with(location="https://example.com:6333")
+
+    def test_qdrant_location_local_path_accepted(self):
+        """F-020: Verify local path is accepted with path= parameter."""
+        engine = AntigravityEngine(qdrant_location="./data/qdrant", model_name="all-MiniLM-L6-v2")
+        self.mock_qdrant_cls.assert_called_with(path="./data/qdrant")
+
+    def test_qdrant_location_memory_accepted(self):
+        """F-020: Verify :memory: special value is accepted with location= parameter."""
+        engine = self._make_engine()
+        self.mock_qdrant_cls.assert_called_with(location=":memory:")
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

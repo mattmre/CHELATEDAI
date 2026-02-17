@@ -15,6 +15,7 @@ from typing import Optional
 from teacher_distillation import TeacherDistillationHelper, create_distillation_helper
 from sedimentation_trainer import compute_homeostatic_target, sync_vectors_to_qdrant
 from checkpoint_manager import CheckpointManager, SafeTrainingContext
+from urllib.parse import urlparse
 
 # Safe import for requests (used in Ollama mode)
 try:
@@ -117,12 +118,21 @@ class AntigravityEngine:
         else:
             self.logger.log_event("adapter_init", "Created new adapter (Identity initialization)")
         
-        # Initialize Qdrant
-        if qdrant_location == ":memory:" or qdrant_location.startswith("http"):
-             self.qdrant = QdrantClient(location=qdrant_location)
+        # Initialize Qdrant with validation (F-020)
+        if qdrant_location is None:
+            raise ValueError("qdrant_location cannot be None")
+        
+        # Determine if URL or local path
+        if qdrant_location == ":memory:" or qdrant_location.startswith("http://") or qdrant_location.startswith("https://"):
+            # Validate URL format if it's HTTP/HTTPS
+            if qdrant_location.startswith("http://") or qdrant_location.startswith("https://"):
+                parsed = urlparse(qdrant_location)
+                if not parsed.hostname:
+                    raise ValueError(f"Invalid Qdrant URL: missing hostname in '{qdrant_location}'")
+            self.qdrant = QdrantClient(location=qdrant_location)
         else:
-             # Assume local path
-             self.qdrant = QdrantClient(path=qdrant_location)
+            # Assume local path
+            self.qdrant = QdrantClient(path=qdrant_location)
         self.collection_name = ChelationConfig.DEFAULT_COLLECTION_NAME
         
         # Configure Quantization
