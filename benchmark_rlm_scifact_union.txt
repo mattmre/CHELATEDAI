@@ -1,0 +1,1021 @@
+============================================================
+  RLM RECURSIVE RETRIEVAL BENCHMARK
+============================================================
+
+Task:         SciFact
+Decomposer:   mock
+Max depth:    3
+Aggregation:  union
+Model:        all-MiniLM-L6-v2
+Top-k:        10
+
+--- 1. INITIALIZING ENGINE ---
+Database path: D:\GITHUB\CHELATEDAI\db_scifact_evolution
+16:13:24 [INFO] [initialization] Initializing Antigravity Engine (Local Mode: all-MiniLM-L6-v2)
+16:13:24 [INFO] [initialization] Device Selected: cpu
+16:13:25 [INFO] [initialization] Model loaded. Vector Size: 384
+16:13:25 [INFO] [adapter_init] Initializing Dynamic Chelation Adapter
+16:13:25 [INFO] [checkpoint] Checkpoint load: D:\GITHUB\CHELATEDAI\adapter_weights.pt
+16:13:26 [INFO] [initialization] Adaptive Quantization enabled (INT8)
+16:13:26 [INFO] [collection_init] Loaded existing collection 'antigravity_stage8'
+
+--- 2. LOADING MTEB (SciFact) ---
+Loaded 5183 docs, 300 queries, 300 qrels.
+
+--- 3. CHECKING INGESTION ---
+Collection 'antigravity_stage8' has 5183 points. Skipping ingestion.
+
+--- 4. CONFIGURING RECURSIVE ENGINE ---
+Using MockDecomposer (conjunction-based)
+
+--- 5. STANDARD RETRIEVAL (Baseline) ---
+Evaluating 300 queries (standard)...
+16:13:28 [INFO] [query] Query: '0-dimensional biomaterials show inductive properti...' | Action: CHELATE
+16:13:28 [INFO] [query] Query: '1,000 genomes project enables mapping of genetic s...' | Action: CHELATE
+16:13:28 [INFO] [query] Query: '1/2000 in UK have abnormal PrP positivity....' | Action: CHELATE
+16:13:28 [INFO] [query] Query: '5% of perinatal mortality is due to low birth weig...' | Action: CHELATE
+16:13:28 [INFO] [query] Query: 'A deficiency of vitamin B12 increases blood levels...' | Action: CHELATE
+16:13:28 [INFO] [query] Query: 'A high microerythrocyte count raises vulnerability...' | Action: CHELATE
+16:13:28 [INFO] [query] Query: 'A total of 1,000 people in the UK are asymptomatic...' | Action: CHELATE
+16:13:28 [INFO] [query] Query: 'ADAR1 binds to Dicer to cleave pre-miRNA....' | Action: CHELATE
+16:13:28 [INFO] [query] Query: 'AIRE is expressed in some skin tumors....' | Action: CHELATE
+16:13:28 [INFO] [query] Query: 'ALDH1 expression is associated with better breast ...' | Action: CHELATE
+16:13:28 [INFO] [query] Query: 'ALDH1 expression is associated with poorer prognos...' | Action: CHELATE
+16:13:28 [INFO] [query] Query: 'AMP-activated protein kinase (AMPK) activation inc...' | Action: CHELATE
+16:13:28 [INFO] [query] Query: 'APOE4 expression in iPSC-derived neurons increases...' | Action: CHELATE
+16:13:28 [INFO] [query] Query: 'APOE4 expression in iPSC-derived neurons increases...' | Action: CHELATE
+16:13:28 [INFO] [query] Query: 'Activation of PPM1D suppresses p53 function....' | Action: CHELATE
+16:13:28 [INFO] [query] Query: 'Activator-inhibitor pairs are provided dorsally by...' | Action: CHELATE
+16:13:28 [INFO] [query] Query: 'Active H. pylori urease has a polymeric structure ...' | Action: CHELATE
+16:13:28 [INFO] [query] Query: 'Albendazole is used to treat lymphatic filariasis....' | Action: CHELATE
+16:13:28 [INFO] [query] Query: 'Alizarin forms hydrogen bonds with residues involv...' | Action: CHELATE
+16:13:28 [INFO] [query] Query: 'All hematopoietic stem cells segregate their chrom...' | Action: CHELATE
+16:13:28 [INFO] [query] Query: 'Angiotensin converting enzyme inhibitors are assoc...' | Action: CHELATE
+16:13:28 [INFO] [query] Query: 'Anthrax spores can be disposed of easily after the...' | Action: CHELATE
+16:13:28 [INFO] [query] Query: 'Antibiotic induced alterations in the gut microbio...' | Action: CHELATE
+16:13:28 [INFO] [query] Query: 'Antiretroviral therapy reduces rates of tuberculos...' | Action: CHELATE
+16:13:28 [INFO] [query] Query: 'Arginine 90 in p150n is important for interaction ...' | Action: CHELATE
+16:13:28 [INFO] [query] Query: 'Arterioles have a larger lumen diameter than venul...' | Action: CHELATE
+16:13:28 [INFO] [query] Query: 'Articles published in open access format are less ...' | Action: CHELATE
+16:13:28 [INFO] [query] Query: 'Articles published in open access format are more ...' | Action: CHELATE
+16:13:28 [INFO] [query] Query: 'Aspirin inhibits the production of PGE2....' | Action: CHELATE
+16:13:28 [INFO] [query] Query: 'Assembly of invadopodia is triggered by focal gene...' | Action: CHELATE
+16:13:28 [INFO] [query] Query: 'Asymptomatic visual impairment screening in elderl...' | Action: CHELATE
+16:13:28 [INFO] [query] Query: 'Auditory entrainment is strengthened when people s...' | Action: CHELATE
+16:13:29 [INFO] [query] Query: 'Autologous transplantation of mesenchymal stem cel...' | Action: CHELATE
+16:13:29 [INFO] [query] Query: 'Autologous transplantation of mesenchymal stem cel...' | Action: CHELATE
+16:13:29 [INFO] [query] Query: 'Autologous transplantation of mesenchymal stem cel...' | Action: CHELATE
+16:13:29 [INFO] [query] Query: 'Autophagy declines in aged organisms....' | Action: CHELATE
+16:13:29 [INFO] [query] Query: 'Bariatric surgery has a positive impact on mental ...' | Action: CHELATE
+16:13:29 [INFO] [query] Query: 'Basophils counteract disease development in patien...' | Action: CHELATE
+16:13:29 [INFO] [query] Query: 'Birth-weight is positively associated with breast ...' | Action: CHELATE
+16:13:29 [INFO] [query] Query: 'Blocking the interaction between TDP-43 and respir...' | Action: CHELATE
+16:13:29 [INFO] [query] Query: 'Bone marrow cells contribute to adult macrophage c...' | Action: CHELATE
+16:13:29 [INFO] [query] Query: 'Breast cancer development is determined exclusivel...' | Action: CHELATE
+16:13:29 [INFO] [query] Query: 'CCL19 is absent within dLNs....' | Action: CHELATE
+16:13:29 [INFO] [query] Query: 'CHEK2 is not associated with breast cancer....' | Action: CHELATE
+16:13:29 [INFO] [query] Query: 'CR is associated with higher methylation age....' | Action: CHELATE
+16:13:29 [INFO] [query] Query: 'CRP is not predictive of postoperative mortality f...' | Action: CHELATE
+16:13:29 [INFO] [query] Query: 'CX3CR1 on the Th2 cells impairs T cell survival...' | Action: CHELATE
+16:13:29 [INFO] [query] Query: 'CX3CR1 on the Th2 cells promotes T cell survival...' | Action: CHELATE
+16:13:29 [INFO] [query] Query: 'CX3CR1 on the Th2 cells promotes airway inflammati...' | Action: CHELATE
+16:13:29 [INFO] [query] Query: 'CX3CR1 on the Th2 cells suppresses airway inflamma...' | Action: CHELATE
+16:13:29 [INFO] [query] Query: 'Carriers of the alcohol aldehyde dehydrogenase def...' | Action: CHELATE
+16:13:29 [INFO] [query] Query: 'Cataract and trachoma are the primary cause of bli...' | Action: CHELATE
+16:13:29 [INFO] [query] Query: 'Cell autonomous sex determination in somatic cells...' | Action: CHELATE
+16:13:29 [INFO] [query] Query: 'Cell autonomous sex determination in somatic cells...' | Action: CHELATE
+16:13:29 [INFO] [query] Query: 'Cells lacking clpC have a defect in sporulation ef...' | Action: CHELATE
+16:13:29 [INFO] [query] Query: 'Cells undergoing methionine restriction may activa...' | Action: CHELATE
+16:13:29 [INFO] [query] Query: 'Cellular aging closely links to an older appearanc...' | Action: CHELATE
+16:13:29 [INFO] [query] Query: 'Chenodeosycholic acid treatment increases whole-bo...' | Action: CHELATE
+16:13:29 [INFO] [query] Query: 'Chenodeosycholic acid treatment reduces whole-body...' | Action: CHELATE
+16:13:29 [INFO] [query] Query: 'Chronic aerobic exercise alters endothelial functi...' | Action: CHELATE
+16:13:29 [INFO] [query] Query: 'Cold exposure increases BAT recruitment....' | Action: CHELATE
+16:13:29 [INFO] [query] Query: 'Cold exposure reduces BAT recruitment....' | Action: CHELATE
+16:13:29 [INFO] [query] Query: 'Combination nicotine replacement therapies with va...' | Action: CHELATE
+16:13:29 [INFO] [query] Query: 'Combining phosphatidylinositide 3-kinase and MEK 1...' | Action: CHELATE
+16:13:29 [INFO] [query] Query: 'Commelina yellow mottle virus' (ComYMV) genome con...' | Action: CHELATE
+16:13:29 [INFO] [query] Query: 'Crossover hot spots are not found within gene prom...' | Action: CHELATE
+16:13:29 [INFO] [query] Query: 'Crosstalk between dendritic cells (DCs) and innate...' | Action: CHELATE
+16:13:29 [INFO] [query] Query: 'Cytochrome c is released from the mitochondrial in...' | Action: CHELATE
+16:13:29 [INFO] [query] Query: 'Cytosolic proteins bind to iron-responsive element...' | Action: CHELATE
+16:13:29 [INFO] [query] Query: 'DMRT1 is a sex-determining gene that is epigenetic...' | Action: CHELATE
+16:13:29 [INFO] [query] Query: 'De novo assembly of sequence data has more specifi...' | Action: CHELATE
+16:13:29 [INFO] [query] Query: 'Deamination of cytidine to uridine on the minus st...' | Action: CHELATE
+16:13:29 [INFO] [query] Query: 'Deleting Raptor reduces G-CSF levels....' | Action: CHELATE
+16:13:29 [INFO] [query] Query: 'Dexamethasone decreases risk of postoperative blee...' | Action: CHELATE
+16:13:29 [INFO] [query] Query: 'Diabetic patients with acute coronary syndrome exp...' | Action: CHELATE
+16:13:29 [INFO] [query] Query: 'Discrimination between the initiator and elongatio...' | Action: CHELATE
+16:13:29 [INFO] [query] Query: 'Downregulation and mislocalization of Scribble pre...' | Action: CHELATE
+16:13:29 [INFO] [query] Query: 'During the primary early antibody response activat...' | Action: CHELATE
+16:13:29 [INFO] [query] Query: 'Enhanced early production of inflammatory chemokin...' | Action: CHELATE
+16:13:30 [INFO] [query] Query: 'Epidemiological disease burden from noncommunicabl...' | Action: CHELATE
+16:13:30 [INFO] [query] Query: 'Epigenetic modulating agents (EMAs) modulate antit...' | Action: CHELATE
+16:13:30 [INFO] [query] Query: 'Errors in peripheral IV drug administration are mo...' | Action: CHELATE
+16:13:30 [INFO] [query] Query: 'Ethanol stress decreases the expression of IBP in ...' | Action: CHELATE
+16:13:30 [INFO] [query] Query: 'Exposure to fine particulate air pollution is rela...' | Action: CHELATE
+16:13:30 [INFO] [query] Query: 'Febrile seizures increase the threshold for develo...' | Action: CHELATE
+16:13:30 [INFO] [query] Query: 'Febrile seizures reduce the threshold for developm...' | Action: CHELATE
+16:13:30 [INFO] [query] Query: 'Female carriers of the Apolipoprotein E4 (APOE4) a...' | Action: CHELATE
+16:13:30 [INFO] [query] Query: 'Flexible molecules experience greater steric hindr...' | Action: CHELATE
+16:13:30 [INFO] [query] Query: 'FoxO3a activation in neuronal death is mediated by...' | Action: CHELATE
+16:13:30 [INFO] [query] Query: 'Free histones are degraded by a Rad53-dependent me...' | Action: CHELATE
+16:13:30 [INFO] [query] Query: 'Functional consequences of genomic alterations due...' | Action: CHELATE
+16:13:30 [INFO] [query] Query: 'Fz/PCP-dependent Pk localizes to the anterior memb...' | Action: CHELATE
+16:13:30 [INFO] [query] Query: 'Fz/PCP-dependent Pk localizes to the anterior memb...' | Action: CHELATE
+16:13:30 [INFO] [query] Query: 'GATA-3 is important for hematopoietic stem cell (H...' | Action: CHELATE
+16:13:30 [INFO] [query] Query: 'Gene expression does not vary appreciably across g...' | Action: CHELATE
+16:13:30 [INFO] [query] Query: 'Glycolysis is one of the primary glycometabolic pa...' | Action: CHELATE
+16:13:30 [INFO] [query] Query: 'Golli-deficient T-cells prefer to differentiate in...' | Action: CHELATE
+16:13:30 [INFO] [query] Query: 'HNF4A mutations can cause diabetes in mutant carri...' | Action: CHELATE
+16:13:30 [INFO] [query] Query: 'Headaches are not correlated with cognitive impair...' | Action: CHELATE
+16:13:30 [INFO] [query] Query: 'Healthcare delivery efficiency in crowded delivery...' | Action: CHELATE
+16:13:30 [INFO] [query] Query: 'Helminths interfere with immune system control of ...' | Action: CHELATE
+16:13:30 [INFO] [query] Query: 'Hematopoietic Stem Cell purification reaches purit...' | Action: CHELATE
+16:13:30 [INFO] [query] Query: 'High cardiopulmonary fitness causes increased mort...' | Action: CHELATE
+16:13:30 [INFO] [query] Query: 'High dietary calcium intakes are unnecessary for p...' | Action: CHELATE
+16:13:30 [INFO] [query] Query: 'High levels of CRP reduces the risk of exacerbatio...' | Action: CHELATE
+16:13:30 [INFO] [query] Query: 'High levels of copeptin decrease risk of diabetes....' | Action: CHELATE
+16:13:30 [INFO] [query] Query: 'High-sensitivity cardiac troponin T (HSCT-T) dosag...' | Action: CHELATE
+16:13:30 [INFO] [query] Query: 'Histone demethylase recruitment and a transient de...' | Action: CHELATE
+16:13:30 [INFO] [query] Query: 'Homozygous deletion of murine Sbds gene from oster...' | Action: CHELATE
+16:13:30 [INFO] [query] Query: 'Human T-lymphotropic virus type-I-associated myelo...' | Action: CHELATE
+16:13:30 [INFO] [query] Query: 'Hyperfibrinogenemia decreases rates of femoropopli...' | Action: CHELATE
+16:13:30 [INFO] [query] Query: 'Hyperfibrinogenemia increases rates of femoropopli...' | Action: CHELATE
+16:13:30 [INFO] [query] Query: 'Hypertension is frequently observed in type 1 diab...' | Action: CHELATE
+16:13:30 [INFO] [query] Query: 'Hypocretin neurones induce panicprone state in rat...' | Action: CHELATE
+16:13:30 [INFO] [query] Query: 'Hypoglycemia increases the risk of dementia....' | Action: CHELATE
+16:13:30 [INFO] [query] Query: 'Hypothalamic glutamate neurotransmission is crucia...' | Action: CHELATE
+16:13:30 [INFO] [query] Query: 'IFIT1 restricts viral replication by sequestrating...' | Action: CHELATE
+16:13:30 [INFO] [query] Query: 'IRG1 has antiviral effects against neurotropic vir...' | Action: CHELATE
+16:13:30 [INFO] [query] Query: 'ITAM phosphorylation prevents the transfer of the ...' | Action: CHELATE
+16:13:30 [INFO] [query] Query: 'IgA plasma cells that are specific for transglutam...' | Action: CHELATE
+16:13:30 [INFO] [query] Query: 'Immune complex triggered cell death leads to extra...' | Action: CHELATE
+16:13:30 [INFO] [query] Query: 'Immune responses result in the development of infl...' | Action: CHELATE
+16:13:30 [INFO] [query] Query: 'In adult tissue, most T cells are memory T cells....' | Action: CHELATE
+16:13:30 [INFO] [query] Query: 'In domesticated populations of Saccharomyces cerev...' | Action: CHELATE
+16:13:30 [INFO] [query] Query: 'In mice, P. chabaudi parasites are able to prolife...' | Action: CHELATE
+16:13:30 [INFO] [query] Query: 'In mouse models, the loss of CSF1R facilitates MOZ...' | Action: CHELATE
+16:13:30 [INFO] [query] Query: 'In transgenic mice harboring green florescent prot...' | Action: CHELATE
+16:13:31 [INFO] [query] Query: 'In young and middle-aged adults, current or remote...' | Action: CHELATE
+16:13:31 [INFO] [query] Query: 'Incidence of heart failure decreased by 10% in wom...' | Action: CHELATE
+16:13:31 [INFO] [query] Query: 'Incidence rates of cervical cancer have decreased....' | Action: CHELATE
+16:13:31 [INFO] [query] Query: 'Incidence rates of cervical cancer have increased ...' | Action: CHELATE
+16:13:31 [INFO] [query] Query: 'Increased microtubule acetylation repairs LRRK2 Ro...' | Action: CHELATE
+16:13:31 [INFO] [query] Query: 'Increased vessel density along with a reduction in...' | Action: CHELATE
+16:13:31 [INFO] [query] Query: 'Individuals with low serum vitamin D concentration...' | Action: CHELATE
+16:13:31 [INFO] [query] Query: 'Infection of human T-cell lymphotropic virus type ...' | Action: CHELATE
+16:13:31 [INFO] [query] Query: 'Inositol lipid 3-phosphatase PTEN converts Ptdlns(...' | Action: CHELATE
+16:13:31 [INFO] [query] Query: 'Input from  mental and physical health care profes...' | Action: CHELATE
+16:13:31 [INFO] [query] Query: 'Insomnia can be effectively treated with cognitive...' | Action: CHELATE
+16:13:31 [INFO] [query] Query: 'Insulin increases risk of severe kidney failure....' | Action: CHELATE
+16:13:31 [INFO] [query] Query: 'Integrating classroom-based collaborative learning...' | Action: CHELATE
+16:13:31 [INFO] [query] Query: 'Ivermectin is used to treat lymphatic filariasis....' | Action: CHELATE
+16:13:31 [INFO] [query] Query: 'Ivermectin is used to treat onchocerciasis....' | Action: CHELATE
+16:13:31 [INFO] [query] Query: 'LDL cholesterol has no involvement in the developm...' | Action: CHELATE
+16:13:31 [INFO] [query] Query: 'Lack of clpC does not affect sporulation efficienc...' | Action: CHELATE
+16:13:31 [INFO] [query] Query: 'Less than 10% of the gabonese children with Schimm...' | Action: CHELATE
+16:13:31 [INFO] [query] Query: 'Leukemia associated Rho guanine nucleotide-exchang...' | Action: CHELATE
+16:13:31 [INFO] [query] Query: 'Leuko-increased blood increases infectious complic...' | Action: CHELATE
+16:13:31 [INFO] [query] Query: 'Leuko-reduced blood reduces infectious complicatio...' | Action: CHELATE
+16:13:31 [INFO] [query] Query: 'Localization of PIN1 in the Arabidopsis embryo doe...' | Action: CHELATE
+16:13:31 [INFO] [query] Query: 'Localization of PIN1 in the roots of Arabidopsis d...' | Action: CHELATE
+16:13:31 [INFO] [query] Query: 'Low expression of miR7a does represses target gene...' | Action: CHELATE
+16:13:31 [INFO] [query] Query: 'Low expression of miR7a exerts a biological functi...' | Action: CHELATE
+16:13:31 [INFO] [query] Query: 'Low nucleosome occupancy correlates with low methy...' | Action: CHELATE
+16:13:31 [INFO] [query] Query: 'Lupus-prone mice infected with curliproducing bact...' | Action: CHELATE
+16:13:31 [INFO] [query] Query: 'Ly49Q directs the organization of neutrophil migra...' | Action: CHELATE
+16:13:31 [INFO] [query] Query: 'Ly6C hi monocytes have a lower inflammatory capaci...' | Action: CHELATE
+16:13:31 [INFO] [query] Query: 'Ly6C hi monocytes have a lower inflammatory capaci...' | Action: CHELATE
+16:13:31 [INFO] [query] Query: 'Lymphadenopathy is observed in knockin mouse lacki...' | Action: CHELATE
+16:13:31 [INFO] [query] Query: 'Macrolides have no protective effect against myoca...' | Action: CHELATE
+16:13:31 [INFO] [query] Query: 'Macrolides protect against myocardial infarction....' | Action: CHELATE
+16:13:31 [INFO] [query] Query: 'Macropinocytosis contributes to a cell's supply of...' | Action: CHELATE
+16:13:31 [INFO] [query] Query: 'Many proteins in human cells can be post-translati...' | Action: CHELATE
+16:13:31 [INFO] [query] Query: 'Mathematical models predict that using Artemisinin...' | Action: CHELATE
+16:13:31 [INFO] [query] Query: 'Mercaptopurine is anabolized into the inactive met...' | Action: CHELATE
+16:13:31 [INFO] [query] Query: 'Metastatic colorectal cancer treated with a single...' | Action: CHELATE
+16:13:31 [INFO] [query] Query: 'Mice defective for deoxyribonucleic acid (DNA) pol...' | Action: CHELATE
+16:13:31 [INFO] [query] Query: 'MicroRNA is involved in the regulation of Neural S...' | Action: CHELATE
+16:13:31 [INFO] [query] Query: 'Microarray results from culture-amplified mixtures...' | Action: CHELATE
+16:13:31 [INFO] [query] Query: 'Mitochondria are uninvolved in apoptosis....' | Action: CHELATE
+16:13:31 [INFO] [query] Query: 'Modifying the epigenome in the brain affects the n...' | Action: CHELATE
+16:13:31 [INFO] [query] Query: 'Monoclonal antibody targeting of N-cadherin inhibi...' | Action: CHELATE
+16:13:31 [INFO] [query] Query: 'Most termination events in Okazaki fragments are s...' | Action: CHELATE
+16:13:31 [INFO] [query] Query: 'Mutant mice lacking SVCT2 have greatly increased a...' | Action: CHELATE
+16:13:32 [INFO] [query] Query: 'Mutations in G-Beta protein GNB2 are present in ma...' | Action: CHELATE
+16:13:32 [INFO] [query] Query: 'N-terminal cleavage increases success identifying ...' | Action: CHELATE
+16:13:32 [INFO] [query] Query: 'N-terminal cleavage reduces success identifying tr...' | Action: CHELATE
+16:13:32 [INFO] [query] Query: 'N348I mutations cause resistance to zidovudine (AZ...' | Action: CHELATE
+16:13:32 [INFO] [query] Query: 'NF2 (Merlin) causes phosphorylation and subsequent...' | Action: CHELATE
+16:13:32 [INFO] [query] Query: 'NF2 (Merlin) prevents phosphorylation and subseque...' | Action: CHELATE
+16:13:32 [INFO] [query] Query: 'NFAT4 activation requires IP3R-mediated Ca2+ mobil...' | Action: CHELATE
+16:13:32 [INFO] [query] Query: 'NOX2-independent pathways can generate peroxynitri...' | Action: CHELATE
+16:13:32 [INFO] [query] Query: 'NR5A2 is important in development of endometrial t...' | Action: CHELATE
+16:13:32 [INFO] [query] Query: 'Nanoparticles can be targeted against specific cel...' | Action: CHELATE
+16:13:32 [INFO] [query] Query: 'Neutrophil extracellular traps (NETs) are released...' | Action: CHELATE
+16:13:32 [INFO] [query] Query: 'New drugs for tuberculosis often do not penetrate ...' | Action: CHELATE
+16:13:32 [INFO] [query] Query: 'Non-invasive ventilation use should be decreased i...' | Action: CHELATE
+16:13:32 [INFO] [query] Query: 'Normal expression of RUNX1 has tumor-promoting eff...' | Action: CHELATE
+16:13:32 [INFO] [query] Query: 'Obesity decreases life quality....' | Action: CHELATE
+16:13:32 [INFO] [query] Query: 'Obesity is determined solely by environmental fact...' | Action: CHELATE
+16:13:32 [INFO] [query] Query: 'Occupancy of ribosomes by IncRNAs do not make func...' | Action: CHELATE
+16:13:32 [INFO] [query] Query: 'Occupancy of ribosomes by IncRNAs mirror 5 0-UTRs...' | Action: CHELATE
+16:13:32 [INFO] [query] Query: 'Omnivores produce less trimethylamine N-oxide from...' | Action: CHELATE
+16:13:32 [INFO] [query] Query: 'Only a minority of cells survive development after...' | Action: CHELATE
+16:13:32 [INFO] [query] Query: 'PD-1 triggering on monocytes reduces IL-10 product...' | Action: CHELATE
+16:13:32 [INFO] [query] Query: 'PDPN promotes efficient motility along stromal sur...' | Action: CHELATE
+16:13:32 [INFO] [query] Query: 'PGE 2 promotes intestinal tumor growth by altering...' | Action: CHELATE
+16:13:32 [INFO] [query] Query: 'PKG-la plays an essential role in expression of pa...' | Action: CHELATE
+16:13:32 [INFO] [query] Query: 'PPAR-RXRs are inhibited by PPAR ligands....' | Action: CHELATE
+16:13:32 [INFO] [query] Query: 'PPAR-RXRs can be activated by PPAR ligands....' | Action: CHELATE
+16:13:32 [INFO] [query] Query: 'Participating in six months of physical activity i...' | Action: CHELATE
+16:13:32 [INFO] [query] Query: 'Patients in stable partnerships have a faster prog...' | Action: CHELATE
+16:13:32 [INFO] [query] Query: 'Peroxynitrite is required for nitration of TCR/CD8...' | Action: CHELATE
+16:13:32 [INFO] [query] Query: 'Pleiotropic coupling of GLP-1R to intracellular ef...' | Action: CHELATE
+16:13:32 [INFO] [query] Query: 'Podocytes are motile and migrate in the presence o...' | Action: CHELATE
+16:13:32 [INFO] [query] Query: 'Polymeal nutrition reduces cardiovascular mortalit...' | Action: CHELATE
+16:13:32 [INFO] [query] Query: 'Pretreatment with the Arp2/3 inhibitor CK-666 affe...' | Action: CHELATE
+16:13:32 [INFO] [query] Query: 'Primary cervical cancer screening with HPV detecti...' | Action: CHELATE
+16:13:32 [INFO] [query] Query: 'Primary pro-inflammatory cytokines induce secondar...' | Action: CHELATE
+16:13:32 [INFO] [query] Query: 'Proteins synthesized at the growth cone are ubiqui...' | Action: CHELATE
+16:13:32 [INFO] [query] Query: 'Pseudogene PTENP1 regulates the expression of PTEN...' | Action: CHELATE
+16:13:32 [INFO] [query] Query: 'Pyridostatin destabilizes the G - quadruplex in th...' | Action: CHELATE
+16:13:32 [INFO] [query] Query: 'Radioiodine treatment of non-toxic multinodular go...' | Action: CHELATE
+16:13:32 [INFO] [query] Query: 'Rapamycin decreases the concentration of triacylgl...' | Action: CHELATE
+16:13:32 [INFO] [query] Query: 'Rapid phosphotransfer rates govern fidelity in two...' | Action: CHELATE
+16:13:32 [INFO] [query] Query: 'Rapid up-regulation and higher basal expression of...' | Action: CHELATE
+16:13:33 [INFO] [query] Query: 'Rapid up-regulation and higher basal expression of...' | Action: CHELATE
+16:13:33 [INFO] [query] Query: 'Recurrent mutations occur frequently within CTCF a...' | Action: CHELATE
+16:13:33 [INFO] [query] Query: 'Reduced responsiveness to interleukin-2 in regulat...' | Action: CHELATE
+16:13:33 [INFO] [query] Query: 'Replacement of histone H2A with H2A.Z slows gene a...' | Action: CHELATE
+16:13:33 [INFO] [query] Query: 'Ribosomopathies have a low degree of cell and tiss...' | Action: CHELATE
+16:13:33 [INFO] [query] Query: 'S-nitrosylated GAPDH physiologically transnitrosyl...' | Action: CHELATE
+16:13:33 [INFO] [query] Query: 'Sildenafil improves erectile function in men who e...' | Action: CHELATE
+16:13:33 [INFO] [query] Query: 'Silencing of Bcl2 is important for the maintenance...' | Action: CHELATE
+16:13:33 [INFO] [query] Query: 'Smc5/6 engagment drives the activation of SUMO E3 ...' | Action: CHELATE
+16:13:33 [INFO] [query] Query: 'Statins decrease blood cholesterol....' | Action: CHELATE
+16:13:33 [INFO] [query] Query: 'Statins increase blood cholesterol....' | Action: CHELATE
+16:13:33 [INFO] [query] Query: 'Stroke patients with prior use of direct oral anti...' | Action: CHELATE
+16:13:33 [INFO] [query] Query: 'Subcutaneous fat depots undergo extensive browning...' | Action: CHELATE
+16:13:33 [INFO] [query] Query: 'Suboptimal nutrition is not predictive of chronic ...' | Action: CHELATE
+16:13:33 [INFO] [query] Query: 'Synaptic activity enhances local release of brain ...' | Action: CHELATE
+16:13:33 [INFO] [query] Query: 'TCR/CD3 microdomains are a required to induce the ...' | Action: CHELATE
+16:13:33 [INFO] [query] Query: 'TNFAIP3 is a tumor suppressor in glioblastoma....' | Action: CHELATE
+16:13:33 [INFO] [query] Query: 'Taxation of sugar-sweetened beverages had no effec...' | Action: CHELATE
+16:13:33 [INFO] [query] Query: 'Teaching hospitals do not provide better care than...' | Action: CHELATE
+16:13:33 [INFO] [query] Query: 'Tetraspanin-3 is a causative factor in the develop...' | Action: CHELATE
+16:13:33 [INFO] [query] Query: 'The DdrB protein from Deinococcus radiodurans is a...' | Action: CHELATE
+16:13:33 [INFO] [query] Query: 'The PPR MDA5 has two N-terminal CARD domains....' | Action: CHELATE
+16:13:33 [INFO] [query] Query: 'The PRR MDA5 has a central DExD/H RNA helices doma...' | Action: CHELATE
+16:13:33 [INFO] [query] Query: 'The PRR MDA5 is a sensor of RNA virus infection....' | Action: CHELATE
+16:13:33 [INFO] [query] Query: 'The US health care system can save up to $750 mill...' | Action: CHELATE
+16:13:33 [INFO] [query] Query: 'The YAP1 and TEAD complex tanslocates into the nuc...' | Action: CHELATE
+16:13:33 [INFO] [query] Query: 'The amount of publicly available DNA data doubles ...' | Action: CHELATE
+16:13:33 [INFO] [query] Query: 'The arm density of TatAd complexes is due to struc...' | Action: CHELATE
+16:13:33 [INFO] [query] Query: 'The availability of safe places to study is effect...' | Action: CHELATE
+16:13:33 [INFO] [query] Query: 'The availability of safe places to study is not ef...' | Action: CHELATE
+16:13:33 [INFO] [query] Query: 'The benefits of colchicine were achieved with effe...' | Action: CHELATE
+16:13:33 [INFO] [query] Query: 'The binding orientation of the ML-SA1 activator at...' | Action: CHELATE
+16:13:33 [INFO] [query] Query: 'The center of the granuloma in an immune cell indu...' | Action: CHELATE
+16:13:33 [INFO] [query] Query: 'The combination of H3K4me3 and H3K79me2 is found i...' | Action: CHELATE
+16:13:33 [INFO] [query] Query: 'The composition of myosin-II isoform switches from...' | Action: CHELATE
+16:13:33 [INFO] [query] Query: 'The deregulated and prolonged activation of monocy...' | Action: CHELATE
+16:13:33 [INFO] [query] Query: 'The extracellular domain of TMEM27 is cleaved in h...' | Action: CHELATE
+16:13:33 [INFO] [query] Query: 'The genomic aberrations found in matasteses are ve...' | Action: CHELATE
+16:13:33 [INFO] [query] Query: 'The locus rs647161 is associated with colorectal c...' | Action: CHELATE
+16:13:34 [INFO] [query] Query: 'The loss of the TET protein functions may have dir...' | Action: CHELATE
+16:13:34 [INFO] [query] Query: 'The minor G allele of FOXO3 is related to more sev...' | Action: CHELATE
+16:13:34 [INFO] [query] Query: 'The myocardial lineage develops from cardiac proge...' | Action: CHELATE
+16:13:34 [INFO] [query] Query: 'The one-child policy has been successful in loweri...' | Action: CHELATE
+16:13:34 [INFO] [query] Query: 'The relationship between a breast cancer patient's...' | Action: CHELATE
+16:13:34 [INFO] [query] Query: 'The repair of Cas9-induced double strand breaks in...' | Action: CHELATE
+16:13:34 [INFO] [query] Query: 'The risk of breast cancer among parous women incre...' | Action: CHELATE
+16:13:34 [INFO] [query] Query: 'The risk of male prisoners harming themselves is t...' | Action: CHELATE
+16:13:34 [INFO] [query] Query: 'The severity of cardiac involvement in amyloidosis...' | Action: CHELATE
+16:13:34 [INFO] [query] Query: 'The single flash-evoked ERG b-wave is generated by...' | Action: CHELATE
+16:13:34 [INFO] [query] Query: 'The sliding activity of kinesin-8 protein Kip3 pro...' | Action: CHELATE
+16:13:34 [INFO] [query] Query: 'The tip of the inner tube of the toxic type VI sec...' | Action: CHELATE
+16:13:34 [INFO] [query] Query: 'The treatment of cancer patients with co-IR blocka...' | Action: CHELATE
+16:13:34 [INFO] [query] Query: 'The treatment of cancer patients with co-IR blocka...' | Action: CHELATE
+16:13:34 [INFO] [query] Query: 'The ureABIEFGH gene cluster encodes urease maturat...' | Action: CHELATE
+16:13:34 [INFO] [query] Query: 'The ureABIEFGH gene cluster is induced by nickel (...' | Action: CHELATE
+16:13:34 [INFO] [query] Query: 'Therapeutic use of the drug Dapsone to treat pyode...' | Action: CHELATE
+16:13:34 [INFO] [query] Query: 'There is an inverse relationship between hip fract...' | Action: CHELATE
+16:13:34 [INFO] [query] Query: 'There is no association between HNF4A mutations an...' | Action: CHELATE
+16:13:34 [INFO] [query] Query: 'Thigh-length graduated compression stockings (GCS)...' | Action: CHELATE
+16:13:34 [INFO] [query] Query: 'Tirasemtiv has no effect on fast-twitch muscle....' | Action: CHELATE
+16:13:34 [INFO] [query] Query: 'Transferred UCB T cells acquire a memory-like phen...' | Action: CHELATE
+16:13:34 [INFO] [query] Query: 'Transplanted human glial cells can differentiate w...' | Action: CHELATE
+16:13:34 [INFO] [query] Query: 'Transplanted human glial progenitor cells are inca...' | Action: CHELATE
+16:13:34 [INFO] [query] Query: 'UCB T cells maintain high TCR diversity after tran...' | Action: CHELATE
+16:13:34 [INFO] [query] Query: 'UCB T cells reduce TCR diversity after transplanta...' | Action: CHELATE
+16:13:34 [INFO] [query] Query: 'Ubiquitin ligase UBC13 generates a K63-linked poly...' | Action: CHELATE
+16:13:34 [INFO] [query] Query: 'Ultrasound guidance significantly raises the numbe...' | Action: CHELATE
+16:13:34 [INFO] [query] Query: 'Up-regulation of the p53 pathway and related molec...' | Action: CHELATE
+16:13:34 [INFO] [query] Query: 'Upregulation of mosGCTL-1 is induced upon infectio...' | Action: CHELATE
+16:13:34 [INFO] [query] Query: 'Varenicline monotherapy is more effective after 12...' | Action: CHELATE
+16:13:34 [INFO] [query] Query: 'Venules have a larger lumen diameter than arteriol...' | Action: CHELATE
+16:13:34 [INFO] [query] Query: 'Venules have a thinner or absent smooth layer comp...' | Action: CHELATE
+16:13:34 [INFO] [query] Query: 'Vitamin D deficiency effects the term of delivery....' | Action: CHELATE
+16:13:34 [INFO] [query] Query: 'Vitamin D deficiency is unrelated to birth weight....' | Action: CHELATE
+16:13:34 [INFO] [query] Query: 'Women with a higher birth weight are more likely t...' | Action: CHELATE
+16:13:34 [INFO] [query] Query: 'aPKCz causes tumour enhancement by affecting gluta...' | Action: CHELATE
+16:13:34 [INFO] [query] Query: 'cSMAC formation enhances weak ligand signalling....' | Action: CHELATE
+16:13:34 [INFO] [query] Query: 'mTORC2 regulates intracellular cysteine levels thr...' | Action: CHELATE
+16:13:34 [INFO] [query] Query: 'p16INK4A accumulation is  linked to an abnormal wo...' | Action: CHELATE
+Standard NDCG@10: 0.58431
+Total time: 6.48s
+
+--- 6. RECURSIVE RETRIEVAL ---
+Evaluating 300 queries (recursive)...
+16:13:34 [INFO] [query] Query: '0-dimensional biomaterials show inductive properti...' | Action: CHELATE
+16:13:34 [INFO] [recursive_inference] Query: '0-dimensional biomaterials show inductive properti' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.021s
+16:13:34 [INFO] [query] Query: '1,000 genomes project enables mapping of genetic s...' | Action: CHELATE
+16:13:34 [INFO] [recursive_inference] Query: '1,000 genomes project enables mapping of genetic s' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.021s
+16:13:34 [INFO] [query] Query: '1/2000 in UK have abnormal PrP positivity....' | Action: CHELATE
+16:13:34 [INFO] [recursive_inference] Query: '1/2000 in UK have abnormal PrP positivity.' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.019s
+16:13:34 [INFO] [query] Query: '5% of perinatal mortality is due to low birth weig...' | Action: CHELATE
+16:13:34 [INFO] [recursive_inference] Query: '5% of perinatal mortality is due to low birth weig' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.020s
+16:13:34 [INFO] [query] Query: 'A deficiency of vitamin B12 increases blood levels...' | Action: CHELATE
+16:13:34 [INFO] [recursive_inference] Query: 'A deficiency of vitamin B12 increases blood levels' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.020s
+16:13:34 [INFO] [query] Query: 'A high microerythrocyte count raises vulnerability...' | Action: CHELATE
+16:13:34 [INFO] [recursive_inference] Query: 'A high microerythrocyte count raises vulnerability' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.020s
+16:13:34 [INFO] [query] Query: 'A total of 1,000 people in the UK are asymptomatic...' | Action: CHELATE
+16:13:34 [INFO] [recursive_inference] Query: 'A total of 1,000 people in the UK are asymptomatic' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.018s
+16:13:34 [INFO] [query] Query: 'ADAR1 binds to Dicer to cleave pre-miRNA....' | Action: CHELATE
+16:13:34 [INFO] [recursive_inference] Query: 'ADAR1 binds to Dicer to cleave pre-miRNA.' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.020s
+16:13:34 [INFO] [query] Query: 'AIRE is expressed in some skin tumors....' | Action: CHELATE
+16:13:34 [INFO] [recursive_inference] Query: 'AIRE is expressed in some skin tumors.' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.019s
+16:13:35 [INFO] [query] Query: 'ALDH1 expression is associated with better breast ...' | Action: CHELATE
+16:13:35 [INFO] [recursive_inference] Query: 'ALDH1 expression is associated with better breast ' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.018s
+16:13:35 [INFO] [query] Query: 'ALDH1 expression is associated with poorer prognos...' | Action: CHELATE
+16:13:35 [INFO] [recursive_inference] Query: 'ALDH1 expression is associated with poorer prognos' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.020s
+16:13:35 [INFO] [query] Query: 'AMP-activated protein kinase (AMPK) activation inc...' | Action: CHELATE
+16:13:35 [INFO] [recursive_inference] Query: 'AMP-activated protein kinase (AMPK) activation inc' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.018s
+16:13:35 [INFO] [query] Query: 'APOE4 expression in iPSC-derived neurons increases...' | Action: CHELATE
+16:13:35 [INFO] [query] Query: 'tau phosphorylation causing GABA neuron degenerati...' | Action: CHELATE
+16:13:35 [INFO] [recursive_inference] Query: 'APOE4 expression in iPSC-derived neurons increases' | Nodes: 3 | Depth: 1 | Leaves: 2 | Results: 10 | 0.037s
+16:13:35 [INFO] [query] Query: 'APOE4 expression in iPSC-derived neurons increases...' | Action: CHELATE
+16:13:35 [INFO] [query] Query: 'tau phosphorylation, delaying GABA neuron degenera...' | Action: CHELATE
+16:13:35 [INFO] [recursive_inference] Query: 'APOE4 expression in iPSC-derived neurons increases' | Nodes: 3 | Depth: 1 | Leaves: 2 | Results: 10 | 0.039s
+16:13:35 [INFO] [query] Query: 'Activation of PPM1D suppresses p53 function....' | Action: CHELATE
+16:13:35 [INFO] [recursive_inference] Query: 'Activation of PPM1D suppresses p53 function.' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.016s
+16:13:35 [INFO] [query] Query: 'Activator-inhibitor pairs are provided dorsally by...' | Action: CHELATE
+16:13:35 [INFO] [recursive_inference] Query: 'Activator-inhibitor pairs are provided dorsally by' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.020s
+16:13:35 [INFO] [query] Query: 'Active H. pylori urease has a polymeric structure ...' | Action: CHELATE
+16:13:35 [INFO] [query] Query: 'UreB....' | Action: CHELATE
+16:13:35 [INFO] [recursive_inference] Query: 'Active H. pylori urease has a polymeric structure ' | Nodes: 3 | Depth: 1 | Leaves: 2 | Results: 10 | 0.039s
+16:13:35 [INFO] [query] Query: 'Albendazole is used to treat lymphatic filariasis....' | Action: CHELATE
+16:13:35 [INFO] [recursive_inference] Query: 'Albendazole is used to treat lymphatic filariasis.' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.021s
+16:13:35 [INFO] [query] Query: 'Alizarin forms hydrogen bonds with residues involv...' | Action: CHELATE
+16:13:35 [INFO] [recursive_inference] Query: 'Alizarin forms hydrogen bonds with residues involv' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.019s
+16:13:35 [INFO] [query] Query: 'All hematopoietic stem cells segregate their chrom...' | Action: CHELATE
+16:13:35 [INFO] [recursive_inference] Query: 'All hematopoietic stem cells segregate their chrom' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.019s
+16:13:35 [INFO] [query] Query: 'Angiotensin converting enzyme inhibitors are assoc...' | Action: CHELATE
+16:13:35 [INFO] [recursive_inference] Query: 'Angiotensin converting enzyme inhibitors are assoc' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.017s
+16:13:35 [INFO] [query] Query: 'Anthrax spores can be disposed of easily after the...' | Action: CHELATE
+16:13:35 [INFO] [recursive_inference] Query: 'Anthrax spores can be disposed of easily after the' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.020s
+16:13:35 [INFO] [query] Query: 'Antibiotic induced alterations in the gut microbio...' | Action: CHELATE
+16:13:35 [INFO] [recursive_inference] Query: 'Antibiotic induced alterations in the gut microbio' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.019s
+16:13:35 [INFO] [query] Query: 'Antiretroviral therapy reduces rates of tuberculos...' | Action: CHELATE
+16:13:35 [INFO] [recursive_inference] Query: 'Antiretroviral therapy reduces rates of tuberculos' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.019s
+16:13:35 [INFO] [query] Query: 'Arginine 90 in p150n is important for interaction ...' | Action: CHELATE
+16:13:35 [INFO] [recursive_inference] Query: 'Arginine 90 in p150n is important for interaction ' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.019s
+16:13:35 [INFO] [query] Query: 'Arterioles have a larger lumen diameter than venul...' | Action: CHELATE
+16:13:35 [INFO] [recursive_inference] Query: 'Arterioles have a larger lumen diameter than venul' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.018s
+16:13:35 [INFO] [query] Query: 'Articles published in open access format are less ...' | Action: CHELATE
+16:13:35 [INFO] [recursive_inference] Query: 'Articles published in open access format are less ' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.019s
+16:13:35 [INFO] [query] Query: 'Articles published in open access format are more ...' | Action: CHELATE
+16:13:35 [INFO] [recursive_inference] Query: 'Articles published in open access format are more ' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.020s
+16:13:35 [INFO] [query] Query: 'Aspirin inhibits the production of PGE2....' | Action: CHELATE
+16:13:35 [INFO] [recursive_inference] Query: 'Aspirin inhibits the production of PGE2.' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.019s
+16:13:35 [INFO] [query] Query: 'Assembly of invadopodia is triggered by focal gene...' | Action: CHELATE
+16:13:35 [INFO] [query] Query: 'the activation of the nonreceptor tyrosine kinase ...' | Action: CHELATE
+16:13:35 [INFO] [recursive_inference] Query: 'Assembly of invadopodia is triggered by focal gene' | Nodes: 3 | Depth: 1 | Leaves: 2 | Results: 10 | 0.040s
+16:13:35 [INFO] [query] Query: 'Asymptomatic visual impairment screening in elderl...' | Action: CHELATE
+16:13:35 [INFO] [recursive_inference] Query: 'Asymptomatic visual impairment screening in elderl' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.021s
+16:13:35 [INFO] [query] Query: 'Auditory entrainment is strengthened when people s...' | Action: CHELATE
+16:13:35 [INFO] [query] Query: 'auditory information....' | Action: CHELATE
+16:13:35 [INFO] [recursive_inference] Query: 'Auditory entrainment is strengthened when people s' | Nodes: 3 | Depth: 1 | Leaves: 2 | Results: 10 | 0.039s
+16:13:35 [INFO] [query] Query: 'Autologous transplantation of mesenchymal stem cel...' | Action: CHELATE
+16:13:35 [INFO] [recursive_inference] Query: 'Autologous transplantation of mesenchymal stem cel' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.021s
+16:13:35 [INFO] [query] Query: 'Autologous transplantation of mesenchymal stem cel...' | Action: CHELATE
+16:13:35 [INFO] [recursive_inference] Query: 'Autologous transplantation of mesenchymal stem cel' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.019s
+16:13:35 [INFO] [query] Query: 'Autologous transplantation of mesenchymal stem cel...' | Action: CHELATE
+16:13:35 [INFO] [recursive_inference] Query: 'Autologous transplantation of mesenchymal stem cel' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.020s
+16:13:35 [INFO] [query] Query: 'Autophagy declines in aged organisms....' | Action: CHELATE
+16:13:35 [INFO] [recursive_inference] Query: 'Autophagy declines in aged organisms.' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.020s
+16:13:35 [INFO] [query] Query: 'Bariatric surgery has a positive impact on mental ...' | Action: CHELATE
+16:13:35 [INFO] [recursive_inference] Query: 'Bariatric surgery has a positive impact on mental ' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.020s
+16:13:35 [INFO] [query] Query: 'Basophils counteract disease development in patien...' | Action: CHELATE
+16:13:35 [INFO] [recursive_inference] Query: 'Basophils counteract disease development in patien' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.019s
+16:13:35 [INFO] [query] Query: 'Birth-weight is positively associated with breast ...' | Action: CHELATE
+16:13:35 [INFO] [recursive_inference] Query: 'Birth-weight is positively associated with breast ' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.020s
+16:13:35 [INFO] [query] Query: 'Blocking the interaction between TDP-43...' | Action: CHELATE
+16:13:35 [INFO] [query] Query: 'respiratory complex I proteins ND3...' | Action: CHELATE
+16:13:35 [INFO] [query] Query: 'ND6 leads to increased TDP-43-induced neuronal los...' | Action: CHELATE
+16:13:35 [INFO] [recursive_inference] Query: 'Blocking the interaction between TDP-43 and respir' | Nodes: 5 | Depth: 2 | Leaves: 3 | Results: 10 | 0.057s
+16:13:35 [INFO] [query] Query: 'Bone marrow cells contribute to adult macrophage c...' | Action: CHELATE
+16:13:35 [INFO] [recursive_inference] Query: 'Bone marrow cells contribute to adult macrophage c' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.020s
+16:13:35 [INFO] [query] Query: 'Breast cancer development is determined exclusivel...' | Action: CHELATE
+16:13:35 [INFO] [recursive_inference] Query: 'Breast cancer development is determined exclusivel' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.020s
+16:13:35 [INFO] [query] Query: 'CCL19 is absent within dLNs....' | Action: CHELATE
+16:13:35 [INFO] [recursive_inference] Query: 'CCL19 is absent within dLNs.' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.017s
+16:13:35 [INFO] [query] Query: 'CHEK2 is not associated with breast cancer....' | Action: CHELATE
+16:13:35 [INFO] [recursive_inference] Query: 'CHEK2 is not associated with breast cancer.' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.017s
+16:13:35 [INFO] [query] Query: 'CR is associated with higher methylation age....' | Action: CHELATE
+16:13:35 [INFO] [recursive_inference] Query: 'CR is associated with higher methylation age.' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.019s
+16:13:35 [INFO] [query] Query: 'CRP is not predictive of postoperative mortality f...' | Action: CHELATE
+16:13:35 [INFO] [recursive_inference] Query: 'CRP is not predictive of postoperative mortality f' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.022s
+16:13:35 [INFO] [query] Query: 'CX3CR1 on the Th2 cells impairs T cell survival...' | Action: CHELATE
+16:13:35 [INFO] [recursive_inference] Query: 'CX3CR1 on the Th2 cells impairs T cell survival' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.018s
+16:13:35 [INFO] [query] Query: 'CX3CR1 on the Th2 cells promotes T cell survival...' | Action: CHELATE
+16:13:35 [INFO] [recursive_inference] Query: 'CX3CR1 on the Th2 cells promotes T cell survival' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.018s
+16:13:35 [INFO] [query] Query: 'CX3CR1 on the Th2 cells promotes airway inflammati...' | Action: CHELATE
+16:13:35 [INFO] [recursive_inference] Query: 'CX3CR1 on the Th2 cells promotes airway inflammati' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.019s
+16:13:35 [INFO] [query] Query: 'CX3CR1 on the Th2 cells suppresses airway inflamma...' | Action: CHELATE
+16:13:35 [INFO] [recursive_inference] Query: 'CX3CR1 on the Th2 cells suppresses airway inflamma' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.020s
+16:13:35 [INFO] [query] Query: 'Carriers of the alcohol aldehyde dehydrogenase def...' | Action: CHELATE
+16:13:35 [INFO] [recursive_inference] Query: 'Carriers of the alcohol aldehyde dehydrogenase def' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.019s
+16:13:35 [INFO] [query] Query: 'Cataract...' | Action: CHELATE
+16:13:35 [INFO] [query] Query: 'trachoma are the primary cause of blindness in Sou...' | Action: CHELATE
+16:13:35 [INFO] [recursive_inference] Query: 'Cataract and trachoma are the primary cause of bli' | Nodes: 3 | Depth: 1 | Leaves: 2 | Results: 10 | 0.038s
+16:13:36 [INFO] [query] Query: 'Cell autonomous sex determination in somatic cells...' | Action: CHELATE
+16:13:36 [INFO] [recursive_inference] Query: 'Cell autonomous sex determination in somatic cells' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.020s
+16:13:36 [INFO] [query] Query: 'Cell autonomous sex determination in somatic cells...' | Action: CHELATE
+16:13:36 [INFO] [recursive_inference] Query: 'Cell autonomous sex determination in somatic cells' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.020s
+16:13:36 [INFO] [query] Query: 'Cells lacking clpC have a defect in sporulation ef...' | Action: CHELATE
+16:13:36 [INFO] [recursive_inference] Query: 'Cells lacking clpC have a defect in sporulation ef' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.019s
+16:13:36 [INFO] [query] Query: 'Cells undergoing methionine restriction may activa...' | Action: CHELATE
+16:13:36 [INFO] [recursive_inference] Query: 'Cells undergoing methionine restriction may activa' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.017s
+16:13:36 [INFO] [query] Query: 'Cellular aging closely links to an older appearanc...' | Action: CHELATE
+16:13:36 [INFO] [recursive_inference] Query: 'Cellular aging closely links to an older appearanc' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.020s
+16:13:36 [INFO] [query] Query: 'Chenodeosycholic acid treatment increases whole-bo...' | Action: CHELATE
+16:13:36 [INFO] [recursive_inference] Query: 'Chenodeosycholic acid treatment increases whole-bo' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.018s
+16:13:36 [INFO] [query] Query: 'Chenodeosycholic acid treatment reduces whole-body...' | Action: CHELATE
+16:13:36 [INFO] [recursive_inference] Query: 'Chenodeosycholic acid treatment reduces whole-body' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.018s
+16:13:36 [INFO] [query] Query: 'Chronic aerobic exercise alters endothelial functi...' | Action: CHELATE
+16:13:36 [INFO] [recursive_inference] Query: 'Chronic aerobic exercise alters endothelial functi' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.019s
+16:13:36 [INFO] [query] Query: 'Cold exposure increases BAT recruitment....' | Action: CHELATE
+16:13:36 [INFO] [recursive_inference] Query: 'Cold exposure increases BAT recruitment.' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.019s
+16:13:36 [INFO] [query] Query: 'Cold exposure reduces BAT recruitment....' | Action: CHELATE
+16:13:36 [INFO] [recursive_inference] Query: 'Cold exposure reduces BAT recruitment.' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.019s
+16:13:36 [INFO] [query] Query: 'Combination nicotine replacement therapies with va...' | Action: CHELATE
+16:13:36 [INFO] [query] Query: 'bupropion lead to significantly higher long-term a...' | Action: CHELATE
+16:13:36 [INFO] [recursive_inference] Query: 'Combination nicotine replacement therapies with va' | Nodes: 3 | Depth: 1 | Leaves: 2 | Results: 10 | 0.036s
+16:13:36 [INFO] [query] Query: 'Combining phosphatidylinositide 3-kinase...' | Action: CHELATE
+16:13:36 [INFO] [query] Query: 'MEK 1/2 inhibitors is effective at treating KRAS m...' | Action: CHELATE
+16:13:36 [INFO] [recursive_inference] Query: 'Combining phosphatidylinositide 3-kinase and MEK 1' | Nodes: 3 | Depth: 1 | Leaves: 2 | Results: 10 | 0.037s
+16:13:36 [INFO] [query] Query: 'Commelina yellow mottle virus' (ComYMV) genome con...' | Action: CHELATE
+16:13:36 [INFO] [recursive_inference] Query: 'Commelina yellow mottle virus' (ComYMV) genome con' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.020s
+16:13:36 [INFO] [query] Query: 'Crossover hot spots are not found within gene prom...' | Action: CHELATE
+16:13:36 [INFO] [recursive_inference] Query: 'Crossover hot spots are not found within gene prom' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.018s
+16:13:36 [INFO] [query] Query: 'Crosstalk between dendritic cells (DCs)...' | Action: CHELATE
+16:13:36 [INFO] [query] Query: 'innate lymphoid cells (ILCs) is important in the r...' | Action: CHELATE
+16:13:36 [INFO] [recursive_inference] Query: 'Crosstalk between dendritic cells (DCs) and innate' | Nodes: 3 | Depth: 1 | Leaves: 2 | Results: 10 | 0.036s
+16:13:36 [INFO] [query] Query: 'Cytochrome c is released from the mitochondrial in...' | Action: CHELATE
+16:13:36 [INFO] [recursive_inference] Query: 'Cytochrome c is released from the mitochondrial in' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.020s
+16:13:36 [INFO] [query] Query: 'Cytosolic proteins bind to iron-responsive element...' | Action: CHELATE
+16:13:36 [INFO] [recursive_inference] Query: 'Cytosolic proteins bind to iron-responsive element' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.021s
+16:13:36 [INFO] [query] Query: 'DMRT1 is a sex-determining gene that is epigenetic...' | Action: CHELATE
+16:13:36 [INFO] [recursive_inference] Query: 'DMRT1 is a sex-determining gene that is epigenetic' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.021s
+16:13:36 [INFO] [query] Query: 'De novo assembly of sequence data has more specifi...' | Action: CHELATE
+16:13:36 [INFO] [recursive_inference] Query: 'De novo assembly of sequence data has more specifi' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.018s
+16:13:36 [INFO] [query] Query: 'Deamination of cytidine to uridine on the minus st...' | Action: CHELATE
+16:13:36 [INFO] [recursive_inference] Query: 'Deamination of cytidine to uridine on the minus st' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.022s
+16:13:36 [INFO] [query] Query: 'Deleting Raptor reduces G-CSF levels....' | Action: CHELATE
+16:13:36 [INFO] [recursive_inference] Query: 'Deleting Raptor reduces G-CSF levels.' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.018s
+16:13:36 [INFO] [query] Query: 'Dexamethasone decreases risk of postoperative blee...' | Action: CHELATE
+16:13:36 [INFO] [recursive_inference] Query: 'Dexamethasone decreases risk of postoperative blee' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.017s
+16:13:36 [INFO] [query] Query: 'Diabetic patients with acute coronary syndrome exp...' | Action: CHELATE
+16:13:36 [INFO] [query] Query: 'long-term risk for bleeding events....' | Action: CHELATE
+16:13:36 [INFO] [recursive_inference] Query: 'Diabetic patients with acute coronary syndrome exp' | Nodes: 3 | Depth: 1 | Leaves: 2 | Results: 10 | 0.037s
+16:13:36 [INFO] [query] Query: 'Discrimination between the initiator...' | Action: CHELATE
+16:13:36 [INFO] [query] Query: 'elongation tRNAs depends on the translation initia...' | Action: CHELATE
+16:13:36 [INFO] [recursive_inference] Query: 'Discrimination between the initiator and elongatio' | Nodes: 3 | Depth: 1 | Leaves: 2 | Results: 10 | 0.039s
+16:13:36 [INFO] [query] Query: 'Downregulation...' | Action: CHELATE
+16:13:36 [INFO] [query] Query: 'mislocalization of Scribble prevents cell transfor...' | Action: CHELATE
+16:13:36 [INFO] [query] Query: 'mammary tumorigenesis....' | Action: CHELATE
+16:13:36 [INFO] [recursive_inference] Query: 'Downregulation and mislocalization of Scribble pre' | Nodes: 5 | Depth: 2 | Leaves: 3 | Results: 10 | 0.056s
+16:13:36 [INFO] [query] Query: 'During the primary early antibody response activat...' | Action: CHELATE
+16:13:36 [INFO] [recursive_inference] Query: 'During the primary early antibody response activat' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.021s
+16:13:36 [INFO] [query] Query: 'Enhanced early production of inflammatory chemokin...' | Action: CHELATE
+16:13:36 [INFO] [recursive_inference] Query: 'Enhanced early production of inflammatory chemokin' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.019s
+16:13:36 [INFO] [query] Query: 'Epidemiological disease burden from noncommunicabl...' | Action: CHELATE
+16:13:36 [INFO] [recursive_inference] Query: 'Epidemiological disease burden from noncommunicabl' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.021s
+16:13:36 [INFO] [query] Query: 'Epigenetic modulating agents (EMAs) modulate antit...' | Action: CHELATE
+16:13:36 [INFO] [recursive_inference] Query: 'Epigenetic modulating agents (EMAs) modulate antit' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.021s
+16:13:36 [INFO] [query] Query: 'Errors in peripheral IV drug administration are mo...' | Action: CHELATE
+16:13:36 [INFO] [query] Query: 'multiple-step medicine preparations....' | Action: CHELATE
+16:13:36 [INFO] [recursive_inference] Query: 'Errors in peripheral IV drug administration are mo' | Nodes: 3 | Depth: 1 | Leaves: 2 | Results: 10 | 0.035s
+16:13:36 [INFO] [query] Query: 'Ethanol stress decreases the expression of IBP in ...' | Action: CHELATE
+16:13:36 [INFO] [recursive_inference] Query: 'Ethanol stress decreases the expression of IBP in ' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.021s
+16:13:36 [INFO] [query] Query: 'Exposure to fine particulate air pollution is rela...' | Action: CHELATE
+16:13:36 [INFO] [recursive_inference] Query: 'Exposure to fine particulate air pollution is rela' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.020s
+16:13:36 [INFO] [query] Query: 'Febrile seizures increase the threshold for develo...' | Action: CHELATE
+16:13:36 [INFO] [recursive_inference] Query: 'Febrile seizures increase the threshold for develo' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.019s
+16:13:36 [INFO] [query] Query: 'Febrile seizures reduce the threshold for developm...' | Action: CHELATE
+16:13:36 [INFO] [recursive_inference] Query: 'Febrile seizures reduce the threshold for developm' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.019s
+16:13:36 [INFO] [query] Query: 'Female carriers of the Apolipoprotein E4 (APOE4) a...' | Action: CHELATE
+16:13:36 [INFO] [recursive_inference] Query: 'Female carriers of the Apolipoprotein E4 (APOE4) a' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.020s
+16:13:36 [INFO] [query] Query: 'Flexible molecules experience greater steric hindr...' | Action: CHELATE
+16:13:36 [INFO] [recursive_inference] Query: 'Flexible molecules experience greater steric hindr' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.020s
+16:13:36 [INFO] [query] Query: 'FoxO3a activation in neuronal death is mediated by...' | Action: CHELATE
+16:13:36 [INFO] [recursive_inference] Query: 'FoxO3a activation in neuronal death is mediated by' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.019s
+16:13:36 [INFO] [query] Query: 'Free histones are degraded by a Rad53-dependent me...' | Action: CHELATE
+16:13:36 [INFO] [recursive_inference] Query: 'Free histones are degraded by a Rad53-dependent me' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.020s
+16:13:36 [INFO] [query] Query: 'Functional consequences of genomic alterations due...' | Action: CHELATE
+16:13:36 [INFO] [recursive_inference] Query: 'Functional consequences of genomic alterations due' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.020s
+16:13:36 [INFO] [query] Query: 'Fz/PCP-dependent Pk localizes to the anterior memb...' | Action: CHELATE
+16:13:36 [INFO] [recursive_inference] Query: 'Fz/PCP-dependent Pk localizes to the anterior memb' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.019s
+16:13:36 [INFO] [query] Query: 'Fz/PCP-dependent Pk localizes to the anterior memb...' | Action: CHELATE
+16:13:36 [INFO] [recursive_inference] Query: 'Fz/PCP-dependent Pk localizes to the anterior memb' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.022s
+16:13:37 [INFO] [query] Query: 'GATA-3 is important for hematopoietic stem cell (H...' | Action: CHELATE
+16:13:37 [INFO] [recursive_inference] Query: 'GATA-3 is important for hematopoietic stem cell (H' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.021s
+16:13:37 [INFO] [query] Query: 'Gene expression does not vary appreciably across g...' | Action: CHELATE
+16:13:37 [INFO] [recursive_inference] Query: 'Gene expression does not vary appreciably across g' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.021s
+16:13:37 [INFO] [query] Query: 'Glycolysis is one of the primary glycometabolic pa...' | Action: CHELATE
+16:13:37 [INFO] [recursive_inference] Query: 'Glycolysis is one of the primary glycometabolic pa' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.020s
+16:13:37 [INFO] [query] Query: 'Golli-deficient T-cells prefer to differentiate in...' | Action: CHELATE
+16:13:37 [INFO] [recursive_inference] Query: 'Golli-deficient T-cells prefer to differentiate in' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.020s
+16:13:37 [INFO] [query] Query: 'HNF4A mutations can cause diabetes in mutant carri...' | Action: CHELATE
+16:13:37 [INFO] [recursive_inference] Query: 'HNF4A mutations can cause diabetes in mutant carri' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.018s
+16:13:37 [INFO] [query] Query: 'Headaches are not correlated with cognitive impair...' | Action: CHELATE
+16:13:37 [INFO] [recursive_inference] Query: 'Headaches are not correlated with cognitive impair' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.020s
+16:13:37 [INFO] [query] Query: 'Healthcare delivery efficiency in crowded delivery...' | Action: CHELATE
+16:13:37 [INFO] [query] Query: 'interpersonal elements....' | Action: CHELATE
+16:13:37 [INFO] [recursive_inference] Query: 'Healthcare delivery efficiency in crowded delivery' | Nodes: 3 | Depth: 1 | Leaves: 2 | Results: 10 | 0.039s
+16:13:37 [INFO] [query] Query: 'Helminths interfere with immune system control of ...' | Action: CHELATE
+16:13:37 [INFO] [recursive_inference] Query: 'Helminths interfere with immune system control of ' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.020s
+16:13:37 [INFO] [query] Query: 'Hematopoietic Stem Cell purification reaches purit...' | Action: CHELATE
+16:13:37 [INFO] [recursive_inference] Query: 'Hematopoietic Stem Cell purification reaches purit' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.018s
+16:13:37 [INFO] [query] Query: 'High cardiopulmonary fitness causes increased mort...' | Action: CHELATE
+16:13:37 [INFO] [recursive_inference] Query: 'High cardiopulmonary fitness causes increased mort' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.018s
+16:13:37 [INFO] [query] Query: 'High dietary calcium intakes are unnecessary for p...' | Action: CHELATE
+16:13:37 [INFO] [recursive_inference] Query: 'High dietary calcium intakes are unnecessary for p' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.020s
+16:13:37 [INFO] [query] Query: 'High levels of CRP reduces the risk of exacerbatio...' | Action: CHELATE
+16:13:37 [INFO] [recursive_inference] Query: 'High levels of CRP reduces the risk of exacerbatio' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.019s
+16:13:37 [INFO] [query] Query: 'High levels of copeptin decrease risk of diabetes....' | Action: CHELATE
+16:13:37 [INFO] [recursive_inference] Query: 'High levels of copeptin decrease risk of diabetes.' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.019s
+16:13:37 [INFO] [query] Query: 'High-sensitivity cardiac troponin T (HSCT-T) dosag...' | Action: CHELATE
+16:13:37 [INFO] [recursive_inference] Query: 'High-sensitivity cardiac troponin T (HSCT-T) dosag' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.020s
+16:13:37 [INFO] [query] Query: 'Histone demethylase recruitment...' | Action: CHELATE
+16:13:37 [INFO] [query] Query: 'a transient decrease in histone methylation is nec...' | Action: CHELATE
+16:13:37 [INFO] [recursive_inference] Query: 'Histone demethylase recruitment and a transient de' | Nodes: 3 | Depth: 1 | Leaves: 2 | Results: 10 | 0.040s
+16:13:37 [INFO] [query] Query: 'Homozygous deletion of murine Sbds gene from oster...' | Action: CHELATE
+16:13:37 [INFO] [query] Query: 'progenitor cells (MPCs) prevents oxidative stress....' | Action: CHELATE
+16:13:37 [INFO] [recursive_inference] Query: 'Homozygous deletion of murine Sbds gene from oster' | Nodes: 3 | Depth: 1 | Leaves: 2 | Results: 10 | 0.040s
+16:13:37 [INFO] [query] Query: 'Human T-lymphotropic virus type-I-associated myelo...' | Action: CHELATE
+16:13:37 [INFO] [recursive_inference] Query: 'Human T-lymphotropic virus type-I-associated myelo' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.026s
+16:13:37 [INFO] [query] Query: 'Hyperfibrinogenemia decreases rates of femoropopli...' | Action: CHELATE
+16:13:37 [INFO] [recursive_inference] Query: 'Hyperfibrinogenemia decreases rates of femoropopli' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.026s
+16:13:37 [INFO] [query] Query: 'Hyperfibrinogenemia increases rates of femoropopli...' | Action: CHELATE
+16:13:37 [INFO] [recursive_inference] Query: 'Hyperfibrinogenemia increases rates of femoropopli' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.023s
+16:13:37 [INFO] [query] Query: 'Hypertension is frequently observed in type 1 diab...' | Action: CHELATE
+16:13:37 [INFO] [recursive_inference] Query: 'Hypertension is frequently observed in type 1 diab' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.024s
+16:13:37 [INFO] [query] Query: 'Hypocretin neurones induce panicprone state in rat...' | Action: CHELATE
+16:13:37 [INFO] [recursive_inference] Query: 'Hypocretin neurones induce panicprone state in rat' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.025s
+16:13:37 [INFO] [query] Query: 'Hypoglycemia increases the risk of dementia....' | Action: CHELATE
+16:13:37 [INFO] [recursive_inference] Query: 'Hypoglycemia increases the risk of dementia.' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.028s
+16:13:37 [INFO] [query] Query: 'Hypothalamic glutamate neurotransmission is crucia...' | Action: CHELATE
+16:13:37 [INFO] [recursive_inference] Query: 'Hypothalamic glutamate neurotransmission is crucia' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.026s
+16:13:37 [INFO] [query] Query: 'IFIT1 restricts viral replication by sequestrating...' | Action: CHELATE
+16:13:37 [INFO] [recursive_inference] Query: 'IFIT1 restricts viral replication by sequestrating' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.061s
+16:13:37 [INFO] [query] Query: 'IRG1 has antiviral effects against neurotropic vir...' | Action: CHELATE
+16:13:37 [INFO] [recursive_inference] Query: 'IRG1 has antiviral effects against neurotropic vir' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.059s
+16:13:37 [INFO] [query] Query: 'ITAM phosphorylation prevents the transfer of the ...' | Action: CHELATE
+16:13:37 [INFO] [recursive_inference] Query: 'ITAM phosphorylation prevents the transfer of the ' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.037s
+16:13:37 [INFO] [query] Query: 'IgA plasma cells that are specific for transglutam...' | Action: CHELATE
+16:13:37 [INFO] [recursive_inference] Query: 'IgA plasma cells that are specific for transglutam' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.021s
+16:13:37 [INFO] [query] Query: 'Immune complex triggered cell death leads to extra...' | Action: CHELATE
+16:13:37 [INFO] [recursive_inference] Query: 'Immune complex triggered cell death leads to extra' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.021s
+16:13:37 [INFO] [query] Query: 'Immune responses result in the development of infl...' | Action: CHELATE
+16:13:37 [INFO] [query] Query: 'anti-inflammatory iTregs....' | Action: CHELATE
+16:13:37 [INFO] [recursive_inference] Query: 'Immune responses result in the development of infl' | Nodes: 3 | Depth: 1 | Leaves: 2 | Results: 10 | 0.039s
+16:13:37 [INFO] [query] Query: 'In adult tissue, most T cells are memory T cells....' | Action: CHELATE
+16:13:37 [INFO] [recursive_inference] Query: 'In adult tissue, most T cells are memory T cells.' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.018s
+16:13:37 [INFO] [query] Query: 'In domesticated populations of Saccharomyces cerev...' | Action: CHELATE
+16:13:37 [INFO] [recursive_inference] Query: 'In domesticated populations of Saccharomyces cerev' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.019s
+16:13:37 [INFO] [query] Query: 'In mice, P. chabaudi parasites are able to prolife...' | Action: CHELATE
+16:13:37 [INFO] [recursive_inference] Query: 'In mice, P. chabaudi parasites are able to prolife' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.022s
+16:13:37 [INFO] [query] Query: 'In mouse models, the loss of CSF1R facilitates MOZ...' | Action: CHELATE
+16:13:37 [INFO] [recursive_inference] Query: 'In mouse models, the loss of CSF1R facilitates MOZ' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.020s
+16:13:37 [INFO] [query] Query: 'In transgenic mice harboring green florescent prot...' | Action: CHELATE
+16:13:37 [INFO] [recursive_inference] Query: 'In transgenic mice harboring green florescent prot' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.021s
+16:13:37 [INFO] [query] Query: 'In young...' | Action: CHELATE
+16:13:37 [INFO] [query] Query: 'middle-aged adults, current...' | Action: CHELATE
+16:13:37 [INFO] [query] Query: 'remote uses of ADHD medications do not increase th...' | Action: CHELATE
+16:13:37 [INFO] [recursive_inference] Query: 'In young and middle-aged adults, current or remote' | Nodes: 5 | Depth: 2 | Leaves: 3 | Results: 10 | 0.056s
+16:13:37 [INFO] [query] Query: 'Incidence of heart failure decreased by 10% in wom...' | Action: CHELATE
+16:13:37 [INFO] [recursive_inference] Query: 'Incidence of heart failure decreased by 10% in wom' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.020s
+16:13:37 [INFO] [query] Query: 'Incidence rates of cervical cancer have decreased....' | Action: CHELATE
+16:13:37 [INFO] [recursive_inference] Query: 'Incidence rates of cervical cancer have decreased.' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.019s
+16:13:38 [INFO] [query] Query: 'Incidence rates of cervical cancer have increased ...' | Action: CHELATE
+16:13:38 [INFO] [recursive_inference] Query: 'Incidence rates of cervical cancer have increased ' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.022s
+16:13:38 [INFO] [query] Query: 'Increased microtubule acetylation repairs LRRK2 Ro...' | Action: CHELATE
+16:13:38 [INFO] [recursive_inference] Query: 'Increased microtubule acetylation repairs LRRK2 Ro' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.020s
+16:13:38 [INFO] [query] Query: 'Increased vessel density along with a reduction in...' | Action: CHELATE
+16:13:38 [INFO] [recursive_inference] Query: 'Increased vessel density along with a reduction in' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.019s
+16:13:38 [INFO] [query] Query: 'Individuals with low serum vitamin D concentration...' | Action: CHELATE
+16:13:38 [INFO] [recursive_inference] Query: 'Individuals with low serum vitamin D concentration' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.019s
+16:13:38 [INFO] [query] Query: 'Infection of human T-cell lymphotropic virus type ...' | Action: CHELATE
+16:13:38 [INFO] [recursive_inference] Query: 'Infection of human T-cell lymphotropic virus type ' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.020s
+16:13:38 [INFO] [query] Query: 'Inositol lipid 3-phosphatase PTEN converts Ptdlns(...' | Action: CHELATE
+16:13:38 [INFO] [recursive_inference] Query: 'Inositol lipid 3-phosphatase PTEN converts Ptdlns(' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.020s
+16:13:38 [INFO] [query] Query: 'Input from  mental...' | Action: CHELATE
+16:13:38 [INFO] [query] Query: 'physical health care professionals is effective at...' | Action: CHELATE
+16:13:38 [INFO] [recursive_inference] Query: 'Input from  mental and physical health care profes' | Nodes: 3 | Depth: 1 | Leaves: 2 | Results: 10 | 0.034s
+16:13:38 [INFO] [query] Query: 'Insomnia can be effectively treated with cognitive...' | Action: CHELATE
+16:13:38 [INFO] [recursive_inference] Query: 'Insomnia can be effectively treated with cognitive' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.020s
+16:13:38 [INFO] [query] Query: 'Insulin increases risk of severe kidney failure....' | Action: CHELATE
+16:13:38 [INFO] [recursive_inference] Query: 'Insulin increases risk of severe kidney failure.' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.017s
+16:13:38 [INFO] [query] Query: 'Integrating classroom-based collaborative learning...' | Action: CHELATE
+16:13:38 [INFO] [recursive_inference] Query: 'Integrating classroom-based collaborative learning' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.019s
+16:13:38 [INFO] [query] Query: 'Ivermectin is used to treat lymphatic filariasis....' | Action: CHELATE
+16:13:38 [INFO] [recursive_inference] Query: 'Ivermectin is used to treat lymphatic filariasis.' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.019s
+16:13:38 [INFO] [query] Query: 'Ivermectin is used to treat onchocerciasis....' | Action: CHELATE
+16:13:38 [INFO] [recursive_inference] Query: 'Ivermectin is used to treat onchocerciasis.' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.019s
+16:13:38 [INFO] [query] Query: 'LDL cholesterol has no involvement in the developm...' | Action: CHELATE
+16:13:38 [INFO] [recursive_inference] Query: 'LDL cholesterol has no involvement in the developm' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.018s
+16:13:38 [INFO] [query] Query: 'Lack of clpC does not affect sporulation efficienc...' | Action: CHELATE
+16:13:38 [INFO] [recursive_inference] Query: 'Lack of clpC does not affect sporulation efficienc' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.019s
+16:13:38 [INFO] [query] Query: 'Less than 10% of the gabonese children with Schimm...' | Action: CHELATE
+16:13:38 [INFO] [recursive_inference] Query: 'Less than 10% of the gabonese children with Schimm' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.022s
+16:13:38 [INFO] [query] Query: 'Leukemia associated Rho guanine nucleotide-exchang...' | Action: CHELATE
+16:13:38 [INFO] [recursive_inference] Query: 'Leukemia associated Rho guanine nucleotide-exchang' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.020s
+16:13:38 [INFO] [query] Query: 'Leuko-increased blood increases infectious complic...' | Action: CHELATE
+16:13:38 [INFO] [recursive_inference] Query: 'Leuko-increased blood increases infectious complic' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.020s
+16:13:38 [INFO] [query] Query: 'Leuko-reduced blood reduces infectious complicatio...' | Action: CHELATE
+16:13:38 [INFO] [recursive_inference] Query: 'Leuko-reduced blood reduces infectious complicatio' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.019s
+16:13:38 [INFO] [query] Query: 'Localization of PIN1 in the Arabidopsis embryo doe...' | Action: CHELATE
+16:13:38 [INFO] [recursive_inference] Query: 'Localization of PIN1 in the Arabidopsis embryo doe' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.019s
+16:13:38 [INFO] [query] Query: 'Localization of PIN1 in the roots of Arabidopsis d...' | Action: CHELATE
+16:13:38 [INFO] [recursive_inference] Query: 'Localization of PIN1 in the roots of Arabidopsis d' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.019s
+16:13:38 [INFO] [query] Query: 'Low expression of miR7a does represses target gene...' | Action: CHELATE
+16:13:38 [INFO] [query] Query: 'exerts a biological function in ovaries....' | Action: CHELATE
+16:13:38 [INFO] [recursive_inference] Query: 'Low expression of miR7a does represses target gene' | Nodes: 3 | Depth: 1 | Leaves: 2 | Results: 10 | 0.040s
+16:13:38 [INFO] [query] Query: 'Low expression of miR7a exerts a biological functi...' | Action: CHELATE
+16:13:38 [INFO] [recursive_inference] Query: 'Low expression of miR7a exerts a biological functi' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.019s
+16:13:38 [INFO] [query] Query: 'Low nucleosome occupancy correlates with low methy...' | Action: CHELATE
+16:13:38 [INFO] [recursive_inference] Query: 'Low nucleosome occupancy correlates with low methy' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.021s
+16:13:38 [INFO] [query] Query: 'Lupus-prone mice infected with curliproducing bact...' | Action: CHELATE
+16:13:38 [INFO] [query] Query: 'controls....' | Action: CHELATE
+16:13:38 [INFO] [recursive_inference] Query: 'Lupus-prone mice infected with curliproducing bact' | Nodes: 3 | Depth: 1 | Leaves: 2 | Results: 10 | 0.036s
+16:13:38 [INFO] [query] Query: 'Ly49Q directs the organization of neutrophil migra...' | Action: CHELATE
+16:13:38 [INFO] [recursive_inference] Query: 'Ly49Q directs the organization of neutrophil migra' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.019s
+16:13:38 [INFO] [query] Query: 'Ly6C hi monocytes have a lower inflammatory capaci...' | Action: CHELATE
+16:13:38 [INFO] [query] Query: 'their Ly6C lo counterparts....' | Action: CHELATE
+16:13:38 [INFO] [recursive_inference] Query: 'Ly6C hi monocytes have a lower inflammatory capaci' | Nodes: 3 | Depth: 1 | Leaves: 2 | Results: 10 | 0.037s
+16:13:38 [INFO] [query] Query: 'Ly6C hi monocytes have a lower inflammatory capaci...' | Action: CHELATE
+16:13:38 [INFO] [recursive_inference] Query: 'Ly6C hi monocytes have a lower inflammatory capaci' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.021s
+16:13:38 [INFO] [query] Query: 'Lymphadenopathy is observed in knockin mouse lacki...' | Action: CHELATE
+16:13:38 [INFO] [recursive_inference] Query: 'Lymphadenopathy is observed in knockin mouse lacki' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.022s
+16:13:38 [INFO] [query] Query: 'Macrolides have no protective effect against myoca...' | Action: CHELATE
+16:13:38 [INFO] [recursive_inference] Query: 'Macrolides have no protective effect against myoca' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.019s
+16:13:38 [INFO] [query] Query: 'Macrolides protect against myocardial infarction....' | Action: CHELATE
+16:13:38 [INFO] [recursive_inference] Query: 'Macrolides protect against myocardial infarction.' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.020s
+16:13:38 [INFO] [query] Query: 'Macropinocytosis contributes to a cell's supply of...' | Action: CHELATE
+16:13:38 [INFO] [recursive_inference] Query: 'Macropinocytosis contributes to a cell's supply of' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.020s
+16:13:38 [INFO] [query] Query: 'Many proteins in human cells can be post-translati...' | Action: CHELATE
+16:13:38 [INFO] [recursive_inference] Query: 'Many proteins in human cells can be post-translati' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.022s
+16:13:38 [INFO] [query] Query: 'Mathematical models predict that using Artemisinin...' | Action: CHELATE
+16:13:38 [INFO] [recursive_inference] Query: 'Mathematical models predict that using Artemisinin' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.022s
+16:13:38 [INFO] [query] Query: 'Mercaptopurine is anabolized into the inactive met...' | Action: CHELATE
+16:13:38 [INFO] [recursive_inference] Query: 'Mercaptopurine is anabolized into the inactive met' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.022s
+16:13:38 [INFO] [query] Query: 'Metastatic colorectal cancer treated with a single...' | Action: CHELATE
+16:13:38 [INFO] [query] Query: 'lower quality of life when compared with oxaliplat...' | Action: CHELATE
+16:13:38 [INFO] [recursive_inference] Query: 'Metastatic colorectal cancer treated with a single' | Nodes: 3 | Depth: 1 | Leaves: 2 | Results: 10 | 0.043s
+16:13:38 [INFO] [query] Query: 'Mice defective for deoxyribonucleic acid (DNA) pol...' | Action: CHELATE
+16:13:38 [INFO] [recursive_inference] Query: 'Mice defective for deoxyribonucleic acid (DNA) pol' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.022s
+16:13:38 [INFO] [query] Query: 'its receptor exhibit high resistance to experiment...' | Action: CHELATE
+16:13:38 [INFO] [query] Query: 'MicroRNA is involved in the regulation of Neural S...' | Action: CHELATE
+16:13:38 [INFO] [query] Query: 'proliferation dynamic homeostasis...' | Action: CHELATE
+16:13:38 [INFO] [recursive_inference] Query: 'MicroRNA is involved in the regulation of Neural S' | Nodes: 3 | Depth: 1 | Leaves: 2 | Results: 10 | 0.039s
+16:13:38 [INFO] [query] Query: 'Microarray results from culture-amplified mixtures...' | Action: CHELATE
+16:13:38 [INFO] [recursive_inference] Query: 'Microarray results from culture-amplified mixtures' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.019s
+16:13:38 [INFO] [query] Query: 'Mitochondria are uninvolved in apoptosis....' | Action: CHELATE
+16:13:38 [INFO] [recursive_inference] Query: 'Mitochondria are uninvolved in apoptosis.' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.019s
+16:13:39 [INFO] [query] Query: 'Modifying the epigenome in the brain affects the n...' | Action: CHELATE
+16:13:39 [INFO] [recursive_inference] Query: 'Modifying the epigenome in the brain affects the n' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.021s
+16:13:39 [INFO] [query] Query: 'Monoclonal antibody targeting of N-cadherin inhibi...' | Action: CHELATE
+16:13:39 [INFO] [recursive_inference] Query: 'Monoclonal antibody targeting of N-cadherin inhibi' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.017s
+16:13:39 [INFO] [query] Query: 'Most termination events in Okazaki fragments are s...' | Action: CHELATE
+16:13:39 [INFO] [recursive_inference] Query: 'Most termination events in Okazaki fragments are s' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.017s
+16:13:39 [INFO] [query] Query: 'Mutant mice lacking SVCT2 have greatly increased a...' | Action: CHELATE
+16:13:39 [INFO] [query] Query: 'adrenals....' | Action: CHELATE
+16:13:39 [INFO] [recursive_inference] Query: 'Mutant mice lacking SVCT2 have greatly increased a' | Nodes: 3 | Depth: 1 | Leaves: 2 | Results: 10 | 0.039s
+16:13:39 [INFO] [query] Query: 'Mutations in G-Beta protein GNB2 are present in ma...' | Action: CHELATE
+16:13:39 [INFO] [query] Query: 'concomitant activation of AKT pathway....' | Action: CHELATE
+16:13:39 [INFO] [recursive_inference] Query: 'Mutations in G-Beta protein GNB2 are present in ma' | Nodes: 3 | Depth: 1 | Leaves: 2 | Results: 10 | 0.036s
+16:13:39 [INFO] [query] Query: 'N-terminal cleavage increases success identifying ...' | Action: CHELATE
+16:13:39 [INFO] [recursive_inference] Query: 'N-terminal cleavage increases success identifying ' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.016s
+16:13:39 [INFO] [query] Query: 'N-terminal cleavage reduces success identifying tr...' | Action: CHELATE
+16:13:39 [INFO] [recursive_inference] Query: 'N-terminal cleavage reduces success identifying tr' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.019s
+16:13:39 [INFO] [query] Query: 'N348I mutations cause resistance to zidovudine (AZ...' | Action: CHELATE
+16:13:39 [INFO] [recursive_inference] Query: 'N348I mutations cause resistance to zidovudine (AZ' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.019s
+16:13:39 [INFO] [query] Query: 'NF2 (Merlin) causes phosphorylation...' | Action: CHELATE
+16:13:39 [INFO] [query] Query: 'subsequent cytoplasmic sequestration of YAP in Dro...' | Action: CHELATE
+16:13:39 [INFO] [recursive_inference] Query: 'NF2 (Merlin) causes phosphorylation and subsequent' | Nodes: 3 | Depth: 1 | Leaves: 2 | Results: 10 | 0.036s
+16:13:39 [INFO] [query] Query: 'NF2 (Merlin) prevents phosphorylation...' | Action: CHELATE
+16:13:39 [INFO] [query] Query: 'subsequent cytoplasmic sequestration of YAP in Dro...' | Action: CHELATE
+16:13:39 [INFO] [recursive_inference] Query: 'NF2 (Merlin) prevents phosphorylation and subseque' | Nodes: 3 | Depth: 1 | Leaves: 2 | Results: 10 | 0.039s
+16:13:39 [INFO] [query] Query: 'NFAT4 activation requires IP3R-mediated Ca2+ mobil...' | Action: CHELATE
+16:13:39 [INFO] [recursive_inference] Query: 'NFAT4 activation requires IP3R-mediated Ca2+ mobil' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.020s
+16:13:39 [INFO] [query] Query: 'NOX2-independent pathways can generate peroxynitri...' | Action: CHELATE
+16:13:39 [INFO] [recursive_inference] Query: 'NOX2-independent pathways can generate peroxynitri' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.019s
+16:13:39 [INFO] [query] Query: 'NR5A2 is important in development of endometrial t...' | Action: CHELATE
+16:13:39 [INFO] [recursive_inference] Query: 'NR5A2 is important in development of endometrial t' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.019s
+16:13:39 [INFO] [query] Query: 'Nanoparticles can be targeted against specific cel...' | Action: CHELATE
+16:13:39 [INFO] [recursive_inference] Query: 'Nanoparticles can be targeted against specific cel' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.020s
+16:13:39 [INFO] [query] Query: 'Neutrophil extracellular traps (NETs) are released...' | Action: CHELATE
+16:13:39 [INFO] [recursive_inference] Query: 'Neutrophil extracellular traps (NETs) are released' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.020s
+16:13:39 [INFO] [query] Query: 'New drugs for tuberculosis often do not penetrate ...' | Action: CHELATE
+16:13:39 [INFO] [recursive_inference] Query: 'New drugs for tuberculosis often do not penetrate ' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.019s
+16:13:39 [INFO] [query] Query: 'Non-invasive ventilation use should be decreased i...' | Action: CHELATE
+16:13:39 [INFO] [recursive_inference] Query: 'Non-invasive ventilation use should be decreased i' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.020s
+16:13:39 [INFO] [query] Query: 'Normal expression of RUNX1 has tumor-promoting eff...' | Action: CHELATE
+16:13:39 [INFO] [recursive_inference] Query: 'Normal expression of RUNX1 has tumor-promoting eff' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.019s
+16:13:39 [INFO] [query] Query: 'Obesity decreases life quality....' | Action: CHELATE
+16:13:39 [INFO] [recursive_inference] Query: 'Obesity decreases life quality.' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.018s
+16:13:39 [INFO] [query] Query: 'Obesity is determined solely by environmental fact...' | Action: CHELATE
+16:13:39 [INFO] [recursive_inference] Query: 'Obesity is determined solely by environmental fact' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.020s
+16:13:39 [INFO] [query] Query: 'Occupancy of ribosomes by IncRNAs do not make func...' | Action: CHELATE
+16:13:39 [INFO] [recursive_inference] Query: 'Occupancy of ribosomes by IncRNAs do not make func' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.020s
+16:13:39 [INFO] [query] Query: 'Occupancy of ribosomes by IncRNAs mirror 5 0-UTRs...' | Action: CHELATE
+16:13:39 [INFO] [recursive_inference] Query: 'Occupancy of ribosomes by IncRNAs mirror 5 0-UTRs' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.022s
+16:13:39 [INFO] [query] Query: 'Omnivores produce less trimethylamine N-oxide from...' | Action: CHELATE
+16:13:39 [INFO] [recursive_inference] Query: 'Omnivores produce less trimethylamine N-oxide from' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.023s
+16:13:39 [INFO] [query] Query: 'Only a minority of cells survive development after...' | Action: CHELATE
+16:13:39 [INFO] [recursive_inference] Query: 'Only a minority of cells survive development after' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.021s
+16:13:39 [INFO] [query] Query: 'PD-1 triggering on monocytes reduces IL-10 product...' | Action: CHELATE
+16:13:39 [INFO] [recursive_inference] Query: 'PD-1 triggering on monocytes reduces IL-10 product' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.019s
+16:13:39 [INFO] [query] Query: 'PDPN promotes efficient motility along stromal sur...' | Action: CHELATE
+16:13:39 [INFO] [recursive_inference] Query: 'PDPN promotes efficient motility along stromal sur' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.021s
+16:13:39 [INFO] [query] Query: 'PGE 2 promotes intestinal tumor growth by altering...' | Action: CHELATE
+16:13:39 [INFO] [query] Query: 'DNA repair genes....' | Action: CHELATE
+16:13:39 [INFO] [recursive_inference] Query: 'PGE 2 promotes intestinal tumor growth by altering' | Nodes: 3 | Depth: 1 | Leaves: 2 | Results: 10 | 0.039s
+16:13:39 [INFO] [query] Query: 'PKG-la plays an essential role in expression of pa...' | Action: CHELATE
+16:13:39 [INFO] [recursive_inference] Query: 'PKG-la plays an essential role in expression of pa' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.021s
+16:13:39 [INFO] [query] Query: 'PPAR-RXRs are inhibited by PPAR ligands....' | Action: CHELATE
+16:13:39 [INFO] [recursive_inference] Query: 'PPAR-RXRs are inhibited by PPAR ligands.' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.022s
+16:13:39 [INFO] [query] Query: 'PPAR-RXRs can be activated by PPAR ligands....' | Action: CHELATE
+16:13:39 [INFO] [recursive_inference] Query: 'PPAR-RXRs can be activated by PPAR ligands.' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.022s
+16:13:39 [INFO] [query] Query: 'Participating in six months of physical activity i...' | Action: CHELATE
+16:13:39 [INFO] [recursive_inference] Query: 'Participating in six months of physical activity i' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.021s
+16:13:39 [INFO] [query] Query: 'Patients in stable partnerships have a faster prog...' | Action: CHELATE
+16:13:39 [INFO] [recursive_inference] Query: 'Patients in stable partnerships have a faster prog' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.020s
+16:13:39 [INFO] [query] Query: 'Peroxynitrite is required for nitration of TCR/CD8...' | Action: CHELATE
+16:13:39 [INFO] [recursive_inference] Query: 'Peroxynitrite is required for nitration of TCR/CD8' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.020s
+16:13:39 [INFO] [query] Query: 'Pleiotropic coupling of GLP-1R to intracellular ef...' | Action: CHELATE
+16:13:39 [INFO] [recursive_inference] Query: 'Pleiotropic coupling of GLP-1R to intracellular ef' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.021s
+16:13:39 [INFO] [query] Query: 'Podocytes are motile...' | Action: CHELATE
+16:13:39 [INFO] [query] Query: 'migrate in the presence of injury....' | Action: CHELATE
+16:13:39 [INFO] [recursive_inference] Query: 'Podocytes are motile and migrate in the presence o' | Nodes: 3 | Depth: 1 | Leaves: 2 | Results: 10 | 0.041s
+16:13:39 [INFO] [query] Query: 'Polymeal nutrition reduces cardiovascular mortalit...' | Action: CHELATE
+16:13:39 [INFO] [recursive_inference] Query: 'Polymeal nutrition reduces cardiovascular mortalit' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.021s
+16:13:39 [INFO] [query] Query: 'Pretreatment with the Arp2/3 inhibitor CK-666 affe...' | Action: CHELATE
+16:13:39 [INFO] [recursive_inference] Query: 'Pretreatment with the Arp2/3 inhibitor CK-666 affe' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.021s
+16:13:39 [INFO] [query] Query: 'Primary cervical cancer screening with HPV detecti...' | Action: CHELATE
+16:13:39 [INFO] [recursive_inference] Query: 'Primary cervical cancer screening with HPV detecti' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.020s
+16:13:39 [INFO] [query] Query: 'Primary pro-inflammatory cytokines induce secondar...' | Action: CHELATE
+16:13:39 [INFO] [query] Query: 'anti-inflammatory mediators....' | Action: CHELATE
+16:13:39 [INFO] [recursive_inference] Query: 'Primary pro-inflammatory cytokines induce secondar' | Nodes: 3 | Depth: 1 | Leaves: 2 | Results: 10 | 0.040s
+16:13:39 [INFO] [query] Query: 'Proteins synthesized at the growth cone are ubiqui...' | Action: CHELATE
+16:13:39 [INFO] [recursive_inference] Query: 'Proteins synthesized at the growth cone are ubiqui' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.018s
+16:13:39 [INFO] [query] Query: 'Pseudogene PTENP1 regulates the expression of PTEN...' | Action: CHELATE
+16:13:39 [INFO] [recursive_inference] Query: 'Pseudogene PTENP1 regulates the expression of PTEN' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.019s
+16:13:39 [INFO] [query] Query: 'Pyridostatin destabilizes the G - quadruplex in th...' | Action: CHELATE
+16:13:39 [INFO] [recursive_inference] Query: 'Pyridostatin destabilizes the G - quadruplex in th' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.019s
+16:13:40 [INFO] [query] Query: 'Radioiodine treatment of non-toxic multinodular go...' | Action: CHELATE
+16:13:40 [INFO] [recursive_inference] Query: 'Radioiodine treatment of non-toxic multinodular go' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.021s
+16:13:40 [INFO] [query] Query: 'Rapamycin decreases the concentration of triacylgl...' | Action: CHELATE
+16:13:40 [INFO] [recursive_inference] Query: 'Rapamycin decreases the concentration of triacylgl' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.021s
+16:13:40 [INFO] [query] Query: 'Rapid phosphotransfer rates govern fidelity in two...' | Action: CHELATE
+16:13:40 [INFO] [recursive_inference] Query: 'Rapid phosphotransfer rates govern fidelity in two' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.021s
+16:13:40 [INFO] [query] Query: 'Rapid up-regulation...' | Action: CHELATE
+16:13:40 [INFO] [query] Query: 'higher basal expression of interferon-induced gene...' | Action: CHELATE
+16:13:40 [INFO] [recursive_inference] Query: 'Rapid up-regulation and higher basal expression of' | Nodes: 3 | Depth: 1 | Leaves: 2 | Results: 10 | 0.041s
+16:13:40 [INFO] [query] Query: 'Rapid up-regulation...' | Action: CHELATE
+16:13:40 [INFO] [query] Query: 'higher basal expression of interferon-induced gene...' | Action: CHELATE
+16:13:40 [INFO] [recursive_inference] Query: 'Rapid up-regulation and higher basal expression of' | Nodes: 3 | Depth: 1 | Leaves: 2 | Results: 10 | 0.038s
+16:13:40 [INFO] [query] Query: 'Recurrent mutations occur frequently within CTCF a...' | Action: CHELATE
+16:13:40 [INFO] [recursive_inference] Query: 'Recurrent mutations occur frequently within CTCF a' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.021s
+16:13:40 [INFO] [query] Query: 'Reduced responsiveness to interleukin-2 in regulat...' | Action: CHELATE
+16:13:40 [INFO] [recursive_inference] Query: 'Reduced responsiveness to interleukin-2 in regulat' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.021s
+16:13:40 [INFO] [query] Query: 'Replacement of histone H2A with H2A.Z slows gene a...' | Action: CHELATE
+16:13:40 [INFO] [recursive_inference] Query: 'Replacement of histone H2A with H2A.Z slows gene a' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.022s
+16:13:40 [INFO] [query] Query: 'Ribosomopathies have a low degree of cell...' | Action: CHELATE
+16:13:40 [INFO] [query] Query: 'tissue specific pathology....' | Action: CHELATE
+16:13:40 [INFO] [recursive_inference] Query: 'Ribosomopathies have a low degree of cell and tiss' | Nodes: 3 | Depth: 1 | Leaves: 2 | Results: 10 | 0.037s
+16:13:40 [INFO] [query] Query: 'S-nitrosylated GAPDH physiologically transnitrosyl...' | Action: CHELATE
+16:13:40 [INFO] [recursive_inference] Query: 'S-nitrosylated GAPDH physiologically transnitrosyl' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.020s
+16:13:40 [INFO] [query] Query: 'Sildenafil improves erectile function in men who e...' | Action: CHELATE
+16:13:40 [INFO] [recursive_inference] Query: 'Sildenafil improves erectile function in men who e' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.020s
+16:13:40 [INFO] [query] Query: 'Silencing of Bcl2 is important for the maintenance...' | Action: CHELATE
+16:13:40 [INFO] [query] Query: 'progression of tumors....' | Action: CHELATE
+16:13:40 [INFO] [recursive_inference] Query: 'Silencing of Bcl2 is important for the maintenance' | Nodes: 3 | Depth: 1 | Leaves: 2 | Results: 10 | 0.038s
+16:13:40 [INFO] [query] Query: 'Smc5/6 engagment drives the activation of SUMO E3 ...' | Action: CHELATE
+16:13:40 [INFO] [recursive_inference] Query: 'Smc5/6 engagment drives the activation of SUMO E3 ' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.019s
+16:13:40 [INFO] [query] Query: 'Statins decrease blood cholesterol....' | Action: CHELATE
+16:13:40 [INFO] [recursive_inference] Query: 'Statins decrease blood cholesterol.' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.020s
+16:13:40 [INFO] [query] Query: 'Statins increase blood cholesterol....' | Action: CHELATE
+16:13:40 [INFO] [recursive_inference] Query: 'Statins increase blood cholesterol.' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.020s
+16:13:40 [INFO] [query] Query: 'Stroke patients with prior use of direct oral anti...' | Action: CHELATE
+16:13:40 [INFO] [recursive_inference] Query: 'Stroke patients with prior use of direct oral anti' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.020s
+16:13:40 [INFO] [query] Query: 'Subcutaneous fat depots undergo extensive browning...' | Action: CHELATE
+16:13:40 [INFO] [recursive_inference] Query: 'Subcutaneous fat depots undergo extensive browning' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.018s
+16:13:40 [INFO] [query] Query: 'Suboptimal nutrition is not predictive of chronic ...' | Action: CHELATE
+16:13:40 [INFO] [recursive_inference] Query: 'Suboptimal nutrition is not predictive of chronic ' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.020s
+16:13:40 [INFO] [query] Query: 'Synaptic activity enhances local release of brain ...' | Action: CHELATE
+16:13:40 [INFO] [recursive_inference] Query: 'Synaptic activity enhances local release of brain ' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.022s
+16:13:40 [INFO] [query] Query: 'TCR/CD3 microdomains are a required to induce the ...' | Action: CHELATE
+16:13:40 [INFO] [recursive_inference] Query: 'TCR/CD3 microdomains are a required to induce the ' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.018s
+16:13:40 [INFO] [query] Query: 'TNFAIP3 is a tumor suppressor in glioblastoma....' | Action: CHELATE
+16:13:40 [INFO] [recursive_inference] Query: 'TNFAIP3 is a tumor suppressor in glioblastoma.' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.022s
+16:13:40 [INFO] [query] Query: 'Taxation of sugar-sweetened beverages had no effec...' | Action: CHELATE
+16:13:40 [INFO] [recursive_inference] Query: 'Taxation of sugar-sweetened beverages had no effec' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.020s
+16:13:40 [INFO] [query] Query: 'Teaching hospitals do not provide better care than...' | Action: CHELATE
+16:13:40 [INFO] [recursive_inference] Query: 'Teaching hospitals do not provide better care than' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.021s
+16:13:40 [INFO] [query] Query: 'Tetraspanin-3 is a causative factor in the develop...' | Action: CHELATE
+16:13:40 [INFO] [recursive_inference] Query: 'Tetraspanin-3 is a causative factor in the develop' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.020s
+16:13:40 [INFO] [query] Query: 'The DdrB protein from Deinococcus radiodurans is a...' | Action: CHELATE
+16:13:40 [INFO] [recursive_inference] Query: 'The DdrB protein from Deinococcus radiodurans is a' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.021s
+16:13:40 [INFO] [query] Query: 'The PPR MDA5 has two N-terminal CARD domains....' | Action: CHELATE
+16:13:40 [INFO] [recursive_inference] Query: 'The PPR MDA5 has two N-terminal CARD domains.' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.018s
+16:13:40 [INFO] [query] Query: 'The PRR MDA5 has a central DExD/H RNA helices doma...' | Action: CHELATE
+16:13:40 [INFO] [recursive_inference] Query: 'The PRR MDA5 has a central DExD/H RNA helices doma' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.019s
+16:13:40 [INFO] [query] Query: 'The PRR MDA5 is a sensor of RNA virus infection....' | Action: CHELATE
+16:13:40 [INFO] [recursive_inference] Query: 'The PRR MDA5 is a sensor of RNA virus infection.' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.021s
+16:13:40 [INFO] [query] Query: 'The US health care system can save up to $750 mill...' | Action: CHELATE
+16:13:40 [INFO] [recursive_inference] Query: 'The US health care system can save up to $750 mill' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.021s
+16:13:40 [INFO] [query] Query: 'The YAP1...' | Action: CHELATE
+16:13:40 [INFO] [query] Query: 'TEAD complex tanslocates into the nucleus where it...' | Action: CHELATE
+16:13:40 [INFO] [query] Query: 'DNA-binding proteins that modulate target gene tra...' | Action: CHELATE
+16:13:40 [INFO] [recursive_inference] Query: 'The YAP1 and TEAD complex tanslocates into the nuc' | Nodes: 5 | Depth: 2 | Leaves: 3 | Results: 10 | 0.055s
+16:13:40 [INFO] [query] Query: 'The amount of publicly available DNA data doubles ...' | Action: CHELATE
+16:13:40 [INFO] [recursive_inference] Query: 'The amount of publicly available DNA data doubles ' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.019s
+16:13:40 [INFO] [query] Query: 'The arm density of TatAd complexes is due to struc...' | Action: CHELATE
+16:13:40 [INFO] [recursive_inference] Query: 'The arm density of TatAd complexes is due to struc' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.023s
+16:13:40 [INFO] [query] Query: 'The availability of safe places to study is effect...' | Action: CHELATE
+16:13:40 [INFO] [recursive_inference] Query: 'The availability of safe places to study is effect' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.021s
+16:13:40 [INFO] [query] Query: 'The availability of safe places to study is not ef...' | Action: CHELATE
+16:13:40 [INFO] [recursive_inference] Query: 'The availability of safe places to study is not ef' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.021s
+16:13:40 [INFO] [query] Query: 'The benefits of colchicine were achieved with effe...' | Action: CHELATE
+16:13:40 [INFO] [recursive_inference] Query: 'The benefits of colchicine were achieved with effe' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.020s
+16:13:40 [INFO] [query] Query: 'The binding orientation of the ML-SA1 activator at...' | Action: CHELATE
+16:13:40 [INFO] [recursive_inference] Query: 'The binding orientation of the ML-SA1 activator at' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.020s
+16:13:40 [INFO] [query] Query: 'The center of the granuloma in an immune cell indu...' | Action: CHELATE
+16:13:40 [INFO] [recursive_inference] Query: 'The center of the granuloma in an immune cell indu' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.020s
+16:13:40 [INFO] [query] Query: 'The combination of H3K4me3...' | Action: CHELATE
+16:13:40 [INFO] [query] Query: 'H3K79me2 is found in quiescent hair follicle stem ...' | Action: CHELATE
+16:13:40 [INFO] [recursive_inference] Query: 'The combination of H3K4me3 and H3K79me2 is found i' | Nodes: 3 | Depth: 1 | Leaves: 2 | Results: 10 | 0.039s
+16:13:40 [INFO] [query] Query: 'The composition of myosin-II isoform switches from...' | Action: CHELATE
+16:13:40 [INFO] [recursive_inference] Query: 'The composition of myosin-II isoform switches from' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.022s
+16:13:41 [INFO] [query] Query: 'The deregulated...' | Action: CHELATE
+16:13:41 [INFO] [query] Query: 'prolonged activation of monocytes has deleterious ...' | Action: CHELATE
+16:13:41 [INFO] [recursive_inference] Query: 'The deregulated and prolonged activation of monocy' | Nodes: 3 | Depth: 1 | Leaves: 2 | Results: 10 | 0.041s
+16:13:41 [INFO] [query] Query: 'The extracellular domain of TMEM27 is cleaved in h...' | Action: CHELATE
+16:13:41 [INFO] [recursive_inference] Query: 'The extracellular domain of TMEM27 is cleaved in h' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.021s
+16:13:41 [INFO] [query] Query: 'The genomic aberrations found in matasteses are ve...' | Action: CHELATE
+16:13:41 [INFO] [recursive_inference] Query: 'The genomic aberrations found in matasteses are ve' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.021s
+16:13:41 [INFO] [query] Query: 'The locus rs647161 is associated with colorectal c...' | Action: CHELATE
+16:13:41 [INFO] [recursive_inference] Query: 'The locus rs647161 is associated with colorectal c' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.020s
+16:13:41 [INFO] [query] Query: 'The loss of the TET protein functions may have dir...' | Action: CHELATE
+16:13:41 [INFO] [recursive_inference] Query: 'The loss of the TET protein functions may have dir' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.018s
+16:13:41 [INFO] [query] Query: 'The minor G allele of FOXO3 is related to more sev...' | Action: CHELATE
+16:13:41 [INFO] [recursive_inference] Query: 'The minor G allele of FOXO3 is related to more sev' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.019s
+16:13:41 [INFO] [query] Query: 'The myocardial lineage develops from cardiac proge...' | Action: CHELATE
+16:13:41 [INFO] [recursive_inference] Query: 'The myocardial lineage develops from cardiac proge' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.020s
+16:13:41 [INFO] [query] Query: 'The one-child policy has been successful in loweri...' | Action: CHELATE
+16:13:41 [INFO] [recursive_inference] Query: 'The one-child policy has been successful in loweri' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.018s
+16:13:41 [INFO] [query] Query: 'The relationship between a breast cancer patient's...' | Action: CHELATE
+16:13:41 [INFO] [query] Query: 'treatment outcome is dependent on the patient's ge...' | Action: CHELATE
+16:13:41 [INFO] [recursive_inference] Query: 'The relationship between a breast cancer patient's' | Nodes: 3 | Depth: 1 | Leaves: 2 | Results: 10 | 0.041s
+16:13:41 [INFO] [query] Query: 'The repair of Cas9-induced double strand breaks in...' | Action: CHELATE
+16:13:41 [INFO] [recursive_inference] Query: 'The repair of Cas9-induced double strand breaks in' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.020s
+16:13:41 [INFO] [query] Query: 'The risk of breast cancer among parous women incre...' | Action: CHELATE
+16:13:41 [INFO] [query] Query: 'this association is strongest for premenopausal br...' | Action: CHELATE
+16:13:41 [INFO] [recursive_inference] Query: 'The risk of breast cancer among parous women incre' | Nodes: 3 | Depth: 1 | Leaves: 2 | Results: 10 | 0.044s
+16:13:41 [INFO] [query] Query: 'The risk of male prisoners harming themselves is t...' | Action: CHELATE
+16:13:41 [INFO] [recursive_inference] Query: 'The risk of male prisoners harming themselves is t' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.020s
+16:13:41 [INFO] [query] Query: 'The severity of cardiac involvement in amyloidosis...' | Action: CHELATE
+16:13:41 [INFO] [recursive_inference] Query: 'The severity of cardiac involvement in amyloidosis' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.021s
+16:13:41 [INFO] [query] Query: 'The single flash-evoked ERG b-wave is generated by...' | Action: CHELATE
+16:13:41 [INFO] [recursive_inference] Query: 'The single flash-evoked ERG b-wave is generated by' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.022s
+16:13:41 [INFO] [query] Query: 'The sliding activity of kinesin-8 protein Kip3 pro...' | Action: CHELATE
+16:13:41 [INFO] [recursive_inference] Query: 'The sliding activity of kinesin-8 protein Kip3 pro' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.022s
+16:13:41 [INFO] [query] Query: 'The tip of the inner tube of the toxic type VI sec...' | Action: CHELATE
+16:13:41 [INFO] [recursive_inference] Query: 'The tip of the inner tube of the toxic type VI sec' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.023s
+16:13:41 [INFO] [query] Query: 'The treatment of cancer patients with co-IR blocka...' | Action: CHELATE
+16:13:41 [INFO] [recursive_inference] Query: 'The treatment of cancer patients with co-IR blocka' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.022s
+16:13:41 [INFO] [query] Query: 'The treatment of cancer patients with co-IR blocka...' | Action: CHELATE
+16:13:41 [INFO] [recursive_inference] Query: 'The treatment of cancer patients with co-IR blocka' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.022s
+16:13:41 [INFO] [query] Query: 'The ureABIEFGH gene cluster encodes urease maturat...' | Action: CHELATE
+16:13:41 [INFO] [query] Query: 'UreG....' | Action: CHELATE
+16:13:41 [INFO] [recursive_inference] Query: 'The ureABIEFGH gene cluster encodes urease maturat' | Nodes: 3 | Depth: 1 | Leaves: 2 | Results: 10 | 0.038s
+16:13:41 [INFO] [query] Query: 'The ureABIEFGH gene cluster is induced by nickel (...' | Action: CHELATE
+16:13:41 [INFO] [recursive_inference] Query: 'The ureABIEFGH gene cluster is induced by nickel (' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.020s
+16:13:41 [INFO] [query] Query: 'Therapeutic use of the drug Dapsone to treat pyode...' | Action: CHELATE
+16:13:41 [INFO] [recursive_inference] Query: 'Therapeutic use of the drug Dapsone to treat pyode' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.021s
+16:13:41 [INFO] [query] Query: 'There is an inverse relationship between hip fract...' | Action: CHELATE
+16:13:41 [INFO] [query] Query: 'statin use....' | Action: CHELATE
+16:13:41 [INFO] [recursive_inference] Query: 'There is an inverse relationship between hip fract' | Nodes: 3 | Depth: 1 | Leaves: 2 | Results: 10 | 0.036s
+16:13:41 [INFO] [query] Query: 'There is no association between HNF4A mutations...' | Action: CHELATE
+16:13:41 [INFO] [query] Query: 'diabetes risks....' | Action: CHELATE
+16:13:41 [INFO] [recursive_inference] Query: 'There is no association between HNF4A mutations an' | Nodes: 3 | Depth: 1 | Leaves: 2 | Results: 10 | 0.037s
+16:13:41 [INFO] [query] Query: 'Thigh-length graduated compression stockings (GCS)...' | Action: CHELATE
+16:13:41 [INFO] [recursive_inference] Query: 'Thigh-length graduated compression stockings (GCS)' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.021s
+16:13:41 [INFO] [query] Query: 'Tirasemtiv has no effect on fast-twitch muscle....' | Action: CHELATE
+16:13:41 [INFO] [recursive_inference] Query: 'Tirasemtiv has no effect on fast-twitch muscle.' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.020s
+16:13:41 [INFO] [query] Query: 'Transferred UCB T cells acquire a memory-like phen...' | Action: CHELATE
+16:13:41 [INFO] [recursive_inference] Query: 'Transferred UCB T cells acquire a memory-like phen' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.021s
+16:13:41 [INFO] [query] Query: 'Transplanted human glial cells can differentiate w...' | Action: CHELATE
+16:13:41 [INFO] [recursive_inference] Query: 'Transplanted human glial cells can differentiate w' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.020s
+16:13:41 [INFO] [query] Query: 'Transplanted human glial progenitor cells are inca...' | Action: CHELATE
+16:13:41 [INFO] [recursive_inference] Query: 'Transplanted human glial progenitor cells are inca' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.018s
+16:13:41 [INFO] [query] Query: 'interleukin-1 (IL-1) are pro-inflammatory cytokine...' | Action: CHELATE
+16:13:41 [INFO] [query] Query: 'IL-10....' | Action: CHELATE
+16:13:41 [INFO] [query] Query: 'UCB T cells maintain high TCR diversity after tran...' | Action: CHELATE
+16:13:41 [INFO] [recursive_inference] Query: 'UCB T cells maintain high TCR diversity after tran' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.019s
+16:13:41 [INFO] [query] Query: 'UCB T cells reduce TCR diversity after transplanta...' | Action: CHELATE
+16:13:41 [INFO] [recursive_inference] Query: 'UCB T cells reduce TCR diversity after transplanta' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.019s
+16:13:41 [INFO] [query] Query: 'Ubiquitin ligase UBC13 generates a K63-linked poly...' | Action: CHELATE
+16:13:41 [INFO] [recursive_inference] Query: 'Ubiquitin ligase UBC13 generates a K63-linked poly' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.022s
+16:13:41 [INFO] [query] Query: 'Ultrasound guidance significantly raises the numbe...' | Action: CHELATE
+16:13:41 [INFO] [recursive_inference] Query: 'Ultrasound guidance significantly raises the numbe' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.018s
+16:13:41 [INFO] [query] Query: 'Up-regulation of the p53 pathway...' | Action: CHELATE
+16:13:41 [INFO] [query] Query: 'related molecular events casues cancer resistance...' | Action: CHELATE
+16:13:41 [INFO] [query] Query: 'results in a significantly shortened lifespan mark...' | Action: CHELATE
+16:13:41 [INFO] [query] Query: 'accelerated organismal aging....' | Action: CHELATE
+16:13:41 [INFO] [recursive_inference] Query: 'Up-regulation of the p53 pathway and related molec' | Nodes: 7 | Depth: 3 | Leaves: 4 | Results: 10 | 0.071s
+16:13:41 [INFO] [query] Query: 'Upregulation of mosGCTL-1 is induced upon infectio...' | Action: CHELATE
+16:13:41 [INFO] [recursive_inference] Query: 'Upregulation of mosGCTL-1 is induced upon infectio' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.021s
+16:13:41 [INFO] [query] Query: 'Varenicline monotherapy is more effective after 12...' | Action: CHELATE
+16:13:41 [INFO] [query] Query: 'combination nicotine replacement therapies with va...' | Action: CHELATE
+16:13:41 [INFO] [query] Query: 'bupropion....' | Action: CHELATE
+16:13:41 [INFO] [recursive_inference] Query: 'Varenicline monotherapy is more effective after 12' | Nodes: 5 | Depth: 2 | Leaves: 3 | Results: 10 | 0.055s
+16:13:42 [INFO] [query] Query: 'Venules have a larger lumen diameter than arteriol...' | Action: CHELATE
+16:13:42 [INFO] [recursive_inference] Query: 'Venules have a larger lumen diameter than arteriol' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.018s
+16:13:42 [INFO] [query] Query: 'Venules have a thinner...' | Action: CHELATE
+16:13:42 [INFO] [query] Query: 'absent smooth layer...' | Action: CHELATE
+16:13:42 [INFO] [query] Query: 'arterioles....' | Action: CHELATE
+16:13:42 [INFO] [recursive_inference] Query: 'Venules have a thinner or absent smooth layer comp' | Nodes: 5 | Depth: 2 | Leaves: 3 | Results: 10 | 0.057s
+16:13:42 [INFO] [query] Query: 'Vitamin D deficiency effects the term of delivery....' | Action: CHELATE
+16:13:42 [INFO] [recursive_inference] Query: 'Vitamin D deficiency effects the term of delivery.' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.020s
+16:13:42 [INFO] [query] Query: 'Vitamin D deficiency is unrelated to birth weight....' | Action: CHELATE
+16:13:42 [INFO] [recursive_inference] Query: 'Vitamin D deficiency is unrelated to birth weight.' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.017s
+16:13:42 [INFO] [query] Query: 'Women with a higher birth weight are more likely t...' | Action: CHELATE
+16:13:42 [INFO] [recursive_inference] Query: 'Women with a higher birth weight are more likely t' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.019s
+16:13:42 [INFO] [query] Query: 'aPKCz causes tumour enhancement by affecting gluta...' | Action: CHELATE
+16:13:42 [INFO] [recursive_inference] Query: 'aPKCz causes tumour enhancement by affecting gluta' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.019s
+16:13:42 [INFO] [query] Query: 'cSMAC formation enhances weak ligand signalling....' | Action: CHELATE
+16:13:42 [INFO] [recursive_inference] Query: 'cSMAC formation enhances weak ligand signalling.' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.017s
+16:13:42 [INFO] [query] Query: 'mTORC2 regulates intracellular cysteine levels thr...' | Action: CHELATE
+16:13:42 [INFO] [recursive_inference] Query: 'mTORC2 regulates intracellular cysteine levels thr' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.019s
+16:13:42 [INFO] [query] Query: 'p16INK4A accumulation is  linked to an abnormal wo...' | Action: CHELATE
+16:13:42 [INFO] [recursive_inference] Query: 'p16INK4A accumulation is  linked to an abnormal wo' | Nodes: 1 | Depth: 0 | Leaves: 1 | Results: 10 | 0.020s
+Recursive NDCG@10: 0.55391
+Total time: 7.38s
+
+============================================================
+  RESULTS
+============================================================
+
+Standard  NDCG@10:  0.58431  (6.48s total)
+Recursive NDCG@10:  0.55391  (7.38s total)
+Delta:                -0.03041  (-5.20%)
+
+Recursive Retrieval Statistics:
+  Avg nodes per query:      1.4
+  Avg max depth reached:    0.2
+  Avg retrieval calls:      1.2
+  Avg latency per query:    0.024s
+  Std latency per query:    0.021s
+  Retrieval overhead:       1.2x vs 1x standard
+  Latency overhead:         1.1x
+
+Per-Query Decomposition Benefit:
+  Queries improved:   2/300 (0.7%)
+  Queries degraded:   24/300 (8.0%)
+  Queries unchanged:  274/300 (91.3%)
+
+  Decomposed queries (50):
+    Standard NDCG@10:  0.58864
+    Recursive NDCG@10: 0.40620
+    Delta:               -0.18245
+
+  Atomic queries (250):
+    Standard NDCG@10:  0.58345
+    Recursive NDCG@10: 0.58345
+    Delta:               +0.00000
+
+------------------------------------------------------------
+Configuration:
+  Decomposer:   mock
+  Aggregation:  union
+  Max depth:    3
+  Top-k:        10
+  Model:        all-MiniLM-L6-v2
+  Task:         SciFact
+------------------------------------------------------------

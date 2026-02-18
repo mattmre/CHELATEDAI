@@ -17,6 +17,7 @@ from sedimentation_trainer import compute_homeostatic_target, sync_vectors_to_qd
 from checkpoint_manager import CheckpointManager, SafeTrainingContext
 from embedding_backend import create_embedding_backend
 from vector_store import create_vector_store
+from antigravity_components import ChelationComponents
 
 class AntigravityEngine:
     def __init__(self, qdrant_location=":memory:", chelation_p=ChelationConfig.DEFAULT_CHELATION_P, model_name='ollama:nomic-embed-text', use_centering=False, use_quantization=False, training_mode: str = "baseline", teacher_model_name: Optional[str] = None, teacher_weight: float = 0.5, store_full_text_payload: Optional[bool] = None):
@@ -41,6 +42,9 @@ class AntigravityEngine:
         
         # F-040: Payload optimization control (default to config for backward compatibility)
         self.store_full_text_payload = store_full_text_payload if store_full_text_payload is not None else ChelationConfig.STORE_FULL_TEXT_PAYLOAD
+        
+        # F-047: Explicit initialization of invert_chelation (no hasattr guard needed)
+        self.invert_chelation = False
         
         # Adaptive threshold state (disabled by default for backward compatibility)
         self._adaptive_threshold_enabled = False
@@ -127,6 +131,17 @@ class AntigravityEngine:
         # Initialize checkpoint manager for safe training (F-043)
         self.checkpoint_manager = CheckpointManager()
         self.logger.log_event("checkpoint_manager_init", "CheckpointManager initialized for safe training")
+        
+        # Initialize chelation components (F-046: Scoped decomposition)
+        self._components = ChelationComponents(
+            qdrant_client=self.qdrant,
+            collection_name=self.collection_name,
+            vector_size=self.vector_size,
+            chelation_p=self.chelation_p,
+            logger=self.logger,
+            chelation_log=self.chelation_log,
+            invert_chelation=self.invert_chelation  # F-047: Use explicit attribute
+        )
 
     def embed(self, texts):
         """Get Embeddings via backend abstraction."""
@@ -351,44 +366,14 @@ class AntigravityEngine:
 
     def _gravity_sensor(self, query_vec, top_k=ChelationConfig.SCOUT_K):
         """Phase 1: Detects Local Curvature (Entropy) around the query."""
-        try:
-            # F-040: Use with_payload=False since we only need vectors here
-            search_result = self.qdrant.query_points(
-                collection_name=self.collection_name,
-                query=query_vec,
-                limit=top_k,
-                with_vectors=True,
-                with_payload=ChelationConfig.FETCH_PAYLOAD_ON_QUERY
-            ).points
-            
-            if not search_result:
-                return np.array([])
-                
-            vectors = [hit.vector for hit in search_result]
-            return np.array(vectors)
-        except (ResponseHandlingException, UnexpectedResponse) as e:
-            self.logger.log_error("qdrant", f"Qdrant error in _gravity_sensor: {e}", exception=e)
-            return np.array([])
+        # F-046: Delegate to ChelationComponents
+        return self._components.gravity_sensor(query_vec, top_k)
 
     def _chelate_toxicity(self, local_cluster):
         """Phase 2: The Antigravity Mechanism (Binding Toxic Dimensions)."""
-        if len(local_cluster) == 0:
-            return np.ones(self.vector_size)
-
-        # Calculate Variance per dimension
-        dim_variance = np.var(local_cluster, axis=0)
-        
-        if hasattr(self, 'invert_chelation') and self.invert_chelation:
-            # INVERTED: Keep Top P% (High Variance), Mask Bottom (Noise)
-            # Threshold at (100 - P)th percentile
-            threshold = np.percentile(dim_variance, 100 - self.chelation_p)
-            mask = (dim_variance > threshold).astype(float)
-        else:
-            # ORIGINAL: Keep Bottom P% (Stable), Mask Top (Toxic)
-            threshold = np.percentile(dim_variance, self.chelation_p)
-            mask = (dim_variance < threshold).astype(float)
-        
-        return mask
+        # F-046: Delegate to ChelationComponents
+        self._components.invert_chelation = self.invert_chelation
+        return self._components.chelate_toxicity(local_cluster)
 
     def get_chelated_vector(self, query_text):
         """
@@ -582,11 +567,8 @@ class AntigravityEngine:
 
     def _cosine_similarity_manual(self, vec1, vec2):
         """Calculates Cosine Similarity manually."""
-        norm1 = np.linalg.norm(vec1)
-        norm2 = np.linalg.norm(vec2)
-        if norm1 == 0 or norm2 == 0:
-            return 0.0
-        return np.dot(vec1, vec2) / (norm1 * norm2)
+        # F-046: Delegate to ChelationComponents
+        return self._components.cosine_similarity_manual(vec1, vec2)
 
     def _spectral_chelation_ranking(self, query_vec, local_vectors, local_ids):
         """
@@ -595,51 +577,9 @@ class AntigravityEngine:
         2. Subtract Mean from Query and Candidates.
         3. Rerank using centered vectors.
         """
-        if not local_vectors:
-            return local_ids, []
-
-        local_np = np.array(local_vectors)
-        
-        # 1. Center of Mass
-        center_of_mass = np.mean(local_np, axis=0)
-        
-        # [HOMEOSTATIC LOGGING]
-        # Record that these documents participated in a cluster with this 'Noise Center'
-        # We only log if this is a "dense" cluster (checking variance is done in caller, so assume yes)
-        max_entries = ChelationConfig.CHELATION_LOG_MAX_ENTRIES_PER_DOC
-        for doc_id in local_ids:
-            self.chelation_log[doc_id].append(center_of_mass)
-            # Cap log size to prevent unbounded memory growth
-            if len(self.chelation_log[doc_id]) > max_entries:
-                # Keep most recent entries
-                self.chelation_log[doc_id] = self.chelation_log[doc_id][-max_entries:]
-        
-        # 2. Shift Reference Frame
-        # V_new = V_old - mu
-        centered_query = query_vec - center_of_mass
-        centered_candidates = local_np - center_of_mass
-        
-        # 3. Recalculate Similarities (vectorized)
-        # Compute norms
-        query_norm = np.linalg.norm(centered_query)
-        candidate_norms = np.linalg.norm(centered_candidates, axis=1)
-        
-        # Compute dot products: shape (n_candidates,)
-        dots = np.dot(centered_candidates, centered_query)
-        
-        # Compute cosine similarities, handling zero norms
-        # Where either norm is zero, keep score at 0.0
-        denominators = query_norm * candidate_norms
-        scores_vec = np.zeros(len(local_ids), dtype=np.float64)
-        valid = denominators != 0
-        scores_vec[valid] = dots[valid] / denominators[valid]
-        
-        # Pair with IDs and sort
-        scores = [(local_ids[i], scores_vec[i]) for i in range(len(local_ids))]
-        scores.sort(key=lambda x: x[1], reverse=True)
-        
-        sorted_ids = [s[0] for s in scores]
-        return sorted_ids, center_of_mass
+        # F-046: Delegate to ChelationComponents
+        self._components.chelation_log = self.chelation_log
+        return self._components.spectral_chelation_ranking(query_vec, local_vectors, local_ids)
 
     def run_sedimentation_cycle(self, threshold=ChelationConfig.DEFAULT_COLLAPSE_THRESHOLD, learning_rate=ChelationConfig.DEFAULT_LEARNING_RATE, epochs=ChelationConfig.DEFAULT_EPOCHS):
         """

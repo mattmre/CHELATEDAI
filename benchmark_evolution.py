@@ -6,7 +6,7 @@ from antigravity_engine import AntigravityEngine
 from typing import Dict, List
 
 # Import shared utilities from benchmark_utils
-from benchmark_utils import dcg_at_k, ndcg_at_k, find_keys, find_payload, load_mteb_data
+from benchmark_utils import canonicalize_id, dcg_at_k, ndcg_at_k, find_keys, find_payload, load_mteb_data
 
 def evaluate_ndcg(engine, queries, qrels, k=10):
     ndcg_scores = []
@@ -32,18 +32,19 @@ def evaluate_ndcg(engine, queries, qrels, k=10):
         # Optimization: Fetch payloads for all pred_ids at once
         try:
             points = engine.qdrant.retrieve(engine.collection_name, ids=pred_ids)
-            # map qdrant_id -> original_id
+            # Build map with canonicalized keys to handle type mismatches
             id_map = {}
             for p in points:
+                canonical_key = canonicalize_id(p.id)
                 if p.payload and 'original_id' in p.payload:
-                    id_map[p.id] = str(p.payload['original_id'])
+                    id_map[canonical_key] = canonicalize_id(p.payload['original_id'])
                 else:
-                    id_map[p.id] = str(p.id)
-
-            mapped_preds = [id_map.get(pid, str(pid)) for pid in pred_ids]
+                    id_map[canonical_key] = canonical_key
+            # Lookup with canonicalized pred_ids
+            mapped_preds = [id_map.get(canonicalize_id(pid), canonicalize_id(pid)) for pid in pred_ids]
         except Exception as e:
             print(f"WARNING: ID mapping failed for query {q_id}: {e}, using raw IDs")
-            mapped_preds = [str(pid) for pid in pred_ids]
+            mapped_preds = [canonicalize_id(pid) for pid in pred_ids]
              
         # Boolean relevance array
         relevance = [1 if pid in relevant_docs else 0 for pid in mapped_preds]

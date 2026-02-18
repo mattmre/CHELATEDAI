@@ -14,7 +14,54 @@ import math
 if 'mteb' not in sys.modules:
     sys.modules['mteb'] = MagicMock()
 
-from benchmark_utils import dcg_at_k, ndcg_at_k, find_keys, find_payload, load_mteb_data
+from benchmark_utils import canonicalize_id, dcg_at_k, ndcg_at_k, find_keys, find_payload, load_mteb_data
+
+
+# =============================================================================
+# canonicalize_id tests
+# =============================================================================
+
+class TestCanonicalizeId(unittest.TestCase):
+    """Tests for ID canonicalization helper."""
+
+    def test_canonicalize_id_integer(self):
+        """Integer IDs should be converted to strings."""
+        self.assertEqual(canonicalize_id(123), "123")
+        self.assertEqual(canonicalize_id(0), "0")
+        self.assertEqual(canonicalize_id(-42), "-42")
+
+    def test_canonicalize_id_string(self):
+        """String IDs should remain unchanged."""
+        self.assertEqual(canonicalize_id("doc_123"), "doc_123")
+        self.assertEqual(canonicalize_id("abc"), "abc")
+        self.assertEqual(canonicalize_id(""), "")
+
+    def test_canonicalize_id_uuid(self):
+        """UUID IDs should be converted to string representation."""
+        from uuid import UUID
+        test_uuid = UUID('12345678-1234-5678-1234-567812345678')
+        result = canonicalize_id(test_uuid)
+        self.assertEqual(result, '12345678-1234-5678-1234-567812345678')
+        self.assertIsInstance(result, str)
+
+    def test_canonicalize_id_numeric_string(self):
+        """Numeric strings should remain as-is (not converted to int then back)."""
+        self.assertEqual(canonicalize_id("123"), "123")
+        self.assertEqual(canonicalize_id("0"), "0")
+
+    def test_canonicalize_id_idempotent(self):
+        """Calling canonicalize_id twice should produce the same result."""
+        from uuid import UUID
+        test_values = [123, "doc_abc", UUID('12345678-1234-5678-1234-567812345678')]
+        for val in test_values:
+            first = canonicalize_id(val)
+            second = canonicalize_id(first)
+            self.assertEqual(first, second)
+
+    def test_canonicalize_id_equality_after_canonicalization(self):
+        """int and str versions of same ID should canonicalize to equal values."""
+        self.assertEqual(canonicalize_id(456), canonicalize_id("456"))
+        self.assertEqual(canonicalize_id(0), canonicalize_id("0"))
 
 
 # =============================================================================

@@ -1,0 +1,80 @@
+{
+  "config": {
+    "tasks": [
+      "SciFact"
+    ],
+    "model": "all-MiniLM-L6-v2",
+    "max_queries": 5,
+    "num_queries_train": 3,
+    "epochs": 1,
+    "learning_rate": 0.001,
+    "stability_runs": 2
+  },
+  "task_results": [
+    {
+      "task": "SciFact",
+      "status": "success",
+      "corpus_size": 5183,
+      "num_queries": 300,
+      "num_qrels": 300,
+      "ingest_time": 110.72655844688416,
+      "retrieval_quality": {
+        "ndcg_10": 0.4456798895236839,
+        "ndcg_std": 0.407109637947518,
+        "ndcg_list": [
+          0.43067655807339306,
+          0.0,
+          1.0,
+          0.0,
+          0.7977228895450266
+        ],
+        "time": 0.09521484375
+      },
+      "stability": {
+        "avg_jaccard": 1.0,
+        "jaccard_std": 0.0,
+        "jaccard_list": [
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "time": 0.1856541633605957
+      },
+      "learning_gain": {
+        "pre_ndcg": 0.4456798895236839,
+        "post_ndcg": 0.4456798895236839,
+        "gain": 0.0,
+        "gain_percent": 0.0,
+        "sediment_time": 0.0015218257904052734,
+        "time": 0.24943208694458008
+      }
+    }
+  ],
+  "aggregate_summary": {
+    "num_tasks": 1,
+    "num_successful": 1,
+    "num_failed": 0,
+    "aggregate_ndcg": {
+      "mean": 0.4456798895236839,
+      "std": 0.0,
+      "min": 0.4456798895236839,
+      "max": 0.4456798895236839
+    },
+    "aggregate_stability": {
+      "mean": 1.0,
+      "std": 0.0,
+      "min": 1.0,
+      "max": 1.0
+    },
+    "aggregate_learning_gain": {
+      "mean_gain": 0.0,
+      "mean_gain_percent": 0.0,
+      "std_gain": 0.0,
+      "positive_gains": 0,
+      "negative_gains": 0
+    }
+  },
+  "total_time": 114.20803570747375
+}

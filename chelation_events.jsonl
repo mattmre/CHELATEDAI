@@ -1,0 +1,28 @@
+{"timestamp": 1770942183.04974, "query_snippet": "distributed computing", "global_variance": 0.0018217560696775243, "action": "FAST", "top_10_ids": ["7", "0", "4", "1", "9", "3", "6", "8", "5", "2"]}
+{"timestamp": 1770942183.0578318, "query_snippet": "database optimization", "global_variance": 0.0018217560696775243, "action": "FAST", "top_10_ids": ["6", "8", "5", "0", "7", "9", "4", "1", "2", "3"]}
+{"timestamp": 1770942183.8987095, "query_snippet": "classification", "global_variance": 0.0018217656236379587, "action": "FAST", "top_10_ids": ["0", "3", "1", "5", "8", "6", "2", "4", "7", "9"]}
+{"timestamp": 1770942183.9077904, "query_snippet": "regression", "global_variance": 0.0018217656236379587, "action": "FAST", "top_10_ids": ["5", "0", "1", "3", "4", "2", "7", "6", "9", "8"]}
+{"timestamp": 1770942183.9173014, "query_snippet": "clustering", "global_variance": 0.0018217656236379587, "action": "FAST", "top_10_ids": ["5", "6", "7", "0", "3", "8", "1", "9", "4", "2"]}
+{"timestamp": 1770942185.7973912, "query_snippet": "machine learning", "global_variance": 0.0018227879381485315, "action": "FAST", "top_10_ids": ["0", "1", "5", "3", "4", "2", "8", "7", "6", "9"]}
+{"timestamp": 1770942185.8064284, "query_snippet": "neural networks", "global_variance": 0.001822787933018402, "action": "FAST", "top_10_ids": ["1", "3", "0", "4", "2", "5", "7", "6", "8", "9"]}
+{"timestamp": 1770942394.4309332, "query_snippet": "distributed computing", "global_variance": 0.0018227879381485315, "action": "FAST", "top_10_ids": ["7", "0", "4", "1", "9", "3", "6", "8", "5", "2"]}
+{"timestamp": 1770942394.4396408, "query_snippet": "database optimization", "global_variance": 0.0018227879330184023, "action": "FAST", "top_10_ids": ["6", "8", "5", "0", "7", "9", "4", "1", "2", "3"]}
+{"timestamp": 1770942395.2148936, "query_snippet": "classification", "global_variance": 0.0018227879381485315, "action": "FAST", "top_10_ids": ["0", "3", "1", "5", "8", "6", "2", "4", "7", "9"]}
+{"timestamp": 1770942395.2219245, "query_snippet": "regression", "global_variance": 0.001822787933018402, "action": "FAST", "top_10_ids": ["5", "0", "1", "3", "4", "2", "7", "6", "9", "8"]}
+{"timestamp": 1770942395.2304442, "query_snippet": "clustering", "global_variance": 0.0018227879612783097, "action": "FAST", "top_10_ids": ["5", "6", "7", "0", "3", "8", "9", "1", "4", "2"]}
+{"timestamp": 1770942396.8040035, "query_snippet": "machine learning", "global_variance": 0.001819156776984271, "action": "FAST", "top_10_ids": ["0", "1", "5", "3", "4", "2", "8", "7", "6", "9"]}
+{"timestamp": 1770942396.8130147, "query_snippet": "neural networks", "global_variance": 0.001819156776984271, "action": "FAST", "top_10_ids": ["1", "3", "0", "4", "2", "5", "7", "6", "8", "9"]}
+{"timestamp": 1770984578.241761, "query_snippet": "distributed computing", "global_variance": 0.001819156776984271, "action": "FAST", "top_10_ids": ["7", "0", "4", "1", "9", "3", "6", "8", "5", "2"]}
+{"timestamp": 1770984578.24978, "query_snippet": "database optimization", "global_variance": 0.001819156776984271, "action": "FAST", "top_10_ids": ["6", "8", "5", "0", "7", "9", "4", "1", "2", "3"]}
+{"timestamp": 1770984579.0187218, "query_snippet": "classification", "global_variance": 0.001819156776984271, "action": "FAST", "top_10_ids": ["0", "3", "1", "5", "8", "6", "2", "4", "7", "9"]}
+{"timestamp": 1770984579.0262313, "query_snippet": "regression", "global_variance": 0.001819156776984271, "action": "FAST", "top_10_ids": ["5", "0", "1", "3", "4", "2", "7", "6", "9", "8"]}
+{"timestamp": 1770984579.0342433, "query_snippet": "clustering", "global_variance": 0.001819156776984271, "action": "FAST", "top_10_ids": ["5", "6", "0", "7", "3", "8", "1", "9", "4", "2"]}
+{"timestamp": 1770984580.5113099, "query_snippet": "machine learning", "global_variance": 0.0018176591386642146, "action": "FAST", "top_10_ids": ["0", "1", "5", "3", "4", "2", "8", "7", "6", "9"]}
+{"timestamp": 1770984580.518819, "query_snippet": "neural networks", "global_variance": 0.0018176590942405174, "action": "FAST", "top_10_ids": ["1", "3", "0", "4", "2", "5", "7", "6", "8", "9"]}
+{"timestamp": 1770986234.918259, "query_snippet": "distributed computing", "global_variance": 0.0018198556781516752, "action": "FAST", "top_10_ids": ["7", "0", "4", "1", "9", "3", "6", "8", "5", "2"]}
+{"timestamp": 1770986234.926293, "query_snippet": "database optimization", "global_variance": 0.0018198556781516752, "action": "FAST", "top_10_ids": ["6", "8", "5", "0", "7", "9", "4", "1", "2", "3"]}
+{"timestamp": 1770986235.7250102, "query_snippet": "classification", "global_variance": 0.0018198556781516752, "action": "FAST", "top_10_ids": ["0", "3", "1", "5", "8", "6", "2", "4", "7", "9"]}
+{"timestamp": 1770986235.733521, "query_snippet": "regression", "global_variance": 0.0018198556781516752, "action": "FAST", "top_10_ids": ["5", "0", "1", "3", "4", "2", "7", "6", "9", "8"]}
+{"timestamp": 1770986235.74103, "query_snippet": "clustering", "global_variance": 0.0018198556781516752, "action": "FAST", "top_10_ids": ["5", "6", "0", "7", "3", "8", "1", "9", "4", "2"]}
+{"timestamp": 1770986237.3622649, "query_snippet": "machine learning", "global_variance": 0.0018143973188380512, "action": "FAST", "top_10_ids": ["0", "1", "5", "3", "4", "2", "8", "7", "6", "9"]}
+{"timestamp": 1770986237.3702807, "query_snippet": "neural networks", "global_variance": 0.0018143973188380512, "action": "FAST", "top_10_ids": ["1", "3", "0", "4", "2", "5", "7", "6", "8", "9"]}

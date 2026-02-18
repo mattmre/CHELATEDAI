@@ -56,6 +56,15 @@ class TestAntigravityEngine(unittest.TestCase):
             **kwargs,
         )
 
+    def test_invert_chelation_explicit_initialization(self):
+        """F-047: Verify invert_chelation is explicitly initialized, not hasattr-guarded."""
+        engine = self._make_engine()
+        # Should have explicit attribute set to False by default
+        self.assertTrue(hasattr(engine, 'invert_chelation'))
+        self.assertEqual(engine.invert_chelation, False)
+        # Components should receive the same value
+        self.assertEqual(engine._components.invert_chelation, False)
+
     def test_embed_local_mode_shape(self):
         engine = self._make_engine()
         result = engine.embed(["a", "b", "c"])
