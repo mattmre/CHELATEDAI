@@ -142,6 +142,48 @@ class TestFinding(unittest.TestCase):
         self.assertEqual(findings[2].finding_id, "MED")
         self.assertEqual(findings[3].finding_id, "LOW")
 
+    def test_effort_size_weight(self):
+        """EffortSize.weight returns correct numeric weights: S=1, M=3, L=5."""
+        self.assertEqual(EffortSize.S.weight, 1)
+        self.assertEqual(EffortSize.M.weight, 3)
+        self.assertEqual(EffortSize.L.weight, 5)
+
+    def test_finding_to_dict(self):
+        """Finding.to_dict includes key serialized fields and enum string values."""
+        f = make_finding(
+            finding_id="DICT-001",
+            title="Test serialization",
+            severity=Severity.HIGH,
+            impact="Test impact",
+            effort=EffortSize.L,
+            file_path="test.py",
+            line_range="10-20",
+            recommended_fix="Fix the issue",
+            acceptance_criteria=["AC1", "AC2"],
+            dependencies=["DEP-001"],
+            blockers=["BLK-001"],
+            status=FindingStatus.IN_PROGRESS,
+            metadata={"custom": "data"},
+        )
+        
+        result = f.to_dict()
+        
+        # Assert key serialized fields
+        self.assertEqual(result["finding_id"], "DICT-001")
+        self.assertEqual(result["title"], "Test serialization")
+        self.assertEqual(result["severity"], "HIGH")  # Enum as string name
+        self.assertEqual(result["impact"], "Test impact")
+        self.assertEqual(result["effort"], "L")  # Enum value as string
+        self.assertEqual(result["file_path"], "test.py")
+        self.assertEqual(result["line_range"], "10-20")
+        self.assertEqual(result["recommended_fix"], "Fix the issue")
+        self.assertEqual(result["acceptance_criteria"], ["AC1", "AC2"])
+        self.assertEqual(result["dependencies"], ["DEP-001"])
+        self.assertEqual(result["blockers"], ["BLK-001"])
+        self.assertEqual(result["status"], "IN_PROGRESS")  # Enum value as string
+        self.assertEqual(result["owning_agent"], "")
+        self.assertIn("metadata", result)
+
 
 class TestAEPTracker(unittest.TestCase):
     """Tests for the AEPTracker class."""
@@ -168,6 +210,13 @@ class TestAEPTracker(unittest.TestCase):
         )
         self.assertEqual(self.tracker.findings["T-002"].status, FindingStatus.IN_PROGRESS)
         self.assertEqual(self.tracker.findings["T-002"].owning_agent, "security-agent")
+
+    def test_update_status_missing_id(self):
+        """update_status raises ValueError for missing finding ID."""
+        with self.assertRaises(ValueError) as ctx:
+            self.tracker.update_status("NONEXISTENT-ID", FindingStatus.IN_PROGRESS)
+        self.assertIn("NONEXISTENT-ID", str(ctx.exception))
+        self.assertIn("not found", str(ctx.exception))
 
     def test_tier_filtering(self):
         """get_tier returns only findings of the requested severity."""
@@ -246,6 +295,79 @@ class TestAEPTracker(unittest.TestCase):
 
         self.assertEqual(self.tracker.findings["VL-001"].status, FindingStatus.VERIFIED)
         self.assertEqual(len(self.tracker.verification_log), 1)
+
+    def test_get_unresolved(self):
+        """get_unresolved returns OPEN, IN_PROGRESS, BLOCKED and excludes terminal states."""
+        # Add findings with various statuses
+        self.tracker.add_finding(make_finding(finding_id="U-OPEN", status=FindingStatus.OPEN))
+        self.tracker.add_finding(make_finding(finding_id="U-PROGRESS", status=FindingStatus.IN_PROGRESS))
+        self.tracker.add_finding(make_finding(finding_id="U-BLOCKED", status=FindingStatus.BLOCKED))
+        self.tracker.add_finding(make_finding(finding_id="U-MERGED", status=FindingStatus.MERGED))
+        self.tracker.add_finding(make_finding(finding_id="U-VERIFIED", status=FindingStatus.VERIFIED))
+        self.tracker.add_finding(make_finding(finding_id="U-DEFERRED", status=FindingStatus.DEFERRED))
+
+        unresolved = self.tracker.get_unresolved()
+        
+        # Should have exactly 3 unresolved findings
+        self.assertEqual(len(unresolved), 3)
+        
+        # Check that only OPEN, IN_PROGRESS, and BLOCKED are included
+        ids = {f.finding_id for f in unresolved}
+        self.assertEqual(ids, {"U-OPEN", "U-PROGRESS", "U-BLOCKED"})
+        
+        # Check that terminal states are excluded
+        for f in unresolved:
+            self.assertIn(f.status, {FindingStatus.OPEN, FindingStatus.IN_PROGRESS, FindingStatus.BLOCKED})
+
+    def test_discovery_fallback_defaults(self):
+        """discovery() applies fallback defaults for missing/invalid severity, effort, and title."""
+        raw_findings = [
+            # Missing severity and effort - should default to MEDIUM and S
+            {
+                "title": "Missing defaults",
+                "impact": "Test impact",
+                "file_path": "test1.py",
+            },
+            # Invalid severity and effort - should default to MEDIUM and S
+            {
+                "title": "Invalid values",
+                "severity": "INVALID_SEVERITY",
+                "effort": "INVALID_EFFORT",
+                "impact": "Test impact",
+                "file_path": "test2.py",
+            },
+            # Missing title - should default to "Untitled"
+            {
+                "severity": "LOW",
+                "effort": "M",
+                "impact": "Test impact",
+                "file_path": "test3.py",
+            },
+        ]
+        
+        orchestrator = AEPOrchestrator()
+        findings = orchestrator.discovery(raw_findings, pr_number=99)
+        
+        # All 3 findings should be created
+        self.assertEqual(len(findings), 3)
+        
+        # Check first finding: missing severity and effort
+        f1 = findings[0]
+        self.assertEqual(f1.title, "Missing defaults")
+        self.assertEqual(f1.severity, Severity.MEDIUM)  # Default severity
+        self.assertEqual(f1.effort, EffortSize.S)  # Default effort
+        
+        # Check second finding: invalid severity and effort
+        f2 = findings[1]
+        self.assertEqual(f2.title, "Invalid values")
+        self.assertEqual(f2.severity, Severity.MEDIUM)  # Default severity
+        self.assertEqual(f2.effort, EffortSize.S)  # Default effort
+        
+        # Check third finding: missing title
+        f3 = findings[2]
+        self.assertEqual(f3.title, "Untitled")  # Default title
+        self.assertEqual(f3.severity, Severity.LOW)
+        self.assertEqual(f3.effort, EffortSize.M)
 
 
 class TestSpecialistAgents(unittest.TestCase):
