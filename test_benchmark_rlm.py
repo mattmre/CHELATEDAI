@@ -15,6 +15,7 @@ if 'mteb' not in sys.modules:
     sys.modules['mteb'] = MagicMock()
 
 from benchmark_rlm import dcg_at_k, ndcg_at_k, find_keys, find_payload, map_predicted_ids
+from qdrant_client.http.exceptions import ResponseHandlingException
 
 
 # =============================================================================
@@ -221,27 +222,22 @@ class TestFindPayload(unittest.TestCase):
         self.assertEqual(result, 0)
 
     def test_find_payload_falsy_value_nested_zero(self):
-        """BUG: nested falsy value 0 is missed because `if res:` evaluates to False."""
+        """Nested falsy value 0 should be found correctly."""
         obj = {"outer": {"count": 0}}
         result = find_payload(obj, "count")
-        # This documents the known bug: the function returns None instead of 0
-        # because `if res:` treats 0 as falsy and continues searching.
-        # When the bug is fixed, change this assertion to assertEqual(result, 0).
-        self.assertIsNone(result)
+        self.assertEqual(result, 0)
 
     def test_find_payload_falsy_value_nested_empty_string(self):
-        """BUG: nested empty string is missed due to `if res:` guard."""
+        """Nested empty string should be found correctly."""
         obj = {"wrapper": {"text": ""}}
         result = find_payload(obj, "text")
-        # Same bug as above: `if res:` treats "" as falsy.
-        self.assertIsNone(result)
+        self.assertEqual(result, "")
 
     def test_find_payload_falsy_value_nested_false(self):
-        """BUG: nested boolean False is missed due to `if res:` guard."""
+        """Nested boolean False should be found correctly."""
         obj = {"wrapper": {"enabled": False}}
         result = find_payload(obj, "enabled")
-        # Same bug: `if res:` treats False as falsy.
-        self.assertIsNone(result)
+        self.assertFalse(result)
 
     def test_find_payload_truthy_nested_value(self):
         """Truthy nested values should be found correctly."""
@@ -309,9 +305,9 @@ class TestMapPredictedIds(unittest.TestCase):
         self.assertEqual(result, ["doc_a", "2", "doc_c"])
 
     def test_map_predicted_ids_qdrant_exception_fallback(self):
-        """Qdrant exception should return stringified raw IDs as fallback."""
+        """Qdrant retrieval exception should return stringified raw IDs as fallback."""
         engine = MagicMock()
-        engine.qdrant.retrieve.side_effect = Exception("Connection refused")
+        engine.qdrant.retrieve.side_effect = ResponseHandlingException(Exception("Connection refused"))
 
         result = map_predicted_ids(engine, [100, 200, 300])
 
@@ -363,6 +359,76 @@ class TestMapPredictedIds(unittest.TestCase):
         result = map_predicted_ids(engine, [1, 2])
 
         self.assertEqual(result, ["doc_a", "2"])
+
+    def test_map_predicted_ids_type_mismatch_int_vs_str(self):
+        """Type mismatch: point.id is int, pred_ids contains str, should still map."""
+        engine = MagicMock()
+        # Qdrant stores as int
+        engine.qdrant.retrieve.return_value = [
+            self._make_point(100, "doc_alpha"),
+            self._make_point(200, "doc_beta"),
+        ]
+
+        # Lookup with string IDs (type mismatch)
+        result = map_predicted_ids(engine, ["100", "200"])
+
+        # Should still map correctly after canonicalization
+        self.assertEqual(result, ["doc_alpha", "doc_beta"])
+
+    def test_map_predicted_ids_type_mismatch_str_vs_int(self):
+        """Type mismatch: point.id is str, pred_ids contains int, should still map."""
+        engine = MagicMock()
+        # Qdrant stores numeric IDs as strings
+        engine.qdrant.retrieve.return_value = [
+            self._make_point("100", "doc_x"),
+            self._make_point("200", "doc_y"),
+        ]
+
+        # Lookup with integer IDs (type mismatch)
+        result = map_predicted_ids(engine, [100, 200])
+
+        self.assertEqual(result, ["doc_x", "doc_y"])
+
+    def test_map_predicted_ids_uuid_handling(self):
+        """UUID IDs should be canonicalized correctly."""
+        from uuid import UUID
+        engine = MagicMock()
+        uuid1 = UUID('12345678-1234-5678-1234-567812345678')
+        uuid2 = UUID('87654321-4321-8765-4321-876543218765')
+        
+        engine.qdrant.retrieve.return_value = [
+            self._make_point(uuid1, "doc_uuid1"),
+            self._make_point(uuid2, "doc_uuid2"),
+        ]
+
+        # Lookup with UUID strings (type mismatch)
+        result = map_predicted_ids(engine, [str(uuid1), str(uuid2)])
+
+        self.assertEqual(result, ["doc_uuid1", "doc_uuid2"])
+
+    def test_map_predicted_ids_mixed_types(self):
+        """Mixed ID types (int, str) should all canonicalize and map correctly."""
+        engine = MagicMock()
+        engine.qdrant.retrieve.return_value = [
+            self._make_point(1, "doc_int"),
+            self._make_point("abc", "doc_str"),
+            self._make_point(999, "doc_int2"),
+        ]
+
+        # Mix of int and str in lookup
+        result = map_predicted_ids(engine, [1, "abc", 999])
+
+        self.assertEqual(result, ["doc_int", "doc_str", "doc_int2"])
+
+    def test_map_predicted_ids_programming_error_propagates(self):
+        """Programming errors like AttributeError should propagate, not be caught."""
+        engine = MagicMock()
+        # Simulate a programming bug: accessing non-existent attribute
+        engine.qdrant.retrieve.side_effect = AttributeError("'NoneType' object has no attribute 'ids'")
+
+        # Should raise the AttributeError, not catch it
+        with self.assertRaises(AttributeError):
+            map_predicted_ids(engine, [100, 200])
 
 
 if __name__ == "__main__":

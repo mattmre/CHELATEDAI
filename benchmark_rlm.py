@@ -17,9 +17,11 @@ from typing import Dict, List, Any
 from config import ChelationConfig
 from antigravity_engine import AntigravityEngine
 from recursive_decomposer import RecursiveRetrievalEngine, MockDecomposer, OllamaDecomposer
+from qdrant_client.http.exceptions import ResponseHandlingException, UnexpectedResponse
 
 # Import shared utilities from benchmark_utils
 from benchmark_utils import (
+    canonicalize_id,
     dcg_at_k as _dcg_at_k,
     ndcg_at_k as _ndcg_at_k,
     find_keys as _find_keys,
@@ -70,6 +72,9 @@ def load_mteb_data(task_name: str):
 def map_predicted_ids(engine, pred_ids):
     """
     Map Qdrant internal IDs back to original document IDs via payload lookup.
+    
+    Uses canonicalized IDs to prevent type mismatch issues when mapping
+    between different ID formats (int/str/UUID).
 
     Args:
         engine: AntigravityEngine with qdrant client
@@ -80,15 +85,18 @@ def map_predicted_ids(engine, pred_ids):
     """
     try:
         points = engine.qdrant.retrieve(engine.collection_name, ids=pred_ids)
+        # Build map with canonicalized keys to handle type mismatches
         id_map = {}
         for p in points:
+            canonical_key = canonicalize_id(p.id)
             if p.payload and 'original_id' in p.payload:
-                id_map[p.id] = str(p.payload['original_id'])
+                id_map[canonical_key] = canonicalize_id(p.payload['original_id'])
             else:
-                id_map[p.id] = str(p.id)
-        return [id_map.get(pid, str(pid)) for pid in pred_ids]
-    except Exception:
-        return [str(pid) for pid in pred_ids]
+                id_map[canonical_key] = canonical_key
+        # Lookup with canonicalized pred_ids
+        return [id_map.get(canonicalize_id(pid), canonicalize_id(pid)) for pid in pred_ids]
+    except (ResponseHandlingException, UnexpectedResponse):
+        return [canonicalize_id(pid) for pid in pred_ids]
 
 
 # =============================================================================
