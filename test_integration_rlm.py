@@ -12,6 +12,7 @@ if the package is not installed.
 import unittest
 import json
 import numpy as np
+import warnings
 from unittest.mock import patch, MagicMock
 
 # Check for sentence-transformers availability
@@ -20,6 +21,13 @@ try:
     HAS_SENTENCE_TRANSFORMERS = True
 except ImportError:
     HAS_SENTENCE_TRANSFORMERS = False
+    warnings.warn(
+        "sentence-transformers is not installed. Integration tests in "
+        "test_integration_rlm.py will be skipped. Install with: "
+        "pip install sentence-transformers",
+        UserWarning,
+        stacklevel=2
+    )
 
 from recursive_decomposer import (
     RecursiveRetrievalEngine,
