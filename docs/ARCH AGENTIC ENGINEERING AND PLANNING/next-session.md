@@ -127,6 +127,12 @@ Purpose: Minimal context to resume the workflow in short sessions.
 - PR #47 -- `pr/f045-embedding-backend` -> `pr/f040-payload-optimization` (F-045, stacked)
 - PR #48 -- `pr/f044-vector-store-boundary` -> `pr/f045-embedding-backend` (F-044, stacked)
 - PR #49 -- `pr/session9-tracking-docs` -> `pr/f044-vector-store-boundary` (Session 9 docs, stacked)
+- PR #50 -- `pr/f051-map-predicted-ids-exception-narrowing` -> `pr/session8-tracking-docs` (F-051, stacked)
+- PR #51 -- `pr/f052-integration-skip-observability` -> `pr/f051-map-predicted-ids-exception-narrowing` (F-052, stacked)
+- PR #52 -- `pr/f053-config-validation-and-presets` -> `pr/f052-integration-skip-observability` (F-053, stacked)
+- PR #53 -- `pr/f054-aep-tracker-coverage-gaps` -> `pr/f053-config-validation-and-presets` (F-054, stacked)
+- PR #54 -- `pr/f055-log-query-sanitization` -> `pr/f054-aep-tracker-coverage-gaps` (F-055, stacked)
+- PR #55 -- `pr/session11-tracking-docs` -> `pr/f055-log-query-sanitization` (Session 11 docs, stacked)
 
 ## Hand-off Notes
 - Session 11 delivered the final 5 findings (F-051/F-052/F-053/F-054/F-055) with full regression pass.
