@@ -8,7 +8,7 @@ Mode: Top-15 orchestration continuity + tracking updates
 - Complete remaining locally actionable work from Top-15 priorities.
 - Create Session 17 research, architecture, and session log artifacts.
 - Update tracking indices for Session 17 continuity.
-- Extend open PR list to include PR #61/#62/#63.
+- Extend open PR tracking through PR #66 for Session 16/17 stacks.
 - Maintain honest status for externally blocked priorities.
 
 ## Implementation Actions
@@ -22,7 +22,7 @@ Mode: Top-15 orchestration continuity + tracking updates
 - **backlog-index.md** -- Added Session 17 row to Session Logs table (line 29)
 - **tracker-index.md** -- Extended scope summary with Session 17 orchestration continuity (line 8)
 - **tracker-pointer.md** -- Updated Last Updated to Session 17 and Verification Log Path to Session 17 log (lines 9, 19)
-- **next-session.md** -- Updated session start reference, completed section, open PR list (added PR #61/#62/#63), Priority #1 PR range (#20-#63), handoff notes, and artifact references with Session 17 continuity
+- **next-session.md** -- Updated session start reference, completed section, open PR list (added PR #61/#62/#63 and Session 17 stack PR #64/#65/#66), Priority #1 PR range (#20-#66), handoff notes, and artifact references with Session 17 continuity
 - **change-log.md** -- Added Session 17 unblock-plan entry documenting orchestration continuity work (line 24)
 
 ### 3. Validation Performed
@@ -30,7 +30,7 @@ Mode: Top-15 orchestration continuity + tracking updates
 - Existing style and table formats preserved.
 - Statuses remain honest (externally blocked priorities not marked as done).
 - Content remains concise and actionable.
-- Open PR list extended to include PR #61/#62/#63 with base/head chain details.
+- Open PR list extended through PR #66 with base/head chain details.
 
 ## Validation
 - No code changes in this session.
@@ -68,7 +68,7 @@ Mode: Top-15 orchestration continuity + tracking updates
 ## Hand-off Notes
 - Session 17 completed all remaining locally actionable top-15 orchestration work.
 - All documentation artifacts created and tracking indices synchronized.
-- Open PR range extended from #20-#60 to #20-#63.
+- Open PR range extended from #20-#60 to #20-#66.
 - 9 priorities remain externally blocked on GitHub PR review/merge events.
 - 4 priorities remain in-progress (tracking, archival, monitoring, documentation).
 - Next operator should monitor PR chain and execute post-merge tracking updates when external dependencies resolve.
@@ -78,5 +78,5 @@ Mode: Top-15 orchestration continuity + tracking updates
 - **Tracking Docs Updated:** 5 (backlog-index, tracker-index, tracker-pointer, next-session, change-log)
 - **Code Changes:** 0 (documentation-only session)
 - **Status Accuracy:** 100% (honest reporting maintained)
-- **Open PR Range Extended:** #20-#60 → #20-#63
+- **Open PR Range Extended:** #20-#60 → #20-#66
 - **Continuity:** Next session operator has full context from Session 17 artifacts

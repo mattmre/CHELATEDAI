@@ -7,14 +7,14 @@ Purpose: Minimal context to resume the workflow in short sessions.
 - Confirm scope lock (PR range, dates).
 - Confirm latest refinement report location.
 - Check tracker date and carryover items.
-- Confirm stacked PR merge order/status for PR #20 -> #63 and verify base/head chain alignment before starting new code work.
+- Confirm stacked PR merge order/status for PR #20 -> #66 and verify base/head chain alignment before starting new code work.
 - Reconfirm no new tracked deltas outside the stacked PR chain before opening new remediation work.
 - Update `docs/ARCH AGENTIC ENGINEERING AND PLANNING/tracker-pointer.md`.
 - Update `docs/ARCH AGENTIC ENGINEERING AND PLANNING/backlog-index.md` and `docs/ARCH AGENTIC ENGINEERING AND PLANNING/tracker-index.md`.
 - If starting a new cycle, follow the Cycle Start Checklist in `docs/ARCH AGENTIC ENGINEERING AND PLANNING/orchestrator-briefing.md`.
 
 ## Session Objectives
-- Primary goal: Drive review/merge progression across the open stacked PR chain (#20 -> #63)
+- Primary goal: Drive review/merge progression across the open stacked PR chain (#20 -> #66)
 - Secondary goal: Keep branch hygiene preserved while deciding backup/safety-ref retention window
 - Keep tracker/session log in sync with implementation progress
 
@@ -88,7 +88,7 @@ Purpose: Minimal context to resume the workflow in short sessions.
 
 ## Cycle Closeout Priorities (Next 5)
 
-1. Drive review/merge progression for open stacked PR chain (#20 -> #63)
+1. Drive review/merge progression for open stacked PR chain (#20 -> #66)
 2. Keep tracker/index docs aligned with PR status transitions (open -> merged/closed)
 3. Preserve backup branches and safety tags until merge chain stability is confirmed
 4. Re-run branch accounting after major merge events to confirm no orphaned work
@@ -144,12 +144,15 @@ Purpose: Minimal context to resume the workflow in short sessions.
 - PR #61 -- `pr/session16-priority01-research-doc` -> `pr/session13-priority05-status-board` (Session 16 research doc, stacked)
 - PR #62 -- `pr/session16-priority02-architecture-doc` -> `pr/session16-priority01-research-doc` (Session 16 architecture doc, stacked)
 - PR #63 -- `pr/session16-priority03-tracking-sync` -> `pr/session16-priority02-architecture-doc` (Session 16 tracking sync, stacked)
+- PR #64 -- `pr/session17-priority01-research-doc` -> `pr/session16-priority03-tracking-sync` (Session 17 research doc, stacked)
+- PR #65 -- `pr/session17-priority02-architecture-doc` -> `pr/session17-priority01-research-doc` (Session 17 architecture doc, stacked)
+- PR #66 -- `pr/session17-priority03-tracking-sync` -> `pr/session17-priority02-architecture-doc` (Session 17 session-log + tracking sync, stacked)
 
 ## Top 15 Priority Status Board
 
 | Priority | Status | Notes |
 | --- | --- | --- |
-| 1. Drive PR review/merge progression (#20-#63) | **blocked** | External dependency: GitHub review/merge events |
+| 1. Drive PR review/merge progression (#20-#66) | **blocked** | External dependency: GitHub review/merge events |
 | 2. Keep tracker/index docs aligned with PR status | **in-progress** | Session 14/15/16/17 tracking refresh complete, ongoing monitoring needed |
 | 3. Preserve backup branches/safety tags | **done** | Retention deferred pending merge stability (see change-log) |
 | 4. Re-run branch accounting after merge events | **blocked** | Waiting for merge events to trigger |
@@ -158,7 +161,7 @@ Purpose: Minimal context to resume the workflow in short sessions.
 | 7. Update tracker-index.md with PR transitions | **blocked** | Waiting for PR merge events |
 | 8. Backup retention decision | **blocked** | Deferred until merge stability confirmed |
 | 9. Cycle closeout formal completion | **blocked** | Pending all PRs merged/closed |
-| 10. Archive Session 13 artifacts | **in-progress** | Session 13 artifacts in PRs #56-#60; Session 16 artifacts in PRs #61-#63 |
+| 10. Archive Session 13 artifacts | **in-progress** | Session 13 artifacts in PRs #56-#60; Session 16 artifacts in PRs #61-#63; Session 17 artifacts in PRs #64-#66 |
 | 11. Monitor PR merge conflicts | **in-progress** | Passive monitoring, action on failure |
 | 12. Validate no orphaned branches post-merge | **blocked** | Waiting for merge completion |
 | 13. Document merge failures/conflicts | **in-progress** | Will update as events occur |
@@ -169,8 +172,8 @@ Purpose: Minimal context to resume the workflow in short sessions.
 
 ## Next Session Prepared Runbook
 
-1. Confirm PR chain health and ordering for PR #20 -> #63 (base/head alignment + mergeability).
-2. Start review/merge progression from the newest docs stack (PR #61 -> #63), then continue upstream chain progression.
+1. Confirm PR chain health and ordering for PR #20 -> #66 (base/head alignment + mergeability).
+2. Start review/merge progression from the newest docs stack (PR #64 -> #66), then continue upstream chain progression.
 3. After each merge event, update `tracker-pointer.md`, `backlog-index.md`, and `tracker-index.md`.
 4. Keep backup branches and safety tags unchanged until merge-chain stability criteria are met.
 5. Re-run branch accounting immediately after major merge blocks to detect orphaned work.
@@ -184,7 +187,7 @@ Purpose: Minimal context to resume the workflow in short sessions.
 - Session 14 completed fresh-agent top-15 execution orchestration, baseline restoration, and verification evidence refresh.
 - Session 15 completed handoff/runbook refresh to minimize context rot before next merge-monitoring pass.
 - Session 16 completed top-15 orchestration continuity: created research/architecture/session-log artifacts and updated all tracking indices.
-- Session 17 completed top-15 orchestration continuity: created research/architecture/session-log artifacts, updated all tracking indices, and extended open PR range to #20-#63.
+- Session 17 completed top-15 orchestration continuity: created research/architecture/session-log artifacts, updated all tracking indices, and extended open PR range to #20-#66.
 - Session 12 backup branches:
   - `backup/wip-local-snapshot-2026-02-18`
   - `backup/local-main-ahead-2026-02-18`
