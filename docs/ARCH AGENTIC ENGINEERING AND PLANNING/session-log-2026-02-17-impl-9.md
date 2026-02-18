@@ -48,10 +48,11 @@ Mode: Agentic implementation tranche (F-040/F-041/F-042/F-044/F-045)
 ## Handoff Notes
 - Next tranche should prioritize: F-046, F-047, F-048, F-049, F-050.
 - Session 9 artifacts are now linked in tracker pointer/index and next-session handoff.
-- Branch/PR stack prepared for per-finding review flow:
-  - `pr/f041-benchmark-utils`
-  - `pr/f042-sedimentation-module`
-  - `pr/f040-payload-optimization`
-  - `pr/f045-embedding-backend`
-  - `pr/f044-vector-store-boundary`
-  - `pr/session9-tracking-docs`
+- Branch/PR stack pushed and opened for per-finding review flow:
+  - PR #44 -- `pr/f041-benchmark-utils` -> `pr/session8-tracking-docs`
+  - PR #45 -- `pr/f042-sedimentation-module` -> `pr/f041-benchmark-utils`
+  - PR #46 -- `pr/f040-payload-optimization` -> `pr/f042-sedimentation-module`
+  - PR #47 -- `pr/f045-embedding-backend` -> `pr/f040-payload-optimization`
+  - PR #48 -- `pr/f044-vector-store-boundary` -> `pr/f045-embedding-backend`
+  - PR #49 -- `pr/session9-tracking-docs` -> `pr/f044-vector-store-boundary`
+- Closeout refresh completed: next-session checklist and handoff docs aligned to the Session 9 PR chain.
