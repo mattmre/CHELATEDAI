@@ -8,10 +8,35 @@ import json
 import logging
 import time
 import warnings
+import re
 from pathlib import Path
 from typing import Dict, Any, Optional
 from datetime import datetime
 import sys
+
+
+def _sanitize_query_snippet(text: str) -> str:
+    """
+    Sanitize query text for safe logging.
+    
+    Replaces newlines and carriage returns with spaces, and removes
+    other control characters to prevent log injection attacks.
+    
+    Args:
+        text: Raw query text
+        
+    Returns:
+        Sanitized query text safe for logging
+    """
+    # Replace newlines and carriage returns with spaces
+    sanitized = text.replace('\n', ' ').replace('\r', ' ')
+    
+    # Remove other control characters (0x00-0x1F except space, and 0x7F-0x9F)
+    # Keep tab (0x09) as a space
+    sanitized = re.sub(r'[\x00-\x08\x0B-\x1F\x7F-\x9F]', '', sanitized)
+
+    # Collapse repeated whitespace introduced by newline/control replacement
+    return " ".join(sanitized.split())
 
 
 class ChelationLogger:
@@ -114,11 +139,14 @@ class ChelationLogger:
             jaccard: Overlap between standard and chelated results
             **kwargs: Additional metrics
         """
+        # Sanitize query text to prevent log injection
+        safe_query = _sanitize_query_snippet(query_text)
+        
         self.log_event(
             event_type="query",
-            message=f"Query: '{query_text[:50]}...' | Action: {action}",
+            message=f"Query: '{safe_query[:50]}...' | Action: {action}",
             level="INFO",
-            query_snippet=query_text[:100],
+            query_snippet=safe_query[:100],
             global_variance=float(variance),
             action=action,
             top_10_ids=[str(id) for id in top_ids[:10]],

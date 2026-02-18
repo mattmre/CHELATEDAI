@@ -673,6 +673,89 @@ class TestLoggerMethods(unittest.TestCase):
         self.assertEqual(event["jaccard_similarity"], 0.87)
         self.assertEqual(len(event["top_10_ids"]), 5)
 
+    def test_log_query_sanitizes_newlines(self):
+        """Test that log_query sanitizes newline characters in query text (F-055)."""
+        logger = ChelationLogger(
+            log_path=self.temp_log_path,
+            console_level="ERROR"
+        )
+
+        # Query with newlines and carriage returns
+        malicious_query = "Line1\nLine2\rLine3\r\nLine4"
+        logger.log_query(
+            query_text=malicious_query,
+            variance=0.001,
+            action="FAST",
+            top_ids=[1, 2, 3],
+            jaccard=0.9
+        )
+
+        events = self._read_json_events(self.temp_log_path)
+        event = events[0]
+        
+        # Verify query_snippet has newlines replaced with spaces
+        self.assertNotIn('\n', event["query_snippet"])
+        self.assertNotIn('\r', event["query_snippet"])
+        self.assertEqual(event["query_snippet"], "Line1 Line2 Line3 Line4")
+        
+        # Verify message also sanitized
+        self.assertNotIn('\n', event["message"])
+        self.assertNotIn('\r', event["message"])
+
+    def test_log_query_sanitizes_control_characters(self):
+        """Test that log_query removes control characters from query text (F-055)."""
+        logger = ChelationLogger(
+            log_path=self.temp_log_path,
+            console_level="ERROR"
+        )
+
+        # Query with various control characters
+        # \x00 = NULL, \x01 = SOH, \x1B = ESC, \x7F = DEL
+        malicious_query = "Hello\x00World\x01Test\x1BData\x7F"
+        logger.log_query(
+            query_text=malicious_query,
+            variance=0.001,
+            action="CHELATE",
+            top_ids=[10, 20],
+            jaccard=0.75
+        )
+
+        events = self._read_json_events(self.temp_log_path)
+        event = events[0]
+        
+        # Verify control characters are removed
+        self.assertEqual(event["query_snippet"], "HelloWorldTestData")
+        
+        # Verify no control characters in message
+        self.assertNotIn('\x00', event["message"])
+        self.assertNotIn('\x01', event["message"])
+        self.assertNotIn('\x1B', event["message"])
+        self.assertNotIn('\x7F', event["message"])
+
+    def test_log_query_preserves_normal_text(self):
+        """Test that log_query preserves normal query text (F-055)."""
+        logger = ChelationLogger(
+            log_path=self.temp_log_path,
+            console_level="ERROR"
+        )
+
+        # Normal query with punctuation and special chars
+        normal_query = "What is the capital of France? (Paris)"
+        logger.log_query(
+            query_text=normal_query,
+            variance=0.001,
+            action="FAST",
+            top_ids=[1],
+            jaccard=0.95
+        )
+
+        events = self._read_json_events(self.temp_log_path)
+        event = events[0]
+        
+        # Verify text is preserved exactly
+        self.assertEqual(event["query_snippet"], normal_query)
+        self.assertIn(normal_query[:50], event["message"])
+
     def test_log_checkpoint_method(self):
         """Test log_checkpoint specialized method."""
         logger = ChelationLogger(
