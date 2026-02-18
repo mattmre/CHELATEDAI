@@ -18,3 +18,4 @@ Change types:
 ## Index
 | cycle-id | date | change-type | owner | rationale | link |
 | --- | --- | --- | --- | --- | --- |
+| AEP-2026-02-13 | 2026-02-18 | defer | Implementer Agent | Backup branch/safety-tag retention deferred pending PR-chain merge stability verification | [session-log-2026-02-18-impl-13.md](session-log-2026-02-18-impl-13.md) |
