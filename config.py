@@ -198,6 +198,44 @@ class ChelationConfig:
             "description": "Large datasets, capture all patterns"
         }
     }
+    
+    # RLM (Recursive Logic Mining) presets
+    RLM_PRESETS = {
+        "balanced": {
+            "max_depth": 3,
+            "min_support": 5,
+            "description": "Balanced depth for general decomposition"
+        },
+        "shallow": {
+            "max_depth": 2,
+            "min_support": 10,
+            "description": "Shallow decomposition for simple queries"
+        },
+        "deep": {
+            "max_depth": 5,
+            "min_support": 2,
+            "description": "Deep decomposition for complex queries"
+        }
+    }
+    
+    # Sedimentation presets
+    SEDIMENTATION_PRESETS = {
+        "balanced": {
+            "collapse_threshold": 3,
+            "push_magnitude": 0.1,
+            "description": "Balanced sedimentation for typical patterns"
+        },
+        "conservative": {
+            "collapse_threshold": 5,
+            "push_magnitude": 0.05,
+            "description": "Conservative sedimentation, fewer interventions"
+        },
+        "aggressive": {
+            "collapse_threshold": 1,
+            "push_magnitude": 0.2,
+            "description": "Aggressive sedimentation for noisy data"
+        }
+    }
 
     # ===== Memory Management =====
     MAX_BATCH_MEMORY_MB = 512  # Target max memory per batch
@@ -226,6 +264,8 @@ class ChelationConfig:
     MAX_LEARNING_RATE = 1.0
     MIN_EPOCHS = 1
     MAX_EPOCHS = 100
+    MIN_MAX_DEPTH = 1
+    MAX_MAX_DEPTH = 10
 
     @classmethod
     def validate_chelation_p(cls, value: float) -> float:
@@ -294,6 +334,14 @@ class ChelationConfig:
             print(f"WARNING: adaptive_min_samples={value} must be >= 1, using 1.")
             return 1
         return value
+    
+    @classmethod
+    def validate_max_depth(cls, value: int) -> int:
+        """Validate and clamp max_depth to valid range."""
+        if not cls.MIN_MAX_DEPTH <= value <= cls.MAX_MAX_DEPTH:
+            print(f"WARNING: max_depth={value} out of range [{cls.MIN_MAX_DEPTH}, {cls.MAX_MAX_DEPTH}], clamping.")
+            return max(cls.MIN_MAX_DEPTH, min(cls.MAX_MAX_DEPTH, value))
+        return value
 
     @classmethod
     def get_preset(cls, preset_name: str, preset_type: str = "chelation") -> Dict[str, Any]:
@@ -302,15 +350,27 @@ class ChelationConfig:
 
         Args:
             preset_name: Name of preset ('conservative', 'balanced', 'aggressive', etc.)
-            preset_type: Type of preset ('chelation' or 'adapter')
+            preset_type: Type of preset ('chelation', 'adapter', 'rlm', 'sedimentation')
 
         Returns:
             Dictionary with preset parameters
 
         Raises:
-            ValueError: If preset not found
+            ValueError: If preset not found or preset_type invalid
         """
-        presets = cls.CHELATION_PRESETS if preset_type == "chelation" else cls.ADAPTER_PRESETS
+        # Map preset_type to preset dictionary
+        preset_map = {
+            "chelation": cls.CHELATION_PRESETS,
+            "adapter": cls.ADAPTER_PRESETS,
+            "rlm": cls.RLM_PRESETS,
+            "sedimentation": cls.SEDIMENTATION_PRESETS
+        }
+        
+        if preset_type not in preset_map:
+            valid_types = ", ".join(preset_map.keys())
+            raise ValueError(f"Invalid preset_type '{preset_type}'. Valid types: {valid_types}")
+        
+        presets = preset_map[preset_type]
 
         if preset_name not in presets:
             available = ", ".join(presets.keys())

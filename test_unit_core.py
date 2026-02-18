@@ -13,7 +13,7 @@ from pathlib import Path
 
 # Import components to test
 from chelation_adapter import ChelationAdapter
-from config import ChelationConfig
+from config import ChelationConfig, get_config
 
 
 class TestChelationAdapter(unittest.TestCase):
@@ -302,6 +302,61 @@ class TestChelationConfig(unittest.TestCase):
             self.assertIn("traversal", str(cm.exception).lower())
         finally:
             shutil.rmtree(temp_dir, ignore_errors=True)
+    
+    def test_validate_max_depth(self):
+        """Test max_depth validation and clamping (F-053)."""
+        # Valid value
+        self.assertEqual(ChelationConfig.validate_max_depth(5), 5)
+        
+        # Clamp high
+        self.assertEqual(ChelationConfig.validate_max_depth(20), 10)
+        
+        # Clamp low
+        self.assertEqual(ChelationConfig.validate_max_depth(0), 1)
+    
+    def test_get_preset_rlm(self):
+        """Test retrieving RLM presets (F-053)."""
+        preset = ChelationConfig.get_preset("balanced", "rlm")
+        
+        self.assertIn("max_depth", preset)
+        self.assertIn("min_support", preset)
+        self.assertIn("description", preset)
+    
+    def test_get_preset_sedimentation(self):
+        """Test retrieving sedimentation presets (F-053)."""
+        preset = ChelationConfig.get_preset("balanced", "sedimentation")
+        
+        self.assertIn("collapse_threshold", preset)
+        self.assertIn("push_magnitude", preset)
+        self.assertIn("description", preset)
+    
+    def test_get_preset_invalid_type(self):
+        """Test that invalid preset_type raises ValueError (F-053)."""
+        with self.assertRaises(ValueError) as cm:
+            ChelationConfig.get_preset("balanced", "invalid_type")
+        self.assertIn("Invalid preset_type", str(cm.exception))
+        self.assertIn("chelation", str(cm.exception))
+        self.assertIn("adapter", str(cm.exception))
+        self.assertIn("rlm", str(cm.exception))
+        self.assertIn("sedimentation", str(cm.exception))
+    
+    def test_get_config_default(self):
+        """Test get_config() returns expected default keys (F-053)."""
+        config = get_config()
+        
+        self.assertIn("chelation_p", config)
+        self.assertIn("chelation_threshold", config)
+        self.assertIn("learning_rate", config)
+        self.assertIn("epochs", config)
+        self.assertIn("scout_k", config)
+    
+    def test_get_config_preset(self):
+        """Test get_config('balanced') returns chelation preset keys (F-053)."""
+        config = get_config("balanced")
+        
+        self.assertIn("chelation_p", config)
+        self.assertIn("chelation_threshold", config)
+        self.assertIn("description", config)
 
 
 class TestChelationAlgorithms(unittest.TestCase):
