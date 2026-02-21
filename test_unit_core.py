@@ -13,7 +13,7 @@ from pathlib import Path
 
 # Import components to test
 from chelation_adapter import ChelationAdapter
-from config import ChelationConfig
+from config import ChelationConfig, get_config
 
 
 class TestChelationAdapter(unittest.TestCase):
@@ -121,6 +121,72 @@ class TestChelationAdapter(unittest.TestCase):
         success = self.adapter.load(str(save_path))
         self.assertFalse(success)
 
+    def test_save_path_traversal_blocked(self):
+        """Test that path traversal attempts are blocked in save()."""
+        traversal_path = self.temp_dir / ".." / "escaping_adapter.pt"
+        with self.assertRaises(ValueError) as cm:
+            self.adapter.save(str(traversal_path))
+        self.assertIn("traversal", str(cm.exception).lower())
+
+    def test_load_path_traversal_blocked(self):
+        """Test that path traversal attempts are blocked in load()."""
+        traversal_path = self.temp_dir / ".." / "malicious.pt"
+        with self.assertRaises(ValueError) as cm:
+            self.adapter.load(str(traversal_path))
+        self.assertIn("traversal", str(cm.exception).lower())
+
+    def test_1d_input_returns_1d_output(self):
+        """Test that 1D input returns 1D output of same shape (F-024)."""
+        input_1d = torch.randn(self.input_dim)
+        
+        output = self.adapter(input_1d)
+        
+        # Output should be 1D with same shape
+        self.assertEqual(output.dim(), 1)
+        self.assertEqual(output.shape, input_1d.shape)
+        self.assertEqual(output.dtype, torch.float32)
+
+    def test_1d_output_normalized(self):
+        """Test that 1D output is properly normalized (F-024)."""
+        input_1d = torch.randn(self.input_dim)
+        
+        output = self.adapter(input_1d)
+        
+        # Output should be L2 normalized
+        norm = torch.norm(output, p=2)
+        self.assertTrue(torch.allclose(norm, torch.tensor(1.0), atol=1e-5),
+                       f"1D output not normalized: norm = {norm:.6f}")
+
+    def test_1d_matches_2d_batch_behavior(self):
+        """Test that 1D input behavior matches corresponding 2D single-batch (F-024)."""
+        input_1d = torch.randn(self.input_dim)
+        
+        # Run as 1D
+        output_1d = self.adapter(input_1d)
+        
+        # Run same input as 2D batch of 1
+        input_2d = input_1d.unsqueeze(0)
+        output_2d = self.adapter(input_2d)
+        output_2d_squeezed = output_2d.squeeze(0)
+        
+        # Results should match
+        self.assertTrue(torch.allclose(output_1d, output_2d_squeezed, atol=1e-6),
+                       f"1D and 2D behavior mismatch: max diff = {(output_1d - output_2d_squeezed).abs().max():.6e}")
+
+    def test_invalid_rank_raises_error(self):
+        """Test that invalid tensor ranks raise ValueError (F-024)."""
+        # 0D tensor (scalar)
+        input_0d = torch.tensor(3.14)
+        with self.assertRaises(ValueError) as cm:
+            self.adapter(input_0d)
+        self.assertIn("1D or 2D", str(cm.exception))
+        
+        # 3D tensor
+        input_3d = torch.randn(2, 3, self.input_dim)
+        with self.assertRaises(ValueError) as cm:
+            self.adapter(input_3d)
+        self.assertIn("1D or 2D", str(cm.exception))
+
 
 class TestChelationConfig(unittest.TestCase):
     """Test the configuration management system."""
@@ -212,6 +278,85 @@ class TestChelationConfig(unittest.TestCase):
 
         finally:
             shutil.rmtree(temp_dir, ignore_errors=True)
+
+    def test_config_load_path_traversal_blocked(self):
+        """Test that path traversal is blocked in load_from_file."""
+        temp_dir = Path(tempfile.mkdtemp())
+        try:
+            # Attempt path traversal
+            traversal_path = temp_dir / ".." / "evil_config.json"
+            with self.assertRaises(ValueError) as cm:
+                ChelationConfig.load_from_file(traversal_path)
+            self.assertIn("traversal", str(cm.exception).lower())
+        finally:
+            shutil.rmtree(temp_dir, ignore_errors=True)
+
+    def test_config_save_path_traversal_blocked(self):
+        """Test that path traversal is blocked in save_to_file."""
+        temp_dir = Path(tempfile.mkdtemp())
+        try:
+            config = {"test": "data"}
+            traversal_path = temp_dir / ".." / "evil_config.json"
+            with self.assertRaises(ValueError) as cm:
+                ChelationConfig.save_to_file(config, traversal_path)
+            self.assertIn("traversal", str(cm.exception).lower())
+        finally:
+            shutil.rmtree(temp_dir, ignore_errors=True)
+    
+    def test_validate_max_depth(self):
+        """Test max_depth validation and clamping (F-053)."""
+        # Valid value
+        self.assertEqual(ChelationConfig.validate_max_depth(5), 5)
+        
+        # Clamp high
+        self.assertEqual(ChelationConfig.validate_max_depth(20), 10)
+        
+        # Clamp low
+        self.assertEqual(ChelationConfig.validate_max_depth(0), 1)
+    
+    def test_get_preset_rlm(self):
+        """Test retrieving RLM presets (F-053)."""
+        preset = ChelationConfig.get_preset("balanced", "rlm")
+        
+        self.assertIn("max_depth", preset)
+        self.assertIn("min_support", preset)
+        self.assertIn("description", preset)
+    
+    def test_get_preset_sedimentation(self):
+        """Test retrieving sedimentation presets (F-053)."""
+        preset = ChelationConfig.get_preset("balanced", "sedimentation")
+        
+        self.assertIn("collapse_threshold", preset)
+        self.assertIn("push_magnitude", preset)
+        self.assertIn("description", preset)
+    
+    def test_get_preset_invalid_type(self):
+        """Test that invalid preset_type raises ValueError (F-053)."""
+        with self.assertRaises(ValueError) as cm:
+            ChelationConfig.get_preset("balanced", "invalid_type")
+        self.assertIn("Invalid preset_type", str(cm.exception))
+        self.assertIn("chelation", str(cm.exception))
+        self.assertIn("adapter", str(cm.exception))
+        self.assertIn("rlm", str(cm.exception))
+        self.assertIn("sedimentation", str(cm.exception))
+    
+    def test_get_config_default(self):
+        """Test get_config() returns expected default keys (F-053)."""
+        config = get_config()
+        
+        self.assertIn("chelation_p", config)
+        self.assertIn("chelation_threshold", config)
+        self.assertIn("learning_rate", config)
+        self.assertIn("epochs", config)
+        self.assertIn("scout_k", config)
+    
+    def test_get_config_preset(self):
+        """Test get_config('balanced') returns chelation preset keys (F-053)."""
+        config = get_config("balanced")
+        
+        self.assertIn("chelation_p", config)
+        self.assertIn("chelation_threshold", config)
+        self.assertIn("description", config)
 
 
 class TestChelationAlgorithms(unittest.TestCase):

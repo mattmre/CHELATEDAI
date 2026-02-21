@@ -2,6 +2,8 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import os
+from pathlib import Path
+from config import validate_safe_path
 
 class ChelationAdapter(nn.Module):
     """
@@ -36,7 +38,18 @@ class ChelationAdapter(nn.Module):
         nn.init.zeros_(self.correction_net[2].bias)
 
     def forward(self, x):
-        # x is [batch_size, input_dim]
+        # Handle input of various ranks
+        if x.dim() == 0 or x.dim() > 2:
+            raise ValueError(f"ChelationAdapter expects 1D or 2D input, got {x.dim()}D tensor with shape {x.shape}")
+        
+        # Track if input was 1D for output reshaping
+        input_was_1d = (x.dim() == 1)
+        
+        # Promote 1D to 2D: [dim] -> [1, dim]
+        if input_was_1d:
+            x = x.unsqueeze(0)
+        
+        # x is now [batch_size, input_dim]
         delta = self.correction_net(x)
         
         # Apply corruption/correction
@@ -44,12 +57,21 @@ class ChelationAdapter(nn.Module):
         
         # Normalize to hypersphere (Cosine Similarity relies on this)
         out = torch.nn.functional.normalize(out, p=2, dim=1)
+        
+        # Restore original rank: [1, dim] -> [dim] if input was 1D
+        if input_was_1d:
+            out = out.squeeze(0)
+        
         return out
     
     def save(self, path):
+        # Validate path for traversal attacks
+        path = validate_safe_path(Path(path))
         torch.save(self.state_dict(), path)
         
     def load(self, path):
+        # Validate path for traversal attacks
+        path = validate_safe_path(Path(path))
         if os.path.exists(path):
             try:
                 self.load_state_dict(torch.load(path, weights_only=True))

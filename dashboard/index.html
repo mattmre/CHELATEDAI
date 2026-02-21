@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ChelatedAI Dashboard</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 24px; color: #222; }
+    .cards { display: grid; grid-template-columns: repeat(4, minmax(160px, 1fr)); gap: 12px; margin-bottom: 18px; }
+    .card { border: 1px solid #ddd; border-radius: 8px; padding: 12px; }
+    .label { font-size: 12px; color: #666; text-transform: uppercase; }
+    .value { font-size: 24px; font-weight: 700; margin-top: 6px; }
+    .controls { display: flex; gap: 10px; margin-bottom: 12px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border-bottom: 1px solid #eee; text-align: left; padding: 8px; font-size: 13px; }
+    th { background: #fafafa; }
+  </style>
+</head>
+<body>
+  <h1>ChelatedAI Log Dashboard</h1>
+  <div class="cards">
+    <div class="card"><div class="label">Total Events</div><div class="value" id="total">-</div></div>
+    <div class="card"><div class="label">Query Count</div><div class="value" id="queries">-</div></div>
+    <div class="card"><div class="label">Error Count</div><div class="value" id="errors">-</div></div>
+    <div class="card"><div class="label">Top Action</div><div class="value" id="top-action">-</div></div>
+  </div>
+
+  <div class="controls">
+    <select id="event-type">
+      <option value="">All events</option>
+      <option value="query">Query events</option>
+      <option value="error">Error events</option>
+    </select>
+    <select id="limit">
+      <option value="10">10</option>
+      <option value="25" selected>25</option>
+      <option value="50">50</option>
+    </select>
+    <button id="refresh">Refresh</button>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Timestamp</th>
+        <th>Event</th>
+        <th>Action</th>
+        <th>Variance</th>
+        <th>Message</th>
+      </tr>
+    </thead>
+    <tbody id="rows">
+      <tr><td colspan="5">Loading...</td></tr>
+    </tbody>
+  </table>
+
+  <script>
+    async function loadSummary() {
+      const res = await fetch('/api/summary');
+      const data = await res.json();
+      document.getElementById('total').textContent = data.total_events ?? 0;
+      document.getElementById('queries').textContent = data.query_count ?? 0;
+      document.getElementById('errors').textContent = data.error_count ?? 0;
+      const entries = Object.entries(data.action_breakdown || {});
+      entries.sort((a, b) => b[1] - a[1]);
+      document.getElementById('top-action').textContent = entries.length ? entries[0][0] : '-';
+    }
+
+    async function loadEvents() {
+      const type = document.getElementById('event-type').value;
+      const limit = document.getElementById('limit').value;
+      let url = `/api/events?limit=${encodeURIComponent(limit)}`;
+      if (type) url += `&event_type=${encodeURIComponent(type)}`;
+
+      const res = await fetch(url);
+      const data = await res.json();
+      const rows = document.getElementById('rows');
+      rows.innerHTML = '';
+      const events = data.events || [];
+      if (!events.length) {
+        rows.innerHTML = '<tr><td colspan="5">No events</td></tr>';
+        return;
+      }
+      for (const e of events) {
+        const tr = document.createElement('tr');
+        const ts = (e.timestamp !== undefined && e.timestamp !== null) ? new Date(e.timestamp * 1000).toLocaleString() : '-';
+        tr.innerHTML = `
+          <td>${ts}</td>
+          <td>${e.event_type || (e.query_snippet ? 'query' : '-')}</td>
+          <td>${e.action || '-'}</td>
+          <td>${(typeof e.global_variance === 'number') ? e.global_variance.toFixed(6) : '-'}</td>
+          <td>${e.message || e.query_snippet || '-'}</td>
+        `;
+        rows.appendChild(tr);
+      }
+    }
+
+    async function refresh() {
+      await Promise.all([loadSummary(), loadEvents()]);
+    }
+
+    document.getElementById('refresh').addEventListener('click', refresh);
+    document.getElementById('event-type').addEventListener('change', loadEvents);
+    document.getElementById('limit').addEventListener('change', loadEvents);
+    refresh();
+  </script>
+</body>
+</html>

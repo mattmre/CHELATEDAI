@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Dict, Any, Optional
 from datetime import datetime
 import hashlib
+from config import validate_safe_path, sanitize_name
 
 
 class CheckpointManager:
@@ -82,6 +83,12 @@ class CheckpointManager:
         Returns:
             Checkpoint ID
         """
+        # Sanitize checkpoint name to prevent injection attacks
+        name = sanitize_name(name)
+        
+        # Validate adapter path
+        adapter_path = validate_safe_path(Path(adapter_path))
+        
         timestamp = datetime.now().isoformat()
         checkpoint_id = f"{name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
 
@@ -156,11 +163,15 @@ class CheckpointManager:
             # Determine target path
             if target_adapter_path is None:
                 target_adapter_path = Path(checkpoint_meta["original_adapter_path"])
+            
+            # Validate target path
+            target_adapter_path = validate_safe_path(target_adapter_path)
 
             # Verify integrity
             current_hash = self._compute_file_hash(adapter_checkpoint)
             if current_hash != checkpoint_meta["adapter_hash"]:
-                print("WARNING: Checkpoint file hash mismatch, may be corrupted")
+                print("ERROR: Checkpoint file hash mismatch. Refusing restore.")
+                return False
 
             # Copy back
             try:
@@ -296,10 +307,21 @@ class SafeTrainingContext:
         if exc_type is not None or not self.success:
             if self.auto_rollback:
                 print(f"Operation failed or not marked successful, rolling back to checkpoint {self.checkpoint_id}")
-                self.checkpoint_manager.restore_checkpoint(
-                    checkpoint_id=self.checkpoint_id,
-                    target_adapter_path=self.adapter_path
-                )
+                try:
+                    self.checkpoint_manager.restore_checkpoint(
+                        checkpoint_id=self.checkpoint_id,
+                        target_adapter_path=self.adapter_path
+                    )
+                except Exception as rollback_error:
+                    # Log rollback failure explicitly
+                    print(f"ERROR: Rollback failed: {rollback_error}")
+                    # If there was an original exception, preserve it (don't mask)
+                    if exc_type is not None:
+                        print(f"WARNING: Original exception preserved despite rollback failure")
+                        return False  # Re-raise original exception
+                    else:
+                        # No original exception, propagate rollback error
+                        raise rollback_error
             else:
                 print("Operation failed but auto_rollback disabled")
         else:

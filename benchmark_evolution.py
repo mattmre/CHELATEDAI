@@ -5,18 +5,8 @@ import mteb
 from antigravity_engine import AntigravityEngine
 from typing import Dict, List
 
-# Metric Calculation (NDCG@10)
-def dcg_at_k(r, k):
-    r = np.asarray(r, dtype=float)[:k]
-    if r.size:
-        return np.sum(r / np.log2(np.arange(2, r.size + 2)))
-    return 0.
-
-def ndcg_at_k(r, k):
-    dcg_max = dcg_at_k(sorted(r, reverse=True), k)
-    if not dcg_max:
-        return 0.
-    return dcg_at_k(r, k) / dcg_max
+# Import shared utilities from benchmark_utils
+from benchmark_utils import dcg_at_k, ndcg_at_k, find_keys, find_payload, load_mteb_data
 
 def evaluate_ndcg(engine, queries, qrels, k=10):
     ndcg_scores = []
@@ -90,183 +80,15 @@ def run_evolution(task_name="SciFact", learning_rate=0.5, model_name='ollama:nom
         use_centering=False
     )
     
-    # ... (Loading Logic omitted for brevity in search replacement, assume it matches) ...
-    # This tool works by replacing a block. I will target the init line and the Check block separately if needed.
-    # Actually I should do it in 2 calls or 1 big block.
-    # I'll update the Init first.
-    pass
-    
     # Load MTEB Task
     print(f"--- 2. LOADING MTEB ({task_name}) ---")
-    try:
-        task = mteb.get_task(task_name)
-    except KeyError:
-        print(f"ERROR: Task '{task_name}' not found in MTEB registry!")
-        print("Available tasks can be listed with: mteb.get_tasks()")
-        return
-    except Exception as e:
-        print(f"ERROR: Failed to load MTEB task '{task_name}': {e}")
+    corpus, queries, qrels = load_mteb_data(task_name)
+
+    if corpus is None or queries is None or qrels is None:
+        print("ERROR: Failed to load task data. Aborting.")
         return
 
-    task.load_data()
-        
-        # DEBUG: Print available attributes
-        # print(f"Task attributes: {dir(task)}")
-        
-    # DEBUG: robustness
-    if not hasattr(task, 'corpus'):
-        print("Attribute 'corpus' missing. Attempting manual extraction from dataset...")
-        # SciFact/HF dataset structure: dataset['test'] is usually a list of dicts?
-        # Or a Dataset object.
-        # Let's assume it is task.dataset['test'] if available.
-        if 'test' in task.dataset:
-            test_data = task.dataset['test']
-            # MTEB HF formatting usually has 'corpus', 'queries' columns?
-            # Or is it raw?
-            # Actually, standard MTEB *should* map it.
-            # If `mteb` is updated, `AbsTaskRetrieval` usually handles this.
-            # But earlier fallback worked.
-            # Let's try to just use `task.queries`, `task.corpus` assuming they MIGHT appear if we wait? No.
-            
-            # COPYING LOGIC FROM manual_benchmark_scifact.py EXACTLY IS SAFEST
-            # BUT I need to adapt it.
-            # manual_benchmark_scifact logic was:
-            # data_root = find_keys(task.dataset, ['corpus', 'queries', 'relevant_docs'])
-            # That implies it searched the whole tree.
-            pass
-
-    # Helper for deep search (Verified Logic)
-    def find_keys(obj, target_keys):
-        if not isinstance(obj, dict):
-            return None
-        if all(k in obj for k in target_keys):
-            return obj
-        for k, v in obj.items():
-            found = find_keys(v, target_keys)
-            if found:
-                return found
-        return None
-
-    # Try to find the data root
-    targets = ['corpus', 'queries'] # Start with these 2
-    data_root = find_keys(task.dataset, targets)
-    
-    if not data_root:
-        print("DEBUG: Strict data root not found. Searching individually...")
-        c_payload = None
-        q_payload = None
-        r_payload = None
-        
-        def find_payload(obj, key):
-            if isinstance(obj, dict):
-                if key in obj: return obj[key]
-                for v in obj.values():
-                    res = find_payload(v, key)
-                    if res: return res
-            return None
-            
-        c_payload = find_payload(task.dataset, 'corpus')
-        q_payload = find_payload(task.dataset, 'queries')
-        r_payload = find_payload(task.dataset, 'relevant_docs')
-        if not r_payload: r_payload = find_payload(task.dataset, 'test') # Maybe it's the split?
-    else:
-        c_payload = data_root.get('corpus')
-        q_payload = data_root.get('queries')
-        r_payload = data_root.get('relevant_docs')
-
-    # Proceed to extraction...
-    corpus = {}
-    queries = {}
-    qrels = {}
-        
-    if c_payload:
-        # It might be a Dataset or dict
-        # For SciFact, corpus is usually {id: {text:..., title:...}}
-        # Let's try to iterate
-        try:
-            # If it's a dict
-            for k, v in c_payload.items():
-                corpus[k] = v['text'] + " " + v['title']
-        except (AttributeError, TypeError):
-            # If it's a HF dataset (list of rows)
-            for row in c_payload:
-                # Robust ID extraction
-                if '_id' in row:
-                    doc_id = row['_id']
-                elif 'id' in row:
-                    doc_id = row['id']
-                else:
-                    continue
-
-                # Robust Text
-                text = row.get('text', '')
-                title = row.get('title', '')
-                corpus[doc_id] = text + " " + title
-        except Exception as e:
-            print(f"ERROR: Failed to parse corpus payload: {e}")
-
-    if q_payload:
-        try:
-            for k, v in q_payload.items():
-                queries[k] = v['text']
-        except (AttributeError, TypeError):
-            for row in q_payload:
-                if '_id' in row:
-                    qid = row['_id']
-                elif 'id' in row:
-                    qid = row['id']
-                else:
-                    continue
-                queries[qid] = row.get('text', '')
-        except Exception as e:
-            print(f"ERROR: Failed to parse queries payload: {e}")
-        
-        if r_payload:
-            try:
-                if isinstance(r_payload, dict):
-                    for qid, docs in r_payload.items():
-                        qid = str(qid)
-                        qrels[qid] = {}
-                        if isinstance(docs, dict):
-                            for did, score in docs.items():
-                                qrels[qid][str(did)] = score
-                        else:
-                            # Maybe list of doc IDs? MTEB raw can be {qid: [did, ...]}
-                            for did in docs:
-                                qrels[qid][str(did)] = 1
-                else:
-                    # List of rows
-                    for row in r_payload:
-                        # Robust Query ID
-                        qid = str(row.get('query-id', row.get('query_id', row.get('_id'))))
-                        if not qid or qid == 'None': continue
-                        
-                        if qid not in qrels: qrels[qid] = {}
-                        
-                        # Robust Doc ID(s)
-                        if 'doc-ids' in row:
-                            for did in row['doc-ids']:
-                                qrels[qid][str(did)] = 1
-                        elif 'doc_ids' in row:
-                            for did in row['doc_ids']:
-                                qrels[qid][str(did)] = 1
-                        elif 'doc-id' in row:
-                            qrels[qid][str(row['doc-id'])] = row.get('score', 1)
-                        elif 'doc_id' in row:
-                            qrels[qid][str(row['doc_id'])] = row.get('score', 1)
-            except Exception as e:
-                print(f"Error parsing qrels: {e}")
-            
-    # Final check
-    if not qrels and hasattr(task, 'qrels'):
-        qrels = task.qrels['test']
-        
     print(f"Loaded {len(corpus)} docs, {len(queries)} queries, {len(qrels)} qrels.")
-    # except Exception as e:
-    #     print(f"MTEB Load Failed: {e}")
-    #     import traceback
-    #     traceback.print_exc()
-    #     return
 
     # Ingest (skip if already done? Engine assumes persistence, but let's re-ingest to be safe/clean)
     # Actually AntigravityEngine uses 'antigravity_stage8' collection. 

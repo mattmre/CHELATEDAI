@@ -7,10 +7,36 @@ Provides JSON-formatted logging with performance metrics and debugging info.
 import json
 import logging
 import time
+import warnings
+import re
 from pathlib import Path
 from typing import Dict, Any, Optional
 from datetime import datetime
 import sys
+
+
+def _sanitize_query_snippet(text: str) -> str:
+    """
+    Sanitize query text for safe logging.
+    
+    Replaces newlines and carriage returns with spaces, and removes
+    other control characters to prevent log injection attacks.
+    
+    Args:
+        text: Raw query text
+        
+    Returns:
+        Sanitized query text safe for logging
+    """
+    # Replace newlines and carriage returns with spaces
+    sanitized = text.replace('\n', ' ').replace('\r', ' ')
+    
+    # Remove other control characters (0x00-0x1F except space, and 0x7F-0x9F)
+    # Keep tab (0x09) as a space
+    sanitized = re.sub(r'[\x00-\x08\x0B-\x1F\x7F-\x9F]', '', sanitized)
+
+    # Collapse repeated whitespace introduced by newline/control replacement
+    return " ".join(sanitized.split())
 
 
 class ChelationLogger:
@@ -33,7 +59,7 @@ class ChelationLogger:
         Args:
             log_path: Path to log file (default: chelation_debug.jsonl)
             console_level: Logging level for console output
-            file_level: Logging level for file output
+            file_level: (Unused - kept for backward compatibility)
         """
         self.log_path = log_path or Path("chelation_debug.jsonl")
         self.start_time = time.time()
@@ -54,10 +80,8 @@ class ChelationLogger:
         console_handler.setFormatter(console_formatter)
         self.logger.addHandler(console_handler)
 
-        # File handler (JSON formatted)
-        file_handler = logging.FileHandler(self.log_path, encoding='utf-8')
-        file_handler.setLevel(getattr(logging, file_level.upper()))
-        self.logger.addHandler(file_handler)
+        # Note: File writes are handled by log_event's JSON line path (lines 92-94)
+        # No FileHandler needed to avoid duplicate writes
 
     def log_event(
         self,
@@ -115,11 +139,14 @@ class ChelationLogger:
             jaccard: Overlap between standard and chelated results
             **kwargs: Additional metrics
         """
+        # Sanitize query text to prevent log injection
+        safe_query = _sanitize_query_snippet(query_text)
+        
         self.log_event(
             event_type="query",
-            message=f"Query: '{query_text[:50]}...' | Action: {action}",
+            message=f"Query: '{safe_query[:50]}...' | Action: {action}",
             level="INFO",
-            query_snippet=query_text[:100],
+            query_snippet=safe_query[:100],
             global_variance=float(variance),
             action=action,
             top_10_ids=[str(id) for id in top_ids[:10]],
@@ -340,6 +367,7 @@ class OperationContext:
 
 # Global logger instance
 _global_logger = None
+_global_logger_config = None
 
 
 def get_logger(
@@ -347,18 +375,52 @@ def get_logger(
     console_level: str = "INFO"
 ) -> ChelationLogger:
     """
-    Get or create global logger instance.
+    Get or create global logger instance (singleton pattern).
+    
+    Warns if called with explicit configuration that differs from 
+    the existing singleton's configuration. Only explicit non-default
+    values trigger warnings to avoid noise from common usage patterns.
 
     Args:
         log_path: Path to log file (only used on first call)
         console_level: Console logging level (only used on first call)
 
     Returns:
-        ChelationLogger instance
+        ChelationLogger instance (singleton)
     """
-    global _global_logger
+    global _global_logger, _global_logger_config
+    
     if _global_logger is None:
+        # First initialization - create logger and record config
         _global_logger = ChelationLogger(log_path, console_level)
+        _global_logger_config = {
+            'log_path': log_path,
+            'console_level': console_level
+        }
+    else:
+        # Logger already exists - check for configuration mismatches
+        # Only warn if explicit non-default values differ from existing config
+        
+        # Check log_path: warn if explicitly provided and differs
+        if log_path is not None and log_path != _global_logger_config['log_path']:
+            warnings.warn(
+                f"Logger already initialized with log_path={_global_logger_config['log_path']}. "
+                f"Ignoring new log_path={log_path}. "
+                f"Subsequent calls to get_logger() return the existing singleton instance.",
+                UserWarning,
+                stacklevel=2
+            )
+        
+        # Check console_level: warn if explicitly provided and non-default and differs
+        if console_level != "INFO" and console_level != _global_logger_config['console_level']:
+            warnings.warn(
+                f"Logger already initialized with console_level={_global_logger_config['console_level']}. "
+                f"Ignoring new console_level={console_level}. "
+                f"Subsequent calls to get_logger() return the existing singleton instance.",
+                UserWarning,
+                stacklevel=2
+            )
+    
     return _global_logger
 
 

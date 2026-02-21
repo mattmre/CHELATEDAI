@@ -5,9 +5,78 @@ Centralized configuration management for hyperparameters, paths, and system sett
 """
 
 import os
+import re
 from pathlib import Path
 from typing import Optional, Dict, Any
 import json
+
+
+# ===== Security Utilities =====
+
+def validate_safe_path(path: Path, base_dir: Optional[Path] = None, allow_absolute: bool = True) -> Path:
+    """
+    Validate that a path is safe from path traversal attacks.
+    
+    Args:
+        path: Path to validate
+        base_dir: Optional base directory to restrict paths to
+        allow_absolute: If False, reject absolute paths (default: True for backwards compatibility)
+    
+    Returns:
+        Resolved safe path
+        
+    Raises:
+        ValueError: If path contains traversal attempts or is outside base_dir
+    """
+    # Convert to Path object
+    path = Path(path)
+    
+    # Check for path traversal components before resolution
+    parts = path.parts
+    if '..' in parts:
+        raise ValueError(f"Path traversal detected: path contains '..' components")
+    
+    # Resolve to absolute path
+    try:
+        resolved_path = path.resolve()
+    except (OSError, RuntimeError) as e:
+        raise ValueError(f"Invalid path: {e}")
+    
+    # If base_dir specified, ensure resolved path is within it
+    if base_dir is not None:
+        base_dir = Path(base_dir).resolve()
+        try:
+            resolved_path.relative_to(base_dir)
+        except ValueError:
+            raise ValueError(f"Path escapes base directory: {path} not under {base_dir}")
+    
+    return resolved_path
+
+
+def sanitize_name(name: str, pattern: str = r'^[a-zA-Z0-9_-]+$') -> str:
+    """
+    Sanitize a name using allowlist pattern.
+    
+    Args:
+        name: Name to sanitize
+        pattern: Regex pattern for allowed characters (default: alphanumeric, underscore, hyphen)
+    
+    Returns:
+        Sanitized name
+        
+    Raises:
+        ValueError: If name doesn't match allowed pattern
+    """
+    if not name:
+        raise ValueError("Name cannot be empty")
+    
+    if not re.match(pattern, name):
+        raise ValueError(
+            f"Invalid name: '{name}' contains disallowed characters. "
+            f"Only alphanumeric, underscore, and hyphen allowed."
+        )
+    
+    return name
 
 
 class ChelationConfig:
@@ -33,6 +102,7 @@ class ChelationConfig:
     OLLAMA_URL = "http://localhost:11434/api/embeddings"
     OLLAMA_TIMEOUT = 30  # seconds per request
     OLLAMA_MAX_WORKERS = 2  # Concurrent requests to avoid overwhelming server
+    OLLAMA_INPUT_MAX_CHARS = 10000  # Hard safety cap before truncation retries
 
     # Truncation strategy for long documents (Ollama mode)
     OLLAMA_TRUNCATION_LIMITS = [6000, 2000, 500]  # chars, tried in order
@@ -41,6 +111,15 @@ class ChelationConfig:
     # Core chelation parameters
     DEFAULT_CHELATION_P = 85  # Percentile threshold for dimension selection (0-100)
     DEFAULT_CHELATION_THRESHOLD = 0.0004  # Variance threshold for adaptive triggering
+    
+    # ===== Adaptive Threshold Configuration =====
+    # Adaptive threshold tuning (opt-in feature)
+    ADAPTIVE_THRESHOLD_ENABLED = False  # Disabled by default for backward compatibility
+    ADAPTIVE_THRESHOLD_PERCENTILE = 75  # Target percentile of observed variances
+    ADAPTIVE_THRESHOLD_WINDOW = 100  # Number of recent variance samples to track
+    ADAPTIVE_THRESHOLD_MIN_SAMPLES = 20  # Minimum samples before adaptive adjustment
+    ADAPTIVE_THRESHOLD_MIN = 0.0001  # Safety lower bound for threshold
+    ADAPTIVE_THRESHOLD_MAX = 0.01  # Safety upper bound for threshold
 
     # Chelation tuning guidelines by use case
     CHELATION_PRESETS = {
@@ -71,6 +150,11 @@ class ChelationConfig:
     SCOUT_K = 50  # Neighborhood size for variance calculation
     TOP_K = 10  # Number of results to return
     BATCH_SIZE = 100  # Documents per ingestion batch
+    
+    # ===== Payload Optimization (F-040) =====
+    # Control whether to store/fetch full document text in Qdrant payload
+    STORE_FULL_TEXT_PAYLOAD = True  # Store text in payload during ingestion (default: True for backward compatibility)
+    FETCH_PAYLOAD_ON_QUERY = False  # Fetch payload during query operations where not needed (default: False for optimization)
 
     # ===== Adapter Training Configuration =====
     DEFAULT_LEARNING_RATE = 0.001  # Conservative by default
@@ -78,6 +162,20 @@ class ChelationConfig:
     DEFAULT_COLLAPSE_THRESHOLD = 3  # Min frequency to trigger sedimentation
     ADAPTER_HIDDEN_DIM_RATIO = 0.5  # hidden_dim = input_dim * ratio
     HOMEOSTATIC_PUSH_MAGNITUDE = 0.1  # Adapter push magnitude for sedimentation target vectors
+    
+    # ===== Teacher Distillation Configuration =====
+    # Training mode: 'baseline', 'offline', 'hybrid'
+    DEFAULT_TRAINING_MODE = "baseline"
+    
+    # Teacher model for distillation (local sentence-transformers model)
+    DEFAULT_TEACHER_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
+    
+    # Teacher weight for hybrid mode (0.0 = homeostatic only, 1.0 = teacher only)
+    DEFAULT_TEACHER_WEIGHT = 0.5
+    
+    # Offline distillation epochs
+    DEFAULT_OFFLINE_EPOCHS = 15
+    DEFAULT_OFFLINE_LEARNING_RATE = 0.005
 
     # Adapter training tuning by dataset size
     ADAPTER_PRESETS = {
@@ -100,10 +198,55 @@ class ChelationConfig:
             "description": "Large datasets, capture all patterns"
         }
     }
+    
+    # RLM (Recursive Logic Mining) presets
+    RLM_PRESETS = {
+        "balanced": {
+            "max_depth": 3,
+            "min_support": 5,
+            "description": "Balanced depth for general decomposition"
+        },
+        "shallow": {
+            "max_depth": 2,
+            "min_support": 10,
+            "description": "Shallow decomposition for simple queries"
+        },
+        "deep": {
+            "max_depth": 5,
+            "min_support": 2,
+            "description": "Deep decomposition for complex queries"
+        }
+    }
+    
+    # Sedimentation presets
+    SEDIMENTATION_PRESETS = {
+        "balanced": {
+            "collapse_threshold": 3,
+            "push_magnitude": 0.1,
+            "description": "Balanced sedimentation for typical patterns"
+        },
+        "conservative": {
+            "collapse_threshold": 5,
+            "push_magnitude": 0.05,
+            "description": "Conservative sedimentation, fewer interventions"
+        },
+        "aggressive": {
+            "collapse_threshold": 1,
+            "push_magnitude": 0.2,
+            "description": "Aggressive sedimentation for noisy data"
+        }
+    }
 
     # ===== Memory Management =====
     MAX_BATCH_MEMORY_MB = 512  # Target max memory per batch
     CHUNK_SIZE = 100  # Qdrant update chunk size
+    
+    # Streaming ingestion parameters
+    STREAMING_BATCH_SIZE = 100  # Documents per batch for streaming ingestion
+    STREAMING_PROGRESS_INTERVAL = 10  # Log progress every N batches
+    
+    # Chelation log memory management
+    CHELATION_LOG_MAX_ENTRIES_PER_DOC = 1000  # Max entries per document in chelation log
 
     # ===== Quantization Settings =====
     QUANTIZATION_TYPE = "INT8"  # Qdrant scalar quantization
@@ -121,6 +264,8 @@ class ChelationConfig:
     MAX_LEARNING_RATE = 1.0
     MIN_EPOCHS = 1
     MAX_EPOCHS = 100
+    MIN_MAX_DEPTH = 1
+    MAX_MAX_DEPTH = 10
 
     @classmethod
     def validate_chelation_p(cls, value: float) -> float:
@@ -141,9 +286,61 @@ class ChelationConfig:
     @classmethod
     def validate_epochs(cls, value: int) -> int:
         """Validate and clamp epochs to valid range."""
+        if value < 0:
+            print(f"WARNING: epochs={value} is negative, using 0 (skip training).")
+            return 0
         if not cls.MIN_EPOCHS <= value <= cls.MAX_EPOCHS:
             print(f"WARNING: epochs={value} out of range [{cls.MIN_EPOCHS}, {cls.MAX_EPOCHS}], clamping.")
             return max(cls.MIN_EPOCHS, min(cls.MAX_EPOCHS, value))
+        return value
+    
+    @classmethod
+    def validate_training_mode(cls, value: str) -> str:
+        """Validate training mode."""
+        valid_modes = ["baseline", "offline", "hybrid"]
+        if value not in valid_modes:
+            print(f"WARNING: training_mode='{value}' invalid. Valid options: {valid_modes}. Using 'baseline'.")
+            return "baseline"
+        return value
+    
+    @classmethod
+    def validate_teacher_weight(cls, value: float) -> float:
+        """Validate and clamp teacher_weight to [0.0, 1.0]."""
+        if not 0.0 <= value <= 1.0:
+            print(f"WARNING: teacher_weight={value} out of range [0.0, 1.0], clamping.")
+            return max(0.0, min(1.0, value))
+        return value
+    
+    @classmethod
+    def validate_adaptive_percentile(cls, value: float) -> float:
+        """Validate and clamp adaptive threshold percentile to [0, 100]."""
+        if not 0.0 <= value <= 100.0:
+            print(f"WARNING: adaptive_percentile={value} out of range [0.0, 100.0], clamping.")
+            return max(0.0, min(100.0, value))
+        return value
+    
+    @classmethod
+    def validate_adaptive_window(cls, value: int) -> int:
+        """Validate adaptive threshold window size."""
+        if value < 1:
+            print(f"WARNING: adaptive_window={value} must be >= 1, using 1.")
+            return 1
+        return value
+    
+    @classmethod
+    def validate_adaptive_min_samples(cls, value: int) -> int:
+        """Validate adaptive threshold minimum samples."""
+        if value < 1:
+            print(f"WARNING: adaptive_min_samples={value} must be >= 1, using 1.")
+            return 1
+        return value
+    
+    @classmethod
+    def validate_max_depth(cls, value: int) -> int:
+        """Validate and clamp max_depth to valid range."""
+        if not cls.MIN_MAX_DEPTH <= value <= cls.MAX_MAX_DEPTH:
+            print(f"WARNING: max_depth={value} out of range [{cls.MIN_MAX_DEPTH}, {cls.MAX_MAX_DEPTH}], clamping.")
+            return max(cls.MIN_MAX_DEPTH, min(cls.MAX_MAX_DEPTH, value))
         return value
 
     @classmethod
@@ -153,15 +350,27 @@ class ChelationConfig:
 
         Args:
             preset_name: Name of preset ('conservative', 'balanced', 'aggressive', etc.)
-            preset_type: Type of preset ('chelation' or 'adapter')
+            preset_type: Type of preset ('chelation', 'adapter', 'rlm', 'sedimentation')
 
         Returns:
             Dictionary with preset parameters
 
         Raises:
-            ValueError: If preset not found
+            ValueError: If preset not found or preset_type invalid
         """
-        presets = cls.CHELATION_PRESETS if preset_type == "chelation" else cls.ADAPTER_PRESETS
+        # Map preset_type to preset dictionary
+        preset_map = {
+            "chelation": cls.CHELATION_PRESETS,
+            "adapter": cls.ADAPTER_PRESETS,
+            "rlm": cls.RLM_PRESETS,
+            "sedimentation": cls.SEDIMENTATION_PRESETS
+        }
+        
+        if preset_type not in preset_map:
+            valid_types = ", ".join(preset_map.keys())
+            raise ValueError(f"Invalid preset_type '{preset_type}'. Valid types: {valid_types}")
+        
+        presets = preset_map[preset_type]
 
         if preset_name not in presets:
             available = ", ".join(presets.keys())
@@ -180,7 +389,9 @@ class ChelationConfig:
         Returns:
             Configuration dictionary
         """
-        config_path = Path(config_path)
+        # Validate path for traversal attacks
+        config_path = validate_safe_path(Path(config_path))
+        
         if not config_path.exists():
             raise FileNotFoundError(f"Configuration file not found: {config_path}")
 
@@ -198,7 +409,8 @@ class ChelationConfig:
             config: Configuration dictionary
             config_path: Path to save JSON config
         """
-        config_path = Path(config_path)
+        # Validate path for traversal attacks
+        config_path = validate_safe_path(Path(config_path))
         config_path.parent.mkdir(parents=True, exist_ok=True)
 
         with open(config_path, 'w', encoding='utf-8') as f:

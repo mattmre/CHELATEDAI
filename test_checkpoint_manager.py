@@ -92,6 +92,30 @@ class TestCheckpointManagerCreate(unittest.TestCase):
         self.assertEqual(meta["learning_rate"], 0.01)
         self.assertEqual(meta["epochs"], 5)
 
+    def test_create_checkpoint_rejects_invalid_name(self):
+        """Creating a checkpoint with disallowed characters in the name raises ValueError."""
+        # Names with path traversal
+        with self.assertRaises(ValueError) as cm:
+            self.manager.create_checkpoint("../evil", self.adapter_path)
+        self.assertIn("Invalid name", str(cm.exception))
+
+        # Names with slashes
+        with self.assertRaises(ValueError) as cm:
+            self.manager.create_checkpoint("bad/name", self.adapter_path)
+        self.assertIn("Invalid name", str(cm.exception))
+
+        # Names with special characters
+        with self.assertRaises(ValueError) as cm:
+            self.manager.create_checkpoint("bad@name!", self.adapter_path)
+        self.assertIn("Invalid name", str(cm.exception))
+
+    def test_create_checkpoint_accepts_valid_name(self):
+        """Creating a checkpoint with valid characters succeeds."""
+        # Alphanumeric with underscore and hyphen are allowed
+        cp_id = self.manager.create_checkpoint("valid_name-123", self.adapter_path)
+        self.assertIsInstance(cp_id, str)
+        self.assertTrue(cp_id.startswith("valid_name-123_"))
+
 
 class TestCheckpointManagerRestore(unittest.TestCase):
     """Test CheckpointManager.restore_checkpoint."""
@@ -150,10 +174,8 @@ class TestCheckpointManagerRestore(unittest.TestCase):
         result = self.manager.restore_checkpoint(checkpoint_id="nonexistent_id")
         self.assertFalse(result)
 
-    def test_restore_with_hash_mismatch_still_restores(self):
-        """When the checkpoint file hash has changed (simulating corruption), the
-        restore still proceeds (prints a warning). This documents current behavior
-        that finding F-018 will tighten later."""
+    def test_restore_with_hash_mismatch_blocks_by_default(self):
+        """Hash mismatch should always fail restore (no override)."""
         cp_id = self.manager.create_checkpoint("snap", self.adapter_path)
         # Tamper with the checkpoint file to cause a hash mismatch
         checkpoint_file = Path(self.manager.list_checkpoints()[-1]["adapter_path"])
@@ -161,11 +183,18 @@ class TestCheckpointManagerRestore(unittest.TestCase):
         # Overwrite original adapter
         torch.save({"weight": torch.zeros(5)}, self.adapter_path)
         result = self.manager.restore_checkpoint(checkpoint_id=cp_id)
-        # Current behavior: still restores despite mismatch
-        self.assertTrue(result)
-        # The restored file should match the tampered checkpoint (not the original)
+        self.assertFalse(result)
+        # Adapter should remain unchanged because restore was blocked.
         restored = torch.load(self.adapter_path, weights_only=True)
-        self.assertTrue(torch.equal(restored["weight"], torch.ones(10)))
+        self.assertTrue(torch.equal(restored["weight"], torch.zeros(5)))
+
+    def test_restore_validates_target_path(self):
+        """Restoring with a path traversal target path raises ValueError."""
+        cp_id = self.manager.create_checkpoint("snap", self.adapter_path)
+        evil_target = self.temp_dir / ".." / "evil_restore.pt"
+        with self.assertRaises(ValueError) as cm:
+            self.manager.restore_checkpoint(checkpoint_id=cp_id, target_adapter_path=evil_target)
+        self.assertIn("traversal", str(cm.exception).lower())
 
 
 class TestCheckpointManagerList(unittest.TestCase):
@@ -406,6 +435,62 @@ class TestSafeTrainingContextFailureNoSuccess(unittest.TestCase):
             # Not calling mark_success, but auto_rollback is disabled
         loaded = torch.load(self.adapter_path, weights_only=True)
         self.assertTrue(torch.equal(loaded["weight"], new_tensor))
+
+
+class TestSafeTrainingContextRollbackExceptions(unittest.TestCase):
+    """Test SafeTrainingContext exception handling during rollback (F-026)."""
+
+    def setUp(self):
+        self.temp_dir = Path(tempfile.mkdtemp())
+        self.checkpoint_dir = self.temp_dir / "checkpoints"
+        self.adapter_path = self.temp_dir / "adapter_weights.pt"
+        self.original_tensor = torch.randn(10)
+        torch.save({"weight": self.original_tensor}, self.adapter_path)
+        self.manager = CheckpointManager(self.checkpoint_dir)
+
+    def tearDown(self):
+        shutil.rmtree(self.temp_dir)
+
+    def test_original_exception_preserved_when_rollback_raises(self):
+        """When operation raises and rollback also raises, the original exception
+        is preserved (not masked by rollback exception)."""
+        # Patch restore_checkpoint to raise
+        original_restore = self.manager.restore_checkpoint
+        def mock_restore(*args, **kwargs):
+            raise IOError("Simulated rollback failure")
+        self.manager.restore_checkpoint = mock_restore
+        
+        try:
+            with SafeTrainingContext(self.manager, self.adapter_path, "fail_both") as ctx:
+                torch.save({"weight": torch.ones(10)}, self.adapter_path)
+                raise ValueError("Original training error")
+        except ValueError as e:
+            # Should get the original ValueError, not IOError
+            self.assertIn("Original training error", str(e))
+        except IOError:
+            self.fail("Rollback exception masked the original exception")
+        finally:
+            self.manager.restore_checkpoint = original_restore
+
+    def test_rollback_exception_raised_when_no_original_exception(self):
+        """When there's no original exception (exit without mark_success) but rollback
+        raises, the rollback exception should propagate."""
+        # Patch restore_checkpoint to raise
+        original_restore = self.manager.restore_checkpoint
+        def mock_restore(*args, **kwargs):
+            raise IOError("Simulated rollback failure")
+        self.manager.restore_checkpoint = mock_restore
+        
+        try:
+            with SafeTrainingContext(self.manager, self.adapter_path, "rollback_fail") as ctx:
+                torch.save({"weight": torch.ones(10)}, self.adapter_path)
+                # Not calling mark_success, but no exception either
+            self.fail("Expected IOError from rollback to propagate")
+        except IOError as e:
+            # Should get the rollback IOError
+            self.assertIn("Simulated rollback failure", str(e))
+        finally:
+            self.manager.restore_checkpoint = original_restore
 
 
 if __name__ == "__main__":

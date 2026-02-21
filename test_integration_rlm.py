@@ -12,6 +12,7 @@ if the package is not installed.
 import unittest
 import json
 import numpy as np
+import warnings
 from unittest.mock import patch, MagicMock
 
 # Check for sentence-transformers availability
@@ -20,6 +21,13 @@ try:
     HAS_SENTENCE_TRANSFORMERS = True
 except ImportError:
     HAS_SENTENCE_TRANSFORMERS = False
+    warnings.warn(
+        "sentence-transformers is not installed. Integration tests in "
+        "test_integration_rlm.py will be skipped. Install with: "
+        "pip install sentence-transformers",
+        UserWarning,
+        stacklevel=2
+    )
 
 from recursive_decomposer import (
     RecursiveRetrievalEngine,
@@ -210,7 +218,216 @@ class TestIntegrationRLM(unittest.TestCase):
         self.assertEqual(len(self.engine.chelation_log), 0)
 
     # ------------------------------------------------------------------
-    # Test 4: Decomposition trace completeness
+    # Test 4: Baseline training mode compatibility
+    # ------------------------------------------------------------------
+    def test_baseline_training_mode_still_works(self):
+        """Baseline mode should work identically to prior behavior."""
+        # Create baseline engine (default mode)
+        baseline_engine = None
+        try:
+            from antigravity_engine import AntigravityEngine
+            
+            baseline_engine = AntigravityEngine(
+                qdrant_location=":memory:",
+                model_name="all-MiniLM-L6-v2",
+                chelation_p=85,
+                training_mode="baseline"  # Explicit baseline
+            )
+            
+            # Ingest small corpus
+            corpus = [
+                "Machine learning and deep learning",
+                "Natural language processing with transformers",
+                "Computer vision applications"
+            ]
+            baseline_engine.ingest(corpus)
+            
+            # Run some queries to populate chelation log
+            baseline_engine.run_inference("machine learning")
+            baseline_engine.run_inference("transformers")
+            
+            # Populate chelation log manually
+            for i in range(3):
+                baseline_engine.chelation_log[i] = [
+                    np.random.randn(baseline_engine.vector_size) for _ in range(3)
+                ]
+            
+            # Run sedimentation with baseline mode
+            baseline_engine.run_sedimentation_cycle(
+                threshold=1,
+                learning_rate=0.001,
+                epochs=2
+            )
+            
+            # Should complete successfully and clear log
+            self.assertEqual(len(baseline_engine.chelation_log), 0)
+            
+        finally:
+            if baseline_engine:
+                del baseline_engine
+
+    # ------------------------------------------------------------------
+    # Test 5: Hybrid mode initialization with mocked teacher
+    # ------------------------------------------------------------------
+    @patch("antigravity_engine.create_distillation_helper")
+    def test_hybrid_mode_initialization(self, mock_helper_factory):
+        """Hybrid mode should initialize with teacher helper."""
+        # Mock the teacher helper
+        mock_helper = MagicMock()
+        mock_helper_factory.return_value = mock_helper
+        
+        from antigravity_engine import AntigravityEngine
+        
+        # Create hybrid engine
+        engine = AntigravityEngine(
+            qdrant_location=":memory:",
+            model_name="all-MiniLM-L6-v2",
+            chelation_p=85,
+            training_mode="hybrid",
+            teacher_model_name="test-teacher",
+            teacher_weight=0.5
+        )
+        
+        # Verify helper was created
+        mock_helper_factory.assert_called_once()
+        self.assertEqual(engine.training_mode, "hybrid")
+        self.assertEqual(engine.teacher_weight, 0.5)
+        self.assertIsNotNone(engine.teacher_helper)
+
+    # ------------------------------------------------------------------
+    # Test 6: Offline mode initialization with mocked teacher
+    # ------------------------------------------------------------------
+    @patch("antigravity_engine.create_distillation_helper")
+    def test_offline_mode_initialization(self, mock_helper_factory):
+        """Offline mode should initialize with teacher helper."""
+        # Mock the teacher helper
+        mock_helper = MagicMock()
+        mock_helper_factory.return_value = mock_helper
+        
+        from antigravity_engine import AntigravityEngine
+        
+        # Create offline engine
+        engine = AntigravityEngine(
+            qdrant_location=":memory:",
+            model_name="all-MiniLM-L6-v2",
+            chelation_p=85,
+            training_mode="offline",
+            teacher_model_name="test-teacher"
+        )
+        
+        # Verify helper was created
+        mock_helper_factory.assert_called_once()
+        self.assertEqual(engine.training_mode, "offline")
+        self.assertIsNotNone(engine.teacher_helper)
+
+    # ------------------------------------------------------------------
+    # Test 7: Sedimentation with mocked teacher (hybrid mode)
+    # ------------------------------------------------------------------
+    @patch("antigravity_engine.create_distillation_helper")
+    def test_sedimentation_hybrid_mode_mocked(self, mock_helper_factory):
+        """Hybrid sedimentation should blend homeostatic and teacher targets."""
+        # Mock teacher helper
+        mock_helper = MagicMock()
+        
+        # Mock get_teacher_embeddings to return random embeddings
+        def mock_get_embeddings(texts):
+            n = len(texts)
+            dim = 384
+            embeds = np.random.randn(n, dim)
+            # Normalize
+            embeds = embeds / (np.linalg.norm(embeds, axis=1, keepdims=True) + 1e-9)
+            return embeds
+        
+        mock_helper.get_teacher_embeddings.side_effect = mock_get_embeddings
+        mock_helper_factory.return_value = mock_helper
+        
+        from antigravity_engine import AntigravityEngine
+        
+        # Create hybrid engine
+        engine = AntigravityEngine(
+            qdrant_location=":memory:",
+            model_name="all-MiniLM-L6-v2",
+            chelation_p=85,
+            training_mode="hybrid",
+            teacher_model_name="test-teacher",
+            teacher_weight=0.5
+        )
+        
+        # Ingest corpus
+        corpus = [
+            "Machine learning research",
+            "Neural network architectures",
+            "Deep learning applications"
+        ]
+        engine.ingest(corpus)
+        
+        # Populate chelation log
+        for i in range(3):
+            engine.chelation_log[i] = [
+                np.random.randn(engine.vector_size) for _ in range(3)
+            ]
+        
+        # Run sedimentation
+        engine.run_sedimentation_cycle(
+            threshold=1,
+            learning_rate=0.001,
+            epochs=2
+        )
+        
+        # Verify teacher embeddings were requested
+        self.assertTrue(mock_helper.get_teacher_embeddings.called)
+        
+        # Log should be cleared
+        self.assertEqual(len(engine.chelation_log), 0)
+
+    # ------------------------------------------------------------------
+    # Test 8: Training mode validation
+    # ------------------------------------------------------------------
+    def test_training_mode_validation(self):
+        """Invalid training modes should fallback to baseline."""
+        from antigravity_engine import AntigravityEngine
+        
+        # Invalid mode should default to baseline (config validation)
+        engine = AntigravityEngine(
+            qdrant_location=":memory:",
+            model_name="all-MiniLM-L6-v2",
+            chelation_p=85,
+            training_mode="invalid_mode"
+        )
+        
+        # Should fallback to baseline
+        self.assertEqual(engine.training_mode, "baseline")
+
+    # ------------------------------------------------------------------
+    # Test 9: Teacher weight validation
+    # ------------------------------------------------------------------
+    @patch("antigravity_engine.create_distillation_helper")
+    def test_teacher_weight_validation(self, mock_helper_factory):
+        """Teacher weight should be clamped to [0, 1]."""
+        mock_helper = MagicMock()
+        mock_helper_factory.return_value = mock_helper
+        
+        from antigravity_engine import AntigravityEngine
+        
+        # Test out-of-range weights get clamped
+        engine1 = AntigravityEngine(
+            qdrant_location=":memory:",
+            model_name="all-MiniLM-L6-v2",
+            training_mode="hybrid",
+            teacher_weight=1.5  # Should clamp to 1.0
+        )
+        self.assertEqual(engine1.teacher_weight, 1.0)
+        
+        engine2 = AntigravityEngine(
+            qdrant_location=":memory:",
+            model_name="all-MiniLM-L6-v2",
+            training_mode="hybrid",
+            teacher_weight=-0.5  # Should clamp to 0.0
+        )
+        self.assertEqual(engine2.teacher_weight, 0.0)
+
+    # ------------------------------------------------------------------
+    # Test 10: Decomposition trace completeness
     # ------------------------------------------------------------------
     def test_decomposition_trace_completeness(self):
         """Trace object is fully populated after recursive inference on a multi-part query."""
@@ -245,7 +462,7 @@ class TestIntegrationRLM(unittest.TestCase):
         )
 
     # ------------------------------------------------------------------
-    # Test 5: AEP orchestrator on ChelatedAI-style findings
+    # Test 11: AEP orchestrator on ChelatedAI-style findings
     # ------------------------------------------------------------------
     def test_aep_orchestrator_on_chelatedai_findings(self):
         """Full AEP cycle processes realistic ChelatedAI findings end to end."""

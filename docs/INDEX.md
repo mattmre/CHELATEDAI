@@ -32,4 +32,24 @@
 | [ARCH-AEP Active Tracker Template](ARCH%20AGENTIC%20ENGINEERING%20AND%20PLANNING/active-tracker-template.md) | Tracker template with lock block |
 | [ARCH-AEP Cycle Layout Template](ARCH%20AGENTIC%20ENGINEERING%20AND%20PLANNING/cycle-layout-template.md) | Optional parallel cycle layout |
 
+## Session Logs & Research
+
+| Document | Description |
+|----------|-------------|
+| [Session Log 1 (2026-02-13)](ARCH%20AGENTIC%20ENGINEERING%20AND%20PLANNING/session-log-2026-02-13-impl.md) | Initial analysis cycle -- 55 findings discovered |
+| [Session Log 2 (2026-02-13)](ARCH%20AGENTIC%20ENGINEERING%20AND%20PLANNING/session-log-2026-02-13-impl-2.md) | Implementation cycle -- 7 findings resolved, 5 PRs merged, 134 tests |
+| [Session Log 3 (2026-02-17)](ARCH%20AGENTIC%20ENGINEERING%20AND%20PLANNING/session-log-2026-02-17-impl-3.md) | Remediation cycle -- 13 findings resolved, 345 tests passing locally |
+| [Backlog (2026-02-13)](ARCH%20AGENTIC%20ENGINEERING%20AND%20PLANNING/backlog-2026-02-13.md) | Master backlog with 55 prioritized findings |
+| [Research: F-006 Config Mapping](ARCH%20AGENTIC%20ENGINEERING%20AND%20PLANNING/research-f006-config-mapping.md) | Hardcoded value -> ChelationConfig mapping |
+| [Research: F-010 Logger Migration](ARCH%20AGENTIC%20ENGINEERING%20AND%20PLANNING/research-f010-logger-migration.md) | print() -> ChelationLogger migration plan |
+| [Research: F-002/F-003 Test Plan](ARCH%20AGENTIC%20ENGINEERING%20AND%20PLANNING/research-f002-f003-test-plan.md) | Test coverage plan for benchmark + checkpoint |
+| [Research: Tier2/Tier3 Plan (2026-02-17)](ARCH%20AGENTIC%20ENGINEERING%20AND%20PLANNING/research-2026-02-17-tier2-tier3-plan.md) | Multi-finding implementation architecture and sequencing notes |
+| [Proposed Trials and Validation Round (2026-02-17)](proposed-trials-validation-round-2026-02-17.md) | Adaptive weighting + Eagan delta-z comparative validation plan |
+
+## Analysis
+
+| Document | Description |
+|----------|-------------|
+| [RLM Analysis](rlm-analysis.md) | Detailed analysis of the RLM paper source code |
+
 ---
