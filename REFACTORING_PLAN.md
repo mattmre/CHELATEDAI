@@ -56,7 +56,7 @@
 ## Environment Notes
 
 ### Local Setup
-- **GPU**: NVIDIA 3090 (shared with other projects)
+- **GPU**: NVIDIA GPU (CUDA-capable)
 - **Docker**: Ollama running locally on port 11434
 - **Model**: nomic-embed-text (768D embeddings)
 - **OS**: Windows (need cross-platform support)

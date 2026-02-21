@@ -65,7 +65,7 @@ python -m pytest (Get-ChildItem -Name test_*.py) -q
 **Error:**
 ```
 ImportError: cannot import name 'canonicalize_id' from benchmark_utils
-  (D:\GITHUB\CHELATEDAI\benchmark_utils.py)
+  (benchmark_utils.py)
   test_benchmark_rlm.py:12
 ```
 
@@ -104,3 +104,13 @@ See `next-session.md` for full 15-item priority status mapping (done/in-progress
 - **Code changes:** 0 (documentation-only session)
 - **Test baseline:** Collection error (requires follow-up investigation)
 - **Next session focus:** PR merge monitoring + baseline test fix
+
+## Post-Closeout Update (Next-Session Preparation)
+- Opened stacked Session 13 documentation PRs for phased review:
+  - PR #56: research artifact
+  - PR #57: architecture artifact
+  - PR #58: tracker/index synchronization
+  - PR #59: change-log + verification evidence
+  - PR #60: top-15 priority status board
+- Prepared `next-session.md` for the expanded open chain and a concrete runbook.
+- Next session should first drive merge progression across PR #56 -> #60, then continue upstream chain progression.

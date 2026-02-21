@@ -27,6 +27,11 @@ htmlcov/
 .DS_Store
 Thumbs.db
 
+# Secrets / environment
+.env
+.env.*
+*.env
+
 # Project specific
 *.backup
 adapter_weights.pt

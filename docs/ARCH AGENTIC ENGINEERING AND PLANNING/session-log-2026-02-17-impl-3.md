@@ -56,6 +56,6 @@ Implemented the next priority remediation batch from `next-session.md`:
 ## PR Preparation Status
 
 - Changes committed on branch `feature/aep-cycle-remediation-20260216` at `44144f5`, with final handoff-docs update at `00d2db5`.
-- Branch pushed to origin and existing PR updated: [#19](https://github.com/mattmre/CHELATEDAI/pull/19).
+- Branch pushed to origin and existing PR updated: PR #19.
 - PR currently represents all session 3 implementation and documentation updates pending review.
 

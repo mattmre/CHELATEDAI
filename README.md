@@ -338,7 +338,7 @@ If you use this code in research, please cite:
   title={ChelatedAI: Adaptive Vector Search with Self-Correcting Embeddings},
   author={ChelatedAI Contributors},
   year={2024},
-  url={https://github.com/yourusername/chelatedai}
+  url={https://github.com/mattmre/CHELATEDAI}
 }
 ```
 
