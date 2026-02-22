@@ -8,7 +8,7 @@ from collections import defaultdict
 from threading import Lock
 import torch
 import torch.optim as optim
-from chelation_adapter import ChelationAdapter
+from chelation_adapter import ChelationAdapter, create_adapter
 from config import ChelationConfig
 from chelation_logger import get_logger
 from typing import Optional
@@ -80,9 +80,13 @@ class AntigravityEngine:
         if self.mode == "ollama":
             self.ollama_url = ChelationConfig.OLLAMA_URL
             
-        # Initialize Dynamic Adapter
+        # Initialize Dynamic Adapter (Phase 2: factory-based creation)
         self.logger.log_event("adapter_init", "Initializing Dynamic Chelation Adapter")
-        self.adapter = ChelationAdapter(input_dim=self.vector_size)
+        self.adapter = create_adapter(
+            adapter_type=ChelationConfig.ADAPTER_TYPE,
+            input_dim=self.vector_size,
+            rank=ChelationConfig.LOW_RANK_ADAPTER_RANK
+        )
         if self.adapter.load(self.adapter_path):
             self.logger.log_checkpoint("load", self.adapter_path)
         else:
@@ -375,9 +379,14 @@ class AntigravityEngine:
         if len(local_cluster) == 0:
             return np.ones(self.vector_size)
 
+        # Phase 4: Use learned mask predictor if enabled
+        mask_predictor = getattr(self, '_mask_predictor', None)
+        if mask_predictor is not None:
+            return mask_predictor.predict_mask(local_cluster)
+
         # Calculate Variance per dimension
         dim_variance = np.var(local_cluster, axis=0)
-        
+
         if hasattr(self, 'invert_chelation') and self.invert_chelation:
             # INVERTED: Keep Top P% (High Variance), Mask Bottom (Noise)
             # Threshold at (100 - P)th percentile
@@ -387,7 +396,7 @@ class AntigravityEngine:
             # ORIGINAL: Keep Bottom P% (Stable), Mask Top (Toxic)
             threshold = np.percentile(dim_variance, self.chelation_p)
             mask = (dim_variance < threshold).astype(float)
-        
+
         return mask
 
     def get_chelated_vector(self, query_text):
@@ -580,6 +589,82 @@ class AntigravityEngine:
                 level="DEBUG"
             )
 
+    # ===== Phase 1: Convergence Detection =====
+
+    def enable_convergence_detection(self, patience=None, rel_threshold=None, min_epochs=None):
+        """
+        Enable early stopping for training loops.
+
+        Args:
+            patience: Epochs without improvement before stopping
+            rel_threshold: Minimum relative improvement to count
+            min_epochs: Minimum epochs before early stopping triggers
+        """
+        self._convergence_enabled = True
+        self._convergence_patience = patience or ChelationConfig.CONVERGENCE_PATIENCE
+        self._convergence_rel_threshold = rel_threshold or ChelationConfig.CONVERGENCE_REL_THRESHOLD
+        self._convergence_min_epochs = min_epochs or ChelationConfig.CONVERGENCE_MIN_EPOCHS
+        self.logger.log_event(
+            "convergence_enabled",
+            f"Convergence detection enabled (patience={self._convergence_patience})",
+            patience=self._convergence_patience,
+            rel_threshold=self._convergence_rel_threshold,
+            min_epochs=self._convergence_min_epochs
+        )
+
+    # ===== Phase 1: Temperature Scaling =====
+
+    def set_temperature(self, temperature):
+        """
+        Set temperature scaling for spectral chelation ranking.
+
+        Args:
+            temperature: Temperature divisor for similarity scores (>0).
+                        <1.0 sharpens, >1.0 softens, 1.0 = no effect.
+        """
+        if temperature <= 0:
+            raise ValueError("Temperature must be positive")
+        self._temperature = temperature
+        self.logger.log_event(
+            "temperature_set",
+            f"Temperature scaling set to {temperature}",
+            temperature=temperature
+        )
+
+    # ===== Phase 3: Online Updates =====
+
+    def enable_online_updates(self, learning_rate=None, micro_steps=None,
+                              momentum=None, max_grad_norm=None,
+                              update_interval=None):
+        """
+        Enable inference-time online gradient updates.
+
+        Args:
+            learning_rate: Step size for micro-updates
+            micro_steps: Number of gradient steps per update
+            momentum: SGD momentum
+            max_grad_norm: Gradient clipping threshold
+            update_interval: Apply update every N queries
+        """
+        from online_updater import OnlineUpdater
+        self._online_updater = OnlineUpdater(
+            adapter=self.adapter,
+            learning_rate=learning_rate or ChelationConfig.ONLINE_LEARNING_RATE,
+            micro_steps=micro_steps or ChelationConfig.ONLINE_MICRO_STEPS,
+            momentum=momentum or ChelationConfig.ONLINE_MOMENTUM,
+            max_grad_norm=max_grad_norm or ChelationConfig.ONLINE_MAX_GRAD_NORM,
+            update_interval=update_interval or ChelationConfig.ONLINE_UPDATE_INTERVAL
+        )
+        self.logger.log_event("online_updates_enabled", "Online gradient updates enabled")
+
+    # ===== Phase 5: Stability Tracking =====
+
+    def enable_stability_tracking(self):
+        """Enable structural stability metric tracking."""
+        from stability_tracker import StabilityTracker
+        self._stability_tracker = StabilityTracker()
+        self.logger.log_event("stability_tracking_enabled", "Stability tracking enabled")
+
     def _cosine_similarity_manual(self, vec1, vec2):
         """Calculates Cosine Similarity manually."""
         norm1 = np.linalg.norm(vec1)
@@ -633,7 +718,12 @@ class AntigravityEngine:
         scores_vec = np.zeros(len(local_ids), dtype=np.float64)
         valid = denominators != 0
         scores_vec[valid] = dots[valid] / denominators[valid]
-        
+
+        # Phase 1: Temperature scaling (divides scores to sharpen/soften ranking)
+        temperature = getattr(self, '_temperature', ChelationConfig.DEFAULT_TEMPERATURE)
+        if temperature != 1.0:
+            scores_vec = scores_vec / temperature
+
         # Pair with IDs and sort
         scores = [(local_ids[i], scores_vec[i]) for i in range(len(local_ids))]
         scores.sort(key=lambda x: x[1], reverse=True)
@@ -675,7 +765,12 @@ class AntigravityEngine:
         # Filter for frequent collapsers
         targets = {k: v for k, v in self.chelation_log.items() if len(v) >= threshold}
         self.logger.log_event("training_preparation", f"Found {len(targets)} collapsing node candidates", num_candidates=len(targets))
-        
+
+        # Phase 5: Record collapse set if stability tracking enabled
+        stability_tracker = getattr(self, '_stability_tracker', None)
+        if stability_tracker is not None:
+            stability_tracker.record_collapse_set(list(targets.keys()))
+
         if not targets:
             self.logger.log_event("training_skipped", "Brain is stable. No sedimentation needed")
             return
@@ -812,6 +907,17 @@ class AntigravityEngine:
             
             self.adapter.train()
             final_loss = 0.0
+
+            # Phase 1: Optional convergence monitoring for early stopping
+            conv_monitor = None
+            if getattr(self, '_convergence_enabled', False):
+                from convergence_monitor import ConvergenceMonitor
+                conv_monitor = ConvergenceMonitor(
+                    patience=getattr(self, '_convergence_patience', ChelationConfig.CONVERGENCE_PATIENCE),
+                    rel_threshold=getattr(self, '_convergence_rel_threshold', ChelationConfig.CONVERGENCE_REL_THRESHOLD),
+                    min_epochs=getattr(self, '_convergence_min_epochs', ChelationConfig.CONVERGENCE_MIN_EPOCHS)
+                )
+
             for epoch in range(epochs):
                 optimizer.zero_grad()
                 outputs = self.adapter(input_tensor)
@@ -822,16 +928,26 @@ class AntigravityEngine:
 
                 if epoch % max(1, epochs // 2) == 0:
                     self.logger.log_training_epoch(epoch=epoch+1, total_epochs=epochs, loss=final_loss)
+
+                # Phase 1: Early stopping check
+                if conv_monitor is not None and conv_monitor.record_loss(final_loss):
+                    self.logger.log_event("early_stopping", f"Sedimentation converged at epoch {epoch+1}", epoch=epoch+1)
+                    break
+
             self.adapter.eval()
             self.adapter.save(self.adapter_path)
             self.logger.log_checkpoint("save", self.adapter_path)
-            
+
             # --- UPDATE QDRANT ---
             self.logger.log_event("vector_update", "Syncing updated vectors to Qdrant")
-            
+
+            # Phase 5: Record adapter snapshot after training
+            if getattr(self, '_stability_tracker', None) is not None:
+                self._stability_tracker.record_adapter_snapshot(self.adapter)
+
             with torch.no_grad():
                  new_vectors_np = self.adapter(input_tensor).numpy()
-                 
+
             # Batch Update Logic using shared helper (F-031: pass cached payload_map)
             total_updates, failed_updates = sync_vectors_to_qdrant(
                 self.qdrant, self.collection_name, ordered_ids, 
@@ -999,7 +1115,17 @@ class AntigravityEngine:
         
         self.adapter.train()
         final_loss = 0.0
-        
+
+        # Phase 1: Optional convergence monitoring for early stopping
+        conv_monitor = None
+        if getattr(self, '_convergence_enabled', False):
+            from convergence_monitor import ConvergenceMonitor
+            conv_monitor = ConvergenceMonitor(
+                patience=getattr(self, '_convergence_patience', ChelationConfig.CONVERGENCE_PATIENCE),
+                rel_threshold=getattr(self, '_convergence_rel_threshold', ChelationConfig.CONVERGENCE_REL_THRESHOLD),
+                min_epochs=getattr(self, '_convergence_min_epochs', ChelationConfig.CONVERGENCE_MIN_EPOCHS)
+            )
+
         for epoch in range(ep):
             optimizer.zero_grad()
             outputs = self.adapter(input_tensor)
@@ -1007,10 +1133,15 @@ class AntigravityEngine:
             loss.backward()
             optimizer.step()
             final_loss = loss.item()
-            
+
             if epoch % max(1, ep // 2) == 0:
                 self.logger.log_training_epoch(epoch=epoch+1, total_epochs=ep, loss=final_loss)
-        
+
+            # Phase 1: Early stopping check
+            if conv_monitor is not None and conv_monitor.record_loss(final_loss):
+                self.logger.log_event("early_stopping", f"Distillation converged at epoch {epoch+1}", epoch=epoch+1)
+                break
+
         self.adapter.eval()
         self.adapter.save(self.adapter_path)
         self.logger.log_checkpoint("save", self.adapter_path)
@@ -1141,9 +1272,23 @@ class AntigravityEngine:
             else:
                 jaccard = len(s1.intersection(s2)) / len(s1.union(s2))
     
+            # Phase 5: Record stability metrics if tracking enabled
+            stability_tracker = getattr(self, '_stability_tracker', None)
+            if stability_tracker is not None:
+                stability_tracker.record_mask(mask)
+                stability_tracker.record_variance_distribution(dim_variances)
+
+            # Phase 3: Online updates if enabled
+            online_updater = getattr(self, '_online_updater', None)
+            if online_updater is not None and len(local_vectors) >= 4:
+                mid = len(local_vectors) // 2
+                top_vecs = np.array(local_vectors[:mid])
+                bottom_vecs = np.array(local_vectors[mid:])
+                online_updater.update(q_vec, top_vecs, bottom_vecs)
+
             # Log Event
             self.logger.log_query(query_text=query_text, variance=global_variance, action=action, top_ids=final_top_ids, jaccard=jaccard)
-    
+
             # Return signature: std_top_10, chel_top_10, mask (dummy), jaccard
             return std_top[:10], chel_top_10, mask, jaccard
         except (ResponseHandlingException, UnexpectedResponse) as e:

@@ -8,6 +8,9 @@ Functions:
     - canonicalize_id: Convert mixed ID types (int/str/UUID) to stable string keys
     - dcg_at_k: Discounted Cumulative Gain at rank k
     - ndcg_at_k: Normalized Discounted Cumulative Gain at rank k
+    - mean_average_precision_at_k: Mean Average Precision at rank k
+    - mean_reciprocal_rank: Mean Reciprocal Rank
+    - recall_at_k: Recall at rank k
     - find_keys: Recursively search nested dict for keys
     - find_payload: Recursively search nested dict for a specific key's value
     - load_mteb_data: Load corpus, queries, and qrels from MTEB tasks
@@ -85,11 +88,11 @@ def dcg_at_k(r, k):
 def ndcg_at_k(r, k):
     """
     Normalized Discounted Cumulative Gain at rank k.
-    
+
     Args:
         r: Array-like of relevance scores (binary or graded)
         k: Rank cutoff
-        
+
     Returns:
         float: NDCG score in [0, 1]
     """
@@ -97,6 +100,83 @@ def ndcg_at_k(r, k):
     if not dcg_max:
         return 0.
     return dcg_at_k(r, k) / dcg_max
+
+
+# =============================================================================
+# Extended Metrics (Phase 6)
+# =============================================================================
+
+def mean_average_precision_at_k(retrieved_ids, relevant_ids, k=10):
+    """
+    Average Precision at rank k for a single query.
+
+    Args:
+        retrieved_ids: List of retrieved document IDs (ordered by rank)
+        relevant_ids: Set/list of relevant document IDs
+        k: Rank cutoff
+
+    Returns:
+        float: AP@k score
+    """
+    retrieved = list(retrieved_ids)[:k]
+    relevant_set = set(relevant_ids)
+
+    if not relevant_set:
+        return 0.0
+
+    num_relevant = 0
+    sum_precision = 0.0
+
+    for i, doc_id in enumerate(retrieved):
+        if doc_id in relevant_set:
+            num_relevant += 1
+            sum_precision += num_relevant / (i + 1)
+
+    if num_relevant == 0:
+        return 0.0
+
+    return sum_precision / min(len(relevant_set), k)
+
+
+def mean_reciprocal_rank(retrieved_ids, relevant_ids):
+    """
+    Reciprocal Rank for a single query.
+
+    Args:
+        retrieved_ids: List of retrieved document IDs (ordered by rank)
+        relevant_ids: Set/list of relevant document IDs
+
+    Returns:
+        float: RR score (1/rank of first relevant result, or 0)
+    """
+    relevant_set = set(relevant_ids)
+
+    for i, doc_id in enumerate(retrieved_ids):
+        if doc_id in relevant_set:
+            return 1.0 / (i + 1)
+
+    return 0.0
+
+
+def recall_at_k(retrieved_ids, relevant_ids, k=10):
+    """
+    Recall at rank k for a single query.
+
+    Args:
+        retrieved_ids: List of retrieved document IDs (ordered by rank)
+        relevant_ids: Set/list of relevant document IDs
+        k: Rank cutoff
+
+    Returns:
+        float: Recall@k score
+    """
+    retrieved_set = set(list(retrieved_ids)[:k])
+    relevant_set = set(relevant_ids)
+
+    if not relevant_set:
+        return 0.0
+
+    return len(retrieved_set & relevant_set) / len(relevant_set)
 
 
 # =============================================================================

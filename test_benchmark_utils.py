@@ -14,7 +14,10 @@ import math
 if 'mteb' not in sys.modules:
     sys.modules['mteb'] = MagicMock()
 
-from benchmark_utils import dcg_at_k, ndcg_at_k, find_keys, find_payload, load_mteb_data, canonicalize_id
+from benchmark_utils import (
+    dcg_at_k, ndcg_at_k, find_keys, find_payload, load_mteb_data, canonicalize_id,
+    mean_average_precision_at_k, mean_reciprocal_rank, recall_at_k,
+)
 
 
 # =============================================================================
@@ -212,6 +215,58 @@ class TestLoadMtebData(unittest.TestCase):
         self.assertEqual(len(queries), 1)
         self.assertEqual(corpus['doc1'], 'Hello World')
         self.assertEqual(queries['q1'], 'search query')
+
+
+# =============================================================================
+# Extended Metrics (Phase 6)
+# =============================================================================
+
+class TestMeanAveragePrecisionAtK(unittest.TestCase):
+    """Tests for MAP@k in benchmark_utils."""
+
+    def test_map_perfect_retrieval(self):
+        """All relevant found at top -> AP = 1.0."""
+        retrieved = ["a", "b", "c"]
+        relevant = {"a", "b", "c"}
+        result = mean_average_precision_at_k(retrieved, relevant, k=3)
+        self.assertAlmostEqual(result, 1.0)
+
+    def test_map_no_relevant(self):
+        """Empty relevant set -> AP = 0.0."""
+        result = mean_average_precision_at_k(["a", "b"], set(), k=2)
+        self.assertAlmostEqual(result, 0.0)
+
+
+class TestMeanReciprocalRank(unittest.TestCase):
+    """Tests for MRR in benchmark_utils."""
+
+    def test_mrr_at_rank_1(self):
+        """Relevant at rank 1 -> RR = 1.0."""
+        self.assertAlmostEqual(
+            mean_reciprocal_rank(["a", "b"], {"a"}), 1.0
+        )
+
+    def test_mrr_no_relevant(self):
+        """No relevant found -> RR = 0.0."""
+        self.assertAlmostEqual(
+            mean_reciprocal_rank(["x", "y"], {"a"}), 0.0
+        )
+
+
+class TestRecallAtK(unittest.TestCase):
+    """Tests for Recall@k in benchmark_utils."""
+
+    def test_recall_full(self):
+        """All relevant in top-k -> Recall = 1.0."""
+        self.assertAlmostEqual(
+            recall_at_k(["a", "b", "c"], {"a", "b"}, k=3), 1.0
+        )
+
+    def test_recall_none(self):
+        """No relevant in top-k -> Recall = 0.0."""
+        self.assertAlmostEqual(
+            recall_at_k(["x", "y"], {"a"}, k=2), 0.0
+        )
 
 
 if __name__ == "__main__":

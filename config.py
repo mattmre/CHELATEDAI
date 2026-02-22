@@ -156,6 +156,76 @@ class ChelationConfig:
     STORE_FULL_TEXT_PAYLOAD = True  # Store text in payload during ingestion (default: True for backward compatibility)
     FETCH_PAYLOAD_ON_QUERY = False  # Fetch payload during query operations where not needed (default: False for optimization)
 
+    # ===== Convergence Detection (Phase 1) =====
+    CONVERGENCE_ENABLED = False  # Opt-in early stopping for training loops
+    CONVERGENCE_PATIENCE = 5  # Epochs without improvement before stopping
+    CONVERGENCE_REL_THRESHOLD = 0.001  # Minimum relative improvement to count
+    CONVERGENCE_MIN_EPOCHS = 3  # Minimum epochs before early stopping triggers
+
+    CONVERGENCE_PRESETS = {
+        "patient": {
+            "patience": 10,
+            "rel_threshold": 0.0005,
+            "min_epochs": 5,
+            "description": "Patient convergence, longer training"
+        },
+        "balanced": {
+            "patience": 5,
+            "rel_threshold": 0.001,
+            "min_epochs": 3,
+            "description": "Standard convergence detection"
+        },
+        "aggressive": {
+            "patience": 2,
+            "rel_threshold": 0.005,
+            "min_epochs": 2,
+            "description": "Quick convergence, stop early"
+        }
+    }
+
+    # ===== Temperature Scaling (Phase 1) =====
+    TEMPERATURE_SCALING_ENABLED = False  # Opt-in temperature for spectral chelation
+    DEFAULT_TEMPERATURE = 1.0  # Temperature divisor for chelation scores (1.0 = no effect)
+
+    # ===== Adapter Type Selection (Phase 2) =====
+    ADAPTER_TYPE = "mlp"  # "mlp", "procrustes", or "low_rank"
+    LOW_RANK_ADAPTER_RANK = 16  # Rank for low-rank affine adapter
+
+    ADAPTER_TYPE_PRESETS = {
+        "mlp": {
+            "adapter_type": "mlp",
+            "description": "Original MLP residual adapter"
+        },
+        "procrustes": {
+            "adapter_type": "procrustes",
+            "description": "Orthogonal Procrustes via Cayley parameterization"
+        },
+        "low_rank": {
+            "adapter_type": "low_rank",
+            "rank": 16,
+            "description": "Low-rank affine correction"
+        }
+    }
+
+    # ===== Online Updates (Phase 3) =====
+    ONLINE_UPDATE_ENABLED = False  # Opt-in inference-time adapter updates
+    ONLINE_LEARNING_RATE = 0.0001
+    ONLINE_MICRO_STEPS = 1
+    ONLINE_MOMENTUM = 0.9
+    ONLINE_MAX_GRAD_NORM = 1.0
+    ONLINE_UPDATE_INTERVAL = 1
+
+    # ===== Learned Dimension Masking (Phase 4) =====
+    LEARNED_MASK_ENABLED = False  # Opt-in neural mask predictor
+    MASK_PREDICTOR_HIDDEN_RATIO = 0.25
+    MASK_PREDICTOR_THRESHOLD = 0.5
+
+    # ===== Per-Embedding Quality Assessment (Phase 4) =====
+    QUALITY_ASSESSMENT_ENABLED = False  # Opt-in per-doc quality scores
+    QUALITY_DECAY_FACTOR = 0.95
+    QUALITY_HIGH_THRESHOLD = 0.8
+    QUALITY_LOW_THRESHOLD = 0.3
+
     # ===== Adapter Training Configuration =====
     DEFAULT_LEARNING_RATE = 0.001  # Conservative by default
     DEFAULT_EPOCHS = 10
@@ -363,7 +433,9 @@ class ChelationConfig:
             "chelation": cls.CHELATION_PRESETS,
             "adapter": cls.ADAPTER_PRESETS,
             "rlm": cls.RLM_PRESETS,
-            "sedimentation": cls.SEDIMENTATION_PRESETS
+            "sedimentation": cls.SEDIMENTATION_PRESETS,
+            "convergence": cls.CONVERGENCE_PRESETS,
+            "adapter_type": cls.ADAPTER_TYPE_PRESETS,
         }
         
         if preset_type not in preset_map:
