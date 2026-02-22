@@ -382,6 +382,8 @@ class AEPTracker:
 
         Accepted kwargs: pr_branch, commit_hash, owning_agent, verification_evidence.
         """
+        if finding_id not in self.findings:
+            raise ValueError(f"Finding ID '{finding_id}' not found in tracker")
         finding = self.findings[finding_id]
         old_status = finding.status
         finding.status = status

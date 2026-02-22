@@ -5,6 +5,7 @@ This module contains common helpers used across multiple benchmark scripts
 (benchmark_rlm.py, benchmark_evolution.py, etc.) to avoid code duplication.
 
 Functions:
+    - canonicalize_id: Convert mixed ID types (int/str/UUID) to stable string keys
     - dcg_at_k: Discounted Cumulative Gain at rank k
     - ndcg_at_k: Normalized Discounted Cumulative Gain at rank k
     - find_keys: Recursively search nested dict for keys
@@ -13,12 +14,51 @@ Functions:
 """
 
 import numpy as np
-from typing import Dict, List, Tuple, Optional, Any
+from typing import Dict, List, Tuple, Optional, Any, Union
+from uuid import UUID
 
 try:
     import mteb
 except ImportError:
     mteb = None
+
+
+# =============================================================================
+# ID Canonicalization
+# =============================================================================
+
+def canonicalize_id(id_val: Union[int, str, UUID]) -> str:
+    """
+    Convert mixed ID types (int/str/UUID) to stable string keys.
+    
+    This helper ensures consistent ID handling across different ID formats
+    (integer, string, UUID) to prevent type mismatch issues when mapping
+    between Qdrant point IDs and original document IDs.
+    
+    Args:
+        id_val: ID value that can be int, str, or UUID
+        
+    Returns:
+        str: Canonicalized string representation of the ID
+        
+    Examples:
+        >>> canonicalize_id(123)
+        '123'
+        >>> canonicalize_id("doc_456")
+        'doc_456'
+        >>> from uuid import UUID
+        >>> canonicalize_id(UUID('12345678-1234-5678-1234-567812345678'))
+        '12345678-1234-5678-1234-567812345678'
+    """
+    if isinstance(id_val, UUID):
+        return str(id_val)
+    elif isinstance(id_val, int):
+        return str(id_val)
+    elif isinstance(id_val, str):
+        return id_val
+    else:
+        # Fallback: try str() conversion for any other type
+        return str(id_val)
 
 
 # =============================================================================
@@ -89,9 +129,6 @@ def find_payload(obj, key):
     """
     Recursively search a nested dict for a specific key and return its value.
     
-    Note: This function has a known issue with falsy values (0, "", False) in
-    nested contexts due to `if res:` guard. Top-level falsy values work correctly.
-    
     Args:
         obj: Object to search (typically a nested dict)
         key: Key to find
@@ -104,7 +141,7 @@ def find_payload(obj, key):
             return obj[key]
         for v in obj.values():
             res = find_payload(v, key)
-            if res:
+            if res is not None:
                 return res
     return None
 
