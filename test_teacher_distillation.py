@@ -7,7 +7,7 @@ Fast, deterministic tests for distillation logic.
 
 import unittest
 import numpy as np
-from unittest.mock import MagicMock, patch, Mock
+from unittest.mock import MagicMock, patch
 from teacher_distillation import (
     TeacherDistillationHelper,
     create_distillation_helper,

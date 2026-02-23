@@ -5,7 +5,6 @@ Tests patience-based early stopping logic for sedimentation and distillation
 training loops without requiring external services.
 """
 
-import math
 import unittest
 from unittest.mock import patch, MagicMock
 
@@ -22,7 +21,7 @@ with patch("chelation_logger.get_logger", _fake_get_logger):
     import convergence_monitor
     convergence_monitor.get_logger = _fake_get_logger
 
-from convergence_monitor import ConvergenceMonitor
+from convergence_monitor import ConvergenceMonitor  # noqa: E402
 
 
 class TestConvergenceMonitorInit(unittest.TestCase):

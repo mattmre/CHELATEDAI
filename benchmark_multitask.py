@@ -13,7 +13,6 @@ Output: JSON report with per-task metrics and aggregate summary.
 import time
 import argparse
 import numpy as np
-import mteb
 from pathlib import Path
 from typing import Dict, List, Tuple, Any
 import json
@@ -23,10 +22,6 @@ from antigravity_engine import AntigravityEngine
 
 # Reuse utilities from benchmark_distillation
 from benchmark_distillation import (
-    dcg_at_k,
-    ndcg_at_k,
-    find_keys,
-    find_payload,
     load_mteb_data,
     map_predicted_ids,
     evaluate_engine
@@ -173,7 +168,7 @@ def compute_learning_gain(
     query_ids = list(queries.keys())
     
     # Evaluate pre-sedimentation
-    print(f"  Evaluating pre-sedimentation NDCG...")
+    print("  Evaluating pre-sedimentation NDCG...")
     pre_ndcg, _ = evaluate_engine(
         engine,
         queries,
@@ -198,7 +193,7 @@ def compute_learning_gain(
     sediment_time = time.time() - sediment_start
     
     # Evaluate post-sedimentation
-    print(f"  Evaluating post-sedimentation NDCG...")
+    print("  Evaluating post-sedimentation NDCG...")
     post_ndcg, _ = evaluate_engine(
         engine,
         queries,
@@ -525,15 +520,15 @@ def main():
     print(f"\nTasks Completed: {summary['num_successful']}/{summary['num_tasks']}")
     
     if summary['num_successful'] > 0:
-        print(f"\nRetrieval Quality (NDCG@10):")
+        print("\nRetrieval Quality (NDCG@10):")
         print(f"  Mean: {summary['aggregate_ndcg']['mean']:.4f} ± {summary['aggregate_ndcg']['std']:.4f}")
         print(f"  Range: [{summary['aggregate_ndcg']['min']:.4f}, {summary['aggregate_ndcg']['max']:.4f}]")
         
-        print(f"\nStability (Jaccard):")
+        print("\nStability (Jaccard):")
         print(f"  Mean: {summary['aggregate_stability']['mean']:.4f} ± {summary['aggregate_stability']['std']:.4f}")
         print(f"  Range: [{summary['aggregate_stability']['min']:.4f}, {summary['aggregate_stability']['max']:.4f}]")
         
-        print(f"\nLearning Gain:")
+        print("\nLearning Gain:")
         print(f"  Mean Gain: {summary['aggregate_learning_gain']['mean_gain']:+.4f} ({summary['aggregate_learning_gain']['mean_gain_percent']:+.2f}%)")
         print(f"  Positive Gains: {summary['aggregate_learning_gain']['positive_gains']}/{summary['num_successful']}")
         print(f"  Negative Gains: {summary['aggregate_learning_gain']['negative_gains']}/{summary['num_successful']}")

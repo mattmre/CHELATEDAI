@@ -822,17 +822,17 @@ def run_server(host: str = "127.0.0.1", port: int = 8080, log_file: str = LOG_FI
     server_address = (host, port)
     httpd = HTTPServer(server_address, DashboardHandler)
     
-    print(f"Dashboard server starting...")
+    print("Dashboard server starting...")
     print(f"  Host: {host}")
     print(f"  Port: {port}")
     print(f"  Log file: {log_file}")
     print(f"  Token auth: {'enabled' if DASHBOARD_TOKEN else 'disabled'}")
     print(f"  Dashboard URL: http://{host}:{port}/dashboard/")
-    print(f"\nAPI Endpoints:")
+    print("\nAPI Endpoints:")
     print(f"  GET http://{host}:{port}/api/events?limit=N")
     print(f"  GET http://{host}:{port}/api/summary")
     print(f"  GET http://{host}:{port}/api/events?event_type=query")
-    print(f"\nPress Ctrl+C to stop the server.")
+    print("\nPress Ctrl+C to stop the server.")
     
     try:
         httpd.serve_forever()

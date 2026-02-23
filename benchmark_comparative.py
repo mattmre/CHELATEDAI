@@ -12,7 +12,7 @@ import time
 import json
 import numpy as np
 from dataclasses import dataclass, field, asdict
-from typing import Dict, List, Optional, Any, Callable
+from typing import Dict, Optional, Any, Callable
 from benchmark_utils import ndcg_at_k, canonicalize_id
 from chelation_logger import get_logger
 

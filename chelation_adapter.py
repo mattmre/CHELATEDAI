@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-import torch.optim as optim
 import os
 from pathlib import Path
 from config import validate_safe_path
@@ -102,7 +101,7 @@ class OrthogonalProcrustesAdapter(nn.Module):
         """Compute orthogonal matrix via Cayley transform of skew-symmetric matrix."""
         # Make skew-symmetric: A = P - P^T
         A = self._skew_param - self._skew_param.t()
-        I = torch.eye(self.input_dim, device=A.device, dtype=A.dtype)
+        I = torch.eye(self.input_dim, device=A.device, dtype=A.dtype)  # noqa: E741
         # Cayley transform: W = (I - A)(I + A)^{-1}
         W = torch.linalg.solve(I + A, I - A)
         return W

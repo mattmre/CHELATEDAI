@@ -181,7 +181,7 @@ class TestStreamingIngestion(unittest.TestCase):
         """Test that streaming ingestion logs progress correctly."""
         texts = [f"Document {i}" for i in range(500)]
         
-        result = self.engine.ingest_streaming(texts, batch_size=50)
+        self.engine.ingest_streaming(texts, batch_size=50)
         
         # Check that logger was called for start and complete
         log_calls = self.engine.logger.log_event.call_args_list

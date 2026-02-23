@@ -17,7 +17,7 @@ from unittest.mock import patch, MagicMock
 
 # Check for sentence-transformers availability
 try:
-    from sentence_transformers import SentenceTransformer
+    from sentence_transformers import SentenceTransformer  # noqa: F401
     HAS_SENTENCE_TRANSFORMERS = True
 except ImportError:
     HAS_SENTENCE_TRANSFORMERS = False
@@ -34,13 +34,9 @@ from recursive_decomposer import (
     MockDecomposer,
     HierarchicalSedimentationEngine,
     DecompositionTrace,
-    DecompositionNode,
 )
 from aep_orchestrator import (
     AEPOrchestrator,
-    Severity,
-    FindingStatus,
-    EffortSize,
 )
 
 

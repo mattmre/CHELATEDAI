@@ -1,7 +1,6 @@
 """Vector store boundary abstractions (F-044)."""
 
 from abc import ABC, abstractmethod
-from typing import Any
 from urllib.parse import urlparse
 
 from qdrant_client import QdrantClient

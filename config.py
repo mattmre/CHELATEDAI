@@ -34,7 +34,7 @@ def validate_safe_path(path: Path, base_dir: Optional[Path] = None, allow_absolu
     # Check for path traversal components before resolution
     parts = path.parts
     if '..' in parts:
-        raise ValueError(f"Path traversal detected: path contains '..' components")
+        raise ValueError("Path traversal detected: path contains '..' components")
     
     # Resolve to absolute path
     try:

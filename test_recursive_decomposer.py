@@ -10,7 +10,6 @@ import time
 from unittest.mock import patch
 
 from recursive_decomposer import (
-    DecompositionStrategy,
     DecompositionNode,
     DecompositionTrace,
     MockDecomposer,

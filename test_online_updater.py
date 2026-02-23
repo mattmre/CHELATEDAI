@@ -5,10 +5,9 @@ Run: python -m pytest test_online_updater.py -v
 """
 
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 import numpy as np
 import torch
-import torch.nn as nn
 
 from online_updater import OnlineUpdater
 from chelation_adapter import ChelationAdapter

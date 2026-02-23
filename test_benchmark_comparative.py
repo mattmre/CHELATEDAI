@@ -5,11 +5,10 @@ Run: python -m pytest test_benchmark_comparative.py -v
 """
 
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 import json
 import tempfile
 import os
-import numpy as np
 
 from benchmark_comparative import (
     BenchmarkConfiguration,

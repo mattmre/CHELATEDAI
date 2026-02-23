@@ -1,6 +1,4 @@
-import os
 import numpy as np
-from openai import OpenAI
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams, PointStruct
 from qdrant_client.http.exceptions import ResponseHandlingException, UnexpectedResponse
@@ -8,11 +6,11 @@ from collections import defaultdict
 from threading import Lock
 import torch
 import torch.optim as optim
-from chelation_adapter import ChelationAdapter, create_adapter
+from chelation_adapter import create_adapter
 from config import ChelationConfig
 from chelation_logger import get_logger
 from typing import Optional
-from teacher_distillation import TeacherDistillationHelper, create_distillation_helper
+from teacher_distillation import create_distillation_helper
 from sedimentation_trainer import compute_homeostatic_target, sync_vectors_to_qdrant
 from checkpoint_manager import CheckpointManager, SafeTrainingContext
 from embedding_backend import create_embedding_backend
@@ -1021,7 +1019,7 @@ class AntigravityEngine:
         if not self.teacher_helper.check_dimension_compatibility(self.vector_size):
             self.logger.log_error(
                 "offline_distillation_dimension_mismatch",
-                f"Teacher dimension mismatch. Cannot proceed with offline distillation.",
+                "Teacher dimension mismatch. Cannot proceed with offline distillation.",
                 teacher_dim=self.teacher_helper.teacher_dim,
                 student_dim=self.vector_size
             )

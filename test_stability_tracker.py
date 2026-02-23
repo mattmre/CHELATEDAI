@@ -5,7 +5,7 @@ Run: python -m pytest test_stability_tracker.py -v
 """
 
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 import numpy as np
 import torch
 

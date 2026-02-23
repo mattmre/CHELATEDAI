@@ -361,24 +361,24 @@ class TestAntigravityEngine(unittest.TestCase):
     def test_qdrant_location_valid_url_accepted(self):
         """F-020: Verify valid HTTP/HTTPS URL is accepted with location= parameter."""
         # Test HTTP URL
-        engine = AntigravityEngine(qdrant_location="http://localhost:6333", model_name="all-MiniLM-L6-v2")
+        AntigravityEngine(qdrant_location="http://localhost:6333", model_name="all-MiniLM-L6-v2")
         self.mock_qdrant_cls.assert_called_with(location="http://localhost:6333")
         
         # Reset mock
         self.mock_qdrant_cls.reset_mock()
         
         # Test HTTPS URL
-        engine = AntigravityEngine(qdrant_location="https://example.com:6333", model_name="all-MiniLM-L6-v2")
+        AntigravityEngine(qdrant_location="https://example.com:6333", model_name="all-MiniLM-L6-v2")
         self.mock_qdrant_cls.assert_called_with(location="https://example.com:6333")
 
     def test_qdrant_location_local_path_accepted(self):
         """F-020: Verify local path is accepted with path= parameter."""
-        engine = AntigravityEngine(qdrant_location="./data/qdrant", model_name="all-MiniLM-L6-v2")
+        AntigravityEngine(qdrant_location="./data/qdrant", model_name="all-MiniLM-L6-v2")
         self.mock_qdrant_cls.assert_called_with(path="./data/qdrant")
 
     def test_qdrant_location_memory_accepted(self):
         """F-020: Verify :memory: special value is accepted with location= parameter."""
-        engine = self._make_engine()
+        self._make_engine()
         self.mock_qdrant_cls.assert_called_with(location=":memory:")
 
     def test_get_chelated_vector_uses_with_vectors_true(self):
@@ -700,7 +700,7 @@ class TestAntigravityEngine(unittest.TestCase):
             mock_qdrant_cls.return_value = mock_qdrant
             
             with self.assertRaises(ValueError) as context:
-                with AntigravityEngine(qdrant_location=":memory:", model_name="all-MiniLM-L6-v2") as engine:
+                with AntigravityEngine(qdrant_location=":memory:", model_name="all-MiniLM-L6-v2"):
                     # Raise an exception inside the context
                     raise ValueError("Test exception")
             
@@ -763,7 +763,7 @@ class TestAntigravityEngine(unittest.TestCase):
         
         # Call _gravity_sensor (which uses query_points internally)
         query_vec = np.random.randn(768)
-        result = engine._gravity_sensor(query_vec)
+        engine._gravity_sensor(query_vec)
         
         # Verify query_points was called with with_payload from config
         self.mock_qdrant.query_points.assert_called_once()

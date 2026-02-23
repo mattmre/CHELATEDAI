@@ -317,7 +317,7 @@ class SafeTrainingContext:
                     print(f"ERROR: Rollback failed: {rollback_error}")
                     # If there was an original exception, preserve it (don't mask)
                     if exc_type is not None:
-                        print(f"WARNING: Original exception preserved despite rollback failure")
+                        print("WARNING: Original exception preserved despite rollback failure")
                         return False  # Re-raise original exception
                     else:
                         # No original exception, propagate rollback error

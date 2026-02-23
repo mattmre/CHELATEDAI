@@ -10,9 +10,6 @@ configurable decomposer (MockDecomposer or OllamaDecomposer).
 import time
 import argparse
 import numpy as np
-import mteb
-from pathlib import Path
-from typing import Dict, List, Any
 
 from config import ChelationConfig
 from antigravity_engine import AntigravityEngine
@@ -275,7 +272,7 @@ def run_benchmark(args):
         try:
             decomposer = OllamaDecomposer()
             # Quick connectivity test
-            test_result = decomposer.decompose("test query")
+            decomposer.decompose("test query")
             print("Using OllamaDecomposer (LLM-backed)")
         except Exception as e:
             print(f"Ollama unavailable ({e}), falling back to MockDecomposer")
@@ -293,7 +290,7 @@ def run_benchmark(args):
     )
 
     # 5. Evaluate: Standard retrieval
-    print(f"\n--- 5. STANDARD RETRIEVAL (Baseline) ---")
+    print("\n--- 5. STANDARD RETRIEVAL (Baseline) ---")
     engine.chelation_log.clear()
 
     std_start = time.time()
@@ -304,7 +301,7 @@ def run_benchmark(args):
     print(f"Total time: {std_total_time:.2f}s")
 
     # 6. Evaluate: Recursive retrieval
-    print(f"\n--- 6. RECURSIVE RETRIEVAL ---")
+    print("\n--- 6. RECURSIVE RETRIEVAL ---")
     engine.chelation_log.clear()
 
     rec_start = time.time()
