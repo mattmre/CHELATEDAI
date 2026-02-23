@@ -99,13 +99,21 @@ class ChelationLogger:
             level: Logging level
             **kwargs: Additional fields to include in JSON
         """
+        # Sanitize all string-type kwargs to prevent log injection
+        sanitized_kwargs = {}
+        for k, v in kwargs.items():
+            if isinstance(v, str):
+                sanitized_kwargs[k] = _sanitize_query_snippet(v)
+            else:
+                sanitized_kwargs[k] = v
+
         event = {
             "timestamp": datetime.utcnow().isoformat(),
             "elapsed_seconds": time.time() - self.start_time,
             "event_type": event_type,
             "level": level,
-            "message": message,
-            **kwargs
+            "message": _sanitize_query_snippet(message),
+            **sanitized_kwargs
         }
 
         # Log to Python logger
@@ -403,19 +411,23 @@ def get_logger(
         
         # Check log_path: warn if explicitly provided and differs
         if log_path is not None and log_path != _global_logger_config['log_path']:
+            safe_old = _sanitize_query_snippet(str(_global_logger_config['log_path']))
+            safe_new = _sanitize_query_snippet(str(log_path))
             warnings.warn(
-                f"Logger already initialized with log_path={_global_logger_config['log_path']}. "
-                f"Ignoring new log_path={log_path}. "
+                f"Logger already initialized with log_path={safe_old}. "
+                f"Ignoring new log_path={safe_new}. "
                 f"Subsequent calls to get_logger() return the existing singleton instance.",
                 UserWarning,
                 stacklevel=2
             )
-        
+
         # Check console_level: warn if explicitly provided and non-default and differs
         if console_level != "INFO" and console_level != _global_logger_config['console_level']:
+            safe_old = _sanitize_query_snippet(str(_global_logger_config['console_level']))
+            safe_new = _sanitize_query_snippet(str(console_level))
             warnings.warn(
-                f"Logger already initialized with console_level={_global_logger_config['console_level']}. "
-                f"Ignoring new console_level={console_level}. "
+                f"Logger already initialized with console_level={safe_old}. "
+                f"Ignoring new console_level={safe_new}. "
                 f"Subsequent calls to get_logger() return the existing singleton instance.",
                 UserWarning,
                 stacklevel=2
