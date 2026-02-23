@@ -19,7 +19,7 @@ class TestStreamingIngestion(unittest.TestCase):
         # Mock the entire AntigravityEngine initialization to avoid Qdrant/Ollama dependencies
         with patch('antigravity_engine.QdrantClient'), \
              patch('antigravity_engine.get_logger'), \
-             patch('antigravity_engine.ChelationAdapter'), \
+             patch('antigravity_engine.create_adapter'), \
              patch('sentence_transformers.SentenceTransformer') as mock_st:
             mock_model = Mock()
             mock_model.get_sentence_embedding_dimension.return_value = 768
@@ -201,7 +201,7 @@ class TestChelationLogCapping(unittest.TestCase):
         """Set up test fixtures."""
         with patch('antigravity_engine.QdrantClient'), \
              patch('antigravity_engine.get_logger'), \
-             patch('antigravity_engine.ChelationAdapter'), \
+             patch('antigravity_engine.create_adapter'), \
              patch('sentence_transformers.SentenceTransformer') as mock_st:
             mock_model = Mock()
             mock_model.get_sentence_embedding_dimension.return_value = 768
@@ -337,7 +337,7 @@ class TestBackwardCompatibility(unittest.TestCase):
         """Set up test fixtures."""
         with patch('antigravity_engine.QdrantClient'), \
              patch('antigravity_engine.get_logger'), \
-             patch('antigravity_engine.ChelationAdapter'), \
+             patch('antigravity_engine.create_adapter'), \
              patch('sentence_transformers.SentenceTransformer') as mock_st:
             mock_model = Mock()
             mock_model.get_sentence_embedding_dimension.return_value = 768

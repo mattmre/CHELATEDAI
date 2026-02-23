@@ -7,8 +7,11 @@ Fast, deterministic tests for distillation logic.
 
 import unittest
 import numpy as np
+import torch
 from unittest.mock import MagicMock, patch
 from teacher_distillation import (
+    DimensionProjection,
+    EnsembleTeacherHelper,
     TeacherDistillationHelper,
     create_distillation_helper,
     generate_hybrid_targets,
@@ -255,12 +258,12 @@ class TestTeacherDistillationHelper(unittest.TestCase):
     @patch("teacher_distillation.SentenceTransformer")
     @patch("teacher_distillation.torch")
     def test_generate_distillation_targets_dimension_mismatch(self, mock_torch, mock_st_class):
-        """Test handling of dimension mismatch between teacher and student."""
+        """Test handling of dimension mismatch with projection disabled."""
         # Setup mocks
         mock_torch.cuda.is_available.return_value = False
         mock_model = MagicMock()
         mock_model.get_sentence_embedding_dimension.return_value = 6  # Wrong dim
-        
+
         # Teacher embeddings with wrong dimension
         teacher_embeds = np.array([
             [1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
@@ -276,6 +279,9 @@ class TestTeacherDistillationHelper(unittest.TestCase):
         ])
 
         texts = ["text1", "text2"]
+
+        # Disable projection to test original fallback path
+        self.helper._projection_enabled = False
 
         # Should fallback to student embeddings
         targets = self.helper.generate_distillation_targets(
@@ -424,6 +430,341 @@ class TestDistillationFactoryFunctions(unittest.TestCase):
 
         # Should be identical to homeostatic targets
         np.testing.assert_array_equal(targets, homeostatic_targets)
+
+
+class TestDimensionProjection(unittest.TestCase):
+    """Test DimensionProjection module."""
+
+    def test_direct_projection_shape(self):
+        """Test output shape for direct (no bottleneck) projection."""
+        proj = DimensionProjection(teacher_dim=16, student_dim=8)
+        x = torch.randn(5, 16)
+        out = proj(x)
+        self.assertEqual(out.shape, (5, 8))
+
+    def test_bottleneck_projection_shape(self):
+        """Test output shape for bottleneck projection."""
+        proj = DimensionProjection(teacher_dim=16, student_dim=8, hidden_dim=4)
+        x = torch.randn(5, 16)
+        out = proj(x)
+        self.assertEqual(out.shape, (5, 8))
+
+    def test_near_identity_init(self):
+        """Test that matching-dim direct projection is near-identity."""
+        dim = 8
+        proj = DimensionProjection(teacher_dim=dim, student_dim=dim)
+        x = torch.randn(3, dim)
+        with torch.no_grad():
+            out = proj(x)
+        # Output should be very close to input due to near-identity init
+        np.testing.assert_allclose(
+            out.numpy(), x.numpy(), atol=0.05,
+        )
+
+    def test_project_numpy(self):
+        """Test convenience numpy projection method."""
+        proj = DimensionProjection(teacher_dim=8, student_dim=4)
+        data = np.random.randn(3, 8).astype(np.float32)
+        result = proj.project_numpy(data)
+        self.assertEqual(result.shape, (3, 4))
+        self.assertIsInstance(result, np.ndarray)
+
+    def test_projection_preserves_norms(self):
+        """Test that near-identity projection approximately preserves norms."""
+        dim = 16
+        proj = DimensionProjection(teacher_dim=dim, student_dim=dim)
+        x = torch.randn(10, dim)
+        x_norms = torch.norm(x, dim=1)
+        with torch.no_grad():
+            out = proj(x)
+        out_norms = torch.norm(out, dim=1)
+        # Norms should be approximately preserved for matching dims
+        np.testing.assert_allclose(
+            out_norms.numpy(), x_norms.numpy(), rtol=0.1,
+        )
+
+    @patch("teacher_distillation.get_logger")
+    def test_ensure_projection_creates_on_mismatch(self, mock_logger):
+        """Test _ensure_projection creates projection when dims differ."""
+        mock_logger.return_value = MagicMock()
+        helper = TeacherDistillationHelper("test-model")
+        helper.teacher_dim = 16
+        helper._ensure_projection(8)
+        self.assertIsNotNone(helper._projection)
+        self.assertIsInstance(helper._projection, DimensionProjection)
+
+    @patch("teacher_distillation.get_logger")
+    def test_ensure_projection_skips_when_matching(self, mock_logger):
+        """Test _ensure_projection does not create when dims match."""
+        mock_logger.return_value = MagicMock()
+        helper = TeacherDistillationHelper("test-model")
+        helper.teacher_dim = 8
+        helper._ensure_projection(8)
+        self.assertIsNone(helper._projection)
+
+    @patch("teacher_distillation.get_logger")
+    @patch("teacher_distillation.SentenceTransformer")
+    def test_projection_in_distillation_targets(self, mock_st, mock_logger):
+        """Test that projection is used in generate_distillation_targets."""
+        mock_logger.return_value = MagicMock()
+        mock_model = MagicMock()
+        mock_model.get_sentence_embedding_dimension.return_value = 16
+        teacher_embeds = np.random.randn(3, 16).astype(np.float32)
+        mock_model.encode.return_value = teacher_embeds
+        mock_st.return_value = mock_model
+
+        helper = TeacherDistillationHelper(
+            "test-model", projection_enabled=True,
+        )
+        # Manually set teacher model to skip load_teacher_model's SentenceTransformer call
+        helper.teacher_model = mock_model
+        helper.teacher_dim = 16
+        student_embeds = np.random.randn(3, 8).astype(np.float32)
+        targets = helper.generate_distillation_targets(
+            texts=["a", "b", "c"],
+            current_embeddings=student_embeds,
+            teacher_weight=0.5,
+        )
+        # Should return student dim, not fall back
+        self.assertEqual(targets.shape, (3, 8))
+        # Projection should have been created
+        self.assertIsNotNone(helper._projection)
+
+    @patch("teacher_distillation.get_logger")
+    @patch("teacher_distillation.SentenceTransformer")
+    def test_projection_disabled_falls_back(self, mock_st, mock_logger):
+        """Test that disabled projection falls back to student embeddings."""
+        mock_logger.return_value = MagicMock()
+        mock_model = MagicMock()
+        mock_model.get_sentence_embedding_dimension.return_value = 16
+        teacher_embeds = np.random.randn(3, 16).astype(np.float32)
+        mock_model.encode.return_value = teacher_embeds
+        mock_st.return_value = mock_model
+
+        helper = TeacherDistillationHelper(
+            "test-model", projection_enabled=False,
+        )
+        helper.teacher_model = mock_model
+        helper.teacher_dim = 16
+        student_embeds = np.random.randn(3, 8).astype(np.float32)
+        targets = helper.generate_distillation_targets(
+            texts=["a", "b", "c"],
+            current_embeddings=student_embeds,
+            teacher_weight=0.5,
+        )
+        # Should fall back to student embeddings
+        np.testing.assert_array_equal(targets, student_embeds)
+
+    @patch("teacher_distillation.get_logger")
+    def test_projection_in_alignment_metric(self, mock_logger):
+        """Test that projection is used in compute_alignment_metric."""
+        mock_logger.return_value = MagicMock()
+
+        helper = TeacherDistillationHelper(
+            "test-model", projection_enabled=True,
+        )
+        helper.teacher_dim = 16
+
+        student = np.random.randn(3, 8).astype(np.float32)
+        teacher = np.random.randn(3, 16).astype(np.float32)
+
+        alignment = helper.compute_alignment_metric(student, teacher)
+        # Projection was created and used
+        self.assertIsNotNone(helper._projection)
+        self.assertIsInstance(alignment, float)
+
+    def test_projection_with_different_dims(self):
+        """Test projection works across various dimension pairs."""
+        for t_dim, s_dim in [(32, 16), (16, 32), (64, 8), (8, 64)]:
+            proj = DimensionProjection(teacher_dim=t_dim, student_dim=s_dim)
+            x = torch.randn(4, t_dim)
+            out = proj(x)
+            self.assertEqual(out.shape, (4, s_dim))
+
+    def test_projection_gradient_flow(self):
+        """Test that gradients flow through the projection."""
+        proj = DimensionProjection(teacher_dim=16, student_dim=8)
+        x = torch.randn(3, 16, requires_grad=True)
+        out = proj(x)
+        loss = out.sum()
+        loss.backward()
+        self.assertIsNotNone(x.grad)
+        # Check projection parameters received gradients
+        for param in proj.parameters():
+            self.assertIsNotNone(param.grad)
+
+
+class TestEnsembleTeacherHelper(unittest.TestCase):
+    """Test EnsembleTeacherHelper multi-teacher support."""
+
+    def setUp(self):
+        self.logger_patcher = patch("teacher_distillation.get_logger")
+        self.mock_logger = self.logger_patcher.start()
+        self.mock_logger.return_value = MagicMock()
+
+    def tearDown(self):
+        self.logger_patcher.stop()
+
+    def _make_teacher(self, dim, embeddings):
+        """Create a mock TeacherDistillationHelper."""
+        teacher = MagicMock(spec=TeacherDistillationHelper)
+        teacher.teacher_dim = dim
+        teacher.get_teacher_embeddings.return_value = embeddings
+        teacher.compute_alignment_metric.return_value = 0.8
+        teacher._projection_enabled = True
+        return teacher
+
+    def test_ensemble_init_equal_weights(self):
+        """Test ensemble initializes with equal weights by default."""
+        t1 = self._make_teacher(8, np.zeros((2, 8)))
+        t2 = self._make_teacher(8, np.zeros((2, 8)))
+        ensemble = EnsembleTeacherHelper([t1, t2])
+        self.assertAlmostEqual(ensemble.weights[0], 0.5)
+        self.assertAlmostEqual(ensemble.weights[1], 0.5)
+
+    def test_ensemble_init_custom_weights(self):
+        """Test ensemble with custom weights."""
+        t1 = self._make_teacher(8, np.zeros((2, 8)))
+        t2 = self._make_teacher(8, np.zeros((2, 8)))
+        ensemble = EnsembleTeacherHelper([t1, t2], weights=[0.3, 0.7])
+        self.assertAlmostEqual(ensemble.weights[0], 0.3)
+        self.assertAlmostEqual(ensemble.weights[1], 0.7)
+
+    def test_ensemble_weight_normalization(self):
+        """Test that weights are normalized to sum to 1."""
+        t1 = self._make_teacher(8, np.zeros((2, 8)))
+        t2 = self._make_teacher(8, np.zeros((2, 8)))
+        ensemble = EnsembleTeacherHelper([t1, t2], weights=[2.0, 8.0])
+        self.assertAlmostEqual(sum(ensemble.weights), 1.0)
+        self.assertAlmostEqual(ensemble.weights[0], 0.2)
+        self.assertAlmostEqual(ensemble.weights[1], 0.8)
+
+    def test_ensemble_get_teacher_embeddings(self):
+        """Test weighted average embeddings from ensemble."""
+        emb1 = np.ones((3, 8), dtype=np.float32) * 2.0
+        emb2 = np.ones((3, 8), dtype=np.float32) * 4.0
+        t1 = self._make_teacher(8, emb1)
+        t2 = self._make_teacher(8, emb2)
+        ensemble = EnsembleTeacherHelper([t1, t2], weights=[0.5, 0.5])
+        result = ensemble.get_teacher_embeddings(["a", "b", "c"], target_dim=8)
+        # Expected: 0.5 * 2.0 + 0.5 * 4.0 = 3.0
+        np.testing.assert_allclose(result, np.ones((3, 8)) * 3.0)
+
+    def test_ensemble_with_dimension_mismatch(self):
+        """Test ensemble handles dimension mismatch via projection."""
+        emb1 = np.random.randn(3, 16).astype(np.float32)
+        emb2 = np.random.randn(3, 8).astype(np.float32)
+        t1 = self._make_teacher(16, emb1)
+        t2 = self._make_teacher(8, emb2)
+        ensemble = EnsembleTeacherHelper([t1, t2])
+        result = ensemble.get_teacher_embeddings(["a", "b", "c"], target_dim=8)
+        # Should project t1 from 16 -> 8, t2 already 8
+        self.assertEqual(result.shape, (3, 8))
+        # Projection should have been created for teacher 0
+        self.assertIn(0, ensemble._projections)
+
+    def test_ensemble_distillation_targets(self):
+        """Test ensemble generate_distillation_targets."""
+        emb1 = np.random.randn(3, 8).astype(np.float32)
+        emb2 = np.random.randn(3, 8).astype(np.float32)
+        t1 = self._make_teacher(8, emb1)
+        t2 = self._make_teacher(8, emb2)
+        ensemble = EnsembleTeacherHelper([t1, t2])
+        student = np.random.randn(3, 8).astype(np.float32)
+        targets = ensemble.generate_distillation_targets(
+            texts=["a", "b", "c"],
+            student_embeddings=student,
+            teacher_weight=0.5,
+        )
+        self.assertEqual(targets.shape, (3, 8))
+        # Should be normalized
+        norms = np.linalg.norm(targets, axis=1)
+        np.testing.assert_allclose(norms, np.ones(3), atol=0.01)
+
+    def test_ensemble_alignment_metric(self):
+        """Test ensemble compute_alignment_metric."""
+        t1 = self._make_teacher(8, np.zeros((3, 8)))
+        t1.compute_alignment_metric.return_value = 0.6
+        t2 = self._make_teacher(8, np.zeros((3, 8)))
+        t2.compute_alignment_metric.return_value = 0.9
+        ensemble = EnsembleTeacherHelper([t1, t2], weights=[0.5, 0.5])
+        student = np.random.randn(3, 8).astype(np.float32)
+        alignment = ensemble.compute_alignment_metric(student)
+        # 0.5 * 0.6 + 0.5 * 0.9 = 0.75
+        self.assertAlmostEqual(alignment, 0.75)
+
+    def test_ensemble_single_teacher_fallback(self):
+        """Test that factory returns single helper for single teacher_models."""
+        helper = create_distillation_helper(
+            teacher_models=[("test-model", 1.0)],
+        )
+        self.assertIsInstance(helper, TeacherDistillationHelper)
+
+    def test_factory_returns_ensemble(self):
+        """Test that factory returns ensemble for multiple teacher_models."""
+        helper = create_distillation_helper(
+            teacher_models=[("model-a", 0.5), ("model-b", 0.5)],
+        )
+        self.assertIsInstance(helper, EnsembleTeacherHelper)
+        self.assertEqual(len(helper.teachers), 2)
+
+    def test_factory_returns_single(self):
+        """Test that factory returns single helper for teacher_model_name."""
+        helper = create_distillation_helper(
+            teacher_model_name="test-model",
+        )
+        self.assertIsInstance(helper, TeacherDistillationHelper)
+        self.assertEqual(helper.teacher_model_name, "test-model")
+
+    def test_ensemble_duck_types_api(self):
+        """Test ensemble has the same API methods as TeacherDistillationHelper."""
+        t1 = self._make_teacher(8, np.zeros((2, 8)))
+        ensemble = EnsembleTeacherHelper([t1])
+        self.assertTrue(hasattr(ensemble, "get_teacher_embeddings"))
+        self.assertTrue(hasattr(ensemble, "generate_distillation_targets"))
+        self.assertTrue(hasattr(ensemble, "compute_alignment_metric"))
+
+    def test_ensemble_with_projections(self):
+        """Test ensemble projection caching."""
+        emb1 = np.random.randn(2, 16).astype(np.float32)
+        t1 = self._make_teacher(16, emb1)
+        ensemble = EnsembleTeacherHelper([t1])
+        # First call creates projection
+        ensemble.get_teacher_embeddings(["a", "b"], target_dim=8)
+        self.assertIn(0, ensemble._projections)
+        # Second call reuses
+        proj_ref = ensemble._projections[0]
+        ensemble.get_teacher_embeddings(["a", "b"], target_dim=8)
+        self.assertIs(ensemble._projections[0], proj_ref)
+
+    def test_ensemble_preset_diverse(self):
+        """Test diverse preset exists in config."""
+        from config import ChelationConfig
+        preset = ChelationConfig.get_preset("diverse", "ensemble")
+        self.assertIn("models", preset)
+        self.assertEqual(len(preset["models"]), 2)
+
+    def test_ensemble_preset_multilingual(self):
+        """Test multilingual preset exists in config."""
+        from config import ChelationConfig
+        preset = ChelationConfig.get_preset("multilingual", "ensemble")
+        self.assertIn("models", preset)
+
+    def test_ensemble_teacher_weight(self):
+        """Test ensemble uses teacher_weight attribute."""
+        emb1 = np.ones((2, 4), dtype=np.float32)
+        t1 = self._make_teacher(4, emb1)
+        ensemble = EnsembleTeacherHelper([t1])
+        ensemble.teacher_weight = 0.8
+        student = np.zeros((2, 4), dtype=np.float32)
+        targets = ensemble.generate_distillation_targets(
+            texts=["a", "b"],
+            student_embeddings=student,
+        )
+        # With student=0 and teacher=1, blend = 0.8 * 1 + 0.2 * 0 = 0.8
+        # After normalization, norms should be 1
+        norms = np.linalg.norm(targets, axis=1)
+        np.testing.assert_allclose(norms, np.ones(2), atol=0.01)
 
 
 if __name__ == "__main__":

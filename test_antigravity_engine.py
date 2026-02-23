@@ -17,7 +17,7 @@ class TestAntigravityEngine(unittest.TestCase):
     def setUp(self):
         self.qdrant_patcher = patch("antigravity_engine.QdrantClient")
         self.logger_patcher = patch("antigravity_engine.get_logger")
-        self.adapter_patcher = patch("antigravity_engine.ChelationAdapter")
+        self.adapter_patcher = patch("antigravity_engine.create_adapter")
         self.st_patcher = patch("sentence_transformers.SentenceTransformer")
 
         self.mock_qdrant_cls = self.qdrant_patcher.start()

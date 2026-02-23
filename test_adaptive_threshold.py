@@ -31,7 +31,7 @@ class TestAdaptiveThresholdDisabled(unittest.TestCase):
         """Set up test fixtures with mocked dependencies."""
         with patch('antigravity_engine.QdrantClient'), \
              patch('antigravity_engine.get_logger'), \
-             patch('antigravity_engine.ChelationAdapter'), \
+             patch('antigravity_engine.create_adapter'), \
              patch('sentence_transformers.SentenceTransformer') as mock_st:
             mock_model = Mock()
             mock_model.get_sentence_embedding_dimension.return_value = 768
@@ -93,7 +93,7 @@ class TestAdaptiveThresholdEnableDisable(unittest.TestCase):
         """Set up test fixtures with mocked dependencies."""
         with patch('antigravity_engine.QdrantClient'), \
              patch('antigravity_engine.get_logger'), \
-             patch('antigravity_engine.ChelationAdapter'), \
+             patch('antigravity_engine.create_adapter'), \
              patch('sentence_transformers.SentenceTransformer') as mock_st:
             mock_model = Mock()
             mock_model.get_sentence_embedding_dimension.return_value = 768
@@ -171,7 +171,7 @@ class TestAdaptiveThresholdUpdate(unittest.TestCase):
         """Set up test fixtures with mocked dependencies."""
         with patch('antigravity_engine.QdrantClient'), \
              patch('antigravity_engine.get_logger'), \
-             patch('antigravity_engine.ChelationAdapter'), \
+             patch('antigravity_engine.create_adapter'), \
              patch('sentence_transformers.SentenceTransformer') as mock_st:
             mock_model = Mock()
             mock_model.get_sentence_embedding_dimension.return_value = 768
@@ -298,7 +298,7 @@ class TestAdaptiveThresholdInRunInference(unittest.TestCase):
         """Set up test fixtures with mocked dependencies."""
         with patch('antigravity_engine.QdrantClient') as mock_qdrant, \
              patch('antigravity_engine.get_logger'), \
-             patch('antigravity_engine.ChelationAdapter'), \
+             patch('antigravity_engine.create_adapter'), \
              patch('sentence_transformers.SentenceTransformer') as mock_st:
             mock_model = Mock()
             mock_model.get_sentence_embedding_dimension.return_value = 768
@@ -372,7 +372,7 @@ class TestAdaptiveThresholdStats(unittest.TestCase):
         """Set up test fixtures with mocked dependencies."""
         with patch('antigravity_engine.QdrantClient'), \
              patch('antigravity_engine.get_logger'), \
-             patch('antigravity_engine.ChelationAdapter'), \
+             patch('antigravity_engine.create_adapter'), \
              patch('sentence_transformers.SentenceTransformer') as mock_st:
             mock_model = Mock()
             mock_model.get_sentence_embedding_dimension.return_value = 768
@@ -423,7 +423,7 @@ class TestQdrantErrorHandling(unittest.TestCase):
         """Set up test fixtures with mocked dependencies."""
         with patch('antigravity_engine.QdrantClient') as mock_qdrant, \
              patch('antigravity_engine.get_logger') as mock_logger, \
-             patch('antigravity_engine.ChelationAdapter'), \
+             patch('antigravity_engine.create_adapter'), \
              patch('sentence_transformers.SentenceTransformer') as mock_st:
             mock_model = Mock()
             mock_model.get_sentence_embedding_dimension.return_value = 768

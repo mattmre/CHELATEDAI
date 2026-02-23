@@ -226,6 +226,10 @@ class ChelationConfig:
     QUALITY_HIGH_THRESHOLD = 0.8
     QUALITY_LOW_THRESHOLD = 0.3
 
+    # ===== Dimension Projection Configuration =====
+    PROJECTION_ENABLED = True  # Auto-project when teacher/student dims mismatch
+    PROJECTION_HIDDEN_DIM = None  # None = direct projection, int = bottleneck
+
     # ===== Adapter Training Configuration =====
     DEFAULT_LEARNING_RATE = 0.001  # Conservative by default
     DEFAULT_EPOCHS = 10
@@ -288,6 +292,24 @@ class ChelationConfig:
         }
     }
     
+    # Ensemble teacher presets
+    ENSEMBLE_PRESETS = {
+        "diverse": {
+            "models": [
+                ("all-MiniLM-L6-v2", 0.4),
+                ("all-mpnet-base-v2", 0.6),
+            ],
+            "description": "Diverse model architectures for robust distillation",
+        },
+        "multilingual": {
+            "models": [
+                ("all-MiniLM-L6-v2", 0.5),
+                ("paraphrase-multilingual-MiniLM-L12-v2", 0.5),
+            ],
+            "description": "Multilingual ensemble for cross-lingual transfer",
+        },
+    }
+
     # Sedimentation presets
     SEDIMENTATION_PRESETS = {
         "balanced": {
@@ -305,6 +327,42 @@ class ChelationConfig:
             "push_magnitude": 0.2,
             "description": "Aggressive sedimentation for noisy data"
         }
+    }
+
+    # Teacher weight schedule presets
+    TEACHER_WEIGHT_SCHEDULE_PRESETS = {
+        "constant": {
+            "schedule": "constant",
+            "initial_weight": 0.5,
+            "description": "Fixed teacher weight throughout training",
+        },
+        "gradual_decay": {
+            "schedule": "linear_decay",
+            "initial_weight": 0.7,
+            "final_weight": 0.1,
+            "total_steps": 100,
+            "description": "Gradual linear decrease in teacher influence",
+        },
+        "cosine": {
+            "schedule": "cosine_annealing",
+            "initial_weight": 0.6,
+            "final_weight": 0.05,
+            "total_steps": 100,
+            "description": "Smooth cosine decay of teacher influence",
+        },
+        "aggressive_decay": {
+            "schedule": "step_decay",
+            "initial_weight": 0.8,
+            "gamma": 0.5,
+            "step_size": 20,
+            "description": "Aggressive step-wise decay of teacher influence",
+        },
+        "adaptive": {
+            "schedule": "adaptive",
+            "initial_weight": 0.5,
+            "patience": 5,
+            "description": "Loss-adaptive teacher weight adjustment",
+        },
     }
 
     # ===== Memory Management =====
@@ -436,6 +494,8 @@ class ChelationConfig:
             "sedimentation": cls.SEDIMENTATION_PRESETS,
             "convergence": cls.CONVERGENCE_PRESETS,
             "adapter_type": cls.ADAPTER_TYPE_PRESETS,
+            "ensemble": cls.ENSEMBLE_PRESETS,
+            "teacher_weight_schedule": cls.TEACHER_WEIGHT_SCHEDULE_PRESETS,
         }
         
         if preset_type not in preset_map:

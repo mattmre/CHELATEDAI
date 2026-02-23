@@ -7,6 +7,7 @@ Uses local sentence-transformers model to avoid external API dependencies.
 
 import numpy as np
 import torch
+import torch.nn as nn
 from typing import List, Optional
 from chelation_logger import get_logger
 from config import ChelationConfig
@@ -17,6 +18,50 @@ except ImportError:
     SentenceTransformer = None  # type: ignore
 
 
+class DimensionProjection(nn.Module):
+    """Projects teacher embeddings to student dimension space."""
+
+    def __init__(self, teacher_dim, student_dim, hidden_dim=None):
+        super().__init__()
+        if hidden_dim is not None:
+            self.projection = nn.Sequential(
+                nn.Linear(teacher_dim, hidden_dim, bias=False),
+                nn.ReLU(),
+                nn.Linear(hidden_dim, student_dim, bias=False),
+            )
+        else:
+            self.projection = nn.Linear(teacher_dim, student_dim, bias=False)
+        self._init_near_identity(teacher_dim, student_dim)
+
+    def _init_near_identity(self, teacher_dim, student_dim):
+        """Initialize near-identity for minimal disruption."""
+        with torch.no_grad():
+            if isinstance(self.projection, nn.Sequential):
+                for module in self.projection:
+                    if isinstance(module, nn.Linear):
+                        nn.init.xavier_uniform_(module.weight)
+                        module.weight.mul_(0.001)
+            else:
+                min_dim = min(teacher_dim, student_dim)
+                self.projection.weight.zero_()
+                self.projection.weight[:min_dim, :min_dim] = (
+                    torch.eye(min_dim) * 0.999
+                )
+                self.projection.weight += (
+                    torch.randn_like(self.projection.weight) * 0.001
+                )
+
+    def forward(self, x):
+        return self.projection(x)
+
+    def project_numpy(self, embeddings):
+        """Convenience method for numpy arrays."""
+        tensor = torch.from_numpy(embeddings).float()
+        with torch.no_grad():
+            projected = self.forward(tensor)
+        return projected.numpy()
+
+
 class TeacherDistillationHelper:
     """
     Helper class for teacher distillation operations.
@@ -24,18 +69,24 @@ class TeacherDistillationHelper:
     Encapsulates teacher model loading, target generation, and blending logic.
     """
     
-    def __init__(self, teacher_model_name: str = "sentence-transformers/all-MiniLM-L6-v2"):
+    def __init__(self, teacher_model_name: str = "sentence-transformers/all-MiniLM-L6-v2",
+                 projection_enabled: bool = True, projection_hidden_dim: Optional[int] = None):
         """
         Initialize teacher distillation helper.
-        
+
         Args:
             teacher_model_name: HuggingFace model name for teacher
+            projection_enabled: If True, auto-project when dimensions mismatch
+            projection_hidden_dim: Optional bottleneck dimension for projection
         """
         self.logger = get_logger()
         self.teacher_model_name = teacher_model_name
         self.teacher_model = None
         self.teacher_dim = None
-        
+        self._projection_enabled = projection_enabled
+        self._projection_hidden_dim = projection_hidden_dim
+        self._projection = None
+
         self.logger.log_event(
             "distillation_init",
             f"Initializing teacher distillation with model: {teacher_model_name}",
@@ -144,7 +195,22 @@ class TeacherDistillationHelper:
             )
         
         return compatible
-    
+
+    def _ensure_projection(self, student_dim):
+        """Create projection layer if dimensions mismatch."""
+        if self._projection is None:
+            if self.teacher_dim != student_dim:
+                self._projection = DimensionProjection(
+                    self.teacher_dim, student_dim,
+                    hidden_dim=self._projection_hidden_dim,
+                )
+                self.logger.log_event(
+                    "projection_created",
+                    f"Created dimension projection: {self.teacher_dim} -> {student_dim}",
+                    teacher_dim=self.teacher_dim,
+                    student_dim=student_dim,
+                )
+
     def generate_distillation_targets(
         self,
         texts: List[str],
@@ -181,14 +247,21 @@ class TeacherDistillationHelper:
         
         # Check dimension compatibility
         if teacher_embeds.shape[1] != current_embeddings.shape[1]:
-            self.logger.log_event(
-                "dimension_mismatch_targets",
-                f"Cannot blend: teacher dim {teacher_embeds.shape[1]} != student dim {current_embeddings.shape[1]}",
-                level="ERROR",
-                teacher_dim=teacher_embeds.shape[1],
-                student_dim=current_embeddings.shape[1]
-            )
-            return current_embeddings.copy()
+            if self._projection_enabled:
+                self._ensure_projection(current_embeddings.shape[1])
+                if self._projection is not None:
+                    teacher_embeds = self._projection.project_numpy(teacher_embeds)
+                else:
+                    return current_embeddings.copy()
+            else:
+                self.logger.log_event(
+                    "dimension_mismatch_targets",
+                    f"Cannot blend: teacher dim {teacher_embeds.shape[1]} != student dim {current_embeddings.shape[1]}",
+                    level="ERROR",
+                    teacher_dim=teacher_embeds.shape[1],
+                    student_dim=current_embeddings.shape[1],
+                )
+                return current_embeddings.copy()
         
         # Blend: target = (1 - alpha) * student + alpha * teacher
         alpha = teacher_weight
@@ -228,14 +301,25 @@ class TeacherDistillationHelper:
             return 0.0
         
         if student_embeds.shape != teacher_embeds.shape:
-            self.logger.log_event(
-                "alignment_shape_mismatch",
-                "Shape mismatch in alignment computation",
-                level="WARNING",
-                student_shape=student_embeds.shape,
-                teacher_shape=teacher_embeds.shape
-            )
-            return 0.0
+            if (self._projection_enabled
+                    and len(student_embeds.shape) == 2
+                    and len(teacher_embeds.shape) == 2
+                    and student_embeds.shape[0] == teacher_embeds.shape[0]
+                    and student_embeds.shape[1] != teacher_embeds.shape[1]):
+                self._ensure_projection(student_embeds.shape[1])
+                if self._projection is not None:
+                    teacher_embeds = self._projection.project_numpy(teacher_embeds)
+                else:
+                    return 0.0
+            else:
+                self.logger.log_event(
+                    "alignment_shape_mismatch",
+                    "Shape mismatch in alignment computation",
+                    level="WARNING",
+                    student_shape=student_embeds.shape,
+                    teacher_shape=teacher_embeds.shape,
+                )
+                return 0.0
         
         # Compute row-wise cosine similarities
         student_norm = student_embeds / (np.linalg.norm(student_embeds, axis=1, keepdims=True) + 1e-9)
@@ -247,22 +331,118 @@ class TeacherDistillationHelper:
         return float(avg_similarity)
 
 
+class EnsembleTeacherHelper:
+    """Multi-teacher ensemble that duck-types TeacherDistillationHelper API."""
+
+    def __init__(self, teachers, weights=None, logger=None):
+        """
+        Args:
+            teachers: List of TeacherDistillationHelper instances
+            weights: Optional list of float weights (normalized internally)
+            logger: Logger instance
+        """
+        if not teachers:
+            raise ValueError("At least one teacher is required")
+        self.teachers = teachers
+        self.logger = logger or get_logger()
+
+        if weights is None:
+            weights = [1.0 / len(teachers)] * len(teachers)
+        total = sum(weights)
+        self.weights = [w / total for w in weights]
+
+        self._projection_enabled = True
+        self._projections = {}  # teacher_idx -> DimensionProjection
+        self.teacher_weight = 0.5
+
+    def get_teacher_embeddings(self, texts, target_dim=None):
+        """Get weighted average of teacher embeddings."""
+        all_embeddings = []
+        for i, teacher in enumerate(self.teachers):
+            embs = teacher.get_teacher_embeddings(texts)
+            if len(embs) == 0:
+                continue
+            if target_dim is not None and embs.shape[-1] != target_dim:
+                if i not in self._projections:
+                    self._projections[i] = DimensionProjection(
+                        embs.shape[-1], target_dim,
+                    )
+                embs = self._projections[i].project_numpy(embs)
+            all_embeddings.append(embs * self.weights[i])
+        if not all_embeddings:
+            return np.array([])
+        return sum(all_embeddings)
+
+    def generate_distillation_targets(self, texts, student_embeddings,
+                                      teacher_weight=None):
+        """Generate targets using weighted ensemble."""
+        if teacher_weight is None:
+            teacher_weight = self.teacher_weight
+        student_dim = student_embeddings.shape[-1]
+        teacher_embs = self.get_teacher_embeddings(texts, target_dim=student_dim)
+        if len(teacher_embs) == 0:
+            return student_embeddings.copy()
+        blended = teacher_weight * teacher_embs + (1 - teacher_weight) * student_embeddings
+        norms = np.linalg.norm(blended, axis=1, keepdims=True)
+        norms = np.maximum(norms, 1e-9)
+        return blended / norms
+
+    def compute_alignment_metric(self, student_embeds, teacher_embeds=None,
+                                 texts=None):
+        """Average alignment across all teachers."""
+        alignments = []
+        for teacher in self.teachers:
+            alignment = teacher.compute_alignment_metric(
+                student_embeds, teacher_embeds if teacher_embeds is not None
+                else student_embeds,
+            )
+            alignments.append(alignment)
+        return sum(a * w for a, w in zip(alignments, self.weights))
+
+
 def create_distillation_helper(
-    teacher_model_name: Optional[str] = None
-) -> TeacherDistillationHelper:
+    teacher_model_name: Optional[str] = None,
+    teacher_models=None,
+    projection_enabled: bool = True,
+    projection_hidden_dim: Optional[int] = None,
+):
     """
     Factory function to create distillation helper.
-    
+
     Args:
-        teacher_model_name: Optional teacher model name (uses default if None)
-        
+        teacher_model_name: Optional single teacher model name (uses default if None)
+        teacher_models: Optional list of (model_name, weight) tuples for ensemble
+        projection_enabled: If True, auto-project when dimensions mismatch
+        projection_hidden_dim: Optional bottleneck dimension for projection
+
     Returns:
-        TeacherDistillationHelper instance
+        TeacherDistillationHelper or EnsembleTeacherHelper instance
     """
-    if teacher_model_name is None:
-        teacher_model_name = ChelationConfig.DEFAULT_TEACHER_MODEL
-    
-    return TeacherDistillationHelper(teacher_model_name=teacher_model_name)
+    if teacher_models and len(teacher_models) > 1:
+        teachers = []
+        weights = []
+        for model_name, weight in teacher_models:
+            helper = TeacherDistillationHelper(
+                teacher_model_name=model_name,
+                projection_enabled=projection_enabled,
+                projection_hidden_dim=projection_hidden_dim,
+            )
+            teachers.append(helper)
+            weights.append(weight)
+        return EnsembleTeacherHelper(teachers, weights)
+
+    # Single teacher path
+    model = teacher_model_name
+    if model is None and teacher_models:
+        model = teacher_models[0][0]
+    if model is None:
+        model = ChelationConfig.DEFAULT_TEACHER_MODEL
+
+    return TeacherDistillationHelper(
+        teacher_model_name=model,
+        projection_enabled=projection_enabled,
+        projection_hidden_dim=projection_hidden_dim,
+    )
 
 
 # Convenience function for hybrid target generation

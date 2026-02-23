@@ -44,6 +44,9 @@ db_*/
 # Keep manual results for reference
 !manual_results.txt
 
+# Ruff
+.ruff_cache/
+
 # Temp files
 *.tmp
 temp_*

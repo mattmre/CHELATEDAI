@@ -17,15 +17,16 @@ from embedding_backend import create_embedding_backend
 from vector_store import create_vector_store
 
 class AntigravityEngine:
-    def __init__(self, qdrant_location=":memory:", chelation_p=ChelationConfig.DEFAULT_CHELATION_P, model_name='ollama:nomic-embed-text', use_centering=False, use_quantization=False, training_mode: str = "baseline", teacher_model_name: Optional[str] = None, teacher_weight: float = 0.5, store_full_text_payload: Optional[bool] = None):
+    def __init__(self, qdrant_location=":memory:", chelation_p=ChelationConfig.DEFAULT_CHELATION_P, model_name='ollama:nomic-embed-text', use_centering=False, use_quantization=False, training_mode: str = "baseline", teacher_model_name: Optional[str] = None, teacher_models=None, teacher_weight: float = 0.5, store_full_text_payload: Optional[bool] = None):
         """
         Stage 8 Engine: Docker/Ollama Integration + Teacher Distillation.
-        
+
         chelation_p: The 'K-Knob'.
         use_centering: If True, uses 'Spectral Chelation' (Centering).
         use_quantization: If True, enables INT8 Scalar Quantization (Layer 3).
         training_mode: 'baseline', 'offline', or 'hybrid' - controls sedimentation behavior.
-        teacher_model_name: Optional teacher model for distillation (local sentence-transformers).
+        teacher_model_name: Optional single teacher model for distillation.
+        teacher_models: Optional list of (model_name, weight) tuples for ensemble.
         teacher_weight: Weight for teacher guidance in hybrid mode (0.0-1.0).
         store_full_text_payload: If True, store full text in Qdrant payload (default: config default for backward compatibility).
         """
@@ -57,14 +58,15 @@ class AntigravityEngine:
         # Initialize teacher distillation helper (lazy loading)
         self.teacher_helper = None
         if self.training_mode in ["offline", "hybrid"]:
-            teacher_model = teacher_model_name or ChelationConfig.DEFAULT_TEACHER_MODEL
-            self.teacher_helper = create_distillation_helper(teacher_model)
+            self.teacher_helper = create_distillation_helper(
+                teacher_model_name=teacher_model_name or ChelationConfig.DEFAULT_TEACHER_MODEL,
+                teacher_models=teacher_models,
+            )
             self.logger.log_event(
                 "distillation_config",
                 f"Training mode: {self.training_mode}, Teacher weight: {self.teacher_weight}",
                 training_mode=self.training_mode,
                 teacher_weight=self.teacher_weight,
-                teacher_model=teacher_model
             )
 
         # Initialize embedding backend (F-045: Extract embedding mode branching)
@@ -655,6 +657,30 @@ class AntigravityEngine:
         )
         self.logger.log_event("online_updates_enabled", "Online gradient updates enabled")
 
+    # ===== Teacher Weight Scheduling =====
+
+    def enable_teacher_weight_scheduling(self, schedule="constant",
+                                         initial_weight=0.5, **kwargs):
+        """
+        Enable dynamic teacher weight scheduling for training loops.
+
+        Args:
+            schedule: One of 'constant', 'linear_decay', 'cosine_annealing',
+                      'step_decay', 'adaptive'
+            initial_weight: Starting teacher weight
+            **kwargs: Additional scheduler parameters (total_steps, gamma, etc.)
+        """
+        from teacher_weight_scheduler import TeacherWeightScheduler
+        self._weight_scheduler = TeacherWeightScheduler(
+            schedule=schedule, initial_weight=initial_weight, **kwargs,
+        )
+        self.logger.log_event(
+            "weight_scheduler_enabled",
+            f"Teacher weight scheduling enabled (schedule={schedule})",
+            schedule=schedule,
+            initial_weight=initial_weight,
+        )
+
     # ===== Phase 5: Stability Tracking =====
 
     def enable_stability_tracking(self):
@@ -924,6 +950,9 @@ class AntigravityEngine:
                     min_epochs=getattr(self, '_convergence_min_epochs', ChelationConfig.CONVERGENCE_MIN_EPOCHS)
                 )
 
+            # Optional weight scheduler for dynamic teacher weight
+            weight_scheduler = getattr(self, '_weight_scheduler', None)
+
             for epoch in range(epochs):
                 optimizer.zero_grad()
                 outputs = self.adapter(input_tensor)
@@ -931,6 +960,10 @@ class AntigravityEngine:
                 loss.backward()
                 optimizer.step()
                 final_loss = loss.item()
+
+                # Update teacher weight schedule if enabled
+                if weight_scheduler is not None:
+                    self.teacher_weight = weight_scheduler.step(final_loss)
 
                 if epoch % max(1, epochs // 2) == 0:
                     self.logger.log_training_epoch(epoch=epoch+1, total_epochs=epochs, loss=final_loss)
@@ -1015,15 +1048,22 @@ class AntigravityEngine:
             batch_size=batch_size
         )
         
-        # Check dimension compatibility
+        # Check dimension compatibility (projection handles mismatch if enabled)
         if not self.teacher_helper.check_dimension_compatibility(self.vector_size):
-            self.logger.log_error(
-                "offline_distillation_dimension_mismatch",
-                "Teacher dimension mismatch. Cannot proceed with offline distillation.",
+            if not self.teacher_helper._projection_enabled:
+                self.logger.log_error(
+                    "offline_distillation_dimension_mismatch",
+                    "Teacher dimension mismatch and projection disabled. Cannot proceed.",
+                    teacher_dim=self.teacher_helper.teacher_dim,
+                    student_dim=self.vector_size,
+                )
+                return
+            self.logger.log_event(
+                "offline_distillation_projection",
+                "Dimension mismatch will be handled by projection layer",
                 teacher_dim=self.teacher_helper.teacher_dim,
-                student_dim=self.vector_size
+                student_dim=self.vector_size,
             )
-            return
         
         # Fetch all corpus IDs
         try:
@@ -1141,6 +1181,9 @@ class AntigravityEngine:
                 min_epochs=getattr(self, '_convergence_min_epochs', ChelationConfig.CONVERGENCE_MIN_EPOCHS)
             )
 
+        # Optional weight scheduler for dynamic teacher weight
+        weight_scheduler = getattr(self, '_weight_scheduler', None)
+
         for epoch in range(ep):
             optimizer.zero_grad()
             outputs = self.adapter(input_tensor)
@@ -1148,6 +1191,10 @@ class AntigravityEngine:
             loss.backward()
             optimizer.step()
             final_loss = loss.item()
+
+            # Update teacher weight schedule if enabled
+            if weight_scheduler is not None:
+                self.teacher_weight = weight_scheduler.step(final_loss)
 
             if epoch % max(1, ep // 2) == 0:
                 self.logger.log_training_epoch(epoch=epoch+1, total_epochs=ep, loss=final_loss)
@@ -1160,7 +1207,7 @@ class AntigravityEngine:
         self.adapter.eval()
         self.adapter.save(self.adapter_path)
         self.logger.log_checkpoint("save", self.adapter_path)
-        
+
         # Update vectors in Qdrant
         self.logger.log_event("offline_distillation_update", "Updating corpus vectors in Qdrant")
         
