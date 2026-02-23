@@ -22,6 +22,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from config import ChelationConfig
 from chelation_logger import get_logger
 # F-042: Import HierarchicalSedimentationEngine from dedicated module
+from sedimentation import HierarchicalSedimentationEngine  # noqa: F401  # re-export
 
 # Try to import requests exceptions for type-safe exception handling
 try:
