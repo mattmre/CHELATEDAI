@@ -75,22 +75,32 @@
       const res = await fetch(url);
       const data = await res.json();
       const rows = document.getElementById('rows');
-      rows.innerHTML = '';
+      rows.replaceChildren();
       const events = data.events || [];
       if (!events.length) {
-        rows.innerHTML = '<tr><td colspan="5">No events</td></tr>';
+        const tr = document.createElement('tr');
+        const td = document.createElement('td');
+        td.colSpan = 5;
+        td.textContent = 'No events';
+        tr.appendChild(td);
+        rows.appendChild(tr);
         return;
       }
       for (const e of events) {
         const tr = document.createElement('tr');
         const ts = (e.timestamp !== undefined && e.timestamp !== null) ? new Date(e.timestamp * 1000).toLocaleString() : '-';
-        tr.innerHTML = `
-          <td>${ts}</td>
-          <td>${e.event_type || (e.query_snippet ? 'query' : '-')}</td>
-          <td>${e.action || '-'}</td>
-          <td>${(typeof e.global_variance === 'number') ? e.global_variance.toFixed(6) : '-'}</td>
-          <td>${e.message || e.query_snippet || '-'}</td>
-        `;
+        const cells = [
+          ts,
+          e.event_type || (e.query_snippet ? 'query' : '-'),
+          e.action || '-',
+          (typeof e.global_variance === 'number') ? e.global_variance.toFixed(6) : '-',
+          e.message || e.query_snippet || '-'
+        ];
+        for (const text of cells) {
+          const td = document.createElement('td');
+          td.textContent = text;
+          tr.appendChild(td);
+        }
         rows.appendChild(tr);
       }
     }
