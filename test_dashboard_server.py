@@ -9,8 +9,7 @@ import os
 import tempfile
 import unittest
 from io import BytesIO
-from unittest.mock import MagicMock, patch
-from urllib.parse import urlencode
+from unittest.mock import MagicMock
 
 # Import the module under test
 import dashboard_server

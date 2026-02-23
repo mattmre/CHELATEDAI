@@ -1,12 +1,10 @@
 # benchmark_evolution.py
 import numpy as np
 import argparse
-import mteb
 from antigravity_engine import AntigravityEngine
-from typing import Dict, List
 
 # Import shared utilities from benchmark_utils
-from benchmark_utils import dcg_at_k, ndcg_at_k, find_keys, find_payload, load_mteb_data
+from benchmark_utils import ndcg_at_k, load_mteb_data
 
 def evaluate_ndcg(engine, queries, qrels, k=10):
     ndcg_scores = []
@@ -63,7 +61,6 @@ def run_evolution(task_name="SciFact", learning_rate=0.5, model_name='ollama:nom
     print("--- 1. INITIALIZING BRAIN ---")
 
     # Use cross-platform path handling
-    from pathlib import Path
     from config import ChelationConfig
 
     db_path = ChelationConfig.get_db_path(task_name)
@@ -98,8 +95,8 @@ def run_evolution(task_name="SciFact", learning_rate=0.5, model_name='ollama:nom
     # For this script, we'll assume the USER has run the previous benchmark and data exists.
     # OR we can force ingest. Let's force ingest to ensure we are starting from State 0.
     
-    corpus_list = list(corpus.values())
-    ids_list = list(corpus.keys()) # We need to ensure IDs match.
+    list(corpus.values())
+    list(corpus.keys()) # We need to ensure IDs match.
     # AntigravityEngine ingest uses int IDs mostly. 
     # MTEB corpus has string IDs.
     # This is a complexity: duplicate ingestion mapping.

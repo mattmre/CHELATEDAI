@@ -6,9 +6,7 @@ Fast, deterministic tests without actual model training or MTEB downloads.
 """
 
 import unittest
-import numpy as np
-from unittest.mock import MagicMock, patch, Mock
-import json
+from unittest.mock import MagicMock, patch
 import sys
 
 # Mock heavy dependencies before importing benchmark modules

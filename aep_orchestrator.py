@@ -382,6 +382,8 @@ class AEPTracker:
 
         Accepted kwargs: pr_branch, commit_hash, owning_agent, verification_evidence.
         """
+        if finding_id not in self.findings:
+            raise ValueError(f"Finding ID '{finding_id}' not found in tracker")
         finding = self.findings[finding_id]
         old_status = finding.status
         finding.status = status
@@ -611,11 +613,14 @@ class AEPOrchestrator:
         Each agent attaches domain-specific metadata (risk levels, test gaps,
         performance flags, coupling analysis).
         """
+        _metadata_lock = threading.Lock()
+
         def _process_finding(finding: Finding) -> None:
             """Process a single finding through all agents."""
             for agent in self.agents:
                 try:
-                    agent.analyze(finding, context)
+                    with _metadata_lock:
+                        agent.analyze(finding, context)
                 except Exception as e:
                     self.logger.log_error(
                         "revalidation_agent_error",

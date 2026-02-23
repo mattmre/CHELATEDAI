@@ -12,9 +12,6 @@ for per-cluster adapter training.
 import re
 import uuid
 import time
-import numpy as np
-import torch
-import torch.optim as optim
 from enum import Enum
 from dataclasses import dataclass, field
 from typing import List, Dict, Any, Optional, Tuple
@@ -23,11 +20,9 @@ from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from config import ChelationConfig
-from chelation_logger import ChelationLogger, get_logger
-from sedimentation_trainer import compute_homeostatic_target, sync_vectors_to_qdrant
-from checkpoint_manager import CheckpointManager, SafeTrainingContext
+from chelation_logger import get_logger
 # F-042: Import HierarchicalSedimentationEngine from dedicated module
-from sedimentation import HierarchicalSedimentationEngine
+from sedimentation import HierarchicalSedimentationEngine  # noqa: F401  # re-export
 
 # Try to import requests exceptions for type-safe exception handling
 try:

@@ -7,7 +7,7 @@ external services (Qdrant, Ollama). Uses mocking for service dependencies.
 
 import unittest
 import numpy as np
-from unittest.mock import Mock, MagicMock, patch
+from unittest.mock import Mock, patch
 from collections import namedtuple
 from httpx import Headers
 

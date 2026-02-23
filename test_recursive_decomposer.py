@@ -10,7 +10,6 @@ import time
 from unittest.mock import patch
 
 from recursive_decomposer import (
-    DecompositionStrategy,
     DecompositionNode,
     DecompositionTrace,
     MockDecomposer,
@@ -718,12 +717,13 @@ class TestHierarchicalSedimentationEdgeCases(unittest.TestCase):
         from unittest.mock import MagicMock
         from recursive_decomposer import HierarchicalSedimentationEngine
         import numpy as np
-        
+
         mock_engine = MagicMock()
         h_engine = HierarchicalSedimentationEngine(mock_engine)
-        
-        # Create vectors where all values on highest variance dim are equal
-        # This forces median to equal all values, causing all to go to one side
+
+        # Create vectors where dims 0 and 2 have zero variance,
+        # forcing the split to use dim 1 where values differ (5,6,7,8).
+        # The median split may put all on one side if <= is used.
         vectors = np.array([
             [1.0, 5.0, 3.0],
             [1.0, 6.0, 3.0],
@@ -732,14 +732,41 @@ class TestHierarchicalSedimentationEdgeCases(unittest.TestCase):
         ])
         doc_ids = list(range(4))
         n_clusters = 2
-        
-        # Should return single cluster due to edge case handling
+
+        # Should handle the skewed median split gracefully
         result = h_engine._simple_partition(vectors, doc_ids, n_clusters)
-        
+
         # Should not crash, all vectors accounted for
         total_docs = sum(len(cluster_ids) for _, cluster_ids in result)
         self.assertEqual(total_docs, 4)
         self.assertGreater(len(result), 0)
+
+    def test_simple_partition_truly_identical_vectors(self):
+        """F-036: _simple_partition handles truly identical vectors (all values equal)."""
+        from unittest.mock import MagicMock
+        from recursive_decomposer import HierarchicalSedimentationEngine
+        import numpy as np
+
+        mock_engine = MagicMock()
+        h_engine = HierarchicalSedimentationEngine(mock_engine)
+
+        # All vectors are truly identical — zero variance on every dimension
+        vectors = np.array([
+            [3.0, 3.0, 3.0],
+            [3.0, 3.0, 3.0],
+            [3.0, 3.0, 3.0],
+            [3.0, 3.0, 3.0],
+        ])
+        doc_ids = list(range(4))
+        n_clusters = 2
+
+        # With zero variance on all dims, should fall back to single cluster
+        result = h_engine._simple_partition(vectors, doc_ids, n_clusters)
+
+        # Should not crash, all vectors accounted for in a single cluster
+        total_docs = sum(len(cluster_ids) for _, cluster_ids in result)
+        self.assertEqual(total_docs, 4)
+        self.assertEqual(len(result), 1)
 
 
 class TestHierarchicalSedimentationIntegration(unittest.TestCase):

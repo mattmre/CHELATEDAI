@@ -7,8 +7,7 @@ and recursive_decomposer.py for sedimentation-based training.
 
 import unittest
 import numpy as np
-from unittest.mock import Mock, MagicMock
-from qdrant_client.models import PointStruct
+from unittest.mock import Mock
 
 from sedimentation_trainer import compute_homeostatic_target, sync_vectors_to_qdrant
 

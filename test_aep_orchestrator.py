@@ -31,7 +31,7 @@ with patch("chelation_logger.get_logger", _fake_get_logger):
     # calls inside the imported module use the mock.
     aep_orchestrator.get_logger = _fake_get_logger
 
-from aep_orchestrator import (
+from aep_orchestrator import (  # noqa: E402
     Severity,
     FindingStatus,
     EffortSize,
@@ -908,7 +908,7 @@ class TestAEPOrchestrator(unittest.TestCase):
             remediate_calls.append(finding.finding_id)
             return {"pr_branch": "fix/test"}
         
-        summary = self.orchestrator.run_full_cycle(
+        self.orchestrator.run_full_cycle(
             raw_findings=raw,
             pr_range="PR#100",
             pr_number=100,
@@ -940,7 +940,7 @@ class TestAEPOrchestrator(unittest.TestCase):
                 agent="tracker",
             )
         
-        summary = self.orchestrator.run_full_cycle(
+        self.orchestrator.run_full_cycle(
             raw_findings=raw,
             pr_range="PR#200",
             pr_number=200,
@@ -981,7 +981,7 @@ class TestAEPOrchestrator(unittest.TestCase):
                 agent="custom-both",
             )
         
-        summary = self.orchestrator.run_full_cycle(
+        self.orchestrator.run_full_cycle(
             raw_findings=raw,
             pr_range="PR#300-PR#301",
             pr_number=300,

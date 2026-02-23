@@ -13,6 +13,7 @@ Example:
 """
 
 import argparse
+import hmac
 import json
 import os
 from collections import Counter
@@ -408,60 +409,88 @@ def get_inline_dashboard_html():
             }
 
             const breakdownDiv = document.getElementById('action-breakdown');
+            breakdownDiv.replaceChildren();
             if (summary.action_breakdown && Object.keys(summary.action_breakdown).length > 0) {
-                let html = '';
                 for (const [action, count] of Object.entries(summary.action_breakdown)) {
-                    html += `
-                        <div class="breakdown-item">
-                            <span>${action}</span>
-                            <span class="breakdown-value">${formatNumber(count)}</span>
-                        </div>
-                    `;
+                    const item = document.createElement('div');
+                    item.className = 'breakdown-item';
+                    const label = document.createElement('span');
+                    label.textContent = action;
+                    const value = document.createElement('span');
+                    value.className = 'breakdown-value';
+                    value.textContent = formatNumber(count);
+                    item.appendChild(label);
+                    item.appendChild(value);
+                    breakdownDiv.appendChild(item);
                 }
-                breakdownDiv.innerHTML = html;
             } else {
-                breakdownDiv.innerHTML = '<div class="loading">No actions recorded</div>';
+                const noData = document.createElement('div');
+                noData.className = 'loading';
+                noData.textContent = 'No actions recorded';
+                breakdownDiv.appendChild(noData);
             }
         }
 
         function updateEventsUI(events) {
             const tbody = document.getElementById('events-tbody');
-            
+            tbody.replaceChildren();
+
             if (!events || events.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" class="loading">No events found</td></tr>';
+                const tr = document.createElement('tr');
+                const td = document.createElement('td');
+                td.colSpan = 5;
+                td.className = 'loading';
+                td.textContent = 'No events found';
+                tr.appendChild(td);
+                tbody.appendChild(tr);
                 return;
             }
 
-            let html = '';
             for (const event of events) {
-                const timestamp = formatTimestamp(event.timestamp);
-                const query = event.query_snippet || '-';
-                const action = event.action || '-';
-                const variance = event.global_variance ? event.global_variance.toFixed(6) : '-';
-                const topIds = event.top_10_ids ? event.top_10_ids.slice(0, 5).join(', ') + '...' : '-';
-                
-                const badgeClass = getActionBadgeClass(action);
+                const tr = document.createElement('tr');
 
-                html += `
-                    <tr>
-                        <td>${timestamp}</td>
-                        <td>${query}</td>
-                        <td><span class="action-badge ${badgeClass}">${action}</span></td>
-                        <td>${variance}</td>
-                        <td>${topIds}</td>
-                    </tr>
-                `;
+                const tdTime = document.createElement('td');
+                tdTime.textContent = formatTimestamp(event.timestamp);
+                tr.appendChild(tdTime);
+
+                const tdQuery = document.createElement('td');
+                tdQuery.textContent = event.query_snippet || '-';
+                tr.appendChild(tdQuery);
+
+                const tdAction = document.createElement('td');
+                const badge = document.createElement('span');
+                const action = event.action || '-';
+                badge.className = 'action-badge ' + getActionBadgeClass(action);
+                badge.textContent = action;
+                tdAction.appendChild(badge);
+                tr.appendChild(tdAction);
+
+                const tdVariance = document.createElement('td');
+                tdVariance.textContent = event.global_variance ? event.global_variance.toFixed(6) : '-';
+                tr.appendChild(tdVariance);
+
+                const tdIds = document.createElement('td');
+                tdIds.textContent = event.top_10_ids ? event.top_10_ids.slice(0, 5).join(', ') + '...' : '-';
+                tr.appendChild(tdIds);
+
+                tbody.appendChild(tr);
             }
-            tbody.innerHTML = html;
         }
 
         function showError(message) {
             const container = document.getElementById('error-container');
-            container.innerHTML = `<div class="error"><strong>Error:</strong> ${message}</div>`;
+            container.replaceChildren();
+            const div = document.createElement('div');
+            div.className = 'error';
+            const strong = document.createElement('strong');
+            strong.textContent = 'Error:';
+            div.appendChild(strong);
+            div.appendChild(document.createTextNode(' ' + message));
+            container.appendChild(div);
         }
 
         function clearError() {
-            document.getElementById('error-container').innerHTML = '';
+            document.getElementById('error-container').replaceChildren();
         }
 
         function updateRefreshStatus() {
@@ -628,7 +657,7 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         path = parsed_path.path
         query_params = parse_qs(parsed_path.query)
 
-        if path.startswith("/api/") and not self._is_api_authorized():
+        if DASHBOARD_TOKEN and not self._is_api_authorized():
             self.send_error_response(401, "Unauthorized")
             return
         
@@ -654,7 +683,7 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         if not auth_header.startswith("Bearer "):
             return False
         token = auth_header.split(" ", 1)[1].strip()
-        return token == DASHBOARD_TOKEN
+        return hmac.compare_digest(token, DASHBOARD_TOKEN)
     
     def handle_api_events(self, query_params: Dict[str, List[str]]):
         """
@@ -793,17 +822,17 @@ def run_server(host: str = "127.0.0.1", port: int = 8080, log_file: str = LOG_FI
     server_address = (host, port)
     httpd = HTTPServer(server_address, DashboardHandler)
     
-    print(f"Dashboard server starting...")
+    print("Dashboard server starting...")
     print(f"  Host: {host}")
     print(f"  Port: {port}")
     print(f"  Log file: {log_file}")
     print(f"  Token auth: {'enabled' if DASHBOARD_TOKEN else 'disabled'}")
     print(f"  Dashboard URL: http://{host}:{port}/dashboard/")
-    print(f"\nAPI Endpoints:")
+    print("\nAPI Endpoints:")
     print(f"  GET http://{host}:{port}/api/events?limit=N")
     print(f"  GET http://{host}:{port}/api/summary")
     print(f"  GET http://{host}:{port}/api/events?event_type=query")
-    print(f"\nPress Ctrl+C to stop the server.")
+    print("\nPress Ctrl+C to stop the server.")
     
     try:
         httpd.serve_forever()

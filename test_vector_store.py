@@ -5,8 +5,6 @@ Tests for the vector store abstraction layer and Qdrant implementation.
 """
 
 import unittest
-import tempfile
-import shutil
 from vector_store import VectorStore, QdrantVectorStore, create_vector_store
 from qdrant_client.models import Distance, VectorParams, PointStruct
 import numpy as np
@@ -175,7 +173,6 @@ class TestQdrantVectorStoreOperations(unittest.TestCase):
     
     def test_get_client_returns_qdrant_client(self):
         """Test get_client returns QdrantClient for backward compatibility."""
-        from qdrant_client import QdrantClient
         client = self.store.get_client()
         self.assertIsNotNone(client)
         # Check it's a QdrantClient by checking for expected methods

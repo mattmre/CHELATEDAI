@@ -85,7 +85,7 @@ class TestCheckpointManagerCreate(unittest.TestCase):
 
     def test_create_checkpoint_extra_metadata(self):
         """Extra keyword arguments are stored in the checkpoint metadata entry."""
-        cp_id = self.manager.create_checkpoint(
+        self.manager.create_checkpoint(
             "extra", self.adapter_path, description="", learning_rate=0.01, epochs=5
         )
         meta = self.manager.list_checkpoints()[-1]
@@ -133,7 +133,7 @@ class TestCheckpointManagerRestore(unittest.TestCase):
 
     def test_restore_latest_checkpoint(self):
         """Restoring without specifying an ID restores the latest checkpoint."""
-        cp_id = self.manager.create_checkpoint("snap", self.adapter_path)
+        self.manager.create_checkpoint("snap", self.adapter_path)
         # Overwrite the adapter file with different data
         torch.save({"weight": torch.ones(10)}, self.adapter_path)
         result = self.manager.restore_checkpoint()
@@ -391,7 +391,7 @@ class TestSafeTrainingContextFailureException(unittest.TestCase):
         """An exception inside the context triggers automatic rollback to the
         checkpoint, restoring the original adapter weights."""
         try:
-            with SafeTrainingContext(self.manager, self.adapter_path, "bad_train") as ctx:
+            with SafeTrainingContext(self.manager, self.adapter_path, "bad_train"):
                 # Overwrite adapter with different data
                 torch.save({"weight": torch.ones(10)}, self.adapter_path)
                 raise RuntimeError("Training exploded!")
@@ -418,7 +418,7 @@ class TestSafeTrainingContextFailureNoSuccess(unittest.TestCase):
 
     def test_no_mark_success_triggers_rollback(self):
         """Exiting the context without calling mark_success() triggers rollback."""
-        with SafeTrainingContext(self.manager, self.adapter_path, "forgot") as ctx:
+        with SafeTrainingContext(self.manager, self.adapter_path, "forgot"):
             torch.save({"weight": torch.ones(10)}, self.adapter_path)
             # Deliberately not calling ctx.mark_success()
         # Adapter should be restored to original
@@ -430,7 +430,7 @@ class TestSafeTrainingContextFailureNoSuccess(unittest.TestCase):
         new_tensor = torch.ones(10)
         with SafeTrainingContext(
             self.manager, self.adapter_path, "no_rollback", auto_rollback=False
-        ) as ctx:
+        ):
             torch.save({"weight": new_tensor}, self.adapter_path)
             # Not calling mark_success, but auto_rollback is disabled
         loaded = torch.load(self.adapter_path, weights_only=True)
@@ -461,7 +461,7 @@ class TestSafeTrainingContextRollbackExceptions(unittest.TestCase):
         self.manager.restore_checkpoint = mock_restore
         
         try:
-            with SafeTrainingContext(self.manager, self.adapter_path, "fail_both") as ctx:
+            with SafeTrainingContext(self.manager, self.adapter_path, "fail_both"):
                 torch.save({"weight": torch.ones(10)}, self.adapter_path)
                 raise ValueError("Original training error")
         except ValueError as e:
@@ -482,7 +482,7 @@ class TestSafeTrainingContextRollbackExceptions(unittest.TestCase):
         self.manager.restore_checkpoint = mock_restore
         
         try:
-            with SafeTrainingContext(self.manager, self.adapter_path, "rollback_fail") as ctx:
+            with SafeTrainingContext(self.manager, self.adapter_path, "rollback_fail"):
                 torch.save({"weight": torch.ones(10)}, self.adapter_path)
                 # Not calling mark_success, but no exception either
             self.fail("Expected IOError from rollback to propagate")

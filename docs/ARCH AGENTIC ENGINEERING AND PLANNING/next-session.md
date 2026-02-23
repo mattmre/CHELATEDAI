@@ -14,12 +14,14 @@ Purpose: Minimal context to resume the workflow in short sessions.
 - If starting a new cycle, follow the Cycle Start Checklist in `docs/ARCH AGENTIC ENGINEERING AND PLANNING/orchestrator-briefing.md`.
 
 ## Session Objectives
-- Primary goal: Drive review/merge progression across the open stacked PR chain (#20 -> #66)
-- Secondary goal: Keep branch hygiene preserved while deciding backup/safety-ref retention window
+- Primary goal: Drive review/merge progression across the open stacked PR chain (#20 -> #66) plus new Session 18 PR
+- Secondary goal: Run comparative testbed on real MTEB data (SciFact) to validate research-validated improvements
+- Tertiary goal: Keep branch hygiene preserved while deciding backup/safety-ref retention window
 - Keep tracker/session log in sync with implementation progress
 
 ## Cycle ID
 - AEP-2026-02-13 (resolved backlog; awaiting final PR merge closeout)
+- AEP-2026-02-21 (research-validated improvements; 6-phase implementation complete, PR pending review)
 
 ## Completed (Sessions 2-17)
 - F-001 RESOLVED: `torch.load` security fix (PR #8, merged)
@@ -80,11 +82,12 @@ Purpose: Minimal context to resume the workflow in short sessions.
 - Session 12 OPS COMPLETE: branch/PR reconciliation finished with no-loss safeguards (backup branches + safety tags) and stale branch pruning
 
 ## Backlog State
-- **Total findings:** 55
+- **Total findings (AEP-2026-02-13):** 55
 - **Resolved:** 55
 - **Remaining:** 0
-- **Current local test count:** 491 passing (1 warning)
-- **Current baseline verification run:** passing (`python -m pytest (Get-ChildItem -Name test_*.py) -q` -> `491 passed, 1 warning`)
+- **Current local test count:** 383 unit tests passing (250 baseline + 133 new from Session 18)
+- **Current baseline verification run:** passing (`python -m pytest test_unit_core.py test_convergence_monitor.py test_online_updater.py test_dimension_mask_predictor.py test_stability_tracker.py test_benchmark_comparative.py test_benchmark_utils.py test_benchmark_rlm.py test_aep_orchestrator.py test_recursive_decomposer.py test_checkpoint_manager.py -q` -> `383 passed, 1 warning`)
+- **Pre-existing env failures:** test_antigravity_engine/test_adaptive_threshold/test_memory_optimization/test_integration_rlm (huggingface-hub version mismatch, unrelated to Session 18)
 
 ## Cycle Closeout Priorities (Next 5)
 
@@ -172,12 +175,13 @@ Purpose: Minimal context to resume the workflow in short sessions.
 
 ## Next Session Prepared Runbook
 
-1. Confirm PR chain health and ordering for PR #20 -> #66 (base/head alignment + mergeability).
-2. Start review/merge progression from the newest docs stack (PR #64 -> #66), then continue upstream chain progression.
-3. After each merge event, update `tracker-pointer.md`, `backlog-index.md`, and `tracker-index.md`.
-4. Keep backup branches and safety tags unchanged until merge-chain stability criteria are met.
-5. Re-run branch accounting immediately after major merge blocks to detect orphaned work.
-6. Keep latest baseline pass evidence visible in `verification-log.md` as merge-validation reference.
+1. Confirm PR chain health and ordering for PR #20 -> #66 plus Session 18 PR (base/head alignment + mergeability).
+2. Review Session 18 research-validated improvements PR for merge readiness.
+3. Run comparative testbed (`python benchmark_comparative.py`) on SciFact to validate all 8 configurations produce valid metrics.
+4. After each merge event, update `tracker-pointer.md`, `backlog-index.md`, and `tracker-index.md`.
+5. Keep backup branches and safety tags unchanged until merge-chain stability criteria are met.
+6. Re-run branch accounting immediately after major merge blocks to detect orphaned work.
+7. Keep latest baseline pass evidence visible in `verification-log.md` as merge-validation reference.
 
 ## Hand-off Notes
 - Session 11 delivered the final 5 findings (F-051/F-052/F-053/F-054/F-055) with full regression pass.
@@ -188,6 +192,7 @@ Purpose: Minimal context to resume the workflow in short sessions.
 - Session 15 completed handoff/runbook refresh to minimize context rot before next merge-monitoring pass.
 - Session 16 completed top-15 orchestration continuity: created research/architecture/session-log artifacts and updated all tracking indices.
 - Session 17 completed top-15 orchestration continuity: created research/architecture/session-log artifacts, updated all tracking indices, and extended open PR range to #20-#66.
+- Session 18 completed research-validated improvements (AEP-2026-02-21): 6-phase implementation of 9 concrete improvements from 17-paper literature survey. 133 new tests (383 total), 12 new files, 6 modified files. All features opt-in (disabled by default). Key additions: convergence detection, temperature scaling, Procrustes/LowRank adapter variants, online gradient updates, learned dimension masking, embedding quality assessment, stability tracking, comparative testbed with extended metrics (MAP@k, MRR, Recall@k). 17 papers formally attributed in REFERENCES.md.
 - Session 12 backup branches:
   - `backup/wip-local-snapshot-2026-02-18`
   - `backup/local-main-ahead-2026-02-18`
@@ -216,6 +221,10 @@ Purpose: Minimal context to resume the workflow in short sessions.
 - Session 17 research/architecture artifacts were created and retained for top-15 orchestration continuity:
   - `research-2026-02-18-top15-priority-orchestration-session17.md`
   - `architecture-2026-02-18-top15-priority-orchestration-session17.md`
+- Session 18 artifacts:
+  - Session log: `session-log-2026-02-21-impl-18.md`
+  - Research source: `docs/research-2026-02-21-molecular-structure-comparison.md`
+  - 12 new source/test files at project root (see session log for full list)
 - Session 12 post-cleanup log: `docs/ARCH AGENTIC ENGINEERING AND PLANNING/session-log-2026-02-18-impl-12.md`
 - Session 11 code changes are implemented and validated locally; current focus is stacked PR closeout.
 - Previous tranche artifacts:

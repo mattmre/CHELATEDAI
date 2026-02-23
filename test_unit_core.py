@@ -12,7 +12,7 @@ import shutil
 from pathlib import Path
 
 # Import components to test
-from chelation_adapter import ChelationAdapter
+from chelation_adapter import ChelationAdapter, OrthogonalProcrustesAdapter, LowRankAffineAdapter, create_adapter
 from config import ChelationConfig, get_config
 
 
@@ -488,6 +488,195 @@ class TestIDManagement(unittest.TestCase):
         # Different input should give different UUID
         uuid3 = str(uuid.uuid5(uuid.NAMESPACE_DNS, "different_id"))
         self.assertNotEqual(uuid1, uuid3)
+
+
+class TestAdapterVariants(unittest.TestCase):
+    """Test OrthogonalProcrustesAdapter, LowRankAffineAdapter, and create_adapter factory."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.input_dim = 384
+        self.temp_dir = Path(tempfile.mkdtemp())
+
+    def tearDown(self):
+        """Clean up temp files."""
+        shutil.rmtree(self.temp_dir, ignore_errors=True)
+
+    # --- OrthogonalProcrustesAdapter tests ---
+
+    def test_procrustes_forward_shape(self):
+        """Test that 2D input preserves shape through Procrustes adapter."""
+        adapter = OrthogonalProcrustesAdapter(input_dim=self.input_dim)
+        batch_size = 5
+        x = torch.randn(batch_size, self.input_dim)
+        out = adapter(x)
+        self.assertEqual(out.shape, (batch_size, self.input_dim))
+
+    def test_procrustes_forward_1d(self):
+        """Test that 1D input returns 1D output."""
+        adapter = OrthogonalProcrustesAdapter(input_dim=self.input_dim)
+        x = torch.randn(self.input_dim)
+        out = adapter(x)
+        self.assertEqual(out.dim(), 1)
+        self.assertEqual(out.shape[0], self.input_dim)
+
+    def test_procrustes_output_normalized(self):
+        """Test that Procrustes output is L2 normalized."""
+        adapter = OrthogonalProcrustesAdapter(input_dim=self.input_dim)
+        x = torch.randn(10, self.input_dim)
+        out = adapter(x)
+        norms = torch.norm(out, p=2, dim=1)
+        self.assertTrue(torch.allclose(norms, torch.ones_like(norms), atol=1e-5),
+                       f"Output not normalized: norms range {norms.min():.6f} to {norms.max():.6f}")
+
+    def test_procrustes_near_identity_init(self):
+        """Test that Procrustes adapter starts near identity (cosine > 0.95)."""
+        adapter = OrthogonalProcrustesAdapter(input_dim=self.input_dim)
+        x = torch.randn(5, self.input_dim)
+        out = adapter(x)
+        x_normalized = torch.nn.functional.normalize(x, p=2, dim=1)
+        cosine_sim = torch.nn.functional.cosine_similarity(out, x_normalized, dim=1)
+        self.assertTrue(torch.all(cosine_sim > 0.95).item(),
+                       f"Not near identity at init: min cosine sim = {cosine_sim.min().item()}")
+
+    def test_procrustes_orthogonal_matrix(self):
+        """Test that the internal matrix W satisfies W^T @ W = I."""
+        adapter = OrthogonalProcrustesAdapter(input_dim=self.input_dim)
+        W = adapter._get_orthogonal_matrix()
+        product = W.t() @ W
+        identity = torch.eye(self.input_dim)
+        self.assertTrue(torch.allclose(product, identity, atol=1e-5),
+                       f"W^T @ W not identity: max error = {(product - identity).abs().max().item()}")
+
+    def test_procrustes_save_load(self):
+        """Test that save and load preserves Procrustes adapter weights."""
+        adapter = OrthogonalProcrustesAdapter(input_dim=self.input_dim)
+        # Perturb weights so they differ from default
+        with torch.no_grad():
+            adapter._skew_param.add_(torch.randn_like(adapter._skew_param) * 0.1)
+        save_path = self.temp_dir / "procrustes.pt"
+        adapter.save(str(save_path))
+
+        new_adapter = OrthogonalProcrustesAdapter(input_dim=self.input_dim)
+        success = new_adapter.load(str(save_path))
+        self.assertTrue(success)
+
+        x = torch.randn(3, self.input_dim)
+        out1 = adapter(x)
+        out2 = new_adapter(x)
+        self.assertTrue(torch.allclose(out1, out2, atol=1e-5))
+
+    def test_procrustes_invalid_rank_raises(self):
+        """Test that 0D and 3D inputs raise ValueError for Procrustes adapter."""
+        adapter = OrthogonalProcrustesAdapter(input_dim=self.input_dim)
+        with self.assertRaises(ValueError):
+            adapter(torch.tensor(3.14))
+        with self.assertRaises(ValueError):
+            adapter(torch.randn(2, 3, self.input_dim))
+
+    # --- LowRankAffineAdapter tests ---
+
+    def test_lowrank_forward_shape(self):
+        """Test that 2D input preserves shape through LowRank adapter."""
+        adapter = LowRankAffineAdapter(input_dim=self.input_dim)
+        batch_size = 5
+        x = torch.randn(batch_size, self.input_dim)
+        out = adapter(x)
+        self.assertEqual(out.shape, (batch_size, self.input_dim))
+
+    def test_lowrank_forward_1d(self):
+        """Test that 1D input returns 1D output for LowRank adapter."""
+        adapter = LowRankAffineAdapter(input_dim=self.input_dim)
+        x = torch.randn(self.input_dim)
+        out = adapter(x)
+        self.assertEqual(out.dim(), 1)
+        self.assertEqual(out.shape[0], self.input_dim)
+
+    def test_lowrank_output_normalized(self):
+        """Test that LowRank output is L2 normalized."""
+        adapter = LowRankAffineAdapter(input_dim=self.input_dim)
+        x = torch.randn(10, self.input_dim)
+        out = adapter(x)
+        norms = torch.norm(out, p=2, dim=1)
+        self.assertTrue(torch.allclose(norms, torch.ones_like(norms), atol=1e-5),
+                       f"Output not normalized: norms range {norms.min():.6f} to {norms.max():.6f}")
+
+    def test_lowrank_near_identity_init(self):
+        """Test that LowRank adapter starts near identity (cosine > 0.99)."""
+        adapter = LowRankAffineAdapter(input_dim=self.input_dim)
+        x = torch.randn(5, self.input_dim)
+        out = adapter(x)
+        x_normalized = torch.nn.functional.normalize(x, p=2, dim=1)
+        cosine_sim = torch.nn.functional.cosine_similarity(out, x_normalized, dim=1)
+        self.assertTrue(torch.all(cosine_sim > 0.99).item(),
+                       f"Not near identity at init: min cosine sim = {cosine_sim.min().item()}")
+
+    def test_lowrank_custom_rank(self):
+        """Test that custom rank parameter is stored and used."""
+        adapter = LowRankAffineAdapter(input_dim=self.input_dim, rank=8)
+        self.assertEqual(adapter.rank, 8)
+        self.assertEqual(adapter.U.shape, (self.input_dim, 8))
+        self.assertEqual(adapter.V.shape, (self.input_dim, 8))
+
+    def test_lowrank_save_load(self):
+        """Test that save and load preserves LowRank adapter weights."""
+        adapter = LowRankAffineAdapter(input_dim=self.input_dim, rank=8)
+        # Perturb weights so they differ from default
+        with torch.no_grad():
+            adapter.U.add_(torch.randn_like(adapter.U) * 0.1)
+        save_path = self.temp_dir / "lowrank.pt"
+        adapter.save(str(save_path))
+
+        new_adapter = LowRankAffineAdapter(input_dim=self.input_dim, rank=8)
+        success = new_adapter.load(str(save_path))
+        self.assertTrue(success)
+
+        x = torch.randn(3, self.input_dim)
+        out1 = adapter(x)
+        out2 = new_adapter(x)
+        self.assertTrue(torch.allclose(out1, out2, atol=1e-5))
+
+    def test_lowrank_invalid_rank_raises(self):
+        """Test that 0D and 3D inputs raise ValueError for LowRank adapter."""
+        adapter = LowRankAffineAdapter(input_dim=self.input_dim)
+        with self.assertRaises(ValueError):
+            adapter(torch.tensor(3.14))
+        with self.assertRaises(ValueError):
+            adapter(torch.randn(2, 3, self.input_dim))
+
+    # --- Factory function tests ---
+
+    def test_factory_mlp(self):
+        """Test that create_adapter('mlp') returns ChelationAdapter."""
+        adapter = create_adapter("mlp", input_dim=self.input_dim)
+        self.assertIsInstance(adapter, ChelationAdapter)
+        self.assertEqual(adapter.input_dim, self.input_dim)
+
+    def test_factory_procrustes(self):
+        """Test that create_adapter('procrustes') returns OrthogonalProcrustesAdapter."""
+        adapter = create_adapter("procrustes", input_dim=self.input_dim)
+        self.assertIsInstance(adapter, OrthogonalProcrustesAdapter)
+        self.assertEqual(adapter.input_dim, self.input_dim)
+
+    def test_factory_low_rank(self):
+        """Test that create_adapter('low_rank') returns LowRankAffineAdapter."""
+        adapter = create_adapter("low_rank", input_dim=self.input_dim)
+        self.assertIsInstance(adapter, LowRankAffineAdapter)
+        self.assertEqual(adapter.input_dim, self.input_dim)
+
+    def test_factory_low_rank_custom_rank(self):
+        """Test that create_adapter('low_rank', rank=32) passes rank through."""
+        adapter = create_adapter("low_rank", input_dim=self.input_dim, rank=32)
+        self.assertIsInstance(adapter, LowRankAffineAdapter)
+        self.assertEqual(adapter.rank, 32)
+        self.assertEqual(adapter.U.shape, (self.input_dim, 32))
+
+    def test_factory_invalid_type(self):
+        """Test that create_adapter('invalid') raises ValueError."""
+        with self.assertRaises(ValueError) as cm:
+            create_adapter("invalid", input_dim=self.input_dim)
+        self.assertIn("Unknown adapter_type", str(cm.exception))
+        self.assertIn("invalid", str(cm.exception))
 
 
 if __name__ == "__main__":

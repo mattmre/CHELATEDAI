@@ -7,7 +7,7 @@ Uses local sentence-transformers model to avoid external API dependencies.
 
 import numpy as np
 import torch
-from typing import List, Dict, Optional, Tuple
+from typing import List, Optional
 from chelation_logger import get_logger
 from config import ChelationConfig
 
