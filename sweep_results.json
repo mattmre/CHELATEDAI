@@ -1,0 +1,1136 @@
+[
+  {
+    "timestamp": "2026-02-23T07:53:51.091180",
+    "config": {
+      "learning_rate": 0.01,
+      "threshold": 1,
+      "noise_scale": 0.0,
+      "epochs": 5
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.5831584383394528,
+      "gain": -0.003527845823317999
+    }
+  },
+  {
+    "timestamp": "2026-02-23T07:54:58.296588",
+    "config": {
+      "learning_rate": 0.01,
+      "threshold": 1,
+      "noise_scale": 0.0,
+      "epochs": 10
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.5770868544576222,
+      "gain": -0.009599429705148599
+    }
+  },
+  {
+    "timestamp": "2026-02-23T07:56:27.200763",
+    "config": {
+      "learning_rate": 0.01,
+      "threshold": 1,
+      "noise_scale": 0.0,
+      "epochs": 20
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.5830438762341899,
+      "gain": -0.0036424079285809485
+    }
+  },
+  {
+    "timestamp": "2026-02-23T07:58:09.760628",
+    "config": {
+      "learning_rate": 0.01,
+      "threshold": 1,
+      "noise_scale": 0.05,
+      "epochs": 5
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.5837048165701769,
+      "gain": -0.0029814675925938783
+    }
+  },
+  {
+    "timestamp": "2026-02-23T07:59:43.823574",
+    "config": {
+      "learning_rate": 0.01,
+      "threshold": 1,
+      "noise_scale": 0.05,
+      "epochs": 10
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.5822812384685527,
+      "gain": -0.004405045694218068
+    }
+  },
+  {
+    "timestamp": "2026-02-23T08:01:25.740555",
+    "config": {
+      "learning_rate": 0.01,
+      "threshold": 1,
+      "noise_scale": 0.05,
+      "epochs": 20
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.5825704845360485,
+      "gain": -0.004115799626722261
+    }
+  },
+  {
+    "timestamp": "2026-02-23T08:03:54.424284",
+    "config": {
+      "learning_rate": 0.01,
+      "threshold": 1,
+      "noise_scale": 0.2,
+      "epochs": 5
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.5860521174507833,
+      "gain": -0.0006341667119874606
+    }
+  },
+  {
+    "timestamp": "2026-02-23T08:05:38.587706",
+    "config": {
+      "learning_rate": 0.01,
+      "threshold": 1,
+      "noise_scale": 0.2,
+      "epochs": 10
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.5797346304368665,
+      "gain": -0.006951653725904339
+    }
+  },
+  {
+    "timestamp": "2026-02-23T08:07:15.583828",
+    "config": {
+      "learning_rate": 0.01,
+      "threshold": 1,
+      "noise_scale": 0.2,
+      "epochs": 20
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.5666201785038717,
+      "gain": -0.020066105658899103
+    }
+  },
+  {
+    "timestamp": "2026-02-23T08:08:55.799064",
+    "config": {
+      "learning_rate": 0.01,
+      "threshold": 2,
+      "noise_scale": 0.0,
+      "epochs": 5
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.5467951964628174,
+      "gain": -0.03989108769995342
+    }
+  },
+  {
+    "timestamp": "2026-02-23T08:10:22.913453",
+    "config": {
+      "learning_rate": 0.01,
+      "threshold": 2,
+      "noise_scale": 0.0,
+      "epochs": 10
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.5365117764706696,
+      "gain": -0.05017450769210119
+    }
+  },
+  {
+    "timestamp": "2026-02-23T08:12:33.120254",
+    "config": {
+      "learning_rate": 0.01,
+      "threshold": 2,
+      "noise_scale": 0.0,
+      "epochs": 20
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.5338825475513598,
+      "gain": -0.05280373661141102
+    }
+  },
+  {
+    "timestamp": "2026-02-23T08:14:17.487287",
+    "config": {
+      "learning_rate": 0.01,
+      "threshold": 2,
+      "noise_scale": 0.05,
+      "epochs": 5
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.549839036706908,
+      "gain": -0.036847247455862764
+    }
+  },
+  {
+    "timestamp": "2026-02-23T08:16:02.139618",
+    "config": {
+      "learning_rate": 0.01,
+      "threshold": 2,
+      "noise_scale": 0.05,
+      "epochs": 10
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.5388292221069959,
+      "gain": -0.04785706205577489
+    }
+  },
+  {
+    "timestamp": "2026-02-23T08:17:46.233657",
+    "config": {
+      "learning_rate": 0.01,
+      "threshold": 2,
+      "noise_scale": 0.05,
+      "epochs": 20
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.5552296601336063,
+      "gain": -0.03145662402916449
+    }
+  },
+  {
+    "timestamp": "2026-02-23T08:19:36.877911",
+    "config": {
+      "learning_rate": 0.01,
+      "threshold": 2,
+      "noise_scale": 0.2,
+      "epochs": 5
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.5534645673972604,
+      "gain": -0.033221716765510445
+    }
+  },
+  {
+    "timestamp": "2026-02-23T08:21:38.797148",
+    "config": {
+      "learning_rate": 0.01,
+      "threshold": 2,
+      "noise_scale": 0.2,
+      "epochs": 10
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.537275286457539,
+      "gain": -0.04941099770523183
+    }
+  },
+  {
+    "timestamp": "2026-02-23T08:23:39.483589",
+    "config": {
+      "learning_rate": 0.01,
+      "threshold": 2,
+      "noise_scale": 0.2,
+      "epochs": 20
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.2677215715143979,
+      "gain": -0.3189647126483729
+    }
+  },
+  {
+    "timestamp": "2026-02-23T08:24:20.413560",
+    "config": {
+      "learning_rate": 0.01,
+      "threshold": 3,
+      "noise_scale": 0.0,
+      "epochs": 5
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.35765956005779964,
+      "gain": -0.22902672410497116
+    }
+  },
+  {
+    "timestamp": "2026-02-23T08:24:48.996542",
+    "config": {
+      "learning_rate": 0.01,
+      "threshold": 3,
+      "noise_scale": 0.0,
+      "epochs": 10
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.3143857851548588,
+      "gain": -0.272300499007912
+    }
+  },
+  {
+    "timestamp": "2026-02-23T08:25:22.466920",
+    "config": {
+      "learning_rate": 0.01,
+      "threshold": 3,
+      "noise_scale": 0.0,
+      "epochs": 20
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.2845888697221549,
+      "gain": -0.3020974144406159
+    }
+  },
+  {
+    "timestamp": "2026-02-23T08:25:53.020133",
+    "config": {
+      "learning_rate": 0.01,
+      "threshold": 3,
+      "noise_scale": 0.05,
+      "epochs": 5
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.40998569643888916,
+      "gain": -0.17670058772388164
+    }
+  },
+  {
+    "timestamp": "2026-02-23T08:26:11.840605",
+    "config": {
+      "learning_rate": 0.01,
+      "threshold": 3,
+      "noise_scale": 0.05,
+      "epochs": 10
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.41176742345161255,
+      "gain": -0.17491886071115825
+    }
+  },
+  {
+    "timestamp": "2026-02-23T08:26:41.346427",
+    "config": {
+      "learning_rate": 0.01,
+      "threshold": 3,
+      "noise_scale": 0.05,
+      "epochs": 20
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.3829143748294871,
+      "gain": -0.2037719093332837
+    }
+  },
+  {
+    "timestamp": "2026-02-23T08:27:06.707248",
+    "config": {
+      "learning_rate": 0.01,
+      "threshold": 3,
+      "noise_scale": 0.2,
+      "epochs": 5
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.0775510576681915,
+      "gain": -0.5091352264945793
+    }
+  },
+  {
+    "timestamp": "2026-02-23T08:27:23.633221",
+    "config": {
+      "learning_rate": 0.01,
+      "threshold": 3,
+      "noise_scale": 0.2,
+      "epochs": 10
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.013213923970543951,
+      "gain": -0.5734723601922268
+    }
+  },
+  {
+    "timestamp": "2026-02-23T08:27:51.608752",
+    "config": {
+      "learning_rate": 0.01,
+      "threshold": 3,
+      "noise_scale": 0.2,
+      "epochs": 20
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.10539594624088357,
+      "gain": -0.48129033792188725
+    }
+  },
+  {
+    "timestamp": "2026-02-23T08:29:27.366829",
+    "config": {
+      "learning_rate": 0.1,
+      "threshold": 1,
+      "noise_scale": 0.0,
+      "epochs": 5
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.005,
+      "gain": -0.5816862841627708
+    }
+  },
+  {
+    "timestamp": "2026-02-23T08:29:44.151527",
+    "config": {
+      "learning_rate": 0.1,
+      "threshold": 1,
+      "noise_scale": 0.0,
+      "epochs": 10
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.003018532329225326,
+      "gain": -0.5836677518335455
+    }
+  },
+  {
+    "timestamp": "2026-02-23T08:29:58.048704",
+    "config": {
+      "learning_rate": 0.1,
+      "threshold": 1,
+      "noise_scale": 0.0,
+      "epochs": 20
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.0039055735463125025,
+      "gain": -0.5827807106164583
+    }
+  },
+  {
+    "timestamp": "2026-02-23T08:30:10.363226",
+    "config": {
+      "learning_rate": 0.1,
+      "threshold": 1,
+      "noise_scale": 0.05,
+      "epochs": 5
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.18695618134550032,
+      "gain": -0.3997301028172705
+    }
+  },
+  {
+    "timestamp": "2026-02-23T08:30:21.821544",
+    "config": {
+      "learning_rate": 0.1,
+      "threshold": 1,
+      "noise_scale": 0.05,
+      "epochs": 10
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.18695618134550032,
+      "gain": -0.3997301028172705
+    }
+  },
+  {
+    "timestamp": "2026-02-23T08:30:33.243226",
+    "config": {
+      "learning_rate": 0.1,
+      "threshold": 1,
+      "noise_scale": 0.05,
+      "epochs": 20
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.18695618134550032,
+      "gain": -0.3997301028172705
+    }
+  },
+  {
+    "timestamp": "2026-02-23T08:30:44.231259",
+    "config": {
+      "learning_rate": 0.1,
+      "threshold": 1,
+      "noise_scale": 0.2,
+      "epochs": 5
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.18695618134550032,
+      "gain": -0.3997301028172705
+    }
+  },
+  {
+    "timestamp": "2026-02-23T08:30:55.357063",
+    "config": {
+      "learning_rate": 0.1,
+      "threshold": 1,
+      "noise_scale": 0.2,
+      "epochs": 10
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.18695618134550032,
+      "gain": -0.3997301028172705
+    }
+  },
+  {
+    "timestamp": "2026-02-23T08:31:06.562367",
+    "config": {
+      "learning_rate": 0.1,
+      "threshold": 1,
+      "noise_scale": 0.2,
+      "epochs": 20
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.18695618134550032,
+      "gain": -0.3997301028172705
+    }
+  },
+  {
+    "timestamp": "2026-02-23T08:31:17.384013",
+    "config": {
+      "learning_rate": 0.1,
+      "threshold": 2,
+      "noise_scale": 0.0,
+      "epochs": 5
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.18695618134550032,
+      "gain": -0.3997301028172705
+    }
+  },
+  {
+    "timestamp": "2026-02-23T08:31:28.364684",
+    "config": {
+      "learning_rate": 0.1,
+      "threshold": 2,
+      "noise_scale": 0.0,
+      "epochs": 10
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.18695618134550032,
+      "gain": -0.3997301028172705
+    }
+  },
+  {
+    "timestamp": "2026-02-23T08:31:39.169430",
+    "config": {
+      "learning_rate": 0.1,
+      "threshold": 2,
+      "noise_scale": 0.0,
+      "epochs": 20
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.18695618134550032,
+      "gain": -0.3997301028172705
+    }
+  },
+  {
+    "timestamp": "2026-02-23T08:31:50.349083",
+    "config": {
+      "learning_rate": 0.1,
+      "threshold": 2,
+      "noise_scale": 0.05,
+      "epochs": 5
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.18695618134550032,
+      "gain": -0.3997301028172705
+    }
+  },
+  {
+    "timestamp": "2026-02-23T08:32:01.597728",
+    "config": {
+      "learning_rate": 0.1,
+      "threshold": 2,
+      "noise_scale": 0.05,
+      "epochs": 10
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.18695618134550032,
+      "gain": -0.3997301028172705
+    }
+  },
+  {
+    "timestamp": "2026-02-23T08:32:12.342515",
+    "config": {
+      "learning_rate": 0.1,
+      "threshold": 2,
+      "noise_scale": 0.05,
+      "epochs": 20
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.18695618134550032,
+      "gain": -0.3997301028172705
+    }
+  },
+  {
+    "timestamp": "2026-02-23T08:32:23.312801",
+    "config": {
+      "learning_rate": 0.1,
+      "threshold": 2,
+      "noise_scale": 0.2,
+      "epochs": 5
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.18695618134550032,
+      "gain": -0.3997301028172705
+    }
+  },
+  {
+    "timestamp": "2026-02-23T08:32:34.494242",
+    "config": {
+      "learning_rate": 0.1,
+      "threshold": 2,
+      "noise_scale": 0.2,
+      "epochs": 10
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.18695618134550032,
+      "gain": -0.3997301028172705
+    }
+  },
+  {
+    "timestamp": "2026-02-23T08:32:45.327189",
+    "config": {
+      "learning_rate": 0.1,
+      "threshold": 2,
+      "noise_scale": 0.2,
+      "epochs": 20
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.18695618134550032,
+      "gain": -0.3997301028172705
+    }
+  },
+  {
+    "timestamp": "2026-02-23T08:32:57.598143",
+    "config": {
+      "learning_rate": 0.1,
+      "threshold": 3,
+      "noise_scale": 0.0,
+      "epochs": 5
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.18695618134550032,
+      "gain": -0.3997301028172705
+    }
+  },
+  {
+    "timestamp": "2026-02-23T08:33:09.781379",
+    "config": {
+      "learning_rate": 0.1,
+      "threshold": 3,
+      "noise_scale": 0.0,
+      "epochs": 10
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.18695618134550032,
+      "gain": -0.3997301028172705
+    }
+  },
+  {
+    "timestamp": "2026-02-23T08:33:20.593549",
+    "config": {
+      "learning_rate": 0.1,
+      "threshold": 3,
+      "noise_scale": 0.0,
+      "epochs": 20
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.18695618134550032,
+      "gain": -0.3997301028172705
+    }
+  },
+  {
+    "timestamp": "2026-02-23T08:33:31.608482",
+    "config": {
+      "learning_rate": 0.1,
+      "threshold": 3,
+      "noise_scale": 0.05,
+      "epochs": 5
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.18695618134550032,
+      "gain": -0.3997301028172705
+    }
+  },
+  {
+    "timestamp": "2026-02-23T08:33:42.339541",
+    "config": {
+      "learning_rate": 0.1,
+      "threshold": 3,
+      "noise_scale": 0.05,
+      "epochs": 10
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.18695618134550032,
+      "gain": -0.3997301028172705
+    }
+  },
+  {
+    "timestamp": "2026-02-23T08:33:53.027643",
+    "config": {
+      "learning_rate": 0.1,
+      "threshold": 3,
+      "noise_scale": 0.05,
+      "epochs": 20
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.18695618134550032,
+      "gain": -0.3997301028172705
+    }
+  },
+  {
+    "timestamp": "2026-02-23T08:34:04.115114",
+    "config": {
+      "learning_rate": 0.1,
+      "threshold": 3,
+      "noise_scale": 0.2,
+      "epochs": 5
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.18695618134550032,
+      "gain": -0.3997301028172705
+    }
+  },
+  {
+    "timestamp": "2026-02-23T08:34:14.900342",
+    "config": {
+      "learning_rate": 0.1,
+      "threshold": 3,
+      "noise_scale": 0.2,
+      "epochs": 10
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.18695618134550032,
+      "gain": -0.3997301028172705
+    }
+  },
+  {
+    "timestamp": "2026-02-23T08:34:25.640488",
+    "config": {
+      "learning_rate": 0.1,
+      "threshold": 3,
+      "noise_scale": 0.2,
+      "epochs": 20
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.18695618134550032,
+      "gain": -0.3997301028172705
+    }
+  },
+  {
+    "timestamp": "2026-02-23T08:34:36.415693",
+    "config": {
+      "learning_rate": 0.5,
+      "threshold": 1,
+      "noise_scale": 0.0,
+      "epochs": 5
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.18695618134550032,
+      "gain": -0.3997301028172705
+    }
+  },
+  {
+    "timestamp": "2026-02-23T08:34:47.065259",
+    "config": {
+      "learning_rate": 0.5,
+      "threshold": 1,
+      "noise_scale": 0.0,
+      "epochs": 10
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.18695618134550032,
+      "gain": -0.3997301028172705
+    }
+  },
+  {
+    "timestamp": "2026-02-23T08:34:57.885821",
+    "config": {
+      "learning_rate": 0.5,
+      "threshold": 1,
+      "noise_scale": 0.0,
+      "epochs": 20
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.18695618134550032,
+      "gain": -0.3997301028172705
+    }
+  },
+  {
+    "timestamp": "2026-02-23T08:35:09.383234",
+    "config": {
+      "learning_rate": 0.5,
+      "threshold": 1,
+      "noise_scale": 0.05,
+      "epochs": 5
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.18695618134550032,
+      "gain": -0.3997301028172705
+    }
+  },
+  {
+    "timestamp": "2026-02-23T08:35:20.248590",
+    "config": {
+      "learning_rate": 0.5,
+      "threshold": 1,
+      "noise_scale": 0.05,
+      "epochs": 10
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.18695618134550032,
+      "gain": -0.3997301028172705
+    }
+  },
+  {
+    "timestamp": "2026-02-23T08:35:31.347919",
+    "config": {
+      "learning_rate": 0.5,
+      "threshold": 1,
+      "noise_scale": 0.05,
+      "epochs": 20
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.18695618134550032,
+      "gain": -0.3997301028172705
+    }
+  },
+  {
+    "timestamp": "2026-02-23T08:35:42.082520",
+    "config": {
+      "learning_rate": 0.5,
+      "threshold": 1,
+      "noise_scale": 0.2,
+      "epochs": 5
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.18695618134550032,
+      "gain": -0.3997301028172705
+    }
+  },
+  {
+    "timestamp": "2026-02-23T08:35:52.945486",
+    "config": {
+      "learning_rate": 0.5,
+      "threshold": 1,
+      "noise_scale": 0.2,
+      "epochs": 10
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.18695618134550032,
+      "gain": -0.3997301028172705
+    }
+  },
+  {
+    "timestamp": "2026-02-23T08:36:03.616000",
+    "config": {
+      "learning_rate": 0.5,
+      "threshold": 1,
+      "noise_scale": 0.2,
+      "epochs": 20
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.18695618134550032,
+      "gain": -0.3997301028172705
+    }
+  },
+  {
+    "timestamp": "2026-02-23T08:36:14.859608",
+    "config": {
+      "learning_rate": 0.5,
+      "threshold": 2,
+      "noise_scale": 0.0,
+      "epochs": 5
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.18695618134550032,
+      "gain": -0.3997301028172705
+    }
+  },
+  {
+    "timestamp": "2026-02-23T08:36:25.785202",
+    "config": {
+      "learning_rate": 0.5,
+      "threshold": 2,
+      "noise_scale": 0.0,
+      "epochs": 10
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.18695618134550032,
+      "gain": -0.3997301028172705
+    }
+  },
+  {
+    "timestamp": "2026-02-23T08:36:36.960969",
+    "config": {
+      "learning_rate": 0.5,
+      "threshold": 2,
+      "noise_scale": 0.0,
+      "epochs": 20
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.18695618134550032,
+      "gain": -0.3997301028172705
+    }
+  },
+  {
+    "timestamp": "2026-02-23T08:36:47.716877",
+    "config": {
+      "learning_rate": 0.5,
+      "threshold": 2,
+      "noise_scale": 0.05,
+      "epochs": 5
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.18695618134550032,
+      "gain": -0.3997301028172705
+    }
+  },
+  {
+    "timestamp": "2026-02-23T08:36:58.679169",
+    "config": {
+      "learning_rate": 0.5,
+      "threshold": 2,
+      "noise_scale": 0.05,
+      "epochs": 10
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.18695618134550032,
+      "gain": -0.3997301028172705
+    }
+  },
+  {
+    "timestamp": "2026-02-23T08:37:10.353693",
+    "config": {
+      "learning_rate": 0.5,
+      "threshold": 2,
+      "noise_scale": 0.05,
+      "epochs": 20
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.18695618134550032,
+      "gain": -0.3997301028172705
+    }
+  },
+  {
+    "timestamp": "2026-02-23T08:37:22.401910",
+    "config": {
+      "learning_rate": 0.5,
+      "threshold": 2,
+      "noise_scale": 0.2,
+      "epochs": 5
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.18695618134550032,
+      "gain": -0.3997301028172705
+    }
+  },
+  {
+    "timestamp": "2026-02-23T08:37:33.794565",
+    "config": {
+      "learning_rate": 0.5,
+      "threshold": 2,
+      "noise_scale": 0.2,
+      "epochs": 10
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.18695618134550032,
+      "gain": -0.3997301028172705
+    }
+  },
+  {
+    "timestamp": "2026-02-23T08:37:45.545080",
+    "config": {
+      "learning_rate": 0.5,
+      "threshold": 2,
+      "noise_scale": 0.2,
+      "epochs": 20
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.18695618134550032,
+      "gain": -0.3997301028172705
+    }
+  },
+  {
+    "timestamp": "2026-02-23T08:37:56.855797",
+    "config": {
+      "learning_rate": 0.5,
+      "threshold": 3,
+      "noise_scale": 0.0,
+      "epochs": 5
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.18695618134550032,
+      "gain": -0.3997301028172705
+    }
+  },
+  {
+    "timestamp": "2026-02-23T08:38:07.937332",
+    "config": {
+      "learning_rate": 0.5,
+      "threshold": 3,
+      "noise_scale": 0.0,
+      "epochs": 10
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.18695618134550032,
+      "gain": -0.3997301028172705
+    }
+  },
+  {
+    "timestamp": "2026-02-23T08:38:19.121082",
+    "config": {
+      "learning_rate": 0.5,
+      "threshold": 3,
+      "noise_scale": 0.0,
+      "epochs": 20
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.18695618134550032,
+      "gain": -0.3997301028172705
+    }
+  },
+  {
+    "timestamp": "2026-02-23T08:38:31.007472",
+    "config": {
+      "learning_rate": 0.5,
+      "threshold": 3,
+      "noise_scale": 0.05,
+      "epochs": 5
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.18695618134550032,
+      "gain": -0.3997301028172705
+    }
+  },
+  {
+    "timestamp": "2026-02-23T08:38:42.777919",
+    "config": {
+      "learning_rate": 0.5,
+      "threshold": 3,
+      "noise_scale": 0.05,
+      "epochs": 10
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.18695618134550032,
+      "gain": -0.3997301028172705
+    }
+  },
+  {
+    "timestamp": "2026-02-23T08:38:54.928716",
+    "config": {
+      "learning_rate": 0.5,
+      "threshold": 3,
+      "noise_scale": 0.05,
+      "epochs": 20
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.18695618134550032,
+      "gain": -0.3997301028172705
+    }
+  },
+  {
+    "timestamp": "2026-02-23T08:39:06.990910",
+    "config": {
+      "learning_rate": 0.5,
+      "threshold": 3,
+      "noise_scale": 0.2,
+      "epochs": 5
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.18695618134550032,
+      "gain": -0.3997301028172705
+    }
+  },
+  {
+    "timestamp": "2026-02-23T08:39:18.514541",
+    "config": {
+      "learning_rate": 0.5,
+      "threshold": 3,
+      "noise_scale": 0.2,
+      "epochs": 10
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.18695618134550032,
+      "gain": -0.3997301028172705
+    }
+  },
+  {
+    "timestamp": "2026-02-23T08:39:29.989252",
+    "config": {
+      "learning_rate": 0.5,
+      "threshold": 3,
+      "noise_scale": 0.2,
+      "epochs": 20
+    },
+    "metrics": {
+      "baseline_ndcg": 0.5866862841627708,
+      "post_ndcg": 0.18695618134550032,
+      "gain": -0.3997301028172705
+    }
+  }
+]

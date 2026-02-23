@@ -3,116 +3,412 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ChelatedAI Dashboard</title>
+  <title>ChelatedAI Control Center</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    body { font-family: Arial, sans-serif; margin: 24px; color: #222; }
-    .cards { display: grid; grid-template-columns: repeat(4, minmax(160px, 1fr)); gap: 12px; margin-bottom: 18px; }
-    .card { border: 1px solid #ddd; border-radius: 8px; padding: 12px; }
-    .label { font-size: 12px; color: #666; text-transform: uppercase; }
-    .value { font-size: 24px; font-weight: 700; margin-top: 6px; }
-    .controls { display: flex; gap: 10px; margin-bottom: 12px; }
+    :root {
+      --primary: #4a6fa5;
+      --secondary: #166088;
+      --bg: #f4f7f6;
+      --card-bg: #ffffff;
+      --text: #333333;
+      --border: #e0e0e0;
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; background: var(--bg); color: var(--text); }
+    header { background: var(--primary); color: white; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    h1 { margin: 0; font-size: 24px; }
+    
+    .tabs { display: flex; background: #fff; border-bottom: 1px solid var(--border); padding: 0 24px; }
+    .tab { padding: 16px 24px; cursor: pointer; border-bottom: 3px solid transparent; font-weight: 600; color: #666; transition: all 0.2s; }
+    .tab:hover { color: var(--primary); }
+    .tab.active { border-bottom-color: var(--primary); color: var(--primary); }
+    
+    .container { padding: 24px; max-width: 1400px; margin: 0 auto; display: none; }
+    .container.active { display: block; }
+    
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+    .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+    .label { font-size: 13px; color: #666; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
+    .value { font-size: 28px; font-weight: 700; margin-top: 8px; color: var(--secondary); }
+    
+    .controls { display: flex; gap: 12px; margin-bottom: 16px; align-items: center; }
+    select, button { padding: 8px 12px; border: 1px solid var(--border); border-radius: 4px; font-size: 14px; outline: none; }
+    button { background: var(--primary); color: white; border: none; cursor: pointer; font-weight: 600; }
+    button:hover { background: var(--secondary); }
+    
+    .panel { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 24px; }
+    .panel h2 { margin-top: 0; margin-bottom: 16px; font-size: 18px; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+    
     table { width: 100%; border-collapse: collapse; }
-    th, td { border-bottom: 1px solid #eee; text-align: left; padding: 8px; font-size: 13px; }
-    th { background: #fafafa; }
+    th, td { border-bottom: 1px solid var(--border); text-align: left; padding: 12px; font-size: 14px; }
+    th { background: #fafafa; font-weight: 600; color: #555; }
+    tr:hover { background: #f9f9f9; }
+    
+    .chart-container { position: relative; height: 400px; width: 100%; }
+    .status-badge { display: inline-block; padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: bold; background: #e3f2fd; color: #0d47a1; }
   </style>
 </head>
 <body>
-  <h1>ChelatedAI Log Dashboard</h1>
-  <div class="cards">
-    <div class="card"><div class="label">Total Events</div><div class="value" id="total">-</div></div>
-    <div class="card"><div class="label">Query Count</div><div class="value" id="queries">-</div></div>
-    <div class="card"><div class="label">Error Count</div><div class="value" id="errors">-</div></div>
-    <div class="card"><div class="label">Top Action</div><div class="value" id="top-action">-</div></div>
+  <header>
+    <h1>ChelatedAI Control Center</h1>
+    <div class="status-badge" id="sweep-status">Sweep Status: Loading...</div>
+  </header>
+
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('analytics')">Analysis & Results</div>
+    <div class="tab" onclick="switchTab('tests')">Test Tracking</div>
+    <div class="tab" onclick="switchTab('logs')">Live Events</div>
   </div>
 
-  <div class="controls">
-    <select id="event-type">
-      <option value="">All events</option>
-      <option value="query">Query events</option>
-      <option value="error">Error events</option>
-    </select>
-    <select id="limit">
-      <option value="10">10</option>
-      <option value="25" selected>25</option>
-      <option value="50">50</option>
-    </select>
-    <button id="refresh">Refresh</button>
+  <!-- Analytics Tab -->
+  <div id="analytics" class="container active">
+    <div class="cards">
+      <div class="card"><div class="label">Total Test Runs</div><div class="value" id="sweep-total">-</div></div>
+      <div class="card"><div class="label">Best Gain (NDCG)</div><div class="value" id="sweep-best-gain">-</div></div>
+      <div class="card"><div class="label">Best Noise Scale</div><div class="value" id="sweep-best-noise">-</div></div>
+      <div class="card"><div class="label">Best Learning Rate</div><div class="value" id="sweep-best-lr">-</div></div>
+    </div>
+
+    <div class="panel">
+      <div style="display:flex; justify-content: space-between; align-items:center">
+        <h2>Performance Gain vs. Noise Injection</h2>
+        <button onclick="loadSweepResults()">Refresh Data</button>
+      </div>
+      <div class="chart-container">
+        <canvas id="noiseChart"></canvas>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Top Performing Configurations</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Rank</th>
+            <th>Noise Scale</th>
+            <th>Learning Rate</th>
+            <th>Threshold</th>
+            <th>Epochs</th>
+            <th>Push Mag.</th>
+            <th>Baseline</th>
+            <th>Post-Learning</th>
+            <th>Gain</th>
+          </tr>
+        </thead>
+        <tbody id="top-configs">
+          <tr><td colspan="9">Loading...</td></tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 
-  <table>
-    <thead>
-      <tr>
-        <th>Timestamp</th>
-        <th>Event</th>
-        <th>Action</th>
-        <th>Variance</th>
-        <th>Message</th>
-      </tr>
-    </thead>
-    <tbody id="rows">
-      <tr><td colspan="5">Loading...</td></tr>
-    </tbody>
-  </table>
+  <!-- Tests Tab -->
+  <div id="tests" class="container">
+    <div class="cards">
+      <div class="card"><div class="label">Total Tests</div><div class="value" id="test-total">-</div></div>
+      <div class="card"><div class="label">Passed</div><div class="value" style="color: green;" id="test-passed">-</div></div>
+      <div class="card"><div class="label">Failed</div><div class="value" style="color: red;" id="test-failed">-</div></div>
+      <div class="card"><div class="label">Duration</div><div class="value" id="test-duration">-</div></div>
+    </div>
+
+    <div class="panel">
+      <div style="display:flex; justify-content: space-between; align-items:center">
+        <h2>Latest Test Run Results</h2>
+        <button onclick="loadTestResults()">Refresh Tests</button>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Status</th>
+            <th>Node ID (Test Name)</th>
+            <th>Duration</th>
+          </tr>
+        </thead>
+        <tbody id="test-rows">
+          <tr><td colspan="3">Loading...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Logs Tab -->
+  <div id="logs" class="container">
+    <div class="cards">
+      <div class="card"><div class="label">Total Events</div><div class="value" id="total">-</div></div>
+      <div class="card"><div class="label">Query Count</div><div class="value" id="queries">-</div></div>
+      <div class="card"><div class="label">Error Count</div><div class="value" id="errors">-</div></div>
+      <div class="card"><div class="label">Top Action</div><div class="value" id="top-action">-</div></div>
+    </div>
+
+    <div class="panel">
+      <div class="controls">
+        <select id="event-type">
+          <option value="">All events</option>
+          <option value="query">Query events</option>
+          <option value="error">Error events</option>
+        </select>
+        <select id="limit">
+          <option value="10">10</option>
+          <option value="25" selected>25</option>
+          <option value="100">100</option>
+        </select>
+        <button id="refresh-logs">Refresh Logs</button>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Timestamp</th>
+            <th>Event</th>
+            <th>Action</th>
+            <th>Variance</th>
+            <th>Message</th>
+          </tr>
+        </thead>
+        <tbody id="rows">
+          <tr><td colspan="5">Loading...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
 
   <script>
+    let noiseChartInstance = null;
+
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.container').forEach(c => c.classList.remove('active'));
+      event.target.classList.add('active');
+      document.getElementById(tabId).classList.add('active');
+      if(tabId === 'analytics') loadSweepResults();
+      if(tabId === 'logs') refreshLogs();
+      if(tabId === 'tests') loadTestResults();
+    }
+
+    // --- TEST LOGIC ---
+    async function loadTestResults() {
+      try {
+        const res = await fetch('/api/test_results');
+        const data = await res.json();
+        
+        if (!data.summary) {
+           document.getElementById('test-rows').innerHTML = '<tr><td colspan="3">No test data available. Run pytest --json-report</td></tr>';
+           return;
+        }
+
+        document.getElementById('test-total').textContent = data.summary.total ?? 0;
+        document.getElementById('test-passed').textContent = data.summary.passed ?? 0;
+        document.getElementById('test-failed').textContent = data.summary.failed ?? 0;
+        document.getElementById('test-duration').textContent = data.summary.duration ? data.summary.duration.toFixed(2) + 's' : '-';
+
+        const rows = document.getElementById('test-rows');
+        rows.innerHTML = '';
+        const tests = data.tests || [];
+        tests.forEach(t => {
+           const tr = document.createElement('tr');
+           let color = t.outcome === 'passed' ? 'green' : (t.outcome === 'failed' ? 'red' : 'orange');
+           tr.innerHTML = `
+             <td style="color: ${color}; font-weight: bold; text-transform: uppercase;">${t.outcome}</td>
+             <td>${t.nodeid}</td>
+             <td>${t.call ? t.call.duration.toFixed(3) + 's' : '-'}</td>
+           `;
+           rows.appendChild(tr);
+        });
+
+      } catch (e) {
+        console.error('Error loading tests', e);
+        document.getElementById('test-rows').innerHTML = '<tr><td colspan="3">Error loading test data</td></tr>';
+      }
+    }
+
+    // --- LOGS LOGIC ---
     async function loadSummary() {
-      const res = await fetch('/api/summary');
-      const data = await res.json();
-      document.getElementById('total').textContent = data.total_events ?? 0;
-      document.getElementById('queries').textContent = data.query_count ?? 0;
-      document.getElementById('errors').textContent = data.error_count ?? 0;
-      const entries = Object.entries(data.action_breakdown || {});
-      entries.sort((a, b) => b[1] - a[1]);
-      document.getElementById('top-action').textContent = entries.length ? entries[0][0] : '-';
+      try {
+        const res = await fetch('/api/summary');
+        const data = await res.json();
+        document.getElementById('total').textContent = data.total_events ?? 0;
+        document.getElementById('queries').textContent = data.query_count ?? 0;
+        document.getElementById('errors').textContent = data.error_count ?? 0;
+        const entries = Object.entries(data.action_breakdown || {});
+        entries.sort((a, b) => b[1] - a[1]);
+        document.getElementById('top-action').textContent = entries.length ? entries[0][0] : '-';
+      } catch (e) { console.error('Error loading summary', e); }
     }
 
     async function loadEvents() {
-      const type = document.getElementById('event-type').value;
-      const limit = document.getElementById('limit').value;
-      let url = `/api/events?limit=${encodeURIComponent(limit)}`;
-      if (type) url += `&event_type=${encodeURIComponent(type)}`;
+      try {
+        const type = document.getElementById('event-type').value;
+        const limit = document.getElementById('limit').value;
+        let url = `/api/events?limit=${encodeURIComponent(limit)}`;
+        if (type) url += `&event_type=${encodeURIComponent(type)}`;
 
-      const res = await fetch(url);
-      const data = await res.json();
-      const rows = document.getElementById('rows');
-      rows.replaceChildren();
-      const events = data.events || [];
-      if (!events.length) {
-        const tr = document.createElement('tr');
-        const td = document.createElement('td');
-        td.colSpan = 5;
-        td.textContent = 'No events';
-        tr.appendChild(td);
-        rows.appendChild(tr);
-        return;
-      }
-      for (const e of events) {
-        const tr = document.createElement('tr');
-        const ts = (e.timestamp !== undefined && e.timestamp !== null) ? new Date(e.timestamp * 1000).toLocaleString() : '-';
-        const cells = [
-          ts,
-          e.event_type || (e.query_snippet ? 'query' : '-'),
-          e.action || '-',
-          (typeof e.global_variance === 'number') ? e.global_variance.toFixed(6) : '-',
-          e.message || e.query_snippet || '-'
-        ];
-        for (const text of cells) {
-          const td = document.createElement('td');
-          td.textContent = text;
-          tr.appendChild(td);
+        const res = await fetch(url);
+        const data = await res.json();
+        const rows = document.getElementById('rows');
+        rows.replaceChildren();
+        const events = data.events || [];
+        if (!events.length) {
+          rows.innerHTML = '<tr><td colspan="5">No events</td></tr>';
+          return;
         }
-        rows.appendChild(tr);
-      }
+        for (const e of events) {
+          const tr = document.createElement('tr');
+          const ts = (e.timestamp !== undefined && e.timestamp !== null) ? new Date(e.timestamp * 1000).toLocaleString() : '-';
+          const cells = [
+            ts,
+            e.event_type || (e.query_snippet ? 'query' : '-'),
+            e.action || '-',
+            (typeof e.global_variance === 'number') ? e.global_variance.toFixed(6) : '-',
+            e.message || e.query_snippet || '-'
+          ];
+          for (const text of cells) {
+            const td = document.createElement('td');
+            td.textContent = text;
+            tr.appendChild(td);
+          }
+          rows.appendChild(tr);
+        }
+      } catch (e) { console.error('Error loading events', e); }
     }
 
-    async function refresh() {
+    async function refreshLogs() {
       await Promise.all([loadSummary(), loadEvents()]);
     }
 
-    document.getElementById('refresh').addEventListener('click', refresh);
+    // --- SWEEP ANALYTICS LOGIC ---
+    async function loadSweepResults() {
+      try {
+        const res = await fetch('/api/sweep_results');
+        const data = await res.json();
+        const results = data.results || [];
+        
+        document.getElementById('sweep-total').textContent = results.length;
+        
+        if (results.length === 0) {
+          document.getElementById('sweep-status').textContent = 'Sweep Status: No data yet';
+          return;
+        }
+
+        document.getElementById('sweep-status').textContent = `Sweep Status: Running (${results.length} / 7350 tests)`;
+
+        // Find Best
+        let best = results[0];
+        for (const r of results) {
+          if (r.metrics.gain > best.metrics.gain) best = r;
+        }
+
+        document.getElementById('sweep-best-gain').textContent = (best.metrics.gain > 0 ? '+' : '') + best.metrics.gain.toFixed(5);
+        document.getElementById('sweep-best-noise').textContent = best.config.noise_scale;
+        document.getElementById('sweep-best-lr').textContent = best.config.learning_rate;
+
+        // Render Table of top 10
+        const sorted = [...results].sort((a, b) => b.metrics.gain - a.metrics.gain).slice(0, 10);
+        const tbody = document.getElementById('top-configs');
+        tbody.innerHTML = '';
+        sorted.forEach((r, i) => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>#${i+1}</td>
+            <td><strong>${r.config.noise_scale}</strong></td>
+            <td>${r.config.learning_rate}</td>
+            <td>${r.config.threshold}</td>
+            <td>${r.config.epochs}</td>
+            <td>${r.config.push_magnitude}</td>
+            <td>${r.metrics.baseline_ndcg.toFixed(4)}</td>
+            <td>${r.metrics.post_ndcg.toFixed(4)}</td>
+            <td style="color: ${r.metrics.gain > 0 ? 'green' : 'red'}; font-weight: bold;">
+              ${r.metrics.gain > 0 ? '+' : ''}${r.metrics.gain.toFixed(5)}
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
+
+        // Render Chart (Average gain per noise scale)
+        renderChart(results);
+
+      } catch (e) {
+        console.error('Error loading sweep results', e);
+        document.getElementById('sweep-status').textContent = 'Sweep Status: Offline';
+      }
+    }
+
+    function renderChart(results) {
+      // Group by noise scale
+      const noiseGroups = {};
+      results.forEach(r => {
+        const ns = r.config.noise_scale.toString();
+        if(!noiseGroups[ns]) noiseGroups[ns] = [];
+        noiseGroups[ns].push(r.metrics.gain);
+      });
+
+      const labels = Object.keys(noiseGroups).sort((a,b) => parseFloat(a) - parseFloat(b));
+      
+      // Calculate averages and maxes
+      const averages = labels.map(l => {
+        const arr = noiseGroups[l];
+        return arr.reduce((sum, val) => sum + val, 0) / arr.length;
+      });
+      const maxes = labels.map(l => Math.max(...noiseGroups[l]));
+
+      const ctx = document.getElementById('noiseChart').getContext('2d');
+      if (noiseChartInstance) noiseChartInstance.destroy();
+
+      noiseChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: 'Average Gain (NDCG)',
+              data: averages,
+              borderColor: '#4a6fa5',
+              backgroundColor: 'rgba(74, 111, 165, 0.1)',
+              borderWidth: 2,
+              fill: true,
+              tension: 0.1
+            },
+            {
+              label: 'Max Peak Gain (NDCG)',
+              data: maxes,
+              borderColor: '#166088',
+              borderWidth: 2,
+              borderDash: [5, 5],
+              fill: false
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            tooltip: { mode: 'index', intersect: false }
+          },
+          scales: {
+            y: {
+              title: { display: true, text: 'NDCG@10 Gain / Loss' }
+            },
+            x: {
+              title: { display: true, text: 'Noise Injection Scale' }
+            }
+          }
+        }
+      });
+    }
+
+    // Bindings
+    document.getElementById('refresh-logs').addEventListener('click', refreshLogs);
     document.getElementById('event-type').addEventListener('change', loadEvents);
     document.getElementById('limit').addEventListener('change', loadEvents);
-    refresh();
+
+    // Init
+    loadSweepResults();
+    
+    // Auto-refresh sweep results every 15 seconds
+    setInterval(() => {
+      if(document.getElementById('analytics').classList.contains('active')) {
+        loadSweepResults();
+      }
+    }, 15000);
   </script>
 </body>
 </html>

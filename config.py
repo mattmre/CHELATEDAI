@@ -121,6 +121,11 @@ class ChelationConfig:
     ADAPTIVE_THRESHOLD_MIN = 0.0001  # Safety lower bound for threshold
     ADAPTIVE_THRESHOLD_MAX = 0.01  # Safety upper bound for threshold
 
+    # ===== Noise Injection (Experimental) =====
+    NOISE_INJECTION_ENABLED = False
+    NOISE_INJECTION_BASE_SCALE = 0.05
+    NOISE_INJECTION_MAX_SCALE = 0.5
+
     # Chelation tuning guidelines by use case
     CHELATION_PRESETS = {
         "conservative": {

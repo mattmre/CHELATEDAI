@@ -206,8 +206,10 @@ def create_adapter(adapter_type="mlp", input_dim=768, **kwargs):
         ValueError: If adapter_type is unknown
     """
     if adapter_type == "mlp":
+        kwargs.pop("rank", None)
         return ChelationAdapter(input_dim=input_dim, **kwargs)
     elif adapter_type == "procrustes":
+        kwargs.pop("rank", None)
         return OrthogonalProcrustesAdapter(input_dim=input_dim)
     elif adapter_type == "low_rank":
         rank = kwargs.get("rank", 16)

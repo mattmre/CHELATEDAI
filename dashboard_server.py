@@ -666,6 +666,10 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             self.handle_api_events(query_params)
         elif path == "/api/summary":
             self.handle_api_summary()
+        elif path == "/api/sweep_results":
+            self.handle_api_sweep_results(query_params)
+        elif path == "/api/test_results":
+            self.handle_api_test_results()
         elif path == "/" or path == "/dashboard" or path == "/dashboard/":
             # Redirect to dashboard page
             self.serve_dashboard()
@@ -733,7 +737,34 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             self.send_error_response(404, str(e))
         except Exception as e:
             self.send_error_response(500, f"Internal server error: {str(e)}")
-    
+            
+    def handle_api_sweep_results(self, query_params: Dict[str, List[str]]):
+        """Handle /api/sweep_results endpoint by returning the large sweep JSON data."""
+        sweep_file = "large_sweep_results.json"
+        try:
+            if not os.path.exists(sweep_file):
+                self.send_json_response({"results": []})
+                return
+            
+            with open(sweep_file, 'r') as f:
+                results = json.load(f)
+            self.send_json_response({"results": results})
+        except Exception as e:
+            self.send_error_response(500, f"Error reading sweep results: {str(e)}")
+
+    def handle_api_test_results(self):
+        """Handle /api/test_results endpoint."""
+        test_file = ".report.json"
+        try:
+            if not os.path.exists(test_file):
+                self.send_json_response({"summary": None, "tests": []})
+                return
+            with open(test_file, 'r') as f:
+                report = json.load(f)
+            self.send_json_response(report)
+        except Exception as e:
+            self.send_error_response(500, f"Error reading test results: {str(e)}")
+            
     def serve_dashboard(self):
         """Serve the dashboard HTML page."""
         dashboard_path = os.path.join(

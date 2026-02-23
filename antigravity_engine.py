@@ -755,7 +755,7 @@ class AntigravityEngine:
         sorted_ids = [s[0] for s in scores]
         return sorted_ids, center_of_mass
 
-    def run_sedimentation_cycle(self, threshold=ChelationConfig.DEFAULT_COLLAPSE_THRESHOLD, learning_rate=ChelationConfig.DEFAULT_LEARNING_RATE, epochs=ChelationConfig.DEFAULT_EPOCHS):
+    def run_sedimentation_cycle(self, threshold=ChelationConfig.DEFAULT_COLLAPSE_THRESHOLD, learning_rate=ChelationConfig.DEFAULT_LEARNING_RATE, epochs=ChelationConfig.DEFAULT_EPOCHS, noise_injection=None):
         """
         [State 2: Sleep Cycle]
         DYNAMIC UPDATE: Trains the Adapter using the collected chelation events.
@@ -777,7 +777,8 @@ class AntigravityEngine:
             threshold=threshold,
             learning_rate=learning_rate,
             epochs=epochs,
-            training_mode=self.training_mode
+            training_mode=self.training_mode,
+            noise_injection=noise_injection
         )
         
         # Handle epochs=0 gracefully (skip training)
@@ -808,6 +809,7 @@ class AntigravityEngine:
         ordered_ids = []
         training_texts = []  # For teacher distillation
         payload_map = {}  # F-031: Cache payloads during initial retrieve
+        complexity_weights = [] # For noise injection scaling
         
         self.logger.log_event("training_preparation", "Fetching training data from Qdrant", level="DEBUG")
         
@@ -833,6 +835,9 @@ class AntigravityEngine:
                 
                 # F-031: Cache payload for later sync
                 payload_map[point.id] = point.payload
+                
+                # Track complexity for noise injection scaling
+                complexity_weights.append(len(noise_vectors))
                 
                 # Calculate Target based on mode
                 if self.training_mode == "baseline":
@@ -926,6 +931,20 @@ class AntigravityEngine:
         input_tensor = torch.tensor(input_array, dtype=torch.float32)
         target_tensor = torch.tensor(target_array, dtype=torch.float32)
         
+        # Noise injection setup
+        if noise_injection is None:
+            noise_injection = ChelationConfig.NOISE_INJECTION_BASE_SCALE if getattr(ChelationConfig, 'NOISE_INJECTION_ENABLED', False) else 0.0
+            
+        if noise_injection > 0.0:
+            complexity_tensor = torch.tensor(complexity_weights, dtype=torch.float32).unsqueeze(1)
+            max_complexity = complexity_tensor.max()
+            if max_complexity > 0:
+                complexity_tensor = complexity_tensor / max_complexity
+            noise_scales = torch.clamp(complexity_tensor * noise_injection, max=ChelationConfig.NOISE_INJECTION_MAX_SCALE)
+            self.logger.log_event("noise_injection", f"Enabled noise injection with base scale {noise_injection}")
+        else:
+            noise_scales = None
+        
         # --- TRAINING LOOP (wrapped in SafeTrainingContext for F-043) ---
         self.logger.log_training_start(num_samples=len(training_inputs), learning_rate=learning_rate, epochs=epochs, threshold=threshold)
         
@@ -955,7 +974,15 @@ class AntigravityEngine:
 
             for epoch in range(epochs):
                 optimizer.zero_grad()
-                outputs = self.adapter(input_tensor)
+                
+                if noise_scales is not None:
+                    noise = torch.randn_like(input_tensor) * noise_scales
+                    noisy_input = input_tensor + noise
+                    noisy_input = torch.nn.functional.normalize(noisy_input, p=2, dim=1)
+                    outputs = self.adapter(noisy_input)
+                else:
+                    outputs = self.adapter(input_tensor)
+                    
                 loss = criterion(outputs, target_tensor)
                 loss.backward()
                 optimizer.step()
