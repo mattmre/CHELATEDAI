@@ -613,11 +613,14 @@ class AEPOrchestrator:
         Each agent attaches domain-specific metadata (risk levels, test gaps,
         performance flags, coupling analysis).
         """
+        _metadata_lock = threading.Lock()
+
         def _process_finding(finding: Finding) -> None:
             """Process a single finding through all agents."""
             for agent in self.agents:
                 try:
-                    agent.analyze(finding, context)
+                    with _metadata_lock:
+                        agent.analyze(finding, context)
                 except Exception as e:
                     self.logger.log_error(
                         "revalidation_agent_error",
