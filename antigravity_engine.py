@@ -228,7 +228,7 @@ class AntigravityEngine:
                 PointStruct(
                     id=i*batch_size + j,
                     vector=embeddings[j],
-                    payload=({"text": batch_texts[j], **batch_payloads[j]} if self.store_full_text_payload else batch_payloads[j])
+                    payload=({**batch_payloads[j], "text": batch_texts[j]} if self.store_full_text_payload else batch_payloads[j])
                 )
                 for j in range(len(batch_texts))
             ]
@@ -314,7 +314,7 @@ class AntigravityEngine:
                 PointStruct(
                     id=current_id + j,
                     vector=embeddings[j],
-                    payload=({"text": batch_texts[j], **batch_payloads[j]} if self.store_full_text_payload else batch_payloads[j])
+                    payload=({**batch_payloads[j], "text": batch_texts[j]} if self.store_full_text_payload else batch_payloads[j])
                 )
                 for j in range(len(batch_texts))
             ]
@@ -850,11 +850,19 @@ class AntigravityEngine:
             except Exception as e:
                 self.logger.log_error(
                     "distillation_failed",
-                    "Teacher target generation failed, falling back to baseline",
+                    "Teacher target generation failed, falling back to homeostatic targets",
                     exception=e
                 )
-                # Fallback to baseline targets (already computed)
-                pass
+                # Recompute targets using homeostatic push instead of identity
+                homeostatic_targets = []
+                for idx, vec in enumerate(training_inputs):
+                    noise_vectors = targets[ordered_ids[idx]]
+                    homeostatic_targets.append(
+                        compute_homeostatic_target(
+                            vec, noise_vectors, ChelationConfig.HOMEOSTATIC_PUSH_MAGNITUDE
+                        )
+                    )
+                target_array = np.array(homeostatic_targets)
         
         elif self.training_mode == "hybrid" and self.teacher_helper:
             self.logger.log_event(
@@ -1021,18 +1029,27 @@ class AntigravityEngine:
         
         # Fetch all corpus IDs
         try:
-            scroll_result = self.qdrant.scroll(
-                collection_name=self.collection_name,
-                limit=10000,  # Reasonable limit per scroll
-                with_vectors=False,
-                with_payload=True
-            )
-            all_points = scroll_result[0]
-            
+            all_points = []
+            offset = None
+            scroll_page_size = 10000
+            while True:
+                scroll_result = self.qdrant.scroll(
+                    collection_name=self.collection_name,
+                    limit=scroll_page_size,
+                    with_vectors=False,
+                    with_payload=True,
+                    offset=offset,
+                )
+                points, next_offset = scroll_result
+                all_points.extend(points)
+                if next_offset is None or len(points) == 0:
+                    break
+                offset = next_offset
+
             if not all_points:
                 self.logger.log_event("offline_distillation_empty", "No documents in corpus, nothing to distill")
                 return
-            
+
             self.logger.log_event(
                 "offline_distillation_corpus",
                 f"Found {len(all_points)} documents in corpus",
