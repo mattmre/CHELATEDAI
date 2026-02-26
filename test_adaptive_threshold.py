@@ -9,14 +9,17 @@ import unittest
 import numpy as np
 from unittest.mock import Mock, patch
 from collections import namedtuple
-from httpx import Headers
 
-# Import components to test
-from antigravity_engine import AntigravityEngine
-from config import ChelationConfig
-
-# Import Qdrant exceptions for testing
-from qdrant_client.http.exceptions import ResponseHandlingException, UnexpectedResponse
+try:
+    import torch  # noqa: F401
+    import sentence_transformers  # noqa: F401
+    from httpx import Headers
+    from antigravity_engine import AntigravityEngine
+    from config import ChelationConfig
+    from qdrant_client.http.exceptions import ResponseHandlingException, UnexpectedResponse
+    HAS_DEPS = True
+except ImportError:
+    HAS_DEPS = False
 
 
 # Mock types for Qdrant responses
@@ -24,6 +27,7 @@ MockPoint = namedtuple('MockPoint', ['id', 'vector', 'score'])
 MockQueryResult = namedtuple('MockQueryResult', ['points'])
 
 
+@unittest.skipUnless(HAS_DEPS, "Requires torch and sentence-transformers")
 class TestAdaptiveThresholdDisabled(unittest.TestCase):
     """Test that adaptive threshold is disabled by default (backward compatibility)."""
 
@@ -86,6 +90,7 @@ class TestAdaptiveThresholdDisabled(unittest.TestCase):
         self.assertNotIn("\x01", cleaned)
 
 
+@unittest.skipUnless(HAS_DEPS, "Requires torch and sentence-transformers")
 class TestAdaptiveThresholdEnableDisable(unittest.TestCase):
     """Test enabling and disabling adaptive threshold mode."""
 
@@ -164,6 +169,7 @@ class TestAdaptiveThresholdEnableDisable(unittest.TestCase):
         self.assertEqual(self.engine._adaptive_threshold_min_samples, 1)
 
 
+@unittest.skipUnless(HAS_DEPS, "Requires torch and sentence-transformers")
 class TestAdaptiveThresholdUpdate(unittest.TestCase):
     """Test threshold update logic during inference."""
 
@@ -291,6 +297,7 @@ class TestAdaptiveThresholdUpdate(unittest.TestCase):
         )
 
 
+@unittest.skipUnless(HAS_DEPS, "Requires torch and sentence-transformers")
 class TestAdaptiveThresholdInRunInference(unittest.TestCase):
     """Test that adaptive threshold update is called during run_inference."""
 
@@ -365,6 +372,7 @@ class TestAdaptiveThresholdInRunInference(unittest.TestCase):
         self.assertGreater(self.engine._variance_history[0], 0)
 
 
+@unittest.skipUnless(HAS_DEPS, "Requires torch and sentence-transformers")
 class TestAdaptiveThresholdStats(unittest.TestCase):
     """Test threshold statistics reporting."""
 
@@ -416,6 +424,7 @@ class TestAdaptiveThresholdStats(unittest.TestCase):
             self.assertIn(key, stats)
 
 
+@unittest.skipUnless(HAS_DEPS, "Requires torch and sentence-transformers")
 class TestQdrantErrorHandling(unittest.TestCase):
     """Test Qdrant error handling in inference path (Finding F-007)."""
 

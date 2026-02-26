@@ -8,9 +8,17 @@ import unittest
 import numpy as np
 from collections import defaultdict
 from unittest.mock import Mock, patch
-from config import ChelationConfig
+
+try:
+    import torch  # noqa: F401
+    import sentence_transformers  # noqa: F401
+    from config import ChelationConfig
+    HAS_DEPS = True
+except ImportError:
+    HAS_DEPS = False
 
 
+@unittest.skipUnless(HAS_DEPS, "Requires torch and sentence-transformers")
 class TestStreamingIngestion(unittest.TestCase):
     """Test streaming ingestion functionality."""
 
@@ -194,6 +202,7 @@ class TestStreamingIngestion(unittest.TestCase):
         self.assertGreater(len(complete_events), 0, "Should log complete event")
 
 
+@unittest.skipUnless(HAS_DEPS, "Requires torch and sentence-transformers")
 class TestChelationLogCapping(unittest.TestCase):
     """Test chelation log memory management."""
 
@@ -330,6 +339,7 @@ class TestChelationLogCapping(unittest.TestCase):
             ChelationConfig.CHELATION_LOG_MAX_ENTRIES_PER_DOC = original_cap
 
 
+@unittest.skipUnless(HAS_DEPS, "Requires torch and sentence-transformers")
 class TestBackwardCompatibility(unittest.TestCase):
     """Test that new features don't break existing behavior."""
 
