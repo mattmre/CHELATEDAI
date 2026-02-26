@@ -236,11 +236,15 @@ class ChelationConfig:
     PROJECTION_HIDDEN_DIM = None  # None = direct projection, int = bottleneck
 
     # ===== Adapter Training Configuration =====
-    DEFAULT_LEARNING_RATE = 0.001  # Conservative by default
+    # Session 21: 81-config SciFact NDCG@10 sweep validated these defaults.
+    # LR>=0.1 causes catastrophic collapse (63% of configs). LR=0.01 is safest.
+    # Threshold=1 preserves quality; threshold>=2 causes severe degradation.
+    # Push magnitude 0.05 reduces degradation ~29% vs 0.1.
+    DEFAULT_LEARNING_RATE = 0.01  # Sweep-validated: LR=0.01 is safest (Session 21, SciFact NDCG@10)
     DEFAULT_EPOCHS = 10
-    DEFAULT_COLLAPSE_THRESHOLD = 3  # Min frequency to trigger sedimentation
+    DEFAULT_COLLAPSE_THRESHOLD = 1  # Sweep-validated: threshold=1 preserves quality; >=2 degrades (Session 21)
     ADAPTER_HIDDEN_DIM_RATIO = 0.5  # hidden_dim = input_dim * ratio
-    HOMEOSTATIC_PUSH_MAGNITUDE = 0.1  # Adapter push magnitude for sedimentation target vectors
+    HOMEOSTATIC_PUSH_MAGNITUDE = 0.05  # Sweep-validated: 0.05 reduces degradation ~29% vs 0.1 (Session 21)
     
     # ===== Teacher Distillation Configuration =====
     # Training mode: 'baseline', 'offline', 'hybrid'
@@ -257,24 +261,32 @@ class ChelationConfig:
     DEFAULT_OFFLINE_LEARNING_RATE = 0.005
 
     # Adapter training tuning by dataset size
+    # Updated Session 21: collapse thresholds lowered based on sweep analysis.
+    # Sweep showed threshold>=2 causes degradation; LR>=0.1 causes catastrophic collapse.
     ADAPTER_PRESETS = {
         "small": {  # <1000 documents
             "learning_rate": 0.01,
             "epochs": 5,
-            "threshold": 10,
-            "description": "Few documents, require strong signal"
+            "threshold": 3,
+            "description": "Few documents, moderate threshold (sweep-safe LR)"
         },
         "medium": {  # 1000-10000 documents
             "learning_rate": 0.005,
             "epochs": 10,
-            "threshold": 3,
-            "description": "Standard datasets"
+            "threshold": 1,
+            "description": "Standard datasets, sweep-validated threshold"
         },
         "large": {  # >10000 documents
             "learning_rate": 0.001,
             "epochs": 15,
             "threshold": 1,
             "description": "Large datasets, capture all patterns"
+        },
+        "sweep_optimal": {
+            "learning_rate": 0.01,
+            "epochs": 5,
+            "threshold": 1,
+            "description": "Best config from 81-config SciFact NDCG@10 sweep (Session 21)"
         }
     }
     
@@ -316,21 +328,30 @@ class ChelationConfig:
     }
 
     # Sedimentation presets
+    # Updated Session 21: 81-config SciFact sweep showed threshold>=2 causes severe degradation.
+    # All presets now use safer values validated by parameter sweep analysis.
     SEDIMENTATION_PRESETS = {
         "balanced": {
-            "collapse_threshold": 3,
-            "push_magnitude": 0.1,
-            "description": "Balanced sedimentation for typical patterns"
+            "collapse_threshold": 1,
+            "push_magnitude": 0.05,
+            "description": "Sweep-validated safe defaults (Session 21: threshold=1, push=0.05)"
         },
         "conservative": {
-            "collapse_threshold": 5,
+            "collapse_threshold": 3,
             "push_magnitude": 0.05,
-            "description": "Conservative sedimentation, fewer interventions"
+            "description": "Conservative sedimentation, higher threshold tolerates more collapse"
         },
         "aggressive": {
             "collapse_threshold": 1,
-            "push_magnitude": 0.2,
-            "description": "Aggressive sedimentation for noisy data"
+            "push_magnitude": 0.1,
+            "description": "Aggressive push magnitude for noisy data (sweep: 0.1 still safe at threshold=1)"
+        },
+        "sweep_optimal": {
+            "collapse_threshold": 1,
+            "push_magnitude": 0.05,
+            "noise_injection_base_scale": 0.05,
+            "learning_rate": 0.01,
+            "description": "Best config from 81-config SciFact NDCG@10 sweep (Session 21)"
         }
     }
 

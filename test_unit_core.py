@@ -353,10 +353,54 @@ class TestChelationConfig(unittest.TestCase):
     def test_get_config_preset(self):
         """Test get_config('balanced') returns chelation preset keys (F-053)."""
         config = get_config("balanced")
-        
+
         self.assertIn("chelation_p", config)
         self.assertIn("chelation_threshold", config)
         self.assertIn("description", config)
+
+    def test_sweep_optimal_sedimentation_preset(self):
+        """Test sweep_optimal sedimentation preset from Session 21 sweep analysis."""
+        preset = ChelationConfig.get_preset("sweep_optimal", "sedimentation")
+
+        self.assertEqual(preset["collapse_threshold"], 1)
+        self.assertEqual(preset["push_magnitude"], 0.05)
+        self.assertEqual(preset["noise_injection_base_scale"], 0.05)
+        self.assertEqual(preset["learning_rate"], 0.01)
+        self.assertIn("description", preset)
+
+    def test_sweep_optimal_adapter_preset(self):
+        """Test sweep_optimal adapter preset from Session 21 sweep analysis."""
+        preset = ChelationConfig.get_preset("sweep_optimal", "adapter")
+
+        self.assertEqual(preset["learning_rate"], 0.01)
+        self.assertEqual(preset["epochs"], 5)
+        self.assertEqual(preset["threshold"], 1)
+        self.assertIn("description", preset)
+
+    def test_sweep_validated_defaults(self):
+        """Test that defaults reflect Session 21 sweep findings."""
+        # Sweep showed LR=0.01 is safest, threshold=1 preserves quality,
+        # push_magnitude=0.05 reduces degradation ~29%.
+        self.assertEqual(ChelationConfig.DEFAULT_LEARNING_RATE, 0.01)
+        self.assertEqual(ChelationConfig.DEFAULT_COLLAPSE_THRESHOLD, 1)
+        self.assertEqual(ChelationConfig.HOMEOSTATIC_PUSH_MAGNITUDE, 0.05)
+
+    def test_sedimentation_balanced_sweep_safe(self):
+        """Test that balanced sedimentation preset uses sweep-safe values."""
+        preset = ChelationConfig.get_preset("balanced", "sedimentation")
+        # Sweep showed threshold>=2 causes severe degradation
+        self.assertEqual(preset["collapse_threshold"], 1)
+        self.assertEqual(preset["push_magnitude"], 0.05)
+
+    def test_adapter_presets_threshold_safety(self):
+        """Test that adapter presets use sweep-validated thresholds."""
+        medium = ChelationConfig.get_preset("medium", "adapter")
+        large = ChelationConfig.get_preset("large", "adapter")
+        sweep = ChelationConfig.get_preset("sweep_optimal", "adapter")
+        # Sweep showed threshold>=2 causes degradation
+        self.assertLessEqual(medium["threshold"], 1)
+        self.assertLessEqual(large["threshold"], 1)
+        self.assertLessEqual(sweep["threshold"], 1)
 
 
 class TestChelationAlgorithms(unittest.TestCase):
