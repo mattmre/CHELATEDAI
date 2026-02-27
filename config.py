@@ -334,6 +334,35 @@ class ChelationConfig:
         }
     }
 
+    # BEIR evaluation presets
+    BEIR_PRESETS = {
+        "quick": {
+            "tier": "quick",
+            "sample_seed": 42,
+            "description": "Quick evaluation on SciFact only",
+        },
+        "small": {
+            "tier": "small",
+            "sample_seed": 42,
+            "description": "Small evaluation on SciFact + NFCorpus",
+        },
+        "medium": {
+            "tier": "medium",
+            "sample_seed": 42,
+            "description": "Medium evaluation including FiQA2018",
+        },
+        "research": {
+            "tier": "research",
+            "sample_seed": 42,
+            "description": "Research evaluation including TRECCOVID",
+        },
+        "full": {
+            "tier": "full",
+            "sample_seed": 42,
+            "description": "Full BEIR evaluation with all 6 datasets",
+        },
+    }
+
     # Teacher weight schedule presets
     TEACHER_WEIGHT_SCHEDULE_PRESETS = {
         "constant": {
@@ -501,6 +530,7 @@ class ChelationConfig:
             "adapter_type": cls.ADAPTER_TYPE_PRESETS,
             "ensemble": cls.ENSEMBLE_PRESETS,
             "teacher_weight_schedule": cls.TEACHER_WEIGHT_SCHEDULE_PRESETS,
+            "beir": cls.BEIR_PRESETS,
         }
         
         if preset_type not in preset_map:
