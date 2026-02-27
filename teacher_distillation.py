@@ -3,11 +3,14 @@ Teacher Distillation Module for ChelatedAI
 
 Provides distillation helpers for offline teacher training and hybrid modes.
 Uses local sentence-transformers model to avoid external API dependencies.
+Supports batch-optimized encoding with chunked processing and parallel
+multi-teacher encoding via ThreadPoolExecutor.
 """
 
 import numpy as np
 import torch
 import torch.nn as nn
+from concurrent.futures import ThreadPoolExecutor
 from typing import List, Optional
 from chelation_logger import get_logger
 from config import ChelationConfig
@@ -65,12 +68,16 @@ class DimensionProjection(nn.Module):
 class TeacherDistillationHelper:
     """
     Helper class for teacher distillation operations.
-    
+
     Encapsulates teacher model loading, target generation, and blending logic.
+    Supports batch-optimized encoding with configurable batch_size, chunked
+    processing for large corpora, and eager model loading.
     """
-    
+
     def __init__(self, teacher_model_name: str = "sentence-transformers/all-MiniLM-L6-v2",
-                 projection_enabled: bool = True, projection_hidden_dim: Optional[int] = None):
+                 projection_enabled: bool = True, projection_hidden_dim: Optional[int] = None,
+                 batch_size: int = 64, eager_load: bool = False,
+                 show_progress: bool = False, max_corpus_chunk: int = 10000):
         """
         Initialize teacher distillation helper.
 
@@ -78,6 +85,10 @@ class TeacherDistillationHelper:
             teacher_model_name: HuggingFace model name for teacher
             projection_enabled: If True, auto-project when dimensions mismatch
             projection_hidden_dim: Optional bottleneck dimension for projection
+            batch_size: Batch size for teacher model encoding (default: 64)
+            eager_load: If True, load teacher model immediately (default: False)
+            show_progress: If True, show progress bar during encoding (default: False)
+            max_corpus_chunk: Maximum texts per encoding chunk (default: 10000)
         """
         self.logger = get_logger()
         self.teacher_model_name = teacher_model_name
@@ -86,12 +97,21 @@ class TeacherDistillationHelper:
         self._projection_enabled = projection_enabled
         self._projection_hidden_dim = projection_hidden_dim
         self._projection = None
+        self.batch_size = batch_size
+        self.show_progress = show_progress
+        self.max_corpus_chunk = max_corpus_chunk
 
         self.logger.log_event(
             "distillation_init",
             f"Initializing teacher distillation with model: {teacher_model_name}",
-            teacher_model=teacher_model_name
+            teacher_model=teacher_model_name,
+            batch_size=batch_size,
+            eager_load=eager_load,
+            max_corpus_chunk=max_corpus_chunk,
         )
+
+        if eager_load:
+            self.load_teacher_model()
     
     def load_teacher_model(self):
         """Load teacher model lazily (only when needed)."""
@@ -138,38 +158,93 @@ class TeacherDistillationHelper:
             )
             raise
     
+    def _encode_chunk(self, chunk: List[str]) -> np.ndarray:
+        """
+        Encode a single chunk of texts using the teacher model.
+
+        Args:
+            chunk: List of text strings (should be <= max_corpus_chunk)
+
+        Returns:
+            Numpy array of embeddings for this chunk
+        """
+        return self.teacher_model.encode(
+            chunk,
+            batch_size=self.batch_size,
+            convert_to_numpy=True,
+            show_progress_bar=self.show_progress,
+            normalize_embeddings=True,
+        )
+
     def get_teacher_embeddings(self, texts: List[str]) -> np.ndarray:
         """
-        Get embeddings from teacher model.
-        
+        Get embeddings from teacher model with chunked encoding.
+
+        Splits large text lists into max_corpus_chunk-sized chunks and encodes
+        each independently. Per-chunk error handling ensures partial failures
+        produce zero-vector fallbacks only for the failed chunk.
+
         Args:
             texts: List of text strings
-            
+
         Returns:
             Numpy array of teacher embeddings [batch_size, teacher_dim]
         """
         if not texts:
             return np.array([])
-        
+
         self.load_teacher_model()
-        
-        try:
-            embeddings = self.teacher_model.encode(
-                texts,
-                convert_to_numpy=True,
-                show_progress_bar=False,
-                normalize_embeddings=True  # Ensure unit norm for cosine similarity
+
+        # Split into chunks for memory-safe processing
+        chunk_size = self.max_corpus_chunk
+        if len(texts) <= chunk_size:
+            # Fast path: single chunk (most common case)
+            try:
+                return self._encode_chunk(texts)
+            except Exception as e:
+                self.logger.log_error(
+                    "teacher_embedding_failed",
+                    f"Teacher embedding failed for {len(texts)} texts",
+                    exception=e,
+                    num_texts=len(texts),
+                )
+                return np.zeros((len(texts), self.teacher_dim))
+
+        # Multi-chunk path
+        all_embeddings = []
+        num_chunks = (len(texts) + chunk_size - 1) // chunk_size
+        failed_chunks = 0
+
+        for chunk_idx in range(num_chunks):
+            start = chunk_idx * chunk_size
+            end = min(start + chunk_size, len(texts))
+            chunk = texts[start:end]
+
+            try:
+                chunk_embeddings = self._encode_chunk(chunk)
+                all_embeddings.append(chunk_embeddings)
+            except Exception as e:
+                failed_chunks += 1
+                self.logger.log_error(
+                    "teacher_chunk_failed",
+                    f"Chunk {chunk_idx + 1}/{num_chunks} failed ({len(chunk)} texts)",
+                    exception=e,
+                    chunk_index=chunk_idx,
+                    chunk_size=len(chunk),
+                )
+                # Zero-vector fallback for this chunk only
+                all_embeddings.append(np.zeros((len(chunk), self.teacher_dim)))
+
+        if failed_chunks > 0:
+            self.logger.log_event(
+                "teacher_encoding_partial",
+                f"Completed with {failed_chunks}/{num_chunks} chunk failures",
+                level="WARNING",
+                failed_chunks=failed_chunks,
+                total_chunks=num_chunks,
             )
-            return embeddings
-        except Exception as e:
-            self.logger.log_error(
-                "teacher_embedding_failed",
-                f"Teacher embedding failed for {len(texts)} texts",
-                exception=e,
-                num_texts=len(texts)
-            )
-            # Return zero vectors as fallback
-            return np.zeros((len(texts), self.teacher_dim))
+
+        return np.concatenate(all_embeddings, axis=0)
     
     def check_dimension_compatibility(self, student_dim: int) -> bool:
         """
@@ -332,19 +407,27 @@ class TeacherDistillationHelper:
 
 
 class EnsembleTeacherHelper:
-    """Multi-teacher ensemble that duck-types TeacherDistillationHelper API."""
+    """Multi-teacher ensemble that duck-types TeacherDistillationHelper API.
 
-    def __init__(self, teachers, weights=None, logger=None):
+    Supports parallel encoding of multiple teachers via ThreadPoolExecutor.
+    """
+
+    def __init__(self, teachers, weights=None, logger=None,
+                 parallel_encoding=True, max_workers=4):
         """
         Args:
             teachers: List of TeacherDistillationHelper instances
             weights: Optional list of float weights (normalized internally)
             logger: Logger instance
+            parallel_encoding: If True, encode teachers in parallel (default: True)
+            max_workers: Max threads for parallel encoding (default: 4)
         """
         if not teachers:
             raise ValueError("At least one teacher is required")
         self.teachers = teachers
         self.logger = logger or get_logger()
+        self.parallel_encoding = parallel_encoding
+        self.max_workers = max_workers
 
         if weights is None:
             weights = [1.0 / len(teachers)] * len(teachers)
@@ -355,11 +438,71 @@ class EnsembleTeacherHelper:
         self._projections = {}  # teacher_idx -> DimensionProjection
         self.teacher_weight = 0.5
 
+    def _encode_single_teacher(self, args):
+        """Encode texts for a single teacher. Used by parallel path.
+
+        Args:
+            args: Tuple of (teacher_index, teacher, texts)
+
+        Returns:
+            Tuple of (teacher_index, embeddings_or_None)
+        """
+        i, teacher, texts = args
+        try:
+            embs = teacher.get_teacher_embeddings(texts)
+            return (i, embs)
+        except Exception as e:
+            self.logger.log_error(
+                "ensemble_teacher_failed",
+                f"Teacher {i} encoding failed",
+                exception=e,
+                teacher_index=i,
+            )
+            return (i, np.array([]))
+
     def get_teacher_embeddings(self, texts, target_dim=None):
-        """Get weighted average of teacher embeddings."""
+        """Get weighted average of teacher embeddings.
+
+        When parallel_encoding is True and there are multiple teachers,
+        uses ThreadPoolExecutor for concurrent encoding.
+        """
+        if self.parallel_encoding and len(self.teachers) > 1:
+            return self._get_teacher_embeddings_parallel(texts, target_dim)
+        return self._get_teacher_embeddings_sequential(texts, target_dim)
+
+    def _get_teacher_embeddings_sequential(self, texts, target_dim=None):
+        """Sequential encoding path (original behavior)."""
         all_embeddings = []
         for i, teacher in enumerate(self.teachers):
             embs = teacher.get_teacher_embeddings(texts)
+            if len(embs) == 0:
+                continue
+            if target_dim is not None and embs.shape[-1] != target_dim:
+                if i not in self._projections:
+                    self._projections[i] = DimensionProjection(
+                        embs.shape[-1], target_dim,
+                    )
+                embs = self._projections[i].project_numpy(embs)
+            all_embeddings.append(embs * self.weights[i])
+        if not all_embeddings:
+            return np.array([])
+        return sum(all_embeddings)
+
+    def _get_teacher_embeddings_parallel(self, texts, target_dim=None):
+        """Parallel encoding path using ThreadPoolExecutor."""
+        work_items = [
+            (i, teacher, texts) for i, teacher in enumerate(self.teachers)
+        ]
+        results = {}
+        effective_workers = min(self.max_workers, len(self.teachers))
+
+        with ThreadPoolExecutor(max_workers=effective_workers) as executor:
+            for i, embs in executor.map(self._encode_single_teacher, work_items):
+                results[i] = embs
+
+        all_embeddings = []
+        for i in range(len(self.teachers)):
+            embs = results.get(i, np.array([]))
             if len(embs) == 0:
                 continue
             if target_dim is not None and embs.shape[-1] != target_dim:
@@ -405,6 +548,12 @@ def create_distillation_helper(
     teacher_models=None,
     projection_enabled: bool = True,
     projection_hidden_dim: Optional[int] = None,
+    batch_size: int = 64,
+    eager_load: bool = False,
+    show_progress: bool = False,
+    max_corpus_chunk: int = 10000,
+    parallel_encoding: bool = True,
+    max_workers: int = 4,
 ):
     """
     Factory function to create distillation helper.
@@ -414,6 +563,12 @@ def create_distillation_helper(
         teacher_models: Optional list of (model_name, weight) tuples for ensemble
         projection_enabled: If True, auto-project when dimensions mismatch
         projection_hidden_dim: Optional bottleneck dimension for projection
+        batch_size: Batch size for teacher model encoding (default: 64)
+        eager_load: If True, load teacher model immediately (default: False)
+        show_progress: If True, show progress bar during encoding (default: False)
+        max_corpus_chunk: Maximum texts per encoding chunk (default: 10000)
+        parallel_encoding: If True, encode ensemble teachers in parallel (default: True)
+        max_workers: Max threads for parallel ensemble encoding (default: 4)
 
     Returns:
         TeacherDistillationHelper or EnsembleTeacherHelper instance
@@ -426,10 +581,18 @@ def create_distillation_helper(
                 teacher_model_name=model_name,
                 projection_enabled=projection_enabled,
                 projection_hidden_dim=projection_hidden_dim,
+                batch_size=batch_size,
+                eager_load=eager_load,
+                show_progress=show_progress,
+                max_corpus_chunk=max_corpus_chunk,
             )
             teachers.append(helper)
             weights.append(weight)
-        return EnsembleTeacherHelper(teachers, weights)
+        return EnsembleTeacherHelper(
+            teachers, weights,
+            parallel_encoding=parallel_encoding,
+            max_workers=max_workers,
+        )
 
     # Single teacher path
     model = teacher_model_name
@@ -442,6 +605,10 @@ def create_distillation_helper(
         teacher_model_name=model,
         projection_enabled=projection_enabled,
         projection_hidden_dim=projection_hidden_dim,
+        batch_size=batch_size,
+        eager_load=eager_load,
+        show_progress=show_progress,
+        max_corpus_chunk=max_corpus_chunk,
     )
 
 
