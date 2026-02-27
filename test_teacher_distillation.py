@@ -767,5 +767,349 @@ class TestEnsembleTeacherHelper(unittest.TestCase):
         np.testing.assert_allclose(norms, np.ones(2), atol=0.01)
 
 
+class TestBatchEncodingParams(unittest.TestCase):
+    """Test batch encoding parameters on TeacherDistillationHelper."""
+
+    def setUp(self):
+        self.logger_patcher = patch("teacher_distillation.get_logger")
+        self.mock_logger = self.logger_patcher.start()
+        self.mock_logger.return_value = MagicMock()
+
+    def tearDown(self):
+        self.logger_patcher.stop()
+
+    def test_default_batch_params(self):
+        """Test that default batch params match backward-compatible values."""
+        helper = TeacherDistillationHelper("test-model")
+        self.assertEqual(helper.batch_size, 64)
+        self.assertFalse(helper.show_progress)
+        self.assertEqual(helper.max_corpus_chunk, 10000)
+
+    def test_custom_batch_size(self):
+        """Test setting custom batch_size."""
+        helper = TeacherDistillationHelper("test-model", batch_size=128)
+        self.assertEqual(helper.batch_size, 128)
+
+    def test_custom_show_progress(self):
+        """Test setting show_progress=True."""
+        helper = TeacherDistillationHelper("test-model", show_progress=True)
+        self.assertTrue(helper.show_progress)
+
+    def test_custom_max_corpus_chunk(self):
+        """Test setting custom max_corpus_chunk."""
+        helper = TeacherDistillationHelper("test-model", max_corpus_chunk=500)
+        self.assertEqual(helper.max_corpus_chunk, 500)
+
+    @patch("teacher_distillation.SentenceTransformer")
+    @patch("teacher_distillation.torch")
+    def test_eager_load(self, mock_torch, mock_st_class):
+        """Test that eager_load=True loads model immediately."""
+        mock_torch.cuda.is_available.return_value = False
+        mock_model = MagicMock()
+        mock_model.get_sentence_embedding_dimension.return_value = 384
+        mock_st_class.return_value = mock_model
+
+        helper = TeacherDistillationHelper("test-model", eager_load=True)
+        self.assertIsNotNone(helper.teacher_model)
+        self.assertEqual(helper.teacher_dim, 384)
+
+    @patch("teacher_distillation.SentenceTransformer")
+    @patch("teacher_distillation.torch")
+    def test_batch_size_forwarded_to_encode(self, mock_torch, mock_st_class):
+        """Test that batch_size is forwarded to model.encode()."""
+        mock_torch.cuda.is_available.return_value = False
+        mock_model = MagicMock()
+        mock_model.get_sentence_embedding_dimension.return_value = 384
+        mock_model.encode.return_value = np.random.randn(3, 384)
+        mock_st_class.return_value = mock_model
+
+        helper = TeacherDistillationHelper("test-model", batch_size=32)
+        helper.get_teacher_embeddings(["a", "b", "c"])
+
+        call_kwargs = mock_model.encode.call_args[1]
+        self.assertEqual(call_kwargs["batch_size"], 32)
+
+    @patch("teacher_distillation.SentenceTransformer")
+    @patch("teacher_distillation.torch")
+    def test_show_progress_forwarded_to_encode(self, mock_torch, mock_st_class):
+        """Test that show_progress is forwarded to model.encode()."""
+        mock_torch.cuda.is_available.return_value = False
+        mock_model = MagicMock()
+        mock_model.get_sentence_embedding_dimension.return_value = 384
+        mock_model.encode.return_value = np.random.randn(2, 384)
+        mock_st_class.return_value = mock_model
+
+        helper = TeacherDistillationHelper("test-model", show_progress=True)
+        helper.get_teacher_embeddings(["a", "b"])
+
+        call_kwargs = mock_model.encode.call_args[1]
+        self.assertTrue(call_kwargs["show_progress_bar"])
+
+    @patch("teacher_distillation.SentenceTransformer")
+    @patch("teacher_distillation.torch")
+    def test_chunked_encoding_splits_large_input(self, mock_torch, mock_st_class):
+        """Test that large inputs are split into chunks."""
+        mock_torch.cuda.is_available.return_value = False
+        mock_model = MagicMock()
+        mock_model.get_sentence_embedding_dimension.return_value = 4
+
+        def encode_side_effect(texts, **kwargs):
+            return np.ones((len(texts), 4))
+
+        mock_model.encode.side_effect = encode_side_effect
+        mock_st_class.return_value = mock_model
+
+        helper = TeacherDistillationHelper("test-model", max_corpus_chunk=3)
+        texts = [f"text_{i}" for i in range(10)]
+        result = helper.get_teacher_embeddings(texts)
+
+        self.assertEqual(result.shape, (10, 4))
+        # 10 texts / chunk_size 3 = 4 chunks (3+3+3+1)
+        self.assertEqual(mock_model.encode.call_count, 4)
+
+    @patch("teacher_distillation.SentenceTransformer")
+    @patch("teacher_distillation.torch")
+    def test_chunked_encoding_per_chunk_error(self, mock_torch, mock_st_class):
+        """Test per-chunk error handling returns zeros for failed chunks."""
+        mock_torch.cuda.is_available.return_value = False
+        mock_model = MagicMock()
+        mock_model.get_sentence_embedding_dimension.return_value = 4
+
+        call_count = [0]
+
+        def encode_side_effect(texts, **kwargs):
+            call_count[0] += 1
+            if call_count[0] == 2:
+                raise RuntimeError("Simulated chunk failure")
+            return np.ones((len(texts), 4))
+
+        mock_model.encode.side_effect = encode_side_effect
+        mock_st_class.return_value = mock_model
+
+        helper = TeacherDistillationHelper("test-model", max_corpus_chunk=3)
+        texts = [f"text_{i}" for i in range(9)]
+        result = helper.get_teacher_embeddings(texts)
+
+        self.assertEqual(result.shape, (9, 4))
+        # Chunk 1 (texts 0-2): ones, Chunk 2 (texts 3-5): zeros, Chunk 3 (texts 6-8): ones
+        np.testing.assert_array_equal(result[0:3], np.ones((3, 4)))
+        np.testing.assert_array_equal(result[3:6], np.zeros((3, 4)))
+        np.testing.assert_array_equal(result[6:9], np.ones((3, 4)))
+
+    @patch("teacher_distillation.SentenceTransformer")
+    @patch("teacher_distillation.torch")
+    def test_single_chunk_fast_path(self, mock_torch, mock_st_class):
+        """Test that small inputs use single-chunk fast path."""
+        mock_torch.cuda.is_available.return_value = False
+        mock_model = MagicMock()
+        mock_model.get_sentence_embedding_dimension.return_value = 4
+        mock_model.encode.return_value = np.ones((3, 4))
+        mock_st_class.return_value = mock_model
+
+        helper = TeacherDistillationHelper("test-model", max_corpus_chunk=10000)
+        texts = ["a", "b", "c"]
+        result = helper.get_teacher_embeddings(texts)
+
+        self.assertEqual(result.shape, (3, 4))
+        self.assertEqual(mock_model.encode.call_count, 1)
+
+
+class TestParallelEnsembleEncoding(unittest.TestCase):
+    """Test parallel encoding in EnsembleTeacherHelper."""
+
+    def setUp(self):
+        self.logger_patcher = patch("teacher_distillation.get_logger")
+        self.mock_logger = self.logger_patcher.start()
+        self.mock_logger.return_value = MagicMock()
+
+    def tearDown(self):
+        self.logger_patcher.stop()
+
+    def _make_teacher(self, dim, embeddings):
+        """Create a mock TeacherDistillationHelper."""
+        teacher = MagicMock(spec=TeacherDistillationHelper)
+        teacher.teacher_dim = dim
+        teacher.get_teacher_embeddings.return_value = embeddings
+        teacher.compute_alignment_metric.return_value = 0.8
+        teacher._projection_enabled = True
+        return teacher
+
+    def test_parallel_encoding_default_enabled(self):
+        """Test that parallel encoding is enabled by default."""
+        t1 = self._make_teacher(8, np.zeros((2, 8)))
+        ensemble = EnsembleTeacherHelper([t1])
+        self.assertTrue(ensemble.parallel_encoding)
+        self.assertEqual(ensemble.max_workers, 4)
+
+    def test_parallel_encoding_disabled(self):
+        """Test ensemble with parallel_encoding=False."""
+        t1 = self._make_teacher(8, np.ones((2, 8)))
+        t2 = self._make_teacher(8, np.ones((2, 8)) * 2)
+        ensemble = EnsembleTeacherHelper([t1, t2], parallel_encoding=False)
+        self.assertFalse(ensemble.parallel_encoding)
+        result = ensemble.get_teacher_embeddings(["a", "b"], target_dim=8)
+        self.assertEqual(result.shape, (2, 8))
+
+    def test_parallel_encoding_produces_same_result(self):
+        """Test that parallel and sequential paths produce same results."""
+        emb1 = np.ones((3, 8), dtype=np.float32) * 2.0
+        emb2 = np.ones((3, 8), dtype=np.float32) * 4.0
+        t1_par = self._make_teacher(8, emb1)
+        t2_par = self._make_teacher(8, emb2)
+        t1_seq = self._make_teacher(8, emb1)
+        t2_seq = self._make_teacher(8, emb2)
+
+        ensemble_par = EnsembleTeacherHelper(
+            [t1_par, t2_par], weights=[0.5, 0.5], parallel_encoding=True,
+        )
+        ensemble_seq = EnsembleTeacherHelper(
+            [t1_seq, t2_seq], weights=[0.5, 0.5], parallel_encoding=False,
+        )
+
+        result_par = ensemble_par.get_teacher_embeddings(["a", "b", "c"], target_dim=8)
+        result_seq = ensemble_seq.get_teacher_embeddings(["a", "b", "c"], target_dim=8)
+        np.testing.assert_allclose(result_par, result_seq)
+
+    def test_parallel_custom_max_workers(self):
+        """Test custom max_workers setting."""
+        t1 = self._make_teacher(8, np.zeros((2, 8)))
+        ensemble = EnsembleTeacherHelper([t1], max_workers=2)
+        self.assertEqual(ensemble.max_workers, 2)
+
+    def test_parallel_single_teacher_uses_sequential(self):
+        """Test that single teacher falls back to sequential even when parallel enabled."""
+        emb = np.ones((2, 8), dtype=np.float32)
+        t1 = self._make_teacher(8, emb)
+        ensemble = EnsembleTeacherHelper([t1], parallel_encoding=True)
+        # Single teacher -> parallel path is not triggered (len(teachers) > 1 check)
+        result = ensemble.get_teacher_embeddings(["a", "b"], target_dim=8)
+        self.assertEqual(result.shape, (2, 8))
+        t1.get_teacher_embeddings.assert_called_once()
+
+    def test_parallel_handles_teacher_failure(self):
+        """Test that parallel encoding handles individual teacher failures."""
+        emb1 = np.ones((2, 8), dtype=np.float32) * 2.0
+        t1 = self._make_teacher(8, emb1)
+        t2 = self._make_teacher(8, np.array([]))  # Simulates failure
+        ensemble = EnsembleTeacherHelper([t1, t2], weights=[0.5, 0.5])
+        result = ensemble.get_teacher_embeddings(["a", "b"], target_dim=8)
+        # Only t1 contributes: 0.5 * 2.0 = 1.0
+        np.testing.assert_allclose(result, np.ones((2, 8)))
+
+
+class TestFactoryBatchParams(unittest.TestCase):
+    """Test that factory function forwards batch encoding params."""
+
+    def setUp(self):
+        self.logger_patcher = patch("teacher_distillation.get_logger")
+        self.mock_logger = self.logger_patcher.start()
+        self.mock_logger.return_value = MagicMock()
+
+    def tearDown(self):
+        self.logger_patcher.stop()
+
+    def test_factory_forwards_batch_size(self):
+        """Test factory forwards batch_size to single teacher."""
+        helper = create_distillation_helper(
+            teacher_model_name="test-model", batch_size=128,
+        )
+        self.assertIsInstance(helper, TeacherDistillationHelper)
+        self.assertEqual(helper.batch_size, 128)
+
+    def test_factory_forwards_show_progress(self):
+        """Test factory forwards show_progress to single teacher."""
+        helper = create_distillation_helper(
+            teacher_model_name="test-model", show_progress=True,
+        )
+        self.assertTrue(helper.show_progress)
+
+    def test_factory_forwards_max_corpus_chunk(self):
+        """Test factory forwards max_corpus_chunk to single teacher."""
+        helper = create_distillation_helper(
+            teacher_model_name="test-model", max_corpus_chunk=500,
+        )
+        self.assertEqual(helper.max_corpus_chunk, 500)
+
+    def test_factory_forwards_params_to_ensemble(self):
+        """Test factory forwards batch params to ensemble teachers."""
+        helper = create_distillation_helper(
+            teacher_models=[("model-a", 0.5), ("model-b", 0.5)],
+            batch_size=256,
+            show_progress=True,
+            max_corpus_chunk=2000,
+            parallel_encoding=False,
+            max_workers=2,
+        )
+        self.assertIsInstance(helper, EnsembleTeacherHelper)
+        self.assertFalse(helper.parallel_encoding)
+        self.assertEqual(helper.max_workers, 2)
+        # Check individual teachers got batch params
+        for teacher in helper.teachers:
+            self.assertEqual(teacher.batch_size, 256)
+            self.assertTrue(teacher.show_progress)
+            self.assertEqual(teacher.max_corpus_chunk, 2000)
+
+    def test_factory_default_params_backward_compatible(self):
+        """Test factory with no batch params matches original defaults."""
+        helper = create_distillation_helper(teacher_model_name="test-model")
+        self.assertEqual(helper.batch_size, 64)
+        self.assertFalse(helper.show_progress)
+        self.assertEqual(helper.max_corpus_chunk, 10000)
+
+
+class TestTeacherEncodingPresets(unittest.TestCase):
+    """Test teacher_encoding preset category in ChelationConfig."""
+
+    def test_default_preset(self):
+        """Test default teacher_encoding preset."""
+        from config import ChelationConfig
+        preset = ChelationConfig.get_preset("default", "teacher_encoding")
+        self.assertEqual(preset["batch_size"], 64)
+        self.assertFalse(preset["eager_load"])
+        self.assertFalse(preset["show_progress"])
+        self.assertEqual(preset["max_corpus_chunk"], 10000)
+        self.assertTrue(preset["parallel_encoding"])
+        self.assertEqual(preset["max_workers"], 4)
+
+    def test_large_corpus_preset(self):
+        """Test large_corpus teacher_encoding preset."""
+        from config import ChelationConfig
+        preset = ChelationConfig.get_preset("large_corpus", "teacher_encoding")
+        self.assertEqual(preset["batch_size"], 128)
+        self.assertTrue(preset["eager_load"])
+        self.assertTrue(preset["show_progress"])
+        self.assertEqual(preset["max_corpus_chunk"], 50000)
+
+    def test_memory_constrained_preset(self):
+        """Test memory_constrained teacher_encoding preset."""
+        from config import ChelationConfig
+        preset = ChelationConfig.get_preset("memory_constrained", "teacher_encoding")
+        self.assertEqual(preset["batch_size"], 16)
+        self.assertFalse(preset["parallel_encoding"])
+        self.assertEqual(preset["max_corpus_chunk"], 2000)
+
+    def test_gpu_optimized_preset(self):
+        """Test gpu_optimized teacher_encoding preset."""
+        from config import ChelationConfig
+        preset = ChelationConfig.get_preset("gpu_optimized", "teacher_encoding")
+        self.assertEqual(preset["batch_size"], 256)
+        self.assertTrue(preset["eager_load"])
+        self.assertEqual(preset["max_corpus_chunk"], 100000)
+        self.assertEqual(preset["max_workers"], 8)
+
+    def test_invalid_preset_raises(self):
+        """Test that invalid preset name raises ValueError."""
+        from config import ChelationConfig
+        with self.assertRaises(ValueError):
+            ChelationConfig.get_preset("nonexistent", "teacher_encoding")
+
+    def test_teacher_encoding_type_registered(self):
+        """Test that teacher_encoding is a valid preset_type."""
+        from config import ChelationConfig
+        # Should not raise
+        preset = ChelationConfig.get_preset("default", "teacher_encoding")
+        self.assertIn("description", preset)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

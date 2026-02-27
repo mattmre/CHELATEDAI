@@ -245,16 +245,64 @@ class ChelationConfig:
     # ===== Teacher Distillation Configuration =====
     # Training mode: 'baseline', 'offline', 'hybrid'
     DEFAULT_TRAINING_MODE = "baseline"
-    
+
     # Teacher model for distillation (local sentence-transformers model)
     DEFAULT_TEACHER_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
-    
+
     # Teacher weight for hybrid mode (0.0 = homeostatic only, 1.0 = teacher only)
     DEFAULT_TEACHER_WEIGHT = 0.5
-    
+
     # Offline distillation epochs
     DEFAULT_OFFLINE_EPOCHS = 15
     DEFAULT_OFFLINE_LEARNING_RATE = 0.005
+
+    # ===== Teacher Encoding Configuration =====
+    TEACHER_BATCH_SIZE = 64
+    TEACHER_EAGER_LOAD = False
+    TEACHER_SHOW_PROGRESS = False
+    TEACHER_MAX_CORPUS_CHUNK = 10000
+    ENSEMBLE_PARALLEL_ENCODING = True
+    ENSEMBLE_MAX_WORKERS = 4
+
+    # Teacher encoding presets
+    TEACHER_ENCODING_PRESETS = {
+        "default": {
+            "batch_size": 64,
+            "eager_load": False,
+            "show_progress": False,
+            "max_corpus_chunk": 10000,
+            "parallel_encoding": True,
+            "max_workers": 4,
+            "description": "Default encoding settings for typical workloads",
+        },
+        "large_corpus": {
+            "batch_size": 128,
+            "eager_load": True,
+            "show_progress": True,
+            "max_corpus_chunk": 50000,
+            "parallel_encoding": True,
+            "max_workers": 4,
+            "description": "Optimized for large corpus encoding (>100k docs)",
+        },
+        "memory_constrained": {
+            "batch_size": 16,
+            "eager_load": False,
+            "show_progress": False,
+            "max_corpus_chunk": 2000,
+            "parallel_encoding": False,
+            "max_workers": 1,
+            "description": "Low memory footprint for constrained environments",
+        },
+        "gpu_optimized": {
+            "batch_size": 256,
+            "eager_load": True,
+            "show_progress": True,
+            "max_corpus_chunk": 100000,
+            "parallel_encoding": True,
+            "max_workers": 8,
+            "description": "Maximum throughput for GPU-equipped systems",
+        },
+    }
 
     # Adapter training tuning by dataset size
     ADAPTER_PRESETS = {
@@ -501,6 +549,7 @@ class ChelationConfig:
             "adapter_type": cls.ADAPTER_TYPE_PRESETS,
             "ensemble": cls.ENSEMBLE_PRESETS,
             "teacher_weight_schedule": cls.TEACHER_WEIGHT_SCHEDULE_PRESETS,
+            "teacher_encoding": cls.TEACHER_ENCODING_PRESETS,
         }
         
         if preset_type not in preset_map:
