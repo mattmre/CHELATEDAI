@@ -1,10 +1,9 @@
 import argparse
 import itertools
-from benchmark_evolution import run_evolution, load_mteb_data, evaluate_ndcg
+from benchmark_evolution import load_mteb_data, evaluate_ndcg
 from config import ChelationConfig
 from antigravity_engine import AntigravityEngine
 import json
-from pathlib import Path
 from datetime import datetime
 
 def run_parameter_sweep(task_name="SciFact", model_name="ollama:nomic-embed-text", output_file="sweep_results.json"):
@@ -63,7 +62,7 @@ def run_parameter_sweep(task_name="SciFact", model_name="ollama:nomic-embed-text
                 for k, v, t in zip(batch_keys, embeddings, batch_texts):
                     try:
                         pid = int(k)
-                    except:
+                    except (ValueError, TypeError):
                         pid = str(uuid.uuid5(uuid.NAMESPACE_DNS, str(k)))
                     points.append(PointStruct(id=pid, vector=v, payload={"text": t, "original_id": str(k)}))
                 base_engine.qdrant.upsert(base_engine.collection_name, points)

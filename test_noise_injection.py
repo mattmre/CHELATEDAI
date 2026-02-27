@@ -3,7 +3,6 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import torch
 from antigravity_engine import AntigravityEngine
-from config import ChelationConfig
 
 def test_noise_injection_enabled():
     """Test that noise injection runs without errors when enabled."""
