@@ -449,6 +449,54 @@ class ChelationConfig:
         },
     }
 
+    # ===== Online Correction Refinements (Session 22) =====
+    ONLINE_LOSS_TYPE = "triplet_margin"  # "triplet_margin", "infonce", "cosine_similarity"
+    ONLINE_AGGREGATION = "mean"  # "mean" or "per_vector"
+    ONLINE_ADAPTIVE_MARGIN_ENABLED = False
+    ONLINE_INFONCE_TEMPERATURE = 0.07
+    ONLINE_LOSS_SCHEDULE = "constant"  # Schedule type for loss weight decay
+    ONLINE_DIAGNOSTICS_ENABLED = False
+
+    # Online update presets
+    ONLINE_UPDATE_PRESETS = {
+        "conservative": {
+            "loss_type": "triplet_margin",
+            "learning_rate": 0.00005,
+            "micro_steps": 1,
+            "margin": 0.15,
+            "update_interval": 3,
+            "aggregation": "mean",
+            "adaptive_margin": False,
+            "loss_schedule": "constant",
+            "diagnostics": False,
+            "description": "Minimal adaptation, stable behavior",
+        },
+        "balanced": {
+            "loss_type": "triplet_margin",
+            "learning_rate": 0.0001,
+            "micro_steps": 1,
+            "margin": 0.1,
+            "update_interval": 1,
+            "aggregation": "mean",
+            "adaptive_margin": False,
+            "loss_schedule": "constant",
+            "diagnostics": False,
+            "description": "Standard online correction",
+        },
+        "aggressive": {
+            "loss_type": "infonce",
+            "learning_rate": 0.0005,
+            "micro_steps": 3,
+            "temperature": 0.07,
+            "update_interval": 1,
+            "aggregation": "per_vector",
+            "adaptive_margin": True,
+            "loss_schedule": "cosine_annealing",
+            "diagnostics": True,
+            "description": "Maximum adaptation with InfoNCE and diagnostics",
+        },
+    }
+
     # ===== Memory Management =====
     MAX_BATCH_MEMORY_MB = 512  # Target max memory per batch
     CHUNK_SIZE = 100  # Qdrant update chunk size
@@ -604,6 +652,7 @@ class ChelationConfig:
             "ensemble": cls.ENSEMBLE_PRESETS,
             "teacher_weight_schedule": cls.TEACHER_WEIGHT_SCHEDULE_PRESETS,
             "teacher_encoding": cls.TEACHER_ENCODING_PRESETS,
+            "online_update": cls.ONLINE_UPDATE_PRESETS,
         }
         
         if preset_type not in preset_map:
