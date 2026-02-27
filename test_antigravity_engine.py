@@ -7,12 +7,18 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import numpy as np
-import requests
-import torch
 
-from antigravity_engine import AntigravityEngine
+try:
+    import torch
+    import sentence_transformers  # noqa: F401
+    import requests
+    from antigravity_engine import AntigravityEngine
+    HAS_TORCH = True
+except ImportError:
+    HAS_TORCH = False
 
 
+@unittest.skipUnless(HAS_TORCH, "Requires torch and sentence-transformers")
 class TestAntigravityEngine(unittest.TestCase):
     def setUp(self):
         self.qdrant_patcher = patch("antigravity_engine.QdrantClient")
