@@ -334,6 +334,51 @@ class ChelationConfig:
         }
     }
 
+    # Cross-lingual distillation presets
+    CROSS_LINGUAL_PRESETS = {
+        "en_de": {
+            "language_mappings": {
+                "en": "all-mpnet-base-v2",
+                "de": "paraphrase-multilingual-MiniLM-L12-v2",
+            },
+            "default_teacher": "paraphrase-multilingual-MiniLM-L12-v2",
+            "teacher_weight": 0.5,
+            "description": "English-German pair with English specialist and multilingual bridge",
+        },
+        "en_zh": {
+            "language_mappings": {
+                "en": "all-mpnet-base-v2",
+                "zh": "paraphrase-multilingual-MiniLM-L12-v2",
+            },
+            "default_teacher": "paraphrase-multilingual-MiniLM-L12-v2",
+            "teacher_weight": 0.5,
+            "description": "English-Chinese pair with English specialist and multilingual bridge",
+        },
+        "en_ja": {
+            "language_mappings": {
+                "en": "all-mpnet-base-v2",
+                "ja": "paraphrase-multilingual-MiniLM-L12-v2",
+            },
+            "default_teacher": "paraphrase-multilingual-MiniLM-L12-v2",
+            "teacher_weight": 0.5,
+            "description": "English-Japanese pair with English specialist and multilingual bridge",
+        },
+        "multilingual_universal": {
+            "language_mappings": {},
+            "default_teacher": "paraphrase-multilingual-mpnet-base-v2",
+            "teacher_weight": 0.6,
+            "description": "Single multilingual teacher for all languages",
+        },
+        "multilingual_hybrid": {
+            "language_mappings": {
+                "en": "all-mpnet-base-v2",
+            },
+            "default_teacher": "paraphrase-multilingual-mpnet-base-v2",
+            "teacher_weight": 0.5,
+            "description": "Best English model with multilingual fallback for other languages",
+        },
+    }
+
     # Teacher weight schedule presets
     TEACHER_WEIGHT_SCHEDULE_PRESETS = {
         "constant": {
@@ -500,6 +545,7 @@ class ChelationConfig:
             "convergence": cls.CONVERGENCE_PRESETS,
             "adapter_type": cls.ADAPTER_TYPE_PRESETS,
             "ensemble": cls.ENSEMBLE_PRESETS,
+            "cross_lingual": cls.CROSS_LINGUAL_PRESETS,
             "teacher_weight_schedule": cls.TEACHER_WEIGHT_SCHEDULE_PRESETS,
         }
         
