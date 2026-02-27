@@ -689,6 +689,108 @@ class AntigravityEngine:
         self._stability_tracker = StabilityTracker()
         self.logger.log_event("stability_tracking_enabled", "Stability tracking enabled")
 
+    def enable_topology_analysis(self, **kwargs):
+        """
+        Enable topology-aware embedding analysis.
+
+        Args:
+            **kwargs: Passed to TopologyAnalyzer constructor.
+                covalent_threshold: float (default 0.90)
+                hydrogen_threshold: float (default 0.70)
+                vdw_threshold: float (default 0.40)
+        """
+        from topology_analyzer import TopologyAnalyzer
+        self._topology_analyzer = TopologyAnalyzer(**kwargs)
+        self.logger.log_event("topology_analysis_enabled", "Topology analysis enabled")
+
+    def enable_isomer_detection(self, **kwargs):
+        """
+        Enable retrieval isomer detection.
+
+        Args:
+            **kwargs: Passed to IsomerDetector constructor.
+                strength_threshold: float (default 0.3)
+                top_k: int (default 10)
+        """
+        from isomer_detector import IsomerDetector
+        self._isomer_detector = IsomerDetector(**kwargs)
+        self.logger.log_event("isomer_detection_enabled", "Isomer detection enabled")
+
+    def get_structural_health_report(self):
+        """
+        Get unified structural health report combining stability tracking,
+        topology analysis, and isomer detection.
+
+        Returns:
+            dict with:
+                - 'stability': stability report (if tracking enabled)
+                - 'topology': topology report (if analysis enabled)
+                - 'isomers': isomer report (if detection enabled)
+                - 'health_classification': overall health (healthy/degrading/critical)
+        """
+        report = {}
+        health_signals = []
+
+        # Stability tracking
+        stability_tracker = getattr(self, '_stability_tracker', None)
+        if stability_tracker is not None:
+            stability_report = stability_tracker.get_stability_report()
+            report["stability"] = stability_report
+
+            # Check stability health signals
+            pcr = stability_report.get("persistent_collapse_ratio", 0.0)
+            if pcr > 0.5:
+                health_signals.append("critical")
+            elif pcr > 0.2:
+                health_signals.append("degrading")
+
+            osc = stability_report.get("threshold_oscillation", 0.0)
+            if osc > 0.005:
+                health_signals.append("degrading")
+
+        # Topology analysis
+        topology_analyzer = getattr(self, '_topology_analyzer', None)
+        if topology_analyzer is not None:
+            # Use snapshot history for health assessment
+            snapshots = topology_analyzer.get_snapshot_history()
+            if len(snapshots) >= 2:
+                latest = snapshots[-1]["bond_ratios"]
+                previous = snapshots[-2]["bond_ratios"]
+                covalent_change = latest.get("covalent", 0) - previous.get("covalent", 0)
+                if covalent_change > 0.1:
+                    health_signals.append("critical")
+                elif covalent_change > 0.05:
+                    health_signals.append("degrading")
+            report["topology"] = {
+                "snapshot_count": len(snapshots),
+                "snapshots": snapshots,
+            }
+
+        # Isomer detection
+        isomer_detector = getattr(self, '_isomer_detector', None)
+        if isomer_detector is not None:
+            isomer_report = isomer_detector.get_isomer_report()
+            report["isomers"] = isomer_report
+
+            # Check isomer health signals
+            if isomer_report["total_detections"] > 0:
+                mean_str = isomer_report["cumulative_mean_strength"]
+                if mean_str > 0.6:
+                    health_signals.append("critical")
+                elif mean_str > 0.3:
+                    health_signals.append("degrading")
+
+        # Classify overall health
+        if "critical" in health_signals:
+            classification = "critical"
+        elif "degrading" in health_signals:
+            classification = "degrading"
+        else:
+            classification = "healthy"
+
+        report["health_classification"] = classification
+        return report
+
     def _cosine_similarity_manual(self, vec1, vec2):
         """Calculates Cosine Similarity manually."""
         norm1 = np.linalg.norm(vec1)
