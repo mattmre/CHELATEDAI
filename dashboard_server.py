@@ -670,6 +670,8 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             self.handle_api_sweep_results(query_params)
         elif path == "/api/test_results":
             self.handle_api_test_results()
+        elif path == "/api/beir_results":
+            self.handle_api_beir_results()
         elif path == "/" or path == "/dashboard" or path == "/dashboard/":
             # Redirect to dashboard page
             self.serve_dashboard()
@@ -764,6 +766,29 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             self.send_json_response(report)
         except Exception as e:
             self.send_error_response(500, f"Error reading test results: {str(e)}")
+
+    def handle_api_beir_results(self):
+        """Handle /api/beir_results endpoint.
+
+        Returns BEIR multi-dataset benchmark results from
+        benchmark_beir_results.json if available.
+        """
+        beir_file = "benchmark_beir_results.json"
+        try:
+            if not os.path.exists(beir_file):
+                self.send_json_response({
+                    "results": [],
+                    "aggregated_by_config": {},
+                    "aggregated_by_dataset": {},
+                    "heatmap": {"configs": [], "datasets": [], "ndcg_matrix": []},
+                    "summary": {"num_datasets": 0, "num_configs": 0, "total_evaluations": 0},
+                })
+                return
+            with open(beir_file, 'r') as f:
+                data = json.load(f)
+            self.send_json_response(data)
+        except Exception as e:
+            self.send_error_response(500, f"Error reading BEIR results: {str(e)}")
             
     def serve_dashboard(self):
         """Serve the dashboard HTML page."""
