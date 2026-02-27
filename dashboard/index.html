@@ -57,6 +57,7 @@
   <div class="tabs">
     <div class="tab active" onclick="switchTab('analytics')">Analysis & Results</div>
     <div class="tab" onclick="switchTab('tests')">Test Tracking</div>
+    <div class="tab" onclick="switchTab('beir')">BEIR Benchmarks</div>
     <div class="tab" onclick="switchTab('logs')">Live Events</div>
   </div>
 
@@ -131,6 +132,56 @@
     </div>
   </div>
 
+  <!-- BEIR Benchmarks Tab -->
+  <div id="beir" class="container">
+    <div class="cards">
+      <div class="card"><div class="label">Datasets Evaluated</div><div class="value" id="beir-datasets">-</div></div>
+      <div class="card"><div class="label">Configurations</div><div class="value" id="beir-configs">-</div></div>
+      <div class="card"><div class="label">Total Evaluations</div><div class="value" id="beir-total">-</div></div>
+      <div class="card"><div class="label">Best Config (Avg NDCG)</div><div class="value" id="beir-best-config" style="font-size:18px;">-</div></div>
+    </div>
+
+    <div class="panel">
+      <div style="display:flex; justify-content: space-between; align-items:center">
+        <h2>NDCG@10 Heatmap (Config x Dataset)</h2>
+        <button onclick="loadBeirResults()">Refresh BEIR Data</button>
+      </div>
+      <div class="table-container">
+        <table id="beir-heatmap-table">
+          <thead id="beir-heatmap-head"><tr><th>Loading...</th></tr></thead>
+          <tbody id="beir-heatmap-body"><tr><td>Loading...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Aggregated NDCG@10 by Configuration</h2>
+      <div class="chart-container">
+        <canvas id="beirChart"></canvas>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Per-Dataset Results</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Dataset</th>
+            <th>Configuration</th>
+            <th>NDCG@10</th>
+            <th>MAP@10</th>
+            <th>MRR</th>
+            <th>Recall@10</th>
+            <th>Latency (ms)</th>
+          </tr>
+        </thead>
+        <tbody id="beir-detail-rows">
+          <tr><td colspan="7">Loading...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
   <!-- Logs Tab -->
   <div id="logs" class="container">
     <div class="cards">
@@ -183,6 +234,7 @@
       if(tabId === 'analytics') loadSweepResults();
       if(tabId === 'logs') refreshLogs();
       if(tabId === 'tests') loadTestResults();
+      if(tabId === 'beir') loadBeirResults();
     }
 
     // --- TEST LOGIC ---
@@ -389,6 +441,159 @@
             },
             x: {
               title: { display: true, text: 'Noise Injection Scale' }
+            }
+          }
+        }
+      });
+    }
+
+    // --- BEIR BENCHMARKS LOGIC ---
+    let beirChartInstance = null;
+
+    async function loadBeirResults() {
+      try {
+        const res = await fetch('/api/beir_results');
+        const data = await res.json();
+
+        const summary = data.summary || {};
+        document.getElementById('beir-datasets').textContent = summary.num_datasets || 0;
+        document.getElementById('beir-configs').textContent = summary.num_configs || 0;
+        document.getElementById('beir-total').textContent = summary.total_evaluations || 0;
+
+        // Find best config by aggregated NDCG
+        const aggByConfig = data.aggregated_by_config || {};
+        let bestConfig = '-';
+        let bestNdcg = -1;
+        for (const [cfg, metrics] of Object.entries(aggByConfig)) {
+          if (metrics.mean_ndcg_at_10 > bestNdcg) {
+            bestNdcg = metrics.mean_ndcg_at_10;
+            bestConfig = cfg;
+          }
+        }
+        document.getElementById('beir-best-config').textContent =
+          bestNdcg >= 0 ? bestConfig + ' (' + bestNdcg.toFixed(4) + ')' : '-';
+
+        // Heatmap table
+        const heatmap = data.heatmap || {};
+        const configs = heatmap.configs || [];
+        const datasets = heatmap.datasets || [];
+        const matrix = heatmap.ndcg_matrix || [];
+
+        const thead = document.getElementById('beir-heatmap-head');
+        const tbody = document.getElementById('beir-heatmap-body');
+        thead.innerHTML = '';
+        tbody.innerHTML = '';
+
+        if (configs.length > 0 && datasets.length > 0) {
+          const headRow = document.createElement('tr');
+          const thCorner = document.createElement('th');
+          thCorner.textContent = 'Config \\ Dataset';
+          headRow.appendChild(thCorner);
+          datasets.forEach(ds => {
+            const th = document.createElement('th');
+            th.textContent = ds;
+            headRow.appendChild(th);
+          });
+          const thAvg = document.createElement('th');
+          thAvg.textContent = 'Avg';
+          headRow.appendChild(thAvg);
+          thead.appendChild(headRow);
+
+          configs.forEach((cfg, i) => {
+            const tr = document.createElement('tr');
+            const tdName = document.createElement('td');
+            tdName.textContent = cfg;
+            tdName.style.fontWeight = 'bold';
+            tr.appendChild(tdName);
+
+            const row = matrix[i] || [];
+            let rowSum = 0;
+            row.forEach(val => {
+              const td = document.createElement('td');
+              td.textContent = val.toFixed(4);
+              // Color-code cells
+              const intensity = Math.min(val * 255 / 0.8, 255);
+              td.style.background = 'rgba(74, 111, 165, ' + (intensity / 255 * 0.3).toFixed(2) + ')';
+              tr.appendChild(td);
+              rowSum += val;
+            });
+            const tdAvg = document.createElement('td');
+            tdAvg.textContent = row.length > 0 ? (rowSum / row.length).toFixed(4) : '-';
+            tdAvg.style.fontWeight = 'bold';
+            tr.appendChild(tdAvg);
+            tbody.appendChild(tr);
+          });
+        } else {
+          thead.innerHTML = '<tr><th>No BEIR data available</th></tr>';
+        }
+
+        // Detail table
+        const detailRows = document.getElementById('beir-detail-rows');
+        detailRows.innerHTML = '';
+        const results = data.results || [];
+        if (results.length === 0) {
+          detailRows.innerHTML = '<tr><td colspan="7">No BEIR results. Run: python benchmark_beir.py --tier quick</td></tr>';
+        } else {
+          results.forEach(r => {
+            const tr = document.createElement('tr');
+            const cells = [
+              r.dataset_name,
+              r.config_name,
+              r.ndcg_at_10.toFixed(4),
+              r.map_at_10.toFixed(4),
+              r.mrr.toFixed(4),
+              r.recall_at_10.toFixed(4),
+              r.latency_ms.toFixed(1)
+            ];
+            cells.forEach(text => {
+              const td = document.createElement('td');
+              td.textContent = text;
+              tr.appendChild(td);
+            });
+            detailRows.appendChild(tr);
+          });
+        }
+
+        // Bar chart of aggregated NDCG by config
+        renderBeirChart(aggByConfig);
+
+      } catch (e) {
+        console.error('Error loading BEIR results', e);
+      }
+    }
+
+    function renderBeirChart(aggByConfig) {
+      const labels = Object.keys(aggByConfig).sort();
+      const values = labels.map(l => aggByConfig[l].mean_ndcg_at_10);
+
+      const ctx = document.getElementById('beirChart').getContext('2d');
+      if (beirChartInstance) beirChartInstance.destroy();
+
+      beirChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Mean NDCG@10 (across datasets)',
+            data: values,
+            backgroundColor: 'rgba(74, 111, 165, 0.7)',
+            borderColor: '#4a6fa5',
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              title: { display: true, text: 'Mean NDCG@10' }
+            },
+            x: {
+              title: { display: true, text: 'Configuration' }
             }
           }
         }
