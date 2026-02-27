@@ -370,6 +370,47 @@ class ChelationConfig:
         },
     }
 
+    # Topology analysis presets
+    TOPOLOGY_PRESETS = {
+        "tight": {
+            "covalent_threshold": 0.95,
+            "hydrogen_threshold": 0.80,
+            "vdw_threshold": 0.50,
+            "description": "Tight thresholds, fewer bonds classified as strong",
+        },
+        "balanced": {
+            "covalent_threshold": 0.90,
+            "hydrogen_threshold": 0.70,
+            "vdw_threshold": 0.40,
+            "description": "Default balanced thresholds for general use",
+        },
+        "loose": {
+            "covalent_threshold": 0.85,
+            "hydrogen_threshold": 0.60,
+            "vdw_threshold": 0.30,
+            "description": "Loose thresholds, more bonds classified as strong",
+        },
+    }
+
+    # Isomer detection presets
+    ISOMER_PRESETS = {
+        "sensitive": {
+            "strength_threshold": 0.1,
+            "top_k": 10,
+            "description": "Sensitive detection, flags even small result differences",
+        },
+        "balanced": {
+            "strength_threshold": 0.3,
+            "top_k": 10,
+            "description": "Default balanced detection thresholds",
+        },
+        "strict": {
+            "strength_threshold": 0.5,
+            "top_k": 10,
+            "description": "Strict detection, only flags major result changes",
+        },
+    }
+
     # ===== Memory Management =====
     MAX_BATCH_MEMORY_MB = 512  # Target max memory per batch
     CHUNK_SIZE = 100  # Qdrant update chunk size
@@ -501,6 +542,8 @@ class ChelationConfig:
             "adapter_type": cls.ADAPTER_TYPE_PRESETS,
             "ensemble": cls.ENSEMBLE_PRESETS,
             "teacher_weight_schedule": cls.TEACHER_WEIGHT_SCHEDULE_PRESETS,
+            "topology": cls.TOPOLOGY_PRESETS,
+            "isomer": cls.ISOMER_PRESETS,
         }
         
         if preset_type not in preset_map:
