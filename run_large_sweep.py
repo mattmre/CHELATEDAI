@@ -1,6 +1,6 @@
 import argparse
 import itertools
-from benchmark_evolution import run_evolution, load_mteb_data, evaluate_ndcg
+from benchmark_evolution import load_mteb_data, evaluate_ndcg
 from config import ChelationConfig
 from antigravity_engine import AntigravityEngine
 import json
