@@ -334,6 +334,37 @@ class ChelationConfig:
         }
     }
 
+    # Sweep-validated sedimentation tuning presets (Session 22)
+    # Derived from 81-config parameter sweep on SciFact (baseline NDCG@10 = 0.58669).
+    # Key finding: LR >= 0.1 causes catastrophic collapse (61.5% of variance).
+    # Safe operating region: LR=0.01, threshold=1, noise=0.05-0.2, epochs=5.
+    SEDIMENTATION_TUNED_PRESETS = {
+        "conservative": {
+            "learning_rate": 0.001,
+            "threshold": 1,
+            "noise_scale": 0.05,
+            "epochs": 5,
+            "description": "Minimal degradation, safest operating point"
+        },
+        "balanced": {
+            "learning_rate": 0.01,
+            "threshold": 1,
+            "noise_scale": 0.1,
+            "epochs": 5,
+            "description": "Best trade-off from sweep (NDCG 0.58555, 99.8% retention)"
+        },
+        "aggressive": {
+            "learning_rate": 0.01,
+            "threshold": 1,
+            "noise_scale": 0.2,
+            "epochs": 10,
+            "description": "Maximize adaptation with higher noise and longer training"
+        }
+    }
+
+    # Collapse risk threshold for learning rate (from sweep analysis)
+    SWEEP_LR_COLLAPSE_THRESHOLD = 0.1
+
     # Teacher weight schedule presets
     TEACHER_WEIGHT_SCHEDULE_PRESETS = {
         "constant": {
@@ -469,6 +500,28 @@ class ChelationConfig:
         return value
     
     @classmethod
+    def validate_sedimentation_learning_rate(cls, value: float) -> float:
+        """
+        Validate learning rate for sedimentation with collapse risk warning.
+
+        Based on 81-config parameter sweep on SciFact: LR >= 0.1 accounts for
+        61.5% of performance variance and causes catastrophic collapse.
+
+        Args:
+            value: Learning rate to validate
+
+        Returns:
+            The validated learning rate (clamped to general bounds)
+        """
+        if value >= cls.SWEEP_LR_COLLAPSE_THRESHOLD:
+            print(
+                f"WARNING: learning_rate={value} >= {cls.SWEEP_LR_COLLAPSE_THRESHOLD} "
+                f"risks catastrophic collapse (sweep analysis: 61.5% variance from LR). "
+                f"Recommended safe range: 0.001-0.01."
+            )
+        return cls.validate_learning_rate(value)
+
+    @classmethod
     def validate_max_depth(cls, value: int) -> int:
         """Validate and clamp max_depth to valid range."""
         if not cls.MIN_MAX_DEPTH <= value <= cls.MAX_MAX_DEPTH:
@@ -497,6 +550,7 @@ class ChelationConfig:
             "adapter": cls.ADAPTER_PRESETS,
             "rlm": cls.RLM_PRESETS,
             "sedimentation": cls.SEDIMENTATION_PRESETS,
+            "sedimentation_tuned": cls.SEDIMENTATION_TUNED_PRESETS,
             "convergence": cls.CONVERGENCE_PRESETS,
             "adapter_type": cls.ADAPTER_TYPE_PRESETS,
             "ensemble": cls.ENSEMBLE_PRESETS,
