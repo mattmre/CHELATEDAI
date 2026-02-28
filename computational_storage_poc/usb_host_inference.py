@@ -7,8 +7,17 @@ def read_inference_from_drive(drive_id, sector_start=100, num_sectors=1):
     For the RP2040 Computational Storage Firmware, reading sector 100 
     triggers the onboard neural network inference.
     """
-    # Windows physical drive path format
-    drive_path = f"\\\\.\\PhysicalDrive{drive_id}"
+    # Path branching for OS agnostic raw drive reading
+    if os.name == 'nt':
+        # Windows physical drive path format
+        drive_path = f"\\\\.\\PhysicalDrive{drive_id}"
+    else:
+        # Linux / Docker path formats
+        if str(drive_id).isdigit():
+            drive_path = f"/dev/loop{drive_id}"
+        else:
+            drive_path = str(drive_id) # Direct path like /mnt/virtual_usb/flash.img
+
     print(f"Attempting to open {drive_path} in raw mode...")
     
     try:
@@ -53,15 +62,16 @@ if __name__ == "__main__":
     
     try:
         if len(sys.argv) > 1:
-            drive_id = int(sys.argv[1])
+            drive_id = sys.argv[1]
         else:
             print("To find your USB Drive ID, you can run this command in PowerShell:")
             print("  Get-Disk | Select-Object Number, FriendlyName")
-            print("")
-            drive_input = input("Enter the PhysicalDrive Number (e.g., 2 for \\\\.\\PhysicalDrive2): ")
-            drive_id = int(drive_input.strip())
+            print("On Linux/Docker, you can pass a path like: /mnt/virtual_usb/flash.img\n")
             
-        print(f"\nSending read request to Sector 100 on PhysicalDrive{drive_id}...")
+            drive_input = input("Enter the Drive Number OR Path: ")
+            drive_id = drive_input.strip()
+            
+        print(f"\nSending read request to Sector 100 on {drive_id}...")
         result = read_inference_from_drive(drive_id)
         
         print("\n" + "="*50)

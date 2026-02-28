@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  usb_emulator:
+    build: .
+    container_name: chelatedai_usb_emulator
+    # Required for FUSE to operate the virtual disk
+    privileged: true
+    devices:
+      - /dev/fuse
+    volumes:
+      # Mount the POC folder down into the container so we can run the test scripts
+      - ../:/app/computational_storage_poc
+    working_dir: /app/computational_storage_poc/emulation
+    command: bash -c "python3 fuse_block_emulator.py /mnt/virtual_usb"
