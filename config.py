@@ -570,6 +570,56 @@ class ChelationConfig:
         },
     }
 
+    # Topology analysis presets
+    TOPOLOGY_PRESETS = {
+        "tight": {
+            "covalent_threshold": 0.95,
+            "hydrogen_threshold": 0.80,
+            "vdw_threshold": 0.50,
+            "description": "Tight thresholds, fewer bonds classified as strong",
+        },
+        "balanced": {
+            "covalent_threshold": 0.90,
+            "hydrogen_threshold": 0.70,
+            "vdw_threshold": 0.40,
+            "description": "Default balanced thresholds for general use",
+        },
+        "loose": {
+            "covalent_threshold": 0.85,
+            "hydrogen_threshold": 0.60,
+            "vdw_threshold": 0.30,
+            "description": "Loose thresholds, more bonds classified as strong",
+        },
+    }
+
+    # Isomer detection presets
+    ISOMER_PRESETS = {
+        "sensitive": {
+            "strength_threshold": 0.1,
+            "top_k": 10,
+            "description": "Sensitive detection, flags even small result differences",
+        },
+        "balanced": {
+            "strength_threshold": 0.3,
+            "top_k": 10,
+            "description": "Default balanced detection thresholds",
+        },
+        "strict": {
+            "strength_threshold": 0.5,
+            "top_k": 10,
+            "description": "Strict detection, only flags major result changes",
+        },
+    }
+
+    # Structural health thresholds
+    STRUCTURAL_HEALTH_PERSISTENT_COLLAPSE_DEGRADING = 0.2
+    STRUCTURAL_HEALTH_PERSISTENT_COLLAPSE_CRITICAL = 0.5
+    STRUCTURAL_HEALTH_THRESHOLD_OSCILLATION_DEGRADING = 0.005
+    STRUCTURAL_HEALTH_TOPOLOGY_COVALENT_DEGRADING = 0.05
+    STRUCTURAL_HEALTH_TOPOLOGY_COVALENT_CRITICAL = 0.1
+    STRUCTURAL_HEALTH_ISOMER_MEAN_STRENGTH_DEGRADING = 0.3
+    STRUCTURAL_HEALTH_ISOMER_MEAN_STRENGTH_CRITICAL = 0.6
+
     # ===== Memory Management =====
     MAX_BATCH_MEMORY_MB = 512  # Target max memory per batch
     CHUNK_SIZE = 100  # Qdrant update chunk size
@@ -728,6 +778,8 @@ class ChelationConfig:
             "teacher_encoding": cls.TEACHER_ENCODING_PRESETS,
             "online_update": cls.ONLINE_UPDATE_PRESETS,
             "beir": cls.BEIR_PRESETS,
+            "topology": cls.TOPOLOGY_PRESETS,
+            "isomer": cls.ISOMER_PRESETS,
         }
         
         if preset_type not in preset_map:
