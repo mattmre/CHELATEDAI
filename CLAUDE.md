@@ -26,7 +26,7 @@ GitHub Actions workflow at `.github/workflows/test.yml`:
 
 ## Running Tests
 
-All tests use Python `unittest` (not pytest). Run via CI or locally:
+All tests use Python `unittest` (not pytest). CI does **not** install `pytest`, so do not add `pytest` imports or pytest-only fixtures to `test_*.py`. Run via CI or locally:
 
 ```bash
 # Run a single test file
@@ -42,22 +42,16 @@ for f in test_*.py; do python "$f"; done
 python -m unittest discover -s . -p "test_*.py" -v
 ```
 
-**Key test files (529+ tests passing):**
-- `test_unit_core.py` (54) - Core adapter variants
-- `test_noise_injection.py` (2) - Noise injection validation
-- `test_convergence_monitor.py` (22) - Phase 1 early stopping
-- `test_online_updater.py` (18) - Phase 3 online updates
-- `test_dimension_mask_predictor.py` (26) - Phase 4 masking
-- `test_stability_tracker.py` (19) - Phase 5 diagnostics
-- `test_checkpoint_manager.py` (32) - Checkpoint/rollback
-- `test_recursive_decomposer.py` (73) - Query decomposition
-- `test_aep_orchestrator.py` (47) - Agentic workflow
-- `test_benchmark_comparative.py` (23), `test_benchmark_utils.py` (26), `test_benchmark_rlm.py` (44)
-- `test_teacher_distillation.py` (45) - B.1/B.2 projection + ensemble
-- `test_teacher_weight_scheduler.py` (25) - B.3 schedule types
-- `test_chelation_logger.py` (30), `test_sedimentation_trainer.py` (18), `test_dashboard_server.py` (27)
+**Representative test files (`957` tests passing on `main` as of 2026-03-05):**
+- `test_unit_core.py` - Core adapter variants
+- `test_noise_injection.py` - Noise injection validation under `unittest`
+- `test_online_updater.py`, `test_dimension_mask_predictor.py`, `test_stability_tracker.py`
+- `test_benchmark_beir.py`, `test_benchmark_comparative.py`, `test_dashboard_server.py`
+- `test_cross_lingual_distillation.py`, `test_language_detector.py`
+- `test_topology_analyzer.py`, `test_isomer_detector.py`, `test_structural_health_report.py`
+- `test_teacher_distillation.py`, `test_teacher_weight_scheduler.py`, `test_aep_orchestrator.py`
 
-**Environment-dependent tests:** `test_antigravity_engine.py` (41), `test_adaptive_threshold.py` (23), `test_memory_optimization.py` (16) require full `torch` + `sentence-transformers` installed. They pass in CI but may fail locally without GPU dependencies. The `PytestCollectionWarning` about `TestingAgent` is harmless.
+**Environment-dependent tests:** `test_antigravity_engine.py`, `test_adaptive_threshold.py`, and `test_memory_optimization.py` require full `torch` + `sentence-transformers` installed. They pass in CI but may fail locally without those dependencies.
 
 ## Architecture
 
@@ -94,16 +88,24 @@ AEPOrchestrator (aep_orchestrator.py)  <- 7-phase agentic remediation workflow
 
 Dashboard & Sweeping (dashboard_server.py, run_sweep.py, run_large_sweep.py)
 `-- Serves live metrics to localhost:8080 and manages parameter grid search.
+
+Evaluation & Analysis Modules
+|-- benchmark_beir.py                # Multi-dataset BEIR benchmarking + report generation
+|-- cross_lingual_distillation.py    # Language-aware teacher routing for distillation
+|-- language_detector.py             # Lightweight language detection with caching/fallbacks
+|-- topology_analyzer.py             # Topology snapshots, bond matrices, cluster connectivity
+`-- isomer_detector.py               # Query-result isomer detection built on topology signals
 ```
 
 ### Key design patterns
 
 - **Adapter factory:** `create_adapter("mlp"|"procrustes"|"low_rank", input_dim)` returns one of three adapter types. All initialize near-identity (small weight std 0.001) to preserve base model quality.
-- **Config presets:** `ChelationConfig.get_preset(name, type)` for `chelation`, `adapter`, `convergence`, `adapter_type`, `rlm`, `sedimentation`, `ensemble`, `teacher_weight_schedule` categories.
+- **Config presets:** `ChelationConfig.get_preset(name, type)` supports `chelation`, `adapter`, `convergence`, `adapter_type`, `rlm`, `sedimentation`, `sedimentation_tuned`, `ensemble`, `cross_lingual`, `teacher_weight_schedule`, `teacher_encoding`, `online_update`, `beir`, `topology`, and `isomer`.
 - **Noise Injection:** Dynamically scaled noise injection during sedimentation training.
 - **Embedding backend routing:** Model names prefixed with `ollama:` use the HTTP API; all others use local SentenceTransformers.
 - **Teacher distillation:** `DimensionProjection` for teacher-student dim mismatches, `EnsembleTeacherHelper` for multi-teacher weighted averaging, `TeacherWeightScheduler` for 5 dynamic schedule types.
 - **AEP data model:** `Finding` objects with `Severity` (CRITICAL/HIGH/MEDIUM/LOW), `FindingStatus`, and `EffortSize` (S=1, M=3, L=5). Tiered remediation processes Critical->High->Medium->Low with no skipping.
+- **Structural health reporting:** `antigravity_engine.py` now uses config-driven thresholds for persistent collapse, oscillation, topology cohesion, and isomer drift.
 
 ## Test Conventions
 
@@ -112,6 +114,11 @@ Dashboard & Sweeping (dashboard_server.py, run_sweep.py, run_large_sweep.py)
 - **Local model for tests:** `model_name="all-MiniLM-L6-v2"` (requires sentence-transformers).
 - **Temp files:** Tests use `tempfile` for filesystem isolation with cleanup in `tearDown`.
 - **No sklearn:** Use numpy and torch only.
+
+## Git Workflow Notes
+
+- The repository branch policy may still show PRs as blocked even after all required checks are green. Session 23 required admin merges for `#80`, `#83`, and `#82`.
+- `gh pr merge` can fail if a local worktree is holding `main`. Before merging stacked PRs, remove/prune merged worktrees or switch them off `main`.
 
 ## Reference Material
 
