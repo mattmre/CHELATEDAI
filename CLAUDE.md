@@ -24,6 +24,9 @@ GitHub Actions workflow at `.github/workflows/test.yml`:
 - **Lint job:** `ruff check .` on Python 3.11
 - **Test job:** `unittest discover` across Python 3.9, 3.10, 3.11, 3.12 matrix
 
+GitHub Actions workflow at `.github/workflows/build_firmware.yml`:
+- **Firmware build job:** builds the RP2040/TinyUSB computational-storage firmware when `computational_storage_poc/firmware/**` changes and uploads UF2/ELF/BIN artifacts
+
 ## Running Tests
 
 All tests use Python `unittest` (not pytest). CI does **not** install `pytest`, so do not add `pytest` imports or pytest-only fixtures to `test_*.py`. Run via CI or locally:
@@ -42,12 +45,13 @@ for f in test_*.py; do python "$f"; done
 python -m unittest discover -s . -p "test_*.py" -v
 ```
 
-**Representative test files (`962` tests passing on this branch as of 2026-03-05):**
+**Representative test files (`966` tests passing on `main` as of 2026-03-06):**
 - `test_unit_core.py` - Core adapter variants
 - `test_noise_injection.py` - Noise injection validation under `unittest`
 - `test_online_updater.py`, `test_dimension_mask_predictor.py`, `test_stability_tracker.py`
 - `test_benchmark_beir.py`, `test_benchmark_comparative.py`, `test_dashboard_server.py`
 - `test_computational_storage_poc.py` - block-graph parity, latency invariants, and real-data storage round-trip validation
+- `test_computational_storage_payload.py` - deterministic trigger-sector payload, host decoding, and virtual-disk interception validation
 - `test_cross_lingual_distillation.py`, `test_language_detector.py`
 - `test_topology_analyzer.py`, `test_isomer_detector.py`, `test_structural_health_report.py`
 - `test_teacher_distillation.py`, `test_teacher_weight_scheduler.py`, `test_aep_orchestrator.py`
@@ -121,7 +125,9 @@ Evaluation & Analysis Modules
 
 - The repository branch policy may still show PRs as blocked even after all required checks are green. Session 23 required admin merges for `#80`, `#83`, and `#82`.
 - `gh pr merge` can fail if a local worktree is holding `main`. Before merging stacked PRs, remove/prune merged worktrees or switch them off `main`.
-- The stale computational-storage PR `#84` was retired in Session 24. Use `#86` for the validation foundation and `#87` for the draft payload track instead of reviving the old branch.
+- The computational-storage split is complete on `main` as of 2026-03-06: `#86` landed the validation foundation, `#87` landed the payload transport path, and `#88` landed the session-wrap docs.
+- Do not revive the stale computational-storage PR `#84` or the old `feat/session22-online-correction` branch line. If historical comparison is needed, use the local `backup/retired-*` refs instead.
+- Local `git status` may show `?? .claude/`; that directory holds local worktree metadata and retired-branch artifacts and is not, by itself, a product-code diff.
 
 ## Reference Material
 
