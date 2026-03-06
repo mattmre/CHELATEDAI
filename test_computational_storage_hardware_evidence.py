@@ -4,6 +4,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 POC_DIR = os.path.join(os.path.dirname(__file__), "computational_storage_poc")
 if POC_DIR not in sys.path:
@@ -15,9 +16,18 @@ from capture_hardware_evidence import (  # noqa: E402
     write_evidence_report,
 )
 from payload_contract import SECTOR_SIZE, TRIGGER_SECTOR_LBA, build_trigger_sector_payload  # noqa: E402
+from usb_host_inference import resolve_drive_path  # noqa: E402
 
 
 class TestHardwareEvidenceCapture(unittest.TestCase):
+    def test_resolve_drive_path_preserves_windows_device_path(self):
+        with patch("usb_host_inference.os.name", "nt"), patch(
+            "usb_host_inference.os.path.exists",
+            return_value=False,
+        ):
+            self.assertEqual(resolve_drive_path(r"\\.\PhysicalDrive2"), r"\\.\PhysicalDrive2")
+            self.assertEqual(resolve_drive_path("2"), r"\\.\PhysicalDrive2")
+
     def test_capture_from_file_path_matches_expected_payload(self):
         payload = build_trigger_sector_payload()
         disk_size = (TRIGGER_SECTOR_LBA + 1) * SECTOR_SIZE

@@ -18,10 +18,14 @@ def decode_inference_bytes(data: bytes) -> str:
 def resolve_drive_path(drive_id):
     drive_id_str = str(drive_id)
 
-    if os.name == 'nt' and os.path.exists(drive_id_str):
-        return drive_id_str
     if os.name == 'nt':
-        return f"\\\\.\\PhysicalDrive{drive_id_str}"
+        if os.path.exists(drive_id_str):
+            return drive_id_str
+        if drive_id_str.startswith('\\\\.\\') or drive_id_str.startswith('\\\\?\\'):
+            return drive_id_str
+        if drive_id_str.isdigit():
+            return f"\\\\.\\PhysicalDrive{drive_id_str}"
+        return drive_id_str
     if drive_id_str.isdigit():
         return f"/dev/loop{drive_id_str}"
     return drive_id_str
