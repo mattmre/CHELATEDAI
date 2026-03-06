@@ -1,5 +1,19 @@
 # Documentation Index
 
+## Core Documentation
+
+| Document | Description |
+|----------|-------------|
+| [Docs Home](README.md) | Canonical starting point plus legacy-to-canonical doc map |
+| [Repository Overview](../README.md) | High-level repo summary, quick start, and validation commands |
+| [System Blueprint](SYSTEM_BLUEPRINT.md) | Architecture, stack, CI surfaces, and information-flow diagrams |
+| [Module Guide](MODULE_GUIDE.md) | Module-by-module inventory across runtime, evaluation, and storage POC files |
+| [Research Tracks](RESEARCH_TRACKS.md) | Current research themes, maturity, and open questions |
+| [Computational Storage And Drive Nodes](COMPUTATIONAL_STORAGE_DRIVE_NODES.md) | Canonical summary of hard-drive / storage-node experiments and scope limits |
+| [Computational Storage Scope Decision](computational-storage-transport-scope-decision.md) | Formal claim boundary for the RP2040 transport path |
+| [Computational Storage Hardware Evidence Runbook](computational-storage-hardware-evidence-runbook.md) | Operator workflow for real hardware evidence capture |
+| [Roadmap Audit And Weight Refinement Plan (2026-03-06)](roadmap-audit-and-weight-refinement-plan-2026-03-06.md) | Current conclusion that non-hardware development phases are complete plus the next evaluation plan |
+
 ## Agentic Engineering And Planning
 
 | Document | Description |
@@ -45,7 +59,6 @@
 | [Research: F-002/F-003 Test Plan](ARCH%20AGENTIC%20ENGINEERING%20AND%20PLANNING/research-f002-f003-test-plan.md) | Test coverage plan for benchmark + checkpoint |
 | [Research: Tier2/Tier3 Plan (2026-02-17)](ARCH%20AGENTIC%20ENGINEERING%20AND%20PLANNING/research-2026-02-17-tier2-tier3-plan.md) | Multi-finding implementation architecture and sequencing notes |
 | [Proposed Trials and Validation Round (2026-02-17)](proposed-trials-validation-round-2026-02-17.md) | Adaptive weighting + Eagan delta-z comparative validation plan |
-
 ## Analysis
 
 | Document | Description |

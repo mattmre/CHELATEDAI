@@ -3,6 +3,12 @@
 This project implements a testbed for the **Computational Storage (SSD Array) AI Inference** architecture.
 The premise replaces matrix multiplication entirely with direct memory routing using memory tables, mapping it directly onto NAND flash memory.
 
+Related repository docs:
+
+- [docs/COMPUTATIONAL_STORAGE_DRIVE_NODES.md](../docs/COMPUTATIONAL_STORAGE_DRIVE_NODES.md) - canonical repo-wide summary of the hard-drive / storage-node research track
+- [docs/computational-storage-transport-scope-decision.md](../docs/computational-storage-transport-scope-decision.md) - current claim boundary for the RP2040 path
+- [docs/computational-storage-hardware-evidence-runbook.md](../docs/computational-storage-hardware-evidence-runbook.md) - operator workflow for real hardware evidence capture
+
 ## What Is Verified
 
 - Exact block-graph traversal from offset `0x0`, including the first block.
@@ -59,6 +65,13 @@ python -m unittest test_computational_storage_payload.py -v
 ## Current Scope Lock
 
 The RP2040 path is still an experimental payload track. The full digits model is validated in software today; the firmware currently uses the deterministic toy graph above to prove the USB interception path and descriptor plumbing.
+
+The wider repository also contains a more speculative storage-node thread:
+
+- `mock_array.py` models multi-drive speculative node racing
+- `CHELATEDAI_integration_demo.py` shows how recursive node requests could dispatch into that array
+
+Treat that as research into drive-resident node orchestration, not as proof that the repo already runs a full LLM from a physical hard drive.
 
 The current claim boundary is intentionally narrow:
 
