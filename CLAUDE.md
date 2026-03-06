@@ -27,6 +27,9 @@ GitHub Actions workflow at `.github/workflows/test.yml`:
 GitHub Actions workflow at `.github/workflows/build_firmware.yml`:
 - **Firmware build job:** builds the RP2040/TinyUSB computational-storage firmware when `computational_storage_poc/firmware/**` changes and uploads UF2/ELF/BIN artifacts
 
+GitHub Actions workflow at `.github/workflows/test.yml` also includes:
+- **Computational-storage emulation job:** validates emulator semantics on hosted CI without privileged FUSE
+
 ## Running Tests
 
 All tests use Python `unittest` (not pytest). CI does **not** install `pytest`, so do not add `pytest` imports or pytest-only fixtures to `test_*.py`. Run via CI or locally:
@@ -45,13 +48,15 @@ for f in test_*.py; do python "$f"; done
 python -m unittest discover -s . -p "test_*.py" -v
 ```
 
-**Representative test files (`966` tests passing on `main` as of 2026-03-06):**
+**Representative test files (`973` tests passing on `main` as of 2026-03-06):**
 - `test_unit_core.py` - Core adapter variants
 - `test_noise_injection.py` - Noise injection validation under `unittest`
 - `test_online_updater.py`, `test_dimension_mask_predictor.py`, `test_stability_tracker.py`
 - `test_benchmark_beir.py`, `test_benchmark_comparative.py`, `test_dashboard_server.py`
 - `test_computational_storage_poc.py` - block-graph parity, latency invariants, and real-data storage round-trip validation
 - `test_computational_storage_payload.py` - deterministic trigger-sector payload, host decoding, and virtual-disk interception validation
+- `test_computational_storage_hardware_evidence.py` - deterministic evidence capture and Windows raw-device path handling
+- `test_computational_storage_emulation.py` - dependency-light emulator parity and file-image validation
 - `test_cross_lingual_distillation.py`, `test_language_detector.py`
 - `test_topology_analyzer.py`, `test_isomer_detector.py`, `test_structural_health_report.py`
 - `test_teacher_distillation.py`, `test_teacher_weight_scheduler.py`, `test_aep_orchestrator.py`
@@ -124,9 +129,15 @@ Evaluation & Analysis Modules
 ## Git Workflow Notes
 
 - The repository branch policy may still show PRs as blocked even after all required checks are green. Session 23 required admin merges for `#80`, `#83`, and `#82`.
+- Session 27 required admin merges for `#90`, `#91`, `#92`, and `#93` even after all required checks passed.
 - `gh pr merge` can fail if a local worktree is holding `main`. Before merging stacked PRs, remove/prune merged worktrees or switch them off `main`.
 - The computational-storage split is complete on `main` as of 2026-03-06: `#86` landed the validation foundation, `#87` landed the payload transport path, and `#88` landed the session-wrap docs.
+- Session 26 follow-up PRs `#90` (hardware evidence capture tool), `#91` (emulation CI), `#92` (transport scope lock), and `#93` (retention policy) are merged on `main` as of 2026-03-06. The remaining follow-through is real hardware evidence capture plus the dated retention review.
 - Do not revive the stale computational-storage PR `#84` or the old `feat/session22-online-correction` branch line. If historical comparison is needed, use the local `backup/retired-*` refs instead.
+- If no RP2040 device is attached, do not fabricate hardware evidence. Use `computational_storage_poc/capture_hardware_evidence.py` once actual hardware is available.
+- Explicit Windows raw-device paths like `\\.\PhysicalDrive2` are valid inputs to `usb_host_inference.py` and `capture_hardware_evidence.py`; do not rewrite them into a second `PhysicalDrive` prefix.
+- Do not treat unrelated removable USB storage as RP2040 evidence. Session 27's local probe only found a SanDisk removable drive, which was not used as a proxy.
+- `ruff check` does not validate GitHub Actions YAML. Keep workflow-file review separate from Python lint.
 - Local `git status` may show `?? .claude/`; that directory holds local worktree metadata and retired-branch artifacts and is not, by itself, a product-code diff.
 
 ## Reference Material
