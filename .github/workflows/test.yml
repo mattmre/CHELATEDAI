@@ -53,3 +53,18 @@ jobs:
         run: python -m unittest test_computational_storage_poc.py -v
       - name: Run computational-storage script harness
         run: python computational_storage_poc/run_all_tests.py
+
+  computational-storage-emulation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+      - name: Install emulation test dependency
+        run: pip install numpy
+      - name: Run emulation unit checks
+        run: python -m unittest test_computational_storage_emulation.py -v
+      - name: Run emulation path validation
+        run: python computational_storage_poc/emulation/validate_emulation_path.py
