@@ -10,7 +10,7 @@ Traditional SSDs run proprietary controllers that prevent custom execution. By u
 3. The Host requests to read the "output" sector.
 4. The `tud_msc_read10_cb` callback in `main.c` intercepts this specific SCSI READ request.
 5. Instead of returning a static demo string, the firmware computes a deterministic `4 -> 3 -> 2` block-graph result that mirrors the validated software transport contract.
-6. It returns a JSON payload from sector `100`, including the computed logits, predicted class, and block count.
+6. It returns a JSON payload from sector `100`, including the toy input vector, computed logits, predicted class, and block count.
 
 To compile this, you'll need the [Pico C/C++ SDK](https://github.com/raspberrypi/pico-sdk) and TinyUSB installed on your build machine.
 

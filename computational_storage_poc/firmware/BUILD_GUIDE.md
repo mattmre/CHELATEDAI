@@ -46,6 +46,7 @@ Once the tools are installed and your terminal is restarted:
 
 After flashing, reading sector `100` with `usb_host_inference.py` should return a JSON payload whose logits match the deterministic toy graph:
 
+- `input`: `[1.0, -2.0, 3.0, 0.5]`
 - `logits`: `[9.3750, -3.6875]`
 - `predicted_class`: `0`
 - `blocks_processed`: `2`

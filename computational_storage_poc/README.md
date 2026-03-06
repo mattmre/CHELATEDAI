@@ -47,7 +47,7 @@ The validation suite now fails if:
 The USB firmware and FUSE emulator now share a deterministic transport contract:
 
 - sector `100` returns a JSON payload rather than a hard-coded demo string,
-- the payload is computed from a validated two-layer `4 -> 3 -> 2` block graph, and
+- the payload includes the deterministic toy input vector plus the computed `4 -> 3 -> 2` block-graph result, and
 - the host-side reader is tested against both the raw sector bytes and a virtual-disk file path.
 
 Run the transport-layer tests with:

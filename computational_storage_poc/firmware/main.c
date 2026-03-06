@@ -70,7 +70,11 @@ static void internal_graph_traversal(uint8_t sector_buffer[SECTOR_SIZE]) {
     snprintf(
         (char*) sector_buffer,
         SECTOR_SIZE,
-        "{\"blocks_processed\":2,\"logits\":[%.4f,%.4f],\"predicted_class\":%u,\"sector_lba\":%u}",
+        "{\"blocks_processed\":2,\"input\":[%.1f,%.1f,%.1f,%.1f],\"logits\":[%.4f,%.4f],\"predicted_class\":%u,\"sector_lba\":%u}",
+        kToyInput[0],
+        kToyInput[1],
+        kToyInput[2],
+        kToyInput[3],
         logits[0],
         logits[1],
         predicted_class,
