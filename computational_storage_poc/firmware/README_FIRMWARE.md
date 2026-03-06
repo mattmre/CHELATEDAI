@@ -23,3 +23,5 @@ This firmware now validates three concrete things:
 - the USB transport path stays aligned with the emulation contract used by `usb_host_inference.py`.
 
 The full digits-model execution path remains software-validated in the foundation branch. The RP2040 firmware is still an experimental transport/control-plane step, not a claim that the full trained digits model already fits and executes on-device.
+
+The scope lock for that statement is recorded in [docs/computational-storage-transport-scope-decision.md](../../docs/computational-storage-transport-scope-decision.md). Until the promotion gates there are satisfied, describe this path as a deterministic transport proof rather than on-device digits inference.

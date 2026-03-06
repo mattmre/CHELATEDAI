@@ -12,6 +12,8 @@ The current firmware build validates the USB interception path with a determinis
 
 This is intentionally narrower than the full digits-model validation in the software-only path. The goal of this firmware build is transport correctness and reproducible payloads, not yet full on-device parity with the trained digits model.
 
+See [docs/computational-storage-transport-scope-decision.md](../../docs/computational-storage-transport-scope-decision.md) for the current scope lock and the gates required before expanding that claim.
+
 ## Prerequisites (Windows)
 To compile this firmware into a `.uf2` file that you can drag-and-drop onto the Pico, you need the standard ARM embedded toolchain.
 
@@ -50,3 +52,5 @@ After flashing, reading sector `100` with `usb_host_inference.py` should return 
 - `logits`: `[9.3750, -3.6875]`
 - `predicted_class`: `0`
 - `blocks_processed`: `2`
+
+That result validates the transport proof. It does not, by itself, prove full on-device digits-model execution.
