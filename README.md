@@ -1,349 +1,210 @@
-# ChelatedAI - Adaptive Vector Search with Self-Correcting Embeddings
+# ChelatedAI
 
-[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
-[![Tests](https://img.shields.io/badge/tests-passing-green.svg)](test_unit_core.py)
+ChelatedAI is a Python research repository for adaptive retrieval, post-hoc embedding correction, multi-dataset evaluation, and computational-storage experiments.
 
-**ChelatedAI** is a research prototype implementing adaptive vector search with automatic embedding correction. It addresses semantic collapse in RAG systems through dynamic dimension masking ("chelation") and neural adaptation.
+The codebase now spans two connected themes:
 
-## Key Features
+- improving vector retrieval quality through chelation, sedimentation, distillation, topology analysis, and online correction
+- exploring whether parts of model execution can be pushed toward storage-resident node graphs, deterministic transport paths, and multi-drive speculative execution
 
-- **Adaptive Retrieval**: Automatically switches between fast and precision modes based on query entropy
-- **Self-Correcting Embeddings**: Learns to fix embeddings that repeatedly collapse into semantic noise
-- **Spectral Chelation**: Reranks results by shifting to cluster center-of-mass reference frame
-- **Production-Ready**: Error recovery, checkpointing, structured logging, and cross-platform support
+> Note
+> The computational-storage track includes drive-resident graph execution experiments and RP2040 transport tooling. It does not yet prove full on-device LLM inference on physical hard drives or SSDs. The current merged hardware claim is scope-locked to a deterministic transport proof. See [docs/computational-storage-transport-scope-decision.md](docs/computational-storage-transport-scope-decision.md).
+
+## Why This Repo Exists
+
+Most embedding systems assume the base embedding model is fixed and that retrieval quality is mainly a search-index problem. ChelatedAI treats retrieval failures as a dynamic systems problem:
+
+- detect when a query enters a noisy neighborhood
+- rerank or adapt before collapse propagates
+- track structural drift over time
+- benchmark whether improvements generalize across datasets
+- test whether some inference primitives can move closer to storage media
+
+## Repository Tracks
+
+| Track | What it covers | Main entrypoints |
+|---|---|---|
+| Adaptive retrieval | Chelation, sedimentation, adapter-based correction, vector-store integration | `antigravity_engine.py`, `chelation_adapter.py`, `vector_store.py`, `config.py` |
+| Distillation and correction | Teacher guidance, cross-lingual routing, online updates, schedule tuning | `teacher_distillation.py`, `cross_lingual_distillation.py`, `teacher_weight_scheduler.py`, `online_updater.py` |
+| Evaluation and reporting | BEIR runs, comparative benchmarks, sweeps, and dashboards | `benchmark_beir.py`, `benchmark_comparative.py`, `benchmark_multitask.py`, `run_sweep.py`, `run_large_sweep.py`, `dashboard_server.py` |
+| Structural analysis | Topology cohesion, isomer drift, embedding quality, stability diagnostics | `topology_analyzer.py`, `isomer_detector.py`, `embedding_quality.py`, `stability_tracker.py` |
+| Computational storage and drive nodes | Block-graph execution, mock NVMe path, multi-drive array simulation, RP2040 firmware, emulator, host reader, evidence capture | `computational_storage_poc/`, `test_computational_storage_poc.py`, `test_computational_storage_payload.py`, `test_computational_storage_emulation.py` |
+| Process and remediation | Agentic review workflow, tracker docs, session logs, verification evidence | `aep_orchestrator.py`, `docs/ARCH AGENTIC ENGINEERING AND PLANNING/` |
 
 ## Quick Start
 
-### Prerequisites
+### 1. Install Python dependencies
+
+Windows PowerShell:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+pip install -e .
+```
+
+macOS / Linux:
 
 ```bash
-# Python dependencies
-pip install numpy torch sentence-transformers qdrant-client mteb requests scikit-learn
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+pip install -e .
+```
 
-# Optional: Ollama for Docker-based embeddings
+`requirements.txt` installs the full research stack, including `requests`, `mteb`, and `scikit-learn`. `pyproject.toml` exposes the installable package metadata and optional dependency groups.
+
+### 2. Optional local embedding backend
+
+If you want to use the Ollama-backed embedding path:
+
+```bash
 docker run -d -p 11434:11434 ollama/ollama
 docker exec ollama ollama pull nomic-embed-text
 ```
 
-### Basic Usage
+Use model names like `ollama:nomic-embed-text` to route through the HTTP embedding backend.
 
-```python
-from antigravity_engine import AntigravityEngine
-
-# Initialize engine
-engine = AntigravityEngine(
-    qdrant_location="./my_database",
-    model_name="ollama:nomic-embed-text",  # or any SentenceTransformer model
-    chelation_p=85,
-    use_quantization=True
-)
-
-# Ingest documents
-documents = ["Document 1 text...", "Document 2 text..."]
-engine.ingest(documents)
-
-# Query with adaptive retrieval
-std_ids, chel_ids, mask, jaccard = engine.run_inference("What is machine learning?")
-print(f"Top Results: {chel_ids}")
-
-# Optional: Train adapter on accumulated patterns
-engine.run_sedimentation_cycle(threshold=3, learning_rate=0.01, epochs=10)
-```
-
-### Phase 4 Features (Memory-Efficient)
-
-```python
-# Streaming ingestion for large datasets (avoids loading all into memory)
-def document_generator():
-    for i in range(100000):
-        yield f"Document {i} content..."
-
-stats = engine.ingest_streaming(document_generator(), batch_size=100)
-print(f"Ingested {stats['total_docs']} documents")
-
-# Enable adaptive threshold tuning (auto-adjusts based on query patterns)
-engine.enable_adaptive_threshold(percentile=75, window=100)
-
-# Multi-task benchmarking
-# python benchmark_multitask.py --tasks mini --epochs 2 --max-queries 50
-
-# Dashboard visualization
-# python dashboard_server.py --port 8080
-```
-
-### Run Tests
+### 3. Run the main validation surfaces
 
 ```bash
-# Full suite
 python -m unittest discover -s . -p "test_*.py" -v
-
-# Targeted computational-storage fundamentals
-python test_computational_storage_poc.py
+python -m unittest test_computational_storage_poc.py -v
+python -m unittest test_computational_storage_emulation.py -v
 python computational_storage_poc/run_all_tests.py
-
-# Benchmarks (requires MTEB)
-python benchmark_evolution.py --task SciFact --lr 0.5
-python benchmark_multitask.py --tasks mini --epochs 2 --max-queries 50
+python computational_storage_poc/emulation/validate_emulation_path.py
 ```
 
-## Architecture
-
-### Core Components
-
-#### 1. AntigravityEngine (antigravity_engine.py)
-Main retrieval system with:
-- Dual-mode embedding (Ollama HTTP API or local SentenceTransformers)
-- Variance-based adaptive path selection
-- Spectral chelation reranking
-- Neural adapter for persistent corrections
-
-#### 2. ChelationAdapter (chelation_adapter.py)
-Lightweight residual neural network that learns to correct embeddings:
-- Identity initialization (preserves base model quality)
-- Trained on collapse events via MSE loss
-- Outputs L2-normalized vectors for cosine similarity
-
-#### 3. Configuration System (config.py)
-Centralized hyperparameter management:
-- Cross-platform path handling
-- Validation and clamping
-- Presets for different use cases
-
-#### 4. Checkpoint Manager (checkpoint_manager.py)
-Safe training with automatic rollback:
-- SHA256 integrity verification
-- Automatic checkpoint cleanup
-- Context manager for safe operations
-
-#### 5. Structured Logger (chelation_logger.py)
-JSON-formatted logging with:
-- Performance metrics
-- Query analysis
-- Training progress
-- Error tracking
-
-## Configuration
-
-### Hyperparameters
-
-| Parameter | Default | Range | Impact |
-|-----------|---------|-------|--------|
-| `chelation_p` | 85 | 0-100 | Higher = fewer dimensions masked |
-| `chelation_threshold` | 0.0004 | 0.0001-0.001 | Variance cutoff for triggering chelation |
-| `learning_rate` | 0.001-0.5 | 0.0001-1.0 | Adapter training speed |
-| `epochs` | 10 | 1-100 | Adapter training iterations |
-| `scout_k` | 50 | 10-100 | Neighborhood size for variance calc |
-
-### Presets
-
-```python
-from config import ChelationConfig
-
-# Conservative (high-quality embeddings)
-config = ChelationConfig.get_preset("conservative", "chelation")
-
-# Balanced (general purpose)
-config = ChelationConfig.get_preset("balanced", "chelation")
-
-# Aggressive (noisy embeddings)
-config = ChelationConfig.get_preset("aggressive", "chelation")
-```
-
-## Performance
-
-### Benchmarks (SciFact Dataset)
-
-| Configuration | NDCG@10 | Delta |
-|---------------|---------|-------|
-| Baseline (no chelation) | 0.5090 | - |
-| Spectral Chelation | 0.5315 | +4.4% |
-| Adaptive Brain (P=99.5) | 0.5360 | +5.3% |
-
-### Resource Usage
-
-- **Memory**: ~500MB base + O(batch_size × vector_dim)
-- **CPU**: Efficient with quantization enabled
-- **GPU**: Optional for local SentenceTransformers
-- **Disk**: Persistent Qdrant databases (~100MB per 1K docs)
-
-## Advanced Usage
-
-### With Checkpointing
-
-```python
-from checkpoint_manager import CheckpointManager, SafeTrainingContext
-from pathlib import Path
-
-checkpoint_mgr = CheckpointManager(Path("./checkpoints"))
-
-# Safe training with automatic rollback on failure
-with SafeTrainingContext(checkpoint_mgr, Path("adapter_weights.pt"), "experiment_1") as ctx:
-    engine.run_sedimentation_cycle(threshold=1, learning_rate=0.1, epochs=20)
-    ctx.mark_success()  # Prevent rollback
-```
-
-### With Structured Logging
-
-```python
-from chelation_logger import get_logger
-
-logger = get_logger(Path("debug.jsonl"), console_level="INFO")
-
-# All engine operations are automatically logged
-# Or log custom events:
-logger.log_event("custom", "My custom event", metric=42)
-```
-
-### Configuration Files
-
-```python
-from config import ChelationConfig
-
-# Save configuration
-config = {
-    "chelation_p": 90,
-    "learning_rate": 0.01,
-    "epochs": 15
-}
-ChelationConfig.save_to_file(config, Path("my_config.json"))
-
-# Load configuration
-loaded = ChelationConfig.load_from_file(Path("my_config.json"))
-```
-
-## File Structure
-
-```
-CHELATEDAI/
-├── antigravity_engine.py        # Main retrieval engine
-├── chelation_adapter.py          # Neural adapter module
-├── homeostatic_engine.py         # Prototype (direct vector updates)
-├── config.py                     # Configuration management
-├── checkpoint_manager.py         # Checkpoint/recovery system
-├── chelation_logger.py           # Structured logging
-├── benchmark_evolution.py        # MTEB benchmarking
-├── test_unit_core.py            # Unit tests
-├── test_dynamic_adaptation.py   # Adapter validation
-├── test_longitudinal_adaptation.py # Homeostatic validation
-├── TECHNICAL_ANALYSIS.md        # Detailed architecture docs
-├── REFACTORING_PLAN.md          # Development roadmap
-└── README.md                    # This file
-```
-
-## Development
-
-### Phase 1: Stabilization (Completed)
-- ✅ Fixed critical bugs (duplicate returns, error handling)
-- ✅ Cross-platform path support
-- ✅ Standardized ID management
-- ✅ Timeout protection for Ollama requests
-
-### Phase 2: Robustness (Completed)
-- ✅ Configuration management system
-- ✅ Checkpoint/rollback functionality
-- ✅ Error recovery with detailed logging
-
-### Phase 3: Observability (Completed)
-- ✅ Structured JSON logging
-- ✅ Performance metrics tracking
-- ✅ Comprehensive unit tests (21 tests passing)
-
-### Phase 4: Memory Optimization & Adaptive Controls (Completed)
-- ✅ Streaming ingestion for large datasets (`ingest_streaming()`)
-- ✅ Chelation log capping (automatic memory management)
-- ✅ Adaptive threshold tuning (runtime optimization)
-- ✅ Multi-task benchmarking framework (`benchmark_multitask.py`)
-- ✅ Web dashboard for log visualization (`dashboard_server.py`)
-- ✅ 234 tests passing, 1 warning (expected)
-
-See `docs/phase4-experiment-protocol.md` for detailed usage instructions.
-
-## Troubleshooting
-
-### Ollama Connection Fails
+### 4. Run representative research entrypoints
 
 ```bash
-# Check if Ollama is running
-curl http://localhost:11434/api/version
-
-# Pull required model
-docker exec ollama ollama pull nomic-embed-text
-
-# Check container logs
-docker logs -f ollama
+python benchmark_beir.py --tier small --output benchmark_beir_small.json
+python benchmark_multitask.py --tasks small --epochs 5 --max-queries 100
+python dashboard_server.py --port 8080
 ```
 
-### Adapter Dimension Mismatch
+## Information Flows
 
-```python
-# If you switch models, delete old adapter
-import os
-os.remove("adapter_weights.pt")
+### Retrieval and adaptation loop
 
-# Or specify different adapter path
-engine = AntigravityEngine(..., adapter_path="new_adapter.pt")
+```mermaid
+flowchart TD
+    A[Documents] --> B[Embedding backend]
+    B --> C[Vector store ingestion]
+    Q[Query] --> E[AntigravityEngine]
+    E --> F[Neighborhood retrieval]
+    F --> G{Variance / structure check}
+    G -->|Stable| H[Standard ranking]
+    G -->|Noisy| I[Chelation / reranking]
+    I --> J[Noise-center logging]
+    J --> K[Sedimentation or online update]
+    K --> L[Adapter weights / corrected behavior]
+    H --> M[Result set]
+    I --> M
 ```
 
-### Out of Memory
+### Computational-storage research flow
 
-```python
-# Reduce batch size
-from config import ChelationConfig
-ChelationConfig.BATCH_SIZE = 50  # Default is 100
-
-# Or use quantization
-engine = AntigravityEngine(..., use_quantization=True)
+```mermaid
+flowchart LR
+    A[Train or define graph] --> B[Compile matrix blocks]
+    B --> C[Flash or file-backed payload]
+    C --> D[Software block-graph validation]
+    C --> E[Mock NVMe latency model]
+    C --> F[RP2040 firmware or emulator]
+    F --> G[Sector 100 payload contract]
+    G --> H[Host reader / evidence capture]
 ```
 
-## Contributing
+## Current Research Status
 
-This is a research prototype. Contributions welcome:
+As of 2026-03-06:
 
-1. Fork the repository
-2. Create a feature branch
-3. Add tests for new functionality
-4. Ensure all tests pass: `python test_unit_core.py`
-5. Submit a pull request
+- the adaptive retrieval, benchmarking, and distillation surfaces are implemented on `main`
+- the remaining non-hardware work is primarily evaluation and weight refinement, not missing feature delivery
+- the computational-storage follow-through is narrowed to real RP2040 evidence capture and a dated retention review
+- the repository includes credible storage-node experiments, but not a shipped hard-drive-hosted LLM runtime
 
-## Research Background
+For the current audit and post-feature evaluation plan, see [docs/roadmap-audit-and-weight-refinement-plan-2026-03-06.md](docs/roadmap-audit-and-weight-refinement-plan-2026-03-06.md).
 
-### The "Semantic Collapse" Problem
+## Module Walkthrough
 
-Standard embedding models can encode unrelated concepts in similar high-dimensional spaces due to:
-- **Dimensional Noise**: Some dimensions capture dataset artifacts rather than meaning
-- **Topic Collapse**: Frequent co-occurrence creates spurious similarities
-- **Contextual Drift**: Same words in different contexts create confusion
+### Core retrieval runtime
 
-### Our Approach
+- `antigravity_engine.py`: central engine for ingestion, inference, adaptive chelation, logging, and training hooks
+- `embedding_backend.py`: routes embeddings to Ollama or local SentenceTransformers
+- `vector_store.py`: Qdrant abstraction used by the retrieval engine
+- `chelation_adapter.py`: near-identity adapter variants for post-hoc correction
+- `config.py`: presets and validation for retrieval, distillation, online updates, topology, and BEIR
 
-1. **Detect**: Measure per-dimension variance in local neighborhoods
-2. **Chelate**: Mask high-variance "toxic" dimensions
-3. **Adapt**: Train lightweight adapter to permanently fix problematic embeddings
-4. **Verify**: Spectral reranking provides additional precision path
+### Training, correction, and analysis
+
+- `teacher_distillation.py`: offline, hybrid, and teacher-guided correction helpers
+- `cross_lingual_distillation.py`: language-aware teacher routing
+- `online_updater.py`: inference-time update mechanisms and diagnostics
+- `topology_analyzer.py` and `isomer_detector.py`: structural drift analysis
+- `stability_tracker.py`, `embedding_quality.py`, `convergence_monitor.py`: health and learning diagnostics
+
+### Evaluation and experimentation
+
+- `benchmark_beir.py`, `benchmark_multitask.py`, `benchmark_comparative.py`, `benchmark_distillation.py`: retrieval-quality evaluation
+- `run_sweep.py` and `run_large_sweep.py`: grid-search style parameter studies
+- `dashboard_server.py` and `dashboard/index.html`: local research dashboard
+
+### Computational storage and drive nodes
+
+- `computational_storage_poc/block_graph.py`: flash-friendly block packing and traversal
+- `computational_storage_poc/mock_nvme.py`: software parity and latency model for computational-storage reads
+- `computational_storage_poc/mock_array.py`: speculative multipath racing across storage nodes
+- `computational_storage_poc/payload_contract.py`: deterministic trigger-sector payload used by firmware and emulator
+- `computational_storage_poc/usb_host_inference.py`: host-side raw-sector reader
+- `computational_storage_poc/capture_hardware_evidence.py`: auditable RP2040 evidence capture tool
+- `computational_storage_poc/firmware/`: RP2040/TinyUSB transport firmware
+- `computational_storage_poc/emulation/`: dependency-light emulator validation path
+
+## CI and Validation
+
+GitHub Actions currently verifies:
+
+- Python linting with `ruff`
+- full `unittest` discovery across Python 3.9, 3.10, 3.11, and 3.12
+- computational-storage fundamentals and the script harness
+- computational-storage emulation validation
+- RP2040 firmware build and artifact upload
+
+See [`.github/workflows/test.yml`](.github/workflows/test.yml) and [`.github/workflows/build_firmware.yml`](.github/workflows/build_firmware.yml).
+
+## Documentation Guide
+
+Start here:
+
+- [docs/README.md](docs/README.md): canonical docs home and legacy-to-canonical map
+- [docs/SYSTEM_BLUEPRINT.md](docs/SYSTEM_BLUEPRINT.md): architecture, stack, and information flows
+- [docs/MODULE_GUIDE.md](docs/MODULE_GUIDE.md): module-by-module inventory
+- [docs/RESEARCH_TRACKS.md](docs/RESEARCH_TRACKS.md): active and historical research tracks
+- [docs/COMPUTATIONAL_STORAGE_DRIVE_NODES.md](docs/COMPUTATIONAL_STORAGE_DRIVE_NODES.md): hard-drive / storage-node research summary
+- [docs/INDEX.md](docs/INDEX.md): broader index, including the AEP process archive
+
+## Use Cases
+
+### Retrieval researcher
+
+- compare standard vs. chelated ranking behavior
+- run cross-dataset BEIR evaluations
+- refine adapter schedules and teacher weights
+
+### Systems researcher
+
+- test whether block-graph traversal can remain correct when moved toward storage media
+- compare host-driven vs. storage-driven latency models
+- validate deterministic firmware or emulator transport surfaces
+
+### Documentation or review session
+
+- use the canonical docs set first
+- fall back to the AEP archive for process evidence, session logs, and prior decisions
 
 ## License
 
-MIT License - See LICENSE file for details
-
-## Citation
-
-If you use this code in research, please cite:
-
-```bibtex
-@software{chelatedai2024,
-  title={ChelatedAI: Adaptive Vector Search with Self-Correcting Embeddings},
-  author={ChelatedAI Contributors},
-  year={2024},
-  url={https://github.com/mattmre/CHELATEDAI}
-}
-```
-
-## Contact & Support
-
-- **Issues**: GitHub Issues tracker
-- **Documentation**: See TECHNICAL_ANALYSIS.md for architecture details
-- **Performance**: See manual_results.txt for benchmark data
-
----
-
-**Warning**: This is a research prototype. While production-hardened with error recovery and testing, it should be thoroughly validated before production deployment.
+This repository is distributed under the MIT license. See [LICENSE](LICENSE).
