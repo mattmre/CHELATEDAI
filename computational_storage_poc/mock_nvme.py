@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import numpy as np
 
 from block_graph import BLOCK_SIZE, BYTES_PER_PARAM, TOTAL_BLOCK_BYTES, run_block_graph
