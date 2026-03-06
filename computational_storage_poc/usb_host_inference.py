@@ -15,28 +15,31 @@ def decode_inference_bytes(data: bytes) -> str:
         return f"[Raw Hex Dump]: {data[:64].hex()}..."
 
 
-def read_inference_from_drive(drive_id, sector_start=100, num_sectors=1):
+def resolve_drive_path(drive_id):
+    drive_id_str = str(drive_id)
+
+    if os.name == 'nt':
+        if os.path.exists(drive_id_str):
+            return drive_id_str
+        if drive_id_str.startswith('\\\\.\\') or drive_id_str.startswith('\\\\?\\'):
+            return drive_id_str
+        if drive_id_str.isdigit():
+            return f"\\\\.\\PhysicalDrive{drive_id_str}"
+        return drive_id_str
+    if drive_id_str.isdigit():
+        return f"/dev/loop{drive_id_str}"
+    return drive_id_str
+
+
+def read_inference_from_drive(drive_id, sector_start=100, num_sectors=1, verbose=True):
     """
     Reads a raw sector from a physical drive on Windows.
     For the RP2040 Computational Storage Firmware, reading sector 100 
     triggers the onboard neural network inference.
     """
-    # Path branching for OS agnostic raw drive reading
-    drive_id_str = str(drive_id)
-
-    if os.name == 'nt' and os.path.exists(drive_id_str):
-        drive_path = drive_id_str
-    elif os.name == 'nt':
-        # Windows physical drive path format
-        drive_path = f"\\\\.\\PhysicalDrive{drive_id_str}"
-    else:
-        # Linux / Docker path formats
-        if drive_id_str.isdigit():
-            drive_path = f"/dev/loop{drive_id_str}"
-        else:
-            drive_path = drive_id_str # Direct path like /mnt/virtual_usb/flash.img
-
-    print(f"Attempting to open {drive_path} in raw mode...")
+    drive_path = resolve_drive_path(drive_id)
+    if verbose:
+        print(f"Attempting to open {drive_path} in raw mode...")
     
     try:
         # Requires Administrator privileges on Windows
@@ -47,7 +50,8 @@ def read_inference_from_drive(drive_id, sector_start=100, num_sectors=1):
             
             # The host OS issues a SCSI READ(10) block request here!
             # The Pico's custom firmware intercepts this and calculates the graph.
-            print(">> Fetching data from silicon...")
+            if verbose:
+                print(">> Fetching data from silicon...")
             data = f.read(SECTOR_SIZE * num_sectors)
             
             # Parse result (the firmware/emulator writes a UTF-8 payload padded with NULL bytes)
