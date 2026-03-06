@@ -63,7 +63,7 @@ class ArraySimulation:
             
             # We only CARE about the correct branch's result.
             # The other 3 futures finish their fetches and are instantly discarded (L1 cache flush).
-            final_result = futures[correct_branch_index].result()
+            futures[correct_branch_index].result()
             
         end = time.perf_counter()
         return end - start

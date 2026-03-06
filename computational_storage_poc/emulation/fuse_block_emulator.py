@@ -49,8 +49,8 @@ class VirtualComputationalStorage(Operations):
             
             # The Magic Sector 100 Interception!
             if sector == 100:
-                print(f"\n[FUSE/OS] 🚨 INTERCEPTED OS READ COMMAND AT SECTOR 100!")
-                print(f"[SILICON] 🧠 Computing Neural Network Graph localized on simulated 'Flash'...")
+                print("\n[FUSE/OS] 🚨 INTERCEPTED OS READ COMMAND AT SECTOR 100!")
+                print("[SILICON] 🧠 Computing Neural Network Graph localized on simulated 'Flash'...")
                 
                 # Mock result showing what the physical RP2040 firmware produces
                 inference_res = b"CHELATEDAI HARDWARE INFERENCE: GRAPH EXECUTED ON VIRTUAL BLOCK DEVICE OVER FUSE"
@@ -82,11 +82,11 @@ if __name__ == '__main__':
     if not os.path.exists(mountpoint):
         os.makedirs(mountpoint, exist_ok=True)
         
-    print(f"\n=======================================================")
-    print(f" 🔌 VIRTUAL COMPUTATIONAL STORAGE CONTROLLER ACTIVE ")
-    print(f"=======================================================")
+    print("\n=======================================================")
+    print(" 🔌 VIRTUAL COMPUTATIONAL STORAGE CONTROLLER ACTIVE ")
+    print("=======================================================")
     print(f"Mounted virtual silicon block file to: {mountpoint}/flash.img")
-    print(f"Waiting for OS SCSI Read Interceptions...\n")
+    print("Waiting for OS SCSI Read Interceptions...\n")
     
     # Run the FUSE filesystem synchronously in the foreground
     FUSE(VirtualComputationalStorage(), mountpoint, nothreads=True, foreground=True)
