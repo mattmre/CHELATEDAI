@@ -3,10 +3,10 @@
 Purpose: Keep a single canonical link to the current tracker to reduce context churn.
 
 ## Current Tracker
-- `docs/ARCH AGENTIC ENGINEERING AND PLANNING/session-log-2026-03-06-session26.md`
+- `docs/ARCH AGENTIC ENGINEERING AND PLANNING/session-log-2026-03-06-session27.md`
 
 ## Last Updated
-- 2026-03-06 (Session 26 wrap)
+- 2026-03-06 (Session 27 wrap)
 
 ## Cycle ID
 - AEP-2026-03-06
@@ -19,4 +19,4 @@ Consistency rule:
 - `docs/ARCH AGENTIC ENGINEERING AND PLANNING/verification-log.md`
 
 Note:
-- Session 26 opened the follow-up PR stack for hardware evidence capture, emulator CI, transport scope lock, and retention policy.
+- Session 27 merged PRs `#90`, `#91`, `#92`, and `#93`, revalidated `main`, and reconfirmed that real hardware evidence is still pending.
