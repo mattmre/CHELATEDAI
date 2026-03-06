@@ -35,9 +35,20 @@ Most embedding systems assume the base embedding model is fixed and that retriev
 
 ### 1. Install Python dependencies
 
+Windows PowerShell:
+
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+pip install -e .
+```
+
+macOS / Linux:
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
 pip install -e .
 ```
@@ -193,3 +204,7 @@ Start here:
 
 - use the canonical docs set first
 - fall back to the AEP archive for process evidence, session logs, and prior decisions
+
+## License
+
+This repository is distributed under the MIT license. See [LICENSE](LICENSE).
