@@ -9,6 +9,8 @@ The premise replaces matrix multiplication entirely with direct memory routing u
 - Hidden-layer `ReLU` application on non-terminal blocks so the storage path matches the trained MLP.
 - Deterministic host-vs-storage output parity and theoretical latency comparisons.
 - Real-data round-trip validation on the handwritten digits dataset with explicit accuracy floors.
+- Deterministic trigger-sector payload generation for the USB/emulation transport path.
+- Host-reader decoding and virtual-disk interception tests for sector `100`.
 
 ## Binary Format
 
@@ -39,3 +41,19 @@ The validation suite now fails if:
 - host and storage outputs diverge,
 - storage accuracy falls below the configured floor, or
 - the speculative execution demo regresses against its sequential baseline.
+
+## USB / Emulation Payload Contract
+
+The USB firmware and FUSE emulator now share a deterministic transport contract:
+
+- sector `100` returns a JSON payload rather than a hard-coded demo string,
+- the payload includes the deterministic toy input vector plus the computed `4 -> 3 -> 2` block-graph result, and
+- the host-side reader is tested against both the raw sector bytes and a virtual-disk file path.
+
+Run the transport-layer tests with:
+
+```bash
+python -m unittest test_computational_storage_payload.py -v
+```
+
+The RP2040 path is still an experimental payload track. The full digits model is validated in software today; the firmware currently uses the deterministic toy graph above to prove the USB interception path and descriptor plumbing without claiming full on-device digits inference yet.
