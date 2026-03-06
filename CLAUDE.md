@@ -42,11 +42,12 @@ for f in test_*.py; do python "$f"; done
 python -m unittest discover -s . -p "test_*.py" -v
 ```
 
-**Representative test files (`957` tests passing on `main` as of 2026-03-05):**
+**Representative test files (`962` tests passing on this branch as of 2026-03-05):**
 - `test_unit_core.py` - Core adapter variants
 - `test_noise_injection.py` - Noise injection validation under `unittest`
 - `test_online_updater.py`, `test_dimension_mask_predictor.py`, `test_stability_tracker.py`
 - `test_benchmark_beir.py`, `test_benchmark_comparative.py`, `test_dashboard_server.py`
+- `test_computational_storage_poc.py` - block-graph parity, latency invariants, and real-data storage round-trip validation
 - `test_cross_lingual_distillation.py`, `test_language_detector.py`
 - `test_topology_analyzer.py`, `test_isomer_detector.py`, `test_structural_health_report.py`
 - `test_teacher_distillation.py`, `test_teacher_weight_scheduler.py`, `test_aep_orchestrator.py`
@@ -113,7 +114,7 @@ Evaluation & Analysis Modules
 - **In-memory Qdrant:** `qdrant_location=":memory:"` for isolation.
 - **Local model for tests:** `model_name="all-MiniLM-L6-v2"` (requires sentence-transformers).
 - **Temp files:** Tests use `tempfile` for filesystem isolation with cleanup in `tearDown`.
-- **No sklearn:** Use numpy and torch only.
+- **Core modules avoid sklearn:** The computational-storage POC is the exception and uses `scikit-learn`'s digits dataset for round-trip validation.
 
 ## Git Workflow Notes
 
