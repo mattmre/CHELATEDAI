@@ -113,12 +113,14 @@ Evaluation & Analysis Modules
 - **In-memory Qdrant:** `qdrant_location=":memory:"` for isolation.
 - **Local model for tests:** `model_name="all-MiniLM-L6-v2"` (requires sentence-transformers).
 - **Temp files:** Tests use `tempfile` for filesystem isolation with cleanup in `tearDown`.
-- **No sklearn:** Use numpy and torch only.
+- **Sklearn usage:** Keep core runtime code on numpy/torch. `scikit-learn` is only acceptable in isolated validation flows such as the computational-storage digits test track.
+- **Python 3.9 CI compatibility:** If a module imported by tests uses `X | None` annotations, add `from __future__ import annotations` or use `Optional[...]`.
 
 ## Git Workflow Notes
 
 - The repository branch policy may still show PRs as blocked even after all required checks are green. Session 23 required admin merges for `#80`, `#83`, and `#82`.
 - `gh pr merge` can fail if a local worktree is holding `main`. Before merging stacked PRs, remove/prune merged worktrees or switch them off `main`.
+- The stale computational-storage PR `#84` was retired in Session 24. Use `#86` for the validation foundation and `#87` for the draft payload track instead of reviving the old branch.
 
 ## Reference Material
 
