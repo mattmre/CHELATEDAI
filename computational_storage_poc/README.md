@@ -56,4 +56,12 @@ Run the transport-layer tests with:
 python -m unittest test_computational_storage_payload.py -v
 ```
 
-The RP2040 path is still an experimental payload track. The full digits model is validated in software today; the firmware currently uses the deterministic toy graph above to prove the USB interception path and descriptor plumbing without claiming full on-device digits inference yet.
+## Current Scope Lock
+
+The RP2040 path is still an experimental payload track. The full digits model is validated in software today; the firmware currently uses the deterministic toy graph above to prove the USB interception path and descriptor plumbing.
+
+The current claim boundary is intentionally narrow:
+
+- this is a deterministic transport proof today,
+- it is not yet a validated on-device digits-model workload, and
+- promotion beyond that boundary requires the gates in [docs/computational-storage-transport-scope-decision.md](../docs/computational-storage-transport-scope-decision.md).
