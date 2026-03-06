@@ -26,6 +26,7 @@ GitHub Actions workflow at `.github/workflows/test.yml`:
 
 GitHub Actions workflow at `.github/workflows/build_firmware.yml`:
 - **Firmware build job:** builds the RP2040/TinyUSB computational-storage firmware when `computational_storage_poc/firmware/**` changes and uploads UF2/ELF/BIN artifacts
+- **Pending Session 26 PR:** `#91` adds a dedicated `computational-storage-emulation` job that validates emulator semantics without privileged FUSE; review that PR before assuming the job exists on `main`
 
 ## Running Tests
 
@@ -126,7 +127,9 @@ Evaluation & Analysis Modules
 - The repository branch policy may still show PRs as blocked even after all required checks are green. Session 23 required admin merges for `#80`, `#83`, and `#82`.
 - `gh pr merge` can fail if a local worktree is holding `main`. Before merging stacked PRs, remove/prune merged worktrees or switch them off `main`.
 - The computational-storage split is complete on `main` as of 2026-03-06: `#86` landed the validation foundation, `#87` landed the payload transport path, and `#88` landed the session-wrap docs.
+- Session 26 opened follow-up PRs `#90` (hardware evidence capture tool), `#91` (emulation CI), `#92` (transport scope lock), and `#93` (retention policy). Review/merge those before starting fresh computational-storage follow-up work.
 - Do not revive the stale computational-storage PR `#84` or the old `feat/session22-online-correction` branch line. If historical comparison is needed, use the local `backup/retired-*` refs instead.
+- If no RP2040 device is attached, do not fabricate hardware evidence. Use `computational_storage_poc/capture_hardware_evidence.py` from PR `#90` once hardware is available.
 - Local `git status` may show `?? .claude/`; that directory holds local worktree metadata and retired-branch artifacts and is not, by itself, a product-code diff.
 
 ## Reference Material
