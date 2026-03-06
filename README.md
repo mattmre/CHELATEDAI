@@ -18,7 +18,7 @@
 
 ```bash
 # Python dependencies
-pip install numpy torch sentence-transformers qdrant-client mteb requests
+pip install numpy torch sentence-transformers qdrant-client mteb requests scikit-learn
 
 # Optional: Ollama for Docker-based embeddings
 docker run -d -p 11434:11434 ollama/ollama
@@ -74,16 +74,12 @@ engine.enable_adaptive_threshold(percentile=75, window=100)
 ### Run Tests
 
 ```bash
-# Unit tests (Phase 1-3)
-python test_unit_core.py
+# Full suite
+python -m unittest discover -s . -p "test_*.py" -v
 
-# Phase 4 tests
-python -m pytest test_adaptive_threshold.py test_memory_optimization.py \
-    test_benchmark_multitask.py test_dashboard_server.py -v
-
-# Integration tests
-python test_dynamic_adaptation.py
-python test_longitudinal_adaptation.py
+# Targeted computational-storage fundamentals
+python test_computational_storage_poc.py
+python computational_storage_poc/run_all_tests.py
 
 # Benchmarks (requires MTEB)
 python benchmark_evolution.py --task SciFact --lr 0.5
