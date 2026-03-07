@@ -21,6 +21,7 @@ import json
 
 from config import ChelationConfig
 from antigravity_engine import AntigravityEngine
+from benchmark_utils import isolated_adapter_state
 
 
 # =============================================================================
@@ -262,7 +263,8 @@ def run_training_cycle(
     num_cycles: int = 3,
     queries_per_cycle: int = 50,
     epochs_per_cycle: int = 10,
-    learning_rate: float = 0.001
+    learning_rate: float = 0.001,
+    max_eval_queries: int = 100,
 ) -> List[Dict]:
     """
     Run multiple query-sedimentation cycles and track performance.
@@ -320,7 +322,7 @@ def run_training_cycle(
             engine,
             queries,
             qrels,
-            max_queries=100  # Evaluate on subset for speed
+            max_queries=max_eval_queries,
         )
         eval_time = time.time() - eval_start
         
@@ -354,6 +356,12 @@ def main():
     parser.add_argument("--epochs", type=int, default=10, help="Training epochs per cycle")
     parser.add_argument("--lr", type=float, default=0.001, help="Learning rate")
     parser.add_argument("--teacher-weight", type=float, default=0.5, help="Teacher weight for hybrid mode")
+    parser.add_argument(
+        "--max-eval-queries",
+        type=int,
+        default=100,
+        help="Maximum queries to evaluate per cycle",
+    )
     parser.add_argument("--output", type=str, default="benchmark_distillation_results.json",
                         help="Output file for results")
     
@@ -395,27 +403,31 @@ def main():
     print("\n" + "="*60)
     print("MODE 1: BASELINE (Homeostatic only)")
     print("="*60)
-    
-    engine_baseline = AntigravityEngine(
-        qdrant_location=":memory:",
-        model_name=args.model,
-        training_mode="baseline"
-    )
-    
-    print("Ingesting corpus...")
-    engine_baseline.ingest(doc_texts, doc_payloads)
-    
-    print("Running baseline cycles...")
-    baseline_results = run_training_cycle(
-        engine_baseline,
-        queries,
-        qrels,
-        num_cycles=args.cycles,
-        queries_per_cycle=args.queries_per_cycle,
-        epochs_per_cycle=args.epochs,
-        learning_rate=args.lr
-    )
-    
+
+    with isolated_adapter_state():
+        engine_baseline = AntigravityEngine(
+            qdrant_location=":memory:",
+            model_name=args.model,
+            training_mode="baseline"
+        )
+        try:
+            print("Ingesting corpus...")
+            engine_baseline.ingest(doc_texts, doc_payloads)
+
+            print("Running baseline cycles...")
+            baseline_results = run_training_cycle(
+                engine_baseline,
+                queries,
+                qrels,
+                num_cycles=args.cycles,
+                queries_per_cycle=args.queries_per_cycle,
+                epochs_per_cycle=args.epochs,
+                learning_rate=args.lr,
+                max_eval_queries=args.max_eval_queries,
+            )
+        finally:
+            engine_baseline.close()
+
     all_results['baseline'] = baseline_results
     
     # ==========================
@@ -424,39 +436,43 @@ def main():
     print("\n" + "="*60)
     print("MODE 2: OFFLINE (Teacher distillation)")
     print("="*60)
-    
-    engine_offline = AntigravityEngine(
-        qdrant_location=":memory:",
-        model_name=args.model,
-        training_mode="offline",
-        teacher_model_name=args.teacher
-    )
-    
-    print("Ingesting corpus...")
-    engine_offline.ingest(doc_texts, doc_payloads)
-    
-    # Run offline distillation first (pre-training)
-    print("Running offline distillation pre-training...")
-    offline_start = time.time()
-    engine_offline.run_offline_distillation(
-        batch_size=100,
-        learning_rate=args.lr,
-        epochs=args.epochs
-    )
-    offline_time = time.time() - offline_start
-    print(f"Offline distillation completed in {offline_time:.2f}s")
-    
-    print("Running offline mode cycles...")
-    offline_results = run_training_cycle(
-        engine_offline,
-        queries,
-        qrels,
-        num_cycles=args.cycles,
-        queries_per_cycle=args.queries_per_cycle,
-        epochs_per_cycle=args.epochs,
-        learning_rate=args.lr
-    )
-    
+
+    with isolated_adapter_state():
+        engine_offline = AntigravityEngine(
+            qdrant_location=":memory:",
+            model_name=args.model,
+            training_mode="offline",
+            teacher_model_name=args.teacher
+        )
+        try:
+            print("Ingesting corpus...")
+            engine_offline.ingest(doc_texts, doc_payloads)
+
+            # Run offline distillation first (pre-training)
+            print("Running offline distillation pre-training...")
+            offline_start = time.time()
+            engine_offline.run_offline_distillation(
+                batch_size=100,
+                learning_rate=args.lr,
+                epochs=args.epochs
+            )
+            offline_time = time.time() - offline_start
+            print(f"Offline distillation completed in {offline_time:.2f}s")
+
+            print("Running offline mode cycles...")
+            offline_results = run_training_cycle(
+                engine_offline,
+                queries,
+                qrels,
+                num_cycles=args.cycles,
+                queries_per_cycle=args.queries_per_cycle,
+                epochs_per_cycle=args.epochs,
+                learning_rate=args.lr,
+                max_eval_queries=args.max_eval_queries,
+            )
+        finally:
+            engine_offline.close()
+
     all_results['offline'] = {
         'pretraining_time': offline_time,
         'cycles': offline_results
@@ -468,29 +484,33 @@ def main():
     print("\n" + "="*60)
     print(f"MODE 3: HYBRID (Homeostatic + Teacher, weight={args.teacher_weight})")
     print("="*60)
-    
-    engine_hybrid = AntigravityEngine(
-        qdrant_location=":memory:",
-        model_name=args.model,
-        training_mode="hybrid",
-        teacher_model_name=args.teacher,
-        teacher_weight=args.teacher_weight
-    )
-    
-    print("Ingesting corpus...")
-    engine_hybrid.ingest(doc_texts, doc_payloads)
-    
-    print("Running hybrid mode cycles...")
-    hybrid_results = run_training_cycle(
-        engine_hybrid,
-        queries,
-        qrels,
-        num_cycles=args.cycles,
-        queries_per_cycle=args.queries_per_cycle,
-        epochs_per_cycle=args.epochs,
-        learning_rate=args.lr
-    )
-    
+
+    with isolated_adapter_state():
+        engine_hybrid = AntigravityEngine(
+            qdrant_location=":memory:",
+            model_name=args.model,
+            training_mode="hybrid",
+            teacher_model_name=args.teacher,
+            teacher_weight=args.teacher_weight
+        )
+        try:
+            print("Ingesting corpus...")
+            engine_hybrid.ingest(doc_texts, doc_payloads)
+
+            print("Running hybrid mode cycles...")
+            hybrid_results = run_training_cycle(
+                engine_hybrid,
+                queries,
+                qrels,
+                num_cycles=args.cycles,
+                queries_per_cycle=args.queries_per_cycle,
+                epochs_per_cycle=args.epochs,
+                learning_rate=args.lr,
+                max_eval_queries=args.max_eval_queries,
+            )
+        finally:
+            engine_hybrid.close()
+
     all_results['hybrid'] = hybrid_results
     
     # ==========================

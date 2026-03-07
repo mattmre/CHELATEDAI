@@ -10,10 +10,16 @@ Usage:
 
 import time
 import json
+from contextlib import contextmanager
 import numpy as np
 from dataclasses import dataclass, field, asdict
 from typing import Dict, Optional, Any, Callable
-from benchmark_utils import ndcg_at_k, canonicalize_id
+from benchmark_utils import (
+    ndcg_at_k,
+    canonicalize_id,
+    isolated_adapter_state,
+    map_predicted_ids,
+)
 from chelation_logger import get_logger
 
 
@@ -186,6 +192,73 @@ def get_default_configurations():
     ]
 
 
+@contextmanager
+def _temporary_config_overrides(adapter_type: str, adapter_kwargs: Dict[str, Any]):
+    """
+    Temporarily override adapter-related ChelationConfig values.
+
+    This lets comparative benchmarks instantiate the requested adapter variant
+    without permanently mutating process-global defaults.
+    """
+    from config import ChelationConfig
+
+    original_adapter_type = ChelationConfig.ADAPTER_TYPE
+    original_rank = ChelationConfig.LOW_RANK_ADAPTER_RANK
+
+    ChelationConfig.ADAPTER_TYPE = adapter_type
+    if "rank" in adapter_kwargs:
+        ChelationConfig.LOW_RANK_ADAPTER_RANK = adapter_kwargs["rank"]
+
+    try:
+        yield
+    finally:
+        ChelationConfig.ADAPTER_TYPE = original_adapter_type
+        ChelationConfig.LOW_RANK_ADAPTER_RANK = original_rank
+
+
+def build_real_engine_factory(corpus, model_name="sentence-transformers/all-MiniLM-L6-v2"):
+    """
+    Build an engine factory for real comparative evaluation.
+
+    Args:
+        corpus: Dict mapping original doc_id -> text
+        model_name: Embedding model identifier
+
+    Returns:
+        Callable[[BenchmarkConfiguration], AntigravityEngine]
+    """
+    from antigravity_engine import AntigravityEngine
+
+    doc_ids = list(corpus.keys())
+    doc_texts = [corpus[doc_id] for doc_id in doc_ids]
+    doc_payloads = [{"doc_id": canonicalize_id(doc_id)} for doc_id in doc_ids]
+
+    def engine_factory(config):
+        with _temporary_config_overrides(config.adapter_type, config.adapter_kwargs):
+            engine = AntigravityEngine(
+                qdrant_location=":memory:",
+                model_name=model_name,
+                use_centering=config.use_centering,
+                use_quantization=config.use_quantization,
+                store_full_text_payload=False,
+            )
+
+        engine.ingest(doc_texts, doc_payloads)
+
+        if config.temperature != 1.0:
+            engine.set_temperature(config.temperature)
+
+        if config.online_updates:
+            engine.enable_online_updates()
+
+        if config.extra_setup is not None:
+            config.extra_setup(engine)
+
+        return engine
+
+    return engine_factory
+
+
 class ComparativeTestbed:
     """
     Orchestrates comparative benchmarking across configurations.
@@ -200,7 +273,7 @@ class ComparativeTestbed:
         self.logger = get_logger()
 
     def evaluate_single_config(self, config, corpus, queries, qrels,
-                               engine_factory=None):
+                               engine_factory=None, max_queries=None):
         """
         Evaluate a single configuration against a dataset.
 
@@ -210,6 +283,7 @@ class ComparativeTestbed:
             queries: dict {query_id: text}
             qrels: dict {query_id: {doc_id: relevance}}
             engine_factory: Optional callable(config) -> engine instance
+            max_queries: Optional limit on number of queries to evaluate
 
         Returns:
             BenchmarkResult
@@ -222,7 +296,10 @@ class ComparativeTestbed:
 
         # If no engine factory, simulate with dummy scores
         if engine_factory is None:
-            for qid, qtext in queries.items():
+            query_items = list(queries.items())
+            if max_queries is not None:
+                query_items = query_items[:max_queries]
+            for qid, qtext in query_items:
                 rel_docs = qrels.get(str(qid), qrels.get(qid, {}))
                 relevant_set = set(str(d) for d, s in rel_docs.items() if s > 0)
 
@@ -238,27 +315,32 @@ class ComparativeTestbed:
                 recall_scores.append(recall_at_k(retrieved, relevant_set, 10))
                 latencies.append(0.0)
         else:
-            engine = engine_factory(config)
-            try:
-                for qid, qtext in queries.items():
-                    rel_docs = qrels.get(str(qid), qrels.get(qid, {}))
-                    relevant_set = set(str(d) for d, s in rel_docs.items() if s > 0)
+            query_items = list(queries.items())
+            if max_queries is not None:
+                query_items = query_items[:max_queries]
 
-                    start = time.perf_counter()
-                    std_top, chel_top, mask, jaccard = engine.run_inference(qtext)
-                    elapsed = (time.perf_counter() - start) * 1000
+            with isolated_adapter_state():
+                engine = engine_factory(config)
+                try:
+                    for qid, qtext in query_items:
+                        rel_docs = qrels.get(str(qid), qrels.get(qid, {}))
+                        relevant_set = set(str(d) for d, s in rel_docs.items() if s > 0)
 
-                    retrieved = [canonicalize_id(d) for d in chel_top[:10]]
-                    r = [1 if d in relevant_set else 0 for d in retrieved]
+                        start = time.perf_counter()
+                        std_top, chel_top, mask, jaccard = engine.run_inference(qtext)
+                        elapsed = (time.perf_counter() - start) * 1000
 
-                    ndcg_scores.append(ndcg_at_k(r, 10))
-                    map_scores.append(mean_average_precision_at_k(retrieved, relevant_set, 10))
-                    mrr_scores.append(mean_reciprocal_rank(retrieved, relevant_set))
-                    recall_scores.append(recall_at_k(retrieved, relevant_set, 10))
-                    latencies.append(elapsed)
-            finally:
-                if hasattr(engine, 'close'):
-                    engine.close()
+                        retrieved = map_predicted_ids(engine, chel_top[:10])
+                        r = [1 if d in relevant_set else 0 for d in retrieved]
+
+                        ndcg_scores.append(ndcg_at_k(r, 10))
+                        map_scores.append(mean_average_precision_at_k(retrieved, relevant_set, 10))
+                        mrr_scores.append(mean_reciprocal_rank(retrieved, relevant_set))
+                        recall_scores.append(recall_at_k(retrieved, relevant_set, 10))
+                        latencies.append(elapsed)
+                finally:
+                    if hasattr(engine, 'close'):
+                        engine.close()
 
         result = BenchmarkResult(
             config_name=config.name,
@@ -267,13 +349,13 @@ class ComparativeTestbed:
             mrr=float(np.mean(mrr_scores)) if mrr_scores else 0.0,
             recall_at_10=float(np.mean(recall_scores)) if recall_scores else 0.0,
             latency_ms=float(np.mean(latencies)) if latencies else 0.0,
-            num_queries=len(queries),
+            num_queries=len(query_items) if engine_factory is not None or max_queries is not None else len(queries),
             num_docs=len(corpus)
         )
 
         return result
 
-    def run_all(self, corpus, queries, qrels, engine_factory=None):
+    def run_all(self, corpus, queries, qrels, engine_factory=None, max_queries=None):
         """
         Run all configurations and collect results.
 
@@ -282,6 +364,7 @@ class ComparativeTestbed:
             queries: dict {query_id: text}
             qrels: dict {query_id: {doc_id: relevance}}
             engine_factory: Optional callable(config) -> engine instance
+            max_queries: Optional limit on number of queries to evaluate
 
         Returns:
             list of BenchmarkResult
@@ -296,7 +379,7 @@ class ComparativeTestbed:
             )
 
             result = self.evaluate_single_config(
-                config, corpus, queries, qrels, engine_factory
+                config, corpus, queries, qrels, engine_factory, max_queries=max_queries
             )
             self.results.append(result)
 
@@ -375,6 +458,17 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="ChelatedAI Comparative Benchmark")
     parser.add_argument("--task", default="SciFact", help="MTEB task name")
+    parser.add_argument(
+        "--model",
+        default="sentence-transformers/all-MiniLM-L6-v2",
+        help="Embedding model for real evaluation",
+    )
+    parser.add_argument(
+        "--max-queries",
+        type=int,
+        default=100,
+        help="Maximum queries to evaluate (default: 100)",
+    )
     parser.add_argument("--output", default=None, help="JSON output file")
     args = parser.parse_args()
 
@@ -390,7 +484,14 @@ if __name__ == "__main__":
     print(f"Loaded {len(corpus)} documents, {len(queries)} queries")
 
     testbed = ComparativeTestbed()
-    results = testbed.run_all(corpus, queries, qrels)
+    engine_factory = build_real_engine_factory(corpus, model_name=args.model)
+    results = testbed.run_all(
+        corpus,
+        queries,
+        qrels,
+        engine_factory=engine_factory,
+        max_queries=args.max_queries,
+    )
 
     print("\n" + testbed.format_ascii_table())
 
