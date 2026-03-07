@@ -19,6 +19,7 @@ import json
 
 from config import ChelationConfig
 from antigravity_engine import AntigravityEngine
+from benchmark_utils import isolated_adapter_state
 
 # Reuse utilities from benchmark_distillation
 from benchmark_distillation import (
@@ -266,61 +267,64 @@ def run_task_benchmark(
     
     # Initialize engine
     print("Initializing engine...")
-    engine = AntigravityEngine(
-        qdrant_location=":memory:",
-        model_name=model_name,
-        training_mode="baseline"
-    )
-    
-    print("Ingesting corpus...")
-    ingest_start = time.time()
-    engine.ingest(doc_texts, doc_payloads)
-    ingest_time = time.time() - ingest_start
-    print(f"Ingestion completed in {ingest_time:.2f}s")
-    
-    # Benchmark 1: Retrieval Quality (NDCG@10)
-    print("\n[1/3] Measuring Retrieval Quality (NDCG@10)...")
-    quality_start = time.time()
-    ndcg_score, ndcg_list = evaluate_engine(
-        engine,
-        queries,
-        qrels,
-        max_queries=max_queries
-    )
-    quality_time = time.time() - quality_start
-    print(f"  NDCG@10: {ndcg_score:.4f} (σ={np.std(ndcg_list):.4f})")
-    print(f"  Time: {quality_time:.2f}s")
-    
-    # Benchmark 2: Stability (Jaccard Similarity)
-    print("\n[2/3] Measuring Stability (Jaccard)...")
-    stability_start = time.time()
-    stability_score, stability_list = compute_stability(
-        engine,
-        queries,
-        num_runs=stability_runs,
-        max_queries=min(max_queries, 30)  # Limit for time
-    )
-    stability_time = time.time() - stability_start
-    print(f"  Avg Jaccard: {stability_score:.4f} (σ={np.std(stability_list):.4f})")
-    print(f"  Time: {stability_time:.2f}s")
-    
-    # Benchmark 3: Learning Gain
-    print("\n[3/3] Measuring Learning Gain...")
-    learning_start = time.time()
-    learning_results = compute_learning_gain(
-        engine,
-        queries,
-        qrels,
-        num_queries_train=num_queries_train,
-        max_queries_eval=max_queries,
-        epochs=epochs,
-        learning_rate=learning_rate
-    )
-    learning_time = time.time() - learning_start
-    print(f"  Pre-NDCG:  {learning_results['pre_ndcg']:.4f}")
-    print(f"  Post-NDCG: {learning_results['post_ndcg']:.4f}")
-    print(f"  Gain: {learning_results['gain']:+.4f} ({learning_results['gain_percent']:+.2f}%)")
-    print(f"  Time: {learning_time:.2f}s")
+    with isolated_adapter_state():
+        engine = AntigravityEngine(
+            qdrant_location=":memory:",
+            model_name=model_name,
+            training_mode="baseline"
+        )
+        try:
+            print("Ingesting corpus...")
+            ingest_start = time.time()
+            engine.ingest(doc_texts, doc_payloads)
+            ingest_time = time.time() - ingest_start
+            print(f"Ingestion completed in {ingest_time:.2f}s")
+
+            # Benchmark 1: Retrieval Quality (NDCG@10)
+            print("\n[1/3] Measuring Retrieval Quality (NDCG@10)...")
+            quality_start = time.time()
+            ndcg_score, ndcg_list = evaluate_engine(
+                engine,
+                queries,
+                qrels,
+                max_queries=max_queries
+            )
+            quality_time = time.time() - quality_start
+            print(f"  NDCG@10: {ndcg_score:.4f} (σ={np.std(ndcg_list):.4f})")
+            print(f"  Time: {quality_time:.2f}s")
+
+            # Benchmark 2: Stability (Jaccard Similarity)
+            print("\n[2/3] Measuring Stability (Jaccard)...")
+            stability_start = time.time()
+            stability_score, stability_list = compute_stability(
+                engine,
+                queries,
+                num_runs=stability_runs,
+                max_queries=min(max_queries, 30)  # Limit for time
+            )
+            stability_time = time.time() - stability_start
+            print(f"  Avg Jaccard: {stability_score:.4f} (σ={np.std(stability_list):.4f})")
+            print(f"  Time: {stability_time:.2f}s")
+
+            # Benchmark 3: Learning Gain
+            print("\n[3/3] Measuring Learning Gain...")
+            learning_start = time.time()
+            learning_results = compute_learning_gain(
+                engine,
+                queries,
+                qrels,
+                num_queries_train=num_queries_train,
+                max_queries_eval=max_queries,
+                epochs=epochs,
+                learning_rate=learning_rate
+            )
+            learning_time = time.time() - learning_start
+            print(f"  Pre-NDCG:  {learning_results['pre_ndcg']:.4f}")
+            print(f"  Post-NDCG: {learning_results['post_ndcg']:.4f}")
+            print(f"  Gain: {learning_results['gain']:+.4f} ({learning_results['gain_percent']:+.2f}%)")
+            print(f"  Time: {learning_time:.2f}s")
+        finally:
+            engine.close()
     
     # Compile results
     results = {

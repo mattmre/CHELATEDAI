@@ -8,7 +8,7 @@ import csv
 import os
 from datetime import datetime
 
-def run_large_parameter_sweep(task_name="SciFact", model_name="sentence-transformers/all-MiniLM-L6-v2", output_prefix="large_sweep"):
+def run_large_parameter_sweep(task_name="SciFact", model_name="sentence-transformers/all-MiniLM-L6-v2", output_prefix="large_sweep", max_queries=None, db_path=None):
     print(f"Starting large parameter sweep on {task_name} using {model_name}")
     
     # Define an extensive parameter grid
@@ -42,7 +42,7 @@ def run_large_parameter_sweep(task_name="SciFact", model_name="sentence-transfor
         return
 
     print("Calculating baseline performance...")
-    db_path = ChelationConfig.get_db_path(task_name)
+    db_path = db_path or str(ChelationConfig.get_db_path(task_name))
     
     base_engine = AntigravityEngine(
         qdrant_location=str(db_path),
@@ -52,7 +52,7 @@ def run_large_parameter_sweep(task_name="SciFact", model_name="sentence-transfor
         use_centering=False
     )
                 
-    base_score = evaluate_ndcg(base_engine, queries, qrels)
+    base_score = evaluate_ndcg(base_engine, queries, qrels, max_queries=max_queries)
     print(f"Baseline NDCG@10: {base_score:.5f}")
     
     # Run the sweep
@@ -74,7 +74,7 @@ def run_large_parameter_sweep(task_name="SciFact", model_name="sentence-transfor
         )
         
         engine.chelation_log.clear()
-        evaluate_ndcg(engine, queries, qrels) 
+        evaluate_ndcg(engine, queries, qrels, max_queries=max_queries)
         
         # Patch Configs Temporarily
         original_noise_enabled = getattr(ChelationConfig, 'NOISE_INJECTION_ENABLED', False)
@@ -98,7 +98,7 @@ def run_large_parameter_sweep(task_name="SciFact", model_name="sentence-transfor
         ChelationConfig.HOMEOSTATIC_PUSH_MAGNITUDE = original_push_mag
         
         # Evaluate post-learning
-        post_score = evaluate_ndcg(engine, queries, qrels)
+        post_score = evaluate_ndcg(engine, queries, qrels, max_queries=max_queries)
         gain = post_score - base_score
         
         print(f"Post-Learning NDCG@10: {post_score:.5f} (Gain: {gain:+.5f})")
@@ -145,6 +145,8 @@ if __name__ == "__main__":
     parser.add_argument("--task", type=str, default="SciFact", help="MTEB Task")
     parser.add_argument("--model", type=str, default="sentence-transformers/all-MiniLM-L6-v2", help="Embedding Model")
     parser.add_argument("--out", type=str, default="large_sweep", help="Output file prefix")
+    parser.add_argument("--max-queries", type=int, default=None, help="Optional query cap for bounded large-sweep runs")
+    parser.add_argument("--db-path", type=str, default=None, help="Optional isolated Qdrant path for this large sweep")
     
     args = parser.parse_args()
-    run_large_parameter_sweep(args.task, args.model, args.out)
+    run_large_parameter_sweep(args.task, args.model, args.out, max_queries=args.max_queries, db_path=args.db_path)
