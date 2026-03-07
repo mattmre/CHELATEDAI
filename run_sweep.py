@@ -6,7 +6,7 @@ from antigravity_engine import AntigravityEngine
 import json
 from datetime import datetime
 
-def run_parameter_sweep(task_name="SciFact", model_name="ollama:nomic-embed-text", output_file="sweep_results.json"):
+def run_parameter_sweep(task_name="SciFact", model_name="ollama:nomic-embed-text", output_file="sweep_results.json", max_queries=None, db_path=None):
     print(f"Starting parameter sweep on {task_name} using {model_name}")
     
     # Define the parameter grid
@@ -32,7 +32,7 @@ def run_parameter_sweep(task_name="SciFact", model_name="ollama:nomic-embed-text
     
     # Pre-calculate baseline so we don't have to do it every time
     print("Calculating baseline performance...")
-    db_path = ChelationConfig.get_db_path(task_name)
+    db_path = db_path or str(ChelationConfig.get_db_path(task_name))
     
     base_engine = AntigravityEngine(
         qdrant_location=str(db_path),
@@ -71,7 +71,7 @@ def run_parameter_sweep(task_name="SciFact", model_name="ollama:nomic-embed-text
             except Exception as e:
                 print(f"Ingestion failed for batch {i}: {e}")
                 
-    base_score = evaluate_ndcg(base_engine, queries, qrels)
+    base_score = evaluate_ndcg(base_engine, queries, qrels, max_queries=max_queries)
     print(f"Baseline NDCG@10: {base_score:.5f}")
     
     # Run the sweep
@@ -95,7 +95,7 @@ def run_parameter_sweep(task_name="SciFact", model_name="ollama:nomic-embed-text
         
         # Clear log and run an initial evaluation to populate the chelation log
         engine.chelation_log.clear()
-        evaluate_ndcg(engine, queries, qrels) 
+        evaluate_ndcg(engine, queries, qrels, max_queries=max_queries)
         
         # Enable noise injection temporarily via config patching
         original_noise_enabled = ChelationConfig.NOISE_INJECTION_ENABLED
@@ -115,7 +115,7 @@ def run_parameter_sweep(task_name="SciFact", model_name="ollama:nomic-embed-text
         ChelationConfig.NOISE_INJECTION_BASE_SCALE = original_noise_scale
         
         # Evaluate post-learning
-        post_score = evaluate_ndcg(engine, queries, qrels)
+        post_score = evaluate_ndcg(engine, queries, qrels, max_queries=max_queries)
         gain = post_score - base_score
         
         print(f"Post-Learning NDCG@10: {post_score:.5f} (Gain: {gain:+.5f})")
@@ -157,6 +157,8 @@ if __name__ == "__main__":
     parser.add_argument("--task", type=str, default="SciFact", help="MTEB Task")
     parser.add_argument("--model", type=str, default="ollama:nomic-embed-text", help="Embedding Model")
     parser.add_argument("--out", type=str, default="sweep_results.json", help="Output JSON file")
+    parser.add_argument("--max-queries", type=int, default=None, help="Optional query cap for faster sweep iteration")
+    parser.add_argument("--db-path", type=str, default=None, help="Optional isolated Qdrant path for this sweep")
     
     args = parser.parse_args()
-    run_parameter_sweep(args.task, args.model, args.out)
+    run_parameter_sweep(args.task, args.model, args.out, max_queries=args.max_queries, db_path=args.db_path)
