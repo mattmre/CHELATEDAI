@@ -5,6 +5,8 @@ Comprehensive refactoring to transform ChelatedAI from research prototype to pro
 
 **All changes are backward compatible. Zero breaking changes.**
 
+> Historical note (2026-03-07): This PR description reflects the 2026-01-06 hardening pass. The "Deferred to Phase 4" section below is historical and should not be treated as the current implementation roadmap. See `docs/roadmap-audit-and-weight-refinement-plan-2026-03-06.md`.
+
 ## 📊 Quick Stats
 - **New Files**: 7 (config, checkpointing, logging, tests, docs)
 - **Modified Files**: 3 (core engine, benchmarks, adapter)
@@ -196,10 +198,12 @@ If using Ollama, ensure model is pulled:
 docker exec ollama ollama pull nomic-embed-text
 ```
 
-### Deferred to Phase 4
+### Historical Follow-On Ideas
 - Memory optimization for large datasets
 - Adaptive threshold learning
 - Web dashboard for log visualization
+
+These were future-looking notes at the time of the original PR description. They are not an authoritative current backlog.
 
 ## 📦 Files Changed
 
