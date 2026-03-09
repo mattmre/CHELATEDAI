@@ -1,5 +1,6 @@
 import argparse
 import itertools
+import time
 from benchmark_evolution import load_mteb_data, evaluate_ndcg
 from config import ChelationConfig
 from antigravity_engine import AntigravityEngine
@@ -108,7 +109,9 @@ def run_parameter_sweep(task_name="SciFact", model_name="ollama:nomic-embed-text
             ChelationConfig.NOISE_INJECTION_ENABLED = False
             
         # Run sedimentation
+        sediment_start = time.time()
         engine.run_sedimentation_cycle(threshold=thresh, learning_rate=lr, epochs=epochs, noise_injection=noise if noise > 0 else None)
+        sediment_time = time.time() - sediment_start
         
         # Restore config
         ChelationConfig.NOISE_INJECTION_ENABLED = original_noise_enabled
@@ -131,7 +134,8 @@ def run_parameter_sweep(task_name="SciFact", model_name="ollama:nomic-embed-text
             "metrics": {
                 "baseline_ndcg": base_score,
                 "post_ndcg": post_score,
-                "gain": gain
+                "gain": gain,
+                "sediment_time": sediment_time
             }
         }
         results.append(result_entry)

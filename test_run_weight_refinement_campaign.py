@@ -51,9 +51,9 @@ class TestCampaignResume(unittest.TestCase):
 
             existing_outputs = [
                 "phase1_sweep_results.json",
-                "phase2_distillation_tw_03.json",
-                "phase2_distillation_tw_05.json",
-                "phase2_distillation_tw_07.json",
+                "phase2_distillation_mlp_tw_03.json",
+                "phase2_distillation_mlp_tw_05.json",
+                "phase2_distillation_mlp_tw_07.json",
                 "phase3_multitask_small.json",
                 "phase3_multitask_medium.json",
                 "phase4_beir_small.json",

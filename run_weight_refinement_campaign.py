@@ -194,20 +194,23 @@ def run_online_ablation(
         return _setup
 
     configs = [
-        BenchmarkConfiguration(name="chelation_baseline", use_centering=True),
+        BenchmarkConfiguration(name="chelation_baseline", use_centering=True, use_quantization=True),
         BenchmarkConfiguration(
             name="online_triplet_margin",
             use_centering=True,
+            use_quantization=True,
             extra_setup=make_online_setup("triplet_margin"),
         ),
         BenchmarkConfiguration(
             name="online_infonce",
             use_centering=True,
+            use_quantization=True,
             extra_setup=make_online_setup("infonce"),
         ),
         BenchmarkConfiguration(
             name="online_cosine_similarity",
             use_centering=True,
+            use_quantization=True,
             extra_setup=make_online_setup("cosine_similarity"),
         ),
     ]
@@ -323,6 +326,11 @@ def main() -> int:
         help="Embedding model to use for real-evaluation phases",
     )
     parser.add_argument(
+        "--teacher",
+        default=None,
+        help="Teacher model for distillation phases (default: same as --model)",
+    )
+    parser.add_argument(
         "--max-queries",
         type=int,
         default=50,
@@ -353,11 +361,19 @@ def main() -> int:
         help="Shared learning rate for bounded campaign phases (Phase 1 sweet spot)",
     )
     parser.add_argument(
+        "--adapter-types",
+        default="mlp",
+        help="Comma-separated adapter types to test in Phase 2 distillation (default: mlp)",
+    )
+    parser.add_argument(
         "--launch-large-sweep",
         action="store_true",
         help="Launch run_large_sweep.py in the background after bounded phases",
     )
     args = parser.parse_args()
+
+    if args.teacher is None:
+        args.teacher = args.model
 
     if args.resume_run_dir:
         run_dir = Path(args.resume_run_dir)
@@ -428,49 +444,53 @@ def main() -> int:
             )
             update_manifest(run_dir, manifest)
 
-        for teacher_weight in ("0.3", "0.5", "0.7"):
-            label = f"phase2_distillation_tw_{teacher_weight.replace('.', '')}"
-            output_path = run_dir / f"{label}.json"
-            if phase_is_complete(manifest["phases"].get(label)) and output_path.exists():
-                continue
-            if output_path.exists():
-                recover_completed_phase(manifest, label, output_path)
-                update_manifest(run_dir, manifest)
-                continue
+        adapter_types = [t.strip() for t in args.adapter_types.split(",")]
+        for adapter_type in adapter_types:
+            for teacher_weight in ("0.3", "0.5", "0.7"):
+                label = f"phase2_distillation_{adapter_type}_tw_{teacher_weight.replace('.', '')}"
+                output_path = run_dir / f"{label}.json"
+                if phase_is_complete(manifest["phases"].get(label)) and output_path.exists():
+                    continue
+                if output_path.exists():
+                    recover_completed_phase(manifest, label, output_path)
+                    update_manifest(run_dir, manifest)
+                    continue
 
-            restore_adapter(snapshot_path)
-            manifest["phases"][label] = run_command(
-                label,
-                [
-                    sys.executable,
-                    "-u",
-                    "benchmark_distillation.py",
-                    "--task",
-                    "SciFact",
-                    "--model",
-                    args.model,
-                    "--teacher",
-                    args.model,
-                    "--cycles",
-                    str(args.distill_cycles),
-                    "--queries-per-cycle",
-                    str(args.distill_queries_per_cycle),
-                    "--epochs",
-                    str(args.distill_epochs),
-                    "--lr",
-                    str(args.learning_rate),
-                    "--max-eval-queries",
-                    str(args.max_queries),
-                    "--teacher-weight",
-                    teacher_weight,
-                    "--threshold",
-                    "1",
-                    "--output",
-                    str(output_path),
-                ],
-                run_dir,
-            )
-            update_manifest(run_dir, manifest)
+                restore_adapter(snapshot_path)
+                manifest["phases"][label] = run_command(
+                    label,
+                    [
+                        sys.executable,
+                        "-u",
+                        "benchmark_distillation.py",
+                        "--task",
+                        "SciFact",
+                        "--model",
+                        args.model,
+                        "--teacher",
+                        args.teacher,
+                        "--cycles",
+                        str(args.distill_cycles),
+                        "--queries-per-cycle",
+                        str(args.distill_queries_per_cycle),
+                        "--epochs",
+                        str(args.distill_epochs),
+                        "--lr",
+                        str(args.learning_rate),
+                        "--max-eval-queries",
+                        str(args.max_queries),
+                        "--teacher-weight",
+                        teacher_weight,
+                        "--threshold",
+                        "1",
+                        "--adapter-type",
+                        adapter_type,
+                        "--output",
+                        str(output_path),
+                    ],
+                    run_dir,
+                )
+                update_manifest(run_dir, manifest)
 
         for suite in ("small", "medium"):
             label = f"phase3_multitask_{suite}"

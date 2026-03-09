@@ -66,6 +66,12 @@ def main() -> int:
         help="Learning rate (default: 0.01, Phase 1 validated sweet spot)",
     )
     parser.add_argument(
+        "--teacher",
+        type=str,
+        default="sentence-transformers/all-mpnet-base-v2",
+        help="Teacher model for distillation (default: all-mpnet-base-v2, 768-dim)",
+    )
+    parser.add_argument(
         "--launch-large-sweep",
         action="store_true",
         help="Launch large sweep in background after bounded phases",
@@ -82,6 +88,7 @@ def main() -> int:
     print(f"Query budget: {args.max_queries}")
     print(f"Distillation: {args.distill_cycles} cycles x {args.distill_queries_per_cycle} queries x {args.distill_epochs} epochs")
     print(f"Learning rate: {args.learning_rate}")
+    print(f"Teacher model: {args.teacher}")
     print(f"Large sweep: {'yes' if args.launch_large_sweep else 'no'}")
     print()
     print("Fixes applied in this campaign:")
@@ -110,6 +117,8 @@ def main() -> int:
         str(args.distill_epochs),
         "--learning-rate",
         str(args.learning_rate),
+        "--teacher",
+        args.teacher,
     ]
 
     if args.launch_large_sweep:

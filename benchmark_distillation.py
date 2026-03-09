@@ -20,6 +20,7 @@ from typing import Dict, List, Tuple
 import json
 
 from antigravity_engine import AntigravityEngine
+from benchmark_comparative import _temporary_config_overrides
 from benchmark_utils import isolated_adapter_state
 
 
@@ -363,6 +364,13 @@ def main():
         default=100,
         help="Maximum queries to evaluate per cycle",
     )
+    parser.add_argument(
+        "--adapter-type",
+        type=str,
+        default="mlp",
+        choices=["mlp", "procrustes", "low_rank"],
+        help="Adapter variant to use for distillation (default: mlp)",
+    )
     parser.add_argument("--output", type=str, default="benchmark_distillation_results.json",
                         help="Output file for results")
     
@@ -379,6 +387,7 @@ def main():
     print(f"Epochs/Cycle: {args.epochs}")
     print(f"Learning Rate: {args.lr}")
     print(f"Teacher Weight (hybrid): {args.teacher_weight}")
+    print(f"Adapter Type: {args.adapter_type}")
     print("="*60)
     
     # Load MTEB data
@@ -406,30 +415,31 @@ def main():
     print("="*60)
 
     with isolated_adapter_state():
-        engine_baseline = AntigravityEngine(
-            qdrant_location=":memory:",
-            model_name=args.model,
-            training_mode="baseline",
-            use_quantization=True,
-        )
-        try:
-            print("Ingesting corpus...")
-            engine_baseline.ingest(doc_texts, doc_payloads)
-
-            print("Running baseline cycles...")
-            baseline_results = run_training_cycle(
-                engine_baseline,
-                queries,
-                qrels,
-                num_cycles=args.cycles,
-                queries_per_cycle=args.queries_per_cycle,
-                epochs_per_cycle=args.epochs,
-                learning_rate=args.lr,
-                max_eval_queries=args.max_eval_queries,
-                threshold=args.threshold,
+        with _temporary_config_overrides(args.adapter_type, {}):
+            engine_baseline = AntigravityEngine(
+                qdrant_location=":memory:",
+                model_name=args.model,
+                training_mode="baseline",
+                use_quantization=True,
             )
-        finally:
-            engine_baseline.close()
+            try:
+                print("Ingesting corpus...")
+                engine_baseline.ingest(doc_texts, doc_payloads)
+
+                print("Running baseline cycles...")
+                baseline_results = run_training_cycle(
+                    engine_baseline,
+                    queries,
+                    qrels,
+                    num_cycles=args.cycles,
+                    queries_per_cycle=args.queries_per_cycle,
+                    epochs_per_cycle=args.epochs,
+                    learning_rate=args.lr,
+                    max_eval_queries=args.max_eval_queries,
+                    threshold=args.threshold,
+                )
+            finally:
+                engine_baseline.close()
 
     all_results['baseline'] = baseline_results
     
@@ -441,42 +451,43 @@ def main():
     print("="*60)
 
     with isolated_adapter_state():
-        engine_offline = AntigravityEngine(
-            qdrant_location=":memory:",
-            model_name=args.model,
-            training_mode="offline",
-            teacher_model_name=args.teacher,
-            use_quantization=True,
-        )
-        try:
-            print("Ingesting corpus...")
-            engine_offline.ingest(doc_texts, doc_payloads)
-
-            # Run offline distillation first (pre-training)
-            print("Running offline distillation pre-training...")
-            offline_start = time.time()
-            engine_offline.run_offline_distillation(
-                batch_size=100,
-                learning_rate=args.lr,
-                epochs=args.epochs
+        with _temporary_config_overrides(args.adapter_type, {}):
+            engine_offline = AntigravityEngine(
+                qdrant_location=":memory:",
+                model_name=args.model,
+                training_mode="offline",
+                teacher_model_name=args.teacher,
+                use_quantization=True,
             )
-            offline_time = time.time() - offline_start
-            print(f"Offline distillation completed in {offline_time:.2f}s")
+            try:
+                print("Ingesting corpus...")
+                engine_offline.ingest(doc_texts, doc_payloads)
 
-            print("Running offline mode cycles...")
-            offline_results = run_training_cycle(
-                engine_offline,
-                queries,
-                qrels,
-                num_cycles=args.cycles,
-                queries_per_cycle=args.queries_per_cycle,
-                epochs_per_cycle=args.epochs,
-                learning_rate=args.lr,
-                max_eval_queries=args.max_eval_queries,
-                threshold=args.threshold,
-            )
-        finally:
-            engine_offline.close()
+                # Run offline distillation first (pre-training)
+                print("Running offline distillation pre-training...")
+                offline_start = time.time()
+                engine_offline.run_offline_distillation(
+                    batch_size=100,
+                    learning_rate=args.lr,
+                    epochs=args.epochs
+                )
+                offline_time = time.time() - offline_start
+                print(f"Offline distillation completed in {offline_time:.2f}s")
+
+                print("Running offline mode cycles...")
+                offline_results = run_training_cycle(
+                    engine_offline,
+                    queries,
+                    qrels,
+                    num_cycles=args.cycles,
+                    queries_per_cycle=args.queries_per_cycle,
+                    epochs_per_cycle=args.epochs,
+                    learning_rate=args.lr,
+                    max_eval_queries=args.max_eval_queries,
+                    threshold=args.threshold,
+                )
+            finally:
+                engine_offline.close()
 
     all_results['offline'] = {
         'pretraining_time': offline_time,
@@ -491,32 +502,33 @@ def main():
     print("="*60)
 
     with isolated_adapter_state():
-        engine_hybrid = AntigravityEngine(
-            qdrant_location=":memory:",
-            model_name=args.model,
-            training_mode="hybrid",
-            teacher_model_name=args.teacher,
-            teacher_weight=args.teacher_weight,
-            use_quantization=True,
-        )
-        try:
-            print("Ingesting corpus...")
-            engine_hybrid.ingest(doc_texts, doc_payloads)
-
-            print("Running hybrid mode cycles...")
-            hybrid_results = run_training_cycle(
-                engine_hybrid,
-                queries,
-                qrels,
-                num_cycles=args.cycles,
-                queries_per_cycle=args.queries_per_cycle,
-                epochs_per_cycle=args.epochs,
-                learning_rate=args.lr,
-                max_eval_queries=args.max_eval_queries,
-                threshold=args.threshold,
+        with _temporary_config_overrides(args.adapter_type, {}):
+            engine_hybrid = AntigravityEngine(
+                qdrant_location=":memory:",
+                model_name=args.model,
+                training_mode="hybrid",
+                teacher_model_name=args.teacher,
+                teacher_weight=args.teacher_weight,
+                use_quantization=True,
             )
-        finally:
-            engine_hybrid.close()
+            try:
+                print("Ingesting corpus...")
+                engine_hybrid.ingest(doc_texts, doc_payloads)
+
+                print("Running hybrid mode cycles...")
+                hybrid_results = run_training_cycle(
+                    engine_hybrid,
+                    queries,
+                    qrels,
+                    num_cycles=args.cycles,
+                    queries_per_cycle=args.queries_per_cycle,
+                    epochs_per_cycle=args.epochs,
+                    learning_rate=args.lr,
+                    max_eval_queries=args.max_eval_queries,
+                    threshold=args.threshold,
+                )
+            finally:
+                engine_hybrid.close()
 
     all_results['hybrid'] = hybrid_results
     
