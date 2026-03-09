@@ -602,13 +602,13 @@ class TestAdapterVariants(unittest.TestCase):
                        f"Output not normalized: norms range {norms.min():.6f} to {norms.max():.6f}")
 
     def test_lowrank_near_identity_init(self):
-        """Test that LowRank adapter starts near identity (cosine > 0.99)."""
+        """Test that LowRank adapter starts near identity (cosine > 0.95)."""
         adapter = LowRankAffineAdapter(input_dim=self.input_dim)
         x = torch.randn(5, self.input_dim)
         out = adapter(x)
         x_normalized = torch.nn.functional.normalize(x, p=2, dim=1)
         cosine_sim = torch.nn.functional.cosine_similarity(out, x_normalized, dim=1)
-        self.assertTrue(torch.all(cosine_sim > 0.99).item(),
+        self.assertTrue(torch.all(cosine_sim > 0.95).item(),
                        f"Not near identity at init: min cosine sim = {cosine_sim.min().item()}")
 
     def test_lowrank_custom_rank(self):

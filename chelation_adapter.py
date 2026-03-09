@@ -95,7 +95,7 @@ class OrthogonalProcrustesAdapter(nn.Module):
         self.input_dim = input_dim
         # Skew-symmetric parameter: only upper triangle needed
         # Initialize near zero for near-identity start
-        self._skew_param = nn.Parameter(torch.zeros(input_dim, input_dim) * 0.001)
+        self._skew_param = nn.Parameter(torch.randn(input_dim, input_dim) * 0.001)
 
     def _get_orthogonal_matrix(self):
         """Compute orthogonal matrix via Cayley transform of skew-symmetric matrix."""
@@ -153,8 +153,8 @@ class LowRankAffineAdapter(nn.Module):
         self.rank = rank
         # Low-rank factors: U is (input_dim, rank), V is (input_dim, rank)
         # x @ U @ V^T gives (batch, input_dim)
-        self.U = nn.Parameter(torch.randn(input_dim, rank) * 0.001)
-        self.V = nn.Parameter(torch.randn(input_dim, rank) * 0.001)
+        self.U = nn.Parameter(torch.randn(input_dim, rank) * 0.01)
+        self.V = nn.Parameter(torch.randn(input_dim, rank) * 0.01)
         self.bias = nn.Parameter(torch.zeros(input_dim))
 
     def forward(self, x):

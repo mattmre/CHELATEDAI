@@ -17,7 +17,6 @@ from pathlib import Path
 from typing import Dict, List, Tuple, Any
 import json
 
-from config import ChelationConfig
 from antigravity_engine import AntigravityEngine
 from benchmark_utils import isolated_adapter_state
 
@@ -149,7 +148,8 @@ def compute_learning_gain(
     num_queries_train: int = 50,
     max_queries_eval: int = 100,
     epochs: int = 10,
-    learning_rate: float = 0.001
+    learning_rate: float = 0.01,
+    threshold: int = 1,
 ) -> Dict[str, Any]:
     """
     Compute learning gain by measuring NDCG improvement after sedimentation.
@@ -187,7 +187,7 @@ def compute_learning_gain(
     print(f"  Running sedimentation (epochs={epochs})...")
     sediment_start = time.time()
     engine.run_sedimentation_cycle(
-        threshold=ChelationConfig.DEFAULT_COLLAPSE_THRESHOLD,
+        threshold=threshold,
         learning_rate=learning_rate,
         epochs=epochs
     )
@@ -225,7 +225,8 @@ def run_task_benchmark(
     num_queries_train: int,
     epochs: int,
     learning_rate: float,
-    stability_runs: int = 3
+    stability_runs: int = 3,
+    threshold: int = 1,
 ) -> Dict[str, Any]:
     """
     Run comprehensive benchmark on a single MTEB task.
@@ -271,7 +272,8 @@ def run_task_benchmark(
         engine = AntigravityEngine(
             qdrant_location=":memory:",
             model_name=model_name,
-            training_mode="baseline"
+            training_mode="baseline",
+            use_quantization=True,
         )
         try:
             print("Ingesting corpus...")
@@ -316,7 +318,8 @@ def run_task_benchmark(
                 num_queries_train=num_queries_train,
                 max_queries_eval=max_queries,
                 epochs=epochs,
-                learning_rate=learning_rate
+                learning_rate=learning_rate,
+                threshold=threshold,
             )
             learning_time = time.time() - learning_start
             print(f"  Pre-NDCG:  {learning_results['pre_ndcg']:.4f}")
@@ -462,8 +465,14 @@ def main():
     parser.add_argument(
         "--lr",
         type=float,
-        default=0.001,
+        default=0.01,
         help="Learning rate"
+    )
+    parser.add_argument(
+        "--threshold",
+        type=int,
+        default=1,
+        help="Chelation frequency threshold for sedimentation"
     )
     parser.add_argument(
         "--stability-runs",
@@ -508,7 +517,8 @@ def main():
             num_queries_train=args.num_queries_train,
             epochs=args.epochs,
             learning_rate=args.lr,
-            stability_runs=args.stability_runs
+            stability_runs=args.stability_runs,
+            threshold=args.threshold,
         )
         all_results.append(task_result)
     

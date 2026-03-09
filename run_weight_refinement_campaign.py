@@ -349,8 +349,8 @@ def main() -> int:
     parser.add_argument(
         "--learning-rate",
         type=float,
-        default=0.001,
-        help="Shared learning rate for bounded campaign phases",
+        default=0.01,
+        help="Shared learning rate for bounded campaign phases (Phase 1 sweet spot)",
     )
     parser.add_argument(
         "--launch-large-sweep",
@@ -463,6 +463,8 @@ def main() -> int:
                     str(args.max_queries),
                     "--teacher-weight",
                     teacher_weight,
+                    "--threshold",
+                    "1",
                     "--output",
                     str(output_path),
                 ],
@@ -499,6 +501,8 @@ def main() -> int:
                     str(args.distill_epochs),
                     "--lr",
                     str(args.learning_rate),
+                    "--threshold",
+                    "1",
                     "--output",
                     str(output_path),
                 ],

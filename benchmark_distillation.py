@@ -19,7 +19,6 @@ from pathlib import Path
 from typing import Dict, List, Tuple
 import json
 
-from config import ChelationConfig
 from antigravity_engine import AntigravityEngine
 from benchmark_utils import isolated_adapter_state
 
@@ -263,8 +262,9 @@ def run_training_cycle(
     num_cycles: int = 3,
     queries_per_cycle: int = 50,
     epochs_per_cycle: int = 10,
-    learning_rate: float = 0.001,
+    learning_rate: float = 0.01,
     max_eval_queries: int = 100,
+    threshold: int = 1,
 ) -> List[Dict]:
     """
     Run multiple query-sedimentation cycles and track performance.
@@ -307,7 +307,7 @@ def run_training_cycle(
         print(f"Running sedimentation (mode={engine.training_mode}, epochs={epochs_per_cycle})...")
         sediment_start = time.time()
         engine.run_sedimentation_cycle(
-            threshold=ChelationConfig.DEFAULT_COLLAPSE_THRESHOLD,
+            threshold=threshold,
             learning_rate=learning_rate,
             epochs=epochs_per_cycle
         )
@@ -354,7 +354,8 @@ def main():
     parser.add_argument("--cycles", type=int, default=3, help="Number of training cycles")
     parser.add_argument("--queries-per-cycle", type=int, default=50, help="Queries per cycle")
     parser.add_argument("--epochs", type=int, default=10, help="Training epochs per cycle")
-    parser.add_argument("--lr", type=float, default=0.001, help="Learning rate")
+    parser.add_argument("--lr", type=float, default=0.01, help="Learning rate")
+    parser.add_argument("--threshold", type=int, default=1, help="Chelation frequency threshold for sedimentation")
     parser.add_argument("--teacher-weight", type=float, default=0.5, help="Teacher weight for hybrid mode")
     parser.add_argument(
         "--max-eval-queries",
@@ -408,7 +409,8 @@ def main():
         engine_baseline = AntigravityEngine(
             qdrant_location=":memory:",
             model_name=args.model,
-            training_mode="baseline"
+            training_mode="baseline",
+            use_quantization=True,
         )
         try:
             print("Ingesting corpus...")
@@ -424,6 +426,7 @@ def main():
                 epochs_per_cycle=args.epochs,
                 learning_rate=args.lr,
                 max_eval_queries=args.max_eval_queries,
+                threshold=args.threshold,
             )
         finally:
             engine_baseline.close()
@@ -442,7 +445,8 @@ def main():
             qdrant_location=":memory:",
             model_name=args.model,
             training_mode="offline",
-            teacher_model_name=args.teacher
+            teacher_model_name=args.teacher,
+            use_quantization=True,
         )
         try:
             print("Ingesting corpus...")
@@ -469,6 +473,7 @@ def main():
                 epochs_per_cycle=args.epochs,
                 learning_rate=args.lr,
                 max_eval_queries=args.max_eval_queries,
+                threshold=args.threshold,
             )
         finally:
             engine_offline.close()
@@ -491,7 +496,8 @@ def main():
             model_name=args.model,
             training_mode="hybrid",
             teacher_model_name=args.teacher,
-            teacher_weight=args.teacher_weight
+            teacher_weight=args.teacher_weight,
+            use_quantization=True,
         )
         try:
             print("Ingesting corpus...")
@@ -507,6 +513,7 @@ def main():
                 epochs_per_cycle=args.epochs,
                 learning_rate=args.lr,
                 max_eval_queries=args.max_eval_queries,
+                threshold=args.threshold,
             )
         finally:
             engine_hybrid.close()
