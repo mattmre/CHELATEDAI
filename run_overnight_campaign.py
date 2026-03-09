@@ -97,6 +97,8 @@ def main() -> int:
     print("  - LR=0.01 (not 0.001)")
     print("  - Procrustes init: randn (not zeros)")
     print("  - Low-rank init: std=0.01 (not 0.001)")
+    print("  - All 3 adapter types tested (mlp, procrustes, low_rank)")
+    print("  - Different teacher model (768-dim) for real distillation signal")
     print("=" * 60)
 
     command = [
@@ -119,6 +121,8 @@ def main() -> int:
         str(args.learning_rate),
         "--teacher",
         args.teacher,
+        "--adapter-types",
+        "mlp,procrustes,low_rank",
     ]
 
     if args.launch_large_sweep:
