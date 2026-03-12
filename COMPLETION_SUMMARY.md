@@ -10,6 +10,8 @@
 
 Successfully completed comprehensive refactoring of ChelatedAI prototype to production-ready state. All critical bugs fixed, cross-platform support added, error recovery implemented, structured logging enabled, and comprehensive testing in place.
 
+> Historical note (2026-03-07): This summary captures the 2026-01-06 refactor closeout. The old "Phase 4" and "future development" wording below is preserved as historical context only and is superseded by `docs/roadmap-audit-and-weight-refinement-plan-2026-03-06.md`.
+
 ### Key Achievements
 
 ✅ **Zero Breaking Changes** - All improvements are backward compatible
@@ -263,19 +265,19 @@ OK
 
 ---
 
-## What Was NOT Done (Deferred to Phase 4)
+## Historical Follow-On Ideas At The Time
 
 ### Memory Optimization
 - Streaming large batches (still loads full batch)
 - Auto batch-size tuning
 - Memory monitoring
-- **Reason**: Lower priority, existing system works for tested datasets
+- **Historical note**: These were lower-priority ideas at the time, not the current numbered roadmap.
 
 ### Advanced Features
 - Web dashboard for log visualization
 - Adaptive threshold learning
 - Additional MTEB benchmarks
-- **Reason**: Research features, not stability concerns
+- **Historical note**: Several of these surfaces now exist in the repo; use the current roadmap audit rather than this section to determine remaining work.
 
 ---
 
@@ -299,7 +301,7 @@ OK
    - Check TECHNICAL_ANALYSIS.md for architecture
    - See CHANGELOG.md for migration notes
 
-### Future Development (Phase 4)
+### Historical Future Development Ideas
 
 1. **Memory Optimization**
    - Implement streaming for large datasets
@@ -320,6 +322,8 @@ OK
    - Adaptive threshold learning
    - Multi-model adapter ensembles
    - Theoretical convergence analysis
+
+These bullets should be read as contemporaneous ideas from 2026-01-06, not as the active post-implementation backlog.
 
 ---
 

@@ -5,6 +5,8 @@
 **Status**: ✅ Phase 1-3 COMPLETE
 **Objective**: Stabilize and harden the ChelatedAI prototype for production use
 
+> Historical note (2026-03-07): This document records the 2026-01-06 Phase 1-3 closeout. References below to "Phase 4" are historical planning language, not the current roadmap. See `docs/roadmap-audit-and-weight-refinement-plan-2026-03-06.md` for the current post-implementation state.
+
 ---
 
 ## Phase Overview
@@ -34,9 +36,11 @@
 - [x] Implement checkpoint/rollback for training cycles
 - [x] Add validation metrics to detect degradation (via checkpoint integrity)
 - [x] Create safe mode with baseline fallback (SafeTrainingContext)
-- [ ] Stream training data instead of loading all at once (Deferred to Phase 4)
-- [ ] Implement batch size auto-tuning (Deferred to Phase 4)
-- [ ] Add memory monitoring and warnings (Deferred to Phase 4)
+
+**Historical follow-on ideas** (recorded at the time; superseded by the current roadmap audit):
+- Stream training data instead of loading all at once
+- Implement batch size auto-tuning
+- Add memory monitoring and warnings
 
 ### Phase 3: Observability (Priority 3) ✅ COMPLETE
 **Goal**: Improve debugging, monitoring, and testing
@@ -129,11 +133,11 @@
 ### Phase 2 Complete When: ✅ ALL MET
 - [x] Configuration system implemented (config.py with presets and validation)
 - [x] Error recovery tested and working (checkpoint_manager.py demo successful)
-- [ ] Memory usage optimized for large datasets (Deferred to Phase 4)
+- *Historical note: memory usage optimization for large datasets was a follow-on idea, not an active numbered phase on the current roadmap.*
 - [x] Safe mode validated (SafeTrainingContext rollback tested)
 
 ### Phase 3 Complete When: ✅ ALL MET
 - [x] Structured logging in place (chelation_logger.py with JSON output)
 - [x] >80% unit test coverage for core algorithms (100% coverage of tested algorithms)
 - [x] Integration tests cover all workflows (existing tests + new unit tests)
-- [ ] Performance metrics dashboard available (Deferred to Phase 4)
+- *Historical note: performance metrics dashboard was a follow-on idea; later repo work should be checked against the current roadmap audit, not this line.*
