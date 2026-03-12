@@ -36,9 +36,11 @@
 - [x] Implement checkpoint/rollback for training cycles
 - [x] Add validation metrics to detect degradation (via checkpoint integrity)
 - [x] Create safe mode with baseline fallback (SafeTrainingContext)
-- [ ] Stream training data instead of loading all at once (Historical follow-on idea at the time; the old "Deferred to Phase 4" wording is superseded by the current roadmap audit)
-- [ ] Implement batch size auto-tuning (Historical follow-on idea at the time; do not treat this line as a current numbered phase)
-- [ ] Add memory monitoring and warnings (Historical optimization note, not an active Phase 4 commitment)
+
+**Historical follow-on ideas** (recorded at the time; superseded by the current roadmap audit):
+- Stream training data instead of loading all at once
+- Implement batch size auto-tuning
+- Add memory monitoring and warnings
 
 ### Phase 3: Observability (Priority 3) ✅ COMPLETE
 **Goal**: Improve debugging, monitoring, and testing
@@ -131,11 +133,11 @@
 ### Phase 2 Complete When: ✅ ALL MET
 - [x] Configuration system implemented (config.py with presets and validation)
 - [x] Error recovery tested and working (checkpoint_manager.py demo successful)
-- [ ] Memory usage optimized for large datasets (Historical optimization note; not an active numbered phase on the current roadmap)
+- *Historical note: memory usage optimization for large datasets was a follow-on idea, not an active numbered phase on the current roadmap.*
 - [x] Safe mode validated (SafeTrainingContext rollback tested)
 
 ### Phase 3 Complete When: ✅ ALL MET
 - [x] Structured logging in place (chelation_logger.py with JSON output)
 - [x] >80% unit test coverage for core algorithms (100% coverage of tested algorithms)
 - [x] Integration tests cover all workflows (existing tests + new unit tests)
-- [ ] Performance metrics dashboard available (Historical note only; later repo work should be checked against the current roadmap audit, not this line)
+- *Historical note: performance metrics dashboard was a follow-on idea; later repo work should be checked against the current roadmap audit, not this line.*
