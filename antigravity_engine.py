@@ -612,6 +612,38 @@ class AntigravityEngine:
             min_epochs=self._convergence_min_epochs
         )
 
+    # ===== Kalman-Gain Adaptive LR =====
+
+    def enable_kalman_lr(self, process_noise=0.1, min_lr_ratio=0.1,
+                         max_lr_ratio=2.0, window_size=10):
+        """Enable Kalman-gain adaptive learning rate for training loops.
+
+        Modulates the optimizer LR based on loss-variance uncertainty:
+        high variance (uncertain) -> lower LR, low variance (stable) -> higher LR.
+
+        Args:
+            process_noise: Expected process noise Q (default: 0.1)
+            min_lr_ratio: Minimum LR as fraction of base_lr (default: 0.1)
+            max_lr_ratio: Maximum LR as fraction of base_lr (default: 2.0)
+            window_size: Rolling window for variance estimation (default: 10)
+        """
+        self._kalman_lr_enabled = True
+        self._kalman_process_noise = process_noise
+        self._kalman_min_lr_ratio = min_lr_ratio
+        self._kalman_max_lr_ratio = max_lr_ratio
+        self._kalman_window_size = window_size
+        self.logger.log_event(
+            "kalman_lr_enabled",
+            "Kalman-gain adaptive LR enabled "
+            "(Q={}, min_ratio={}, max_ratio={}, window={})".format(
+                process_noise, min_lr_ratio, max_lr_ratio, window_size
+            ),
+            process_noise=process_noise,
+            min_lr_ratio=min_lr_ratio,
+            max_lr_ratio=max_lr_ratio,
+            window_size=window_size,
+        )
+
     # ===== Phase 1: Temperature Scaling =====
 
     def set_temperature(self, temperature):
@@ -1103,9 +1135,21 @@ class AntigravityEngine:
             # Optional weight scheduler for dynamic teacher weight
             weight_scheduler = getattr(self, '_weight_scheduler', None)
 
+            # Kalman-gain adaptive LR scheduler
+            kalman_scheduler = None
+            if getattr(self, '_kalman_lr_enabled', False):
+                from kalman_lr_scheduler import KalmanLRScheduler
+                kalman_scheduler = KalmanLRScheduler(
+                    base_lr=learning_rate,
+                    process_noise=getattr(self, '_kalman_process_noise', 0.1),
+                    min_lr_ratio=getattr(self, '_kalman_min_lr_ratio', 0.1),
+                    max_lr_ratio=getattr(self, '_kalman_max_lr_ratio', 2.0),
+                    window_size=getattr(self, '_kalman_window_size', 10),
+                )
+
             for epoch in range(epochs):
                 optimizer.zero_grad()
-                
+
                 if noise_scales is not None:
                     noise = torch.randn_like(input_tensor) * noise_scales
                     noisy_input = input_tensor + noise
@@ -1113,7 +1157,7 @@ class AntigravityEngine:
                     outputs = self.adapter(noisy_input)
                 else:
                     outputs = self.adapter(input_tensor)
-                    
+
                 loss = criterion(outputs, target_tensor)
 
                 # Frobenius-norm regularization (Procrustes: penalise skew-param
@@ -1126,6 +1170,12 @@ class AntigravityEngine:
                 loss.backward()
                 optimizer.step()
                 final_loss = loss.item()
+
+                # Kalman-gain adaptive LR update
+                if kalman_scheduler is not None:
+                    new_lr = kalman_scheduler.step(final_loss)
+                    for param_group in optimizer.param_groups:
+                        param_group['lr'] = new_lr
 
                 # Update teacher weight schedule if enabled
                 if weight_scheduler is not None:
@@ -1359,6 +1409,18 @@ class AntigravityEngine:
         # Optional weight scheduler for dynamic teacher weight
         weight_scheduler = getattr(self, '_weight_scheduler', None)
 
+        # Kalman-gain adaptive LR scheduler
+        kalman_scheduler = None
+        if getattr(self, '_kalman_lr_enabled', False):
+            from kalman_lr_scheduler import KalmanLRScheduler
+            kalman_scheduler = KalmanLRScheduler(
+                base_lr=lr,
+                process_noise=getattr(self, '_kalman_process_noise', 0.1),
+                min_lr_ratio=getattr(self, '_kalman_min_lr_ratio', 0.1),
+                max_lr_ratio=getattr(self, '_kalman_max_lr_ratio', 2.0),
+                window_size=getattr(self, '_kalman_window_size', 10),
+            )
+
         for epoch in range(ep):
             optimizer.zero_grad()
             outputs = self.adapter(input_tensor)
@@ -1366,6 +1428,12 @@ class AntigravityEngine:
             loss.backward()
             optimizer.step()
             final_loss = loss.item()
+
+            # Kalman-gain adaptive LR update
+            if kalman_scheduler is not None:
+                new_lr = kalman_scheduler.step(final_loss)
+                for param_group in optimizer.param_groups:
+                    param_group['lr'] = new_lr
 
             # Update teacher weight schedule if enabled
             if weight_scheduler is not None:
