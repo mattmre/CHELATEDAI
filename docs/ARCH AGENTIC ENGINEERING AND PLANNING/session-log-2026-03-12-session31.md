@@ -69,7 +69,35 @@ Fix open PR review comments, merge PRs #96/#97/#98 to main, then implement prior
 - PR #102: Rebased after #101, conflict resolved, MERGED ✓
 - Final verification: 1082 tests passing on main, all CI green
 
-## Phase 6: Session Wrap (Complete)
+## Phase 6: Session Wrap & Housekeeping (Complete)
+
+### PR #103 — Session wrap docs (MERGED)
+- Session log, 3 research documents, task plan
+
+### PR #104 — CLAUDE.md + next-session refresh (MERGED)
+- Test count 973 → 1082 in CLAUDE.md
+- New modules, APIs, preset types documented
+- Removed resolved contamination warning
+- next-session.md refreshed for Session 32 (overnight campaign priority)
+
+### Branch Cleanup
+- 67 stale local branches deleted (all `pr/*`, `feature/*`, `feat/session21-*`, `feat/session31-*`)
+- 3 stale remote branches deleted (`feat/session21-*` with closed PRs)
+- Remaining: `main`, 6 `backup/*` refs (retained per policy until 2026-04-05)
+
+### Memory & Docs Updated
+- `project-state.md`: Session 31 outcomes, 1082 tests
+- `project-history.md`: Sessions 23-31 timeline added
+- `roadmap.md`: Overnight campaign as next priority, blocked/scheduled items documented
+
+## Session Summary
+- **PRs merged:** 9 (#96-#104)
+- **Tests:** 977 → 1082 (+105 new tests)
+- **New modules:** `sedimentation_loss.py`, `kalman_lr_scheduler.py`
+- **New APIs:** `set_sedimentation_loss()`, `enable_kalman_lr()`, `create_adapter(bounded=True)`
+- **Research docs:** 3 (contrastive loss, scaler-constrainer, projection+Kalman)
+- **Branches cleaned:** 70 total (67 local + 3 remote)
+- **Next action:** Launch overnight campaign (`python run_overnight_campaign.py`)
 
 ## Agents Dispatched
 | Agent | Task | Status |
