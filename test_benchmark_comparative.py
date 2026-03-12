@@ -9,6 +9,7 @@ from unittest.mock import patch
 import json
 import tempfile
 import os
+from pathlib import Path
 
 from benchmark_comparative import (
     BenchmarkConfiguration,
@@ -19,6 +20,7 @@ from benchmark_comparative import (
     recall_at_k,
     get_default_configurations,
 )
+from config import ChelationConfig
 
 
 # =============================================================================
@@ -199,6 +201,98 @@ class TestComparativeTestbed(unittest.TestCase):
         self.assertEqual(len(results), 2)
         self.assertEqual(results[0].config_name, "config_a")
         self.assertEqual(results[1].config_name, "config_b")
+
+    def test_evaluate_single_config_restores_existing_adapter_file(self, mock_logger):
+        """Real-engine evaluation restores any pre-existing adapter checkpoint."""
+        testbed = ComparativeTestbed(configurations=[BenchmarkConfiguration(name="isolated")])
+        config = BenchmarkConfiguration(name="isolated")
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            adapter_path = Path(temp_dir) / "adapter_weights.pt"
+            adapter_path.write_text("original", encoding="utf-8")
+
+            class DummyPoint:
+                def __init__(self, doc_id):
+                    self.id = doc_id
+                    self.payload = {"doc_id": doc_id}
+
+            class DummyQdrant:
+                def retrieve(self, collection_name, ids):
+                    return [DummyPoint(str(doc_id)) for doc_id in ids]
+
+            class DummyEngine:
+                def __init__(self, path):
+                    self.collection_name = "test"
+                    self.qdrant = DummyQdrant()
+                    self._path = path
+
+                def run_inference(self, query_text):
+                    self._path.write_text("mutated", encoding="utf-8")
+                    return [], ["doc1"], None, None
+
+                def close(self):
+                    return None
+
+            def engine_factory(_config):
+                self.assertFalse(adapter_path.exists())
+                return DummyEngine(adapter_path)
+
+            with patch.object(ChelationConfig, "ADAPTER_WEIGHTS_PATH", adapter_path):
+                result = testbed.evaluate_single_config(
+                    config,
+                    {"doc1": "Document 1"},
+                    {"q1": "query"},
+                    {"q1": {"doc1": 1}},
+                    engine_factory=engine_factory,
+                )
+
+            self.assertEqual(result.config_name, "isolated")
+            self.assertEqual(adapter_path.read_text(encoding="utf-8"), "original")
+
+    def test_evaluate_single_config_removes_new_adapter_when_no_baseline_exists(self, mock_logger):
+        """Real-engine evaluation should not leave a new adapter checkpoint behind."""
+        testbed = ComparativeTestbed(configurations=[BenchmarkConfiguration(name="isolated")])
+        config = BenchmarkConfiguration(name="isolated")
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            adapter_path = Path(temp_dir) / "adapter_weights.pt"
+
+            class DummyPoint:
+                def __init__(self, doc_id):
+                    self.id = doc_id
+                    self.payload = {"doc_id": doc_id}
+
+            class DummyQdrant:
+                def retrieve(self, collection_name, ids):
+                    return [DummyPoint(str(doc_id)) for doc_id in ids]
+
+            class DummyEngine:
+                def __init__(self, path):
+                    self.collection_name = "test"
+                    self.qdrant = DummyQdrant()
+                    self._path = path
+
+                def run_inference(self, query_text):
+                    self._path.write_text("mutated", encoding="utf-8")
+                    return [], ["doc1"], None, None
+
+                def close(self):
+                    return None
+
+            def engine_factory(_config):
+                self.assertFalse(adapter_path.exists())
+                return DummyEngine(adapter_path)
+
+            with patch.object(ChelationConfig, "ADAPTER_WEIGHTS_PATH", adapter_path):
+                testbed.evaluate_single_config(
+                    config,
+                    {"doc1": "Document 1"},
+                    {"q1": "query"},
+                    {"q1": {"doc1": 1}},
+                    engine_factory=engine_factory,
+                )
+
+            self.assertFalse(adapter_path.exists())
 
     def test_format_ascii_table(self, mock_logger):
         """Test ASCII table formatting."""

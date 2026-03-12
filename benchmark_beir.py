@@ -28,6 +28,7 @@ from benchmark_comparative import (
     BenchmarkConfiguration,
     BenchmarkResult,
     ComparativeTestbed,
+    build_real_engine_factory,
     get_default_configurations,
 )
 from chelation_logger import get_logger
@@ -381,6 +382,7 @@ class BEIRBenchmarkRunner:
         tier: str = "quick",
         sample_seed: int = 42,
         engine_factory: Optional[Callable] = None,
+        max_queries: Optional[int] = None,
     ):
         """Initialize the BEIR benchmark runner.
 
@@ -389,12 +391,15 @@ class BEIRBenchmarkRunner:
                 If None, uses get_default_configurations().
             tier: Dataset tier to evaluate ("quick"/"small"/"medium"/"research"/"full")
             sample_seed: Seed for corpus sampling reproducibility
-            engine_factory: Optional engine factory for real evaluation
+            engine_factory: Optional engine factory for real evaluation.
+                Expected signature: (config, corpus) -> engine
+            max_queries: Optional maximum queries to evaluate per dataset
         """
         self.configurations = configurations or get_default_configurations()
         self.tier = tier
         self.sample_seed = sample_seed
         self.engine_factory = engine_factory
+        self.max_queries = max_queries
         self.logger = get_logger()
 
         self.datasets = BEIRDatasetRegistry.get_tier_datasets(tier)
@@ -425,6 +430,10 @@ class BEIRBenchmarkRunner:
         testbed = ComparativeTestbed(configurations=self.configurations)
 
         dataset_results = []
+        dataset_engine_factory = None
+        if self.engine_factory is not None:
+            def dataset_engine_factory(config):
+                return self.engine_factory(config, corpus)
 
         for config in self.configurations:
             self.logger.log_event(
@@ -436,7 +445,12 @@ class BEIRBenchmarkRunner:
 
             start = time.perf_counter()
             result = testbed.evaluate_single_config(
-                config, corpus, queries, qrels, self.engine_factory
+                config,
+                corpus,
+                queries,
+                qrels,
+                dataset_engine_factory,
+                max_queries=self.max_queries,
             )
             elapsed = time.perf_counter() - start
 
@@ -771,6 +785,17 @@ def main():
         help="JSON output file path (default: benchmark_beir_results.json)",
     )
     parser.add_argument(
+        "--model",
+        default="sentence-transformers/all-MiniLM-L6-v2",
+        help="Embedding model for real evaluation",
+    )
+    parser.add_argument(
+        "--max-queries",
+        type=int,
+        default=100,
+        help="Maximum queries per dataset to evaluate (default: 100)",
+    )
+    parser.add_argument(
         "--seed",
         type=int,
         default=42,
@@ -787,7 +812,23 @@ def main():
         sample_note = f" (sampled to {ds.default_sample_size})" if ds.default_sample_size else ""
         print(f"  - {ds.name}: {ds.description}{sample_note}")
 
-    runner = BEIRBenchmarkRunner(tier=args.tier, sample_seed=args.seed)
+    _corpus_factory_cache: dict = {}
+
+    def _cached_engine_factory(config, corpus):
+        corpus_key = id(corpus)
+        if corpus_key not in _corpus_factory_cache:
+            _corpus_factory_cache[corpus_key] = build_real_engine_factory(
+                corpus,
+                model_name=args.model,
+            )
+        return _corpus_factory_cache[corpus_key](config)
+
+    runner = BEIRBenchmarkRunner(
+        tier=args.tier,
+        sample_seed=args.seed,
+        engine_factory=_cached_engine_factory,
+        max_queries=args.max_queries,
+    )
 
     print(f"\nRunning {len(runner.configurations)} configurations across {len(datasets)} datasets...")
     results = runner.run_all()

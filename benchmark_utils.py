@@ -6,6 +6,7 @@ This module contains common helpers used across multiple benchmark scripts
 
 Functions:
     - canonicalize_id: Convert mixed ID types (int/str/UUID) to stable string keys
+    - map_predicted_ids: Map Qdrant point IDs back to original document IDs
     - dcg_at_k: Discounted Cumulative Gain at rank k
     - ndcg_at_k: Normalized Discounted Cumulative Gain at rank k
     - mean_average_precision_at_k: Mean Average Precision at rank k
@@ -16,9 +17,12 @@ Functions:
     - load_mteb_data: Load corpus, queries, and qrels from MTEB tasks
 """
 
+from contextlib import contextmanager
+from pathlib import Path
+import shutil
 import numpy as np
 from typing import Dict, Tuple, Optional, Union
-from uuid import UUID
+from uuid import UUID, uuid4
 
 try:
     import mteb
@@ -62,6 +66,75 @@ def canonicalize_id(id_val: Union[int, str, UUID]) -> str:
     else:
         # Fallback: try str() conversion for any other type
         return str(id_val)
+
+
+def map_predicted_ids(engine, pred_ids):
+    """
+    Map engine/Qdrant internal IDs back to original document IDs.
+
+    Args:
+        engine: AntigravityEngine-like object with qdrant client
+        pred_ids: List of internal point IDs returned by run_inference()
+
+    Returns:
+        List[str]: Original document IDs when present in payload, otherwise
+        canonicalized internal IDs.
+    """
+    try:
+        points = engine.qdrant.retrieve(engine.collection_name, ids=pred_ids)
+    except Exception:
+        return [canonicalize_id(pid) for pid in pred_ids]
+
+    # Build a map from internal ID to original doc ID so we can return
+    # mapped IDs in the same order as the input pred_ids list.
+    id_to_original: dict = {}
+    for point in points:
+        internal_id = getattr(point, "id", None)
+        payload = getattr(point, "payload", {}) or {}
+        original_id = (
+            payload.get("doc_id")
+            or payload.get("original_id")
+            or payload.get("id")
+            or internal_id
+        )
+        id_to_original[internal_id] = canonicalize_id(original_id)
+
+    return [id_to_original.get(pid, canonicalize_id(pid)) for pid in pred_ids]
+
+
+@contextmanager
+def isolated_adapter_state(adapter_path: Optional[Union[str, Path]] = None):
+    """
+    Hide the shared adapter checkpoint for an isolated benchmark run.
+
+    Benchmarks should start from a clean adapter state and must not leave
+    behind mutated checkpoint files that contaminate later configurations.
+    This context manager temporarily removes the shared adapter file, then
+    restores the original contents after the isolated block completes.
+    """
+    if adapter_path is None:
+        from config import ChelationConfig
+
+        target_path = Path(ChelationConfig.ADAPTER_WEIGHTS_PATH)
+    else:
+        target_path = Path(adapter_path)
+
+    target_path.parent.mkdir(parents=True, exist_ok=True)
+    backup_path = None
+
+    if target_path.exists():
+        backup_path = target_path.with_name(
+            f"{target_path.stem}.benchmark-backup-{uuid4().hex}{target_path.suffix}"
+        )
+        shutil.copy2(target_path, backup_path)
+        target_path.unlink()
+
+    try:
+        yield target_path
+    finally:
+        target_path.unlink(missing_ok=True)
+        if backup_path is not None and backup_path.exists():
+            shutil.move(str(backup_path), str(target_path))
 
 
 # =============================================================================

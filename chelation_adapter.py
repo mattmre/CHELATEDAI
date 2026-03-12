@@ -40,29 +40,33 @@ class ChelationAdapter(nn.Module):
         # Handle input of various ranks
         if x.dim() == 0 or x.dim() > 2:
             raise ValueError(f"ChelationAdapter expects 1D or 2D input, got {x.dim()}D tensor with shape {x.shape}")
-        
+
         # Track if input was 1D for output reshaping
         input_was_1d = (x.dim() == 1)
-        
+
         # Promote 1D to 2D: [dim] -> [1, dim]
         if input_was_1d:
             x = x.unsqueeze(0)
-        
+
         # x is now [batch_size, input_dim]
         delta = self.correction_net(x)
-        
+
         # Apply corruption/correction
         out = x + delta
-        
+
         # Normalize to hypersphere (Cosine Similarity relies on this)
         out = torch.nn.functional.normalize(out, p=2, dim=1)
-        
+
         # Restore original rank: [1, dim] -> [dim] if input was 1D
         if input_was_1d:
             out = out.squeeze(0)
-        
+
         return out
-    
+
+    def regularization_loss(self):
+        """Return 0.0 -- MLP adapter has no special regularization term."""
+        return 0.0
+
     def save(self, path):
         # Validate path for traversal attacks
         path = validate_safe_path(Path(path))
@@ -95,7 +99,13 @@ class OrthogonalProcrustesAdapter(nn.Module):
         self.input_dim = input_dim
         # Skew-symmetric parameter: only upper triangle needed
         # Initialize near zero for near-identity start
-        self._skew_param = nn.Parameter(torch.zeros(input_dim, input_dim) * 0.001)
+        self._skew_param = nn.Parameter(torch.randn(input_dim, input_dim) * 0.001)
+        # Diagonal scaling matrix (DSM): per-dimension learned scale factors.
+        # Initialized to ones so the initial transform is still near-identity.
+        # Drift-Adapter (EMNLP 2025) showed DSM improves recall recovery from
+        # 95-97% to 98-99% by allowing dimension-wise rescaling that a pure
+        # orthogonal transform cannot express.
+        self._scale = nn.Parameter(torch.ones(input_dim))
 
     def _get_orthogonal_matrix(self):
         """Compute orthogonal matrix via Cayley transform of skew-symmetric matrix."""
@@ -115,11 +125,23 @@ class OrthogonalProcrustesAdapter(nn.Module):
 
         W = self._get_orthogonal_matrix()
         out = x @ W.t()
+        # Apply diagonal scaling matrix (DSM) for per-dimension rescaling
+        out = out * self._scale
         out = torch.nn.functional.normalize(out, p=2, dim=1)
 
         if input_was_1d:
             out = out.squeeze(0)
         return out
+
+    def regularization_loss(self):
+        """Frobenius norm of the skew-symmetric matrix A = P - P^T.
+
+        Penalizing ||A||_F^2 keeps the Cayley rotation angle small, preventing
+        the optimizer from pushing _skew_param entries to large magnitudes and
+        degrading NDCG over multiple sedimentation cycles.
+        """
+        A = self._skew_param - self._skew_param.t()
+        return (A ** 2).sum()
 
     def save(self, path):
         path = validate_safe_path(Path(path))
@@ -153,8 +175,11 @@ class LowRankAffineAdapter(nn.Module):
         self.rank = rank
         # Low-rank factors: U is (input_dim, rank), V is (input_dim, rank)
         # x @ U @ V^T gives (batch, input_dim)
-        self.U = nn.Parameter(torch.randn(input_dim, rank) * 0.001)
-        self.V = nn.Parameter(torch.randn(input_dim, rank) * 0.001)
+        # Asymmetric init (LoRA convention, Hu et al. ICLR 2022):
+        # V=zero so correction starts at exactly zero (identity behavior),
+        # U=random so gradients can flow from the first step.
+        self.U = nn.Parameter(torch.randn(input_dim, rank) * 0.01)
+        self.V = nn.Parameter(torch.zeros(input_dim, rank))
         self.bias = nn.Parameter(torch.zeros(input_dim))
 
     def forward(self, x):
@@ -172,6 +197,10 @@ class LowRankAffineAdapter(nn.Module):
         if input_was_1d:
             out = out.squeeze(0)
         return out
+
+    def regularization_loss(self):
+        """Return 0.0 -- LowRank adapter has no special regularization term."""
+        return 0.0
 
     def save(self, path):
         path = validate_safe_path(Path(path))

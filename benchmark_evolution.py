@@ -6,11 +6,15 @@ from antigravity_engine import AntigravityEngine
 # Import shared utilities from benchmark_utils
 from benchmark_utils import ndcg_at_k, load_mteb_data
 
-def evaluate_ndcg(engine, queries, qrels, k=10):
+def evaluate_ndcg(engine, queries, qrels, k=10, max_queries=None):
     ndcg_scores = []
-    
-    print(f"Evaluating {len(queries)} queries...")
-    for q_id, q_text in queries.items():
+
+    query_items = list(queries.items())
+    if max_queries is not None:
+        query_items = query_items[:max_queries]
+
+    print(f"Evaluating {len(query_items)} queries...")
+    for q_id, q_text in query_items:
         if q_id not in qrels:
             continue
             

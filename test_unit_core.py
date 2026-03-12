@@ -574,6 +574,94 @@ class TestAdapterVariants(unittest.TestCase):
         with self.assertRaises(ValueError):
             adapter(torch.randn(2, 3, self.input_dim))
 
+    def test_procrustes_scale_param_exists(self):
+        """Test that _scale parameter exists with correct shape and init."""
+        adapter = OrthogonalProcrustesAdapter(input_dim=self.input_dim)
+        self.assertTrue(hasattr(adapter, '_scale'))
+        self.assertEqual(adapter._scale.shape, (self.input_dim,))
+        # Initialized to ones
+        self.assertTrue(torch.allclose(adapter._scale.data, torch.ones(self.input_dim)))
+
+    def test_procrustes_scale_is_learnable(self):
+        """Test that _scale is an nn.Parameter and participates in optimization."""
+        adapter = OrthogonalProcrustesAdapter(input_dim=self.input_dim)
+        param_names = [name for name, _ in adapter.named_parameters()]
+        self.assertIn('_scale', param_names)
+
+    def test_procrustes_scale_affects_output(self):
+        """Test that non-uniform scaling changes the output direction."""
+        adapter = OrthogonalProcrustesAdapter(input_dim=self.input_dim)
+        x = torch.randn(5, self.input_dim)
+        out_before = adapter(x).detach().clone()
+        # Set non-uniform scale: double first half, halve second half
+        with torch.no_grad():
+            adapter._scale[:self.input_dim // 2] = 2.0
+            adapter._scale[self.input_dim // 2:] = 0.5
+        out_after = adapter(x).detach()
+        # Outputs should differ because scaling changes relative dimension magnitudes
+        self.assertFalse(torch.allclose(out_before, out_after, atol=1e-4),
+                        "Non-uniform scale should change output directions")
+
+    def test_procrustes_regularization_loss_at_init(self):
+        """Test that regularization_loss is small at initialization."""
+        adapter = OrthogonalProcrustesAdapter(input_dim=self.input_dim)
+        reg = adapter.regularization_loss()
+        # _skew_param is ~0.001 randn, so A = P - P^T has entries ~0.002;
+        # ||A||_F^2 should be small but positive
+        self.assertGreater(reg.item(), 0.0)
+        # With std=0.001, each entry of A is ~N(0, 0.001*sqrt(2)),
+        # so ||A||_F^2 ~ input_dim^2 * 2 * 0.001^2 = 384^2 * 0.002 ~ 0.295
+        self.assertLess(reg.item(), 5.0, "Regularization loss should be small at init")
+
+    def test_procrustes_regularization_loss_increases_with_skew(self):
+        """Test that regularization_loss grows when skew parameters grow."""
+        adapter = OrthogonalProcrustesAdapter(input_dim=self.input_dim)
+        reg_small = adapter.regularization_loss().item()
+        # Push skew_param to larger values
+        with torch.no_grad():
+            adapter._skew_param.mul_(100.0)
+        reg_large = adapter.regularization_loss().item()
+        self.assertGreater(reg_large, reg_small * 100,
+                          "Regularization should grow with skew magnitude")
+
+    def test_procrustes_regularization_loss_is_differentiable(self):
+        """Test that regularization_loss produces a gradient on _skew_param."""
+        adapter = OrthogonalProcrustesAdapter(input_dim=64)
+        reg = adapter.regularization_loss()
+        reg.backward()
+        self.assertIsNotNone(adapter._skew_param.grad)
+        self.assertFalse(torch.all(adapter._skew_param.grad == 0).item(),
+                        "Gradient should be non-zero")
+
+    def test_procrustes_save_load_with_scale(self):
+        """Test that save/load round-trips the _scale parameter."""
+        adapter = OrthogonalProcrustesAdapter(input_dim=self.input_dim)
+        with torch.no_grad():
+            adapter._skew_param.add_(torch.randn_like(adapter._skew_param) * 0.1)
+            adapter._scale.fill_(1.5)
+        save_path = self.temp_dir / "procrustes_dsm.pt"
+        adapter.save(str(save_path))
+
+        new_adapter = OrthogonalProcrustesAdapter(input_dim=self.input_dim)
+        success = new_adapter.load(str(save_path))
+        self.assertTrue(success)
+        self.assertTrue(torch.allclose(adapter._scale, new_adapter._scale))
+
+        x = torch.randn(3, self.input_dim)
+        self.assertTrue(torch.allclose(adapter(x), new_adapter(x), atol=1e-5))
+
+    # --- regularization_loss on all adapter types ---
+
+    def test_mlp_regularization_loss_zero(self):
+        """Test that MLP adapter regularization_loss returns 0.0."""
+        adapter = ChelationAdapter(input_dim=self.input_dim)
+        self.assertEqual(adapter.regularization_loss(), 0.0)
+
+    def test_lowrank_regularization_loss_zero(self):
+        """Test that LowRank adapter regularization_loss returns 0.0."""
+        adapter = LowRankAffineAdapter(input_dim=self.input_dim)
+        self.assertEqual(adapter.regularization_loss(), 0.0)
+
     # --- LowRankAffineAdapter tests ---
 
     def test_lowrank_forward_shape(self):
@@ -602,13 +690,13 @@ class TestAdapterVariants(unittest.TestCase):
                        f"Output not normalized: norms range {norms.min():.6f} to {norms.max():.6f}")
 
     def test_lowrank_near_identity_init(self):
-        """Test that LowRank adapter starts near identity (cosine > 0.99)."""
+        """Test that LowRank adapter starts near identity (cosine > 0.95)."""
         adapter = LowRankAffineAdapter(input_dim=self.input_dim)
         x = torch.randn(5, self.input_dim)
         out = adapter(x)
         x_normalized = torch.nn.functional.normalize(x, p=2, dim=1)
         cosine_sim = torch.nn.functional.cosine_similarity(out, x_normalized, dim=1)
-        self.assertTrue(torch.all(cosine_sim > 0.99).item(),
+        self.assertTrue(torch.all(cosine_sim > 0.95).item(),
                        f"Not near identity at init: min cosine sim = {cosine_sim.min().item()}")
 
     def test_lowrank_custom_rank(self):

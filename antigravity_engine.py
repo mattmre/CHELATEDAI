@@ -1001,27 +1001,16 @@ class AntigravityEngine:
                 f"Blending homeostatic and teacher targets (teacher_weight={self.teacher_weight})"
             )
             try:
-                # target_array currently contains homeostatic targets
+                # target_array currently contains homeostatic targets.
+                # Use generate_distillation_targets which handles dimension
+                # projection internally (teacher 768-dim -> student 384-dim)
+                # and blends: (1 - alpha) * homeostatic + alpha * teacher.
                 homeostatic_targets = target_array.copy()
-                
-                # Get teacher embeddings
-                teacher_embeds = self.teacher_helper.get_teacher_embeddings(training_texts)
-                
-                if teacher_embeds.shape == homeostatic_targets.shape:
-                    # Blend: target = (1 - alpha) * homeostatic + alpha * teacher
-                    alpha = self.teacher_weight
-                    blended = (1 - alpha) * homeostatic_targets + alpha * teacher_embeds
-                    # Normalize
-                    norms = np.linalg.norm(blended, axis=1, keepdims=True)
-                    norms = np.maximum(norms, 1e-9)
-                    target_array = blended / norms
-                else:
-                    self.logger.log_error(
-                        "hybrid_shape_mismatch",
-                        f"Shape mismatch: homeostatic {homeostatic_targets.shape} vs teacher {teacher_embeds.shape}",
-                        homeostatic_shape=homeostatic_targets.shape,
-                        teacher_shape=teacher_embeds.shape
-                    )
+                target_array = self.teacher_helper.generate_distillation_targets(
+                    training_texts,
+                    homeostatic_targets,
+                    teacher_weight=self.teacher_weight
+                )
             except Exception as e:
                 self.logger.log_error(
                     "hybrid_blend_failed",
@@ -1086,6 +1075,14 @@ class AntigravityEngine:
                     outputs = self.adapter(input_tensor)
                     
                 loss = criterion(outputs, target_tensor)
+
+                # Frobenius-norm regularization (Procrustes: penalise skew-param
+                # magnitude to keep rotation angles small across cycles;
+                # MLP/LowRank adapters return 0.0 so the term is a no-op).
+                reg_loss = getattr(self.adapter, 'regularization_loss', lambda: 0.0)()
+                if reg_loss != 0.0:
+                    loss = loss + 0.01 * reg_loss
+
                 loss.backward()
                 optimizer.step()
                 final_loss = loss.item()
