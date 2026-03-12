@@ -86,7 +86,6 @@ def phase_is_complete(phase_info: Any) -> bool:
     return phase_info.get("status") in {
         "completed",
         "launched",
-        "staged_not_launched",
         "recovered_from_output",
     }
 
@@ -394,7 +393,14 @@ def main() -> int:
         manifest = load_manifest(run_dir)
         manifest.setdefault("started_at", datetime.now().isoformat())
         manifest["run_dir"] = str(run_dir)
-        manifest["config"] = vars(args)
+        # Preserve original config; only override fields explicitly set on CLI.
+        existing_config = manifest.get("config", {})
+        defaults = vars(parser.parse_args([]))
+        cli_args = vars(args)
+        for key, value in cli_args.items():
+            if value != defaults.get(key):
+                existing_config[key] = value
+        manifest["config"] = existing_config
         manifest.setdefault("phases", {})
         manifest["resumed_at"] = datetime.now().isoformat()
     else:

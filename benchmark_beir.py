@@ -812,13 +812,21 @@ def main():
         sample_note = f" (sampled to {ds.default_sample_size})" if ds.default_sample_size else ""
         print(f"  - {ds.name}: {ds.description}{sample_note}")
 
+    _corpus_factory_cache: dict = {}
+
+    def _cached_engine_factory(config, corpus):
+        corpus_key = id(corpus)
+        if corpus_key not in _corpus_factory_cache:
+            _corpus_factory_cache[corpus_key] = build_real_engine_factory(
+                corpus,
+                model_name=args.model,
+            )
+        return _corpus_factory_cache[corpus_key](config)
+
     runner = BEIRBenchmarkRunner(
         tier=args.tier,
         sample_seed=args.seed,
-        engine_factory=lambda config, corpus: build_real_engine_factory(
-            corpus,
-            model_name=args.model,
-        )(config),
+        engine_factory=_cached_engine_factory,
         max_queries=args.max_queries,
     )
 

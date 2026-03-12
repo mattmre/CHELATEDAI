@@ -85,17 +85,21 @@ def map_predicted_ids(engine, pred_ids):
     except Exception:
         return [canonicalize_id(pid) for pid in pred_ids]
 
-    mapped_ids = []
+    # Build a map from internal ID to original doc ID so we can return
+    # mapped IDs in the same order as the input pred_ids list.
+    id_to_original: dict = {}
     for point in points:
+        internal_id = getattr(point, "id", None)
         payload = getattr(point, "payload", {}) or {}
         original_id = (
             payload.get("doc_id")
             or payload.get("original_id")
             or payload.get("id")
-            or getattr(point, "id", None)
+            or internal_id
         )
-        mapped_ids.append(canonicalize_id(original_id))
-    return mapped_ids
+        id_to_original[internal_id] = canonicalize_id(original_id)
+
+    return [id_to_original.get(pid, canonicalize_id(pid)) for pid in pred_ids]
 
 
 @contextmanager

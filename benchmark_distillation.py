@@ -474,6 +474,14 @@ def main():
                 offline_time = time.time() - offline_start
                 print(f"Offline distillation completed in {offline_time:.2f}s")
 
+                # Bug fix: After offline distillation updates all corpus vectors,
+                # their variance drops below the chelation threshold. This causes
+                # run_inference to take the FAST path, which never populates
+                # chelation_log, making all subsequent sedimentation cycles no-ops.
+                # Force the CHELATE path so chelation_log entries are generated
+                # and sedimentation can continue refining the adapted vectors.
+                engine_offline.use_centering = True
+
                 print("Running offline mode cycles...")
                 offline_results = run_training_cycle(
                     engine_offline,

@@ -324,17 +324,18 @@ class TestIntegrationRLM(unittest.TestCase):
         """Hybrid sedimentation should blend homeostatic and teacher targets."""
         # Mock teacher helper
         mock_helper = MagicMock()
-        
-        # Mock get_teacher_embeddings to return random embeddings
-        def mock_get_embeddings(texts):
+
+        # Mock generate_distillation_targets to return blended targets
+        def mock_generate_targets(texts, current_embeddings, teacher_weight=0.5):
             n = len(texts)
-            dim = 384
-            embeds = np.random.randn(n, dim)
-            # Normalize
-            embeds = embeds / (np.linalg.norm(embeds, axis=1, keepdims=True) + 1e-9)
-            return embeds
-        
-        mock_helper.get_teacher_embeddings.side_effect = mock_get_embeddings
+            dim = current_embeddings.shape[1]
+            teacher_embeds = np.random.randn(n, dim)
+            teacher_embeds = teacher_embeds / (np.linalg.norm(teacher_embeds, axis=1, keepdims=True) + 1e-9)
+            blended = (1 - teacher_weight) * current_embeddings + teacher_weight * teacher_embeds
+            norms = np.linalg.norm(blended, axis=1, keepdims=True)
+            return blended / np.maximum(norms, 1e-9)
+
+        mock_helper.generate_distillation_targets.side_effect = mock_generate_targets
         mock_helper_factory.return_value = mock_helper
         
         from antigravity_engine import AntigravityEngine
@@ -370,8 +371,8 @@ class TestIntegrationRLM(unittest.TestCase):
             epochs=2
         )
         
-        # Verify teacher embeddings were requested
-        self.assertTrue(mock_helper.get_teacher_embeddings.called)
+        # Verify teacher distillation targets were generated
+        self.assertTrue(mock_helper.generate_distillation_targets.called)
         
         # Log should be cleared
         self.assertEqual(len(engine.chelation_log), 0)
