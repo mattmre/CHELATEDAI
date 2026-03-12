@@ -1044,7 +1044,13 @@ class AntigravityEngine:
             self.adapter_path,
             f"sedimentation_cycle_threshold_{threshold}"
         ) as training_ctx:
-            optimizer = optim.Adam(self.adapter.parameters(), lr=learning_rate)
+            # Collect trainable parameters: adapter + projection (if present)
+            params = list(self.adapter.parameters())
+            if (getattr(self, 'teacher_helper', None) is not None
+                    and hasattr(self.teacher_helper, '_projection')
+                    and self.teacher_helper._projection is not None):
+                params += list(self.teacher_helper._projection.parameters())
+            optimizer = optim.Adam(params, lr=learning_rate)
             criterion = torch.nn.MSELoss()
             
             self.adapter.train()
@@ -1291,9 +1297,15 @@ class AntigravityEngine:
             threshold=0
         )
         
-        optimizer = optim.Adam(self.adapter.parameters(), lr=lr)
+        # Collect trainable parameters: adapter + projection (if present)
+        params = list(self.adapter.parameters())
+        if (getattr(self, 'teacher_helper', None) is not None
+                and hasattr(self.teacher_helper, '_projection')
+                and self.teacher_helper._projection is not None):
+            params += list(self.teacher_helper._projection.parameters())
+        optimizer = optim.Adam(params, lr=lr)
         criterion = torch.nn.MSELoss()
-        
+
         self.adapter.train()
         final_loss = 0.0
 

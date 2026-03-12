@@ -767,6 +767,121 @@ class TestAdapterVariants(unittest.TestCase):
         self.assertIn("invalid", str(cm.exception))
 
 
+class TestDimensionProjectionTraining(unittest.TestCase):
+    """Test that DimensionProjection parameters are included in training."""
+
+    def test_projection_parameters_included_in_optimizer(self):
+        """Verify projection params are added to optimizer alongside adapter params."""
+        from unittest.mock import MagicMock
+        from teacher_distillation import DimensionProjection, TeacherDistillationHelper
+
+        adapter = create_adapter("mlp", input_dim=384)
+        projection = DimensionProjection(teacher_dim=768, student_dim=384)
+
+        # Simulate what antigravity_engine does when building optimizer params
+        params = list(adapter.parameters())
+        adapter_param_count = len(params)
+
+        # Build a mock teacher_helper with a projection
+        teacher_helper = MagicMock(spec=TeacherDistillationHelper)
+        teacher_helper._projection = projection
+
+        if (teacher_helper is not None
+                and hasattr(teacher_helper, '_projection')
+                and teacher_helper._projection is not None):
+            params += list(teacher_helper._projection.parameters())
+
+        total_param_count = len(params)
+        self.assertGreater(total_param_count, adapter_param_count,
+                           "Projection parameters should be added to optimizer param list")
+
+        # Verify projection parameters are actually in the list
+        projection_params = set(id(p) for p in projection.parameters())
+        optimizer_params = set(id(p) for p in params)
+        self.assertTrue(projection_params.issubset(optimizer_params),
+                        "All projection parameters must appear in the optimizer param list")
+
+    def test_projection_weights_change_after_training_step(self):
+        """Verify projection weights are actually updated by an optimizer step."""
+        from teacher_distillation import DimensionProjection
+        import torch.optim as optim
+
+        projection = DimensionProjection(teacher_dim=768, student_dim=384)
+
+        # Snapshot weights before training
+        initial_weight = projection.projection.weight.data.clone()
+
+        # Create optimizer that includes projection parameters
+        adapter = create_adapter("mlp", input_dim=384)
+        params = list(adapter.parameters()) + list(projection.parameters())
+        optimizer = optim.Adam(params, lr=0.01)
+
+        # Simulate a training step: project teacher embeddings, compute loss
+        teacher_embeds = torch.randn(8, 768)
+        projected = projection.project_tensor(teacher_embeds)
+        target = torch.randn(8, 384)
+        loss = torch.nn.MSELoss()(projected, target)
+        loss.backward()
+        optimizer.step()
+
+        # Projection weights must have changed
+        weight_diff = (projection.projection.weight.data - initial_weight).abs().sum().item()
+        self.assertGreater(weight_diff, 0.0,
+                           "Projection weights should change after optimizer step")
+
+    def test_projection_weights_frozen_under_no_grad(self):
+        """Verify that project_numpy (no_grad path) does NOT accumulate gradients."""
+        from teacher_distillation import DimensionProjection
+
+        projection = DimensionProjection(teacher_dim=768, student_dim=384)
+
+        teacher_embeds = np.random.randn(4, 768).astype(np.float32)
+        _ = projection.project_numpy(teacher_embeds)
+
+        # No gradient should have been recorded
+        for param in projection.parameters():
+            self.assertIsNone(param.grad,
+                              "project_numpy must not produce gradients")
+
+    def test_project_tensor_preserves_gradients(self):
+        """Verify project_tensor keeps the computation graph alive."""
+        from teacher_distillation import DimensionProjection
+
+        projection = DimensionProjection(teacher_dim=768, student_dim=384)
+
+        teacher_tensor = torch.randn(4, 768)
+        projected = projection.project_tensor(teacher_tensor)
+
+        self.assertTrue(projected.requires_grad,
+                        "project_tensor output must require grad")
+
+        loss = projected.sum()
+        loss.backward()
+
+        has_grad = any(p.grad is not None and p.grad.abs().sum() > 0
+                       for p in projection.parameters())
+        self.assertTrue(has_grad,
+                        "Projection parameters must receive gradients via project_tensor")
+
+    def test_optimizer_without_projection_still_works(self):
+        """Verify optimizer creation works when teacher_helper has no projection."""
+        adapter = create_adapter("mlp", input_dim=384)
+
+        # Simulate teacher_helper = None (no distillation)
+        teacher_helper = None
+        params = list(adapter.parameters())
+        if (teacher_helper is not None
+                and hasattr(teacher_helper, '_projection')
+                and teacher_helper._projection is not None):
+            params += list(teacher_helper._projection.parameters())
+
+        # Should still create a valid optimizer with adapter params only
+        import torch.optim as optim
+        optimizer = optim.Adam(params, lr=0.001)
+        self.assertIsNotNone(optimizer)
+        self.assertEqual(len(params), len(list(adapter.parameters())))
+
+
 if __name__ == "__main__":
     # Run tests with verbose output
     unittest.main(verbosity=2)

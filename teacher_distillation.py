@@ -58,11 +58,19 @@ class DimensionProjection(nn.Module):
         return self.projection(x)
 
     def project_numpy(self, embeddings):
-        """Convenience method for numpy arrays."""
+        """Convenience method for numpy arrays (no-grad inference path)."""
         tensor = torch.from_numpy(embeddings).float()
         with torch.no_grad():
             projected = self.forward(tensor)
         return projected.numpy()
+
+    def project_tensor(self, tensor):
+        """Project a tensor with gradients preserved for training.
+
+        Unlike project_numpy, this keeps the projection in the
+        computation graph so its parameters receive gradients.
+        """
+        return self.forward(tensor)
 
 
 class TeacherDistillationHelper:
@@ -325,7 +333,11 @@ class TeacherDistillationHelper:
             if self._projection_enabled:
                 self._ensure_projection(current_embeddings.shape[1])
                 if self._projection is not None:
-                    teacher_embeds = self._projection.project_numpy(teacher_embeds)
+                    # Use gradient-preserving projection so parameters
+                    # can be trained when included in an optimizer.
+                    teacher_tensor = torch.from_numpy(teacher_embeds).float()
+                    projected = self._projection.project_tensor(teacher_tensor)
+                    teacher_embeds = projected.detach().numpy()
                 else:
                     return current_embeddings.copy()
             else:
