@@ -631,6 +631,37 @@ class AntigravityEngine:
             temperature=temperature
         )
 
+    # ===== Sedimentation Loss Configuration =====
+
+    def set_sedimentation_loss(self, loss_type="mse", **kwargs):
+        """
+        Configure the loss function used during sedimentation training.
+
+        By default, sedimentation uses MSE loss (pointwise). Contrastive
+        alternatives (InfoNCE, hybrid) teach the adapter to preserve
+        retrieval structure by treating in-batch targets as negatives.
+
+        Args:
+            loss_type: "mse" (default), "infonce", or "hybrid"
+            **kwargs: Loss-specific parameters:
+                - temperature (float): InfoNCE temperature (default 0.07)
+                - contrastive_weight (float): hybrid contrastive term weight
+                - mse_weight (float): hybrid MSE term weight
+        """
+        valid_types = ("mse", "infonce", "hybrid")
+        if loss_type not in valid_types:
+            raise ValueError(
+                f"Invalid loss_type '{loss_type}'. Valid: {', '.join(valid_types)}"
+            )
+        self._sedimentation_loss_type = loss_type
+        self._sedimentation_loss_kwargs = kwargs
+        self.logger.log_event(
+            "sedimentation_loss_set",
+            f"Sedimentation loss set to '{loss_type}'",
+            loss_type=loss_type,
+            **{k: v for k, v in kwargs.items() if isinstance(v, (int, float, str, bool))}
+        )
+
     # ===== Phase 3: Online Updates =====
 
     def enable_online_updates(self, learning_rate=None, micro_steps=None,
@@ -1051,8 +1082,11 @@ class AntigravityEngine:
                     and self.teacher_helper._projection is not None):
                 params += list(self.teacher_helper._projection.parameters())
             optimizer = optim.Adam(params, lr=learning_rate)
-            criterion = torch.nn.MSELoss()
-            
+            from sedimentation_loss import create_sedimentation_loss
+            _loss_type = getattr(self, '_sedimentation_loss_type', 'mse')
+            _loss_kwargs = getattr(self, '_sedimentation_loss_kwargs', {})
+            criterion = create_sedimentation_loss(_loss_type, **_loss_kwargs)
+
             self.adapter.train()
             final_loss = 0.0
 
@@ -1304,7 +1338,10 @@ class AntigravityEngine:
                 and self.teacher_helper._projection is not None):
             params += list(self.teacher_helper._projection.parameters())
         optimizer = optim.Adam(params, lr=lr)
-        criterion = torch.nn.MSELoss()
+        from sedimentation_loss import create_sedimentation_loss
+        _loss_type = getattr(self, '_sedimentation_loss_type', 'mse')
+        _loss_kwargs = getattr(self, '_sedimentation_loss_kwargs', {})
+        criterion = create_sedimentation_loss(_loss_type, **_loss_kwargs)
 
         self.adapter.train()
         final_loss = 0.0
