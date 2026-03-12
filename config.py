@@ -212,6 +212,34 @@ class ChelationConfig:
         }
     }
 
+    # ===== Bounded Adapter Configuration (Session 31) =====
+    # INT8 quantization noise floor is ~1/128 = ~0.0078.
+    # Default min_correction=0.01 ensures corrections survive quantization.
+    BOUNDED_ADAPTER_ENABLED = False
+    BOUNDED_ADAPTER_MIN_CORRECTION = 0.01
+    BOUNDED_ADAPTER_MAX_CORRECTION = 0.5
+
+    BOUNDED_ADAPTER_PRESETS = {
+        "conservative": {
+            "bounded": True,
+            "min_correction": 0.01,
+            "max_correction": 0.3,
+            "description": "Conservative bounds, minimal divergence risk"
+        },
+        "balanced": {
+            "bounded": True,
+            "min_correction": 0.01,
+            "max_correction": 0.5,
+            "description": "Default bounds above INT8 noise floor with headroom"
+        },
+        "aggressive": {
+            "bounded": True,
+            "min_correction": 0.02,
+            "max_correction": 0.8,
+            "description": "Larger corrections for stronger adaptation"
+        },
+    }
+
     # ===== Online Updates (Phase 3) =====
     ONLINE_UPDATE_ENABLED = False  # Opt-in inference-time adapter updates
     ONLINE_LEARNING_RATE = 0.0001
@@ -780,6 +808,7 @@ class ChelationConfig:
             "beir": cls.BEIR_PRESETS,
             "topology": cls.TOPOLOGY_PRESETS,
             "isomer": cls.ISOMER_PRESETS,
+            "bounded_adapter": cls.BOUNDED_ADAPTER_PRESETS,
         }
         
         if preset_type not in preset_map:
