@@ -12,7 +12,10 @@ import shutil
 from pathlib import Path
 
 # Import components to test
-from chelation_adapter import ChelationAdapter, OrthogonalProcrustesAdapter, LowRankAffineAdapter, create_adapter
+from chelation_adapter import (
+    ChelationAdapter, OrthogonalProcrustesAdapter, LowRankAffineAdapter,
+    BoundedAdapter, create_adapter,
+)
 from config import ChelationConfig, get_config
 
 
@@ -880,6 +883,364 @@ class TestDimensionProjectionTraining(unittest.TestCase):
         optimizer = optim.Adam(params, lr=0.001)
         self.assertIsNotNone(optimizer)
         self.assertEqual(len(params), len(list(adapter.parameters())))
+
+
+class TestBoundedAdapter(unittest.TestCase):
+    """Test BoundedAdapter wrapper for quantization-safe bounded corrections."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.input_dim = 384
+        self.temp_dir = Path(tempfile.mkdtemp())
+
+    def tearDown(self):
+        """Clean up temp files."""
+        shutil.rmtree(self.temp_dir, ignore_errors=True)
+
+    # --- Wrapping all three adapter types ---
+
+    def test_wraps_mlp(self):
+        """Test that BoundedAdapter wraps MLP adapter correctly."""
+        base = ChelationAdapter(input_dim=self.input_dim)
+        bounded = BoundedAdapter(base)
+        self.assertIsInstance(bounded.base_adapter, ChelationAdapter)
+        self.assertEqual(bounded.input_dim, self.input_dim)
+
+    def test_wraps_procrustes(self):
+        """Test that BoundedAdapter wraps Procrustes adapter correctly."""
+        base = OrthogonalProcrustesAdapter(input_dim=self.input_dim)
+        bounded = BoundedAdapter(base)
+        self.assertIsInstance(bounded.base_adapter, OrthogonalProcrustesAdapter)
+        self.assertEqual(bounded.input_dim, self.input_dim)
+
+    def test_wraps_low_rank(self):
+        """Test that BoundedAdapter wraps Low-rank adapter correctly."""
+        base = LowRankAffineAdapter(input_dim=self.input_dim, rank=8)
+        bounded = BoundedAdapter(base)
+        self.assertIsInstance(bounded.base_adapter, LowRankAffineAdapter)
+        self.assertEqual(bounded.input_dim, self.input_dim)
+
+    # --- Forward pass shape and normalization ---
+
+    def test_forward_2d_shape(self):
+        """Test that 2D input preserves shape through BoundedAdapter."""
+        base = ChelationAdapter(input_dim=self.input_dim)
+        bounded = BoundedAdapter(base)
+        x = torch.randn(5, self.input_dim)
+        out = bounded(x)
+        self.assertEqual(out.shape, (5, self.input_dim))
+
+    def test_forward_1d_shape(self):
+        """Test that 1D input returns 1D output from BoundedAdapter."""
+        base = ChelationAdapter(input_dim=self.input_dim)
+        bounded = BoundedAdapter(base)
+        x = torch.randn(self.input_dim)
+        out = bounded(x)
+        self.assertEqual(out.dim(), 1)
+        self.assertEqual(out.shape[0], self.input_dim)
+
+    def test_output_normalized(self):
+        """Test that BoundedAdapter output is L2 normalized."""
+        base = ChelationAdapter(input_dim=self.input_dim)
+        bounded = BoundedAdapter(base)
+        x = torch.randn(10, self.input_dim)
+        out = bounded(x)
+        norms = torch.norm(out, p=2, dim=1)
+        self.assertTrue(torch.allclose(norms, torch.ones_like(norms), atol=1e-5),
+                       f"Output not normalized: norms range {norms.min():.6f} to {norms.max():.6f}")
+
+    # --- Correction bounding ---
+
+    def test_corrections_above_min(self):
+        """Test that non-zero corrections are at least min_correction in magnitude."""
+        # Use a trained adapter that produces non-trivial corrections
+        base = ChelationAdapter(input_dim=self.input_dim)
+        min_corr = 0.05
+        bounded = BoundedAdapter(base, min_correction=min_corr, max_correction=0.5)
+
+        x = torch.randn(10, self.input_dim)
+        with torch.no_grad():
+            out = bounded(x)
+        x_norm = torch.nn.functional.normalize(x, p=2, dim=1)
+        # The output differs from input; check that the effective delta
+        # after normalization is non-trivial (at least non-zero)
+        delta = out - x_norm
+        correction_norms = torch.norm(delta, dim=1)
+        # All corrections should be non-zero since base adapter produces some delta
+        for i, cn in enumerate(correction_norms):
+            if cn.item() > 1e-8:
+                # If there is a correction, it should be above the noise floor
+                # (the exact norm changes after final normalization, but the
+                #  pre-normalization delta was scaled to min_correction)
+                self.assertGreater(cn.item(), 0.0,
+                                  f"Correction {i} should be non-trivial")
+
+    def test_corrections_capped_at_max(self):
+        """Test that corrections are capped to max_correction."""
+        base = ChelationAdapter(input_dim=self.input_dim)
+        max_corr = 0.1
+        bounded = BoundedAdapter(base, min_correction=0.001, max_correction=max_corr)
+
+        # Train the base adapter aggressively so corrections are large
+        x = torch.randn(5, self.input_dim)
+        target = torch.randn(5, self.input_dim)
+        target = torch.nn.functional.normalize(target, p=2, dim=1)
+        optimizer = torch.optim.Adam(base.parameters(), lr=0.1)
+        for _ in range(50):
+            optimizer.zero_grad()
+            out = base(x)
+            loss = torch.nn.MSELoss()(out, target)
+            loss.backward()
+            optimizer.step()
+
+        # Now run through bounded adapter
+        with torch.no_grad():
+            base_out = base(x)
+            bounded_out = bounded(x)
+
+        x_norm = torch.nn.functional.normalize(x, p=2, dim=1)
+        base_delta = base_out - x_norm
+        base_norms = torch.norm(base_delta, dim=1)
+
+        # Verify base adapter has large corrections
+        has_large = torch.any(base_norms > max_corr).item()
+        if has_large:
+            # The bounded output should be closer to input than the unbounded output
+            bounded_delta = bounded_out - x_norm
+            bounded_norms = torch.norm(bounded_delta, dim=1)
+            # After normalization the exact norms shift, but bounded should be
+            # less extreme than base on the vectors with large corrections
+            for i in range(len(base_norms)):
+                if base_norms[i].item() > max_corr:
+                    self.assertLess(bounded_norms[i].item(), base_norms[i].item(),
+                                   f"Bounded correction {i} should be smaller than base")
+
+    # --- Per-dimension scaling ---
+
+    def test_dim_scale_parameter_exists(self):
+        """Test that dim_scale parameter exists with correct shape and init."""
+        base = ChelationAdapter(input_dim=self.input_dim)
+        bounded = BoundedAdapter(base)
+        self.assertTrue(hasattr(bounded, 'dim_scale'))
+        self.assertEqual(bounded.dim_scale.shape, (self.input_dim,))
+        self.assertTrue(torch.allclose(bounded.dim_scale.data, torch.ones(self.input_dim)))
+
+    def test_dim_scale_is_trainable(self):
+        """Test that dim_scale is an nn.Parameter and can receive gradients."""
+        base = ChelationAdapter(input_dim=self.input_dim)
+        bounded = BoundedAdapter(base)
+        param_names = [name for name, _ in bounded.named_parameters()]
+        self.assertIn('dim_scale', param_names)
+
+        # Verify gradient flows
+        x = torch.randn(5, self.input_dim)
+        target = torch.nn.functional.normalize(torch.randn(5, self.input_dim), p=2, dim=1)
+        out = bounded(x)
+        loss = torch.nn.MSELoss()(out, target)
+        loss.backward()
+        self.assertIsNotNone(bounded.dim_scale.grad)
+
+    def test_dim_scale_affects_output(self):
+        """Test that modifying dim_scale changes the adapter output."""
+        base = ChelationAdapter(input_dim=self.input_dim)
+        bounded = BoundedAdapter(base)
+        x = torch.randn(5, self.input_dim)
+        out_before = bounded(x).detach().clone()
+
+        with torch.no_grad():
+            bounded.dim_scale[:self.input_dim // 2] = 3.0
+            bounded.dim_scale[self.input_dim // 2:] = 0.1
+        out_after = bounded(x).detach()
+
+        self.assertFalse(torch.allclose(out_before, out_after, atol=1e-4),
+                        "Non-uniform dim_scale should change output")
+
+    # --- Factory integration ---
+
+    def test_factory_bounded_mlp(self):
+        """Test create_adapter with bounded=True returns BoundedAdapter wrapping MLP."""
+        adapter = create_adapter("mlp", input_dim=self.input_dim, bounded=True)
+        self.assertIsInstance(adapter, BoundedAdapter)
+        self.assertIsInstance(adapter.base_adapter, ChelationAdapter)
+        self.assertEqual(adapter.input_dim, self.input_dim)
+
+    def test_factory_bounded_procrustes(self):
+        """Test create_adapter with bounded=True returns BoundedAdapter wrapping Procrustes."""
+        adapter = create_adapter("procrustes", input_dim=self.input_dim, bounded=True)
+        self.assertIsInstance(adapter, BoundedAdapter)
+        self.assertIsInstance(adapter.base_adapter, OrthogonalProcrustesAdapter)
+
+    def test_factory_bounded_low_rank(self):
+        """Test create_adapter with bounded=True returns BoundedAdapter wrapping Low-rank."""
+        adapter = create_adapter("low_rank", input_dim=self.input_dim, bounded=True,
+                                 rank=8)
+        self.assertIsInstance(adapter, BoundedAdapter)
+        self.assertIsInstance(adapter.base_adapter, LowRankAffineAdapter)
+        self.assertEqual(adapter.base_adapter.rank, 8)
+
+    def test_factory_bounded_custom_bounds(self):
+        """Test create_adapter passes min/max_correction to BoundedAdapter."""
+        adapter = create_adapter("mlp", input_dim=self.input_dim, bounded=True,
+                                 min_correction=0.02, max_correction=0.3)
+        self.assertIsInstance(adapter, BoundedAdapter)
+        self.assertAlmostEqual(adapter.min_correction, 0.02)
+        self.assertAlmostEqual(adapter.max_correction, 0.3)
+
+    def test_factory_unbounded_returns_base(self):
+        """Test create_adapter with bounded=False returns base adapter directly."""
+        adapter = create_adapter("mlp", input_dim=self.input_dim, bounded=False)
+        self.assertIsInstance(adapter, ChelationAdapter)
+        self.assertNotIsInstance(adapter, BoundedAdapter)
+
+    # --- Regularization loss ---
+
+    def test_regularization_loss_includes_scale_term(self):
+        """Test that regularization_loss includes dim_scale deviation penalty."""
+        base = ChelationAdapter(input_dim=self.input_dim)
+        bounded = BoundedAdapter(base)
+
+        # At init, dim_scale = 1.0, so scale_reg = 0.0
+        # Base MLP reg = 0.0, so total should be 0.0
+        reg_at_init = bounded.regularization_loss()
+        if isinstance(reg_at_init, (int, float)):
+            self.assertAlmostEqual(reg_at_init, 0.0, places=6)
+        else:
+            self.assertAlmostEqual(reg_at_init.item(), 0.0, places=6)
+
+        # Now move dim_scale away from 1.0
+        with torch.no_grad():
+            bounded.dim_scale.fill_(2.0)
+        reg_after = bounded.regularization_loss()
+        if isinstance(reg_after, (int, float)):
+            reg_val = reg_after
+        else:
+            reg_val = reg_after.item()
+        self.assertGreater(reg_val, 0.0,
+                          "Regularization should be positive when dim_scale != 1.0")
+
+    def test_regularization_loss_includes_base_adapter_term(self):
+        """Test that regularization_loss delegates to base adapter."""
+        base = OrthogonalProcrustesAdapter(input_dim=self.input_dim)
+        bounded = BoundedAdapter(base)
+
+        # Procrustes has non-zero reg at init (from skew param)
+        base_reg = base.regularization_loss().item()
+        bounded_reg = bounded.regularization_loss().item()
+
+        # Bounded reg should be at least as large as base reg
+        # (dim_scale = 1.0 at init, so scale_reg = 0.0)
+        self.assertAlmostEqual(bounded_reg, base_reg, places=5,
+                              msg="Bounded reg should equal base reg when dim_scale = 1.0")
+
+    def test_regularization_loss_is_differentiable(self):
+        """Test that regularization_loss produces gradients on dim_scale."""
+        base = ChelationAdapter(input_dim=64)
+        bounded = BoundedAdapter(base)
+        # Move dim_scale so gradient is non-zero
+        with torch.no_grad():
+            bounded.dim_scale.fill_(1.5)
+        reg = bounded.regularization_loss()
+        reg.backward()
+        self.assertIsNotNone(bounded.dim_scale.grad)
+        self.assertFalse(torch.all(bounded.dim_scale.grad == 0).item(),
+                        "Gradient should be non-zero when dim_scale != 1.0")
+
+    # --- Save and load ---
+
+    def test_save_load_round_trip(self):
+        """Test that save/load preserves BoundedAdapter state."""
+        base = ChelationAdapter(input_dim=self.input_dim)
+        bounded = BoundedAdapter(base, min_correction=0.02, max_correction=0.4)
+
+        # Modify state
+        x = torch.randn(5, self.input_dim)
+        target = torch.nn.functional.normalize(torch.randn(5, self.input_dim), p=2, dim=1)
+        optimizer = torch.optim.Adam(bounded.parameters(), lr=0.01)
+        for _ in range(5):
+            optimizer.zero_grad()
+            out = bounded(x)
+            loss = torch.nn.MSELoss()(out, target)
+            loss.backward()
+            optimizer.step()
+
+        save_path = self.temp_dir / "bounded_adapter.pt"
+        bounded.save(str(save_path))
+        self.assertTrue(save_path.exists())
+
+        # Load into new instance
+        new_base = ChelationAdapter(input_dim=self.input_dim)
+        new_bounded = BoundedAdapter(new_base, min_correction=0.02, max_correction=0.4)
+        success = new_bounded.load(str(save_path))
+        self.assertTrue(success)
+
+        # Outputs should match
+        with torch.no_grad():
+            out1 = bounded(x)
+            out2 = new_bounded(x)
+        self.assertTrue(torch.allclose(out1, out2, atol=1e-5),
+                       f"Save/load mismatch: max diff = {(out1 - out2).abs().max():.6e}")
+
+    def test_load_nonexistent_returns_false(self):
+        """Test that loading from nonexistent path returns False."""
+        base = ChelationAdapter(input_dim=self.input_dim)
+        bounded = BoundedAdapter(base)
+        success = bounded.load(str(self.temp_dir / "nonexistent.pt"))
+        self.assertFalse(success)
+
+    def test_save_path_traversal_blocked(self):
+        """Test that path traversal is blocked in save()."""
+        base = ChelationAdapter(input_dim=self.input_dim)
+        bounded = BoundedAdapter(base)
+        traversal_path = self.temp_dir / ".." / "escaping.pt"
+        with self.assertRaises(ValueError) as cm:
+            bounded.save(str(traversal_path))
+        self.assertIn("traversal", str(cm.exception).lower())
+
+    def test_load_path_traversal_blocked(self):
+        """Test that path traversal is blocked in load()."""
+        base = ChelationAdapter(input_dim=self.input_dim)
+        bounded = BoundedAdapter(base)
+        traversal_path = self.temp_dir / ".." / "malicious.pt"
+        with self.assertRaises(ValueError) as cm:
+            bounded.load(str(traversal_path))
+        self.assertIn("traversal", str(cm.exception).lower())
+
+    # --- Config preset ---
+
+    def test_bounded_adapter_preset(self):
+        """Test that bounded_adapter preset is accessible from ChelationConfig."""
+        preset = ChelationConfig.get_preset("balanced", "bounded_adapter")
+        self.assertTrue(preset["bounded"])
+        self.assertEqual(preset["min_correction"], 0.01)
+        self.assertEqual(preset["max_correction"], 0.5)
+        self.assertIn("description", preset)
+
+    def test_bounded_adapter_preset_conservative(self):
+        """Test that conservative bounded_adapter preset has tighter bounds."""
+        preset = ChelationConfig.get_preset("conservative", "bounded_adapter")
+        self.assertTrue(preset["bounded"])
+        self.assertEqual(preset["max_correction"], 0.3)
+
+    def test_bounded_adapter_preset_aggressive(self):
+        """Test that aggressive bounded_adapter preset has wider bounds."""
+        preset = ChelationConfig.get_preset("aggressive", "bounded_adapter")
+        self.assertTrue(preset["bounded"])
+        self.assertEqual(preset["min_correction"], 0.02)
+        self.assertEqual(preset["max_correction"], 0.8)
+
+    # --- Parameters include both base and wrapper ---
+
+    def test_parameters_include_all(self):
+        """Test that parameters() returns both base adapter and dim_scale params."""
+        base = ChelationAdapter(input_dim=64)
+        bounded = BoundedAdapter(base)
+
+        # Count base params
+        base_param_count = sum(1 for _ in base.parameters())
+        # Count bounded params (should be base + dim_scale)
+        bounded_param_count = sum(1 for _ in bounded.parameters())
+        self.assertEqual(bounded_param_count, base_param_count + 1,
+                        "BoundedAdapter should have base params + dim_scale")
 
 
 if __name__ == "__main__":

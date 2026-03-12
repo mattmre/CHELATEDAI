@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import os
 from pathlib import Path
 from config import validate_safe_path
@@ -217,32 +218,142 @@ class LowRankAffineAdapter(nn.Module):
         return False
 
 
-def create_adapter(adapter_type="mlp", input_dim=768, **kwargs):
+class BoundedAdapter(nn.Module):
+    """Wrapper that bounds correction magnitude and adds per-dimension scaling.
+
+    Addresses INT8 quantization noise floor (~0.0078) by ensuring corrections
+    are large enough to survive quantization, while capping them to prevent
+    divergence.
+
+    Wraps any base adapter (MLP, Procrustes, Low-rank) uniformly.
+
+    Args:
+        base_adapter: Any adapter nn.Module with .input_dim and .forward()
+        min_correction: Minimum L2 norm for correction delta (default 0.01,
+            above INT8 noise floor of ~0.0078)
+        max_correction: Maximum L2 norm for correction delta (default 0.5,
+            prevents divergence)
+    """
+    def __init__(self, base_adapter, min_correction=0.01, max_correction=0.5):
+        super().__init__()
+        self.base_adapter = base_adapter
+        self.input_dim = base_adapter.input_dim
+        self.min_correction = min_correction
+        self.max_correction = max_correction
+        # Per-dimension learned scaling (initialized to 1.0)
+        self.dim_scale = nn.Parameter(torch.ones(self.input_dim))
+
+    def forward(self, x):
+        # Get base adapter output
+        base_out = self.base_adapter(x)
+
+        # Handle 1D/2D input
+        input_was_1d = (x.dim() == 1)
+        if input_was_1d:
+            x_2d = x.unsqueeze(0)
+            base_out_2d = base_out.unsqueeze(0)
+        else:
+            x_2d = x
+            base_out_2d = base_out if base_out.dim() == 2 else base_out.unsqueeze(0)
+
+        # Compute correction delta (what the adapter changed)
+        # Base adapters normalize output, so work in normalized space
+        x_norm = F.normalize(x_2d, p=2, dim=1)
+        delta = base_out_2d - x_norm
+
+        # Apply per-dimension scaling
+        delta = delta * self.dim_scale
+
+        # Compute correction magnitude per vector
+        correction_norm = torch.norm(delta, dim=1, keepdim=True)
+
+        # Scale corrections to be within [min_correction, max_correction]
+        # If correction is too small, scale UP (above INT8 noise floor)
+        # If correction is too large, scale DOWN (prevent divergence)
+        scale = torch.ones_like(correction_norm)
+        too_small = correction_norm < self.min_correction
+        too_large = correction_norm > self.max_correction
+        # Only rescale non-zero corrections
+        nonzero = correction_norm > 1e-10
+
+        scale = torch.where(
+            too_small & nonzero,
+            self.min_correction / correction_norm.clamp(min=1e-10),
+            scale
+        )
+        scale = torch.where(
+            too_large,
+            self.max_correction / correction_norm.clamp(min=1e-10),
+            scale
+        )
+
+        delta = delta * scale
+
+        # Apply bounded correction
+        out = x_norm + delta
+        out = F.normalize(out, p=2, dim=1)
+
+        if input_was_1d:
+            out = out.squeeze(0)
+        return out
+
+    def regularization_loss(self):
+        """Delegate to base adapter + L2 on dim_scale deviation from 1.0."""
+        base_reg = self.base_adapter.regularization_loss()
+        # Penalize dim_scale deviation from 1.0 (keeps scaling conservative)
+        scale_reg = ((self.dim_scale - 1.0) ** 2).mean()
+        return base_reg + 0.001 * scale_reg
+
+    def save(self, path):
+        path = validate_safe_path(Path(path))
+        torch.save(self.state_dict(), path)
+
+    def load(self, path):
+        path = validate_safe_path(Path(path))
+        if os.path.exists(path):
+            try:
+                self.load_state_dict(torch.load(path, weights_only=True))
+                return True
+            except RuntimeError:
+                return False
+        return False
+
+
+def create_adapter(adapter_type="mlp", input_dim=768, bounded=False,
+                   min_correction=0.01, max_correction=0.5, **kwargs):
     """
     Factory function to create adapter instances by type name.
 
     Args:
         adapter_type: One of "mlp", "procrustes", "low_rank"
         input_dim: Embedding dimension
+        bounded: If True, wrap in BoundedAdapter for quantization-safe corrections
+        min_correction: Minimum correction norm (BoundedAdapter only, default 0.01)
+        max_correction: Maximum correction norm (BoundedAdapter only, default 0.5)
         **kwargs: Additional args passed to adapter constructor
             - For "mlp": hidden_dim (optional)
             - For "low_rank": rank (default 16)
 
     Returns:
-        nn.Module: Adapter instance
+        nn.Module: Adapter instance (optionally wrapped in BoundedAdapter)
 
     Raises:
         ValueError: If adapter_type is unknown
     """
     if adapter_type == "mlp":
         kwargs.pop("rank", None)
-        return ChelationAdapter(input_dim=input_dim, **kwargs)
+        adapter = ChelationAdapter(input_dim=input_dim, **kwargs)
     elif adapter_type == "procrustes":
         kwargs.pop("rank", None)
-        return OrthogonalProcrustesAdapter(input_dim=input_dim)
+        adapter = OrthogonalProcrustesAdapter(input_dim=input_dim)
     elif adapter_type == "low_rank":
         rank = kwargs.get("rank", 16)
-        return LowRankAffineAdapter(input_dim=input_dim, rank=rank)
+        adapter = LowRankAffineAdapter(input_dim=input_dim, rank=rank)
     else:
         valid = ["mlp", "procrustes", "low_rank"]
         raise ValueError(f"Unknown adapter_type '{adapter_type}'. Valid types: {valid}")
+
+    if bounded:
+        adapter = BoundedAdapter(adapter, min_correction=min_correction,
+                                 max_correction=max_correction)
+    return adapter
