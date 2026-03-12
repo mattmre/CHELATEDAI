@@ -659,6 +659,31 @@ class ChelationConfig:
         },
     }
 
+    # Kalman-gain adaptive LR presets
+    KALMAN_LR_PRESETS = {
+        "conservative": {
+            "process_noise": 0.05,
+            "min_lr_ratio": 0.1,
+            "max_lr_ratio": 1.5,
+            "window_size": 10,
+            "description": "Conservative Kalman LR, tight gain bounds",
+        },
+        "balanced": {
+            "process_noise": 0.1,
+            "min_lr_ratio": 0.1,
+            "max_lr_ratio": 2.0,
+            "window_size": 10,
+            "description": "Balanced Kalman LR for general sedimentation",
+        },
+        "aggressive": {
+            "process_noise": 0.2,
+            "min_lr_ratio": 0.2,
+            "max_lr_ratio": 3.0,
+            "window_size": 10,
+            "description": "Aggressive Kalman LR, wider gain range",
+        },
+    }
+
     # Structural health thresholds
     STRUCTURAL_HEALTH_PERSISTENT_COLLAPSE_DEGRADING = 0.2
     STRUCTURAL_HEALTH_PERSISTENT_COLLAPSE_CRITICAL = 0.5
@@ -830,6 +855,7 @@ class ChelationConfig:
             "isomer": cls.ISOMER_PRESETS,
             "bounded_adapter": cls.BOUNDED_ADAPTER_PRESETS,
             "sedimentation_loss": cls.SEDIMENTATION_LOSS_PRESETS,
+            "kalman_lr": cls.KALMAN_LR_PRESETS,
         }
         
         if preset_type not in preset_map:
