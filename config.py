@@ -639,6 +639,26 @@ class ChelationConfig:
         },
     }
 
+    # Sedimentation loss presets
+    SEDIMENTATION_LOSS_PRESETS = {
+        "mse": {
+            "loss_type": "mse",
+            "description": "Default MSE loss (pointwise, backward compatible)",
+        },
+        "contrastive": {
+            "loss_type": "infonce",
+            "temperature": 0.07,
+            "description": "InfoNCE contrastive loss for retrieval-aware training",
+        },
+        "hybrid": {
+            "loss_type": "hybrid",
+            "contrastive_weight": 0.5,
+            "mse_weight": 0.5,
+            "temperature": 0.07,
+            "description": "Hybrid MSE + InfoNCE for stability and retrieval quality",
+        },
+    }
+
     # Structural health thresholds
     STRUCTURAL_HEALTH_PERSISTENT_COLLAPSE_DEGRADING = 0.2
     STRUCTURAL_HEALTH_PERSISTENT_COLLAPSE_CRITICAL = 0.5
@@ -809,6 +829,7 @@ class ChelationConfig:
             "topology": cls.TOPOLOGY_PRESETS,
             "isomer": cls.ISOMER_PRESETS,
             "bounded_adapter": cls.BOUNDED_ADAPTER_PRESETS,
+            "sedimentation_loss": cls.SEDIMENTATION_LOSS_PRESETS,
         }
         
         if preset_type not in preset_map:
