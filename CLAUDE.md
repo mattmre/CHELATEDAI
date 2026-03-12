@@ -48,11 +48,13 @@ for f in test_*.py; do python "$f"; done
 python -m unittest discover -s . -p "test_*.py" -v
 ```
 
-**Representative test files (`973` tests passing on `main` as of 2026-03-06):**
-- `test_unit_core.py` - Core adapter variants
+**Representative test files (`1082` tests passing on `main` as of 2026-03-12):**
+- `test_unit_core.py` - Core adapter variants, BoundedAdapter, DimensionProjection training
 - `test_noise_injection.py` - Noise injection validation under `unittest`
 - `test_online_updater.py`, `test_dimension_mask_predictor.py`, `test_stability_tracker.py`
 - `test_benchmark_beir.py`, `test_benchmark_comparative.py`, `test_dashboard_server.py`
+- `test_sedimentation_loss.py` - InfoNCE, hybrid loss, hard negative miner, factory
+- `test_kalman_lr.py` - Kalman-gain adaptive LR, variance behavior, clamping, engine integration
 - `test_computational_storage_poc.py` - block-graph parity, latency invariants, and real-data storage round-trip validation
 - `test_computational_storage_payload.py` - deterministic trigger-sector payload, host decoding, and virtual-disk interception validation
 - `test_computational_storage_hardware_evidence.py` - deterministic evidence capture and Windows raw-device path handling
@@ -75,11 +77,13 @@ All `.py` files live at the project root. No packages, no `__init__.py`. Imports
 AntigravityEngine (antigravity_engine.py)  <- central entry point
 |-- embedding_backend.py       # F-045: "ollama:model" -> HTTP, else -> SentenceTransformer
 |-- vector_store.py            # F-044: QdrantVectorStore abstraction
-|-- chelation_adapter.py       # 3 adapter types via create_adapter() factory
+|-- chelation_adapter.py       # 4 adapter types via create_adapter() factory + BoundedAdapter wrapper
 |-- config.py                  # ChelationConfig with presets + validation
 |-- chelation_logger.py        # get_logger() -> JSON structured logging
 |-- teacher_distillation.py    # Offline/hybrid modes + DimensionProjection + EnsembleTeacherHelper
 |-- teacher_weight_scheduler.py # 5 schedule types: constant/linear/cosine/step/adaptive
+|-- sedimentation_loss.py      # InfoNCE, hybrid, hard-negative mining loss functions
+|-- kalman_lr_scheduler.py     # Kalman-gain adaptive LR for sedimentation training
 |-- sedimentation_trainer.py   # Shared homeostatic target logic
 |-- checkpoint_manager.py      # SafeTrainingContext with SHA256 verification
 |-- convergence_monitor.py     # Phase 1: patience-based early stopping
@@ -109,8 +113,10 @@ Evaluation & Analysis Modules
 
 ### Key design patterns
 
-- **Adapter factory:** `create_adapter("mlp"|"procrustes"|"low_rank", input_dim)` returns one of three adapter types. All initialize near-identity (small weight std 0.001) to preserve base model quality.
-- **Config presets:** `ChelationConfig.get_preset(name, type)` supports `chelation`, `adapter`, `convergence`, `adapter_type`, `rlm`, `sedimentation`, `sedimentation_tuned`, `ensemble`, `cross_lingual`, `teacher_weight_schedule`, `teacher_encoding`, `online_update`, `beir`, `topology`, and `isomer`.
+- **Adapter factory:** `create_adapter("mlp"|"procrustes"|"low_rank", input_dim, bounded=False)` returns one of three adapter types, optionally wrapped in `BoundedAdapter` for INT8-safe corrections. All initialize near-identity (small weight std 0.001) to preserve base model quality.
+- **Config presets:** `ChelationConfig.get_preset(name, type)` supports `chelation`, `adapter`, `convergence`, `adapter_type`, `rlm`, `sedimentation`, `sedimentation_tuned`, `ensemble`, `cross_lingual`, `teacher_weight_schedule`, `teacher_encoding`, `online_update`, `beir`, `topology`, `isomer`, `bounded_adapter`, `sedimentation_loss`, and `kalman_lr`.
+- **Sedimentation loss:** `engine.set_sedimentation_loss("mse"|"infonce"|"hybrid")` switches loss function. InfoNCE uses batch contrastive alignment; hybrid combines MSE + InfoNCE.
+- **Kalman-gain adaptive LR:** `engine.enable_kalman_lr(process_noise, min_lr_ratio, max_lr_ratio)` modulates learning rate based on loss variance — high variance lowers LR, low variance raises it.
 - **Noise Injection:** Dynamically scaled noise injection during sedimentation training.
 - **Embedding backend routing:** Model names prefixed with `ollama:` use the HTTP API; all others use local SentenceTransformers.
 - **Teacher distillation:** `DimensionProjection` for teacher-student dim mismatches, `EnsembleTeacherHelper` for multi-teacher weighted averaging, `TeacherWeightScheduler` for 5 dynamic schedule types.
@@ -133,12 +139,11 @@ Evaluation & Analysis Modules
 - `gh pr merge` can fail if a local worktree is holding `main`. Before merging stacked PRs, remove/prune merged worktrees or switch them off `main`.
 - The computational-storage split is complete on `main` as of 2026-03-06: `#86` landed the validation foundation, `#87` landed the payload transport path, and `#88` landed the session-wrap docs.
 - Session 26 follow-up PRs `#90` (hardware evidence capture tool), `#91` (emulation CI), `#92` (transport scope lock), and `#93` (retention policy) are merged on `main` as of 2026-03-06. The remaining follow-through is real hardware evidence capture plus the dated retention review.
-- Session 28 opened PR `#96` for weight-refinement benchmark recovery and PR `#97` for stale-roadmap cleanup. Review those before resuming the bounded evaluation campaign or treating the legacy hardening docs as active planning.
+- Session 31 merged PRs `#96`–`#103` (weight refinement, docs cleanup, 4 features, session wrap). The adapter checkpoint contamination risk from Session 28 is resolved (isolated checkpoints per config).
 - Do not revive the stale computational-storage PR `#84` or the old `feat/session22-online-correction` branch line. If historical comparison is needed, use the local `backup/retired-*` refs instead.
 - If no RP2040 device is attached, do not fabricate hardware evidence. Use `computational_storage_poc/capture_hardware_evidence.py` once actual hardware is available.
 - Explicit Windows raw-device paths like `\\.\PhysicalDrive2` are valid inputs to `usb_host_inference.py` and `capture_hardware_evidence.py`; do not rewrite them into a second `PhysicalDrive` prefix.
 - Do not treat unrelated removable USB storage as RP2040 evidence. Session 27's local probe only found a SanDisk removable drive, which was not used as a proxy.
-- The interrupted weight-refinement campaign exposed a real cross-configuration contamination risk through the shared `adapter_weights.pt` checkpoint. Until PR `#96` lands, do not assume `main` isolates adapter state across comparative, distillation, multitask, and resumed campaign runs.
 - If a resumed benchmark campaign is no longer the active task, stop the live process instead of leaving it consuming CPU in the background.
 - `ruff check` does not validate GitHub Actions YAML. Keep workflow-file review separate from Python lint.
 - Local `git status` may show `?? .claude/`; that directory holds local worktree metadata and retired-branch artifacts and is not, by itself, a product-code diff.
