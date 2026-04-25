@@ -64,7 +64,11 @@ Close the remaining post-Session-31 follow-through without reopening stale work:
     - baseline final-cycle `NDCG@10`: `0.6012`
     - offline final-cycle `NDCG@10`: `0.0130` after `1357.50s` pretraining (still not viable)
     - hybrid final-cycle `NDCG@10`: `0.2961` (catastrophic late-cycle collapse)
-  - The runner automatically advanced into `phase2_distillation_mlp_tw_07`
+  - Third Phase 2 checkpoint completed at `2026-04-25T03:04:03` for `phase2_distillation_mlp_tw_07`
+    - baseline final-cycle `NDCG@10`: `0.6012`
+    - offline final-cycle `NDCG@10`: `0.0130` after `1340.87s` pretraining (still not viable)
+    - hybrid final-cycle `NDCG@10`: `0.2722` (another disqualifying collapse)
+  - The runner automatically advanced into `phase2_distillation_procrustes_tw_03`
 - Operational constraint:
   - do **not** switch branches in the original worktree while the campaign is running; later subprocesses in the campaign would pick up the wrong file state
 
@@ -72,7 +76,8 @@ Close the remaining post-Session-31 follow-through without reopening stale work:
 - **PRs merged so far:** #107, #108
 - **Campaign status:** bounded Session 32 campaign still running
 - **Best Phase 2 signal so far:** `mlp` + teacher weight `0.3` in `hybrid` mode (`NDCG@10` `0.6239`)
-- **Worst Phase 2 signal so far:** `mlp` + teacher weight `0.5` in `hybrid` mode (`NDCG@10` `0.2961`)
+- **Worst Phase 2 signal so far:** `mlp` + teacher weight `0.7` in `hybrid` mode (`NDCG@10` `0.2722`)
+- **Current Phase 2 readout:** `mlp` is only viable at `teacher_weight=0.3`; `0.5` and `0.7` are not promotion candidates
 - **Retention review:** complete
 - **Hardware evidence:** still blocked pending real RP2040 availability
 - **Next immediate action:** let the campaign finish, analyze bounded-phase outputs, then decide whether a preset-refresh PR is justified or whether the outcome is an explicit no-promotion result
