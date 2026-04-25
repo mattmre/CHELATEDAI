@@ -110,18 +110,25 @@ class TestRunRepeatabilityCheck(unittest.TestCase):
     @patch("run_repeatability_check.subprocess.Popen")
     def test_run_with_tee_forces_utf8_subprocess_environment(self, mock_popen):
         process = MagicMock()
-        process.stdout = iter([])
+        process.stdout = iter(["line one\n"])
         process.wait.return_value = 0
         mock_popen.return_value = process
 
         log_path = Path("repeatability.log")
-        with patch.object(Path, "open", return_value=MagicMock()):
+        log_handle = MagicMock()
+        context_manager = MagicMock()
+        context_manager.__enter__.return_value = log_handle
+        context_manager.__exit__.return_value = False
+
+        with patch.object(Path, "open", return_value=context_manager):
             repeatability.run_with_tee(["python", "benchmark_distillation.py"], log_path, Path("."))
 
         env = mock_popen.call_args.kwargs["env"]
         self.assertEqual(env["PYTHONIOENCODING"], "utf-8")
         self.assertEqual(env["PYTHONUTF8"], "1")
         self.assertEqual(env["PATH"], os.environ["PATH"])
+        log_handle.write.assert_called_once_with("line one\n")
+        log_handle.flush.assert_called_once()
 
 
 if __name__ == "__main__":

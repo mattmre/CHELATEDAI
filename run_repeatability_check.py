@@ -182,6 +182,7 @@ def run_with_tee(command: list[str], log_path: Path, cwd: Path) -> int:
         for line in process.stdout:
             print(line, end="")
             log_handle.write(line)
+            log_handle.flush()
 
         return process.wait()
 
