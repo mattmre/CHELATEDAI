@@ -307,6 +307,15 @@ def recover_phase5_result(output_path: Path) -> dict[str, Any]:
     }
 
 
+def get_explicit_cli_keys(argv: list[str]) -> set[str]:
+    explicit = set()
+    for token in argv:
+        if not token.startswith("--"):
+            continue
+        explicit.add(token[2:].split("=", 1)[0].replace("-", "_"))
+    return explicit
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run the weight-refinement campaign")
     parser.add_argument(
@@ -369,10 +378,8 @@ def main() -> int:
         action="store_true",
         help="Launch run_large_sweep.py in the background after bounded phases",
     )
+    explicit_cli_keys = get_explicit_cli_keys(sys.argv[1:])
     args = parser.parse_args()
-
-    if args.teacher is None:
-        args.teacher = args.model
 
     if args.resume_run_dir:
         run_dir = Path(args.resume_run_dir)
@@ -393,17 +400,27 @@ def main() -> int:
         manifest = load_manifest(run_dir)
         manifest.setdefault("started_at", datetime.now().isoformat())
         manifest["run_dir"] = str(run_dir)
-        # Preserve original config; only override fields explicitly set on CLI.
         existing_config = manifest.get("config", {})
-        defaults = vars(parser.parse_args([]))
+        for key, value in existing_config.items():
+            if key == "resume_run_dir":
+                continue
+            if key not in explicit_cli_keys and hasattr(args, key):
+                setattr(args, key, value)
+        if args.teacher is None:
+            args.teacher = args.model
         cli_args = vars(args)
         for key, value in cli_args.items():
-            if value != defaults.get(key):
+            if key == "resume_run_dir":
+                continue
+            if key in explicit_cli_keys or key not in existing_config:
                 existing_config[key] = value
+        existing_config["run_dir"] = str(run_dir)
         manifest["config"] = existing_config
         manifest.setdefault("phases", {})
         manifest["resumed_at"] = datetime.now().isoformat()
     else:
+        if args.teacher is None:
+            args.teacher = args.model
         manifest = {
             "started_at": datetime.now().isoformat(),
             "run_dir": str(run_dir),

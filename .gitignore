@@ -35,6 +35,7 @@ Thumbs.db
 # Project specific
 *.backup
 adapter_weights.pt
+adapter_weights.benchmark-backup-*.pt
 demo_log.jsonl
 chelation_debug.jsonl
 checkpoints/

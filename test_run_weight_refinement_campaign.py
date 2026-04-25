@@ -117,6 +117,78 @@ class TestCampaignResume(unittest.TestCase):
                 "launched",
             )
 
+    def test_resume_preserves_manifest_config_when_cli_omits_overrides(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            run_dir = Path(tmpdir)
+            manifest = {
+                "started_at": "2026-04-24T21:08:46",
+                "run_dir": str(run_dir),
+                "config": {
+                    "run_dir": str(run_dir),
+                    "model": "sentence-transformers/all-MiniLM-L6-v2",
+                    "teacher": "sentence-transformers/all-mpnet-base-v2",
+                    "max_queries": 100,
+                    "distill_queries_per_cycle": 50,
+                    "distill_cycles": 5,
+                    "distill_epochs": 5,
+                    "learning_rate": 0.01,
+                    "adapter_types": "mlp",
+                    "launch_large_sweep": False,
+                },
+                "phases": {
+                    "phase1_standard_sweep": {"returncode": 0},
+                    "phase2_distillation_mlp_tw_03": {"returncode": 0},
+                },
+                "baseline_adapter_snapshot": None,
+            }
+            (run_dir / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+            (run_dir / "phase1_sweep_results.json").write_text("{}", encoding="utf-8")
+            (run_dir / "phase2_distillation_mlp_tw_03.json").write_text("{}", encoding="utf-8")
+            run_calls = []
+
+            def fake_run_command(label, command, local_run_dir):
+                run_calls.append((label, command, local_run_dir))
+                return {
+                    "label": label,
+                    "command": command,
+                    "returncode": 0,
+                    "started_at": "2026-04-24T23:45:00",
+                    "finished_at": "2026-04-24T23:46:00",
+                }
+
+            with patch.object(campaign, "run_command", side_effect=fake_run_command), \
+                patch.object(campaign, "run_online_ablation", return_value={
+                    "output_path": str(run_dir / "phase5_online_ablation.json"),
+                    "best_config": "baseline",
+                    "best_ndcg_at_10": 0.75,
+                }), \
+                patch.object(campaign, "launch_background_command", return_value={
+                    "label": "phase6_large_sweep",
+                    "status": "not_launched",
+                    "command": [],
+                }), \
+                patch.object(campaign, "restore_adapter"), \
+                patch.object(campaign, "snapshot_adapter", return_value=None), \
+                patch.object(campaign, "summarize_run"), \
+                patch.object(sys, "argv", [
+                    "run_weight_refinement_campaign.py",
+                    "--resume-run-dir",
+                    str(run_dir),
+                ]):
+                exit_code = campaign.main()
+
+            self.assertEqual(exit_code, 0)
+            first_phase2_call = next(call for call in run_calls if call[0] == "phase2_distillation_mlp_tw_05")
+            command = first_phase2_call[1]
+            self.assertEqual(command[command.index("--teacher") + 1], "sentence-transformers/all-mpnet-base-v2")
+            self.assertEqual(command[command.index("--cycles") + 1], "5")
+            self.assertEqual(command[command.index("--queries-per-cycle") + 1], "50")
+            self.assertEqual(command[command.index("--epochs") + 1], "5")
+            self.assertEqual(
+                json.loads((run_dir / "manifest.json").read_text(encoding="utf-8"))["config"]["teacher"],
+                "sentence-transformers/all-mpnet-base-v2",
+            )
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
