@@ -111,7 +111,7 @@
 
 ### High Risk Changes
 - ID type standardization (affects all retrieval logic)
-- Memory optimization (could break large batch processing)
+- Large-batch processing changes (historical follow-on idea; not part of the current roadmap)
 - Error handling changes (could mask real issues if done wrong)
 
 ### Mitigation Strategies
@@ -133,11 +133,11 @@
 ### Phase 2 Complete When: ✅ ALL MET
 - [x] Configuration system implemented (config.py with presets and validation)
 - [x] Error recovery tested and working (checkpoint_manager.py demo successful)
-- *Historical note: memory usage optimization for large datasets was a follow-on idea, not an active numbered phase on the current roadmap.*
 - [x] Safe mode validated (SafeTrainingContext rollback tested)
+- Historical follow-on idea recorded at the time: memory usage optimization for large datasets. It was never an active numbered phase on the current roadmap.
 
 ### Phase 3 Complete When: ✅ ALL MET
 - [x] Structured logging in place (chelation_logger.py with JSON output)
 - [x] >80% unit test coverage for core algorithms (100% coverage of tested algorithms)
 - [x] Integration tests cover all workflows (existing tests + new unit tests)
-- *Historical note: performance metrics dashboard was a follow-on idea; later repo work should be checked against the current roadmap audit, not this line.*
+- Historical follow-on idea recorded at the time: a performance metrics dashboard. Later repo work should be checked against the current roadmap audit, not this note.

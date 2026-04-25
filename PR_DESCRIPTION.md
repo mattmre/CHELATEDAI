@@ -5,7 +5,7 @@ Comprehensive refactoring to transform ChelatedAI from research prototype to pro
 
 **All changes are backward compatible. Zero breaking changes.**
 
-> Historical note (2026-03-07): This PR description reflects the 2026-01-06 hardening pass. The "Deferred to Phase 4" section below is historical and should not be treated as the current implementation roadmap. See `docs/roadmap-audit-and-weight-refinement-plan-2026-03-06.md`.
+> Historical note (2026-03-07): This PR description reflects the 2026-01-06 hardening pass. The "Historical Follow-On Ideas" section below is historical and should not be treated as the current implementation roadmap. See `docs/roadmap-audit-and-weight-refinement-plan-2026-03-06.md`.
 
 ## 📊 Quick Stats
 - **New Files**: 7 (config, checkpointing, logging, tests, docs)

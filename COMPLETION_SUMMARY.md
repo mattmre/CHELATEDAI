@@ -265,7 +265,7 @@ OK
 
 ---
 
-## Historical Follow-On Ideas At The Time
+## Appendix: 2026-01-06 Forward-Looking Ideas (Superseded)
 
 ### Memory Optimization
 - Streaming large batches (still loads full batch)
@@ -281,9 +281,9 @@ OK
 
 ---
 
-## Recommendations
+## Historical Recommendations At The Time
 
-### Immediate Next Steps
+### Immediate Next Steps Recorded At The Time
 
 1. **Pull Ollama Model** (if using Ollama):
    ```bash
@@ -301,7 +301,7 @@ OK
    - Check TECHNICAL_ANALYSIS.md for architecture
    - See CHANGELOG.md for migration notes
 
-### Historical Future Development Ideas
+### Additional Future-Development Ideas Recorded At The Time
 
 1. **Memory Optimization**
    - Implement streaming for large datasets
