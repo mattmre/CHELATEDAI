@@ -37,7 +37,7 @@ Close the remaining post-Session-31 follow-through without reopening stale work:
   - `backup/local-session8-ahead-2026-02-18`
   - `backup/wip-local-snapshot-2026-02-18`
 
-## Phase 4: Overnight Campaign Execution (In Progress)
+## Phase 4: Overnight Campaign Execution (Complete - No Promotion)
 - Worktree: `C:\GitHub\repos\CHELATEDAI`
 - Active branch/worktree lock: `feat/session32-overnight-campaign`
 - Run command:
@@ -79,18 +79,25 @@ Close the remaining post-Session-31 follow-through without reopening stale work:
     - hybrid final-cycle `NDCG@10`: `0.1170`
     - interpretation: `teacher_weight=0.5` underperformed the already-collapsed slice-local baseline, so `procrustes` remains a non-promotion path
   - The runner automatically advanced into `phase2_distillation_procrustes_tw_07`
+  - The bounded campaign was intentionally stopped during `phase2_distillation_procrustes_tw_07` once the promotion gates were already failed:
+    - only one local positive Phase 2 slice remained (`mlp` + `teacher_weight=0.3`)
+    - adjacent MLP teacher weights and both completed `procrustes` slices showed instability or outright regression
+    - the only positive slice was not repeatable across 2+ independent runs
+    - the current run still lacked multi-task and BEIR transfer evidence for any candidate
 - Operational constraint:
-  - do **not** switch branches in the original worktree while the campaign is running; later subprocesses in the campaign would pick up the wrong file state
+  - while the campaign was live, the original worktree could not switch branches without corrupting later subprocess state
 
-## Current Summary (Interim)
-- **PRs merged so far:** #107, #108
-- **Campaign status:** bounded Session 32 campaign still running
+## Final Summary
+- **PRs merged before wrap closeout:** #107, #108, #110
+- **Campaign status:** partial bounded campaign intentionally stopped after enough evidence for an explicit no-promotion outcome
+- **Decision:** leave current presets and defaults unchanged
 - **Best Phase 2 signal so far:** `mlp` + teacher weight `0.3` in `hybrid` mode (`NDCG@10` `0.6239`)
 - **Worst Phase 2 signal so far:** `mlp` + teacher weight `0.7` in `hybrid` mode (`NDCG@10` `0.2722`)
-- **Current Phase 2 readout:** `mlp` is only viable at `teacher_weight=0.3`; `0.5` and `0.7` are not promotion candidates, and `procrustes` is also tracking as a non-promotion family through both `tw_03` and `tw_05`
+- **Current Phase 2 readout:** `mlp` is only locally viable at `teacher_weight=0.3`; `0.5` and `0.7` are not promotion candidates, and `procrustes` is also a non-promotion family through both completed slices
+- **Promotion-gate failure:** no repeatable 2-run evidence for the only positive slice, no current-run multi-task/BEIR confirmation, and clear instability across adjacent weights and adapter families
 - **Retention review:** complete
 - **Hardware evidence:** still blocked pending real RP2040 availability
-- **Next immediate action:** let the campaign finish, analyze bounded-phase outputs, then decide whether a preset-refresh PR is justified or whether the outcome is an explicit no-promotion result
+- **Next immediate action:** merge the Session 32 no-promotion wrap and only resume research via a focused repeatability rerun if there is an explicit appetite for more evaluation work
 
 ## Agents Dispatched
 | Agent | Task | Status |
