@@ -60,6 +60,11 @@ Close the remaining post-Session-31 follow-through without reopening stale work:
   - A clean attached resume was verified after the fix, and the regenerated `phase2_distillation_mlp_tw_05.log` now shows:
     - teacher: `sentence-transformers/all-mpnet-base-v2`
     - cycles/queries/epochs: `5 / 50 / 5`
+  - Second Phase 2 checkpoint completed at `2026-04-25T01:44:21` for `phase2_distillation_mlp_tw_05`
+    - baseline final-cycle `NDCG@10`: `0.6012`
+    - offline final-cycle `NDCG@10`: `0.0130` after `1357.50s` pretraining (still not viable)
+    - hybrid final-cycle `NDCG@10`: `0.2961` (catastrophic late-cycle collapse)
+  - The runner automatically advanced into `phase2_distillation_mlp_tw_07`
 - Operational constraint:
   - do **not** switch branches in the original worktree while the campaign is running; later subprocesses in the campaign would pick up the wrong file state
 
@@ -67,7 +72,7 @@ Close the remaining post-Session-31 follow-through without reopening stale work:
 - **PRs merged so far:** #107, #108
 - **Campaign status:** bounded Session 32 campaign still running
 - **Best Phase 2 signal so far:** `mlp` + teacher weight `0.3` in `hybrid` mode (`NDCG@10` `0.6239`)
-- **Worst Phase 2 signal so far:** `mlp` + teacher weight `0.3` in `offline` mode (`NDCG@10` `0.0130`)
+- **Worst Phase 2 signal so far:** `mlp` + teacher weight `0.5` in `hybrid` mode (`NDCG@10` `0.2961`)
 - **Retention review:** complete
 - **Hardware evidence:** still blocked pending real RP2040 availability
 - **Next immediate action:** let the campaign finish, analyze bounded-phase outputs, then decide whether a preset-refresh PR is justified or whether the outcome is an explicit no-promotion result
