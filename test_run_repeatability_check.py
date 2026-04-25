@@ -109,10 +109,11 @@ class TestRunRepeatabilityCheck(unittest.TestCase):
 
     def test_format_command_matches_windows_quoting(self):
         command = ["python", "script.py", "--output", r"C:\Temp Folder\results.json"]
-        self.assertEqual(
-            repeatability.format_command(command),
-            repeatability.subprocess.list2cmdline(command),
-        )
+        with patch.object(repeatability.os, "name", "nt"):
+            self.assertEqual(
+                repeatability.format_command(command),
+                repeatability.subprocess.list2cmdline(command),
+            )
 
     @patch("run_repeatability_check.subprocess.Popen")
     def test_run_with_tee_forces_utf8_subprocess_environment(self, mock_popen):
