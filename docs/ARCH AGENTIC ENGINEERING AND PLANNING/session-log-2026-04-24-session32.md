@@ -53,11 +53,19 @@ Close the remaining post-Session-31 follow-through without reopening stale work:
     - offline final-cycle `NDCG@10`: `0.0130` after `1386.45s` pretraining (not viable)
     - hybrid final-cycle `NDCG@10`: `0.6239` (best of the three modes for this slice)
   - The runner automatically advanced into `phase2_distillation_mlp_tw_05`
+  - A resume-path bug was discovered while recovering the long-running campaign:
+    - resumed runs were silently falling back to parser defaults for the teacher model and Phase 2 cycle/query/epoch counts
+    - this produced invalid `3/30/3` retries with the student model substituted as the teacher
+  - The campaign branch was patched and revalidated locally, then reopened as PR #110
+  - A clean attached resume was verified after the fix, and the regenerated `phase2_distillation_mlp_tw_05.log` now shows:
+    - teacher: `sentence-transformers/all-mpnet-base-v2`
+    - cycles/queries/epochs: `5 / 50 / 5`
 - Operational constraint:
   - do **not** switch branches in the original worktree while the campaign is running; later subprocesses in the campaign would pick up the wrong file state
 
 ## Current Summary (Interim)
 - **PRs merged so far:** #107, #108
+- **PR currently open:** #110 (`fix: preserve campaign config on resume`)
 - **Campaign status:** bounded Session 32 campaign still running
 - **Best Phase 2 signal so far:** `mlp` + teacher weight `0.3` in `hybrid` mode (`NDCG@10` `0.6239`)
 - **Worst Phase 2 signal so far:** `mlp` + teacher weight `0.3` in `offline` mode (`NDCG@10` `0.0130`)
@@ -76,3 +84,4 @@ Close the remaining post-Session-31 follow-through without reopening stale work:
 | wrapper-review | Review the overnight wrapper hardening diff | Complete |
 | wrapper-rereview | Re-review the wrapper diff after fixes | Complete |
 | retention-reviewer | Review the retention-review documentation diff | Complete |
+| resume-fix-review | Review the resume-config preservation fix diff | Complete |
