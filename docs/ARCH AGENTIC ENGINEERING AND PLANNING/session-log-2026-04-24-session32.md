@@ -73,7 +73,12 @@ Close the remaining post-Session-31 follow-through without reopening stale work:
     - offline final-cycle `NDCG@10`: `0.1010` after `1340.57s` pretraining
     - hybrid final-cycle `NDCG@10`: `0.1313`
     - interpretation: despite a nominal `+0.92%` edge over the collapsed slice-local baseline, the adapter family is not a promotion candidate because the entire slice degraded catastrophically across cycles
-  - The runner automatically advanced into `phase2_distillation_procrustes_tw_05`
+  - Fifth Phase 2 checkpoint completed at `2026-04-25T07:21:44` for `phase2_distillation_procrustes_tw_05`
+    - slice-local baseline final-cycle `NDCG@10`: `0.1221`
+    - offline final-cycle `NDCG@10`: `0.1010` after `1354.49s` pretraining
+    - hybrid final-cycle `NDCG@10`: `0.1170`
+    - interpretation: `teacher_weight=0.5` underperformed the already-collapsed slice-local baseline, so `procrustes` remains a non-promotion path
+  - The runner automatically advanced into `phase2_distillation_procrustes_tw_07`
 - Operational constraint:
   - do **not** switch branches in the original worktree while the campaign is running; later subprocesses in the campaign would pick up the wrong file state
 
@@ -82,7 +87,7 @@ Close the remaining post-Session-31 follow-through without reopening stale work:
 - **Campaign status:** bounded Session 32 campaign still running
 - **Best Phase 2 signal so far:** `mlp` + teacher weight `0.3` in `hybrid` mode (`NDCG@10` `0.6239`)
 - **Worst Phase 2 signal so far:** `mlp` + teacher weight `0.7` in `hybrid` mode (`NDCG@10` `0.2722`)
-- **Current Phase 2 readout:** `mlp` is only viable at `teacher_weight=0.3`; `0.5` and `0.7` are not promotion candidates, and `procrustes_tw_03` is also not promotion-worthy because the whole slice collapsed across cycles
+- **Current Phase 2 readout:** `mlp` is only viable at `teacher_weight=0.3`; `0.5` and `0.7` are not promotion candidates, and `procrustes` is also tracking as a non-promotion family through both `tw_03` and `tw_05`
 - **Retention review:** complete
 - **Hardware evidence:** still blocked pending real RP2040 availability
 - **Next immediate action:** let the campaign finish, analyze bounded-phase outputs, then decide whether a preset-refresh PR is justified or whether the outcome is an explicit no-promotion result
