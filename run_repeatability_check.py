@@ -26,6 +26,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shlex
 import subprocess
 import sys
 from datetime import datetime
@@ -88,6 +89,12 @@ def build_command(output_path: Path, args: argparse.Namespace) -> list[str]:
         "--output",
         str(output_path),
     ]
+
+
+def format_command(command: list[str]) -> str:
+    if os.name == "nt":
+        return subprocess.list2cmdline(command)
+    return shlex.join(command)
 
 
 def load_results(output_path: Path) -> Dict[str, Any]:
@@ -168,23 +175,24 @@ def run_with_tee(command: list[str], log_path: Path, cwd: Path) -> int:
         env.setdefault("PYTHONIOENCODING", "utf-8")
         env.setdefault("PYTHONUTF8", "1")
 
-        process = subprocess.Popen(
+        with subprocess.Popen(
             command,
             cwd=cwd,
             env=env,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             bufsize=1,
-        )
+        ) as process:
+            assert process.stdout is not None
+            for line in process.stdout:
+                print(line, end="")
+                log_handle.write(line)
+                log_handle.flush()
 
-        assert process.stdout is not None
-        for line in process.stdout:
-            print(line, end="")
-            log_handle.write(line)
-            log_handle.flush()
-
-        return process.wait()
+            return process.wait()
 
 
 def main() -> int:
@@ -261,7 +269,8 @@ def main() -> int:
     summary_path = run_dir / "summary.json"
 
     command = build_command(output_path, args)
-    command_path.write_text(" ".join(command) + "\n", encoding="utf-8")
+    formatted_command = format_command(command)
+    command_path.write_text(formatted_command + "\n", encoding="utf-8")
 
     print("=" * 60)
     print("Session 33 Focused Repeatability Check")
@@ -275,7 +284,7 @@ def main() -> int:
     print("=" * 60)
     print()
     print("Launching:")
-    print(" ".join(command))
+    print(formatted_command)
     print()
 
     return_code = run_with_tee(command, log_path, PROJECT_ROOT)

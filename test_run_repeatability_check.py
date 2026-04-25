@@ -107,11 +107,20 @@ class TestRunRepeatabilityCheck(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "missing completed cycle data for 'hybrid'"):
             repeatability._extract_final_ndcg({}, "hybrid")
 
+    def test_format_command_matches_windows_quoting(self):
+        command = ["python", "script.py", "--output", r"C:\Temp Folder\results.json"]
+        self.assertEqual(
+            repeatability.format_command(command),
+            repeatability.subprocess.list2cmdline(command),
+        )
+
     @patch("run_repeatability_check.subprocess.Popen")
     def test_run_with_tee_forces_utf8_subprocess_environment(self, mock_popen):
         process = MagicMock()
         process.stdout = iter(["line one\n"])
         process.wait.return_value = 0
+        process.__enter__.return_value = process
+        process.__exit__.return_value = False
         mock_popen.return_value = process
 
         log_path = Path("repeatability.log")
@@ -127,6 +136,8 @@ class TestRunRepeatabilityCheck(unittest.TestCase):
         self.assertEqual(env["PYTHONIOENCODING"], "utf-8")
         self.assertEqual(env["PYTHONUTF8"], "1")
         self.assertEqual(env["PATH"], os.environ["PATH"])
+        self.assertEqual(mock_popen.call_args.kwargs["encoding"], "utf-8")
+        self.assertEqual(mock_popen.call_args.kwargs["errors"], "replace")
         log_handle.write.assert_called_once_with("line one\n")
         log_handle.flush.assert_called_once()
 
