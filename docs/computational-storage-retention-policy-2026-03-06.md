@@ -42,7 +42,12 @@ Reason:
 - They predate the current computational-storage split by more than two weeks.
 - The earlier cleanup report already treated these as temporary safety snapshots rather than long-term artifacts.
 
-## Current Inventory
+## Inventory Snapshot As Of 2026-03-06
+
+This section records the refs and artifact bundles that were noted when the
+policy was authored. Review-time state may differ in later clones or after
+subsequent cleanup. The execution log below is the authoritative record for
+what still existed during the 2026-04-24 review.
 
 ### Local backup refs
 
