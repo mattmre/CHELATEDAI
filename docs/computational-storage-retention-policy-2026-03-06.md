@@ -42,7 +42,12 @@ Reason:
 - They predate the current computational-storage split by more than two weeks.
 - The earlier cleanup report already treated these as temporary safety snapshots rather than long-term artifacts.
 
-## Current Inventory
+## Inventory Snapshot As Of 2026-03-06
+
+This section records the refs and artifact bundles that were noted when the
+policy was authored. Review-time state may differ in later clones or after
+subsequent cleanup. The execution log below is the authoritative record for
+what still existed during the 2026-04-24 review.
 
 ### Local backup refs
 
@@ -86,3 +91,24 @@ At the 2026-04-05 or later review:
 4. Delete Tier B items only after confirming the stale-branch retirement path is no longer needed for forensic comparison.
 
 Deletion remains manual. This document authorizes review, not automatic cleanup.
+
+## Execution Log
+
+### 2026-04-24 review execution
+
+Review outcome:
+
+- Tier A (`backup/feat-computational-storage-payload`) was not present at review time and therefore required no action.
+- Tier B rollback refs and retired branch artifacts were also absent at review time and therefore required no action.
+- Tier C remote backup refs from 2026-02-18 remained present and were approved for deletion as superseded safety snapshots.
+
+Actions taken:
+
+- Deleted `origin/backup/local-main-ahead-2026-02-18`
+- Deleted `origin/backup/local-session8-ahead-2026-02-18`
+- Deleted `origin/backup/wip-local-snapshot-2026-02-18`
+
+Hardware-evidence status:
+
+- Real RP2040 evidence capture is still pending.
+- This review does not reopen or close the hardware-evidence track; it only closes the dated retention window for stale February safety refs.
