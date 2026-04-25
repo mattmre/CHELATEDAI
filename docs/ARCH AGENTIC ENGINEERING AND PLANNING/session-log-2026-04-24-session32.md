@@ -68,7 +68,12 @@ Close the remaining post-Session-31 follow-through without reopening stale work:
     - baseline final-cycle `NDCG@10`: `0.6012`
     - offline final-cycle `NDCG@10`: `0.0130` after `1340.87s` pretraining (still not viable)
     - hybrid final-cycle `NDCG@10`: `0.2722` (another disqualifying collapse)
-  - The runner automatically advanced into `phase2_distillation_procrustes_tw_03`
+  - Fourth Phase 2 checkpoint completed at `2026-04-25T05:12:51` for `phase2_distillation_procrustes_tw_03`
+    - slice-local baseline final-cycle `NDCG@10`: `0.1221` after degrading from `0.5764` at cycle 1
+    - offline final-cycle `NDCG@10`: `0.1010` after `1340.57s` pretraining
+    - hybrid final-cycle `NDCG@10`: `0.1313`
+    - interpretation: despite a nominal `+0.92%` edge over the collapsed slice-local baseline, the adapter family is not a promotion candidate because the entire slice degraded catastrophically across cycles
+  - The runner automatically advanced into `phase2_distillation_procrustes_tw_05`
 - Operational constraint:
   - do **not** switch branches in the original worktree while the campaign is running; later subprocesses in the campaign would pick up the wrong file state
 
@@ -77,7 +82,7 @@ Close the remaining post-Session-31 follow-through without reopening stale work:
 - **Campaign status:** bounded Session 32 campaign still running
 - **Best Phase 2 signal so far:** `mlp` + teacher weight `0.3` in `hybrid` mode (`NDCG@10` `0.6239`)
 - **Worst Phase 2 signal so far:** `mlp` + teacher weight `0.7` in `hybrid` mode (`NDCG@10` `0.2722`)
-- **Current Phase 2 readout:** `mlp` is only viable at `teacher_weight=0.3`; `0.5` and `0.7` are not promotion candidates
+- **Current Phase 2 readout:** `mlp` is only viable at `teacher_weight=0.3`; `0.5` and `0.7` are not promotion candidates, and `procrustes_tw_03` is also not promotion-worthy because the whole slice collapsed across cycles
 - **Retention review:** complete
 - **Hardware evidence:** still blocked pending real RP2040 availability
 - **Next immediate action:** let the campaign finish, analyze bounded-phase outputs, then decide whether a preset-refresh PR is justified or whether the outcome is an explicit no-promotion result
