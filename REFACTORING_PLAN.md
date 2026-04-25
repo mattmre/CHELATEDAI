@@ -111,7 +111,6 @@
 
 ### High Risk Changes
 - ID type standardization (affects all retrieval logic)
-- Large-batch processing changes (historical follow-on idea; not part of the current roadmap)
 - Error handling changes (could mask real issues if done wrong)
 
 ### Mitigation Strategies
