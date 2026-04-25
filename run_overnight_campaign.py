@@ -1,8 +1,8 @@
 """
-Overnight weight-refinement campaign with Session 29 research fixes.
+Launch the overnight weight-refinement campaign with the validated defaults.
 
-This wraps run_weight_refinement_campaign.py with the corrected parameters
-identified in Session 29 Tier 3 research:
+This wraps run_weight_refinement_campaign.py with the parameters that became
+the current default operating point after the earlier refinement research:
 
 1. use_quantization=True in benchmark scripts (already patched in source)
 2. LR=0.01 (Phase 1 sweet spot, not the old 0.001 default)
@@ -27,13 +27,20 @@ from pathlib import Path
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent
+MAX_RUN_LABEL_LENGTH = 64
+
+
+def _normalize_run_label(label: str) -> str:
+    normalized = "".join(ch.lower() if ch.isalnum() else "-" for ch in label).strip("-")
+    normalized = normalized[:MAX_RUN_LABEL_LENGTH].strip("-")
+    return normalized or "overnight"
 
 
 def main() -> int:
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="Launch overnight weight-refinement campaign (Session 29 fixes)"
+        description="Launch the overnight weight-refinement campaign with validated defaults"
     )
     parser.add_argument(
         "--max-queries",
@@ -72,17 +79,27 @@ def main() -> int:
         help="Teacher model for distillation (default: all-mpnet-base-v2, 768-dim)",
     )
     parser.add_argument(
+        "--run-label",
+        type=str,
+        default="overnight",
+        help="Suffix for the run directory name (default: overnight)",
+    )
+    parser.add_argument(
         "--launch-large-sweep",
         action="store_true",
         help="Launch large sweep in background after bounded phases",
     )
     args = parser.parse_args()
 
-    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    run_dir = PROJECT_ROOT / "experiment_runs" / f"weight-refinement-{timestamp}-session29"
+    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S-%f")
+    run_dir = (
+        PROJECT_ROOT
+        / "experiment_runs"
+        / f"weight-refinement-{timestamp}-{_normalize_run_label(args.run_label)}"
+    )
 
     print("=" * 60)
-    print("Session 29 Overnight Weight Refinement Campaign")
+    print("Overnight Weight Refinement Campaign")
     print("=" * 60)
     print(f"Run directory: {run_dir}")
     print(f"Query budget: {args.max_queries}")

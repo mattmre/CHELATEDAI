@@ -38,6 +38,7 @@ adapter_weights.pt
 demo_log.jsonl
 chelation_debug.jsonl
 checkpoints/
+experiment_runs/
 db_*/
 *.log
 
