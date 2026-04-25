@@ -48,12 +48,19 @@ Close the remaining post-Session-31 follow-through without reopening stale work:
   - Phase 1 standard sweep completed at `2026-04-24T21:20:36`
   - Early Phase 1 signal: baseline `NDCG@10` `0.6101`, post-learning `0.6119`, gain `+0.0017`
   - Phase 2 distillation entered active execution and loaded the `all-mpnet-base-v2` teacher with 768 -> 384 projection handling
+  - First Phase 2 checkpoint completed at `2026-04-24T23:17:40` for `phase2_distillation_mlp_tw_03`
+    - baseline final-cycle `NDCG@10`: `0.6012`
+    - offline final-cycle `NDCG@10`: `0.0130` after `1386.45s` pretraining (not viable)
+    - hybrid final-cycle `NDCG@10`: `0.6239` (best of the three modes for this slice)
+  - The runner automatically advanced into `phase2_distillation_mlp_tw_05`
 - Operational constraint:
   - do **not** switch branches in the original worktree while the campaign is running; later subprocesses in the campaign would pick up the wrong file state
 
 ## Current Summary (Interim)
 - **PRs merged so far:** #107, #108
 - **Campaign status:** bounded Session 32 campaign still running
+- **Best Phase 2 signal so far:** `mlp` + teacher weight `0.3` in `hybrid` mode (`NDCG@10` `0.6239`)
+- **Worst Phase 2 signal so far:** `mlp` + teacher weight `0.3` in `offline` mode (`NDCG@10` `0.0130`)
 - **Retention review:** complete
 - **Hardware evidence:** still blocked pending real RP2040 availability
 - **Next immediate action:** let the campaign finish, analyze bounded-phase outputs, then decide whether a preset-refresh PR is justified or whether the outcome is an explicit no-promotion result
