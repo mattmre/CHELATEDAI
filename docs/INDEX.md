@@ -14,6 +14,7 @@
 | [Computational Storage Hardware Evidence Runbook](computational-storage-hardware-evidence-runbook.md) | Operator workflow for real hardware evidence capture |
 | [Roadmap Audit And Weight Refinement Plan (2026-03-06)](roadmap-audit-and-weight-refinement-plan-2026-03-06.md) | Current conclusion that non-hardware development phases are complete plus the next evaluation plan |
 | [Weight Refinement Campaign Results (Session 28)](weight-refinement-campaign-results-2026-03-06-session28.md) | Durable summary of the partial bounded campaign, recovered findings, and promotion guidance |
+| [Weight Refinement Campaign Results (Session 32)](weight-refinement-campaign-results-2026-04-25-session32.md) | Durable summary of the Session 32 partial bounded campaign and explicit no-promotion outcome |
 
 ## Agentic Engineering And Planning
 
