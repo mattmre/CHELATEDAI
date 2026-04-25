@@ -56,7 +56,7 @@ Close the remaining post-Session-31 follow-through without reopening stale work:
   - A resume-path bug was discovered while recovering the long-running campaign:
     - resumed runs were silently falling back to parser defaults for the teacher model and Phase 2 cycle/query/epoch counts
     - this produced invalid `3/30/3` retries with the student model substituted as the teacher
-  - The campaign branch was patched and revalidated locally, then reopened as PR #110
+  - The campaign branch was patched, revalidated locally, and merged as PR #110
   - A clean attached resume was verified after the fix, and the regenerated `phase2_distillation_mlp_tw_05.log` now shows:
     - teacher: `sentence-transformers/all-mpnet-base-v2`
     - cycles/queries/epochs: `5 / 50 / 5`
@@ -65,7 +65,6 @@ Close the remaining post-Session-31 follow-through without reopening stale work:
 
 ## Current Summary (Interim)
 - **PRs merged so far:** #107, #108
-- **PR currently open:** #110 (`fix: preserve campaign config on resume`)
 - **Campaign status:** bounded Session 32 campaign still running
 - **Best Phase 2 signal so far:** `mlp` + teacher weight `0.3` in `hybrid` mode (`NDCG@10` `0.6239`)
 - **Worst Phase 2 signal so far:** `mlp` + teacher weight `0.3` in `offline` mode (`NDCG@10` `0.0130`)
