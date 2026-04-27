@@ -241,5 +241,77 @@ class TestP3ResearchScaffolding(unittest.TestCase):
         self.assertEqual(engine._adapter_router.calls, 1)
 
 
+class TestAdaptiveWorkflowOrchestration(unittest.TestCase):
+    def test_fitness_composition_unifies_health_quantization_and_storage(self):
+        from fitness_composition_orchestrator import FitnessCompositionOrchestrator
+        from quantization_promotion_gate import QuantizationPromotionGate
+        from retrieval_fitness_evaluator import RetrievalFitnessEvaluator
+
+        evaluator = RetrievalFitnessEvaluator(qrels={"q1": {"d1": 1}}, k=2, logger=unittest.mock.MagicMock())
+        orchestrator = FitnessCompositionOrchestrator(
+            retrieval_evaluator=evaluator,
+            health_weight=0.5,
+            quantization_gate=QuantizationPromotionGate(retained_gain_threshold=0.8, logger=unittest.mock.MagicMock()),
+            logger=unittest.mock.MagicMock(),
+        )
+
+        result = orchestrator.compose_rankings(
+            {"q1": ["d1", "d2"]},
+            candidate_id="candidate",
+            structural_health_score=0.2,
+            quantized_fitness=0.4,
+            baseline_fitness=0.0,
+            storage_metadata={"storage_latency_ms": 3.5},
+        )
+
+        self.assertAlmostEqual(result.structural_health_multiplier, 0.6)
+        self.assertAlmostEqual(result.final_fitness, 0.6)
+        self.assertFalse(result.quantization_gate.passed)
+        self.assertEqual(result.storage_metadata["storage_latency_ms"], 3.5)
+        self.assertEqual(result.to_dict()["retrieval_metrics"]["evaluated_queries"], 1.0)
+
+    def test_integrated_diagnostics_and_adaptive_gate_emit_actions(self):
+        from adaptive_gate_orchestrator import AdaptiveGateOrchestrator
+        from fitness_composition_orchestrator import FitnessCompositionOrchestrator
+        from integrated_diagnostics_report import IntegratedDiagnosticsReport
+        from quantization_promotion_gate import QuantizationPromotionGate
+        from retrieval_fitness_evaluator import RetrievalFitnessEvaluator
+
+        evaluator = RetrievalFitnessEvaluator(qrels={"q1": {"d1": 1}}, k=2, logger=unittest.mock.MagicMock())
+        composition = FitnessCompositionOrchestrator(
+            evaluator,
+            health_weight=0.5,
+            quantization_gate=QuantizationPromotionGate(retained_gain_threshold=0.9, logger=unittest.mock.MagicMock()),
+            logger=unittest.mock.MagicMock(),
+        ).compose_rankings(
+            {"q1": ["d1"]},
+            structural_health_score=0.4,
+            quantized_fitness=0.2,
+            baseline_fitness=0.0,
+            storage_metadata={"storage_latency_ms": 12.0},
+        )
+        diagnostics = IntegratedDiagnosticsReport.from_composition(
+            composition,
+            cycle=1,
+            phase="test",
+            baseline_fitness=0.0,
+            es_result={"generations": 1},
+        )
+
+        decision = AdaptiveGateOrchestrator(
+            min_structural_health=0.6,
+            storage_latency_sla_ms=5.0,
+            logger=unittest.mock.MagicMock(),
+        ).evaluate(diagnostics.to_dict())
+        diagnostics.adaptive_gate = decision.to_dict()
+
+        self.assertTrue(decision.passed)
+        self.assertEqual(decision.status, "warning")
+        self.assertIn("enable_query_reformulation", decision.actions)
+        self.assertIn("reject_quantized_candidate", decision.actions)
+        self.assertIn("apply_storage_latency_penalty", decision.actions)
+        self.assertEqual(diagnostics.to_dict()["adaptive_gate"]["status"], "warning")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

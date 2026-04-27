@@ -16,15 +16,18 @@ import argparse
 import numpy as np
 import mteb
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 import json
 import random
 
 import torch
 
 from antigravity_engine import AntigravityEngine
+from adaptive_gate_orchestrator import AdaptiveGateOrchestrator
 from benchmark_comparative import _temporary_config_overrides
 from benchmark_utils import isolated_adapter_state
+from fitness_composition_orchestrator import FitnessCompositionOrchestrator
+from integrated_diagnostics_report import IntegratedDiagnosticsReport, extract_latest_storage_evaluation
 from quantization_promotion_gate import QuantizationPromotionGate
 from reproducibility_context import ReproducibilityContext
 from retrieval_fitness_evaluator import RetrievalFitnessEvaluator
@@ -309,6 +312,23 @@ def _structural_health_multiplier(engine: AntigravityEngine, weight: float) -> f
     return max(0.0, 1.0 - weight * (1.0 - score))
 
 
+def _current_structural_health_score(engine: AntigravityEngine, weight: float) -> Optional[float]:
+    if weight <= 0:
+        return None
+    reporter = getattr(engine, "get_structural_health_report", None)
+    if not callable(reporter):
+        return None
+    report = reporter()
+    raw_score = report.get("structural_health_score", report.get("health_score", 1.0))
+    try:
+        score = float(raw_score)
+    except (TypeError, ValueError):
+        score = 1.0
+    if score > 1.0:
+        score = score / 100.0
+    return max(0.0, min(1.0, score))
+
+
 def _refresh_engine_corpus_vectors(
     engine: AntigravityEngine,
     quantize_adapter_output: bool = False,
@@ -355,6 +375,17 @@ def run_retrieval_fitness_es_cycle(
 
     query_ids = list(queries.keys())[: args.max_eval_queries]
     evaluator = RetrievalFitnessEvaluator(qrels=qrels, k=10, query_ids=query_ids)
+    quantization_gate = (
+        QuantizationPromotionGate(args.quantization_gate_threshold, logger=engine.logger)
+        if args.quantization_gate
+        else None
+    )
+    fitness_orchestrator = FitnessCompositionOrchestrator(
+        retrieval_evaluator=evaluator,
+        health_weight=args.structural_health_weight,
+        quantization_gate=quantization_gate,
+        logger=engine.logger,
+    )
     _refresh_engine_corpus_vectors(engine, quantize_adapter_output=False)
     baseline_result = evaluator.evaluate_engine(engine, queries, map_predicted_ids, candidate_id="baseline")
 
@@ -378,12 +409,18 @@ def run_retrieval_fitness_es_cycle(
     def fitness_fn() -> float:
         _refresh_engine_corpus_vectors(engine, quantize_adapter_output=False)
         result = evaluator.evaluate_engine(engine, queries, map_predicted_ids, candidate_id="candidate")
-        return result.fitness * _structural_health_multiplier(engine, args.structural_health_weight)
+        composed = fitness_orchestrator.compose_retrieval_result(
+            result,
+            candidate_id="candidate",
+            structural_health_score=_current_structural_health_score(engine, args.structural_health_weight),
+            baseline_fitness=baseline_result.fitness,
+        )
+        return composed.final_fitness
 
     es_result = optimizer.optimize(fitness_fn, generations=es_config.generations)
     _refresh_engine_corpus_vectors(engine, quantize_adapter_output=False)
     final_result = evaluator.evaluate_engine(engine, queries, map_predicted_ids, candidate_id="final")
-    gate_result = None
+    quantized_result = None
     if args.quantization_gate:
         previous_quantization = _set_embedding_quantization_simulation(
             engine,
@@ -405,18 +442,37 @@ def run_retrieval_fitness_es_cycle(
         finally:
             _restore_embedding_quantization_simulation(engine, previous_quantization)
             _refresh_engine_corpus_vectors(engine, quantize_adapter_output=False)
-        gate_result = QuantizationPromotionGate(args.quantization_gate_threshold).evaluate(
-            fp32_fitness=final_result.fitness,
-            quantized_fitness=quantized_result.fitness,
-            baseline_fitness=baseline_result.fitness,
-        ).to_dict()
+    final_composition = fitness_orchestrator.compose_retrieval_result(
+        final_result,
+        candidate_id="final",
+        structural_health_score=_current_structural_health_score(engine, args.structural_health_weight),
+        quantized_retrieval_result=quantized_result,
+        baseline_fitness=baseline_result.fitness,
+        storage_metadata=extract_latest_storage_evaluation(es_result),
+        metadata={"workflow": "retrieval_fitness_es"},
+    )
+    diagnostics = IntegratedDiagnosticsReport.from_composition(
+        final_composition,
+        phase="retrieval_fitness_es",
+        baseline_fitness=baseline_result.fitness,
+        es_result=es_result,
+        metadata={"query_count": len(query_ids)},
+    )
+    adaptive_gate = AdaptiveGateOrchestrator(logger=engine.logger).evaluate(diagnostics.to_dict())
+    diagnostics.adaptive_gate = adaptive_gate.to_dict()
+    diagnostics.log(engine.logger)
     engine._last_es_result = {
         **es_result,
         "baseline_retrieval_fitness": baseline_result.fitness,
         "final_retrieval_fitness": final_result.fitness,
+        "final_composed_fitness": final_composition.final_fitness,
         "retrieval_metrics": final_result.to_fitness_evaluation().metrics,
-        "quantization_gate": gate_result,
+        "fitness_composition": final_composition.to_dict(),
+        "quantization_gate": final_composition.to_dict()["quantization_gate"],
+        "integrated_diagnostics": diagnostics.to_dict(),
+        "adaptive_gate": adaptive_gate.to_dict(),
     }
+    engine._last_diagnostics_report = diagnostics.to_dict()
     engine.adapter.save(engine.adapter_path)
     return engine._last_es_result
 
@@ -514,7 +570,9 @@ def run_training_cycle(
         })
         if es_cycle_result is not None:
             results[-1]['es_result'] = es_cycle_result
-    
+            if isinstance(es_cycle_result, dict) and "integrated_diagnostics" in es_cycle_result:
+                results[-1]['integrated_diagnostics'] = es_cycle_result["integrated_diagnostics"]
+
     return results
 
 

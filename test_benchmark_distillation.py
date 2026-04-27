@@ -334,6 +334,9 @@ class TestESBenchmarkWiring(unittest.TestCase):
 
         self.assertEqual(result["quantization_gate"]["fp32_fitness"], 0.75)
         self.assertEqual(result["quantization_gate"]["quantized_fitness"], 0.55)
+        self.assertEqual(result["fitness_composition"]["final_fitness"], 0.75)
+        self.assertIn("integrated_diagnostics", result)
+        self.assertIn("adaptive_gate", result)
         self.assertIn((True, 127), engine.refresh_calls)
         self.assertFalse(engine._simulate_embedding_quantization)
 
