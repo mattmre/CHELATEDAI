@@ -13,6 +13,7 @@
 | [Current EGGROLL/ChelatedAI Research Validation](current-research-eggroll-chelatedai-2026-04-27.md) | Current research scan and design validation for low-rank ES, quantized ZO, adaptive retrieval, and near-data storage scoring |
 | [EGGROLL Implementation Expert Panel Review](eggroll-implementation-panel-review-2026-04-27.md) | Multi-panel expert review of missing coverage, risks, and next priorities after the EGGROLL-inspired implementation |
 | [EGGROLL Strategic Analysis Plan](eggroll-strategic-analysis-plan-2026-04-27.md) | Three-loop strategic plan for retrieval-native ES, candidate promotion gates, storage-backed fitness, and follow-up platform functionality |
+| [LLM Architecture And AI Engineering Adaptation Review](llm-architecture-ai-engineering-adaptation-review-2026-04-27.md) | Review of modern LLM architecture features and practical AI-engineering operations mapped to ChelatedAI subcomponent adaptation opportunities |
 | [Computational Storage And Drive Nodes](COMPUTATIONAL_STORAGE_DRIVE_NODES.md) | Canonical summary of hard-drive / storage-node experiments and scope limits |
 | [Computational Storage Scope Decision](computational-storage-transport-scope-decision.md) | Formal claim boundary for the RP2040 transport path |
 | [Computational Storage Hardware Evidence Runbook](computational-storage-hardware-evidence-runbook.md) | Operator workflow for real hardware evidence capture |

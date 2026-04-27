@@ -18,6 +18,7 @@ If you need to understand the codebase quickly, read the docs in this order:
 | [SYSTEM_BLUEPRINT.md](SYSTEM_BLUEPRINT.md) | System architecture, stack, CI, and information-flow diagrams |
 | [MODULE_GUIDE.md](MODULE_GUIDE.md) | Module-by-module inventory of the Python runtime, evaluation tooling, and storage POC |
 | [RESEARCH_TRACKS.md](RESEARCH_TRACKS.md) | Research themes, status, open questions, and artifact pointers |
+| [llm-architecture-ai-engineering-adaptation-review-2026-04-27.md](llm-architecture-ai-engineering-adaptation-review-2026-04-27.md) | Modern LLM architecture and AI-engineering operations review mapped to ChelatedAI adaptation opportunities |
 | [COMPUTATIONAL_STORAGE_DRIVE_NODES.md](COMPUTATIONAL_STORAGE_DRIVE_NODES.md) | Detailed summary of hard-drive / storage-node experiments and current scope limits |
 | [computational-storage-transport-scope-decision.md](computational-storage-transport-scope-decision.md) | Formal claim boundary for the RP2040 transport path |
 | [computational-storage-hardware-evidence-runbook.md](computational-storage-hardware-evidence-runbook.md) | Operator runbook for real hardware evidence capture |
@@ -55,4 +56,3 @@ This repo accumulated several historical or session-scoped documents before the 
 - [COMPUTATIONAL_STORAGE_DRIVE_NODES.md](COMPUTATIONAL_STORAGE_DRIVE_NODES.md)
 - [computational-storage-transport-scope-decision.md](computational-storage-transport-scope-decision.md)
 - [computational-storage-hardware-evidence-runbook.md](computational-storage-hardware-evidence-runbook.md)
-

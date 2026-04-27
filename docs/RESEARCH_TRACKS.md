@@ -11,6 +11,7 @@ This document describes the main research themes in the repository and where eac
 | Online correction | Can inference-time updates improve quality without destabilizing the system? | Implemented, requires controlled ablation |
 | Structural diagnostics | Can topology and isomer signals reveal degradation that ranking metrics miss? | Implemented and test-backed |
 | Multi-dataset evaluation | Do improvements transfer beyond SciFact? | Implemented; campaign execution is ongoing work |
+| LLM architecture adaptation | Which modern LLM architecture and serving patterns should become retrieval-native ChelatedAI subcomponents? | Research review complete; implementation candidates identified |
 | Computational storage and drive nodes | Can some model or control-plane work move toward storage-resident execution? | Mixed maturity: software proof is strong, hardware claim remains scope-locked |
 | Agentic remediation process | Can repository changes be triaged and delivered through a durable AEP workflow? | Implemented and extensively documented |
 
@@ -102,7 +103,41 @@ The canonical repo-wide audit is:
 
 That audit concludes that the missing work is mostly evaluation and research iteration, not unbuilt runtime features.
 
-## 5. Computational Storage And Drive-Resident Nodes
+## 5. LLM Architecture And AI Engineering Adaptation
+
+### Question
+
+Which modern LLM architecture patterns and practical AI-engineering operations should inform ChelatedAI's adaptive retrieval engine?
+
+### Main files
+
+- `adapter_router.py`
+- `adaptive_gate_orchestrator.py`
+- `fitness_composition_orchestrator.py`
+- `integrated_diagnostics_report.py`
+- `dimension_mask_predictor.py`
+- `embedding_quality.py`
+- `retrieval_fitness_evaluator.py`
+- `vector_store.py`
+- `dashboard_server.py`
+
+### What exists now
+
+- adapter routing and query reformulation hooks
+- structural-health scoring and integrated diagnostics
+- quantization promotion gates
+- retrieval-fitness evaluation
+- storage-profile metadata and mock distributed scoring
+
+### Research conclusion
+
+Modern LLMs repeatedly use sparse routing, compressed memory, local/global context schedules, normalization, speculative execution, and serving/runtime optimization. ChelatedAI should adapt those ideas as retrieval-native workflows rather than copying transformer internals directly.
+
+The canonical review is:
+
+- [LLM Architecture And AI Engineering Adaptation Review](llm-architecture-ai-engineering-adaptation-review-2026-04-27.md)
+
+## 6. Computational Storage And Drive-Resident Nodes
 
 ### Question
 
@@ -142,7 +177,7 @@ This distinction matters. The repo contains genuine drive-node research, but the
 
 See [COMPUTATIONAL_STORAGE_DRIVE_NODES.md](COMPUTATIONAL_STORAGE_DRIVE_NODES.md) for the detailed summary.
 
-## 6. Agentic Engineering And Planning
+## 7. Agentic Engineering And Planning
 
 ### Question
 
@@ -174,6 +209,7 @@ The remaining practical follow-through is physical RP2040 evidence capture when 
 
 ## Read Next
 
+- [LLM Architecture And AI Engineering Adaptation Review](llm-architecture-ai-engineering-adaptation-review-2026-04-27.md)
 - [COMPUTATIONAL_STORAGE_DRIVE_NODES.md](COMPUTATIONAL_STORAGE_DRIVE_NODES.md)
 - [roadmap-audit-and-weight-refinement-plan-2026-03-06.md](roadmap-audit-and-weight-refinement-plan-2026-03-06.md)
 - [INDEX.md](INDEX.md)
