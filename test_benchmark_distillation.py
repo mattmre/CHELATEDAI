@@ -24,6 +24,7 @@ from benchmark_distillation import (
     map_predicted_ids,
     evaluate_engine,
     configure_es_optimizer,
+    configure_query_reformulation,
     run_retrieval_fitness_es_cycle,
 )
 
@@ -250,6 +251,15 @@ class TestESBenchmarkWiring(unittest.TestCase):
         self.assertEqual(kwargs["population_size"], 6)
         self.assertTrue(kwargs["quantization_gate"])
         self.assertEqual(kwargs["storage_profile"], "consumer_nvme")
+
+    def test_configure_query_reformulation_is_opt_in(self):
+        engine = MagicMock()
+
+        configure_query_reformulation(engine, SimpleNamespace(query_reformulation_variants=1))
+        engine.enable_query_reformulation.assert_not_called()
+
+        configure_query_reformulation(engine, SimpleNamespace(query_reformulation_variants=3))
+        engine.enable_query_reformulation.assert_called_once_with(max_variants=3)
 
     def test_retrieval_fitness_quantization_gate_uses_quantized_evaluation(self):
         import benchmark_distillation

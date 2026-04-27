@@ -341,14 +341,21 @@ class LowRankEvolutionStrategyOptimizer:
         storage_evaluation = None
         if self.config.storage_profile:
             from computational_storage_poc.mock_array import ArraySimulation
+            from distributed_fitness_evaluator import MockStorageFitnessEvaluator
             from device_profiles import get_profile
 
-            storage_evaluation = ArraySimulation(
-                device_profile=get_profile(self.config.storage_profile)
-            ).sharded_population_evaluation([
-                {"candidate_id": f"generation_{self._step_count}_member_{index}", "fitness": fitness}
+            candidates = [
+                {
+                    "candidate_id": f"generation_{self._step_count}_member_{index}",
+                    "fitness": fitness,
+                }
                 for index, fitness in enumerate(fitness_values)
-            ])
+            ]
+            storage_evaluation = MockStorageFitnessEvaluator(
+                ArraySimulation(device_profile=get_profile(self.config.storage_profile)),
+                lambda candidate: float(candidate["fitness"]),
+                logger=self.logger,
+            ).evaluate_population(candidates)
         result = {
             "generation": self._step_count,
             "mean_fitness": float(fitness_tensor.mean().item()),

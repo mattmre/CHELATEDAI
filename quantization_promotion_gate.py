@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Dict
 
+from chelation_logger import get_logger
+
 
 @dataclass
 class QuantizationGateResult:
@@ -35,13 +37,14 @@ class QuantizationGateResult:
 class QuantizationPromotionGate:
     """Reject candidates whose improvements disappear after quantization."""
 
-    def __init__(self, retained_gain_threshold: float = 0.8, minimum_fp32_gain: float = 0.0):
+    def __init__(self, retained_gain_threshold: float = 0.8, minimum_fp32_gain: float = 0.0, logger=None):
         if retained_gain_threshold < 0:
             raise ValueError("retained_gain_threshold must be non-negative")
         if minimum_fp32_gain < 0:
             raise ValueError("minimum_fp32_gain must be non-negative")
         self.retained_gain_threshold = float(retained_gain_threshold)
         self.minimum_fp32_gain = float(minimum_fp32_gain)
+        self.logger = logger or get_logger()
 
     def evaluate(
         self,
@@ -58,7 +61,7 @@ class QuantizationPromotionGate:
             retained_ratio = quantized_gain / fp32_gain
             passed = retained_ratio >= self.retained_gain_threshold
 
-        return QuantizationGateResult(
+        result = QuantizationGateResult(
             passed=bool(passed),
             fp32_fitness=float(fp32_fitness),
             quantized_fitness=float(quantized_fitness),
@@ -68,4 +71,15 @@ class QuantizationPromotionGate:
             retained_gain_ratio=float(retained_ratio),
             threshold=self.retained_gain_threshold,
         )
+        self.logger.log_event(
+            "quantization_gate_evaluated",
+            "Evaluated quantization promotion gate",
+            passed=result.passed,
+            fp32_fitness=result.fp32_fitness,
+            quantized_fitness=result.quantized_fitness,
+            baseline_fitness=result.baseline_fitness,
+            retained_gain_ratio=result.retained_gain_ratio,
+            threshold=result.threshold,
+        )
+        return result
 

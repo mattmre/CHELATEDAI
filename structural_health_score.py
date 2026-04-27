@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Dict, Optional
 
+from chelation_logger import get_logger
+
 
 @dataclass
 class StructuralHealthResult:
@@ -28,6 +30,7 @@ class StructuralHealthScore:
         collapse_weight: float = 0.4,
         isomer_weight: float = 0.3,
         topology_weight: float = 0.3,
+        logger=None,
     ):
         if collapse_weight < 0 or isomer_weight < 0 or topology_weight < 0:
             raise ValueError("weights must be non-negative")
@@ -37,6 +40,7 @@ class StructuralHealthScore:
         self.collapse_weight = collapse_weight / total
         self.isomer_weight = isomer_weight / total
         self.topology_weight = topology_weight / total
+        self.logger = logger or get_logger()
 
     def evaluate(
         self,
@@ -60,7 +64,17 @@ class StructuralHealthScore:
         }
         if metadata:
             components.update({f"metadata_{key}": value for key, value in metadata.items() if isinstance(value, (int, float))})
-        return StructuralHealthResult(score=float(score), components=components)
+        result = StructuralHealthResult(score=float(score), components=components)
+        self.logger.log_event(
+            "structural_health_score_evaluated",
+            "Evaluated structural health score",
+            score=result.score,
+            collapse_health=collapse_health,
+            isomer_health=isomer_health,
+            topology_health=topology_health,
+            level="DEBUG",
+        )
+        return result
 
     @staticmethod
     def _bounded(value: float) -> float:

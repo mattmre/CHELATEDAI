@@ -7,6 +7,8 @@ from typing import Any, Callable, Dict, Iterable, Optional
 
 import numpy as np
 
+from chelation_logger import get_logger
+
 
 @dataclass
 class AdapterRoute:
@@ -20,8 +22,9 @@ class AdapterRoute:
 class AdapterRouter:
     """Route query vectors to registered adapters by centroid similarity."""
 
-    def __init__(self):
+    def __init__(self, logger=None):
         self._routes: Dict[str, tuple[np.ndarray, Any]] = {}
+        self.logger = logger or get_logger()
 
     def register(self, key: str, centroid: Iterable[float], adapter: Any) -> None:
         vector = np.array(list(centroid), dtype=float)
@@ -36,7 +39,15 @@ class AdapterRouter:
         if not self._routes:
             if fallback is None:
                 raise ValueError("no adapters registered and no fallback provided")
-            return AdapterRoute(key="fallback", score=0.0, adapter=fallback())
+            route = AdapterRoute(key="fallback", score=0.0, adapter=fallback())
+            self.logger.log_event(
+                "adapter_route_selected",
+                "Selected fallback adapter route",
+                route_key=route.key,
+                route_score=route.score,
+                level="DEBUG",
+            )
+            return route
 
         query_norm = np.linalg.norm(query)
         if query_norm == 0:
@@ -53,4 +64,13 @@ class AdapterRouter:
                 best_score = score
                 best_adapter = adapter
 
-        return AdapterRoute(key=str(best_key), score=best_score, adapter=best_adapter)
+        route = AdapterRoute(key=str(best_key), score=best_score, adapter=best_adapter)
+        self.logger.log_event(
+            "adapter_route_selected",
+            "Selected adapter route",
+            route_key=route.key,
+            route_score=route.score,
+            route_count=len(self._routes),
+            level="DEBUG",
+        )
+        return route

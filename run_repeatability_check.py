@@ -112,6 +112,7 @@ def build_command(output_path: Path, args: argparse.Namespace) -> list[str]:
         ("--quantization-gate-threshold", "quantization_gate_threshold"),
         ("--structural-health-weight", "structural_health_weight"),
         ("--es-storage-profile", "es_storage_profile"),
+        ("--query-reformulation-variants", "query_reformulation_variants"),
     ]
     for flag, attr in optional_pairs:
         value = getattr(args, attr, None)
@@ -317,6 +318,7 @@ def main() -> int:
     parser.add_argument("--quantization-gate", action="store_true")
     parser.add_argument("--quantization-gate-threshold", type=float, default=0.8)
     parser.add_argument("--structural-health-weight", type=float, default=0.0)
+    parser.add_argument("--query-reformulation-variants", type=int, default=1)
     args = parser.parse_args()
 
     run_dir = build_run_dir(Path(args.output_root), args.run_label)

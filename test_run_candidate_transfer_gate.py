@@ -101,6 +101,7 @@ class TestRunCandidateTransferGate(unittest.TestCase):
             es_storage_profile="consumer_nvme",
             quantization_gate_threshold=0.9,
             structural_health_weight=0.25,
+            query_reformulation_variants=3,
         )
 
         command = transfer_gate.build_distillation_command("SciFact", Path("results.json"), args)
@@ -113,6 +114,8 @@ class TestRunCandidateTransferGate(unittest.TestCase):
         self.assertIn("--es-kalman-sigma", command)
         self.assertIn("--es-storage-profile", command)
         self.assertIn("consumer_nvme", command)
+        self.assertIn("--query-reformulation-variants", command)
+        self.assertIn("3", command)
 
     def test_extract_quantization_gate_status_requires_observed_passing_gates(self):
         status = transfer_gate.extract_quantization_gate_status({

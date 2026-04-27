@@ -6,6 +6,8 @@ from dataclasses import dataclass
 import re
 from typing import Iterable, List
 
+from chelation_logger import get_logger
+
 
 @dataclass
 class QueryReformulation:
@@ -18,8 +20,9 @@ class QueryReformulation:
 class QueryReformulator:
     """Generate deterministic query variants without external LLM dependencies."""
 
-    def __init__(self, stopwords: Iterable[str] | None = None):
+    def __init__(self, stopwords: Iterable[str] | None = None, logger=None):
         self.stopwords = set(stopwords or {"the", "a", "an", "of", "to", "and", "or", "for", "in"})
+        self.logger = logger or get_logger()
 
     def reformulate(self, query: str, max_variants: int = 3) -> List[QueryReformulation]:
         if max_variants < 1:
@@ -45,5 +48,12 @@ class QueryReformulator:
                 deduped.append(variant)
             if len(deduped) >= max_variants:
                 break
+        self.logger.log_event(
+            "query_reformulated",
+            "Generated query reformulation variants",
+            variant_count=len(deduped),
+            strategies=[variant.strategy for variant in deduped],
+            level="DEBUG",
+        )
         return deduped
 

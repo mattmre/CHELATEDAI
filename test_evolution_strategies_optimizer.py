@@ -114,6 +114,53 @@ class TestEvolutionStrategiesOptimizer(unittest.TestCase):
         self.assertEqual(result["generations"], 1)
         self.assertIn("elite_candidates", result)
 
+    def test_storage_profile_result_uses_distributed_evaluator_metadata(self):
+        from evolution_strategies_optimizer import EvolutionStrategiesConfig, LowRankEvolutionStrategyOptimizer
+
+        module = nn.Linear(2, 2, bias=False)
+        optimizer = LowRankEvolutionStrategyOptimizer(
+            module,
+            EvolutionStrategiesConfig(
+                population_size=4,
+                generations=1,
+                seed=4,
+                storage_profile="consumer_nvme",
+            ),
+            logger=MagicMock(),
+        )
+
+        result = optimizer.optimize(lambda: float(module.weight.sum().item()))
+
+        self.assertEqual(result["final"]["storage_evaluation"]["backend"], "mock_storage")
+        self.assertIn("storage_latency_ms", result["final"]["storage_evaluation"])
+
+    def test_es_training_with_quantization_gate_returns_gate_result(self):
+        from evolution_strategies_optimizer import EvolutionStrategiesConfig, train_adapter_with_es
+        from quantization_promotion_gate import QuantizationPromotionGate
+
+        torch.manual_seed(8)
+        adapter = LowRankAffineAdapter(input_dim=3, rank=1)
+        inputs = torch.eye(3)
+        targets = torch.roll(inputs, shifts=1, dims=1)
+
+        result = train_adapter_with_es(
+            adapter,
+            inputs,
+            targets,
+            nn.MSELoss(),
+            config=EvolutionStrategiesConfig(
+                population_size=4,
+                generations=1,
+                seed=8,
+                quantization_aware=True,
+            ),
+            logger=MagicMock(),
+            quantization_gate=QuantizationPromotionGate(logger=MagicMock()),
+        )
+
+        self.assertIn("quantization_gate", result)
+        self.assertIn("retained_gain_ratio", result["quantization_gate"])
+
 
 class TestEvolutionStrategiesConfig(unittest.TestCase):
     def test_es_optimizer_preset_available(self):

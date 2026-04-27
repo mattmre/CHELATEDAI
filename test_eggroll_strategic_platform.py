@@ -1,4 +1,5 @@
 import unittest
+from threading import Lock
 
 import numpy as np
 import torch
@@ -117,12 +118,25 @@ class TestStructuralAndDistributedFitness(unittest.TestCase):
         from computational_storage_poc.mock_array import ArraySimulation
         from distributed_fitness_evaluator import MockStorageFitnessEvaluator
 
-        evaluator = MockStorageFitnessEvaluator(ArraySimulation(num_drives=2), lambda candidate: float(candidate))
-        result = evaluator.batch_evaluate([0.1, 0.4, 0.2])
+        evaluator = MockStorageFitnessEvaluator(ArraySimulation(num_drives=2), lambda candidate: float(candidate), logger=unittest.mock.MagicMock())
+        result = evaluator.evaluate_population([0.1, 0.4, 0.2])
 
         self.assertEqual(result["backend"], "mock_storage")
         self.assertEqual(result["best_candidate_id"], "candidate_1")
         self.assertGreater(result["storage_latency_ms"], 0.0)
+
+    def test_local_fitness_evaluator_returns_interface_batch(self):
+        from distributed_fitness_evaluator import LocalFitnessEvaluator
+        from fitness_interfaces import FitnessEvaluation
+
+        evaluator = LocalFitnessEvaluator(lambda candidate: float(candidate) * 2.0, logger=unittest.mock.MagicMock())
+        evaluations = evaluator.batch_evaluate([0.1, 0.4])
+        population = evaluator.evaluate_population([0.1, 0.4])
+
+        self.assertIsInstance(evaluations[0], FitnessEvaluation)
+        self.assertEqual(evaluations[1].fitness, 0.8)
+        self.assertEqual(population["backend"], "local")
+        self.assertEqual(population["best_candidate_id"], "candidate_1")
 
     def test_device_profile_changes_latency(self):
         from computational_storage_poc.mock_array import ArraySimulation
@@ -164,7 +178,7 @@ class TestP3ResearchScaffolding(unittest.TestCase):
     def test_adapter_router_selects_nearest_centroid(self):
         from adapter_router import AdapterRouter
 
-        router = AdapterRouter()
+        router = AdapterRouter(logger=unittest.mock.MagicMock())
         router.register("x", [1.0, 0.0], adapter="adapter-x")
         router.register("y", [0.0, 1.0], adapter="adapter-y")
 
@@ -172,6 +186,59 @@ class TestP3ResearchScaffolding(unittest.TestCase):
 
         self.assertEqual(route.key, "x")
         self.assertEqual(route.adapter, "adapter-x")
+
+    def test_query_reformulator_edge_cases(self):
+        from query_reformulator import QueryReformulator
+
+        reformulator = QueryReformulator(logger=unittest.mock.MagicMock())
+
+        with self.assertRaises(ValueError):
+            reformulator.reformulate("   !!!   ")
+        with self.assertRaises(ValueError):
+            reformulator.reformulate("valid query", max_variants=0)
+        self.assertEqual(len(reformulator.reformulate("the", max_variants=3)), 1)
+
+    def test_engine_adapter_routing_guard_prevents_recursive_reroute(self):
+        from adapter_router import AdapterRoute
+        from antigravity_engine import AntigravityEngine
+
+        class FakeQdrant:
+            def query_points(self, **kwargs):
+                return type("QueryResult", (), {
+                    "points": [
+                        type("Point", (), {"id": 1, "vector": [1.0, 0.0]})()
+                    ]
+                })()
+
+        class AlwaysRouteElsewhere:
+            def __init__(self):
+                self.calls = 0
+
+            def select(self, query_vector, fallback=None):
+                self.calls += 1
+                return AdapterRoute(key="alternate", score=1.0, adapter="alternate-adapter")
+
+        engine = object.__new__(AntigravityEngine)
+        engine.vector_size = 2
+        engine.collection_name = "test"
+        engine.qdrant = FakeQdrant()
+        engine.use_quantization = False
+        engine.use_centering = False
+        engine.chelation_threshold = 1.0
+        engine._adaptive_threshold_enabled = False
+        engine._adaptive_threshold_lock = Lock()
+        engine._variance_history = []
+        engine.logger = unittest.mock.MagicMock()
+        engine.adapter = "default-adapter"
+        engine.embed = lambda _query: np.array([[1.0, 0.0]])
+        engine._adapter_router = AlwaysRouteElsewhere()
+
+        std_top, final_top, _mask, _jaccard = engine.run_inference("route me")
+
+        self.assertEqual(std_top, [1])
+        self.assertEqual(final_top, [1])
+        self.assertEqual(engine.adapter, "default-adapter")
+        self.assertEqual(engine._adapter_router.calls, 1)
 
 
 if __name__ == "__main__":

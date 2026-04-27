@@ -35,6 +35,7 @@ class TestStructuralHealthReport(unittest.TestCase):
         engine = self._make_engine()
         report = engine.get_structural_health_report()
         self.assertEqual(report["health_classification"], "healthy")
+        self.assertEqual(report["structural_health_score"], 1.0)
 
     def test_stability_signal_marks_degrading(self):
         engine = self._make_engine()
@@ -59,6 +60,8 @@ class TestStructuralHealthReport(unittest.TestCase):
 
         report = engine.get_structural_health_report()
         self.assertEqual(report["health_classification"], "critical")
+        self.assertLess(report["structural_health_score"], 1.0)
+        self.assertIn("structural_health_components", report)
         self.assertIn("topology", report)
         self.assertIn("isomers", report)
 

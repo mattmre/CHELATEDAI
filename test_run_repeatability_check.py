@@ -46,6 +46,7 @@ class TestRunRepeatabilityCheck(unittest.TestCase):
             quantization_gate_threshold=None,
             structural_health_weight=None,
             es_storage_profile=None,
+            query_reformulation_variants=None,
             reference_baseline_final=0.6012,
             reference_hybrid_final=0.6239,
             reference_baseline_tolerance=0.03,
@@ -76,6 +77,14 @@ class TestRunRepeatabilityCheck(unittest.TestCase):
         self.assertEqual(command[command.index("--adapter-type") + 1], "mlp")
         self.assertEqual(command[command.index("--seed") + 1], "0")
         self.assertEqual(command[command.index("--output") + 1], str(output_path))
+
+    def test_build_command_forwards_query_reformulation_variants(self):
+        args = self._make_args()
+        args.query_reformulation_variants = 3
+
+        command = repeatability.build_command(Path("results.json"), args)
+
+        self.assertEqual(command[command.index("--query-reformulation-variants") + 1], "3")
 
     def test_build_multi_seed_summary_requires_all_seed_gates(self):
         summaries = [

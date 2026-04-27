@@ -8,6 +8,7 @@ from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Seque
 import numpy as np
 
 from benchmark_utils import canonicalize_id, mean_reciprocal_rank, ndcg_at_k, recall_at_k
+from chelation_logger import get_logger
 from fitness_interfaces import FitnessEvaluation, FitnessFunctionInterface
 
 
@@ -52,6 +53,7 @@ class RetrievalFitnessEvaluator(FitnessFunctionInterface):
         mrr_weight: float = 0.2,
         recall_weight: float = 0.2,
         query_ids: Optional[Iterable[Any]] = None,
+        logger=None,
     ):
         if k < 1:
             raise ValueError("k must be >= 1")
@@ -74,6 +76,7 @@ class RetrievalFitnessEvaluator(FitnessFunctionInterface):
         self.ndcg_weight = ndcg_weight / total_weight
         self.mrr_weight = mrr_weight / total_weight
         self.recall_weight = recall_weight / total_weight
+        self.logger = logger or get_logger()
 
     @staticmethod
     def _normalize_relevance(relevance: Any) -> Dict[str, float]:
@@ -107,7 +110,7 @@ class RetrievalFitnessEvaluator(FitnessFunctionInterface):
 
         evaluated = len(ndcg_scores)
         if evaluated == 0:
-            return RetrievalFitnessResult(
+            result = RetrievalFitnessResult(
                 candidate_id=candidate_id,
                 fitness=0.0,
                 ndcg_at_k=0.0,
@@ -116,6 +119,15 @@ class RetrievalFitnessEvaluator(FitnessFunctionInterface):
                 evaluated_queries=0,
                 metadata=metadata or {},
             )
+            self.logger.log_event(
+                "retrieval_fitness_evaluated",
+                "No relevant queries evaluated for retrieval fitness",
+                candidate_id=candidate_id,
+                fitness=result.fitness,
+                evaluated_queries=result.evaluated_queries,
+                level="DEBUG",
+            )
+            return result
 
         ndcg_mean = float(np.mean(ndcg_scores))
         mrr_mean = float(np.mean(mrr_scores))
@@ -125,7 +137,7 @@ class RetrievalFitnessEvaluator(FitnessFunctionInterface):
             + self.mrr_weight * mrr_mean
             + self.recall_weight * recall_mean
         )
-        return RetrievalFitnessResult(
+        result = RetrievalFitnessResult(
             candidate_id=candidate_id,
             fitness=float(fitness),
             ndcg_at_k=ndcg_mean,
@@ -134,6 +146,18 @@ class RetrievalFitnessEvaluator(FitnessFunctionInterface):
             evaluated_queries=evaluated,
             metadata=metadata or {},
         )
+        self.logger.log_event(
+            "retrieval_fitness_evaluated",
+            "Evaluated retrieval fitness",
+            candidate_id=candidate_id,
+            fitness=result.fitness,
+            ndcg_at_k=result.ndcg_at_k,
+            mrr=result.mrr,
+            recall_at_k=result.recall_at_k,
+            evaluated_queries=result.evaluated_queries,
+            level="DEBUG",
+        )
+        return result
 
     def evaluate_candidate(self, candidate: Any, candidate_id: str = "candidate") -> FitnessEvaluation:
         if self.ranking_provider is None:

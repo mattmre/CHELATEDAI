@@ -1044,6 +1044,26 @@ class AntigravityEngine:
                 elif mean_str > ChelationConfig.STRUCTURAL_HEALTH_ISOMER_MEAN_STRENGTH_DEGRADING:
                     health_signals.append("degrading")
 
+        persistent_collapse_ratio = report.get("stability", {}).get("persistent_collapse_ratio", 0.0)
+        isomer_signal = report.get("isomers", {}).get("cumulative_mean_strength", 0.0)
+        topology_drift = 0.0
+        topology_report = report.get("topology", {})
+        snapshots = topology_report.get("snapshots", [])
+        if len(snapshots) >= 2:
+            latest = snapshots[-1].get("bond_ratios", {})
+            previous = snapshots[-2].get("bond_ratios", {})
+            topology_drift = abs(float(latest.get("covalent", 0.0)) - float(previous.get("covalent", 0.0)))
+
+        from structural_health_score import StructuralHealthScore
+
+        structural_health = StructuralHealthScore(logger=getattr(self, "logger", None)).evaluate(
+            persistent_collapse_ratio=persistent_collapse_ratio,
+            isomer_ratio=isomer_signal,
+            topology_drift=topology_drift,
+        )
+        report["structural_health_score"] = structural_health.score
+        report["structural_health_components"] = structural_health.components
+
         # Classify overall health
         if "critical" in health_signals:
             classification = "critical"
@@ -1856,16 +1876,24 @@ class AntigravityEngine:
         # A. Embed
         q_vec = self.embed(query_text)[0]
         adapter_router = getattr(self, '_adapter_router', None)
-        if adapter_router is not None:
+        if adapter_router is not None and not getattr(self, '_adapter_routing_active', False):
             route = adapter_router.select(q_vec, fallback=lambda: self.adapter)
             routed_adapter = route.adapter
             if routed_adapter is not self.adapter:
                 original_adapter = self.adapter
                 self.adapter = routed_adapter
+                self._adapter_routing_active = True
                 try:
+                    self.logger.log_event(
+                        "adapter_route_applied",
+                        "Applying routed adapter for inference",
+                        route_key=route.key,
+                        route_score=route.score,
+                    )
                     return self.run_inference(query_text)
                 finally:
                     self.adapter = original_adapter
+                    self._adapter_routing_active = False
         
         try:
             # B. Standard Retrieval (Scout Step)

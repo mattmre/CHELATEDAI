@@ -283,6 +283,14 @@ def configure_es_optimizer(engine: AntigravityEngine, args: argparse.Namespace) 
     )
 
 
+def configure_query_reformulation(engine: AntigravityEngine, args: argparse.Namespace) -> None:
+    """Apply opt-in query reformulation to an engine."""
+
+    variants = getattr(args, "query_reformulation_variants", 1)
+    if variants and variants > 1:
+        engine.enable_query_reformulation(max_variants=variants)
+
+
 def _structural_health_multiplier(engine: AntigravityEngine, weight: float) -> float:
     if weight <= 0:
         return 1.0
@@ -477,6 +485,7 @@ def run_training_cycle(
                 learning_rate=learning_rate,
                 epochs=epochs_per_cycle
             )
+            _refresh_engine_corpus_vectors(engine, quantize_adapter_output=False)
             es_cycle_result = getattr(engine, "_last_es_result", None)
         sediment_time = time.time() - sediment_start
         
@@ -558,6 +567,12 @@ def main():
     parser.add_argument("--quantization-gate", action="store_true")
     parser.add_argument("--quantization-gate-threshold", type=float, default=0.8)
     parser.add_argument("--structural-health-weight", type=float, default=0.0)
+    parser.add_argument(
+        "--query-reformulation-variants",
+        type=int,
+        default=1,
+        help="Enable query reformulation when greater than 1 and merge up to this many variants",
+    )
     
     args = parser.parse_args()
     random.seed(args.seed)
@@ -611,6 +626,7 @@ def main():
                 use_quantization=True,
             )
             configure_es_optimizer(engine_baseline, args)
+            configure_query_reformulation(engine_baseline, args)
             try:
                 print("Ingesting corpus...")
                 engine_baseline.ingest(doc_texts, doc_payloads)
@@ -650,6 +666,7 @@ def main():
                 use_quantization=True,
             )
             configure_es_optimizer(engine_offline, args)
+            configure_query_reformulation(engine_offline, args)
             try:
                 print("Ingesting corpus...")
                 engine_offline.ingest(doc_texts, doc_payloads)
@@ -712,6 +729,7 @@ def main():
                 use_quantization=True,
             )
             configure_es_optimizer(engine_hybrid, args)
+            configure_query_reformulation(engine_hybrid, args)
             try:
                 print("Ingesting corpus...")
                 engine_hybrid.ingest(doc_texts, doc_payloads)
