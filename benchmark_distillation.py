@@ -301,6 +301,40 @@ def _structural_health_multiplier(engine: AntigravityEngine, weight: float) -> f
     return max(0.0, 1.0 - weight * (1.0 - score))
 
 
+def _refresh_engine_corpus_vectors(
+    engine: AntigravityEngine,
+    quantize_adapter_output: bool = False,
+    quantization_levels: int = 127,
+) -> None:
+    refresh = getattr(engine, "refresh_corpus_vectors", None)
+    if refresh is not None:
+        refresh(
+            quantize_adapter_output=quantize_adapter_output,
+            quantization_levels=quantization_levels,
+        )
+
+
+def _set_embedding_quantization_simulation(
+    engine: AntigravityEngine,
+    enabled: bool,
+    quantization_levels: int = 127,
+) -> Tuple[bool, int]:
+    previous = (
+        getattr(engine, "_simulate_embedding_quantization", False),
+        getattr(engine, "_embedding_quantization_levels", 127),
+    )
+    engine._simulate_embedding_quantization = bool(enabled)
+    engine._embedding_quantization_levels = int(quantization_levels)
+    return previous
+
+
+def _restore_embedding_quantization_simulation(
+    engine: AntigravityEngine,
+    previous: Tuple[bool, int],
+) -> None:
+    engine._simulate_embedding_quantization, engine._embedding_quantization_levels = previous
+
+
 def run_retrieval_fitness_es_cycle(
     engine: AntigravityEngine,
     queries: Dict,
@@ -313,6 +347,7 @@ def run_retrieval_fitness_es_cycle(
 
     query_ids = list(queries.keys())[: args.max_eval_queries]
     evaluator = RetrievalFitnessEvaluator(qrels=qrels, k=10, query_ids=query_ids)
+    _refresh_engine_corpus_vectors(engine, quantize_adapter_output=False)
     baseline_result = evaluator.evaluate_engine(engine, queries, map_predicted_ids, candidate_id="baseline")
 
     es_config = EvolutionStrategiesConfig(
@@ -333,16 +368,38 @@ def run_retrieval_fitness_es_cycle(
     optimizer = LowRankEvolutionStrategyOptimizer(engine.adapter, es_config, logger=engine.logger)
 
     def fitness_fn() -> float:
+        _refresh_engine_corpus_vectors(engine, quantize_adapter_output=False)
         result = evaluator.evaluate_engine(engine, queries, map_predicted_ids, candidate_id="candidate")
         return result.fitness * _structural_health_multiplier(engine, args.structural_health_weight)
 
     es_result = optimizer.optimize(fitness_fn, generations=es_config.generations)
+    _refresh_engine_corpus_vectors(engine, quantize_adapter_output=False)
     final_result = evaluator.evaluate_engine(engine, queries, map_predicted_ids, candidate_id="final")
     gate_result = None
     if args.quantization_gate:
+        previous_quantization = _set_embedding_quantization_simulation(
+            engine,
+            enabled=True,
+            quantization_levels=es_config.quantization_levels,
+        )
+        try:
+            _refresh_engine_corpus_vectors(
+                engine,
+                quantize_adapter_output=True,
+                quantization_levels=es_config.quantization_levels,
+            )
+            quantized_result = evaluator.evaluate_engine(
+                engine,
+                queries,
+                map_predicted_ids,
+                candidate_id="quantized_final",
+            )
+        finally:
+            _restore_embedding_quantization_simulation(engine, previous_quantization)
+            _refresh_engine_corpus_vectors(engine, quantize_adapter_output=False)
         gate_result = QuantizationPromotionGate(args.quantization_gate_threshold).evaluate(
             fp32_fitness=final_result.fitness,
-            quantized_fitness=final_result.fitness if engine.use_quantization else final_result.fitness,
+            quantized_fitness=quantized_result.fitness,
             baseline_fitness=baseline_result.fitness,
         ).to_dict()
     engine._last_es_result = {

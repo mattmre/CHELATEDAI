@@ -9,6 +9,9 @@ import unittest
 import numpy as np
 from unittest.mock import MagicMock, patch
 import sys
+from types import SimpleNamespace
+
+import torch
 
 if 'mteb' not in sys.modules:
     sys.modules['mteb'] = MagicMock()
@@ -21,6 +24,7 @@ from benchmark_distillation import (
     map_predicted_ids,
     evaluate_engine,
     configure_es_optimizer,
+    run_retrieval_fitness_es_cycle,
 )
 
 
@@ -246,6 +250,82 @@ class TestESBenchmarkWiring(unittest.TestCase):
         self.assertEqual(kwargs["population_size"], 6)
         self.assertTrue(kwargs["quantization_gate"])
         self.assertEqual(kwargs["storage_profile"], "consumer_nvme")
+
+    def test_retrieval_fitness_quantization_gate_uses_quantized_evaluation(self):
+        import benchmark_distillation
+
+        class FakeFitnessResult:
+            def __init__(self, fitness):
+                self.fitness = fitness
+
+            def to_fitness_evaluation(self):
+                return SimpleNamespace(metrics={"ndcg": self.fitness})
+
+        class FakeEvaluator:
+            def __init__(self, qrels, k, query_ids):
+                self.query_ids = query_ids
+
+            def evaluate_engine(self, engine, queries, mapper, candidate_id="candidate"):
+                if candidate_id == "baseline":
+                    return FakeFitnessResult(0.5)
+                if getattr(engine, "_simulate_embedding_quantization", False):
+                    return FakeFitnessResult(0.55)
+                return FakeFitnessResult(0.75)
+
+        class FakeAdapter(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.weight = torch.nn.Parameter(torch.ones(1, 1))
+                self.save = MagicMock()
+
+            def forward(self, inputs):
+                return inputs @ self.weight
+
+        class FakeEngine:
+            def __init__(self):
+                self.adapter = FakeAdapter()
+                self.logger = MagicMock()
+                self.adapter_path = "adapter_weights.pt"
+                self.use_quantization = True
+                self.refresh_calls = []
+                self._simulate_embedding_quantization = False
+                self._embedding_quantization_levels = 127
+
+            def refresh_corpus_vectors(self, quantize_adapter_output=False, quantization_levels=127):
+                self.refresh_calls.append((quantize_adapter_output, quantization_levels))
+
+        args = SimpleNamespace(
+            max_eval_queries=1,
+            es_population_size=2,
+            es_rank=1,
+            es_sigma=0.01,
+            lr=0.01,
+            es_generations=1,
+            epochs=1,
+            seed=0,
+            es_quantization_aware=False,
+            es_kalman_sigma=False,
+            es_elite_pool_size=1,
+            es_rollback_to_elite=False,
+            es_antithetic_sampling=False,
+            es_fitness_shaping="centered",
+            es_storage_profile=None,
+            structural_health_weight=0.0,
+            quantization_gate=True,
+            quantization_gate_threshold=0.8,
+        )
+        original_evaluator = benchmark_distillation.RetrievalFitnessEvaluator
+        try:
+            benchmark_distillation.RetrievalFitnessEvaluator = FakeEvaluator
+            engine = FakeEngine()
+            result = run_retrieval_fitness_es_cycle(engine, {"q1": "query"}, {"q1": {"d1": 1}}, args)
+        finally:
+            benchmark_distillation.RetrievalFitnessEvaluator = original_evaluator
+
+        self.assertEqual(result["quantization_gate"]["fp32_fitness"], 0.75)
+        self.assertEqual(result["quantization_gate"]["quantized_fitness"], 0.55)
+        self.assertIn((True, 127), engine.refresh_calls)
+        self.assertFalse(engine._simulate_embedding_quantization)
 
     def test_map_predicted_ids_missing_doc_id(self):
         """Test ID mapping when doc_id not in payload."""

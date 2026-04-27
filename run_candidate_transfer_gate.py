@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
 from statistics import mean
 from typing import Any, Dict, List, Tuple
@@ -72,7 +73,7 @@ def resolve_tasks(gate: str, scope: str) -> List[str]:
 
 def build_distillation_command(task_name: str, output_path: Path, args: argparse.Namespace) -> List[str]:
     command = [
-        "python",
+        sys.executable,
         "-u",
         "benchmark_distillation.py",
         "--task",
@@ -97,6 +98,8 @@ def build_distillation_command(task_name: str, output_path: Path, args: argparse
         str(args.threshold),
         "--adapter-type",
         args.adapter_type,
+        "--seed",
+        str(getattr(args, "seed", 0)),
         "--output",
         str(output_path),
     ]
@@ -106,6 +109,29 @@ def build_distillation_command(task_name: str, output_path: Path, args: argparse
         command.append("--es-retrieval-fitness")
     if getattr(args, "quantization_gate", False):
         command.append("--quantization-gate")
+    if getattr(args, "es_antithetic_sampling", False):
+        command.append("--es-antithetic-sampling")
+    if getattr(args, "es_rollback_to_elite", False):
+        command.append("--es-rollback-to-elite")
+    if getattr(args, "es_quantization_aware", False):
+        command.append("--es-quantization-aware")
+    if getattr(args, "es_kalman_sigma", False):
+        command.append("--es-kalman-sigma")
+    optional_pairs = [
+        ("--es-population-size", "es_population_size"),
+        ("--es-rank", "es_rank"),
+        ("--es-sigma", "es_sigma"),
+        ("--es-generations", "es_generations"),
+        ("--es-elite-pool-size", "es_elite_pool_size"),
+        ("--es-fitness-shaping", "es_fitness_shaping"),
+        ("--es-storage-profile", "es_storage_profile"),
+        ("--quantization-gate-threshold", "quantization_gate_threshold"),
+        ("--structural-health-weight", "structural_health_weight"),
+    ]
+    for flag, attr in optional_pairs:
+        value = getattr(args, attr, None)
+        if value is not None:
+            command.extend([flag, str(value)])
     return command
 
 
@@ -141,10 +167,29 @@ def summarize_task_result(
     min_task_gain: float,
     require_quantization_gate: bool = False,
 ) -> Dict[str, Any]:
-    results = load_results(results_path)
-    baseline_final = _extract_final_ndcg(results, "baseline")
-    offline_final = _extract_final_ndcg(results, "offline")
-    hybrid_final = _extract_final_ndcg(results, "hybrid")
+    try:
+        results = load_results(results_path)
+        baseline_final = _extract_final_ndcg(results, "baseline")
+        offline_final = _extract_final_ndcg(results, "offline")
+        hybrid_final = _extract_final_ndcg(results, "hybrid")
+    except (FileNotFoundError, json.JSONDecodeError, KeyError, TypeError, ValueError) as exc:
+        return {
+            "task": task_name,
+            "results_path": str(results_path),
+            "reused": reused,
+            "baseline_final_ndcg": 0.0,
+            "offline_final_ndcg": 0.0,
+            "hybrid_final_ndcg": 0.0,
+            "hybrid_gain_absolute": 0.0,
+            "hybrid_gain_pct": 0.0,
+            "passes_task_gate": False,
+            "quantization_gate": {
+                "observed": [],
+                "failed": [],
+                "passes_quantization_gate": False,
+            },
+            "error": f"Failed to summarize results: {exc}",
+        }
     hybrid_gain = hybrid_final - baseline_final
     hybrid_gain_pct = (hybrid_gain / baseline_final * 100.0) if baseline_final else 0.0
 
@@ -225,6 +270,7 @@ def main() -> int:
     parser.add_argument("--teacher-weight", type=float, default=0.3)
     parser.add_argument("--threshold", type=int, default=1)
     parser.add_argument("--adapter-type", choices=["mlp", "procrustes", "low_rank"], default="mlp")
+    parser.add_argument("--seed", type=int, default=0)
     parser.add_argument(
         "--run-label",
         default="session33-candidate-transfer",
@@ -254,7 +300,20 @@ def main() -> int:
     )
     parser.add_argument("--sedimentation-optimizer", choices=["adam", "eggroll_es"], default="adam")
     parser.add_argument("--es-retrieval-fitness", action="store_true")
+    parser.add_argument("--es-population-size", type=int, default=8)
+    parser.add_argument("--es-rank", type=int, default=1)
+    parser.add_argument("--es-sigma", type=float, default=0.01)
+    parser.add_argument("--es-generations", type=int, default=None)
+    parser.add_argument("--es-quantization-aware", action="store_true")
+    parser.add_argument("--es-kalman-sigma", action="store_true")
+    parser.add_argument("--es-elite-pool-size", type=int, default=3)
+    parser.add_argument("--es-rollback-to-elite", action="store_true")
+    parser.add_argument("--es-antithetic-sampling", action="store_true")
+    parser.add_argument("--es-fitness-shaping", choices=["zscore", "centered", "linear_rank"], default="zscore")
+    parser.add_argument("--es-storage-profile", choices=["rp2040", "consumer_nvme", "smartssd", "dpu_storage"], default=None)
     parser.add_argument("--quantization-gate", action="store_true")
+    parser.add_argument("--quantization-gate-threshold", type=float, default=0.8)
+    parser.add_argument("--structural-health-weight", type=float, default=0.0)
     parser.add_argument(
         "--require-quantization-gate",
         action="store_true",

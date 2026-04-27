@@ -1,5 +1,7 @@
 import unittest
+import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 import run_candidate_transfer_gate as transfer_gate
 
@@ -70,6 +72,48 @@ class TestRunCandidateTransferGate(unittest.TestCase):
         self.assertEqual(summary["failed_tasks"], ["SciFact"])
         self.assertEqual(summary["recommended_next_step"], "stop-and-review")
 
+    def test_build_distillation_command_forwards_es_options(self):
+        args = SimpleNamespace(
+            model="model",
+            teacher="teacher",
+            cycles=1,
+            queries_per_cycle=2,
+            epochs=3,
+            learning_rate=0.01,
+            max_eval_queries=4,
+            teacher_weight=0.3,
+            threshold=1,
+            adapter_type="low_rank",
+            seed=7,
+            sedimentation_optimizer="eggroll_es",
+            es_retrieval_fitness=True,
+            quantization_gate=True,
+            es_antithetic_sampling=True,
+            es_rollback_to_elite=True,
+            es_quantization_aware=True,
+            es_kalman_sigma=True,
+            es_population_size=6,
+            es_rank=2,
+            es_sigma=0.02,
+            es_generations=5,
+            es_elite_pool_size=2,
+            es_fitness_shaping="linear_rank",
+            es_storage_profile="consumer_nvme",
+            quantization_gate_threshold=0.9,
+            structural_health_weight=0.25,
+        )
+
+        command = transfer_gate.build_distillation_command("SciFact", Path("results.json"), args)
+
+        self.assertEqual(command[0], sys.executable)
+        self.assertIn("--es-retrieval-fitness", command)
+        self.assertIn("--es-antithetic-sampling", command)
+        self.assertIn("--es-rollback-to-elite", command)
+        self.assertIn("--es-quantization-aware", command)
+        self.assertIn("--es-kalman-sigma", command)
+        self.assertIn("--es-storage-profile", command)
+        self.assertIn("consumer_nvme", command)
+
     def test_extract_quantization_gate_status_requires_observed_passing_gates(self):
         status = transfer_gate.extract_quantization_gate_status({
             "hybrid": [
@@ -103,6 +147,19 @@ class TestRunCandidateTransferGate(unittest.TestCase):
 
         self.assertTrue(summary["passes_task_gate"])
         self.assertTrue(summary["quantization_gate"]["passes_quantization_gate"])
+
+    def test_summarize_task_result_returns_failed_summary_for_missing_results(self):
+        summary = transfer_gate.summarize_task_result(
+            "SciFact",
+            Path("missing-results.json"),
+            reused=False,
+            min_task_gain=0.0,
+            require_quantization_gate=True,
+        )
+
+        self.assertFalse(summary["passes_task_gate"])
+        self.assertIn("error", summary)
+        self.assertEqual(summary["baseline_final_ndcg"], 0.0)
 
 
 if __name__ == "__main__":

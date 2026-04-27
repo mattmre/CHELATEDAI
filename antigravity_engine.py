@@ -133,6 +133,8 @@ class AntigravityEngine:
         self.logger.log_event("checkpoint_manager_init", "CheckpointManager initialized for safe training")
         self._sedimentation_optimizer_type = ChelationConfig.SEDIMENTATION_OPTIMIZER
         self._es_optimizer_kwargs = {}
+        self._simulate_embedding_quantization = False
+        self._embedding_quantization_levels = 127
 
     def embed(self, texts):
         """Get Embeddings via backend abstraction."""
@@ -150,10 +152,118 @@ class AntigravityEngine:
             with torch.no_grad():
                 tensor_inputs = torch.tensor(raw_embeddings, dtype=torch.float32)
                 adapted_embeddings = self.adapter(tensor_inputs)
+                if getattr(self, "_simulate_embedding_quantization", False):
+                    from evolution_strategies_optimizer import simulate_int8_quantization
+
+                    adapted_embeddings = simulate_int8_quantization(
+                        adapted_embeddings,
+                        levels=getattr(self, "_embedding_quantization_levels", 127),
+                    )
                 return adapted_embeddings.numpy()
         else:
             # Ollama mode - return raw embeddings directly (no adapter)
+            if getattr(self, "_simulate_embedding_quantization", False):
+                from evolution_strategies_optimizer import simulate_int8_quantization
+
+                with torch.no_grad():
+                    return simulate_int8_quantization(
+                        torch.tensor(raw_embeddings, dtype=torch.float32),
+                        levels=getattr(self, "_embedding_quantization_levels", 127),
+                    ).numpy()
             return raw_embeddings
+
+    def refresh_corpus_vectors(
+        self,
+        batch_size: Optional[int] = None,
+        quantize_adapter_output: bool = False,
+        quantization_levels: int = 127,
+    ):
+        """Recompute stored corpus vectors from payload text using the current adapter."""
+
+        batch_size = batch_size or ChelationConfig.BATCH_SIZE
+        if batch_size < 1:
+            raise ValueError("batch_size must be >= 1")
+
+        all_points = []
+        offset = None
+        while True:
+            points, next_offset = self.qdrant.scroll(
+                collection_name=self.collection_name,
+                limit=batch_size,
+                with_vectors=False,
+                with_payload=True,
+                offset=offset,
+            )
+            all_points.extend(points)
+            if next_offset is None or not points:
+                break
+            offset = next_offset
+
+        if not all_points:
+            self.logger.log_event("corpus_vector_refresh_empty", "No corpus vectors to refresh")
+            return {"updated": 0, "failed": 0}
+
+        previous_quantization = getattr(self, "_simulate_embedding_quantization", False)
+        previous_levels = getattr(self, "_embedding_quantization_levels", 127)
+        self._simulate_embedding_quantization = bool(quantize_adapter_output)
+        self._embedding_quantization_levels = int(quantization_levels)
+
+        total_updates = 0
+        failed_updates = 0
+        try:
+            for batch_start in range(0, len(all_points), batch_size):
+                batch_points = all_points[batch_start:batch_start + batch_size]
+                missing_text_ids = [
+                    point.id for point in batch_points
+                    if not isinstance(getattr(point, "payload", None), dict) or "text" not in point.payload
+                ]
+                if missing_text_ids:
+                    raise ValueError(
+                        "Cannot refresh corpus vectors without text payloads; "
+                        f"missing text for IDs: {missing_text_ids[:5]}"
+                    )
+
+                batch_texts = [point.payload["text"] for point in batch_points]
+                vectors = np.asarray(self.embed(batch_texts))
+                if vectors.ndim != 2 or vectors.shape[0] != len(batch_points):
+                    raise ValueError(
+                        "Embedding refresh returned invalid shape "
+                        f"{vectors.shape}; expected ({len(batch_points)}, {self.vector_size})"
+                    )
+
+                upsert_points = [
+                    PointStruct(
+                        id=point.id,
+                        vector=vectors[index],
+                        payload=point.payload,
+                    )
+                    for index, point in enumerate(batch_points)
+                ]
+                self.qdrant.upsert(collection_name=self.collection_name, points=upsert_points)
+                total_updates += len(upsert_points)
+        except Exception as exc:
+            failed_updates = len(all_points) - total_updates
+            self.logger.log_error(
+                "corpus_vector_refresh_failed",
+                "Failed to refresh corpus vectors",
+                exception=exc,
+                vectors_updated=total_updates,
+                vectors_failed=failed_updates,
+                quantize_adapter_output=quantize_adapter_output,
+            )
+            raise
+        finally:
+            self._simulate_embedding_quantization = previous_quantization
+            self._embedding_quantization_levels = previous_levels
+
+        self.logger.log_event(
+            "corpus_vector_refresh_complete",
+            f"Refreshed {total_updates} corpus vectors",
+            vectors_updated=total_updates,
+            vectors_failed=failed_updates,
+            quantize_adapter_output=quantize_adapter_output,
+        )
+        return {"updated": total_updates, "failed": failed_updates}
 
     def _sanitize_ollama_text(self, text, doc_index=None):
         """Backward-compatible Ollama text sanitizer API."""
