@@ -82,6 +82,23 @@ flowchart TD
     E --> F[More diagnostics]
 ```
 
+### Live-fire calibration loop
+
+```mermaid
+flowchart TD
+    A[Deterministic corpus + qrels] --> B[Baseline engine run]
+    B --> C[InitialChelatedValues]
+    C --> D[Enable reformulation, routing, stability, telemetry]
+    D --> E[Live-fire engine run]
+    E --> F[Retrieval fitness + composition]
+    F --> G[Integrated diagnostics report]
+    G --> H[Adaptive gate advisory decision]
+    H --> I[Dashboard/event summary]
+    I --> J[Docs + research priorities refresh]
+```
+
+`run_live_fire_diagnostics.py` is the dependency-light harness for this loop. It does not replace BEIR or multitask campaigns; it validates that controls, telemetry, gates, and reports are wired before expensive benchmark runs.
+
 ### Computational-storage track
 
 ```mermaid

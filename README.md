@@ -70,6 +70,7 @@ Use model names like `ollama:nomic-embed-text` to route through the HTTP embeddi
 
 ```bash
 python -m unittest discover -s . -p "test_*.py" -v
+python run_live_fire_diagnostics.py --output live_fire_results.json
 python -m unittest test_computational_storage_poc.py -v
 python -m unittest test_computational_storage_emulation.py -v
 python computational_storage_poc/run_all_tests.py
@@ -119,14 +120,16 @@ flowchart LR
 
 ## Current Research Status
 
-As of 2026-03-06:
+As of 2026-04-27:
 
 - the adaptive retrieval, benchmarking, and distillation surfaces are implemented on `main`
-- the remaining non-hardware work is primarily evaluation and weight refinement, not missing feature delivery
+- the EGGROLL-inspired optimizer, retrieval-fitness gates, adaptive workflow orchestration, and AI-engineering runtime diagnostics are implemented on `main`
+- deterministic live-fire diagnostics validate that engine controls and reporting are wired end-to-end; the tiny fixture is saturated, so proof of chelation lift still requires benchmark campaigns
+- the remaining non-hardware work is primarily live-fire campaign execution, initial-value calibration, and weight refinement, not missing feature delivery
 - the computational-storage follow-through is narrowed to real RP2040 evidence capture and a dated retention review
 - the repository includes credible storage-node experiments, but not a shipped hard-drive-hosted LLM runtime
 
-For the current audit and post-feature evaluation plan, see [docs/roadmap-audit-and-weight-refinement-plan-2026-03-06.md](docs/roadmap-audit-and-weight-refinement-plan-2026-03-06.md).
+For the current live-fire validation plan, see [docs/live-fire-diagnostics-2026-04-27.md](docs/live-fire-diagnostics-2026-04-27.md). For the earlier post-feature evaluation plan, see [docs/roadmap-audit-and-weight-refinement-plan-2026-03-06.md](docs/roadmap-audit-and-weight-refinement-plan-2026-03-06.md).
 
 ## Module Walkthrough
 
@@ -150,6 +153,7 @@ For the current audit and post-feature evaluation plan, see [docs/roadmap-audit-
 
 - `benchmark_beir.py`, `benchmark_multitask.py`, `benchmark_comparative.py`, `benchmark_distillation.py`: retrieval-quality evaluation
 - `run_sweep.py` and `run_large_sweep.py`: grid-search style parameter studies
+- `run_live_fire_diagnostics.py`: deterministic live-fire harness for engine controls, telemetry, gates, and reporting
 - `dashboard_server.py` and `dashboard/index.html`: local research dashboard
 
 ### Computational storage and drive nodes

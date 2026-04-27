@@ -83,6 +83,25 @@ class ReproducibilityContext:
         return asdict(self)
 
 
+@dataclass
+class InitialChelatedValues:
+    """Frozen baseline retrieval values used before adaptive controls are promoted."""
+
+    dataset_hash: str
+    query_set_hash: str
+    corpus_size: int
+    query_count: int
+    ndcg_at_k: float
+    mrr: float
+    recall_at_k: float
+    fitness: float
+    k: int = 10
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return asdict(self)
+
+
 def build_seed_matrix(base_seed: int, count: int) -> List[int]:
     """Build a deterministic seed matrix for smoke-gate sweeps."""
 

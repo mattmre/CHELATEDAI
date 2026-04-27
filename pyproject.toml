@@ -16,6 +16,9 @@ dependencies = [
     "scikit-learn>=1.5",
 ]
 
+[project.scripts]
+chelatedai-live-fire = "run_live_fire_diagnostics:main"
+
 [project.optional-dependencies]
 benchmark = ["mteb>=1.0"]
 ollama = ["requests>=2.28"]
@@ -51,6 +54,7 @@ py-modules = [
     "query_reformulator",
     "recursive_decomposer",
     "reproducibility_context",
+    "run_live_fire_diagnostics",
     "sedimentation",
     "sedimentation_trainer",
     "stability_tracker",

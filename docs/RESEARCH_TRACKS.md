@@ -4,16 +4,17 @@ This document describes the main research themes in the repository and where eac
 
 ## Portfolio Summary
 
-| Track | Primary question | Current state |
-|---|---|---|
-| Adaptive retrieval | Can noisy embedding neighborhoods be detected and corrected before they degrade retrieval? | Implemented and benchmarkable |
-| Distillation and cross-lingual routing | Can teacher-guided correction generalize across models and languages? | Implemented and under evaluation |
-| Online correction | Can inference-time updates improve quality without destabilizing the system? | Implemented, requires controlled ablation |
-| Structural diagnostics | Can topology and isomer signals reveal degradation that ranking metrics miss? | Implemented and test-backed |
-| Multi-dataset evaluation | Do improvements transfer beyond SciFact? | Implemented; campaign execution is ongoing work |
-| LLM architecture adaptation | Which modern LLM architecture and serving patterns should become retrieval-native ChelatedAI subcomponents? | Research review complete; implementation candidates identified |
-| Computational storage and drive nodes | Can some model or control-plane work move toward storage-resident execution? | Mixed maturity: software proof is strong, hardware claim remains scope-locked |
-| Agentic remediation process | Can repository changes be triaged and delivered through a durable AEP workflow? | Implemented and extensively documented |
+| Track | Primary question | Proof required | Current state |
+|---|---|---|---|
+| Adaptive retrieval | Can noisy embedding neighborhoods be detected and corrected before they degrade retrieval? | Frozen baseline values plus NDCG@10/MRR/Recall@K deltas after chelation | Implemented; deterministic live-fire wiring validated; campaign proof still required |
+| Chelation fitness validation | Does chelation improve retrieval metrics directly, not just adapter loss? | Retrieval-fitness campaigns with baseline, adaptive, transfer, and quantized comparisons | Harness and evaluator exist; benchmark campaigns are next |
+| Distillation and cross-lingual routing | Can teacher-guided correction generalize across models and languages? | Multitask/cross-lingual campaign results with no structural-health regression | Implemented and under evaluation |
+| Online correction | Can inference-time updates improve quality without destabilizing the system? | Ablations showing norm/drift and ranking stability under online updates | Implemented; requires controlled ablation |
+| Structural diagnostics | Can topology and isomer signals reveal degradation that ranking metrics miss? | Structural-health gates correlated with retrieval outcomes | Implemented and test-backed |
+| Multi-dataset evaluation | Do improvements transfer beyond SciFact? | Transfer gates over held-out query sets and BEIR-style tasks | Implemented; campaign execution is ongoing work |
+| LLM architecture adaptation | Which modern LLM architecture and serving patterns should become retrieval-native ChelatedAI subcomponents? | Live-fire telemetry for routing, norm drift, local/global policy, and gate recommendations | Research review complete; runtime diagnostics wired |
+| Computational storage and drive nodes | Can some model or control-plane work move toward storage-resident execution? | Hardware evidence for physical transport; separate proof for any full storage-resident runtime claim | Mixed maturity: software proof is strong, hardware claim remains scope-locked |
+| Agentic remediation process | Can repository changes be triaged and delivered through a durable AEP workflow? | Verification log entries for each implementation/campaign round | Implemented and extensively documented |
 
 ## 1. Adaptive Retrieval And Chelation
 
@@ -207,9 +208,46 @@ The most recent merged storage-track additions on `main` include:
 
 The remaining practical follow-through is physical RP2040 evidence capture when compatible hardware is actually attached.
 
+## 8. Testing And Validation Roadmap For Chelation Proof
+
+### Current live-fire status
+
+`run_live_fire_diagnostics.py` now validates the end-to-end control and reporting path without external services:
+
+- baseline retrieval values via `InitialChelatedValues`
+- query reformulation through `AntigravityEngine`
+- adapter routing and route-effectiveness telemetry
+- norm drift and stability diagnostics
+- retrieval fitness, structural health, quantization gate, and storage metadata composition
+- integrated diagnostics and adaptive gate recommendations
+- dashboard summary aggregation over emitted events
+
+The first deterministic run passed all hard checks and emitted two expected warnings: the tiny synthetic corpus saturated baseline retrieval (`fitness=1.0`), and its forced-noisy setup produced a CHELATE rate of `1.00`. That means the harness proves wiring and reporting, not retrieval lift.
+
+### Calibration starting points
+
+| Control | Current default/evidence | Recommended start | Adjust when |
+|---|---:|---:|---|
+| Chelation variance threshold | `0.0004`; presets `0.0002`, `0.0004`, `0.0008`; adaptive bounds `0.0001-0.01` | Start `0.0004`; explore `0.0002-0.001`; target 20-40% CHELATE rate | CHELATE rate drifts, threshold oscillation rises, or NDCG/recall drops |
+| Quantization retention | retained-gain gate `0.8` | Require `0.8-0.9`; add minimum FP32 gain only after baseline campaigns | Quantized fitness loses FP32 gain or falls below baseline |
+| Norm drift | advisory hard band `<0.5` or `>2.0` | Watch `0.75-1.33`; hard fail outside `0.5-2.0` | Repeated hard-band exits or monotonic query/result norm deltas |
+| Route effectiveness | advisory disable below mean Jaccard `0.25` | Require at least 20 samples; warn below `0.5`, disable below `0.25` | Low route Jaccard combines with no NDCG lift or latency regression |
+| Retrieval fitness | `0.6 NDCG@10 + 0.2 MRR + 0.2 Recall@K` | Promote only if at or above baseline, preferably +1-3% | NDCG/MRR/Recall fall more than 1-2%, empty results appear, or p95 latency regresses |
+| Structural health | adaptive gate minimum `0.6` | Start min health `0.7`; never promote below `0.6` | Persistent collapse, isomer drift, or topology drift increases |
+
+### P0 live-fire campaign gates
+
+1. Freeze corpus, query set, qrels, config hash, and seed into `InitialChelatedValues`.
+2. Run baseline retrieval and capture NDCG@10, MRR, Recall@K, latency, and action mix.
+3. Enable chelation/adaptive controls and compare retrieval deltas against the frozen baseline.
+4. Re-run candidate rankings through quantized simulation and require retained gain >= 80%.
+5. Check structural health, norm drift, route effectiveness, and adaptive gate recommendations.
+6. Publish a dated campaign result document and verification-log entry.
+
 ## Read Next
 
 - [LLM Architecture And AI Engineering Adaptation Review](llm-architecture-ai-engineering-adaptation-review-2026-04-27.md)
+- [Live-Fire Diagnostics And Calibration](live-fire-diagnostics-2026-04-27.md)
 - [COMPUTATIONAL_STORAGE_DRIVE_NODES.md](COMPUTATIONAL_STORAGE_DRIVE_NODES.md)
 - [roadmap-audit-and-weight-refinement-plan-2026-03-06.md](roadmap-audit-and-weight-refinement-plan-2026-03-06.md)
 - [INDEX.md](INDEX.md)
