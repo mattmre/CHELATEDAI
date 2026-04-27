@@ -162,9 +162,33 @@ class TestStabilityTracker(unittest.TestCase):
         self.assertIn("persistent_collapse_ratio", report)
         self.assertIn("threshold_oscillation", report)
         self.assertIn("adapter_drift", report)
+        self.assertIn("norm_drift", report)
         self.assertIn("loss_history", report)
         self.assertIn("total_inferences_tracked", report)
         self.assertIn("total_training_cycles_tracked", report)
+
+    def test_norm_drift_report_tracks_runtime_norms(self, mock_logger):
+        """Test runtime norm diagnostics summarize deltas and adapter ratios."""
+        tracker = StabilityTracker()
+        tracker.record_norms(
+            query_norm=2.0,
+            result_norms=np.array([1.0, 3.0]),
+            adapter_input_norm=2.0,
+            adapter_output_norm=4.0,
+        )
+        tracker.record_norms(
+            query_norm=3.0,
+            result_norms=np.array([2.0, 4.0]),
+            adapter_input_norm=2.0,
+            adapter_output_norm=6.0,
+        )
+
+        report = tracker.compute_norm_drift_report()
+
+        self.assertEqual(report["count"], 2)
+        self.assertAlmostEqual(report["query_norm_delta"], 1.0)
+        self.assertAlmostEqual(report["result_norm_mean_delta"], 1.0)
+        self.assertAlmostEqual(report["adapter_norm_ratio_latest"], 3.0)
 
     def test_reset(self, mock_logger):
         """Test that reset clears all state."""

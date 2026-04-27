@@ -42,6 +42,9 @@ class StabilityTracker:
         # Loss history from training
         self._loss_history = []
 
+        # Runtime norm diagnostics
+        self._norm_history = []
+
     def record_mask(self, mask):
         """
         Record a chelation mask from inference.
@@ -101,6 +104,28 @@ class StabilityTracker:
             loss: float loss value
         """
         self._loss_history.append(float(loss))
+
+    def record_norms(self, query_norm=None, result_norms=None, adapter_input_norm=None, adapter_output_norm=None):
+        """
+        Record runtime vector norm diagnostics without storing raw vectors.
+        """
+
+        entry = {}
+        if query_norm is not None:
+            entry["query_norm"] = float(query_norm)
+        if result_norms is not None:
+            norms = np.array(result_norms, dtype=float).flatten()
+            entry["result_norm_mean"] = float(np.mean(norms)) if norms.size else None
+            entry["result_norm_std"] = float(np.std(norms)) if norms.size else None
+            entry["result_count"] = int(norms.size)
+        if adapter_input_norm is not None:
+            entry["adapter_input_norm"] = float(adapter_input_norm)
+        if adapter_output_norm is not None:
+            entry["adapter_output_norm"] = float(adapter_output_norm)
+        if adapter_input_norm is not None and adapter_output_norm is not None:
+            denominator = max(abs(float(adapter_input_norm)), 1e-12)
+            entry["adapter_norm_ratio"] = float(adapter_output_norm) / denominator
+        self._norm_history.append(entry)
 
     # ==================== Metric Computations ====================
 
@@ -220,6 +245,43 @@ class StabilityTracker:
 
         return drifts
 
+    def compute_norm_drift_report(self):
+        """
+        Summarize runtime norm drift from query/result/adapter norm observations.
+        """
+
+        if not self._norm_history:
+            return {
+                "count": 0,
+                "latest": None,
+                "query_norm_delta": None,
+                "result_norm_mean_delta": None,
+                "adapter_norm_ratio_latest": None,
+                "adapter_norm_ratio_mean": None,
+            }
+
+        latest = dict(self._norm_history[-1])
+
+        def delta_for(key):
+            values = [entry[key] for entry in self._norm_history if entry.get(key) is not None]
+            if len(values) < 2:
+                return None
+            return float(values[-1] - values[0])
+
+        ratios = [
+            entry["adapter_norm_ratio"]
+            for entry in self._norm_history
+            if entry.get("adapter_norm_ratio") is not None
+        ]
+        return {
+            "count": len(self._norm_history),
+            "latest": latest,
+            "query_norm_delta": delta_for("query_norm"),
+            "result_norm_mean_delta": delta_for("result_norm_mean"),
+            "adapter_norm_ratio_latest": float(ratios[-1]) if ratios else None,
+            "adapter_norm_ratio_mean": float(np.mean(ratios)) if ratios else None,
+        }
+
     def get_stability_report(self):
         """
         Get comprehensive stability report.
@@ -251,6 +313,7 @@ class StabilityTracker:
                 "total": float(np.sum(adapter_drift)) if adapter_drift else 0.0,
                 "count": len(self._adapter_snapshots)
             },
+            "norm_drift": self.compute_norm_drift_report(),
             "loss_history": list(self._loss_history),
             "total_inferences_tracked": len(self._mask_history),
             "total_training_cycles_tracked": len(self._collapse_history)
@@ -266,3 +329,4 @@ class StabilityTracker:
         self._threshold_history = []
         self._adapter_snapshots = []
         self._loss_history = []
+        self._norm_history = []

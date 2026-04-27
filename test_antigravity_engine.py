@@ -146,6 +146,13 @@ class TestAntigravityEngine(unittest.TestCase):
         self.assertEqual(chel_top, list(range(10)))
         self.assertEqual(mask.shape, (768,))
         self.assertEqual(jaccard, 1.0)
+        diagnostics = engine.get_last_runtime_diagnostics()
+        self.assertEqual(diagnostics["runtime"]["action"], "FAST")
+        self.assertEqual(diagnostics["runtime"]["std_result_count"], 10)
+        self.assertEqual(diagnostics["retrieval_policy"]["policy"], "global_scout")
+        self.assertIn("query_hash", diagnostics["query_summary"])
+        self.assertNotIn("x", str(diagnostics["query_summary"]))
+        self.assertGreaterEqual(engine.get_runtime_telemetry()["total_inferences"], 1)
 
     def test_run_inference_chelation_path_with_centering(self):
         engine = self._make_engine(use_quantization=False, use_centering=True)
@@ -167,6 +174,7 @@ class TestAntigravityEngine(unittest.TestCase):
         self.assertEqual(chel_top, [])
         self.assertEqual(mask.shape, (768,))
         self.assertEqual(jaccard, 0.0)
+        self.assertEqual(engine.get_last_runtime_diagnostics()["runtime"]["status"], "empty_results")
 
     def test_ingest_upserts_points(self):
         engine = self._make_engine()

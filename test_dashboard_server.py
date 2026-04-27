@@ -122,11 +122,12 @@ class TestSummarizeEvents(unittest.TestCase):
         events = [
             {"timestamp": 1234567890.0, "event_type": "error", "error": "test error"},
             {"timestamp": 1234567891.0, "query_snippet": "test", "action": "FAST"},
+            {"timestamp": 1234567892.0, "event_type": "info", "error": None},
         ]
         
         summary = dashboard_server.summarize_events(events)
         
-        self.assertEqual(summary["total_events"], 2)
+        self.assertEqual(summary["total_events"], 3)
         self.assertEqual(summary["query_count"], 1)
         self.assertEqual(summary["error_count"], 1)
 
@@ -145,6 +146,38 @@ class TestSummarizeEvents(unittest.TestCase):
         self.assertEqual(summary["query_count"], 2)
         self.assertEqual(summary["error_count"], 1)
         self.assertEqual(summary["action_breakdown"], {"FAST": 1, "DEEP": 1, "ADAPT": 1})
+
+    def test_summarize_adaptive_runtime_events(self):
+        """Test summarizing adaptive diagnostics and route telemetry."""
+        events = [
+            {
+                "timestamp": 1.0,
+                "event_type": "runtime_diagnostics",
+                "runtime": {"latency_ms": 10.0},
+                "route": {"key": "route-a"},
+            },
+            {
+                "timestamp": 2.0,
+                "event_type": "adaptive_gate_evaluated",
+                "actions": ["prefer_global_scout", "normalize_runtime_vectors"],
+            },
+            {
+                "timestamp": 3.0,
+                "event_type": "adapter_route_selected",
+                "route_key": "route-a",
+            },
+            {
+                "timestamp": 4.0,
+                "adaptive_gate": {"actions": ["prefer_global_scout"]},
+            },
+        ]
+
+        summary = dashboard_server.summarize_events(events)
+
+        self.assertEqual(summary["runtime_diagnostics_count"], 1)
+        self.assertEqual(summary["adapter_route_breakdown"], {"route-a": 2})
+        self.assertEqual(summary["adaptive_gate_actions"]["prefer_global_scout"], 2)
+        self.assertEqual(summary["latency_ms"]["mean"], 10.0)
 
 
 class TestFilterEvents(unittest.TestCase):

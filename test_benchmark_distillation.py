@@ -304,6 +304,18 @@ class TestESBenchmarkWiring(unittest.TestCase):
             def refresh_corpus_vectors(self, quantize_adapter_output=False, quantization_levels=127):
                 self.refresh_calls.append((quantize_adapter_output, quantization_levels))
 
+            def get_last_runtime_diagnostics(self):
+                return {
+                    "runtime": {"status": "ok", "latency_ms": 4.0, "action": "FAST"},
+                    "norm_drift": {"adapter_norm_ratio_latest": 1.1},
+                    "route_effectiveness": {"routes": {}},
+                    "retrieval_policy": {"policy": "global_scout"},
+                    "query_summary": {"query_hash": "abc", "token_estimate": 1},
+                }
+
+            def get_runtime_telemetry(self):
+                return {"mode": "local", "torch_cuda_available": False}
+
         args = SimpleNamespace(
             max_eval_queries=1,
             es_population_size=2,
@@ -337,6 +349,8 @@ class TestESBenchmarkWiring(unittest.TestCase):
         self.assertEqual(result["fitness_composition"]["final_fitness"], 0.75)
         self.assertIn("integrated_diagnostics", result)
         self.assertIn("adaptive_gate", result)
+        self.assertEqual(result["integrated_diagnostics"]["runtime"]["latency_ms"], 4.0)
+        self.assertEqual(result["integrated_diagnostics"]["telemetry"]["mode"], "local")
         self.assertIn((True, 127), engine.refresh_calls)
         self.assertFalse(engine._simulate_embedding_quantization)
 

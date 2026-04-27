@@ -1,3 +1,6 @@
+import hashlib
+import time
+
 import numpy as np
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams, PointStruct
@@ -37,10 +40,10 @@ class AntigravityEngine:
         self.chelation_threshold = ChelationConfig.DEFAULT_CHELATION_THRESHOLD
         self.adapter_path = ChelationConfig.ADAPTER_WEIGHTS_PATH
         self.logger = get_logger()
-        
+
         # F-040: Payload optimization control (default to config for backward compatibility)
         self.store_full_text_payload = store_full_text_payload if store_full_text_payload is not None else ChelationConfig.STORE_FULL_TEXT_PAYLOAD
-        
+
         # Adaptive threshold state (disabled by default for backward compatibility)
         self._adaptive_threshold_enabled = False
         self._adaptive_threshold_percentile = ChelationConfig.ADAPTIVE_THRESHOLD_PERCENTILE
@@ -50,11 +53,11 @@ class AntigravityEngine:
         self._adaptive_threshold_max = ChelationConfig.ADAPTIVE_THRESHOLD_MAX
         self._variance_history = []  # Stores recent variance observations
         self._adaptive_threshold_lock = Lock()
-        
+
         # Validate and store training configuration
         self.training_mode = ChelationConfig.validate_training_mode(training_mode)
         self.teacher_weight = ChelationConfig.validate_teacher_weight(teacher_weight)
-        
+
         # Initialize teacher distillation helper (lazy loading)
         self.teacher_helper = None
         if self.training_mode in ["offline", "hybrid"]:
@@ -73,13 +76,13 @@ class AntigravityEngine:
         self.logger.log_event("initialization", f"Initializing Antigravity Engine with model: {model_name}", model_name=model_name)
         self.embedding_backend = create_embedding_backend(model_name, self.logger)
         self.vector_size = self.embedding_backend.vector_size
-        
+
         # Store mode and model_name for backward compatibility
         self.mode = "ollama" if model_name.startswith("ollama:") else "local"
         self.model_name = model_name.replace("ollama:", "") if model_name.startswith("ollama:") else model_name
         if self.mode == "ollama":
             self.ollama_url = ChelationConfig.OLLAMA_URL
-            
+
         # Initialize Dynamic Adapter (Phase 2: factory-based creation)
         self.logger.log_event("adapter_init", "Initializing Dynamic Chelation Adapter")
         self.adapter = create_adapter(
@@ -91,7 +94,7 @@ class AntigravityEngine:
             self.logger.log_checkpoint("load", self.adapter_path)
         else:
             self.logger.log_event("adapter_init", "Created new adapter (Identity initialization)")
-        
+
         # Initialize Vector Store with validation (F-044: Vector Store Abstraction)
         # Create vector store abstraction (uses Qdrant backend)
         self._vector_store = create_vector_store(
@@ -99,12 +102,12 @@ class AntigravityEngine:
             backend="qdrant",
             client_cls=QdrantClient,
         )
-        
+
         # Backward compatibility: keep engine.qdrant access path.
         self.qdrant = self._vector_store
-        
+
         self.collection_name = ChelationConfig.DEFAULT_COLLECTION_NAME
-        
+
         # Configure Quantization
         from qdrant_client import models
         quant_config = None
@@ -117,7 +120,7 @@ class AntigravityEngine:
                     always_ram=True
                 )
             )
-        
+
         # Create collection if not exists (Enable Persistence)
         if self.qdrant.collection_exists(self.collection_name):
             self.logger.log_event("collection_init", f"Loaded existing collection '{self.collection_name}'", collection_name=self.collection_name)
@@ -127,7 +130,7 @@ class AntigravityEngine:
                 vectors_config=VectorParams(size=self.vector_size, distance=Distance.COSINE),
                 quantization_config=quant_config
             )
-        
+
         # Initialize checkpoint manager for safe training (F-043)
         self.checkpoint_manager = CheckpointManager()
         self.logger.log_event("checkpoint_manager_init", "CheckpointManager initialized for safe training")
@@ -135,23 +138,43 @@ class AntigravityEngine:
         self._es_optimizer_kwargs = {}
         self._simulate_embedding_quantization = False
         self._embedding_quantization_levels = 127
+        self._last_runtime_diagnostics = None
+        self._runtime_telemetry = {
+            "mode": self.mode,
+            "model_name": self.model_name,
+            "vector_size": int(self.vector_size),
+            "total_inferences": 0,
+            "empty_result_count": 0,
+            "qdrant_error_count": 0,
+        }
+        self._last_embedding_norms = None
 
     def embed(self, texts):
         """Get Embeddings via backend abstraction."""
         if isinstance(texts, str):
             texts = [texts]
-        
+
         if not texts:
             return np.array([])
-        
+
         # Get raw embeddings from backend
         raw_embeddings = self.embedding_backend.embed_raw(texts)
-        
+
         # For local mode, pass through adapter
         if self.mode == "local":
             with torch.no_grad():
                 tensor_inputs = torch.tensor(raw_embeddings, dtype=torch.float32)
                 adapted_embeddings = self.adapter(tensor_inputs)
+                if isinstance(adapted_embeddings, torch.Tensor):
+                    adapter_output_norm = float(torch.norm(adapted_embeddings).item())
+                else:
+                    adapter_output_norm = float(np.linalg.norm(np.asarray(adapted_embeddings.numpy())))
+                self._last_embedding_norms = {
+                    "adapter_input_norm": float(torch.norm(tensor_inputs).item()),
+                    "adapter_output_norm": adapter_output_norm,
+                    "batch_size": int(tensor_inputs.shape[0]),
+                    "dtype": str(tensor_inputs.dtype),
+                }
                 if getattr(self, "_simulate_embedding_quantization", False):
                     from evolution_strategies_optimizer import simulate_int8_quantization
 
@@ -162,6 +185,12 @@ class AntigravityEngine:
                 return adapted_embeddings.numpy()
         else:
             # Ollama mode - return raw embeddings directly (no adapter)
+            self._last_embedding_norms = {
+                "adapter_input_norm": None,
+                "adapter_output_norm": None,
+                "batch_size": len(texts),
+                "dtype": str(getattr(raw_embeddings, "dtype", "unknown")),
+            }
             if getattr(self, "_simulate_embedding_quantization", False):
                 from evolution_strategies_optimizer import simulate_int8_quantization
 
@@ -279,17 +308,17 @@ class AntigravityEngine:
     def ingest(self, text_corpus, payloads=None):
         """Ingests real-world documents into Qdrant."""
         self.logger.log_event("ingestion_start", f"Ingesting {len(text_corpus)} documents", total_docs=len(text_corpus))
-        
+
         batch_size = ChelationConfig.BATCH_SIZE
         total_batches = (len(text_corpus) + batch_size - 1) // batch_size
-        
+
         for i in range(total_batches):
             batch_texts = text_corpus[i*batch_size : (i+1)*batch_size]
             batch_payloads = payloads[i*batch_size : (i+1)*batch_size] if payloads else [{}] * len(batch_texts)
-            
+
             # Embed
             embeddings = self.embed(batch_texts)
-            
+
             # F-025: Validate embed() output before PointStruct/upsert
             # Check 1: Empty result on non-empty batch
             if len(batch_texts) > 0 and len(embeddings) == 0:
@@ -300,9 +329,9 @@ class AntigravityEngine:
                     batch_size=len(batch_texts)
                 )
                 continue
-            
+
             embeddings = np.asarray(embeddings)
-            
+
             # Check 2: Shape must be 2D [batch, dim]
             if embeddings.ndim != 2:
                 self.logger.log_error(
@@ -312,7 +341,7 @@ class AntigravityEngine:
                     shape=embeddings.shape
                 )
                 continue
-            
+
             # Check 3: Number of embeddings must match number of texts
             if embeddings.shape[0] != len(batch_texts):
                 self.logger.log_error(
@@ -323,7 +352,7 @@ class AntigravityEngine:
                     embedding_count=embeddings.shape[0]
                 )
                 continue
-            
+
             # Check 4: Embedding dimension must match vector_size
             if embeddings.shape[1] != self.vector_size:
                 self.logger.log_error(
@@ -334,7 +363,7 @@ class AntigravityEngine:
                     actual_dim=embeddings.shape[1]
                 )
                 continue
-            
+
             # F-040: Build payload conditionally based on store_full_text_payload flag
             points = [
                 PointStruct(
@@ -346,22 +375,22 @@ class AntigravityEngine:
             ]
             self.qdrant.upsert(collection_name=self.collection_name, points=points)
             self.logger.log_event("ingestion_progress", f"Ingested batch {i+1}/{total_batches}", level="DEBUG", batch_num=i+1, total_batches=total_batches)
-            
+
         self.logger.log_event("ingestion_complete", "Ingestion Complete")
 
     def ingest_streaming(self, texts_iterable, payloads_iterable=None, batch_size=None, start_id=0):
         """
         Ingest documents from iterables without loading full corpus into memory.
-        
+
         Processes documents in batches, embedding and upserting incrementally.
         Suitable for large datasets that don't fit in memory.
-        
+
         Args:
             texts_iterable: Iterable of text documents (e.g., generator, list, etc.)
             payloads_iterable: Optional iterable of payload dicts, aligned with texts
             batch_size: Documents per batch (defaults to config STREAMING_BATCH_SIZE)
             start_id: Starting document ID (default 0)
-            
+
         Returns:
             Dict with ingestion statistics: {
                 'total_docs': int,
@@ -372,34 +401,34 @@ class AntigravityEngine:
         """
         if batch_size is None:
             batch_size = ChelationConfig.STREAMING_BATCH_SIZE
-        
+
         progress_interval = ChelationConfig.STREAMING_PROGRESS_INTERVAL
-        
+
         self.logger.log_event(
             "streaming_ingestion_start",
             "Starting streaming ingestion",
             batch_size=batch_size,
             start_id=start_id
         )
-        
+
         total_docs = 0
         total_batches = 0
         current_id = start_id
-        
+
         # Convert to iterators to support both lists and generators
         texts_iter = iter(texts_iterable)
         payloads_iter = iter(payloads_iterable) if payloads_iterable is not None else None
-        
+
         while True:
             # Collect batch
             batch_texts = []
             batch_payloads = []
-            
+
             for _ in range(batch_size):
                 try:
                     text = next(texts_iter)
                     batch_texts.append(text)
-                    
+
                     if payloads_iter is not None:
                         try:
                             payload = next(payloads_iter)
@@ -409,18 +438,18 @@ class AntigravityEngine:
                             batch_payloads.append({})
                     else:
                         batch_payloads.append({})
-                        
+
                 except StopIteration:
                     # Text iterator exhausted
                     break
-            
+
             # Check if we have any documents to process
             if not batch_texts:
                 break
-            
+
             # Embed batch
             embeddings = self.embed(batch_texts)
-            
+
             # F-040: Build payload conditionally based on store_full_text_payload flag
             points = [
                 PointStruct(
@@ -431,13 +460,13 @@ class AntigravityEngine:
                 for j in range(len(batch_texts))
             ]
             self.qdrant.upsert(collection_name=self.collection_name, points=points)
-            
+
             # Update counters
             batch_doc_count = len(batch_texts)
             total_docs += batch_doc_count
             total_batches += 1
             current_id += batch_doc_count
-            
+
             # Log progress periodically
             if total_batches % progress_interval == 0:
                 self.logger.log_event(
@@ -447,7 +476,7 @@ class AntigravityEngine:
                     batch_num=total_batches,
                     total_docs=total_docs
                 )
-        
+
         # Log completion
         self.logger.log_event(
             "streaming_ingestion_complete",
@@ -457,7 +486,7 @@ class AntigravityEngine:
             start_id=start_id,
             end_id=current_id - 1
         )
-        
+
         return {
             'total_docs': total_docs,
             'total_batches': total_batches,
@@ -476,10 +505,10 @@ class AntigravityEngine:
                 with_vectors=True,
                 with_payload=ChelationConfig.FETCH_PAYLOAD_ON_QUERY
             ).points
-            
+
             if not search_result:
                 return np.array([])
-                
+
             vectors = [hit.vector for hit in search_result]
             return np.array(vectors)
         except (ResponseHandlingException, UnexpectedResponse) as e:
@@ -517,7 +546,7 @@ class AntigravityEngine:
         """
         # 1. Embed Query
         q_vec = self.embed(query_text)[0]
-        
+
         try:
             # 2. Gravity Sensor (Scout)
             # We need to find the local cluster in the EXISTING corpus.
@@ -530,29 +559,29 @@ class AntigravityEngine:
                 with_vectors=True,
                 with_payload=ChelationConfig.FETCH_PAYLOAD_ON_QUERY
             ).points
-            
+
             if not scout_results:
                 # Fallback if index empty
                 return q_vec
-            
+
             # Extract vectors directly from scout_results (F-027: eliminated redundant retrieve())
             local_vectors = [hit.vector for hit in scout_results if hit.vector is not None]
-            
+
             if not local_vectors:
                 return q_vec
-                
+
             local_cluster_np = np.array(local_vectors)
-            
+
             # 3. Chelate
             mask = self._chelate_toxicity(local_cluster_np)
-            
+
             # 4. Apply Mask
             q_chelated = q_vec * mask
             return q_chelated
         except (ResponseHandlingException, UnexpectedResponse) as e:
             self.logger.log_error("qdrant", f"Qdrant error in get_chelated_vector: {e}", exception=e)
             return q_vec
-    
+
     def enable_adaptive_threshold(
         self,
         percentile: float = None,
@@ -563,10 +592,10 @@ class AntigravityEngine:
     ):
         """
         Enable adaptive threshold tuning.
-        
+
         When enabled, the chelation threshold will automatically adjust based on
         observed variance distribution during inference.
-        
+
         Args:
             percentile: Target percentile of observed variances (default: 75)
             window: Number of recent variance samples to track (default: 100)
@@ -576,7 +605,7 @@ class AntigravityEngine:
         """
         with self._adaptive_threshold_lock:
             self._adaptive_threshold_enabled = True
-            
+
             if percentile is not None:
                 self._adaptive_threshold_percentile = ChelationConfig.validate_adaptive_percentile(percentile)
             if window is not None:
@@ -593,7 +622,7 @@ class AntigravityEngine:
             min_samples_val = self._adaptive_threshold_min_samples
             min_bound_val = self._adaptive_threshold_min
             max_bound_val = self._adaptive_threshold_max
-        
+
         self.logger.log_event(
             "adaptive_threshold_enabled",
             "Adaptive threshold tuning enabled",
@@ -603,28 +632,28 @@ class AntigravityEngine:
             min_bound=min_bound_val,
             max_bound=max_bound_val
         )
-    
+
     def disable_adaptive_threshold(self):
         """
         Disable adaptive threshold tuning.
-        
+
         Resets the threshold to the configured default and clears variance history.
         """
         with self._adaptive_threshold_lock:
             self._adaptive_threshold_enabled = False
             self.chelation_threshold = ChelationConfig.DEFAULT_CHELATION_THRESHOLD
             self._variance_history.clear()
-        
+
         self.logger.log_event(
             "adaptive_threshold_disabled",
             "Adaptive threshold tuning disabled",
             threshold_reset_to=self.chelation_threshold
         )
-    
+
     def get_threshold_stats(self):
         """
         Get current adaptive threshold statistics.
-        
+
         Returns:
             dict: Statistics including enabled status, current threshold, and history stats
         """
@@ -640,21 +669,21 @@ class AntigravityEngine:
                 "max_bound": self._adaptive_threshold_max,
                 "variance_samples_count": len(variance_history)
             }
-        
+
         if variance_history:
             stats["variance_min"] = float(np.min(variance_history))
             stats["variance_max"] = float(np.max(variance_history))
             stats["variance_mean"] = float(np.mean(variance_history))
             stats["variance_median"] = float(np.median(variance_history))
-        
+
         return stats
-    
+
     def _update_adaptive_threshold(self, global_variance: float):
         """
         Internal helper to update threshold based on observed variance.
-        
+
         Called during inference when adaptive mode is enabled.
-        
+
         Args:
             global_variance: Current query's global variance value
         """
@@ -921,6 +950,138 @@ class AntigravityEngine:
             route_count=len(routes),
         )
 
+    @staticmethod
+    def _runtime_json_safe(value):
+        if value is None or isinstance(value, (str, bool, int, float)):
+            return value
+        if isinstance(value, np.generic):
+            return value.item()
+        if isinstance(value, np.ndarray):
+            return value.tolist()
+        if isinstance(value, dict):
+            return {str(key): AntigravityEngine._runtime_json_safe(item) for key, item in value.items()}
+        if isinstance(value, (list, tuple, set)):
+            return [AntigravityEngine._runtime_json_safe(item) for item in value]
+        return str(value)
+
+    def get_last_runtime_diagnostics(self):
+        """Return the last inference diagnostics snapshot, if available."""
+
+        diagnostics = getattr(self, "_last_runtime_diagnostics", None)
+        if diagnostics is None:
+            return None
+        return self._runtime_json_safe(diagnostics)
+
+    def get_runtime_telemetry(self):
+        """Return lightweight AI-engineering runtime telemetry."""
+
+        telemetry = dict(getattr(self, "_runtime_telemetry", {}))
+        telemetry.setdefault("mode", getattr(self, "mode", "unknown"))
+        telemetry.setdefault("model_name", getattr(self, "model_name", "unknown"))
+        telemetry.setdefault("vector_size", int(getattr(self, "vector_size", 0) or 0))
+        telemetry["torch_cuda_available"] = bool(torch.cuda.is_available())
+        if torch.cuda.is_available():
+            telemetry["cuda_device_name"] = torch.cuda.get_device_name(0)
+            telemetry["cuda_memory_allocated_mb"] = float(torch.cuda.memory_allocated(0) / (1024 ** 2))
+            telemetry["cuda_memory_reserved_mb"] = float(torch.cuda.memory_reserved(0) / (1024 ** 2))
+            telemetry["cuda_max_memory_allocated_mb"] = float(torch.cuda.max_memory_allocated(0) / (1024 ** 2))
+        else:
+            telemetry["cuda_device_name"] = None
+            telemetry["cuda_memory_allocated_mb"] = 0.0
+            telemetry["cuda_memory_reserved_mb"] = 0.0
+            telemetry["cuda_max_memory_allocated_mb"] = 0.0
+        return self._runtime_json_safe(telemetry)
+
+    def _select_retrieval_policy(self, action, variance=None, active_threshold=None, scout_limit=None):
+        variance_value = None if variance is None else float(variance)
+        threshold_value = None if active_threshold is None else float(active_threshold)
+        variance_above_threshold = (
+            variance_value is not None
+            and threshold_value is not None
+            and variance_value > threshold_value
+        )
+        policy = "global_scout" if action == "FAST" else "local_chelation"
+        return {
+            "policy": policy,
+            "action": action,
+            "scout_limit": int(scout_limit or ChelationConfig.SCOUT_K),
+            "use_quantization": bool(getattr(self, "use_quantization", False)),
+            "use_centering": bool(getattr(self, "use_centering", False)),
+            "variance": variance_value,
+            "active_threshold": threshold_value,
+            "variance_above_threshold": bool(variance_above_threshold),
+            "high_variance_fast_path": bool(variance_above_threshold and action == "FAST"),
+        }
+
+    def _build_runtime_diagnostics(
+        self,
+        query_text,
+        action,
+        latency_ms,
+        std_top=None,
+        final_top=None,
+        jaccard=None,
+        variance=None,
+        active_threshold=None,
+        route=None,
+        query_reformulation=None,
+        status="ok",
+        retrieval_policy=None,
+        norm_drift=None,
+        error_type=None,
+    ):
+        query_hash = hashlib.sha256(str(query_text).encode("utf-8")).hexdigest()[:16]
+        runtime = {
+            "status": status,
+            "action": action,
+            "latency_ms": float(latency_ms),
+            "global_variance": None if variance is None else float(variance),
+            "active_threshold": None if active_threshold is None else float(active_threshold),
+            "std_result_count": len(std_top or []),
+            "final_result_count": len(final_top or []),
+            "jaccard": None if jaccard is None else float(jaccard),
+            "error_type": error_type,
+        }
+        diagnostics = {
+            "runtime": runtime,
+            "query_summary": {
+                "query_hash": query_hash,
+                "query_length": len(str(query_text)),
+                "token_estimate": len(str(query_text).split()),
+            },
+            "retrieval_policy": retrieval_policy or self._select_retrieval_policy(
+                action,
+                variance=variance,
+                active_threshold=active_threshold,
+            ),
+            "route": route,
+            "query_reformulation": query_reformulation,
+            "norm_drift": norm_drift,
+            "telemetry": self.get_runtime_telemetry(),
+        }
+        return self._runtime_json_safe(diagnostics)
+
+    def _record_runtime_diagnostics(self, diagnostics):
+        self._last_runtime_diagnostics = self._runtime_json_safe(diagnostics)
+        telemetry = dict(getattr(self, "_runtime_telemetry", {}))
+        telemetry["total_inferences"] = int(telemetry.get("total_inferences", 0)) + 1
+        runtime = self._last_runtime_diagnostics.get("runtime", {})
+        telemetry["last_latency_ms"] = runtime.get("latency_ms")
+        if runtime.get("status") == "empty_results":
+            telemetry["empty_result_count"] = int(telemetry.get("empty_result_count", 0)) + 1
+        if runtime.get("status") == "qdrant_error":
+            telemetry["qdrant_error_count"] = int(telemetry.get("qdrant_error_count", 0)) + 1
+        self._runtime_telemetry = telemetry
+        logger = getattr(self, "logger", None)
+        if logger is not None:
+            logger.log_event(
+                "runtime_diagnostics",
+                "Captured runtime inference diagnostics",
+                **self._last_runtime_diagnostics,
+                level="DEBUG",
+            )
+        return self._last_runtime_diagnostics
+
     # ===== Teacher Weight Scheduling =====
 
     def enable_teacher_weight_scheduling(self, schedule="constant",
@@ -1094,10 +1255,10 @@ class AntigravityEngine:
             return local_ids, []
 
         local_np = np.array(local_vectors)
-        
+
         # 1. Center of Mass
         center_of_mass = np.mean(local_np, axis=0)
-        
+
         # [HOMEOSTATIC LOGGING]
         # Record that these documents participated in a cluster with this 'Noise Center'
         # We only log if this is a "dense" cluster (checking variance is done in caller, so assume yes)
@@ -1108,20 +1269,20 @@ class AntigravityEngine:
             if len(self.chelation_log[doc_id]) > max_entries:
                 # Keep most recent entries
                 self.chelation_log[doc_id] = self.chelation_log[doc_id][-max_entries:]
-        
+
         # 2. Shift Reference Frame
         # V_new = V_old - mu
         centered_query = query_vec - center_of_mass
         centered_candidates = local_np - center_of_mass
-        
+
         # 3. Recalculate Similarities (vectorized)
         # Compute norms
         query_norm = np.linalg.norm(centered_query)
         candidate_norms = np.linalg.norm(centered_candidates, axis=1)
-        
+
         # Compute dot products: shape (n_candidates,)
         dots = np.dot(centered_candidates, centered_query)
-        
+
         # Compute cosine similarities, handling zero norms
         # Where either norm is zero, keep score at 0.0
         denominators = query_norm * candidate_norms
@@ -1137,7 +1298,7 @@ class AntigravityEngine:
         # Pair with IDs and sort
         scores = [(local_ids[i], scores_vec[i]) for i in range(len(local_ids))]
         scores.sort(key=lambda x: x[1], reverse=True)
-        
+
         sorted_ids = [s[0] for s in scores]
         return sorted_ids, center_of_mass
 
@@ -1145,12 +1306,12 @@ class AntigravityEngine:
         """
         [State 2: Sleep Cycle]
         DYNAMIC UPDATE: Trains the Adapter using the collected chelation events.
-        
+
         Supports multiple training modes:
         - baseline: Original homeostatic training (push away from noise centers)
         - offline: Teacher-guided training (align with teacher embeddings)
         - hybrid: Blend homeostatic and teacher guidance
-        
+
         The 'Sleep Cycle' now does:
         1. Identifies vectors that were prone to 'semantic noise' (collapsing).
         2. Trains the Adapter to push these vectors AWAY from the noise centers (baseline)
@@ -1166,13 +1327,13 @@ class AntigravityEngine:
             training_mode=self.training_mode,
             noise_injection=noise_injection
         )
-        
+
         # Handle epochs=0 gracefully (skip training)
         if epochs == 0:
             self.logger.log_event("training_skipped", "Epochs=0, skipping training cycle")
             self.chelation_log.clear()  # Still clear the log even if no training
             return
-        
+
         # Filter for frequent collapsers
         targets = {k: v for k, v in self.chelation_log.items() if len(v) >= threshold}
         self.logger.log_event("training_preparation", f"Found {len(targets)} collapsing node candidates", num_candidates=len(targets))
@@ -1188,7 +1349,7 @@ class AntigravityEngine:
 
         # --- PREPARE TRAINING DATA ---
         batch_ids = list(targets.keys())
-        
+
         chunk_size = ChelationConfig.CHUNK_SIZE
         training_inputs = []
         training_targets = []
@@ -1196,9 +1357,9 @@ class AntigravityEngine:
         training_texts = []  # For teacher distillation
         payload_map = {}  # F-031: Cache payloads during initial retrieve
         complexity_weights = [] # For noise injection scaling
-        
+
         self.logger.log_event("training_preparation", "Fetching training data from Qdrant", level="DEBUG")
-        
+
         for i in range(0, len(batch_ids), chunk_size):
             chunk = batch_ids[i:i+chunk_size]
             points = self.qdrant.retrieve(
@@ -1206,25 +1367,25 @@ class AntigravityEngine:
                 ids=chunk,
                 with_vectors=True
             )
-            
+
             for point in points:
                 ordered_ids.append(point.id)
                 noise_vectors = targets[point.id]
                 current_vec = np.array(point.vector)
-                
+
                 # Store input
                 training_inputs.append(current_vec)
-                
+
                 # Get text for teacher distillation modes
                 text = point.payload.get("text", "")
                 training_texts.append(text)
-                
+
                 # F-031: Cache payload for later sync
                 payload_map[point.id] = point.payload
-                
+
                 # Track complexity for noise injection scaling
                 complexity_weights.append(len(noise_vectors))
-                
+
                 # Calculate Target based on mode
                 if self.training_mode == "baseline":
                     # Original homeostatic push using shared helper
@@ -1232,12 +1393,12 @@ class AntigravityEngine:
                         current_vec, noise_vectors, ChelationConfig.HOMEOSTATIC_PUSH_MAGNITUDE
                     )
                     training_targets.append(target_vec)
-                    
+
                 elif self.training_mode == "offline":
                     # Pure teacher guidance - defer to batch processing
                     # For now, use current vec as placeholder (will be replaced)
                     training_targets.append(current_vec)
-                    
+
                 elif self.training_mode == "hybrid":
                     # Blend homeostatic + teacher - defer to batch processing
                     # Calculate homeostatic target first using shared helper
@@ -1245,14 +1406,14 @@ class AntigravityEngine:
                         current_vec, noise_vectors, ChelationConfig.HOMEOSTATIC_PUSH_MAGNITUDE
                     )
                     training_targets.append(homeostatic_target)  # Will be blended later
-                
+
         if not training_inputs:
             return
-        
+
         # Convert to numpy arrays
         input_array = np.array(training_inputs)
         target_array = np.array(training_targets)
-        
+
         # Apply teacher distillation if needed
         if self.training_mode == "offline" and self.teacher_helper:
             self.logger.log_event("distillation_teacher_targets", "Generating pure teacher targets")
@@ -1278,7 +1439,7 @@ class AntigravityEngine:
                         )
                     )
                 target_array = np.array(homeostatic_targets)
-        
+
         elif self.training_mode == "hybrid" and self.teacher_helper:
             self.logger.log_event(
                 "distillation_hybrid_targets",
@@ -1305,11 +1466,11 @@ class AntigravityEngine:
         # Normalize Data
         input_tensor = torch.tensor(input_array, dtype=torch.float32)
         target_tensor = torch.tensor(target_array, dtype=torch.float32)
-        
+
         # Noise injection setup
         if noise_injection is None:
             noise_injection = ChelationConfig.NOISE_INJECTION_BASE_SCALE if getattr(ChelationConfig, 'NOISE_INJECTION_ENABLED', False) else 0.0
-            
+
         if noise_injection > 0.0:
             complexity_tensor = torch.tensor(complexity_weights, dtype=torch.float32).unsqueeze(1)
             max_complexity = complexity_tensor.max()
@@ -1319,10 +1480,10 @@ class AntigravityEngine:
             self.logger.log_event("noise_injection", f"Enabled noise injection with base scale {noise_injection}")
         else:
             noise_scales = None
-        
+
         # --- TRAINING LOOP (wrapped in SafeTrainingContext for F-043) ---
         self.logger.log_training_start(num_samples=len(training_inputs), learning_rate=learning_rate, epochs=epochs, threshold=threshold)
-        
+
         with SafeTrainingContext(
             self.checkpoint_manager,
             self.adapter_path,
@@ -1485,10 +1646,10 @@ class AntigravityEngine:
 
             # Batch Update Logic using shared helper (F-031: pass cached payload_map)
             total_updates, failed_updates = sync_vectors_to_qdrant(
-                self.qdrant, self.collection_name, ordered_ids, 
+                self.qdrant, self.collection_name, ordered_ids,
                 new_vectors_np, chunk_size, self.logger, payload_map
             )
-            
+
             # Mark success only if no failed vector updates (F-043)
             if failed_updates == 0:
                 training_ctx.mark_success()
@@ -1504,18 +1665,18 @@ class AntigravityEngine:
                     vectors_updated=total_updates,
                     vectors_failed=failed_updates
                 )
-                    
+
         self.logger.log_training_complete(final_loss=final_loss, vectors_updated=total_updates, vectors_failed=failed_updates)
         self.chelation_log.clear()
-    
+
     def run_offline_distillation(self, batch_size: int = 100, learning_rate: float = None, epochs: int = None):
         """
         Run explicit offline teacher distillation on the entire corpus.
-        
+
         This method trains the adapter to align ALL corpus embeddings with teacher embeddings,
         independent of query-time chelation events. Useful for pre-training or warm-starting
         the adapter with teacher knowledge.
-        
+
         Args:
             batch_size: Number of documents to process per batch
             learning_rate: Optional learning rate (uses config default if None)
@@ -1528,14 +1689,14 @@ class AntigravityEngine:
                 training_mode=self.training_mode
             )
             return
-        
+
         lr = learning_rate or ChelationConfig.DEFAULT_OFFLINE_LEARNING_RATE
         ep = epochs or ChelationConfig.DEFAULT_OFFLINE_EPOCHS
-        
+
         if ep == 0:
             self.logger.log_event("offline_distillation_skipped", "Epochs=0, skipping offline distillation")
             return
-        
+
         self.logger.log_event(
             "offline_distillation_start",
             f"Starting offline distillation (LR={lr}, Epochs={ep}, Batch={batch_size})",
@@ -1543,7 +1704,7 @@ class AntigravityEngine:
             epochs=ep,
             batch_size=batch_size
         )
-        
+
         # Check dimension compatibility (projection handles mismatch if enabled)
         if not self.teacher_helper.check_dimension_compatibility(self.vector_size):
             if not self.teacher_helper._projection_enabled:
@@ -1560,7 +1721,7 @@ class AntigravityEngine:
                 teacher_dim=self.teacher_helper.teacher_dim,
                 student_dim=self.vector_size,
             )
-        
+
         # Fetch all corpus IDs
         try:
             all_points = []
@@ -1596,17 +1757,17 @@ class AntigravityEngine:
                 exception=e
             )
             return
-        
+
         # Process in batches
         training_inputs = []
         training_targets = []
         ordered_ids = []
-        
+
         for i in range(0, len(all_points), batch_size):
             batch_points = all_points[i:i+batch_size]
             batch_ids = [p.id for p in batch_points]
             batch_texts = [p.payload.get("text", "") for p in batch_points]
-            
+
             # Retrieve vectors for this batch
             try:
                 points_with_vectors = self.qdrant.retrieve(
@@ -1614,20 +1775,20 @@ class AntigravityEngine:
                     ids=batch_ids,
                     with_vectors=True
                 )
-                
+
                 current_vecs = [np.array(p.vector) for p in points_with_vectors]
-                
+
                 # Generate teacher targets
                 target_vecs = self.teacher_helper.generate_distillation_targets(
                     texts=batch_texts,
                     current_embeddings=np.array(current_vecs),
                     teacher_weight=1.0  # Pure teacher guidance for offline mode
                 )
-                
+
                 training_inputs.extend(current_vecs)
                 training_targets.extend(target_vecs)
                 ordered_ids.extend(batch_ids)
-                
+
                 self.logger.log_event(
                     "offline_distillation_batch",
                     f"Processed batch {i//batch_size + 1}",
@@ -1635,7 +1796,7 @@ class AntigravityEngine:
                     batch_num=i//batch_size + 1,
                     batch_size=len(batch_ids)
                 )
-                
+
             except Exception as e:
                 self.logger.log_error(
                     "offline_distillation_batch_failed",
@@ -1644,15 +1805,15 @@ class AntigravityEngine:
                     batch_num=i//batch_size + 1
                 )
                 continue
-        
+
         if not training_inputs:
             self.logger.log_event("offline_distillation_no_data", "No training data generated")
             return
-        
+
         # Convert to tensors
         input_tensor = torch.tensor(np.array(training_inputs), dtype=torch.float32)
         target_tensor = torch.tensor(np.array(training_targets), dtype=torch.float32)
-        
+
         # Train adapter
         self.logger.log_training_start(
             num_samples=len(training_inputs),
@@ -1660,7 +1821,7 @@ class AntigravityEngine:
             epochs=ep,
             threshold=0
         )
-        
+
         from sedimentation_loss import create_sedimentation_loss
         _loss_type = getattr(self, '_sedimentation_loss_type', 'mse')
         _loss_kwargs = getattr(self, '_sedimentation_loss_kwargs', {})
@@ -1792,18 +1953,18 @@ class AntigravityEngine:
 
         # Update vectors in Qdrant
         self.logger.log_event("offline_distillation_update", "Updating corpus vectors in Qdrant")
-        
+
         with torch.no_grad():
             new_vectors_np = self.adapter(input_tensor).numpy()
-        
+
         chunk_size = ChelationConfig.CHUNK_SIZE
         total_updates = 0
         failed_updates = 0
-        
+
         for i in range(0, len(ordered_ids), chunk_size):
             chunk_ids = ordered_ids[i:i+chunk_size]
             chunk_vectors = new_vectors_np[i:i+chunk_size]
-            
+
             try:
                 existing_points = self.qdrant.retrieve(
                     collection_name=self.collection_name,
@@ -1811,18 +1972,18 @@ class AntigravityEngine:
                     with_vectors=False
                 )
                 payload_map = {p.id: p.payload for p in existing_points}
-                
+
                 batch_points = []
                 for j, doc_id in enumerate(chunk_ids):
                     vec = chunk_vectors[j].tolist()
                     pay = payload_map.get(doc_id, {})
-                    
+
                     batch_points.append(PointStruct(
                         id=doc_id,
                         vector=vec,
                         payload=pay
                     ))
-                
+
                 if batch_points:
                     self.qdrant.upsert(
                         collection_name=self.collection_name,
@@ -1837,7 +1998,7 @@ class AntigravityEngine:
                     batch_num=i//chunk_size
                 )
                 failed_updates += len(chunk_ids)
-        
+
         self.logger.log_training_complete(
             final_loss=final_loss,
             vectors_updated=total_updates,
@@ -1846,6 +2007,7 @@ class AntigravityEngine:
 
     def run_inference(self, query_text):
         """Full Navigational Loop (returns IDs)."""
+        inference_start = time.time()
         reformulator = getattr(self, '_query_reformulator', None)
         if reformulator is not None and not getattr(self, '_query_reformulation_active', False):
             self._query_reformulation_active = True
@@ -1857,8 +2019,20 @@ class AntigravityEngine:
                 merged = []
                 seen = set()
                 first_result = None
+                variant_summaries = []
                 for variant in variants:
                     result = self.run_inference(variant.text)
+                    child_diagnostics = self.get_last_runtime_diagnostics()
+                    variant_summaries.append({
+                        "strategy": variant.strategy,
+                        "result_count": len(result[1]),
+                        "jaccard": float(result[3]),
+                        "child_status": (
+                            child_diagnostics.get("runtime", {}).get("status")
+                            if isinstance(child_diagnostics, dict)
+                            else None
+                        ),
+                    })
                     if first_result is None:
                         first_result = result
                     for doc_id in result[1]:
@@ -1868,16 +2042,59 @@ class AntigravityEngine:
                     if len(merged) >= 10:
                         break
                 if first_result is None:
+                    latency_ms = (time.time() - inference_start) * 1000.0
+                    self._record_runtime_diagnostics(self._build_runtime_diagnostics(
+                        query_text,
+                        action="REFORMULATE",
+                        latency_ms=latency_ms,
+                        std_top=[],
+                        final_top=[],
+                        jaccard=0.0,
+                        status="empty_results",
+                        query_reformulation={"variant_count": 0, "variants": []},
+                    ))
                     return [], [], np.ones(self.vector_size), 0.0
-                return first_result[0], merged[:10], first_result[2], first_result[3]
+                final_result = (first_result[0], merged[:10], first_result[2], first_result[3])
+                latency_ms = (time.time() - inference_start) * 1000.0
+                self._record_runtime_diagnostics(self._build_runtime_diagnostics(
+                    query_text,
+                    action="REFORMULATE",
+                    latency_ms=latency_ms,
+                    std_top=final_result[0],
+                    final_top=final_result[1],
+                    jaccard=final_result[3],
+                    status="ok",
+                    query_reformulation={
+                        "variant_count": len(variant_summaries),
+                        "variants": variant_summaries,
+                    },
+                    retrieval_policy={
+                        "policy": "multi_variant_merge",
+                        "action": "REFORMULATE",
+                        "scout_limit": ChelationConfig.SCOUT_K,
+                        "use_quantization": bool(getattr(self, "use_quantization", False)),
+                        "use_centering": bool(getattr(self, "use_centering", False)),
+                        "variance": None,
+                        "active_threshold": None,
+                        "variance_above_threshold": False,
+                        "high_variance_fast_path": False,
+                    },
+                ))
+                return final_result
             finally:
                 self._query_reformulation_active = False
-         
+
         # A. Embed
         q_vec = self.embed(query_text)[0]
         adapter_router = getattr(self, '_adapter_router', None)
+        route_metadata = None
         if adapter_router is not None and not getattr(self, '_adapter_routing_active', False):
             route = adapter_router.select(q_vec, fallback=lambda: self.adapter)
+            route_metadata = route.to_dict() if hasattr(route, "to_dict") else {
+                "key": route.key,
+                "score": float(route.score),
+                "adapter_type": type(route.adapter).__name__,
+            }
             routed_adapter = route.adapter
             if routed_adapter is not self.adapter:
                 original_adapter = self.adapter
@@ -1890,11 +2107,30 @@ class AntigravityEngine:
                         route_key=route.key,
                         route_score=route.score,
                     )
-                    return self.run_inference(query_text)
+                    result = self.run_inference(query_text)
+                    route_latency_ms = (time.time() - inference_start) * 1000.0
+                    route_outcome = None
+                    if hasattr(adapter_router, "record_outcome"):
+                        route_outcome = adapter_router.record_outcome(
+                            route.key,
+                            result[3],
+                            latency_ms=route_latency_ms,
+                        )
+                    diagnostics = self.get_last_runtime_diagnostics() or {}
+                    diagnostics["route"] = route_metadata
+                    diagnostics["route_outcome"] = route_outcome
+                    diagnostics["route_effectiveness"] = (
+                        adapter_router.get_route_effectiveness()
+                        if hasattr(adapter_router, "get_route_effectiveness")
+                        else None
+                    )
+                    diagnostics.setdefault("runtime", {})["latency_ms"] = route_latency_ms
+                    self._record_runtime_diagnostics(diagnostics)
+                    return result
                 finally:
                     self.adapter = original_adapter
                     self._adapter_routing_active = False
-        
+
         try:
             # B. Standard Retrieval (Scout Step)
             scout_limit = ChelationConfig.SCOUT_K
@@ -1906,32 +2142,51 @@ class AntigravityEngine:
                 with_vectors=True, # Important for Centering
                 with_payload=ChelationConfig.FETCH_PAYLOAD_ON_QUERY
             ).points
-            
+
             std_top = [hit.id for hit in std_results]
-            
+
             if not std_results:
-                 return [], [], np.ones(self.vector_size), 0.0
-    
+                latency_ms = (time.time() - inference_start) * 1000.0
+                retrieval_policy = self._select_retrieval_policy(
+                    "FAST",
+                    variance=None,
+                    active_threshold=getattr(self, "chelation_threshold", None),
+                    scout_limit=scout_limit,
+                )
+                self._record_runtime_diagnostics(self._build_runtime_diagnostics(
+                    query_text,
+                    action="FAST",
+                    latency_ms=latency_ms,
+                    std_top=[],
+                    final_top=[],
+                    jaccard=0.0,
+                    active_threshold=getattr(self, "chelation_threshold", None),
+                    route=route_metadata,
+                    status="empty_results",
+                    retrieval_policy=retrieval_policy,
+                ))
+                return [], [], np.ones(self.vector_size), 0.0
+
             # C. Processing Logic
             local_vectors = [hit.vector for hit in std_results]
             local_cluster_np = np.array(local_vectors)
-            
+
             # Calculate Global Variance (Entropy Metric)
             # Sum of variances of all dimensions? Or just mean variance?
             # Let's use simple mean variance for now as "K"
             dim_variances = np.var(local_cluster_np, axis=0)
             global_variance = np.mean(dim_variances)
-            
+
             # Update adaptive threshold if enabled
             self._update_adaptive_threshold(global_variance)
-    
+
             with self._adaptive_threshold_lock:
                 active_threshold = self.chelation_threshold
-            
+
             final_top_ids = std_top
             mask = np.ones(self.vector_size)
             action = "FAST"
-            
+
             if self.use_quantization:
                  # Adaptive Logic: Chelate if High Variance OR Forced
                  if global_variance > active_threshold or self.use_centering:
@@ -1949,10 +2204,10 @@ class AntigravityEngine:
                  action = "CHELATE_ALWAYS"
                  chel_top, center_of_mass = self._spectral_chelation_ranking(q_vec, local_vectors, std_top)
                  final_top_ids = chel_top
-            
+
             # Format Return
             chel_top_10 = final_top_ids[:10]
-    
+
             # Impact: Jaccard
             s1 = set(std_top[:10])
             s2 = set(chel_top_10)
@@ -1960,12 +2215,22 @@ class AntigravityEngine:
                 jaccard = 1.0
             else:
                 jaccard = len(s1.intersection(s2)) / len(s1.union(s2))
-    
+
             # Phase 5: Record stability metrics if tracking enabled
             stability_tracker = getattr(self, '_stability_tracker', None)
+            norm_drift_report = None
             if stability_tracker is not None:
                 stability_tracker.record_mask(mask)
                 stability_tracker.record_variance_distribution(dim_variances)
+                result_norms = np.linalg.norm(local_cluster_np, axis=1)
+                embedding_norms = getattr(self, "_last_embedding_norms", {}) or {}
+                stability_tracker.record_norms(
+                    query_norm=np.linalg.norm(q_vec),
+                    result_norms=result_norms,
+                    adapter_input_norm=embedding_norms.get("adapter_input_norm"),
+                    adapter_output_norm=embedding_norms.get("adapter_output_norm"),
+                )
+                norm_drift_report = stability_tracker.compute_norm_drift_report()
 
             # Phase 3: Online updates if enabled
             online_updater = getattr(self, '_online_updater', None)
@@ -1977,11 +2242,59 @@ class AntigravityEngine:
 
             # Log Event
             self.logger.log_query(query_text=query_text, variance=global_variance, action=action, top_ids=final_top_ids, jaccard=jaccard)
+            latency_ms = (time.time() - inference_start) * 1000.0
+            route_outcome = None
+            if adapter_router is not None and route_metadata is not None and hasattr(adapter_router, "record_outcome"):
+                route_outcome = adapter_router.record_outcome(
+                    route_metadata["key"],
+                    jaccard,
+                    latency_ms=latency_ms,
+                )
+            route_effectiveness = (
+                adapter_router.get_route_effectiveness()
+                if adapter_router is not None and hasattr(adapter_router, "get_route_effectiveness")
+                else None
+            )
+            retrieval_policy = self._select_retrieval_policy(
+                action,
+                variance=global_variance,
+                active_threshold=active_threshold,
+                scout_limit=scout_limit,
+            )
+            diagnostics = self._build_runtime_diagnostics(
+                query_text,
+                action=action,
+                latency_ms=latency_ms,
+                std_top=std_top[:10],
+                final_top=chel_top_10,
+                jaccard=jaccard,
+                variance=global_variance,
+                active_threshold=active_threshold,
+                route=route_metadata,
+                status="ok",
+                retrieval_policy=retrieval_policy,
+                norm_drift=norm_drift_report,
+            )
+            diagnostics["route_outcome"] = route_outcome
+            diagnostics["route_effectiveness"] = route_effectiveness
+            self._record_runtime_diagnostics(diagnostics)
 
             # Return signature: std_top_10, chel_top_10, mask (dummy), jaccard
             return std_top[:10], chel_top_10, mask, jaccard
         except (ResponseHandlingException, UnexpectedResponse) as e:
             self.logger.log_error("qdrant", f"Qdrant error in run_inference: {e}", exception=e)
+            latency_ms = (time.time() - inference_start) * 1000.0
+            self._record_runtime_diagnostics(self._build_runtime_diagnostics(
+                query_text,
+                action="ERROR",
+                latency_ms=latency_ms,
+                std_top=[],
+                final_top=[],
+                jaccard=0.0,
+                route=route_metadata,
+                status="qdrant_error",
+                error_type=type(e).__name__,
+            ))
             return [], [], np.ones(self.vector_size), 0.0
 
     def close(self):

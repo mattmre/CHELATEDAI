@@ -451,12 +451,33 @@ def run_retrieval_fitness_es_cycle(
         storage_metadata=extract_latest_storage_evaluation(es_result),
         metadata={"workflow": "retrieval_fitness_es"},
     )
+    runtime_diagnostics = (
+        engine.get_last_runtime_diagnostics()
+        if callable(getattr(engine, "get_last_runtime_diagnostics", None))
+        else None
+    ) or {}
+    runtime_telemetry = (
+        engine.get_runtime_telemetry()
+        if callable(getattr(engine, "get_runtime_telemetry", None))
+        else None
+    )
     diagnostics = IntegratedDiagnosticsReport.from_composition(
         final_composition,
         phase="retrieval_fitness_es",
         baseline_fitness=baseline_result.fitness,
         es_result=es_result,
         metadata={"query_count": len(query_ids)},
+        runtime=runtime_diagnostics.get("runtime"),
+        norm_drift=runtime_diagnostics.get("norm_drift"),
+        route_effectiveness=runtime_diagnostics.get("route_effectiveness"),
+        retrieval_policy=runtime_diagnostics.get("retrieval_policy"),
+        telemetry=runtime_telemetry or runtime_diagnostics.get("telemetry"),
+        query_summary=runtime_diagnostics.get("query_summary"),
+        training_summary={
+            "query_count": len(query_ids),
+            "baseline_retrieval_fitness": baseline_result.fitness,
+            "final_retrieval_fitness": final_result.fitness,
+        },
     )
     adaptive_gate = AdaptiveGateOrchestrator(logger=engine.logger).evaluate(diagnostics.to_dict())
     diagnostics.adaptive_gate = adaptive_gate.to_dict()

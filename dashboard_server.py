@@ -571,16 +571,60 @@ def summarize_events(events: List[Dict[str, Any]]) -> Dict[str, Any]:
             "query_count": 0,
             "error_count": 0,
             "action_breakdown": {},
+            "adaptive_gate_actions": {},
+            "adapter_route_breakdown": {},
+            "runtime_diagnostics_count": 0,
+            "latency_ms": {"mean": None, "p50": None, "p95": None},
             "time_range": {"earliest": None, "latest": None}
         }
     
     total_events = len(events)
     query_count = sum(1 for e in events if "query_snippet" in e)
-    error_count = sum(1 for e in events if e.get("event_type") == "error" or "error" in e)
+    error_count = sum(1 for e in events if e.get("event_type") == "error" or e.get("error") is not None)
     
     # Count actions
     actions = [e.get("action") for e in events if "action" in e]
     action_breakdown = dict(Counter(actions))
+
+    adaptive_actions = []
+    for event in events:
+        if event.get("event_type") == "adaptive_gate_evaluated":
+            adaptive_actions.extend(event.get("actions", []))
+        gate = event.get("adaptive_gate")
+        if isinstance(gate, dict):
+            adaptive_actions.extend(gate.get("actions", []))
+    adaptive_gate_actions = dict(Counter(adaptive_actions))
+
+    route_keys = []
+    for event in events:
+        if event.get("route_key") is not None:
+            route_keys.append(event.get("route_key"))
+        route = event.get("route")
+        if isinstance(route, dict) and route.get("key") is not None:
+            route_keys.append(route.get("key"))
+    adapter_route_breakdown = dict(Counter(route_keys))
+
+    runtime_events = [e for e in events if e.get("event_type") == "runtime_diagnostics" or isinstance(e.get("runtime"), dict)]
+    latencies = []
+    for event in runtime_events:
+        runtime = event.get("runtime", {})
+        if isinstance(runtime, dict) and runtime.get("latency_ms") is not None:
+            latencies.append(float(runtime["latency_ms"]))
+        elif event.get("latency_ms") is not None:
+            latencies.append(float(event["latency_ms"]))
+
+    def percentile(values, pct):
+        if not values:
+            return None
+        ordered = sorted(values)
+        index = int(round((len(ordered) - 1) * pct))
+        return float(ordered[index])
+
+    latency_ms = {
+        "mean": float(sum(latencies) / len(latencies)) if latencies else None,
+        "p50": percentile(latencies, 0.50),
+        "p95": percentile(latencies, 0.95),
+    }
     
     # Get time range
     timestamps = [e.get("timestamp") for e in events if "timestamp" in e]
@@ -594,6 +638,10 @@ def summarize_events(events: List[Dict[str, Any]]) -> Dict[str, Any]:
         "query_count": query_count,
         "error_count": error_count,
         "action_breakdown": action_breakdown,
+        "adaptive_gate_actions": adaptive_gate_actions,
+        "adapter_route_breakdown": adapter_route_breakdown,
+        "runtime_diagnostics_count": len(runtime_events),
+        "latency_ms": latency_ms,
         "time_range": time_range
     }
 

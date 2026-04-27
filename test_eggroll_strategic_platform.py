@@ -1,3 +1,4 @@
+import json
 import unittest
 from threading import Lock
 
@@ -186,6 +187,13 @@ class TestP3ResearchScaffolding(unittest.TestCase):
 
         self.assertEqual(route.key, "x")
         self.assertEqual(route.adapter, "adapter-x")
+        self.assertEqual(route.to_dict()["adapter_type"], "str")
+
+        outcome = router.record_outcome(route.key, jaccard=0.8, latency_ms=2.5)
+        effectiveness = router.get_route_effectiveness()
+        self.assertEqual(outcome["route_key"], "x")
+        self.assertEqual(effectiveness["routes"]["x"]["count"], 1)
+        self.assertAlmostEqual(effectiveness["routes"]["x"]["mean_jaccard"], 0.8)
 
     def test_query_reformulator_edge_cases(self):
         from query_reformulator import QueryReformulator
@@ -311,6 +319,39 @@ class TestAdaptiveWorkflowOrchestration(unittest.TestCase):
         self.assertIn("reject_quantized_candidate", decision.actions)
         self.assertIn("apply_storage_latency_penalty", decision.actions)
         self.assertEqual(diagnostics.to_dict()["adaptive_gate"]["status"], "warning")
+
+    def test_integrated_diagnostics_preserves_ai_engineering_metadata_json_safely(self):
+        from adaptive_gate_orchestrator import AdaptiveGateOrchestrator
+        from fitness_composition_orchestrator import FitnessCompositionOrchestrator
+        from integrated_diagnostics_report import IntegratedDiagnosticsReport
+        from retrieval_fitness_evaluator import RetrievalFitnessEvaluator
+
+        evaluator = RetrievalFitnessEvaluator(qrels={"q1": {"d1": 1}}, k=2, logger=unittest.mock.MagicMock())
+        composition = FitnessCompositionOrchestrator(
+            evaluator,
+            logger=unittest.mock.MagicMock(),
+        ).compose_rankings({"q1": ["d1"]})
+        diagnostics = IntegratedDiagnosticsReport.from_composition(
+            composition,
+            runtime={"latency_ms": np.float32(3.5), "status": "ok"},
+            norm_drift={"adapter_norm_ratio_latest": np.float64(3.0)},
+            route_effectiveness={
+                "routes": {"route-a": {"count": 1, "mean_jaccard": np.float32(0.1)}},
+                "last_route_outcome": {"route_key": "route-a", "jaccard": 0.1},
+            },
+            retrieval_policy={"policy": "global_scout", "high_variance_fast_path": True},
+            telemetry={"torch_cuda_available": False, "batch_sizes": np.array([1, 2])},
+        )
+
+        payload = diagnostics.to_dict()
+        json.dumps(payload)
+        decision = AdaptiveGateOrchestrator(logger=unittest.mock.MagicMock()).evaluate(payload)
+
+        self.assertEqual(payload["telemetry"]["batch_sizes"], [1, 2])
+        self.assertIn("normalize_runtime_vectors", decision.actions)
+        self.assertIn("disable_low_effectiveness_route", decision.actions)
+        self.assertIn("prefer_global_scout", decision.actions)
+        self.assertTrue(all(item["apply_mode"] == "advisory" for item in decision.recommendations))
 
 
 if __name__ == "__main__":
