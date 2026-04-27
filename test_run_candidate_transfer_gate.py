@@ -70,6 +70,40 @@ class TestRunCandidateTransferGate(unittest.TestCase):
         self.assertEqual(summary["failed_tasks"], ["SciFact"])
         self.assertEqual(summary["recommended_next_step"], "stop-and-review")
 
+    def test_extract_quantization_gate_status_requires_observed_passing_gates(self):
+        status = transfer_gate.extract_quantization_gate_status({
+            "hybrid": [
+                {"cycle": 1, "es_result": {"quantization_gate": {"passed": True}}},
+                {"cycle": 2, "es_result": {"quantization_gate": {"passed": False}}},
+            ]
+        })
+
+        self.assertFalse(status["passes_quantization_gate"])
+        self.assertEqual(len(status["failed"]), 1)
+
+    def test_summarize_task_result_can_require_quantization_gate(self):
+        path = Path("results.json")
+        results = {
+            "baseline": [{"cycle": 1, "ndcg": 0.5}],
+            "offline": {"cycles": [{"cycle": 1, "ndcg": 0.5}]},
+            "hybrid": [{"cycle": 1, "ndcg": 0.6, "es_result": {"quantization_gate": {"passed": True}}}],
+        }
+        original_load = transfer_gate.load_results
+        try:
+            transfer_gate.load_results = lambda _path: results
+            summary = transfer_gate.summarize_task_result(
+                "SciFact",
+                path,
+                reused=False,
+                min_task_gain=0.0,
+                require_quantization_gate=True,
+            )
+        finally:
+            transfer_gate.load_results = original_load
+
+        self.assertTrue(summary["passes_task_gate"])
+        self.assertTrue(summary["quantization_gate"]["passes_quantization_gate"])
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

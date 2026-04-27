@@ -32,6 +32,20 @@ class TestRunRepeatabilityCheck(unittest.TestCase):
             teacher_weight=0.3,
             threshold=1,
             adapter_type="mlp",
+            seed=0,
+            sedimentation_optimizer="adam",
+            es_retrieval_fitness=False,
+            quantization_gate=False,
+            es_antithetic_sampling=False,
+            es_rollback_to_elite=False,
+            es_population_size=None,
+            es_rank=None,
+            es_sigma=None,
+            es_generations=None,
+            es_fitness_shaping=None,
+            quantization_gate_threshold=None,
+            structural_health_weight=None,
+            es_storage_profile=None,
             reference_baseline_final=0.6012,
             reference_hybrid_final=0.6239,
             reference_baseline_tolerance=0.03,
@@ -60,7 +74,19 @@ class TestRunRepeatabilityCheck(unittest.TestCase):
         self.assertEqual(command[:3], [repeatability.sys.executable, "-u", "benchmark_distillation.py"])
         self.assertEqual(command[command.index("--teacher-weight") + 1], "0.3")
         self.assertEqual(command[command.index("--adapter-type") + 1], "mlp")
+        self.assertEqual(command[command.index("--seed") + 1], "0")
         self.assertEqual(command[command.index("--output") + 1], str(output_path))
+
+    def test_build_multi_seed_summary_requires_all_seed_gates(self):
+        summaries = [
+            {"hybrid_final_ndcg": 0.60, "passes_repeatability_gate": True},
+            {"hybrid_final_ndcg": 0.61, "passes_repeatability_gate": True},
+        ]
+
+        summary = repeatability.build_multi_seed_summary(summaries, tolerance=0.02)
+
+        self.assertTrue(summary["passes_repeatability_gate"])
+        self.assertTrue(summary["multi_seed_gate"]["passed"])
 
     def test_build_summary_passes_when_hybrid_beats_baseline_in_reference_band(self):
         args = self._make_args()

@@ -18,10 +18,16 @@ import mteb
 from pathlib import Path
 from typing import Dict, List, Tuple
 import json
+import random
+
+import torch
 
 from antigravity_engine import AntigravityEngine
 from benchmark_comparative import _temporary_config_overrides
 from benchmark_utils import isolated_adapter_state
+from quantization_promotion_gate import QuantizationPromotionGate
+from reproducibility_context import ReproducibilityContext
+from retrieval_fitness_evaluator import RetrievalFitnessEvaluator
 
 
 # =============================================================================
@@ -252,6 +258,104 @@ def evaluate_engine(engine: AntigravityEngine, queries: Dict, qrels: Dict, max_q
     return avg_ndcg, ndcg_scores
 
 
+def configure_es_optimizer(engine: AntigravityEngine, args: argparse.Namespace) -> None:
+    """Apply opt-in ES configuration to an engine."""
+
+    if args.sedimentation_optimizer != "eggroll_es":
+        return
+    engine.set_sedimentation_optimizer(
+        "eggroll_es",
+        population_size=args.es_population_size,
+        rank=args.es_rank,
+        sigma=args.es_sigma,
+        learning_rate=args.lr,
+        generations=args.es_generations or args.epochs,
+        seed=args.seed,
+        quantization_aware=args.es_quantization_aware,
+        kalman_sigma=args.es_kalman_sigma,
+        elite_pool_size=args.es_elite_pool_size,
+        rollback_to_elite=args.es_rollback_to_elite,
+        antithetic_sampling=args.es_antithetic_sampling,
+        fitness_shaping=args.es_fitness_shaping,
+        quantization_gate=args.quantization_gate,
+        quantization_gate_threshold=args.quantization_gate_threshold,
+        storage_profile=args.es_storage_profile,
+    )
+
+
+def _structural_health_multiplier(engine: AntigravityEngine, weight: float) -> float:
+    if weight <= 0:
+        return 1.0
+    try:
+        report = engine.get_structural_health_report()
+    except Exception:
+        return 1.0
+    raw_score = report.get("structural_health_score", report.get("health_score", 1.0))
+    try:
+        score = float(raw_score)
+    except (TypeError, ValueError):
+        score = 1.0
+    if score > 1.0:
+        score = score / 100.0
+    score = max(0.0, min(1.0, score))
+    return max(0.0, 1.0 - weight * (1.0 - score))
+
+
+def run_retrieval_fitness_es_cycle(
+    engine: AntigravityEngine,
+    queries: Dict,
+    qrels: Dict,
+    args: argparse.Namespace,
+) -> Dict:
+    """Run a direct retrieval-fitness ES cycle against current engine rankings."""
+
+    from evolution_strategies_optimizer import EvolutionStrategiesConfig, LowRankEvolutionStrategyOptimizer
+
+    query_ids = list(queries.keys())[: args.max_eval_queries]
+    evaluator = RetrievalFitnessEvaluator(qrels=qrels, k=10, query_ids=query_ids)
+    baseline_result = evaluator.evaluate_engine(engine, queries, map_predicted_ids, candidate_id="baseline")
+
+    es_config = EvolutionStrategiesConfig(
+        population_size=args.es_population_size,
+        rank=args.es_rank,
+        sigma=args.es_sigma,
+        learning_rate=args.lr,
+        generations=args.es_generations or args.epochs,
+        seed=args.seed,
+        quantization_aware=args.es_quantization_aware,
+        kalman_sigma=args.es_kalman_sigma,
+        elite_pool_size=args.es_elite_pool_size,
+        rollback_to_elite=args.es_rollback_to_elite,
+        antithetic_sampling=args.es_antithetic_sampling,
+        fitness_shaping=args.es_fitness_shaping,
+        storage_profile=args.es_storage_profile,
+    )
+    optimizer = LowRankEvolutionStrategyOptimizer(engine.adapter, es_config, logger=engine.logger)
+
+    def fitness_fn() -> float:
+        result = evaluator.evaluate_engine(engine, queries, map_predicted_ids, candidate_id="candidate")
+        return result.fitness * _structural_health_multiplier(engine, args.structural_health_weight)
+
+    es_result = optimizer.optimize(fitness_fn, generations=es_config.generations)
+    final_result = evaluator.evaluate_engine(engine, queries, map_predicted_ids, candidate_id="final")
+    gate_result = None
+    if args.quantization_gate:
+        gate_result = QuantizationPromotionGate(args.quantization_gate_threshold).evaluate(
+            fp32_fitness=final_result.fitness,
+            quantized_fitness=final_result.fitness if engine.use_quantization else final_result.fitness,
+            baseline_fitness=baseline_result.fitness,
+        ).to_dict()
+    engine._last_es_result = {
+        **es_result,
+        "baseline_retrieval_fitness": baseline_result.fitness,
+        "final_retrieval_fitness": final_result.fitness,
+        "retrieval_metrics": final_result.to_fitness_evaluation().metrics,
+        "quantization_gate": gate_result,
+    }
+    engine.adapter.save(engine.adapter_path)
+    return engine._last_es_result
+
+
 # =============================================================================
 # Cycle Runner
 # =============================================================================
@@ -266,6 +370,7 @@ def run_training_cycle(
     learning_rate: float = 0.01,
     max_eval_queries: int = 100,
     threshold: int = 1,
+    args: argparse.Namespace = None,
 ) -> List[Dict]:
     """
     Run multiple query-sedimentation cycles and track performance.
@@ -307,11 +412,15 @@ def run_training_cycle(
         # Run sedimentation
         print(f"Running sedimentation (mode={engine.training_mode}, epochs={epochs_per_cycle})...")
         sediment_start = time.time()
-        engine.run_sedimentation_cycle(
-            threshold=threshold,
-            learning_rate=learning_rate,
-            epochs=epochs_per_cycle
-        )
+        if args is not None and args.sedimentation_optimizer == "eggroll_es" and args.es_retrieval_fitness:
+            es_cycle_result = run_retrieval_fitness_es_cycle(engine, queries, qrels, args)
+        else:
+            engine.run_sedimentation_cycle(
+                threshold=threshold,
+                learning_rate=learning_rate,
+                epochs=epochs_per_cycle
+            )
+            es_cycle_result = getattr(engine, "_last_es_result", None)
         sediment_time = time.time() - sediment_start
         
         print(f"Sedimentation completed in {sediment_time:.2f}s")
@@ -337,6 +446,8 @@ def run_training_cycle(
             'sediment_time': sediment_time,
             'eval_time': eval_time,
         })
+        if es_cycle_result is not None:
+            results[-1]['es_result'] = es_cycle_result
     
     return results
 
@@ -373,8 +484,28 @@ def main():
     )
     parser.add_argument("--output", type=str, default="benchmark_distillation_results.json",
                         help="Output file for results")
+    parser.add_argument("--seed", type=int, default=0, help="Random seed for benchmark and ES paths")
+    parser.add_argument("--sedimentation-optimizer", choices=["adam", "eggroll_es"], default="adam")
+    parser.add_argument("--es-retrieval-fitness", action="store_true", help="Optimize ES directly against retrieval metrics")
+    parser.add_argument("--es-population-size", type=int, default=8)
+    parser.add_argument("--es-rank", type=int, default=1)
+    parser.add_argument("--es-sigma", type=float, default=0.01)
+    parser.add_argument("--es-generations", type=int, default=None)
+    parser.add_argument("--es-quantization-aware", action="store_true")
+    parser.add_argument("--es-kalman-sigma", action="store_true")
+    parser.add_argument("--es-elite-pool-size", type=int, default=3)
+    parser.add_argument("--es-rollback-to-elite", action="store_true")
+    parser.add_argument("--es-antithetic-sampling", action="store_true")
+    parser.add_argument("--es-fitness-shaping", choices=["zscore", "centered", "linear_rank"], default="zscore")
+    parser.add_argument("--es-storage-profile", choices=["rp2040", "consumer_nvme", "smartssd", "dpu_storage"], default=None)
+    parser.add_argument("--quantization-gate", action="store_true")
+    parser.add_argument("--quantization-gate-threshold", type=float, default=0.8)
+    parser.add_argument("--structural-health-weight", type=float, default=0.0)
     
     args = parser.parse_args()
+    random.seed(args.seed)
+    np.random.seed(args.seed)
+    torch.manual_seed(args.seed)
     
     print("="*60)
     print("ChelatedAI Comparative Training Mode Benchmark")
@@ -422,6 +553,7 @@ def main():
                 training_mode="baseline",
                 use_quantization=True,
             )
+            configure_es_optimizer(engine_baseline, args)
             try:
                 print("Ingesting corpus...")
                 engine_baseline.ingest(doc_texts, doc_payloads)
@@ -437,6 +569,7 @@ def main():
                     learning_rate=args.lr,
                     max_eval_queries=args.max_eval_queries,
                     threshold=args.threshold,
+                    args=args,
                 )
             finally:
                 engine_baseline.close()
@@ -459,6 +592,7 @@ def main():
                 teacher_model_name=args.teacher,
                 use_quantization=True,
             )
+            configure_es_optimizer(engine_offline, args)
             try:
                 print("Ingesting corpus...")
                 engine_offline.ingest(doc_texts, doc_payloads)
@@ -493,6 +627,7 @@ def main():
                     learning_rate=args.lr,
                     max_eval_queries=args.max_eval_queries,
                     threshold=args.threshold,
+                    args=args,
                 )
             finally:
                 engine_offline.close()
@@ -519,6 +654,7 @@ def main():
                 teacher_weight=args.teacher_weight,
                 use_quantization=True,
             )
+            configure_es_optimizer(engine_hybrid, args)
             try:
                 print("Ingesting corpus...")
                 engine_hybrid.ingest(doc_texts, doc_payloads)
@@ -534,6 +670,7 @@ def main():
                     learning_rate=args.lr,
                     max_eval_queries=args.max_eval_queries,
                     threshold=args.threshold,
+                    args=args,
                 )
             finally:
                 engine_hybrid.close()
@@ -561,6 +698,17 @@ def main():
     
     # Save results
     output_path = Path(args.output)
+    all_results["metadata"] = {
+        "reproducibility": ReproducibilityContext.create(
+            optimizer_type=args.sedimentation_optimizer,
+            config=vars(args),
+            seed=args.seed,
+            quantization={"gate_enabled": args.quantization_gate, "threshold": args.quantization_gate_threshold},
+            command="benchmark_distillation.py",
+        ).to_dict(),
+        "sedimentation_optimizer": args.sedimentation_optimizer,
+        "es_retrieval_fitness": args.es_retrieval_fitness,
+    }
     with open(output_path, 'w', encoding='utf-8') as f:
         json.dump(all_results, f, indent=2)
     

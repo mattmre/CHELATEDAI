@@ -150,6 +150,21 @@ class RetrievalFitnessEvaluator(FitnessFunctionInterface):
             for index, candidate in enumerate(candidates)
         ]
 
+    def evaluate_engine(
+        self,
+        engine: Any,
+        queries: Mapping[Any, str],
+        id_mapper: Callable[[Any, Sequence[Any]], Sequence[Any]],
+        candidate_id: str = "engine",
+    ) -> RetrievalFitnessResult:
+        """Evaluate an AntigravityEngine-like object by running retrieval for each query."""
+
+        rankings = {}
+        for query_id in self.query_ids:
+            _, pred_ids, _, _ = engine.run_inference(queries[query_id])
+            rankings[query_id] = id_mapper(engine, pred_ids[: self.k])
+        return self.evaluate_rankings(rankings, candidate_id=candidate_id)
+
 
 class RetrievalFitnessComposer:
     """Compose retrieval fitness with optional penalty scores."""

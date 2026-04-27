@@ -94,6 +94,26 @@ class TestEvolutionStrategiesOptimizer(unittest.TestCase):
         self.assertIsNotNone(result)
         self.assertEqual(result["generations"], 2)
 
+    def test_optimizer_accepts_shared_fitness_interface(self):
+        from evolution_strategies_optimizer import EvolutionStrategiesConfig, LowRankEvolutionStrategyOptimizer
+        from fitness_interfaces import FitnessEvaluation, FitnessFunctionInterface
+
+        class SumFitness(FitnessFunctionInterface):
+            def evaluate_candidate(self, candidate, candidate_id="candidate"):
+                return FitnessEvaluation(candidate_id=candidate_id, fitness=float(candidate.weight.sum().item()))
+
+        module = nn.Linear(2, 2, bias=False)
+        optimizer = LowRankEvolutionStrategyOptimizer(
+            module,
+            EvolutionStrategiesConfig(population_size=4, generations=1, seed=3),
+            logger=MagicMock(),
+        )
+
+        result = optimizer.optimize(SumFitness())
+
+        self.assertEqual(result["generations"], 1)
+        self.assertIn("elite_candidates", result)
+
 
 class TestEvolutionStrategiesConfig(unittest.TestCase):
     def test_es_optimizer_preset_available(self):

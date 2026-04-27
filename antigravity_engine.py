@@ -709,6 +709,7 @@ class AntigravityEngine:
             )
         self._sedimentation_optimizer_type = optimizer_type
         self._es_optimizer_kwargs = kwargs
+        self._last_es_result = None
         self.logger.log_event(
             "sedimentation_optimizer_set",
             f"Sedimentation optimizer set to '{optimizer_type}'",
@@ -782,6 +783,32 @@ class AntigravityEngine:
             rank=config.rank,
             sigma=config.sigma,
             generations=config.generations,
+        )
+
+    def enable_query_reformulation(self, max_variants=3):
+        """Enable deterministic multi-query reformulation for retrieval fallback."""
+        if max_variants < 1:
+            raise ValueError("max_variants must be >= 1")
+        from query_reformulator import QueryReformulator
+        self._query_reformulator = QueryReformulator()
+        self._query_reformulator_max_variants = max_variants
+        self.logger.log_event(
+            "query_reformulation_enabled",
+            "Query reformulation enabled",
+            max_variants=max_variants,
+        )
+
+    def enable_adapter_routing(self, routes):
+        """Enable centroid-based adapter routing for query-specific adapters."""
+        from adapter_router import AdapterRouter
+        router = AdapterRouter()
+        for key, centroid, adapter in routes:
+            router.register(key, centroid, adapter)
+        self._adapter_router = router
+        self.logger.log_event(
+            "adapter_routing_enabled",
+            "Adapter routing enabled",
+            route_count=len(routes),
         )
 
     # ===== Teacher Weight Scheduling =====
@@ -1191,6 +1218,7 @@ class AntigravityEngine:
                     EvolutionStrategiesConfig,
                     train_adapter_with_es,
                 )
+                from quantization_promotion_gate import QuantizationPromotionGate
                 es_kwargs = getattr(self, '_es_optimizer_kwargs', {})
                 es_config = EvolutionStrategiesConfig(
                     population_size=es_kwargs.get("population_size", ChelationConfig.ES_POPULATION_SIZE),
@@ -1205,7 +1233,17 @@ class AntigravityEngine:
                     kalman_sigma=es_kwargs.get(
                         "kalman_sigma", ChelationConfig.ES_KALMAN_SIGMA_ENABLED
                     ),
+                    elite_pool_size=es_kwargs.get("elite_pool_size", 3),
+                    rollback_to_elite=es_kwargs.get("rollback_to_elite", False),
+                    antithetic_sampling=es_kwargs.get("antithetic_sampling", False),
+                    fitness_shaping=es_kwargs.get("fitness_shaping", "zscore"),
+                    storage_profile=es_kwargs.get("storage_profile"),
                 )
+                quantization_gate = None
+                if es_kwargs.get("quantization_gate", False):
+                    quantization_gate = QuantizationPromotionGate(
+                        retained_gain_threshold=es_kwargs.get("quantization_gate_threshold", 0.8)
+                    )
                 es_result = train_adapter_with_es(
                     self.adapter,
                     input_tensor,
@@ -1213,7 +1251,9 @@ class AntigravityEngine:
                     criterion,
                     config=es_config,
                     logger=self.logger,
+                    quantization_gate=quantization_gate,
                 )
+                self._last_es_result = es_result
                 final_loss = es_result["final_loss"]
                 self.logger.log_training_epoch(
                     epoch=es_config.generations,
@@ -1504,6 +1544,7 @@ class AntigravityEngine:
                 EvolutionStrategiesConfig,
                 train_adapter_with_es,
             )
+            from quantization_promotion_gate import QuantizationPromotionGate
             es_kwargs = getattr(self, '_es_optimizer_kwargs', {})
             es_config = EvolutionStrategiesConfig(
                 population_size=es_kwargs.get("population_size", ChelationConfig.ES_POPULATION_SIZE),
@@ -1518,7 +1559,17 @@ class AntigravityEngine:
                 kalman_sigma=es_kwargs.get(
                     "kalman_sigma", ChelationConfig.ES_KALMAN_SIGMA_ENABLED
                 ),
+                elite_pool_size=es_kwargs.get("elite_pool_size", 3),
+                rollback_to_elite=es_kwargs.get("rollback_to_elite", False),
+                antithetic_sampling=es_kwargs.get("antithetic_sampling", False),
+                fitness_shaping=es_kwargs.get("fitness_shaping", "zscore"),
+                storage_profile=es_kwargs.get("storage_profile"),
             )
+            quantization_gate = None
+            if es_kwargs.get("quantization_gate", False):
+                quantization_gate = QuantizationPromotionGate(
+                    retained_gain_threshold=es_kwargs.get("quantization_gate_threshold", 0.8)
+                )
             es_result = train_adapter_with_es(
                 self.adapter,
                 input_tensor,
@@ -1526,7 +1577,9 @@ class AntigravityEngine:
                 criterion,
                 config=es_config,
                 logger=self.logger,
+                quantization_gate=quantization_gate,
             )
+            self._last_es_result = es_result
             final_loss = es_result["final_loss"]
             self.logger.log_training_epoch(
                 epoch=es_config.generations,
@@ -1663,9 +1716,46 @@ class AntigravityEngine:
 
     def run_inference(self, query_text):
         """Full Navigational Loop (returns IDs)."""
-        
+        reformulator = getattr(self, '_query_reformulator', None)
+        if reformulator is not None and not getattr(self, '_query_reformulation_active', False):
+            self._query_reformulation_active = True
+            try:
+                variants = reformulator.reformulate(
+                    query_text,
+                    max_variants=getattr(self, '_query_reformulator_max_variants', 3),
+                )
+                merged = []
+                seen = set()
+                first_result = None
+                for variant in variants:
+                    result = self.run_inference(variant.text)
+                    if first_result is None:
+                        first_result = result
+                    for doc_id in result[1]:
+                        if doc_id not in seen:
+                            seen.add(doc_id)
+                            merged.append(doc_id)
+                    if len(merged) >= 10:
+                        break
+                if first_result is None:
+                    return [], [], np.ones(self.vector_size), 0.0
+                return first_result[0], merged[:10], first_result[2], first_result[3]
+            finally:
+                self._query_reformulation_active = False
+         
         # A. Embed
         q_vec = self.embed(query_text)[0]
+        adapter_router = getattr(self, '_adapter_router', None)
+        if adapter_router is not None:
+            route = adapter_router.select(q_vec, fallback=lambda: self.adapter)
+            routed_adapter = route.adapter
+            if routed_adapter is not self.adapter:
+                original_adapter = self.adapter
+                self.adapter = routed_adapter
+                try:
+                    return self.run_inference(query_text)
+                finally:
+                    self.adapter = original_adapter
         
         try:
             # B. Standard Retrieval (Scout Step)

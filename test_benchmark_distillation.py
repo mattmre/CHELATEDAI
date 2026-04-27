@@ -20,6 +20,7 @@ from benchmark_distillation import (
     find_payload,
     map_predicted_ids,
     evaluate_engine,
+    configure_es_optimizer,
 )
 
 
@@ -211,6 +212,40 @@ class TestIDMapping(unittest.TestCase):
         mapped = map_predicted_ids(mock_engine, pred_ids)
         
         self.assertEqual(mapped, ['1', '2', '3'])
+
+
+class TestESBenchmarkWiring(unittest.TestCase):
+    def test_configure_es_optimizer_passes_gate_and_retrieval_options(self):
+        from types import SimpleNamespace
+
+        engine = MagicMock()
+        args = SimpleNamespace(
+            sedimentation_optimizer="eggroll_es",
+            es_population_size=6,
+            es_rank=1,
+            es_sigma=0.01,
+            lr=0.02,
+            es_generations=2,
+            epochs=3,
+            seed=42,
+            es_quantization_aware=True,
+            es_kalman_sigma=True,
+            es_elite_pool_size=2,
+            es_rollback_to_elite=True,
+            es_antithetic_sampling=True,
+            es_fitness_shaping="linear_rank",
+            quantization_gate=True,
+            quantization_gate_threshold=0.9,
+            es_storage_profile="consumer_nvme",
+        )
+
+        configure_es_optimizer(engine, args)
+
+        engine.set_sedimentation_optimizer.assert_called_once()
+        _, kwargs = engine.set_sedimentation_optimizer.call_args
+        self.assertEqual(kwargs["population_size"], 6)
+        self.assertTrue(kwargs["quantization_gate"])
+        self.assertEqual(kwargs["storage_profile"], "consumer_nvme")
 
     def test_map_predicted_ids_missing_doc_id(self):
         """Test ID mapping when doc_id not in payload."""

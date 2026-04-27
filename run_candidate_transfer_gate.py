@@ -71,7 +71,7 @@ def resolve_tasks(gate: str, scope: str) -> List[str]:
 
 
 def build_distillation_command(task_name: str, output_path: Path, args: argparse.Namespace) -> List[str]:
-    return [
+    command = [
         "python",
         "-u",
         "benchmark_distillation.py",
@@ -100,9 +100,47 @@ def build_distillation_command(task_name: str, output_path: Path, args: argparse
         "--output",
         str(output_path),
     ]
+    if getattr(args, "sedimentation_optimizer", "adam") != "adam":
+        command.extend(["--sedimentation-optimizer", args.sedimentation_optimizer])
+    if getattr(args, "es_retrieval_fitness", False):
+        command.append("--es-retrieval-fitness")
+    if getattr(args, "quantization_gate", False):
+        command.append("--quantization-gate")
+    return command
 
 
-def summarize_task_result(task_name: str, results_path: Path, reused: bool, min_task_gain: float) -> Dict[str, Any]:
+def extract_quantization_gate_status(results: Dict[str, Any]) -> Dict[str, Any]:
+    """Extract ES quantization gate failures from benchmark results."""
+
+    statuses = []
+    for mode in ("baseline", "hybrid"):
+        cycles = results.get(mode, [])
+        if isinstance(cycles, list):
+            for cycle in cycles:
+                gate = cycle.get("es_result", {}).get("quantization_gate") if isinstance(cycle, dict) else None
+                if gate is not None:
+                    statuses.append({"mode": mode, "cycle": cycle.get("cycle"), **gate})
+    offline_cycles = results.get("offline", {}).get("cycles", {})
+    if isinstance(offline_cycles, list):
+        for cycle in offline_cycles:
+            gate = cycle.get("es_result", {}).get("quantization_gate") if isinstance(cycle, dict) else None
+            if gate is not None:
+                statuses.append({"mode": "offline", "cycle": cycle.get("cycle"), **gate})
+    failed = [status for status in statuses if not status.get("passed", False)]
+    return {
+        "observed": statuses,
+        "failed": failed,
+        "passes_quantization_gate": bool(statuses) and not failed,
+    }
+
+
+def summarize_task_result(
+    task_name: str,
+    results_path: Path,
+    reused: bool,
+    min_task_gain: float,
+    require_quantization_gate: bool = False,
+) -> Dict[str, Any]:
     results = load_results(results_path)
     baseline_final = _extract_final_ndcg(results, "baseline")
     offline_final = _extract_final_ndcg(results, "offline")
@@ -110,6 +148,10 @@ def summarize_task_result(task_name: str, results_path: Path, reused: bool, min_
     hybrid_gain = hybrid_final - baseline_final
     hybrid_gain_pct = (hybrid_gain / baseline_final * 100.0) if baseline_final else 0.0
 
+    quantization_gate = extract_quantization_gate_status(results)
+    passes_task_gate = hybrid_gain >= min_task_gain
+    if require_quantization_gate:
+        passes_task_gate = passes_task_gate and quantization_gate["passes_quantization_gate"]
     return {
         "task": task_name,
         "results_path": str(results_path),
@@ -119,7 +161,8 @@ def summarize_task_result(task_name: str, results_path: Path, reused: bool, min_
         "hybrid_final_ndcg": hybrid_final,
         "hybrid_gain_absolute": hybrid_gain,
         "hybrid_gain_pct": hybrid_gain_pct,
-        "passes_task_gate": hybrid_gain >= min_task_gain,
+        "passes_task_gate": passes_task_gate,
+        "quantization_gate": quantization_gate,
     }
 
 
@@ -209,6 +252,14 @@ def main() -> int:
         action="store_true",
         help="Exit with code 2 if the transfer gate does not pass",
     )
+    parser.add_argument("--sedimentation-optimizer", choices=["adam", "eggroll_es"], default="adam")
+    parser.add_argument("--es-retrieval-fitness", action="store_true")
+    parser.add_argument("--quantization-gate", action="store_true")
+    parser.add_argument(
+        "--require-quantization-gate",
+        action="store_true",
+        help="Require observed ES quantization gates to pass for every task",
+    )
     args = parser.parse_args()
 
     tasks = resolve_tasks(args.gate, args.scope)
@@ -235,7 +286,13 @@ def main() -> int:
             results_path = reuse_results[task_name]
             print(f"\nReusing {task_name} results from: {results_path}")
             task_summaries.append(
-                summarize_task_result(task_name, results_path, reused=True, min_task_gain=args.min_task_gain)
+                summarize_task_result(
+                    task_name,
+                    results_path,
+                    reused=True,
+                    min_task_gain=args.min_task_gain,
+                    require_quantization_gate=args.require_quantization_gate,
+                )
             )
             continue
 
@@ -259,7 +316,13 @@ def main() -> int:
             return 1
 
         task_summaries.append(
-            summarize_task_result(task_name, results_path, reused=False, min_task_gain=args.min_task_gain)
+            summarize_task_result(
+                task_name,
+                results_path,
+                reused=False,
+                min_task_gain=args.min_task_gain,
+                require_quantization_gate=args.require_quantization_gate,
+            )
         )
 
     summary = build_transfer_summary(args.gate, args.scope, task_summaries, args.min_task_gain)

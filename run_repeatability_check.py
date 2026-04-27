@@ -34,6 +34,8 @@ from json import JSONDecodeError
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+from reproducibility_context import build_seed_matrix, evaluate_seed_scores
+
 
 PROJECT_ROOT = Path(__file__).resolve().parent
 MAX_RUN_LABEL_LENGTH = 64
@@ -60,7 +62,7 @@ def build_run_dir(
 
 
 def build_command(output_path: Path, args: argparse.Namespace) -> list[str]:
-    return [
+    command = [
         sys.executable,
         "-u",
         "benchmark_distillation.py",
@@ -86,9 +88,36 @@ def build_command(output_path: Path, args: argparse.Namespace) -> list[str]:
         str(args.threshold),
         "--adapter-type",
         args.adapter_type,
+        "--seed",
+        str(getattr(args, "seed", 0)),
         "--output",
         str(output_path),
     ]
+    if getattr(args, "sedimentation_optimizer", "adam") != "adam":
+        command.extend(["--sedimentation-optimizer", args.sedimentation_optimizer])
+    if getattr(args, "es_retrieval_fitness", False):
+        command.append("--es-retrieval-fitness")
+    if getattr(args, "quantization_gate", False):
+        command.append("--quantization-gate")
+    if getattr(args, "es_antithetic_sampling", False):
+        command.append("--es-antithetic-sampling")
+    if getattr(args, "es_rollback_to_elite", False):
+        command.append("--es-rollback-to-elite")
+    optional_pairs = [
+        ("--es-population-size", "es_population_size"),
+        ("--es-rank", "es_rank"),
+        ("--es-sigma", "es_sigma"),
+        ("--es-generations", "es_generations"),
+        ("--es-fitness-shaping", "es_fitness_shaping"),
+        ("--quantization-gate-threshold", "quantization_gate_threshold"),
+        ("--structural-health-weight", "structural_health_weight"),
+        ("--es-storage-profile", "es_storage_profile"),
+    ]
+    for flag, attr in optional_pairs:
+        value = getattr(args, attr, None)
+        if value is not None:
+            command.extend([flag, str(value)])
+    return command
 
 
 def format_command(command: list[str]) -> str:
@@ -166,6 +195,20 @@ def build_summary(
         "recommended_next_step": (
             "run-multitask-gate" if passes_repeatability_gate else "stop-and-review"
         ),
+    }
+
+
+def build_multi_seed_summary(seed_summaries: list[Dict[str, Any]], tolerance: float) -> Dict[str, Any]:
+    """Aggregate repeatability summaries across seed runs."""
+
+    hybrid_scores = [summary["hybrid_final_ndcg"] for summary in seed_summaries]
+    gate = evaluate_seed_scores(hybrid_scores, tolerance)
+    all_repeatable = all(summary["passes_repeatability_gate"] for summary in seed_summaries)
+    return {
+        "seed_summaries": seed_summaries,
+        "multi_seed_gate": gate.to_dict(),
+        "passes_repeatability_gate": all_repeatable and gate.passed,
+        "recommended_next_step": "run-multitask-gate" if all_repeatable and gate.passed else "stop-and-review",
     }
 
 
@@ -258,6 +301,22 @@ def main() -> int:
         action="store_true",
         help="Exit with code 2 if the rerun does not clear the repeatability gate",
     )
+    parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--seed-count", type=int, default=1)
+    parser.add_argument("--seed-tolerance", type=float, default=0.03)
+    parser.add_argument("--sedimentation-optimizer", choices=["adam", "eggroll_es"], default="adam")
+    parser.add_argument("--es-retrieval-fitness", action="store_true")
+    parser.add_argument("--es-population-size", type=int, default=8)
+    parser.add_argument("--es-rank", type=int, default=1)
+    parser.add_argument("--es-sigma", type=float, default=0.01)
+    parser.add_argument("--es-generations", type=int, default=None)
+    parser.add_argument("--es-antithetic-sampling", action="store_true")
+    parser.add_argument("--es-rollback-to-elite", action="store_true")
+    parser.add_argument("--es-fitness-shaping", choices=["zscore", "centered", "linear_rank"], default="zscore")
+    parser.add_argument("--es-storage-profile", choices=["rp2040", "consumer_nvme", "smartssd", "dpu_storage"], default=None)
+    parser.add_argument("--quantization-gate", action="store_true")
+    parser.add_argument("--quantization-gate-threshold", type=float, default=0.8)
+    parser.add_argument("--structural-health-weight", type=float, default=0.0)
     args = parser.parse_args()
 
     run_dir = build_run_dir(Path(args.output_root), args.run_label)
@@ -268,6 +327,7 @@ def main() -> int:
     command_path = run_dir / "command.txt"
     summary_path = run_dir / "summary.json"
 
+    seeds = build_seed_matrix(args.seed, args.seed_count)
     command = build_command(output_path, args)
     formatted_command = format_command(command)
     command_path.write_text(formatted_command + "\n", encoding="utf-8")
@@ -287,26 +347,40 @@ def main() -> int:
     print(formatted_command)
     print()
 
-    return_code = run_with_tee(command, log_path, PROJECT_ROOT)
-    if return_code != 0:
-        return return_code
+    seed_summaries = []
+    for seed_index, seed in enumerate(seeds):
+        args.seed = seed
+        seed_output_path = output_path if len(seeds) == 1 else run_dir / f"results_seed_{seed_index}.json"
+        seed_log_path = log_path if len(seeds) == 1 else run_dir / f"benchmark_distillation_seed_{seed_index}.log"
+        seed_command = build_command(seed_output_path, args)
+        return_code = run_with_tee(seed_command, seed_log_path, PROJECT_ROOT)
+        if return_code != 0:
+            return return_code
+        if not seed_output_path.exists():
+            print(f"ERROR: benchmark completed but output is missing: {seed_output_path}")
+            return 1
+        try:
+            results = load_results(seed_output_path)
+            seed_summary = build_summary(results, seed_output_path, seed_log_path, seed_command, args)
+            seed_summary["seed"] = seed
+            seed_summaries.append(seed_summary)
+        except JSONDecodeError as exc:
+            print(
+                "ERROR: benchmark output JSON is malformed. "
+                f"Check {seed_output_path} and {seed_log_path} for details.\n{exc}"
+            )
+            return 1
+        except ValueError as exc:
+            print(f"ERROR: {exc}")
+            return 1
 
-    if not output_path.exists():
-        print(f"ERROR: benchmark completed but output is missing: {output_path}")
-        return 1
-
-    try:
-        results = load_results(output_path)
-        summary = build_summary(results, output_path, log_path, command, args)
-    except JSONDecodeError as exc:
-        print(
-            "ERROR: benchmark output JSON is malformed. "
-            f"Check {output_path} and {log_path} for details.\n{exc}"
-        )
-        return 1
-    except ValueError as exc:
-        print(f"ERROR: {exc}")
-        return 1
+    if len(seed_summaries) == 1:
+        summary = seed_summaries[0]
+        summary["multi_seed_gate"] = evaluate_seed_scores(
+            [summary["hybrid_final_ndcg"]], args.seed_tolerance
+        ).to_dict()
+    else:
+        summary = build_multi_seed_summary(seed_summaries, args.seed_tolerance)
 
     summary_path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
 

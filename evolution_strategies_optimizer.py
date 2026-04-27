@@ -19,6 +19,8 @@ import torch.nn as nn
 
 from chelation_logger import get_logger
 from elite_archive import EliteArchive
+from fitness_interfaces import FitnessFunctionInterface
+from quantization_promotion_gate import QuantizationPromotionGate
 from reproducibility_context import ReproducibilityContext
 
 
@@ -46,6 +48,7 @@ class EvolutionStrategiesConfig:
     rollback_to_elite: bool = False
     antithetic_sampling: bool = False
     fitness_shaping: str = "zscore"  # "zscore", "centered", or "linear_rank"
+    storage_profile: Optional[str] = None
 
     def __post_init__(self) -> None:
         if self.population_size < 2:
@@ -271,6 +274,11 @@ class LowRankEvolutionStrategyOptimizer:
             centered = centered / std
         return centered
 
+    def _evaluate_fitness(self, fitness_fn: Any, candidate_id: str) -> float:
+        if isinstance(fitness_fn, FitnessFunctionInterface):
+            return float(fitness_fn.evaluate_candidate(self.module, candidate_id=candidate_id).fitness)
+        return float(fitness_fn())
+
     def step(self, fitness_fn: FitnessFn) -> Dict[str, Any]:
         """Run one ES generation and apply the weighted perturbation update."""
 
@@ -284,7 +292,7 @@ class LowRankEvolutionStrategyOptimizer:
             for member_index, perturbations in enumerate(self._sample_population()):
                 population_perturbations.append(perturbations)
                 self._apply_perturbation(base, perturbations, sigma)
-                fitness_values.append(float(fitness_fn()))
+                fitness_values.append(self._evaluate_fitness(fitness_fn, f"generation_{self._step_count + 1}_member_{member_index}"))
         finally:
             self._restore(base)
 
@@ -321,7 +329,7 @@ class LowRankEvolutionStrategyOptimizer:
         final_update_fitness = None
         restored_elite = False
         if self.config.rollback_to_elite:
-            final_update_fitness = float(fitness_fn())
+            final_update_fitness = self._evaluate_fitness(fitness_fn, f"generation_{self._step_count + 1}_final")
             best = self._elite_archive.best()
             if best is not None and best.fitness > final_update_fitness:
                 restored_elite = self._elite_archive.restore_best(self.params)
@@ -330,6 +338,17 @@ class LowRankEvolutionStrategyOptimizer:
             self._sigma_scheduler.step(fitness_values)
 
         self._step_count += 1
+        storage_evaluation = None
+        if self.config.storage_profile:
+            from computational_storage_poc.mock_array import ArraySimulation
+            from device_profiles import get_profile
+
+            storage_evaluation = ArraySimulation(
+                device_profile=get_profile(self.config.storage_profile)
+            ).sharded_population_evaluation([
+                {"candidate_id": f"generation_{self._step_count}_member_{index}", "fitness": fitness}
+                for index, fitness in enumerate(fitness_values)
+            ])
         result = {
             "generation": self._step_count,
             "mean_fitness": float(fitness_tensor.mean().item()),
@@ -340,6 +359,8 @@ class LowRankEvolutionStrategyOptimizer:
             "elite_candidates": self._elite_archive.summaries(),
             "restored_elite": restored_elite,
         }
+        if storage_evaluation is not None:
+            result["storage_evaluation"] = storage_evaluation
         if final_update_fitness is not None:
             result["final_update_fitness"] = final_update_fitness
         self.logger.log_event(
@@ -371,11 +392,17 @@ def train_adapter_with_es(
     criterion: nn.Module,
     config: Optional[EvolutionStrategiesConfig] = None,
     logger: Optional[Any] = None,
+    quantization_gate: Optional[QuantizationPromotionGate] = None,
 ) -> Dict[str, Any]:
     """Train an adapter against fixed targets using low-rank ES fitness."""
 
     es_config = config or EvolutionStrategiesConfig()
     optimizer = LowRankEvolutionStrategyOptimizer(adapter, es_config, logger=logger)
+
+    with torch.no_grad():
+        baseline_outputs = adapter(input_tensor)
+        baseline_loss = criterion(baseline_outputs, target_tensor)
+        baseline_fitness = -float(baseline_loss.item())
 
     def fitness_fn() -> float:
         with torch.no_grad():
@@ -393,10 +420,25 @@ def train_adapter_with_es(
     result = optimizer.optimize(fitness_fn, generations=es_config.generations)
     with torch.no_grad():
         outputs = adapter(input_tensor)
+        fp32_loss = criterion(outputs, target_tensor)
         if es_config.quantization_aware:
-            outputs = simulate_int8_quantization(outputs, levels=es_config.quantization_levels)
-        final_loss = float(criterion(outputs, target_tensor).item())
+            quantized_outputs = simulate_int8_quantization(outputs, levels=es_config.quantization_levels)
+        else:
+            quantized_outputs = outputs
+        final_loss = float(criterion(quantized_outputs, target_tensor).item())
+        fp32_fitness = -float(fp32_loss.item())
+        quantized_fitness = -final_loss
     result["final_loss"] = final_loss
+    result["fp32_final_loss"] = float(fp32_loss.item())
+    result["baseline_fitness"] = baseline_fitness
+    result["fp32_fitness"] = fp32_fitness
+    result["quantized_fitness"] = quantized_fitness
+    if quantization_gate is not None:
+        result["quantization_gate"] = quantization_gate.evaluate(
+            fp32_fitness=fp32_fitness,
+            quantized_fitness=quantized_fitness,
+            baseline_fitness=baseline_fitness,
+        ).to_dict()
     return result
 
 
