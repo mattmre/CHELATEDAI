@@ -269,6 +269,53 @@ class ChelationConfig:
     DEFAULT_COLLAPSE_THRESHOLD = 3  # Min frequency to trigger sedimentation
     ADAPTER_HIDDEN_DIM_RATIO = 0.5  # hidden_dim = input_dim * ratio
     HOMEOSTATIC_PUSH_MAGNITUDE = 0.1  # Adapter push magnitude for sedimentation target vectors
+
+    # ===== EGGROLL-style Evolution Strategies Optimizer (opt-in) =====
+    SEDIMENTATION_OPTIMIZER = "adam"  # "adam" or "eggroll_es"
+    ES_POPULATION_SIZE = 16
+    ES_RANK = 1
+    ES_SIGMA = 0.01
+    ES_LEARNING_RATE = 0.01
+    ES_GENERATIONS = 5
+    ES_SEED = 0
+    ES_QUANTIZATION_AWARE = False
+    ES_KALMAN_SIGMA_ENABLED = False
+
+    ES_OPTIMIZER_PRESETS = {
+        "conservative": {
+            "optimizer": "eggroll_es",
+            "population_size": 8,
+            "rank": 1,
+            "sigma": 0.005,
+            "learning_rate": 0.005,
+            "generations": 3,
+            "quantization_aware": True,
+            "kalman_sigma": True,
+            "description": "Small low-rank ES population with quantization-aware scoring",
+        },
+        "balanced": {
+            "optimizer": "eggroll_es",
+            "population_size": 16,
+            "rank": 1,
+            "sigma": 0.01,
+            "learning_rate": 0.01,
+            "generations": 5,
+            "quantization_aware": True,
+            "kalman_sigma": True,
+            "description": "Default EGGROLL-style adapter-only ES candidate",
+        },
+        "aggressive": {
+            "optimizer": "eggroll_es",
+            "population_size": 32,
+            "rank": 2,
+            "sigma": 0.02,
+            "learning_rate": 0.02,
+            "generations": 8,
+            "quantization_aware": True,
+            "kalman_sigma": True,
+            "description": "Larger ES population for stronger offline adaptation",
+        },
+    }
     
     # ===== Teacher Distillation Configuration =====
     # Training mode: 'baseline', 'offline', 'hybrid'
@@ -856,6 +903,7 @@ class ChelationConfig:
             "bounded_adapter": cls.BOUNDED_ADAPTER_PRESETS,
             "sedimentation_loss": cls.SEDIMENTATION_LOSS_PRESETS,
             "kalman_lr": cls.KALMAN_LR_PRESETS,
+            "es_optimizer": cls.ES_OPTIMIZER_PRESETS,
         }
         
         if preset_type not in preset_map:

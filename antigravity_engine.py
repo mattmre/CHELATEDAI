@@ -131,6 +131,8 @@ class AntigravityEngine:
         # Initialize checkpoint manager for safe training (F-043)
         self.checkpoint_manager = CheckpointManager()
         self.logger.log_event("checkpoint_manager_init", "CheckpointManager initialized for safe training")
+        self._sedimentation_optimizer_type = ChelationConfig.SEDIMENTATION_OPTIMIZER
+        self._es_optimizer_kwargs = {}
 
     def embed(self, texts):
         """Get Embeddings via backend abstraction."""
@@ -694,6 +696,26 @@ class AntigravityEngine:
             **{k: v for k, v in kwargs.items() if isinstance(v, (int, float, str, bool))}
         )
 
+    def set_sedimentation_optimizer(self, optimizer_type="adam", **kwargs):
+        """Select the optimizer used by sedimentation and offline distillation.
+
+        Defaults remain Adam. The "eggroll_es" option performs adapter-only
+        low-rank zeroth-order optimization using scalar fitness.
+        """
+        valid_types = ("adam", "eggroll_es")
+        if optimizer_type not in valid_types:
+            raise ValueError(
+                f"Invalid optimizer_type '{optimizer_type}'. Valid: {', '.join(valid_types)}"
+            )
+        self._sedimentation_optimizer_type = optimizer_type
+        self._es_optimizer_kwargs = kwargs
+        self.logger.log_event(
+            "sedimentation_optimizer_set",
+            f"Sedimentation optimizer set to '{optimizer_type}'",
+            optimizer_type=optimizer_type,
+            **{k: v for k, v in kwargs.items() if isinstance(v, (int, float, str, bool))}
+        )
+
     # ===== Phase 3: Online Updates =====
 
     def enable_online_updates(self, learning_rate=None, micro_steps=None,
@@ -719,6 +741,48 @@ class AntigravityEngine:
             update_interval=update_interval or ChelationConfig.ONLINE_UPDATE_INTERVAL
         )
         self.logger.log_event("online_updates_enabled", "Online gradient updates enabled")
+
+    def enable_evolutionary_online_updates(self, population_size=None, rank=None,
+                                           sigma=None, learning_rate=None,
+                                           generations=None, seed=None,
+                                           quantization_aware=None,
+                                           update_interval=None,
+                                           kalman_sigma=None):
+        """Enable inference-time low-rank ES micro-population updates."""
+        from evolution_strategies_optimizer import (
+            EvolutionStrategiesConfig,
+            EvolutionaryOnlineUpdater,
+        )
+        config = EvolutionStrategiesConfig(
+            population_size=population_size or max(2, ChelationConfig.ES_POPULATION_SIZE // 2),
+            rank=rank or ChelationConfig.ES_RANK,
+            sigma=sigma or max(ChelationConfig.ES_SIGMA / 2.0, 1e-6),
+            learning_rate=learning_rate or ChelationConfig.ES_LEARNING_RATE,
+            generations=generations or 1,
+            seed=seed if seed is not None else ChelationConfig.ES_SEED,
+            quantization_aware=(
+                ChelationConfig.ES_QUANTIZATION_AWARE
+                if quantization_aware is None else quantization_aware
+            ),
+            kalman_sigma=(
+                ChelationConfig.ES_KALMAN_SIGMA_ENABLED
+                if kalman_sigma is None else kalman_sigma
+            ),
+        )
+        self._online_updater = EvolutionaryOnlineUpdater(
+            adapter=self.adapter,
+            config=config,
+            update_interval=update_interval or ChelationConfig.ONLINE_UPDATE_INTERVAL,
+            logger=self.logger,
+        )
+        self.logger.log_event(
+            "online_eggroll_es_enabled",
+            "Online low-rank ES updates enabled",
+            population_size=config.population_size,
+            rank=config.rank,
+            sigma=config.sigma,
+            generations=config.generations,
+        )
 
     # ===== Teacher Weight Scheduling =====
 
@@ -1122,76 +1186,122 @@ class AntigravityEngine:
             self.adapter.train()
             final_loss = 0.0
 
-            # Phase 1: Optional convergence monitoring for early stopping
-            conv_monitor = None
-            if getattr(self, '_convergence_enabled', False):
-                from convergence_monitor import ConvergenceMonitor
-                conv_monitor = ConvergenceMonitor(
-                    patience=getattr(self, '_convergence_patience', ChelationConfig.CONVERGENCE_PATIENCE),
-                    rel_threshold=getattr(self, '_convergence_rel_threshold', ChelationConfig.CONVERGENCE_REL_THRESHOLD),
-                    min_epochs=getattr(self, '_convergence_min_epochs', ChelationConfig.CONVERGENCE_MIN_EPOCHS)
+            if getattr(self, '_sedimentation_optimizer_type', 'adam') == "eggroll_es":
+                from evolution_strategies_optimizer import (
+                    EvolutionStrategiesConfig,
+                    train_adapter_with_es,
                 )
-
-            # Optional weight scheduler for dynamic teacher weight
-            weight_scheduler = getattr(self, '_weight_scheduler', None)
-
-            # Kalman-gain adaptive LR scheduler
-            kalman_scheduler = None
-            if getattr(self, '_kalman_lr_enabled', False):
-                from kalman_lr_scheduler import KalmanLRScheduler
-                kalman_scheduler = KalmanLRScheduler(
-                    base_lr=learning_rate,
-                    process_noise=getattr(self, '_kalman_process_noise', 0.1),
-                    min_lr_ratio=getattr(self, '_kalman_min_lr_ratio', 0.1),
-                    max_lr_ratio=getattr(self, '_kalman_max_lr_ratio', 2.0),
-                    window_size=getattr(self, '_kalman_window_size', 10),
+                es_kwargs = getattr(self, '_es_optimizer_kwargs', {})
+                es_config = EvolutionStrategiesConfig(
+                    population_size=es_kwargs.get("population_size", ChelationConfig.ES_POPULATION_SIZE),
+                    rank=es_kwargs.get("rank", ChelationConfig.ES_RANK),
+                    sigma=es_kwargs.get("sigma", ChelationConfig.ES_SIGMA),
+                    learning_rate=es_kwargs.get("learning_rate", learning_rate),
+                    generations=es_kwargs.get("generations", epochs),
+                    seed=es_kwargs.get("seed", ChelationConfig.ES_SEED),
+                    quantization_aware=es_kwargs.get(
+                        "quantization_aware", ChelationConfig.ES_QUANTIZATION_AWARE
+                    ),
+                    kalman_sigma=es_kwargs.get(
+                        "kalman_sigma", ChelationConfig.ES_KALMAN_SIGMA_ENABLED
+                    ),
                 )
+                es_result = train_adapter_with_es(
+                    self.adapter,
+                    input_tensor,
+                    target_tensor,
+                    criterion,
+                    config=es_config,
+                    logger=self.logger,
+                )
+                final_loss = es_result["final_loss"]
+                self.logger.log_training_epoch(
+                    epoch=es_config.generations,
+                    total_epochs=es_config.generations,
+                    loss=final_loss,
+                )
+                self.adapter.eval()
+                self.adapter.save(self.adapter_path)
+                self.logger.log_checkpoint("save", self.adapter_path)
+                self.logger.log_event(
+                    "eggroll_es_training_complete",
+                    "Sedimentation completed with low-rank ES optimizer",
+                    final_loss=final_loss,
+                    generations=es_config.generations,
+                    population_size=es_config.population_size,
+                )
+            else:
 
-            for epoch in range(epochs):
-                optimizer.zero_grad()
+                # Phase 1: Optional convergence monitoring for early stopping
+                conv_monitor = None
+                if getattr(self, '_convergence_enabled', False):
+                    from convergence_monitor import ConvergenceMonitor
+                    conv_monitor = ConvergenceMonitor(
+                        patience=getattr(self, '_convergence_patience', ChelationConfig.CONVERGENCE_PATIENCE),
+                        rel_threshold=getattr(self, '_convergence_rel_threshold', ChelationConfig.CONVERGENCE_REL_THRESHOLD),
+                        min_epochs=getattr(self, '_convergence_min_epochs', ChelationConfig.CONVERGENCE_MIN_EPOCHS)
+                    )
 
-                if noise_scales is not None:
-                    noise = torch.randn_like(input_tensor) * noise_scales
-                    noisy_input = input_tensor + noise
-                    noisy_input = torch.nn.functional.normalize(noisy_input, p=2, dim=1)
-                    outputs = self.adapter(noisy_input)
-                else:
-                    outputs = self.adapter(input_tensor)
+                # Optional weight scheduler for dynamic teacher weight
+                weight_scheduler = getattr(self, '_weight_scheduler', None)
 
-                loss = criterion(outputs, target_tensor)
+                # Kalman-gain adaptive LR scheduler
+                kalman_scheduler = None
+                if getattr(self, '_kalman_lr_enabled', False):
+                    from kalman_lr_scheduler import KalmanLRScheduler
+                    kalman_scheduler = KalmanLRScheduler(
+                        base_lr=learning_rate,
+                        process_noise=getattr(self, '_kalman_process_noise', 0.1),
+                        min_lr_ratio=getattr(self, '_kalman_min_lr_ratio', 0.1),
+                        max_lr_ratio=getattr(self, '_kalman_max_lr_ratio', 2.0),
+                        window_size=getattr(self, '_kalman_window_size', 10),
+                    )
 
-                # Frobenius-norm regularization (Procrustes: penalise skew-param
-                # magnitude to keep rotation angles small across cycles;
-                # MLP/LowRank adapters return 0.0 so the term is a no-op).
-                reg_loss = getattr(self.adapter, 'regularization_loss', lambda: 0.0)()
-                if reg_loss != 0.0:
-                    loss = loss + 0.01 * reg_loss
+                for epoch in range(epochs):
+                    optimizer.zero_grad()
 
-                loss.backward()
-                optimizer.step()
-                final_loss = loss.item()
+                    if noise_scales is not None:
+                        noise = torch.randn_like(input_tensor) * noise_scales
+                        noisy_input = input_tensor + noise
+                        noisy_input = torch.nn.functional.normalize(noisy_input, p=2, dim=1)
+                        outputs = self.adapter(noisy_input)
+                    else:
+                        outputs = self.adapter(input_tensor)
 
-                # Kalman-gain adaptive LR update
-                if kalman_scheduler is not None:
-                    new_lr = kalman_scheduler.step(final_loss)
-                    for param_group in optimizer.param_groups:
-                        param_group['lr'] = new_lr
+                    loss = criterion(outputs, target_tensor)
 
-                # Update teacher weight schedule if enabled
-                if weight_scheduler is not None:
-                    self.teacher_weight = weight_scheduler.step(final_loss)
+                    # Frobenius-norm regularization (Procrustes: penalise skew-param
+                    # magnitude to keep rotation angles small across cycles;
+                    # MLP/LowRank adapters return 0.0 so the term is a no-op).
+                    reg_loss = getattr(self.adapter, 'regularization_loss', lambda: 0.0)()
+                    if reg_loss != 0.0:
+                        loss = loss + 0.01 * reg_loss
 
-                if epoch % max(1, epochs // 2) == 0:
-                    self.logger.log_training_epoch(epoch=epoch+1, total_epochs=epochs, loss=final_loss)
+                    loss.backward()
+                    optimizer.step()
+                    final_loss = loss.item()
 
-                # Phase 1: Early stopping check
-                if conv_monitor is not None and conv_monitor.record_loss(final_loss):
-                    self.logger.log_event("early_stopping", f"Sedimentation converged at epoch {epoch+1}", epoch=epoch+1)
-                    break
+                    # Kalman-gain adaptive LR update
+                    if kalman_scheduler is not None:
+                        new_lr = kalman_scheduler.step(final_loss)
+                        for param_group in optimizer.param_groups:
+                            param_group['lr'] = new_lr
 
-            self.adapter.eval()
-            self.adapter.save(self.adapter_path)
-            self.logger.log_checkpoint("save", self.adapter_path)
+                    # Update teacher weight schedule if enabled
+                    if weight_scheduler is not None:
+                        self.teacher_weight = weight_scheduler.step(final_loss)
+
+                    if epoch % max(1, epochs // 2) == 0:
+                        self.logger.log_training_epoch(epoch=epoch+1, total_epochs=epochs, loss=final_loss)
+
+                    # Phase 1: Early stopping check
+                    if conv_monitor is not None and conv_monitor.record_loss(final_loss):
+                        self.logger.log_event("early_stopping", f"Sedimentation converged at epoch {epoch+1}", epoch=epoch+1)
+                        break
+
+                self.adapter.eval()
+                self.adapter.save(self.adapter_path)
+                self.logger.log_checkpoint("save", self.adapter_path)
 
             # --- UPDATE QDRANT ---
             self.logger.log_event("vector_update", "Syncing updated vectors to Qdrant")
@@ -1381,13 +1491,6 @@ class AntigravityEngine:
             threshold=0
         )
         
-        # Collect trainable parameters: adapter + projection (if present)
-        params = list(self.adapter.parameters())
-        if (getattr(self, 'teacher_helper', None) is not None
-                and hasattr(self.teacher_helper, '_projection')
-                and self.teacher_helper._projection is not None):
-            params += list(self.teacher_helper._projection.parameters())
-        optimizer = optim.Adam(params, lr=lr)
         from sedimentation_loss import create_sedimentation_loss
         _loss_type = getattr(self, '_sedimentation_loss_type', 'mse')
         _loss_kwargs = getattr(self, '_sedimentation_loss_kwargs', {})
@@ -1396,60 +1499,113 @@ class AntigravityEngine:
         self.adapter.train()
         final_loss = 0.0
 
-        # Phase 1: Optional convergence monitoring for early stopping
-        conv_monitor = None
-        if getattr(self, '_convergence_enabled', False):
-            from convergence_monitor import ConvergenceMonitor
-            conv_monitor = ConvergenceMonitor(
-                patience=getattr(self, '_convergence_patience', ChelationConfig.CONVERGENCE_PATIENCE),
-                rel_threshold=getattr(self, '_convergence_rel_threshold', ChelationConfig.CONVERGENCE_REL_THRESHOLD),
-                min_epochs=getattr(self, '_convergence_min_epochs', ChelationConfig.CONVERGENCE_MIN_EPOCHS)
+        if getattr(self, '_sedimentation_optimizer_type', 'adam') == "eggroll_es":
+            from evolution_strategies_optimizer import (
+                EvolutionStrategiesConfig,
+                train_adapter_with_es,
             )
-
-        # Optional weight scheduler for dynamic teacher weight
-        weight_scheduler = getattr(self, '_weight_scheduler', None)
-
-        # Kalman-gain adaptive LR scheduler
-        kalman_scheduler = None
-        if getattr(self, '_kalman_lr_enabled', False):
-            from kalman_lr_scheduler import KalmanLRScheduler
-            kalman_scheduler = KalmanLRScheduler(
-                base_lr=lr,
-                process_noise=getattr(self, '_kalman_process_noise', 0.1),
-                min_lr_ratio=getattr(self, '_kalman_min_lr_ratio', 0.1),
-                max_lr_ratio=getattr(self, '_kalman_max_lr_ratio', 2.0),
-                window_size=getattr(self, '_kalman_window_size', 10),
+            es_kwargs = getattr(self, '_es_optimizer_kwargs', {})
+            es_config = EvolutionStrategiesConfig(
+                population_size=es_kwargs.get("population_size", ChelationConfig.ES_POPULATION_SIZE),
+                rank=es_kwargs.get("rank", ChelationConfig.ES_RANK),
+                sigma=es_kwargs.get("sigma", ChelationConfig.ES_SIGMA),
+                learning_rate=es_kwargs.get("learning_rate", lr),
+                generations=es_kwargs.get("generations", ep),
+                seed=es_kwargs.get("seed", ChelationConfig.ES_SEED),
+                quantization_aware=es_kwargs.get(
+                    "quantization_aware", ChelationConfig.ES_QUANTIZATION_AWARE
+                ),
+                kalman_sigma=es_kwargs.get(
+                    "kalman_sigma", ChelationConfig.ES_KALMAN_SIGMA_ENABLED
+                ),
             )
+            es_result = train_adapter_with_es(
+                self.adapter,
+                input_tensor,
+                target_tensor,
+                criterion,
+                config=es_config,
+                logger=self.logger,
+            )
+            final_loss = es_result["final_loss"]
+            self.logger.log_training_epoch(
+                epoch=es_config.generations,
+                total_epochs=es_config.generations,
+                loss=final_loss,
+            )
+            self.adapter.eval()
+            self.adapter.save(self.adapter_path)
+            self.logger.log_checkpoint("save", self.adapter_path)
+            self.logger.log_event(
+                "eggroll_es_offline_distillation_complete",
+                "Offline distillation completed with low-rank ES optimizer",
+                final_loss=final_loss,
+                generations=es_config.generations,
+                population_size=es_config.population_size,
+            )
+        else:
+            # Collect trainable parameters: adapter + projection (if present)
+            params = list(self.adapter.parameters())
+            if (getattr(self, 'teacher_helper', None) is not None
+                    and hasattr(self.teacher_helper, '_projection')
+                    and self.teacher_helper._projection is not None):
+                params += list(self.teacher_helper._projection.parameters())
+            optimizer = optim.Adam(params, lr=lr)
 
-        for epoch in range(ep):
-            optimizer.zero_grad()
-            outputs = self.adapter(input_tensor)
-            loss = criterion(outputs, target_tensor)
-            loss.backward()
-            optimizer.step()
-            final_loss = loss.item()
+            # Phase 1: Optional convergence monitoring for early stopping
+            conv_monitor = None
+            if getattr(self, '_convergence_enabled', False):
+                from convergence_monitor import ConvergenceMonitor
+                conv_monitor = ConvergenceMonitor(
+                    patience=getattr(self, '_convergence_patience', ChelationConfig.CONVERGENCE_PATIENCE),
+                    rel_threshold=getattr(self, '_convergence_rel_threshold', ChelationConfig.CONVERGENCE_REL_THRESHOLD),
+                    min_epochs=getattr(self, '_convergence_min_epochs', ChelationConfig.CONVERGENCE_MIN_EPOCHS)
+                )
 
-            # Kalman-gain adaptive LR update
-            if kalman_scheduler is not None:
-                new_lr = kalman_scheduler.step(final_loss)
-                for param_group in optimizer.param_groups:
-                    param_group['lr'] = new_lr
+            # Optional weight scheduler for dynamic teacher weight
+            weight_scheduler = getattr(self, '_weight_scheduler', None)
 
-            # Update teacher weight schedule if enabled
-            if weight_scheduler is not None:
-                self.teacher_weight = weight_scheduler.step(final_loss)
+            # Kalman-gain adaptive LR scheduler
+            kalman_scheduler = None
+            if getattr(self, '_kalman_lr_enabled', False):
+                from kalman_lr_scheduler import KalmanLRScheduler
+                kalman_scheduler = KalmanLRScheduler(
+                    base_lr=lr,
+                    process_noise=getattr(self, '_kalman_process_noise', 0.1),
+                    min_lr_ratio=getattr(self, '_kalman_min_lr_ratio', 0.1),
+                    max_lr_ratio=getattr(self, '_kalman_max_lr_ratio', 2.0),
+                    window_size=getattr(self, '_kalman_window_size', 10),
+                )
 
-            if epoch % max(1, ep // 2) == 0:
-                self.logger.log_training_epoch(epoch=epoch+1, total_epochs=ep, loss=final_loss)
+            for epoch in range(ep):
+                optimizer.zero_grad()
+                outputs = self.adapter(input_tensor)
+                loss = criterion(outputs, target_tensor)
+                loss.backward()
+                optimizer.step()
+                final_loss = loss.item()
 
-            # Phase 1: Early stopping check
-            if conv_monitor is not None and conv_monitor.record_loss(final_loss):
-                self.logger.log_event("early_stopping", f"Distillation converged at epoch {epoch+1}", epoch=epoch+1)
-                break
+                # Kalman-gain adaptive LR update
+                if kalman_scheduler is not None:
+                    new_lr = kalman_scheduler.step(final_loss)
+                    for param_group in optimizer.param_groups:
+                        param_group['lr'] = new_lr
 
-        self.adapter.eval()
-        self.adapter.save(self.adapter_path)
-        self.logger.log_checkpoint("save", self.adapter_path)
+                # Update teacher weight schedule if enabled
+                if weight_scheduler is not None:
+                    self.teacher_weight = weight_scheduler.step(final_loss)
+
+                if epoch % max(1, ep // 2) == 0:
+                    self.logger.log_training_epoch(epoch=epoch+1, total_epochs=ep, loss=final_loss)
+
+                # Phase 1: Early stopping check
+                if conv_monitor is not None and conv_monitor.record_loss(final_loss):
+                    self.logger.log_event("early_stopping", f"Distillation converged at epoch {epoch+1}", epoch=epoch+1)
+                    break
+
+            self.adapter.eval()
+            self.adapter.save(self.adapter_path)
+            self.logger.log_checkpoint("save", self.adapter_path)
 
         # Update vectors in Qdrant
         self.logger.log_event("offline_distillation_update", "Updating corpus vectors in Qdrant")
