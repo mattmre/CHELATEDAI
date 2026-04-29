@@ -6,10 +6,11 @@ This document describes the main research themes in the repository and where eac
 
 | Track | Primary question | Proof required | Current state |
 |---|---|---|---|
-| Adaptive retrieval | Can noisy embedding neighborhoods be detected and corrected before they degrade retrieval? | Frozen baseline values plus NDCG@10/MRR/Recall@K deltas after chelation | Implemented; deterministic live-fire wiring validated; campaign proof still required |
-| Chelation fitness validation | Does chelation improve retrieval metrics directly, not just adapter loss? | Retrieval-fitness campaigns with baseline, adaptive, transfer, and quantized comparisons | Harness and evaluator exist; benchmark campaigns are next |
+| Adaptive retrieval | Can noisy embedding neighborhoods be detected and corrected before they degrade retrieval? | Frozen baseline values plus NDCG@10/MRR/Recall@K deltas after chelation | Implemented; deterministic live-fire and non-saturated closed-course safety harnesses validated; first MiniLM/SciFact road course supports a safer threshold guardrail, not aggressive chelation |
+| Chelation fitness validation | Does chelation improve retrieval metrics directly, not just adapter loss? | Retrieval-fitness campaigns with baseline, adaptive, transfer, quantized comparisons, query-level attribution rows, and controlled collapse fixtures | Harness, evaluator, calibration profiles, failure-injection tests, first small-model road course, query attribution, and synthetic collapse benchmark exist; broader benchmark campaigns remain next |
 | Distillation and cross-lingual routing | Can teacher-guided correction generalize across models and languages? | Multitask/cross-lingual campaign results with no structural-health regression | Implemented and under evaluation |
 | Online correction | Can inference-time updates improve quality without destabilizing the system? | Ablations showing norm/drift and ranking stability under online updates | Implemented; requires controlled ablation |
+| Self-adapting chelation | Can the system synthesize, sandbox, and filter its own repair directives from new context and diagnostics? | Positive-reward self-edit candidates that retain prior behavior, survive quantization, and pass road-course gates | SEAL/EGGROLL-inspired advisory planner, self-generated eval probes, candidate ledger, sandbox execution seam, and adaptive validation loops implemented; cloned-adapter persistence remains gated |
 | Structural diagnostics | Can topology and isomer signals reveal degradation that ranking metrics miss? | Structural-health gates correlated with retrieval outcomes | Implemented and test-backed |
 | Multi-dataset evaluation | Do improvements transfer beyond SciFact? | Transfer gates over held-out query sets and BEIR-style tasks | Implemented; campaign execution is ongoing work |
 | LLM architecture adaptation | Which modern LLM architecture and serving patterns should become retrieval-native ChelatedAI subcomponents? | Live-fire telemetry for routing, norm drift, local/global policy, and gate recommendations | Research review complete; runtime diagnostics wired |
@@ -75,6 +76,7 @@ Can the runtime update itself during inference without introducing instability t
 
 - multiple online loss families
 - scheduler and diagnostics support
+- SEAL/EGGROLL-inspired self-edit planning in `self_healing_chelation.py`
 - topology snapshots
 - isomer drift detection
 - structural health reporting
@@ -133,6 +135,8 @@ Which modern LLM architecture patterns and practical AI-engineering operations s
 ### Research conclusion
 
 Modern LLMs repeatedly use sparse routing, compressed memory, local/global context schedules, normalization, speculative execution, and serving/runtime optimization. ChelatedAI should adapt those ideas as retrieval-native workflows rather than copying transformer internals directly.
+
+The project-car safety testbed now covers instrumentation, component benches, control-surface dyno sweeps, non-saturated closed-course loops, calibration profiles, and failure injection. Defaults remain unchanged until the road-course campaign plan passes BEIR, multitask transfer, repeatability, and quantization-survival gates.
 
 The canonical review is:
 

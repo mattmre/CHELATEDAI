@@ -123,6 +123,14 @@ class AdaptiveGateOrchestrator:
                         "adapter_norm_ratio_out_of_band",
                         adapter_norm_ratio=ratio,
                     )
+                elif ratio < 0.75 or ratio > 1.33:
+                    recommend(
+                        "inspect_norm_drift",
+                        "adapter_norm_ratio_watch_band_exceeded",
+                        severity="info",
+                        confidence=0.65,
+                        adapter_norm_ratio=ratio,
+                    )
             query_delta = norm_drift.get("query_norm_delta")
             if query_delta is not None:
                 metrics["query_norm_delta"] = float(query_delta)

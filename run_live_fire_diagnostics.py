@@ -38,6 +38,7 @@ from quantization_promotion_gate import QuantizationPromotionGate
 from query_reformulator import QueryReformulator
 from reproducibility_context import InitialChelatedValues, stable_hash
 from retrieval_fitness_evaluator import RetrievalFitnessEvaluator
+from self_healing_chelation import SelfHealingChelationConfig, SelfHealingChelationPlanner
 from stability_tracker import StabilityTracker
 from structural_health_score import StructuralHealthScore
 
@@ -63,8 +64,8 @@ KNOWN_GOOD_THRESHOLDS = {
 CALIBRATION_GUIDANCE = {
     "chelation_threshold": {
         "current_default": ChelationConfig.DEFAULT_CHELATION_THRESHOLD,
-        "recommended_start": 0.0004,
-        "explore_range": [0.0002, 0.001],
+        "recommended_start": 0.01,
+        "explore_range": [0.0004, 0.01],
         "adjust_when": "CHELATE rate leaves 20-40%, retrieval fitness drops, or threshold oscillation rises.",
     },
     "quantization_retention": {
@@ -184,6 +185,26 @@ class FakeQdrant:
         scored.sort(key=lambda item: item.score, reverse=True)
         return SimpleNamespace(points=scored[:limit])
 
+    def scroll(
+        self,
+        collection_name: str,
+        limit: int,
+        with_vectors: bool,
+        with_payload: bool,
+        offset: int | None = None,
+    ):
+        del collection_name, with_vectors, with_payload
+        start = int(offset or 0)
+        end = start + int(limit)
+        batch = self.points[start:end]
+        next_offset = end if end < len(self.points) else None
+        return batch, next_offset
+
+    def retrieve(self, collection_name: str, ids: Sequence[Any]):
+        del collection_name
+        wanted = set(ids)
+        return [point for point in self.points if point.id in wanted]
+
 
 def _json_safe(value: Any) -> Any:
     if value is None or isinstance(value, (str, bool, int, float)):
@@ -288,6 +309,16 @@ def _status(value: float | None, minimum: float | None = None, maximum: float | 
     return "pass"
 
 
+def _quantization_gate_status(gate: Any) -> str:
+    if gate is None:
+        return "warning"
+    if gate.passed:
+        return "pass"
+    if gate.fp32_gain <= 0 and "fp32_gain_below_minimum" in gate.reasons:
+        return "warning"
+    return "fail"
+
+
 def run_live_fire_diagnostics() -> Dict[str, Any]:
     logger = EventCollector()
     engine = _make_engine(logger)
@@ -379,6 +410,67 @@ def run_live_fire_diagnostics() -> Dict[str, Any]:
         level="DEBUG",
     )
 
+    self_healing_context = [
+        "adaptive retrieval chelation variance correction",
+        "int8 quantization promotion gate retained gain",
+    ]
+    self_healing_planner = SelfHealingChelationPlanner(
+        config=SelfHealingChelationConfig(
+            baseline_fitness=0.0,
+            reward_threshold=0.0,
+            min_retention_score=0.8,
+            max_directives=4,
+        ),
+        logger=logger,
+    )
+    self_healing_probes = self_healing_planner.generate_eval_probes(self_healing_context)
+    probe_queries = {
+        probe.probe_id: self_healing_context[index // 2]
+        for index, probe in enumerate(self_healing_probes)
+    }
+    probe_qrels = {}
+    for probe_id, query_text in probe_queries.items():
+        if "quantization" in query_text:
+            probe_qrels[probe_id] = {4: 1.0}
+        else:
+            probe_qrels[probe_id] = {0: 1.0, 1: 1.0}
+    probe_evaluator = RetrievalFitnessEvaluator(qrels=probe_qrels, k=5, logger=logger)
+
+    def _self_edit_fitness(directive):
+        from fitness_interfaces import FitnessEvaluation
+
+        probe_result = probe_evaluator.evaluate_engine(
+            engine,
+            probe_queries,
+            id_mapper=lambda _engine, ids: ids,
+            candidate_id=directive.directive_id,
+        )
+        metrics = dict(probe_result.to_fitness_evaluation().metrics)
+        metrics["retention_score"] = 0.95
+        if directive.directive_id == "eggroll_low_rank_self_edit":
+            metrics["fp32_fitness"] = probe_result.fitness
+            metrics["quantized_fitness"] = probe_result.fitness * 0.95
+        return FitnessEvaluation(
+            candidate_id=directive.directive_id,
+            fitness=probe_result.fitness,
+            metrics=metrics,
+            metadata={
+                "fixture": "deterministic_live_fire",
+                "probe_query_count": len(probe_queries),
+                "reward_source": "retrieval_fitness_evaluator",
+            },
+        )
+
+    self_healing_plan = self_healing_planner.run_adaptive_validation_loop(
+        context=self_healing_context,
+        diagnostics={
+            **diagnostics.to_dict(),
+            "retrieval_policy": {"high_variance_fast_path": True},
+        },
+        fitness=_self_edit_fitness,
+        rounds=2,
+    )
+
     stability_report = engine._stability_tracker.get_stability_report()
     norm_ratio = stability_report["norm_drift"].get("adapter_norm_ratio_latest")
     chelate_actions = [
@@ -392,7 +484,7 @@ def run_live_fire_diagnostics() -> Dict[str, Any]:
         "baseline_retrieval_fitness": _status(baseline_result.fitness, KNOWN_GOOD_THRESHOLDS["retrieval_fitness_min"]),
         "live_retrieval_fitness": _status(live_result.fitness, KNOWN_GOOD_THRESHOLDS["retrieval_fitness_min"]),
         "final_fitness": _status(composition.final_fitness, KNOWN_GOOD_THRESHOLDS["final_fitness_min"]),
-        "quantization_gate": "pass" if composition.quantization_gate and composition.quantization_gate.passed else "fail",
+        "quantization_gate": _quantization_gate_status(composition.quantization_gate),
         "structural_health": _status(health_result.score, KNOWN_GOOD_THRESHOLDS["structural_health_min"]),
         "norm_ratio_hard_band": _status(
             norm_ratio,
@@ -401,9 +493,11 @@ def run_live_fire_diagnostics() -> Dict[str, Any]:
         ),
         "route_effectiveness": "pass",
         "diagnostics_json_serializable": "pass",
+        "self_healing_plan": "pass" if self_healing_plan["accepted_total"] > 0 else "warning",
         "convergence_guard": _status(fitness_ratio, KNOWN_GOOD_THRESHOLDS["convergence_fitness_ratio_min"]),
     }
     json.dumps(diagnostics.to_dict())
+    json.dumps(self_healing_plan)
     failures = [name for name, status in checks.items() if status == "fail"]
     warnings = []
     if chelate_rate < KNOWN_GOOD_THRESHOLDS["target_chelate_rate_min"] or chelate_rate > KNOWN_GOOD_THRESHOLDS["target_chelate_rate_max"]:
@@ -441,6 +535,7 @@ def run_live_fire_diagnostics() -> Dict[str, Any]:
             "fitness_composition": composition.to_dict(),
             "integrated_diagnostics": diagnostics.to_dict(),
             "adaptive_gate": gate_decision.to_dict(),
+            "self_healing_update_plan": self_healing_plan,
             "stability_report": stability_report,
         },
         "summary": {

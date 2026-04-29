@@ -57,3 +57,55 @@ class QueryReformulator:
         )
         return deduped
 
+
+def query_lexical_features(query: str) -> dict:
+    """Compute lightweight query-shape features usable before retrieval."""
+
+    normalized = " ".join(re.findall(r"[A-Za-z0-9_+-]+", query.lower()))
+    tokens = normalized.split()
+    stopwords = {"the", "a", "an", "of", "to", "and", "or", "for", "in"}
+    negations = {"no", "not", "without", "lack", "lacks", "never"}
+    claim_cues = {
+        "increase",
+        "increased",
+        "decrease",
+        "decreased",
+        "risk",
+        "treat",
+        "treats",
+        "used",
+        "associated",
+        "affect",
+        "facilitates",
+    }
+    token_count = len(tokens)
+    return {
+        "token_count": token_count,
+        "char_count": len(query),
+        "stopword_ratio": (sum(token in stopwords for token in tokens) / token_count) if token_count else 0.0,
+        "numeric_token_count": sum(any(char.isdigit() for char in token) for token in tokens),
+        "negation_count": sum(token in negations for token in tokens),
+        "claim_cue_count": sum(token in claim_cues for token in tokens),
+    }
+
+
+def should_apply_reformulation(query: str, policy: str = "always") -> bool:
+    """Return whether query reformulation should run for a query under a policy."""
+
+    features = query_lexical_features(query)
+    token_count = int(features["token_count"])
+    stopword_ratio = float(features["stopword_ratio"])
+    if policy == "always":
+        return True
+    if policy == "never":
+        return False
+    if policy == "selective_low_specificity":
+        if token_count == 0:
+            return False
+        return token_count <= 6 or stopword_ratio >= 0.35
+    if policy == "selective_high_specificity":
+        return token_count >= 8 and stopword_ratio <= 0.25
+    if policy == "selective_claim_cue":
+        return bool(features["claim_cue_count"] or features["negation_count"] or features["numeric_token_count"])
+    raise ValueError(f"unsupported query reformulation policy: {policy}")
+

@@ -924,17 +924,21 @@ class AntigravityEngine:
             generations=config.generations,
         )
 
-    def enable_query_reformulation(self, max_variants=3):
+    def enable_query_reformulation(self, max_variants=3, policy="always"):
         """Enable deterministic multi-query reformulation for retrieval fallback."""
         if max_variants < 1:
             raise ValueError("max_variants must be >= 1")
+        from query_reformulator import should_apply_reformulation
+        should_apply_reformulation("calibration query", policy)
         from query_reformulator import QueryReformulator
         self._query_reformulator = QueryReformulator()
         self._query_reformulator_max_variants = max_variants
+        self._query_reformulator_policy = policy
         self.logger.log_event(
             "query_reformulation_enabled",
             "Query reformulation enabled",
             max_variants=max_variants,
+            policy=policy,
         )
 
     def enable_adapter_routing(self, routes):
@@ -1061,6 +1065,27 @@ class AntigravityEngine:
         }
         return self._runtime_json_safe(diagnostics)
 
+    @staticmethod
+    def _fuse_reformulated_rankings(variant_rankings, limit=10, rrf_k=60):
+        """Fuse multi-query rankings with reciprocal-rank scoring."""
+
+        scores = {}
+        first_seen = {}
+        order = 0
+        for ranking in variant_rankings:
+            for rank, doc_id in enumerate(ranking):
+                if doc_id not in first_seen:
+                    first_seen[doc_id] = order
+                    order += 1
+                scores[doc_id] = scores.get(doc_id, 0.0) + (1.0 / (rrf_k + rank + 1))
+        return [
+            doc_id
+            for doc_id, _score in sorted(
+                scores.items(),
+                key=lambda item: (-item[1], first_seen[item[0]]),
+            )[:limit]
+        ]
+
     def _record_runtime_diagnostics(self, diagnostics):
         self._last_runtime_diagnostics = self._runtime_json_safe(diagnostics)
         telemetry = dict(getattr(self, "_runtime_telemetry", {}))
@@ -1071,6 +1096,8 @@ class AntigravityEngine:
             telemetry["empty_result_count"] = int(telemetry.get("empty_result_count", 0)) + 1
         if runtime.get("status") == "qdrant_error":
             telemetry["qdrant_error_count"] = int(telemetry.get("qdrant_error_count", 0)) + 1
+        if runtime.get("status") == "embedding_error":
+            telemetry["embedding_error_count"] = int(telemetry.get("embedding_error_count", 0)) + 1
         self._runtime_telemetry = telemetry
         logger = getattr(self, "logger", None)
         if logger is not None:
@@ -1274,6 +1301,10 @@ class AntigravityEngine:
         # V_new = V_old - mu
         centered_query = query_vec - center_of_mass
         centered_candidates = local_np - center_of_mass
+        mask = self._chelate_toxicity(local_np)
+        self._last_chelation_mask = mask
+        centered_query = centered_query * mask
+        centered_candidates = centered_candidates * mask
 
         # 3. Recalculate Similarities (vectorized)
         # Compute norms
@@ -2010,19 +2041,24 @@ class AntigravityEngine:
         inference_start = time.time()
         reformulator = getattr(self, '_query_reformulator', None)
         if reformulator is not None and not getattr(self, '_query_reformulation_active', False):
+            from query_reformulator import should_apply_reformulation
+            policy = getattr(self, '_query_reformulator_policy', 'always')
+            if not should_apply_reformulation(query_text, policy):
+                reformulator = None
+        if reformulator is not None and not getattr(self, '_query_reformulation_active', False):
             self._query_reformulation_active = True
             try:
                 variants = reformulator.reformulate(
                     query_text,
                     max_variants=getattr(self, '_query_reformulator_max_variants', 3),
                 )
-                merged = []
-                seen = set()
                 first_result = None
                 variant_summaries = []
+                variant_rankings = []
                 for variant in variants:
                     result = self.run_inference(variant.text)
                     child_diagnostics = self.get_last_runtime_diagnostics()
+                    variant_rankings.append(list(result[1]))
                     variant_summaries.append({
                         "strategy": variant.strategy,
                         "result_count": len(result[1]),
@@ -2035,12 +2071,6 @@ class AntigravityEngine:
                     })
                     if first_result is None:
                         first_result = result
-                    for doc_id in result[1]:
-                        if doc_id not in seen:
-                            seen.add(doc_id)
-                            merged.append(doc_id)
-                    if len(merged) >= 10:
-                        break
                 if first_result is None:
                     latency_ms = (time.time() - inference_start) * 1000.0
                     self._record_runtime_diagnostics(self._build_runtime_diagnostics(
@@ -2054,7 +2084,15 @@ class AntigravityEngine:
                         query_reformulation={"variant_count": 0, "variants": []},
                     ))
                     return [], [], np.ones(self.vector_size), 0.0
-                final_result = (first_result[0], merged[:10], first_result[2], first_result[3])
+                fused_top = self._fuse_reformulated_rankings(variant_rankings, limit=10)
+                original_top = list(first_result[1])[:10]
+                original_set = set(original_top)
+                fused_set = set(fused_top)
+                if not original_set and not fused_set:
+                    fusion_jaccard = 1.0
+                else:
+                    fusion_jaccard = len(original_set.intersection(fused_set)) / len(original_set.union(fused_set))
+                final_result = (first_result[0], fused_top, first_result[2], fusion_jaccard)
                 latency_ms = (time.time() - inference_start) * 1000.0
                 self._record_runtime_diagnostics(self._build_runtime_diagnostics(
                     query_text,
@@ -2067,6 +2105,11 @@ class AntigravityEngine:
                     query_reformulation={
                         "variant_count": len(variant_summaries),
                         "variants": variant_summaries,
+                        "fusion": {
+                            "method": "reciprocal_rank_fusion",
+                            "original_overlap": fusion_jaccard,
+                            "fused_changed": fused_top != original_top,
+                        },
                     },
                     retrieval_policy={
                         "policy": "multi_variant_merge",
@@ -2084,10 +2127,38 @@ class AntigravityEngine:
             finally:
                 self._query_reformulation_active = False
 
-        # A. Embed
-        q_vec = self.embed(query_text)[0]
-        adapter_router = getattr(self, '_adapter_router', None)
         route_metadata = None
+
+        # A. Embed
+        try:
+            query_embeddings = np.asarray(self.embed(query_text), dtype=float)
+            if (
+                query_embeddings.ndim != 2
+                or query_embeddings.shape[0] < 1
+                or query_embeddings.shape[1] != self.vector_size
+                or not np.all(np.isfinite(query_embeddings))
+            ):
+                raise ValueError(
+                    "Query embedding returned invalid shape or non-finite values "
+                    f"(shape={query_embeddings.shape}, expected (*, {self.vector_size}))"
+                )
+            q_vec = query_embeddings[0]
+        except Exception as e:
+            self.logger.log_error("embed_validation", "Invalid query embedding during inference", exception=e)
+            latency_ms = (time.time() - inference_start) * 1000.0
+            self._record_runtime_diagnostics(self._build_runtime_diagnostics(
+                query_text,
+                action="ERROR",
+                latency_ms=latency_ms,
+                std_top=[],
+                final_top=[],
+                jaccard=0.0,
+                route=route_metadata,
+                status="embedding_error",
+                error_type=type(e).__name__,
+            ))
+            return [], [], np.ones(self.vector_size), 0.0
+        adapter_router = getattr(self, '_adapter_router', None)
         if adapter_router is not None and not getattr(self, '_adapter_routing_active', False):
             route = adapter_router.select(q_vec, fallback=lambda: self.adapter)
             route_metadata = route.to_dict() if hasattr(route, "to_dict") else {
@@ -2195,15 +2266,17 @@ class AntigravityEngine:
                       # This method now handles the `chelation_log` update implicitly
                       chel_top, center_of_mass = self._spectral_chelation_ranking(q_vec, local_vectors, std_top)
                       final_top_ids = chel_top
+                      mask = getattr(self, "_last_chelation_mask", mask)
                  else:
                       # Variance is Low -> Trust the Quantized Scout (Fast)
                       action = "FAST"
                       final_top_ids = std_top
             elif self.use_centering:
                  # If quantization is off but centering is on, always chelate (Old verification path)
-                 action = "CHELATE_ALWAYS"
-                 chel_top, center_of_mass = self._spectral_chelation_ranking(q_vec, local_vectors, std_top)
-                 final_top_ids = chel_top
+                  action = "CHELATE_ALWAYS"
+                  chel_top, center_of_mass = self._spectral_chelation_ranking(q_vec, local_vectors, std_top)
+                  final_top_ids = chel_top
+                  mask = getattr(self, "_last_chelation_mask", mask)
 
             # Format Return
             chel_top_10 = final_top_ids[:10]

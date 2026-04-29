@@ -10,11 +10,15 @@
 | [Module Guide](MODULE_GUIDE.md) | Module-by-module inventory across runtime, evaluation, and storage POC files |
 | [Research Tracks](RESEARCH_TRACKS.md) | Current research themes, maturity, and open questions |
 | [Evolution Strategies Hyperscale Comparison](evolution-strategies-hyperscale-chelatedai-analysis.md) | Comparison of the EGGROLL / Evolution Strategies hyperscale paper with ChelatedAI tuning, quantization, and storage-node strategy |
+| [Self-Adapting Chelation: SEAL + EGGROLL Adaptation](self-adapting-chelation-seal-eggroll-analysis-2026-04-28.md) | Mapping of SEAL self-edits and EGGROLL low-rank ES into ChelatedAI's self-healing chelation implementation |
+| [SEAL + EGGROLL Multi-Panel Architecture Review](seal-eggroll-multipanel-architecture-2026-04-28.md) | Multi-panel synthesis, claim boundary, and implementation sequence for self-healing adapter-only chelation |
 | [Current EGGROLL/ChelatedAI Research Validation](current-research-eggroll-chelatedai-2026-04-27.md) | Current research scan and design validation for low-rank ES, quantized ZO, adaptive retrieval, and near-data storage scoring |
 | [EGGROLL Implementation Expert Panel Review](eggroll-implementation-panel-review-2026-04-27.md) | Multi-panel expert review of missing coverage, risks, and next priorities after the EGGROLL-inspired implementation |
 | [EGGROLL Strategic Analysis Plan](eggroll-strategic-analysis-plan-2026-04-27.md) | Three-loop strategic plan for retrieval-native ES, candidate promotion gates, storage-backed fitness, and follow-up platform functionality |
 | [LLM Architecture And AI Engineering Adaptation Review](llm-architecture-ai-engineering-adaptation-review-2026-04-27.md) | Review of modern LLM architecture features and practical AI-engineering operations mapped to ChelatedAI subcomponent adaptation opportunities |
 | [Live-Fire Diagnostics And Calibration](live-fire-diagnostics-2026-04-27.md) | Deterministic end-to-end diagnostics harness results, known-good value guidance, and next benchmark campaign priorities |
+| [Safety Testbed Road-Course Campaign Plan](safety-testbed-road-course-plan.md) | Project-car safety testbed status, default-promotion gate, road-course campaign evidence requirements, and documentation refresh criteria |
+| [Road-Course Results And Default Threshold Decision](road-course-results-2026-04-27.md) | Small-model SciFact/NFCorpus road-course evidence supporting the safer `0.01` default chelation threshold guardrail |
 | [Computational Storage And Drive Nodes](COMPUTATIONAL_STORAGE_DRIVE_NODES.md) | Canonical summary of hard-drive / storage-node experiments and scope limits |
 | [Computational Storage Scope Decision](computational-storage-transport-scope-decision.md) | Formal claim boundary for the RP2040 transport path |
 | [Computational Storage Hardware Evidence Runbook](computational-storage-hardware-evidence-runbook.md) | Operator workflow for real hardware evidence capture |
@@ -61,6 +65,7 @@
 | [Session Log 1 (2026-02-13)](ARCH%20AGENTIC%20ENGINEERING%20AND%20PLANNING/session-log-2026-02-13-impl.md) | Initial analysis cycle -- 55 findings discovered |
 | [Session Log 2 (2026-02-13)](ARCH%20AGENTIC%20ENGINEERING%20AND%20PLANNING/session-log-2026-02-13-impl-2.md) | Implementation cycle -- 7 findings resolved, 5 PRs merged, 134 tests |
 | [Session Log 3 (2026-02-17)](ARCH%20AGENTIC%20ENGINEERING%20AND%20PLANNING/session-log-2026-02-17-impl-3.md) | Remediation cycle -- 13 findings resolved, 345 tests passing locally |
+| [Session Log 34 (2026-04-29)](ARCH%20AGENTIC%20ENGINEERING%20AND%20PLANNING/session-log-2026-04-29-session34.md) | Road-course, self-healing, and attribution batch with 1259-test wrap validation |
 | [Backlog (2026-02-13)](ARCH%20AGENTIC%20ENGINEERING%20AND%20PLANNING/backlog-2026-02-13.md) | Master backlog with 55 prioritized findings |
 | [Research: F-006 Config Mapping](ARCH%20AGENTIC%20ENGINEERING%20AND%20PLANNING/research-f006-config-mapping.md) | Hardcoded value -> ChelationConfig mapping |
 | [Research: F-010 Logger Migration](ARCH%20AGENTIC%20ENGINEERING%20AND%20PLANNING/research-f010-logger-migration.md) | print() -> ChelationLogger migration plan |

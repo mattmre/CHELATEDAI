@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Any, Dict
+from dataclasses import dataclass, field
+from typing import Any, Dict, List
 
 from chelation_logger import get_logger
 
@@ -20,6 +20,7 @@ class QuantizationGateResult:
     quantized_gain: float
     retained_gain_ratio: float
     threshold: float
+    reasons: List[str] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -31,6 +32,7 @@ class QuantizationGateResult:
             "quantized_gain": self.quantized_gain,
             "retained_gain_ratio": self.retained_gain_ratio,
             "threshold": self.threshold,
+            "reasons": self.reasons,
         }
 
 
@@ -56,10 +58,17 @@ class QuantizationPromotionGate:
         quantized_gain = float(quantized_fitness) - float(baseline_fitness)
         if fp32_gain <= self.minimum_fp32_gain:
             retained_ratio = 1.0 if quantized_gain >= fp32_gain else 0.0
-            passed = quantized_gain >= fp32_gain
+            passed = False
         else:
             retained_ratio = quantized_gain / fp32_gain
             passed = retained_ratio >= self.retained_gain_threshold
+        reasons = []
+        if fp32_gain <= self.minimum_fp32_gain:
+            reasons.append("fp32_gain_below_minimum")
+        if retained_ratio < self.retained_gain_threshold:
+            reasons.append("retained_gain_below_threshold")
+        if quantized_gain < 0:
+            reasons.append("quantized_fitness_below_baseline")
 
         result = QuantizationGateResult(
             passed=bool(passed),
@@ -70,6 +79,7 @@ class QuantizationPromotionGate:
             quantized_gain=float(quantized_gain),
             retained_gain_ratio=float(retained_ratio),
             threshold=self.retained_gain_threshold,
+            reasons=reasons,
         )
         self.logger.log_event(
             "quantization_gate_evaluated",
@@ -80,6 +90,7 @@ class QuantizationPromotionGate:
             baseline_fitness=result.baseline_fitness,
             retained_gain_ratio=result.retained_gain_ratio,
             threshold=result.threshold,
+            reasons=result.reasons,
         )
         return result
 

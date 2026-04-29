@@ -71,6 +71,13 @@ Use model names like `ollama:nomic-embed-text` to route through the HTTP embeddi
 ```bash
 python -m unittest discover -s . -p "test_*.py" -v
 python run_live_fire_diagnostics.py --output live_fire_results.json
+python run_safety_testbed.py
+python run_road_course_campaign.py --task SciFact --max-queries 20 --sample-docs 1200 --output experiment_runs\roadcourse-small\roadcourse_profile_grid.json
+python run_road_course_tuning_loop.py --task SciFact --max-queries 100 --sample-docs 1200 --rounds 2 --output experiment_runs\roadcourse-small\scifact_hundred_tuning_loop.json
+python run_road_course_tuning_loop.py --task SciFact --max-queries 100 --sample-docs 1200 --rounds 2 --initial-grid modules --output experiment_runs\roadcourse-small\scifact_hundred_module_tuning_loop.json
+python run_road_course_tuning_loop.py --task SciFact --max-queries 100 --sample-docs 1200 --rounds 2 --initial-grid calibrated --output experiment_runs\roadcourse-small\scifact_hundred_calibrated_tuning_loop.json
+python run_thousand_query_tuning.py --loop-queries 200 --window-queries 50 --sample-docs 400 --output experiment_runs\roadcourse-small\adaptive_thousand_query_tuning.json
+python run_thousand_query_tuning.py --phase-queries 5000 --loop-queries 200 --window-queries 50 --sample-docs 250 --output experiment_runs\roadcourse-small\adaptive_fivek_query_tuning.json
 python -m unittest test_computational_storage_poc.py -v
 python -m unittest test_computational_storage_emulation.py -v
 python computational_storage_poc/run_all_tests.py
@@ -125,11 +132,27 @@ As of 2026-04-27:
 - the adaptive retrieval, benchmarking, and distillation surfaces are implemented on `main`
 - the EGGROLL-inspired optimizer, retrieval-fitness gates, adaptive workflow orchestration, and AI-engineering runtime diagnostics are implemented on `main`
 - deterministic live-fire diagnostics validate that engine controls and reporting are wired end-to-end; the tiny fixture is saturated, so proof of chelation lift still requires benchmark campaigns
-- the remaining non-hardware work is primarily live-fire campaign execution, initial-value calibration, and weight refinement, not missing feature delivery
+- the project-car safety testbed now covers instrumentation, component benches, dyno sweeps, non-saturated closed-course loops, calibration profiles, and failure-injection ravine tests
+- the first small-model road-course campaign supports a conservative chelation threshold guardrail (`0.01`) and rejects always-on chelation for MiniLM/SciFact
+- module-aware hundred-query loops exercise query reformulation, guard+reformulation, and temperature-centered profiles; they currently preserve baseline or regress, so no module profile is promoted
+- calibrated actuator loops now prove query reformulation fusion and chelation percentile masks mechanically affect rankings, but those effects reduce quality on first-hundred SciFact/NFCorpus loops
+- an adaptive 1,000-query cycle with 50-query checkpoints found directional FiQA lift for `adaptive_p85_t0.002`, but cross-task instability blocks default/profile promotion
+- adaptive 5,000-query and FiQA-focused confirmation phases found no global winner; the earlier FiQA-like `adaptive_p85_t0.002` / `adaptive_p85_t0.002_reform_rrf_v2` prospect did not survive repeat confirmation, so no route-specific promotion is justified
+- tuning summaries now include fault classifications (`no_op_tied`, `actuator_active_positive`, `actuator_active_negative`, and `metric_changed_without_actuator`) so future runs can separate safe no-ops, working-but-harmful actuators, and implementation/instrumentation faults
+- a fault-aware 5,000-query golden-setting search found no default-promotable or golden profile; `adaptive_p99_t0.0015` produced large positive SciFact windows but also larger active-negative regressions, confirming the next path is learned/query-conditional gating rather than another global threshold default
+- a gate-learning 5,000-query campaign now emits `gate_feature_rows`, `gate_candidate_report`, and `shippable_gate_candidates`; no shippable diagnostic gate was found, and the result points to a supervised gate trained on held-out windows rather than another hand-written threshold
+- conservative learned-gate tooling is now implemented: `chelatedai-train-gate` trains holdout-validated gate artifacts and `run_thousand_query_tuning.py --strategy learned_gate --gate-artifact ...` consumes them; the first trained artifact rejected all 140 candidate rules, so it correctly fails closed instead of promoting an unsafe actuator
+- two alternative validation tracks are now implemented: tuning artifacts emit `query_attribution_rows` for per-query actuator/gate learning, and `chelatedai-synthetic-collapse` provides a deterministic semantic-collapse fixture where masking the known noisy dimension recovers NDCG/MRR/Recall from 0.0 to 1.0
+- all six follow-up research pathways now have working surfaces: query attribution, synthetic collapse, learned mask smoke, selective reformulation, benchmark-family meta-analysis, and candidate-profile proposals; the first 200-query SciFact meta probe still finds no golden setting, but it identifies always-on `reform_rrf_v2` as the only retest candidate while treating chelation profiles as training data only
+- follow-on reformulation-policy and static-mask probes did not produce a new candidate: reformulation policies were neutral/negative across the next 100-query search, and supervised static masks showed train-slice hints but hurt held-out SciFact retrieval
+- conditional static-mask gates can reduce damage but are not stable enough yet: the recurring low-stopword gate tied or slightly improved holdout in some compact probes, but one repeat regressed and no run crossed the promotion threshold
+- regularized conditional static-mask gates now require an internal train/validation split before holdout application; compact repeats produced one small holdout lift (+0.0014), one tie, and one fail-closed run, so this remains a weak research lead rather than a shippable setting
+- classifier-gated conditional masks are now implemented with logistic scoring, internal validation, and a minimum-positive-example floor; 50 compact SciFact loops found no lift, and the safer floor failed closed on all seeds, so this branch is rejected as a current candidate but retained as guarded research tooling
+- the remaining non-hardware work is broader road-course campaign execution and evidence review before any aggressive profile promotion, not missing feature delivery
 - the computational-storage follow-through is narrowed to real RP2040 evidence capture and a dated retention review
 - the repository includes credible storage-node experiments, but not a shipped hard-drive-hosted LLM runtime
 
-For the current live-fire validation plan, see [docs/live-fire-diagnostics-2026-04-27.md](docs/live-fire-diagnostics-2026-04-27.md). For the earlier post-feature evaluation plan, see [docs/roadmap-audit-and-weight-refinement-plan-2026-03-06.md](docs/roadmap-audit-and-weight-refinement-plan-2026-03-06.md).
+For the current live-fire validation plan, see [docs/live-fire-diagnostics-2026-04-27.md](docs/live-fire-diagnostics-2026-04-27.md). For the safety testbed road-course gates, see [docs/safety-testbed-road-course-plan.md](docs/safety-testbed-road-course-plan.md). For the first small-model road-course result, see [docs/road-course-results-2026-04-27.md](docs/road-course-results-2026-04-27.md). For the earlier post-feature evaluation plan, see [docs/roadmap-audit-and-weight-refinement-plan-2026-03-06.md](docs/roadmap-audit-and-weight-refinement-plan-2026-03-06.md).
 
 ## Module Walkthrough
 
@@ -146,6 +169,7 @@ For the current live-fire validation plan, see [docs/live-fire-diagnostics-2026-
 - `teacher_distillation.py`: offline, hybrid, and teacher-guided correction helpers
 - `cross_lingual_distillation.py`: language-aware teacher routing
 - `online_updater.py`: inference-time update mechanisms and diagnostics
+- `self_healing_chelation.py`: SEAL/EGGROLL-inspired self-edit planning for advisory adapter-only repair directives
 - `topology_analyzer.py` and `isomer_detector.py`: structural drift analysis
 - `stability_tracker.py`, `embedding_quality.py`, `convergence_monitor.py`: health and learning diagnostics
 
@@ -154,6 +178,10 @@ For the current live-fire validation plan, see [docs/live-fire-diagnostics-2026-
 - `benchmark_beir.py`, `benchmark_multitask.py`, `benchmark_comparative.py`, `benchmark_distillation.py`: retrieval-quality evaluation
 - `run_sweep.py` and `run_large_sweep.py`: grid-search style parameter studies
 - `run_live_fire_diagnostics.py`: deterministic live-fire harness for engine controls, telemetry, gates, and reporting
+- `run_safety_testbed.py`: staged safety testbed for non-saturated closed-course loops, calibration profiles, failure gates, and road-course campaign planning
+- `run_road_course_campaign.py`: small-model road-course profile grid for threshold/default decisions
+- `run_road_course_tuning_loop.py`: iterative first-hundred-query profile tuning loop with adaptive and module-aware next-grid selection
+- `run_thousand_query_tuning.py`: five-loop adaptive 1,000-query road-course cycle with 50-query validation windows
 - `dashboard_server.py` and `dashboard/index.html`: local research dashboard
 
 ### Computational storage and drive nodes

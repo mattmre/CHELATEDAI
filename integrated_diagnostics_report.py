@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, Optional
 
 import numpy as np
+import torch
 
 from chelation_logger import get_logger
 from fitness_composition_orchestrator import FitnessCompositionResult
@@ -20,6 +21,8 @@ def _json_safe(value: Any) -> Any:
         return value.item()
     if isinstance(value, np.ndarray):
         return [_json_safe(item) for item in value.tolist()]
+    if isinstance(value, torch.Tensor):
+        return _json_safe(value.detach().cpu().tolist())
     if isinstance(value, dict):
         return {str(key): _json_safe(item) for key, item in value.items()}
     if isinstance(value, (list, tuple, set)):

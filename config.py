@@ -110,7 +110,7 @@ class ChelationConfig:
     # ===== Chelation Hyperparameters =====
     # Core chelation parameters
     DEFAULT_CHELATION_P = 85  # Percentile threshold for dimension selection (0-100)
-    DEFAULT_CHELATION_THRESHOLD = 0.0004  # Variance threshold for adaptive triggering
+    DEFAULT_CHELATION_THRESHOLD = 0.01  # Road-course guardrail; lower thresholds over-chelated MiniLM/SciFact
     
     # ===== Adaptive Threshold Configuration =====
     # Adaptive threshold tuning (opt-in feature)
@@ -130,18 +130,18 @@ class ChelationConfig:
     CHELATION_PRESETS = {
         "conservative": {
             "chelation_p": 95,
-            "chelation_threshold": 0.0002,
-            "description": "High-quality embeddings, minimal intervention"
+            "chelation_threshold": 0.01,
+            "description": "Road-course guardrail for high-quality embeddings; avoids over-chelation"
         },
         "balanced": {
             "chelation_p": 85,
-            "chelation_threshold": 0.0004,
-            "description": "General purpose, tested on SciFact"
+            "chelation_threshold": 0.01,
+            "description": "General purpose MiniLM/SciFact road-course setting; tied baseline without over-chelation"
         },
         "aggressive": {
             "chelation_p": 75,
-            "chelation_threshold": 0.0008,
-            "description": "Lower-quality embeddings, strong noise reduction"
+            "chelation_threshold": 0.0004,
+            "description": "Experimental lower-threshold chelation; road-course evidence shows regression on MiniLM/SciFact"
         }
     }
 

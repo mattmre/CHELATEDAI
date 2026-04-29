@@ -18,6 +18,15 @@ dependencies = [
 
 [project.scripts]
 chelatedai-live-fire = "run_live_fire_diagnostics:main"
+chelatedai-road-course = "run_road_course_campaign:main"
+chelatedai-road-course-tuning = "run_road_course_tuning_loop:main"
+chelatedai-thousand-query-tuning = "run_thousand_query_tuning:main"
+chelatedai-train-gate = "train_gate_from_tuning_artifact:main"
+chelatedai-synthetic-collapse = "synthetic_collapse_benchmark:main"
+chelatedai-learned-mask-smoke = "learned_mask_policy:main"
+chelatedai-research-pathways = "research_pathway_analyzer:main"
+chelatedai-static-mask-probe = "static_mask_probe:main"
+chelatedai-safety-testbed = "run_safety_testbed:main"
 
 [project.optional-dependencies]
 benchmark = ["mteb>=1.0"]
@@ -55,8 +64,18 @@ py-modules = [
     "recursive_decomposer",
     "reproducibility_context",
     "run_live_fire_diagnostics",
+    "run_road_course_campaign",
+    "run_road_course_tuning_loop",
+    "run_thousand_query_tuning",
+    "train_gate_from_tuning_artifact",
+    "synthetic_collapse_benchmark",
+    "learned_mask_policy",
+    "research_pathway_analyzer",
+    "static_mask_probe",
+    "run_safety_testbed",
     "sedimentation",
     "sedimentation_trainer",
+    "self_healing_chelation",
     "stability_tracker",
     "structural_health_score",
     "retrieval_fitness_evaluator",
