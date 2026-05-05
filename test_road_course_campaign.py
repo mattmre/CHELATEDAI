@@ -6,6 +6,7 @@ from config import ChelationConfig
 from run_road_course_campaign import (
     ATTNRES_COMPARISON_GRID,
     ATTNRES_NUM_BLOCKS_GRID,
+    ATTNRES_TRAINED_NUM_BLOCKS_GRID,
     DEFAULT_PROFILE_GRID,
     PROFILE_SETS,
     RoadCourseProfile,
@@ -60,6 +61,7 @@ class TestRoadCourseCampaignHarness(unittest.TestCase):
         self.assertFalse(profile.use_quantization)
         self.assertEqual(profile.chelation_threshold, ChelationConfig.DEFAULT_CHELATION_THRESHOLD)
         self.assertEqual(profile.adapter_type, "mlp")
+        self.assertEqual(profile.sedimentation_epochs, 0)
 
     def test_attnres_comparison_grid_keeps_baseline_and_adapter_controls(self):
         profiles = {profile.name: profile for profile in ATTNRES_COMPARISON_GRID}
@@ -80,6 +82,18 @@ class TestRoadCourseCampaignHarness(unittest.TestCase):
         self.assertEqual(profiles["attnres_balanced"].attnres_num_blocks, 4)
         self.assertEqual(profiles["attnres_deep"].attnres_num_blocks, 8)
         self.assertIn("attnres_num_blocks", PROFILE_SETS)
+
+    def test_trained_attnres_grid_has_mlp_and_block_depth_controls(self):
+        profiles = {profile.name: profile for profile in ATTNRES_TRAINED_NUM_BLOCKS_GRID}
+
+        self.assertIn("baseline", profiles)
+        self.assertEqual(profiles["baseline"].sedimentation_epochs, 0)
+        self.assertEqual(profiles["mlp_trained"].adapter_type, "mlp")
+        self.assertEqual(profiles["mlp_trained"].sedimentation_threshold, 1)
+        self.assertEqual(profiles["attnres_shallow_trained"].attnres_num_blocks, 2)
+        self.assertEqual(profiles["attnres_balanced_trained"].attnres_num_blocks, 4)
+        self.assertEqual(profiles["attnres_deep_trained"].attnres_num_blocks, 8)
+        self.assertIn("attnres_trained_num_blocks", PROFILE_SETS)
 
     def test_temporary_adapter_config_restores_global_config(self):
         original_adapter_type = ChelationConfig.ADAPTER_TYPE

@@ -41,6 +41,10 @@ class RoadCourseProfile:
     adapter_type: str = ChelationConfig.ADAPTER_TYPE
     attnres_num_blocks: int = ChelationConfig.ATTNRES_ADAPTER_NUM_BLOCKS
     attnres_proj_dim: int | None = ChelationConfig.ATTNRES_ADAPTER_PROJ_DIM
+    sedimentation_epochs: int = 0
+    sedimentation_learning_rate: float = ChelationConfig.DEFAULT_LEARNING_RATE
+    sedimentation_threshold: int = ChelationConfig.DEFAULT_COLLAPSE_THRESHOLD
+    sedimentation_warmup_queries: int = 0
 
 
 DEFAULT_PROFILE_GRID = [
@@ -79,10 +83,46 @@ ATTNRES_NUM_BLOCKS_GRID = [
 ]
 
 
+ATTNRES_TRAINED_NUM_BLOCKS_GRID = [
+    RoadCourseProfile("baseline"),
+    RoadCourseProfile(
+        "mlp_trained",
+        sedimentation_epochs=2,
+        sedimentation_threshold=1,
+        sedimentation_warmup_queries=20,
+    ),
+    RoadCourseProfile(
+        "attnres_shallow_trained",
+        adapter_type="attnres",
+        attnres_num_blocks=2,
+        sedimentation_epochs=2,
+        sedimentation_threshold=1,
+        sedimentation_warmup_queries=20,
+    ),
+    RoadCourseProfile(
+        "attnres_balanced_trained",
+        adapter_type="attnres",
+        attnres_num_blocks=4,
+        sedimentation_epochs=2,
+        sedimentation_threshold=1,
+        sedimentation_warmup_queries=20,
+    ),
+    RoadCourseProfile(
+        "attnres_deep_trained",
+        adapter_type="attnres",
+        attnres_num_blocks=8,
+        sedimentation_epochs=2,
+        sedimentation_threshold=1,
+        sedimentation_warmup_queries=20,
+    ),
+]
+
+
 PROFILE_SETS = {
     "default": DEFAULT_PROFILE_GRID,
     "attnres_comparison": ATTNRES_COMPARISON_GRID,
     "attnres_num_blocks": ATTNRES_NUM_BLOCKS_GRID,
+    "attnres_trained_num_blocks": ATTNRES_TRAINED_NUM_BLOCKS_GRID,
 }
 
 
@@ -210,6 +250,43 @@ def _profile_engine(
     return engine
 
 
+def _run_sedimentation_warmup(
+    engine,
+    profile: RoadCourseProfile,
+    queries: Mapping[str, str],
+) -> Dict[str, Any] | None:
+    if profile.sedimentation_epochs <= 0:
+        return None
+
+    warmup_limit = profile.sedimentation_warmup_queries or len(queries)
+    warmup_items = list(queries.items())[:warmup_limit]
+    original_use_centering = engine.use_centering
+    try:
+        engine.use_centering = True
+        for _query_id, query_text in warmup_items:
+            engine.run_inference(query_text)
+    finally:
+        engine.use_centering = original_use_centering
+
+    candidates_before = len(engine.chelation_log)
+    events_before = sum(len(events) for events in engine.chelation_log.values())
+    start = time.perf_counter()
+    engine.run_sedimentation_cycle(
+        threshold=profile.sedimentation_threshold,
+        learning_rate=profile.sedimentation_learning_rate,
+        epochs=profile.sedimentation_epochs,
+    )
+    return {
+        "warmup_query_count": len(warmup_items),
+        "candidates_before": candidates_before,
+        "events_before": events_before,
+        "epochs": profile.sedimentation_epochs,
+        "threshold": profile.sedimentation_threshold,
+        "learning_rate": profile.sedimentation_learning_rate,
+        "elapsed_seconds": time.perf_counter() - start,
+    }
+
+
 def evaluate_profile(
     profile: RoadCourseProfile,
     model_name: str,
@@ -221,6 +298,7 @@ def evaluate_profile(
     with isolated_adapter_state():
         engine = _profile_engine(profile, model_name, corpus)
         try:
+            sedimentation = _run_sedimentation_warmup(engine, profile, queries)
             rankings: Dict[str, list[str]] = {}
             action_mix: Dict[str, int] = {}
             latencies = []
@@ -276,6 +354,7 @@ def evaluate_profile(
         },
         "latency_ms_mean": float(np.mean(latencies)) if latencies else 0.0,
         "elapsed_seconds": elapsed,
+        "sedimentation": sedimentation,
         "telemetry": telemetry,
     }
 
@@ -303,6 +382,10 @@ def quantization_survival_check(
         adapter_type=profile.adapter_type,
         attnres_num_blocks=profile.attnres_num_blocks,
         attnres_proj_dim=profile.attnres_proj_dim,
+        sedimentation_epochs=profile.sedimentation_epochs,
+        sedimentation_learning_rate=profile.sedimentation_learning_rate,
+        sedimentation_threshold=profile.sedimentation_threshold,
+        sedimentation_warmup_queries=profile.sedimentation_warmup_queries,
     )
     with isolated_adapter_state():
         engine = _profile_engine(quantized_profile, model_name, corpus)

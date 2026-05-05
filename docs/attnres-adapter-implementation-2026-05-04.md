@@ -107,6 +107,8 @@ ChelationConfig.get_preset("deep",     "attnres_adapter")  # num_blocks=8 (paper
    The balanced AttnRes path tied the MLP baseline and did not justify a default change.
 3. **Evaluate num_blocks sensitivity** — engine and road-course profiles now expose
    explicit AttnRes block/projection controls, including `--profile-set attnres_num_blocks`
-   for shallow/balanced/deep comparison. The next handoff is to run this after a
-   sedimentation training pass on SciFact and NFCorpus to find the right default for
-   embedding-size adapters (vs. full transformers).
+   for near-identity shallow/balanced/deep comparison and
+   `--profile-set attnres_trained_num_blocks` for the same adapter-depth comparison after
+   an opt-in sedimentation warmup/training pass. The next handoff is to run the trained
+   grid on SciFact and NFCorpus to find the right default for embedding-size adapters
+   (vs. full transformers).
