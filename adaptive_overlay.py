@@ -303,6 +303,68 @@ def compute_branch_set_metrics(
     }
 
 
+def summarize_overlay_readiness(
+    overlay_report: Mapping[str, Any],
+    *,
+    min_groups: int = 3,
+    min_safe_pass_rate: float = 0.05,
+    max_regressed_rate: float = 0.0,
+    min_mean_best_delta: float = 0.001,
+) -> Dict[str, Any]:
+    """Summarize whether overlay metrics justify broader validation.
+
+    This is not a promotion gate. It is a fail-closed readiness signal used to
+    decide whether a channel family deserves more replay/holdout work.
+    """
+
+    metrics = overlay_report.get("branch_set_metrics", {}) if isinstance(overlay_report, Mapping) else {}
+    summary = overlay_report.get("summary", {}) if isinstance(overlay_report, Mapping) else {}
+    group_count = int(metrics.get("group_count", 0))
+    safe_pass_rate = float(metrics.get("safe_pass_at_k_rate", 0.0))
+    regressed_rate = float(metrics.get("regressed_at_k_rate", 1.0))
+    mean_best_delta = float(metrics.get("mean_best_delta", 0.0))
+    blocker_count = int(summary.get("promotion_blockers", 0))
+    active_negative_count = int(summary.get("active_negative_records", 0))
+
+    blockers = []
+    if group_count < min_groups:
+        blockers.append("insufficient_branch_groups")
+    if safe_pass_rate < min_safe_pass_rate:
+        blockers.append("safe_pass_rate_below_threshold")
+    if regressed_rate > max_regressed_rate:
+        blockers.append("regression_rate_above_threshold")
+    if mean_best_delta < min_mean_best_delta:
+        blockers.append("mean_best_delta_below_threshold")
+    if blocker_count > 0:
+        blockers.append("promotion_blockers_present")
+    if active_negative_count > 0:
+        blockers.append("active_negative_records_present")
+
+    return {
+        "schema_version": ADAPTIVE_OVERLAY_SCHEMA_VERSION,
+        "record_type": "adaptive_overlay_readiness",
+        "ready_for_broader_validation": len(blockers) == 0,
+        "blockers": blockers,
+        "group_count": group_count,
+        "safe_pass_at_k_rate": safe_pass_rate,
+        "regressed_at_k_rate": regressed_rate,
+        "mean_best_delta": mean_best_delta,
+        "promotion_blockers": blocker_count,
+        "active_negative_records": active_negative_count,
+        "criteria": {
+            "min_groups": int(min_groups),
+            "min_safe_pass_rate": float(min_safe_pass_rate),
+            "max_regressed_rate": float(max_regressed_rate),
+            "min_mean_best_delta": float(min_mean_best_delta),
+        },
+        "next_action": (
+            "run broader replay and holdout validation"
+            if not blockers
+            else "continue observation and coverage-aware channel collection"
+        ),
+    }
+
+
 def build_overlay_report(
     rows: Iterable[Mapping[str, Any]],
     *,
@@ -311,10 +373,12 @@ def build_overlay_report(
     """Build normalized channel records plus summary and branch-set metrics."""
 
     records = build_channel_variation_records(rows)
-    return {
+    report = {
         "schema_version": ADAPTIVE_OVERLAY_SCHEMA_VERSION,
         "record_type": "adaptive_overlay_report",
         "channel_variation_records": records,
         "summary": summarize_channel_variations(records),
         "branch_set_metrics": compute_branch_set_metrics(records, success_delta=success_delta),
     }
+    report["readiness"] = summarize_overlay_readiness(report)
+    return report

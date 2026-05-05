@@ -145,6 +145,31 @@ class TestGoldenDefaultAutopilot(unittest.TestCase):
             "expand repeatability and transfer validation for the surviving gate candidate",
         )
 
+    def test_recommendation_surfaces_adaptive_overlay_readiness(self):
+        recommendation = _recommendation(
+            None,
+            {
+                "adaptive_overlay": {
+                    "readiness": {
+                        "ready_for_broader_validation": True,
+                        "blockers": [],
+                    }
+                }
+            },
+            None,
+            {
+                "adaptive_overlay": {
+                    "readiness": {
+                        "ready_for_broader_validation": False,
+                        "blockers": ["safe_pass_rate_below_threshold"],
+                    }
+                }
+            },
+        )
+
+        self.assertTrue(recommendation["adaptive_overlay_ready_for_broader_validation"])
+        self.assertEqual(recommendation["adaptive_overlay_blockers"], ["safe_pass_rate_below_threshold"])
+
     def test_recommendation_blocks_reform_candidate_after_bad_hard_negative_replay(self):
         recommendation = _recommendation(
             {"type": "linear_classifier"},

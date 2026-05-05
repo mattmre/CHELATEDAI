@@ -564,6 +564,26 @@ def _recommendation(
     reform_hard_negative_validation: Dict[str, Any] | None = None,
     coverage_summary: Dict[str, Any] | None = None,
 ) -> Dict[str, Any]:
+    overlay_reports = [
+        report
+        for report in (
+            reform_validation.get("adaptive_overlay") if isinstance(reform_validation, dict) else None,
+            mask_validation.get("adaptive_overlay") if isinstance(mask_validation, dict) else None,
+            reform_hard_negative_validation.get("adaptive_overlay")
+            if isinstance(reform_hard_negative_validation, dict)
+            else None,
+        )
+        if isinstance(report, dict)
+    ]
+    overlay_ready = any(
+        bool((report.get("readiness") or {}).get("ready_for_broader_validation"))
+        for report in overlay_reports
+    )
+    overlay_blockers = sorted({
+        str(blocker)
+        for report in overlay_reports
+        for blocker in (report.get("readiness") or {}).get("blockers", [])
+    })
     reform_stress_clean = True
     reform_hard_negative_family_count = 0
     if reform_hard_negative_validation:
@@ -593,6 +613,8 @@ def _recommendation(
         "reform_gate_survived_hard_negative_replay": reform_stress_clean,
         "reform_hard_negative_family_count": reform_hard_negative_family_count,
         "mask_gate_candidate_for_broader_validation": mask_candidate,
+        "adaptive_overlay_ready_for_broader_validation": overlay_ready,
+        "adaptive_overlay_blockers": overlay_blockers,
         "coverage_guided_collection_recommended": coverage_guided_collection,
         "next_action": (
             "expand repeatability and transfer validation for the surviving gate candidate"

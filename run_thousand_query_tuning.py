@@ -1054,6 +1054,11 @@ def run_thousand_query_cycle(
         "gate_candidate_report": gate_candidate_report,
         "recommendation": {
             "default_change_allowed": False,
+            "adaptive_overlay_ready_for_broader_validation": adaptive_overlay["readiness"][
+                "ready_for_broader_validation"
+            ],
+            "adaptive_overlay_blockers": adaptive_overlay["readiness"]["blockers"],
+            "adaptive_overlay_next_action": adaptive_overlay["readiness"]["next_action"],
             "directional_candidate_profiles": directional_candidates,
             "promotable_profiles": promotable_profiles,
             "default_promotable_profiles": default_promotable_profiles,

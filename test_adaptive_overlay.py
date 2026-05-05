@@ -6,6 +6,7 @@ from adaptive_overlay import (
     build_channel_variation_records,
     channel_variation_from_engine_scope_row,
     compute_branch_set_metrics,
+    summarize_overlay_readiness,
     summarize_channel_variations,
 )
 
@@ -150,6 +151,47 @@ class TestAdaptiveOverlay(unittest.TestCase):
         self.assertEqual(report["summary"]["record_count"], 2)
         self.assertEqual(report["branch_set_metrics"]["group_count"], 1)
         self.assertEqual(len(report["channel_variation_records"]), 2)
+        self.assertIn("readiness", report)
+
+    def test_overlay_readiness_fails_closed_on_blockers(self):
+        report = build_overlay_report([
+            {
+                "row_type": "query_profile",
+                "task": "SciFact",
+                "seed": 1,
+                "query_id": "q1",
+                "profile": "reform_rrf_v2",
+                "action": "REFORMULATE",
+                "fault_class": "actuator_active_negative",
+                "promotion_blocker": True,
+                "delta_ndcg_at_10": -0.02,
+            }
+        ])
+
+        readiness = summarize_overlay_readiness(report)
+
+        self.assertFalse(readiness["ready_for_broader_validation"])
+        self.assertIn("promotion_blockers_present", readiness["blockers"])
+        self.assertIn("active_negative_records_present", readiness["blockers"])
+        self.assertEqual(readiness["next_action"], "continue observation and coverage-aware channel collection")
+
+    def test_overlay_readiness_accepts_clean_multi_group_signal(self):
+        rows = []
+        for query_id in ("q1", "q2", "q3"):
+            rows.append({
+                "row_type": "query_profile",
+                "task": "SciFact",
+                "seed": 1,
+                "query_id": query_id,
+                "profile": "reform_rrf_v2",
+                "action": "REFORMULATE",
+                "fault_class": "actuator_active_positive",
+                "delta_ndcg_at_10": 0.02,
+            })
+        report = build_overlay_report(rows)
+
+        self.assertTrue(report["readiness"]["ready_for_broader_validation"])
+        self.assertEqual(report["readiness"]["blockers"], [])
 
 
 if __name__ == "__main__":

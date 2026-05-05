@@ -381,6 +381,14 @@ Follow-up implementation slices completed after the overlap audit:
 4. Wired `adaptive_overlay` reports into golden-default autopilot reform validation, mask validation, and hard-negative replay artifacts.
 5. Added regression tests for channel records, branch metrics, overlay report construction, and tuning-report integration.
 
+Second follow-up implementation slices:
+
+1. Added fail-closed adaptive overlay readiness summaries over branch metrics.
+2. Added explicit readiness blockers for insufficient groups, weak safe-pass rate, regressions, low mean best delta, promotion blockers, and active-negative records.
+3. Surfaced overlay readiness in thousand-query tuning recommendations.
+4. Surfaced aggregate overlay readiness and blockers in golden-default autopilot recommendations.
+5. Added tests for readiness acceptance, fail-closed blockers, and recommendation propagation.
+
 Defer:
 
 1. spawning agent swarms
