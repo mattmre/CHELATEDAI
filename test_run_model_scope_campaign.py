@@ -132,11 +132,15 @@ class TestRunModelScopeCampaign(unittest.TestCase):
             self.assertIn("adaptive_overlay_report", report["outputs"])
             self.assertTrue((output_dir / "adaptive_overlay_report.json").exists())
             self.assertIn("adaptive_overlay_artifact_card", report["outputs"])
+            self.assertIn("adaptive_overlay_validation_report", report["outputs"])
             self.assertTrue((output_dir / "adaptive_overlay_artifact_card.json").exists())
+            self.assertTrue((output_dir / "adaptive_overlay_validation_report.json").exists())
             self.assertFalse(report["promotion_decision"]["adaptive_overlay_ready"])
             self.assertIn("adaptive_overlay_not_ready", report["promotion_decision"]["reasons"])
             self.assertFalse(report["adaptive_overlay_summary"]["ready_for_broader_validation"])
             self.assertIn("promotion_blockers_present", report["adaptive_overlay_summary"]["blockers"])
+            self.assertFalse(report["adaptive_overlay_validation_report"]["validation_ready"])
+            self.assertIn("missing_holdout_overlay_report", report["adaptive_overlay_validation_report"]["blockers"])
             self.assertFalse(report["adaptive_overlay_artifact_card"]["readiness"]["ready_for_broader_validation"])
             self.assertIn("not_default_promoted", report["adaptive_overlay_artifact_card"]["limitations"])
 
@@ -174,6 +178,8 @@ class TestRunModelScopeCampaign(unittest.TestCase):
                 )
             overlay_path = root / "overlay.json"
             overlay_path.write_text(json.dumps(build_overlay_report(rows), indent=2), encoding="utf-8")
+            holdout_path = root / "overlay-holdout.json"
+            holdout_path.write_text(json.dumps(build_overlay_report(rows), indent=2), encoding="utf-8")
 
             report = run_model_scope_campaign(
                 input_dir,
@@ -183,12 +189,16 @@ class TestRunModelScopeCampaign(unittest.TestCase):
                 holdout_report={"passed": True, "score": 0.8},
                 safety_report={"passed": True},
                 adaptive_overlay_report=overlay_path,
+                adaptive_overlay_holdout_report=holdout_path,
                 require_adaptive_overlay_readiness=True,
             )
 
             self.assertTrue(report["promotion_decision"]["adaptive_overlay_ready"])
             self.assertTrue(report["adaptive_overlay_summary"]["ready_for_broader_validation"])
+            self.assertTrue(report["adaptive_overlay_validation_report"]["validation_ready"])
+            self.assertIn("adaptive_overlay_holdout_report", report["outputs"])
             self.assertTrue(report["adaptive_overlay_artifact_card"]["readiness"]["ready_for_broader_validation"])
+            self.assertTrue(report["adaptive_overlay_artifact_card"]["evidence"]["validation"]["validation_ready"])
             self.assertEqual(report["adaptive_overlay_artifact_card"]["source_overlay_report_path"], str(overlay_path))
             self.assertNotIn("missing_adaptive_overlay_report", report["promotion_decision"]["reasons"])
             self.assertNotIn("adaptive_overlay_not_ready", report["promotion_decision"]["reasons"])

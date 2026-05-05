@@ -3,6 +3,7 @@ import unittest
 from adaptive_overlay import (
     build_overlay_artifact_card,
     build_overlay_report,
+    build_overlay_validation_report,
     build_adaptive_overlay_intake,
     build_channel_variation_records,
     channel_variation_from_engine_scope_row,
@@ -232,6 +233,48 @@ class TestAdaptiveOverlay(unittest.TestCase):
         self.assertFalse(card["evidence"]["promotion_decision"]["promotion_ready"])
         self.assertIn("not_default_promoted", card["limitations"])
         self.assertNotIn("channel_variation_records", card)
+
+    def test_overlay_validation_report_requires_replay_and_holdout_readiness(self):
+        replay_report = build_overlay_report([
+            {
+                "task": "SciFact",
+                "seed": 1,
+                "query_id": query_id,
+                "profile": "guard_learned_reform_gate_v1",
+                "delta_ndcg_at_10": 0.02,
+                "fault_class": "actuator_active_positive",
+            }
+            for query_id in ("q1", "q2", "q3")
+        ])
+
+        missing_holdout = build_overlay_validation_report(
+            candidate_id="candidate-a",
+            replay_overlay_report=replay_report,
+            holdout_overlay_report=None,
+        )
+        self.assertFalse(missing_holdout["validation_ready"])
+        self.assertIn("missing_holdout_overlay_report", missing_holdout["blockers"])
+
+        holdout_report = build_overlay_report([
+            {
+                "task": "SciFact",
+                "seed": 2,
+                "query_id": query_id,
+                "profile": "guard_learned_reform_gate_v1",
+                "delta_ndcg_at_10": 0.02,
+                "fault_class": "actuator_active_positive",
+            }
+            for query_id in ("q4", "q5", "q6")
+        ])
+        validation = build_overlay_validation_report(
+            candidate_id="candidate-a",
+            replay_overlay_report=replay_report,
+            holdout_overlay_report=holdout_report,
+        )
+
+        self.assertTrue(validation["validation_ready"])
+        self.assertEqual(validation["blockers"], [])
+        self.assertTrue(validation["validation_report_id"].startswith("overlay_validation_"))
 
 
 if __name__ == "__main__":

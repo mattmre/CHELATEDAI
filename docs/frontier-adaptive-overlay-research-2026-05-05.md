@@ -44,7 +44,9 @@ The highest-value next implementation slice is an overlay artifact card and vali
 
 Artifact cards landed as the next reporting slice: `build_overlay_artifact_card` now creates compact candidate review objects from overlay readiness, branch-set metrics, replay, holdout, hard-negative, evaluator, safety, promotion, limitations, and rollback evidence. Model-Scope campaign runs that receive an adaptive overlay report now write `adaptive_overlay_artifact_card.json` next to the full overlay report.
 
-After artifact cards, the next implementation target should be broader replay/holdout validation, followed by overlay trajectory diagnostics inspired by TIDE:
+Broader replay/holdout validation landed as the next validation slice: `build_overlay_validation_report` now requires replay readiness plus holdout readiness and fails closed on missing or regressing holdout evidence. Model-Scope campaigns can accept `--adaptive-overlay-holdout-report`, write `adaptive_overlay_validation_report.json`, and embed validation evidence into the artifact card.
+
+The next implementation target should be overlay trajectory diagnostics inspired by TIDE:
 
 - loop or repeated-branch count
 - memory/report burden
