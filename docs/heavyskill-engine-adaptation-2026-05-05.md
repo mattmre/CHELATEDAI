@@ -340,13 +340,38 @@ The next practical slice is P0: typed adaptive overlay evidence and cache manife
 
 Do not implement a full HeavySkill harness in this repo now.
 
-Implement:
+Most of the adaptive channel overlay is already part of the current ChelatedAI direction under existing names:
 
-1. typed adaptive overlay records
-2. channel variation records for existing engine branches
-3. replayable cache/manifest hashing
-4. HeavySkill-inspired metrics over branch sets
-5. fail-closed promotion extensions only after the observation layer is stable
+| Overlay idea | Existing repo surface | Status |
+| --- | --- | --- |
+| Channels | Road-course profiles, reformulation variants, mask probes, AttnRes profiles, Model-Scope hook runtime | Already present |
+| Intakes | Engine-Scope rows, Model-Scope artifacts, evidence bundles, query attribution rows | Already present |
+| Routing | Learned reformulation gates, learned mask gates, profile selection in tuning/autopilot | Partially present |
+| Damp/protect behavior | Active-negative blockers, fail-closed gates, safe default recommendation, baseline preservation | Already present |
+| Promotion | `promotion_contract.py`, quantization gate, repeat-seed docs, holdout gates | Already present |
+| Replayable evidence | `evidence_contract.py`, Engine-Scope row loaders, Model-Scope artifacts | Already present |
+| Unified overlay vocabulary | Cross-channel channel variation records | Missing before this review |
+
+The only near-term adaptation worth pulling from HeavySkill is the normalized branch-set vocabulary: make each existing profile/gate/hook branch visible as a channel variation, then compute metrics over those branch sets. That is useful because it lets existing engine work ask HeavySkill-like questions without copying the harness:
+
+1. Did any channel variant work for this query?
+2. Did the router pick the working variant?
+3. Did a negative channel need damping or protection?
+4. Is the oracle gap shrinking across learned gates?
+5. Does wider branch search add value after budget and active-negative costs?
+
+Implemented in this follow-up:
+
+1. `adaptive_overlay.py` adds observation-only `ChannelVariationRecord` and `AdaptiveOverlayIntake` builders.
+2. Engine-Scope rows can now be normalized into channel records with `channel_type`, `aggression_level`, `protection_level`, `decision`, `active_negative_flags`, and stable record hashes.
+3. The module includes summaries over channel type, decision, blockers, and active-negative records.
+4. Tests cover active-negative reformulation damping, frozen baseline protection, intake construction, and summary output.
+
+Continue to implement:
+
+1. HeavySkill-inspired branch metrics over existing channel variation records.
+2. Router/oracle-gap reporting in road-course and autopilot artifacts.
+3. Promotion-gate extensions only after the observation layer shows stable signal.
 
 Defer:
 
