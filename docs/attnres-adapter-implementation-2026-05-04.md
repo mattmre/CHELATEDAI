@@ -105,6 +105,8 @@ ChelationConfig.get_preset("deep",     "attnres_adapter")  # num_blocks=8 (paper
 2. **Benchmark `attnres` vs. `mlp` on the road-course harness** — done for the initial
    deterministic SciFact slice. See `docs/attnres-road-course-benchmark-2026-05-04.md`.
    The balanced AttnRes path tied the MLP baseline and did not justify a default change.
-3. **Evaluate num_blocks sensitivity** — add explicit profile controls and compare
-   shallow/balanced/deep after a sedimentation training pass on SciFact and
-   NFCorpus to find the right default for embedding-size adapters (vs. full transformers).
+3. **Evaluate num_blocks sensitivity** — engine and road-course profiles now expose
+   explicit AttnRes block/projection controls, including `--profile-set attnres_num_blocks`
+   for shallow/balanced/deep comparison. The next handoff is to run this after a
+   sedimentation training pass on SciFact and NFCorpus to find the right default for
+   embedding-size adapters (vs. full transformers).

@@ -204,6 +204,8 @@ class ChelationConfig:
     # ===== Adapter Type Selection (Phase 2) =====
     ADAPTER_TYPE = "mlp"  # "mlp", "procrustes", or "low_rank"
     LOW_RANK_ADAPTER_RANK = 16  # Rank for low-rank affine adapter
+    ATTNRES_ADAPTER_NUM_BLOCKS = 4  # Balanced Block-AttnRes default
+    ATTNRES_ADAPTER_PROJ_DIM = None  # None lets the adapter derive a safe projection size
 
     ADAPTER_TYPE_PRESETS = {
         "mlp": {

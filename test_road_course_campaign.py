@@ -5,10 +5,11 @@ import unittest
 from config import ChelationConfig
 from run_road_course_campaign import (
     ATTNRES_COMPARISON_GRID,
+    ATTNRES_NUM_BLOCKS_GRID,
     DEFAULT_PROFILE_GRID,
     PROFILE_SETS,
     RoadCourseProfile,
-    _temporary_adapter_type,
+    _temporary_adapter_config,
     evaluate_rankings,
     select_road_course_slice,
 )
@@ -67,16 +68,32 @@ class TestRoadCourseCampaignHarness(unittest.TestCase):
         self.assertEqual(profiles["baseline"].adapter_type, "mlp")
         self.assertEqual(profiles["attnres_baseline"].adapter_type, "attnres")
         self.assertEqual(profiles["attnres_balanced_p85_t0.01"].adapter_type, "attnres")
+        self.assertEqual(profiles["attnres_balanced_p85_t0.01"].attnres_num_blocks, 4)
         self.assertEqual(profiles["attnres_balanced_p85_t0.01"].chelation_threshold, 0.01)
         self.assertIn("attnres_comparison", PROFILE_SETS)
 
-    def test_temporary_adapter_type_restores_global_config(self):
-        original = ChelationConfig.ADAPTER_TYPE
+    def test_attnres_num_blocks_grid_has_shallow_balanced_deep_profiles(self):
+        profiles = {profile.name: profile for profile in ATTNRES_NUM_BLOCKS_GRID}
 
-        with _temporary_adapter_type("attnres"):
+        self.assertIn("baseline", profiles)
+        self.assertEqual(profiles["attnres_shallow"].attnres_num_blocks, 2)
+        self.assertEqual(profiles["attnres_balanced"].attnres_num_blocks, 4)
+        self.assertEqual(profiles["attnres_deep"].attnres_num_blocks, 8)
+        self.assertIn("attnres_num_blocks", PROFILE_SETS)
+
+    def test_temporary_adapter_config_restores_global_config(self):
+        original_adapter_type = ChelationConfig.ADAPTER_TYPE
+        original_num_blocks = ChelationConfig.ATTNRES_ADAPTER_NUM_BLOCKS
+        original_proj_dim = ChelationConfig.ATTNRES_ADAPTER_PROJ_DIM
+
+        with _temporary_adapter_config("attnres", 8, 32):
             self.assertEqual(ChelationConfig.ADAPTER_TYPE, "attnres")
+            self.assertEqual(ChelationConfig.ATTNRES_ADAPTER_NUM_BLOCKS, 8)
+            self.assertEqual(ChelationConfig.ATTNRES_ADAPTER_PROJ_DIM, 32)
 
-        self.assertEqual(ChelationConfig.ADAPTER_TYPE, original)
+        self.assertEqual(ChelationConfig.ADAPTER_TYPE, original_adapter_type)
+        self.assertEqual(ChelationConfig.ATTNRES_ADAPTER_NUM_BLOCKS, original_num_blocks)
+        self.assertEqual(ChelationConfig.ATTNRES_ADAPTER_PROJ_DIM, original_proj_dim)
 
 
 if __name__ == "__main__":

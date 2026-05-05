@@ -158,6 +158,10 @@ class TestBlockAttnResAdapterFactory(unittest.TestCase):
         self.assertIsInstance(adapter, BlockAttnResAdapter)
         self.assertEqual(adapter.num_blocks, 6)
 
+    def test_create_adapter_ignores_attnres_kwargs_for_mlp(self):
+        adapter = create_adapter("mlp", input_dim=self.input_dim, num_blocks=8, proj_dim=32)
+        self.assertEqual(adapter.input_dim, self.input_dim)
+
     def test_create_adapter_attnres_bounded(self):
         adapter = create_adapter("attnres", input_dim=self.input_dim, bounded=True)
         self.assertIsInstance(adapter, BoundedAdapter)
