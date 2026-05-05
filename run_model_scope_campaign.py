@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Mapping
 
 from adaptive_overlay import (
     build_overlay_artifact_card,
+    build_verifier_evidence_card,
     build_overlay_validation_report,
     decide_overlay_collection_budget,
 )
@@ -284,7 +285,30 @@ def run_model_scope_campaign(
     adaptive_overlay_artifact_card = None
     adaptive_overlay_validation_report = None
     adaptive_overlay_collection_policy = None
+    verifier_cards = []
     if resolved_adaptive_overlay_report is not None:
+        verifier_cards = [
+            build_verifier_evidence_card(
+                verifier_id="model_scope_evaluator_summary",
+                subject_id=str(candidate.get("candidate_id", "model_scope_shadow_policy_v1")),
+                rubric={
+                    "min_mean_score": 0.5,
+                    "requires_trace_grade": True,
+                    "default_runtime_controller": False,
+                },
+                result={
+                    "passed": bool(evaluator_summary.get("majority_passed", False)),
+                    "score": evaluator_summary.get("mean_score", 0.0),
+                    "reasons": list(evaluator_summary.get("reasons", [])),
+                    "blockers": (
+                        []
+                        if evaluator_summary.get("majority_passed", False)
+                        else ["evaluator_summary_not_passed"]
+                    ),
+                },
+                metadata={"source": "run_model_scope_campaign"},
+            )
+        ]
         adaptive_overlay_collection_policy = decide_overlay_collection_budget(
             resolved_adaptive_overlay_report,
             uncertainty_score=float(evaluator_summary.get("disagreement_rate", 0.0) or 0.0),
@@ -315,6 +339,7 @@ def run_model_scope_campaign(
             promotion_decision=promotion_decision,
             validation_report=adaptive_overlay_validation_report,
             collection_policy=adaptive_overlay_collection_policy,
+            verifier_cards=verifier_cards,
             replay_report={"entry_count": len(replay_bundle.get("entries", []))},
             holdout_report=resolved_holdout_report,
             hard_negative_report=hard_negative_report,
@@ -392,6 +417,10 @@ def run_model_scope_campaign(
             json.dumps(_json_safe(adaptive_overlay_collection_policy), indent=2),
             encoding="utf-8",
         )
+    verifier_cards_path = None
+    if verifier_cards:
+        verifier_cards_path = resolved_output_dir / "verifier_evidence_cards.json"
+        verifier_cards_path.write_text(json.dumps(_json_safe(verifier_cards), indent=2), encoding="utf-8")
     adaptive_overlay_artifact_card_path = None
     if adaptive_overlay_artifact_card is not None:
         adaptive_overlay_artifact_card_path = resolved_output_dir / "adaptive_overlay_artifact_card.json"
@@ -447,6 +476,7 @@ def run_model_scope_campaign(
         "adaptive_overlay_validation_report": adaptive_overlay_validation_report,
         "adaptive_overlay_collection_policy": adaptive_overlay_collection_policy,
         "adaptive_overlay_artifact_card": adaptive_overlay_artifact_card,
+        "verifier_evidence_cards": verifier_cards,
         "promotion_decision": promotion_decision,
         "outputs": {
             "memory_snapshot": str(memory_path),
@@ -472,6 +502,8 @@ def run_model_scope_campaign(
         report["outputs"]["adaptive_overlay_validation_report"] = str(adaptive_overlay_validation_path)
     if adaptive_overlay_collection_policy_path is not None:
         report["outputs"]["adaptive_overlay_collection_policy"] = str(adaptive_overlay_collection_policy_path)
+    if verifier_cards_path is not None:
+        report["outputs"]["verifier_evidence_cards"] = str(verifier_cards_path)
     if adaptive_overlay_artifact_card_path is not None:
         report["outputs"]["adaptive_overlay_artifact_card"] = str(adaptive_overlay_artifact_card_path)
     if promotion is not None:

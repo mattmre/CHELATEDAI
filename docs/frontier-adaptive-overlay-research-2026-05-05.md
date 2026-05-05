@@ -56,7 +56,9 @@ Overlay trajectory diagnostics landed as an observational report field on overla
 
 Budget-aware overlay collection policy landed as advisory-only evidence. It uses readiness blockers, trajectory warnings, uncertainty, coverage novelty, and blocker history to choose observe-only, standard collection, or broadened collection without changing runtime routing.
 
-The next implementation target should be verifier/rubric evidence card integration.
+Verifier/rubric evidence card integration landed as review-only artifacts. Model-Scope campaigns emit `verifier_evidence_cards.json`, and overlay artifact cards embed the verifier cards without treating them as default runtime controllers.
+
+The next implementation target should be a Model-Scope smoke campaign with supplied overlay report to prove the whole report bundle can be generated from the command path.
 
 ## Updated Priority Recommendation
 
