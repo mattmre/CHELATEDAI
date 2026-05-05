@@ -1,6 +1,7 @@
 import unittest
 
 from adaptive_overlay import (
+    build_overlay_artifact_card,
     build_overlay_report,
     build_adaptive_overlay_intake,
     build_channel_variation_records,
@@ -192,6 +193,45 @@ class TestAdaptiveOverlay(unittest.TestCase):
 
         self.assertTrue(report["readiness"]["ready_for_broader_validation"])
         self.assertEqual(report["readiness"]["blockers"], [])
+
+    def test_overlay_artifact_card_is_compact_and_links_promotion_evidence(self):
+        report = build_overlay_report([
+            {
+                "row_type": "query_profile",
+                "task": "SciFact",
+                "seed": 1,
+                "query_id": "q1",
+                "profile": "mask_gate_v1",
+                "action": "CHELATE",
+                "fault_class": "actuator_active_negative",
+                "promotion_blocker": True,
+                "delta_ndcg_at_10": -0.02,
+            }
+        ])
+
+        card = build_overlay_artifact_card(
+            candidate_id="candidate-a",
+            overlay_report=report,
+            source_path="overlay.json",
+            promotion_decision={
+                "promotion_ready": False,
+                "adaptive_overlay_ready": False,
+                "reasons": ["adaptive_overlay_not_ready"],
+            },
+            holdout_report={"passed": True, "score": 0.8},
+            safety_report={"passed": True},
+            rollback_path="policies/current.json",
+        )
+
+        self.assertEqual(card["record_type"], "adaptive_overlay_artifact_card")
+        self.assertTrue(card["card_id"].startswith("overlay_card_"))
+        self.assertEqual(card["candidate_id"], "candidate-a")
+        self.assertEqual(card["source_overlay_report_path"], "overlay.json")
+        self.assertFalse(card["readiness"]["ready_for_broader_validation"])
+        self.assertIn("promotion_blockers_present", card["readiness"]["blockers"])
+        self.assertFalse(card["evidence"]["promotion_decision"]["promotion_ready"])
+        self.assertIn("not_default_promoted", card["limitations"])
+        self.assertNotIn("channel_variation_records", card)
 
 
 if __name__ == "__main__":
