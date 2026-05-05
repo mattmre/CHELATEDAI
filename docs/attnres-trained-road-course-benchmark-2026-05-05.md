@@ -52,6 +52,9 @@ homeostatic sedimentation pass damages NDCG for both MLP and AttnRes by the same
 amount. There is no evidence here for promoting AttnRes, and no evidence that
 deeper AttnRes blocks help under the current homeostatic target.
 
-Next useful slice: run the same trained grid on NFCorpus for transfer evidence, then
-test whether a less aggressive warmup/threshold or contrastive sedimentation loss
-avoids the uniform NDCG drop.
+NFCorpus transfer evidence is now documented in
+`docs/attnres-nfcorpus-transfer-benchmark-2026-05-05.md`. That run showed a
+positive balanced-AttnRes signal, but quantization survival still failed closed.
+Next useful slice: repeat seeds across SciFact/NFCorpus and test whether a less
+aggressive warmup/threshold or contrastive sedimentation loss preserves gains
+under quantization.
