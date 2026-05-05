@@ -102,9 +102,9 @@ ChelationConfig.get_preset("deep",     "attnres_adapter")  # num_blocks=8 (paper
    can optionally capture raw mean-pooled embeddings per layer via
    `HookObservationConfig.capture_raw_embeddings`, and `ModelScopeRuntime` can aggregate
    those tensors before final embedding normalization.
-2. **Benchmark `attnres` vs. `mlp` on sedimentation training** — road-course profile
-   selection now supports `--profile-set attnres_comparison`, which keeps the required
-   MLP `baseline` and adds balanced AttnRes baseline/guard profiles. The next handoff is
-   to run the campaign and compare NDCG against the MLP baseline.
-3. **Evaluate num_blocks sensitivity** — compare shallow/balanced/deep on SciFact and
+2. **Benchmark `attnres` vs. `mlp` on the road-course harness** — done for the initial
+   deterministic SciFact slice. See `docs/attnres-road-course-benchmark-2026-05-04.md`.
+   The balanced AttnRes path tied the MLP baseline and did not justify a default change.
+3. **Evaluate num_blocks sensitivity** — add explicit profile controls and compare
+   shallow/balanced/deep after a sedimentation training pass on SciFact and
    NFCorpus to find the right default for embedding-size adapters (vs. full transformers).
