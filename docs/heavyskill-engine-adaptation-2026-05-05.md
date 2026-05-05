@@ -4,8 +4,18 @@ Date: 2026-05-05
 
 Sources reviewed:
 
-- Paper: `HeavySkill: Heavy Thinking as the Inner Skill in Agentic Harness`, arXiv:2605.02396v1, 2026-05-04.
+- Paper: `HeavySkill: Heavy Thinking as the Inner Skill in Agentic Harness`, arXiv:2605.02396v1, 2026-05-04, `https://arxiv.org/abs/2605.02396`.
+- HTML paper view: `https://arxiv.org/html/2605.02396v1`.
 - Reference repository: `https://github.com/wjn1996/HeavySkill`, HEAD `649a5b4af6e941c358f0ad6f019010c5acd0e28c`.
+- Related work inspected:
+  - `Self-Consistency Improves Chain of Thought Reasoning in Language Models`, arXiv:2203.11171.
+  - `Tree of Thoughts: Deliberate Problem Solving with Large Language Models`, arXiv:2305.10601.
+  - `ParaThinker: Native Parallel Thinking as a New Paradigm to Scale LLM Test-time Compute`, arXiv:2509.04475.
+  - `LongCat-Flash-Thinking-2601 Technical Report`, arXiv:2601.16725.
+  - `Group Sequence Policy Optimization`, arXiv:2507.18071.
+  - `Agent Skills for Large Language Models: Architecture, Acquisition, Security, and the Path Forward`, arXiv:2602.12430.
+  - `Towards Secure Agent Skills: Architecture, Threat Taxonomy, and Security Analysis`, arXiv:2604.02837.
+  - OpenClaw agent runtime documentation, `https://docs.openclaw.ai/concepts/agent`.
 
 ## Executive Read
 
@@ -14,9 +24,15 @@ HeavySkill argues that much of the useful behavior inside modern agentic harness
 1. generate multiple independent reasoning trajectories for the same task
 2. serialize those trajectories into a memory cache and ask a deliberation model to synthesize the final answer
 
-The important transfer into ChelatedAI is not "spawn more agents." The useful transfer is a new evidence unit: a replayable trajectory set plus a deliberation record, scored by verifiable outcomes, budget telemetry, diversity diagnostics, and fail-closed promotion gates.
+The important transfer into ChelatedAI is not "spawn more agents." HeavySkill is primarily a harness paper. Its core mechanism lives outside the model weights and outside the retrieval engine: sample several independent attempts, serialize them as context, and run a deliberator over that context.
 
-For this repo, HeavySkill should become an observation-first engine layer that sits beside the current Model-Scope and Engine-Scope work. It should not promote a new default until it can prove that trajectory width and deliberation depth beat the existing baseline on held-out retrieval and reasoning tasks without quantization, latency, or active-negative regressions.
+For this repo, that means HeavySkill should not become a full agent harness implementation. The useful transfer is an engine-adjacent adaptation layer: a replayable trajectory/cache evidence format plus hook points that let the engine vary, segment, protect, or amplify different channels during runtime. That layer can later support harness-like deliberation, but the first implementation should stay focused on engine tuning and fail-closed adaptive variation.
+
+The clean name for the user idea is:
+
+> adaptive channel overlay
+
+This means a runtime overlay that sits above a base model or retrieval engine, divides behavior into typed channels, and learns when to route more aggression toward a channel, damp it, protect it, or fork it into alternate variants. It is similar to RAG only in the sense that it injects external state at inference time. It is not static context retrieval; it is adaptive variation over engine/model control surfaces.
 
 ## Paper Claims That Matter
 
@@ -34,6 +50,35 @@ That hierarchy is directly relevant to our evaluation posture because it separat
 4. whether deliberation can recover or re-derive it
 
 The paper also claims that quality and diversity of the sampled trajectories are key contributors, that the deliberation model can be different from the reasoning model, and that RLVR can optimize both width and depth.
+
+## Related Work Interpretation
+
+HeavySkill is best understood as a consolidation paper over several adjacent lines:
+
+| Line of work | Methodology | What it contributes to HeavySkill | What it means for ChelatedAI |
+| --- | --- | --- | --- |
+| Self-consistency | Sample diverse reasoning paths, then marginalize/select the most consistent answer. | Establishes that multiple sampled paths expose latent model capability beyond greedy decoding. | Useful metric split: sample availability vs selection quality. Not enough by itself because retrieval metrics do not have a single boxed answer. |
+| Tree of Thoughts | Explore intermediate "thought" states with self-evaluation, lookahead, and backtracking. | Shows that deliberate search over reasoning states helps tasks requiring planning. | Relevant as a search/control analogy, but too harness-heavy to import directly. Our analogue is branch search over engine profiles and hooks. |
+| ParaThinker | Train a model to produce multiple parallel paths and synthesize them, targeting test-time compute bottlenecks and "tunnel vision." | Supports the width-vs-depth framing and the value of path diversity. | Long-term insight only. We should not train native parallel cognition; we should log engine branch diversity first. |
+| LongCat Heavy Thinking | Combines reasoning depth and width in an agentic/tool-capable model family. | Confirms that heavy thinking is now a model/harness product feature, not only a prompt trick. | Useful as a benchmark direction, but the repo should remain provider/model agnostic. |
+| GSPO / RLVR | Sequence-level RL optimization for LLM training and verifiable reward settings. | HeavySkill uses this as the bridge from harness behavior to trainable policy. | Defer. ChelatedAI can use verifiable rewards for overlay policy and engine tuning, not base-model rewriting. |
+| Agent Skills survey | Skills are dynamic capability packages loaded on demand without retraining. | Explains why HeavySkill is packaged as `heavyskill.md`. | Use as a protocol inspiration only. Engine hooks need typed schemas, permissions, and promotion gates. |
+| Secure Agent Skills | Skills create lifecycle and data-instruction boundary risks. | Warns that a readable skill is also an attack surface. | Another reason not to drop a free-form harness skill into the engine path. Use typed, gated policies instead. |
+| OpenClaw-style runtime | Workspace files, skills, memory, tools, sessions, and steering are loaded by an outer runtime. | Shows the operational shape of a harness. | Confirms this is outside CHELATEDAI's main scope unless we expose a narrow integration hook. |
+
+The net is straightforward: HeavySkill is a test-time orchestration/control pattern. It is not an engine-tuning method in the same sense as Qwen-Scope, AttnRes, or our road-course promotion gates. Its best fit is to improve how we observe and steer adaptive branches, not to become the product architecture.
+
+## Methodology Caveats
+
+HeavySkill's reported gains are strongest when a verifier can determine correctness cleanly. That includes math, coding, and constrained reasoning. CHELATEDAI's main surface is retrieval and adaptive engine tuning, where a "correct" answer is usually a metric distribution over ranked documents, not a boxed scalar answer.
+
+Important caveats:
+
+1. `Pass@K` is an upper bound on whether at least one branch found a good answer; it is not evidence that the system can pick the good branch.
+2. `Vote@K` works best when answers normalize cleanly. Retrieval branches may disagree by useful complementarity rather than a single majority winner.
+3. Deliberation can regress strong branches by over-summarizing or preferring consensus. The engine must record active-negative cases where synthesis hides a bad intervention.
+4. RLVR claims should not be applied to this repo until reward adapters are verifiable and replayable.
+5. The reference repo stores raw trajectories as strings. That is acceptable for a demo harness, but insufficient for engine promotion because it omits provenance, clipping, score, and replay boundaries.
 
 ## Reference Repo Findings
 
@@ -54,14 +99,41 @@ The GitHub implementation is small and confirms the paper's practical shape:
 | --- | --- | --- | --- |
 | Independent trajectory set | Road-course profile comparisons, reformulation variants, Model-Scope observations | No first-class `TrajectoryRecord` with prompt, seed, model, answer, artifact pointers, and score | P0 |
 | Serialized memory cache | Model-Scope artifact writer, evidence events, experiment JSON reports | No cache manifest with included trajectories, shuffle seed, clipping policy, omitted hashes, and context budget | P0 |
-| Sequential deliberation | Comparator reports and promotion summaries | No deliberator model/stage that consumes a cache and emits a replayable synthesis | P1 |
-| Iterative deliberation | Autopilot loops and repeat-seed validation | No per-query depth state or convergence/stop reason for deliberation loops | P1 |
+| Sequential deliberation | Comparator reports and promotion summaries | No deliberator model/stage that consumes a cache and emits a replayable synthesis | P3 |
+| Iterative deliberation | Autopilot loops and repeat-seed validation | No per-query depth state or convergence/stop reason for deliberation loops | P4 |
 | Heavy-Mean/Pass/Vote metrics | NDCG@10, MAP@10, MRR, recall, quantization gate | No heavy-thinking metrics that separate sample availability, voting recovery, and deliberation recovery | P0 |
 | Verifiable rewards | Promotion contract, holdout reports, quantization promotion gate | Need verifier adapters per task family before RLVR claims are safe | P0 |
 | Trajectory diversity | Balanced AttnRes profile set and active-negative mining | No semantic/answer diversity diagnostics over candidate trajectories | P1 |
-| Deliberator model selection | Model-Scope runtime and provider probes | No policy for cheap vs strong deliberators or cross-model pairing | P2 |
-| Heavy-mode-aware RL | Sedimentation, adapter tuning, fail-closed promotion | Too early until logs prove which width/depth decisions correlate with reward | P3 |
-| Readable harness skill | Local docs and Codex skill-like handoffs | Need a repo-native protocol file only after schemas are stable | P2 |
+| Deliberator model selection | Model-Scope runtime and provider probes | No policy for cheap vs strong deliberators or cross-model pairing | P4 |
+| Heavy-mode-aware RL | Sedimentation, adapter tuning, fail-closed promotion | Too early until logs prove which width/depth decisions correlate with reward | P5 |
+| Readable harness skill | Local docs and Codex skill-like handoffs | Out of main scope; only useful as a future integration spec | Defer |
+| Adaptive channel overlay | Engine-Scope gates, Model-Scope hooks, masks, reformulation, AttnRes profiles | No unified runtime vocabulary for routing, damping, protecting, or forking channels | P0 |
+
+## Adaptive Channel Overlay
+
+The better implementation target is not "HeavySkill for CHELATEDAI." It is an adaptive channel overlay that can use HeavySkill-style evidence when useful.
+
+In this architecture:
+
+- a `channel` is a bounded control surface such as retrieval baseline, reformulation, mask gate, AttnRes profile, Model-Scope hook, feature steering overlay, verifier, or safety blocker
+- a `variation` is one concrete setting of that channel for a query or batch
+- an `intake` is the current evidence packet: query features, prior outcomes, memory summaries, profile scores, safety signals, and budget state
+- a `router` decides which channels should receive more aggression, damping, protection, or branching
+- a `promotion gate` decides whether any changed channel policy can persist
+
+This is RAG-like only in that external state affects inference. The difference is that the state is not primarily retrieved content. It is adaptive control state over engine behavior.
+
+The key verbs are:
+
+| Verb | Engine meaning | Example |
+| --- | --- | --- |
+| Route | Send a query toward a channel or profile family | Prefer reformulation variants on ambiguous short queries |
+| Amplify | Increase channel influence or sampling width | Try more reformulation candidates when feature coverage is low |
+| Damp | Reduce a channel's influence | Suppress masking after active-negative blockers |
+| Protect | Prevent a channel from mutating or affecting output | Freeze baseline retrieval and safety gates during experiments |
+| Fork | Create controlled alternate variants | Compare baseline, mask, reformulation, and AttnRes branches |
+| Merge | Combine evidence from variants | Report candidate deltas and consensus/contradiction |
+| Promote | Persist a policy only after replay and holdout | Make a channel router default only after quantization and repeat-seed gates |
 
 ## Information To Add To The Engine
 
@@ -137,62 +209,112 @@ The paper's strongest operational claim is that trajectory quality and diversity
 - profile/source diversity when trajectories come from different engine branches
 - low-pass-rate cohort labels so we can test whether deliberation actually rescues hard queries
 
+### 6. `ChannelVariationRecord`
+
+This is the bridge from HeavySkill-style trajectories into the engine-tuning scope.
+
+Required fields:
+
+- `channel_id`, `channel_type`, `variation_id`
+- `aggression_level`: disabled, observe, soft, normal, high
+- `protection_level`: mutable, guarded, frozen, safety_critical
+- `input_features_hash`, `intake_id`, `policy_id`
+- `baseline_output_hash`, `variation_output_hash`
+- `metric_delta`, `active_negative_flags`, `safety_flags`
+- `decision`: route, amplify, damp, protect, fork, merge, promote, reject
+- `decision_reason`, `budget_impact`, `replay_group_id`
+
+### 7. `AdaptiveOverlayIntake`
+
+One typed evidence packet used by the router before it changes channel behavior.
+
+Required fields:
+
+- query/task metadata
+- engine feature summary
+- model-scope observation summary when present
+- recent memory/evidence profile matches
+- current channel states
+- safety and blocker state
+- budget state
+- eligible variation policies
+- forbidden mutations
+
 ## Adaptation Plan
 
-### P0: Observation-Only Heavy-Thinking Evidence
+### P0: Observation-Only Adaptive Overlay Evidence
 
-Add dataclasses or typed JSON builders for `TrajectoryRecord`, `TrajectoryCacheManifest`, `DeliberationRecord`, and `HeavyThinkingRun`. Wire them to the existing evidence/artifact style without changing any default retrieval behavior.
+Add dataclasses or typed JSON builders for `ChannelVariationRecord`, `AdaptiveOverlayIntake`, `TrajectoryRecord`, `TrajectoryCacheManifest`, and `HeavyThinkingRun`. Wire them to the existing evidence/artifact style without changing any default retrieval behavior.
 
 Acceptance bar:
 
-- deterministic hashes for records and cache manifests
+- deterministic hashes for records, intakes, and cache manifests
 - JSON schema versioning
-- unit tests for serialization, clipping provenance, and cache hash stability
+- unit tests for serialization, routing/protection fields, clipping provenance, and hash stability
 - no promotion path enabled
 
-### P1: Retrieval-Aware Parallel Trajectory Runner
+### P1: Channel Variation Emitter
 
-Build a small runner that treats existing retrieval branches as trajectories: baseline, reformulation variants, mask variants, AttnRes profiles, and Model-Scope-observed runs.
+Emit observation records for existing retrieval branches: baseline, reformulation variants, mask variants, AttnRes profiles, and Model-Scope-observed runs. Do not add an LLM deliberator yet.
 
 Acceptance bar:
 
-- emits trajectory records for every branch
+- emits channel variation records for every branch
+- records route/amplify/damp/protect/fork/merge decisions when they are known
+- preserves baseline protection state
+- can replay a fixed query slice with identical manifests
+
+### P2: Heavy Metrics Over Engine Branches
+
+Compute HeavySkill-inspired metrics over branch sets without importing a harness:
+
+- `Mean@K`: average branch score
+- `Pass@K`: whether any branch exceeds a success threshold
+- `Vote@K`: whether a simple consensus/selection heuristic recovers a good branch
+- `Overlay-Mean@K`: score after the overlay router picks a branch
+- `Oracle gap`: `Pass@K - Overlay-Mean@K`
+
+Acceptance bar:
+
 - computes `Mean@K`, `Pass@K`, and `Vote@K` analogues for retrieval metrics
-- can replay a fixed query slice with identical cache manifests
+- reports oracle gap and active-negative counts
+- fails closed when thresholds are task-incompatible
 
-### P2: Deliberation Adapter
+### P3: Optional Deliberation Adapter
 
-Add a deliberation stage that consumes a cache manifest and emits a final candidate answer or retrieval action. Start with text-only deliberation over summaries and metric traces, not raw hidden-state dumps.
+Only after P0-P2, add a deliberation stage that consumes a cache manifest and emits a final candidate answer or retrieval action. Start with text-only deliberation over summaries and metric traces, not raw hidden-state dumps.
 
 Acceptance bar:
 
 - deliberator prompt is versioned
 - output is verifier-scored
 - failure classes include `majority_wrong`, `minority_recovered`, `all_wrong_rederived`, and `deliberation_regressed`
+- default remains disabled
 
-### P3: Promotion Gate Extension
+### P4: Promotion Gate Extension
 
-Extend the promotion contract to understand heavy-thinking evidence.
+Extend the promotion contract to understand adaptive overlay evidence.
 
 Acceptance bar:
 
 - promotion fails closed when replay, holdout, verifier, quantization, or budget-normalized lift is missing
-- heavy-thinking lift must survive repeat seeds
+- overlay lift must survive repeat seeds
 - no active-negative blocker can be masked by a high aggregate score
+- protected channels cannot be mutated by promotion
 
-### P4: Coverage-Aware Width And Depth Search
+### P5: Coverage-Aware Width And Channel Search
 
-Use diversity and low-pass-rate cohort labels to decide where more width or another deliberation iteration is worth the budget.
+Use diversity and low-pass-rate cohort labels to decide where more branch width, a channel fork, or another deliberation iteration is worth the budget.
 
 Acceptance bar:
 
 - stop conditions are explicit
-- width/depth increases are justified by observed uncertainty or disagreement
+- width/channel changes are justified by observed uncertainty or disagreement
 - budget-normalized lift is reported beside raw lift
 
-### P5: Heavy-Mode-Aware Training
+### P6: Heavy-Mode-Aware Training
 
-Only after the above exists, train policies that choose width, trajectory source mix, cache selection strategy, and deliberator model.
+Only after the above exists, train policies that choose width, channel source mix, cache selection strategy, and optional deliberator model.
 
 Acceptance bar:
 
@@ -206,10 +328,29 @@ HeavySkill's most convincing results are on verifiable reasoning tasks. CHELATED
 
 Safe claim:
 
-> ChelatedAI can evaluate heavy-thinking style breadth and deliberation as a typed, replayable, fail-closed engine mode.
+> ChelatedAI can evaluate HeavySkill-style breadth as typed, replayable adaptive overlay evidence over engine channels, while keeping harness-level deliberation optional and disabled by default.
 
 Unsafe claim for now:
 
 > HeavySkill proves that more agents or more samples will improve our retrieval engine by default.
 
-The next practical slice is P0: typed heavy-thinking evidence and cache manifests. It is small, testable, and sets up every later experiment without changing production defaults.
+The next practical slice is P0: typed adaptive overlay evidence and cache manifests. It is small, testable, and sets up every later experiment without changing production defaults.
+
+## Implementation Decision
+
+Do not implement a full HeavySkill harness in this repo now.
+
+Implement:
+
+1. typed adaptive overlay records
+2. channel variation records for existing engine branches
+3. replayable cache/manifest hashing
+4. HeavySkill-inspired metrics over branch sets
+5. fail-closed promotion extensions only after the observation layer is stable
+
+Defer:
+
+1. spawning agent swarms
+2. readable skill execution inside the engine
+3. base-model RLVR or heavy-mode-aware model training
+4. any default route that lets a deliberator override retrieval without verifier evidence
