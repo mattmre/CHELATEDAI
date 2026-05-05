@@ -119,6 +119,28 @@ class TestModelScopeRuntime(unittest.TestCase):
         self.assertEqual(feature_summary["feature_space"], "activation_dimension_fallback")
         self.assertEqual(len(feature_summary["active_features"]), 1)
 
+    def test_runtime_aggregates_captured_layer_embeddings(self):
+        runtime = ModelScopeRuntime(
+            ModelScopeRuntimeConfig(
+                model_name="Qwen/Qwen3.5-2B",
+                layer_indices=[0, 1],
+                capture_raw_embeddings=True,
+                enable_layer_attention_aggregation=True,
+                layer_attention_proj_dim=2,
+            ),
+            model=_FakeCausalModel(layer_count=2, hidden_size=4),
+            tokenizer=_FakeTokenizer(),
+        )
+
+        artifact = runtime.observe_text("alpha beta")
+
+        aggregation = artifact["layer_attention_aggregation"]
+        self.assertEqual(aggregation["method"], "layer_attention_aggregator")
+        self.assertEqual(aggregation["layer_indices"], [0, 1])
+        self.assertEqual(aggregation["input_shape"], [1, 2, 4])
+        self.assertEqual(aggregation["output_shape"], [1, 4])
+        self.assertEqual(len(aggregation["embedding"][0]), 4)
+
     def test_runtime_emits_shadow_steering_summary(self):
         class _ConstantFeatureExtractor:
             def summarize(self, *, layer_index, activation):
