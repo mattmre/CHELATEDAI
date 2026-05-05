@@ -9,6 +9,7 @@ from adaptive_overlay import (
     channel_variation_from_engine_scope_row,
     compute_branch_set_metrics,
     summarize_overlay_readiness,
+    summarize_overlay_trajectory_health,
     summarize_channel_variations,
 )
 
@@ -231,6 +232,7 @@ class TestAdaptiveOverlay(unittest.TestCase):
         self.assertFalse(card["readiness"]["ready_for_broader_validation"])
         self.assertIn("promotion_blockers_present", card["readiness"]["blockers"])
         self.assertFalse(card["evidence"]["promotion_decision"]["promotion_ready"])
+        self.assertEqual(card["evidence"]["trajectory_health"]["record_type"], "adaptive_overlay_trajectory_health")
         self.assertIn("not_default_promoted", card["limitations"])
         self.assertNotIn("channel_variation_records", card)
 
@@ -275,6 +277,42 @@ class TestAdaptiveOverlay(unittest.TestCase):
         self.assertTrue(validation["validation_ready"])
         self.assertEqual(validation["blockers"], [])
         self.assertTrue(validation["validation_report_id"].startswith("overlay_validation_"))
+
+    def test_overlay_trajectory_health_reports_burden_and_blockers(self):
+        report = build_overlay_report([
+            {
+                "row_type": "query_profile",
+                "task": "SciFact",
+                "seed": 1,
+                "query_id": "q1",
+                "profile": "reform_rrf_v2",
+                "action": "REFORMULATE",
+                "fault_class": "actuator_active_positive",
+                "delta_ndcg_at_10": 0.02,
+                "budget_units": 3,
+            },
+            {
+                "row_type": "query_profile",
+                "task": "SciFact",
+                "seed": 1,
+                "query_id": "q1",
+                "profile": "mask_gate_v1",
+                "action": "CHELATE",
+                "fault_class": "actuator_active_negative",
+                "promotion_blocker": True,
+                "delta_ndcg_at_10": -0.02,
+                "budget_units": 2,
+            },
+        ])
+
+        health = summarize_overlay_trajectory_health(report)
+
+        self.assertEqual(report["trajectory_health"]["record_type"], "adaptive_overlay_trajectory_health")
+        self.assertEqual(health["record_count"], 2)
+        self.assertEqual(health["budget_units"], 5)
+        self.assertEqual(health["budget_per_safe_pass"], 5)
+        self.assertIn("mask_gate_v1", health["blocker_recurrence_by_channel"])
+        self.assertIn("blocker_recurrence_present", health["warnings"])
 
 
 if __name__ == "__main__":

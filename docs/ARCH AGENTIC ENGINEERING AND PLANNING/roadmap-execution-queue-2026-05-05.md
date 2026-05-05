@@ -19,8 +19,8 @@ Purpose: Durable continuation queue after Engine-Scope, Model-Scope, and adaptiv
 | --- | --- | --- | --- | --- |
 | 1 | Overlay artifact cards for promoted or candidate overlays | reporting | complete | compact card includes purpose, base, data, evals, safety checks, limitations, rollback |
 | 2 | Broader adaptive-overlay replay and holdout validation | validation | complete | produce replay/holdout artifact proving ready or blocked status |
-| 3 | Overlay trajectory health diagnostics | diagnostics | next | report loop burden, blocker recurrence, oracle-gap trend, and budget per safe pass |
-| 4 | Budget-aware overlay collection policy | implementation | queued | collection policy chooses broader branch search by uncertainty, coverage novelty, and blocker history |
+| 3 | Overlay trajectory health diagnostics | diagnostics | complete | report loop burden, blocker recurrence, oracle-gap trend, and budget per safe pass |
+| 4 | Budget-aware overlay collection policy | implementation | next | collection policy chooses broader branch search by uncertainty, coverage novelty, and blocker history |
 | 5 | Verifier/rubric evidence card integration | reporting | queued | verifier/rubric outputs are evidence cards, not default runtime controllers |
 | 6 | Model-Scope smoke campaign with supplied overlay report | validation | queued | campaign report shows promotion decision and overlay summary together |
 | 7 | Hard-negative replay expansion for overlay readiness | validation | queued | readiness summary includes stress replay blocker state |
@@ -50,3 +50,4 @@ Start the next branch from the highest-ranked `next` item that is not blocked. I
 - 2026-05-05: Frontier adaptive overlay/test-time scaling refresh recorded in `docs/frontier-adaptive-overlay-research-2026-05-05.md`. Queue updated to prioritize overlay artifact cards before broader branching.
 - 2026-05-05: Overlay artifact cards implemented for Model-Scope campaign reports. Next slice remains broader replay/holdout validation using the card as the durable review object.
 - 2026-05-05: Adaptive overlay validation reports implemented. Campaigns can now carry replay and holdout overlay reports and emit fail-closed validation evidence into the artifact card.
+- 2026-05-05: Overlay trajectory health diagnostics implemented. Overlay reports and artifact cards now expose loop burden, blocker recurrence, oracle-gap trend, and budget per safe pass.
