@@ -365,6 +365,92 @@ def summarize_overlay_readiness(
     }
 
 
+def _record_budget_units(record: Mapping[str, Any]) -> int:
+    for key in ("budget_units", "compute_budget_units"):
+        value = record.get(key)
+        if isinstance(value, (int, float)):
+            return int(value)
+    source_row = record.get("source_row", {})
+    if isinstance(source_row, Mapping):
+        for key in ("budget_units", "compute_budget_units"):
+            value = source_row.get(key)
+            if isinstance(value, (int, float)):
+                return int(value)
+    return 1
+
+
+def summarize_overlay_trajectory_health(overlay_report: Mapping[str, Any]) -> Dict[str, Any]:
+    """Summarize overlay branch-search health without changing runtime behavior."""
+
+    records = (
+        list(overlay_report.get("channel_variation_records", []))
+        if isinstance(overlay_report, Mapping)
+        else []
+    )
+    metrics = dict(overlay_report.get("branch_set_metrics", {})) if isinstance(overlay_report, Mapping) else {}
+    groups = list(metrics.get("groups", []))
+    blocker_recurrence: Dict[str, int] = {}
+    budget_total = 0
+    safe_passes = 0
+    repeated_branch_groups = 0
+
+    for record in records:
+        budget_total += _record_budget_units(record)
+        channel_id = str(record.get("channel_id") or "unknown")
+        if bool(record.get("promotion_blocker", False)) or bool(record.get("active_negative_flags")):
+            blocker_recurrence[channel_id] = blocker_recurrence.get(channel_id, 0) + 1
+
+    oracle_gaps = []
+    for group in groups:
+        if int(group.get("branch_count", 0) or 0) > 1:
+            repeated_branch_groups += 1
+        if bool(group.get("safe_pass_at_k", False)):
+            safe_passes += 1
+        oracle_gap = group.get("oracle_gap")
+        if isinstance(oracle_gap, (int, float)):
+            oracle_gaps.append(float(oracle_gap))
+
+    midpoint = len(oracle_gaps) // 2
+    early_gap = sum(oracle_gaps[:midpoint]) / midpoint if midpoint else 0.0
+    late_count = len(oracle_gaps) - midpoint
+    late_gap = sum(oracle_gaps[midpoint:]) / late_count if late_count else 0.0
+    if len(oracle_gaps) < 2:
+        oracle_gap_trend = "insufficient_signal"
+    elif late_gap < early_gap:
+        oracle_gap_trend = "improving"
+    elif late_gap > early_gap:
+        oracle_gap_trend = "worsening"
+    else:
+        oracle_gap_trend = "flat"
+
+    group_count = int(metrics.get("group_count", len(groups)) or 0)
+    loop_burden = repeated_branch_groups / group_count if group_count else 0.0
+    budget_per_safe_pass = budget_total / safe_passes if safe_passes else None
+    warnings = []
+    if blocker_recurrence:
+        warnings.append("blocker_recurrence_present")
+    if oracle_gap_trend == "worsening":
+        warnings.append("oracle_gap_worsening")
+    if budget_per_safe_pass is None:
+        warnings.append("no_safe_pass_budget_signal")
+
+    return {
+        "schema_version": ADAPTIVE_OVERLAY_SCHEMA_VERSION,
+        "record_type": "adaptive_overlay_trajectory_health",
+        "record_count": len(records),
+        "branch_group_count": group_count,
+        "loop_burden_rate": loop_burden,
+        "blocker_recurrence_by_channel": dict(sorted(blocker_recurrence.items())),
+        "oracle_gap_trend": oracle_gap_trend,
+        "early_mean_oracle_gap": early_gap,
+        "late_mean_oracle_gap": late_gap,
+        "budget_units": budget_total,
+        "safe_pass_count": safe_passes,
+        "budget_per_safe_pass": budget_per_safe_pass,
+        "warnings": warnings,
+    }
+
+
 def build_overlay_report(
     rows: Iterable[Mapping[str, Any]],
     *,
@@ -381,6 +467,7 @@ def build_overlay_report(
         "branch_set_metrics": compute_branch_set_metrics(records, success_delta=success_delta),
     }
     report["readiness"] = summarize_overlay_readiness(report)
+    report["trajectory_health"] = summarize_overlay_trajectory_health(report)
     return report
 
 
@@ -406,6 +493,7 @@ def build_overlay_artifact_card(
     readiness = dict(overlay_report.get("readiness", {})) if isinstance(overlay_report, Mapping) else {}
     summary = dict(overlay_report.get("summary", {})) if isinstance(overlay_report, Mapping) else {}
     metrics = dict(overlay_report.get("branch_set_metrics", {})) if isinstance(overlay_report, Mapping) else {}
+    trajectory_health = dict(overlay_report.get("trajectory_health", {})) if isinstance(overlay_report, Mapping) else {}
     decision = dict(promotion_decision or {})
     blocker_list = list(readiness.get("blockers") or [])
     limitation_list = list(limitations or [])
@@ -439,6 +527,7 @@ def build_overlay_artifact_card(
             "pass_at_k_rate": float(metrics.get("pass_at_k_rate", 0.0) or 0.0),
             "safe_pass_at_k_rate": float(metrics.get("safe_pass_at_k_rate", 0.0) or 0.0),
             "mean_oracle_gap": float(metrics.get("mean_oracle_gap", 0.0) or 0.0),
+            "trajectory_health": _json_safe(trajectory_health),
             "validation": _json_safe(validation_report or {}),
             "replay": _json_safe(replay_report or {}),
             "holdout": _json_safe(holdout_report or {}),

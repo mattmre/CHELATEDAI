@@ -46,13 +46,15 @@ Artifact cards landed as the next reporting slice: `build_overlay_artifact_card`
 
 Broader replay/holdout validation landed as the next validation slice: `build_overlay_validation_report` now requires replay readiness plus holdout readiness and fails closed on missing or regressing holdout evidence. Model-Scope campaigns can accept `--adaptive-overlay-holdout-report`, write `adaptive_overlay_validation_report.json`, and embed validation evidence into the artifact card.
 
-The next implementation target should be overlay trajectory diagnostics inspired by TIDE:
+Overlay trajectory diagnostics landed as an observational report field on overlay reports and artifact cards:
 
 - loop or repeated-branch count
 - memory/report burden
 - oracle gap trend
 - blocker recurrence by channel
 - budget used per safe pass
+
+The next implementation target should be a budget-aware overlay collection policy using these diagnostics plus uncertainty, coverage novelty, and blocker history.
 
 ## Updated Priority Recommendation
 

@@ -10,3 +10,4 @@ Naming convention: `YYYY-MM-DD_PR-###_summary.md`.
 | autonomous-continuation | 2026-05-05 | PR `#133` / `codex/frontier-overlay-research-refresh` | research/refinement | Codex | `RESEARCH-20260505-001` | [2026-05-05_PR-133_summary.md](2026-05-05_PR-133_summary.md) |
 | autonomous-continuation | 2026-05-05 | PR `#134` / `codex/adaptive-overlay-artifact-cards` | reporting | Codex | `OVERLAY-CARD-20260505-001` | [2026-05-05_PR-134_summary.md](2026-05-05_PR-134_summary.md) |
 | autonomous-continuation | 2026-05-05 | PR `#135` / `codex/adaptive-overlay-validation-report` | validation | Codex | `OVERLAY-VALIDATION-20260505-001` | [2026-05-05_PR-135_summary.md](2026-05-05_PR-135_summary.md) |
+| autonomous-continuation | 2026-05-05 | PR `#136` / `codex/adaptive-overlay-trajectory-health` | diagnostics | Codex | `OVERLAY-HEALTH-20260505-001` | [2026-05-05_PR-136_summary.md](2026-05-05_PR-136_summary.md) |
