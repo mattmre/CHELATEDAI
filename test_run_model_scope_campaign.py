@@ -134,9 +134,11 @@ class TestRunModelScopeCampaign(unittest.TestCase):
             self.assertIn("adaptive_overlay_artifact_card", report["outputs"])
             self.assertIn("adaptive_overlay_validation_report", report["outputs"])
             self.assertIn("adaptive_overlay_collection_policy", report["outputs"])
+            self.assertIn("verifier_evidence_cards", report["outputs"])
             self.assertTrue((output_dir / "adaptive_overlay_artifact_card.json").exists())
             self.assertTrue((output_dir / "adaptive_overlay_validation_report.json").exists())
             self.assertTrue((output_dir / "adaptive_overlay_collection_policy.json").exists())
+            self.assertTrue((output_dir / "verifier_evidence_cards.json").exists())
             self.assertFalse(report["promotion_decision"]["adaptive_overlay_ready"])
             self.assertIn("adaptive_overlay_not_ready", report["promotion_decision"]["reasons"])
             self.assertFalse(report["adaptive_overlay_summary"]["ready_for_broader_validation"])
@@ -144,6 +146,7 @@ class TestRunModelScopeCampaign(unittest.TestCase):
             self.assertFalse(report["adaptive_overlay_validation_report"]["validation_ready"])
             self.assertIn("missing_holdout_overlay_report", report["adaptive_overlay_validation_report"]["blockers"])
             self.assertTrue(report["adaptive_overlay_collection_policy"]["advisory_only"])
+            self.assertTrue(report["verifier_evidence_cards"][0]["advisory_only"])
             self.assertFalse(report["adaptive_overlay_artifact_card"]["readiness"]["ready_for_broader_validation"])
             self.assertIn("not_default_promoted", report["adaptive_overlay_artifact_card"]["limitations"])
 
@@ -203,6 +206,10 @@ class TestRunModelScopeCampaign(unittest.TestCase):
             self.assertIn(report["adaptive_overlay_collection_policy"]["decision"], {"standard_collection", "broaden_collection"})
             self.assertTrue(report["adaptive_overlay_artifact_card"]["readiness"]["ready_for_broader_validation"])
             self.assertTrue(report["adaptive_overlay_artifact_card"]["evidence"]["collection_policy"]["advisory_only"])
+            self.assertEqual(
+                report["adaptive_overlay_artifact_card"]["evidence"]["verifier_cards"][0]["record_type"],
+                "verifier_evidence_card",
+            )
             self.assertTrue(report["adaptive_overlay_artifact_card"]["evidence"]["validation"]["validation_ready"])
             self.assertEqual(report["adaptive_overlay_artifact_card"]["source_overlay_report_path"], str(overlay_path))
             self.assertNotIn("missing_adaptive_overlay_report", report["promotion_decision"]["reasons"])

@@ -21,8 +21,8 @@ Purpose: Durable continuation queue after Engine-Scope, Model-Scope, and adaptiv
 | 2 | Broader adaptive-overlay replay and holdout validation | validation | complete | produce replay/holdout artifact proving ready or blocked status |
 | 3 | Overlay trajectory health diagnostics | diagnostics | complete | report loop burden, blocker recurrence, oracle-gap trend, and budget per safe pass |
 | 4 | Budget-aware overlay collection policy | implementation | complete | collection policy chooses broader branch search by uncertainty, coverage novelty, and blocker history |
-| 5 | Verifier/rubric evidence card integration | reporting | next | verifier/rubric outputs are evidence cards, not default runtime controllers |
-| 6 | Model-Scope smoke campaign with supplied overlay report | validation | queued | campaign report shows promotion decision and overlay summary together |
+| 5 | Verifier/rubric evidence card integration | reporting | complete | verifier/rubric outputs are evidence cards, not default runtime controllers |
+| 6 | Model-Scope smoke campaign with supplied overlay report | validation | next | campaign report shows promotion decision and overlay summary together |
 | 7 | Hard-negative replay expansion for overlay readiness | validation | queued | readiness summary includes stress replay blocker state |
 | 8 | Repeat-seed AttnRes contrastive/quantization-aware experiment | research/validation | queued | result doc states promote/no-promote with repeat-seed evidence |
 | 9 | Computational-storage real-hardware evidence capture | operational | externally blocked | hardware report captured on actual RP2040/Pico device |
@@ -52,3 +52,4 @@ Start the next branch from the highest-ranked `next` item that is not blocked. I
 - 2026-05-05: Adaptive overlay validation reports implemented. Campaigns can now carry replay and holdout overlay reports and emit fail-closed validation evidence into the artifact card.
 - 2026-05-05: Overlay trajectory health diagnostics implemented. Overlay reports and artifact cards now expose loop burden, blocker recurrence, oracle-gap trend, and budget per safe pass.
 - 2026-05-05: Budget-aware overlay collection policy implemented as advisory-only evidence. Campaigns now emit collection policy artifacts and include them in overlay artifact cards.
+- 2026-05-05: Verifier/rubric evidence cards implemented as review-only artifacts. Campaigns now emit verifier cards and embed them in overlay artifact cards.

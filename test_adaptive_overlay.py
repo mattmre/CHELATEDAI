@@ -3,6 +3,7 @@ import unittest
 from adaptive_overlay import (
     build_overlay_artifact_card,
     build_overlay_report,
+    build_verifier_evidence_card,
     build_overlay_validation_report,
     build_adaptive_overlay_intake,
     build_channel_variation_records,
@@ -222,6 +223,14 @@ class TestAdaptiveOverlay(unittest.TestCase):
                 "reasons": ["adaptive_overlay_not_ready"],
             },
             collection_policy={"decision": "observe_only", "advisory_only": True},
+            verifier_cards=[
+                build_verifier_evidence_card(
+                    verifier_id="rubric-v1",
+                    subject_id="candidate-a",
+                    rubric={"min_score": 0.75},
+                    result={"passed": True, "score": 0.8},
+                )
+            ],
             holdout_report={"passed": True, "score": 0.8},
             safety_report={"passed": True},
             rollback_path="policies/current.json",
@@ -236,6 +245,7 @@ class TestAdaptiveOverlay(unittest.TestCase):
         self.assertFalse(card["evidence"]["promotion_decision"]["promotion_ready"])
         self.assertEqual(card["evidence"]["trajectory_health"]["record_type"], "adaptive_overlay_trajectory_health")
         self.assertEqual(card["evidence"]["collection_policy"]["decision"], "observe_only")
+        self.assertEqual(card["evidence"]["verifier_cards"][0]["record_type"], "verifier_evidence_card")
         self.assertIn("not_default_promoted", card["limitations"])
         self.assertNotIn("channel_variation_records", card)
 
@@ -357,6 +367,21 @@ class TestAdaptiveOverlay(unittest.TestCase):
         )
         self.assertEqual(broaden_policy["decision"], "broaden_collection")
         self.assertGreater(broaden_policy["budget_units"], 1)
+
+    def test_verifier_evidence_card_is_review_only(self):
+        card = build_verifier_evidence_card(
+            verifier_id="rubric-v1",
+            subject_id="candidate-a",
+            rubric={"min_score": 0.75, "criteria": ["faithfulness", "safety"]},
+            result={"passed": False, "score": 0.7, "reasons": ["weak_support"], "blockers": ["safety_gap"]},
+            source_path="verifier.json",
+        )
+
+        self.assertEqual(card["record_type"], "verifier_evidence_card")
+        self.assertTrue(card["card_id"].startswith("verifier_card_"))
+        self.assertFalse(card["result"]["passed"])
+        self.assertEqual(card["result"]["score"], 0.7)
+        self.assertTrue(card["advisory_only"])
 
 
 if __name__ == "__main__":

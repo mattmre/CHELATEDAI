@@ -560,6 +560,7 @@ def build_overlay_artifact_card(
     promotion_decision: Mapping[str, Any] | None = None,
     validation_report: Mapping[str, Any] | None = None,
     collection_policy: Mapping[str, Any] | None = None,
+    verifier_cards: Iterable[Mapping[str, Any]] | None = None,
     replay_report: Mapping[str, Any] | None = None,
     holdout_report: Mapping[str, Any] | None = None,
     hard_negative_report: Mapping[str, Any] | None = None,
@@ -611,6 +612,7 @@ def build_overlay_artifact_card(
             "trajectory_health": _json_safe(trajectory_health),
             "validation": _json_safe(validation_report or {}),
             "collection_policy": _json_safe(collection_policy or {}),
+            "verifier_cards": _json_safe(list(verifier_cards or [])),
             "replay": _json_safe(replay_report or {}),
             "holdout": _json_safe(holdout_report or {}),
             "hard_negative": _json_safe(hard_negative_report or {}),
@@ -627,6 +629,40 @@ def build_overlay_artifact_card(
         "metadata": _json_safe(metadata or {}),
     }
     card["card_id"] = f"overlay_card_{stable_overlay_hash(card)}"
+    return card
+
+
+def build_verifier_evidence_card(
+    *,
+    verifier_id: str,
+    subject_id: str,
+    rubric: Mapping[str, Any],
+    result: Mapping[str, Any],
+    source_path: str | None = None,
+    metadata: Mapping[str, Any] | None = None,
+) -> Dict[str, Any]:
+    """Build review-only verifier/rubric evidence for overlay artifacts."""
+
+    passed = bool(result.get("passed", False))
+    score = result.get("score")
+    normalized_score = float(score) if isinstance(score, (int, float)) else None
+    card = {
+        "schema_version": ADAPTIVE_OVERLAY_SCHEMA_VERSION,
+        "record_type": "verifier_evidence_card",
+        "verifier_id": str(verifier_id),
+        "subject_id": str(subject_id),
+        "rubric": _json_safe(rubric),
+        "result": {
+            "passed": passed,
+            "score": normalized_score,
+            "reasons": list(result.get("reasons") or []),
+            "blockers": list(result.get("blockers") or []),
+        },
+        "source_path": source_path,
+        "metadata": _json_safe(metadata or {}),
+        "advisory_only": True,
+    }
+    card["card_id"] = f"verifier_card_{stable_overlay_hash(card)}"
     return card
 
 
