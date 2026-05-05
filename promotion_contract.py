@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from typing import Any, Dict, Mapping
 
+from adaptive_overlay import ADAPTIVE_OVERLAY_SCHEMA_VERSION
 from evidence_contract import EVIDENCE_SCHEMA_VERSION, summarize_evidence_bundle
 
 
@@ -21,6 +22,7 @@ class PromotionGateConfig:
     require_safety: bool = True
     require_no_hard_negative_blockers: bool = True
     require_no_reward_overoptimization: bool = True
+    require_adaptive_overlay_readiness: bool = False
 
     def __post_init__(self) -> None:
         for field_name in ("min_replay_score", "min_holdout_score", "min_evaluator_agreement"):
@@ -50,6 +52,7 @@ def evaluate_promotion_candidate(
     hard_negative_report: Mapping[str, Any] | None = None,
     evaluator_report: Mapping[str, Any] | None = None,
     reward_report: Mapping[str, Any] | None = None,
+    adaptive_overlay_report: Mapping[str, Any] | None = None,
     config: PromotionGateConfig | None = None,
 ) -> Dict[str, Any]:
     """Return a single fail-closed promotion decision for any candidate artifact."""
@@ -100,6 +103,28 @@ def evaluate_promotion_candidate(
     if cfg.require_no_reward_overoptimization and reward_diverged:
         reasons.append("reward_overoptimization_detected")
 
+    overlay_readiness = None
+    overlay_blockers = []
+    if adaptive_overlay_report is not None:
+        if int(adaptive_overlay_report.get("schema_version", -1)) != ADAPTIVE_OVERLAY_SCHEMA_VERSION:
+            reasons.append("unsupported_adaptive_overlay_schema")
+        if adaptive_overlay_report.get("record_type") != "adaptive_overlay_report":
+            reasons.append("unsupported_adaptive_overlay_artifact")
+        readiness = adaptive_overlay_report.get("readiness", {})
+        if not isinstance(readiness, Mapping):
+            readiness = {}
+        overlay_readiness = bool(readiness.get("ready_for_broader_validation", False))
+        raw_overlay_blockers = readiness.get("blockers", [])
+        if not isinstance(raw_overlay_blockers, (list, tuple, set)):
+            raw_overlay_blockers = []
+        overlay_blockers = [str(blocker) for blocker in raw_overlay_blockers]
+        if not overlay_readiness:
+            reasons.append("adaptive_overlay_not_ready")
+        if overlay_blockers:
+            reasons.append("adaptive_overlay_blockers_present")
+    elif cfg.require_adaptive_overlay_readiness:
+        reasons.append("missing_adaptive_overlay_report")
+
     return {
         "schema_version": PROMOTION_SCHEMA_VERSION,
         "artifact_type": "promotion_decision",
@@ -112,5 +137,7 @@ def evaluate_promotion_candidate(
         "evaluator_agreement": float(agreement),
         "hard_negative_blocker_count": blockers,
         "safety_passed": safety_passed,
+        "adaptive_overlay_ready": overlay_readiness,
+        "adaptive_overlay_blockers": overlay_blockers,
         "config": asdict(cfg),
     }

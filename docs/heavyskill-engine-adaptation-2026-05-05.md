@@ -389,6 +389,14 @@ Second follow-up implementation slices:
 4. Surfaced aggregate overlay readiness and blockers in golden-default autopilot recommendations.
 5. Added tests for readiness acceptance, fail-closed blockers, and recommendation propagation.
 
+Third follow-up implementation slices:
+
+1. Extended `PromotionGateConfig` with an opt-in adaptive overlay readiness requirement.
+2. Added `adaptive_overlay_report` handling to the comparator-first promotion gate.
+3. Made overlay promotion evidence fail closed on missing, malformed, or unready reports.
+4. Carried overlay readiness and blocker details into promotion decision artifacts.
+5. Added regression tests for missing overlay evidence, unready overlay evidence, and clean ready overlay evidence.
+
 Defer:
 
 1. spawning agent swarms
