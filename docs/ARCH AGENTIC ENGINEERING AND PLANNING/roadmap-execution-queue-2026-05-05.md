@@ -17,19 +17,19 @@ Purpose: Durable continuation queue after Engine-Scope, Model-Scope, and adaptiv
 ## Priority Queue
 | rank | item | type | status | acceptance target |
 | --- | --- | --- | --- | --- |
-| 1 | Broader adaptive-overlay replay and holdout validation | validation | next | produce replay/holdout artifact proving ready or blocked status |
-| 2 | Overlay artifact cards for promoted or candidate overlays | reporting | next | compact card includes purpose, base, data, evals, safety checks, limitations, rollback |
-| 3 | Dashboard detail drilldown for adaptive overlay summaries | reporting | next | dashboard/API exposes latest blockers and branch metrics without full records |
-| 4 | Frontier research refresh for adaptive overlays and test-time scaling | research | next | repo doc maps accepted/rejected ideas into the queue |
-| 5 | Model-Scope smoke campaign with supplied overlay report | validation | next | campaign report shows promotion decision and overlay summary together |
-| 6 | Hard-negative replay expansion for overlay readiness | validation | queued | readiness summary includes stress replay blocker state |
-| 7 | Repeat-seed AttnRes contrastive/quantization-aware experiment | research/validation | queued | result doc states promote/no-promote with repeat-seed evidence |
-| 8 | Computational-storage real-hardware evidence capture | operational | externally blocked | hardware report captured on actual RP2040/Pico device |
-| 9 | Dashboard campaign-history view for model-scope reports | reporting | queued | latest campaign reports visible without reading files manually |
-| 10 | Promotion-contract artifact-card linkage | implementation | queued | promotion decision links candidate artifact card and rollback path |
-| 11 | Overlay-ready branch-set collection policy | implementation | queued | collection policy picks windows by coverage and overlay novelty |
+| 1 | Overlay artifact cards for promoted or candidate overlays | reporting | next | compact card includes purpose, base, data, evals, safety checks, limitations, rollback |
+| 2 | Broader adaptive-overlay replay and holdout validation | validation | next | produce replay/holdout artifact proving ready or blocked status |
+| 3 | Overlay trajectory health diagnostics | diagnostics | next | report loop burden, blocker recurrence, oracle-gap trend, and budget per safe pass |
+| 4 | Budget-aware overlay collection policy | implementation | queued | collection policy chooses broader branch search by uncertainty, coverage novelty, and blocker history |
+| 5 | Verifier/rubric evidence card integration | reporting | queued | verifier/rubric outputs are evidence cards, not default runtime controllers |
+| 6 | Model-Scope smoke campaign with supplied overlay report | validation | queued | campaign report shows promotion decision and overlay summary together |
+| 7 | Hard-negative replay expansion for overlay readiness | validation | queued | readiness summary includes stress replay blocker state |
+| 8 | Repeat-seed AttnRes contrastive/quantization-aware experiment | research/validation | queued | result doc states promote/no-promote with repeat-seed evidence |
+| 9 | Computational-storage real-hardware evidence capture | operational | externally blocked | hardware report captured on actual RP2040/Pico device |
+| 10 | Dashboard campaign-history view for model-scope reports | reporting | queued | latest campaign reports visible without reading files manually |
+| 11 | Promotion-contract artifact-card linkage | implementation | queued | promotion decision links candidate artifact card and rollback path |
 | 12 | Long-run validation bundle | validation | queued | single command runs focused overlay/model-scope regression suite |
-| 13 | ARCH-AEP tracker closure audit | documentation | queued | all current trackers/indexes agree on open/complete/external-blocked state |
+| 13 | ARCH-AEP tracker closure audit | documentation | complete | all current trackers/indexes agree on open/complete/external-blocked state |
 | 14 | Session memory and resume summary refresh | documentation | recurring | next-session and phase summary stay current after each merged PR |
 | 15 | Default-promotion decision review | governance | gated | only starts after validation items show repeatable positive evidence |
 
@@ -45,3 +45,6 @@ Purpose: Durable continuation queue after Engine-Scope, Model-Scope, and adaptiv
 
 ## Resume Note
 Start the next branch from the highest-ranked `next` item that is not blocked. If research changes the ranking, update this file in the same PR that records the research.
+
+## Research Refresh
+- 2026-05-05: Frontier adaptive overlay/test-time scaling refresh recorded in `docs/frontier-adaptive-overlay-research-2026-05-05.md`. Queue updated to prioritize overlay artifact cards before broader branching.
