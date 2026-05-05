@@ -275,10 +275,15 @@ def _existing_iteration_reports(run_dir: Path) -> List[Path]:
 
 def _rows_within_run_dir(rows: Iterable[Dict[str, Any]], run_dir: Path) -> List[Dict[str, Any]]:
     run_root = run_dir.resolve()
+    run_root_key = _path_scope_key(str(run_dir))
     scoped: List[Dict[str, Any]] = []
     for row in rows:
         artifact_path = row.get("_artifact_path")
         if not artifact_path:
+            continue
+        artifact_key = _path_scope_key(str(artifact_path))
+        if artifact_key == run_root_key or artifact_key.startswith(f"{run_root_key}/"):
+            scoped.append(dict(row))
             continue
         try:
             resolved = Path(str(artifact_path)).resolve()
@@ -287,6 +292,10 @@ def _rows_within_run_dir(rows: Iterable[Dict[str, Any]], run_dir: Path) -> List[
         if resolved == run_root or run_root in resolved.parents:
             scoped.append(dict(row))
     return scoped
+
+
+def _path_scope_key(path_value: str) -> str:
+    return path_value.replace("\\", "/").rstrip("/").lower()
 
 
 def _deserialize_loop_specs(rows: Iterable[Dict[str, Any]]) -> List[LoopSpec]:

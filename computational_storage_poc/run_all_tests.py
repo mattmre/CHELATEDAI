@@ -10,7 +10,11 @@ def run_script(script_name, description):
     print("="*60 + "\n")
     
     start_time = time.time()
-    result = subprocess.run([sys.executable, script_name], check=False)
+    env = os.environ.copy()
+    repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    existing_pythonpath = env.get("PYTHONPATH")
+    env["PYTHONPATH"] = repo_root if not existing_pythonpath else os.pathsep.join([repo_root, existing_pythonpath])
+    result = subprocess.run([sys.executable, script_name], check=False, env=env)
     elapsed = time.time() - start_time
     
     if result.returncode != 0:
