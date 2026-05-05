@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 from typing import Any, Dict, List, Mapping
 
+from adaptive_overlay import build_overlay_artifact_card
 from checkpoint_manager import CheckpointManager
 from compute_budget_policy import decide_compute_budget, summarize_compute_budget_decisions
 from config import ChelationConfig
@@ -274,6 +275,26 @@ def run_model_scope_campaign(
             require_adaptive_overlay_readiness=require_adaptive_overlay_readiness,
         ),
     )
+    adaptive_overlay_artifact_card = None
+    if resolved_adaptive_overlay_report is not None:
+        adaptive_overlay_artifact_card = build_overlay_artifact_card(
+            candidate_id=str(candidate.get("candidate_id", "model_scope_shadow_policy_v1")),
+            overlay_report=resolved_adaptive_overlay_report,
+            purpose="model-scope campaign supplied adaptive overlay evidence",
+            source_path=str(adaptive_overlay_report) if isinstance(adaptive_overlay_report, (str, Path)) else None,
+            promotion_decision=promotion_decision,
+            replay_report={"entry_count": len(replay_bundle.get("entries", []))},
+            holdout_report=resolved_holdout_report,
+            hard_negative_report=hard_negative_report,
+            evaluator_report=evaluator_summary,
+            safety_report=resolved_safety_report,
+            rollback_path=str(promotion_path) if promotion_path is not None else None,
+            metadata={
+                "input_path": str(input_path),
+                "output_dir": str(output_dir) if output_dir is not None else None,
+                "require_adaptive_overlay_readiness": require_adaptive_overlay_readiness,
+            },
+        )
 
     resolved_output_dir = Path(output_dir) if output_dir is not None else (
         ChelationConfig.MODEL_SCOPE_ARTIFACT_ROOT / "campaigns" / "latest"
@@ -316,6 +337,13 @@ def run_model_scope_campaign(
         adaptive_overlay_path = resolved_output_dir / "adaptive_overlay_report.json"
         adaptive_overlay_path.write_text(
             json.dumps(_json_safe(resolved_adaptive_overlay_report), indent=2),
+            encoding="utf-8",
+        )
+    adaptive_overlay_artifact_card_path = None
+    if adaptive_overlay_artifact_card is not None:
+        adaptive_overlay_artifact_card_path = resolved_output_dir / "adaptive_overlay_artifact_card.json"
+        adaptive_overlay_artifact_card_path.write_text(
+            json.dumps(_json_safe(adaptive_overlay_artifact_card), indent=2),
             encoding="utf-8",
         )
     promotion_decision_path = resolved_output_dir / "promotion_decision.json"
@@ -362,6 +390,7 @@ def run_model_scope_campaign(
         "hard_negative_report": hard_negative_report,
         "adaptive_overlay": resolved_adaptive_overlay_report,
         "adaptive_overlay_summary": adaptive_overlay_summary,
+        "adaptive_overlay_artifact_card": adaptive_overlay_artifact_card,
         "promotion_decision": promotion_decision,
         "outputs": {
             "memory_snapshot": str(memory_path),
@@ -381,6 +410,8 @@ def run_model_scope_campaign(
     }
     if adaptive_overlay_path is not None:
         report["outputs"]["adaptive_overlay_report"] = str(adaptive_overlay_path)
+    if adaptive_overlay_artifact_card_path is not None:
+        report["outputs"]["adaptive_overlay_artifact_card"] = str(adaptive_overlay_artifact_card_path)
     if promotion is not None:
         report["promotion"] = promotion
     report_path = resolved_output_dir / "campaign_report.json"

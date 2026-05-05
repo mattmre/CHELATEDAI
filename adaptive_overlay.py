@@ -382,3 +382,76 @@ def build_overlay_report(
     }
     report["readiness"] = summarize_overlay_readiness(report)
     return report
+
+
+def build_overlay_artifact_card(
+    *,
+    candidate_id: str,
+    overlay_report: Mapping[str, Any],
+    purpose: str = "adaptive overlay candidate evidence",
+    source_path: str | None = None,
+    promotion_decision: Mapping[str, Any] | None = None,
+    replay_report: Mapping[str, Any] | None = None,
+    holdout_report: Mapping[str, Any] | None = None,
+    hard_negative_report: Mapping[str, Any] | None = None,
+    evaluator_report: Mapping[str, Any] | None = None,
+    safety_report: Mapping[str, Any] | None = None,
+    limitations: Iterable[str] | None = None,
+    rollback_path: str | None = None,
+    metadata: Mapping[str, Any] | None = None,
+) -> Dict[str, Any]:
+    """Build a compact card for candidate overlay review and rollback tracking."""
+
+    readiness = dict(overlay_report.get("readiness", {})) if isinstance(overlay_report, Mapping) else {}
+    summary = dict(overlay_report.get("summary", {})) if isinstance(overlay_report, Mapping) else {}
+    metrics = dict(overlay_report.get("branch_set_metrics", {})) if isinstance(overlay_report, Mapping) else {}
+    decision = dict(promotion_decision or {})
+    blocker_list = list(readiness.get("blockers") or [])
+    limitation_list = list(limitations or [])
+    if not bool(decision.get("promotion_ready", False)):
+        limitation_list.append("not_default_promoted")
+    limitation_list.extend(str(blocker) for blocker in blocker_list)
+
+    card = {
+        "schema_version": ADAPTIVE_OVERLAY_SCHEMA_VERSION,
+        "record_type": "adaptive_overlay_artifact_card",
+        "candidate_id": str(candidate_id),
+        "purpose": purpose,
+        "source_overlay_report_hash": f"overlay_report_{stable_overlay_hash(overlay_report)}",
+        "source_overlay_report_path": source_path,
+        "readiness": {
+            "ready_for_broader_validation": bool(readiness.get("ready_for_broader_validation", False)),
+            "blockers": blocker_list,
+            "next_action": readiness.get("next_action"),
+            "group_count": int(readiness.get("group_count", metrics.get("group_count", 0)) or 0),
+            "safe_pass_at_k_rate": float(readiness.get("safe_pass_at_k_rate", metrics.get("safe_pass_at_k_rate", 0.0)) or 0.0),
+            "regressed_at_k_rate": float(readiness.get("regressed_at_k_rate", metrics.get("regressed_at_k_rate", 0.0)) or 0.0),
+            "mean_best_delta": float(readiness.get("mean_best_delta", metrics.get("mean_best_delta", 0.0)) or 0.0),
+        },
+        "evidence": {
+            "record_count": int(summary.get("record_count", 0) or 0),
+            "channel_types": _json_safe(summary.get("channel_types", {})),
+            "decisions": _json_safe(summary.get("decisions", {})),
+            "promotion_blockers": int(summary.get("promotion_blockers", 0) or 0),
+            "active_negative_records": int(summary.get("active_negative_records", 0) or 0),
+            "branch_group_count": int(metrics.get("group_count", 0) or 0),
+            "pass_at_k_rate": float(metrics.get("pass_at_k_rate", 0.0) or 0.0),
+            "safe_pass_at_k_rate": float(metrics.get("safe_pass_at_k_rate", 0.0) or 0.0),
+            "mean_oracle_gap": float(metrics.get("mean_oracle_gap", 0.0) or 0.0),
+            "replay": _json_safe(replay_report or {}),
+            "holdout": _json_safe(holdout_report or {}),
+            "hard_negative": _json_safe(hard_negative_report or {}),
+            "evaluator": _json_safe(evaluator_report or {}),
+            "safety": _json_safe(safety_report or {}),
+            "promotion_decision": {
+                "promotion_ready": bool(decision.get("promotion_ready", False)),
+                "adaptive_overlay_ready": bool(decision.get("adaptive_overlay_ready", False)),
+                "reasons": list(decision.get("reasons") or []),
+            },
+        },
+        "limitations": sorted(set(str(item) for item in limitation_list if item)),
+        "rollback_path": rollback_path,
+        "metadata": _json_safe(metadata or {}),
+    }
+    card["card_id"] = f"overlay_card_{stable_overlay_hash(card)}"
+    return card
