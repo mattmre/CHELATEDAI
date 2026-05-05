@@ -59,7 +59,8 @@ a research candidate that needs repeat seeds, transfer confirmation, and either 
 quantization-aware training path or a stricter promotion gate before any default
 change.
 
-Next useful slice: run repeat seeds for NFCorpus and SciFact with
-`--profile-set attnres_balanced_candidate`, which keeps only `baseline`,
-`mlp_trained`, and `attnres_balanced_trained`, then test whether contrastive
+Repeat-seed evidence is now documented in
+`docs/attnres-repeat-seed-benchmark-2026-05-05.md`. NFCorpus retained a positive
+balanced-AttnRes signal across seeds 42/43/44, but quantization survival only
+passed on one of the three seeds. Next useful slice: test whether contrastive
 sedimentation preserves the NFCorpus gain under quantization.
