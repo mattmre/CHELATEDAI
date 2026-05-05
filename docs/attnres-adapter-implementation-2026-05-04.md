@@ -109,6 +109,7 @@ ChelationConfig.get_preset("deep",     "attnres_adapter")  # num_blocks=8 (paper
    explicit AttnRes block/projection controls, including `--profile-set attnres_num_blocks`
    for near-identity shallow/balanced/deep comparison and
    `--profile-set attnres_trained_num_blocks` for the same adapter-depth comparison after
-   an opt-in sedimentation warmup/training pass. The next handoff is to run the trained
-   grid on SciFact and NFCorpus to find the right default for embedding-size adapters
-   (vs. full transformers).
+   an opt-in sedimentation warmup/training pass. The trained SciFact run is documented in
+   `docs/attnres-trained-road-course-benchmark-2026-05-05.md`; it failed closed because
+   all trained profiles underperformed the untrained baseline. The next handoff is NFCorpus
+   transfer evidence plus less aggressive or contrastive sedimentation targets.
