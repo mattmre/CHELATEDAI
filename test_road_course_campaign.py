@@ -4,6 +4,7 @@ import unittest
 
 from config import ChelationConfig
 from run_road_course_campaign import (
+    ATTNRES_BALANCED_CANDIDATE_GRID,
     ATTNRES_COMPARISON_GRID,
     ATTNRES_NUM_BLOCKS_GRID,
     ATTNRES_TRAINED_NUM_BLOCKS_GRID,
@@ -94,6 +95,15 @@ class TestRoadCourseCampaignHarness(unittest.TestCase):
         self.assertEqual(profiles["attnres_balanced_trained"].attnres_num_blocks, 4)
         self.assertEqual(profiles["attnres_deep_trained"].attnres_num_blocks, 8)
         self.assertIn("attnres_trained_num_blocks", PROFILE_SETS)
+
+    def test_balanced_candidate_grid_keeps_only_repeat_seed_candidates(self):
+        profiles = {profile.name: profile for profile in ATTNRES_BALANCED_CANDIDATE_GRID}
+
+        self.assertEqual(set(profiles), {"baseline", "mlp_trained", "attnres_balanced_trained"})
+        self.assertEqual(profiles["attnres_balanced_trained"].adapter_type, "attnres")
+        self.assertEqual(profiles["attnres_balanced_trained"].attnres_num_blocks, 4)
+        self.assertEqual(profiles["attnres_balanced_trained"].sedimentation_epochs, 2)
+        self.assertIn("attnres_balanced_candidate", PROFILE_SETS)
 
     def test_temporary_adapter_config_restores_global_config(self):
         original_adapter_type = ChelationConfig.ADAPTER_TYPE
