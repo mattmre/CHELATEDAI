@@ -1,7 +1,8 @@
 import json
 import unittest
 
-from integrated_diagnostics_report import IntegratedDiagnosticsReport
+from adaptive_overlay import build_overlay_report
+from integrated_diagnostics_report import IntegratedDiagnosticsReport, summarize_adaptive_overlay_report
 
 
 class _StubComposition:
@@ -46,6 +47,75 @@ class TestIntegratedDiagnosticsReportModelScope(unittest.TestCase):
         self.assertEqual(payload["evaluator_summary"]["agreement_score"], 1.0)
         self.assertTrue(payload["safety_summary"]["passed"])
         self.assertEqual(payload["hard_negative_summary"]["blocker_count"], 0)
+
+    def test_to_dict_preserves_adaptive_overlay_summary(self):
+        overlay_report = build_overlay_report([
+            {
+                "task": "SciFact",
+                "seed": 1,
+                "query_id": "q1",
+                "profile": "baseline",
+                "delta_ndcg_at_10": 0.0,
+                "fault_class": "reference",
+            },
+            {
+                "task": "SciFact",
+                "seed": 1,
+                "query_id": "q1",
+                "profile": "mask_gate_v1",
+                "delta_ndcg_at_10": -0.02,
+                "fault_class": "actuator_active_negative",
+                "promotion_blocker": True,
+            },
+        ])
+        overlay_summary = summarize_adaptive_overlay_report(overlay_report)
+        diagnostics = IntegratedDiagnosticsReport.from_composition(
+            _StubComposition(),
+            phase="unit_test",
+            adaptive_overlay_summary=overlay_summary,
+        )
+
+        payload = diagnostics.to_dict()
+        json.dumps(payload)
+
+        self.assertEqual(payload["adaptive_overlay_summary"]["record_type"], "adaptive_overlay_summary")
+        self.assertFalse(payload["adaptive_overlay_summary"]["ready_for_broader_validation"])
+        self.assertIn("promotion_blockers_present", payload["adaptive_overlay_summary"]["blockers"])
+        self.assertEqual(payload["adaptive_overlay_summary"]["branch_set_metrics"]["group_count"], 1)
+
+    def test_adaptive_overlay_summary_omits_full_channel_records(self):
+        overlay_report = build_overlay_report([
+            {
+                "task": "SciFact",
+                "seed": 1,
+                "query_id": "q1",
+                "profile": "guard_learned_reform_gate_v1",
+                "delta_ndcg_at_10": 0.02,
+                "fault_class": "actuator_active_positive",
+            },
+        ])
+
+        overlay_summary = summarize_adaptive_overlay_report(overlay_report)
+
+        self.assertNotIn("channel_variation_records", overlay_summary)
+        self.assertEqual(overlay_summary["record_count"], 1)
+
+    def test_adaptive_overlay_summary_handles_partial_report(self):
+        overlay_summary = summarize_adaptive_overlay_report(
+            {
+                "schema_version": 1,
+                "record_type": "adaptive_overlay_report",
+                "summary": {"record_count": None},
+                "branch_set_metrics": {"group_count": None, "mean_best_delta": "unknown"},
+                "readiness": {"blockers": "not-a-list"},
+            }
+        )
+
+        json.dumps(overlay_summary)
+        self.assertEqual(overlay_summary["record_count"], 0)
+        self.assertEqual(overlay_summary["blockers"], [])
+        self.assertEqual(overlay_summary["branch_set_metrics"]["group_count"], 0)
+        self.assertEqual(overlay_summary["branch_set_metrics"]["mean_best_delta"], 0.0)
 
 
 if __name__ == "__main__":

@@ -12,6 +12,59 @@ from chelation_logger import get_logger
 from fitness_composition_orchestrator import FitnessCompositionResult
 
 
+def summarize_adaptive_overlay_report(report: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    """Return a compact diagnostics summary for an adaptive overlay report."""
+
+    if not isinstance(report, dict):
+        return None
+
+    def _as_int(value: Any) -> int:
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return 0
+
+    def _as_float(value: Any) -> float:
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return 0.0
+
+    readiness = report.get("readiness", {})
+    if not isinstance(readiness, dict):
+        readiness = {}
+    summary = report.get("summary", {})
+    if not isinstance(summary, dict):
+        summary = {}
+    metrics = report.get("branch_set_metrics", {})
+    if not isinstance(metrics, dict):
+        metrics = {}
+    return _json_safe(
+        {
+            "schema_version": report.get("schema_version"),
+            "record_type": "adaptive_overlay_summary",
+            "source_record_type": report.get("record_type"),
+            "ready_for_broader_validation": bool(readiness.get("ready_for_broader_validation", False)),
+            "blockers": list(readiness.get("blockers", [])) if isinstance(readiness.get("blockers", []), list) else [],
+            "next_action": readiness.get("next_action"),
+            "record_count": _as_int(summary.get("record_count", 0)),
+            "channel_types": summary.get("channel_types", {}),
+            "decisions": summary.get("decisions", {}),
+            "promotion_blockers": _as_int(summary.get("promotion_blockers", 0)),
+            "active_negative_records": _as_int(summary.get("active_negative_records", 0)),
+            "branch_set_metrics": {
+                "group_count": _as_int(metrics.get("group_count", 0)),
+                "pass_at_k_rate": _as_float(metrics.get("pass_at_k_rate", 0.0)),
+                "safe_pass_at_k_rate": _as_float(metrics.get("safe_pass_at_k_rate", 0.0)),
+                "regressed_at_k_rate": _as_float(metrics.get("regressed_at_k_rate", 0.0)),
+                "mean_best_delta": _as_float(metrics.get("mean_best_delta", 0.0)),
+                "mean_branch_delta": _as_float(metrics.get("mean_branch_delta", 0.0)),
+                "mean_oracle_gap": _as_float(metrics.get("mean_oracle_gap", 0.0)),
+            },
+        }
+    )
+
+
 def _json_safe(value: Any) -> Any:
     """Convert diagnostics payloads to plain JSON-compatible values."""
 
@@ -63,6 +116,7 @@ class IntegratedDiagnosticsReport:
     rag_faithfulness: Optional[Dict[str, Any]] = None
     reward_overoptimization: Optional[Dict[str, Any]] = None
     hard_negative_summary: Optional[Dict[str, Any]] = None
+    adaptive_overlay_summary: Optional[Dict[str, Any]] = None
 
     @classmethod
     def from_composition(
@@ -90,6 +144,7 @@ class IntegratedDiagnosticsReport:
         rag_faithfulness: Optional[Dict[str, Any]] = None,
         reward_overoptimization: Optional[Dict[str, Any]] = None,
         hard_negative_summary: Optional[Dict[str, Any]] = None,
+        adaptive_overlay_summary: Optional[Dict[str, Any]] = None,
     ) -> "IntegratedDiagnosticsReport":
         composed = composition.to_dict()
         return cls(
@@ -122,6 +177,7 @@ class IntegratedDiagnosticsReport:
             rag_faithfulness=rag_faithfulness,
             reward_overoptimization=reward_overoptimization,
             hard_negative_summary=hard_negative_summary,
+            adaptive_overlay_summary=adaptive_overlay_summary,
         )
 
     def to_dict(self) -> Dict[str, Any]:
@@ -157,6 +213,7 @@ class IntegratedDiagnosticsReport:
             "rag_faithfulness": self.rag_faithfulness,
             "reward_overoptimization": self.reward_overoptimization,
             "hard_negative_summary": self.hard_negative_summary,
+            "adaptive_overlay_summary": self.adaptive_overlay_summary,
         }
         for key, value in optional_sections.items():
             if value is not None:
@@ -187,4 +244,3 @@ def extract_latest_storage_evaluation(es_result: Optional[Dict[str, Any]]) -> Di
             if isinstance(generation, dict) and isinstance(generation.get("storage_evaluation"), dict):
                 return generation["storage_evaluation"]
     return {}
-
