@@ -54,7 +54,9 @@ Overlay trajectory diagnostics landed as an observational report field on overla
 - blocker recurrence by channel
 - budget used per safe pass
 
-The next implementation target should be a budget-aware overlay collection policy using these diagnostics plus uncertainty, coverage novelty, and blocker history.
+Budget-aware overlay collection policy landed as advisory-only evidence. It uses readiness blockers, trajectory warnings, uncertainty, coverage novelty, and blocker history to choose observe-only, standard collection, or broadened collection without changing runtime routing.
+
+The next implementation target should be verifier/rubric evidence card integration.
 
 ## Updated Priority Recommendation
 

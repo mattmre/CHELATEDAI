@@ -8,6 +8,7 @@ from adaptive_overlay import (
     build_channel_variation_records,
     channel_variation_from_engine_scope_row,
     compute_branch_set_metrics,
+    decide_overlay_collection_budget,
     summarize_overlay_readiness,
     summarize_overlay_trajectory_health,
     summarize_channel_variations,
@@ -220,6 +221,7 @@ class TestAdaptiveOverlay(unittest.TestCase):
                 "adaptive_overlay_ready": False,
                 "reasons": ["adaptive_overlay_not_ready"],
             },
+            collection_policy={"decision": "observe_only", "advisory_only": True},
             holdout_report={"passed": True, "score": 0.8},
             safety_report={"passed": True},
             rollback_path="policies/current.json",
@@ -233,6 +235,7 @@ class TestAdaptiveOverlay(unittest.TestCase):
         self.assertIn("promotion_blockers_present", card["readiness"]["blockers"])
         self.assertFalse(card["evidence"]["promotion_decision"]["promotion_ready"])
         self.assertEqual(card["evidence"]["trajectory_health"]["record_type"], "adaptive_overlay_trajectory_health")
+        self.assertEqual(card["evidence"]["collection_policy"]["decision"], "observe_only")
         self.assertIn("not_default_promoted", card["limitations"])
         self.assertNotIn("channel_variation_records", card)
 
@@ -313,6 +316,47 @@ class TestAdaptiveOverlay(unittest.TestCase):
         self.assertEqual(health["budget_per_safe_pass"], 5)
         self.assertIn("mask_gate_v1", health["blocker_recurrence_by_channel"])
         self.assertIn("blocker_recurrence_present", health["warnings"])
+
+    def test_overlay_collection_budget_policy_is_advisory_and_fail_closed_on_blockers(self):
+        blocked_report = build_overlay_report([
+            {
+                "task": "SciFact",
+                "seed": 1,
+                "query_id": "q1",
+                "profile": "mask_gate_v1",
+                "delta_ndcg_at_10": -0.02,
+                "fault_class": "actuator_active_negative",
+                "promotion_blocker": True,
+            }
+        ])
+        blocked_policy = decide_overlay_collection_budget(
+            blocked_report,
+            uncertainty_score=0.8,
+            coverage_novelty_score=0.8,
+            blocker_history_count=3,
+        )
+        self.assertEqual(blocked_policy["decision"], "observe_only")
+        self.assertTrue(blocked_policy["advisory_only"])
+        self.assertIn("blocker_history_present", blocked_policy["reasons"])
+
+        ready_report = build_overlay_report([
+            {
+                "task": "SciFact",
+                "seed": 1,
+                "query_id": query_id,
+                "profile": "guard_learned_reform_gate_v1",
+                "delta_ndcg_at_10": 0.02,
+                "fault_class": "actuator_active_positive",
+            }
+            for query_id in ("q1", "q2", "q3")
+        ])
+        broaden_policy = decide_overlay_collection_budget(
+            ready_report,
+            uncertainty_score=0.8,
+            coverage_novelty_score=0.8,
+        )
+        self.assertEqual(broaden_policy["decision"], "broaden_collection")
+        self.assertGreater(broaden_policy["budget_units"], 1)
 
 
 if __name__ == "__main__":
