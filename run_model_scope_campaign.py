@@ -84,6 +84,15 @@ def _derive_holdout_report(records: List[Mapping[str, Any]]) -> Dict[str, Any] |
     }
 
 
+def _load_optional_json_report(path_or_report: str | Path | Mapping[str, Any] | None) -> Dict[str, Any] | None:
+    if path_or_report is None:
+        return None
+    if isinstance(path_or_report, Mapping):
+        return dict(path_or_report)
+    path = Path(path_or_report)
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
 def run_model_scope_campaign(
     input_path: str | Path,
     *,
@@ -93,6 +102,8 @@ def run_model_scope_campaign(
     promotion_path: str | Path | None = None,
     holdout_report: Mapping[str, Any] | None = None,
     safety_report: Mapping[str, Any] | None = None,
+    adaptive_overlay_report: str | Path | Mapping[str, Any] | None = None,
+    require_adaptive_overlay_readiness: bool = False,
 ) -> Dict[str, Any]:
     artifact_paths = _load_artifact_paths(input_path)
     artifacts = []
@@ -213,6 +224,7 @@ def run_model_scope_campaign(
         "failure_count": int(trace_grade.get("failure_count", 0)),
         "source": "trace_grade",
     }
+    resolved_adaptive_overlay_report = _load_optional_json_report(adaptive_overlay_report)
     evaluator_summary = summarize_evaluator_results(evaluator_records)
     compute_budget_summary = summarize_compute_budget_decisions(compute_budget_decisions)
     replay_entries_for_scorecard = [
@@ -249,6 +261,7 @@ def run_model_scope_campaign(
         hard_negative_report=hard_negative_report,
         evaluator_report=evaluator_summary,
         reward_report=reward_report,
+        adaptive_overlay_report=resolved_adaptive_overlay_report,
         config=PromotionGateConfig(
             min_replay_score=min_alignment_score,
             min_evaluator_agreement=0.5,
@@ -256,6 +269,7 @@ def run_model_scope_campaign(
             require_holdout=True,
             require_safety=True,
             require_no_hard_negative_blockers=True,
+            require_adaptive_overlay_readiness=require_adaptive_overlay_readiness,
         ),
     )
 
@@ -295,6 +309,13 @@ def run_model_scope_campaign(
     holdout_path.write_text(json.dumps(_json_safe(resolved_holdout_report), indent=2), encoding="utf-8")
     safety_path = resolved_output_dir / "safety_report.json"
     safety_path.write_text(json.dumps(_json_safe(resolved_safety_report), indent=2), encoding="utf-8")
+    adaptive_overlay_path = None
+    if resolved_adaptive_overlay_report is not None:
+        adaptive_overlay_path = resolved_output_dir / "adaptive_overlay_report.json"
+        adaptive_overlay_path.write_text(
+            json.dumps(_json_safe(resolved_adaptive_overlay_report), indent=2),
+            encoding="utf-8",
+        )
     promotion_decision_path = resolved_output_dir / "promotion_decision.json"
     promotion_decision_path.write_text(json.dumps(_json_safe(promotion_decision), indent=2), encoding="utf-8")
 
@@ -337,6 +358,7 @@ def run_model_scope_campaign(
         "holdout_report": resolved_holdout_report,
         "safety_report": resolved_safety_report,
         "hard_negative_report": hard_negative_report,
+        "adaptive_overlay": resolved_adaptive_overlay_report,
         "promotion_decision": promotion_decision,
         "outputs": {
             "memory_snapshot": str(memory_path),
@@ -354,6 +376,8 @@ def run_model_scope_campaign(
             "promotion_decision": str(promotion_decision_path),
         },
     }
+    if adaptive_overlay_path is not None:
+        report["outputs"]["adaptive_overlay_report"] = str(adaptive_overlay_path)
     if promotion is not None:
         report["promotion"] = promotion
     report_path = resolved_output_dir / "campaign_report.json"
@@ -383,6 +407,17 @@ def main() -> int:
         default=None,
         help="Optional path to write a promoted shadow policy if the candidate passes the promotion gate",
     )
+    parser.add_argument(
+        "--adaptive-overlay-report",
+        type=str,
+        default=None,
+        help="Optional adaptive overlay report JSON to include in promotion evidence",
+    )
+    parser.add_argument(
+        "--require-adaptive-overlay-readiness",
+        action="store_true",
+        help="Require adaptive overlay readiness before promotion",
+    )
     args = parser.parse_args()
     report = run_model_scope_campaign(
         args.input_path,
@@ -390,6 +425,8 @@ def main() -> int:
         max_rules=args.max_rules,
         min_alignment_score=args.min_alignment_score,
         promotion_path=args.promotion_path,
+        adaptive_overlay_report=args.adaptive_overlay_report,
+        require_adaptive_overlay_readiness=args.require_adaptive_overlay_readiness,
     )
     print(json.dumps(_json_safe(report), indent=2))
     return 0

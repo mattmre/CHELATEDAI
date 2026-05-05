@@ -397,6 +397,14 @@ Third follow-up implementation slices:
 4. Carried overlay readiness and blocker details into promotion decision artifacts.
 5. Added regression tests for missing overlay evidence, unready overlay evidence, and clean ready overlay evidence.
 
+Fourth follow-up implementation slices:
+
+1. Added optional adaptive overlay report input to the Model-Scope campaign runner.
+2. Added a CLI flag to require adaptive overlay readiness during Model-Scope campaign promotion.
+3. Passed supplied overlay evidence into the comparator-first promotion decision.
+4. Persisted campaign-supplied overlay evidence as `adaptive_overlay_report.json` with output path tracking.
+5. Added campaign tests for unready overlay evidence and ready overlay report-path evidence.
+
 Defer:
 
 1. spawning agent swarms
