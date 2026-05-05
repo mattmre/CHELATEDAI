@@ -550,6 +550,7 @@ class TestRoadCourseTuningLoop(unittest.TestCase):
 
         self.assertEqual(report["summary"]["record_count"], 2)
         self.assertEqual(report["branch_set_metrics"]["pass_at_k_rate"], 1.0)
+        self.assertIn("readiness", report)
 
     def test_gate_trainer_accepts_holdout_safe_rules(self):
         rows = []
