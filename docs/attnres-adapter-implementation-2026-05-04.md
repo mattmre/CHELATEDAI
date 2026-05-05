@@ -98,10 +98,13 @@ ChelationConfig.get_preset("deep",     "attnres_adapter")  # num_blocks=8 (paper
 
 ## Next Steps (AttnRes track)
 
-1. **Wire `LayerAttentionAggregator` into `model_scope_runtime.py`** — requires extending
-   `ModelHookBus.capture()` to optionally return raw mean-pooled embeddings per layer
-   (a `capture_raw_embeddings: bool` flag on `HookObservationConfig`).
-2. **Benchmark `attnres` vs. `mlp` on sedimentation training** — run the road-course
-   campaign with `adapter_type: attnres, balanced` and compare NDCG vs. MLP baseline.
+1. **Wire `LayerAttentionAggregator` into `model_scope_runtime.py`** — done. The hook bus
+   can optionally capture raw mean-pooled embeddings per layer via
+   `HookObservationConfig.capture_raw_embeddings`, and `ModelScopeRuntime` can aggregate
+   those tensors before final embedding normalization.
+2. **Benchmark `attnres` vs. `mlp` on sedimentation training** — road-course profile
+   selection now supports `--profile-set attnres_comparison`, which keeps the required
+   MLP `baseline` and adds balanced AttnRes baseline/guard profiles. The next handoff is
+   to run the campaign and compare NDCG against the MLP baseline.
 3. **Evaluate num_blocks sensitivity** — compare shallow/balanced/deep on SciFact and
    NFCorpus to find the right default for embedding-size adapters (vs. full transformers).

@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import argparse
+from contextlib import contextmanager
 from dataclasses import asdict, dataclass
 import json
 from pathlib import Path
 import time
-from typing import Any, Dict, Iterable, Mapping, Sequence
+from typing import Any, Dict, Iterable, Iterator, Mapping, Sequence
 
 import numpy as np
 
@@ -37,6 +38,7 @@ class RoadCourseProfile:
     temperature: float = 1.0
     query_reformulation_variants: int = 0
     query_reformulation_policy: str = "always"
+    adapter_type: str = ChelationConfig.ADAPTER_TYPE
 
 
 DEFAULT_PROFILE_GRID = [
@@ -51,6 +53,38 @@ DEFAULT_PROFILE_GRID = [
     RoadCourseProfile("centered_p85_temp1", use_centering=True, chelation_p=85, chelation_threshold=0.0),
     RoadCourseProfile("centered_p50_temp1", use_centering=True, chelation_p=50, chelation_threshold=0.0),
 ]
+
+
+ATTNRES_COMPARISON_GRID = [
+    RoadCourseProfile("baseline"),
+    RoadCourseProfile("adaptive_p85_t0.01", use_quantization=True, chelation_p=85, chelation_threshold=0.01),
+    RoadCourseProfile("attnres_baseline", adapter_type="attnres"),
+    RoadCourseProfile(
+        "attnres_balanced_p85_t0.01",
+        use_quantization=True,
+        chelation_p=85,
+        chelation_threshold=0.01,
+        adapter_type="attnres",
+    ),
+]
+
+
+PROFILE_SETS = {
+    "default": DEFAULT_PROFILE_GRID,
+    "attnres_comparison": ATTNRES_COMPARISON_GRID,
+}
+
+
+@contextmanager
+def _temporary_adapter_type(adapter_type: str) -> Iterator[None]:
+    """Temporarily select the adapter factory type for engine construction."""
+
+    original_adapter_type = ChelationConfig.ADAPTER_TYPE
+    try:
+        ChelationConfig.ADAPTER_TYPE = adapter_type
+        yield
+    finally:
+        ChelationConfig.ADAPTER_TYPE = original_adapter_type
 
 
 def select_road_course_slice(
@@ -129,13 +163,14 @@ def _profile_engine(
     model_name: str,
     corpus: Mapping[str, str],
 ):
-    engine = AntigravityEngine(
-        qdrant_location=":memory:",
-        model_name=model_name,
-        use_centering=profile.use_centering,
-        use_quantization=profile.use_quantization,
-        store_full_text_payload=True,
-    )
+    with _temporary_adapter_type(profile.adapter_type):
+        engine = AntigravityEngine(
+            qdrant_location=":memory:",
+            model_name=model_name,
+            use_centering=profile.use_centering,
+            use_quantization=profile.use_quantization,
+            store_full_text_payload=True,
+        )
     engine.chelation_p = profile.chelation_p
     engine.chelation_threshold = profile.chelation_threshold
     if profile.temperature != 1.0:
@@ -240,6 +275,7 @@ def quantization_survival_check(
         temperature=profile.temperature,
         query_reformulation_variants=profile.query_reformulation_variants,
         query_reformulation_policy=profile.query_reformulation_policy,
+        adapter_type=profile.adapter_type,
     )
     with isolated_adapter_state():
         engine = _profile_engine(quantized_profile, model_name, corpus)
@@ -331,6 +367,7 @@ def main() -> int:
     parser.add_argument("--max-queries", type=int, default=20)
     parser.add_argument("--sample-docs", type=int, default=1200)
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--profile-set", choices=sorted(PROFILE_SETS), default="default")
     parser.add_argument("--output", default="experiment_runs/roadcourse-small/roadcourse_profile_grid.json")
     args = parser.parse_args()
 
@@ -340,6 +377,7 @@ def main() -> int:
         max_queries=args.max_queries,
         sample_docs=args.sample_docs,
         seed=args.seed,
+        profiles=PROFILE_SETS[args.profile_set],
     )
     output_path = Path(args.output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
