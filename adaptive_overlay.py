@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from typing import Any, Dict, Iterable, Mapping
+from typing import Any, Dict, Iterable, Mapping, Sequence
 
 
 ADAPTIVE_OVERLAY_SCHEMA_VERSION = 1
@@ -191,4 +191,130 @@ def summarize_channel_variations(records: Iterable[Mapping[str, Any]]) -> Dict[s
         "decisions": by_decision,
         "promotion_blockers": blockers,
         "active_negative_records": active_negatives,
+    }
+
+
+def _metric_delta(record: Mapping[str, Any]) -> float | None:
+    value = record.get("metric_delta")
+    if isinstance(value, (int, float)):
+        return float(value)
+    return None
+
+
+def _branch_group_key(record: Mapping[str, Any], keys: Sequence[str]) -> tuple[str, ...]:
+    return tuple(str(record.get(key) or "") for key in keys)
+
+
+def compute_branch_set_metrics(
+    records: Iterable[Mapping[str, Any]],
+    *,
+    success_delta: float = 0.001,
+    group_keys: Sequence[str] = ("task", "seed", "query_id"),
+) -> Dict[str, Any]:
+    """Compute HeavySkill-style branch metrics over engine channel variants.
+
+    This is intentionally post-hoc and observation-only. It asks whether any
+    non-baseline channel variant helped, how often branch search had an oracle
+    win available, and how often that win was clean of blockers.
+    """
+
+    groups: Dict[tuple[str, ...], list[Dict[str, Any]]] = {}
+    for record in records:
+        item = dict(record)
+        if _metric_delta(item) is None:
+            continue
+        groups.setdefault(_branch_group_key(item, group_keys), []).append(item)
+
+    group_summaries = []
+    pass_count = 0
+    safe_pass_count = 0
+    regression_count = 0
+    total_best_delta = 0.0
+    total_mean_delta = 0.0
+    oracle_gap_sum = 0.0
+    oracle_gap_count = 0
+
+    for key, group_records in sorted(groups.items()):
+        candidates = [
+            record
+            for record in group_records
+            if str(record.get("channel_type") or "") != "baseline"
+        ]
+        if not candidates:
+            candidates = group_records
+        deltas = [float(_metric_delta(record) or 0.0) for record in candidates]
+        best_index = max(range(len(candidates)), key=lambda index: deltas[index])
+        best_record = candidates[best_index]
+        best_delta = deltas[best_index]
+        mean_delta = sum(deltas) / len(deltas)
+        branch_passed = best_delta > success_delta
+        safe_branch_passed = (
+            branch_passed
+            and not bool(best_record.get("promotion_blocker", False))
+            and not bool(best_record.get("active_negative_flags"))
+        )
+        branch_regressed = any(delta < -success_delta for delta in deltas)
+        selected_records = [
+            record
+            for record in candidates
+            if str(record.get("decision") or "") in {"amplify_candidate", "route", "promote"}
+        ]
+        selected_delta = None
+        if selected_records:
+            selected_delta = max(float(_metric_delta(record) or 0.0) for record in selected_records)
+            oracle_gap_sum += max(0.0, best_delta - selected_delta)
+            oracle_gap_count += 1
+
+        pass_count += int(branch_passed)
+        safe_pass_count += int(safe_branch_passed)
+        regression_count += int(branch_regressed)
+        total_best_delta += best_delta
+        total_mean_delta += mean_delta
+        group_summary = {
+            "group": {name: value for name, value in zip(group_keys, key)},
+            "branch_count": len(candidates),
+            "mean_delta": mean_delta,
+            "best_delta": best_delta,
+            "best_channel_id": best_record.get("channel_id"),
+            "best_channel_type": best_record.get("channel_type"),
+            "pass_at_k": branch_passed,
+            "safe_pass_at_k": safe_branch_passed,
+            "regressed_at_k": branch_regressed,
+            "selected_delta": selected_delta,
+            "oracle_gap": None if selected_delta is None else max(0.0, best_delta - selected_delta),
+        }
+        group_summaries.append(group_summary)
+
+    group_count = len(group_summaries)
+    return {
+        "schema_version": ADAPTIVE_OVERLAY_SCHEMA_VERSION,
+        "metric_type": "branch_set_metrics",
+        "success_delta": float(success_delta),
+        "group_keys": list(group_keys),
+        "group_count": group_count,
+        "pass_at_k_rate": pass_count / group_count if group_count else 0.0,
+        "safe_pass_at_k_rate": safe_pass_count / group_count if group_count else 0.0,
+        "regressed_at_k_rate": regression_count / group_count if group_count else 0.0,
+        "mean_best_delta": total_best_delta / group_count if group_count else 0.0,
+        "mean_branch_delta": total_mean_delta / group_count if group_count else 0.0,
+        "mean_oracle_gap": oracle_gap_sum / oracle_gap_count if oracle_gap_count else 0.0,
+        "oracle_gap_group_count": oracle_gap_count,
+        "groups": group_summaries,
+    }
+
+
+def build_overlay_report(
+    rows: Iterable[Mapping[str, Any]],
+    *,
+    success_delta: float = 0.001,
+) -> Dict[str, Any]:
+    """Build normalized channel records plus summary and branch-set metrics."""
+
+    records = build_channel_variation_records(rows)
+    return {
+        "schema_version": ADAPTIVE_OVERLAY_SCHEMA_VERSION,
+        "record_type": "adaptive_overlay_report",
+        "channel_variation_records": records,
+        "summary": summarize_channel_variations(records),
+        "branch_set_metrics": compute_branch_set_metrics(records, success_delta=success_delta),
     }

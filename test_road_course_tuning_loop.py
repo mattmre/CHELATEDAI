@@ -12,6 +12,7 @@ from run_road_course_tuning_loop import (
 from run_thousand_query_tuning import (
     LoopSpec,
     _profile_cache_key,
+    build_adaptive_overlay_report,
     build_gate_feature_rows,
     build_phase_loop_specs,
     build_query_attribution_rows,
@@ -525,6 +526,30 @@ class TestRoadCourseTuningLoop(unittest.TestCase):
         self.assertEqual(candidate["query_offset"], 100)
         self.assertEqual(candidate["seed"], 260)
         self.assertEqual(candidate["query_offset"], 100)
+
+    def test_thousand_runner_builds_adaptive_overlay_report_from_attribution_rows(self):
+        report = build_adaptive_overlay_report([
+            {
+                "task": "SciFact",
+                "seed": 1,
+                "query_id": "q1",
+                "profile": "baseline",
+                "fault_class": "reference",
+                "delta_ndcg_at_10": 0.0,
+            },
+            {
+                "task": "SciFact",
+                "seed": 1,
+                "query_id": "q1",
+                "profile": "reform_rrf_v2",
+                "action": "REFORMULATE",
+                "fault_class": "actuator_active_positive",
+                "delta_ndcg_at_10": 0.02,
+            },
+        ])
+
+        self.assertEqual(report["summary"]["record_count"], 2)
+        self.assertEqual(report["branch_set_metrics"]["pass_at_k_rate"], 1.0)
 
     def test_gate_trainer_accepts_holdout_safe_rules(self):
         rows = []
