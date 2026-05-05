@@ -89,7 +89,9 @@ class AntigravityEngine:
         self.adapter = create_adapter(
             adapter_type=ChelationConfig.ADAPTER_TYPE,
             input_dim=self.vector_size,
-            rank=ChelationConfig.LOW_RANK_ADAPTER_RANK
+            rank=ChelationConfig.LOW_RANK_ADAPTER_RANK,
+            num_blocks=ChelationConfig.ATTNRES_ADAPTER_NUM_BLOCKS,
+            proj_dim=ChelationConfig.ATTNRES_ADAPTER_PROJ_DIM,
         )
         if self.adapter.load(self.adapter_path):
             self.logger.log_checkpoint("load", self.adapter_path)

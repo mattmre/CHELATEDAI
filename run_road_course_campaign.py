@@ -39,6 +39,8 @@ class RoadCourseProfile:
     query_reformulation_variants: int = 0
     query_reformulation_policy: str = "always"
     adapter_type: str = ChelationConfig.ADAPTER_TYPE
+    attnres_num_blocks: int = ChelationConfig.ATTNRES_ADAPTER_NUM_BLOCKS
+    attnres_proj_dim: int | None = ChelationConfig.ATTNRES_ADAPTER_PROJ_DIM
 
 
 DEFAULT_PROFILE_GRID = [
@@ -69,22 +71,41 @@ ATTNRES_COMPARISON_GRID = [
 ]
 
 
+ATTNRES_NUM_BLOCKS_GRID = [
+    RoadCourseProfile("baseline"),
+    RoadCourseProfile("attnres_shallow", adapter_type="attnres", attnres_num_blocks=2),
+    RoadCourseProfile("attnres_balanced", adapter_type="attnres", attnres_num_blocks=4),
+    RoadCourseProfile("attnres_deep", adapter_type="attnres", attnres_num_blocks=8),
+]
+
+
 PROFILE_SETS = {
     "default": DEFAULT_PROFILE_GRID,
     "attnres_comparison": ATTNRES_COMPARISON_GRID,
+    "attnres_num_blocks": ATTNRES_NUM_BLOCKS_GRID,
 }
 
 
 @contextmanager
-def _temporary_adapter_type(adapter_type: str) -> Iterator[None]:
-    """Temporarily select the adapter factory type for engine construction."""
+def _temporary_adapter_config(
+    adapter_type: str,
+    attnres_num_blocks: int,
+    attnres_proj_dim: int | None,
+) -> Iterator[None]:
+    """Temporarily select adapter factory settings for engine construction."""
 
     original_adapter_type = ChelationConfig.ADAPTER_TYPE
+    original_num_blocks = ChelationConfig.ATTNRES_ADAPTER_NUM_BLOCKS
+    original_proj_dim = ChelationConfig.ATTNRES_ADAPTER_PROJ_DIM
     try:
         ChelationConfig.ADAPTER_TYPE = adapter_type
+        ChelationConfig.ATTNRES_ADAPTER_NUM_BLOCKS = attnres_num_blocks
+        ChelationConfig.ATTNRES_ADAPTER_PROJ_DIM = attnres_proj_dim
         yield
     finally:
         ChelationConfig.ADAPTER_TYPE = original_adapter_type
+        ChelationConfig.ATTNRES_ADAPTER_NUM_BLOCKS = original_num_blocks
+        ChelationConfig.ATTNRES_ADAPTER_PROJ_DIM = original_proj_dim
 
 
 def select_road_course_slice(
@@ -163,7 +184,11 @@ def _profile_engine(
     model_name: str,
     corpus: Mapping[str, str],
 ):
-    with _temporary_adapter_type(profile.adapter_type):
+    with _temporary_adapter_config(
+        profile.adapter_type,
+        profile.attnres_num_blocks,
+        profile.attnres_proj_dim,
+    ):
         engine = AntigravityEngine(
             qdrant_location=":memory:",
             model_name=model_name,
@@ -276,6 +301,8 @@ def quantization_survival_check(
         query_reformulation_variants=profile.query_reformulation_variants,
         query_reformulation_policy=profile.query_reformulation_policy,
         adapter_type=profile.adapter_type,
+        attnres_num_blocks=profile.attnres_num_blocks,
+        attnres_proj_dim=profile.attnres_proj_dim,
     )
     with isolated_adapter_state():
         engine = _profile_engine(quantized_profile, model_name, corpus)

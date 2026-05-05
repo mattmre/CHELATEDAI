@@ -493,11 +493,17 @@ def create_adapter(adapter_type="mlp", input_dim=768, bounded=False,
     """
     if adapter_type == "mlp":
         kwargs.pop("rank", None)
+        kwargs.pop("num_blocks", None)
+        kwargs.pop("proj_dim", None)
         adapter = ChelationAdapter(input_dim=input_dim, **kwargs)
     elif adapter_type == "procrustes":
         kwargs.pop("rank", None)
+        kwargs.pop("num_blocks", None)
+        kwargs.pop("proj_dim", None)
         adapter = OrthogonalProcrustesAdapter(input_dim=input_dim)
     elif adapter_type == "low_rank":
+        kwargs.pop("num_blocks", None)
+        kwargs.pop("proj_dim", None)
         rank = kwargs.get("rank", 16)
         adapter = LowRankAffineAdapter(input_dim=input_dim, rank=rank)
     elif adapter_type == "attnres":

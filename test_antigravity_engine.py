@@ -13,6 +13,7 @@ try:
     import sentence_transformers  # noqa: F401
     import requests
     from antigravity_engine import AntigravityEngine
+    from config import ChelationConfig
     HAS_TORCH = True
 except ImportError:
     HAS_TORCH = False
@@ -67,6 +68,29 @@ class TestAntigravityEngine(unittest.TestCase):
         result = engine.embed(["a", "b", "c"])
         self.assertEqual(result.shape, (3, 768))
         self.assertIsInstance(result, np.ndarray)
+
+    def test_adapter_factory_receives_attnres_config(self):
+        original_adapter_type = ChelationConfig.ADAPTER_TYPE
+        original_num_blocks = ChelationConfig.ATTNRES_ADAPTER_NUM_BLOCKS
+        original_proj_dim = ChelationConfig.ATTNRES_ADAPTER_PROJ_DIM
+        try:
+            ChelationConfig.ADAPTER_TYPE = "attnres"
+            ChelationConfig.ATTNRES_ADAPTER_NUM_BLOCKS = 8
+            ChelationConfig.ATTNRES_ADAPTER_PROJ_DIM = 64
+
+            self._make_engine()
+
+            self.mock_adapter_cls.assert_called_with(
+                adapter_type="attnres",
+                input_dim=768,
+                rank=ChelationConfig.LOW_RANK_ADAPTER_RANK,
+                num_blocks=8,
+                proj_dim=64,
+            )
+        finally:
+            ChelationConfig.ADAPTER_TYPE = original_adapter_type
+            ChelationConfig.ATTNRES_ADAPTER_NUM_BLOCKS = original_num_blocks
+            ChelationConfig.ATTNRES_ADAPTER_PROJ_DIM = original_proj_dim
 
     def test_embed_ollama_mode_timeout_fallback(self):
         self.st_patcher.stop()
