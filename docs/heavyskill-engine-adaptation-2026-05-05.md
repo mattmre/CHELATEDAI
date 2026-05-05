@@ -405,6 +405,14 @@ Fourth follow-up implementation slices:
 4. Persisted campaign-supplied overlay evidence as `adaptive_overlay_report.json` with output path tracking.
 5. Added campaign tests for unready overlay evidence and ready overlay report-path evidence.
 
+Fifth follow-up implementation slices:
+
+1. Added a compact adaptive overlay diagnostics summarizer.
+2. Added an optional `adaptive_overlay_summary` section to integrated diagnostics reports.
+3. Emitted compact overlay summaries from Model-Scope campaign reports when overlay evidence is supplied.
+4. Kept full channel-variation records out of diagnostics summaries to avoid report bloat.
+5. Added tests for JSON-safe diagnostics serialization and campaign-level overlay summary propagation.
+
 Defer:
 
 1. spawning agent swarms

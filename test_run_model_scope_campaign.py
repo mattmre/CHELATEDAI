@@ -133,6 +133,8 @@ class TestRunModelScopeCampaign(unittest.TestCase):
             self.assertTrue((output_dir / "adaptive_overlay_report.json").exists())
             self.assertFalse(report["promotion_decision"]["adaptive_overlay_ready"])
             self.assertIn("adaptive_overlay_not_ready", report["promotion_decision"]["reasons"])
+            self.assertFalse(report["adaptive_overlay_summary"]["ready_for_broader_validation"])
+            self.assertIn("promotion_blockers_present", report["adaptive_overlay_summary"]["blockers"])
 
     def test_campaign_accepts_ready_adaptive_overlay_report_path(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -181,6 +183,7 @@ class TestRunModelScopeCampaign(unittest.TestCase):
             )
 
             self.assertTrue(report["promotion_decision"]["adaptive_overlay_ready"])
+            self.assertTrue(report["adaptive_overlay_summary"]["ready_for_broader_validation"])
             self.assertNotIn("missing_adaptive_overlay_report", report["promotion_decision"]["reasons"])
             self.assertNotIn("adaptive_overlay_not_ready", report["promotion_decision"]["reasons"])
 

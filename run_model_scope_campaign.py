@@ -19,6 +19,7 @@ from evidence_contract import (
     write_evidence_bundle,
 )
 from expectation_comparator import ModelScopeExpectationComparator
+from integrated_diagnostics_report import summarize_adaptive_overlay_report
 from model_scope_artifacts import load_model_scope_artifact
 from model_scope_features import build_feature_scorecard
 from model_scope_memory import ModelScopeMemoryStore
@@ -225,6 +226,7 @@ def run_model_scope_campaign(
         "source": "trace_grade",
     }
     resolved_adaptive_overlay_report = _load_optional_json_report(adaptive_overlay_report)
+    adaptive_overlay_summary = summarize_adaptive_overlay_report(resolved_adaptive_overlay_report)
     evaluator_summary = summarize_evaluator_results(evaluator_records)
     compute_budget_summary = summarize_compute_budget_decisions(compute_budget_decisions)
     replay_entries_for_scorecard = [
@@ -359,6 +361,7 @@ def run_model_scope_campaign(
         "safety_report": resolved_safety_report,
         "hard_negative_report": hard_negative_report,
         "adaptive_overlay": resolved_adaptive_overlay_report,
+        "adaptive_overlay_summary": adaptive_overlay_summary,
         "promotion_decision": promotion_decision,
         "outputs": {
             "memory_snapshot": str(memory_path),
