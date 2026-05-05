@@ -11,6 +11,7 @@ import numpy as np
 
 from benchmark_utils import load_mteb_data
 from embedding_backend import create_embedding_backend
+from engine_scope import ENGINE_SCOPE_SCHEMA_VERSION, build_engine_scope_rows
 from query_reformulator import query_lexical_features
 from run_road_course_campaign import evaluate_rankings
 from run_thousand_query_tuning import query_metric_row
@@ -147,6 +148,7 @@ def build_conditional_mask_examples(
         lexical = query_lexical_features((query_texts or {}).get(query_id, ""))
         examples.append({
             "query_id": query_id,
+            "query_text": (query_texts or {}).get(query_id, ""),
             "delta_ndcg_at_10": masked_metrics["ndcg_at_10"] - baseline_metrics["ndcg_at_10"],
             "delta_mrr": masked_metrics["mrr"] - baseline_metrics["mrr"],
             "baseline_rank": baseline_metrics["first_relevant_rank"],
@@ -155,11 +157,33 @@ def build_conditional_mask_examples(
             "baseline_top_score": baseline_details[query_id]["top_score"],
             "query_norm": float(np.linalg.norm(query_embeddings[query_id])),
             "query_token_count": lexical["token_count"],
+            "query_char_count": lexical["char_count"],
             "query_stopword_ratio": lexical["stopword_ratio"],
+            "query_numeric_token_count": lexical["numeric_token_count"],
             "query_negation_count": lexical["negation_count"],
             "query_claim_cue_count": lexical["claim_cue_count"],
         })
     return examples
+
+
+def _mask_example_rows(
+    examples: Iterable[Dict[str, Any]],
+    *,
+    task: str,
+    seed: int,
+    query_offset: int,
+    split: str,
+) -> List[Dict[str, Any]]:
+    return [
+        {
+            "task": task,
+            "seed": seed,
+            "query_offset": query_offset,
+            "split": split,
+            **example,
+        }
+        for example in examples
+    ]
 
 
 def _gate_matches(example: Dict[str, Any], gate: Dict[str, Any]) -> bool:
@@ -510,12 +534,17 @@ def evaluate_conditional_mask(
         if gate is not None and _gate_matches(example, gate):
             rankings[query_id] = masked_details[query_id]["ranking"]
             applied += 1
+            example["gate_applied"] = True
+            example["selected_delta_ndcg_at_10"] = float(example["delta_ndcg_at_10"])
         else:
             rankings[query_id] = baseline_details[query_id]["ranking"]
+            example["gate_applied"] = False
+            example["selected_delta_ndcg_at_10"] = 0.0
     return {
         "metrics": evaluate_rankings(rankings, qrels),
         "applied_queries": applied,
         "total_queries": len(examples),
+        "query_examples": examples,
     }
 
 
@@ -584,8 +613,41 @@ def run_static_mask_probe(
         rank_by_cosine(holdout_query_embeddings, doc_embeddings, mask=learned["mask"]),
         holdout_qrels,
     )
+    train_query_texts = _split_mapping(selected_queries, train_ids)
+    holdout_query_texts = _split_mapping(selected_queries, holdout_ids)
+    train_examples = build_conditional_mask_examples(
+        train_query_embeddings,
+        doc_embeddings,
+        train_qrels,
+        learned["mask"],
+        query_texts=train_query_texts,
+    )
+    holdout_examples = build_conditional_mask_examples(
+        holdout_query_embeddings,
+        doc_embeddings,
+        holdout_qrels,
+        learned["mask"],
+        query_texts=holdout_query_texts,
+    )
+    mask_example_rows = [
+        *_mask_example_rows(
+            train_examples,
+            task=task,
+            seed=seed,
+            query_offset=query_offset,
+            split="train",
+        ),
+        *_mask_example_rows(
+            holdout_examples,
+            task=task,
+            seed=seed,
+            query_offset=query_offset,
+            split="holdout",
+        ),
+    ]
     result = {
         "task": task,
+        "engine_scope_schema_version": ENGINE_SCOPE_SCHEMA_VERSION,
         "model": model,
         "query_offset": query_offset,
         "max_queries": max_queries,
@@ -608,19 +670,17 @@ def run_static_mask_probe(
             "masked": holdout_masked,
             "delta_ndcg_at_10": holdout_masked["ndcg_at_10"] - holdout_baseline["ndcg_at_10"],
         },
+        "mask_example_rows": mask_example_rows,
+        "engine_scope_rows": build_engine_scope_rows(
+            mask_example_rows=mask_example_rows,
+            source_family="mask_collection",
+        ),
         "promotion_candidate": (
             holdout_masked["ndcg_at_10"] - holdout_baseline["ndcg_at_10"] > 0.001
             and train_masked["ndcg_at_10"] >= train_baseline["ndcg_at_10"]
         ),
     }
     if conditional or regularized_gate or classifier_gate:
-        train_examples = build_conditional_mask_examples(
-            train_query_embeddings,
-            doc_embeddings,
-            train_qrels,
-            learned["mask"],
-            query_texts=_split_mapping(selected_queries, train_ids),
-        )
         if classifier_gate:
             gate = train_classifier_conditional_mask_gate(
                 train_examples,
@@ -639,7 +699,7 @@ def run_static_mask_probe(
             train_qrels,
             learned["mask"],
             gate["gate"],
-            query_texts=_split_mapping(selected_queries, train_ids),
+            query_texts=train_query_texts,
         )
         holdout_conditional = evaluate_conditional_mask(
             holdout_query_embeddings,
@@ -647,7 +707,7 @@ def run_static_mask_probe(
             holdout_qrels,
             learned["mask"],
             gate["gate"],
-            query_texts=_split_mapping(selected_queries, holdout_ids),
+            query_texts=holdout_query_texts,
         )
         result["conditional"] = {
             "gate": gate,

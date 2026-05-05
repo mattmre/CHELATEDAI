@@ -21,6 +21,7 @@ from benchmark_utils import (
     ndcg_at_k,
     recall_at_k,
 )
+from engine_scope import ENGINE_SCOPE_SCHEMA_VERSION, build_engine_scope_rows
 from run_road_course_campaign import RoadCourseProfile, _profile_engine, evaluate_rankings
 from run_road_course_tuning_loop import classify_profile_behavior, profile_summary
 from query_reformulator import query_lexical_features
@@ -663,6 +664,8 @@ def build_query_attribution_rows(window_results: Iterable[Dict[str, Any]]) -> Li
                     "window": window["window"],
                     "global_window": window["global_window"],
                     "task": window["task"],
+                    "seed": window.get("seed"),
+                    "query_offset": window.get("query_offset"),
                     "query_id": query_id,
                     "query_text": query_text,
                     "query_token_count": lexical_features["token_count"],
@@ -679,6 +682,8 @@ def build_query_attribution_rows(window_results: Iterable[Dict[str, Any]]) -> Li
                     "delta_recall_at_10": (
                         float(query_row["recall_at_10"]) - float(baseline_row.get("recall_at_10", 0.0))
                     ),
+                    "baseline_rank": baseline_row.get("first_relevant_rank"),
+                    "candidate_rank": query_row.get("first_relevant_rank"),
                     "rank_delta": _rank_delta(
                         query_row.get("first_relevant_rank"),
                         baseline_row.get("first_relevant_rank"),
@@ -916,9 +921,12 @@ def run_thousand_query_cycle(
                     loop_windows.append(window_record)
                     if checkpoint_path is not None:
                         checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
+                        checkpoint_feature_rows = build_gate_feature_rows(all_window_results)
+                        checkpoint_attribution_rows = build_query_attribution_rows(all_window_results)
                         checkpoint_path.write_text(
                             json.dumps({
                                 "status": "running",
+                                "engine_scope_schema_version": ENGINE_SCOPE_SCHEMA_VERSION,
                                 "completed_windows": len(all_window_results),
                                 "completed_queries": sum(window["query_count"] for window in all_window_results),
                                 "loops": loops + [{
@@ -930,10 +938,14 @@ def run_thousand_query_cycle(
                                     "windows": loop_windows,
                                 }],
                                 "profile_outcomes": summarize_profile_outcomes(all_window_results),
-                                "gate_feature_rows": build_gate_feature_rows(all_window_results),
-                                "query_attribution_rows": build_query_attribution_rows(all_window_results),
+                                "gate_feature_rows": checkpoint_feature_rows,
+                                "query_attribution_rows": checkpoint_attribution_rows,
+                                "engine_scope_rows": build_engine_scope_rows(
+                                    query_attribution_rows=checkpoint_attribution_rows,
+                                    source_family="reformulation_collection",
+                                ),
                                 "gate_candidate_report": summarize_gate_candidates(
-                                    build_gate_feature_rows(all_window_results)
+                                    checkpoint_feature_rows
                                 ),
                             }, indent=2),
                             encoding="utf-8",
@@ -1005,6 +1017,7 @@ def run_thousand_query_cycle(
     ]
     return {
         "status": "completed",
+        "engine_scope_schema_version": ENGINE_SCOPE_SCHEMA_VERSION,
         "model": model,
         "loop_queries": loop_queries,
         "window_queries": window_queries,
@@ -1018,6 +1031,10 @@ def run_thousand_query_cycle(
         "profile_outcomes": profile_outcomes,
         "gate_feature_rows": gate_feature_rows,
         "query_attribution_rows": query_attribution_rows,
+        "engine_scope_rows": build_engine_scope_rows(
+            query_attribution_rows=query_attribution_rows,
+            source_family="reformulation_collection",
+        ),
         "gate_candidate_report": gate_candidate_report,
         "recommendation": {
             "default_change_allowed": False,

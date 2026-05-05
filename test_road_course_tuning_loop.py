@@ -355,6 +355,8 @@ class TestRoadCourseTuningLoop(unittest.TestCase):
         windows = [
             {
                 "loop": 1,
+                "seed": 260,
+                "query_offset": 100,
                 "window": 1,
                 "global_window": 1,
                 "task": "SciFact",
@@ -451,6 +453,8 @@ class TestRoadCourseTuningLoop(unittest.TestCase):
         windows = [
             {
                 "loop": 1,
+                "seed": 260,
+                "query_offset": 100,
                 "window": 1,
                 "global_window": 1,
                 "task": "SciFact",
@@ -517,6 +521,10 @@ class TestRoadCourseTuningLoop(unittest.TestCase):
         self.assertEqual(candidate["fault_class"], "actuator_active_positive")
         self.assertEqual(candidate["query_numeric_token_count"], 1)
         self.assertEqual(candidate["query_negation_count"], 1)
+        self.assertEqual(candidate["seed"], 260)
+        self.assertEqual(candidate["query_offset"], 100)
+        self.assertEqual(candidate["seed"], 260)
+        self.assertEqual(candidate["query_offset"], 100)
 
     def test_gate_trainer_accepts_holdout_safe_rules(self):
         rows = []

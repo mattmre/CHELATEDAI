@@ -19,12 +19,16 @@
 | [Live-Fire Diagnostics And Calibration](live-fire-diagnostics-2026-04-27.md) | Deterministic end-to-end diagnostics harness results, known-good value guidance, and next benchmark campaign priorities |
 | [Safety Testbed Road-Course Campaign Plan](safety-testbed-road-course-plan.md) | Project-car safety testbed status, default-promotion gate, road-course campaign evidence requirements, and documentation refresh criteria |
 | [Road-Course Results And Default Threshold Decision](road-course-results-2026-04-27.md) | Small-model SciFact/NFCorpus road-course evidence supporting the safer `0.01` default chelation threshold guardrail |
+| [Golden Default And Autopilot Roadmap](golden-default-roadmap-2026-04-29.md) | Two-day analysis of road-course, six-path validation, masking/reformulation branches, and the next autopilot search path |
+| [Qwen-Scope Engine Mapping](qwen-scope-engine-mapping-2026-04-30.md) | Loop-fix summary plus the "Engine-Scope" roadmap for internal feature gating, coverage analysis, and synthetic hard-negative generation |
+| [Model-Scope Steering Architecture](model-scope-steering-architecture-2026-05-01.md) | Architecture translation from Qwen-Scope-style model hooking into a bounded ChelatedAI Model-Scope program with segmented memory and overlay-first promotion |
 | [Computational Storage And Drive Nodes](COMPUTATIONAL_STORAGE_DRIVE_NODES.md) | Canonical summary of hard-drive / storage-node experiments and scope limits |
 | [Computational Storage Scope Decision](computational-storage-transport-scope-decision.md) | Formal claim boundary for the RP2040 transport path |
 | [Computational Storage Hardware Evidence Runbook](computational-storage-hardware-evidence-runbook.md) | Operator workflow for real hardware evidence capture |
 | [Roadmap Audit And Weight Refinement Plan (2026-03-06)](roadmap-audit-and-weight-refinement-plan-2026-03-06.md) | Current conclusion that non-hardware development phases are complete plus the next evaluation plan |
 | [Weight Refinement Campaign Results (Session 28)](weight-refinement-campaign-results-2026-03-06-session28.md) | Durable summary of the partial bounded campaign, recovered findings, and promotion guidance |
 | [Weight Refinement Campaign Results (Session 32)](weight-refinement-campaign-results-2026-04-25-session32.md) | Durable summary of the Session 32 partial bounded campaign and explicit no-promotion outcome |
+| [AttnRes Adapter Implementation (2026-05-04)](attnres-adapter-implementation-2026-05-04.md) | BlockAttnResAdapter and LayerAttentionAggregator — MoonshotAI Attention Residuals adapted to the ChelatedAI adapter framework |
 
 ## Agentic Engineering And Planning
 
@@ -36,6 +40,8 @@
 | [ARCH-AEP Templates](ARCH%20AGENTIC%20ENGINEERING%20AND%20PLANNING/templates.md) | ID, branch, and tracker conventions |
 | [ARCH-AEP Next Session](ARCH%20AGENTIC%20ENGINEERING%20AND%20PLANNING/next-session.md) | Session handoff checklist |
 | [ARCH-AEP Phase Planning](ARCH%20AGENTIC%20ENGINEERING%20AND%20PLANNING/phase-planning.md) | Long-running planning record |
+| [ARCH-AEP Engine-Scope Roadmap](ARCH%20AGENTIC%20ENGINEERING%20AND%20PLANNING/architecture-2026-04-30-engine-scope-roadmap.md) | Phase-by-phase architecture and implementation roadmap for the Engine-Scope autonomous search cycle |
+| [ARCH-AEP Model-Scope Roadmap](ARCH%20AGENTIC%20ENGINEERING%20AND%20PLANNING/architecture-2026-05-01-model-scope-roadmap.md) | Phase-by-phase architecture and implementation roadmap for the true model-hook steering cycle |
 | [ARCH-AEP Schedule And Tracking](ARCH%20AGENTIC%20ENGINEERING%20AND%20PLANNING/schedule-and-tracking.md) | Cadence and gates |
 | [ARCH-AEP Tier Close Checklist](ARCH%20AGENTIC%20ENGINEERING%20AND%20PLANNING/tier-close-checklist.md) | Tier close audit checklist |
 | [ARCH-AEP Cycle Summary Template](ARCH%20AGENTIC%20ENGINEERING%20AND%20PLANNING/cycle-summary-template.md) | End-of-cycle summary template |

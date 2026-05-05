@@ -85,6 +85,9 @@ class TestStaticMaskProbe(unittest.TestCase):
 
         self.assertEqual(result["applied_queries"], 0)
         self.assertEqual(result["metrics"]["mrr"], 0.5)
+        self.assertEqual(len(result["query_examples"]), 1)
+        self.assertFalse(result["query_examples"][0]["gate_applied"])
+        self.assertEqual(result["query_examples"][0]["selected_delta_ndcg_at_10"], 0.0)
 
     def test_conditional_examples_include_mask_delta(self):
         query = {"q": np.array([1.0, 4.0])}
@@ -227,6 +230,58 @@ class TestStaticMaskProbe(unittest.TestCase):
         )
 
         self.assertIsNone(gate["gate"])
+
+    def test_run_static_probe_persists_mask_example_rows(self):
+        corpus = {f"d{i}": f"doc{i}" for i in range(8)}
+        queries = {f"q{i}": f"query{i}" for i in range(8)}
+        qrels = {f"q{i}": {f"d{i}": 1.0} for i in range(8)}
+        vectors = {
+            **{f"doc{i}": np.array([1.0, 0.0]) if i % 2 == 0 else np.array([0.0, 1.0]) for i in range(8)},
+            **{f"query{i}": np.array([1.0, 0.1]) if i % 2 == 0 else np.array([0.1, 1.0]) for i in range(8)},
+        }
+
+        class FakeBackend:
+            def embed_raw(self, texts):
+                return np.vstack([vectors[text] for text in texts])
+
+        with (
+            patch("static_mask_probe.load_mteb_data", return_value=(corpus, queries, qrels)),
+            patch("static_mask_probe.create_embedding_backend", return_value=FakeBackend()),
+        ):
+            result = run_static_mask_probe(
+                query_offset=2,
+                max_queries=6,
+                train_queries=4,
+                sample_docs=8,
+                seed=321,
+            )
+
+        self.assertEqual(len(result["mask_example_rows"]), 6)
+        self.assertEqual(sum(row["split"] == "train" for row in result["mask_example_rows"]), 4)
+        self.assertEqual(sum(row["split"] == "holdout" for row in result["mask_example_rows"]), 2)
+        self.assertEqual({row["task"] for row in result["mask_example_rows"]}, {"SciFact"})
+        self.assertEqual({row["seed"] for row in result["mask_example_rows"]}, {321})
+        self.assertEqual({row["query_offset"] for row in result["mask_example_rows"]}, {2})
+        self.assertTrue({
+            "query_id",
+            "query_text",
+            "delta_ndcg_at_10",
+            "delta_mrr",
+            "baseline_rank",
+            "masked_rank",
+            "baseline_score_margin",
+            "baseline_top_score",
+            "query_norm",
+            "query_token_count",
+            "query_char_count",
+            "query_stopword_ratio",
+            "query_numeric_token_count",
+            "query_negation_count",
+            "query_claim_cue_count",
+        }.issubset(result["mask_example_rows"][0]))
+        self.assertEqual(len(result["engine_scope_rows"]), len(result["mask_example_rows"]))
+        self.assertEqual({row["row_type"] for row in result["engine_scope_rows"]}, {"mask_probe"})
+        self.assertEqual({row["source_family"] for row in result["engine_scope_rows"]}, {"mask_collection"})
 
     def test_run_static_probe_uses_regularized_gate_policy(self):
         corpus = {f"d{i}": f"doc{i}" for i in range(6)}

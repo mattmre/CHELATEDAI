@@ -468,6 +468,7 @@ def run_retrieval_fitness_es_cycle(
         es_result=es_result,
         metadata={"query_count": len(query_ids)},
         runtime=runtime_diagnostics.get("runtime"),
+        model_scope=runtime_diagnostics.get("model_scope"),
         norm_drift=runtime_diagnostics.get("norm_drift"),
         route_effectiveness=runtime_diagnostics.get("route_effectiveness"),
         retrieval_policy=runtime_diagnostics.get("retrieval_policy"),

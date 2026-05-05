@@ -1,5 +1,6 @@
 numpy>=1.24
 torch>=2.0
+transformers>=4.51
 sentence-transformers>=2.2
 qdrant-client>=1.7
 requests>=2.28

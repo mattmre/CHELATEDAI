@@ -6,6 +6,8 @@ Purpose: Track master backlog files across cycles.
 | cycle-id | cycle start date | scope lock | PR range | owner | status | closed date | link |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | AEP-2026-02-13 | 2026-02-13 | Full codebase | #5, #8, #9, #10, #11 | Copilot CLI | COMPLETE (55/55 resolved) | 2026-02-18 | [backlog-2026-02-13.md](backlog-2026-02-13.md) |
+| AEP-2026-04-30 | 2026-04-30 | Engine-Scope implementation planning and autonomous golden-default search redesign | `PR000` planning cycle plus future Engine-Scope implementation PR series | Codex | IN PROGRESS (planning created; implementation pending) |  | [cycles/2026-04-30/backlog-2026-04-30.md](cycles/2026-04-30/backlog-2026-04-30.md) |
+| AEP-2026-05-01 | 2026-05-01 | Model-Scope implementation planning for true model hooks, sparse feature steering, segmented memory, and bounded overlay promotion | `PR000` planning cycle plus future Model-Scope implementation PR series | Codex | IN PROGRESS (planning created; implementation pending) |  | [cycles/2026-05-01/backlog-2026-05-01.md](cycles/2026-05-01/backlog-2026-05-01.md) |
 
 ## Session Logs
 | session | date | findings resolved | tests added | link |
@@ -27,3 +29,4 @@ Purpose: Track master backlog files across cycles.
 | Session 15 | 2026-02-18 | Handoff refresh + next-session preparation (0 findings) | +0 | [session-log-2026-02-18-impl-15.md](session-log-2026-02-18-impl-15.md) |
 | Session 16 | 2026-02-18 | Top-15 priority orchestration continuity + tracking updates (0 findings) | +0 | [session-log-2026-02-18-impl-16.md](session-log-2026-02-18-impl-16.md) |
 | Session 17 | 2026-02-18 | Top-15 priority orchestration continuity + tracking updates (0 findings) | +0 | [session-log-2026-02-18-impl-17.md](session-log-2026-02-18-impl-17.md) |
+| Session 33 | 2026-05-04 | AttnRes paper review + BlockAttnResAdapter + LayerAttentionAggregator (0 AEP findings, 1 new adapter type) | +37 | [../attnres-adapter-implementation-2026-05-04.md](../attnres-adapter-implementation-2026-05-04.md) |

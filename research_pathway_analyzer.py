@@ -10,6 +10,7 @@ from typing import Any, Dict, Iterable, List
 
 import numpy as np
 
+from engine_scope import load_engine_scope_rows
 from learned_mask_policy import run_learned_mask_smoke
 from synthetic_collapse_benchmark import run_synthetic_collapse_benchmark
 
@@ -21,7 +22,12 @@ def load_artifact(path: str | Path) -> Dict[str, Any]:
 def summarize_query_attribution(rows: Iterable[Dict[str, Any]]) -> Dict[str, Any]:
     by_profile: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
     for row in rows:
-        if row.get("profile") != "baseline":
+        if row.get("row_type") not in {None, "query_profile"}:
+            continue
+        profile = row.get("profile")
+        if profile in {None, "baseline"}:
+            continue
+        if profile != "baseline":
             by_profile[str(row.get("profile"))].append(row)
     summary = {}
     for profile, profile_rows in by_profile.items():
@@ -96,9 +102,12 @@ def propose_candidate_profiles(attribution_summary: Dict[str, Any]) -> List[Dict
 
 def run_meta_analysis(paths: List[str | Path]) -> Dict[str, Any]:
     artifacts = [load_artifact(path) for path in paths]
-    attribution_rows = []
-    for artifact in artifacts:
-        attribution_rows.extend(artifact.get("query_attribution_rows", []))
+    try:
+        attribution_rows = load_engine_scope_rows(paths)
+    except ValueError:
+        attribution_rows = []
+        for artifact in artifacts:
+            attribution_rows.extend(artifact.get("query_attribution_rows", []))
     attribution_summary = summarize_query_attribution(attribution_rows)
     synthetic = run_synthetic_collapse_benchmark()
     learned_mask = run_learned_mask_smoke()
