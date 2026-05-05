@@ -60,5 +60,6 @@ quantization-aware training path or a stricter promotion gate before any default
 change.
 
 Next useful slice: run repeat seeds for NFCorpus and SciFact with
-`attnres_balanced_trained` plus `mlp_trained`, then test whether contrastive
+`--profile-set attnres_balanced_candidate`, which keeps only `baseline`,
+`mlp_trained`, and `attnres_balanced_trained`, then test whether contrastive
 sedimentation preserves the NFCorpus gain under quantization.

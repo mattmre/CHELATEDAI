@@ -118,11 +118,31 @@ ATTNRES_TRAINED_NUM_BLOCKS_GRID = [
 ]
 
 
+ATTNRES_BALANCED_CANDIDATE_GRID = [
+    RoadCourseProfile("baseline"),
+    RoadCourseProfile(
+        "mlp_trained",
+        sedimentation_epochs=2,
+        sedimentation_threshold=1,
+        sedimentation_warmup_queries=20,
+    ),
+    RoadCourseProfile(
+        "attnres_balanced_trained",
+        adapter_type="attnres",
+        attnres_num_blocks=4,
+        sedimentation_epochs=2,
+        sedimentation_threshold=1,
+        sedimentation_warmup_queries=20,
+    ),
+]
+
+
 PROFILE_SETS = {
     "default": DEFAULT_PROFILE_GRID,
     "attnres_comparison": ATTNRES_COMPARISON_GRID,
     "attnres_num_blocks": ATTNRES_NUM_BLOCKS_GRID,
     "attnres_trained_num_blocks": ATTNRES_TRAINED_NUM_BLOCKS_GRID,
+    "attnres_balanced_candidate": ATTNRES_BALANCED_CANDIDATE_GRID,
 }
 
 
