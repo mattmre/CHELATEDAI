@@ -1,49 +1,49 @@
 # Next Session Checklist
 
-Purpose: Continue the Model-Scope ARCH-AEP cycle and build a true model-hook steering layer without overstating what the current repo can safely persist.
+Purpose: Continue autonomous execution after the Engine-Scope and Model-Scope implementation cycles closed on `main`.
 
 ## Session Start
-- Review `docs/model-scope-steering-architecture-2026-05-01.md`.
-- Review `docs/ARCH AGENTIC ENGINEERING AND PLANNING/architecture-2026-05-01-model-scope-roadmap.md`.
-- Review `docs/ARCH AGENTIC ENGINEERING AND PLANNING/cycles/2026-05-01/backlog-2026-05-01.md`.
-- Review `docs/ARCH AGENTIC ENGINEERING AND PLANNING/cycles/2026-05-01/tracker-2026-05-01.md`.
-- Review `docs/qwen-scope-engine-mapping-2026-04-30.md`.
 - Sync local `main` to `origin/main`.
-- Confirm local model/runtime dependencies before starting implementation.
-
-## Priority Order
-1. **Build the hook runtime first.**
-   - do not start with steering policy code before a deterministic local hook bus exists
-   - keep the first slice observation-only
-2. **Use `Qwen3.5-9B` as the primary serious pilot.**
-   - use `Qwen3.5-2B` or `Qwen3-1.7B` only for smoke/debug loops
-   - do not pivot the primary plan to `Qwen3.6` until the hook pipeline is stable
-3. **Add sparse feature extraction second.**
-   - load official Qwen-Scope artifacts where supported
-   - provide fallback feature summaries for unsupported targets
-4. **Keep all steering fail-closed and shadow-mode at first.**
-   - no persistent base-weight edits
-   - no always-on intervention path
-5. **Treat segmented memory as typed infrastructure, not a generic dump.**
-   - separate working, episode, expectation, and persistent stores
-   - add retention and promotion boundaries before scale
-6. **Only then add training and promotion.**
-   - promote overlays, probes, or steering artifacts only after replay and rollback checks
-   - treat base-weight mutation as a later research phase, not the initial path
+- Review `docs/ARCH AGENTIC ENGINEERING AND PLANNING/roadmap-execution-queue-2026-05-05.md`.
+- Review `docs/heavyskill-engine-adaptation-2026-05-05.md`.
+- Review the latest phase summary under `docs/ARCH AGENTIC ENGINEERING AND PLANNING/phase-summaries/`.
+- Check open PRs for comments and failing checks before starting new work.
+- Keep each implementation slice PR-sized, with focused tests and a phase-summary update.
 
 ## Current State
-- The repo now has a canonical plan for `Model-Scope`, which is distinct from the earlier Engine-Scope cycle.
-- Engine-Scope remains useful as the engine-side telemetry/control layer and should not be deleted.
-- The current missing component is a local hook-and-feature runtime, not another retrieval-only search loop.
-- **2026-05-04:** `BlockAttnResAdapter` ("attnres") and `LayerAttentionAggregator` were added to `chelation_adapter.py`, based on MoonshotAI's Attention Residuals paper. The hook bus and `model_scope_runtime.py` now support optional raw mean-pooled layer capture plus LayerAttentionAggregator output. See `docs/attnres-adapter-implementation-2026-05-04.md`.
+- Engine-Scope and Model-Scope implementation cycles are complete as implementation scaffolds.
+- Adaptive overlay evidence now flows from Engine-Scope artifacts into readiness summaries, promotion decisions, Model-Scope campaign reports, integrated diagnostics, and dashboard API summaries.
+- No production default route has changed. Promotion remains evidence-gated and fail-closed.
+- Remaining work is validation, frontier research assimilation, operational evidence capture, dashboard/reporting expansion, and safe follow-up experiments.
+
+## Priority Order
+1. **Review and merge clean PRs first.**
+   - inspect comments/checks before starting new implementation
+   - keep draft PRs until local and CI validation are green
+2. **Run research/refinement loops before deeper implementation.**
+   - scan current papers and tool docs only when they can change the queue
+   - record accepted/rejected ideas in repo docs
+3. **Prioritize validation campaigns over default changes.**
+   - broader replay/holdout validation comes before any route or artifact promotion
+   - document no-promotion results explicitly
+4. **Finish operational blockers.**
+   - real computational-storage hardware evidence remains externally gated
+   - capture evidence only when trustworthy hardware is actually available
+5. **Keep adaptive overlays observation-first.**
+   - route, damp, protect, or fork only after repeat-seed and holdout evidence
+   - avoid full harness implementation unless a verifier-backed use case appears
+
+## Resume Pointer
+- Active execution queue: `docs/ARCH AGENTIC ENGINEERING AND PLANNING/roadmap-execution-queue-2026-05-05.md`
+- Latest completed implementation chain: PRs `#127` through `#131`
+- Current cycle status: Engine-Scope and Model-Scope implementation scaffolds complete; frontier validation/research queue active
 
 ## Handoff Notes
 - Do not add `pytest` imports to `test_*.py`; CI does not install `pytest`.
-- Python 3.9 CI: avoid runtime `X | None` annotations unless module uses deferred annotations.
+- Python 3.9 CI: avoid runtime `X | None` annotations unless the module uses deferred annotations.
 - `ruff check` does not validate GitHub Actions YAML.
 - Prefer compact, versioned artifact schemas over large raw dumps.
 - Persistent promotion should target overlays and memory artifacts before any discussion of base-weight mutation.
-- The canonical tracker pointer now lives at `docs/ARCH AGENTIC ENGINEERING AND PLANNING/cycles/2026-05-01/tracker-2026-05-01.md`.
 
 ## Cycle ID
-- AEP-2026-05-01
+- Autonomous continuation after AEP-2026-04-30 and AEP-2026-05-01
