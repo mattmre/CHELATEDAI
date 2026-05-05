@@ -391,6 +391,7 @@ def build_overlay_artifact_card(
     purpose: str = "adaptive overlay candidate evidence",
     source_path: str | None = None,
     promotion_decision: Mapping[str, Any] | None = None,
+    validation_report: Mapping[str, Any] | None = None,
     replay_report: Mapping[str, Any] | None = None,
     holdout_report: Mapping[str, Any] | None = None,
     hard_negative_report: Mapping[str, Any] | None = None,
@@ -438,6 +439,7 @@ def build_overlay_artifact_card(
             "pass_at_k_rate": float(metrics.get("pass_at_k_rate", 0.0) or 0.0),
             "safe_pass_at_k_rate": float(metrics.get("safe_pass_at_k_rate", 0.0) or 0.0),
             "mean_oracle_gap": float(metrics.get("mean_oracle_gap", 0.0) or 0.0),
+            "validation": _json_safe(validation_report or {}),
             "replay": _json_safe(replay_report or {}),
             "holdout": _json_safe(holdout_report or {}),
             "hard_negative": _json_safe(hard_negative_report or {}),
@@ -455,3 +457,81 @@ def build_overlay_artifact_card(
     }
     card["card_id"] = f"overlay_card_{stable_overlay_hash(card)}"
     return card
+
+
+def build_overlay_validation_report(
+    *,
+    candidate_id: str,
+    replay_overlay_report: Mapping[str, Any],
+    holdout_overlay_report: Mapping[str, Any] | None = None,
+    min_holdout_safe_pass_rate: float = 0.05,
+    max_holdout_regressed_rate: float = 0.0,
+    metadata: Mapping[str, Any] | None = None,
+) -> Dict[str, Any]:
+    """Build fail-closed replay/holdout validation evidence for an overlay."""
+
+    replay_readiness = (
+        dict(replay_overlay_report.get("readiness", {}))
+        if isinstance(replay_overlay_report, Mapping)
+        else {}
+    )
+    holdout_readiness = (
+        dict(holdout_overlay_report.get("readiness", {}))
+        if isinstance(holdout_overlay_report, Mapping)
+        else {}
+    )
+    holdout_metrics = (
+        dict(holdout_overlay_report.get("branch_set_metrics", {}))
+        if isinstance(holdout_overlay_report, Mapping)
+        else {}
+    )
+    replay_ready = bool(replay_readiness.get("ready_for_broader_validation", False))
+    holdout_ready = bool(holdout_readiness.get("ready_for_broader_validation", False))
+    holdout_safe_pass_rate = float(
+        holdout_readiness.get("safe_pass_at_k_rate", holdout_metrics.get("safe_pass_at_k_rate", 0.0)) or 0.0
+    )
+    holdout_regressed_rate = float(
+        holdout_readiness.get("regressed_at_k_rate", holdout_metrics.get("regressed_at_k_rate", 1.0)) or 0.0
+    )
+
+    blockers = []
+    if not replay_ready:
+        blockers.append("replay_overlay_not_ready")
+    if holdout_overlay_report is None:
+        blockers.append("missing_holdout_overlay_report")
+    elif not holdout_ready:
+        blockers.append("holdout_overlay_not_ready")
+    if holdout_safe_pass_rate < min_holdout_safe_pass_rate:
+        blockers.append("holdout_safe_pass_rate_below_threshold")
+    if holdout_regressed_rate > max_holdout_regressed_rate:
+        blockers.append("holdout_regression_rate_above_threshold")
+    blockers.extend(f"replay:{blocker}" for blocker in replay_readiness.get("blockers", []))
+    blockers.extend(f"holdout:{blocker}" for blocker in holdout_readiness.get("blockers", []))
+
+    report = {
+        "schema_version": ADAPTIVE_OVERLAY_SCHEMA_VERSION,
+        "record_type": "adaptive_overlay_validation_report",
+        "candidate_id": str(candidate_id),
+        "replay_overlay_report_hash": f"overlay_report_{stable_overlay_hash(replay_overlay_report)}",
+        "holdout_overlay_report_hash": (
+            f"overlay_report_{stable_overlay_hash(holdout_overlay_report)}"
+            if holdout_overlay_report is not None
+            else None
+        ),
+        "replay_readiness": _json_safe(replay_readiness),
+        "holdout_readiness": _json_safe(holdout_readiness),
+        "criteria": {
+            "min_holdout_safe_pass_rate": float(min_holdout_safe_pass_rate),
+            "max_holdout_regressed_rate": float(max_holdout_regressed_rate),
+        },
+        "validation_ready": len(blockers) == 0,
+        "blockers": sorted(set(blockers)),
+        "next_action": (
+            "eligible for promotion review with artifact card"
+            if not blockers
+            else "collect broader replay and holdout overlay evidence"
+        ),
+        "metadata": _json_safe(metadata or {}),
+    }
+    report["validation_report_id"] = f"overlay_validation_{stable_overlay_hash(report)}"
+    return report

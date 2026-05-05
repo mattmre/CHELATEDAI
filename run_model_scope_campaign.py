@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 from typing import Any, Dict, List, Mapping
 
-from adaptive_overlay import build_overlay_artifact_card
+from adaptive_overlay import build_overlay_artifact_card, build_overlay_validation_report
 from checkpoint_manager import CheckpointManager
 from compute_budget_policy import decide_compute_budget, summarize_compute_budget_decisions
 from config import ChelationConfig
@@ -105,6 +105,7 @@ def run_model_scope_campaign(
     holdout_report: Mapping[str, Any] | None = None,
     safety_report: Mapping[str, Any] | None = None,
     adaptive_overlay_report: str | Path | Mapping[str, Any] | None = None,
+    adaptive_overlay_holdout_report: str | Path | Mapping[str, Any] | None = None,
     require_adaptive_overlay_readiness: bool = False,
 ) -> Dict[str, Any]:
     artifact_paths = _load_artifact_paths(input_path)
@@ -227,6 +228,7 @@ def run_model_scope_campaign(
         "source": "trace_grade",
     }
     resolved_adaptive_overlay_report = _load_optional_json_report(adaptive_overlay_report)
+    resolved_adaptive_overlay_holdout_report = _load_optional_json_report(adaptive_overlay_holdout_report)
     adaptive_overlay_summary = summarize_adaptive_overlay_report(resolved_adaptive_overlay_report)
     evaluator_summary = summarize_evaluator_results(evaluator_records)
     compute_budget_summary = summarize_compute_budget_decisions(compute_budget_decisions)
@@ -276,13 +278,31 @@ def run_model_scope_campaign(
         ),
     )
     adaptive_overlay_artifact_card = None
+    adaptive_overlay_validation_report = None
     if resolved_adaptive_overlay_report is not None:
+        adaptive_overlay_validation_report = build_overlay_validation_report(
+            candidate_id=str(candidate.get("candidate_id", "model_scope_shadow_policy_v1")),
+            replay_overlay_report=resolved_adaptive_overlay_report,
+            holdout_overlay_report=resolved_adaptive_overlay_holdout_report,
+            metadata={
+                "input_path": str(input_path),
+                "adaptive_overlay_report": (
+                    str(adaptive_overlay_report) if isinstance(adaptive_overlay_report, (str, Path)) else None
+                ),
+                "adaptive_overlay_holdout_report": (
+                    str(adaptive_overlay_holdout_report)
+                    if isinstance(adaptive_overlay_holdout_report, (str, Path))
+                    else None
+                ),
+            },
+        )
         adaptive_overlay_artifact_card = build_overlay_artifact_card(
             candidate_id=str(candidate.get("candidate_id", "model_scope_shadow_policy_v1")),
             overlay_report=resolved_adaptive_overlay_report,
             purpose="model-scope campaign supplied adaptive overlay evidence",
             source_path=str(adaptive_overlay_report) if isinstance(adaptive_overlay_report, (str, Path)) else None,
             promotion_decision=promotion_decision,
+            validation_report=adaptive_overlay_validation_report,
             replay_report={"entry_count": len(replay_bundle.get("entries", []))},
             holdout_report=resolved_holdout_report,
             hard_negative_report=hard_negative_report,
@@ -339,6 +359,20 @@ def run_model_scope_campaign(
             json.dumps(_json_safe(resolved_adaptive_overlay_report), indent=2),
             encoding="utf-8",
         )
+    adaptive_overlay_holdout_path = None
+    if resolved_adaptive_overlay_holdout_report is not None:
+        adaptive_overlay_holdout_path = resolved_output_dir / "adaptive_overlay_holdout_report.json"
+        adaptive_overlay_holdout_path.write_text(
+            json.dumps(_json_safe(resolved_adaptive_overlay_holdout_report), indent=2),
+            encoding="utf-8",
+        )
+    adaptive_overlay_validation_path = None
+    if adaptive_overlay_validation_report is not None:
+        adaptive_overlay_validation_path = resolved_output_dir / "adaptive_overlay_validation_report.json"
+        adaptive_overlay_validation_path.write_text(
+            json.dumps(_json_safe(adaptive_overlay_validation_report), indent=2),
+            encoding="utf-8",
+        )
     adaptive_overlay_artifact_card_path = None
     if adaptive_overlay_artifact_card is not None:
         adaptive_overlay_artifact_card_path = resolved_output_dir / "adaptive_overlay_artifact_card.json"
@@ -389,7 +423,9 @@ def run_model_scope_campaign(
         "safety_report": resolved_safety_report,
         "hard_negative_report": hard_negative_report,
         "adaptive_overlay": resolved_adaptive_overlay_report,
+        "adaptive_overlay_holdout": resolved_adaptive_overlay_holdout_report,
         "adaptive_overlay_summary": adaptive_overlay_summary,
+        "adaptive_overlay_validation_report": adaptive_overlay_validation_report,
         "adaptive_overlay_artifact_card": adaptive_overlay_artifact_card,
         "promotion_decision": promotion_decision,
         "outputs": {
@@ -410,6 +446,10 @@ def run_model_scope_campaign(
     }
     if adaptive_overlay_path is not None:
         report["outputs"]["adaptive_overlay_report"] = str(adaptive_overlay_path)
+    if adaptive_overlay_holdout_path is not None:
+        report["outputs"]["adaptive_overlay_holdout_report"] = str(adaptive_overlay_holdout_path)
+    if adaptive_overlay_validation_path is not None:
+        report["outputs"]["adaptive_overlay_validation_report"] = str(adaptive_overlay_validation_path)
     if adaptive_overlay_artifact_card_path is not None:
         report["outputs"]["adaptive_overlay_artifact_card"] = str(adaptive_overlay_artifact_card_path)
     if promotion is not None:
@@ -448,6 +488,12 @@ def main() -> int:
         help="Optional adaptive overlay report JSON to include in promotion evidence",
     )
     parser.add_argument(
+        "--adaptive-overlay-holdout-report",
+        type=str,
+        default=None,
+        help="Optional holdout adaptive overlay report JSON to include in validation evidence",
+    )
+    parser.add_argument(
         "--require-adaptive-overlay-readiness",
         action="store_true",
         help="Require adaptive overlay readiness before promotion",
@@ -460,6 +506,7 @@ def main() -> int:
         min_alignment_score=args.min_alignment_score,
         promotion_path=args.promotion_path,
         adaptive_overlay_report=args.adaptive_overlay_report,
+        adaptive_overlay_holdout_report=args.adaptive_overlay_holdout_report,
         require_adaptive_overlay_readiness=args.require_adaptive_overlay_readiness,
     )
     print(json.dumps(_json_safe(report), indent=2))
