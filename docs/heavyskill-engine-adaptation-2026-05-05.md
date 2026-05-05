@@ -413,6 +413,14 @@ Fifth follow-up implementation slices:
 4. Kept full channel-variation records out of diagnostics summaries to avoid report bloat.
 5. Added tests for JSON-safe diagnostics serialization and campaign-level overlay summary propagation.
 
+Sixth follow-up implementation slices:
+
+1. Added adaptive overlay summary aggregation to the dashboard event summarizer.
+2. Counted ready and blocked overlay summaries across direct and integrated-diagnostics events.
+3. Aggregated overlay readiness blockers for dashboard API consumers.
+4. Preserved a stable empty overlay summary shape when no overlay events are present.
+5. Added reporting tests for blocked overlay summaries and the empty overlay dashboard payload.
+
 Defer:
 
 1. spawning agent swarms

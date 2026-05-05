@@ -277,11 +277,20 @@ class TestStage1ComponentBench(unittest.TestCase):
             final_fitness=0.45,
             runtime={"latency_ms": np.float32(2.0), "status": "ok"},
             adaptive_gate={"actions": ["prefer_global_scout"]},
+            adaptive_overlay_summary={
+                "ready_for_broader_validation": False,
+                "blockers": ["safe_pass_rate_below_threshold"],
+                "next_action": "continue observation and coverage-aware channel collection",
+            },
             telemetry={"samples": np.array([1, 2])},
         ).to_dict()
         events = [
             {"timestamp": "1", "event_type": "runtime_diagnostics", "runtime": report["runtime"], "route": {"key": "x"}},
-            {"timestamp": "2", "adaptive_gate": report["adaptive_gate"]},
+            {
+                "timestamp": "2",
+                "adaptive_gate": report["adaptive_gate"],
+                "integrated_diagnostics": report,
+            },
         ]
         summary = summarize_events(events)
 
@@ -289,6 +298,19 @@ class TestStage1ComponentBench(unittest.TestCase):
         self.assertEqual(report["telemetry"]["samples"], [1, 2])
         self.assertEqual(summary["runtime_diagnostics_count"], 1)
         self.assertEqual(summary["adaptive_gate_actions"], {"prefer_global_scout": 1})
+        self.assertEqual(summary["adaptive_overlay"]["summary_count"], 1)
+        self.assertEqual(summary["adaptive_overlay"]["blocked_count"], 1)
+        self.assertEqual(summary["adaptive_overlay"]["blockers"], {"safe_pass_rate_below_threshold": 1})
+        self.assertFalse(summary["adaptive_overlay"]["latest_ready_for_broader_validation"])
+
+    def test_dashboard_summary_includes_empty_adaptive_overlay_shape(self):
+        summary = summarize_events([])
+
+        self.assertEqual(summary["adaptive_overlay"]["summary_count"], 0)
+        self.assertEqual(summary["adaptive_overlay"]["ready_count"], 0)
+        self.assertEqual(summary["adaptive_overlay"]["blocked_count"], 0)
+        self.assertEqual(summary["adaptive_overlay"]["blockers"], {})
+        self.assertIsNone(summary["adaptive_overlay"]["latest_ready_for_broader_validation"])
 
 
 if __name__ == "__main__":

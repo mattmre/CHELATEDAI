@@ -573,6 +573,14 @@ def summarize_events(events: List[Dict[str, Any]]) -> Dict[str, Any]:
             "action_breakdown": {},
             "adaptive_gate_actions": {},
             "adapter_route_breakdown": {},
+            "adaptive_overlay": {
+                "summary_count": 0,
+                "ready_count": 0,
+                "blocked_count": 0,
+                "blockers": {},
+                "latest_ready_for_broader_validation": None,
+                "latest_next_action": None,
+            },
             "runtime_diagnostics_count": 0,
             "latency_ms": {"mean": None, "p50": None, "p95": None},
             "time_range": {"earliest": None, "latest": None}
@@ -603,6 +611,37 @@ def summarize_events(events: List[Dict[str, Any]]) -> Dict[str, Any]:
         if isinstance(route, dict) and route.get("key") is not None:
             route_keys.append(route.get("key"))
     adapter_route_breakdown = dict(Counter(route_keys))
+
+    overlay_summaries = []
+    for event in events:
+        overlay = event.get("adaptive_overlay_summary")
+        if isinstance(overlay, dict):
+            overlay_summaries.append(overlay)
+        diagnostics = event.get("integrated_diagnostics")
+        if isinstance(diagnostics, dict) and isinstance(diagnostics.get("adaptive_overlay_summary"), dict):
+            overlay_summaries.append(diagnostics["adaptive_overlay_summary"])
+
+    overlay_blockers = []
+    ready_count = 0
+    for overlay in overlay_summaries:
+        if bool(overlay.get("ready_for_broader_validation", False)):
+            ready_count += 1
+        blockers = overlay.get("blockers", [])
+        if isinstance(blockers, list):
+            overlay_blockers.extend(str(blocker) for blocker in blockers)
+    latest_overlay = overlay_summaries[-1] if overlay_summaries else {}
+    adaptive_overlay = {
+        "summary_count": len(overlay_summaries),
+        "ready_count": ready_count,
+        "blocked_count": len(overlay_summaries) - ready_count,
+        "blockers": dict(Counter(overlay_blockers)),
+        "latest_ready_for_broader_validation": (
+            bool(latest_overlay.get("ready_for_broader_validation"))
+            if overlay_summaries
+            else None
+        ),
+        "latest_next_action": latest_overlay.get("next_action") if overlay_summaries else None,
+    }
 
     runtime_events = [e for e in events if e.get("event_type") == "runtime_diagnostics" or isinstance(e.get("runtime"), dict)]
     latencies = []
@@ -640,6 +679,7 @@ def summarize_events(events: List[Dict[str, Any]]) -> Dict[str, Any]:
         "action_breakdown": action_breakdown,
         "adaptive_gate_actions": adaptive_gate_actions,
         "adapter_route_breakdown": adapter_route_breakdown,
+        "adaptive_overlay": adaptive_overlay,
         "runtime_diagnostics_count": len(runtime_events),
         "latency_ms": latency_ms,
         "time_range": time_range
