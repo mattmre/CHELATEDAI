@@ -111,5 +111,8 @@ ChelationConfig.get_preset("deep",     "attnres_adapter")  # num_blocks=8 (paper
    `--profile-set attnres_trained_num_blocks` for the same adapter-depth comparison after
    an opt-in sedimentation warmup/training pass. The trained SciFact run is documented in
    `docs/attnres-trained-road-course-benchmark-2026-05-05.md`; it failed closed because
-   all trained profiles underperformed the untrained baseline. The next handoff is NFCorpus
-   transfer evidence plus less aggressive or contrastive sedimentation targets.
+   all trained profiles underperformed the untrained baseline. NFCorpus transfer evidence
+   is documented in `docs/attnres-nfcorpus-transfer-benchmark-2026-05-05.md`; balanced
+   AttnRes improved NDCG on that slice, but the quantization survival gate still failed.
+   The next handoff is repeat seeds plus less aggressive or contrastive sedimentation
+   targets.
