@@ -7,7 +7,11 @@ import json
 from pathlib import Path
 from typing import Any, Dict, List, Mapping
 
-from adaptive_overlay import build_overlay_artifact_card, build_overlay_validation_report
+from adaptive_overlay import (
+    build_overlay_artifact_card,
+    build_overlay_validation_report,
+    decide_overlay_collection_budget,
+)
 from checkpoint_manager import CheckpointManager
 from compute_budget_policy import decide_compute_budget, summarize_compute_budget_decisions
 from config import ChelationConfig
@@ -279,7 +283,14 @@ def run_model_scope_campaign(
     )
     adaptive_overlay_artifact_card = None
     adaptive_overlay_validation_report = None
+    adaptive_overlay_collection_policy = None
     if resolved_adaptive_overlay_report is not None:
+        adaptive_overlay_collection_policy = decide_overlay_collection_budget(
+            resolved_adaptive_overlay_report,
+            uncertainty_score=float(evaluator_summary.get("disagreement_rate", 0.0) or 0.0),
+            coverage_novelty_score=float(feature_scorecard.get("feature_count", 0) > 0),
+            blocker_history_count=int(hard_negative_report.get("blocker_count", 0)),
+        )
         adaptive_overlay_validation_report = build_overlay_validation_report(
             candidate_id=str(candidate.get("candidate_id", "model_scope_shadow_policy_v1")),
             replay_overlay_report=resolved_adaptive_overlay_report,
@@ -303,6 +314,7 @@ def run_model_scope_campaign(
             source_path=str(adaptive_overlay_report) if isinstance(adaptive_overlay_report, (str, Path)) else None,
             promotion_decision=promotion_decision,
             validation_report=adaptive_overlay_validation_report,
+            collection_policy=adaptive_overlay_collection_policy,
             replay_report={"entry_count": len(replay_bundle.get("entries", []))},
             holdout_report=resolved_holdout_report,
             hard_negative_report=hard_negative_report,
@@ -373,6 +385,13 @@ def run_model_scope_campaign(
             json.dumps(_json_safe(adaptive_overlay_validation_report), indent=2),
             encoding="utf-8",
         )
+    adaptive_overlay_collection_policy_path = None
+    if adaptive_overlay_collection_policy is not None:
+        adaptive_overlay_collection_policy_path = resolved_output_dir / "adaptive_overlay_collection_policy.json"
+        adaptive_overlay_collection_policy_path.write_text(
+            json.dumps(_json_safe(adaptive_overlay_collection_policy), indent=2),
+            encoding="utf-8",
+        )
     adaptive_overlay_artifact_card_path = None
     if adaptive_overlay_artifact_card is not None:
         adaptive_overlay_artifact_card_path = resolved_output_dir / "adaptive_overlay_artifact_card.json"
@@ -426,6 +445,7 @@ def run_model_scope_campaign(
         "adaptive_overlay_holdout": resolved_adaptive_overlay_holdout_report,
         "adaptive_overlay_summary": adaptive_overlay_summary,
         "adaptive_overlay_validation_report": adaptive_overlay_validation_report,
+        "adaptive_overlay_collection_policy": adaptive_overlay_collection_policy,
         "adaptive_overlay_artifact_card": adaptive_overlay_artifact_card,
         "promotion_decision": promotion_decision,
         "outputs": {
@@ -450,6 +470,8 @@ def run_model_scope_campaign(
         report["outputs"]["adaptive_overlay_holdout_report"] = str(adaptive_overlay_holdout_path)
     if adaptive_overlay_validation_path is not None:
         report["outputs"]["adaptive_overlay_validation_report"] = str(adaptive_overlay_validation_path)
+    if adaptive_overlay_collection_policy_path is not None:
+        report["outputs"]["adaptive_overlay_collection_policy"] = str(adaptive_overlay_collection_policy_path)
     if adaptive_overlay_artifact_card_path is not None:
         report["outputs"]["adaptive_overlay_artifact_card"] = str(adaptive_overlay_artifact_card_path)
     if promotion is not None:

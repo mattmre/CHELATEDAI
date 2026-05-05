@@ -451,6 +451,86 @@ def summarize_overlay_trajectory_health(overlay_report: Mapping[str, Any]) -> Di
     }
 
 
+def decide_overlay_collection_budget(
+    overlay_report: Mapping[str, Any],
+    *,
+    uncertainty_score: float = 0.0,
+    coverage_novelty_score: float = 0.0,
+    blocker_history_count: int = 0,
+    base_budget_units: int = 1,
+    max_budget_units: int = 8,
+) -> Dict[str, Any]:
+    """Choose an advisory overlay collection budget from report diagnostics."""
+
+    readiness = dict(overlay_report.get("readiness", {})) if isinstance(overlay_report, Mapping) else {}
+    trajectory = dict(overlay_report.get("trajectory_health", {})) if isinstance(overlay_report, Mapping) else {}
+    blockers = set(str(blocker) for blocker in readiness.get("blockers", []))
+    warnings = set(str(warning) for warning in trajectory.get("warnings", []))
+    score = 0.0
+    reasons = []
+
+    if bool(readiness.get("ready_for_broader_validation", False)):
+        score += 0.20
+        reasons.append("overlay_ready")
+    if "insufficient_branch_groups" in blockers:
+        score += 0.25
+        reasons.append("insufficient_branch_groups")
+    if "safe_pass_rate_below_threshold" in blockers:
+        score += 0.15
+        reasons.append("safe_pass_rate_below_threshold")
+    if "promotion_blockers_present" in blockers or "active_negative_records_present" in blockers:
+        score -= 0.30
+        reasons.append("blocker_history_present")
+    if "blocker_recurrence_present" in warnings:
+        score -= 0.20
+        reasons.append("trajectory_blocker_recurrence")
+    if "oracle_gap_worsening" in warnings:
+        score += 0.15
+        reasons.append("oracle_gap_worsening")
+    if blocker_history_count > 0:
+        score -= min(0.30, blocker_history_count * 0.05)
+        reasons.append("external_blocker_history")
+
+    score += max(0.0, min(1.0, float(uncertainty_score))) * 0.30
+    score += max(0.0, min(1.0, float(coverage_novelty_score))) * 0.25
+    if uncertainty_score:
+        reasons.append("uncertainty_signal")
+    if coverage_novelty_score:
+        reasons.append("coverage_novelty_signal")
+
+    if score >= 0.55:
+        decision = "broaden_collection"
+        budget_units = max(base_budget_units + 2, int(round(max_budget_units * 0.75)))
+    elif score >= 0.20:
+        decision = "standard_collection"
+        budget_units = max(base_budget_units, int(round(max_budget_units * 0.40)))
+    else:
+        decision = "observe_only"
+        budget_units = base_budget_units
+
+    return {
+        "schema_version": ADAPTIVE_OVERLAY_SCHEMA_VERSION,
+        "record_type": "adaptive_overlay_collection_budget_policy",
+        "decision": decision,
+        "budget_units": min(int(max_budget_units), max(int(base_budget_units), int(budget_units))),
+        "score": float(score),
+        "reasons": sorted(set(reasons)),
+        "inputs": {
+            "uncertainty_score": float(uncertainty_score),
+            "coverage_novelty_score": float(coverage_novelty_score),
+            "blocker_history_count": int(blocker_history_count),
+            "base_budget_units": int(base_budget_units),
+            "max_budget_units": int(max_budget_units),
+        },
+        "advisory_only": True,
+        "next_action": (
+            "collect broader overlay branch evidence"
+            if decision == "broaden_collection"
+            else "continue observation without promotion"
+        ),
+    }
+
+
 def build_overlay_report(
     rows: Iterable[Mapping[str, Any]],
     *,
@@ -479,6 +559,7 @@ def build_overlay_artifact_card(
     source_path: str | None = None,
     promotion_decision: Mapping[str, Any] | None = None,
     validation_report: Mapping[str, Any] | None = None,
+    collection_policy: Mapping[str, Any] | None = None,
     replay_report: Mapping[str, Any] | None = None,
     holdout_report: Mapping[str, Any] | None = None,
     hard_negative_report: Mapping[str, Any] | None = None,
@@ -529,6 +610,7 @@ def build_overlay_artifact_card(
             "mean_oracle_gap": float(metrics.get("mean_oracle_gap", 0.0) or 0.0),
             "trajectory_health": _json_safe(trajectory_health),
             "validation": _json_safe(validation_report or {}),
+            "collection_policy": _json_safe(collection_policy or {}),
             "replay": _json_safe(replay_report or {}),
             "holdout": _json_safe(holdout_report or {}),
             "hard_negative": _json_safe(hard_negative_report or {}),
