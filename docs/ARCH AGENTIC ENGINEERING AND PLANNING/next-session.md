@@ -35,7 +35,7 @@ Purpose: Continue the Model-Scope ARCH-AEP cycle and build a true model-hook ste
 - The repo now has a canonical plan for `Model-Scope`, which is distinct from the earlier Engine-Scope cycle.
 - Engine-Scope remains useful as the engine-side telemetry/control layer and should not be deleted.
 - The current missing component is a local hook-and-feature runtime, not another retrieval-only search loop.
-- **2026-05-04:** `BlockAttnResAdapter` ("attnres") and `LayerAttentionAggregator` were added to `chelation_adapter.py`, based on MoonshotAI's Attention Residuals paper. The `LayerAttentionAggregator` is the planned bridge between the hook bus and AttnRes-style cross-layer aggregation — it is implemented but not yet wired into `model_scope_runtime.py`. See `docs/attnres-adapter-implementation-2026-05-04.md`.
+- **2026-05-04:** `BlockAttnResAdapter` ("attnres") and `LayerAttentionAggregator` were added to `chelation_adapter.py`, based on MoonshotAI's Attention Residuals paper. The hook bus and `model_scope_runtime.py` now support optional raw mean-pooled layer capture plus LayerAttentionAggregator output. See `docs/attnres-adapter-implementation-2026-05-04.md`.
 
 ## Handoff Notes
 - Do not add `pytest` imports to `test_*.py`; CI does not install `pytest`.

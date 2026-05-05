@@ -10,6 +10,7 @@ from typing import Any, Callable, Dict, Iterable, Mapping
 
 import torch
 
+from chelation_adapter import LayerAttentionAggregator
 from chelation_logger import get_logger
 from config import ChelationConfig
 from model_hook_bus import HookObservationConfig, ModelHookBus, _json_safe
@@ -35,6 +36,9 @@ class ModelScopeRuntimeConfig:
     artifact_dir: str | None = None
     model_family: str = "qwen_like"
     trust_remote_code: bool = False
+    capture_raw_embeddings: bool = False
+    enable_layer_attention_aggregation: bool = False
+    layer_attention_proj_dim: int | None = None
 
 
 def _timestamp_slug() -> str:
@@ -63,6 +67,7 @@ class ModelScopeRuntime:
         steerer=None,
         memory_store=None,
         expectation_comparator=None,
+        layer_attention_aggregator=None,
         eager_load: bool = False,
     ):
         self.config = config
@@ -82,6 +87,7 @@ class ModelScopeRuntime:
                 summary_top_dimensions=config.summary_top_dimensions,
                 hook_target=config.hook_target,
                 model_family=config.model_family,
+                capture_raw_embeddings=config.capture_raw_embeddings,
             ),
             logger=self.logger,
             feature_extractor=resolved_feature_extractor,
@@ -89,6 +95,7 @@ class ModelScopeRuntime:
         self._steerer = steerer
         self._memory_store = memory_store
         self._expectation_comparator = expectation_comparator
+        self._layer_attention_aggregator = layer_attention_aggregator
         self._last_artifact: Dict[str, Any] | None = None
 
         if eager_load:
@@ -145,6 +152,46 @@ class ModelScopeRuntime:
             "tokenizer_loaded": self.tokenizer is not None,
             "memory_enabled": self._memory_store is not None,
             "expectation_comparator_enabled": self._expectation_comparator is not None,
+            "raw_embedding_capture_enabled": bool(self.config.capture_raw_embeddings),
+            "layer_attention_aggregation_enabled": bool(self.config.enable_layer_attention_aggregation),
+        }
+
+    def _aggregate_layer_embeddings(self, capture: Mapping[str, Any]) -> Dict[str, Any] | None:
+        observations = capture.get("observations")
+        if not isinstance(observations, list):
+            return None
+        embeddings = []
+        layer_indices = []
+        for observation in observations:
+            if not isinstance(observation, Mapping):
+                continue
+            pooled = observation.get("mean_pooled_embedding")
+            if not isinstance(pooled, Mapping):
+                continue
+            values = pooled.get("values")
+            if not values:
+                continue
+            embeddings.append(torch.tensor(values, dtype=torch.float32))
+            layer_indices.append(int(observation.get("layer_index", len(layer_indices))))
+        if not embeddings:
+            return None
+        layer_embeddings = torch.stack(embeddings, dim=1)
+        hidden_size = int(layer_embeddings.shape[-1])
+        aggregator = self._layer_attention_aggregator
+        if aggregator is None:
+            aggregator = LayerAttentionAggregator(
+                hidden_size=hidden_size,
+                proj_dim=self.config.layer_attention_proj_dim,
+            )
+            self._layer_attention_aggregator = aggregator
+        with torch.no_grad():
+            aggregated = aggregator(layer_embeddings).detach().cpu()
+        return {
+            "method": "layer_attention_aggregator",
+            "layer_indices": layer_indices,
+            "input_shape": [int(dim) for dim in layer_embeddings.shape],
+            "output_shape": [int(dim) for dim in aggregated.shape],
+            "embedding": aggregated.tolist(),
         }
 
     def _prepare_inputs(self, text: str) -> Dict[str, torch.Tensor]:
@@ -186,6 +233,10 @@ class ModelScopeRuntime:
             layer_indices=self.config.layer_indices,
         )
         artifact = build_model_scope_artifact(runtime=self.describe_runtime(), capture=capture)
+        if self.config.enable_layer_attention_aggregation:
+            aggregation = self._aggregate_layer_embeddings(capture)
+            if aggregation is not None:
+                artifact["layer_attention_aggregation"] = aggregation
         if self._steerer is not None:
             artifact["steering"] = self._steerer.evaluate_capture(artifact)
         expectation_profile_id = None if metadata is None else metadata.get("expectation_profile_id")
@@ -245,6 +296,8 @@ def create_model_scope_runtime(
     max_input_tokens: int | None = None,
     summary_top_dimensions: int | None = None,
     artifact_dir: str | None = None,
+    capture_raw_embeddings: bool = False,
+    enable_layer_attention_aggregation: bool = False,
     eager_load: bool = False,
     logger=None,
 ) -> ModelScopeRuntime:
@@ -254,5 +307,7 @@ def create_model_scope_runtime(
         max_input_tokens=max_input_tokens or ChelationConfig.MODEL_SCOPE_MAX_INPUT_TOKENS,
         summary_top_dimensions=summary_top_dimensions or ChelationConfig.MODEL_SCOPE_SUMMARY_TOP_DIMENSIONS,
         artifact_dir=artifact_dir or str(ChelationConfig.MODEL_SCOPE_ARTIFACT_ROOT),
+        capture_raw_embeddings=capture_raw_embeddings or enable_layer_attention_aggregation,
+        enable_layer_attention_aggregation=enable_layer_attention_aggregation,
     )
     return ModelScopeRuntime(config, logger=logger, eager_load=eager_load)

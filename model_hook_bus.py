@@ -25,6 +25,7 @@ class HookObservationConfig:
     model_family: str = "generic_transformer"
     artifact_type: str = "model_scope_observation"
     metadata: Dict[str, Any] = field(default_factory=dict)
+    capture_raw_embeddings: bool = False
 
 
 def _json_safe(value: Any) -> Any:
@@ -120,6 +121,21 @@ def _activation_summary(
     }
 
 
+def _mean_pooled_embedding(tensor: torch.Tensor) -> Dict[str, Any]:
+    value = tensor.detach().float().cpu()
+    if value.dim() == 1:
+        value = value.unsqueeze(0).unsqueeze(0)
+    elif value.dim() == 2:
+        value = value.unsqueeze(0)
+    if value.dim() < 3:
+        raise ValueError(f"expected activation tensor with >= 2 feature axes, got shape {tuple(value.shape)}")
+    pooled = value.reshape(value.shape[0], -1, value.shape[-1]).mean(dim=1)
+    return {
+        "shape": [int(dim) for dim in pooled.shape],
+        "values": pooled.tolist(),
+    }
+
+
 class ModelHookBus:
     """Capture residual-stream summaries from selected transformer layers."""
 
@@ -156,6 +172,8 @@ class ModelHookBus:
                     hook_target=self.config.hook_target,
                     top_dimensions=self.config.summary_top_dimensions,
                 )
+                if self.config.capture_raw_embeddings:
+                    summary["mean_pooled_embedding"] = _mean_pooled_embedding(hidden_tensor)
                 if self.feature_extractor is not None:
                     feature_summary = self.feature_extractor.summarize(
                         layer_index=index,

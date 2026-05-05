@@ -72,6 +72,26 @@ class TestModelHookBus(unittest.TestCase):
                 model_name="Qwen/Qwen3.5-2B",
             )
 
+    def test_capture_can_emit_mean_pooled_embeddings(self):
+        model = _FakeCausalModel(layer_count=2, hidden_size=4)
+        bus = ModelHookBus(
+            HookObservationConfig(
+                layer_indices=[0, 1],
+                capture_raw_embeddings=True,
+            )
+        )
+
+        artifact = bus.capture(
+            model,
+            {"input_ids": torch.tensor([[1, 2]], dtype=torch.long)},
+            model_name="Qwen/Qwen3.5-2B",
+        )
+
+        self.assertEqual(artifact["captured_layer_count"], 2)
+        pooled = artifact["observations"][0]["mean_pooled_embedding"]
+        self.assertEqual(pooled["shape"], [1, 4])
+        self.assertEqual(len(pooled["values"][0]), 4)
+
 
 if __name__ == "__main__":
     unittest.main()
