@@ -385,6 +385,7 @@ def run_live_fire_diagnostics() -> Dict[str, Any]:
         phase="live_fire",
         baseline_fitness=baseline_result.fitness,
         runtime=runtime.get("runtime"),
+        model_scope=runtime.get("model_scope"),
         norm_drift=runtime.get("norm_drift"),
         route_effectiveness=runtime.get("route_effectiveness"),
         retrieval_policy=runtime.get("retrieval_policy"),

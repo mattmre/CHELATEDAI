@@ -104,6 +104,15 @@ class ChelationConfig:
     OLLAMA_MAX_WORKERS = 2  # Concurrent requests to avoid overwhelming server
     OLLAMA_INPUT_MAX_CHARS = 10000  # Hard safety cap before truncation retries
 
+    # ===== Model-Scope Runtime Configuration =====
+    MODEL_SCOPE_ENABLED = False
+    MODEL_SCOPE_PRIMARY_PILOT_MODEL = "Qwen/Qwen3.5-9B"
+    MODEL_SCOPE_DEBUG_MODEL_NAME = "Qwen/Qwen3.5-2B"
+    MODEL_SCOPE_MAX_INPUT_TOKENS = 256
+    MODEL_SCOPE_SUMMARY_TOP_DIMENSIONS = 8
+    MODEL_SCOPE_ARTIFACT_ROOT = PROJECT_ROOT / "experiment_runs" / "model_scope"
+    MODEL_SCOPE_DEPLOYMENT_MODE = "observation_only"
+
     # Truncation strategy for long documents (Ollama mode)
     OLLAMA_TRUNCATION_LIMITS = [6000, 2000, 500]  # chars, tried in order
 
@@ -209,7 +218,33 @@ class ChelationConfig:
             "adapter_type": "low_rank",
             "rank": 16,
             "description": "Low-rank affine correction"
-        }
+        },
+        "attnres": {
+            "adapter_type": "attnres",
+            "num_blocks": 4,
+            "description": "Block Attention Residual adapter (MoonshotAI AttnRes, 2025)"
+        },
+    }
+
+    # ===== Block Attention Residual Adapter Presets (AttnRes) =====
+    # Inspired by MoonshotAI "Attention Residuals" (2025): replaces fixed x+delta
+    # residual with multi-block corrections + learned cross-block attention aggregation.
+    ATTNRES_ADAPTER_PRESETS = {
+        "shallow": {
+            "adapter_type": "attnres",
+            "num_blocks": 2,
+            "description": "2-block AttnRes — fast inference, minimal parameters",
+        },
+        "balanced": {
+            "adapter_type": "attnres",
+            "num_blocks": 4,
+            "description": "4-block AttnRes — default trade-off between expressiveness and compute",
+        },
+        "deep": {
+            "adapter_type": "attnres",
+            "num_blocks": 8,
+            "description": "8-block AttnRes — matches paper block count, most expressive",
+        },
     }
 
     # ===== Bounded Adapter Configuration (Session 31) =====
@@ -904,6 +939,7 @@ class ChelationConfig:
             "sedimentation_loss": cls.SEDIMENTATION_LOSS_PRESETS,
             "kalman_lr": cls.KALMAN_LR_PRESETS,
             "es_optimizer": cls.ES_OPTIMIZER_PRESETS,
+            "attnres_adapter": cls.ATTNRES_ADAPTER_PRESETS,
         }
         
         if preset_type not in preset_map:

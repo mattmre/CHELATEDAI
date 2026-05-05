@@ -49,6 +49,7 @@ class IntegratedDiagnosticsReport:
     timings: Dict[str, float] = field(default_factory=dict)
     metadata: Dict[str, Any] = field(default_factory=dict)
     runtime: Optional[Dict[str, Any]] = None
+    model_scope: Optional[Dict[str, Any]] = None
     norm_drift: Optional[Dict[str, Any]] = None
     route_effectiveness: Optional[Dict[str, Any]] = None
     retrieval_policy: Optional[Dict[str, Any]] = None
@@ -56,6 +57,12 @@ class IntegratedDiagnosticsReport:
     query_summary: Optional[Dict[str, Any]] = None
     training_summary: Optional[Dict[str, Any]] = None
     next_cycle_plan: Optional[Dict[str, Any]] = None
+    evidence_summary: Optional[Dict[str, Any]] = None
+    evaluator_summary: Optional[Dict[str, Any]] = None
+    safety_summary: Optional[Dict[str, Any]] = None
+    rag_faithfulness: Optional[Dict[str, Any]] = None
+    reward_overoptimization: Optional[Dict[str, Any]] = None
+    hard_negative_summary: Optional[Dict[str, Any]] = None
 
     @classmethod
     def from_composition(
@@ -69,6 +76,7 @@ class IntegratedDiagnosticsReport:
         timings: Optional[Dict[str, float]] = None,
         metadata: Optional[Dict[str, Any]] = None,
         runtime: Optional[Dict[str, Any]] = None,
+        model_scope: Optional[Dict[str, Any]] = None,
         norm_drift: Optional[Dict[str, Any]] = None,
         route_effectiveness: Optional[Dict[str, Any]] = None,
         retrieval_policy: Optional[Dict[str, Any]] = None,
@@ -76,6 +84,12 @@ class IntegratedDiagnosticsReport:
         query_summary: Optional[Dict[str, Any]] = None,
         training_summary: Optional[Dict[str, Any]] = None,
         next_cycle_plan: Optional[Dict[str, Any]] = None,
+        evidence_summary: Optional[Dict[str, Any]] = None,
+        evaluator_summary: Optional[Dict[str, Any]] = None,
+        safety_summary: Optional[Dict[str, Any]] = None,
+        rag_faithfulness: Optional[Dict[str, Any]] = None,
+        reward_overoptimization: Optional[Dict[str, Any]] = None,
+        hard_negative_summary: Optional[Dict[str, Any]] = None,
     ) -> "IntegratedDiagnosticsReport":
         composed = composition.to_dict()
         return cls(
@@ -94,6 +108,7 @@ class IntegratedDiagnosticsReport:
             timings=timings or {},
             metadata=metadata or {},
             runtime=runtime,
+            model_scope=model_scope,
             norm_drift=norm_drift,
             route_effectiveness=route_effectiveness,
             retrieval_policy=retrieval_policy,
@@ -101,6 +116,12 @@ class IntegratedDiagnosticsReport:
             query_summary=query_summary,
             training_summary=training_summary,
             next_cycle_plan=next_cycle_plan,
+            evidence_summary=evidence_summary,
+            evaluator_summary=evaluator_summary,
+            safety_summary=safety_summary,
+            rag_faithfulness=rag_faithfulness,
+            reward_overoptimization=reward_overoptimization,
+            hard_negative_summary=hard_negative_summary,
         )
 
     def to_dict(self) -> Dict[str, Any]:
@@ -122,6 +143,7 @@ class IntegratedDiagnosticsReport:
         }
         optional_sections = {
             "runtime": self.runtime,
+            "model_scope": self.model_scope,
             "norm_drift": self.norm_drift,
             "route_effectiveness": self.route_effectiveness,
             "retrieval_policy": self.retrieval_policy,
@@ -129,6 +151,12 @@ class IntegratedDiagnosticsReport:
             "query_summary": self.query_summary,
             "training_summary": self.training_summary,
             "next_cycle_plan": self.next_cycle_plan,
+            "evidence_summary": self.evidence_summary,
+            "evaluator_summary": self.evaluator_summary,
+            "safety_summary": self.safety_summary,
+            "rag_faithfulness": self.rag_faithfulness,
+            "reward_overoptimization": self.reward_overoptimization,
+            "hard_negative_summary": self.hard_negative_summary,
         }
         for key, value in optional_sections.items():
             if value is not None:

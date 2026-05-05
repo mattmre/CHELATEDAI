@@ -1,3 +1,4 @@
+import copy
 import hashlib
 import time
 
@@ -146,8 +147,15 @@ class AntigravityEngine:
             "total_inferences": 0,
             "empty_result_count": 0,
             "qdrant_error_count": 0,
+            "model_scope_enabled": False,
+            "model_scope_observation_count": 0,
+            "model_scope_error_count": 0,
         }
         self._last_embedding_norms = None
+        self._model_scope_runtime = None
+        self._model_scope_config = None
+        self._last_model_scope_artifact = None
+        self._model_scope_observation_active = False
 
     def embed(self, texts):
         """Get Embeddings via backend abstraction."""
@@ -929,16 +937,61 @@ class AntigravityEngine:
         if max_variants < 1:
             raise ValueError("max_variants must be >= 1")
         from query_reformulator import should_apply_reformulation
-        should_apply_reformulation("calibration query", policy)
+        policy_snapshot = copy.deepcopy(policy)
+        should_apply_reformulation("calibration query", policy_snapshot)
         from query_reformulator import QueryReformulator
         self._query_reformulator = QueryReformulator()
         self._query_reformulator_max_variants = max_variants
-        self._query_reformulator_policy = policy
+        self._query_reformulator_policy = policy_snapshot
         self.logger.log_event(
             "query_reformulation_enabled",
             "Query reformulation enabled",
             max_variants=max_variants,
-            policy=policy,
+            policy=self._runtime_json_safe(policy_snapshot),
+        )
+
+    def enable_model_scope_observation(
+        self,
+        model_name=None,
+        *,
+        layer_indices=None,
+        max_input_tokens=None,
+        summary_top_dimensions=None,
+        artifact_dir=None,
+        eager_load=False,
+        runtime=None,
+    ):
+        """Enable observation-only Model-Scope capture for query text."""
+
+        if runtime is None:
+            from model_scope_runtime import create_model_scope_runtime
+
+            runtime = create_model_scope_runtime(
+                model_name=model_name or ChelationConfig.MODEL_SCOPE_DEBUG_MODEL_NAME,
+                layer_indices=layer_indices,
+                max_input_tokens=max_input_tokens,
+                summary_top_dimensions=summary_top_dimensions,
+                artifact_dir=artifact_dir or str(ChelationConfig.MODEL_SCOPE_ARTIFACT_ROOT),
+                eager_load=eager_load,
+                logger=self.logger,
+            )
+        self._model_scope_runtime = runtime
+        self._model_scope_config = self._runtime_json_safe(
+            runtime.describe_runtime() if hasattr(runtime, "describe_runtime") else {
+                "model_name": model_name or ChelationConfig.MODEL_SCOPE_DEBUG_MODEL_NAME,
+                "layer_indices": list(layer_indices) if layer_indices is not None else None,
+                "max_input_tokens": max_input_tokens or ChelationConfig.MODEL_SCOPE_MAX_INPUT_TOKENS,
+                "summary_top_dimensions": (
+                    summary_top_dimensions or ChelationConfig.MODEL_SCOPE_SUMMARY_TOP_DIMENSIONS
+                ),
+                "artifact_dir": artifact_dir or str(ChelationConfig.MODEL_SCOPE_ARTIFACT_ROOT),
+            }
+        )
+        self._runtime_telemetry["model_scope_enabled"] = True
+        self.logger.log_event(
+            "model_scope_observation_enabled",
+            "Model-Scope observation enabled",
+            config=self._model_scope_config,
         )
 
     def enable_adapter_routing(self, routes):
@@ -976,6 +1029,14 @@ class AntigravityEngine:
             return None
         return self._runtime_json_safe(diagnostics)
 
+    def get_last_model_scope_artifact(self):
+        """Return the last Model-Scope artifact snapshot, if available."""
+
+        artifact = getattr(self, "_last_model_scope_artifact", None)
+        if artifact is None:
+            return None
+        return self._runtime_json_safe(artifact)
+
     def get_runtime_telemetry(self):
         """Return lightweight AI-engineering runtime telemetry."""
 
@@ -983,6 +1044,9 @@ class AntigravityEngine:
         telemetry.setdefault("mode", getattr(self, "mode", "unknown"))
         telemetry.setdefault("model_name", getattr(self, "model_name", "unknown"))
         telemetry.setdefault("vector_size", int(getattr(self, "vector_size", 0) or 0))
+        telemetry.setdefault("model_scope_enabled", bool(getattr(self, "_model_scope_runtime", None) is not None))
+        telemetry.setdefault("model_scope_observation_count", 0)
+        telemetry.setdefault("model_scope_error_count", 0)
         telemetry["torch_cuda_available"] = bool(torch.cuda.is_available())
         if torch.cuda.is_available():
             telemetry["cuda_device_name"] = torch.cuda.get_device_name(0)
@@ -1017,6 +1081,58 @@ class AntigravityEngine:
             "high_variance_fast_path": bool(variance_above_threshold and action == "FAST"),
         }
 
+    def _observe_model_scope_query(self, query_text):
+        runtime = getattr(self, "_model_scope_runtime", None)
+        if runtime is None:
+            return None
+        if (
+            getattr(self, "_model_scope_observation_active", False)
+            or getattr(self, "_query_reformulation_active", False)
+            or getattr(self, "_adapter_routing_active", False)
+        ):
+            return None
+        self._model_scope_observation_active = True
+        try:
+            artifact = runtime.observe_text(
+                query_text,
+                metadata={
+                    "source": "antigravity_engine",
+                    "engine_model_name": self.model_name,
+                    "deployment_mode": ChelationConfig.MODEL_SCOPE_DEPLOYMENT_MODE,
+                },
+            )
+            self._last_model_scope_artifact = artifact
+            telemetry = dict(getattr(self, "_runtime_telemetry", {}))
+            telemetry["model_scope_enabled"] = True
+            telemetry["model_scope_observation_count"] = int(telemetry.get("model_scope_observation_count", 0)) + 1
+            self._runtime_telemetry = telemetry
+            capture = artifact.get("capture", {})
+            return {
+                "status": "observed",
+                "model_name": artifact.get("runtime", {}).get("model_name"),
+                "token_count": capture.get("token_count"),
+                "captured_layer_count": capture.get("captured_layer_count", 0),
+                "layer_indices": capture.get("layer_indices"),
+                "output_path": artifact.get("output_path"),
+                "steering": artifact.get("steering"),
+                "memory": artifact.get("memory"),
+                "expectation_comparison": artifact.get("expectation_comparison"),
+            }
+        except Exception as exc:
+            telemetry = dict(getattr(self, "_runtime_telemetry", {}))
+            telemetry["model_scope_enabled"] = True
+            telemetry["model_scope_error_count"] = int(telemetry.get("model_scope_error_count", 0)) + 1
+            self._runtime_telemetry = telemetry
+            self.logger.log_error("model_scope", "Model-Scope observation failed", exception=exc)
+            return {
+                "status": "error",
+                "model_name": getattr(getattr(runtime, "config", None), "model_name", None),
+                "error_type": type(exc).__name__,
+                "message": str(exc),
+            }
+        finally:
+            self._model_scope_observation_active = False
+
     def _build_runtime_diagnostics(
         self,
         query_text,
@@ -1029,6 +1145,7 @@ class AntigravityEngine:
         active_threshold=None,
         route=None,
         query_reformulation=None,
+        model_scope=None,
         status="ok",
         retrieval_policy=None,
         norm_drift=None,
@@ -1060,6 +1177,7 @@ class AntigravityEngine:
             ),
             "route": route,
             "query_reformulation": query_reformulation,
+            "model_scope": model_scope,
             "norm_drift": norm_drift,
             "telemetry": self.get_runtime_telemetry(),
         }
@@ -2039,6 +2157,7 @@ class AntigravityEngine:
     def run_inference(self, query_text):
         """Full Navigational Loop (returns IDs)."""
         inference_start = time.time()
+        model_scope_summary = self._observe_model_scope_query(query_text)
         reformulator = getattr(self, '_query_reformulator', None)
         if reformulator is not None and not getattr(self, '_query_reformulation_active', False):
             from query_reformulator import should_apply_reformulation
@@ -2082,6 +2201,7 @@ class AntigravityEngine:
                         jaccard=0.0,
                         status="empty_results",
                         query_reformulation={"variant_count": 0, "variants": []},
+                        model_scope=model_scope_summary,
                     ))
                     return [], [], np.ones(self.vector_size), 0.0
                 fused_top = self._fuse_reformulated_rankings(variant_rankings, limit=10)
@@ -2122,6 +2242,7 @@ class AntigravityEngine:
                         "variance_above_threshold": False,
                         "high_variance_fast_path": False,
                     },
+                    model_scope=model_scope_summary,
                 ))
                 return final_result
             finally:
@@ -2156,6 +2277,7 @@ class AntigravityEngine:
                 route=route_metadata,
                 status="embedding_error",
                 error_type=type(e).__name__,
+                model_scope=model_scope_summary,
             ))
             return [], [], np.ones(self.vector_size), 0.0
         adapter_router = getattr(self, '_adapter_router', None)
@@ -2195,6 +2317,7 @@ class AntigravityEngine:
                         if hasattr(adapter_router, "get_route_effectiveness")
                         else None
                     )
+                    diagnostics.setdefault("model_scope", model_scope_summary)
                     diagnostics.setdefault("runtime", {})["latency_ms"] = route_latency_ms
                     self._record_runtime_diagnostics(diagnostics)
                     return result
@@ -2235,6 +2358,7 @@ class AntigravityEngine:
                     route=route_metadata,
                     status="empty_results",
                     retrieval_policy=retrieval_policy,
+                    model_scope=model_scope_summary,
                 ))
                 return [], [], np.ones(self.vector_size), 0.0
 
@@ -2347,6 +2471,7 @@ class AntigravityEngine:
                 status="ok",
                 retrieval_policy=retrieval_policy,
                 norm_drift=norm_drift_report,
+                model_scope=model_scope_summary,
             )
             diagnostics["route_outcome"] = route_outcome
             diagnostics["route_effectiveness"] = route_effectiveness
@@ -2367,11 +2492,20 @@ class AntigravityEngine:
                 route=route_metadata,
                 status="qdrant_error",
                 error_type=type(e).__name__,
+                model_scope=model_scope_summary,
             ))
             return [], [], np.ones(self.vector_size), 0.0
 
     def close(self):
         """Close vector store and release resources (idempotent)."""
+        runtime = getattr(self, "_model_scope_runtime", None)
+        if runtime is not None and hasattr(runtime, "close"):
+            try:
+                runtime.close()
+            except Exception as e:
+                self.logger.log_error("resource_cleanup", f"Error closing Model-Scope runtime: {e}", exception=e)
+            finally:
+                self._model_scope_runtime = None
         if self._vector_store is not None:
             try:
                 self._vector_store.close()

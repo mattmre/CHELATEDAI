@@ -11,6 +11,7 @@ license = {text = "MIT"}
 dependencies = [
     "numpy>=1.24",
     "torch>=2.0",
+    "transformers>=4.51",
     "sentence-transformers>=2.2",
     "qdrant-client>=1.7",
     "scikit-learn>=1.5",
@@ -27,6 +28,7 @@ chelatedai-learned-mask-smoke = "learned_mask_policy:main"
 chelatedai-research-pathways = "research_pathway_analyzer:main"
 chelatedai-static-mask-probe = "static_mask_probe:main"
 chelatedai-safety-testbed = "run_safety_testbed:main"
+chelatedai-model-scope-campaign = "run_model_scope_campaign:main"
 
 [project.optional-dependencies]
 benchmark = ["mteb>=1.0"]
@@ -49,21 +51,35 @@ py-modules = [
     "chelation_logger",
     "config",
     "convergence_monitor",
+    "compute_budget_policy",
     "dashboard_server",
     "dimension_mask_predictor",
     "device_profiles",
     "distributed_fitness_evaluator",
     "embedding_backend",
     "embedding_quality",
+    "evaluator_fabric",
+    "evidence_contract",
+    "expectation_comparator",
     "elite_archive",
     "evolution_strategies_optimizer",
     "fitness_interfaces",
+    "model_hook_bus",
+    "model_scope_artifacts",
+    "model_scope_features",
+    "model_scope_memory",
+    "model_scope_runtime",
+    "model_scope_steering",
+    "model_scope_trainer",
     "online_updater",
+    "promotion_contract",
     "quantization_promotion_gate",
     "query_reformulator",
+    "qwen_scope_adapter",
     "recursive_decomposer",
     "reproducibility_context",
     "run_live_fire_diagnostics",
+    "run_model_scope_campaign",
     "run_road_course_campaign",
     "run_road_course_tuning_loop",
     "run_thousand_query_tuning",
@@ -76,6 +92,7 @@ py-modules = [
     "sedimentation",
     "sedimentation_trainer",
     "self_healing_chelation",
+    "steering_policy",
     "stability_tracker",
     "structural_health_score",
     "retrieval_fitness_evaluator",

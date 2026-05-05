@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -319,13 +321,161 @@ class BoundedAdapter(nn.Module):
         return False
 
 
+class BlockAttnResAdapter(nn.Module):
+    """
+    Block Attention Residual adapter.
+
+    Implements the Block-AttnRes design from MoonshotAI's "Attention Residuals"
+    paper (2025). Instead of a single x + delta residual, runs `num_blocks`
+    sequential correction blocks (standard within-block residuals) then uses
+    a learned softmax cross-block attention to aggregate all block outputs.
+
+    The attention selects which correction depth is most useful per input,
+    preventing single-shot over-correction and bounding output magnitude — the
+    same two pathologies AttnRes addresses in deep transformer stacks.
+
+    Args:
+        input_dim: Embedding dimension.
+        num_blocks: Number of correction blocks (default 4; paper uses ~8).
+        proj_dim: Key/query projection dimension (default input_dim // 4, min 32).
+    """
+
+    def __init__(self, input_dim: int, num_blocks: int = 4, proj_dim: int | None = None):
+        super().__init__()
+        self.input_dim = input_dim
+        self.num_blocks = num_blocks
+        proj = proj_dim if proj_dim is not None else max(input_dim // 4, 32)
+
+        self.blocks = nn.ModuleList([
+            nn.Sequential(
+                nn.Linear(input_dim, input_dim // 2),
+                nn.ReLU(),
+                nn.Linear(input_dim // 2, input_dim),
+            )
+            for _ in range(num_blocks)
+        ])
+        self.query_proj = nn.Linear(input_dim, proj)
+        self.key_proj = nn.Linear(input_dim, proj)
+        self._attn_scale = proj ** -0.5
+
+        for block in self.blocks:
+            nn.init.normal_(block[0].weight, std=0.001)
+            nn.init.zeros_(block[0].bias)
+            nn.init.normal_(block[2].weight, std=0.001)
+            nn.init.zeros_(block[2].bias)
+        nn.init.normal_(self.query_proj.weight, std=0.001)
+        nn.init.zeros_(self.query_proj.bias)
+        nn.init.normal_(self.key_proj.weight, std=0.001)
+        nn.init.zeros_(self.key_proj.bias)
+
+    def forward(self, x):
+        if x.dim() == 0 or x.dim() > 2:
+            raise ValueError(
+                f"BlockAttnResAdapter expects 1D or 2D input, got {x.dim()}D tensor with shape {x.shape}"
+            )
+        input_was_1d = (x.dim() == 1)
+        if input_was_1d:
+            x = x.unsqueeze(0)
+
+        # Within-block residuals; collect all states including input
+        block_states = [x]
+        h = x
+        for block in self.blocks:
+            h = h + block(h)
+            block_states.append(h)
+
+        # Cross-block attention: final block state as query, all states as keys/values
+        states = torch.stack(block_states, dim=1)                                   # [B, N+1, d]
+        query = self.query_proj(h)                                                  # [B, proj]
+        keys = self.key_proj(states)                                                # [B, N+1, proj]
+        attn = (query.unsqueeze(1) @ keys.transpose(-2, -1)) * self._attn_scale    # [B, 1, N+1]
+        attn = F.softmax(attn, dim=-1)
+        out = (attn @ states).squeeze(1)                                            # [B, d]
+
+        out = F.normalize(out, p=2, dim=1)
+        if input_was_1d:
+            out = out.squeeze(0)
+        return out
+
+    def regularization_loss(self):
+        return 0.0
+
+    def save(self, path):
+        path = validate_safe_path(Path(path))
+        torch.save(self.state_dict(), path)
+
+    def load(self, path):
+        path = validate_safe_path(Path(path))
+        if os.path.exists(path):
+            try:
+                self.load_state_dict(torch.load(path, weights_only=True))
+                return True
+            except RuntimeError:
+                return False
+        return False
+
+
+class LayerAttentionAggregator(nn.Module):
+    """
+    Learned cross-layer attention aggregation for transformer embeddings.
+
+    Applies the AttnRes cross-block aggregation concept at the transformer level:
+    instead of using only the last (or averaged) layer output, learns a softmax
+    attention over all captured layer embeddings and returns a weighted combination.
+
+    Intended for use with mean-pooled per-layer hidden states captured via
+    ModelHookBus or equivalent layer-output extraction.
+
+    Args:
+        hidden_size: Transformer hidden dimension.
+        proj_dim: Attention projection dimension (default hidden_size // 8, min 32).
+    """
+
+    def __init__(self, hidden_size: int, proj_dim: int | None = None):
+        super().__init__()
+        self.hidden_size = hidden_size
+        proj = proj_dim if proj_dim is not None else max(hidden_size // 8, 32)
+        self.query_proj = nn.Linear(hidden_size, proj)
+        self.key_proj = nn.Linear(hidden_size, proj)
+        self._attn_scale = proj ** -0.5
+
+        nn.init.normal_(self.query_proj.weight, std=0.001)
+        nn.init.zeros_(self.query_proj.bias)
+        nn.init.normal_(self.key_proj.weight, std=0.001)
+        nn.init.zeros_(self.key_proj.bias)
+
+    def forward(self, layer_embeddings: torch.Tensor) -> torch.Tensor:
+        """
+        Aggregate mean-pooled layer embeddings via learned attention.
+
+        Args:
+            layer_embeddings: [batch, num_layers, hidden_size] — mean-pooled
+                              per-layer hidden states.
+
+        Returns:
+            [batch, hidden_size] — L2-normalized attention-weighted aggregation.
+        """
+        if layer_embeddings.dim() != 3 or layer_embeddings.size(-1) != self.hidden_size:
+            raise ValueError(
+                f"LayerAttentionAggregator expects [B, L, {self.hidden_size}] input, "
+                f"got {tuple(layer_embeddings.shape)}"
+            )
+        # Mean of all layers as a neutral query baseline
+        query = self.query_proj(layer_embeddings.mean(dim=1))       # [B, proj]
+        keys = self.key_proj(layer_embeddings)                       # [B, L, proj]
+        attn = (query.unsqueeze(1) @ keys.transpose(-2, -1)) * self._attn_scale  # [B, 1, L]
+        attn = F.softmax(attn, dim=-1)
+        out = (attn @ layer_embeddings).squeeze(1)                   # [B, d]
+        return F.normalize(out, p=2, dim=1)
+
+
 def create_adapter(adapter_type="mlp", input_dim=768, bounded=False,
                    min_correction=0.01, max_correction=0.5, **kwargs):
     """
     Factory function to create adapter instances by type name.
 
     Args:
-        adapter_type: One of "mlp", "procrustes", "low_rank"
+        adapter_type: One of "mlp", "procrustes", "low_rank", "attnres"
         input_dim: Embedding dimension
         bounded: If True, wrap in BoundedAdapter for quantization-safe corrections
         min_correction: Minimum correction norm (BoundedAdapter only, default 0.01)
@@ -333,6 +483,7 @@ def create_adapter(adapter_type="mlp", input_dim=768, bounded=False,
         **kwargs: Additional args passed to adapter constructor
             - For "mlp": hidden_dim (optional)
             - For "low_rank": rank (default 16)
+            - For "attnres": num_blocks (default 4), proj_dim (optional)
 
     Returns:
         nn.Module: Adapter instance (optionally wrapped in BoundedAdapter)
@@ -349,8 +500,12 @@ def create_adapter(adapter_type="mlp", input_dim=768, bounded=False,
     elif adapter_type == "low_rank":
         rank = kwargs.get("rank", 16)
         adapter = LowRankAffineAdapter(input_dim=input_dim, rank=rank)
+    elif adapter_type == "attnres":
+        num_blocks = kwargs.get("num_blocks", 4)
+        proj_dim = kwargs.get("proj_dim", None)
+        adapter = BlockAttnResAdapter(input_dim=input_dim, num_blocks=num_blocks, proj_dim=proj_dim)
     else:
-        valid = ["mlp", "procrustes", "low_rank"]
+        valid = ["mlp", "procrustes", "low_rank", "attnres"]
         raise ValueError(f"Unknown adapter_type '{adapter_type}'. Valid types: {valid}")
 
     if bounded:

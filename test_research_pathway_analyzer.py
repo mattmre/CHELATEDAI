@@ -115,6 +115,37 @@ class TestResearchPathwayAnalyzer(unittest.TestCase):
         self.assertTrue(result["learned_mask"]["recovered"])
         self.assertIsNone(result["golden_setting"])
 
+    def test_meta_analysis_prefers_engine_scope_rows_when_present(self):
+        artifact = {
+            "engine_scope_rows": [
+                {
+                    "row_type": "query_profile",
+                    "source_family": "reformulation_collection",
+                    "profile": "candidate",
+                    "delta_ndcg_at_10": 0.1,
+                    "top_doc_changed": True,
+                    "action": "REFORMULATE",
+                },
+                {
+                    "row_type": "mask_probe",
+                    "source_family": "mask_collection",
+                    "profile": None,
+                    "delta_ndcg_at_10": 0.3,
+                },
+            ],
+            "loops": [],
+        }
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "artifact.json"
+            path.write_text(__import__("json").dumps(artifact), encoding="utf-8")
+
+            result = run_meta_analysis([path])
+
+        self.assertEqual(result["artifact_count"], 1)
+        self.assertEqual(result["query_attribution_rows"], 2)
+        self.assertIn("candidate", result["query_attribution_summary"])
+        self.assertNotIn("None", result["query_attribution_summary"])
+
 
 if __name__ == "__main__":
     unittest.main()
