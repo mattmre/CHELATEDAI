@@ -6,7 +6,7 @@ Purpose: Keep a single canonical link to the current tracker to reduce context c
 - `docs/ARCH AGENTIC ENGINEERING AND PLANNING/cycles/2026-05-01/tracker-2026-05-01.md`
 
 ## Last Updated
-- 2026-05-01 (Model-Scope cycle creation)
+- 2026-05-05 (Model-Scope cycle closed; autonomous frontier queue created)
 
 ## Cycle ID
 - AEP-2026-05-01
@@ -19,4 +19,4 @@ Consistency rule:
 - `docs/ARCH AGENTIC ENGINEERING AND PLANNING/cycles/2026-05-01/verification-log.md`
 
 Note:
-- The active cycle is now the Model-Scope implementation program. The canonical roadmap is `docs/ARCH AGENTIC ENGINEERING AND PLANNING/architecture-2026-05-01-model-scope-roadmap.md`, and the canonical backlog/tracker live under `cycles/2026-05-01/`.
+- The Model-Scope implementation program is closed as an implementation cycle. Continue from `docs/ARCH AGENTIC ENGINEERING AND PLANNING/roadmap-execution-queue-2026-05-05.md` for frontier research, validation campaigns, hardware evidence, and adaptive-overlay follow-ups.

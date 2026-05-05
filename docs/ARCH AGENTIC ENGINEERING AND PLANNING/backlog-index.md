@@ -6,8 +6,8 @@ Purpose: Track master backlog files across cycles.
 | cycle-id | cycle start date | scope lock | PR range | owner | status | closed date | link |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | AEP-2026-02-13 | 2026-02-13 | Full codebase | #5, #8, #9, #10, #11 | Copilot CLI | COMPLETE (55/55 resolved) | 2026-02-18 | [backlog-2026-02-13.md](backlog-2026-02-13.md) |
-| AEP-2026-04-30 | 2026-04-30 | Engine-Scope implementation planning and autonomous golden-default search redesign | `PR000` planning cycle plus future Engine-Scope implementation PR series | Codex | IN PROGRESS (planning created; implementation pending) |  | [cycles/2026-04-30/backlog-2026-04-30.md](cycles/2026-04-30/backlog-2026-04-30.md) |
-| AEP-2026-05-01 | 2026-05-01 | Model-Scope implementation planning for true model hooks, sparse feature steering, segmented memory, and bounded overlay promotion | `PR000` planning cycle plus future Model-Scope implementation PR series | Codex | IN PROGRESS (planning created; implementation pending) |  | [cycles/2026-05-01/backlog-2026-05-01.md](cycles/2026-05-01/backlog-2026-05-01.md) |
+| AEP-2026-04-30 | 2026-04-30 | Engine-Scope implementation planning and autonomous golden-default search redesign | `PR000` planning cycle plus follow-up implementation PRs | Codex | COMPLETE (implementation slices landed; no default promotion) | 2026-05-05 | [cycles/2026-04-30/backlog-2026-04-30.md](cycles/2026-04-30/backlog-2026-04-30.md) |
+| AEP-2026-05-01 | 2026-05-01 | Model-Scope implementation planning for true model hooks, sparse feature steering, segmented memory, and bounded overlay promotion | `PR000` planning cycle plus follow-up implementation PRs | Codex | COMPLETE (implementation slices landed; overlay promotion remains fail-closed) | 2026-05-05 | [cycles/2026-05-01/backlog-2026-05-01.md](cycles/2026-05-01/backlog-2026-05-01.md) |
 
 ## Session Logs
 | session | date | findings resolved | tests added | link |

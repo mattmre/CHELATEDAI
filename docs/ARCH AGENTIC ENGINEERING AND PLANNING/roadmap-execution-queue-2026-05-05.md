@@ -1,0 +1,47 @@
+# Roadmap Execution Queue - 2026-05-05
+
+Purpose: Durable continuation queue after Engine-Scope, Model-Scope, and adaptive overlay implementation scaffolds landed on `main`.
+
+## Status
+- Engine-Scope cycle: complete as implementation scaffold; no default promotion.
+- Model-Scope cycle: complete as implementation scaffold; promotion remains fail-closed.
+- Adaptive overlay chain: implemented through records, metrics, readiness, promotion input, campaign reporting, integrated diagnostics, and dashboard summaries.
+
+## Execution Rules
+- Review open PR comments and checks before creating new branches.
+- Keep one PR-sized slice per branch.
+- Each PR must include focused validation and a phase summary or session-log update.
+- Re-run a research/refinement pass before starting any high-uncertainty implementation path.
+- Do not promote defaults from single-slice or single-seed evidence.
+
+## Priority Queue
+| rank | item | type | status | acceptance target |
+| --- | --- | --- | --- | --- |
+| 1 | Broader adaptive-overlay replay and holdout validation | validation | next | produce replay/holdout artifact proving ready or blocked status |
+| 2 | Overlay artifact cards for promoted or candidate overlays | reporting | next | compact card includes purpose, base, data, evals, safety checks, limitations, rollback |
+| 3 | Dashboard detail drilldown for adaptive overlay summaries | reporting | next | dashboard/API exposes latest blockers and branch metrics without full records |
+| 4 | Frontier research refresh for adaptive overlays and test-time scaling | research | next | repo doc maps accepted/rejected ideas into the queue |
+| 5 | Model-Scope smoke campaign with supplied overlay report | validation | next | campaign report shows promotion decision and overlay summary together |
+| 6 | Hard-negative replay expansion for overlay readiness | validation | queued | readiness summary includes stress replay blocker state |
+| 7 | Repeat-seed AttnRes contrastive/quantization-aware experiment | research/validation | queued | result doc states promote/no-promote with repeat-seed evidence |
+| 8 | Computational-storage real-hardware evidence capture | operational | externally blocked | hardware report captured on actual RP2040/Pico device |
+| 9 | Dashboard campaign-history view for model-scope reports | reporting | queued | latest campaign reports visible without reading files manually |
+| 10 | Promotion-contract artifact-card linkage | implementation | queued | promotion decision links candidate artifact card and rollback path |
+| 11 | Overlay-ready branch-set collection policy | implementation | queued | collection policy picks windows by coverage and overlay novelty |
+| 12 | Long-run validation bundle | validation | queued | single command runs focused overlay/model-scope regression suite |
+| 13 | ARCH-AEP tracker closure audit | documentation | queued | all current trackers/indexes agree on open/complete/external-blocked state |
+| 14 | Session memory and resume summary refresh | documentation | recurring | next-session and phase summary stay current after each merged PR |
+| 15 | Default-promotion decision review | governance | gated | only starts after validation items show repeatable positive evidence |
+
+## Closed Implementation Scaffolds
+- Engine-Scope row contract, internal gates, coverage analysis, hard-negative pipeline, and supervisor integration are implemented.
+- Model-Scope hook runtime, feature extraction, shadow steering, segmented memory, overlay training/promotion, and engine integration are implemented.
+- HeavySkill-derived adaptive overlay scaffolding is implemented as an observation-first engine-control layer, not as a full harness.
+
+## Known Non-Goals
+- No base-weight mutation.
+- No default runtime route changes from weak or single-run evidence.
+- No full HeavySkill-style agent harness unless a verifier-backed use case appears.
+
+## Resume Note
+Start the next branch from the highest-ranked `next` item that is not blocked. If research changes the ranking, update this file in the same PR that records the research.
