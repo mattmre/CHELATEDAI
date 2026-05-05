@@ -1,7 +1,9 @@
+import json
 import tempfile
 import unittest
 from pathlib import Path
 
+from adaptive_overlay import build_overlay_report
 from model_scope_artifacts import build_model_scope_artifact, write_model_scope_artifact
 from run_model_scope_campaign import run_model_scope_campaign
 
@@ -95,6 +97,92 @@ class TestRunModelScopeCampaign(unittest.TestCase):
 
             self.assertNotIn("missing_holdout_report", report["promotion_decision"]["reasons"])
             self.assertNotIn("missing_safety_report", report["promotion_decision"]["reasons"])
+
+    def test_campaign_passes_unready_adaptive_overlay_into_promotion_decision(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            input_dir = root / "artifacts"
+            output_dir = root / "outputs"
+            input_dir.mkdir()
+
+            write_model_scope_artifact(input_dir / "q1_ref.json", _artifact("q1", "hash-q1", feature_id="101", value=1.2))
+            write_model_scope_artifact(input_dir / "q1_repeat.json", _artifact("q1", "hash-q1", feature_id="101", value=1.1))
+            overlay_report = build_overlay_report([
+                {
+                    "task": "SciFact",
+                    "seed": 1,
+                    "query_id": "q1",
+                    "profile": "mask_gate_v1",
+                    "delta_ndcg_at_10": -0.02,
+                    "fault_class": "actuator_active_negative",
+                    "promotion_blocker": True,
+                }
+            ])
+
+            report = run_model_scope_campaign(
+                input_dir,
+                output_dir=output_dir,
+                max_rules=4,
+                min_alignment_score=0.5,
+                holdout_report={"passed": True, "score": 0.8},
+                safety_report={"passed": True},
+                adaptive_overlay_report=overlay_report,
+            )
+
+            self.assertIn("adaptive_overlay_report", report["outputs"])
+            self.assertTrue((output_dir / "adaptive_overlay_report.json").exists())
+            self.assertFalse(report["promotion_decision"]["adaptive_overlay_ready"])
+            self.assertIn("adaptive_overlay_not_ready", report["promotion_decision"]["reasons"])
+
+    def test_campaign_accepts_ready_adaptive_overlay_report_path(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            input_dir = root / "artifacts"
+            output_dir = root / "outputs"
+            input_dir.mkdir()
+
+            write_model_scope_artifact(input_dir / "q1_ref.json", _artifact("q1", "hash-q1", feature_id="101", value=1.2))
+            write_model_scope_artifact(input_dir / "q1_repeat.json", _artifact("q1", "hash-q1", feature_id="101", value=1.1))
+            rows = []
+            for query_id in ("q1", "q2", "q3"):
+                rows.append(
+                    {
+                        "task": "SciFact",
+                        "seed": 1,
+                        "query_id": query_id,
+                        "profile": "baseline",
+                        "delta_ndcg_at_10": 0.0,
+                        "fault_class": "reference",
+                    }
+                )
+                rows.append(
+                    {
+                        "task": "SciFact",
+                        "seed": 1,
+                        "query_id": query_id,
+                        "profile": "guard_learned_reform_gate_v1",
+                        "delta_ndcg_at_10": 0.02,
+                        "fault_class": "actuator_active_positive",
+                        "promotion_blocker": False,
+                    }
+                )
+            overlay_path = root / "overlay.json"
+            overlay_path.write_text(json.dumps(build_overlay_report(rows), indent=2), encoding="utf-8")
+
+            report = run_model_scope_campaign(
+                input_dir,
+                output_dir=output_dir,
+                max_rules=4,
+                min_alignment_score=0.5,
+                holdout_report={"passed": True, "score": 0.8},
+                safety_report={"passed": True},
+                adaptive_overlay_report=overlay_path,
+                require_adaptive_overlay_readiness=True,
+            )
+
+            self.assertTrue(report["promotion_decision"]["adaptive_overlay_ready"])
+            self.assertNotIn("missing_adaptive_overlay_report", report["promotion_decision"]["reasons"])
+            self.assertNotIn("adaptive_overlay_not_ready", report["promotion_decision"]["reasons"])
 
 
 if __name__ == "__main__":
