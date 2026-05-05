@@ -4,8 +4,11 @@ import unittest
 
 from config import ChelationConfig
 from run_road_course_campaign import (
+    ATTNRES_COMPARISON_GRID,
     DEFAULT_PROFILE_GRID,
+    PROFILE_SETS,
     RoadCourseProfile,
+    _temporary_adapter_type,
     evaluate_rankings,
     select_road_course_slice,
 )
@@ -55,6 +58,25 @@ class TestRoadCourseCampaignHarness(unittest.TestCase):
         self.assertFalse(profile.use_centering)
         self.assertFalse(profile.use_quantization)
         self.assertEqual(profile.chelation_threshold, ChelationConfig.DEFAULT_CHELATION_THRESHOLD)
+        self.assertEqual(profile.adapter_type, "mlp")
+
+    def test_attnres_comparison_grid_keeps_baseline_and_adapter_controls(self):
+        profiles = {profile.name: profile for profile in ATTNRES_COMPARISON_GRID}
+
+        self.assertIn("baseline", profiles)
+        self.assertEqual(profiles["baseline"].adapter_type, "mlp")
+        self.assertEqual(profiles["attnres_baseline"].adapter_type, "attnres")
+        self.assertEqual(profiles["attnres_balanced_p85_t0.01"].adapter_type, "attnres")
+        self.assertEqual(profiles["attnres_balanced_p85_t0.01"].chelation_threshold, 0.01)
+        self.assertIn("attnres_comparison", PROFILE_SETS)
+
+    def test_temporary_adapter_type_restores_global_config(self):
+        original = ChelationConfig.ADAPTER_TYPE
+
+        with _temporary_adapter_type("attnres"):
+            self.assertEqual(ChelationConfig.ADAPTER_TYPE, "attnres")
+
+        self.assertEqual(ChelationConfig.ADAPTER_TYPE, original)
 
 
 if __name__ == "__main__":
