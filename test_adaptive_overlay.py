@@ -1,9 +1,11 @@
 import unittest
 
 from adaptive_overlay import (
+    build_overlay_report,
     build_adaptive_overlay_intake,
     build_channel_variation_records,
     channel_variation_from_engine_scope_row,
+    compute_branch_set_metrics,
     summarize_channel_variations,
 )
 
@@ -78,6 +80,76 @@ class TestAdaptiveOverlay(unittest.TestCase):
         self.assertEqual(summary["record_count"], 2)
         self.assertEqual(summary["decisions"]["protect_baseline"], 1)
         self.assertEqual(summary["decisions"]["amplify_candidate"], 1)
+
+    def test_branch_set_metrics_report_oracle_signal_and_regression_risk(self):
+        records = build_channel_variation_records([
+            {
+                "row_type": "query_profile",
+                "task": "SciFact",
+                "seed": 1,
+                "query_id": "q1",
+                "profile": "baseline",
+                "fault_class": "reference",
+                "delta_ndcg_at_10": 0.0,
+            },
+            {
+                "row_type": "query_profile",
+                "task": "SciFact",
+                "seed": 1,
+                "query_id": "q1",
+                "profile": "reform_rrf_v2",
+                "action": "REFORMULATE",
+                "fault_class": "actuator_active_positive",
+                "delta_ndcg_at_10": 0.02,
+            },
+            {
+                "row_type": "query_profile",
+                "task": "SciFact",
+                "seed": 1,
+                "query_id": "q2",
+                "profile": "adaptive_p85_t0.002",
+                "action": "CHELATE",
+                "fault_class": "actuator_active_negative",
+                "promotion_blocker": True,
+                "delta_ndcg_at_10": -0.03,
+            },
+        ])
+
+        metrics = compute_branch_set_metrics(records)
+
+        self.assertEqual(metrics["group_count"], 2)
+        self.assertEqual(metrics["pass_at_k_rate"], 0.5)
+        self.assertEqual(metrics["safe_pass_at_k_rate"], 0.5)
+        self.assertEqual(metrics["regressed_at_k_rate"], 0.5)
+        self.assertGreater(metrics["mean_best_delta"], -0.01)
+
+    def test_overlay_report_combines_records_summary_and_branch_metrics(self):
+        report = build_overlay_report([
+            {
+                "row_type": "query_profile",
+                "task": "SciFact",
+                "seed": 1,
+                "query_id": "q1",
+                "profile": "baseline",
+                "fault_class": "reference",
+                "delta_ndcg_at_10": 0.0,
+            },
+            {
+                "row_type": "query_profile",
+                "task": "SciFact",
+                "seed": 1,
+                "query_id": "q1",
+                "profile": "reform_rrf_v2",
+                "action": "REFORMULATE",
+                "fault_class": "actuator_active_positive",
+                "delta_ndcg_at_10": 0.01,
+            },
+        ])
+
+        self.assertEqual(report["record_type"], "adaptive_overlay_report")
+        self.assertEqual(report["summary"]["record_count"], 2)
+        self.assertEqual(report["branch_set_metrics"]["group_count"], 1)
+        self.assertEqual(len(report["channel_variation_records"]), 2)
 
 
 if __name__ == "__main__":

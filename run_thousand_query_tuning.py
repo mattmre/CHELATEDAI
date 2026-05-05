@@ -11,6 +11,7 @@ from typing import Any, Dict, Iterable, List, Mapping
 
 import numpy as np
 
+from adaptive_overlay import build_overlay_report
 from benchmark_utils import (
     canonicalize_id,
     isolated_adapter_state,
@@ -833,6 +834,16 @@ def summarize_profile_outcomes(window_results: Iterable[Dict[str, Any]]) -> Dict
     return summary
 
 
+def build_adaptive_overlay_report(query_attribution_rows: Iterable[Dict[str, Any]]) -> Dict[str, Any]:
+    """Build observation-only overlay records from query attribution rows."""
+
+    engine_scope_rows = build_engine_scope_rows(
+        query_attribution_rows=query_attribution_rows,
+        source_family="reformulation_collection",
+    )
+    return build_overlay_report(engine_scope_rows)
+
+
 def run_thousand_query_cycle(
     model: str,
     loop_specs: List[LoopSpec],
@@ -923,6 +934,10 @@ def run_thousand_query_cycle(
                         checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
                         checkpoint_feature_rows = build_gate_feature_rows(all_window_results)
                         checkpoint_attribution_rows = build_query_attribution_rows(all_window_results)
+                        checkpoint_engine_scope_rows = build_engine_scope_rows(
+                            query_attribution_rows=checkpoint_attribution_rows,
+                            source_family="reformulation_collection",
+                        )
                         checkpoint_path.write_text(
                             json.dumps({
                                 "status": "running",
@@ -940,10 +955,8 @@ def run_thousand_query_cycle(
                                 "profile_outcomes": summarize_profile_outcomes(all_window_results),
                                 "gate_feature_rows": checkpoint_feature_rows,
                                 "query_attribution_rows": checkpoint_attribution_rows,
-                                "engine_scope_rows": build_engine_scope_rows(
-                                    query_attribution_rows=checkpoint_attribution_rows,
-                                    source_family="reformulation_collection",
-                                ),
+                                "engine_scope_rows": checkpoint_engine_scope_rows,
+                                "adaptive_overlay": build_overlay_report(checkpoint_engine_scope_rows),
                                 "gate_candidate_report": summarize_gate_candidates(
                                     checkpoint_feature_rows
                                 ),
@@ -973,6 +986,11 @@ def run_thousand_query_cycle(
     profile_outcomes = summarize_profile_outcomes(all_window_results)
     gate_feature_rows = build_gate_feature_rows(all_window_results)
     query_attribution_rows = build_query_attribution_rows(all_window_results)
+    engine_scope_rows = build_engine_scope_rows(
+        query_attribution_rows=query_attribution_rows,
+        source_family="reformulation_collection",
+    )
+    adaptive_overlay = build_overlay_report(engine_scope_rows)
     gate_candidate_report = summarize_gate_candidates(gate_feature_rows)
     directional_candidates = [
         profile
@@ -1031,10 +1049,8 @@ def run_thousand_query_cycle(
         "profile_outcomes": profile_outcomes,
         "gate_feature_rows": gate_feature_rows,
         "query_attribution_rows": query_attribution_rows,
-        "engine_scope_rows": build_engine_scope_rows(
-            query_attribution_rows=query_attribution_rows,
-            source_family="reformulation_collection",
-        ),
+        "engine_scope_rows": engine_scope_rows,
+        "adaptive_overlay": adaptive_overlay,
         "gate_candidate_report": gate_candidate_report,
         "recommendation": {
             "default_change_allowed": False,

@@ -13,6 +13,7 @@ import sys
 import time
 from typing import Any, Dict, Iterable, List, Sequence
 
+from adaptive_overlay import build_overlay_report
 from benchmark_utils import canonicalize_id, isolated_adapter_state, load_mteb_data
 from embedding_backend import create_embedding_backend
 from engine_scope import (
@@ -524,6 +525,10 @@ def run_reform_validation(
         learned_blockers += int(rows["learned_reform_gate_v1"]["fault_classification"]["promotion_blocker"])
         guard_learned_blockers += int(rows["guard_learned_reform_gate_v1"]["fault_classification"]["promotion_blocker"])
     query_attribution_rows = build_query_attribution_rows(windows)
+    engine_scope_rows = build_engine_scope_rows(
+        query_attribution_rows=query_attribution_rows,
+        source_family="reformulation_validation",
+    )
     return {
         "engine_scope_schema_version": ENGINE_SCOPE_SCHEMA_VERSION,
         "model": model,
@@ -531,10 +536,8 @@ def run_reform_validation(
         "sample_docs": sample_docs,
         "windows": windows,
         "query_attribution_rows": query_attribution_rows,
-        "engine_scope_rows": build_engine_scope_rows(
-            query_attribution_rows=query_attribution_rows,
-            source_family="reformulation_validation",
-        ),
+        "engine_scope_rows": engine_scope_rows,
+        "adaptive_overlay": build_overlay_report(engine_scope_rows),
         "aggregate": {
             "guard_mean_delta_vs_baseline": sum(baseline_guard_deltas) / len(baseline_guard_deltas) if baseline_guard_deltas else 0.0,
             "always_on_reform_mean_delta_vs_baseline": sum(always_deltas) / len(always_deltas) if always_deltas else 0.0,
@@ -691,6 +694,10 @@ def run_mask_validation(
         for window in windows
         for row in window.get("mask_example_rows", [])
     ]
+    engine_scope_rows = build_engine_scope_rows(
+        mask_example_rows=mask_example_rows,
+        source_family="mask_validation",
+    )
     return {
         "engine_scope_schema_version": ENGINE_SCOPE_SCHEMA_VERSION,
         "model": model,
@@ -700,10 +707,8 @@ def run_mask_validation(
         "mask_fraction": mask_fraction,
         "windows": windows,
         "mask_example_rows": mask_example_rows,
-        "engine_scope_rows": build_engine_scope_rows(
-            mask_example_rows=mask_example_rows,
-            source_family="mask_validation",
-        ),
+        "engine_scope_rows": engine_scope_rows,
+        "adaptive_overlay": build_overlay_report(engine_scope_rows),
         "aggregate": {
             "always_on_mask_mean_delta_vs_baseline": sum(always_deltas) / len(always_deltas) if always_deltas else 0.0,
             "learned_gate_mean_delta_vs_baseline": sum(learned_deltas) / len(learned_deltas) if learned_deltas else 0.0,
@@ -808,16 +813,18 @@ def run_reform_hard_negative_replay(
         )
         guard_learned_blockers += int(rows["guard_learned_reform_gate_v1"]["fault_classification"]["promotion_blocker"])
     query_attribution_rows = build_query_attribution_rows(windows)
+    engine_scope_rows = build_engine_scope_rows(
+        query_attribution_rows=query_attribution_rows,
+        source_family="hard_negative_reform_validation",
+    )
     return {
         "engine_scope_schema_version": ENGINE_SCOPE_SCHEMA_VERSION,
         "family_count": len(windows),
         "sample_docs": sample_docs,
         "windows": windows,
         "query_attribution_rows": query_attribution_rows,
-        "engine_scope_rows": build_engine_scope_rows(
-            query_attribution_rows=query_attribution_rows,
-            source_family="hard_negative_reform_validation",
-        ),
+        "engine_scope_rows": engine_scope_rows,
+        "adaptive_overlay": build_overlay_report(engine_scope_rows),
         "aggregate": {
             "guard_always_reform_mean_delta_vs_guard": sum(guard_always_deltas) / len(guard_always_deltas),
             "guard_learned_reform_mean_delta_vs_guard": sum(guard_learned_deltas) / len(guard_learned_deltas),

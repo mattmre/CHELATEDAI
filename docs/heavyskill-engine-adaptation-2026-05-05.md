@@ -369,9 +369,17 @@ Implemented in this follow-up:
 
 Continue to implement:
 
-1. HeavySkill-inspired branch metrics over existing channel variation records.
-2. Router/oracle-gap reporting in road-course and autopilot artifacts.
-3. Promotion-gate extensions only after the observation layer shows stable signal.
+1. Promotion-gate extensions only after the observation layer shows stable signal.
+2. Optional router/oracle-gap dashboards if branch metrics show enough signal.
+3. Coverage-aware channel search using branch metrics plus existing Engine-Scope coverage rows.
+
+Follow-up implementation slices completed after the overlap audit:
+
+1. Added HeavySkill-inspired branch-set metrics over channel variation records: `pass_at_k_rate`, `safe_pass_at_k_rate`, `regressed_at_k_rate`, `mean_best_delta`, `mean_branch_delta`, and `mean_oracle_gap`.
+2. Added `build_overlay_report()` so Engine-Scope rows can produce channel records, summaries, and branch metrics through one call.
+3. Wired `adaptive_overlay` reports into `run_thousand_query_tuning.py` final and checkpoint artifacts.
+4. Wired `adaptive_overlay` reports into golden-default autopilot reform validation, mask validation, and hard-negative replay artifacts.
+5. Added regression tests for channel records, branch metrics, overlay report construction, and tuning-report integration.
 
 Defer:
 
