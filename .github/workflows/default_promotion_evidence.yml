@@ -7,6 +7,14 @@ on:
         description: "Timeout per validation command"
         required: false
         default: "300"
+      cleanup-guard-mode:
+        description: "Cleanup review guard behavior"
+        required: false
+        default: "fail"
+        type: choice
+        options:
+          - fail
+          - warn
 
 jobs:
   evidence-chain:
@@ -47,13 +55,17 @@ jobs:
         id: cleanup-plan
         continue-on-error: true
         run: |
+          cleanup_guard_args=()
+          if [ "${{ inputs.cleanup-guard-mode }}" = "fail" ]; then
+            cleanup_guard_args+=(--fail-on-blocked-review)
+          fi
           python plan_evidence_artifact_cleanup.py \
             --root experiment_runs \
             --keep-latest 1 \
             --evidence-index experiment_runs/evidence-index/ci/evidence_index.json \
             --freshness-audit experiment_runs/evidence-index/ci/freshness_audit.json \
             --output experiment_runs/evidence-cleanup/ci/cleanup_plan.json \
-            --fail-on-blocked-review
+            "${cleanup_guard_args[@]}"
 
       - name: Upload evidence-chain artifacts
         if: always()
@@ -66,7 +78,7 @@ jobs:
             experiment_runs/evidence-cleanup/ci/
 
       - name: Fail on blocked cleanup review
-        if: steps.cleanup-plan.outcome == 'failure'
+        if: steps.cleanup-plan.outcome == 'failure' && inputs.cleanup-guard-mode == 'fail'
         run: |
           python - <<'PY'
           import json
