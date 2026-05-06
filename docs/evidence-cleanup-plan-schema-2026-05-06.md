@@ -44,6 +44,7 @@ python -m cleanup_review_diagnostic --plan experiment_runs/evidence-cleanup/late
 | `Source <name>` | `source_status.<name>` | linked source path and present/missing state |
 
 Blocked diagnostics include `Candidate bytes` and fail in workflow `fail` mode. Warn-mode diagnostics include the allowed/blocked status and a warning when blocked candidates must not be used for deletion decisions.
+If the cleanup plan is missing or malformed, the diagnostic reports `Cleanup plan missing` or `Cleanup plan unreadable` and avoids traceback output.
 
 ## Workflow Guard Modes
 

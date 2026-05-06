@@ -53,6 +53,17 @@ class CleanupReviewDiagnosticTests(unittest.TestCase):
             self.assertIn("## Cleanup Review Blocked", text)
             self.assertIn("Cleanup plan missing", text)
 
+    def test_render_handles_invalid_json_without_traceback(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            plan_path = Path(tmpdir) / "cleanup_plan.json"
+            plan_path.write_text("{not-json", encoding="utf-8")
+
+            text = render_cleanup_review_diagnostic(plan_path, mode="blocked")
+
+            self.assertIn("Cleanup plan unreadable", text)
+            self.assertIn("Error:", text)
+            self.assertNotIn("Traceback", text)
+
     def test_main_writes_github_summary_when_requested(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             plan_path = Path(tmpdir) / "cleanup_plan.json"
@@ -127,6 +138,30 @@ class CleanupReviewDiagnosticTests(unittest.TestCase):
 
             self.assertIn("Cleanup review: blocked", result.stdout)
             self.assertIn("Missing source artifacts: evidence_index", result.stdout)
+
+    def test_module_cli_handles_invalid_json_without_traceback(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            plan_path = Path(tmpdir) / "cleanup_plan.json"
+            plan_path.write_text("{not-json", encoding="utf-8")
+
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    "-m",
+                    "cleanup_review_diagnostic",
+                    "--plan",
+                    plan_path.as_posix(),
+                    "--mode",
+                    "blocked",
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+
+            self.assertIn("Cleanup plan unreadable", result.stdout)
+            self.assertNotIn("Traceback", result.stdout)
+            self.assertEqual(result.stderr, "")
 
 
 if __name__ == "__main__":
