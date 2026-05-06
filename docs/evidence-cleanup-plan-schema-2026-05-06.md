@@ -64,6 +64,8 @@ Response fields:
 | `summary.candidate_count` | integer | total cleanup candidates before row limiting |
 | `summary.retained_count` | integer | total retained artifacts |
 | `summary.candidate_bytes` | integer | total candidate bytes |
+| `summary.cleanup_review_allowed` | boolean or null | `false` when linked source artifacts are missing; `null` only for legacy plans without the field |
+| `summary.missing_source_artifacts` | string array | linked source artifact names missing when the dashboard plan is generated |
 | `summary.candidate_types` | string array | artifact types currently represented in candidates |
 | `candidates[]` | array | row-limited candidate records |
 | `source_artifacts.evidence_index` | string or null | linked evidence index path |
@@ -78,6 +80,6 @@ The dashboard intentionally omits the full `retained[]` list and displays only `
 - A candidate is safe to inspect, not safe to delete automatically.
 - A retained artifact is the newest file for its artifact type under the current `keep_latest` rule.
 - Missing source status means the cleanup plan is stale against its linked evidence-index or freshness-audit path.
-- `cleanup_review_allowed: false` means operators should regenerate source artifacts before using the candidate list.
+- `cleanup_review_allowed: false` means operators should regenerate source artifacts before using the candidate list. The dashboard renders this as `Cleanup Review: blocked`.
 - If generated files are deleted manually, regenerate the evidence index and rerun the freshness audit.
 - Source scripts, schemas, runbooks, phase summaries, and test fixtures are outside the cleanup planner's deletion scope.
