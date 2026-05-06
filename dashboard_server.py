@@ -741,8 +741,15 @@ def _first_present(payload: Dict[str, Any], keys: List[str]) -> Any:
     return None
 
 
-def _extract_campaign_record(path: Path, root: Path) -> Dict[str, Any]:
+def _load_json_object(path: Path) -> Dict[str, Any]:
     payload = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise ValueError("JSON payload must be an object")
+    return payload
+
+
+def _extract_campaign_record(path: Path, root: Path) -> Dict[str, Any]:
+    payload = _load_json_object(path)
     promotion = payload.get("promotion_decision")
     if not isinstance(promotion, dict):
         promotion = payload.get("promotion")
@@ -801,7 +808,7 @@ def load_campaign_history(root: str = CAMPAIGN_HISTORY_ROOT, limit: int = 25) ->
     for path in report_paths[: max(0, limit)]:
         try:
             reports.append(_extract_campaign_record(path, root_path))
-        except (OSError, json.JSONDecodeError):
+        except (OSError, ValueError, UnicodeDecodeError):
             continue
 
     return {
@@ -816,7 +823,7 @@ def load_campaign_history(root: str = CAMPAIGN_HISTORY_ROOT, limit: int = 25) ->
 
 
 def _extract_validation_record(path: Path, root: Path) -> Dict[str, Any]:
-    payload = json.loads(path.read_text(encoding="utf-8"))
+    payload = _load_json_object(path)
     stat = path.stat()
     results = payload.get("results", [])
     if not isinstance(results, list):
@@ -848,7 +855,7 @@ def load_validation_history(root: str = VALIDATION_HISTORY_ROOT, limit: int = 10
     for path in report_paths[: max(0, limit)]:
         try:
             reports.append(_extract_validation_record(path, root_path))
-        except (OSError, json.JSONDecodeError):
+        except (OSError, ValueError, UnicodeDecodeError):
             continue
     latest = reports[0] if reports else {}
     return {
@@ -864,7 +871,7 @@ def load_validation_history(root: str = VALIDATION_HISTORY_ROOT, limit: int = 10
 
 
 def _extract_preflight_record(path: Path, root: Path) -> Dict[str, Any]:
-    payload = json.loads(path.read_text(encoding="utf-8"))
+    payload = _load_json_object(path)
     stat = path.stat()
     blockers = payload.get("blockers", [])
     if not isinstance(blockers, list):
@@ -900,7 +907,7 @@ def load_preflight_history(root: str = PREFLIGHT_HISTORY_ROOT, limit: int = 10) 
     for path in report_paths[: max(0, limit)]:
         try:
             reports.append(_extract_preflight_record(path, root_path))
-        except (OSError, json.JSONDecodeError):
+        except (OSError, ValueError, UnicodeDecodeError):
             continue
     latest = reports[0] if reports else {}
     return {
@@ -931,8 +938,9 @@ def load_evidence_index(path: str = EVIDENCE_INDEX_PATH) -> Dict[str, Any]:
             },
             "artifacts": {},
         }
-    payload = json.loads(index_path.read_text(encoding="utf-8"))
-    if not isinstance(payload, dict):
+    try:
+        payload = _load_json_object(index_path)
+    except (OSError, ValueError, UnicodeDecodeError):
         payload = {}
     summary = payload.get("summary")
     if not isinstance(summary, dict):
@@ -958,9 +966,7 @@ def load_evidence_index(path: str = EVIDENCE_INDEX_PATH) -> Dict[str, Any]:
 
 
 def _extract_evidence_chain_record(path: Path, root: Path) -> Dict[str, Any]:
-    payload = json.loads(path.read_text(encoding="utf-8"))
-    if not isinstance(payload, dict):
-        payload = {}
+    payload = _load_json_object(path)
     stat = path.stat()
     artifacts = payload.get("artifacts", {})
     if not isinstance(artifacts, dict):
