@@ -1061,6 +1061,7 @@ def load_evidence_cleanup_plan(
         "dry_run": True,
         "root": plan.get("root", root),
         "keep_latest": plan.get("keep_latest", keep_latest),
+        "source_artifacts": plan.get("source_artifacts", {}),
         "summary": {
             "candidate_count": summary.get("candidate_count", len(candidates)),
             "retained_count": summary.get("retained_count", len(retained)),

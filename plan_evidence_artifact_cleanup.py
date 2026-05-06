@@ -42,6 +42,10 @@ def _relative(path: Path, root: Path) -> str:
     return relative.as_posix()
 
 
+def _display_path(path: str | Path | None) -> str | None:
+    return Path(path).as_posix() if path is not None else None
+
+
 def _record(path: Path, root: Path, artifact_type: str, disposition: str, stat_result: Any) -> dict[str, Any]:
     return {
         "artifact_type": artifact_type,
@@ -97,8 +101,8 @@ def plan_evidence_artifact_cleanup(
         "root": str(root_path),
         "keep_latest": keep_count,
         "source_artifacts": {
-            "evidence_index": str(evidence_index) if evidence_index is not None else None,
-            "freshness_audit": str(freshness_audit) if freshness_audit is not None else None,
+            "evidence_index": _display_path(evidence_index),
+            "freshness_audit": _display_path(freshness_audit),
         },
         "summary": {
             "candidate_count": len(candidates),

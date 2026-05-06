@@ -19,6 +19,7 @@ Open `http://127.0.0.1:8000/dashboard/` and use the Campaign History tab for the
 | Promotion preflight | `/api/preflight_history` | `experiment_runs/default-promotion-preflight/**/default-promotion-preflight.json` | fail-closed blocker status for default-promotion review |
 | Evidence index | `/api/evidence_index` | `experiment_runs/evidence-index/latest/evidence_index.json` | compact artifact counts and latest linked chain/preflight states |
 | Evidence chains | `/api/evidence_chain_history` | `experiment_runs/default-promotion-evidence-chain/**/evidence_chain_summary.json` | whether the evidence collection chain ran cleanly and whether review is allowed |
+| Evidence cleanup | `/api/evidence_cleanup_plan` | generated dry-run plan from `plan_evidence_artifact_cleanup.py` | cleanup candidate counts, retained count, candidate paths, and linked evidence-index/freshness-audit paths |
 
 The dashboard is read-only. If a panel is empty, malformed, or stale, regenerate the source artifacts instead of editing dashboard output.
 
