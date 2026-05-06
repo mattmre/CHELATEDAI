@@ -34,8 +34,8 @@ Purpose: Durable continuation queue after Engine-Scope, Model-Scope, and adaptiv
 | 15 | Default-promotion decision review | governance | gated | only starts after validation items show repeatable positive evidence |
 | 16 | Validation bundle dashboard ingestion | reporting | complete | dashboard can surface latest validation-bundle pass/fail state |
 | 17 | Overlay validation bundle CI affordance | validation | complete | CI or local command can run the bundle with clear timeout/failure reporting |
-| 18 | Promotion linkage audit report | governance | next | existing campaign artifacts can be checked for artifact-card and rollback linkage |
-| 19 | Model-Scope overlay bundle schema doc | documentation | queued | generated campaign bundle fields are documented for future operators |
+| 18 | Promotion linkage audit report | governance | complete | existing campaign artifacts can be checked for artifact-card and rollback linkage |
+| 19 | Model-Scope overlay bundle schema doc | documentation | next | generated campaign bundle fields are documented for future operators |
 
 ## Closed Implementation Scaffolds
 - Engine-Scope row contract, internal gates, coverage analysis, hard-negative pipeline, and supervisor integration are implemented.
@@ -65,3 +65,4 @@ Start the next branch from the highest-ranked `next` item that is not blocked. I
 - 2026-05-05: Long-run overlay/model-scope validation bundle added as `run_overlay_model_scope_validation.py` and `chelatedai-overlay-model-scope-validation`. Queue expanded with the next concrete reporting, CI, audit, and schema-doc follow-ups.
 - 2026-05-05: Dashboard validation-history ingestion added. The Campaign History tab can now show latest validation-bundle pass/fail state and failed command names.
 - 2026-05-05: Manual GitHub Actions validation workflow added for the overlay/model-scope bundle. Local operators can also list the exact commands with `python run_overlay_model_scope_validation.py --list-commands`.
+- 2026-05-05: Promotion-linkage audit command added. Campaign reports with overlay evidence or promotion-ready decisions now have a scanner for missing artifact-card and rollback references.

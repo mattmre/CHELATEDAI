@@ -30,6 +30,7 @@ chelatedai-static-mask-probe = "static_mask_probe:main"
 chelatedai-safety-testbed = "run_safety_testbed:main"
 chelatedai-model-scope-campaign = "run_model_scope_campaign:main"
 chelatedai-overlay-model-scope-validation = "run_overlay_model_scope_validation:main"
+chelatedai-promotion-linkage-audit = "audit_promotion_linkage:main"
 
 [project.optional-dependencies]
 benchmark = ["mteb>=1.0"]
@@ -41,6 +42,7 @@ py-modules = [
     "aep_orchestrator",
     "antigravity_engine",
     "adapter_router",
+    "audit_promotion_linkage",
     "adaptive_overlay",
     "benchmark_comparative",
     "benchmark_distillation",
