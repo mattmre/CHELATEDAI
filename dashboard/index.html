@@ -220,6 +220,13 @@
       <div class="card"><div class="label">Chains Failed</div><div class="value" id="evidence-chain-failed">-</div></div>
     </div>
 
+    <div class="cards">
+      <div class="card"><div class="label">Cleanup Mode</div><div class="value" id="cleanup-mode" style="font-size:20px;">-</div></div>
+      <div class="card"><div class="label">Cleanup Candidates</div><div class="value" id="cleanup-candidates">-</div></div>
+      <div class="card"><div class="label">Retained Artifacts</div><div class="value" id="cleanup-retained">-</div></div>
+      <div class="card"><div class="label">Candidate Bytes</div><div class="value" id="cleanup-bytes">-</div></div>
+    </div>
+
     <div class="panel">
       <div style="display:flex; justify-content: space-between; align-items:center">
         <h2>Latest Campaign Reports</h2>
@@ -326,6 +333,27 @@
         </tbody>
       </table>
     </div>
+
+    <div class="panel">
+      <div style="display:flex; justify-content: space-between; align-items:center">
+        <h2>Evidence Cleanup Plan</h2>
+        <button onclick="loadEvidenceCleanupPlan()">Refresh Cleanup</button>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Artifact Type</th>
+            <th>Disposition</th>
+            <th>Size</th>
+            <th>Path</th>
+          </tr>
+        </thead>
+        <tbody id="cleanup-rows">
+          <tr><td colspan="4">Loading...</td></tr>
+        </tbody>
+      </table>
+      <div style="margin-top:12px; font-size:13px; color:#666;" id="cleanup-types"></div>
+    </div>
   </div>
 
   <!-- Logs Tab -->
@@ -387,6 +415,7 @@
         loadPreflightHistory();
         loadEvidenceIndex();
         loadEvidenceChainHistory();
+        loadEvidenceCleanupPlan();
       }
     }
 
@@ -701,6 +730,45 @@
       } catch (e) {
         console.error('Error loading evidence-chain history', e);
         document.getElementById('evidence-chain-rows').innerHTML = '<tr><td colspan="6">Error loading evidence-chain history</td></tr>';
+      }
+    }
+
+    async function loadEvidenceCleanupPlan() {
+      try {
+        const data = asObject(await fetchJson('/api/evidence_cleanup_plan?keep_latest=1&limit=25'));
+        const summary = asObject(data.summary);
+        document.getElementById('cleanup-mode').textContent = data.dry_run ? 'dry-run' : 'unknown';
+        document.getElementById('cleanup-candidates').textContent = summary.candidate_count || 0;
+        document.getElementById('cleanup-retained').textContent = summary.retained_count || 0;
+        document.getElementById('cleanup-bytes').textContent = summary.candidate_bytes || 0;
+        document.getElementById('cleanup-types').textContent =
+          'Candidate types: ' + (asArray(summary.candidate_types).join(', ') || '-');
+
+        const rows = document.getElementById('cleanup-rows');
+        rows.replaceChildren();
+        const candidates = asArray(data.candidates);
+        if (!candidates.length) {
+          rows.innerHTML = '<tr><td colspan="4">No cleanup candidates found</td></tr>';
+          return;
+        }
+        candidates.forEach(candidate => {
+          const item = asObject(candidate);
+          const tr = document.createElement('tr');
+          [
+            item.artifact_type || '-',
+            item.disposition || '-',
+            item.size_bytes ?? '-',
+            item.path || '-'
+          ].forEach(text => {
+            const td = document.createElement('td');
+            td.textContent = text;
+            tr.appendChild(td);
+          });
+          rows.appendChild(tr);
+        });
+      } catch (e) {
+        console.error('Error loading evidence cleanup plan', e);
+        document.getElementById('cleanup-rows').innerHTML = '<tr><td colspan="4">Error loading cleanup plan</td></tr>';
       }
     }
 

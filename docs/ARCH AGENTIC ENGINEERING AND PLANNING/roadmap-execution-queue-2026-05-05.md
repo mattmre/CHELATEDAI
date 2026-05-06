@@ -51,7 +51,8 @@ Purpose: Durable continuation queue after Engine-Scope, Model-Scope, and adaptiv
 | 32 | Evidence chain workflow freshness audit | governance | complete | manual evidence workflow can generate the index and run freshness audit after evidence-chain collection |
 | 33 | Evidence dashboard runbook refresh | documentation | complete | operator docs explain dashboard evidence panels and when to regenerate artifacts |
 | 34 | Evidence artifact cleanup dry-run | governance | complete | command lists generated evidence candidates safe to delete without deleting them |
-| 35 | Evidence cleanup dashboard/report ingestion | reporting | next | dashboard or generated report can surface dry-run cleanup candidates without deleting files |
+| 35 | Evidence cleanup dashboard/report ingestion | reporting | complete | dashboard or generated report can surface dry-run cleanup candidates without deleting files |
+| 36 | Evidence cleanup plan schema doc | documentation | next | cleanup dry-run output fields and dashboard interpretation are documented |
 
 ## Closed Implementation Scaffolds
 - Engine-Scope row contract, internal gates, coverage analysis, hard-negative pipeline, and supervisor integration are implemented.
@@ -98,3 +99,4 @@ Start the next branch from the highest-ranked `next` item that is not blocked. I
 - 2026-05-06: Manual evidence-chain workflow freshness audit added. The workflow now regenerates the evidence index, audits freshness, and uploads both chain and index artifacts after collection.
 - 2026-05-06: Evidence dashboard runbook added. Operators now have panel/API/source-artifact mapping plus regeneration triggers for evidence-chain, index, and freshness-audit outputs.
 - 2026-05-06: Evidence artifact cleanup dry-run planner added. Operators can list generated evidence cleanup candidates while retaining the latest artifact per type, with no deletion behavior.
+- 2026-05-06: Evidence cleanup dashboard ingestion added. The dashboard now exposes a dry-run cleanup plan API and panel with candidate counts, retained counts, candidate bytes, and candidate paths.

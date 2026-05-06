@@ -23,6 +23,8 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 from urllib.parse import parse_qs, urlparse
 
+from plan_evidence_artifact_cleanup import plan_evidence_artifact_cleanup
+
 
 # Global configuration
 LOG_FILE_PATH = "chelation_events.jsonl"
@@ -33,6 +35,7 @@ VALIDATION_HISTORY_ROOT = "experiment_runs"
 PREFLIGHT_HISTORY_ROOT = "experiment_runs"
 EVIDENCE_INDEX_PATH = "experiment_runs/evidence-index/latest/evidence_index.json"
 EVIDENCE_CHAIN_HISTORY_ROOT = "experiment_runs"
+EVIDENCE_CLEANUP_ROOT = "experiment_runs"
 
 
 def get_inline_dashboard_html():
@@ -1035,6 +1038,40 @@ def load_evidence_chain_history(root: str = EVIDENCE_CHAIN_HISTORY_ROOT, limit: 
     }
 
 
+def load_evidence_cleanup_plan(
+    root: str = EVIDENCE_CLEANUP_ROOT,
+    keep_latest: int = 1,
+    candidate_limit: int = 25,
+) -> Dict[str, Any]:
+    """Load a read-only dry-run cleanup plan for dashboard display."""
+
+    plan = plan_evidence_artifact_cleanup(root=root, keep_latest=keep_latest)
+    candidates = plan.get("candidates", [])
+    if not isinstance(candidates, list):
+        candidates = []
+    retained = plan.get("retained", [])
+    if not isinstance(retained, list):
+        retained = []
+    summary = plan.get("summary", {})
+    if not isinstance(summary, dict):
+        summary = {}
+
+    return {
+        "record_type": plan.get("record_type"),
+        "dry_run": True,
+        "root": plan.get("root", root),
+        "keep_latest": plan.get("keep_latest", keep_latest),
+        "summary": {
+            "candidate_count": summary.get("candidate_count", len(candidates)),
+            "retained_count": summary.get("retained_count", len(retained)),
+            "candidate_bytes": summary.get("candidate_bytes", 0),
+            "candidate_types": sorted({str(item.get("artifact_type", "unknown")) for item in candidates if isinstance(item, dict)}),
+        },
+        "candidates": candidates[: max(0, candidate_limit)],
+        "retained": retained,
+    }
+
+
 class DashboardHandler(SimpleHTTPRequestHandler):
     """
     HTTP request handler for the dashboard server.
@@ -1077,6 +1114,8 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             self.handle_api_evidence_index()
         elif path == "/api/evidence_chain_history":
             self.handle_api_evidence_chain_history(query_params)
+        elif path == "/api/evidence_cleanup_plan":
+            self.handle_api_evidence_cleanup_plan(query_params)
         elif path == "/" or path == "/dashboard" or path == "/dashboard/":
             # Redirect to dashboard page
             self.serve_dashboard()
@@ -1253,6 +1292,19 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             self.send_json_response(load_evidence_chain_history(EVIDENCE_CHAIN_HISTORY_ROOT, limit=limit))
         except Exception as e:
             self.send_error_response(500, f"Error reading evidence-chain history: {str(e)}")
+
+    def handle_api_evidence_cleanup_plan(self, query_params: Dict[str, List[str]]):
+        """Handle /api/evidence_cleanup_plan endpoint."""
+        try:
+            keep_latest = 1
+            limit = 25
+            if "keep_latest" in query_params:
+                keep_latest = max(0, int(query_params["keep_latest"][0]))
+            if "limit" in query_params:
+                limit = max(0, int(query_params["limit"][0]))
+            self.send_json_response(load_evidence_cleanup_plan(EVIDENCE_CLEANUP_ROOT, keep_latest=keep_latest, candidate_limit=limit))
+        except Exception as e:
+            self.send_error_response(500, f"Error reading evidence cleanup plan: {str(e)}")
             
     def serve_dashboard(self):
         """Serve the dashboard HTML page."""

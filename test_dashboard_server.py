@@ -503,6 +503,44 @@ class TestEvidenceChainHistory(unittest.TestCase):
         self.assertEqual(result["reports"], [])
 
 
+class TestEvidenceCleanupPlan(unittest.TestCase):
+    """Test evidence cleanup dry-run dashboard helper."""
+
+    def test_load_evidence_cleanup_plan_summarizes_candidates(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = os.path.join(tmpdir, "experiment_runs")
+            old_dir = os.path.join(root, "evidence-index", "old")
+            latest_dir = os.path.join(root, "evidence-index", "latest")
+            os.makedirs(old_dir)
+            os.makedirs(latest_dir)
+            with open(os.path.join(old_dir, "evidence_index.json"), "w", encoding="utf-8") as handle:
+                json.dump({"record_type": "old"}, handle)
+            with open(os.path.join(latest_dir, "evidence_index.json"), "w", encoding="utf-8") as handle:
+                json.dump({"record_type": "latest"}, handle)
+
+            result = dashboard_server.load_evidence_cleanup_plan(root, keep_latest=1, candidate_limit=10)
+
+        self.assertTrue(result["dry_run"])
+        self.assertEqual(result["summary"]["candidate_count"], 1)
+        self.assertEqual(result["summary"]["retained_count"], 1)
+        self.assertEqual(result["summary"]["candidate_types"], ["evidence_indexes"])
+        self.assertEqual(result["candidates"][0]["path"], "experiment_runs/evidence-index/old/evidence_index.json")
+
+    def test_load_evidence_cleanup_plan_limits_candidate_rows(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = os.path.join(tmpdir, "experiment_runs")
+            for index in range(3):
+                report_dir = os.path.join(root, "validation", str(index))
+                os.makedirs(report_dir)
+                with open(os.path.join(report_dir, "validation_summary.json"), "w", encoding="utf-8") as handle:
+                    json.dump({"passed": True, "index": index}, handle)
+
+            result = dashboard_server.load_evidence_cleanup_plan(root, keep_latest=0, candidate_limit=2)
+
+        self.assertEqual(result["summary"]["candidate_count"], 3)
+        self.assertEqual(len(result["candidates"]), 2)
+
+
 class TestDashboardHandler(unittest.TestCase):
     """Test the DashboardHandler class."""
 
