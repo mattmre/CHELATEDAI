@@ -55,6 +55,7 @@ Use the GitHub Actions `Default Promotion Evidence` workflow when evidence shoul
 3. run the evidence-index freshness audit.
 
 It uploads both `experiment_runs/default-promotion-evidence-chain/ci/` and `experiment_runs/evidence-index/ci/`.
+It also uploads `experiment_runs/evidence-cleanup/ci/cleanup_plan.json`, which is a dry-run cleanup plan only.
 
 ## Interpretation Rules
 

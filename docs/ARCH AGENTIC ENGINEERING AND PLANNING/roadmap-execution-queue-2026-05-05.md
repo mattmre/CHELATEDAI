@@ -53,7 +53,8 @@ Purpose: Durable continuation queue after Engine-Scope, Model-Scope, and adaptiv
 | 34 | Evidence artifact cleanup dry-run | governance | complete | command lists generated evidence candidates safe to delete without deleting them |
 | 35 | Evidence cleanup dashboard/report ingestion | reporting | complete | dashboard or generated report can surface dry-run cleanup candidates without deleting files |
 | 36 | Evidence cleanup plan schema doc | documentation | complete | cleanup dry-run output fields and dashboard interpretation are documented |
-| 37 | Evidence cleanup plan CI artifact | governance | next | manual evidence workflow can publish a cleanup dry-run plan artifact without deleting files |
+| 37 | Evidence cleanup plan CI artifact | governance | complete | manual evidence workflow can publish a cleanup dry-run plan artifact without deleting files |
+| 38 | Evidence cleanup freshness linkage | governance | next | cleanup plan generation can run after freshness audit and record index/freshness artifact references |
 
 ## Closed Implementation Scaffolds
 - Engine-Scope row contract, internal gates, coverage analysis, hard-negative pipeline, and supervisor integration are implemented.
@@ -102,3 +103,4 @@ Start the next branch from the highest-ranked `next` item that is not blocked. I
 - 2026-05-06: Evidence artifact cleanup dry-run planner added. Operators can list generated evidence cleanup candidates while retaining the latest artifact per type, with no deletion behavior.
 - 2026-05-06: Evidence cleanup dashboard ingestion added. The dashboard now exposes a dry-run cleanup plan API and panel with candidate counts, retained counts, candidate bytes, and candidate paths.
 - 2026-05-06: Evidence cleanup plan schema documented. The dashboard cleanup-plan response is documented as compact and row-limited while the CLI output retains full audit fields.
+- 2026-05-06: Evidence cleanup plan CI artifact added. The manual evidence workflow now writes and uploads a dry-run cleanup plan alongside evidence-chain and evidence-index artifacts.
