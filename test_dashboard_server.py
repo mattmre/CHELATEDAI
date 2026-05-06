@@ -335,6 +335,53 @@ class TestValidationHistory(unittest.TestCase):
         self.assertEqual(report["failed_commands"], ["model_scope_overlay_smoke"])
 
 
+class TestPreflightHistory(unittest.TestCase):
+    """Test default-promotion preflight discovery helpers."""
+
+    def test_load_preflight_history_empty_root(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            result = dashboard_server.load_preflight_history(os.path.join(tmpdir, "missing"))
+
+        self.assertEqual(result["reports"], [])
+        self.assertEqual(result["summary"]["latest_review_allowed"], None)
+
+    def test_load_preflight_history_normalizes_blocked_preflight(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = os.path.join(tmpdir, "experiment_runs")
+            report_dir = os.path.join(root, "default-promotion-preflight", "latest")
+            os.makedirs(report_dir)
+            report_path = os.path.join(report_dir, "preflight.json")
+            with open(report_path, "w", encoding="utf-8") as handle:
+                json.dump(
+                    {
+                        "record_type": "default_promotion_preflight",
+                        "review_allowed": False,
+                        "default_change_allowed": False,
+                        "blockers": ["repeat_seed_evidence_does_not_support_default_promotion"],
+                        "artifacts": {
+                            "validation_summary": {"passed": True},
+                            "promotion_linkage_audit": {"passed": True},
+                            "repeat_seed_decision": {"passed": False},
+                        },
+                    },
+                    handle,
+                )
+
+            result = dashboard_server.load_preflight_history(root)
+
+        self.assertEqual(result["summary"]["total_reports"], 1)
+        self.assertEqual(result["summary"]["review_allowed"], 0)
+        self.assertEqual(result["summary"]["blocked"], 1)
+        self.assertFalse(result["summary"]["latest_review_allowed"])
+        self.assertEqual(
+            result["summary"]["latest_blockers"],
+            ["repeat_seed_evidence_does_not_support_default_promotion"],
+        )
+        report = result["reports"][0]
+        self.assertEqual(report["record_type"], "default_promotion_preflight")
+        self.assertEqual(report["artifact_count"], 3)
+
+
 class TestDashboardHandler(unittest.TestCase):
     """Test the DashboardHandler class."""
 
