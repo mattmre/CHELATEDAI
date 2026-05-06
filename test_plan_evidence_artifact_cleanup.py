@@ -1,10 +1,13 @@
 import json
+import sys
 import tempfile
 import time
 import unittest
+from io import StringIO
 from pathlib import Path
+from unittest.mock import patch
 
-from plan_evidence_artifact_cleanup import plan_evidence_artifact_cleanup
+from plan_evidence_artifact_cleanup import main, plan_evidence_artifact_cleanup
 
 
 class EvidenceArtifactCleanupPlanTests(unittest.TestCase):
@@ -82,6 +85,50 @@ class EvidenceArtifactCleanupPlanTests(unittest.TestCase):
 
             self.assertTrue(plan["summary"]["cleanup_review_allowed"])
             self.assertEqual(plan["summary"]["missing_source_artifacts"], [])
+
+    def test_main_can_fail_when_cleanup_review_is_blocked(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir) / "experiment_runs"
+            evidence_index = self._write_json(root, "evidence-index/latest/evidence_index.json", {"record_type": "index"})
+            missing_freshness = root / "evidence-index" / "latest" / "freshness_audit.json"
+            argv = [
+                "plan_evidence_artifact_cleanup.py",
+                "--root",
+                root.as_posix(),
+                "--evidence-index",
+                evidence_index.as_posix(),
+                "--freshness-audit",
+                missing_freshness.as_posix(),
+                "--fail-on-blocked-review",
+            ]
+
+            with patch.object(sys, "argv", argv), patch("sys.stdout", new_callable=StringIO) as stdout:
+                exit_code = main()
+
+            self.assertEqual(exit_code, 2)
+            emitted = json.loads(stdout.getvalue())
+            self.assertFalse(emitted["summary"]["cleanup_review_allowed"])
+            self.assertEqual(emitted["summary"]["missing_source_artifacts"], ["freshness_audit"])
+
+    def test_main_keeps_default_zero_exit_when_cleanup_review_is_blocked(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir) / "experiment_runs"
+            evidence_index = self._write_json(root, "evidence-index/latest/evidence_index.json", {"record_type": "index"})
+            missing_freshness = root / "evidence-index" / "latest" / "freshness_audit.json"
+            argv = [
+                "plan_evidence_artifact_cleanup.py",
+                "--root",
+                root.as_posix(),
+                "--evidence-index",
+                evidence_index.as_posix(),
+                "--freshness-audit",
+                missing_freshness.as_posix(),
+            ]
+
+            with patch.object(sys, "argv", argv), patch("sys.stdout", new_callable=StringIO):
+                exit_code = main()
+
+            self.assertEqual(exit_code, 0)
 
 
 if __name__ == "__main__":
