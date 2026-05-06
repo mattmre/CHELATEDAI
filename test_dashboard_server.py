@@ -421,6 +421,17 @@ class TestEvidenceIndex(unittest.TestCase):
         self.assertFalse(result["summary"]["latest_review_allowed"])
         self.assertTrue(result["summary"]["latest_chain_passed"])
 
+    def test_load_evidence_index_returns_empty_for_malformed_json(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "evidence_index.json")
+            with open(path, "w", encoding="utf-8") as handle:
+                handle.write("[not-an-object]")
+
+            result = dashboard_server.load_evidence_index(path)
+
+        self.assertTrue(result["present"])
+        self.assertEqual(result["summary"]["artifact_counts"], {})
+
 
 class TestEvidenceChainHistory(unittest.TestCase):
     """Test evidence-chain history discovery helpers."""
@@ -458,6 +469,21 @@ class TestEvidenceChainHistory(unittest.TestCase):
         self.assertTrue(result["summary"]["latest_chain_passed"])
         self.assertFalse(result["summary"]["latest_review_allowed"])
         self.assertEqual(result["reports"][0]["artifact_count"], 1)
+
+    def test_load_evidence_chain_history_skips_non_object_json(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = os.path.join(tmpdir, "experiment_runs")
+            report_dir = os.path.join(root, "default-promotion-evidence-chain", "latest")
+            os.makedirs(report_dir)
+            report_path = os.path.join(report_dir, "evidence_chain_summary.json")
+            with open(report_path, "w", encoding="utf-8") as handle:
+                json.dump(["not", "object"], handle)
+
+            result = dashboard_server.load_evidence_chain_history(root)
+
+        self.assertEqual(result["summary"]["total_reports"], 1)
+        self.assertEqual(result["summary"]["loaded_reports"], 0)
+        self.assertEqual(result["reports"], [])
 
 
 class TestDashboardHandler(unittest.TestCase):
