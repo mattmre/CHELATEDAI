@@ -33,6 +33,7 @@ chelatedai-overlay-model-scope-validation = "run_overlay_model_scope_validation:
 chelatedai-promotion-linkage-audit = "audit_promotion_linkage:main"
 chelatedai-default-promotion-preflight = "default_promotion_preflight:main"
 chelatedai-default-promotion-evidence-chain = "run_default_promotion_evidence_chain:main"
+chelatedai-evidence-index = "generate_evidence_index:main"
 
 [project.optional-dependencies]
 benchmark = ["mteb>=1.0"]
@@ -71,6 +72,7 @@ py-modules = [
     "elite_archive",
     "evolution_strategies_optimizer",
     "fitness_interfaces",
+    "generate_evidence_index",
     "model_hook_bus",
     "model_scope_artifacts",
     "model_scope_features",

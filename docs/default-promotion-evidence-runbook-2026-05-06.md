@@ -26,6 +26,16 @@ The chain can exit `0` while `review_allowed` is `false`. That is expected when 
 
 Use `--fail-on-blocked-review` only when a caller wants blocked review status to become a nonzero exit.
 
+## Cross-Artifact Index
+
+Run:
+
+```bash
+python generate_evidence_index.py --root experiment_runs --output experiment_runs/evidence-index/latest/evidence_index.json
+```
+
+The index is a compact navigation artifact. It links the latest validation summaries, promotion-linkage audits, repeat-seed decisions, preflights, evidence-chain summaries, campaign reports, and adaptive overlay artifact cards. It is not a promotion decision.
+
 ## Manual CI
 
 Use the `Default Promotion Evidence` workflow when the evidence chain should run on GitHub Actions. The workflow uploads `experiment_runs/default-promotion-evidence-chain/ci/` as an artifact.
