@@ -56,6 +56,7 @@ chelatedai-cleanup-review-diagnostic --plan experiment_runs/evidence-cleanup/lat
 ```
 
 From a source checkout before installation, use `python -m cleanup_review_diagnostic` with the same arguments.
+The optional `--github-summary` flag appends the same diagnostic to `GITHUB_STEP_SUMMARY` inside GitHub Actions. In local shells where `GITHUB_STEP_SUMMARY` is unset, the command still prints the diagnostic and exits cleanly.
 The diagnostic field mapping is documented in `docs/evidence-cleanup-plan-schema-2026-05-06.md`.
 
 ## Preflight Fields
