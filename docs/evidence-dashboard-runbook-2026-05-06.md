@@ -63,6 +63,7 @@ Use the GitHub Actions `Default Promotion Evidence` workflow when evidence shoul
 It uploads `experiment_runs/default-promotion-evidence-chain/ci/`, `experiment_runs/evidence-index/ci/`, and `experiment_runs/evidence-cleanup/ci/`.
 The cleanup step remains dry-run only and does not delete files.
 If the cleanup review guard fails, the workflow still uploads available evidence artifacts before reporting the failure.
+The failing step prints a compact diagnostic from `cleanup_plan.json` into the job log and GitHub step summary.
 
 ## Interpretation Rules
 
