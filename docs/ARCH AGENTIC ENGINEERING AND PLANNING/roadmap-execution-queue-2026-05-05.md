@@ -77,7 +77,8 @@ Purpose: Durable continuation queue after Engine-Scope, Model-Scope, and adaptiv
 | 58 | Cleanup diagnostic local command validation | validation | complete | local validation covers the installed console-script behavior or module equivalent |
 | 59 | Cleanup diagnostic invalid-json handling | validation | complete | diagnostic helper reports malformed cleanup plans without traceback noise |
 | 60 | Cleanup diagnostic workflow invalid-plan note | documentation | complete | workflow docs explain malformed cleanup-plan diagnostic output and operator response |
-| 61 | Cleanup diagnostic unreadable-plan schema action | documentation | next | cleanup schema gives the operator response for unreadable cleanup-plan diagnostics |
+| 61 | Cleanup diagnostic unreadable-plan schema action | documentation | complete | cleanup schema gives the operator response for unreadable cleanup-plan diagnostics |
+| 62 | Cleanup diagnostic missing-plan schema action | documentation | next | cleanup schema gives the operator response for missing cleanup-plan diagnostics |
 
 ## Closed Implementation Scaffolds
 - Engine-Scope row contract, internal gates, coverage analysis, hard-negative pipeline, and supervisor integration are implemented.
@@ -150,3 +151,4 @@ Start the next branch from the highest-ranked `next` item that is not blocked. I
 - 2026-05-06: Cleanup diagnostic local command validation added. Unit coverage now exercises `python -m cleanup_review_diagnostic` as the source-checkout equivalent to the console script.
 - 2026-05-06: Cleanup diagnostic invalid-json handling added. Malformed cleanup plans now render clean unreadable-plan diagnostics without traceback noise.
 - 2026-05-06: Cleanup diagnostic workflow invalid-plan note added. The default-promotion evidence runbook now explains how to respond when workflow diagnostics report an unreadable cleanup plan.
+- 2026-05-06: Cleanup diagnostic unreadable-plan schema action added. The cleanup-plan schema now states that unreadable cleanup-plan diagnostics require full evidence regeneration before cleanup decisions.
