@@ -163,6 +163,30 @@ class CleanupReviewDiagnosticTests(unittest.TestCase):
             self.assertNotIn("Traceback", result.stdout)
             self.assertEqual(result.stderr, "")
 
+    def test_module_cli_handles_missing_plan_without_traceback(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            plan_path = Path(tmpdir) / "missing_cleanup_plan.json"
+
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    "-m",
+                    "cleanup_review_diagnostic",
+                    "--plan",
+                    plan_path.as_posix(),
+                    "--mode",
+                    "blocked",
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+
+            self.assertIn("Cleanup plan missing", result.stdout)
+            self.assertIn(plan_path.as_posix(), result.stdout)
+            self.assertNotIn("Traceback", result.stdout)
+            self.assertEqual(result.stderr, "")
+
 
 if __name__ == "__main__":
     unittest.main()
