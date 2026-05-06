@@ -29,6 +29,7 @@ chelatedai-research-pathways = "research_pathway_analyzer:main"
 chelatedai-static-mask-probe = "static_mask_probe:main"
 chelatedai-safety-testbed = "run_safety_testbed:main"
 chelatedai-model-scope-campaign = "run_model_scope_campaign:main"
+chelatedai-overlay-model-scope-validation = "run_overlay_model_scope_validation:main"
 
 [project.optional-dependencies]
 benchmark = ["mteb>=1.0"]
@@ -81,6 +82,7 @@ py-modules = [
     "reproducibility_context",
     "run_live_fire_diagnostics",
     "run_model_scope_campaign",
+    "run_overlay_model_scope_validation",
     "run_road_course_campaign",
     "run_road_course_tuning_loop",
     "run_thousand_query_tuning",
