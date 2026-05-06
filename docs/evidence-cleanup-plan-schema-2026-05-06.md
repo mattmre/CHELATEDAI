@@ -27,6 +27,8 @@ The command prints the plan to stdout and optionally writes the same JSON to `--
 | `source_artifacts.freshness_audit` | string or null | freshness-audit path the plan was generated after |
 | `source_status.evidence_index.present` | boolean | whether the linked evidence index exists when the plan is generated |
 | `source_status.freshness_audit.present` | boolean | whether the linked freshness audit exists when the plan is generated |
+| `summary.cleanup_review_allowed` | boolean | `false` when linked source artifacts are missing |
+| `summary.missing_source_artifacts` | string array | missing linked source artifact names |
 | `summary.candidate_count` | integer | total files listed as cleanup candidates |
 | `summary.retained_count` | integer | total files retained by the keep-latest rule |
 | `summary.candidate_bytes` | integer | total byte size of candidate files |
@@ -76,5 +78,6 @@ The dashboard intentionally omits the full `retained[]` list and displays only `
 - A candidate is safe to inspect, not safe to delete automatically.
 - A retained artifact is the newest file for its artifact type under the current `keep_latest` rule.
 - Missing source status means the cleanup plan is stale against its linked evidence-index or freshness-audit path.
+- `cleanup_review_allowed: false` means operators should regenerate source artifacts before using the candidate list.
 - If generated files are deleted manually, regenerate the evidence index and rerun the freshness audit.
 - Source scripts, schemas, runbooks, phase summaries, and test fixtures are outside the cleanup planner's deletion scope.

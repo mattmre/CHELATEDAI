@@ -102,6 +102,14 @@ def plan_evidence_artifact_cleanup(
             else:
                 candidates.append(record)
 
+    source_status = {
+        "evidence_index": _source_status(evidence_index),
+        "freshness_audit": _source_status(freshness_audit),
+    }
+    missing_sources = [
+        name for name, status_record in source_status.items() if not bool(status_record.get("present", False))
+    ]
+
     plan = {
         "record_type": "evidence_artifact_cleanup_plan",
         "dry_run": True,
@@ -111,11 +119,10 @@ def plan_evidence_artifact_cleanup(
             "evidence_index": _display_path(evidence_index),
             "freshness_audit": _display_path(freshness_audit),
         },
-        "source_status": {
-            "evidence_index": _source_status(evidence_index),
-            "freshness_audit": _source_status(freshness_audit),
-        },
+        "source_status": source_status,
         "summary": {
+            "cleanup_review_allowed": len(missing_sources) == 0,
+            "missing_source_artifacts": missing_sources,
             "candidate_count": len(candidates),
             "retained_count": len(retained),
             "candidate_bytes": sum(int(record["size_bytes"]) for record in candidates),
