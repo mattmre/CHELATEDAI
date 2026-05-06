@@ -48,6 +48,8 @@ jobs:
           python plan_evidence_artifact_cleanup.py \
             --root experiment_runs \
             --keep-latest 1 \
+            --evidence-index experiment_runs/evidence-index/ci/evidence_index.json \
+            --freshness-audit experiment_runs/evidence-index/ci/freshness_audit.json \
             --output experiment_runs/evidence-cleanup/ci/cleanup_plan.json
 
       - name: Upload evidence-chain artifacts

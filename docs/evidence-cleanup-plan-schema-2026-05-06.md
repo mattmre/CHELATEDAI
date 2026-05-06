@@ -5,7 +5,12 @@ Purpose: document the generated JSON contract for cleanup dry-run plans and the 
 ## Generator
 
 ```bash
-python plan_evidence_artifact_cleanup.py --root experiment_runs --keep-latest 1 --output experiment_runs/evidence-cleanup/latest/cleanup_plan.json
+python plan_evidence_artifact_cleanup.py \
+  --root experiment_runs \
+  --keep-latest 1 \
+  --evidence-index experiment_runs/evidence-index/latest/evidence_index.json \
+  --freshness-audit experiment_runs/evidence-index/latest/freshness_audit.json \
+  --output experiment_runs/evidence-cleanup/latest/cleanup_plan.json
 ```
 
 The command prints the plan to stdout and optionally writes the same JSON to `--output`.
@@ -18,6 +23,8 @@ The command prints the plan to stdout and optionally writes the same JSON to `--
 | `dry_run` | boolean | Always `true`; this command does not delete files |
 | `root` | string | scanned generated-output root |
 | `keep_latest` | integer | number of newest artifacts retained per artifact type |
+| `source_artifacts.evidence_index` | string or null | evidence index path the plan was generated after |
+| `source_artifacts.freshness_audit` | string or null | freshness-audit path the plan was generated after |
 | `summary.candidate_count` | integer | total files listed as cleanup candidates |
 | `summary.retained_count` | integer | total files retained by the keep-latest rule |
 | `summary.candidate_bytes` | integer | total byte size of candidate files |

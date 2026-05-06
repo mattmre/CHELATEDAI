@@ -11,6 +11,8 @@ from typing import Any, Mapping
 
 DEFAULT_ROOT = Path("experiment_runs")
 DEFAULT_KEEP_LATEST = 1
+DEFAULT_EVIDENCE_INDEX = DEFAULT_ROOT / "evidence-index" / "latest" / "evidence_index.json"
+DEFAULT_FRESHNESS_AUDIT = DEFAULT_ROOT / "evidence-index" / "latest" / "freshness_audit.json"
 
 ARTIFACT_PATTERNS = {
     "validation_summaries": "validation_summary.json",
@@ -54,6 +56,8 @@ def plan_evidence_artifact_cleanup(
     *,
     root: str | Path = DEFAULT_ROOT,
     keep_latest: int = DEFAULT_KEEP_LATEST,
+    evidence_index: str | Path | None = DEFAULT_EVIDENCE_INDEX,
+    freshness_audit: str | Path | None = DEFAULT_FRESHNESS_AUDIT,
     output: str | Path | None = None,
 ) -> dict[str, Any]:
     """Return a dry-run deletion plan without deleting any files."""
@@ -92,6 +96,10 @@ def plan_evidence_artifact_cleanup(
         "dry_run": True,
         "root": str(root_path),
         "keep_latest": keep_count,
+        "source_artifacts": {
+            "evidence_index": str(evidence_index) if evidence_index is not None else None,
+            "freshness_audit": str(freshness_audit) if freshness_audit is not None else None,
+        },
         "summary": {
             "candidate_count": len(candidates),
             "retained_count": len(retained),
@@ -112,9 +120,17 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Plan generated evidence artifact cleanup without deleting files")
     parser.add_argument("--root", default=str(DEFAULT_ROOT), help="Experiment root to scan")
     parser.add_argument("--keep-latest", type=int, default=DEFAULT_KEEP_LATEST, help="Artifacts to retain per type")
+    parser.add_argument("--evidence-index", default=str(DEFAULT_EVIDENCE_INDEX), help="Evidence index path linked by the plan")
+    parser.add_argument("--freshness-audit", default=str(DEFAULT_FRESHNESS_AUDIT), help="Freshness audit path linked by the plan")
     parser.add_argument("--output", default=None, help="Optional JSON output path")
     args = parser.parse_args()
-    plan = plan_evidence_artifact_cleanup(root=args.root, keep_latest=args.keep_latest, output=args.output)
+    plan = plan_evidence_artifact_cleanup(
+        root=args.root,
+        keep_latest=args.keep_latest,
+        evidence_index=args.evidence_index,
+        freshness_audit=args.freshness_audit,
+        output=args.output,
+    )
     print(json.dumps(_json_safe(plan), indent=2))
     return 0
 

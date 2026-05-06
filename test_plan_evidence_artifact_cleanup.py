@@ -44,6 +44,21 @@ class EvidenceArtifactCleanupPlanTests(unittest.TestCase):
             self.assertEqual(written["record_type"], "evidence_artifact_cleanup_plan")
             self.assertEqual(written["summary"], plan["summary"])
 
+    def test_plan_records_source_artifact_references(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir) / "experiment_runs"
+            evidence_index = root / "evidence-index" / "latest" / "evidence_index.json"
+            freshness_audit = root / "evidence-index" / "latest" / "freshness_audit.json"
+
+            plan = plan_evidence_artifact_cleanup(
+                root=root,
+                evidence_index=evidence_index,
+                freshness_audit=freshness_audit,
+            )
+
+            self.assertEqual(plan["source_artifacts"]["evidence_index"], str(evidence_index))
+            self.assertEqual(plan["source_artifacts"]["freshness_audit"], str(freshness_audit))
+
 
 if __name__ == "__main__":
     unittest.main()
