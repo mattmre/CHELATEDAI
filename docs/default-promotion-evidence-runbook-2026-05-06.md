@@ -38,7 +38,7 @@ The index is a compact navigation artifact. It links the latest validation summa
 
 ## Manual CI
 
-Use the `Default Promotion Evidence` workflow when the evidence chain should run on GitHub Actions. The workflow uploads `experiment_runs/default-promotion-evidence-chain/ci/` and `experiment_runs/evidence-index/ci/` as artifacts.
+Use the `Default Promotion Evidence` workflow when the evidence chain should run on GitHub Actions. The workflow uploads `experiment_runs/default-promotion-evidence-chain/ci/`, `experiment_runs/evidence-index/ci/`, and `experiment_runs/evidence-cleanup/ci/` as artifacts.
 
 The workflow is intentionally manual. Promotion evidence should not become background noise on every commit.
 

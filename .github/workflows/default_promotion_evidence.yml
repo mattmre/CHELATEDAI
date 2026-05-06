@@ -43,6 +43,13 @@ jobs:
             --index experiment_runs/evidence-index/ci/evidence_index.json \
             --output experiment_runs/evidence-index/ci/freshness_audit.json
 
+      - name: Plan evidence artifact cleanup
+        run: |
+          python plan_evidence_artifact_cleanup.py \
+            --root experiment_runs \
+            --keep-latest 1 \
+            --output experiment_runs/evidence-cleanup/ci/cleanup_plan.json
+
       - name: Upload evidence-chain artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -50,3 +57,4 @@ jobs:
           path: |
             experiment_runs/default-promotion-evidence-chain/ci/
             experiment_runs/evidence-index/ci/
+            experiment_runs/evidence-cleanup/ci/
