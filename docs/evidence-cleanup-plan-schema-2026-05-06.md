@@ -16,6 +16,17 @@ python plan_evidence_artifact_cleanup.py \
 The command prints the plan to stdout and optionally writes the same JSON to `--output`.
 Add `--fail-on-blocked-review` when a local or CI caller should exit with status `2` if `summary.cleanup_review_allowed` is `false`.
 
+## Workflow Guard Modes
+
+The manual `Default Promotion Evidence` workflow wraps the cleanup planner with a `cleanup-guard-mode` dispatch input:
+
+| Mode | Planner behavior | Workflow behavior |
+| --- | --- | --- |
+| `fail` | passes `--fail-on-blocked-review` | fail-closed default; uploads available artifacts, emits blocked-review diagnostics, then fails if linked source artifacts are missing |
+| `warn` | omits `--fail-on-blocked-review` | collects nonblocking diagnostics only; cleanup remains dry-run and candidates still must not be used when `cleanup_review_allowed` is `false` |
+
+Use `warn` only for deliberate evidence collection or debugging. It does not make blocked cleanup candidates safe to use.
+
 ## `evidence_artifact_cleanup_plan`
 
 | Field | Type | Meaning |

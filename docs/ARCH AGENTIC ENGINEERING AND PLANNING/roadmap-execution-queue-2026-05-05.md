@@ -69,7 +69,8 @@ Purpose: Durable continuation queue after Engine-Scope, Model-Scope, and adaptiv
 | 50 | Cleanup workflow artifact upload resilience | governance | complete | evidence workflow preserves cleanup/index artifacts for debugging even when blocked-review guard fails |
 | 51 | Cleanup workflow blocked-review diagnostics | reporting | complete | workflow emits a compact blocked-review diagnostic summary before failing |
 | 52 | Cleanup workflow manual dispatch guardrail | governance | complete | manual evidence workflow exposes an explicit cleanup guard mode input with fail-closed default |
-| 53 | Cleanup guard mode docs schema refresh | documentation | next | cleanup workflow guard modes are documented in the cleanup-plan schema/runbook contract |
+| 53 | Cleanup guard mode docs schema refresh | documentation | complete | cleanup workflow guard modes are documented in the cleanup-plan schema/runbook contract |
+| 54 | Cleanup guard mode warning diagnostic | reporting | next | warn-mode workflow runs still emit cleanup-review allowed/blocked summary without failing |
 
 ## Closed Implementation Scaffolds
 - Engine-Scope row contract, internal gates, coverage analysis, hard-negative pipeline, and supervisor integration are implemented.
@@ -134,3 +135,4 @@ Start the next branch from the highest-ranked `next` item that is not blocked. I
 - 2026-05-06: Cleanup workflow artifact upload resilience added. The manual evidence workflow now uploads available evidence artifacts even when the cleanup review guard fails.
 - 2026-05-06: Cleanup workflow blocked-review diagnostics added. Blocked cleanup review now emits missing source artifacts, source status, and candidate counts before failing.
 - 2026-05-06: Cleanup workflow manual dispatch guardrail added. The manual evidence workflow now exposes `cleanup-guard-mode` with fail-closed default and explicit warn mode.
+- 2026-05-06: Cleanup guard mode docs schema refreshed. The cleanup-plan schema now documents workflow `fail` and `warn` guard-mode behavior.
