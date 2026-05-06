@@ -32,6 +32,7 @@ chelatedai-model-scope-campaign = "run_model_scope_campaign:main"
 chelatedai-overlay-model-scope-validation = "run_overlay_model_scope_validation:main"
 chelatedai-promotion-linkage-audit = "audit_promotion_linkage:main"
 chelatedai-default-promotion-preflight = "default_promotion_preflight:main"
+chelatedai-default-promotion-evidence-chain = "run_default_promotion_evidence_chain:main"
 
 [project.optional-dependencies]
 benchmark = ["mteb>=1.0"]
@@ -86,6 +87,7 @@ py-modules = [
     "reproducibility_context",
     "run_live_fire_diagnostics",
     "run_model_scope_campaign",
+    "run_default_promotion_evidence_chain",
     "run_overlay_model_scope_validation",
     "run_road_course_campaign",
     "run_road_course_tuning_loop",
