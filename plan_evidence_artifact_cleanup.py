@@ -1,0 +1,123 @@
+"""Plan safe dry-run cleanup candidates for generated evidence artifacts."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import stat
+from pathlib import Path
+from typing import Any, Mapping
+
+
+DEFAULT_ROOT = Path("experiment_runs")
+DEFAULT_KEEP_LATEST = 1
+
+ARTIFACT_PATTERNS = {
+    "validation_summaries": "validation_summary.json",
+    "promotion_linkage_audits": "*promotion-linkage-audit*.json",
+    "attnres_repeat_seed_decisions": "*attnres-repeat-seed-decision*.json",
+    "default_promotion_preflights": "*preflight*.json",
+    "evidence_chain_summaries": "evidence_chain_summary.json",
+    "evidence_indexes": "evidence_index.json",
+    "freshness_audits": "freshness_audit.json",
+    "campaign_reports": "campaign_report.json",
+    "adaptive_overlay_artifact_cards": "adaptive_overlay_artifact_card.json",
+}
+
+
+def _json_safe(value: Any) -> Any:
+    if value is None or isinstance(value, (str, bool, int, float)):
+        return value
+    if isinstance(value, Mapping):
+        return {str(key): _json_safe(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple, set)):
+        return [_json_safe(item) for item in value]
+    return str(value)
+
+
+def _relative(path: Path, root: Path) -> str:
+    relative = path.relative_to(root.parent) if path.is_relative_to(root.parent) else path
+    return relative.as_posix()
+
+
+def _record(path: Path, root: Path, artifact_type: str, disposition: str, stat_result: Any) -> dict[str, Any]:
+    return {
+        "artifact_type": artifact_type,
+        "path": _relative(path, root),
+        "modified_at": stat_result.st_mtime,
+        "size_bytes": stat_result.st_size,
+        "disposition": disposition,
+    }
+
+
+def plan_evidence_artifact_cleanup(
+    *,
+    root: str | Path = DEFAULT_ROOT,
+    keep_latest: int = DEFAULT_KEEP_LATEST,
+    output: str | Path | None = None,
+) -> dict[str, Any]:
+    """Return a dry-run deletion plan without deleting any files."""
+
+    root_path = Path(root)
+    keep_count = max(0, int(keep_latest))
+    retained: list[dict[str, Any]] = []
+    candidates: list[dict[str, Any]] = []
+    seen: set[Path] = set()
+
+    for artifact_type, pattern in ARTIFACT_PATTERNS.items():
+        paths_with_stat = []
+        if root_path.exists():
+            for path in root_path.rglob(pattern):
+                if path in seen:
+                    continue
+                try:
+                    stat_result = path.stat()
+                except OSError:
+                    continue
+                if not stat.S_ISREG(stat_result.st_mode):
+                    continue
+                paths_with_stat.append((path, stat_result))
+        paths_with_stat.sort(key=lambda item: item[1].st_mtime, reverse=True)
+        seen.update(path for path, _stat_result in paths_with_stat)
+        for index, (path, stat_result) in enumerate(paths_with_stat):
+            disposition = "retain_latest" if index < keep_count else "candidate"
+            record = _record(path, root_path, artifact_type, disposition, stat_result)
+            if disposition == "retain_latest":
+                retained.append(record)
+            else:
+                candidates.append(record)
+
+    plan = {
+        "record_type": "evidence_artifact_cleanup_plan",
+        "dry_run": True,
+        "root": str(root_path),
+        "keep_latest": keep_count,
+        "summary": {
+            "candidate_count": len(candidates),
+            "retained_count": len(retained),
+            "candidate_bytes": sum(int(record["size_bytes"]) for record in candidates),
+        },
+        "candidates": candidates,
+        "retained": retained,
+    }
+    if output is not None:
+        output_path = Path(output)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        plan["output"] = str(output_path)
+        output_path.write_text(json.dumps(_json_safe(plan), indent=2), encoding="utf-8")
+    return plan
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Plan generated evidence artifact cleanup without deleting files")
+    parser.add_argument("--root", default=str(DEFAULT_ROOT), help="Experiment root to scan")
+    parser.add_argument("--keep-latest", type=int, default=DEFAULT_KEEP_LATEST, help="Artifacts to retain per type")
+    parser.add_argument("--output", default=None, help="Optional JSON output path")
+    args = parser.parse_args()
+    plan = plan_evidence_artifact_cleanup(root=args.root, keep_latest=args.keep_latest, output=args.output)
+    print(json.dumps(_json_safe(plan), indent=2))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

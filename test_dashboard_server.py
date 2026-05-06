@@ -381,6 +381,23 @@ class TestPreflightHistory(unittest.TestCase):
         self.assertEqual(report["record_type"], "default_promotion_preflight")
         self.assertEqual(report["artifact_count"], 3)
 
+    def test_load_preflight_history_accepts_default_promotion_filename(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = os.path.join(tmpdir, "experiment_runs")
+            report_dir = os.path.join(root, "default-promotion-evidence-chain", "latest")
+            os.makedirs(report_dir)
+            report_path = os.path.join(report_dir, "default-promotion-preflight.json")
+            with open(report_path, "w", encoding="utf-8") as handle:
+                json.dump({"review_allowed": False, "blockers": ["blocked"]}, handle)
+
+            result = dashboard_server.load_preflight_history(root)
+
+        self.assertEqual(result["summary"]["total_reports"], 1)
+        self.assertEqual(
+            result["reports"][0]["path"],
+            "experiment_runs/default-promotion-evidence-chain/latest/default-promotion-preflight.json",
+        )
+
 
 class TestEvidenceIndex(unittest.TestCase):
     """Test evidence-index dashboard helper."""

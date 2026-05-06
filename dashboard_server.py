@@ -748,6 +748,11 @@ def _load_json_object(path: Path) -> Dict[str, Any]:
     return payload
 
 
+def _relative_dashboard_path(path: Path, root: Path) -> str:
+    relative = path.relative_to(root.parent) if path.is_relative_to(root.parent) else path
+    return relative.as_posix()
+
+
 def _extract_campaign_record(path: Path, root: Path) -> Dict[str, Any]:
     payload = _load_json_object(path)
     promotion = payload.get("promotion_decision")
@@ -770,7 +775,7 @@ def _extract_campaign_record(path: Path, root: Path) -> Dict[str, Any]:
 
     stat = path.stat()
     return {
-        "path": str(path.relative_to(root.parent)) if path.is_relative_to(root.parent) else str(path),
+        "path": _relative_dashboard_path(path, root),
         "report_name": path.name,
         "run_label": _first_present(payload, ["run_label", "label", "campaign_id"]) or path.parent.name,
         "record_type": payload.get("record_type"),
@@ -829,7 +834,7 @@ def _extract_validation_record(path: Path, root: Path) -> Dict[str, Any]:
     if not isinstance(results, list):
         results = []
     return {
-        "path": str(path.relative_to(root.parent)) if path.is_relative_to(root.parent) else str(path),
+        "path": _relative_dashboard_path(path, root),
         "report_name": path.name,
         "record_type": payload.get("record_type"),
         "passed": bool(payload.get("passed", False)),
@@ -880,7 +885,7 @@ def _extract_preflight_record(path: Path, root: Path) -> Dict[str, Any]:
     if not isinstance(artifacts, dict):
         artifacts = {}
     return {
-        "path": str(path.relative_to(root.parent)) if path.is_relative_to(root.parent) else str(path),
+        "path": _relative_dashboard_path(path, root),
         "report_name": path.name,
         "record_type": payload.get("record_type"),
         "review_allowed": bool(payload.get("review_allowed", False)),
@@ -902,7 +907,14 @@ def load_preflight_history(root: str = PREFLIGHT_HISTORY_ROOT, limit: int = 10) 
             "summary": {"total_reports": 0, "review_allowed": 0, "blocked": 0, "latest_review_allowed": None},
         }
 
-    report_paths = sorted(root_path.rglob("preflight.json"), key=lambda item: item.stat().st_mtime, reverse=True)
+    report_paths_with_mtime = []
+    for path in root_path.rglob("*preflight*.json"):
+        try:
+            report_paths_with_mtime.append((path, path.stat().st_mtime))
+        except OSError:
+            continue
+    report_paths_with_mtime.sort(key=lambda item: item[1], reverse=True)
+    report_paths = [path for path, _mtime in report_paths_with_mtime]
     reports = []
     for path in report_paths[: max(0, limit)]:
         try:
@@ -978,7 +990,7 @@ def _extract_evidence_chain_record(path: Path, root: Path) -> Dict[str, Any]:
     if not isinstance(failures, list):
         failures = []
     return {
-        "path": str(path.relative_to(root.parent)) if path.is_relative_to(root.parent) else str(path),
+        "path": _relative_dashboard_path(path, root),
         "report_name": path.name,
         "record_type": payload.get("record_type"),
         "chain_passed": bool(payload.get("chain_passed", False)),
