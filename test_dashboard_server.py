@@ -422,6 +422,43 @@ class TestEvidenceIndex(unittest.TestCase):
         self.assertTrue(result["summary"]["latest_chain_passed"])
 
 
+class TestEvidenceChainHistory(unittest.TestCase):
+    """Test evidence-chain history discovery helpers."""
+
+    def test_load_evidence_chain_history_empty_root(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            result = dashboard_server.load_evidence_chain_history(os.path.join(tmpdir, "missing"))
+
+        self.assertEqual(result["reports"], [])
+        self.assertIsNone(result["summary"]["latest_chain_passed"])
+
+    def test_load_evidence_chain_history_normalizes_summary(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = os.path.join(tmpdir, "experiment_runs")
+            report_dir = os.path.join(root, "default-promotion-evidence-chain", "latest")
+            os.makedirs(report_dir)
+            report_path = os.path.join(report_dir, "evidence_chain_summary.json")
+            with open(report_path, "w", encoding="utf-8") as handle:
+                json.dump(
+                    {
+                        "record_type": "default_promotion_evidence_chain",
+                        "chain_passed": True,
+                        "review_allowed": False,
+                        "preflight_blockers": ["repeat_seed_evidence_does_not_support_default_promotion"],
+                        "artifacts": {"validation_summary": "validation_summary.json"},
+                    },
+                    handle,
+                )
+
+            result = dashboard_server.load_evidence_chain_history(root)
+
+        self.assertEqual(result["summary"]["total_reports"], 1)
+        self.assertEqual(result["summary"]["passed"], 1)
+        self.assertTrue(result["summary"]["latest_chain_passed"])
+        self.assertFalse(result["summary"]["latest_review_allowed"])
+        self.assertEqual(result["reports"][0]["artifact_count"], 1)
+
+
 class TestDashboardHandler(unittest.TestCase):
     """Test the DashboardHandler class."""
 

@@ -32,6 +32,7 @@ CAMPAIGN_HISTORY_ROOT = "experiment_runs"
 VALIDATION_HISTORY_ROOT = "experiment_runs"
 PREFLIGHT_HISTORY_ROOT = "experiment_runs"
 EVIDENCE_INDEX_PATH = "experiment_runs/evidence-index/latest/evidence_index.json"
+EVIDENCE_CHAIN_HISTORY_ROOT = "experiment_runs"
 
 
 def get_inline_dashboard_html():
@@ -956,6 +957,63 @@ def load_evidence_index(path: str = EVIDENCE_INDEX_PATH) -> Dict[str, Any]:
     }
 
 
+def _extract_evidence_chain_record(path: Path, root: Path) -> Dict[str, Any]:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    stat = path.stat()
+    artifacts = payload.get("artifacts", {})
+    if not isinstance(artifacts, dict):
+        artifacts = {}
+    blockers = payload.get("preflight_blockers", [])
+    if not isinstance(blockers, list):
+        blockers = []
+    failures = payload.get("command_failures", [])
+    if not isinstance(failures, list):
+        failures = []
+    return {
+        "path": str(path.relative_to(root.parent)) if path.is_relative_to(root.parent) else str(path),
+        "report_name": path.name,
+        "record_type": payload.get("record_type"),
+        "chain_passed": bool(payload.get("chain_passed", False)),
+        "review_allowed": bool(payload.get("review_allowed", False)),
+        "default_change_allowed": bool(payload.get("default_change_allowed", False)),
+        "command_failures": [str(item) for item in failures],
+        "preflight_blockers": [str(item) for item in blockers],
+        "artifact_count": len(artifacts),
+        "modified_at": stat.st_mtime,
+    }
+
+
+def load_evidence_chain_history(root: str = EVIDENCE_CHAIN_HISTORY_ROOT, limit: int = 10) -> Dict[str, Any]:
+    """Load compact default-promotion evidence-chain summaries for dashboard display."""
+    root_path = Path(root)
+    if not root_path.exists():
+        return {
+            "root": root,
+            "reports": [],
+            "summary": {"total_reports": 0, "passed": 0, "failed": 0, "latest_chain_passed": None},
+        }
+    report_paths = sorted(root_path.rglob("evidence_chain_summary.json"), key=lambda item: item.stat().st_mtime, reverse=True)
+    reports = []
+    for path in report_paths[: max(0, limit)]:
+        try:
+            reports.append(_extract_evidence_chain_record(path, root_path))
+        except (OSError, ValueError, UnicodeDecodeError):
+            continue
+    latest = reports[0] if reports else {}
+    return {
+        "root": root,
+        "reports": reports,
+        "summary": {
+            "total_reports": len(reports),
+            "passed": sum(1 for report in reports if report["chain_passed"]),
+            "failed": sum(1 for report in reports if not report["chain_passed"]),
+            "latest_chain_passed": latest.get("chain_passed") if reports else None,
+            "latest_review_allowed": latest.get("review_allowed") if reports else None,
+            "latest_preflight_blockers": latest.get("preflight_blockers", []) if reports else [],
+        },
+    }
+
+
 class DashboardHandler(SimpleHTTPRequestHandler):
     """
     HTTP request handler for the dashboard server.
@@ -996,6 +1054,8 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             self.handle_api_preflight_history(query_params)
         elif path == "/api/evidence_index":
             self.handle_api_evidence_index()
+        elif path == "/api/evidence_chain_history":
+            self.handle_api_evidence_chain_history(query_params)
         elif path == "/" or path == "/dashboard" or path == "/dashboard/":
             # Redirect to dashboard page
             self.serve_dashboard()
@@ -1159,6 +1219,19 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             self.send_json_response(load_evidence_index(EVIDENCE_INDEX_PATH))
         except Exception as e:
             self.send_error_response(500, f"Error reading evidence index: {str(e)}")
+
+    def handle_api_evidence_chain_history(self, query_params: Dict[str, List[str]]):
+        """Handle /api/evidence_chain_history endpoint."""
+        limit = 10
+        if "limit" in query_params:
+            try:
+                limit = int(query_params["limit"][0])
+            except (ValueError, IndexError):
+                limit = 10
+        try:
+            self.send_json_response(load_evidence_chain_history(EVIDENCE_CHAIN_HISTORY_ROOT, limit=limit))
+        except Exception as e:
+            self.send_error_response(500, f"Error reading evidence-chain history: {str(e)}")
             
     def serve_dashboard(self):
         """Serve the dashboard HTML page."""

@@ -213,6 +213,13 @@
       <div class="card"><div class="label">Review Status</div><div class="value" id="evidence-index-review" style="font-size:20px;">-</div></div>
     </div>
 
+    <div class="cards">
+      <div class="card"><div class="label">Evidence Chains</div><div class="value" id="evidence-chain-total">-</div></div>
+      <div class="card"><div class="label">Latest Chain</div><div class="value" id="evidence-chain-latest" style="font-size:20px;">-</div></div>
+      <div class="card"><div class="label">Chains Passed</div><div class="value" id="evidence-chain-passed">-</div></div>
+      <div class="card"><div class="label">Chains Failed</div><div class="value" id="evidence-chain-failed">-</div></div>
+    </div>
+
     <div class="panel">
       <div style="display:flex; justify-content: space-between; align-items:center">
         <h2>Latest Campaign Reports</h2>
@@ -297,6 +304,28 @@
       <div style="margin-top:12px; font-size:13px; color:#666;" id="evidence-index-blockers"></div>
       <div style="margin-top:6px; font-size:13px; color:#666;" id="evidence-index-path"></div>
     </div>
+
+    <div class="panel">
+      <div style="display:flex; justify-content: space-between; align-items:center">
+        <h2>Evidence Chains</h2>
+        <button onclick="loadEvidenceChainHistory()">Refresh Chains</button>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Modified</th>
+            <th>Chain</th>
+            <th>Review</th>
+            <th>Artifacts</th>
+            <th>Blockers</th>
+            <th>Report</th>
+          </tr>
+        </thead>
+        <tbody id="evidence-chain-rows">
+          <tr><td colspan="6">Loading...</td></tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 
   <!-- Logs Tab -->
@@ -357,6 +386,7 @@
         loadValidationHistory();
         loadPreflightHistory();
         loadEvidenceIndex();
+        loadEvidenceChainHistory();
       }
     }
 
@@ -617,6 +647,49 @@
       } catch (e) {
         console.error('Error loading evidence index', e);
         document.getElementById('evidence-index-rows').innerHTML = '<tr><td colspan="2">Error loading evidence index</td></tr>';
+      }
+    }
+
+    async function loadEvidenceChainHistory() {
+      try {
+        const res = await fetch('/api/evidence_chain_history?limit=10');
+        const data = await res.json();
+        const summary = data.summary || {};
+        document.getElementById('evidence-chain-total').textContent = summary.total_reports || 0;
+        document.getElementById('evidence-chain-latest').textContent =
+          summary.latest_chain_passed === true ? 'passed' : (summary.latest_chain_passed === false ? 'failed' : '-');
+        document.getElementById('evidence-chain-passed').textContent = summary.passed || 0;
+        document.getElementById('evidence-chain-failed').textContent = summary.failed || 0;
+
+        const rows = document.getElementById('evidence-chain-rows');
+        rows.replaceChildren();
+        const reports = data.reports || [];
+        if (!reports.length) {
+          rows.innerHTML = '<tr><td colspan="6">No evidence-chain summaries found</td></tr>';
+          return;
+        }
+        reports.forEach(report => {
+          const tr = document.createElement('tr');
+          const modified = report.modified_at ? new Date(report.modified_at * 1000).toLocaleString() : '-';
+          const blockers = (report.preflight_blockers || []).join(', ') || '-';
+          const cells = [
+            modified,
+            report.chain_passed ? 'passed' : 'failed',
+            report.review_allowed ? 'allowed' : 'blocked',
+            report.artifact_count ?? '-',
+            blockers,
+            report.path || report.report_name || '-'
+          ];
+          cells.forEach(text => {
+            const td = document.createElement('td');
+            td.textContent = text;
+            tr.appendChild(td);
+          });
+          rows.appendChild(tr);
+        });
+      } catch (e) {
+        console.error('Error loading evidence-chain history', e);
+        document.getElementById('evidence-chain-rows').innerHTML = '<tr><td colspan="6">Error loading evidence-chain history</td></tr>';
       }
     }
 
