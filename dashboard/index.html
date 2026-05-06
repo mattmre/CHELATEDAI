@@ -199,6 +199,13 @@
       <div class="card"><div class="label">Failed Bundles</div><div class="value" id="validation-failed">-</div></div>
     </div>
 
+    <div class="cards">
+      <div class="card"><div class="label">Reports Loaded</div><div class="value" id="preflight-total">-</div></div>
+      <div class="card"><div class="label">Latest Preflight</div><div class="value" id="preflight-latest" style="font-size:20px;">-</div></div>
+      <div class="card"><div class="label">Review Allowed</div><div class="value" id="preflight-allowed">-</div></div>
+      <div class="card"><div class="label">Blocked</div><div class="value" id="preflight-blocked">-</div></div>
+    </div>
+
     <div class="panel">
       <div style="display:flex; justify-content: space-between; align-items:center">
         <h2>Latest Campaign Reports</h2>
@@ -238,6 +245,27 @@
           </tr>
         </thead>
         <tbody id="validation-rows">
+          <tr><td colspan="5">Loading...</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="panel">
+      <div style="display:flex; justify-content: space-between; align-items:center">
+        <h2>Default-Promotion Preflight</h2>
+        <button onclick="loadPreflightHistory()">Refresh Preflight</button>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Modified</th>
+            <th>Status</th>
+            <th>Blockers</th>
+            <th>Artifacts</th>
+            <th>Report</th>
+          </tr>
+        </thead>
+        <tbody id="preflight-rows">
           <tr><td colspan="5">Loading...</td></tr>
         </tbody>
       </table>
@@ -300,6 +328,7 @@
       if(tabId === 'campaigns') {
         loadCampaignHistory();
         loadValidationHistory();
+        loadPreflightHistory();
       }
     }
 
@@ -479,6 +508,49 @@
       } catch (e) {
         console.error('Error loading validation history', e);
         document.getElementById('validation-rows').innerHTML = '<tr><td colspan="5">Error loading validation history</td></tr>';
+      }
+    }
+
+    async function loadPreflightHistory() {
+      try {
+        const res = await fetch('/api/preflight_history?limit=10');
+        const data = await res.json();
+        const summary = data.summary || {};
+        document.getElementById('preflight-total').textContent = summary.total_reports || 0;
+        document.getElementById('preflight-latest').textContent =
+          summary.latest_review_allowed === true ? 'allowed' : (summary.latest_review_allowed === false ? 'blocked' : '-');
+        document.getElementById('preflight-allowed').textContent = summary.review_allowed || 0;
+        document.getElementById('preflight-blocked').textContent = summary.blocked || 0;
+
+        const rows = document.getElementById('preflight-rows');
+        rows.replaceChildren();
+        const reports = data.reports || [];
+        if (!reports.length) {
+          rows.innerHTML = '<tr><td colspan="5">No preflight reports found</td></tr>';
+          return;
+        }
+
+        reports.forEach(report => {
+          const tr = document.createElement('tr');
+          const modified = report.modified_at ? new Date(report.modified_at * 1000).toLocaleString() : '-';
+          const blockers = (report.blockers || []).join(', ') || '-';
+          const cells = [
+            modified,
+            report.review_allowed ? 'allowed' : 'blocked',
+            blockers,
+            report.artifact_count ?? '-',
+            report.path || report.report_name || '-'
+          ];
+          cells.forEach(text => {
+            const td = document.createElement('td');
+            td.textContent = text;
+            tr.appendChild(td);
+          });
+          rows.appendChild(tr);
+        });
+      } catch (e) {
+        console.error('Error loading preflight history', e);
+        document.getElementById('preflight-rows').innerHTML = '<tr><td colspan="5">Error loading preflight history</td></tr>';
       }
     }
 

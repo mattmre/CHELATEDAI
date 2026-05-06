@@ -30,6 +30,7 @@ DASHBOARD_TOKEN = os.getenv("CHELATED_DASHBOARD_TOKEN", "").strip()
 DASHBOARD_CORS_ORIGIN = os.getenv("CHELATED_DASHBOARD_CORS_ORIGIN", "").strip()
 CAMPAIGN_HISTORY_ROOT = "experiment_runs"
 VALIDATION_HISTORY_ROOT = "experiment_runs"
+PREFLIGHT_HISTORY_ROOT = "experiment_runs"
 
 
 def get_inline_dashboard_html():
@@ -860,6 +861,59 @@ def load_validation_history(root: str = VALIDATION_HISTORY_ROOT, limit: int = 10
     }
 
 
+def _extract_preflight_record(path: Path, root: Path) -> Dict[str, Any]:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    stat = path.stat()
+    blockers = payload.get("blockers", [])
+    if not isinstance(blockers, list):
+        blockers = []
+    artifacts = payload.get("artifacts", {})
+    if not isinstance(artifacts, dict):
+        artifacts = {}
+    return {
+        "path": str(path.relative_to(root.parent)) if path.is_relative_to(root.parent) else str(path),
+        "report_name": path.name,
+        "record_type": payload.get("record_type"),
+        "review_allowed": bool(payload.get("review_allowed", False)),
+        "default_change_allowed": bool(payload.get("default_change_allowed", False)),
+        "blockers": [str(blocker) for blocker in blockers],
+        "artifact_count": len(artifacts),
+        "artifacts": artifacts,
+        "modified_at": stat.st_mtime,
+    }
+
+
+def load_preflight_history(root: str = PREFLIGHT_HISTORY_ROOT, limit: int = 10) -> Dict[str, Any]:
+    """Load compact default-promotion preflight reports for dashboard display."""
+    root_path = Path(root)
+    if not root_path.exists():
+        return {
+            "root": root,
+            "reports": [],
+            "summary": {"total_reports": 0, "review_allowed": 0, "blocked": 0, "latest_review_allowed": None},
+        }
+
+    report_paths = sorted(root_path.rglob("preflight.json"), key=lambda item: item.stat().st_mtime, reverse=True)
+    reports = []
+    for path in report_paths[: max(0, limit)]:
+        try:
+            reports.append(_extract_preflight_record(path, root_path))
+        except (OSError, json.JSONDecodeError):
+            continue
+    latest = reports[0] if reports else {}
+    return {
+        "root": root,
+        "reports": reports,
+        "summary": {
+            "total_reports": len(reports),
+            "review_allowed": sum(1 for report in reports if report["review_allowed"]),
+            "blocked": sum(1 for report in reports if not report["review_allowed"]),
+            "latest_review_allowed": latest.get("review_allowed") if reports else None,
+            "latest_blockers": latest.get("blockers", []) if reports else [],
+        },
+    }
+
+
 class DashboardHandler(SimpleHTTPRequestHandler):
     """
     HTTP request handler for the dashboard server.
@@ -896,6 +950,8 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             self.handle_api_campaign_history(query_params)
         elif path == "/api/validation_history":
             self.handle_api_validation_history(query_params)
+        elif path == "/api/preflight_history":
+            self.handle_api_preflight_history(query_params)
         elif path == "/" or path == "/dashboard" or path == "/dashboard/":
             # Redirect to dashboard page
             self.serve_dashboard()
@@ -1039,6 +1095,19 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             self.send_json_response(load_validation_history(VALIDATION_HISTORY_ROOT, limit=limit))
         except Exception as e:
             self.send_error_response(500, f"Error reading validation history: {str(e)}")
+
+    def handle_api_preflight_history(self, query_params: Dict[str, List[str]]):
+        """Handle /api/preflight_history endpoint."""
+        limit = 10
+        if "limit" in query_params:
+            try:
+                limit = int(query_params["limit"][0])
+            except (ValueError, IndexError):
+                limit = 10
+        try:
+            self.send_json_response(load_preflight_history(PREFLIGHT_HISTORY_ROOT, limit=limit))
+        except Exception as e:
+            self.send_error_response(500, f"Error reading preflight history: {str(e)}")
             
     def serve_dashboard(self):
         """Serve the dashboard HTML page."""
