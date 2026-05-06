@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from run_overlay_model_scope_validation import run_validation_bundle
+from run_overlay_model_scope_validation import main, run_validation_bundle
 
 
 class TestOverlayModelScopeValidation(unittest.TestCase):
@@ -51,6 +51,14 @@ class TestOverlayModelScopeValidation(unittest.TestCase):
 
             self.assertTrue(summary["passed"])
             self.assertEqual(summary["failed_commands"], [])
+
+    def test_main_can_list_commands_without_running(self):
+        with patch("sys.argv", ["run_overlay_model_scope_validation.py", "--list-commands"]):
+            with patch("run_overlay_model_scope_validation.run_validation_bundle") as run_bundle:
+                exit_code = main()
+
+        self.assertEqual(exit_code, 0)
+        run_bundle.assert_not_called()
 
 
 if __name__ == "__main__":

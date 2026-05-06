@@ -1,0 +1,37 @@
+name: Overlay Model-Scope Validation
+
+on:
+  workflow_dispatch:
+    inputs:
+      timeout-seconds:
+        description: Timeout per validation command
+        required: false
+        default: "300"
+
+jobs:
+  overlay-model-scope-validation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+      - name: Install PyTorch CPU
+        run: pip install torch --index-url https://download.pytorch.org/whl/cpu
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Run overlay Model-Scope validation bundle
+        run: |
+          python run_overlay_model_scope_validation.py \
+            --output-dir experiment_runs/overlay-model-scope-validation/ci \
+            --timeout-seconds "${{ inputs.timeout-seconds }}"
+      - name: Upload validation summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: overlay-model-scope-validation-summary
+          path: experiment_runs/overlay-model-scope-validation/ci/validation_summary.json
+          if-no-files-found: warn
+          retention-days: 14

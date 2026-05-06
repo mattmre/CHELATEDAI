@@ -122,7 +122,15 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Run focused overlay and Model-Scope validation bundle")
     parser.add_argument("--output-dir", default=str(DEFAULT_OUTPUT_DIR), help="Directory for validation outputs")
     parser.add_argument("--timeout-seconds", type=int, default=300, help="Timeout per validation command")
+    parser.add_argument(
+        "--list-commands",
+        action="store_true",
+        help="Print the validation commands without running them",
+    )
     args = parser.parse_args()
+    if args.list_commands:
+        print(json.dumps(_json_safe({"commands": [{"name": name, "command": command} for name, command in VALIDATION_COMMANDS]}), indent=2))
+        return 0
     summary = run_validation_bundle(output_dir=args.output_dir, timeout_seconds=args.timeout_seconds)
     print(json.dumps(_json_safe(summary), indent=2))
     return 0 if summary["passed"] else 1
