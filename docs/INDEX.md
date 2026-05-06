@@ -23,6 +23,7 @@
 | [Qwen-Scope Engine Mapping](qwen-scope-engine-mapping-2026-04-30.md) | Loop-fix summary plus the "Engine-Scope" roadmap for internal feature gating, coverage analysis, and synthetic hard-negative generation |
 | [Model-Scope Steering Architecture](model-scope-steering-architecture-2026-05-01.md) | Architecture translation from Qwen-Scope-style model hooking into a bounded ChelatedAI Model-Scope program with segmented memory and overlay-first promotion |
 | [Model-Scope Overlay Bundle Schema](model-scope-overlay-bundle-schema-2026-05-05.md) | Operator contract for Model-Scope campaign reports, overlay sidecars, validation summaries, and promotion-linkage audit fields |
+| [Default-Promotion Evidence Runbook](default-promotion-evidence-runbook-2026-05-06.md) | Operator workflow for linked validation, promotion-linkage audit, repeat-seed decision, and fail-closed preflight evidence |
 | [HeavySkill Engine Adaptation Review](heavyskill-engine-adaptation-2026-05-05.md) | HeavySkill paper and repo review mapped into typed trajectory evidence, deliberation records, heavy-thinking metrics, and fail-closed engine promotion phases |
 | [Computational Storage And Drive Nodes](COMPUTATIONAL_STORAGE_DRIVE_NODES.md) | Canonical summary of hard-drive / storage-node experiments and scope limits |
 | [Computational Storage Scope Decision](computational-storage-transport-scope-decision.md) | Formal claim boundary for the RP2040 transport path |
