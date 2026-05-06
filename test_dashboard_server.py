@@ -523,6 +523,8 @@ class TestEvidenceCleanupPlan(unittest.TestCase):
         self.assertTrue(result["dry_run"])
         self.assertIn("source_artifacts", result)
         self.assertIn("source_status", result)
+        self.assertIn("present", result["source_status"]["evidence_index"])
+        self.assertIn("present", result["source_status"]["freshness_audit"])
         self.assertEqual(result["summary"]["candidate_count"], 1)
         self.assertEqual(result["summary"]["retained_count"], 1)
         self.assertEqual(result["summary"]["candidate_types"], ["evidence_indexes"])

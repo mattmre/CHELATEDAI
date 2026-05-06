@@ -64,6 +64,10 @@ Response fields:
 | `summary.candidate_bytes` | integer | total candidate bytes |
 | `summary.candidate_types` | string array | artifact types currently represented in candidates |
 | `candidates[]` | array | row-limited candidate records |
+| `source_artifacts.evidence_index` | string or null | linked evidence index path |
+| `source_artifacts.freshness_audit` | string or null | linked freshness audit path |
+| `source_status.evidence_index.present` | boolean | whether the linked evidence index exists |
+| `source_status.freshness_audit.present` | boolean | whether the linked freshness audit exists |
 
 The dashboard intentionally omits the full `retained[]` list and displays only `summary.retained_count`, keeping the response compact while preserving deletion-safety context.
 
