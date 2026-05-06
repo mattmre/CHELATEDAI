@@ -24,6 +24,22 @@ python cleanup_review_diagnostic.py --plan experiment_runs/evidence-cleanup/late
 
 Installed environments can use `chelatedai-cleanup-review-diagnostic` with the same arguments.
 
+## Cleanup Review Diagnostic
+
+`cleanup_review_diagnostic.py` renders a markdown operator summary from a cleanup plan. The output is stable enough for humans and runbook references, but it is not a machine-readable API contract; parse `cleanup_plan.json` directly for automation.
+
+| Diagnostic line | Source field | Meaning |
+| --- | --- | --- |
+| `Cleanup review` | `summary.cleanup_review_allowed` | `allowed` or `blocked`; shown in `warn` mode |
+| `Plan` | diagnostic `--plan` argument | cleanup-plan file used for rendering |
+| `Missing source artifacts` | `summary.missing_source_artifacts` | linked source artifacts absent when the plan was generated |
+| `Candidate count` | `summary.candidate_count` | cleanup candidate count in the plan |
+| `Retained count` | `summary.retained_count` | retained artifact count in the plan |
+| `Candidate bytes` | `summary.candidate_bytes` | total candidate bytes in the plan |
+| `Source <name>` | `source_status.<name>` | linked source path and present/missing state |
+
+Blocked diagnostics include `Candidate bytes` and fail in workflow `fail` mode. Warn-mode diagnostics include the allowed/blocked status and a warning when blocked candidates must not be used for deletion decisions.
+
 ## Workflow Guard Modes
 
 The manual `Default Promotion Evidence` workflow wraps the cleanup planner with a `cleanup-guard-mode` dispatch input:

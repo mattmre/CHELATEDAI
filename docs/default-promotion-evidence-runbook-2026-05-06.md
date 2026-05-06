@@ -53,6 +53,8 @@ For local diagnostic rendering, use:
 chelatedai-cleanup-review-diagnostic --plan experiment_runs/evidence-cleanup/latest/cleanup_plan.json --mode warn
 ```
 
+The diagnostic field mapping is documented in `docs/evidence-cleanup-plan-schema-2026-05-06.md`.
+
 ## Preflight Fields
 
 | Field | Meaning |
