@@ -43,6 +43,7 @@ The workflow defaults `cleanup-guard-mode` to `fail`, which runs cleanup plannin
 Set `cleanup-guard-mode` to `warn` only when intentionally collecting nonblocking diagnostics; cleanup remains dry-run only.
 If cleanup review is blocked, artifact upload still runs before the workflow reports failure so operators can inspect the available chain, index, freshness, and cleanup outputs.
 The failure step also writes a compact cleanup-review diagnostic to the GitHub step summary, including missing source artifacts and cleanup candidate counts.
+The guard mode contract is documented in `docs/evidence-cleanup-plan-schema-2026-05-06.md`.
 
 The workflow is intentionally manual. Promotion evidence should not become background noise on every commit.
 
