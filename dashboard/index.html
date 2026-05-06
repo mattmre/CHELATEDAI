@@ -390,6 +390,22 @@
       }
     }
 
+    async function fetchJson(url) {
+      const res = await fetch(url);
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+      return await res.json();
+    }
+
+    function asObject(value) {
+      return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+    }
+
+    function asArray(value) {
+      return Array.isArray(value) ? value : [];
+    }
+
     // --- TEST LOGIC ---
     async function loadTestResults() {
       try {
@@ -483,9 +499,8 @@
     // --- CAMPAIGN HISTORY LOGIC ---
     async function loadCampaignHistory() {
       try {
-        const res = await fetch('/api/campaign_history?limit=25');
-        const data = await res.json();
-        const summary = data.summary || {};
+        const data = asObject(await fetchJson('/api/campaign_history?limit=25'));
+        const summary = asObject(data.summary);
         document.getElementById('campaign-total').textContent = summary.total_reports || 0;
         document.getElementById('campaign-promoted').textContent = summary.promotion_allowed || 0;
         document.getElementById('campaign-overlay-ready').textContent = summary.overlay_ready || 0;
@@ -493,7 +508,7 @@
 
         const rows = document.getElementById('campaign-rows');
         rows.replaceChildren();
-        const reports = data.reports || [];
+        const reports = asArray(data.reports);
         if (!reports.length) {
           rows.innerHTML = '<tr><td colspan="7">No campaign reports found</td></tr>';
           return;
@@ -528,9 +543,8 @@
 
     async function loadValidationHistory() {
       try {
-        const res = await fetch('/api/validation_history?limit=10');
-        const data = await res.json();
-        const summary = data.summary || {};
+        const data = asObject(await fetchJson('/api/validation_history?limit=10'));
+        const summary = asObject(data.summary);
         document.getElementById('validation-total').textContent = summary.total_reports || 0;
         document.getElementById('validation-latest').textContent =
           summary.latest_passed === true ? 'passed' : (summary.latest_passed === false ? 'failed' : '-');
@@ -539,7 +553,7 @@
 
         const rows = document.getElementById('validation-rows');
         rows.replaceChildren();
-        const reports = data.reports || [];
+        const reports = asArray(data.reports);
         if (!reports.length) {
           rows.innerHTML = '<tr><td colspan="5">No validation bundles found</td></tr>';
           return;
@@ -548,7 +562,7 @@
         reports.forEach(report => {
           const tr = document.createElement('tr');
           const modified = report.modified_at ? new Date(report.modified_at * 1000).toLocaleString() : '-';
-          const failures = (report.failed_commands || []).join(', ') || '-';
+          const failures = asArray(report.failed_commands).join(', ') || '-';
           const cells = [
             modified,
             report.passed ? 'passed' : 'failed',
@@ -571,9 +585,8 @@
 
     async function loadPreflightHistory() {
       try {
-        const res = await fetch('/api/preflight_history?limit=10');
-        const data = await res.json();
-        const summary = data.summary || {};
+        const data = asObject(await fetchJson('/api/preflight_history?limit=10'));
+        const summary = asObject(data.summary);
         document.getElementById('preflight-total').textContent = summary.total_reports || 0;
         document.getElementById('preflight-latest').textContent =
           summary.latest_review_allowed === true ? 'allowed' : (summary.latest_review_allowed === false ? 'blocked' : '-');
@@ -582,7 +595,7 @@
 
         const rows = document.getElementById('preflight-rows');
         rows.replaceChildren();
-        const reports = data.reports || [];
+        const reports = asArray(data.reports);
         if (!reports.length) {
           rows.innerHTML = '<tr><td colspan="5">No preflight reports found</td></tr>';
           return;
@@ -591,7 +604,7 @@
         reports.forEach(report => {
           const tr = document.createElement('tr');
           const modified = report.modified_at ? new Date(report.modified_at * 1000).toLocaleString() : '-';
-          const blockers = (report.blockers || []).join(', ') || '-';
+          const blockers = asArray(report.blockers).join(', ') || '-';
           const cells = [
             modified,
             report.review_allowed ? 'allowed' : 'blocked',
@@ -614,10 +627,9 @@
 
     async function loadEvidenceIndex() {
       try {
-        const res = await fetch('/api/evidence_index');
-        const data = await res.json();
-        const summary = data.summary || {};
-        const counts = summary.artifact_counts || {};
+        const data = asObject(await fetchJson('/api/evidence_index'));
+        const summary = asObject(data.summary);
+        const counts = asObject(summary.artifact_counts);
         const countEntries = Object.entries(counts);
         document.getElementById('evidence-index-present').textContent = data.present ? 'present' : 'missing';
         document.getElementById('evidence-index-types').textContent = countEntries.length;
@@ -626,7 +638,7 @@
         document.getElementById('evidence-index-review').textContent =
           summary.latest_review_allowed === true ? 'allowed' : (summary.latest_review_allowed === false ? 'blocked' : '-');
         document.getElementById('evidence-index-blockers').textContent =
-          'Latest blockers: ' + ((summary.latest_preflight_blockers || []).join(', ') || '-');
+          'Latest blockers: ' + (asArray(summary.latest_preflight_blockers).join(', ') || '-');
         document.getElementById('evidence-index-path').textContent = data.path || '-';
 
         const rows = document.getElementById('evidence-index-rows');
@@ -652,9 +664,8 @@
 
     async function loadEvidenceChainHistory() {
       try {
-        const res = await fetch('/api/evidence_chain_history?limit=10');
-        const data = await res.json();
-        const summary = data.summary || {};
+        const data = asObject(await fetchJson('/api/evidence_chain_history?limit=10'));
+        const summary = asObject(data.summary);
         document.getElementById('evidence-chain-total').textContent = summary.total_reports || 0;
         document.getElementById('evidence-chain-latest').textContent =
           summary.latest_chain_passed === true ? 'passed' : (summary.latest_chain_passed === false ? 'failed' : '-');
@@ -663,7 +674,7 @@
 
         const rows = document.getElementById('evidence-chain-rows');
         rows.replaceChildren();
-        const reports = data.reports || [];
+        const reports = asArray(data.reports);
         if (!reports.length) {
           rows.innerHTML = '<tr><td colspan="6">No evidence-chain summaries found</td></tr>';
           return;
@@ -671,7 +682,7 @@
         reports.forEach(report => {
           const tr = document.createElement('tr');
           const modified = report.modified_at ? new Date(report.modified_at * 1000).toLocaleString() : '-';
-          const blockers = (report.preflight_blockers || []).join(', ') || '-';
+          const blockers = asArray(report.preflight_blockers).join(', ') || '-';
           const cells = [
             modified,
             report.chain_passed ? 'passed' : 'failed',
