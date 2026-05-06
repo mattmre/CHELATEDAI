@@ -1,0 +1,38 @@
+name: Default Promotion Evidence
+
+on:
+  workflow_dispatch:
+    inputs:
+      timeout-seconds:
+        description: "Timeout per validation command"
+        required: false
+        default: "300"
+
+jobs:
+  evidence-chain:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install -e .[dev]
+
+      - name: Run default-promotion evidence chain
+        run: |
+          python run_default_promotion_evidence_chain.py \
+            --output-dir experiment_runs/default-promotion-evidence-chain/ci \
+            --timeout-seconds "${{ inputs.timeout-seconds }}"
+
+      - name: Upload evidence-chain summary
+        uses: actions/upload-artifact@v4
+        with:
+          name: default-promotion-evidence-chain
+          path: experiment_runs/default-promotion-evidence-chain/ci/
