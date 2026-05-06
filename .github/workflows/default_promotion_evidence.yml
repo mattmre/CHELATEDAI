@@ -50,7 +50,8 @@ jobs:
             --keep-latest 1 \
             --evidence-index experiment_runs/evidence-index/ci/evidence_index.json \
             --freshness-audit experiment_runs/evidence-index/ci/freshness_audit.json \
-            --output experiment_runs/evidence-cleanup/ci/cleanup_plan.json
+            --output experiment_runs/evidence-cleanup/ci/cleanup_plan.json \
+            --fail-on-blocked-review
 
       - name: Upload evidence-chain artifacts
         uses: actions/upload-artifact@v4
