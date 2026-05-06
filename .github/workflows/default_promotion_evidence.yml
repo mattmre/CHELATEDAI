@@ -44,6 +44,8 @@ jobs:
             --output experiment_runs/evidence-index/ci/freshness_audit.json
 
       - name: Plan evidence artifact cleanup
+        id: cleanup-plan
+        continue-on-error: true
         run: |
           python plan_evidence_artifact_cleanup.py \
             --root experiment_runs \
@@ -54,6 +56,7 @@ jobs:
             --fail-on-blocked-review
 
       - name: Upload evidence-chain artifacts
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: default-promotion-evidence-chain
@@ -61,3 +64,9 @@ jobs:
             experiment_runs/default-promotion-evidence-chain/ci/
             experiment_runs/evidence-index/ci/
             experiment_runs/evidence-cleanup/ci/
+
+      - name: Fail on blocked cleanup review
+        if: steps.cleanup-plan.outcome == 'failure'
+        run: |
+          echo "Cleanup review is blocked; uploaded available evidence artifacts for debugging."
+          exit 1
