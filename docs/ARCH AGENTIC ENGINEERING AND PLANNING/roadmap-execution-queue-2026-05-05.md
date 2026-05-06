@@ -79,7 +79,8 @@ Purpose: Durable continuation queue after Engine-Scope, Model-Scope, and adaptiv
 | 60 | Cleanup diagnostic workflow invalid-plan note | documentation | complete | workflow docs explain malformed cleanup-plan diagnostic output and operator response |
 | 61 | Cleanup diagnostic unreadable-plan schema action | documentation | complete | cleanup schema gives the operator response for unreadable cleanup-plan diagnostics |
 | 62 | Cleanup diagnostic missing-plan schema action | documentation | complete | cleanup schema gives the operator response for missing cleanup-plan diagnostics |
-| 63 | Cleanup diagnostic missing-plan workflow note | documentation | next | workflow docs explain missing cleanup-plan diagnostic output and operator response |
+| 63 | Cleanup diagnostic missing-plan workflow note | documentation | complete | workflow docs explain missing cleanup-plan diagnostic output and operator response |
+| 64 | Cleanup diagnostic missing-plan CLI validation | validation | next | module CLI coverage proves missing cleanup-plan diagnostics exit cleanly without tracebacks |
 
 ## Closed Implementation Scaffolds
 - Engine-Scope row contract, internal gates, coverage analysis, hard-negative pipeline, and supervisor integration are implemented.
@@ -154,3 +155,4 @@ Start the next branch from the highest-ranked `next` item that is not blocked. I
 - 2026-05-06: Cleanup diagnostic workflow invalid-plan note added. The default-promotion evidence runbook now explains how to respond when workflow diagnostics report an unreadable cleanup plan.
 - 2026-05-06: Cleanup diagnostic unreadable-plan schema action added. The cleanup-plan schema now states that unreadable cleanup-plan diagnostics require full evidence regeneration before cleanup decisions.
 - 2026-05-06: Cleanup diagnostic missing-plan schema action added. The cleanup-plan schema now distinguishes missing cleanup-plan artifacts from unreadable artifacts and keeps both fail-closed.
+- 2026-05-06: Cleanup diagnostic missing-plan workflow note added. The default-promotion evidence runbook now explains how to respond when workflow diagnostics report a missing cleanup plan.
