@@ -10,6 +10,7 @@ from adaptive_overlay import (
     channel_variation_from_engine_scope_row,
     compute_branch_set_metrics,
     decide_overlay_collection_budget,
+    summarize_overlay_hard_negative_replay,
     summarize_overlay_readiness,
     summarize_overlay_trajectory_health,
     summarize_channel_variations,
@@ -180,6 +181,40 @@ class TestAdaptiveOverlay(unittest.TestCase):
         self.assertIn("active_negative_records_present", readiness["blockers"])
         self.assertEqual(readiness["next_action"], "continue observation and coverage-aware channel collection")
 
+    def test_overlay_readiness_fails_closed_on_hard_negative_replay(self):
+        report = build_overlay_report(
+            [
+                {
+                    "row_type": "query_profile",
+                    "task": "SciFact",
+                    "seed": 1,
+                    "query_id": query_id,
+                    "profile": "guard_learned_reform_gate_v1",
+                    "delta_ndcg_at_10": 0.02,
+                    "fault_class": "actuator_active_positive",
+                }
+                for query_id in ("q1", "q2", "q3")
+            ],
+            hard_negative_rows=[
+                {
+                    "row_type": "query_profile",
+                    "task": "SciFact",
+                    "seed": 99,
+                    "query_id": "hn1",
+                    "profile": "guard_learned_reform_gate_v1",
+                    "delta_ndcg_at_10": -0.01,
+                    "fault_class": "actuator_active_negative",
+                }
+            ],
+        )
+
+        self.assertFalse(report["readiness"]["ready_for_broader_validation"])
+        self.assertEqual(report["hard_negative_replay"]["blocker_count"], 1)
+        self.assertIn("hard_negative_replay_blockers_present", report["readiness"]["blockers"])
+
+        hard_negative = summarize_overlay_hard_negative_replay(report["channel_variation_records"])
+        self.assertEqual(hard_negative["record_type"], "adaptive_overlay_hard_negative_replay")
+
     def test_overlay_readiness_accepts_clean_multi_group_signal(self):
         rows = []
         for query_id in ("q1", "q2", "q3"):
@@ -244,6 +279,7 @@ class TestAdaptiveOverlay(unittest.TestCase):
         self.assertIn("promotion_blockers_present", card["readiness"]["blockers"])
         self.assertFalse(card["evidence"]["promotion_decision"]["promotion_ready"])
         self.assertEqual(card["evidence"]["trajectory_health"]["record_type"], "adaptive_overlay_trajectory_health")
+        self.assertEqual(card["evidence"]["hard_negative_replay"], {})
         self.assertEqual(card["evidence"]["collection_policy"]["decision"], "observe_only")
         self.assertEqual(card["evidence"]["verifier_cards"][0]["record_type"], "verifier_evidence_card")
         self.assertIn("not_default_promoted", card["limitations"])

@@ -14,3 +14,4 @@ Naming convention: `YYYY-MM-DD_PR-###_summary.md`.
 | autonomous-continuation | 2026-05-05 | PR `#137` / `codex/adaptive-overlay-budget-policy` | implementation | Codex | `OVERLAY-BUDGET-20260505-001` | [2026-05-05_PR-137_summary.md](2026-05-05_PR-137_summary.md) |
 | autonomous-continuation | 2026-05-05 | PR `#138` / `codex/verifier-rubric-evidence-cards` | reporting | Codex | `VERIFIER-CARD-20260505-001` | [2026-05-05_PR-138_summary.md](2026-05-05_PR-138_summary.md) |
 | autonomous-continuation | 2026-05-05 | PR `#139` / `codex/model-scope-overlay-smoke` | validation | Codex | `OVERLAY-SMOKE-20260505-001` | [2026-05-05_PR-139_summary.md](2026-05-05_PR-139_summary.md) |
+| autonomous-continuation | 2026-05-05 | PR `#140` / `codex/overlay-hard-negative-readiness` | validation | Codex | `OVERLAY-HARDNEG-20260505-001` | [2026-05-05_PR-140_summary.md](2026-05-05_PR-140_summary.md) |
