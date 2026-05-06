@@ -382,6 +382,46 @@ class TestPreflightHistory(unittest.TestCase):
         self.assertEqual(report["artifact_count"], 3)
 
 
+class TestEvidenceIndex(unittest.TestCase):
+    """Test evidence-index dashboard helper."""
+
+    def test_load_evidence_index_missing_file(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            result = dashboard_server.load_evidence_index(os.path.join(tmpdir, "missing.json"))
+
+        self.assertFalse(result["present"])
+        self.assertEqual(result["summary"]["artifact_counts"], {})
+
+    def test_load_evidence_index_normalizes_summary(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "evidence_index.json")
+            with open(path, "w", encoding="utf-8") as handle:
+                json.dump(
+                    {
+                        "record_type": "cross_artifact_evidence_index",
+                        "root": "experiment_runs",
+                        "summary": {
+                            "artifact_counts": {"validation_summaries": 2, "campaign_reports": 1},
+                            "latest_review_allowed": False,
+                            "latest_preflight_blockers": ["repeat_seed_evidence_does_not_support_default_promotion"],
+                            "latest_chain_passed": True,
+                        },
+                        "artifacts": {
+                            "validation_summaries": [{"path": "validation_summary.json"}],
+                        },
+                    },
+                    handle,
+                )
+
+            result = dashboard_server.load_evidence_index(path)
+
+        self.assertTrue(result["present"])
+        self.assertEqual(result["record_type"], "cross_artifact_evidence_index")
+        self.assertEqual(result["summary"]["artifact_counts"]["validation_summaries"], 2)
+        self.assertFalse(result["summary"]["latest_review_allowed"])
+        self.assertTrue(result["summary"]["latest_chain_passed"])
+
+
 class TestDashboardHandler(unittest.TestCase):
     """Test the DashboardHandler class."""
 

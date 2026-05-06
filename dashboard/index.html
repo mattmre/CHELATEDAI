@@ -206,6 +206,13 @@
       <div class="card"><div class="label">Blocked</div><div class="value" id="preflight-blocked">-</div></div>
     </div>
 
+    <div class="cards">
+      <div class="card"><div class="label">Evidence Index</div><div class="value" id="evidence-index-present" style="font-size:20px;">-</div></div>
+      <div class="card"><div class="label">Artifact Types</div><div class="value" id="evidence-index-types">-</div></div>
+      <div class="card"><div class="label">Chain Status</div><div class="value" id="evidence-index-chain" style="font-size:20px;">-</div></div>
+      <div class="card"><div class="label">Review Status</div><div class="value" id="evidence-index-review" style="font-size:20px;">-</div></div>
+    </div>
+
     <div class="panel">
       <div style="display:flex; justify-content: space-between; align-items:center">
         <h2>Latest Campaign Reports</h2>
@@ -270,6 +277,26 @@
         </tbody>
       </table>
     </div>
+
+    <div class="panel">
+      <div style="display:flex; justify-content: space-between; align-items:center">
+        <h2>Evidence Index</h2>
+        <button onclick="loadEvidenceIndex()">Refresh Index</button>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Artifact Type</th>
+            <th>Count</th>
+          </tr>
+        </thead>
+        <tbody id="evidence-index-rows">
+          <tr><td colspan="2">Loading...</td></tr>
+        </tbody>
+      </table>
+      <div style="margin-top:12px; font-size:13px; color:#666;" id="evidence-index-blockers"></div>
+      <div style="margin-top:6px; font-size:13px; color:#666;" id="evidence-index-path"></div>
+    </div>
   </div>
 
   <!-- Logs Tab -->
@@ -329,6 +356,7 @@
         loadCampaignHistory();
         loadValidationHistory();
         loadPreflightHistory();
+        loadEvidenceIndex();
       }
     }
 
@@ -551,6 +579,44 @@
       } catch (e) {
         console.error('Error loading preflight history', e);
         document.getElementById('preflight-rows').innerHTML = '<tr><td colspan="5">Error loading preflight history</td></tr>';
+      }
+    }
+
+    async function loadEvidenceIndex() {
+      try {
+        const res = await fetch('/api/evidence_index');
+        const data = await res.json();
+        const summary = data.summary || {};
+        const counts = summary.artifact_counts || {};
+        const countEntries = Object.entries(counts);
+        document.getElementById('evidence-index-present').textContent = data.present ? 'present' : 'missing';
+        document.getElementById('evidence-index-types').textContent = countEntries.length;
+        document.getElementById('evidence-index-chain').textContent =
+          summary.latest_chain_passed === true ? 'passed' : (summary.latest_chain_passed === false ? 'failed' : '-');
+        document.getElementById('evidence-index-review').textContent =
+          summary.latest_review_allowed === true ? 'allowed' : (summary.latest_review_allowed === false ? 'blocked' : '-');
+        document.getElementById('evidence-index-blockers').textContent =
+          'Latest blockers: ' + ((summary.latest_preflight_blockers || []).join(', ') || '-');
+        document.getElementById('evidence-index-path').textContent = data.path || '-';
+
+        const rows = document.getElementById('evidence-index-rows');
+        rows.replaceChildren();
+        if (!countEntries.length) {
+          rows.innerHTML = '<tr><td colspan="2">No evidence index found</td></tr>';
+          return;
+        }
+        countEntries.forEach(([artifactType, count]) => {
+          const tr = document.createElement('tr');
+          [artifactType, count].forEach(text => {
+            const td = document.createElement('td');
+            td.textContent = text;
+            tr.appendChild(td);
+          });
+          rows.appendChild(tr);
+        });
+      } catch (e) {
+        console.error('Error loading evidence index', e);
+        document.getElementById('evidence-index-rows').innerHTML = '<tr><td colspan="2">Error loading evidence index</td></tr>';
       }
     }
 

@@ -41,7 +41,11 @@ Purpose: Durable continuation queue after Engine-Scope, Model-Scope, and adaptiv
 | 22 | Preflight CI affordance | governance | complete | CI or local command can run/link validation, audit, repeat decision, and preflight with clear fail-closed status |
 | 23 | Promotion evidence runbook | documentation | complete | operator doc explains the promotion evidence bundle, blocker meanings, and no-default-change path |
 | 24 | Cross-artifact evidence index | reporting | complete | single generated index links validation, audit, repeat decision, preflight, campaign reports, and artifact cards |
-| 25 | Evidence-index dashboard ingestion | reporting | next | dashboard can surface the latest cross-artifact evidence index summary and artifact counts |
+| 25 | Evidence-index dashboard ingestion | reporting | complete | dashboard can surface the latest cross-artifact evidence index summary and artifact counts |
+| 26 | Evidence index freshness audit | governance | next | command reports whether evidence-index entries point to existing files and whether the index is stale against source artifacts |
+| 27 | Evidence chain dashboard ingestion | reporting | queued | dashboard can surface latest evidence-chain summaries without reading JSON manually |
+| 28 | Evidence artifact retention policy | governance | queued | operator doc defines which generated evidence artifacts are retained, regenerated, or excluded from git |
+| 29 | Evidence chain manifest schema doc | documentation | queued | documented schema for evidence-chain summary and evidence-index records |
 
 ## Closed Implementation Scaffolds
 - Engine-Scope row contract, internal gates, coverage analysis, hard-negative pipeline, and supervisor integration are implemented.
@@ -78,3 +82,4 @@ Start the next branch from the highest-ranked `next` item that is not blocked. I
 - 2026-05-06: Default-promotion evidence-chain runner and manual workflow added. The chain links validation, promotion-linkage audit, repeat-seed decision, and preflight outputs while keeping no-default-change as an explicit fail-closed status.
 - 2026-05-06: Default-promotion evidence runbook added. Operators now have one doc for the evidence-chain command, manual workflow, blocker meanings, and expected no-default-change path.
 - 2026-05-06: Cross-artifact evidence index generator added. Operators can generate one compact index over validation, audit, repeat-decision, preflight, evidence-chain, campaign, and overlay artifact-card outputs.
+- 2026-05-06: Evidence-index dashboard ingestion added. `/api/evidence_index` and the Campaign History tab can surface artifact counts, latest chain status, review status, blockers, and index path.
