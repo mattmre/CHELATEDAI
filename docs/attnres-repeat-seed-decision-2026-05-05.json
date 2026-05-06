@@ -1,0 +1,116 @@
+{
+  "record_type": "attnres_repeat_seed_decision",
+  "artifact_count": 6,
+  "rows": [
+    {
+      "path": "experiment_runs/roadcourse-small/attnres_trained_num_blocks_scifact_seed42.json",
+      "task": "SciFact",
+      "seed": 42,
+      "recommended_profile": "baseline",
+      "baseline_ndcg_at_10": 0.8165742137051941,
+      "best_ndcg_at_10": 0.8165742137051941,
+      "delta_vs_baseline": 0.0,
+      "local_default_change_allowed": false,
+      "quantization_gate_passed": false,
+      "quantization_reasons": [
+        "fp32_gain_below_minimum",
+        "retained_gain_below_threshold",
+        "quantized_fitness_below_baseline"
+      ]
+    },
+    {
+      "path": "experiment_runs/roadcourse-small/attnres_balanced_candidate_scifact_seed43.json",
+      "task": "SciFact",
+      "seed": 43,
+      "recommended_profile": "baseline",
+      "baseline_ndcg_at_10": 0.8421340108469912,
+      "best_ndcg_at_10": 0.8421340108469912,
+      "delta_vs_baseline": 0.0,
+      "local_default_change_allowed": false,
+      "quantization_gate_passed": false,
+      "quantization_reasons": [
+        "fp32_gain_below_minimum",
+        "retained_gain_below_threshold",
+        "quantized_fitness_below_baseline"
+      ]
+    },
+    {
+      "path": "experiment_runs/roadcourse-small/attnres_balanced_candidate_scifact_seed44.json",
+      "task": "SciFact",
+      "seed": 44,
+      "recommended_profile": "baseline",
+      "baseline_ndcg_at_10": 0.8407971812644209,
+      "best_ndcg_at_10": 0.8407971812644209,
+      "delta_vs_baseline": 0.0,
+      "local_default_change_allowed": false,
+      "quantization_gate_passed": false,
+      "quantization_reasons": [
+        "fp32_gain_below_minimum"
+      ]
+    },
+    {
+      "path": "experiment_runs/roadcourse-small/attnres_trained_num_blocks_nfcorpus_seed42.json",
+      "task": "NFCorpus",
+      "seed": 42,
+      "recommended_profile": "attnres_balanced_trained",
+      "baseline_ndcg_at_10": 0.8379105182130612,
+      "best_ndcg_at_10": 0.8579888904399754,
+      "delta_vs_baseline": 0.02007837222691422,
+      "local_default_change_allowed": true,
+      "quantization_gate_passed": false,
+      "quantization_reasons": [
+        "retained_gain_below_threshold",
+        "quantized_fitness_below_baseline"
+      ]
+    },
+    {
+      "path": "experiment_runs/roadcourse-small/attnres_balanced_candidate_nfcorpus_seed43.json",
+      "task": "NFCorpus",
+      "seed": 43,
+      "recommended_profile": "attnres_balanced_trained",
+      "baseline_ndcg_at_10": 0.8637631198744538,
+      "best_ndcg_at_10": 0.8648822803433533,
+      "delta_vs_baseline": 0.0011191604688995938,
+      "local_default_change_allowed": true,
+      "quantization_gate_passed": false,
+      "quantization_reasons": [
+        "retained_gain_below_threshold",
+        "quantized_fitness_below_baseline"
+      ]
+    },
+    {
+      "path": "experiment_runs/roadcourse-small/attnres_balanced_candidate_nfcorpus_seed44.json",
+      "task": "NFCorpus",
+      "seed": 44,
+      "recommended_profile": "attnres_balanced_trained",
+      "baseline_ndcg_at_10": 0.8740575097683893,
+      "best_ndcg_at_10": 0.875174160382189,
+      "delta_vs_baseline": 0.00111665061379973,
+      "local_default_change_allowed": true,
+      "quantization_gate_passed": true,
+      "quantization_reasons": []
+    }
+  ],
+  "task_summary": {
+    "SciFact": {
+      "seed_count": 3,
+      "positive_delta_count": 0,
+      "quantization_pass_count": 0
+    },
+    "NFCorpus": {
+      "seed_count": 3,
+      "positive_delta_count": 3,
+      "quantization_pass_count": 1
+    }
+  },
+  "positive_delta_count": 3,
+  "non_positive_delta_count": 3,
+  "quantization_failure_count": 5,
+  "promote_default": false,
+  "decision": "no_default_change",
+  "reasons": [
+    "repeat_seed_non_positive_delta_present",
+    "quantization_survival_failures_present",
+    "task_seed_consistency_failed"
+  ]
+}
