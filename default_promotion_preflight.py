@@ -95,8 +95,8 @@ def evaluate_default_promotion_preflight(
     if output is not None:
         output_path = Path(output)
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        output_path.write_text(json.dumps(_json_safe(summary), indent=2), encoding="utf-8")
         summary["output"] = str(output_path)
+        output_path.write_text(json.dumps(_json_safe(summary), indent=2), encoding="utf-8")
     return summary
 
 

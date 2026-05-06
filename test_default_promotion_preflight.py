@@ -66,6 +66,7 @@ class DefaultPromotionPreflightTests(unittest.TestCase):
             written = json.loads(output.read_text(encoding="utf-8"))
             self.assertEqual(written["record_type"], "default_promotion_preflight")
             self.assertEqual(summary["output"], str(output))
+            self.assertEqual(written["output"], str(output))
 
 
 if __name__ == "__main__":
