@@ -62,6 +62,7 @@ py-modules = [
     "config",
     "convergence_monitor",
     "compute_budget_policy",
+    "cleanup_review_diagnostic",
     "dashboard_server",
     "default_promotion_preflight",
     "dimension_mask_predictor",
