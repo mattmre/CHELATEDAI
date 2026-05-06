@@ -65,7 +65,8 @@ Purpose: Durable continuation queue after Engine-Scope, Model-Scope, and adaptiv
 | 46 | Cleanup fail-closed dashboard status | reporting | complete | dashboard cleanup cards show cleanup-review allowed or blocked by missing source artifacts |
 | 47 | Cleanup fail-closed API schema | documentation | complete | dashboard cleanup-plan response documents cleanup_review_allowed and missing_source_artifacts |
 | 48 | Cleanup planner blocked-review exit mode | governance | complete | cleanup planner can optionally exit nonzero when cleanup_review_allowed is false |
-| 49 | Cleanup workflow blocked-review guard | governance | next | manual evidence workflow documents or wires the blocked-review exit mode without deleting files |
+| 49 | Cleanup workflow blocked-review guard | governance | complete | manual evidence workflow documents or wires the blocked-review exit mode without deleting files |
+| 50 | Cleanup workflow artifact upload resilience | governance | next | evidence workflow preserves cleanup/index artifacts for debugging even when blocked-review guard fails |
 
 ## Closed Implementation Scaffolds
 - Engine-Scope row contract, internal gates, coverage analysis, hard-negative pipeline, and supervisor integration are implemented.
@@ -126,3 +127,4 @@ Start the next branch from the highest-ranked `next` item that is not blocked. I
 - 2026-05-06: Cleanup fail-closed dashboard status added. The cleanup dashboard now shows cleanup-review allowed/blocked status and missing source artifact names.
 - 2026-05-06: Cleanup fail-closed API schema refreshed. The dashboard cleanup-plan response now documents `cleanup_review_allowed` and `missing_source_artifacts`.
 - 2026-05-06: Cleanup planner blocked-review exit mode added. `--fail-on-blocked-review` lets cleanup-plan callers exit nonzero when linked source artifacts are missing while preserving default read-only behavior.
+- 2026-05-06: Cleanup workflow blocked-review guard added. The manual evidence workflow now fails cleanup planning when linked source artifacts are missing, while cleanup remains dry-run only.
