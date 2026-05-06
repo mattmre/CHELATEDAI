@@ -45,7 +45,8 @@ python -m cleanup_review_diagnostic --plan experiment_runs/evidence-cleanup/late
 
 Blocked diagnostics include `Candidate bytes` and fail in workflow `fail` mode. Warn-mode diagnostics include the allowed/blocked status and a warning when blocked candidates must not be used for deletion decisions.
 If the cleanup plan is missing or malformed, the diagnostic reports `Cleanup plan missing` or `Cleanup plan unreadable` and avoids traceback output.
-Both states mean the cleanup-plan artifact is not reviewable. Regenerate the evidence chain, evidence index, freshness audit, and cleanup plan before making any cleanup decision.
+`Cleanup plan missing` means the planner did not produce the expected artifact at the diagnostic path; check the earlier workflow steps, regenerate the evidence chain, evidence index, freshness audit, and cleanup plan, and do not use cleanup candidates from that run.
+`Cleanup plan unreadable` means the artifact exists but is not parseable JSON; regenerate the same evidence chain before making cleanup decisions.
 
 ## Workflow Guard Modes
 
@@ -124,6 +125,7 @@ The dashboard intentionally omits the full `retained[]` list and displays only `
 - A retained artifact is the newest file for its artifact type under the current `keep_latest` rule.
 - Missing source status means the cleanup plan is stale against its linked evidence-index or freshness-audit path.
 - `cleanup_review_allowed: false` means operators should regenerate source artifacts before using the candidate list. The dashboard renders this as `Cleanup Review: blocked`.
-- `Cleanup plan missing` or `Cleanup plan unreadable` diagnostics mean there is no valid cleanup-plan contract for the run; regenerate the full evidence chain and do not use candidates from that artifact set.
+- `Cleanup plan missing` diagnostics mean there is no cleanup-plan artifact at the expected path; inspect earlier workflow output, regenerate the full evidence chain, and do not use candidates from that artifact set.
+- `Cleanup plan unreadable` diagnostics mean there is no valid cleanup-plan contract for the run; regenerate the full evidence chain and do not use candidates from that artifact set.
 - If generated files are deleted manually, regenerate the evidence index and rerun the freshness audit.
 - Source scripts, schemas, runbooks, phase summaries, and test fixtures are outside the cleanup planner's deletion scope.
