@@ -259,6 +259,19 @@ def run_model_scope_campaign(
         max_divergence=0.20,
         min_training_gain=min_alignment_score,
     )
+    resolved_output_dir = Path(output_dir) if output_dir is not None else (
+        ChelationConfig.MODEL_SCOPE_ARTIFACT_ROOT / "campaigns" / "latest"
+    )
+    adaptive_overlay_artifact_card_path = (
+        resolved_output_dir / "adaptive_overlay_artifact_card.json"
+        if resolved_adaptive_overlay_report is not None
+        else None
+    )
+    promotion_rollback_path = (
+        str(promotion_path)
+        if promotion_path is not None
+        else str(resolved_output_dir / "shadow_policy_candidate.json")
+    )
     promotion_decision = evaluate_promotion_candidate(
         candidate_id=str(candidate.get("candidate_id", "model_scope_shadow_policy_v1")),
         evidence_bundle=evidence_bundle,
@@ -272,6 +285,15 @@ def run_model_scope_campaign(
         evaluator_report=evaluator_summary,
         reward_report=reward_report,
         adaptive_overlay_report=resolved_adaptive_overlay_report,
+        artifact_card_reference=(
+            {
+                "record_type": "adaptive_overlay_artifact_card",
+                "path": str(adaptive_overlay_artifact_card_path),
+            }
+            if adaptive_overlay_artifact_card_path is not None
+            else None
+        ),
+        rollback_path=promotion_rollback_path,
         config=PromotionGateConfig(
             min_replay_score=min_alignment_score,
             min_evaluator_agreement=0.5,
@@ -280,6 +302,8 @@ def run_model_scope_campaign(
             require_safety=True,
             require_no_hard_negative_blockers=True,
             require_adaptive_overlay_readiness=require_adaptive_overlay_readiness,
+            require_artifact_card_reference=resolved_adaptive_overlay_report is not None,
+            require_rollback_path=resolved_adaptive_overlay_report is not None,
         ),
     )
     adaptive_overlay_artifact_card = None
@@ -345,7 +369,7 @@ def run_model_scope_campaign(
             hard_negative_report=hard_negative_report,
             evaluator_report=evaluator_summary,
             safety_report=resolved_safety_report,
-            rollback_path=str(promotion_path) if promotion_path is not None else None,
+            rollback_path=promotion_rollback_path,
             metadata={
                 "input_path": str(input_path),
                 "output_dir": str(output_dir) if output_dir is not None else None,
@@ -353,9 +377,6 @@ def run_model_scope_campaign(
             },
         )
 
-    resolved_output_dir = Path(output_dir) if output_dir is not None else (
-        ChelationConfig.MODEL_SCOPE_ARTIFACT_ROOT / "campaigns" / "latest"
-    )
     resolved_output_dir.mkdir(parents=True, exist_ok=True)
     memory_path = memory.save(resolved_output_dir / "memory_snapshot.json")
     evidence_path = write_evidence_bundle(resolved_output_dir / "evidence_bundle.json", evidence_bundle)
@@ -421,9 +442,7 @@ def run_model_scope_campaign(
     if verifier_cards:
         verifier_cards_path = resolved_output_dir / "verifier_evidence_cards.json"
         verifier_cards_path.write_text(json.dumps(_json_safe(verifier_cards), indent=2), encoding="utf-8")
-    adaptive_overlay_artifact_card_path = None
     if adaptive_overlay_artifact_card is not None:
-        adaptive_overlay_artifact_card_path = resolved_output_dir / "adaptive_overlay_artifact_card.json"
         adaptive_overlay_artifact_card_path.write_text(
             json.dumps(_json_safe(adaptive_overlay_artifact_card), indent=2),
             encoding="utf-8",

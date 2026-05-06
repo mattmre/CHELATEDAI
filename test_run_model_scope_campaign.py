@@ -140,6 +140,11 @@ class TestRunModelScopeCampaign(unittest.TestCase):
             self.assertTrue((output_dir / "adaptive_overlay_collection_policy.json").exists())
             self.assertTrue((output_dir / "verifier_evidence_cards.json").exists())
             self.assertFalse(report["promotion_decision"]["adaptive_overlay_ready"])
+            self.assertEqual(
+                report["promotion_decision"]["artifact_card_reference"]["path"],
+                str(output_dir / "adaptive_overlay_artifact_card.json"),
+            )
+            self.assertEqual(report["promotion_decision"]["rollback_path"], str(output_dir / "shadow_policy_candidate.json"))
             self.assertIn("adaptive_overlay_not_ready", report["promotion_decision"]["reasons"])
             self.assertFalse(report["adaptive_overlay_summary"]["ready_for_broader_validation"])
             self.assertIn("promotion_blockers_present", report["adaptive_overlay_summary"]["blockers"])
@@ -200,6 +205,11 @@ class TestRunModelScopeCampaign(unittest.TestCase):
             )
 
             self.assertTrue(report["promotion_decision"]["adaptive_overlay_ready"])
+            self.assertEqual(
+                report["promotion_decision"]["artifact_card_reference"]["path"],
+                str(output_dir / "adaptive_overlay_artifact_card.json"),
+            )
+            self.assertEqual(report["promotion_decision"]["rollback_path"], str(output_dir / "shadow_policy_candidate.json"))
             self.assertTrue(report["adaptive_overlay_summary"]["ready_for_broader_validation"])
             self.assertTrue(report["adaptive_overlay_validation_report"]["validation_ready"])
             self.assertIn("adaptive_overlay_holdout_report", report["outputs"])
