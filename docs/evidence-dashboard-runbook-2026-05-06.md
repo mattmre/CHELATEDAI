@@ -48,14 +48,14 @@ Expected current posture: the chain can pass while `review_allowed` remains `fal
 
 ## Manual Workflow
 
-Use the GitHub Actions `Default Promotion Evidence` workflow when evidence should be collected in CI. The workflow now performs the same three-stage sequence:
+Use the GitHub Actions `Default Promotion Evidence` workflow when evidence should be collected in CI. The workflow now performs the same four-stage sequence:
 
 1. collect the default-promotion evidence chain;
 2. generate the cross-artifact evidence index;
-3. run the evidence-index freshness audit.
+3. run the evidence-index freshness audit;
+4. write a dry-run evidence cleanup plan linked to the index and freshness audit.
 
-It uploads both `experiment_runs/default-promotion-evidence-chain/ci/` and `experiment_runs/evidence-index/ci/`.
-It also uploads `experiment_runs/evidence-cleanup/ci/cleanup_plan.json`, which is a dry-run cleanup plan only.
+It uploads `experiment_runs/default-promotion-evidence-chain/ci/`, `experiment_runs/evidence-index/ci/`, and `experiment_runs/evidence-cleanup/ci/`.
 
 ## Interpretation Rules
 

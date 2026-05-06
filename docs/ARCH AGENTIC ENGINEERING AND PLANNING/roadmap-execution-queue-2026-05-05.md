@@ -54,7 +54,8 @@ Purpose: Durable continuation queue after Engine-Scope, Model-Scope, and adaptiv
 | 35 | Evidence cleanup dashboard/report ingestion | reporting | complete | dashboard or generated report can surface dry-run cleanup candidates without deleting files |
 | 36 | Evidence cleanup plan schema doc | documentation | complete | cleanup dry-run output fields and dashboard interpretation are documented |
 | 37 | Evidence cleanup plan CI artifact | governance | complete | manual evidence workflow can publish a cleanup dry-run plan artifact without deleting files |
-| 38 | Evidence cleanup freshness linkage | governance | next | cleanup plan generation can run after freshness audit and record index/freshness artifact references |
+| 38 | Evidence cleanup freshness linkage | governance | complete | cleanup plan generation can run after freshness audit and record index/freshness artifact references |
+| 39 | Cleanup plan dashboard source linkage | reporting | next | dashboard cleanup panel shows linked evidence index and freshness audit paths |
 
 ## Closed Implementation Scaffolds
 - Engine-Scope row contract, internal gates, coverage analysis, hard-negative pipeline, and supervisor integration are implemented.
@@ -104,3 +105,4 @@ Start the next branch from the highest-ranked `next` item that is not blocked. I
 - 2026-05-06: Evidence cleanup dashboard ingestion added. The dashboard now exposes a dry-run cleanup plan API and panel with candidate counts, retained counts, candidate bytes, and candidate paths.
 - 2026-05-06: Evidence cleanup plan schema documented. The dashboard cleanup-plan response is documented as compact and row-limited while the CLI output retains full audit fields.
 - 2026-05-06: Evidence cleanup plan CI artifact added. The manual evidence workflow now writes and uploads a dry-run cleanup plan alongside evidence-chain and evidence-index artifacts.
+- 2026-05-06: Evidence cleanup freshness linkage added. Cleanup plans now record the evidence-index and freshness-audit paths they were generated after.
