@@ -242,6 +242,29 @@ class CleanupReviewDiagnosticTests(unittest.TestCase):
             self.assertIn("Error:", summary_text)
             self.assertNotIn("Traceback", summary_text)
 
+    def test_main_github_summary_without_env_exits_cleanly(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            plan_path = Path(tmpdir) / "missing_cleanup_plan.json"
+            argv = [
+                "cleanup_review_diagnostic.py",
+                "--plan",
+                plan_path.as_posix(),
+                "--mode",
+                "blocked",
+                "--github-summary",
+            ]
+
+            with (
+                patch.object(sys, "argv", argv),
+                patch.dict(os.environ, {}, clear=True),
+                patch("sys.stdout", new_callable=StringIO) as stdout,
+            ):
+                exit_code = main()
+
+            self.assertEqual(exit_code, 0)
+            self.assertIn("Cleanup plan missing", stdout.getvalue())
+            self.assertNotIn("Traceback", stdout.getvalue())
+
 
 if __name__ == "__main__":
     unittest.main()
