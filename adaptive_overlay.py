@@ -325,6 +325,8 @@ def summarize_overlay_readiness(
     mean_best_delta = float(metrics.get("mean_best_delta", 0.0))
     blocker_count = int(summary.get("promotion_blockers", 0))
     active_negative_count = int(summary.get("active_negative_records", 0))
+    hard_negative = overlay_report.get("hard_negative_replay", {}) if isinstance(overlay_report, Mapping) else {}
+    hard_negative_blocker_count = int(hard_negative.get("blocker_count", 0) or 0)
 
     blockers = []
     if group_count < min_groups:
@@ -339,6 +341,8 @@ def summarize_overlay_readiness(
         blockers.append("promotion_blockers_present")
     if active_negative_count > 0:
         blockers.append("active_negative_records_present")
+    if hard_negative_blocker_count > 0:
+        blockers.append("hard_negative_replay_blockers_present")
 
     return {
         "schema_version": ADAPTIVE_OVERLAY_SCHEMA_VERSION,
@@ -351,6 +355,7 @@ def summarize_overlay_readiness(
         "mean_best_delta": mean_best_delta,
         "promotion_blockers": blocker_count,
         "active_negative_records": active_negative_count,
+        "hard_negative_replay_blockers": hard_negative_blocker_count,
         "criteria": {
             "min_groups": int(min_groups),
             "min_safe_pass_rate": float(min_safe_pass_rate),
@@ -362,6 +367,38 @@ def summarize_overlay_readiness(
             if not blockers
             else "continue observation and coverage-aware channel collection"
         ),
+    }
+
+
+def summarize_overlay_hard_negative_replay(records: Iterable[Mapping[str, Any]]) -> Dict[str, Any]:
+    """Summarize stress replay rows that should block readiness if they regress."""
+
+    items = [dict(record) for record in records]
+    blockers = []
+    for record in items:
+        metric_delta = _metric_delta(record)
+        blocked = (
+            bool(record.get("promotion_blocker", False))
+            or bool(record.get("active_negative_flags"))
+            or (metric_delta is not None and metric_delta < 0.0)
+        )
+        if blocked:
+            blockers.append(
+                {
+                    "channel_id": record.get("channel_id"),
+                    "channel_type": record.get("channel_type"),
+                    "query_id": record.get("query_id"),
+                    "metric_delta": metric_delta,
+                    "reason": record.get("decision_reason") or record.get("decision"),
+                }
+            )
+    return {
+        "schema_version": ADAPTIVE_OVERLAY_SCHEMA_VERSION,
+        "record_type": "adaptive_overlay_hard_negative_replay",
+        "record_count": len(items),
+        "blocker_count": len(blockers),
+        "passed": len(blockers) == 0,
+        "blockers": _json_safe(blockers),
     }
 
 
@@ -535,6 +572,7 @@ def build_overlay_report(
     rows: Iterable[Mapping[str, Any]],
     *,
     success_delta: float = 0.001,
+    hard_negative_rows: Iterable[Mapping[str, Any]] = (),
 ) -> Dict[str, Any]:
     """Build normalized channel records plus summary and branch-set metrics."""
 
@@ -546,6 +584,9 @@ def build_overlay_report(
         "summary": summarize_channel_variations(records),
         "branch_set_metrics": compute_branch_set_metrics(records, success_delta=success_delta),
     }
+    hard_negative_records = build_channel_variation_records(hard_negative_rows)
+    if hard_negative_records:
+        report["hard_negative_replay"] = summarize_overlay_hard_negative_replay(hard_negative_records)
     report["readiness"] = summarize_overlay_readiness(report)
     report["trajectory_health"] = summarize_overlay_trajectory_health(report)
     return report
@@ -576,6 +617,7 @@ def build_overlay_artifact_card(
     summary = dict(overlay_report.get("summary", {})) if isinstance(overlay_report, Mapping) else {}
     metrics = dict(overlay_report.get("branch_set_metrics", {})) if isinstance(overlay_report, Mapping) else {}
     trajectory_health = dict(overlay_report.get("trajectory_health", {})) if isinstance(overlay_report, Mapping) else {}
+    hard_negative_replay = dict(overlay_report.get("hard_negative_replay", {})) if isinstance(overlay_report, Mapping) else {}
     decision = dict(promotion_decision or {})
     blocker_list = list(readiness.get("blockers") or [])
     limitation_list = list(limitations or [])
@@ -610,6 +652,7 @@ def build_overlay_artifact_card(
             "safe_pass_at_k_rate": float(metrics.get("safe_pass_at_k_rate", 0.0) or 0.0),
             "mean_oracle_gap": float(metrics.get("mean_oracle_gap", 0.0) or 0.0),
             "trajectory_health": _json_safe(trajectory_health),
+            "hard_negative_replay": _json_safe(hard_negative_replay),
             "validation": _json_safe(validation_report or {}),
             "collection_policy": _json_safe(collection_policy or {}),
             "verifier_cards": _json_safe(list(verifier_cards or [])),
