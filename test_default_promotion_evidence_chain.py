@@ -77,6 +77,37 @@ class DefaultPromotionEvidenceChainTests(unittest.TestCase):
                 ["overlay_model_scope_validation", "promotion_linkage_audit"],
             )
 
+    def test_chain_can_use_explicit_attnres_artifacts(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            attnres_artifact = root / "attnres.json"
+
+            def fake_validation(output_dir, timeout_seconds):
+                path = Path(output_dir) / "validation_summary.json"
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(json.dumps({"passed": True}), encoding="utf-8")
+                return {"passed": True, "summary_path": str(path)}
+
+            def fake_audit(root, output):
+                Path(output).write_text(json.dumps({"passed": True}), encoding="utf-8")
+                return {"passed": True}
+
+            with (
+                patch("run_default_promotion_evidence_chain.run_validation_bundle", side_effect=fake_validation),
+                patch("run_default_promotion_evidence_chain.audit_promotion_linkage", side_effect=fake_audit),
+                patch(
+                    "run_default_promotion_evidence_chain.summarize_attnres_repeat_seed_decision",
+                    return_value={"record_type": "attnres_repeat_seed_decision", "promote_default": True},
+                ) as summarize,
+            ):
+                summary = run_default_promotion_evidence_chain(
+                    output_dir=root / "chain",
+                    attnres_artifacts=[attnres_artifact],
+                )
+
+            summarize.assert_called_once_with([attnres_artifact])
+            self.assertTrue(summary["review_allowed"])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -31,6 +31,7 @@ def run_default_promotion_evidence_chain(
     output_dir: str | Path = DEFAULT_OUTPUT_DIR,
     experiment_root: str | Path = "experiment_runs",
     timeout_seconds: int = 300,
+    attnres_artifacts: list[str | Path] | None = None,
 ) -> dict[str, Any]:
     """Run validation, audit, repeat decision, and preflight into one linked summary."""
 
@@ -45,7 +46,7 @@ def run_default_promotion_evidence_chain(
     audit_summary = audit_promotion_linkage(experiment_root, output=audit_path)
 
     decision_path = resolved_output_dir / "attnres-repeat-seed-decision.json"
-    decision_summary = summarize_attnres_repeat_seed_decision()
+    decision_summary = summarize_attnres_repeat_seed_decision(attnres_artifacts) if attnres_artifacts else summarize_attnres_repeat_seed_decision()
     decision_path.write_text(json.dumps(_json_safe(decision_summary), indent=2), encoding="utf-8")
 
     preflight_path = resolved_output_dir / "default-promotion-preflight.json"
@@ -67,7 +68,7 @@ def run_default_promotion_evidence_chain(
         "output_dir": str(resolved_output_dir),
         "chain_passed": len(command_failures) == 0,
         "review_allowed": bool(preflight_summary.get("review_allowed", False)),
-        "default_change_allowed": False,
+        "default_change_allowed": bool(preflight_summary.get("default_change_allowed", False)),
         "command_failures": command_failures,
         "preflight_blockers": preflight_summary.get("blockers", []),
         "artifacts": {
@@ -89,6 +90,12 @@ def main() -> int:
     parser.add_argument("--experiment-root", default="experiment_runs", help="Experiment root to audit")
     parser.add_argument("--timeout-seconds", type=int, default=300, help="Timeout per validation command")
     parser.add_argument(
+        "--attnres-artifact",
+        action="append",
+        dest="attnres_artifacts",
+        help="Optional AttnRes repeat-seed artifact path; may be provided more than once",
+    )
+    parser.add_argument(
         "--fail-on-blocked-review",
         action="store_true",
         help="Return nonzero when the evidence chain passes but preflight blocks review",
@@ -98,6 +105,7 @@ def main() -> int:
         output_dir=args.output_dir,
         experiment_root=args.experiment_root,
         timeout_seconds=args.timeout_seconds,
+        attnres_artifacts=args.attnres_artifacts,
     )
     print(json.dumps(_json_safe(summary), indent=2))
     if not summary["chain_passed"]:
