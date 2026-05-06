@@ -77,6 +77,48 @@ jobs:
             experiment_runs/evidence-index/ci/
             experiment_runs/evidence-cleanup/ci/
 
+      - name: Report cleanup review warning summary
+        if: always() && inputs.cleanup-guard-mode == 'warn'
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          plan_path = Path("experiment_runs/evidence-cleanup/ci/cleanup_plan.json")
+          lines = ["## Cleanup Review Warning Mode", ""]
+          if plan_path.exists():
+              plan = json.loads(plan_path.read_text(encoding="utf-8"))
+              summary = plan.get("summary", {})
+              source_status = plan.get("source_status", {})
+              allowed = bool(summary.get("cleanup_review_allowed", False))
+              missing = summary.get("missing_source_artifacts", [])
+              lines.extend(
+                  [
+                      f"- Cleanup review: {'allowed' if allowed else 'blocked'}",
+                      f"- Plan: `{plan_path.as_posix()}`",
+                      f"- Missing source artifacts: {', '.join(missing) if missing else '-'}",
+                      f"- Candidate count: {summary.get('candidate_count', '-')}",
+                      f"- Retained count: {summary.get('retained_count', '-')}",
+                  ]
+              )
+              for name, status in sorted(source_status.items()):
+                  present = status.get("present", False) if isinstance(status, dict) else False
+                  path = status.get("path", "-") if isinstance(status, dict) else "-"
+                  lines.append(f"- Source {name}: {'present' if present else 'missing'} `{path}`")
+              if not allowed:
+                  lines.append("- Warning: blocked cleanup candidates must not be used for deletion decisions.")
+          else:
+              lines.append(f"- Cleanup plan missing: `{plan_path.as_posix()}`")
+
+          text = "\n".join(lines)
+          print(text)
+          summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
+          if summary_path:
+              with open(summary_path, "a", encoding="utf-8") as handle:
+                  handle.write(text + "\n")
+          PY
+
       - name: Fail on blocked cleanup review
         if: steps.cleanup-plan.outcome == 'failure' && inputs.cleanup-guard-mode == 'fail'
         run: |
