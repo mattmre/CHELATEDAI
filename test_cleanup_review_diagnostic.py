@@ -1,5 +1,6 @@
 import json
 import os
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -89,6 +90,43 @@ class CleanupReviewDiagnosticTests(unittest.TestCase):
             self.assertEqual(exit_code, 0)
             self.assertIn("Cleanup review: allowed", stdout.getvalue())
             self.assertIn("Cleanup review: allowed", summary_path.read_text(encoding="utf-8"))
+
+    def test_module_cli_renders_warn_mode(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            plan_path = Path(tmpdir) / "cleanup_plan.json"
+            plan_path.write_text(
+                json.dumps(
+                    {
+                        "summary": {
+                            "cleanup_review_allowed": False,
+                            "missing_source_artifacts": ["evidence_index"],
+                            "candidate_count": 1,
+                            "retained_count": 1,
+                            "candidate_bytes": 50,
+                        },
+                        "source_status": {"evidence_index": {"present": False, "path": "index.json"}},
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    "-m",
+                    "cleanup_review_diagnostic",
+                    "--plan",
+                    plan_path.as_posix(),
+                    "--mode",
+                    "warn",
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+
+            self.assertIn("Cleanup review: blocked", result.stdout)
+            self.assertIn("Missing source artifacts: evidence_index", result.stdout)
 
 
 if __name__ == "__main__":
