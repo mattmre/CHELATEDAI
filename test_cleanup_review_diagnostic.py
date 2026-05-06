@@ -214,6 +214,34 @@ class CleanupReviewDiagnosticTests(unittest.TestCase):
             self.assertIn(plan_path.as_posix(), summary_text)
             self.assertNotIn("Traceback", summary_text)
 
+    def test_main_appends_unreadable_plan_to_github_summary(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            plan_path = Path(tmpdir) / "cleanup_plan.json"
+            summary_path = Path(tmpdir) / "summary.md"
+            plan_path.write_text("{not-json", encoding="utf-8")
+            argv = [
+                "cleanup_review_diagnostic.py",
+                "--plan",
+                plan_path.as_posix(),
+                "--mode",
+                "blocked",
+                "--github-summary",
+            ]
+
+            with (
+                patch.object(sys, "argv", argv),
+                patch.dict(os.environ, {"GITHUB_STEP_SUMMARY": summary_path.as_posix()}),
+                patch("sys.stdout", new_callable=StringIO) as stdout,
+            ):
+                exit_code = main()
+
+            summary_text = summary_path.read_text(encoding="utf-8")
+            self.assertEqual(exit_code, 0)
+            self.assertIn("Cleanup plan unreadable", stdout.getvalue())
+            self.assertIn("Cleanup plan unreadable", summary_text)
+            self.assertIn("Error:", summary_text)
+            self.assertNotIn("Traceback", summary_text)
+
 
 if __name__ == "__main__":
     unittest.main()

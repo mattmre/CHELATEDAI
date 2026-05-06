@@ -82,7 +82,8 @@ Purpose: Durable continuation queue after Engine-Scope, Model-Scope, and adaptiv
 | 63 | Cleanup diagnostic missing-plan workflow note | documentation | complete | workflow docs explain missing cleanup-plan diagnostic output and operator response |
 | 64 | Cleanup diagnostic missing-plan CLI validation | validation | complete | module CLI coverage proves missing cleanup-plan diagnostics exit cleanly without tracebacks |
 | 65 | Cleanup diagnostic missing-plan summary append validation | validation | complete | GitHub summary append path is covered for missing cleanup-plan diagnostics |
-| 66 | Cleanup diagnostic unreadable-plan summary append validation | validation | next | GitHub summary append path is covered for unreadable cleanup-plan diagnostics |
+| 66 | Cleanup diagnostic unreadable-plan summary append validation | validation | complete | GitHub summary append path is covered for unreadable cleanup-plan diagnostics |
+| 67 | Cleanup diagnostic summary append no-env validation | validation | next | GitHub summary mode exits cleanly when GITHUB_STEP_SUMMARY is unset |
 
 ## Closed Implementation Scaffolds
 - Engine-Scope row contract, internal gates, coverage analysis, hard-negative pipeline, and supervisor integration are implemented.
@@ -160,3 +161,4 @@ Start the next branch from the highest-ranked `next` item that is not blocked. I
 - 2026-05-06: Cleanup diagnostic missing-plan workflow note added. The default-promotion evidence runbook now explains how to respond when workflow diagnostics report a missing cleanup plan.
 - 2026-05-06: Cleanup diagnostic missing-plan CLI validation added. Module CLI coverage now proves missing cleanup-plan diagnostics exit cleanly without traceback output.
 - 2026-05-06: Cleanup diagnostic missing-plan summary append validation added. The GitHub summary append path now covers missing cleanup-plan diagnostics without traceback output.
+- 2026-05-06: Cleanup diagnostic unreadable-plan summary append validation added. The GitHub summary append path now covers malformed cleanup-plan diagnostics without traceback output.
