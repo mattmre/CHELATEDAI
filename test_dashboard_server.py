@@ -521,10 +521,26 @@ class TestEvidenceCleanupPlan(unittest.TestCase):
             result = dashboard_server.load_evidence_cleanup_plan(root, keep_latest=1, candidate_limit=10)
 
         self.assertTrue(result["dry_run"])
+        self.assertIn("source_artifacts", result)
         self.assertEqual(result["summary"]["candidate_count"], 1)
         self.assertEqual(result["summary"]["retained_count"], 1)
         self.assertEqual(result["summary"]["candidate_types"], ["evidence_indexes"])
         self.assertEqual(result["candidates"][0]["path"], "experiment_runs/evidence-index/old/evidence_index.json")
+
+    def test_load_evidence_cleanup_plan_surfaces_source_artifacts(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = os.path.join(tmpdir, "experiment_runs")
+
+            result = dashboard_server.load_evidence_cleanup_plan(root)
+
+        self.assertEqual(
+            result["source_artifacts"]["evidence_index"],
+            "experiment_runs/evidence-index/latest/evidence_index.json",
+        )
+        self.assertEqual(
+            result["source_artifacts"]["freshness_audit"],
+            "experiment_runs/evidence-index/latest/freshness_audit.json",
+        )
 
     def test_load_evidence_cleanup_plan_limits_candidate_rows(self):
         with tempfile.TemporaryDirectory() as tmpdir:

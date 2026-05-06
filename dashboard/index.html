@@ -353,6 +353,7 @@
         </tbody>
       </table>
       <div style="margin-top:12px; font-size:13px; color:#666;" id="cleanup-types"></div>
+      <div style="margin-top:6px; font-size:13px; color:#666;" id="cleanup-source-artifacts"></div>
     </div>
   </div>
 
@@ -743,6 +744,11 @@
         document.getElementById('cleanup-bytes').textContent = summary.candidate_bytes || 0;
         document.getElementById('cleanup-types').textContent =
           'Candidate types: ' + (asArray(summary.candidate_types).join(', ') || '-');
+        const sourceArtifacts = asObject(data.source_artifacts);
+        const indexPath = sourceArtifacts.evidence_index || '-';
+        const freshnessPath = sourceArtifacts.freshness_audit || '-';
+        document.getElementById('cleanup-source-artifacts').textContent =
+          `Source artifacts: evidence index ${indexPath}; freshness audit ${freshnessPath}`;
 
         const rows = document.getElementById('cleanup-rows');
         rows.replaceChildren();

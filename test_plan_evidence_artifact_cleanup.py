@@ -56,8 +56,8 @@ class EvidenceArtifactCleanupPlanTests(unittest.TestCase):
                 freshness_audit=freshness_audit,
             )
 
-            self.assertEqual(plan["source_artifacts"]["evidence_index"], str(evidence_index))
-            self.assertEqual(plan["source_artifacts"]["freshness_audit"], str(freshness_audit))
+            self.assertEqual(plan["source_artifacts"]["evidence_index"], evidence_index.as_posix())
+            self.assertEqual(plan["source_artifacts"]["freshness_audit"], freshness_audit.as_posix())
 
 
 if __name__ == "__main__":
