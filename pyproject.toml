@@ -31,6 +31,7 @@ chelatedai-safety-testbed = "run_safety_testbed:main"
 chelatedai-model-scope-campaign = "run_model_scope_campaign:main"
 chelatedai-overlay-model-scope-validation = "run_overlay_model_scope_validation:main"
 chelatedai-promotion-linkage-audit = "audit_promotion_linkage:main"
+chelatedai-default-promotion-preflight = "default_promotion_preflight:main"
 
 [project.optional-dependencies]
 benchmark = ["mteb>=1.0"]
@@ -57,6 +58,7 @@ py-modules = [
     "convergence_monitor",
     "compute_budget_policy",
     "dashboard_server",
+    "default_promotion_preflight",
     "dimension_mask_predictor",
     "device_profiles",
     "distributed_fitness_evaluator",
