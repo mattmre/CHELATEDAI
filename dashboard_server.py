@@ -808,7 +808,7 @@ def load_campaign_history(root: str = CAMPAIGN_HISTORY_ROOT, limit: int = 25) ->
     for path in report_paths[: max(0, limit)]:
         try:
             reports.append(_extract_campaign_record(path, root_path))
-        except (OSError, ValueError, UnicodeDecodeError):
+        except (OSError, ValueError):
             continue
 
     return {
@@ -855,7 +855,7 @@ def load_validation_history(root: str = VALIDATION_HISTORY_ROOT, limit: int = 10
     for path in report_paths[: max(0, limit)]:
         try:
             reports.append(_extract_validation_record(path, root_path))
-        except (OSError, ValueError, UnicodeDecodeError):
+        except (OSError, ValueError):
             continue
     latest = reports[0] if reports else {}
     return {
@@ -907,7 +907,7 @@ def load_preflight_history(root: str = PREFLIGHT_HISTORY_ROOT, limit: int = 10) 
     for path in report_paths[: max(0, limit)]:
         try:
             reports.append(_extract_preflight_record(path, root_path))
-        except (OSError, ValueError, UnicodeDecodeError):
+        except (OSError, ValueError):
             continue
     latest = reports[0] if reports else {}
     return {
@@ -940,7 +940,7 @@ def load_evidence_index(path: str = EVIDENCE_INDEX_PATH) -> Dict[str, Any]:
         }
     try:
         payload = _load_json_object(index_path)
-    except (OSError, ValueError, UnicodeDecodeError):
+    except (OSError, ValueError):
         payload = {}
     summary = payload.get("summary")
     if not isinstance(summary, dict):
@@ -1005,7 +1005,7 @@ def load_evidence_chain_history(root: str = EVIDENCE_CHAIN_HISTORY_ROOT, limit: 
     for path in report_paths[: max(0, limit)]:
         try:
             reports.append(_extract_evidence_chain_record(path, root_path))
-        except (OSError, ValueError, UnicodeDecodeError):
+        except (OSError, ValueError):
             continue
     latest = reports[0] if reports else {}
     return {
