@@ -84,7 +84,8 @@ Purpose: Durable continuation queue after Engine-Scope, Model-Scope, and adaptiv
 | 65 | Cleanup diagnostic missing-plan summary append validation | validation | complete | GitHub summary append path is covered for missing cleanup-plan diagnostics |
 | 66 | Cleanup diagnostic unreadable-plan summary append validation | validation | complete | GitHub summary append path is covered for unreadable cleanup-plan diagnostics |
 | 67 | Cleanup diagnostic summary append no-env validation | validation | complete | GitHub summary mode exits cleanly when GITHUB_STEP_SUMMARY is unset |
-| 68 | Cleanup diagnostic summary append no-env docs | documentation | next | local diagnostic docs explain that --github-summary is inert without GITHUB_STEP_SUMMARY |
+| 68 | Cleanup diagnostic summary append no-env docs | documentation | complete | local diagnostic docs explain that --github-summary is inert without GITHUB_STEP_SUMMARY |
+| 69 | Cleanup diagnostic summary append preexisting-content validation | validation | next | GitHub summary append preserves preexisting summary content |
 
 ## Closed Implementation Scaffolds
 - Engine-Scope row contract, internal gates, coverage analysis, hard-negative pipeline, and supervisor integration are implemented.
@@ -164,3 +165,4 @@ Start the next branch from the highest-ranked `next` item that is not blocked. I
 - 2026-05-06: Cleanup diagnostic missing-plan summary append validation added. The GitHub summary append path now covers missing cleanup-plan diagnostics without traceback output.
 - 2026-05-06: Cleanup diagnostic unreadable-plan summary append validation added. The GitHub summary append path now covers malformed cleanup-plan diagnostics without traceback output.
 - 2026-05-06: Cleanup diagnostic summary append no-env validation added. `--github-summary` now has regression coverage for local runs without `GITHUB_STEP_SUMMARY`.
+- 2026-05-06: Cleanup diagnostic summary append no-env docs added. Operator docs now explain that `--github-summary` appends only when `GITHUB_STEP_SUMMARY` is set.
