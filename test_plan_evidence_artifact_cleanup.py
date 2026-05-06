@@ -61,6 +61,27 @@ class EvidenceArtifactCleanupPlanTests(unittest.TestCase):
             self.assertEqual(plan["source_artifacts"]["freshness_audit"], freshness_audit.as_posix())
             self.assertTrue(plan["source_status"]["evidence_index"]["present"])
             self.assertFalse(plan["source_status"]["freshness_audit"]["present"])
+            self.assertFalse(plan["summary"]["cleanup_review_allowed"])
+            self.assertEqual(plan["summary"]["missing_source_artifacts"], ["freshness_audit"])
+
+    def test_plan_allows_cleanup_review_when_sources_are_present(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir) / "experiment_runs"
+            evidence_index = self._write_json(root, "evidence-index/latest/evidence_index.json", {"record_type": "index"})
+            freshness_audit = self._write_json(
+                root,
+                "evidence-index/latest/freshness_audit.json",
+                {"record_type": "freshness"},
+            )
+
+            plan = plan_evidence_artifact_cleanup(
+                root=root,
+                evidence_index=evidence_index,
+                freshness_audit=freshness_audit,
+            )
+
+            self.assertTrue(plan["summary"]["cleanup_review_allowed"])
+            self.assertEqual(plan["summary"]["missing_source_artifacts"], [])
 
 
 if __name__ == "__main__":
