@@ -1047,12 +1047,12 @@ def load_evidence_cleanup_plan(
 ) -> Dict[str, Any]:
     """Load a read-only dry-run cleanup plan for dashboard display."""
 
-    plan = plan_evidence_artifact_cleanup(
-        root=root,
-        keep_latest=keep_latest,
-        evidence_index=evidence_index or None,
-        freshness_audit=freshness_audit or None,
-    )
+    plan_kwargs: Dict[str, Any] = {"root": root, "keep_latest": keep_latest}
+    if evidence_index is not None:
+        plan_kwargs["evidence_index"] = evidence_index
+    if freshness_audit is not None:
+        plan_kwargs["freshness_audit"] = freshness_audit
+    plan = plan_evidence_artifact_cleanup(**plan_kwargs)
     candidates = plan.get("candidates", [])
     if not isinstance(candidates, list):
         candidates = []
