@@ -959,6 +959,8 @@ def load_evidence_index(path: str = EVIDENCE_INDEX_PATH) -> Dict[str, Any]:
 
 def _extract_evidence_chain_record(path: Path, root: Path) -> Dict[str, Any]:
     payload = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        payload = {}
     stat = path.stat()
     artifacts = payload.get("artifacts", {})
     if not isinstance(artifacts, dict):
@@ -1004,7 +1006,8 @@ def load_evidence_chain_history(root: str = EVIDENCE_CHAIN_HISTORY_ROOT, limit: 
         "root": root,
         "reports": reports,
         "summary": {
-            "total_reports": len(reports),
+            "total_reports": len(report_paths),
+            "loaded_reports": len(reports),
             "passed": sum(1 for report in reports if report["chain_passed"]),
             "failed": sum(1 for report in reports if not report["chain_passed"]),
             "latest_chain_passed": latest.get("chain_passed") if reports else None,

@@ -453,6 +453,7 @@ class TestEvidenceChainHistory(unittest.TestCase):
             result = dashboard_server.load_evidence_chain_history(root)
 
         self.assertEqual(result["summary"]["total_reports"], 1)
+        self.assertEqual(result["summary"]["loaded_reports"], 1)
         self.assertEqual(result["summary"]["passed"], 1)
         self.assertTrue(result["summary"]["latest_chain_passed"])
         self.assertFalse(result["summary"]["latest_review_allowed"])
