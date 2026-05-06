@@ -22,3 +22,4 @@ Naming convention: `YYYY-MM-DD_PR-###_summary.md`.
 | autonomous-continuation | 2026-05-05 | PR `#145` / `codex/dashboard-validation-bundle` | reporting | Codex | `DASHBOARD-VALIDATION-20260505-001` | [2026-05-05_PR-145_summary.md](2026-05-05_PR-145_summary.md) |
 | autonomous-continuation | 2026-05-05 | PR `#146` / `codex/validation-bundle-ci-affordance` | validation | Codex | `VALIDATION-CI-20260505-001` | [2026-05-05_PR-146_summary.md](2026-05-05_PR-146_summary.md) |
 | autonomous-continuation | 2026-05-05 | PR `#147` / `codex/promotion-linkage-audit` | governance | Codex | `PROMOTION-AUDIT-20260505-001` | [2026-05-05_PR-147_summary.md](2026-05-05_PR-147_summary.md) |
+| autonomous-continuation | 2026-05-05 | PR `#148` / `codex/model-scope-overlay-bundle-schema` | documentation | Codex | `BUNDLE-SCHEMA-20260505-001` | [2026-05-05_PR-148_summary.md](2026-05-05_PR-148_summary.md) |
