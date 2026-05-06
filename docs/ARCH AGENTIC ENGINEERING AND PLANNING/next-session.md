@@ -35,7 +35,7 @@ Purpose: Continue autonomous execution after the Engine-Scope and Model-Scope im
 
 ## Resume Pointer
 - Active execution queue: `docs/ARCH AGENTIC ENGINEERING AND PLANNING/roadmap-execution-queue-2026-05-05.md`
-- Latest completed implementation chain: PRs `#127` through `#131`
+- Latest completed implementation chain: PRs `#127` through `#149`
 - Current cycle status: Engine-Scope and Model-Scope implementation scaffolds complete; frontier validation/research queue active
 
 ## Handoff Notes
@@ -44,6 +44,7 @@ Purpose: Continue autonomous execution after the Engine-Scope and Model-Scope im
 - `ruff check` does not validate GitHub Actions YAML.
 - Prefer compact, versioned artifact schemas over large raw dumps.
 - Persistent promotion should target overlays and memory artifacts before any discussion of base-weight mutation.
+- Default-promotion preflight is fail-closed; a nonzero exit can be the expected result when evidence says `no_default_change`.
 
 ## Cycle ID
 - Autonomous continuation after AEP-2026-04-30 and AEP-2026-05-01
