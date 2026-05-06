@@ -67,7 +67,8 @@ Purpose: Durable continuation queue after Engine-Scope, Model-Scope, and adaptiv
 | 48 | Cleanup planner blocked-review exit mode | governance | complete | cleanup planner can optionally exit nonzero when cleanup_review_allowed is false |
 | 49 | Cleanup workflow blocked-review guard | governance | complete | manual evidence workflow documents or wires the blocked-review exit mode without deleting files |
 | 50 | Cleanup workflow artifact upload resilience | governance | complete | evidence workflow preserves cleanup/index artifacts for debugging even when blocked-review guard fails |
-| 51 | Cleanup workflow blocked-review diagnostics | reporting | next | workflow emits a compact blocked-review diagnostic summary before failing |
+| 51 | Cleanup workflow blocked-review diagnostics | reporting | complete | workflow emits a compact blocked-review diagnostic summary before failing |
+| 52 | Cleanup workflow manual dispatch guardrail | governance | next | manual evidence workflow exposes an explicit cleanup guard mode input with fail-closed default |
 
 ## Closed Implementation Scaffolds
 - Engine-Scope row contract, internal gates, coverage analysis, hard-negative pipeline, and supervisor integration are implemented.
@@ -130,3 +131,4 @@ Start the next branch from the highest-ranked `next` item that is not blocked. I
 - 2026-05-06: Cleanup planner blocked-review exit mode added. `--fail-on-blocked-review` lets cleanup-plan callers exit nonzero when linked source artifacts are missing while preserving default read-only behavior.
 - 2026-05-06: Cleanup workflow blocked-review guard added. The manual evidence workflow now fails cleanup planning when linked source artifacts are missing, while cleanup remains dry-run only.
 - 2026-05-06: Cleanup workflow artifact upload resilience added. The manual evidence workflow now uploads available evidence artifacts even when the cleanup review guard fails.
+- 2026-05-06: Cleanup workflow blocked-review diagnostics added. Blocked cleanup review now emits missing source artifacts, source status, and candidate counts before failing.
