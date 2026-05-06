@@ -23,6 +23,8 @@ class PromotionGateConfig:
     require_no_hard_negative_blockers: bool = True
     require_no_reward_overoptimization: bool = True
     require_adaptive_overlay_readiness: bool = False
+    require_artifact_card_reference: bool = False
+    require_rollback_path: bool = False
 
     def __post_init__(self) -> None:
         for field_name in ("min_replay_score", "min_holdout_score", "min_evaluator_agreement"):
@@ -53,6 +55,8 @@ def evaluate_promotion_candidate(
     evaluator_report: Mapping[str, Any] | None = None,
     reward_report: Mapping[str, Any] | None = None,
     adaptive_overlay_report: Mapping[str, Any] | None = None,
+    artifact_card_reference: Mapping[str, Any] | None = None,
+    rollback_path: str | None = None,
     config: PromotionGateConfig | None = None,
 ) -> Dict[str, Any]:
     """Return a single fail-closed promotion decision for any candidate artifact."""
@@ -125,10 +129,26 @@ def evaluate_promotion_candidate(
     elif cfg.require_adaptive_overlay_readiness:
         reasons.append("missing_adaptive_overlay_report")
 
+    artifact_card = dict(artifact_card_reference or {})
+    artifact_card_path = artifact_card.get("path")
+    artifact_card_id = artifact_card.get("card_id") or artifact_card.get("artifact_card_id")
+    if cfg.require_artifact_card_reference and not (artifact_card_path or artifact_card_id):
+        reasons.append("missing_artifact_card_reference")
+
+    normalized_rollback_path = str(rollback_path or artifact_card.get("rollback_path") or "")
+    if cfg.require_rollback_path and not normalized_rollback_path:
+        reasons.append("missing_rollback_path")
+
     return {
         "schema_version": PROMOTION_SCHEMA_VERSION,
         "artifact_type": "promotion_decision",
         "candidate_id": str(candidate_id),
+        "artifact_card_reference": {
+            "card_id": str(artifact_card_id) if artifact_card_id else None,
+            "path": str(artifact_card_path) if artifact_card_path else None,
+            "record_type": artifact_card.get("record_type"),
+        },
+        "rollback_path": normalized_rollback_path or None,
         "promotion_ready": len(reasons) == 0,
         "reasons": reasons,
         "evidence_summary": bundle_summary,

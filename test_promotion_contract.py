@@ -41,6 +41,55 @@ class TestPromotionContract(unittest.TestCase):
         self.assertTrue(decision["promotion_ready"])
         self.assertEqual(decision["reasons"], [])
 
+    def test_promotion_candidate_can_require_artifact_card_and_rollback_linkage(self):
+        bundle = build_evidence_bundle(
+            [build_episode_event(event_type="observe", surface="model_scope", query_id="q1")]
+        )
+
+        decision = evaluate_promotion_candidate(
+            candidate_id="shadow_v1",
+            evidence_bundle=bundle,
+            comparator_report={"passed": True, "score": 0.9},
+            holdout_report={"passed": True, "score": 0.8},
+            safety_report={"passed": True},
+            hard_negative_report={"blocker_count": 0},
+            evaluator_report={"agreement_score": 1.0},
+            artifact_card_reference={
+                "record_type": "adaptive_overlay_artifact_card",
+                "path": "campaign/adaptive_overlay_artifact_card.json",
+            },
+            rollback_path="policies/current.json",
+            config=PromotionGateConfig(
+                min_replay_score=0.5,
+                min_holdout_score=0.5,
+                min_evaluator_agreement=0.5,
+                require_artifact_card_reference=True,
+                require_rollback_path=True,
+            ),
+        )
+
+        self.assertTrue(decision["promotion_ready"])
+        self.assertEqual(decision["artifact_card_reference"]["path"], "campaign/adaptive_overlay_artifact_card.json")
+        self.assertEqual(decision["rollback_path"], "policies/current.json")
+
+    def test_promotion_candidate_fails_closed_when_required_linkage_is_missing(self):
+        bundle = build_evidence_bundle(
+            [build_episode_event(event_type="observe", surface="model_scope", query_id="q1")]
+        )
+
+        decision = evaluate_promotion_candidate(
+            candidate_id="shadow_v1",
+            evidence_bundle=bundle,
+            comparator_report={"passed": True, "score": 1.0},
+            holdout_report={"passed": True, "score": 1.0},
+            safety_report={"passed": True},
+            config=PromotionGateConfig(require_artifact_card_reference=True, require_rollback_path=True),
+        )
+
+        self.assertFalse(decision["promotion_ready"])
+        self.assertIn("missing_artifact_card_reference", decision["reasons"])
+        self.assertIn("missing_rollback_path", decision["reasons"])
+
     def test_promotion_candidate_reports_empty_bad_schema_and_reward_divergence(self):
         decision = evaluate_promotion_candidate(
             candidate_id="shadow_v1",

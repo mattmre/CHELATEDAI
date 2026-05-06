@@ -27,8 +27,8 @@ Purpose: Durable continuation queue after Engine-Scope, Model-Scope, and adaptiv
 | 8 | Repeat-seed AttnRes contrastive/quantization-aware experiment | research/validation | complete | result doc states promote/no-promote with repeat-seed evidence |
 | 9 | Computational-storage real-hardware evidence capture | operational | externally blocked | hardware report captured on actual RP2040/Pico device |
 | 10 | Dashboard campaign-history view for model-scope reports | reporting | complete | latest campaign reports visible without reading files manually |
-| 11 | Promotion-contract artifact-card linkage | implementation | next | promotion decision links candidate artifact card and rollback path |
-| 12 | Long-run validation bundle | validation | queued | single command runs focused overlay/model-scope regression suite |
+| 11 | Promotion-contract artifact-card linkage | implementation | complete | promotion decision links candidate artifact card and rollback path |
+| 12 | Long-run validation bundle | validation | next | single command runs focused overlay/model-scope regression suite |
 | 13 | ARCH-AEP tracker closure audit | documentation | complete | all current trackers/indexes agree on open/complete/external-blocked state |
 | 14 | Session memory and resume summary refresh | documentation | recurring | next-session and phase summary stay current after each merged PR |
 | 15 | Default-promotion decision review | governance | gated | only starts after validation items show repeatable positive evidence |
@@ -57,3 +57,4 @@ Start the next branch from the highest-ranked `next` item that is not blocked. I
 - 2026-05-05: Hard-negative overlay replay readiness added. Overlay reports can now carry stress replay blockers, and readiness fails closed when they are present.
 - 2026-05-05: Repeat-seed AttnRes decision codified from existing artifacts. Machine summary says `no_default_change` because SciFact has non-positive deltas and 5/6 quantization gates fail.
 - 2026-05-05: Dashboard campaign-history API and tab added. Live model-scope campaign reports are discoverable from `experiment_runs` without reading files manually.
+- 2026-05-05: Promotion decisions can now carry required artifact-card and rollback references. Model-Scope overlay campaigns require the linkage and fail closed if it is missing.
