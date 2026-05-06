@@ -59,7 +59,8 @@ Purpose: Durable continuation queue after Engine-Scope, Model-Scope, and adaptiv
 | 40 | Evidence cleanup plan stale-source audit | governance | complete | cleanup plan can report when linked evidence index or freshness audit artifacts are missing |
 | 41 | Cleanup source status dashboard | reporting | complete | dashboard cleanup panel shows whether linked source artifacts are present |
 | 42 | Cleanup source status schema refresh | documentation | complete | dashboard cleanup-plan response documents source status fields |
-| 43 | Cleanup source status API regression | validation | next | API handler preserves default cleanup source paths and validates query overrides |
+| 43 | Cleanup source status API regression | validation | complete | API handler preserves default cleanup source paths and validates query overrides |
+| 44 | Cleanup source status runbook note | documentation | next | operator docs explain present/missing source status on the cleanup dashboard |
 
 ## Closed Implementation Scaffolds
 - Engine-Scope row contract, internal gates, coverage analysis, hard-negative pipeline, and supervisor integration are implemented.
@@ -114,3 +115,4 @@ Start the next branch from the highest-ranked `next` item that is not blocked. I
 - 2026-05-06: Cleanup stale-source audit added. Cleanup plans now report presence status for linked evidence-index and freshness-audit artifacts.
 - 2026-05-06: Cleanup source status dashboard added. The cleanup panel now shows whether linked evidence-index and freshness-audit artifacts are present or missing.
 - 2026-05-06: Cleanup source status schema refreshed. The dashboard cleanup-plan response now documents source artifact paths and presence fields, and the API wrapper preserves planner defaults.
+- 2026-05-06: Cleanup source status API regression added. Empty source-path overrides now preserve planner defaults instead of resolving to the current directory.

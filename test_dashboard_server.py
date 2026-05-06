@@ -553,6 +553,22 @@ class TestEvidenceCleanupPlan(unittest.TestCase):
         self.assertFalse(result["source_status"]["evidence_index"]["present"])
         self.assertFalse(result["source_status"]["freshness_audit"]["present"])
 
+    def test_load_evidence_cleanup_plan_ignores_empty_source_overrides(self):
+        result = dashboard_server.load_evidence_cleanup_plan(
+            "missing-experiment-runs",
+            evidence_index="",
+            freshness_audit="",
+        )
+
+        self.assertEqual(
+            result["source_artifacts"]["evidence_index"],
+            "experiment_runs/evidence-index/latest/evidence_index.json",
+        )
+        self.assertEqual(
+            result["source_artifacts"]["freshness_audit"],
+            "experiment_runs/evidence-index/latest/freshness_audit.json",
+        )
+
     def test_load_evidence_cleanup_plan_limits_candidate_rows(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = os.path.join(tmpdir, "experiment_runs")
