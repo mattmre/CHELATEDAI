@@ -70,8 +70,11 @@ Before deleting generated evidence:
 
 1. Confirm it is under `experiment_runs/` or another explicit generated-output directory.
 2. Confirm no source doc links to it as an irreplaceable artifact.
-3. Keep at least one recent local or CI artifact copy for the latest merged evidence chain.
-4. Regenerate the evidence index after deletion.
-5. Run the freshness audit; it must pass or explicitly name the deleted stale links.
+3. Run `python plan_evidence_artifact_cleanup.py --root experiment_runs --keep-latest 1` and inspect the dry-run candidate list.
+4. Keep at least one recent local or CI artifact copy for the latest merged evidence chain.
+5. Regenerate the evidence index after deletion.
+6. Run the freshness audit; it must pass or explicitly name the deleted stale links.
 
 Never delete source scripts, schemas, runbooks, phase summaries, or test fixtures as part of generated-output cleanup.
+
+The cleanup planner never deletes files. It only reports generated evidence candidates and the retained latest artifact per type.
