@@ -49,6 +49,7 @@ class EvidenceArtifactCleanupPlanTests(unittest.TestCase):
             root = Path(tmpdir) / "experiment_runs"
             evidence_index = root / "evidence-index" / "latest" / "evidence_index.json"
             freshness_audit = root / "evidence-index" / "latest" / "freshness_audit.json"
+            self._write_json(root, "evidence-index/latest/evidence_index.json", {"record_type": "index"})
 
             plan = plan_evidence_artifact_cleanup(
                 root=root,
@@ -58,6 +59,8 @@ class EvidenceArtifactCleanupPlanTests(unittest.TestCase):
 
             self.assertEqual(plan["source_artifacts"]["evidence_index"], evidence_index.as_posix())
             self.assertEqual(plan["source_artifacts"]["freshness_audit"], freshness_audit.as_posix())
+            self.assertTrue(plan["source_status"]["evidence_index"]["present"])
+            self.assertFalse(plan["source_status"]["freshness_audit"]["present"])
 
 
 if __name__ == "__main__":

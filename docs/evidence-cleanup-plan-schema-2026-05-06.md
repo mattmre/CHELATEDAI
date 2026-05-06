@@ -25,6 +25,8 @@ The command prints the plan to stdout and optionally writes the same JSON to `--
 | `keep_latest` | integer | number of newest artifacts retained per artifact type |
 | `source_artifacts.evidence_index` | string or null | evidence index path the plan was generated after |
 | `source_artifacts.freshness_audit` | string or null | freshness-audit path the plan was generated after |
+| `source_status.evidence_index.present` | boolean | whether the linked evidence index exists when the plan is generated |
+| `source_status.freshness_audit.present` | boolean | whether the linked freshness audit exists when the plan is generated |
 | `summary.candidate_count` | integer | total files listed as cleanup candidates |
 | `summary.retained_count` | integer | total files retained by the keep-latest rule |
 | `summary.candidate_bytes` | integer | total byte size of candidate files |

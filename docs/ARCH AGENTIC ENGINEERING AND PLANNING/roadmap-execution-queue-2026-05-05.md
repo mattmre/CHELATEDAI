@@ -56,7 +56,8 @@ Purpose: Durable continuation queue after Engine-Scope, Model-Scope, and adaptiv
 | 37 | Evidence cleanup plan CI artifact | governance | complete | manual evidence workflow can publish a cleanup dry-run plan artifact without deleting files |
 | 38 | Evidence cleanup freshness linkage | governance | complete | cleanup plan generation can run after freshness audit and record index/freshness artifact references |
 | 39 | Cleanup plan dashboard source linkage | reporting | complete | dashboard cleanup panel shows linked evidence index and freshness audit paths |
-| 40 | Evidence cleanup plan stale-source audit | governance | next | cleanup plan can report when linked evidence index or freshness audit artifacts are missing |
+| 40 | Evidence cleanup plan stale-source audit | governance | complete | cleanup plan can report when linked evidence index or freshness audit artifacts are missing |
+| 41 | Cleanup source status dashboard | reporting | next | dashboard cleanup panel shows whether linked source artifacts are present |
 
 ## Closed Implementation Scaffolds
 - Engine-Scope row contract, internal gates, coverage analysis, hard-negative pipeline, and supervisor integration are implemented.
@@ -108,3 +109,4 @@ Start the next branch from the highest-ranked `next` item that is not blocked. I
 - 2026-05-06: Evidence cleanup plan CI artifact added. The manual evidence workflow now writes and uploads a dry-run cleanup plan alongside evidence-chain and evidence-index artifacts.
 - 2026-05-06: Evidence cleanup freshness linkage added. Cleanup plans now record the evidence-index and freshness-audit paths they were generated after.
 - 2026-05-06: Cleanup dashboard source linkage added. The cleanup panel now shows the evidence-index and freshness-audit paths linked by the dry-run cleanup plan.
+- 2026-05-06: Cleanup stale-source audit added. Cleanup plans now report presence status for linked evidence-index and freshness-audit artifacts.
