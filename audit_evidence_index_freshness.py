@@ -29,14 +29,13 @@ def _load_json(path: Path) -> dict[str, Any] | None:
     return payload if isinstance(payload, dict) else None
 
 
-def _resolve_indexed_path(path_text: str, index_path: Path) -> Path:
+def _resolve_indexed_path(path_text: str, index_path: Path, repo_root: Path) -> Path:
     path = Path(path_text)
     if path.is_absolute():
         return path
     candidates = [
-        Path.cwd() / path,
+        repo_root / path,
         index_path.parent / path,
-        index_path.parent.parent / path,
     ]
     for candidate in candidates:
         if candidate.exists():
@@ -69,6 +68,7 @@ def audit_evidence_index_freshness(
         artifacts = {}
 
     index_mtime = index_path.stat().st_mtime if index_path.exists() else 0.0
+    repo_root = Path.cwd()
     for records in artifacts.values():
         if not isinstance(records, list):
             warnings.append("artifact_records_not_list")
@@ -82,7 +82,7 @@ def audit_evidence_index_freshness(
                 warnings.append("artifact_record_missing_path")
                 continue
             checked_paths += 1
-            source_path = _resolve_indexed_path(str(path_text), index_path)
+            source_path = _resolve_indexed_path(str(path_text), index_path, repo_root)
             if not source_path.exists():
                 missing_paths.append(str(path_text))
                 continue

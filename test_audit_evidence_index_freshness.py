@@ -56,6 +56,25 @@ class EvidenceIndexFreshnessAuditTests(unittest.TestCase):
         self.assertFalse(summary["passed"])
         self.assertIn("evidence_index_missing_or_unreadable", summary["blockers"])
 
+    def test_audit_resolves_relative_paths_from_index_parent(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            index_dir = root / "nested" / "index"
+            index_dir.mkdir(parents=True)
+            artifact = index_dir / "relative" / "artifact.json"
+            artifact.parent.mkdir()
+            artifact.write_text(json.dumps({"passed": True}), encoding="utf-8")
+            index = index_dir / "evidence_index.json"
+            index.write_text(
+                json.dumps({"artifacts": {"validation_summaries": [{"path": "relative/artifact.json"}]}}),
+                encoding="utf-8",
+            )
+
+            summary = audit_evidence_index_freshness(index=index)
+
+            self.assertTrue(summary["passed"])
+            self.assertEqual(summary["checked_path_count"], 1)
+
 
 if __name__ == "__main__":
     unittest.main()
