@@ -36,7 +36,7 @@ def _json_safe(value: Any) -> Any:
 def _load_json(path: Path) -> dict[str, Any] | None:
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
+    except (OSError, ValueError, UnicodeDecodeError):
         return None
     return payload if isinstance(payload, dict) else None
 
