@@ -47,6 +47,12 @@ The guard mode contract is documented in `docs/evidence-cleanup-plan-schema-2026
 
 The workflow is intentionally manual. Promotion evidence should not become background noise on every commit.
 
+For local diagnostic rendering, use:
+
+```bash
+chelatedai-cleanup-review-diagnostic --plan experiment_runs/evidence-cleanup/latest/cleanup_plan.json --mode warn
+```
+
 ## Preflight Fields
 
 | Field | Meaning |

@@ -1,9 +1,13 @@
 import json
+import os
+import sys
 import tempfile
 import unittest
+from io import StringIO
 from pathlib import Path
+from unittest.mock import patch
 
-from cleanup_review_diagnostic import render_cleanup_review_diagnostic
+from cleanup_review_diagnostic import main, render_cleanup_review_diagnostic
 
 
 class CleanupReviewDiagnosticTests(unittest.TestCase):
@@ -47,6 +51,44 @@ class CleanupReviewDiagnosticTests(unittest.TestCase):
 
             self.assertIn("## Cleanup Review Blocked", text)
             self.assertIn("Cleanup plan missing", text)
+
+    def test_main_writes_github_summary_when_requested(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            plan_path = Path(tmpdir) / "cleanup_plan.json"
+            summary_path = Path(tmpdir) / "summary.md"
+            plan_path.write_text(
+                json.dumps(
+                    {
+                        "summary": {
+                            "cleanup_review_allowed": True,
+                            "candidate_count": 0,
+                            "retained_count": 1,
+                            "candidate_bytes": 0,
+                        },
+                        "source_status": {},
+                    }
+                ),
+                encoding="utf-8",
+            )
+            argv = [
+                "cleanup_review_diagnostic.py",
+                "--plan",
+                plan_path.as_posix(),
+                "--mode",
+                "warn",
+                "--github-summary",
+            ]
+
+            with (
+                patch.object(sys, "argv", argv),
+                patch.dict(os.environ, {"GITHUB_STEP_SUMMARY": summary_path.as_posix()}),
+                patch("sys.stdout", new_callable=StringIO) as stdout,
+            ):
+                exit_code = main()
+
+            self.assertEqual(exit_code, 0)
+            self.assertIn("Cleanup review: allowed", stdout.getvalue())
+            self.assertIn("Cleanup review: allowed", summary_path.read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":

@@ -36,6 +36,7 @@ chelatedai-default-promotion-evidence-chain = "run_default_promotion_evidence_ch
 chelatedai-evidence-index = "generate_evidence_index:main"
 chelatedai-evidence-index-freshness-audit = "audit_evidence_index_freshness:main"
 chelatedai-evidence-cleanup-plan = "plan_evidence_artifact_cleanup:main"
+chelatedai-cleanup-review-diagnostic = "cleanup_review_diagnostic:main"
 
 [project.optional-dependencies]
 benchmark = ["mteb>=1.0"]
