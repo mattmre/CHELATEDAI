@@ -23,6 +23,11 @@ python cleanup_review_diagnostic.py --plan experiment_runs/evidence-cleanup/late
 ```
 
 Installed environments can use `chelatedai-cleanup-review-diagnostic` with the same arguments.
+For source-checkout validation before installation, use the module form:
+
+```bash
+python -m cleanup_review_diagnostic --plan experiment_runs/evidence-cleanup/latest/cleanup_plan.json --mode warn
+```
 
 ## Cleanup Review Diagnostic
 

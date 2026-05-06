@@ -74,7 +74,8 @@ Purpose: Durable continuation queue after Engine-Scope, Model-Scope, and adaptiv
 | 55 | Cleanup workflow diagnostic de-duplication | maintainability | complete | shared cleanup diagnostic generation avoids duplicated inline workflow scripts |
 | 56 | Cleanup diagnostic script entry point | implementation | complete | cleanup-review diagnostic helper is exposed as a console script for local operators |
 | 57 | Cleanup diagnostic schema doc fields | documentation | complete | cleanup diagnostic output fields are documented as a stable operator-facing contract |
-| 58 | Cleanup diagnostic local command validation | validation | next | local validation covers the installed console-script behavior or module equivalent |
+| 58 | Cleanup diagnostic local command validation | validation | complete | local validation covers the installed console-script behavior or module equivalent |
+| 59 | Cleanup diagnostic invalid-json handling | validation | next | diagnostic helper reports malformed cleanup plans without traceback noise |
 
 ## Closed Implementation Scaffolds
 - Engine-Scope row contract, internal gates, coverage analysis, hard-negative pipeline, and supervisor integration are implemented.
@@ -144,3 +145,4 @@ Start the next branch from the highest-ranked `next` item that is not blocked. I
 - 2026-05-06: Cleanup workflow diagnostic de-duplication added. Cleanup-review diagnostics now come from `cleanup_review_diagnostic.py` instead of duplicated inline workflow scripts.
 - 2026-05-06: Cleanup diagnostic script entry point added. Local operators can run `chelatedai-cleanup-review-diagnostic` for the same cleanup-review diagnostic used by CI.
 - 2026-05-06: Cleanup diagnostic schema fields documented. The cleanup-plan schema now maps diagnostic lines to source fields and operator meaning.
+- 2026-05-06: Cleanup diagnostic local command validation added. Unit coverage now exercises `python -m cleanup_review_diagnostic` as the source-checkout equivalent to the console script.
