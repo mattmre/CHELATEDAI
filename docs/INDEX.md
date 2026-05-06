@@ -27,6 +27,7 @@
 | [Evidence Dashboard Runbook](evidence-dashboard-runbook-2026-05-06.md) | Operator guide for dashboard evidence panels, source APIs, artifact regeneration, and fail-closed interpretation |
 | [Evidence Artifact Retention Policy](evidence-artifact-retention-policy-2026-05-06.md) | Retention, regeneration, CI artifact, and safe-deletion policy for generated evidence outputs |
 | [Evidence Chain And Index Schema](evidence-chain-index-schema-2026-05-06.md) | JSON contract for evidence-chain summaries, cross-artifact evidence indexes, and freshness audits |
+| [Evidence Cleanup Plan Schema](evidence-cleanup-plan-schema-2026-05-06.md) | JSON contract for generated evidence cleanup dry-run plans and dashboard cleanup-plan responses |
 | [HeavySkill Engine Adaptation Review](heavyskill-engine-adaptation-2026-05-05.md) | HeavySkill paper and repo review mapped into typed trajectory evidence, deliberation records, heavy-thinking metrics, and fail-closed engine promotion phases |
 | [Computational Storage And Drive Nodes](COMPUTATIONAL_STORAGE_DRIVE_NODES.md) | Canonical summary of hard-drive / storage-node experiments and scope limits |
 | [Computational Storage Scope Decision](computational-storage-transport-scope-decision.md) | Formal claim boundary for the RP2040 transport path |

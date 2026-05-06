@@ -1068,7 +1068,6 @@ def load_evidence_cleanup_plan(
             "candidate_types": sorted({str(item.get("artifact_type", "unknown")) for item in candidates if isinstance(item, dict)}),
         },
         "candidates": candidates[: max(0, candidate_limit)],
-        "retained": retained,
     }
 
 
