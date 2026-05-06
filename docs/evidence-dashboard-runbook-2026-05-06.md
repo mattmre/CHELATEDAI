@@ -23,6 +23,8 @@ Open `http://127.0.0.1:8000/dashboard/` and use the Campaign History tab for the
 
 The dashboard is read-only. If a panel is empty, malformed, or stale, regenerate the source artifacts instead of editing dashboard output.
 
+For the Evidence cleanup panel, `present` source status means the cleanup plan can still see the evidence-index or freshness-audit artifact it was linked against. `missing` means the linked source path is absent and the operator should regenerate the evidence index, rerun the freshness audit, and refresh the cleanup plan before making deletion decisions.
+
 ## Regeneration Triggers
 
 Regenerate the evidence set when any of these are true:
@@ -63,5 +65,6 @@ It uploads `experiment_runs/default-promotion-evidence-chain/ci/`, `experiment_r
 - Treat `chain_passed: false` as an execution problem to debug before interpreting promotion readiness.
 - Treat `chain_passed: true` with `review_allowed: false` as a valid fail-closed result when blockers are present.
 - Treat a stale or dangling evidence index as a navigation problem, not as evidence that the underlying validation passed or failed.
+- Treat missing cleanup source status as a stale planning problem. Regenerate the linked index and freshness audit before using cleanup candidates.
 - Do not commit generated evidence artifacts unless they are deliberately curated as small fixtures or source contracts.
 - Do not change defaults from dashboard state alone; the promotion contract and preflight gate remain authoritative.

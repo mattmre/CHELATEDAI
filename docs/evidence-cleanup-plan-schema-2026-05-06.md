@@ -75,5 +75,6 @@ The dashboard intentionally omits the full `retained[]` list and displays only `
 
 - A candidate is safe to inspect, not safe to delete automatically.
 - A retained artifact is the newest file for its artifact type under the current `keep_latest` rule.
+- Missing source status means the cleanup plan is stale against its linked evidence-index or freshness-audit path.
 - If generated files are deleted manually, regenerate the evidence index and rerun the freshness audit.
 - Source scripts, schemas, runbooks, phase summaries, and test fixtures are outside the cleanup planner's deletion scope.
