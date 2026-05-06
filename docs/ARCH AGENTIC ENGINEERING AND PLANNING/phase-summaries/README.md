@@ -20,3 +20,4 @@ Naming convention: `YYYY-MM-DD_PR-###_summary.md`.
 | autonomous-continuation | 2026-05-05 | PR `#143` / `codex/promotion-artifact-card-linkage` | implementation | Codex | `PROMOTION-LINKAGE-20260505-001` | [2026-05-05_PR-143_summary.md](2026-05-05_PR-143_summary.md) |
 | autonomous-continuation | 2026-05-05 | PR `#144` / `codex/long-run-validation-bundle` | validation | Codex | `VALIDATION-BUNDLE-20260505-001` | [2026-05-05_PR-144_summary.md](2026-05-05_PR-144_summary.md) |
 | autonomous-continuation | 2026-05-05 | PR `#145` / `codex/dashboard-validation-bundle` | reporting | Codex | `DASHBOARD-VALIDATION-20260505-001` | [2026-05-05_PR-145_summary.md](2026-05-05_PR-145_summary.md) |
+| autonomous-continuation | 2026-05-05 | PR `#146` / `codex/validation-bundle-ci-affordance` | validation | Codex | `VALIDATION-CI-20260505-001` | [2026-05-05_PR-146_summary.md](2026-05-05_PR-146_summary.md) |
