@@ -145,6 +145,11 @@ def main() -> int:
     parser.add_argument("--evidence-index", default=str(DEFAULT_EVIDENCE_INDEX), help="Evidence index path linked by the plan")
     parser.add_argument("--freshness-audit", default=str(DEFAULT_FRESHNESS_AUDIT), help="Freshness audit path linked by the plan")
     parser.add_argument("--output", default=None, help="Optional JSON output path")
+    parser.add_argument(
+        "--fail-on-blocked-review",
+        action="store_true",
+        help="Exit with status 2 when linked source artifacts are missing",
+    )
     args = parser.parse_args()
     plan = plan_evidence_artifact_cleanup(
         root=args.root,
@@ -154,6 +159,8 @@ def main() -> int:
         output=args.output,
     )
     print(json.dumps(_json_safe(plan), indent=2))
+    if args.fail_on_blocked_review and not bool(plan["summary"].get("cleanup_review_allowed", False)):
+        return 2
     return 0
 
 

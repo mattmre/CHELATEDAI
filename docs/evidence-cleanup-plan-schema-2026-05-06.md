@@ -14,6 +14,7 @@ python plan_evidence_artifact_cleanup.py \
 ```
 
 The command prints the plan to stdout and optionally writes the same JSON to `--output`.
+Add `--fail-on-blocked-review` when a local or CI caller should exit with status `2` if `summary.cleanup_review_allowed` is `false`.
 
 ## `evidence_artifact_cleanup_plan`
 
