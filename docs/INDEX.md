@@ -24,6 +24,7 @@
 | [Model-Scope Steering Architecture](model-scope-steering-architecture-2026-05-01.md) | Architecture translation from Qwen-Scope-style model hooking into a bounded ChelatedAI Model-Scope program with segmented memory and overlay-first promotion |
 | [Model-Scope Overlay Bundle Schema](model-scope-overlay-bundle-schema-2026-05-05.md) | Operator contract for Model-Scope campaign reports, overlay sidecars, validation summaries, and promotion-linkage audit fields |
 | [Default-Promotion Evidence Runbook](default-promotion-evidence-runbook-2026-05-06.md) | Operator workflow for linked validation, promotion-linkage audit, repeat-seed decision, and fail-closed preflight evidence |
+| [Evidence Dashboard Runbook](evidence-dashboard-runbook-2026-05-06.md) | Operator guide for dashboard evidence panels, source APIs, artifact regeneration, and fail-closed interpretation |
 | [Evidence Artifact Retention Policy](evidence-artifact-retention-policy-2026-05-06.md) | Retention, regeneration, CI artifact, and safe-deletion policy for generated evidence outputs |
 | [Evidence Chain And Index Schema](evidence-chain-index-schema-2026-05-06.md) | JSON contract for evidence-chain summaries, cross-artifact evidence indexes, and freshness audits |
 | [HeavySkill Engine Adaptation Review](heavyskill-engine-adaptation-2026-05-05.md) | HeavySkill paper and repo review mapped into typed trajectory evidence, deliberation records, heavy-thinking metrics, and fail-closed engine promotion phases |
