@@ -29,6 +29,7 @@ LOG_FILE_PATH = "chelation_events.jsonl"
 DASHBOARD_TOKEN = os.getenv("CHELATED_DASHBOARD_TOKEN", "").strip()
 DASHBOARD_CORS_ORIGIN = os.getenv("CHELATED_DASHBOARD_CORS_ORIGIN", "").strip()
 CAMPAIGN_HISTORY_ROOT = "experiment_runs"
+VALIDATION_HISTORY_ROOT = "experiment_runs"
 
 
 def get_inline_dashboard_html():
@@ -811,6 +812,54 @@ def load_campaign_history(root: str = CAMPAIGN_HISTORY_ROOT, limit: int = 25) ->
     }
 
 
+def _extract_validation_record(path: Path, root: Path) -> Dict[str, Any]:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    stat = path.stat()
+    results = payload.get("results", [])
+    if not isinstance(results, list):
+        results = []
+    return {
+        "path": str(path.relative_to(root.parent)) if path.is_relative_to(root.parent) else str(path),
+        "report_name": path.name,
+        "record_type": payload.get("record_type"),
+        "passed": bool(payload.get("passed", False)),
+        "command_count": int(payload.get("command_count", len(results)) or 0),
+        "failed_commands": [str(item) for item in payload.get("failed_commands", [])],
+        "output_dir": payload.get("output_dir"),
+        "modified_at": stat.st_mtime,
+    }
+
+
+def load_validation_history(root: str = VALIDATION_HISTORY_ROOT, limit: int = 10) -> Dict[str, Any]:
+    """Load compact validation-bundle summaries for dashboard display."""
+    root_path = Path(root)
+    if not root_path.exists():
+        return {
+            "root": root,
+            "reports": [],
+            "summary": {"total_reports": 0, "passed": 0, "failed": 0, "latest_passed": None},
+        }
+
+    report_paths = sorted(root_path.rglob("validation_summary.json"), key=lambda item: item.stat().st_mtime, reverse=True)
+    reports = []
+    for path in report_paths[: max(0, limit)]:
+        try:
+            reports.append(_extract_validation_record(path, root_path))
+        except (OSError, json.JSONDecodeError):
+            continue
+    latest = reports[0] if reports else {}
+    return {
+        "root": root,
+        "reports": reports,
+        "summary": {
+            "total_reports": len(reports),
+            "passed": sum(1 for report in reports if report["passed"]),
+            "failed": sum(1 for report in reports if not report["passed"]),
+            "latest_passed": latest.get("passed") if reports else None,
+        },
+    }
+
+
 class DashboardHandler(SimpleHTTPRequestHandler):
     """
     HTTP request handler for the dashboard server.
@@ -845,6 +894,8 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             self.handle_api_beir_results()
         elif path == "/api/campaign_history":
             self.handle_api_campaign_history(query_params)
+        elif path == "/api/validation_history":
+            self.handle_api_validation_history(query_params)
         elif path == "/" or path == "/dashboard" or path == "/dashboard/":
             # Redirect to dashboard page
             self.serve_dashboard()
@@ -975,6 +1026,19 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             self.send_json_response(load_campaign_history(CAMPAIGN_HISTORY_ROOT, limit=limit))
         except Exception as e:
             self.send_error_response(500, f"Error reading campaign history: {str(e)}")
+
+    def handle_api_validation_history(self, query_params: Dict[str, List[str]]):
+        """Handle /api/validation_history endpoint."""
+        limit = 10
+        if "limit" in query_params:
+            try:
+                limit = int(query_params["limit"][0])
+            except (ValueError, IndexError):
+                limit = 10
+        try:
+            self.send_json_response(load_validation_history(VALIDATION_HISTORY_ROOT, limit=limit))
+        except Exception as e:
+            self.send_error_response(500, f"Error reading validation history: {str(e)}")
             
     def serve_dashboard(self):
         """Serve the dashboard HTML page."""

@@ -295,6 +295,46 @@ class TestCampaignHistory(unittest.TestCase):
         self.assertEqual(report["artifact_card_id"], "overlay-card-smoke")
 
 
+class TestValidationHistory(unittest.TestCase):
+    """Test validation-history discovery helpers."""
+
+    def test_load_validation_history_empty_root(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            result = dashboard_server.load_validation_history(os.path.join(tmpdir, "missing"))
+
+        self.assertEqual(result["reports"], [])
+        self.assertEqual(result["summary"]["latest_passed"], None)
+
+    def test_load_validation_history_normalizes_bundle_summary(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = os.path.join(tmpdir, "experiment_runs")
+            report_dir = os.path.join(root, "overlay-model-scope-validation", "latest")
+            os.makedirs(report_dir)
+            report_path = os.path.join(report_dir, "validation_summary.json")
+            with open(report_path, "w", encoding="utf-8") as handle:
+                json.dump(
+                    {
+                        "record_type": "overlay_model_scope_validation_bundle",
+                        "output_dir": report_dir,
+                        "passed": False,
+                        "command_count": 2,
+                        "failed_commands": ["model_scope_overlay_smoke"],
+                        "results": [],
+                    },
+                    handle,
+                )
+
+            result = dashboard_server.load_validation_history(root)
+
+        self.assertEqual(result["summary"]["total_reports"], 1)
+        self.assertEqual(result["summary"]["passed"], 0)
+        self.assertEqual(result["summary"]["failed"], 1)
+        self.assertFalse(result["summary"]["latest_passed"])
+        report = result["reports"][0]
+        self.assertEqual(report["record_type"], "overlay_model_scope_validation_bundle")
+        self.assertEqual(report["failed_commands"], ["model_scope_overlay_smoke"])
+
+
 class TestDashboardHandler(unittest.TestCase):
     """Test the DashboardHandler class."""
 
