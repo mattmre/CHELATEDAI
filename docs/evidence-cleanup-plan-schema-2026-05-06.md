@@ -16,6 +16,14 @@ python plan_evidence_artifact_cleanup.py \
 The command prints the plan to stdout and optionally writes the same JSON to `--output`.
 Add `--fail-on-blocked-review` when a local or CI caller should exit with status `2` if `summary.cleanup_review_allowed` is `false`.
 
+Render the same cleanup-review diagnostic used by CI with:
+
+```bash
+python cleanup_review_diagnostic.py --plan experiment_runs/evidence-cleanup/latest/cleanup_plan.json --mode warn
+```
+
+Installed environments can use `chelatedai-cleanup-review-diagnostic` with the same arguments.
+
 ## Workflow Guard Modes
 
 The manual `Default Promotion Evidence` workflow wraps the cleanup planner with a `cleanup-guard-mode` dispatch input:

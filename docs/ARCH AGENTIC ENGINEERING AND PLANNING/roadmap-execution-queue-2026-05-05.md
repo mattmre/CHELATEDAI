@@ -72,7 +72,8 @@ Purpose: Durable continuation queue after Engine-Scope, Model-Scope, and adaptiv
 | 53 | Cleanup guard mode docs schema refresh | documentation | complete | cleanup workflow guard modes are documented in the cleanup-plan schema/runbook contract |
 | 54 | Cleanup guard mode warning diagnostic | reporting | complete | warn-mode workflow runs still emit cleanup-review allowed/blocked summary without failing |
 | 55 | Cleanup workflow diagnostic de-duplication | maintainability | complete | shared cleanup diagnostic generation avoids duplicated inline workflow scripts |
-| 56 | Cleanup diagnostic script entry point | implementation | next | cleanup-review diagnostic helper is exposed as a console script for local operators |
+| 56 | Cleanup diagnostic script entry point | implementation | complete | cleanup-review diagnostic helper is exposed as a console script for local operators |
+| 57 | Cleanup diagnostic schema doc fields | documentation | next | cleanup diagnostic output fields are documented as a stable operator-facing contract |
 
 ## Closed Implementation Scaffolds
 - Engine-Scope row contract, internal gates, coverage analysis, hard-negative pipeline, and supervisor integration are implemented.
@@ -140,3 +141,4 @@ Start the next branch from the highest-ranked `next` item that is not blocked. I
 - 2026-05-06: Cleanup guard mode docs schema refreshed. The cleanup-plan schema now documents workflow `fail` and `warn` guard-mode behavior.
 - 2026-05-06: Cleanup guard mode warning diagnostic added. Warn-mode workflow runs now emit cleanup-review allowed/blocked status and source status without failing.
 - 2026-05-06: Cleanup workflow diagnostic de-duplication added. Cleanup-review diagnostics now come from `cleanup_review_diagnostic.py` instead of duplicated inline workflow scripts.
+- 2026-05-06: Cleanup diagnostic script entry point added. Local operators can run `chelatedai-cleanup-review-diagnostic` for the same cleanup-review diagnostic used by CI.
