@@ -20,7 +20,7 @@ from collections import Counter
 from datetime import datetime
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 from urllib.parse import parse_qs, urlparse
 
 from plan_evidence_artifact_cleanup import plan_evidence_artifact_cleanup
@@ -1042,10 +1042,17 @@ def load_evidence_cleanup_plan(
     root: str = EVIDENCE_CLEANUP_ROOT,
     keep_latest: int = 1,
     candidate_limit: int = 25,
+    evidence_index: Optional[Union[str, Path]] = None,
+    freshness_audit: Optional[Union[str, Path]] = None,
 ) -> Dict[str, Any]:
     """Load a read-only dry-run cleanup plan for dashboard display."""
 
-    plan = plan_evidence_artifact_cleanup(root=root, keep_latest=keep_latest)
+    plan = plan_evidence_artifact_cleanup(
+        root=root,
+        keep_latest=keep_latest,
+        evidence_index=evidence_index or None,
+        freshness_audit=freshness_audit or None,
+    )
     candidates = plan.get("candidates", [])
     if not isinstance(candidates, list):
         candidates = []
@@ -1062,6 +1069,7 @@ def load_evidence_cleanup_plan(
         "root": plan.get("root", root),
         "keep_latest": plan.get("keep_latest", keep_latest),
         "source_artifacts": plan.get("source_artifacts", {}),
+        "source_status": plan.get("source_status", {}),
         "summary": {
             "candidate_count": summary.get("candidate_count", len(candidates)),
             "retained_count": summary.get("retained_count", len(retained)),
