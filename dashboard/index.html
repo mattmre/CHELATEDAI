@@ -354,6 +354,7 @@
       </table>
       <div style="margin-top:12px; font-size:13px; color:#666;" id="cleanup-types"></div>
       <div style="margin-top:6px; font-size:13px; color:#666;" id="cleanup-source-artifacts"></div>
+      <div style="margin-top:6px; font-size:13px; color:#666;" id="cleanup-source-status"></div>
     </div>
   </div>
 
@@ -749,6 +750,11 @@
         const freshnessPath = sourceArtifacts.freshness_audit || '-';
         document.getElementById('cleanup-source-artifacts').textContent =
           `Source artifacts: evidence index ${indexPath}; freshness audit ${freshnessPath}`;
+        const sourceStatus = asObject(data.source_status);
+        const indexStatus = asObject(sourceStatus.evidence_index).present ? 'present' : 'missing';
+        const freshnessStatus = asObject(sourceStatus.freshness_audit).present ? 'present' : 'missing';
+        document.getElementById('cleanup-source-status').textContent =
+          `Source status: evidence index ${indexStatus}; freshness audit ${freshnessStatus}`;
 
         const rows = document.getElementById('cleanup-rows');
         rows.replaceChildren();
