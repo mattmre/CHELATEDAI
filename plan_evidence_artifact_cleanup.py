@@ -46,6 +46,13 @@ def _display_path(path: str | Path | None) -> str | None:
     return Path(path).as_posix() if path is not None else None
 
 
+def _source_status(path: str | Path | None) -> dict[str, Any]:
+    if path is None:
+        return {"path": None, "present": False}
+    source_path = Path(path)
+    return {"path": source_path.as_posix(), "present": source_path.exists()}
+
+
 def _record(path: Path, root: Path, artifact_type: str, disposition: str, stat_result: Any) -> dict[str, Any]:
     return {
         "artifact_type": artifact_type,
@@ -103,6 +110,10 @@ def plan_evidence_artifact_cleanup(
         "source_artifacts": {
             "evidence_index": _display_path(evidence_index),
             "freshness_audit": _display_path(freshness_audit),
+        },
+        "source_status": {
+            "evidence_index": _source_status(evidence_index),
+            "freshness_audit": _source_status(freshness_audit),
         },
         "summary": {
             "candidate_count": len(candidates),
