@@ -40,7 +40,8 @@ Purpose: Durable continuation queue after Engine-Scope, Model-Scope, and adaptiv
 | 21 | Preflight dashboard ingestion | reporting | complete | dashboard can surface the latest default-promotion preflight decision and blockers |
 | 22 | Preflight CI affordance | governance | complete | CI or local command can run/link validation, audit, repeat decision, and preflight with clear fail-closed status |
 | 23 | Promotion evidence runbook | documentation | complete | operator doc explains the promotion evidence bundle, blocker meanings, and no-default-change path |
-| 24 | Cross-artifact evidence index | reporting | next | single generated index links validation, audit, repeat decision, preflight, campaign reports, and artifact cards |
+| 24 | Cross-artifact evidence index | reporting | complete | single generated index links validation, audit, repeat decision, preflight, campaign reports, and artifact cards |
+| 25 | Evidence-index dashboard ingestion | reporting | next | dashboard can surface the latest cross-artifact evidence index summary and artifact counts |
 
 ## Closed Implementation Scaffolds
 - Engine-Scope row contract, internal gates, coverage analysis, hard-negative pipeline, and supervisor integration are implemented.
@@ -76,3 +77,4 @@ Start the next branch from the highest-ranked `next` item that is not blocked. I
 - 2026-05-06: Dashboard preflight-history ingestion added. The Campaign History tab and `/api/preflight_history` can surface latest default-promotion preflight status, blockers, artifact count, and report path.
 - 2026-05-06: Default-promotion evidence-chain runner and manual workflow added. The chain links validation, promotion-linkage audit, repeat-seed decision, and preflight outputs while keeping no-default-change as an explicit fail-closed status.
 - 2026-05-06: Default-promotion evidence runbook added. Operators now have one doc for the evidence-chain command, manual workflow, blocker meanings, and expected no-default-change path.
+- 2026-05-06: Cross-artifact evidence index generator added. Operators can generate one compact index over validation, audit, repeat-decision, preflight, evidence-chain, campaign, and overlay artifact-card outputs.
