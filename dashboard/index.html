@@ -225,6 +225,7 @@
       <div class="card"><div class="label">Cleanup Candidates</div><div class="value" id="cleanup-candidates">-</div></div>
       <div class="card"><div class="label">Retained Artifacts</div><div class="value" id="cleanup-retained">-</div></div>
       <div class="card"><div class="label">Candidate Bytes</div><div class="value" id="cleanup-bytes">-</div></div>
+      <div class="card"><div class="label">Cleanup Review</div><div class="value" id="cleanup-review" style="font-size:20px;">-</div></div>
     </div>
 
     <div class="panel">
@@ -355,6 +356,7 @@
       <div style="margin-top:12px; font-size:13px; color:#666;" id="cleanup-types"></div>
       <div style="margin-top:6px; font-size:13px; color:#666;" id="cleanup-source-artifacts"></div>
       <div style="margin-top:6px; font-size:13px; color:#666;" id="cleanup-source-status"></div>
+      <div style="margin-top:6px; font-size:13px; color:#666;" id="cleanup-blockers"></div>
     </div>
   </div>
 
@@ -743,6 +745,8 @@
         document.getElementById('cleanup-candidates').textContent = summary.candidate_count || 0;
         document.getElementById('cleanup-retained').textContent = summary.retained_count || 0;
         document.getElementById('cleanup-bytes').textContent = summary.candidate_bytes || 0;
+        document.getElementById('cleanup-review').textContent =
+          summary.cleanup_review_allowed === true ? 'allowed' : (summary.cleanup_review_allowed === false ? 'blocked' : '-');
         document.getElementById('cleanup-types').textContent =
           'Candidate types: ' + (asArray(summary.candidate_types).join(', ') || '-');
         const sourceArtifacts = asObject(data.source_artifacts);
@@ -755,6 +759,8 @@
         const freshnessStatus = asObject(sourceStatus.freshness_audit).present ? 'present' : 'missing';
         document.getElementById('cleanup-source-status').textContent =
           `Source status: evidence index ${indexStatus}; freshness audit ${freshnessStatus}`;
+        document.getElementById('cleanup-blockers').textContent =
+          'Missing source artifacts: ' + (asArray(summary.missing_source_artifacts).join(', ') || '-');
 
         const rows = document.getElementById('cleanup-rows');
         rows.replaceChildren();

@@ -1074,6 +1074,8 @@ def load_evidence_cleanup_plan(
             "candidate_count": summary.get("candidate_count", len(candidates)),
             "retained_count": summary.get("retained_count", len(retained)),
             "candidate_bytes": summary.get("candidate_bytes", 0),
+            "cleanup_review_allowed": summary.get("cleanup_review_allowed"),
+            "missing_source_artifacts": summary.get("missing_source_artifacts", []),
             "candidate_types": sorted({str(item.get("artifact_type", "unknown")) for item in candidates if isinstance(item, dict)}),
         },
         "candidates": candidates[: max(0, candidate_limit)],

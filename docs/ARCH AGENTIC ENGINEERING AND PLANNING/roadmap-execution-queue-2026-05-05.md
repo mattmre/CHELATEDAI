@@ -62,7 +62,8 @@ Purpose: Durable continuation queue after Engine-Scope, Model-Scope, and adaptiv
 | 43 | Cleanup source status API regression | validation | complete | API handler preserves default cleanup source paths and validates query overrides |
 | 44 | Cleanup source status runbook note | documentation | complete | operator docs explain present/missing source status on the cleanup dashboard |
 | 45 | Cleanup stale-source fail-closed summary | governance | complete | cleanup plan summary flags missing linked source artifacts without deleting files |
-| 46 | Cleanup fail-closed dashboard status | reporting | next | dashboard cleanup cards show cleanup-review allowed or blocked by missing source artifacts |
+| 46 | Cleanup fail-closed dashboard status | reporting | complete | dashboard cleanup cards show cleanup-review allowed or blocked by missing source artifacts |
+| 47 | Cleanup fail-closed API schema | documentation | next | dashboard cleanup-plan response documents cleanup_review_allowed and missing_source_artifacts |
 
 ## Closed Implementation Scaffolds
 - Engine-Scope row contract, internal gates, coverage analysis, hard-negative pipeline, and supervisor integration are implemented.
@@ -120,3 +121,4 @@ Start the next branch from the highest-ranked `next` item that is not blocked. I
 - 2026-05-06: Cleanup source status API regression added. Empty source-path overrides now preserve planner defaults instead of resolving to the current directory.
 - 2026-05-06: Cleanup source status runbook note added. Operator docs now explain present/missing cleanup source status and the regenerate-before-delete response.
 - 2026-05-06: Cleanup stale-source fail-closed summary added. Cleanup plans now expose `cleanup_review_allowed` and missing linked source artifact names.
+- 2026-05-06: Cleanup fail-closed dashboard status added. The cleanup dashboard now shows cleanup-review allowed/blocked status and missing source artifact names.

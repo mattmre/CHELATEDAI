@@ -526,6 +526,8 @@ class TestEvidenceCleanupPlan(unittest.TestCase):
         self.assertIn("present", result["source_status"]["evidence_index"])
         self.assertIn("present", result["source_status"]["freshness_audit"])
         self.assertEqual(result["summary"]["candidate_count"], 1)
+        self.assertIn("cleanup_review_allowed", result["summary"])
+        self.assertIn("missing_source_artifacts", result["summary"])
         self.assertEqual(result["summary"]["retained_count"], 1)
         self.assertEqual(result["summary"]["candidate_types"], ["evidence_indexes"])
         self.assertEqual(result["candidates"][0]["path"], "experiment_runs/evidence-index/old/evidence_index.json")

@@ -24,6 +24,7 @@ Open `http://127.0.0.1:8000/dashboard/` and use the Campaign History tab for the
 The dashboard is read-only. If a panel is empty, malformed, or stale, regenerate the source artifacts instead of editing dashboard output.
 
 For the Evidence cleanup panel, `present` source status means the cleanup plan can still see the evidence-index or freshness-audit artifact it was linked against. `missing` means the linked source path is absent and the operator should regenerate the evidence index, rerun the freshness audit, and refresh the cleanup plan before making deletion decisions.
+`Cleanup Review` is fail-closed: `blocked` means at least one linked source artifact is missing and cleanup candidates should not be used for deletion decisions.
 
 ## Regeneration Triggers
 
