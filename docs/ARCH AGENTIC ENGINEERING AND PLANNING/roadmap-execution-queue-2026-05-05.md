@@ -32,8 +32,8 @@ Purpose: Durable continuation queue after Engine-Scope, Model-Scope, and adaptiv
 | 13 | ARCH-AEP tracker closure audit | documentation | complete | all current trackers/indexes agree on open/complete/external-blocked state |
 | 14 | Session memory and resume summary refresh | documentation | recurring | next-session and phase summary stay current after each merged PR |
 | 15 | Default-promotion decision review | governance | gated | only starts after validation items show repeatable positive evidence |
-| 16 | Validation bundle dashboard ingestion | reporting | next | dashboard can surface latest validation-bundle pass/fail state |
-| 17 | Overlay validation bundle CI affordance | validation | queued | CI or local command can run the bundle with clear timeout/failure reporting |
+| 16 | Validation bundle dashboard ingestion | reporting | complete | dashboard can surface latest validation-bundle pass/fail state |
+| 17 | Overlay validation bundle CI affordance | validation | next | CI or local command can run the bundle with clear timeout/failure reporting |
 | 18 | Promotion linkage audit report | governance | queued | existing campaign artifacts can be checked for artifact-card and rollback linkage |
 | 19 | Model-Scope overlay bundle schema doc | documentation | queued | generated campaign bundle fields are documented for future operators |
 
@@ -63,3 +63,4 @@ Start the next branch from the highest-ranked `next` item that is not blocked. I
 - 2026-05-05: Dashboard campaign-history API and tab added. Live model-scope campaign reports are discoverable from `experiment_runs` without reading files manually.
 - 2026-05-05: Promotion decisions can now carry required artifact-card and rollback references. Model-Scope overlay campaigns require the linkage and fail closed if it is missing.
 - 2026-05-05: Long-run overlay/model-scope validation bundle added as `run_overlay_model_scope_validation.py` and `chelatedai-overlay-model-scope-validation`. Queue expanded with the next concrete reporting, CI, audit, and schema-doc follow-ups.
+- 2026-05-05: Dashboard validation-history ingestion added. The Campaign History tab can now show latest validation-bundle pass/fail state and failed command names.

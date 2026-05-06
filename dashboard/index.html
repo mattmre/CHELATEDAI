@@ -192,6 +192,13 @@
       <div class="card"><div class="label">History Root</div><div class="value" id="campaign-root" style="font-size:16px;">-</div></div>
     </div>
 
+    <div class="cards">
+      <div class="card"><div class="label">Validation Reports</div><div class="value" id="validation-total">-</div></div>
+      <div class="card"><div class="label">Latest Bundle</div><div class="value" id="validation-latest" style="font-size:20px;">-</div></div>
+      <div class="card"><div class="label">Passed Bundles</div><div class="value" id="validation-passed">-</div></div>
+      <div class="card"><div class="label">Failed Bundles</div><div class="value" id="validation-failed">-</div></div>
+    </div>
+
     <div class="panel">
       <div style="display:flex; justify-content: space-between; align-items:center">
         <h2>Latest Campaign Reports</h2>
@@ -211,6 +218,27 @@
         </thead>
         <tbody id="campaign-rows">
           <tr><td colspan="7">Loading...</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="panel">
+      <div style="display:flex; justify-content: space-between; align-items:center">
+        <h2>Validation Bundles</h2>
+        <button onclick="loadValidationHistory()">Refresh Validation</button>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Modified</th>
+            <th>Status</th>
+            <th>Commands</th>
+            <th>Failures</th>
+            <th>Report</th>
+          </tr>
+        </thead>
+        <tbody id="validation-rows">
+          <tr><td colspan="5">Loading...</td></tr>
         </tbody>
       </table>
     </div>
@@ -269,7 +297,10 @@
       if(tabId === 'logs') refreshLogs();
       if(tabId === 'tests') loadTestResults();
       if(tabId === 'beir') loadBeirResults();
-      if(tabId === 'campaigns') loadCampaignHistory();
+      if(tabId === 'campaigns') {
+        loadCampaignHistory();
+        loadValidationHistory();
+      }
     }
 
     // --- TEST LOGIC ---
@@ -405,6 +436,49 @@
       } catch (e) {
         console.error('Error loading campaign history', e);
         document.getElementById('campaign-rows').innerHTML = '<tr><td colspan="7">Error loading campaign history</td></tr>';
+      }
+    }
+
+    async function loadValidationHistory() {
+      try {
+        const res = await fetch('/api/validation_history?limit=10');
+        const data = await res.json();
+        const summary = data.summary || {};
+        document.getElementById('validation-total').textContent = summary.total_reports || 0;
+        document.getElementById('validation-latest').textContent =
+          summary.latest_passed === true ? 'passed' : (summary.latest_passed === false ? 'failed' : '-');
+        document.getElementById('validation-passed').textContent = summary.passed || 0;
+        document.getElementById('validation-failed').textContent = summary.failed || 0;
+
+        const rows = document.getElementById('validation-rows');
+        rows.replaceChildren();
+        const reports = data.reports || [];
+        if (!reports.length) {
+          rows.innerHTML = '<tr><td colspan="5">No validation bundles found</td></tr>';
+          return;
+        }
+
+        reports.forEach(report => {
+          const tr = document.createElement('tr');
+          const modified = report.modified_at ? new Date(report.modified_at * 1000).toLocaleString() : '-';
+          const failures = (report.failed_commands || []).join(', ') || '-';
+          const cells = [
+            modified,
+            report.passed ? 'passed' : 'failed',
+            report.command_count ?? '-',
+            failures,
+            report.path || report.report_name || '-'
+          ];
+          cells.forEach(text => {
+            const td = document.createElement('td');
+            td.textContent = text;
+            tr.appendChild(td);
+          });
+          rows.appendChild(tr);
+        });
+      } catch (e) {
+        console.error('Error loading validation history', e);
+        document.getElementById('validation-rows').innerHTML = '<tr><td colspan="5">Error loading validation history</td></tr>';
       }
     }
 
