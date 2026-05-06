@@ -58,6 +58,7 @@
     <div class="tab active" onclick="switchTab('analytics')">Analysis & Results</div>
     <div class="tab" onclick="switchTab('tests')">Test Tracking</div>
     <div class="tab" onclick="switchTab('beir')">BEIR Benchmarks</div>
+    <div class="tab" onclick="switchTab('campaigns')">Campaign History</div>
     <div class="tab" onclick="switchTab('logs')">Live Events</div>
   </div>
 
@@ -182,6 +183,39 @@
     </div>
   </div>
 
+  <!-- Campaign History Tab -->
+  <div id="campaigns" class="container">
+    <div class="cards">
+      <div class="card"><div class="label">Reports Loaded</div><div class="value" id="campaign-total">-</div></div>
+      <div class="card"><div class="label">Default Changes</div><div class="value" id="campaign-promoted">-</div></div>
+      <div class="card"><div class="label">Overlay Ready</div><div class="value" id="campaign-overlay-ready">-</div></div>
+      <div class="card"><div class="label">History Root</div><div class="value" id="campaign-root" style="font-size:16px;">-</div></div>
+    </div>
+
+    <div class="panel">
+      <div style="display:flex; justify-content: space-between; align-items:center">
+        <h2>Latest Campaign Reports</h2>
+        <button onclick="loadCampaignHistory()">Refresh Campaigns</button>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Modified</th>
+            <th>Run</th>
+            <th>Task</th>
+            <th>Decision</th>
+            <th>Overlay</th>
+            <th>Artifact Card</th>
+            <th>Report</th>
+          </tr>
+        </thead>
+        <tbody id="campaign-rows">
+          <tr><td colspan="7">Loading...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
   <!-- Logs Tab -->
   <div id="logs" class="container">
     <div class="cards">
@@ -235,6 +269,7 @@
       if(tabId === 'logs') refreshLogs();
       if(tabId === 'tests') loadTestResults();
       if(tabId === 'beir') loadBeirResults();
+      if(tabId === 'campaigns') loadCampaignHistory();
     }
 
     // --- TEST LOGIC ---
@@ -325,6 +360,52 @@
 
     async function refreshLogs() {
       await Promise.all([loadSummary(), loadEvents()]);
+    }
+
+    // --- CAMPAIGN HISTORY LOGIC ---
+    async function loadCampaignHistory() {
+      try {
+        const res = await fetch('/api/campaign_history?limit=25');
+        const data = await res.json();
+        const summary = data.summary || {};
+        document.getElementById('campaign-total').textContent = summary.total_reports || 0;
+        document.getElementById('campaign-promoted').textContent = summary.promotion_allowed || 0;
+        document.getElementById('campaign-overlay-ready').textContent = summary.overlay_ready || 0;
+        document.getElementById('campaign-root').textContent = data.root || '-';
+
+        const rows = document.getElementById('campaign-rows');
+        rows.replaceChildren();
+        const reports = data.reports || [];
+        if (!reports.length) {
+          rows.innerHTML = '<tr><td colspan="7">No campaign reports found</td></tr>';
+          return;
+        }
+
+        reports.forEach(report => {
+          const tr = document.createElement('tr');
+          const modified = report.modified_at ? new Date(report.modified_at * 1000).toLocaleString() : '-';
+          const overlay = report.overlay_ready === true ? 'ready' : (report.overlay_ready === false ? 'blocked' : '-');
+          const decision = report.default_change_allowed ? 'promote' : (report.decision || 'hold');
+          const cells = [
+            modified,
+            report.run_label || '-',
+            report.task || '-',
+            decision,
+            overlay,
+            report.artifact_card_id || '-',
+            report.path || report.report_name || '-'
+          ];
+          cells.forEach(text => {
+            const td = document.createElement('td');
+            td.textContent = text;
+            tr.appendChild(td);
+          });
+          rows.appendChild(tr);
+        });
+      } catch (e) {
+        console.error('Error loading campaign history', e);
+        document.getElementById('campaign-rows').innerHTML = '<tr><td colspan="7">Error loading campaign history</td></tr>';
+      }
     }
 
     // --- SWEEP ANALYTICS LOGIC ---

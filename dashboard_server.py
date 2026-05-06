@@ -19,6 +19,7 @@ import os
 from collections import Counter
 from datetime import datetime
 from http.server import HTTPServer, SimpleHTTPRequestHandler
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 from urllib.parse import parse_qs, urlparse
 
@@ -27,6 +28,7 @@ from urllib.parse import parse_qs, urlparse
 LOG_FILE_PATH = "chelation_events.jsonl"
 DASHBOARD_TOKEN = os.getenv("CHELATED_DASHBOARD_TOKEN", "").strip()
 DASHBOARD_CORS_ORIGIN = os.getenv("CHELATED_DASHBOARD_CORS_ORIGIN", "").strip()
+CAMPAIGN_HISTORY_ROOT = "experiment_runs"
 
 
 def get_inline_dashboard_html():
@@ -728,6 +730,87 @@ def filter_events(
     return filtered
 
 
+def _first_present(payload: Dict[str, Any], keys: List[str]) -> Any:
+    for key in keys:
+        if key in payload:
+            return payload[key]
+    return None
+
+
+def _extract_campaign_record(path: Path, root: Path) -> Dict[str, Any]:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    promotion = payload.get("promotion_decision")
+    if not isinstance(promotion, dict):
+        promotion = payload.get("promotion")
+    if not isinstance(promotion, dict):
+        promotion = {}
+
+    overlay = payload.get("adaptive_overlay_summary")
+    if not isinstance(overlay, dict):
+        overlay = payload.get("overlay_summary")
+    if not isinstance(overlay, dict):
+        overlay = {}
+
+    artifact_card = payload.get("adaptive_overlay_artifact_card")
+    if not isinstance(artifact_card, dict):
+        artifact_card = payload.get("artifact_card")
+    if not isinstance(artifact_card, dict):
+        artifact_card = {}
+
+    stat = path.stat()
+    return {
+        "path": str(path.relative_to(root.parent)) if path.is_relative_to(root.parent) else str(path),
+        "report_name": path.name,
+        "run_label": _first_present(payload, ["run_label", "label", "campaign_id"]) or path.parent.name,
+        "record_type": payload.get("record_type"),
+        "task": _first_present(payload, ["task", "dataset", "dataset_name"]),
+        "decision": promotion.get("decision") or promotion.get("status") or payload.get("decision"),
+        "default_change_allowed": bool(
+            promotion.get("default_change_allowed", payload.get("default_change_allowed", False))
+        ),
+        "overlay_ready": overlay.get("ready_for_broader_validation"),
+        "overlay_next_action": overlay.get("next_action"),
+        "artifact_card_id": artifact_card.get("artifact_card_id") or artifact_card.get("id"),
+        "modified_at": stat.st_mtime,
+    }
+
+
+def load_campaign_history(root: str = CAMPAIGN_HISTORY_ROOT, limit: int = 25) -> Dict[str, Any]:
+    """Load compact campaign report history for dashboard display."""
+    root_path = Path(root)
+    if not root_path.exists():
+        return {
+            "root": root,
+            "reports": [],
+            "summary": {"total_reports": 0, "promotion_allowed": 0, "overlay_ready": 0},
+        }
+
+    report_paths = sorted(
+        {
+            *root_path.rglob("campaign_report.json"),
+            *root_path.rglob("*campaign*report*.json"),
+        },
+        key=lambda item: item.stat().st_mtime,
+        reverse=True,
+    )
+    reports = []
+    for path in report_paths[: max(0, limit)]:
+        try:
+            reports.append(_extract_campaign_record(path, root_path))
+        except (OSError, json.JSONDecodeError):
+            continue
+
+    return {
+        "root": root,
+        "reports": reports,
+        "summary": {
+            "total_reports": len(reports),
+            "promotion_allowed": sum(1 for report in reports if report["default_change_allowed"]),
+            "overlay_ready": sum(1 for report in reports if report["overlay_ready"] is True),
+        },
+    }
+
+
 class DashboardHandler(SimpleHTTPRequestHandler):
     """
     HTTP request handler for the dashboard server.
@@ -760,6 +843,8 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             self.handle_api_test_results()
         elif path == "/api/beir_results":
             self.handle_api_beir_results()
+        elif path == "/api/campaign_history":
+            self.handle_api_campaign_history(query_params)
         elif path == "/" or path == "/dashboard" or path == "/dashboard/":
             # Redirect to dashboard page
             self.serve_dashboard()
@@ -877,6 +962,19 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             self.send_json_response(data)
         except Exception as e:
             self.send_error_response(500, f"Error reading BEIR results: {str(e)}")
+
+    def handle_api_campaign_history(self, query_params: Dict[str, List[str]]):
+        """Handle /api/campaign_history endpoint."""
+        limit = 25
+        if "limit" in query_params:
+            try:
+                limit = int(query_params["limit"][0])
+            except (ValueError, IndexError):
+                limit = 25
+        try:
+            self.send_json_response(load_campaign_history(CAMPAIGN_HISTORY_ROOT, limit=limit))
+        except Exception as e:
+            self.send_error_response(500, f"Error reading campaign history: {str(e)}")
             
     def serve_dashboard(self):
         """Serve the dashboard HTML page."""

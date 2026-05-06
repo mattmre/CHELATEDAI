@@ -247,6 +247,54 @@ class TestFilterEvents(unittest.TestCase):
         self.assertEqual(filtered, [])
 
 
+class TestCampaignHistory(unittest.TestCase):
+    """Test campaign-history discovery helpers."""
+
+    def test_load_campaign_history_empty_root(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            result = dashboard_server.load_campaign_history(os.path.join(tmpdir, "missing"))
+
+        self.assertEqual(result["reports"], [])
+        self.assertEqual(result["summary"]["total_reports"], 0)
+
+    def test_load_campaign_history_normalizes_model_scope_report(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = os.path.join(tmpdir, "experiment_runs")
+            report_dir = os.path.join(root, "model-scope-overlay-smoke", "latest", "campaign")
+            os.makedirs(report_dir)
+            report_path = os.path.join(report_dir, "campaign_report.json")
+            with open(report_path, "w", encoding="utf-8") as handle:
+                json.dump(
+                    {
+                        "record_type": "model_scope_campaign_report",
+                        "run_label": "smoke",
+                        "task": "SciFact",
+                        "promotion_decision": {
+                            "decision": "hold",
+                            "default_change_allowed": False,
+                        },
+                        "adaptive_overlay_summary": {
+                            "ready_for_broader_validation": True,
+                            "next_action": "broaden_validation",
+                        },
+                        "adaptive_overlay_artifact_card": {
+                            "artifact_card_id": "overlay-card-smoke",
+                        },
+                    },
+                    handle,
+                )
+
+            result = dashboard_server.load_campaign_history(root)
+
+        self.assertEqual(result["summary"]["total_reports"], 1)
+        self.assertEqual(result["summary"]["overlay_ready"], 1)
+        self.assertEqual(result["summary"]["promotion_allowed"], 0)
+        report = result["reports"][0]
+        self.assertEqual(report["run_label"], "smoke")
+        self.assertEqual(report["decision"], "hold")
+        self.assertEqual(report["artifact_card_id"], "overlay-card-smoke")
+
+
 class TestDashboardHandler(unittest.TestCase):
     """Test the DashboardHandler class."""
 
