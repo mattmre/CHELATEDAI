@@ -6,6 +6,7 @@ import argparse
 import json
 import os
 from pathlib import Path
+from json import JSONDecodeError
 from typing import Any, Mapping
 
 
@@ -30,7 +31,12 @@ def render_cleanup_review_diagnostic(plan_path: str | Path = DEFAULT_PLAN, *, mo
         lines.append(f"- Cleanup plan missing: `{path.as_posix()}`")
         return "\n".join(lines)
 
-    plan = json.loads(path.read_text(encoding="utf-8"))
+    try:
+        plan = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, JSONDecodeError) as exc:
+        lines.append(f"- Cleanup plan unreadable: `{path.as_posix()}`")
+        lines.append(f"- Error: {exc}")
+        return "\n".join(lines)
     summary = _as_mapping(plan.get("summary", {}))
     source_status = _as_mapping(plan.get("source_status", {}))
     missing = [str(item) for item in _as_list(summary.get("missing_source_artifacts", []))]
