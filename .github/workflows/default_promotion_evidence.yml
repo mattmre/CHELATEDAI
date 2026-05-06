@@ -31,8 +31,22 @@ jobs:
             --output-dir experiment_runs/default-promotion-evidence-chain/ci \
             --timeout-seconds "${{ inputs.timeout-seconds }}"
 
-      - name: Upload evidence-chain summary
+      - name: Generate evidence index
+        run: |
+          python generate_evidence_index.py \
+            --root experiment_runs \
+            --output experiment_runs/evidence-index/ci/evidence_index.json
+
+      - name: Audit evidence index freshness
+        run: |
+          python audit_evidence_index_freshness.py \
+            --index experiment_runs/evidence-index/ci/evidence_index.json \
+            --output experiment_runs/evidence-index/ci/freshness_audit.json
+
+      - name: Upload evidence-chain artifacts
         uses: actions/upload-artifact@v4
         with:
           name: default-promotion-evidence-chain
-          path: experiment_runs/default-promotion-evidence-chain/ci/
+          path: |
+            experiment_runs/default-promotion-evidence-chain/ci/
+            experiment_runs/evidence-index/ci/

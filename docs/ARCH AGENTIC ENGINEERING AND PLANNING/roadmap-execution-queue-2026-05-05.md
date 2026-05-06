@@ -48,8 +48,8 @@ Purpose: Durable continuation queue after Engine-Scope, Model-Scope, and adaptiv
 | 29 | Evidence chain manifest schema doc | documentation | complete | documented schema for evidence-chain summary and evidence-index records |
 | 30 | Dashboard fetch robustness follow-up | reporting | complete | dashboard fetch helpers check response status and avoid rendering malformed evidence payloads |
 | 31 | Evidence API backend parse hardening | reporting | complete | evidence dashboard API loaders skip malformed JSON consistently and return stable empty payloads |
-| 32 | Evidence chain workflow freshness audit | governance | next | manual evidence workflow can generate the index and run freshness audit after evidence-chain collection |
-| 33 | Evidence dashboard runbook refresh | documentation | queued | operator docs explain dashboard evidence panels and when to regenerate artifacts |
+| 32 | Evidence chain workflow freshness audit | governance | complete | manual evidence workflow can generate the index and run freshness audit after evidence-chain collection |
+| 33 | Evidence dashboard runbook refresh | documentation | next | operator docs explain dashboard evidence panels and when to regenerate artifacts |
 | 34 | Evidence artifact cleanup dry-run | governance | queued | command lists generated evidence candidates safe to delete without deleting them |
 
 ## Closed Implementation Scaffolds
@@ -94,3 +94,4 @@ Start the next branch from the highest-ranked `next` item that is not blocked. I
 - 2026-05-06: Evidence-chain/index schema doc added. The evidence-chain summary, evidence-index, freshness-audit, and dashboard read-only surfaces are now documented.
 - 2026-05-06: Dashboard evidence fetch robustness added. Evidence panels now use checked JSON fetches and defensive object/array normalization before rendering.
 - 2026-05-06: Evidence dashboard backend parse hardening added. Dashboard loaders now require JSON objects, skip malformed history files consistently, and return stable empty evidence-index payloads.
+- 2026-05-06: Manual evidence-chain workflow freshness audit added. The workflow now regenerates the evidence index, audits freshness, and uploads both chain and index artifacts after collection.
