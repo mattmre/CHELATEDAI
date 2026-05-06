@@ -83,3 +83,15 @@ This keeps the candidate in research status only. The best next implementation
 slice is not a default promotion; it is a quantization-aware or contrastive
 sedimentation variant that attempts to preserve the NFCorpus gain after the
 quantization survival check.
+
+## Machine-Checked Decision
+
+`python attnres_repeat_seed_decision.py --output docs/attnres-repeat-seed-decision-2026-05-05.json`
+
+The repeat-seed decision remains `no_default_change`:
+
+- 6 artifacts summarized.
+- 3 positive deltas, all on NFCorpus.
+- 3 non-positive deltas, all on SciFact.
+- 5 of 6 quantization survival gates failed.
+- Reasons: `repeat_seed_non_positive_delta_present`, `quantization_survival_failures_present`, `task_seed_consistency_failed`.
