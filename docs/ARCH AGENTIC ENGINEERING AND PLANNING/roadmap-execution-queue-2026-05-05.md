@@ -44,8 +44,8 @@ Purpose: Durable continuation queue after Engine-Scope, Model-Scope, and adaptiv
 | 25 | Evidence-index dashboard ingestion | reporting | complete | dashboard can surface the latest cross-artifact evidence index summary and artifact counts |
 | 26 | Evidence index freshness audit | governance | complete | command reports whether evidence-index entries point to existing files and whether the index is stale against source artifacts |
 | 27 | Evidence chain dashboard ingestion | reporting | complete | dashboard can surface latest evidence-chain summaries without reading JSON manually |
-| 28 | Evidence artifact retention policy | governance | next | operator doc defines which generated evidence artifacts are retained, regenerated, or excluded from git |
-| 29 | Evidence chain manifest schema doc | documentation | queued | documented schema for evidence-chain summary and evidence-index records |
+| 28 | Evidence artifact retention policy | governance | complete | operator doc defines which generated evidence artifacts are retained, regenerated, or excluded from git |
+| 29 | Evidence chain manifest schema doc | documentation | next | documented schema for evidence-chain summary and evidence-index records |
 
 ## Closed Implementation Scaffolds
 - Engine-Scope row contract, internal gates, coverage analysis, hard-negative pipeline, and supervisor integration are implemented.
@@ -85,3 +85,4 @@ Start the next branch from the highest-ranked `next` item that is not blocked. I
 - 2026-05-06: Evidence-index dashboard ingestion added. `/api/evidence_index` and the Campaign History tab can surface artifact counts, latest chain status, review status, blockers, and index path.
 - 2026-05-06: Evidence-index freshness audit added. The audit verifies that indexed artifact paths exist and that the index is not older than its referenced artifacts.
 - 2026-05-06: Evidence-chain dashboard ingestion added. `/api/evidence_chain_history` and the Campaign History tab can show latest chain pass/fail state, review status, artifacts, blockers, and report paths.
+- 2026-05-06: Evidence artifact retention policy added. Generated evidence stays in local/CI artifacts unless curated as deterministic fixtures or source contracts.
