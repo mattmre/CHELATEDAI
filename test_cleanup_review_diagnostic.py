@@ -265,6 +265,34 @@ class CleanupReviewDiagnosticTests(unittest.TestCase):
             self.assertIn("Cleanup plan missing", stdout.getvalue())
             self.assertNotIn("Traceback", stdout.getvalue())
 
+    def test_main_github_summary_preserves_existing_content(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            plan_path = Path(tmpdir) / "missing_cleanup_plan.json"
+            summary_path = Path(tmpdir) / "summary.md"
+            summary_path.write_text("## Existing Step\n\n- already here\n", encoding="utf-8")
+            argv = [
+                "cleanup_review_diagnostic.py",
+                "--plan",
+                plan_path.as_posix(),
+                "--mode",
+                "blocked",
+                "--github-summary",
+            ]
+
+            with (
+                patch.object(sys, "argv", argv),
+                patch.dict(os.environ, {"GITHUB_STEP_SUMMARY": summary_path.as_posix()}),
+                patch("sys.stdout", new_callable=StringIO),
+            ):
+                exit_code = main()
+
+            summary_text = summary_path.read_text(encoding="utf-8")
+            self.assertEqual(exit_code, 0)
+            self.assertTrue(summary_text.startswith("## Existing Step"))
+            self.assertIn("- already here", summary_text)
+            self.assertIn("## Cleanup Review Blocked", summary_text)
+            self.assertIn("Cleanup plan missing", summary_text)
+
 
 if __name__ == "__main__":
     unittest.main()
