@@ -31,6 +31,7 @@ DASHBOARD_CORS_ORIGIN = os.getenv("CHELATED_DASHBOARD_CORS_ORIGIN", "").strip()
 CAMPAIGN_HISTORY_ROOT = "experiment_runs"
 VALIDATION_HISTORY_ROOT = "experiment_runs"
 PREFLIGHT_HISTORY_ROOT = "experiment_runs"
+EVIDENCE_INDEX_PATH = "experiment_runs/evidence-index/latest/evidence_index.json"
 
 
 def get_inline_dashboard_html():
@@ -914,6 +915,47 @@ def load_preflight_history(root: str = PREFLIGHT_HISTORY_ROOT, limit: int = 10) 
     }
 
 
+def load_evidence_index(path: str = EVIDENCE_INDEX_PATH) -> Dict[str, Any]:
+    """Load the latest compact cross-artifact evidence index for dashboard display."""
+    index_path = Path(path)
+    if not index_path.exists():
+        return {
+            "path": path,
+            "present": False,
+            "summary": {
+                "artifact_counts": {},
+                "latest_review_allowed": None,
+                "latest_preflight_blockers": [],
+                "latest_chain_passed": None,
+            },
+            "artifacts": {},
+        }
+    payload = json.loads(index_path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        payload = {}
+    summary = payload.get("summary")
+    if not isinstance(summary, dict):
+        summary = {}
+    artifacts = payload.get("artifacts")
+    if not isinstance(artifacts, dict):
+        artifacts = {}
+    stat = index_path.stat()
+    return {
+        "path": str(index_path),
+        "present": True,
+        "record_type": payload.get("record_type"),
+        "root": payload.get("root"),
+        "modified_at": stat.st_mtime,
+        "summary": {
+            "artifact_counts": summary.get("artifact_counts", {}),
+            "latest_review_allowed": summary.get("latest_review_allowed"),
+            "latest_preflight_blockers": summary.get("latest_preflight_blockers", []),
+            "latest_chain_passed": summary.get("latest_chain_passed"),
+        },
+        "artifacts": artifacts,
+    }
+
+
 class DashboardHandler(SimpleHTTPRequestHandler):
     """
     HTTP request handler for the dashboard server.
@@ -952,6 +994,8 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             self.handle_api_validation_history(query_params)
         elif path == "/api/preflight_history":
             self.handle_api_preflight_history(query_params)
+        elif path == "/api/evidence_index":
+            self.handle_api_evidence_index()
         elif path == "/" or path == "/dashboard" or path == "/dashboard/":
             # Redirect to dashboard page
             self.serve_dashboard()
@@ -1108,6 +1152,13 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             self.send_json_response(load_preflight_history(PREFLIGHT_HISTORY_ROOT, limit=limit))
         except Exception as e:
             self.send_error_response(500, f"Error reading preflight history: {str(e)}")
+
+    def handle_api_evidence_index(self):
+        """Handle /api/evidence_index endpoint."""
+        try:
+            self.send_json_response(load_evidence_index(EVIDENCE_INDEX_PATH))
+        except Exception as e:
+            self.send_error_response(500, f"Error reading evidence index: {str(e)}")
             
     def serve_dashboard(self):
         """Serve the dashboard HTML page."""
