@@ -316,6 +316,32 @@ class CleanupReviewDiagnosticTests(unittest.TestCase):
             self.assertEqual(exit_code, 0)
             self.assertTrue(summary_path.read_text(encoding="utf-8").endswith("\n"))
 
+    def test_main_github_summary_creates_file_in_existing_directory(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            plan_path = Path(tmpdir) / "missing_cleanup_plan.json"
+            summary_dir = Path(tmpdir) / "summaries"
+            summary_dir.mkdir()
+            summary_path = summary_dir / "summary.md"
+            argv = [
+                "cleanup_review_diagnostic.py",
+                "--plan",
+                plan_path.as_posix(),
+                "--mode",
+                "blocked",
+                "--github-summary",
+            ]
+
+            with (
+                patch.object(sys, "argv", argv),
+                patch.dict(os.environ, {"GITHUB_STEP_SUMMARY": summary_path.as_posix()}),
+                patch("sys.stdout", new_callable=StringIO),
+            ):
+                exit_code = main()
+
+            self.assertEqual(exit_code, 0)
+            self.assertTrue(summary_path.exists())
+            self.assertIn("Cleanup plan missing", summary_path.read_text(encoding="utf-8"))
+
 
 if __name__ == "__main__":
     unittest.main()
