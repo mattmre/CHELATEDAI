@@ -24,15 +24,6 @@ from pathlib import Path
 _SMOKE_MARKERS = ("smoke-model", "smoke query")
 
 
-def _raw_contains_smoke(path: Path) -> bool:
-    """Return True if the file's raw bytes contain any smoke marker."""
-    try:
-        raw = path.read_bytes()
-        return any(m.encode() in raw for m in _SMOKE_MARKERS)
-    except OSError:
-        return False
-
-
 def _label_file(path: Path, dry_run: bool) -> str:
     """
     Attempt to add "data_source": "smoke_test" to a JSON object file.
@@ -40,13 +31,11 @@ def _label_file(path: Path, dry_run: bool) -> str:
     Returns one of: "skipped_non_object", "skipped_has_source", "skipped_no_marker",
                     "labeled" (dry-run or real), "error".
     """
-    # Fast path: skip files with no smoke markers (raw bytes, no JSON parse)
-    if not _raw_contains_smoke(path):
-        return "skipped_no_marker"
-
     try:
-        text = path.read_text(encoding="utf-8")
-        data = json.loads(text)
+        raw = path.read_bytes()
+        if not any(m.encode() in raw for m in _SMOKE_MARKERS):
+            return "skipped_no_marker"
+        data = json.loads(raw)
     except Exception:
         return "error"
 
@@ -60,7 +49,7 @@ def _label_file(path: Path, dry_run: bool) -> str:
         return "labeled"
 
     data["data_source"] = "smoke_test"
-    path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    path.write_text(json.dumps(data, indent=2), encoding="utf-8")
     return "labeled"
 
 
