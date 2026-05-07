@@ -88,7 +88,8 @@ Purpose: Durable continuation queue after Engine-Scope, Model-Scope, and adaptiv
 | 69 | Cleanup diagnostic summary append preexisting-content validation | validation | complete | GitHub summary append preserves preexisting summary content |
 | 70 | Cleanup diagnostic append contract docs | documentation | complete | docs state summary diagnostics append after existing step summary content |
 | 71 | Cleanup diagnostic append newline validation | validation | complete | GitHub summary append writes a trailing newline after cleanup diagnostics |
-| 72 | Cleanup diagnostic append newline docs | documentation | next | docs state summary append writes complete newline-terminated markdown blocks |
+| 72 | Cleanup diagnostic append newline docs | documentation | complete | docs state summary append writes complete newline-terminated markdown blocks |
+| 73 | Cleanup diagnostic summary parent-dir validation | validation | next | GitHub summary append creates diagnostics when the summary file path is in an existing directory |
 
 ## Closed Implementation Scaffolds
 - Engine-Scope row contract, internal gates, coverage analysis, hard-negative pipeline, and supervisor integration are implemented.
@@ -172,3 +173,4 @@ Start the next branch from the highest-ranked `next` item that is not blocked. I
 - 2026-05-06: Cleanup diagnostic summary append preexisting-content validation added. Regression coverage now verifies cleanup diagnostics append after existing GitHub step-summary content.
 - 2026-05-06: Cleanup diagnostic append contract docs added. Operator docs now state summary writes are append-only and preserve existing step-summary content.
 - 2026-05-06: Cleanup diagnostic append newline validation added. GitHub summary append coverage now verifies cleanup diagnostics are written as newline-terminated blocks.
+- 2026-05-06: Cleanup diagnostic append newline docs added. Operator docs now state GitHub summary appends are complete newline-terminated markdown blocks.
