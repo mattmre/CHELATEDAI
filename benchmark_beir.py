@@ -737,10 +737,10 @@ class BEIRBenchmarkReport:
         Returns:
             Dict with all results, aggregations, and heatmap data
         """
-        import time as _time
         data = {
             "record_type": "beir_benchmark_results",
-            "run_at": _time.strftime("%Y-%m-%dT%H:%M:%SZ", _time.gmtime()),
+            "run_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "passed": len(self.results) > 0,
             "results": [
                 {
                     "dataset_name": r.dataset_name,
@@ -763,7 +763,6 @@ class BEIRBenchmarkReport:
                 "num_datasets": len(self.get_dataset_names()),
                 "num_configs": len(self.get_config_names()),
                 "total_evaluations": len(self.results),
-                "passed": len(self.results) > 0,
             },
         }
 
