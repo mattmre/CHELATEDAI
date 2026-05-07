@@ -95,7 +95,8 @@ Purpose: Durable continuation queue after Engine-Scope, Model-Scope, and adaptiv
 | 76 | Cleanup diagnostic unwritable summary docs | documentation | complete | docs state invalid summary paths fail visibly instead of silently dropping diagnostics |
 | 77 | Cleanup diagnostic stdout still emitted on summary failure validation | validation | complete | invalid summary path still leaves the cleanup diagnostic visible in stdout |
 | 78 | Cleanup diagnostic stdout-on-summary-failure docs | documentation | complete | docs state stdout remains the primary diagnostic channel when summary append fails |
-| 79 | Cleanup diagnostic no-summary-file side-effect validation | validation | next | local --github-summary without GITHUB_STEP_SUMMARY does not create unexpected summary files |
+| 79 | Cleanup diagnostic no-summary-file side-effect validation | validation | complete | local --github-summary without GITHUB_STEP_SUMMARY does not create unexpected summary files |
+| 80 | Cleanup diagnostic no-summary-file docs | documentation | next | docs state local --github-summary without GITHUB_STEP_SUMMARY writes only stdout |
 
 ## Closed Implementation Scaffolds
 - Engine-Scope row contract, internal gates, coverage analysis, hard-negative pipeline, and supervisor integration are implemented.
@@ -186,3 +187,4 @@ Start the next branch from the highest-ranked `next` item that is not blocked. I
 - 2026-05-06: Cleanup diagnostic unwritable summary docs added. Operator docs now state invalid summary paths fail visibly and should be fixed before rerun.
 - 2026-05-06: Cleanup diagnostic stdout-on-summary-failure validation added. Coverage now verifies stdout contains the cleanup diagnostic before summary append failures surface.
 - 2026-05-06: Cleanup diagnostic stdout-on-summary-failure docs added. Operator docs now state stdout/job logs remain the fallback diagnostic channel when summary append fails.
+- 2026-05-06: Cleanup diagnostic no-summary-file side-effect validation added. Local `--github-summary` without `GITHUB_STEP_SUMMARY` now has coverage proving no unexpected summary files are created.

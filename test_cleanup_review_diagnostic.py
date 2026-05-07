@@ -245,6 +245,7 @@ class CleanupReviewDiagnosticTests(unittest.TestCase):
     def test_main_github_summary_without_env_exits_cleanly(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             plan_path = Path(tmpdir) / "missing_cleanup_plan.json"
+            before_paths = {path.relative_to(tmpdir) for path in Path(tmpdir).rglob("*")}
             argv = [
                 "cleanup_review_diagnostic.py",
                 "--plan",
@@ -264,6 +265,8 @@ class CleanupReviewDiagnosticTests(unittest.TestCase):
             self.assertEqual(exit_code, 0)
             self.assertIn("Cleanup plan missing", stdout.getvalue())
             self.assertNotIn("Traceback", stdout.getvalue())
+            after_paths = {path.relative_to(tmpdir) for path in Path(tmpdir).rglob("*")}
+            self.assertEqual(before_paths, after_paths)
 
     def test_main_github_summary_preserves_existing_content(self):
         with tempfile.TemporaryDirectory() as tmpdir:
