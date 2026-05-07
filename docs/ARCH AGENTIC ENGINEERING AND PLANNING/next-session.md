@@ -2,6 +2,14 @@
 
 Purpose: Continue autonomous execution after the Engine-Scope and Model-Scope implementation cycles closed on `main`.
 
+## Non-Negotiable Session Rules
+
+These rules apply to every session, every task, every PR — no exceptions:
+
+1. **Full Implementation Only.** No scaffolding, stubs, `pass`-body placeholders, or `TODO: implement` in committed code. Each sub-slice must be independently complete and working.
+2. **PR on Completion.** Every finished slice must be in an open PR before the next slice starts. No accumulating dirty branches or uncommitted work across sessions.
+3. **No Placeholder Data or Fake Metrics.** Every field shown in a dashboard or frontend must trace to a real source artifact or live computation. Hard-coded demo values and mock responses are forbidden in committed code.
+
 ## Session Start
 - Sync local `main` to `origin/main`.
 - Review `docs/ARCH AGENTIC ENGINEERING AND PLANNING/roadmap-execution-queue-2026-05-05.md`.

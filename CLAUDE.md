@@ -2,6 +2,17 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Session Rules (enforced every session, no exceptions)
+
+### Rule 1 — Full Implementation Only
+Every slice, every phase, every PR must be **fully implemented**. No scaffolding, no stubs, no `pass`-body placeholders, no `TODO: implement` markers left in committed code. If a feature is too large for one PR, split it into genuinely shippable sub-slices — but each sub-slice must itself be complete and working, not a placeholder for future work.
+
+### Rule 2 — PR on Completion
+Every unit of completed work must land in a PR **before moving to the next task**. Do not accumulate dirty branches, uncommitted changes, or local-only work across sessions. The rule is: finish a slice → open PR → get it merged (or at minimum opened and green) → then start the next slice. Stale branches and deferred cleanup are not acceptable.
+
+### Rule 3 — No Placeholder Data or Fake Metrics
+Dashboards, frontends, and reporting surfaces must be wired to **real data pipelines**. Placeholder values, hard-coded demo numbers, mock metrics, and fake responses are forbidden in committed code. Every data field displayed to an operator must trace to an actual source artifact, live computation, or explicitly documented empty-state. The wiring from backend to frontend must be obvious and verifiable.
+
 ## What This Project Is
 
 ChelatedAI is a research prototype for adaptive vector search with self-correcting embeddings. It detects "semantic collapse" in RAG systems (where unrelated concepts get similar embeddings) and fixes it through dynamic dimension masking and neural adaptation.
