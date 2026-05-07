@@ -7,10 +7,10 @@
       "map_at_10": 0.6781825396825397,
       "mrr": 0.6874126984126984,
       "recall_at_10": 0.831,
-      "latency_ms": 23.655541999996785,
+      "latency_ms": 22.413817000087874,
       "num_queries": 100,
       "num_docs": 5183,
-      "elapsed_seconds": 127.62559560000045
+      "elapsed_seconds": 124.5133696999983
     },
     {
       "dataset_name": "SciFact",
@@ -19,10 +19,10 @@
       "map_at_10": 0.5394238095238095,
       "mrr": 0.5546904761904762,
       "recall_at_10": 0.774,
-      "latency_ms": 23.993955999958416,
+      "latency_ms": 23.895520999831206,
       "num_queries": 100,
       "num_docs": 5183,
-      "elapsed_seconds": 124.76332490000095
+      "elapsed_seconds": 124.16535849999855
     },
     {
       "dataset_name": "SciFact",
@@ -31,10 +31,10 @@
       "map_at_10": 0.538868253968254,
       "mrr": 0.5541349206349206,
       "recall_at_10": 0.774,
-      "latency_ms": 24.75577000004705,
+      "latency_ms": 24.18472200006363,
       "num_queries": 100,
       "num_docs": 5183,
-      "elapsed_seconds": 123.9452237000005
+      "elapsed_seconds": 124.13034509999852
     },
     {
       "dataset_name": "SciFact",
@@ -43,10 +43,10 @@
       "map_at_10": 0.5394238095238095,
       "mrr": 0.5546904761904762,
       "recall_at_10": 0.774,
-      "latency_ms": 24.11867799995889,
+      "latency_ms": 23.889922000053048,
       "num_queries": 100,
       "num_docs": 5183,
-      "elapsed_seconds": 123.72836960000132
+      "elapsed_seconds": 123.8504036000013
     },
     {
       "dataset_name": "SciFact",
@@ -55,10 +55,10 @@
       "map_at_10": 0.5278968253968255,
       "mrr": 0.5437301587301587,
       "recall_at_10": 0.752,
-      "latency_ms": 25.98505499998282,
+      "latency_ms": 25.583192999874882,
       "num_queries": 100,
       "num_docs": 5183,
-      "elapsed_seconds": 141.64712820000022
+      "elapsed_seconds": 123.22609270000248
     },
     {
       "dataset_name": "SciFact",
@@ -67,10 +67,10 @@
       "map_at_10": 0.538868253968254,
       "mrr": 0.5541349206349206,
       "recall_at_10": 0.774,
-      "latency_ms": 23.7228540000433,
+      "latency_ms": 23.686946000016178,
       "num_queries": 100,
       "num_docs": 5183,
-      "elapsed_seconds": 123.09194010000101
+      "elapsed_seconds": 123.3266272999972
     },
     {
       "dataset_name": "SciFact",
@@ -79,22 +79,22 @@
       "map_at_10": 0.5440904761904762,
       "mrr": 0.5596904761904762,
       "recall_at_10": 0.774,
-      "latency_ms": 30.205797999933566,
+      "latency_ms": 28.219204000015452,
       "num_queries": 100,
       "num_docs": 5183,
-      "elapsed_seconds": 127.93793080000069
+      "elapsed_seconds": 124.06030950000059
     },
     {
       "dataset_name": "SciFact",
       "config_name": "random_mask_50pct",
-      "ndcg_at_10": 0.7229631616648291,
-      "map_at_10": 0.6781825396825397,
-      "mrr": 0.6874126984126984,
-      "recall_at_10": 0.831,
-      "latency_ms": 24.204807999904006,
+      "ndcg_at_10": 0.6667185616066698,
+      "map_at_10": 0.6101349206349207,
+      "mrr": 0.6222619047619048,
+      "recall_at_10": 0.7909999999999999,
+      "latency_ms": 22.44704400007322,
       "num_queries": 100,
       "num_docs": 5183,
-      "elapsed_seconds": 128.1985134000006
+      "elapsed_seconds": 122.65626749999865
     }
   ],
   "aggregated_by_config": {
@@ -103,7 +103,7 @@
       "mean_map_at_10": 0.6781825396825397,
       "mean_mrr": 0.6874126984126984,
       "mean_recall_at_10": 0.831,
-      "mean_latency_ms": 23.655541999996785,
+      "mean_latency_ms": 22.413817000087874,
       "num_datasets": 1
     },
     "chelation": {
@@ -111,7 +111,7 @@
       "mean_map_at_10": 0.5394238095238095,
       "mean_mrr": 0.5546904761904762,
       "mean_recall_at_10": 0.774,
-      "mean_latency_ms": 23.993955999958416,
+      "mean_latency_ms": 23.895520999831206,
       "num_datasets": 1
     },
     "chelation+tempscale_0.5": {
@@ -119,7 +119,7 @@
       "mean_map_at_10": 0.538868253968254,
       "mean_mrr": 0.5541349206349206,
       "mean_recall_at_10": 0.774,
-      "mean_latency_ms": 24.75577000004705,
+      "mean_latency_ms": 24.18472200006363,
       "num_datasets": 1
     },
     "chelation+tempscale_2.0": {
@@ -127,7 +127,7 @@
       "mean_map_at_10": 0.5394238095238095,
       "mean_mrr": 0.5546904761904762,
       "mean_recall_at_10": 0.774,
-      "mean_latency_ms": 24.11867799995889,
+      "mean_latency_ms": 23.889922000053048,
       "num_datasets": 1
     },
     "procrustes": {
@@ -135,7 +135,7 @@
       "mean_map_at_10": 0.5278968253968255,
       "mean_mrr": 0.5437301587301587,
       "mean_recall_at_10": 0.752,
-      "mean_latency_ms": 25.98505499998282,
+      "mean_latency_ms": 25.583192999874882,
       "num_datasets": 1
     },
     "low_rank_16": {
@@ -143,7 +143,7 @@
       "mean_map_at_10": 0.538868253968254,
       "mean_mrr": 0.5541349206349206,
       "mean_recall_at_10": 0.774,
-      "mean_latency_ms": 23.7228540000433,
+      "mean_latency_ms": 23.686946000016178,
       "num_datasets": 1
     },
     "online_updates": {
@@ -151,21 +151,21 @@
       "mean_map_at_10": 0.5440904761904762,
       "mean_mrr": 0.5596904761904762,
       "mean_recall_at_10": 0.774,
-      "mean_latency_ms": 30.205797999933566,
+      "mean_latency_ms": 28.219204000015452,
       "num_datasets": 1
     },
     "random_mask_50pct": {
-      "mean_ndcg_at_10": 0.7229631616648291,
-      "mean_map_at_10": 0.6781825396825397,
-      "mean_mrr": 0.6874126984126984,
-      "mean_recall_at_10": 0.831,
-      "mean_latency_ms": 24.204807999904006,
+      "mean_ndcg_at_10": 0.6667185616066698,
+      "mean_map_at_10": 0.6101349206349207,
+      "mean_mrr": 0.6222619047619048,
+      "mean_recall_at_10": 0.7909999999999999,
+      "mean_latency_ms": 22.44704400007322,
       "num_datasets": 1
     }
   },
   "aggregated_by_dataset": {
     "SciFact": {
-      "mean_ndcg_at_10": 0.6359718686671751,
+      "mean_ndcg_at_10": 0.6289412936599053,
       "num_configs": 8
     }
   },
@@ -206,7 +206,7 @@
         0.5937095746295786
       ],
       [
-        0.7229631616648291
+        0.6667185616066698
       ]
     ]
   },

@@ -804,6 +804,13 @@ class AntigravityEngine:
         Args:
             temperature: Temperature divisor for similarity scores (>0).
                         <1.0 sharpens, >1.0 softens, 1.0 = no effect.
+
+        Note: Temperature is a monotonic transformation of cosine similarity
+        scores and therefore does NOT change top-k retrieval rank ordering.
+        It affects the magnitude of scores but not which documents are ranked
+        first. This is useful for downstream reranking or score calibration,
+        but will produce identical NDCG/MRR as temperature=1.0 in pure
+        top-k retrieval benchmarks.
         """
         if temperature <= 0:
             raise ValueError("Temperature must be positive")
@@ -812,6 +819,39 @@ class AntigravityEngine:
             "temperature_set",
             f"Temperature scaling set to {temperature}",
             temperature=temperature
+        )
+
+    # ===== Static Dimension Masking =====
+
+    def set_static_dimension_mask(self, mask):
+        """
+        Apply a fixed dimension mask to query vectors during inference.
+
+        The mask is applied to the query embedding before Qdrant nearest-
+        neighbor search, zeroing out the specified dimensions. This lets
+        ablation benchmarks measure retrieval quality when a subset of
+        embedding dimensions is withheld.
+
+        Args:
+            mask: Array-like of length vector_size. Use 0.0 to zero out a
+                  dimension, 1.0 to keep it. Non-binary values are supported
+                  but integer 0/1 is the typical use-case.
+
+        Raises:
+            ValueError: If mask length != vector_size.
+        """
+        mask_arr = np.asarray(mask, dtype=float)
+        if mask_arr.shape != (self.vector_size,):
+            raise ValueError(
+                f"Mask length {mask_arr.shape} != vector_size ({self.vector_size},)"
+            )
+        self._static_dim_mask = mask_arr
+        n_active = int(np.sum(mask_arr != 0.0))
+        self.logger.log_event(
+            "static_dimension_mask_set",
+            f"Static dimension mask applied: {n_active}/{self.vector_size} dimensions active",
+            active_dimensions=n_active,
+            total_dimensions=self.vector_size,
         )
 
     # ===== Sedimentation Loss Configuration =====
@@ -2266,6 +2306,9 @@ class AntigravityEngine:
                     f"(shape={query_embeddings.shape}, expected (*, {self.vector_size}))"
                 )
             q_vec = query_embeddings[0]
+            _static_mask = getattr(self, '_static_dim_mask', None)
+            if _static_mask is not None:
+                q_vec = q_vec * _static_mask
         except Exception as e:
             self.logger.log_error("embed_validation", "Invalid query embedding during inference", exception=e)
             latency_ms = (time.time() - inference_start) * 1000.0

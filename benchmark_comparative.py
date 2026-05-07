@@ -251,6 +251,15 @@ def build_real_engine_factory(corpus, model_name="sentence-transformers/all-Mini
         if config.online_updates:
             engine.enable_online_updates()
 
+        if config.random_mask_pct is not None and config.random_mask_pct > 0:
+            rng = np.random.RandomState(42)  # fixed seed for reproducibility
+            n_dims = engine.vector_size
+            n_masked = int(n_dims * config.random_mask_pct / 100.0)
+            mask = np.ones(n_dims, dtype=float)
+            masked_indices = rng.choice(n_dims, size=n_masked, replace=False)
+            mask[masked_indices] = 0.0
+            engine.set_static_dimension_mask(mask)
+
         if config.extra_setup is not None:
             config.extra_setup(engine)
 
