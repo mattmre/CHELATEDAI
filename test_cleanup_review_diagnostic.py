@@ -342,6 +342,27 @@ class CleanupReviewDiagnosticTests(unittest.TestCase):
             self.assertTrue(summary_path.exists())
             self.assertIn("Cleanup plan missing", summary_path.read_text(encoding="utf-8"))
 
+    def test_main_github_summary_invalid_parent_fails_visibly(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            plan_path = Path(tmpdir) / "missing_cleanup_plan.json"
+            summary_path = Path(tmpdir) / "missing-dir" / "summary.md"
+            argv = [
+                "cleanup_review_diagnostic.py",
+                "--plan",
+                plan_path.as_posix(),
+                "--mode",
+                "blocked",
+                "--github-summary",
+            ]
+
+            with (
+                patch.object(sys, "argv", argv),
+                patch.dict(os.environ, {"GITHUB_STEP_SUMMARY": summary_path.as_posix()}),
+                patch("sys.stdout", new_callable=StringIO),
+            ):
+                with self.assertRaises(FileNotFoundError):
+                    main()
+
 
 if __name__ == "__main__":
     unittest.main()
