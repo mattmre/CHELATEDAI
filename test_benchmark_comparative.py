@@ -179,28 +179,49 @@ class TestComparativeTestbed(unittest.TestCase):
         self.assertEqual(len(testbed.configurations), 1)
 
     def test_evaluate_single_config_no_engine(self, mock_logger):
-        """Test evaluation with no engine factory (dummy mode)."""
+        """Test evaluation in synthetic mode (allow_synthetic=True)."""
         testbed = ComparativeTestbed()
         config = BenchmarkConfiguration(name="test")
-        result = testbed.evaluate_single_config(
-            config, self.corpus, self.queries, self.qrels
-        )
+        import warnings
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            result = testbed.evaluate_single_config(
+                config, self.corpus, self.queries, self.qrels,
+                allow_synthetic=True,
+            )
         self.assertIsInstance(result, BenchmarkResult)
         self.assertEqual(result.config_name, "test")
         self.assertEqual(result.num_queries, 2)
         self.assertEqual(result.num_docs, 3)
+        self.assertTrue(result.is_synthetic)
+        self.assertTrue(any(issubclass(warning.category, RuntimeWarning) for warning in w))
+
+    def test_evaluate_single_config_no_engine_requires_allow_synthetic(self, mock_logger):
+        """Test that omitting engine_factory without allow_synthetic raises ValueError."""
+        testbed = ComparativeTestbed()
+        config = BenchmarkConfiguration(name="test")
+        with self.assertRaises(ValueError):
+            testbed.evaluate_single_config(
+                config, self.corpus, self.queries, self.qrels
+            )
 
     def test_run_all_no_engine(self, mock_logger):
-        """Test running all default configs without engine."""
+        """Test running all configs in synthetic mode (allow_synthetic=True)."""
         configs = [
             BenchmarkConfiguration(name="config_a"),
             BenchmarkConfiguration(name="config_b"),
         ]
         testbed = ComparativeTestbed(configurations=configs)
-        results = testbed.run_all(self.corpus, self.queries, self.qrels)
+        import warnings
+        with warnings.catch_warnings(record=True):
+            warnings.simplefilter("always")
+            results = testbed.run_all(
+                self.corpus, self.queries, self.qrels, allow_synthetic=True
+            )
         self.assertEqual(len(results), 2)
         self.assertEqual(results[0].config_name, "config_a")
         self.assertEqual(results[1].config_name, "config_b")
+        self.assertTrue(all(r.is_synthetic for r in results))
 
     def test_evaluate_single_config_restores_existing_adapter_file(self, mock_logger):
         """Real-engine evaluation restores any pre-existing adapter checkpoint."""
