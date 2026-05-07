@@ -63,6 +63,7 @@ class BenchmarkResult:
     latency_ms: float
     num_queries: int
     num_docs: int
+    is_synthetic: bool = False
 
 
 def mean_average_precision_at_k(retrieved_ids, relevant_ids, k=10):
@@ -273,7 +274,8 @@ class ComparativeTestbed:
         self.logger = get_logger()
 
     def evaluate_single_config(self, config, corpus, queries, qrels,
-                               engine_factory=None, max_queries=None):
+                               engine_factory=None, max_queries=None,
+                               allow_synthetic=False):
         """
         Evaluate a single configuration against a dataset.
 
@@ -282,8 +284,14 @@ class ComparativeTestbed:
             corpus: dict {doc_id: text}
             queries: dict {query_id: text}
             qrels: dict {query_id: {doc_id: relevance}}
-            engine_factory: Optional callable(config) -> engine instance
+            engine_factory: Optional callable(config) -> engine instance.
+                Must be provided for real evaluation. Pass ``allow_synthetic=True``
+                to run without an engine (for unit-test scaffolding only).
             max_queries: Optional limit on number of queries to evaluate
+            allow_synthetic: If True, allow running without engine_factory in
+                synthetic/test mode. The returned BenchmarkResult will have
+                ``is_synthetic=True``. Synthetic results must never appear in
+                production reports or promotions.
 
         Returns:
             BenchmarkResult
@@ -294,8 +302,28 @@ class ComparativeTestbed:
         recall_scores = []
         latencies = []
 
-        # If no engine factory, simulate with dummy scores
+        if engine_factory is None and not allow_synthetic:
+            raise ValueError(
+                "engine_factory is required for real benchmark evaluation. "
+                "To run in synthetic test mode (unranked retrieval, 0.0 latency), "
+                "pass allow_synthetic=True. Synthetic results must never appear in "
+                "production reports or promotion decisions."
+            )
+
         if engine_factory is None:
+            # Synthetic mode: unranked corpus retrieval, 0.0 latency.
+            # Only reachable when allow_synthetic=True (guarded above).
+            # Results are tagged is_synthetic=True and must not be used in
+            # production reports or promotion decisions.
+            import warnings
+            warnings.warn(
+                f"BenchmarkResult for '{config.name}' uses synthetic retrieval "
+                "(unranked first-10 corpus docs, 0.0 ms latency). This result "
+                "is tagged is_synthetic=True and must not appear in production "
+                "reports or promotion decisions.",
+                RuntimeWarning,
+                stacklevel=3,
+            )
             query_items = list(queries.items())
             if max_queries is not None:
                 query_items = query_items[:max_queries]
@@ -303,11 +331,9 @@ class ComparativeTestbed:
                 rel_docs = qrels.get(str(qid), qrels.get(qid, {}))
                 relevant_set = set(str(d) for d, s in rel_docs.items() if s > 0)
 
-                # Dummy retrieval (for testing framework)
                 retrieved = list(corpus.keys())[:10]
                 retrieved = [str(d) for d in retrieved]
 
-                # Compute metrics
                 r = [1 if d in relevant_set else 0 for d in retrieved]
                 ndcg_scores.append(ndcg_at_k(r, 10))
                 map_scores.append(mean_average_precision_at_k(retrieved, relevant_set, 10))
@@ -349,13 +375,15 @@ class ComparativeTestbed:
             mrr=float(np.mean(mrr_scores)) if mrr_scores else 0.0,
             recall_at_10=float(np.mean(recall_scores)) if recall_scores else 0.0,
             latency_ms=float(np.mean(latencies)) if latencies else 0.0,
-            num_queries=len(query_items) if engine_factory is not None or max_queries is not None else len(queries),
-            num_docs=len(corpus)
+            num_queries=len(query_items),
+            num_docs=len(corpus),
+            is_synthetic=(engine_factory is None),
         )
 
         return result
 
-    def run_all(self, corpus, queries, qrels, engine_factory=None, max_queries=None):
+    def run_all(self, corpus, queries, qrels, engine_factory=None, max_queries=None,
+                allow_synthetic=False):
         """
         Run all configurations and collect results.
 
@@ -363,8 +391,11 @@ class ComparativeTestbed:
             corpus: dict {doc_id: text}
             queries: dict {query_id: text}
             qrels: dict {query_id: {doc_id: relevance}}
-            engine_factory: Optional callable(config) -> engine instance
+            engine_factory: Optional callable(config) -> engine instance.
+                Required for real evaluation; see evaluate_single_config.
             max_queries: Optional limit on number of queries to evaluate
+            allow_synthetic: Forwarded to evaluate_single_config. See that
+                method for full semantics. Never set True in production.
 
         Returns:
             list of BenchmarkResult
@@ -379,7 +410,8 @@ class ComparativeTestbed:
             )
 
             result = self.evaluate_single_config(
-                config, corpus, queries, qrels, engine_factory, max_queries=max_queries
+                config, corpus, queries, qrels, engine_factory,
+                max_queries=max_queries, allow_synthetic=allow_synthetic,
             )
             self.results.append(result)
 
