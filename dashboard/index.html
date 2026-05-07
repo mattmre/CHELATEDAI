@@ -141,6 +141,7 @@
       <div class="card"><div class="label">Total Evaluations</div><div class="value" id="beir-total">-</div></div>
       <div class="card"><div class="label">Best Config (Avg NDCG)</div><div class="value" id="beir-best-config" style="font-size:18px;">-</div></div>
     </div>
+    <div id="beir-not-generated-notice" style="display:none; padding:8px 12px; background:#fff3cd; border:1px solid #ffc107; border-radius:4px; margin-bottom:12px; color:#856404;"></div>
 
     <div class="panel">
       <div style="display:flex; justify-content: space-between; align-items:center">
@@ -242,11 +243,12 @@
             <th>Decision</th>
             <th>Overlay</th>
             <th>Artifact Card</th>
+            <th>Source</th>
             <th>Report</th>
           </tr>
         </thead>
         <tbody id="campaign-rows">
-          <tr><td colspan="7">Loading...</td></tr>
+          <tr><td colspan="8">Loading...</td></tr>
         </tbody>
       </table>
     </div>
@@ -263,11 +265,12 @@
             <th>Status</th>
             <th>Commands</th>
             <th>Failures</th>
+            <th>Source</th>
             <th>Report</th>
           </tr>
         </thead>
         <tbody id="validation-rows">
-          <tr><td colspan="5">Loading...</td></tr>
+          <tr><td colspan="6">Loading...</td></tr>
         </tbody>
       </table>
     </div>
@@ -445,8 +448,14 @@
         const res = await fetch('/api/test_results');
         const data = await res.json();
         
+        if (data.data_status === 'not_generated') {
+          document.getElementById('test-rows').innerHTML =
+            `<tr><td colspan="3">⚠ ${data.reason || 'Run tests to generate .report.json'}</td></tr>`;
+          return;
+        }
+
         if (!data.summary) {
-           document.getElementById('test-rows').innerHTML = '<tr><td colspan="3">No test data available. Run pytest --json-report</td></tr>';
+           document.getElementById('test-rows').innerHTML = '<tr><td colspan="3">No test data available. Run: python -m unittest discover -v 2>&1 | python generate_report_json.py</td></tr>';
            return;
         }
 
@@ -543,7 +552,7 @@
         rows.replaceChildren();
         const reports = asArray(data.reports);
         if (!reports.length) {
-          rows.innerHTML = '<tr><td colspan="7">No campaign reports found</td></tr>';
+          rows.innerHTML = '<tr><td colspan="8">No campaign reports found</td></tr>';
           return;
         }
 
@@ -552,6 +561,8 @@
           const modified = report.modified_at ? new Date(report.modified_at * 1000).toLocaleString() : '-';
           const overlay = report.overlay_ready === true ? 'ready' : (report.overlay_ready === false ? 'blocked' : '-');
           const decision = report.default_change_allowed ? 'promote' : (report.decision || 'hold');
+          const src = report.data_source || 'unknown';
+          const srcLabel = src === 'smoke_test' ? '⚠ smoke' : (src === 'unknown' ? '?' : src);
           const cells = [
             modified,
             report.run_label || '-',
@@ -559,10 +570,12 @@
             decision,
             overlay,
             report.artifact_card_id || '-',
+            srcLabel,
             report.path || report.report_name || '-'
           ];
           cells.forEach(text => {
             const td = document.createElement('td');
+            if (text === '⚠ smoke') td.style.color = '#c0392b';
             td.textContent = text;
             tr.appendChild(td);
           });
@@ -570,7 +583,7 @@
         });
       } catch (e) {
         console.error('Error loading campaign history', e);
-        document.getElementById('campaign-rows').innerHTML = '<tr><td colspan="7">Error loading campaign history</td></tr>';
+        document.getElementById('campaign-rows').innerHTML = '<tr><td colspan="8">Error loading campaign history</td></tr>';
       }
     }
 
@@ -588,7 +601,7 @@
         rows.replaceChildren();
         const reports = asArray(data.reports);
         if (!reports.length) {
-          rows.innerHTML = '<tr><td colspan="5">No validation bundles found</td></tr>';
+          rows.innerHTML = '<tr><td colspan="6">No validation bundles found</td></tr>';
           return;
         }
 
@@ -596,15 +609,19 @@
           const tr = document.createElement('tr');
           const modified = report.modified_at ? new Date(report.modified_at * 1000).toLocaleString() : '-';
           const failures = asArray(report.failed_commands).join(', ') || '-';
+          const src = report.data_source || 'unknown';
+          const srcLabel = src === 'smoke_test' ? '⚠ smoke' : (src === 'unknown' ? '?' : src);
           const cells = [
             modified,
             report.passed ? 'passed' : 'failed',
             report.command_count ?? '-',
             failures,
+            srcLabel,
             report.path || report.report_name || '-'
           ];
           cells.forEach(text => {
             const td = document.createElement('td');
+            if (text === '⚠ smoke') td.style.color = '#c0392b';
             td.textContent = text;
             tr.appendChild(td);
           });
@@ -612,7 +629,7 @@
         });
       } catch (e) {
         console.error('Error loading validation history', e);
-        document.getElementById('validation-rows').innerHTML = '<tr><td colspan="5">Error loading validation history</td></tr>';
+        document.getElementById('validation-rows').innerHTML = '<tr><td colspan="6">Error loading validation history</td></tr>';
       }
     }
 
@@ -795,12 +812,19 @@
       try {
         const res = await fetch('/api/sweep_results');
         const data = await res.json();
+
+        if (data.data_status === 'not_generated') {
+          document.getElementById('sweep-status').textContent = 'Sweep Status: ⚠ Not generated — ' + (data.reason || 'run run_large_sweep.py');
+          document.getElementById('sweep-total').textContent = '—';
+          return;
+        }
+
         const results = data.results || [];
         
         document.getElementById('sweep-total').textContent = results.length;
         
         if (results.length === 0) {
-          document.getElementById('sweep-status').textContent = 'Sweep Status: No data yet';
+          document.getElementById('sweep-status').textContent = 'Sweep Status: No results in file';
           return;
         }
 
@@ -918,6 +942,19 @@
       try {
         const res = await fetch('/api/beir_results');
         const data = await res.json();
+
+        if (data.data_status === 'not_generated') {
+          ['beir-datasets','beir-configs','beir-total','beir-best-config'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = '—';
+          });
+          const noticeEl = document.getElementById('beir-not-generated-notice');
+          if (noticeEl) {
+            noticeEl.textContent = '⚠ ' + (data.reason || 'Run benchmark_beir.py to populate');
+            noticeEl.style.display = 'block';
+          }
+          return;
+        }
 
         const summary = data.summary || {};
         document.getElementById('beir-datasets').textContent = summary.num_datasets || 0;
