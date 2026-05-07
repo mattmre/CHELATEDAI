@@ -36,6 +36,7 @@ When `--github-summary` is passed, the diagnostic is appended only if `GITHUB_ST
 The summary writer opens `GITHUB_STEP_SUMMARY` in append mode, so existing step-summary sections are preserved before the cleanup diagnostic.
 Each append writes a complete diagnostic block followed by a trailing newline.
 The command expects `GITHUB_STEP_SUMMARY`, when set, to name a writable file whose parent directory already exists; GitHub Actions provides that path automatically.
+Invalid or unwritable summary paths are not ignored, because a dropped diagnostic can hide cleanup-review evidence.
 
 | Diagnostic line | Source field | Meaning |
 | --- | --- | --- |
