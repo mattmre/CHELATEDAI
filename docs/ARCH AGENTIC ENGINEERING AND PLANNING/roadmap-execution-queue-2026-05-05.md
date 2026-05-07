@@ -90,7 +90,8 @@ Purpose: Durable continuation queue after Engine-Scope, Model-Scope, and adaptiv
 | 71 | Cleanup diagnostic append newline validation | validation | complete | GitHub summary append writes a trailing newline after cleanup diagnostics |
 | 72 | Cleanup diagnostic append newline docs | documentation | complete | docs state summary append writes complete newline-terminated markdown blocks |
 | 73 | Cleanup diagnostic summary parent-dir validation | validation | complete | GitHub summary append creates diagnostics when the summary file path is in an existing directory |
-| 74 | Cleanup diagnostic summary path docs | documentation | next | docs state GITHUB_STEP_SUMMARY parent directory must already exist |
+| 74 | Cleanup diagnostic summary path docs | documentation | complete | docs state GITHUB_STEP_SUMMARY parent directory must already exist |
+| 75 | Cleanup diagnostic unwritable summary validation | validation | next | GitHub summary append failure surfaces as an operator-visible exception |
 
 ## Closed Implementation Scaffolds
 - Engine-Scope row contract, internal gates, coverage analysis, hard-negative pipeline, and supervisor integration are implemented.
@@ -176,3 +177,4 @@ Start the next branch from the highest-ranked `next` item that is not blocked. I
 - 2026-05-06: Cleanup diagnostic append newline validation added. GitHub summary append coverage now verifies cleanup diagnostics are written as newline-terminated blocks.
 - 2026-05-06: Cleanup diagnostic append newline docs added. Operator docs now state GitHub summary appends are complete newline-terminated markdown blocks.
 - 2026-05-06: Cleanup diagnostic summary parent-dir validation added. Coverage now verifies `--github-summary` creates the summary file when its parent directory already exists.
+- 2026-05-06: Cleanup diagnostic summary path docs added. Operator docs now state `GITHUB_STEP_SUMMARY` should point to a writable file in an existing directory.
