@@ -9,9 +9,9 @@ from typing import Any, Mapping
 
 
 DEFAULT_ROOT = Path("experiment_runs")
-DEFAULT_OUTPUT = DEFAULT_ROOT / "evidence-index" / "latest" / "evidence_index.json"
+DEFAULT_OUTPUT = Path("evidence_index.json")
 
-
+# Patterns scanned under experiment_runs/
 ARTIFACT_PATTERNS = {
     "validation_summaries": "validation_summary.json",
     "promotion_linkage_audits": "*promotion-linkage-audit*.json",
@@ -20,6 +20,11 @@ ARTIFACT_PATTERNS = {
     "evidence_chain_summaries": "evidence_chain_summary.json",
     "campaign_reports": "campaign_report.json",
     "adaptive_overlay_artifact_cards": "adaptive_overlay_artifact_card.json",
+}
+
+# Tracked artifacts at repo root, always included regardless of experiment_runs/ state
+TRACKED_ARTIFACT_PATHS: dict[str, str] = {
+    "beir_results": "benchmark_beir_results.json",
 }
 
 
@@ -68,8 +73,14 @@ def generate_evidence_index(
     root: str | Path = DEFAULT_ROOT,
     output: str | Path = DEFAULT_OUTPUT,
     limit_per_type: int = 25,
+    tracked_root: str | Path | None = None,
 ) -> dict[str, Any]:
-    """Generate and write a compact index of evidence artifacts under root."""
+    """Generate and write a compact index of evidence artifacts under root.
+
+    Scans both `root` (typically experiment_runs/) for pattern-matched artifacts
+    and `tracked_root` (defaults to cwd) for tracked repository artifacts listed in
+    TRACKED_ARTIFACT_PATHS (e.g. benchmark_beir_results.json).
+    """
 
     root_path = Path(root)
     artifacts: dict[str, list[dict[str, Any]]] = {}
@@ -78,6 +89,15 @@ def generate_evidence_index(
         if root_path.exists():
             paths = sorted(root_path.rglob(pattern), key=lambda item: item.stat().st_mtime, reverse=True)
         artifacts[name] = [_record(path, root_path) for path in paths[: max(0, limit_per_type)]]
+
+    # Include tracked repo-root artifacts regardless of experiment_runs/ state
+    resolved_tracked_root = Path(tracked_root) if tracked_root is not None else Path(".")
+    for name, filename in TRACKED_ARTIFACT_PATHS.items():
+        tracked_path = resolved_tracked_root / filename
+        if tracked_path.exists():
+            artifacts[name] = [_record(tracked_path, resolved_tracked_root)]
+        else:
+            artifacts[name] = []
 
     latest_preflight = artifacts["default_promotion_preflights"][0] if artifacts["default_promotion_preflights"] else {}
     latest_chain = artifacts["evidence_chain_summaries"][0] if artifacts["evidence_chain_summaries"] else {}
