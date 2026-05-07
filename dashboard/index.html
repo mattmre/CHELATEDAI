@@ -455,7 +455,7 @@
         }
 
         if (!data.summary) {
-           document.getElementById('test-rows').innerHTML = '<tr><td colspan="3">No test data available. Run: python -m unittest discover</td></tr>';
+           document.getElementById('test-rows').innerHTML = '<tr><td colspan="3">No test data available. Run: python -m unittest discover -v 2>&1 | python generate_report_json.py</td></tr>';
            return;
         }
 

@@ -736,12 +736,10 @@ class TestDashboardHandler(unittest.TestCase):
         ) as f:
             json.dump({"results": [{"config": "a", "score": 0.8}]}, f)
             tmp_name = f.name
-        orig_sweep = dashboard_server.DashboardHandler.handle_api_sweep_results
         sweep_file = "large_sweep_results.json"
-        orig_exists = os.path.exists
         # Rename the temp file to the expected sweep file name if it doesn't exist
         backup = None
-        if orig_exists(sweep_file):
+        if os.path.exists(sweep_file):
             backup = sweep_file + ".test_bak"
             os.rename(sweep_file, backup)
         try:
@@ -761,7 +759,6 @@ class TestDashboardHandler(unittest.TestCase):
     def test_handle_api_test_results_not_generated(self):
         """Test results endpoint returns data_status=not_generated when .report.json absent."""
         handler = self._make_handler()
-        old = dashboard_server.__dict__.get("_TEST_REPORT_FILE")
         # Patch the report file path by ensuring it doesn't exist
         real_path = os.path.join(os.getcwd(), ".report.json")
         existed = os.path.exists(real_path)

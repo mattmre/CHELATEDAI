@@ -1210,7 +1210,11 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             
             with open(sweep_file, 'r') as f:
                 results = json.load(f)
-            self.send_json_response({"data_status": "ok", "results": results})
+            if isinstance(results, dict):
+                results.setdefault("data_status", "ok")
+                self.send_json_response(results)
+            else:
+                self.send_json_response({"data_status": "ok", "results": results})
         except Exception as e:
             self.send_error_response(500, f"Error reading sweep results: {str(e)}")
 
