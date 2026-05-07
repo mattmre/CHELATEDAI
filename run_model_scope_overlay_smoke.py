@@ -23,7 +23,7 @@ def _json_safe(value: Any) -> Any:
 
 
 def _artifact(query_id: str, prompt_hash: str, *, feature_id: str, value: float) -> dict[str, Any]:
-    return build_model_scope_artifact(
+    artifact = build_model_scope_artifact(
         runtime={"model_name": "smoke-model", "device": "cpu"},
         capture={
             "prompt_hash": prompt_hash,
@@ -42,6 +42,8 @@ def _artifact(query_id: str, prompt_hash: str, *, feature_id: str, value: float)
             ],
         },
     )
+    artifact["data_source"] = "smoke_test"
+    return artifact
 
 
 def _overlay_rows(seed: int) -> list[dict[str, Any]]:
@@ -104,6 +106,7 @@ def run_smoke(output_dir: str | Path) -> dict[str, Any]:
     )
     smoke_summary = {
         "record_type": "model_scope_overlay_smoke_summary",
+        "data_source": "smoke_test",
         "output_dir": str(root),
         "campaign_report": report["outputs"]["campaign_report"],
         "required_outputs": {
