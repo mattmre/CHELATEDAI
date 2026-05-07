@@ -1498,6 +1498,20 @@ class AntigravityEngine:
             self.logger.log_event("training_skipped", "Brain is stable. No sedimentation needed")
             return
 
+        # Guard: offline mode requires a teacher_helper. Without one, target_array would be
+        # filled with identity vectors (current_vec), training the adapter to reproduce its own
+        # input — a silent no-op. Early-exit here avoids the expensive Qdrant I/O and numpy
+        # allocation that would follow when the engine is misconfigured.
+        if self.training_mode == "offline" and not self.teacher_helper:
+            self.logger.log_event(
+                "training_skipped",
+                "offline mode requires teacher_helper; none configured — skipping training "
+                "to prevent silent identity-target training. Ensure a teacher is configured "
+                "during engine initialization.",
+                training_mode=self.training_mode,
+            )
+            return
+
         # --- PREPARE TRAINING DATA ---
         batch_ids = list(targets.keys())
 
@@ -1546,8 +1560,10 @@ class AntigravityEngine:
                     training_targets.append(target_vec)
 
                 elif self.training_mode == "offline":
-                    # Pure teacher guidance - defer to batch processing
-                    # For now, use current vec as placeholder (will be replaced)
+                    # Pure teacher guidance — targets will be overwritten below by
+                    # teacher_helper.generate_distillation_targets(). Append a placeholder
+                    # so training_inputs and training_targets stay aligned; the array is
+                    # replaced in full before any gradient step is taken.
                     training_targets.append(current_vec)
 
                 elif self.training_mode == "hybrid":
@@ -2479,7 +2495,8 @@ class AntigravityEngine:
             diagnostics["route_effectiveness"] = route_effectiveness
             self._record_runtime_diagnostics(diagnostics)
 
-            # Return signature: std_top_10, chel_top_10, mask (dummy), jaccard
+            # Return: std_top_10, chel_top_10, mask (np.ones identity on FAST path;
+            # _last_chelation_mask on CHELATE path), jaccard
             return std_top[:10], chel_top_10, mask, jaccard
         except (ResponseHandlingException, UnexpectedResponse) as e:
             self.logger.log_error("qdrant", f"Qdrant error in run_inference: {e}", exception=e)
