@@ -93,7 +93,8 @@ Purpose: Durable continuation queue after Engine-Scope, Model-Scope, and adaptiv
 | 74 | Cleanup diagnostic summary path docs | documentation | complete | docs state GITHUB_STEP_SUMMARY parent directory must already exist |
 | 75 | Cleanup diagnostic unwritable summary validation | validation | complete | GitHub summary append failure surfaces as an operator-visible exception |
 | 76 | Cleanup diagnostic unwritable summary docs | documentation | complete | docs state invalid summary paths fail visibly instead of silently dropping diagnostics |
-| 77 | Cleanup diagnostic stdout still emitted on summary failure validation | validation | next | invalid summary path still leaves the cleanup diagnostic visible in stdout |
+| 77 | Cleanup diagnostic stdout still emitted on summary failure validation | validation | complete | invalid summary path still leaves the cleanup diagnostic visible in stdout |
+| 78 | Cleanup diagnostic stdout-on-summary-failure docs | documentation | next | docs state stdout remains the primary diagnostic channel when summary append fails |
 
 ## Closed Implementation Scaffolds
 - Engine-Scope row contract, internal gates, coverage analysis, hard-negative pipeline, and supervisor integration are implemented.
@@ -182,3 +183,4 @@ Start the next branch from the highest-ranked `next` item that is not blocked. I
 - 2026-05-06: Cleanup diagnostic summary path docs added. Operator docs now state `GITHUB_STEP_SUMMARY` should point to a writable file in an existing directory.
 - 2026-05-06: Cleanup diagnostic unwritable summary validation added. Coverage now verifies invalid summary paths fail visibly instead of silently dropping diagnostics.
 - 2026-05-06: Cleanup diagnostic unwritable summary docs added. Operator docs now state invalid summary paths fail visibly and should be fixed before rerun.
+- 2026-05-06: Cleanup diagnostic stdout-on-summary-failure validation added. Coverage now verifies stdout contains the cleanup diagnostic before summary append failures surface.

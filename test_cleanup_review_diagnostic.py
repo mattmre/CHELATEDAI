@@ -363,6 +363,30 @@ class CleanupReviewDiagnosticTests(unittest.TestCase):
                 with self.assertRaises(FileNotFoundError):
                     main()
 
+    def test_main_prints_stdout_before_summary_path_failure(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            plan_path = Path(tmpdir) / "missing_cleanup_plan.json"
+            summary_path = Path(tmpdir) / "missing-dir" / "summary.md"
+            argv = [
+                "cleanup_review_diagnostic.py",
+                "--plan",
+                plan_path.as_posix(),
+                "--mode",
+                "blocked",
+                "--github-summary",
+            ]
+
+            with (
+                patch.object(sys, "argv", argv),
+                patch.dict(os.environ, {"GITHUB_STEP_SUMMARY": summary_path.as_posix()}),
+                patch("sys.stdout", new_callable=StringIO) as stdout,
+            ):
+                with self.assertRaises(FileNotFoundError):
+                    main()
+
+            self.assertIn("Cleanup plan missing", stdout.getvalue())
+            self.assertIn(plan_path.as_posix(), stdout.getvalue())
+
 
 if __name__ == "__main__":
     unittest.main()
