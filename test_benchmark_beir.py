@@ -306,7 +306,8 @@ class TestBEIRBenchmarkRunner(unittest.TestCase):
         runner = BEIRBenchmarkRunner(configurations=configs, tier="quick")
         corpus, queries, qrels = make_test_dataset()
 
-        results = runner.run_single_dataset("TestDS", corpus, queries, qrels)
+        results = runner.run_single_dataset("TestDS", corpus, queries, qrels,
+                                            allow_synthetic=True)
         self.assertEqual(len(results), 2)
         self.assertEqual(results[0].dataset_name, "TestDS")
         self.assertEqual(results[1].dataset_name, "TestDS")
@@ -322,7 +323,7 @@ class TestBEIRBenchmarkRunner(unittest.TestCase):
         results = runner.run_all_preloaded({
             "DS1": ds1_data,
             "DS2": ds2_data,
-        })
+        }, allow_synthetic=True)
         self.assertEqual(len(results), 2)
         ds_names = {r.dataset_name for r in results}
         self.assertEqual(ds_names, {"DS1", "DS2"})
@@ -335,7 +336,7 @@ class TestBEIRBenchmarkRunner(unittest.TestCase):
         runner.run_all_preloaded({
             "DS1": make_test_dataset(5, 2),
             "DS2": make_test_dataset(5, 2),
-        })
+        }, allow_synthetic=True)
 
         ds1_results = runner.get_results_for_dataset("DS1")
         self.assertEqual(len(ds1_results), 1)
@@ -349,7 +350,7 @@ class TestBEIRBenchmarkRunner(unittest.TestCase):
         ]
         runner = BEIRBenchmarkRunner(configurations=configs, tier="quick")
 
-        runner.run_all_preloaded({"DS1": make_test_dataset(5, 2)})
+        runner.run_all_preloaded({"DS1": make_test_dataset(5, 2)}, allow_synthetic=True)
 
         fast_results = runner.get_results_for_config("fast")
         self.assertEqual(len(fast_results), 1)
@@ -360,7 +361,7 @@ class TestBEIRBenchmarkRunner(unittest.TestCase):
         configs = [BenchmarkConfiguration(name="t")]
         runner = BEIRBenchmarkRunner(configurations=configs, tier="quick")
 
-        runner.run_all_preloaded({"DS1": make_test_dataset()})
+        runner.run_all_preloaded({"DS1": make_test_dataset()}, allow_synthetic=True)
 
         for r in runner.results:
             self.assertGreaterEqual(r.elapsed_seconds, 0.0)
@@ -377,7 +378,7 @@ class TestBEIRBenchmarkRunner(unittest.TestCase):
         runner.run_all_preloaded({
             "DS1": make_test_dataset(),
             "DS2": make_test_dataset(),
-        })
+        }, allow_synthetic=True)
 
         self.assertEqual(len(runner.results), 6)
 
@@ -391,7 +392,7 @@ class TestBEIRBenchmarkRunner(unittest.TestCase):
         configs = [BenchmarkConfiguration(name="t")]
         runner = BEIRBenchmarkRunner(configurations=configs, tier="quick")
 
-        runner.run_all_preloaded({"DS1": make_test_dataset()})
+        runner.run_all_preloaded({"DS1": make_test_dataset()}, allow_synthetic=True)
 
         mdr = runner.results[0]
         self.assertIsInstance(mdr.result, BenchmarkResult)

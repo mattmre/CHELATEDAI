@@ -415,6 +415,7 @@ class BEIRBenchmarkRunner:
         corpus: Dict,
         queries: Dict,
         qrels: Dict,
+        allow_synthetic: bool = False,
     ) -> List[MultiDatasetResult]:
         """Run all configurations against a single pre-loaded dataset.
 
@@ -423,6 +424,8 @@ class BEIRBenchmarkRunner:
             corpus: Corpus dict
             queries: Queries dict
             qrels: Qrels dict
+            allow_synthetic: Pass True to allow no-engine synthetic evaluation
+                (unit-test scaffolding only). Must never be True in production.
 
         Returns:
             List of MultiDatasetResult for each configuration
@@ -451,6 +454,7 @@ class BEIRBenchmarkRunner:
                 qrels,
                 dataset_engine_factory,
                 max_queries=self.max_queries,
+                allow_synthetic=allow_synthetic,
             )
             elapsed = time.perf_counter() - start
 
@@ -515,6 +519,7 @@ class BEIRBenchmarkRunner:
     def run_all_preloaded(
         self,
         datasets: Dict[str, Tuple[Dict, Dict, Dict]],
+        allow_synthetic: bool = False,
     ) -> List[MultiDatasetResult]:
         """Run all configurations across pre-loaded datasets.
 
@@ -522,6 +527,8 @@ class BEIRBenchmarkRunner:
 
         Args:
             datasets: Dict mapping dataset_name -> (corpus, queries, qrels)
+            allow_synthetic: Pass True to allow no-engine synthetic evaluation
+                (unit-test scaffolding only). Must never be True in production.
 
         Returns:
             List of all MultiDatasetResult objects
@@ -529,7 +536,8 @@ class BEIRBenchmarkRunner:
         self.results = []
 
         for ds_name, (corpus, queries, qrels) in datasets.items():
-            self.run_single_dataset(ds_name, corpus, queries, qrels)
+            self.run_single_dataset(ds_name, corpus, queries, qrels,
+                                    allow_synthetic=allow_synthetic)
 
         return self.results
 
