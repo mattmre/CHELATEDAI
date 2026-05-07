@@ -1498,6 +1498,20 @@ class AntigravityEngine:
             self.logger.log_event("training_skipped", "Brain is stable. No sedimentation needed")
             return
 
+        # Guard: offline mode requires a teacher_helper. Without one, target_array would be
+        # filled with identity vectors (current_vec), training the adapter to reproduce its own
+        # input — a silent no-op. Early-exit here avoids the expensive Qdrant I/O and numpy
+        # allocation that would follow when the engine is misconfigured.
+        if self.training_mode == "offline" and not self.teacher_helper:
+            self.logger.log_event(
+                "training_skipped",
+                "offline mode requires teacher_helper; none configured — skipping training "
+                "to prevent silent identity-target training. Ensure a teacher is configured "
+                "during engine initialization.",
+                training_mode=self.training_mode,
+            )
+            return
+
         # --- PREPARE TRAINING DATA ---
         batch_ids = list(targets.keys())
 
@@ -1566,19 +1580,6 @@ class AntigravityEngine:
         # Convert to numpy arrays
         input_array = np.array(training_inputs)
         target_array = np.array(training_targets)
-
-        # Guard: offline mode requires a teacher_helper. Without one, target_array is
-        # filled with identity vectors (current_vec), which trains the adapter to reproduce
-        # its own input — a silent no-op that wastes a training cycle.
-        if self.training_mode == "offline" and not self.teacher_helper:
-            self.logger.log_event(
-                "training_skipped",
-                "offline mode requires teacher_helper; none configured — skipping training "
-                "to prevent silent identity-target training. Assign a teacher via "
-                "engine.set_teacher() before calling train().",
-                training_mode=self.training_mode,
-            )
-            return
 
         # Apply teacher distillation if needed
         if self.training_mode == "offline" and self.teacher_helper:
