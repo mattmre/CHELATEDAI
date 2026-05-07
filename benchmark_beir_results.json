@@ -1,0 +1,218 @@
+{
+  "results": [
+    {
+      "dataset_name": "SciFact",
+      "config_name": "baseline",
+      "ndcg_at_10": 0.7229631616648291,
+      "map_at_10": 0.6781825396825397,
+      "mrr": 0.6874126984126984,
+      "recall_at_10": 0.831,
+      "latency_ms": 23.655541999996785,
+      "num_queries": 100,
+      "num_docs": 5183,
+      "elapsed_seconds": 127.62559560000045
+    },
+    {
+      "dataset_name": "SciFact",
+      "config_name": "chelation",
+      "ndcg_at_10": 0.6091479591004544,
+      "map_at_10": 0.5394238095238095,
+      "mrr": 0.5546904761904762,
+      "recall_at_10": 0.774,
+      "latency_ms": 23.993955999958416,
+      "num_queries": 100,
+      "num_docs": 5183,
+      "elapsed_seconds": 124.76332490000095
+    },
+    {
+      "dataset_name": "SciFact",
+      "config_name": "chelation+tempscale_0.5",
+      "ndcg_at_10": 0.6085961871860139,
+      "map_at_10": 0.538868253968254,
+      "mrr": 0.5541349206349206,
+      "recall_at_10": 0.774,
+      "latency_ms": 24.75577000004705,
+      "num_queries": 100,
+      "num_docs": 5183,
+      "elapsed_seconds": 123.9452237000005
+    },
+    {
+      "dataset_name": "SciFact",
+      "config_name": "chelation+tempscale_2.0",
+      "ndcg_at_10": 0.6091479591004544,
+      "map_at_10": 0.5394238095238095,
+      "mrr": 0.5546904761904762,
+      "recall_at_10": 0.774,
+      "latency_ms": 24.11867799995889,
+      "num_queries": 100,
+      "num_docs": 5183,
+      "elapsed_seconds": 123.72836960000132
+    },
+    {
+      "dataset_name": "SciFact",
+      "config_name": "procrustes",
+      "ndcg_at_10": 0.5937095746295786,
+      "map_at_10": 0.5278968253968255,
+      "mrr": 0.5437301587301587,
+      "recall_at_10": 0.752,
+      "latency_ms": 25.98505499998282,
+      "num_queries": 100,
+      "num_docs": 5183,
+      "elapsed_seconds": 141.64712820000022
+    },
+    {
+      "dataset_name": "SciFact",
+      "config_name": "low_rank_16",
+      "ndcg_at_10": 0.6085961871860139,
+      "map_at_10": 0.538868253968254,
+      "mrr": 0.5541349206349206,
+      "recall_at_10": 0.774,
+      "latency_ms": 23.7228540000433,
+      "num_queries": 100,
+      "num_docs": 5183,
+      "elapsed_seconds": 123.09194010000101
+    },
+    {
+      "dataset_name": "SciFact",
+      "config_name": "online_updates",
+      "ndcg_at_10": 0.6126507588052285,
+      "map_at_10": 0.5440904761904762,
+      "mrr": 0.5596904761904762,
+      "recall_at_10": 0.774,
+      "latency_ms": 30.205797999933566,
+      "num_queries": 100,
+      "num_docs": 5183,
+      "elapsed_seconds": 127.93793080000069
+    },
+    {
+      "dataset_name": "SciFact",
+      "config_name": "random_mask_50pct",
+      "ndcg_at_10": 0.7229631616648291,
+      "map_at_10": 0.6781825396825397,
+      "mrr": 0.6874126984126984,
+      "recall_at_10": 0.831,
+      "latency_ms": 24.204807999904006,
+      "num_queries": 100,
+      "num_docs": 5183,
+      "elapsed_seconds": 128.1985134000006
+    }
+  ],
+  "aggregated_by_config": {
+    "baseline": {
+      "mean_ndcg_at_10": 0.7229631616648291,
+      "mean_map_at_10": 0.6781825396825397,
+      "mean_mrr": 0.6874126984126984,
+      "mean_recall_at_10": 0.831,
+      "mean_latency_ms": 23.655541999996785,
+      "num_datasets": 1
+    },
+    "chelation": {
+      "mean_ndcg_at_10": 0.6091479591004544,
+      "mean_map_at_10": 0.5394238095238095,
+      "mean_mrr": 0.5546904761904762,
+      "mean_recall_at_10": 0.774,
+      "mean_latency_ms": 23.993955999958416,
+      "num_datasets": 1
+    },
+    "chelation+tempscale_0.5": {
+      "mean_ndcg_at_10": 0.6085961871860139,
+      "mean_map_at_10": 0.538868253968254,
+      "mean_mrr": 0.5541349206349206,
+      "mean_recall_at_10": 0.774,
+      "mean_latency_ms": 24.75577000004705,
+      "num_datasets": 1
+    },
+    "chelation+tempscale_2.0": {
+      "mean_ndcg_at_10": 0.6091479591004544,
+      "mean_map_at_10": 0.5394238095238095,
+      "mean_mrr": 0.5546904761904762,
+      "mean_recall_at_10": 0.774,
+      "mean_latency_ms": 24.11867799995889,
+      "num_datasets": 1
+    },
+    "procrustes": {
+      "mean_ndcg_at_10": 0.5937095746295786,
+      "mean_map_at_10": 0.5278968253968255,
+      "mean_mrr": 0.5437301587301587,
+      "mean_recall_at_10": 0.752,
+      "mean_latency_ms": 25.98505499998282,
+      "num_datasets": 1
+    },
+    "low_rank_16": {
+      "mean_ndcg_at_10": 0.6085961871860139,
+      "mean_map_at_10": 0.538868253968254,
+      "mean_mrr": 0.5541349206349206,
+      "mean_recall_at_10": 0.774,
+      "mean_latency_ms": 23.7228540000433,
+      "num_datasets": 1
+    },
+    "online_updates": {
+      "mean_ndcg_at_10": 0.6126507588052285,
+      "mean_map_at_10": 0.5440904761904762,
+      "mean_mrr": 0.5596904761904762,
+      "mean_recall_at_10": 0.774,
+      "mean_latency_ms": 30.205797999933566,
+      "num_datasets": 1
+    },
+    "random_mask_50pct": {
+      "mean_ndcg_at_10": 0.7229631616648291,
+      "mean_map_at_10": 0.6781825396825397,
+      "mean_mrr": 0.6874126984126984,
+      "mean_recall_at_10": 0.831,
+      "mean_latency_ms": 24.204807999904006,
+      "num_datasets": 1
+    }
+  },
+  "aggregated_by_dataset": {
+    "SciFact": {
+      "mean_ndcg_at_10": 0.6359718686671751,
+      "num_configs": 8
+    }
+  },
+  "heatmap": {
+    "configs": [
+      "baseline",
+      "chelation",
+      "chelation+tempscale_0.5",
+      "chelation+tempscale_2.0",
+      "low_rank_16",
+      "online_updates",
+      "procrustes",
+      "random_mask_50pct"
+    ],
+    "datasets": [
+      "SciFact"
+    ],
+    "ndcg_matrix": [
+      [
+        0.7229631616648291
+      ],
+      [
+        0.6091479591004544
+      ],
+      [
+        0.6085961871860139
+      ],
+      [
+        0.6091479591004544
+      ],
+      [
+        0.6085961871860139
+      ],
+      [
+        0.6126507588052285
+      ],
+      [
+        0.5937095746295786
+      ],
+      [
+        0.7229631616648291
+      ]
+    ]
+  },
+  "summary": {
+    "num_datasets": 1,
+    "num_configs": 8,
+    "total_evaluations": 8
+  }
+}
