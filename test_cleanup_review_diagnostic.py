@@ -293,6 +293,29 @@ class CleanupReviewDiagnosticTests(unittest.TestCase):
             self.assertIn("## Cleanup Review Blocked", summary_text)
             self.assertIn("Cleanup plan missing", summary_text)
 
+    def test_main_github_summary_append_ends_with_newline(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            plan_path = Path(tmpdir) / "missing_cleanup_plan.json"
+            summary_path = Path(tmpdir) / "summary.md"
+            argv = [
+                "cleanup_review_diagnostic.py",
+                "--plan",
+                plan_path.as_posix(),
+                "--mode",
+                "blocked",
+                "--github-summary",
+            ]
+
+            with (
+                patch.object(sys, "argv", argv),
+                patch.dict(os.environ, {"GITHUB_STEP_SUMMARY": summary_path.as_posix()}),
+                patch("sys.stdout", new_callable=StringIO),
+            ):
+                exit_code = main()
+
+            self.assertEqual(exit_code, 0)
+            self.assertTrue(summary_path.read_text(encoding="utf-8").endswith("\n"))
+
 
 if __name__ == "__main__":
     unittest.main()
