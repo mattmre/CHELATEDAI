@@ -790,6 +790,7 @@ def _extract_campaign_record(path: Path, root: Path) -> Dict[str, Any]:
         "overlay_ready": overlay.get("ready_for_broader_validation"),
         "overlay_next_action": overlay.get("next_action"),
         "artifact_card_id": artifact_card.get("artifact_card_id") or artifact_card.get("id"),
+        "data_source": payload.get("data_source", "unknown"),
         "modified_at": stat.st_mtime,
     }
 
@@ -844,6 +845,7 @@ def _extract_validation_record(path: Path, root: Path) -> Dict[str, Any]:
         "command_count": int(payload.get("command_count", len(results)) or 0),
         "failed_commands": [str(item) for item in payload.get("failed_commands", [])],
         "output_dir": payload.get("output_dir"),
+        "data_source": payload.get("data_source", "unknown"),
         "modified_at": stat.st_mtime,
     }
 
@@ -1199,12 +1201,16 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         sweep_file = "large_sweep_results.json"
         try:
             if not os.path.exists(sweep_file):
-                self.send_json_response({"results": []})
+                self.send_json_response({
+                    "data_status": "not_generated",
+                    "reason": "large_sweep_results.json not found — run run_large_sweep.py to populate",
+                    "results": [],
+                })
                 return
             
             with open(sweep_file, 'r') as f:
                 results = json.load(f)
-            self.send_json_response({"results": results})
+            self.send_json_response({"data_status": "ok", "results": results})
         except Exception as e:
             self.send_error_response(500, f"Error reading sweep results: {str(e)}")
 
@@ -1213,10 +1219,18 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         test_file = ".report.json"
         try:
             if not os.path.exists(test_file):
-                self.send_json_response({"summary": None, "tests": []})
+                self.send_json_response({
+                    "data_status": "not_generated",
+                    "reason": ".report.json not found — generate with: "
+                              "python -m unittest discover -v 2>&1 | python generate_report_json.py",
+                    "summary": None,
+                    "tests": [],
+                })
                 return
             with open(test_file, 'r') as f:
                 report = json.load(f)
+            if isinstance(report, dict) and "data_status" not in report:
+                report["data_status"] = "ok"
             self.send_json_response(report)
         except Exception as e:
             self.send_error_response(500, f"Error reading test results: {str(e)}")
@@ -1231,6 +1245,8 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         try:
             if not os.path.exists(beir_file):
                 self.send_json_response({
+                    "data_status": "not_generated",
+                    "reason": "benchmark_beir_results.json not found — run benchmark_beir.py to populate",
                     "results": [],
                     "aggregated_by_config": {},
                     "aggregated_by_dataset": {},
@@ -1240,6 +1256,8 @@ class DashboardHandler(SimpleHTTPRequestHandler):
                 return
             with open(beir_file, 'r') as f:
                 data = json.load(f)
+            if isinstance(data, dict) and "data_status" not in data:
+                data["data_status"] = "ok"
             self.send_json_response(data)
         except Exception as e:
             self.send_error_response(500, f"Error reading BEIR results: {str(e)}")

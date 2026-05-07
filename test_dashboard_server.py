@@ -293,10 +293,8 @@ class TestCampaignHistory(unittest.TestCase):
         self.assertEqual(report["run_label"], "smoke")
         self.assertEqual(report["decision"], "hold")
         self.assertEqual(report["artifact_card_id"], "overlay-card-smoke")
+        self.assertEqual(report["data_source"], "unknown")
 
-
-class TestValidationHistory(unittest.TestCase):
-    """Test validation-history discovery helpers."""
 
     def test_load_validation_history_empty_root(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -333,6 +331,7 @@ class TestValidationHistory(unittest.TestCase):
         report = result["reports"][0]
         self.assertEqual(report["record_type"], "overlay_model_scope_validation_bundle")
         self.assertEqual(report["failed_commands"], ["model_scope_overlay_smoke"])
+        self.assertEqual(report["data_source"], "unknown")
 
 
 class TestPreflightHistory(unittest.TestCase):
@@ -719,6 +718,77 @@ class TestDashboardHandler(unittest.TestCase):
         
         self.assertIn("error", response_data)
         self.assertEqual(response_data["error"], "Not found")
+
+    def test_handle_api_sweep_results_not_generated(self):
+        """Sweep endpoint returns data_status=not_generated when file absent."""
+        handler = self._make_handler()
+        handler.handle_api_sweep_results({})
+        output = handler.wfile.getvalue()
+        data = json.loads(output.decode('utf-8'))
+        self.assertEqual(data["data_status"], "not_generated")
+        self.assertIn("reason", data)
+        self.assertEqual(data["results"], [])
+
+    def test_handle_api_sweep_results_ok(self):
+        """Sweep endpoint returns data_status=ok when sweep file is present."""
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".json", delete=False, dir=os.getcwd()
+        ) as f:
+            json.dump({"results": [{"config": "a", "score": 0.8}]}, f)
+            tmp_name = f.name
+        orig_sweep = dashboard_server.DashboardHandler.handle_api_sweep_results
+        sweep_file = "large_sweep_results.json"
+        orig_exists = os.path.exists
+        # Rename the temp file to the expected sweep file name if it doesn't exist
+        backup = None
+        if orig_exists(sweep_file):
+            backup = sweep_file + ".test_bak"
+            os.rename(sweep_file, backup)
+        try:
+            os.rename(tmp_name, sweep_file)
+            handler = self._make_handler()
+            handler.handle_api_sweep_results({})
+            output = handler.wfile.getvalue()
+            data = json.loads(output.decode("utf-8"))
+            self.assertEqual(data.get("data_status"), "ok")
+            self.assertEqual(len(data["results"]), 1)
+        finally:
+            if os.path.exists(sweep_file) and sweep_file != tmp_name:
+                os.remove(sweep_file)
+            if backup and os.path.exists(backup):
+                os.rename(backup, sweep_file)
+
+    def test_handle_api_test_results_not_generated(self):
+        """Test results endpoint returns data_status=not_generated when .report.json absent."""
+        handler = self._make_handler()
+        old = dashboard_server.__dict__.get("_TEST_REPORT_FILE")
+        # Patch the report file path by ensuring it doesn't exist
+        real_path = os.path.join(os.getcwd(), ".report.json")
+        existed = os.path.exists(real_path)
+        if existed:
+            self.skipTest(".report.json exists in cwd; cannot test not_generated path")
+        handler.handle_api_test_results()
+        output = handler.wfile.getvalue()
+        data = json.loads(output.decode('utf-8'))
+        self.assertEqual(data["data_status"], "not_generated")
+        self.assertIn("reason", data)
+        self.assertIsNone(data["summary"])
+        self.assertEqual(data["tests"], [])
+
+    def test_handle_api_beir_results_not_generated(self):
+        """BEIR endpoint returns data_status=not_generated when file absent."""
+        handler = self._make_handler()
+        real_path = os.path.join(os.getcwd(), "benchmark_beir_results.json")
+        existed = os.path.exists(real_path)
+        if existed:
+            self.skipTest("benchmark_beir_results.json exists; cannot test not_generated path")
+        handler.handle_api_beir_results()
+        output = handler.wfile.getvalue()
+        data = json.loads(output.decode('utf-8'))
+        self.assertEqual(data["data_status"], "not_generated")
+        self.assertIn("reason", data)
+        self.assertEqual(data["results"], [])
+        self.assertEqual(data["summary"]["num_datasets"], 0)
 
 
 class TestIntegration(unittest.TestCase):
