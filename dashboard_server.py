@@ -33,7 +33,7 @@ DASHBOARD_CORS_ORIGIN = os.getenv("CHELATED_DASHBOARD_CORS_ORIGIN", "").strip()
 CAMPAIGN_HISTORY_ROOT = "experiment_runs"
 VALIDATION_HISTORY_ROOT = "experiment_runs"
 PREFLIGHT_HISTORY_ROOT = "experiment_runs"
-EVIDENCE_INDEX_PATH = "experiment_runs/evidence-index/latest/evidence_index.json"
+EVIDENCE_INDEX_PATH = "evidence_index.json"
 EVIDENCE_CHAIN_HISTORY_ROOT = "experiment_runs"
 EVIDENCE_CLEANUP_ROOT = "experiment_runs"
 

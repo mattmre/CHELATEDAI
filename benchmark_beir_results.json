@@ -1,4 +1,6 @@
 {
+  "record_type": "beir_benchmark_results",
+  "run_at": "2026-05-07T17:31:52Z",
   "results": [
     {
       "dataset_name": "SciFact",
@@ -213,6 +215,7 @@
   "summary": {
     "num_datasets": 1,
     "num_configs": 8,
-    "total_evaluations": 8
+    "total_evaluations": 8,
+    "passed": true
   }
 }

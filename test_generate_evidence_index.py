@@ -49,7 +49,7 @@ class GenerateEvidenceIndexTests(unittest.TestCase):
             )
             output = root / "evidence-index" / "latest" / "evidence_index.json"
 
-            index = generate_evidence_index(root=root, output=output)
+            index = generate_evidence_index(root=root, output=output, tracked_root=root)
 
             self.assertTrue(output.exists())
             counts = index["summary"]["artifact_counts"]
@@ -72,11 +72,33 @@ class GenerateEvidenceIndexTests(unittest.TestCase):
             root = Path(tmpdir) / "missing"
             output = Path(tmpdir) / "index.json"
 
-            index = generate_evidence_index(root=root, output=output)
+            index = generate_evidence_index(root=root, output=output, tracked_root=Path(tmpdir))
 
             self.assertTrue(output.exists())
             self.assertEqual(sum(index["summary"]["artifact_counts"].values()), 0)
             self.assertIsNone(index["summary"]["latest_review_allowed"])
+
+    def test_index_includes_beir_results_when_present(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir) / "missing"
+            output = Path(tmpdir) / "index.json"
+            beir_file = Path(tmpdir) / "benchmark_beir_results.json"
+            beir_file.write_text(
+                json.dumps({
+                    "record_type": "beir_benchmark_results",
+                    "run_at": "2026-05-07T00:00:00Z",
+                    "summary": {"passed": True, "num_datasets": 1, "num_configs": 2, "total_evaluations": 2},
+                }),
+                encoding="utf-8",
+            )
+
+            index = generate_evidence_index(root=root, output=output, tracked_root=Path(tmpdir))
+
+            self.assertTrue(output.exists())
+            counts = index["summary"]["artifact_counts"]
+            self.assertEqual(counts["beir_results"], 1)
+            beir_record = index["artifacts"]["beir_results"][0]
+            self.assertEqual(beir_record["record_type"], "beir_benchmark_results")
 
 
 if __name__ == "__main__":

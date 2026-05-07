@@ -1,0 +1,165 @@
+{
+  "record_type": "cross_artifact_evidence_index",
+  "root": "experiment_runs",
+  "limit_per_type": 25,
+  "summary": {
+    "artifact_counts": {
+      "validation_summaries": 2,
+      "promotion_linkage_audits": 1,
+      "attnres_repeat_seed_decisions": 1,
+      "default_promotion_preflights": 2,
+      "evidence_chain_summaries": 1,
+      "campaign_reports": 2,
+      "adaptive_overlay_artifact_cards": 2,
+      "beir_results": 1
+    },
+    "latest_review_allowed": false,
+    "latest_preflight_blockers": [
+      "repeat_seed_evidence_does_not_support_default_promotion"
+    ],
+    "latest_chain_passed": true
+  },
+  "artifacts": {
+    "validation_summaries": [
+      {
+        "path": "experiment_runs\\default-promotion-evidence-chain\\latest\\overlay-model-scope-validation\\validation_summary.json",
+        "record_type": "overlay_model_scope_validation_bundle",
+        "modified_at": 1778074106.584708,
+        "passed": true,
+        "review_allowed": null,
+        "promotion_ready": null,
+        "decision": null,
+        "blockers": []
+      },
+      {
+        "path": "experiment_runs\\overlay-model-scope-validation\\latest\\validation_summary.json",
+        "record_type": "overlay_model_scope_validation_bundle",
+        "modified_at": 1778073173.0241783,
+        "passed": true,
+        "review_allowed": null,
+        "promotion_ready": null,
+        "decision": null,
+        "blockers": []
+      }
+    ],
+    "promotion_linkage_audits": [
+      {
+        "path": "experiment_runs\\default-promotion-evidence-chain\\latest\\promotion-linkage-audit.json",
+        "record_type": "promotion_linkage_audit",
+        "modified_at": 1778074106.6550038,
+        "passed": true,
+        "review_allowed": null,
+        "promotion_ready": null,
+        "decision": null,
+        "blockers": []
+      }
+    ],
+    "attnres_repeat_seed_decisions": [
+      {
+        "path": "experiment_runs\\default-promotion-evidence-chain\\latest\\attnres-repeat-seed-decision.json",
+        "record_type": "attnres_repeat_seed_decision",
+        "modified_at": 1778074106.6570039,
+        "passed": null,
+        "review_allowed": null,
+        "promotion_ready": null,
+        "decision": "no_default_change",
+        "blockers": []
+      }
+    ],
+    "default_promotion_preflights": [
+      {
+        "path": "experiment_runs\\default-promotion-evidence-chain\\latest\\default-promotion-preflight.json",
+        "record_type": "default_promotion_preflight",
+        "modified_at": 1778074106.6701722,
+        "passed": null,
+        "review_allowed": false,
+        "promotion_ready": null,
+        "decision": null,
+        "blockers": [
+          "repeat_seed_evidence_does_not_support_default_promotion"
+        ]
+      },
+      {
+        "path": "experiment_runs\\default-promotion-preflight\\latest\\preflight.json",
+        "record_type": "default_promotion_preflight",
+        "modified_at": 1778073178.0899818,
+        "passed": null,
+        "review_allowed": false,
+        "promotion_ready": null,
+        "decision": null,
+        "blockers": [
+          "repeat_seed_evidence_does_not_support_default_promotion"
+        ]
+      }
+    ],
+    "evidence_chain_summaries": [
+      {
+        "path": "experiment_runs\\default-promotion-evidence-chain\\latest\\evidence_chain_summary.json",
+        "record_type": "default_promotion_evidence_chain",
+        "modified_at": 1778074106.6701722,
+        "passed": true,
+        "review_allowed": false,
+        "promotion_ready": null,
+        "decision": null,
+        "blockers": []
+      }
+    ],
+    "campaign_reports": [
+      {
+        "path": "experiment_runs\\default-promotion-evidence-chain\\latest\\overlay-model-scope-validation\\smoke\\campaign\\campaign_report.json",
+        "record_type": null,
+        "modified_at": 1778074105.3979342,
+        "passed": null,
+        "review_allowed": null,
+        "promotion_ready": false,
+        "decision": null,
+        "blockers": []
+      },
+      {
+        "path": "experiment_runs\\overlay-model-scope-validation\\latest\\smoke\\campaign\\campaign_report.json",
+        "record_type": null,
+        "modified_at": 1778073171.6250365,
+        "passed": null,
+        "review_allowed": null,
+        "promotion_ready": false,
+        "decision": null,
+        "blockers": []
+      }
+    ],
+    "adaptive_overlay_artifact_cards": [
+      {
+        "path": "experiment_runs\\default-promotion-evidence-chain\\latest\\overlay-model-scope-validation\\smoke\\campaign\\adaptive_overlay_artifact_card.json",
+        "record_type": "adaptive_overlay_artifact_card",
+        "modified_at": 1778074105.3959343,
+        "passed": null,
+        "review_allowed": null,
+        "promotion_ready": null,
+        "decision": null,
+        "blockers": []
+      },
+      {
+        "path": "experiment_runs\\overlay-model-scope-validation\\latest\\smoke\\campaign\\adaptive_overlay_artifact_card.json",
+        "record_type": "adaptive_overlay_artifact_card",
+        "modified_at": 1778073171.622037,
+        "passed": null,
+        "review_allowed": null,
+        "promotion_ready": null,
+        "decision": null,
+        "blockers": []
+      }
+    ],
+    "beir_results": [
+      {
+        "path": "benchmark_beir_results.json",
+        "record_type": "beir_benchmark_results",
+        "modified_at": 1778176231.5607975,
+        "passed": null,
+        "review_allowed": null,
+        "promotion_ready": null,
+        "decision": null,
+        "blockers": []
+      }
+    ]
+  },
+  "output": "evidence_index.json"
+}
