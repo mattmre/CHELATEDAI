@@ -35,6 +35,7 @@ python -m cleanup_review_diagnostic --plan experiment_runs/evidence-cleanup/late
 When `--github-summary` is passed, the diagnostic is appended only if `GITHUB_STEP_SUMMARY` is present in the environment. Local runs without that variable still print the diagnostic and exit normally.
 The summary writer opens `GITHUB_STEP_SUMMARY` in append mode, so existing step-summary sections are preserved before the cleanup diagnostic.
 Each append writes a complete diagnostic block followed by a trailing newline.
+The command expects `GITHUB_STEP_SUMMARY`, when set, to name a writable file whose parent directory already exists; GitHub Actions provides that path automatically.
 
 | Diagnostic line | Source field | Meaning |
 | --- | --- | --- |
