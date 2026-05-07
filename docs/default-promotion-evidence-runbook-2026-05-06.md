@@ -61,6 +61,7 @@ Summary writes are append-only: existing step-summary content remains in place a
 The appended diagnostic is written as a complete newline-terminated markdown block so later workflow steps can append their own sections cleanly.
 The `GITHUB_STEP_SUMMARY` path is supplied by GitHub Actions and should point to a file in an existing runner-managed directory.
 If that path is invalid or unwritable, the diagnostic command fails visibly; fix the runner path or permissions and rerun instead of treating a missing summary as success.
+The command prints the cleanup diagnostic to stdout before attempting the summary append, so job logs remain the primary fallback when summary writing fails.
 The diagnostic field mapping is documented in `docs/evidence-cleanup-plan-schema-2026-05-06.md`.
 
 ## Preflight Fields
