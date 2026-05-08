@@ -1,10 +1,15 @@
-"""Sparse feature extraction surfaces for Model-Scope captures."""
+"""Sparse feature extraction layer for Model-Scope activation events."""
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Any, Dict, Iterable, Mapping
 
 import torch
+
+from model_scope_runtime import ActivationEvent
+from qwen_scope_adapter import QwenScopeAdapter
 
 
 MODEL_SCOPE_FEATURE_SCORECARD_SCHEMA_VERSION = 1
@@ -158,3 +163,64 @@ class QwenScopeFeatureExtractor:
         if self.fallback is not None:
             return self.fallback.summarize(layer_index=layer_index, activation=activation)
         return None
+
+
+@dataclass
+class SparseFeatureEvent:
+    """Sparse feature representation derived from an ActivationEvent."""
+
+    source_activation: ActivationEvent
+    feature_source: str
+    features: dict[str, float]
+    feature_count: int
+    nonzero_count: int
+    extracted_at: str
+    schema_version: str = "1.0"
+
+
+class FeatureExtractor:
+    """Converts ActivationEvent objects into SparseFeatureEvent artifacts."""
+
+    def __init__(self, adapter: QwenScopeAdapter | None = None) -> None:
+        self._adapter = adapter
+
+    def extract(self, activation: ActivationEvent) -> SparseFeatureEvent:
+        """Extract features using SAE adapter when available; fall back to raw stats."""
+        if (
+            self._adapter is not None
+            and self._adapter.is_loaded()
+            and self._adapter.supports_model(activation.model_id)
+        ):
+            features = self._adapter.extract_features(activation)
+            return SparseFeatureEvent(
+                source_activation=activation,
+                feature_source="qwen_scope_sae",
+                features=features,
+                feature_count=self._adapter.feature_count(),
+                nonzero_count=len(features),
+                extracted_at=datetime.now(timezone.utc).isoformat(),
+            )
+        return self._raw_stats_fallback(activation)
+
+    def _raw_stats_fallback(self, activation: ActivationEvent) -> SparseFeatureEvent:
+        """Build SparseFeatureEvent from activation scalar stats."""
+        raw: dict[str, float] = {
+            "mean_activation": float(activation.mean_activation),
+            "norm_activation": float(activation.norm_activation),
+            "token_count": float(activation.token_count),
+        }
+        if activation.shape:
+            raw["shape_0"] = float(activation.shape[0])
+        features = {k: v for k, v in raw.items() if v != 0.0}
+        return SparseFeatureEvent(
+            source_activation=activation,
+            feature_source="raw_stats",
+            features=features,
+            feature_count=len(raw),
+            nonzero_count=len(features),
+            extracted_at=datetime.now(timezone.utc).isoformat(),
+        )
+
+    def extract_batch(self, activations: list[ActivationEvent]) -> list[SparseFeatureEvent]:
+        """Extract features from a list of ActivationEvents."""
+        return [self.extract(a) for a in activations]

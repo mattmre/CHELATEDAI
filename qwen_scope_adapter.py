@@ -1,12 +1,16 @@
-"""Load and apply official Qwen-Scope SAE checkpoints."""
+"""Qwen-Scope SAE adapter for sparse feature extraction from activation events."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, Mapping
+from typing import Any, Callable, Dict, Mapping
 
+import numpy as np
 import torch
+
+from model_scope_runtime import ActivationEvent
 
 
 @dataclass
@@ -95,3 +99,104 @@ class QwenScopeLayerSAE:
             "token_selector": "last_token",
             "active_features": features,
         }
+
+
+@dataclass
+class SAECheckpointMetadata:
+    """Metadata for a loaded Sparse Autoencoder checkpoint."""
+
+    model_family: str
+    layer_id: str
+    feature_count: int
+    checkpoint_path: str
+    loaded_at: str
+    schema_version: str = "1.0"
+
+
+class QwenScopeAdapter:
+    """Loads Qwen-Scope SAE checkpoints and extracts sparse feature activations."""
+
+    def __init__(self, model_family: str = "Qwen3.5") -> None:
+        self.model_family = model_family
+        self._weights: np.ndarray | None = None
+        self._metadata: SAECheckpointMetadata | None = None
+
+    def load_checkpoint(
+        self,
+        checkpoint_path: str | Path,
+        *,
+        checkpoint_loader: Callable | None = None,
+    ) -> SAECheckpointMetadata:
+        """Load SAE weights from path; optional loader callable for test injection."""
+        checkpoint_path = Path(checkpoint_path)
+        if checkpoint_loader is not None:
+            raw = checkpoint_loader(checkpoint_path)
+        else:
+            raw = np.load(str(checkpoint_path))
+
+        layer_id = checkpoint_path.stem
+        if isinstance(raw, dict):
+            layer_id = str(raw.get("layer_id", checkpoint_path.stem))
+            weights_candidate = raw.get("weights")
+            if weights_candidate is None:
+                for v in raw.values():
+                    if hasattr(v, "shape"):
+                        weights_candidate = v
+                        break
+            if weights_candidate is None:
+                raise ValueError("Checkpoint dict contains no array with .shape attribute.")
+            weights = np.asarray(weights_candidate, dtype=np.float64)
+        else:
+            weights = np.asarray(raw, dtype=np.float64)
+
+        self._weights = weights
+        self._metadata = SAECheckpointMetadata(
+            model_family=self.model_family,
+            layer_id=layer_id,
+            feature_count=int(weights.shape[0]),
+            checkpoint_path=str(checkpoint_path),
+            loaded_at=datetime.now(timezone.utc).isoformat(),
+        )
+        return self._metadata
+
+    def is_loaded(self) -> bool:
+        """Return True if a checkpoint has been loaded."""
+        return self._weights is not None
+
+    def extract_features(self, activation: ActivationEvent) -> dict[str, float]:
+        """Project activation stats through SAE weights; return sparse feature dict."""
+        if not self.is_loaded():
+            raise RuntimeError("SAE checkpoint not loaded; call load_checkpoint() first.")
+
+        weights = self._weights  # shape (feature_count, input_dim)
+        input_dim = int(weights.shape[1])
+        raw: list[float] = [
+            float(activation.mean_activation),
+            float(activation.norm_activation),
+            float(activation.token_count),
+        ]
+        if activation.shape:
+            raw.append(float(activation.shape[0]))
+
+        if len(raw) < input_dim:
+            raw = raw + [0.0] * (input_dim - len(raw))
+        else:
+            raw = raw[:input_dim]
+
+        input_vec = np.array(raw, dtype=np.float64)
+        output: np.ndarray = weights @ input_vec
+        return {
+            f"feature_{i}": float(val)
+            for i, val in enumerate(output)
+            if float(val) > 0.0
+        }
+
+    def feature_count(self) -> int:
+        """Return number of SAE features. Raises RuntimeError if not loaded."""
+        if not self.is_loaded():
+            raise RuntimeError("SAE checkpoint not loaded; call load_checkpoint() first.")
+        return int(self._weights.shape[0])
+
+    def supports_model(self, model_id: str) -> bool:
+        """Return True if model_family substring appears in model_id."""
+        return self.model_family in model_id
