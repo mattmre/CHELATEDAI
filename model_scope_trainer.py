@@ -6,9 +6,14 @@ from collections import defaultdict
 from dataclasses import asdict, dataclass
 import json
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Mapping, Tuple
+from datetime import datetime, timezone
+from typing import Any, Dict, Iterable, List, Mapping, Optional, Tuple
 
 from checkpoint_manager import CheckpointManager
+from expectation_comparator import ExpectationComparator
+from model_scope_artifacts import ArtifactStore
+from model_scope_features import SparseFeatureEvent
+from model_scope_memory import MemoryManager
 
 
 MODEL_SCOPE_TRAINER_SCHEMA_VERSION = 1
@@ -382,3 +387,288 @@ class ModelScopeShadowPolicyTrainer:
             "checkpoint_id": checkpoint_id,
             "reasons": [],
         }
+
+
+# ---------------------------------------------------------------------------
+# Slice-17: OverlayTrainer — iterative overlay trainer + evidence-gated promotion
+# ---------------------------------------------------------------------------
+
+
+def _utcnow_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+@dataclass
+class OverlayConfig:
+    """Configuration for one iterative overlay training campaign."""
+
+    overlay_id: str
+    policy_id: str
+    learning_rate: float = 0.001
+    max_epochs: int = 10
+    patience: int = 3
+    min_improvement: float = 0.01
+    promotion_threshold: float = 0.05
+    enabled: bool = True
+
+
+@dataclass
+class TrainingRecord:
+    """Result of a single training epoch."""
+
+    overlay_id: str
+    epoch: int
+    loss: float
+    improved: bool
+    checkpoint_path: Optional[str]
+    created_at: str
+
+
+@dataclass
+class PromotionDecision:
+    """Evidence-gated promotion decision for a trained overlay."""
+
+    overlay_id: str
+    promoted: bool
+    reason: str
+    baseline_score: float
+    candidate_score: float
+    delta: float
+    decided_at: str
+
+
+class OverlayTrainer:
+    """Iterative overlay trainer with evidence-gated promotion, early stopping, and rollback.
+
+    Per-feature scaling weights are initialised to 1.0 (identity) and updated with a
+    simple first-order rule each epoch:
+        weight[k] += lr * (target[k] - weight[k] * input[k])
+
+    Promotion compares two scores computed from (baseline_events, candidate_events) pairs:
+      * baseline_score — fraction of pairs where all comparator rules pass for the
+        *unscaled* input features vs the target features.
+      * candidate_score — same pairs, but the current overlay weights are applied to the
+        input features before comparison.
+    """
+
+    def __init__(
+        self,
+        config: OverlayConfig,
+        memory: MemoryManager,
+        comparator: ExpectationComparator,
+        artifact_store: ArtifactStore,
+        checkpoint_dir: Optional[str] = None,
+    ) -> None:
+        self.config = config
+        self.memory = memory
+        self.comparator = comparator
+        self.artifact_store = artifact_store
+        self._checkpoint_dir: Any = (
+            Path(checkpoint_dir) if checkpoint_dir is not None else artifact_store._base_dir / "checkpoints"
+        )
+        self._weights: Dict[str, float] = {}
+        self._epoch_counter: int = 0
+        self._best_loss: Optional[float] = None
+
+    def _get_weight(self, key: str) -> float:
+        return self._weights.get(key, 1.0)
+
+    def _to_comparison_dict(self, features: Dict[str, float]) -> Dict[str, Any]:
+        """Build a comparator-compatible dict from a raw feature map."""
+        vals = list(features.values())
+        mean_act = sum(vals) / len(vals) if vals else 0.0
+        return {"features": features, "mean_activation": mean_act}
+
+    def train_epoch(
+        self,
+        features: List[SparseFeatureEvent],
+        target_features: List[SparseFeatureEvent],
+    ) -> TrainingRecord:
+        """Compute one gradient step and return a TrainingRecord.
+
+        Loss is MSE over all feature keys across all event pairs.
+        Weight update: weight[k] += lr * (target[k] - weight[k] * input[k]).
+        The record is stored in episodic memory with tags=["training"].
+        """
+        total_sq_error = 0.0
+        total_count = 0
+
+        for inp, tgt in zip(features, target_features):
+            all_keys = set(inp.features) | set(tgt.features)
+            for k in all_keys:
+                inp_val = inp.features.get(k, 0.0)
+                tgt_val = tgt.features.get(k, 0.0)
+                w = self._get_weight(k)
+                total_sq_error += (tgt_val - w * inp_val) ** 2
+                self._weights[k] = w + self.config.learning_rate * (tgt_val - w * inp_val)
+                total_count += 1
+
+        loss = total_sq_error / max(total_count, 1)
+        epoch = self._epoch_counter
+        self._epoch_counter += 1
+
+        improved = self._best_loss is None or (self._best_loss - loss) >= self.config.min_improvement
+        if improved:
+            self._best_loss = loss
+
+        self.memory.episodic.store(
+            key=f"epoch_{epoch}",
+            value={
+                "overlay_id": self.config.overlay_id,
+                "epoch": epoch,
+                "loss": loss,
+                "improved": improved,
+            },
+            tags=["training"],
+        )
+
+        return TrainingRecord(
+            overlay_id=self.config.overlay_id,
+            epoch=epoch,
+            loss=loss,
+            improved=improved,
+            checkpoint_path=None,
+            created_at=_utcnow_iso(),
+        )
+
+    def run_campaign(
+        self,
+        episodes: List[tuple],
+    ) -> List[TrainingRecord]:
+        """Run epochs 0..max_epochs-1 with early stopping and per-improvement checkpointing.
+
+        Each epoch trains on all events from all episodes (concatenated).
+        Early stopping halts after `patience` consecutive non-improving epochs.
+        A checkpoint is saved to artifact_store after each improving epoch.
+        Returns all TrainingRecords produced during the campaign.
+        """
+        all_inputs: List[SparseFeatureEvent] = []
+        all_targets: List[SparseFeatureEvent] = []
+        for inp_list, tgt_list in episodes:
+            all_inputs.extend(inp_list)
+            all_targets.extend(tgt_list)
+
+        records: List[TrainingRecord] = []
+        no_improve_count = 0
+
+        for _ in range(self.config.max_epochs):
+            record = self.train_epoch(all_inputs, all_targets)
+            if record.improved:
+                no_improve_count = 0
+                record.checkpoint_path = self._save_checkpoint(record.epoch)
+            else:
+                no_improve_count += 1
+
+            records.append(record)
+
+            if no_improve_count >= self.config.patience:
+                break
+
+        return records
+
+    def _save_checkpoint(self, epoch: int) -> str:
+        """Write current weights to a checkpoint JSON file; return its path string."""
+        self._checkpoint_dir.mkdir(parents=True, exist_ok=True)
+        path = self._checkpoint_dir / f"overlay_{self.config.overlay_id}_epoch_{epoch}.json"
+        path.write_text(
+            json.dumps({"overlay_id": self.config.overlay_id, "epoch": epoch, "weights": dict(self._weights)}, indent=2),
+            encoding="utf-8",
+        )
+        return str(path)
+
+    def evaluate_promotion(
+        self,
+        baseline_events: List[SparseFeatureEvent],
+        candidate_events: List[SparseFeatureEvent],
+    ) -> PromotionDecision:
+        """Evaluate whether the trained overlay warrants promotion.
+
+        baseline_score: fraction of pairs where all comparator rules pass comparing
+        raw input features (baseline_events[i]) against target features (candidate_events[i]).
+
+        candidate_score: same pairs but overlay weights are applied to the input features,
+        measuring what the trained overlay actually produces vs the target.
+
+        promoted = True if (candidate_score - baseline_score) >= promotion_threshold.
+        The decision is persisted to PersistentMemory.
+        """
+        pairs = list(zip(baseline_events, candidate_events))
+
+        if pairs:
+            baseline_score = sum(
+                float(
+                    self.comparator.all_passed(
+                        self._to_comparison_dict(b.features),
+                        self._to_comparison_dict(c.features),
+                    )
+                )
+                for b, c in pairs
+            ) / len(pairs)
+        else:
+            baseline_score = 0.0
+
+        if pairs:
+            candidate_score = sum(
+                float(
+                    self.comparator.all_passed(
+                        self._to_comparison_dict({k: self._get_weight(k) * v for k, v in b.features.items()}),
+                        self._to_comparison_dict(c.features),
+                    )
+                )
+                for b, c in pairs
+            ) / len(pairs)
+        else:
+            candidate_score = 0.0
+
+        delta = candidate_score - baseline_score
+        promoted = delta >= self.config.promotion_threshold
+        reason = (
+            f"delta={delta:.6f} >= threshold={self.config.promotion_threshold}"
+            if promoted
+            else f"delta={delta:.6f} < threshold={self.config.promotion_threshold}"
+        )
+
+        decision = PromotionDecision(
+            overlay_id=self.config.overlay_id,
+            promoted=promoted,
+            reason=reason,
+            baseline_score=baseline_score,
+            candidate_score=candidate_score,
+            delta=delta,
+            decided_at=_utcnow_iso(),
+        )
+
+        self.memory.persistent.save(
+            key=f"promotion_{self.config.overlay_id}",
+            value={
+                "overlay_id": decision.overlay_id,
+                "promoted": decision.promoted,
+                "reason": decision.reason,
+                "baseline_score": decision.baseline_score,
+                "candidate_score": decision.candidate_score,
+                "delta": decision.delta,
+                "decided_at": decision.decided_at,
+            },
+            tags=["promotion_decision"],
+        )
+
+        return decision
+
+    def rollback(self) -> None:
+        """Reset all feature weights to 1.0 and log a rollback event in working memory."""
+        self._weights = {}
+        self._best_loss = None
+        self.memory.working.store(
+            key="rollback",
+            value={"overlay_id": self.config.overlay_id, "event": "rollback", "rolled_back_at": _utcnow_iso()},
+            tags=["rollback"],
+        )
+
+    def save_weights(self, path: str) -> None:
+        """Serialize current feature weights to a JSON file."""
+        Path(path).write_text(json.dumps({"weights": dict(self._weights)}, indent=2), encoding="utf-8")
+
+    def load_weights(self, path: str) -> None:
+        """Load feature weights from a JSON file produced by save_weights."""
+        data = json.loads(Path(path).read_text(encoding="utf-8"))
+        self._weights = {str(k): float(v) for k, v in data.get("weights", {}).items()}
