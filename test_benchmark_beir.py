@@ -72,31 +72,31 @@ class TestBEIRDatasetRegistry(unittest.TestCase):
         self.assertEqual(names, ["SciFact"])
 
     def test_get_tier_small(self):
-        """Small tier contains SciFact + NFCorpus."""
+        """Small tier contains SciFact + NFCorpus + ArguAna."""
         datasets = BEIRDatasetRegistry.get_tier_datasets("small")
         names = sorted([d.name for d in datasets])
         self.assertIn("SciFact", names)
         self.assertIn("NFCorpus", names)
-        self.assertEqual(len(names), 2)
+        self.assertEqual(len(names), 3)
 
     def test_get_tier_medium(self):
-        """Medium tier contains 3 datasets."""
+        """Medium tier contains 4 datasets."""
         datasets = BEIRDatasetRegistry.get_tier_datasets("medium")
         names = [d.name for d in datasets]
-        self.assertEqual(len(names), 3)
+        self.assertEqual(len(names), 4)
         self.assertIn("FiQA2018", names)
 
     def test_get_tier_research(self):
-        """Research tier contains 4 datasets."""
+        """Research tier contains 6 datasets."""
         datasets = BEIRDatasetRegistry.get_tier_datasets("research")
         names = [d.name for d in datasets]
-        self.assertEqual(len(names), 4)
+        self.assertEqual(len(names), 6)
         self.assertIn("TRECCOVID", names)
 
     def test_get_tier_full(self):
-        """Full tier contains all 6 datasets."""
+        """Full tier contains all 8 datasets."""
         datasets = BEIRDatasetRegistry.get_tier_datasets("full")
-        self.assertEqual(len(datasets), 6)
+        self.assertEqual(len(datasets), 8)
         names = [d.name for d in datasets]
         self.assertIn("NQ", names)
         self.assertIn("HotpotQA", names)
@@ -107,9 +107,9 @@ class TestBEIRDatasetRegistry(unittest.TestCase):
             BEIRDatasetRegistry.get_tier_datasets("nonexistent")
 
     def test_list_all(self):
-        """List all returns all 6 datasets."""
+        """List all returns all 8 datasets."""
         all_ds = BEIRDatasetRegistry.list_all()
-        self.assertEqual(len(all_ds), 6)
+        self.assertEqual(len(all_ds), 8)
 
     def test_list_tiers(self):
         """List tiers returns the correct order."""
@@ -636,6 +636,72 @@ class TestTierOrder(unittest.TestCase):
                 lower_ds.issubset(higher_ds),
                 f"Tier '{lower_tier}' datasets should be subset of '{higher_tier}'"
             )
+
+
+# =============================================================================
+# TestBEIRRegistryExpansion
+# =============================================================================
+
+class TestBEIRRegistryExpansion(unittest.TestCase):
+    """Tests for the ArguAna and ClimateFEVER registry additions."""
+
+    def setUp(self):
+        BEIRDatasetRegistry._reset_registry()
+
+    def tearDown(self):
+        BEIRDatasetRegistry._reset_registry()
+
+    def test_arguana_in_registry(self):
+        """ArguAna exists in registry with correct tier and corpus_size."""
+        ds = BEIRDatasetRegistry.get_dataset("ArguAna")
+        self.assertEqual(ds.tier, "small")
+        self.assertEqual(ds.corpus_size, 8674)
+
+    def test_arguana_tier_inclusion(self):
+        """ArguAna is included in small, medium, research, and full tiers."""
+        for tier in ("small", "medium", "research", "full"):
+            names = [d.name for d in BEIRDatasetRegistry.get_tier_datasets(tier)]
+            self.assertIn("ArguAna", names, f"ArguAna missing from tier '{tier}'")
+
+    def test_arguana_not_in_quick(self):
+        """ArguAna is NOT included in the quick tier."""
+        names = [d.name for d in BEIRDatasetRegistry.get_tier_datasets("quick")]
+        self.assertNotIn("ArguAna", names)
+
+    def test_climate_fever_in_registry(self):
+        """ClimateFEVER exists in registry with correct tier and sample size."""
+        ds = BEIRDatasetRegistry.get_dataset("ClimateFEVER")
+        self.assertEqual(ds.tier, "research")
+        self.assertEqual(ds.default_sample_size, 10000)
+
+    def test_climate_fever_tier_inclusion(self):
+        """ClimateFEVER is included in research and full tiers."""
+        for tier in ("research", "full"):
+            names = [d.name for d in BEIRDatasetRegistry.get_tier_datasets(tier)]
+            self.assertIn("ClimateFEVER", names, f"ClimateFEVER missing from tier '{tier}'")
+
+    def test_climate_fever_not_in_medium(self):
+        """ClimateFEVER is NOT included in the medium tier."""
+        names = [d.name for d in BEIRDatasetRegistry.get_tier_datasets("medium")]
+        self.assertNotIn("ClimateFEVER", names)
+
+    def test_registry_total_count(self):
+        """Registry now contains 8 datasets total."""
+        self.assertEqual(len(BEIRDatasetRegistry.list_all()), 8)
+
+    def test_arguana_domain(self):
+        """ArguAna domain is 'argumentative'."""
+        ds = BEIRDatasetRegistry.get_dataset("ArguAna")
+        self.assertEqual(ds.domain, "argumentative")
+
+    def test_climate_fever_domain(self):
+        """ClimateFEVER domain is 'scientific'."""
+        ds = BEIRDatasetRegistry.get_dataset("ClimateFEVER")
+        self.assertEqual(ds.domain, "scientific")
+
+    def test_tier_order_unchanged(self):
+        """TIER_ORDER is unchanged after registry expansion."""
+        self.assertEqual(TIER_ORDER, ["quick", "small", "medium", "research", "full"])
 
 
 if __name__ == "__main__":
