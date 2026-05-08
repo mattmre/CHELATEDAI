@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
 from dataclasses import asdict, dataclass
 import hashlib
 import json
@@ -300,3 +301,161 @@ class ModelScopeExpectationComparator:
             "comparisons": comparisons,
             "config": asdict(self.config),
         }
+
+
+# ---------------------------------------------------------------------------
+# Slice-16: ComparatorRule API
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class ComparisonResult:
+    """Result of a single comparator rule evaluation."""
+
+    rule_name: str
+    passed: bool
+    delta: float
+    threshold: float
+    detail: str
+
+
+class ComparatorRule(ABC):
+    """Abstract base for expectation comparator rules."""
+
+    @property
+    @abstractmethod
+    def name(self) -> str: ...
+
+    @abstractmethod
+    def evaluate(self, baseline: dict, candidate: dict) -> ComparisonResult: ...
+
+
+class MeanActivationRule(ComparatorRule):
+    """Compare mean activation values between baseline and candidate."""
+
+    def __init__(self, threshold: float = 0.15) -> None:
+        self.threshold = float(threshold)
+
+    @property
+    def name(self) -> str:
+        return "mean_activation"
+
+    def evaluate(self, baseline: dict, candidate: dict) -> ComparisonResult:
+        baseline_mean = float(baseline.get("mean_activation", 0.0))
+        candidate_mean = float(candidate.get("mean_activation", 0.0))
+        delta = abs(candidate_mean - baseline_mean) / (abs(baseline_mean) + 1e-9)
+        passed = delta <= self.threshold
+        detail = (
+            f"baseline={baseline_mean:.6f}, candidate={candidate_mean:.6f}, delta={delta:.6f}"
+        )
+        return ComparisonResult(
+            rule_name=self.name,
+            passed=passed,
+            delta=delta,
+            threshold=self.threshold,
+            detail=detail,
+        )
+
+
+class FeatureOverlapRule(ComparatorRule):
+    """Compare feature overlap (Jaccard on nonzero keys) between baseline and candidate."""
+
+    def __init__(self, threshold: float = 0.5) -> None:
+        self.threshold = float(threshold)
+
+    @property
+    def name(self) -> str:
+        return "feature_overlap"
+
+    def evaluate(self, baseline: dict, candidate: dict) -> ComparisonResult:
+        baseline_features: dict = baseline.get("features", {})
+        candidate_features: dict = candidate.get("features", {})
+        baseline_keys = {k for k, v in baseline_features.items() if float(v) != 0.0}
+        candidate_keys = {k for k, v in candidate_features.items() if float(v) != 0.0}
+        union = baseline_keys | candidate_keys
+        intersection = baseline_keys & candidate_keys
+        overlap = len(intersection) / (len(union) + 1e-9)
+        passed = overlap >= self.threshold
+        detail = (
+            f"|intersection|={len(intersection)}, |union|={len(union)}, overlap={overlap:.6f}"
+        )
+        return ComparisonResult(
+            rule_name=self.name,
+            passed=passed,
+            delta=overlap,
+            threshold=self.threshold,
+            detail=detail,
+        )
+
+
+class InterventionCountRule(ComparatorRule):
+    """Ensure candidate intervention count does not exceed a maximum."""
+
+    def __init__(self, max_interventions: int = 5) -> None:
+        self.max_interventions = int(max_interventions)
+
+    @property
+    def name(self) -> str:
+        return "intervention_count"
+
+    def evaluate(self, baseline: dict, candidate: dict) -> ComparisonResult:
+        count = float(candidate.get("intervention_count", 0))
+        passed = count <= self.max_interventions
+        detail = f"intervention_count={count}, max={self.max_interventions}"
+        return ComparisonResult(
+            rule_name=self.name,
+            passed=passed,
+            delta=count,
+            threshold=float(self.max_interventions),
+            detail=detail,
+        )
+
+
+class ExpectationComparator:
+    """Run a list of ComparatorRules and aggregate results."""
+
+    def __init__(self) -> None:
+        self.rules: List[ComparatorRule] = []
+
+    def add_rule(self, rule: ComparatorRule) -> None:
+        self.rules.append(rule)
+
+    def compare(self, baseline: dict, candidate: dict) -> List[ComparisonResult]:
+        return [rule.evaluate(baseline, candidate) for rule in self.rules]
+
+    def all_passed(self, baseline: dict, candidate: dict) -> bool:
+        return all(r.passed for r in self.compare(baseline, candidate))
+
+    def summary(self, baseline: dict, candidate: dict) -> dict:
+        results = self.compare(baseline, candidate)
+        return {
+            "passed": all(r.passed for r in results),
+            "results": [asdict(r) for r in results],
+            "rule_count": len(results),
+        }
+
+
+class ReplaySetGenerator:
+    """Generate comparison sets from an EpisodicMemory replay bundle."""
+
+    def __init__(self, episodic_memory: Any) -> None:
+        self.episodic_memory = episodic_memory
+
+    def generate(
+        self,
+        episode_id: str,
+        comparator: ExpectationComparator,
+        baseline_key: str,
+    ) -> List[dict]:
+        bundle = self.episodic_memory.replay_bundle(episode_id)
+        baseline_entry = next((e for e in bundle if e.key == baseline_key), None)
+        if baseline_entry is None:
+            return []
+        baseline = baseline_entry.value
+        results = []
+        for entry in bundle:
+            if entry.key == baseline_key:
+                continue
+            comparison = comparator.summary(baseline, entry.value)
+            results.append({"entry": entry, "comparison": comparison})
+        return results
