@@ -1018,6 +1018,11 @@ class AntigravityEngine:
                 logger=self.logger,
             )
         self._model_scope_runtime = runtime
+        from model_scope_engine_bridge import ModelScopeEngineBridge, ModelScopeBridgeConfig
+        _bridge_config = ModelScopeBridgeConfig(
+            artifact_dir=artifact_dir or str(ChelationConfig.MODEL_SCOPE_ARTIFACT_ROOT)
+        )
+        self._model_scope_bridge = ModelScopeEngineBridge(_bridge_config)
         self._model_scope_config = self._runtime_json_safe(
             runtime.describe_runtime() if hasattr(runtime, "describe_runtime") else {
                 "model_name": model_name or ChelationConfig.MODEL_SCOPE_DEBUG_MODEL_NAME,
@@ -1074,10 +1079,34 @@ class AntigravityEngine:
     def get_last_model_scope_artifact(self):
         """Return the last Model-Scope artifact snapshot, if available."""
 
+        import dataclasses as _dc
+
         artifact = getattr(self, "_last_model_scope_artifact", None)
-        if artifact is None:
-            return None
-        return self._runtime_json_safe(artifact)
+        if artifact is not None:
+            if _dc.is_dataclass(artifact) and not isinstance(artifact, type):
+                return _dc.asdict(artifact)
+            return self._runtime_json_safe(artifact)
+        bridge = getattr(self, "_model_scope_bridge", None)
+        if bridge is not None:
+            return bridge.get_summary_for_diagnostics()
+        return None
+
+    def observe_query_with_model_scope(self, query: str) -> dict:
+        """Run bridge observation for a query; returns result dict."""
+        import dataclasses
+
+        runtime = getattr(self, "_model_scope_runtime", None)
+        bridge = getattr(self, "_model_scope_bridge", None)
+        if runtime is None or bridge is None:
+            return {"error": "model_scope_not_enabled"}
+        result = bridge.observe(query, runtime)
+        self._last_model_scope_artifact = result
+        telemetry = dict(getattr(self, "_runtime_telemetry", {}))
+        telemetry["model_scope_observation_count"] = (
+            int(telemetry.get("model_scope_observation_count", 0)) + 1
+        )
+        self._runtime_telemetry = telemetry
+        return dataclasses.asdict(result)
 
     def get_runtime_telemetry(self):
         """Return lightweight AI-engineering runtime telemetry."""

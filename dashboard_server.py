@@ -38,6 +38,10 @@ EVIDENCE_CHAIN_HISTORY_ROOT = "experiment_runs"
 EVIDENCE_CLEANUP_ROOT = "experiment_runs"
 PHASE_C_RESULTS_PATH = "phase_c_results.json"
 PHASE_C_ANALYSIS_PATH = "phase_c_analysis.json"
+MODEL_SCOPE_ARTIFACT_ROOT = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)),
+    "experiment_runs", "model_scope"
+)
 
 
 def get_inline_dashboard_html():
@@ -1313,6 +1317,12 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             self.handle_api_phase_c_results()
         elif path == "/api/phase_c_analysis":
             self.handle_api_phase_c_analysis()
+        elif path == "/api/model_scope/events":
+            self.handle_api_model_scope_events(query_params)
+        elif path == "/api/model_scope/features":
+            self.handle_api_model_scope_features(query_params)
+        elif path == "/api/model_scope/interventions":
+            self.handle_api_model_scope_interventions(query_params)
         elif path == "/" or path == "/dashboard" or path == "/dashboard/":
             # Redirect to dashboard page
             self.serve_dashboard()
@@ -1536,7 +1546,75 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             self.send_json_response(load_phase_c_analysis(PHASE_C_ANALYSIS_PATH))
         except Exception as e:
             self.send_error_response(500, f"Error reading Phase C analysis: {str(e)}")
-            
+
+    def handle_api_model_scope_events(self, query_params):
+        """Handle /api/model_scope/events — lists recent activation event files."""
+        from model_scope_artifacts import ArtifactStore, load_model_scope_artifact, summarize_model_scope_artifact
+        try:
+            limit = int(query_params.get("limit", ["20"])[0])
+            store = ArtifactStore(base_dir=MODEL_SCOPE_ARTIFACT_ROOT)
+            paths = store.list_artifacts(pattern="feature_event_*.json")[-limit:]
+            items = []
+            for p in reversed(paths):
+                try:
+                    artifact = load_model_scope_artifact(p)
+                    items.append({"path": str(p), "summary": summarize_model_scope_artifact(artifact)})
+                except Exception as e:
+                    items.append({"path": str(p), "error": str(e)})
+            self.send_json_response({
+                "status": "ok" if items else "not_generated",
+                "count": len(items),
+                "reason": None if items else "no_artifacts_found",
+                "items": items,
+            })
+        except Exception as e:
+            self.send_error_response(500, f"Error reading model-scope events: {e}")
+
+    def handle_api_model_scope_features(self, query_params):
+        """Handle /api/model_scope/features — lists recent sparse feature events."""
+        from model_scope_artifacts import ArtifactStore, load_model_scope_artifact
+        try:
+            limit = int(query_params.get("limit", ["20"])[0])
+            store = ArtifactStore(base_dir=MODEL_SCOPE_ARTIFACT_ROOT)
+            paths = store.list_artifacts(pattern="feature_event_*.json")[-limit:]
+            items = []
+            for p in reversed(paths):
+                try:
+                    raw = load_model_scope_artifact(p)
+                    items.append(raw)
+                except Exception as e:
+                    items.append({"path": str(p), "error": str(e)})
+            self.send_json_response({
+                "status": "ok" if items else "not_generated",
+                "count": len(items),
+                "reason": None if items else "no_feature_events_found",
+                "items": items,
+            })
+        except Exception as e:
+            self.send_error_response(500, f"Error reading model-scope features: {e}")
+
+    def handle_api_model_scope_interventions(self, query_params):
+        """Handle /api/model_scope/interventions — lists recent intervention records."""
+        from model_scope_artifacts import ArtifactStore, load_model_scope_artifact
+        try:
+            limit = int(query_params.get("limit", ["20"])[0])
+            store = ArtifactStore(base_dir=MODEL_SCOPE_ARTIFACT_ROOT)
+            paths = store.list_artifacts(pattern="intervention_*.json")[-limit:]
+            items = []
+            for p in reversed(paths):
+                try:
+                    items.append(load_model_scope_artifact(p))
+                except Exception as e:
+                    items.append({"path": str(p), "error": str(e)})
+            self.send_json_response({
+                "status": "ok" if items else "not_generated",
+                "count": len(items),
+                "reason": None if items else "no_interventions_found",
+                "items": items,
+            })
+        except Exception as e:
+            self.send_error_response(500, f"Error reading model-scope interventions: {e}")
+
     def serve_dashboard(self):
         """Serve the dashboard HTML page."""
         dashboard_path = os.path.join(
