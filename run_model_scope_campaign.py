@@ -4,8 +4,11 @@ from __future__ import annotations
 
 import argparse
 import json
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Mapping
+from typing import Any, Dict, List, Mapping, Optional, Tuple
+
+import numpy as np
 
 from adaptive_overlay import (
     build_overlay_artifact_card,
@@ -24,12 +27,13 @@ from evidence_contract import (
     summarize_evidence_bundle,
     write_evidence_bundle,
 )
-from expectation_comparator import ModelScopeExpectationComparator
+from expectation_comparator import ExpectationComparator, FeatureOverlapRule, MeanActivationRule, ModelScopeExpectationComparator
 from integrated_diagnostics_report import summarize_adaptive_overlay_report
-from model_scope_artifacts import load_model_scope_artifact
-from model_scope_features import build_feature_scorecard
-from model_scope_memory import ModelScopeMemoryStore
-from model_scope_trainer import ModelScopeShadowPolicyTrainer, ModelScopeTrainerConfig
+from model_scope_artifacts import ArtifactStore, load_model_scope_artifact
+from model_scope_features import SparseFeatureEvent, build_feature_scorecard
+from model_scope_memory import MemoryManager, ModelScopeMemoryStore
+from model_scope_runtime import ActivationEvent
+from model_scope_trainer import ModelScopeShadowPolicyTrainer, ModelScopeTrainerConfig, OverlayConfig, OverlayTrainer
 from promotion_contract import PromotionGateConfig, evaluate_promotion_candidate
 
 
@@ -584,6 +588,147 @@ def main() -> int:
     )
     print(json.dumps(_json_safe(report), indent=2))
     return 0
+
+
+# ---------------------------------------------------------------------------
+# Slice-17: parse_args / run_campaign — iterative overlay trainer CLI
+# ---------------------------------------------------------------------------
+
+
+def _utcnow_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def _make_activation_event() -> ActivationEvent:
+    return ActivationEvent(
+        schema_version="1.0",
+        model_id="synthetic",
+        layer_id="layer_0",
+        token_count=1,
+        shape=(1, 1),
+        mean_activation=0.0,
+        norm_activation=0.0,
+        captured_at=_utcnow_iso(),
+        run_id="synthetic",
+    )
+
+
+def _make_sparse_feature_event(features: Dict[str, float]) -> SparseFeatureEvent:
+    return SparseFeatureEvent(
+        source_activation=_make_activation_event(),
+        feature_source="synthetic",
+        features=features,
+        feature_count=len(features),
+        nonzero_count=len(features),
+        extracted_at=_utcnow_iso(),
+    )
+
+
+def _generate_episodes(
+    rng: Any,
+    num_episodes: int,
+) -> List[Tuple[List[SparseFeatureEvent], List[SparseFeatureEvent]]]:
+    """Generate synthetic (input, target) episode pairs with 4 events each."""
+    episodes: List[Tuple[List[SparseFeatureEvent], List[SparseFeatureEvent]]] = []
+    for _ in range(num_episodes):
+        inputs: List[SparseFeatureEvent] = []
+        targets: List[SparseFeatureEvent] = []
+        for _ in range(4):
+            num_feats = int(rng.integers(3, 7))
+            inp_features = {f"f{i}": float(rng.random()) for i in range(num_feats)}
+            tgt_features = {f"f{i}": float(rng.random()) for i in range(num_feats)}
+            inputs.append(_make_sparse_feature_event(inp_features))
+            targets.append(_make_sparse_feature_event(tgt_features))
+        episodes.append((inputs, targets))
+    return episodes
+
+
+def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
+    """Parse CLI arguments for the Slice-17 overlay-trainer campaign."""
+    parser = argparse.ArgumentParser(
+        prog="run_model_scope_campaign_overlay",
+        description="Slice-17: Iterative overlay trainer campaign",
+    )
+    parser.add_argument("--overlay-id", required=True, help="Identifier for this overlay training run")
+    parser.add_argument("--policy-id", required=True, help="Policy identifier to associate with the overlay")
+    parser.add_argument("--episodes", type=int, default=5, help="Number of synthetic episode pairs to generate")
+    parser.add_argument("--max-epochs", type=int, default=10, help="Maximum training epochs")
+    parser.add_argument("--learning-rate", type=float, default=0.001, help="Per-feature weight learning rate")
+    parser.add_argument("--promotion-threshold", type=float, default=0.05, help="Minimum score delta required for promotion")
+    parser.add_argument("--output-dir", default="experiment_runs/model_scope_campaigns", help="Output directory for results")
+    parser.add_argument("--seed", type=int, default=42, help="Random seed for reproducibility")
+    return parser.parse_args(argv)
+
+
+def run_campaign(args: argparse.Namespace) -> Dict[str, Any]:
+    """Execute an overlay training campaign and persist a JSON result.
+
+    Uses synthetic episode data generated from a seeded RNG.  The result is
+    written to <output_dir>/<overlay_id>_campaign_result.json and returned.
+    """
+    output_dir = Path(args.output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    config = OverlayConfig(
+        overlay_id=args.overlay_id,
+        policy_id=args.policy_id,
+        learning_rate=args.learning_rate,
+        max_epochs=args.max_epochs,
+        promotion_threshold=args.promotion_threshold,
+    )
+
+    memory_dir = output_dir / "memory" / args.overlay_id
+    memory_dir.mkdir(parents=True, exist_ok=True)
+    memory = MemoryManager(base_dir=memory_dir)
+
+    artifact_dir = output_dir / "artifacts" / args.overlay_id
+    artifact_dir.mkdir(parents=True, exist_ok=True)
+    artifact_store = ArtifactStore(base_dir=artifact_dir)
+
+    comparator = ExpectationComparator()
+    comparator.add_rule(MeanActivationRule(threshold=0.0))
+    comparator.add_rule(FeatureOverlapRule(threshold=0.0))
+
+    trainer = OverlayTrainer(
+        config=config,
+        memory=memory,
+        comparator=comparator,
+        artifact_store=artifact_store,
+        checkpoint_dir=str(output_dir / "checkpoints" / args.overlay_id),
+    )
+
+    rng = np.random.default_rng(args.seed)
+    episodes = _generate_episodes(rng, args.episodes)
+    records = trainer.run_campaign(episodes)
+
+    all_inputs = [ev for inp, _ in episodes for ev in inp]
+    all_targets = [ev for _, tgt in episodes for ev in tgt]
+    decision = trainer.evaluate_promotion(all_inputs, all_targets)
+
+    final_loss = records[-1].loss if records else float("nan")
+    result: Dict[str, Any] = {
+        "overlay_id": args.overlay_id,
+        "policy_id": args.policy_id,
+        "seed": args.seed,
+        "epochs_run": len(records),
+        "final_loss": final_loss,
+        "promoted": decision.promoted,
+        "promotion_delta": decision.delta,
+        "records": [
+            {
+                "epoch": r.epoch,
+                "loss": r.loss,
+                "improved": r.improved,
+                "checkpoint_path": r.checkpoint_path,
+                "created_at": r.created_at,
+            }
+            for r in records
+        ],
+    }
+
+    out_path = output_dir / f"{args.overlay_id}_campaign_result.json"
+    out_path.write_text(json.dumps(_json_safe(result), indent=2), encoding="utf-8")
+    return result
 
 
 if __name__ == "__main__":
