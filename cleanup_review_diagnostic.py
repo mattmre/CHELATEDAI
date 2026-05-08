@@ -67,7 +67,15 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Emit cleanup-review diagnostics")
     parser.add_argument("--plan", default=str(DEFAULT_PLAN), help="Cleanup plan JSON path")
     parser.add_argument("--mode", choices=["blocked", "warn"], default="blocked", help="Diagnostic mode")
-    parser.add_argument("--github-summary", action="store_true", help="Append output to GITHUB_STEP_SUMMARY")
+    parser.add_argument(
+        "--github-summary",
+        action="store_true",
+        help=(
+            "Append output to GITHUB_STEP_SUMMARY when that env var is set. "
+            "Without GITHUB_STEP_SUMMARY, this flag is a no-op: only stdout is written "
+            "and no files or other side effects are produced."
+        ),
+    )
     args = parser.parse_args()
 
     text = render_cleanup_review_diagnostic(args.plan, mode=args.mode)

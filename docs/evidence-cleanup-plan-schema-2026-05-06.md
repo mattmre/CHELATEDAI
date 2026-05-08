@@ -32,7 +32,7 @@ python -m cleanup_review_diagnostic --plan experiment_runs/evidence-cleanup/late
 ## Cleanup Review Diagnostic
 
 `cleanup_review_diagnostic.py` renders a markdown operator summary from a cleanup plan. The output is stable enough for humans and runbook references, but it is not a machine-readable API contract; parse `cleanup_plan.json` directly for automation.
-When `--github-summary` is passed, the diagnostic is appended only if `GITHUB_STEP_SUMMARY` is present in the environment. Local runs without that variable still print the diagnostic and exit normally.
+When `--github-summary` is passed, the diagnostic is appended only if `GITHUB_STEP_SUMMARY` is present in the environment. Local runs without that variable still print the diagnostic and exit normally; passing `--github-summary` without `GITHUB_STEP_SUMMARY` produces only stdout output and creates no files or other side effects.
 The summary writer opens `GITHUB_STEP_SUMMARY` in append mode, so existing step-summary sections are preserved before the cleanup diagnostic.
 Each append writes a complete diagnostic block followed by a trailing newline.
 The command expects `GITHUB_STEP_SUMMARY`, when set, to name a writable file whose parent directory already exists; GitHub Actions provides that path automatically.
