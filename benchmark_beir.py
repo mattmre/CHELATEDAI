@@ -12,10 +12,10 @@ Usage:
 
 Dataset tiers:
     quick    -> SciFact
-    small    -> SciFact, NFCorpus
-    medium   -> SciFact, NFCorpus, FiQA2018
-    research -> SciFact, NFCorpus, FiQA2018, TRECCOVID
-    full     -> SciFact, NFCorpus, FiQA2018, TRECCOVID, NQ, HotpotQA
+    small    -> SciFact, NFCorpus, ArguAna
+    medium   -> SciFact, NFCorpus, ArguAna, FiQA2018
+    research -> SciFact, NFCorpus, ArguAna, FiQA2018, TRECCOVID, ClimateFEVER
+    full     -> SciFact, NFCorpus, ArguAna, FiQA2018, TRECCOVID, ClimateFEVER, NQ, HotpotQA
 """
 
 import json
@@ -124,6 +124,24 @@ def _build_default_datasets() -> Dict[str, DatasetInfo]:
             tier="full",
             default_sample_size=10000,
         ),
+        "ArguAna": DatasetInfo(
+            name="ArguAna",
+            description="Counter-argument retrieval",
+            corpus_size=8674,
+            query_count=1406,
+            domain="argumentative",
+            tier="small",
+            default_sample_size=None,
+        ),
+        "ClimateFEVER": DatasetInfo(
+            name="ClimateFEVER",
+            description="Climate claim fact-checking retrieval",
+            corpus_size=5416593,
+            query_count=1535,
+            domain="scientific",
+            tier="research",
+            default_sample_size=10000,
+        ),
     }
 
 
@@ -132,9 +150,9 @@ class BEIRDatasetRegistry:
 
     Tier hierarchy (cumulative):
         quick    -> {SciFact}
-        small    -> quick + {NFCorpus}
+        small    -> quick + {NFCorpus, ArguAna}
         medium   -> small + {FiQA2018}
-        research -> medium + {TRECCOVID}
+        research -> medium + {TRECCOVID, ClimateFEVER}
         full     -> research + {NQ, HotpotQA}
     """
 
