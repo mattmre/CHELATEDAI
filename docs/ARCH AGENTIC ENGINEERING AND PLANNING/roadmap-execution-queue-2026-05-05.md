@@ -96,7 +96,7 @@ Purpose: Durable continuation queue after Engine-Scope, Model-Scope, and adaptiv
 | 77 | Cleanup diagnostic stdout still emitted on summary failure validation | validation | complete | invalid summary path still leaves the cleanup diagnostic visible in stdout |
 | 78 | Cleanup diagnostic stdout-on-summary-failure docs | documentation | complete | docs state stdout remains the primary diagnostic channel when summary append fails |
 | 79 | Cleanup diagnostic no-summary-file side-effect validation | validation | complete | local --github-summary without GITHUB_STEP_SUMMARY does not create unexpected summary files |
-| 80 | Cleanup diagnostic no-summary-file docs | documentation | next | docs state local --github-summary without GITHUB_STEP_SUMMARY writes only stdout |
+| 80 | Cleanup diagnostic no-summary-file docs | documentation | complete | docs state local --github-summary without GITHUB_STEP_SUMMARY writes only stdout |
 
 ## Closed Implementation Scaffolds
 - Engine-Scope row contract, internal gates, coverage analysis, hard-negative pipeline, and supervisor integration are implemented.
@@ -109,7 +109,7 @@ Purpose: Durable continuation queue after Engine-Scope, Model-Scope, and adaptiv
 - No full HeavySkill-style agent harness unless a verifier-backed use case appears.
 
 ## Resume Note
-Start the next branch from the highest-ranked `next` item that is not blocked. If research changes the ranking, update this file in the same PR that records the research.
+All 80 queue items are complete. Golden-default roadmap slices 1–10 are merged on main (PRs #219–#222, 2026-05-08). Next work begins the Model-Scope implementation cycle per `docs/ARCH AGENTIC ENGINEERING AND PLANNING/architecture-2026-05-01-model-scope-roadmap.md`. Start with Phase 1 (model_scope_runtime.py + model_hook_bus.py) on branch `feat/slice13-model-scope-runtime`.
 
 ## Research Refresh
 - 2026-05-05: Frontier adaptive overlay/test-time scaling refresh recorded in `docs/frontier-adaptive-overlay-research-2026-05-05.md`. Queue updated to prioritize overlay artifact cards before broader branching.

@@ -42,9 +42,11 @@ These rules apply to every session, every task, every PR — no exceptions:
    - avoid full harness implementation unless a verifier-backed use case appears
 
 ## Resume Pointer
-- Active execution queue: `docs/ARCH AGENTIC ENGINEERING AND PLANNING/roadmap-execution-queue-2026-05-05.md`
-- Latest completed implementation chain: PRs `#127` through `#149`
-- Current cycle status: Engine-Scope and Model-Scope implementation scaffolds complete; frontier validation/research queue active
+- Active architecture doc: `docs/ARCH AGENTIC ENGINEERING AND PLANNING/architecture-2026-05-01-model-scope-roadmap.md`
+- Golden-default roadmap slices 1–10 merged on `main` as of 2026-05-08 (PRs #219–#222; 1,643 tests passing)
+- Execution queue (roadmap-execution-queue-2026-05-05.md): all 80 items complete
+- **Next slice: Model-Scope Phase 1** — `feat/slice13-model-scope-runtime` (`model_scope_runtime.py` + `model_hook_bus.py`)
+- Sequence: Phase 1 → Phase 2 (features) → Phase 3 (steering) → Phase 4 (memory) → Phase 5 (training) → Phase 6 (engine integration)
 
 ## Handoff Notes
 - Do not add `pytest` imports to `test_*.py`; CI does not install `pytest`.
