@@ -378,6 +378,10 @@ def run_live_fire_diagnostics() -> Dict[str, Any]:
         metadata={"workflow": "live_fire_diagnostics"},
     )
 
+    _model_scope_summary = None
+    _ms_bridge = getattr(engine, "_model_scope_bridge", None)
+    if _ms_bridge is not None:
+        _model_scope_summary = _ms_bridge.get_summary_for_diagnostics()
     runtime = engine.get_last_runtime_diagnostics() or {}
     diagnostics = IntegratedDiagnosticsReport.from_composition(
         composition,
@@ -385,7 +389,7 @@ def run_live_fire_diagnostics() -> Dict[str, Any]:
         phase="live_fire",
         baseline_fitness=baseline_result.fitness,
         runtime=runtime.get("runtime"),
-        model_scope=runtime.get("model_scope"),
+        model_scope=_model_scope_summary or runtime.get("model_scope"),
         norm_drift=runtime.get("norm_drift"),
         route_effectiveness=runtime.get("route_effectiveness"),
         retrieval_policy=runtime.get("retrieval_policy"),
@@ -515,6 +519,8 @@ def run_live_fire_diagnostics() -> Dict[str, Any]:
         warnings.append("live_fire_fixture_is_saturated: adaptive path validated but no retrieval lift measured")
 
     dashboard_summary = summarize_events(logger.events)
+    if _model_scope_summary:
+        print(f"  Model-Scope observations: {_model_scope_summary.get('observation_count', 0)}")
     return _json_safe({
         "test_name": "live_fire_diagnostics",
         "generated_at": datetime.utcnow().isoformat() + "Z",
