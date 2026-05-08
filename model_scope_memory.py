@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
+from enum import Enum
 import hashlib
 import json
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Mapping
+from typing import Any, Dict, Iterable, List, Mapping, Optional
+import uuid
 
 from model_scope_artifacts import summarize_model_scope_artifact
 
@@ -360,3 +362,228 @@ class ModelScopeMemoryStore:
         for name in store._segments:
             store._segments[name] = [_deep_copy(entry) for entry in segments.get(name, [])]
         return store
+
+
+# ---------------------------------------------------------------------------
+# Slice-16: typed segmented memory API
+# ---------------------------------------------------------------------------
+
+
+class MemorySegmentType(Enum):
+    """Typed segment identifiers for the Slice-16 memory API."""
+
+    WORKING = "working"
+    EPISODIC = "episodic"
+    EXPECTATION = "expectation"
+    PERSISTENT = "persistent"
+
+
+@dataclass
+class MemoryEntry:
+    """Single typed memory record across all segment types."""
+
+    entry_id: str
+    segment: MemorySegmentType
+    key: str
+    value: dict
+    created_at: str
+    expires_at: Optional[str]
+    tags: List[str]
+
+
+def _is_entry_expired(entry: MemoryEntry) -> bool:
+    if entry.expires_at is None:
+        return False
+    return _utcnow_iso() >= entry.expires_at
+
+
+def _make_expires_at(ttl_seconds: Optional[float]) -> Optional[str]:
+    if ttl_seconds is None:
+        return None
+    return (datetime.now(timezone.utc) + timedelta(seconds=float(ttl_seconds))).isoformat()
+
+
+def _make_memory_entry(
+    segment: MemorySegmentType,
+    key: str,
+    value: dict,
+    tags: List[str],
+    expires_at: Optional[str],
+) -> MemoryEntry:
+    return MemoryEntry(
+        entry_id=str(uuid.uuid4()),
+        segment=segment,
+        key=key,
+        value=_deep_copy(value),
+        created_at=_utcnow_iso(),
+        expires_at=expires_at,
+        tags=list(tags),
+    )
+
+
+class WorkingMemory:
+    """Short-horizon FIFO store with configurable capacity and LRU eviction."""
+
+    def __init__(self, max_entries: int = 50) -> None:
+        if max_entries < 1:
+            raise ValueError("max_entries must be >= 1")
+        self.max_entries = max_entries
+        self._entries: List[MemoryEntry] = []
+
+    def store(self, key: str, value: dict, tags: Optional[List[str]] = None) -> MemoryEntry:
+        entry = _make_memory_entry(MemorySegmentType.WORKING, key, value, tags or [], None)
+        self._entries.append(entry)
+        if len(self._entries) > self.max_entries:
+            self._entries = self._entries[-self.max_entries :]
+        return entry
+
+    def retrieve(self, key: str) -> Optional[MemoryEntry]:
+        for entry in reversed(self._entries):
+            if entry.key == key:
+                return entry
+        return None
+
+    def evict_expired(self) -> int:
+        before = len(self._entries)
+        self._entries = [e for e in self._entries if not _is_entry_expired(e)]
+        return before - len(self._entries)
+
+    def clear(self) -> int:
+        count = len(self._entries)
+        self._entries.clear()
+        return count
+
+    def list_entries(self) -> List[MemoryEntry]:
+        return list(self._entries)
+
+
+class EpisodicMemory:
+    """TTL-aware episodic store supporting tag-based replay bundles."""
+
+    def __init__(self) -> None:
+        self._entries: List[MemoryEntry] = []
+
+    def store(
+        self,
+        key: str,
+        value: dict,
+        tags: Optional[List[str]] = None,
+        ttl_seconds: Optional[float] = None,
+    ) -> MemoryEntry:
+        entry = _make_memory_entry(
+            MemorySegmentType.EPISODIC,
+            key,
+            value,
+            tags or [],
+            _make_expires_at(ttl_seconds),
+        )
+        self._entries.append(entry)
+        return entry
+
+    def retrieve(self, key: str) -> Optional[MemoryEntry]:
+        for entry in reversed(self._entries):
+            if entry.key == key and not _is_entry_expired(entry):
+                return entry
+        return None
+
+    def query_by_tag(self, tag: str) -> List[MemoryEntry]:
+        return [e for e in self._entries if tag in e.tags and not _is_entry_expired(e)]
+
+    def evict_expired(self) -> int:
+        before = len(self._entries)
+        self._entries = [e for e in self._entries if not _is_entry_expired(e)]
+        return before - len(self._entries)
+
+    def replay_bundle(self, episode_id: str) -> List[MemoryEntry]:
+        return [e for e in self._entries if episode_id in e.tags and not _is_entry_expired(e)]
+
+
+class ExpectationStore:
+    """Reference store for named expectation baselines with thresholds."""
+
+    def __init__(self) -> None:
+        self._entries: Dict[str, MemoryEntry] = {}
+
+    def set_expectation(self, key: str, baseline: dict, threshold: float = 0.1) -> MemoryEntry:
+        value = {"baseline": _deep_copy(baseline), "threshold": float(threshold)}
+        entry = _make_memory_entry(MemorySegmentType.EXPECTATION, key, value, ["expectation"], None)
+        self._entries[key] = entry
+        return entry
+
+    def get_expectation(self, key: str) -> Optional[MemoryEntry]:
+        return self._entries.get(key)
+
+    def list_expectations(self) -> List[MemoryEntry]:
+        return list(self._entries.values())
+
+
+class PersistentMemory:
+    """File-backed persistent store with JSON serialisation per key."""
+
+    def __init__(self, base_dir: Path) -> None:
+        self.base_dir = Path(base_dir)
+        self.base_dir.mkdir(parents=True, exist_ok=True)
+
+    def _key_path(self, key: str) -> Path:
+        safe = key.replace("/", "_").replace("\\", "_").replace(":", "_")
+        return self.base_dir / f"{safe}.json"
+
+    def save(self, key: str, value: dict, tags: Optional[List[str]] = None) -> MemoryEntry:
+        entry = _make_memory_entry(MemorySegmentType.PERSISTENT, key, value, tags or [], None)
+        raw = {
+            "entry_id": entry.entry_id,
+            "segment": entry.segment.value,
+            "key": entry.key,
+            "value": entry.value,
+            "created_at": entry.created_at,
+            "expires_at": entry.expires_at,
+            "tags": entry.tags,
+        }
+        self._key_path(key).write_text(json.dumps(raw), encoding="utf-8")
+        return entry
+
+    def load(self, key: str) -> Optional[MemoryEntry]:
+        path = self._key_path(key)
+        if not path.exists():
+            return None
+        raw = json.loads(path.read_text(encoding="utf-8"))
+        return MemoryEntry(
+            entry_id=raw["entry_id"],
+            segment=MemorySegmentType(raw["segment"]),
+            key=raw["key"],
+            value=raw["value"],
+            created_at=raw["created_at"],
+            expires_at=raw.get("expires_at"),
+            tags=raw.get("tags", []),
+        )
+
+    def list_keys(self) -> List[str]:
+        return [p.stem for p in self.base_dir.glob("*.json")]
+
+    def delete(self, key: str) -> bool:
+        path = self._key_path(key)
+        if path.exists():
+            path.unlink()
+            return True
+        return False
+
+
+class MemoryManager:
+    """Unified facade across all four memory segment types."""
+
+    def __init__(self, base_dir: Path, working_max_entries: int = 50) -> None:
+        self.working = WorkingMemory(max_entries=working_max_entries)
+        self.episodic = EpisodicMemory()
+        self.expectations = ExpectationStore()
+        self.persistent = PersistentMemory(base_dir=Path(base_dir))
+
+    def snapshot(self) -> dict:
+        return {
+            MemorySegmentType.WORKING.value: len(self.working.list_entries()),
+            MemorySegmentType.EPISODIC.value: len(self.episodic._entries),
+            MemorySegmentType.EXPECTATION.value: len(self.expectations.list_expectations()),
+            MemorySegmentType.PERSISTENT.value: len(self.persistent.list_keys()),
+        }
+
+    def promote_to_persistent(self, entry: MemoryEntry) -> MemoryEntry:
+        return self.persistent.save(entry.key, entry.value, entry.tags)
