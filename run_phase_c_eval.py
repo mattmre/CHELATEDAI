@@ -36,6 +36,8 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+import random
+
 import numpy as np
 
 from adaptive_overlay import build_overlay_artifact_card, build_overlay_report
@@ -521,6 +523,7 @@ def run_phase_c_eval(
     reform_gate_path: Optional[str] = None,
     mask_gate_path: Optional[str] = None,
     mask_vector_path: Optional[str] = None,
+    seed: int = 42,
 ) -> Dict[str, Any]:
     """Run Phase C four-candidate evaluation campaign.
 
@@ -533,10 +536,14 @@ def run_phase_c_eval(
         reform_gate_path: Path to pre-trained reform gate JSON (optional).
         mask_gate_path: Path to pre-trained mask gate JSON (optional).
         mask_vector_path: Path to JSON with a ``masked_dims`` key (optional).
+        seed: Random seed for gate training reproducibility.
 
     Returns:
         Full results dict (also written to ``output_dir/phase_c_results.json``).
     """
+    random.seed(seed)
+    np.random.seed(seed)
+
     run_at = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     _LOGGER.log_event(
         "phase_c_start",
@@ -608,6 +615,7 @@ def run_phase_c_eval(
         "schema_version": PHASE_C_SCHEMA_VERSION,
         "record_type": "phase_c_eval_results",
         "run_at": run_at,
+        "seed": seed,
         "candidates": candidates,
         "datasets": datasets,
         "max_queries_per_dataset": max_queries,
@@ -682,6 +690,12 @@ def main() -> int:
         help="Path to JSON with masked_dims key (derived from probe artifacts if omitted)",
     )
     parser.add_argument("--model", default=DEFAULT_MODEL_NAME, help="Embedding model name")
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=42,
+        help="Random seed for gate training reproducibility",
+    )
     args = parser.parse_args()
 
     datasets = ["SciFact"] if args.tier == "minimal" else ["SciFact", "NFCorpus"]
@@ -695,6 +709,7 @@ def main() -> int:
         reform_gate_path=args.reform_gate,
         mask_gate_path=args.mask_gate,
         mask_vector_path=args.mask_vector,
+        seed=args.seed,
     )
 
     # Summary table

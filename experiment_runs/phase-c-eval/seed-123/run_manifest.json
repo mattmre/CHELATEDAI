@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "record_type": "phase_c_run_manifest",
+  "run_at": "2026-05-08T13:47:29Z",
+  "candidates": [
+    "baseline",
+    "guard_p85_t0.01",
+    "learned_reform_gate_v1",
+    "learned_mask_gate_v1"
+  ],
+  "datasets": [
+    "SciFact"
+  ],
+  "artifacts": [
+    "overlay_card_baseline.json",
+    "overlay_card_guard_p85_t0.01.json",
+    "overlay_card_learned_mask_gate_v1.json",
+    "overlay_card_learned_reform_gate_v1.json",
+    "phase_c_results.json"
+  ]
+}

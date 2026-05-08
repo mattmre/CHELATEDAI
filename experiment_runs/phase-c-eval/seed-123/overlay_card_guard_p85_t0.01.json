@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "record_type": "adaptive_overlay_artifact_card",
+  "candidate_id": "guard_p85_t0.01",
+  "purpose": "Phase C four-candidate evaluation: guard_p85_t0.01",
+  "source_overlay_report_hash": "overlay_report_29b153823b194fe0",
+  "source_overlay_report_path": null,
+  "readiness": {
+    "ready_for_broader_validation": false,
+    "blockers": [
+      "regression_rate_above_threshold",
+      "mean_best_delta_below_threshold",
+      "active_negative_records_present"
+    ],
+    "next_action": "continue observation and coverage-aware channel collection",
+    "group_count": 50,
+    "safe_pass_at_k_rate": 0.06,
+    "regressed_at_k_rate": 0.32,
+    "mean_best_delta": -0.12016676710258886
+  },
+  "evidence": {
+    "record_count": 50,
+    "channel_types": {
+      "guardrail": 50
+    },
+    "decisions": {
+      "damp_candidate": 16,
+      "observe": 31,
+      "amplify_candidate": 3
+    },
+    "promotion_blockers": 0,
+    "active_negative_records": 16,
+    "branch_group_count": 50,
+    "pass_at_k_rate": 0.06,
+    "safe_pass_at_k_rate": 0.06,
+    "mean_oracle_gap": 0.0,
+    "trajectory_health": {
+      "schema_version": 1,
+      "record_type": "adaptive_overlay_trajectory_health",
+      "record_count": 50,
+      "branch_group_count": 50,
+      "loop_burden_rate": 0.0,
+      "blocker_recurrence_by_channel": {
+        "guard_p85_t0.01": 16
+      },
+      "oracle_gap_trend": "flat",
+      "early_mean_oracle_gap": 0.0,
+      "late_mean_oracle_gap": 0.0,
+      "budget_units": 50,
+      "safe_pass_count": 3,
+      "budget_per_safe_pass": 16.666666666666668,
+      "warnings": [
+        "blocker_recurrence_present"
+      ]
+    },
+    "hard_negative_replay": {},
+    "validation": {},
+    "collection_policy": {},
+    "verifier_cards": [],
+    "replay": {},
+    "holdout": {},
+    "hard_negative": {},
+    "evaluator": {},
+    "safety": {},
+    "promotion_decision": {
+      "promotion_ready": false,
+      "adaptive_overlay_ready": false,
+      "reasons": []
+    }
+  },
+  "limitations": [
+    "active_negative_records_present",
+    "mean_best_delta_below_threshold",
+    "not_default_promoted",
+    "regression_rate_above_threshold"
+  ],
+  "rollback_path": null,
+  "metadata": {
+    "run_at": "2026-05-08T13:47:29Z",
+    "candidate_id": "guard_p85_t0.01",
+    "query_count": 50,
+    "data_source": "phase_c_eval",
+    "schema_version": 1
+  },
+  "card_id": "overlay_card_804b60fa4d639f0a"
+}
