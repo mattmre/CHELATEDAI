@@ -1,6 +1,6 @@
 {
   "record_type": "beir_benchmark_results",
-  "run_at": "2026-05-08T00:17:33Z",
+  "run_at": "2026-05-08T03:04:21Z",
   "passed": true,
   "results": [
     {
@@ -10,10 +10,10 @@
       "map_at_10": 0.6781825396825397,
       "mrr": 0.6874126984126984,
       "recall_at_10": 0.831,
-      "latency_ms": 23.2898360001127,
+      "latency_ms": 23.19038499968883,
       "num_queries": 100,
       "num_docs": 5183,
-      "elapsed_seconds": 129.06331659999705
+      "elapsed_seconds": 123.07240399999864
     },
     {
       "dataset_name": "SciFact",
@@ -22,10 +22,10 @@
       "map_at_10": 0.5394238095238095,
       "mrr": 0.5546904761904762,
       "recall_at_10": 0.774,
-      "latency_ms": 24.881222999829333,
+      "latency_ms": 23.908661999739707,
       "num_queries": 100,
       "num_docs": 5183,
-      "elapsed_seconds": 128.6019501999981
+      "elapsed_seconds": 121.70508960000006
     },
     {
       "dataset_name": "SciFact",
@@ -34,10 +34,10 @@
       "map_at_10": 0.538868253968254,
       "mrr": 0.5541349206349206,
       "recall_at_10": 0.774,
-      "latency_ms": 26.19416099980299,
+      "latency_ms": 23.661778999885428,
       "num_queries": 100,
       "num_docs": 5183,
-      "elapsed_seconds": 127.16006239999842
+      "elapsed_seconds": 121.73418959999981
     },
     {
       "dataset_name": "SciFact",
@@ -46,10 +46,10 @@
       "map_at_10": 0.5394238095238095,
       "mrr": 0.5546904761904762,
       "recall_at_10": 0.774,
-      "latency_ms": 25.814964000383043,
+      "latency_ms": 23.734087999982876,
       "num_queries": 100,
       "num_docs": 5183,
-      "elapsed_seconds": 126.38187299999845
+      "elapsed_seconds": 122.07329899999604
     },
     {
       "dataset_name": "SciFact",
@@ -58,10 +58,10 @@
       "map_at_10": 0.5278968253968255,
       "mrr": 0.5437301587301587,
       "recall_at_10": 0.752,
-      "latency_ms": 26.209010999882594,
+      "latency_ms": 25.906808000436286,
       "num_queries": 100,
       "num_docs": 5183,
-      "elapsed_seconds": 127.70696599999792
+      "elapsed_seconds": 122.09838199999649
     },
     {
       "dataset_name": "SciFact",
@@ -70,10 +70,10 @@
       "map_at_10": 0.538868253968254,
       "mrr": 0.5541349206349206,
       "recall_at_10": 0.774,
-      "latency_ms": 25.5505620000622,
+      "latency_ms": 23.74573400033114,
       "num_queries": 100,
       "num_docs": 5183,
-      "elapsed_seconds": 127.22200050000538
+      "elapsed_seconds": 121.95203490000131
     },
     {
       "dataset_name": "SciFact",
@@ -82,10 +82,10 @@
       "map_at_10": 0.5440904761904762,
       "mrr": 0.5596904761904762,
       "recall_at_10": 0.774,
-      "latency_ms": 28.92720999989251,
+      "latency_ms": 28.036404999511433,
       "num_queries": 100,
       "num_docs": 5183,
-      "elapsed_seconds": 126.74997060000169
+      "elapsed_seconds": 122.31831709999824
     },
     {
       "dataset_name": "SciFact",
@@ -94,10 +94,10 @@
       "map_at_10": 0.6101349206349207,
       "mrr": 0.6222619047619048,
       "recall_at_10": 0.7909999999999999,
-      "latency_ms": 24.20507999981055,
+      "latency_ms": 22.222181000179262,
       "num_queries": 100,
       "num_docs": 5183,
-      "elapsed_seconds": 126.2454293999981
+      "elapsed_seconds": 121.02023640000698
     },
     {
       "dataset_name": "NFCorpus",
@@ -106,10 +106,10 @@
       "map_at_10": 0.25604794973544975,
       "mrr": 0.5699444444444445,
       "recall_at_10": 0.1726387563890594,
-      "latency_ms": 19.527605999901425,
+      "latency_ms": 18.342496000113897,
       "num_queries": 100,
       "num_docs": 3633,
-      "elapsed_seconds": 92.44166889999906
+      "elapsed_seconds": 82.94060319999699
     },
     {
       "dataset_name": "NFCorpus",
@@ -118,10 +118,10 @@
       "map_at_10": 0.19312328042328042,
       "mrr": 0.4955238095238095,
       "recall_at_10": 0.13048244031583753,
-      "latency_ms": 23.719682999362703,
+      "latency_ms": 19.55373700002383,
       "num_queries": 100,
       "num_docs": 3633,
-      "elapsed_seconds": 93.06148860000394
+      "elapsed_seconds": 83.00846649999585
     },
     {
       "dataset_name": "NFCorpus",
@@ -130,10 +130,10 @@
       "map_at_10": 0.19307328042328037,
       "mrr": 0.49502380952380953,
       "recall_at_10": 0.13048244031583753,
-      "latency_ms": 20.972426000080304,
+      "latency_ms": 19.68246899996302,
       "num_queries": 100,
       "num_docs": 3633,
-      "elapsed_seconds": 90.51262710000447
+      "elapsed_seconds": 83.13953670000046
     },
     {
       "dataset_name": "NFCorpus",
@@ -142,10 +142,10 @@
       "map_at_10": 0.19357328042328042,
       "mrr": 0.5000238095238095,
       "recall_at_10": 0.13048244031583753,
-      "latency_ms": 21.66738399944734,
+      "latency_ms": 19.681309000152396,
       "num_queries": 100,
       "num_docs": 3633,
-      "elapsed_seconds": 89.55353349999496
+      "elapsed_seconds": 83.25289909999992
     },
     {
       "dataset_name": "NFCorpus",
@@ -154,10 +154,10 @@
       "map_at_10": 0.1947218253968254,
       "mrr": 0.49076190476190473,
       "recall_at_10": 0.13122972605697375,
-      "latency_ms": 23.805329999886453,
+      "latency_ms": 21.52454700000817,
       "num_queries": 100,
       "num_docs": 3633,
-      "elapsed_seconds": 91.3717964000025
+      "elapsed_seconds": 83.40263169999525
     },
     {
       "dataset_name": "NFCorpus",
@@ -166,10 +166,10 @@
       "map_at_10": 0.19307328042328037,
       "mrr": 0.49502380952380953,
       "recall_at_10": 0.13048244031583753,
-      "latency_ms": 21.753604999757954,
+      "latency_ms": 20.26364100005594,
       "num_queries": 100,
       "num_docs": 3633,
-      "elapsed_seconds": 90.23717300000135
+      "elapsed_seconds": 82.97106740000163
     },
     {
       "dataset_name": "NFCorpus",
@@ -178,10 +178,10 @@
       "map_at_10": 0.19388439153439152,
       "mrr": 0.5005238095238095,
       "recall_at_10": 0.13048244031583753,
-      "latency_ms": 25.09062700017239,
+      "latency_ms": 23.83230999985244,
       "num_queries": 100,
       "num_docs": 3633,
-      "elapsed_seconds": 90.23596820000239
+      "elapsed_seconds": 83.57792160000099
     },
     {
       "dataset_name": "NFCorpus",
@@ -190,76 +190,172 @@
       "map_at_10": 0.21769563492063493,
       "mrr": 0.5226071428571428,
       "recall_at_10": 0.14366060692764876,
-      "latency_ms": 19.379784999982803,
+      "latency_ms": 18.410543999489164,
       "num_queries": 100,
       "num_docs": 3633,
-      "elapsed_seconds": 89.52323969999998
+      "elapsed_seconds": 82.76112799999828
+    },
+    {
+      "dataset_name": "FiQA2018",
+      "config_name": "baseline",
+      "ndcg_at_10": 0.6732636803884882,
+      "map_at_10": 0.4784163029100529,
+      "mrr": 0.6522222222222223,
+      "recall_at_10": 0.6015515873015873,
+      "latency_ms": 30.282720999384765,
+      "num_queries": 100,
+      "num_docs": 10000,
+      "elapsed_seconds": 167.5840304000012
+    },
+    {
+      "dataset_name": "FiQA2018",
+      "config_name": "chelation",
+      "ndcg_at_10": 0.5898142154146438,
+      "map_at_10": 0.4026776029856387,
+      "mrr": 0.5640238095238095,
+      "recall_at_10": 0.5199444444444444,
+      "latency_ms": 31.47962799972447,
+      "num_queries": 100,
+      "num_docs": 10000,
+      "elapsed_seconds": 167.48534039999504
+    },
+    {
+      "dataset_name": "FiQA2018",
+      "config_name": "chelation+tempscale_0.5",
+      "ndcg_at_10": 0.5924992081381908,
+      "map_at_10": 0.40271093631897203,
+      "mrr": 0.5650238095238095,
+      "recall_at_10": 0.5232777777777777,
+      "latency_ms": 31.631606000300962,
+      "num_queries": 100,
+      "num_docs": 10000,
+      "elapsed_seconds": 167.40630680000322
+    },
+    {
+      "dataset_name": "FiQA2018",
+      "config_name": "chelation+tempscale_2.0",
+      "ndcg_at_10": 0.5924992081381908,
+      "map_at_10": 0.40271093631897203,
+      "mrr": 0.5650238095238095,
+      "recall_at_10": 0.5232777777777777,
+      "latency_ms": 31.862048999537365,
+      "num_queries": 100,
+      "num_docs": 10000,
+      "elapsed_seconds": 167.65167590000055
+    },
+    {
+      "dataset_name": "FiQA2018",
+      "config_name": "procrustes",
+      "ndcg_at_10": 0.5951121210232314,
+      "map_at_10": 0.40340792705971285,
+      "mrr": 0.5712063492063492,
+      "recall_at_10": 0.5274444444444445,
+      "latency_ms": 33.573693000143976,
+      "num_queries": 100,
+      "num_docs": 10000,
+      "elapsed_seconds": 168.50941949999833
+    },
+    {
+      "dataset_name": "FiQA2018",
+      "config_name": "low_rank_16",
+      "ndcg_at_10": 0.5924992081381908,
+      "map_at_10": 0.40271093631897203,
+      "mrr": 0.5650238095238095,
+      "recall_at_10": 0.5232777777777777,
+      "latency_ms": 31.116159000521293,
+      "num_queries": 100,
+      "num_docs": 10000,
+      "elapsed_seconds": 167.81277119999868
+    },
+    {
+      "dataset_name": "FiQA2018",
+      "config_name": "online_updates",
+      "ndcg_at_10": 0.5911243008437822,
+      "map_at_10": 0.40502085695389267,
+      "mrr": 0.5656904761904762,
+      "recall_at_10": 0.5199444444444444,
+      "latency_ms": 35.814262999920174,
+      "num_queries": 100,
+      "num_docs": 10000,
+      "elapsed_seconds": 167.97512849999475
+    },
+    {
+      "dataset_name": "FiQA2018",
+      "config_name": "random_mask_50pct",
+      "ndcg_at_10": 0.6206639115073721,
+      "map_at_10": 0.4363273289871505,
+      "mrr": 0.5898730158730158,
+      "recall_at_10": 0.5883690476190475,
+      "latency_ms": 29.92420000016864,
+      "num_queries": 100,
+      "num_docs": 10000,
+      "elapsed_seconds": 167.69127339999977
     }
   ],
   "aggregated_by_config": {
     "baseline": {
-      "mean_ndcg_at_10": 0.6517039410486406,
-      "mean_map_at_10": 0.46711524470899474,
-      "mean_mrr": 0.6286785714285714,
-      "mean_recall_at_10": 0.5018193781945297,
-      "mean_latency_ms": 21.408721000007063,
-      "num_datasets": 2
+      "mean_ndcg_at_10": 0.6588905208285898,
+      "mean_map_at_10": 0.47088226410934747,
+      "mean_mrr": 0.636526455026455,
+      "mean_recall_at_10": 0.5350634478968822,
+      "mean_latency_ms": 23.938533999729163,
+      "num_datasets": 3
     },
     "chelation": {
-      "mean_ndcg_at_10": 0.5531367444680434,
-      "mean_map_at_10": 0.366273544973545,
-      "mean_mrr": 0.5251071428571428,
-      "mean_recall_at_10": 0.4522412201579188,
-      "mean_latency_ms": 24.30045299959602,
-      "num_datasets": 2
+      "mean_ndcg_at_10": 0.5653625681169102,
+      "mean_map_at_10": 0.3784082309775762,
+      "mean_mrr": 0.538079365079365,
+      "mean_recall_at_10": 0.4748089615867606,
+      "mean_latency_ms": 24.980675666496,
+      "num_datasets": 3
     },
     "chelation+tempscale_0.5": {
-      "mean_ndcg_at_10": 0.5526417397566289,
-      "mean_map_at_10": 0.36597076719576715,
-      "mean_mrr": 0.5245793650793651,
-      "mean_recall_at_10": 0.4522412201579188,
-      "mean_latency_ms": 23.583293499941647,
-      "num_datasets": 2
+      "mean_ndcg_at_10": 0.5659275625504828,
+      "mean_map_at_10": 0.37821749023683543,
+      "mean_mrr": 0.5380608465608465,
+      "mean_recall_at_10": 0.4759200726978718,
+      "mean_latency_ms": 24.99195133338314,
+      "num_datasets": 3
     },
     "chelation+tempscale_2.0": {
-      "mean_ndcg_at_10": 0.553638014020106,
-      "mean_map_at_10": 0.36649854497354495,
-      "mean_mrr": 0.5273571428571429,
-      "mean_recall_at_10": 0.4522412201579188,
-      "mean_latency_ms": 23.74117399991519,
-      "num_datasets": 2
+      "mean_ndcg_at_10": 0.566591745392801,
+      "mean_map_at_10": 0.3785693420886873,
+      "mean_mrr": 0.5399126984126984,
+      "mean_recall_at_10": 0.4759200726978718,
+      "mean_latency_ms": 25.09248199989088,
+      "num_datasets": 3
     },
     "procrustes": {
-      "mean_ndcg_at_10": 0.544445946377776,
-      "mean_map_at_10": 0.3613093253968254,
-      "mean_mrr": 0.5172460317460317,
-      "mean_recall_at_10": 0.44161486302848685,
-      "mean_latency_ms": 25.007170499884523,
-      "num_datasets": 2
+      "mean_ndcg_at_10": 0.5613346712595945,
+      "mean_map_at_10": 0.37534219261778795,
+      "mean_mrr": 0.5352328042328042,
+      "mean_recall_at_10": 0.4702247235004727,
+      "mean_latency_ms": 27.00168266686281,
+      "num_datasets": 3
     },
     "low_rank_16": {
-      "mean_ndcg_at_10": 0.5526417397566289,
-      "mean_map_at_10": 0.36597076719576715,
-      "mean_mrr": 0.5245793650793651,
-      "mean_recall_at_10": 0.4522412201579188,
-      "mean_latency_ms": 23.652083499910077,
-      "num_datasets": 2
+      "mean_ndcg_at_10": 0.5659275625504828,
+      "mean_map_at_10": 0.37821749023683543,
+      "mean_mrr": 0.5380608465608465,
+      "mean_recall_at_10": 0.4759200726978718,
+      "mean_latency_ms": 25.041844666969457,
+      "num_datasets": 3
     },
     "online_updates": {
-      "mean_ndcg_at_10": 0.555893482855966,
-      "mean_map_at_10": 0.3689874338624339,
-      "mean_mrr": 0.5301071428571429,
-      "mean_recall_at_10": 0.4522412201579188,
-      "mean_latency_ms": 27.00891850003245,
-      "num_datasets": 2
+      "mean_ndcg_at_10": 0.5676370888519048,
+      "mean_map_at_10": 0.38099857489292016,
+      "mean_mrr": 0.541968253968254,
+      "mean_recall_at_10": 0.4748089615867606,
+      "mean_latency_ms": 29.22765933309468,
+      "num_datasets": 3
     },
     "random_mask_50pct": {
-      "mean_ndcg_at_10": 0.6041310807589672,
-      "mean_map_at_10": 0.4139152777777778,
-      "mean_mrr": 0.5724345238095239,
-      "mean_recall_at_10": 0.4673303034638243,
-      "mean_latency_ms": 21.792432499896677,
-      "num_datasets": 2
+      "mean_ndcg_at_10": 0.6096420243417687,
+      "mean_map_at_10": 0.4213859615142354,
+      "mean_mrr": 0.5782473544973544,
+      "mean_recall_at_10": 0.5076765515155653,
+      "mean_latency_ms": 23.518974999945687,
+      "num_datasets": 3
     }
   },
   "aggregated_by_dataset": {
@@ -269,6 +365,10 @@
     },
     "NFCorpus": {
       "mean_ndcg_at_10": 0.5131168786007838,
+      "num_configs": 8
+    },
+    "FiQA2018": {
+      "mean_ndcg_at_10": 0.6059344816990113,
       "num_configs": 8
     }
   },
@@ -284,47 +384,56 @@
       "random_mask_50pct"
     ],
     "datasets": [
+      "FiQA2018",
       "NFCorpus",
       "SciFact"
     ],
     "ndcg_matrix": [
       [
+        0.6732636803884882,
         0.5804447204324521,
         0.7229631616648291
       ],
       [
+        0.5898142154146438,
         0.49712552983563235,
         0.6091479591004544
       ],
       [
+        0.5924992081381908,
         0.4966872923272439,
         0.6085961871860139
       ],
       [
+        0.5924992081381908,
         0.4981280689397576,
         0.6091479591004544
       ],
       [
+        0.5924992081381908,
         0.4966872923272439,
         0.6085961871860139
       ],
       [
+        0.5911243008437822,
         0.4991362069067035,
         0.6126507588052285
       ],
       [
+        0.5951121210232314,
         0.49518231812597335,
         0.5937095746295786
       ],
       [
+        0.6206639115073721,
         0.5415435999112646,
         0.6667185616066698
       ]
     ]
   },
   "summary": {
-    "num_datasets": 2,
+    "num_datasets": 3,
     "num_configs": 8,
-    "total_evaluations": 16
+    "total_evaluations": 24
   }
 }
