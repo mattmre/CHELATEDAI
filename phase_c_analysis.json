@@ -1,0 +1,54 @@
+{
+  "schema_version": "1.0",
+  "analysis_timestamp": "2026-05-08T00:53:43Z",
+  "results_path": "phase_c_results.json",
+  "candidate_summaries": {
+    "baseline": {
+      "mean_delta_ndcg_at_10": 0.0,
+      "win_count": 0,
+      "loss_count": 0,
+      "tie_count": 200,
+      "win_rate": 0.0,
+      "datasets": [
+        "SciFact"
+      ],
+      "mean_ndcg_at_10": 0.6515041074084047
+    },
+    "guard_p85_t0.01": {
+      "mean_delta_ndcg_at_10": -0.07646128540126916,
+      "win_count": 20,
+      "loss_count": 58,
+      "tie_count": 122,
+      "win_rate": 0.1,
+      "datasets": [
+        "SciFact"
+      ],
+      "mean_ndcg_at_10": 0.5750428220071354
+    },
+    "learned_reform_gate_v1": {
+      "mean_delta_ndcg_at_10": -0.07673717135848934,
+      "win_count": 20,
+      "loss_count": 58,
+      "tie_count": 122,
+      "win_rate": 0.1,
+      "datasets": [
+        "SciFact"
+      ],
+      "mean_ndcg_at_10": 0.5747669360499152
+    },
+    "learned_mask_gate_v1": {
+      "mean_delta_ndcg_at_10": -0.08045610857884036,
+      "win_count": 20,
+      "loss_count": 62,
+      "tie_count": 118,
+      "win_rate": 0.1,
+      "datasets": [
+        "SciFact"
+      ],
+      "mean_ndcg_at_10": 0.5710479988295643
+    }
+  },
+  "promotable_candidates": [],
+  "recommendation": "no_default_change",
+  "baseline_mean_ndcg_at_10": 0.6515041074084047
+}

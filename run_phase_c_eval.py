@@ -15,6 +15,9 @@ Outputs (all in --output-dir):
   overlay_card_<candidate>.json – overlay artifact card per candidate (Slice 5)
   run_manifest.json             – artifact inventory
 
+Root-level committed copy (same convention as benchmark_beir_results.json):
+  phase_c_results.json          – identical to output_dir copy; committed to repo
+
 Usage:
   python run_phase_c_eval.py
   python run_phase_c_eval.py --tier small --max-queries 200
@@ -724,7 +727,12 @@ def main() -> int:
                 f"{pct}"
             )
 
+    # Write a root-level committed copy (same convention as benchmark_beir_results.json)
+    root_results = Path("phase_c_results.json")
+    with open(root_results, "w", encoding="utf-8") as fh:
+        json.dump(results, fh, indent=2)
     print(f"\nArtifacts written to: {args.output_dir}")
+    print(f"Root summary: {root_results}")
     return 0
 
 
