@@ -585,7 +585,177 @@ class TestEvidenceCleanupPlan(unittest.TestCase):
         self.assertEqual(len(result["candidates"]), 2)
 
 
-class TestDashboardHandler(unittest.TestCase):
+class TestLoadPhaseC(unittest.TestCase):
+    """Test load_phase_c_results and load_phase_c_analysis."""
+
+    _RESULTS = {
+        "record_type": "phase_c_eval",
+        "run_at": "2026-05-07T00:00:00Z",
+        "schema_version": "1.0",
+        "candidates": ["baseline", "guard_p85_t0.01"],
+        "datasets": ["scifact"],
+        "summaries": {
+            "baseline": {"mean_ndcg_at_10": 0.6515, "gate_apply_pct": None},
+            "guard_p85_t0.01": {"mean_ndcg_at_10": 0.5750, "gate_apply_pct": 85.0},
+        },
+        "gate_summary": {"guard_p85_t0.01": {"apply_pct": 85.0}},
+    }
+    _ANALYSIS = {
+        "schema_version": "1.0",
+        "analysis_timestamp": "2026-05-07T00:01:00Z",
+        "recommendation": "no_default_change",
+        "baseline_mean_ndcg_at_10": 0.6515,
+        "promotable_candidates": [],
+        "candidate_summaries": {
+            "guard_p85_t0.01": {"mean_delta": -0.0765, "win_rate": 0.32, "status": "hold"},
+        },
+    }
+
+    def test_load_phase_c_results_missing(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            result = dashboard_server.load_phase_c_results(os.path.join(tmpdir, "missing.json"))
+        self.assertEqual(result["data_status"], "not_generated")
+        self.assertEqual(result["candidates"], [])
+        self.assertIn("reason", result)
+
+    def test_load_phase_c_results_ok(self):
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+            json.dump(self._RESULTS, f)
+            path = f.name
+        try:
+            result = dashboard_server.load_phase_c_results(path)
+        finally:
+            os.unlink(path)
+        self.assertEqual(result["data_status"], "ok")
+        self.assertEqual(result["schema_version"], "1.0")
+        self.assertIn("baseline", result["summaries"])
+        self.assertEqual(result["summaries"]["baseline"]["mean_ndcg_at_10"], 0.6515)
+
+    def test_load_phase_c_results_malformed(self):
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+            f.write("[not-an-object]")
+            path = f.name
+        try:
+            result = dashboard_server.load_phase_c_results(path)
+        finally:
+            os.unlink(path)
+        self.assertEqual(result["data_status"], "error")
+        self.assertIn("reason", result)
+
+    def test_load_phase_c_analysis_missing(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            result = dashboard_server.load_phase_c_analysis(os.path.join(tmpdir, "missing.json"))
+        self.assertEqual(result["data_status"], "not_generated")
+        self.assertIsNone(result["recommendation"])
+        self.assertEqual(result["promotable_candidates"], [])
+
+    def test_load_phase_c_analysis_ok(self):
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+            json.dump(self._ANALYSIS, f)
+            path = f.name
+        try:
+            result = dashboard_server.load_phase_c_analysis(path)
+        finally:
+            os.unlink(path)
+        self.assertEqual(result["data_status"], "ok")
+        self.assertEqual(result["recommendation"], "no_default_change")
+        self.assertAlmostEqual(result["baseline_mean_ndcg_at_10"], 0.6515)
+        self.assertEqual(result["promotable_candidates"], [])
+        self.assertIn("guard_p85_t0.01", result["candidate_summaries"])
+
+    def test_load_phase_c_analysis_malformed(self):
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+            f.write("not-json{{{")
+            path = f.name
+        try:
+            result = dashboard_server.load_phase_c_analysis(path)
+        finally:
+            os.unlink(path)
+        self.assertEqual(result["data_status"], "error")
+
+    def test_load_phase_c_results_missing_summaries_defaults_to_empty(self):
+        payload = dict(self._RESULTS)
+        del payload["summaries"]
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+            json.dump(payload, f)
+            path = f.name
+        try:
+            result = dashboard_server.load_phase_c_results(path)
+        finally:
+            os.unlink(path)
+        self.assertEqual(result["data_status"], "ok")
+        self.assertEqual(result["summaries"], {})
+
+    def test_load_phase_c_analysis_missing_candidate_summaries_defaults_to_empty(self):
+        payload = dict(self._ANALYSIS)
+        del payload["candidate_summaries"]
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+            json.dump(payload, f)
+            path = f.name
+        try:
+            result = dashboard_server.load_phase_c_analysis(path)
+        finally:
+            os.unlink(path)
+        self.assertEqual(result["data_status"], "ok")
+        self.assertEqual(result["candidate_summaries"], {})
+
+
+class TestPhaseCHandlers(unittest.TestCase):
+    """Test DashboardHandler.handle_api_phase_c_results and handle_api_phase_c_analysis."""
+
+    def _make_handler(self):
+        handler = dashboard_server.DashboardHandler.__new__(dashboard_server.DashboardHandler)
+        handler.wfile = BytesIO()
+        handler.headers = {}
+        handler.send_response = MagicMock()
+        handler.send_header = MagicMock()
+        handler.end_headers = MagicMock()
+        return handler
+
+    def test_handle_api_phase_c_results_calls_loader(self):
+        handler = self._make_handler()
+        handler.send_json_response = MagicMock()
+        with tempfile.TemporaryDirectory() as tmpdir:
+            old = dashboard_server.PHASE_C_RESULTS_PATH
+            dashboard_server.PHASE_C_RESULTS_PATH = os.path.join(tmpdir, "missing.json")
+            try:
+                handler.handle_api_phase_c_results()
+            finally:
+                dashboard_server.PHASE_C_RESULTS_PATH = old
+        handler.send_json_response.assert_called_once()
+        result = handler.send_json_response.call_args[0][0]
+        self.assertEqual(result["data_status"], "not_generated")
+
+    def test_handle_api_phase_c_analysis_calls_loader(self):
+        handler = self._make_handler()
+        handler.send_json_response = MagicMock()
+        with tempfile.TemporaryDirectory() as tmpdir:
+            old = dashboard_server.PHASE_C_ANALYSIS_PATH
+            dashboard_server.PHASE_C_ANALYSIS_PATH = os.path.join(tmpdir, "missing.json")
+            try:
+                handler.handle_api_phase_c_analysis()
+            finally:
+                dashboard_server.PHASE_C_ANALYSIS_PATH = old
+        handler.send_json_response.assert_called_once()
+        result = handler.send_json_response.call_args[0][0]
+        self.assertEqual(result["data_status"], "not_generated")
+
+    def test_do_get_routes_phase_c_results(self):
+        handler = self._make_handler()
+        handler.handle_api_phase_c_results = MagicMock()
+        handler.path = "/api/phase_c_results"
+        handler.do_GET()
+        handler.handle_api_phase_c_results.assert_called_once()
+
+    def test_do_get_routes_phase_c_analysis(self):
+        handler = self._make_handler()
+        handler.handle_api_phase_c_analysis = MagicMock()
+        handler.path = "/api/phase_c_analysis"
+        handler.do_GET()
+        handler.handle_api_phase_c_analysis.assert_called_once()
+
+
+
     """Test the DashboardHandler class."""
 
     def setUp(self):

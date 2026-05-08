@@ -36,6 +36,8 @@ PREFLIGHT_HISTORY_ROOT = "experiment_runs"
 EVIDENCE_INDEX_PATH = "evidence_index.json"
 EVIDENCE_CHAIN_HISTORY_ROOT = "experiment_runs"
 EVIDENCE_CLEANUP_ROOT = "experiment_runs"
+PHASE_C_RESULTS_PATH = "phase_c_results.json"
+PHASE_C_ANALYSIS_PATH = "phase_c_analysis.json"
 
 
 def get_inline_dashboard_html():
@@ -298,6 +300,36 @@ def get_inline_dashboard_html():
 
         <div class="events-section">
             <div class="section-header">
+                <h2>Phase C Evaluation — Four-Candidate Results</h2>
+            </div>
+            <div id="phase-c-panel">
+                <div class="loading" id="phase-c-loading">Loading Phase C data…</div>
+                <div id="phase-c-recommendation" style="margin-bottom:12px;display:none;"></div>
+                <div id="phase-c-table-wrap" style="display:none;">
+                    <div class="table-container">
+                        <table id="phase-c-table">
+                            <thead>
+                                <tr>
+                                    <th>Candidate</th>
+                                    <th>NDCG@10 (mean)</th>
+                                    <th>Δ vs Baseline</th>
+                                    <th>Win Rate</th>
+                                    <th>Gate%</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="phase-c-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div id="phase-c-empty" style="display:none;color:#888;padding:12px;">
+                    Phase C results not yet generated — run <code>run_phase_c_eval.py</code> then <code>analyze_phase_c_results.py</code>.
+                </div>
+            </div>
+        </div>
+
+        <div class="events-section">
+            <div class="section-header">
                 <h2>Recent Events</h2>
                 <div class="controls">
                     <select id="event-filter">
@@ -509,7 +541,73 @@ def get_inline_dashboard_html():
         }
 
         async function refreshData() {
-            await Promise.all([loadSummary(), loadEvents()]);
+            await Promise.all([loadSummary(), loadEvents(), loadPhaseC()]);
+        }
+
+        async function loadPhaseC() {
+            try {
+                const [resultsResp, analysisResp] = await Promise.all([
+                    fetch('/api/phase_c_results'),
+                    fetch('/api/phase_c_analysis'),
+                ]);
+                const results = resultsResp.ok ? await resultsResp.json() : null;
+                const analysis = analysisResp.ok ? await analysisResp.json() : null;
+                renderPhaseC(results, analysis);
+            } catch (e) {
+                document.getElementById('phase-c-loading').textContent = `Error loading Phase C data: ${e.message}`;
+            }
+        }
+
+        function renderPhaseC(results, analysis) {
+            const loading = document.getElementById('phase-c-loading');
+            const recDiv = document.getElementById('phase-c-recommendation');
+            const tableWrap = document.getElementById('phase-c-table-wrap');
+            const tbody = document.getElementById('phase-c-tbody');
+            const empty = document.getElementById('phase-c-empty');
+
+            const hasData = results && results.data_status === 'ok' && results.summaries;
+            if (!hasData) {
+                loading.style.display = 'none';
+                empty.style.display = 'block';
+                return;
+            }
+            loading.style.display = 'none';
+
+            // Recommendation badge
+            const rec = analysis && analysis.recommendation ? analysis.recommendation : null;
+            if (rec) {
+                const badge = rec === 'no_default_change'
+                    ? `<span style="background:#e8f5e9;color:#388e3c;padding:4px 10px;border-radius:4px;font-weight:600;">✅ ${rec.replace(/_/g,' ')}</span>`
+                    : `<span style="background:#fff8e1;color:#f57f17;padding:4px 10px;border-radius:4px;font-weight:600;">⚠️ ${rec.replace(/_/g,' ')}</span>`;
+                const base = analysis.baseline_mean_ndcg_at_10 != null
+                    ? ` — Baseline NDCG@10: <strong>${analysis.baseline_mean_ndcg_at_10.toFixed(4)}</strong>` : '';
+                recDiv.innerHTML = `Recommendation: ${badge}${base}`;
+                recDiv.style.display = 'block';
+            }
+
+            // Candidate table
+            const summaries = results.summaries || {};
+            const promotable = (analysis && analysis.promotable_candidates) ? new Set(analysis.promotable_candidates) : new Set();
+            const candidateSummaries = (analysis && analysis.candidate_summaries) ? analysis.candidate_summaries : {};
+            tbody.replaceChildren();
+            for (const [cname, cdata] of Object.entries(summaries)) {
+                const ana = candidateSummaries[cname] || {};
+                const ndcg = typeof cdata.mean_ndcg_at_10 === 'number' ? cdata.mean_ndcg_at_10.toFixed(4) : '-';
+                const delta = typeof ana.mean_delta === 'number' ? (ana.mean_delta >= 0 ? '+' : '') + ana.mean_delta.toFixed(4) : '-';
+                const winRate = typeof ana.win_rate === 'number' ? (ana.win_rate * 100).toFixed(1) + '%' : '-';
+                const gatePct = typeof cdata.gate_apply_pct === 'number' ? cdata.gate_apply_pct.toFixed(0) + '%' : '-';
+                const isPromo = promotable.has(cname);
+                const status = cname === 'baseline'
+                    ? '<span style="color:#1976d2;font-weight:600;">baseline</span>'
+                    : isPromo
+                        ? '<span style="color:#388e3c;font-weight:600;">✅ promotable</span>'
+                        : '<span style="color:#888;">hold</span>';
+                const deltaColor = ana.mean_delta != null ? (ana.mean_delta > 0 ? 'color:#388e3c' : ana.mean_delta < 0 ? 'color:#d32f2f' : '') : '';
+                const row = document.createElement('tr');
+                row.innerHTML = `<td><code>${cname}</code></td><td>${ndcg}</td><td style="${deltaColor}">${delta}</td><td>${winRate}</td><td>${gatePct}</td><td>${status}</td>`;
+                tbody.appendChild(row);
+            }
+            tableWrap.style.display = 'block';
         }
 
         document.getElementById('event-filter').addEventListener('change', loadEvents);
@@ -1084,6 +1182,89 @@ def load_evidence_cleanup_plan(
     }
 
 
+def load_phase_c_results(path: str = PHASE_C_RESULTS_PATH) -> Dict[str, Any]:
+    """Load Phase C four-candidate evaluation results for dashboard display.
+
+    Returns a dashboard-safe payload: if the file is missing, returns a
+    ``data_status="not_generated"`` sentinel so the frontend can show a helpful
+    prompt rather than an error.
+    """
+    p = Path(path)
+    if not p.exists():
+        return {
+            "data_status": "not_generated",
+            "reason": f"{path} not found — run run_phase_c_eval.py to populate",
+            "candidates": [],
+            "datasets": [],
+            "summaries": {},
+        }
+    try:
+        payload = _load_json_object(p)
+    except (OSError, ValueError) as exc:
+        return {
+            "data_status": "error",
+            "reason": f"Failed to load {path}: {exc}",
+            "candidates": [],
+            "datasets": [],
+            "summaries": {},
+        }
+    summaries = payload.get("summaries")
+    if not isinstance(summaries, dict):
+        summaries = {}
+    return {
+        "data_status": "ok",
+        "record_type": payload.get("record_type"),
+        "run_at": payload.get("run_at"),
+        "schema_version": payload.get("schema_version"),
+        "candidates": payload.get("candidates") if isinstance(payload.get("candidates"), list) else [],
+        "datasets": payload.get("datasets") if isinstance(payload.get("datasets"), list) else [],
+        "summaries": summaries,
+        "gate_summary": payload.get("gate_summary") if isinstance(payload.get("gate_summary"), dict) else {},
+    }
+
+
+def load_phase_c_analysis(path: str = PHASE_C_ANALYSIS_PATH) -> Dict[str, Any]:
+    """Load Phase C analysis report for dashboard display.
+
+    Returns a dashboard-safe payload with a ``data_status`` sentinel when the
+    file is missing or malformed.
+    """
+    p = Path(path)
+    if not p.exists():
+        return {
+            "data_status": "not_generated",
+            "reason": f"{path} not found — run analyze_phase_c_results.py to populate",
+            "recommendation": None,
+            "promotable_candidates": [],
+            "candidate_summaries": {},
+        }
+    try:
+        payload = _load_json_object(p)
+    except (OSError, ValueError) as exc:
+        return {
+            "data_status": "error",
+            "reason": f"Failed to load {path}: {exc}",
+            "recommendation": None,
+            "promotable_candidates": [],
+            "candidate_summaries": {},
+        }
+    summaries = payload.get("candidate_summaries")
+    if not isinstance(summaries, dict):
+        summaries = {}
+    promotable = payload.get("promotable_candidates")
+    if not isinstance(promotable, list):
+        promotable = []
+    return {
+        "data_status": "ok",
+        "analysis_timestamp": payload.get("analysis_timestamp"),
+        "schema_version": payload.get("schema_version"),
+        "recommendation": payload.get("recommendation"),
+        "promotable_candidates": promotable,
+        "baseline_mean_ndcg_at_10": payload.get("baseline_mean_ndcg_at_10"),
+        "candidate_summaries": summaries,
+    }
+
+
 class DashboardHandler(SimpleHTTPRequestHandler):
     """
     HTTP request handler for the dashboard server.
@@ -1128,6 +1309,10 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             self.handle_api_evidence_chain_history(query_params)
         elif path == "/api/evidence_cleanup_plan":
             self.handle_api_evidence_cleanup_plan(query_params)
+        elif path == "/api/phase_c_results":
+            self.handle_api_phase_c_results()
+        elif path == "/api/phase_c_analysis":
+            self.handle_api_phase_c_analysis()
         elif path == "/" or path == "/dashboard" or path == "/dashboard/":
             # Redirect to dashboard page
             self.serve_dashboard()
@@ -1337,6 +1522,20 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             self.send_json_response(load_evidence_cleanup_plan(EVIDENCE_CLEANUP_ROOT, keep_latest=keep_latest, candidate_limit=limit))
         except Exception as e:
             self.send_error_response(500, f"Error reading evidence cleanup plan: {str(e)}")
+
+    def handle_api_phase_c_results(self):
+        """Handle /api/phase_c_results endpoint."""
+        try:
+            self.send_json_response(load_phase_c_results(PHASE_C_RESULTS_PATH))
+        except Exception as e:
+            self.send_error_response(500, f"Error reading Phase C results: {str(e)}")
+
+    def handle_api_phase_c_analysis(self):
+        """Handle /api/phase_c_analysis endpoint."""
+        try:
+            self.send_json_response(load_phase_c_analysis(PHASE_C_ANALYSIS_PATH))
+        except Exception as e:
+            self.send_error_response(500, f"Error reading Phase C analysis: {str(e)}")
             
     def serve_dashboard(self):
         """Serve the dashboard HTML page."""
