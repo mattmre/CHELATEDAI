@@ -36,6 +36,8 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+import random
+
 import numpy as np
 
 from adaptive_overlay import build_overlay_artifact_card, build_overlay_report
@@ -237,9 +239,38 @@ def _reformulate_query(query_text: str, reformulator: QueryReformulator) -> str:
         return query_text
 
 
+_PRIOR_RESULTS_PATH = "experiment_runs/phase-c-eval/latest/phase_c_results.json"
+
+
+def _load_prior_baseline_lookup() -> Optional[Dict[str, float]]:
+    """Load per-query baseline NDCG from the prior run, keyed by query_text.
+
+    Returns None when the prior results file is absent or unreadable.
+    """
+    try:
+        data = json.loads(Path(_PRIOR_RESULTS_PATH).read_text(encoding="utf-8"))
+        lookup: Dict[str, float] = {}
+        for row in data.get("per_query_results", []):
+            if row.get("candidate_id") == "baseline":
+                qt = row.get("query_text")
+                ndcg = row.get("ndcg_at_10")
+                if qt is not None and ndcg is not None:
+                    lookup[qt] = float(ndcg)
+        return lookup if lookup else None
+    except (OSError, json.JSONDecodeError, KeyError, TypeError):
+        return None
+
+
 def _mask_gate_features(query_text: str) -> Dict[str, Any]:
     """Build feature dict from query text for mask gate prediction."""
     lexical = query_lexical_features(query_text)
+    prior_lookup = _load_prior_baseline_lookup()
+    if prior_lookup is not None and query_text in prior_lookup:
+        delta_ndcg: Optional[float] = prior_lookup[query_text]
+        delta_source = "computed_from_prior_run"
+    else:
+        delta_ndcg = None
+        delta_source = "unavailable"
     return {
         "query_token_count": lexical.get("token_count", 0),
         "query_char_count": lexical.get("char_count", len(query_text)),
@@ -248,8 +279,8 @@ def _mask_gate_features(query_text: str) -> Dict[str, Any]:
         "query_negation_count": lexical.get("negation_count", 0),
         "query_claim_cue_count": lexical.get("claim_cue_count", 0),
         "query_text": query_text,
-        # delta unknown at prediction time; zero is safe (feature not in MASK_GATE_FEATURES)
-        "delta_ndcg_at_10": 0.0,
+        "delta_ndcg_at_10": delta_ndcg,
+        "delta_ndcg_source": delta_source,
     }
 
 
@@ -521,6 +552,7 @@ def run_phase_c_eval(
     reform_gate_path: Optional[str] = None,
     mask_gate_path: Optional[str] = None,
     mask_vector_path: Optional[str] = None,
+    seed: int = 42,
 ) -> Dict[str, Any]:
     """Run Phase C four-candidate evaluation campaign.
 
@@ -533,10 +565,14 @@ def run_phase_c_eval(
         reform_gate_path: Path to pre-trained reform gate JSON (optional).
         mask_gate_path: Path to pre-trained mask gate JSON (optional).
         mask_vector_path: Path to JSON with a ``masked_dims`` key (optional).
+        seed: Random seed for gate training reproducibility.
 
     Returns:
         Full results dict (also written to ``output_dir/phase_c_results.json``).
     """
+    random.seed(seed)
+    np.random.seed(seed)
+
     run_at = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     _LOGGER.log_event(
         "phase_c_start",
@@ -608,6 +644,7 @@ def run_phase_c_eval(
         "schema_version": PHASE_C_SCHEMA_VERSION,
         "record_type": "phase_c_eval_results",
         "run_at": run_at,
+        "seed": seed,
         "candidates": candidates,
         "datasets": datasets,
         "max_queries_per_dataset": max_queries,
@@ -682,6 +719,12 @@ def main() -> int:
         help="Path to JSON with masked_dims key (derived from probe artifacts if omitted)",
     )
     parser.add_argument("--model", default=DEFAULT_MODEL_NAME, help="Embedding model name")
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=42,
+        help="Random seed for gate training reproducibility",
+    )
     args = parser.parse_args()
 
     datasets = ["SciFact"] if args.tier == "minimal" else ["SciFact", "NFCorpus"]
@@ -695,6 +738,7 @@ def main() -> int:
         reform_gate_path=args.reform_gate,
         mask_gate_path=args.mask_gate,
         mask_vector_path=args.mask_vector,
+        seed=args.seed,
     )
 
     # Summary table

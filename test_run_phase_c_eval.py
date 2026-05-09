@@ -148,9 +148,43 @@ class TestMaskGateFeatures(unittest.TestCase):
         self.assertIn("query_stopword_ratio", feats)
         self.assertIn("delta_ndcg_at_10", feats)
 
-    def test_delta_is_zero_placeholder(self):
-        feats = _mask_gate_features("test")
-        self.assertEqual(feats["delta_ndcg_at_10"], 0.0)
+    def test_delta_ndcg_returns_none_when_no_prior(self):
+        with patch("run_phase_c_eval.Path") as mock_path_cls:
+            mock_path_cls.return_value.read_text.side_effect = OSError("no file")
+            feats = _mask_gate_features("test")
+        self.assertIsNone(feats["delta_ndcg_at_10"])
+        self.assertEqual(feats["delta_ndcg_source"], "unavailable")
+
+    def test_delta_ndcg_returns_float_when_prior_exists(self):
+        prior_data = json.dumps({
+            "per_query_results": [
+                {"candidate_id": "baseline", "query_text": "what is CRISPR gene editing", "ndcg_at_10": 0.75},
+            ]
+        })
+        with patch("run_phase_c_eval.Path") as mock_path_cls:
+            mock_path_cls.return_value.read_text.return_value = prior_data
+            feats = _mask_gate_features("what is CRISPR gene editing")
+        self.assertIsInstance(feats["delta_ndcg_at_10"], float)
+        self.assertAlmostEqual(feats["delta_ndcg_at_10"], 0.75)
+        self.assertEqual(feats["delta_ndcg_source"], "computed_from_prior_run")
+
+    def test_delta_ndcg_returns_none_when_query_not_in_prior(self):
+        prior_data = json.dumps({
+            "per_query_results": [
+                {"candidate_id": "baseline", "query_text": "other query", "ndcg_at_10": 0.5},
+            ]
+        })
+        with patch("run_phase_c_eval.Path") as mock_path_cls:
+            mock_path_cls.return_value.read_text.return_value = prior_data
+            feats = _mask_gate_features("not in prior")
+        self.assertIsNone(feats["delta_ndcg_at_10"])
+        self.assertEqual(feats["delta_ndcg_source"], "unavailable")
+
+    def test_delta_ndcg_source_key_always_present(self):
+        with patch("run_phase_c_eval.Path") as mock_path_cls:
+            mock_path_cls.return_value.read_text.side_effect = OSError("no file")
+            feats = _mask_gate_features("any query")
+        self.assertIn("delta_ndcg_source", feats)
 
     def test_empty_query(self):
         feats = _mask_gate_features("")
