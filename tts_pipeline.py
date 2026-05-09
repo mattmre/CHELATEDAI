@@ -18,6 +18,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 
 from chelation_logger import get_logger
+from feature_direction_bank import FeatureDirectionBank
 from vector_translator import TranslationConfig, TranslationResult, VectorTranslator
 from vector_transport import TransportConfig, TransportResult, VectorTransport
 
@@ -93,14 +94,30 @@ class VectorSteerer:
         max_strength = 0.3
         steerer = cls(max_strength=max_strength)
         features = getattr(feature_event, "features", [])
-        dim = getattr(feature_event, "dim", 384)
 
-        for feat in features:
-            feature_id = str(getattr(feat, "feature_id", id(feat)))
-            feature_value = float(getattr(feat, "value", 1.0))
-            dim_idx = abs(hash(feature_id)) % dim
-            direction = np.zeros(dim)
-            direction[dim_idx] = 1.0
+        dim = 384  # fallback
+        src = getattr(feature_event, "source_activation", None)
+        if src is not None:
+            shape = getattr(src, "shape", None)
+            if shape and len(shape) >= 1:
+                dim = shape[-1]
+        else:
+            dim = getattr(feature_event, "dim", 384)
+
+        bank = FeatureDirectionBank(dim=dim)
+
+        if isinstance(features, dict):
+            items: Any = features.items()
+        else:
+            items = (
+                (str(getattr(feat, "feature_id", id(feat))), float(getattr(feat, "value", 1.0)))
+                for feat in features
+            )
+
+        for feature_id, feature_value in items:
+            feature_id = str(feature_id)
+            feature_value = float(feature_value)
+            direction = bank.get_direction(feature_id)
             strength = min(feature_value * strength_scale, max_strength)
             steerer.add_signal(
                 SteeringSignal(
