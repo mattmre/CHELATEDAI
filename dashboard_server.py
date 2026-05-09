@@ -43,6 +43,55 @@ MODEL_SCOPE_ARTIFACT_ROOT = os.path.join(
     "experiment_runs", "model_scope"
 )
 
+# TTS pipeline state — populated by AntigravityEngine.enable_tts() and run_inference()
+_TTS_DASHBOARD_STATE: Dict[str, Any] = {
+    "enabled": False,
+    "config": {},
+    "last_result": None,
+}
+
+
+def update_tts_dashboard_state(
+    enabled: bool,
+    config: Optional[Dict[str, Any]] = None,
+    last_result: Optional[Dict[str, Any]] = None,
+) -> None:
+    """Update TTS dashboard state. Called by AntigravityEngine when TTS is active."""
+    _TTS_DASHBOARD_STATE["enabled"] = bool(enabled)
+    if config is not None:
+        _TTS_DASHBOARD_STATE["config"] = dict(config)
+    if last_result is not None:
+        _TTS_DASHBOARD_STATE["last_result"] = dict(last_result)
+
+
+def _tts_result_to_dict(tts_result: Any) -> Dict[str, Any]:
+    """Convert a TTSResult object to a JSON-serialisable dict for dashboard API."""
+    import numpy as _np
+
+    norm_before = float(_np.linalg.norm(tts_result.original))
+    norm_after = float(_np.linalg.norm(tts_result.after_steering))
+    translation_offset_norm: Optional[float] = None
+    transport_weight_used: Optional[float] = None
+    steering_delta_norm: Optional[float] = None
+
+    if tts_result.translation_result is not None:
+        translation_offset_norm = float(tts_result.translation_result.offset_norm)
+    if tts_result.transport_result is not None:
+        transport_weight_used = float(tts_result.transport_result.weight_used)
+    if tts_result.steering_meta is not None:
+        steering_delta_norm = float(tts_result.steering_meta.get("total_delta_norm", 0.0))
+
+    return {
+        "last_result_available": True,
+        "norm_before": norm_before,
+        "norm_after": norm_after,
+        "total_delta_norm": float(tts_result.total_delta_norm),
+        "stages_applied": list(tts_result.stages_applied),
+        "translation_offset_norm": translation_offset_norm,
+        "transport_weight_used": transport_weight_used,
+        "steering_delta_norm": steering_delta_norm,
+    }
+
 
 def get_inline_dashboard_html():
     """Return inline dashboard HTML for when dashboard/index.html doesn't exist."""
@@ -373,6 +422,54 @@ def get_inline_dashboard_html():
             </div>
         </div>
 
+        <div class="events-section" id="tts-panel">
+            <div class="section-header">
+                <h2>TTS Pipeline (Translation &#x2192; Transport &#x2192; Steering)</h2>
+            </div>
+            <div id="tts-loading" class="loading">Loading TTS data&#x2026;</div>
+            <div id="tts-content" style="display:none;">
+                <div class="metrics-grid" style="margin-bottom:16px;">
+                    <div class="metric-card">
+                        <div class="metric-label">Status</div>
+                        <div class="metric-value" id="tts-status">-</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Translation &#x394; (L2)</div>
+                        <div class="metric-value" id="tts-translation-delta">-</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Transport Weight (t)</div>
+                        <div class="metric-value" id="tts-transport-weight">-</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Steering Magnitude</div>
+                        <div class="metric-value" id="tts-steering-magnitude">-</div>
+                    </div>
+                </div>
+                <div class="metrics-grid" style="margin-bottom:16px;">
+                    <div class="metric-card">
+                        <div class="metric-label">Vector Norm (before TTS)</div>
+                        <div class="metric-value" id="tts-norm-before">-</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Vector Norm (after TTS)</div>
+                        <div class="metric-value" id="tts-norm-after">-</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Total &#x394; Norm</div>
+                        <div class="metric-value" id="tts-total-delta">-</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Stages Applied</div>
+                        <div class="metric-value" id="tts-stages">-</div>
+                    </div>
+                </div>
+            </div>
+            <div id="tts-disabled" style="display:none;color:#888;padding:12px;">
+                TTS pipeline not enabled &#x2014; call <code>engine.enable_tts()</code> to activate.
+            </div>
+        </div>
+
         <div class="events-section">
             <div class="section-header">
                 <h2>Recent Events</h2>
@@ -586,7 +683,55 @@ def get_inline_dashboard_html():
         }
 
         async function refreshData() {
-            await Promise.all([loadSummary(), loadEvents(), loadPhaseC(), loadModelScope()]);
+            await Promise.all([loadSummary(), loadEvents(), loadPhaseC(), loadModelScope(), loadTTS()]);
+        }
+
+        async function loadTTS() {
+            try {
+                const [statusResp, resultResp] = await Promise.all([
+                    fetch('/api/tts/status'),
+                    fetch('/api/tts/last_result'),
+                ]);
+                const status = statusResp.ok ? await statusResp.json() : null;
+                const result = resultResp.ok ? await resultResp.json() : null;
+                renderTTS(status, result);
+            } catch (e) {
+                const el = document.getElementById('tts-loading');
+                if (el) el.textContent = 'Error loading TTS data: ' + e.message;
+            }
+        }
+
+        function renderTTS(status, result) {
+            const loading = document.getElementById('tts-loading');
+            const content = document.getElementById('tts-content');
+            const disabled = document.getElementById('tts-disabled');
+            if (!loading) return;
+            loading.style.display = 'none';
+            const enabled = status && status.enabled;
+            if (!enabled) {
+                if (disabled) disabled.style.display = 'block';
+                return;
+            }
+            if (content) content.style.display = 'block';
+            const statusEl = document.getElementById('tts-status');
+            if (statusEl) statusEl.textContent = '\u2705 Active';
+            if (result && result.last_result_available) {
+                const setVal = (id, val, fmt) => {
+                    const el = document.getElementById(id);
+                    if (el) el.textContent = val != null ? fmt(val) : '-';
+                };
+                setVal('tts-translation-delta', result.translation_offset_norm, v => v.toFixed(6));
+                setVal('tts-transport-weight', result.transport_weight_used, v => v.toFixed(4));
+                setVal('tts-steering-magnitude', result.steering_delta_norm, v => v.toFixed(6));
+                setVal('tts-norm-before', result.norm_before, v => v.toFixed(4));
+                setVal('tts-norm-after', result.norm_after, v => v.toFixed(4));
+                setVal('tts-total-delta', result.total_delta_norm, v => v.toFixed(6));
+                const stagesEl = document.getElementById('tts-stages');
+                if (stagesEl) {
+                    const stages = result.stages_applied;
+                    stagesEl.textContent = (stages && stages.length > 0) ? stages.join(', ') : 'none';
+                }
+            }
         }
 
         async function loadModelScope() {
@@ -721,6 +866,7 @@ def get_inline_dashboard_html():
 
         refreshData();
         setInterval(refreshData, 30000);
+        setInterval(loadTTS, 5000);
     </script>
 </body>
 </html>
@@ -1425,6 +1571,10 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             self.handle_api_model_scope_features(query_params)
         elif path == "/api/model_scope/interventions":
             self.handle_api_model_scope_interventions(query_params)
+        elif path == "/api/tts/status":
+            self.handle_api_tts_status()
+        elif path == "/api/tts/last_result":
+            self.handle_api_tts_last_result()
         elif path == "/" or path == "/dashboard" or path == "/dashboard/":
             # Redirect to dashboard page
             self.serve_dashboard()
@@ -1716,6 +1866,46 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             })
         except Exception as e:
             self.send_error_response(500, f"Error reading model-scope interventions: {e}")
+
+    def handle_api_tts_status(self):
+        """Handle /api/tts/status — returns TTS enable state, config, and last result summary."""
+        try:
+            state = _TTS_DASHBOARD_STATE
+            last = state.get("last_result")
+            last_summary: Optional[Dict[str, Any]] = None
+            if last is not None:
+                last_summary = {
+                    "stages_applied": last.get("stages_applied", []),
+                    "total_delta_norm": last.get("total_delta_norm", 0.0),
+                }
+            self.send_json_response({
+                "enabled": state.get("enabled", False),
+                "config": state.get("config", {}),
+                "last_result_summary": last_summary,
+            })
+        except Exception as e:
+            self.send_error_response(500, f"Error reading TTS status: {e}")
+
+    def handle_api_tts_last_result(self):
+        """Handle /api/tts/last_result — returns full TTSResult summary as JSON."""
+        try:
+            state = _TTS_DASHBOARD_STATE
+            last = state.get("last_result")
+            if last is None:
+                self.send_json_response({
+                    "last_result_available": False,
+                    "translation_offset_norm": None,
+                    "transport_weight_used": None,
+                    "steering_delta_norm": None,
+                    "norm_before": None,
+                    "norm_after": None,
+                    "total_delta_norm": None,
+                    "stages_applied": None,
+                })
+            else:
+                self.send_json_response(dict(last))
+        except Exception as e:
+            self.send_error_response(500, f"Error reading TTS last result: {e}")
 
     def serve_dashboard(self):
         """Serve the dashboard HTML page."""
