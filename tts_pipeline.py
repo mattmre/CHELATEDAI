@@ -192,6 +192,11 @@ class TTSPipeline:
         steering_meta: Optional[Dict[str, Any]] = None
         if self._config.steering_enabled:
             if feature_event is not None:
+                # feature_event signals are transient per-inference: clear accumulated
+                # state from prior calls before loading this inference's signals.
+                # Signals added via steerer.add_signal() (external/persistent) only
+                # persist when feature_event=None.
+                self._steerer.clear_signals()
                 for sig in VectorSteerer.from_sparse_feature_event(feature_event)._signals:
                     self._steerer.add_signal(sig)
             steered, meta = self._steerer.steer(current)
