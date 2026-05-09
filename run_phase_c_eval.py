@@ -239,38 +239,43 @@ def _reformulate_query(query_text: str, reformulator: QueryReformulator) -> str:
         return query_text
 
 
-_PRIOR_RESULTS_PATH = "experiment_runs/phase-c-eval/latest/phase_c_results.json"
+def _load_prior_baseline_lookup() -> Dict[str, float]:
+    """Scan all phase-c-eval run directories and merge per-query baseline NDCG.
 
-
-def _load_prior_baseline_lookup() -> Optional[Dict[str, float]]:
-    """Load per-query baseline NDCG from the prior run, keyed by query_text.
-
-    Returns None when the prior results file is absent or unreadable.
+    Scans experiment_runs/phase-c-eval/ recursively for phase_c_results.json files.
+    Sorts directories ascending so later runs overwrite earlier ones.
+    Returns empty dict (not None) when no results exist.
     """
-    try:
-        data = json.loads(Path(_PRIOR_RESULTS_PATH).read_text(encoding="utf-8"))
-        lookup: Dict[str, float] = {}
-        for row in data.get("per_query_results", []):
-            if row.get("candidate_id") == "baseline":
-                qt = row.get("query_text")
-                ndcg = row.get("ndcg_at_10")
-                if qt is not None and ndcg is not None:
-                    lookup[qt] = float(ndcg)
-        return lookup if lookup else None
-    except (OSError, json.JSONDecodeError, KeyError, TypeError):
-        return None
+    base = Path("experiment_runs/phase-c-eval")
+    if not base.exists():
+        return {}
+
+    lookup: Dict[str, float] = {}
+    for result_file in sorted(base.rglob("phase_c_results.json")):
+        try:
+            data = json.loads(result_file.read_text(encoding="utf-8"))
+            for row in data.get("per_query_results", []):
+                if row.get("candidate_id") == "baseline":
+                    qt = row.get("query_text")
+                    ndcg = row.get("ndcg_at_10")
+                    if qt is not None and ndcg is not None:
+                        lookup[qt] = float(ndcg)
+        except (OSError, json.JSONDecodeError, KeyError, TypeError):
+            continue
+
+    return lookup
 
 
 def _mask_gate_features(query_text: str) -> Dict[str, Any]:
     """Build feature dict from query text for mask gate prediction."""
     lexical = query_lexical_features(query_text)
     prior_lookup = _load_prior_baseline_lookup()
-    if prior_lookup is not None and query_text in prior_lookup:
-        delta_ndcg: Optional[float] = prior_lookup[query_text]
-        delta_source = "computed_from_prior_run"
+    if query_text in prior_lookup:
+        delta_ndcg: float = prior_lookup[query_text]
+        delta_source = "prior_run"
     else:
-        delta_ndcg = None
-        delta_source = "unavailable"
+        delta_ndcg = 0.0
+        delta_source = "neutral_fallback"
     return {
         "query_token_count": lexical.get("token_count", 0),
         "query_char_count": lexical.get("char_count", len(query_text)),
