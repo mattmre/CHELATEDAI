@@ -9,19 +9,48 @@ from typing import Any, Dict, List, Mapping, Optional
 
 from model_scope_features import SparseFeatureEvent
 from model_scope_runtime import ActivationEvent
-from steering_policy import ModelScopeSteeringPolicy, PolicyRegistry, PolicyStatus, SteeringMode
+from steering_policy import ModelScopeSteeringPolicy, PolicyRegistry, PolicyStatus, SteeringMode, SteeringPolicyConfig
+
+
+_STEERER_MODE_MAP = {
+    "shadow_mode": SteeringMode.SHADOW,
+    "soft_scale_mode": SteeringMode.SOFT_SCALE,
+    "suppression_mode": SteeringMode.SUPPRESSION,
+}
 
 
 class ModelScopeShadowSteerer:
     """Evaluate Model-Scope feature summaries and emit advisory steering actions."""
 
-    def __init__(self, policy: ModelScopeSteeringPolicy | Mapping[str, Any]):
+    def __init__(self, policy: ModelScopeSteeringPolicy | Mapping[str, Any] | None = None):
+        if policy is None:
+            policy = ModelScopeSteeringPolicy()
         if isinstance(policy, ModelScopeSteeringPolicy):
-            self.policy = policy
+            self._policy = policy
         else:
-            self.policy = ModelScopeSteeringPolicy.from_mapping(policy)
+            self._policy = ModelScopeSteeringPolicy.from_mapping(policy)
+        # Public alias for backward compatibility
+        self.policy = self._policy
 
-    def evaluate_capture(self, artifact: Mapping[str, Any]) -> Dict[str, Any]:
+        # Internal actuator bridge (System B)
+        self._policy_config = SteeringPolicyConfig(
+            name="shadow_steerer_internal",
+            mode=SteeringMode.SHADOW,
+            target_features=[],
+            policy_id="shadow_steerer_internal",
+        )
+        self._registry = PolicyRegistry()
+        self._registry.register(self._policy_config)
+        self._actuator = SteeringActuator(self._registry)
+
+    def activate(self, mode_string: str) -> None:
+        """Activate deployment mode. Syncs both the policy string (System A) and actuator enum (System B)."""
+        self._policy.deployment_mode = mode_string
+        self._policy_config.mode = _STEERER_MODE_MAP.get(mode_string, SteeringMode.SHADOW)
+
+    def evaluate_capture(self, artifact: Mapping[str, Any] | None = None) -> Dict[str, Any]:
+        if artifact is None:
+            artifact = {}
         observations = artifact.get("capture", {}).get("observations", [])
         matched_rules: List[Dict[str, Any]] = []
 
@@ -30,15 +59,15 @@ class ModelScopeShadowSteerer:
             if not isinstance(feature_summary, Mapping):
                 continue
             if (
-                self.policy.feature_space is not None
-                and str(feature_summary.get("feature_space")) != self.policy.feature_space
+                self._policy.feature_space is not None
+                and str(feature_summary.get("feature_space")) != self._policy.feature_space
             ):
                 continue
             features = {
                 str(item.get("feature_id")): float(item.get("value", 0.0))
                 for item in feature_summary.get("active_features", [])
             }
-            for rule in self.policy.rules:
+            for rule in self._policy.rules:
                 if rule.layer_index is not None and int(observation.get("layer_index", -1)) != rule.layer_index:
                     continue
                 value = features.get(rule.feature_id)
@@ -56,16 +85,44 @@ class ModelScopeShadowSteerer:
                     }
                 )
 
+        # Build a minimal feature event to drive the actuator
+        activation = ActivationEvent(
+            schema_version="1.0",
+            model_id=getattr(self._policy, "model_id", "unknown"),
+            layer_id="evaluate_capture",
+            token_count=0,
+            shape=(0,),
+            mean_activation=0.0,
+            norm_activation=0.0,
+            captured_at=datetime.now(timezone.utc).isoformat(),
+            run_id="evaluate_capture",
+        )
+        feature_event = SparseFeatureEvent(
+            schema_version="1.0",
+            source_activation=activation,
+            feature_source="evaluate_capture",
+            features={},
+            feature_count=0,
+            nonzero_count=0,
+            extracted_at=datetime.now(timezone.utc).isoformat(),
+        )
+        _, record = self._actuator.apply(feature_event, self._policy_config.policy_id)
+        runtime_applied = record.applied
+        applied_actions = list(record.features_modified)
+
         return {
-            "policy_name": self.policy.name,
-            "deployment_mode": self.policy.deployment_mode,
-            "feature_space": self.policy.feature_space,
+            "policy_name": self._policy.name,
+            "deployment_mode": self._policy.deployment_mode,
+            "feature_space": self._policy.feature_space,
             "matched_rule_count": len(matched_rules),
             "recommended_actions": matched_rules,
-            "runtime_applied": False,
+            "runtime_applied": runtime_applied,
+            "mode": self._policy_config.mode.value,
+            "rules_matched": len(matched_rules),
+            "applied_actions": applied_actions,
             "provenance": {
-                "policy_name": self.policy.name,
-                "deployment_mode": self.policy.deployment_mode,
+                "policy_name": self._policy.name,
+                "deployment_mode": self._policy.deployment_mode,
                 "artifact_path": artifact.get("output_path"),
             },
             "rollback": {

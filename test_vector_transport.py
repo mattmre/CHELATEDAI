@@ -44,7 +44,7 @@ class TestTransportConfig(unittest.TestCase):
         self.assertEqual(c.mode, TransportMode.LINEAR)
         self.assertAlmostEqual(c.default_weight, 0.2)
         self.assertAlmostEqual(c.max_weight, 0.5)
-        self.assertAlmostEqual(c.min_similarity_for_transport, 0.3)
+        self.assertAlmostEqual(c.min_similarity_for_transport, 0.85)
         self.assertTrue(c.enabled)
 
     def test_custom_values(self):
@@ -309,6 +309,105 @@ class TestVectorTransportSaveLoad(unittest.TestCase):
             loaded = VectorTransport.load(path)
         self.assertEqual(loaded._config.mode, TransportMode.COSINE)
         self.assertAlmostEqual(loaded._config.default_weight, 0.35)
+
+
+class TestVectorTransportRegistrationAPI(unittest.TestCase):
+    """Tests for register_target, target_count, and clear_targets."""
+
+    def setUp(self):
+        self.tp = _make_transport()
+
+    def test_register_target_stores_entry(self):
+        centroid = _unit(np.array([1.0, 0.0, 0.0, 0.0]))
+        self.tp.register_target("t1", centroid, "label-A")
+        self.assertIn("t1", self.tp._targets)
+
+    def test_register_target_sets_centroid(self):
+        centroid = _unit(np.array([0.0, 1.0, 0.0, 0.0]))
+        self.tp.register_target("t1", centroid)
+        np.testing.assert_array_almost_equal(self.tp._targets["t1"].centroid, centroid)
+
+    def test_register_target_sets_label_as_description(self):
+        centroid = np.ones(4)
+        self.tp.register_target("t1", centroid, label="my-label")
+        self.assertEqual(self.tp._targets["t1"].description, "my-label")
+
+    def test_register_target_default_label_empty(self):
+        self.tp.register_target("t1", np.ones(4))
+        self.assertEqual(self.tp._targets["t1"].description, "")
+
+    def test_register_target_overwrite(self):
+        c1 = _unit(np.array([1.0, 0.0, 0.0, 0.0]))
+        c2 = _unit(np.array([0.0, 1.0, 0.0, 0.0]))
+        self.tp.register_target("t1", c1, "first")
+        self.tp.register_target("t1", c2, "second")
+        self.assertEqual(self.tp.target_count(), 1)
+        self.assertEqual(self.tp._targets["t1"].description, "second")
+
+    def test_target_count_zero_initially(self):
+        self.assertEqual(self.tp.target_count(), 0)
+
+    def test_target_count_increments(self):
+        self.tp.register_target("a", np.ones(4))
+        self.assertEqual(self.tp.target_count(), 1)
+        self.tp.register_target("b", np.zeros(4) + 0.1)
+        self.assertEqual(self.tp.target_count(), 2)
+
+    def test_clear_targets_removes_all(self):
+        self.tp.register_target("a", np.ones(4))
+        self.tp.register_target("b", np.zeros(4) + 0.1)
+        self.tp.clear_targets()
+        self.assertEqual(self.tp.target_count(), 0)
+
+    def test_clear_targets_on_empty_is_safe(self):
+        self.tp.clear_targets()  # should not raise
+        self.assertEqual(self.tp.target_count(), 0)
+
+    def test_register_target_converts_list_to_ndarray(self):
+        self.tp.register_target("t1", [1.0, 0.0, 0.0, 0.0])
+        self.assertIsInstance(self.tp._targets["t1"].centroid, np.ndarray)
+
+    def test_register_then_transport_fires(self):
+        # Vector orthogonal to target → sim=0 < 0.85 → transport fires
+        target = _unit(np.array([1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]))
+        query = np.array([0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+        self.tp.register_target("t1", target)
+        r = self.tp.transport(query)
+        self.assertTrue(r.was_transported)
+
+    def test_register_target_id_matches(self):
+        centroid = np.ones(4)
+        self.tp.register_target("my-id", centroid)
+        self.assertEqual(self.tp._targets["my-id"].target_id, "my-id")
+
+
+class TestTransportConfigDefaultThreshold(unittest.TestCase):
+    """Verify the new default threshold is 0.85."""
+
+    def test_default_is_0_85(self):
+        from vector_transport import TransportConfig
+
+        c = TransportConfig()
+        self.assertAlmostEqual(c.min_similarity_for_transport, 0.85)
+
+    def test_transport_skips_when_sim_above_0_85(self):
+        """With default threshold, vector already close (sim>0.85) is NOT transported."""
+        tp = _make_transport()
+        target = _unit(np.array([1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]))
+        tp.register_target("t", target)
+        # Vector very close to target (sim ≈ 0.999)
+        query = _unit(target + np.array([0.001, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]))
+        r = tp.transport(query)
+        self.assertFalse(r.was_transported)
+
+    def test_transport_fires_when_sim_below_0_85(self):
+        """With default threshold, orthogonal vector IS transported."""
+        tp = _make_transport()
+        target = _unit(np.array([1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]))
+        tp.register_target("t", target)
+        query = np.array([0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+        r = tp.transport(query)
+        self.assertTrue(r.was_transported)
 
 
 if __name__ == "__main__":

@@ -29,7 +29,7 @@ class TransportConfig:
     mode: TransportMode = TransportMode.LINEAR
     default_weight: float = 0.2
     max_weight: float = 0.5
-    min_similarity_for_transport: float = 0.3
+    min_similarity_for_transport: float = 0.85
     enabled: bool = True
 
 
@@ -62,6 +62,22 @@ class VectorTransport:
     def add_target(self, target: TransportTarget) -> None:
         """Register a transport target centroid."""
         self._targets[target.target_id] = target
+
+    def register_target(self, target_id: str, centroid: np.ndarray, label: str = "") -> None:
+        """Register a target centroid using flat parameters (convenience API)."""
+        self._targets[target_id] = TransportTarget(
+            target_id=target_id,
+            centroid=np.array(centroid, dtype=float),
+            description=label,
+        )
+
+    def target_count(self) -> int:
+        """Return the number of registered transport targets."""
+        return len(self._targets)
+
+    def clear_targets(self) -> None:
+        """Remove all registered transport targets."""
+        self._targets.clear()
 
     def transport(
         self,

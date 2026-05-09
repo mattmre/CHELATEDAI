@@ -1041,8 +1041,9 @@ class AntigravityEngine:
             config=self._model_scope_config,
         )
 
-    def enable_tts(self, tts_config=None):
+    def enable_tts(self, tts_config=None, phase_c_results_path: Optional[str] = None, transport_state_path: Optional[str] = None):
         """Enable TTS pipeline (Translation→Transport→Steering). Must be called before run_inference()."""
+        import json
         from tts_pipeline import TTSPipeline, TTSConfig, VectorSteerer
         from vector_translator import VectorTranslator, TranslationConfig
         from vector_transport import VectorTransport, TransportConfig
@@ -1050,6 +1051,18 @@ class AntigravityEngine:
         cfg = tts_config or TTSConfig()
         translator = VectorTranslator(TranslationConfig(offset_dim=self.vector_size))
         transport = VectorTransport(TransportConfig())
+        if transport_state_path is not None:
+            import os as _os
+            if _os.path.exists(transport_state_path):
+                with open(transport_state_path) as _fh:
+                    _state = json.load(_fh)
+                import numpy as _np
+                for _entry in _state.get("targets", []):
+                    transport.register_target(
+                        _entry["id"],
+                        _np.array(_entry["centroid"], dtype=float),
+                        _entry.get("label", ""),
+                    )
         steerer = VectorSteerer(max_strength=0.3)
         self._tts_pipeline = TTSPipeline(translator, transport, steerer, cfg)
         self._last_tts_result = None
@@ -1070,6 +1083,37 @@ class AntigravityEngine:
     def get_last_tts_result(self):
         """Return the TTSResult from the most recent inference, or None."""
         return getattr(self, '_last_tts_result', None)
+
+    def add_tts_transport_target(self, target_id: str, centroid, label: str = "") -> None:
+        """Register a transport target on the active TTS pipeline's transport stage.
+
+        Raises RuntimeError if enable_tts() has not been called.
+        """
+        import numpy as _np
+        pipeline = getattr(self, "_tts_pipeline", None)
+        if pipeline is None:
+            raise RuntimeError("TTS not enabled. Call enable_tts() first.")
+        pipeline._transport.register_target(target_id, _np.array(centroid, dtype=float), label)
+
+    def load_tts_transport_state(self, path: str) -> None:
+        """Load transport targets from a JSON file and register them on the active TTS pipeline.
+
+        File format: {"targets": [{"id": str, "centroid": [...], "label": str}, ...]}
+        Raises RuntimeError if enable_tts() has not been called.
+        """
+        import json
+        import numpy as _np
+        pipeline = getattr(self, "_tts_pipeline", None)
+        if pipeline is None:
+            raise RuntimeError("TTS not enabled. Call enable_tts() first.")
+        with open(path) as fh:
+            state = json.load(fh)
+        for entry in state.get("targets", []):
+            pipeline._transport.register_target(
+                entry["id"],
+                _np.array(entry["centroid"], dtype=float),
+                entry.get("label", ""),
+            )
 
     def enable_adapter_routing(self, routes):
         """Enable centroid-based adapter routing for query-specific adapters."""

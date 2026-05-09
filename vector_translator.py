@@ -7,14 +7,15 @@ backpropagation. Two modes:
   - Dynamic cluster override: per-cluster offsets keyed by cluster_id, used when
     cluster assignment confidence >= cluster_confidence_threshold
 
-The learned offset is computed from Phase C evaluation data: the mean per-dimension
-delta between the baseline embedding centroid and the best-candidate centroid.
+The learned offset is computed from Phase C evaluation data using the geometric
+direction between the baseline embedding centroid and the best-candidate centroid.
 """
 from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from typing import Dict, Optional
+from pathlib import Path
+from typing import Dict, Optional, Tuple
 
 import numpy as np
 
@@ -53,6 +54,11 @@ class VectorTranslator:
         self._learned_offset: Optional[np.ndarray] = None  # shape (dim,)
         self._cluster_offsets: Dict[str, ClusterOffset] = {}
         self.logger = get_logger()
+
+    @property
+    def _offset(self) -> Optional[np.ndarray]:
+        """Alias for _learned_offset."""
+        return self._learned_offset
 
     def set_learned_offset(self, offset: np.ndarray) -> None:
         """Set the global learned offset vector. Clamps to max_offset_norm."""
@@ -135,47 +141,95 @@ class VectorTranslator:
 
     @classmethod
     def from_phase_c_results(
-        cls, results_path: str, config: TranslationConfig
+        cls, results_path: str, config: Optional[TranslationConfig] = None
     ) -> "VectorTranslator":
         """Build a VectorTranslator from Phase C evaluation results JSON.
 
-        Reads phase_c_results.json, computes the delta between baseline and best-scoring
-        candidate per dataset, averages across datasets, returns a translator with that
-        as the learned offset. If the results file doesn't exist or has no summary data,
-        returns a translator with no offset set (passthrough mode).
+        Prefers embedding centroid geometry when available:
+          offset = normalize(best_centroid - baseline_centroid) * 0.05
 
-        Note: Phase C results contain NDCG scores per candidate, not embeddings. So the
-        learned offset here is computed as a synthetic offset scaled by mean NDCG delta:
-        offset = best_ndcg_delta * np.ones(config.offset_dim) * 0.01 (unit direction)
-        This is a principled approximation until full embedding-level Phase C eval.
+        Falls back to passthrough if centroid data is absent (better than a
+        semantically meaningless uniform shift based on NDCG scalars).
         """
-        translator = cls(config)
         try:
-            with open(results_path) as fh:
-                data = json.load(fh)
+            data = json.loads(Path(results_path).read_text(encoding="utf-8"))
         except (FileNotFoundError, json.JSONDecodeError, OSError):
-            return translator
+            dim = config.offset_dim if config is not None else 384
+            return cls(config if config is not None else TranslationConfig(offset_dim=dim))
 
-        summaries = data.get("summaries", data.get("summary", []))
-        if not summaries:
-            return translator
+        per_query = data.get("per_query_results", [])
 
-        deltas: list[float] = []
-        entries = summaries.values() if isinstance(summaries, dict) else summaries
-        for entry in entries:
-            baseline = float(entry.get("baseline_ndcg", 0.0))
-            best = float(entry.get("best_ndcg", 0.0))
-            deltas.append(best - baseline)
+        # Collect per-candidate centroids; keep last seen for each candidate_id
+        seen_candidates: Dict[str, Tuple[float, np.ndarray]] = {}
+        for row in per_query:
+            cid = row.get("candidate_id")
+            ndcg = float(row.get("ndcg_at_10", 0.0) or 0.0)
+            centroid_list = row.get("embedding_centroid")
+            if centroid_list is not None and cid is not None:
+                seen_candidates[cid] = (ndcg, np.array(centroid_list, dtype=float))
 
-        if not deltas:
-            return translator
+        baseline_centroid: Optional[np.ndarray] = None
+        best_centroid: Optional[np.ndarray] = None
+        best_ndcg = -1.0
 
-        mean_delta = float(np.mean(deltas))
-        if mean_delta == 0.0:
-            return translator
+        if "baseline" in seen_candidates:
+            baseline_centroid = seen_candidates["baseline"][1]
 
-        offset = mean_delta * np.ones(config.offset_dim) * 0.01
-        translator.set_learned_offset(offset)
+        for cid, (ndcg, centroid) in seen_candidates.items():
+            if cid != "baseline" and ndcg > best_ndcg:
+                best_ndcg = ndcg
+                best_centroid = centroid
+
+        if baseline_centroid is not None and best_centroid is not None:
+            raw_offset = best_centroid - baseline_centroid
+            norm = float(np.linalg.norm(raw_offset))
+            if norm > 1e-8:
+                offset = raw_offset / norm * 0.05
+            else:
+                offset = np.zeros_like(baseline_centroid)
+            dim = len(offset)
+        else:
+            all_centroids = [c for _, c in seen_candidates.values()]
+            dim = (
+                len(all_centroids[0])
+                if all_centroids
+                else (config.offset_dim if config is not None else 384)
+            )
+            offset = np.zeros(dim)
+
+        if config is None:
+            config = TranslationConfig(offset_dim=dim)
+        translator = cls(config)
+        if float(np.linalg.norm(offset)) > 1e-8:
+            translator.set_learned_offset(offset)
+        return translator
+
+    @classmethod
+    def from_centroids(
+        cls,
+        baseline_centroid: np.ndarray,
+        best_centroid: np.ndarray,
+        config: Optional[TranslationConfig] = None,
+        step_size: float = 0.05,
+    ) -> "VectorTranslator":
+        """Build translator from explicit baseline and best embedding centroids.
+
+        offset = normalize(best - baseline) * step_size
+        """
+        raw_offset = np.array(best_centroid, dtype=float) - np.array(
+            baseline_centroid, dtype=float
+        )
+        norm = float(np.linalg.norm(raw_offset))
+        if norm > 1e-8:
+            offset = raw_offset / norm * step_size
+        else:
+            offset = np.zeros_like(raw_offset)
+        dim = len(offset)
+        if config is None:
+            config = TranslationConfig(offset_dim=dim)
+        translator = cls(config)
+        if float(np.linalg.norm(offset)) > 1e-8:
+            translator.set_learned_offset(offset)
         return translator
 
     def save(self, path: str) -> None:
