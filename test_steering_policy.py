@@ -281,5 +281,42 @@ class TestPolicyRegistry(unittest.TestCase):
             self.assertEqual(registry.get(c.policy_id).name, c.name)
 
 
+class TestModelScopeSteeringPolicyActivate(unittest.TestCase):
+    """Tests for ModelScopeSteeringPolicy.activate() — R3 fix."""
+
+    def setUp(self):
+        from steering_policy import ModelScopeSteeringPolicy
+        self.Policy = ModelScopeSteeringPolicy
+
+    def test_default_deployment_mode_is_shadow_mode(self):
+        policy = self.Policy()
+        self.assertEqual(policy.deployment_mode, "shadow_mode")
+
+    def test_activate_soft_scale_sets_mode(self):
+        policy = self.Policy()
+        policy.activate("soft_scale")
+        self.assertEqual(policy.deployment_mode, "soft_scale")
+
+    def test_activate_suppression_sets_mode(self):
+        policy = self.Policy()
+        policy.activate("suppression")
+        self.assertEqual(policy.deployment_mode, "suppression")
+
+    def test_activate_active_sets_mode(self):
+        policy = self.Policy()
+        policy.activate("active")
+        self.assertEqual(policy.deployment_mode, "active")
+
+    def test_activate_shadow_mode_raises_value_error(self):
+        policy = self.Policy()
+        with self.assertRaises(ValueError):
+            policy.activate("shadow_mode")
+
+    def test_activate_invalid_string_raises_value_error(self):
+        policy = self.Policy()
+        with self.assertRaises(ValueError):
+            policy.activate("not_a_real_mode")
+
+
 if __name__ == "__main__":
     unittest.main()

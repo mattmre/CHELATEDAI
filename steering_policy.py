@@ -44,6 +44,13 @@ class ModelScopeSteeringPolicy:
     feature_space: str | None = None
     rules: List[SteeringRule] = field(default_factory=list)
 
+    def activate(self, mode: str = "soft_scale") -> None:
+        """Switch out of shadow_mode. mode must be 'soft_scale', 'suppression', or 'active'."""
+        valid = {"soft_scale", "suppression", "active"}
+        if mode not in valid:
+            raise ValueError(f"mode must be one of {valid}, got {mode!r}")
+        self.deployment_mode = mode
+
     @classmethod
     def from_mapping(cls, payload: Mapping[str, Any]):
         rules = [SteeringRule.from_mapping(item) for item in payload.get("rules", [])]

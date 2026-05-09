@@ -1041,6 +1041,36 @@ class AntigravityEngine:
             config=self._model_scope_config,
         )
 
+    def enable_tts(self, tts_config=None):
+        """Enable TTS pipeline (Translation→Transport→Steering). Must be called before run_inference()."""
+        from tts_pipeline import TTSPipeline, TTSConfig, VectorSteerer
+        from vector_translator import VectorTranslator, TranslationConfig
+        from vector_transport import VectorTransport, TransportConfig
+
+        cfg = tts_config or TTSConfig()
+        translator = VectorTranslator(TranslationConfig(offset_dim=self.vector_size))
+        transport = VectorTransport(TransportConfig())
+        steerer = VectorSteerer(max_strength=0.3)
+        self._tts_pipeline = TTSPipeline(translator, transport, steerer, cfg)
+        self._last_tts_result = None
+        self.logger.log_event(
+            "tts_enabled",
+            "TTS pipeline enabled",
+            tts_config=self._runtime_json_safe(cfg.__dict__),
+        )
+        try:
+            import dashboard_server as _ds
+            _ds.update_tts_dashboard_state(
+                enabled=True,
+                config=self._runtime_json_safe(cfg.__dict__),
+            )
+        except Exception:
+            pass
+
+    def get_last_tts_result(self):
+        """Return the TTSResult from the most recent inference, or None."""
+        return getattr(self, '_last_tts_result', None)
+
     def enable_adapter_routing(self, routes):
         """Enable centroid-based adapter routing for query-specific adapters."""
         from adapter_router import AdapterRouter
@@ -2370,6 +2400,27 @@ class AntigravityEngine:
                 model_scope=model_scope_summary,
             ))
             return [], [], np.ones(self.vector_size), 0.0
+        # TTS intercept — applied after embedding (and static mask), before retrieval
+        _tts = getattr(self, '_tts_pipeline', None)
+        if _tts is not None:
+            try:
+                _tts_result = _tts.apply(q_vec)
+                self._last_tts_result = _tts_result
+                q_vec = _tts_result.after_steering
+                try:
+                    import dashboard_server as _ds
+                    _ds.update_tts_dashboard_state(
+                        enabled=True,
+                        last_result=_ds._tts_result_to_dict(_tts_result),
+                    )
+                except Exception:
+                    pass
+            except Exception as _tts_err:
+                self.logger.log_error(
+                    "tts_pipeline",
+                    "TTS pipeline error during inference; using original embedding",
+                    exception=_tts_err,
+                )
         adapter_router = getattr(self, '_adapter_router', None)
         if adapter_router is not None and not getattr(self, '_adapter_routing_active', False):
             route = adapter_router.select(q_vec, fallback=lambda: self.adapter)
