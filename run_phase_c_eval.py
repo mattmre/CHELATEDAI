@@ -100,6 +100,7 @@ class PhaseCResult:
     gate_applied: bool = False
     reformulated: bool = False
     mask_applied: bool = False
+    embedding_centroid: Optional[List[float]] = None
 
 
 @dataclass
@@ -333,6 +334,8 @@ def evaluate_phase_c_candidate(
     reformulator = QueryReformulator() if candidate_id == "learned_reform_gate_v1" else None
 
     results: List[PhaseCResult] = []
+    effective_queries_list: List[str] = []
+    embedding_centroid: Optional[List[float]] = None
 
     with isolated_adapter_state():
         use_centering = candidate_id != "baseline"
@@ -385,6 +388,8 @@ def evaluate_phase_c_candidate(
                     else:
                         engine.set_static_dimension_mask(identity_mask)
 
+                effective_queries_list.append(effective_query)
+
                 start = time.perf_counter()
                 _std_top, chel_top, _mask_arr, _jaccard = engine.run_inference(effective_query)
                 elapsed = (time.perf_counter() - start) * 1000
@@ -408,9 +413,21 @@ def evaluate_phase_c_candidate(
                         mask_applied=mask_applied,
                     )
                 )
+
+            # Compute embedding centroid from all effective queries before engine closes
+            if effective_queries_list:
+                try:
+                    q_embs = np.array(engine.embed(effective_queries_list), dtype=float)
+                    if q_embs.ndim == 2 and len(q_embs) > 0:
+                        embedding_centroid = np.mean(q_embs, axis=0).tolist()
+                except Exception:
+                    pass
         finally:
             if hasattr(engine, "close"):
                 engine.close()
+
+    for r in results:
+        r.embedding_centroid = embedding_centroid
 
     return results
 

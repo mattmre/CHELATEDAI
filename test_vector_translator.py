@@ -289,23 +289,33 @@ class TestVectorTranslatorFromPhaseC(unittest.TestCase):
             t = VectorTranslator.from_phase_c_results(path, config)
         self.assertIsNone(t._learned_offset)
 
-    def test_empty_summaries_returns_passthrough(self):
+    def test_empty_per_query_results_returns_passthrough(self):
         path = self._tmp("_pc_empty.json")
         with open(path, "w") as fh:
-            json.dump({"summaries": []}, fh)
+            json.dump({"per_query_results": []}, fh)
         config = TranslationConfig(offset_dim=8)
         with patch(_PATCH, return_value=MagicMock()):
             t = VectorTranslator.from_phase_c_results(path, config)
         self.assertIsNone(t._learned_offset)
 
-    def test_with_data_offset_is_nonzero(self):
-        path = self._tmp("_pc_data.json")
+    def test_with_centroid_data_offset_is_nonzero(self):
+        path = self._tmp("_pc_centroid.json")
+        baseline_c = [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        best_c = [0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
         with open(path, "w") as fh:
             json.dump(
                 {
-                    "summaries": [
-                        {"baseline_ndcg": 0.50, "best_ndcg": 0.70},
-                        {"baseline_ndcg": 0.40, "best_ndcg": 0.65},
+                    "per_query_results": [
+                        {
+                            "candidate_id": "baseline",
+                            "ndcg_at_10": 0.5,
+                            "embedding_centroid": baseline_c,
+                        },
+                        {
+                            "candidate_id": "guard_p85_t0.01",
+                            "ndcg_at_10": 0.7,
+                            "embedding_centroid": best_c,
+                        },
                     ]
                 },
                 fh,
@@ -316,8 +326,9 @@ class TestVectorTranslatorFromPhaseC(unittest.TestCase):
         self.assertIsNotNone(t._learned_offset)
         self.assertGreater(float(np.linalg.norm(t._learned_offset)), 0.0)
 
-    def test_with_dict_summaries(self):
-        path = self._tmp("_pc_dict.json")
+    def test_old_summaries_format_returns_passthrough(self):
+        """Old JSON without per_query_results has no centroid data -> passthrough."""
+        path = self._tmp("_pc_old_fmt.json")
         with open(path, "w") as fh:
             json.dump(
                 {
@@ -330,7 +341,139 @@ class TestVectorTranslatorFromPhaseC(unittest.TestCase):
         config = TranslationConfig(offset_dim=8)
         with patch(_PATCH, return_value=MagicMock()):
             t = VectorTranslator.from_phase_c_results(path, config)
+        self.assertIsNone(t._learned_offset)
+
+    def test_centroid_offset_direction_aligned(self):
+        path = self._tmp("_pc_dir.json")
+        baseline_c = [1.0, 0.0, 0.0, 0.0]
+        best_c = [0.0, 1.0, 0.0, 0.0]
+        with open(path, "w") as fh:
+            json.dump(
+                {
+                    "per_query_results": [
+                        {
+                            "candidate_id": "baseline",
+                            "ndcg_at_10": 0.4,
+                            "embedding_centroid": baseline_c,
+                        },
+                        {
+                            "candidate_id": "cand_a",
+                            "ndcg_at_10": 0.6,
+                            "embedding_centroid": best_c,
+                        },
+                    ]
+                },
+                fh,
+            )
+        config = TranslationConfig(offset_dim=4)
+        with patch(_PATCH, return_value=MagicMock()):
+            t = VectorTranslator.from_phase_c_results(path, config)
+        b = np.array(baseline_c)
+        be = np.array(best_c)
+        expected_dir = (be - b) / np.linalg.norm(be - b)
+        actual_offset = t._learned_offset
+        self.assertIsNotNone(actual_offset)
+        actual_dir = actual_offset / np.linalg.norm(actual_offset)
+        self.assertGreater(float(np.dot(expected_dir, actual_dir)), 0.999)
+
+    def test_config_optional_inferred_from_centroid(self):
+        path = self._tmp("_pc_nocfg.json")
+        baseline_c = [0.0, 0.0, 1.0, 0.0, 0.0, 0.0]
+        best_c = [0.0, 1.0, 0.0, 0.0, 0.0, 0.0]
+        with open(path, "w") as fh:
+            json.dump(
+                {
+                    "per_query_results": [
+                        {"candidate_id": "baseline", "ndcg_at_10": 0.4, "embedding_centroid": baseline_c},
+                        {"candidate_id": "x", "ndcg_at_10": 0.8, "embedding_centroid": best_c},
+                    ]
+                },
+                fh,
+            )
+        with patch(_PATCH, return_value=MagicMock()):
+            t = VectorTranslator.from_phase_c_results(path)
         self.assertIsNotNone(t._learned_offset)
+        self.assertEqual(len(t._learned_offset), 6)
+
+    def test_best_candidate_selected_by_ndcg(self):
+        path = self._tmp("_pc_best.json")
+        baseline_c = [0.0, 0.0, 0.0, 1.0]
+        good_c = [0.0, 0.0, 1.0, 0.0]
+        better_c = [0.0, 1.0, 0.0, 0.0]
+        with open(path, "w") as fh:
+            json.dump(
+                {
+                    "per_query_results": [
+                        {"candidate_id": "baseline", "ndcg_at_10": 0.3, "embedding_centroid": baseline_c},
+                        {"candidate_id": "a", "ndcg_at_10": 0.5, "embedding_centroid": good_c},
+                        {"candidate_id": "b", "ndcg_at_10": 0.8, "embedding_centroid": better_c},
+                    ]
+                },
+                fh,
+            )
+        config = TranslationConfig(offset_dim=4)
+        with patch(_PATCH, return_value=MagicMock()):
+            t = VectorTranslator.from_phase_c_results(path, config)
+        b = np.array(baseline_c)
+        be = np.array(better_c)
+        expected_dir = (be - b) / np.linalg.norm(be - b)
+        actual_dir = t._learned_offset / np.linalg.norm(t._learned_offset)
+        self.assertGreater(float(np.dot(expected_dir, actual_dir)), 0.999)
+
+
+class TestVectorTranslatorFromCentroids(unittest.TestCase):
+    def test_direction_aligned_with_centroid_diff(self):
+        baseline = np.array([0.0, 0.0, 1.0])
+        best = np.array([0.0, 1.0, 0.0])
+        with patch(_PATCH, return_value=MagicMock()):
+            t = VectorTranslator.from_centroids(baseline, best, step_size=0.05)
+        expected_dir = (best - baseline) / np.linalg.norm(best - baseline)
+        actual_offset = t._offset
+        self.assertIsNotNone(actual_offset)
+        actual_dir = actual_offset / np.linalg.norm(actual_offset)
+        self.assertGreater(float(np.dot(expected_dir, actual_dir)), 0.999)
+
+    def test_step_size_controls_norm(self):
+        baseline = np.array([1.0, 0.0, 0.0])
+        best = np.array([0.0, 1.0, 0.0])
+        with patch(_PATCH, return_value=MagicMock()):
+            t = VectorTranslator.from_centroids(baseline, best, step_size=0.1)
+        self.assertAlmostEqual(float(np.linalg.norm(t._offset)), 0.1, places=6)
+
+    def test_identical_centroids_no_offset(self):
+        c = np.array([1.0, 0.5, 0.0])
+        with patch(_PATCH, return_value=MagicMock()):
+            t = VectorTranslator.from_centroids(c, c, step_size=0.05)
+        self.assertIsNone(t._offset)
+
+    def test_config_inferred_from_centroid_dim(self):
+        baseline = np.zeros(16)
+        best = np.ones(16)
+        with patch(_PATCH, return_value=MagicMock()):
+            t = VectorTranslator.from_centroids(baseline, best)
+        self.assertEqual(t._config.offset_dim, 16)
+
+    def test_custom_config_used(self):
+        baseline = np.zeros(4)
+        best = np.ones(4)
+        config = TranslationConfig(offset_dim=4, max_offset_norm=0.5)
+        with patch(_PATCH, return_value=MagicMock()):
+            t = VectorTranslator.from_centroids(baseline, best, config=config)
+        self.assertAlmostEqual(t._config.max_offset_norm, 0.5)
+
+    def test_default_step_size_is_0_05(self):
+        baseline = np.array([1.0, 0.0])
+        best = np.array([0.0, 1.0])
+        with patch(_PATCH, return_value=MagicMock()):
+            t = VectorTranslator.from_centroids(baseline, best)
+        self.assertAlmostEqual(float(np.linalg.norm(t._offset)), 0.05, places=6)
+
+    def test_offset_property_alias(self):
+        baseline = np.array([1.0, 0.0, 0.0])
+        best = np.array([0.0, 1.0, 0.0])
+        with patch(_PATCH, return_value=MagicMock()):
+            t = VectorTranslator.from_centroids(baseline, best)
+        np.testing.assert_array_equal(t._offset, t._learned_offset)
 
 
 class TestTranslationResultOffsetNorm(unittest.TestCase):
