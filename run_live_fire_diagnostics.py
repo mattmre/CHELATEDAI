@@ -319,9 +319,16 @@ def _quantization_gate_status(gate: Any) -> str:
     return "fail"
 
 
-def run_live_fire_diagnostics() -> Dict[str, Any]:
+def run_live_fire_diagnostics(*, args: Any = None) -> Dict[str, Any]:
     logger = EventCollector()
     engine = _make_engine(logger)
+
+    if args is not None and getattr(args, "enable_model_scope", False):
+        try:
+            engine.enable_model_scope_observation()
+            print("[model-scope] Observation enabled.")
+        except Exception as e:
+            print(f"[model-scope] WARNING: Could not enable observation: {e}")
     corpus, payloads, queries, qrels = _dataset()
     engine.ingest(corpus, payloads)
 
@@ -558,9 +565,15 @@ def run_live_fire_diagnostics() -> Dict[str, Any]:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run deterministic ChelatedAI live-fire diagnostics")
     parser.add_argument("--output", type=Path, default=None, help="Optional JSON output path")
+    parser.add_argument(
+        "--enable-model-scope",
+        action="store_true",
+        default=False,
+        help="Enable Model-Scope observation during diagnostics (requires local transformer model).",
+    )
     args = parser.parse_args()
 
-    report = run_live_fire_diagnostics()
+    report = run_live_fire_diagnostics(args=args)
     payload = json.dumps(report, indent=2, sort_keys=True)
     if args.output is not None:
         args.output.write_text(payload + "\n", encoding="utf-8")

@@ -332,6 +332,47 @@ def get_inline_dashboard_html():
             </div>
         </div>
 
+        <div class="events-section" id="model-scope-panel">
+            <div class="section-header">
+                <h2>Model Scope Observations</h2>
+            </div>
+            <div id="ms-loading" class="loading">Loading Model Scope data…</div>
+            <div id="ms-content" style="display:none;">
+                <div class="metrics-grid" style="margin-bottom:16px;">
+                    <div class="metric-card">
+                        <div class="metric-label">Observation Events</div>
+                        <div class="metric-value" id="ms-event-count">-</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Intervention Records</div>
+                        <div class="metric-value" id="ms-intervention-count">-</div>
+                    </div>
+                </div>
+                <h3 style="color:#333;font-size:18px;margin-bottom:12px;">Last Feature Event</h3>
+                <div class="table-container" style="margin-bottom:20px;">
+                    <table id="ms-features-table">
+                        <thead>
+                            <tr>
+                                <th>Layer ID</th>
+                                <th>Feature Count</th>
+                                <th>Nonzero Count</th>
+                                <th>Extracted At</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ms-features-tbody">
+                        </tbody>
+                    </table>
+                </div>
+                <h3 style="color:#333;font-size:18px;margin-bottom:12px;">Last Intervention</h3>
+                <div id="ms-last-intervention" style="background:#f8f9fa;border-radius:6px;padding:12px;font-size:13px;color:#555;font-family:monospace;">
+                    No interventions recorded.
+                </div>
+            </div>
+            <div id="ms-empty" style="display:none;color:#888;padding:12px;">
+                No Model Scope data yet — run a campaign with model-scope enabled to populate this panel.
+            </div>
+        </div>
+
         <div class="events-section">
             <div class="section-header">
                 <h2>Recent Events</h2>
@@ -545,7 +586,68 @@ def get_inline_dashboard_html():
         }
 
         async function refreshData() {
-            await Promise.all([loadSummary(), loadEvents(), loadPhaseC()]);
+            await Promise.all([loadSummary(), loadEvents(), loadPhaseC(), loadModelScope()]);
+        }
+
+        async function loadModelScope() {
+            try {
+                const [eventsResp, featuresResp, interventionsResp] = await Promise.all([
+                    fetch('/api/model_scope/events'),
+                    fetch('/api/model_scope/features'),
+                    fetch('/api/model_scope/interventions'),
+                ]);
+                const events = eventsResp.ok ? await eventsResp.json() : null;
+                const features = featuresResp.ok ? await featuresResp.json() : null;
+                const interventions = interventionsResp.ok ? await interventionsResp.json() : null;
+                renderModelScope(events, features, interventions);
+            } catch (e) {
+                document.getElementById('ms-loading').textContent = `Error loading Model Scope data: ${e.message}`;
+            }
+        }
+
+        function renderModelScope(events, features, interventions) {
+            const loading = document.getElementById('ms-loading');
+            const content = document.getElementById('ms-content');
+            const empty = document.getElementById('ms-empty');
+
+            const eventItems = (events && events.items) ? events.items : [];
+            const featureItems = (features && features.items) ? features.items : [];
+            const interventionItems = (interventions && interventions.items) ? interventions.items : [];
+
+            const hasData = eventItems.length > 0 || featureItems.length > 0 || interventionItems.length > 0;
+            loading.style.display = 'none';
+            if (!hasData) {
+                empty.style.display = 'block';
+                return;
+            }
+            content.style.display = 'block';
+
+            document.getElementById('ms-event-count').textContent = formatNumber(eventItems.length);
+            document.getElementById('ms-intervention-count').textContent = formatNumber(interventionItems.length);
+
+            const tbody = document.getElementById('ms-features-tbody');
+            tbody.replaceChildren();
+            if (featureItems.length > 0) {
+                const last = featureItems[featureItems.length - 1];
+                const row = document.createElement('tr');
+                row.innerHTML = `<td>${last.layer_id != null ? last.layer_id : '-'}</td>` +
+                    `<td>${last.feature_count != null ? last.feature_count : '-'}</td>` +
+                    `<td>${last.nonzero_count != null ? last.nonzero_count : '-'}</td>` +
+                    `<td>${last.extracted_at != null ? last.extracted_at : '-'}</td>`;
+                tbody.appendChild(row);
+            } else {
+                const row = document.createElement('tr');
+                row.innerHTML = '<td colspan="4" style="color:#888;">No feature events recorded.</td>';
+                tbody.appendChild(row);
+            }
+
+            const lastIntervDiv = document.getElementById('ms-last-intervention');
+            if (interventionItems.length > 0) {
+                const last = interventionItems[interventionItems.length - 1];
+                lastIntervDiv.textContent = JSON.stringify(last, null, 2);
+            } else {
+                lastIntervDiv.textContent = 'No interventions recorded.';
+            }
         }
 
         async function loadPhaseC() {
