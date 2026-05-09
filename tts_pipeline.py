@@ -222,21 +222,34 @@ class TTSPipeline:
 
     @classmethod
     def build_default(
-        cls, dim: int, phase_c_results_path: Optional[str] = None
+        cls, dim: int, phase_c_results_path: Optional[str] = None, transport_state_path: Optional[str] = None
     ) -> "TTSPipeline":
         """Build a default-configured TTSPipeline.
 
         - Translator: loads from phase_c_results_path if provided, else passthrough
-        - Transport: no targets, passthrough
+        - Transport: registers targets from transport_state_path if provided and file exists
         - Steerer: max_strength=0.3, no initial signals
         - Config: all stages enabled
         """
+        import json
+        import os
+
         t_config = TranslationConfig(offset_dim=dim)
         if phase_c_results_path is not None:
             translator = VectorTranslator.from_phase_c_results(phase_c_results_path, t_config)
         else:
             translator = VectorTranslator(t_config)
         transport = VectorTransport(TransportConfig())
+        if transport_state_path is not None and os.path.exists(transport_state_path):
+            with open(transport_state_path) as fh:
+                state = json.load(fh)
+            import numpy as _np
+            for entry in state.get("targets", []):
+                transport.register_target(
+                    entry["id"],
+                    _np.array(entry["centroid"], dtype=float),
+                    entry.get("label", ""),
+                )
         steerer = VectorSteerer(max_strength=0.3)
         return cls(translator, transport, steerer, TTSConfig())
 
