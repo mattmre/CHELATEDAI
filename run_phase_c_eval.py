@@ -267,10 +267,17 @@ def _load_prior_baseline_lookup() -> Dict[str, float]:
     return lookup
 
 
-def _mask_gate_features(query_text: str) -> Dict[str, Any]:
-    """Build feature dict from query text for mask gate prediction."""
+def _mask_gate_features(query_text: str, prior_lookup: Optional[Dict[str, float]] = None) -> Dict[str, Any]:
+    """Build feature dict from query text for mask gate prediction.
+
+    Args:
+        query_text: The query string to extract features from.
+        prior_lookup: Pre-loaded baseline NDCG lookup dict. If None, loads from disk
+            (expensive — callers processing multiple queries should pass a pre-loaded dict).
+    """
     lexical = query_lexical_features(query_text)
-    prior_lookup = _load_prior_baseline_lookup()
+    if prior_lookup is None:
+        prior_lookup = _load_prior_baseline_lookup()
     if query_text in prior_lookup:
         delta_ndcg: float = prior_lookup[query_text]
         delta_source = "prior_run"
@@ -333,6 +340,9 @@ def evaluate_phase_c_candidate(
 
     reformulator = QueryReformulator() if candidate_id == "learned_reform_gate_v1" else None
 
+    # Load prior baseline lookup once — avoids O(N×M) per-query filesystem scans.
+    prior_lookup = _load_prior_baseline_lookup() if candidate_id == "learned_mask_gate_v1" else {}
+
     results: List[PhaseCResult] = []
     effective_queries_list: List[str] = []
     embedding_centroid: Optional[List[float]] = None
@@ -380,7 +390,7 @@ def evaluate_phase_c_candidate(
                     and mask_gate_config is not None
                     and mask_vector is not None
                 ):
-                    row_features = _mask_gate_features(qtext)
+                    row_features = _mask_gate_features(qtext, prior_lookup)
                     if _predict_mask_gate(row_features, mask_gate_config):
                         engine.set_static_dimension_mask(mask_vector)
                         mask_applied = True
