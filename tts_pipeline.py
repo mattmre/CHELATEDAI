@@ -85,11 +85,11 @@ class VectorSteerer:
     ) -> "VectorSteerer":
         """Build a VectorSteerer from a SparseFeatureEvent.
 
-        Each active feature becomes a steering signal. Direction is computed as:
-        a unit vector with nonzero values at the feature's corresponding dimensions
-        (using feature_id hash mod dim as a proxy until real SAE decoder is available).
-        Strength is feature_value * strength_scale, clamped to max_strength.
-        This is an approximation — real implementation would use the SAE decoder matrix.
+        Each active feature becomes a steering signal. Direction is computed using
+        FeatureDirectionBank: a deterministic SHA-256-seeded Gaussian unit vector per
+        feature_id, providing full hypersphere coverage. Strength is feature_value *
+        strength_scale, clamped to max_strength. When an SAE decoder is available,
+        call bank.update_from_activation() to upgrade directions to decoder geometry.
         """
         max_strength = 0.3
         steerer = cls(max_strength=max_strength)

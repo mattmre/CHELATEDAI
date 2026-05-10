@@ -85,14 +85,20 @@ class ModelScopeShadowSteerer:
                     }
                 )
 
-        # Build a minimal feature event to drive the actuator
+        # Build feature dict and target list from matched rules so the actuator
+        # operates on real matched feature values instead of an empty event.
+        matched_feature_ids = [r["feature_id"] for r in matched_rules]
+        matched_features = {r["feature_id"]: r["observed_value"] for r in matched_rules}
+        # Update policy config in-place so the actuator sees the current target list.
+        self._policy_config.target_features = matched_feature_ids
+
         activation = ActivationEvent(
             schema_version="1.0",
             model_id=getattr(self._policy, "model_id", "unknown"),
             layer_id="evaluate_capture",
-            token_count=0,
-            shape=(0,),
-            mean_activation=0.0,
+            token_count=len(matched_features),
+            shape=(len(matched_features),),
+            mean_activation=float(sum(matched_features.values()) / len(matched_features)) if matched_features else 0.0,
             norm_activation=0.0,
             captured_at=datetime.now(timezone.utc).isoformat(),
             run_id="evaluate_capture",
@@ -101,14 +107,17 @@ class ModelScopeShadowSteerer:
             schema_version="1.0",
             source_activation=activation,
             feature_source="evaluate_capture",
-            features={},
-            feature_count=0,
-            nonzero_count=0,
+            features=matched_features,
+            feature_count=len(matched_features),
+            nonzero_count=sum(1 for v in matched_features.values() if v != 0.0),
             extracted_at=datetime.now(timezone.utc).isoformat(),
         )
         _, record = self._actuator.apply(feature_event, self._policy_config.policy_id)
         runtime_applied = record.applied
-        applied_actions = list(record.features_modified)
+        # In SHADOW mode record.applied=False; in SOFT_SCALE/SUPPRESSION record.applied=True.
+        # applied_actions reports which features the actuator targeted (not just modified),
+        # so callers can see which matched rules drove an actual intervention.
+        applied_actions = list(record.features_targeted) if record.applied else []
 
         return {
             "policy_name": self._policy.name,
