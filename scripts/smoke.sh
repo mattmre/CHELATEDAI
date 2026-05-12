@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# scripts/smoke.sh — Brutal Honesty Rulebook v3.2 Rule 5 smoke gate.
+# scripts/smoke.sh — Brutal Honesty Rulebook v3.3 Rule 5 smoke gate.
 #
 # Single deterministic smoke command. Exercises the production code path end-to-end.
 # Returns 0 only if every check it ran passed.
@@ -15,7 +15,7 @@
 #     SKIPPED with a clear reason — and the script EXITS NON-ZERO because Rule 5
 #     demands an actual end-to-end production-path verification.
 #
-# Two-tier framing per v3.2 Rule 5 (§1 + §10):
+# Two-tier framing per v3.3 Rule 5 (§1 + §10):
 #   - Floor: import + surface-check through production code paths (what the
 #     reference smoke_pipeline.py.template emits). Acceptable for a v3.2 minimum.
 #   - Ceiling: true end-to-end against a real fixture (your real OCR/web/CLI
@@ -64,7 +64,7 @@ STAGE2_RESULT="NOT RUN"
 STAGE2_REASON=""
 
 echo "========================================================================="
-echo "Brutal Honesty Rulebook v3.2 Rule 5 smoke"
+echo "Brutal Honesty Rulebook v3.3 Rule 5 smoke"
 echo "Repo root: $REPO_ROOT"
 echo "Started:   $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 echo "========================================================================="

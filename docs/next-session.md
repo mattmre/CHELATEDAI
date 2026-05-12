@@ -37,6 +37,7 @@ authoritative source; everything else is advisory.
 | ID | Item | Source | TTL | Blocking | Status |
 |----|------|--------|-----|----------|--------|
 | CD-001 | smoke_pipeline.py ceiling-tier not yet implemented; floor-tier only (`run_ceiling_smoke()` returns sentinel 2). Ceiling gap = no real end-to-end fixture exercise of AntigravityEngine | kit install 2026-05-10 | 1 cycle | NO — honestly disclosed per Rule 5 | OPEN — implement ceiling smoke once a lightweight fixture path is identified |
+| CD-002 | `scripts/smoke.sh` Stage 1 exits non-zero: `tests/test_e2e_smoke.py` does not exist; smoke.sh is the `bash`-mode entry point but the repo has no e2e smoke test file. The Python `smoke_pipeline.py` path (used by CI and operator) is unaffected. | kit v3.3 upgrade 2026-05-12 | 1 cycle | NO — CI uses `smoke_pipeline.py` directly; gap is only in the `bash scripts/smoke.sh` code path | OPEN — add `tests/test_e2e_smoke.py` surface-boot test or re-route smoke.sh Stage 1 to smoke_pipeline.py |
 
 **Schema**:
 - `ID`: stable identifier, prefix `CD-` + sequential number (CD-001, CD-002, ...).

@@ -87,9 +87,6 @@ jobs:
   smoke-gate:
     name: Rule 5 smoke gate
     runs-on: ubuntu-latest
-    # If your smoke needs heavy deps (GPU, models, external services), you
-    # probably want this job in a self-hosted runner pool with --api-only on
-    # the public CI and the full ceiling-tier smoke on the private runner.
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -99,29 +96,41 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install minimal deps for Stage 1
+      - name: Install production deps
         run: |
           if [ -f requirements.txt ]; then
             pip install -r requirements.txt
           fi
 
-      - name: Run smoke (Stage 1 only on public CI)
+      - name: Run smoke (floor tier — production imports + entry-point surface)
         env:
           PYTHONIOENCODING: utf-8
         run: |
-          # Public CI runs --api-only because Stage 2 typically needs heavy
-          # production deps (GPU/models/external services). The script EXITS
-          # NON-ZERO with --api-only per Rule 5 — but we tolerate that exit
-          # code here BECAUSE we set up a separate `smoke-ceiling` job (or
-          # operator-run gate) for the full Stage 2 verification.
-          #
-          # If your Stage 2 deps are light enough to install in CI, drop the
-          # `--api-only` flag and the `|| ...` shim; smoke.sh's natural exit
-          # code will then enforce the gate.
-          if [ -f scripts/smoke.sh ]; then
-            bash scripts/smoke.sh --api-only || \
-              echo "::warning::Stage 2 skipped on public CI; ensure ceiling-tier smoke ran on operator gate before merging."
-          else
-            echo "::error::scripts/smoke.sh missing — Rule 5 requires a deterministic smoke gate."
-            exit 1
-          fi
+          # ChelatedAI production imports are light (no GPU required on CI).
+          # scripts/smoke_pipeline.py exits 0 at floor tier and has an HONEST
+          # DISCLOSURE block per Rule 5. Ceiling tier is deferred as CD-001.
+          # This job will FAIL if the imports break — that is the intended
+          # enforcement. No || shim, no swallowed exit code.
+          python scripts/smoke_pipeline.py
+
+  schema-drift-gate:
+    name: v3.3 schema drift validator
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install drift-validator deps
+        run: pip install jsonschema pyyaml
+
+      - name: Run schema drift validator
+        env:
+          PYTHONIOENCODING: utf-8
+        run: |
+          mkdir -p tmp
+          python scripts/validate_v33_schema_drift.py --json-report tmp/v33-report.json

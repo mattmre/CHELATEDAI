@@ -84,7 +84,7 @@ L2 (escape conditional): <none | ...>
 L3 (mock in production path): <none | ...>
 L4 (partial-with-claim-of-complete): <none | ...>
 L5 (untested production path): <none | ...>
-L8 (untested production path, integration variant): <none | ...>
+L8 (test that asserts the bug): <none | ...>
 L9 (doc-as-implementation): <none | ...>
 L11 (broad-catch swallowing): <none | ...>
 L12 (untested error path): <none | ...>

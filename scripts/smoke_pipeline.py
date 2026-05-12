@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""scripts/smoke_pipeline.py — Stage 2 of the v3.2 Rule 5 smoke gate.
+"""scripts/smoke_pipeline.py — Stage 2 of the v3.3 Rule 5 smoke gate.
 
 REPO-SPECIFIC FILL for ChelatedAI (mattmre/CHELATEDAI).
 
@@ -22,11 +22,11 @@ Ceiling-tier gap: CD-001 in docs/next-session.md — run_ceiling_smoke() is
 NOT YET IMPLEMENTED (returns sentinel 2). The PR body SMOKE: line must state
 "floor-tier only" and reference CD-001.
 
-Two-tier framing per Brutal Honesty Rulebook v3.2 §1 + §10 Rule 5:
+Two-tier framing per Brutal Honesty Rulebook v3.3 §1 + §10 Rule 5:
   Floor (this file, active):
     Imports the production module, verifies its documented surface (entry
     point class, core deps). Catches L1 scaffold-as-feature, L9
-    dependency-phantom, L10 broken imports. Acceptable as the v3.2 minimum
+    dependency-phantom, L10 broken imports. Acceptable as the v3.3 minimum
     but NOT a substitute for ceiling-tier verification.
   Ceiling (target — CD-001):
     Runs AntigravityEngine against a real embedding fixture, calls embed()
@@ -60,7 +60,7 @@ def run_floor_smoke() -> int:
     """Floor-tier smoke: import + surface verification through production code.
 
     Returns 0 on PASS, 1 on FAIL. Does NOT require GPU, models, or external
-    services. Acceptable as the v3.2 minimum but not a substitute for ceiling.
+    services. Acceptable as the v3.3 minimum but not a substitute for ceiling.
     """
     _print(f"smoke_pipeline.py (floor tier) — REPO_ROOT={REPO_ROOT}")
 
@@ -172,8 +172,8 @@ def main() -> int:
     _print("")
     if ceiling_status == 2:
         # HONEST DISCLOSURE: floor-tier PASS, ceiling-tier NOT IMPLEMENTED.
-        # This block is load-bearing per Rulebook v3.2 §1 Rule 5 — do not delete it.
-        _print("HONEST DISCLOSURE (per Brutal Honesty Rulebook v3.2 §1 Rule 5):")
+        # This block is load-bearing per Rulebook v3.3 §1 Rule 5 — do not delete it.
+        _print("HONEST DISCLOSURE (per Brutal Honesty Rulebook v3.3 §1 Rule 5):")
         _print("  This smoke ran the FLOOR tier only (import + surface-check through")
         _print("  production code paths). The ceiling tier (real end-to-end against a")
         _print("  fixture) is NOT YET IMPLEMENTED in run_ceiling_smoke().")
