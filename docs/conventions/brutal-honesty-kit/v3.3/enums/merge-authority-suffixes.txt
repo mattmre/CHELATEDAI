@@ -1,0 +1,27 @@
+# merge-authority-suffixes.txt
+#
+# Canonical enumeration of `authority:` suffixes for `merge_authority_assert`
+# events, identifying which rulebook clause authorized the merge.
+#
+# Format: `<rulebook_section>:<clause>` where rulebook_section names a
+# top-level section of brutal-honesty-rulebook.md (or the v3.3 charter).
+#
+# Authority: this file is the source of truth. New merge authority paths
+# MUST be added here AND referenced from the relevant section before they
+# can appear in out/lane-history.jsonl.
+
+rulebook_§6.1:bhs_official_100
+rulebook_§6.1:operator_override
+rulebook_§6.2:tier_b_independence_satisfied
+rulebook_§6.3:block_flag_clear
+rulebook_§4:pr_body_validator_passed
+rulebook_§4:smoke_gate_floor_passed
+rulebook_§4:smoke_gate_ceiling_passed
+rulebook_§6.4:remediation_loop_satisfied
+charter_§1:charter_authorized_substitute_gate
+charter_§2:phase_scope_verified
+charter_§3:auto_expiry_not_triggered
+charter_§5:same_family_check_passed
+charter_§5:same_family_operator_override
+charter_§6:tier_b_score_100_severity_none
+charter_§4:audit_log_appended

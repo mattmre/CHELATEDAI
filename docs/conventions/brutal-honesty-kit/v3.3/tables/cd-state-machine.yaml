@@ -1,0 +1,125 @@
+# cd-state-machine.yaml
+#
+# Canonical state machine for Carried Debt (CD) entries in
+# out/carried-debt.jsonl.
+#
+# Closes iter-7 Tier B Finding 3: "the post-merge-audit (β) predicate
+# 'status: open AND ttl>=1' contradicts the cd_block forward-walk semantics
+# (cd_block yields status: blocked, ttl: 0), so the predicate as written
+# can never match a blocked entry that requires operator attention."
+#
+# Authority: this file is the source of truth for the CD lifecycle. The
+# embedded (β) predicate definition that previously lived in §6.5b of
+# v3.3-architecture.md is REPLACED by the `audit_predicate` block below.
+# v3.3-architecture.md §6.5b now points at this file.
+
+states:
+  open:
+    description: |
+      CD entry has been written via cd_open. ttl_cycles_remaining > 0.
+      Operator owes either a cd_close (resolution) or, if work cannot
+      complete within TTL, a cd_block transition.
+    forward_walk_field_state:
+      current_status: "open"
+      ttl_cycles_remaining: "> 0"
+
+  closed:
+    description: |
+      CD entry has been resolved by a cd_close record. Terminal state.
+      No further state transitions are permitted for this cd_id; any
+      record that would mutate a closed cd_id is rejected by the schema
+      validator and flips the block flag.
+    forward_walk_field_state:
+      current_status: "closed"
+      ttl_cycles_remaining: ">= 0"
+      closure_record: "cd_close present"
+
+  blocked:
+    description: |
+      CD entry's TTL expired without a cd_close. A cd_block record was
+      appended automatically by the cd_tick batch that decremented TTL
+      to 0. All new feature work is forbidden until either a cd_close
+      lands (manual resolution) or the operator emits an explicit
+      OPERATOR_OVERRIDE PR per rulebook §6.4.
+    forward_walk_field_state:
+      current_status: "blocked"
+      ttl_cycles_remaining: 0
+      block_record: "cd_block present"
+
+transitions:
+  - from: "(none — initial)"
+    to: "open"
+    via: "cd_open"
+    invariant: |
+      The cd_open record assigns initial ttl_cycles_remaining (default 1
+      per rulebook §6.4; charter PRs may pin to a different TTL via the
+      cd_open record's `ttl_initial` field). cd_open is the ONLY record
+      kind that may introduce a new cd_id.
+
+  - from: "open"
+    to: "open"
+    via: "cd_tick"
+    invariant: |
+      Each cd_tick decrements ttl_cycles_remaining by exactly 1. cd_tick
+      records are emitted in batches at cycle_boundary events per
+      cycle-clock.yaml. A cd_tick that would decrement ttl below 0 is
+      rejected — the corresponding entry must transition to blocked
+      via cd_block in the SAME batch instead.
+
+  - from: "open"
+    to: "closed"
+    via: "cd_close"
+    invariant: |
+      Operator-initiated resolution. cd_close records MUST carry a
+      `resolution:` field naming the PR or commit that resolved the
+      debt; the value is cross-checked against git log by the post-merge
+      audit. Missing or unverifiable resolution flips the block flag.
+
+  - from: "open"
+    to: "blocked"
+    via: "cd_block"
+    invariant: |
+      Automatic transition emitted by the cd_tick batch when TTL would
+      decrement to 0 without a matching cd_close. The cd_block record
+      MUST appear in the SAME cycle_boundary batch as the final cd_tick;
+      a cd_block that appears outside a cycle_boundary batch is rejected.
+
+  - from: "blocked"
+    to: "closed"
+    via: "cd_close"
+    invariant: |
+      Operator manually resolves a blocked entry. cd_close on a blocked
+      entry MUST carry an additional `unblock_authority:` field naming
+      the operator-override commit (rulebook §6.4 force-create rule).
+      Without the field, the cd_close is rejected.
+
+audit_predicate:
+  name: "post_merge_audit_carried_debt_predicate"
+  formal_id: "(β)"
+  expression: |
+    (status == "open" AND ttl_cycles_remaining >= 1) OR (status == "blocked")
+  semantics: |
+    The post-merge audit visits every cd_id reachable via forward-walk
+    over out/carried-debt.jsonl. A cd_id "requires operator attention"
+    if and only if this predicate evaluates true. The predicate matches
+    BOTH active open entries (ttl > 0, work in progress) AND blocked
+    entries (ttl = 0, work overdue) because both demand operator action
+    before merge.
+
+  rationale: |
+    Closes iter-7 Tier B Finding 3. The prior formulation
+    "status: open AND ttl>=1" was self-contradictory because cd_block
+    transitions status to "blocked" and ttl to 0, so a blocked entry
+    that the audit MOST needs to surface was structurally excluded.
+    The corrected predicate adds the blocked-state disjunct explicitly.
+
+  invariants:
+    - "Predicate evaluates over forward-walk last-record-wins state, NOT raw record stream"
+    - "closed entries NEVER match (terminal state, no operator attention needed)"
+    - "The predicate is the ONLY definition of (β); v3.3-architecture.md prose MUST NOT redefine it"
+
+  test_oracle: |
+    scripts/audit_carried_debt.py (Phase 2 deliverable) MUST evaluate
+    this predicate at every PR merge. The script's exit code is the
+    block-flag input: zero matches → exit 0 (clear), one-or-more
+    matches → exit non-zero (block, list matching cd_ids on stderr).

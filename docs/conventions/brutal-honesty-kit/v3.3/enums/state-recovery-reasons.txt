@@ -1,0 +1,13 @@
+# state-recovery-reasons.txt
+#
+# Canonical enumeration of `recovery_reason:` values for `state_recovery` events,
+# identifying why state had to be rebuilt from log replay.
+#
+# Authority: this file is the source of truth. lane-history.schema.json's
+# `state_recovery.recovery_reason` enum MUST match this list exactly.
+
+crc_mismatch
+truncated_json
+missing_required_field
+heartbeat_gap_exceeded
+post_merge_drift_detected

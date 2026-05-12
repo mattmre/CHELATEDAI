@@ -1,0 +1,12 @@
+# pivot-kinds.txt
+#
+# Canonical enumeration of `kind_of_pivot:` values for `pivot` events in
+# out/lane-history.jsonl.
+#
+# A pivot event records a mid-lane scope change that has been approved by the
+# operator. The kind distinguishes the nature of the change for downstream
+# audit and the Tier B "did this lane stay in scope?" check.
+
+deferred-on-dependency
+scope-reduced
+abandoned-with-replacement

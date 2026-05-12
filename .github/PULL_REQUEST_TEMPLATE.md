@@ -1,5 +1,5 @@
 <!--
-  Brutal Honesty Rulebook v3.2 §4 PR body template.
+  Brutal Honesty Rulebook v3.3 §4 PR body template.
 
   Copy this whole file as your PR body. Replace every <placeholder>. Empty
   fields are NOT acceptable — write `none` or `n/a — <reason>` and let the
@@ -23,7 +23,7 @@ doc / Carried Debt entry it closes.>
 
 ---
 
-## Brutal Honesty (rulebook v3.2 §4)
+## Brutal Honesty (rulebook v3.3 §4)
 
 EVIDENCE: <1–3 lines pointing at runtime evidence. Command output, file path,
 URL — NOT a test name. Test existing is not evidence. Example:
@@ -66,7 +66,7 @@ UTC, out-of-band reference (URL/ticket/Slack permalink). Example:
 
 ### Disclosures
 
-<Use the lie taxonomy L1–L12 (rulebook §1). Quote by number. Empty answers
+<Use the lie taxonomy L1–L13 (rulebook §1). Quote by number. Empty answers
 must be JUSTIFIED, not omitted. Example:
 "L1 (scaffold-as-feature): none — production module exposes real entry point
 verified by smoke_pipeline.py:124.
@@ -77,7 +77,7 @@ L4 (partial-with-claim-of-complete): none.
 L9 (doc-as-implementation): none.
 L11 (broad-catch swallowing): see bar.py:88 — except Exception around
 network call is intentional, falls through to retry; documented inline.
-Other L1–L12: none.">
+Other L1–L13: none.">
 
 L1 (scaffold-as-feature): <none | file:line + brief description>
 L2 (escape conditional): <none | ...>
@@ -88,4 +88,4 @@ L8 (untested production path, integration variant): <none | ...>
 L9 (doc-as-implementation): <none | ...>
 L11 (broad-catch swallowing): <none | ...>
 L12 (untested error path): <none | ...>
-Other L1–L12: <none | ...>
+Other L1–L13: <none | ...>

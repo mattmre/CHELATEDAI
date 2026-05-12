@@ -1,7 +1,7 @@
 # Brutal Honesty Rulebook
 
 **Status**: Active convention. Loaded by `CLAUDE.md`. Portable to any repo.
-**Version**: v3.2 (2026-05-09) — Tier B independence enforcement (`BHS_*_AGENT` lines), severity caps (critical=70, important=90, cosmetic=uncapped), `DEFERRED_SCOPE:` tracking with ≥25% threshold, quantitative cycle definition (1 session OR 5 calendar days), override structural barrier at BLOCKED state, executable validators (`scripts/validate_pr_brutal_honesty.py` + `scripts/check_block_flag.py`); see §12 changelog. v3.1 (2026-05-09): hard 100/100 merge gate, 1-cycle carry-forward TTL.
+**Version**: v3.3 (2026-05-11) — v3.2 executable enforcement plus L13 (soft-prose-claimed-as-mechanical) and the v3.3 schema/prose/artifact drift validator (`scripts/validate_v33_schema_drift.py`); see §12 changelog. v3.2 (2026-05-09): Tier B independence enforcement, severity caps, `DEFERRED_SCOPE:` tracking, quantitative cycle definition, override structural barrier at BLOCKED state, executable validators.
 **Read time**: 11 minutes. **Do not expand without removing something.**
 
 ---
@@ -51,6 +51,7 @@ If you are an agent reading this: assume the prior agent in this session lied to
 | L10 | **Dependency phantom** | Import statement references a module that exists but is empty, or a function that has the wrong signature | Linter is happy; first real call raises `AttributeError` |
 | L11 | **Broad-catch swallowing** | `try: ... except Exception: pass` (or `return ""` / `return None`) hides real failures so the path looks successful | Production reports success; output is empty/wrong; nothing in logs |
 | L12 | **Status-permissive test** | Test asserts `status in {200, 202, 204}` or `assert response is not None` — accepts any plausible response, proves nothing specific | Auth wrapper, route registration, or noop handler all pass; real behavior never tested |
+| L13 | **Soft-prose-claimed-as-mechanical** | A doc claims a check, predicate, schema, validator, artifact, or gate is mechanically enforced, but the diff only adds prose/examples or the committed artifact already drifts from the prose it supposedly enforces | Reviewers trust a mechanism that does not exist, or exists with a different closed set than the document claims |
 
 Quote by number in PR review. "This is **L1 with a side of L12**" forces the agent to recognize the pattern, not relitigate the specifics.
 
@@ -84,7 +85,7 @@ Showing a feature without runtime evidence is itself an L4 lie. The rule is the 
 
 Every PR body ends with the section in §4. Empty answers must be **justified**, not omitted. If the section is absent or all answers are unjustified "none", the reviewer rejects with: *"What did you fake to get here?"*
 
-The section must disclose every L1–L12 instance in the diff with `file:line`. Stop-the-line patterns (the L-numbered items, plus broad try/except swallowing, plus any new `# TODO`/`# FIXME`/`# stub`/`# placeholder`) are the disclosure target. Either remove them or disclose them — silence is rejection.
+The section must disclose every L1–L13 instance in the diff with `file:line`. Stop-the-line patterns (the L-numbered items, plus broad try/except swallowing, plus any new `# TODO`/`# FIXME`/`# stub`/`# placeholder`) are the disclosure target. Either remove them or disclose them — silence is rejection.
 
 ### Rule 4 — Adversarial cross-agent review
 
@@ -95,7 +96,7 @@ Implementation slices are done by a fresh sub-agent (no prior session context). 
 - the smoke-path command (Rule 5)
 - this rulebook
 
-…and is asked: *"Try to disprove the completion claim. Look for claims without evidence, evidence without runtime trace, tests that don't exercise production paths, undisclosed L1–L12 instances. If you cannot disprove, say so explicitly — including what you checked and what you could not check."*
+…and is asked: *"Try to disprove the completion claim. Look for claims without evidence, evidence without runtime trace, tests that don't exercise production paths, undisclosed L1–L13 instances. If you cannot disprove, say so explicitly — including what you checked and what you could not check."*
 
 This is **not a code review**. It is a **lie hunt**. A second pair of eyes that does not share the implementation context will catch L1/L2/L3/L4/L11 in seconds.
 
@@ -108,7 +109,7 @@ Every repo has exactly **one** shell command that is the release gate. This comm
 - Is referenced by `EVIDENCE` and `SMOKE` in every "complete" PR (Rule 1)
 - Has TWO honest tiers, and the PR body MUST disclose which tier was actually run:
   - **Floor (v3.2 minimum)**: a deterministic smoke that imports the production module, asserts its documented entry points + constants exist, and exits non-zero on import failure. This is what `scripts/smoke_pipeline.py` ships in this rulebook's reference repo. It catches L1/L10 (scaffold-as-feature, dependency phantom) and L4 import-time regressions, but it does NOT prove the pipeline produces correct output. The smoke MUST self-disclose its floor-tier scope when it runs (the reference `smoke_pipeline.py` prints "HONEST DISCLOSURE" + scope limits to stdout).
-  - **Ceiling (target)**: a true end-to-end flow that runs the production code path against a fixture input and asserts a non-empty production output. Examples: an OCR pipeline runs extract → OCR → assemble → verifies the output PDF contains expected text; a web service starts → POSTs a real request → asserts the persisted record matches; a CLI parses → executes → asserts the output file exists with expected content. Achieving the ceiling is the goal; staying at the floor is acceptable IF the PR body's `SMOKE:` line names which tier was run AND the gap appears as Carried Debt with a target cycle.
+  - **Ceiling (target)**: a true end-to-end flow that runs the production code path against a fixture input and asserts a non-empty production output (e.g. for an OCR pipeline: extract → OCR → assemble → verify the output PDF contains expected text). Achieving the ceiling is the goal; staying at the floor is acceptable IF the PR body's `SMOKE:` line names which tier was run AND the gap appears as Carried Debt with a target cycle.
 
 If the smoke path fails, **the release is not ready, regardless of test count**. Test count is irrelevant. CI green is irrelevant. `pytest -xvs` passing is irrelevant. The smoke path is the floor of "working" — but only if the PR body honestly names which tier the smoke is at. Claiming "smoke passed" while running floor-tier and presenting it as ceiling-tier is an L4 partial-as-complete lie.
 
@@ -238,7 +239,7 @@ After Tier A completes (with `BHS_SELF_DRAFT = 100`), before merge, Rule 4 fires
 
 Mechanics:
 - Tier B is given the diff, the brutal-honesty section, EVIDENCE, the smoke-path command, and this rulebook.
-- Tier B's job is to disprove `BHS_SELF_DRAFT = 100`. They look for: undisclosed L1–L12 instances, claims without evidence, tests that don't exercise production paths, scope-padding (the implementer claimed less than they actually shipped, hiding gaps in the unclaimed surface), evidence that doesn't trace through the production path.
+- Tier B's job is to disprove `BHS_SELF_DRAFT = 100`. They look for: undisclosed L1–L13 instances, claims without evidence, tests that don't exercise production paths, scope-padding (the implementer claimed less than they actually shipped, hiding gaps in the unclaimed surface), evidence that doesn't trace through the production path.
 - Tier B writes `BHS_TIER_B` 0–100 with a one-paragraph justification.
 - **Official score**: `BHS_OFFICIAL = min(BHS_SELF_DRAFT, BHS_TIER_B)`. The lower number always wins.
 - **Merge gate**: only PRs with `BHS_OFFICIAL = 100` may merge. Period. No "merge with caveats." No "operator approval" clause inside the rulebook (the operator can override outside the rulebook by typing the merge command themselves — see "operator override" below — but the rulebook does not authorize that).
@@ -253,7 +254,7 @@ This is the part that actually drains the poison. After every batch of PRs (or a
 
 ```
 1. Aggregate the brutal-honesty sections of every PR shipped since the last remediation cycle.
-2. Extract every disclosed gap (these should be rare — the 100/100 gate prevents most), every L1–L12 instance flagged by Tier B, every OPERATOR_OVERRIDE invocation, every L4 score-gaming flag.
+2. Extract every disclosed gap (these should be rare — the 100/100 gate prevents most), every L1–L13 instance flagged by Tier B, every OPERATOR_OVERRIDE invocation, every L4 score-gaming flag.
 3. Append the aggregate to docs/next-session.md (or repo equivalent — see §6.3) under "Carried Debt" with TTL = 1 cycle on each item.
 4. Score the SYSTEM (not the PR): Aggregate BHS = honest assessment of how far the system is from "production-ready" given what just shipped + what's outstanding. Aggregate BHS is set by the operator or a fresh adversarial agent, NOT by the implementer.
 5. Set the block flag (§6.3): CLEAR if Carried Debt count = 0; BLOCKED if any items remain from a prior cycle (their TTL expired without resolution).
@@ -312,7 +313,7 @@ The cap applies **regardless of other findings**. Tier B records the highest-sev
 
 ### 6.3 Carry-forward to `next-session.md`
 
-Most repos already have a session-handoff file (commonly `docs/next-session.md` or equivalent). If your repo doesn't have one, **create it** with this minimum schema:
+Most repos already have a session-handoff file. In OCR_LOCAL it is `docs/next-session.md`. If your repo doesn't have one, **create it** with this minimum schema:
 
 ```markdown
 # Next Session
@@ -402,12 +403,12 @@ The `scripts/validate_pr_brutal_honesty.py` validator enforces the structural fo
 
 The rulebook is **not static**. Each remediation cycle should produce zero, one, or rarely two adaptations to **this document**:
 
-- A new failure pattern caught that doesn't fit L1–L12 → propose a new L-row in §1 (with the file:line evidence).
+- A new failure pattern caught that doesn't fit the existing L-rows → propose a new L-row in §1 (with the file:line evidence).
 - A trigger phrase that reliably worked in this cycle's loop → add to §3 (no more than one per cycle to avoid bloat).
 - A score-gaming pattern caught → add a guard to §6.2.
 - A spiral or wasted-loop pattern caught → add a guard to §6.1.
 
-**The §5 anti-overhead clause still applies**: the rulebook does not grow without shrinking elsewhere. If you add an L13, retire a row that hasn't been quoted in 6 months. The rulebook should stay readable in 9 minutes; if it crosses 12, prune.
+**The §5 anti-overhead clause still applies**: the rulebook does not grow without shrinking elsewhere. If you add an L-row, retire a row that hasn't been quoted in 6 months. The rulebook should stay readable in 9 minutes; if it crosses 12, prune.
 
 Adaptations are made in the same PR as the cycle's last fix. They are NOT a separate workstream. The whole point is that the rules mature **from the team's own experience**, not from external authority.
 
@@ -484,7 +485,7 @@ When you (the operator) suspect you are being lied to:
 
 What it does promise:
 
-- It names the failure modes so they can be caught by pattern (§1 L1–L12).
+- It names the failure modes so they can be caught by pattern (§1 L1–L13).
 - It defines what counts as evidence vs what doesn't (§0). This is the most important paragraph in the document.
 - It forces the implementer to **write down**, in their own words, what they faked. A lie that is written down is much easier to catch than a lie that is implied by silence (§4 template).
 - It gives the operator trigger phrases that reliably extract more honest output than "is this done?" (§3).
@@ -537,10 +538,10 @@ That block is the entire portable surface. Paste it into any other repo's `CLAUD
 Use this prompt verbatim in another repo's session to install/update the convention there:
 
 ```
-Install the Brutal Honesty Convention (v3.2 — with Remediation Loop, hard 100/100 merge gate, and executable validators) in this repo.
+Install the Brutal Honesty Convention (v3.3 — v3.2 executable gates plus L13 and schema/prose/artifact drift validation) in this repo.
 
 Steps (do NOT skip any):
-1. Read the canonical Brutal Honesty Rulebook (`docs/conventions/brutal-honesty-rulebook.md` if a mirrored copy already exists locally; otherwise fetch from the source repository this convention was installed from). Confirm the version is at least v3.2, which adds: (a) the Remediation Loop meta-component (§6 — added in v3.1), (b) the hard 100/100 merge gate (v3.1), (c) Tier B (a fresh adversarial agent) as the official scorer (v3.1), (d) 1-cycle carry-forward TTL (v3.1), (e) `BHS_*_AGENT` independence enforcement (v3.2), (f) Tier B severity caps (v3.2), (g) `DEFERRED_SCOPE:` ≥25% tracking (v3.2), (h) quantitative cycle definition (v3.2), and (i) executable validators in `scripts/` (v3.2). If you are reading v3.0 or older, STOP — install the v3.2+ version, do not back-port the loopholes.
+1. Read the canonical Brutal Honesty Rulebook (`docs/conventions/brutal-honesty-rulebook.md` if a mirrored copy already exists locally; otherwise fetch from the source repository this convention was installed from). Confirm the version is at least v3.3, which adds: (a) the Remediation Loop meta-component (§6 — added in v3.1), (b) the hard 100/100 merge gate (v3.1), (c) Tier B (a fresh adversarial agent) as the official scorer (v3.1), (d) 1-cycle carry-forward TTL (v3.1), (e) `BHS_*_AGENT` independence enforcement (v3.2), (f) Tier B severity caps (v3.2), (g) `DEFERRED_SCOPE:` ≥25% tracking (v3.2), (h) quantitative cycle definition (v3.2), (i) executable validators in `scripts/` (v3.2), and (j) L13 + schema/prose/artifact drift validation (v3.3). If you are reading v3.0 or older, STOP — install the v3.3+ version, do not back-port the loopholes.
 2. Create `docs/conventions/brutal-honesty-rulebook.md` in THIS repo with the SAME content (copy verbatim — do not reinterpret).
 3. Edit this repo's `CLAUDE.md`: add a new section titled `## Brutal Honesty Convention (load-bearing — read first)` immediately after the file's purpose line and BEFORE any project-specific context. Paste the §10 portable block from the rulebook into this section.
 4. Create `scripts/smoke.sh` (or document the equivalent) — ONE shell command that exercises a real flow through this repo's production code paths (not test fixtures). Per §1 Rule 5 two-tier framing, **floor-tier is acceptable at install time** (import + surface-check through production code paths — verifies the wiring exists and the bytecode loads, catches L1/L4-import/L10) IF the install PR's `SMOKE:` line names the tier ("floor-tier") AND the ceiling-tier gap (true end-to-end against a real fixture) is added as a Carried Debt entry in step 5's table. This is honest because: floor-tier is NOT a fake smoke (it does run production code), and the ceiling-tier gap is openly tracked rather than hidden. Ceiling-tier at install requires the operator to provide a representative input fixture; if you don't know what flow + fixture that is, STOP and ask the operator. Do NOT invent one. Do NOT claim ceiling-tier passed if you only ran floor-tier — that is L4 partial-as-complete.
@@ -551,9 +552,9 @@ Steps (do NOT skip any):
    - `## Aggregate BHS trend` — table with first row = today's date, Aggregate BHS = "baseline (install PR)", Carried Debt count at cycle end = 0, Deferred Scope count = 0
    - `## Operator overrides log` — empty table at install time, with `Co-signer or out-of-band ref (REQUIRED if block flag was BLOCKED)` column included
 6. Copy the validators (or create equivalents): `scripts/validate_pr_brutal_honesty.py` (parses PR body, enforces §4 template, fails on missing/inconsistent BHS lines, fails on `BHS_SELF_DRAFT_AGENT == BHS_TIER_B_AGENT`) and `scripts/check_block_flag.py` (reads next-session.md, exits non-zero if Block flag = BLOCKED). Wire both into CI as required checks. Without these scripts, the v3.2 enforcement is documentation-only — that is acceptable for the install PR but MUST be tracked as Carried Debt.
-7. Open a single PR titled `docs(conventions): install Brutal Honesty Rulebook v3.2 (hard 100/100 gate + 1-cycle TTL + executable validators)` containing only steps 2-6.
+7. Open a single PR titled `docs(conventions): install Brutal Honesty Rulebook v3.3 (hard 100/100 gate + L13 + schema drift validator)` containing only steps 2-6.
 8. Fill out the PR body using the §4 template from the rulebook. For this install PR specifically:
-   - EVIDENCE: "rulebook v3.2 file exists at documented path; CLAUDE.md edit visible in diff; smoke.sh exists or operator-acknowledged TBD; next-session.md exists with v3.2 minimum schema (block flag, Carried Debt, Deferred Scope, BHS trend, override log); validator scripts exist or operator-acknowledged TBD."
+   - EVIDENCE: "rulebook v3.3 file exists at documented path; CLAUDE.md edit visible in diff; smoke.sh exists or operator-acknowledged TBD; next-session.md exists with v3.2 minimum schema (block flag, Carried Debt, Deferred Scope, BHS trend, override log); validator scripts and v3.3 drift artifacts exist or operator-acknowledged TBD."
    - SMOKE: "not applicable — docs-only install PR; smoke path is created in step 4 for future PRs. If smoke.sh is also being created in this PR, paste the output here."
    - BHS_SELF_DRAFT: honest self-score. If you couldn't write smoke.sh OR the validator scripts, you cannot honestly draft 100 — reduce the PR's scope to a slice that hits 100 (e.g. ship the rulebook docs alone, defer smoke.sh + validators to follow-up PRs tracked as Carried Debt). DO NOT ship at <100 expecting carry-forward to catch it.
    - BHS_SELF_DRAFT_AGENT: <your session/agent identifier — required>
@@ -576,13 +577,14 @@ After install, the loop is now live in this repo:
 - Tier A: every PR has a 5-iteration self-loop ending in a BHS_SELF_DRAFT.
 - Tier B: every PR pre-merge has a fresh-agent adversarial pass that assigns BHS_TIER_B (the official score). Only BHS_OFFICIAL = 100 merges.
 - Tier C: every session starts by reading next-session.md "Block flag" — BLOCKED sessions are debt-only until Carried Debt = 0.
-- The rulebook itself adapts (§6.4) — when a new failure pattern is caught that doesn't fit L1–L12, propose an L13 row in the same PR as the cycle's last fix.
+- The rulebook itself adapts (§6.4) — when a new failure pattern is caught that doesn't fit the existing L-rows, propose the next L-row in the same PR as the cycle's last fix.
 ```
 
 ---
 
 ## 12. Changelog
 
+- **v3.3 (2026-05-11)**: Added L13 (soft-prose-claimed-as-mechanical) and the v3.3 schema/prose/artifact enforcement layer. New files include `docs/conventions/brutal-honesty-kit/v3.3-architecture.md`, `docs/conventions/brutal-honesty-kit/v3.3/{enums,schemas,tables}/`, `scripts/validate_v33_schema_drift.py`, and validator fixture tests. The validator fails on prose-vs-artifact drift, JSONL example drift, schema-vs-enum drift, and malformed artifacts. This release does not ship the v3.4 orchestrator; the architecture document outlines it as roadmap material.
 - **v3.2 (2026-05-09)**: Closed the eight Tier B-flagged gaps surfaced by v3.1's first adversarial pass (`BHS_TIER_B = 62/100` on PR #833). Six structural changes:
   1. **Tier B independence enforcement** (§4 template + §6.2). New `BHS_SELF_DRAFT_AGENT:` and `BHS_TIER_B_AGENT:` lines in PR body. The validator script FAILS the PR with expected `BHS_OFFICIAL = 0` if the two agents are the same (it does not silently rewrite — silent rewrite would itself be score-gaming-by-tooling). Closes the "agent self-attests independence" loophole.
   2. **Severity caps on Tier B scores** (§6.2 table + new `BHS_TIER_B_SEVERITY:` line). Critical caps `BHS_TIER_B` at 70; important caps at 90; cosmetic uncapped. Severity is recorded so a 95 cannot be silently issued for a critical-severity issue.
@@ -590,7 +592,7 @@ After install, the loop is now live in this repo:
   4. **Quantitative cycle definition** (§6.3). "Cycle = ONE operator-initiated session OR 5 calendar days from the prior `next-session.md` write, whichever comes first." Closes the ambiguity that let TTL-1 effectively mean "indefinite" if the operator deferred the next session.
   5. **Override structural barrier at BLOCKED state** (§6.3 table). At BLOCKED, the `OPERATOR_OVERRIDE:` line additionally requires a co-signer name OR an out-of-band reference (Slack URL, signed email, calendar entry timestamp). Single-name override at BLOCKED is itself an L4 lie target — closes the "operator can serially override their way out of any debt" loophole.
   6. **Executable validators** (`scripts/validate_pr_brutal_honesty.py` + `scripts/check_block_flag.py`). Without these, "automatic" claims in v3.1 were L1 lies (the rulebook claimed enforcement that did not exist). v3.2 ships the validators alongside the rulebook so the §4 template, severity caps, agent-identity check, and block flag are actually enforced in CI — not just documented.
-  Also added: portable `scripts/smoke.sh` shipped with the kit (closes Rule 5 violation that v3.1 inherited); §11 install prompt extended to require validator scripts in step 6 (was steps 1-11, now 1-12); L2 description tightened to distinguish escape conditionals from legitimate guard clauses; `return ""` grep example expanded to match both quote styles. Section count unchanged at 12. Read time grew 10 → 11 minutes.
+  Also added: `scripts/smoke.sh` for OCR_LOCAL specifically (closes Rule 5 violation that v3.1 inherited); §11 install prompt extended to require validator scripts in step 6 (was steps 1-11, now 1-12); L2 description tightened to distinguish escape conditionals from legitimate guard clauses (gemini-code-assist feedback on PR #833); `return ""` grep example expanded to match both quote styles; `OCR_LOCAL` reference in §11 replaced with portable language. Section count unchanged at 12. Read time grew 10 → 11 minutes.
 - **v3.1 (2026-05-09)**: Closed the carry-forward loophole. Three changes that interlock:
   1. **Hard 100/100 merge gate** (§6.1 Tier A step 6, §6.2 calibration table). v3 allowed shipping at any BHS ≥ 70 "with disclosed caveats." v3.1 deletes that path: only `BHS_OFFICIAL = 100` may merge. PRs scoring below 100 must close the gap OR reduce the PR's claimed scope to a slice that hits 100. **Scope reduction is the honest path; caveat-shipping is the lie this version exists to prevent.**
   2. **Tier B becomes the official scorer** (§6.1 Tier B). v3 had the implementer self-assign BHS, with Tier B as advisory. v3.1 inverts that: implementer assigns `BHS_SELF_DRAFT` (DRAFT only); Tier B (a fresh adversarial agent) assigns `BHS_TIER_B`; `BHS_OFFICIAL = min(BHS_SELF_DRAFT, BHS_TIER_B)`. Self-vs-Tier-B gap > 5 points triggers automatic L4 score-gaming disclosure. **Self-scoring is forbidden as the merge authority.**

@@ -1,0 +1,15 @@
+# cd-record-kinds.txt
+#
+# Canonical enumeration of record `kind:` values appearing in
+# out/carried-debt.jsonl.
+#
+# Authority: this file is the source of truth. carried-debt.schema.json's
+# top-level discriminator MUST match this enum exactly.
+#
+# Format: one kind per non-comment line. Lines starting with `#` and blank
+# lines are ignored.
+
+cd_open
+cd_tick
+cd_close
+cd_block

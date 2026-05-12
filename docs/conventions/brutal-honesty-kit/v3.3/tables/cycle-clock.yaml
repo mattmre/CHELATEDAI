@@ -1,0 +1,74 @@
+# cycle-clock.yaml
+#
+# Defines the `cycle_boundary` first-class event in out/lane-history.jsonl
+# and specifies what triggers a `cd_tick` batch in out/carried-debt.jsonl.
+#
+# Closes iter-7 Tier B Finding 4: "cd_tick references 'cycle boundary' but
+# 'cycle' is never defined as a first-class observable event."
+#
+# Authority: this file is the source of truth for the cycle clock. Any prose
+# in v3.3-architecture.md that mentions "cycle" or "cycle boundary" MUST be
+# consistent with the definitions here; the schema-drift validator
+# (scripts/validate_v33_schema_drift.py) cross-checks at commit time.
+
+cycle:
+  definition: |
+    A "cycle" is the unit of Carried Debt TTL accounting per rulebook §6 (the
+    Remediation Loop). In v3.2 the cycle was loosely defined as "the next
+    development session"; v3.3 makes it mechanically observable.
+
+  boundary_definition: |
+    A cycle_boundary event MUST be emitted to out/lane-history.jsonl when ALL
+    of the following are true:
+      1. The `wrap_session` skill runs to completion (zero-exception exit), OR
+         the operator manually invokes `scripts/emit_cycle_boundary.sh` (Phase
+         3 deliverable), OR a charter PR with `Charter-Phase:` field merges.
+      2. The previous cycle_boundary event was at least
+         `min_cycle_interval_seconds` ago (default 3600s), to prevent rapid
+         no-op cycles inflating TTL clocks during burst sessions.
+      3. There is at least one open lane (lane_open without a matching
+         lane_abandon or merge_authority_assert) OR at least one open
+         carried-debt entry (cd_open without a matching cd_close or cd_block).
+
+  min_cycle_interval_seconds: 3600
+
+  emission_authority: |
+    Phase 3 ships `scripts/emit_cycle_boundary.sh` as the canonical emitter.
+    Direct hand-editing of lane-history.jsonl to insert a cycle_boundary
+    record is structurally forbidden (the schema validator rejects records
+    whose `emitter:` field is not one of the approved tool identifiers).
+
+cd_tick_trigger:
+  rule: |
+    Exactly one cd_tick record MUST be appended to out/carried-debt.jsonl for
+    EACH currently-open cd_open entry whose TTL is > 0, IMMEDIATELY AFTER
+    each cycle_boundary event is appended to lane-history.jsonl.
+
+  ordering_invariant: |
+    The cycle_boundary record MUST be written and fsynced to lane-history.jsonl
+    BEFORE any cd_tick records for that cycle are written to carried-debt.jsonl.
+    If the process crashes between the two writes, recovery rebuilds state
+    from forward-walk and detects the missing cd_tick batch via the
+    cycle_id-to-tick-batch cross-check in scripts/audit_carried_debt.py
+    (Phase 2 deliverable), emitting a state_recovery event with
+    reason: corrupted_record_crc_mismatch.
+
+  ttl_decrement: |
+    Each cd_tick decrements `ttl_cycles_remaining` by 1 for its target cd_id.
+    When ttl_cycles_remaining reaches 0 AND the cd entry has NOT been closed
+    (no cd_close for that cd_id), a cd_block record MUST be appended in the
+    SAME cd_tick batch, transitioning the cd entry to state: blocked per the
+    cd-state-machine.yaml transitions.
+
+cycle_id:
+  format: |
+    UUIDv7 generated at cycle_boundary emission time. Used as the
+    `target_cycle_id` field of every cd_tick record in that batch, so
+    audit replay can confirm 1:1 correspondence between cycle boundaries
+    and tick batches.
+
+  uniqueness: |
+    Each cycle_id appears in exactly ONE cycle_boundary event across the
+    entire history. Duplicate cycle_ids (detected by post-merge audit) flip
+    the block flag — they indicate either log corruption or unauthorized
+    direct edits.

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Brutal Honesty Convention (load-bearing — read first)
 
-See `docs/conventions/brutal-honesty-rulebook.md` (v3.2 — Tier B independence enforcement via `BHS_*_AGENT` lines, severity caps on Tier B scores, `DEFERRED_SCOPE:` ≥25% tracking, quantitative cycle definition, override structural barrier at BLOCKED, executable validators in `scripts/`. v3.1 baseline: hard 100/100 merge gate, 1-cycle carry-forward TTL with automatic block flag).
+See `docs/conventions/brutal-honesty-rulebook.md` (v3.3 — v3.2 executable PR gates plus L13 soft-prose-claimed-as-mechanical and the v3.3 schema/prose/artifact drift validator. v3.2 baseline: Tier B independence enforcement via `BHS_*_AGENT` lines, severity caps on Tier B scores, `DEFERRED_SCOPE:` tracking, quantitative cycle definition, override structural barrier at BLOCKED, executable validators in `scripts/`).
 
 **Premise**: Assume every implementation/completion claim is false until independently proven by runtime evidence. Tests existing, routes existing, docs saying complete, PR text saying complete, agent claims, and even self-attested brutal-honesty sections are NOT evidence. Evidence is: command output from the production code path, real UI/API behavior, persistence/state mutation, artifact/replay/checkpoint surviving a fresh checkout, or an independent reviewer who tried to disprove and failed.
 
@@ -27,7 +27,7 @@ See `docs/conventions/brutal-honesty-rulebook.md` (v3.2 — Tier B independence 
 - **PR body required lines**: `BHS_SELF_DRAFT`, `BHS_SELF_DRAFT_AGENT`, `BHS_TIER_B`, `BHS_TIER_B_AGENT`, `BHS_TIER_B_SEVERITY`, `BHS_OFFICIAL`, `CARRY_FORWARD`, `DEFERRED_SCOPE`, `LOOP_ITERATIONS`, `OPERATOR_OVERRIDE` (per §4 template).
 - **Why this is in CLAUDE.md, not in a skill or MCP server**: skills can fail to load, agents can spin up without MCP context, the convention can't. This file is auto-loaded every session — the convention is the meta-component.
 
-**Lie taxonomy L1–L12** is in §1 of the rulebook; quote by number when calling out a failure. Speculating is itself a lie — *"I don't know"* is the correct answer when there is no evidence.
+**Lie taxonomy L1–L13** is in §1 of the rulebook; quote by number when calling out a failure. Speculating is itself a lie — *"I don't know"* is the correct answer when there is no evidence.
 
 ## Session Rules (enforced every session, no exceptions)
 

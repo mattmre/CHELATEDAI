@@ -1,0 +1,29 @@
+# lane-history-kinds.txt
+#
+# Canonical enumeration of event `kind:` values appearing in
+# out/lane-history.jsonl. Mirrors the §6.5 per-event-kind table in
+# docs/conventions/brutal-honesty-kit/v3.3-architecture.md verbatim;
+# any drift between this file and §6.5 is L13 and fails the schema-drift
+# validator delivered in Phase 1 (scripts/validate_v33_schema_drift.py).
+#
+# Authority: this file is the source of truth for the kind enumeration.
+# lane-history.schema.json's top-level discriminator MUST match this enum
+# exactly. Any prose in v3.3-architecture.md that names a lane-history
+# event kind MUST appear here.
+#
+# Format: one kind per non-comment line. Lines starting with `#` and
+# blank lines are ignored. Order matches §6.5 table order for readability;
+# the schema-drift validator compares as a set, not a sequence.
+
+lane_open
+pr_open
+tier_a_iter
+tier_b_run
+pivot
+merge
+lane_pause
+lane_resume
+phase_boundary
+digest_emit
+state_recovery
+cycle_boundary

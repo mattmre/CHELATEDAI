@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""scripts/check_block_flag.py — Brutal Honesty Rulebook v3.2 §6.3 block-flag gate.
+"""scripts/check_block_flag.py — Brutal Honesty Rulebook v3.3 §6.3 block-flag gate.
 
 Reads `docs/next-session.md` (or a path passed via --file) and exits non-zero
 when the Block flag is `BLOCKED`. This is the mechanism that turns the v3.1/v3.2
@@ -224,7 +224,7 @@ def main() -> int:
     debt_count = count_carried_debt_rows(content)
 
     print("=" * 70)
-    print("Brutal Honesty Rulebook v3.2 — §6.3 block-flag gate")
+    print("Brutal Honesty Rulebook v3.3 — §6.3 block-flag gate")
     print(f"File: {path}")
     print("=" * 70)
     print(f"Block flag state: {state}")

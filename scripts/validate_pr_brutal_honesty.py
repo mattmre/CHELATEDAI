@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""scripts/validate_pr_brutal_honesty.py — Brutal Honesty Rulebook v3.2 §4 validator.
+"""scripts/validate_pr_brutal_honesty.py — Brutal Honesty Rulebook v3.3 §4 validator.
 
 Parses a PR body and enforces the §4 template. Exits 0 only if every required
 field is present, in the correct format, and the cross-field invariants hold.
@@ -393,7 +393,7 @@ def read_body(args: argparse.Namespace) -> str:
 def render_report(report: Report) -> str:
     lines = []
     lines.append("=" * 70)
-    lines.append("Brutal Honesty Rulebook v3.2 — §4 PR-body validator")
+    lines.append("Brutal Honesty Rulebook v3.3 — §4 PR-body validator")
     lines.append("=" * 70)
     lines.append("")
 

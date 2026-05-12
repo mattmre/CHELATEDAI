@@ -1,6 +1,6 @@
 # .github/workflows/brutal-honesty-gate.yml
 #
-# Brutal Honesty Rulebook v3.2 §6.3 + §4 merge gate.
+# Brutal Honesty Rulebook v3.3 §6.3 + §4 merge gate.
 #
 # Runs on every PR opened against the protected branch. Fails the merge if:
 #   1. The PR body is missing required §4 fields (validate_pr_brutal_honesty).

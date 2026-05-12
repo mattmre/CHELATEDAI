@@ -1,0 +1,22 @@
+# lane-pause-causes.txt
+#
+# Canonical enumeration of `cause:` namespaces for `lane_pause` events.
+#
+# Grammar: `<namespace>:<suffix>` where namespace appears in this file and
+# suffix conforms to the per-namespace suffix set enumerated in
+# v3.3-architecture.md §6.5 (and, for plan_fault, in plan-faults.txt).
+#
+# Authority: this file is the source of truth for the namespace set.
+# Per-namespace suffix sets currently live in §6.5 prose; the schema-drift
+# validator extracts them and cross-checks against any prose elsewhere in
+# the doc that names a lane_pause cause.
+
+merge_authority
+tier_b_pool
+rate_limit
+plan_fault
+block_flag
+forward_progress
+state_recovery
+operator
+F11
