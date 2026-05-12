@@ -1,0 +1,31 @@
+# plan-faults.txt
+#
+# Canonical enumeration of `plan_fault:<suffix>` values that may appear as the
+# `cause:` of a `lane_pause` event in out/lane-history.jsonl.
+#
+# Authority: this file is the source of truth. Any prose in
+# docs/conventions/brutal-honesty-kit/v3.3-architecture.md that names a
+# plan_fault suffix MUST appear in this file; scripts/validate_v33_schema_drift.py
+# (Phase 1 deliverable) cross-checks doc prose against this enum at commit time
+# and fails closed on drift.
+#
+# Format: one suffix per non-comment line, lowercase, [a-z0-9_] only.
+# Lines starting with `#` and blank lines are ignored.
+#
+# To add a new plan_fault suffix:
+#   1. Add the suffix here.
+#   2. Reference it from the relevant section of v3.3-architecture.md.
+#   3. Update scripts/validate_v33_schema_drift.py test fixtures.
+#   4. Update Phase 1 Tier B brief (§11) if the new fault affects merge gating.
+
+disprove_pre_flight_failed
+phase_alignment_misaligned
+aggregate_smoke_nonzero
+same_gap_twice
+cumulative_iter_cap_exceeded
+digest_emit_overdue
+charter_invariant_violated
+mid_lane_pivot_unapproved
+scope_excess
+ttl_exhausted_without_close
+digest_missing

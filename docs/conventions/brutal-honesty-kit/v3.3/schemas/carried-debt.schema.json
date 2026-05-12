@@ -1,0 +1,152 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/mattmre/brutal-honesty-kit/v3.3/schemas/carried-debt.schema.json",
+  "title": "carried-debt.jsonl record",
+  "description": "JSON Schema for a single JSONL record in out/carried-debt.jsonl. The file is append-only; each record is one JSON object with a `crc32` field over the serialized JSON body excluding that field, per v3.3-architecture.md §6.5b. State transitions and the post-merge-audit (β) predicate are defined in v3.3/tables/cd-state-machine.yaml. Field names mirror the §6.5b prose exactly so the §6.5 digest_emit Carried Debt predicate's (α)/(β)/(γ) clauses can be evaluated mechanically against records of this schema.",
+
+  "type": "object",
+  "required": ["ts", "kind", "cd_id", "crc32"],
+
+  "properties": {
+    "ts": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 UTC timestamp with millisecond precision."
+    },
+    "cd_id": {
+      "type": "string",
+      "pattern": "^CD-[0-9]{3,5}$",
+      "description": "Stable identifier for the carried-debt entry. cd_open is the only record kind that may introduce a new cd_id; subsequent records (cd_tick, cd_close, cd_block) MUST reference an existing cd_id."
+    },
+    "kind": {
+      "type": "string",
+      "enum": ["cd_open", "cd_tick", "cd_close", "cd_block"],
+      "description": "MUST match v3.3/enums/cd-record-kinds.txt exactly."
+    },
+    "crc32": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}$",
+      "description": "CRC32 over the JSON body of this record excluding the crc32 field itself. Detects truncation and silent corruption per §6.5b."
+    }
+  },
+
+  "oneOf": [
+    {
+      "title": "cd_open",
+      "properties": {
+        "kind": {"const": "cd_open"},
+        "lane_history_ref": {
+          "oneOf": [
+            {"type": "string", "pattern": "^lane-history\\.jsonl:[0-9]+$"},
+            {"const": "none"}
+          ],
+          "description": "Literal string reference to the lane-history.jsonl line index that surfaced this debt (typically a merge_authority:post_merge_invariant_violated lane_pause), or literal none for operator-originated debt. The §6.5 digest_emit Carried Debt predicate clause (α) compares this field for exact equality against `lane-history.jsonl:N`."
+        },
+        "ttl_cycles_initial": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5,
+          "description": "TTL at open time, in cycles. Default 1 per rulebook §6.4 one-cycle carry-forward TTL; higher values require explicit operator authorization."
+        },
+        "ttl_cycles_remaining": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5,
+          "description": "Current TTL. On cd_open this MUST equal ttl_cycles_initial. Each cd_tick decrements this by 1; the §6.5 (β) predicate accepts (status==open AND ttl_cycles_remaining>=1) OR (status==blocked)."
+        },
+        "blocking": {
+          "type": "boolean",
+          "description": "If true, this CD entry transitions to status==blocked (via cd_block) when ttl_cycles_remaining reaches 0; once any blocking CD is in status==blocked, new feature work is forbidden until it transitions to closed."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["open", "closed", "blocked"],
+          "const": "open",
+          "description": "Initial status at cd_open. MUST be the literal string 'open'; cd_close/cd_block transitions are recorded by their respective record kinds, not by re-asserting status on subsequent records."
+        },
+        "item_text": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 500,
+          "description": "One-sentence human-readable summary of the debt item. Rendered verbatim into docs/next-session.md by Phase 4."
+        },
+        "source_text": {
+          "type": "string",
+          "minLength": 10,
+          "description": "Verbatim snippet from the source event (e.g. the lane_pause details field). Distinct from item_text: source_text records the raw evidence, item_text is the operator-facing summary."
+        },
+        "opened_at_lane_history_index": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "lane-history.jsonl line index AT WHICH this cd_open record is opened (i.e. the index the cd_open's own emission corresponds to, NOT lane_history_ref). Per §10.8, opened_at_lane_history_index MUST be no greater than N+2 where N is the lane_history_ref line index, allowing the slot for the state_recovery successor event."
+        }
+      },
+      "required": ["lane_history_ref", "ttl_cycles_initial", "ttl_cycles_remaining", "blocking", "status", "item_text", "source_text", "opened_at_lane_history_index"]
+    },
+    {
+      "title": "cd_tick",
+      "properties": {
+        "kind": {"const": "cd_tick"},
+        "ttl_cycles_remaining": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5,
+          "description": "TTL value AFTER this tick decrement is applied (i.e. previous ttl_cycles_remaining minus 1). A cd_tick that would yield a negative value is L4 — the orchestrator MUST emit cd_block on the same tick instead."
+        },
+        "target_cycle_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "description": "UUIDv7 cycle_id from the cycle_boundary event that triggered this tick batch. Per v3.3/tables/cycle-clock.yaml the cycle_boundary record MUST appear in lane-history.jsonl and be fsynced BEFORE this cd_tick is appended to carried-debt.jsonl."
+        }
+      },
+      "required": ["ttl_cycles_remaining", "target_cycle_id"]
+    },
+    {
+      "title": "cd_close",
+      "properties": {
+        "kind": {"const": "cd_close"},
+        "closed_at_lane_history_index": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "lane-history.jsonl line index at which the close happened (typically a merge event whose diff resolved the drift)."
+        },
+        "close_reason": {
+          "type": "string",
+          "minLength": 5,
+          "description": "Short reason string. If closing from status==blocked, MUST be paired with unblock_authority per cd-state-machine.yaml."
+        },
+        "unblock_authority": {
+          "type": "string",
+          "description": "Required ONLY when transitioning blocked → closed. Names the operator-override per cd-state-machine.yaml (e.g. a charter-merges.md row identifier or an OPERATOR_OVERRIDE: PR-body line ref)."
+        }
+      },
+      "required": ["closed_at_lane_history_index", "close_reason"]
+    },
+    {
+      "title": "cd_block",
+      "properties": {
+        "kind": {"const": "cd_block"},
+        "blocked_at_lane_history_index": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "lane-history.jsonl line index at which the block transition was decided."
+        },
+        "blocked_reason": {
+          "type": "string",
+          "minLength": 5,
+          "description": "Short reason; canonical value is 'ttl_remaining_zero_and_status_still_open'."
+        },
+        "triggering_tick_record_id": {
+          "type": "string",
+          "description": "Optional pointer (cd_tick's ts or a content-addressed hash) to the tick that decremented TTL to 0 and produced this block; aids audit but is not load-bearing for the (β) predicate."
+        },
+        "target_cycle_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "description": "UUIDv7 cycle_id of the cycle in which this block occurred. MUST equal the target_cycle_id of the triggering cd_tick when triggering_tick_record_id is present."
+        }
+      },
+      "required": ["blocked_at_lane_history_index", "blocked_reason", "target_cycle_id"]
+    }
+  ]
+}

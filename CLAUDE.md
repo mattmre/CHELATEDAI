@@ -2,6 +2,33 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Brutal Honesty Convention (load-bearing — read first)
+
+See `docs/conventions/brutal-honesty-rulebook.md` (v3.3 — v3.2 executable PR gates plus L13 soft-prose-claimed-as-mechanical and the v3.3 schema/prose/artifact drift validator. v3.2 baseline: Tier B independence enforcement via `BHS_*_AGENT` lines, severity caps on Tier B scores, `DEFERRED_SCOPE:` tracking, quantitative cycle definition, override structural barrier at BLOCKED, executable validators in `scripts/`).
+
+**Premise**: Assume every implementation/completion claim is false until independently proven by runtime evidence. Tests existing, routes existing, docs saying complete, PR text saying complete, agent claims, and even self-attested brutal-honesty sections are NOT evidence. Evidence is: command output from the production code path, real UI/API behavior, persistence/state mutation, artifact/replay/checkpoint surviving a fresh checkout, or an independent reviewer who tried to disprove and failed.
+
+**Five hard rules**:
+
+1. **Evidence rule.** Every PR with a "complete" claim includes `EVIDENCE:` and `SMOKE:` lines pointing at runtime evidence — not tests.
+2. **Visible means verified.** Incomplete code may live in the repo; it may NOT be presented as a working feature (no UI surfacing, no API doc, no release-note implication, no roadmap tick).
+3. **Mandatory PR brutal-honesty section.** Every PR body ends with a `## Brutal Honesty` section disclosing stubs (L1), escape conditionals (L2), mocks in production paths (L3), partial implementations (L4), untested production paths (L5/L8/L12), broad-catch swallowing (L11), and any other §1 instance with `file:line`. Empty answers must be justified, not omitted (template in §4 of the rulebook).
+4. **Adversarial cross-agent review.** Implementation slices are done by a fresh sub-agent; a second fresh sub-agent is given the diff + brutal-honesty section + EVIDENCE + smoke command + this rulebook, and is asked to **try to disprove** completion. Not verify — *disprove*.
+5. **One deterministic smoke path per repo.** `scripts/smoke.sh` (or equivalent) is the release gate. **Two honest tiers per §1 Rule 5**: Floor (import + surface-check through production code paths — the v3.2 minimum) is acceptable IF the PR body's SMOKE: line names which tier was run AND any ceiling-tier gap appears as a Carried Debt entry. Ceiling (true end-to-end against a real fixture) is the target. Claiming "smoke passed" at ceiling-tier when only floor-tier was run is itself L4 partial-as-complete. If smoke fails, the release is not ready regardless of test count.
+
+**Trigger phrases** (use these instead of "is this done?"): *"Be brutally honest." / "What did you fake to get here?" / "If I ran this on a fresh checkout right now, what would actually fail?" / "Tell me the smallest concrete thing that does NOT work yet." / "Show me the runtime evidence, not the test." / "If I disable this feature behind a flag, what visible behavior changes?"*
+
+**The Remediation Loop (meta-component, §6 of the rulebook; v3.1 closes the carry-forward loophole)** — applies to this repo:
+- **Tier A (per-PR)**: 5 iterations max. Implementer self-scores `BHS_SELF_DRAFT` after each. If self-score < 100 at iteration 5, the PR is **withdrawn or scope-reduced** — it does NOT ship at <100 hoping for carry-forward. Same gap surviving 2 iterations → escalate, don't loop more.
+- **Tier B (pre-merge — THE OFFICIAL SCORER)**: one fresh adversarial agent assigns `BHS_TIER_B` independently. `BHS_OFFICIAL = min(BHS_SELF_DRAFT, BHS_TIER_B)`. **Hard merge gate: only PRs with `BHS_OFFICIAL = 100` may merge.** No "ships with caveats" path. Self-vs-Tier-B gap > 5 → automatic L4 score-gaming disclosure.
+- **Tier C (cross-PR / session boundary)**: aggregate disclosures into `docs/next-session.md` "Carried Debt" with TTL = 1 cycle. Items not cleared in the next cycle flip the **block flag** to BLOCKED — the cycle after that forbids ALL new feature work until Carried Debt = 0. **No two-cycle slop.** Block flag is automatic from the math.
+- **BHS scale (only 100 ships)**: 100 = merges · 90–99 = does not merge, back to Tier A · 70–89 = does not merge, reduce scope · 50–69 = does not merge, scaffold-only allowed · 0–49 = draft, not a PR.
+- **Operator override**: rulebook can't prevent the operator from typing the merge command at <100; it makes the override visible (`OPERATOR_OVERRIDE:` line) and force-creates a top-priority carried-debt entry for the next cycle.
+- **PR body required lines**: `BHS_SELF_DRAFT`, `BHS_SELF_DRAFT_AGENT`, `BHS_TIER_B`, `BHS_TIER_B_AGENT`, `BHS_TIER_B_SEVERITY`, `BHS_OFFICIAL`, `CARRY_FORWARD`, `DEFERRED_SCOPE`, `LOOP_ITERATIONS`, `OPERATOR_OVERRIDE` (per §4 template).
+- **Why this is in CLAUDE.md, not in a skill or MCP server**: skills can fail to load, agents can spin up without MCP context, the convention can't. This file is auto-loaded every session — the convention is the meta-component.
+
+**Lie taxonomy L1–L13** is in §1 of the rulebook; quote by number when calling out a failure. Speculating is itself a lie — *"I don't know"* is the correct answer when there is no evidence.
+
 ## Session Rules (enforced every session, no exceptions)
 
 ### Rule 1 — Full Implementation Only

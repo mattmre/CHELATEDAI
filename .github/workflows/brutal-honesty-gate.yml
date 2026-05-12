@@ -1,0 +1,136 @@
+# .github/workflows/brutal-honesty-gate.yml
+#
+# Brutal Honesty Rulebook v3.3 §6.3 + §4 merge gate.
+#
+# Runs on every PR opened against the protected branch. Fails the merge if:
+#   1. The PR body is missing required §4 fields (validate_pr_brutal_honesty).
+#   2. BHS_OFFICIAL ≠ min(BHS_SELF_DRAFT, capped(BHS_TIER_B)).
+#   3. Severity caps not applied correctly.
+#   4. Self-vs-Tier-B agent identity collision (forces score to 0).
+#   5. Block flag = BLOCKED in docs/next-session.md (unless --allow-debt-prs
+#      label applied to a debt-draining PR).
+#
+# WHY THIS WORKFLOW EXISTS:
+#   Skills can fail to load. Agents can spin up without context. CI cannot.
+#   This workflow is the structural enforcement that makes the rulebook gate
+#   real instead of aspirational.
+#
+# ADAPTATION:
+#   - Replace `branches: [main]` if your protected branch differs.
+#   - If you store the rulebook somewhere other than the default
+#     `docs/conventions/brutal-honesty-rulebook.md`, the validators do not
+#     care — they only read `--body` and `docs/next-session.md`. Update the
+#     paths in the steps below if you moved the next-session file.
+#   - The `--allow-debt-prs` override is keyed off a PR label. Create a label
+#     called `debt-draining` in your repo (Settings → Labels) and apply it
+#     ONLY to PRs whose entire purpose is closing existing Carried Debt.
+
+name: Brutal Honesty Gate
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened, labeled, unlabeled]
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  validate-pr-body:
+    name: §4 PR body validator
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run validator against PR body
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PYTHONIOENCODING: utf-8
+        run: |
+          python scripts/validate_pr_brutal_honesty.py --pr ${{ github.event.pull_request.number }}
+
+  check-block-flag:
+    name: §6.3 block-flag gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run block-flag check
+        env:
+          PYTHONIOENCODING: utf-8
+        run: |
+          # If the `debt-draining` label is on this PR, allow it through even
+          # when the flag is BLOCKED. Otherwise the flag must be CLEAR.
+          ALLOW_FLAG=""
+          for label in $(echo '${{ toJson(github.event.pull_request.labels.*.name) }}' | python -c "import json,sys; print(' '.join(json.load(sys.stdin)))"); do
+            if [ "$label" = "debt-draining" ]; then
+              ALLOW_FLAG="--allow-debt-prs"
+              echo "::notice::debt-draining label present; --allow-debt-prs override active"
+              break
+            fi
+          done
+          python scripts/check_block_flag.py $ALLOW_FLAG
+
+  smoke-gate:
+    name: Rule 5 smoke gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install production deps
+        run: |
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+          fi
+
+      - name: Run smoke (floor tier — production imports + entry-point surface)
+        env:
+          PYTHONIOENCODING: utf-8
+        run: |
+          # ChelatedAI production imports are light (no GPU required on CI).
+          # scripts/smoke_pipeline.py exits 0 at floor tier and has an HONEST
+          # DISCLOSURE block per Rule 5. Ceiling tier is deferred as CD-001.
+          # This job will FAIL if the imports break — that is the intended
+          # enforcement. No || shim, no swallowed exit code.
+          python scripts/smoke_pipeline.py
+
+  schema-drift-gate:
+    name: v3.3 schema drift validator
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install drift-validator deps
+        run: pip install jsonschema pyyaml
+
+      - name: Run schema drift validator
+        env:
+          PYTHONIOENCODING: utf-8
+        run: |
+          mkdir -p tmp
+          python scripts/validate_v33_schema_drift.py --json-report tmp/v33-report.json

@@ -1,0 +1,258 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/mattmre/brutal-honesty-kit/v3.3/schemas/lane-history.schema.json",
+  "title": "lane-history.jsonl record",
+  "description": "JSON Schema for the JSON object portion of a single record in out/lane-history.jsonl. The file is append-only; each record is one JSON object terminated by a newline and followed by a per-record CRC32 footer line per v3.3-architecture.md §6.5. This schema validates the JSON object only; the CRC footer line is validated separately by the reader-side verifier and by scripts/validate_lane_history.py. Field names and per-kind required-field sets mirror the §6.5 prose verbatim so the post-merge audit ordering rule, the state_recovery successor rule, and the digest_emit Carried Debt predicate can be evaluated mechanically against records of this schema.",
+
+  "type": "object",
+  "required": ["ts", "kind", "lane_id"],
+
+  "properties": {
+    "ts": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 UTC timestamp with millisecond precision (e.g. 2026-05-10T14:23:45.123Z)."
+    },
+    "lane_id": {
+      "type": "string",
+      "pattern": "^lane-[a-z0-9_-]{1,64}$",
+      "description": "Identifier of the lane this event belongs to. cycle_boundary events emitted by the global cycle clock use lane_id: lane-cycle-clock."
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "lane_open",
+        "pr_open",
+        "tier_a_iter",
+        "tier_b_run",
+        "pivot",
+        "merge",
+        "lane_pause",
+        "lane_resume",
+        "phase_boundary",
+        "digest_emit",
+        "state_recovery",
+        "cycle_boundary"
+      ],
+      "description": "Event kind discriminator. MUST match v3.3/enums/lane-history-kinds.txt exactly; the schema-drift validator (Phase 1) fails the commit if this enum diverges from that file or from §6.5 prose."
+    }
+  },
+
+  "oneOf": [
+    {
+      "title": "lane_open",
+      "properties": {
+        "kind": {"const": "lane_open"},
+        "plan_sha": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "description": "sha256 of the lane-plan.yaml at lane-open time. A second lane_open for the same lane_id is L4."
+        },
+        "plan_pr_count": {"type": "integer", "minimum": 1}
+      },
+      "required": ["plan_sha", "plan_pr_count"]
+    },
+    {
+      "title": "pr_open",
+      "properties": {
+        "kind": {"const": "pr_open"},
+        "pr": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "GitHub PR number. 0 means 'branch created, gh pr create not yet succeeded'; updated to the real PR number by a follow-up pr_open with the same branch."
+        },
+        "phase": {"type": "string"},
+        "intent": {"type": "string", "minLength": 5},
+        "branch": {"type": "string", "minLength": 1}
+      },
+      "required": ["pr", "phase", "intent", "branch"]
+    },
+    {
+      "title": "tier_a_iter",
+      "properties": {
+        "kind": {"const": "tier_a_iter"},
+        "pr": {"type": "integer", "minimum": 0},
+        "iter": {"type": "integer", "minimum": 1, "maximum": 5},
+        "bhs_self_draft": {"type": "integer", "minimum": 0, "maximum": 100},
+        "bhs_self_draft_severity": {"type": "string", "enum": ["none", "important", "critical"]}
+      },
+      "required": ["pr", "iter", "bhs_self_draft", "bhs_self_draft_severity"]
+    },
+    {
+      "title": "tier_b_run",
+      "properties": {
+        "kind": {"const": "tier_b_run"},
+        "pr": {"type": "integer", "minimum": 0},
+        "agent": {"type": "string"},
+        "family": {"type": "string"},
+        "bhs_tier_b": {"type": "integer", "minimum": 0, "maximum": 100},
+        "severity": {"type": "string", "enum": ["none", "important", "critical"]},
+        "bhs_official": {"type": "integer", "minimum": 0, "maximum": 100}
+      },
+      "required": ["pr", "agent", "family", "bhs_tier_b", "severity", "bhs_official"]
+    },
+    {
+      "title": "pivot",
+      "properties": {
+        "kind": {"const": "pivot"},
+        "pr": {"type": "integer", "minimum": 0},
+        "kind_of_pivot": {
+          "type": "string",
+          "enum": ["deferred-on-dependency", "scope-reduced", "abandoned-with-replacement"]
+        },
+        "recovery_plan": {"type": "string", "minLength": 5},
+        "blocker_pr": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Required if kind_of_pivot is deferred-on-dependency; absent otherwise."
+        }
+      },
+      "required": ["pr", "kind_of_pivot", "recovery_plan"],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind_of_pivot": {"const": "deferred-on-dependency"}
+            },
+            "required": ["kind_of_pivot"]
+          },
+          "then": {
+            "required": ["blocker_pr"]
+          }
+        }
+      ]
+    },
+    {
+      "title": "merge",
+      "properties": {
+        "kind": {"const": "merge"},
+        "pr": {"type": "integer", "minimum": 1},
+        "bhs_official": {"type": "integer", "minimum": 0, "maximum": 100},
+        "override": {
+          "oneOf": [
+            {"type": "null"},
+            {"type": "string", "minLength": 5}
+          ],
+          "description": "null means no override invoked; a non-null string is the operator-override justification. bhs_official < 100 requires a non-null override."
+        },
+        "merge_sha": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{7,40}$",
+          "description": "SHA returned by gh pr merge step 4 in §10.8; the post-merge confirm-state step verifies this equals mergeCommit.oid."
+        }
+      },
+      "required": ["pr", "bhs_official", "override", "merge_sha"]
+    },
+    {
+      "title": "lane_pause",
+      "properties": {
+        "kind": {"const": "lane_pause"},
+        "cause": {
+          "type": "string",
+          "pattern": "^(merge_authority|tier_b_pool|rate_limit|plan_fault|block_flag|forward_progress|state_recovery|operator|F11):[a-z0-9_]+$",
+          "description": "<namespace>:<suffix>. Namespace MUST appear in v3.3/enums/lane-pause-causes.txt; plan_fault suffixes MUST appear in v3.3/enums/plan-faults.txt. Per-namespace suffix sets for non-plan_fault namespaces are enumerated in the §6.5 lane_pause row prose and cross-checked by scripts/validate_v33_schema_drift.py."
+        },
+        "details": {"type": "string"},
+        "last_event_index": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Line index into lane-history.jsonl that this lane_pause event occupies. Referenced by lane_history_ref fields in out/carried-debt.jsonl cd_open records when the pause was a merge_authority:post_merge_invariant_violated event."
+        }
+      },
+      "required": ["cause", "details", "last_event_index"]
+    },
+    {
+      "title": "lane_resume",
+      "properties": {
+        "kind": {"const": "lane_resume"},
+        "operator_signoff": {"type": "string", "minLength": 1},
+        "paused_at_event_index": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "MUST match the last_event_index of the prior lane_pause event being resumed. A lane_resume without a matching prior lane_pause is L4."
+        }
+      },
+      "required": ["operator_signoff", "paused_at_event_index"]
+    },
+    {
+      "title": "phase_boundary",
+      "properties": {
+        "kind": {"const": "phase_boundary"},
+        "phase_completed": {"type": "string", "minLength": 1},
+        "phase_alignment_path": {
+          "type": "string",
+          "pattern": "^out/phase-alignment-phase[0-9]+\\.md$",
+          "description": "Path to the phase-alignment.md artifact produced at this boundary per §6.6."
+        },
+        "aggregate_smoke_exit": {
+          "type": "integer",
+          "description": "Exit code from the phase-boundary aggregate smoke run. Non-zero requires the next event be either a lane_pause with cause: plan_fault:aggregate_smoke_nonzero or a pivot."
+        }
+      },
+      "required": ["phase_completed", "phase_alignment_path", "aggregate_smoke_exit"]
+    },
+    {
+      "title": "digest_emit",
+      "properties": {
+        "kind": {"const": "digest_emit"},
+        "digest_path": {
+          "type": "string",
+          "pattern": "^out/return-digest.*\\.md$"
+        },
+        "events_summarized_count": {"type": "integer", "minimum": 0},
+        "pending_event_count": {"type": "integer", "minimum": 0},
+        "carried_debt_ids_written": {
+          "type": "array",
+          "items": {"type": "string", "pattern": "^CD-[0-9]{3,5}$"},
+          "description": "Every cd_id appended to out/carried-debt.jsonl since the previous digest_emit. The §6.5 digest_emit row's Carried Debt predicate operates on this field; an unsatisfied predicate is L5 and the reader-side verifier refuses to advance."
+        }
+      },
+      "required": ["digest_path", "events_summarized_count", "pending_event_count", "carried_debt_ids_written"]
+    },
+    {
+      "title": "state_recovery",
+      "properties": {
+        "kind": {"const": "state_recovery"},
+        "recovered_at_event_index": {"type": "integer", "minimum": 0},
+        "dropped_trailing_record": {"type": "boolean"},
+        "crc_failed": {"type": "boolean"},
+        "recovery_reason": {
+          "type": "string",
+          "enum": [
+            "crc_mismatch",
+            "truncated_json",
+            "missing_required_field",
+            "heartbeat_gap_exceeded",
+            "post_merge_drift_detected"
+          ],
+          "description": "MUST match v3.3/enums/state-recovery-reasons.txt. post_merge_drift_detected is the only legal recovery_reason for a state_recovery whose immediately prior event is a lane_pause with cause merge_authority:post_merge_invariant_violated."
+        }
+      },
+      "required": ["recovered_at_event_index", "dropped_trailing_record", "crc_failed", "recovery_reason"]
+    },
+    {
+      "title": "cycle_boundary",
+      "properties": {
+        "kind": {"const": "cycle_boundary"},
+        "cycle_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "description": "UUIDv7 unique across all cycle_boundary events. Per v3.3/tables/cycle-clock.yaml, this id is the target_cycle_id of every cd_tick record in the batch that follows."
+        },
+        "preceding_cycle_id": {
+          "oneOf": [
+            {"type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[0-9a-f]{4}-[0-9a-f]{12}$"},
+            {"type": "null"}
+          ],
+          "description": "cycle_id of the immediately prior cycle_boundary, or null for the first cycle in the lane-history."
+        },
+        "trigger": {
+          "type": "string",
+          "enum": ["wrap_session_skill", "manual_emit_cycle_boundary", "charter_phase_pr_merged"],
+          "description": "MUST match the three approved triggers in v3.3/tables/cycle-clock.yaml. min_cycle_interval_seconds (default 3600) is enforced by the writer per cycle-clock.yaml."
+        }
+      },
+      "required": ["cycle_id", "preceding_cycle_id", "trigger"]
+    }
+  ]
+}
