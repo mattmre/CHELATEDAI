@@ -6,5 +6,7 @@ qdrant-client>=1.7
 requests>=2.28
 mteb>=1.0
 scikit-learn>=1.5
+jsonschema>=4.0
+PyYAML>=6.0
 # Optional: langdetect for cross-lingual distillation (falls back to heuristics if absent)
 # langdetect>=1.0.9
