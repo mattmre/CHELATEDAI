@@ -14,8 +14,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-import pytest
-
+import tempfile
+import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "validate_v33_schema_drift.py"
@@ -231,173 +231,182 @@ def apply_known_iter8_drift(arch_doc: Path, artifact_dir: Path) -> None:
     arch_doc.write_text(text, encoding="utf-8")
 
 
-def test_current_tree_exits_zero_after_phase_c_reconciliation(tmp_path: Path) -> None:
-    report_path = tmp_path / "report.json"
-    result = run_validator(json_report=report_path)
+class TestValidatorV33(unittest.TestCase):
+    def setUp(self) -> None:
+        self._tmpdir = tempfile.TemporaryDirectory()
+        self.tmp_path = Path(self._tmpdir.name)
 
-    assert result.returncode == 0, result.stdout + result.stderr
-    assert "RESULT: PASS" in result.stdout
-    payload = load_json(report_path)
-    assert payload["issues"] == []
+    def tearDown(self) -> None:
+        self._tmpdir.cleanup()
 
+    def test_current_tree_exits_zero_after_phase_c_reconciliation(self) -> None:
+        report_path = self.tmp_path / "report.json"
+        result = run_validator(json_report=report_path)
 
-def test_synthetic_known_good_fixture_exits_zero(tmp_path: Path) -> None:
-    arch_doc, artifact_dir = make_known_good_fixture(tmp_path)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("RESULT: PASS", result.stdout)
+        payload = load_json(report_path)
+        self.assertEqual(payload["issues"], [])
 
-    result = run_validator(arch_doc, artifact_dir)
+    def test_synthetic_known_good_fixture_exits_zero(self) -> None:
+        arch_doc, artifact_dir = make_known_good_fixture(self.tmp_path)
 
-    assert result.returncode == 0, result.stdout + result.stderr
-    assert "RESULT: PASS" in result.stdout
+        result = run_validator(arch_doc, artifact_dir)
 
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("RESULT: PASS", result.stdout)
 
-def test_known_iter8_drift_oracle_is_exercised(tmp_path: Path) -> None:
-    arch_doc, artifact_dir = make_known_good_fixture(tmp_path)
-    apply_known_iter8_drift(arch_doc, artifact_dir)
+    def test_known_iter8_drift_oracle_is_exercised(self) -> None:
+        arch_doc, artifact_dir = make_known_good_fixture(self.tmp_path)
+        apply_known_iter8_drift(arch_doc, artifact_dir)
 
-    result = run_validator(arch_doc, artifact_dir)
+        result = run_validator(arch_doc, artifact_dir)
 
-    baseline_checks = issue_checks(BASELINE_OUTPUT.read_text(encoding="utf-8"))
-    oracle_prefixes = (
-        "prose.6.5.base_required_fields",
-        "prose.6.5b.cd_block.required_fields",
-        "prose.6.5b.cd_tick.required_fields",
-        "prose.cd_open.lane_history_ref_none",
-        "prose.cd_state_machine.audit_predicate.multiple_definitions",
-        "prose.pivot.blocker_pr_conditional_required",
-        "prose.pivot.kind_of_pivot",
-        "prose.state_recovery.recovery_reason",
-    )
-    expected_checks = {
-        check for check in baseline_checks
-        if check.startswith(oracle_prefixes)
-    }
-
-    assert len(expected_checks) >= 10
-    assert result.returncode == 1
-    assert expected_checks <= issue_checks(result.stdout)
-
-
-@pytest.mark.parametrize(
-    "drift_name",
-    [
-        "enum_plan_fault",
-        "event_kind_sentence",
-        "extra_lane_history_table_row",
-        "missing_lane_history_table_row",
-        "extra_carried_debt_table_row",
-        "missing_carried_debt_table_row",
-        "merge_authority_suffixes",
-        "schema_required_field",
-        "table_predicate",
-        "lane_history_base_field",
-    ],
-)
-def test_planted_prose_vs_artifact_drift_exits_one(
-    tmp_path: Path,
-    drift_name: str,
-) -> None:
-    arch_doc, artifact_dir = make_known_good_fixture(tmp_path)
-
-    if drift_name == "enum_plan_fault":
-        text = arch_doc.read_text(encoding="utf-8")
-        text = text.replace(
-            "digest_missing}`",
-            "digest_missing,fixture_extra_fault}`",
-            1,
+        baseline_checks = issue_checks(BASELINE_OUTPUT.read_text(encoding="utf-8"))
+        oracle_prefixes = (
+            "prose.6.5.base_required_fields",
+            "prose.6.5b.cd_block.required_fields",
+            "prose.6.5b.cd_tick.required_fields",
+            "prose.cd_open.lane_history_ref_none",
+            "prose.cd_state_machine.audit_predicate.multiple_definitions",
+            "prose.pivot.blocker_pr_conditional_required",
+            "prose.pivot.kind_of_pivot",
+            "prose.state_recovery.recovery_reason",
         )
-        arch_doc.write_text(text, encoding="utf-8")
-        expected = "fixture_extra_fault"
-    elif drift_name == "event_kind_sentence":
-        text = arch_doc.read_text(encoding="utf-8")
-        text = text.replace(
-            "and `cycle_boundary`",
-            "and `cycle_boundary`, and `fake_event`",
-            1,
-        )
-        arch_doc.write_text(text, encoding="utf-8")
-        expected = "fake_event"
-    elif drift_name == "extra_lane_history_table_row":
-        text = arch_doc.read_text(encoding="utf-8")
-        text = text.replace(
-            "| `state_recovery` |",
-            "| `fake_event` | `fake_field` (string) | Fixture-only bogus row. |\n| `state_recovery` |",
-            1,
-        )
-        arch_doc.write_text(text, encoding="utf-8")
-        expected = "fake_event"
-    elif drift_name == "missing_lane_history_table_row":
-        text = remove_table_row(arch_doc.read_text(encoding="utf-8"), "lane_open")
-        arch_doc.write_text(text, encoding="utf-8")
-        expected = "lane_open"
-    elif drift_name == "extra_carried_debt_table_row":
-        text = arch_doc.read_text(encoding="utf-8")
-        text = text.replace(
-            "| `cd_block` |",
-            "| `cd_fake` | `fake_field` (string) | Fixture-only bogus row. |\n| `cd_block` |",
-            1,
-        )
-        arch_doc.write_text(text, encoding="utf-8")
-        expected = "cd_fake"
-    elif drift_name == "missing_carried_debt_table_row":
-        text = remove_table_row(arch_doc.read_text(encoding="utf-8"), "cd_open")
-        arch_doc.write_text(text, encoding="utf-8")
-        expected = "cd_open"
-    elif drift_name == "merge_authority_suffixes":
-        merge_path = artifact_dir / "enums/merge-authority-suffixes.txt"
-        text = merge_path.read_text(encoding="utf-8")
-        text = text.replace(
-            "rulebook_§6.1:bhs_official_100",
-            "rulebook_§6.1:bogus_valid_suffix",
-            1,
-        )
-        merge_path.write_text(text, encoding="utf-8")
-        expected = "bogus_valid_suffix"
-    elif drift_name == "schema_required_field":
-        schema_path = artifact_dir / "schemas/carried-debt.schema.json"
-        schema = load_json(schema_path)
-        cd_tick = next(branch for branch in schema["oneOf"] if branch["title"] == "cd_tick")
-        cd_tick["properties"]["fixture_required_field"] = {"type": "string"}
-        cd_tick["required"] = [
-            "ttl_cycles_remaining",
-            "target_cycle_id",
-            "fixture_required_field",
+        expected_checks = {
+            check for check in baseline_checks
+            if check.startswith(oracle_prefixes)
+        }
+
+        self.assertGreaterEqual(len(expected_checks), 10)
+        self.assertEqual(result.returncode, 1)
+        self.assertTrue(expected_checks <= issue_checks(result.stdout))
+
+    def test_planted_prose_vs_artifact_drift_exits_one(self) -> None:
+        drift_names = [
+            "enum_plan_fault",
+            "event_kind_sentence",
+            "extra_lane_history_table_row",
+            "missing_lane_history_table_row",
+            "extra_carried_debt_table_row",
+            "missing_carried_debt_table_row",
+            "merge_authority_suffixes",
+            "schema_required_field",
+            "table_predicate",
+            "lane_history_base_field",
         ]
-        write_json(schema_path, schema)
+        for drift_name in drift_names:
+            with self.subTest(drift_name=drift_name):
+                with tempfile.TemporaryDirectory() as td:
+                    tmp = Path(td)
+                    arch_doc, artifact_dir = make_known_good_fixture(tmp)
+
+                    if drift_name == "enum_plan_fault":
+                        text = arch_doc.read_text(encoding="utf-8")
+                        text = text.replace(
+                            "digest_missing}`",
+                            "digest_missing,fixture_extra_fault}`",
+                            1,
+                        )
+                        arch_doc.write_text(text, encoding="utf-8")
+                        expected = "fixture_extra_fault"
+                    elif drift_name == "event_kind_sentence":
+                        text = arch_doc.read_text(encoding="utf-8")
+                        text = text.replace(
+                            "and `cycle_boundary`",
+                            "and `cycle_boundary`, and `fake_event`",
+                            1,
+                        )
+                        arch_doc.write_text(text, encoding="utf-8")
+                        expected = "fake_event"
+                    elif drift_name == "extra_lane_history_table_row":
+                        text = arch_doc.read_text(encoding="utf-8")
+                        text = text.replace(
+                            "| `state_recovery` |",
+                            "| `fake_event` | `fake_field` (string) | Fixture-only bogus row. |\n| `state_recovery` |",
+                            1,
+                        )
+                        arch_doc.write_text(text, encoding="utf-8")
+                        expected = "fake_event"
+                    elif drift_name == "missing_lane_history_table_row":
+                        text = remove_table_row(arch_doc.read_text(encoding="utf-8"), "lane_open")
+                        arch_doc.write_text(text, encoding="utf-8")
+                        expected = "lane_open"
+                    elif drift_name == "extra_carried_debt_table_row":
+                        text = arch_doc.read_text(encoding="utf-8")
+                        text = text.replace(
+                            "| `cd_block` |",
+                            "| `cd_fake` | `fake_field` (string) | Fixture-only bogus row. |\n| `cd_block` |",
+                            1,
+                        )
+                        arch_doc.write_text(text, encoding="utf-8")
+                        expected = "cd_fake"
+                    elif drift_name == "missing_carried_debt_table_row":
+                        text = remove_table_row(arch_doc.read_text(encoding="utf-8"), "cd_open")
+                        arch_doc.write_text(text, encoding="utf-8")
+                        expected = "cd_open"
+                    elif drift_name == "merge_authority_suffixes":
+                        merge_path = artifact_dir / "enums/merge-authority-suffixes.txt"
+                        text = merge_path.read_text(encoding="utf-8")
+                        text = text.replace(
+                            "rulebook_§6.1:bhs_official_100",
+                            "rulebook_§6.1:bogus_valid_suffix",
+                            1,
+                        )
+                        merge_path.write_text(text, encoding="utf-8")
+                        expected = "bogus_valid_suffix"
+                    elif drift_name == "schema_required_field":
+                        schema_path = artifact_dir / "schemas/carried-debt.schema.json"
+                        schema = load_json(schema_path)
+                        cd_tick = next(branch for branch in schema["oneOf"] if branch["title"] == "cd_tick")
+                        cd_tick["properties"]["fixture_required_field"] = {"type": "string"}
+                        cd_tick["required"] = [
+                            "ttl_cycles_remaining",
+                            "target_cycle_id",
+                            "fixture_required_field",
+                        ]
+                        write_json(schema_path, schema)
+                        text = arch_doc.read_text(encoding="utf-8")
+                        text = text.replace(
+                            f'"target_cycle_id":"{UUIDV7}","crc32":"deadbeef"',
+                            f'"target_cycle_id":"{UUIDV7}","fixture_required_field":"present","crc32":"deadbeef"',
+                        )
+                        arch_doc.write_text(text, encoding="utf-8")
+                        expected = "fixture_required_field"
+                    elif drift_name == "table_predicate":
+                        table_path = artifact_dir / "tables/cd-state-machine.yaml"
+                        table_text = table_path.read_text(encoding="utf-8")
+                        table_text = table_text.replace('status == "blocked"', 'status == "parked"', 1)
+                        table_path.write_text(table_text, encoding="utf-8")
+                        expected = "audit_predicate"
+                    else:
+                        text = arch_doc.read_text(encoding="utf-8")
+                        text = text.replace("`lane_id`; each line", "`lane_id`, and `crc32`; each line")
+                        arch_doc.write_text(text, encoding="utf-8")
+                        expected = "base_required_fields"
+
+                    result = run_validator(arch_doc, artifact_dir)
+
+                    self.assertEqual(result.returncode, 1, f"{drift_name}: {result.stdout + result.stderr}")
+                    self.assertTrue(
+                        expected in result.stdout or expected in result.stderr,
+                        f"{drift_name}: expected '{expected}' in output",
+                    )
+
+    def test_planted_jsonl_example_drift_exits_two(self) -> None:
+        arch_doc, artifact_dir = make_known_good_fixture(self.tmp_path)
         text = arch_doc.read_text(encoding="utf-8")
-        text = text.replace(
-            f'"target_cycle_id":"{UUIDV7}","crc32":"deadbeef"',
-            f'"target_cycle_id":"{UUIDV7}","fixture_required_field":"present","crc32":"deadbeef"',
-        )
+        text = text.replace('"crc32":"deadbeef"}', '"crc32":"nothex"}', 1)
         arch_doc.write_text(text, encoding="utf-8")
-        expected = "fixture_required_field"
-    elif drift_name == "table_predicate":
-        table_path = artifact_dir / "tables/cd-state-machine.yaml"
-        table_text = table_path.read_text(encoding="utf-8")
-        table_text = table_text.replace('status == "blocked"', 'status == "parked"', 1)
-        table_path.write_text(table_text, encoding="utf-8")
-        expected = "audit_predicate"
-    else:
-        text = arch_doc.read_text(encoding="utf-8")
-        text = text.replace("`lane_id`; each line", "`lane_id`, and `crc32`; each line")
-        arch_doc.write_text(text, encoding="utf-8")
-        expected = "base_required_fields"
 
-    result = run_validator(arch_doc, artifact_dir)
+        result = run_validator(arch_doc, artifact_dir)
 
-    assert result.returncode == 1
-    assert expected in result.stdout or expected in result.stderr
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("crc32", result.stdout)
 
 
-def test_planted_jsonl_example_drift_exits_two(tmp_path: Path) -> None:
-    arch_doc, artifact_dir = make_known_good_fixture(tmp_path)
-    text = arch_doc.read_text(encoding="utf-8")
-    text = text.replace('"crc32":"deadbeef"}', '"crc32":"nothex"}', 1)
-    arch_doc.write_text(text, encoding="utf-8")
-
-    result = run_validator(arch_doc, artifact_dir)
-
-    assert result.returncode == 2
-    assert "crc32" in result.stdout
+if __name__ == "__main__":
+    unittest.main()
 
 
 def test_planted_invalid_timestamp_exits_two(tmp_path: Path) -> None:

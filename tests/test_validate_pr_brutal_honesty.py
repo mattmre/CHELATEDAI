@@ -3,12 +3,12 @@
 Exercises the §4 PR-body schema parser plus every cross-field rule
 (R1–R9) defined in scripts/validate_pr_brutal_honesty.py.
 
-Run with: python -m pytest tests/test_validate_pr_brutal_honesty.py -v
+Run with: python -m unittest tests/test_validate_pr_brutal_honesty.py -v
 """
 
 from __future__ import annotations
 
-import pytest
+import unittest
 
 from scripts.validate_pr_brutal_honesty import (
     REQUIRED_FIELDS,
@@ -62,27 +62,27 @@ def _fail_codes(report) -> list:
 # ---------------------------------------------------------------------------
 
 
-class TestParseFields:
+class TestParseFields(unittest.TestCase):
     def test_extracts_all_required_fields(self) -> None:
         body = _body()
         fields = parse_fields(body)
-        assert set(fields) == set(REQUIRED_FIELDS)
+        self.assertEqual(set(fields), set(REQUIRED_FIELDS))
 
     def test_blockquoted_fields_are_recognized(self) -> None:
         body = "> EVIDENCE: trace\n> SMOKE: ok\n"
         fields = parse_fields(body)
-        assert fields["EVIDENCE"] == "trace"
-        assert fields["SMOKE"] == "ok"
+        self.assertEqual(fields["EVIDENCE"], "trace")
+        self.assertEqual(fields["SMOKE"], "ok")
 
     def test_last_occurrence_wins(self) -> None:
         body = "BHS_SELF_DRAFT: 50\nBHS_SELF_DRAFT: 100\n"
-        assert parse_fields(body)["BHS_SELF_DRAFT"] == "100"
+        self.assertEqual(parse_fields(body)["BHS_SELF_DRAFT"], "100")
 
     def test_unknown_fields_ignored(self) -> None:
         body = "EVIDENCE: x\nNOT_A_FIELD: noise\n"
         fields = parse_fields(body)
-        assert "NOT_A_FIELD" not in fields
-        assert fields["EVIDENCE"] == "x"
+        self.assertNotIn("NOT_A_FIELD", fields)
+        self.assertEqual(fields["EVIDENCE"], "x")
 
 
 # ---------------------------------------------------------------------------
@@ -90,23 +90,23 @@ class TestParseFields:
 # ---------------------------------------------------------------------------
 
 
-class TestR1RequiredFields:
+class TestR1RequiredFields(unittest.TestCase):
     def test_passing_body_emits_no_r1_failure(self) -> None:
         report = validate(_body())
-        assert "R1" not in _fail_codes(report)
+        self.assertNotIn("R1", _fail_codes(report))
 
-    @pytest.mark.parametrize("missing", REQUIRED_FIELDS)
-    def test_each_missing_field_fires_r1(self, missing: str) -> None:
-        report = validate(_body(**{missing: None}))
-        # Expect at least one R1 violation naming the missing field.
-        r1s = [v for v in report.fails if v.rule == "R1" and v.field == missing]
-        assert r1s, f"R1 did not fire for missing field {missing}"
+    def test_each_missing_field_fires_r1(self) -> None:
+        for missing in REQUIRED_FIELDS:
+            with self.subTest(missing=missing):
+                report = validate(_body(**{missing: None}))
+                r1s = [v for v in report.fails if v.rule == "R1" and v.field == missing]
+                self.assertTrue(r1s, f"R1 did not fire for missing field {missing}")
 
     def test_unfilled_template_hint_fires_r1(self) -> None:
-        body = _body(BHS_SELF_DRAFT="<0–100, implementer's self-assessed score>")
+        body = _body(BHS_SELF_DRAFT="<0\u2013100, implementer's self-assessed score>")
         report = validate(body)
         r1s = [v for v in report.fails if v.rule == "R1" and v.field == "BHS_SELF_DRAFT"]
-        assert r1s
+        self.assertTrue(r1s)
 
 
 # ---------------------------------------------------------------------------
@@ -114,26 +114,26 @@ class TestR1RequiredFields:
 # ---------------------------------------------------------------------------
 
 
-class TestR2ScoreRange:
+class TestR2ScoreRange(unittest.TestCase):
     def test_non_integer_score_fires_r2(self) -> None:
         report = validate(_body(BHS_SELF_DRAFT="not a number"))
-        assert any(v.rule == "R2" and v.field == "BHS_SELF_DRAFT" for v in report.fails)
+        self.assertTrue(any(v.rule == "R2" and v.field == "BHS_SELF_DRAFT" for v in report.fails))
 
     def test_score_above_100_fires_r2(self) -> None:
         # 200 also breaks R5 (min mismatch); we just check R2 fires.
         report = validate(_body(BHS_SELF_DRAFT="200", BHS_OFFICIAL="100"))
-        assert any(v.rule == "R2" and v.field == "BHS_SELF_DRAFT" for v in report.fails)
+        self.assertTrue(any(v.rule == "R2" and v.field == "BHS_SELF_DRAFT" for v in report.fails))
 
     def test_negative_score_fires_r2(self) -> None:
         report = validate(_body(BHS_TIER_B="-1"))
-        assert any(v.rule == "R2" and v.field == "BHS_TIER_B" for v in report.fails)
+        self.assertTrue(any(v.rule == "R2" and v.field == "BHS_TIER_B" for v in report.fails))
 
     def test_score_with_trailing_justification_parses(self) -> None:
         # "100 — Tier B confirmed" should parse as 100.
         report = validate(
-            _body(BHS_SELF_DRAFT="100 — Tier B confirmed", BHS_TIER_B="100", BHS_OFFICIAL="100")
+            _body(BHS_SELF_DRAFT="100 \u2014 Tier B confirmed", BHS_TIER_B="100", BHS_OFFICIAL="100")
         )
-        assert "R2" not in _fail_codes(report)
+        self.assertNotIn("R2", _fail_codes(report))
 
 
 # ---------------------------------------------------------------------------
@@ -141,24 +141,25 @@ class TestR2ScoreRange:
 # ---------------------------------------------------------------------------
 
 
-class TestR3SeverityValue:
-    @pytest.mark.parametrize("severity", sorted(VALID_SEVERITIES))
-    def test_valid_severities_accepted(self, severity: str) -> None:
-        # Pick a Tier B score that satisfies the cap so R4 doesn't also fire.
-        cap = SEVERITY_CAPS[severity]
-        report = validate(
-            _body(
-                BHS_SELF_DRAFT=str(cap),
-                BHS_TIER_B=str(cap),
-                BHS_TIER_B_SEVERITY=severity,
-                BHS_OFFICIAL=str(cap),
-            )
-        )
-        assert "R3" not in _fail_codes(report)
+class TestR3SeverityValue(unittest.TestCase):
+    def test_valid_severities_accepted(self) -> None:
+        for severity in sorted(VALID_SEVERITIES):
+            with self.subTest(severity=severity):
+                # Pick a Tier B score that satisfies the cap so R4 doesn't also fire.
+                cap = SEVERITY_CAPS[severity]
+                report = validate(
+                    _body(
+                        BHS_SELF_DRAFT=str(cap),
+                        BHS_TIER_B=str(cap),
+                        BHS_TIER_B_SEVERITY=severity,
+                        BHS_OFFICIAL=str(cap),
+                    )
+                )
+                self.assertNotIn("R3", _fail_codes(report))
 
     def test_invalid_severity_fires_r3(self) -> None:
         report = validate(_body(BHS_TIER_B_SEVERITY="urgent"))
-        assert any(v.rule == "R3" for v in report.fails)
+        self.assertTrue(any(v.rule == "R3" for v in report.fails))
 
 
 # ---------------------------------------------------------------------------
@@ -166,7 +167,7 @@ class TestR3SeverityValue:
 # ---------------------------------------------------------------------------
 
 
-class TestR4SeverityCaps:
+class TestR4SeverityCaps(unittest.TestCase):
     def test_critical_cap_at_70_fires(self) -> None:
         report = validate(
             _body(
@@ -177,7 +178,7 @@ class TestR4SeverityCaps:
             )
         )
         r4s = [v for v in report.fails if v.rule == "R4"]
-        assert r4s, "critical severity did not cap Tier B at 70"
+        self.assertTrue(r4s, "critical severity did not cap Tier B at 70")
 
     def test_important_cap_at_90_fires(self) -> None:
         report = validate(
@@ -188,7 +189,7 @@ class TestR4SeverityCaps:
                 BHS_OFFICIAL="95",
             )
         )
-        assert any(v.rule == "R4" for v in report.fails)
+        self.assertTrue(any(v.rule == "R4" for v in report.fails))
 
     def test_critical_with_70_does_not_fire(self) -> None:
         report = validate(
@@ -199,7 +200,7 @@ class TestR4SeverityCaps:
                 BHS_OFFICIAL="70",
             )
         )
-        assert "R4" not in _fail_codes(report)
+        self.assertNotIn("R4", _fail_codes(report))
 
     def test_cosmetic_does_not_cap(self) -> None:
         report = validate(
@@ -207,7 +208,7 @@ class TestR4SeverityCaps:
                 BHS_TIER_B_SEVERITY="cosmetic",
             )
         )
-        assert "R4" not in _fail_codes(report)
+        self.assertNotIn("R4", _fail_codes(report))
 
 
 # ---------------------------------------------------------------------------
@@ -215,14 +216,14 @@ class TestR4SeverityCaps:
 # ---------------------------------------------------------------------------
 
 
-class TestR5OfficialMin:
+class TestR5OfficialMin(unittest.TestCase):
     def test_official_matches_min_passes(self) -> None:
         report = validate(_body(BHS_SELF_DRAFT="80", BHS_TIER_B="100", BHS_OFFICIAL="80"))
-        assert "R5" not in _fail_codes(report)
+        self.assertNotIn("R5", _fail_codes(report))
 
     def test_official_higher_than_min_fires(self) -> None:
         report = validate(_body(BHS_SELF_DRAFT="80", BHS_TIER_B="100", BHS_OFFICIAL="100"))
-        assert any(v.rule == "R5" for v in report.fails)
+        self.assertTrue(any(v.rule == "R5" for v in report.fails))
 
     def test_official_after_severity_cap_fires(self) -> None:
         # Tier B raw 95 → capped at 90 (important) → expected official 90,
@@ -237,8 +238,8 @@ class TestR5OfficialMin:
         )
         # R4 fires for the raw cap and R5 fires for the official mismatch.
         codes = _fail_codes(report)
-        assert "R4" in codes
-        assert "R5" in codes
+        self.assertIn("R4", codes)
+        self.assertIn("R5", codes)
 
 
 # ---------------------------------------------------------------------------
@@ -246,10 +247,10 @@ class TestR5OfficialMin:
 # ---------------------------------------------------------------------------
 
 
-class TestR6Independence:
+class TestR6Independence(unittest.TestCase):
     def test_distinct_agents_pass(self) -> None:
         report = validate(_body())
-        assert "R6" not in _fail_codes(report)
+        self.assertNotIn("R6", _fail_codes(report))
 
     def test_identical_agents_fire_and_force_official_zero(self) -> None:
         report = validate(
@@ -260,9 +261,9 @@ class TestR6Independence:
             )
         )
         codes = _fail_codes(report)
-        assert "R6" in codes
+        self.assertIn("R6", codes)
         # R5 should ALSO fire because the expected official is 0, not 100.
-        assert "R5" in codes
+        self.assertIn("R5", codes)
 
     def test_case_insensitive_match(self) -> None:
         report = validate(
@@ -271,7 +272,7 @@ class TestR6Independence:
                 BHS_TIER_B_AGENT="session abc",
             )
         )
-        assert any(v.rule == "R6" for v in report.fails)
+        self.assertTrue(any(v.rule == "R6" for v in report.fails))
 
 
 # ---------------------------------------------------------------------------
@@ -279,11 +280,16 @@ class TestR6Independence:
 # ---------------------------------------------------------------------------
 
 
-class TestR7Loops:
-    @pytest.mark.parametrize("loops", ["0", "6", "-1", "abc"])
-    def test_out_of_range_or_unparseable_fires(self, loops: str) -> None:
-        report = validate(_body(LOOP_ITERATIONS=loops))
-        assert any(v.rule == "R7" for v in report.fails)
+class TestR7Loops(unittest.TestCase):
+    def test_out_of_range_or_unparseable_fires(self) -> None:
+        for loops in ["0", "6", "-1", "abc"]:
+            with self.subTest(loops=loops):
+                report = validate(_body(LOOP_ITERATIONS=loops))
+                self.assertTrue(any(v.rule == "R7" for v in report.fails))
+
+
+if __name__ == "__main__":
+    unittest.main()
 
     def test_loop_5_with_low_self_draft_requires_explanation(self) -> None:
         # No 'withdraw' or 'scope-reduce' phrase anywhere in the body.
