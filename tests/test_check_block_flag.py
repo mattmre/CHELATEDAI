@@ -14,8 +14,6 @@ import sys
 import textwrap
 from pathlib import Path
 
-import pytest
-
 from scripts.check_block_flag import (
     count_carried_debt_rows,
     parse_block_flag,

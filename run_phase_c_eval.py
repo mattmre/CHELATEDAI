@@ -279,11 +279,11 @@ def _mask_gate_features(query_text: str, prior_lookup: Optional[Dict[str, float]
     if prior_lookup is None:
         prior_lookup = _load_prior_baseline_lookup()
     if query_text in prior_lookup:
-        delta_ndcg: float = prior_lookup[query_text]
-        delta_source = "prior_run"
+        delta_ndcg: Optional[float] = prior_lookup[query_text]
+        delta_source = "computed_from_prior_run"
     else:
-        delta_ndcg = 0.0
-        delta_source = "neutral_fallback"
+        delta_ndcg = None
+        delta_source = "unavailable"
     return {
         "query_token_count": lexical.get("token_count", 0),
         "query_char_count": lexical.get("char_count", len(query_text)),
