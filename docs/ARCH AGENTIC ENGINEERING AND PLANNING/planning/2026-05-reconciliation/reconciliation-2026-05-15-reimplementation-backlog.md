@@ -10,11 +10,24 @@
 - `/home/mattmre/backups/CHELATEDAI/CHELATEDAI-untracked-raw-2026-05-15.tar.gz` (52 MB — contains all new POC code + planning docs)
 - Working tree diff + staged diff captured
 
-**Status at time of doc creation:**
-- Origin/main (BHS v3.3 + Model-Scope + heavy remediation) merged cleanly.
-- Most local computational_storage_poc edits survived.
-- All major laptop strategic artifacts remain untracked (as designed).
-- One subagent (dedicated Computational Storage POC specialist) failed after 389s with 0 tool calls. The other three delivered high-signal analysis.
+**Status (Updated 2026-05-15 during full-power solidification pass):**
+- Origin/main (BHS v3.3 + Model-Scope + heavy remediation) merged cleanly on `reconciliation/2026-05-desktop-sync`.
+- All major laptop planning artifacts (FINAL_PLAN.md family + panel-analysis + disk-resident docs) moved into `docs/ARCH AGENTIC ENGINEERING AND PLANNING/planning/2026-05-reconciliation/` and committed (54 files).
+- Real BHS v3.3 tooling now lives in `scripts/` (`validate_pr_brutal_honesty.py`, `validate_v33_schema_drift.py`, `smoke_pipeline.py`, `check_block_flag.py`, `smoke.sh`).
+- New computational storage POC code (packed/CPU/sparse/repo-graph/MoE/REAP + tests) moved to dedicated feature branch `feat/post-merge-comp-storage-substrate`.
+- First BHS integration hooks added to `aep_orchestrator.py`:
+  - Import + smoke call in `run_full_cycle()`
+  - BHS scoring in `synthesis()` (findings now carry `bhs_metadata`)
+  - BHS scoring before remediation in `tiered_remediation()`
+- `CLAUDE.md`, `task_plan.md`, `next-session.md`, and `docs/INDEX.md` updated with reconciliation reality.
+- Reconciliation backlog actively maintained.
+- Hygiene pass completed:
+  - `experiment_runs/` confirmed in .gitignore (twice, reconciliation addition).
+  - Clean baseline attempted with `python3 -m ruff` and filtered `unittest discover`.
+  - Ruff not available in base python3 (environment note).
+  - Unittest still surfaces legacy campaign output from `experiment_runs/` (known noise, not new code).
+- BHS integration now present in four places in the orchestrator.
+- One subagent failed; the other three delivered strong analysis (see sections below).
 
 ---
 

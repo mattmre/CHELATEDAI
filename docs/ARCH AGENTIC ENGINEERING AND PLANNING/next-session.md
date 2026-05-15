@@ -18,28 +18,23 @@ These rules apply to every session, every task, every PR — no exceptions:
 - Check open PRs for comments and failing checks before starting new work.
 - Keep each implementation slice PR-sized, with focused tests and a phase-summary update.
 
-## Current State
-- Engine-Scope and Model-Scope implementation cycles are complete as implementation scaffolds.
-- Adaptive overlay evidence now flows from Engine-Scope artifacts into readiness summaries, promotion decisions, Model-Scope campaign reports, integrated diagnostics, and dashboard API summaries.
-- No production default route has changed. Promotion remains evidence-gated and fail-closed.
-- Remaining work is validation, frontier research assimilation, operational evidence capture, dashboard/reporting expansion, and safe follow-up experiments.
+## Current State (Post 2026-05-15 Reconciliation)
+- Desktop machine (23 commits behind) has been reconciled with laptop work on branch `reconciliation/2026-05-desktop-sync`.
+- BHS v3.3 tooling is now present in `scripts/` (validate_pr_brutal_honesty.py, schema drift validator, smoke_pipeline.py, etc.), but **not yet wired** into the AEP orchestrator.
+- All major laptop 10-phase planning artifacts (`FINAL_PLAN.md` family + panel-analysis) have been landed into `docs/ARCH AGENTIC ENGINEERING AND PLANNING/planning/2026-05-reconciliation/`.
+- New computational storage POC code (packed/CPU/sparse/repo-graph/MoE/REAP) moved to feature branch `feat/post-merge-comp-storage-substrate`.
+- Engine-Scope and Model-Scope cycles remain complete as scaffolds. Promotion is still evidence-gated and fail-closed.
+- A dedicated reconciliation reimplementation backlog now exists (see planning/2026-05-reconciliation/reconciliation-2026-05-15-reimplementation-backlog.md).
 
-## Priority Order
-1. **Review and merge clean PRs first.**
-   - inspect comments/checks before starting new implementation
-   - keep draft PRs until local and CI validation are green
-2. **Run research/refinement loops before deeper implementation.**
-   - scan current papers and tool docs only when they can change the queue
-   - record accepted/rejected ideas in repo docs
-3. **Prioritize validation campaigns over default changes.**
-   - broader replay/holdout validation comes before any route or artifact promotion
-   - document no-promotion results explicitly
-4. **Finish operational blockers.**
-   - real computational-storage hardware evidence remains externally gated
-   - capture evidence only when trustworthy hardware is actually available
-5. **Keep adaptive overlays observation-first.**
-   - route, damp, protect, or fork only after repeat-seed and holdout evidence
-   - avoid full harness implementation unless a verifier-backed use case appears
+## Priority Order (Post-Reconciliation 2026-05-15)
+1. **Wire BHS v3.3 honesty gates into the AEP orchestrator** (highest integrity gap — BHS tooling exists in scripts/ but is not enforced).
+2. **Port and integrate the new computational storage substrate** (packed/CPU/sparse/repo-graph/MoE) from `feat/post-merge-comp-storage-substrate` with honesty + Model-Scope scoping.
+3. **Re-scope and integrate the 10-phase laptop planning docs** (now in planning/2026-05-reconciliation/) against post-merge reality.
+4. **Create scripts/ smoke + BHS validator integration** so honesty claims are actually testable.
+5. **Update golden suite + research validity tests** for BHS v3.3 + Model-Scope + new storage code.
+6. **Real computational-storage hardware evidence** (still externally blocked).
+7. **Default promotion governance review** (still gated until strong evidence).
+8. **Model-Scope runtime + hook bus** (was previous next slice).
 
 ## Resume Pointer
 - Active architecture doc: `docs/ARCH AGENTIC ENGINEERING AND PLANNING/architecture-2026-05-01-model-scope-roadmap.md`

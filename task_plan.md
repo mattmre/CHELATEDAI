@@ -23,31 +23,14 @@
 - Phase 3B parallel MoE / REAP branch: COMPLETE
 - Final synthesis for the initial storage+CPU baseline: COMPLETE
 
-### Current Addendum State
-- Phase 1, Phase 2, Phase 2b, Phase 3A, Phase 4, Phase 5, Phase 6, and Phase 7 are complete and promotable as the baseline substrate for follow-on work.
-- The repo now has an initial promoted low-bit path:
-  - INT8 packed artifacts
-  - prequantized weight reuse in the CPU backend
-  - a measured microbenchmark win over the float32 baseline
-- The repo now also has an initial selective-loading runtime:
-  - streamed-block row-chunk loading
-  - activation-driven routing
-  - chunk reuse cache
-  - measured streamed-byte reduction against the dense packed baseline
-- The repo now has an initial disk-backed code-memory layer:
-  - on-disk node / edge / embedding bundle
-  - memory-mapped embedding index
-  - hybrid retrieval with graph-aware reranking
-  - independent ingest and query benchmark
-- The repo now has an initial end-to-end CPU-only prototype path:
-  - repository query -> disk-backed memory retrieval
-  - retrieval-result featureization
-  - packed INT8 reranking through the sparse CPU path
-  - end-to-end latency and byte metrics
-- The repo now has an initial compression path on top of that baseline:
-  - int8-compressed repo-memory embeddings
-  - mapped-byte reduction benchmarks
-  - integrated-runtime compression comparison
+### Current Addendum State (as of 2026-05-15 Desktop Reconciliation)
+- All Phase 1–7 + 3B work from the Session 32 Addendum is complete on the merged baseline.
+- 2026-05-15: Desktop machine (23 commits behind) reconciled with laptop work.
+  - BHS v3.3 tooling now present in `scripts/`.
+  - Major laptop planning artifacts landed into `docs/ARCH AGENTIC ENGINEERING AND PLANNING/planning/2026-05-reconciliation/`.
+  - Advanced computational storage POC (packed/CPU/sparse/repo-graph/MoE) moved to `feat/post-merge-comp-storage-substrate`.
+- Next major work: Wire BHS v3.3 honesty gates into the AEP orchestrator + port/integrate the new computational storage substrate with Model-Scope scoping and honesty enforcement.
+- A dedicated reconciliation reimplementation backlog now exists (see `docs/ARCH AGENTIC ENGINEERING AND PLANNING/planning/2026-05-reconciliation/reconciliation-2026-05-15-reimplementation-backlog.md`).
 - The repo now has a closed promotion review:
   - research-baseline promotion approved
   - production-ready promotion deferred

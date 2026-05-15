@@ -28,6 +28,13 @@
 #   bash scripts/smoke.sh                 # full local smoke
 #   bash scripts/smoke.sh --api-only      # only Stage 1 (CI use, docs-only PRs)
 #   bash scripts/smoke.sh --skip-stage2   # alias for --api-only
+
+# BHS v3.3 integration note (added 2026-05-15 during reconciliation):
+# This script is the canonical smoke gate. It should eventually call
+# validate_pr_brutal_honesty + run_smoke_pipeline for any changed planning docs,
+# AEP cycles, or computational storage artifacts.
+# Current state: Real BHS v3.3 scripts exist in this directory. Full wiring into
+# the AEP orchestrator and CI is in progress (see reconciliation backlog).
 #
 # The --api-only / --skip-stage2 flags exist to let docs-only PRs (and pre-deploy
 # check-the-API CI jobs) run a partial smoke. v3.2 §4 PR template requires that

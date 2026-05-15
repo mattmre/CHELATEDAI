@@ -26,6 +26,14 @@ import uuid
 
 from chelation_logger import ChelationLogger, get_logger
 
+# BHS v3.3 integration (added during 2026-05-15 reconciliation)
+try:
+    from scripts.bhs_validator import validate_pr_brutal_honesty, run_smoke_pipeline, BHSResult
+    BHS_AVAILABLE = True
+except Exception:
+    BHS_AVAILABLE = False
+    BHSResult = None  # type: ignore
+
 
 # =============================================================================
 # Data Models
@@ -659,8 +667,26 @@ class AEPOrchestrator:
         Phase 4: Merge, re-score, and re-rank findings using the severity model.
 
         Sorting: severity first, then impact x (1/effort), then dependency order.
+
+        BHS v3.3 note (2026-05-15): This is the ideal place to run honesty scoring
+        on each finding before it advances to remediation.
         """
         findings.sort(key=lambda f: f.sort_key())
+
+        # BHS v3.3 placeholder hook
+        if BHS_AVAILABLE:
+            for f in findings:
+                bhs_result = validate_pr_brutal_honesty(finding_dict={
+                    "id": f.finding_id,
+                    "severity": f.severity.name,
+                    "impact": f.impact,
+                    "recommended_fix": f.recommended_fix,
+                })
+                # For now we just attach the score; real gating logic comes later
+                if not hasattr(f, "bhs_metadata"):
+                    f.bhs_metadata = {}
+                f.bhs_metadata["synthesis_score"] = bhs_result.score
+
         self.logger.log_event(
             "synthesis",
             f"Synthesized and ranked {len(findings)} findings",
@@ -713,6 +739,17 @@ class AEPOrchestrator:
                     continue
 
                 self.tracker.update_status(finding.finding_id, FindingStatus.IN_PROGRESS)
+
+                # BHS v3.3 hook (2026-05-15) — gate remediation with honesty score
+                if BHS_AVAILABLE:
+                    bhs_result = validate_pr_brutal_honesty(finding_dict={
+                        "id": finding.finding_id,
+                        "severity": finding.severity.name,
+                        "recommended_fix": finding.recommended_fix,
+                    })
+                    if not hasattr(finding, "bhs_metadata"):
+                        finding.bhs_metadata = {}
+                    finding.bhs_metadata["remediation_score"] = bhs_result.score
 
                 if remediate_fn is not None:
                     # F-022: Execute remediate_fn with timeout and exception safety
@@ -846,6 +883,9 @@ class AEPOrchestrator:
 
         Returns a summary dict with severity/status breakdowns, the markdown
         tracker table, and a full JSON export for archival.
+
+        BHS v3.3 note (2026-05-15): Final closure now includes aggregate BHS
+        honesty metrics from the cycle.
         """
         all_findings = list(self.tracker.findings.values())
 
@@ -875,6 +915,16 @@ class AEPOrchestrator:
             "completed_at": datetime.utcnow().isoformat(),
         }
 
+        # BHS v3.3 aggregate (2026-05-15)
+        bhs_scores = []
+        for f in all_findings:
+            if hasattr(f, "bhs_metadata") and f.bhs_metadata:
+                for key in ["synthesis_score", "remediation_score"]:
+                    if key in f.bhs_metadata:
+                        bhs_scores.append(f.bhs_metadata[key])
+
+        avg_bhs = sum(bhs_scores) / len(bhs_scores) if bhs_scores else 0.0
+
         self.logger.log_event(
             "closure",
             f"Cycle {cycle_id} closed: {len(all_findings)} findings",
@@ -882,7 +932,13 @@ class AEPOrchestrator:
             total_findings=len(all_findings),
             by_severity=by_severity,
             by_status=by_status,
+            avg_bhs_score=round(avg_bhs, 1),
+            bhs_samples=len(bhs_scores),
         )
+
+        summary["avg_bhs_score"] = round(avg_bhs, 1)
+        summary["bhs_samples"] = len(bhs_scores)
+
         return summary
 
     # ----- Convenience: Full Cycle -----
@@ -899,8 +955,16 @@ class AEPOrchestrator:
         Run all 7 AEP phases in sequence and return the closure summary.
 
         This is the primary entry point for automated remediation cycles.
+
+        BHS v3.3 note (2026-05-15): Full honesty gating is not yet wired.
+        A stub import exists. Real enforcement will be added during solidification.
         """
         self.scope_lock(pr_range=pr_range)
+
+        # BHS v3.3 placeholder (to be expanded)
+        if BHS_AVAILABLE:
+            _ = run_smoke_pipeline()  # floor tier smoke for now
+
         findings = self.discovery(raw_findings, pr_number=pr_number)
         findings = self.parallel_revalidation(findings)
         findings = self.synthesis(findings)

@@ -187,6 +187,14 @@ Evaluation & Analysis Modules
 - `ruff check` does not validate GitHub Actions YAML. Keep workflow-file review separate from Python lint.
 - Local `git status` may show `?? .claude/`; that directory holds local worktree metadata and retired-branch artifacts and is not, by itself, a product-code diff.
 
+**2026-05-15 Desktop Reconciliation:**
+- Desktop machine (previously 23 commits behind) reconciled with laptop work on branch `reconciliation/2026-05-desktop-sync`.
+- Merged `origin/main` (BHS v3.3 tooling + full Model-Scope + heavy remediation).
+- All major laptop 10-phase planning artifacts (`FINAL_PLAN.md` family + `panel-analysis/`) landed into `docs/ARCH AGENTIC ENGINEERING AND PLANNING/planning/2026-05-reconciliation/`.
+- New computational storage POC code (packed/CPU/sparse/repo-graph/MoE/REAP) moved to `feat/post-merge-comp-storage-substrate`.
+- Real BHS v3.3 scripts now live in `scripts/` (`validate_pr_brutal_honesty.py`, `validate_v33_schema_drift.py`, `smoke_pipeline.py`, etc.), though full wiring into AEP is still in progress.
+- Reconciliation reimplementation backlog created and being actively maintained.
+
 ## Reference Material
 
 - `rlm_reference/` -- Cloned RLM paper implementation (read-only, do not modify)
