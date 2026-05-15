@@ -63,3 +63,13 @@ large_sweep.log
 # Generated computational-storage artifacts
 computational_storage_poc/model.bin
 computational_storage_poc/real_model.bin
+
+# === Added during 2026-05-15 desktop reconciliation ===
+# Local Claude Code / agent worktree state (never commit)
+.claude/
+
+# Hashed experiment checkpoint backups from laptop sessions
+adapter_weights.benchmark-backup-*.pt
+
+# Experiment run output directories
+experiment_runs/

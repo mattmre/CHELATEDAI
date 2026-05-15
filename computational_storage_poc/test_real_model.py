@@ -23,18 +23,18 @@ def _prepare_storage_input(sample: np.ndarray) -> np.ndarray:
 
 
 def evaluate_storage_model(binary_path: str, X_test, y_test):
-    drive = MockNVMeDrive(binary_path)
     correct = 0
     total_comp_latency = 0.0
 
-    for sample, expected_label in zip(X_test, y_test):
-        input_act = _prepare_storage_input(sample)
-        out_comp, latency = drive.computational_inference(0x0, input_act)
-        total_comp_latency += latency
+    with MockNVMeDrive(binary_path) as drive:
+        for sample, expected_label in zip(X_test, y_test):
+            input_act = _prepare_storage_input(sample)
+            out_comp, latency = drive.computational_inference(0x0, input_act)
+            total_comp_latency += latency
 
-        pred = int(np.argmax(out_comp[0, :10]))
-        if pred == int(expected_label):
-            correct += 1
+            pred = int(np.argmax(out_comp[0, :10]))
+            if pred == int(expected_label):
+                correct += 1
 
     total = len(y_test)
     return {

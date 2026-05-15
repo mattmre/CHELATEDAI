@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import mmap
+
 import numpy as np
 
 from block_graph import BLOCK_SIZE, BYTES_PER_PARAM, TOTAL_BLOCK_BYTES, run_block_graph
@@ -23,8 +25,27 @@ def _matrix_compute_latency(macs_per_second: float) -> float:
 
 class MockNVMeDrive:
     def __init__(self, binary_path: str):
-        with open(binary_path, "rb") as f:
-            self.flash_memory = f.read()
+        self._file = open(binary_path, "rb")
+        self.flash_memory = mmap.mmap(self._file.fileno(), 0, access=mmap.ACCESS_READ)
+
+    def close(self) -> None:
+        mapping = getattr(self, "flash_memory", None)
+        if mapping is not None:
+            mapping.close()
+            self.flash_memory = None
+        file_obj = getattr(self, "_file", None)
+        if file_obj is not None:
+            file_obj.close()
+            self._file = None
+
+    def __enter__(self) -> "MockNVMeDrive":
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> None:
+        self.close()
+
+    def __del__(self) -> None:
+        self.close()
 
     def host_read_block(self, offset: int, size: int):
         transfer_time = size / PCIE_BANDWIDTH_BPS
@@ -71,13 +92,13 @@ def traditional_host_inference(
 
 def profile_sample_inference(binary_path: str = "model.bin", seed: int = 42):
     rng = np.random.default_rng(seed)
-    drive = MockNVMeDrive(binary_path)
-    inputs = np.zeros((1, BLOCK_SIZE), dtype=np.float16)
-    inputs[0, :256] = rng.normal(size=256).astype(np.float32) * 0.1
+    with MockNVMeDrive(binary_path) as drive:
+        inputs = np.zeros((1, BLOCK_SIZE), dtype=np.float16)
+        inputs[0, :256] = rng.normal(size=256).astype(np.float32) * 0.1
 
-    out_trad, trad_time = traditional_host_inference(drive, 0x0, inputs, hidden_activation="relu")
-    out_comp, comp_time = drive.computational_inference(0x0, inputs, hidden_activation="relu")
-    diff = float(np.max(np.abs(out_trad - out_comp)))
+        out_trad, trad_time = traditional_host_inference(drive, 0x0, inputs, hidden_activation="relu")
+        out_comp, comp_time = drive.computational_inference(0x0, inputs, hidden_activation="relu")
+        diff = float(np.max(np.abs(out_trad - out_comp)))
 
     return {
         "traditional_time_us": trad_time * 1_000_000,

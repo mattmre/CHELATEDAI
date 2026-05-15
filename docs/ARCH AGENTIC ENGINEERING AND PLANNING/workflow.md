@@ -97,6 +97,36 @@ Quick links:
    - Record end-of-cycle summary using `docs/ARCH AGENTIC ENGINEERING AND PLANNING/cycle-summary-template.md`.
    - Repeat until all tiers are remediated or formally deferred.
 
+## Program Loop (Architecture-Led Delivery)
+
+Use this loop when the work is not simple remediation, but a multi-phase architecture program.
+
+1. **Architecture scope lock**
+   - Define current phase, non-goals, dependencies, and promotion gates.
+   - Freeze the current phase contract before implementation begins.
+
+2. **Implementation**
+   - Deliver only the current phase slice.
+   - Keep PRs aligned to one component or one integration seam.
+
+3. **ARCH-AEP review**
+   - Re-check architecture conformance after the phase slice lands.
+   - Record dependency drift, hidden coupling, or follow-up findings before opening the next phase.
+
+4. **Code analysis / hardening**
+   - Run targeted review, verification, and doc synchronization.
+   - Expand tests only where the new slice changed behavior or interfaces.
+
+5. **Promote / defer**
+   - Mark the phase promotable as the baseline for the next phase, or defer with an unblock plan.
+
+Program-loop guardrails:
+
+- Do not merge future-phase scaffolding into the current phase "for convenience."
+- Each phase must declare non-goals.
+- Each phase must have explicit entry and exit gates.
+- Start the next phase only after the current phase passes ARCH-AEP review and hardening.
+
 ## Deliverables
 - Master backlog
 - Remediation PRs by tier
@@ -183,6 +213,7 @@ Dependency ordering:
 - Each PR must be reviewable within one sitting.
 - No tier skipping.
 - Enforce commit message convention from `docs/ARCH AGENTIC ENGINEERING AND PLANNING/templates.md`.
+- For architecture-led programs, no phase skipping and no cross-phase PRs.
 
 ## Enhancements (Research-Informed)
 - Add explicit governance checkpoints: require human approval at scope lock, tier completion, and defer decisions.

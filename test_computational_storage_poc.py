@@ -70,9 +70,9 @@ class TestComputationalStorageBlockGraph(unittest.TestCase):
             with open(binary_path, "wb") as f:
                 f.write(payload)
 
-            drive = MockNVMeDrive(binary_path)
-            storage_output, storage_latency = drive.computational_inference(0, input_act)
-            host_output, host_latency = traditional_host_inference(drive, 0, input_act)
+            with MockNVMeDrive(binary_path) as drive:
+                storage_output, storage_latency = drive.computational_inference(0, input_act)
+                host_output, host_latency = traditional_host_inference(drive, 0, input_act)
 
         np.testing.assert_allclose(storage_output, host_output, rtol=1e-6, atol=1e-6)
         self.assertLess(storage_latency, host_latency)

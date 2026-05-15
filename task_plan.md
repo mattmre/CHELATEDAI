@@ -1,5 +1,69 @@
 # Session 31 Task Plan: PR Fixes, Merges, and Feature Implementation
 
+## Session 32 Addendum: Disk-Resident LLM Feasibility
+
+### Goal
+- Quantify whether ChelatedAI can evolve from the current computational-storage proof into a disk-resident CPU inference path for larger language models.
+
+### Phase Status
+- Repo architecture review: COMPLETE
+- External method alignment (`LLM in a Flash`, CPU low-bit lookup): COMPLETE
+- In-repo estimator implementation: COMPLETE
+- Feasibility memo: COMPLETE
+- Revised roadmap and ARCH-AEP loop updates: COMPLETE
+- Phase 1 storage substrate initial slice: COMPLETE
+- Phase 2 CPU inference substrate initial slice: COMPLETE
+- Phase 2 ARCH-AEP hardening and validation: COMPLETE
+- Phase 2b prequantized packed artifacts and lower-overhead CPU path: COMPLETE
+- Phase 3A dense/sparse FFN selective-loading path: COMPLETE
+- Phase 4 retrieval and graph memory substrate: COMPLETE
+- Phase 5 runtime integration prototype: COMPLETE
+- Phase 6 memory compression on the integrated baseline: COMPLETE
+- Phase 7 end-to-end evaluation and promotion review: COMPLETE
+- Phase 3B parallel MoE / REAP branch: COMPLETE
+- Final synthesis for the initial storage+CPU baseline: COMPLETE
+
+### Current Addendum State
+- Phase 1, Phase 2, Phase 2b, Phase 3A, Phase 4, Phase 5, Phase 6, and Phase 7 are complete and promotable as the baseline substrate for follow-on work.
+- The repo now has an initial promoted low-bit path:
+  - INT8 packed artifacts
+  - prequantized weight reuse in the CPU backend
+  - a measured microbenchmark win over the float32 baseline
+- The repo now also has an initial selective-loading runtime:
+  - streamed-block row-chunk loading
+  - activation-driven routing
+  - chunk reuse cache
+  - measured streamed-byte reduction against the dense packed baseline
+- The repo now has an initial disk-backed code-memory layer:
+  - on-disk node / edge / embedding bundle
+  - memory-mapped embedding index
+  - hybrid retrieval with graph-aware reranking
+  - independent ingest and query benchmark
+- The repo now has an initial end-to-end CPU-only prototype path:
+  - repository query -> disk-backed memory retrieval
+  - retrieval-result featureization
+  - packed INT8 reranking through the sparse CPU path
+  - end-to-end latency and byte metrics
+- The repo now has an initial compression path on top of that baseline:
+  - int8-compressed repo-memory embeddings
+  - mapped-byte reduction benchmarks
+  - integrated-runtime compression comparison
+- The repo now has a closed promotion review:
+  - research-baseline promotion approved
+  - production-ready promotion deferred
+  - next-branch recommendation recorded
+- The repo now has an initial parallel MoE / REAP branch:
+  - disk-backed MoE artifact
+  - routed-expert CPU execution
+  - REAP-like expert-bank pruning compatibility
+- The repo now also has a bounded post-Phase-7 optimization pass:
+  - chunked int8 repo-memory query scoring
+  - a shared retrieval evaluation suite across standalone and integrated benchmarks
+  - broader repo-local evaluation coverage without changing architecture scope
+- Next bounded decision is either:
+  - further optimization under the current research baseline
+  - end-to-end integration of the MoE branch, if a concrete MoE target is selected
+
 ## Goal
 Fix open PR review comments, merge PRs #96/#97/#98 smartly, then implement priority architectural improvements from Session 30 research findings.
 

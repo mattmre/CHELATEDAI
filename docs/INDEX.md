@@ -32,6 +32,10 @@
 | [Computational Storage And Drive Nodes](COMPUTATIONAL_STORAGE_DRIVE_NODES.md) | Canonical summary of hard-drive / storage-node experiments and scope limits |
 | [Computational Storage Scope Decision](computational-storage-transport-scope-decision.md) | Formal claim boundary for the RP2040 transport path |
 | [Computational Storage Hardware Evidence Runbook](computational-storage-hardware-evidence-runbook.md) | Operator workflow for real hardware evidence capture |
+| [Revised Roadmap: Disk-First CPU And Retrieval Program (2026-03-28)](revised-roadmap-disk-first-program-2026-03-28.md) | Active phase-gated program roadmap with dependencies, review loops, and scope controls |
+| [Disk-Resident LLM Feasibility (2026-03-28)](disk-resident-llm-feasibility-2026-03-28.md) | Feasibility memo, hardware sizing, and repo improvement plan for SSD-resident CPU inference |
+| [Disk-Resident LLM Addendum: REAP And TurboQuant (2026-03-28)](disk-resident-llm-addendum-reap-turboquant-2026-03-28.md) | Follow-up research memo on MoE pruning, KV compression, and CPU / retrieval-first systems |
+| [Phase 7 Promotion Review (2026-03-29)](phase7-promotion-review-2026-03-29.md) | Final research-baseline promotion call, defer conditions, and next-branch recommendations for the disk-first CPU / retrieval program |
 | [Roadmap Audit And Weight Refinement Plan (2026-03-06)](roadmap-audit-and-weight-refinement-plan-2026-03-06.md) | Current conclusion that non-hardware development phases are complete plus the next evaluation plan |
 | [Weight Refinement Campaign Results (Session 28)](weight-refinement-campaign-results-2026-03-06-session28.md) | Durable summary of the partial bounded campaign, recovered findings, and promotion guidance |
 | [Weight Refinement Campaign Results (Session 32)](weight-refinement-campaign-results-2026-04-25-session32.md) | Durable summary of the Session 32 partial bounded campaign and explicit no-promotion outcome |

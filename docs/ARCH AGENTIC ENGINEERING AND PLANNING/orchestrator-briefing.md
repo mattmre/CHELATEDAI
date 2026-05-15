@@ -35,6 +35,18 @@ Full file index: `docs/INDEX.md`
 CODEX ARCH AGENTIC ENGINEERING AND PLANNING
 Begin an ARCH-AEP cycle. Scope-lock the PR range and dates, then ingest `docs/agentic-review-framework.md` and the latest refinement report. Normalize all findings into a single master backlog with unique IDs using `docs/ARCH AGENTIC ENGINEERING AND PLANNING/templates.md` (Option A). De-duplicate and assign provisional severity. Spawn specialist agents (Architecture, Security, Testing, Performance, Reliability/Debug, Documentation, UX) to re-validate findings on current `main`, attach exact file paths and line ranges, and propose the smallest safe fix with acceptance criteria and effort sizing (S/M/L). Orchestrator merges validated findings, re-sorts strictly by Severity (Critical > High > Medium > Low), breaking ties by impact × (1/effort) and dependency order. For each tier, generate small remediation PRs (one coherent theme per PR) and do not advance to the next tier until the current tier is empty or formally blocked with a written unblock plan in `docs/ARCH AGENTIC ENGINEERING AND PLANNING/change-log.md`. Maintain the auditable tracker at `docs/refinement-remediation/YYYY-MM-DD_tracker.md` and record commands/results for build and tests after each PR. Use `docs/ARCH AGENTIC ENGINEERING AND PLANNING/phase-planning.md` for long-running planning, `docs/ARCH AGENTIC ENGINEERING AND PLANNING/next-session.md` for session handoffs, `docs/ARCH AGENTIC ENGINEERING AND PLANNING/schedule-and-tracking.md` for cadence and gates, and log cross-session learnings in `docs/ARCH AGENTIC ENGINEERING AND PLANNING/agent-learning.md`. For Critical/High findings, create a risk memo from `docs/ARCH AGENTIC ENGINEERING AND PLANNING/risk-memo-template.md`. Post a concise phase summary after each PR: what closed, what remains, what’s next. Repeat until all severities are remediated or formally deferred with scheduled follow-up.
 
+For architecture-led programs, switch from pure remediation flow to the program loop defined in `workflow.md`:
+
+1. scope-lock the current phase
+2. implement only the current phase slice
+3. run ARCH-AEP review before opening the next phase
+4. run code analysis / hardening after implementation
+5. record a promote / defer decision before advancing
+
+The current active architecture-led reference plan is:
+
+- `docs/revised-roadmap-disk-first-program-2026-03-28.md`
+
 ## Cycle Start Checklist
 - Create scope lock record from `docs/ARCH AGENTIC ENGINEERING AND PLANNING/scope-lock-template.md`.
 - Create backlog file from `docs/ARCH AGENTIC ENGINEERING AND PLANNING/backlog-template.md`.
