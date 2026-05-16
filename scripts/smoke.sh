@@ -8,8 +8,11 @@
 #   - Stage 1 (API / surface boot): always runs. Validates the application stack
 #     can construct (whatever "the application" is in your repo — FastAPI app,
 #     Django settings, CLI argument parser, etc.). The default invocation runs
-#     `pytest tests/test_e2e_smoke.py -x` — replace with your own surface check
-#     if you do not have that file.
+#     `python -m unittest tests.test_e2e_smoke` — replace with your own surface
+#     check if you do not have that file. ChelatedAI standardises on the stdlib
+#     `unittest` runner per CLAUDE.md Test Conventions (CI does not install
+#     pytest), so pytest invocations would break Stage 1 even when the test
+#     file is present.
 #   - Stage 2 (production-pipeline import + minimal exercise): runs ONLY if your
 #     production deps are importable. If they are not, Stage 2 is reported as
 #     SKIPPED with a clear reason — and the script EXITS NON-ZERO because Rule 5
@@ -82,7 +85,10 @@ echo "========================================================================="
 echo
 echo "--- Stage 1: application/surface boot smoke ---"
 if [ -f "$REPO_ROOT/tests/test_e2e_smoke.py" ]; then
-    if python -m pytest tests/test_e2e_smoke.py -v --tb=short -x 2>&1; then
+    # ChelatedAI uses stdlib unittest per CLAUDE.md Test Conventions; pytest is
+    # not installed in CI. Invoke via -m unittest with the module path so
+    # discovery does not depend on the caller's working directory.
+    if python -m unittest -v tests.test_e2e_smoke 2>&1; then
         STAGE1_RESULT="PASS"
         echo "Stage 1 PASS"
     else
