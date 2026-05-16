@@ -139,9 +139,15 @@ def _score_finding(finding_dict: Dict[str, Any]) -> BHSResult:
     score = 100.0
     flags: List[str] = []
 
-    # Missing required keys → L4.
+    # Missing required keys → L4. Whitespace-only strings are treated as empty.
     for key in _REQUIRED_FINDING_KEYS:
-        if key not in finding_dict or finding_dict.get(key) in (None, ""):
+        raw = finding_dict.get(key)
+        is_empty = (
+            key not in finding_dict
+            or raw is None
+            or (isinstance(raw, str) and raw.strip() == "")
+        )
+        if is_empty:
             score -= 15.0
             flags.append(f"L4: missing/empty finding field {key!r}")
 
