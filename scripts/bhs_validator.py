@@ -78,20 +78,33 @@ _LIE_MARKERS = (
     "tbd",
 )
 
-# Cheap evidence regex: matches file:line, PR refs, artifact paths, command
-# transcripts. Used to award the "evidence_present" credit.
+# Evidence regex: requires substantive evidence (not just a bare "a.py" token).
+# Accepts any of:
+#   - file path with at least one separator AND extension (e.g. scripts/x.py)
+#   - bare filename WITH a line-number suffix (e.g. foo.py:42) — line numbers
+#     are themselves a commitment to a specific location
+#   - PR/issue ref (PR #123, issue #45)
+#   - artifact path (artifact: or artifacts/...)
+#   - commit hash (sha or "commit <hash>") with >=7 hex chars
+# A loose ``a.py`` token in prose is NOT enough — operators must point at
+# something actually locatable.
 _EVIDENCE_RE = re.compile(
     r"""
     (
-        [\w./\\-]+\.[a-zA-Z0-9]{1,5}(:\d+)?   |  # path with extension, optional :line
-        \bPR\s*\#\s*\d+                       |  # PR #123
-        \bartifact[s]?[/:]                    |  # artifact: or artifacts/
-        \bcommit\s+[0-9a-f]{7,40}             |  # commit hash
+        [\w.-]+[/\\][\w./\\-]+\.[a-zA-Z0-9]{1,5}(:\d+)? |  # path with separator + ext
+        \b[\w-]+\.[a-zA-Z0-9]{1,5}:\d+                  |  # bare file:line
+        \b(?:PR|issue)\s*\#\s*\d+                       |  # PR #123 / issue #45
+        \bartifact[s]?[/:]                              |  # artifact: or artifacts/
+        \bcommit\s+[0-9a-f]{7,40}                       |  # commit <hash>
         \b(SHA|sha)\s*[:=]\s*[0-9a-f]{7,40}
     )
     """,
     re.VERBOSE,
 )
+
+# AEP severity enum (per CLAUDE.md). Anything outside this set is not a
+# committed tier and should be penalised the same as UNKNOWN.
+_KNOWN_SEVERITIES = frozenset({"CRITICAL", "HIGH", "MEDIUM", "LOW"})
 
 
 def _collect_text(d: Dict[str, Any]) -> str:
@@ -119,11 +132,16 @@ def _score_finding(finding_dict: Dict[str, Any]) -> BHSResult:
             score -= 15.0
             flags.append(f"L4: missing/empty finding field {key!r}")
 
-    # Severity must be a non-UNKNOWN tier
+    # Severity must be one of the committed AEP tiers; any other string
+    # (empty, UNKNOWN, NONE, free-form like "WHATEVER") is not a committed
+    # tier and gets the same penalty.
     severity = str(finding_dict.get("severity", "")).strip().upper()
-    if severity in ("", "UNKNOWN", "NONE"):
+    if severity not in _KNOWN_SEVERITIES:
         score -= 10.0
-        flags.append("L4: severity not committed (UNKNOWN/empty)")
+        flags.append(
+            f"L4: severity not a committed AEP tier "
+            f"(got {severity!r}; expected one of {sorted(_KNOWN_SEVERITIES)})"
+        )
 
     text_blob = _collect_text(finding_dict)
     text_lower = text_blob.lower()

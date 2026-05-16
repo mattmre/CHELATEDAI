@@ -97,6 +97,57 @@ class TestFindingScoring(unittest.TestCase):
         self.assertEqual(result.score, 0.0)
         self.assertTrue(any("L4" in f for f in result.optimism_flags))
 
+    def test_bogus_severity_string_is_penalised(self) -> None:
+        """Regression guard for Tier B Q1: an unknown severity string like
+        'WHATEVER' must not score the same as a committed AEP tier."""
+        bogus = {
+            "id": "F-D",
+            "severity": "WHATEVER",
+            "impact": "Description at module.py:10",
+            "recommended_fix": "Patch at module.py:11; artifact: logs/foo.json",
+        }
+        committed = {**bogus, "severity": "HIGH"}
+        bogus_score = validate_pr_brutal_honesty(finding_dict=bogus).score
+        committed_score = validate_pr_brutal_honesty(finding_dict=committed).score
+        self.assertLess(bogus_score, committed_score)
+        self.assertEqual(committed_score, 100.0)
+        self.assertEqual(bogus_score, 90.0)  # -10 for non-committed tier
+
+    def test_bare_extension_is_not_evidence(self) -> None:
+        """Regression guard for Tier B Q1: a single 'a.py' token in prose
+        without a path separator OR line number is NOT enough evidence."""
+        no_evidence = {
+            "id": "F-E",
+            "severity": "HIGH",
+            "impact": "Something happened in a.py somewhere",
+            "recommended_fix": "Fix it in b.py probably",
+        }
+        result = validate_pr_brutal_honesty(finding_dict=no_evidence)
+        self.assertFalse(result.evidence_present, "Bare 'a.py' must not count as evidence")
+        self.assertLess(result.score, 100.0)
+
+    def test_path_with_separator_is_evidence(self) -> None:
+        with_path = {
+            "id": "F-F",
+            "severity": "HIGH",
+            "impact": "Bug at src/api/handler.py",
+            "recommended_fix": "Patch src/api/handler.py",
+        }
+        result = validate_pr_brutal_honesty(finding_dict=with_path)
+        self.assertTrue(result.evidence_present)
+        self.assertEqual(result.score, 100.0)
+
+    def test_file_with_line_number_is_evidence(self) -> None:
+        with_line = {
+            "id": "F-G",
+            "severity": "HIGH",
+            "impact": "Issue at handler.py:42",
+            "recommended_fix": "Fix at handler.py:43",
+        }
+        result = validate_pr_brutal_honesty(finding_dict=with_line)
+        self.assertTrue(result.evidence_present)
+        self.assertEqual(result.score, 100.0)
+
 
 class TestPhaseSummaryScoring(unittest.TestCase):
     def test_complete_phase_summary_scores_high(self) -> None:
