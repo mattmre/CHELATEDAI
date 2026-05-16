@@ -1,5 +1,52 @@
 # Session 31 Task Plan: PR Fixes, Merges, and Feature Implementation
 
+## Session 32 Addendum: Disk-Resident LLM Feasibility
+
+### Goal
+- Quantify whether ChelatedAI can evolve from the current computational-storage proof into a disk-resident CPU inference path for larger language models.
+
+### Phase Status
+- Repo architecture review: COMPLETE
+- External method alignment (`LLM in a Flash`, CPU low-bit lookup): COMPLETE
+- In-repo estimator implementation: COMPLETE
+- Feasibility memo: COMPLETE
+- Revised roadmap and ARCH-AEP loop updates: COMPLETE
+- Phase 1 storage substrate initial slice: COMPLETE
+- Phase 2 CPU inference substrate initial slice: COMPLETE
+- Phase 2 ARCH-AEP hardening and validation: COMPLETE
+- Phase 2b prequantized packed artifacts and lower-overhead CPU path: COMPLETE
+- Phase 3A dense/sparse FFN selective-loading path: COMPLETE
+- Phase 4 retrieval and graph memory substrate: COMPLETE
+- Phase 5 runtime integration prototype: COMPLETE
+- Phase 6 memory compression on the integrated baseline: COMPLETE
+- Phase 7 end-to-end evaluation and promotion review: COMPLETE
+- Phase 3B parallel MoE / REAP branch: COMPLETE
+- Final synthesis for the initial storage+CPU baseline: COMPLETE
+
+### Current Addendum State (as of 2026-05-15 Desktop Reconciliation)
+- All Phase 1–7 + 3B work from the Session 32 Addendum is complete on the merged baseline.
+- 2026-05-15: Desktop machine (23 commits behind) reconciled with laptop work.
+  - BHS v3.3 tooling now present in `scripts/`.
+  - Major laptop planning artifacts landed into `docs/ARCH AGENTIC ENGINEERING AND PLANNING/planning/2026-05-reconciliation/`.
+  - Advanced computational storage POC (packed/CPU/sparse/repo-graph/MoE) moved to `feat/post-merge-comp-storage-substrate`.
+- Next major work: Wire BHS v3.3 honesty gates into the AEP orchestrator + port/integrate the new computational storage substrate with Model-Scope scoping and honesty enforcement.
+- A dedicated reconciliation reimplementation backlog now exists (see `docs/ARCH AGENTIC ENGINEERING AND PLANNING/planning/2026-05-reconciliation/reconciliation-2026-05-15-reimplementation-backlog.md`).
+- The repo now has a closed promotion review:
+  - research-baseline promotion approved
+  - production-ready promotion deferred
+  - next-branch recommendation recorded
+- The repo now has an initial parallel MoE / REAP branch:
+  - disk-backed MoE artifact
+  - routed-expert CPU execution
+  - REAP-like expert-bank pruning compatibility
+- The repo now also has a bounded post-Phase-7 optimization pass:
+  - chunked int8 repo-memory query scoring
+  - a shared retrieval evaluation suite across standalone and integrated benchmarks
+  - broader repo-local evaluation coverage without changing architecture scope
+- Next bounded decision is either:
+  - further optimization under the current research baseline
+  - end-to-end integration of the MoE branch, if a concrete MoE target is selected
+
 ## Goal
 Fix open PR review comments, merge PRs #96/#97/#98 smartly, then implement priority architectural improvements from Session 30 research findings.
 

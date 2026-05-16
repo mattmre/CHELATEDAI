@@ -1,5 +1,8 @@
 # Roadmap Audit And Weight Refinement Plan
 
+> Superseded as the active program roadmap by [revised-roadmap-disk-first-program-2026-03-28.md](revised-roadmap-disk-first-program-2026-03-28.md).
+> This document remains useful as a historical audit of the earlier retrieval-feature backlog and evaluation plan.
+
 **Date:** 2026-03-06
 
 ## Executive Conclusion

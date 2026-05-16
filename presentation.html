@@ -1,0 +1,1001 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ChelatedAI — Codebase Improvement Plan</title>
+<style>
+  /* === RESET & BASE === */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { font-size: 18px; scroll-behavior: smooth; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: #1a1a2e;
+    color: #e0e0e0;
+    line-height: 1.5;
+  }
+
+  /* === SLIDE BASE === */
+  .slide {
+    min-height: 100vh;
+    padding: 3rem 4rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    border-bottom: 3px solid #16213e;
+    position: relative;
+    overflow: hidden;
+  }
+  .slide::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 4px;
+  }
+
+  /* === COLOURS (Colorblind-safe palette: #264653, #2a9d8f, #e9c46a, #f4a261, #e76f51, #6b7b8d) === */
+  .slide-title::before    { background: #e9c46a; }
+  .slide-summary::before  { background: #2a9d8f; }
+  .slide-why::before      { background: #264653; }
+  .slide-state::before    { background: #f4a261; }
+  .slide-plan::before     { background: #2a9d8f; }
+  .slide-notdoing::before { background: #e76f51; }
+  .slide-timeline::before { background: #e9c46a; }
+  .slide-risk::before     { background: #e76f51; }
+  .slide-resources::before{ background: #264653; }
+  .slide-decision::before { background: #f4a261; }
+
+  /* === TYPOGRAPHY === */
+  h1 { font-size: 2.4rem; font-weight: 700; margin-bottom: 0.5rem; }
+  h2 { font-size: 1.8rem; font-weight: 700; margin-bottom: 0.25rem; }
+  h3 { font-size: 1.3rem; font-weight: 600; margin-bottom: 0.75rem; }
+  .subtitle { font-size: 1.1rem; color: #8899aa; margin-bottom: 1.5rem; }
+  .slide-label {
+    position: absolute;
+    top: 1.5rem; right: 2rem;
+    font-size: 0.75rem;
+    color: #556677;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+  }
+  .slide-number {
+    position: absolute;
+    bottom: 1.5rem; right: 2rem;
+    font-size: 0.75rem;
+    color: #556677;
+  }
+
+  /* === LISTS === */
+  ul { list-style: none; padding: 0; }
+  ul li {
+    padding: 0.4rem 0 0.4rem 1.5rem;
+    position: relative;
+    font-size: 1.05rem;
+  }
+  ul li::before {
+    content: '\25B6';
+    position: absolute;
+    left: 0;
+    font-size: 0.6rem;
+    top: 0.65rem;
+    color: #2a9d8f;
+  }
+  .slide-why ul li::before { color: #e9c46a; }
+  .slide-risk ul li::before { color: #e76f51; }
+
+  /* === VISUAL CONTAINERS === */
+  .visual {
+    margin: 1.5rem 0;
+    padding: 1.2rem 1.5rem;
+    background: #16213e;
+    border-radius: 8px;
+    border-left: 4px solid;
+    overflow-x: auto;
+  }
+  .visual-teal   { border-left-color: #2a9d8f; }
+  .visual-gold   { border-left-color: #e9c46a; }
+  .visual-orange { border-left-color: #f4a261; }
+  .visual-red    { border-left-color: #e76f51; }
+  .visual-blue   { border-left-color: #264653; }
+
+  /* === METRIC CARDS === */
+  .metrics-row {
+    display: flex;
+    gap: 1.5rem;
+    margin: 1.5rem 0;
+    flex-wrap: wrap;
+  }
+  .metric-card {
+    flex: 1;
+    min-width: 140px;
+    background: #16213e;
+    border-radius: 8px;
+    padding: 1.2rem;
+    text-align: center;
+    border-top: 3px solid;
+  }
+  .metric-card.teal   { border-top-color: #2a9d8f; }
+  .metric-card.gold   { border-top-color: #e9c46a; }
+  .metric-card.orange { border-top-color: #f4a261; }
+  .metric-card.red    { border-top-color: #e76f51; }
+  .metric-card.blue   { border-top-color: #264653; }
+  .metric-value {
+    font-size: 2.2rem;
+    font-weight: 800;
+    display: block;
+    line-height: 1.1;
+  }
+  .metric-value.teal   { color: #2a9d8f; }
+  .metric-value.gold   { color: #e9c46a; }
+  .metric-value.orange { color: #f4a261; }
+  .metric-value.red    { color: #e76f51; }
+  .metric-value.blue   { color: #6b8db5; }
+  .metric-label {
+    font-size: 0.8rem;
+    color: #8899aa;
+    margin-top: 0.3rem;
+    display: block;
+  }
+  .metric-target {
+    font-size: 0.75rem;
+    color: #2a9d8f;
+    margin-top: 0.5rem;
+    display: block;
+  }
+
+  /* === PHASE TIMELINE DIAGRAM === */
+  .timeline-diagram {
+    font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+    font-size: 0.82rem;
+    line-height: 1.45;
+    white-space: pre;
+    color: #c8d8e8;
+    background: #0f1a2e;
+    padding: 1.5rem;
+    border-radius: 8px;
+    overflow-x: auto;
+    margin: 1rem 0;
+  }
+
+  /* === TABLE === */
+  .phase-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+    font-size: 0.9rem;
+  }
+  .phase-table th {
+    text-align: left;
+    padding: 0.6rem 0.8rem;
+    background: #0f1a2e;
+    color: #8899aa;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.7rem;
+    letter-spacing: 1px;
+    border-bottom: 2px solid #264653;
+  }
+  .phase-table td {
+    padding: 0.5rem 0.8rem;
+    border-bottom: 1px solid #1e2d4a;
+  }
+  .phase-table tr:hover td { background: #16213e; }
+  .badge {
+    display: inline-block;
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+  .badge-p0 { background: #e76f51; color: #fff; }
+  .badge-p1 { background: #2a9d8f; color: #fff; }
+  .badge-p2 { background: #6b7b8d; color: #fff; }
+
+  /* === EXCLUDED GRID === */
+  .excluded-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 0.8rem;
+    margin: 1rem 0;
+  }
+  .excluded-item {
+    background: #16213e;
+    padding: 0.8rem 1rem;
+    border-radius: 6px;
+    border-left: 3px solid #e76f51;
+    font-size: 0.9rem;
+  }
+  .excluded-item .reason {
+    font-size: 0.75rem;
+    color: #6b7b8d;
+    margin-top: 0.2rem;
+  }
+
+  /* === RISK MATRIX === */
+  .risk-item {
+    display: flex;
+    gap: 1rem;
+    padding: 0.8rem 0;
+    border-bottom: 1px solid #1e2d4a;
+    align-items: flex-start;
+  }
+  .risk-severity {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    margin-top: 0.4rem;
+  }
+  .risk-high   { background: #e76f51; }
+  .risk-medium { background: #e9c46a; }
+  .risk-low    { background: #2a9d8f; }
+
+  /* === SPEAKER NOTES === */
+  .speaker-notes {
+    margin-top: 2rem;
+    padding: 1rem 1.5rem;
+    background: #0f1a2e;
+    border-radius: 8px;
+    border: 1px dashed #334455;
+    font-size: 0.85rem;
+    color: #6b7b8d;
+  }
+  .speaker-notes summary {
+    cursor: pointer;
+    font-weight: 600;
+    color: #8899aa;
+    margin-bottom: 0.5rem;
+    user-select: none;
+  }
+  .speaker-notes summary:hover { color: #aabbcc; }
+  .speaker-notes p { margin: 0.3rem 0; }
+
+  /* === DECISION BOX === */
+  .decision-box {
+    background: #16213e;
+    border: 2px solid #f4a261;
+    border-radius: 12px;
+    padding: 2rem;
+    margin: 1.5rem 0;
+  }
+  .decision-box h3 {
+    color: #f4a261;
+    margin-bottom: 1rem;
+  }
+  .decision-option {
+    padding: 0.6rem 0;
+    font-size: 1rem;
+  }
+  .decision-option .yes { color: #2a9d8f; font-weight: 700; }
+  .decision-option .no  { color: #e76f51; font-weight: 600; }
+
+  /* === FLOW DIAGRAM === */
+  .flow-ascii {
+    font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+    font-size: 0.8rem;
+    line-height: 1.5;
+    white-space: pre;
+    color: #c8d8e8;
+    background: #0f1a2e;
+    padding: 1.5rem;
+    border-radius: 8px;
+    overflow-x: auto;
+    margin: 1rem 0;
+  }
+
+  /* === GANTT BAR === */
+  .gantt-bar {
+    display: flex;
+    align-items: center;
+    margin: 0.4rem 0;
+    font-size: 0.85rem;
+  }
+  .gantt-label {
+    width: 180px;
+    text-align: right;
+    padding-right: 1rem;
+    flex-shrink: 0;
+    color: #8899aa;
+  }
+  .gantt-track {
+    flex: 1;
+    height: 24px;
+    background: #0f1a2e;
+    border-radius: 4px;
+    position: relative;
+    overflow: hidden;
+  }
+  .gantt-fill {
+    height: 100%;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    padding-left: 0.5rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #fff;
+    white-space: nowrap;
+  }
+  .gantt-fill.teal   { background: #2a9d8f; }
+  .gantt-fill.gold   { background: #e9c46a; color: #1a1a2e; }
+  .gantt-fill.orange { background: #f4a261; color: #1a1a2e; }
+  .gantt-fill.blue   { background: #264653; }
+  .gantt-fill.red    { background: #e76f51; }
+  .gantt-fill.muted  { background: #334455; }
+
+  .week-labels {
+    display: flex;
+    margin-left: 180px;
+    margin-bottom: 0.3rem;
+  }
+  .week-labels span {
+    flex: 1;
+    text-align: center;
+    font-size: 0.7rem;
+    color: #556677;
+  }
+
+  /* === NAVIGATION === */
+  .nav-dots {
+    position: fixed;
+    right: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .nav-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #334455;
+    text-decoration: none;
+    display: block;
+    transition: background 0.2s;
+  }
+  .nav-dot:hover { background: #2a9d8f; }
+
+  @media (max-width: 768px) {
+    .slide { padding: 2rem 1.5rem; }
+    h1 { font-size: 1.8rem; }
+    h2 { font-size: 1.4rem; }
+    .metrics-row { flex-direction: column; }
+    .gantt-label { width: 120px; font-size: 0.75rem; }
+    .week-labels { margin-left: 120px; }
+    .nav-dots { display: none; }
+    .excluded-grid { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ===================== NAVIGATION DOTS ===================== -->
+<nav class="nav-dots" aria-label="Slide navigation">
+  <a href="#slide-1" class="nav-dot" title="Title"></a>
+  <a href="#slide-2" class="nav-dot" title="Executive Summary"></a>
+  <a href="#slide-3" class="nav-dot" title="Why This Sprint"></a>
+  <a href="#slide-4" class="nav-dot" title="Current State"></a>
+  <a href="#slide-5" class="nav-dot" title="The Plan"></a>
+  <a href="#slide-6" class="nav-dot" title="What We're NOT Doing"></a>
+  <a href="#slide-7" class="nav-dot" title="Timeline"></a>
+  <a href="#slide-8" class="nav-dot" title="Risks"></a>
+  <a href="#slide-9" class="nav-dot" title="Resources"></a>
+  <a href="#slide-10" class="nav-dot" title="Decision"></a>
+</nav>
+
+
+<!-- ===================== SLIDE 1: TITLE ===================== -->
+<section id="slide-1" class="slide slide-title">
+  <span class="slide-label">Stakeholder Briefing</span>
+  <h1>ChelatedAI</h1>
+  <h2>Codebase Improvement Plan</h2>
+  <p class="subtitle">10-Phase Plan &mdash; Panel-Refined, Expert-Vetted, PM-Ready</p>
+
+  <div class="visual visual-gold">
+    <div class="metrics-row" style="margin:0">
+      <div class="metric-card gold" style="flex:1">
+        <span class="metric-value gold">4&ndash;5</span>
+        <span class="metric-label">Weeks Duration</span>
+      </div>
+      <div class="metric-card gold" style="flex:1">
+        <span class="metric-value gold">10</span>
+        <span class="metric-label">Phases (170 Tasks)</span>
+      </div>
+      <div class="metric-card gold" style="flex:1">
+        <span class="metric-value gold">20</span>
+        <span class="metric-label">Expert Analysts</span>
+      </div>
+      <div class="metric-card gold" style="flex:1">
+        <span class="metric-value gold">0</span>
+        <span class="metric-label">Breaking Changes</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="speaker-notes">
+    <details>
+      <summary>Speaker Notes (Opening)</summary>
+      <p>&ldquo;Good morning. I&rsquo;m here to present a plan to strengthen the ChelatedAI codebase before we scale it further. Think of this as a house inspection before we add another floor.&rsquo;</p>
+      <p>&lsquo;We ran our code through a rigorous review: 20 subject-matter experts across security, testing, architecture, performance, and more, went through three rounds of analysis. The result is a focused 10-phase plan that takes 4-5 weeks.</p>
+      <p>&lsquo;The most important thing to know upfront: zero breaking changes. Everything we do preserves existing functionality. And the #1 deliverable is a &lsquo;golden regression suite&rsquo; that protects us from regressions across every other phase.&rsquo;</p>
+      <p>&lsquo;I&rsquo;ll walk you through what&rsquo;s wrong, what we&rsquo;ll fix, what we&rsquo;re deliberately NOT fixing, the timeline, and what I need from you today.&rsquo;</p>
+    </details>
+  </div>
+  <span class="slide-number">1 / 10</span>
+</section>
+
+
+<!-- ===================== SLIDE 2: EXECUTIVE SUMMARY ===================== -->
+<section id="slide-2" class="slide slide-summary">
+  <span class="slide-label">60-Second Overview</span>
+  <h2>Why We&rsquo;re Here</h2>
+
+  <div class="flow-ascii">
+&#9654; ChelatedAI is our adaptive vector search research engine
+&#9654; 10,000+ lines of code across 140+ files
+&#9654; 1,082 tests passing reliably in CI
+&#9654; It works &mdash; but it was never designed to scale as a maintained product
+
+&#9654; What we found: 1 major security flaw, 1,248-line &ldquo;god object&rdquo;,
+     no regression guardrails, missing documentation
+&#9654; What we&rsquo;ll do: 10 focused phases, parallel workstreams, 4-5 weeks
+&#9654; What we need: Your approval to begin, resource allocation, risk acceptance
+  </div>
+
+  <ul>
+    <li><strong>The core AI works</strong> &mdash; 1,082 tests pass. We&rsquo;re not rebuilding, we&rsquo;re reinforcing.</li>
+    <li><strong>20 experts reviewed the code</strong> over 3 rounds. Consensus: fix security, add regression guards, reorganize architecture.</li>
+    <li><strong>4-5 weeks, parallel workstreams.</strong> Critical path is 3-4 weeks.</li>
+    <li><strong>Decision needed today:</strong> Approve sprint, allocate developers, accept known risks.</li>
+  </ul>
+
+  <div class="speaker-notes">
+    <details>
+      <summary>Speaker Notes</summary>
+      <p>&lsquo;ChelatedAI is our adaptive vector search system. It detects when AI embeddings start to lose meaning &mdash; when &lsquo;apple&rsquo; and &lsquo;orange&rsquo; get similar scores &mdash; and corrects it. It works. The 1,082 tests prove it.</p>
+      <p>&lsquo;But the codebase grew organically. One file is 1,248 lines &mdash; that&rsquo;s like having the entire engine, transmission, and electrical system in one component. If it fails, everything fails.</p>
+      <p>&lsquo;We found a security flaw that could let someone manipulate our AI models silently. We have no way to detect if future changes break the core AI behavior. And new developers have no way to get started quickly.</p>
+      <p>&lsquo;This plan fixes all of that. Not by rewriting, but by reinforcing. Think of it as structural engineering, not a remodel.&rsquo;</p>
+    </details>
+  </div>
+  <span class="slide-number">2 / 10</span>
+</section>
+
+
+<!-- ===================== SLIDE 3: WHY THIS SPRINT ===================== -->
+<section id="slide-3" class="slide slide-why">
+  <span class="slide-label">Business Value</span>
+  <h2>Why This Sprint Matters</h2>
+  <p class="subtitle">Code quality IS product quality. Here&rsquo;s what&rsquo;s at stake.</p>
+
+  <div class="visual visual-teal">
+    <h3>The Problem in Plain Language</h3>
+    <ul>
+      <li><strong>One file does everything</strong> &mdash; a 1,248-line file controls embeddings, vector search, training, monitoring, and logging. When one thing breaks, everything breaks.</li>
+      <li><strong>No safety net</strong> &mdash; if we change the AI model, we have no automated way to know it stopped working correctly.</li>
+      <li><strong>Security gap</strong> &mdash; a known flaw lets anyone bypass authentication to our vector database.</li>
+      <li><strong>Onboarding friction</strong> &mdash; new developers can&rsquo;t set up the project in under an hour because there&rsquo;s no setup guide.</li>
+    </ul>
+  </div>
+
+  <div class="visual visual-gold">
+    <h3>The Business Impact</h3>
+    <ul>
+      <li><strong>Faster development</strong> &mdash; reorganized code means new features take 30-50% less time to build.</li>
+      <li><strong>Regression protection</strong> &mdash; the golden suite catches AI behavior changes before they reach production.</li>
+      <li><strong>Security hardening</strong> &mdash; fixes the #1 architectural flaw and adds input validation for AI models.</li>
+      <li><strong>Team scalability</strong> &mdash; documentation and dev container let new developers start coding in hours, not days.</li>
+    </ul>
+  </div>
+
+  <div class="speaker-notes">
+    <details>
+      <summary>Speaker Notes</summary>
+      <p>&lsquo;Let me translate the technical problems into business terms.&rsquo;</p>
+      <p>&lsquo;That 1,248-line file &mdash; called &lsquo;antigravity_engine&rsquo; &mdash; is the heart of our AI system. It handles everything from generating embeddings to training the AI to monitoring health. Right now, it&rsquo;s like having your heart, lungs, and nervous system in one organ. If anything goes wrong, you can&rsquo;t isolate the problem.</p>
+      <p>&lsquo;Our golden regression suite is the highest-value deliverable. It&rsquo;s a baseline test that captures exactly how the AI currently behaves. After every future change, it checks: &lsquo;did the AI start thinking differently?&rsquo; If yes, we catch it immediately.</p>
+      <p>&lsquo;And the security fix &mdash; there&rsquo;s a bypass in our vector database layer. Someone could theoretically inject malicious data into the AI&rsquo;s training pipeline. That&rsquo;s not just a bug, it&rsquo;s a supply-chain attack vector.&rsquo;</p>
+    </details>
+  </div>
+  <span class="slide-number">3 / 10</span>
+</section>
+
+
+<!-- ===================== SLIDE 4: CURRENT STATE ===================== -->
+<section id="slide-4" class="slide slide-state">
+  <span class="slide-label">Current State Snapshot</span>
+  <h2>Where We Stand Today</h2>
+  <p class="subtitle">The numbers tell the story.</p>
+
+  <div class="metrics-row">
+    <div class="metric-card red">
+      <span class="metric-value red">1,248</span>
+      <span class="metric-label">Lines in Single File</span>
+      <span class="metric-target">Target: &lt;400 lines</span>
+    </div>
+    <div class="metric-card teal">
+      <span class="metric-value teal">1,082</span>
+      <span class="metric-label">Tests Passing</span>
+      <span class="metric-target">Target: 1,180-1,250</span>
+    </div>
+    <div class="metric-card blue">
+      <span class="metric-value blue">140</span>
+      <span class="metric-label">Files, Flat Layout</span>
+      <span class="metric-target">Target: Packaged</span>
+    </div>
+    <div class="metric-card orange">
+      <span class="metric-value orange">7</span>
+      <span class="metric-label">Custom Exceptions</span>
+      <span class="metric-target">Target: 4</span>
+    </div>
+  </div>
+
+  <div class="visual visual-orange">
+    <h3>Architecture Health Indicators</h3>
+    <div class="flow-ascii" style="margin:0; font-size:0.78rem">
+&#9679; antigravity_engine.py: 1,248 lines (ENGINE)
+  &#9698; embedding backend, vector store, adapters, training, logging, config
+  &#9698; ALL in one file &mdash; violates single-responsibility principle
+
+&#9679; Flat file layout: 140+ .py files at root, no package structure
+  &#9698; No __init__.py, no import paths
+  &#9698; No CONTRIBUTING.md, no onboarding path
+
+&#9679; Testing: 1,082 unit tests (PASS)
+  &#9698; No integration tests, no regression baseline
+  &#9698; No shared test fixtures (copy/paste patterns)
+
+&#9679; Security: __getattr__ bypass in vector_store.py
+  &#9698; Can bypass auth checks by accessing unknown attributes
+  &#9698; No input validation on model weights
+  </div>
+  </div>
+
+  <div class="speaker-notes">
+    <details>
+      <summary>Speaker Notes</summary>
+      <p>&lsquo;Here are the key metrics that tell our story.&rsquo;</p>
+      <p>&lsquo;1,248 lines in one file is what engineers call a &lsquo;god object&rsquo; &mdash; a single component that knows and does too much. It handles embedding generation, vector search, AI adaptation, training loops, and logging. It needs to be broken into separate modules.</p>
+      <p>&lsquo;1,082 tests passing is good &mdash; it means the system works. But we need 100 more tests: integration tests that verify the whole system works together, and research validity tests that confirm the AI adaptation actually improves embeddings.</p>
+      <p>&lsquo;140 files with no package structure means no organization. It&rsquo;s like a warehouse where every tool is in a pile on the floor. You can find what you need, but it takes time.</p>
+      <p>&lsquo;And 7 custom exception classes when 4 would do &mdash; these are small things, but they add up to confusion and bugs over time.&rsquo;</p>
+    </details>
+  </div>
+  <span class="slide-number">4 / 10</span>
+</section>
+
+
+<!-- ===================== SLIDE 5: THE PLAN ===================== -->
+<section id="slide-5" class="slide slide-plan">
+  <span class="slide-label">10 Phases at a Glance</span>
+  <h2>The Plan: 10 Phases, 170 Tasks</h2>
+  <p class="subtitle">Organized by priority. Each phase is independently mergeable.</p>
+
+  <table class="phase-table">
+    <thead>
+      <tr>
+        <th>Phase</th>
+        <th>Focus Area</th>
+        <th>Priority</th>
+        <th>Duration</th>
+        <th>Key Deliverable</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>1</strong></td>
+        <td>Security Foundation</td>
+        <td><span class="badge badge-p0">P0</span></td>
+        <td>3-5 days</td>
+        <td>Fix critical security flaw + golden baseline</td>
+      </tr>
+      <tr>
+        <td><strong>2</strong></td>
+        <td>Testing Deepening</td>
+        <td><span class="badge badge-p1">P1</span></td>
+        <td>5-7 days</td>
+        <td>Shared fixtures, integration tests, research validity</td>
+      </tr>
+      <tr>
+        <td><strong>3</strong></td>
+        <td>Architecture Migration</td>
+        <td><span class="badge badge-p1">P1</span></td>
+        <td>10-14 days</td>
+        <td>1,248-line file &rarr; structured packages</td>
+      </tr>
+      <tr>
+        <td><strong>4</strong></td>
+        <td>Code Quality</td>
+        <td><span class="badge badge-p1">P1</span></td>
+        <td>3-5 days</td>
+        <td>Exception consolidation, linting, typing</td>
+      </tr>
+      <tr>
+        <td><strong>5</strong></td>
+        <td>Training Systems</td>
+        <td><span class="badge badge-p2">P2</span></td>
+        <td>3-4 days</td>
+        <td>Hyperparameter sweep, experiment logs</td>
+      </tr>
+      <tr>
+        <td><strong>6</strong></td>
+        <td>Benchmark Infrastructure</td>
+        <td><span class="badge badge-p0">P0</span></td>
+        <td>2-4 days</td>
+        <td>Golden suite CI guard (fails on 2% drift)</td>
+      </tr>
+      <tr>
+        <td><strong>7</strong></td>
+        <td>Documentation</td>
+        <td><span class="badge badge-p1">P1</span></td>
+        <td>3-5 days</td>
+        <td>Auto-generated API docs, model cards</td>
+      </tr>
+      <tr>
+        <td><strong>8</strong></td>
+        <td>Computational Storage Docs</td>
+        <td><span class="badge badge-p2">P2</span></td>
+        <td>2-3 days</td>
+        <td>Firmware build docs, design decisions log</td>
+      </tr>
+      <tr>
+        <td><strong>9</strong></td>
+        <td>Performance</td>
+        <td><span class="badge badge-p1">P1</span></td>
+        <td>5-7 days</td>
+        <td>Embedding cache, ONNX export, profiling</td>
+      </tr>
+      <tr>
+        <td><strong>10</strong></td>
+        <td>Developer Experience</td>
+        <td><span class="badge badge-p2">P2</span></td>
+        <td>2-3 days</td>
+        <td>Dev container, pre-commit hooks, setup scripts</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="speaker-notes">
+    <details>
+      <summary>Speaker Notes</summary>
+      <p>&lsquo;Here&rsquo;s the full plan at a glance. Ten phases, 170 tasks total.&rsquo;</p>
+      <p>&lsquo;Two phases are P0-critical: Phase 1 (security) and Phase 6 (golden regression suite). These are our Day 1 tasks and they run in parallel.&rsquo;</p>
+      <p>&lsquo;Phase 3 is the biggest: we reorganize the entire codebase from a flat file layout into a proper package structure. But we do it in a non-breaking way: existing import statements keep working through a &lsquo;re-export&rsquo; pattern. It&rsquo;s like reorganizing a library without changing the catalog numbers.</p>
+      <p>&lsquo;Phase 10 used to be called &lsquo;Monitoring&rsquo; but the experts eliminated that entirely. The existing monitoring tools are sufficient. Phase 10 is now developer experience: dev containers, pre-commit hooks, and setup scripts. It&rsquo;s about making the team faster, not about monitoring.&rsquo;</p>
+    </details>
+  </div>
+  <span class="slide-number">5 / 10</span>
+</section>
+
+
+<!-- ===================== SLIDE 6: WHAT WE'RE NOT DOING ===================== -->
+<section id="slide-6" class="slide slide-notdoing">
+  <span class="slide-label">Scope Boundaries</span>
+  <h2>What We&rsquo;re Deliberately NOT Doing</h2>
+  <p class="subtitle">Scope discipline. These were considered and explicitly rejected.</p>
+
+  <div class="excluded-grid">
+    <div class="excluded-item">
+      <strong>Sentry integration</strong>
+      <div class="reason">Assumes production infrastructure we don&rsquo;t have</div>
+    </div>
+    <div class="excluded-item">
+      <strong>Optuna HPO</strong>
+      <div class="reason">Overkill for research prototype; existing sweep tool suffices</div>
+    </div>
+    <div class="excluded-item">
+      <strong>MLflow tracking</strong>
+      <div class="reason">Project uses JSONL; MLflow is overkill</div>
+    </div>
+    <div class="excluded-item">
+      <strong>Prometheus metrics</strong>
+      <div class="reason">Assumes production metrics stack</div>
+    </div>
+    <div class="excluded-item">
+      <strong>GPU quantization</strong>
+      <div class="reason">GPU hardware doesn&rsquo;t exist in our environment</div>
+    </div>
+    <div class="excluded-item">
+      <strong>Async migration</strong>
+      <div class="reason">Zero user-facing value for current use case</div>
+    </div>
+    <div class="excluded-item">
+      <strong>Complex fuzz testing</strong>
+      <div class="reason">Over-engineered; parameterized edge-case tests suffice</div>
+    </div>
+    <div class="excluded-item">
+      <strong>pytest adoption</strong>
+      <div class="reason">CI uses unittest exclusively; no reason to switch</div>
+    </div>
+    <div class="excluded-item">
+      <strong>90% test coverage</strong>
+      <div class="reason">Research code is exploratory; 70% is appropriate</div>
+    </div>
+    <div class="excluded-item">
+      <strong>OpenTelemetry tracing</strong>
+      <div class="reason">Assumes distributed tracing infrastructure</div>
+    </div>
+    <div class="excluded-item">
+      <strong>Runbooks / alerting</strong>
+      <div class="reason">Assumes production incident response workflows</div>
+    </div>
+    <div class="excluded-item">
+      <strong>Complex online rollback</strong>
+      <div class="reason">Simple checkpoint-restore is sufficient</div>
+    </div>
+  </div>
+
+  <div class="visual visual-red">
+    <h3>Key Principle: Preserve Existing Patterns</h3>
+    <ul>
+      <li>Project convention: JSONL for data storage &mdash; confirmed by 3 experts as the right choice</li>
+      <li>MkDocs over Sphinx for documentation &mdash; lighter, auto-generates API docs from code</li>
+      <li>No new dependencies unless absolutely necessary</li>
+      <li>Research code gets research-grade testing (70% coverage, not 90%)</li>
+    </ul>
+  </div>
+
+  <div class="speaker-notes">
+    <details>
+      <summary>Speaker Notes</summary>
+      <p>&lsquo;A good plan is as much about what you say no to as what you say yes to. Twelve major items were explicitly considered and rejected.&rsquo;</p>
+      <p>&lsquo;The common thread: most proposals assumed production infrastructure we don&rsquo;t have. Sentry, Prometheus, OpenTelemetry, runbooks, alerting &mdash; these are enterprise production tools. We&rsquo;re a research prototype. We keep it simple.&rsquo;</p>
+      <p>&lsquo;Others were rejected because they add complexity without proportional value. Optuna for hyperparameter tuning when a lightweight existing sweep tool works. pytest when unittest is our CI standard. GPU quantization when we don&rsquo;t have GPUs.&rsquo;</p>
+      <p>&lsquo;One important decision: we&rsquo;re keeping our existing JSONL data format instead of adopting a new database. The data engineers confirmed JSONL is the right choice for this project&rsquo;s scale and use case.&rsquo;</p>
+    </details>
+  </div>
+  <span class="slide-number">6 / 10</span>
+</section>
+
+
+<!-- ===================== SLIDE 7: TIMELINE & MILESTONES ===================== -->
+<section id="slide-7" class="slide slide-timeline">
+  <span class="slide-label">4-5 Week Execution</span>
+  <h2>Timeline &amp; Milestones</h2>
+  <p class="subtitle">Three parallel workstreams with clear gates.</p>
+
+  <div class="visual visual-blue">
+    <h3>Workstream A &mdash; Critical Path (Week 1)</h3>
+    <div class="gantt-track" style="margin-left:0">
+      <div class="gantt-label" style="text-align:left; padding-right:0.5rem; width:auto">P1 Security</div>
+      <div class="gantt-fill orange" style="width:80%">3-5 days</div>
+    </div>
+    <div class="gantt-track" style="margin-left:0">
+      <div class="gantt-label" style="text-align:left; padding-right:0.5rem; width:auto">P6 Golden Suite</div>
+      <div class="gantt-fill teal" style="width:40%">2 days</div>
+    </div>
+    <p style="font-size:0.8rem; color:#6b7b8d; margin-top:0.5rem">&#9658; These run in parallel from Day 1</p>
+  </div>
+
+  <div class="visual visual-blue">
+    <h3>Workstream B &mdash; Independent (Week 1-3)</h3>
+    <div class="gantt-track" style="margin-left:0">
+      <div class="gantt-label" style="text-align:left; padding-right:0.5rem; width:auto">P7 Documentation</div>
+      <div class="gantt-fill muted" style="width:50%">3-5 days</div>
+    </div>
+    <div class="gantt-track" style="margin-left:0">
+      <div class="gantt-label" style="text-align:left; padding-right:0.5rem; width:auto">P4 Code Quality</div>
+      <div class="gantt-fill muted" style="width:50%">3-5 days</div>
+    </div>
+    <div class="gantt-track" style="margin-left:0">
+      <div class="gantt-label" style="text-align:left; padding-right:0.5rem; width:auto">P2 Testing</div>
+      <div class="gantt-fill muted" style="width:65%">5-7 days</div>
+    </div>
+  </div>
+
+  <div class="visual visual-blue">
+    <h3>Workstream C &mdash; Sequential (Week 2-4)</h3>
+    <div class="gantt-track" style="margin-left:0">
+      <div class="gantt-label" style="text-align:left; padding-right:0.5rem; width:auto">P4a Typing Pass</div>
+      <div class="gantt-fill gold" style="width:20%">2 days</div>
+    </div>
+    <div class="gantt-track" style="margin-left:0">
+      <div class="gantt-label" style="text-align:left; padding-right:0.5rem; width:auto">P3 Architecture</div>
+      <div class="gantt-fill gold" style="width:90%">10-14 days</div>
+    </div>
+    <p style="font-size:0.8rem; color:#6b7b8d; margin-top:0.5rem">&#9658; Typing pass MUST complete before architecture restructure</p>
+  </div>
+
+  <div class="visual visual-gold">
+    <h3>Milestone Gates</h3>
+    <ul>
+      <li><strong>Week 1 Gate:</strong> Security patched, golden baseline captured, CONTRIBUTING.md complete</li>
+      <li><strong>Week 2 Gate:</strong> 1,082+ tests passing, ruff + mypy clean, integration tests working</li>
+      <li><strong>Week 3 Gate:</strong> Architecture migrated, all imports preserved, no breaking changes</li>
+      <li><strong>Week 4 Gate:</strong> Profiling complete, embedding cache working, MkDocs site live</li>
+      <li><strong>Week 5 Gate:</strong> Dev container ready, pre-commit hooks working, final cleanup</li>
+    </ul>
+  </div>
+
+  <div class="speaker-notes">
+    <details>
+      <summary>Speaker Notes</summary>
+      <p>&lsquo;The timeline is 4-5 weeks with three parallel workstreams.&rsquo;</p>
+      <p>&lsquo;Week 1 is the most intense: security fixes and the golden regression suite run in parallel. These are P0-critical. If I had to pick ONE thing from this entire plan, it&rsquo;s the golden suite &mdash; it protects against regressions across every other phase.</p>
+      <p>&lsquo;Weeks 2-3: testing deepening runs alongside documentation and code quality improvements. The architecture reorganization depends on a quick &lsquo;typing pass&rsquo; first &mdash; we add type annotations that enable Python 3.9 compatibility, then reorganize.</p>
+      <p>&lsquo;The critical path is: security &rarr; testing &rarr; typing &rarr; architecture. That&rsquo;s 3-4 weeks. Everything else runs in parallel and doesn&rsquo;t block the critical path.</p>
+      <p>&lsquo;Each week has a clear gate. If a gate isn&rsquo;t met, we stop and reassess. No phase proceeds if the test count drops below 1,000.&rsquo;</p>
+    </details>
+  </div>
+  <span class="slide-number">7 / 10</span>
+</section>
+
+
+<!-- ===================== SLIDE 8: RISK ASSESSMENT ===================== -->
+<section id="slide-8" class="slide slide-risk">
+  <span class="slide-label">Risk Assessment</span>
+  <h2>Top 5 Risks &amp; Mitigations</h2>
+  <p class="subtitle">Honest assessment. Every risk has a mitigation plan.</p>
+
+  <div class="risk-item">
+    <span class="risk-severity risk-high"></span>
+    <div>
+      <strong>Architecture restructure breaks existing imports</strong>
+      <p style="font-size:0.85rem; color:#8899aa; margin-top:0.2rem">Impact: High &bull; Likelihood: Medium</p>
+      <p style="font-size:0.85rem; color:#6b7b8d; margin-top:0.3rem"><strong>Mitigation:</strong> Re-export pattern preserves all existing imports. Every import like <code>from antigravity_engine import X</code> continues to work. Verified with import smoke tests before each merge.</p>
+    </div>
+  </div>
+
+  <div class="risk-item">
+    <span class="risk-severity risk-high"></span>
+    <div>
+      <strong>Architecture migration takes longer than estimated</strong>
+      <p style="font-size:0.85rem; color:#8899aa; margin-top:0.2rem">Impact: High &bull; Likelihood: Medium</p>
+      <p style="font-size:0.85rem; color:#6b7b8d; margin-top:0.3rem"><strong>Mitigation:</strong> Phased approach: typing pass (2 days) &rarr; dead code removal (2 days) &rarr; package structure (2 days) &rarr; decomposition (4 days). Each phase is independently verifiable.</p>
+    </div>
+  </div>
+
+  <div class="risk-item">
+    <span class="risk-severity risk-medium"></span>
+    <div>
+      <strong>Golden baseline drifts due to non-deterministic AI behavior</strong>
+      <p style="font-size:0.85rem; color:#8899aa; margin-top:0.2rem">Impact: Medium &bull; Likelihood: High</p>
+      <p style="font-size:0.85rem; color:#6b7b8d; margin-top:0.3rem"><strong>Mitigation:</strong> Fixed random seeds in all experiments. Configurable drift threshold (2%) instead of hardcoded. Weekly baseline verification.</p>
+    </div>
+  </div>
+
+  <div class="risk-item">
+    <span class="risk-severity risk-medium"></span>
+    <div>
+      <strong>Dead code removal deletes useful but unused code</strong>
+      <p style="font-size:0.85rem; color:#8899aa; margin-top:0.2rem">Impact: Medium &bull; Likelihood: Low</p>
+      <p style="font-size:0.85rem; color:#6b7b8d; margin-top:0.3rem"><strong>Mitigation:</strong> Conservative approach: only remove code confirmed unused by static analysis (ruff F401) plus manual review by module owners.</p>
+    </div>
+  </div>
+
+  <div class="risk-item">
+    <span class="risk-severity risk-low"></span>
+    <div>
+      <strong>Pre-commit hooks annoy contributors</strong>
+      <p style="font-size:0.85rem; color:#8899aa; margin-top:0.2rem">Impact: Low &bull; Likelihood: Medium</p>
+      <p style="font-size:0.85rem; color:#6b7b8d; margin-top:0.3rem"><strong>Mitigation:</strong> Start in advisory-only mode (warnings, not blocks). Enforce in CI later. Developers can bypass with <code>--no-verify</code> if needed.</p>
+    </div>
+  </div>
+
+  <div class="speaker-notes">
+    <details>
+      <summary>Speaker Notes</summary>
+      <p>&lsquo;Let me be transparent about the risks.&rsquo;</p>
+      <p>&lsquo;The biggest risk is the architecture restructure. We&rsquo;re moving 140 files from a flat layout into a package structure. But we&rsquo;re not breaking anything: every existing import statement keeps working through a re-export pattern. It&rsquo;s the same as rearranging books in a library without changing the ISBN catalog.&rsquo;</p>
+      <p>&lsquo;The second biggest risk is the timeline. The architecture work is 10-14 days, which is the longest single phase. But we&rsquo;ve broken it into 4 sub-phases so we can measure progress at each step.&rsquo;</p>
+      <p>&lsquo;The golden baseline drift risk is interesting: AI systems are inherently non-deterministic. Our mitigation is fixed random seeds in all experiments and a configurable 2% drift threshold. If the AI changes by less than 2%, we consider it normal variation.</p>
+      <p>&lsquo;Low-risk items like pre-commit hooks: we start in advisory mode. Developers get warnings but aren&rsquo;t blocked. This avoids the &lsquo;this tool is annoying&rsquo; problem that kills adoption of good practices.&rsquo;</p>
+    </details>
+  </div>
+  <span class="slide-number">8 / 10</span>
+</section>
+
+
+<!-- ===================== SLIDE 9: RESOURCE REQUIREMENTS ===================== -->
+<section id="slide-9" class="slide slide-resources">
+  <span class="slide-label">What We Need</span>
+  <h2>Resource Requirements</h2>
+  <p class="subtitle">What we need from Product Management to make this happen.</p>
+
+  <div class="visual visual-teal">
+    <h3>Team Allocation</h3>
+    <div class="metrics-row" style="margin:0">
+      <div class="metric-card teal" style="flex:1">
+        <span class="metric-value teal">2-3</span>
+        <span class="metric-label">Developers on Critical Path</span>
+        <p style="font-size:0.75rem; color:#6b7b8d; margin-top:0.3rem">Security + Golden Suite + Architecture</p>
+      </div>
+      <div class="metric-card teal" style="flex:1">
+        <span class="metric-value teal">1-2</span>
+        <span class="metric-label">Developers on Parallel Work</span>
+        <p style="font-size:0.75rem; color:#6b7b8d; margin-top:0.3rem">Documentation, Testing, Performance</p>
+      </div>
+      <div class="metric-card gold" style="flex:1">
+        <span class="metric-value gold">1</span>
+        <span class="metric-label">Tech Lead Oversight</span>
+        <p style="font-size:0.75rem; color:#6b7b8d; margin-top:0.3rem">Architecture review + gate decisions</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="visual visual-gold">
+    <h3>Decisions Needed from PM Today</h3>
+    <ul>
+      <li><strong>Approve the sprint</strong> &mdash; 10-phase plan, 4-5 weeks, zero breaking changes</li>
+      <li><strong>Allocate 3-5 developers</strong> across critical path and parallel workstreams</li>
+      <li><strong>Accept the risk register</strong> &mdash; all 9 risks documented with mitigations above</li>
+      <li><strong>Define scope boundaries</strong> &mdash; confirm that P2 items (training systems, storage docs, devex) can slip to Week 5 if needed</li>
+      <li><strong>Set up weekly check-ins</strong> &mdash; 15 minutes at week's end to review milestone gates</li>
+    </ul>
+  </div>
+
+  <div class="speaker-notes">
+    <details>
+      <summary>Speaker Notes</summary>
+      <p>&lsquo;Here&rsquo;s what I need from you today.&rsquo;</p>
+      <p>&lsquo;First: approve the sprint. This isn&rsquo;t a request for more time or more money. This is a focused improvement plan using the team we already have. We need 2-3 developers on the critical path and 1-2 on parallel work.&rsquo;</p>
+      <p>&lsquo;Second: accept the risk register. I&rsquo;ve been honest about what could go wrong and how we&rsquo;ll handle it. The highest-impact risks have concrete mitigations. The team is experienced enough to handle the rest.&rsquo;</p>
+      <p>&lsquo;Third: help us define scope boundaries. If we&rsquo;re running behind, the P2 items (training systems, computational storage docs, developer experience) are the ones we can push to Week 5 without affecting the core value of the plan.&rsquo;</p>
+      <p>&lsquo;And I&rsquo;d like 15-minute weekly check-ins at the end of each week to review milestone gates. No surprise meetings. Just a quick &lsquo;are we on track?&rsquo; at each gate.&rsquo;</p>
+    </details>
+  </div>
+  <span class="slide-number">9 / 10</span>
+</section>
+
+
+<!-- ===================== SLIDE 10: DECISION REQUEST ===================== -->
+<section id="slide-10" class="slide slide-decision">
+  <span class="slide-label">The Ask</span>
+  <h2>Decision Requested</h2>
+  <p class="subtitle">Three yeses. One signature. Let&rsquo;s begin.</p>
+
+  <div class="decision-box">
+    <h3>Approve the Following</h3>
+    <div class="decision-option">
+      <span class="yes">YES</span> &mdash; Commence the 10-phase improvement sprint (4-5 weeks, zero breaking changes)
+    </div>
+    <div class="decision-option">
+      <span class="yes">YES</span> &mdash; Allocate 3-5 developers across critical path and parallel workstreams
+    </div>
+    <div class="decision-option">
+      <span class="yes">YES</span> &mdash; Accept the documented risk register with all 9 mitigations in place
+    </div>
+  </div>
+
+  <div class="visual visual-teal">
+    <h3>What Success Looks Like in 5 Weeks</h3>
+    <div class="flow-ascii" style="margin:0; font-size:0.78rem">
+&#9646; Security: critical bypass patched, attack surface documented
+&#9646; Testing: 1,180-1,250 tests, 70% coverage, golden baseline locked
+&#9646; Architecture: 1,248-line file restructured to &lt;400 lines, packaged
+&#9646; Quality: 4 exception classes, mypy CI gate, expanded ruff rules
+&#9646; Performance: embedding cache (50%+ latency reduction), ONNX export
+&#9646; Docs: MkDocs site with auto-generated API, model cards, PR template
+&#9646; DevEx: devcontainer, pre-commit hooks, setup scripts for Windows/Linux
+&#9646; Golden Suite: CI fails if AI behavior drifts &gt;2% from baseline
+     </div>
+  </div>
+
+  <div class="visual visual-orange">
+    <h3>The One-Sentence Summary</h3>
+    <p style="font-size:1.1rem; font-weight:600; color:#f4a261">
+      &ldquo;We have a working AI system that needs structural reinforcement before we scale. This plan reinforces it without breaking anything, in 4-5 weeks, with the team we have.&rdquo;
+    </p>
+  </div>
+
+  <div class="speaker-notes">
+    <details>
+      <summary>Speaker Notes (Closing)</summary>
+      <p>&lsquo;I&rsquo;ll leave you with the one-sentence summary.&rsquo;</p>
+      <p>&lsquo;We have a working AI system that needs structural reinforcement before we scale. This plan reinforces it without breaking anything, in 4-5 weeks, with the team we have.&rsquo;</p>
+      <p>&lsquo;The highest-value deliverable is the golden regression suite. It&rsquo;s a baseline test that captures exactly how the AI currently thinks. Every future change gets checked against it. If the AI starts thinking differently, we know immediately.&rsquo;</p>
+      <p>&lsquo;That&rsquo;s the safety net. Everything else &mdash; security, architecture, documentation, performance &mdash; makes the team faster and the system more reliable.&rsquo;</p>
+      <p>&lsquo;I need three yeses: approve the sprint, allocate the team, and accept the risks. Then we begin on Monday.&rsquo;</p>
+      <p>&lsquo;Thank you. I&rsquo;m happy to take questions.&rsquo;</p>
+    </details>
+  </div>
+  <span class="slide-number">10 / 10</span>
+</section>
+
+
+</body>
+</html>

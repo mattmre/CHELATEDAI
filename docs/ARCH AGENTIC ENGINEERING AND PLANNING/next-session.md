@@ -18,28 +18,23 @@ These rules apply to every session, every task, every PR — no exceptions:
 - Check open PRs for comments and failing checks before starting new work.
 - Keep each implementation slice PR-sized, with focused tests and a phase-summary update.
 
-## Current State
-- Engine-Scope and Model-Scope implementation cycles are complete as implementation scaffolds.
-- Adaptive overlay evidence now flows from Engine-Scope artifacts into readiness summaries, promotion decisions, Model-Scope campaign reports, integrated diagnostics, and dashboard API summaries.
-- No production default route has changed. Promotion remains evidence-gated and fail-closed.
-- Remaining work is validation, frontier research assimilation, operational evidence capture, dashboard/reporting expansion, and safe follow-up experiments.
+## Current State (Post 2026-05-15 Reconciliation)
+- Desktop machine (23 commits behind) has been reconciled with laptop work on branch `reconciliation/2026-05-desktop-sync`.
+- BHS v3.3 tooling is now present in `scripts/` (validate_pr_brutal_honesty.py, schema drift validator, smoke_pipeline.py, etc.), but **not yet wired** into the AEP orchestrator.
+- All major laptop 10-phase planning artifacts (`FINAL_PLAN.md` family + panel-analysis) have been landed into `docs/ARCH AGENTIC ENGINEERING AND PLANNING/planning/2026-05-reconciliation/`.
+- New computational storage POC code (packed/CPU/sparse/repo-graph/MoE/REAP) moved to feature branch `feat/post-merge-comp-storage-substrate`.
+- Engine-Scope and Model-Scope cycles remain complete as scaffolds. Promotion is still evidence-gated and fail-closed.
+- A dedicated reconciliation reimplementation backlog now exists (see planning/2026-05-reconciliation/reconciliation-2026-05-15-reimplementation-backlog.md).
 
-## Priority Order
-1. **Review and merge clean PRs first.**
-   - inspect comments/checks before starting new implementation
-   - keep draft PRs until local and CI validation are green
-2. **Run research/refinement loops before deeper implementation.**
-   - scan current papers and tool docs only when they can change the queue
-   - record accepted/rejected ideas in repo docs
-3. **Prioritize validation campaigns over default changes.**
-   - broader replay/holdout validation comes before any route or artifact promotion
-   - document no-promotion results explicitly
-4. **Finish operational blockers.**
-   - real computational-storage hardware evidence remains externally gated
-   - capture evidence only when trustworthy hardware is actually available
-5. **Keep adaptive overlays observation-first.**
-   - route, damp, protect, or fork only after repeat-seed and holdout evidence
-   - avoid full harness implementation unless a verifier-backed use case appears
+## Priority Order (Post-Reconciliation 2026-05-15)
+1. **Wire BHS v3.3 honesty gates into the AEP orchestrator** (highest integrity gap — BHS tooling exists in scripts/ but is not enforced).
+2. **Port and integrate the new computational storage substrate** (packed/CPU/sparse/repo-graph/MoE) from `feat/post-merge-comp-storage-substrate` with honesty + Model-Scope scoping.
+3. **Re-scope and integrate the 10-phase laptop planning docs** (now in planning/2026-05-reconciliation/) against post-merge reality.
+4. **Create scripts/ smoke + BHS validator integration** so honesty claims are actually testable.
+5. **Update golden suite + research validity tests** for BHS v3.3 + Model-Scope + new storage code.
+6. **Real computational-storage hardware evidence** (still externally blocked).
+7. **Default promotion governance review** (still gated until strong evidence).
+8. **Model-Scope runtime + hook bus** (was previous next slice).
 
 ## Resume Pointer
 - Active architecture doc: `docs/ARCH AGENTIC ENGINEERING AND PLANNING/architecture-2026-05-01-model-scope-roadmap.md`
@@ -56,5 +51,15 @@ These rules apply to every session, every task, every PR — no exceptions:
 - Persistent promotion should target overlays and memory artifacts before any discussion of base-weight mutation.
 - Default-promotion preflight is fail-closed; a nonzero exit can be the expected result when evidence says `no_default_change`.
 
+## Carried Debt (BHS v3.3 §6.3 — TTL = 1 cycle, BLOCKED if unresolved next cycle)
+
+These are honesty gaps disclosed at merge time of PR #244 (2026-05-16, BHS_OFFICIAL = 55, OPERATOR_OVERRIDE). The cycle after this one **forbids new feature work until these are cleared** per §6.3 quantitative cycle definition.
+
+- **CD-244-01 (P0, L1 + L4)** — Replace the `scripts/bhs_validator.py` stub with a real implementation. Current `validate_pr_brutal_honesty()` returns hardcoded `score=0.0` and `run_smoke_pipeline()` always returns `True`. AEP orchestrator hooks call these functions, so the headline "BHS scoring in synthesis/tiered_remediation/closure" claim is currently load-bearing on a placeholder. Either wire `scripts/validate_pr_brutal_honesty.py` logic into the importable module, or strip the hooks. Violates Session Rule #1.
+- **CD-244-02 (P0, L4)** — `aep_orchestrator.py` `synthesis()`/`tiered_remediation()`/`closure()` hooks consume `bhs_metadata` but the resulting `summary["avg_bhs_score"]` is currently always 0.0. Once CD-244-01 lands, verify the score actually varies with finding content and is surfaced in the closure summary that operators read.
+- **CD-244-03 (P1, L4 + L8)** — New computational-storage modules (`computational_storage_poc/moe_reap.py`, `sparse_cpu_inference.py`, `packed_graph.py`, `packed_cpu_inference.py`, `repo_graph_memory.py`, `integrated_repo_runtime.py`, `phase7_system_evaluation.py`, `disk_llm_estimator.py`, `cpu_backends.py`, and their benchmarks) are unit-tested but not consumed by any production path. They must either be wired into an actual code path (engine, AEP, dashboard) with runtime evidence, or be moved behind an explicitly-experimental flag/README label and removed from any "ships" claims.
+- **CD-244-04 (P2, L11 risk)** — `aep_orchestrator.py` line 33 catches `Exception` (not `ImportError`) around the BHS import, silently absorbing any failure mode. After CD-244-01 fixes the underlying stub, narrow the except clause so a real failure is not hidden.
+- **CD-244-05 (P2, hygiene)** — `model.cspg` (binary artifact, tracked via PR #244) should be either ignored, LFS-tracked, or removed depending on its role. Decide and document.
+
 ## Cycle ID
-- Autonomous continuation after AEP-2026-04-30 and AEP-2026-05-01
+- Autonomous continuation after AEP-2026-04-30 and AEP-2026-05-01; PR #244 admin-merged 2026-05-16 with OPERATOR_OVERRIDE (BHS_OFFICIAL=55).

@@ -8,6 +8,7 @@ import torch.nn as nn
 import torch.optim as optim
 
 from block_graph import build_graph_payload
+from packed_graph import INT8_STORAGE_DTYPE, build_packed_graph_artifact
 from validation_config import DEFAULT_RANDOM_SEED, DEFAULT_TRAIN_EPOCHS
 
 try:
@@ -94,11 +95,19 @@ def evaluate_torch_model(model: nn.Module, X_test, y_test) -> float:
     return float(acc)
 
 
-def compile_model(model: TinyDigitClassifier, output_path: str):
+def compile_model(model: TinyDigitClassifier, output_path: str, artifact_format: str = "legacy"):
     print("Extracting weights for Computational Storage serialization...")
     w1 = model.fc1.weight.detach().cpu().numpy().T
     w2 = model.fc2.weight.detach().cpu().numpy().T
-    payload = build_graph_payload([w1, w2])
+    matrices = [w1, w2]
+    if artifact_format == "packed":
+        payload = build_packed_graph_artifact(matrices)
+    elif artifact_format == "packed_int8":
+        payload = build_packed_graph_artifact(matrices, storage_dtype=INT8_STORAGE_DTYPE)
+    elif artifact_format == "legacy":
+        payload = build_graph_payload(matrices)
+    else:
+        raise ValueError(f"Unsupported artifact format: {artifact_format}")
 
     with open(output_path, "wb") as f:
         f.write(payload)
@@ -107,6 +116,7 @@ def compile_model(model: TinyDigitClassifier, output_path: str):
         "output_path": output_path,
         "payload_size": len(payload),
         "layer_shapes": [w1.shape, w2.shape],
+        "artifact_format": artifact_format,
     }
 
 
@@ -114,6 +124,7 @@ def train_and_compile(
     output_path: str | None = None,
     epochs: int = DEFAULT_TRAIN_EPOCHS,
     seed: int = DEFAULT_RANDOM_SEED,
+    artifact_format: str = "legacy",
 ):
     print("Loading Digits dataset (8x8 images = 64 inputs)...")
     X_train, X_test, y_train, y_test = load_digits_split()
@@ -125,14 +136,20 @@ def train_and_compile(
 
     if output_path is None:
         out_dir = os.path.dirname(os.path.abspath(__file__))
-        output_path = os.path.join(out_dir, "real_model.bin")
+        extension = "cspg" if artifact_format in {"packed", "packed_int8"} else "bin"
+        output_path = os.path.join(out_dir, f"real_model.{extension}")
 
-    compile_metrics = compile_model(model, output_path)
+    compile_metrics = compile_model(model, output_path, artifact_format=artifact_format)
     print(f"\nCompiled REAL binary graph to {compile_metrics['output_path']}")
     print(f"Total size: {compile_metrics['payload_size']} bytes")
+    print(f"Artifact format: {compile_metrics['artifact_format']}")
     print("Graph Structure:")
-    print(f"  Block 0 (Offset 0x0) -> W1 {compile_metrics['layer_shapes'][0]} -> Points to Block 1")
-    print(f"  Block 1 (Offset 0x80008) -> W2 {compile_metrics['layer_shapes'][1]} -> Points to 0x0 (End)")
+    if artifact_format == "legacy":
+        print(f"  Block 0 (Offset 0x0) -> W1 {compile_metrics['layer_shapes'][0]} -> Points to Block 1")
+        print(f"  Block 1 (Offset 0x80008) -> W2 {compile_metrics['layer_shapes'][1]} -> Points to 0x0 (End)")
+    else:
+        print(f"  Block 0 -> W1 {compile_metrics['layer_shapes'][0]} -> Points to Block 1")
+        print(f"  Block 1 -> W2 {compile_metrics['layer_shapes'][1]} -> End of graph")
 
     compile_metrics.update(
         {

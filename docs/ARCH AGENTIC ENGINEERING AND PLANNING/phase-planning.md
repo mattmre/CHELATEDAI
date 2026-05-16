@@ -23,6 +23,22 @@ Purpose: Single long-running planning record for the current ARCH-AEP cycle.
 - Phase 5: add bounded overlay training, replay, and promotion gates
 - Phase 6: integrate Model-Scope into ChelatedAI engine and evaluation surfaces
 
+## Current Phase Contract
+- Phase name:
+- Phase owner:
+- In scope:
+- Out of scope:
+- Entry gates:
+- Exit gates:
+- Promotion target:
+
+## Phase Loop Checklist
+- Architecture scope lock complete:
+- Implementation PRs scoped:
+- ARCH-AEP review complete:
+- Code analysis / hardening complete:
+- Promote or defer decision logged:
+
 ## Backlog Summary
 - Critical: 0
 - High: 3
