@@ -63,6 +63,10 @@ large_sweep.log
 # Generated computational-storage artifacts
 computational_storage_poc/model.bin
 computational_storage_poc/real_model.bin
+# CSPG packed-graph artifacts are regenerable from compiler.py /
+# train_and_compile.py; do not track them. See computational_storage_poc/README.md
+# "Regenerating the computational-storage artifact" section.
+*.cspg
 
 # === Added during 2026-05-15 desktop reconciliation ===
 # Local Claude Code / agent worktree state (never commit)

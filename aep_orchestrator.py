@@ -26,11 +26,13 @@ import uuid
 
 from chelation_logger import ChelationLogger, get_logger
 
-# BHS v3.3 integration (added during 2026-05-15 reconciliation)
+# BHS v3.3 integration (added during 2026-05-15 reconciliation; narrowed
+# Exception -> ImportError per CD-244-04 — broad except would swallow real
+# runtime errors in scripts.bhs_validator and present them as a missing module).
 try:
     from scripts.bhs_validator import validate_pr_brutal_honesty, run_smoke_pipeline, BHSResult
     BHS_AVAILABLE = True
-except Exception:
+except ImportError:
     BHS_AVAILABLE = False
     BHSResult = None  # type: ignore
 

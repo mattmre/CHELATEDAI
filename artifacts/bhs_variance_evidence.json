@@ -1,0 +1,10 @@
+{
+  "task": "CD-244-02",
+  "purpose": "verify summary['avg_bhs_score'] varies with finding content",
+  "rich_avg_bhs_score": 100.0,
+  "rich_bhs_samples": 2,
+  "sparse_avg_bhs_score": 50.0,
+  "sparse_bhs_samples": 2,
+  "differ": true,
+  "rich_higher": true
+}
