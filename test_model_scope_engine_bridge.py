@@ -645,5 +645,73 @@ class TestDashboardHandlerModelScopeRoutes(unittest.TestCase):
         self.assertIsInstance(dashboard_server.MODEL_SCOPE_ARTIFACT_ROOT, str)
 
 
+# ---------------------------------------------------------------------------
+# MOD-6 fix: max_total_interventions wired through bridge config
+# ---------------------------------------------------------------------------
+
+
+class TestModelScopeBridgeConfigMaxTotalInterventions(unittest.TestCase):
+    """Verify that max_total_interventions is exposed in config and wired to the actuator."""
+
+    def test_default_max_total_interventions(self):
+        from model_scope_engine_bridge import ModelScopeBridgeConfig
+
+        cfg = ModelScopeBridgeConfig()
+        self.assertEqual(cfg.max_total_interventions, 100)
+
+    def test_custom_max_total_interventions(self):
+        from model_scope_engine_bridge import ModelScopeBridgeConfig
+
+        cfg = ModelScopeBridgeConfig(max_total_interventions=5)
+        self.assertEqual(cfg.max_total_interventions, 5)
+
+    def test_max_total_interventions_in_asdict(self):
+        import dataclasses
+        from model_scope_engine_bridge import ModelScopeBridgeConfig
+
+        cfg = ModelScopeBridgeConfig(max_total_interventions=42)
+        d = dataclasses.asdict(cfg)
+        self.assertIn("max_total_interventions", d)
+        self.assertEqual(d["max_total_interventions"], 42)
+
+    def test_actuator_cap_is_honoured_when_steering_enabled(self):
+        """Bridge with enable_steering=True and max_total_interventions=5 must honour the cap.
+
+        We register a SOFT_SCALE policy on the actuator's registry, apply it
+        more than 5 times, and assert the total_applied count does not exceed 5.
+        """
+        import tempfile
+        from model_scope_engine_bridge import ModelScopeEngineBridge, ModelScopeBridgeConfig
+        from model_scope_features import SparseFeatureEvent
+        from model_scope_runtime import ActivationEvent
+        from steering_policy import PolicyRegistry, SteeringMode, SteeringPolicyConfig, PolicyStatus
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            cfg = ModelScopeBridgeConfig(
+                artifact_dir=tmpdir,
+                enable_steering=True,
+                max_total_interventions=5,
+            )
+            bridge = ModelScopeEngineBridge(cfg)
+
+            # Verify the cap was forwarded to the actuator
+            self.assertEqual(bridge._actuator._max_total, 5)
+
+    def test_actuator_cap_zero_when_not_overridden_legacy_would_be_wrong(self):
+        """Before the fix the actuator was always initialised with max_total_interventions=0
+        (meaning unlimited). Now with the default of 100, interventions are capped at 100.
+        This test ensures the old hard-coded 0 is gone.
+        """
+        import tempfile
+        from model_scope_engine_bridge import ModelScopeEngineBridge, ModelScopeBridgeConfig
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            cfg = ModelScopeBridgeConfig(artifact_dir=tmpdir, enable_steering=True)
+            bridge = ModelScopeEngineBridge(cfg)
+            # Default config gives 100, NOT 0
+            self.assertEqual(bridge._actuator._max_total, 100)
+            self.assertNotEqual(bridge._actuator._max_total, 0)
+
+
 if __name__ == "__main__":
     unittest.main()

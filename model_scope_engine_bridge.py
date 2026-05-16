@@ -28,6 +28,7 @@ class ModelScopeBridgeConfig:
     enable_steering: bool = False
     max_events_in_memory: int = 100
     observation_tag: str = "engine_bridge"
+    max_total_interventions: int = 100
 
 
 @dataclass
@@ -58,7 +59,7 @@ class ModelScopeEngineBridge:
         )
         self._extractor = FeatureExtractor(adapter=None)
         registry = PolicyRegistry()
-        self._actuator = SteeringActuator(registry, max_total_interventions=0)
+        self._actuator = SteeringActuator(registry, max_total_interventions=self._config.max_total_interventions)
         self._observation_count = 0
         self._error_count = 0
 

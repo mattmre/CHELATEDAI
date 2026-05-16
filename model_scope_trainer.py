@@ -89,6 +89,8 @@ class ModelScopeShadowPolicyTrainer:
 
     def __init__(self, config: ModelScopeTrainerConfig | None = None):
         self.config = config or ModelScopeTrainerConfig()
+        # Track the last successfully promoted overlay path for rollback support.
+        self._promoted_overlay_path: Optional[str] = None
 
     def _empty_candidate(self, candidate_id: str, *, reasons: Iterable[str], example_counts: Mapping[str, int]) -> Dict[str, Any]:
         return {
@@ -371,22 +373,50 @@ class ModelScopeShadowPolicyTrainer:
                 "checkpoint_id": None,
                 "reasons": list(gate.get("reasons", ["promotion_gate_failed"])),
             }
+        import shutil
+
         output_path = Path(target_path)
         output_path.parent.mkdir(parents=True, exist_ok=True)
         checkpoint_id = None
-        if checkpoint_manager is not None and output_path.exists():
-            checkpoint_id = checkpoint_manager.create_checkpoint(
-                name="before_model_scope_shadow_policy",
-                adapter_path=output_path,
-                description="Automatic backup before Model-Scope shadow-policy promotion",
-            )
+        # Save a .backup copy of the current overlay file *before* overwriting it
+        # so that rollback() can restore the prior promoted state.
+        if output_path.exists():
+            backup_path = Path(str(output_path) + ".backup")
+            shutil.copy2(str(output_path), str(backup_path))
+            if checkpoint_manager is not None:
+                checkpoint_id = checkpoint_manager.create_checkpoint(
+                    name="before_model_scope_shadow_policy",
+                    adapter_path=output_path,
+                    description="Automatic backup before Model-Scope shadow-policy promotion",
+                )
         output_path.write_text(json.dumps(_json_safe(candidate.get("policy", {})), indent=2), encoding="utf-8")
+        self._promoted_overlay_path = str(output_path)
         return {
             "promoted": True,
             "path": str(output_path),
             "checkpoint_id": checkpoint_id,
             "reasons": [],
         }
+
+    def rollback(self, promoted_overlay_path: Optional[str] = None) -> None:
+        """Restore the prior promoted overlay file from its ``.backup`` copy.
+
+        If *promoted_overlay_path* is supplied, or a path was recorded by a
+        previous ``promote_candidate`` call, and a backup file ``<path>.backup``
+        exists alongside that path, the backup is copied back to restore the
+        state before the last promotion.
+
+        If no backup exists the call is a no-op (no file mutation happens).
+        In both cases ``_promoted_overlay_path`` is cleared.
+        """
+        import shutil
+
+        path = promoted_overlay_path or self._promoted_overlay_path
+        if path is not None:
+            backup_path = Path(str(path) + ".backup")
+            if backup_path.exists():
+                shutil.copy2(str(backup_path), str(path))
+        self._promoted_overlay_path = None
 
 
 # ---------------------------------------------------------------------------
@@ -469,6 +499,9 @@ class OverlayTrainer:
         self._weights: Dict[str, float] = {}
         self._epoch_counter: int = 0
         self._best_loss: Optional[float] = None
+        # Track the last successfully promoted overlay path so rollback() can
+        # restore the backup without requiring the caller to re-supply it.
+        self._promoted_overlay_path: Optional[str] = None
 
     def _get_weight(self, key: str) -> float:
         return self._weights.get(key, 1.0)
@@ -654,8 +687,22 @@ class OverlayTrainer:
 
         return decision
 
-    def rollback(self) -> None:
-        """Reset all feature weights to 1.0 and log a rollback event in working memory."""
+    def rollback(self, promoted_overlay_path: Optional[str] = None) -> None:
+        """Reset all feature weights to 1.0 and log a rollback event in working memory.
+
+        If *promoted_overlay_path* is supplied (or self._promoted_overlay_path is set)
+        and a backup file ``<path>.backup`` exists, the backup is restored to that path,
+        undoing the most recent ``promote_candidate`` call on disk.  If no backup exists
+        the rollback still clears in-memory weights (existing behaviour).
+        """
+        import shutil
+
+        path = promoted_overlay_path or self._promoted_overlay_path
+        if path is not None:
+            backup_path = Path(str(path) + ".backup")
+            if backup_path.exists():
+                shutil.copy2(str(backup_path), str(path))
+
         self._weights = {}
         self._best_loss = None
         self.memory.working.store(

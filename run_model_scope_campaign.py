@@ -699,11 +699,24 @@ def run_campaign(args: argparse.Namespace) -> Dict[str, Any]:
 
     rng = np.random.default_rng(args.seed)
     episodes = _generate_episodes(rng, args.episodes)
-    records = trainer.run_campaign(episodes)
 
-    all_inputs = [ev for inp, _ in episodes for ev in inp]
-    all_targets = [ev for _, tgt in episodes for ev in tgt]
-    decision = trainer.evaluate_promotion(all_inputs, all_targets)
+    # Split episodes into train / eval before training begins so that
+    # evaluate_promotion() is always called with held-out data.
+    # With fewer than 2 episodes use the single episode for both (graceful
+    # degradation disclosed in run result); with 2+ use an 80/20 split.
+    if len(episodes) >= 2:
+        split_idx = max(1, int(len(episodes) * 0.8))
+        train_episodes = episodes[:split_idx]
+        eval_episodes = episodes[split_idx:]
+    else:
+        train_episodes = episodes
+        eval_episodes = episodes  # disclosed below via eval_is_training_data
+
+    records = trainer.run_campaign(train_episodes)
+
+    eval_inputs = [ev for inp, _ in eval_episodes for ev in inp]
+    eval_targets = [ev for _, tgt in eval_episodes for ev in tgt]
+    decision = trainer.evaluate_promotion(eval_inputs, eval_targets)
 
     final_loss = records[-1].loss if records else float("nan")
     result: Dict[str, Any] = {

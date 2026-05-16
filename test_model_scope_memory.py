@@ -430,6 +430,221 @@ class TestModelScopeMemoryStore(unittest.TestCase):
         self.assertIn("missing_holdout_report", result["reasons"])
 
 
+# ---------------------------------------------------------------------------
+# MOD-4: Additional edge-case and coverage tests
+# ---------------------------------------------------------------------------
+
+
+class TestModelScopeMemoryStoreEdgeCases(unittest.TestCase):
+    """Cover branches and error paths not exercised by existing tests."""
+
+    def _default_store(self):
+        return ModelScopeMemoryStore(
+            segment_configs=[
+                MemorySegmentConfig(name="working", max_entries=4),
+                MemorySegmentConfig(name="episode", max_entries=8, allow_promotion=True),
+                MemorySegmentConfig(name="expectation", max_entries=4),
+                MemorySegmentConfig(name="persistent", max_entries=8),
+            ]
+        )
+
+    # ------------------------------------------------------------------
+    # _require_segment raises on unknown segment name
+    # ------------------------------------------------------------------
+
+    def test_get_segment_entries_raises_on_unknown_segment(self):
+        store = self._default_store()
+        with self.assertRaises(ValueError):
+            store.get_segment_entries("nonexistent")
+
+    def test_annotate_entry_raises_on_unknown_segment(self):
+        store = self._default_store()
+        with self.assertRaises(ValueError):
+            store.annotate_entry("ghost_segment", "any_id", update={"k": "v"})
+
+    # ------------------------------------------------------------------
+    # annotate_entry raises KeyError when entry_id is not found
+    # ------------------------------------------------------------------
+
+    def test_annotate_entry_raises_key_error_on_missing_entry_id(self):
+        store = self._default_store()
+        store.record_observation(_artifact("q1"), query_text="a")
+        with self.assertRaises(KeyError):
+            store.annotate_entry("episode", "no_such_entry_id", update={"extra": "data"})
+
+    # ------------------------------------------------------------------
+    # annotate_entry actually updates payload
+    # ------------------------------------------------------------------
+
+    def test_annotate_entry_updates_payload_field(self):
+        store = self._default_store()
+        result = store.record_observation(_artifact("q1"), query_text="a")
+        episode_id = result["episode_entry_id"]
+        updated = store.annotate_entry("episode", episode_id, update={"custom_label": "good"})
+        self.assertEqual(updated["payload"]["custom_label"], "good")
+
+    # ------------------------------------------------------------------
+    # promote_episode raises KeyError when episode_entry_id not found
+    # ------------------------------------------------------------------
+
+    def test_promote_episode_raises_key_error_on_missing_episode(self):
+        store = self._default_store()
+        with self.assertRaises(KeyError):
+            store.promote_episode("nonexistent_episode_id", reason="test")
+
+    # ------------------------------------------------------------------
+    # promote_episode with no promotion_status promotes successfully
+    # ------------------------------------------------------------------
+
+    def test_promote_episode_no_status_promotes(self):
+        store = self._default_store()
+        result = store.record_observation(_artifact("q2"), query_text="b")
+        promoted = store.promote_episode(result["episode_entry_id"], reason="manual")
+        self.assertTrue(promoted["promoted"])
+        self.assertIsNotNone(promoted["persistent_entry_id"])
+
+    # ------------------------------------------------------------------
+    # build_replay_bundle with entry_ids filter
+    # ------------------------------------------------------------------
+
+    def test_build_replay_bundle_entry_ids_filter(self):
+        store = self._default_store()
+        r1 = store.record_observation(_artifact("q1"), query_text="x")
+        r2 = store.record_observation(_artifact("q2"), query_text="y")
+        bundle = store.build_replay_bundle(
+            segment="episode",
+            entry_ids=[r1["episode_entry_id"]],
+        )
+        self.assertEqual(bundle["entry_count"], 1)
+        self.assertEqual(bundle["entry_ids"][0], r1["episode_entry_id"])
+
+    def test_build_replay_bundle_limit(self):
+        store = self._default_store()
+        for i in range(5):
+            store.record_observation(_artifact(f"q{i}"), query_text=str(i))
+        bundle = store.build_replay_bundle(segment="episode", limit=2)
+        self.assertLessEqual(bundle["entry_count"], 2)
+
+    def test_build_replay_bundle_exclude_artifacts(self):
+        store = self._default_store()
+        store.record_observation(_artifact("q1"), query_text="z")
+        bundle = store.build_replay_bundle(segment="episode", include_artifacts=False)
+        self.assertEqual(bundle["entry_count"], 1)
+        for entry in bundle["entries"]:
+            self.assertNotIn("artifact", entry)
+
+    def test_build_replay_bundle_raises_on_unknown_segment(self):
+        store = self._default_store()
+        with self.assertRaises(ValueError):
+            store.build_replay_bundle(segment="no_such_segment")
+
+    # ------------------------------------------------------------------
+    # MemorySegmentConfig validation
+    # ------------------------------------------------------------------
+
+    def test_segment_config_raises_on_zero_max_entries(self):
+        with self.assertRaises(ValueError):
+            MemorySegmentConfig(name="bad", max_entries=0)
+
+    def test_segment_config_raises_on_negative_max_entries(self):
+        with self.assertRaises(ValueError):
+            MemorySegmentConfig(name="bad", max_entries=-1)
+
+    # ------------------------------------------------------------------
+    # segment_sizes keys match configured segments
+    # ------------------------------------------------------------------
+
+    def test_segment_sizes_keys(self):
+        store = self._default_store()
+        sizes = store.segment_sizes()
+        for seg in ("working", "episode", "expectation", "persistent"):
+            self.assertIn(seg, sizes)
+
+    def test_segment_sizes_all_zero_initially(self):
+        store = self._default_store()
+        for v in store.segment_sizes().values():
+            self.assertEqual(v, 0)
+
+    # ------------------------------------------------------------------
+    # record_observation with promote=True writes to persistent
+    # ------------------------------------------------------------------
+
+    def test_record_observation_promote_true(self):
+        store = self._default_store()
+        result = store.record_observation(_artifact("q_promote"), query_text="promo", promote=True)
+        self.assertIsNotNone(result["persistent_entry_id"])
+        self.assertEqual(store.segment_sizes()["persistent"], 1)
+
+    # ------------------------------------------------------------------
+    # get_expectation_profile returns None for unknown profile
+    # ------------------------------------------------------------------
+
+    def test_get_expectation_profile_returns_none_for_unknown(self):
+        store = self._default_store()
+        self.assertIsNone(store.get_expectation_profile("unknown_profile_id"))
+
+    # ------------------------------------------------------------------
+    # working segment overflow — oldest entries evicted
+    # ------------------------------------------------------------------
+
+    def test_working_segment_overflow_evicts_oldest(self):
+        store = ModelScopeMemoryStore(
+            segment_configs=[
+                MemorySegmentConfig(name="working", max_entries=2),
+                MemorySegmentConfig(name="episode", max_entries=8, allow_promotion=True),
+                MemorySegmentConfig(name="expectation", max_entries=4),
+                MemorySegmentConfig(name="persistent", max_entries=8),
+            ]
+        )
+        for i in range(3):
+            store.record_observation(_artifact(f"qw{i}"), query_text=str(i))
+        self.assertEqual(store.segment_sizes()["working"], 2)
+
+    # ------------------------------------------------------------------
+    # ModelScopeMemoryStore.save / load round-trip on non-trivial store
+    # ------------------------------------------------------------------
+
+    def test_save_load_round_trip_segment_configs(self):
+        store = self._default_store()
+        store.record_observation(_artifact("q_rt"), query_text="round-trip")
+        import tempfile as _tempfile
+        with _tempfile.TemporaryDirectory() as tmpdir:
+            path = store.save(f"{tmpdir}/snap.json")
+            loaded = ModelScopeMemoryStore.load(path)
+        self.assertEqual(loaded.segment_sizes()["episode"], 1)
+
+    def test_load_raises_on_wrong_schema_version(self):
+        import json
+        import tempfile as _tempfile
+        bad = {"schema_version": 99, "segment_configs": [], "segments": {}}
+        with _tempfile.TemporaryDirectory() as tmpdir:
+            p = f"{tmpdir}/bad.json"
+            with open(p, "w", encoding="utf-8") as fh:
+                json.dump(bad, fh)
+            with self.assertRaises(ValueError):
+                ModelScopeMemoryStore.load(p)
+
+    # ------------------------------------------------------------------
+    # PersistentMemory: key path sanitisation for backslash and colon
+    # ------------------------------------------------------------------
+
+    def test_key_path_sanitises_backslash(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            pm = PersistentMemory(Path(tmpdir))
+            pm.save("a\\b", {"ok": True})
+            loaded = pm.load("a\\b")
+            self.assertIsNotNone(loaded)
+            self.assertTrue(loaded.value["ok"])
+
+    def test_key_path_sanitises_colon(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            pm = PersistentMemory(Path(tmpdir))
+            pm.save("key:with:colons", {"x": 1})
+            loaded = pm.load("key:with:colons")
+            self.assertIsNotNone(loaded)
+            self.assertEqual(loaded.value["x"], 1)
+
+
 if __name__ == "__main__":
     unittest.main()
 
