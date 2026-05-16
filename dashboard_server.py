@@ -24,6 +24,10 @@ from typing import Any, Dict, List, Optional, Union
 from urllib.parse import parse_qs, urlparse
 
 from plan_evidence_artifact_cleanup import plan_evidence_artifact_cleanup
+from computational_storage_poc.disk_llm_estimator import (
+    DEFAULT_HARDWARE_PROFILES,
+    estimate_disk_llm,
+)
 
 
 # Global configuration
@@ -1575,6 +1579,8 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             self.handle_api_tts_status()
         elif path == "/api/tts/last_result":
             self.handle_api_tts_last_result()
+        elif path == "/api/disk_llm_estimate":
+            self.handle_api_disk_llm_estimate(query_params)
         elif path == "/" or path == "/dashboard" or path == "/dashboard/":
             # Redirect to dashboard page
             self.serve_dashboard()
@@ -1906,6 +1912,67 @@ class DashboardHandler(SimpleHTTPRequestHandler):
                 self.send_json_response(dict(last))
         except Exception as e:
             self.send_error_response(500, f"Error reading TTS last result: {e}")
+
+    def handle_api_disk_llm_estimate(self, query_params: Dict[str, List[str]]):
+        """Handle /api/disk_llm_estimate — feasibility estimate for a disk-resident LLM.
+
+        Computed live by computational_storage_poc.disk_llm_estimator.estimate_disk_llm.
+        Query parameters (all optional, with safe defaults):
+          - hardware: one of DEFAULT_HARDWARE_PROFILES keys (default workstation_gen5)
+          - params_billion: model size in billions of params (default 70)
+          - bits: bits per weight after quantization (default 4)
+        """
+        try:
+            hardware_name = query_params.get("hardware", ["workstation_gen5"])[0]
+            if hardware_name not in DEFAULT_HARDWARE_PROFILES:
+                self.send_error_response(
+                    400,
+                    f"unknown hardware profile '{hardware_name}'; "
+                    f"available: {sorted(DEFAULT_HARDWARE_PROFILES)}",
+                )
+                return
+            try:
+                params_billion = float(query_params.get("params_billion", ["70"])[0])
+                bits = float(query_params.get("bits", ["4"])[0])
+            except (TypeError, ValueError):
+                self.send_error_response(400, "params_billion and bits must be numeric")
+                return
+
+            hardware = DEFAULT_HARDWARE_PROFILES[hardware_name]
+            estimate = estimate_disk_llm(
+                params_billion=params_billion,
+                bits_per_weight=bits,
+                ssd_bandwidth_gbps=hardware.ssd_bandwidth_gbps,
+                dram_gb=hardware.dram_gb,
+            )
+            self.send_json_response({
+                "hardware": {
+                    "name": hardware.name,
+                    "ssd_bandwidth_gbps": hardware.ssd_bandwidth_gbps,
+                    "dram_gb": hardware.dram_gb,
+                    "cpu_cores": hardware.cpu_cores,
+                },
+                "request": {
+                    "params_billion": params_billion,
+                    "bits_per_weight": bits,
+                },
+                "estimate": {
+                    "model_size_gb": estimate.model_size_gb,
+                    "resident_set_gb": estimate.resident_set_gb,
+                    "required_ram_gb": estimate.required_ram_gb,
+                    "streamed_bytes_per_token_dense_gb": estimate.streamed_bytes_per_token_dense_gb,
+                    "streamed_bytes_per_token_flash_gb": estimate.streamed_bytes_per_token_flash_gb,
+                    "dense_tokens_per_second_upper": estimate.dense_tokens_per_second_upper,
+                    "flash_tokens_per_second_upper": estimate.flash_tokens_per_second_upper,
+                    "fits_resident_ram": estimate.fits_resident_ram,
+                    "fits_paper_ratio": estimate.fits_paper_ratio,
+                },
+                "source": "computational_storage_poc.disk_llm_estimator.estimate_disk_llm",
+            })
+        except ValueError as exc:
+            self.send_error_response(400, f"invalid estimator input: {exc}")
+        except Exception as exc:
+            self.send_error_response(500, f"Error computing disk-LLM estimate: {exc}")
 
     def serve_dashboard(self):
         """Serve the dashboard HTML page."""

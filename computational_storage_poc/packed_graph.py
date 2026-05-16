@@ -11,6 +11,9 @@ import numpy as np
 
 from block_graph import PARAM_TYPE, apply_hidden_activation
 
+# Research-stage / POC module. No production code path in this repo consumes it.
+EXPERIMENTAL = True
+
 PACKED_GRAPH_MAGIC = b"CSPG01"
 HEADER_LENGTH_BYTES = 4
 FLOAT16_STORAGE_DTYPE = "float16"

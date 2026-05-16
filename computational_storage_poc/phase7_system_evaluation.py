@@ -10,6 +10,9 @@ from repo_graph_memory_compression_benchmark import benchmark_repo_graph_memory_
 from sparse_inference_benchmark import benchmark_sparse_inference
 from storage_substrate_benchmark import benchmark_storage_substrate
 
+# Research-stage / POC module. No production code path in this repo consumes it.
+EXPERIMENTAL = True
+
 
 @dataclass(frozen=True)
 class PromotionThresholds:

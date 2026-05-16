@@ -1064,5 +1064,85 @@ class TestDashboardSecurity(unittest.TestCase):
             dashboard_server.run_server(host="0.0.0.0", port=8080, log_file="chelation_events.jsonl")
 
 
+class TestDiskLLMEstimateIntegration(unittest.TestCase):
+    """Integration test for /api/disk_llm_estimate — verifies the substrate module
+    output (computational_storage_poc.disk_llm_estimator.estimate_disk_llm)
+    actually reaches the dashboard JSON consumer path.
+    """
+
+    def _make_handler(self):
+        handler = dashboard_server.DashboardHandler.__new__(dashboard_server.DashboardHandler)
+        handler.wfile = BytesIO()
+        handler.headers = {}
+        handler.send_response = MagicMock()
+        handler.send_header = MagicMock()
+        handler.end_headers = MagicMock()
+        return handler
+
+    def test_default_estimate_returns_expected_fields_from_substrate(self):
+        handler = self._make_handler()
+        handler.handle_api_disk_llm_estimate({})
+        output = handler.wfile.getvalue()
+        response = json.loads(output.decode("utf-8"))
+
+        # Substrate-sourced fields must be present in JSON response.
+        self.assertIn("estimate", response)
+        self.assertIn("hardware", response)
+        self.assertEqual(
+            response["source"],
+            "computational_storage_poc.disk_llm_estimator.estimate_disk_llm",
+        )
+        # Default profile is workstation_gen5 (14 GB/s, 128 GB DRAM).
+        self.assertEqual(response["hardware"]["name"], "workstation_gen5")
+        self.assertEqual(response["hardware"]["dram_gb"], 128.0)
+        # Default request is 70B params at 4 bits/weight = 35 GB.
+        self.assertAlmostEqual(response["estimate"]["model_size_gb"], 35.0, places=6)
+        # flash path must beat dense path on tokens/sec.
+        self.assertGreater(
+            response["estimate"]["flash_tokens_per_second_upper"],
+            response["estimate"]["dense_tokens_per_second_upper"],
+        )
+
+    def test_query_params_drive_substrate_call(self):
+        handler = self._make_handler()
+        handler.handle_api_disk_llm_estimate({
+            "hardware": ["consumer_gen4"],
+            "params_billion": ["7"],
+            "bits": ["4"],
+        })
+        output = handler.wfile.getvalue()
+        response = json.loads(output.decode("utf-8"))
+        self.assertEqual(response["hardware"]["name"], "consumer_gen4")
+        self.assertEqual(response["request"]["params_billion"], 7.0)
+        # 7B * 4 bits = 3.5 GB
+        self.assertAlmostEqual(response["estimate"]["model_size_gb"], 3.5, places=6)
+        # 7B at consumer_gen4 (32 GB DRAM) fits resident set.
+        self.assertTrue(response["estimate"]["fits_resident_ram"])
+
+    def test_unknown_hardware_returns_400(self):
+        handler = self._make_handler()
+        handler.send_error_response = MagicMock()
+        handler.handle_api_disk_llm_estimate({"hardware": ["not_a_real_profile"]})
+        handler.send_error_response.assert_called_once()
+        status, message = handler.send_error_response.call_args[0]
+        self.assertEqual(status, 400)
+        self.assertIn("unknown hardware profile", message)
+
+    def test_non_numeric_params_return_400(self):
+        handler = self._make_handler()
+        handler.send_error_response = MagicMock()
+        handler.handle_api_disk_llm_estimate({"params_billion": ["banana"]})
+        handler.send_error_response.assert_called_once()
+        status, _ = handler.send_error_response.call_args[0]
+        self.assertEqual(status, 400)
+
+    def test_do_get_routes_disk_llm_estimate(self):
+        handler = self._make_handler()
+        handler.handle_api_disk_llm_estimate = MagicMock()
+        handler.path = "/api/disk_llm_estimate"
+        handler.do_GET()
+        handler.handle_api_disk_llm_estimate.assert_called_once()
+
+
 if __name__ == "__main__":
     unittest.main()

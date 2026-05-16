@@ -5,6 +5,9 @@ from dataclasses import dataclass
 
 import numpy as np
 
+# Research-stage / POC module. No production code path in this repo consumes it.
+EXPERIMENTAL = True
+
 
 @dataclass(frozen=True)
 class BackendResult:

@@ -11,6 +11,9 @@ from pathlib import Path
 
 import numpy as np
 
+# Research-stage / POC module. No production code path in this repo consumes it.
+EXPERIMENTAL = True
+
 EMBEDDING_DIM = 256
 SUPPORTED_EXTENSIONS = {".py", ".md", ".txt", ".js", ".ts"}
 TOKEN_PATTERN = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")

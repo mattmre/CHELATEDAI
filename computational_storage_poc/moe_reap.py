@@ -13,6 +13,9 @@ from block_graph import apply_hidden_activation
 from cpu_backends import CPUInferenceBackend, NumpyInt8DynamicBackend
 from packed_graph import INT8_STORAGE_DTYPE, _quantize_matrix_to_int8
 
+# Research-stage / POC module. No production code path in this repo consumes it.
+EXPERIMENTAL = True
+
 MOE_ARTIFACT_MAGIC = b"CSMOE1"
 HEADER_LENGTH_BYTES = 4
 

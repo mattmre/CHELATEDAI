@@ -3,6 +3,37 @@
 This project implements a testbed for the **Computational Storage (SSD Array) AI Inference** architecture.
 The premise replaces matrix multiplication entirely with direct memory routing using memory tables, mapping it directly onto NAND flash memory.
 
+## Status
+
+The modules in this directory are **research-stage / POC code**. Their unit
+tests verify each module works in isolation, but with the single exception
+noted below they are NOT consumed by any production code path in this repo
+(engine, AEP orchestrator, dashboard). Do not cite them as "substrate" or
+"ships" in operator-facing surfaces (PR descriptions, release notes, status
+JSON, dashboard text) until they have at least one real production caller.
+
+Each unwired module is also annotated with a module-level `EXPERIMENTAL = True`
+constant so the boundary is machine-checkable.
+
+| Module | Production caller |
+|--------|------------------|
+| `disk_llm_estimator.py` | `dashboard_server.py` `/api/disk_llm_estimate` (CD-244-03, PR closing this row) |
+| `moe_reap.py` | none |
+| `sparse_cpu_inference.py` | none |
+| `packed_graph.py` | none |
+| `packed_cpu_inference.py` | none |
+| `repo_graph_memory.py` | none |
+| `integrated_repo_runtime.py` | none |
+| `phase7_system_evaluation.py` | none |
+| `cpu_backends.py` | none |
+
+The `block_graph.py` / `compiler.py` / payload-contract path (USB / FUSE
+emulator / RP2040 firmware track) is a separate concern — its claim
+boundary is documented in `## Current Scope Lock` below and in
+`docs/computational-storage-transport-scope-decision.md`. The "Status"
+section above applies specifically to the nine substrate modules listed
+in the table.
+
 Related repository docs:
 
 - [docs/COMPUTATIONAL_STORAGE_DRIVE_NODES.md](../docs/COMPUTATIONAL_STORAGE_DRIVE_NODES.md) - canonical repo-wide summary of the hard-drive / storage-node research track

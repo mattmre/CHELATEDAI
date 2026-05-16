@@ -10,6 +10,9 @@ from block_graph import apply_hidden_activation
 from cpu_backends import CPUInferenceBackend, NumpyInt8DynamicBackend
 from packed_graph import DiskBackedPackedGraph, INT8_STORAGE_DTYPE
 
+# Research-stage / POC module. No production code path in this repo consumes it.
+EXPERIMENTAL = True
+
 
 @dataclass(frozen=True)
 class SparseInferenceConfig:
