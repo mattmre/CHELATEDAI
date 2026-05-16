@@ -5,6 +5,8 @@ import unittest
 
 from engine_scope import (
     ENGINE_SCOPE_SCHEMA_VERSION,
+    _iter_artifact_paths,
+    _normalize_engine_scope_row,
     build_engine_scope_rows,
     engine_scope_rows_to_evidence_events,
     load_engine_scope_rows,
@@ -169,6 +171,100 @@ class TestEngineScope(unittest.TestCase):
         self.assertEqual(events[0]["surface"], "engine_scope")
         self.assertEqual(events[0]["decision"], "gate_block")
         self.assertEqual(events[0]["outcome_metrics"]["delta_ndcg_at_10"], -0.02)
+
+
+    # ENG-2: Internal Fail-Closed Gates — missing edge-case coverage
+
+    def test_iter_artifact_paths_raises_for_missing_path(self):
+        with self.assertRaises(FileNotFoundError):
+            _iter_artifact_paths(["completely_missing_artifact_path_xyz.json"])
+
+    def test_iter_artifact_paths_raises_for_empty_directory(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with self.assertRaises(ValueError):
+                _iter_artifact_paths([tmpdir])
+
+    def test_iter_artifact_paths_deduplicates_same_resolved_path(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            f = Path(tmpdir) / "artifact.json"
+            f.write_text(json.dumps({
+                "engine_scope_rows": [
+                    {"row_type": "query_profile", "source_family": "sf", "query_id": "q1"}
+                ]
+            }), encoding="utf-8")
+            # Pass same path twice — should deduplicate to one file
+            paths = _iter_artifact_paths([f, f])
+            self.assertEqual(len(paths), 1)
+
+    def test_load_engine_scope_rows_raises_for_artifact_with_no_rows(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            f = Path(tmpdir) / "empty.json"
+            f.write_text(json.dumps({"metadata": "present but no scope rows"}), encoding="utf-8")
+            with self.assertRaises(ValueError):
+                load_engine_scope_rows([f])
+
+    def test_load_engine_scope_rows_raises_for_missing_path(self):
+        with self.assertRaises(FileNotFoundError):
+            load_engine_scope_rows(["no_such_file_xyz.json"])
+
+    def test_load_engine_scope_rows_loads_from_directory(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            d = Path(tmpdir)
+            (d / "a.json").write_text(json.dumps({
+                "engine_scope_rows": [
+                    {"row_type": "query_profile", "source_family": "sf_a", "query_id": "q1"}
+                ]
+            }), encoding="utf-8")
+            (d / "b.json").write_text(json.dumps({
+                "engine_scope_rows": [
+                    {"row_type": "mask_probe", "source_family": "sf_b", "query_id": "q2"}
+                ]
+            }), encoding="utf-8")
+            rows = load_engine_scope_rows([tmpdir])
+        self.assertEqual(len(rows), 2)
+        source_families = {row["source_family"] for row in rows}
+        self.assertEqual(source_families, {"sf_a", "sf_b"})
+
+    def test_load_engine_scope_rows_propagates_context_from_artifact_payload(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            f = Path(tmpdir) / "context.json"
+            f.write_text(json.dumps({
+                "task": "SciFact",
+                "seed": 42,
+                "engine_scope_rows": [
+                    {"row_type": "query_profile", "source_family": "sf", "query_id": "q1"}
+                ]
+            }), encoding="utf-8")
+            rows = load_engine_scope_rows([f])
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["task"], "SciFact")
+        self.assertEqual(rows[0]["seed"], 42)
+        self.assertEqual(rows[0]["schema_version"], ENGINE_SCOPE_SCHEMA_VERSION)
+
+    def test_normalize_engine_scope_row_preserves_existing_artifact_path(self):
+        row = _normalize_engine_scope_row(
+            {"row_type": "query_profile", "_artifact_path": "already/set"},
+            artifact_path=Path("other/path"),
+        )
+        self.assertEqual(row["_artifact_path"], "already/set")
+
+    def test_normalize_engine_scope_row_sets_default_schema_version(self):
+        row = _normalize_engine_scope_row({"row_type": "query_profile"})
+        self.assertEqual(row["schema_version"], ENGINE_SCOPE_SCHEMA_VERSION)
+
+    def test_normalize_engine_scope_row_does_not_overwrite_explicit_schema_version(self):
+        row = _normalize_engine_scope_row({"row_type": "query_profile", "schema_version": 99})
+        self.assertEqual(row["schema_version"], 99)
+
+    def test_build_engine_scope_rows_with_neither_input_returns_empty(self):
+        rows = build_engine_scope_rows(source_family="sf")
+        self.assertEqual(rows, [])
+
+    def test_summarize_engine_scope_rows_handles_empty_input(self):
+        summary = summarize_engine_scope_rows([])
+        self.assertEqual(summary["schema_version"], ENGINE_SCOPE_SCHEMA_VERSION)
+        self.assertEqual(summary["row_count"], 0)
+        self.assertEqual(summary["tasks"], [])
 
 
 if __name__ == "__main__":
