@@ -148,6 +148,28 @@ class TestFindingScoring(unittest.TestCase):
         self.assertTrue(result.evidence_present)
         self.assertEqual(result.score, 100.0)
 
+    def test_trivially_short_content_does_not_score_100(self) -> None:
+        """Regression guard for Tier B Q7 (residual gameability): trivial
+        single-character or filler content in required fields must not score
+        the same as committed prose."""
+        trivial = {
+            "id": "F-H",
+            "severity": "HIGH",
+            "impact": ".",
+            "recommended_fix": "a.py:1",  # passes evidence regex but is 6 chars
+        }
+        substantive = {
+            "id": "F-I",
+            "severity": "HIGH",
+            "impact": "Auth bypass at auth.py:42 leaks tokens",
+            "recommended_fix": "Patch handler at api.py:55 + add regression test",
+        }
+        trivial_score = validate_pr_brutal_honesty(finding_dict=trivial).score
+        substantive_score = validate_pr_brutal_honesty(finding_dict=substantive).score
+        self.assertLess(trivial_score, substantive_score)
+        self.assertEqual(substantive_score, 100.0)
+        self.assertLess(trivial_score, 100.0)
+
 
 class TestPhaseSummaryScoring(unittest.TestCase):
     def test_complete_phase_summary_scores_high(self) -> None:

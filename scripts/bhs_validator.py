@@ -61,6 +61,12 @@ class BHSResult:
 # Required keys on the orchestrator's finding dict. Each missing key = -15.
 _REQUIRED_FINDING_KEYS = ("id", "severity", "recommended_fix", "impact")
 
+# Subset of required keys that must contain committed prose (not just be
+# present). Trivially short content (".", "x", "TBD") is structural padding.
+# ``id`` is excluded (short identifier by design); ``severity`` is excluded
+# (validated against the known-tier enum separately).
+_PROSE_FINDING_KEYS = ("recommended_fix", "impact")
+
 # Required keys on a phase summary. Each missing key = -10.
 _REQUIRED_PHASE_KEYS = ("cycle_id", "total_findings", "by_severity", "by_status")
 
@@ -106,6 +112,13 @@ _EVIDENCE_RE = re.compile(
 # committed tier and should be penalised the same as UNKNOWN.
 _KNOWN_SEVERITIES = frozenset({"CRITICAL", "HIGH", "MEDIUM", "LOW"})
 
+# Trivially short prose ("." / "x" / "TBD") is structural padding, not
+# committed content. Anything below this many trimmed characters in a
+# required text field gets the same penalty as a missing field. Tuned so
+# that a one-word answer like "fixed" (5 chars) still flags but a short
+# real sentence like "Auth bypass at auth.py:42" (24 chars) is fine.
+_MIN_CONTENT_CHARS = 12
+
 
 def _collect_text(d: Dict[str, Any]) -> str:
     """Flatten every str-valued field into one searchable blob."""
@@ -126,11 +139,23 @@ def _score_finding(finding_dict: Dict[str, Any]) -> BHSResult:
     score = 100.0
     flags: List[str] = []
 
-    # Missing required keys → L4
+    # Missing required keys → L4.
     for key in _REQUIRED_FINDING_KEYS:
         if key not in finding_dict or finding_dict.get(key) in (None, ""):
             score -= 15.0
             flags.append(f"L4: missing/empty finding field {key!r}")
+
+    # Trivially short PROSE fields (".", "x", "TBD") are structural padding.
+    # Skipped for ``id`` (short by design) and ``severity`` (enum value, length
+    # is fine if it's a known tier — already checked below).
+    for key in _PROSE_FINDING_KEYS:
+        raw = finding_dict.get(key)
+        if isinstance(raw, str) and 0 < len(raw.strip()) < _MIN_CONTENT_CHARS:
+            score -= 15.0
+            flags.append(
+                f"L4: trivially short finding field {key!r} ({len(raw.strip())} chars; "
+                f"min {_MIN_CONTENT_CHARS})"
+            )
 
     # Severity must be one of the committed AEP tiers; any other string
     # (empty, UNKNOWN, NONE, free-form like "WHATEVER") is not a committed
