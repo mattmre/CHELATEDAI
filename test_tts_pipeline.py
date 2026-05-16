@@ -465,5 +465,226 @@ class TestTTSPipelineDiagnostics(unittest.TestCase):
         self.assertEqual(diag["transport_target_count"], 1)
 
 
+class TestRegressionREM_C2(unittest.TestCase):
+    """Regression for REM-C2: per-inference signal state must be cleared between calls.
+
+    Bug: when feature_event was provided on call N, its signals were not cleared before
+    call N+1 with a different feature_event. This caused signal bleed-through where
+    call N+1's output contained steering from call N's features.
+
+    Fix: TTSPipeline.apply() calls self._steerer.clear_signals() before loading a new
+    feature_event's signals.
+
+    Regression test: the second call with a *different* feature_event (different feature
+    direction and strength) must produce different output than the first call. If signals
+    were NOT cleared, the steerer would accumulate signals across calls and both calls
+    would show compound steering rather than the signal from their own event only.
+    """
+
+    def _make_event(self, feature_id: str, value: float, dim: int = 8):
+        class Feature:
+            def __init__(self, fid, val):
+                self.feature_id = fid
+                self.value = val
+
+        class Event:
+            pass
+
+        evt = Event()
+        evt.features = [Feature(feature_id, value)]
+        evt.dim = dim
+        return evt
+
+    def test_second_call_not_contaminated_by_first_call_signals(self):
+        """Signals from call 1's feature_event must NOT appear in call 2's output.
+
+        Strategy: call once with event_A (strength 0.25, strong signal) then call
+        again with event_B (strength 0.0 effective via zero-valued feature).
+        If REM-C2 were reverted the second call would still contain event_A's steering
+        and produce a non-zero delta. With the fix, the second call with a near-zero
+        feature value produces near-zero steering.
+        """
+        dim = 8
+        # Build pipeline: no translation offset, no transport targets.
+        # Steering is from feature_event only.
+        translator = _make_translator(dim)
+        transport = _make_transport()
+        steerer = VectorSteerer(max_strength=0.3)
+        cfg = TTSConfig(translation_enabled=False, transport_enabled=False, steering_enabled=True)
+        with patch(_TTS_PATCH, return_value=MagicMock()):
+            pipeline = TTSPipeline(translator, transport, steerer, cfg)
+
+        v = np.zeros(dim)
+
+        # Call 1: high-value feature → strong steering delta
+        event_A = self._make_event("feature_strong", value=1.0, dim=dim)
+        result_A = pipeline.apply(v.copy(), feature_event=event_A)
+        delta_A = result_A.total_delta_norm
+        # Sanity: call 1 must have produced some steering
+        self.assertGreater(delta_A, 0.0, "Call 1 must produce non-zero steering (test setup error)")
+
+        # Call 2: feature with near-zero value → near-zero steering
+        # With REM-C2 reverted: signals from event_A are still in the steerer and
+        # delta_B would be close to delta_A (accumulated). With the fix: delta_B ≈ 0.
+        event_B = self._make_event("feature_weak", value=0.0, dim=dim)
+        result_B = pipeline.apply(v.copy(), feature_event=event_B)
+        delta_B = result_B.total_delta_norm
+
+        # Assert second call is NOT contaminated by first call's signals.
+        # If bleed-through occurred, delta_B would be comparable to delta_A.
+        # With the fix, delta_B is near zero (value=0.0 → strength=0.0).
+        self.assertAlmostEqual(
+            delta_B,
+            0.0,
+            places=5,
+            msg=(
+                f"Call 2 produced delta={delta_B:.6f} but expected ≈0.0. "
+                "Signals from call 1 are bleeding into call 2 (REM-C2 regression)."
+            ),
+        )
+
+    def test_independent_calls_produce_independent_output(self):
+        """Two sequential calls with distinct events must produce outputs matching their
+        own event only — not the union of both events.
+
+        If signals were not cleared, after 2 calls the steerer would hold 2×N signals
+        instead of N, and the second result's delta would exceed a single-event upper bound.
+        """
+        dim = 8
+        translator = _make_translator(dim)
+        transport = _make_transport()
+        steerer = VectorSteerer(max_strength=0.3)
+        cfg = TTSConfig(translation_enabled=False, transport_enabled=False, steering_enabled=True)
+        with patch(_TTS_PATCH, return_value=MagicMock()):
+            pipeline = TTSPipeline(translator, transport, steerer, cfg)
+
+        v = np.zeros(dim)
+
+        # Both events use value=0.5, so each independently produces the same delta.
+        event_X = self._make_event("fx", value=0.5, dim=dim)
+        event_Y = self._make_event("fy", value=0.5, dim=dim)
+
+        result_X = pipeline.apply(v.copy(), feature_event=event_X)
+        result_Y = pipeline.apply(v.copy(), feature_event=event_Y)
+
+        delta_X = result_X.total_delta_norm
+        delta_Y = result_Y.total_delta_norm
+
+        # Both events have the same strength so deltas should be close.
+        # If accumulation had occurred, delta_Y would be ~2× delta_X.
+        self.assertAlmostEqual(
+            delta_X,
+            delta_Y,
+            places=5,
+            msg=(
+                f"delta_X={delta_X:.6f} ≠ delta_Y={delta_Y:.6f}. "
+                "Signal bleed-through across sequential calls (REM-C2 regression)."
+            ),
+        )
+
+
+class TestRegressionREM_H2(unittest.TestCase):
+    """Regression for REM-H2: FeatureDirectionBank must use Gaussian unit vectors,
+    not hash-mod-dim one-hot encoding.
+
+    Bug: the original direction bank mapped feature_id → a one-hot vector where only
+    one dimension was 1.0 (selected via hash(feature_id) % dim). This caused heavy
+    axis alignment and poor hypersphere coverage.
+
+    Fix: directions are now seeded Gaussian unit vectors (SHA-256 → seed → standard_normal
+    → normalize). These have all dimensions non-zero (with overwhelming probability)
+    and are not one-hot.
+
+    Regression test: sample several feature directions from FeatureDirectionBank and
+    verify that NONE of them is a one-hot vector. A one-hot vector has exactly one
+    non-zero component and all others are exactly 0.0. A Gaussian unit vector has
+    all components non-zero (with probability 1 − astronomically small).
+    """
+
+    def test_direction_bank_vectors_are_not_one_hot(self):
+        """Directions from FeatureDirectionBank must NOT be one-hot vectors.
+
+        If REM-H2 were reverted, get_direction() would return one-hot vectors where
+        exactly one element is 1.0 and the rest are 0.0. With the fix, all elements
+        are non-zero Gaussian samples (unit-normalised).
+        """
+        from feature_direction_bank import FeatureDirectionBank
+
+        dim = 32
+        bank = FeatureDirectionBank(dim=dim)
+
+        feature_ids = [f"feature_{i}" for i in range(20)]
+        for fid in feature_ids:
+            direction = bank.get_direction(fid)
+
+            # A one-hot vector has exactly 1 non-zero element.
+            nonzero_count = int(np.count_nonzero(direction))
+            self.assertGreater(
+                nonzero_count,
+                1,
+                msg=(
+                    f"Feature '{fid}' produced a one-hot direction (nonzero_count={nonzero_count}). "
+                    "FeatureDirectionBank is using hash-mod-dim one-hot encoding instead of "
+                    "Gaussian unit vectors (REM-H2 regression)."
+                ),
+            )
+
+    def test_direction_bank_vectors_are_unit_norm(self):
+        """Gaussian directions must be normalised to unit length."""
+        from feature_direction_bank import FeatureDirectionBank
+
+        dim = 16
+        bank = FeatureDirectionBank(dim=dim)
+
+        for i in range(10):
+            direction = bank.get_direction(f"f{i}")
+            norm = float(np.linalg.norm(direction))
+            self.assertAlmostEqual(
+                norm,
+                1.0,
+                places=5,
+                msg=f"Feature 'f{i}' direction has norm={norm:.6f}, expected 1.0.",
+            )
+
+    def test_direction_bank_deterministic(self):
+        """Same feature_id must always produce the same direction (seeded Gaussian)."""
+        from feature_direction_bank import FeatureDirectionBank
+
+        dim = 16
+        bank1 = FeatureDirectionBank(dim=dim)
+        bank2 = FeatureDirectionBank(dim=dim)
+
+        for i in range(5):
+            fid = f"stable_feature_{i}"
+            d1 = bank1.get_direction(fid)
+            d2 = bank2.get_direction(fid)
+            np.testing.assert_array_almost_equal(
+                d1,
+                d2,
+                decimal=10,
+                err_msg=f"Direction for '{fid}' is not deterministic across bank instances.",
+            )
+
+    def test_direction_bank_distinct_features_get_distinct_directions(self):
+        """Different feature IDs must produce different directions."""
+        from feature_direction_bank import FeatureDirectionBank
+
+        dim = 32
+        bank = FeatureDirectionBank(dim=dim)
+        directions = [bank.get_direction(f"feat_{i}") for i in range(10)]
+
+        for i in range(len(directions)):
+            for j in range(i + 1, len(directions)):
+                cosine_sim = float(np.dot(directions[i], directions[j]))
+                self.assertLess(
+                    abs(cosine_sim),
+                    0.9999,
+                    msg=(
+                        f"Features feat_{i} and feat_{j} have cosine similarity={cosine_sim:.6f} ≈ 1.0, "
+                        "suggesting they are the same direction (possible hash collision regression)."
+                    ),
+                )
+
+
 if __name__ == "__main__":
     unittest.main()
