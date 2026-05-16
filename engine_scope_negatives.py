@@ -236,7 +236,18 @@ def mine_hard_negative_families(
     max_queries_per_family: int = 12,
     max_synthetic_depth: int = 1,
 ) -> Dict[str, Any]:
-    """Mine replayable failure families from pooled Engine-Scope rows."""
+    """Mine replayable failure families from pooled Engine-Scope rows.
+
+    **Grouping algorithm**: rows are partitioned into families by a deterministic
+    fault-class grouping — each (task, signature-token-set) pair becomes exactly
+    one family, with the signature derived from a fixed prefix whitelist per
+    ``row_type``.  This is NOT algorithmic clustering (no distance metric, no
+    centroid, no k-means or DBSCAN pass).  The word "cluster" in any prior
+    description was inaccurate; "fault-class group" or "signature group" is
+    the correct term.  The grouping is fully deterministic: given the same input
+    rows in any order, the output families and their ``family_id`` assignments
+    are identical.
+    """
 
     row_list = [dict(row) for row in rows]
     filtered_rows = [
