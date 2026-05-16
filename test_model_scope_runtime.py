@@ -1,8 +1,21 @@
-"""Tests for model_scope_runtime.py — LocalModelRuntime and ActivationEvent."""
+"""Tests for model_scope_runtime.py — LocalModelRuntime and ActivationEvent.
+
+Integration tests that exercise the real transformers code path are gated behind
+the ``CHELATED_INTEGRATION_MODEL`` environment variable.  These tests are skipped
+in CI because the weights are too large to download on hosted runners.  To run
+them locally::
+
+    CHELATED_INTEGRATION_MODEL=sshleifer/tiny-gpt2 python test_model_scope_runtime.py
+
+``sshleifer/tiny-gpt2`` is ~5 MB and exercises the exact same
+``AutoModelForCausalLM.from_pretrained`` → hook registration → ``run_inference``
+code path that the Qwen3.5-9B pilot would use.
+"""
 
 from __future__ import annotations
 
 import json
+import os
 import tempfile
 import unittest
 import uuid
@@ -78,6 +91,43 @@ class TestActivationEventConstruction(unittest.TestCase):
         self.assertAlmostEqual(evt.norm_activation, 18.44)
         self.assertEqual(evt.run_id, run_id)
 
+    def test_raw_tensor_shape_defaults_to_shape(self):
+        """raw_tensor_shape documents the true tensor dimensions at capture time."""
+        evt = ActivationEvent(
+            schema_version="1.0",
+            model_id="Qwen/Qwen3.5-2B",
+            layer_id="model.layers.10",
+            token_count=8,
+            shape=(1, 8, 2048),
+            mean_activation=0.0127,
+            norm_activation=18.44,
+            captured_at="2025-01-01T00:00:00+00:00",
+            run_id=str(uuid.uuid4()),
+        )
+        # raw_tensor_shape must match shape — it records the actual captured
+        # tensor dimensions (the full tensor data is NOT stored).
+        self.assertEqual(evt.raw_tensor_shape, (1, 8, 2048))
+
+    def test_raw_tensor_shape_explicit_override(self):
+        """raw_tensor_shape can be set explicitly when shape differs from capture."""
+        evt = ActivationEvent(
+            schema_version="1.0",
+            model_id="m",
+            layer_id="l",
+            token_count=4,
+            shape=(1, 4, 512),
+            mean_activation=0.0,
+            norm_activation=1.0,
+            captured_at="2025-01-01T00:00:00+00:00",
+            run_id=str(uuid.uuid4()),
+            raw_tensor_shape=(1, 4, 512),
+        )
+        self.assertEqual(evt.raw_tensor_shape, (1, 4, 512))
+
+    def test_raw_tensor_shape_is_tuple(self):
+        evt = _make_activation_event()
+        self.assertIsInstance(evt.raw_tensor_shape, tuple)
+
     def test_to_dict_serialization(self):
         evt = _make_activation_event()
         d = evt.to_dict()
@@ -86,6 +136,10 @@ class TestActivationEventConstruction(unittest.TestCase):
         self.assertEqual(d["shape"], [1, 12, 2048])
         self.assertIn("run_id", d)
         self.assertIn("captured_at", d)
+        # raw_tensor_shape must be serialised as a list (JSON-compatible)
+        self.assertIn("raw_tensor_shape", d)
+        self.assertIsInstance(d["raw_tensor_shape"], list)
+        self.assertEqual(d["raw_tensor_shape"], [1, 12, 2048])
 
     def test_from_dict_roundtrip(self):
         evt = _make_activation_event()
@@ -97,6 +151,9 @@ class TestActivationEventConstruction(unittest.TestCase):
         self.assertEqual(evt2.token_count, evt.token_count)
         self.assertAlmostEqual(evt2.mean_activation, evt.mean_activation)
         self.assertAlmostEqual(evt2.norm_activation, evt.norm_activation)
+        # raw_tensor_shape must survive the roundtrip as a tuple
+        self.assertIsInstance(evt2.raw_tensor_shape, tuple)
+        self.assertEqual(evt2.raw_tensor_shape, (1, 12, 2048))
 
     def test_json_serializable(self):
         evt = _make_activation_event()
@@ -226,6 +283,18 @@ class TestRunInference(unittest.TestCase):
             self.assertIsInstance(evt.mean_activation, float)
             self.assertIsInstance(evt.norm_activation, float)
             self.assertIsInstance(evt.shape, tuple)
+
+    def test_run_inference_raw_tensor_shape_populated(self):
+        """raw_tensor_shape must be set by the hook and match the captured tensor shape."""
+        rt, model, _ = self._build_runtime_with_hooks()
+        events = rt.run_inference(MagicMock())
+        if events:
+            evt = events[0]
+            # The mock tensor has shape (1, 5, 2048) — raw_tensor_shape must
+            # reflect that exact shape (the full tensor is not stored).
+            self.assertIsNotNone(evt.raw_tensor_shape)
+            self.assertIsInstance(evt.raw_tensor_shape, tuple)
+            self.assertEqual(evt.raw_tensor_shape, evt.shape)
 
     def test_run_inference_auto_run_id_is_uuid(self):
         rt, model, _ = self._build_runtime_with_hooks()
@@ -359,6 +428,66 @@ class TestSaveLoadEvents(unittest.TestCase):
         rt.save_events(path)
         loaded = LocalModelRuntime.load_events(path)
         self.assertEqual(loaded, [])
+
+
+@unittest.skipUnless(
+    os.getenv("CHELATED_INTEGRATION_MODEL"),
+    "Integration test requires a real model download.  "
+    "Set CHELATED_INTEGRATION_MODEL=sshleifer/tiny-gpt2 (or any causal-LM on HF Hub) "
+    "to run.  Skipped in CI because weight download is too large for hosted runners.",
+)
+class TestLocalModelRuntimeIntegration(unittest.TestCase):
+    """Exercise the real ``AutoModelForCausalLM.from_pretrained`` code path.
+
+    Uses the model named by ``CHELATED_INTEGRATION_MODEL``.  The recommended
+    value is ``sshleifer/tiny-gpt2`` (<5 MB), which exercises the same
+    ``from_pretrained`` → hook registration → ``run_inference`` path that the
+    Qwen3.5-9B pilot load uses.  This test would fail if that path were broken,
+    even though CI mocks it out.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.model_name = os.environ["CHELATED_INTEGRATION_MODEL"]
+
+    def test_real_load_and_is_loaded(self):
+        """load() without a model_loader must actually call from_pretrained."""
+        rt = LocalModelRuntime(self.model_name, device="cpu")
+        # No model_loader injected — must hit the real transformers branch.
+        rt.load()
+        self.assertTrue(rt.is_loaded())
+
+    def test_real_hook_capture_shape(self):
+        """Hook must capture a real tensor; raw_tensor_shape must be non-empty."""
+        try:
+            import torch  # type: ignore[import]
+        except ImportError:
+            self.skipTest("torch not available")
+
+        # Discover first transformer block layer name so we can hook it.
+        rt = LocalModelRuntime(self.model_name, device="cpu")
+        rt.load()
+        model = rt._model
+        # Walk to first named child to find a hookable module.
+        first_layer_id = None
+        for name, _module in model.named_modules():
+            if name:  # skip root
+                first_layer_id = name
+                break
+
+        self.assertIsNotNone(first_layer_id, "Model has no named submodules")
+        rt.register_hook_layers([first_layer_id])
+
+        # Build a tiny input tensor (1 token).
+        input_ids = torch.tensor([[0]])
+        events = rt.run_inference(input_ids)
+
+        self.assertGreater(len(events), 0, "No events captured; hook registration failed")
+        evt = events[0]
+        self.assertIsInstance(evt.raw_tensor_shape, tuple)
+        self.assertGreater(len(evt.raw_tensor_shape), 0)
+        # shape and raw_tensor_shape must agree.
+        self.assertEqual(evt.shape, evt.raw_tensor_shape)
 
 
 if __name__ == "__main__":

@@ -1,3 +1,4 @@
+import tempfile
 import unittest
 from datetime import datetime, timezone
 from pathlib import Path
@@ -38,6 +39,70 @@ class TestQwenScopeLayerSAE(unittest.TestCase):
         self.assertEqual(summary["layer_index"], 3)
         self.assertEqual(summary["active_feature_count"], 2)
         self.assertEqual(len(summary["active_features"]), 2)
+
+
+class TestQwenScopeLayerSAEFromFile(unittest.TestCase):
+    """Exercises the real ``from_file`` → ``torch.load`` → ``encode`` code path.
+
+    This test creates a small synthetic checkpoint with ``torch.save``, loads it
+    with ``QwenScopeLayerSAE.from_file``, and calls ``encode``.  If
+    ``from_file`` is broken (wrong key names, wrong load path, shape mismatch)
+    this test will fail — even though the ``from_state_dict`` path above may
+    still pass.
+    """
+
+    def setUp(self):
+        # d_model=4, d_sae=8 — tiny but covers the full tensor path.
+        self._d_model = 4
+        self._d_sae = 8
+        self._tmpfile = tempfile.NamedTemporaryFile(suffix=".pt", delete=False)
+        self._tmpfile.close()
+        state_dict = {
+            "W_enc": torch.randn(self._d_sae, self._d_model),
+            "b_enc": torch.zeros(self._d_sae),
+        }
+        torch.save(state_dict, self._tmpfile.name)
+
+    def tearDown(self):
+        Path(self._tmpfile.name).unlink(missing_ok=True)
+
+    def test_from_file_loads_without_error(self):
+        sae = QwenScopeLayerSAE.from_file(self._tmpfile.name, layer_index=0)
+        self.assertEqual(sae.layer_index, 0)
+        self.assertEqual(sae.d_model, self._d_model)
+        self.assertEqual(sae.d_sae, self._d_sae)
+
+    def test_from_file_encode_output_shape(self):
+        """encode() must return (1, d_sae) for a (1, d_model) input tensor."""
+        sae = QwenScopeLayerSAE.from_file(self._tmpfile.name, layer_index=0)
+        residual = torch.randn(1, self._d_model)
+        acts = sae.encode(residual)
+        self.assertEqual(tuple(acts.shape), (1, self._d_sae))
+
+    def test_from_file_encode_3d_input_shape(self):
+        """encode() must return (batch, seq, d_sae) for 3-D residual input."""
+        sae = QwenScopeLayerSAE.from_file(self._tmpfile.name, layer_index=0)
+        residual = torch.randn(1, 3, self._d_model)
+        acts = sae.encode(residual)
+        self.assertEqual(tuple(acts.shape), (1, 3, self._d_sae))
+
+    def test_from_file_wrong_key_raises(self):
+        """from_file must raise ValueError if W_enc or b_enc is missing."""
+        bad_path = Path(self._tmpfile.name).parent / "bad_ckpt.pt"
+        torch.save({"wrong_key": torch.zeros(4, 4)}, bad_path)
+        try:
+            with self.assertRaises(ValueError):
+                QwenScopeLayerSAE.from_file(bad_path, layer_index=0)
+        finally:
+            bad_path.unlink(missing_ok=True)
+
+    def test_from_file_encode_top_k_sparsity(self):
+        """With top_k=2, encode must leave exactly 2 non-zero values per token."""
+        sae = QwenScopeLayerSAE.from_file(self._tmpfile.name, layer_index=0, top_k=2)
+        residual = torch.randn(1, self._d_model)
+        acts = sae.encode(residual)
+        nonzero_count = int((acts != 0).sum().item())
+        self.assertEqual(nonzero_count, 2)
 
 
 def _make_activation(
@@ -249,6 +314,52 @@ class TestQwenScopeAdapterExtract(unittest.TestCase):
     def test_extract_nonempty_with_positive_input(self):
         result = self.adapter.extract_features(self.activation)
         self.assertGreater(len(result), 0)
+
+
+class TestQwenScopeAdapterExtractStatisticsDisclosure(unittest.TestCase):
+    """Verify that extract_features() is wired to activation STATISTICS, not raw tensors.
+
+    The method intentionally operates on scalar stats (mean, norm, token_count,
+    shape[0]) because ActivationEvent does not carry the full residual tensor.
+    These tests confirm the statistics-based contract is stable and consistent,
+    and that changing any stat changes the output (proving real dependency, not
+    zeroed padding).
+    """
+
+    def _adapter_with_identity_weights(self, input_dim: int = 4, feature_count: int = 4) -> QwenScopeAdapter:
+        """Return adapter whose weights are the identity so output == input projection."""
+        adapter = QwenScopeAdapter(model_family="Qwen3.5")
+        # Use identity-ish weights (diagonal ones) to make output predictable.
+        weights = np.eye(feature_count, input_dim, dtype=np.float64)
+        adapter.load_checkpoint(
+            Path("fake.npy"),
+            checkpoint_loader=lambda _p: weights,
+        )
+        return adapter
+
+    def test_extract_features_is_deterministic_for_same_stats(self):
+        adapter = self._adapter_with_identity_weights()
+        act = _make_activation(mean_activation=0.5, norm_activation=1.0, token_count=8, shape=(1, 8, 4))
+        result1 = adapter.extract_features(act)
+        result2 = adapter.extract_features(act)
+        self.assertEqual(result1, result2)
+
+    def test_extract_features_changes_when_mean_changes(self):
+        """Output must differ when mean_activation changes — proves real stat dependency."""
+        adapter = self._adapter_with_identity_weights(input_dim=4, feature_count=4)
+        act_low = _make_activation(mean_activation=0.1, norm_activation=1.0, token_count=8, shape=(1, 8, 4))
+        act_high = _make_activation(mean_activation=5.0, norm_activation=1.0, token_count=8, shape=(1, 8, 4))
+        result_low = adapter.extract_features(act_low)
+        result_high = adapter.extract_features(act_high)
+        # At least the feature driven by mean_activation must differ.
+        self.assertNotEqual(result_low, result_high)
+
+    def test_extract_features_changes_when_norm_changes(self):
+        """Output must differ when norm_activation changes."""
+        adapter = self._adapter_with_identity_weights(input_dim=4, feature_count=4)
+        act_a = _make_activation(mean_activation=0.5, norm_activation=0.1, token_count=8, shape=(1, 8, 4))
+        act_b = _make_activation(mean_activation=0.5, norm_activation=9.9, token_count=8, shape=(1, 8, 4))
+        self.assertNotEqual(adapter.extract_features(act_a), adapter.extract_features(act_b))
 
 
 class TestQwenScopeAdapterSupports(unittest.TestCase):
