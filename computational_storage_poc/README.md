@@ -3,6 +3,47 @@
 This project implements a testbed for the **Computational Storage (SSD Array) AI Inference** architecture.
 The premise replaces matrix multiplication entirely with direct memory routing using memory tables, mapping it directly onto NAND flash memory.
 
+## Status
+
+The modules in this directory are **research-stage / POC code**. Their unit
+tests verify each module works in isolation, but with the single exception
+noted below they are NOT consumed by any production code path in this repo
+(engine, AEP orchestrator, dashboard). Do not cite them as "substrate" or
+"ships" in operator-facing surfaces (PR descriptions, release notes, status
+JSON, dashboard text) until they have at least one real production caller.
+
+Each unwired module is annotated with a module-level `EXPERIMENTAL = True`
+constant AND a call to `_experimental.mark_experimental(__name__, EXPERIMENTAL)`
+at import time. The helper reads the constant, emits an `ExperimentalPOCWarning`
+(subclass of `DeprecationWarning`) on first import, and raises `TypeError` if
+the flag isn't a bool — so the boundary is genuinely machine-checked, not just
+a comment. Operators who want to see the warnings can run with `-W default`;
+production CI (`-W ignore::DeprecationWarning`) stays quiet.
+
+The dashboard renders the one wired module (`disk_llm_estimator.py`) via the
+"Disk-Resident LLM Estimate" panel in the campaigns tab (`/api/disk_llm_estimate`).
+That is its production caller — the substrate output reaches a human-readable
+surface, not just an importable JSON endpoint.
+
+| Module | Production caller |
+|--------|------------------|
+| `disk_llm_estimator.py` | `dashboard_server.py` `/api/disk_llm_estimate` rendered in `dashboard/index.html` campaigns-tab panel (PR #247) |
+| `moe_reap.py` | none |
+| `sparse_cpu_inference.py` | none |
+| `packed_graph.py` | none |
+| `packed_cpu_inference.py` | none |
+| `repo_graph_memory.py` | none |
+| `integrated_repo_runtime.py` | none |
+| `phase7_system_evaluation.py` | none |
+| `cpu_backends.py` | none |
+
+The `block_graph.py` / `compiler.py` / payload-contract path (USB / FUSE
+emulator / RP2040 firmware track) is a separate concern — its claim
+boundary is documented in `## Current Scope Lock` below and in
+`docs/computational-storage-transport-scope-decision.md`. The "Status"
+section above applies specifically to the nine substrate modules listed
+in the table.
+
 Related repository docs:
 
 - [docs/COMPUTATIONAL_STORAGE_DRIVE_NODES.md](../docs/COMPUTATIONAL_STORAGE_DRIVE_NODES.md) - canonical repo-wide summary of the hard-drive / storage-node research track

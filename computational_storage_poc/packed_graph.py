@@ -10,6 +10,13 @@ from typing import BinaryIO
 import numpy as np
 
 from block_graph import PARAM_TYPE, apply_hidden_activation
+from _experimental import mark_experimental
+
+# Research-stage / POC module. No production code path in this repo consumes it.
+# EXPERIMENTAL is read by _experimental.mark_experimental — flipping it to
+# False suppresses the import-time warning; a non-bool raises TypeError.
+EXPERIMENTAL = True
+mark_experimental(__name__, EXPERIMENTAL)
 
 PACKED_GRAPH_MAGIC = b"CSPG01"
 HEADER_LENGTH_BYTES = 4

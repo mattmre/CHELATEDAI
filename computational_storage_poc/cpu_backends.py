@@ -4,6 +4,13 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
 import numpy as np
+from _experimental import mark_experimental
+
+# Research-stage / POC module. No production code path in this repo consumes it.
+# EXPERIMENTAL is read by _experimental.mark_experimental — flipping it to
+# False suppresses the import-time warning; a non-bool raises TypeError.
+EXPERIMENTAL = True
+mark_experimental(__name__, EXPERIMENTAL)
 
 
 @dataclass(frozen=True)
