@@ -18,20 +18,26 @@ Placeholder substitutions (filled from real CLAUDE.md / source, not guessed):
   {{ALSO_REQUIRED_IMPORTS}}  → ["chelation_adapter", "embedding_backend",
                                 "vector_store", "config"]
 
-Ceiling-tier gap: CD-001 in docs/next-session.md — run_ceiling_smoke() is
-NOT YET IMPLEMENTED (returns sentinel 2). The PR body SMOKE: line must state
-"floor-tier only" and reference CD-001.
+Ceiling-tier (CD-001 closure): runs AntigravityEngine end-to-end against an
+in-memory Qdrant + local SentenceTransformer fixture. Ingests a small corpus,
+computes a chelated query vector, and asserts non-trivial output. If torch /
+sentence-transformers / antigravity_engine deps are missing in this Python
+environment, the ceiling tier prints an explicit SKIP and exits 0 (an honest
+skip is acceptable per Rule 5; a fake pass is L4). Per CLAUDE.md, the CI
+matrix installs torch + sentence-transformers, so the ceiling tier SHOULD
+run (not skip) in CI.
 
 Two-tier framing per Brutal Honesty Rulebook v3.3 §1 + §10 Rule 5:
-  Floor (this file, active):
+  Floor (active):
     Imports the production module, verifies its documented surface (entry
     point class, core deps). Catches L1 scaffold-as-feature, L9
     dependency-phantom, L10 broken imports. Acceptable as the v3.3 minimum
     but NOT a substitute for ceiling-tier verification.
-  Ceiling (target — CD-001):
-    Runs AntigravityEngine against a real embedding fixture, calls embed()
-    or run_inference(), asserts returned vector has expected shape and is
-    not all-zeros. Not yet implemented; tracked as CD-001.
+  Ceiling (active — CD-001 closed):
+    Constructs AntigravityEngine(qdrant_location=":memory:",
+    model_name="all-MiniLM-L6-v2"), ingests 3 documents, runs
+    get_chelated_vector() on a real query, and asserts the returned vector
+    is a numpy array of the expected dim with non-zero norm.
 """
 
 from __future__ import annotations
@@ -144,22 +150,141 @@ def run_floor_smoke() -> int:
     return 0
 
 
+CEILING_SKIPPED = 3
+"""Sentinel exit status for ceiling-tier honest skip (missing heavy deps).
+
+Distinct from sentinel 2 (which used to mean "not implemented"). A skip
+exits the process with 0 because the surface gap is honest, not a failure;
+this constant is internal-only and never escapes ``main()``.
+"""
+
+
 def run_ceiling_smoke() -> int:
-    """Ceiling-tier smoke: real end-to-end exercise against a real fixture.
+    """Ceiling-tier smoke: real end-to-end exercise against AntigravityEngine.
 
-    NOT YET IMPLEMENTED — returns sentinel 2 (deferred, not a failure).
-    Tracked as CD-001 in docs/next-session.md.
+    Closes CD-001. Returns:
+        0                 — ceiling tier PASS (engine built, ingested, queried).
+        1                 — ceiling tier FAIL (an assertion or runtime error fired).
+        CEILING_SKIPPED   — heavy deps (torch / sentence-transformers / qdrant)
+                            unavailable in this Python env. Honest skip; main()
+                            translates this to a 0 exit with a SKIP banner.
 
-    Target implementation:
-        engine = AntigravityEngine(model_name="all-MiniLM-L6-v2",
-                                   qdrant_location=":memory:")
-        result = engine.embed("smoke test sentence")
-        assert len(result) > 0, "embed() returned empty vector"
-        assert any(v != 0.0 for v in result), "embed() returned all-zeros (likely broken)"
-        _ok("ceiling-tier: embed() produced non-zero vector")
-        return 0
+    Per Rule 5, the ceiling tier MUST exercise a real fixture through the
+    production code path. It does NOT mock the embedding backend or Qdrant —
+    if those won't import, that is a dependency-phantom (L9) call, and skipping
+    honestly is the correct response. Faking a pass would be L4.
+
+    Per CLAUDE.md, the CI matrix installs torch + sentence-transformers; this
+    function therefore runs (does not skip) on the standard CI path.
     """
-    return 2
+    _print("")
+    _print("--- ceiling tier: AntigravityEngine end-to-end exercise ---")
+
+    # Heavy deps gate. Import errors here are honest skips, not failures.
+    # We DO NOT broad-except: an import that raises something other than
+    # ImportError is a real bug (L10 broken module) and must surface as FAIL.
+    try:
+        import numpy as np  # noqa: F401
+        import torch  # noqa: F401
+        import sentence_transformers  # noqa: F401
+        import qdrant_client  # noqa: F401
+    except ImportError as exc:
+        _print(f"  SKIP: heavy dep missing ({exc.__class__.__name__}: {exc})")
+        _print("  Honest skip per Rule 5; install requirements.txt to enable.")
+        return CEILING_SKIPPED
+
+    try:
+        from antigravity_engine import AntigravityEngine
+    except ImportError as exc:
+        _print(f"  SKIP: antigravity_engine import failed ({exc})")
+        _print("  Honest skip per Rule 5; install requirements.txt to enable.")
+        return CEILING_SKIPPED
+
+    import numpy as np
+
+    # Build engine against the lightest viable config: in-memory Qdrant +
+    # local SentenceTransformer (no Ollama HTTP call, no teacher distillation,
+    # no quantization).
+    try:
+        engine = AntigravityEngine(
+            qdrant_location=":memory:",
+            model_name="all-MiniLM-L6-v2",
+            training_mode="baseline",
+        )
+    except Exception as exc:  # noqa: BLE001 - surface ANY build failure as FAIL
+        _print(f"  FAIL: AntigravityEngine construction raised: {exc!r}")
+        _print(traceback.format_exc())
+        return 1
+
+    _ok(f"engine built (vector_size={engine.vector_size}, mode={engine.mode})")
+
+    # Ingest a small real corpus — 4 short sentences spanning two topics so
+    # the chelation mask has some actual variance to work against.
+    corpus = [
+        "Cats are small carnivorous mammals often kept as pets.",
+        "Dogs are loyal animals frequently used as service companions.",
+        "The Eiffel Tower is a wrought-iron lattice tower in Paris.",
+        "Photosynthesis converts sunlight into chemical energy in plants.",
+    ]
+    try:
+        engine.ingest(corpus)
+    except Exception as exc:  # noqa: BLE001
+        _print(f"  FAIL: engine.ingest raised: {exc!r}")
+        _print(traceback.format_exc())
+        return 1
+
+    _ok(f"ingested {len(corpus)} documents")
+
+    # Run a real query through the production retrieval entry point.
+    try:
+        chelated = engine.get_chelated_vector("What pets do people keep?")
+    except Exception as exc:  # noqa: BLE001
+        _print(f"  FAIL: engine.get_chelated_vector raised: {exc!r}")
+        _print(traceback.format_exc())
+        return 1
+
+    chelated_arr = np.asarray(chelated)
+    if chelated_arr.ndim != 1:
+        return _fail(
+            f"ceiling: get_chelated_vector returned ndim={chelated_arr.ndim}, "
+            f"expected 1 (shape={chelated_arr.shape})"
+        )
+    if chelated_arr.shape[0] != engine.vector_size:
+        return _fail(
+            f"ceiling: get_chelated_vector returned len={chelated_arr.shape[0]}, "
+            f"expected vector_size={engine.vector_size}"
+        )
+    norm = float(np.linalg.norm(chelated_arr))
+    if not np.isfinite(norm):
+        return _fail(f"ceiling: chelated vector norm is non-finite ({norm})")
+    if norm == 0.0:
+        return _fail("ceiling: chelated vector is all-zeros (broken pipeline)")
+
+    _ok(
+        f"get_chelated_vector PASS (shape={chelated_arr.shape}, "
+        f"norm={norm:.4f}, dtype={chelated_arr.dtype})"
+    )
+
+    # Surface-check embed() too — it is the second production entry point and
+    # is exercised by the recursive decomposer / dashboard.
+    try:
+        batch = engine.embed(["smoke test sentence", "another smoke sentence"])
+    except Exception as exc:  # noqa: BLE001
+        _print(f"  FAIL: engine.embed raised: {exc!r}")
+        _print(traceback.format_exc())
+        return 1
+
+    batch_arr = np.asarray(batch)
+    if batch_arr.shape != (2, engine.vector_size):
+        return _fail(
+            f"ceiling: embed returned shape {batch_arr.shape}, "
+            f"expected (2, {engine.vector_size})"
+        )
+    if float(np.linalg.norm(batch_arr)) == 0.0:
+        return _fail("ceiling: embed batch is all-zeros (broken pipeline)")
+
+    _ok(f"embed batch PASS (shape={batch_arr.shape})")
+    return 0
 
 
 def main() -> int:
@@ -170,21 +295,21 @@ def main() -> int:
     ceiling_status = run_ceiling_smoke()
 
     _print("")
-    if ceiling_status == 2:
-        # HONEST DISCLOSURE: floor-tier PASS, ceiling-tier NOT IMPLEMENTED.
-        # This block is load-bearing per Rulebook v3.3 §1 Rule 5 — do not delete it.
+    if ceiling_status == CEILING_SKIPPED:
+        # HONEST DISCLOSURE: floor-tier PASS, ceiling-tier SKIPPED because the
+        # current Python env is missing heavy deps (torch / sentence-transformers
+        # / qdrant). Skipping is honest; faking a pass would be L4. PR body
+        # SMOKE: line must name 'floor-tier only (ceiling skipped: deps)'.
         _print("HONEST DISCLOSURE (per Brutal Honesty Rulebook v3.3 §1 Rule 5):")
-        _print("  This smoke ran the FLOOR tier only (import + surface-check through")
-        _print("  production code paths). The ceiling tier (real end-to-end against a")
-        _print("  fixture) is NOT YET IMPLEMENTED in run_ceiling_smoke().")
-        _print("  Per Rule 5, claiming 'smoke passed' at ceiling-tier when only floor")
-        _print("  ran is L4 partial-with-claim-of-complete. The PR body SMOKE: line")
-        _print("  must name 'floor-tier only' AND the ceiling-tier gap appears as")
-        _print("  CD-001 in docs/next-session.md per §6.3.")
+        _print("  Floor tier PASS. Ceiling tier SKIPPED because heavy deps")
+        _print("  (torch / sentence-transformers / qdrant) are not installed in")
+        _print("  this Python environment. On the standard CI matrix these deps")
+        _print("  ARE installed and the ceiling tier will run.")
         _print("")
-        _print("SMOKE_PIPELINE PASS (floor tier; ceiling tier deferred as CD-001)")
+        _print("SMOKE_PIPELINE PASS (floor tier; ceiling tier honestly skipped)")
         return 0
     if ceiling_status != 0:
+        _print(f"SMOKE_PIPELINE FAIL: ceiling tier exit={ceiling_status}")
         return ceiling_status
 
     _print("")
