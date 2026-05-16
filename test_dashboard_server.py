@@ -1143,6 +1143,23 @@ class TestDiskLLMEstimateIntegration(unittest.TestCase):
         handler.do_GET()
         handler.handle_api_disk_llm_estimate.assert_called_once()
 
+    def test_estimator_unexpected_exception_returns_500(self):
+        """500-branch coverage: an unexpected estimator failure surfaces as a
+        500 (not swallowed silently). Tier B follow-up on PR #247."""
+        from unittest.mock import patch
+
+        handler = self._make_handler()
+        handler.send_error_response = MagicMock()
+        with patch(
+            "dashboard_server.estimate_disk_llm",
+            side_effect=RuntimeError("simulated estimator failure"),
+        ):
+            handler.handle_api_disk_llm_estimate({})
+        handler.send_error_response.assert_called_once()
+        status, message = handler.send_error_response.call_args[0]
+        self.assertEqual(status, 500)
+        self.assertIn("simulated estimator failure", message)
+
 
 if __name__ == "__main__":
     unittest.main()

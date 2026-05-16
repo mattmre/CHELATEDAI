@@ -340,6 +340,34 @@
 
     <div class="panel">
       <div style="display:flex; justify-content: space-between; align-items:center">
+        <h2>Disk-Resident LLM Estimate <span style="font-size:12px; color:#888; font-weight:normal;">(experimental — computational_storage_poc)</span></h2>
+        <button onclick="loadDiskLlmEstimate()">Refresh Estimate</button>
+      </div>
+      <div style="margin:8px 0; font-size:13px;">
+        Hardware:
+        <select id="disk-llm-hardware" onchange="loadDiskLlmEstimate()">
+          <option value="workstation_gen5">workstation_gen5</option>
+          <option value="server_gen4">server_gen4</option>
+          <option value="laptop_gen4">laptop_gen4</option>
+        </select>
+        Params (B):
+        <input id="disk-llm-params" type="number" value="70" min="0.1" step="0.1" style="width:60px;" onchange="loadDiskLlmEstimate()">
+        Bits:
+        <input id="disk-llm-bits" type="number" value="4" min="1" max="32" step="0.5" style="width:50px;" onchange="loadDiskLlmEstimate()">
+      </div>
+      <table>
+        <thead>
+          <tr><th>Metric</th><th>Value</th></tr>
+        </thead>
+        <tbody id="disk-llm-rows">
+          <tr><td colspan="2">Loading...</td></tr>
+        </tbody>
+      </table>
+      <div style="margin-top:6px; font-size:12px; color:#666;" id="disk-llm-source"></div>
+    </div>
+
+    <div class="panel">
+      <div style="display:flex; justify-content: space-between; align-items:center">
         <h2>Evidence Cleanup Plan</h2>
         <button onclick="loadEvidenceCleanupPlan()">Refresh Cleanup</button>
       </div>
@@ -422,6 +450,7 @@
         loadPreflightHistory();
         loadEvidenceIndex();
         loadEvidenceChainHistory();
+        loadDiskLlmEstimate();
         loadEvidenceCleanupPlan();
       }
     }
@@ -751,6 +780,47 @@
       } catch (e) {
         console.error('Error loading evidence-chain history', e);
         document.getElementById('evidence-chain-rows').innerHTML = '<tr><td colspan="6">Error loading evidence-chain history</td></tr>';
+      }
+    }
+
+    async function loadDiskLlmEstimate() {
+      const rows = document.getElementById('disk-llm-rows');
+      const source = document.getElementById('disk-llm-source');
+      try {
+        const hw = document.getElementById('disk-llm-hardware').value;
+        const params = document.getElementById('disk-llm-params').value;
+        const bits = document.getElementById('disk-llm-bits').value;
+        const data = asObject(await fetchJson(`/api/disk_llm_estimate?hardware=${encodeURIComponent(hw)}&params_billion=${encodeURIComponent(params)}&bits=${encodeURIComponent(bits)}`));
+        const est = asObject(data.estimate);
+        const hwInfo = asObject(data.hardware);
+        const entries = [
+          ['Hardware', `${hwInfo.name || hw} (SSD ${hwInfo.ssd_bandwidth_gbps}GB/s, ${hwInfo.dram_gb}GB DRAM)`],
+          ['Model size (GB)', est.model_size_gb],
+          ['Resident set (GB)', est.resident_set_gb],
+          ['Required RAM (GB)', est.required_ram_gb],
+          ['Streamed bytes/token — dense (GB)', est.streamed_bytes_per_token_dense_gb],
+          ['Streamed bytes/token — flash (GB)', est.streamed_bytes_per_token_flash_gb],
+          ['Dense tokens/sec (upper)', est.dense_tokens_per_second_upper],
+          ['Flash tokens/sec (upper)', est.flash_tokens_per_second_upper],
+          ['Fits resident RAM', est.fits_resident_ram === true ? 'yes' : (est.fits_resident_ram === false ? 'no' : '-')],
+          ['Fits paper ratio', est.fits_paper_ratio],
+        ];
+        rows.replaceChildren();
+        entries.forEach(([k, v]) => {
+          const tr = document.createElement('tr');
+          [k, v].forEach((text, i) => {
+            const td = document.createElement('td');
+            td.textContent = typeof text === 'number' ? Number(text).toFixed(3) : (text === null || text === undefined ? '-' : String(text));
+            if (i === 0) td.style.fontWeight = '500';
+            tr.appendChild(td);
+          });
+          rows.appendChild(tr);
+        });
+        source.textContent = 'Source: ' + (data.source || '-');
+      } catch (e) {
+        console.error('Error loading disk-LLM estimate', e);
+        rows.innerHTML = '<tr><td colspan="2">Error loading disk-LLM estimate: ' + String(e.message || e) + '</td></tr>';
+        source.textContent = '';
       }
     }
 

@@ -20,7 +20,12 @@ from repo_graph_memory import (
 from sparse_cpu_inference import SparseChunkCache, SparseInferenceConfig, run_sparse_packed_graph_with_backend
 
 # Research-stage / POC module. No production code path in this repo consumes it.
+# EXPERIMENTAL is read by _experimental.mark_experimental below — flipping
+# it to False suppresses the import-time warning, and a non-bool raises.
 EXPERIMENTAL = True
+
+from _experimental import mark_experimental
+mark_experimental(__name__, EXPERIMENTAL)
 
 RERANK_FEATURE_DIM = 8
 RERANK_FUSION_WEIGHT = 0.15

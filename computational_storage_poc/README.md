@@ -12,12 +12,22 @@ noted below they are NOT consumed by any production code path in this repo
 "ships" in operator-facing surfaces (PR descriptions, release notes, status
 JSON, dashboard text) until they have at least one real production caller.
 
-Each unwired module is also annotated with a module-level `EXPERIMENTAL = True`
-constant so the boundary is machine-checkable.
+Each unwired module is annotated with a module-level `EXPERIMENTAL = True`
+constant AND a call to `_experimental.mark_experimental(__name__, EXPERIMENTAL)`
+at import time. The helper reads the constant, emits an `ExperimentalPOCWarning`
+(subclass of `DeprecationWarning`) on first import, and raises `TypeError` if
+the flag isn't a bool — so the boundary is genuinely machine-checked, not just
+a comment. Operators who want to see the warnings can run with `-W default`;
+production CI (`-W ignore::DeprecationWarning`) stays quiet.
+
+The dashboard renders the one wired module (`disk_llm_estimator.py`) via the
+"Disk-Resident LLM Estimate" panel in the campaigns tab (`/api/disk_llm_estimate`).
+That is its production caller — the substrate output reaches a human-readable
+surface, not just an importable JSON endpoint.
 
 | Module | Production caller |
 |--------|------------------|
-| `disk_llm_estimator.py` | `dashboard_server.py` `/api/disk_llm_estimate` (CD-244-03, PR closing this row) |
+| `disk_llm_estimator.py` | `dashboard_server.py` `/api/disk_llm_estimate` rendered in `dashboard/index.html` campaigns-tab panel (PR #247) |
 | `moe_reap.py` | none |
 | `sparse_cpu_inference.py` | none |
 | `packed_graph.py` | none |

@@ -14,7 +14,12 @@ from cpu_backends import CPUInferenceBackend, NumpyInt8DynamicBackend
 from packed_graph import INT8_STORAGE_DTYPE, _quantize_matrix_to_int8
 
 # Research-stage / POC module. No production code path in this repo consumes it.
+# EXPERIMENTAL is read by _experimental.mark_experimental below — flipping
+# it to False suppresses the import-time warning, and a non-bool raises.
 EXPERIMENTAL = True
+
+from _experimental import mark_experimental
+mark_experimental(__name__, EXPERIMENTAL)
 
 MOE_ARTIFACT_MAGIC = b"CSMOE1"
 HEADER_LENGTH_BYTES = 4
