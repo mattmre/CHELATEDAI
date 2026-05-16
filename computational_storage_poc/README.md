@@ -191,6 +191,35 @@ python compiler.py
 ```
 This will produce a `model.bin` file containing the connected graph.
 
+### Regenerating the computational-storage artifact
+
+`*.cspg` packed-graph artifacts (e.g. `model.cspg`, `real_model.cspg`) are **not** tracked in the repo. They are regenerable on demand from `train_and_compile.py` / `compiler.py` and are listed in the top-level `.gitignore`.
+
+To produce a packed FP16 artifact:
+
+```bash
+python compiler.py --format packed         # writes model.cspg (header CSPG018)
+```
+
+To produce a packed INT8 artifact:
+
+```bash
+python compiler.py --format packed_int8    # writes model.cspg (header CSPG01Q)
+```
+
+To produce a fully-trained INT8 artifact from the digits MLP (the path used by `test_real_model.py`):
+
+```bash
+python train_and_compile.py
+# writes real_model.bin by default; pass artifact_format="packed_int8"
+# and an output_path ending in .cspg for the packed INT8 form.
+```
+
+Notes:
+
+- The artifact is **not** bit-deterministic across `scikit-learn` versions because training uses a small MLP whose Adam trajectory depends on numeric library versions. Tests therefore validate accuracy floors / output parity, not byte equality.
+- No source code or test loads a tracked `computational_storage_poc/model.cspg` by name; tests generate artifacts in `tempfile.TemporaryDirectory()` paths (see `test_packed_graph.py`, `test_cpu_inference.py`, `test_sparse_cpu_inference.py`).
+
 Run the full proof-of-concept validation:
 
 ```bash
