@@ -81,7 +81,7 @@ def benchmark_sparse_inference(token_count: int = 32) -> dict[str, float]:
         np.max(
             [
                 np.max(np.abs(dense_output[:, :10] - sparse_output[:, :10]))
-                for dense_output, sparse_output in zip(dense_outputs, sparse_outputs, strict=True)
+                for dense_output, sparse_output in zip(dense_outputs, sparse_outputs)
             ]
         )
     )

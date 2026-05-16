@@ -301,7 +301,7 @@ def run_moe_artifact(
         weights = np.array([result.router_weight for result in routed_outputs], dtype=np.float32)
         weights = np.exp(weights - np.max(weights))
         weights /= np.sum(weights)
-        output = sum(weight * result.output for weight, result in zip(weights, routed_outputs, strict=True))
+        output = sum(weight * result.output for weight, result in zip(weights, routed_outputs))
         active_ids = [result.expert_id for result in routed_outputs]
 
     return MoEInferenceResult(
