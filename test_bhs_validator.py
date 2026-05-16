@@ -170,6 +170,79 @@ class TestFindingScoring(unittest.TestCase):
         self.assertEqual(substantive_score, 100.0)
         self.assertLess(trivial_score, 100.0)
 
+    # --- CD-245-01 closure: content-quality (entropy + unique-token + dominant) ---
+
+    def test_cd_245_01_literal_xxx_padding_does_not_score_100(self) -> None:
+        """The literal CD-245-01 gameability vector: a prose field that is
+        long enough to pass _MIN_CONTENT_CHARS (>=12 chars) but is just one
+        character repeated must not score 100. Closed by the entropy signal."""
+        padded = {
+            "id": "F-CD245-1",
+            "severity": "HIGH",
+            "impact": "issue at a.py:1 with details after",  # passes evidence
+            "recommended_fix": "xxxxxxxxxxxx",  # 12 chars, all 'x', entropy 0
+        }
+        result = validate_pr_brutal_honesty(finding_dict=padded)
+        self.assertLess(result.score, 100.0)
+        self.assertTrue(
+            any("entropy" in f.lower() for f in result.optimism_flags),
+            f"Expected entropy flag; got {result.optimism_flags}",
+        )
+
+    def test_repeated_word_padding_does_not_score_100(self) -> None:
+        """Mixed-case padding like "fix fix fix fix bug bug" is the second
+        common gameability vector. Caught by the entropy signal (or by
+        unique-token count when entropy slips through)."""
+        padded = {
+            "id": "F-CD245-2",
+            "severity": "HIGH",
+            "impact": "Auth bypass at auth.py:42 leaks tokens",
+            "recommended_fix": "fix fix fix fix bug bug",
+        }
+        result = validate_pr_brutal_honesty(finding_dict=padded)
+        self.assertLess(result.score, 100.0)
+
+    def test_short_genuine_prose_still_scores_100(self) -> None:
+        """Verify the new rubric doesn't false-positive on legitimate short
+        technical strings. The entropy threshold (3.0 bits/char) is below
+        the typical English-prose entropy (~3.5-4.5)."""
+        short_real = {
+            "id": "F-CD245-3",
+            "severity": "HIGH",
+            "impact": "Outage at server.py:120 returns wrong shape",
+            "recommended_fix": "Patch handler at api.py:55, see PR #244",
+        }
+        result = validate_pr_brutal_honesty(finding_dict=short_real)
+        self.assertEqual(result.score, 100.0, f"flags: {result.optimism_flags}")
+
+    def test_diverse_but_meaningless_prose_acknowledged_gap_scores_100(self) -> None:
+        """Honest test: a motivated operator who tunes prose to pass every
+        mechanical signal (4+ unique tokens, entropy >= 3.0, evidence pointer,
+        no lie markers) DOES score 100. This is the residual semantic gap
+        documented in docs/bhs-rubric-scope.md and mitigated by the human
+        audit pass in scripts/audit_findings.py. We assert it here so the
+        test breaks loudly if anyone later claims to have closed it without
+        actually changing the rubric."""
+        diverse_nonsense = {
+            "id": "F-CD245-4",
+            "severity": "HIGH",
+            "impact": "foo bar baz qux at handler.py:42",
+            "recommended_fix": "tweak the thing in module.py:10",
+        }
+        result = validate_pr_brutal_honesty(finding_dict=diverse_nonsense)
+        # If this assertion ever fails, EITHER the rubric became semantic
+        # (good, but update docs/bhs-rubric-scope.md), OR the entropy
+        # threshold drifted and is now false-positive-ing on real prose
+        # (bad, investigate).
+        self.assertEqual(result.score, 100.0, f"flags: {result.optimism_flags}")
+
+    def test_internal_alias_score_finding_still_callable(self) -> None:
+        """Backwards-compatible alias check: ``_score_finding`` still resolves
+        to the (renamed) ``_score_finding_structure`` so any external code
+        that imported the old internal name keeps working."""
+        from scripts.bhs_validator import _score_finding, _score_finding_structure
+        self.assertIs(_score_finding, _score_finding_structure)
+
 
 class TestPhaseSummaryScoring(unittest.TestCase):
     def test_complete_phase_summary_scores_high(self) -> None:

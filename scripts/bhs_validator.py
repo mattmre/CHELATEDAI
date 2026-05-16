@@ -1,40 +1,75 @@
 #!/usr/bin/env python3
-"""BHS v3.3 Validator — orchestrator-side honesty scoring.
+"""BHS v3.3 Validator — orchestrator-side **structural** honesty scoring.
 
 This module is the BHS hook called by ``aep_orchestrator.py`` during synthesis,
 remediation, and closure. It scores AEP ``finding_dict``s and ``phase_summary``
-dicts on a 0–100 honesty scale and exposes a smoke pipeline runner that
-validates the orchestrator's runtime surface at floor or ceiling tier.
+dicts on a 0–100 **structural** honesty scale (NOT a semantic one — see Scope
+section) and exposes a smoke pipeline runner that validates the orchestrator's
+runtime surface at floor or ceiling tier.
 
-Why this is NOT the same code as ``scripts/validate_pr_brutal_honesty.py``:
-that validator parses PR-body field schemas (EVIDENCE/SMOKE/BHS_* lines). The
-orchestrator never hands us a PR body — it hands us small dicts describing a
-finding or a phase outcome. The schema is different, so the scoring logic is
-different. Both validators share the rulebook's lie taxonomy (L1–L13) by name
-but operate on disjoint inputs.
+## Scope (per CD-245-01 closure, 2026-05-16)
 
-Scoring signals (additive penalties from 100):
+This validator is a **structural** check. It mechanically verifies that:
+  - required fields are present and non-empty
+  - severity is a committed AEP tier
+  - prose fields are not trivially short, single-char-padded, or one-token-only
+  - an evidence pointer (file:line, PR ref, artifact, commit) is somewhere
+    in the text
+  - lie-marker keywords ("stub", "TODO", "fake", ...) are absent
+
+It does NOT semantically judge whether the prose is *true*, *useful*, or
+*actually describes the finding*. A motivated operator can compose prose
+that passes every mechanical signal while saying nothing meaningful
+(``"foo bar baz qux at handler.py:42"`` — 4 unique tokens, evidence pointer,
+no lie markers → scores 100). That gap is fundamental to a regex-based
+rubric. The honest mitigation is documented in ``docs/bhs-rubric-scope.md``
+and implemented by ``scripts/audit_findings.py``, which lets a human
+periodically sample-grade findings and surface drift between the mechanical
+score and human judgement.
+
+If you are reading this module and considering adding a heuristic that
+"detects bad prose" — read ``docs/bhs-rubric-scope.md`` first. Past Tier B
+iterations converged on the conclusion that escalating heuristics either
+re-creates the L13 framing lie at a higher threshold, or pulls in
+non-deterministic dependencies (LLMs) that conflict with Session Rule #1.
+
+## Distinct from scripts/validate_pr_brutal_honesty.py
+
+That validator parses PR-body field schemas (EVIDENCE/SMOKE/BHS_* lines).
+The orchestrator never hands us a PR body — it hands us small dicts
+describing a finding or a phase outcome. Different schema, different
+scoring logic. Both validators share the rulebook's lie taxonomy (L1–L13)
+by name but operate on disjoint inputs.
+
+## Structural scoring signals (additive penalties from 100)
+
   - Missing ``id`` / ``severity`` / ``recommended_fix`` / ``impact`` fields
     (each absence is L4 partial-as-complete on the orchestrator's side).
-  - ``severity`` equal to ``UNKNOWN`` / empty / ``None`` — orchestrator did
-    not commit to a tier (L4).
-  - No evidence pointer in any text field (regex for ``file:line``, ``PR #``,
-    ``artifact``, or a path with extension). Findings without evidence are
-    L5 test-as-truth precursors.
+  - Whitespace-only string in a required field counts as empty.
+  - Prose field (``recommended_fix``, ``impact``) below ``_MIN_CONTENT_CHARS``
+    trimmed chars → -15 (structural padding).
+  - Prose field with content-quality failure (entropy < 3.0 bits/char OR
+    unique-token count < 3 OR any single token >= 60% of the field) → -15
+    each. Closes the literal CD-245-01 ``"xxxxxxxxxxxx"`` gap.
+  - ``severity`` outside ``{CRITICAL, HIGH, MEDIUM, LOW}`` → -10.
+  - No evidence pointer (regex for ``file:line``, ``PR #``, ``artifact``,
+    commit hash) → -20. L5 test-as-truth precursor.
   - L1–L13 marker words in any text field (``stub``, ``TODO``,
-    ``NotImplementedError``, ``placeholder``, ``mock``, ``fake``).
+    ``NotImplementedError``, ``placeholder``, ``mock``, ``fake``) → -5 each.
 """
 
 from __future__ import annotations
 
 import importlib
+import math
 import re
 import sys
 import traceback
+from collections import Counter
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 # Repo root is one level above /scripts. We need it on sys.path so we can
 # import aep_orchestrator.py during floor-tier smoke.
@@ -119,6 +154,95 @@ _KNOWN_SEVERITIES = frozenset({"CRITICAL", "HIGH", "MEDIUM", "LOW"})
 # real sentence like "Auth bypass at auth.py:42" (24 chars) is fine.
 _MIN_CONTENT_CHARS = 12
 
+# Content-quality thresholds (CD-245-01 closure, 2026-05-16). Each prose
+# field is penalised if ANY of the three signals trips:
+#
+#   - Shannon entropy over characters below this many bits per character.
+#     Padded constant-char strings ("xxxxxxxxxxxx") have entropy ~0.0;
+#     genuine English prose typically sits at 3.5-4.5 bits/char. The
+#     threshold is intentionally low (3.0) to avoid false-positives on
+#     short technical strings like "fix auth.py:42" (~3.4 bits/char).
+#   - Unique-token count below this minimum after splitting on \W+ and
+#     lower-casing. "xxxxxxxxxxxx" tokenises to one unique token; "fix
+#     fix fix fix bug" tokenises to two. A real sentence virtually always
+#     has >= 3 unique tokens.
+#   - Any single token's share of total tokens above this ratio. "fix
+#     fix fix bug" has one token at 75% share, well above 60%.
+#
+# This rubric is mechanical, not semantic. A motivated operator who knows
+# the rubric can still write diverse-but-meaningless prose
+# ("foo bar baz qux at handler.py:42"). See module docstring "Scope" and
+# scripts/audit_findings.py for the documented mitigation.
+_MIN_CHAR_ENTROPY_BITS = 3.0
+_MIN_UNIQUE_TOKENS = 3
+_MAX_DOMINANT_TOKEN_RATIO = 0.60
+
+_TOKEN_SPLIT_RE = re.compile(r"\W+")
+
+
+def _content_quality_penalty(field_name: str, value: str) -> Tuple[float, List[str]]:
+    """Return (penalty, flags) for content-quality signals on a prose field.
+
+    Penalty is additive (>= 0). Flags list is empty when no signal trips.
+
+    Skipped for trivially-short values — those are already handled by the
+    ``_MIN_CONTENT_CHARS`` check upstream, and computing entropy on 2 chars
+    is noise. We only score quality when the field has enough material to
+    judge.
+
+    All three signals are deterministic and stdlib-only. No network, no
+    external dependencies. Per Session Rule #1 there is no fallback path
+    because there is nothing to fall back from.
+    """
+    stripped = value.strip()
+    if len(stripped) < _MIN_CONTENT_CHARS:
+        return 0.0, []
+
+    penalty = 0.0
+    flags: List[str] = []
+
+    # Signal 1: character entropy (Shannon, base 2).
+    char_counts = Counter(stripped)
+    n_chars = len(stripped)
+    entropy = -sum(
+        (c / n_chars) * math.log2(c / n_chars) for c in char_counts.values()
+    )
+    if entropy < _MIN_CHAR_ENTROPY_BITS:
+        penalty += 15.0
+        flags.append(
+            f"L13: {field_name!r} character entropy {entropy:.2f} bits/char below "
+            f"{_MIN_CHAR_ENTROPY_BITS} (looks like padding, not committed prose)"
+        )
+        # If entropy is dead — single repeated char — also catches dominant
+        # token, but we don't double-penalise; return early.
+        return penalty, flags
+
+    # Signal 2: unique-token count after lowercasing + \W+ split.
+    tokens = [t for t in _TOKEN_SPLIT_RE.split(stripped.lower()) if t]
+    unique_tokens = set(tokens)
+    if len(unique_tokens) < _MIN_UNIQUE_TOKENS:
+        penalty += 15.0
+        flags.append(
+            f"L13: {field_name!r} has {len(unique_tokens)} unique token(s); "
+            f"min {_MIN_UNIQUE_TOKENS} (repeated-word padding)"
+        )
+        return penalty, flags
+
+    # Signal 3: dominant token ratio. (Only meaningful when we have several
+    # tokens; with 3 tokens "a b a" has 67% which is fair to penalise.)
+    if tokens:
+        most_common_token, most_common_count = Counter(tokens).most_common(1)[0]
+        ratio = most_common_count / len(tokens)
+        if ratio > _MAX_DOMINANT_TOKEN_RATIO:
+            penalty += 15.0
+            flags.append(
+                f"L13: {field_name!r} token {most_common_token!r} is "
+                f"{ratio:.0%} of total tokens (>{_MAX_DOMINANT_TOKEN_RATIO:.0%}; "
+                f"dominant-token padding)"
+            )
+
+    return penalty, flags
+
 
 def _collect_text(d: Dict[str, Any]) -> str:
     """Flatten every str-valued field into one searchable blob."""
@@ -135,7 +259,15 @@ def _collect_text(d: Dict[str, Any]) -> str:
     return " \n ".join(parts)
 
 
-def _score_finding(finding_dict: Dict[str, Any]) -> BHSResult:
+def _score_finding_structure(finding_dict: Dict[str, Any]) -> BHSResult:
+    """Score a finding_dict on structural honesty signals only.
+
+    Renamed from ``_score_finding`` per CD-245-01 (2026-05-16) to make the
+    structural-not-semantic boundary visible at the symbol name. A backwards-
+    compatible alias is provided below for any external code that imported
+    the old name; the public API (``validate_pr_brutal_honesty``) is
+    unchanged.
+    """
     score = 100.0
     flags: List[str] = []
 
@@ -154,6 +286,9 @@ def _score_finding(finding_dict: Dict[str, Any]) -> BHSResult:
     # Trivially short PROSE fields (".", "x", "TBD") are structural padding.
     # Skipped for ``id`` (short by design) and ``severity`` (enum value, length
     # is fine if it's a known tier — already checked below).
+    # Then content-quality (entropy / unique tokens / dominant token) per
+    # CD-245-01 — catches "xxxxxxxxxxxx" and "fix fix fix fix bug" padding
+    # that the bare length check missed.
     for key in _PROSE_FINDING_KEYS:
         raw = finding_dict.get(key)
         if isinstance(raw, str) and 0 < len(raw.strip()) < _MIN_CONTENT_CHARS:
@@ -162,6 +297,10 @@ def _score_finding(finding_dict: Dict[str, Any]) -> BHSResult:
                 f"L4: trivially short finding field {key!r} ({len(raw.strip())} chars; "
                 f"min {_MIN_CONTENT_CHARS})"
             )
+        elif isinstance(raw, str):
+            penalty, quality_flags = _content_quality_penalty(key, raw)
+            score -= penalty
+            flags.extend(quality_flags)
 
     # Severity must be one of the committed AEP tiers; any other string
     # (empty, UNKNOWN, NONE, free-form like "WHATEVER") is not a committed
@@ -198,6 +337,11 @@ def _score_finding(finding_dict: Dict[str, Any]) -> BHSResult:
         drift_detected=False,
         notes=f"finding_dict scored: {len(flags)} flag(s)",
     )
+
+
+# Backwards-compatible alias for any external caller that imported the old
+# name. Public API (validate_pr_brutal_honesty) is unchanged.
+_score_finding = _score_finding_structure
 
 
 def _score_phase_summary(phase_summary: Dict[str, Any]) -> BHSResult:
@@ -257,7 +401,7 @@ def validate_pr_brutal_honesty(
     in ``scripts/validate_pr_brutal_honesty.py``.
     """
     if finding_dict is not None:
-        return _score_finding(finding_dict)
+        return _score_finding_structure(finding_dict)
     if phase_summary is not None:
         return _score_phase_summary(phase_summary)
 
