@@ -41,6 +41,7 @@
 | [Weight Refinement Campaign Results (Session 32)](weight-refinement-campaign-results-2026-04-25-session32.md) | Durable summary of the Session 32 partial bounded campaign and explicit no-promotion outcome |
 | [2026-05-15 Desktop Reconciliation & Reimplementation Backlog](planning/2026-05-reconciliation/reconciliation-2026-05-15-reimplementation-backlog.md) | Full post-merge reconciliation of desktop machine with laptop work, multi-agent gap analysis, and prioritized reimplementation backlog |
 | [AttnRes Adapter Implementation (2026-05-04)](attnres-adapter-implementation-2026-05-04.md) | BlockAttnResAdapter and LayerAttentionAggregator — MoonshotAI Attention Residuals adapted to the ChelatedAI adapter framework |
+| [BHS Scope B Audit (2026-05-16)](bhs-scope-b-audit-2026-05-16.md) | End-to-end Brutal Honesty Score audit — 13 fresh Tier B adversarial agents covering Engine-Scope (5), Model-Scope (6), and TTS (2) phases; per-phase scores, critical cross-phase findings, and 9 new Carried Debt rows |
 
 ## Agentic Engineering And Planning
 
