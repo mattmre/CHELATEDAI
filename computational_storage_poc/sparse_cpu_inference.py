@@ -9,13 +9,12 @@ import numpy as np
 from block_graph import apply_hidden_activation
 from cpu_backends import CPUInferenceBackend, NumpyInt8DynamicBackend
 from packed_graph import DiskBackedPackedGraph, INT8_STORAGE_DTYPE
+from _experimental import mark_experimental
 
 # Research-stage / POC module. No production code path in this repo consumes it.
-# EXPERIMENTAL is read by _experimental.mark_experimental below — flipping
-# it to False suppresses the import-time warning, and a non-bool raises.
+# EXPERIMENTAL is read by _experimental.mark_experimental — flipping it to
+# False suppresses the import-time warning; a non-bool raises TypeError.
 EXPERIMENTAL = True
-
-from _experimental import mark_experimental
 mark_experimental(__name__, EXPERIMENTAL)
 
 

@@ -9,13 +9,12 @@ from repo_graph_memory_benchmark import benchmark_repo_graph_memory
 from repo_graph_memory_compression_benchmark import benchmark_repo_graph_memory_compression
 from sparse_inference_benchmark import benchmark_sparse_inference
 from storage_substrate_benchmark import benchmark_storage_substrate
+from _experimental import mark_experimental
 
 # Research-stage / POC module. No production code path in this repo consumes it.
-# EXPERIMENTAL is read by _experimental.mark_experimental below — flipping
-# it to False suppresses the import-time warning, and a non-bool raises.
+# EXPERIMENTAL is read by _experimental.mark_experimental — flipping it to
+# False suppresses the import-time warning; a non-bool raises TypeError.
 EXPERIMENTAL = True
-
-from _experimental import mark_experimental
 mark_experimental(__name__, EXPERIMENTAL)
 
 
