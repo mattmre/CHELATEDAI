@@ -184,7 +184,13 @@ class ModelScopeEngineBridge:
                 with open(paths[-1], encoding="utf-8") as fh:
                     last_data = json.load(fh)
                 last_artifact_summary = summarize_model_scope_artifact(last_data)
-            except Exception:
+            except Exception as _diag_err:
+                import warnings as _warnings
+                _warnings.warn(
+                    f"get_summary_for_diagnostics: failed to read last artifact: {_diag_err!r}",
+                    UserWarning,
+                    stacklevel=2,
+                )
                 last_artifact_summary = None
         return {
             "observation_count": self._observation_count,

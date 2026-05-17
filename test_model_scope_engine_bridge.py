@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import dataclasses
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -436,6 +437,29 @@ class TestBridgeGetSummaryForDiagnostics(unittest.TestCase):
     def test_bridge_config_contains_artifact_dir(self):
         s = self._bridge.get_summary_for_diagnostics()
         self.assertIn("artifact_dir", s["bridge_config"])
+
+    def test_get_summary_for_diagnostics_warns_on_corrupt_artifact(self):
+        import warnings
+        # Write a corrupt (non-JSON) file that matches the artifact pattern.
+        bad_path = os.path.join(self._td, "feature_event_bad.json")
+        with open(bad_path, "w", encoding="utf-8") as fh:
+            fh.write("NOT VALID JSON {{{")
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            result = self._bridge.get_summary_for_diagnostics()
+        self.assertIsNone(result["last_artifact"])
+        matching = [
+            w for w in caught
+            if issubclass(w.category, UserWarning)
+            and (
+                "get_summary_for_diagnostics" in str(w.message)
+                or "failed to read" in str(w.message)
+            )
+        ]
+        self.assertTrue(
+            matching,
+            f"Expected a UserWarning about corrupt artifact; got: {[str(w.message) for w in caught]}",
+        )
 
 
 # ---------------------------------------------------------------------------
