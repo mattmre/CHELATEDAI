@@ -1,3 +1,5 @@
+import json
+import tempfile
 import unittest
 from contextlib import nullcontext
 from pathlib import Path
@@ -245,6 +247,227 @@ class TestGoldenDefaultAutopilot(unittest.TestCase):
 
         self.assertEqual(len(scoped), 1)
         self.assertEqual(scoped[0]["query_id"], "q1")
+
+    # --- ENG-5 gap 1: default_change_allowed must reflect candidate gate state ---
+
+    def test_recommendation_default_change_allowed_false_when_no_candidate(self):
+        """default_change_allowed must be False when neither gate is a candidate.
+
+        Guards against regression to the old hardcoded-False L2 escape: if both
+        reform_candidate and mask_candidate are False the field should be False,
+        but for the right reason — not because it was hardcoded.
+        """
+        rec = _recommendation(
+            None,
+            {},
+            None,
+            {},
+        )
+        self.assertFalse(rec["default_change_allowed"])
+        self.assertTrue(rec["safe_default_holds"])
+
+    def test_recommendation_default_change_allowed_true_when_reform_candidate(self):
+        """default_change_allowed must be True when a reform gate is a real candidate.
+
+        This directly guards against the ENG-5 gap 1 L2 escape: hardcoding
+        'default_change_allowed': False regardless of gate outcome prevented the
+        promotion path from ever firing.
+        """
+        rec = _recommendation(
+            {"type": "linear_classifier"},
+            {
+                "guard_learned_reform_mean_delta_vs_guard": 0.005,
+                "guard_learned_reform_promotion_blockers": 0,
+            },
+            None,
+            {},
+        )
+        self.assertTrue(rec["reform_gate_candidate_for_broader_validation"])
+        self.assertTrue(rec["default_change_allowed"])
+        self.assertFalse(rec["safe_default_holds"])
+
+    def test_recommendation_default_change_allowed_true_when_mask_candidate(self):
+        """default_change_allowed must be True when a mask gate is a real candidate."""
+        rec = _recommendation(
+            None,
+            {},
+            {"type": "linear_classifier"},
+            {
+                "learned_gate_mean_delta_vs_baseline": 0.01,
+                "learned_gate_negative_windows": 0,
+            },
+        )
+        self.assertTrue(rec["mask_gate_candidate_for_broader_validation"])
+        self.assertTrue(rec["default_change_allowed"])
+        self.assertFalse(rec["safe_default_holds"])
+
+    # --- ENG-5 gap 2: terminal_decision.json must be written at end of main() ---
+
+    def test_main_writes_terminal_decision_json(self):
+        """main() must write terminal_decision.json before returning.
+
+        Guards against ENG-5 gap 2: acceptance criterion #3 (terminal decision
+        artifact) was unimplemented.  We run main() with max-iterations=0 so
+        it exits immediately after zero iterations, then verify the artifact
+        exists and contains the required fields.
+        """
+        from run_golden_default_autopilot import main, _write_json_atomic, _now_iso
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            run_dir = Path(tmpdir) / "test_run"
+            run_dir.mkdir()
+
+            # Patch argument parsing so main() uses our controlled run directory
+            # and exits after 0 iterations (max_iterations=0 → deadline already reached
+            # semantics don't apply cleanly; use max_iterations=1 but stub _run_iteration).
+            fake_args = [
+                "--run-dir", str(run_dir),
+                "--max-iterations", "1",
+                "--deadline-hours", "48",
+            ]
+
+            # Stub _run_iteration to avoid any real computation
+            def fake_run_iteration(run_dir, manifest, *, iteration, args):
+                # Write a minimal iteration report so downstream code doesn't fail
+                report = {
+                    "iteration": iteration,
+                    "started_at": _now_iso(),
+                    "finished_at": _now_iso(),
+                    "engine_scope_schema_version": 1,
+                    "golden_safe_default": {},
+                    "recommendation": {
+                        "default_change_allowed": False,
+                        "safe_default_holds": True,
+                        "reform_gate_candidate_for_broader_validation": False,
+                        "reform_gate_survived_hard_negative_replay": True,
+                        "reform_hard_negative_family_count": 0,
+                        "mask_gate_candidate_for_broader_validation": False,
+                        "adaptive_overlay_ready_for_broader_validation": False,
+                        "adaptive_overlay_blockers": [],
+                        "coverage_guided_collection_recommended": False,
+                        "next_action": "continue pooled data collection and fail-closed gate search",
+                    },
+                }
+                report_path = run_dir / "reports" / f"iteration_{iteration:03d}.json"
+                _write_json_atomic(report_path, report)
+                manifest.setdefault("iterations", {})[f"iter_{iteration:03d}"] = {
+                    "iteration": iteration,
+                    "status": "completed",
+                    "finished_at": _now_iso(),
+                    "report_path": str(report_path),
+                    "recommendation": report["recommendation"],
+                }
+                manifest["latest_report"] = str(report_path)
+                manifest["latest_recommendation"] = report["recommendation"]
+                return report
+
+            with (
+                patch("sys.argv", ["run_golden_default_autopilot.py", *fake_args]),
+                patch("run_golden_default_autopilot._run_iteration", side_effect=fake_run_iteration),
+                patch("run_golden_default_autopilot.time.sleep"),
+            ):
+                exit_code = main()
+
+            self.assertEqual(exit_code, 0)
+            terminal_path = run_dir / "terminal_decision.json"
+            self.assertTrue(
+                terminal_path.exists(),
+                f"terminal_decision.json was not written to {terminal_path}",
+            )
+            payload = json.loads(terminal_path.read_text(encoding="utf-8"))
+            # Required fields from acceptance criterion #3
+            self.assertIn("generated_at", payload)
+            self.assertIn("run_dir", payload)
+            self.assertIn("status", payload)
+            self.assertIn("termination_reason", payload)
+            self.assertIn("iteration_count", payload)
+            self.assertIn("latest_recommendation", payload)
+
+    def test_main_writes_terminal_decision_json_on_exception(self):
+        """main() must write terminal_decision.json even when _run_iteration raises.
+
+        Guards against ENG-5 L5: acceptance criterion #3 (terminal decision
+        artifact) was only met on the happy path.  When _run_iteration raises,
+        the except block must write the artifact with termination_reason='exception'
+        before re-raising, so the supervisor's caller can always inspect outcome.
+        """
+        from run_golden_default_autopilot import main
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            run_dir = Path(tmpdir) / "test_run_exc"
+            run_dir.mkdir()
+
+            fake_args = [
+                "--run-dir", str(run_dir),
+                "--max-iterations", "5",
+                "--deadline-hours", "48",
+            ]
+
+            def exploding_run_iteration(run_dir, manifest, *, iteration, args):
+                raise RuntimeError("injected failure for L5 test")
+
+            with (
+                patch("sys.argv", ["run_golden_default_autopilot.py", *fake_args]),
+                patch("run_golden_default_autopilot._run_iteration", side_effect=exploding_run_iteration),
+                patch("run_golden_default_autopilot.time.sleep"),
+            ):
+                with self.assertRaises(RuntimeError):
+                    main()
+
+            terminal_path = run_dir / "terminal_decision.json"
+            self.assertTrue(
+                terminal_path.exists(),
+                "terminal_decision.json must be written even when _run_iteration raises",
+            )
+            payload = json.loads(terminal_path.read_text(encoding="utf-8"))
+            self.assertEqual(payload["termination_reason"], "exception",
+                             "termination_reason must be 'exception' on error path")
+            self.assertIn("generated_at", payload)
+            self.assertIn("run_dir", payload)
+            self.assertEqual(payload["status"], "failed")
+            self.assertIn("exception_type", payload)
+            self.assertIn("exception_message", payload)
+            self.assertIn("iteration_count", payload)
+
+    # --- ENG-5 gap 3: contract module absence must be intentional & documented ---
+
+    def test_supervisor_module_docstring_explains_absent_contract_imports(self):
+        """The supervisor module docstring must explain why contract modules are absent.
+
+        Guards against ENG-5 gap 3: evidence_contract, promotion_contract,
+        compute_budget_policy, and evaluator_fabric exist in the repo but are
+        not imported by this supervisor.  The absence must be documented so it
+        cannot be mistaken for an oversight.
+        """
+        import run_golden_default_autopilot
+        doc = run_golden_default_autopilot.__doc__ or ""
+        keywords = ["evidence_contract", "promotion_contract", "intentionally"]
+        for keyword in keywords:
+            self.assertIn(
+                keyword,
+                doc,
+                f"Supervisor module docstring must mention '{keyword}' to document "
+                "why contract modules are intentionally absent.",
+            )
+
+    def test_contract_modules_not_imported_by_supervisor(self):
+        """The supervisor must NOT import contract modules at module level.
+
+        The contract modules belong to the Model-Scope layer; importing them
+        here would create a false dependency.
+        """
+        import run_golden_default_autopilot
+        for module_name in (
+            "evidence_contract",
+            "promotion_contract",
+            "compute_budget_policy",
+            "evaluator_fabric",
+        ):
+            self.assertNotIn(
+                module_name,
+                dir(run_golden_default_autopilot),
+                f"'{module_name}' must not be imported at module level in the supervisor.",
+            )
 
 
 if __name__ == "__main__":

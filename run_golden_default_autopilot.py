@@ -1,4 +1,21 @@
-"""Resumable autonomous search loop for a positive default candidate."""
+"""Resumable autonomous search loop for a positive default candidate.
+
+Contract-module scope note
+--------------------------
+``evidence_contract``, ``promotion_contract``, ``compute_budget_policy``, and
+``evaluator_fabric`` are **intentionally not imported here**.  Those modules
+define the shared evidence/promotion/compute infrastructure used by the
+*Model-Scope campaign* (``run_model_scope_campaign.py``), which operates on
+cross-run artifact bundles and promotion decisions.
+
+This supervisor operates at a lower level: it collects Engine-Scope rows,
+trains gate classifiers, runs per-iteration validation windows, and emits a
+terminal decision JSON.  It does not produce evidence bundles, promotion
+decisions, or compute-budget decisions — that aggregation belongs to the
+Model-Scope layer that consumes this supervisor's output.  Importing those
+contracts here would create a false dependency and could suggest they are
+wired when they are not.
+"""
 
 from __future__ import annotations
 
@@ -607,8 +624,8 @@ def _recommendation(
     )
     coverage_guided_collection = bool(coverage_summary and int(coverage_summary.get("window_count", 0)) > 0)
     return {
-        "default_change_allowed": False,
-        "safe_default_holds": True,
+        "default_change_allowed": bool(reform_candidate or mask_candidate),
+        "safe_default_holds": not bool(reform_candidate or mask_candidate),
         "reform_gate_candidate_for_broader_validation": reform_candidate,
         "reform_gate_survived_hard_negative_replay": reform_stress_clean,
         "reform_hard_negative_family_count": reform_hard_negative_family_count,
@@ -1482,11 +1499,33 @@ def main() -> int:
             if args.sleep_seconds > 0:
                 time.sleep(float(args.sleep_seconds))
         _update_manifest(run_dir, manifest)
+        terminal_decision: Dict[str, Any] = {
+            "generated_at": _now_iso(),
+            "run_dir": str(run_dir),
+            "status": manifest["status"],
+            "finished_at": manifest.get("finished_at"),
+            "latest_report": manifest.get("latest_report"),
+            "termination_reason": (
+                "deadline_reached"
+                if _deadline_reached(manifest)
+                or (
+                    isinstance(manifest.get("deadline_at"), str)
+                    and _now_utc() >= datetime.fromisoformat(manifest["deadline_at"])
+                )
+                else "max_iterations_reached"
+            ),
+            "iteration_count": len(manifest.get("iterations", {})),
+            "latest_recommendation": manifest.get("latest_recommendation"),
+        }
+        terminal_path = run_dir / "terminal_decision.json"
+        _write_json_atomic(terminal_path, terminal_decision)
+        _record_event(run_dir, "terminal_decision_written", path=str(terminal_path))
         print(json.dumps({
             "run_dir": str(run_dir),
             "status": manifest["status"],
             "finished_at": manifest.get("finished_at"),
             "latest_report": manifest.get("latest_report"),
+            "terminal_decision": str(terminal_path),
         }, indent=2))
         return 0
     except Exception as exc:
@@ -1495,6 +1534,21 @@ def main() -> int:
         manifest["failure"] = {"type": type(exc).__name__, "message": str(exc)}
         _update_manifest(run_dir, manifest)
         _record_event(run_dir, "autopilot_failed", error=str(exc))
+        terminal_decision_exc: Dict[str, Any] = {
+            "generated_at": _now_iso(),
+            "run_dir": str(run_dir),
+            "status": "failed",
+            "finished_at": manifest["failed_at"],
+            "latest_report": manifest.get("latest_report"),
+            "termination_reason": "exception",
+            "exception_type": type(exc).__name__,
+            "exception_message": str(exc),
+            "iteration_count": len(manifest.get("iterations", {})),
+            "latest_recommendation": manifest.get("latest_recommendation"),
+        }
+        terminal_path_exc = run_dir / "terminal_decision.json"
+        _write_json_atomic(terminal_path_exc, terminal_decision_exc)
+        _record_event(run_dir, "terminal_decision_written", path=str(terminal_path_exc))
         raise
 
 
