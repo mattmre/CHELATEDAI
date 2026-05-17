@@ -2457,9 +2457,16 @@ class AntigravityEngine:
                         enabled=True,
                         last_result=_ds._tts_result_to_dict(_tts_result),
                     )
-                except Exception:
-                    pass
+                except Exception as _tts_dash_err:  # L11-disclosed: dashboard update must never kill inference
+                    import warnings
+                    warnings.warn(
+                        f"TTS dashboard update failed: {_tts_dash_err!r}",
+                        stacklevel=2,
+                    )
             except Exception as _tts_err:
+                # L11-disclosed intentional safety fallback: TTS pipeline errors must
+                # never kill inference.  The original embedding (q_vec) is retained.
+                # _last_tts_result is NOT updated so callers see the previous value or None.
                 self.logger.log_error(
                     "tts_pipeline",
                     "TTS pipeline error during inference; using original embedding",

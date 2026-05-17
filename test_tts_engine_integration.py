@@ -412,6 +412,49 @@ class TestRunInferenceTTSIntercept(unittest.TestCase):
         # after_steering should NOT equal the raw embedding (all-zeros)
         self.assertFalse(np.allclose(result.after_steering, np.zeros(dim)))
 
+    @patch("antigravity_engine.get_logger", return_value=MagicMock())
+    @patch("dashboard_server.update_tts_dashboard_state")
+    def test_tts_apply_failure_leaves_original_embedding(self, _upd, _log):
+        """L5: when _tts.apply() raises, run_inference must not raise and
+        _last_tts_result must remain None (the error path must not set it)."""
+        from tts_pipeline import TTSConfig
+
+        dim = 8
+        engine = self._build_engine_with_mocked_internals(dim=dim)
+        engine.enable_tts(tts_config=TTSConfig())
+
+        # Confirm baseline: result is None before inference
+        self.assertIsNone(engine.get_last_tts_result())
+
+        # Patch apply() to raise so the TTS error path is exercised
+        engine._tts_pipeline.apply = MagicMock(
+            side_effect=RuntimeError("TTS pipeline test failure")
+        )
+
+        good_embedding = np.zeros((1, dim))
+        with (
+            patch.object(engine, "embed", return_value=good_embedding),
+            patch.object(engine, "_observe_model_scope_query", return_value=None),
+            patch.object(engine, "_record_runtime_diagnostics", return_value=None),
+            patch.object(engine, "_build_runtime_diagnostics", return_value={}),
+        ):
+            # Must NOT raise — TTS failure is a safety fallback, not a fatal error
+            result = engine.run_inference("test query")
+
+        # Inference must return a result (original embedding path continued)
+        self.assertIsNotNone(result)
+
+        # _last_tts_result must still be None — the failure path must not set it
+        self.assertIsNone(
+            engine.get_last_tts_result(),
+            "_last_tts_result must not be set when _tts.apply() raises",
+        )
+
+        # The logger must have recorded the error
+        engine.logger.log_error.assert_called()
+        call_args = engine.logger.log_error.call_args
+        self.assertEqual(call_args[0][0], "tts_pipeline")
+
 
 # ===========================================================================
 # Dashboard state helpers
