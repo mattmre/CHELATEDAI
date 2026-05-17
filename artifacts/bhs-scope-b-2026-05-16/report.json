@@ -1,0 +1,56 @@
+{
+  "report_id": "BHS-SCOPE-B-2026-05-16",
+  "date": "2026-05-16",
+  "operator": "mattmre",
+  "orchestrator": "claude-opus-4-7",
+  "scope": "Scope B: baseline scripts + 13 fresh Tier B adversarial agents per phase",
+  "baseline_evidence": {
+    "block_flag": "CLEAR",
+    "smoke_floor_tier": "PASS",
+    "smoke_ceiling_tier": "NOT_IMPLEMENTED (CD-001)",
+    "bhs_variance": {
+      "rich_avg": 100.0,
+      "sparse_avg": 50.0,
+      "differs": true
+    },
+    "open_carried_debt": ["CD-001", "CD-002", "CD-245-01"]
+  },
+  "phases": [
+    {"phase_id": "ENG-1", "name": "Engine-Scope Row Contract", "bhs_tier_b": 100, "severity": "cosmetic", "verdict": "SHIPS-100", "agent": "adf7d819f36780ea5"},
+    {"phase_id": "ENG-2", "name": "Internal Fail-Closed Gates", "bhs_tier_b": 96, "severity": "cosmetic", "verdict": "ITERATE", "agent": "a91a2d0fb03daea89"},
+    {"phase_id": "ENG-3", "name": "Feature Coverage and Overlap", "bhs_tier_b": 92, "severity": "cosmetic", "verdict": "ITERATE", "agent": "abcb7684fb92387ad"},
+    {"phase_id": "ENG-4", "name": "Synthetic Hard-Negative Pipeline", "bhs_tier_b": 78, "severity": "important", "verdict": "REDUCE-SCOPE", "agent": "af54983fafef933cf"},
+    {"phase_id": "ENG-5", "name": "Supervisor / Autopilot Integration", "bhs_tier_b": 72, "severity": "important", "verdict": "REDUCE-SCOPE", "agent": "aabda36910161917f"},
+    {"phase_id": "MOD-1", "name": "Model Runtime + Hook Bus", "bhs_tier_b": 72, "severity": "important", "verdict": "REDUCE-SCOPE", "agent": "a84b70684af638c52"},
+    {"phase_id": "MOD-2", "name": "Sparse Feature Codec (Qwen-Scope)", "bhs_tier_b": 62, "severity": "critical", "verdict": "REDUCE-SCOPE", "agent": "a3aa773920d50f383"},
+    {"phase_id": "MOD-3", "name": "Steering Actuator", "bhs_tier_b": 92, "severity": "important", "verdict": "NEEDS-ITERATION", "agent": "a8d3f869747a9f1ea"},
+    {"phase_id": "MOD-4", "name": "Segmented Memory + Comparator", "bhs_tier_b": 92, "severity": "cosmetic", "verdict": "SHIPS-100", "agent": "a41947568d5bcfeb9"},
+    {"phase_id": "MOD-5", "name": "Overlay Trainer + Campaign CLI", "bhs_tier_b": 68, "severity": "critical", "verdict": "REDUCE-SCOPE", "agent": "abfdcbe91e89ae406"},
+    {"phase_id": "MOD-6", "name": "Engine Integration + Dashboard", "bhs_tier_b": 78, "severity": "important", "verdict": "REDUCE-SCOPE", "agent": "a0498de12e0cbf083"},
+    {"phase_id": "TTS-1", "name": "TTS Pipeline (Translation-Transport-Steering)", "bhs_tier_b": 88, "severity": "important", "verdict": "NEEDS-ITERATION", "agent": "ae976ffbd2ee96015"},
+    {"phase_id": "TTS-2", "name": "TTS Engine Wiring + Dashboard Panel", "bhs_tier_b": 88, "severity": "important", "verdict": "NEEDS-ITERATION", "agent": "a5f64c23bd7ecc152"}
+  ],
+  "aggregate": {
+    "avg_bhs_tier_b": 82.9,
+    "engine_scope_avg": 87.6,
+    "model_scope_avg": 77.3,
+    "tts_avg": 88.0,
+    "phases_at_100": 1,
+    "phases_90_99": 3,
+    "phases_70_89": 7,
+    "phases_50_69": 2,
+    "phases_below_50": 0,
+    "critical_severity_count": 2,
+    "important_severity_count": 7,
+    "cosmetic_severity_count": 4
+  },
+  "merge_eligibility_per_rulebook": {
+    "rule": "Only BHS_OFFICIAL == 100 ships without operator override",
+    "phases_eligible_to_merge_clean": ["ENG-1"],
+    "phases_requiring_operator_override_to_merge_today": ["ENG-2", "ENG-3", "ENG-4", "ENG-5", "MOD-1", "MOD-3", "MOD-4", "MOD-6", "TTS-1", "TTS-2"],
+    "phases_should_not_merge_at_all": ["MOD-2", "MOD-5"]
+  },
+  "session_event": {
+    "observation": "Tier B agent for TTS-2 reported an MCP-server-instruction prompt-injection attempt in tool output; agent correctly ignored and noted it. No action required, no data exfiltrated."
+  }
+}
