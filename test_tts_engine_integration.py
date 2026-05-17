@@ -325,6 +325,14 @@ class TestRunInferenceTTSIntercept(unittest.TestCase):
         engine._history_vectors = []
         engine._query_count = 0
         engine._adapter_routing_active = False
+        # Mock qdrant client and collection_name so run_inference can complete
+        # past the retrieval step (TTS result is set before this call).
+        qdrant_mock = MagicMock()
+        qdrant_response = MagicMock()
+        qdrant_response.points = []
+        qdrant_mock.query_points.return_value = qdrant_response
+        engine.qdrant = qdrant_mock
+        engine.collection_name = "test_collection"
         return engine
 
     @patch("antigravity_engine.get_logger", return_value=MagicMock())
@@ -398,14 +406,11 @@ class TestRunInferenceTTSIntercept(unittest.TestCase):
             patch.object(engine, "_record_runtime_diagnostics", return_value=None),
             patch.object(engine, "_build_runtime_diagnostics", return_value={}),
         ):
-            try:
-                engine.run_inference("test")
-            except Exception:
-                pass
+            engine.run_inference("test")
         result = engine.get_last_tts_result()
-        if result is not None:
-            # after_steering should NOT equal the raw embedding (all-zeros)
-            self.assertFalse(np.allclose(result.after_steering, np.zeros(dim)))
+        self.assertIsNotNone(result, "TTS result should be populated after run_inference")
+        # after_steering should NOT equal the raw embedding (all-zeros)
+        self.assertFalse(np.allclose(result.after_steering, np.zeros(dim)))
 
 
 # ===========================================================================
@@ -959,6 +964,100 @@ class TestRunRoadCourseCampaignCLIWiring(unittest.TestCase):
         self.assertTrue(
             tts_config_arg.transport_enabled,
             "--tts-transport defaults True; must remain True when not overridden",
+        )
+
+    @patch("run_road_course_campaign.run_campaign")
+    def test_main_no_tts_translation_disables_translation_in_tts_config(self, mock_run_campaign):
+        """--enable-tts --no-tts-translation must produce TTSConfig(translation_enabled=False)."""
+        import sys
+        import tempfile
+        import os
+        import run_road_course_campaign as rrc
+
+        mock_run_campaign.return_value = self._minimal_campaign_result()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_file = os.path.join(tmpdir, "out.json")
+            argv = [
+                "run_road_course_campaign.py",
+                "--enable-tts",
+                "--no-tts-translation",
+                "--output", output_file,
+                "--max-queries", "1",
+                "--sample-docs", "2",
+            ]
+            with patch.object(sys, "argv", argv):
+                rrc.main()
+
+        self.assertTrue(mock_run_campaign.called, "run_campaign must have been called")
+        call_kwargs = mock_run_campaign.call_args
+        tts_config_arg = call_kwargs.kwargs.get("tts_config") or (
+            call_kwargs.args[6] if len(call_kwargs.args) > 6 else None
+        )
+        self.assertIsNotNone(
+            tts_config_arg,
+            "--enable-tts must produce a non-None tts_config passed to run_campaign",
+        )
+        from tts_pipeline import TTSConfig
+        self.assertIsInstance(tts_config_arg, TTSConfig)
+        self.assertFalse(
+            tts_config_arg.translation_enabled,
+            "--no-tts-translation must set TTSConfig.translation_enabled=False",
+        )
+        self.assertTrue(
+            tts_config_arg.transport_enabled,
+            "--tts-transport defaults True; must remain True when not overridden",
+        )
+        self.assertTrue(
+            tts_config_arg.steering_enabled,
+            "--tts-steering defaults True; must remain True when not overridden",
+        )
+
+    @patch("run_road_course_campaign.run_campaign")
+    def test_main_no_tts_transport_disables_transport_in_tts_config(self, mock_run_campaign):
+        """--enable-tts --no-tts-transport must produce TTSConfig(transport_enabled=False)."""
+        import sys
+        import tempfile
+        import os
+        import run_road_course_campaign as rrc
+
+        mock_run_campaign.return_value = self._minimal_campaign_result()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_file = os.path.join(tmpdir, "out.json")
+            argv = [
+                "run_road_course_campaign.py",
+                "--enable-tts",
+                "--no-tts-transport",
+                "--output", output_file,
+                "--max-queries", "1",
+                "--sample-docs", "2",
+            ]
+            with patch.object(sys, "argv", argv):
+                rrc.main()
+
+        self.assertTrue(mock_run_campaign.called, "run_campaign must have been called")
+        call_kwargs = mock_run_campaign.call_args
+        tts_config_arg = call_kwargs.kwargs.get("tts_config") or (
+            call_kwargs.args[6] if len(call_kwargs.args) > 6 else None
+        )
+        self.assertIsNotNone(
+            tts_config_arg,
+            "--enable-tts must produce a non-None tts_config passed to run_campaign",
+        )
+        from tts_pipeline import TTSConfig
+        self.assertIsInstance(tts_config_arg, TTSConfig)
+        self.assertFalse(
+            tts_config_arg.transport_enabled,
+            "--no-tts-transport must set TTSConfig.transport_enabled=False",
+        )
+        self.assertTrue(
+            tts_config_arg.translation_enabled,
+            "--tts-translation defaults True; must remain True when not overridden",
+        )
+        self.assertTrue(
+            tts_config_arg.steering_enabled,
+            "--tts-steering defaults True; must remain True when not overridden",
         )
 
     @patch("run_road_course_campaign.run_campaign")
