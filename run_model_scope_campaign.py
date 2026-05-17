@@ -708,9 +708,11 @@ def run_campaign(args: argparse.Namespace) -> Dict[str, Any]:
         split_idx = max(1, int(len(episodes) * 0.8))
         train_episodes = episodes[:split_idx]
         eval_episodes = episodes[split_idx:]
+        _eval_is_training_data = False
     else:
         train_episodes = episodes
-        eval_episodes = episodes  # disclosed below via eval_is_training_data
+        eval_episodes = episodes
+        _eval_is_training_data = True
 
     records = trainer.run_campaign(train_episodes)
 
@@ -727,6 +729,7 @@ def run_campaign(args: argparse.Namespace) -> Dict[str, Any]:
         "final_loss": final_loss,
         "promoted": decision.promoted,
         "promotion_delta": decision.delta,
+        "eval_is_training_data": _eval_is_training_data,
         "records": [
             {
                 "epoch": r.epoch,

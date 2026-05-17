@@ -347,6 +347,12 @@ class SteeringActuator:
         Each line is a self-contained JSON object produced by
         ``intervention_record_to_dict()``.  Existing file content is
         overwritten.  Returns the number of records written.
+
+        Important: Records are in-memory only until ``persist_records()`` is
+        explicitly called by the caller.  The bridge layer
+        (``ModelScopeEngineBridge``) does **not** automatically persist records
+        on shutdown — the caller is responsible for persisting before the
+        process exits.
         """
         output = Path(path)
         output.parent.mkdir(parents=True, exist_ok=True)
@@ -367,8 +373,12 @@ class SteeringActuator:
             line = raw_line.strip()
             if not line:
                 continue
-            self._records.append(intervention_record_from_dict(_json.loads(line)))
-            loaded += 1
+            try:
+                self._records.append(intervention_record_from_dict(_json.loads(line)))
+                loaded += 1
+            except (_json.JSONDecodeError, ValueError):
+                import warnings
+                warnings.warn(f"Skipping corrupt JSON line in {path}: {line[:80]!r}", stacklevel=2)
         return loaded
 
 

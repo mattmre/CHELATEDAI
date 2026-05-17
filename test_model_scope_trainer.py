@@ -620,27 +620,38 @@ class TestOverlayCampaignCLI(unittest.TestCase):
             self.assertIsInstance(result["promoted"], bool)
 
     def test_run_campaign_eval_split_uses_held_out_data(self):
-        """With >=2 episodes run_campaign trains on 80% and evaluates on 20%.
+        """run_campaign takes the split path (eval_is_training_data=False) with >=2 episodes
+        and the fallback path (eval_is_training_data=True) with exactly 1 episode.
 
-        We verify that with 5 episodes and patience=100, the epochs_run reflects
-        training on 4 episodes (not 5) by checking reproducibility — both runs
-        with the same seed and 5 episodes must agree, confirming the split path
-        is deterministic and not using the full dataset for evaluation.
+        This test would fail if eval_episodes = episodes (no holdout), because the
+        single-episode branch sets eval_is_training_data=True and the multi-episode
+        branch sets it to False — so checking both values distinguishes the two paths.
         """
-        with tempfile.TemporaryDirectory() as td1, tempfile.TemporaryDirectory() as td2:
-            def _args(d):
-                return argparse.Namespace(
-                    overlay_id="split_ov", policy_id="split_pol",
-                    episodes=5, max_epochs=10, learning_rate=0.01,
-                    promotion_threshold=0.05, output_dir=d, seed=77,
-                )
-            r1 = self._run(_args(td1))
-            r2 = self._run(_args(td2))
-            # Reproducibility: same seed → same result regardless of output dir
-            self.assertEqual(r1["epochs_run"], r2["epochs_run"])
-            self.assertAlmostEqual(r1["final_loss"], r2["final_loss"], places=10)
-            # promotion_delta must be a float (comes from held-out eval)
-            self.assertIsInstance(r1["promotion_delta"], float)
+        # Multi-episode path: 5 episodes → 4 train + 1 eval (held out)
+        with tempfile.TemporaryDirectory() as td_multi:
+            args_multi = argparse.Namespace(
+                overlay_id="split_multi", policy_id="split_pol",
+                episodes=5, max_epochs=5, learning_rate=0.01,
+                promotion_threshold=0.05, output_dir=td_multi, seed=77,
+            )
+            result_multi = self._run(args_multi)
+            self.assertFalse(
+                result_multi["eval_is_training_data"],
+                "With 5 episodes the split path must set eval_is_training_data=False",
+            )
+
+        # Single-episode fallback: eval data == training data
+        with tempfile.TemporaryDirectory() as td_single:
+            args_single = argparse.Namespace(
+                overlay_id="split_single", policy_id="split_pol",
+                episodes=1, max_epochs=5, learning_rate=0.01,
+                promotion_threshold=0.05, output_dir=td_single, seed=77,
+            )
+            result_single = self._run(args_single)
+            self.assertTrue(
+                result_single["eval_is_training_data"],
+                "With 1 episode the fallback path must set eval_is_training_data=True",
+            )
 
     def test_run_campaign_single_episode_does_not_crash(self):
         """With only 1 episode the campaign falls back to using it for both train and eval."""

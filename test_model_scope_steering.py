@@ -630,6 +630,34 @@ class TestSteeringActuatorPersistence(unittest.TestCase):
             actuator.load_records(path)  # adds 1 more from file → total 2
             self.assertEqual(len(actuator.get_records()), 2)
 
+    def test_load_records_skips_corrupt_line(self):
+        """A corrupt JSON line between two valid records is skipped; valid records load."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Build two valid records and serialise them to a JSONL file.
+            actuator_src = self._build_actuator_with_records(count=2)
+            valid_lines = []
+            for record in actuator_src.get_records():
+                import json as _json_local
+                from model_scope_steering import intervention_record_to_dict
+                valid_lines.append(_json_local.dumps(intervention_record_to_dict(record)))
+
+            # Insert a corrupt line between the two valid ones.
+            path = Path(tmpdir) / "corrupt.jsonl"
+            path.write_text(
+                valid_lines[0] + "\n"
+                + "THIS IS NOT VALID JSON {{{\n"
+                + valid_lines[1] + "\n",
+                encoding="utf-8",
+            )
+
+            registry2 = PolicyRegistry()
+            actuator2 = SteeringActuator(registry2)
+            loaded = actuator2.load_records(path)
+
+            # Only the 2 valid records should be loaded; no exception raised.
+            self.assertEqual(loaded, 2)
+            self.assertEqual(len(actuator2.get_records()), 2)
+
 
 if __name__ == "__main__":
     unittest.main()
