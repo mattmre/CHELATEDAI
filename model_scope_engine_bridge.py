@@ -113,9 +113,25 @@ class ModelScopeEngineBridge:
             intervention_count = sum(1 for r in records if r.applied)
             if records:
                 intervention_path = self._artifact_store._base_dir / f"intervention_{run_id}.json"
-                from model_scope_steering import intervention_record_to_dict
-                with open(intervention_path, "w", encoding="utf-8") as fh:
-                    json.dump([intervention_record_to_dict(r) for r in records], fh)
+                from model_scope_steering import intervention_record_to_dict as _irtd
+                import warnings as _warnings
+                try:
+                    with open(intervention_path, "w", encoding="utf-8") as fh:
+                        json.dump([_irtd(r) for r in records], fh)
+                except OSError as _write_err:
+                    _warnings.warn(
+                        f"Failed to persist intervention record {run_id}: {_write_err!r}",
+                        stacklevel=2,
+                    )
+                else:
+                    # Enforce cap to prevent unbounded accumulation
+                    existing = sorted(self._artifact_store._base_dir.glob("intervention_*.json"))
+                    if len(existing) > 50:
+                        for old_file in existing[:-50]:
+                            try:
+                                old_file.unlink()
+                            except OSError:
+                                pass  # best-effort cleanup
 
         self._observation_count += 1
         elapsed_ms = (time.monotonic() - t_start) * 1000.0

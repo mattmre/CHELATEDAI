@@ -940,5 +940,126 @@ class TestBridgeObserveWithSteeringEnabled(unittest.TestCase):
         self.assertGreater(summary["intervention_summary"]["total_applied"], 0)
 
 
+# ---------------------------------------------------------------------------
+# Gap 1: Disk write failure leaves bridge in partial state
+# ---------------------------------------------------------------------------
+
+
+class TestBridgeObserveSteeringDiskWriteFailure(unittest.TestCase):
+    """Gap-1 fix: OSError during intervention file write must not raise and must still
+    increment observation_count."""
+
+    def setUp(self):
+        from model_scope_engine_bridge import ModelScopeEngineBridge, ModelScopeBridgeConfig
+        from steering_policy import SteeringPolicyConfig, SteeringMode, PolicyStatus
+
+        self._td = tempfile.mkdtemp(prefix="bridge_diskfail_")
+        cfg = ModelScopeBridgeConfig(
+            artifact_dir=self._td,
+            enable_feature_extraction=True,
+            enable_steering=True,
+        )
+        self._bridge = ModelScopeEngineBridge(cfg)
+
+        policy_cfg = SteeringPolicyConfig(
+            name="test_diskfail_policy",
+            mode=SteeringMode.SOFT_SCALE,
+            target_features=["mean_activation", "norm_activation"],
+            scale_factor=1.5,
+            status=PolicyStatus.ACTIVE,
+        )
+        self._bridge._actuator._registry.register(policy_cfg)
+
+    def _mock_runtime_with_event(self):
+        act = _make_activation_event()
+        rt = MagicMock()
+        rt.is_loaded.return_value = True
+        rt.get_events.return_value = [act]
+        return rt
+
+    def test_observe_with_steering_disk_write_failure_still_increments_count(self):
+        """If the intervention file write raises OSError, observe() must not propagate
+        the exception and must still increment observation_count to 1."""
+        import warnings as _warnings_mod
+
+        rt = self._mock_runtime_with_event()
+
+        _real_open = open  # save reference before patch
+
+        def _selective_open(path, *args, **kwargs):
+            if "intervention_" in str(path):
+                raise OSError("disk full")
+            return _real_open(path, *args, **kwargs)
+
+        captured = []
+        with _warnings_mod.catch_warnings(record=True) as w:
+            _warnings_mod.simplefilter("always")
+            with patch("builtins.open", side_effect=_selective_open):
+                result = self._bridge.observe("test disk failure", rt)
+            captured = list(w)
+
+        # Must not have raised
+        self.assertIsNone(result.error)
+        # observation_count must still be incremented
+        self.assertEqual(self._bridge.get_telemetry()["observation_count"], 1)
+        # A UserWarning must have been emitted about the failed write
+        user_warnings = [x for x in captured if issubclass(x.category, UserWarning)]
+        self.assertGreater(len(user_warnings), 0, "Expected a UserWarning about the disk write failure")
+
+
+# ---------------------------------------------------------------------------
+# Gap 2: Unbounded intervention file accumulation
+# ---------------------------------------------------------------------------
+
+
+class TestBridgeObserveSteeringFileCap(unittest.TestCase):
+    """Gap-2 fix: after >50 observe() calls with steering, at most 50 intervention
+    files must remain on disk."""
+
+    def setUp(self):
+        from model_scope_engine_bridge import ModelScopeEngineBridge, ModelScopeBridgeConfig
+        from steering_policy import SteeringPolicyConfig, SteeringMode, PolicyStatus
+
+        self._td = tempfile.mkdtemp(prefix="bridge_cap_")
+        cfg = ModelScopeBridgeConfig(
+            artifact_dir=self._td,
+            enable_feature_extraction=True,
+            enable_steering=True,
+            max_total_interventions=1000,
+        )
+        self._bridge = ModelScopeEngineBridge(cfg)
+
+        policy_cfg = SteeringPolicyConfig(
+            name="test_cap_policy",
+            mode=SteeringMode.SOFT_SCALE,
+            target_features=["mean_activation", "norm_activation"],
+            scale_factor=1.5,
+            status=PolicyStatus.ACTIVE,
+        )
+        self._bridge._actuator._registry.register(policy_cfg)
+
+    def _mock_runtime_with_event(self):
+        act = _make_activation_event()
+        rt = MagicMock()
+        rt.is_loaded.return_value = True
+        rt.get_events.return_value = [act]
+        return rt
+
+    def test_observe_with_steering_caps_intervention_files_at_50(self):
+        """After 55 observe() calls with steering, at most 50 intervention files must
+        remain in the artifact directory."""
+        rt = self._mock_runtime_with_event()
+        for _ in range(55):
+            self._bridge.observe("cap test query", rt)
+
+        artifact_dir = Path(self._td)
+        intervention_files = list(artifact_dir.glob("intervention_*.json"))
+        self.assertLessEqual(
+            len(intervention_files),
+            50,
+            f"Expected at most 50 intervention files, found {len(intervention_files)}",
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
