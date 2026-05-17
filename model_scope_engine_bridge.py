@@ -124,14 +124,22 @@ class ModelScopeEngineBridge:
                         stacklevel=2,
                     )
                 else:
-                    # Enforce cap to prevent unbounded accumulation
+                    # Enforce cap to prevent unbounded accumulation.
+                    # Files are removed until count reaches the cap; sort order is
+                    # lexicographic, not temporal (UUID-based names have no time
+                    # correlation, so "oldest" is meaningless here).
                     existing = sorted(self._artifact_store._base_dir.glob("intervention_*.json"))
                     if len(existing) > 50:
                         for old_file in existing[:-50]:
                             try:
                                 old_file.unlink()
-                            except OSError:
-                                pass  # best-effort cleanup
+                            except OSError as _del_err:
+                                import warnings as _warnings
+                                _warnings.warn(
+                                    f"Failed to remove old intervention file during cap cleanup: {_del_err!r}",
+                                    UserWarning,
+                                    stacklevel=2,
+                                )
 
         self._observation_count += 1
         elapsed_ms = (time.monotonic() - t_start) * 1000.0

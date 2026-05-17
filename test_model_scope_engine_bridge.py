@@ -1002,9 +1002,18 @@ class TestBridgeObserveSteeringDiskWriteFailure(unittest.TestCase):
         self.assertIsNone(result.error)
         # observation_count must still be incremented
         self.assertEqual(self._bridge.get_telemetry()["observation_count"], 1)
-        # A UserWarning must have been emitted about the failed write
+        # A UserWarning specifically about the intervention file write failure must
+        # have been emitted — not just any UserWarning.
         user_warnings = [x for x in captured if issubclass(x.category, UserWarning)]
         self.assertGreater(len(user_warnings), 0, "Expected a UserWarning about the disk write failure")
+        disk_write_warnings = [
+            x for x in user_warnings
+            if "intervention_" in str(x.message) or "Failed to persist" in str(x.message)
+        ]
+        self.assertGreater(
+            len(disk_write_warnings), 0,
+            "Expected a UserWarning mentioning intervention file write failure"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -1058,6 +1067,93 @@ class TestBridgeObserveSteeringFileCap(unittest.TestCase):
             len(intervention_files),
             50,
             f"Expected at most 50 intervention files, found {len(intervention_files)}",
+        )
+
+
+# ---------------------------------------------------------------------------
+# Gap 1 (L11): Cap cleanup warns on OSError from unlink instead of swallowing
+# ---------------------------------------------------------------------------
+
+
+class TestBridgeCapCleanupWarnsOnUnlinkFailure(unittest.TestCase):
+    """Verify that an OSError during cap-cleanup unlink emits a UserWarning
+    instead of being silently swallowed, and that observe() does NOT raise."""
+
+    def setUp(self):
+        from model_scope_engine_bridge import ModelScopeEngineBridge, ModelScopeBridgeConfig
+        from steering_policy import SteeringPolicyConfig, SteeringMode, PolicyStatus
+
+        self._td = tempfile.mkdtemp(prefix="bridge_cleanup_warn_")
+        cfg = ModelScopeBridgeConfig(
+            artifact_dir=self._td,
+            enable_feature_extraction=True,
+            enable_steering=True,
+            max_total_interventions=10000,
+        )
+        self._bridge = ModelScopeEngineBridge(cfg)
+
+        policy_cfg = SteeringPolicyConfig(
+            name="test_cleanup_warn_policy",
+            mode=SteeringMode.SOFT_SCALE,
+            target_features=["mean_activation", "norm_activation"],
+            scale_factor=1.5,
+            status=PolicyStatus.ACTIVE,
+        )
+        self._bridge._actuator._registry.register(policy_cfg)
+
+    def _mock_runtime_with_event(self):
+        act = _make_activation_event()
+        rt = MagicMock()
+        rt.is_loaded.return_value = True
+        rt.get_events.return_value = [act]
+        return rt
+
+    def test_cap_cleanup_emits_warning_on_unlink_failure(self):
+        """When Path.unlink raises OSError during cap cleanup, a UserWarning
+        mentioning 'cleanup' or 'intervention file' must be emitted, and
+        observe() must NOT raise."""
+        import warnings as _warnings_mod
+
+        artifact_dir = Path(self._td)
+
+        # Pre-populate 51 dummy intervention files so cleanup is triggered
+        # on the very next observe() call.
+        for i in range(51):
+            dummy = artifact_dir / f"intervention_dummy_{i:04d}.json"
+            dummy.write_text("[]", encoding="utf-8")
+
+        _unlink_call_count = {"n": 0}
+        _real_unlink = Path.unlink
+
+        def _failing_unlink(self_path, *args, **kwargs):
+            # Raise only on the first unlink call (one failure is enough to
+            # exercise the warning path).
+            if _unlink_call_count["n"] == 0:
+                _unlink_call_count["n"] += 1
+                raise OSError("permission denied")
+            _unlink_call_count["n"] += 1
+            return _real_unlink(self_path, *args, **kwargs)
+
+        rt = self._mock_runtime_with_event()
+        captured = []
+        with _warnings_mod.catch_warnings(record=True) as w:
+            _warnings_mod.simplefilter("always")
+            with patch.object(Path, "unlink", _failing_unlink):
+                result = self._bridge.observe("cleanup warn test", rt)
+            captured = list(w)
+
+        # observe() must NOT raise — result.error stays None
+        self.assertIsNone(result.error, f"observe() raised unexpectedly: {result.error}")
+
+        # A UserWarning about the cap cleanup failure must have been emitted
+        user_warnings = [x for x in captured if issubclass(x.category, UserWarning)]
+        cleanup_warnings = [
+            x for x in user_warnings
+            if "cleanup" in str(x.message).lower() or "intervention file" in str(x.message).lower()
+        ]
+        self.assertGreater(
+            len(cleanup_warnings), 0,
+            f"Expected a UserWarning mentioning cap cleanup failure, got: {[str(x.message) for x in user_warnings]}",
         )
 
 
