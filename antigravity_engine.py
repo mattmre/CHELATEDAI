@@ -1077,10 +1077,11 @@ class AntigravityEngine:
                 enabled=True,
                 config=self._runtime_json_safe(cfg.__dict__),
             )
-        except Exception as _tts_enable_dash_err:
-            import warnings as _warnings
-            _warnings.warn(
-                f"TTS dashboard enable update failed: {_tts_enable_dash_err!r}",
+        except Exception as _exc:
+            import warnings
+            warnings.warn(
+                f"TTS dashboard enable update failed: {_exc}",
+                UserWarning,
                 stacklevel=2,
             )
 

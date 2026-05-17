@@ -293,6 +293,25 @@ class TestEngineTTSMethods(unittest.TestCase):
         engine.enable_tts(tts_config=TTSConfig())
         self.assertIsNone(engine.get_last_tts_result())
 
+    @patch("antigravity_engine.get_logger", return_value=MagicMock())
+    @patch("dashboard_server.update_tts_dashboard_state", side_effect=RuntimeError("dashboard down"))
+    def test_enable_tts_dashboard_failure_emits_warning(self, _upd, _log):
+        """L5 gap: enable_tts() dashboard update failure path must emit a UserWarning
+        and NOT propagate the exception, and must still set engine._tts_pipeline."""
+        import warnings
+        from tts_pipeline import TTSConfig
+        engine = self._make_bare_engine()
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            engine.enable_tts(tts_config=TTSConfig())
+        # Must not raise -- call completed
+        self.assertIsNotNone(engine._tts_pipeline)
+        # At least one UserWarning must have been emitted
+        user_warnings = [x for x in w if issubclass(x.category, UserWarning)]
+        self.assertGreater(len(user_warnings), 0, "Expected a UserWarning but none was emitted")
+        warning_text = str(user_warnings[0].message).lower()
+        self.assertIn("dashboard", warning_text)
+
 
 # ===========================================================================
 # TTS intercept in run_inference()
