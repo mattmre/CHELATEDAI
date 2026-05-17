@@ -471,6 +471,51 @@ class TestRunInferenceTTSIntercept(unittest.TestCase):
         call_args = engine.logger.log_error.call_args
         self.assertEqual(call_args[0][0], "tts_pipeline")
 
+    @patch("antigravity_engine.get_logger", return_value=MagicMock())
+    def test_run_inference_dashboard_update_failure_emits_warning(self, _log):
+        """L5: when update_tts_dashboard_state() raises during run_inference, a
+        UserWarning must be emitted and run_inference must NOT raise.
+        _last_tts_result must still be populated (TTS pipeline ran successfully
+        before the dashboard update was attempted)."""
+        import warnings
+        from tts_pipeline import TTSConfig
+
+        dim = 8
+        engine = self._build_engine_with_mocked_internals(dim=dim)
+        engine.enable_tts(tts_config=TTSConfig())
+
+        good_embedding = np.zeros((1, dim))
+        with (
+            patch.object(engine, "embed", return_value=good_embedding),
+            patch.object(engine, "_observe_model_scope_query", return_value=None),
+            patch.object(engine, "_record_runtime_diagnostics", return_value=None),
+            patch.object(engine, "_build_runtime_diagnostics", return_value={}),
+            patch("dashboard_server.update_tts_dashboard_state",
+                  side_effect=RuntimeError("dashboard down")),
+            warnings.catch_warnings(record=True) as w,
+        ):
+            warnings.simplefilter("always")
+            # Must NOT raise — dashboard failure is a non-fatal side-channel
+            engine.run_inference("test query")
+
+        # At least one UserWarning must mention "TTS dashboard" or "dashboard update"
+        user_warnings = [x for x in w if issubclass(x.category, UserWarning)]
+        self.assertGreater(
+            len(user_warnings), 0,
+            "Expected a UserWarning from dashboard update failure but none was emitted",
+        )
+        warning_text = " ".join(str(x.message) for x in user_warnings).lower()
+        self.assertTrue(
+            "tts dashboard" in warning_text or "dashboard update" in warning_text,
+            f"Warning text did not mention TTS dashboard: {warning_text!r}",
+        )
+
+        # TTS pipeline ran before the dashboard update — _last_tts_result must be set
+        self.assertIsNotNone(
+            engine.get_last_tts_result(),
+            "_last_tts_result must be populated even when dashboard update fails",
+        )
+
 
 # ===========================================================================
 # Dashboard state helpers
