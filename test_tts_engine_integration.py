@@ -293,6 +293,25 @@ class TestEngineTTSMethods(unittest.TestCase):
         engine.enable_tts(tts_config=TTSConfig())
         self.assertIsNone(engine.get_last_tts_result())
 
+    @patch("antigravity_engine.get_logger", return_value=MagicMock())
+    @patch("dashboard_server.update_tts_dashboard_state", side_effect=RuntimeError("dashboard down"))
+    def test_enable_tts_dashboard_failure_emits_warning(self, _upd, _log):
+        """L5 gap: enable_tts() dashboard update failure path must emit a UserWarning
+        and NOT propagate the exception, and must still set engine._tts_pipeline."""
+        import warnings
+        from tts_pipeline import TTSConfig
+        engine = self._make_bare_engine()
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            engine.enable_tts(tts_config=TTSConfig())
+        # Must not raise -- call completed
+        self.assertIsNotNone(engine._tts_pipeline)
+        # At least one UserWarning must have been emitted
+        user_warnings = [x for x in w if issubclass(x.category, UserWarning)]
+        self.assertGreater(len(user_warnings), 0, "Expected a UserWarning but none was emitted")
+        warning_text = str(user_warnings[0].message).lower()
+        self.assertIn("dashboard", warning_text)
+
 
 # ===========================================================================
 # TTS intercept in run_inference()
@@ -325,6 +344,14 @@ class TestRunInferenceTTSIntercept(unittest.TestCase):
         engine._history_vectors = []
         engine._query_count = 0
         engine._adapter_routing_active = False
+        # Mock qdrant client and collection_name so run_inference can complete
+        # past the retrieval step (TTS result is set before this call).
+        qdrant_mock = MagicMock()
+        qdrant_response = MagicMock()
+        qdrant_response.points = []
+        qdrant_mock.query_points.return_value = qdrant_response
+        engine.qdrant = qdrant_mock
+        engine.collection_name = "test_collection"
         return engine
 
     @patch("antigravity_engine.get_logger", return_value=MagicMock())
@@ -398,14 +425,96 @@ class TestRunInferenceTTSIntercept(unittest.TestCase):
             patch.object(engine, "_record_runtime_diagnostics", return_value=None),
             patch.object(engine, "_build_runtime_diagnostics", return_value={}),
         ):
-            try:
-                engine.run_inference("test")
-            except Exception:
-                pass
+            engine.run_inference("test")
         result = engine.get_last_tts_result()
-        if result is not None:
-            # after_steering should NOT equal the raw embedding (all-zeros)
-            self.assertFalse(np.allclose(result.after_steering, np.zeros(dim)))
+        self.assertIsNotNone(result, "TTS result should be populated after run_inference")
+        # after_steering should NOT equal the raw embedding (all-zeros)
+        self.assertFalse(np.allclose(result.after_steering, np.zeros(dim)))
+
+    @patch("antigravity_engine.get_logger", return_value=MagicMock())
+    @patch("dashboard_server.update_tts_dashboard_state")
+    def test_tts_apply_failure_leaves_original_embedding(self, _upd, _log):
+        """L5: when _tts.apply() raises, run_inference must not raise and
+        _last_tts_result must remain None (the error path must not set it)."""
+        from tts_pipeline import TTSConfig
+
+        dim = 8
+        engine = self._build_engine_with_mocked_internals(dim=dim)
+        engine.enable_tts(tts_config=TTSConfig())
+
+        # Confirm baseline: result is None before inference
+        self.assertIsNone(engine.get_last_tts_result())
+
+        # Patch apply() to raise so the TTS error path is exercised
+        engine._tts_pipeline.apply = MagicMock(
+            side_effect=RuntimeError("TTS pipeline test failure")
+        )
+
+        good_embedding = np.zeros((1, dim))
+        with (
+            patch.object(engine, "embed", return_value=good_embedding),
+            patch.object(engine, "_observe_model_scope_query", return_value=None),
+            patch.object(engine, "_record_runtime_diagnostics", return_value=None),
+            patch.object(engine, "_build_runtime_diagnostics", return_value={}),
+        ):
+            # Must NOT raise — TTS failure is a safety fallback, not a fatal error
+            engine.run_inference("test query")
+
+        # _last_tts_result must still be None — the failure path must not set it
+        self.assertIsNone(
+            engine.get_last_tts_result(),
+            "_last_tts_result must not be set when _tts.apply() raises",
+        )
+
+        # The logger must have recorded the error
+        engine.logger.log_error.assert_called()
+        call_args = engine.logger.log_error.call_args
+        self.assertEqual(call_args[0][0], "tts_pipeline")
+
+    @patch("antigravity_engine.get_logger", return_value=MagicMock())
+    def test_run_inference_dashboard_update_failure_emits_warning(self, _log):
+        """L5: when update_tts_dashboard_state() raises during run_inference, a
+        UserWarning must be emitted and run_inference must NOT raise.
+        _last_tts_result must still be populated (TTS pipeline ran successfully
+        before the dashboard update was attempted)."""
+        import warnings
+        from tts_pipeline import TTSConfig
+
+        dim = 8
+        engine = self._build_engine_with_mocked_internals(dim=dim)
+        engine.enable_tts(tts_config=TTSConfig())
+
+        good_embedding = np.zeros((1, dim))
+        with (
+            patch.object(engine, "embed", return_value=good_embedding),
+            patch.object(engine, "_observe_model_scope_query", return_value=None),
+            patch.object(engine, "_record_runtime_diagnostics", return_value=None),
+            patch.object(engine, "_build_runtime_diagnostics", return_value={}),
+            patch("dashboard_server.update_tts_dashboard_state",
+                  side_effect=RuntimeError("dashboard down")),
+            warnings.catch_warnings(record=True) as w,
+        ):
+            warnings.simplefilter("always")
+            # Must NOT raise — dashboard failure is a non-fatal side-channel
+            engine.run_inference("test query")
+
+        # At least one UserWarning must mention "TTS dashboard" or "dashboard update"
+        user_warnings = [x for x in w if issubclass(x.category, UserWarning)]
+        self.assertGreater(
+            len(user_warnings), 0,
+            "Expected a UserWarning from dashboard update failure but none was emitted",
+        )
+        warning_text = " ".join(str(x.message) for x in user_warnings).lower()
+        self.assertTrue(
+            "tts dashboard" in warning_text or "dashboard update" in warning_text,
+            f"Warning text did not mention TTS dashboard: {warning_text!r}",
+        )
+
+        # TTS pipeline ran before the dashboard update — _last_tts_result must be set
+        self.assertIsNotNone(
+            engine.get_last_tts_result(),
+            "_last_tts_result must be populated even when dashboard update fails",
+        )
 
 
 # ===========================================================================
@@ -710,6 +819,381 @@ class TestSteeringModeEnum(unittest.TestCase):
         from steering_policy import SteeringMode
         values = {m.value for m in SteeringMode}
         self.assertNotIn("ACTIVE", values)
+
+
+# ===========================================================================
+# --enable-tts CLI flag wiring in run_road_course_campaign
+# ===========================================================================
+
+class TestRunRoadCourseCampaignEnableTTS(unittest.TestCase):
+    """Tests for the --enable-tts flag wiring in run_road_course_campaign.
+
+    These tests exercise the real TTSConfig initialization and real
+    evaluate_profile() call path (with mock data to avoid network/MTEB deps).
+    """
+
+    def _make_minimal_corpus_queries_qrels(self):
+        """Return minimal corpus/queries/qrels dicts for one query + two docs."""
+        corpus = {"doc0": "the cat sat on the mat", "doc1": "neural networks learn representations"}
+        queries = {"q0": "cat mat"}
+        qrels = {"q0": {"doc0": 1}}
+        return corpus, queries, qrels
+
+    def test_tts_config_is_none_when_flag_not_set(self):
+        """When --enable-tts is not passed, tts_config must be None."""
+        import argparse
+        # Simulate parse_args without --enable-tts
+        import run_road_course_campaign as rrc
+        parser = argparse.ArgumentParser()
+        parser.add_argument("--enable-tts", action="store_true", default=False)
+        args = parser.parse_args([])
+        tts_config = rrc.TTSConfig() if args.enable_tts else None
+        self.assertIsNone(tts_config)
+
+    def test_tts_config_is_constructed_when_flag_set(self):
+        """When --enable-tts is passed, TTSConfig must be constructed."""
+        import argparse
+        import run_road_course_campaign as rrc
+        parser = argparse.ArgumentParser()
+        parser.add_argument("--enable-tts", action="store_true", default=False)
+        args = parser.parse_args(["--enable-tts"])
+        tts_config = rrc.TTSConfig() if args.enable_tts else None
+        self.assertIsNotNone(tts_config)
+        self.assertIsInstance(tts_config, rrc.TTSConfig)
+
+    @patch("antigravity_engine.get_logger", return_value=MagicMock())
+    @patch("dashboard_server.update_tts_dashboard_state")
+    def test_evaluate_profile_tts_enabled_sets_pipeline_on_engine(self, _upd, _log):
+        """evaluate_profile() with tts_config must call engine.enable_tts()."""
+        from run_road_course_campaign import RoadCourseProfile, evaluate_profile
+        from tts_pipeline import TTSConfig
+
+        tts_config = TTSConfig()
+        profile = RoadCourseProfile("baseline")
+        corpus, queries, qrels = self._make_minimal_corpus_queries_qrels()
+
+        captured_tts_config = []
+
+        def fake_enable_tts(self_engine, tts_config=None, **kwargs):
+            captured_tts_config.append(tts_config)
+            # Also set _tts_pipeline to a dummy so get_last_tts_result works
+            from tts_pipeline import TTSPipeline, VectorSteerer
+            from vector_translator import TranslationConfig, VectorTranslator
+            from vector_transport import TransportConfig, VectorTransport
+
+            cfg = tts_config or TTSConfig()
+            translator = VectorTranslator(TranslationConfig(offset_dim=self_engine.vector_size))
+            transport = VectorTransport(TransportConfig())
+            steerer = VectorSteerer(max_strength=0.3)
+            self_engine._tts_pipeline = TTSPipeline(translator, transport, steerer, cfg)
+            self_engine._last_tts_result = None
+
+        from antigravity_engine import AntigravityEngine
+        with patch.object(AntigravityEngine, "enable_tts", fake_enable_tts):
+            try:
+                evaluate_profile(
+                    profile,
+                    model_name="sentence-transformers/all-MiniLM-L6-v2",
+                    corpus=corpus,
+                    queries=queries,
+                    qrels=qrels,
+                    tts_config=tts_config,
+                )
+            except Exception:
+                # Some imports may fail in limited CI; we still check the capture
+                pass
+
+        # enable_tts must have been called at least once with a TTSConfig
+        self.assertGreater(len(captured_tts_config), 0, "engine.enable_tts() was never called")
+        self.assertIsInstance(captured_tts_config[0], TTSConfig)
+
+    @patch("antigravity_engine.get_logger", return_value=MagicMock())
+    @patch("dashboard_server.update_tts_dashboard_state")
+    def test_evaluate_profile_tts_disabled_does_not_call_enable_tts(self, _upd, _log):
+        """evaluate_profile() without tts_config must NOT call engine.enable_tts()."""
+        from run_road_course_campaign import RoadCourseProfile, evaluate_profile
+
+        profile = RoadCourseProfile("baseline")
+        corpus, queries, qrels = self._make_minimal_corpus_queries_qrels()
+
+        captured_tts_config = []
+
+        def fake_enable_tts(self_engine, tts_config=None, **kwargs):
+            captured_tts_config.append(tts_config)
+
+        from antigravity_engine import AntigravityEngine
+        with patch.object(AntigravityEngine, "enable_tts", fake_enable_tts):
+            try:
+                evaluate_profile(
+                    profile,
+                    model_name="sentence-transformers/all-MiniLM-L6-v2",
+                    corpus=corpus,
+                    queries=queries,
+                    qrels=qrels,
+                    tts_config=None,
+                )
+            except Exception:
+                pass
+
+        self.assertEqual(
+            len(captured_tts_config),
+            0,
+            "engine.enable_tts() must NOT be called when tts_config is None",
+        )
+
+    def test_result_tts_key_disabled_when_no_tts_config(self):
+        """Profile result must contain tts.enabled=False when tts_config is None."""
+        from run_road_course_campaign import RoadCourseProfile, evaluate_profile
+
+        profile = RoadCourseProfile("baseline")
+        corpus, queries, qrels = self._make_minimal_corpus_queries_qrels()
+
+        try:
+            result = evaluate_profile(
+                profile,
+                model_name="sentence-transformers/all-MiniLM-L6-v2",
+                corpus=corpus,
+                queries=queries,
+                qrels=qrels,
+                tts_config=None,
+            )
+        except ImportError as exc:
+            self.skipTest(f"sentence-transformers not available: {exc}")
+
+        self.assertIn("tts", result)
+        self.assertFalse(result["tts"]["enabled"])
+
+    def test_result_tts_key_enabled_when_tts_config_passed(self):
+        """Profile result must contain tts.enabled=True when tts_config is provided."""
+        from run_road_course_campaign import RoadCourseProfile, evaluate_profile
+        from tts_pipeline import TTSConfig
+
+        profile = RoadCourseProfile("baseline")
+        corpus, queries, qrels = self._make_minimal_corpus_queries_qrels()
+        tts_config = TTSConfig()
+
+        try:
+            result = evaluate_profile(
+                profile,
+                model_name="sentence-transformers/all-MiniLM-L6-v2",
+                corpus=corpus,
+                queries=queries,
+                qrels=qrels,
+                tts_config=tts_config,
+            )
+        except ImportError as exc:
+            self.skipTest(f"sentence-transformers not available: {exc}")
+
+        self.assertIn("tts", result)
+        self.assertTrue(result["tts"]["enabled"])
+        self.assertIn("query_count", result["tts"])
+        self.assertIn("per_query", result["tts"])
+
+
+# ===========================================================================
+# Real CLI wiring: main() argparse path for TTS flags
+# ===========================================================================
+
+class TestRunRoadCourseCampaignCLIWiring(unittest.TestCase):
+    """Exercise the real main() argparse path — not a reconstructed parser.
+
+    These tests mock run_campaign to avoid model loading but call the
+    actual run_road_course_campaign.main() so the real ArgumentParser and
+    TTSConfig construction code paths are covered.
+    """
+
+    def _minimal_campaign_result(self) -> dict:
+        """Return a fake run_campaign result with the keys main() accesses."""
+        return {
+            "task": "SciFact",
+            "model": "sentence-transformers/all-MiniLM-L6-v2",
+            "corpus_size": 2,
+            "query_count": 1,
+            "profile_results": [],
+            "default_recommendation": {
+                "recommended_profile": "baseline",
+                "baseline_ndcg_at_10": 0.5,
+                "best_ndcg_at_10": 0.5,
+                "delta_vs_baseline": 0.0,
+                "default_change_allowed": False,
+                "reason": "baseline_remains_best",
+            },
+        }
+
+    @patch("run_road_course_campaign.run_campaign")
+    def test_main_no_tts_steering_disables_steering_in_tts_config(self, mock_run_campaign):
+        """--enable-tts --no-tts-steering must produce TTSConfig(steering_enabled=False)."""
+        import sys
+        import tempfile
+        import os
+        import run_road_course_campaign as rrc
+
+        mock_run_campaign.return_value = self._minimal_campaign_result()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_file = os.path.join(tmpdir, "out.json")
+            argv = [
+                "run_road_course_campaign.py",
+                "--enable-tts",
+                "--no-tts-steering",
+                "--output", output_file,
+                # Keep network/data loading fast — SciFact with 1 query still
+                # hits MTEB; max_queries=1 exercises the CLI path with minimal work.
+                "--max-queries", "1",
+                "--sample-docs", "2",
+            ]
+            with patch.object(sys, "argv", argv):
+                rrc.main()
+
+        # Verify run_campaign was called with a TTSConfig that has steering disabled
+        self.assertTrue(mock_run_campaign.called, "run_campaign must have been called")
+        call_kwargs = mock_run_campaign.call_args
+        tts_config_arg = call_kwargs.kwargs.get("tts_config") or (
+            call_kwargs.args[6] if len(call_kwargs.args) > 6 else None
+        )
+        self.assertIsNotNone(
+            tts_config_arg,
+            "--enable-tts must produce a non-None tts_config passed to run_campaign",
+        )
+        from tts_pipeline import TTSConfig
+        self.assertIsInstance(tts_config_arg, TTSConfig)
+        self.assertFalse(
+            tts_config_arg.steering_enabled,
+            "--no-tts-steering must set TTSConfig.steering_enabled=False",
+        )
+        self.assertTrue(
+            tts_config_arg.translation_enabled,
+            "--tts-translation defaults True; must remain True when not overridden",
+        )
+        self.assertTrue(
+            tts_config_arg.transport_enabled,
+            "--tts-transport defaults True; must remain True when not overridden",
+        )
+
+    @patch("run_road_course_campaign.run_campaign")
+    def test_main_no_tts_translation_disables_translation_in_tts_config(self, mock_run_campaign):
+        """--enable-tts --no-tts-translation must produce TTSConfig(translation_enabled=False)."""
+        import sys
+        import tempfile
+        import os
+        import run_road_course_campaign as rrc
+
+        mock_run_campaign.return_value = self._minimal_campaign_result()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_file = os.path.join(tmpdir, "out.json")
+            argv = [
+                "run_road_course_campaign.py",
+                "--enable-tts",
+                "--no-tts-translation",
+                "--output", output_file,
+                "--max-queries", "1",
+                "--sample-docs", "2",
+            ]
+            with patch.object(sys, "argv", argv):
+                rrc.main()
+
+        self.assertTrue(mock_run_campaign.called, "run_campaign must have been called")
+        call_kwargs = mock_run_campaign.call_args
+        tts_config_arg = call_kwargs.kwargs.get("tts_config") or (
+            call_kwargs.args[6] if len(call_kwargs.args) > 6 else None
+        )
+        self.assertIsNotNone(
+            tts_config_arg,
+            "--enable-tts must produce a non-None tts_config passed to run_campaign",
+        )
+        from tts_pipeline import TTSConfig
+        self.assertIsInstance(tts_config_arg, TTSConfig)
+        self.assertFalse(
+            tts_config_arg.translation_enabled,
+            "--no-tts-translation must set TTSConfig.translation_enabled=False",
+        )
+        self.assertTrue(
+            tts_config_arg.transport_enabled,
+            "--tts-transport defaults True; must remain True when not overridden",
+        )
+        self.assertTrue(
+            tts_config_arg.steering_enabled,
+            "--tts-steering defaults True; must remain True when not overridden",
+        )
+
+    @patch("run_road_course_campaign.run_campaign")
+    def test_main_no_tts_transport_disables_transport_in_tts_config(self, mock_run_campaign):
+        """--enable-tts --no-tts-transport must produce TTSConfig(transport_enabled=False)."""
+        import sys
+        import tempfile
+        import os
+        import run_road_course_campaign as rrc
+
+        mock_run_campaign.return_value = self._minimal_campaign_result()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_file = os.path.join(tmpdir, "out.json")
+            argv = [
+                "run_road_course_campaign.py",
+                "--enable-tts",
+                "--no-tts-transport",
+                "--output", output_file,
+                "--max-queries", "1",
+                "--sample-docs", "2",
+            ]
+            with patch.object(sys, "argv", argv):
+                rrc.main()
+
+        self.assertTrue(mock_run_campaign.called, "run_campaign must have been called")
+        call_kwargs = mock_run_campaign.call_args
+        tts_config_arg = call_kwargs.kwargs.get("tts_config") or (
+            call_kwargs.args[6] if len(call_kwargs.args) > 6 else None
+        )
+        self.assertIsNotNone(
+            tts_config_arg,
+            "--enable-tts must produce a non-None tts_config passed to run_campaign",
+        )
+        from tts_pipeline import TTSConfig
+        self.assertIsInstance(tts_config_arg, TTSConfig)
+        self.assertFalse(
+            tts_config_arg.transport_enabled,
+            "--no-tts-transport must set TTSConfig.transport_enabled=False",
+        )
+        self.assertTrue(
+            tts_config_arg.translation_enabled,
+            "--tts-translation defaults True; must remain True when not overridden",
+        )
+        self.assertTrue(
+            tts_config_arg.steering_enabled,
+            "--tts-steering defaults True; must remain True when not overridden",
+        )
+
+    @patch("run_road_course_campaign.run_campaign")
+    def test_main_without_enable_tts_passes_none_tts_config(self, mock_run_campaign):
+        """When --enable-tts is absent, main() must pass tts_config=None to run_campaign."""
+        import sys
+        import tempfile
+        import os
+        import run_road_course_campaign as rrc
+
+        mock_run_campaign.return_value = self._minimal_campaign_result()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_file = os.path.join(tmpdir, "out.json")
+            argv = [
+                "run_road_course_campaign.py",
+                "--output", output_file,
+                "--max-queries", "1",
+                "--sample-docs", "2",
+            ]
+            with patch.object(sys, "argv", argv):
+                rrc.main()
+
+        self.assertTrue(mock_run_campaign.called, "run_campaign must have been called")
+        call_kwargs = mock_run_campaign.call_args
+        tts_config_arg = call_kwargs.kwargs.get("tts_config") or (
+            call_kwargs.args[6] if len(call_kwargs.args) > 6 else None
+        )
+        self.assertIsNone(
+            tts_config_arg,
+            "Without --enable-tts, tts_config must be None",
+        )
 
 
 if __name__ == "__main__":

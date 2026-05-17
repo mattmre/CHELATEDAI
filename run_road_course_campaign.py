@@ -8,7 +8,7 @@ from dataclasses import asdict, dataclass
 import json
 from pathlib import Path
 import time
-from typing import Any, Dict, Iterable, Iterator, Mapping, Sequence
+from typing import Any, Dict, Iterable, Iterator, List, Mapping, Optional, Sequence
 
 import numpy as np
 
@@ -26,6 +26,7 @@ from benchmark_utils import (
 from config import ChelationConfig
 from quantization_promotion_gate import QuantizationPromotionGate
 from reproducibility_context import evaluate_seed_scores, stable_hash
+from tts_pipeline import TTSConfig
 
 
 @dataclass(frozen=True)
@@ -313,10 +314,14 @@ def evaluate_profile(
     corpus: Mapping[str, str],
     queries: Mapping[str, str],
     qrels: Mapping[str, Mapping[str, float]],
+    tts_config: Optional[TTSConfig] = None,
 ) -> Dict[str, Any]:
     start = time.perf_counter()
+    tts_records: List[Dict[str, Any]] = []
     with isolated_adapter_state():
         engine = _profile_engine(profile, model_name, corpus)
+        if tts_config is not None:
+            engine.enable_tts(tts_config=tts_config)
         try:
             sedimentation = _run_sedimentation_warmup(engine, profile, queries)
             rankings: Dict[str, list[str]] = {}
@@ -332,6 +337,15 @@ def evaluate_profile(
                 _std_top, final_top, mask, jaccard = engine.run_inference(query_text)
                 latencies.append((time.perf_counter() - query_start) * 1000.0)
                 rankings[query_id] = map_predicted_ids(engine, final_top[:10])
+                # Collect TTS result for this query when TTS is enabled
+                if tts_config is not None:
+                    tts_result = engine.get_last_tts_result()
+                    if tts_result is not None:
+                        tts_records.append({
+                            "query_id": query_id,
+                            "total_delta_norm": float(tts_result.total_delta_norm),
+                            "stages_applied": list(tts_result.stages_applied),
+                        })
                 diagnostics = engine.get_last_runtime_diagnostics() or {}
                 runtime = diagnostics.get("runtime", {})
                 action = runtime.get("action", "unknown")
@@ -353,7 +367,17 @@ def evaluate_profile(
         finally:
             engine.close()
     elapsed = time.perf_counter() - start
-    return {
+    tts_pipeline_diag = None
+    if tts_config is not None:
+        # Retrieve diagnostics from the pipeline that was created inside the engine.
+        # The engine's _tts_pipeline is closed/cleaned with the engine, so we snapshot
+        # the config we passed in (the pipeline itself may be gone after engine.close()).
+        tts_pipeline_diag = {
+            "translation_enabled": tts_config.translation_enabled,
+            "transport_enabled": tts_config.transport_enabled,
+            "steering_enabled": tts_config.steering_enabled,
+        }
+    result: Dict[str, Any] = {
         "profile": profile.name,
         "controls": asdict(profile),
         "metrics": metrics,
@@ -377,6 +401,19 @@ def evaluate_profile(
         "sedimentation": sedimentation,
         "telemetry": telemetry,
     }
+    if tts_config is not None:
+        tts_deltas = [r["total_delta_norm"] for r in tts_records]
+        result["tts"] = {
+            "enabled": True,
+            "query_count": len(tts_records),
+            "mean_delta_norm": float(np.mean(tts_deltas)) if tts_deltas else 0.0,
+            "max_delta_norm": float(np.max(tts_deltas)) if tts_deltas else 0.0,
+            "config": tts_pipeline_diag,
+            "per_query": tts_records,
+        }
+    else:
+        result["tts"] = {"enabled": False}
+    return result
 
 
 def quantization_survival_check(
@@ -435,6 +472,7 @@ def run_campaign(
     sample_docs: int,
     seed: int,
     profiles: Iterable[RoadCourseProfile] = DEFAULT_PROFILE_GRID,
+    tts_config: Optional[TTSConfig] = None,
 ) -> Dict[str, Any]:
     corpus, queries, qrels = load_mteb_data(task)
     if not corpus or not queries or not qrels:
@@ -448,7 +486,7 @@ def run_campaign(
         seed=seed,
     )
     profile_results = [
-        evaluate_profile(profile, model, sliced_corpus, sliced_queries, sliced_qrels)
+        evaluate_profile(profile, model, sliced_corpus, sliced_queries, sliced_qrels, tts_config=tts_config)
         for profile in profiles
     ]
     baseline = next(result for result in profile_results if result["profile"] == "baseline")
@@ -499,7 +537,51 @@ def main() -> int:
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--profile-set", choices=sorted(PROFILE_SETS), default="default")
     parser.add_argument("--output", default="experiment_runs/roadcourse-small/roadcourse_profile_grid.json")
+    parser.add_argument(
+        "--enable-tts",
+        action="store_true",
+        default=False,
+        help=(
+            "Enable TTS (Translation→Transport→Steering) pipeline during the campaign. "
+            "When set, each profile's run_inference() calls are intercepted by the TTS "
+            "pipeline and per-query delta norms appear under the 'tts' key in the output."
+        ),
+    )
+    parser.add_argument(
+        "--tts-translation",
+        action="store_true",
+        default=True,
+        help="Enable Translation stage in TTS pipeline (default: enabled). Use --no-tts-translation to disable.",
+    )
+    parser.add_argument("--no-tts-translation", dest="tts_translation", action="store_false")
+    parser.add_argument(
+        "--tts-transport",
+        action="store_true",
+        default=True,
+        help="Enable Transport stage in TTS pipeline (default: enabled). Use --no-tts-transport to disable.",
+    )
+    parser.add_argument("--no-tts-transport", dest="tts_transport", action="store_false")
+    parser.add_argument(
+        "--tts-steering",
+        action="store_true",
+        default=True,
+        help="Enable Steering stage in TTS pipeline (default: enabled). Use --no-tts-steering to disable.",
+    )
+    parser.add_argument("--no-tts-steering", dest="tts_steering", action="store_false")
     args = parser.parse_args()
+
+    tts_config: Optional[TTSConfig] = None
+    if args.enable_tts:
+        tts_config = TTSConfig(
+            translation_enabled=args.tts_translation,
+            transport_enabled=args.tts_transport,
+            steering_enabled=args.tts_steering,
+        )
+        print(
+            f"TTS enabled: translation={tts_config.translation_enabled}, "
+            f"transport={tts_config.transport_enabled}, "
+            f"steering={tts_config.steering_enabled}"
+        )
 
     result = run_campaign(
         task=args.task,
@@ -508,18 +590,36 @@ def main() -> int:
         sample_docs=args.sample_docs,
         seed=args.seed,
         profiles=PROFILE_SETS[args.profile_set],
+        tts_config=tts_config,
     )
     output_path = Path(args.output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(json.dumps(result, indent=2), encoding="utf-8")
-    print(json.dumps({
+
+    summary: Dict[str, Any] = {
         "output": str(output_path),
         "task": result["task"],
         "model": result["model"],
         "corpus_size": result["corpus_size"],
         "query_count": result["query_count"],
         "default_recommendation": result["default_recommendation"],
-    }, indent=2))
+    }
+    if args.enable_tts:
+        # Aggregate TTS data across all profiles for the summary
+        tts_enabled_profiles = [
+            pr for pr in result.get("profile_results", [])
+            if pr.get("tts", {}).get("enabled")
+        ]
+        tts_query_counts = [pr["tts"]["query_count"] for pr in tts_enabled_profiles]
+        summary["tts_summary"] = {
+            "enabled": True,
+            "profiles_with_tts": len(tts_enabled_profiles),
+            "total_tts_queries": sum(tts_query_counts),
+        }
+    else:
+        summary["tts_summary"] = {"enabled": False}
+
+    print(json.dumps(summary, indent=2))
     return 0
 
 
