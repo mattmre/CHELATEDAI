@@ -194,6 +194,13 @@ class LocalModelRuntime:
             if module is not None:
                 h = module.register_forward_hook(_make_hook(lid))
                 hooks.append(h)
+            else:
+                warnings.warn(
+                    f"Layer '{lid}' not found in model; hook will be skipped. "
+                    f"Available submodules: {[n for n, _ in self._model.named_modules()]}",
+                    UserWarning,
+                    stacklevel=2,
+                )
 
         try:
             self._model(input_ids)

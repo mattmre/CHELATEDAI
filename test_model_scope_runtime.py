@@ -363,6 +363,42 @@ class TestRunInference(unittest.TestCase):
 
         self.assertTrue(events, "run_inference should produce at least one ActivationEvent")
 
+    def test_run_inference_warns_for_missing_layer(self):
+        """Gap (L5): confirms UserWarning is emitted when a hook layer is not found."""
+        import warnings
+
+        try:
+            import torch  # type: ignore[import]
+        except ImportError:
+            self.skipTest("torch not installed")
+
+        class TinyModel(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.fc = torch.nn.Linear(4, 4)
+
+            def forward(self, x):
+                return self.fc(x)
+
+        rt = LocalModelRuntime("tiny-model", hook_layers=["nonexistent_layer"])
+        rt.load(model_loader=lambda _: TinyModel())
+
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            dummy_input = torch.zeros(1, 4)
+            events = rt.run_inference(dummy_input)
+
+        self.assertEqual(events, [], "no hooks fired so events must be empty")
+        warning_messages = [str(w.message) for w in caught if issubclass(w.category, UserWarning)]
+        self.assertTrue(
+            warning_messages,
+            "a UserWarning should have been emitted for the missing layer",
+        )
+        self.assertTrue(
+            any("nonexistent_layer" in msg for msg in warning_messages),
+            f"warning message must mention the missing layer; got: {warning_messages}",
+        )
+
 
 class TestGetAndClearEvents(unittest.TestCase):
     def test_get_events_empty_initially(self):
