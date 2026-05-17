@@ -1,8 +1,21 @@
-"""Tests for model_scope_runtime.py — LocalModelRuntime and ActivationEvent."""
+"""Tests for model_scope_runtime.py — LocalModelRuntime and ActivationEvent.
+
+Integration tests that exercise the real transformers code path are gated behind
+the ``CHELATED_INTEGRATION_MODEL`` environment variable.  These tests are skipped
+in CI because the weights are too large to download on hosted runners.  To run
+them locally::
+
+    CHELATED_INTEGRATION_MODEL=sshleifer/tiny-gpt2 python test_model_scope_runtime.py
+
+``sshleifer/tiny-gpt2`` is ~5 MB and exercises the exact same
+``AutoModelForCausalLM.from_pretrained`` → hook registration → ``run_inference``
+code path that the Qwen3.5-9B pilot would use.
+"""
 
 from __future__ import annotations
 
 import json
+import os
 import tempfile
 import unittest
 import uuid
@@ -78,6 +91,43 @@ class TestActivationEventConstruction(unittest.TestCase):
         self.assertAlmostEqual(evt.norm_activation, 18.44)
         self.assertEqual(evt.run_id, run_id)
 
+    def test_raw_tensor_shape_defaults_to_shape(self):
+        """raw_tensor_shape documents the true tensor dimensions at capture time."""
+        evt = ActivationEvent(
+            schema_version="1.0",
+            model_id="Qwen/Qwen3.5-2B",
+            layer_id="model.layers.10",
+            token_count=8,
+            shape=(1, 8, 2048),
+            mean_activation=0.0127,
+            norm_activation=18.44,
+            captured_at="2025-01-01T00:00:00+00:00",
+            run_id=str(uuid.uuid4()),
+        )
+        # raw_tensor_shape must match shape — it records the actual captured
+        # tensor dimensions (the full tensor data is NOT stored).
+        self.assertEqual(evt.raw_tensor_shape, (1, 8, 2048))
+
+    def test_raw_tensor_shape_explicit_override(self):
+        """raw_tensor_shape can be set explicitly when shape differs from capture."""
+        evt = ActivationEvent(
+            schema_version="1.0",
+            model_id="m",
+            layer_id="l",
+            token_count=4,
+            shape=(1, 4, 512),
+            mean_activation=0.0,
+            norm_activation=1.0,
+            captured_at="2025-01-01T00:00:00+00:00",
+            run_id=str(uuid.uuid4()),
+            raw_tensor_shape=(1, 4, 512),
+        )
+        self.assertEqual(evt.raw_tensor_shape, (1, 4, 512))
+
+    def test_raw_tensor_shape_is_tuple(self):
+        evt = _make_activation_event()
+        self.assertIsInstance(evt.raw_tensor_shape, tuple)
+
     def test_to_dict_serialization(self):
         evt = _make_activation_event()
         d = evt.to_dict()
@@ -86,6 +136,10 @@ class TestActivationEventConstruction(unittest.TestCase):
         self.assertEqual(d["shape"], [1, 12, 2048])
         self.assertIn("run_id", d)
         self.assertIn("captured_at", d)
+        # raw_tensor_shape must be serialised as a list (JSON-compatible)
+        self.assertIn("raw_tensor_shape", d)
+        self.assertIsInstance(d["raw_tensor_shape"], list)
+        self.assertEqual(d["raw_tensor_shape"], [1, 12, 2048])
 
     def test_from_dict_roundtrip(self):
         evt = _make_activation_event()
@@ -97,6 +151,9 @@ class TestActivationEventConstruction(unittest.TestCase):
         self.assertEqual(evt2.token_count, evt.token_count)
         self.assertAlmostEqual(evt2.mean_activation, evt.mean_activation)
         self.assertAlmostEqual(evt2.norm_activation, evt.norm_activation)
+        # raw_tensor_shape must survive the roundtrip as a tuple
+        self.assertIsInstance(evt2.raw_tensor_shape, tuple)
+        self.assertEqual(evt2.raw_tensor_shape, (1, 12, 2048))
 
     def test_json_serializable(self):
         evt = _make_activation_event()
@@ -217,24 +274,39 @@ class TestRunInference(unittest.TestCase):
         self.assertGreater(len(events), 0)
 
     def test_run_inference_event_fields(self):
+        # Gap 1 (L2): guard replaced — test FAILS if events is empty
         rt, model, _ = self._build_runtime_with_hooks()
         events = rt.run_inference(MagicMock())
-        if events:
-            evt = events[0]
-            self.assertIsInstance(evt, ActivationEvent)
-            self.assertEqual(evt.model_id, "Qwen/Qwen3.5-2B")
-            self.assertIsInstance(evt.mean_activation, float)
-            self.assertIsInstance(evt.norm_activation, float)
-            self.assertIsInstance(evt.shape, tuple)
+        self.assertTrue(events, "run_inference should produce at least one ActivationEvent")
+        evt = events[0]
+        self.assertIsInstance(evt, ActivationEvent)
+        self.assertEqual(evt.model_id, "Qwen/Qwen3.5-2B")
+        self.assertIsInstance(evt.mean_activation, float)
+        self.assertIsInstance(evt.norm_activation, float)
+        self.assertIsInstance(evt.shape, tuple)
+
+    def test_run_inference_raw_tensor_shape_populated(self):
+        """raw_tensor_shape must be set by the hook and match the captured tensor shape."""
+        # Gap 1 (L2): guard replaced — test FAILS if events is empty
+        rt, model, _ = self._build_runtime_with_hooks()
+        events = rt.run_inference(MagicMock())
+        self.assertTrue(events, "run_inference should produce at least one ActivationEvent")
+        evt = events[0]
+        # The mock tensor has shape (1, 5, 2048) — raw_tensor_shape must
+        # reflect that exact shape (the full tensor is not stored).
+        self.assertIsNotNone(evt.raw_tensor_shape)
+        self.assertIsInstance(evt.raw_tensor_shape, tuple)
+        self.assertEqual(evt.raw_tensor_shape, evt.shape)
 
     def test_run_inference_auto_run_id_is_uuid(self):
+        # Gap 1 (L2): guard replaced — test FAILS if events is empty
         rt, model, _ = self._build_runtime_with_hooks()
         events = rt.run_inference(MagicMock())
-        if events:
-            try:
-                uuid.UUID(events[0].run_id)
-            except ValueError:
-                self.fail("run_id is not a valid UUID")
+        self.assertTrue(events, "run_inference should produce at least one ActivationEvent")
+        try:
+            uuid.UUID(events[0].run_id)
+        except ValueError:
+            self.fail("run_id is not a valid UUID")
 
     def test_run_inference_explicit_run_id(self):
         rt, model, _ = self._build_runtime_with_hooks()
@@ -244,21 +316,141 @@ class TestRunInference(unittest.TestCase):
             self.assertEqual(evt.run_id, custom_id)
 
     def test_run_inference_same_run_id_all_events(self):
+        # Gap 1 (L2): assertLessEqual(<=1) passes on empty; replaced with assertEqual(==1)
         rt, model, _ = self._build_runtime_with_hooks()
         events = rt.run_inference(MagicMock())
+        self.assertTrue(events, "run_inference should produce at least one ActivationEvent")
         run_ids = {e.run_id for e in events}
-        self.assertLessEqual(len(run_ids), 1)
+        self.assertEqual(len(run_ids), 1, "all events in one run must share the same run_id")
 
     def test_run_inference_accumulates_in_get_events(self):
         rt, model, _ = self._build_runtime_with_hooks()
         rt.run_inference(MagicMock())
         rt.run_inference(MagicMock())
-        self.assertGreaterEqual(len(rt.get_events()), 0)
+        # Two successive run_inference calls; accumulation is tested in
+        # TestGetAndClearEvents.  This just verifies no exception is raised.
+        self.assertIsInstance(rt.get_events(), list)
 
     def test_run_inference_without_load_raises(self):
         rt = LocalModelRuntime("no-load-model")
         with self.assertRaises(RuntimeError):
             rt.run_inference(MagicMock())
+
+    def test_norm_fallback_emits_warning_when_linalg_raises(self):
+        """Gap 2 (L11): confirms UserWarning is emitted when linalg.norm falls back."""
+        try:
+            import torch  # type: ignore[import]
+        except ImportError:
+            self.skipTest("torch not installed")
+
+        loader, model, layer_mocks = _mock_model_loader(["model.layers.0"])
+        rt = LocalModelRuntime("Qwen/Qwen3.5-2B", hook_layers=["model.layers.0"])
+        rt.load(model_loader=loader)
+
+        real_tensor = torch.tensor([[1.0, 2.0, 4.0]])
+
+        def fake_call(input_ids):
+            for lm in layer_mocks.values():
+                if lm.register_forward_hook.called:
+                    hook_fn = lm.register_forward_hook.call_args[0][0]
+                    hook_fn(lm, None, real_tensor)
+
+        model.side_effect = fake_call
+
+        with patch("torch.linalg.norm", side_effect=RuntimeError("test linalg error")):
+            with self.assertWarns(UserWarning):
+                events = rt.run_inference(MagicMock())
+
+        self.assertTrue(events, "run_inference should produce at least one ActivationEvent")
+
+    def test_run_inference_warns_for_missing_layer(self):
+        """Gap (L5): confirms UserWarning is emitted when a hook layer is not found."""
+        import warnings
+
+        try:
+            import torch  # type: ignore[import]
+        except ImportError:
+            self.skipTest("torch not installed")
+
+        class TinyModel(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.fc = torch.nn.Linear(4, 4)
+
+            def forward(self, x):
+                return self.fc(x)
+
+        rt = LocalModelRuntime("tiny-model", hook_layers=["nonexistent_layer"])
+        rt.load(model_loader=lambda _: TinyModel())
+
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            dummy_input = torch.zeros(1, 4)
+            events = rt.run_inference(dummy_input)
+
+        self.assertEqual(events, [], "no hooks fired so events must be empty")
+        warning_messages = [str(w.message) for w in caught if issubclass(w.category, UserWarning)]
+        self.assertTrue(
+            warning_messages,
+            "a UserWarning should have been emitted for the missing layer",
+        )
+        self.assertTrue(
+            any("nonexistent_layer" in msg for msg in warning_messages),
+            f"warning message must mention the missing layer; got: {warning_messages}",
+        )
+
+    def test_norm_fallback_outer_warns_for_non_torch_tensor(self):
+        """Gap (L11): outer except must emit UserWarning when .float() raises.
+
+        The outer except catches failures that happen before or during
+        ``t_float.mean().item()`` (e.g. mock tensors whose ``.float()``
+        raises TypeError).  The warning must be emitted, the call must not
+        raise, and the event must still be appended to get_events().
+        """
+        import warnings
+
+        loader, model, layer_mocks = _mock_model_loader(["model.layers.0"])
+        rt = LocalModelRuntime("Qwen/Qwen3.5-2B", hook_layers=["model.layers.0"])
+        rt.load(model_loader=loader)
+
+        # Build a mock tensor whose .float() raises TypeError — this forces
+        # execution into the outer except block.
+        bad_tensor = MagicMock()
+        bad_tensor.shape = (1, 5, 2048)
+        bad_tensor.float.side_effect = TypeError("mock tensor has no float()")
+        # .mean() and .norm() must still work so the fallback path completes.
+        bad_tensor.mean.return_value = 0.0
+        bad_tensor.norm.return_value = 0.0
+
+        def fake_call(input_ids):
+            for lm in layer_mocks.values():
+                if lm.register_forward_hook.called:
+                    hook_fn = lm.register_forward_hook.call_args[0][0]
+                    hook_fn(lm, None, bad_tensor)
+
+        model.side_effect = fake_call
+
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            events = rt.run_inference(MagicMock())
+
+        # 1. Call must not raise.
+        # 2. A UserWarning must have been emitted.
+        user_warnings = [w for w in caught if issubclass(w.category, UserWarning)]
+        self.assertTrue(
+            user_warnings,
+            "outer except block must emit a UserWarning when .float() raises",
+        )
+        warning_texts = [str(w.message) for w in user_warnings]
+        self.assertTrue(
+            any("fallback" in txt or "protocol" in txt for txt in warning_texts),
+            f"warning must contain 'fallback' or 'protocol'; got: {warning_texts}",
+        )
+        # 3. Event was still appended despite the error.
+        self.assertTrue(
+            events or rt.get_events(),
+            "run_inference must still append an ActivationEvent via the fallback path",
+        )
 
 
 class TestGetAndClearEvents(unittest.TestCase):
@@ -359,6 +551,207 @@ class TestSaveLoadEvents(unittest.TestCase):
         rt.save_events(path)
         loaded = LocalModelRuntime.load_events(path)
         self.assertEqual(loaded, [])
+
+
+class TestRunInferenceTryBranchDiscrimination(unittest.TestCase):
+    """Verify the try-branch (torch.linalg.norm) is exercised, not the except fallback.
+
+    Previous tests used a real torch.Tensor and asserted ``norm_activation > 0``
+    or ``norm_activation ≈ 3.74``.  Both branches produce the same value for a
+    real tensor so those tests pass even when the except-branch runs — they are
+    non-discriminating.
+
+    This suite uses a **sentinel value approach**: ``torch.linalg.norm`` is patched
+    to return an object whose ``.item()`` returns a known sentinel (42.0).  If the
+    try-branch runs, ``norm_activation`` will equal 42.0.  If the except-branch
+    runs instead (calling ``tensor.norm()``), it returns the real Frobenius norm
+    (~3.74) and the sentinel assertion fails — proving branch discrimination.
+
+    WHY THIS WORKS
+    ---------------
+    Inside ``run_inference._make_hook``, torch is imported locally:
+    ``import torch``.  Python resolves that to ``sys.modules['torch']``, which is
+    the same object patched by ``unittest.mock.patch('torch.linalg.norm')``.
+    Patching the attribute on the live module object is therefore visible to the
+    hook regardless of where it imports torch from.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        try:
+            import torch  # type: ignore[import]
+            import torch.nn as nn  # type: ignore[import]
+
+            cls.torch = torch
+            cls.nn = nn
+            cls.torch_available = True
+        except ImportError:
+            cls.torch_available = False
+
+    def _skip_if_no_torch(self):
+        if not self.torch_available:
+            self.skipTest("torch not installed — sentinel discrimination test skipped")
+
+    def _build_tiny_runtime(self):
+        """Return a LocalModelRuntime with a tiny identity nn.Module on layer 'fc'."""
+        torch = self.torch
+        nn = self.nn
+
+        class TinyModel(nn.Module):
+            def __init__(self_inner):
+                super().__init__()
+                self_inner.fc = nn.Linear(3, 3, bias=False)
+                with torch.no_grad():
+                    self_inner.fc.weight.copy_(torch.eye(3))
+
+            def forward(self_inner, x):
+                return (self_inner.fc(x),)
+
+        rt = LocalModelRuntime("test-sentinel", hook_layers=["fc"])
+        rt.load(model_loader=lambda _: TinyModel())
+        return rt
+
+    def test_try_branch_uses_torch_linalg_norm_not_fallback(self):
+        """Patch torch.linalg.norm to a sentinel; assert norm_activation == sentinel.
+
+        If the try-branch runs: ``norm_val = float(torch.linalg.norm(t_float).item())``
+        resolves to ``float(sentinel_obj.item())`` == 42.0.
+
+        If the except-branch runs instead: ``norm_val = float(tensor.norm())``
+        which returns the real Frobenius norm (~3.74) — NOT 42.0.  The assertion
+        therefore fails, proving the try-branch is the one that actually executed.
+        """
+        self._skip_if_no_torch()
+        import torch  # type: ignore[import]
+
+        SENTINEL = 42.0
+
+        # Build a minimal return object whose .item() yields the sentinel.
+        class _SentinelResult:
+            def item(self):
+                return SENTINEL
+
+        rt = self._build_tiny_runtime()
+
+        with patch("torch.linalg.norm", return_value=_SentinelResult()):
+            events = rt.run_inference(torch.tensor([[1.0, 2.0, 3.0]]))
+
+        self.assertTrue(events, "No events captured — hook did not fire")
+        evt = events[-1]
+        self.assertAlmostEqual(
+            evt.norm_activation,
+            SENTINEL,
+            places=5,
+            msg=(
+                f"norm_activation should equal sentinel {SENTINEL} "
+                f"(got {evt.norm_activation!r}) — if this fails, "
+                "torch.linalg.norm was NOT called in the try-branch; "
+                "the except fallback ran instead."
+            ),
+        )
+
+    def test_run_inference_mean_computation_is_float_mean(self):
+        """Gap 3 (L8): verifies the mean computation is numerically correct.
+
+        Renamed from ``test_try_branch_mean_uses_float_tensor_mean`` — that name
+        overclaimed branch discrimination.  This test validates the computation
+        itself: input [[1, 2, 3]] (mean=2.0) vs [[1, 2, 4]] (mean≈2.333) would
+        differ, but here both branches return the same real mean so it is NOT a
+        discriminating branch proof.
+
+        The sentinel norm test
+        (``test_try_branch_uses_torch_linalg_norm_not_fallback``) is the
+        discriminating proof for which branch ran.  This test complements it by
+        confirming the float arithmetic is correct.
+        """
+        self._skip_if_no_torch()
+        import torch  # type: ignore[import]
+
+        rt = self._build_tiny_runtime()
+        events = rt.run_inference(torch.tensor([[1.0, 2.0, 3.0]]))
+        self.assertEqual(len(events), 1, "Expected exactly one event from the fc hook")
+        evt = events[0]
+        self.assertIsInstance(evt.mean_activation, float,
+                              "mean_activation must be a real Python float")
+        # identity fc: output == input [[1, 2, 3]] → mean = 2.0
+        self.assertAlmostEqual(evt.mean_activation, 2.0, places=4,
+                               msg="mean_activation must equal (1+2+3)/3 = 2.0")
+
+    def test_raw_tensor_shape_set_by_try_branch(self):
+        """raw_tensor_shape must equal the actual tensor shape from the fc hook."""
+        self._skip_if_no_torch()
+        import torch  # type: ignore[import]
+
+        rt = self._build_tiny_runtime()
+        events = rt.run_inference(torch.tensor([[1.0, 2.0, 3.0]]))
+        self.assertEqual(len(events), 1)
+        evt = events[0]
+        self.assertIsNotNone(evt.raw_tensor_shape)
+        self.assertIsInstance(evt.raw_tensor_shape, tuple)
+        # Input (1, 3) through Linear(3→3, bias=False) → output (1, 3)
+        self.assertEqual(evt.raw_tensor_shape, (1, 3),
+                         "raw_tensor_shape must equal the captured tensor shape (1, 3)")
+        self.assertEqual(evt.shape, evt.raw_tensor_shape)
+
+
+@unittest.skipUnless(
+    os.getenv("CHELATED_INTEGRATION_MODEL"),
+    "Integration test requires a real model download.  "
+    "Set CHELATED_INTEGRATION_MODEL=sshleifer/tiny-gpt2 (or any causal-LM on HF Hub) "
+    "to run.  Skipped in CI because weight download is too large for hosted runners.",
+)
+class TestLocalModelRuntimeIntegration(unittest.TestCase):
+    """Exercise the real ``AutoModelForCausalLM.from_pretrained`` code path.
+
+    Uses the model named by ``CHELATED_INTEGRATION_MODEL``.  The recommended
+    value is ``sshleifer/tiny-gpt2`` (<5 MB), which exercises the same
+    ``from_pretrained`` → hook registration → ``run_inference`` path that the
+    Qwen3.5-9B pilot load uses.  This test would fail if that path were broken,
+    even though CI mocks it out.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.model_name = os.environ["CHELATED_INTEGRATION_MODEL"]
+
+    def test_real_load_and_is_loaded(self):
+        """load() without a model_loader must actually call from_pretrained."""
+        rt = LocalModelRuntime(self.model_name, device="cpu")
+        # No model_loader injected — must hit the real transformers branch.
+        rt.load()
+        self.assertTrue(rt.is_loaded())
+
+    def test_real_hook_capture_shape(self):
+        """Hook must capture a real tensor; raw_tensor_shape must be non-empty."""
+        try:
+            import torch  # type: ignore[import]
+        except ImportError:
+            self.skipTest("torch not available")
+
+        # Discover first transformer block layer name so we can hook it.
+        rt = LocalModelRuntime(self.model_name, device="cpu")
+        rt.load()
+        model = rt._model
+        # Walk to first named child to find a hookable module.
+        first_layer_id = None
+        for name, _module in model.named_modules():
+            if name:  # skip root
+                first_layer_id = name
+                break
+
+        self.assertIsNotNone(first_layer_id, "Model has no named submodules")
+        rt.register_hook_layers([first_layer_id])
+
+        # Build a tiny input tensor (1 token).
+        input_ids = torch.tensor([[0]])
+        events = rt.run_inference(input_ids)
+
+        self.assertGreater(len(events), 0, "No events captured; hook registration failed")
+        evt = events[0]
+        self.assertIsInstance(evt.raw_tensor_shape, tuple)
+        self.assertGreater(len(evt.raw_tensor_shape), 0)
+        # shape and raw_tensor_shape must agree.
+        self.assertEqual(evt.shape, evt.raw_tensor_shape)
 
 
 if __name__ == "__main__":

@@ -164,7 +164,31 @@ class QwenScopeAdapter:
         return self._weights is not None
 
     def extract_features(self, activation: ActivationEvent) -> dict[str, float]:
-        """Project activation stats through SAE weights; return sparse feature dict."""
+        """Project activation statistics through SAE weights and return a sparse feature dict.
+
+        IMPORTANT — STATISTICS-BASED PATH, NOT TENSOR-BASED
+        -----------------------------------------------------
+        This method operates on the *scalar statistics* stored in ``ActivationEvent``
+        (``mean_activation``, ``norm_activation``, ``token_count``, ``shape[0]``),
+        NOT on a raw residual tensor.  ``ActivationEvent`` intentionally does not
+        store the full tensor for memory-efficiency reasons (see module docstring in
+        ``model_scope_runtime.py``).
+
+        As a result the SAE projection here is an approximation suitable for
+        lightweight monitoring only.  It is NOT the same as calling
+        ``QwenScopeLayerSAE.encode(residual)`` on the full hidden-state tensor.
+        If you need the true SAE feature activations, use ``QwenScopeLayerSAE``
+        directly inside your hook and pass the raw ``torch.Tensor`` residual.
+
+        The input vector constructed here is:
+            [mean_activation, norm_activation, token_count, shape[0], 0.0, ...]
+        padded or truncated to match ``weights.shape[1]``.
+
+        Returns
+        -------
+        dict[str, float]
+            Sparse dict of ``"feature_<i>": value`` for all positive-valued outputs.
+        """
         if not self.is_loaded():
             raise RuntimeError("SAE checkpoint not loaded; call load_checkpoint() first.")
 
