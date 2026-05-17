@@ -368,12 +368,26 @@ class TestTTSPipelineApply(unittest.TestCase):
         self.assertIsNotNone(r.after_transport)
         self.assertEqual(r.after_transport.shape, self.v.shape)
 
-    def test_record_intermediates_false_still_stores(self):
-        """record_intermediates=False: intermediates are still stored in TTSResult."""
+    def test_record_intermediates_false_suppresses_intermediates(self):
+        """record_intermediates=False: after_translation and after_transport are None."""
         translator = _make_translator(self.dim)
         transport = _make_transport()
         steerer = VectorSteerer()
         cfg = TTSConfig(record_intermediates=False)
+        with patch(_TTS_PATCH, return_value=MagicMock()):
+            p = TTSPipeline(translator, transport, steerer, cfg)
+        r = p.apply(self.v)
+        self.assertIsNone(r.after_translation)
+        self.assertIsNone(r.after_transport)
+        # final output is always present regardless
+        self.assertIsNotNone(r.after_steering)
+
+    def test_record_intermediates_true_stores_intermediates(self):
+        """record_intermediates=True (default): after_translation and after_transport are stored."""
+        translator = _make_translator(self.dim)
+        transport = _make_transport()
+        steerer = VectorSteerer()
+        cfg = TTSConfig(record_intermediates=True)
         with patch(_TTS_PATCH, return_value=MagicMock()):
             p = TTSPipeline(translator, transport, steerer, cfg)
         r = p.apply(self.v)

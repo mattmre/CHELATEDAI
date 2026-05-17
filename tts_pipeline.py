@@ -140,9 +140,9 @@ class TTSConfig:
 @dataclass
 class TTSResult:
     original: np.ndarray
-    after_translation: np.ndarray
-    after_transport: np.ndarray
-    after_steering: np.ndarray  # = final
+    after_translation: Optional[np.ndarray]  # None when record_intermediates=False
+    after_transport: Optional[np.ndarray]  # None when record_intermediates=False
+    after_steering: np.ndarray  # = final (always stored)
     translation_result: Optional[TranslationResult]
     transport_result: Optional[TransportResult]
     steering_meta: Optional[Dict[str, Any]]
@@ -193,7 +193,9 @@ class TTSPipeline:
             if tr.mode != "passthrough":
                 stages_applied.append("translation")
             current = tr.translated
-        after_translation = current.copy()
+        after_translation: Optional[np.ndarray] = (
+            current.copy() if self._config.record_intermediates else None
+        )
 
         # ── Stage 2: Transport ───────────────────────────────────────────────
         transport_result: Optional[TransportResult] = None
@@ -203,7 +205,9 @@ class TTSPipeline:
             if tr2.was_transported:
                 stages_applied.append("transport")
             current = tr2.transported
-        after_transport = current.copy()
+        after_transport: Optional[np.ndarray] = (
+            current.copy() if self._config.record_intermediates else None
+        )
 
         # ── Stage 3: Steering ────────────────────────────────────────────────
         steering_meta: Optional[Dict[str, Any]] = None
