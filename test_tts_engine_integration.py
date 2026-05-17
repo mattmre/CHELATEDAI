@@ -848,12 +848,11 @@ class TestRunRoadCourseCampaignEnableTTS(unittest.TestCase):
                 qrels=qrels,
                 tts_config=None,
             )
-            self.assertIn("tts", result)
-            self.assertFalse(result["tts"]["enabled"])
-        except Exception:
-            # If the test environment lacks sentence-transformers, skip the assertion
-            # but the key structure must still hold when evaluate_profile can run.
-            pass
+        except ImportError as exc:
+            self.skipTest(f"sentence-transformers not available: {exc}")
+
+        self.assertIn("tts", result)
+        self.assertFalse(result["tts"]["enabled"])
 
     def test_result_tts_key_enabled_when_tts_config_passed(self):
         """Profile result must contain tts.enabled=True when tts_config is provided."""
@@ -873,12 +872,125 @@ class TestRunRoadCourseCampaignEnableTTS(unittest.TestCase):
                 qrels=qrels,
                 tts_config=tts_config,
             )
-            self.assertIn("tts", result)
-            self.assertTrue(result["tts"]["enabled"])
-            self.assertIn("query_count", result["tts"])
-            self.assertIn("per_query", result["tts"])
-        except Exception:
-            pass
+        except ImportError as exc:
+            self.skipTest(f"sentence-transformers not available: {exc}")
+
+        self.assertIn("tts", result)
+        self.assertTrue(result["tts"]["enabled"])
+        self.assertIn("query_count", result["tts"])
+        self.assertIn("per_query", result["tts"])
+
+
+# ===========================================================================
+# Real CLI wiring: main() argparse path for TTS flags
+# ===========================================================================
+
+class TestRunRoadCourseCampaignCLIWiring(unittest.TestCase):
+    """Exercise the real main() argparse path — not a reconstructed parser.
+
+    These tests mock run_campaign to avoid model loading but call the
+    actual run_road_course_campaign.main() so the real ArgumentParser and
+    TTSConfig construction code paths are covered.
+    """
+
+    def _minimal_campaign_result(self) -> dict:
+        """Return a fake run_campaign result with the keys main() accesses."""
+        return {
+            "task": "SciFact",
+            "model": "sentence-transformers/all-MiniLM-L6-v2",
+            "corpus_size": 2,
+            "query_count": 1,
+            "profile_results": [],
+            "default_recommendation": {
+                "recommended_profile": "baseline",
+                "baseline_ndcg_at_10": 0.5,
+                "best_ndcg_at_10": 0.5,
+                "delta_vs_baseline": 0.0,
+                "default_change_allowed": False,
+                "reason": "baseline_remains_best",
+            },
+        }
+
+    @patch("run_road_course_campaign.run_campaign")
+    def test_main_no_tts_steering_disables_steering_in_tts_config(self, mock_run_campaign):
+        """--enable-tts --no-tts-steering must produce TTSConfig(steering_enabled=False)."""
+        import sys
+        import tempfile
+        import os
+        import run_road_course_campaign as rrc
+
+        mock_run_campaign.return_value = self._minimal_campaign_result()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_file = os.path.join(tmpdir, "out.json")
+            argv = [
+                "run_road_course_campaign.py",
+                "--enable-tts",
+                "--no-tts-steering",
+                "--output", output_file,
+                # Keep network/data loading fast — SciFact with 1 query still
+                # hits MTEB; max_queries=1 exercises the CLI path with minimal work.
+                "--max-queries", "1",
+                "--sample-docs", "2",
+            ]
+            with patch.object(sys, "argv", argv):
+                rrc.main()
+
+        # Verify run_campaign was called with a TTSConfig that has steering disabled
+        self.assertTrue(mock_run_campaign.called, "run_campaign must have been called")
+        call_kwargs = mock_run_campaign.call_args
+        tts_config_arg = call_kwargs.kwargs.get("tts_config") or (
+            call_kwargs.args[6] if len(call_kwargs.args) > 6 else None
+        )
+        self.assertIsNotNone(
+            tts_config_arg,
+            "--enable-tts must produce a non-None tts_config passed to run_campaign",
+        )
+        from tts_pipeline import TTSConfig
+        self.assertIsInstance(tts_config_arg, TTSConfig)
+        self.assertFalse(
+            tts_config_arg.steering_enabled,
+            "--no-tts-steering must set TTSConfig.steering_enabled=False",
+        )
+        self.assertTrue(
+            tts_config_arg.translation_enabled,
+            "--tts-translation defaults True; must remain True when not overridden",
+        )
+        self.assertTrue(
+            tts_config_arg.transport_enabled,
+            "--tts-transport defaults True; must remain True when not overridden",
+        )
+
+    @patch("run_road_course_campaign.run_campaign")
+    def test_main_without_enable_tts_passes_none_tts_config(self, mock_run_campaign):
+        """When --enable-tts is absent, main() must pass tts_config=None to run_campaign."""
+        import sys
+        import tempfile
+        import os
+        import run_road_course_campaign as rrc
+
+        mock_run_campaign.return_value = self._minimal_campaign_result()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_file = os.path.join(tmpdir, "out.json")
+            argv = [
+                "run_road_course_campaign.py",
+                "--output", output_file,
+                "--max-queries", "1",
+                "--sample-docs", "2",
+            ]
+            with patch.object(sys, "argv", argv):
+                rrc.main()
+
+        self.assertTrue(mock_run_campaign.called, "run_campaign must have been called")
+        call_kwargs = mock_run_campaign.call_args
+        tts_config_arg = call_kwargs.kwargs.get("tts_config") or (
+            call_kwargs.args[6] if len(call_kwargs.args) > 6 else None
+        )
+        self.assertIsNone(
+            tts_config_arg,
+            "Without --enable-tts, tts_config must be None",
+        )
 
 
 if __name__ == "__main__":
