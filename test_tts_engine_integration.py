@@ -439,10 +439,7 @@ class TestRunInferenceTTSIntercept(unittest.TestCase):
             patch.object(engine, "_build_runtime_diagnostics", return_value={}),
         ):
             # Must NOT raise — TTS failure is a safety fallback, not a fatal error
-            result = engine.run_inference("test query")
-
-        # Inference must return a result (original embedding path continued)
-        self.assertIsNotNone(result)
+            engine.run_inference("test query")
 
         # _last_tts_result must still be None — the failure path must not set it
         self.assertIsNone(

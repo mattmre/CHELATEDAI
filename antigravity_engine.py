@@ -1077,8 +1077,12 @@ class AntigravityEngine:
                 enabled=True,
                 config=self._runtime_json_safe(cfg.__dict__),
             )
-        except Exception:
-            pass
+        except Exception as _tts_enable_dash_err:
+            import warnings as _warnings
+            _warnings.warn(
+                f"TTS dashboard enable update failed: {_tts_enable_dash_err!r}",
+                stacklevel=2,
+            )
 
     def get_last_tts_result(self):
         """Return the TTSResult from the most recent inference, or None."""
