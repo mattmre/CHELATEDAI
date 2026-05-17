@@ -682,9 +682,6 @@ class TestModelScopeBridgeConfigMaxTotalInterventions(unittest.TestCase):
         """
         import tempfile
         from model_scope_engine_bridge import ModelScopeEngineBridge, ModelScopeBridgeConfig
-        from model_scope_features import SparseFeatureEvent
-        from model_scope_runtime import ActivationEvent
-        from steering_policy import PolicyRegistry, SteeringMode, SteeringPolicyConfig, PolicyStatus
 
         with tempfile.TemporaryDirectory() as tmpdir:
             cfg = ModelScopeBridgeConfig(
@@ -711,6 +708,144 @@ class TestModelScopeBridgeConfigMaxTotalInterventions(unittest.TestCase):
             # Default config gives 100, NOT 0
             self.assertEqual(bridge._actuator._max_total, 100)
             self.assertNotEqual(bridge._actuator._max_total, 0)
+
+
+class TestBridgeMaxTotalInterventionsRuntimeEnforcement(unittest.TestCase):
+    """Verify that max_total_interventions cap is enforced at runtime, not just stored."""
+
+    def test_bridge_max_total_interventions_enforced_at_runtime(self):
+        """After `max_total_interventions` successful interventions the next apply() is declined.
+
+        This tests RUNTIME BEHAVIOR of the cap — not just attribute storage.
+
+        Design:
+        - cap = 2, so the first two apply() calls should succeed (applied=True),
+          and the third must be declined with decline_reason == "max_total_interventions_exceeded".
+        - We use a SOFT_SCALE policy whose target_features overlap with the feature event,
+          so that applied=True is actually produced (SHADOW never sets applied=True and would
+          never decrement the cap).
+        """
+        from model_scope_steering import SteeringActuator
+        from model_scope_features import SparseFeatureEvent
+        from model_scope_runtime import ActivationEvent
+        from steering_policy import PolicyRegistry, SteeringMode, SteeringPolicyConfig
+        from datetime import datetime, timezone
+
+        cap = 2
+
+        # Build a real registry + actuator with the same cap as the bridge config would wire in.
+        registry = PolicyRegistry()
+        policy_config = SteeringPolicyConfig(
+            name="test_cap_policy",
+            mode=SteeringMode.SOFT_SCALE,
+            target_features=["mean_activation"],
+            scale_factor=0.5,
+            policy_id="test_cap_policy_id",
+        )
+        registry.register(policy_config)
+
+        actuator = SteeringActuator(registry, max_total_interventions=cap)
+
+        # Confirm the cap value is what we set (catches a hardcoded-0 bug).
+        self.assertEqual(actuator._max_total, cap)
+        self.assertNotEqual(actuator._max_total, 0)
+
+        def _make_event():
+            activation = ActivationEvent(
+                schema_version="1.0",
+                model_id="test_model",
+                layer_id="layer.0",
+                token_count=1,
+                shape=(1,),
+                mean_activation=0.5,
+                norm_activation=0.8,
+                captured_at=datetime.now(timezone.utc).isoformat(),
+                run_id="cap_test_run",
+            )
+            return SparseFeatureEvent(
+                source_activation=activation,
+                feature_source="raw_stats",
+                features={"mean_activation": 0.5},
+                feature_count=1,
+                nonzero_count=1,
+                extracted_at=datetime.now(timezone.utc).isoformat(),
+            )
+
+        # --- Apply up to the cap (each should be applied=True) ---
+        records_applied = []
+        for i in range(cap):
+            _, record = actuator.apply(_make_event(), policy_config.policy_id)
+            records_applied.append(record)
+
+        applied_count = sum(1 for r in records_applied if r.applied)
+        self.assertEqual(
+            applied_count,
+            cap,
+            f"Expected exactly {cap} applied interventions before hitting the cap, got {applied_count}",
+        )
+        self.assertEqual(actuator.total_applied(), cap)
+
+        # --- The (cap + 1)-th call MUST be declined ---
+        _, declined_record = actuator.apply(_make_event(), policy_config.policy_id)
+        self.assertFalse(
+            declined_record.applied,
+            "The intervention beyond the cap must NOT be applied (applied should be False)",
+        )
+        self.assertEqual(
+            declined_record.decline_reason,
+            "max_total_interventions_exceeded",
+            f"Expected decline_reason='max_total_interventions_exceeded', got {declined_record.decline_reason!r}",
+        )
+
+        # Total applied count must NOT exceed the cap.
+        self.assertLessEqual(
+            actuator.total_applied(),
+            cap,
+            f"total_applied() exceeded cap {cap}: got {actuator.total_applied()}",
+        )
+
+    def test_bridge_wires_max_total_interventions_from_config(self):
+        """ModelScopeEngineBridge must forward max_total_interventions from its config to SteeringActuator.
+
+        This test will fail if max_total_interventions is hardcoded (e.g. always 0 or always 100)
+        instead of being read from the config object.
+        """
+        import tempfile
+        from model_scope_engine_bridge import ModelScopeEngineBridge, ModelScopeBridgeConfig
+
+        custom_cap = 7
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            cfg = ModelScopeBridgeConfig(
+                artifact_dir=tmpdir,
+                enable_steering=True,
+                max_total_interventions=custom_cap,
+            )
+            bridge = ModelScopeEngineBridge(cfg)
+
+            # The actuator must reflect the exact value from config.
+            self.assertEqual(
+                bridge._actuator._max_total,
+                custom_cap,
+                f"Expected actuator._max_total={custom_cap} (from config), "
+                f"got {bridge._actuator._max_total}",
+            )
+
+        # A different cap value must also be forwarded correctly (guards against hardcoding).
+        other_cap = 3
+        with tempfile.TemporaryDirectory() as tmpdir2:
+            cfg2 = ModelScopeBridgeConfig(
+                artifact_dir=tmpdir2,
+                enable_steering=True,
+                max_total_interventions=other_cap,
+            )
+            bridge2 = ModelScopeEngineBridge(cfg2)
+            self.assertEqual(
+                bridge2._actuator._max_total,
+                other_cap,
+                f"Expected actuator._max_total={other_cap} (from config), "
+                f"got {bridge2._actuator._max_total}",
+            )
 
 
 if __name__ == "__main__":
