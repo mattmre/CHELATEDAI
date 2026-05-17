@@ -386,6 +386,35 @@ class TestEngineScopeNegatives(unittest.TestCase):
         self.assertIn("q1", selected_queries)
         self.assertNotIn("q2", selected_queries)
 
+    def test_query_profile_negative_rows_excludes_positive_delta_non_improving_rank(self):
+        """Line 93 independent path: delta > 0.001 with non-improving rank (rank_delta >= 0)
+        is excluded. This is distinct from line 90 which only fires when rank IS improving."""
+        rows = [
+            {
+                "row_type": "query_profile",
+                "source_family": "normal",
+                "profile": "reform",
+                "fault_class": "actuator_active_negative",
+                "delta_ndcg_at_10": 0.01,   # > 0.001 — triggers line 92
+                "rank_delta": 0,             # >= 0 — non-improving; line 90 does NOT fire
+            },
+            {
+                "row_type": "query_profile",
+                "source_family": "normal",
+                "profile": "reform",
+                "fault_class": "actuator_active_negative",
+                "delta_ndcg_at_10": -0.01,  # negative delta — passes through
+                "rank_delta": 0,
+            },
+        ]
+        result = _query_profile_negative_rows(rows)
+        # Only the negative-delta row should survive
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["delta_ndcg_at_10"], -0.01)
+        # The positive-delta row must be absent even though rank_delta is 0 (non-improving)
+        positive_delta_rows = [r for r in result if r["delta_ndcg_at_10"] == 0.01]
+        self.assertEqual(positive_delta_rows, [])
+
 
 if __name__ == "__main__":
     unittest.main()

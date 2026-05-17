@@ -5,6 +5,7 @@ from engine_scope_coverage import (
     _count_bucket,
     _delta_bucket,
     _jaccard,
+    _window_key,
     build_window_footprints,
     rank_task_offset_candidates,
     row_feature_tokens,
@@ -445,6 +446,53 @@ class TestEngineScopeCoverage(unittest.TestCase):
             self.assertIn("source_families", entry)
             self.assertIn("max_overlap_with_previous", entry)
             self.assertIn("max_novelty_ratio", entry)
+
+    def test_window_key_fallback_when_no_context_fields_present(self):
+        """_window_key returns 'window=unknown' when all context fields are absent or empty.
+        Removing the fallback branch would cause an empty string to be returned instead."""
+        result = _window_key({})
+        self.assertEqual(result, "window=unknown")
+        # Also verify that an all-None/empty-string dict produces the same fallback
+        result_empty_values = _window_key({
+            "source_family": None,
+            "task": "",
+            "query_offset": None,
+            "seed": None,
+            "split": None,
+            "loop": None,
+            "window": None,
+            "global_window": None,
+        })
+        self.assertEqual(result_empty_values, "window=unknown")
+
+    def test_row_feature_tokens_bool_bucket_no_branches_for_query_profile(self):
+        """row_feature_tokens emits topdoc_changed:no and reform_changed:no when
+        top_doc_changed=False and reformulation_changed=False.  Deleting the 'no'
+        branch of _bool_bucket would emit 'yes' here and break this assertion."""
+        tokens = row_feature_tokens({
+            "row_type": "query_profile",
+            "profile": "reform",
+            "delta_ndcg_at_10": -0.01,
+            "query_token_count": 4,
+            "query_char_count": 30,
+            "query_stopword_ratio": 0.2,
+            "query_numeric_token_count": 0,
+            "query_negation_count": 0,
+            "query_claim_cue_count": 0,
+            "action": "REFORMULATE",
+            "fault_class": "actuator_active_negative",
+            "top10_overlap_with_baseline": 5,
+            "top_doc_changed": False,
+            "global_variance": 0.1,
+            "jaccard": 0.4,
+            "mask_density": 0.5,
+            "reformulation_variant_count": 1,
+            "reformulation_changed": False,
+        })
+        self.assertIn("topdoc_changed:no", tokens)
+        self.assertIn("reform_changed:no", tokens)
+        self.assertNotIn("topdoc_changed:yes", tokens)
+        self.assertNotIn("reform_changed:yes", tokens)
 
 
 if __name__ == "__main__":
