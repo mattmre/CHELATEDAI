@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import dataclasses
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -846,6 +847,97 @@ class TestBridgeMaxTotalInterventionsRuntimeEnforcement(unittest.TestCase):
                 f"Expected actuator._max_total={other_cap} (from config), "
                 f"got {bridge2._actuator._max_total}",
             )
+
+
+
+
+# ---------------------------------------------------------------------------
+# Bridge.observe — steering enabled, intervention_count > 0
+# ---------------------------------------------------------------------------
+
+
+class TestBridgeObserveWithSteeringEnabled(unittest.TestCase):
+    """Gap-1 coverage: end-to-end observe() with enable_steering=True."""
+
+    def setUp(self):
+        from model_scope_engine_bridge import ModelScopeEngineBridge, ModelScopeBridgeConfig
+        from steering_policy import SteeringPolicyConfig, SteeringMode, PolicyStatus
+
+        self._td = tempfile.mkdtemp(prefix="bridge_steering_")
+        cfg = ModelScopeBridgeConfig(
+            artifact_dir=self._td,
+            enable_feature_extraction=True,
+            enable_steering=True,
+        )
+        self._bridge = ModelScopeEngineBridge(cfg)
+
+        # Register a SOFT_SCALE ACTIVE policy whose target_features match what
+        # FeatureExtractor._raw_stats_fallback() emits for our test ActivationEvent:
+        #   "mean_activation", "norm_activation", "token_count", "shape_0"
+        policy_cfg = SteeringPolicyConfig(
+            name="test_soft_scale_policy",
+            mode=SteeringMode.SOFT_SCALE,
+            target_features=["mean_activation", "norm_activation"],
+            scale_factor=1.5,
+            status=PolicyStatus.ACTIVE,
+        )
+        self._bridge._actuator._registry.register(policy_cfg)
+
+    def _mock_runtime_with_event(self):
+        act = _make_activation_event()
+        rt = MagicMock()
+        rt.is_loaded.return_value = True
+        rt.get_events.return_value = [act]
+        return rt
+
+    def test_observe_with_steering_enabled_returns_nonzero_intervention_count(self):
+        rt = self._mock_runtime_with_event()
+        result = self._bridge.observe("test steering query", rt)
+        self.assertIsNone(result.error)
+        self.assertGreater(result.intervention_count, 0)
+
+    def test_observe_with_steering_persists_intervention_file(self):
+        """Gap-2 dashboard path: observe() must write intervention_*.json to disk."""
+        rt = self._mock_runtime_with_event()
+        self._bridge.observe("test persistence query", rt)
+        artifact_dir = Path(self._td)
+        intervention_files = list(artifact_dir.glob("intervention_*.json"))
+        self.assertGreater(
+            len(intervention_files),
+            0,
+            "Expected at least one intervention_*.json file but found none.",
+        )
+
+    def test_observe_with_steering_persisted_file_is_valid_json(self):
+        rt = self._mock_runtime_with_event()
+        self._bridge.observe("test json validity", rt)
+        artifact_dir = Path(self._td)
+        intervention_files = list(artifact_dir.glob("intervention_*.json"))
+        self.assertGreater(len(intervention_files), 0)
+        with open(intervention_files[0], encoding="utf-8") as fh:
+            data = json.load(fh)
+        self.assertIsInstance(data, list)
+        self.assertGreater(len(data), 0)
+
+    def test_observe_with_steering_persisted_record_has_applied_true(self):
+        rt = self._mock_runtime_with_event()
+        self._bridge.observe("test record fields", rt)
+        artifact_dir = Path(self._td)
+        intervention_files = list(artifact_dir.glob("intervention_*.json"))
+        self.assertGreater(len(intervention_files), 0)
+        with open(intervention_files[0], encoding="utf-8") as fh:
+            records = json.load(fh)
+        applied_records = [r for r in records if r.get("applied") is True]
+        self.assertGreater(len(applied_records), 0)
+
+    def test_get_summary_for_diagnostics_has_intervention_summary(self):
+        rt = self._mock_runtime_with_event()
+        self._bridge.observe("test summary", rt)
+        summary = self._bridge.get_summary_for_diagnostics()
+        self.assertIn("intervention_summary", summary)
+        self.assertIn("total_applied", summary["intervention_summary"])
+        self.assertIn("total_shadow", summary["intervention_summary"])
+        self.assertGreater(summary["intervention_summary"]["total_applied"], 0)
 
 
 if __name__ == "__main__":

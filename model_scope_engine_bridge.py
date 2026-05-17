@@ -111,6 +111,11 @@ class ModelScopeEngineBridge:
         if self._config.enable_steering and feature_event is not None:
             _, records = self._actuator.apply_all_active(feature_event)
             intervention_count = sum(1 for r in records if r.applied)
+            if records:
+                intervention_path = self._artifact_store._base_dir / f"intervention_{run_id}.json"
+                from model_scope_steering import intervention_record_to_dict
+                with open(intervention_path, "w", encoding="utf-8") as fh:
+                    json.dump([intervention_record_to_dict(r) for r in records], fh)
 
         self._observation_count += 1
         elapsed_ms = (time.monotonic() - t_start) * 1000.0
@@ -162,4 +167,8 @@ class ModelScopeEngineBridge:
             "error_count": self._error_count,
             "last_artifact": last_artifact_summary,
             "bridge_config": dataclasses.asdict(self._config),
+            "intervention_summary": {
+                "total_applied": self._actuator.total_applied(),
+                "total_shadow": self._actuator.total_shadow(),
+            },
         }
