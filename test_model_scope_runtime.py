@@ -430,6 +430,136 @@ class TestSaveLoadEvents(unittest.TestCase):
         self.assertEqual(loaded, [])
 
 
+class TestRunInferenceRealTensorPath(unittest.TestCase):
+    """Exercise the real torch.linalg.norm production branch using an injected
+    nn.Module — no weight downloads required.
+
+    The existing TestRunInference suite injects MagicMock tensors.  MagicMock
+    tensors fail at ``.float()`` → the except-branch silently absorbs the failure
+    and returns mock-friendly fallback values.  These tests use a *real*
+    ``torch.Tensor`` fed through a locally-constructed ``nn.Module`` so that:
+
+    * ``tensor.float()`` succeeds with a real float tensor.
+    * ``torch.linalg.norm(t_float)`` is actually called and returns a real scalar.
+    * ``mean_activation`` and ``norm_activation`` in the emitted ActivationEvent
+      are genuine computed floats — not 0.0 or MagicMock fallbacks.
+
+    If the try-branch were replaced with only the except-fallback the assertions
+    on ``norm_activation > 0.0`` and exact ``mean_activation`` would fail,
+    proving these tests are coupled to the production code path.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        try:
+            import torch  # type: ignore[import]
+            import torch.nn as nn  # type: ignore[import]
+
+            cls.torch = torch
+            cls.nn = nn
+            cls.torch_available = True
+        except ImportError:
+            cls.torch_available = False
+
+    def _skip_if_no_torch(self):
+        if not self.torch_available:
+            self.skipTest("torch not installed — real-tensor path test skipped")
+
+    def _build_tiny_runtime(self):
+        """Return a LocalModelRuntime loaded with a tiny nn.Module.
+
+        The model has one named submodule ``fc`` (a 3→3 Linear layer).
+        ``forward()`` calls ``self.fc(x)`` and returns the result as a
+        single-element tuple so the hook logic sees ``output[0]`` as the tensor.
+        We register the hook on ``fc`` via layer_id ``"fc"``.
+        """
+        torch = self.torch
+        nn = self.nn
+
+        class TinyModel(nn.Module):
+            def __init__(self_inner):
+                super().__init__()
+                self_inner.fc = nn.Linear(3, 3, bias=False)
+                # Initialise weights to known values so we can compute expected stats.
+                with torch.no_grad():
+                    self_inner.fc.weight.copy_(torch.eye(3))
+
+            def forward(self_inner, x):
+                out = self_inner.fc(x)
+                return (out,)
+
+        def loader(model_name):
+            return TinyModel()
+
+        rt = LocalModelRuntime("test-tiny", hook_layers=["fc"])
+        rt.load(model_loader=loader)
+        return rt
+
+    def test_try_branch_mean_activation_is_real_float(self):
+        """mean_activation must be a genuine Python float from the try branch."""
+        self._skip_if_no_torch()
+        torch = self.torch
+        rt = self._build_tiny_runtime()
+        # Input: [[1.0, 2.0, 3.0]] — shape (1, 3)
+        events = rt.run_inference(torch.tensor([[1.0, 2.0, 3.0]]))
+        self.assertEqual(len(events), 1, "Expected exactly one event from the fc hook")
+        evt = events[0]
+        self.assertIsInstance(evt.mean_activation, float,
+                              "mean_activation must be a real float, not a MagicMock")
+        # fc is identity (eye(3)), so output == input [[1, 2, 3]].
+        # mean = (1+2+3)/3 = 2.0
+        self.assertAlmostEqual(evt.mean_activation, 2.0, places=4,
+                               msg="mean_activation must equal the computed tensor mean")
+
+    def test_try_branch_norm_activation_is_positive(self):
+        """norm_activation must be > 0.0 — proves torch.linalg.norm was called."""
+        self._skip_if_no_torch()
+        torch = self.torch
+        rt = self._build_tiny_runtime()
+        events = rt.run_inference(torch.tensor([[1.0, 2.0, 3.0]]))
+        self.assertEqual(len(events), 1)
+        evt = events[0]
+        self.assertIsInstance(evt.norm_activation, float,
+                              "norm_activation must be a real float")
+        # L2 norm of [1, 2, 3] = sqrt(1+4+9) = sqrt(14) ≈ 3.7417
+        self.assertGreater(evt.norm_activation, 0.0,
+                           "norm_activation must be > 0 — the try branch must have run")
+        self.assertAlmostEqual(evt.norm_activation, 3.7417, places=3,
+                               msg="norm_activation must match sqrt(14) for input [1,2,3]")
+
+    def test_try_branch_raw_tensor_shape_matches_output(self):
+        """raw_tensor_shape must reflect the actual fc output tensor dimensions."""
+        self._skip_if_no_torch()
+        torch = self.torch
+        rt = self._build_tiny_runtime()
+        # Input shape (1, 3) → fc(Linear 3→3) output shape (1, 3)
+        events = rt.run_inference(torch.tensor([[1.0, 2.0, 3.0]]))
+        self.assertEqual(len(events), 1)
+        evt = events[0]
+        self.assertIsNotNone(evt.raw_tensor_shape)
+        self.assertIsInstance(evt.raw_tensor_shape, tuple)
+        self.assertEqual(evt.raw_tensor_shape, (1, 3),
+                         "raw_tensor_shape must equal the actual tensor shape (1, 3)")
+        self.assertEqual(evt.shape, evt.raw_tensor_shape,
+                         "shape and raw_tensor_shape must agree")
+
+    def test_try_branch_fails_if_only_except_path(self):
+        """Sentinel: if the except fallback ran instead, norm would be 0.0 (MagicMock).
+
+        This test is not asserting that the except path produces 0.0 — it asserts
+        the norm is NOT 0.0 so that any regression to the except path is caught.
+        """
+        self._skip_if_no_torch()
+        torch = self.torch
+        rt = self._build_tiny_runtime()
+        events = rt.run_inference(torch.tensor([[1.0, 2.0, 3.0]]))
+        self.assertEqual(len(events), 1)
+        evt = events[0]
+        # 0.0 would indicate the except-branch fallback ran (MagicMock.norm() → 0).
+        self.assertNotEqual(evt.norm_activation, 0.0,
+                            "norm_activation must not be 0.0 — the except branch must NOT have run")
+
+
 @unittest.skipUnless(
     os.getenv("CHELATED_INTEGRATION_MODEL"),
     "Integration test requires a real model download.  "
