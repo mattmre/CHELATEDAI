@@ -436,6 +436,89 @@ class TestOverlayTrainer(unittest.TestCase):
             self.assertIsNone(trainer._best_loss)
             self.assertEqual(trainer._epoch_counter, 0)
 
+    # ------------------------------------------------------------------
+    # MOD-5 fix: rollback restores the prior promoted overlay file
+    # ------------------------------------------------------------------
+
+    def test_rollback_restores_prior_overlay_file(self):
+        """Promote a candidate over an existing overlay, rollback, assert original restored."""
+        from model_scope_trainer import ModelScopeShadowPolicyTrainer, ModelScopeTrainerConfig
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            overlay_path = Path(tmpdir) / "overlay.json"
+            original_content = '{"name": "original_policy"}'
+            overlay_path.write_text(original_content, encoding="utf-8")
+
+            # Build a promotable candidate
+            replay_bundle = {
+                "entries": [
+                    {"entry_id": "p1", "metadata": {"label": "positive"}, "artifact": _artifact("101", 1.2)},
+                    {"entry_id": "p2", "metadata": {"label": "positive"}, "artifact": _artifact("101", 1.1)},
+                    {"entry_id": "n1", "metadata": {"label": "negative"}, "artifact": _artifact("202", 1.4)},
+                    {"entry_id": "n2", "metadata": {"label": "negative"}, "artifact": _artifact("202", 1.3)},
+                ]
+            }
+            shadow_trainer = ModelScopeShadowPolicyTrainer(
+                ModelScopeTrainerConfig(min_alignment_score=0.5)
+            )
+            candidate = shadow_trainer.train_shadow_policy(replay_bundle, candidate_id="rb_test_v1")
+            self.assertTrue(candidate["promotion_gate"]["promotion_ready"], "candidate must be promotable for this test")
+
+            result = shadow_trainer.promote_candidate(candidate, overlay_path)
+            self.assertTrue(result["promoted"])
+
+            # Verify the overlay file was overwritten
+            promoted_content = overlay_path.read_text(encoding="utf-8")
+            self.assertNotEqual(promoted_content, original_content)
+
+            # Verify backup exists
+            backup_path = Path(str(overlay_path) + ".backup")
+            self.assertTrue(backup_path.exists(), "backup file must exist after promote_candidate")
+
+            # Rollback — should restore the original content
+            shadow_trainer.rollback(promoted_overlay_path=str(overlay_path))
+            restored_content = overlay_path.read_text(encoding="utf-8")
+            self.assertEqual(restored_content, original_content)
+
+    def test_rollback_without_backup_still_clears_weights(self):
+        """When no backup exists, rollback clears in-memory weights without error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            trainer = _make_trainer(tmpdir, overlay_id="rb_no_backup")
+            trainer.train_epoch([_make_sparse_event({"q": 0.5})], [_make_sparse_event({"q": 1.0})])
+            self.assertNotEqual(trainer._weights, {})
+
+            # Supply a path that doesn't have a .backup alongside it
+            fake_path = str(Path(tmpdir) / "no_overlay.json")
+            trainer.rollback(promoted_overlay_path=fake_path)
+            self.assertEqual(trainer._weights, {})
+
+    def test_rollback_uses_stored_promoted_path_when_no_arg(self):
+        """If promote_candidate was called earlier, rollback() without args still restores."""
+        from model_scope_trainer import ModelScopeShadowPolicyTrainer, ModelScopeTrainerConfig
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            overlay_path = Path(tmpdir) / "overlay2.json"
+            original_content = '{"name": "prior_policy"}'
+            overlay_path.write_text(original_content, encoding="utf-8")
+
+            replay_bundle = {
+                "entries": [
+                    {"entry_id": "p1", "metadata": {"label": "positive"}, "artifact": _artifact("101", 1.2)},
+                    {"entry_id": "p2", "metadata": {"label": "positive"}, "artifact": _artifact("101", 1.1)},
+                    {"entry_id": "n1", "metadata": {"label": "negative"}, "artifact": _artifact("202", 1.4)},
+                    {"entry_id": "n2", "metadata": {"label": "negative"}, "artifact": _artifact("202", 1.3)},
+                ]
+            }
+            shadow_trainer = ModelScopeShadowPolicyTrainer(
+                ModelScopeTrainerConfig(min_alignment_score=0.5)
+            )
+            candidate = shadow_trainer.train_shadow_policy(replay_bundle, candidate_id="rb_stored_path")
+            shadow_trainer.promote_candidate(candidate, overlay_path)
+
+            # rollback with no argument should still restore via _promoted_overlay_path
+            shadow_trainer.rollback()
+            self.assertEqual(overlay_path.read_text(encoding="utf-8"), original_content)
+
 
 class TestOverlayCampaignCLI(unittest.TestCase):
     def _parse(self, args_list):
@@ -535,6 +618,52 @@ class TestOverlayCampaignCLI(unittest.TestCase):
             )
             result = self._run(args)
             self.assertIsInstance(result["promoted"], bool)
+
+    def test_run_campaign_eval_split_uses_held_out_data(self):
+        """run_campaign takes the split path (eval_is_training_data=False) with >=2 episodes
+        and the fallback path (eval_is_training_data=True) with exactly 1 episode.
+
+        This test would fail if eval_episodes = episodes (no holdout), because the
+        single-episode branch sets eval_is_training_data=True and the multi-episode
+        branch sets it to False — so checking both values distinguishes the two paths.
+        """
+        # Multi-episode path: 5 episodes → 4 train + 1 eval (held out)
+        with tempfile.TemporaryDirectory() as td_multi:
+            args_multi = argparse.Namespace(
+                overlay_id="split_multi", policy_id="split_pol",
+                episodes=5, max_epochs=5, learning_rate=0.01,
+                promotion_threshold=0.05, output_dir=td_multi, seed=77,
+            )
+            result_multi = self._run(args_multi)
+            self.assertFalse(
+                result_multi["eval_is_training_data"],
+                "With 5 episodes the split path must set eval_is_training_data=False",
+            )
+
+        # Single-episode fallback: eval data == training data
+        with tempfile.TemporaryDirectory() as td_single:
+            args_single = argparse.Namespace(
+                overlay_id="split_single", policy_id="split_pol",
+                episodes=1, max_epochs=5, learning_rate=0.01,
+                promotion_threshold=0.05, output_dir=td_single, seed=77,
+            )
+            result_single = self._run(args_single)
+            self.assertTrue(
+                result_single["eval_is_training_data"],
+                "With 1 episode the fallback path must set eval_is_training_data=True",
+            )
+
+    def test_run_campaign_single_episode_does_not_crash(self):
+        """With only 1 episode the campaign falls back to using it for both train and eval."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            args = argparse.Namespace(
+                overlay_id="one_ep", policy_id="one_pol",
+                episodes=1, max_epochs=3, learning_rate=0.01,
+                promotion_threshold=0.05, output_dir=tmpdir, seed=3,
+            )
+            result = self._run(args)
+            self.assertIsInstance(result, dict)
+            self.assertIn("promoted", result)
 
 
 if __name__ == "__main__":

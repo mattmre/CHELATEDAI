@@ -28,6 +28,7 @@ class ModelScopeBridgeConfig:
     enable_steering: bool = False
     max_events_in_memory: int = 100
     observation_tag: str = "engine_bridge"
+    max_total_interventions: int = 100
 
 
 @dataclass
@@ -58,7 +59,7 @@ class ModelScopeEngineBridge:
         )
         self._extractor = FeatureExtractor(adapter=None)
         registry = PolicyRegistry()
-        self._actuator = SteeringActuator(registry, max_total_interventions=0)
+        self._actuator = SteeringActuator(registry, max_total_interventions=self._config.max_total_interventions)
         self._observation_count = 0
         self._error_count = 0
 
@@ -110,6 +111,35 @@ class ModelScopeEngineBridge:
         if self._config.enable_steering and feature_event is not None:
             _, records = self._actuator.apply_all_active(feature_event)
             intervention_count = sum(1 for r in records if r.applied)
+            if records:
+                intervention_path = self._artifact_store._base_dir / f"intervention_{run_id}.json"
+                from model_scope_steering import intervention_record_to_dict as _irtd
+                import warnings as _warnings
+                try:
+                    with open(intervention_path, "w", encoding="utf-8") as fh:
+                        json.dump([_irtd(r) for r in records], fh)
+                except OSError as _write_err:
+                    _warnings.warn(
+                        f"Failed to persist intervention record {run_id}: {_write_err!r}",
+                        stacklevel=2,
+                    )
+                else:
+                    # Enforce cap to prevent unbounded accumulation.
+                    # Files are removed until count reaches the cap; sort order is
+                    # lexicographic, not temporal (UUID-based names have no time
+                    # correlation, so "oldest" is meaningless here).
+                    existing = sorted(self._artifact_store._base_dir.glob("intervention_*.json"))
+                    if len(existing) > 50:
+                        for old_file in existing[:-50]:
+                            try:
+                                old_file.unlink()
+                            except OSError as _del_err:
+                                import warnings as _warnings
+                                _warnings.warn(
+                                    f"Failed to remove old intervention file during cap cleanup: {_del_err!r}",
+                                    UserWarning,
+                                    stacklevel=2,
+                                )
 
         self._observation_count += 1
         elapsed_ms = (time.monotonic() - t_start) * 1000.0
@@ -154,11 +184,21 @@ class ModelScopeEngineBridge:
                 with open(paths[-1], encoding="utf-8") as fh:
                     last_data = json.load(fh)
                 last_artifact_summary = summarize_model_scope_artifact(last_data)
-            except Exception:
+            except Exception as _diag_err:
+                import warnings as _warnings
+                _warnings.warn(
+                    f"get_summary_for_diagnostics: failed to read last artifact: {_diag_err!r}",
+                    UserWarning,
+                    stacklevel=2,
+                )
                 last_artifact_summary = None
         return {
             "observation_count": self._observation_count,
             "error_count": self._error_count,
             "last_artifact": last_artifact_summary,
             "bridge_config": dataclasses.asdict(self._config),
+            "intervention_summary": {
+                "total_applied": self._actuator.total_applied(),
+                "total_shadow": self._actuator.total_shadow(),
+            },
         }

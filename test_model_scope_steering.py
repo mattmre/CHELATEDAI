@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import tempfile
 import unittest
 from datetime import datetime, timezone
+from pathlib import Path
 
 from model_scope_features import SparseFeatureEvent
 from model_scope_runtime import ActivationEvent
@@ -499,6 +501,162 @@ class TestInterventionRecordSerialization(unittest.TestCase):
         _, record = actuator.apply(event, config.policy_id)
         restored = intervention_record_from_dict(intervention_record_to_dict(record))
         self.assertIsNone(restored.decline_reason)
+
+
+# ---------------------------------------------------------------------------
+# SteeringActuator provenance persistence (MOD-3 fix)
+# ---------------------------------------------------------------------------
+
+
+class TestSteeringActuatorPersistence(unittest.TestCase):
+    def _build_actuator_with_records(self, mode=SteeringMode.SOFT_SCALE, count=3):
+        config, actuator = _single_actuator(mode, scale_factor=1.5, target_features=["f0"])
+        event = _make_feature_event({"f0": 1.0, "f1": 2.0})
+        for _ in range(count):
+            actuator.apply(event, config.policy_id)
+        return actuator
+
+    def test_persist_records_returns_count(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            actuator = self._build_actuator_with_records(count=3)
+            n = actuator.persist_records(Path(tmpdir) / "records.jsonl")
+            self.assertEqual(n, 3)
+
+    def test_persist_records_creates_file(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            actuator = self._build_actuator_with_records(count=2)
+            path = Path(tmpdir) / "records.jsonl"
+            actuator.persist_records(path)
+            self.assertTrue(path.exists())
+
+    def test_persist_records_writes_one_line_per_record(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            actuator = self._build_actuator_with_records(count=4)
+            path = Path(tmpdir) / "records.jsonl"
+            actuator.persist_records(path)
+            lines = [ln for ln in path.read_text(encoding="utf-8").splitlines() if ln.strip()]
+            self.assertEqual(len(lines), 4)
+
+    def test_persist_and_reload_preserves_record_count(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            actuator = self._build_actuator_with_records(count=5)
+            path = Path(tmpdir) / "records.jsonl"
+            actuator.persist_records(path)
+
+            registry2 = PolicyRegistry()
+            actuator2 = SteeringActuator(registry2)
+            loaded = actuator2.load_records(path)
+            self.assertEqual(loaded, 5)
+            self.assertEqual(len(actuator2.get_records()), 5)
+
+    def test_persist_and_reload_preserves_applied_status(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            actuator = self._build_actuator_with_records(SteeringMode.SOFT_SCALE, count=2)
+            path = Path(tmpdir) / "records.jsonl"
+            actuator.persist_records(path)
+
+            registry2 = PolicyRegistry()
+            actuator2 = SteeringActuator(registry2)
+            actuator2.load_records(path)
+            for r in actuator2.get_records():
+                self.assertTrue(r.applied)
+
+    def test_persist_and_reload_preserves_all_fields(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config, actuator = _single_actuator(SteeringMode.SUPPRESSION, target_features=["f0"])
+            event = _make_feature_event({"f0": 2.5, "f1": 1.0})
+            _, original = actuator.apply(event, config.policy_id)
+            path = Path(tmpdir) / "records.jsonl"
+            actuator.persist_records(path)
+
+            registry2 = PolicyRegistry()
+            actuator2 = SteeringActuator(registry2)
+            actuator2.load_records(path)
+            restored = actuator2.get_records()[0]
+
+            self.assertEqual(restored.record_id, original.record_id)
+            self.assertEqual(restored.policy_id, original.policy_id)
+            self.assertEqual(restored.mode, original.mode)
+            self.assertEqual(restored.applied, original.applied)
+            self.assertEqual(restored.features_targeted, original.features_targeted)
+            self.assertEqual(restored.original_values, original.original_values)
+            self.assertEqual(restored.modified_values, original.modified_values)
+
+    def test_reload_into_fresh_instance_across_new_actuator(self):
+        """Records survive a process restart simulation: write then read into brand-new SteeringActuator."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Session A: build and persist
+            actuator_a = self._build_actuator_with_records(count=2)
+            path = Path(tmpdir) / "session_a.jsonl"
+            actuator_a.persist_records(path)
+
+            # Session B: fresh actuator with no prior state
+            registry_b = PolicyRegistry()
+            actuator_b = SteeringActuator(registry_b)
+            self.assertEqual(len(actuator_b.get_records()), 0)
+            actuator_b.load_records(path)
+            self.assertEqual(len(actuator_b.get_records()), 2)
+
+    def test_persist_empty_records_produces_empty_file(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            registry = PolicyRegistry()
+            actuator = SteeringActuator(registry)
+            path = Path(tmpdir) / "empty.jsonl"
+            n = actuator.persist_records(path)
+            self.assertEqual(n, 0)
+            self.assertEqual(path.read_text(encoding="utf-8").strip(), "")
+
+    def test_load_records_returns_count(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            actuator = self._build_actuator_with_records(count=3)
+            path = Path(tmpdir) / "records.jsonl"
+            actuator.persist_records(path)
+
+            registry2 = PolicyRegistry()
+            actuator2 = SteeringActuator(registry2)
+            n = actuator2.load_records(path)
+            self.assertEqual(n, 3)
+
+    def test_load_records_is_additive(self):
+        """load_records appends, does not replace existing records."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config, actuator = _single_actuator(SteeringMode.SHADOW)
+            event = _make_feature_event()
+            actuator.apply(event, config.policy_id)
+
+            path = Path(tmpdir) / "records.jsonl"
+            actuator.persist_records(path)
+
+            actuator.load_records(path)  # adds 1 more from file → total 2
+            self.assertEqual(len(actuator.get_records()), 2)
+
+    def test_load_records_skips_corrupt_line(self):
+        """A corrupt JSON line between two valid records is skipped; valid records load."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Build two valid records and serialise them to a JSONL file.
+            actuator_src = self._build_actuator_with_records(count=2)
+            valid_lines = []
+            for record in actuator_src.get_records():
+                import json as _json_local
+                from model_scope_steering import intervention_record_to_dict
+                valid_lines.append(_json_local.dumps(intervention_record_to_dict(record)))
+
+            # Insert a corrupt line between the two valid ones.
+            path = Path(tmpdir) / "corrupt.jsonl"
+            path.write_text(
+                valid_lines[0] + "\n"
+                + "THIS IS NOT VALID JSON {{{\n"
+                + valid_lines[1] + "\n",
+                encoding="utf-8",
+            )
+
+            registry2 = PolicyRegistry()
+            actuator2 = SteeringActuator(registry2)
+            loaded = actuator2.load_records(path)
+
+            # Only the 2 valid records should be loaded; no exception raised.
+            self.assertEqual(loaded, 2)
+            self.assertEqual(len(actuator2.get_records()), 2)
 
 
 if __name__ == "__main__":

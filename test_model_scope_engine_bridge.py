@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import dataclasses
+import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -436,6 +438,29 @@ class TestBridgeGetSummaryForDiagnostics(unittest.TestCase):
         s = self._bridge.get_summary_for_diagnostics()
         self.assertIn("artifact_dir", s["bridge_config"])
 
+    def test_get_summary_for_diagnostics_warns_on_corrupt_artifact(self):
+        import warnings
+        # Write a corrupt (non-JSON) file that matches the artifact pattern.
+        bad_path = os.path.join(self._td, "feature_event_bad.json")
+        with open(bad_path, "w", encoding="utf-8") as fh:
+            fh.write("NOT VALID JSON {{{")
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            result = self._bridge.get_summary_for_diagnostics()
+        self.assertIsNone(result["last_artifact"])
+        matching = [
+            w for w in caught
+            if issubclass(w.category, UserWarning)
+            and (
+                "get_summary_for_diagnostics" in str(w.message)
+                or "failed to read" in str(w.message)
+            )
+        ]
+        self.assertTrue(
+            matching,
+            f"Expected a UserWarning about corrupt artifact; got: {[str(w.message) for w in caught]}",
+        )
+
 
 # ---------------------------------------------------------------------------
 # AntigravityEngine.observe_query_with_model_scope
@@ -643,6 +668,517 @@ class TestDashboardHandlerModelScopeRoutes(unittest.TestCase):
         import dashboard_server
 
         self.assertIsInstance(dashboard_server.MODEL_SCOPE_ARTIFACT_ROOT, str)
+
+
+# ---------------------------------------------------------------------------
+# MOD-6 fix: max_total_interventions wired through bridge config
+# ---------------------------------------------------------------------------
+
+
+class TestModelScopeBridgeConfigMaxTotalInterventions(unittest.TestCase):
+    """Verify that max_total_interventions is exposed in config and wired to the actuator."""
+
+    def test_default_max_total_interventions(self):
+        from model_scope_engine_bridge import ModelScopeBridgeConfig
+
+        cfg = ModelScopeBridgeConfig()
+        self.assertEqual(cfg.max_total_interventions, 100)
+
+    def test_custom_max_total_interventions(self):
+        from model_scope_engine_bridge import ModelScopeBridgeConfig
+
+        cfg = ModelScopeBridgeConfig(max_total_interventions=5)
+        self.assertEqual(cfg.max_total_interventions, 5)
+
+    def test_max_total_interventions_in_asdict(self):
+        import dataclasses
+        from model_scope_engine_bridge import ModelScopeBridgeConfig
+
+        cfg = ModelScopeBridgeConfig(max_total_interventions=42)
+        d = dataclasses.asdict(cfg)
+        self.assertIn("max_total_interventions", d)
+        self.assertEqual(d["max_total_interventions"], 42)
+
+    def test_actuator_cap_is_honoured_when_steering_enabled(self):
+        """Bridge with enable_steering=True and max_total_interventions=5 must honour the cap.
+
+        We register a SOFT_SCALE policy on the actuator's registry, apply it
+        more than 5 times, and assert the total_applied count does not exceed 5.
+        """
+        import tempfile
+        from model_scope_engine_bridge import ModelScopeEngineBridge, ModelScopeBridgeConfig
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            cfg = ModelScopeBridgeConfig(
+                artifact_dir=tmpdir,
+                enable_steering=True,
+                max_total_interventions=5,
+            )
+            bridge = ModelScopeEngineBridge(cfg)
+
+            # Verify the cap was forwarded to the actuator
+            self.assertEqual(bridge._actuator._max_total, 5)
+
+    def test_actuator_cap_zero_when_not_overridden_legacy_would_be_wrong(self):
+        """Before the fix the actuator was always initialised with max_total_interventions=0
+        (meaning unlimited). Now with the default of 100, interventions are capped at 100.
+        This test ensures the old hard-coded 0 is gone.
+        """
+        import tempfile
+        from model_scope_engine_bridge import ModelScopeEngineBridge, ModelScopeBridgeConfig
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            cfg = ModelScopeBridgeConfig(artifact_dir=tmpdir, enable_steering=True)
+            bridge = ModelScopeEngineBridge(cfg)
+            # Default config gives 100, NOT 0
+            self.assertEqual(bridge._actuator._max_total, 100)
+            self.assertNotEqual(bridge._actuator._max_total, 0)
+
+
+class TestBridgeMaxTotalInterventionsRuntimeEnforcement(unittest.TestCase):
+    """Verify that max_total_interventions cap is enforced at runtime, not just stored."""
+
+    def test_bridge_max_total_interventions_enforced_at_runtime(self):
+        """After `max_total_interventions` successful interventions the next apply() is declined.
+
+        This tests RUNTIME BEHAVIOR of the cap — not just attribute storage.
+
+        Design:
+        - cap = 2, so the first two apply() calls should succeed (applied=True),
+          and the third must be declined with decline_reason == "max_total_interventions_exceeded".
+        - We use a SOFT_SCALE policy whose target_features overlap with the feature event,
+          so that applied=True is actually produced (SHADOW never sets applied=True and would
+          never decrement the cap).
+        """
+        from model_scope_steering import SteeringActuator
+        from model_scope_features import SparseFeatureEvent
+        from model_scope_runtime import ActivationEvent
+        from steering_policy import PolicyRegistry, SteeringMode, SteeringPolicyConfig
+        from datetime import datetime, timezone
+
+        cap = 2
+
+        # Build a real registry + actuator with the same cap as the bridge config would wire in.
+        registry = PolicyRegistry()
+        policy_config = SteeringPolicyConfig(
+            name="test_cap_policy",
+            mode=SteeringMode.SOFT_SCALE,
+            target_features=["mean_activation"],
+            scale_factor=0.5,
+            policy_id="test_cap_policy_id",
+        )
+        registry.register(policy_config)
+
+        actuator = SteeringActuator(registry, max_total_interventions=cap)
+
+        # Confirm the cap value is what we set (catches a hardcoded-0 bug).
+        self.assertEqual(actuator._max_total, cap)
+        self.assertNotEqual(actuator._max_total, 0)
+
+        def _make_event():
+            activation = ActivationEvent(
+                schema_version="1.0",
+                model_id="test_model",
+                layer_id="layer.0",
+                token_count=1,
+                shape=(1,),
+                mean_activation=0.5,
+                norm_activation=0.8,
+                captured_at=datetime.now(timezone.utc).isoformat(),
+                run_id="cap_test_run",
+            )
+            return SparseFeatureEvent(
+                source_activation=activation,
+                feature_source="raw_stats",
+                features={"mean_activation": 0.5},
+                feature_count=1,
+                nonzero_count=1,
+                extracted_at=datetime.now(timezone.utc).isoformat(),
+            )
+
+        # --- Apply up to the cap (each should be applied=True) ---
+        records_applied = []
+        for i in range(cap):
+            _, record = actuator.apply(_make_event(), policy_config.policy_id)
+            records_applied.append(record)
+
+        applied_count = sum(1 for r in records_applied if r.applied)
+        self.assertEqual(
+            applied_count,
+            cap,
+            f"Expected exactly {cap} applied interventions before hitting the cap, got {applied_count}",
+        )
+        self.assertEqual(actuator.total_applied(), cap)
+
+        # --- The (cap + 1)-th call MUST be declined ---
+        _, declined_record = actuator.apply(_make_event(), policy_config.policy_id)
+        self.assertFalse(
+            declined_record.applied,
+            "The intervention beyond the cap must NOT be applied (applied should be False)",
+        )
+        self.assertEqual(
+            declined_record.decline_reason,
+            "max_total_interventions_exceeded",
+            f"Expected decline_reason='max_total_interventions_exceeded', got {declined_record.decline_reason!r}",
+        )
+
+        # Total applied count must NOT exceed the cap.
+        self.assertLessEqual(
+            actuator.total_applied(),
+            cap,
+            f"total_applied() exceeded cap {cap}: got {actuator.total_applied()}",
+        )
+
+    def test_bridge_wires_max_total_interventions_from_config(self):
+        """ModelScopeEngineBridge must forward max_total_interventions from its config to SteeringActuator.
+
+        This test will fail if max_total_interventions is hardcoded (e.g. always 0 or always 100)
+        instead of being read from the config object.
+        """
+        import tempfile
+        from model_scope_engine_bridge import ModelScopeEngineBridge, ModelScopeBridgeConfig
+
+        custom_cap = 7
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            cfg = ModelScopeBridgeConfig(
+                artifact_dir=tmpdir,
+                enable_steering=True,
+                max_total_interventions=custom_cap,
+            )
+            bridge = ModelScopeEngineBridge(cfg)
+
+            # The actuator must reflect the exact value from config.
+            self.assertEqual(
+                bridge._actuator._max_total,
+                custom_cap,
+                f"Expected actuator._max_total={custom_cap} (from config), "
+                f"got {bridge._actuator._max_total}",
+            )
+
+        # A different cap value must also be forwarded correctly (guards against hardcoding).
+        other_cap = 3
+        with tempfile.TemporaryDirectory() as tmpdir2:
+            cfg2 = ModelScopeBridgeConfig(
+                artifact_dir=tmpdir2,
+                enable_steering=True,
+                max_total_interventions=other_cap,
+            )
+            bridge2 = ModelScopeEngineBridge(cfg2)
+            self.assertEqual(
+                bridge2._actuator._max_total,
+                other_cap,
+                f"Expected actuator._max_total={other_cap} (from config), "
+                f"got {bridge2._actuator._max_total}",
+            )
+
+
+
+
+# ---------------------------------------------------------------------------
+# Bridge.observe — steering enabled, intervention_count > 0
+# ---------------------------------------------------------------------------
+
+
+class TestBridgeObserveWithSteeringEnabled(unittest.TestCase):
+    """Gap-1 coverage: end-to-end observe() with enable_steering=True."""
+
+    def setUp(self):
+        from model_scope_engine_bridge import ModelScopeEngineBridge, ModelScopeBridgeConfig
+        from steering_policy import SteeringPolicyConfig, SteeringMode, PolicyStatus
+
+        self._td = tempfile.mkdtemp(prefix="bridge_steering_")
+        cfg = ModelScopeBridgeConfig(
+            artifact_dir=self._td,
+            enable_feature_extraction=True,
+            enable_steering=True,
+        )
+        self._bridge = ModelScopeEngineBridge(cfg)
+
+        # Register a SOFT_SCALE ACTIVE policy whose target_features match what
+        # FeatureExtractor._raw_stats_fallback() emits for our test ActivationEvent:
+        #   "mean_activation", "norm_activation", "token_count", "shape_0"
+        policy_cfg = SteeringPolicyConfig(
+            name="test_soft_scale_policy",
+            mode=SteeringMode.SOFT_SCALE,
+            target_features=["mean_activation", "norm_activation"],
+            scale_factor=1.5,
+            status=PolicyStatus.ACTIVE,
+        )
+        self._bridge._actuator._registry.register(policy_cfg)
+
+    def _mock_runtime_with_event(self):
+        act = _make_activation_event()
+        rt = MagicMock()
+        rt.is_loaded.return_value = True
+        rt.get_events.return_value = [act]
+        return rt
+
+    def test_observe_with_steering_enabled_returns_nonzero_intervention_count(self):
+        rt = self._mock_runtime_with_event()
+        result = self._bridge.observe("test steering query", rt)
+        self.assertIsNone(result.error)
+        self.assertGreater(result.intervention_count, 0)
+
+    def test_observe_with_steering_persists_intervention_file(self):
+        """Gap-2 dashboard path: observe() must write intervention_*.json to disk."""
+        rt = self._mock_runtime_with_event()
+        self._bridge.observe("test persistence query", rt)
+        artifact_dir = Path(self._td)
+        intervention_files = list(artifact_dir.glob("intervention_*.json"))
+        self.assertGreater(
+            len(intervention_files),
+            0,
+            "Expected at least one intervention_*.json file but found none.",
+        )
+
+    def test_observe_with_steering_persisted_file_is_valid_json(self):
+        rt = self._mock_runtime_with_event()
+        self._bridge.observe("test json validity", rt)
+        artifact_dir = Path(self._td)
+        intervention_files = list(artifact_dir.glob("intervention_*.json"))
+        self.assertGreater(len(intervention_files), 0)
+        with open(intervention_files[0], encoding="utf-8") as fh:
+            data = json.load(fh)
+        self.assertIsInstance(data, list)
+        self.assertGreater(len(data), 0)
+
+    def test_observe_with_steering_persisted_record_has_applied_true(self):
+        rt = self._mock_runtime_with_event()
+        self._bridge.observe("test record fields", rt)
+        artifact_dir = Path(self._td)
+        intervention_files = list(artifact_dir.glob("intervention_*.json"))
+        self.assertGreater(len(intervention_files), 0)
+        with open(intervention_files[0], encoding="utf-8") as fh:
+            records = json.load(fh)
+        applied_records = [r for r in records if r.get("applied") is True]
+        self.assertGreater(len(applied_records), 0)
+
+    def test_get_summary_for_diagnostics_has_intervention_summary(self):
+        rt = self._mock_runtime_with_event()
+        self._bridge.observe("test summary", rt)
+        summary = self._bridge.get_summary_for_diagnostics()
+        self.assertIn("intervention_summary", summary)
+        self.assertIn("total_applied", summary["intervention_summary"])
+        self.assertIn("total_shadow", summary["intervention_summary"])
+        self.assertGreater(summary["intervention_summary"]["total_applied"], 0)
+
+
+# ---------------------------------------------------------------------------
+# Gap 1: Disk write failure leaves bridge in partial state
+# ---------------------------------------------------------------------------
+
+
+class TestBridgeObserveSteeringDiskWriteFailure(unittest.TestCase):
+    """Gap-1 fix: OSError during intervention file write must not raise and must still
+    increment observation_count."""
+
+    def setUp(self):
+        from model_scope_engine_bridge import ModelScopeEngineBridge, ModelScopeBridgeConfig
+        from steering_policy import SteeringPolicyConfig, SteeringMode, PolicyStatus
+
+        self._td = tempfile.mkdtemp(prefix="bridge_diskfail_")
+        cfg = ModelScopeBridgeConfig(
+            artifact_dir=self._td,
+            enable_feature_extraction=True,
+            enable_steering=True,
+        )
+        self._bridge = ModelScopeEngineBridge(cfg)
+
+        policy_cfg = SteeringPolicyConfig(
+            name="test_diskfail_policy",
+            mode=SteeringMode.SOFT_SCALE,
+            target_features=["mean_activation", "norm_activation"],
+            scale_factor=1.5,
+            status=PolicyStatus.ACTIVE,
+        )
+        self._bridge._actuator._registry.register(policy_cfg)
+
+    def _mock_runtime_with_event(self):
+        act = _make_activation_event()
+        rt = MagicMock()
+        rt.is_loaded.return_value = True
+        rt.get_events.return_value = [act]
+        return rt
+
+    def test_observe_with_steering_disk_write_failure_still_increments_count(self):
+        """If the intervention file write raises OSError, observe() must not propagate
+        the exception and must still increment observation_count to 1."""
+        import warnings as _warnings_mod
+
+        rt = self._mock_runtime_with_event()
+
+        _real_open = open  # save reference before patch
+
+        def _selective_open(path, *args, **kwargs):
+            if "intervention_" in str(path):
+                raise OSError("disk full")
+            return _real_open(path, *args, **kwargs)
+
+        captured = []
+        with _warnings_mod.catch_warnings(record=True) as w:
+            _warnings_mod.simplefilter("always")
+            with patch("builtins.open", side_effect=_selective_open):
+                result = self._bridge.observe("test disk failure", rt)
+            captured = list(w)
+
+        # Must not have raised
+        self.assertIsNone(result.error)
+        # observation_count must still be incremented
+        self.assertEqual(self._bridge.get_telemetry()["observation_count"], 1)
+        # A UserWarning specifically about the intervention file write failure must
+        # have been emitted — not just any UserWarning.
+        user_warnings = [x for x in captured if issubclass(x.category, UserWarning)]
+        self.assertGreater(len(user_warnings), 0, "Expected a UserWarning about the disk write failure")
+        disk_write_warnings = [
+            x for x in user_warnings
+            if "intervention_" in str(x.message) or "Failed to persist" in str(x.message)
+        ]
+        self.assertGreater(
+            len(disk_write_warnings), 0,
+            "Expected a UserWarning mentioning intervention file write failure"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Gap 2: Unbounded intervention file accumulation
+# ---------------------------------------------------------------------------
+
+
+class TestBridgeObserveSteeringFileCap(unittest.TestCase):
+    """Gap-2 fix: after >50 observe() calls with steering, at most 50 intervention
+    files must remain on disk."""
+
+    def setUp(self):
+        from model_scope_engine_bridge import ModelScopeEngineBridge, ModelScopeBridgeConfig
+        from steering_policy import SteeringPolicyConfig, SteeringMode, PolicyStatus
+
+        self._td = tempfile.mkdtemp(prefix="bridge_cap_")
+        cfg = ModelScopeBridgeConfig(
+            artifact_dir=self._td,
+            enable_feature_extraction=True,
+            enable_steering=True,
+            max_total_interventions=1000,
+        )
+        self._bridge = ModelScopeEngineBridge(cfg)
+
+        policy_cfg = SteeringPolicyConfig(
+            name="test_cap_policy",
+            mode=SteeringMode.SOFT_SCALE,
+            target_features=["mean_activation", "norm_activation"],
+            scale_factor=1.5,
+            status=PolicyStatus.ACTIVE,
+        )
+        self._bridge._actuator._registry.register(policy_cfg)
+
+    def _mock_runtime_with_event(self):
+        act = _make_activation_event()
+        rt = MagicMock()
+        rt.is_loaded.return_value = True
+        rt.get_events.return_value = [act]
+        return rt
+
+    def test_observe_with_steering_caps_intervention_files_at_50(self):
+        """After 55 observe() calls with steering, at most 50 intervention files must
+        remain in the artifact directory."""
+        rt = self._mock_runtime_with_event()
+        for _ in range(55):
+            self._bridge.observe("cap test query", rt)
+
+        artifact_dir = Path(self._td)
+        intervention_files = list(artifact_dir.glob("intervention_*.json"))
+        self.assertLessEqual(
+            len(intervention_files),
+            50,
+            f"Expected at most 50 intervention files, found {len(intervention_files)}",
+        )
+
+
+# ---------------------------------------------------------------------------
+# Gap 1 (L11): Cap cleanup warns on OSError from unlink instead of swallowing
+# ---------------------------------------------------------------------------
+
+
+class TestBridgeCapCleanupWarnsOnUnlinkFailure(unittest.TestCase):
+    """Verify that an OSError during cap-cleanup unlink emits a UserWarning
+    instead of being silently swallowed, and that observe() does NOT raise."""
+
+    def setUp(self):
+        from model_scope_engine_bridge import ModelScopeEngineBridge, ModelScopeBridgeConfig
+        from steering_policy import SteeringPolicyConfig, SteeringMode, PolicyStatus
+
+        self._td = tempfile.mkdtemp(prefix="bridge_cleanup_warn_")
+        cfg = ModelScopeBridgeConfig(
+            artifact_dir=self._td,
+            enable_feature_extraction=True,
+            enable_steering=True,
+            max_total_interventions=10000,
+        )
+        self._bridge = ModelScopeEngineBridge(cfg)
+
+        policy_cfg = SteeringPolicyConfig(
+            name="test_cleanup_warn_policy",
+            mode=SteeringMode.SOFT_SCALE,
+            target_features=["mean_activation", "norm_activation"],
+            scale_factor=1.5,
+            status=PolicyStatus.ACTIVE,
+        )
+        self._bridge._actuator._registry.register(policy_cfg)
+
+    def _mock_runtime_with_event(self):
+        act = _make_activation_event()
+        rt = MagicMock()
+        rt.is_loaded.return_value = True
+        rt.get_events.return_value = [act]
+        return rt
+
+    def test_cap_cleanup_emits_warning_on_unlink_failure(self):
+        """When Path.unlink raises OSError during cap cleanup, a UserWarning
+        mentioning 'cleanup' or 'intervention file' must be emitted, and
+        observe() must NOT raise."""
+        import warnings as _warnings_mod
+
+        artifact_dir = Path(self._td)
+
+        # Pre-populate 51 dummy intervention files so cleanup is triggered
+        # on the very next observe() call.
+        for i in range(51):
+            dummy = artifact_dir / f"intervention_dummy_{i:04d}.json"
+            dummy.write_text("[]", encoding="utf-8")
+
+        _unlink_call_count = {"n": 0}
+        _real_unlink = Path.unlink
+
+        def _failing_unlink(self_path, *args, **kwargs):
+            # Raise only on the first unlink call (one failure is enough to
+            # exercise the warning path).
+            if _unlink_call_count["n"] == 0:
+                _unlink_call_count["n"] += 1
+                raise OSError("permission denied")
+            _unlink_call_count["n"] += 1
+            return _real_unlink(self_path, *args, **kwargs)
+
+        rt = self._mock_runtime_with_event()
+        captured = []
+        with _warnings_mod.catch_warnings(record=True) as w:
+            _warnings_mod.simplefilter("always")
+            with patch.object(Path, "unlink", _failing_unlink):
+                result = self._bridge.observe("cleanup warn test", rt)
+            captured = list(w)
+
+        # observe() must NOT raise — result.error stays None
+        self.assertIsNone(result.error, f"observe() raised unexpectedly: {result.error}")
+
+        # A UserWarning about the cap cleanup failure must have been emitted
+        user_warnings = [x for x in captured if issubclass(x.category, UserWarning)]
+        cleanup_warnings = [
+            x for x in user_warnings
+            if "cleanup" in str(x.message).lower() or "intervention file" in str(x.message).lower()
+        ]
+        self.assertGreater(
+            len(cleanup_warnings), 0,
+            f"Expected a UserWarning mentioning cap cleanup failure, got: {[str(x.message) for x in user_warnings]}",
+        )
 
 
 if __name__ == "__main__":
