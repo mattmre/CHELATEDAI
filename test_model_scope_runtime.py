@@ -322,7 +322,9 @@ class TestRunInference(unittest.TestCase):
         rt, model, _ = self._build_runtime_with_hooks()
         rt.run_inference(MagicMock())
         rt.run_inference(MagicMock())
-        self.assertGreaterEqual(len(rt.get_events()), 0)
+        # Two successive run_inference calls; accumulation is tested in
+        # TestGetAndClearEvents.  This just verifies no exception is raised.
+        self.assertIsInstance(rt.get_events(), list)
 
     def test_run_inference_without_load_raises(self):
         rt = LocalModelRuntime("no-load-model")
@@ -430,23 +432,27 @@ class TestSaveLoadEvents(unittest.TestCase):
         self.assertEqual(loaded, [])
 
 
-class TestRunInferenceRealTensorPath(unittest.TestCase):
-    """Exercise the real torch.linalg.norm production branch using an injected
-    nn.Module — no weight downloads required.
+class TestRunInferenceTryBranchDiscrimination(unittest.TestCase):
+    """Verify the try-branch (torch.linalg.norm) is exercised, not the except fallback.
 
-    The existing TestRunInference suite injects MagicMock tensors.  MagicMock
-    tensors fail at ``.float()`` → the except-branch silently absorbs the failure
-    and returns mock-friendly fallback values.  These tests use a *real*
-    ``torch.Tensor`` fed through a locally-constructed ``nn.Module`` so that:
+    Previous tests used a real torch.Tensor and asserted ``norm_activation > 0``
+    or ``norm_activation ≈ 3.74``.  Both branches produce the same value for a
+    real tensor so those tests pass even when the except-branch runs — they are
+    non-discriminating.
 
-    * ``tensor.float()`` succeeds with a real float tensor.
-    * ``torch.linalg.norm(t_float)`` is actually called and returns a real scalar.
-    * ``mean_activation`` and ``norm_activation`` in the emitted ActivationEvent
-      are genuine computed floats — not 0.0 or MagicMock fallbacks.
+    This suite uses a **sentinel value approach**: ``torch.linalg.norm`` is patched
+    to return an object whose ``.item()`` returns a known sentinel (42.0).  If the
+    try-branch runs, ``norm_activation`` will equal 42.0.  If the except-branch
+    runs instead (calling ``tensor.norm()``), it returns the real Frobenius norm
+    (~3.74) and the sentinel assertion fails — proving branch discrimination.
 
-    If the try-branch were replaced with only the except-fallback the assertions
-    on ``norm_activation > 0.0`` and exact ``mean_activation`` would fail,
-    proving these tests are coupled to the production code path.
+    WHY THIS WORKS
+    ---------------
+    Inside ``run_inference._make_hook``, torch is imported locally:
+    ``import torch``.  Python resolves that to ``sys.modules['torch']``, which is
+    the same object patched by ``unittest.mock.patch('torch.linalg.norm')``.
+    Patching the attribute on the live module object is therefore visible to the
+    hook regardless of where it imports torch from.
     """
 
     @classmethod
@@ -463,16 +469,10 @@ class TestRunInferenceRealTensorPath(unittest.TestCase):
 
     def _skip_if_no_torch(self):
         if not self.torch_available:
-            self.skipTest("torch not installed — real-tensor path test skipped")
+            self.skipTest("torch not installed — sentinel discrimination test skipped")
 
     def _build_tiny_runtime(self):
-        """Return a LocalModelRuntime loaded with a tiny nn.Module.
-
-        The model has one named submodule ``fc`` (a 3→3 Linear layer).
-        ``forward()`` calls ``self.fc(x)`` and returns the result as a
-        single-element tuple so the hook logic sees ``output[0]`` as the tensor.
-        We register the hook on ``fc`` via layer_id ``"fc"``.
-        """
+        """Return a LocalModelRuntime with a tiny identity nn.Module on layer 'fc'."""
         torch = self.torch
         nn = self.nn
 
@@ -480,84 +480,92 @@ class TestRunInferenceRealTensorPath(unittest.TestCase):
             def __init__(self_inner):
                 super().__init__()
                 self_inner.fc = nn.Linear(3, 3, bias=False)
-                # Initialise weights to known values so we can compute expected stats.
                 with torch.no_grad():
                     self_inner.fc.weight.copy_(torch.eye(3))
 
             def forward(self_inner, x):
-                out = self_inner.fc(x)
-                return (out,)
+                return (self_inner.fc(x),)
 
-        def loader(model_name):
-            return TinyModel()
-
-        rt = LocalModelRuntime("test-tiny", hook_layers=["fc"])
-        rt.load(model_loader=loader)
+        rt = LocalModelRuntime("test-sentinel", hook_layers=["fc"])
+        rt.load(model_loader=lambda _: TinyModel())
         return rt
 
-    def test_try_branch_mean_activation_is_real_float(self):
-        """mean_activation must be a genuine Python float from the try branch."""
+    def test_try_branch_uses_torch_linalg_norm_not_fallback(self):
+        """Patch torch.linalg.norm to a sentinel; assert norm_activation == sentinel.
+
+        If the try-branch runs: ``norm_val = float(torch.linalg.norm(t_float).item())``
+        resolves to ``float(sentinel_obj.item())`` == 42.0.
+
+        If the except-branch runs instead: ``norm_val = float(tensor.norm())``
+        which returns the real Frobenius norm (~3.74) — NOT 42.0.  The assertion
+        therefore fails, proving the try-branch is the one that actually executed.
+        """
         self._skip_if_no_torch()
-        torch = self.torch
+        import torch  # type: ignore[import]
+
+        SENTINEL = 42.0
+
+        # Build a minimal return object whose .item() yields the sentinel.
+        class _SentinelResult:
+            def item(self):
+                return SENTINEL
+
         rt = self._build_tiny_runtime()
-        # Input: [[1.0, 2.0, 3.0]] — shape (1, 3)
+
+        with patch("torch.linalg.norm", return_value=_SentinelResult()):
+            events = rt.run_inference(torch.tensor([[1.0, 2.0, 3.0]]))
+
+        self.assertTrue(events, "No events captured — hook did not fire")
+        evt = events[-1]
+        self.assertAlmostEqual(
+            evt.norm_activation,
+            SENTINEL,
+            places=5,
+            msg=(
+                f"norm_activation should equal sentinel {SENTINEL} "
+                f"(got {evt.norm_activation!r}) — if this fails, "
+                "torch.linalg.norm was NOT called in the try-branch; "
+                "the except fallback ran instead."
+            ),
+        )
+
+    def test_try_branch_mean_uses_float_tensor_mean(self):
+        """mean_activation equals the true tensor mean — proves t_float.mean() ran.
+
+        The try-branch computes ``float(t_float.mean().item())``.  With identity
+        weights and input [[1, 2, 3]], output is also [[1, 2, 3]] so mean = 2.0.
+        The except-branch calls ``float(tensor.mean())``, which on a real tensor
+        also equals 2.0 — so this is *not* a discriminating assertion by itself.
+        It is kept here as a sanity check alongside the sentinel norm test.
+        """
+        self._skip_if_no_torch()
+        import torch  # type: ignore[import]
+
+        rt = self._build_tiny_runtime()
         events = rt.run_inference(torch.tensor([[1.0, 2.0, 3.0]]))
         self.assertEqual(len(events), 1, "Expected exactly one event from the fc hook")
         evt = events[0]
         self.assertIsInstance(evt.mean_activation, float,
-                              "mean_activation must be a real float, not a MagicMock")
-        # fc is identity (eye(3)), so output == input [[1, 2, 3]].
-        # mean = (1+2+3)/3 = 2.0
+                              "mean_activation must be a real Python float")
+        # identity fc: output == input [[1, 2, 3]] → mean = 2.0
         self.assertAlmostEqual(evt.mean_activation, 2.0, places=4,
-                               msg="mean_activation must equal the computed tensor mean")
+                               msg="mean_activation must equal (1+2+3)/3 = 2.0")
 
-    def test_try_branch_norm_activation_is_positive(self):
-        """norm_activation must be > 0.0 — proves torch.linalg.norm was called."""
+    def test_raw_tensor_shape_set_by_try_branch(self):
+        """raw_tensor_shape must equal the actual tensor shape from the fc hook."""
         self._skip_if_no_torch()
-        torch = self.torch
-        rt = self._build_tiny_runtime()
-        events = rt.run_inference(torch.tensor([[1.0, 2.0, 3.0]]))
-        self.assertEqual(len(events), 1)
-        evt = events[0]
-        self.assertIsInstance(evt.norm_activation, float,
-                              "norm_activation must be a real float")
-        # L2 norm of [1, 2, 3] = sqrt(1+4+9) = sqrt(14) ≈ 3.7417
-        self.assertGreater(evt.norm_activation, 0.0,
-                           "norm_activation must be > 0 — the try branch must have run")
-        self.assertAlmostEqual(evt.norm_activation, 3.7417, places=3,
-                               msg="norm_activation must match sqrt(14) for input [1,2,3]")
+        import torch  # type: ignore[import]
 
-    def test_try_branch_raw_tensor_shape_matches_output(self):
-        """raw_tensor_shape must reflect the actual fc output tensor dimensions."""
-        self._skip_if_no_torch()
-        torch = self.torch
         rt = self._build_tiny_runtime()
-        # Input shape (1, 3) → fc(Linear 3→3) output shape (1, 3)
         events = rt.run_inference(torch.tensor([[1.0, 2.0, 3.0]]))
         self.assertEqual(len(events), 1)
         evt = events[0]
         self.assertIsNotNone(evt.raw_tensor_shape)
         self.assertIsInstance(evt.raw_tensor_shape, tuple)
+        # Input (1, 3) through Linear(3→3, bias=False) → output (1, 3)
         self.assertEqual(evt.raw_tensor_shape, (1, 3),
-                         "raw_tensor_shape must equal the actual tensor shape (1, 3)")
-        self.assertEqual(evt.shape, evt.raw_tensor_shape,
-                         "shape and raw_tensor_shape must agree")
-
-    def test_try_branch_fails_if_only_except_path(self):
-        """Sentinel: if the except fallback ran instead, norm would be 0.0 (MagicMock).
-
-        This test is not asserting that the except path produces 0.0 — it asserts
-        the norm is NOT 0.0 so that any regression to the except path is caught.
-        """
-        self._skip_if_no_torch()
-        torch = self.torch
-        rt = self._build_tiny_runtime()
-        events = rt.run_inference(torch.tensor([[1.0, 2.0, 3.0]]))
-        self.assertEqual(len(events), 1)
-        evt = events[0]
-        # 0.0 would indicate the except-branch fallback ran (MagicMock.norm() → 0).
-        self.assertNotEqual(evt.norm_activation, 0.0,
-                            "norm_activation must not be 0.0 — the except branch must NOT have run")
+                         "raw_tensor_shape must equal the captured tensor shape (1, 3)")
+        self.assertEqual(evt.shape, evt.raw_tensor_shape)
 
 
 @unittest.skipUnless(
