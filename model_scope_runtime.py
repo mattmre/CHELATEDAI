@@ -162,9 +162,18 @@ class LocalModelRuntime:
                             stacklevel=2,
                         )
                         norm_val = float(tensor.norm())
-                except Exception:
+                except Exception as _outer_e:
                     # Fallback for mock tensors that do not implement the full
                     # torch tensor protocol (e.g. no .item() on .mean() result).
+                    # Warning makes silent swallowing visible; expected in tests,
+                    # unexpected in production.
+                    warnings.warn(
+                        f"torch tensor protocol fallback triggered in hook "
+                        f"(mock-tensor compatible path; unexpected in production): "
+                        f"{_outer_e!r}",
+                        UserWarning,
+                        stacklevel=2,
+                    )
                     mean_val = float(tensor.mean())
                     norm_val = float(tensor.norm())
                 shape = tuple(tensor.shape)

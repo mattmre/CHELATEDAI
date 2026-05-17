@@ -399,6 +399,59 @@ class TestRunInference(unittest.TestCase):
             f"warning message must mention the missing layer; got: {warning_messages}",
         )
 
+    def test_norm_fallback_outer_warns_for_non_torch_tensor(self):
+        """Gap (L11): outer except must emit UserWarning when .float() raises.
+
+        The outer except catches failures that happen before or during
+        ``t_float.mean().item()`` (e.g. mock tensors whose ``.float()``
+        raises TypeError).  The warning must be emitted, the call must not
+        raise, and the event must still be appended to get_events().
+        """
+        import warnings
+
+        loader, model, layer_mocks = _mock_model_loader(["model.layers.0"])
+        rt = LocalModelRuntime("Qwen/Qwen3.5-2B", hook_layers=["model.layers.0"])
+        rt.load(model_loader=loader)
+
+        # Build a mock tensor whose .float() raises TypeError — this forces
+        # execution into the outer except block.
+        bad_tensor = MagicMock()
+        bad_tensor.shape = (1, 5, 2048)
+        bad_tensor.float.side_effect = TypeError("mock tensor has no float()")
+        # .mean() and .norm() must still work so the fallback path completes.
+        bad_tensor.mean.return_value = 0.0
+        bad_tensor.norm.return_value = 0.0
+
+        def fake_call(input_ids):
+            for lm in layer_mocks.values():
+                if lm.register_forward_hook.called:
+                    hook_fn = lm.register_forward_hook.call_args[0][0]
+                    hook_fn(lm, None, bad_tensor)
+
+        model.side_effect = fake_call
+
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            events = rt.run_inference(MagicMock())
+
+        # 1. Call must not raise.
+        # 2. A UserWarning must have been emitted.
+        user_warnings = [w for w in caught if issubclass(w.category, UserWarning)]
+        self.assertTrue(
+            user_warnings,
+            "outer except block must emit a UserWarning when .float() raises",
+        )
+        warning_texts = [str(w.message) for w in user_warnings]
+        self.assertTrue(
+            any("fallback" in txt or "protocol" in txt for txt in warning_texts),
+            f"warning must contain 'fallback' or 'protocol'; got: {warning_texts}",
+        )
+        # 3. Event was still appended despite the error.
+        self.assertTrue(
+            events or rt.get_events(),
+            "run_inference must still append an ActivationEvent via the fallback path",
+        )
+
 
 class TestGetAndClearEvents(unittest.TestCase):
     def test_get_events_empty_initially(self):
