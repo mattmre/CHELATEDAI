@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import json
 import uuid
+import warnings
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -146,15 +147,28 @@ class LocalModelRuntime:
 
                     t_float = tensor.float()
                     mean_val = float(t_float.mean().item())
-                    norm_val = float(torch.linalg.norm(t_float).item())
-                    shape = tuple(tensor.shape)
-                    token_count = shape[1] if len(shape) >= 2 else shape[0]
+                    try:
+                        norm_val = float(torch.linalg.norm(t_float).item())
+                    except Exception as _e:
+                        # Fallback for mock tensors that do not implement linalg.norm.
+                        # Expected in tests; unexpected in production (e.g. CUDA OOM
+                        # would appear here — the warning makes silent swallowing
+                        # visible).
+                        warnings.warn(
+                            f"torch.linalg.norm fallback triggered"
+                            f" ({type(_e).__name__}: {_e}); "
+                            "expected for mock tensors in tests,"
+                            " unexpected in production",
+                            stacklevel=2,
+                        )
+                        norm_val = float(tensor.norm())
                 except Exception:
-                    # Fallback for mock tensors exposing .mean / .norm as callables
+                    # Fallback for mock tensors that do not implement the full
+                    # torch tensor protocol (e.g. no .item() on .mean() result).
                     mean_val = float(tensor.mean())
                     norm_val = float(tensor.norm())
-                    shape = tuple(tensor.shape)
-                    token_count = shape[1] if len(shape) >= 2 else shape[0]
+                shape = tuple(tensor.shape)
+                token_count = shape[1] if len(shape) >= 2 else shape[0]
 
                 event = ActivationEvent(
                     schema_version="1.0",

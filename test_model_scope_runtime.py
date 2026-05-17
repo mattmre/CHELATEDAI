@@ -274,36 +274,39 @@ class TestRunInference(unittest.TestCase):
         self.assertGreater(len(events), 0)
 
     def test_run_inference_event_fields(self):
+        # Gap 1 (L2): guard replaced — test FAILS if events is empty
         rt, model, _ = self._build_runtime_with_hooks()
         events = rt.run_inference(MagicMock())
-        if events:
-            evt = events[0]
-            self.assertIsInstance(evt, ActivationEvent)
-            self.assertEqual(evt.model_id, "Qwen/Qwen3.5-2B")
-            self.assertIsInstance(evt.mean_activation, float)
-            self.assertIsInstance(evt.norm_activation, float)
-            self.assertIsInstance(evt.shape, tuple)
+        self.assertTrue(events, "run_inference should produce at least one ActivationEvent")
+        evt = events[0]
+        self.assertIsInstance(evt, ActivationEvent)
+        self.assertEqual(evt.model_id, "Qwen/Qwen3.5-2B")
+        self.assertIsInstance(evt.mean_activation, float)
+        self.assertIsInstance(evt.norm_activation, float)
+        self.assertIsInstance(evt.shape, tuple)
 
     def test_run_inference_raw_tensor_shape_populated(self):
         """raw_tensor_shape must be set by the hook and match the captured tensor shape."""
+        # Gap 1 (L2): guard replaced — test FAILS if events is empty
         rt, model, _ = self._build_runtime_with_hooks()
         events = rt.run_inference(MagicMock())
-        if events:
-            evt = events[0]
-            # The mock tensor has shape (1, 5, 2048) — raw_tensor_shape must
-            # reflect that exact shape (the full tensor is not stored).
-            self.assertIsNotNone(evt.raw_tensor_shape)
-            self.assertIsInstance(evt.raw_tensor_shape, tuple)
-            self.assertEqual(evt.raw_tensor_shape, evt.shape)
+        self.assertTrue(events, "run_inference should produce at least one ActivationEvent")
+        evt = events[0]
+        # The mock tensor has shape (1, 5, 2048) — raw_tensor_shape must
+        # reflect that exact shape (the full tensor is not stored).
+        self.assertIsNotNone(evt.raw_tensor_shape)
+        self.assertIsInstance(evt.raw_tensor_shape, tuple)
+        self.assertEqual(evt.raw_tensor_shape, evt.shape)
 
     def test_run_inference_auto_run_id_is_uuid(self):
+        # Gap 1 (L2): guard replaced — test FAILS if events is empty
         rt, model, _ = self._build_runtime_with_hooks()
         events = rt.run_inference(MagicMock())
-        if events:
-            try:
-                uuid.UUID(events[0].run_id)
-            except ValueError:
-                self.fail("run_id is not a valid UUID")
+        self.assertTrue(events, "run_inference should produce at least one ActivationEvent")
+        try:
+            uuid.UUID(events[0].run_id)
+        except ValueError:
+            self.fail("run_id is not a valid UUID")
 
     def test_run_inference_explicit_run_id(self):
         rt, model, _ = self._build_runtime_with_hooks()
@@ -313,10 +316,12 @@ class TestRunInference(unittest.TestCase):
             self.assertEqual(evt.run_id, custom_id)
 
     def test_run_inference_same_run_id_all_events(self):
+        # Gap 1 (L2): assertLessEqual(<=1) passes on empty; replaced with assertEqual(==1)
         rt, model, _ = self._build_runtime_with_hooks()
         events = rt.run_inference(MagicMock())
+        self.assertTrue(events, "run_inference should produce at least one ActivationEvent")
         run_ids = {e.run_id for e in events}
-        self.assertLessEqual(len(run_ids), 1)
+        self.assertEqual(len(run_ids), 1, "all events in one run must share the same run_id")
 
     def test_run_inference_accumulates_in_get_events(self):
         rt, model, _ = self._build_runtime_with_hooks()
@@ -330,6 +335,33 @@ class TestRunInference(unittest.TestCase):
         rt = LocalModelRuntime("no-load-model")
         with self.assertRaises(RuntimeError):
             rt.run_inference(MagicMock())
+
+    def test_norm_fallback_emits_warning_when_linalg_raises(self):
+        """Gap 2 (L11): confirms UserWarning is emitted when linalg.norm falls back."""
+        try:
+            import torch  # type: ignore[import]
+        except ImportError:
+            self.skipTest("torch not installed")
+
+        loader, model, layer_mocks = _mock_model_loader(["model.layers.0"])
+        rt = LocalModelRuntime("Qwen/Qwen3.5-2B", hook_layers=["model.layers.0"])
+        rt.load(model_loader=loader)
+
+        real_tensor = torch.tensor([[1.0, 2.0, 4.0]])
+
+        def fake_call(input_ids):
+            for lm in layer_mocks.values():
+                if lm.register_forward_hook.called:
+                    hook_fn = lm.register_forward_hook.call_args[0][0]
+                    hook_fn(lm, None, real_tensor)
+
+        model.side_effect = fake_call
+
+        with patch("torch.linalg.norm", side_effect=RuntimeError("test linalg error")):
+            with self.assertWarns(UserWarning):
+                events = rt.run_inference(MagicMock())
+
+        self.assertTrue(events, "run_inference should produce at least one ActivationEvent")
 
 
 class TestGetAndClearEvents(unittest.TestCase):
@@ -529,14 +561,19 @@ class TestRunInferenceTryBranchDiscrimination(unittest.TestCase):
             ),
         )
 
-    def test_try_branch_mean_uses_float_tensor_mean(self):
-        """mean_activation equals the true tensor mean — proves t_float.mean() ran.
+    def test_run_inference_mean_computation_is_float_mean(self):
+        """Gap 3 (L8): verifies the mean computation is numerically correct.
 
-        The try-branch computes ``float(t_float.mean().item())``.  With identity
-        weights and input [[1, 2, 3]], output is also [[1, 2, 3]] so mean = 2.0.
-        The except-branch calls ``float(tensor.mean())``, which on a real tensor
-        also equals 2.0 — so this is *not* a discriminating assertion by itself.
-        It is kept here as a sanity check alongside the sentinel norm test.
+        Renamed from ``test_try_branch_mean_uses_float_tensor_mean`` — that name
+        overclaimed branch discrimination.  This test validates the computation
+        itself: input [[1, 2, 3]] (mean=2.0) vs [[1, 2, 4]] (mean≈2.333) would
+        differ, but here both branches return the same real mean so it is NOT a
+        discriminating branch proof.
+
+        The sentinel norm test
+        (``test_try_branch_uses_torch_linalg_norm_not_fallback``) is the
+        discriminating proof for which branch ran.  This test complements it by
+        confirming the float arithmetic is correct.
         """
         self._skip_if_no_torch()
         import torch  # type: ignore[import]
