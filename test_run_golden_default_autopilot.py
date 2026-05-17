@@ -311,7 +311,6 @@ class TestGoldenDefaultAutopilot(unittest.TestCase):
         it exits immediately after zero iterations, then verify the artifact
         exists and contains the required fields.
         """
-        import argparse
         from run_golden_default_autopilot import main, _write_json_atomic, _now_iso
 
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -383,6 +382,52 @@ class TestGoldenDefaultAutopilot(unittest.TestCase):
             self.assertIn("termination_reason", payload)
             self.assertIn("iteration_count", payload)
             self.assertIn("latest_recommendation", payload)
+
+    def test_main_writes_terminal_decision_json_on_exception(self):
+        """main() must write terminal_decision.json even when _run_iteration raises.
+
+        Guards against ENG-5 L5: acceptance criterion #3 (terminal decision
+        artifact) was only met on the happy path.  When _run_iteration raises,
+        the except block must write the artifact with termination_reason='exception'
+        before re-raising, so the supervisor's caller can always inspect outcome.
+        """
+        from run_golden_default_autopilot import main
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            run_dir = Path(tmpdir) / "test_run_exc"
+            run_dir.mkdir()
+
+            fake_args = [
+                "--run-dir", str(run_dir),
+                "--max-iterations", "5",
+                "--deadline-hours", "48",
+            ]
+
+            def exploding_run_iteration(run_dir, manifest, *, iteration, args):
+                raise RuntimeError("injected failure for L5 test")
+
+            with (
+                patch("sys.argv", ["run_golden_default_autopilot.py", *fake_args]),
+                patch("run_golden_default_autopilot._run_iteration", side_effect=exploding_run_iteration),
+                patch("run_golden_default_autopilot.time.sleep"),
+            ):
+                with self.assertRaises(RuntimeError):
+                    main()
+
+            terminal_path = run_dir / "terminal_decision.json"
+            self.assertTrue(
+                terminal_path.exists(),
+                "terminal_decision.json must be written even when _run_iteration raises",
+            )
+            payload = json.loads(terminal_path.read_text(encoding="utf-8"))
+            self.assertEqual(payload["termination_reason"], "exception",
+                             "termination_reason must be 'exception' on error path")
+            self.assertIn("generated_at", payload)
+            self.assertIn("run_dir", payload)
+            self.assertEqual(payload["status"], "failed")
+            self.assertIn("exception_type", payload)
+            self.assertIn("exception_message", payload)
+            self.assertIn("iteration_count", payload)
 
     # --- ENG-5 gap 3: contract module absence must be intentional & documented ---
 

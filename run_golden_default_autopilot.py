@@ -1534,6 +1534,21 @@ def main() -> int:
         manifest["failure"] = {"type": type(exc).__name__, "message": str(exc)}
         _update_manifest(run_dir, manifest)
         _record_event(run_dir, "autopilot_failed", error=str(exc))
+        terminal_decision_exc: Dict[str, Any] = {
+            "generated_at": _now_iso(),
+            "run_dir": str(run_dir),
+            "status": "failed",
+            "finished_at": manifest["failed_at"],
+            "latest_report": manifest.get("latest_report"),
+            "termination_reason": "exception",
+            "exception_type": type(exc).__name__,
+            "exception_message": str(exc),
+            "iteration_count": len(manifest.get("iterations", {})),
+            "latest_recommendation": manifest.get("latest_recommendation"),
+        }
+        terminal_path_exc = run_dir / "terminal_decision.json"
+        _write_json_atomic(terminal_path_exc, terminal_decision_exc)
+        _record_event(run_dir, "terminal_decision_written", path=str(terminal_path_exc))
         raise
 
 
