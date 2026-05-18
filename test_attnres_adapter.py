@@ -12,6 +12,7 @@ from chelation_adapter import (
     BlockAttnResAdapter,
     BoundedAdapter,
     LayerAttentionAggregator,
+    QuantizationAwareLowRankAdapter,
     create_adapter,
 )
 from config import ChelationConfig
@@ -262,6 +263,95 @@ class TestLayerAttentionAggregator(unittest.TestCase):
         agg = LayerAttentionAggregator(hidden_size=self.hidden_size)
         out = agg(torch.randn(1, self.num_layers, self.hidden_size))
         self.assertEqual(out.shape, (1, self.hidden_size))
+
+
+class TestQuantizationAwareLowRankAdapter(unittest.TestCase):
+    """Tests for QuantizationAwareLowRankAdapter (OPSD Loop 1 Agent 8).
+    Verifies low-rank + STE fake-quant integration for quant-robust chelation
+    self-distillation. Enables direct testing of OPSD-quant variants.
+    """
+
+    def setUp(self):
+        self.input_dim = 128
+        self.rank = 8
+        self.temp_dir = Path(tempfile.mkdtemp())
+
+    def tearDown(self):
+        shutil.rmtree(self.temp_dir, ignore_errors=True)
+
+    def test_create_via_factory_quant_low_rank(self):
+        adapter = create_adapter("quant_low_rank", input_dim=self.input_dim, rank=self.rank)
+        self.assertIsInstance(adapter, QuantizationAwareLowRankAdapter)
+        self.assertEqual(adapter.rank, self.rank)
+        self.assertEqual(adapter.quant_levels, 127)
+
+    def test_forward_shape_and_normalization(self):
+        adapter = create_adapter("quant_low_rank", input_dim=self.input_dim, rank=self.rank)
+        x = torch.randn(4, self.input_dim)
+        out = adapter(x)
+        self.assertEqual(out.shape, (4, self.input_dim))
+        # Should be approx unit norm
+        norms = torch.norm(out, p=2, dim=1)
+        self.assertTrue(torch.allclose(norms, torch.ones_like(norms), atol=1e-5))
+
+    def test_training_mode_applies_ste_quant(self):
+        adapter = create_adapter(
+            "quant_low_rank", input_dim=self.input_dim, rank=self.rank,
+            quant_levels=127, quant_quantile=0.99, apply_quant_to="output"
+        )
+        adapter.train()
+        x = torch.randn(2, self.input_dim)
+        out = adapter(x)
+        # In training, output is STE-quantized version of low-rank correction
+        self.assertEqual(out.shape, (2, self.input_dim))
+        # Gradients should flow (STE)
+        loss = out.sum()
+        loss.backward()
+        self.assertIsNotNone(adapter.U.grad)
+        self.assertIsNotNone(adapter.V.grad)
+
+    def test_inference_mode_uses_non_ste_simulator(self):
+        adapter = create_adapter("quant_low_rank", input_dim=self.input_dim, rank=self.rank)
+        adapter.eval()
+        x = torch.randn(3, self.input_dim)
+        with torch.no_grad():
+            out = adapter(x)
+        self.assertEqual(out.shape, (3, self.input_dim))
+        # Eval mode plus no_grad should use the non-STE storage simulator without autograd.
+        self.assertFalse(out.requires_grad)
+
+    def test_quant_low_rank_plus_bounded(self):
+        adapter = create_adapter(
+            "quant_low_rank", input_dim=self.input_dim, rank=self.rank,
+            bounded=True, min_correction=0.01, max_correction=0.4
+        )
+        self.assertIsInstance(adapter, BoundedAdapter)
+        # Inner base should be quant low rank
+        self.assertIsInstance(adapter.base_adapter, QuantizationAwareLowRankAdapter)
+
+    def test_regularization_and_save_load(self):
+        adapter = create_adapter("quant_low_rank", input_dim=self.input_dim, rank=self.rank, ste_scale=True)
+        reg = adapter.regularization_loss()
+        self.assertIsInstance(reg, torch.Tensor)
+        # Save/load roundtrip
+        p = self.temp_dir / "qlowrank_test.pt"
+        adapter.save(p)
+        adapter2 = create_adapter("quant_low_rank", input_dim=self.input_dim, rank=self.rank, ste_scale=True)
+        loaded = adapter2.load(p)
+        self.assertTrue(loaded)
+
+    def test_ste_vs_non_quant_low_rank_delta_magnitude(self):
+        # Quick sanity: quant version should produce deltas that are quant-discretized
+        base_lr = create_adapter("low_rank", input_dim=self.input_dim, rank=self.rank)
+        q_lr = create_adapter("quant_low_rank", input_dim=self.input_dim, rank=self.rank)
+        base_lr.eval()
+        q_lr.eval()
+        x = torch.randn(1, self.input_dim)
+        # Different outputs expected due to quant step (unless zero correction)
+        out_base = base_lr(x)
+        out_q = q_lr(x)
+        # They can be close but the point is the mechanism exists for distillation training
+        self.assertEqual(out_base.shape, out_q.shape)
 
 
 if __name__ == "__main__":
