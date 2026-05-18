@@ -220,6 +220,132 @@ class LowRankAffineAdapter(nn.Module):
         return False
 
 
+class QuantizationAwareLowRankAdapter(LowRankAffineAdapter):
+    """
+    Low-rank affine adapter with built-in quantization simulation (QAT-style)
+    for self-distillation of chelation corrections.
+
+    Extends LowRankAffineAdapter (LoRA-style asymmetric U/V init) with
+    differentiable fake-quantization using Straight-Through Estimator (STE).
+    During training (for OPSD-style self-distillation), the output (or delta)
+    is passed through a simulated INT8 scalar quantizer; gradients flow through
+    as if identity (STE), so the low-rank factors learn corrections that
+    survive downstream embedding quantization (Qdrant scalar INT8, packed_graph
+    INT8 blocks, etc.).
+
+    This directly addresses the gap: BoundedAdapter + QuantizationPromotionGate
+    are post-hoc filters; this makes quant-robustness part of the learned
+    objective (synergistic with OPSD/SDPO per-"token"/per-dim clipping and
+    filtered on-policy data).
+
+    When used in asymmetric teacher-student distillation:
+    - Teacher (privileged diagnostics) can use quant_aware=True to produce
+      targets that already account for quant noise.
+    - Student learns low-rank delta that matches teacher even after quant sim.
+
+    Compatible with existing BoundedAdapter wrapper (nest it) and
+    simulate_int8_quantization from evolution_strategies_optimizer (non-diff
+    version for fitness eval).
+
+    Args:
+        input_dim: Embedding dim
+        rank: Low-rank (default 16, smaller ranks often more quant-stable)
+        quant_levels: INT8 levels (127 for symmetric -127..127)
+        quant_quantile: Scale estimation quantile (0.99 matches ES simulator)
+        apply_quant_to: "output" (after x+delta+norm) or "delta" (before add)
+        ste_scale: Whether to learn a per-dim scale inside quant (default False)
+    """
+
+    def __init__(
+        self,
+        input_dim: int,
+        rank: int = 16,
+        quant_levels: int = 127,
+        quant_quantile: float = 0.99,
+        apply_quant_to: str = "output",
+        ste_scale: bool = False,
+    ):
+        super().__init__(input_dim=input_dim, rank=rank)
+        self.quant_levels = int(quant_levels)
+        self.quant_quantile = float(quant_quantile)
+        self.apply_quant_to = apply_quant_to  # "output" or "delta"
+        self.ste_scale = bool(ste_scale)
+        if self.ste_scale:
+            # Optional learned per-dim quant scale (multiplicative)
+            self.quant_scale_param = nn.Parameter(torch.ones(input_dim))
+        else:
+            self.register_buffer("quant_scale_param", None)
+
+    def _simulate_quant_ste(self, tensor: torch.Tensor) -> torch.Tensor:
+        """Differentiable fake INT8 quantization with Straight-Through Estimator."""
+        if not self.training:
+            # Inference: use non-diff version for exact parity with storage
+            # (import here to avoid circular; in practice engine controls)
+            try:
+                from evolution_strategies_optimizer import simulate_int8_quantization
+                return simulate_int8_quantization(
+                    tensor, levels=self.quant_levels, quantile=self.quant_quantile
+                )
+            except Exception:
+                # Fallback pure torch (no quantile, use max)
+                pass
+
+        # Training path: STE
+        with torch.no_grad():
+            abs_vals = tensor.detach().abs().reshape(-1)
+            if abs_vals.numel() == 0:
+                scale = torch.tensor(1.0, device=tensor.device, dtype=tensor.dtype)
+            else:
+                scale_ref = torch.quantile(abs_vals, self.quant_quantile)
+                scale_ref = torch.clamp(scale_ref, min=1e-12)
+                scale = scale_ref / float(self.quant_levels)
+
+        # Quantize
+        q = torch.clamp(torch.round(tensor / scale), -self.quant_levels, self.quant_levels)
+        dequant = q * scale
+
+        # STE: forward dequant, backward as identity
+        out = (dequant - tensor).detach() + tensor
+
+        if self.ste_scale and self.quant_scale_param is not None:
+            out = out * self.quant_scale_param
+        return out
+
+    def forward(self, x):
+        # Get the low-rank base output (normalized)
+        base_out = super().forward(x)  # calls LowRankAffineAdapter.forward -> x + delta, normalize
+
+        if self.apply_quant_to == "delta":
+            # Recompute delta for quant application (more targeted)
+            # Note: for simplicity in STE variant we quant the final; override if needed
+            input_was_1d = (x.dim() == 1)
+            if input_was_1d:
+                x2 = x.unsqueeze(0)
+            else:
+                x2 = x
+            x_norm = F.normalize(x2, p=2, dim=1)
+            delta = base_out.unsqueeze(0) - x_norm if base_out.dim() == 1 else base_out - x_norm
+            q_delta = self._simulate_quant_ste(delta)
+            out = x_norm + q_delta
+            out = F.normalize(out, p=2, dim=1)
+            if input_was_1d:
+                out = out.squeeze(0)
+            return out
+        else:
+            # Default: quantize the final normalized output (what gets stored/retrieved)
+            q_out = self._simulate_quant_ste(base_out)
+            norm_dim = 0 if q_out.dim() == 1 else 1
+            return F.normalize(q_out, p=2, dim=norm_dim)
+
+    def regularization_loss(self):
+        base_reg = super().regularization_loss()
+        # Extra penalty on quant_scale deviation if enabled (keeps conservative)
+        if self.ste_scale and self.quant_scale_param is not None:
+            scale_reg = ((self.quant_scale_param - 1.0) ** 2).mean()
+            return base_reg + 0.0005 * scale_reg
+        return base_reg
+
+
 class BoundedAdapter(nn.Module):
     """Wrapper that bounds correction magnitude and adds per-dimension scaling.
 
@@ -475,14 +601,17 @@ def create_adapter(adapter_type="mlp", input_dim=768, bounded=False,
     Factory function to create adapter instances by type name.
 
     Args:
-        adapter_type: One of "mlp", "procrustes", "low_rank", "attnres"
+        adapter_type: One of "mlp", "procrustes", "low_rank", "quant_low_rank", "attnres"
         input_dim: Embedding dimension
         bounded: If True, wrap in BoundedAdapter for quantization-safe corrections
+                 (can be nested with quant_low_rank for double protection)
         min_correction: Minimum correction norm (BoundedAdapter only, default 0.01)
         max_correction: Maximum correction norm (BoundedAdapter only, default 0.5)
         **kwargs: Additional args passed to adapter constructor
             - For "mlp": hidden_dim (optional)
-            - For "low_rank": rank (default 16)
+            - For "low_rank", "quant_low_rank": rank (default 16),
+              quant_levels (127), quant_quantile (0.99), apply_quant_to ("output"),
+              ste_scale (False)
             - For "attnres": num_blocks (default 4), proj_dim (optional)
 
     Returns:
@@ -495,23 +624,49 @@ def create_adapter(adapter_type="mlp", input_dim=768, bounded=False,
         kwargs.pop("rank", None)
         kwargs.pop("num_blocks", None)
         kwargs.pop("proj_dim", None)
+        kwargs.pop("quant_levels", None)
+        kwargs.pop("quant_quantile", None)
         adapter = ChelationAdapter(input_dim=input_dim, **kwargs)
     elif adapter_type == "procrustes":
         kwargs.pop("rank", None)
         kwargs.pop("num_blocks", None)
         kwargs.pop("proj_dim", None)
+        kwargs.pop("quant_levels", None)
+        kwargs.pop("quant_quantile", None)
         adapter = OrthogonalProcrustesAdapter(input_dim=input_dim)
     elif adapter_type == "low_rank":
         kwargs.pop("num_blocks", None)
         kwargs.pop("proj_dim", None)
+        kwargs.pop("quant_levels", None)
+        kwargs.pop("quant_quantile", None)
         rank = kwargs.get("rank", 16)
         adapter = LowRankAffineAdapter(input_dim=input_dim, rank=rank)
+    elif adapter_type == "quant_low_rank":
+        # NEW for OPSD Loop 1 Agent 8: quantization-aware low-rank variant
+        kwargs.pop("num_blocks", None)
+        kwargs.pop("proj_dim", None)
+        rank = kwargs.pop("rank", 16)
+        quant_levels = kwargs.pop("quant_levels", 127)
+        quant_quantile = kwargs.pop("quant_quantile", 0.99)
+        apply_quant_to = kwargs.pop("apply_quant_to", "output")
+        ste_scale = kwargs.pop("ste_scale", False)
+        adapter = QuantizationAwareLowRankAdapter(
+            input_dim=input_dim,
+            rank=rank,
+            quant_levels=quant_levels,
+            quant_quantile=quant_quantile,
+            apply_quant_to=apply_quant_to,
+            ste_scale=ste_scale,
+        )
     elif adapter_type == "attnres":
         num_blocks = kwargs.get("num_blocks", 4)
         proj_dim = kwargs.get("proj_dim", None)
+        kwargs.pop("rank", None)
+        kwargs.pop("quant_levels", None)
+        kwargs.pop("quant_quantile", None)
         adapter = BlockAttnResAdapter(input_dim=input_dim, num_blocks=num_blocks, proj_dim=proj_dim)
     else:
-        valid = ["mlp", "procrustes", "low_rank", "attnres"]
+        valid = ["mlp", "procrustes", "low_rank", "quant_low_rank", "attnres"]
         raise ValueError(f"Unknown adapter_type '{adapter_type}'. Valid types: {valid}")
 
     if bounded:

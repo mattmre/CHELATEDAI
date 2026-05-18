@@ -11,7 +11,7 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import asdict, dataclass, field
-from typing import Any, Callable, Dict, Iterable, List, Optional, Union
+from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Union
 
 from chelation_logger import get_logger
 from fitness_interfaces import FitnessEvaluation, FitnessFunctionInterface
@@ -720,3 +720,330 @@ def _keyword_terms(text: str, limit: int = 5) -> List[str]:
             break
     return tokens or ["retrieval"]
 
+
+# =============================================================================
+# OPSD / Self-Edit Directive Integration Layer (Loop 1 Research Artifact)
+# =============================================================================
+#
+# Research Agent 6 contribution: The missing bridge from advisory SelfEditDirective
+# (SEAL/EGGROLL planning + ReSTEM filtering) to actual on-policy self-distillation
+# training of ChelationAdapter.
+#
+# This is deliberately scaffolded code to enable immediate testing of OPSD patterns.
+# It is NOT wired into antigravity_engine.run_sedimentation_cycle() or live paths yet.
+# See 06_selfedit_directive_integration.md for full analysis, mappings, variants,
+# risks, and the brutal-honesty disclosure of current state (L4 partial implementation).
+#
+# Key OPSD concepts realized here for embeddings (adapted from generative LLM OPSD/SDPO):
+# - On-policy: Use current adapter's "rollouts" (embeddings on recent/synthetic queries)
+#   as student policy trajectories.
+# - Asymmetric privileged teacher: Diagnostics + full context as "privileged info"
+#   for constructing richer teacher targets/similarities. Student sees only normal context.
+# - Filtered: Only directives that passed reward/retention/quant gates become training data.
+# - Dense supervision: Synthetic examples + self-generated probes -> contrastive pairs
+#   (not sparse collapse counts).
+# - KL control: Explicit regularizer on embedding distribution shift (prevents KL shock / forgetting).
+# - MIS-PO / SDPO style: Support for filtered perturbation acceptance (ties to eggroll_es).
+#
+# Usage in tests (immediate):
+#   integrator = SelfEditDirectiveOPSDIntegrator()
+#   batch = integrator.directive_to_onpolicy_batch(accepted_directive, context, diagnostics)
+#   # Then feed batch["student_inputs"], batch["teacher_targets"] to a distillation loss + adapter.
+# =============================================================================
+
+# Note: torch is lazily imported inside methods that need it (this module stays pure-Python by default
+# for compatibility with existing non-torch test paths and fitness callables).
+
+
+@dataclass
+class OPSDTrainingBatch:
+    """Structured on-policy self-distillation training batch derived from a SelfEditDirective.
+
+    Contains everything needed to run a teacher-student chelation distillation step
+    on a ChelationAdapter (or any residual adapter).
+    """
+    directive_id: str
+    strategy: str
+    adaptation_mode: str
+    student_inputs: List[str]  # Queries / contexts for student (normal view)
+    teacher_targets: List[str]  # Privileged or richer targets for teacher view
+    positive_pairs: List[Tuple[str, str]]  # (query, positive_doc) contrastive
+    negative_pairs: List[Tuple[str, str]]  # Hard negatives from probes / context
+    privileged_diagnostics: Dict[str, Any]  # Full diagnostics injected for teacher
+    optimization_hints: Dict[str, Any]  # LR, epochs, loss_type from directive
+    kl_weight: float = 0.1  # Suggested KL reg weight for stability
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
+
+class SelfEditDirectiveOPSDIntegrator:
+    """Converts accepted SelfEditDirectives into high-quality on-policy training data
+    for ChelationAdapter self-distillation. Enables teacher-student asymmetric setups.
+
+    This is the core integration specialist artifact for Loop 1.
+    Designed so that:
+      - `directive_to_onpolicy_batch` produces immediately usable data for existing
+        SedimentationInfoNCELoss or new KLDistillation losses.
+      - `build_asymmetric_teacher_student_objective` sketches the privileged distillation loss.
+      - `compute_embedding_kl_regularization` provides the forgetting-prevention term
+        (compatible with ProcrustesAdapter, LowRankAffineAdapter, etc.).
+
+    All methods are pure / deterministic given inputs (reproducible for tests).
+    """
+
+    def __init__(self, logger: Optional[Any] = None):
+        self.logger = logger or get_logger()
+
+    def directive_to_onpolicy_batch(
+        self,
+        directive: SelfEditDirective,
+        context: Union[str, Iterable[str]],
+        diagnostics: Optional[Dict[str, Any]] = None,
+        base_adapter: Optional[Any] = None,  # Optional: for on-policy "student rollout" simulation
+    ) -> OPSDTrainingBatch:
+        """Core conversion: Accepted directive + diagnostics -> OPSD-style training batch.
+
+        On-policy aspect: Synthetic examples and self-generated probes from the directive
+        are treated as the model's own "generations" (rollouts) under the current policy.
+
+        Privileged teacher: diagnostics (structural_health, quantization_gate, retrieval_anomaly,
+        runtime status) are injected into teacher_targets and privileged_diagnostics so a
+        teacher forward pass (or target construction) has more information than the student.
+
+        Returns a batch ready for contrastive distillation training of the adapter.
+        """
+        normalized_context = self._normalize_for_batch(context)
+        diagnostics = diagnostics or {}
+        synth = list(directive.synthetic_examples) or self._fallback_synth(normalized_context)
+
+        # Student inputs: normal context (what inference sees)
+        student_inputs = normalized_context[:4]
+
+        # Teacher targets: richer version using privileged diagnostics + implications
+        # This is the OPSD "privileged conditioning" analogue for embeddings.
+        teacher_targets = self._build_privileged_teacher_targets(synth, diagnostics, directive)
+
+        # Contrastive pairs from synthetic examples + probes (dense supervision)
+        pos_pairs, neg_pairs = self._extract_contrastive_pairs(synth, diagnostics)
+
+        # Optimization hints pulled from directive (adapter_sft, eggroll_es, etc.)
+        opt_hints = dict(directive.optimization_params)
+        opt_hints.setdefault("loss", "infonce_kl_regularized")
+        opt_hints.setdefault("epochs", 1)
+        opt_hints.setdefault("lr", 1e-4)
+
+        # Suggested KL weight higher for structural/quant directives (stability critical)
+        kl_w = 0.15 if "quantization" in directive.directive_id or "structural" in directive.directive_id else 0.08
+
+        batch = OPSDTrainingBatch(
+            directive_id=directive.directive_id,
+            strategy=directive.strategy,
+            adaptation_mode=directive.adaptation_mode,
+            student_inputs=student_inputs,
+            teacher_targets=teacher_targets,
+            positive_pairs=pos_pairs,
+            negative_pairs=neg_pairs,
+            privileged_diagnostics=dict(diagnostics),
+            optimization_hints=opt_hints,
+            kl_weight=kl_w,
+            metadata={
+                "source": directive.source,
+                "paper_alignment": directive.metadata.get("paper_alignment", "OPSD+SEAL"),
+                "is_accepted_directive": True,  # By construction, caller should only pass accepted
+                "num_synth_examples": len(synth),
+            },
+        )
+        self.logger.log_event(
+            "opsd_directive_to_batch",
+            "Converted SelfEditDirective to OPSD on-policy distillation batch",
+            directive_id=directive.directive_id,
+            adaptation_mode=directive.adaptation_mode,
+            student_count=len(student_inputs),
+            teacher_count=len(teacher_targets),
+            pos_pairs=len(pos_pairs),
+            level="DEBUG",
+        )
+        return batch
+
+    def _normalize_for_batch(self, context: Union[str, Iterable[str]]) -> List[str]:
+        if isinstance(context, str):
+            items = [context]
+        else:
+            items = list(context)
+        return [" ".join(str(item).split()) for item in items if str(item).strip()][:6]
+
+    def _fallback_synth(self, context: List[str]) -> List[str]:
+        return [f"Implication: {c}" for c in context[:3]] + [f"Retrieval QA: preserve from {c}" for c in context[:3]]
+
+    def _build_privileged_teacher_targets(
+        self,
+        synth: List[str],
+        diagnostics: Dict[str, Any],
+        directive: SelfEditDirective,
+    ) -> List[str]:
+        """OPSD asymmetric teacher construction.
+
+        Teacher sees *everything* the student sees PLUS the full diagnostic trace
+        (retrieval anomalies, structural health score, quant gate status, runtime errors).
+        This lets the teacher generate "corrected" target implications or preferred
+        similarity structures that the student (normal context only) must match.
+        """
+        targets = list(synth)
+        # Inject privileged signals as "meta-examples" the teacher uses for target shaping
+        if diagnostics.get("retrieval_policy", {}).get("high_variance_fast_path"):
+            targets.append("PRIVILEGED: High variance retrieval detected - strengthen contrastive margins on anomalous clusters.")
+        if diagnostics.get("structural_health", {}).get("score", 1.0) < 0.7:
+            targets.append("PRIVILEGED: Structural collapse risk - apply conservative low-rank correction and retention replay.")
+        if diagnostics.get("quantization_gate", {}).get("passed") is False:
+            targets.append("PRIVILEGED: Quantization survival failed - enforce bounded correction magnitude > INT8 noise floor.")
+        if "runtime" in diagnostics and diagnostics["runtime"].get("status") in {"empty_results", "qdrant_error"}:
+            targets.append("PRIVILEGED: Runtime retrieval failure - synthesize hard-negative confusers from context.")
+        # Include directive strategy as privileged hint (e.g., "implication_synthesis")
+        targets.append(f"PRIVILEGED_TEACHER_STRATEGY: {directive.strategy} with adaptation={directive.adaptation_mode}")
+        return targets[:8]
+
+    def _extract_contrastive_pairs(
+        self, synth: List[str], diagnostics: Dict[str, Any]
+    ) -> Tuple[List[Tuple[str, str]], List[Tuple[str, str]]]:
+        """Build positive/negative pairs for dense InfoNCE-style distillation.
+
+        Positives: implication <-> retrieval QA from same context item.
+        Negatives: cross terms + confusers from probes + diagnostic signals.
+        This replaces sparse chelation_log threshold counting with dense self-generated supervision.
+        """
+        positives: List[Tuple[str, str]] = []
+        negatives: List[Tuple[str, str]] = []
+        for i, s in enumerate(synth):
+            if "Implication" in s or "Retrieval QA" in s:
+                # Pair implication with its QA counterpart if present
+                for j, t in enumerate(synth):
+                    if i != j and (("Implication" in s and "Retrieval QA" in t) or ("Retrieval QA" in s and "Implication" in t)):
+                        positives.append((s, t))
+        # Hard negatives from diagnostic confusers (SEAL-style)
+        confusers = ["unrelated", "collapse", "regression", "forgetting", "route drift", "quantization loss"]
+        for s in synth[:3]:
+            for c in confusers[:3]:
+                negatives.append((s, f"Negative confuser: {c}"))
+        # If quant failure in diagnostics, add extra hard negative for magnitude control
+        if diagnostics.get("quantization_gate", {}).get("passed") is False:
+            negatives.append((synth[0] if synth else "context", "Negative: over-correction that fails INT8"))
+        return positives[:6], negatives[:8]
+
+    def build_asymmetric_teacher_student_objective(
+        self,
+        batch: OPSDTrainingBatch,
+        student_embeddings: Any,
+        teacher_embeddings: Any,
+        base_embeddings: Optional[Any] = None,
+    ) -> Dict[str, Any]:
+        """Sketch of the full OPSD-style objective for a ChelationAdapter training step.
+
+        Returns a dict of loss components (student_teacher_distill_loss, kl_reg, total).
+        This is the direct analogue of OPSD's per-token teacher KL on the student's on-policy rollouts,
+        but operating in embedding / similarity space.
+
+        Usage (in a torch context):
+            import torch
+            import torch.nn.functional as F
+            loss_dict = integrator.build_asymmetric_teacher_student_objective(batch, stud_emb, teach_emb, base_emb)
+            loss = loss_dict["total"]
+            loss.backward()
+
+        Brutal honesty (L4): This method assumes caller provides torch tensors when torch is available.
+        When torch is absent the method returns a diagnostic dict without computing (test-safe).
+        """
+        try:
+            import torch
+            import torch.nn.functional as F  # noqa: F401
+        except ImportError:
+            return {
+                "distill_loss": "torch_unavailable",
+                "kl_regularization": "torch_unavailable",
+                "total": 0.0,
+                "kl_weight_used": batch.kl_weight,
+                "num_pairs": len(batch.positive_pairs) + len(batch.negative_pairs),
+                "note": "Torch not installed in this environment; objective is a no-op sketch for research.",
+            }
+
+        if not isinstance(student_embeddings, torch.Tensor) or not isinstance(teacher_embeddings, torch.Tensor):
+            return {
+                "distill_loss": "non_tensor_input",
+                "kl_regularization": "non_tensor_input",
+                "total": 0.0,
+                "kl_weight_used": batch.kl_weight,
+                "num_pairs": len(batch.positive_pairs) + len(batch.negative_pairs),
+                "note": "Torch is installed, but tensor inputs are required to compute the OPSD objective.",
+            }
+
+        # Student-teacher alignment (dense distillation signal, asymmetric because teacher had privileged diagnostics)
+        # Simple mean squared alignment for teacher targets (can be upgraded to full InfoNCE or JS in SDPO)
+        distill_loss = F.mse_loss(student_embeddings, teacher_embeddings[: student_embeddings.size(0)])
+
+        # KL regularization to base (frozen) to prevent destructive correction / forgetting
+        # This is critical OPSD "KL shock" mitigation for residual adapters.
+        kl_reg = torch.tensor(0.0, device=student_embeddings.device)
+        if (
+            isinstance(base_embeddings, torch.Tensor)
+            and base_embeddings.shape == student_embeddings.shape
+        ):
+            # Distributional KL on normalized similarities (or direct L2 on delta)
+            delta = student_embeddings - base_embeddings
+            kl_reg = (delta ** 2).mean() * batch.kl_weight  # Simple but effective proxy for embedding KL
+
+        total = distill_loss + kl_reg
+
+        return {
+            "distill_loss": distill_loss,
+            "kl_regularization": kl_reg,
+            "total": total,
+            "kl_weight_used": torch.tensor(batch.kl_weight),
+            "num_pairs": torch.tensor(len(batch.positive_pairs) + len(batch.negative_pairs)),
+        }
+
+    def compute_embedding_kl_regularization(
+        self,
+        base_embeddings: Any,
+        adapted_embeddings: Any,
+        weight: float = 0.1,
+    ) -> Any:
+        """Standalone KL-style regularizer for any ChelationAdapter training.
+
+        Penalizes large deviation from the frozen base model embeddings.
+        Compatible with all adapter variants (MLP, Procrustes + DSM, LowRank, AttnRes, Bounded).
+        Use inside existing train_adapter_with_es or Adam sedimentation loops.
+
+        This directly addresses the "catastrophic forgetting during self-edits" problem
+        identified in SEAL paper and current CHELATEDAI panel audits (F-ML findings).
+
+        Brutal honesty: When torch absent, returns a dict describing the intended reg (test-safe scaffold).
+        """
+        try:
+            import torch
+        except ImportError:
+            return {
+                "kl_reg_value": "torch_unavailable",
+                "weight": weight,
+                "note": "Torch-dependent regularizer sketch. In production: (adapted - base).pow(2).mean() * weight",
+            }
+
+        if not isinstance(base_embeddings, torch.Tensor) or not isinstance(adapted_embeddings, torch.Tensor):
+            return {
+                "kl_reg_value": "non_tensor_input",
+                "weight": weight,
+                "note": "Torch is installed, but tensor inputs are required to compute embedding KL regularization.",
+            }
+
+        if base_embeddings.shape != adapted_embeddings.shape:
+            # Handle batch mismatch gracefully
+            min_b = min(base_embeddings.size(0), adapted_embeddings.size(0))
+            base_embeddings = base_embeddings[:min_b]
+            adapted_embeddings = adapted_embeddings[:min_b]
+        delta = adapted_embeddings - base_embeddings
+        # Squared L2 on delta (proxy for preventing "KL shock" in representation space)
+        reg = (delta ** 2).mean() * weight
+        return reg
+
+
+# End of OPSD Integration Layer (Agent 6, Loop 1)
+# Next: Wire this into SelfHealingChelationPlanner.execute_... and a new ChelationSelfDistiller
+# in sedimentation / antigravity for Variant A/B/C testing. Full details + 8+ testable patterns
+# in the accompanying research report.

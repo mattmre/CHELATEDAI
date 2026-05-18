@@ -202,7 +202,7 @@ class ChelationConfig:
     DEFAULT_TEMPERATURE = 1.0  # Temperature divisor for chelation scores (1.0 = no effect)
 
     # ===== Adapter Type Selection (Phase 2) =====
-    ADAPTER_TYPE = "mlp"  # "mlp", "procrustes", or "low_rank"
+    ADAPTER_TYPE = "mlp"  # "mlp", "procrustes", "low_rank", "quant_low_rank", "attnres"
     LOW_RANK_ADAPTER_RANK = 16  # Rank for low-rank affine adapter
     ATTNRES_ADAPTER_NUM_BLOCKS = 4  # Balanced Block-AttnRes default
     ATTNRES_ADAPTER_PROJ_DIM = None  # None lets the adapter derive a safe projection size
@@ -219,7 +219,16 @@ class ChelationConfig:
         "low_rank": {
             "adapter_type": "low_rank",
             "rank": 16,
-            "description": "Low-rank affine correction"
+            "description": "Low-rank affine correction (LoRA-style)"
+        },
+        "quant_low_rank": {
+            "adapter_type": "quant_low_rank",
+            "rank": 8,  # Smaller rank often more stable under quant noise
+            "quant_levels": 127,
+            "quant_quantile": 0.99,
+            "apply_quant_to": "output",
+            "ste_scale": False,
+            "description": "Quantization-aware low-rank (QLoRA-inspired for chelation; OPSD Loop1 Agent8). Uses STE fake-quant during training for corrections that survive INT8 storage/retrieval."
         },
         "attnres": {
             "adapter_type": "attnres",

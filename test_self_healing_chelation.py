@@ -154,6 +154,89 @@ class TestSelfHealingChelationPlanner(unittest.TestCase):
             SelfHealingChelationConfig(min_structural_health=-0.1)
 
 
+class TestSelfEditDirectiveOPSDIntegrator(unittest.TestCase):
+    """Loop 1 tests for Agent 6 OPSD integration scaffold (SelfEditDirective -> on-policy distillation data).
+
+    These tests validate the bridge from advisory SEAL/EGGROLL directives to
+    teacher-student asymmetric self-distillation batches. They run without torch.
+    Full objective + KL tests require a torch environment + ChelationAdapter instance.
+    """
+
+    def test_directive_to_onpolicy_batch_produces_privileged_teacher_data(self):
+        from self_healing_chelation import SelfEditDirectiveOPSDIntegrator, OPSDTrainingBatch
+        planner = SelfHealingChelationPlanner(logger=MagicMock())
+        directives = planner.generate_directives(
+            ["critical new retrieval fact under collapse"],
+            {
+                "runtime": {"status": "empty_results"},
+                "structural_health": {"score": 0.55},
+                "quantization_gate": {"passed": False},
+            },
+        )
+        integrator = SelfEditDirectiveOPSDIntegrator()
+        # Pick a directive that would be accepted in real flow (we test conversion regardless)
+        directive = directives[0]
+        batch = integrator.directive_to_onpolicy_batch(
+            directive,
+            context=["critical new retrieval fact under collapse"],
+            diagnostics={
+                "runtime": {"status": "empty_results"},
+                "structural_health": {"score": 0.55},
+                "quantization_gate": {"passed": False},
+            },
+        )
+
+        self.assertIsInstance(batch, OPSDTrainingBatch)
+        self.assertEqual(batch.directive_id, directive.directive_id)
+        self.assertGreater(len(batch.student_inputs), 0)
+        self.assertGreater(len(batch.teacher_targets), len(batch.student_inputs), "Teacher must have privileged extras")
+        # Verify privileged injection happened
+        privileged_hints = [t for t in batch.teacher_targets if "PRIVILEGED" in t]
+        self.assertGreater(len(privileged_hints), 0, "Asymmetric privileged teacher context must be injected for OPSD")
+        self.assertIn("quantization", " ".join(privileged_hints).lower() + " " + batch.directive_id.lower())
+        self.assertGreater(batch.kl_weight, 0.0)
+        self.assertIn("is_accepted_directive", batch.metadata)
+
+    def test_kl_regularization_returns_sensible_value_or_scaffold(self):
+        from self_healing_chelation import SelfEditDirectiveOPSDIntegrator
+        integrator = SelfEditDirectiveOPSDIntegrator()
+        # Without torch this returns diagnostic dict (test safe)
+        result = integrator.compute_embedding_kl_regularization(
+            base_embeddings=[0.1] * 8,  # fake
+            adapted_embeddings=[0.12] * 8,
+            weight=0.1,
+        )
+        # Either torch tensor or the scaffold dict
+        if isinstance(result, dict):
+            self.assertIn("note", result)
+            self.assertIn("torch", result.get("note", "").lower())
+        else:
+            # If torch present, value should be small positive
+            self.assertGreater(float(result), 0)
+
+    def test_asymmetric_objective_handles_missing_torch_gracefully(self):
+        from self_healing_chelation import SelfEditDirectiveOPSDIntegrator, OPSDTrainingBatch
+        integrator = SelfEditDirectiveOPSDIntegrator()
+        dummy_batch = OPSDTrainingBatch(
+            directive_id="test",
+            strategy="test",
+            adaptation_mode="adapter_sft",
+            student_inputs=["q1"],
+            teacher_targets=["t1", "PRIVILEGED: extra"],
+            positive_pairs=[],
+            negative_pairs=[],
+            privileged_diagnostics={},
+            optimization_hints={},
+            kl_weight=0.1,
+        )
+        # Pass fake non-tensor; method must not crash
+        res = integrator.build_asymmetric_teacher_student_objective(
+            dummy_batch, "fake_student", "fake_teacher"
+        )
+        self.assertIn("total", res)
+        self.assertTrue(res["total"] == 0.0 or res.get("distill_loss") == "torch_unavailable")
+
+
 if __name__ == "__main__":
     unittest.main()
 
