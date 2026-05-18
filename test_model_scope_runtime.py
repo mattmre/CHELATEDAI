@@ -338,6 +338,8 @@ class TestRunInference(unittest.TestCase):
 
     def test_norm_fallback_emits_warning_when_linalg_raises(self):
         """Gap 2 (L11): confirms UserWarning is emitted when linalg.norm falls back."""
+        import warnings
+
         try:
             import torch  # type: ignore[import]
         except ImportError:
@@ -358,9 +360,14 @@ class TestRunInference(unittest.TestCase):
         model.side_effect = fake_call
 
         with patch("torch.linalg.norm", side_effect=RuntimeError("test linalg error")):
-            with self.assertWarns(UserWarning):
+            with warnings.catch_warnings(record=True) as caught:
+                warnings.simplefilter("always", UserWarning)
                 events = rt.run_inference(MagicMock())
 
+        self.assertTrue(
+            any(issubclass(item.category, UserWarning) for item in caught),
+            "run_inference should emit a UserWarning when torch.linalg.norm falls back",
+        )
         self.assertTrue(events, "run_inference should produce at least one ActivationEvent")
 
     def test_run_inference_warns_for_missing_layer(self):

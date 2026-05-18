@@ -510,7 +510,7 @@ class TestModelScopeMemoryStoreEdgeCases(unittest.TestCase):
     def test_build_replay_bundle_entry_ids_filter(self):
         store = self._default_store()
         r1 = store.record_observation(_artifact("q1"), query_text="x")
-        r2 = store.record_observation(_artifact("q2"), query_text="y")
+        store.record_observation(_artifact("q2"), query_text="y")
         bundle = store.build_replay_bundle(
             segment="episode",
             entry_ids=[r1["episode_entry_id"]],
@@ -647,4 +647,3 @@ class TestModelScopeMemoryStoreEdgeCases(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
