@@ -1,0 +1,69 @@
+{
+  "round": "Sustained-01",
+  "agent": "G (OPSD / EGGROLL Trace Integration)",
+  "subtask": "generator outcome variance injection (Phase 5, addressing 19_ diagnosis for future min_max vs outcome corr)",
+  "date": "2026-05-27",
+  "research_guard": "CHELATED_SHIM_RESEARCH=1 or --research-* only; 0 prod/SIP/substrate on real paths; docs/steering_chelation_rag_dag_research/artifacts/ ONLY",
+  "params": {
+    "function": "generate_successful_synthetic_shim_cascade_traces",
+    "new_param": "outcome_variance: float = 0.0 (default full backward compat)",
+    "when_gt0": "seeded per-trace RNG (hash(trace_id)^salt^i); probabilistic was_success (p~1-0.45v); relative jitter ~N(0,0.18v) on costs clipped>0.1; post-derive jitter on success_rate (clip [0.60,1.0]), cum_cost, quality_lift_proxy; filter on jittered values; field 'outcome_variance_applied' emitted",
+    "gated_family": "generate_minmax_gated... forwards param",
+    "cli": "--family traces demos 0.25 under guard"
+  },
+  "before_after_evidence": {
+    "default_variance_0": {
+      "success_rates": [1.0,1.0,1.0,1.0,1.0],
+      "mean_sr": 1.0,
+      "std_sr": 0.0,
+      "costs": [3.5,3.5,3.5,3.5,3.5],
+      "std_cost": 0.0,
+      "variance_applied": [0.0],
+      "note": "exact prior behavior (forced high success, fixed low cost)"
+    },
+    "variance_0.3": {
+      "success_rates_sample": [1.0, 0.9842, 1.0, 1.0, 0.9812, 0.9997, 0.9772],
+      "mean_sr": 0.9918,
+      "std_sr": 0.0104,
+      "costs_sample": [3.7, 3.8, 2.77, 3.25, 3.71, 3.25, 4.01],
+      "mean_cost": 3.5,
+      "std_cost": 0.4266,
+      "variance_applied_sample": [0.3, 0.3, 0.3],
+      "note": "realistic dist; still passes min_success_rate filter + rollback"
+    },
+    "repro_check_variance_0.25": {
+      "sr_match_on_repeat_call": true,
+      "note": "seeded deterministic"
+    }
+  },
+  "deltas_attribution": {
+    "from_G_outcome_variance_injection": "+visible std_sr>0 + std_cost>0 on emitted traces (vs forced flat 1.0 pre); enables future nonzero min_max vs success_rate correlation (direct fix for 19_ diagnosis 'zero outcome variance' + 'High-mm vs low-mm success delta=0.0'); 'outcome_variance_applied' field + CLI demo under guard",
+    "runtime_evidence_cmd": "CHELATED_SHIM_RESEARCH=1 python -B -c 'import sys... from shim_collapse... import generate...; t=generate...(n_traces=8, outcome_variance=0.3); ... statistics.stdev on sr/cost'",
+    "compat_preserved": "default=0 bitwise identical to pre-edit (all prior callers, mtp eval, gated base, CLI without flag)"
+  },
+  "bhs_evidence": {
+    "cycle": "Sustained-01-AgentG",
+    "backlog": "#4 (deepened per Phase 5)",
+    "harness_file": "docs/steering_chelation_rag_dag_research/artifacts/shim_collapse_benchmark_extension.py:1022 (generator) + 1210 (gated) + 2180 (CLI) + 1198 (coord note) + 2625 (BHS NOTES update)",
+    "post_edit_gates": {
+      "0_prod": "count=0 active Shim code outside exactly 2 research files (confirmed pre/post)",
+      "block": "BLOCKED count:2 FAIL (check_block_flag.py, unchanged)",
+      "coord_note": "SUSTAINED-01 AGENT G appended + verified lines (post 0-prod/block/runsmoke)"
+    },
+    "L_tax": "L3 (synthetic generator + jitter) + L4 (while #1 0% + BLOCKED + research guard)",
+    "research_guard": "CHELATED_SHIM_RESEARCH=1 only; 0 prod/SIP/substrate advance"
+  },
+  "SMOKE_repro": [
+    "CHELATED_SHIM_RESEARCH=1 python -B -c '...' (exact above; produces std>0 + repro=True + bounded)",
+    "python scripts/check_block_flag.py → BLOCKED row count:2 FAIL",
+    "precise 0-prod grep (non-comment) → 0 outside 2 files",
+    "grep -n 'SUSTAINED-01 AGENT G' harness → note + verified present",
+    "list_dir loop_02/ → 20_sustained..._agentG_generator_variance.md present"
+  ],
+  "0_substrate_explicit": "0 on goal success def #1 (no real SIP; 0 prod runtime deltas; program 10/100 flat; SHIM-CD-01 OPEN; BLOCKED count:2; 5-vs-10 L4/L9/L13 persists). Does not satisfy goal #1-3. Synthetic harness L3/L4 only.",
+  "pivot_mode": "per A plan + 19_ + protocol: advancing Phase 2/5 because Phase 3 blocked by SHIM-CD-01 + BLOCKED + OVERRIDE:NONE",
+  "A_plan_cite": "20_sustained_phase_round_01_agentA_research_mapping.md:100-106 (G sub-task spec) + 147 (L-tax) + 169 (SMOKE for round)",
+  "artifact": "loop_02/20_sustained_phase_round_01_agentG_generator_variance.md (full re-read log, before/after, JSON diff, EVIDENCE, L-tax, §128 rec)",
+  "visible_verified": "All tool outputs (read/grep/run/list/todo/scheduler) + search_replace logs + captured smoke stdout + absolute paths. Survives fresh checkout on research paths only.",
+  "§128_rec": "Human intervention mandatory: PAUSE/TERMINATE schedulers or scope-reduce until first real prod SIP + prod EVIDENCE + BHS>=60 + deltas + SHIM-CDs closed + BLOCKED=CLEAR. 10+ cycles unambiguous failure on goal terms. No more silent iteration."
+}
