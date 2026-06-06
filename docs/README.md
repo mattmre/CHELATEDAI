@@ -5,16 +5,20 @@ This is the canonical entrypoint for repository documentation.
 If you need to understand the codebase quickly, read the docs in this order:
 
 1. [../README.md](../README.md)
-2. [SYSTEM_BLUEPRINT.md](SYSTEM_BLUEPRINT.md)
-3. [MODULE_GUIDE.md](MODULE_GUIDE.md)
-4. [RESEARCH_TRACKS.md](RESEARCH_TRACKS.md)
-5. [COMPUTATIONAL_STORAGE_DRIVE_NODES.md](COMPUTATIONAL_STORAGE_DRIVE_NODES.md) for the storage-node track
+2. [VISION_LIQUIFIED_LATTICE.md](VISION_LIQUIFIED_LATTICE.md) for the north-star architecture
+3. [ROADMAP_EXECUTION.md](ROADMAP_EXECUTION.md) for what to build next (Phase I + II)
+4. [SYSTEM_BLUEPRINT.md](SYSTEM_BLUEPRINT.md)
+5. [MODULE_GUIDE.md](MODULE_GUIDE.md)
+6. [RESEARCH_TRACKS.md](RESEARCH_TRACKS.md)
+7. [COMPUTATIONAL_STORAGE_DRIVE_NODES.md](COMPUTATIONAL_STORAGE_DRIVE_NODES.md) for the storage-node track
 
 ## Canonical Documents
 
 | Canonical doc | Purpose |
 |---|---|
 | [../README.md](../README.md) | Repo-level overview, quick start, validation commands, and docs entrypoints |
+| [VISION_LIQUIFIED_LATTICE.md](VISION_LIQUIFIED_LATTICE.md) | North-star: self-annealing lattice, shims, evidence DAG, disk pools |
+| [ROADMAP_EXECUTION.md](ROADMAP_EXECUTION.md) | Operator execution queue (Phase I core + Phase II lattice) |
 | [SYSTEM_BLUEPRINT.md](SYSTEM_BLUEPRINT.md) | System architecture, stack, CI, and information-flow diagrams |
 | [MODULE_GUIDE.md](MODULE_GUIDE.md) | Module-by-module inventory of the Python runtime, evaluation tooling, and storage POC |
 | [RESEARCH_TRACKS.md](RESEARCH_TRACKS.md) | Research themes, status, open questions, and artifact pointers |

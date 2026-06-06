@@ -13,6 +13,7 @@ This document describes the main research themes in the repository and where eac
 | Multi-dataset evaluation | Do improvements transfer beyond SciFact? | Implemented; campaign execution is ongoing work |
 | Computational storage and drive nodes | Can some model or control-plane work move toward storage-resident execution? | Mixed maturity: software proof is strong, hardware claim remains scope-locked |
 | Disk-first CPU and retrieval program | Can ChelatedAI become a CPU-native, disk-assisted, retrieval-augmented system for coding and retrieval workloads? | New active roadmap proposal; architecture and phase planning in progress |
+| Liquified lattice (self-annealing RAG/DAG) | Can retrieval pools self-anneal and disintegrate under drift while shims steer and disk shards scale? | Vision + Phase II queue documented; implementation starts after Phase I step 8 |
 | Agentic remediation process | Can repository changes be triaged and delivered through a durable AEP workflow? | Implemented and extensively documented |
 
 ## 1. Adaptive Retrieval And Chelation
@@ -161,7 +162,44 @@ Can this repository keep delivery quality high while multiple sessions and remed
 - long-lived session archive
 - scope-lock and risk-memo templates
 
-## 7. Disk-First CPU And Retrieval Program
+## 7. Liquified Lattice (Self-Annealing RAG/DAG)
+
+### Question
+
+Can ChelatedAI treat the vector store and attribution graph as a **steerable crystal pool** — annealing under new inputs, disintegrating stale structure on drift, and linking query–doc–actuator relationships dynamically — without mutating frozen base weights?
+
+### Main files
+
+- `antigravity_engine.py`, `vector_store.py`, `chelation_adapter.py`
+- `self_healing_chelation.py`, `online_updater.py`, `evolution_strategies_optimizer.py`
+- `build_attribution_pool.py`, `elite_archive.py`, `fitness_composition_orchestrator.py`
+- `isomer_detector.py`, `convergence_monitor.py`, `topology_analyzer.py`
+- `chelated_shim_research.py`, `model_scope_steering.py`, `learned_mask_gate.py`
+- `computational_storage_poc/block_graph.py`
+
+### What exists now
+
+- retrieval pool + steering (chelation, masks, adapters)
+- SEAL/EGGROLL advisory self-healing and ES optimizer
+- flat attribution pool and elite archive
+- drift/topology diagnostics
+- env-guarded shim SIP probes
+- block-graph disk transport proof
+
+### What Phase II adds (see [VISION_LIQUIFIED_LATTICE.md](VISION_LIQUIFIED_LATTICE.md))
+
+- unified annealing controller (temperature schedule)
+- evidence DAG schema over attribution pool
+- drift-triggered disintegration + re-anneal loop
+- concept-drift recovery experiment (gate before GNN)
+- optional GNN layer, quant-aware shim routing, one disk pool shard
+
+### Execution
+
+- Phase I: [ROADMAP_EXECUTION.md](ROADMAP_EXECUTION.md) steps 1–8
+- Phase II: same doc, steps 9–17 (starts after step 8)
+
+## 8. Disk-First CPU And Retrieval Program
 
 ### Question
 
@@ -198,6 +236,8 @@ The remaining practical follow-through is physical RP2040 evidence capture when 
 
 ## Read Next
 
+- [VISION_LIQUIFIED_LATTICE.md](VISION_LIQUIFIED_LATTICE.md)
+- [ROADMAP_EXECUTION.md](ROADMAP_EXECUTION.md)
 - [COMPUTATIONAL_STORAGE_DRIVE_NODES.md](COMPUTATIONAL_STORAGE_DRIVE_NODES.md)
 - [roadmap-audit-and-weight-refinement-plan-2026-03-06.md](roadmap-audit-and-weight-refinement-plan-2026-03-06.md)
 - [INDEX.md](INDEX.md)
