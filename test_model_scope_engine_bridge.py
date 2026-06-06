@@ -198,6 +198,38 @@ class TestModelScopeEngineBridgeInit(unittest.TestCase):
             bridge = ModelScopeEngineBridge(None)
         self.assertEqual(bridge._config.artifact_dir, "experiment_runs/model_scope")
 
+    def test_register_shadow_policy_records_default_and_returns_id(self):
+        from model_scope_engine_bridge import ModelScopeEngineBridge
+        from steering_policy import PolicyStatus
+
+        bridge, _ = self._bridge_in_tmpdir()
+        policy_id = bridge.register_shadow_policy(
+            name="test_shadow_policy",
+            feature_space="raw_stats",
+            target_features=("mean_activation", "norm_activation"),
+            max_interventions=7,
+            status=PolicyStatus.ACTIVE,
+        )
+        self.assertEqual(bridge.get_last_shadow_policy_id(), policy_id)
+        self.assertIn(policy_id, bridge.get_active_policy_ids())
+
+    def test_register_shadow_policy_records_status_and_id(self):
+        from model_scope_engine_bridge import ModelScopeEngineBridge
+        from steering_policy import PolicyStatus
+
+        bridge, _ = self._bridge_in_tmpdir()
+        policy_id = "explicit-ms-policy-id"
+        returned = bridge.register_shadow_policy(
+            name="inactive_shadow_policy",
+            feature_space="raw_stats",
+            target_features=("mean_activation", "norm_activation"),
+            max_interventions=1,
+            status=PolicyStatus.DISABLED,
+            policy_id=policy_id,
+        )
+        self.assertEqual(returned, policy_id)
+        self.assertNotIn(policy_id, bridge.get_active_policy_ids())
+
 
 # ---------------------------------------------------------------------------
 # Bridge.observe — runtime not loaded
@@ -460,6 +492,85 @@ class TestBridgeGetSummaryForDiagnostics(unittest.TestCase):
             matching,
             f"Expected a UserWarning about corrupt artifact; got: {[str(w.message) for w in caught]}",
         )
+
+
+# ---------------------------------------------------------------------------
+# Shim research preflight metadata
+# ---------------------------------------------------------------------------
+
+
+class TestModelScopeEngineBridgeResearchSeam(unittest.TestCase):
+    def setUp(self) -> None:
+        from model_scope_engine_bridge import ModelScopeBridgeConfig, ModelScopeEngineBridge
+
+        os.environ.pop("CHELATED_SHIM_RESEARCH", None)
+        os.environ.pop("CHELATED_SHIM_PROMOTED", None)
+        self._td = tempfile.mkdtemp(prefix="bridge_research_")
+        self._bridge = ModelScopeEngineBridge(ModelScopeBridgeConfig(artifact_dir=self._td, enable_feature_extraction=False))
+
+    def tearDown(self) -> None:
+        os.environ.pop("CHELATED_SHIM_RESEARCH", None)
+        os.environ.pop("CHELATED_SHIM_PROMOTED", None)
+
+    @staticmethod
+    def _runtime(loaded: bool, events):
+        rt = MagicMock()
+        rt.is_loaded.return_value = loaded
+        rt.get_events.return_value = events
+        return rt
+
+    def test_research_meta_emits_when_research_enabled(self) -> None:
+        from model_scope_engine_bridge import ModelScopeBridgeConfig, ModelScopeEngineBridge
+
+        os.environ["CHELATED_SHIM_RESEARCH"] = "1"
+        bridge = ModelScopeEngineBridge(ModelScopeBridgeConfig(artifact_dir=self._td, enable_feature_extraction=False))
+        bridge.observe("q", self._runtime(True, [_make_activation_event("run-1")]))
+
+        meta = bridge.get_last_research_shim_meta()
+        self.assertIsNotNone(meta)
+        self.assertEqual(meta.get("sip_seam"), "ModelScopeEngineBridge.observe")
+        self.assertTrue(meta.get("research_shim_guard"))
+        self.assertEqual(meta.get("research_stall_count"), 0)
+
+    def test_research_meta_includes_promoted_sip_apply_when_promoted_enabled(self) -> None:
+        from model_scope_engine_bridge import ModelScopeBridgeConfig, ModelScopeEngineBridge
+
+        os.environ["CHELATED_SHIM_RESEARCH"] = "1"
+        os.environ["CHELATED_SHIM_PROMOTED"] = "1"
+        bridge = ModelScopeEngineBridge(ModelScopeBridgeConfig(artifact_dir=self._td, enable_feature_extraction=False))
+        bridge.observe("q", self._runtime(True, [_make_activation_event("run-promoted")]))
+
+        meta = bridge.get_last_research_shim_meta()
+        self.assertIsNotNone(meta)
+        self.assertIn("promoted_sip_apply", meta)
+        self.assertIsInstance(meta["promoted_sip_apply"], dict)
+        self.assertEqual(meta.get("research_shim_meta"), None)
+
+    def test_research_meta_tracks_stall_count_on_no_events(self) -> None:
+        os.environ["CHELATED_SHIM_RESEARCH"] = "1"
+        self._bridge.observe("first miss", self._runtime(True, []))
+        self._bridge.observe("second miss", self._runtime(True, []))
+        meta = self._bridge.get_last_research_shim_meta()
+        self.assertIsNotNone(meta)
+        self.assertEqual(meta.get("research_stall_count"), 2)
+
+    def test_research_meta_absent_without_research_flag(self) -> None:
+        self._bridge.observe("q", self._runtime(True, [_make_activation_event("run-2")]))
+        self.assertIsNone(self._bridge.get_last_research_shim_meta())
+
+    def test_research_meta_absent_when_runtime_not_loaded(self) -> None:
+        result = self._bridge.observe("q", self._runtime(False, [_make_activation_event("run-3")]))
+        self.assertIsNone(self._bridge.get_last_research_shim_meta())
+        self.assertEqual(result.error, "runtime_not_loaded")
+
+    def test_research_meta_reset_when_research_disabled_after_enabled_run(self) -> None:
+        os.environ["CHELATED_SHIM_RESEARCH"] = "1"
+        self._bridge.observe("q", self._runtime(True, [_make_activation_event("run-4")]))
+        self.assertIsNotNone(self._bridge.get_last_research_shim_meta())
+
+        os.environ.pop("CHELATED_SHIM_RESEARCH", None)
+        self._bridge.observe("q", self._runtime(True, [_make_activation_event("run-5")]))
+        self.assertIsNone(self._bridge.get_last_research_shim_meta())
 
 
 # ---------------------------------------------------------------------------
@@ -962,6 +1073,35 @@ class TestBridgeObserveWithSteeringEnabled(unittest.TestCase):
         self.assertIn("total_applied", summary["intervention_summary"])
         self.assertIn("total_shadow", summary["intervention_summary"])
         self.assertGreater(summary["intervention_summary"]["total_applied"], 0)
+
+    def test_observe_feature_events_include_raw_activation_dim_count(self):
+        from steering_policy import SteeringPolicyConfig, SteeringMode, PolicyStatus
+
+        policy_cfg = SteeringPolicyConfig(
+            name="test_default_feature_policy",
+            mode=SteeringMode.SHADOW,
+            target_features=[
+                "mean_activation",
+                "norm_activation",
+                "token_count",
+                "shape_0",
+                "raw_activation_dim_count",
+            ],
+            status=PolicyStatus.ACTIVE,
+        )
+        self._bridge._actuator._registry.register(policy_cfg)
+
+        rt = self._mock_runtime_with_event()
+        result = self._bridge.observe("test raw feature key", rt)
+        self.assertIsNotNone(result.feature_event)
+        self.assertIn(
+            "raw_activation_dim_count",
+            result.feature_event.features,
+        )
+        self.assertIn(
+            "raw_activation_dim_count",
+            self._bridge._actuator._registry.get(self._bridge._actuator._registry.list_active()[-1].policy_id).target_features,
+        )
 
 
 # ---------------------------------------------------------------------------

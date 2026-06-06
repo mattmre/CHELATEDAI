@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Mapping
+from typing import Any, Dict, Iterable, List, Mapping, Tuple
 
 import numpy as np
 
@@ -13,9 +13,6 @@ from benchmark_utils import load_mteb_data
 from embedding_backend import create_embedding_backend
 from engine_scope import ENGINE_SCOPE_SCHEMA_VERSION, build_engine_scope_rows
 from query_reformulator import query_lexical_features
-from run_road_course_campaign import evaluate_rankings
-from run_thousand_query_tuning import query_metric_row
-from run_thousand_query_tuning import select_query_window
 
 
 CONDITIONAL_MASK_FEATURES = [
@@ -27,6 +24,41 @@ CONDITIONAL_MASK_FEATURES = [
     "query_negation_count",
     "query_claim_cue_count",
 ]
+
+
+def _evaluate_rankings(rankings: Mapping[str, List[str]], qrels: Mapping[str, Mapping[str, float]]) -> Dict[str, Any]:
+    from run_road_course_campaign import evaluate_rankings
+
+    return evaluate_rankings(rankings, qrels)
+
+
+def _query_metric_row(query_id: str, ranking: List[str], qrels: Mapping[str, Mapping[str, float]]) -> Dict[str, Any]:
+    from run_thousand_query_tuning import query_metric_row
+
+    return query_metric_row(query_id, ranking, qrels)
+
+
+def _select_query_window(
+    corpus: Mapping[str, str],
+    queries: Mapping[str, str],
+    qrels: Mapping[str, Mapping[str, float]],
+    *,
+    query_offset: int,
+    max_queries: int,
+    sample_docs: int,
+    seed: int,
+) -> Tuple[Dict[str, str], Dict[str, str], Dict[str, Mapping[str, float]]]:
+    from run_thousand_query_tuning import select_query_window
+
+    return select_query_window(
+        corpus,
+        queries,
+        qrels,
+        query_offset=query_offset,
+        max_queries=max_queries,
+        sample_docs=sample_docs,
+        seed=seed,
+    )
 
 
 def _normalize(matrix: np.ndarray) -> np.ndarray:
@@ -143,8 +175,8 @@ def build_conditional_mask_examples(
     masked_details = cosine_score_details(query_embeddings, doc_embeddings, mask=mask)
     examples = []
     for query_id, relevance in qrels.items():
-        baseline_metrics = query_metric_row(query_id, baseline_details[query_id]["ranking"], relevance)
-        masked_metrics = query_metric_row(query_id, masked_details[query_id]["ranking"], relevance)
+        baseline_metrics = _query_metric_row(query_id, baseline_details[query_id]["ranking"], relevance)
+        masked_metrics = _query_metric_row(query_id, masked_details[query_id]["ranking"], relevance)
         lexical = query_lexical_features((query_texts or {}).get(query_id, ""))
         examples.append({
             "query_id": query_id,
@@ -541,7 +573,7 @@ def evaluate_conditional_mask(
             example["gate_applied"] = False
             example["selected_delta_ndcg_at_10"] = 0.0
     return {
-        "metrics": evaluate_rankings(rankings, qrels),
+        "metrics": _evaluate_rankings(rankings, qrels),
         "applied_queries": applied,
         "total_queries": len(examples),
         "query_examples": examples,
@@ -575,7 +607,7 @@ def run_static_mask_probe(
     gate_validation_fraction: float = 0.4,
 ) -> Dict[str, Any]:
     corpus, queries, qrels = load_mteb_data(task)
-    selected_corpus, selected_queries, selected_qrels = select_query_window(
+    selected_corpus, selected_queries, selected_qrels = _select_query_window(
         corpus,
         queries,
         qrels,
@@ -603,13 +635,13 @@ def run_static_mask_probe(
         train_qrels,
         mask_fraction=mask_fraction,
     )
-    train_baseline = evaluate_rankings(rank_by_cosine(train_query_embeddings, doc_embeddings), train_qrels)
-    train_masked = evaluate_rankings(
+    train_baseline = _evaluate_rankings(rank_by_cosine(train_query_embeddings, doc_embeddings), train_qrels)
+    train_masked = _evaluate_rankings(
         rank_by_cosine(train_query_embeddings, doc_embeddings, mask=learned["mask"]),
         train_qrels,
     )
-    holdout_baseline = evaluate_rankings(rank_by_cosine(holdout_query_embeddings, doc_embeddings), holdout_qrels)
-    holdout_masked = evaluate_rankings(
+    holdout_baseline = _evaluate_rankings(rank_by_cosine(holdout_query_embeddings, doc_embeddings), holdout_qrels)
+    holdout_masked = _evaluate_rankings(
         rank_by_cosine(holdout_query_embeddings, doc_embeddings, mask=learned["mask"]),
         holdout_qrels,
     )

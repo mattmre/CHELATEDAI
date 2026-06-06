@@ -79,14 +79,24 @@ python test_unit_core.py
 # Run a specific test class or method
 python -m unittest test_unit_core.TestChelationAdapter.test_adapter_forward_pass
 
-# Run all test files (bash glob)
+# Run all root test files (bash glob)
 for f in test_*.py; do python "$f"; done
 
-# Discover and run all tests
+# Discover and run all namespaced tests
+python -m unittest discover tests -p "test_*.py" -v
+
+# Discover and run all tests (root + tests/)
 python -m unittest discover -s . -p "test_*.py" -v
+
+# Smoke checks and entrypoint smoke gate
+python -m unittest tests.test_e2e_smoke
+bash scripts/smoke.sh
+# Lightweight benchmark sweep smoke
+python run_large_sweep.py --task SciFact --model sentence-transformers/all-MiniLM-L6-v2 --out large_sweep_smoke --max-queries 10
+
 ```
 
-**Representative test files (`1082` tests passing on `main` as of 2026-03-12):**
+**Representative test files (`2679` tests currently discoverable across root and `tests/`):**
 - `test_unit_core.py` - Core adapter variants, BoundedAdapter, DimensionProjection training
 - `test_noise_injection.py` - Noise injection validation under `unittest`
 - `test_online_updater.py`, `test_dimension_mask_predictor.py`, `test_stability_tracker.py`
@@ -99,15 +109,15 @@ python -m unittest discover -s . -p "test_*.py" -v
 - `test_computational_storage_emulation.py` - dependency-light emulator parity and file-image validation
 - `test_cross_lingual_distillation.py`, `test_language_detector.py`
 - `test_topology_analyzer.py`, `test_isomer_detector.py`, `test_structural_health_report.py`
-- `test_teacher_distillation.py`, `test_teacher_weight_scheduler.py`, `test_aep_orchestrator.py`
+- `test_teacher_distillation.py`, `test_teacher_weight_scheduler.py`, `test_aep_orchestrator.py`, `test_learning_loop_e2e.py`, `tests/test_model_scope_runtime.py`
 
 **Environment-dependent tests:** `test_antigravity_engine.py`, `test_adaptive_threshold.py`, and `test_memory_optimization.py` require full `torch` + `sentence-transformers` installed. They pass in CI but may fail locally without those dependencies.
 
 ## Architecture
 
-### Flat file layout
+### Layout
 
-All `.py` files live at the project root. No packages, no `__init__.py`. Imports are direct module references (e.g., `from antigravity_engine import AntigravityEngine`).
+Most runtime modules are at project root (`antigravity_engine.py`, `chelation_adapter.py`, etc.), with namespaced package modules under `computational_storage_poc/` and namespaced tests under `tests/`.
 
 ### Core module dependency graph
 

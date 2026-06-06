@@ -21,13 +21,29 @@ from contextlib import contextmanager
 from pathlib import Path
 import shutil
 import numpy as np
-from typing import Dict, Tuple, Optional, Union
+from collections import defaultdict
+from typing import Dict, List, Optional, Tuple, Union
 from uuid import UUID, uuid4
 
 try:
     import mteb
 except ImportError:
     mteb = None
+
+
+_isolated_adapter_backup_stack: Dict[Path, List[Optional[Path]]] = defaultdict(list)
+
+
+def _restore_orphaned_backup(target_path: Path, backup_path: Path) -> None:
+    """Restore a backup file and remove it when successful."""
+    target_path.unlink(missing_ok=True)
+    try:
+        shutil.move(str(backup_path), str(target_path))
+    except OSError:
+        # Fallback copy keeps recovery possible under systems where rename fails.
+        shutil.copy2(backup_path, target_path)
+    if backup_path.exists():
+        backup_path.unlink()
 
 
 # =============================================================================
@@ -119,22 +135,34 @@ def isolated_adapter_state(adapter_path: Optional[Union[str, Path]] = None):
     else:
         target_path = Path(adapter_path)
 
+    target_path = target_path.resolve()
     target_path.parent.mkdir(parents=True, exist_ok=True)
+    stack = _isolated_adapter_backup_stack[target_path]
     backup_path = None
 
-    if target_path.exists():
+    if not stack and target_path.exists():
         backup_path = target_path.with_name(
             f"{target_path.stem}.benchmark-backup-{uuid4().hex}{target_path.suffix}"
         )
         shutil.copy2(target_path, backup_path)
+        stack.append(backup_path)
         target_path.unlink()
+    else:
+        stack.append(None)
 
     try:
         yield target_path
     finally:
-        target_path.unlink(missing_ok=True)
-        if backup_path is not None and backup_path.exists():
-            shutil.move(str(backup_path), str(target_path))
+        recorded_backup = stack.pop()
+        if not stack:
+            # Outermost context restores and cleans up backup state.
+            try:
+                if recorded_backup is None:
+                    target_path.unlink(missing_ok=True)
+                else:
+                    _restore_orphaned_backup(target_path, recorded_backup)
+            finally:
+                _isolated_adapter_backup_stack.pop(target_path, None)
 
 
 # =============================================================================

@@ -209,6 +209,14 @@ class TestFeatureExtractorNoAdapter(unittest.TestCase):
         result = self.extractor._raw_stats_fallback(self.activation)
         self.assertEqual(result.feature_source, "raw_stats")
 
+    def test_raw_stats_includes_raw_activation_dim_count(self):
+        result = self.extractor._raw_stats_fallback(self.activation)
+        self.assertIn("raw_activation_dim_count", result.features)
+        self.assertEqual(
+            result.features["raw_activation_dim_count"],
+            float(np.prod(self.activation.shape)),
+        )
+
     def test_extract_batch_empty(self):
         result = self.extractor.extract_batch([])
         self.assertEqual(result, [])

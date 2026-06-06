@@ -1238,6 +1238,24 @@ class MinMaxBlockRelevanceScorer:
 # See full L disclosures + CAN PROVE update in BHS NOTES section below.
 # =============================================================================
 
+
+def collect_research_probe_from_tts_metadata(
+    steering_meta: Optional[Dict[str, Any]],
+    seam: str = "tts_pipeline.VectorSteerer.steer",
+    cycle_tag: str = "research-probe-VectorSteerer-first-sip-C",
+) -> Dict[str, Any]:
+    """Harness alias — implementation lives in chelated_shim_research (prod helper)."""
+    import sys
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[3]
+    if str(root) not in sys.path:
+        sys.path.insert(0, str(root))
+    from chelated_shim_research import collect_research_probe_from_tts_metadata as _collect
+
+    return _collect(steering_meta, seam=seam, cycle_tag=cycle_tag)
+
+
 def generate_successful_synthetic_shim_cascade_traces(
     n_traces: int = 5,
     min_success_rate: float = 0.90,

@@ -11,7 +11,7 @@ import warnings
 import re
 from pathlib import Path
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timezone
 import sys
 
 
@@ -108,7 +108,7 @@ class ChelationLogger:
                 sanitized_kwargs[k] = v
 
         event = {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "elapsed_seconds": time.time() - self.start_time,
             "event_type": event_type,
             "level": level,

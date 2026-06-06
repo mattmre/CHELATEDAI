@@ -6,7 +6,10 @@ extracting the branching logic from AntigravityEngine.
 """
 
 import numpy as np
-import torch
+try:
+    import torch
+except ModuleNotFoundError:
+    torch = None
 from abc import ABC, abstractmethod
 from typing import List, Optional
 from chelation_logger import get_logger
@@ -251,6 +254,12 @@ class LocalEmbeddingBackend(EmbeddingBackend):
             logger: Optional logger instance
         """
         super().__init__(model_name, logger)
+
+        if torch is None:
+            raise ImportError(
+                "torch is required for local embedding backends; "
+                "install torch or use an Ollama-backed model with `ollama:` prefix"
+            )
         
         self.logger.log_event(
             "embedding_backend_init",
@@ -261,7 +270,7 @@ class LocalEmbeddingBackend(EmbeddingBackend):
         
         from sentence_transformers import SentenceTransformer
         
-        device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        device = "cuda" if torch.cuda.is_available() else "cpu"
         self.logger.log_event("initialization", f"Device Selected: {device}", device=device)
         
         # Load model

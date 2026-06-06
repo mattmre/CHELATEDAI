@@ -8,7 +8,13 @@ from pathlib import Path
 from typing import Any, Callable, Dict, Mapping
 
 import numpy as np
-import torch
+
+try:
+    import torch  # type: ignore
+    _HAS_TORCH = True
+except ModuleNotFoundError:  # pragma: no cover - lean environments without torch
+    torch = None
+    _HAS_TORCH = False
 
 from model_scope_runtime import ActivationEvent
 
@@ -24,6 +30,8 @@ class QwenScopeLayerSAE:
 
     @classmethod
     def from_state_dict(cls, state_dict: Mapping[str, Any], *, layer_index: int, top_k: int = 100):
+        if torch is None:
+            raise ModuleNotFoundError("torch is required for QwenScopeLayerSAE")
         if "W_enc" not in state_dict or "b_enc" not in state_dict:
             raise ValueError("Qwen-Scope checkpoint must contain W_enc and b_enc")
         w_enc = torch.as_tensor(state_dict["W_enc"], dtype=torch.float32).detach().cpu()
@@ -40,6 +48,8 @@ class QwenScopeLayerSAE:
 
     @classmethod
     def from_file(cls, path: str | Path, *, layer_index: int, top_k: int = 100):
+        if torch is None:
+            raise ModuleNotFoundError("torch is required for QwenScopeLayerSAE.from_file")
         state_dict = torch.load(Path(path), map_location="cpu")
         return cls.from_state_dict(state_dict, layer_index=layer_index, top_k=top_k)
 
@@ -53,6 +63,8 @@ class QwenScopeLayerSAE:
 
     def encode(self, residual: torch.Tensor) -> torch.Tensor:
         """Apply the official encoder path and top-k sparsification."""
+        if torch is None:
+            raise ModuleNotFoundError("torch is required for QwenScopeLayerSAE.encode")
 
         value = torch.as_tensor(residual, dtype=torch.float32).detach().cpu()
         if value.shape[-1] != self.d_model:
@@ -67,6 +79,8 @@ class QwenScopeLayerSAE:
         return acts
 
     def summarize_last_token(self, residual: torch.Tensor, *, top_features: int = 8) -> Dict[str, Any]:
+        if torch is None:
+            raise ModuleNotFoundError("torch is required for QwenScopeLayerSAE.summarize_last_token")
         acts = self.encode(residual)
         if acts.ndim == 3:
             last_token = acts[0, -1]

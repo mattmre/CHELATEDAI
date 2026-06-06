@@ -5,11 +5,19 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Dict, Iterable, Mapping
-
-import torch
+from typing import TYPE_CHECKING
 
 from model_scope_runtime import ActivationEvent
-from qwen_scope_adapter import QwenScopeAdapter
+import numpy as np
+if TYPE_CHECKING:  # pragma: no cover - typing-only import path
+    from qwen_scope_adapter import QwenScopeAdapter
+
+try:
+    import torch  # type: ignore
+    _HAS_TORCH = True
+except ModuleNotFoundError:  # pragma: no cover - lean environments without torch
+    torch = None
+    _HAS_TORCH = False
 
 
 MODEL_SCOPE_FEATURE_SCORECARD_SCHEMA_VERSION = 1
@@ -118,18 +126,26 @@ class FallbackActivationFeatureExtractor:
     def __init__(self, top_dimensions: int = 8):
         self.top_dimensions = int(top_dimensions)
 
-    def summarize(self, *, layer_index: int, activation: torch.Tensor):
-        value = activation.detach().float().cpu()
+    def summarize(self, *, layer_index: int, activation: Any):
+        if _HAS_TORCH and hasattr(activation, "detach"):
+            value = activation.detach().float().cpu()  # type: ignore[attr-defined]
+            value = np.asarray(value)
+        else:
+            value = np.asarray(activation)
         if value.ndim == 3:
             last_token = value[0, -1]
         elif value.ndim == 2:
             last_token = value[-1]
         else:
             last_token = value.reshape(-1)
-        magnitudes = last_token.abs()
-        top_k = min(max(self.top_dimensions, 0), magnitudes.numel())
+        magnitudes = np.abs(last_token)
+        top_k = min(max(self.top_dimensions, 0), int(magnitudes.size))
         if top_k > 0:
-            top_vals, top_idx = torch.topk(magnitudes, k=top_k, dim=-1)
+            order = np.argpartition(-magnitudes, -top_k if top_k < magnitudes.size else -1)
+            top_idx = order[:top_k]
+            top_vals = magnitudes[top_idx]
+            top_idx = top_idx[np.argsort(-top_vals)]
+            top_vals = top_vals[np.argsort(-top_vals)]
             features = [
                 {
                     "feature_id": f"dim_{int(index)}",
@@ -156,7 +172,7 @@ class QwenScopeFeatureExtractor:
         self.top_features = int(top_features)
         self.fallback = fallback
 
-    def summarize(self, *, layer_index: int, activation: torch.Tensor):
+    def summarize(self, *, layer_index: int, activation: Any):
         sae = self.sae_layers.get(int(layer_index))
         if sae is not None:
             return sae.summarize_last_token(activation, top_features=self.top_features)
@@ -209,8 +225,14 @@ class FeatureExtractor:
             "norm_activation": float(activation.norm_activation),
             "token_count": float(activation.token_count),
         }
-        if activation.shape:
-            raw["shape_0"] = float(activation.shape[0])
+        shape = activation.raw_tensor_shape or activation.shape
+        if shape:
+            shape = tuple(int(s) for s in shape)
+            raw["shape_0"] = float(shape[0])
+            try:
+                raw["raw_activation_dim_count"] = float(np.prod(shape))
+            except Exception:  # pragma: no cover - defensive for malformed shapes
+                raw["raw_activation_dim_count"] = float(np.nan)
         features = {k: v for k, v in raw.items() if v != 0.0}
         return SparseFeatureEvent(
             source_activation=activation,

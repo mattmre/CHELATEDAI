@@ -1,0 +1,70 @@
+{
+  "timestamp": "2026-06-03T21:09:25.213266+00:00",
+  "cycle_index": 3,
+  "bhs_target": 100,
+  "steps": [
+    {
+      "step": "promote",
+      "exit_code": 0,
+      "ok": true
+    },
+    {
+      "step": "prod_evidence",
+      "exit_code": 0,
+      "ok": true
+    },
+    {
+      "step": "tts_evidence",
+      "exit_code": 0,
+      "ok": true
+    },
+    {
+      "step": "inference_evidence",
+      "exit_code": 0,
+      "ok": true
+    },
+    {
+      "step": "promoted_sip_evidence",
+      "exit_code": 0,
+      "ok": true
+    },
+    {
+      "step": "engine_embed_evidence",
+      "exit_code": 0,
+      "ok": true
+    },
+    {
+      "step": "insert_once_tests",
+      "exit_code": 0,
+      "ok": true
+    },
+    {
+      "step": "five_worker",
+      "exit_code": 0,
+      "ok": true
+    },
+    {
+      "step": "shim_unittests",
+      "exit_code": 0,
+      "ok": true
+    }
+  ],
+  "all_steps_ok": true,
+  "bhs_smoke": {
+    "include_ceiling": true,
+    "floor": {
+      "passed": true,
+      "exit_code": 0
+    },
+    "ceiling": {
+      "passed": true,
+      "exit_code": 0
+    }
+  },
+  "bhs_audit": {
+    "exit_code": 0,
+    "unittest_exit": 0,
+    "unittest_tail": "(tests.test_shim_promoted_probe.TestShimPromotedProbe.test_promoted_probe_in_metadata_when_both_envs) ... ok\ntest_apply_changes_vector_when_both_envs (tests.test_shim_promoted_sip_apply.TestPromotedSipApply.test_apply_changes_vector_when_both_envs) ... ok\ntest_steerer_surfaces_promoted_sip_meta (tests.test_shim_promoted_sip_apply.TestPromotedSipApply.test_steerer_surfaces_promoted_sip_meta) ... ok\n\n----------------------------------------------------------------------\nRan 11 tests in 5.786s\n\nOK\n"
+  },
+  "cycle_ok": true
+}

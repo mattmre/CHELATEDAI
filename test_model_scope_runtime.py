@@ -701,6 +701,82 @@ class TestRunInferenceTryBranchDiscrimination(unittest.TestCase):
         self.assertEqual(evt.shape, evt.raw_tensor_shape)
 
 
+class TestLocalModelRuntimeResearchShim(unittest.TestCase):
+    def tearDown(self) -> None:
+        os.environ.pop("CHELATED_SHIM_RESEARCH", None)
+        os.environ.pop("CHELATED_SHIM_PROMOTED", None)
+
+    def test_research_meta_emits_on_observe_text(self) -> None:
+        os.environ["CHELATED_SHIM_RESEARCH"] = "1"
+        event = _make_activation_event(run_id="run-1")
+        with tempfile.TemporaryDirectory() as td:
+            runtime = LocalModelRuntime(
+                model_name="Qwen/Qwen3.5-2B",
+                layer_indices=[0],
+                artifact_dir=td,
+            )
+            runtime._prepare_input_ids = lambda _q: (MagicMock(), 2)
+            runtime.run_inference = lambda _input_ids, run_id=None: [event]
+            artifact = runtime.observe_text("hello world")
+
+        meta = runtime.get_last_research_shim_meta()
+        self.assertIsNotNone(meta)
+        self.assertTrue(meta.get("research_shim_guard"))
+        self.assertEqual(meta.get("sip_seam"), "LocalModelRuntime.observe_text")
+        self.assertEqual(meta.get("research_stall_count"), 0)
+        self.assertEqual(artifact.get("research_shim_meta"), meta)
+        self.assertTrue(artifact["capture"]["captured"])
+        self.assertEqual(artifact["capture"]["captured_layer_count"], 1)
+
+    def test_research_meta_stall_count_increments_when_no_events(self) -> None:
+        os.environ["CHELATED_SHIM_RESEARCH"] = "1"
+        with tempfile.TemporaryDirectory() as td:
+            runtime = LocalModelRuntime(
+                model_name="Qwen/Qwen3.5-2B",
+                layer_indices=[0],
+                artifact_dir=td,
+            )
+            runtime._prepare_input_ids = lambda _q: (MagicMock(), 2)
+            runtime.run_inference = lambda _input_ids, run_id=None: []
+            runtime.observe_text("first miss")
+            self.assertEqual(runtime._research_observe_stall_count, 1)
+            runtime.observe_text("second miss")
+        self.assertEqual(runtime._research_observe_stall_count, 2)
+
+    def test_research_meta_absent_by_default(self) -> None:
+        runtime = LocalModelRuntime(
+            model_name="Qwen/Qwen3.5-2B",
+            layer_indices=[0],
+            artifact_dir=tempfile.mkdtemp(prefix="ms-runtime-off-"),
+        )
+        runtime._prepare_input_ids = lambda _q: (MagicMock(), 2)
+        runtime.run_inference = lambda _input_ids, run_id=None: []
+        artifact = runtime.observe_text("off")
+        self.assertIsNone(runtime.get_last_research_shim_meta())
+        self.assertIsNone(artifact.get("research_shim_meta"))
+
+    def test_research_meta_includes_promoted_sip_apply_when_promoted_enabled(self) -> None:
+        os.environ["CHELATED_SHIM_RESEARCH"] = "1"
+        os.environ["CHELATED_SHIM_PROMOTED"] = "1"
+        event = _make_activation_event(run_id="run-promoted")
+        with tempfile.TemporaryDirectory() as td:
+            runtime = LocalModelRuntime(
+                model_name="Qwen/Qwen3.5-2B",
+                layer_indices=[0],
+                artifact_dir=td,
+            )
+            runtime._prepare_input_ids = lambda _q: (MagicMock(), 2)
+            runtime.run_inference = lambda _input_ids, run_id=None: [event]
+            artifact = runtime.observe_text("hello world")
+
+        meta = runtime.get_last_research_shim_meta()
+        self.assertIsNotNone(meta)
+        self.assertIn("promoted_sip_apply", meta)
+        self.assertIsInstance(meta["promoted_sip_apply"], dict)
+        self.assertEqual(meta["sip_seam"], "LocalModelRuntime.observe_text")
+        self.assertEqual(artifact["research_shim_meta"], meta)
+
+
 @unittest.skipUnless(
     os.getenv("CHELATED_INTEGRATION_MODEL"),
     "Integration test requires a real model download.  "

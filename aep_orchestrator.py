@@ -18,8 +18,10 @@ AEPOrchestrator that drives the full cycle.
 from enum import Enum, IntEnum
 from dataclasses import dataclass, field
 from typing import List, Dict, Any, Optional, Callable, Tuple
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import multiprocessing
+import pickle
 import json
 import threading
 import uuid
@@ -30,11 +32,17 @@ from chelation_logger import ChelationLogger, get_logger
 # Exception -> ImportError per CD-244-04 — broad except would swallow real
 # runtime errors in scripts.bhs_validator and present them as a missing module).
 try:
-    from scripts.bhs_validator import validate_pr_brutal_honesty, run_smoke_pipeline, BHSResult
+    from scripts.bhs_validator import (
+        HonestyTier,
+        validate_pr_brutal_honesty,
+        run_smoke_pipeline,
+        BHSResult,
+    )
     BHS_AVAILABLE = True
 except ImportError:
     BHS_AVAILABLE = False
     BHSResult = None  # type: ignore
+    HonestyTier = None  # type: ignore
 
 
 # =============================================================================
@@ -96,6 +104,7 @@ class Finding:
     pr_branch: str = ""
     commit_hash: str = ""
     verification_evidence: str = ""
+    bhs_metadata: Dict[str, Any] = field(default_factory=dict)
     metadata: Dict[str, Any] = field(default_factory=dict)
 
     def _impact_effort_score(self) -> float:
@@ -130,6 +139,7 @@ class Finding:
             "pr_branch": self.pr_branch,
             "commit_hash": self.commit_hash,
             "verification_evidence": self.verification_evidence,
+            "bhs_metadata": self.bhs_metadata,
             "metadata": self.metadata,
         }
 
@@ -155,13 +165,41 @@ class VerificationResult:
     command: str
     output: str
     passed: bool
-    timestamp: str = field(default_factory=lambda: datetime.utcnow().isoformat())
+    timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     agent: str = ""
 
 
 # =============================================================================
 # Callback Safety Wrapper (F-022)
 # =============================================================================
+
+
+def _picklable(obj: Any) -> bool:
+    """Return True when an object can be sent to a subprocess."""
+    try:
+        pickle.dumps(obj)
+        return True
+    except Exception:
+        return False
+
+
+def _run_callback_in_process(conn: Any, callback: Callable, finding: Finding) -> None:
+    """Process entrypoint for callback execution."""
+    try:
+        result = callback(finding)
+    except Exception as exc:  # noqa: BLE001
+        conn.send(
+            (
+                "error",
+                type(exc).__name__,
+                str(exc),
+            )
+        )
+    else:
+        conn.send(("ok", result))
+    finally:
+        conn.close()
+
 
 def _safe_callback_wrapper(
     callback: Callable,
@@ -172,8 +210,10 @@ def _safe_callback_wrapper(
 ) -> Tuple[Optional[Any], Optional[str]]:
     """
     Execute a callback with timeout and exception safety.
-    
-    Windows-compatible implementation using a daemon thread join timeout.
+
+    Uses a subprocess for picklable callbacks to enforce hard timeout
+    cleanup. Falls back to daemon-thread execution for callbacks that cannot
+    be pickled (common in local test helpers).
     
     Args:
         callback: The callback function to execute
@@ -186,19 +226,108 @@ def _safe_callback_wrapper(
         Tuple of (result, error_message). If successful, (result, None).
         If timeout/exception, (None, error_message).
     """
-    result_container = [None]
-    exception_container = [None]
-    
-    def _run_callback():
+    timeout_seconds = max(0.0, float(timeout_seconds))
+    context = {"finding_id": finding.finding_id, "callback": callback_name}
+
+    # Picklable callbacks can run in a subprocess, which we can terminate when
+    # the timeout is hit and avoids hanging/stray callback work.
+    if _picklable(callback):
+        parent_conn, child_conn = multiprocessing.Pipe(False)
+        proc = multiprocessing.get_context("spawn").Process(
+            target=_run_callback_in_process,
+            args=(child_conn, callback, finding),
+        )
+        try:
+            proc.start()
+            proc.join(timeout=timeout_seconds)
+            if proc.is_alive():
+                proc.terminate()
+                proc.join(1.0)
+                error_msg = (
+                    f"{callback_name} timeout after {timeout_seconds}s for finding "
+                    f"{finding.finding_id}"
+                )
+                logger.log_error(
+                    "callback_timeout",
+                    error_msg,
+                    finding_id=finding.finding_id,
+                    callback=callback_name,
+                    timeout_seconds=timeout_seconds,
+                )
+                return None, error_msg
+
+            if proc.exitcode and proc.exitcode != 0:
+                error_msg = (
+                    f"{callback_name} subprocess for finding {finding.finding_id} "
+                    f"exited with code {proc.exitcode}"
+                )
+                logger.log_error(
+                    "callback_subprocess_exit_nonzero",
+                    error_msg,
+                    finding_id=finding.finding_id,
+                    callback=callback_name,
+                    exit_code=proc.exitcode,
+                    context=context,
+                )
+                return None, error_msg
+
+            if parent_conn.poll():
+                status, payload = parent_conn.recv()
+                if status == "ok":
+                    return payload, None
+
+                if isinstance(payload, tuple) and len(payload) >= 2:
+                    exc_name = str(payload[0])
+                    exc_msg = str(payload[1])
+                else:
+                    exc_name = "UnknownError"
+                    exc_msg = "Malformed subprocess callback payload"
+                error_msg = (
+                    f"{callback_name} exception for finding {finding.finding_id}: "
+                    f"{exc_name}: {exc_msg}"
+                )
+                logger.log_error(
+                    "callback_exception",
+                    error_msg,
+                    finding_id=finding.finding_id,
+                    callback=callback_name,
+                    exception=exc_name,
+                )
+                return None, error_msg
+
+            error_msg = (
+                f"{callback_name} subprocess for finding {finding.finding_id} "
+                f"did not return a callback payload"
+            )
+            logger.log_error(
+                "callback_subprocess_protocol_error",
+                error_msg,
+                finding_id=finding.finding_id,
+                callback=callback_name,
+                context=context,
+            )
+            return None, error_msg
+        finally:
+            if proc.is_alive():
+                proc.terminate()
+                proc.join(1.0)
+            parent_conn.close()
+            proc.close()
+
+    # Fallback for non-picklable callbacks (most often local test closures).
+    result_container: List[Optional[Any]] = [None]
+    exception_container: List[Optional[BaseException]] = [None]
+
+    def _run_callback() -> None:
         try:
             result_container[0] = callback(finding)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             exception_container[0] = e
-    
+
     thread = threading.Thread(target=_run_callback, daemon=True)
     thread.start()
     thread.join(timeout=timeout_seconds)
-    
+
     if thread.is_alive():
         # Timeout occurred
         error_msg = f"{callback_name} timeout after {timeout_seconds}s for finding {finding.finding_id}"
@@ -210,7 +339,7 @@ def _safe_callback_wrapper(
             timeout_seconds=timeout_seconds,
         )
         return None, error_msg
-    
+
     if exception_container[0] is not None:
         # Exception occurred
         exc = exception_container[0]
@@ -223,7 +352,7 @@ def _safe_callback_wrapper(
             callback=callback_name,
         )
         return None, error_msg
-    
+
     return result_container[0], None
 
 
@@ -375,6 +504,12 @@ class AEPTracker:
         self.verification_log: List[VerificationResult] = []
         self.logger = get_logger()
 
+    def reset(self) -> None:
+        """Clear all findings and verification records for a clean cycle."""
+        self.findings.clear()
+        self.verification_log.clear()
+        self.logger.log_event("tracker_reset", "Tracker reset for new cycle")
+
     def add_finding(self, finding: Finding) -> str:
         """Add a finding to the tracker. Returns the finding_id."""
         self.findings[finding.finding_id] = finding
@@ -483,7 +618,7 @@ class AEPTracker:
                 }
                 for v in self.verification_log
             ],
-            "exported_at": datetime.utcnow().isoformat(),
+            "exported_at": datetime.now(timezone.utc).isoformat(),
         }
         return json.dumps(payload, indent=2)
 
@@ -513,6 +648,60 @@ class AEPOrchestrator:
         self.scope_lock_record: Optional[ScopeLock] = None
         self.logger = get_logger()
         self.callback_timeout_seconds = 30.0
+        self.bhs_enabled = BHS_AVAILABLE
+        self.bhs_min_score_by_severity: Dict[Severity, float] = {
+            Severity.CRITICAL: 65.0,
+            Severity.HIGH: 60.0,
+            Severity.MEDIUM: 55.0,
+            Severity.LOW: 50.0,
+        }
+        self.default_bhs_min_score = 50.0
+        self.last_smoke_gate_result: Optional[bool] = None
+
+    def _bhs_min_score(self, severity: Severity) -> float:
+        return self.bhs_min_score_by_severity.get(severity, self.default_bhs_min_score)
+
+    def _run_bhs_smoke_gate(self, tier: Optional[Any] = None) -> bool:
+        if not self.bhs_enabled:
+            return True
+        smoke_tier = tier if tier is not None else getattr(HonestyTier, "FLOOR")
+        result = run_smoke_pipeline(smoke_tier)
+        self.last_smoke_gate_result = bool(result)
+        return bool(result)
+
+    def _score_finding_with_bhs(self, finding: Finding, stage: str) -> Optional[Any]:
+        if not self.bhs_enabled:
+            return None
+        try:
+            bhs_result = validate_pr_brutal_honesty(
+                finding_dict={
+                    "id": finding.finding_id,
+                    "severity": finding.severity.name,
+                    "impact": finding.impact,
+                    "recommended_fix": finding.recommended_fix,
+                }
+            )
+        except Exception as exc:  # noqa: BLE001 - scoring should never crash remediation
+            finding.bhs_metadata[f"{stage}_error"] = str(exc)
+            self.logger.log_error(
+                "bhs_scoring_error",
+                f"{stage} BHS scoring failed for {finding.finding_id}: {type(exc).__name__}",
+                finding_id=finding.finding_id,
+                stage=stage,
+                error=str(exc),
+            )
+            return None
+        finding.bhs_metadata[f"{stage}_score"] = bhs_result.score
+        finding.bhs_metadata[f"{stage}_evidence_present"] = bhs_result.evidence_present
+        finding.bhs_metadata[f"{stage}_flags"] = list(bhs_result.optimism_flags)
+        self.logger.log_event(
+            "bhs_score",
+            f"{finding.finding_id} {stage} BHS score {bhs_result.score}",
+            finding_id=finding.finding_id,
+            stage=stage,
+            score=bhs_result.score,
+        )
+        return bhs_result
 
     # ----- Phase 1: Scope Lock -----
 
@@ -623,14 +812,12 @@ class AEPOrchestrator:
         Each agent attaches domain-specific metadata (risk levels, test gaps,
         performance flags, coupling analysis).
         """
-        _metadata_lock = threading.Lock()
 
         def _process_finding(finding: Finding) -> None:
             """Process a single finding through all agents."""
             for agent in self.agents:
                 try:
-                    with _metadata_lock:
-                        agent.analyze(finding, context)
+                    agent.analyze(finding, context)
                 except Exception as e:
                     self.logger.log_error(
                         "revalidation_agent_error",
@@ -675,19 +862,10 @@ class AEPOrchestrator:
         """
         findings.sort(key=lambda f: f.sort_key())
 
-        # BHS v3.3 placeholder hook
-        if BHS_AVAILABLE:
+        # BHS v3.3: validate_pr_brutal_honesty is live (PR #245); scores attach to findings.
+        if self.bhs_enabled:
             for f in findings:
-                bhs_result = validate_pr_brutal_honesty(finding_dict={
-                    "id": f.finding_id,
-                    "severity": f.severity.name,
-                    "impact": f.impact,
-                    "recommended_fix": f.recommended_fix,
-                })
-                # For now we just attach the score; real gating logic comes later
-                if not hasattr(f, "bhs_metadata"):
-                    f.bhs_metadata = {}
-                f.bhs_metadata["synthesis_score"] = bhs_result.score
+                self._score_finding_with_bhs(f, "synthesis")
 
         self.logger.log_event(
             "synthesis",
@@ -742,16 +920,28 @@ class AEPOrchestrator:
 
                 self.tracker.update_status(finding.finding_id, FindingStatus.IN_PROGRESS)
 
-                # BHS v3.3 hook (2026-05-15) — gate remediation with honesty score
-                if BHS_AVAILABLE:
-                    bhs_result = validate_pr_brutal_honesty(finding_dict={
-                        "id": finding.finding_id,
-                        "severity": finding.severity.name,
-                        "recommended_fix": finding.recommended_fix,
-                    })
-                    if not hasattr(finding, "bhs_metadata"):
-                        finding.bhs_metadata = {}
-                    finding.bhs_metadata["remediation_score"] = bhs_result.score
+                # BHS v3.3: enforce minimum structural honesty score for remediation.
+                bhs_result = self._score_finding_with_bhs(finding, "remediation")
+                min_score = self._bhs_min_score(finding.severity)
+                if bhs_result is not None and bhs_result.score < min_score:
+                    finding.bhs_metadata["remediation_gate"] = {
+                        "status": "blocked",
+                        "required_min": min_score,
+                        "actual": bhs_result.score,
+                    }
+                    self.logger.log_event(
+                        "remediation_bhs_gate_block",
+                        (
+                            f"{finding.finding_id} blocked by BHS remediation gate: "
+                            f"score={bhs_result.score}, required>={min_score}"
+                        ),
+                        finding_id=finding.finding_id,
+                        score=bhs_result.score,
+                        required_min=min_score,
+                    )
+                    self.tracker.update_status(finding.finding_id, FindingStatus.BLOCKED)
+                    blocked_ids.append(finding.finding_id)
+                    continue
 
                 if remediate_fn is not None:
                     # F-022: Execute remediate_fn with timeout and exception safety
@@ -914,7 +1104,8 @@ class AEPOrchestrator:
             "by_status": by_status,
             "markdown_tracker": self.tracker.to_markdown_table(),
             "json_export": self.tracker.export_json(),
-            "completed_at": datetime.utcnow().isoformat(),
+            "completed_at": datetime.now(timezone.utc).isoformat(),
+            "bhs_smoke_gate": self.last_smoke_gate_result,
         }
 
         # BHS v3.3 aggregate (2026-05-15)
@@ -958,14 +1149,15 @@ class AEPOrchestrator:
 
         This is the primary entry point for automated remediation cycles.
 
-        BHS v3.3 note (2026-05-15): Full honesty gating is not yet wired.
-        A stub import exists. Real enforcement will be added during solidification.
+        BHS v3.3 note (2026-05-15): Full honesty gating is now enforced.
         """
         self.scope_lock(pr_range=pr_range)
+        self.tracker.reset()
 
-        # BHS v3.3 placeholder (to be expanded)
-        if BHS_AVAILABLE:
-            _ = run_smoke_pipeline()  # floor tier smoke for now
+        # BHS v3.3: floor-tier smoke must pass before remediation starts.
+        smoke_gate_passed = self._run_bhs_smoke_gate()
+        if not smoke_gate_passed:
+            raise RuntimeError("AEP full cycle blocked: BHS smoke gate failed")
 
         findings = self.discovery(raw_findings, pr_number=pr_number)
         findings = self.parallel_revalidation(findings)
@@ -1045,4 +1237,3 @@ if __name__ == "__main__":
     print(f"By severity: {summary['by_severity']}")
     print(f"By status: {summary['by_status']}")
     print(f"\n{summary['markdown_tracker']}")
-

@@ -1,0 +1,22 @@
+{
+  "timestamp": "2026-06-03T23:21:05.080569+00:00",
+  "env": {
+    "CHELATED_SHIM_RESEARCH": "1"
+  },
+  "seam": "AntigravityEngine.run_inference",
+  "tts_enabled": true,
+  "tts_result_present": true,
+  "research_shim_meta": {
+    "research_shim_guard": true,
+    "research_stall_count": 0,
+    "sip_seam": "AntigravityEngine.chelation_variance",
+    "scout_hits": 1,
+    "scout_limit": 50
+  },
+  "research_seams_observed": [
+    "AntigravityEngine.chelation_variance",
+    "AntigravityEngine.post_embed"
+  ],
+  "partial_error": null,
+  "block_flag_note": "Run scripts/check_block_flag.py separately; does not flip BLOCKED."
+}

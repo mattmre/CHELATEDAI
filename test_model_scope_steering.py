@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import tempfile
 import unittest
 from datetime import datetime, timezone
@@ -132,6 +133,98 @@ class TestModelScopeShadowSteerer(unittest.TestCase):
         self.assertEqual(result["matched_rule_count"], 1)
         self.assertFalse(result["runtime_applied"])
         self.assertEqual(result["recommended_actions"][0]["feature_id"], "42")
+
+
+class TestModelScopeShadowSteererResearchSeam(unittest.TestCase):
+    def setUp(self) -> None:
+        os.environ.pop("CHELATED_SHIM_RESEARCH", None)
+        os.environ.pop("CHELATED_SHIM_PROMOTED", None)
+
+    def tearDown(self) -> None:
+        os.environ.pop("CHELATED_SHIM_RESEARCH", None)
+        os.environ.pop("CHELATED_SHIM_PROMOTED", None)
+
+    @staticmethod
+    def _artifact(match: bool = True) -> dict:
+        feature_id = "42" if match else "7"
+        feature_value = 1.2 if match else 0.3
+        return {
+            "capture": {
+                "observations": [
+                    {
+                        "layer_index": 3,
+                        "feature_summary": {
+                            "feature_space": "qwen_scope_sae",
+                            "active_features": [
+                                {"feature_id": feature_id, "value": feature_value},
+                            ],
+                        },
+                    }
+                ]
+            }
+        }
+
+    @staticmethod
+    def _steerer() -> ModelScopeShadowSteerer:
+        return ModelScopeShadowSteerer(
+            ModelScopeSteeringPolicy.from_mapping(
+                {
+                    "name": "shadow_qwen_scope_test",
+                    "deployment_mode": "shadow_mode",
+                    "feature_space": "qwen_scope_sae",
+                    "rules": [
+                        {
+                            "feature_id": "42",
+                            "min_value": 0.8,
+                            "layer_index": 3,
+                            "action_type": "suppress",
+                            "strength": 0.4,
+                        }
+                    ],
+                }
+            )
+        )
+
+    def test_research_meta_emits_when_research_enabled(self) -> None:
+        os.environ["CHELATED_SHIM_RESEARCH"] = "1"
+        steerer = self._steerer()
+        artifact = self._artifact(match=True)
+        result = steerer.evaluate_capture(artifact)
+        meta = steerer.get_last_research_shim_meta()
+        self.assertIsNotNone(meta)
+        self.assertTrue(meta.get("research_shim_guard"))
+        self.assertEqual(meta.get("sip_seam"), "ModelScopeShadowSteerer.evaluate_capture")
+        self.assertEqual(meta.get("research_stall_count"), 0)
+        self.assertEqual(result.get("research_shim_meta"), meta)
+        self.assertEqual(result["matched_rule_count"], 1)
+
+    def test_research_meta_stall_count_increments_when_no_match(self) -> None:
+        os.environ["CHELATED_SHIM_RESEARCH"] = "1"
+        steerer = self._steerer()
+        steerer.evaluate_capture(self._artifact(match=False))
+        steerer.evaluate_capture(self._artifact(match=False))
+        meta = steerer.get_last_research_shim_meta()
+        self.assertIsNotNone(meta)
+        self.assertEqual(meta.get("research_stall_count"), 2)
+
+    def test_research_meta_absent_when_disabled(self) -> None:
+        steerer = self._steerer()
+        artifact = self._artifact(match=True)
+        result = steerer.evaluate_capture(artifact)
+        self.assertIsNone(steerer.get_last_research_shim_meta())
+        self.assertIsNone(result.get("research_shim_meta"))
+
+    def test_research_meta_includes_promoted_sip_apply_when_promoted_enabled(self) -> None:
+        os.environ["CHELATED_SHIM_RESEARCH"] = "1"
+        os.environ["CHELATED_SHIM_PROMOTED"] = "1"
+        steerer = self._steerer()
+        artifact = self._artifact(match=True)
+        result = steerer.evaluate_capture(artifact)
+        meta = steerer.get_last_research_shim_meta()
+        self.assertIsNotNone(meta)
+        self.assertIn("promoted_sip_apply", meta)
+        self.assertIsInstance(meta["promoted_sip_apply"], dict)
+        self.assertEqual(result["research_shim_meta"], meta)
 
 
 # ---------------------------------------------------------------------------
@@ -661,4 +754,3 @@ class TestSteeringActuatorPersistence(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

@@ -7,10 +7,27 @@ Run: python -m pytest test_stability_tracker.py -v
 import unittest
 from unittest.mock import patch
 import numpy as np
-import torch
+try:
+    import torch
+except ModuleNotFoundError:
+    torch = None
+    _HAVE_TORCH = False
+else:
+    _HAVE_TORCH = True
 
 from stability_tracker import StabilityTracker
-from chelation_adapter import ChelationAdapter
+try:
+    from chelation_adapter import ChelationAdapter
+except Exception:  # pragma: no cover - import-time dependency optional in minimal env
+    ChelationAdapter = None
+    _HAVE_TORCH = False
+
+
+def setUpModule() -> None:
+    if not _HAVE_TORCH:
+        raise unittest.SkipTest(
+            "Skipping stability tracker tests: torch is not installed in this environment."
+        )
 
 
 @patch('stability_tracker.get_logger')

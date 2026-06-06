@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import unittest
 from datetime import datetime
+import os
 
 from steering_policy import (
     PolicyRegistry,
     PolicyStatus,
+    ModelScopeSteeringPolicy,
     SteeringMode,
     SteeringPolicyConfig,
 )
@@ -316,6 +318,36 @@ class TestModelScopeSteeringPolicyActivate(unittest.TestCase):
         policy = self.Policy()
         with self.assertRaises(ValueError):
             policy.activate("not_a_real_mode")
+
+
+class TestSteeringPolicyShimResearch(unittest.TestCase):
+    def tearDown(self) -> None:
+        os.environ.pop("CHELATED_SHIM_RESEARCH", None)
+        os.environ.pop("CHELATED_SHIM_PROMOTED", None)
+
+    def test_research_meta_emits_on_activate(self) -> None:
+        os.environ["CHELATED_SHIM_RESEARCH"] = "1"
+        policy = ModelScopeSteeringPolicy()
+        policy.activate("active")
+        meta = policy.get_last_research_shim_meta()
+        self.assertIsNotNone(meta)
+        self.assertTrue(meta.get("research_shim_guard"))
+        self.assertEqual(meta.get("sip_seam"), "ModelScopeSteeringPolicy.activate")
+
+    def test_research_meta_includes_promoted_sip_apply_when_promoted_enabled(self) -> None:
+        os.environ["CHELATED_SHIM_RESEARCH"] = "1"
+        os.environ["CHELATED_SHIM_PROMOTED"] = "1"
+        policy = ModelScopeSteeringPolicy()
+        policy.activate("active")
+        meta = policy.get_last_research_shim_meta()
+        self.assertIsNotNone(meta)
+        self.assertIn("promoted_sip_apply", meta)
+        self.assertIsInstance(meta["promoted_sip_apply"], dict)
+
+    def test_research_meta_absent_by_default(self) -> None:
+        policy = ModelScopeSteeringPolicy()
+        policy.activate("soft_scale")
+        self.assertIsNone(policy.get_last_research_shim_meta())
 
 
 if __name__ == "__main__":

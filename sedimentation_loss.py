@@ -9,7 +9,7 @@ from __future__ import annotations
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional, Sequence
 
 
 class SedimentationInfoNCELoss(nn.Module):
@@ -29,12 +29,19 @@ class SedimentationInfoNCELoss(nn.Module):
             raise ValueError("temperature must be positive")
         self.temperature = temperature
 
-    def forward(self, outputs: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
+    def forward(
+        self,
+        outputs: torch.Tensor,
+        targets: torch.Tensor,
+        sample_ids: Optional[Sequence[Any]] = None,
+    ) -> torch.Tensor:
         """Compute InfoNCE loss.
 
         Args:
             outputs: Adapter outputs (batch_size, dim)
             targets: Target vectors (batch_size, dim)
+            sample_ids: Optional sample/group IDs aligned to batch order. Duplicate IDs
+                are masked as false negatives in InfoNCE.
 
         Returns:
             Scalar loss
@@ -48,6 +55,26 @@ class SedimentationInfoNCELoss(nn.Module):
         sim_matrix = torch.mm(outputs_norm, targets_norm.t()) / self.temperature
 
         # Labels: diagonal entries are positives (output[i] should match target[i])
+        # Optionally mask in-batch false negatives when two samples represent
+        # the same document/group. This prevents the loss from punishing
+        # near-duplicate-positive pairs as negatives.
+        if sample_ids is not None and len(sample_ids) == sim_matrix.size(0):
+            same_group = torch.zeros_like(sim_matrix, dtype=torch.bool)
+            if sample_ids:
+                value_to_indices: Dict[Any, List[int]] = {}
+                for idx, sample_id in enumerate(sample_ids):
+                    value_to_indices.setdefault(sample_id, []).append(idx)
+
+                for indices in value_to_indices.values():
+                    if len(indices) <= 1:
+                        continue
+                    idx_tensor = torch.tensor(indices, device=sim_matrix.device)
+                    same_group[idx_tensor[:, None], idx_tensor[None, :]] = True
+
+            # Keep true positives (i == j) as valid targets.
+            mask = same_group.fill_diagonal_(False)
+            sim_matrix = sim_matrix.masked_fill(mask, float("-inf"))
+
         labels = torch.arange(sim_matrix.size(0), device=sim_matrix.device)
 
         # Cross-entropy loss treats this as classification:

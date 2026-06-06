@@ -1,0 +1,32 @@
+{
+  "timestamp": "2026-06-03T23:20:58.837859+00:00",
+  "env": {
+    "CHELATED_SHIM_RESEARCH": "1",
+    "CHELATED_SHIM_PROMOTED": "1"
+  },
+  "seam": "AntigravityEngine.get_chelated_vector",
+  "mode": "stubbed_fallback",
+  "engine_meta": {
+    "engine_model": "all-MiniLM-L6-v2->stubbed",
+    "fallback_reason": "ValueError: shapes (4,384) and (8,) not aligned: 384 (dim 1) != 8 (dim 0)"
+  },
+  "vector_norm": 0.05,
+  "research_shim_meta": {
+    "research_shim_guard": true,
+    "research_stall_count": 0,
+    "sip_seam": "AntigravityEngine.get_chelated_vector.chelated",
+    "promoted_sip_apply": {
+      "promoted_sip_applied": true,
+      "promoted_sip_insert_once": true,
+      "cascade_ids": [
+        "chelated-sip-probe-v1"
+      ],
+      "composite_delta_norm": 0.05,
+      "registry_count": 1,
+      "sip_seam": "VectorSteerer.steer.promoted_apply"
+    }
+  },
+  "promoted_sip_applied": true,
+  "fallback_reason": "ValueError: shapes (4,384) and (8,) not aligned: 384 (dim 1) != 8 (dim 0)",
+  "skip_for_env_limits": true
+}

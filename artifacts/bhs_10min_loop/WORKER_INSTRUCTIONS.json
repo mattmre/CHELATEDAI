@@ -1,0 +1,13 @@
+{
+  "bhs_target": 100,
+  "mandate": "Iteratively improve implemented code toward BHS 100/100; re-test after each slice; no doc-only work.",
+  "roles": {
+    "Goal": "Execute phase slices only; reject doc-only backlog while BLOCKED.",
+    "A": "chelated_shim_research + registry probes \u2014 iterate to BHS 100.",
+    "B": "VectorSteerer / TTS seams \u2014 tests must fail on regression.",
+    "C": "Inference + enable_tts evidence scripts.",
+    "D": "Promotion + apply_shim_cascade SIP apply.",
+    "E": "Integrator: verify_shim_development + five_worker gate + block flag."
+  },
+  "iteration_rule": "After each slice: unittest + record JSON artifact before next slice."
+}

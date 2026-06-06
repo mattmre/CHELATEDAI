@@ -6,8 +6,19 @@ Tests for the vector store abstraction layer and Qdrant implementation.
 
 import unittest
 from vector_store import VectorStore, QdrantVectorStore, create_vector_store
-from qdrant_client.models import Distance, VectorParams, PointStruct
+try:
+    from qdrant_client.models import Distance, VectorParams, PointStruct
+except ModuleNotFoundError:
+    Distance = VectorParams = PointStruct = None
+    _HAVE_QDRANT = False
+else:
+    _HAVE_QDRANT = True
 import numpy as np
+
+
+def setUpModule() -> None:
+    if not _HAVE_QDRANT:
+        raise unittest.SkipTest("Skipping vector store tests: qdrant_client is not installed.")
 
 
 class TestVectorStoreAbstraction(unittest.TestCase):

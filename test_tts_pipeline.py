@@ -1,6 +1,7 @@
 """Tests for VectorSteerer, TTSConfig, TTSPipeline (≥30 tests)."""
 from __future__ import annotations
 
+import os
 import unittest
 from unittest.mock import MagicMock, patch
 
@@ -83,6 +84,19 @@ class TestVectorSteererBasic(unittest.TestCase):
         s.add_signal(SteeringSignal(np.array([1.0, 0.0]), 0.1, "x"))
         s.clear_signals()
         self.assertEqual(len(s._signals), 0)
+
+    def test_clear_signals_resets_research_stall_count(self):
+        os.environ["CHELATED_SHIM_RESEARCH"] = "1"
+        try:
+            s = VectorSteerer()
+            v = np.zeros(4, dtype=float)
+            s.steer(v)
+            s.steer(v)
+            self.assertEqual(s._research_stall_count, 2)
+            s.clear_signals()
+            self.assertEqual(s._research_stall_count, 0)
+        finally:
+            os.environ.pop("CHELATED_SHIM_RESEARCH", None)
 
 
 class TestVectorSteererSteer(unittest.TestCase):

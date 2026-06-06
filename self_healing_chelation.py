@@ -10,12 +10,43 @@ from __future__ import annotations
 
 import hashlib
 import json
+import numpy as np
 from dataclasses import asdict, dataclass, field
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Union
 
 from chelation_logger import get_logger
 from fitness_interfaces import FitnessEvaluation, FitnessFunctionInterface
 from quantization_promotion_gate import QuantizationPromotionGate
+
+try:
+    from chelated_shim_research import (
+        promoted_sip_apply,
+        bump_stall_counter,
+        research_enabled,
+        research_preflight_metadata,
+    )
+except ModuleNotFoundError:
+    def promoted_sip_apply(v):
+        return np.array(v, dtype=float).copy(), None
+
+    def research_enabled() -> bool:
+        return False
+
+    def bump_stall_counter(counter: int, *, has_work: bool) -> int:
+        return counter
+
+    def research_preflight_metadata(
+        *,
+        seam: str,
+        stall_count: int,
+        extra: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        return {
+            "research_shim_guard": False,
+            "research_stall_count": stall_count,
+            "sip_seam": seam,
+            **(extra or {}),
+        }
 
 
 @dataclass
@@ -283,6 +314,8 @@ class SelfHealingChelationPlanner:
             minimum_fp32_gain=self.config.minimum_fp32_gain,
             logger=self.logger,
         )
+        self._research_stall_count = 0
+        self._last_research_shim_meta: Optional[Dict[str, Any]] = None
 
     def generate_directives(
         self,
@@ -479,6 +512,37 @@ class SelfHealingChelationPlanner:
                 diagnostics_hash=diagnostics_hash,
                 safety=safety,
             )
+
+        if research_enabled():
+            self._research_stall_count = bump_stall_counter(
+                self._research_stall_count,
+                has_work=bool(evaluations),
+            )
+            control_vector = np.array(
+                [
+                    float(len(evaluations)),
+                    float(len(accepted)),
+                    float(len(rejected)),
+                    float(self.config.baseline_fitness),
+                    float(self.config.reward_threshold),
+                ],
+                dtype=float,
+            )
+            _, promoted_meta = promoted_sip_apply(control_vector)
+            self._last_research_shim_meta = research_preflight_metadata(
+                seam="SelfHealingChelationPlanner.build_update_plan",
+                stall_count=self._research_stall_count,
+                extra={
+                    "accepted_count": len(accepted),
+                    "rejected_count": len(rejected),
+                    "directive_count": len(evaluations),
+                    "allow_persistent_update": bool(self.config.allow_persistent_update),
+                    **({"promoted_sip_apply": promoted_meta} if promoted_meta else {}),
+                },
+            )
+        else:
+            self._last_research_shim_meta = None
+
         plan = {
             "mode": "persistent_update" if self.config.allow_persistent_update else "advisory",
             "baseline_fitness": self.config.baseline_fitness,
@@ -491,6 +555,7 @@ class SelfHealingChelationPlanner:
             "self_generated_eval_probes": [probe.to_dict() for probe in probes],
             "candidate_ledger": ledger.to_dict(),
             "safety": safety,
+            "research_shim_meta": self._last_research_shim_meta,
         }
         self.logger.log_event(
             "self_healing_update_plan_built",
@@ -501,6 +566,10 @@ class SelfHealingChelationPlanner:
             level="DEBUG",
         )
         return plan
+
+    def get_last_research_shim_meta(self) -> Dict[str, Any] | None:
+        """Return the most recent guard-only research metadata emitted by the planner."""
+        return self._last_research_shim_meta
 
     def execute_shadow_round(
         self,

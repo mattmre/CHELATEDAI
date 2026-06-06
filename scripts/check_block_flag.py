@@ -172,7 +172,10 @@ def count_carried_debt_rows(content: str) -> int:
                 last_header_candidate = _split_row_cells(line)
             continue
         if not TABLE_ROW_RE.match(line):
-            # Table ended.
+            # Skip blank lines inside the table (common markdown mistake between rows).
+            if not line.strip():
+                continue
+            # Non-table content ends the table once we have counted rows.
             if rows > 0:
                 break
             continue
@@ -190,6 +193,66 @@ def count_carried_debt_rows(content: str) -> int:
                 continue
         rows += 1
     return rows
+
+
+def count_blocking_open_debt_rows(content: str) -> int:
+    """Count OPEN rows whose Blocking cell starts with YES (case-insensitive)."""
+    section = _find_section(content, CARRIED_DEBT_HEADING_RE)
+    if section is None:
+        return 0
+    start, end = section
+    excerpt = content[start:end]
+
+    seen_separator = False
+    header_cells: list[str] = []
+    status_idx: int | None = None
+    blocking_idx: int | None = None
+    last_header_candidate: list[str] | None = None
+    blocking_open = 0
+    blocking_column_present = False
+
+    for line in excerpt.splitlines():
+        if TABLE_SEPARATOR_RE.match(line):
+            seen_separator = True
+            if last_header_candidate is not None:
+                header_cells = last_header_candidate
+                lowered = [h.lower() for h in header_cells]
+                if "status" in lowered:
+                    status_idx = lowered.index("status")
+                if "blocking" in lowered:
+                    blocking_idx = lowered.index("blocking")
+                    blocking_column_present = True
+            continue
+        if not seen_separator:
+            if TABLE_ROW_RE.match(line):
+                last_header_candidate = _split_row_cells(line)
+            continue
+        if not TABLE_ROW_RE.match(line):
+            if not line.strip():
+                continue
+            if blocking_open > 0:
+                break
+            continue
+        if "_none yet_" in line.lower() or "_no items_" in line.lower():
+            continue
+        cells = _split_row_cells(line)
+        if all(c in ("_—_", "—", "-", "") for c in cells):
+            continue
+        if status_idx is not None and status_idx < len(cells):
+            status = cells[status_idx].strip("*").strip().lower()
+            if status.startswith("closed"):
+                continue
+        if not blocking_column_present:
+            # Legacy format without a Blocking column: count all open rows as
+            # potentially blocking to preserve conservative posture.
+            blocking_open += 1
+            continue
+
+        if blocking_idx is not None and blocking_idx < len(cells):
+            blocking = cells[blocking_idx].strip().lower()
+            if blocking.startswith("yes"):
+                blocking_open += 1
+    return blocking_open
 
 
 def main() -> int:
@@ -222,13 +285,15 @@ def main() -> int:
 
     state, excerpt = parse_block_flag(content)
     debt_count = count_carried_debt_rows(content)
+    blocking_debt_count = count_blocking_open_debt_rows(content)
 
     print("=" * 70)
     print("Brutal Honesty Rulebook v3.3 — §6.3 block-flag gate")
     print(f"File: {path}")
     print("=" * 70)
     print(f"Block flag state: {state}")
-    print(f"Carried Debt row count: {debt_count}")
+    print(f"Carried Debt row count (OPEN): {debt_count}")
+    print(f"Carried Debt row count (OPEN + Blocking YES): {blocking_debt_count}")
 
     # Stale-state detection (advisory only — doesn't change exit code by itself).
     # The script does not know the cycle-age of each row, so it can only flag

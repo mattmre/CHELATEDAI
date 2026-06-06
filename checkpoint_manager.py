@@ -6,7 +6,10 @@ Provides safe checkpoint/rollback functionality for training cycles.
 
 import json
 import shutil
-import torch
+try:
+    import torch
+except ModuleNotFoundError:  # pragma: no cover - optional dependency
+    torch = None
 from pathlib import Path
 from typing import Dict, Any, Optional
 from datetime import datetime
@@ -333,6 +336,8 @@ class SafeTrainingContext:
 
 
 if __name__ == "__main__":
+    if torch is None:
+        raise SystemExit("torch is required for CheckpointManager demo execution.")
     # Demo usage
     from pathlib import Path
     import tempfile

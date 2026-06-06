@@ -1,0 +1,52 @@
+{
+  "timestamp": "2026-06-05T20:03:52.046476+00:00",
+  "scheduler_id": "019e669bf1bb",
+  "expected_agent_count": 5,
+  "found": false,
+  "verified": false,
+  "strict": false,
+  "notes": [
+    "scheduler id not present in probe output"
+  ],
+  "details": {
+    "probe": {
+      "source": "cli",
+      "commands": [
+        "scheduler_list",
+        "systemctl list-timers --all"
+      ],
+      "executed": true,
+      "exit_code": 0,
+      "stdout": "NEXT                                  LEFT LAST                              PASSED UNIT                           ACTIVATES\nFri 2026-06-05 16:10:00 EDT           6min Fri 2026-06-05 16:00:00 EDT 3min 51s ago sysstat-collect.timer          sysstat-collect.service\nFri 2026-06-05 16:11:05 EDT           7min Fri 2026-06-05 15:25:20 EDT    38min ago fwupd-refresh.timer            fwupd-refresh.service\nFri 2026-06-05 16:33:11 EDT          29min Fri 2026-06-05 15:32:03 EDT    31min ago anacron.timer                  anacron.service\nFri 2026-06-05 17:36:37 EDT       1h 32min Thu 2026-06-04 19:07:55 EDT      20h ago apt-daily.timer                apt-daily.service\nFri 2026-06-05 18:32:40 EDT       2h 28min Fri 2026-06-05 08:10:54 EDT       7h ago motd-news.timer                motd-news.service\nSat 2026-06-06 00:00:00 EDT             7h Fri 2026-06-05 00:00:00 EDT      16h ago chkrootkit.timer               chkrootkit.service\nSat 2026-06-06 00:00:00 EDT             7h Fri 2026-06-05 00:00:00 EDT      16h ago dpkg-db-backup.timer           dpkg-db-backup.service\nSat 2026-06-06 00:00:00 EDT             7h Fri 2026-06-05 00:00:00 EDT      16h ago sysstat-rotate.timer           sysstat-rotate.service\nSat 2026-06-06 00:00:04 EDT             7h Fri 2026-06-05 00:21:12 EDT      15h ago logrotate.timer                logrotate.service\nSat 2026-06-06 00:05:08 EDT             8h Fri 2026-06-05 00:09:04 EDT      15h ago lynis.timer                    lynis.service\nSat 2026-06-06 00:07:00 EDT             8h Fri 2026-06-05 00:07:00 EDT      15h ago sysstat-summary.timer          sysstat-summary.service\nSat 2026-06-06 03:37:39 EDT            11h Fri 2026-06-05 03:16:49 EDT      12h ago dailyaidecheck.timer           dailyaidecheck.service\nSat 2026-06-06 06:01:24 EDT            13h Fri 2026-06-05 06:56:23 EDT       9h ago man-db.timer                   man-db.service\nSat 2026-06-06 06:55:42 EDT            14h Fri 2026-06-05 06:12:10 EDT       9h ago apt-daily-upgrade.timer        apt-daily-upgrade.service\nSat 2026-06-06 09:45:30 EDT            17h Fri 2026-06-05 09:45:30 EDT       6h ago update-notifier-download.timer update-notifier-download.service\nSat 2026-06-06 09:55:29 EDT            17h Fri 2026-06-05 09:55:29 EDT       6h ago systemd-tmpfiles-clean.timer   systemd-tmpfiles-clean.service\nSun 2026-06-07 03:10:23 EDT      1 day 11h Sun 2026-05-31 14:19:25 EDT            - e2scrub_all.timer              e2scrub_all.service\nSun 2026-06-07 03:10:52 EDT      1 day 11h Sun 2026-05-31 14:19:37 EDT            - xfs_scrub_all.timer            xfs_scrub_all.service\nMon 2026-06-08 00:44:29 EDT         2 days Mon 2026-06-01 12:41:19 EDT            - fstrim.timer                   fstrim.service\nMon 2026-06-08 20:59:30 EDT         3 days Sun 2026-05-31 17:31:07 EDT            - update-notifier-motd.timer     update-notifier-motd.service\nWed 2026-07-01 00:00:00 EDT 3 weeks 4 days Mon 2026-06-01 11:52:45 EDT            - acct-monthly-report.timer      acct-monthly-report.service\n-                                        - -                                      - apport-autoreport.timer        apport-autoreport.service\n-                                        - -                                      - snapd.snap-repair.timer        snapd.snap-repair.service\n-                                        - -                                      - ua-timer.timer                 ua-timer.service\n\n24 timers listed.\n",
+      "stderr": "",
+      "attempts": [
+        {
+          "source": "cli",
+          "command": "scheduler_list",
+          "executed": false,
+          "exit_code": 127,
+          "stderr": "command not found: scheduler_list",
+          "stdout": ""
+        },
+        {
+          "source": "cli",
+          "command": "systemctl list-timers --all",
+          "executed": true,
+          "exit_code": 0,
+          "stderr": "",
+          "stdout": "NEXT                                  LEFT LAST                              PASSED UNIT                           ACTIVATES\nFri 2026-06-05 16:10:00 EDT           6min Fri 2026-06-05 16:00:00 EDT 3min 51s ago sysstat-collect.timer          sysstat-collect.service\nFri 2026-06-05 16:11:05 EDT           7min Fri 2026-06-05 15:25:20 EDT    38min ago fwupd-refresh.timer            fwupd-refresh.service\nFri 2026-06-05 16:33:11 EDT          29min Fri 2026-06-05 15:32:03 EDT    31min ago anacron.timer                  anacron.service\nFri 2026-06-05 17:36:37 EDT       1h 32min Thu 2026-06-04 19:07:55 EDT      20h ago apt-daily.timer                apt-daily.service\nFri 2026-06-05 18:32:40 EDT       2h 28min Fri 2026-06-05 08:10:54 EDT       7h ago motd-news.timer                motd-news.service\nSat 2026-06-06 00:00:00 EDT             7h Fri 2026-06-05 00:00:00 EDT      16h ago chkrootkit.timer               chkrootkit.service\nSat 2026-06-06 00:00:00 EDT             7h Fri 2026-06-05 00:00:00 EDT      16h ago dpkg-db-backup.timer           dpkg-db-backup.service\nSat 2026-06-06 00:00:00 EDT             7h Fri 2026-06-05 00:00:00 EDT      16h ago sysstat-rotate.timer           sysstat-rotate.service\nSat 2026-06-06 00:00:04 EDT             7h Fri 2026-06-05 00:21:12 EDT      15h ago logrotate.timer                logrotate.service\nSat 2026-06-06 00:05:08 EDT             8h Fri 2026-06-05 00:09:04 EDT      15h ago lynis.timer                    lynis.service\nSat 2026-06-06 00:07:00 EDT             8h Fri 2026-06-05 00:07:00 EDT      15h ago sysstat-summary.timer          sysstat-summary.service\nSat 2026-06-06 03:37:39 EDT            11h Fri 2026-06-05 03:16:49 EDT      12h ago dailyaidecheck.timer           dailyaidecheck.service\nSat 2026-06-06 06:01:24 EDT            13h Fri 2026-06-05 06:56:23 EDT       9h ago man-db.timer                   man-db.service\nSat 2026-06-06 06:55:42 EDT            14h Fri 2026-06-05 06:12:10 EDT       9h ago apt-daily-upgrade.timer        apt-daily-upgrade.service\nSat 2026-06-06 09:45:30 EDT            17h Fri 2026-06-05 09:45:30 EDT       6h ago update-notifier-download.timer update-notifier-download.service\nSat 2026-06-06 09:55:29 EDT            17h Fri 2026-06-05 09:55:29 EDT       6h ago systemd-tmpfiles-clean.timer   systemd-tmpfiles-clean.service\nSun 2026-06-07 03:10:23 EDT      1 day 11h Sun 2026-05-31 14:19:25 EDT            - e2scrub_all.timer              e2scrub_all.service\nSun 2026-06-07 03:10:52 EDT      1 day 11h Sun 2026-05-31 14:19:37 EDT            - xfs_scrub_all.timer            xfs_scrub_all.service\nMon 2026-06-08 00:44:29 EDT         2 days Mon 2026-06-01 12:41:19 EDT            - fstrim.timer                   fstrim.service\nMon 2026-06-08 20:59:30 EDT         3 days Sun 2026-05-31 17:31:07 EDT            - update-notifier-motd.timer     update-notifier-motd.service\nWed 2026-07-01 00:00:00 EDT 3 weeks 4 days Mon 2026-06-01 11:52:45 EDT            - acct-monthly-report.timer      acct-monthly-report.service\n-                                        - -                                      - apport-autoreport.timer        apport-autoreport.service\n-                                        - -                                      - snapd.snap-repair.timer        snapd.snap-repair.service\n-                                        - -                                      - ua-timer.timer                 ua-timer.service\n\n24 timers listed.\n"
+        }
+      ],
+      "command": "systemctl list-timers --all"
+    },
+    "deterministic": true,
+    "parsed_as_json": false,
+    "scheduler_id": "019e669bf1bb"
+  },
+  "env": {
+    "CHELATED_SHIM_SCHEDULER_CMD": null,
+    "CHELATED_SHIM_SCHEDULER_FIXTURE": null,
+    "CHELATED_SHIM_EVIDENCE_DIR": null
+  },
+  "block_flag_note": "Run scripts/check_block_flag.py separately; this script does not flip BLOCKED."
+}

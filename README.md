@@ -125,9 +125,46 @@ flowchart LR
     G --> H[Host reader / evidence capture]
 ```
 
+## Current Work (live branch)
+
+As of 2026-06-06, active development follows the **core-first execution queue** in [docs/ROADMAP_EXECUTION.md](docs/ROADMAP_EXECUTION.md). SHIM substrate rows stay open but deferred until core queue step 8 completes.
+
+| Area | Status | Notes |
+|---|---|---|
+| ML correctness (InfoNCE, projection, adapter isolation) | Done on branch | Regression tests guard against reversion |
+| Sweep / packaging / docs truth | Done on branch | `run_large_sweep` bounded; `pyproject.toml` py-modules updated |
+| Model-Scope pilot | In progress | Runtime, steering, bridge, and provenance paths tested on fixtures |
+| E2E learning loop | Done on branch | `tests/test_learning_loop_e2e.py` covers ingest → sedimentation → metric delta |
+| SHIM research (deferred) | Partial, env-guarded | `chelated_shim_research.py`, promoted SIP probe, evidence recorders; see [CHANGELOG.md](CHANGELOG.md) |
+| Phase / BHS loops | Running | `scripts/phase_development_loop.py`, `scripts/run_10min_priority_bhs_loop.py`, `bash scripts/loop_core_10m.sh` |
+
+**Block flag:** `CLEAR` (8 open SHIM carried-debt rows, non-blocking per operator queue). See [docs/next-session.md](docs/next-session.md).
+
+**Progress log:** [CHANGELOG.md](CHANGELOG.md) — dated findings, validation notes, and what we are working on next.
+
+### Quick validation (current branch)
+
+```bash
+python -m unittest discover -s tests -p "test_*.py" -v
+python scripts/check_block_flag.py
+bash scripts/verify_shim_development.sh   # SHIM evidence gate (env-guarded)
+python scripts/phase_development_loop.py --once   # single orchestrator turn
+```
+
+### New research surfaces on this branch
+
+| Surface | Purpose |
+|---|---|
+| `chelated_shim_research.py` | Env-guarded (`CHELATED_SHIM_RESEARCH=1`) SIP preflight and promoted registry probe |
+| `shim_node_promoted.py` | Promoted shim registry copy (`CHELATED_SHIM_PROMOTED=1`) |
+| `scripts/record_shim_*_evidence.py` | Writes dated `artifacts/bhs_shim_evidence_*.json` from production seams |
+| `scripts/run_five_worker_shim_gate.py` | In-repo five-worker shim gate (SHIM-CD-06 partial) |
+| `scripts/phase_development_loop.py` | CORE-SLICE / SHIM-SLICE orchestrator with `artifacts/phase_loop/` state |
+| `reports/ARCH_AEP_REMEDIATION_FINDINGS*.md` | AEP remediation findings and merge-readiness notes |
+
 ## Current Research Status
 
-As of 2026-04-27:
+As of 2026-04-27 (baseline on `main`; extended on live branch above):
 
 - the adaptive retrieval, benchmarking, and distillation surfaces are implemented on `main`
 - the EGGROLL-inspired optimizer, retrieval-fitness gates, adaptive workflow orchestration, and AI-engineering runtime diagnostics are implemented on `main`

@@ -298,8 +298,9 @@ class TeacherDistillationHelper:
         self,
         texts: List[str],
         current_embeddings: np.ndarray,
-        teacher_weight: float = 1.0
-    ) -> np.ndarray:
+        teacher_weight: float = 1.0,
+        return_torch: bool = False,
+    ):
         """
         Generate distillation targets by blending teacher and current embeddings.
         
@@ -309,10 +310,12 @@ class TeacherDistillationHelper:
             teacher_weight: Weight for teacher guidance (0=student only, 1=teacher only)
             
         Returns:
-            Target embeddings [N, dim]
+            Target embeddings [N, dim] (numpy array by default; torch tensor if return_torch=True)
         """
         if teacher_weight == 0.0:
             # Pure student mode - no teacher guidance
+            if return_torch:
+                return torch.tensor(current_embeddings, dtype=torch.float32)
             return current_embeddings.copy()
         
         # Get teacher embeddings
@@ -326,21 +329,13 @@ class TeacherDistillationHelper:
                 teacher_size=len(teacher_embeds),
                 student_size=len(current_embeddings)
             )
+            if return_torch:
+                return torch.tensor(current_embeddings, dtype=torch.float32)
             return current_embeddings.copy()
         
         # Check dimension compatibility
         if teacher_embeds.shape[1] != current_embeddings.shape[1]:
-            if self._projection_enabled:
-                self._ensure_projection(current_embeddings.shape[1])
-                if self._projection is not None:
-                    # Use gradient-preserving projection so parameters
-                    # can be trained when included in an optimizer.
-                    teacher_tensor = torch.from_numpy(teacher_embeds).float()
-                    projected = self._projection.project_tensor(teacher_tensor)
-                    teacher_embeds = projected.detach().numpy()
-                else:
-                    return current_embeddings.copy()
-            else:
+            if not self._projection_enabled:
                 self.logger.log_event(
                     "dimension_mismatch_targets",
                     f"Cannot blend: teacher dim {teacher_embeds.shape[1]} != student dim {current_embeddings.shape[1]}",
@@ -348,12 +343,39 @@ class TeacherDistillationHelper:
                     teacher_dim=teacher_embeds.shape[1],
                     student_dim=current_embeddings.shape[1],
                 )
+                if return_torch:
+                    return torch.tensor(current_embeddings, dtype=torch.float32)
                 return current_embeddings.copy()
-        
-        # Blend: target = (1 - alpha) * student + alpha * teacher
-        alpha = teacher_weight
-        blended = (1 - alpha) * current_embeddings + alpha * teacher_embeds
-        
+
+            self._ensure_projection(current_embeddings.shape[1])
+            if self._projection is None:
+                if return_torch:
+                    return torch.tensor(current_embeddings, dtype=torch.float32)
+                return current_embeddings.copy()
+
+            # Use gradient-preserving projection so parameters can be trained when
+            # included in an optimizer.
+            teacher_tensor = torch.from_numpy(teacher_embeds).float()
+            projected = self._projection.project_tensor(teacher_tensor)
+            if return_torch:
+                teacher_embeds = projected
+            else:
+                teacher_embeds = projected.detach().numpy()
+        elif return_torch:
+            teacher_embeds = torch.from_numpy(teacher_embeds).float()
+
+        # Normalize and blend.
+        if return_torch:
+            current_tensor = torch.tensor(current_embeddings, dtype=torch.float32)
+            alpha = float(teacher_weight)
+            blended = (1 - alpha) * current_tensor + alpha * teacher_embeds
+            norms = torch.norm(blended, dim=1, keepdim=True)
+            norms = torch.clamp_min(norms, 1e-9)
+            targets = blended / norms
+            return targets
+
+        blended = (1 - teacher_weight) * current_embeddings + teacher_weight * teacher_embeds
+
         # Normalize to unit sphere (important for cosine similarity)
         norms = np.linalg.norm(blended, axis=1, keepdims=True)
         norms = np.maximum(norms, 1e-9)  # Avoid division by zero

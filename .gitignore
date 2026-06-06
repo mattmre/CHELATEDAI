@@ -77,3 +77,8 @@ adapter_weights.benchmark-backup-*.pt
 
 # Experiment run output directories
 experiment_runs/
+
+# Agent loop outputs (regenerable; do not merge bulk turn reports)
+artifacts/phase_loop/reports/
+artifacts/bhs_10min_loop/workers/
+artifacts/arch_aep_turns/

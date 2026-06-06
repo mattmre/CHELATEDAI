@@ -6,6 +6,8 @@ Run: python -m pytest test_benchmark_utils.py -v
 """
 
 import sys
+import tempfile
+from pathlib import Path
 import unittest
 from unittest.mock import MagicMock, patch
 import math
@@ -17,6 +19,7 @@ if 'mteb' not in sys.modules:
 from benchmark_utils import (
     dcg_at_k, ndcg_at_k, find_keys, find_payload, load_mteb_data, canonicalize_id,
     mean_average_precision_at_k, mean_reciprocal_rank, recall_at_k,
+    isolated_adapter_state,
 )
 
 
@@ -267,6 +270,45 @@ class TestRecallAtK(unittest.TestCase):
         self.assertAlmostEqual(
             recall_at_k(["x", "y"], {"a"}, k=2), 0.0
         )
+
+
+class TestIsolatedAdapterState(unittest.TestCase):
+    """Tests for benchmark adapter checkpoint isolation."""
+
+    def test_restores_adapter_after_exception(self):
+        """Context manager restores the original adapter when the body raises."""
+        tmpdir = Path(tempfile.mkdtemp())
+        target = tmpdir / "adapter_weights.pt"
+        target.write_text("baseline")
+        backup_glob = tmpdir.glob("adapter_weights.benchmark-backup-*.pt")
+
+        try:
+            with self.assertRaises(RuntimeError):
+                with isolated_adapter_state(target):
+                    target.write_text("mutated")
+                    raise RuntimeError("forced test exception")
+            self.assertEqual(target.read_text(), "baseline")
+            self.assertEqual(len(list(backup_glob)), 0)
+        finally:
+            for p in tmpdir.glob("adapter_weights.benchmark-backup-*"):
+                if p.exists():
+                    p.unlink()
+
+    def test_nested_context_restores_once(self):
+        """Nested contexts should preserve outer restore state and not leak backups."""
+        tmpdir = Path(tempfile.mkdtemp())
+        target = tmpdir / "adapter_weights.pt"
+        target.write_text("baseline")
+
+        with isolated_adapter_state(target):
+            target.write_text("inner-start")
+            with isolated_adapter_state(target):
+                target.write_text("nested")
+                self.assertEqual(target.read_text(), "nested")
+            target.write_text("after-nested")
+
+        self.assertEqual(target.read_text(), "baseline")
+        self.assertEqual(len(list(tmpdir.glob("adapter_weights.benchmark-backup-*"))), 0)
 
 
 if __name__ == "__main__":

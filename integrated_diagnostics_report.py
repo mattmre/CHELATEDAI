@@ -6,7 +6,12 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, Optional
 
 import numpy as np
-import torch
+try:
+    import torch
+except ModuleNotFoundError:
+    class torch:  # pragma: no cover - fallback for lightweight environments
+        class Tensor:
+            pass
 
 from chelation_logger import get_logger
 from fitness_composition_orchestrator import FitnessCompositionResult

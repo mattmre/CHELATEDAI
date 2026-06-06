@@ -17,6 +17,34 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 
+try:
+    from chelated_shim_research import (
+        bump_stall_counter,
+        promoted_registry_probe,
+        promoted_sip_apply,
+        research_enabled,
+        research_preflight_metadata,
+    )
+except ModuleNotFoundError:
+    def research_enabled() -> bool:
+        return False
+
+    def promoted_registry_probe(dim: int = 8):
+        return None
+
+    def promoted_sip_apply(v):
+        return np.array(v, dtype=float), None
+
+    def bump_stall_counter(counter: int, *, has_work: bool) -> int:
+        return counter
+
+    def research_preflight_metadata(
+        *,
+        seam: str,
+        stall_count: int,
+        extra: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        return {"research_shim_guard": False, "research_stall_count": stall_count, "sip_seam": seam, **(extra or {})}
 from chelation_logger import get_logger
 from feature_direction_bank import FeatureDirectionBank
 from vector_translator import TranslationConfig, TranslationResult, VectorTranslator
@@ -35,6 +63,9 @@ class VectorSteerer:
         self._max_strength = max_strength
         self._enabled = enabled
         self._signals: List[SteeringSignal] = []
+        self._research_stall_count: int = 0
+        self._research_probe_count: int = 0
+        self._last_research_activation_record: Dict[str, Any] | None = None
 
     def add_signal(self, signal: SteeringSignal) -> None:
         """Append a steering signal to the queue."""
@@ -43,6 +74,19 @@ class VectorSteerer:
     def clear_signals(self) -> None:
         """Remove all accumulated steering signals."""
         self._signals.clear()
+        if research_enabled():
+            self._research_stall_count = 0
+
+    def _build_research_activation_record(self, signals_count: int) -> Dict[str, Any]:
+        self._research_probe_count += 1
+        record = {
+            "seam": "VectorSteerer.steer",
+            "probe_activated": True,
+            "probe_count": self._research_probe_count,
+            "signals_count": signals_count,
+        }
+        self._last_research_activation_record = record
+        return record
 
     def steer(self, v: np.ndarray) -> Tuple[np.ndarray, Dict[str, Any]]:
         """Apply accumulated steering signals to v.
@@ -52,6 +96,39 @@ class VectorSteerer:
         Clamps total steering delta norm to max_strength.
         """
         v = np.array(v, dtype=float)
+        promoted_meta: Optional[Dict[str, Any]] = None
+        activation_record: Dict[str, Any] | None = None
+        if research_enabled():
+            activation_record = self._build_research_activation_record(signals_count=len(self._signals))
+            v, promoted_meta = promoted_sip_apply(v)
+            if promoted_meta:
+                promoted_meta = {
+                    **promoted_meta,
+                    "research_activation_record": activation_record,
+                }
+
+        if research_enabled():
+            self._research_stall_count = bump_stall_counter(
+                self._research_stall_count, has_work=bool(self._signals)
+            )
+            if not self._signals:
+                extra_idle = {
+                    "signals_applied": 0,
+                    "total_delta_norm": 0.0,
+                    "was_steered": False,
+                }
+                probe = promoted_registry_probe(dim=int(v.shape[0]) if v.size else 8)
+                if probe:
+                    extra_idle["promoted_registry_probe"] = probe
+                if promoted_meta:
+                    extra_idle["promoted_sip_apply"] = promoted_meta
+                if activation_record:
+                    extra_idle["research_activation_record"] = activation_record
+                return v.copy(), research_preflight_metadata(
+                    seam="VectorSteerer.steer",
+                    stall_count=self._research_stall_count,
+                    extra=extra_idle,
+                )
 
         if not self._enabled or not self._signals:
             return v.copy(), {
@@ -73,11 +150,25 @@ class VectorSteerer:
             total_delta = total_delta * (self._max_strength / delta_norm)
             delta_norm = self._max_strength
 
-        return v + total_delta, {
+        meta: Dict[str, Any] = {
             "signals_applied": len(self._signals),
             "total_delta_norm": delta_norm,
             "was_steered": True,
         }
+        if research_enabled():
+            self._research_stall_count = 0
+            if promoted_meta:
+                meta["promoted_sip_apply"] = promoted_meta
+            if activation_record:
+                meta["research_activation_record"] = activation_record
+            meta.update(
+                research_preflight_metadata(
+                    seam="VectorSteerer.steer",
+                    stall_count=self._research_stall_count,
+                    extra=meta,
+                )
+            )
+        return v + total_delta, meta
 
     @classmethod
     def from_sparse_feature_event(
