@@ -2,7 +2,11 @@
 
 ChelatedAI is a Python research repository for adaptive retrieval, post-hoc embedding correction, multi-dataset evaluation, and computational-storage experiments.
 
-The codebase now spans two connected themes:
+**Primary research path (2026-06):** the [**Liquified Lattice**](docs/VISION_LIQUIFIED_LATTICE.md) program — self-annealing retrieval pools steerable by quant-like shims, linked as a DAG/GNN evidence graph, with disk-scale precomputed pools as the endgame. Active execution is tracked in [docs/ROADMAP_EXECUTION.md](docs/ROADMAP_EXECUTION.md) (Phase I core queue now; Phase II lattice slices after step 8).
+
+The repo still carries substantial work on road-course tuning, learned gates, Model-Scope steering, computational storage, and agentic remediation. Those tracks remain on the books and are not abandoned; they are sequenced **after** or **alongside** the primary lattice milestones as capacity allows. See [Research baseline and queued work](#research-baseline-and-queued-work) below.
+
+The codebase spans two connected themes that feed the lattice path:
 
 - improving vector retrieval quality through chelation, sedimentation, distillation, topology analysis, and online correction
 - exploring whether parts of model execution can be pushed toward storage-resident node graphs, deterministic transport paths, and multi-drive speculative execution
@@ -20,16 +24,49 @@ Most embedding systems assume the base embedding model is fixed and that retriev
 - benchmark whether improvements generalize across datasets
 - test whether some inference primitives can move closer to storage media
 
+## Primary Research Path: Liquified Lattice
+
+This is the **current focus**. It unifies retrieval correction, self-healing (SEAL/EGGROLL), Model-Scope steering, shims, and the disk-first endgame into one phased program.
+
+| Phase | Scope | Status (2026-06-06) |
+|---|---|---|
+| **Phase I** (steps 1–8) | ML correctness, infra hygiene, Model-Scope shadow pilot, E2E learning loop | Steps 1–6 and 8 largely complete on live branch; **step 7 (Model-Scope) in progress** |
+| **Phase I defer** | SHIM substrate (production SIP wiring) | Open, env-guarded; resumes after step 8 |
+| **Phase II** (steps 9–17) | Annealing controller, evidence DAG, disintegration loop, drift experiment, GNN, quant shim routing, disk pool slice | Documented; starts after Phase I exit |
+
+**Key docs:** [VISION_LIQUIFIED_LATTICE.md](docs/VISION_LIQUIFIED_LATTICE.md) · [ROADMAP_EXECUTION.md](docs/ROADMAP_EXECUTION.md) · [CHANGELOG.md](CHANGELOG.md)
+
+**What “liquified lattice” means in practice today**
+
+| Lattice piece | Repo surface today | Next milestone |
+|---|---|---|
+| Crystal pool | `vector_store.py`, sedimentation, adapters | Evidence DAG schema (Phase II #12) |
+| Laser / refraction | `antigravity_engine.py` chelation + masks | Annealing controller (Phase II #11) |
+| Annealing | sedimentation, `online_updater.py`, ES optimizer | Unified temperature schedule |
+| Disintegration | `isomer_detector.py`, masking | Drift-triggered prune loop (Phase II #13) |
+| Shims (quant-like) | adapters, `model_scope_steering.py`, `chelated_shim_research.py` | Production SHIM DoD (Phase I defer / II #10) |
+| Disk pools | `computational_storage_poc/block_graph.py` | One pool shard + parity (Phase II #17) |
+
+```bash
+# Primary-path validation (live branch)
+python -m unittest discover -s tests -p "test_*.py" -v
+python scripts/check_block_flag.py
+python scripts/phase_development_loop.py --once
+```
+
 ## Repository Tracks
 
-| Track | What it covers | Main entrypoints |
-|---|---|---|
-| Adaptive retrieval | Chelation, sedimentation, adapter-based correction, vector-store integration | `antigravity_engine.py`, `chelation_adapter.py`, `vector_store.py`, `config.py` |
-| Distillation and correction | Teacher guidance, cross-lingual routing, online updates, schedule tuning | `teacher_distillation.py`, `cross_lingual_distillation.py`, `teacher_weight_scheduler.py`, `online_updater.py` |
-| Evaluation and reporting | BEIR runs, comparative benchmarks, sweeps, and dashboards | `benchmark_beir.py`, `benchmark_comparative.py`, `benchmark_multitask.py`, `run_sweep.py`, `run_large_sweep.py`, `dashboard_server.py` |
-| Structural analysis | Topology cohesion, isomer drift, embedding quality, stability diagnostics | `topology_analyzer.py`, `isomer_detector.py`, `embedding_quality.py`, `stability_tracker.py` |
-| Computational storage and drive nodes | Block-graph execution, mock NVMe path, multi-drive array simulation, RP2040 firmware, emulator, host reader, evidence capture | `computational_storage_poc/`, `test_computational_storage_poc.py`, `test_computational_storage_payload.py`, `test_computational_storage_emulation.py` |
-| Process and remediation | Agentic review workflow, tracker docs, session logs, verification evidence | `aep_orchestrator.py`, `docs/ARCH AGENTIC ENGINEERING AND PLANNING/` |
+All tracks below remain active parts of the portfolio. **Primary** = lattice program; **Queued** = tackle on schedule, not dropped.
+
+| Priority | Track | What it covers | Main entrypoints |
+|---|---|---|---|
+| **Primary** | Liquified lattice | Self-annealing pools, shims, evidence DAG, disk-scale endgame | [VISION_LIQUIFIED_LATTICE.md](docs/VISION_LIQUIFIED_LATTICE.md), `self_healing_chelation.py`, `build_attribution_pool.py`, `chelated_shim_research.py` |
+| Queued | Adaptive retrieval | Chelation, sedimentation, adapter-based correction, vector-store integration | `antigravity_engine.py`, `chelation_adapter.py`, `vector_store.py`, `config.py` |
+| Queued | Distillation and correction | Teacher guidance, cross-lingual routing, online updates, schedule tuning | `teacher_distillation.py`, `cross_lingual_distillation.py`, `teacher_weight_scheduler.py`, `online_updater.py` |
+| Queued | Evaluation and reporting | BEIR runs, comparative benchmarks, sweeps, and dashboards | `benchmark_beir.py`, `benchmark_comparative.py`, `benchmark_multitask.py`, `run_sweep.py`, `run_large_sweep.py`, `dashboard_server.py` |
+| Queued | Structural analysis | Topology cohesion, isomer drift, embedding quality, stability diagnostics | `topology_analyzer.py`, `isomer_detector.py`, `embedding_quality.py`, `stability_tracker.py` |
+| Queued | Computational storage and drive nodes | Block-graph execution, mock NVMe path, multi-drive array simulation, RP2040 firmware, emulator, host reader, evidence capture | `computational_storage_poc/`, `test_computational_storage_poc.py`, `test_computational_storage_payload.py`, `test_computational_storage_emulation.py` |
+| Queued | Process and remediation | Agentic review workflow, tracker docs, session logs, verification evidence | `aep_orchestrator.py`, `docs/ARCH AGENTIC ENGINEERING AND PLANNING/` |
 
 ## Quick Start
 
@@ -125,9 +162,40 @@ flowchart LR
     G --> H[Host reader / evidence capture]
 ```
 
-## Current Research Status
+## Live Branch Status
 
-As of 2026-04-27:
+Progress branch: `feat/live-progress-tracker-20260606` · PR [#257](https://github.com/mattmre/CHELATEDAI/pull/257)
+
+| Area | Status | Notes |
+|---|---|---|
+| ML correctness (InfoNCE, projection, adapter isolation) | Done on branch | Regression tests guard against reversion |
+| Sweep / packaging / docs truth | Done on branch | `run_large_sweep` bounded; `pyproject.toml` py-modules updated |
+| Model-Scope pilot (Phase I #7) | **In progress** | Runtime, steering, bridge, and provenance paths tested on fixtures |
+| E2E learning loop (Phase I #8) | Done on branch | `tests/test_learning_loop_e2e.py` covers ingest → sedimentation → metric delta |
+| SHIM research (Phase I defer) | Partial, env-guarded | `chelated_shim_research.py`, promoted SIP probe, evidence recorders |
+| Phase / BHS loops | Running | `scripts/phase_development_loop.py`, `bash scripts/loop_core_10m.sh` |
+| Liquified Lattice vision + Phase II plan | Documented | [VISION_LIQUIFIED_LATTICE.md](docs/VISION_LIQUIFIED_LATTICE.md), [ROADMAP_EXECUTION.md](docs/ROADMAP_EXECUTION.md) |
+
+**Block flag:** `CLEAR` (8 open SHIM carried-debt rows, non-blocking per operator queue). See [docs/next-session.md](docs/next-session.md).
+
+**Progress log:** [CHANGELOG.md](CHANGELOG.md)
+
+### New surfaces on the live branch
+
+| Surface | Purpose |
+|---|---|
+| `chelated_shim_research.py` | Env-guarded (`CHELATED_SHIM_RESEARCH=1`) SIP preflight and promoted registry probe |
+| `shim_node_promoted.py` | Promoted shim registry copy (`CHELATED_SHIM_PROMOTED=1`) |
+| `scripts/record_shim_*_evidence.py` | Writes dated `artifacts/bhs_shim_evidence_*.json` from production seams |
+| `scripts/run_five_worker_shim_gate.py` | In-repo five-worker shim gate (SHIM-CD-06 partial) |
+| `scripts/phase_development_loop.py` | CORE-SLICE / SHIM-SLICE orchestrator with `artifacts/phase_loop/` state |
+| `reports/ARCH_AEP_REMEDIATION_FINDINGS*.md` | AEP remediation findings and merge-readiness notes |
+
+## Research Baseline and Queued Work
+
+The sections below describe **established results on `main` and work still on the books**. They are not the day-to-day execution queue — that is the Liquified Lattice path above — but they remain valid research context and will be revisited (road-course campaigns, learned gates, RP2040 evidence, etc.) as Phase I/II milestones clear.
+
+### Established baseline (2026-04-27 on `main`)
 
 - the adaptive retrieval, benchmarking, and distillation surfaces are implemented on `main`
 - the EGGROLL-inspired optimizer, retrieval-fitness gates, adaptive workflow orchestration, and AI-engineering runtime diagnostics are implemented on `main`
@@ -152,7 +220,18 @@ As of 2026-04-27:
 - the computational-storage follow-through is narrowed to real RP2040 evidence capture and a dated retention review
 - the repository includes credible storage-node experiments, but not a shipped hard-drive-hosted LLM runtime
 
-For the current live-fire validation plan, see [docs/live-fire-diagnostics-2026-04-27.md](docs/live-fire-diagnostics-2026-04-27.md). For the safety testbed road-course gates, see [docs/safety-testbed-road-course-plan.md](docs/safety-testbed-road-course-plan.md). For the first small-model road-course result, see [docs/road-course-results-2026-04-27.md](docs/road-course-results-2026-04-27.md). For the earlier post-feature evaluation plan, see [docs/roadmap-audit-and-weight-refinement-plan-2026-03-06.md](docs/roadmap-audit-and-weight-refinement-plan-2026-03-06.md).
+### Queued work (tackle over time; feeds lattice path)
+
+| Area | Status | When / how it returns |
+|---|---|---|
+| Road-course profile promotion | No global golden setting yet; learned/query-conditional gating is the lead | Ongoing campaigns; Phase II drift experiment (#14) |
+| Learned gates and static masks | Tooling exists; first artifacts fail closed or hurt holdout | Attribution pool → evidence DAG (Phase II #12) |
+| SEAL/EGGROLL self-healing depth | Advisory + sandbox; cloned-adapter execution pending | Phase II annealing controller (#11) + [seal-eggroll doc](docs/seal-eggroll-multipanel-architecture-2026-04-28.md) |
+| Computational storage / RP2040 | Software transport proof strong; physical evidence capture pending | Phase II disk pool slice (#17); [storage track](docs/COMPUTATIONAL_STORAGE_DRIVE_NODES.md) |
+| Disk-first CPU program | Architecture docs exist; not fully reflected in runtime | After evidence DAG + pool shard milestones |
+| Agentic remediation (AEP/BHS) | Active process layer | Continuous; see [docs/next-session.md](docs/next-session.md) |
+
+For the current live-fire validation plan, see [docs/live-fire-diagnostics-2026-04-27.md](docs/live-fire-diagnostics-2026-04-27.md). For the safety testbed road-course gates, see [docs/safety-testbed-road-course-plan.md](docs/safety-testbed-road-course-plan.md). For the first small-model road-course result, see [docs/road-course-results-2026-04-27.md](docs/road-course-results-2026-04-27.md). For the earlier post-feature evaluation plan, see [docs/roadmap-audit-and-weight-refinement-plan-2026-03-06.md](docs/roadmap-audit-and-weight-refinement-plan-2026-03-06.md). Full track inventory: [docs/RESEARCH_TRACKS.md](docs/RESEARCH_TRACKS.md).
 
 ## Module Walkthrough
 
@@ -212,6 +291,8 @@ See [`.github/workflows/test.yml`](.github/workflows/test.yml) and [`.github/wor
 Start here:
 
 - [docs/README.md](docs/README.md): canonical docs home and legacy-to-canonical map
+- [docs/VISION_LIQUIFIED_LATTICE.md](docs/VISION_LIQUIFIED_LATTICE.md): north-star architecture (self-annealing lattice, shims, disk pools)
+- [docs/ROADMAP_EXECUTION.md](docs/ROADMAP_EXECUTION.md): Phase I + Phase II execution queue
 - [docs/SYSTEM_BLUEPRINT.md](docs/SYSTEM_BLUEPRINT.md): architecture, stack, and information flows
 - [docs/MODULE_GUIDE.md](docs/MODULE_GUIDE.md): module-by-module inventory
 - [docs/RESEARCH_TRACKS.md](docs/RESEARCH_TRACKS.md): active and historical research tracks
