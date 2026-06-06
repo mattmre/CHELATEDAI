@@ -6,7 +6,9 @@ All notable changes to ChelatedAI are documented here. Format follows [Keep a Ch
 
 ### Added
 
-- **Execution queue** — [docs/ROADMAP_EXECUTION.md](docs/ROADMAP_EXECUTION.md) defines core-first, single-track work (ML → infra → Model-Scope → E2E; SHIM deferred last).
+- **Liquified Lattice vision** — [docs/VISION_LIQUIFIED_LATTICE.md](docs/VISION_LIQUIFIED_LATTICE.md) names the north-star (self-annealing pools, shims, evidence DAG, disk scale) with claim boundaries and success metrics.
+- **Phase II execution program** — [docs/ROADMAP_EXECUTION.md](docs/ROADMAP_EXECUTION.md) steps 9–17: Model-Scope close-out, SHIM DoD, annealing controller, evidence DAG, disintegration loop, drift experiment, GNN prototype, quant shim routing, disk pool slice.
+- **Execution queue** — [docs/ROADMAP_EXECUTION.md](docs/ROADMAP_EXECUTION.md) Phase I defines core-first, single-track work (ML → infra → Model-Scope → E2E; SHIM deferred last).
 - **Phase development loop** — `scripts/phase_development_loop.py` registers CORE-SLICE and SHIM-SLICE handlers, persists turn state under `artifacts/phase_loop/`, and emits `NEXT_AGENT_SLICE.json` for the next operator turn.
 - **BHS 10-minute loop tooling** — `scripts/run_10min_priority_bhs_loop.py`, `scripts/loop_core_10m.sh`, `scripts/loop_10m.sh`, `scripts/chelated_loop_timer.py`, and `docs/loop_workers/` worker briefs.
 - **SHIM evidence recorders** — `scripts/record_shim_inference_evidence.py`, `record_shim_prod_evidence.py`, `record_shim_tts_intercept_evidence.py`, `record_shim_engine_embed_evidence.py`, `record_shim_promoted_sip_evidence.py`, `record_shim_scheduler_evidence.py` write dated JSON under `artifacts/`.

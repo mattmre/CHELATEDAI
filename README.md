@@ -2,6 +2,8 @@
 
 ChelatedAI is a Python research repository for adaptive retrieval, post-hoc embedding correction, multi-dataset evaluation, and computational-storage experiments.
 
+The long-term north-star is a **liquified lattice**: self-annealing retrieval pools steerable by quant-like shims, linked as a DAG/GNN evidence graph, with disk-scale precomputed pools as the endgame. See [docs/VISION_LIQUIFIED_LATTICE.md](docs/VISION_LIQUIFIED_LATTICE.md) and the phased execution queue in [docs/ROADMAP_EXECUTION.md](docs/ROADMAP_EXECUTION.md).
+
 The codebase now spans two connected themes:
 
 - improving vector retrieval quality through chelation, sedimentation, distillation, topology analysis, and online correction
@@ -127,7 +129,7 @@ flowchart LR
 
 ## Current Work (live branch)
 
-As of 2026-06-06, active development follows the **core-first execution queue** in [docs/ROADMAP_EXECUTION.md](docs/ROADMAP_EXECUTION.md). SHIM substrate rows stay open but deferred until core queue step 8 completes.
+As of 2026-06-06, active development follows the **core-first execution queue** (Phase I) in [docs/ROADMAP_EXECUTION.md](docs/ROADMAP_EXECUTION.md), then the **Liquified Lattice program** (Phase II: annealing controller, evidence DAG, disintegration loop, GNN, disk pools). SHIM substrate rows stay open but deferred until Phase I step 8 completes.
 
 | Area | Status | Notes |
 |---|---|---|
@@ -139,6 +141,8 @@ As of 2026-06-06, active development follows the **core-first execution queue** 
 | Phase / BHS loops | Running | `scripts/phase_development_loop.py`, `scripts/run_10min_priority_bhs_loop.py`, `bash scripts/loop_core_10m.sh` |
 
 **Block flag:** `CLEAR` (8 open SHIM carried-debt rows, non-blocking per operator queue). See [docs/next-session.md](docs/next-session.md).
+
+**Vision:** [docs/VISION_LIQUIFIED_LATTICE.md](docs/VISION_LIQUIFIED_LATTICE.md) — metaphor map, invariants, and Phase II architecture.
 
 **Progress log:** [CHANGELOG.md](CHANGELOG.md) — dated findings, validation notes, and what we are working on next.
 
@@ -249,6 +253,8 @@ See [`.github/workflows/test.yml`](.github/workflows/test.yml) and [`.github/wor
 Start here:
 
 - [docs/README.md](docs/README.md): canonical docs home and legacy-to-canonical map
+- [docs/VISION_LIQUIFIED_LATTICE.md](docs/VISION_LIQUIFIED_LATTICE.md): north-star architecture (self-annealing lattice, shims, disk pools)
+- [docs/ROADMAP_EXECUTION.md](docs/ROADMAP_EXECUTION.md): Phase I + Phase II execution queue
 - [docs/SYSTEM_BLUEPRINT.md](docs/SYSTEM_BLUEPRINT.md): architecture, stack, and information flows
 - [docs/MODULE_GUIDE.md](docs/MODULE_GUIDE.md): module-by-module inventory
 - [docs/RESEARCH_TRACKS.md](docs/RESEARCH_TRACKS.md): active and historical research tracks
