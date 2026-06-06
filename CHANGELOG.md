@@ -25,6 +25,7 @@ All notable changes to ChelatedAI are documented here. Format follows [Keep a Ch
 - **Core engine seams** — `antigravity_engine.py`, `tts_pipeline.py`, `vector_store.py`, `steering_policy.py`, `self_healing_chelation.py` wired for optional SHIM preflight metadata (default OFF).
 - **Infra / hygiene** — `benchmark_utils.py` adapter isolation, `sedimentation_loss.py` InfoNCE masking, `run_large_sweep.py` bounded persistence, `checkpoint_manager.py` and `.gitignore` backup patterns.
 - **Operational docs** — `CLAUDE.md`, `docs/next-session.md`, and tracker pointer updated for operator reprioritization (core first, SHIM on hold).
+- **README** — frames Liquified Lattice as the primary research path with Phase I/II status; preserves road-course, gates, storage, and baseline findings as queued work on the books.
 
 ### Findings (honest status)
 
