@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import math
 import unittest
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import numpy as np
@@ -146,6 +147,35 @@ class TestDriftInjector(unittest.TestCase):
         self.assertEqual(decoded, manifest)
         self.assertEqual(len(decoded["checksum_before"]), 64)
         self.assertEqual(len(decoded["checksum_after"]), 64)
+
+    def test_single_named_vector_schema_is_preserved_on_upsert(self):
+        class FakeQdrant:
+            def __init__(self):
+                self.upserted_points = None
+                self._points = [
+                    SimpleNamespace(id=1, vector={"dense": [1.0, 0.0, 0.0]}, payload={"text": "a"}),
+                    SimpleNamespace(id=2, vector={"dense": [0.0, 1.0, 0.0]}, payload={"text": "b"}),
+                ]
+
+            def scroll(self, **_kwargs):
+                return self._points, None
+
+            def upsert(self, collection_name, points):
+                self.collection_name = collection_name
+                self.upserted_points = points
+
+        fake_qdrant = FakeQdrant()
+        engine = SimpleNamespace(qdrant=fake_qdrant, collection_name="named_vectors")
+
+        manifest = DriftInjector(engine, seed=11).inject_noise_drift(0.5, 0.01)
+
+        self.assertEqual(manifest["affected_count"], 1)
+        self.assertEqual(fake_qdrant.collection_name, "named_vectors")
+        self.assertEqual(len(fake_qdrant.upserted_points), 1)
+        upserted_vector = fake_qdrant.upserted_points[0].vector
+        self.assertIsInstance(upserted_vector, dict)
+        self.assertEqual(set(upserted_vector.keys()), {"dense"})
+        self.assertEqual(len(upserted_vector["dense"]), 3)
 
 
 if __name__ == "__main__":

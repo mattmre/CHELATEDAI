@@ -102,10 +102,12 @@ class DriftInjector:
                 offset=offset,
             )
             for point in points:
+                vector, vector_name = self._as_vector(point.vector)
                 records.append(
                     {
                         "id": point.id,
-                        "vector": self._as_vector(point.vector),
+                        "vector": vector,
+                        "vector_name": vector_name,
                         "payload": point.payload or {},
                     }
                 )
@@ -131,14 +133,18 @@ class DriftInjector:
     def _upsert_records(self, records: Sequence[Dict[str, Any]]) -> None:
         if not records:
             return
-        points = [
-            PointStruct(
-                id=record["id"],
-                vector=record["vector"].astype(np.float32).tolist(),
-                payload=record["payload"],
+        points = []
+        for record in records:
+            vector_values = record["vector"].astype(np.float32).tolist()
+            vector_name = record.get("vector_name")
+            vector_payload = {vector_name: vector_values} if vector_name is not None else vector_values
+            points.append(
+                PointStruct(
+                    id=record["id"],
+                    vector=vector_payload,
+                    payload=record["payload"],
+                )
             )
-            for record in records
-        ]
         self.engine.qdrant.upsert(collection_name=self.engine.collection_name, points=points)
 
     def _records_with_updates(
@@ -206,18 +212,18 @@ class DriftInjector:
         return int(records[0]["vector"].shape[0])
 
     @staticmethod
-    def _as_vector(vector: Any) -> np.ndarray:
+    def _as_vector(vector: Any) -> Tuple[np.ndarray, Optional[str]]:
+        vector_name = None
         if isinstance(vector, dict):
-            if "" in vector:
-                vector = vector[""]
-            elif len(vector) == 1:
-                vector = next(iter(vector.values()))
-            else:
-                raise ValueError("Named vectors are not supported by DriftInjector")
+            if len(vector) != 1:
+                raise ValueError("Multi-vector Qdrant records are not supported by DriftInjector")
+            vector_name, vector = next(iter(vector.items()))
+            if vector_name == "":
+                vector_name = None
         array = np.asarray(vector, dtype=np.float32)
         if array.ndim != 1:
             raise ValueError(f"Expected one-dimensional vector, got shape {array.shape}")
-        return array
+        return array, vector_name
 
     @staticmethod
     def _checksum(records: Sequence[Dict[str, Any]]) -> str:
