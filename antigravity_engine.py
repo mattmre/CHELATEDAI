@@ -1677,11 +1677,15 @@ class AntigravityEngine:
         def _finish_annealing_cycle():
             if annealing_cycle_active:
                 annealing_controller.end_cycle()
-                self.set_temperature(max(annealing_controller.temperature, 1e-6))
+                if annealing_controller.should_correct():
+                    self.set_temperature(annealing_controller.temperature)
+                else:
+                    self.set_temperature(ChelationConfig.DEFAULT_TEMPERATURE)
                 self.logger.log_event(
                     "annealing_cycle_completed",
                     "Annealing cycle completed",
                     temperature=float(annealing_controller.temperature),
+                    engine_temperature=float(getattr(self, "_temperature", ChelationConfig.DEFAULT_TEMPERATURE)),
                 )
 
         if annealing_controller is not None:

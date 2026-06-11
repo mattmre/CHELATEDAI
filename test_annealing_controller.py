@@ -126,6 +126,21 @@ class TestAnnealingEngineIntegration(unittest.TestCase):
             noise_injection=None,
         )
 
+    def test_engine_temperature_returns_to_default_when_annealing_cools_to_zero(self):
+        engine = self._make_engine()
+        engine.ingest(["doc a", "doc b", "doc c", "doc d"])
+        controller = engine.enable_annealing_controller(
+            initial_temperature=2e-6,
+            cooling_rate=0.5,
+            trigger_threshold=0.2,
+        )
+
+        engine.run_sedimentation_cycle(threshold=1, learning_rate=0.2, epochs=5)
+
+        self.assertEqual(controller.temperature, 0.0)
+        self.assertFalse(controller.should_correct())
+        self.assertEqual(engine._temperature, 1.0)
+
     def test_computed_drift_uses_existing_structural_signals(self):
         engine = self._make_engine()
         engine.enable_annealing_controller(trigger_threshold=0.2)
