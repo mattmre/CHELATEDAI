@@ -821,6 +821,61 @@ class AntigravityEngine:
             temperature=temperature
         )
 
+    def enable_annealing_controller(self, **kwargs):
+        """Enable drift-triggered annealing for sedimentation cycles."""
+        from annealing_controller import AnnealingController
+        self._annealing_controller = AnnealingController(**kwargs)
+        self._last_annealing_settings = None
+        self.logger.log_event(
+            "annealing_controller_enabled",
+            "Annealing controller enabled",
+            initial_temperature=self._annealing_controller.temperature,
+            cooling_rate=self._annealing_controller.cooling_rate,
+            trigger_threshold=self._annealing_controller.trigger_threshold,
+            max_temperature=self._annealing_controller.max_temperature,
+        )
+        return self._annealing_controller
+
+    def observe_annealing_drift(self, drift_magnitude=None):
+        """Observe a drift signal and update the annealing controller."""
+        controller = getattr(self, "_annealing_controller", None)
+        if controller is None:
+            raise RuntimeError("Annealing controller is not enabled")
+        if drift_magnitude is None:
+            drift_magnitude = self._compute_annealing_drift_magnitude()
+        controller.observe_drift(float(drift_magnitude))
+        if controller.should_correct():
+            self.set_temperature(max(controller.temperature, 1e-6))
+        observation = {
+            "drift_magnitude": float(drift_magnitude),
+            "temperature": float(controller.temperature),
+            "should_correct": bool(controller.should_correct()),
+        }
+        self.logger.log_event("annealing_drift_observed", "Annealing drift observed", **observation)
+        return observation
+
+    def _compute_annealing_drift_magnitude(self):
+        """Extract a simple scalar drift signal from existing structural reports."""
+        signals = []
+        stability_tracker = getattr(self, "_stability_tracker", None)
+        if stability_tracker is not None:
+            stability_report = stability_tracker.get_stability_report()
+            signals.append(float(stability_report.get("persistent_collapse_ratio", 0.0)))
+            signals.append(float(stability_report.get("threshold_oscillation", 0.0)))
+
+        isomer_detector = getattr(self, "_isomer_detector", None)
+        if isomer_detector is not None:
+            isomer_report = isomer_detector.get_isomer_report()
+            signals.append(float(isomer_report.get("cumulative_mean_strength", 0.0)))
+
+        diagnostics = getattr(self, "_last_runtime_diagnostics", None)
+        if isinstance(diagnostics, dict):
+            runtime = diagnostics.get("runtime", {})
+            if runtime.get("global_variance") is not None:
+                signals.append(float(runtime["global_variance"]))
+
+        return max(signals) if signals else 0.0
+
     # ===== Static Dimension Masking =====
 
     def set_static_dimension_mask(self, mask):
@@ -1617,6 +1672,48 @@ class AntigravityEngine:
            OR align with teacher embeddings (offline) OR blend both (hybrid).
         3. Persists the improved model weights.
         """
+        annealing_controller = getattr(self, "_annealing_controller", None)
+        annealing_cycle_active = False
+        def _finish_annealing_cycle():
+            if annealing_cycle_active:
+                annealing_controller.end_cycle()
+                if annealing_controller.should_correct():
+                    self.set_temperature(annealing_controller.temperature)
+                else:
+                    self.set_temperature(ChelationConfig.DEFAULT_TEMPERATURE)
+                self.logger.log_event(
+                    "annealing_cycle_completed",
+                    "Annealing cycle completed",
+                    temperature=float(annealing_controller.temperature),
+                    engine_temperature=float(getattr(self, "_temperature", ChelationConfig.DEFAULT_TEMPERATURE)),
+                )
+
+        if annealing_controller is not None:
+            if not annealing_controller.should_correct():
+                self.observe_annealing_drift()
+            if annealing_controller.should_correct():
+                settings = annealing_controller.cycle_settings()
+                annealing_cycle_active = True
+                original_learning_rate = learning_rate
+                original_epochs = epochs
+                learning_rate = learning_rate * settings["learning_rate_scale"]
+                epochs = settings["epochs"]
+                self.set_temperature(max(annealing_controller.temperature, 1e-6))
+                self._last_annealing_settings = {
+                    "temperature": float(annealing_controller.temperature),
+                    "learning_rate_scale": float(settings["learning_rate_scale"]),
+                    "online_intensity": float(settings["online_intensity"]),
+                    "original_learning_rate": float(original_learning_rate),
+                    "effective_learning_rate": float(learning_rate),
+                    "original_epochs": int(original_epochs),
+                    "effective_epochs": int(epochs),
+                }
+                self.logger.log_event(
+                    "annealing_cycle_settings_applied",
+                    "Applied annealing settings to sedimentation cycle",
+                    **self._last_annealing_settings,
+                )
+
         self.logger.log_event(
             "sedimentation_start",
             f"Running sedimentation cycle (Mode={self.training_mode}, Threshold={threshold}, LR={learning_rate})",
@@ -1631,6 +1728,7 @@ class AntigravityEngine:
         if epochs == 0:
             self.logger.log_event("training_skipped", "Epochs=0, skipping training cycle")
             self.chelation_log.clear()  # Still clear the log even if no training
+            _finish_annealing_cycle()
             return
 
         # Filter for frequent collapsers
@@ -1644,6 +1742,7 @@ class AntigravityEngine:
 
         if not targets:
             self.logger.log_event("training_skipped", "Brain is stable. No sedimentation needed")
+            _finish_annealing_cycle()
             return
 
         # Guard: offline mode requires a teacher_helper. Without one, target_array would be
@@ -1658,6 +1757,7 @@ class AntigravityEngine:
                 "during engine initialization.",
                 training_mode=self.training_mode,
             )
+            _finish_annealing_cycle()
             return
 
         # --- PREPARE TRAINING DATA ---
@@ -1723,6 +1823,7 @@ class AntigravityEngine:
                     training_targets.append(homeostatic_target)  # Will be blended later
 
         if not training_inputs:
+            _finish_annealing_cycle()
             return
 
         # Convert to numpy arrays
@@ -1983,6 +2084,7 @@ class AntigravityEngine:
 
         self.logger.log_training_complete(final_loss=final_loss, vectors_updated=total_updates, vectors_failed=failed_updates)
         self.chelation_log.clear()
+        _finish_annealing_cycle()
 
     def run_offline_distillation(self, batch_size: int = 100, learning_rate: float = None, epochs: int = None):
         """
