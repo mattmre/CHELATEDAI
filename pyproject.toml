@@ -48,6 +48,7 @@ dev = ["ruff>=0.4", "httpx>=0.27"]
 [tool.setuptools]
 py-modules = [
     "aep_orchestrator",
+    "annealing_controller",
     "antigravity_engine",
     "adapter_router",
     "audit_evidence_index_freshness",
