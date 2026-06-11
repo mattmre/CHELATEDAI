@@ -71,6 +71,7 @@ py-modules = [
     "dimension_mask_predictor",
     "device_profiles",
     "distributed_fitness_evaluator",
+    "drift_injector",
     "embedding_backend",
     "embedding_quality",
     "evaluator_fabric",
