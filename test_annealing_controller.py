@@ -36,6 +36,9 @@ class TestAnnealingController(unittest.TestCase):
         controller.observe_drift(0.19)
         self.assertFalse(controller.should_correct())
 
+        controller.observe_drift(0.2)
+        self.assertFalse(controller.should_correct())
+
         controller.observe_drift(0.4)
         self.assertTrue(controller.should_correct())
         self.assertAlmostEqual(controller.temperature, 0.4)
@@ -112,6 +115,7 @@ class TestAnnealingEngineIntegration(unittest.TestCase):
         self.assertEqual(settings["effective_epochs"], 3)
         self.assertAlmostEqual(settings["effective_learning_rate"], 0.2)
         self.assertAlmostEqual(engine._annealing_controller.temperature, 0.7)
+        self.assertAlmostEqual(engine._temperature, 0.7)
         engine.logger.log_event.assert_any_call(
             "sedimentation_start",
             "Running sedimentation cycle (Mode=baseline, Threshold=1, LR=0.2)",

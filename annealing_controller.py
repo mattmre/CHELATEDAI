@@ -33,7 +33,7 @@ class AnnealingController:
         magnitude = float(drift_magnitude)
         if magnitude < 0.0:
             raise ValueError("drift_magnitude must be >= 0")
-        if magnitude < self.trigger_threshold:
+        if magnitude <= self.trigger_threshold:
             return
         self.temperature = max(self.temperature, min(self.max_temperature, magnitude))
 

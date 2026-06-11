@@ -1677,6 +1677,7 @@ class AntigravityEngine:
         def _finish_annealing_cycle():
             if annealing_cycle_active:
                 annealing_controller.end_cycle()
+                self.set_temperature(max(annealing_controller.temperature, 1e-6))
                 self.logger.log_event(
                     "annealing_cycle_completed",
                     "Annealing cycle completed",
