@@ -1,0 +1,21 @@
+{
+  "turn": 3171,
+  "completed": {
+    "cd05_inference_evidence": "2026-06-03T00:12:47.617725+00:00",
+    "cd05_prod_evidence": "2026-06-03T00:13:17.871712+00:00",
+    "cd05_tts_intercept": "2026-06-03T00:13:18.529906+00:00",
+    "verify_shim_development": "2026-06-03T00:13:38.570939+00:00",
+    "shim_unit_tests": "2026-06-03T00:13:52.443112+00:00",
+    "promote_shim_primitives": "2026-06-03T14:00:12.660975+00:00",
+    "cd01_promoted_sip_apply": "2026-06-03T15:41:55.269613+00:00",
+    "five_worker_shim_gate": "2026-06-03T15:42:01.718819+00:00",
+    "cd01_engine_embed_sip": "2026-06-03T21:05:30.521590+00:00",
+    "cd01_insert_once_tests": "2026-06-03T21:05:31.055628+00:00",
+    "core_smoke_gate": "2026-06-05T01:31:23.659910+00:00",
+    "core_ceiling_unittest": "2026-06-05T01:31:38.291623+00:00",
+    "core_sedimentation_tests": "2026-06-05T01:31:49.231959+00:00",
+    "cd01_promoted_sip_probe": "2026-06-05T19:51:15.722140+00:00"
+  },
+  "last_report_path": "/home/mattmre/CHELATEDAI/artifacts/phase_loop/reports/turn_3171_20260605_200636.json",
+  "started_at": "2026-06-03T00:12:41.562869+00:00"
+}

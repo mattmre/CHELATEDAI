@@ -1,5 +1,6 @@
 import json
 import unittest
+import os
 from unittest.mock import MagicMock
 
 from fitness_interfaces import FitnessEvaluation
@@ -154,6 +155,61 @@ class TestSelfHealingChelationPlanner(unittest.TestCase):
             SelfHealingChelationConfig(min_structural_health=-0.1)
 
 
+class TestSelfHealingPlannerResearch(unittest.TestCase):
+    def tearDown(self) -> None:
+        os.environ.pop("CHELATED_SHIM_RESEARCH", None)
+        os.environ.pop("CHELATED_SHIM_PROMOTED", None)
+
+    def test_research_meta_emits_on_plan_build(self) -> None:
+        os.environ["CHELATED_SHIM_RESEARCH"] = "1"
+        planner = SelfHealingChelationPlanner(
+            logger=MagicMock(),
+        )
+        plan = planner.build_update_plan(
+            context="retain retrieval facts",
+            diagnostics={"structural_health": {"score": 0.52}},
+            fitness=lambda directive: 1.0,
+        )
+
+        meta = planner.get_last_research_shim_meta()
+        self.assertIsNotNone(meta)
+        self.assertEqual(meta.get("sip_seam"), "SelfHealingChelationPlanner.build_update_plan")
+        self.assertTrue(meta.get("research_shim_guard"))
+        self.assertIn("research_shim_meta", plan)
+
+    def test_research_meta_absent_by_default(self) -> None:
+        planner = SelfHealingChelationPlanner(logger=MagicMock())
+        plan = planner.build_update_plan(
+            context="test context",
+            diagnostics={"structural_health": {"score": 0.8}},
+            fitness=lambda directive: 0.5,
+        )
+
+        meta = planner.get_last_research_shim_meta()
+        self.assertIsNone(meta)
+        self.assertIn("research_shim_meta", plan)
+        self.assertIsNone(plan.get("research_shim_meta"))
+
+    def test_research_meta_includes_promoted_sip_apply_when_promoted_enabled(self) -> None:
+        os.environ["CHELATED_SHIM_RESEARCH"] = "1"
+        os.environ["CHELATED_SHIM_PROMOTED"] = "1"
+        planner = SelfHealingChelationPlanner(
+            logger=MagicMock(),
+        )
+        plan = planner.build_update_plan(
+            context="retain retrieval facts",
+            diagnostics={"structural_health": {"score": 0.52}},
+            fitness=lambda directive: 1.0,
+        )
+
+        meta = planner.get_last_research_shim_meta()
+        self.assertIsNotNone(meta)
+        self.assertIn("promoted_sip_apply", meta)
+        self.assertIsInstance(meta["promoted_sip_apply"], dict)
+        self.assertEqual(meta.get("sip_seam"), "SelfHealingChelationPlanner.build_update_plan")
+        self.assertEqual(plan["research_shim_meta"], meta)
+
+
 class TestSelfEditDirectiveOPSDIntegrator(unittest.TestCase):
     """Loop 1 tests for Agent 6 OPSD integration scaffold (SelfEditDirective -> on-policy distillation data).
 
@@ -239,4 +295,3 @@ class TestSelfEditDirectiveOPSDIntegrator(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

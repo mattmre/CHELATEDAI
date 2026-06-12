@@ -236,7 +236,13 @@ def _reformulate_query(query_text: str, reformulator: QueryReformulator) -> str:
             if variant.strategy == "stopword_removed":
                 return variant.text
         return query_text
-    except Exception:
+    except Exception as exc:
+        _LOGGER.log_event(
+            "phase_c_reformulate_query_fallback",
+            "Query reformulation failed; using original query",
+            level="DEBUG",
+            exception_type=type(exc).__name__,
+        )
         return query_text
 
 
@@ -430,8 +436,13 @@ def evaluate_phase_c_candidate(
                     q_embs = np.array(engine.embed(effective_queries_list), dtype=float)
                     if q_embs.ndim == 2 and len(q_embs) > 0:
                         embedding_centroid = np.mean(q_embs, axis=0).tolist()
-                except Exception:
-                    pass
+                except Exception as exc:
+                    _LOGGER.log_event(
+                        "phase_c_embedding_centroid_skipped",
+                        "Could not compute embedding centroid for phase-c row",
+                        level="DEBUG",
+                        exception_type=type(exc).__name__,
+                    )
         finally:
             if hasattr(engine, "close"):
                 engine.close()

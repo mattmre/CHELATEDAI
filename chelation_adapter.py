@@ -1,11 +1,63 @@
 from __future__ import annotations
 
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
 import os
 from pathlib import Path
 from config import validate_safe_path
+
+try:
+    import torch
+    import torch.nn as nn
+    import torch.nn.functional as F
+except Exception as exc:  # pragma: no cover - dependency optional for non-training environments
+    _TORCH_IMPORT_ERROR = exc
+
+    class _TorchUnavailableError(ImportError):
+        """Raised when torch-backed adapters are used without torch installed."""
+
+    def _raise_torch_unavailable():
+        raise _TorchUnavailableError(
+            "torch is required for chelation adapter operations; install torch for "
+            "training and inference with production adapters."
+        ) from _TORCH_IMPORT_ERROR
+
+    def _missing_fn(*_args, **_kwargs):
+        _raise_torch_unavailable()
+
+    class _MissingTorchBase:
+        def __init__(self, *args, **kwargs):
+            _raise_torch_unavailable()
+
+    class _MissingTorchFunctional:
+        normalize = staticmethod(_missing_fn)
+        softmax = staticmethod(_missing_fn)
+
+    def _missing_nn_init(_obj: str, *args, **kwargs):  # pragma: no cover
+        _raise_torch_unavailable()
+
+    class _MissingTorchNNNamespace:
+        Module = _MissingTorchBase
+        Linear = _MissingTorchBase
+        ReLU = _MissingTorchBase
+        Sequential = _MissingTorchBase
+        ModuleList = _MissingTorchBase
+        init = _missing_nn_init
+
+        class Parameter(_MissingTorchBase):
+            pass
+
+    class _TorchFallback:
+        nn = _MissingTorchNNNamespace()
+        nn.functional = _MissingTorchFunctional
+
+        def __getattr__(self, _name):
+            _raise_torch_unavailable()
+
+        def __call__(self, *args, **kwargs):
+            _raise_torch_unavailable()
+
+    torch = _TorchFallback()
+    nn = _MissingTorchNNNamespace()
+    F = _MissingTorchFunctional()
 
 class ChelationAdapter(nn.Module):
     """

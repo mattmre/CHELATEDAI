@@ -1,0 +1,21 @@
+{
+  "timestamp": "2026-06-04T01:06:36.392122+00:00",
+  "env": {
+    "CHELATED_SHIM_RESEARCH": "1"
+  },
+  "seam": "VectorSteerer.steer",
+  "runs": [
+    {
+      "stall_count": 1,
+      "was_steered": false,
+      "guard": true
+    },
+    {
+      "stall_count": 2,
+      "was_steered": false,
+      "guard": true
+    }
+  ],
+  "vector_unchanged": true,
+  "block_flag_note": "Run scripts/check_block_flag.py separately; this script does not flip BLOCKED."
+}

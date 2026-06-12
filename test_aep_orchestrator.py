@@ -165,6 +165,7 @@ class TestFinding(unittest.TestCase):
             status=FindingStatus.IN_PROGRESS,
             metadata={"custom": "data"},
         )
+        f.bhs_metadata.update({"synthesis_score": 87, "remediation_score": 92})
         
         result = f.to_dict()
         
@@ -183,6 +184,14 @@ class TestFinding(unittest.TestCase):
         self.assertEqual(result["status"], "IN_PROGRESS")  # Enum value as string
         self.assertEqual(result["owning_agent"], "")
         self.assertIn("metadata", result)
+        self.assertIn("bhs_metadata", result)
+        self.assertEqual(result["bhs_metadata"]["synthesis_score"], 87)
+        self.assertEqual(result["bhs_metadata"]["remediation_score"], 92)
+
+    def test_finding_bhs_metadata_default_empty(self):
+        """Each Finding starts with an explicit bhs_metadata dict."""
+        f = make_finding(finding_id="DICT-META")
+        self.assertEqual(f.bhs_metadata, {})
 
 
 class TestAEPTracker(unittest.TestCase):
@@ -420,6 +429,9 @@ class TestAEPOrchestrator(unittest.TestCase):
 
     def setUp(self):
         self.orchestrator = AEPOrchestrator()
+        # Keep unit tests deterministic and focused on orchestrator mechanics.
+        # BHS integration is validated in dedicated gating tests below.
+        self.orchestrator.bhs_enabled = False
 
     def test_scope_lock(self):
         """scope_lock returns a ScopeLock with a generated cycle_id."""
@@ -1006,6 +1018,61 @@ class TestAEPOrchestrator(unittest.TestCase):
         ]
         self.assertEqual(len(custom_verifications), 2)
 
+    def test_run_full_cycle_blocks_bhs_low_quality_remediation(self):
+        """BHS remediation gate blocks findings that score below severity threshold."""
+        self.orchestrator.bhs_enabled = True
+        self.orchestrator.bhs_min_score_by_severity = {
+            Severity.CRITICAL: 100,
+            Severity.HIGH: 100,
+            Severity.MEDIUM: 100,
+            Severity.LOW: 100,
+        }
+
+        raw = [
+            {
+                "title": "Critical bug",
+                "severity": "CRITICAL",
+                "impact": "x",
+                "recommended_fix": "x",
+                "effort": "S",
+            },
+        ]
+
+        summary = self.orchestrator.run_full_cycle(
+            raw_findings=raw,
+            pr_range="PR#500",
+            pr_number=500,
+        )
+
+        self.assertEqual(summary["by_status"]["BLOCKED"], 1)
+
+    def test_run_full_cycle_bhs_gate_allows_good_score_findings(self):
+        """BHS remediation gate allows findings with score above threshold."""
+        self.orchestrator.bhs_enabled = True
+
+        raw = [
+            {
+                "title": "Security validation fix",
+                "severity": "CRITICAL",
+                "impact": (
+                    "Missing authorization check in auth.py:123 lets untrusted users read "
+                    "restricted profiles and exposes sensitive profile fields."
+                ),
+                "recommended_fix": (
+                    "Add explicit authorization guard in auth.py:127 and add regression tests in "
+                    "tests/unit_authz.py to cover unauthorized access."
+                ),
+                "effort": "M",
+            },
+        ]
+
+        summary = self.orchestrator.run_full_cycle(
+            raw_findings=raw,
+            pr_range="PR#501",
+            pr_number=501,
+        )
+
+        self.assertEqual(summary["by_status"]["VERIFIED"], 1)
     # =============================================================================
     # F-022: Callback Safety Controls
     # =============================================================================
@@ -1165,6 +1232,19 @@ class TestAEPOrchestrator(unittest.TestCase):
         event_calls = [str(call) for call in _mock_logger.log_event.call_args_list]
         warning_logged = any("verify_warning" in str(call) and "VER-WARN-001" in str(call) for call in event_calls)
         self.assertTrue(warning_logged, "Expected warning for non-VerificationResult return")
+
+    def test_bhs_scoring_exception_is_tolerated(self):
+        """AEP orchestrator keeps working when BHS scoring raises an exception."""
+        self.orchestrator.bhs_enabled = True
+        finding = make_finding(finding_id="BHS-EXC-001", severity=Severity.HIGH)
+        self.orchestrator.tracker.add_finding(finding)
+
+        with patch("aep_orchestrator.validate_pr_brutal_honesty", side_effect=RuntimeError("validator fail")):
+            result = self.orchestrator._score_finding_with_bhs(finding, "synthesis")
+
+        self.assertIsNone(result)
+        self.assertIn("synthesis_error", finding.bhs_metadata)
+        self.assertIn("validator fail", finding.bhs_metadata["synthesis_error"])
 
 
 if __name__ == "__main__":

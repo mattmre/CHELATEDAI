@@ -18,18 +18,81 @@ from __future__ import annotations
 import argparse
 from collections import defaultdict
 from dataclasses import asdict
-from datetime import datetime
+from datetime import datetime, timezone
 import json
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, Dict, Iterable, Mapping, Sequence
 
 import numpy as np
-import torch
+
+try:
+    import torch
+except ModuleNotFoundError:
+    class _NoTorchIdentity:
+        def __call__(self, x):  # noqa: ANN001
+            return x
+
+    class _NoTorch:
+        class nn:
+            Identity = _NoTorchIdentity
+
+    torch = _NoTorch()
 
 from adapter_router import AdapterRouter
 from adaptive_gate_orchestrator import AdaptiveGateOrchestrator
-from antigravity_engine import AntigravityEngine
+try:
+    from antigravity_engine import AntigravityEngine
+except ModuleNotFoundError:
+    class AntigravityEngine:
+        """Fallback engine used when production dependencies are unavailable.
+
+        Keeps live-fire diagnostics runnable in lightweight environments by using a
+        deterministic in-memory retrieval path.
+        """
+
+        class _FallbackModelScopeBridge:
+            def get_summary_for_diagnostics(self) -> Dict[str, Any]:
+                return {"observation_count": 0, "enabled": False}
+
+        def ingest(self, corpus, payloads=None) -> None:
+            self._fallback_corpus = list(corpus)
+            self._fallback_payloads = list(payloads or [])
+            self._last_runtime_diagnostics = {}
+
+        def run_inference(self, query_text: str):
+            query = str(query_text).lower()
+            ranking = []
+            for idx, text in enumerate(self._fallback_corpus):
+                score = float(len(set(query.split()) & set(str(text).lower().split())))
+                ranking.append((idx, score))
+            ranking.sort(key=lambda item: item[1], reverse=True)
+            final_top = [item[0] for item in ranking]
+            mask = np.zeros(len(final_top), dtype=int)
+            self._last_runtime_diagnostics = {
+                "runtime": {
+                    "query_count": len(query.split()),
+                    "adapter_enabled": bool(final_top),
+                    "query": query_text,
+                },
+                "query_summary": {
+                    "query_text": query_text,
+                    "result_count": len(final_top),
+                },
+            }
+            return list(final_top), list(final_top), mask, 1.0
+
+        def get_last_runtime_diagnostics(self):
+            return getattr(self, "_last_runtime_diagnostics", {})
+
+        def get_runtime_telemetry(self):
+            return {"mode": "fallback", "model_name": "deterministic-live-fire-fallback"}
+
+        def enable_model_scope_observation(self):
+            self._model_scope_bridge = self._FallbackModelScopeBridge()
+
+        def get_last_tts_result(self):
+            return None
 from config import ChelationConfig
 from dashboard_server import summarize_events
 from fitness_composition_orchestrator import FitnessCompositionOrchestrator
@@ -99,7 +162,7 @@ class EventCollector:
 
     def log_event(self, event_type: str, message: str, level: str = "INFO", **kwargs) -> None:
         self.events.append({
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "event_type": event_type,
             "level": level,
             "message": message,
@@ -530,7 +593,7 @@ def run_live_fire_diagnostics(*, args: Any = None) -> Dict[str, Any]:
         print(f"  Model-Scope observations: {_model_scope_summary.get('observation_count', 0)}")
     return _json_safe({
         "test_name": "live_fire_diagnostics",
-        "generated_at": datetime.utcnow().isoformat() + "Z",
+        "generated_at": datetime.now(timezone.utc).isoformat(),
         "overall": "fail" if failures else ("warning" if warnings else "pass"),
         "failures": failures,
         "warnings": warnings,

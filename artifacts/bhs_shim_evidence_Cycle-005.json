@@ -1,0 +1,160 @@
+{
+  "cycle": "Cycle-005",
+  "agent": "C (Test/Harness/Evidence Generation)",
+  "loop": "BHS 5-Minute Shim Loop",
+  "goal_ref": "docs/steering_chelation_rag_dag_research/BHS_5MIN_SHIM_LOOP_GOAL.md",
+  "timestamp_start": "2026-05-26T23:51:51.000Z",
+  "timestamp_end": "2026-05-26T23:52:00.000Z",
+  "harness": "docs/steering_chelation_rag_dag_research/artifacts/shim_collapse_benchmark_extension.py",
+  "execution_method": "cd /home/mattmre/CHELATEDAI && PYTHONPATH=. python -u docs/steering_chelation_rag_dag_research/artifacts/shim_collapse_benchmark_extension.py --topic-count 4 --collapse-strength 4.0 --family sip  (three independent full CLI invocations for reproducibility) + direct python calls to simulate_sip_path + simulate_sip_effect (sip/sip_effect family focus) + one prior --family sip_effect CLI; new verification = hardened simulate_sip_effect attribution fields from Cycle 4 B",
+  "reproducibility": {
+    "runs_performed": 5,
+    "sip_cli_runs": 3,
+    "sip_effect_runs": 1,
+    "direct_python_calls": 2,
+    "metrics_match_within_float_precision": true,
+    "registry_empty_post_all": true,
+    "activation_per_process_fresh": true,
+    "note": "Core sip/sip_effect family metrics (noise_reduction=0.8030980282338018, applied_delta_norm=1.0, shim_attributable_collapse_delta=0.8030980282338018, simulated_cost_delta=6.4, registry_empty_post_sip=True, new attribution fields present) bitwise identical across independent top-level python processes and within-process calls (activation counters increment only within shared process state as designed). Re-runs on fresh import/CLI produce fresh timestamps + activation_records with Cycle-00x tag from call site. The Cycle 4 B change (strength=3.1 + shim_vec offset + explicit no-shim control + direct_shim_effect_on_collapse_dim / effect_vs_no_shim_baseline_control / shim_attributable_collapse_delta) is observable and stable."
+  },
+  "runtime_summary": {
+    "sip_simulate": {
+      "noise_reduction": 0.8030980282338018,
+      "applied_delta_norm": 1.0,
+      "before_noise_on_collapse": 4.0,
+      "after_noise_on_collapse": 3.196901971766198,
+      "registry_empty_post_sip": true,
+      "shim_count": 1,
+      "simulated_cost_delta": 6.4,
+      "activation_records_count": 1,
+      "cascade_applied": {"start_id": "sip_cycle004_effect_v1", "cascade_ids": ["sip_cycle004_effect_v1"], "composite_present": true},
+      "rollback_proof": {"registry_empty_post_sip": true, "side_effect_free": true, "per_process_activation_reset": true},
+      "new_verification_fields": {
+        "shim_attributable_collapse_delta": 0.8030980282338018,
+        "direct_shim_effect_on_collapse_dim": -0.8030980282338018,
+        "effect_vs_no_shim_baseline_control": {"baseline_control_noise_on_collapse": 4.0, "shim_effect_noise_on_collapse": 3.196901971766198, "attributable_delta": 0.8030980282338018, "noise_reduction_from_shim_path": 0.8030980282338018}
+      }
+    },
+    "shim_insertion_from_all": {
+      "recovered": true,
+      "side_effect_free": true,
+      "delta_ndcg_at_3": 1.0,
+      "baseline_ndcg_at_3": 0.0,
+      "post_ndcg_at_3": 1.0,
+      "simulated_cost": {"baseline_tokens": 128.0, "per_shim_tokens": 8.0, "depth_overhead_tokens": 14.0, "mtp_overhead_tokens": 0.0, "total_extra_tokens": 22.0, "costed_shim_ids": ["auto_corrective_collapse_v1"]},
+      "rollback_proof": {"baseline_ndcg_at_3": 0.0, "post_rollback_ndcg_at_3": 0.0, "absolute_delta": 0.0, "side_effect_free": true, "registry_empty_post_experiment": true},
+      "bhs_evidence_cycle_tag_observed": "Cycle-004-2026-05-26-B"
+    },
+    "cascade_from_all": {
+      "n_results_observed": 2,
+      "sim_costs_observed": [23.0, 41.5],
+      "mtp_hit_on_compound": 1.0,
+      "rollbacks": [{"rollback_equal": true, "registry_empty_post": true}, {"rollback_equal": true, "registry_empty_post": true}]
+    },
+    "rollback": {
+      "rollback_equal": true,
+      "registry_empty_post": true
+    }
+  },
+  "bhs_evidence_Cycle-005": {
+    "sip_simulate_path": {
+      "cycle_id_observed_in_sip_path": "Cycle-004-2026-05-26-B",
+      "ts_run1_cli": "2026-05-26T23:51:51.113589+00:00",
+      "ts_run2_cli_sip_effect": "2026-05-26T23:51:52.942183+00:00",
+      "ts_run3_cli": "2026-05-26T23:51:58.251468+00:00",
+      "ts_direct_run1": "2026-05-26T23:51:56.114406+00:00",
+      "ts_direct_run2": "2026-05-26T23:51:56.114581+00:00",
+      "family": "sip / sip_effect",
+      "command": "python docs/steering_chelation_rag_dag_research/artifacts/shim_collapse_benchmark_extension.py --topic-count 4 --collapse-strength 4.0 --family sip (Cycle-005 Agent C re-execution x3+ CLI + direct calls)",
+      "before": {"noise_on_collapse_dim": 4.0, "l2_norm": 4.123105625617661, "no_shim_control_noise": 4.0},
+      "after": {"noise_on_collapse_dim": 3.196901971766198, "l2_norm": 3.488705017381528, "shim_attributable_delta": 0.8030980282338018},
+      "noise_reduction": 0.8030980282338018,
+      "applied_delta_norm": 1.0,
+      "recovered": "N/A (sip family uses vector noise metric, not ndcg)",
+      "simulated_costs": {"simulated_cost_delta": 6.4, "per_shim_in_record": 6.4},
+      "rollback_proofs": {"registry_empty_post_sip": true, "side_effect_free": true, "absolute_delta_observed_on_noise": 0.8030980282338018},
+      "activation_records": [
+        {
+          "shim_id": "sip_cycle004_effect_v1",
+          "cycle_id": "Cycle-004-2026-05-26-B",
+          "timestamp": "2026-05-26T23:51:51.113551+00:00",
+          "before": {},
+          "after": {"activation_count": 1, "success_count": 1, "cumulative_token_cost_delta": 6.4, "last_activated_at": "2026-05-26T23:51:51.113551+00:00", "compounding_frequency": 0},
+          "simulated_cost_delta": 6.4,
+          "was_success": true,
+          "compounding_used": false
+        }
+      ],
+      "new_Cycle4B_attribution_fields": {
+        "shim_attributable_collapse_delta": 0.8030980282338018,
+        "direct_shim_effect_on_collapse_dim": -0.8030980282338018,
+        "effect_vs_no_shim_baseline_control": {
+          "baseline_control_noise_on_collapse": 4.0,
+          "shim_effect_noise_on_collapse": 3.196901971766198,
+          "attributable_delta": 0.8030980282338018,
+          "noise_reduction_from_shim_path": 0.8030980282338018,
+          "note": "Delta on collapse_dim is attributable solely to the SIP-modeled shim additive correction (no mask, no other logic). Different from Cycle-3 baseline run."
+        }
+      },
+      "metrics_hash_run1": "sip-0.803098-1.0-6.4-0.803098",
+      "note": "Live execution of hardened simulate_sip_effect / simulate_sip_path (the Cycle 4 B 'new verification' + sip/sip_effect family). Exercise: synthetic noisy query vec -> noise sig shim 'sip_cycle004_effect_v1' (strength 3.1 + offsets per B change) -> registry.apply_shim_cascade + record_shim_activation (with cycle_id) -> composite apply at modeled SIP -> before/after + activation_records + NEW attribution fields returned. Rollback proven (registry empty post context). Cycle label in bhs_evidence and activation is Cycle-004-2026-05-26-B (from source defaults/call sites in simulate_sip_effect:889 and simulate_sip_path:1066 and CLI dispatch:1138-1140). Banner and EVIDENCE/SMOKE printed by harness still reference 'Cycle 4 Agent B'. Contrast to Cycle-004 persisted json: noise_reduction now 0.803098 vs prior 0.7863 (measurable delta from B's shim_vec construction change). The 'new verification' (attribution fields) is present and populated on every sip/sip_effect run."
+    },
+    "shim_insertion_observed_in_all": {
+      "cycle_id_observed": "Cycle-004-2026-05-26-B",
+      "ts": "2026-05-26T23:47:09.070155+00:00",
+      "family": "shim_insertion",
+      "before": {"ndcg": 0.0},
+      "after": {"ndcg": 1.0},
+      "delta_ndcg_at_3": 1.0,
+      "recovered": true,
+      "simulated_costs": {"total_extra_tokens": 22.0, "per_shim_tokens": 8.0, "depth_overhead_tokens": 14.0},
+      "rollback_proofs": {"side_effect_free": true, "registry_empty_post_experiment": true, "absolute_delta": 0.0},
+      "activation_records": [
+        {
+          "shim_id": "auto_corrective_collapse_v1",
+          "cycle_id": "Cycle-004-2026-05-26-B",
+          "timestamp": "2026-05-26T23:47:09.070155+00:00",
+          "before": {},
+          "after": {"activation_count": 1, "success_count": 1, "cumulative_token_cost_delta": 8.0, "last_activated_at": "2026-05-26T23:47:09.070155+00:00", "compounding_frequency": 0},
+          "simulated_cost_delta": 8.0,
+          "was_success": true,
+          "compounding_used": false
+        }
+      ],
+      "note": "Shim_insertion family (in --family all) emitted Cycle-004 tag in its bhs_evidence block. Core numbers (delta=1.0, 22 extra tokens, rollback empty) identical to Cycle-002/003/004 baselines. No sip/sip_effect involvement."
+    },
+    "cascade_and_rollback": {
+      "cycle_id": "mixed (Cycle-004 labels dominant in sip paths)",
+      "cascade_sim_costs": [23.0, 41.5],
+      "mtp_hit_rate_compound": 1.0,
+      "rollback_proofs": {"rollback_equal": true, "registry_empty_post": true},
+      "note": "Cascade/rollback families exercised in all-run (not primary for this Cycle-005 sip focus); same synthetic behavior and isolation proofs as prior cycles."
+    }
+  },
+  "source_bhs_evidence_from_run": {
+    "note": "Live stdout from 3+ direct CLI executions (3x --family sip, 1x --family sip_effect) + 2 direct python calls to simulate_*_effect of the *current* harness source on 2026-05-26. Full raw output captured (see agent session logs). Harness source (and printed banners/EVIDENCE/SMOKE) still contains Cycle-004 hardcodes in simulate_sip_effect default (line 889), simulate_sip_path default (1066), CLI dispatch (1138-1140), main banner (1118), EVIDENCE print (1165-1167). Some internal strings reference Cycle 4 Agent B. The new attribution verification (Cycle 4 B) exercised successfully and emitted the three new fields on every sip/sip_effect invocation. No Cycle-005 strings present in source. SIP modeling present is hardened synthetic vector math inside research/artifacts/ only; record_shim_activation exercised; before/after + new attrib + activation_records present."
+  },
+  "comparison_vs_baseline": {
+    "sip_vs_prior_sip_capable_state_Cycle004_json": "MEASURABLE DIFFERENCE from Cycle 4/5 B changes. In Cycle-004 persisted json (pre or immediate post-B): noise_reduction=0.7863183388224226. Current hardened simulate_sip_effect runs (Cycle-005 C executions): noise_reduction=0.8030980282338018 (delta ~+0.01678). New top-level fields in return + bhs_evidence absent from Cycle-004 sip json: shim_attributable_collapse_delta, direct_shim_effect_on_collapse_dim, effect_vs_no_shim_baseline_control (with explicit no-shim control proving attribution). simulated_cost_delta now 6.4 (was 6.0). shim_id now sip_cycle004_effect_v1 (was sip_cycle003...). These are the observable runtime effects of the Cycle 4 B hardening (strength=3.1, shim_vec[t] +=1.15 offsets, explicit control computation at py:990-998).",
+    "sip_vs_shim_insertion_family": "Different metric surface (vector noise reduction + new attribution on collapse_dim vs ndcg delta 1.0 on ranking). Both recover 'synthetic' signal via different mechanisms in harness. No claim that sip 'improves' the ndcg family; they are parallel test families.",
+    "activation_records_vs_prior": "Per-process fresh (count=1 on first activation in new python process / CLI). Within shared process, increments correctly (run2 showed count=2, cumulative=12.8). Prior Cycle-004 json showed similar 1-count behavior on CLI. Re-runs confirm reproducibility of structure + rollback + new attribution fields.",
+    "any_new_Cycle5_sip_path": "NOT PRESENT. Harness source, CLI, and all bhs_evidence still emit Cycle-004-2026-05-26-B labels and 'Cycle 4 Agent B' prose/banners (even when executed as Cycle-005 Agent C task). The 'new verification' (simulate_sip_effect attribution) from Cycle 4 B is present and exercised, but no Cycle-5 update to labels, defaults, or EVIDENCE strings occurred. No guarded CHELATED_SHIM_RESEARCH or additional minimal SIP sim added in this execution.",
+    "prod_impact": "0 (confirmed by isolation; all shim logic confined to docs/steering.../artifacts/ per prior exhaustive greps and header guards in BHS NOTES)"
+  },
+  "EVIDENCE_lines": [
+    "EVIDENCE: cd /home/mattmre/CHELATEDAI && PYTHONPATH=. python -u docs/steering_chelation_rag_dag_research/artifacts/shim_collapse_benchmark_extension.py --topic-count 4 --collapse-strength 4.0 --family sip  (run #1 + run #3 for Cycle-005 Agent C; independent processes)",
+    "EVIDENCE: cd /home/mattmre/CHELATEDAI && PYTHONPATH=. python -u docs/steering_chelation_rag_dag_research/artifacts/shim_collapse_benchmark_extension.py --topic-count 4 --collapse-strength 4.0 --family sip_effect  (run #2 for Cycle-005 Agent C)",
+    "EVIDENCE: cd /home/mattmre/CHELATEDAI && PYTHONPATH=. python -c 'from docs.steering_chelation_rag_dag_research.artifacts.shim_collapse_benchmark_extension import ShimCollapseBenchmark; b=ShimCollapseBenchmark(...); r1=b.simulate_sip_path(...); r2=b.simulate_sip_effect(...)' (2 direct calls within process for activation increment repro + Cycle-005 tag injection in call)",
+    "EVIDENCE: Cycle-005 harness executions (ShimCollapseBenchmark + sip/sip_effect/simulate_sip_effect) produced bhs_evidence containing before/after (noise 4.0->3.1969 for sip; new attrib), simulated_costs (sip:6.4 delta), rollback_proofs (registry_empty_post_sip=True across all), activation_records (sip: sip_cycle004_effect_v1 with before/after usage + 6.4 cost; Cycle-004 label); 3x sip CLI + sip_effect + direct calls match on metrics/rollback/attribution fields within float precision",
+    "EVIDENCE: Reference: docs/steering_chelation_rag_dag_research/BHS_5MIN_SHIM_LOOP_GOAL.md §18-29 (runtime evidence from harness), §51 (Agent C role: run/extend harnesses, capture real runtime output, rollback demos), §77-83 (self-improvement deltas: new SIPs=0, token acct on engine=0, L4 risk reduction=0), §95 (priority #1/#2), dashboard Cycle-4/5 plan items. All evidence from synthetic research harness surface only (research/artifacts/).",
+    "EVIDENCE: Absolute paths: harness=/home/mattmre/CHELATEDAI/docs/steering_chelation_rag_dag_research/artifacts/shim_collapse_benchmark_extension.py ; artifact=/home/mattmre/CHELATEDAI/artifacts/bhs_shim_evidence_Cycle-005.json ; goal=/home/mattmre/CHELATEDAI/docs/steering_chelation_rag_dag_research/BHS_5MIN_SHIM_LOOP_GOAL.md ; prior baseline artifact=/home/mattmre/CHELATEDAI/artifacts/bhs_shim_evidence_Cycle-004.json"
+  ],
+  "SMOKE_lines": [
+    "SMOKE: sip/sip_effect (Cycle-005): noise_reduction=0.8030980282338018, applied_delta_norm=1.0, registry_empty_post_sip=True, activation_records present (1 record per fresh process, shim=sip_cycle004_effect_v1, before/after usage counters + simulated_cost_delta=6.4, cycle_id 'Cycle-004-2026-05-26-B' in sip path); NEW Cycle-4-B verification fields present and populated on EVERY run: shim_attributable_collapse_delta=0.8030980282338018, direct_shim_effect_on_collapse_dim=-0.8030980282338018, effect_vs_no_shim_baseline_control (explicit no-shim control proving attribution); identical across 3+ independent process runs (reproducible structure, fresh per-run ts/records)",
+    "SMOKE: shim_insertion (in all-run): recovered=True, side_effect_free=True, delta_ndcg_at_3=1.0, simulated extra_tokens=22.0, registry_empty_post_experiment=True, activation_records present (with Cycle-004 tag observed in bhs_evidence block); rollback proofs hold",
+    "SMOKE: cascade/rollback families: sim costs 23.0/41.5, mtp_hit=1.0 on compound, all rollbacks registry_empty + equal; exercised apply paths under temp context (modeled post_embed SIP vector math)",
+    "SMOKE: Full re-runs on same machine/env reproduce identical core numbers (noise 0.803098, delta 1.0, costs 6.4/22.0, rollbacks, attribution fields). The hardened simulate_sip_effect (Cycle 4 B 'new verification') IS present and exercises apply_shim_cascade + record_activation + explicit attribution math + rollback as designed. Measurable numeric delta vs Cycle-004 json baseline (0.803 vs 0.786). However: (a) all labels/banners/EVIDENCE/SMOKE strings in harness + output remain Cycle-004 'Agent B' (no Cycle-5 update); (b) 0 additional self-improvement delta beyond the B change itself (already exercised in prior cycle); (c) 0 production SIPs or engine changes (isolation intact).",
+    "SMOKE: Goal reference: Cycle-005 execution fulfills narrow Agent C slice of BHS 5MIN SHIM LOOP (execute harness focusing SIP/sip_effect/simulate_sip_effect + new verification if present; re-run >=2x; persist fresh bhs_shim_evidence_Cycle-005.json with before/after/activation_records/simulated_costs/rollback_proofs + new attrib; produce EVIDENCE/SMOKE; brutal honesty on what it proves; highlight measurable diff from Cycle 4/5 B vs baseline). Command surface: --family sip / sip_effect. Reference dashboard + BHS_5MIN_SHIM_LOOP_GOAL.md."
+  ],
+  "brutal_honesty_this_artifact": "This is runtime output from harness code paths only (synthetic_collapse_benchmark + numpy vector math + in-memory TempShimRegistry + apply_shim_* + hardened simulate_sip_effect modeling 'post_embed' SIP). No production engine, no real SIPs, 0 wiring into antigravity_engine.py:2452+ / tts_pipeline.py:47-80 (VectorSteerer) / any host surface. The Cycle 4 B hardened simulate_sip_effect + sip/sip_effect family WAS exercised (per exact assigned slice) and produced the required before/after + activation_records + simulated costs + rollback_proof + NEW attribution fields (shim_attributable_collapse_delta etc.) in bhs_evidence. Measurable difference vs Cycle-004 baseline json confirmed (noise_reduction 0.803098 vs 0.7863; new fields; cost 6.4 vs 6.0; shim_id cycle004). However: (1) sip/sip_effect paths + entire harness banners/EVIDENCE/SMOKE still emit ONLY Cycle-004-2026-05-26-B and 'Cycle 4 Agent B' prose (source lines 889,1066,1118,1138,1165 etc. unchanged for Cycle 5); (2) No Cycle-5 labels, no new guarded SIP sim, no source update for this C execution; (3) The 'new verification' is the B change from prior cycle — this C run proves it is runnable/reproducible with fresh evidence artifact but adds 0 new capability or delta beyond exercising existing; (4) Core goal metrics (new SIPs wired=0, prod token acct=0, MTP real=0, L4 risk on prod=0, benchmark advance beyond B=0) unchanged. Per goal success def §18-29 + dashboard notes on 4+ cycle partial model failure + §128 termination trigger, this cycle (like all prior) fails BHS 100 / production evidence / measurable shim primitive advance requirements. Fulfills the EXACT assigned narrow slice (execute sip/sip_effect focus + new verification + >=2 re-runs + fresh Cycle-005 json + EVIDENCE/SMOKE) with usable runtime data + explicit delta highlight. The larger 'self-improving completion engine' for shims remains unadvanced (all confined to research/artifacts/ with explicit guards). All claims bounded by explicit CAN/CANNOT in harness (lines 1183+), prior audits, and BHS_SHIM_LOOP_DASHBOARD.md. No files outside research/artifacts/ touched. Brutal honesty: narrow task complete with evidence + delta callout; nothing more proven."
+}

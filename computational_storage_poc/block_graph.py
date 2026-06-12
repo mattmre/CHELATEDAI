@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import struct
 from dataclasses import dataclass
+from typing import Any
 
 import numpy as np
 
@@ -11,6 +12,38 @@ BYTES_PER_PARAM = np.dtype(PARAM_TYPE).itemsize
 MATRIX_BYTES = BLOCK_SIZE * BLOCK_SIZE * BYTES_PER_PARAM
 POINTER_BYTES = 8
 TOTAL_BLOCK_BYTES = MATRIX_BYTES + POINTER_BYTES
+try:
+    from chelated_shim_research import (
+        promoted_sip_apply,
+        bump_stall_counter,
+        research_enabled,
+        research_preflight_metadata,
+    )
+except ModuleNotFoundError:
+    def promoted_sip_apply(v):
+        return np.array(v, dtype=float).copy(), None
+
+    def research_enabled() -> bool:
+        return False
+
+    def bump_stall_counter(counter: int, *, has_work: bool) -> int:
+        return counter
+
+    def research_preflight_metadata(
+        *,
+        seam: str,
+        stall_count: int,
+        extra: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        return {
+            "research_shim_guard": False,
+            "research_stall_count": stall_count,
+            "sip_seam": seam,
+            **(dict(extra or {})),
+        }
+
+_research_block_graph_stall_count = 0
+_last_research_shim_meta: dict[str, Any] | None = None
 
 
 @dataclass(frozen=True)
@@ -77,19 +110,82 @@ def run_block_graph(
     trigger_offset: int = 0,
     hidden_activation: str | None = "relu",
 ):
+    global _research_block_graph_stall_count, _last_research_shim_meta
     current_offset = int(trigger_offset)
     current_activations = input_activations.astype(np.float32)
     blocks_processed = 0
+    dim = int(current_activations.shape[-1]) if current_activations.ndim else 8
+    if dim <= 0:
+        dim = 8
 
-    while True:
-        block = read_block(flash_memory, current_offset)
-        current_activations = current_activations @ block.matrix
-        blocks_processed += 1
+    try:
+        while True:
+            block = read_block(flash_memory, current_offset)
+            current_activations = current_activations @ block.matrix
+            blocks_processed += 1
 
-        if block.next_offset == 0:
-            break
+            if block.next_offset == 0:
+                break
 
-        current_activations = apply_hidden_activation(current_activations, hidden_activation)
-        current_offset = block.next_offset
+            current_activations = apply_hidden_activation(
+                current_activations, hidden_activation
+            )
+            current_offset = block.next_offset
+    except Exception as exc:
+        if research_enabled():
+            _, promoted_meta = promoted_sip_apply(np.zeros(dim, dtype=float))
+            _research_block_graph_stall_count = bump_stall_counter(
+                _research_block_graph_stall_count,
+                has_work=False,
+            )
+            _last_research_shim_meta = research_preflight_metadata(
+                seam="computational_storage_poc.block_graph.run_block_graph",
+                stall_count=_research_block_graph_stall_count,
+                extra={
+                    "error": exc.__class__.__name__,
+                    "error_message": str(exc),
+                    "blocks_processed": blocks_processed,
+                    "payload_bytes": len(flash_memory),
+                    **({"promoted_sip_apply": promoted_meta} if promoted_meta else {}),
+                },
+            )
+        raise
+
+    if research_enabled():
+        flat = current_activations.reshape(-1)
+        sample_dim = min(8, flat.size)
+        sample = flat[:sample_dim].astype(float)
+        applied, promoted_meta = promoted_sip_apply(sample)
+        if applied is not None and len(applied):
+            flat = flat.astype(float).copy()
+            flat[:sample_dim] = applied[:sample_dim]
+            current_activations = flat.reshape(current_activations.shape)
+        _research_block_graph_stall_count = bump_stall_counter(
+            _research_block_graph_stall_count,
+            has_work=True,
+        )
+        _last_research_shim_meta = research_preflight_metadata(
+            seam="computational_storage_poc.block_graph.run_block_graph",
+            stall_count=_research_block_graph_stall_count,
+            extra={
+                "blocks_processed": blocks_processed,
+                "payload_bytes": len(flash_memory),
+                "input_shape": tuple(current_activations.shape),
+                "hidden_activation": hidden_activation,
+                "promoted_sip_apply": promoted_meta,
+            },
+        )
 
     return current_activations, blocks_processed
+
+
+def get_last_research_shim_meta() -> dict[str, Any] | None:
+    """Return metadata from the most recent research-seam preflight path."""
+    return _last_research_shim_meta
+
+
+def clear_last_research_shim_meta() -> None:
+    """Reset research metadata for deterministic tests."""
+    global _last_research_shim_meta, _research_block_graph_stall_count
+    _last_research_shim_meta = None
+    _research_block_graph_stall_count = 0

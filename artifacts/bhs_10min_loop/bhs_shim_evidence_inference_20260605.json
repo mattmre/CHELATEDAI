@@ -1,0 +1,24 @@
+{
+  "timestamp": "2026-06-05T20:06:57.323222+00:00",
+  "env": {
+    "CHELATED_SHIM_RESEARCH": "1",
+    "CHELATED_SHIM_EVIDENCE_DIR": "/home/mattmre/CHELATEDAI/artifacts/bhs_10min_loop"
+  },
+  "seam": "AntigravityEngine.run_inference",
+  "tts_enabled": true,
+  "tts_result_present": true,
+  "research_shim_meta": {
+    "research_shim_guard": true,
+    "research_stall_count": 0,
+    "sip_seam": "AntigravityEngine.chelation_variance",
+    "scout_hits": 1,
+    "scout_limit": 50
+  },
+  "research_seams_observed": [
+    "AntigravityEngine.post_embed",
+    "AntigravityEngine.pre_retrieval",
+    "AntigravityEngine.chelation_variance"
+  ],
+  "partial_error": null,
+  "block_flag_note": "Run scripts/check_block_flag.py separately; does not flip BLOCKED."
+}

@@ -10,17 +10,32 @@ if POC_DIR not in sys.path:
     sys.path.insert(0, POC_DIR)
 
 from block_graph import BLOCK_SIZE, build_graph_payload, run_block_graph  # noqa: E402
+from block_graph import clear_last_research_shim_meta, get_last_research_shim_meta  # noqa: E402
 from mock_array import ArraySimulation  # noqa: E402
 from mock_nvme import MockNVMeDrive, traditional_host_inference  # noqa: E402
-from test_real_model import evaluate_storage_model, validate_storage_metrics  # noqa: E402
-from train_and_compile import (  # noqa: E402
-    DIGITS_DEPENDENCIES_AVAILABLE,
-    compile_model,
-    evaluate_torch_model,
-    load_digits_split,
-    train_digit_classifier,
-)
 from validation_config import DEFAULT_RANDOM_SEED, MIN_REFERENCE_ACCURACY  # noqa: E402
+
+try:
+    from train_and_compile import (  # noqa: E402
+        DIGITS_DEPENDENCIES_AVAILABLE,
+        compile_model,
+        evaluate_torch_model,
+        load_digits_split,
+        train_digit_classifier,
+    )
+    from test_real_model import evaluate_storage_model, validate_storage_metrics  # noqa: E402
+except ModuleNotFoundError:
+    DIGITS_DEPENDENCIES_AVAILABLE = False
+
+    # Optional dependency path (torch/sklearn) not installed in lightweight test
+    # environments. The digit-roundtrip test is decorated with skipUnless and
+    # should remain skipped when unavailable.
+    compile_model = None
+    evaluate_torch_model = None
+    load_digits_split = None
+    train_digit_classifier = None
+    evaluate_storage_model = None
+    validate_storage_metrics = None
 
 
 class TestComputationalStorageBlockGraph(unittest.TestCase):
@@ -76,6 +91,87 @@ class TestComputationalStorageBlockGraph(unittest.TestCase):
 
         np.testing.assert_allclose(storage_output, host_output, rtol=1e-6, atol=1e-6)
         self.assertLess(storage_latency, host_latency)
+
+
+class TestComputationalStorageBlockGraphResearch(unittest.TestCase):
+    def setUp(self) -> None:
+        clear_last_research_shim_meta()
+        os.environ.pop("CHELATED_SHIM_RESEARCH", None)
+        os.environ.pop("CHELATED_SHIM_PROMOTED", None)
+
+    def tearDown(self) -> None:
+        os.environ.pop("CHELATED_SHIM_RESEARCH", None)
+        os.environ.pop("CHELATED_SHIM_PROMOTED", None)
+
+    @staticmethod
+    def _sample_payload() -> bytes:
+        return build_graph_payload(
+            [
+                np.eye(2, dtype=np.float32),
+                np.ones((2, 2), dtype=np.float32),
+            ]
+        )
+
+    def test_research_meta_emits_with_research_flag(self) -> None:
+        import os
+
+        os.environ["CHELATED_SHIM_RESEARCH"] = "1"
+        payload = self._sample_payload()
+        input_act = np.zeros((1, BLOCK_SIZE), dtype=np.float16)
+        input_act[0, :2] = [1.0, 3.0]
+
+        run_block_graph(payload, input_act, trigger_offset=0, hidden_activation="identity")
+
+        meta = get_last_research_shim_meta()
+        self.assertIsNotNone(meta)
+        self.assertTrue(meta.get("research_shim_guard"))
+        self.assertEqual(meta.get("sip_seam"), "computational_storage_poc.block_graph.run_block_graph")
+        self.assertEqual(meta.get("research_stall_count"), 0)
+        self.assertGreaterEqual(meta.get("blocks_processed", 0), 1)
+
+    def test_research_meta_stall_count_increments_on_failure(self) -> None:
+        import os
+
+        os.environ["CHELATED_SHIM_RESEARCH"] = "1"
+        input_act = np.zeros((1, BLOCK_SIZE), dtype=np.float16)
+        input_act[0, :2] = [1.0, 3.0]
+
+        with self.assertRaises(ValueError):
+            run_block_graph(b"", input_act, trigger_offset=0)
+
+        first_meta = get_last_research_shim_meta()
+        self.assertIsNotNone(first_meta)
+        self.assertEqual(first_meta.get("research_stall_count"), 1)
+        self.assertIn("error", first_meta)
+
+        with self.assertRaises(ValueError):
+            run_block_graph(b"", input_act, trigger_offset=0)
+
+        second_meta = get_last_research_shim_meta()
+        self.assertIsNotNone(second_meta)
+        self.assertEqual(second_meta.get("research_stall_count"), 2)
+
+    def test_research_meta_absent_when_flag_off(self) -> None:
+        payload = self._sample_payload()
+        input_act = np.zeros((1, BLOCK_SIZE), dtype=np.float16)
+        input_act[0, :2] = [2.0, -1.0]
+        run_block_graph(payload, input_act)
+        self.assertIsNone(get_last_research_shim_meta())
+
+    def test_research_meta_includes_promoted_sip_apply_when_promoted_enabled(self) -> None:
+        os.environ["CHELATED_SHIM_RESEARCH"] = "1"
+        os.environ["CHELATED_SHIM_PROMOTED"] = "1"
+        payload = self._sample_payload()
+        input_act = np.zeros((1, BLOCK_SIZE), dtype=np.float16)
+        input_act[0, :2] = [1.0, 3.0]
+
+        run_block_graph(payload, input_act, trigger_offset=0, hidden_activation="identity")
+
+        meta = get_last_research_shim_meta()
+        self.assertIsNotNone(meta)
+        self.assertIn("promoted_sip_apply", meta)
+        self.assertIsInstance(meta["promoted_sip_apply"], dict)
+        self.assertEqual(meta.get("sip_seam"), "computational_storage_poc.block_graph.run_block_graph")
 
 
 class TestComputationalStorageLatencyModel(unittest.TestCase):

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json as _json
 import uuid
+import numpy as np
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -12,6 +13,36 @@ from typing import Any, Dict, List, Mapping, Optional
 from model_scope_features import SparseFeatureEvent
 from model_scope_runtime import ActivationEvent
 from steering_policy import ModelScopeSteeringPolicy, PolicyRegistry, PolicyStatus, SteeringMode, SteeringPolicyConfig
+
+try:
+    from chelated_shim_research import (
+        promoted_sip_apply,
+        bump_stall_counter,
+        research_enabled,
+        research_preflight_metadata,
+    )
+except ModuleNotFoundError:
+    def promoted_sip_apply(v):
+        return np.array(v, dtype=float).copy(), None
+
+    def research_enabled() -> bool:
+        return False
+
+    def bump_stall_counter(counter: int, *, has_work: bool) -> int:
+        return counter
+
+    def research_preflight_metadata(
+        *,
+        seam: str,
+        stall_count: int,
+        extra: dict | None = None,
+    ) -> dict:
+        return {
+            "research_shim_guard": False,
+            "research_stall_count": stall_count,
+            "sip_seam": seam,
+            **(dict(extra or {})),
+        }
 
 
 _STEERER_MODE_MAP = {
@@ -44,16 +75,34 @@ class ModelScopeShadowSteerer:
         self._registry = PolicyRegistry()
         self._registry.register(self._policy_config)
         self._actuator = SteeringActuator(self._registry)
+        self._research_evaluate_stall_count: int = 0
+        self._last_research_shim_meta: dict | None = None
 
     def activate(self, mode_string: str) -> None:
         """Activate deployment mode. Syncs both the policy string (System A) and actuator enum (System B)."""
         self._policy.deployment_mode = mode_string
         self._policy_config.mode = _STEERER_MODE_MAP.get(mode_string, SteeringMode.SHADOW)
 
+    def _apply_shim_to_feature_values(
+        self,
+        feature_values: list[float],
+    ) -> tuple[list[float], dict | None]:
+        values = np.array(feature_values, dtype=float)
+        out, promoted_meta = promoted_sip_apply(values)
+        if promoted_meta is None:
+            return feature_values, None
+        try:
+            return list(out[: len(values)]), promoted_meta
+        except Exception:
+            return list(values), promoted_meta
+
+
     def evaluate_capture(self, artifact: Mapping[str, Any] | None = None) -> Dict[str, Any]:
         if artifact is None:
             artifact = {}
         observations = artifact.get("capture", {}).get("observations", [])
+        if not isinstance(observations, list):
+            observations = []
         matched_rules: List[Dict[str, Any]] = []
 
         for observation in observations:
@@ -91,6 +140,11 @@ class ModelScopeShadowSteerer:
         # operates on real matched feature values instead of an empty event.
         matched_feature_ids = [r["feature_id"] for r in matched_rules]
         matched_features = {r["feature_id"]: r["observed_value"] for r in matched_rules}
+        feature_values = [matched_features[fid] for fid in matched_feature_ids]
+        feature_apply_meta = None
+        if feature_values and research_enabled():
+            feature_values, feature_apply_meta = self._apply_shim_to_feature_values(feature_values)
+            matched_features = dict(zip(matched_feature_ids, feature_values))
         # Update policy config in-place so the actuator sees the current target list.
         self._policy_config.target_features = matched_feature_ids
 
@@ -121,6 +175,25 @@ class ModelScopeShadowSteerer:
         # so callers can see which matched rules drove an actual intervention.
         applied_actions = list(record.features_targeted) if record.applied else []
 
+        if research_enabled():
+            self._research_evaluate_stall_count = bump_stall_counter(
+                self._research_evaluate_stall_count,
+                has_work=bool(matched_rules),
+            )
+            self._last_research_shim_meta = research_preflight_metadata(
+                seam="ModelScopeShadowSteerer.evaluate_capture",
+                stall_count=self._research_evaluate_stall_count,
+                extra={
+                    "matched_rule_count": len(matched_rules),
+                    "runtime_applied": runtime_applied,
+                    "observation_count": len(observations),
+                    "artifact_output_path": artifact.get("output_path"),
+                    **({"promoted_sip_apply": feature_apply_meta} if feature_apply_meta else {}),
+                },
+            )
+        else:
+            self._last_research_shim_meta = None
+
         return {
             "policy_name": self._policy.name,
             "deployment_mode": self._policy.deployment_mode,
@@ -142,7 +215,12 @@ class ModelScopeShadowSteerer:
                 "disable_by_setting_deployment_mode": "disabled",
             },
             "safety_regression_required": bool(matched_rules),
+            "research_shim_meta": self._last_research_shim_meta,
         }
+
+    def get_last_research_shim_meta(self) -> dict | None:
+        """Return the latest research shim metadata emitted by evaluate_capture()."""
+        return self._last_research_shim_meta
 
 
 # ---------------------------------------------------------------------------

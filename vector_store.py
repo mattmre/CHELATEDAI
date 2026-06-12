@@ -3,7 +3,14 @@
 from abc import ABC, abstractmethod
 from urllib.parse import urlparse
 
-from qdrant_client import QdrantClient
+try:
+    from qdrant_client import QdrantClient
+except ModuleNotFoundError:  # pragma: no cover - optional dependency
+    class QdrantClient:  # pragma: no cover
+        def __init__(self, *args, **kwargs):
+            raise ModuleNotFoundError(
+                "qdrant_client is required for vector-store operations."
+            )
 
 
 class VectorStore(ABC):

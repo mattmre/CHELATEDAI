@@ -3,11 +3,42 @@
 from __future__ import annotations
 
 import uuid
+import numpy as np
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, List, Mapping
 
+
+try:
+    from chelated_shim_research import (
+        promoted_sip_apply,
+        bump_stall_counter,
+        research_enabled,
+        research_preflight_metadata,
+    )
+except ModuleNotFoundError:
+    def promoted_sip_apply(v):
+        return np.array(v, dtype=float).copy(), None
+
+    def research_enabled() -> bool:
+        return False
+
+    def bump_stall_counter(counter: int, *, has_work: bool) -> int:
+        return counter
+
+    def research_preflight_metadata(
+        *,
+        seam: str,
+        stall_count: int,
+        extra: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        return {
+            "research_shim_guard": False,
+            "research_stall_count": stall_count,
+            "sip_seam": seam,
+            **(extra or {}),
+        }
 
 @dataclass
 class SteeringRule:
@@ -43,13 +74,41 @@ class ModelScopeSteeringPolicy:
     deployment_mode: str = "shadow_mode"
     feature_space: str | None = None
     rules: List[SteeringRule] = field(default_factory=list)
+    _research_shim_meta: dict[str, Any] | None = None
+    _research_stall_count: int = 0
 
     def activate(self, mode: str = "soft_scale") -> None:
         """Switch out of shadow_mode. mode must be 'soft_scale', 'suppression', or 'active'."""
         valid = {"soft_scale", "suppression", "active"}
         if mode not in valid:
             raise ValueError(f"mode must be one of {valid}, got {mode!r}")
+
+        if research_enabled():
+            control_values = np.array(
+                [float(len(self.rules)), float(len(self._research_shim_meta or {}))]
+            )
+            _, promoted_meta = promoted_sip_apply(control_values)
+            self._research_stall_count = bump_stall_counter(
+                self._research_stall_count,
+                has_work=True,
+            )
+            self._research_shim_meta = research_preflight_metadata(
+                seam="ModelScopeSteeringPolicy.activate",
+                stall_count=self._research_stall_count,
+                extra={
+                    "target": "mode_change",
+                    "next_mode": mode,
+                    **({"promoted_sip_apply": promoted_meta} if promoted_meta else {}),
+                },
+            )
+        else:
+            self._research_shim_meta = None
+
         self.deployment_mode = mode
+
+    def get_last_research_shim_meta(self) -> dict[str, Any] | None:
+        """Return the most recent research shim metadata emitted by this policy."""
+        return self._research_shim_meta
 
     @classmethod
     def from_mapping(cls, payload: Mapping[str, Any]):

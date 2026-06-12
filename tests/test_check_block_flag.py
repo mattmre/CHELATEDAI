@@ -1,20 +1,24 @@
 """Unit tests for scripts/check_block_flag.py.
 
-Covers the section-finder, the canonical state token detection (CLEAR /
-BLOCKED / UNKNOWN), the Carried Debt row counter, the stale-state warning,
-and the CLI exit codes including --allow-debt-prs.
+Covers:
+- section parsing and canonical token detection (CLEAR / BLOCKED / UNKNOWN)
+- Carried Debt table counting and status filtering
+- CLI exit codes and warning behavior
 
-Run with: python -m pytest tests/test_check_block_flag.py -v
+Run with: python -m unittest tests.test_check_block_flag -v
 """
 
 from __future__ import annotations
 
 import subprocess
 import sys
-import textwrap
+import tempfile
 from pathlib import Path
+import textwrap
+import unittest
 
 from scripts.check_block_flag import (
+    count_blocking_open_debt_rows,
     count_carried_debt_rows,
     parse_block_flag,
 )
@@ -43,6 +47,7 @@ CLEAR_BODY = textwrap.dedent(
     """
 )
 
+
 BLOCKED_BODY = textwrap.dedent(
     """\
     # Next Session
@@ -60,6 +65,7 @@ BLOCKED_BODY = textwrap.dedent(
     """
 )
 
+
 CLEAR_WITH_DEBT_BODY = textwrap.dedent(
     """\
     # Next Session
@@ -76,6 +82,7 @@ CLEAR_WITH_DEBT_BODY = textwrap.dedent(
     """
 )
 
+
 BOTH_TOKENS_NO_CURRENT_BODY = textwrap.dedent(
     """\
     # Next Session
@@ -87,12 +94,6 @@ BOTH_TOKENS_NO_CURRENT_BODY = textwrap.dedent(
 )
 
 
-def _write(tmp_path: Path, text: str) -> Path:
-    p = tmp_path / "next-session.md"
-    p.write_text(text, encoding="utf-8")
-    return p
-
-
 def _run(path: Path, *extra: str):
     return subprocess.run(
         [sys.executable, str(SCRIPT), "--file", str(path), *extra],
@@ -101,31 +102,43 @@ def _run(path: Path, *extra: str):
     )
 
 
+def _run_with_tmp(content: str, *extra: str):
+    with tempfile.TemporaryDirectory() as td:
+        path = Path(td) / "next-session.md"
+        path.write_text(content, encoding="utf-8")
+        return _run(path, *extra)
+
+
+def _missing_file_path() -> Path:
+    with tempfile.TemporaryDirectory() as td:
+        return Path(td) / "does_not_exist.md"
+
+
 # ---------------------------------------------------------------------------
 # parse_block_flag()
 # ---------------------------------------------------------------------------
 
 
-class TestParseBlockFlag:
+class TestParseBlockFlag(unittest.TestCase):
     def test_clear(self) -> None:
         state, _ = parse_block_flag(CLEAR_BODY)
-        assert state == "CLEAR"
+        self.assertEqual(state, "CLEAR")
 
     def test_blocked(self) -> None:
         state, _ = parse_block_flag(BLOCKED_BODY)
-        assert state == "BLOCKED"
+        self.assertEqual(state, "BLOCKED")
 
     def test_both_tokens_without_current_returns_unknown(self) -> None:
         state, excerpt = parse_block_flag(BOTH_TOKENS_NO_CURRENT_BODY)
-        assert state == "UNKNOWN"
-        assert "CLEAR" in excerpt and "BLOCKED" in excerpt
+        self.assertEqual(state, "UNKNOWN")
+        self.assertIn("CLEAR", excerpt)
+        self.assertIn("BLOCKED", excerpt)
 
     def test_no_block_flag_section_returns_unknown(self) -> None:
         state, _ = parse_block_flag("# Just a doc with no flag section.\n")
-        assert state == "UNKNOWN"
+        self.assertEqual(state, "UNKNOWN")
 
     def test_lowercase_blocked_word_does_not_trigger(self) -> None:
-        # Prose use of "blocked" lowercase should not flip the state.
         body = textwrap.dedent(
             """\
             ## Block flag
@@ -134,7 +147,7 @@ class TestParseBlockFlag:
             """
         )
         state, _ = parse_block_flag(body)
-        assert state == "CLEAR"
+        self.assertEqual(state, "CLEAR")
 
     def test_current_pattern_is_tiebreaker(self) -> None:
         body = textwrap.dedent(
@@ -147,7 +160,7 @@ class TestParseBlockFlag:
             """
         )
         state, _ = parse_block_flag(body)
-        assert state == "BLOCKED"
+        self.assertEqual(state, "BLOCKED")
 
 
 # ---------------------------------------------------------------------------
@@ -155,22 +168,20 @@ class TestParseBlockFlag:
 # ---------------------------------------------------------------------------
 
 
-class TestCountCarriedDebt:
+class TestCountCarriedDebt(unittest.TestCase):
     def test_placeholder_row_counts_as_zero(self) -> None:
-        assert count_carried_debt_rows(CLEAR_BODY) == 0
+        self.assertEqual(count_carried_debt_rows(CLEAR_BODY), 0)
 
     def test_two_real_rows(self) -> None:
-        assert count_carried_debt_rows(BLOCKED_BODY) == 2
+        self.assertEqual(count_carried_debt_rows(BLOCKED_BODY), 2)
 
     def test_one_real_row(self) -> None:
-        assert count_carried_debt_rows(CLEAR_WITH_DEBT_BODY) == 1
+        self.assertEqual(count_carried_debt_rows(CLEAR_WITH_DEBT_BODY), 1)
 
     def test_no_carried_debt_section(self) -> None:
-        assert count_carried_debt_rows("# Just text\n") == 0
+        self.assertEqual(count_carried_debt_rows("# Just text\n"), 0)
 
     def test_status_column_filters_closed_rows(self) -> None:
-        # Mixed table: 8 CLOSED + 3 OPEN — should report 3 OPEN, not 11 total.
-        # Mirrors the real docs/next-session.md schema as of v3.2.
         body = textwrap.dedent(
             """\
             ## Carried Debt
@@ -190,10 +201,54 @@ class TestCountCarriedDebt:
             | CD-011 | K | x | 1 cycle | NO | OPEN |
             """
         )
-        assert count_carried_debt_rows(body) == 3
+        self.assertEqual(count_carried_debt_rows(body), 3)
+
+    def test_blocking_open_rows_count(self) -> None:
+        body = textwrap.dedent(
+            """\
+            ## Carried Debt
+
+            | ID | Item | Source | TTL | Blocking | Status |
+            |----|------|--------|-----|----------|--------|
+            | CD-A | a | x | 1 cycle | NO — reason | OPEN |
+            | CD-B | b | x | 1 cycle | YES | OPEN |
+            | CD-C | c | x | 1 cycle | YES — load-bearing | OPEN |
+            | CD-D | d | x | 1 cycle | NO | **CLOSED** by PR #1 |
+            """
+        )
+        self.assertEqual(count_carried_debt_rows(body), 3)
+        self.assertEqual(count_blocking_open_debt_rows(body), 2)
+
+    def test_blocking_column_missing_counts_open_rows_as_blocking(self) -> None:
+        body = textwrap.dedent(
+            """\
+            ## Carried Debt
+
+            | ID | Item | Source | TTL | Status |
+            |---|---|---|---|---|
+            | CD-A | a | x | 1 cycle | OPEN |
+            | CD-B | b | x | 1 cycle | **OPEN** |
+            | CD-C | c | x | 1 cycle | **CLOSED** by PR #1 |
+            """
+        )
+        self.assertEqual(count_carried_debt_rows(body), 2)
+        self.assertEqual(count_blocking_open_debt_rows(body), 2)
+
+    def test_blank_line_inside_table_does_not_truncate(self) -> None:
+        body = textwrap.dedent(
+            """\
+            ## Carried Debt
+
+            | ID | Item | Source | TTL | Blocking | Status |
+            |----|------|--------|-----|----------|--------|
+            | CD-A | first | x | 1 cycle | NO | OPEN |
+
+            | CD-B | second | x | 1 cycle | YES | OPEN |
+            """
+        )
+        self.assertEqual(count_carried_debt_rows(body), 2)
 
     def test_status_column_absent_falls_back_to_count_all(self) -> None:
-        # Older table format without a Status column: count every real row.
         body = textwrap.dedent(
             """\
             ## Carried Debt
@@ -205,7 +260,7 @@ class TestCountCarriedDebt:
             | CD-003 | Three | PR | expired | YES |
             """
         )
-        assert count_carried_debt_rows(body) == 3
+        self.assertEqual(count_carried_debt_rows(body), 3)
 
 
 # ---------------------------------------------------------------------------
@@ -213,36 +268,40 @@ class TestCountCarriedDebt:
 # ---------------------------------------------------------------------------
 
 
-class TestCliExitCodes:
-    def test_clear_exits_zero(self, tmp_path: Path) -> None:
-        result = _run(_write(tmp_path, CLEAR_BODY))
-        assert result.returncode == 0
-        assert "PASS" in result.stdout
+class TestCliExitCodes(unittest.TestCase):
+    def test_clear_exits_zero(self) -> None:
+        result = _run_with_tmp(CLEAR_BODY)
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("PASS", result.stdout)
 
-    def test_blocked_exits_one(self, tmp_path: Path) -> None:
-        result = _run(_write(tmp_path, BLOCKED_BODY))
-        assert result.returncode == 1
-        assert "FAIL" in result.stdout
+    def test_blocked_exits_one(self) -> None:
+        result = _run_with_tmp(BLOCKED_BODY)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("FAIL", result.stdout)
 
-    def test_blocked_with_allow_debt_exits_zero(self, tmp_path: Path) -> None:
-        result = _run(_write(tmp_path, BLOCKED_BODY), "--allow-debt-prs")
-        assert result.returncode == 0
-        assert "OVERRIDE" in result.stdout
+    def test_blocked_with_allow_debt_exits_zero(self) -> None:
+        result = _run_with_tmp(BLOCKED_BODY, "--allow-debt-prs")
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("OVERRIDE", result.stdout)
 
-    def test_unknown_state_exits_two(self, tmp_path: Path) -> None:
-        result = _run(_write(tmp_path, BOTH_TOKENS_NO_CURRENT_BODY))
-        assert result.returncode == 2
+    def test_unknown_state_exits_two(self) -> None:
+        result = _run_with_tmp(BOTH_TOKENS_NO_CURRENT_BODY)
+        self.assertEqual(result.returncode, 2)
 
-    def test_missing_file_exits_two(self, tmp_path: Path) -> None:
-        missing = tmp_path / "does_not_exist.md"
+    def test_missing_file_exits_two(self) -> None:
+        missing = _missing_file_path()
         result = subprocess.run(
             [sys.executable, str(SCRIPT), "--file", str(missing)],
             capture_output=True,
             text=True,
         )
-        assert result.returncode == 2
+        self.assertEqual(result.returncode, 2)
 
-    def test_clear_with_debt_warns_about_stale_state(self, tmp_path: Path) -> None:
-        result = _run(_write(tmp_path, CLEAR_WITH_DEBT_BODY))
-        assert result.returncode == 0  # CLEAR still passes
-        assert "WARNING" in result.stdout
+    def test_clear_with_debt_warns_about_stale_state(self) -> None:
+        result = _run_with_tmp(CLEAR_WITH_DEBT_BODY)
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("WARNING", result.stdout)
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -8,20 +8,44 @@ import csv
 import os
 from datetime import datetime
 
-def run_large_parameter_sweep(task_name="SciFact", model_name="sentence-transformers/all-MiniLM-L6-v2", output_prefix="large_sweep", max_queries=None, db_path=None):
+
+
+def _write_json_results(path: str, results):
+    """Persist sweep results as a JSON array."""
+    with open(path, 'w', encoding="utf-8") as f:
+        json.dump(results, f, indent=2)
+
+
+def run_large_parameter_sweep(
+    task_name="SciFact",
+    model_name="sentence-transformers/all-MiniLM-L6-v2",
+    output_prefix="large_sweep",
+    max_queries=None,
+    db_path=None,
+    checkpoint_every=50,
+    learning_rates=None,
+    thresholds=None,
+    noise_scales=None,
+    epochs_list=None,
+    push_magnitudes=None,
+):
     print(f"Starting large parameter sweep on {task_name} using {model_name}")
     
     # Define an extensive parameter grid
-    # This matrix contains 7,350 unique configurations
-    learning_rates = [0.001, 0.005, 0.01, 0.05, 0.1, 0.2, 0.5]
-    thresholds = [1, 2, 3, 4, 5]
-    noise_scales = [0.0, 0.01, 0.05, 0.1, 0.2, 0.3, 0.5]
-    epochs_list = [1, 3, 5, 10, 20, 50]
-    push_magnitudes = [0.01, 0.05, 0.1, 0.2, 0.5]
+    learning_rates = learning_rates or [0.001, 0.005, 0.01, 0.05, 0.1, 0.2, 0.5]
+    thresholds = thresholds or [1, 2, 3, 4, 5]
+    noise_scales = noise_scales or [0.0, 0.01, 0.05, 0.1, 0.2, 0.3, 0.5]
+    epochs_list = epochs_list or [1, 3, 5, 10, 20, 50]
+    push_magnitudes = push_magnitudes or [0.01, 0.05, 0.1, 0.2, 0.5]
     
-    # Generate all combinations
-    combinations = list(itertools.product(learning_rates, thresholds, noise_scales, epochs_list, push_magnitudes))
-    total_runs = len(combinations)
+    combinations = itertools.product(learning_rates, thresholds, noise_scales, epochs_list, push_magnitudes)
+    total_runs = (
+        len(list(learning_rates))
+        * len(list(thresholds))
+        * len(list(noise_scales))
+        * len(list(epochs_list))
+        * len(list(push_magnitudes))
+    )
     
     print(f"Total configurations to test: {total_runs}")
     
@@ -54,6 +78,15 @@ def run_large_parameter_sweep(task_name="SciFact", model_name="sentence-transfor
                 
     base_score = evaluate_ndcg(base_engine, queries, qrels, max_queries=max_queries)
     print(f"Baseline NDCG@10: {base_score:.5f}")
+
+    results = []
+    try:
+        with open(json_file, 'r', encoding="utf-8") as f:
+            loaded = json.load(f)
+            if isinstance(loaded, list):
+                results.extend(loaded)
+    except (FileNotFoundError, json.JSONDecodeError):
+        pass
     
     # Run the sweep
     for i, (lr, thresh, noise, epochs, push_mag) in enumerate(combinations):
@@ -121,23 +154,17 @@ def run_large_parameter_sweep(task_name="SciFact", model_name="sentence-transfor
                 "gain": gain
             }
         }
-        
-        try:
-            with open(json_file, 'r') as f:
-                current_results = json.load(f)
-        except (FileNotFoundError, json.JSONDecodeError):
-            current_results = []
-            
-        current_results.append(result_entry)
-        
-        with open(json_file, 'w') as f:
-            json.dump(current_results, f, indent=2)
+        results.append(result_entry)
+
+        if len(results) % checkpoint_every == 0:
+            _write_json_results(json_file, results)
             
         # Save to CSV table iteratively so no data is lost if interrupted
         with open(csv_file, 'a', newline='') as f:
             writer = csv.writer(f)
             writer.writerow([timestamp, lr, thresh, noise, epochs, push_mag, base_score, post_score, gain])
 
+    _write_json_results(json_file, results)
     print(f"Sweep completed. Results saved to {json_file} and {csv_file}")
 
 if __name__ == "__main__":

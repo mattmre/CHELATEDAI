@@ -1,0 +1,114 @@
+{
+  "cycle": "Cycle-003",
+  "agent": "C (Test/Harness/Evidence Generation)",
+  "loop": "BHS 5-Minute Shim Loop",
+  "goal_ref": "docs/steering_chelation_rag_dag_research/BHS_5MIN_SHIM_LOOP_GOAL.md",
+  "timestamp_start": "2026-05-26T23:37:07.000000Z",
+  "timestamp_end": "2026-05-26T23:37:09.300000Z",
+  "harness": "docs/steering_chelation_rag_dag_research/artifacts/shim_collapse_benchmark_extension.py",
+  "execution_method": "cd /home/mattmre/CHELATEDAI && PYTHONPATH=. python -u docs/steering_chelation_rag_dag_research/artifacts/shim_collapse_benchmark_extension.py --topic-count 4 --collapse-strength 4.0 --family all  (two independent full invocations for reproducibility; direct CLI entrypoint exercising ShimCollapseBenchmark + all three families)",
+  "reproducibility": {
+    "runs_performed": 2,
+    "delta_ndcg_match_within_1e-12": true,
+    "side_effect_free_match": true,
+    "registry_empty_post_both": true,
+    "simulated_costs_match_exactly": true,
+    "note": "Core before/after ndcg deltas (1.0), rollback proofs, and cost numbers bitwise identical across fresh process invocations. Activation count resets per-process as expected (no shared registry state across top-level runs)."
+  },
+  "runtime_summary": {
+    "shim_insertion": {
+      "recovered": true,
+      "side_effect_free": true,
+      "delta_ndcg_at_3": 1.0,
+      "baseline_ndcg_at_3": 0.0,
+      "post_ndcg_at_3": 1.0,
+      "simulated_cost": {"baseline_tokens": 128.0, "per_shim_tokens": 8.0, "depth_overhead_tokens": 14.0, "mtp_overhead_tokens": 0.0, "total_extra_tokens": 22.0, "costed_shim_ids": ["auto_corrective_collapse_v1"]},
+      "rollback_proof": {"baseline_ndcg_at_3": 0.0, "post_rollback_ndcg_at_3": 0.0, "absolute_delta": 0.0, "side_effect_free": true, "registry_empty_post_experiment": true}
+    },
+    "cascade": {
+      "n_results": 2,
+      "aggregate_mtp_hit": {"hit_rate": 1.0, "evaluated_followers": 1},
+      "sim_costs": [
+        {"total_extra_tokens": 23.0, "costed_shim_ids": ["cascade_single_v1"]},
+        {"total_extra_tokens": 41.5, "costed_shim_ids": ["cascade_compound_base", "cascade_compound_partner"]}
+      ],
+      "rollbacks": [
+        {"rollback_equal": true, "registry_empty_post": true},
+        {"rollback_equal": true, "registry_empty_post": true}
+      ]
+    },
+    "rollback": {
+      "rollback_equal": true,
+      "registry_empty_post": true,
+      "during_depth": 1,
+      "before": 0.0,
+      "during": 0.0,
+      "after": 0.0
+    }
+  },
+  "bhs_evidence_Cycle-003": {
+    "shim_insertion": {
+      "cycle_id": "Cycle-003",
+      "ts": "2026-05-26T23:37:09.229545+00:00",
+      "family": "shim_insertion",
+      "command": "python docs/steering_chelation_rag_dag_research/artifacts/shim_collapse_benchmark_extension.py --topic-count 4 --collapse-strength 4.0 --family shim_insertion (Cycle-003 Agent C re-execution)",
+      "before": {"ndcg": 0.0},
+      "after": {"ndcg": 1.0},
+      "delta_ndcg_at_3": 1.0,
+      "recovered": true,
+      "simulated_costs": {"total_extra_tokens": 22.0, "per_shim_tokens": 8.0, "depth_overhead_tokens": 14.0},
+      "rollback_proofs": {"side_effect_free": true, "registry_empty_post_experiment": true, "absolute_delta": 0.0},
+      "activation_records": [
+        {
+          "shim_id": "auto_corrective_collapse_v1",
+          "cycle_id": "Cycle-003",
+          "timestamp": "2026-05-26T23:37:09.229457+00:00",
+          "before": {},
+          "after": {"activation_count": 1, "success_count": 1, "cumulative_token_cost_delta": 8.0, "last_activated_at": "2026-05-26T23:37:09.229457+00:00", "compounding_frequency": 0},
+          "simulated_cost_delta": 8.0,
+          "was_success": true,
+          "compounding_used": false
+        }
+      ],
+      "metrics_hash": "5fada3624bd6e06f",
+      "note": "From live execution of *current* (unextended for Cycle-3) harness. SIP modeling present is pre-existing `sip=\"post_embed\"` param in apply_shim_to_vector (additive query correction); no new guarded minimal SIP simulation / VectorSteerer wrapper / research_flag path added by prior B slice. record_shim_activation exercised; before/after usage present in structure."
+    },
+    "cascade": {
+      "cycle_id": "Cycle-003",
+      "ts": "2026-05-26T23:37:09.229545+00:00",
+      "family": "cascade",
+      "n_results": 2,
+      "simulated_costs": [{"total_extra_tokens": 23.0}, {"total_extra_tokens": 41.5}],
+      "rollback_proofs": [{"rollback_equal": true, "registry_empty_post": true}, {"rollback_equal": true, "registry_empty_post": true}],
+      "activation_records": {"mtp_hit_rate": {"hit_rate": 1.0, "evaluated_followers": 1}, "mtp_predictor_patterns": 1},
+      "efficiencies_observed": [0.0, 0.0],
+      "note": "Uses apply_shim_cascade_to_fixture_query (which internally calls the post_embed SIP-modeled apply_shim_to_vector). MTP mock hit observed on compound cascade. All via harness synthetic surface."
+    },
+    "rollback": {
+      "cycle_id": "Cycle-003",
+      "ts": "2026-05-26T23:37:09.229545+00:00",
+      "family": "rollback",
+      "before": 0.0,
+      "during": 0.0,
+      "after": 0.0,
+      "rollback_proofs": {"rollback_equal": true, "registry_empty": true},
+      "activation_records": {"live_shim_apply": "explicit vector math + temp_experiment context (post_embed SIP path exercised during measurement)"}
+    }
+  },
+  "source_bhs_evidence_from_run": {
+    "note": "Live stdout from two direct CLI executions of the harness (current state, no Cycle-3 B extensions present). The harness source still contains hardcoded 'Cycle-002' strings in banners/EVIDENCE prints and default cycle_id in record_shim_activation call site inside run_shim_insertion_under_collapse. Fresh bhs_evidence dicts extracted/adapted from run output for this Cycle-003 artifact per task. See harness CAN/CANNOT at end of shim_collapse_benchmark_extension.py:891+."
+  },
+  "EVIDENCE_lines": [
+    "EVIDENCE: cd /home/mattmre/CHELATEDAI && PYTHONPATH=. python -u docs/steering_chelation_rag_dag_research/artifacts/shim_collapse_benchmark_extension.py --topic-count 4 --collapse-strength 4.0 --family all  (run #1 + run #2 for Cycle-003 Agent C)",
+    "EVIDENCE: Cycle-003 harness execution (ShimCollapseBenchmark + shim_insertion/cascade/rollback families via CLI) produced bhs_evidence dicts containing before/after ndcg deltas (0.0 -> 1.0), simulated_costs (22.0 / 23.0 / 41.5 extra tokens), rollback_proofs (registry_empty_post_experiment=True, side_effect_free=True, rollback_equal=True for all), activation_records (with before/after usage_stats for auto_corrective_collapse_v1 + mtp hits); 2x runs match within 1e-12 on ndcg/costs/proofs",
+    "EVIDENCE: Reference: docs/steering_chelation_rag_dag_research/BHS_5MIN_SHIM_LOOP_GOAL.md §18-29 (runtime evidence requirement), §51 (Agent C role), §77-83 (self-improvement deltas), §95 (priority #2: extend benchmark for token-accounted before/after). All evidence from synthetic harness surface only."
+  ],
+  "SMOKE_lines": [
+    "SMOKE: shim_insertion (Cycle-003): recovered=True, side_effect_free=True, delta_ndcg_at_3=1.0, simulated extra_tokens=22.0, registry_empty_post_experiment=True, activation_records present with structure (before/after counters); identical across 2 independent process runs",
+    "SMOKE: cascade (Cycle-003): 2 cascades executed, aggregate_mtp_hit=1.0 (synthetic GT on one), all rollbacks equal+registry_clean, simulated costs 23.0 and 41.5; exercised apply_shim_cascade_to_fixture_query (existing post_embed SIP modeling)",
+    "SMOKE: rollback (Cycle-003): before/during/after ndcg equality (all 0.0) + registry_empty_post=True + during_delta_norm_sample populated from apply path under temp context (post_embed SIP vector math)",
+    "SMOKE: Full re-runs on same machine/env reproduce identical ndcg deltas, costs, rollback isolation; no new simulated SIP path (guarded VectorSteerer wrapper or research_flag SIP) was present in harness at execution time (see dashboard Cycle-3 plan item #2).",
+    "SMOKE: Goal reference: Cycle-003 execution fulfills Agent C slice of BHS 5MIN SHIM LOOP (produce usable runtime evidence artifacts this cycle; re-run >=2x; focus on simulated SIP path *if present*)."
+  ],
+  "brutal_honesty_this_artifact": "This is runtime output from harness code paths only (synthetic_collapse_benchmark + numpy vector math + in-memory TempShimRegistry + apply_shim_* helpers modeling 'post_embed' SIP). No production engine, no real SIPs, 0 wiring into antigravity_engine.py / tts_pipeline.py VectorSteerer / any host. The 'new simulated SIP path' referenced in Cycle-3 Agent C task slice was NOT present (no guarded minimal SIP implementation / shim-aware wrapper / CHELATED_SHIM_RESEARCH flag / VectorSteerer integration added to research harness or shim_node.py; dashboard Cycle-3 plan item #2 for B not executed in visible artifacts prior to this C execution). Harness internals still emit 'Cycle-002' strings and default cycle_ids (L4 partial update debt). Core metrics (delta=1.0, recovered, costs, rollbacks) bitwise identical to Cycle-002 / pre-Cycle-2 baseline — 0 self-improvement delta on goal §77-83 substrate metrics (new SIPs wired=0, token acct on engine=0, MTP real=0). Survives fresh checkout only as research scaffold evidence of harness mechanics + reproducibility. Per goal success def, this cycle (like prior) fails BHS 100 / production evidence / measurable shim primitive advance requirements. All claims bounded by explicit CAN/CANNOT disclosure in harness source (lines 891-1023+). No files outside research/artifacts/ touched. Brutal honesty: this fulfills the narrow 'produce fresh runtime output artifact' instruction for the assigned slice but demonstrates zero progress on the shim substrate itself."
+}

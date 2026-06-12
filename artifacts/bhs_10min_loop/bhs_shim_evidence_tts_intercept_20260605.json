@@ -1,0 +1,75 @@
+{
+  "timestamp": "2026-06-05T20:06:53.817269+00:00",
+  "env": {
+    "CHELATED_SHIM_RESEARCH": "1",
+    "CHELATED_SHIM_EVIDENCE_DIR": "/home/mattmre/CHELATEDAI/artifacts/bhs_10min_loop"
+  },
+  "seam": "TTSPipeline.apply (AntigravityEngine TTS intercept path)",
+  "runs": [
+    {
+      "label": "idle_no_persistent_signals",
+      "stages_applied": [],
+      "total_delta_norm": 0.0,
+      "vector_unchanged": true,
+      "collector": {
+        "probe_hit": true,
+        "seam": "VectorSteerer.steer",
+        "probe_count": 1,
+        "activation_record": {
+          "seam": "VectorSteerer.steer",
+          "probe_activated": true,
+          "probe_count": 1,
+          "signals_count": 0
+        },
+        "base_signals_applied": 0,
+        "base_total_delta_norm": 0.0,
+        "base_was_steered": false,
+        "cycle_tag": "research-probe-VectorSteerer-first-sip-C",
+        "all_meta_keys_present": [
+          "research_shim_guard",
+          "research_stall_count",
+          "sip_seam",
+          "signals_applied",
+          "total_delta_norm",
+          "was_steered",
+          "research_activation_record"
+        ],
+        "research_guard": "CHELATED_SHIM_RESEARCH or --research-shim"
+      }
+    },
+    {
+      "label": "with_steering_signal",
+      "stages_applied": [
+        "steering"
+      ],
+      "total_delta_norm": 0.09999999999999998,
+      "was_steered": true,
+      "collector": {
+        "probe_hit": true,
+        "seam": "VectorSteerer.steer",
+        "probe_count": 0,
+        "activation_record": {
+          "seam": "VectorSteerer.steer",
+          "probe_activated": true,
+          "probe_count": 2,
+          "signals_count": 1
+        },
+        "base_signals_applied": 1,
+        "base_total_delta_norm": 0.1,
+        "base_was_steered": true,
+        "cycle_tag": "research-probe-VectorSteerer-first-sip-C",
+        "all_meta_keys_present": [
+          "signals_applied",
+          "total_delta_norm",
+          "was_steered",
+          "research_activation_record",
+          "research_shim_guard",
+          "research_stall_count",
+          "sip_seam"
+        ],
+        "research_guard": "CHELATED_SHIM_RESEARCH or --research-shim"
+      }
+    }
+  ],
+  "block_flag_note": "Run scripts/check_block_flag.py separately; this script does not flip BLOCKED."
+}

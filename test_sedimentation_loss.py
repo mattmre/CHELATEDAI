@@ -115,6 +115,50 @@ class TestSedimentationInfoNCELoss(unittest.TestCase):
         loss = loss_fn(outputs, targets)
         self.assertTrue(torch.isfinite(loss).item())
 
+    def test_false_negative_mask_ignores_duplicate_sample_ids(self):
+        """Duplicate sample IDs should suppress in-batch false negatives."""
+        loss_fn = SedimentationInfoNCELoss(temperature=0.07)
+        outputs = torch.tensor(
+            [
+                [1.0, 0.0],
+                [1.0, 0.0],
+                [0.0, 1.0],
+            ],
+            dtype=torch.float32,
+        )
+        targets = torch.tensor(
+            [
+                [1.0, 0.0],
+                [1.0, 0.0],
+                [0.0, 1.0],
+            ],
+            dtype=torch.float32,
+        )
+        unmasked_loss = loss_fn(outputs, targets)
+        masked_loss = loss_fn(outputs, targets, sample_ids=["doc-a", "doc-a", "doc-b"])
+
+        self.assertLess(
+            float(masked_loss),
+            float(unmasked_loss),
+            "Masking duplicate IDs should reduce InfoNCE loss",
+        )
+
+    def test_unique_sample_ids_do_not_change_loss(self):
+        """No duplicate IDs means masking path should match baseline behavior."""
+        loss_fn = SedimentationInfoNCELoss(temperature=0.07)
+        outputs = torch.tensor(
+            [[1.0, 0.0], [0.0, 1.0], [1.0, 0.0]],
+            dtype=torch.float32,
+        )
+        targets = torch.tensor(
+            [[1.0, 0.0], [0.0, 1.0], [1.0, 0.0]],
+            dtype=torch.float32,
+        )
+        baseline = loss_fn(outputs, targets)
+        masked = loss_fn(outputs, targets, sample_ids=["doc-a", "doc-b", "doc-c"])
+
+        self.assertAlmostEqual(float(masked), float(baseline), places=4)
+
 
 class TestSedimentationHybridLoss(unittest.TestCase):
     """Tests for SedimentationHybridLoss."""

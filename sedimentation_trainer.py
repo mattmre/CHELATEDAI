@@ -8,7 +8,6 @@ common logic for homeostatic target computation and Qdrant vector synchronizatio
 
 import numpy as np
 from typing import List, Any
-from qdrant_client.models import PointStruct
 
 
 def compute_homeostatic_target(current_vec: np.ndarray, noise_vectors: List[np.ndarray], 
@@ -91,6 +90,15 @@ def sync_vectors_to_qdrant(qdrant: Any, collection_name: str, ordered_ids: List,
     total_updates = 0
     failed_updates = 0
     
+    try:
+        from qdrant_client.models import PointStruct
+    except ModuleNotFoundError:
+        class PointStruct:
+            def __init__(self, id, vector, payload):
+                self.id = id
+                self.vector = vector
+                self.payload = payload
+
     for i in range(0, len(ordered_ids), chunk_size):
         chunk_ids = ordered_ids[i:i + chunk_size]
         chunk_vectors = new_vectors_np[i:i + chunk_size]

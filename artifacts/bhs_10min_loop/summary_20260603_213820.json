@@ -1,0 +1,36 @@
+{
+  "finished_at": "2026-06-03T21:38:20.733775+00:00",
+  "turns": 0,
+  "bhs_target": 100,
+  "promote": {
+    "exit_code": 0,
+    "stdout_tail": "Wrote /home/mattmre/CHELATEDAI/shim_node_promoted.py (49558 bytes)\nshim_node_promoted __main__ smoke OK\n",
+    "stderr_tail": ""
+  },
+  "verify_exit_code": 0,
+  "verify_stdout_tail": "stamp\": \"2026-06-03T21:38:20.129489+00:00\",\n      \"modules\": [\n        \"tests.test_shim_inference_evidence\"\n      ],\n      \"exit_code\": 0,\n      \"stdout_tail\": \"\",\n      \"stderr_tail\": \"test_record_inference_script_writes_json (tests.test_shim_inference_evidence.TestShimInferenceEvidence.test_record_inference_script_writes_json) ... ok\\n\\n----------------------------------------------------------------------\\nRan 1 test in 0.291s\\n\\nOK\\n\",\n      \"bhs_target\": 100,\n      \"worker_mandate\": \"Iteratively improve code toward BHS 100/100; no doc-only output.\"\n    },\n    {\n      \"role\": \"D\",\n      \"timestamp\": \"2026-06-03T21:38:20.050749+00:00\",\n      \"modules\": [\n        \"tests.test_shim_promoted_probe\",\n        \"tests.test_shim_promoted_sip_apply\"\n      ],\n      \"exit_code\": 0,\n      \"stdout_tail\": \"\",\n      \"stderr_tail\": \" (tests.test_shim_promoted_probe.TestShimPromotedProbe.test_promoted_probe_in_metadata_when_both_envs) ... ok\\ntest_apply_changes_vector_when_both_envs (tests.test_shim_promoted_sip_apply.TestPromotedSipApply.test_apply_changes_vector_when_both_envs) ... ok\\ntest_steerer_surfaces_promoted_sip_meta (tests.test_shim_promoted_sip_apply.TestPromotedSipApply.test_steerer_surfaces_promoted_sip_meta) ... ok\\n\\n----------------------------------------------------------------------\\nRan 4 tests in 0.009s\\n\\nOK\\n\",\n      \"bhs_target\": 100,\n      \"worker_mandate\": \"Iteratively improve code toward BHS 100/100; no doc-only output.\"\n    },\n    {\n      \"role\": \"E\",\n      \"timestamp\": \"2026-06-03T21:38:20.124971+00:00\",\n      \"modules\": [\n        \"tests.test_shim_harness_collector\",\n        \"tests.test_shim_tts_intercept_evidence\"\n      ],\n      \"exit_code\": 0,\n      \"stdout_tail\": \"\",\n      \"stderr_tail\": \"im_harness_collector.TestShimHarnessCollector.test_collector_miss_when_meta_none) ... ok\\ntest_collector_miss_without_guard_keys (tests.test_shim_harness_collector.TestShimHarnessCollector.test_collector_miss_without_guard_keys) ... ok\\ntest_record_tts_intercept_script_writes_json (tests.test_shim_tts_intercept_evidence.TestShimTtsInterceptEvidence.test_record_tts_intercept_script_writes_json) ... ok\\n\\n----------------------------------------------------------------------\\nRan 4 tests in 0.139s\\n\\nOK\\n\",\n      \"bhs_target\": 100,\n      \"worker_mandate\": \"Iteratively improve code toward BHS 100/100; no doc-only output.\"\n    }\n  ]\n}\n--- block flag (informational; may still be BLOCKED) ---\n======================================================================\nBrutal Honesty Rulebook v3.3 \u2014 \u00a76.3 block-flag gate\nFile: docs/next-session.md\n======================================================================\nBlock flag state: BLOCKED\nCarried Debt row count (OPEN): 8\nCarried Debt row count (OPEN + Blocking YES): 5\nRESULT: FAIL \u2014 block flag BLOCKED. Per \u00a76.3, no new feature work may merge until the Carried Debt table is empty. If this PR's entire purpose is draining a Carried Debt item, re-run with --allow-debt-prs.\n=== SHIM verification complete ===\n",
+  "verify_stderr_tail": "s_json) ... ok\ntest_default_path_unchanged_without_env (test_shim_vector_steerer_research.TestShimVectorSteererResearch.test_default_path_unchanged_without_env) ... ok\ntest_research_guard_no_signals_returns_metadata (test_shim_vector_steerer_research.TestShimVectorSteererResearch.test_research_guard_no_signals_returns_metadata) ... ok\ntest_research_guard_off_matches_disabled_empty_signals (test_shim_vector_steerer_research.TestShimVectorSteererResearch.test_research_guard_off_matches_disabled_empty_signals) ... ok\ntest_research_guard_resets_stall_when_signals_present (test_shim_vector_steerer_research.TestShimVectorSteererResearch.test_research_guard_resets_stall_when_signals_present) ... ok\n\n----------------------------------------------------------------------\nRan 20 tests in 0.467s\n\nOK\n",
+  "bhs_smoke": {
+    "include_ceiling": true,
+    "floor": {
+      "passed": true,
+      "exit_code": 0
+    },
+    "ceiling": {
+      "passed": true,
+      "exit_code": 0
+    }
+  },
+  "bhs_audit": {
+    "exit_code": 0,
+    "unittest_exit": 0,
+    "unittest_tail": "(tests.test_shim_promoted_probe.TestShimPromotedProbe.test_promoted_probe_in_metadata_when_both_envs) ... ok\ntest_apply_changes_vector_when_both_envs (tests.test_shim_promoted_sip_apply.TestPromotedSipApply.test_apply_changes_vector_when_both_envs) ... ok\ntest_steerer_surfaces_promoted_sip_meta (tests.test_shim_promoted_sip_apply.TestPromotedSipApply.test_steerer_surfaces_promoted_sip_meta) ... ok\n\n----------------------------------------------------------------------\nRan 11 tests in 0.211s\n\nOK\n"
+  },
+  "block_flag_exit": 1,
+  "block_flag_stdout": "======================================================================\nBrutal Honesty Rulebook v3.3 \u2014 \u00a76.3 block-flag gate\nFile: docs/next-session.md\n======================================================================\nBlock flag state: BLOCKED\nCarried Debt row count (OPEN): 8\nCarried Debt row count (OPEN + Blocking YES): 5\nRESULT: FAIL \u2014 block flag BLOCKED. Per \u00a76.3, no new feature work may merge until the Carried Debt table is empty. If this PR's entire purpose is draining a Carried Debt item, re-run with --allow-debt-prs.\n",
+  "goal_excerpt": "# 10-minute priority loop \u2014 goal and worker charter\n\n**Duration:** 10 minutes wall clock  \n**BHS target:** 100/100 on every file touched in this loop  \n**Block gate:** `docs/next-session.md` may remain BLOCKED until SHIM blocking rows close; debt-draining work uses `python scripts/check_block_flag.py --allow-debt-prs`.\n\n## Goal (operator)\n\nDrain Tier A shim substrate debt without doc-only slices:\n\n1. Refresh production-path evidence: `VectorSteerer.steer`, `TTSPipeline.apply`, `AntigravityEngine.run_inference` + `enable_tts` under `CHELATED_SHIM_RESEARCH=1`.\n2. Promote minimal `ShimRegistry` surface to repo root (`shim_node_promoted.py`) when BHS smoke passes \u2014 not import from `docs/.../artifacts/` at runtime.\n3. Iteratively raise BHS on `chelated_shim_research.py`, `tts_pipeline.py` seam, and promotion module until structural validator reports no blocking issues.\n4. Update `docs/next-session.md` only with honest **CLOSED** rows backed by tests + artifacts.\n\n## Worker roles (iterative improvement)\n\n| Role | Mandate |\n|------|---------|\n| **Goal** | Keep scope on executable slices in `scripts/phase_development_loop.py`; reject doc-only backlog additions while SHIM-CD-01/02/05/06/08/",
+  "worker_brief": "Iteratively improve implemented code toward BHS 100/100; re-test after each slice; no doc-only work.",
+  "improvement_cycles": [],
+  "improvement_cycle_count": 0,
+  "improvement_cycles_all_ok": null
+}

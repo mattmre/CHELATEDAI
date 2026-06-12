@@ -1,0 +1,62 @@
+{
+  "cycle_id": "Cycle-010-2026-05-27-Agent10-Integrator",
+  "timestamp": "2026-05-27",
+  "agent_role": "Agent 10 (Integrator, File Editor & Evidence Packager)",
+  "task": "Collect/integrate Agents 1-9 outputs; perform file edits for comparison section + backlog slice + min-max pseudocode; update BHS_SHIM_LOOP_DASHBOARD.md as successful 10-agent model use; produce this consolidated EVIDENCE package; address Agent 9 BHS reqs.",
+  "10_agent_model_context": "Per BHS_5MIN_SHIM_LOOP_GOAL.md v1.1 (10-agent A-J from 2026-05-27); scheduler 019e669bf1bb still 5-agent per Model Change Log; this meta-work is single Integrator dispatch demonstrating role mechanics only.",
+  "background_agents_collected": [
+    "Agent 5 (019e66e3-0093...): Full min-max adaptation pseudocode + L risks + shim_node.py integration points + 'no files modified' honesty (31 tools).",
+    "Agent 6 (019e66e3-0a34...): Min-max stats as cheap signal for chelation variance + pseudocode sketches on antigravity:2566 + BHS implications (46 tools).",
+    "Agent 7 (019e66e3-169a...): Full new high-leverage backlog slice draft (min-max block scorer) inserted into goal (39 tools).",
+    "Agent 8 (019e66e3-21f1...): Detailed MiniMax MSA vs SE-RDAG comparison section drafted + inserted into research plan with tables, mappings, 5-vs-10 BHS subsection (34 tools)."
+  ],
+  "edits_performed": [
+    {
+      "file": "/home/mattmre/CHELATEDAI/docs/steering_chelation_rag_dag_research/STEERING_CHELATION_RAGDAG_MICROSLM_RESEARCH_PLAN.md",
+      "action": "search_replace append (comparison section + backlog ref + pseudocode + full BHS §4 disclosures)",
+      "pre_read_lines": "70-96",
+      "post_verification": "New section 'Loop 10 Comparative Analysis Slice' present with min_max_shim_adapt pseudocode, L4/L9/L13 citations, EVIDENCE/SMOKE for the edit itself.",
+      "BHS_disclosures_included": true
+    },
+    {
+      "file": "/home/mattmre/CHELATEDAI/docs/steering_chelation_rag_dag_research/BHS_5MIN_SHIM_LOOP_GOAL.md",
+      "action": "search_replace append (backlog #10 + sync note)",
+      "pre_read_lines": "90-110",
+      "post_verification": "New #10 item for 'NEW (Agent 10 Integrator meta...) comparison of MinMax MSA vs SE-RDAG' + L citations.",
+      "BHS_disclosures_included": true
+    },
+    {
+      "file": "/home/mattmre/CHELATEDAI/docs/steering_chelation_rag_dag_research/artifacts/BHS_SHIM_LOOP_DASHBOARD.md",
+      "action": "search_replace append (Cycle-010 row + 4Q + full §4 BH + EVIDENCE/SMOKE + §128 rec)",
+      "pre_read_lines": "940-952",
+      "post_verification": "Full Cycle-010 section with quantified 0s, background agents summary, L citations, SMOKE rejection tests.",
+      "BHS_disclosures_included": true
+    }
+  ],
+  "no_new_md_files_created": true,
+  "prod_isolation_evidence": {
+    "grep_command": "grep -r --include='*.py' 'ShimNode|apply_shim_cascade|min_max_shim_adapt|MinMax MSA' /home/mattmre/CHELATEDAI --glob '!**/docs/**' --glob '!**/artifacts/bhs_*.json' ",
+    "result": "0 production references (only research artifacts + this evidence json prose). Confirmed pre/post edits.",
+    "shim_files_only_in": "docs/steering_chelation_rag_dag_research/artifacts/shim_node.py + shim_collapse_benchmark_extension.py (explicit L4 guards at shim_node.py:34-36)"
+  },
+  "carried_debt_state": {
+    "next_session_shim_cds": "SHIM-CD-01 to 08 all OPEN (lines 61-68)",
+    "block_flag": "BLOCKED + 'Carried Debt row count: 2' + 'RESULT: FAIL' (scripts/check_block_flag.py semantics)",
+    "program_score": "10/100 flat (no change from this meta-work)"
+  },
+  "hashes_pre_post_example": {
+    "plan_md_pre": "documented via read before first edit",
+    "verification_cmd": "python -c 'import hashlib; p=\"docs/steering_chelation_rag_dag_research/STEERING_CHELATION_RAGDAG_MICROSLM_RESEARCH_PLAN.md\"; h=hashlib.sha256(open(p,\"rb\").read()).hexdigest(); print(h[:16])'  # run on fresh checkout to confirm edit survival"
+  },
+  "smoke_commands_for_repro": [
+    "grep -n 'MinMax MSA vs SE-RDAG' docs/steering_chelation_rag_dag_research/STEERING_CHELATION_RAGDAG_MICROSLM_RESEARCH_PLAN.md",
+    "python scripts/check_block_flag.py  # expects BLOCKED + FAIL + row count 2",
+    "python -B -c 'import sys; sys.path.insert(0,\"docs/steering_chelation_rag_dag_research/artifacts\"); from shim_collapse_benchmark_extension import ShimCollapseBenchmark; b=ShimCollapseBenchmark(); print(b.run_shim_insertion_smoke())'  # core metrics identical to prior baselines, no new Cycle-010 fields",
+    "grep -r --glob='!**/docs/**' 'min_max_shim_adapt|MinMax MSA' /home/mattmre/CHELATEDAI  # 0 hits outside this json prose"
+  ],
+  "agent9_bhs_requirements_addressed": "Full §4 template in all edits; L citations with file:line; 4Q answers; EVIDENCE/SMOKE; explicit §128 rec repeated; no overclaims on fidelity/substrate; background Agent 5-8 outputs collected as proxy for 1-9; adversarial posture maintained (0 substrate advance disclosed).",
+  "5_vs_10_gap_disclosed": "Repeated in every added BHS section + goal Model Change Log reference. This 'successful use' is Integrator role execution only (L4/L13).",
+  "brutal_honesty_this_artifact": "This json is meta evidence of documentation edits only. No production shim/SE-RDAG/MTP path exercised or advanced. 0 SIPs. Program score flat. Satisfies the specific Agent 10 task but does NOT satisfy goal success def #1 (runtime evidence from prod/harness). All claims bounded with L4/L9/L13. Survives fresh checkout as json. Independent reviewer can disprove any 'progress' claim using the SMOKE commands above. References: all prior cycle jsons/mds (001-009), goal:7/34/130/156-170, dashboard header/table, shim_node.py:10-36, next-session:61-69, rulebook v3.3.",
+  "final_program_score": "10/100 (unchanged)",
+  "recommendation": "Per §128 after 10 cycles 0 substrate: PAUSE or TERMINATE scheduler 019e669bf1bb or scope-reduce entire shim workstream to historical research artifact collection."
+}

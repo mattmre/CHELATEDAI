@@ -1,0 +1,110 @@
+{
+  "cycle": "Cycle-002",
+  "agent": "C (Test/Harness/Evidence Generation)",
+  "loop": "BHS 5-Minute Shim Loop",
+  "goal_ref": "docs/steering_chelation_rag_dag_research/BHS_5MIN_SHIM_LOOP_GOAL.md",
+  "timestamp_start": "2026-05-26T23:32:05.350160Z",
+  "timestamp_end": "2026-05-26T23:32:05.357000Z",
+  "harness": "docs/steering_chelation_rag_dag_research/artifacts/shim_collapse_benchmark_extension.py",
+  "execution_method": "cd /home/mattmre/CHELATEDAI && PYTHONPATH=.:docs/steering_chelation_rag_dag_research/artifacts python -u -c 'import shim_collapse_benchmark_extension as mod; ...' (live harness function calls for all families)",
+  "reproducibility": {
+    "runs_performed": 2,
+    "delta_ndcg_match_within_1e-12": true,
+    "side_effect_free_match": true,
+    "registry_empty_post_both": true
+  },
+  "runtime_summary": {
+    "shim_insertion": {
+      "recovered": true,
+      "side_effect_free": true,
+      "delta_ndcg_at_3": 1.0,
+      "baseline_ndcg_at_3": 0.0,
+      "post_ndcg_at_3": 1.0,
+      "simulated_cost": {"baseline_tokens": 128.0, "per_shim_tokens": 8.0, "depth_overhead_tokens": 14.0, "mtp_overhead_tokens": 0.0, "total_extra_tokens": 22.0, "costed_shim_ids": ["auto_corrective_collapse_v1"]},
+      "rollback_proof": {"baseline_ndcg_at_3": 0.0, "post_rollback_ndcg_at_3": 0.0, "absolute_delta": 0.0, "side_effect_free": true, "registry_empty_post_experiment": true}
+    },
+    "cascade": {
+      "n_results": 2,
+      "aggregate_mtp_hit": {"hit_rate": 1.0, "evaluated_followers": 1},
+      "sim_costs": [
+        {"total_extra_tokens": 23.0, "costed_shim_ids": ["cascade_single_v1"]},
+        {"total_extra_tokens": 41.5, "costed_shim_ids": ["cascade_compound_base", "cascade_compound_partner"]}
+      ],
+      "rollbacks": [
+        {"rollback_equal": true, "registry_empty_post": true},
+        {"rollback_equal": true, "registry_empty_post": true}
+      ]
+    },
+    "rollback": {
+      "rollback_equal": true,
+      "registry_empty_post": true,
+      "during_depth": 1,
+      "before": 0.0,
+      "during": 0.0,
+      "after": 0.0
+    }
+  },
+  "bhs_evidence_Cycle-002": {
+    "shim_insertion": {
+      "cycle_id": "Cycle-002",
+      "ts": "2026-05-26T23:32:05.356763Z",
+      "family": "shim_insertion",
+      "command": "python -u [harness load exec via import] ... --family shim_insertion (Cycle-002 Agent C)",
+      "before": {"ndcg": 0.0},
+      "after": {"ndcg": 1.0},
+      "delta_ndcg_at_3": 1.0,
+      "recovered": true,
+      "simulated_costs": {"total_extra_tokens": 22.0, "per_shim_tokens": 8.0, "depth_overhead_tokens": 14.0},
+      "rollback_proofs": {"side_effect_free": true, "registry_empty_post_experiment": true, "absolute_delta": 0.0},
+      "activation_records": [
+        {
+          "shim_id": "auto_corrective_collapse_v1",
+          "cycle_id": "Cycle-002-2026-05-26-B",
+          "timestamp": "2026-05-26T23:32:05.352037+00:00",
+          "before": {},
+          "after": {"activation_count": 1, "success_count": 1, "cumulative_token_cost_delta": 8.0, "last_activated_at": "2026-05-26T23:32:05.352037+00:00", "compounding_frequency": 0},
+          "simulated_cost_delta": 8.0,
+          "was_success": true,
+          "compounding_used": false
+        }
+      ],
+      "metrics_hash": "5fada3624bd6e06f",
+      "note": "From live execution of extended harness (record_shim_activation path)"
+    },
+    "cascade": {
+      "cycle_id": "Cycle-002",
+      "ts": "2026-05-26T23:32:05.356763Z",
+      "family": "cascade",
+      "n_results": 2,
+      "simulated_costs": [{"total_extra_tokens": 23.0}, {"total_extra_tokens": 41.5}],
+      "rollback_proofs": [{"rollback_equal": true, "registry_empty_post": true}, {"rollback_equal": true, "registry_empty_post": true}],
+      "activation_records": {"mtp_hit_rate": {"hit_rate": 1.0, "evaluated_followers": 1}, "mtp_predictor_patterns": 1},
+      "efficiencies_observed": [null, null]
+    },
+    "rollback": {
+      "cycle_id": "Cycle-002",
+      "ts": "2026-05-26T23:32:05.356763Z",
+      "family": "rollback",
+      "before": 0.0,
+      "during": 0.0,
+      "after": 0.0,
+      "rollback_proofs": {"rollback_equal": true, "registry_empty": true},
+      "activation_records": {"live_shim_apply": "explicit vector math + temp_experiment context"}
+    }
+  },
+  "source_bhs_evidence_from_run": {
+    "note": "The live run output already contained extended bhs_evidence with Cycle-002-2026-05-26-B due to prior extension in source (record_shim_activation + usage_stats). See harness source for exact construction at shim_insertion_under_collapse:587"
+  },
+  "EVIDENCE_lines": [
+    "EVIDENCE: python docs/steering_chelation_rag_dag_research/artifacts/shim_collapse_benchmark_extension.py --topic-count 4 --collapse-strength 4.0 --family all --verbose",
+    "EVIDENCE: Cycle-002 harness execution (import shim_collapse... + ShimCollapseBenchmark calls) produced bhs_evidence dicts containing cycle_id, timestamp, before/after ndcg deltas, simulated_costs (22.0/23.0/41.5 extra tokens), rollback_proofs (registry_empty_post_experiment=True, side_effect_free=True, rollback_equal=True), activation_records (with before/after usage_stats increments for shim_id auto_corrective_collapse_v1 + mtp hits)",
+    "EVIDENCE: Two full invocations: delta_ndcg_at_3=1.0 identical within 1e-12; side_effect_free=True both; registry empty post both runs (reproducibility proof from synthetic fixture + TempShimRegistry.temp_experiment isolation)"
+  ],
+  "SMOKE_lines": [
+    "SMOKE: shim_insertion: recovered=True, side_effect_free=True, delta_ndcg_at_3=1.0, simulated extra_tokens=22.0, registry_empty_post_experiment=True, activation_records present with cycle_id and incremented counters",
+    "SMOKE: cascade: 2 cascades executed, aggregate_mtp_hit=1.0 (synthetic GT), all rollbacks equal+registry_clean, simulated costs 23.0 and 41.5",
+    "SMOKE: rollback: before/during/after ndcg equality + registry_empty_post=True + explicit during_delta_norm_sample populated from apply_shim_to_vector under temp context",
+    "SMOKE: Full re-run on same machine/env reproduces bitwise-identical ndcg deltas and registry isolation guarantees; activation counts would increment on shared registry instance across calls"
+  ],
+  "brutal_honesty_this_artifact": "This is runtime output from harness code paths only (synthetic_collapse_benchmark + numpy vector math + in-memory TempShimRegistry). No production engine, SIPs, or real models exercised. See harness BHS NOTES CAN/CANNOT section (lines ~892-1023). The Cycle-002 fields and record_shim_activation are new in this extended harness but confined to research/artifacts/. Numbers identical to pre-Cycle-2 baseline (per Cycle-1 dashboard audit). Survives fresh checkout only as research scaffold evidence of harness mechanics."
+}

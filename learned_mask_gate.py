@@ -105,10 +105,16 @@ def load_mask_example_rows(paths: Sequence[str | Path]) -> List[Dict[str, Any]]:
 
 
 def _task_query_texts(task: str) -> Dict[str, str]:
-    _corpus, queries, _qrels = load_mteb_data(task)
+    try:
+        _corpus, queries, _qrels = load_mteb_data(task)
+    except Exception:
+        return {}
+    if not isinstance(queries, dict):
+        return {}
     return {
         canonicalize_id(query_id): str(query_text)
         for query_id, query_text in queries.items()
+        if query_id is not None and query_text is not None
     }
 
 

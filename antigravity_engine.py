@@ -1,24 +1,114 @@
 import copy
 import hashlib
 import time
-
 import numpy as np
-from qdrant_client import QdrantClient
-from qdrant_client.models import Distance, VectorParams, PointStruct
-from qdrant_client.http.exceptions import ResponseHandlingException, UnexpectedResponse
 from collections import defaultdict
 from threading import Lock
-import torch
-import torch.optim as optim
-from chelation_adapter import create_adapter
+from typing import Any, Dict, Optional
+
+try:
+    from qdrant_client import QdrantClient
+    from qdrant_client.models import Distance, VectorParams, PointStruct
+    from qdrant_client.http.exceptions import ResponseHandlingException, UnexpectedResponse
+except ModuleNotFoundError:
+    class QdrantClient:  # pragma: no cover - optional dependency
+        def __init__(self, *args, **kwargs):
+            raise ModuleNotFoundError(
+                "qdrant_client is required for AntigravityEngine runtime operations."
+            )
+
+    class _QdrantDistance:
+        COSINE = "COSINE"
+
+    class Distance:  # pragma: no cover - optional dependency
+        COSINE = _QdrantDistance.COSINE
+
+    class VectorParams:  # pragma: no cover
+        def __init__(self, *args, **kwargs):
+            self.size = kwargs.get("size")
+            self.distance = kwargs.get("distance")
+
+    class PointStruct:  # pragma: no cover
+        def __init__(self, *args, **kwargs):
+            self.id = kwargs.get("id")
+            self.vector = kwargs.get("vector")
+            self.payload = kwargs.get("payload", {})
+
+    class ResponseHandlingException(Exception):
+        pass
+
+    class UnexpectedResponse(Exception):
+        pass
+
+try:
+    import torch
+    import torch.optim as optim
+except ModuleNotFoundError:
+    torch = None
+    optim = None
+
+try:
+    from chelation_adapter import create_adapter
+except Exception:  # pragma: no cover - dependency optional for environments without torch
+    def create_adapter(*args, **kwargs):
+        raise ImportError(
+            "torch is required for adapter creation; install torch or avoid engine instantiation."
+        )
+
 from config import ChelationConfig
 from chelation_logger import get_logger
-from typing import Optional
-from teacher_distillation import create_distillation_helper
+try:
+    from teacher_distillation import create_distillation_helper
+except Exception:  # pragma: no cover - dependency optional for environments without torch
+    def create_distillation_helper(*args, **kwargs):
+        raise ImportError(
+            "torch is required for teacher distillation; install torch for offline/hybrid training modes."
+        )
 from sedimentation_trainer import compute_homeostatic_target, sync_vectors_to_qdrant
 from checkpoint_manager import CheckpointManager, SafeTrainingContext
 from embedding_backend import create_embedding_backend
 from vector_store import create_vector_store
+try:
+    from chelated_shim_research import (
+        attach_research_meta,
+        bump_stall_counter,
+        promoted_sip_apply,
+        research_enabled,
+        research_preflight_metadata,
+    )
+except ModuleNotFoundError:
+    def research_enabled() -> bool:
+        return False
+
+    def attach_research_meta(diagnostics: dict, _meta: Any | None) -> dict:
+        return diagnostics
+
+    def bump_stall_counter(counter: int, *, has_work: bool) -> int:
+        return counter
+
+    def promoted_sip_apply(v, **kwargs):
+        return np.array(v, dtype=float).copy(), None
+
+    def research_preflight_metadata(
+        *,
+        seam: str,
+        stall_count: int,
+        extra: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        return {"research_shim_guard": False, "research_stall_count": stall_count, "sip_seam": seam, **(extra or {})}
+
+try:
+    import model_scope_runtime
+    import model_scope_engine_bridge
+
+    # Import aliases used by tests and runtime wiring.
+    create_model_scope_runtime = model_scope_runtime.create_model_scope_runtime
+    ModelScopeEngineBridge = model_scope_engine_bridge.ModelScopeEngineBridge
+except Exception:  # pragma: no cover - optional dependency path for compatibility
+    model_scope_runtime = None  # type: ignore[assignment]
+    model_scope_engine_bridge = None  # type: ignore[assignment]
+    create_model_scope_runtime = None  # type: ignore[assignment]
+    ModelScopeEngineBridge = None  # type: ignore[assignment]
 
 class AntigravityEngine:
     def __init__(self, qdrant_location=":memory:", chelation_p=ChelationConfig.DEFAULT_CHELATION_P, model_name='ollama:nomic-embed-text', use_centering=False, use_quantization=False, training_mode: str = "baseline", teacher_model_name: Optional[str] = None, teacher_models=None, teacher_weight: float = 0.5, store_full_text_payload: Optional[bool] = None):
@@ -38,6 +128,10 @@ class AntigravityEngine:
         self.use_centering = use_centering
         self.use_quantization = use_quantization
         self.chelation_log = defaultdict(list)
+        self._research_post_embed_stall = 0
+        self._research_chelation_stall = 0
+        self._research_pre_retrieval_stall = 0
+        self._last_research_shim_meta = None
         self.chelation_threshold = ChelationConfig.DEFAULT_CHELATION_THRESHOLD
         self.adapter_path = ChelationConfig.ADAPTER_WEIGHTS_PATH
         self.logger = get_logger()
@@ -169,6 +263,18 @@ class AntigravityEngine:
 
         # Get raw embeddings from backend
         raw_embeddings = self.embedding_backend.embed_raw(texts)
+
+        if self.mode == "local" and torch is None:
+            self._last_embedding_norms = {
+                "adapter_input_norm": None,
+                "adapter_output_norm": None,
+                "batch_size": len(texts),
+                "dtype": str(getattr(raw_embeddings, "dtype", "unknown")),
+            }
+            if getattr(self, "_simulate_embedding_quantization", False):
+                # Best-effort no-op fallback without PyTorch.
+                return np.asarray(raw_embeddings)
+            return raw_embeddings
 
         # For local mode, pass through adapter
         if self.mode == "local":
@@ -550,6 +656,17 @@ class AntigravityEngine:
 
         return mask
 
+    def _apply_promoted_sip_if_enabled(self, vec: np.ndarray, *, seam: str) -> np.ndarray:
+        """Env-guarded promoted SIP at production vector seams (research default OFF)."""
+        out, sip_meta = promoted_sip_apply(np.array(vec, dtype=float))
+        if sip_meta and research_enabled():
+            self._last_research_shim_meta = research_preflight_metadata(
+                seam=seam,
+                stall_count=0,
+                extra={"promoted_sip_apply": sip_meta},
+            )
+        return out
+
     def get_chelated_vector(self, query_text):
         """
         Returns the chelated (masked) query vector for external benchmarking (MTEB).
@@ -572,13 +689,17 @@ class AntigravityEngine:
 
             if not scout_results:
                 # Fallback if index empty
-                return q_vec
+                return self._apply_promoted_sip_if_enabled(
+                    q_vec, seam="AntigravityEngine.get_chelated_vector.empty_index"
+                )
 
             # Extract vectors directly from scout_results (F-027: eliminated redundant retrieve())
             local_vectors = [hit.vector for hit in scout_results if hit.vector is not None]
 
             if not local_vectors:
-                return q_vec
+                return self._apply_promoted_sip_if_enabled(
+                    q_vec, seam="AntigravityEngine.get_chelated_vector.no_local_vectors"
+                )
 
             local_cluster_np = np.array(local_vectors)
 
@@ -587,10 +708,14 @@ class AntigravityEngine:
 
             # 4. Apply Mask
             q_chelated = q_vec * mask
-            return q_chelated
+            return self._apply_promoted_sip_if_enabled(
+                q_chelated, seam="AntigravityEngine.get_chelated_vector.chelated"
+            )
         except (ResponseHandlingException, UnexpectedResponse) as e:
             self.logger.log_error("qdrant", f"Qdrant error in get_chelated_vector: {e}", exception=e)
-            return q_vec
+            return self._apply_promoted_sip_if_enabled(
+                q_vec, seam="AntigravityEngine.get_chelated_vector.qdrant_error"
+            )
 
     def enable_adaptive_threshold(
         self,
@@ -1059,35 +1184,135 @@ class AntigravityEngine:
         runtime=None,
     ):
         """Enable observation-only Model-Scope capture for query text."""
+        if model_name is None:
+            model_name = ChelationConfig.MODEL_SCOPE_PRIMARY_PILOT_MODEL
 
+        runtime_is_local = False
         if runtime is None:
-            from model_scope_runtime import create_model_scope_runtime
-
+            resolved_max_input_tokens = (
+                max_input_tokens
+                if max_input_tokens is not None
+                else ChelationConfig.MODEL_SCOPE_MAX_INPUT_TOKENS
+            )
+            resolved_summary_top_dimensions = (
+                summary_top_dimensions
+                if summary_top_dimensions is not None
+                else ChelationConfig.MODEL_SCOPE_SUMMARY_TOP_DIMENSIONS
+            )
             runtime = create_model_scope_runtime(
-                model_name=model_name or ChelationConfig.MODEL_SCOPE_DEBUG_MODEL_NAME,
+                model_name=model_name,
                 layer_indices=layer_indices,
-                max_input_tokens=max_input_tokens,
-                summary_top_dimensions=summary_top_dimensions,
+                max_input_tokens=resolved_max_input_tokens,
+                summary_top_dimensions=resolved_summary_top_dimensions,
                 artifact_dir=artifact_dir or str(ChelationConfig.MODEL_SCOPE_ARTIFACT_ROOT),
                 eager_load=eager_load,
                 logger=self.logger,
             )
+            runtime_is_local = True
+        else:
+            runtime_model_name = getattr(runtime, "model_name", None)
+            if runtime_model_name is None and hasattr(runtime, "describe_runtime"):
+                describe = runtime.describe_runtime()
+                if isinstance(describe, dict):
+                    runtime_model_name = describe.get("model_name")
+
+            local_runtime_cls = None
+            if model_scope_runtime is not None and hasattr(model_scope_runtime, "LocalModelRuntime"):
+                local_runtime_cls = model_scope_runtime.LocalModelRuntime
+            try:
+                runtime_is_local = bool(
+                    (
+                        local_runtime_cls is not None
+                        and local_runtime_cls is not object
+                        and isinstance(runtime, local_runtime_cls)
+                    )
+                    or (
+                        local_runtime_cls is None
+                        and runtime_model_name == ChelationConfig.MODEL_SCOPE_PRIMARY_PILOT_MODEL
+                    )
+                )
+            except Exception:  # noqa: BLE001
+                runtime_is_local = False
+
         self._model_scope_runtime = runtime
-        from model_scope_engine_bridge import ModelScopeEngineBridge, ModelScopeBridgeConfig
-        _bridge_config = ModelScopeBridgeConfig(
-            artifact_dir=artifact_dir or str(ChelationConfig.MODEL_SCOPE_ARTIFACT_ROOT)
+        if "ModelScopeEngineBridge" in globals() and ModelScopeEngineBridge is not None:
+            _bridge_cls = ModelScopeEngineBridge
+        else:
+            from model_scope_engine_bridge import (
+                ModelScopeEngineBridge as _ModelScopeEngineBridge,
+                ModelScopeBridgeConfig,
+            )
+            _bridge_cls = _ModelScopeEngineBridge
+        from model_scope_engine_bridge import ModelScopeBridgeConfig
+
+        if ModelScopeBridgeConfig is None:  # pragma: no cover - defensive fallback
+            from model_scope_engine_bridge import ModelScopeBridgeConfig
+        if _bridge_cls is None:  # pragma: no cover - defensive fallback
+            raise RuntimeError("ModelScopeEngineBridge could not be imported")
+
+        self._model_scope_default_policy_id = None
+        _resolved_max_input_tokens = (
+            max_input_tokens if max_input_tokens is not None else ChelationConfig.MODEL_SCOPE_MAX_INPUT_TOKENS
         )
-        self._model_scope_bridge = ModelScopeEngineBridge(_bridge_config)
+        _resolved_summary_top_dimensions = (
+            summary_top_dimensions if summary_top_dimensions is not None else ChelationConfig.MODEL_SCOPE_SUMMARY_TOP_DIMENSIONS
+        )
+        _bridge_config = ModelScopeBridgeConfig(
+            artifact_dir=artifact_dir or str(ChelationConfig.MODEL_SCOPE_ARTIFACT_ROOT),
+            enable_steering=runtime_is_local,
+            max_total_interventions=100,
+        )
+        self._model_scope_bridge = _bridge_cls(_bridge_config) if runtime_is_local else None
+        if self._model_scope_bridge is not None:
+            try:
+                policy_id = self._model_scope_bridge.register_shadow_policy(
+                    name="model_scope_shadow_pilot",
+                    feature_space="raw_stats",
+                    target_features=(
+                        "mean_activation",
+                        "norm_activation",
+                        "token_count",
+                        "shape_0",
+                        "raw_activation_dim_count",
+                    ),
+                    max_interventions=self._model_scope_bridge._config.max_total_interventions,
+                )
+                self._model_scope_default_policy_id = policy_id
+            except Exception:
+                # Keep observation enabled even if policy bootstrapping fails.
+                self.logger.log_error(
+                    "model_scope",
+                    "Failed to register default model-scope policy; continuing in observation-only mode",
+                )
+                self._model_scope_bridge = _bridge_cls(_bridge_config)
+
+        runtime_config_base = {
+            "model_name": model_name,
+            "layer_indices": list(layer_indices) if layer_indices is not None else None,
+            "max_input_tokens": _resolved_max_input_tokens,
+            "summary_top_dimensions": _resolved_summary_top_dimensions,
+            "artifact_dir": artifact_dir or str(ChelationConfig.MODEL_SCOPE_ARTIFACT_ROOT),
+        }
+        model_scope_config = runtime.describe_runtime() if hasattr(runtime, "describe_runtime") else {
+            runtime_config_base
+        }
+        if isinstance(model_scope_config, dict):
+            if not runtime_is_local:
+                model_scope_config["model_name"] = model_name
+            elif "model_name" not in model_scope_config:
+                model_scope_config["model_name"] = runtime_model_name or model_name
+            model_scope_config.setdefault(
+                "model_scope_default_policy_id",
+                self._model_scope_default_policy_id,
+            )
+            model_scope_config.setdefault(
+                "model_scope_bridge_enabled",
+                runtime_is_local,
+            )
+        if isinstance(model_scope_config, dict):
+            model_scope_config.setdefault("deployment_mode", ChelationConfig.MODEL_SCOPE_DEPLOYMENT_MODE)
         self._model_scope_config = self._runtime_json_safe(
-            runtime.describe_runtime() if hasattr(runtime, "describe_runtime") else {
-                "model_name": model_name or ChelationConfig.MODEL_SCOPE_DEBUG_MODEL_NAME,
-                "layer_indices": list(layer_indices) if layer_indices is not None else None,
-                "max_input_tokens": max_input_tokens or ChelationConfig.MODEL_SCOPE_MAX_INPUT_TOKENS,
-                "summary_top_dimensions": (
-                    summary_top_dimensions or ChelationConfig.MODEL_SCOPE_SUMMARY_TOP_DIMENSIONS
-                ),
-                "artifact_dir": artifact_dir or str(ChelationConfig.MODEL_SCOPE_ARTIFACT_ROOT),
-            }
+            model_scope_config
         )
         self._runtime_telemetry["model_scope_enabled"] = True
         self.logger.log_event(
@@ -1133,6 +1358,12 @@ class AntigravityEngine:
                 config=self._runtime_json_safe(cfg.__dict__),
             )
         except Exception as _exc:
+            self.logger.log_event(
+                "tts_dashboard_enable_failed",
+                "TTS dashboard enable update failed",
+                level="DEBUG",
+                exception_type=type(_exc).__name__,
+            )
             import warnings
             warnings.warn(
                 f"TTS dashboard enable update failed: {_exc}",
@@ -1143,6 +1374,10 @@ class AntigravityEngine:
     def get_last_tts_result(self):
         """Return the TTSResult from the most recent inference, or None."""
         return getattr(self, '_last_tts_result', None)
+
+    def get_last_research_shim_meta(self):
+        """Return research SIP preflight metadata from the latest inference, or None."""
+        return getattr(self, "_last_research_shim_meta", None)
 
     def add_tts_transport_target(self, target_id: str, centroid, label: str = "") -> None:
         """Register a transport target on the active TTS pipeline's transport stage.
@@ -1234,6 +1469,7 @@ class AntigravityEngine:
         if runtime is None or bridge is None:
             return {"error": "model_scope_not_enabled"}
         result = bridge.observe(query, runtime)
+        self._last_model_scope_observation = result
         self._last_model_scope_artifact = result
         telemetry = dict(getattr(self, "_runtime_telemetry", {}))
         telemetry["model_scope_observation_count"] = (
@@ -1252,17 +1488,24 @@ class AntigravityEngine:
         telemetry.setdefault("model_scope_enabled", bool(getattr(self, "_model_scope_runtime", None) is not None))
         telemetry.setdefault("model_scope_observation_count", 0)
         telemetry.setdefault("model_scope_error_count", 0)
-        telemetry["torch_cuda_available"] = bool(torch.cuda.is_available())
-        if torch.cuda.is_available():
-            telemetry["cuda_device_name"] = torch.cuda.get_device_name(0)
-            telemetry["cuda_memory_allocated_mb"] = float(torch.cuda.memory_allocated(0) / (1024 ** 2))
-            telemetry["cuda_memory_reserved_mb"] = float(torch.cuda.memory_reserved(0) / (1024 ** 2))
-            telemetry["cuda_max_memory_allocated_mb"] = float(torch.cuda.max_memory_allocated(0) / (1024 ** 2))
-        else:
+        if torch is None:
+            telemetry["torch_cuda_available"] = False
             telemetry["cuda_device_name"] = None
             telemetry["cuda_memory_allocated_mb"] = 0.0
             telemetry["cuda_memory_reserved_mb"] = 0.0
             telemetry["cuda_max_memory_allocated_mb"] = 0.0
+        else:
+            telemetry["torch_cuda_available"] = bool(torch.cuda.is_available())
+            if telemetry["torch_cuda_available"]:
+                telemetry["cuda_device_name"] = torch.cuda.get_device_name(0)
+                telemetry["cuda_memory_allocated_mb"] = float(torch.cuda.memory_allocated(0) / (1024 ** 2))
+                telemetry["cuda_memory_reserved_mb"] = float(torch.cuda.memory_reserved(0) / (1024 ** 2))
+                telemetry["cuda_max_memory_allocated_mb"] = float(torch.cuda.max_memory_allocated(0) / (1024 ** 2))
+            else:
+                telemetry["cuda_device_name"] = None
+                telemetry["cuda_memory_allocated_mb"] = 0.0
+                telemetry["cuda_memory_reserved_mb"] = 0.0
+                telemetry["cuda_max_memory_allocated_mb"] = 0.0
         return self._runtime_json_safe(telemetry)
 
     def _select_retrieval_policy(self, action, variance=None, active_threshold=None, scout_limit=None):
@@ -1288,6 +1531,8 @@ class AntigravityEngine:
 
     def _observe_model_scope_query(self, query_text):
         runtime = getattr(self, "_model_scope_runtime", None)
+        import dataclasses
+        self._last_model_scope_feature_event = None
         if runtime is None:
             return None
         if (
@@ -1298,30 +1543,64 @@ class AntigravityEngine:
             return None
         self._model_scope_observation_active = True
         try:
-            artifact = runtime.observe_text(
-                query_text,
-                metadata={
-                    "source": "antigravity_engine",
-                    "engine_model_name": self.model_name,
-                    "deployment_mode": ChelationConfig.MODEL_SCOPE_DEPLOYMENT_MODE,
-                },
-            )
+            bridge = getattr(self, "_model_scope_bridge", None)
+            capture = None
+            feature_event = None
+            if bridge is not None:
+                observation = self.observe_query_with_model_scope(query_text)
+                artifact = getattr(self, "_last_model_scope_artifact", {})
+                observation = getattr(self, "_last_model_scope_observation", None)
+                if observation is None:
+                    feature_event = None
+                else:
+                    feature_event = getattr(observation, "feature_event", None)
+            else:
+                artifact = runtime.observe_text(
+                    query_text,
+                    metadata={
+                        "source": "antigravity_engine",
+                        "engine_model_name": self.model_name,
+                        "deployment_mode": ChelationConfig.MODEL_SCOPE_DEPLOYMENT_MODE,
+                    },
+                )
+                feature_event = None
+                if isinstance(artifact, dict):
+                    feature_event = artifact.get("feature_event")
             self._last_model_scope_artifact = artifact
+            if feature_event is None and isinstance(artifact, dict):
+                feature_event = artifact.get("feature_event")
+            if feature_event is not None:
+                self._last_model_scope_feature_event = feature_event
+            else:
+                feature_event = None
+            self._last_model_scope_feature_event = feature_event
             telemetry = dict(getattr(self, "_runtime_telemetry", {}))
             telemetry["model_scope_enabled"] = True
             telemetry["model_scope_observation_count"] = int(telemetry.get("model_scope_observation_count", 0)) + 1
             self._runtime_telemetry = telemetry
-            capture = artifact.get("capture", {})
+            if isinstance(artifact, dict):
+                capture = artifact.get("capture", {})
+            elif dataclasses.is_dataclass(artifact):
+                capture = {}
+            else:
+                capture = {}
             return {
                 "status": "observed",
-                "model_name": artifact.get("runtime", {}).get("model_name"),
+                "model_name": (
+                    artifact.get("runtime", {}).get("model_name")
+                    if isinstance(artifact, dict)
+                    else getattr(runtime, "model_name", None)
+                    if hasattr(runtime, "model_name")
+                    else None
+                ),
                 "token_count": capture.get("token_count"),
                 "captured_layer_count": capture.get("captured_layer_count", 0),
                 "layer_indices": capture.get("layer_indices"),
-                "output_path": artifact.get("output_path"),
-                "steering": artifact.get("steering"),
-                "memory": artifact.get("memory"),
-                "expectation_comparison": artifact.get("expectation_comparison"),
+                "output_path": artifact.get("output_path") if isinstance(artifact, dict) else getattr(artifact, "artifact_path", None),
+                "steering": artifact.get("steering") if isinstance(artifact, dict) else None,
+                "memory": artifact.get("memory") if isinstance(artifact, dict) else None,
+                "expectation_comparison": artifact.get("expectation_comparison") if isinstance(artifact, dict) else None,
+                "feature_event_present": feature_event is not None,
             }
         except Exception as exc:
             telemetry = dict(getattr(self, "_runtime_telemetry", {}))
@@ -1386,7 +1665,10 @@ class AntigravityEngine:
             "norm_drift": norm_drift,
             "telemetry": self.get_runtime_telemetry(),
         }
-        return self._runtime_json_safe(diagnostics)
+        return attach_research_meta(
+            self._runtime_json_safe(diagnostics),
+            getattr(self, "_last_research_shim_meta", None),
+        )
 
     @staticmethod
     def _fuse_reformulated_rankings(variant_rankings, limit=10, rrf_k=60):
@@ -1829,6 +2111,15 @@ class AntigravityEngine:
         # Convert to numpy arrays
         input_array = np.array(training_inputs)
         target_array = np.array(training_targets)
+        sample_ids = []
+        for point_id in ordered_ids:
+            payload = payload_map.get(point_id, {})
+            sample_ids.append(
+                payload.get("doc_id")
+                or payload.get("original_id")
+                or payload.get("id")
+                or point_id
+            )
 
         # Apply teacher distillation if needed
         if self.training_mode == "offline" and self.teacher_helper:
@@ -1837,7 +2128,8 @@ class AntigravityEngine:
                 target_array = self.teacher_helper.generate_distillation_targets(
                     texts=training_texts,
                     current_embeddings=input_array,
-                    teacher_weight=1.0  # Pure teacher
+                    teacher_weight=1.0,  # Pure teacher
+                    return_torch=True,
                 )
             except Exception as e:
                 self.logger.log_error(
@@ -1870,7 +2162,8 @@ class AntigravityEngine:
                 target_array = self.teacher_helper.generate_distillation_targets(
                     training_texts,
                     homeostatic_targets,
-                    teacher_weight=self.teacher_weight
+                    teacher_weight=self.teacher_weight,
+                    return_torch=True,
                 )
             except Exception as e:
                 self.logger.log_error(
@@ -1881,7 +2174,11 @@ class AntigravityEngine:
 
         # Normalize Data
         input_tensor = torch.tensor(input_array, dtype=torch.float32)
-        target_tensor = torch.tensor(target_array, dtype=torch.float32)
+        if isinstance(target_array, torch.Tensor):
+            target_tensor = target_array.to(dtype=torch.float32)
+        else:
+            target_array = np.asarray(target_array)
+            target_tensor = torch.tensor(target_array, dtype=torch.float32)
 
         # Noise injection setup
         if noise_injection is None:
@@ -2015,7 +2312,10 @@ class AntigravityEngine:
                     else:
                         outputs = self.adapter(input_tensor)
 
-                    loss = criterion(outputs, target_tensor)
+                    try:
+                        loss = criterion(outputs, target_tensor, sample_ids=sample_ids)
+                    except TypeError:
+                        loss = criterion(outputs, target_tensor)
 
                     # Frobenius-norm regularization (Procrustes: penalise skew-param
                     # magnitude to keep rotation angles small across cycles;
@@ -2426,6 +2726,9 @@ class AntigravityEngine:
         """Full Navigational Loop (returns IDs)."""
         inference_start = time.time()
         model_scope_summary = self._observe_model_scope_query(query_text)
+        model_scope_feature_event = getattr(self, "_last_model_scope_feature_event", None)
+        if model_scope_feature_event is None and isinstance(model_scope_summary, dict):
+            model_scope_feature_event = model_scope_summary.get("feature_event")
         reformulator = getattr(self, '_query_reformulator', None)
         if reformulator is not None and not getattr(self, '_query_reformulation_active', False):
             from query_reformulator import should_apply_reformulation
@@ -2551,11 +2854,27 @@ class AntigravityEngine:
                 model_scope=model_scope_summary,
             ))
             return [], [], np.ones(self.vector_size), 0.0
+
+        if research_enabled():
+            _tts_probe = getattr(self, "_tts_pipeline", None)
+            self._research_post_embed_stall = bump_stall_counter(
+                self._research_post_embed_stall,
+                has_work=_tts_probe is not None,
+            )
+            self._last_research_shim_meta = research_preflight_metadata(
+                seam="AntigravityEngine.post_embed",
+                stall_count=self._research_post_embed_stall,
+                extra={"has_tts_pipeline": _tts_probe is not None},
+            )
+
         # TTS intercept — applied after embedding (and static mask), before retrieval
         _tts = getattr(self, '_tts_pipeline', None)
         if _tts is not None:
             try:
-                _tts_result = _tts.apply(q_vec)
+                _tts_result = _tts.apply(
+                    q_vec,
+                    feature_event=model_scope_feature_event,
+                )
                 self._last_tts_result = _tts_result
                 q_vec = _tts_result.after_steering
                 try:
@@ -2579,6 +2898,27 @@ class AntigravityEngine:
                     "TTS pipeline error during inference; using original embedding",
                     exception=_tts_err,
                 )
+        if research_enabled():
+            self._research_pre_retrieval_stall = bump_stall_counter(
+                self._research_pre_retrieval_stall,
+                has_work=bool(query_text),
+            )
+            q_vec = self._apply_promoted_sip_if_enabled(
+                q_vec,
+                seam="AntigravityEngine.pre_retrieval",
+            )
+            pre_retrieval_meta = research_preflight_metadata(
+                seam="AntigravityEngine.pre_retrieval",
+                stall_count=self._research_pre_retrieval_stall,
+                extra={"has_tts_pipeline": _tts is not None},
+            )
+            last_meta = getattr(self, "_last_research_shim_meta", None)
+            if isinstance(last_meta, dict):
+                sip_meta = last_meta.get("promoted_sip_apply")
+                if isinstance(sip_meta, dict):
+                    pre_retrieval_meta["promoted_sip_apply"] = sip_meta
+            self._last_research_shim_meta = pre_retrieval_meta
+
         adapter_router = getattr(self, '_adapter_router', None)
         if adapter_router is not None and not getattr(self, '_adapter_routing_active', False):
             route = adapter_router.select(q_vec, fallback=lambda: self.adapter)
@@ -2664,6 +3004,21 @@ class AntigravityEngine:
             # C. Processing Logic
             local_vectors = [hit.vector for hit in std_results]
             local_cluster_np = np.array(local_vectors)
+
+            if research_enabled():
+                has_scout = len(local_vectors) > 0
+                self._research_chelation_stall = bump_stall_counter(
+                    self._research_chelation_stall,
+                    has_work=has_scout,
+                )
+                self._last_research_shim_meta = research_preflight_metadata(
+                    seam="AntigravityEngine.chelation_variance",
+                    stall_count=self._research_chelation_stall,
+                    extra={
+                        "scout_hits": len(local_vectors),
+                        "scout_limit": scout_limit,
+                    },
+                )
 
             # Calculate Global Variance (Entropy Metric)
             # Sum of variances of all dimensions? Or just mean variance?

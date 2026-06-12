@@ -1,0 +1,60 @@
+{
+  "timestamp": "2026-06-05T20:03:47.142101+00:00",
+  "env": {
+    "CHELATED_SHIM_RESEARCH": "1",
+    "CHELATED_SHIM_PROMOTED": "1"
+  },
+  "seam": "VectorSteerer.steer.promoted_apply",
+  "vector_changed": true,
+  "steering_meta": {
+    "research_shim_guard": true,
+    "research_stall_count": 1,
+    "sip_seam": "VectorSteerer.steer",
+    "signals_applied": 0,
+    "total_delta_norm": 0.0,
+    "was_steered": false,
+    "promoted_registry_probe": {
+      "promoted_shim_registry": true,
+      "probe_shim_registered": true,
+      "registry_count": 1
+    },
+    "promoted_sip_apply": {
+      "promoted_sip_applied": true,
+      "promoted_sip_insert_once": true,
+      "cascade_ids": [
+        "chelated-sip-probe-v1"
+      ],
+      "composite_delta_norm": 0.05,
+      "registry_count": 1,
+      "sip_seam": "VectorSteerer.steer.promoted_apply",
+      "research_activation_record": {
+        "seam": "VectorSteerer.steer",
+        "probe_activated": true,
+        "probe_count": 1,
+        "signals_count": 0
+      }
+    },
+    "research_activation_record": {
+      "seam": "VectorSteerer.steer",
+      "probe_activated": true,
+      "probe_count": 1,
+      "signals_count": 0
+    }
+  },
+  "promoted_sip_apply": {
+    "promoted_sip_applied": true,
+    "promoted_sip_insert_once": true,
+    "cascade_ids": [
+      "chelated-sip-probe-v1"
+    ],
+    "composite_delta_norm": 0.05,
+    "registry_count": 1,
+    "sip_seam": "VectorSteerer.steer.promoted_apply",
+    "research_activation_record": {
+      "seam": "VectorSteerer.steer",
+      "probe_activated": true,
+      "probe_count": 1,
+      "signals_count": 0
+    }
+  }
+}

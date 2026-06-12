@@ -9,7 +9,10 @@ monitoring of the chelation pipeline.
 """
 
 import numpy as np
-import torch
+try:
+    import torch
+except ModuleNotFoundError:
+    torch = None
 from chelation_logger import get_logger
 
 
@@ -88,6 +91,8 @@ class StabilityTracker:
         Args:
             adapter: nn.Module adapter instance
         """
+        if torch is None:
+            return
         with torch.no_grad():
             params = []
             for p in adapter.parameters():

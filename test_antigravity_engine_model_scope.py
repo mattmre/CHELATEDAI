@@ -1,8 +1,11 @@
 import unittest
+import tempfile
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import numpy as np
+
+from config import ChelationConfig
 
 try:
     import torch  # noqa: F401
@@ -57,6 +60,98 @@ class TestAntigravityEngineModelScope(unittest.TestCase):
             model_name="all-MiniLM-L6-v2",
             use_quantization=True,
             use_centering=False,
+        )
+
+    def test_enable_model_scope_observation_registers_primary_pilot_shadow_policy(self):
+        td = tempfile.mkdtemp(prefix="mscope_primary_model_")
+        engine = self._make_engine()
+        engine._runtime_telemetry = {
+            "model_scope_observation_count": 0,
+            "model_scope_error_count": 0,
+            "model_scope_enabled": False,
+        }
+
+        with patch("model_scope_runtime.create_model_scope_runtime") as mock_create_runtime:
+            from model_scope_runtime import LocalModelRuntime
+
+            mock_runtime = LocalModelRuntime(
+                model_name=ChelationConfig.MODEL_SCOPE_PRIMARY_PILOT_MODEL,
+                layer_indices=[0],
+                artifact_dir=td,
+                eager_load=False,
+                logger=engine.logger,
+            )
+            mock_create_runtime.return_value = mock_runtime
+            engine.enable_model_scope_observation(
+                artifact_dir=td,
+                runtime=None,
+            )
+
+        self.assertEqual(engine._model_scope_runtime.model_name, ChelationConfig.MODEL_SCOPE_PRIMARY_PILOT_MODEL)
+        self.assertIsNotNone(engine._model_scope_bridge)
+        self.assertTrue(engine._model_scope_bridge._config.enable_steering)
+        self.assertEqual(
+            engine._model_scope_config["model_name"],
+            ChelationConfig.MODEL_SCOPE_PRIMARY_PILOT_MODEL,
+        )
+        self.assertEqual(
+            engine._model_scope_default_policy_id,
+            engine._model_scope_bridge.get_last_shadow_policy_id(),
+        )
+
+    def test_enable_model_scope_observation_with_local_runtime_uses_bridge(self):
+        td = tempfile.mkdtemp(prefix="mscope_local_runtime_")
+        engine = self._make_engine()
+        engine._runtime_telemetry = {
+            "model_scope_observation_count": 0,
+            "model_scope_error_count": 0,
+            "model_scope_enabled": False,
+        }
+
+        class _LocalRuntime:
+            model_name = ChelationConfig.MODEL_SCOPE_PRIMARY_PILOT_MODEL
+
+            def describe_runtime(self):
+                return {"model_name": self.model_name}
+
+        runtime = _LocalRuntime()
+        with patch("antigravity_engine.model_scope_runtime.LocalModelRuntime", _LocalRuntime):
+            engine.enable_model_scope_observation(runtime=runtime, artifact_dir=td)
+
+        self.assertIsNotNone(engine._model_scope_bridge)
+        self.assertTrue(engine._model_scope_config["model_scope_bridge_enabled"])
+        self.assertEqual(
+            engine._model_scope_config["model_scope_default_policy_id"],
+            engine._model_scope_bridge.get_last_shadow_policy_id(),
+        )
+
+    def test_enable_model_scope_observation_with_non_local_runtime_disables_bridge(self):
+        td = tempfile.mkdtemp(prefix="mscope_nonlocal_runtime_")
+        engine = self._make_engine()
+        engine._runtime_telemetry = {
+            "model_scope_observation_count": 0,
+            "model_scope_error_count": 0,
+            "model_scope_enabled": False,
+        }
+
+        class _NonLocalRuntime:
+            model_name = "provider/remote-model"
+
+            def describe_runtime(self):
+                return {"model_name": self.model_name}
+
+        runtime = _NonLocalRuntime()
+        with patch("antigravity_engine.model_scope_runtime.LocalModelRuntime", object):
+            with patch("antigravity_engine.ModelScopeEngineBridge") as _bridge_cls:
+                engine.enable_model_scope_observation(runtime=runtime, artifact_dir=td)
+                _bridge_cls.assert_not_called()
+
+        self.assertIsNone(engine._model_scope_bridge)
+        self.assertFalse(engine._model_scope_config["model_scope_bridge_enabled"])
+        self.assertEqual(engine._model_scope_runtime, runtime)
+        self.assertEqual(
+            engine._model_scope_config["model_name"],
+            ChelationConfig.MODEL_SCOPE_PRIMARY_PILOT_MODEL,
         )
 
     def test_run_inference_records_model_scope_summary(self):

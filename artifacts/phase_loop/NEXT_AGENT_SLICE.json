@@ -1,0 +1,74 @@
+{
+  "timestamp": "2026-06-05T20:06:36.623594+00:00",
+  "primary_action": "execute_handler",
+  "primary_slice_id": "SHIM-SLICE-SCHEDULER-06",
+  "next_executable": {
+    "slice_id": "SHIM-SLICE-SCHEDULER-06",
+    "title": "Verify SHIM scheduler task wiring (019e669bf1bb)",
+    "phase": 0,
+    "shim_cd": "SHIM-CD-06",
+    "blocking": true,
+    "priority": 206,
+    "handler": "record_shim_scheduler_evidence",
+    "rationale": "Close SHIM-CD-06 by proving scheduler dispatch intent and capacity.",
+    "completed_key": "cd06_scheduler_evidence"
+  },
+  "next_advisory": {
+    "slice_id": "SHIM-SLICE-CD02-PROMOTE",
+    "phase": 0,
+    "shim_cd": "SHIM-CD-02",
+    "blocking": true,
+    "priority": 15,
+    "title": "BHS promotion path for research primitives (or honest scope reduction)",
+    "rationale": "Primitives isolated under artifacts/; promotion or documented termination.",
+    "executable": false,
+    "agent_roles": [
+      "D",
+      "J",
+      "E"
+    ]
+  },
+  "open_shim_cds": [
+    {
+      "id": "SHIM-CD-01",
+      "blocking": true,
+      "summary": "CRITICAL: Shim Insertion Points (SIPs) in production hosts \u2014 partial 2026-06-03: `promoted_sip_apply()` at `VectorSteerer.steer` + `get_chelated_vector` when both envs on. Still unwired: steering_poli"
+    },
+    {
+      "id": "SHIM-CD-02",
+      "blocking": true,
+      "summary": "CRITICAL: Shim primitives promotion \u2014 partial 2026-06-03: `shim_node_promoted.py` at repo root when `CHELATED_SHIM_PROMOTED=1`. Collapse/MockMTP remain research-only."
+    },
+    {
+      "id": "SHIM-CD-03",
+      "blocking": false,
+      "summary": "IMPORTANT: All MTP Shim Lookahead, cascade compounding, usage refinement, efficiency logic is pure simulation (MockMTPShimLookahead dict patterns, placeholder tokens, no real head, no OPSD trace consu"
+    },
+    {
+      "id": "SHIM-CD-04",
+      "blocking": false,
+      "summary": "IMPORTANT: Companion tests for shim \u2014 2026-06-03: `tests/test_shim_*`, `test_shim_inference_evidence.py`, `test_shim_promoted_probe.py`; `bash scripts/verify_shim_development.sh` runs full gate includ"
+    },
+    {
+      "id": "SHIM-CD-06",
+      "blocking": true,
+      "summary": "CRITICAL process: 5-agent model \u2014 partial 2026-06-03: in-repo `run_five_worker_shim_gate.py`. External scheduler 019e669bf1bb still unverified."
+    },
+    {
+      "id": "SHIM-CD-07",
+      "blocking": false,
+      "summary": "IMPORTANT: BHS Research Program Score (shim workstream) showed 0 delta (35\u219222/100 flat) despite \"first official cycle\" + subsequent claims. No quantified self-improvement on any goal \u00a777-83 metrics (S"
+    },
+    {
+      "id": "SHIM-CD-08",
+      "blocking": true,
+      "summary": "CRITICAL: Remediation loop Tier C / next-session.md transcription \u2014 SHIM rows maintained; block gate now operator-driven per execution queue."
+    },
+    {
+      "id": "SHIM-CD-09",
+      "blocking": true,
+      "summary": "CRITICAL process: 10th cycle (Cycle-010 Agent 10 Integrator meta + background) of doc-only slice additions (min-max backlog #9/#10 inserted in goal:115-168 + #10 at 109-110; \"Loop 10 Comparative Analy"
+    }
+  ],
+  "substrate_note": "Active track: docs/ROADMAP_EXECUTION.md (core first, SHIM deferred last). SHIM slices run only after CORE-SLICE-* queue drains unless OVERRIDE ACTIVE."
+}

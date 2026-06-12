@@ -8,12 +8,23 @@ automatic rollback behavior without requiring external services.
 import unittest
 import tempfile
 import shutil
-import torch
+try:
+    import torch
+except ModuleNotFoundError:
+    torch = None
+    _HAVE_TORCH = False
+else:
+    _HAVE_TORCH = True
 from pathlib import Path
 from unittest.mock import patch
 from datetime import datetime
 
 from checkpoint_manager import CheckpointManager, SafeTrainingContext
+
+
+def setUpModule() -> None:
+    if not _HAVE_TORCH:
+        raise unittest.SkipTest("Skipping checkpoint manager tests: torch is not installed.")
 
 
 class TestCheckpointManagerCreate(unittest.TestCase):

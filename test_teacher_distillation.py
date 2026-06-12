@@ -530,6 +530,39 @@ class TestDimensionProjection(unittest.TestCase):
         # Projection should have been created
         self.assertIsNotNone(helper._projection)
 
+    @patch("teacher_distillation.SentenceTransformer")
+    def test_generate_distillation_targets_return_torch_preserves_projection_gradients(
+        self,
+        mock_st_class,
+    ):
+        """return_torch=True should keep projection trainable through the distillation targets."""
+        mock_model = MagicMock()
+        mock_model.get_sentence_embedding_dimension.return_value = 16
+        mock_model.encode.return_value = np.random.randn(2, 16).astype(np.float32)
+        mock_st_class.return_value = mock_model
+
+        helper = TeacherDistillationHelper("test-model", projection_enabled=True)
+        helper.teacher_model = mock_model
+        helper.teacher_dim = 16
+        helper._projection = DimensionProjection(teacher_dim=16, student_dim=8)
+        helper._projection.train()
+
+        current_embeds = np.random.randn(2, 8).astype(np.float32)
+        targets = helper.generate_distillation_targets(
+            texts=["a", "b"],
+            current_embeddings=current_embeds,
+            teacher_weight=1.0,
+            return_torch=True,
+        )
+
+        self.assertIsInstance(targets, torch.Tensor)
+
+        total = targets.sum()
+        total.backward()
+
+        for param in helper._projection.parameters():
+            self.assertIsNotNone(param.grad)
+
     @patch("teacher_distillation.get_logger")
     @patch("teacher_distillation.SentenceTransformer")
     def test_projection_disabled_falls_back(self, mock_st, mock_logger):

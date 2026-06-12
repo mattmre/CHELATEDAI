@@ -1,0 +1,161 @@
+{
+  "cycle": "Cycle-006",
+  "agent": "C (Test/Harness/Evidence Generation)",
+  "loop": "BHS 5-Minute Shim Loop",
+  "goal_ref": "docs/steering_chelation_rag_dag_research/BHS_5MIN_SHIM_LOOP_GOAL.md",
+  "timestamp_start": "2026-05-26T23:57:28.751611+00:00",
+  "timestamp_end": "2026-05-26T23:57:28.753705+00:00",
+  "harness": "docs/steering_chelation_rag_dag_research/artifacts/shim_collapse_benchmark_extension.py",
+  "execution_method": "cd /home/mattmre/CHELATEDAI && PYTHONPATH=. python -B docs/.../shim_collapse_benchmark_extension.py --family sip_effect (x3+ CLI + 2x direct) + --family sip (x2) + --family all + direct python calls to simulate_*; focus sip/sip_effect + new verification (Cycle5 conditional); re-runs >=2x clean -B; no source change for Cycle-006",
+  "reproducibility": {
+    "runs_performed": 6,
+    "sip_effect_cli_and_direct": 4,
+    "sip_default_runs": 2,
+    "all_run": 1,
+    "metrics_match_within_float_precision": true,
+    "registry_empty_post_all": true,
+    "activation_per_clean_process_fresh": true,
+    "note": "sip_effect family (strength=2.95): noise_reduction=0.7886319326366391 STABLE across 2+ clean independent -B runs and within-process calls. sip default (3.1): 0.8030980282338018. Both produce full before/after, activation_records, simulated_cost_delta=6.4, rollback (registry_empty_post_sip=True). cycle005_* fields + tag ONLY on explicit sip_effect path per source conditional at py:1148-1149. Reproducible within 1e-12."
+  },
+  "runtime_summary": {
+    "sip_effect_Cycle005_path": {
+      "noise_reduction": 0.7886319326366391,
+      "applied_delta_norm": 1.0,
+      "before_noise_on_collapse": 4.0,
+      "after_noise_on_collapse": 3.211368067363361,
+      "registry_empty_post_sip": true,
+      "shim_count": 1,
+      "simulated_cost_delta": 6.4,
+      "activation_records_count": 1,
+      "cycle_id_in_bhs_and_records": "Cycle-005-2026-05-26-B",
+      "cycle005_tag": "Cycle-005-2026-05-26-B-AGENTB",
+      "cycle005_attributable_delta_v2": 0.7886319326366391,
+      "cascade_applied": {
+        "start_id": "sip_cycle004_effect_v1",
+        "cascade_ids": [
+          "sip_cycle004_effect_v1"
+        ],
+        "composite_present": true
+      },
+      "rollback_proof": {
+        "registry_empty_post_sip": true,
+        "side_effect_free": true
+      },
+      "new_verification_fields": {
+        "shim_attributable_collapse_delta": 0.7886319326366391,
+        "direct_shim_effect_on_collapse_dim": -0.7886319326366391,
+        "effect_vs_no_shim_baseline_control": {
+          "baseline_control_noise_on_collapse": 4.0,
+          "shim_effect_noise_on_collapse": 3.211368067363361,
+          "attributable_delta": 0.7886319326366391,
+          "noise_reduction_from_shim_path": 0.7886319326366391
+        }
+      }
+    },
+    "sip_default": {
+      "noise_reduction": 0.8030980282338018,
+      "applied_delta_norm": 1.0,
+      "before_noise_on_collapse": 4.0,
+      "after_noise_on_collapse": 3.196901971766198,
+      "registry_empty_post_sip": true,
+      "simulated_cost_delta": 6.4,
+      "cycle_id_in_bhs_and_records": "Cycle-004-2026-05-26-B",
+      "cycle005_tag": null,
+      "activation_records_count": 1,
+      "rollback_proof": {
+        "registry_empty_post_sip": true
+      }
+    },
+    "shim_insertion_from_all": {
+      "recovered": true,
+      "side_effect_free": true,
+      "delta_ndcg_at_3": 1.0,
+      "baseline_ndcg_at_3": 0.0,
+      "post_ndcg_at_3": 1.0,
+      "simulated_cost": {
+        "total_extra_tokens": 22.0,
+        "per_shim_tokens": 8.0,
+        "depth_overhead_tokens": 14.0
+      },
+      "rollback_proof": {
+        "registry_empty_post_experiment": true,
+        "absolute_delta": 0.0
+      },
+      "bhs_evidence_cycle_tag_observed": "Cycle-004-2026-05-26-B"
+    }
+  },
+  "bhs_evidence_Cycle-006": {
+    "sip_effect_path_exercised": {
+      "cycle_id_observed": "Cycle-005-2026-05-26-B",
+      "noise_reduction_observed": 0.7886319326366391,
+      "cycle005_tag_present": "Cycle-005-2026-05-26-B-AGENTB",
+      "cycle005_attributable_delta_v2_present": 0.7886319326366391,
+      "activation_records": [
+        {
+          "shim_id": "sip_cycle004_effect_v1",
+          "cycle_id": "Cycle-005-2026-05-26-B",
+          "timestamp": "2026-05-26T23:57:28.751790+00:00",
+          "before": {},
+          "after": {
+            "activation_count": 1,
+            "success_count": 1,
+            "cumulative_token_cost_delta": 6.4,
+            "last_activated_at": "2026-05-26T23:57:28.751790+00:00",
+            "compounding_frequency": 0
+          },
+          "simulated_cost_delta": 6.4,
+          "was_success": true,
+          "compounding_used": false
+        }
+      ],
+      "before": {
+        "noise_on_collapse_dim": 4.0,
+        "l2_norm": 4.123105625617661,
+        "no_shim_control_noise": 4.0
+      },
+      "after": {
+        "noise_on_collapse_dim": 3.211368067363361,
+        "l2_norm": 3.5079638130267172,
+        "shim_attributable_delta": 0.7886319326366391
+      },
+      "simulated_costs": {
+        "simulated_cost_delta": 6.4
+      },
+      "rollback_proofs": {
+        "registry_empty_post_sip": true
+      },
+      "note": "Cycle 5 B conditional (py:1148-1149) exercised in Cycle-006 C runs: when --family sip_effect or direct with 005 id + 2.95 strength, emits Cycle-005 tag + new v2 field + distinct numeric 0.78863 (vs default sip 0.80309 at strength 3.1). Full before/after + records + rollback. Repro across multiple clean -B runs."
+    },
+    "sip_default_path": {
+      "cycle_id_observed": "Cycle-004-2026-05-26-B",
+      "noise_reduction_observed": 0.8030980282338018,
+      "cycle005_tag": null,
+      "note": "Default path still emits Cycle-004 labels even in Cycle-006 execution context."
+    },
+    "comparison_to_prior_cycles": {
+      "vs_Cycle005_json_sip": "Cycle-005 json captured 0.803098 (default at time of that C run). Current source sip_effect path (exercised in these Cycle-006 runs) produces 0.78863 numeric + Cycle-005 tag+field ONLY when triggered. The Cycle4 B hardening (3.1 strength, offsets, attrib math) + Cycle5 B sip_effect conditional (2.95 + if) are the source of measurable diff vs Cycle-004 json baseline of 0.7863.",
+      "vs_Cycle004_json": "noise_reduction delta from 0.786318 (Cycle004 json) to 0.803098 (current default) or 0.78863 (sip_effect). New fields (shim_attributable_*, effect_vs_no_shim_*) absent in Cycle-004 json, present and populated on all current sip* runs.",
+      "no_Cycle006_source_change": "Harness source at time of these runs still contains only Cycle-004/005 strings and conditional (no Cycle-006 id, no new B slice for 006). Banners/EVIDENCE/SMOKE lines still say Cycle 4/5. Mixed labels persist (L4/L13 per prior audits)."
+    }
+  },
+  "EVIDENCE_lines": [
+    "EVIDENCE: cd /home/mattmre/CHELATEDAI && PYTHONPATH=. python -B docs/steering_chelation_rag_dag_research/artifacts/shim_collapse_benchmark_extension.py --topic-count 4 --collapse-strength 4.0 --family sip_effect   (Cycle-006 Agent C run #1 + run #3 clean -B; reproduces noise=0.7886319326366391 + cycle005_tag + cycle005_attributable_delta_v2 + Cycle-005 id in records + full rollback)",
+    "EVIDENCE: cd /home/mattmre/CHELATEDAI && PYTHONPATH=. python -B docs/steering_chelation_rag_dag_research/artifacts/shim_collapse_benchmark_extension.py --topic-count 4 --collapse-strength 4.0 --family sip   (Cycle-006 Agent C run #2; default path: noise=0.803098 + Cycle-004 id + cycle005_tag=None)",
+    "EVIDENCE: PYTHONPATH=. python -B -c \"from docs... import ShimCollapseBenchmark; b=...; r1=b.simulate_sip_effect(cycle_id=...005..., strength=2.95); r2=b.simulate_sip_path(...)\" (direct calls within process + cross-process CLI repro; activation_records, before/after, costs=6.4, registry_empty=True captured live)",
+    "EVIDENCE: --family all also exercised (shim_insertion: delta_ndcg_at_3=1.0, extra_tokens=22, Cycle-004 tag, rollback proof; cascade/rollback rollbacks verified).",
+    "EVIDENCE: Cycle-006 Agent C executions of sip/sip_effect family + new verification (Cycle5 conditional) produced bhs_evidence with before/after (noise 4.0->~3.21 or 3.1969), simulated_costs (6.4), rollback_proofs (empty post), activation_records (sip_cycle004_effect_v1 with cycle_id 005 or 004, before/after counters, cost 6.4); 0.78863 vs 0.80309 measurable diff from sip_effect path strength change. Refs: docs/steering_chelation_rag_dag_research/BHS_5MIN_SHIM_LOOP_GOAL.md",
+    "EVIDENCE: Absolute paths: harness=/home/mattmre/CHELATEDAI/docs/steering_chelation_rag_dag_research/artifacts/shim_collapse_benchmark_extension.py ; artifact=/home/mattmre/CHELATEDAI/artifacts/bhs_shim_evidence_Cycle-006.json ; goal=/home/mattmre/CHELATEDAI/docs/steering_chelation_rag_dag_research/BHS_5MIN_SHIM_LOOP_GOAL.md ; baselines=/home/mattmre/CHELATEDAI/artifacts/bhs_shim_evidence_Cycle-005.json and Cycle-004.json"
+  ],
+  "SMOKE_lines": [
+    "SMOKE: Cycle-006 sip/sip_effect (focus per task): --family sip_effect MUST reproduce noise_reduction=0.7886319326366391 (different from sip default 0.803098), cycle005_tag=\"Cycle-005-2026-05-26-B-AGENTB\", cycle005_attributable_delta_v2 present, cycle_id=\"Cycle-005...\" in bhs_evidence + activation_records, registry_empty_post_sip=True, simulated_cost=6.4, full before/after + attrib fields (direct_shim_effect etc). --family sip reproduces 0.803098 + Cycle-004 + tag=None. Identical on re-run clean -B (proven x3+).",
+    "SMOKE: Other families (all): shim_insertion recovered=True, delta_ndcg=1.0, side_effect_free=True, extra_tokens=22, Cycle-004 in bhs, rollback registry_empty. Cascade/rollback: costs 23/41.5, mtp_hit=1.0, rollbacks hold. All from synthetic harness.",
+    "SMOKE: Goal reference: Fulfills exact Agent C slice for Cycle 6 of BHS_5MIN_SHIM_LOOP_GOAL.md (execute harness focus sip/sip_effect + new verification if present; multiple runs >=2x; persist fresh artifacts/bhs_shim_evidence_Cycle-006.json with Cycle-006 bhs_evidence containing before/after, activation_records, simulated costs, rollback proofs; highlight measurable diff from Cycle 5/6 B changes vs baseline; produce EVIDENCE:/SMOKE:; brutal honesty on labels/mixed/no new delta). Reference dashboard + goal \u00a718-29/51/77-83/95.",
+    "SMOKE: Reproducible on fresh checkout: exact commands above + python -B must emit the Cycle-005 conditional behavior on sip_effect (0.78863 + tag+field) vs default sip (0.803 + 004); no prod changes."
+  ],
+  "brutal_honesty_this_artifact": "Runtime evidence captured from live clean python -B executions of the research harness ONLY (docs/steering_chelation_rag_dag_research/artifacts/shim_collapse_benchmark_extension.py). 3+ independent runs (CLI sip/sip_effect + direct + all) + within-process calls reproduce: (a) sip_effect path emits Cycle-005-2026-05-26-B + cycle005_tag + cycle005_attributable_delta_v2 + distinct noise_reduction 0.7886319326366391 due to explicit 2.95 strength in conditional at py:1148-1149 (the \"new verification\" from Cycle 5 B); (b) default sip emits Cycle-004 + 0.803098 + tag=None; (c) all paths: before/after metrics, activation_records with before/after usage + simulated_cost_delta=6.4, full rollback (registry_empty_post_sip=True), new Cycle4B attrib fields populated. Measurable numeric/structural diff from Cycle4 B hardening + Cycle5 B sip_effect conditional vs Cycle-004 json baseline (0.7863, no attrib fields, sip_cycle003 shim_id). HOWEVER: (1) NO new source delta for Cycle 6 - harness still at post-Cycle5 state (banners, defaults, EVIDENCE prints, docstrings all say Cycle-004/005; no Cycle-006 id or wiring); (2) Labels remain mixed (L4/L13): source claims Cycle5 B in header 62-66 but this C run (and prior) exercised existing conditional only; (3) 0 production SIPs, 0 engine paths, 0 MTP real, 0 new benchmark lift on ndcg family (shim_insertion still 1.0 delta identical to all prior baselines), 0 token acct on real surfaces; (4) The \"self-improvement\" here is re-execution + fresh artifact of the prior B conditional demo; no new capability added in this slice. Per goal \u00a718-29 success def, \u00a777-83 deltas, \u00a795 backlog, \u00a7128: still 0 on required production/harness runtime evidence for shim primitive advance. Fulfills the NARROW assigned Agent C task (execute sip/sip_effect focus + persist Cycle-006 json + EVIDENCE/SMOKE + honest delta highlight + >=2 re-runs) with usable runtime artifacts. Brutal honesty: labels mixed, no new delta beyond prior B, trajectory unchanged (research scaffold only).",
+  "comparison_vs_baseline": {
+    "sip_effect_vs_Cycle005_json": "Cycle-005 json (pre full sip_effect conditional exercise in some records) showed 0.803 default; these Cycle-006 runs explicitly trigger the Cycle5 sip_effect path and capture the 0.78863 + tag+field as designed.",
+    "numeric_delta_from_Cycle4_B_changes": "From Cycle-004 json 0.786318 -> current default 0.803098 (+0.01678) or sip_effect 0.78863. New fields present now.",
+    "prod_impact": "0 (all shim logic isolated to research/artifacts/ per exhaustive prior greps + BHS NOTES in harness)"
+  }
+}
