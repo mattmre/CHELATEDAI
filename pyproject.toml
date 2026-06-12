@@ -22,6 +22,7 @@ dependencies = [
 [project.scripts]
 chelatedai-live-fire = "run_live_fire_diagnostics:main"
 chelatedai-road-course = "run_road_course_campaign:main"
+chelatedai-drift-recovery = "run_drift_recovery_experiment:main"
 chelatedai-road-course-tuning = "run_road_course_tuning_loop:main"
 chelatedai-thousand-query-tuning = "run_thousand_query_tuning:main"
 chelatedai-train-gate = "train_gate_from_tuning_artifact:main"
@@ -98,6 +99,7 @@ py-modules = [
     "qwen_scope_adapter",
     "recursive_decomposer",
     "reproducibility_context",
+    "run_drift_recovery_experiment",
     "run_live_fire_diagnostics",
     "run_model_scope_campaign",
     "run_default_promotion_evidence_chain",
