@@ -11,10 +11,22 @@ from qdrant_client.models import PointStruct
 
 
 class DriftInjector:
+    """Injects seeded drift into vectors stored by an AntigravityEngine.
+
+    Determinism contract: outcomes are a pure function of ``(seed, ordered
+    sequence of injection calls)``. The shared RNG advances on every call, so
+    the second injection on one instance differs from the first injection on a
+    fresh instance with the same seed. Every manifest records
+    ``injection_index`` (0-based position in this instance's call sequence);
+    reproducing any injection requires replaying the same seed and call
+    sequence from a fresh instance.
+    """
+
     def __init__(self, engine, seed: int):
         self.engine = engine
         self.seed = int(seed)
         self._rng = np.random.default_rng(self.seed)
+        self._injection_index = 0
 
     def inject_rotation_drift(
         self,
@@ -174,9 +186,12 @@ class DriftInjector:
         sigma: Optional[float],
         rotation_pairs: Sequence[Tuple[int, int]],
     ) -> dict:
+        injection_index = self._injection_index
+        self._injection_index += 1
         return {
             "mode": mode,
             "seed": self.seed,
+            "injection_index": injection_index,
             "fraction": float(fraction),
             "affected_ids": [record["id"] for record in affected_records],
             "affected_count": len(affected_records),

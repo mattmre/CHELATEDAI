@@ -136,6 +136,44 @@ class TestDriftInjector(unittest.TestCase):
         self.assertGreaterEqual(baseline_ndcg, 0.99)
         self.assertLess(drifted_ndcg, baseline_ndcg - 0.05)
 
+    def test_injection_index_increments_and_call_sequence_is_reproducible(self):
+        vectors = _build_vectors()
+        corpus = [f"doc-{index}" for index in range(50)]
+
+        engine_a = self._make_engine(vectors)
+        engine_a.ingest(corpus)
+        injector_a = DriftInjector(engine_a, seed=29)
+        first_a = injector_a.inject_rotation_drift(0.3, 15.0)
+        second_a = injector_a.inject_noise_drift(0.3, 0.05)
+        vectors_a = _read_vectors(engine_a)
+
+        engine_b = self._make_engine(vectors)
+        engine_b.ingest(corpus)
+        injector_b = DriftInjector(engine_b, seed=29)
+        first_b = injector_b.inject_rotation_drift(0.3, 15.0)
+        second_b = injector_b.inject_noise_drift(0.3, 0.05)
+        vectors_b = _read_vectors(engine_b)
+
+        # Manifests record the position of each call in the injection sequence.
+        self.assertEqual(first_a["injection_index"], 0)
+        self.assertEqual(second_a["injection_index"], 1)
+
+        # Replaying the same seed and call sequence reproduces the run exactly.
+        self.assertEqual(first_a, first_b)
+        self.assertEqual(second_a, second_b)
+        for point_id in vectors_a:
+            np.testing.assert_array_equal(vectors_a[point_id], vectors_b[point_id])
+
+        # A later call is NOT interchangeable with a fresh instance's first
+        # call: the second injection drew from an advanced RNG state.
+        engine_c = self._make_engine(vectors)
+        engine_c.ingest(corpus)
+        fresh_first = DriftInjector(engine_c, seed=29).inject_noise_drift(0.3, 0.05)
+        self.assertEqual(fresh_first["injection_index"], 0)
+        self.assertNotEqual(
+            set(fresh_first["affected_ids"]), set(second_a["affected_ids"])
+        )
+
     def test_manifest_round_trips_through_json(self):
         vectors = _build_vectors()
         engine = self._make_engine(vectors)
