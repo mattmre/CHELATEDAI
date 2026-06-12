@@ -23,6 +23,7 @@ dependencies = [
 chelatedai-live-fire = "run_live_fire_diagnostics:main"
 chelatedai-road-course = "run_road_course_campaign:main"
 chelatedai-drift-recovery = "run_drift_recovery_experiment:main"
+chelatedai-drift-diagnostics = "analyze_drift_recovery:main"
 chelatedai-road-course-tuning = "run_road_course_tuning_loop:main"
 chelatedai-thousand-query-tuning = "run_thousand_query_tuning:main"
 chelatedai-train-gate = "train_gate_from_tuning_artifact:main"
@@ -55,6 +56,7 @@ py-modules = [
     "audit_evidence_index_freshness",
     "audit_promotion_linkage",
     "adaptive_overlay",
+    "analyze_drift_recovery",
     "benchmark_comparative",
     "benchmark_distillation",
     "benchmark_evolution",
