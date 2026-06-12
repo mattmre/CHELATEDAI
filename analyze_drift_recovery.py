@@ -351,9 +351,10 @@ def _h1_verdict(severity: Mapping[str, Mapping[str, Any]]) -> dict:
         and rotation["c0_drop_pct_mean"] < 5.0
     )
     verdict = "confirmed" if confirmed else "refuted"
+    rotation_recovery = "all" if rotation["all_c0_recovered_cycle_one"] else "not all"
     evidence = (
-        f"Rotation C0 mean drop is {rotation['c0_drop_pct_mean']:.3f}% and all C0 rotation runs "
-        f"recover at cycle 1; noise C0 mean drop is {noise['c0_drop_pct_mean']:.3f}%."
+        f"Rotation C0 mean drop is {rotation['c0_drop_pct_mean']:.3f}% and {rotation_recovery} "
+        f"C0 rotation runs recover at cycle 1; noise C0 mean drop is {noise['c0_drop_pct_mean']:.3f}%."
     )
     return {"verdict": verdict, "evidence": evidence}
 
