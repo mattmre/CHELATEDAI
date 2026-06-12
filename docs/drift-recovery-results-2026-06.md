@@ -86,6 +86,58 @@ the C2 oracle upper bound in both modes. The severity calibration therefore
 supports the negative/mechanistic story unless PR-8's pre-registered knob
 sweep changes the confirmed three-seed result.
 
+## C3 Knob Sweep
+
+Source: `experiment_runs/drift-recovery/knob-sweep/knob-sweep-manifest-2026-06.json`
+and `docs/drift-recovery-knob-sweep-2026-06.md`.
+
+Scope: calibrated rotation setting only, using the chosen rotation scout setting
+fraction 0.5 / 35 degrees / sigma 0.05. The 12-cell grid is seed 42 exploratory
+selection evidence; the two highest seed-42 cells were then confirmed on seeds
+42, 1337, and 7.
+
+Selection policy: top two cells by seed-42 final NDCG; ties are broken by lower
+trigger threshold, then profile name, then lower bound epsilon. The bound 0.10 /
+trigger 0.15 cells tied the selected cells on seed-42 final NDCG, but were not
+confirmed because the pre-declared tie-break selected the lower trigger
+threshold. Profile note: `hotter` means the pre-registered aggressive schedule
+profile (lower max-temperature cap plus doubled epoch scale), not a higher
+temperature cap.
+
+### All Grid Cells
+
+| Bound epsilon | Trigger threshold | Profile | Final NDCG | Recovery cycle | should_correct | attempted | applied |
+|---:|---:|---|---:|---:|---:|---:|---:|
+| 0.01 | 0.05 | default | 0.754416 |  | 0/12 | 0/12 | 0/12 |
+| 0.01 | 0.05 | hotter | 0.754416 |  | 0/12 | 0/12 | 0/12 |
+| 0.01 | 0.15 | default | 0.754416 |  | 0/12 | 0/12 | 0/12 |
+| 0.01 | 0.15 | hotter | 0.754416 |  | 0/12 | 0/12 | 0/12 |
+| 0.05 | 0.05 | default | 0.753156 |  | 0/12 | 0/12 | 0/12 |
+| 0.05 | 0.05 | hotter | 0.753156 |  | 0/12 | 0/12 | 0/12 |
+| 0.05 | 0.15 | default | 0.753156 |  | 0/12 | 0/12 | 0/12 |
+| 0.05 | 0.15 | hotter | 0.753156 |  | 0/12 | 0/12 | 0/12 |
+| 0.10 | 0.05 | default | 0.754530 |  | 0/12 | 0/12 | 0/12 |
+| 0.10 | 0.05 | hotter | 0.754530 |  | 0/12 | 0/12 | 0/12 |
+| 0.10 | 0.15 | default | 0.754530 |  | 0/12 | 0/12 | 0/12 |
+| 0.10 | 0.15 | hotter | 0.754530 |  | 0/12 | 0/12 | 0/12 |
+
+### Three-Seed Confirmation
+
+| Cell | Mean final NDCG | Std | Recovery@12 | Versus C0 | Versus C2 |
+|---|---:|---:|---:|---:|---:|
+| bound 0.10 / trigger 0.05 / default | 0.760189 | 0.024486 | 1/3 | -0.004476 | -0.069022 |
+| bound 0.10 / trigger 0.05 / hotter | 0.760189 | 0.024486 | 1/3 | -0.004476 | -0.069022 |
+
+Calibrated references: C0 rotation final NDCG is 0.764666 +/- 0.023299 with
+recovery@12 1/3; C2 oracle re-embed upper bound is 0.829212 +/- 0.010032 with
+recovery@12 3/3.
+
+Knob-sweep result: no grid or confirmation cell triggered correction
+(`should_correct`, `sedimentation_attempted`, and `correction_applied` are all
+0/12). The confirmed top-2 cells lose to frozen C0 and to the C2 oracle. This is
+a negative sensitivity result, not evidence that tuning recovered retrieval
+quality.
+
 ## Honesty Notes
 
 - All table values above are computed from completed JSON artifacts in this branch.

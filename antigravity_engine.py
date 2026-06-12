@@ -1693,11 +1693,12 @@ class AntigravityEngine:
                 self.observe_annealing_drift()
             if annealing_controller.should_correct():
                 settings = annealing_controller.cycle_settings()
+                epochs_scale = float(getattr(self, "_annealing_epochs_scale", 1.0))
                 annealing_cycle_active = True
                 original_learning_rate = learning_rate
                 original_epochs = epochs
                 learning_rate = learning_rate * settings["learning_rate_scale"]
-                epochs = settings["epochs"]
+                epochs = max(1, int(round(settings["epochs"] * epochs_scale)))
                 self.set_temperature(max(annealing_controller.temperature, 1e-6))
                 self._last_annealing_settings = {
                     "temperature": float(annealing_controller.temperature),
@@ -1708,6 +1709,8 @@ class AntigravityEngine:
                     "original_epochs": int(original_epochs),
                     "effective_epochs": int(epochs),
                 }
+                if epochs_scale != 1.0:
+                    self._last_annealing_settings["epochs_scale"] = float(epochs_scale)
                 self.logger.log_event(
                     "annealing_cycle_settings_applied",
                     "Applied annealing settings to sedimentation cycle",
