@@ -55,6 +55,20 @@ class TestAnalyzeDriftRecovery(unittest.TestCase):
 
         self.assertEqual(diagnostics["hypotheses"]["H3_c2_oracle_reembed"]["verdict"], "refuted")
 
+    def test_h1_refutation_does_not_claim_all_rotation_runs_recovered(self):
+        artifacts = self._write_matrix(self.root)
+        for artifact in artifacts:
+            if artifact["config"]["condition"] == "C0" and artifact["config"]["drift"] == "rotation":
+                artifact["recovery"]["trajectory"][-1]["ndcg"] = 0.90
+                artifact["recovery"]["recovery_cycle"] = None
+
+        diagnostics = analyze_artifacts(artifacts)
+
+        h1 = diagnostics["hypotheses"]["H1_rotation_too_weak"]
+        self.assertEqual(h1["verdict"], "refuted")
+        self.assertIn("not all C0 rotation runs recover at cycle 1", h1["evidence"])
+        self.assertNotIn("and all C0 rotation runs recover", h1["evidence"])
+
     def test_write_diagnostics_emits_json_markdown_and_plot_paths(self):
         diagnostics = analyze_artifacts(self._write_matrix(self.root))
         output_json = self.root / "diagnostics.json"

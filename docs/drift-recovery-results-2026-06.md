@@ -44,6 +44,48 @@ Source: `experiment_runs/drift-recovery/diagnostics-2026-06.json` and
   oracle re-embed upper bound. It re-embeds affected raw text with the original
   frozen model, which undoes synthetic vector drift by construction.
 
+## Calibrated Severity
+
+Source: `experiment_runs/drift-recovery/calibrated/calibration-manifest-2026-06.json`
+and `docs/drift-recovery-calibrated-results-2026-06.md`.
+
+Pre-registered choice rule: among scout cells, choose a setting inside the
+8-20% baseline-drop zone closest to 12%; if none lands in-zone, choose the
+closest overall and disclose that.
+
+### Scout Cells
+
+| Drift | Fraction | Angle | Sigma | Baseline | Final C0 | Drop % | In 8-20% zone |
+|---|---:|---:|---:|---:|---:|---:|---|
+| noise | 0.50 | 25.0 | 0.010 | 0.817821 | 0.819284 | -0.179% | False |
+| noise | 0.50 | 25.0 | 0.020 | 0.817821 | 0.805277 | 1.534% | False |
+| noise | 0.50 | 25.0 | 0.035 | 0.817821 | 0.741620 | 9.317% | True |
+| rotation | 0.50 | 35.0 | 0.050 | 0.817821 | 0.754585 | 7.732% | False |
+| rotation | 0.50 | 50.0 | 0.050 | 0.817821 | 0.628182 | 23.188% | False |
+| rotation | 0.50 | 65.0 | 0.050 | 0.817821 | 0.514974 | 37.031% | False |
+| rotation | 0.75 | 35.0 | 0.050 | 0.817821 | 0.794601 | 2.839% | False |
+| rotation | 0.75 | 50.0 | 0.050 | 0.817821 | 0.591663 | 27.654% | False |
+| rotation | 0.75 | 65.0 | 0.050 | 0.817821 | 0.344693 | 57.852% | False |
+
+Chosen settings: noise uses fraction 0.5 / sigma 0.035 because it is in-zone
+and closest to 12%; rotation uses fraction 0.5 / 35 degrees because no rotation
+scout cell landed in the 8-20% zone and 7.732% was closest overall.
+
+### Calibrated Full Matrix
+
+| Condition | Baseline NDCG | Recovery@12 (rot) | Final NDCG (rot) | Drop (rot) | Recovery@12 (noise) | Final NDCG (noise) | Drop (noise) |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| C0 | 0.829212 +/- 0.010032 | 1/3 | 0.764666 +/- 0.023299 | 7.760% | 0/3 | 0.763149 +/- 0.017778 | 7.963% |
+| C1 | 0.829212 +/- 0.010032 | 1/3 | 0.764666 +/- 0.023299 | 7.760% | 0/3 | 0.763149 +/- 0.017778 | 7.963% |
+| C2 (oracle re-embed upper bound) | 0.829212 +/- 0.010032 | 3/3 | 0.829212 +/- 0.010032 | 0.000% | 3/3 | 0.829212 +/- 0.010032 | 0.000% |
+| C3 | 0.829212 +/- 0.010032 | 1/3 | 0.764609 +/- 0.023323 | 7.767% | 0/3 | 0.763342 +/- 0.017833 | 7.940% |
+| C4 | 0.829212 +/- 0.010032 | 1/3 | 0.764666 +/- 0.023299 | 7.760% | 0/3 | 0.763149 +/- 0.017778 | 7.963% |
+
+Calibrated result: C3 still does not beat C0/C1 materially and remains below
+the C2 oracle upper bound in both modes. The severity calibration therefore
+supports the negative/mechanistic story unless PR-8's pre-registered knob
+sweep changes the confirmed three-seed result.
+
 ## Honesty Notes
 
 - All table values above are computed from completed JSON artifacts in this branch.
