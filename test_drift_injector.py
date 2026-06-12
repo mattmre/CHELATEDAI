@@ -174,6 +174,30 @@ class TestDriftInjector(unittest.TestCase):
             set(fresh_first["affected_ids"]), set(second_a["affected_ids"])
         )
 
+    def test_validation_failure_consumes_no_rng_and_preserves_replay(self):
+        vectors = _build_vectors()
+        corpus = [f"doc-{index}" for index in range(50)]
+
+        engine_a = self._make_engine(vectors)
+        engine_a.ingest(corpus)
+        injector_a = DriftInjector(engine_a, seed=43)
+        with self.assertRaises(ValueError):
+            injector_a.inject_rotation_drift(0.3, 15.0, dims=[0, 0])
+        with self.assertRaises(ValueError):
+            injector_a.inject_noise_drift(0.3, -1.0)
+        with self.assertRaises(ValueError):
+            injector_a.inject_rotation_drift(0.3, float("inf"))
+        manifest_after_failures = injector_a.inject_noise_drift(0.3, 0.05)
+
+        engine_b = self._make_engine(vectors)
+        engine_b.ingest(corpus)
+        manifest_fresh = DriftInjector(engine_b, seed=43).inject_noise_drift(0.3, 0.05)
+
+        # Raising calls advanced neither the RNG nor the injection index, so
+        # the post-failure injection is identical to a fresh instance's first.
+        self.assertEqual(manifest_after_failures["injection_index"], 0)
+        self.assertEqual(manifest_after_failures, manifest_fresh)
+
     def test_manifest_round_trips_through_json(self):
         vectors = _build_vectors()
         engine = self._make_engine(vectors)

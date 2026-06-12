@@ -19,7 +19,9 @@ class DriftInjector:
     fresh instance with the same seed. Every manifest records
     ``injection_index`` (0-based position in this instance's call sequence);
     reproducing any injection requires replaying the same seed and call
-    sequence from a fresh instance.
+    sequence from a fresh instance. Validation errors raise before any RNG is
+    consumed, so a raising call advances neither the RNG state nor
+    ``injection_index`` — only successful injections count toward the sequence.
     """
 
     def __init__(self, engine, seed: int):
@@ -37,13 +39,19 @@ class DriftInjector:
         """Apply seeded Givens rotations to a deterministic fraction of stored vectors."""
 
         records = self._load_records()
-        affected_records = self._select_affected(records, fraction)
+        # All validation must precede any RNG consumption so that a raising
+        # call leaves both the RNG state and injection_index untouched.
         vector_size = self._vector_size(records)
         selected_dims = self._validate_dims(dims, vector_size)
+        theta = math.radians(float(angle_degrees))
+        if not math.isfinite(theta):
+            raise ValueError("angle_degrees must be finite")
+        self._validate_fraction(fraction)
+
+        affected_records = self._select_affected(records, fraction)
         rotation_pairs = self._rotation_pairs(selected_dims)
 
         checksum_before = self._checksum(records)
-        theta = math.radians(float(angle_degrees))
         cos_theta = math.cos(theta)
         sin_theta = math.sin(theta)
 
@@ -75,12 +83,19 @@ class DriftInjector:
         """Add seeded Gaussian noise to a deterministic fraction of stored vectors."""
 
         records = self._load_records()
+        # All validation must precede any RNG consumption so that a raising
+        # call leaves both the RNG state and injection_index untouched.
+        sigma_value = float(sigma)
+        if not math.isfinite(sigma_value) or sigma_value < 0.0:
+            raise ValueError("sigma must be a non-negative finite number")
+        self._validate_fraction(fraction)
+
         affected_records = self._select_affected(records, fraction)
         checksum_before = self._checksum(records)
 
         for record in affected_records:
             vector = record["vector"].copy()
-            noise = self._rng.normal(0.0, float(sigma), size=vector.shape).astype(np.float32)
+            noise = self._rng.normal(0.0, sigma_value, size=vector.shape).astype(np.float32)
             drifted = vector + noise
             norm = float(np.linalg.norm(drifted))
             if norm > 0.0:
@@ -132,9 +147,13 @@ class DriftInjector:
             raise ValueError("Cannot inject drift into an empty vector store")
         return records
 
-    def _select_affected(self, records: Sequence[Dict[str, Any]], fraction: float) -> List[Dict[str, Any]]:
+    @staticmethod
+    def _validate_fraction(fraction: float) -> None:
         if not 0.0 <= float(fraction) <= 1.0:
             raise ValueError("fraction must be between 0.0 and 1.0")
+
+    def _select_affected(self, records: Sequence[Dict[str, Any]], fraction: float) -> List[Dict[str, Any]]:
+        self._validate_fraction(fraction)
         count = int(math.floor((len(records) * float(fraction)) + 0.5))
         count = max(0, min(len(records), count))
         if count == 0:
