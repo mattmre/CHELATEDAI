@@ -91,7 +91,7 @@ class TestRunDriftRecoveryExperiment(unittest.TestCase):
     def test_c3_uses_bounded_adapter_and_c4_uses_unbounded_adapter(self):
         observed_adapter_types = {}
 
-        def capture_cycle(engine, condition, queries, drift_manifest):
+        def capture_cycle(engine, condition, queries, drift_manifest, run_config=None):
             observed_adapter_types[condition] = isinstance(engine.adapter, BoundedAdapter)
             return {"action": "captured"}
 
@@ -123,6 +123,68 @@ class TestRunDriftRecoveryExperiment(unittest.TestCase):
         self.assertEqual(first["drift_manifest"], second["drift_manifest"])
         self.assertEqual(first["recovery"]["trajectory"], second["recovery"]["trajectory"])
 
+    def test_explicit_default_knobs_preserve_default_trajectory(self):
+        with self._patched_backend():
+            implicit = run_experiment(
+                self._config("C3", Path(self.tempdir.name) / "implicit.json"),
+                self.corpus,
+                self.queries,
+                self.qrels,
+            )
+            explicit_config = self._config("C3", Path(self.tempdir.name) / "explicit.json")
+            explicit_config = DriftRecoveryConfig(
+                **{
+                    **explicit_config.__dict__,
+                    "bound_epsilon": 0.01,
+                    "trigger_threshold": 0.0,
+                    "max_temperature": 1.0,
+                    "epochs_scale": 1.0,
+                }
+            )
+            explicit = run_experiment(explicit_config, self.corpus, self.queries, self.qrels)
+
+        self.assertEqual(implicit["recovery"]["trajectory"], explicit["recovery"]["trajectory"])
+        self.assertEqual(implicit["recovery"]["trajectory"], self._pre_change_c3_default_golden_trajectory())
+        first_meta = implicit["recovery"]["trajectory"][0]["metadata"]
+        self.assertNotIn("knobs", first_meta)
+        self.assertNotIn("epochs_scale", first_meta.get("annealing_settings", {}))
+
+    def test_c3_records_non_default_knobs_and_applies_epoch_scale(self):
+        config = self._config("C3", Path(self.tempdir.name) / "knobs.json")
+        config = DriftRecoveryConfig(
+            **{
+                **config.__dict__,
+                "bound_epsilon": 0.05,
+                "trigger_threshold": 0.0,
+                "max_temperature": 0.5,
+                "epochs_scale": 2.0,
+            }
+        )
+
+        with self._patched_backend():
+            result = run_experiment(config, self.corpus, self.queries, self.qrels)
+
+        first_meta = result["recovery"]["trajectory"][0]["metadata"]
+        self.assertEqual(
+            first_meta["knobs"],
+            {
+                "bound_epsilon": 0.05,
+                "trigger_threshold": 0.0,
+                "max_temperature": 0.5,
+                "epochs_scale": 2.0,
+            },
+        )
+        self.assertEqual(first_meta["annealing_settings"]["epochs_scale"], 2.0)
+        self.assertGreaterEqual(first_meta["annealing_settings"]["effective_epochs"], 2)
+        self.assertGreater(result["correction_norm_stats"]["mean"], 0.03)
+
+    def test_invalid_knob_values_raise(self):
+        bad_config = self._config("C3", Path(self.tempdir.name) / "bad.json")
+        bad_config = DriftRecoveryConfig(**{**bad_config.__dict__, "bound_epsilon": 0.0})
+
+        with self.assertRaisesRegex(ValueError, "bound_epsilon"):
+            run_experiment(bad_config, self.corpus, self.queries, self.qrels)
+
     def _config(self, condition, output):
         return DriftRecoveryConfig(
             task="Tiny",
@@ -151,6 +213,61 @@ class TestRunDriftRecoveryExperiment(unittest.TestCase):
                 yield
 
         return manager()
+
+    def _pre_change_c3_default_golden_trajectory(self):
+        base_metadata = {
+            "action": "detection_triggered_sedimentation",
+            "annealing_observation": {
+                "drift_magnitude": 0.2132925720177655,
+                "should_correct": True,
+                "temperature": 0.2132925720177655,
+            },
+            "annealing_settings": {
+                "effective_epochs": 1,
+                "effective_learning_rate": 0.00029196331481598893,
+                "learning_rate_scale": 0.2919633148159889,
+                "online_intensity": 0.2132925720177655,
+                "original_epochs": 1,
+                "original_learning_rate": 0.001,
+                "temperature": 0.2132925720177655,
+            },
+            "bounded": True,
+            "condition": "C3",
+            "correction_applied": False,
+            "correction_norm_stats": {
+                "count": 4,
+                "max": 0.009997744113206863,
+                "mean": 0.007490877062082291,
+                "sample_norms": [
+                    0.009968805126845837,
+                    0.0,
+                    0.009997744113206863,
+                    0.009996959008276463,
+                ],
+            },
+            "detector_source": "AntigravityEngine._compute_annealing_drift_magnitude",
+            "evaluated_queries": 2,
+            "query_ndcg": [
+                {
+                    "ndcg": 1.0,
+                    "query_id": "q-alpha",
+                    "ranked_ids": ["d-alpha", "d-delta", "d-gamma", "d-beta"],
+                    "relevant_ids": ["d-alpha"],
+                },
+                {
+                    "ndcg": 1.0,
+                    "query_id": "q-beta",
+                    "ranked_ids": ["d-beta", "d-gamma", "d-delta", "d-alpha"],
+                    "relevant_ids": ["d-beta"],
+                },
+            ],
+            "sedimentation_attempted": True,
+            "should_correct": True,
+        }
+        return [
+            {"cycle_index": 1, "metadata": base_metadata, "ndcg": 1.0},
+            {"cycle_index": 2, "metadata": dict(base_metadata), "ndcg": 1.0},
+        ]
 
 
 if __name__ == "__main__":

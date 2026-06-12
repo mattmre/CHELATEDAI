@@ -42,6 +42,10 @@ class DriftRecoveryConfig:
     k: int = 10
     injection_index: Optional[int] = None
     device: Optional[str] = None
+    bound_epsilon: float = 0.01
+    trigger_threshold: float = 0.0
+    max_temperature: float = 1.0
+    epochs_scale: float = 1.0
 
 
 def run_experiment(
@@ -94,7 +98,7 @@ def run_experiment(
 
             for cycle_index in range(1, config.cycles + 1):
                 metadata: Dict[str, Any] = {"condition": config.condition}
-                metadata.update(_run_condition_cycle(engine, config.condition, sliced_queries, manifest))
+                metadata.update(_run_condition_cycle(engine, config.condition, sliced_queries, manifest, run_config))
                 ndcg, details = evaluate_engine(engine, sliced_queries, sliced_qrels, config.k)
                 metadata["query_ndcg"] = details
                 metadata["evaluated_queries"] = len(details)
@@ -161,6 +165,8 @@ def _build_engine(config: DriftRecoveryConfig, corpus: Mapping[str, str]):
             "mlp",
             input_dim=engine.vector_size,
             bounded=(config.condition == "C3"),
+            min_correction=config.bound_epsilon,
+            max_correction=0.5,
         )
     doc_ids = list(corpus.keys())
     payloads = [{"doc_id": canonicalize_id(doc_id)} for doc_id in doc_ids]
@@ -176,7 +182,14 @@ def _inject_drift(injector: DriftInjector, config: DriftRecoveryConfig) -> dict:
     raise ValueError(f"Unsupported drift mode: {config.drift}")
 
 
-def _run_condition_cycle(engine, condition: str, queries: Mapping[str, str], drift_manifest: Mapping[str, Any]) -> Dict[str, Any]:
+def _run_condition_cycle(
+    engine,
+    condition: str,
+    queries: Mapping[str, str],
+    drift_manifest: Mapping[str, Any],
+    run_config: Optional[Mapping[str, Any]] = None,
+) -> Dict[str, Any]:
+    config = run_config or {}
     if condition == "C0":
         return {"action": "none"}
     if condition == "C1":
@@ -189,7 +202,12 @@ def _run_condition_cycle(engine, condition: str, queries: Mapping[str, str], dri
     if condition in {"C3", "C4"}:
         controller = getattr(engine, "_annealing_controller", None)
         if controller is None:
-            controller = engine.enable_annealing_controller(trigger_threshold=0.0, cooling_rate=0.5)
+            controller = engine.enable_annealing_controller(
+                trigger_threshold=float(config.get("trigger_threshold", 0.0)),
+                max_temperature=float(config.get("max_temperature", 1.0)),
+                cooling_rate=0.5,
+            )
+        engine._annealing_epochs_scale = float(config.get("epochs_scale", 1.0))
         _prime_correction_log(engine, queries)
         observation = engine.observe_annealing_drift()
         should_correct = bool(controller.should_correct())
@@ -200,7 +218,7 @@ def _run_condition_cycle(engine, condition: str, queries: Mapping[str, str], dri
             sedimentation_attempted = True
             engine.run_sedimentation_cycle(threshold=1, learning_rate=0.001, epochs=1)
             correction_applied = checksum_before != _vector_store_checksum(engine)
-        return {
+        metadata = {
             "action": "detection_triggered_sedimentation",
             "bounded": condition == "C3",
             "detector_source": "AntigravityEngine._compute_annealing_drift_magnitude",
@@ -210,6 +228,20 @@ def _run_condition_cycle(engine, condition: str, queries: Mapping[str, str], dri
             "annealing_observation": observation,
             "annealing_settings": getattr(engine, "_last_annealing_settings", None),
         }
+        knobs = {
+            "bound_epsilon": float(config.get("bound_epsilon", 0.01)),
+            "trigger_threshold": float(config.get("trigger_threshold", 0.0)),
+            "max_temperature": float(config.get("max_temperature", 1.0)),
+            "epochs_scale": float(config.get("epochs_scale", 1.0)),
+        }
+        if knobs != {
+            "bound_epsilon": 0.01,
+            "trigger_threshold": 0.0,
+            "max_temperature": 1.0,
+            "epochs_scale": 1.0,
+        }:
+            metadata["knobs"] = knobs
+        return metadata
     raise ValueError(f"Unsupported condition: {condition}")
 
 
@@ -357,6 +389,14 @@ def _validate_config(config: DriftRecoveryConfig) -> None:
         raise ValueError("angle must be finite")
     if not math.isfinite(float(config.sigma)) or float(config.sigma) < 0.0:
         raise ValueError("sigma must be a non-negative finite number")
+    if not math.isfinite(float(config.bound_epsilon)) or float(config.bound_epsilon) <= 0.0:
+        raise ValueError("bound_epsilon must be a positive finite number")
+    if not math.isfinite(float(config.trigger_threshold)) or float(config.trigger_threshold) < 0.0:
+        raise ValueError("trigger_threshold must be a non-negative finite number")
+    if not math.isfinite(float(config.max_temperature)) or float(config.max_temperature) <= 0.0:
+        raise ValueError("max_temperature must be a positive finite number")
+    if not math.isfinite(float(config.epochs_scale)) or float(config.epochs_scale) <= 0.0:
+        raise ValueError("epochs_scale must be a positive finite number")
 
 
 def _write_json(path: str, data: Mapping[str, Any]) -> None:
@@ -378,6 +418,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--cycles", type=int, default=12)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--model", default="sentence-transformers/all-MiniLM-L6-v2")
+    parser.add_argument("--bound-epsilon", type=float, default=0.01)
+    parser.add_argument("--trigger-threshold", type=float, default=0.0)
+    parser.add_argument("--max-temperature", type=float, default=1.0)
+    parser.add_argument("--epochs-scale", type=float, default=1.0)
     parser.add_argument("--output", required=True)
     return parser
 
@@ -398,6 +442,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         model=args.model,
         output=args.output,
         device=_detect_device(),
+        bound_epsilon=args.bound_epsilon,
+        trigger_threshold=args.trigger_threshold,
+        max_temperature=args.max_temperature,
+        epochs_scale=args.epochs_scale,
     )
     result = run_experiment(config)
     print(json.dumps({"output": args.output, "final_ndcg": result["recovery"]["trajectory"][-1]["ndcg"]}, sort_keys=True))
