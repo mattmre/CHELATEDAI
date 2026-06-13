@@ -2,7 +2,9 @@
 
 Source artifacts: `experiment_runs/drift-recovery/scifact_C*_{rotation,noise}_seed*.json`.
 Matrix: SciFact, conditions C0-C4, drift fraction 0.5, rotation angle 25 degrees, noise sigma 0.05, seeds 42/1337/7, `--max-queries 100 --sample-docs 1200 --cycles 12`.
-Device recorded in run configs: cuda.
+Device recorded in run configs: cuda. (Compute ran on GPU; `HF_HUB_OFFLINE=1` was set
+only to use the locally cached model/dataset and bypass the host's Hugging Face SSL fetch
+issue — offline cache and GPU compute are independent, not contradictory.)
 
 ## Results Table
 

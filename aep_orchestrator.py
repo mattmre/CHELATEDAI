@@ -675,7 +675,9 @@ class AEPOrchestrator:
         """
         findings.sort(key=lambda f: f.sort_key())
 
-        # BHS v3.3 placeholder hook
+        # BHS v3.3 honesty scoring (advisory): the validator below is the real
+        # implementation merged in PR #245. Scores are attached to each finding's
+        # bhs_metadata for visibility; advancement is not yet gated on the score.
         if BHS_AVAILABLE:
             for f in findings:
                 bhs_result = validate_pr_brutal_honesty(finding_dict={
@@ -684,7 +686,7 @@ class AEPOrchestrator:
                     "impact": f.impact,
                     "recommended_fix": f.recommended_fix,
                 })
-                # For now we just attach the score; real gating logic comes later
+                # Advisory only: attach the real validator score; gating is not enforced here.
                 if not hasattr(f, "bhs_metadata"):
                     f.bhs_metadata = {}
                 f.bhs_metadata["synthesis_score"] = bhs_result.score
@@ -958,14 +960,17 @@ class AEPOrchestrator:
 
         This is the primary entry point for automated remediation cycles.
 
-        BHS v3.3 note (2026-05-15): Full honesty gating is not yet wired.
-        A stub import exists. Real enforcement will be added during solidification.
+        BHS v3.3 note: the floor-tier smoke call below runs the real
+        run_smoke_pipeline (PR #245). Its result is currently advisory — it is
+        executed but does not block remediation; hard enforcement is tracked
+        separately, as is full per-finding honesty gating (see synthesis()).
         """
         self.scope_lock(pr_range=pr_range)
 
-        # BHS v3.3 placeholder (to be expanded)
+        # BHS v3.3 floor-tier smoke run (real run_smoke_pipeline, import-surface
+        # tier). Advisory: executed for surface verification, result not yet enforced.
         if BHS_AVAILABLE:
-            _ = run_smoke_pipeline()  # floor tier smoke for now
+            _ = run_smoke_pipeline()  # floor-tier smoke; result advisory (not a hard gate)
 
         findings = self.discovery(raw_findings, pr_number=pr_number)
         findings = self.parallel_revalidation(findings)
