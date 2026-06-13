@@ -430,8 +430,10 @@ def evaluate_phase_c_candidate(
                     q_embs = np.array(engine.embed(effective_queries_list), dtype=float)
                     if q_embs.ndim == 2 and len(q_embs) > 0:
                         embedding_centroid = np.mean(q_embs, axis=0).tolist()
-                except Exception:
-                    pass
+                except Exception as exc:
+                    # Optional telemetry centroid; failure must not abort eval.
+                    # Narrowed disclosure (CD-247-02): log instead of silent swallow.
+                    print(f"[phase-c] embedding centroid skipped: {type(exc).__name__}: {exc}")
         finally:
             if hasattr(engine, "close"):
                 engine.close()
