@@ -33,6 +33,35 @@ class TinyEmbeddingBackend:
         return np.asarray(rows, dtype=np.float32)
 
 
+class StubSwapBackend:
+    """A *different* frozen encoder used by the query-encoder-swap arena.
+
+    It maps each topic to a CYCLICALLY PERMUTED one-hot relative to the original
+    TinyEmbeddingBackend (alpha->dim1, beta->dim2, gamma->dim3, delta->dim0).
+    After the near-identity seeded projection, a drifted query for "alpha topic"
+    lands near the basis dimension the ORIGINAL store assigned to "beta topic",
+    so it retrieves the wrong doc against the original store (C0/C2 stay low) but
+    matches a doc re-embedded with this same swap encoder (C2O recovers).
+    """
+
+    vector_size = 4
+
+    def __init__(self):
+        self.vectors = {
+            "alpha topic": np.array([0.0, 1.0, 0.0, 0.0], dtype=np.float32),
+            "beta topic": np.array([0.0, 0.0, 1.0, 0.0], dtype=np.float32),
+            "gamma topic": np.array([0.0, 0.0, 0.0, 1.0], dtype=np.float32),
+            "delta topic": np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float32),
+        }
+
+    def embed_raw(self, texts):
+        rows = []
+        for text in texts:
+            vector = self.vectors.get(str(text), np.array([0.0, 0.5, 0.5, 0.0], dtype=np.float32))
+            rows.append(vector / np.linalg.norm(vector))
+        return np.asarray(rows, dtype=np.float32)
+
+
 class TestRunDriftRecoveryExperiment(unittest.TestCase):
     def setUp(self):
         # Order-independence isolation against torch GLOBAL state a seed does not
@@ -84,6 +113,11 @@ class TestRunDriftRecoveryExperiment(unittest.TestCase):
     def test_all_conditions_write_well_formed_json_through_engine_path(self):
         with self._patched_backend():
             for condition in CONDITIONS:
+                # C2O is the query-encoder-swap oracle and is not valid for the
+                # rotation drift this case exercises; it is covered separately by
+                # the query_encoder_swap arena tests below.
+                if condition == "C2O":
+                    continue
                 output = Path(self.tempdir.name) / f"{condition}.json"
                 config = self._config(condition, output)
                 result = run_experiment(config, self.corpus, self.queries, self.qrels)
@@ -121,7 +155,7 @@ class TestRunDriftRecoveryExperiment(unittest.TestCase):
     def test_c3_uses_bounded_adapter_and_c4_uses_unbounded_adapter(self):
         observed_adapter_types = {}
 
-        def capture_cycle(engine, condition, queries, drift_manifest, run_config=None):
+        def capture_cycle(engine, condition, queries, drift_manifest, run_config=None, query_drift=None):
             observed_adapter_types[condition] = isinstance(engine.adapter, BoundedAdapter)
             return {"action": "captured"}
 
@@ -272,6 +306,166 @@ class TestRunDriftRecoveryExperiment(unittest.TestCase):
             model="tiny-local",
             device="cpu",
         )
+
+    # --- query_encoder_swap arena -------------------------------------------------
+
+    def _swap_config(self, condition, output, cycles=1):
+        return DriftRecoveryConfig(
+            task="Tiny",
+            condition=condition,
+            drift="query_encoder_swap",
+            fraction=0.5,
+            angle=25.0,
+            sigma=0.05,
+            cycles=cycles,
+            seed=123,
+            max_queries=4,
+            sample_docs=4,
+            output=str(output),
+            model="tiny-local",
+            device="cpu",
+            swap_model="stub-swap",
+        )
+
+    def _patched_swap_backend(self):
+        @contextmanager
+        def manager():
+            with ExitStack() as stack:
+                stack.enter_context(
+                    patch("antigravity_engine.create_embedding_backend", return_value=TinyEmbeddingBackend())
+                )
+                stack.enter_context(patch("antigravity_engine.get_logger", return_value=MagicMock()))
+                # The swap encoder is resolved lazily inside QueryEncoderDrift via
+                # embedding_backend.create_embedding_backend(swap_model_name); patch
+                # it so the arena runs without the real mpnet model.
+                stack.enter_context(
+                    patch("embedding_backend.create_embedding_backend", return_value=StubSwapBackend())
+                )
+                yield
+
+        return manager()
+
+    def _swap_corpus_queries_qrels(self):
+        corpus = {
+            "d-alpha": "alpha topic",
+            "d-beta": "beta topic",
+            "d-gamma": "gamma topic",
+            "d-delta": "delta topic",
+        }
+        queries = {
+            "q-alpha": "alpha topic",
+            "q-beta": "beta topic",
+            "q-gamma": "gamma topic",
+            "q-delta": "delta topic",
+        }
+        qrels = {
+            "q-alpha": {"d-alpha": 1.0},
+            "q-beta": {"d-beta": 1.0},
+            "q-gamma": {"d-gamma": 1.0},
+            "q-delta": {"d-delta": 1.0},
+        }
+        return corpus, queries, qrels
+
+    def test_query_encoder_swap_oracle_breaker_c2_noop_c2o_recovers(self):
+        """Load-bearing harness-level oracle-breaker.
+
+        Baseline (native queries vs original store) is high. After the
+        query-encoder upgrade, C0 (no correction) drops. C2 (re-embed docs with
+        the ORIGINAL model) is a no-op and stays low. C2O (re-embed docs with the
+        SWAP model + the same frozen projection) recovers materially above C2.
+        """
+        corpus, queries, qrels = self._swap_corpus_queries_qrels()
+
+        finals = {}
+        baselines = {}
+        with self._patched_swap_backend():
+            for condition in ("C0", "C2", "C2O"):
+                output = Path(self.tempdir.name) / f"swap-{condition}.json"
+                result = run_experiment(self._swap_config(condition, output), corpus, queries, qrels)
+                baselines[condition] = result["baseline"]["ndcg_at_10"]
+                finals[condition] = result["recovery"]["trajectory"][-1]["ndcg"]
+                self.assertEqual(result["drift_manifest"]["drift"], "query_encoder_swap")
+
+        # All conditions share the same baseline (pre-drift, native queries) and
+        # it retrieves perfectly.
+        for condition in ("C0", "C2", "C2O"):
+            self.assertEqual(baselines[condition], 1.0, msg=f"baseline {condition}")
+        # Drift degrades retrieval (C0).
+        self.assertLess(finals["C0"], 0.5)
+        # C2 re-embed-with-original is a proven no-op for query-side drift.
+        self.assertEqual(finals["C2"], finals["C0"])
+        self.assertLess(finals["C2"], 0.5)
+        # C2O recovers fully and is materially above C2.
+        self.assertEqual(finals["C2O"], 1.0)
+        self.assertGreater(finals["C2O"], finals["C2"] + 0.5)
+
+    def test_query_encoder_swap_c2_action_reembeds_with_original_model(self):
+        corpus, queries, qrels = self._swap_corpus_queries_qrels()
+        with self._patched_swap_backend():
+            result = run_experiment(
+                self._swap_config("C2", Path(self.tempdir.name) / "swap-c2-action.json"),
+                corpus,
+                queries,
+                qrels,
+            )
+        meta = result["recovery"]["trajectory"][0]["metadata"]
+        self.assertEqual(meta["action"], "maintenance_reembed_original_model")
+        self.assertEqual(meta["refresh"]["updated"], len(corpus))
+
+    def test_query_encoder_swap_c2o_action_reembeds_with_swap_model(self):
+        corpus, queries, qrels = self._swap_corpus_queries_qrels()
+        with self._patched_swap_backend():
+            result = run_experiment(
+                self._swap_config("C2O", Path(self.tempdir.name) / "swap-c2o-action.json"),
+                corpus,
+                queries,
+                qrels,
+            )
+        meta = result["recovery"]["trajectory"][0]["metadata"]
+        self.assertEqual(meta["action"], "oracle_reembed_swap_model")
+        self.assertEqual(meta["refresh"]["updated"], len(corpus))
+
+    def test_query_encoder_swap_manifest_records_projection_checksum(self):
+        corpus, queries, qrels = self._swap_corpus_queries_qrels()
+        with self._patched_swap_backend():
+            result = run_experiment(
+                self._swap_config("C0", Path(self.tempdir.name) / "swap-manifest.json"),
+                corpus,
+                queries,
+                qrels,
+            )
+        manifest = result["drift_manifest"]
+        self.assertEqual(manifest["drift"], "query_encoder_swap")
+        self.assertEqual(manifest["swap_model"], "stub-swap")
+        self.assertEqual(manifest["store_dim"], 4)
+        self.assertEqual(manifest["swap_dim"], 4)
+        self.assertEqual(manifest["injection_index"], 0)
+        self.assertEqual(len(manifest["projection_checksum"]), 64)
+        self.assertEqual(result["config"]["injection_index"], 0)
+
+    def test_query_encoder_swap_same_seed_produces_identical_trajectory(self):
+        corpus, queries, qrels = self._swap_corpus_queries_qrels()
+        with self._patched_swap_backend():
+            first = run_experiment(
+                self._swap_config("C2O", Path(self.tempdir.name) / "swap-det-1.json"),
+                corpus,
+                queries,
+                qrels,
+            )
+            second = run_experiment(
+                self._swap_config("C2O", Path(self.tempdir.name) / "swap-det-2.json"),
+                corpus,
+                queries,
+                qrels,
+            )
+        self.assertEqual(first["drift_manifest"], second["drift_manifest"])
+        self.assertEqual(first["recovery"]["trajectory"], second["recovery"]["trajectory"])
+
+    def test_c2o_requires_query_encoder_swap_drift(self):
+        with self._patched_swap_backend():
+            bad = self._config("C2O", Path(self.tempdir.name) / "bad-c2o.json")
+            with self.assertRaisesRegex(ValueError, "C2O"):
+                run_experiment(bad, self.corpus, self.queries, self.qrels)
 
     def _patched_backend(self):
         @contextmanager
