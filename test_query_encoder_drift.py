@@ -32,14 +32,30 @@ class _StubSwapBackend:
         return np.vstack([_deterministic_unit_vector(t, self.dim) for t in texts]).astype(np.float32)
 
 
-def _original_doc_vectors(doc_count: int):
-    """Original-encoder doc store: doc d -> one-hot[d] in STORE_DIM (queries align in baseline)."""
-    vectors = {}
-    for d in range(doc_count):
-        v = np.zeros(STORE_DIM, dtype=np.float32)
-        v[d] = 1.0
-        vectors[d] = v
-    return vectors
+class _StubOriginalBackend:
+    """The ORIGINAL frozen encoder: doc/query 'item-{d}' -> one-hot[d] in STORE_DIM.
+
+    Re-embedding the same text always yields the same vector, so this is what
+    makes condition C2 (re-embed-with-original) a genuine, observable code path
+    rather than a copy of the cached store.
+    """
+
+    def __init__(self, dim: int = STORE_DIM):
+        self.dim = dim
+
+    def embed_raw(self, texts):
+        out = np.zeros((len(texts), self.dim), dtype=np.float32)
+        for row, text in enumerate(texts):
+            idx = int(text.split("-")[-1])
+            out[row, idx % self.dim] = 1.0
+        return out
+
+
+def _original_doc_vectors(doc_count: int, backend=None):
+    """Original-encoder doc store built by actually calling the original encoder."""
+    backend = backend or _StubOriginalBackend()
+    embedded = backend.embed_raw([f"item-{d}" for d in range(doc_count)])
+    return {d: embedded[d].astype(np.float32) for d in range(doc_count)}
 
 
 def _retrieval_accuracy(query_vectors, doc_vectors):
@@ -86,7 +102,8 @@ class TestQueryEncoderDrift(unittest.TestCase):
         exactly why C2 is not a fair baseline here.
         """
         doc_count = 40
-        original_docs = _original_doc_vectors(doc_count)
+        original_backend = _StubOriginalBackend()
+        original_docs = _original_doc_vectors(doc_count, backend=original_backend)
         # Baseline: query d == doc d (one-hot). Perfect alignment.
         baseline_queries = {d: original_docs[d].copy() for d in range(doc_count)}
         baseline_acc = _retrieval_accuracy(baseline_queries, original_docs)
@@ -98,9 +115,15 @@ class TestQueryEncoderDrift(unittest.TestCase):
         drifted_queries = {d: drifted_q_mat[d] for d in range(doc_count)}
         drifted_acc = _retrieval_accuracy(drifted_queries, original_docs)
 
-        # C2 maintenance: re-embed docs with the ORIGINAL encoder -> docs are the
-        # same one-hot vectors. Drifted queries remain misaligned.
-        c2_docs = {d: original_docs[d].copy() for d in range(doc_count)}
+        # C2 maintenance: actually RE-EMBED the doc text with the ORIGINAL encoder
+        # (a real backend call, not a copy of the cached store). We first OBSERVE
+        # that this reproduces the cached vectors exactly -- i.e. C2 is genuinely a
+        # no-op for query-side drift, demonstrated rather than assumed -- then
+        # measure that retrieval stays degraded.
+        c2_reembed = original_backend.embed_raw([f"item-{d}" for d in range(doc_count)])
+        c2_docs = {d: c2_reembed[d].astype(np.float32) for d in range(doc_count)}
+        for d in range(doc_count):
+            np.testing.assert_array_equal(c2_docs[d], original_docs[d])  # C2 no-op is observed
         c2_acc = _retrieval_accuracy(drifted_queries, c2_docs)
 
         # Expensive oracle: re-embed docs with the NEW encoder+projection (same
@@ -113,12 +136,13 @@ class TestQueryEncoderDrift(unittest.TestCase):
         # Baseline retrieves perfectly; the upgrade degrades it materially.
         self.assertEqual(baseline_acc, 1.0)
         self.assertLess(drifted_acc, 0.5)
-        # The oracle-breaker: C2 re-embed-with-original does NOT recover...
-        self.assertLessEqual(c2_acc, drifted_acc + 1e-9)
+        # The oracle-breaker: C2 re-embed-with-original is a demonstrated no-op
+        # (asserted above) and therefore does NOT recover -- retrieval stays low.
         self.assertLess(c2_acc, 0.5)
         # ...while re-embedding into the NEW space fully recovers, proving recovery
-        # is possible and that C2's failure is structural, not noise.
+        # is possible and that C2's failure is structural (a no-op), not noise.
         self.assertEqual(oracle_acc, 1.0)
+        self.assertGreater(oracle_acc, c2_acc)  # recovery exists but C2 does not achieve it
 
     def test_manifest_round_trips_and_has_checksum(self):
         drift = QueryEncoderDrift(STORE_DIM, seed=5, swap_backend=_StubSwapBackend())

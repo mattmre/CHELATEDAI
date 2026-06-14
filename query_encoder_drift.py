@@ -93,6 +93,10 @@ class QueryEncoderDrift:
 
         # Seed torch's global RNG so DimensionProjection's near-identity init
         # (which uses torch.randn_like) is reproducible. Frozen — never trained.
+        # Caveat: reproducibility relies on the global torch RNG between this
+        # seed call and the randn_like inside DimensionProjection. This is safe
+        # single-threaded (our case); a concurrent thread consuming the global
+        # torch RNG in that window could desync the init.
         torch.manual_seed(int(self.seed))
         projection = DimensionProjection(int(swap_dim), int(self.store_dim))
         projection.eval()
