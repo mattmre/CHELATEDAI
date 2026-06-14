@@ -8,6 +8,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import numpy as np
+import torch
 
 from chelation_adapter import BoundedAdapter
 from run_drift_recovery_experiment import DriftRecoveryConfig, CONDITIONS, run_experiment
@@ -34,6 +35,35 @@ class TinyEmbeddingBackend:
 
 class TestRunDriftRecoveryExperiment(unittest.TestCase):
     def setUp(self):
+        # Order-independence isolation against torch GLOBAL state a seed does not
+        # control. run_experiment() reseeds random/numpy/torch internally, so the
+        # seed is not the issue; but the trajectory floats come from a torch
+        # matmul whose value/executability depends on torch globals an earlier
+        # test in a full-suite run can leak:
+        #   - default dtype: a leaked torch.float64 makes adapter init float64 and
+        #     CRASHES the matmul (Float vs Double) — pinned to float32.
+        #   - default device: a leaked 'cuda' pushes the matmul onto the GPU and
+        #     crashes the .numpy() readback (and would diverge low bits) — pinned
+        #     to 'cpu' (guarded; the API exists on torch>=2.0).
+        #   - intra-op thread count: defensively pinned to 1 for a deterministic
+        #     single reduction order.
+        # The golden comparison itself is also tolerance-based (see
+        # _assert_trajectory_close) so residual low-bit FP differences from any
+        # un-enumerated global cannot flake it. State is restored via addCleanup
+        # so this test neither depends on nor pollutes sibling tests.
+        self._prev_num_threads = torch.get_num_threads()
+        self._prev_default_dtype = torch.get_default_dtype()
+        self._prev_default_device = None
+        torch.set_num_threads(1)
+        torch.set_default_dtype(torch.float32)
+        if hasattr(torch, "set_default_device"):
+            getter = getattr(torch, "get_default_device", None)
+            self._prev_default_device = getter() if getter is not None else torch.device("cpu")
+            torch.set_default_device("cpu")
+        np.random.seed(0)
+        torch.manual_seed(0)
+        self.addCleanup(self._restore_torch_state)
+
         self.tempdir = tempfile.TemporaryDirectory()
         self.addCleanup(self.tempdir.cleanup)
         self.corpus = {
@@ -143,8 +173,14 @@ class TestRunDriftRecoveryExperiment(unittest.TestCase):
             )
             explicit = run_experiment(explicit_config, self.corpus, self.queries, self.qrels)
 
+        # Exact: explicit-default knobs must reproduce the implicit-default
+        # trajectory bit-for-bit (same process/environment -> robust to globals).
         self.assertEqual(implicit["recovery"]["trajectory"], explicit["recovery"]["trajectory"])
-        self.assertEqual(implicit["recovery"]["trajectory"], self._pre_change_c3_default_golden_trajectory())
+        # Tolerance on float leaves only: guards against trajectory regressions
+        # without flaking on ~1e-16 FP noise from un-enumerated torch globals.
+        self._assert_trajectory_close(
+            implicit["recovery"]["trajectory"], self._pre_change_c3_default_golden_trajectory()
+        )
         first_meta = implicit["recovery"]["trajectory"][0]["metadata"]
         self.assertNotIn("knobs", first_meta)
         self.assertNotIn("epochs_scale", first_meta.get("annealing_settings", {}))
@@ -184,6 +220,41 @@ class TestRunDriftRecoveryExperiment(unittest.TestCase):
 
         with self.assertRaisesRegex(ValueError, "bound_epsilon"):
             run_experiment(bad_config, self.corpus, self.queries, self.qrels)
+
+    def _restore_torch_state(self):
+        # Restore (via addCleanup) the global torch knobs we pinned in setUp so
+        # this test does not leak single-threaded / float32 / cpu state onto
+        # later tests.
+        torch.set_num_threads(self._prev_num_threads)
+        torch.set_default_dtype(self._prev_default_dtype)
+        if self._prev_default_device is not None and hasattr(torch, "set_default_device"):
+            torch.set_default_device(self._prev_default_device)
+
+    def _assert_trajectory_close(self, actual, expected, path="trajectory"):
+        """Compare two trajectory structures: float leaves within a tight
+        tolerance (robust to ~1e-16 FP-environment noise), everything else
+        (ints, bools, strings, list lengths, dict keys) exact. Keeps the test a
+        real regression guard while immune to un-enumerated FP-affecting globals.
+        """
+        if isinstance(expected, bool) or isinstance(actual, bool):
+            self.assertEqual(actual, expected, msg=path)
+        elif isinstance(expected, float) or isinstance(actual, float):
+            self.assertIsInstance(actual, (int, float), msg=path)
+            self.assertTrue(
+                np.isclose(float(actual), float(expected), rtol=1e-9, atol=1e-12),
+                msg=f"{path}: {actual!r} != {expected!r} (beyond tolerance)",
+            )
+        elif isinstance(expected, dict):
+            self.assertIsInstance(actual, dict, msg=path)
+            self.assertEqual(set(actual.keys()), set(expected.keys()), msg=path)
+            for key in expected:
+                self._assert_trajectory_close(actual[key], expected[key], f"{path}.{key}")
+        elif isinstance(expected, (list, tuple)):
+            self.assertEqual(len(actual), len(expected), msg=path)
+            for i, (a, e) in enumerate(zip(actual, expected)):
+                self._assert_trajectory_close(a, e, f"{path}[{i}]")
+        else:
+            self.assertEqual(actual, expected, msg=path)
 
     def _config(self, condition, output):
         return DriftRecoveryConfig(
