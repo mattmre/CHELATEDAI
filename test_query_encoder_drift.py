@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import hashlib
+import importlib.util
 import json
+import os
 import unittest
 
 import numpy as np
@@ -166,9 +168,19 @@ class TestQueryEncoderDrift(unittest.TestCase):
             drift.embed_queries([])
 
 
+# Opt-in only. This test loads a real Hugging Face model (all-mpnet-base-v2). On CI
+# runners where the HF connection HANGS rather than fails fast, the network attempt has
+# blocked a job for ~17 minutes before skipping (observed on the 3.11 matrix for #270).
+# Gate on an explicit env var so normal CI skips WITHOUT any network attempt; set
+# CHELATED_RUN_REAL_MODEL_TESTS=1 on a networked machine (or with the model cached) to run it.
+# Coverage consequence (disclosed): with this gate, the real swap-backend resolution path
+# (query_encoder_drift.QueryEncoderDrift._backend -> embedding_backend.create_embedding_backend)
+# is NOT exercised by any default-CI test; it is covered only by mocked unit tests and the
+# (non-gating) PR-A4 real-model campaign. See Carried Debt CD-A2-01.
 @unittest.skipUnless(
-    __import__("importlib").util.find_spec("sentence_transformers") is not None,
-    "sentence-transformers not installed",
+    os.environ.get("CHELATED_RUN_REAL_MODEL_TESTS") == "1"
+    and importlib.util.find_spec("sentence_transformers") is not None,
+    "real-model smoke is opt-in: set CHELATED_RUN_REAL_MODEL_TESTS=1 (avoids CI network hangs)",
 )
 class TestQueryEncoderDriftRealModelSmoke(unittest.TestCase):
     def test_real_swap_model_path_produces_store_dim_unit_vectors(self):
