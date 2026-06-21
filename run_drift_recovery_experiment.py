@@ -54,6 +54,11 @@ class DriftRecoveryConfig:
     epochs_scale: float = 1.0
     swap_model: str = "all-mpnet-base-v2"
     anchor_fraction: float = 0.0
+    # Supervised-correction (C3a/C4a) training budget. Exposed for the PR-A4
+    # sweep: Tier B showed the prior hardcoded 30 steps / lr 0.01 under-fits even
+    # in-sample, so the budget must be swept before concluding no-recovery.
+    correction_steps: int = 30
+    correction_lr: float = 0.01
 
 
 def run_experiment(
@@ -593,6 +598,8 @@ def _supervised_anchor_cycle(
             engine,
             anchor_pairs,
             seed=int(config.get("seed", 0)),
+            steps=int(config.get("correction_steps", 30)),
+            learning_rate=float(config.get("correction_lr", 0.01)),
         )
         applied = _apply_adapter_to_all_docs(engine, original_points=original_doc_points)
         correction_norm_stats = applied["correction_norm_stats"]
@@ -986,6 +993,10 @@ def _validate_config(config: DriftRecoveryConfig) -> None:
         raise ValueError("epochs_scale must be a positive finite number")
     if not (math.isfinite(float(config.anchor_fraction)) and 0.0 <= float(config.anchor_fraction) < 1.0):
         raise ValueError("anchor_fraction must be a finite number in [0, 1)")
+    if int(config.correction_steps) < 1:
+        raise ValueError("correction_steps must be a positive integer")
+    if not (math.isfinite(float(config.correction_lr)) and float(config.correction_lr) > 0.0):
+        raise ValueError("correction_lr must be a positive finite number")
 
 
 def _write_json(path: str, data: Mapping[str, Any]) -> None:
@@ -1013,6 +1024,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--epochs-scale", type=float, default=1.0)
     parser.add_argument("--swap-model", default="all-mpnet-base-v2")
     parser.add_argument("--anchor-fraction", type=float, default=0.0)
+    parser.add_argument("--correction-steps", type=int, default=30)
+    parser.add_argument("--correction-lr", type=float, default=0.01)
     parser.add_argument("--output", required=True)
     return parser
 
@@ -1039,6 +1052,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         epochs_scale=args.epochs_scale,
         swap_model=args.swap_model,
         anchor_fraction=args.anchor_fraction,
+        correction_steps=args.correction_steps,
+        correction_lr=args.correction_lr,
     )
     result = run_experiment(config)
     print(json.dumps({"output": args.output, "final_ndcg": result["recovery"]["trajectory"][-1]["ndcg"]}, sort_keys=True))
