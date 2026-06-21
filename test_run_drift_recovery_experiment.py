@@ -113,10 +113,10 @@ class TestRunDriftRecoveryExperiment(unittest.TestCase):
     def test_all_conditions_write_well_formed_json_through_engine_path(self):
         with self._patched_backend():
             for condition in CONDITIONS:
-                # C2O is the query-encoder-swap oracle and is not valid for the
-                # rotation drift this case exercises; it is covered separately by
-                # the query_encoder_swap arena tests below.
-                if condition == "C2O":
+                # C2O/C3a/C4a are query-encoder-swap-only conditions and are not
+                # valid for the rotation drift this case exercises; they are
+                # covered separately by the query_encoder_swap arena tests below.
+                if condition in {"C2O", "C3a", "C4a"}:
                     continue
                 output = Path(self.tempdir.name) / f"{condition}.json"
                 config = self._config(condition, output)
@@ -155,7 +155,7 @@ class TestRunDriftRecoveryExperiment(unittest.TestCase):
     def test_c3_uses_bounded_adapter_and_c4_uses_unbounded_adapter(self):
         observed_adapter_types = {}
 
-        def capture_cycle(engine, condition, queries, drift_manifest, run_config=None, query_drift=None):
+        def capture_cycle(engine, condition, queries, drift_manifest, run_config=None, query_drift=None, **kwargs):
             observed_adapter_types[condition] = isinstance(engine.adapter, BoundedAdapter)
             return {"action": "captured"}
 
@@ -466,6 +466,241 @@ class TestRunDriftRecoveryExperiment(unittest.TestCase):
             bad = self._config("C2O", Path(self.tempdir.name) / "bad-c2o.json")
             with self.assertRaisesRegex(ValueError, "C2O"):
                 run_experiment(bad, self.corpus, self.queries, self.qrels)
+
+    # --- supervised closed loop (C3a / C4a, PR-A2b) -------------------------------
+
+    def _supervised_swap_config(self, condition, output, anchor_fraction=0.5, cycles=1):
+        config = self._swap_config(condition, output, cycles=cycles)
+        return DriftRecoveryConfig(**{**config.__dict__, "anchor_fraction": anchor_fraction})
+
+    def test_c3a_actuator_fires_and_writes_to_store(self):
+        """LOAD-BEARING: the v1 closed loop NEVER fired (correction_applied=0/36,
+        store byte-identical). This proves PR-A2b's supervised actuator FIRES and
+        WRITES — should_correct True, correction_applied True (store checksum
+        changed), and the mean correction norm is well above the bound floor.
+        """
+        corpus, queries, qrels = self._swap_corpus_queries_qrels()
+        with self._patched_swap_backend():
+            result = run_experiment(
+                self._supervised_swap_config("C3a", Path(self.tempdir.name) / "c3a-fires.json"),
+                corpus,
+                queries,
+                qrels,
+            )
+        meta = result["recovery"]["trajectory"][-1]["metadata"]
+        self.assertEqual(meta["action"], "supervised_anchor_infonce_correction")
+        self.assertTrue(meta["should_correct"], "trigger must cross threshold")
+        self.assertTrue(meta["sedimentation_attempted"])
+        # The actuator actually mutated the store (the v1 failure was this == False).
+        self.assertTrue(meta["correction_applied"], "store checksum must change")
+        self.assertGreater(meta["anchor_count"], 0)
+        self.assertGreater(meta["ndcg_drop"], 0.0)
+        norm_stats = meta["correction_norm_stats"]
+        self.assertGreater(norm_stats["count"], 0)
+        # Mean correction is well above the BoundedAdapter floor (bound_epsilon=0.01).
+        self.assertGreater(norm_stats["mean"], 0.01)
+        # And the run-level aggregate reflects a real, non-trivial correction.
+        self.assertGreater(result["correction_norm_stats"]["mean"], 0.01)
+
+    def test_c4a_unbounded_actuator_fires_and_writes(self):
+        corpus, queries, qrels = self._swap_corpus_queries_qrels()
+        with self._patched_swap_backend():
+            result = run_experiment(
+                self._supervised_swap_config("C4a", Path(self.tempdir.name) / "c4a-fires.json"),
+                corpus,
+                queries,
+                qrels,
+            )
+        meta = result["recovery"]["trajectory"][-1]["metadata"]
+        self.assertFalse(meta["bounded"])
+        self.assertTrue(meta["should_correct"])
+        self.assertTrue(meta["correction_applied"])
+        # Unbounded correction is free to be larger than the bounded C3a floor.
+        self.assertGreater(meta["correction_norm_stats"]["mean"], 0.01)
+
+    def test_c3a_fires_writes_and_records_honest_eval_outcome(self):
+        """C3a fires + writes, but on the cyclic-permutation stub geometry a
+        bounded MLP trained on sparse held-out anchors does NOT generalize the
+        per-query realignment to the disjoint eval queries — so it does not beat
+        the no-correction baseline here. This is the HONEST finding (the
+        documented bounded-adapter / sparse-anchor capacity limit), and the
+        oracle C2O remains the only full recovery. Asserted as-is, not tuned.
+
+        APPLES-TO-APPLES: the C0 baseline is run at the SAME anchor_fraction as
+        C3a (0.5), so the anchor/eval split is identical and both score the SAME
+        disjoint eval subset. (Comparing C3a@af=0.5 against C0@af=0 would measure
+        different query subsets — a different bug Tier B flagged; this avoids it.)
+        """
+        corpus, queries, qrels = self._swap_corpus_queries_qrels()
+        finals = {}
+        with self._patched_swap_backend():
+            # C0 at af=0.5: no correction, but the split is active so it scores
+            # the identical eval subset C3a is scored on (fair baseline).
+            r_c0 = run_experiment(
+                self._supervised_swap_config("C0", Path(self.tempdir.name) / "honest-c0.json", anchor_fraction=0.5),
+                corpus,
+                queries,
+                qrels,
+            )
+            finals["C0_fair"] = r_c0["recovery"]["trajectory"][-1]["ndcg"]
+            c0_eval_ids = set(r_c0["anchor_eval_split"]["eval_ids"])
+            # C2O oracle at af=0 (re-embeds all docs into the swap space — full recovery).
+            r_c2o = run_experiment(
+                self._swap_config("C2O", Path(self.tempdir.name) / "honest-c2o.json"),
+                corpus,
+                queries,
+                qrels,
+            )
+            finals["C2O"] = r_c2o["recovery"]["trajectory"][-1]["ndcg"]
+            r_c3a = run_experiment(
+                self._supervised_swap_config("C3a", Path(self.tempdir.name) / "honest-c3a.json"),
+                corpus,
+                queries,
+                qrels,
+            )
+        meta = r_c3a["recovery"]["trajectory"][-1]["metadata"]
+        finals["C3a"] = r_c3a["recovery"]["trajectory"][-1]["ndcg"]
+        c3a_eval_ids = set(r_c3a["anchor_eval_split"]["eval_ids"])
+        # Same seed -> identical anchor/eval split, so C0_fair and C3a score the
+        # SAME eval subset (this is what makes the comparison apples-to-apples).
+        self.assertEqual(c0_eval_ids, c3a_eval_ids)
+        # The loop fired and wrote (the load-bearing point).
+        self.assertTrue(meta["correction_applied"])
+        # Honest outcome: against the fair same-subset baseline, the supervised
+        # correction does not beat no-correction on this geometry (it does not
+        # generalize from the sparse anchors), and never exceeds the oracle.
+        self.assertLessEqual(finals["C3a"], finals["C2O"])
+        self.assertLessEqual(finals["C3a"], finals["C0_fair"] + 1e-9)
+        # The oracle still recovers fully — proves the arena itself is recoverable.
+        self.assertEqual(finals["C2O"], 1.0)
+
+    def test_c3a_multi_cycle_is_idempotent(self):
+        """With per-cycle adapter re-init from the fixed original-doc snapshot,
+        each supervised cycle is a pure function of (snapshot, anchors, seed), so
+        a multi-cycle run produces an identical correction and NDCG every cycle —
+        no drift/compounding (Tier B caught the pre-fix accumulating-weights drift).
+        """
+        corpus, queries, qrels = self._swap_corpus_queries_qrels()
+        with self._patched_swap_backend():
+            result = run_experiment(
+                self._supervised_swap_config("C3a", Path(self.tempdir.name) / "c3a-multicycle.json", cycles=3),
+                corpus,
+                queries,
+                qrels,
+            )
+        traj = result["recovery"]["trajectory"]
+        self.assertEqual(len(traj), 3)
+        ndcgs = [cycle["ndcg"] for cycle in traj]
+        norms = [cycle["metadata"]["correction_norm_stats"]["mean"] for cycle in traj]
+        # Flat trajectory: every cycle's NDCG and correction magnitude identical.
+        self.assertEqual(len(set(ndcgs)), 1, f"NDCG drifted across cycles: {ndcgs}")
+        for norm in norms[1:]:
+            self.assertAlmostEqual(norm, norms[0], places=6, msg=f"norm drifted: {norms}")
+        for cycle in traj:
+            self.assertTrue(cycle["metadata"]["correction_applied"])
+
+    def test_c3a_anchor_eval_split_is_disjoint_and_recorded(self):
+        corpus, queries, qrels = self._swap_corpus_queries_qrels()
+        with self._patched_swap_backend():
+            result = run_experiment(
+                self._supervised_swap_config("C3a", Path(self.tempdir.name) / "c3a-split.json"),
+                corpus,
+                queries,
+                qrels,
+            )
+        split = result["anchor_eval_split"]
+        self.assertTrue(split["active"])
+        self.assertGreater(split["anchor_count"], 0)
+        self.assertGreater(split["eval_count"], 0)
+        self.assertEqual(split["anchor_count"] + split["eval_count"], len(queries))
+        self.assertTrue(set(split["anchor_ids"]).isdisjoint(set(split["eval_ids"])))
+        self.assertEqual(result["config"]["anchor_count"], split["anchor_count"])
+        self.assertEqual(result["config"]["eval_count"], split["eval_count"])
+        # Eval NDCG is measured on the eval subset only.
+        meta = result["recovery"]["trajectory"][-1]["metadata"]
+        self.assertEqual(meta["evaluated_queries"], split["eval_count"])
+
+    def test_c3a_same_seed_produces_identical_trajectory(self):
+        corpus, queries, qrels = self._swap_corpus_queries_qrels()
+        with self._patched_swap_backend():
+            first = run_experiment(
+                self._supervised_swap_config("C3a", Path(self.tempdir.name) / "c3a-det-1.json"),
+                corpus,
+                queries,
+                qrels,
+            )
+            second = run_experiment(
+                self._supervised_swap_config("C3a", Path(self.tempdir.name) / "c3a-det-2.json"),
+                corpus,
+                queries,
+                qrels,
+            )
+        self.assertEqual(first["drift_manifest"], second["drift_manifest"])
+        self.assertEqual(first["recovery"]["trajectory"], second["recovery"]["trajectory"])
+        self.assertEqual(first["anchor_eval_split"], second["anchor_eval_split"])
+
+    def test_c3a_uses_bounded_adapter_c4a_uses_unbounded_adapter(self):
+        observed = {}
+
+        def capture_cycle(engine, condition, queries, drift_manifest, run_config=None, **kwargs):
+            observed[condition] = isinstance(engine.adapter, BoundedAdapter)
+            return {"action": "captured"}
+
+        corpus, queries, qrels = self._swap_corpus_queries_qrels()
+        with self._patched_swap_backend(), patch(
+            "run_drift_recovery_experiment._run_condition_cycle",
+            side_effect=capture_cycle,
+        ):
+            run_experiment(
+                self._supervised_swap_config("C3a", Path(self.tempdir.name) / "c3a-adapter.json"),
+                corpus,
+                queries,
+                qrels,
+            )
+            run_experiment(
+                self._supervised_swap_config("C4a", Path(self.tempdir.name) / "c4a-adapter.json"),
+                corpus,
+                queries,
+                qrels,
+            )
+        self.assertTrue(observed["C3a"])
+        self.assertFalse(observed["C4a"])
+
+    def test_c3a_requires_query_encoder_swap_and_anchor_fraction(self):
+        with self._patched_swap_backend():
+            # Wrong drift mode.
+            bad_drift = DriftRecoveryConfig(
+                **{**self._config("C3a", Path(self.tempdir.name) / "bad-c3a-drift.json").__dict__,
+                   "anchor_fraction": 0.5}
+            )
+            with self.assertRaisesRegex(ValueError, "query_encoder_swap"):
+                run_experiment(bad_drift, self.corpus, self.queries, self.qrels)
+            # Right drift, but anchor_fraction == 0 (no anchors to supervise).
+            bad_anchor = self._swap_config("C3a", Path(self.tempdir.name) / "bad-c3a-anchor.json")
+            with self.assertRaisesRegex(ValueError, "anchor_fraction"):
+                run_experiment(bad_anchor, self.corpus, self.queries, self.qrels)
+            # C4a has the same requirement.
+            bad_c4a = self._swap_config("C4a", Path(self.tempdir.name) / "bad-c4a-anchor.json")
+            with self.assertRaisesRegex(ValueError, "anchor_fraction"):
+                run_experiment(bad_c4a, self.corpus, self.queries, self.qrels)
+
+    def test_anchor_fraction_zero_preserves_arena_behavior(self):
+        """With anchor_fraction == 0 (default), C0/C2/C2O measure on ALL queries
+        exactly as the A2a arena did — the split is inactive and the existing
+        oracle-breaker numbers are unchanged.
+        """
+        corpus, queries, qrels = self._swap_corpus_queries_qrels()
+        with self._patched_swap_backend():
+            result = run_experiment(
+                self._swap_config("C0", Path(self.tempdir.name) / "af0-c0.json"),
+                corpus,
+                queries,
+                qrels,
+            )
+        split = result["anchor_eval_split"]
+        self.assertFalse(split["active"])
+        self.assertEqual(split["anchor_count"], 0)
+        self.assertEqual(split["eval_count"], len(queries))
 
     def _patched_backend(self):
         @contextmanager
