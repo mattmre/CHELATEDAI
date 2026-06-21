@@ -21,8 +21,8 @@ from drift_recovery_metrics import RecoveryTracker, ndcg_at_k
 from run_road_course_campaign import select_road_course_slice
 
 
-CONDITIONS = ("C0", "C1", "C2", "C3", "C4")
-DRIFT_MODES = ("rotation", "noise")
+CONDITIONS = ("C0", "C1", "C2", "C2O", "C3", "C4")
+DRIFT_MODES = ("rotation", "noise", "query_encoder_swap")
 
 
 @dataclass(frozen=True)
@@ -46,6 +46,7 @@ class DriftRecoveryConfig:
     trigger_threshold: float = 0.0
     max_temperature: float = 1.0
     epochs_scale: float = 1.0
+    swap_model: str = "all-mpnet-base-v2"
 
 
 def run_experiment(
@@ -85,8 +86,21 @@ def run_experiment(
             if config.condition == "C1":
                 engine.run_sedimentation_cycle(threshold=1, learning_rate=0.001, epochs=1)
 
-            injector = DriftInjector(engine, seed=config.seed)
-            manifest = _inject_drift(injector, config)
+            query_drift = None
+            drifted_query_vectors: Optional[Dict[str, np.ndarray]] = None
+            if config.drift == "query_encoder_swap":
+                # Query-encoder upgrade: the store is NOT mutated. Instead, eval
+                # queries are re-embedded with the swapped encoder and used for
+                # every post-drift measurement. The drift object carries the
+                # frozen seeded projection that C2O reuses to re-embed docs.
+                query_drift, drifted_query_vectors = _build_query_encoder_drift(
+                    engine, sliced_queries, config
+                )
+                manifest = query_drift.manifest()
+                manifest["injection_index"] = 0
+            else:
+                injector = DriftInjector(engine, seed=config.seed)
+                manifest = _inject_drift(injector, config)
             run_config = asdict(config)
             run_config["injection_index"] = manifest["injection_index"]
             run_config["device"] = config.device or _detect_device()
@@ -98,8 +112,22 @@ def run_experiment(
 
             for cycle_index in range(1, config.cycles + 1):
                 metadata: Dict[str, Any] = {"condition": config.condition}
-                metadata.update(_run_condition_cycle(engine, config.condition, sliced_queries, manifest, run_config))
-                ndcg, details = evaluate_engine(engine, sliced_queries, sliced_qrels, config.k)
+                metadata.update(
+                    _run_condition_cycle(
+                        engine,
+                        config.condition,
+                        sliced_queries,
+                        manifest,
+                        run_config,
+                        query_drift=query_drift,
+                    )
+                )
+                if drifted_query_vectors is not None:
+                    ndcg, details = evaluate_engine_with_query_vectors(
+                        engine, drifted_query_vectors, sliced_qrels, config.k
+                    )
+                else:
+                    ndcg, details = evaluate_engine(engine, sliced_queries, sliced_qrels, config.k)
                 metadata["query_ndcg"] = details
                 metadata["evaluated_queries"] = len(details)
                 if config.condition in {"C3", "C4"}:
@@ -152,6 +180,67 @@ def evaluate_engine(engine, queries: Mapping[str, str], qrels: Mapping[str, Mapp
     return mean_ndcg, rows
 
 
+def evaluate_engine_with_query_vectors(
+    engine,
+    query_vectors_by_id: Mapping[str, np.ndarray],
+    qrels: Mapping[str, Mapping[str, float]],
+    k: int = 10,
+) -> Tuple[float, list]:
+    """Score retrieval using precomputed query vectors instead of engine embeddings.
+
+    Mirrors ``evaluate_engine`` exactly (same row shape, same ID mapping, same
+    ndcg_at_k scoring) but searches the store by a caller-supplied vector. Used
+    for the query-encoder-swap arena, where eval queries live in the swapped
+    encoder's space while the cached doc vectors stay in the original space.
+    """
+    rows = []
+    for query_id, query_vector in query_vectors_by_id.items():
+        relevance = qrels.get(query_id, qrels.get(canonicalize_id(query_id), {}))
+        relevant_ids = [canonicalize_id(doc_id) for doc_id, score in relevance.items() if float(score) > 0.0]
+        if not relevant_ids:
+            continue
+        hits = engine.qdrant.query_points(
+            collection_name=engine.collection_name,
+            query=np.asarray(query_vector, dtype=np.float32),
+            limit=k,
+            with_payload=False,
+            with_vectors=False,
+        ).points
+        ranked = map_predicted_ids(engine, [hit.id for hit in hits])
+        score = ndcg_at_k(ranked, relevant_ids, k=k)
+        rows.append(
+            {
+                "query_id": canonicalize_id(query_id),
+                "ndcg": score,
+                "ranked_ids": ranked,
+                "relevant_ids": relevant_ids,
+            }
+        )
+    mean_ndcg = float(statistics.fmean(row["ndcg"] for row in rows)) if rows else 0.0
+    return mean_ndcg, rows
+
+
+def _build_query_encoder_drift(engine, queries: Mapping[str, str], config: DriftRecoveryConfig):
+    """Construct the query-encoder-swap drift and embed the eval queries with it.
+
+    Returns ``(query_drift, drifted_query_vectors_by_id)``. The drift object owns
+    the frozen seeded projection; ``manifest()`` is only valid after this call.
+    """
+    from query_encoder_drift import QueryEncoderDrift
+
+    query_drift = QueryEncoderDrift(
+        store_dim=engine.vector_size,
+        swap_model_name=config.swap_model,
+        seed=config.seed,
+    )
+    query_ids = list(queries.keys())
+    drifted = query_drift.embed_queries([str(queries[query_id]) for query_id in query_ids])
+    drifted_query_vectors = {
+        canonicalize_id(query_id): drifted[index] for index, query_id in enumerate(query_ids)
+    }
+    return query_drift, drifted_query_vectors
+
+
 def _build_engine(config: DriftRecoveryConfig, corpus: Mapping[str, str]):
     from antigravity_engine import AntigravityEngine
 
@@ -188,6 +277,7 @@ def _run_condition_cycle(
     queries: Mapping[str, str],
     drift_manifest: Mapping[str, Any],
     run_config: Optional[Mapping[str, Any]] = None,
+    query_drift: Any = None,
 ) -> Dict[str, Any]:
     config = run_config or {}
     if condition == "C0":
@@ -195,9 +285,26 @@ def _run_condition_cycle(
     if condition == "C1":
         return {"action": "static_adapter_frozen"}
     if condition == "C2":
+        # Re-embed docs with the ORIGINAL engine model. For store-mutating drift
+        # this refreshes the affected vectors; for query_encoder_swap it is a
+        # proven no-op (re-embedding unchanged text reproduces cached vectors,
+        # which remain in the original space and stay misaligned with the swapped
+        # query space) — so all docs are refreshed to make that no-op observable.
+        if drift_manifest.get("drift") == "query_encoder_swap":
+            return {
+                "action": "maintenance_reembed_original_model",
+                "refresh": _reembed_all_docs_with_original_model(engine),
+            }
         return {
             "action": "maintenance_reindex_affected",
             "refresh": _refresh_affected_corpus_vectors(engine, drift_manifest["affected_ids"]),
+        }
+    if condition == "C2O":
+        if query_drift is None:
+            raise ValueError("C2O requires a query_encoder_swap drift object")
+        return {
+            "action": "oracle_reembed_swap_model",
+            "refresh": _reembed_all_docs_with_swap_model(engine, query_drift),
         }
     if condition in {"C3", "C4"}:
         controller = getattr(engine, "_annealing_controller", None)
@@ -271,6 +378,83 @@ def _refresh_affected_corpus_vectors(engine, affected_ids: Sequence[Any]) -> Dic
             vector=vectors[index],
             payload=point.payload,
         )
+        for index, point in enumerate(points)
+    ]
+    engine.qdrant.upsert(collection_name=engine.collection_name, points=upserts)
+    return {"updated": len(upserts), "failed": 0}
+
+
+def _load_all_doc_points(engine) -> list:
+    """Scroll the whole store and return points carrying a 'text' payload."""
+    points = []
+    offset = None
+    while True:
+        batch, next_offset = engine.qdrant.scroll(
+            collection_name=engine.collection_name,
+            limit=256,
+            with_vectors=False,
+            with_payload=True,
+            offset=offset,
+        )
+        points.extend(batch)
+        if next_offset is None or not batch:
+            break
+        offset = next_offset
+    points.sort(key=lambda item: repr(item.id))
+    missing_text = [
+        point.id
+        for point in points
+        if not isinstance(getattr(point, "payload", None), dict) or "text" not in point.payload
+    ]
+    if missing_text:
+        raise ValueError(f"Cannot re-embed docs without text payloads; missing IDs: {missing_text[:5]}")
+    return points
+
+
+def _reembed_all_docs_with_original_model(engine) -> Dict[str, int]:
+    """C2 for query_encoder_swap: re-embed every doc with the ORIGINAL engine model.
+
+    The store is not mutated by query-side drift, so re-embedding the unchanged
+    doc text with the frozen original encoder reproduces the cached vectors and
+    leaves them in the original space — a proven no-op against swapped queries.
+    """
+    from qdrant_client.models import PointStruct
+
+    points = _load_all_doc_points(engine)
+    if not points:
+        return {"updated": 0, "failed": 0}
+    vectors = np.asarray(engine.embed([point.payload["text"] for point in points]), dtype=np.float32)
+    if vectors.ndim != 2 or vectors.shape[0] != len(points):
+        raise ValueError(f"Embedding refresh returned invalid shape {vectors.shape}; expected {len(points)} rows")
+    upserts = [
+        PointStruct(id=point.id, vector=vectors[index], payload=point.payload)
+        for index, point in enumerate(points)
+    ]
+    engine.qdrant.upsert(collection_name=engine.collection_name, points=upserts)
+    return {"updated": len(upserts), "failed": 0}
+
+
+def _reembed_all_docs_with_swap_model(engine, query_drift: Any) -> Dict[str, int]:
+    """C2-oracle: re-embed every doc with the SWAP model + the SAME frozen seeded
+    projection used for the query drift, so docs land in the drifted query space.
+
+    This is the expensive upper bound that recovers retrieval. It reuses the
+    query_drift object directly so the projection (and its checksum) is identical
+    to the one applied to the eval queries.
+    """
+    from qdrant_client.models import PointStruct
+
+    points = _load_all_doc_points(engine)
+    if not points:
+        return {"updated": 0, "failed": 0}
+    vectors = np.asarray(
+        query_drift.embed_queries([str(point.payload["text"]) for point in points]),
+        dtype=np.float32,
+    )
+    if vectors.ndim != 2 or vectors.shape[0] != len(points):
+        raise ValueError(f"Swap re-embed returned invalid shape {vectors.shape}; expected {len(points)} rows")
+    upserts = [
+        PointStruct(id=point.id, vector=vectors[index], payload=point.payload)
         for index, point in enumerate(points)
     ]
     engine.qdrant.upsert(collection_name=engine.collection_name, points=upserts)
@@ -377,6 +561,10 @@ def _validate_config(config: DriftRecoveryConfig) -> None:
         raise ValueError(f"condition must be one of {CONDITIONS}")
     if config.drift not in DRIFT_MODES:
         raise ValueError(f"drift must be one of {DRIFT_MODES}")
+    if config.condition == "C2O" and config.drift != "query_encoder_swap":
+        raise ValueError("condition C2O is only valid with drift=query_encoder_swap")
+    if config.drift == "query_encoder_swap" and not str(config.swap_model).strip():
+        raise ValueError("swap_model must be a non-empty model name")
     if not 0.0 <= float(config.fraction) <= 1.0:
         raise ValueError("fraction must be between 0 and 1")
     if config.cycles < 1:
@@ -422,6 +610,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--trigger-threshold", type=float, default=0.0)
     parser.add_argument("--max-temperature", type=float, default=1.0)
     parser.add_argument("--epochs-scale", type=float, default=1.0)
+    parser.add_argument("--swap-model", default="all-mpnet-base-v2")
     parser.add_argument("--output", required=True)
     return parser
 
@@ -446,6 +635,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         trigger_threshold=args.trigger_threshold,
         max_temperature=args.max_temperature,
         epochs_scale=args.epochs_scale,
+        swap_model=args.swap_model,
     )
     result = run_experiment(config)
     print(json.dumps({"output": args.output, "final_ndcg": result["recovery"]["trajectory"][-1]["ndcg"]}, sort_keys=True))
