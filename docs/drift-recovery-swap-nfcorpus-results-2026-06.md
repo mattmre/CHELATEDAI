@@ -26,8 +26,10 @@ Conditions: C0 frozen (lower bound) · C2 re-embed-with-original (proven no-op) 
 | 1000 | 0.10 | 0.040058 | 12/12 | 12/12 | 0.508960 |
 | 2000 | 0.10 | 0.041228 | 12/12 | 12/12 | 0.509369 |
 
-Best budget cell: steps=30, lr=0.01 (seed-42 final 0.051264). Three-seed confirmation:
+Best budget cell: steps=30, lr=0.01 (seed-42 final 0.051264). Larger budgets degrade (all 12/12 corrections applied at every budget level — the degradation is genuine overshooting, not a broken loop). Three-seed confirmation:
 
 | Steps | LR | Mean final NDCG | Std | Recovery@N |
 |---:|---:|---:|---:|---:|
 | 30 | 0.01 | 0.053501 | 0.008779 | 0/3 |
+
+Note: supervised recovery (C3a/C4a) saturates at cycle 1 and holds flat across all 12 cycles. Subsequent cycles re-apply the same bounded correction magnitude without further improvement. Wall-clock timing was not captured (split run); see campaign-completion.log for session timestamps.
