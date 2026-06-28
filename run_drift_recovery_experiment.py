@@ -405,11 +405,25 @@ def _build_engine(config: DriftRecoveryConfig, corpus: Mapping[str, str]):
         model_name=config.model,
         store_full_text_payload=True,
     )
-    if config.condition in {"C3", "C4", "C3a", "C4a"}:
+    # Only the SYNTHETIC-drift conditions (C3/C4) need a correction adapter wired
+    # at build time: their cycle drives engine.adapter directly via
+    # run_sedimentation_cycle. The supervised swap conditions (C3a/C4a) RE-CREATE
+    # engine.adapter from scratch inside each correction cycle
+    # (_supervised_anchor_cycle), so a build-time adapter is redundant for them —
+    # and harmful: `embed()` applies engine.adapter to every ingested doc vector
+    # and to the baseline query path, so a build-time *bounded* adapter (C3a) would
+    # bake its ~bound_epsilon correction FLOOR into the stored vectors and the
+    # pre-correction baseline. That made C3a's baseline diverge from C0/C2/C2O/C4a
+    # on dense-relevance data (NFCorpus), breaking the "all conditions scored on
+    # the same eval subset" invariant. Leaving C3a/C4a on the default near-identity
+    # adapter at ingest/baseline keeps every condition's pre-correction state
+    # identical; the bounded/unbounded adapter is installed per-cycle when the loop
+    # actually corrects.
+    if config.condition in {"C3", "C4"}:
         engine.adapter = create_adapter(
             "mlp",
             input_dim=engine.vector_size,
-            bounded=(config.condition in {"C3", "C3a"}),
+            bounded=(config.condition == "C3"),
             min_correction=config.bound_epsilon,
             max_correction=0.5,
         )

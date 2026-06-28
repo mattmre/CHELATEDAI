@@ -639,11 +639,23 @@ class TestRunDriftRecoveryExperiment(unittest.TestCase):
         self.assertEqual(first["recovery"]["trajectory"], second["recovery"]["trajectory"])
         self.assertEqual(first["anchor_eval_split"], second["anchor_eval_split"])
 
-    def test_c3a_uses_bounded_adapter_c4a_uses_unbounded_adapter(self):
-        observed = {}
+    def test_supervised_conditions_have_no_build_time_bounded_adapter(self):
+        """Regression (H1): the bounded adapter must NOT be live at ingest/baseline.
+
+        ``embed()`` applies engine.adapter to every ingested doc vector and to the
+        baseline query path. A build-time *bounded* adapter (the old behaviour for
+        C3a) baked its ~bound_epsilon correction FLOOR into the stored vectors and
+        the pre-correction baseline, making C3a's baseline diverge from
+        C0/C2/C2O/C4a on dense-relevance data (NFCorpus) and breaking the
+        "all conditions scored on the same eval subset" invariant. C3a/C4a
+        re-create the adapter per correction cycle, so at build/baseline time
+        neither must carry a bounded adapter.
+        """
+        observed_build_time = {}
 
         def capture_cycle(engine, condition, queries, drift_manifest, run_config=None, **kwargs):
-            observed[condition] = isinstance(engine.adapter, BoundedAdapter)
+            # Adapter state as the cycle is entered == post-build, pre-correction.
+            observed_build_time[condition] = isinstance(engine.adapter, BoundedAdapter)
             return {"action": "captured"}
 
         corpus, queries, qrels = self._swap_corpus_queries_qrels()
@@ -651,20 +663,39 @@ class TestRunDriftRecoveryExperiment(unittest.TestCase):
             "run_drift_recovery_experiment._run_condition_cycle",
             side_effect=capture_cycle,
         ):
-            run_experiment(
-                self._supervised_swap_config("C3a", Path(self.tempdir.name) / "c3a-adapter.json"),
+            for cond in ("C3a", "C4a"):
+                run_experiment(
+                    self._supervised_swap_config(cond, Path(self.tempdir.name) / f"{cond}-build.json"),
+                    corpus,
+                    queries,
+                    qrels,
+                )
+        self.assertFalse(
+            observed_build_time["C3a"], "C3a must not carry a build-time bounded adapter (H1)"
+        )
+        self.assertFalse(observed_build_time["C4a"])
+
+    def test_supervised_correction_is_bounded_for_c3a_unbounded_for_c4a(self):
+        """The bounded/unbounded property is enforced INSIDE the real correction
+        cycle (where engine.adapter is re-created per cycle), recorded as
+        ``meta['bounded']`` — not at build time.
+        """
+        corpus, queries, qrels = self._swap_corpus_queries_qrels()
+        with self._patched_swap_backend():
+            r_c3a = run_experiment(
+                self._supervised_swap_config("C3a", Path(self.tempdir.name) / "c3a-bounded.json"),
                 corpus,
                 queries,
                 qrels,
             )
-            run_experiment(
-                self._supervised_swap_config("C4a", Path(self.tempdir.name) / "c4a-adapter.json"),
+            r_c4a = run_experiment(
+                self._supervised_swap_config("C4a", Path(self.tempdir.name) / "c4a-bounded.json"),
                 corpus,
                 queries,
                 qrels,
             )
-        self.assertTrue(observed["C3a"])
-        self.assertFalse(observed["C4a"])
+        self.assertTrue(r_c3a["recovery"]["trajectory"][-1]["metadata"]["bounded"])
+        self.assertFalse(r_c4a["recovery"]["trajectory"][-1]["metadata"]["bounded"])
 
     def test_c3a_requires_query_encoder_swap_and_anchor_fraction(self):
         with self._patched_swap_backend():
