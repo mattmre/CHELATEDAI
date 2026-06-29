@@ -1253,7 +1253,11 @@ class AntigravityEngine:
         telemetry.setdefault("model_scope_observation_count", 0)
         telemetry.setdefault("model_scope_error_count", 0)
         telemetry["torch_cuda_available"] = bool(torch.cuda.is_available())
-        if torch.cuda.is_available():
+        # device_count() guards the CUDA-available-but-no-visible-device case
+        # (e.g. CUDA_VISIBLE_DEVICES="" / "-1"): is_available() can still report
+        # True while device 0 is invalid, so get_device_name(0) would raise
+        # "Invalid device id" and crash telemetry on any CPU-only / GPU-hidden run.
+        if torch.cuda.is_available() and torch.cuda.device_count() > 0:
             telemetry["cuda_device_name"] = torch.cuda.get_device_name(0)
             telemetry["cuda_memory_allocated_mb"] = float(torch.cuda.memory_allocated(0) / (1024 ** 2))
             telemetry["cuda_memory_reserved_mb"] = float(torch.cuda.memory_reserved(0) / (1024 ** 2))
