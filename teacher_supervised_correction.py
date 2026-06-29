@@ -86,12 +86,14 @@ def train_distillation_adapter(
 
     optimizer = torch.optim.Adam(adapter.parameters(), lr=float(learning_rate))
     adapter.train()
-    final_mse = initial_mse
     for _ in range(int(steps)):
         optimizer.zero_grad()
         loss = loss_fn(adapter(docs), teach)
         loss.backward()
         optimizer.step()
-        final_mse = float(loss.detach())
+    # Re-measure on the FINAL weights (post-last-step) so final_mse is exactly the
+    # trained adapter's MSE, not the one-step-stale in-loop loss.
     adapter.eval()
+    with torch.no_grad():
+        final_mse = float(loss_fn(adapter(docs), teach).detach())
     return initial_mse, final_mse
