@@ -528,6 +528,36 @@ class TestRunDriftRecoveryExperiment(unittest.TestCase):
         # bound floor — the same strong mutate-proof C3a uses.
         self.assertGreater(norm_stats["mean"], 0.01)
 
+    def test_compound_cycles_diverges_from_the_one_shot_fixed_point(self):
+        """H4 'make cycles compound': with compound_cycles=True the supervised cycle
+        applies the adapter to the LIVE (already-corrected) store each cycle, so
+        corrections STACK and the trajectory diverges from the idempotent one-shot
+        (which applies to the fixed pre-drift snapshot and is flat after cycle 1).
+        Proves the capability exists + is wired; the overshoot magnitude is the GPU
+        ablation's job, not asserted here."""
+        corpus, queries, qrels = self._swap_corpus_queries_qrels()
+        with self._patched_swap_backend():
+            base = self._supervised_swap_config(
+                "C4a", Path(self.tempdir.name) / "c4a-oneshot.json", cycles=3)
+            oneshot = run_experiment(base, corpus, queries, qrels)
+            compound = run_experiment(
+                DriftRecoveryConfig(**{**base.__dict__, "compound_cycles": True,
+                                       "output": str(Path(self.tempdir.name) / "c4a-compound.json")}),
+                corpus, queries, qrels)
+        self.assertFalse(oneshot["recovery"]["trajectory"][-1]["metadata"]["compound_cycles"])
+        self.assertTrue(compound["recovery"]["trajectory"][-1]["metadata"]["compound_cycles"])
+        # The robust signal is the per-cycle correction NORM (ndcg@10 on the 4-doc stub is
+        # rank-coarse, so a vector change need not flip a rank). One-shot applies the adapter
+        # to the SAME fixed snapshot every cycle -> identical correction norm (flat). Compound
+        # applies to the CHANGING live store -> the per-cycle correction norm changes.
+        def _norms(result):
+            return [round(p["metadata"].get("correction_norm_stats", {}).get("mean", 0.0), 8)
+                    for p in result["recovery"]["trajectory"]]
+        os_norms, cp_norms = _norms(oneshot), _norms(compound)
+        self.assertGreater(os_norms[0], 0.0)             # the actuator fired
+        self.assertEqual(os_norms[0], os_norms[-1])      # one-shot: flat (idempotent fixed point)
+        self.assertNotEqual(cp_norms[0], cp_norms[-1])   # compound: stacks on the live store
+
     def test_post_bank_conditions_fire_and_mutate_store_in_swap_arena(self):
         """End-to-end (H5b/S2b): C5/C5s/C5r build a per-cluster post-bank, fire
         (should_correct), and MUTATE the store (correction_applied) through the real

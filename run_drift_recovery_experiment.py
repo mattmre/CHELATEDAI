@@ -63,6 +63,12 @@ class DriftRecoveryConfig:
     post_bank_clusters: int = 3
     post_prune_below: float = 0.5
     post_min_posts: int = 1
+    # H4: when True, supervised corrections COMPOUND — each cycle applies the adapter to the
+    # LIVE (already-mutated) store instead of the fixed pre-drift snapshot, so corrections
+    # stack across cycles. Default False = the idempotent one-shot fixed point. The compounding
+    # regime was found to overshoot (correction-norm escalation 0.136->0.497->0.443); this knob
+    # makes that trajectory measurable rather than only characterized.
+    compound_cycles: bool = False
 
 
 def run_experiment(
@@ -708,7 +714,12 @@ def _supervised_anchor_cycle(
                 steps=int(config.get("correction_steps", 30)),
                 learning_rate=float(config.get("correction_lr", 0.01)),
             )
-        applied = _apply_adapter_to_all_docs(engine, original_points=original_doc_points)
+        # H4: compound_cycles applies to the LIVE store (corrections stack across cycles)
+        # instead of the fixed pre-drift snapshot (the idempotent one-shot fixed point).
+        _compound = bool(config.get("compound_cycles", False))
+        applied = _apply_adapter_to_all_docs(
+            engine, original_points=None if _compound else original_doc_points,
+        )
         correction_norm_stats = applied["correction_norm_stats"]
         correction_applied = checksum_before != _vector_store_checksum(engine)
 
@@ -716,6 +727,7 @@ def _supervised_anchor_cycle(
         "action": ("supervised_teacher_distillation_correction" if condition == "C3b"
                    else "supervised_anchor_infonce_correction"),
         "bounded": condition in ("C3a", "C3b"),
+        "compound_cycles": bool(config.get("compound_cycles", False)),
         "detector_source": "ndcg_drop_vs_baseline",
         "should_correct": should_correct,
         "sedimentation_attempted": correction_attempted,
