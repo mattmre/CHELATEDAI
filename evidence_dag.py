@@ -292,9 +292,14 @@ def from_attribution_pool(pool: Mapping[str, Any]) -> EvidenceDAG:
         dag.add_node(cluster_node_id, NodeType.CLUSTER, task=task, profile=profile)
         dag.add_edge(query_node_id, cluster_node_id, EdgeType.RETRIEVED_IN)
 
-        # A correction-actuator edge only when the action denotes a correction
-        # (CHELATE / REFORM); a plain FAST retrieval invoked no actuator.
-        if action in {"CHELATE", "REFORM"}:
+        # A correction-actuator edge only when the action denotes a REAL correction.
+        # The pipeline's per-row action vocabulary (canonical interpreter:
+        # adaptive_overlay.infer_aggression_level; emitted by
+        # antigravity_engine.run_inference) is FAST (no correction) vs the corrections
+        # CHELATE / CHELATE_ALWAYS / REFORMULATE. NB "REFORM" is NOT a per-row action —
+        # it is only an action_mix COUNT key in build_attribution_pool, so matching it
+        # would silently drop every real reformulation/always correction.
+        if action in {"CHELATE", "CHELATE_ALWAYS", "REFORMULATE"}:
             dag.add_node(actuator_node_id, NodeType.ACTUATOR, strategy=strategy, action=action)
             dag.add_edge(query_node_id, actuator_node_id, EdgeType.CORRECTED_BY)
             dag.add_edge(actuator_node_id, cluster_node_id, EdgeType.OPERATES_ON)

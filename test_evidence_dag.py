@@ -97,6 +97,10 @@ class TestEvidenceDagContract(unittest.TestCase):
 
 class TestFromAttributionPool(unittest.TestCase):
     def _pool(self):
+        # Uses the REAL per-row action vocabulary emitted by the pipeline
+        # (FAST = no correction; CHELATE / REFORMULATE / CHELATE_ALWAYS = corrections).
+        # "REFORM" is deliberately NOT used here — it is an action_mix count key, not a
+        # per-row action, so a builder matching it would silently drop real corrections.
         return {
             "query_attribution_rows": [
                 {"strategy": "probeA", "query_id": "q-1", "task": "SciFact",
@@ -104,7 +108,9 @@ class TestFromAttributionPool(unittest.TestCase):
                 {"strategy": "probeA", "query_id": "q-2", "task": "SciFact",
                  "profile": "default", "action": "CHELATE", "fault_class": "drift"},
                 {"strategy": "probeB", "query_id": "q-3", "task": "NFCorpus",
-                 "profile": "hotter", "action": "REFORM", "fault_class": "collapse"},
+                 "profile": "hotter", "action": "REFORMULATE", "fault_class": "collapse"},
+                {"strategy": "probeB", "query_id": "q-4", "task": "NFCorpus",
+                 "profile": "hotter", "action": "CHELATE_ALWAYS", "fault_class": "drift"},
             ]
         }
 
@@ -117,11 +123,15 @@ class TestFromAttributionPool(unittest.TestCase):
         dag = from_attribution_pool(self._pool())
         types = {n.node_type for n in dag.nodes}
         self.assertIn(NodeType.ACTUATOR, types)
-        # Exactly the two correcting rows (CHELATE, REFORM) created actuators.
+        # The three correcting rows (CHELATE, REFORMULATE, CHELATE_ALWAYS) each created an
+        # actuator; the single FAST row created none. This would fail (count 1, not 3) if
+        # the builder matched the fictional "REFORM" token instead of the real vocabulary.
         actuators = [n for n in dag.nodes if n.node_type == NodeType.ACTUATOR]
-        self.assertEqual(len(actuators), 2)
+        self.assertEqual(len(actuators), 3)
         corrected_by = [e for e in dag.edges if e.edge_type == EdgeType.CORRECTED_BY]
-        self.assertEqual(len(corrected_by), 2)
+        self.assertEqual(len(corrected_by), 3)
+        operates_on = [e for e in dag.edges if e.edge_type == EdgeType.OPERATES_ON]
+        self.assertEqual(len(operates_on), 3)
 
     def test_builder_is_deterministic(self):
         a = from_attribution_pool(self._pool()).to_dict()
