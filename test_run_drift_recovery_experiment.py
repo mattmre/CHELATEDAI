@@ -113,10 +113,11 @@ class TestRunDriftRecoveryExperiment(unittest.TestCase):
     def test_all_conditions_write_well_formed_json_through_engine_path(self):
         with self._patched_backend():
             for condition in CONDITIONS:
-                # C2O/C3a/C4a are query-encoder-swap-only conditions and are not
-                # valid for the rotation drift this case exercises; they are
-                # covered separately by the query_encoder_swap arena tests below.
-                if condition in {"C2O", "C3a", "C4a"}:
+                # C2O/C3a/C4a and the post-bank conditions C5/C5s/C5r are
+                # query-encoder-swap-only conditions and are not valid for the
+                # rotation drift this case exercises; they are covered separately
+                # by the query_encoder_swap arena tests below.
+                if condition in {"C2O", "C3a", "C4a", "C5", "C5s", "C5r"}:
                     continue
                 output = Path(self.tempdir.name) / f"{condition}.json"
                 config = self._config(condition, output)
@@ -501,6 +502,51 @@ class TestRunDriftRecoveryExperiment(unittest.TestCase):
         self.assertGreater(norm_stats["mean"], 0.01)
         # And the run-level aggregate reflects a real, non-trivial correction.
         self.assertGreater(result["correction_norm_stats"]["mean"], 0.01)
+
+    def test_post_bank_conditions_fire_and_mutate_store_in_swap_arena(self):
+        """End-to-end (H5b/S2b): C5/C5s/C5r build a per-cluster post-bank, fire
+        (should_correct), and MUTATE the store (correction_applied) through the real
+        run_experiment path in the query-encoder-swap arena. The second block forces
+        C5's prune/re-anneal lifecycle to fire end-to-end. Whether C5 BEATS C5s/C5r
+        is the GPU campaign's verdict — NOT asserted here."""
+        corpus, queries, qrels = self._swap_corpus_queries_qrels()
+        kinds = {"C5": "living", "C5s": "static", "C5r": "one_shot"}
+        with self._patched_swap_backend():
+            for cond in ("C5", "C5s", "C5r"):
+                result = run_experiment(
+                    self._supervised_swap_config(cond, Path(self.tempdir.name) / f"{cond}-pb.json", cycles=2),
+                    corpus, queries, qrels,
+                )
+                build = result["recovery"]["trajectory"][0]["metadata"]
+                self.assertEqual(build["action"], "post_bank_correction")
+                self.assertEqual(build["post_bank_kind"], kinds[cond])
+                self.assertTrue(build["should_correct"], f"{cond} trigger must fire")
+                self.assertTrue(build["correction_applied"], f"{cond} must mutate the store")
+                self.assertGreater(build["n_posts"], 0)
+                self.assertGreater(build["correction_norm_stats"]["mean"], 0.0)
+                self.assertTrue(build["lifecycle"]["built"])
+
+            # C5 living: FORCE the prune/re-anneal lifecycle end-to-end on the evolve
+            # cycle. prune_below above any post's fitness means every post but the
+            # min_posts fittest is a prune candidate; with cycles=2 the final cycle's
+            # cosine temperature is 0, so the effective threshold == post_prune_below.
+            # With 2 clusters + min_posts 1, cycle 2 prunes 1 post and re-anneals it
+            # from the same anchors -> bank restored to 2 (net no shrink). This
+            # distinguishes the LIVING bank from the static/one-shot banks, which
+            # never prune/re-anneal.
+            base = self._supervised_swap_config("C5", Path(self.tempdir.name) / "c5-prune.json", cycles=2)
+            forced = DriftRecoveryConfig(**{**base.__dict__, "post_bank_clusters": 2,
+                                            "post_prune_below": 1e9, "post_min_posts": 1})
+            traj = run_experiment(forced, corpus, queries, qrels)["recovery"]["trajectory"]
+            self.assertEqual(len(traj), 2)
+            cycle2 = traj[1]["metadata"]
+            self.assertTrue(cycle2["should_correct"], "C5 cycle 2 must re-fire")
+            self.assertTrue(cycle2["correction_applied"])
+            self.assertFalse(cycle2["lifecycle"]["built"])           # evolve, not rebuild
+            self.assertEqual(cycle2["lifecycle"]["temperature"], 0.0)
+            self.assertTrue(cycle2["lifecycle"]["pruned"], "prune must fire end-to-end")
+            self.assertTrue(cycle2["lifecycle"]["reannealed"], "re-anneal must restore the post")
+            self.assertEqual(cycle2["n_posts"], 2)                   # net no shrink
 
     def test_c4a_unbounded_actuator_fires_and_writes(self):
         corpus, queries, qrels = self._swap_corpus_queries_qrels()
