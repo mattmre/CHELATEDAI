@@ -35,9 +35,10 @@ def cluster_vectors(
     """Seeded k-means. Returns ``(labels (N,), centroids (k, d))``.
 
     Deterministic for a fixed ``(vectors, k, seed)``. ``k`` is clamped to
-    ``[1, N]``. Empty clusters are re-seeded to the point farthest from its own
-    centroid, so every returned centroid is backed by >= 1 point and labels are
-    always in ``[0, k)``.
+    ``[1, N]``. Empty clusters are re-seeded by stealing the worst-fit member of
+    the currently-largest cluster (counts recomputed per empty), so every returned
+    centroid is backed by >= 1 point and labels are always in ``[0, k)`` — this is
+    always achievable because ``k <= N``.
     """
     arr = np.asarray(vectors, dtype=float)
     if arr.ndim != 2:
@@ -59,11 +60,20 @@ def cluster_vectors(
         # Assign: nearest centroid by squared Euclidean distance.
         dists = np.linalg.norm(arr[:, None, :] - centroids[None, :, :], axis=2)
         new_labels = np.argmin(dists, axis=1)
-        # Re-seed empty clusters to the worst-fit point (deterministic).
+        # Re-seed empty clusters: steal the worst-fit member from the CURRENTLY
+        # largest cluster (counts recomputed each time), so we never create a new
+        # empty. With k <= N the largest cluster always has >= 2 members while any
+        # cluster is empty (pigeonhole), so the donor keeps >= 1 — every cluster
+        # ends non-empty. (The prior version recomputed `worst` from a constant
+        # `dists` and overwrote the same point, leaving >=2 simultaneous empties
+        # unfilled on duplicate/degenerate input.)
         for c in range(k):
             if not np.any(new_labels == c):
-                worst = int(np.argmax(np.min(dists, axis=1)))
-                new_labels[worst] = c
+                counts = np.bincount(new_labels, minlength=k)
+                donor = int(np.argmax(counts))
+                members = np.where(new_labels == donor)[0]
+                worst_member = int(members[np.argmax(np.min(dists[members], axis=1))])
+                new_labels[worst_member] = c
         moved = not np.array_equal(new_labels, labels)
         labels = new_labels
         new_centroids = np.stack(

@@ -46,6 +46,21 @@ class TestClusterVectors(unittest.TestCase):
         # every cluster index in [0, k) is represented (empty clusters re-seeded)
         self.assertEqual(set(labels.tolist()), set(range(centroids.shape[0])))
 
+    def test_duplicate_points_yield_k_nonempty_clusters(self):
+        # Regression: all-identical points put every point in cluster 0 on the
+        # first assign, leaving >=2 clusters empty SIMULTANEOUSLY. The re-seed must
+        # still fill all k (the prior non-reentrant version left a cluster empty).
+        labels, centroids = cluster_vectors(np.ones((5, 2)), k=3, seed=0)
+        self.assertEqual(centroids.shape[0], 3)
+        self.assertEqual(set(labels.tolist()), {0, 1, 2})  # all three non-empty
+        self.assertFalse(np.isnan(centroids).any())  # every centroid backed by >=1 point
+
+    def test_many_simultaneous_empties_are_all_filled(self):
+        # k=4 over 5 identical points -> up to 3 clusters empty at once.
+        labels, centroids = cluster_vectors(np.ones((5, 3)), k=4, seed=2)
+        self.assertEqual(set(labels.tolist()), {0, 1, 2, 3})
+        self.assertFalse(np.isnan(centroids).any())
+
     def test_validations(self):
         with self.assertRaises(ValueError):
             cluster_vectors(np.zeros((0, 2)), k=2, seed=0)   # empty
