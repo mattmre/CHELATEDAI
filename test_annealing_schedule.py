@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 import unittest
 
 from annealing_schedule import (
@@ -25,22 +26,29 @@ class TestDeterministicSchedules(unittest.TestCase):
         self.assertTrue(all(temps[i] >= temps[i + 1] for i in range(len(temps) - 1)))
         self.assertAlmostEqual(temps[2], 0.5)   # midpoint of 5 cycles
 
-    def test_cosine_endpoints_and_monotonic_decreasing(self):
-        s = AnnealingSchedule("cosine", n_cycles=7, t_start=1.0, t_end=0.0)
+    def test_cosine_endpoints_monotonic_and_distinct_from_linear(self):
+        s = AnnealingSchedule("cosine", n_cycles=5, t_start=1.0, t_end=0.0)
         temps = s.schedule_over_cycles()
         self.assertAlmostEqual(temps[0], 1.0)
         self.assertAlmostEqual(temps[-1], 0.0)
         self.assertTrue(all(temps[i] >= temps[i + 1] - 1e-12 for i in range(len(temps) - 1)))
+        # Cosine must be DISTINCT from linear: flatter near the explore end, steeper
+        # in the middle. cycle 1 (p=0.25) ~0.854 > linear 0.75; cycle 3 (p=0.75)
+        # ~0.146 < linear 0.25. These fail if the cosine curve were really linear.
+        linear = AnnealingSchedule("linear", n_cycles=5, t_start=1.0, t_end=0.0).schedule_over_cycles()
+        self.assertAlmostEqual(temps[1], 0.5 * (1.0 + math.cos(math.pi * 0.25)), places=6)
+        self.assertGreater(temps[1], linear[1] + 1e-3)
+        self.assertLess(temps[3], linear[3] - 1e-3)
 
-    def test_step_switches_at_fraction(self):
+    def test_step_switches_at_correct_index(self):
         s = AnnealingSchedule("step", n_cycles=10, t_start=1.0, t_end=0.0, step_fraction=0.5)
         temps = s.schedule_over_cycles()
-        # progress < 0.5 -> explore (1.0); progress >= 0.5 -> stabilize (0.0)
-        self.assertEqual(temps[0], 1.0)
-        self.assertEqual(temps[-1], 0.0)
-        # exactly one transition, from 1.0 to 0.0
+        # progress = c/9: < 0.5 for c<=4 (explore=1.0); >= 0.5 for c>=5 (stabilize=0.0).
+        # Pin the transition INDEX, not just "one transition".
+        self.assertEqual(temps[:5], [1.0] * 5)
+        self.assertEqual(temps[5:], [0.0] * 5)
         transitions = [i for i in range(1, len(temps)) if temps[i] != temps[i - 1]]
-        self.assertEqual(len(transitions), 1)
+        self.assertEqual(transitions, [5])
 
     def test_n_cycles_one_collapses_to_t_end_for_decaying_schedules(self):
         # progress is 1.0 when n_cycles<=1 -> linear/cosine return t_end.
@@ -48,9 +56,13 @@ class TestDeterministicSchedules(unittest.TestCase):
         self.assertAlmostEqual(AnnealingSchedule("cosine", n_cycles=1, t_start=1.0, t_end=0.2).temperature(0), 0.2)
         self.assertAlmostEqual(AnnealingSchedule("constant", n_cycles=1, t_start=0.9).temperature(0), 0.9)
 
-    def test_temperatures_clamped_to_unit_interval(self):
-        # Even with out-of-range t_start/t_end (clamped at init), outputs stay [0,1].
+    def test_out_of_range_t_start_t_end_are_clamped_at_init(self):
+        # t_start/t_end are clamped to [0,1] at construction, so every output is in
+        # range. (Asserts the init-clamp explicitly, which is what actually fires —
+        # interpolation between in-range endpoints never leaves [0,1].)
         s = AnnealingSchedule("linear", n_cycles=4, t_start=5.0, t_end=-3.0)
+        self.assertEqual(s.t_start, 1.0)
+        self.assertEqual(s.t_end, 0.0)
         for c in range(4):
             t = s.temperature(c)
             self.assertGreaterEqual(t, 0.0)
