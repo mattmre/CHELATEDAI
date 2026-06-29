@@ -113,11 +113,11 @@ class TestRunDriftRecoveryExperiment(unittest.TestCase):
     def test_all_conditions_write_well_formed_json_through_engine_path(self):
         with self._patched_backend():
             for condition in CONDITIONS:
-                # C2O/C3a/C4a and the post-bank conditions C5/C5s/C5r are
+                # C2O/C3a/C4a/C3b and the post-bank conditions C5/C5s/C5r are
                 # query-encoder-swap-only conditions and are not valid for the
                 # rotation drift this case exercises; they are covered separately
                 # by the query_encoder_swap arena tests below.
-                if condition in {"C2O", "C3a", "C4a", "C5", "C5s", "C5r"}:
+                if condition in {"C2O", "C3a", "C4a", "C3b", "C5", "C5s", "C5r"}:
                     continue
                 output = Path(self.tempdir.name) / f"{condition}.json"
                 config = self._config(condition, output)
@@ -502,6 +502,31 @@ class TestRunDriftRecoveryExperiment(unittest.TestCase):
         self.assertGreater(norm_stats["mean"], 0.01)
         # And the run-level aggregate reflects a real, non-trivial correction.
         self.assertGreater(result["correction_norm_stats"]["mean"], 0.01)
+
+    def test_c3b_teacher_distillation_fires_and_writes_to_store(self):
+        """C3b (teacher-supervised distillation, H3): trains adapter(doc) -> the
+        swap encoder's re-embedding of the doc text and writes corrected docs back.
+        Proves it FIRES + MUTATES the store end-to-end. The teacher is oracle-derived
+        (the C2O signal, disclosed); whether C3b RECOVERS NDCG is the GPU campaign's
+        verdict, NOT asserted here."""
+        corpus, queries, qrels = self._swap_corpus_queries_qrels()
+        with self._patched_swap_backend():
+            result = run_experiment(
+                self._supervised_swap_config("C3b", Path(self.tempdir.name) / "c3b-fires.json"),
+                corpus, queries, qrels,
+            )
+        meta = result["recovery"]["trajectory"][-1]["metadata"]
+        self.assertEqual(meta["action"], "supervised_teacher_distillation_correction")
+        self.assertTrue(meta["bounded"])  # C3b is bounded, like C3a
+        self.assertTrue(meta["should_correct"], "trigger must fire")
+        self.assertTrue(meta["sedimentation_attempted"])
+        self.assertTrue(meta["correction_applied"], "store checksum must change")
+        self.assertGreater(meta["ndcg_drop"], 0.0)
+        norm_stats = meta["correction_norm_stats"]
+        self.assertGreater(norm_stats["count"], 0)
+        # C3b is bounded (min_correction=0.01), so the written correction clears the
+        # bound floor — the same strong mutate-proof C3a uses.
+        self.assertGreater(norm_stats["mean"], 0.01)
 
     def test_post_bank_conditions_fire_and_mutate_store_in_swap_arena(self):
         """End-to-end (H5b/S2b): C5/C5s/C5r build a per-cluster post-bank, fire

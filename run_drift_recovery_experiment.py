@@ -21,14 +21,14 @@ from drift_recovery_metrics import RecoveryTracker, ndcg_at_k
 from run_road_course_campaign import select_road_course_slice
 
 
-CONDITIONS = ("C0", "C1", "C2", "C2O", "C3", "C4", "C3a", "C4a", "C5", "C5s", "C5r")
+CONDITIONS = ("C0", "C1", "C2", "C2O", "C3", "C4", "C3a", "C4a", "C3b", "C5", "C5s", "C5r")
 DRIFT_MODES = ("rotation", "noise", "query_encoder_swap")
 
 # Conditions whose correction is the supervised anchor-pair InfoNCE closed loop
 # (PR-A2b). Unlike C3/C4 (unsupervised homeostatic sedimentation, which never
 # fired in v1), these train the adapter so adapted cached doc vectors realign
 # with the NEW drifted query space, supervised by held-out pre-drift anchors.
-SUPERVISED_CONDITIONS = ("C3a", "C4a")
+SUPERVISED_CONDITIONS = ("C3a", "C4a", "C3b")
 
 
 @dataclass(frozen=True)
@@ -402,6 +402,35 @@ def _doc_vectors_by_id(engine) -> Dict[str, np.ndarray]:
     return vectors
 
 
+def _doc_texts_by_id(engine) -> Dict[str, str]:
+    """Map canonical doc_id -> stored document text (store_full_text_payload=True).
+
+    Used by the teacher-supervised C3b condition: the teacher target for a doc is
+    its text re-embedded by the swap encoder, so we need the text back from the
+    store (the same payload["text"] the C2O oracle re-embeds).
+    """
+    texts: Dict[str, str] = {}
+    offset = None
+    while True:
+        points, next_offset = engine.qdrant.scroll(
+            collection_name=engine.collection_name,
+            limit=256,
+            with_vectors=False,
+            with_payload=True,
+            offset=offset,
+        )
+        for point in points:
+            payload = getattr(point, "payload", None) or {}
+            doc_id = payload.get("doc_id", payload.get("original_id", point.id))
+            text = payload.get("text")
+            if text is not None:
+                texts[canonicalize_id(doc_id)] = str(text)
+        if next_offset is None or not points:
+            break
+        offset = next_offset
+    return texts
+
+
 def _build_engine(config: DriftRecoveryConfig, corpus: Mapping[str, str]):
     from antigravity_engine import AntigravityEngine
 
@@ -540,6 +569,7 @@ def _run_condition_cycle(
             anchor_pairs=anchor_pairs,
             baseline_ndcg=baseline_ndcg,
             original_doc_points=original_doc_points,
+            query_drift=query_drift,
         )
     from post_bank_conditions import POSTBANK_CONDITIONS, run_post_bank_cycle
 
@@ -567,8 +597,9 @@ def _supervised_anchor_cycle(
     anchor_pairs: Optional[Sequence[Mapping[str, Any]]],
     baseline_ndcg: float,
     original_doc_points: Optional[Sequence[Any]] = None,
+    query_drift: Any = None,
 ) -> Dict[str, Any]:
-    """Supervised anchor-pair InfoNCE closed loop (PR-A2b).
+    """Supervised anchor-pair InfoNCE closed loop (PR-A2b), plus C3b teacher distillation.
 
     This is the CRUX of PR-A2b and is deliberately NOT run_sedimentation_cycle
     (whose unsupervised homeostatic targets never fired in v1). The actuator
@@ -621,27 +652,70 @@ def _supervised_anchor_cycle(
         # training, making cycle 1 != cycle 2). Each cycle is then a clean,
         # reproducible one-shot supervised correction from the fixed originals.
         torch.manual_seed(int(config.get("seed", 0)))
-        engine.adapter = create_adapter(
-            "mlp",
-            input_dim=engine.vector_size,
-            bounded=(condition == "C3a"),
-            min_correction=float(config.get("bound_epsilon", 0.01)),
-            max_correction=0.5,
-        )
-        _train_adapter_on_anchor_pairs(
-            engine,
-            anchor_pairs,
-            seed=int(config.get("seed", 0)),
-            steps=int(config.get("correction_steps", 30)),
-            learning_rate=float(config.get("correction_lr", 0.01)),
-        )
+        if condition == "C3b":
+            # Teacher-supervised DISTILLATION: train adapter(doc) -> teacher, where
+            # the teacher is the swap encoder's re-embedding of the doc's text (the
+            # same signal C2O applies directly, generalised from anchor docs to all
+            # docs). Bounded, like C3a. NOTE: the teacher is oracle-derived — C3b is
+            # not an oracle-free recovery condition (disclosed in the H3a module).
+            from teacher_supervised_correction import (
+                build_teacher_pairs,
+                train_distillation_adapter,
+            )
+
+            if query_drift is None:
+                raise ValueError("C3b requires the query_drift teacher (swap encoder)")
+            texts_by_id = _doc_texts_by_id(engine)
+            unique: Dict[str, Any] = {}
+            for pair in anchor_pairs:
+                did = pair["doc_id"]
+                if did not in unique and did in texts_by_id:
+                    unique[did] = (pair["doc_vector"], texts_by_id[did])
+            if not unique:
+                raise ValueError("C3b found no anchor doc texts in the store payload")
+            doc_vectors = [vec for vec, _ in unique.values()]
+            doc_texts = [txt for _, txt in unique.values()]
+            engine.adapter = create_adapter(
+                "mlp",
+                input_dim=engine.vector_size,
+                bounded=True,
+                min_correction=float(config.get("bound_epsilon", 0.01)),
+                max_correction=0.5,
+            )
+            docs_arr, teacher_arr = build_teacher_pairs(
+                doc_vectors, doc_texts, query_drift.embed_queries
+            )
+            train_distillation_adapter(
+                engine.adapter,
+                docs_arr,
+                teacher_arr,
+                seed=int(config.get("seed", 0)),
+                steps=int(config.get("correction_steps", 30)),
+                learning_rate=float(config.get("correction_lr", 0.01)),
+            )
+        else:
+            engine.adapter = create_adapter(
+                "mlp",
+                input_dim=engine.vector_size,
+                bounded=(condition == "C3a"),
+                min_correction=float(config.get("bound_epsilon", 0.01)),
+                max_correction=0.5,
+            )
+            _train_adapter_on_anchor_pairs(
+                engine,
+                anchor_pairs,
+                seed=int(config.get("seed", 0)),
+                steps=int(config.get("correction_steps", 30)),
+                learning_rate=float(config.get("correction_lr", 0.01)),
+            )
         applied = _apply_adapter_to_all_docs(engine, original_points=original_doc_points)
         correction_norm_stats = applied["correction_norm_stats"]
         correction_applied = checksum_before != _vector_store_checksum(engine)
 
     return {
-        "action": "supervised_anchor_infonce_correction",
-        "bounded": condition == "C3a",
+        "action": ("supervised_teacher_distillation_correction" if condition == "C3b"
+                   else "supervised_anchor_infonce_correction"),
+        "bounded": condition in ("C3a", "C3b"),
         "detector_source": "ndcg_drop_vs_baseline",
         "should_correct": should_correct,
         "sedimentation_attempted": correction_attempted,
