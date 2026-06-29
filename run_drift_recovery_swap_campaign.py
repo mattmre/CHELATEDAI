@@ -280,6 +280,120 @@ def _fmt(value: float) -> str:
     return ("%g" % value).replace(".", "p")
 
 
+# H5 post-bank proving experiment: the living bank vs the two baselines, with the
+# frozen floor and the oracle ceiling for context.
+POSTBANK_HEADTOHEAD_CONDITIONS = ("C0", "C2O", "C5", "C5s", "C5r")
+
+
+def run_condition_head_to_head(
+    config: SwapCampaignConfig,
+    conditions: Sequence[str] = POSTBANK_HEADTOHEAD_CONDITIONS,
+    runner: Callable[[DriftRecoveryConfig], Mapping[str, Any]] = run_experiment,
+) -> dict:
+    """Run a head-to-head campaign over ``conditions`` x seeds and write a manifest +
+    report with the H5 verdict.
+
+    For the H5 post-bank proving experiment (default conditions) this pits **C5**
+    (living annealed bank) against **C5s** (frozen SVF-style static bank) and **C5r**
+    (one-shot LD-MoLE-style router), with **C0** (frozen floor) and **C2O** (oracle
+    ceiling) for context — all scored on the SAME held-out eval subset. The verdict
+    reports whether the living bank beats BOTH baselines on mean final NDCG (the H5
+    gate). The same driver serves the H3 C3b head-to-head via a different
+    ``conditions`` tuple. ``runner`` is injectable, so the orchestration is testable
+    without a GPU; the real run uses ``run_experiment`` against the swap models.
+    """
+    started = time.perf_counter()
+    output_dir = Path(config.output_dir)
+    (output_dir / "headtohead").mkdir(parents=True, exist_ok=True)
+    rows = []
+    for condition in conditions:
+        for seed in SEEDS:
+            run_config = _run_config(
+                config, condition=condition, seed=seed,
+                output=output_dir / "headtohead" / f"{condition}_seed{seed}.json",
+            )
+            rows.append(_row(runner(run_config), phase="headtohead"))
+    summary = _summary_by_condition(rows)
+    verdict = _post_bank_verdict(summary)
+    manifest = {
+        "record_type": "post_bank_head_to_head_campaign",
+        "config": asdict(config),
+        "arena": "query_encoder_swap",
+        "conditions": list(conditions),
+        "seeds": list(SEEDS),
+        "rows": rows,
+        "summary": summary,
+        "verdict": verdict,
+        "wall_clock_seconds": time.perf_counter() - started,
+    }
+    manifest_path = output_dir / "post-bank-headtohead-manifest-2026-06.json"
+    manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8")
+    Path(config.report_md).parent.mkdir(parents=True, exist_ok=True)
+    Path(config.report_md).write_text(render_head_to_head_report(manifest), encoding="utf-8")
+    print(json.dumps({"manifest": str(manifest_path), "report": config.report_md}, sort_keys=True))
+    return manifest
+
+
+def _post_bank_verdict(summary: Sequence[Mapping[str, Any]]) -> dict:
+    """The H5 gate: does the living bank (C5) beat BOTH the static bank (C5s) and the
+    one-shot router (C5r) on mean final NDCG? Returns the per-condition means and the
+    boolean gate; fields are None when a condition is absent (e.g. a C3b head-to-head).
+    ``living_bank_wins`` requires all three post-bank conditions present AND C5 > both.
+    """
+    means = {row["condition"]: float(row["final_mean"]) for row in summary}
+    c5, c5s, c5r = means.get("C5"), means.get("C5s"), means.get("C5r")
+    all_present = None not in (c5, c5s, c5r)
+    return {
+        "c5_living_mean": c5,
+        "c5s_static_mean": c5s,
+        "c5r_one_shot_mean": c5r,
+        "living_beats_static": bool(c5 is not None and c5s is not None and c5 > c5s),
+        "living_beats_one_shot": bool(c5 is not None and c5r is not None and c5 > c5r),
+        "all_post_bank_present": bool(all_present),
+        "living_bank_wins": bool(all_present and c5 > c5s and c5 > c5r),
+    }
+
+
+def render_head_to_head_report(manifest: Mapping[str, Any]) -> str:
+    v = manifest["verdict"]
+    lines = [
+        "# Drift Recovery — Post-Bank Head-to-Head (H5) — June 2026",
+        "",
+        f"Arena: `{manifest['arena']}`. Task {manifest['config']['task']}, "
+        f"cycles {manifest['config']['cycles']}, seeds {manifest['seeds']}.",
+        "",
+        "Conditions: C0 frozen (floor) · C2O oracle (ceiling) · **C5 living bank** · "
+        "**C5s frozen static bank** · **C5r one-shot router**. All scored on the SAME eval subset.",
+        "",
+        "## Head-to-head (mean over seeds)",
+        "",
+        "| Condition | Baseline NDCG | Final NDCG | Std | Applied runs |",
+        "|---|---:|---:|---:|---:|",
+    ]
+    for row in manifest["summary"]:
+        lines.append(
+            f"| {row['condition']} | {row['baseline_mean']:.6f} | {row['final_mean']:.6f} | "
+            f"{row['final_std']:.6f} | {row['applied_runs']}/{row['run_count']} |"
+        )
+    lines.extend([
+        "",
+        "## Verdict (the H5 gate)",
+        "",
+        f"- C5 living mean: {v['c5_living_mean']}",
+        f"- C5s static mean: {v['c5s_static_mean']}",
+        f"- C5r one-shot mean: {v['c5r_one_shot_mean']}",
+        f"- Living beats static (C5 > C5s): **{v['living_beats_static']}**",
+        f"- Living beats one-shot (C5 > C5r): **{v['living_beats_one_shot']}**",
+        f"- **LIVING BANK WINS (beats both): {v['living_bank_wins']}**",
+        "",
+        "Gate: the living annealed bank must beat BOTH the frozen static bank and the "
+        "one-shot router with the lifecycle exercised. This verdict is from the real run; "
+        "it is not asserted until the campaign executes on the GPU.",
+        "",
+    ])
+    return "\n".join(lines)
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Run the query-encoder-swap drift-recovery campaign")
     parser.add_argument("--output-dir", default=DEFAULT_OUTPUT_DIR)
