@@ -524,7 +524,9 @@ class TestRunDriftRecoveryExperiment(unittest.TestCase):
         self.assertGreater(meta["ndcg_drop"], 0.0)
         norm_stats = meta["correction_norm_stats"]
         self.assertGreater(norm_stats["count"], 0)
-        self.assertGreater(norm_stats["mean"], 0.0)  # a real, non-trivial correction
+        # C3b is bounded (min_correction=0.01), so the written correction clears the
+        # bound floor — the same strong mutate-proof C3a uses.
+        self.assertGreater(norm_stats["mean"], 0.01)
 
     def test_post_bank_conditions_fire_and_mutate_store_in_swap_arena(self):
         """End-to-end (H5b/S2b): C5/C5s/C5r build a per-cluster post-bank, fire
