@@ -59,6 +59,10 @@ class DriftRecoveryConfig:
     # in-sample, so the budget must be swept before concluding no-recovery.
     correction_steps: int = 30
     correction_lr: float = 0.01
+    # Post-bank conditions (C5/C5s/C5r) knobs — swept by the H5 head-to-head campaign.
+    post_bank_clusters: int = 3
+    post_prune_below: float = 0.5
+    post_min_posts: int = 1
 
 
 def run_experiment(
