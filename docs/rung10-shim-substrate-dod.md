@@ -41,11 +41,19 @@ anything unproven is `SHADOW`.
 - A1c: a promoted route keeps its live mode; a route failing quantization (or with no decision)
   is downgraded to SHADOW. 6 tests, including end-to-end against a real A1b decision.
 
-## Remaining operational step (NOT a code change in this slice — honest scope)
+## Operational status — the diagnostics seam is already observation-only (verified)
 
-The substrate (the control-plane authority above) is complete and default-safe. The final
-operational adoption — having `run_live_fire_diagnostics.py --enable-model-scope` consult
-`resolve_production_mode(...)` for each route instead of treating the flag as an unconditional
-"on" — is a one-line wiring change to that campaign script, deferred from this slice so it is
-not rushed into a run path. Until then, live steering remains behind the existing research flag;
-the production control plane is available for adoption and is the documented authority.
+The substrate (the control-plane authority above) is complete and default-safe. A follow-up
+investigation corrected the earlier framing of "one remaining wiring step":
+`run_live_fire_diagnostics.py --enable-model-scope` does **not** apply a live steering route —
+it calls `engine.enable_model_scope_observation()` (observation / SHADOW only; the diagnostics
+summary reports `observation_count`, never an applied `SOFT_SCALE`/`SUPPRESSION` intervention).
+
+So there is **no existing live seam to retrofit** in the current run path: it is already
+default-safe by construction (shadow-only). `resolve_production_mode` is therefore the authority
+for **if and when** live promotable routes (`SOFT_SCALE` / `SUPPRESSION`) are introduced — and
+introducing live routes is a separate future feature (it overlaps rung 16, quant-aware shim
+routing), **not** an un-guarding of an existing live seam. Rung 10's substrate is complete; the
+moment a live route exists, the control plane gates it (live iff quantization-survival + an
+actionable rollback, else SHADOW). No campaign-script change is needed today, because there is
+nothing live to gate.
