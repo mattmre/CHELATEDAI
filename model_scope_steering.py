@@ -7,7 +7,7 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Mapping, Optional
+from typing import Any, Dict, List, Mapping, Optional, Sequence
 
 from model_scope_features import SparseFeatureEvent
 from model_scope_runtime import ActivationEvent
@@ -400,6 +400,64 @@ def rollback_feature_event(record: InterventionRecord, feature_event: SparseFeat
         nonzero_count=sum(1 for v in new_features.values() if v != 0.0),
         extracted_at=feature_event.extracted_at,
     )
+
+
+@dataclass
+class RollbackPlan:
+    """An executable, ordered rollback over a sequence of APPLIED interventions
+    (rung 10 SHIM — A1a).
+
+    Built from a ``SteeringActuator``'s applied ``InterventionRecord``s in
+    application order. Executing the plan replays ``rollback_feature_event`` in
+    REVERSE order, so for a feature touched by several interventions the EARLIEST
+    intervention's ``original_value`` wins — restoring the exact pre-steering
+    feature values. Steering operates only on ``SparseFeatureEvent`` activations
+    and never mutates base model weights, so a full execution is a lossless
+    rollback of the targeted features: the control-plane "you can roll back / base
+    weights are not mutated" claim made EXECUTABLE and verifiable rather than a
+    hardcoded assertion.
+    """
+
+    records: List[InterventionRecord] = field(default_factory=list)
+
+    @property
+    def step_count(self) -> int:
+        return len(self.records)
+
+    @property
+    def policy_ids(self) -> List[str]:
+        return [r.policy_id for r in self.records]
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "record_type": "steering_rollback_plan",
+            "step_count": self.step_count,
+            "policy_ids": self.policy_ids,
+            "records": [intervention_record_to_dict(r) for r in self.records],
+        }
+
+
+def build_rollback_plan(records: Sequence[InterventionRecord]) -> RollbackPlan:
+    """Collect the APPLIED interventions (in order) into an executable RollbackPlan.
+
+    Shadow / declined records (``applied=False``) carry no mutation and are
+    skipped, so the plan contains only reversible steps.
+    """
+    return RollbackPlan(records=[r for r in records if r.applied])
+
+
+def execute_rollback(plan: RollbackPlan, feature_event: SparseFeatureEvent) -> SparseFeatureEvent:
+    """Replay ``plan``'s rollbacks (reverse application order) to restore the
+    pre-steering feature values into a copy of ``feature_event``.
+
+    Reverse order means that for a feature targeted by multiple interventions the
+    FIRST (earliest) intervention's original value is applied last and therefore
+    wins — the true pre-steering value. An empty plan returns an unmodified copy.
+    """
+    restored = _copy_feature_event(feature_event)
+    for record in reversed(plan.records):
+        restored = rollback_feature_event(record, restored)
+    return restored
 
 
 def intervention_record_to_dict(record: InterventionRecord) -> Dict[str, Any]:
