@@ -10,7 +10,7 @@ brain:
   stability: "beta"
   trust_tier: "research_path"
   last_verified: "2026-06-29"
-  last_verified_sha: "439b037c"
+  last_verified_sha: "a1f88c77"
   verified_by: agent
   ingest_tags: [online, inference, triplet, infonce, adapter, research]
   related_docs:

@@ -21,7 +21,7 @@ from drift_recovery_metrics import RecoveryTracker, ndcg_at_k
 from run_road_course_campaign import select_road_course_slice
 
 
-CONDITIONS = ("C0", "C1", "C2", "C2O", "C3", "C4", "C3a", "C4a")
+CONDITIONS = ("C0", "C1", "C2", "C2O", "C3", "C4", "C3a", "C4a", "C5", "C5s", "C5r")
 DRIFT_MODES = ("rotation", "noise", "query_encoder_swap")
 
 # Conditions whose correction is the supervised anchor-pair InfoNCE closed loop
@@ -59,6 +59,10 @@ class DriftRecoveryConfig:
     # in-sample, so the budget must be swept before concluding no-recovery.
     correction_steps: int = 30
     correction_lr: float = 0.01
+    # Post-bank conditions (C5/C5s/C5r) knobs — swept by the H5 head-to-head campaign.
+    post_bank_clusters: int = 3
+    post_prune_below: float = 0.5
+    post_min_posts: int = 1
 
 
 def run_experiment(
@@ -165,6 +169,7 @@ def run_experiment(
                         anchor_pairs=anchor_pairs,
                         baseline_ndcg=baseline_ndcg,
                         original_doc_points=original_doc_points,
+                        cycle_index=cycle_index,
                     )
                 )
                 if drifted_query_vectors is not None:
@@ -453,6 +458,7 @@ def _run_condition_cycle(
     anchor_pairs: Optional[Sequence[Mapping[str, Any]]] = None,
     baseline_ndcg: float = 0.0,
     original_doc_points: Optional[Sequence[Any]] = None,
+    cycle_index: int = 1,
 ) -> Dict[str, Any]:
     config = run_config or {}
     if condition == "C0":
@@ -534,6 +540,20 @@ def _run_condition_cycle(
             anchor_pairs=anchor_pairs,
             baseline_ndcg=baseline_ndcg,
             original_doc_points=original_doc_points,
+        )
+    from post_bank_conditions import POSTBANK_CONDITIONS, run_post_bank_cycle
+
+    if condition in POSTBANK_CONDITIONS:
+        return run_post_bank_cycle(
+            engine,
+            condition,
+            config,
+            drifted_eval_vectors=drifted_eval_vectors,
+            eval_qrels=eval_qrels,
+            anchor_pairs=anchor_pairs,
+            baseline_ndcg=baseline_ndcg,
+            original_doc_points=original_doc_points,
+            cycle_index=cycle_index,
         )
     raise ValueError(f"Unsupported condition: {condition}")
 
