@@ -59,6 +59,18 @@ class TestSteeringRoutePromotion(unittest.TestCase):
         self.assertTrue(d.quantization_passed)  # 0.5 retained >= 0.4
         self.assertTrue(d.promotable)
 
+    def test_string_path_is_not_an_actionable_rollback_plan(self):
+        # A string rollback "path" is NOT an executable RollbackPlan -> the
+        # isinstance guard rejects duck-typed impostors (fail-closed). This is the
+        # whole point of A1b: an EXECUTABLE plan, not a string path.
+        d = evaluate_steering_route_promotion(
+            fp32_fitness=1.0, quantized_fitness=0.9, rollback_plan="path/to/rollback",
+        )
+        self.assertFalse(d.promotable)
+        self.assertFalse(d.rollback_actionable)
+        self.assertIn("missing_rollback_plan", d.reasons)
+        self.assertEqual(d.rollback_step_count, 0)
+
     def test_to_dict_is_json_safe(self):
         d = evaluate_steering_route_promotion(
             fp32_fitness=1.0, quantized_fitness=0.9, rollback_plan=_plan(2)
