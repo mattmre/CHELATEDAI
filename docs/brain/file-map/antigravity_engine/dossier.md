@@ -10,7 +10,7 @@ brain:
   stability: "stable"
   trust_tier: "production_critical"
   last_verified: "2026-06-29"
-  last_verified_sha: "439b037c"
+  last_verified_sha: "a1f88c77"
   verified_by: agent
   ingest_tags: [retrieval, qdrant, chelation, sedimentation, inference, engine]
   related_docs:
