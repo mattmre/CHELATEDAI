@@ -113,10 +113,11 @@ class TestRunDriftRecoveryExperiment(unittest.TestCase):
     def test_all_conditions_write_well_formed_json_through_engine_path(self):
         with self._patched_backend():
             for condition in CONDITIONS:
-                # C2O/C3a/C4a are query-encoder-swap-only conditions and are not
-                # valid for the rotation drift this case exercises; they are
-                # covered separately by the query_encoder_swap arena tests below.
-                if condition in {"C2O", "C3a", "C4a"}:
+                # C2O/C3a/C4a and the post-bank conditions C5/C5s/C5r are
+                # query-encoder-swap-only conditions and are not valid for the
+                # rotation drift this case exercises; they are covered separately
+                # by the query_encoder_swap arena tests below.
+                if condition in {"C2O", "C3a", "C4a", "C5", "C5s", "C5r"}:
                     continue
                 output = Path(self.tempdir.name) / f"{condition}.json"
                 config = self._config(condition, output)
@@ -501,6 +502,40 @@ class TestRunDriftRecoveryExperiment(unittest.TestCase):
         self.assertGreater(norm_stats["mean"], 0.01)
         # And the run-level aggregate reflects a real, non-trivial correction.
         self.assertGreater(result["correction_norm_stats"]["mean"], 0.01)
+
+    def test_post_bank_conditions_fire_and_mutate_store_in_swap_arena(self):
+        """End-to-end (H5b/S2b): C5/C5s/C5r build a per-cluster post-bank, fire
+        (should_correct), and MUTATE the store (correction_applied) through the real
+        run_experiment path in the query-encoder-swap arena. C5 (living) additionally
+        exercises the prune/re-anneal lifecycle on its evolve cycle. Whether C5 BEATS
+        C5s/C5r is the GPU campaign's verdict — NOT asserted here."""
+        corpus, queries, qrels = self._swap_corpus_queries_qrels()
+        kinds = {"C5": "living", "C5s": "static", "C5r": "one_shot"}
+        with self._patched_swap_backend():
+            for cond in ("C5", "C5s", "C5r"):
+                result = run_experiment(
+                    self._supervised_swap_config(cond, Path(self.tempdir.name) / f"{cond}-pb.json", cycles=2),
+                    corpus, queries, qrels,
+                )
+                build = result["recovery"]["trajectory"][0]["metadata"]
+                self.assertEqual(build["action"], "post_bank_correction")
+                self.assertEqual(build["post_bank_kind"], kinds[cond])
+                self.assertTrue(build["should_correct"], f"{cond} trigger must fire")
+                self.assertTrue(build["correction_applied"], f"{cond} must mutate the store")
+                self.assertGreater(build["n_posts"], 0)
+                self.assertGreater(build["correction_norm_stats"]["mean"], 0.0)
+                self.assertTrue(build["lifecycle"]["built"])
+
+            # C5 living: cycle 2 must EVOLVE — anneal temperature set (the lifecycle
+            # is exercised, distinct from the static/one-shot banks).
+            result_c5 = run_experiment(
+                self._supervised_swap_config("C5", Path(self.tempdir.name) / "c5-evolve.json", cycles=2),
+                corpus, queries, qrels,
+            )
+            cycle2 = result_c5["recovery"]["trajectory"][1]["metadata"]
+            if cycle2.get("correction_applied"):
+                self.assertFalse(cycle2["lifecycle"]["built"])
+                self.assertIsNotNone(cycle2["lifecycle"]["temperature"])
 
     def test_c4a_unbounded_actuator_fires_and_writes(self):
         corpus, queries, qrels = self._swap_corpus_queries_qrels()
