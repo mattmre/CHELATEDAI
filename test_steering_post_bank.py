@@ -40,10 +40,8 @@ class TestRoutingAndApply(unittest.TestCase):
         self.assertEqual(bank.route([1.0, 0.0]).key, "a")
 
     def test_apply_corrects_and_logs_store_mutation(self):
-        bank = _three_post_bank()
-        bank.register_post("shift1", [1.0, 0.0, 0.0], _shift(0.5), fitness=1.0)
-        # A vector near e1 actually routes to whichever centroid is closest; use a
-        # bank where every post shifts so the correction norm is non-zero.
+        # Every post shifts, so the correction norm is non-zero and per-post hit
+        # counts are exact.
         b2 = SteeringPostBank(input_dim=3)
         b2.register_post("s", [1.0, 0.0, 0.0], _shift(0.25))
         vecs = np.array([[1.0, 0.0, 0.0], [0.9, 0.1, 0.0]])
@@ -118,6 +116,21 @@ class TestLifecycle(unittest.TestCase):
         bank.anneal_step(0.0)
         self.assertEqual(set(bank.prune()), {"e1", "e2", "e3"})
         self.assertEqual(len(bank), 0)
+
+    def test_min_posts_floor_uses_effective_not_base_threshold(self):
+        # Regression guard for the load-bearing interaction (Tier-B coverage gap):
+        # prune() must compare fitness against the TEMPERATURE-SCALED effective
+        # threshold even when min_posts > 0. base=0.5, T=0.5 -> effective 0.25.
+        bank = _three_post_bank(prune_below=0.5, min_posts=1)
+        bank.anneal_step(0.5)  # effective threshold = 0.5 * (1 - 0.5) = 0.25
+        bank.record_fitness("e1", 0.4)  # all three are >= 0.25 (the effective
+        bank.record_fitness("e2", 0.3)  # threshold) -> NONE should be pruned.
+        bank.record_fitness("e3", 0.6)
+        # A regression that used the BASE threshold (0.5) would prune e1 and e2
+        # (0.4, 0.3 < 0.5) down to {e3}, even with min_posts=1. This test fails in
+        # that case and passes only when prune() honours the effective threshold.
+        self.assertEqual(bank.prune(), [])
+        self.assertEqual(len(bank), 3)
 
     def test_re_anneal_recreates_posts_with_origin(self):
         bank = _three_post_bank(prune_below=1.0, min_posts=0)
