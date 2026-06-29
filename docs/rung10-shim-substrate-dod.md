@@ -19,7 +19,7 @@ and any live route is reversible.
    when (1) and (2) hold (the route is *promotable*); otherwise the route is **downgraded to
    `SHADOW`** (observe-only, no mutation). `SHADOW` is always allowed.
 
-## How it composes (all landed, BHS 100)
+## How it composes (three merged slices)
 
 | Piece | Module | Role |
 |-------|--------|------|
