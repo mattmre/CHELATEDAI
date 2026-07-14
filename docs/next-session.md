@@ -79,6 +79,26 @@ not-in-scope items. They appear here so the next planner sees them.
 |----|------|-----------|--------------|
 | _none yet_ | _—_ | _—_ | _—_ |
 
+## Disposition — living / annealed post-bank corrector (H5)
+
+**NON-PROMOTED.** The living-bank / annealed-post-bank corrector line is parked per its own
+preregistered H5 gate: C5 (living) must beat **both** C5s (frozen static bank) and C5r (one-shot
+router). Frozen campaign means (query-encoder-swap arena, cycles 12, seeds [42,1337,7]):
+
+| Dataset | C5 living | C5s static | C5r one-shot | C5 > C5s | C5 > C5r | LIVING BANK WINS |
+|---|---:|---:|---:|:---:|:---:|:---:|
+| SciFact | 0.131135 | 0.131135 | 0.180862 | False | False | **False** |
+| NFCorpus | 0.046389 | 0.046389 | 0.045817 | False | True | **False** |
+
+Sources: `docs/drift-recovery-post-bank-headtohead-results-2026-06.md`,
+`docs/drift-recovery-post-bank-headtohead-nfcorpus-results-2026-06.md`. On SciFact the living bank
+beat neither comparator (tied static; one-shot higher). On NFCorpus it beat only one-shot by a small
+margin and still tied static. **If any post-bank is kept at all, the frozen static bank (C5s) is the
+honest baseline** — the living/annealed lifecycle is not justified over C5s. This is a closed
+non-promoted research outcome, **not** a Carried Debt / Deferred-Scope obligation. Adjacent H4
+(single-seed SciFact C4a seed 42): `compound_cycles=True` 0.005258 vs `False` 0.236297 (~45× collapse)
+— compounding remains a rejected design (`docs/drift-recovery-h4-compound-cycles-ablation-2026-07.md`).
+
 ## Aggregate BHS trend
 
 Track `BHS_OFFICIAL` per merged PR over the last 5 cycles. Falling trend = the
