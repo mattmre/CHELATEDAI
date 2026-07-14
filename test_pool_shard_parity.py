@@ -77,6 +77,33 @@ class TestPoolShardParity(unittest.TestCase):
                 disk_topk = retrieve_topk(query, disk_vectors, disk_ids, k=3)
                 self.assertEqual(disk_topk, in_memory_topk)
 
+    def test_nan_payload_round_trips_byte_identically_and_parity_passes(self):
+        # Byte-exact parity must treat a byte-identical NaN payload as matching
+        # (np.array_equal would wrongly reject it since NaN != NaN). Also covers
+        # +inf/-inf which are byte-stable but not IEEE-equal to themselves under
+        # value comparison only for NaN — included for completeness.
+        vectors = np.array(
+            [[np.nan, 1.0, -2.0, 0.5], [np.inf, -np.inf, 0.0, np.nan]],
+            dtype=np.float32,
+        )
+        ids = ["doc-nan-a", "doc-nan-b"]
+        write_pool_shard(self.shard_path, vectors, ids)
+        disk_vectors, disk_ids = read_pool_shard(self.shard_path)
+
+        # Byte-identical round-trip (NaN payloads preserved bit-for-bit).
+        self.assertEqual(disk_vectors.tobytes(order="C"), vectors.tobytes(order="C"))
+        self.assertEqual(disk_ids, ids)
+        parity = verify_pool_shard_parity(vectors, ids, self.shard_path)
+        self.assertTrue(parity["vectors_match"])
+        self.assertTrue(parity["in_memory_hash_match"])
+
+    def test_verify_raises_on_mutated_vector_byte(self):
+        write_pool_shard(self.shard_path, FIXTURE_VECTORS, FIXTURE_IDS)
+        mutated = FIXTURE_VECTORS.copy()
+        mutated[0, 0] = np.float32(FIXTURE_VECTORS[0, 0] + 1.0)
+        with self.assertRaisesRegex(AssertionError, "Pool-shard parity mismatch"):
+            verify_pool_shard_parity(mutated, FIXTURE_IDS, self.shard_path)
+
     def test_verify_raises_on_corrupted_payload(self):
         write_pool_shard(self.shard_path, FIXTURE_VECTORS, FIXTURE_IDS)
         payload = bytearray(self.shard_path.read_bytes())

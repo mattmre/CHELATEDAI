@@ -259,13 +259,20 @@ def verify_pool_shard_parity(
     expected_ids = _validate_vectors_and_ids(in_memory_vectors, in_memory_ids)
     disk_vectors, disk_ids, manifest = _read_pool_shard_with_manifest(shard_path)
 
-    in_memory_hash = _sha256(_vector_bytes(in_memory_vectors))
-    disk_hash = _sha256(_vector_bytes(disk_vectors))
+    in_memory_bytes = _vector_bytes(in_memory_vectors)
+    disk_bytes = _vector_bytes(disk_vectors)
+    in_memory_hash = _sha256(in_memory_bytes)
+    disk_hash = _sha256(disk_bytes)
     manifest_hash = manifest["vector_sha256"]
     manifest_hash_match = manifest_hash == disk_hash
     in_memory_hash_match = in_memory_hash == disk_hash
     ids_match = expected_ids == disk_ids
-    vectors_match = np.array_equal(in_memory_vectors, disk_vectors)
+    # Byte-exact comparison (not np.array_equal / IEEE value equality): a bit-exact
+    # parity check must treat byte-identical NaN payloads as matching, and this is
+    # the same semantics as the SHA256 check above.
+    vectors_match = (
+        in_memory_vectors.shape == disk_vectors.shape and in_memory_bytes == disk_bytes
+    )
 
     if not (manifest_hash_match and in_memory_hash_match and ids_match and vectors_match):
         raise AssertionError(
