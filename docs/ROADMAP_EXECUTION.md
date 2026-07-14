@@ -53,10 +53,11 @@ Same one-track rule: finish each step before starting the next. Phase II does no
 
 **Status snapshot (2026-07, git-verified):** rungs **9–13 DONE** (13 completed by the detector-driven
 Evidence-DAG edge-prune loop, rung-13 PR); **14 apparatus DONE** with the **H5 living-bank question
-closed as a hard negative** (LIVING BANK WINS = False on SciFact + NFCorpus); **15–17 OPEN**. Lattice
-apparatus PRs: #260, #277, #279–#291 + rung-13. With step 13 closed, the remaining executable feature
-work is **15 (GNN), 16 (quant-aware routing plane), 17 (disk pool slice)** — being tackled as the
-endgame program (see `docs/waypoint-research-2026-06-09/panel/lattice-endgame-plan-2026-07-14.md`).
+closed as a hard negative** (LIVING BANK WINS = False on SciFact + NFCorpus); **17 DONE** (block-graph
+pool-shard read with host parity, rung-17 PR); **15–16 OPEN**. Lattice apparatus PRs: #260, #277,
+#279–#291 + rung-13 + rung-17. Remaining executable feature work is **16 (quant-aware routing plane)**
+and **15 (GNN)** — the endgame program (see
+`docs/waypoint-research-2026-06-09/panel/lattice-endgame-plan-2026-07-14.md`).
 
 | Step | Track | Status | Exit criteria |
 |------|--------|--------|----------------|
@@ -68,7 +69,7 @@ endgame program (see `docs/waypoint-research-2026-06-09/panel/lattice-endgame-pl
 | 14 | **Concept-drift experiment** | **DONE apparatus** (#258–#266 harness, #267 track-0 hygiene; swap arena #268–#276; H3 #287/#288; H4 #291; H5 driver #290). **H5 living-bank VERDICT: FAIL / non-promoted** (SciFact + NFCorpus) | Injected drift + recovery campaigns under `docs/drift-recovery-*.md`. Living annealed post-bank (C5) does **not** beat the frozen static bank + one-shot router gate. Compounding (`compound_cycles=True`) is catastrophic on the single-seed H4 ablation. |
 | 15 | **GNN prototype** | **OPEN** (no merged PR; no PyG/DGL code — only a docstring forward-ref in `evidence_dag.py`) | Lightweight GNN over evidence DAG (PyG or DGL); only after steps 12–14 green; must beat flat-pool baseline on drift fixture or fail closed |
 | 16 | **Quant-aware shim routing** | **OPEN** (pieces exist: `adapter_router`, `QuantizationPromotionGate`, route gate #285 — **not** integrated as one retrieval-fitness steering plane) | `adapter_router.py` + `QuantizationPromotionGate` integrated as steering plane; promotion requires quant survival + retrieval fitness |
-| 17 | **Disk pool slice** | **OPEN** (no pool-shard parity via `block_graph`; the computational-storage POC is a different graph) | One precomputed pool shard readable via `computational_storage_poc/block_graph.py` with host parity check; documented in storage track docs |
+| 17 | **Disk pool slice** | **DONE** — one precomputed retrieval pool shard written as a block-graph payload and read back via the real `block_graph.read_block` traversal with a host parity check (rung-17 PR: `computational_storage_poc/pool_shard.py`) | One precomputed pool shard readable via `computational_storage_poc/block_graph.py` with host parity check; documented in storage track docs. Delivered: `write_pool_shard`/`read_pool_shard` (float32 bytes carried losslessly through the FP16-native block format via byte-lane encoding), `verify_pool_shard_parity` (three-way SHA256 + byte-exact vectors + ids, fail-closed), and disk-vs-in-memory top-k equivalence. Grok Tier B 100 (100k random-float32 round-trip, 0 fails). POC/EXPERIMENTAL, not yet wired into live retrieval. |
 
 ### Phase II dependencies (do not skip)
 
