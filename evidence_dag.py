@@ -23,7 +23,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Mapping, Optional, Tuple
+from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple
 
 
 class NodeType(str, Enum):
@@ -81,6 +81,10 @@ class EvidenceDAG:
     def __init__(self) -> None:
         self._nodes: Dict[str, EvidenceNode] = {}
         self._edges: List[EvidenceEdge] = []
+        # Runtime-only ledger.  It is deliberately excluded from the rung-12 JSON
+        # schema: a serialized DAG describes the current graph, while the rung-13
+        # lifecycle artifact records why edges left or re-entered it.
+        self._pruned_edge_ledger: List[Dict[str, Any]] = []
 
     # -- construction --------------------------------------------------------
     def add_node(self, node_id: str, node_type: NodeType, **attrs: Any) -> EvidenceNode:
@@ -110,6 +114,127 @@ class EvidenceDAG:
 
     def node(self, node_id: str) -> Optional[EvidenceNode]:
         return self._nodes.get(str(node_id))
+
+    @property
+    def pruned_edge_ledger(self) -> List[Dict[str, Any]]:
+        """Return a defensive copy of edges eligible for re-annealing."""
+        return [dict(entry) for entry in self._pruned_edge_ledger]
+
+    @staticmethod
+    def _edge_record_id(edge: EvidenceEdge, occurrence: int) -> str:
+        """Stable-in-record identifier that also distinguishes duplicate edges."""
+        return f"{edge.src}|{edge.edge_type.value}|{edge.dst}|{occurrence}"
+
+    @staticmethod
+    def default_protected_predicate(edge: EvidenceEdge) -> bool:
+        """Protect required topology edges when no downstream proxy is supplied.
+
+        ``EdgeType`` has no literal STRUCTURAL/REQUIRED member.  In the current
+        schema, ``OPERATES_ON`` is the structural actuator-to-cluster link.  A
+        caller may also mark any edge ``required=True`` or ``structural=True``.
+        """
+        return (
+            edge.edge_type is EdgeType.OPERATES_ON
+            or bool(edge.attrs.get("required"))
+            or bool(edge.attrs.get("structural"))
+        )
+
+    def prune_edges(
+        self,
+        scorer: Callable[[EvidenceEdge], float],
+        threshold: float,
+        *,
+        dry_run: bool = False,
+        protected_predicate: Optional[Callable[[EvidenceEdge], bool]] = None,
+    ) -> Dict[str, Any]:
+        """Score and remove edges with fitness strictly below ``threshold``.
+
+        The scorer is called once per edge and must return a finite value in
+        ``[0, 1]``.  Nodes are never removed.  A dry run reports the same proposed
+        decisions without mutating either the edge list or the pruned-edge ledger.
+        The default fail-closed predicate protects structural/required edges.
+        """
+        threshold = float(threshold)
+        if not 0.0 <= threshold <= 1.0:
+            raise ValueError(f"threshold must be in [0.0, 1.0], got {threshold}")
+        violations = validate_evidence_dag(self)
+        if violations:
+            raise ValueError("cannot prune an invalid EvidenceDAG: " + "; ".join(violations))
+
+        protect = protected_predicate or self.default_protected_predicate
+        occurrences: Dict[Tuple[str, str, str], int] = {}
+        scores: List[Dict[str, Any]] = []
+        retained: List[EvidenceEdge] = []
+        proposed_ledger: List[Dict[str, Any]] = []
+
+        # Score over a snapshot so a scorer that mutates the DAG mid-pass cannot
+        # drop unscored/unledgered edges; a mutating scorer is a caller bug and is
+        # rejected below rather than silently corrupting the edge set.
+        edge_snapshot = list(self._edges)
+        for edge in edge_snapshot:
+            identity = (edge.src, edge.edge_type.value, edge.dst)
+            occurrence = occurrences.get(identity, 0)
+            occurrences[identity] = occurrence + 1
+            edge_id = self._edge_record_id(edge, occurrence)
+            fitness = float(scorer(edge))
+            if fitness != fitness or not 0.0 <= fitness <= 1.0:
+                raise ValueError(
+                    f"scorer returned non-finite/out-of-range fitness {fitness!r} "
+                    f"for edge {edge_id}"
+                )
+
+            is_protected = bool(protect(edge))
+            would_prune = fitness < threshold and not is_protected
+            decision = "prune" if would_prune else (
+                "skip_protected" if fitness < threshold and is_protected else "keep"
+            )
+            score_record = {
+                "edge_id": edge_id,
+                "edge": edge.to_dict(),
+                "fitness_before": fitness,
+                "fitness_after": None if would_prune else fitness,
+                "decision": decision,
+                "protected": is_protected,
+            }
+            scores.append(score_record)
+            if would_prune:
+                proposed_ledger.append({
+                    "edge_id": edge_id,
+                    "edge": edge,
+                    "fitness_at_prune": fitness,
+                    "threshold": threshold,
+                })
+            else:
+                retained.append(edge)
+
+        record = {
+            "record_type": "evidence_dag_prune",
+            "threshold": threshold,
+            "dry_run": bool(dry_run),
+            "edges_before": len(edge_snapshot),
+            "edges_after": len(retained),
+            "scores": scores,
+            "pruned": [entry["edge"].to_dict() for entry in proposed_ledger],
+            "protected_skips": [
+                item["edge"] for item in scores if item["decision"] == "skip_protected"
+            ],
+        }
+        if dry_run:
+            return record
+
+        if len(self._edges) != len(edge_snapshot):
+            raise RuntimeError(
+                "scorer mutated the DAG edge set during prune_edges; refusing to apply "
+                "a prune computed over a stale snapshot"
+            )
+        original_edges = self._edges
+        self._edges = retained
+        post_violations = validate_evidence_dag(self)
+        if post_violations:
+            self._edges = original_edges
+            raise ValueError("prune would invalidate EvidenceDAG: " + "; ".join(post_violations))
+        self._pruned_edge_ledger.extend(proposed_ledger)
+        return record
 
     # -- serialization -------------------------------------------------------
     def to_dict(self) -> Dict[str, Any]:
@@ -287,7 +412,8 @@ def from_attribution_pool(pool: Mapping[str, Any]) -> EvidenceDAG:
         actuator_node_id = f"a:{strategy}:{action or 'none'}"
 
         dag.add_node(query_node_id, NodeType.QUERY,
-                     task=task, profile=profile, action=action or None,
+                     task=task, profile=profile, query_id=qid,
+                     query_text=row.get("query_text"), action=action or None,
                      fault_class=row.get("fault_class"))
         dag.add_node(cluster_node_id, NodeType.CLUSTER, task=task, profile=profile)
         dag.add_edge(query_node_id, cluster_node_id, EdgeType.RETRIEVED_IN)
