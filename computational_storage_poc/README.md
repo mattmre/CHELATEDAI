@@ -36,12 +36,13 @@ surface, not just an importable JSON endpoint.
 | `integrated_repo_runtime.py` | none |
 | `phase7_system_evaluation.py` | none |
 | `cpu_backends.py` | none |
+| `pool_shard.py` | none |
 
 The `block_graph.py` / `compiler.py` / payload-contract path (USB / FUSE
 emulator / RP2040 firmware track) is a separate concern — its claim
 boundary is documented in `## Current Scope Lock` below and in
 `docs/computational-storage-transport-scope-decision.md`. The "Status"
-section above applies specifically to the nine substrate modules listed
+section above applies specifically to the ten substrate modules listed
 in the table.
 
 Related repository docs:
