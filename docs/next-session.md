@@ -136,7 +136,7 @@ not-in-scope items. They appear here so the next planner sees them.
 
 ## Disposition — living / annealed post-bank corrector (H5)
 
-**NON-PROMOTED.** This H5 verdict is on this branch (PR #292), not previously on main. Do not promote the living bank. Rung 13 detector-to-DAG prune, rung 15, rung 16, and rung 17 are not done. The living-bank / annealed-post-bank corrector line is parked per its own
+**NON-PROMOTED.** This H5 verdict is on main via merged PR #292. Do not promote the living bank. Rung 13 detector-to-DAG prune is on main via #293. Rung 17 is on main via #294. Rung 15 is not done. Rung 16 is this PR (#295), not already merged. The living-bank / annealed-post-bank corrector line is parked per its own
 preregistered H5 gate: C5 (living) must beat **both** C5s (frozen static bank) and C5r (one-shot
 router). Frozen campaign means (query-encoder-swap arena, cycles 12, seeds [42,1337,7]):
 
@@ -153,6 +153,25 @@ honest baseline** — the living/annealed lifecycle is not justified over C5s. T
 non-promoted research outcome, **not** a Carried Debt / Deferred-Scope obligation. Adjacent H4
 (single-seed SciFact C4a seed 42): `compound_cycles=True` 0.005258 vs `False` 0.236297 (~45× collapse)
 — compounding remains a rejected design (`docs/drift-recovery-h4-compound-cycles-ablation-2026-07.md`).
+
+## Disposition — Rung 16 quant-aware routing plane
+
+**IN THIS PR (#295) / NON-PROMOTED. Not already merged.** The integrated plane is implemented on
+`lattice/rung16-routing-20260714`, but both preregistered GPU arenas honestly failed the SELECT
+promotion gate. Arena A (SciFact, MiniLM→mpnet) produced delta 0.000000 with paired 95% CI
+[0.000000, 0.000000] and quant pass-rate 0.25. Arena B (SciFact + NFCorpus + FiQA2018) produced
+delta -0.000899 with CI [-0.026005, 0.024604] and quant pass-rate 0.75. Both REPORT splits exercised
+at least two specialist routes above the 10% binding threshold, so both final verdicts are
+`FAIL-CLOSED`, not `DEGENERATE`. No plane is enabled in `AntigravityEngine`; enabling remains opt-in
+and accepts only a final `PROMOTED` plane.
+
+Sources: `prereg_rung16.md`, `prereg_rung16.json`,
+`docs/rung16-quant-aware-routing-manifest-2026-07.json`, and
+`docs/rung16-quant-aware-routing-results-2026-07.md`. The one-shot REPORT-consumption markers were
+backfilled from the completed manifest, and final adversarial hardening happened after the campaign;
+the results doc records both limitations. Do not rerun either REPORT. This rebase publishes that
+change set on `lattice/rung16-routing-20260714` (PR #295) on top of `origin/main`, where rung 17 is
+already merged via #294. Rung 16 is this PR, not already merged. The fail-closed non-promotion stands.
 
 ## Aggregate BHS trend
 
@@ -182,6 +201,8 @@ entry; this log is the audit trail.
 ---
 
 **Last session**: 2026-09-22 — PR #292 rebased onto `3d1d620`. CD-H1-01, CD-A2-01, and CD-305-01 are closed from committed artifacts. The GPU campaign was not re-executed in this session. The #305/#306 operator override is not extended. Block flag `CLEAR`. Prior: 2026-08-25 PR #305/#306 terminal-negative EGV disposition under that bounded override.
+
+**Rebase note (2026-09-22, PR #295)**: This branch is rebased onto `origin/main` `8e6e83b` (PR #294 merged). CD-H1-01, CD-A2-01, and CD-305-01 stay **CLOSED**. Block flag stays `CLEAR`. The #305/#306 operator override is not extended. Rung 15 is not done. Rung 16 is this PR, not already merged. Rung 17 is already on main via #294 and is not part of this PR.
 **2026-05-17**: PRs #249–#254 merged; 9 BHS Scope B audit Carried Debt rows (CD-MOD-001 through CD-TTS-002) closed.
 **Last validated by `check_block_flag.py`**: run after this commit
 
@@ -206,4 +227,4 @@ entry; this log is the audit trail.
 
 ## Rebase note (2026-09-22, PR #292)
 
-The 2026-09-03 session-evidence block is a historical log of that session. It is not the current block flag. This rebase closed CD-305-01, CD-A2-01, and CD-H1-01 from committed manifests and set `**Current**:` to `CLEAR`. It does not reuse the #305/#306 operator override. Rung 13 detector-to-DAG prune (#293), rung 17 disk pool (#294), and rung 16 quant routing (#295) stay unmerged. The two sections above were not in commit `3d1d620`; they were uncommitted text on the dirty main worktree and are kept because this rebase was required to preserve them. They do not add carried-debt rows.
+The 2026-09-03 session-evidence block is a historical log of that session. It is not the current block flag. This rebase closed CD-305-01, CD-A2-01, and CD-H1-01 from committed manifests and set `**Current**:` to `CLEAR`. It does not reuse the #305/#306 operator override. As of that #292 rebase, rung 13 (#293), rung 17 (#294), and rung 16 (#295) were still unmerged. The PR #295 rebase note above is the current placement: #293 and #294 are on main, and rung 16 is this PR, not already merged. The two sections above were not in commit `3d1d620`; they were uncommitted text on the dirty main worktree and are kept because this rebase was required to preserve them. They do not add carried-debt rows.
