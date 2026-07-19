@@ -1,0 +1,122 @@
+{
+  "record_type": "rung16_quant_aware_routing_preregistration",
+  "rung": 16,
+  "status": "FROZEN_PRE_REPORT",
+  "frozen_date": "2026-07-14",
+  "hypothesis": "A quant-surviving multi-route plane can beat a same-class, same-budget single-global adapter under query-encoder swap without losing materially to no-route retrieval.",
+  "arenas": {
+    "arena_a_default_swap": {
+      "datasets": [
+        "SciFact"
+      ],
+      "cluster_rule": "kmeans_on_anchor_relevant_document_vectors_only",
+      "max_queries_per_dataset": 100,
+      "sample_docs_per_dataset": 1200
+    },
+    "arena_b_multi_domain": {
+      "datasets": [
+        "SciFact",
+        "NFCorpus",
+        "FiQA2018"
+      ],
+      "cluster_rule": "dataset_domain",
+      "max_queries_per_dataset": 100,
+      "sample_docs_per_dataset": 1200
+    }
+  },
+  "split": {
+    "seed": 1616,
+    "anchor_fraction": 0.4,
+    "select_fraction": 0.3,
+    "report_fraction": 0.3,
+    "stratify_multi_domain_by_dataset": true,
+    "anchor_use": "fit_route_adapters_global_adapter_and_centroids_only",
+    "select_use": "all_threshold_plane_ci_quant_and_ablation_selection_decisions",
+    "report_use": "one_frozen_evaluation_only"
+  },
+  "models": {
+    "document_encoder": "sentence-transformers/all-MiniLM-L6-v2",
+    "swapped_query_encoder": "all-mpnet-base-v2",
+    "swap_projection_seed": 1616,
+    "device_requirement": "cuda"
+  },
+  "adapter": {
+    "class": "mlp",
+    "bounded": true,
+    "min_correction": 0.01,
+    "max_correction": 0.5,
+    "training_steps": 2000,
+    "learning_rate": 0.1,
+    "loss": "InfoNCE",
+    "anchor_positive_policy": "one_relevance_weighted_positive_document_centroid_per_anchor_query",
+    "batch_size": 64,
+    "batch_order": "seeded_shuffle_repeated_to_exact_training_steps",
+    "fairness_rule": "route_and_single_global_adapters_use_the_same_anchor_pairs_class_bounds_optimizer_steps_and_learning_rate"
+  },
+  "routing": {
+    "k": 3,
+    "minimum_cluster_documents": 5,
+    "margin_delta": 0.02,
+    "margin_fallback": "single_global",
+    "minimum_report_routes": 2,
+    "minimum_report_fraction_per_route": 0.1,
+    "usage_scopes": [
+      "SELECT",
+      "REPORT"
+    ]
+  },
+  "promotion": {
+    "primary_comparator": "single_global_adapter",
+    "delta": "NDCG_plane_fp32_minus_NDCG_single_global_fp32",
+    "confidence_level": 0.95,
+    "bootstrap_resamples": 5000,
+    "bootstrap_seed": 1617,
+    "minimum_ci_lower_bound_lift": 0.005,
+    "maximum_material_loss_vs_no_route": 0.005,
+    "rule": "select_ci_lower_bound_strictly_greater_than_minimum_lift_and_no_material_floor_loss_and_every_used_adapter_passes_quant_survival"
+  },
+  "quantization": {
+    "method": "simulate_int8_quantization_on_adapted_document_embeddings",
+    "levels": 127,
+    "quantile": 0.99,
+    "retained_gain_threshold": 0.8,
+    "minimum_fp32_gain_over_no_route": 0.01,
+    "baseline_fitness": "no_route_ndcg_on_the_same_select_query_subset_as_each_used_adapter",
+    "used_adapter_scope": "every_route_or_global_fallback_selected_by_the_plane_on_SELECT"
+  },
+  "baselines": [
+    {
+      "name": "no_route",
+      "role": "floor_and_quant_baseline"
+    },
+    {
+      "name": "single_global_adapter",
+      "role": "primary_win_condition"
+    },
+    {
+      "name": "c2o_oracle",
+      "role": "ceiling_context_only"
+    },
+    {
+      "name": "single_best_route",
+      "role": "report_only_degeneracy_ablation_selected_on_SELECT"
+    }
+  ],
+  "verdicts": {
+    "PROMOTED": "all_SELECT_promotion_gates_pass_and_REPORT_multi_route_binding_passes",
+    "FAIL_CLOSED": "one_or_more_SELECT_promotion_gates_fail_while_REPORT_multi_route_binding_passes",
+    "DEGENERATE": "fewer_than_two_non_global_routes_each_serve_at_least_ten_percent_of_REPORT_queries"
+  },
+  "anti_leakage": {
+    "report_can_be_evaluated_once": true,
+    "report_ids_forbidden_from_fit_and_select": true,
+    "promotion_thresholds_locked_before_report": true,
+    "report_route_lift_cannot_promote_plane": true
+  },
+  "metric": {
+    "name": "graded_ndcg_at_10",
+    "gain": "two_power_relevance_minus_one",
+    "idcg_source": "full_positive_qrels_for_each_query",
+    "shared_path": "identical_ranking_and_metric_code_for_every_baseline_fp32_and_quantized_condition"
+  }
+}

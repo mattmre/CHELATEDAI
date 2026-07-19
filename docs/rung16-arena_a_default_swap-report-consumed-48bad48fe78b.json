@@ -1,0 +1,13 @@
+{
+  "arena": "arena_a_default_swap",
+  "backfilled_from_completed_manifest": true,
+  "frozen_report_canonical_sha256": "883d72cc84c70a401c143c44dfdbd3d4309a42166313baccc2a295996980a9c3",
+  "preregistration_canonical_sha256": "48bad48fe78bc205b1e9c0abae8cc504ba067c27f2868548107b67a39f5c069a",
+  "preregistration_file_sha256": "7061f1f20e720a653172e9ae995989549d5d07b4ac603215ab3cbdc4ffc5ba15",
+  "record_type": "rung16_report_consumed",
+  "recorded_at_utc": "2026-07-14T12:31:28.1117048Z",
+  "report_consumed": true,
+  "selection_lock_path": "docs/rung16-arena_a_default_swap-selection-lock-2026-07.json",
+  "selection_lock_sha256": "c81b72a12fe87e56fcb12974a152d28a249dca8550e9354af244fc97dabbc10c",
+  "verdict": "FAIL-CLOSED"
+}

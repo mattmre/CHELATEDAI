@@ -99,6 +99,25 @@ non-promoted research outcome, **not** a Carried Debt / Deferred-Scope obligatio
 (single-seed SciFact C4a seed 42): `compound_cycles=True` 0.005258 vs `False` 0.236297 (~45× collapse)
 — compounding remains a rejected design (`docs/drift-recovery-h4-compound-cycles-ablation-2026-07.md`).
 
+## Disposition — Rung 16 quant-aware routing plane
+
+**DONE LOCALLY / NON-PROMOTED.** The integrated plane is implemented on
+`lattice/rung16-routing-20260714`, but both preregistered GPU arenas honestly failed the SELECT
+promotion gate. Arena A (SciFact, MiniLM→mpnet) produced delta 0.000000 with paired 95% CI
+[0.000000, 0.000000] and quant pass-rate 0.25. Arena B (SciFact + NFCorpus + FiQA2018) produced
+delta -0.000899 with CI [-0.026005, 0.024604] and quant pass-rate 0.75. Both REPORT splits exercised
+at least two specialist routes above the 10% binding threshold, so both final verdicts are
+`FAIL-CLOSED`, not `DEGENERATE`. No plane is enabled in `AntigravityEngine`; enabling remains opt-in
+and accepts only a final `PROMOTED` plane.
+
+Sources: `prereg_rung16.md`, `prereg_rung16.json`,
+`docs/rung16-quant-aware-routing-manifest-2026-07.json`, and
+`docs/rung16-quant-aware-routing-results-2026-07.md`. The one-shot REPORT-consumption markers were
+backfilled from the completed manifest, and final adversarial hardening happened after the campaign;
+the results doc records both limitations. Do not rerun either REPORT. At this handoff the Rung-16
+source/evidence is still an uncommitted local change set stacked on the open rung-17 head, so it is
+not yet durable review evidence and must be published without weakening the fail-closed outcome.
+
 ## Aggregate BHS trend
 
 Track `BHS_OFFICIAL` per merged PR over the last 5 cycles. Falling trend = the
@@ -123,6 +142,6 @@ priority Carried Debt entry; this log is the audit trail.
 
 ---
 
-**Last session**: 2026-06-13 — PR #267 Track 0 hygiene: closed CD-247-01 / CD-247-02 (last two open rows); Carried Debt now empty; block flag legitimately CLEAR. Prior: 2026-05-16 PR #244 reconciliation merge (BHS_OFFICIAL=55, OPERATOR_OVERRIDE).
+**Last session**: 2026-07-14 — Rung 16 quant-aware routing implemented and run once on CUDA; both arenas honestly FAIL-CLOSED, no plane promoted; local change set/evidence remains unpublished and stacked on the rung-17 head. Prior: 2026-06-13 PR #267 Track 0 hygiene closed CD-247-01 / CD-247-02; Carried Debt remains empty and block flag legitimately CLEAR.
 **2026-05-17**: PRs #249–#254 merged; 9 BHS Scope B audit Carried Debt rows (CD-MOD-001 through CD-TTS-002) closed.
 **Last validated by `check_block_flag.py`**: run after this commit

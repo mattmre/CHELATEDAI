@@ -26,6 +26,7 @@ chelatedai-drift-recovery = "run_drift_recovery_experiment:main"
 chelatedai-drift-diagnostics = "analyze_drift_recovery:main"
 chelatedai-drift-calibration = "run_drift_recovery_calibration:main"
 chelatedai-drift-knob-sweep = "run_drift_recovery_knob_sweep:main"
+chelatedai-quant-aware-routing = "run_quant_aware_routing_campaign:main"
 chelatedai-road-course-tuning = "run_road_course_tuning_loop:main"
 chelatedai-thousand-query-tuning = "run_thousand_query_tuning:main"
 chelatedai-train-gate = "train_gate_from_tuning_artifact:main"
@@ -99,6 +100,7 @@ py-modules = [
     "plan_evidence_artifact_cleanup",
     "promotion_contract",
     "quantization_promotion_gate",
+    "quant_aware_routing",
     "query_reformulator",
     "qwen_scope_adapter",
     "recursive_decomposer",
@@ -111,6 +113,7 @@ py-modules = [
     "run_default_promotion_evidence_chain",
     "run_overlay_model_scope_validation",
     "run_road_course_campaign",
+    "run_quant_aware_routing_campaign",
     "run_road_course_tuning_loop",
     "run_thousand_query_tuning",
     "train_gate_from_tuning_artifact",
