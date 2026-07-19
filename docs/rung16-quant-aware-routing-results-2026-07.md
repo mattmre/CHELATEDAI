@@ -90,6 +90,37 @@ Entropy (nats): 1.260873; n_used: 4.
 
 Verdict: **FAIL-CLOSED**. Corpus 4511; queries 300; split 120/90/90.
 
+> **Scope correction (Tier B, important).** Arena B was intended as routing's "fair-chance home turf"
+> (clusters = distinct domains). It did **not** cleanly exercise that hypothesis: under the
+> encoder swap, serve-time centroid assignment is largely **anti-domain**, so most queries were routed
+> to a specialist trained on a *different* domain. What this arena actually falsified is the
+> **preregistered centroid-margin domain plane**, not "domain-specialized routing" in general.
+>
+> REPORT domain → home-route purity (recomputed from the frozen manifest rows):
+>
+> | Domain | Home-routed | Purity |
+> |---|---:|---:|
+> | FiQA2018 | 9/30 | 30.0% |
+> | NFCorpus | 1/30 | **3.3%** |
+> | SciFact | 11/30 | 36.7% |
+>
+> REPORT loss attribution (plane − single-global, per query):
+>
+> | Bucket | n | mean Δ | sum Δ |
+> |---|---:|---:|---:|
+> | Home-correct specialist | 21 | **+0.0257** | +0.5391 |
+> | Cross-domain (misrouted) specialist | 39 | **−0.0309** | −1.2035 |
+> | Global fallback | 30 | 0.0000 | 0.0000 |
+> | **Total** | 90 | **−0.007383** | — |
+>
+> **Read this carefully:** specialists *helped* when they were routed to their own domain (+0.026);
+> the plane lost because misroutes (65% of specialist-served queries) dominated. The binding
+> constraint measured here is **route assignment under encoder-swap drift**, not specialist capacity.
+> This does not rescue the verdict — the preregistered plane-level SELECT gate still failed
+> (δ = −0.000899, CI [−0.026005, 0.024604], required lower bound > 0.005) and home-correct wins do not
+> promote under a plane-level rule — but it means the multi-domain negative is **weaker evidence
+> against domain routing per se** than a naive reading of "fail-closed on its home turf" suggests.
+
 ### Frozen SELECT promotion gate
 
 - Plane vs single-global delta: -0.000899 NDCG
