@@ -81,9 +81,21 @@ not-in-scope items. They appear here so the next planner sees them.
 
 ## Disposition — living / annealed post-bank corrector (H5)
 
-**NON-PROMOTED.** The living-bank / annealed-post-bank corrector line is parked per its own
-preregistered H5 gate: C5 (living) must beat **both** C5s (frozen static bank) and C5r (one-shot
-router). Frozen campaign means (query-encoder-swap arena, cycles 12, seeds [42,1337,7]):
+**SUPERSEDED METRIC EVIDENCE — STILL NON-PROMOTED.** The July 2026
+metric-lineage audit found that the legacy nDCG helper forms IDCG from
+retrieved relevance instead of all positive qrels. H5's exact values and
+comparator ordering are therefore `LEGACY_METRIC_LINEAGE_BLOCKED` and are not
+accepted scientific evidence until regenerated. See
+`docs/research/latent-option-value-audit-2026-07.md`, Section 3.1, and
+`docs/research/metric-lineage-repair-protocol-2026-07.md`. The existing
+non-promotion remains the conservative disposition; this note does not reopen
+or promote H5.
+
+The living-bank / annealed-post-bank corrector line was parked per its own
+preregistered H5 gate: C5 (living) had to beat **both** C5s (frozen static
+bank) and C5r (one-shot router). These are quarantined stored campaign values,
+not current accepted metrics (query-encoder-swap arena, cycles 12, seeds
+[42,1337,7]):
 
 | Dataset | C5 living | C5s static | C5r one-shot | C5 > C5s | C5 > C5r | LIVING BANK WINS |
 |---|---:|---:|---:|:---:|:---:|:---:|
@@ -91,13 +103,13 @@ router). Frozen campaign means (query-encoder-swap arena, cycles 12, seeds [42,1
 | NFCorpus | 0.046389 | 0.046389 | 0.045817 | False | True | **False** |
 
 Sources: `docs/drift-recovery-post-bank-headtohead-results-2026-06.md`,
-`docs/drift-recovery-post-bank-headtohead-nfcorpus-results-2026-06.md`. On SciFact the living bank
-beat neither comparator (tied static; one-shot higher). On NFCorpus it beat only one-shot by a small
-margin and still tied static. **If any post-bank is kept at all, the frozen static bank (C5s) is the
-honest baseline** — the living/annealed lifecycle is not justified over C5s. This is a closed
-non-promoted research outcome, **not** a Carried Debt / Deferred-Scope obligation. Adjacent H4
-(single-seed SciFact C4a seed 42): `compound_cycles=True` 0.005258 vs `False` 0.236297 (~45× collapse)
-— compounding remains a rejected design (`docs/drift-recovery-h4-compound-cycles-ablation-2026-07.md`).
+`docs/drift-recovery-post-bank-headtohead-nfcorpus-results-2026-06.md`.
+Do not treat the legacy ordering as proof that C5s is the confirmed honest
+baseline. The line remains closed and non-promoted because it has no valid
+positive evidence, **not** because the quarantined comparator means have been
+reconfirmed. This is not a Carried Debt / Deferred-Scope obligation. Adjacent
+H4 exact nDCG values are quarantined by the same lineage audit; compounding
+remains non-promoted pending any separately justified corrected regeneration.
 
 ## Aggregate BHS trend
 

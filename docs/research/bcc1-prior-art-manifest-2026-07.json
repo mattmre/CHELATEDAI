@@ -1,0 +1,488 @@
+{
+  "schema_version": "chelatedai.bcc1.prior-art-audit.v1",
+  "audit_date": "2026-07-23",
+  "audit_status": "non_exhaustive_novelty_unconfirmed_closest_combination_found",
+  "legal_opinion": false,
+  "candidate_claim_under_test": "A content-addressed representation contract and evidence-bound operational policy that chooses per query between zero-write reverse-query translation into a resident old-space index and an exactly materialized forward-translated new-space index, abstains fail-closed on identity, evidence, confidence, or materialization failure, and is evaluated once on dataset and encoder-transition families held out along both axes.",
+  "constituent_findings": [
+    {
+      "constituent": "reverse_query_translation",
+      "novel_as_a_constituent": false,
+      "source_ids": [
+        "drift_adapter",
+        "query_drift_compensation",
+        "steer_transform_before_query",
+        "trans_rag",
+        "online_backfilling_no_regret",
+        "metric_compatible_training",
+        "vectormigrate",
+        "amazon_backward_compatible_search"
+      ]
+    },
+    {
+      "constituent": "forward_embedding_conversion_or_backfill",
+      "novel_as_a_constituent": false,
+      "source_ids": [
+        "embedding_converter",
+        "forward_compatible_training",
+        "bict",
+        "fastfill",
+        "darwinian_model_upgrades",
+        "online_backfilling_no_regret",
+        "metric_compatible_training",
+        "vectormigrate",
+        "amazon_backward_compatible_search"
+      ]
+    },
+    {
+      "constituent": "representation_abi_or_pinned_vectorizer_identity",
+      "novel_as_a_constituent": false,
+      "source_ids": [
+        "vectormigrate",
+        "mongodb_automated_embedding",
+        "openclaw_memory_identity",
+        "atteler_vectorizer_spec",
+        "recallm_model_isolation"
+      ]
+    },
+    {
+      "constituent": "fail_closed_identity_or_evidence_contract",
+      "novel_as_a_constituent": false,
+      "source_ids": [
+        "openclaw_memory_identity",
+        "atteler_vectorizer_spec",
+        "resident_kv_fail_closed"
+      ]
+    },
+    {
+      "constituent": "per_query_adapter_confidence_and_fallback",
+      "novel_as_a_constituent": false,
+      "source_ids": [
+        "embedding_adapters",
+        "vectormigrate",
+        "mor",
+        "r3ag"
+      ]
+    },
+    {
+      "constituent": "cross_space_translation_or_dynamic_traversal",
+      "novel_as_a_constituent": false,
+      "source_ids": [
+        "disney_cross_embedding_space_search",
+        "steer_transform_before_query",
+        "trans_rag",
+        "vectormigrate"
+      ]
+    },
+    {
+      "constituent": "dual_read_or_rank_merge_during_migration",
+      "novel_as_a_constituent": false,
+      "source_ids": [
+        "online_backfilling_no_regret",
+        "metric_compatible_training",
+        "vectormigrate"
+      ]
+    },
+    {
+      "constituent": "per_query_oracle_headroom_and_feature_predictability",
+      "novel_as_a_constituent": false,
+      "source_ids": [
+        "algorithm_selection_survey",
+        "satzilla",
+        "autofolio",
+        "diffretriever",
+        "mor",
+        "r3ag"
+      ]
+    }
+  ],
+  "combination_result": {
+    "one_source_disclosing_every_candidate_element_found": false,
+    "interpretation": "The exact combined system was not found in this bounded audit. vectormigrate is a particularly close systems disclosure: it combines an EmbeddingABI, directional compatibility operators, and confidence-gated routing from a transformed query against the old index to dual-read or a target index. Metric Compatible Training and Online Backfilling with No Regret also disclose paired retrieval paths and merged operation during backfill. The remaining distinction is narrow: BCC-1 compares that reverse route against a separately materialized forward-transformed legacy corpus rather than a native or conventionally backfilled target index, and binds the choice to stricter evidence and one-shot evaluation contracts. FastFill, Darwinian Model Upgrades, Amazon's issued patent, and Disney's pending application further crowd the surrounding migration and cross-space-search claims. Absence of the exact combination is not evidence of novelty, priority, patentability, or usefulness.",
+    "required_next_search": "Freeze source snapshots where licensing permits, record publication and release chronology, and perform backward and forward citation searches from every paper and first-party system below before any novelty statement."
+  },
+  "sources": [
+    {
+      "id": "drift_adapter",
+      "title": "Drift-Adapter: Breaking the Coupling Barrier in Embedding-Based Retrieval Systems",
+      "kind": "peer_reviewed_paper",
+      "url": "https://aclanthology.org/2025.emnlp-main.805/",
+      "discloses": [
+        "new-query to old-index reverse translation",
+        "embedding-model migration without immediate corpus re-encoding"
+      ],
+      "not_established_by_this_source": [
+        "per-query choice against an exactly materialized forward index",
+        "the full candidate combination"
+      ]
+    },
+    {
+      "id": "query_drift_compensation",
+      "title": "Query Drift Compensation for Embedding Model Migration",
+      "kind": "research_preprint",
+      "url": "https://arxiv.org/abs/2506.00037",
+      "discloses": [
+        "query-side compensation across embedding versions"
+      ],
+      "not_established_by_this_source": [
+        "the full candidate combination"
+      ]
+    },
+    {
+      "id": "steer_transform_before_query",
+      "title": "Transform Before You Query: A Privacy-Preserving Approach for Vector Retrieval with Embedding Space Alignment",
+      "kind": "research_preprint",
+      "url": "https://arxiv.org/abs/2507.18518",
+      "publication_date": "2025-07-24",
+      "discloses": [
+        "query-side derivation of approximate embeddings in another model's semantic space",
+        "retrieval against the original vector database without server-side modification"
+      ],
+      "not_established_by_this_source": [
+        "per-query choice against an exactly materialized forward-transformed legacy corpus",
+        "the full candidate combination"
+      ]
+    },
+    {
+      "id": "trans_rag",
+      "title": "Trans-RAG: Query-Centric Vector Transformation for Secure Cross-Organizational Retrieval",
+      "kind": "research_preprint",
+      "url": "https://arxiv.org/abs/2604.09541",
+      "publication_date": "2026-04-10",
+      "discloses": [
+        "query-centric transformation into multiple isolated vector spaces",
+        "native retrieval in each target organization's vector space"
+      ],
+      "not_established_by_this_source": [
+        "per-query choice against an exactly materialized forward-transformed legacy corpus",
+        "the full candidate combination"
+      ]
+    },
+    {
+      "id": "embedding_converter",
+      "title": "Embedding-Converter: A Unified Framework for Cross-Model Embedding Conversion",
+      "kind": "peer_reviewed_paper",
+      "url": "https://aclanthology.org/2025.acl-long.1237/",
+      "discloses": [
+        "cross-model embedding conversion",
+        "forward reuse of resident embeddings"
+      ],
+      "not_established_by_this_source": [
+        "the full candidate combination"
+      ]
+    },
+    {
+      "id": "forward_compatible_training",
+      "title": "Forward Compatible Training for Large-Scale Embedding Retrieval Systems",
+      "kind": "research_preprint",
+      "url": "https://arxiv.org/abs/2112.02805",
+      "discloses": [
+        "forward-compatible embedding upgrade"
+      ],
+      "not_established_by_this_source": [
+        "the full candidate combination"
+      ]
+    },
+    {
+      "id": "bict",
+      "title": "Privacy-Preserving Model Upgrades with Bidirectional Compatible Training in Image Retrieval",
+      "kind": "research_preprint",
+      "url": "https://arxiv.org/abs/2204.13919",
+      "discloses": [
+        "bidirectional compatible model upgrade",
+        "old-gallery forward upgrade after backward-compatible deployment"
+      ],
+      "not_established_by_this_source": [
+        "the full candidate combination"
+      ]
+    },
+    {
+      "id": "fastfill",
+      "title": "FastFill: Efficient Compatible Model Update",
+      "kind": "peer_reviewed_paper",
+      "url": "https://arxiv.org/abs/2303.04766",
+      "publication_date": "2023-03-08",
+      "discloses": [
+        "feature alignment between old and new embedding models",
+        "uncertainty estimation",
+        "policy-based partial backfilling"
+      ],
+      "not_established_by_this_source": [
+        "per-query choice between reverse-query translation and an exactly materialized forward-translated legacy corpus",
+        "the full candidate combination"
+      ]
+    },
+    {
+      "id": "darwinian_model_upgrades",
+      "title": "Darwinian Model Upgrades: Model Evolving with Selective Compatibility",
+      "kind": "peer_reviewed_paper",
+      "url": "https://arxiv.org/abs/2210.06954",
+      "publication_date": "2022-10-13",
+      "discloses": [
+        "selective backward compatibility",
+        "forward adaptation of legacy gallery features"
+      ],
+      "not_established_by_this_source": [
+        "the exact per-query directional decision under the candidate contract",
+        "the full candidate combination"
+      ]
+    },
+    {
+      "id": "online_backfilling_no_regret",
+      "title": "Online Backfilling with No Regret for Large-Scale Image Retrieval",
+      "kind": "peer_reviewed_paper",
+      "url": "https://openreview.net/pdf?id=KoSduEDl5M",
+      "discloses": [
+        "reverse query transform",
+        "forward gallery transform",
+        "online backfilling and merged upgrade operation"
+      ],
+      "not_established_by_this_source": [
+        "qrels-free per-query choice between the two directional operations under the full candidate contract"
+      ]
+    },
+    {
+      "id": "metric_compatible_training",
+      "title": "Metric Compatible Training for Online Backfilling in Large-Scale Retrieval",
+      "kind": "peer_reviewed_workshop_paper",
+      "url": "https://openreview.net/forum?id=1RmeKnkwsB",
+      "publication_date": "2023-06-16",
+      "discloses": [
+        "separate old-space and new-space retrieval pipelines during online backfill",
+        "distance rank merge across both result sets",
+        "a reverse transformation module for compatible model upgrades"
+      ],
+      "not_established_by_this_source": [
+        "a one-search per-query choice between reverse-query translation and an exactly materialized forward-transformed legacy corpus",
+        "the full candidate combination"
+      ]
+    },
+    {
+      "id": "mor",
+      "title": "Mixture of Retrievers",
+      "kind": "peer_reviewed_paper",
+      "url": "https://aclanthology.org/2025.emnlp-main.601/",
+      "discloses": [
+        "query-specific retriever mixing"
+      ],
+      "not_established_by_this_source": [
+        "embedding migration semantics",
+        "the full candidate combination"
+      ]
+    },
+    {
+      "id": "r3ag",
+      "title": "R3AG: Query-Specific Retriever Routing for Retrieval-Augmented Generation",
+      "kind": "peer_reviewed_paper",
+      "url": "https://aclanthology.org/2026.acl-long.939/",
+      "discloses": [
+        "query-specific retriever routing"
+      ],
+      "not_established_by_this_source": [
+        "embedding migration semantics",
+        "the full candidate combination"
+      ]
+    },
+    {
+      "id": "mongodb_automated_embedding",
+      "title": "MongoDB Vector Search Automated Embedding Overview",
+      "kind": "first_party_product_documentation",
+      "url": "https://www.mongodb.com/docs/vector-search/crud-embeddings/automated-embedding/overview/",
+      "discloses": [
+        "index-definition hash and version for embedding/index identity"
+      ],
+      "not_established_by_this_source": [
+        "cross-space bridge routing",
+        "the full candidate combination"
+      ]
+    },
+    {
+      "id": "vectormigrate",
+      "title": "vectormigrate",
+      "kind": "first_party_package_documentation",
+      "url": "https://github.com/goutamadwant/vectormigrate/blob/main/docs/paper_system_model.md",
+      "discloses": [
+        "EmbeddingABI as an explicit compatibility contract",
+        "source and target ABI migration plans",
+        "directional query and document compatibility operators",
+        "confidence-gated per-query transformed-query routing against the old index",
+        "fallback to dual-read or the target index",
+        "dual-write and backfill migration"
+      ],
+      "not_established_by_this_source": [
+        "fallback to an exactly materialized forward-transformed legacy corpus rather than a native or conventionally backfilled target index",
+        "the candidate evidence and one-shot evaluation contract",
+        "the full candidate combination"
+      ]
+    },
+    {
+      "id": "amazon_backward_compatible_search",
+      "title": "Backward compatible and backfill-free image search system",
+      "kind": "issued_patent",
+      "url": "https://patents.google.com/patent/US11216697B1/en",
+      "patent_number": "US11216697B1",
+      "issued_date": "2022-01-04",
+      "discloses": [
+        "backfill-free search using backward-compatible embedding models",
+        "queries from a new model against a legacy gallery",
+        "optional gradual gallery backfill"
+      ],
+      "not_established_by_this_source": [
+        "the exact bidirectional per-query choice under the candidate contract",
+        "the full candidate combination"
+      ]
+    },
+    {
+      "id": "disney_cross_embedding_space_search",
+      "title": "Cross-embedding space search",
+      "kind": "pending_patent_application",
+      "url": "https://patents.google.com/patent/US20260111496A1/en",
+      "patent_number": "US20260111496A1",
+      "priority_date": "2024-10-22",
+      "publication_date": "2026-04-23",
+      "discloses": [
+        "search and aggregation across multiple vector spaces",
+        "translation of search vectors or asset representations between spaces",
+        "predetermined or dynamically determined cross-space traversal"
+      ],
+      "not_established_by_this_source": [
+        "the exact reverse-query versus materialized-forward migration decision",
+        "the full candidate combination"
+      ]
+    },
+    {
+      "id": "openclaw_memory_identity",
+      "title": "OpenClaw Memory Configuration Reference",
+      "kind": "first_party_product_documentation",
+      "url": "https://docs.openclaw.ai/reference/memory-config",
+      "discloses": [
+        "vector-index identity over provider, model, settings, sources, scope, chunking, and tokenizer",
+        "paused vector search on incompatible index identity",
+        "fail-closed behavior for unavailable explicitly configured providers"
+      ],
+      "not_established_by_this_source": [
+        "cross-space bridge routing",
+        "the full candidate combination"
+      ]
+    },
+    {
+      "id": "atteler_vectorizer_spec",
+      "title": "atteler vector package",
+      "kind": "first_party_package_documentation",
+      "url": "https://pkg.go.dev/github.com/tommoulard/atteler/pkg/vector",
+      "discloses": [
+        "stable VectorizerSpec over provider, model, endpoint, normalization, version, and dimensions",
+        "persisted stores pinned to vectorizer identity",
+        "refusal to search with incompatible vectorizer identity",
+        "explicit migration and rebuild path"
+      ],
+      "not_established_by_this_source": [
+        "cross-space bridge routing",
+        "the full candidate combination"
+      ]
+    },
+    {
+      "id": "recallm_model_isolation",
+      "title": "Recallm: How It Works",
+      "kind": "first_party_product_documentation",
+      "url": "https://recallm.dev/how-it-works/",
+      "discloses": [
+        "embedding model identity stored per semantic-cache entry",
+        "cross-model entries made invisible to lookup"
+      ],
+      "not_established_by_this_source": [
+        "fail-closed application behavior",
+        "cross-space bridge routing",
+        "the full candidate combination"
+      ]
+    },
+    {
+      "id": "embedding_adapters",
+      "title": "EmbeddingAdapters: How It Works",
+      "kind": "first_party_product_documentation",
+      "url": "https://www.embedding-adapters.com/how.html",
+      "discloses": [
+        "cross-model embedding adapters",
+        "per-query out-of-distribution confidence scoring",
+        "confidence-threshold fallback to a native provider"
+      ],
+      "not_established_by_this_source": [
+        "per-query reverse versus exactly materialized forward index choice",
+        "the full candidate combination"
+      ]
+    },
+    {
+      "id": "resident_kv_fail_closed",
+      "title": "Fail-Closed Lowering of Resident KV Claims onto LLM Serving Runtimes",
+      "kind": "research_preprint",
+      "url": "https://arxiv.org/abs/2606.01387",
+      "discloses": [
+        "content-bound resident-cache claim identity",
+        "materialization predicates",
+        "evidence classification",
+        "fail-closed runtime outcomes and a bad-lowering suite"
+      ],
+      "not_established_by_this_source": [
+        "semantic embedding migration",
+        "the full candidate combination"
+      ]
+    },
+    {
+      "id": "algorithm_selection_survey",
+      "title": "Automated Algorithm Selection: Survey and Perspectives",
+      "kind": "research_preprint",
+      "url": "https://arxiv.org/abs/1811.11597",
+      "discloses": [
+        "the longstanding per-instance algorithm-selection problem",
+        "complementary algorithm portfolios",
+        "cheap instance features as the basis for predicting an algorithm"
+      ],
+      "not_established_by_this_source": [
+        "embedding migration semantics",
+        "the full candidate combination"
+      ]
+    },
+    {
+      "id": "satzilla",
+      "title": "SATzilla: Portfolio-based Algorithm Selection for SAT",
+      "kind": "research_preprint",
+      "url": "https://arxiv.org/abs/1111.2249",
+      "discloses": [
+        "per-instance online selection from complementary algorithms",
+        "feature-based empirical models for choosing a portfolio member"
+      ],
+      "not_established_by_this_source": [
+        "embedding migration semantics",
+        "the full candidate combination"
+      ]
+    },
+    {
+      "id": "autofolio",
+      "title": "AutoFolio: An Automatically Configured Algorithm Selector",
+      "kind": "peer_reviewed_paper",
+      "url": "https://www.ijcai.org/Proceedings/2017/715",
+      "discloses": [
+        "automated construction and configuration of per-instance algorithm selectors",
+        "improvement over a best single algorithm across multiple problem domains"
+      ],
+      "not_established_by_this_source": [
+        "embedding migration semantics",
+        "the full candidate combination"
+      ]
+    },
+    {
+      "id": "diffretriever",
+      "title": "DiffRetriever: Parallel Representative Tokens for Retrieval with Diffusion Language Models",
+      "kind": "research_preprint",
+      "url": "https://arxiv.org/abs/2605.07210",
+      "discloses": [
+        "per-query oracle headroom over a fixed retrieval configuration",
+        "analysis of cheap pre-outcome features as predictors of adaptive selection"
+      ],
+      "not_established_by_this_source": [
+        "embedding migration semantics",
+        "the full candidate combination"
+      ]
+    }
+  ]
+}

@@ -2,22 +2,26 @@
 
 from __future__ import annotations
 
+import math
 import statistics
 from typing import Dict, List, Optional, Tuple
 
-from benchmark_utils import ndcg_at_k as _relevance_ndcg_at_k
-
 
 def ndcg_at_k(ranked_ids, relevant_ids, k=10) -> float:
-    """Compute binary NDCG@k from ranked document IDs and relevant document IDs."""
+    """Compute binary nDCG@k with IDCG from the complete positive-qrel set."""
 
-    if k < 1:
-        raise ValueError("k must be >= 1")
+    if isinstance(k, bool) or not isinstance(k, int) or k < 1:
+        raise ValueError("k must be a positive integer")
     relevant_set = set(relevant_ids)
     if not relevant_set:
         return 0.0
-    relevance = [1.0 if doc_id in relevant_set else 0.0 for doc_id in list(ranked_ids)[:k]]
-    return float(_relevance_ndcg_at_k(relevance, k))
+    ranked = list(ranked_ids)[:k]
+    if len(set(ranked)) != len(ranked):
+        raise ValueError("ranked_ids must not contain duplicate document IDs")
+    dcg = sum(1.0 / math.log2(rank + 2.0) for rank, doc_id in enumerate(ranked) if doc_id in relevant_set)
+    ideal_count = min(k, len(relevant_set))
+    idcg = sum(1.0 / math.log2(rank + 2.0) for rank in range(ideal_count))
+    return float(dcg / idcg)
 
 
 class RecoveryTracker:

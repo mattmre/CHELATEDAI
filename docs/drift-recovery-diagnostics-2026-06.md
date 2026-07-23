@@ -1,5 +1,11 @@
 # Drift Recovery Diagnostics - June 2026
 
+> [!WARNING]
+> **LEGACY_METRIC_LINEAGE_BLOCKED (2026-07-23).** Exact nDCG values and
+> derived comparisons below are historical diagnostics, not accepted evidence,
+> until corrected regeneration. See
+> `docs/research/metric-lineage-repair-protocol-2026-07.md`.
+
 Diagnostics JSON: `experiment_runs/drift-recovery/diagnostics-2026-06.json`.
 Source artifact count: 30.
 
