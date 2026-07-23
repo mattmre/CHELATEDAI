@@ -1,0 +1,133 @@
+{
+  "record_type": "d3_c2_baseline_analysis",
+  "regimes": [
+    "scifact_minilm_to_mpnet",
+    "nfcorpus_minilm_to_mpnet",
+    "scifact_minilm_to_bge_large",
+    "nfcorpus_minilm_to_bge_large"
+  ],
+  "actual_recovery": [
+    0.8434,
+    0.6471,
+    0.7224,
+    0.664
+  ],
+  "oracle_margin_mean_in_feature_names": false,
+  "univariate_spearman_vs_R": {
+    "oracle_margin_mean": 1.0,
+    "oracle_margin_q50": 0.8,
+    "oracle_margin_sign_rate": 0.8,
+    "predicted_inversion_rate": NaN
+  },
+  "loo_rows": [
+    {
+      "predictor": "shipped multi-feature R_hat (alpha=10)",
+      "spearman": -0.4,
+      "mae": 0.0793,
+      "bin_accuracy": 0.75,
+      "predictions": [
+        0.684,
+        0.7636,
+        0.7559,
+        0.6562
+      ]
+    },
+    {
+      "predictor": "multi-feature ablation (alpha=0.01)",
+      "spearman": 0.0,
+      "mae": 0.1254,
+      "bin_accuracy": 0.75,
+      "predictions": [
+        0.7084,
+        0.7724,
+        0.8533,
+        0.5538
+      ]
+    },
+    {
+      "predictor": "trivial: mean train R",
+      "spearman": -1.0,
+      "mae": 0.0849,
+      "bin_accuracy": 0.5,
+      "predictions": [
+        0.6778,
+        0.7433,
+        0.7182,
+        0.7376
+      ]
+    },
+    {
+      "predictor": "trivial: constant 0.7",
+      "spearman": NaN,
+      "mae": 0.0637,
+      "bin_accuracy": 0.5,
+      "predictions": [
+        0.7,
+        0.7,
+        0.7,
+        0.7
+      ]
+    },
+    {
+      "predictor": "trivial: floor NDCG -> R (OLS)",
+      "spearman": 0.0,
+      "mae": 0.1238,
+      "bin_accuracy": 0.75,
+      "predictions": [
+        0.7086,
+        0.7409,
+        0.7472,
+        0.4222
+      ]
+    },
+    {
+      "predictor": "trivial: oracle gap -> R (OLS)",
+      "spearman": 0.6,
+      "mae": 0.0717,
+      "bin_accuracy": 1.0,
+      "predictions": [
+        0.7175,
+        0.6647,
+        0.8592,
+        0.6574
+      ]
+    },
+    {
+      "predictor": "continuous: oracle_margin_mean (OLS)",
+      "spearman": 1.0,
+      "mae": 0.0329,
+      "bin_accuracy": 1.0,
+      "predictions": [
+        0.7742,
+        0.642,
+        0.7623,
+        0.6466
+      ]
+    },
+    {
+      "predictor": "continuous: oracle_margin_q50 (OLS)",
+      "spearman": 0.6,
+      "mae": 0.0753,
+      "bin_accuracy": 0.75,
+      "predictions": [
+        0.7423,
+        0.7035,
+        0.7558,
+        0.5536
+      ]
+    },
+    {
+      "predictor": "continuous: oracle_margin_sign_rate (OLS)",
+      "spearman": 0.8,
+      "mae": 0.0802,
+      "bin_accuracy": 0.75,
+      "predictions": [
+        0.7105,
+        0.6587,
+        0.8816,
+        0.6812
+      ]
+    }
+  ],
+  "note": "n=4 held-out regimes: Spearman flips on a single swap and cannot support a high-power claim in EITHER direction. The binary predicted_inversion_rate is constant (dead); the continuous oracle-margin structure ranks R on this n=4 set. The shipped alpha=10 map over-shrinks (8 features, 3 train points) toward the train mean and does not beat trivial baselines."
+}

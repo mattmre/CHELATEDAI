@@ -1,0 +1,396 @@
+{
+  "collapse_cluster_count": 16,
+  "contrasts": {
+    "chelation_vs_cbie": {
+      "delta_ndcg": {
+        "ci_high": 0.0046394195855220186,
+        "ci_low": -0.04634190566803405,
+        "estimate": -0.020161443356199293,
+        "half_width": 0.025490662626778033
+      },
+      "half_width": 0.025490662626778033,
+      "left": "chelation_primary",
+      "multiple_testing": {
+        "family_size": 3,
+        "holm_adjusted_p": 0.22557744225577442,
+        "holm_threshold": 0.025,
+        "p_value": 0.11278872112788721,
+        "rank": 2,
+        "reject": false
+      },
+      "p_value": 0.11278872112788721,
+      "recovery_point_advantage": {
+        "ci_high": null,
+        "ci_low": null,
+        "estimate": null,
+        "half_width": null
+      },
+      "right": "cbie",
+      "seed_delta_ndcg": [
+        -0.011543834825006427,
+        -0.01854319304204277,
+        -0.025846996919130394,
+        -0.030618666375838766,
+        -0.014254525618978109
+      ],
+      "seed_recovery_advantage": [
+        null,
+        null,
+        -5.565185738284271,
+        -5.575017577391673,
+        null
+      ]
+    },
+    "chelation_vs_global_ridge": {
+      "delta_ndcg": {
+        "ci_high": 0.048355238911691,
+        "ci_low": -9.162568137333894e-05,
+        "estimate": 0.022131784313473846,
+        "half_width": 0.02422343229653217
+      },
+      "half_width": 0.02422343229653217,
+      "left": "chelation_primary",
+      "multiple_testing": {
+        "family_size": 3,
+        "holm_adjusted_p": 0.15478452154784522,
+        "holm_threshold": 0.016666666666666666,
+        "p_value": 0.051594840515948405,
+        "rank": 1,
+        "reject": false
+      },
+      "p_value": 0.051594840515948405,
+      "recovery_point_advantage": {
+        "ci_high": null,
+        "ci_low": null,
+        "estimate": null,
+        "half_width": null
+      },
+      "right": "global_ridge",
+      "seed_delta_ndcg": [
+        0.023219871905598377,
+        0.03530518920964232,
+        0.022636061827206344,
+        0.0009134962776328193,
+        0.02858430234728937
+      ],
+      "seed_recovery_advantage": [
+        null,
+        null,
+        4.873830752788593,
+        0.1663285311702385,
+        null
+      ]
+    },
+    "chelation_vs_hubness": {
+      "delta_ndcg": {
+        "ci_high": 0.04194340358831571,
+        "ci_low": -0.015991192895232896,
+        "estimate": 0.011328332836815669,
+        "half_width": 0.028967298241774304
+      },
+      "half_width": 0.028967298241774304,
+      "left": "chelation_primary",
+      "multiple_testing": {
+        "family_size": 3,
+        "holm_adjusted_p": 0.45855414458554145,
+        "holm_threshold": 0.05,
+        "p_value": 0.45855414458554145,
+        "rank": 3,
+        "reject": false
+      },
+      "p_value": 0.45855414458554145,
+      "recovery_point_advantage": {
+        "ci_high": null,
+        "ci_low": null,
+        "estimate": null,
+        "half_width": null
+      },
+      "right": "hubness",
+      "seed_delta_ndcg": [
+        0.013331001963606703,
+        0.012036104385722224,
+        0.011920362559053044,
+        0.007232672482954006,
+        0.01212152279274159
+      ],
+      "seed_recovery_advantage": [
+        null,
+        null,
+        2.566605007010297,
+        1.3169181090069955,
+        null
+      ]
+    }
+  },
+  "dataset": "NFCorpus",
+  "decision": {
+    "g2_pass": false,
+    "g3_interpreted": false,
+    "reason": "G2 median bootstrap half-width exceeds the preregistered threshold",
+    "status": "UNDERPOWERED_NEGATIVE",
+    "verdict": "NO_G3_VERDICT",
+    "win": false
+  },
+  "detector": {
+    "auprc": 0.36529880394128067,
+    "auprc_status": "ok",
+    "cluster_predictions": 160,
+    "collapse_cluster_count": 16,
+    "dataset": "NFCorpus",
+    "per_seed": [
+      {
+        "auprc": 0.6825892857142857,
+        "auprc_status": "ok",
+        "eval_positive_clusters": 8,
+        "seed": 42,
+        "selected_gate_threshold": 0.4
+      },
+      {
+        "auprc": 0.13095238095238093,
+        "auprc_status": "ok",
+        "eval_positive_clusters": 2,
+        "seed": 1337,
+        "selected_gate_threshold": 0.4
+      },
+      {
+        "auprc": 0.24582084582084582,
+        "auprc_status": "ok",
+        "eval_positive_clusters": 6,
+        "seed": 7,
+        "selected_gate_threshold": 0.4
+      },
+      {
+        "auprc": 0.7236471861471861,
+        "auprc_status": "ok",
+        "eval_positive_clusters": 6,
+        "seed": 101,
+        "selected_gate_threshold": 0.4
+      },
+      {
+        "auprc": 0.2527146464646465,
+        "auprc_status": "ok",
+        "eval_positive_clusters": 4,
+        "seed": 202,
+        "selected_gate_threshold": 0.4
+      }
+    ],
+    "positive_clusters": 26,
+    "record_type": "d2_cell_detector"
+  },
+  "displacement": [
+    {
+      "chelation_alpha_0_05": {
+        "max_displacement": 0.020664709677901603,
+        "max_relative_displacement": 0.02172354187046518,
+        "mean_displacement": 0.0010559235972392245,
+        "mean_relative_displacement": 0.0011185158957118947,
+        "moved_fraction": 0.0888
+      },
+      "chelation_primary": {
+        "max_displacement": 0.020664709677901603,
+        "max_relative_displacement": 0.02172354187046518,
+        "mean_displacement": 0.0010559235972392245,
+        "mean_relative_displacement": 0.0011185158957118947,
+        "moved_fraction": 0.0888
+      },
+      "corruption_mean": 0.04371039301558844
+    },
+    {
+      "chelation_alpha_0_05": {
+        "max_displacement": 0.019922859060226103,
+        "max_relative_displacement": 0.02091137920785663,
+        "mean_displacement": 0.0007200818440575896,
+        "mean_relative_displacement": 0.0007570925065041204,
+        "moved_fraction": 0.0664
+      },
+      "chelation_primary": {
+        "max_displacement": 0.019922859060226103,
+        "max_relative_displacement": 0.02091137920785663,
+        "mean_displacement": 0.0007200818440575896,
+        "mean_relative_displacement": 0.0007570925065041204,
+        "moved_fraction": 0.0664
+      },
+      "corruption_mean": 0.04082121485878482
+    },
+    {
+      "chelation_alpha_0_05": {
+        "max_displacement": 0.0,
+        "max_relative_displacement": 0.0,
+        "mean_displacement": 0.0,
+        "mean_relative_displacement": 0.0,
+        "moved_fraction": 0.0
+      },
+      "chelation_primary": {
+        "max_displacement": 0.0,
+        "max_relative_displacement": 0.0,
+        "mean_displacement": 0.0,
+        "mean_relative_displacement": 0.0,
+        "moved_fraction": 0.0
+      },
+      "corruption_mean": 0.032982782189830084
+    },
+    {
+      "chelation_alpha_0_05": {
+        "max_displacement": 0.048233927327019706,
+        "max_relative_displacement": 0.050000000000000024,
+        "mean_displacement": 0.0057874420436202,
+        "mean_relative_displacement": 0.006092042121088372,
+        "moved_fraction": 0.142
+      },
+      "chelation_primary": {
+        "max_displacement": 0.06703756353445568,
+        "max_relative_displacement": 0.0710136503208234,
+        "mean_displacement": 0.006066322915157303,
+        "mean_relative_displacement": 0.006384785673640603,
+        "moved_fraction": 0.142
+      },
+      "corruption_mean": 0.041603423809258334
+    },
+    {
+      "chelation_alpha_0_05": {
+        "max_displacement": 0.03717495007993574,
+        "max_relative_displacement": 0.039250695935486725,
+        "mean_displacement": 0.001976483250915933,
+        "mean_relative_displacement": 0.0020911653786534787,
+        "moved_fraction": 0.0892
+      },
+      "chelation_primary": {
+        "max_displacement": 0.03717495007993574,
+        "max_relative_displacement": 0.039250695935486725,
+        "mean_displacement": 0.001976483250915933,
+        "mean_relative_displacement": 0.0020911653786534787,
+        "moved_fraction": 0.0892
+      },
+      "corruption_mean": 0.03406503715563726
+    }
+  ],
+  "g2": {
+    "contrast_half_widths": {
+      "chelation_vs_cbie": 0.025490662626778033,
+      "chelation_vs_global_ridge": 0.02422343229653217,
+      "chelation_vs_hubness": 0.028967298241774304
+    },
+    "family": [
+      "chelation_vs_cbie",
+      "chelation_vs_hubness",
+      "chelation_vs_global_ridge"
+    ],
+    "gate": "G2",
+    "median_half_width": 0.025490662626778033,
+    "pass": false,
+    "query_count": 60,
+    "rough_query_count_for_threshold": 174,
+    "threshold": 0.015
+  },
+  "harness_parity_max_abs": 0.0,
+  "leakage_audits": [
+    {
+      "contaminated_ids": [],
+      "fit_document_count": 218,
+      "known_positive_document_count": 2063,
+      "positive_documents_in_fit": 0
+    },
+    {
+      "contaminated_ids": [],
+      "fit_document_count": 218,
+      "known_positive_document_count": 2063,
+      "positive_documents_in_fit": 0
+    },
+    {
+      "contaminated_ids": [],
+      "fit_document_count": 218,
+      "known_positive_document_count": 2063,
+      "positive_documents_in_fit": 0
+    },
+    {
+      "contaminated_ids": [],
+      "fit_document_count": 218,
+      "known_positive_document_count": 2063,
+      "positive_documents_in_fit": 0
+    },
+    {
+      "contaminated_ids": [],
+      "fit_document_count": 218,
+      "known_positive_document_count": 2063,
+      "positive_documents_in_fit": 0
+    }
+  ],
+  "min_oracle_gap": -0.009101934122341171,
+  "pack": {
+    "arrays": "research\\drift_recovery\\out\\d2\\cells\\nfcorpus_c16\\cell_pack.npz",
+    "metadata": "research\\drift_recovery\\out\\d2\\cells\\nfcorpus_c16\\cell_pack.json",
+    "sha256": "9e695e37cdfe655fc935e9eb4fc4ceaf98c38d971c858dd7be015fea290c6990"
+  },
+  "parameter_budgets": [
+    {
+      "chelation_primary": 27648,
+      "matched": true,
+      "paired_local_adapter": 27648
+    },
+    {
+      "chelation_primary": 27648,
+      "matched": true,
+      "paired_local_adapter": 27648
+    },
+    {
+      "chelation_primary": 27648,
+      "matched": true,
+      "paired_local_adapter": 27648
+    },
+    {
+      "chelation_primary": 27648,
+      "matched": true,
+      "paired_local_adapter": 27648
+    },
+    {
+      "chelation_primary": 27648,
+      "matched": true,
+      "paired_local_adapter": 27648
+    }
+  ],
+  "record_type": "d2_decision_cell",
+  "seeds": [
+    42,
+    1337,
+    7,
+    101,
+    202
+  ],
+  "selected_hyperparameters": [
+    {
+      "chelation_primary_radial_gain": 0.05,
+      "detector_gate_threshold": 0.4,
+      "global_ridge_regularization": 0.1,
+      "hubness_strength": 0.1,
+      "paired_local_regularization": 0.1
+    },
+    {
+      "chelation_primary_radial_gain": 0.05,
+      "detector_gate_threshold": 0.4,
+      "global_ridge_regularization": 0.1,
+      "hubness_strength": 0.1,
+      "paired_local_regularization": 0.1
+    },
+    {
+      "chelation_primary_radial_gain": 0.05,
+      "detector_gate_threshold": 0.4,
+      "global_ridge_regularization": 0.1,
+      "hubness_strength": 0.1,
+      "paired_local_regularization": 0.1
+    },
+    {
+      "chelation_primary_radial_gain": 0.2,
+      "detector_gate_threshold": 0.4,
+      "global_ridge_regularization": 0.1,
+      "hubness_strength": 0.1,
+      "paired_local_regularization": 0.1
+    },
+    {
+      "chelation_primary_radial_gain": 0.1,
+      "detector_gate_threshold": 0.4,
+      "global_ridge_regularization": 0.1,
+      "hubness_strength": 0.1,
+      "paired_local_regularization": 0.1
+    }
+  ]
+}

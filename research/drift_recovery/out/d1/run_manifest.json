@@ -1,0 +1,62 @@
+{
+  "command": "python research/drift_recovery/run_d1.py --device cuda --paper D:\\GITHUB\\CHELATEDAI\\docs\\waypoint-research-2026-06-09\\paper-draft\\main.md",
+  "drift_manifest": {
+    "drift": "query_encoder_swap",
+    "projection_checksum": "3984ab778d1b8b909dfd4a637e74c6588017e4b158487745f29103193bac4626",
+    "projection_seed": 42,
+    "store_dim": 384,
+    "swap_dim": 768,
+    "swap_model": "all-mpnet-base-v2"
+  },
+  "environment": {
+    "HF_DATASETS_OFFLINE": "1",
+    "HF_HUB_OFFLINE": "1"
+  },
+  "harness_sha": "34ce4b5632e0d9cd2a16c29e0e1acc42e645b9c2",
+  "models": {
+    "old": "sentence-transformers/all-MiniLM-L6-v2",
+    "swap": "all-mpnet-base-v2"
+  },
+  "outputs": [
+    "C1_FIX_REPORT.md",
+    "bootstrap_cis.json",
+    "ci_report.md",
+    "contrasts_holm.json",
+    "d1_summary.json",
+    "ladder.json",
+    "leakage_sensitivity.json",
+    "learning_curve.json",
+    "paper_edits.md",
+    "run_manifest.json",
+    "scifact_evalsplit_pack.json",
+    "scifact_evalsplit_pack.npz",
+    "section3_draft.md"
+  ],
+  "paper_source_read_only": "D:\\GITHUB\\CHELATEDAI\\docs\\waypoint-research-2026-06-09\\paper-draft\\main.md",
+  "protocol": {
+    "anchor_fraction": 0.4,
+    "bootstrap_draws": 10000,
+    "bootstrap_seed": 20260630,
+    "dataset": "SciFact",
+    "eval_queries": 60,
+    "learning_counts": [
+      8,
+      16,
+      32,
+      64,
+      128
+    ],
+    "learning_order_seeds": [
+      7,
+      42,
+      1337,
+      2026,
+      9001
+    ],
+    "ndcg": "binary NDCG@10 from merged harness",
+    "split_seed": 42
+  },
+  "protocol_sha": "2215fb3ea7ef238988527370a71f858e94cf3efe694a2af1b58c30f92b477ca9",
+  "record_type": "d1_run_manifest",
+  "repo_sha": "34ce4b5632e0d9cd2a16c29e0e1acc42e645b9c2"
+}

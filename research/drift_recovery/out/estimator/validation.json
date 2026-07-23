@@ -1,0 +1,79 @@
+{
+  "bin_accuracy": 0.75,
+  "bin_thresholds": {
+    "high": "R >= 0.666667",
+    "low": "R < 0.333333",
+    "medium": "0.333333 <= R < 0.666667"
+  },
+  "held_out_axis": "regime (dataset / encoder family / anchor setting)",
+  "held_out_count": 4,
+  "lower_band_coverage": 0.75,
+  "record_type": "recoverability_leave_one_regime_out_validation",
+  "regime_count": 4,
+  "rows": [
+    {
+      "R_hat": 0.6840096562278455,
+      "actual_bin": "high",
+      "actual_recovery": 0.8434286306657018,
+      "bin_correct": true,
+      "lower_band": 0.5418130994796307,
+      "lower_band_covers": true,
+      "predicted_bin": "high",
+      "regime": "scifact_minilm_to_mpnet",
+      "training_regimes": [
+        "nfcorpus_minilm_to_mpnet",
+        "scifact_minilm_to_bge_large",
+        "nfcorpus_minilm_to_bge_large"
+      ]
+    },
+    {
+      "R_hat": 0.7635889655935123,
+      "actual_bin": "medium",
+      "actual_recovery": 0.647119786542357,
+      "bin_correct": false,
+      "lower_band": 0.6473716250700156,
+      "lower_band_covers": false,
+      "predicted_bin": "high",
+      "regime": "nfcorpus_minilm_to_mpnet",
+      "training_regimes": [
+        "scifact_minilm_to_mpnet",
+        "scifact_minilm_to_bge_large",
+        "nfcorpus_minilm_to_bge_large"
+      ]
+    },
+    {
+      "R_hat": 0.7558645839863694,
+      "actual_bin": "high",
+      "actual_recovery": 0.7223707722283974,
+      "bin_correct": true,
+      "lower_band": 0.050617102091020216,
+      "lower_band_covers": true,
+      "predicted_bin": "high",
+      "regime": "scifact_minilm_to_bge_large",
+      "training_regimes": [
+        "scifact_minilm_to_mpnet",
+        "nfcorpus_minilm_to_mpnet",
+        "nfcorpus_minilm_to_bge_large"
+      ]
+    },
+    {
+      "R_hat": 0.6562146658656209,
+      "actual_bin": "medium",
+      "actual_recovery": 0.6640397106924352,
+      "bin_correct": true,
+      "lower_band": 0.0,
+      "lower_band_covers": true,
+      "predicted_bin": "medium",
+      "regime": "nfcorpus_minilm_to_bge_large",
+      "training_regimes": [
+        "scifact_minilm_to_mpnet",
+        "nfcorpus_minilm_to_mpnet",
+        "scifact_minilm_to_bge_large"
+      ]
+    }
+  ],
+  "scoping_note": "Across 4 held-out regimes, Spearman=-0.400 and 3-way bin accuracy=75.0%; neither locked success threshold was met.",
+  "spearman": -0.39999999999999997,
+  "success_bar": "Spearman >= 0.7 OR bin accuracy >= 0.80, across >=3 regimes",
+  "verdict": "VALIDATION-NEGATIVE"
+}

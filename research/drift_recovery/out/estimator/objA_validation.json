@@ -1,0 +1,692 @@
+{
+  "block_loo": {
+    "dataset": {
+      "block_field": "dataset",
+      "cell_n": 6,
+      "comparisons": {
+        "mean_R": {
+          "beats_on_both": true,
+          "strictly_better_spearman": true,
+          "strictly_lower_mae": true
+        },
+        "oracle_gap_ols": {
+          "beats_on_both": true,
+          "strictly_better_spearman": true,
+          "strictly_lower_mae": true
+        }
+      },
+      "held_out_unit_count": 3,
+      "held_out_units": [
+        "FiQA2018",
+        "NFCorpus",
+        "SciFact"
+      ],
+      "metrics": {
+        "mean_R": {
+          "cell_n": 6,
+          "mae": 0.08527634333410956,
+          "spearman": -0.7171371656006361
+        },
+        "oracle_gap_ols": {
+          "cell_n": 6,
+          "mae": 0.07728807359818059,
+          "spearman": -0.08571428571428572
+        },
+        "oracle_margin_mean": {
+          "cell_n": 6,
+          "mae": 0.02521672354382141,
+          "spearman": 0.8857142857142857
+        }
+      },
+      "primary_beats_both_nulls": true,
+      "rows": [
+        {
+          "actual_R": 0.7470860965336013,
+          "held_out_block": "FiQA2018",
+          "predictions": {
+            "mean_R": 0.7192397250322229,
+            "oracle_gap_ols": 0.7441259374903852,
+            "oracle_margin_mean": 0.7035939160487312
+          },
+          "regime": "fiqa2018_minilm_to_bge_large_af040",
+          "training_blocks": [
+            "NFCorpus",
+            "SciFact"
+          ],
+          "training_regimes": [
+            "scifact_minilm_to_mpnet",
+            "scifact_minilm_to_bge_large",
+            "nfcorpus_minilm_to_mpnet",
+            "nfcorpus_minilm_to_bge_large"
+          ]
+        },
+        {
+          "actual_R": 0.8210915550465415,
+          "held_out_block": "FiQA2018",
+          "predictions": {
+            "mean_R": 0.7192397250322229,
+            "oracle_gap_ols": 0.759886021922634,
+            "oracle_margin_mean": 0.8305367587132476
+          },
+          "regime": "fiqa2018_minilm_to_mpnet_af040",
+          "training_blocks": [
+            "NFCorpus",
+            "SciFact"
+          ],
+          "training_regimes": [
+            "scifact_minilm_to_mpnet",
+            "scifact_minilm_to_bge_large",
+            "nfcorpus_minilm_to_mpnet",
+            "nfcorpus_minilm_to_bge_large"
+          ]
+        },
+        {
+          "actual_R": 0.6640397106924352,
+          "held_out_block": "NFCorpus",
+          "predictions": {
+            "mean_R": 0.7834942636185604,
+            "oracle_gap_ols": 0.787828841117111,
+            "oracle_margin_mean": 0.6830631014584301
+          },
+          "regime": "nfcorpus_minilm_to_bge_large",
+          "training_blocks": [
+            "FiQA2018",
+            "SciFact"
+          ],
+          "training_regimes": [
+            "scifact_minilm_to_mpnet",
+            "scifact_minilm_to_bge_large",
+            "fiqa2018_minilm_to_mpnet_af040",
+            "fiqa2018_minilm_to_bge_large_af040"
+          ]
+        },
+        {
+          "actual_R": 0.647119786542357,
+          "held_out_block": "NFCorpus",
+          "predictions": {
+            "mean_R": 0.7834942636185604,
+            "oracle_gap_ols": 0.7880355904804388,
+            "oracle_margin_mean": 0.6751874566243257
+          },
+          "regime": "nfcorpus_minilm_to_mpnet",
+          "training_blocks": [
+            "FiQA2018",
+            "SciFact"
+          ],
+          "training_regimes": [
+            "scifact_minilm_to_mpnet",
+            "scifact_minilm_to_bge_large",
+            "fiqa2018_minilm_to_mpnet_af040",
+            "fiqa2018_minilm_to_bge_large_af040"
+          ]
+        },
+        {
+          "actual_R": 0.7223707722283974,
+          "held_out_block": "SciFact",
+          "predictions": {
+            "mean_R": 0.7198342872037338,
+            "oracle_gap_ols": 0.8335440238519705,
+            "oracle_margin_mean": 0.7582587512448219
+          },
+          "regime": "scifact_minilm_to_bge_large",
+          "training_blocks": [
+            "FiQA2018",
+            "NFCorpus"
+          ],
+          "training_regimes": [
+            "nfcorpus_minilm_to_mpnet",
+            "nfcorpus_minilm_to_bge_large",
+            "fiqa2018_minilm_to_mpnet_af040",
+            "fiqa2018_minilm_to_bge_large_af040"
+          ]
+        },
+        {
+          "actual_R": 0.8434286306657018,
+          "held_out_block": "SciFact",
+          "predictions": {
+            "mean_R": 0.7198342872037338,
+            "oracle_gap_ols": 0.8197440672300725,
+            "oracle_margin_mean": 0.8280447134187375
+          },
+          "regime": "scifact_minilm_to_mpnet",
+          "training_blocks": [
+            "FiQA2018",
+            "NFCorpus"
+          ],
+          "training_regimes": [
+            "nfcorpus_minilm_to_mpnet",
+            "nfcorpus_minilm_to_bge_large",
+            "fiqa2018_minilm_to_mpnet_af040",
+            "fiqa2018_minilm_to_bge_large_af040"
+          ]
+        }
+      ]
+    },
+    "encoder_family": {
+      "block_field": "encoder_family",
+      "cell_n": 6,
+      "comparisons": {
+        "mean_R": {
+          "beats_on_both": true,
+          "strictly_better_spearman": true,
+          "strictly_lower_mae": true
+        },
+        "oracle_gap_ols": {
+          "beats_on_both": true,
+          "strictly_better_spearman": true,
+          "strictly_lower_mae": true
+        }
+      },
+      "held_out_unit_count": 2,
+      "held_out_units": [
+        "bge-large",
+        "mpnet"
+      ],
+      "metrics": {
+        "mean_R": {
+          "cell_n": 6,
+          "mae": 0.08072971091420696,
+          "spearman": -0.29277002188455997
+        },
+        "oracle_gap_ols": {
+          "cell_n": 6,
+          "mae": 0.06964619188306892,
+          "spearman": 0.42857142857142855
+        },
+        "oracle_margin_mean": {
+          "cell_n": 6,
+          "mae": 0.03235724946980826,
+          "spearman": 0.8285714285714286
+        }
+      },
+      "primary_beats_both_nulls": true,
+      "rows": [
+        {
+          "actual_R": 0.7470860965336013,
+          "held_out_block": "bge-large",
+          "predictions": {
+            "mean_R": 0.7705466574182002,
+            "oracle_gap_ols": 0.7932789413758556,
+            "oracle_margin_mean": 0.7064859094436802
+          },
+          "regime": "fiqa2018_minilm_to_bge_large_af040",
+          "training_blocks": [
+            "mpnet"
+          ],
+          "training_regimes": [
+            "scifact_minilm_to_mpnet",
+            "nfcorpus_minilm_to_mpnet",
+            "fiqa2018_minilm_to_mpnet_af040"
+          ]
+        },
+        {
+          "actual_R": 0.8210915550465415,
+          "held_out_block": "mpnet",
+          "predictions": {
+            "mean_R": 0.7111655264848112,
+            "oracle_gap_ols": 0.7274441104078693,
+            "oracle_margin_mean": 0.7896156966919027
+          },
+          "regime": "fiqa2018_minilm_to_mpnet_af040",
+          "training_blocks": [
+            "bge-large"
+          ],
+          "training_regimes": [
+            "scifact_minilm_to_bge_large",
+            "nfcorpus_minilm_to_bge_large",
+            "fiqa2018_minilm_to_bge_large_af040"
+          ]
+        },
+        {
+          "actual_R": 0.6640397106924352,
+          "held_out_block": "bge-large",
+          "predictions": {
+            "mean_R": 0.7705466574182002,
+            "oracle_gap_ols": 0.6556609310045679,
+            "oracle_margin_mean": 0.6570495216741328
+          },
+          "regime": "nfcorpus_minilm_to_bge_large",
+          "training_blocks": [
+            "mpnet"
+          ],
+          "training_regimes": [
+            "scifact_minilm_to_mpnet",
+            "nfcorpus_minilm_to_mpnet",
+            "fiqa2018_minilm_to_mpnet_af040"
+          ]
+        },
+        {
+          "actual_R": 0.647119786542357,
+          "held_out_block": "mpnet",
+          "predictions": {
+            "mean_R": 0.7111655264848112,
+            "oracle_gap_ols": 0.6706120439494716,
+            "oracle_margin_mean": 0.6753648046121427
+          },
+          "regime": "nfcorpus_minilm_to_mpnet",
+          "training_blocks": [
+            "bge-large"
+          ],
+          "training_regimes": [
+            "scifact_minilm_to_bge_large",
+            "nfcorpus_minilm_to_bge_large",
+            "fiqa2018_minilm_to_bge_large_af040"
+          ]
+        },
+        {
+          "actual_R": 0.7223707722283974,
+          "held_out_block": "bge-large",
+          "predictions": {
+            "mean_R": 0.7705466574182002,
+            "oracle_gap_ols": 0.8610830697445641,
+            "oracle_margin_mean": 0.7535772238092568
+          },
+          "regime": "scifact_minilm_to_bge_large",
+          "training_blocks": [
+            "mpnet"
+          ],
+          "training_regimes": [
+            "scifact_minilm_to_mpnet",
+            "nfcorpus_minilm_to_mpnet",
+            "fiqa2018_minilm_to_mpnet_af040"
+          ]
+        },
+        {
+          "actual_R": 0.8434286306657018,
+          "held_out_block": "mpnet",
+          "predictions": {
+            "mean_R": 0.7111655264848112,
+            "oracle_gap_ols": 0.7359751034593635,
+            "oracle_margin_mean": 0.7878028379603597
+          },
+          "regime": "scifact_minilm_to_mpnet",
+          "training_blocks": [
+            "bge-large"
+          ],
+          "training_regimes": [
+            "scifact_minilm_to_bge_large",
+            "nfcorpus_minilm_to_bge_large",
+            "fiqa2018_minilm_to_bge_large_af040"
+          ]
+        }
+      ]
+    }
+  },
+  "counts": {
+    "available_cell_n": 6,
+    "cell_n": 6,
+    "dataset_holdout_unit_count": 3,
+    "encoder_family_holdout_unit_count": 2,
+    "independent_pair_block_n": 6,
+    "pseudo_replicate_cell_n": 0,
+    "registered_cell_n": 6
+  },
+  "fiqa_held_out": {
+    "held_out_training_regimes": [
+      "scifact_minilm_to_mpnet",
+      "scifact_minilm_to_bge_large",
+      "nfcorpus_minilm_to_mpnet",
+      "nfcorpus_minilm_to_bge_large"
+    ],
+    "margin_beats_gap_on_both_within_fiqa": false,
+    "metrics_within_two_fiqa_cells": {
+      "mean_R": {
+        "cell_n": 2,
+        "mae": 0.0648491007578485,
+        "spearman": null
+      },
+      "oracle_gap_ols": {
+        "cell_n": 2,
+        "mae": 0.03208284608356177,
+        "spearman": 1.0
+      },
+      "oracle_margin_mean": {
+        "cell_n": 2,
+        "mae": 0.02646869207578806,
+        "spearman": 1.0
+      }
+    },
+    "rows": [
+      {
+        "actual_R": 0.7470860965336013,
+        "held_out_block": "FiQA2018",
+        "predictions": {
+          "mean_R": 0.7192397250322229,
+          "oracle_gap_ols": 0.7441259374903852,
+          "oracle_margin_mean": 0.7035939160487312
+        },
+        "regime": "fiqa2018_minilm_to_bge_large_af040",
+        "training_blocks": [
+          "NFCorpus",
+          "SciFact"
+        ],
+        "training_regimes": [
+          "scifact_minilm_to_mpnet",
+          "scifact_minilm_to_bge_large",
+          "nfcorpus_minilm_to_mpnet",
+          "nfcorpus_minilm_to_bge_large"
+        ]
+      },
+      {
+        "actual_R": 0.8210915550465415,
+        "held_out_block": "FiQA2018",
+        "predictions": {
+          "mean_R": 0.7192397250322229,
+          "oracle_gap_ols": 0.759886021922634,
+          "oracle_margin_mean": 0.8305367587132476
+        },
+        "regime": "fiqa2018_minilm_to_mpnet_af040",
+        "training_blocks": [
+          "NFCorpus",
+          "SciFact"
+        ],
+        "training_regimes": [
+          "scifact_minilm_to_mpnet",
+          "scifact_minilm_to_bge_large",
+          "nfcorpus_minilm_to_mpnet",
+          "nfcorpus_minilm_to_bge_large"
+        ]
+      }
+    ],
+    "status": "available"
+  },
+  "gap_only_failure_under_either_scheme": false,
+  "generated_at_utc": "2026-07-10T19:56:45.343462+00:00",
+  "inventory": [
+    {
+      "R": 0.8434286306657018,
+      "anchor_fraction": 0.4,
+      "build_action": "reused_existing",
+      "dataset": "SciFact",
+      "encoder_family": "mpnet",
+      "eval_positive_docs_in_fit": 0,
+      "existing_feature_audit": {
+        "max_abs_difference": 0.0,
+        "status": "match"
+      },
+      "floor_ndcg": 0.0,
+      "harness_parity": {
+        "c3a": 0.0,
+        "floor": 0.0,
+        "mlp": 0.0,
+        "oracle": 0.0,
+        "procrustes": 0.0,
+        "ridge": 0.0
+      },
+      "harness_parity_max_abs": 0.0,
+      "leakage_safe_fit_count": 600,
+      "name": "scifact_minilm_to_mpnet",
+      "oracle_gap": 0.8076072066050948,
+      "oracle_margin_mean": 0.07816141095598604,
+      "oracle_ndcg": 0.8076072066050948,
+      "pack_prefix": "research/drift_recovery/out/d1/scifact_evalsplit_pack",
+      "pack_sha256": "14bc80356f2d77b74e48edd266e5071b162fc9d905034cddf31dc7d4747058ac",
+      "ridge_ndcg": 0.6811590403826876,
+      "source": "reuse_existing",
+      "status": "available",
+      "swap_model": "all-mpnet-base-v2"
+    },
+    {
+      "R": 0.7223707722283974,
+      "anchor_fraction": 0.4,
+      "build_action": "reused_existing",
+      "dataset": "SciFact",
+      "encoder_family": "bge-large",
+      "eval_positive_docs_in_fit": 0,
+      "existing_feature_audit": {
+        "max_abs_difference": 0.0,
+        "status": "match"
+      },
+      "floor_ndcg": 0.016666666666666666,
+      "harness_parity": {
+        "floor": 0.0,
+        "oracle": 0.0,
+        "ridge": 0.0
+      },
+      "harness_parity_max_abs": 0.0,
+      "leakage_safe_fit_count": 600,
+      "name": "scifact_minilm_to_bge_large",
+      "oracle_gap": 0.8259686805467247,
+      "oracle_margin_mean": 0.0469631504238786,
+      "oracle_ndcg": 0.8426353472133914,
+      "pack_prefix": "research/drift_recovery/out/estimator/packs/scifact_minilm_to_bge_large_pack",
+      "pack_sha256": "642eb835d1bb62e772f1028dfe6dea7d13a9d9757c0922584cb0694d80b1cda8",
+      "ridge_ndcg": 0.6133223002696747,
+      "source": "reuse_existing",
+      "status": "available",
+      "swap_model": "BAAI/bge-large-en-v1.5"
+    },
+    {
+      "R": 0.647119786542357,
+      "anchor_fraction": 0.4,
+      "build_action": "reused_existing",
+      "dataset": "NFCorpus",
+      "encoder_family": "mpnet",
+      "eval_positive_docs_in_fit": 0,
+      "existing_feature_audit": {
+        "max_abs_difference": 0.0,
+        "status": "match"
+      },
+      "floor_ndcg": 0.023905613995729966,
+      "harness_parity": {
+        "floor": 0.0,
+        "oracle": 0.0,
+        "ridge": 0.0
+      },
+      "harness_parity_max_abs": 0.0,
+      "leakage_safe_fit_count": 869,
+      "name": "nfcorpus_minilm_to_mpnet",
+      "oracle_gap": 0.5813717699567543,
+      "oracle_margin_mean": 0.003969339592398955,
+      "oracle_ndcg": 0.6052773839524843,
+      "pack_prefix": "research/drift_recovery/out/estimator/packs/nfcorpus_minilm_to_mpnet_pack",
+      "pack_sha256": "0e7e4354a12e28dcef370df044fe5a4cc3193b79aceddf6a0881c9c4911cf25d",
+      "ridge_ndcg": 0.4001227896718971,
+      "source": "reuse_existing",
+      "status": "available",
+      "swap_model": "all-mpnet-base-v2"
+    },
+    {
+      "R": 0.6640397106924352,
+      "anchor_fraction": 0.4,
+      "build_action": "reused_existing",
+      "dataset": "NFCorpus",
+      "encoder_family": "bge-large",
+      "eval_positive_docs_in_fit": 0,
+      "existing_feature_audit": {
+        "max_abs_difference": 0.0,
+        "status": "match"
+      },
+      "floor_ndcg": 0.05272833202262924,
+      "harness_parity": {
+        "floor": 0.0,
+        "oracle": 0.0,
+        "ridge": 0.0
+      },
+      "harness_parity_max_abs": 0.0,
+      "leakage_safe_fit_count": 869,
+      "name": "nfcorpus_minilm_to_bge_large",
+      "oracle_gap": 0.5908701019901607,
+      "oracle_margin_mean": 0.007905342283582278,
+      "oracle_ndcg": 0.6435984340127899,
+      "pack_prefix": "research/drift_recovery/out/estimator/packs/nfcorpus_minilm_to_bge_large_pack",
+      "pack_sha256": "548fdb0bbfecb621ea3a80e14f8f07bce4fe1f680b4ec6585545af058431da13",
+      "ridge_ndcg": 0.44508954360498515,
+      "source": "reuse_existing",
+      "status": "available",
+      "swap_model": "BAAI/bge-large-en-v1.5"
+    },
+    {
+      "R": 0.8210915550465415,
+      "anchor_fraction": 0.4,
+      "build_action": "reused_new",
+      "dataset": "FiQA2018",
+      "encoder_family": "mpnet",
+      "eval_positive_docs_in_fit": 0,
+      "existing_feature_audit": {
+        "status": "new"
+      },
+      "floor_ndcg": 0.008333333333333333,
+      "harness_parity": {
+        "floor": 0.0,
+        "oracle": 0.0,
+        "ridge": 0.0
+      },
+      "harness_parity_max_abs": 0.0,
+      "leakage_safe_fit_count": 600,
+      "name": "fiqa2018_minilm_to_mpnet_af040",
+      "oracle_gap": 0.7780796270743866,
+      "oracle_margin_mean": 0.07935762313061738,
+      "oracle_ndcg": 0.7864129604077199,
+      "pack_prefix": "research/drift_recovery/out/estimator/packs/fiqa2018_minilm_to_mpnet_af040_pack",
+      "pack_sha256": "766810b8d2c2a09ea7a9376f7478d625abb0c4c891e3295454797e21f3e33072",
+      "ridge_ndcg": 0.6472079442778745,
+      "source": "build_new",
+      "status": "available",
+      "swap_model": "all-mpnet-base-v2"
+    },
+    {
+      "R": 0.7470860965336013,
+      "anchor_fraction": 0.4,
+      "build_action": "reused_new",
+      "dataset": "FiQA2018",
+      "encoder_family": "bge-large",
+      "eval_positive_docs_in_fit": 0,
+      "existing_feature_audit": {
+        "status": "new"
+      },
+      "floor_ndcg": 0.017020268937197602,
+      "harness_parity": {
+        "floor": 0.0,
+        "oracle": 0.0,
+        "ridge": 0.0
+      },
+      "harness_parity_max_abs": 0.0,
+      "leakage_safe_fit_count": 600,
+      "name": "fiqa2018_minilm_to_bge_large_af040",
+      "oracle_gap": 0.7483691856844581,
+      "oracle_margin_mean": 0.02790868749892099,
+      "oracle_ndcg": 0.7653894546216556,
+      "pack_prefix": "research/drift_recovery/out/estimator/packs/fiqa2018_minilm_to_bge_large_af040_pack",
+      "pack_sha256": "683a83a43633f0ba8bf74d5bb89d617bbe796fbdc391095326f68fbe7c97282a",
+      "ridge_ndcg": 0.5761164826362293,
+      "source": "build_new",
+      "status": "available",
+      "swap_model": "BAAI/bge-large-en-v1.5"
+    }
+  ],
+  "offline_environment": {
+    "HF_DATASETS_OFFLINE": "1",
+    "HF_HUB_OFFLINE": "1",
+    "TRANSFORMERS_OFFLINE": "1",
+    "execution": "sequential"
+  },
+  "partial_spearman": {
+    "definition": "Pearson correlation of ranked-margin and ranked-R OLS residuals after separate adjustment for intercept plus ranked oracle_gap.",
+    "independent_pair_block_n": 6,
+    "partial_spearman_margin_R_controlling_oracle_gap": 0.7897188828807973,
+    "raw_spearman_gap_R": 0.6571428571428571,
+    "raw_spearman_margin_R": 0.8857142857142857,
+    "raw_spearman_margin_minus_gap": 0.22857142857142854
+  },
+  "preregistration": {
+    "hashes": {
+      "prereg_objA.json": "ab06418b5d331cdb0c19a79f021d6125a0ae58073247bd8bdc85962ca5ae658f",
+      "prereg_objA.md": "4d1aac9f92390e9d0298afe40a51dc5677456d8a0a765e50a778e550f53248a2"
+    },
+    "id": "objA-oracle-margin-block-loo-v1",
+    "null_names": [
+      "oracle_gap_ols",
+      "mean_R"
+    ],
+    "primary_feature_names": [
+      "oracle_margin_mean"
+    ]
+  },
+  "record_type": "drift_recovery_objA_validation",
+  "regimes": [
+    {
+      "R": 0.8434286306657018,
+      "anchor_fraction": 0.4,
+      "dataset": "SciFact",
+      "encoder_family": "mpnet",
+      "floor_ndcg": 0.0,
+      "name": "scifact_minilm_to_mpnet",
+      "oracle_gap": 0.8076072066050948,
+      "oracle_margin_mean": 0.07816141095598604,
+      "oracle_ndcg": 0.8076072066050948,
+      "ridge_ndcg": 0.6811590403826876,
+      "swap_model": "all-mpnet-base-v2"
+    },
+    {
+      "R": 0.7223707722283974,
+      "anchor_fraction": 0.4,
+      "dataset": "SciFact",
+      "encoder_family": "bge-large",
+      "floor_ndcg": 0.016666666666666666,
+      "name": "scifact_minilm_to_bge_large",
+      "oracle_gap": 0.8259686805467247,
+      "oracle_margin_mean": 0.0469631504238786,
+      "oracle_ndcg": 0.8426353472133914,
+      "ridge_ndcg": 0.6133223002696747,
+      "swap_model": "BAAI/bge-large-en-v1.5"
+    },
+    {
+      "R": 0.647119786542357,
+      "anchor_fraction": 0.4,
+      "dataset": "NFCorpus",
+      "encoder_family": "mpnet",
+      "floor_ndcg": 0.023905613995729966,
+      "name": "nfcorpus_minilm_to_mpnet",
+      "oracle_gap": 0.5813717699567543,
+      "oracle_margin_mean": 0.003969339592398955,
+      "oracle_ndcg": 0.6052773839524843,
+      "ridge_ndcg": 0.4001227896718971,
+      "swap_model": "all-mpnet-base-v2"
+    },
+    {
+      "R": 0.6640397106924352,
+      "anchor_fraction": 0.4,
+      "dataset": "NFCorpus",
+      "encoder_family": "bge-large",
+      "floor_ndcg": 0.05272833202262924,
+      "name": "nfcorpus_minilm_to_bge_large",
+      "oracle_gap": 0.5908701019901607,
+      "oracle_margin_mean": 0.007905342283582278,
+      "oracle_ndcg": 0.6435984340127899,
+      "ridge_ndcg": 0.44508954360498515,
+      "swap_model": "BAAI/bge-large-en-v1.5"
+    },
+    {
+      "R": 0.8210915550465415,
+      "anchor_fraction": 0.4,
+      "dataset": "FiQA2018",
+      "encoder_family": "mpnet",
+      "floor_ndcg": 0.008333333333333333,
+      "name": "fiqa2018_minilm_to_mpnet_af040",
+      "oracle_gap": 0.7780796270743866,
+      "oracle_margin_mean": 0.07935762313061738,
+      "oracle_ndcg": 0.7864129604077199,
+      "ridge_ndcg": 0.6472079442778745,
+      "swap_model": "all-mpnet-base-v2"
+    },
+    {
+      "R": 0.7470860965336013,
+      "anchor_fraction": 0.4,
+      "dataset": "FiQA2018",
+      "encoder_family": "bge-large",
+      "floor_ndcg": 0.017020268937197602,
+      "name": "fiqa2018_minilm_to_bge_large_af040",
+      "oracle_gap": 0.7483691856844581,
+      "oracle_margin_mean": 0.02790868749892099,
+      "oracle_ndcg": 0.7653894546216556,
+      "ridge_ndcg": 0.5761164826362293,
+      "swap_model": "BAAI/bge-large-en-v1.5"
+    }
+  ],
+  "schema_version": 1,
+  "success_bar_met": true,
+  "validated_positive": false,
+  "verdict": "PROMISING-BUT-UNDERPOWERED",
+  "verdict_policy_note": "Even a met AND-bar is only PROMISING-BUT-UNDERPOWERED because the offline scope has three dataset and two encoder-family holdout units."
+}

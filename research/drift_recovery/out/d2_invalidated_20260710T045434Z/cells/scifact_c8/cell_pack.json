@@ -1,0 +1,135 @@
+{
+  "array_shapes": {
+    "detector_harm_losses": [
+      5,
+      32
+    ],
+    "detector_probabilities": [
+      5,
+      32
+    ],
+    "query_ids": [
+      60
+    ],
+    "score__all_but_top": [
+      5,
+      60
+    ],
+    "score__cbie": [
+      5,
+      60
+    ],
+    "score__chelation_alpha_0_05": [
+      5,
+      60
+    ],
+    "score__chelation_primary": [
+      5,
+      60
+    ],
+    "score__floor": [
+      5,
+      60
+    ],
+    "score__global_ridge": [
+      5,
+      60
+    ],
+    "score__hubness": [
+      5,
+      60
+    ],
+    "score__oracle": [
+      5,
+      60
+    ],
+    "score__paired_local_adapter": [
+      5,
+      60
+    ],
+    "score__zca": [
+      5,
+      60
+    ],
+    "seed_ids": [
+      5
+    ]
+  },
+  "arrays_file": "cell_pack.npz",
+  "arrays_sha256": "b1d7f38be87a336ca369674710fc54da8eb243812ae86c20271174756eb06dfc",
+  "format_version": 1,
+  "metadata": {
+    "beta": 0.1,
+    "collapse_cluster_count": 8,
+    "dataset": "SciFact",
+    "method_labels": {
+      "all_but_top": {
+        "component_count": 1
+      },
+      "cbie": {
+        "cluster_count": 32,
+        "epsilon": 0.0001,
+        "routing_temperature": 0.25
+      },
+      "chelation_alpha_0_05": {
+        "alpha": 0.05,
+        "judged_by_g3": false,
+        "radial_gain": "selected_primary_radial_gain"
+      },
+      "chelation_primary": {
+        "alpha": null,
+        "radial_gain_candidates": [
+          0.05,
+          0.1,
+          0.2
+        ],
+        "supervision": "corrupted_geometry_plus_anchor_validation_harm_only"
+      },
+      "design_premise_stress_arms": [
+        "chelation_alpha_0_05"
+      ],
+      "diagnostic_arms": [
+        "paired_local_adapter"
+      ],
+      "exploratory_arms": [
+        "zca",
+        "all_but_top"
+      ],
+      "global_ridge": {
+        "regularization_candidates": [
+          0.1,
+          1.0,
+          10.0
+        ]
+      },
+      "hubness": {
+        "strength_candidates": [
+          0.1,
+          0.25,
+          0.5
+        ]
+      },
+      "paired_local_adapter": {
+        "regularization_candidates": [
+          0.1,
+          1.0
+        ]
+      },
+      "primary_arms": [
+        "global_ridge",
+        "cbie",
+        "hubness",
+        "chelation_primary"
+      ],
+      "shared_adapter_budget": {
+        "global_rank": 4,
+        "local_rank": 1,
+        "routing_temperature": 0.25
+      },
+      "zca": {
+        "epsilon": 0.0001
+      }
+    }
+  },
+  "record_type": "d2_cell_pack"
+}

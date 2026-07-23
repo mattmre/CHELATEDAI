@@ -1,0 +1,65 @@
+{
+  "audit": {
+    "eval_positive_docs_in_leakage_safe_fit": 0,
+    "eval_positive_docs_in_literal_fit": 28,
+    "eval_positive_docs_total": 62,
+    "leakage_safe_fit_count": 600,
+    "literal_fit_count": 600,
+    "literal_fit_share_of_eval_positive_docs": 0.45161290322580644
+  },
+  "fits": {
+    "leakage_safe_full_600": "first 600 seed-42 permutation documents after excluding every eval-positive document",
+    "literal_waypoint": "literal seed-42 half-corpus permutation"
+  },
+  "floor_ndcg": 0.0,
+  "methods": {
+    "mlp": {
+      "inflation_recovery_pp": 14.138726554633008,
+      "label": "residual MLP",
+      "leakage_safe_full_600": {
+        "eval_positive_docs_in_fit": 0,
+        "ndcg": 0.5451054010727805,
+        "recovery": 0.6749635176786221
+      },
+      "literal_frozen_score_max_abs_delta": 0.0,
+      "literal_waypoint": {
+        "eval_positive_docs_in_fit": 28,
+        "ndcg": 0.6592907756501849,
+        "recovery": 0.8163507832249521
+      }
+    },
+    "procrustes": {
+      "inflation_recovery_pp": 8.408211817368949,
+      "label": "closed-form orthogonal Procrustes",
+      "leakage_safe_full_600": {
+        "eval_positive_docs_in_fit": 0,
+        "ndcg": 0.5967599203911357,
+        "recovery": 0.738923471101392
+      },
+      "literal_frozen_score_max_abs_delta": 0.0,
+      "literal_waypoint": {
+        "eval_positive_docs_in_fit": 28,
+        "ndcg": 0.6646652449748285,
+        "recovery": 0.8230055892750815
+      }
+    },
+    "ridge": {
+      "inflation_recovery_pp": 5.4284330531711555,
+      "label": "ridge",
+      "leakage_safe_full_600": {
+        "eval_positive_docs_in_fit": 0,
+        "ndcg": 0.6373186238395446,
+        "recovery": 0.7891443001339905
+      },
+      "literal_frozen_score_max_abs_delta": 0.0,
+      "literal_waypoint": {
+        "eval_positive_docs_in_fit": 28,
+        "ndcg": 0.6811590403826878,
+        "recovery": 0.8434286306657021
+      }
+    }
+  },
+  "oracle_gap": 0.8076072066050948,
+  "oracle_ndcg": 0.8076072066050948,
+  "record_type": "d1_leakage_sensitivity"
+}

@@ -1,0 +1,1596 @@
+{
+  "allowed_verdict_labels": [
+    "POSITIVE",
+    "PROMISING-BUT-UNDERPOWERED",
+    "NEGATIVE"
+  ],
+  "block_loo": {
+    "dataset": {
+      "block_field": "dataset",
+      "cell_n": 12,
+      "comparisons": {
+        "mean_R": {
+          "beats_on_both": false,
+          "strictly_better_spearman": false,
+          "strictly_lower_mae": false
+        },
+        "oracle_gap_ols": {
+          "beats_on_both": false,
+          "strictly_better_spearman": false,
+          "strictly_lower_mae": false
+        }
+      },
+      "held_out_unit_count": 4,
+      "held_out_units": [
+        "ArguAna",
+        "FiQA2018",
+        "NFCorpus",
+        "SciFact"
+      ],
+      "metrics": {
+        "mean_R": {
+          "cell_n": 12,
+          "mae": 0.09958760637711539,
+          "spearman": -0.5182002205050366
+        },
+        "oracle_gap_ols": {
+          "cell_n": 12,
+          "mae": 0.12387397539271632,
+          "spearman": -0.4965034965034965
+        },
+        "oracle_margin_mean": {
+          "cell_n": 12,
+          "mae": 0.14922079360583781,
+          "spearman": -0.7062937062937062
+        }
+      },
+      "primary_beats_both_nulls": false,
+      "rows": [
+        {
+          "actual_R": 0.7932414485431329,
+          "held_out_block": "ArguAna",
+          "predictions": {
+            "mean_R": 0.6885716619323898,
+            "oracle_gap_ols": 0.7093764937269031,
+            "oracle_margin_mean": 0.5464215393584381
+          },
+          "regime": "arguana_minilm_to_bge_large_af040",
+          "training_blocks": [
+            "FiQA2018",
+            "NFCorpus",
+            "SciFact"
+          ],
+          "training_regimes": [
+            "scifact_minilm_to_mpnet",
+            "scifact_minilm_to_bge_large",
+            "scifact_minilm_to_e5_base_v2_af040",
+            "nfcorpus_minilm_to_mpnet",
+            "nfcorpus_minilm_to_bge_large",
+            "nfcorpus_minilm_to_e5_base_v2_af040",
+            "fiqa2018_minilm_to_mpnet_af040",
+            "fiqa2018_minilm_to_bge_large_af040",
+            "fiqa2018_minilm_to_e5_base_v2_af040"
+          ]
+        },
+        {
+          "actual_R": 0.7466172771306891,
+          "held_out_block": "ArguAna",
+          "predictions": {
+            "mean_R": 0.6885716619323898,
+            "oracle_gap_ols": 0.6747311020734278,
+            "oracle_margin_mean": 0.5524275960297513
+          },
+          "regime": "arguana_minilm_to_e5_base_v2_af040",
+          "training_blocks": [
+            "FiQA2018",
+            "NFCorpus",
+            "SciFact"
+          ],
+          "training_regimes": [
+            "scifact_minilm_to_mpnet",
+            "scifact_minilm_to_bge_large",
+            "scifact_minilm_to_e5_base_v2_af040",
+            "nfcorpus_minilm_to_mpnet",
+            "nfcorpus_minilm_to_bge_large",
+            "nfcorpus_minilm_to_e5_base_v2_af040",
+            "fiqa2018_minilm_to_mpnet_af040",
+            "fiqa2018_minilm_to_bge_large_af040",
+            "fiqa2018_minilm_to_e5_base_v2_af040"
+          ]
+        },
+        {
+          "actual_R": 0.8568803713466899,
+          "held_out_block": "ArguAna",
+          "predictions": {
+            "mean_R": 0.6885716619323898,
+            "oracle_gap_ols": 0.653263684442856,
+            "oracle_margin_mean": 0.41937035248942617
+          },
+          "regime": "arguana_minilm_to_mpnet_af040",
+          "training_blocks": [
+            "FiQA2018",
+            "NFCorpus",
+            "SciFact"
+          ],
+          "training_regimes": [
+            "scifact_minilm_to_mpnet",
+            "scifact_minilm_to_bge_large",
+            "scifact_minilm_to_e5_base_v2_af040",
+            "nfcorpus_minilm_to_mpnet",
+            "nfcorpus_minilm_to_bge_large",
+            "nfcorpus_minilm_to_e5_base_v2_af040",
+            "fiqa2018_minilm_to_mpnet_af040",
+            "fiqa2018_minilm_to_bge_large_af040",
+            "fiqa2018_minilm_to_e5_base_v2_af040"
+          ]
+        },
+        {
+          "actual_R": 0.7470860965336013,
+          "held_out_block": "FiQA2018",
+          "predictions": {
+            "mean_R": 0.7191376811396617,
+            "oracle_gap_ols": 0.7369293501999699,
+            "oracle_margin_mean": 0.714158385027374
+          },
+          "regime": "fiqa2018_minilm_to_bge_large_af040",
+          "training_blocks": [
+            "ArguAna",
+            "NFCorpus",
+            "SciFact"
+          ],
+          "training_regimes": [
+            "scifact_minilm_to_mpnet",
+            "scifact_minilm_to_bge_large",
+            "scifact_minilm_to_e5_base_v2_af040",
+            "nfcorpus_minilm_to_mpnet",
+            "nfcorpus_minilm_to_bge_large",
+            "nfcorpus_minilm_to_e5_base_v2_af040",
+            "arguana_minilm_to_mpnet_af040",
+            "arguana_minilm_to_bge_large_af040",
+            "arguana_minilm_to_e5_base_v2_af040"
+          ]
+        },
+        {
+          "actual_R": 0.553467272574923,
+          "held_out_block": "FiQA2018",
+          "predictions": {
+            "mean_R": 0.7191376811396617,
+            "oracle_gap_ols": 0.7415100646277598,
+            "oracle_margin_mean": 0.7190887238792024
+          },
+          "regime": "fiqa2018_minilm_to_e5_base_v2_af040",
+          "training_blocks": [
+            "ArguAna",
+            "NFCorpus",
+            "SciFact"
+          ],
+          "training_regimes": [
+            "scifact_minilm_to_mpnet",
+            "scifact_minilm_to_bge_large",
+            "scifact_minilm_to_e5_base_v2_af040",
+            "nfcorpus_minilm_to_mpnet",
+            "nfcorpus_minilm_to_bge_large",
+            "nfcorpus_minilm_to_e5_base_v2_af040",
+            "arguana_minilm_to_mpnet_af040",
+            "arguana_minilm_to_bge_large_af040",
+            "arguana_minilm_to_e5_base_v2_af040"
+          ]
+        },
+        {
+          "actual_R": 0.8210915550465415,
+          "held_out_block": "FiQA2018",
+          "predictions": {
+            "mean_R": 0.7191376811396617,
+            "oracle_gap_ols": 0.7464345249722034,
+            "oracle_margin_mean": 0.702377798704723
+          },
+          "regime": "fiqa2018_minilm_to_mpnet_af040",
+          "training_blocks": [
+            "ArguAna",
+            "NFCorpus",
+            "SciFact"
+          ],
+          "training_regimes": [
+            "scifact_minilm_to_mpnet",
+            "scifact_minilm_to_bge_large",
+            "scifact_minilm_to_e5_base_v2_af040",
+            "nfcorpus_minilm_to_mpnet",
+            "nfcorpus_minilm_to_bge_large",
+            "nfcorpus_minilm_to_e5_base_v2_af040",
+            "arguana_minilm_to_mpnet_af040",
+            "arguana_minilm_to_bge_large_af040",
+            "arguana_minilm_to_e5_base_v2_af040"
+          ]
+        },
+        {
+          "actual_R": 0.6640397106924352,
+          "held_out_block": "NFCorpus",
+          "predictions": {
+            "mean_R": 0.7423185924875043,
+            "oracle_gap_ols": 0.8204992811674193,
+            "oracle_margin_mean": 0.7410541279099979
+          },
+          "regime": "nfcorpus_minilm_to_bge_large",
+          "training_blocks": [
+            "ArguAna",
+            "FiQA2018",
+            "SciFact"
+          ],
+          "training_regimes": [
+            "scifact_minilm_to_mpnet",
+            "scifact_minilm_to_bge_large",
+            "scifact_minilm_to_e5_base_v2_af040",
+            "fiqa2018_minilm_to_mpnet_af040",
+            "fiqa2018_minilm_to_bge_large_af040",
+            "fiqa2018_minilm_to_e5_base_v2_af040",
+            "arguana_minilm_to_mpnet_af040",
+            "arguana_minilm_to_bge_large_af040",
+            "arguana_minilm_to_e5_base_v2_af040"
+          ]
+        },
+        {
+          "actual_R": 0.6018572247896886,
+          "held_out_block": "NFCorpus",
+          "predictions": {
+            "mean_R": 0.7423185924875043,
+            "oracle_gap_ols": 0.8344266829344983,
+            "oracle_margin_mean": 0.7403033645636061
+          },
+          "regime": "nfcorpus_minilm_to_e5_base_v2_af040",
+          "training_blocks": [
+            "ArguAna",
+            "FiQA2018",
+            "SciFact"
+          ],
+          "training_regimes": [
+            "scifact_minilm_to_mpnet",
+            "scifact_minilm_to_bge_large",
+            "scifact_minilm_to_e5_base_v2_af040",
+            "fiqa2018_minilm_to_mpnet_af040",
+            "fiqa2018_minilm_to_bge_large_af040",
+            "fiqa2018_minilm_to_e5_base_v2_af040",
+            "arguana_minilm_to_mpnet_af040",
+            "arguana_minilm_to_bge_large_af040",
+            "arguana_minilm_to_e5_base_v2_af040"
+          ]
+        },
+        {
+          "actual_R": 0.647119786542357,
+          "held_out_block": "NFCorpus",
+          "predictions": {
+            "mean_R": 0.7423185924875043,
+            "oracle_gap_ols": 0.8250390858118195,
+            "oracle_margin_mean": 0.7405189847654751
+          },
+          "regime": "nfcorpus_minilm_to_mpnet",
+          "training_blocks": [
+            "ArguAna",
+            "FiQA2018",
+            "SciFact"
+          ],
+          "training_regimes": [
+            "scifact_minilm_to_mpnet",
+            "scifact_minilm_to_bge_large",
+            "scifact_minilm_to_e5_base_v2_af040",
+            "fiqa2018_minilm_to_mpnet_af040",
+            "fiqa2018_minilm_to_bge_large_af040",
+            "fiqa2018_minilm_to_e5_base_v2_af040",
+            "arguana_minilm_to_mpnet_af040",
+            "arguana_minilm_to_bge_large_af040",
+            "arguana_minilm_to_e5_base_v2_af040"
+          ]
+        },
+        {
+          "actual_R": 0.7223707722283974,
+          "held_out_block": "SciFact",
+          "predictions": {
+            "mean_R": 0.7146000825777842,
+            "oracle_gap_ols": 0.7703270226300997,
+            "oracle_margin_mean": 0.7021014176678108
+          },
+          "regime": "scifact_minilm_to_bge_large",
+          "training_blocks": [
+            "ArguAna",
+            "FiQA2018",
+            "NFCorpus"
+          ],
+          "training_regimes": [
+            "nfcorpus_minilm_to_mpnet",
+            "nfcorpus_minilm_to_bge_large",
+            "nfcorpus_minilm_to_e5_base_v2_af040",
+            "fiqa2018_minilm_to_mpnet_af040",
+            "fiqa2018_minilm_to_bge_large_af040",
+            "fiqa2018_minilm_to_e5_base_v2_af040",
+            "arguana_minilm_to_mpnet_af040",
+            "arguana_minilm_to_bge_large_af040",
+            "arguana_minilm_to_e5_base_v2_af040"
+          ]
+        },
+        {
+          "actual_R": 0.596683908317863,
+          "held_out_block": "SciFact",
+          "predictions": {
+            "mean_R": 0.7146000825777842,
+            "oracle_gap_ols": 0.7560239127714272,
+            "oracle_margin_mean": 0.7121156689073564
+          },
+          "regime": "scifact_minilm_to_e5_base_v2_af040",
+          "training_blocks": [
+            "ArguAna",
+            "FiQA2018",
+            "NFCorpus"
+          ],
+          "training_regimes": [
+            "nfcorpus_minilm_to_mpnet",
+            "nfcorpus_minilm_to_bge_large",
+            "nfcorpus_minilm_to_e5_base_v2_af040",
+            "fiqa2018_minilm_to_mpnet_af040",
+            "fiqa2018_minilm_to_bge_large_af040",
+            "fiqa2018_minilm_to_e5_base_v2_af040",
+            "arguana_minilm_to_mpnet_af040",
+            "arguana_minilm_to_bge_large_af040",
+            "arguana_minilm_to_e5_base_v2_af040"
+          ]
+        },
+        {
+          "actual_R": 0.8434286306657018,
+          "held_out_block": "SciFact",
+          "predictions": {
+            "mean_R": 0.7146000825777842,
+            "oracle_gap_ols": 0.7634098939357603,
+            "oracle_margin_mean": 0.693122506055548
+          },
+          "regime": "scifact_minilm_to_mpnet",
+          "training_blocks": [
+            "ArguAna",
+            "FiQA2018",
+            "NFCorpus"
+          ],
+          "training_regimes": [
+            "nfcorpus_minilm_to_mpnet",
+            "nfcorpus_minilm_to_bge_large",
+            "nfcorpus_minilm_to_e5_base_v2_af040",
+            "fiqa2018_minilm_to_mpnet_af040",
+            "fiqa2018_minilm_to_bge_large_af040",
+            "fiqa2018_minilm_to_e5_base_v2_af040",
+            "arguana_minilm_to_mpnet_af040",
+            "arguana_minilm_to_bge_large_af040",
+            "arguana_minilm_to_e5_base_v2_af040"
+          ]
+        }
+      ]
+    },
+    "encoder_family": {
+      "block_field": "encoder_family",
+      "cell_n": 12,
+      "comparisons": {
+        "mean_R": {
+          "beats_on_both": false,
+          "strictly_better_spearman": true,
+          "strictly_lower_mae": false
+        },
+        "oracle_gap_ols": {
+          "beats_on_both": false,
+          "strictly_better_spearman": false,
+          "strictly_lower_mae": false
+        }
+      },
+      "held_out_unit_count": 3,
+      "held_out_units": [
+        "bge-large",
+        "e5-base-v2",
+        "mpnet"
+      ],
+      "metrics": {
+        "mean_R": {
+          "cell_n": 12,
+          "mae": 0.10406795381743679,
+          "spearman": -0.7095748751868991
+        },
+        "oracle_gap_ols": {
+          "cell_n": 12,
+          "mae": 0.09433474508822592,
+          "spearman": -0.44755244755244755
+        },
+        "oracle_margin_mean": {
+          "cell_n": 12,
+          "mae": 0.10553139329739218,
+          "spearman": -0.6853146853146853
+        }
+      },
+      "primary_beats_both_nulls": false,
+      "rows": [
+        {
+          "actual_R": 0.7932414485431329,
+          "held_out_block": "bge-large",
+          "predictions": {
+            "mean_R": 0.7083932533018067,
+            "oracle_gap_ols": 0.7231325775348576,
+            "oracle_margin_mean": 0.6940746880252299
+          },
+          "regime": "arguana_minilm_to_bge_large_af040",
+          "training_blocks": [
+            "e5-base-v2",
+            "mpnet"
+          ],
+          "training_regimes": [
+            "scifact_minilm_to_mpnet",
+            "scifact_minilm_to_e5_base_v2_af040",
+            "nfcorpus_minilm_to_mpnet",
+            "nfcorpus_minilm_to_e5_base_v2_af040",
+            "fiqa2018_minilm_to_mpnet_af040",
+            "fiqa2018_minilm_to_e5_base_v2_af040",
+            "arguana_minilm_to_mpnet_af040",
+            "arguana_minilm_to_e5_base_v2_af040"
+          ]
+        },
+        {
+          "actual_R": 0.7466172771306891,
+          "held_out_block": "e5-base-v2",
+          "predictions": {
+            "mean_R": 0.7619072964498571,
+            "oracle_gap_ols": 0.7485045486569961,
+            "oracle_margin_mean": 0.7592210922148479
+          },
+          "regime": "arguana_minilm_to_e5_base_v2_af040",
+          "training_blocks": [
+            "bge-large",
+            "mpnet"
+          ],
+          "training_regimes": [
+            "scifact_minilm_to_mpnet",
+            "scifact_minilm_to_bge_large",
+            "nfcorpus_minilm_to_mpnet",
+            "nfcorpus_minilm_to_bge_large",
+            "fiqa2018_minilm_to_mpnet_af040",
+            "fiqa2018_minilm_to_bge_large_af040",
+            "arguana_minilm_to_mpnet_af040",
+            "arguana_minilm_to_bge_large_af040"
+          ]
+        },
+        {
+          "actual_R": 0.8568803713466899,
+          "held_out_block": "mpnet",
+          "predictions": {
+            "mean_R": 0.6781704638513413,
+            "oracle_gap_ols": 0.6613798779547837,
+            "oracle_margin_mean": 0.7065894333882535
+          },
+          "regime": "arguana_minilm_to_mpnet_af040",
+          "training_blocks": [
+            "bge-large",
+            "e5-base-v2"
+          ],
+          "training_regimes": [
+            "scifact_minilm_to_bge_large",
+            "scifact_minilm_to_e5_base_v2_af040",
+            "nfcorpus_minilm_to_bge_large",
+            "nfcorpus_minilm_to_e5_base_v2_af040",
+            "fiqa2018_minilm_to_bge_large_af040",
+            "fiqa2018_minilm_to_e5_base_v2_af040",
+            "arguana_minilm_to_bge_large_af040",
+            "arguana_minilm_to_e5_base_v2_af040"
+          ]
+        },
+        {
+          "actual_R": 0.7470860965336013,
+          "held_out_block": "bge-large",
+          "predictions": {
+            "mean_R": 0.7083932533018067,
+            "oracle_gap_ols": 0.7191421940542085,
+            "oracle_margin_mean": 0.7151207283580863
+          },
+          "regime": "fiqa2018_minilm_to_bge_large_af040",
+          "training_blocks": [
+            "e5-base-v2",
+            "mpnet"
+          ],
+          "training_regimes": [
+            "scifact_minilm_to_mpnet",
+            "scifact_minilm_to_e5_base_v2_af040",
+            "nfcorpus_minilm_to_mpnet",
+            "nfcorpus_minilm_to_e5_base_v2_af040",
+            "fiqa2018_minilm_to_mpnet_af040",
+            "fiqa2018_minilm_to_e5_base_v2_af040",
+            "arguana_minilm_to_mpnet_af040",
+            "arguana_minilm_to_e5_base_v2_af040"
+          ]
+        },
+        {
+          "actual_R": 0.553467272574923,
+          "held_out_block": "e5-base-v2",
+          "predictions": {
+            "mean_R": 0.7619072964498571,
+            "oracle_gap_ols": 0.7803971530366355,
+            "oracle_margin_mean": 0.7608761011375604
+          },
+          "regime": "fiqa2018_minilm_to_e5_base_v2_af040",
+          "training_blocks": [
+            "bge-large",
+            "mpnet"
+          ],
+          "training_regimes": [
+            "scifact_minilm_to_mpnet",
+            "scifact_minilm_to_bge_large",
+            "nfcorpus_minilm_to_mpnet",
+            "nfcorpus_minilm_to_bge_large",
+            "fiqa2018_minilm_to_mpnet_af040",
+            "fiqa2018_minilm_to_bge_large_af040",
+            "arguana_minilm_to_mpnet_af040",
+            "arguana_minilm_to_bge_large_af040"
+          ]
+        },
+        {
+          "actual_R": 0.8210915550465415,
+          "held_out_block": "mpnet",
+          "predictions": {
+            "mean_R": 0.6781704638513413,
+            "oracle_gap_ols": 0.6903690106148117,
+            "oracle_margin_mean": 0.6493860245167584
+          },
+          "regime": "fiqa2018_minilm_to_mpnet_af040",
+          "training_blocks": [
+            "bge-large",
+            "e5-base-v2"
+          ],
+          "training_regimes": [
+            "scifact_minilm_to_bge_large",
+            "scifact_minilm_to_e5_base_v2_af040",
+            "nfcorpus_minilm_to_bge_large",
+            "nfcorpus_minilm_to_e5_base_v2_af040",
+            "fiqa2018_minilm_to_bge_large_af040",
+            "fiqa2018_minilm_to_e5_base_v2_af040",
+            "arguana_minilm_to_bge_large_af040",
+            "arguana_minilm_to_e5_base_v2_af040"
+          ]
+        },
+        {
+          "actual_R": 0.6640397106924352,
+          "held_out_block": "bge-large",
+          "predictions": {
+            "mean_R": 0.7083932533018067,
+            "oracle_gap_ols": 0.6848461152694356,
+            "oracle_margin_mean": 0.7060361613560439
+          },
+          "regime": "nfcorpus_minilm_to_bge_large",
+          "training_blocks": [
+            "e5-base-v2",
+            "mpnet"
+          ],
+          "training_regimes": [
+            "scifact_minilm_to_mpnet",
+            "scifact_minilm_to_e5_base_v2_af040",
+            "nfcorpus_minilm_to_mpnet",
+            "nfcorpus_minilm_to_e5_base_v2_af040",
+            "fiqa2018_minilm_to_mpnet_af040",
+            "fiqa2018_minilm_to_e5_base_v2_af040",
+            "arguana_minilm_to_mpnet_af040",
+            "arguana_minilm_to_e5_base_v2_af040"
+          ]
+        },
+        {
+          "actual_R": 0.6018572247896886,
+          "held_out_block": "e5-base-v2",
+          "predictions": {
+            "mean_R": 0.7619072964498571,
+            "oracle_gap_ols": 0.7005688285437255,
+            "oracle_margin_mean": 0.7605860611658796
+          },
+          "regime": "nfcorpus_minilm_to_e5_base_v2_af040",
+          "training_blocks": [
+            "bge-large",
+            "mpnet"
+          ],
+          "training_regimes": [
+            "scifact_minilm_to_mpnet",
+            "scifact_minilm_to_bge_large",
+            "nfcorpus_minilm_to_mpnet",
+            "nfcorpus_minilm_to_bge_large",
+            "fiqa2018_minilm_to_mpnet_af040",
+            "fiqa2018_minilm_to_bge_large_af040",
+            "arguana_minilm_to_mpnet_af040",
+            "arguana_minilm_to_bge_large_af040"
+          ]
+        },
+        {
+          "actual_R": 0.647119786542357,
+          "held_out_block": "mpnet",
+          "predictions": {
+            "mean_R": 0.6781704638513413,
+            "oracle_gap_ols": 0.6518153285194318,
+            "oracle_margin_mean": 0.6800576531771123
+          },
+          "regime": "nfcorpus_minilm_to_mpnet",
+          "training_blocks": [
+            "bge-large",
+            "e5-base-v2"
+          ],
+          "training_regimes": [
+            "scifact_minilm_to_bge_large",
+            "scifact_minilm_to_e5_base_v2_af040",
+            "nfcorpus_minilm_to_bge_large",
+            "nfcorpus_minilm_to_e5_base_v2_af040",
+            "fiqa2018_minilm_to_bge_large_af040",
+            "fiqa2018_minilm_to_e5_base_v2_af040",
+            "arguana_minilm_to_bge_large_af040",
+            "arguana_minilm_to_e5_base_v2_af040"
+          ]
+        },
+        {
+          "actual_R": 0.7223707722283974,
+          "held_out_block": "bge-large",
+          "predictions": {
+            "mean_R": 0.7083932533018067,
+            "oracle_gap_ols": 0.7360398059452117,
+            "oracle_margin_mean": 0.7237743582018074
+          },
+          "regime": "scifact_minilm_to_bge_large",
+          "training_blocks": [
+            "e5-base-v2",
+            "mpnet"
+          ],
+          "training_regimes": [
+            "scifact_minilm_to_mpnet",
+            "scifact_minilm_to_e5_base_v2_af040",
+            "nfcorpus_minilm_to_mpnet",
+            "nfcorpus_minilm_to_e5_base_v2_af040",
+            "fiqa2018_minilm_to_mpnet_af040",
+            "fiqa2018_minilm_to_e5_base_v2_af040",
+            "arguana_minilm_to_mpnet_af040",
+            "arguana_minilm_to_e5_base_v2_af040"
+          ]
+        },
+        {
+          "actual_R": 0.596683908317863,
+          "held_out_block": "e5-base-v2",
+          "predictions": {
+            "mean_R": 0.7619072964498571,
+            "oracle_gap_ols": 0.7904529287894067,
+            "oracle_margin_mean": 0.7612967186850562
+          },
+          "regime": "scifact_minilm_to_e5_base_v2_af040",
+          "training_blocks": [
+            "bge-large",
+            "mpnet"
+          ],
+          "training_regimes": [
+            "scifact_minilm_to_mpnet",
+            "scifact_minilm_to_bge_large",
+            "nfcorpus_minilm_to_mpnet",
+            "nfcorpus_minilm_to_bge_large",
+            "fiqa2018_minilm_to_mpnet_af040",
+            "fiqa2018_minilm_to_bge_large_af040",
+            "arguana_minilm_to_mpnet_af040",
+            "arguana_minilm_to_bge_large_af040"
+          ]
+        },
+        {
+          "actual_R": 0.8434286306657018,
+          "held_out_block": "mpnet",
+          "predictions": {
+            "mean_R": 0.6781704638513413,
+            "oracle_gap_ols": 0.6961562574027842,
+            "oracle_margin_mean": 0.6498727019405875
+          },
+          "regime": "scifact_minilm_to_mpnet",
+          "training_blocks": [
+            "bge-large",
+            "e5-base-v2"
+          ],
+          "training_regimes": [
+            "scifact_minilm_to_bge_large",
+            "scifact_minilm_to_e5_base_v2_af040",
+            "nfcorpus_minilm_to_bge_large",
+            "nfcorpus_minilm_to_e5_base_v2_af040",
+            "fiqa2018_minilm_to_bge_large_af040",
+            "fiqa2018_minilm_to_e5_base_v2_af040",
+            "arguana_minilm_to_bge_large_af040",
+            "arguana_minilm_to_e5_base_v2_af040"
+          ]
+        }
+      ]
+    }
+  },
+  "counts": {
+    "available_cell_n": 12,
+    "cell_n": 12,
+    "dataset_holdout_unit_count": 4,
+    "encoder_family_holdout_unit_count": 3,
+    "excluded_cell_n": 0,
+    "independent_pair_block_n": 12,
+    "pseudo_replicate_cell_n": 0,
+    "registered_cell_n": 12
+  },
+  "dataset_margin_beats_gap_at_four_blocks": false,
+  "dataset_margin_beats_gap_on_both": false,
+  "e5_protocol": {
+    "caveat": "This may understate e5 absolute quality but keeps the encoder-swap protocol identical across families.",
+    "model": "intfloat/e5-base-v2",
+    "plain_harness_encode_path": true,
+    "query_or_passage_prefixes": false
+  },
+  "excluded_cells": [],
+  "gap_only_failure_under_either_scheme": true,
+  "generated_at_utc": "2026-07-14T01:20:50.204467+00:00",
+  "inventory": [
+    {
+      "R": 0.8434286306657018,
+      "anchor_fraction": 0.4,
+      "build_action": "reused_existing",
+      "dataset": "SciFact",
+      "document_count": 1200,
+      "encoder_family": "mpnet",
+      "eval_positive_docs_in_fit": 0,
+      "floor_ndcg": 0.0,
+      "frozen_per_query_score_names": [
+        "c3a",
+        "floor",
+        "mlp",
+        "oracle",
+        "procrustes",
+        "ridge"
+      ],
+      "harness_parity": {
+        "c3a": 0.0,
+        "floor": 0.0,
+        "mlp": 0.0,
+        "oracle": 0.0,
+        "procrustes": 0.0,
+        "ridge": 0.0
+      },
+      "harness_parity_max_abs": 0.0,
+      "leakage_safe_fit_count": 600,
+      "name": "scifact_minilm_to_mpnet",
+      "oracle_gap": 0.8076072066050948,
+      "oracle_margin_mean": 0.07816141095598604,
+      "oracle_ndcg": 0.8076072066050948,
+      "pack_prefix": "research/drift_recovery/out/d1/scifact_evalsplit_pack",
+      "pack_sha256": "14bc80356f2d77b74e48edd266e5071b162fc9d905034cddf31dc7d4747058ac",
+      "query_count": 60,
+      "ridge_ndcg": 0.6811590403826876,
+      "seed": 42,
+      "source": "reuse_existing",
+      "status": "available",
+      "swap_model": "all-mpnet-base-v2"
+    },
+    {
+      "R": 0.7223707722283974,
+      "anchor_fraction": 0.4,
+      "build_action": "reused_existing",
+      "dataset": "SciFact",
+      "document_count": 1200,
+      "encoder_family": "bge-large",
+      "eval_positive_docs_in_fit": 0,
+      "floor_ndcg": 0.016666666666666666,
+      "frozen_per_query_score_names": [
+        "floor",
+        "oracle",
+        "ridge"
+      ],
+      "harness_parity": {
+        "floor": 0.0,
+        "oracle": 0.0,
+        "ridge": 0.0
+      },
+      "harness_parity_max_abs": 0.0,
+      "leakage_safe_fit_count": 600,
+      "name": "scifact_minilm_to_bge_large",
+      "oracle_gap": 0.8259686805467247,
+      "oracle_margin_mean": 0.0469631504238786,
+      "oracle_ndcg": 0.8426353472133914,
+      "pack_prefix": "research/drift_recovery/out/estimator/packs/scifact_minilm_to_bge_large_pack",
+      "pack_sha256": "642eb835d1bb62e772f1028dfe6dea7d13a9d9757c0922584cb0694d80b1cda8",
+      "query_count": 60,
+      "ridge_ndcg": 0.6133223002696747,
+      "seed": 42,
+      "source": "reuse_existing",
+      "status": "available",
+      "swap_model": "BAAI/bge-large-en-v1.5"
+    },
+    {
+      "R": 0.596683908317863,
+      "anchor_fraction": 0.4,
+      "build_action": "built_new",
+      "dataset": "SciFact",
+      "document_count": 1200,
+      "encoder_family": "e5-base-v2",
+      "eval_positive_docs_in_fit": 0,
+      "floor_ndcg": 0.0,
+      "frozen_per_query_score_names": [
+        "floor",
+        "oracle",
+        "ridge"
+      ],
+      "harness_parity": {
+        "floor": 0.0,
+        "oracle": 0.0,
+        "ridge": 0.0
+      },
+      "harness_parity_max_abs": 0.0,
+      "leakage_safe_fit_count": 600,
+      "name": "scifact_minilm_to_e5_base_v2_af040",
+      "oracle_gap": 0.7880011667762777,
+      "oracle_margin_mean": 0.012167483343401434,
+      "oracle_ndcg": 0.7880011667762777,
+      "pack_prefix": "research/drift_recovery/out/estimator/packs/scifact_minilm_to_e5_base_v2_af040_pack",
+      "pack_sha256": "f6f548f26eb8c6fd4aacb3ca296c4320db896d85c12c7282b17abad6822479e4",
+      "query_count": 60,
+      "ridge_ndcg": 0.4701876159511056,
+      "seed": 42,
+      "source": "build_new",
+      "status": "available",
+      "swap_model": "intfloat/e5-base-v2"
+    },
+    {
+      "R": 0.647119786542357,
+      "anchor_fraction": 0.4,
+      "build_action": "reused_existing",
+      "dataset": "NFCorpus",
+      "document_count": 2063,
+      "encoder_family": "mpnet",
+      "eval_positive_docs_in_fit": 0,
+      "floor_ndcg": 0.023905613995729966,
+      "frozen_per_query_score_names": [
+        "floor",
+        "oracle",
+        "ridge"
+      ],
+      "harness_parity": {
+        "floor": 0.0,
+        "oracle": 0.0,
+        "ridge": 0.0
+      },
+      "harness_parity_max_abs": 0.0,
+      "leakage_safe_fit_count": 869,
+      "name": "nfcorpus_minilm_to_mpnet",
+      "oracle_gap": 0.5813717699567543,
+      "oracle_margin_mean": 0.003969339592398955,
+      "oracle_ndcg": 0.6052773839524843,
+      "pack_prefix": "research/drift_recovery/out/estimator/packs/nfcorpus_minilm_to_mpnet_pack",
+      "pack_sha256": "0e7e4354a12e28dcef370df044fe5a4cc3193b79aceddf6a0881c9c4911cf25d",
+      "query_count": 60,
+      "ridge_ndcg": 0.4001227896718971,
+      "seed": 42,
+      "source": "reuse_existing",
+      "status": "available",
+      "swap_model": "all-mpnet-base-v2"
+    },
+    {
+      "R": 0.6640397106924352,
+      "anchor_fraction": 0.4,
+      "build_action": "reused_existing",
+      "dataset": "NFCorpus",
+      "document_count": 2063,
+      "encoder_family": "bge-large",
+      "eval_positive_docs_in_fit": 0,
+      "floor_ndcg": 0.05272833202262924,
+      "frozen_per_query_score_names": [
+        "floor",
+        "oracle",
+        "ridge"
+      ],
+      "harness_parity": {
+        "floor": 0.0,
+        "oracle": 0.0,
+        "ridge": 0.0
+      },
+      "harness_parity_max_abs": 0.0,
+      "leakage_safe_fit_count": 869,
+      "name": "nfcorpus_minilm_to_bge_large",
+      "oracle_gap": 0.5908701019901607,
+      "oracle_margin_mean": 0.007905342283582278,
+      "oracle_ndcg": 0.6435984340127899,
+      "pack_prefix": "research/drift_recovery/out/estimator/packs/nfcorpus_minilm_to_bge_large_pack",
+      "pack_sha256": "548fdb0bbfecb621ea3a80e14f8f07bce4fe1f680b4ec6585545af058431da13",
+      "query_count": 60,
+      "ridge_ndcg": 0.44508954360498515,
+      "seed": 42,
+      "source": "reuse_existing",
+      "status": "available",
+      "swap_model": "BAAI/bge-large-en-v1.5"
+    },
+    {
+      "R": 0.6018572247896886,
+      "anchor_fraction": 0.4,
+      "build_action": "built_new",
+      "dataset": "NFCorpus",
+      "document_count": 2063,
+      "encoder_family": "e5-base-v2",
+      "eval_positive_docs_in_fit": 0,
+      "floor_ndcg": 0.0553355606282451,
+      "frozen_per_query_score_names": [
+        "floor",
+        "oracle",
+        "ridge"
+      ],
+      "harness_parity": {
+        "floor": 0.0,
+        "oracle": 0.0,
+        "ridge": 0.0
+      },
+      "harness_parity_max_abs": 0.0,
+      "leakage_safe_fit_count": 869,
+      "name": "nfcorpus_minilm_to_e5_base_v2_af040",
+      "oracle_gap": 0.5617307233806558,
+      "oracle_margin_mean": 0.002383442989750299,
+      "oracle_ndcg": 0.6170662840089008,
+      "pack_prefix": "research/drift_recovery/out/estimator/packs/nfcorpus_minilm_to_e5_base_v2_af040_pack",
+      "pack_sha256": "d0ab53f9533e5d0ea34ef2ceff948f5179e0e6418afc8b088be78a6026022303",
+      "query_count": 60,
+      "ridge_ndcg": 0.39341725488123086,
+      "seed": 42,
+      "source": "build_new",
+      "status": "available",
+      "swap_model": "intfloat/e5-base-v2"
+    },
+    {
+      "R": 0.8210915550465415,
+      "anchor_fraction": 0.4,
+      "build_action": "reused_existing",
+      "dataset": "FiQA2018",
+      "document_count": 1200,
+      "encoder_family": "mpnet",
+      "eval_positive_docs_in_fit": 0,
+      "floor_ndcg": 0.008333333333333333,
+      "frozen_per_query_score_names": [
+        "floor",
+        "oracle",
+        "ridge"
+      ],
+      "harness_parity": {
+        "floor": 0.0,
+        "oracle": 0.0,
+        "ridge": 0.0
+      },
+      "harness_parity_max_abs": 0.0,
+      "leakage_safe_fit_count": 600,
+      "name": "fiqa2018_minilm_to_mpnet_af040",
+      "oracle_gap": 0.7780796270743866,
+      "oracle_margin_mean": 0.07935762313061738,
+      "oracle_ndcg": 0.7864129604077199,
+      "pack_prefix": "research/drift_recovery/out/estimator/packs/fiqa2018_minilm_to_mpnet_af040_pack",
+      "pack_sha256": "766810b8d2c2a09ea7a9376f7478d625abb0c4c891e3295454797e21f3e33072",
+      "query_count": 60,
+      "ridge_ndcg": 0.6472079442778745,
+      "seed": 42,
+      "source": "reuse_existing",
+      "status": "available",
+      "swap_model": "all-mpnet-base-v2"
+    },
+    {
+      "R": 0.7470860965336013,
+      "anchor_fraction": 0.4,
+      "build_action": "reused_existing",
+      "dataset": "FiQA2018",
+      "document_count": 1200,
+      "encoder_family": "bge-large",
+      "eval_positive_docs_in_fit": 0,
+      "floor_ndcg": 0.017020268937197602,
+      "frozen_per_query_score_names": [
+        "floor",
+        "oracle",
+        "ridge"
+      ],
+      "harness_parity": {
+        "floor": 0.0,
+        "oracle": 0.0,
+        "ridge": 0.0
+      },
+      "harness_parity_max_abs": 0.0,
+      "leakage_safe_fit_count": 600,
+      "name": "fiqa2018_minilm_to_bge_large_af040",
+      "oracle_gap": 0.7483691856844581,
+      "oracle_margin_mean": 0.02790868749892099,
+      "oracle_ndcg": 0.7653894546216556,
+      "pack_prefix": "research/drift_recovery/out/estimator/packs/fiqa2018_minilm_to_bge_large_af040_pack",
+      "pack_sha256": "683a83a43633f0ba8bf74d5bb89d617bbe796fbdc391095326f68fbe7c97282a",
+      "query_count": 60,
+      "ridge_ndcg": 0.5761164826362293,
+      "seed": 42,
+      "source": "reuse_existing",
+      "status": "available",
+      "swap_model": "BAAI/bge-large-en-v1.5"
+    },
+    {
+      "R": 0.553467272574923,
+      "anchor_fraction": 0.4,
+      "build_action": "built_new",
+      "dataset": "FiQA2018",
+      "document_count": 1200,
+      "encoder_family": "e5-base-v2",
+      "eval_positive_docs_in_fit": 0,
+      "floor_ndcg": 0.0,
+      "frozen_per_query_score_names": [
+        "floor",
+        "oracle",
+        "ridge"
+      ],
+      "harness_parity": {
+        "floor": 0.0,
+        "oracle": 0.0,
+        "ridge": 0.0
+      },
+      "harness_parity_max_abs": 0.0,
+      "leakage_safe_fit_count": 600,
+      "name": "fiqa2018_minilm_to_e5_base_v2_af040",
+      "oracle_gap": 0.7626871809651354,
+      "oracle_margin_mean": 0.006376593995013706,
+      "oracle_ndcg": 0.7626871809651354,
+      "pack_prefix": "research/drift_recovery/out/estimator/packs/fiqa2018_minilm_to_e5_base_v2_af040_pack",
+      "pack_sha256": "4d478882cb84e3a1981740568964fa855798917c3a2d2e37372a4b6f34e665b9",
+      "query_count": 60,
+      "ridge_ndcg": 0.42212239387663025,
+      "seed": 42,
+      "source": "build_new",
+      "status": "available",
+      "swap_model": "intfloat/e5-base-v2"
+    },
+    {
+      "R": 0.8568803713466899,
+      "anchor_fraction": 0.4,
+      "build_action": "built_new",
+      "dataset": "ArguAna",
+      "document_count": 1200,
+      "encoder_family": "mpnet",
+      "eval_positive_docs_in_fit": 0,
+      "floor_ndcg": 0.0214844137719648,
+      "frozen_per_query_score_names": [
+        "floor",
+        "oracle",
+        "ridge"
+      ],
+      "harness_parity": {
+        "floor": 0.0,
+        "oracle": 0.0,
+        "ridge": 0.0
+      },
+      "harness_parity_max_abs": 0.0,
+      "leakage_safe_fit_count": 600,
+      "name": "arguana_minilm_to_mpnet_af040",
+      "oracle_gap": 0.6301718305857023,
+      "oracle_margin_mean": -0.0612435446492728,
+      "oracle_ndcg": 0.651656244357667,
+      "pack_prefix": "research/drift_recovery/out/estimator/packs/arguana_minilm_to_mpnet_af040_pack",
+      "pack_sha256": "a650f66c36ff8ca415a7a821c021152615bf3cadf8b595a3dcd1abf4e7dfe9a2",
+      "query_count": 60,
+      "ridge_ndcg": 0.5614662859764646,
+      "seed": 42,
+      "source": "build_new",
+      "status": "available",
+      "swap_model": "all-mpnet-base-v2"
+    },
+    {
+      "R": 0.7932414485431329,
+      "anchor_fraction": 0.4,
+      "build_action": "built_new",
+      "dataset": "ArguAna",
+      "document_count": 1200,
+      "encoder_family": "bge-large",
+      "eval_positive_docs_in_fit": 0,
+      "floor_ndcg": 0.007177942634556551,
+      "frozen_per_query_score_names": [
+        "floor",
+        "oracle",
+        "ridge"
+      ],
+      "harness_parity": {
+        "floor": 0.0,
+        "oracle": 0.0,
+        "ridge": 0.0
+      },
+      "harness_parity_max_abs": 0.0,
+      "leakage_safe_fit_count": 600,
+      "name": "arguana_minilm_to_bge_large_af040",
+      "oracle_gap": 0.7666943634907946,
+      "oracle_margin_mean": -0.018432674736551573,
+      "oracle_ndcg": 0.7738723061253511,
+      "pack_prefix": "research/drift_recovery/out/estimator/packs/arguana_minilm_to_bge_large_af040_pack",
+      "pack_sha256": "0ddd760d3577e9f8d84be37cc00a08a5e812ab3556ad0143a068cb2cf2fd77c0",
+      "query_count": 60,
+      "ridge_ndcg": 0.6153516901198497,
+      "seed": 42,
+      "source": "build_new",
+      "status": "available",
+      "swap_model": "BAAI/bge-large-en-v1.5"
+    },
+    {
+      "R": 0.7466172771306891,
+      "anchor_fraction": 0.4,
+      "build_action": "built_new",
+      "dataset": "ArguAna",
+      "document_count": 1200,
+      "encoder_family": "e5-base-v2",
+      "eval_positive_docs_in_fit": 0,
+      "floor_ndcg": 0.005257747946428813,
+      "frozen_per_query_score_names": [
+        "floor",
+        "oracle",
+        "ridge"
+      ],
+      "harness_parity": {
+        "floor": 0.0,
+        "oracle": 0.0,
+        "ridge": 0.0
+      },
+      "harness_parity_max_abs": 0.0,
+      "leakage_safe_fit_count": 600,
+      "name": "arguana_minilm_to_e5_base_v2_af040",
+      "oracle_gap": 0.6824020836643042,
+      "oracle_margin_mean": -0.01640888796855299,
+      "oracle_ndcg": 0.6876598316107331,
+      "pack_prefix": "research/drift_recovery/out/estimator/packs/arguana_minilm_to_e5_base_v2_af040_pack",
+      "pack_sha256": "c0d6ce5659488cde9b7727ac1431d60112d2355f748fe079cb7ed10bc024cc46",
+      "query_count": 60,
+      "ridge_ndcg": 0.5147509335601804,
+      "seed": 42,
+      "source": "build_new",
+      "status": "available",
+      "swap_model": "intfloat/e5-base-v2"
+    }
+  ],
+  "novel_holdouts": {
+    "ArguAna": {
+      "agrees_with_aggregate_gap_result": true,
+      "cell_n": 3,
+      "held_out_block": "ArguAna",
+      "margin_vs_gap": {
+        "beats_on_both": false,
+        "spearman_relation": "loses",
+        "strictly_better_spearman": false,
+        "strictly_lower_mae": false
+      },
+      "metrics": {
+        "mean_R": {
+          "cell_n": 3,
+          "mae": 0.11034137040778084,
+          "spearman": null
+        },
+        "oracle_gap_ols": {
+          "cell_n": 3,
+          "mae": 0.11978927225910836,
+          "spearman": -0.5
+        },
+        "oracle_margin_mean": {
+          "cell_n": 3,
+          "mae": 0.2928398697142988,
+          "spearman": -1.0
+        }
+      },
+      "rows": [
+        {
+          "actual_R": 0.7932414485431329,
+          "held_out_block": "ArguAna",
+          "predictions": {
+            "mean_R": 0.6885716619323898,
+            "oracle_gap_ols": 0.7093764937269031,
+            "oracle_margin_mean": 0.5464215393584381
+          },
+          "regime": "arguana_minilm_to_bge_large_af040",
+          "training_blocks": [
+            "FiQA2018",
+            "NFCorpus",
+            "SciFact"
+          ],
+          "training_regimes": [
+            "scifact_minilm_to_mpnet",
+            "scifact_minilm_to_bge_large",
+            "scifact_minilm_to_e5_base_v2_af040",
+            "nfcorpus_minilm_to_mpnet",
+            "nfcorpus_minilm_to_bge_large",
+            "nfcorpus_minilm_to_e5_base_v2_af040",
+            "fiqa2018_minilm_to_mpnet_af040",
+            "fiqa2018_minilm_to_bge_large_af040",
+            "fiqa2018_minilm_to_e5_base_v2_af040"
+          ]
+        },
+        {
+          "actual_R": 0.7466172771306891,
+          "held_out_block": "ArguAna",
+          "predictions": {
+            "mean_R": 0.6885716619323898,
+            "oracle_gap_ols": 0.6747311020734278,
+            "oracle_margin_mean": 0.5524275960297513
+          },
+          "regime": "arguana_minilm_to_e5_base_v2_af040",
+          "training_blocks": [
+            "FiQA2018",
+            "NFCorpus",
+            "SciFact"
+          ],
+          "training_regimes": [
+            "scifact_minilm_to_mpnet",
+            "scifact_minilm_to_bge_large",
+            "scifact_minilm_to_e5_base_v2_af040",
+            "nfcorpus_minilm_to_mpnet",
+            "nfcorpus_minilm_to_bge_large",
+            "nfcorpus_minilm_to_e5_base_v2_af040",
+            "fiqa2018_minilm_to_mpnet_af040",
+            "fiqa2018_minilm_to_bge_large_af040",
+            "fiqa2018_minilm_to_e5_base_v2_af040"
+          ]
+        },
+        {
+          "actual_R": 0.8568803713466899,
+          "held_out_block": "ArguAna",
+          "predictions": {
+            "mean_R": 0.6885716619323898,
+            "oracle_gap_ols": 0.653263684442856,
+            "oracle_margin_mean": 0.41937035248942617
+          },
+          "regime": "arguana_minilm_to_mpnet_af040",
+          "training_blocks": [
+            "FiQA2018",
+            "NFCorpus",
+            "SciFact"
+          ],
+          "training_regimes": [
+            "scifact_minilm_to_mpnet",
+            "scifact_minilm_to_bge_large",
+            "scifact_minilm_to_e5_base_v2_af040",
+            "nfcorpus_minilm_to_mpnet",
+            "nfcorpus_minilm_to_bge_large",
+            "nfcorpus_minilm_to_e5_base_v2_af040",
+            "fiqa2018_minilm_to_mpnet_af040",
+            "fiqa2018_minilm_to_bge_large_af040",
+            "fiqa2018_minilm_to_e5_base_v2_af040"
+          ]
+        }
+      ],
+      "status": "available"
+    },
+    "e5-base-v2": {
+      "agrees_with_aggregate_gap_result": true,
+      "cell_n": 4,
+      "held_out_block": "e5-base-v2",
+      "margin_vs_gap": {
+        "beats_on_both": false,
+        "spearman_relation": "loses",
+        "strictly_better_spearman": false,
+        "strictly_lower_mae": false
+      },
+      "metrics": {
+        "mean_R": {
+          "cell_n": 4,
+          "mae": 0.13725087574656616,
+          "spearman": null
+        },
+        "oracle_gap_ols": {
+          "cell_n": 4,
+          "mae": 0.1303244440534,
+          "spearman": -0.6
+        },
+        "oracle_margin_mean": {
+          "cell_n": 4,
+          "mae": 0.1358385725975451,
+          "spearman": -0.8
+        }
+      },
+      "rows": [
+        {
+          "actual_R": 0.7466172771306891,
+          "held_out_block": "e5-base-v2",
+          "predictions": {
+            "mean_R": 0.7619072964498571,
+            "oracle_gap_ols": 0.7485045486569961,
+            "oracle_margin_mean": 0.7592210922148479
+          },
+          "regime": "arguana_minilm_to_e5_base_v2_af040",
+          "training_blocks": [
+            "bge-large",
+            "mpnet"
+          ],
+          "training_regimes": [
+            "scifact_minilm_to_mpnet",
+            "scifact_minilm_to_bge_large",
+            "nfcorpus_minilm_to_mpnet",
+            "nfcorpus_minilm_to_bge_large",
+            "fiqa2018_minilm_to_mpnet_af040",
+            "fiqa2018_minilm_to_bge_large_af040",
+            "arguana_minilm_to_mpnet_af040",
+            "arguana_minilm_to_bge_large_af040"
+          ]
+        },
+        {
+          "actual_R": 0.553467272574923,
+          "held_out_block": "e5-base-v2",
+          "predictions": {
+            "mean_R": 0.7619072964498571,
+            "oracle_gap_ols": 0.7803971530366355,
+            "oracle_margin_mean": 0.7608761011375604
+          },
+          "regime": "fiqa2018_minilm_to_e5_base_v2_af040",
+          "training_blocks": [
+            "bge-large",
+            "mpnet"
+          ],
+          "training_regimes": [
+            "scifact_minilm_to_mpnet",
+            "scifact_minilm_to_bge_large",
+            "nfcorpus_minilm_to_mpnet",
+            "nfcorpus_minilm_to_bge_large",
+            "fiqa2018_minilm_to_mpnet_af040",
+            "fiqa2018_minilm_to_bge_large_af040",
+            "arguana_minilm_to_mpnet_af040",
+            "arguana_minilm_to_bge_large_af040"
+          ]
+        },
+        {
+          "actual_R": 0.6018572247896886,
+          "held_out_block": "e5-base-v2",
+          "predictions": {
+            "mean_R": 0.7619072964498571,
+            "oracle_gap_ols": 0.7005688285437255,
+            "oracle_margin_mean": 0.7605860611658796
+          },
+          "regime": "nfcorpus_minilm_to_e5_base_v2_af040",
+          "training_blocks": [
+            "bge-large",
+            "mpnet"
+          ],
+          "training_regimes": [
+            "scifact_minilm_to_mpnet",
+            "scifact_minilm_to_bge_large",
+            "nfcorpus_minilm_to_mpnet",
+            "nfcorpus_minilm_to_bge_large",
+            "fiqa2018_minilm_to_mpnet_af040",
+            "fiqa2018_minilm_to_bge_large_af040",
+            "arguana_minilm_to_mpnet_af040",
+            "arguana_minilm_to_bge_large_af040"
+          ]
+        },
+        {
+          "actual_R": 0.596683908317863,
+          "held_out_block": "e5-base-v2",
+          "predictions": {
+            "mean_R": 0.7619072964498571,
+            "oracle_gap_ols": 0.7904529287894067,
+            "oracle_margin_mean": 0.7612967186850562
+          },
+          "regime": "scifact_minilm_to_e5_base_v2_af040",
+          "training_blocks": [
+            "bge-large",
+            "mpnet"
+          ],
+          "training_regimes": [
+            "scifact_minilm_to_mpnet",
+            "scifact_minilm_to_bge_large",
+            "nfcorpus_minilm_to_mpnet",
+            "nfcorpus_minilm_to_bge_large",
+            "fiqa2018_minilm_to_mpnet_af040",
+            "fiqa2018_minilm_to_bge_large_af040",
+            "arguana_minilm_to_mpnet_af040",
+            "arguana_minilm_to_bge_large_af040"
+          ]
+        }
+      ],
+      "status": "available"
+    }
+  },
+  "offline_environment": {
+    "HF_DATASETS_OFFLINE": "1",
+    "HF_HUB_OFFLINE": "1",
+    "TRANSFORMERS_OFFLINE": "1",
+    "execution": "sequential"
+  },
+  "partial_spearman": {
+    "definition": "Pearson correlation of ranked-margin and ranked-R OLS residuals after separate adjustment for intercept plus ranked oracle_gap.",
+    "independent_pair_block_n": 12,
+    "partial_spearman_margin_R_controlling_oracle_gap": -0.12463638355495012,
+    "raw_spearman_gap_R": 0.22377622377622378,
+    "raw_spearman_margin_R": 0.04195804195804196,
+    "raw_spearman_margin_minus_gap": -0.18181818181818182
+  },
+  "preregistration": {
+    "hash_lock_sha256": "df1a4cde03e3d72224bd5d2d8afd0a2c4806503a9cf83d698348a967f9596f2e",
+    "hashes": {
+      "prereg_objA_v2.json": "7aed0e4900218b73c18e54faf7ce26b61df134e1c09837c6861dbbf87552a77a",
+      "prereg_objA_v2.md": "bc42fb0ad92a0a8f55f4fa8935ad8ca3dcb122031f571b7f31dffaec9085d8f7"
+    },
+    "id": "objA-oracle-margin-block-loo-v2",
+    "null_names": [
+      "oracle_gap_ols",
+      "mean_R"
+    ],
+    "ordering_audit": {
+      "checked_new_pack_file_count": 12,
+      "new_pack_file_mtimes_utc": {
+        "research/drift_recovery/out/estimator/packs/arguana_minilm_to_bge_large_af040_pack.json": "2026-07-14T01:20:12.626447+00:00",
+        "research/drift_recovery/out/estimator/packs/arguana_minilm_to_bge_large_af040_pack.npz": "2026-07-14T01:20:12.614530+00:00",
+        "research/drift_recovery/out/estimator/packs/arguana_minilm_to_e5_base_v2_af040_pack.json": "2026-07-14T01:20:40.531757+00:00",
+        "research/drift_recovery/out/estimator/packs/arguana_minilm_to_e5_base_v2_af040_pack.npz": "2026-07-14T01:20:40.449226+00:00",
+        "research/drift_recovery/out/estimator/packs/arguana_minilm_to_mpnet_af040_pack.json": "2026-07-14T01:19:34.690266+00:00",
+        "research/drift_recovery/out/estimator/packs/arguana_minilm_to_mpnet_af040_pack.npz": "2026-07-14T01:19:34.653491+00:00",
+        "research/drift_recovery/out/estimator/packs/fiqa2018_minilm_to_e5_base_v2_af040_pack.json": "2026-07-14T01:18:17.029396+00:00",
+        "research/drift_recovery/out/estimator/packs/fiqa2018_minilm_to_e5_base_v2_af040_pack.npz": "2026-07-14T01:18:17.018047+00:00",
+        "research/drift_recovery/out/estimator/packs/nfcorpus_minilm_to_e5_base_v2_af040_pack.json": "2026-07-14T01:17:42.700873+00:00",
+        "research/drift_recovery/out/estimator/packs/nfcorpus_minilm_to_e5_base_v2_af040_pack.npz": "2026-07-14T01:17:42.673033+00:00",
+        "research/drift_recovery/out/estimator/packs/scifact_minilm_to_e5_base_v2_af040_pack.json": "2026-07-14T01:17:01.092996+00:00",
+        "research/drift_recovery/out/estimator/packs/scifact_minilm_to_e5_base_v2_af040_pack.npz": "2026-07-14T01:17:01.077787+00:00"
+      },
+      "note": "Filesystem ordering is execution evidence for this worktree; hashes are the content freeze.",
+      "preregistration_file_mtimes_utc": {
+        "prereg_objA_v2.json": "2026-07-14T01:06:52.242605+00:00",
+        "prereg_objA_v2.md": "2026-07-14T01:06:52.240087+00:00",
+        "prereg_objA_v2.sha256": "2026-07-14T01:07:01.654973+00:00"
+      },
+      "preregistration_precedes_every_new_pack": true
+    },
+    "primary_feature_names": [
+      "oracle_margin_mean"
+    ]
+  },
+  "record_type": "drift_recovery_objA_v2_validation",
+  "regimes": [
+    {
+      "R": 0.8434286306657018,
+      "anchor_fraction": 0.4,
+      "dataset": "SciFact",
+      "encoder_family": "mpnet",
+      "floor_ndcg": 0.0,
+      "name": "scifact_minilm_to_mpnet",
+      "oracle_gap": 0.8076072066050948,
+      "oracle_margin_mean": 0.07816141095598604,
+      "oracle_ndcg": 0.8076072066050948,
+      "ridge_ndcg": 0.6811590403826876,
+      "seed": 42,
+      "swap_model": "all-mpnet-base-v2"
+    },
+    {
+      "R": 0.7223707722283974,
+      "anchor_fraction": 0.4,
+      "dataset": "SciFact",
+      "encoder_family": "bge-large",
+      "floor_ndcg": 0.016666666666666666,
+      "name": "scifact_minilm_to_bge_large",
+      "oracle_gap": 0.8259686805467247,
+      "oracle_margin_mean": 0.0469631504238786,
+      "oracle_ndcg": 0.8426353472133914,
+      "ridge_ndcg": 0.6133223002696747,
+      "seed": 42,
+      "swap_model": "BAAI/bge-large-en-v1.5"
+    },
+    {
+      "R": 0.596683908317863,
+      "anchor_fraction": 0.4,
+      "dataset": "SciFact",
+      "encoder_family": "e5-base-v2",
+      "floor_ndcg": 0.0,
+      "name": "scifact_minilm_to_e5_base_v2_af040",
+      "oracle_gap": 0.7880011667762777,
+      "oracle_margin_mean": 0.012167483343401434,
+      "oracle_ndcg": 0.7880011667762777,
+      "ridge_ndcg": 0.4701876159511056,
+      "seed": 42,
+      "swap_model": "intfloat/e5-base-v2"
+    },
+    {
+      "R": 0.647119786542357,
+      "anchor_fraction": 0.4,
+      "dataset": "NFCorpus",
+      "encoder_family": "mpnet",
+      "floor_ndcg": 0.023905613995729966,
+      "name": "nfcorpus_minilm_to_mpnet",
+      "oracle_gap": 0.5813717699567543,
+      "oracle_margin_mean": 0.003969339592398955,
+      "oracle_ndcg": 0.6052773839524843,
+      "ridge_ndcg": 0.4001227896718971,
+      "seed": 42,
+      "swap_model": "all-mpnet-base-v2"
+    },
+    {
+      "R": 0.6640397106924352,
+      "anchor_fraction": 0.4,
+      "dataset": "NFCorpus",
+      "encoder_family": "bge-large",
+      "floor_ndcg": 0.05272833202262924,
+      "name": "nfcorpus_minilm_to_bge_large",
+      "oracle_gap": 0.5908701019901607,
+      "oracle_margin_mean": 0.007905342283582278,
+      "oracle_ndcg": 0.6435984340127899,
+      "ridge_ndcg": 0.44508954360498515,
+      "seed": 42,
+      "swap_model": "BAAI/bge-large-en-v1.5"
+    },
+    {
+      "R": 0.6018572247896886,
+      "anchor_fraction": 0.4,
+      "dataset": "NFCorpus",
+      "encoder_family": "e5-base-v2",
+      "floor_ndcg": 0.0553355606282451,
+      "name": "nfcorpus_minilm_to_e5_base_v2_af040",
+      "oracle_gap": 0.5617307233806558,
+      "oracle_margin_mean": 0.002383442989750299,
+      "oracle_ndcg": 0.6170662840089008,
+      "ridge_ndcg": 0.39341725488123086,
+      "seed": 42,
+      "swap_model": "intfloat/e5-base-v2"
+    },
+    {
+      "R": 0.8210915550465415,
+      "anchor_fraction": 0.4,
+      "dataset": "FiQA2018",
+      "encoder_family": "mpnet",
+      "floor_ndcg": 0.008333333333333333,
+      "name": "fiqa2018_minilm_to_mpnet_af040",
+      "oracle_gap": 0.7780796270743866,
+      "oracle_margin_mean": 0.07935762313061738,
+      "oracle_ndcg": 0.7864129604077199,
+      "ridge_ndcg": 0.6472079442778745,
+      "seed": 42,
+      "swap_model": "all-mpnet-base-v2"
+    },
+    {
+      "R": 0.7470860965336013,
+      "anchor_fraction": 0.4,
+      "dataset": "FiQA2018",
+      "encoder_family": "bge-large",
+      "floor_ndcg": 0.017020268937197602,
+      "name": "fiqa2018_minilm_to_bge_large_af040",
+      "oracle_gap": 0.7483691856844581,
+      "oracle_margin_mean": 0.02790868749892099,
+      "oracle_ndcg": 0.7653894546216556,
+      "ridge_ndcg": 0.5761164826362293,
+      "seed": 42,
+      "swap_model": "BAAI/bge-large-en-v1.5"
+    },
+    {
+      "R": 0.553467272574923,
+      "anchor_fraction": 0.4,
+      "dataset": "FiQA2018",
+      "encoder_family": "e5-base-v2",
+      "floor_ndcg": 0.0,
+      "name": "fiqa2018_minilm_to_e5_base_v2_af040",
+      "oracle_gap": 0.7626871809651354,
+      "oracle_margin_mean": 0.006376593995013706,
+      "oracle_ndcg": 0.7626871809651354,
+      "ridge_ndcg": 0.42212239387663025,
+      "seed": 42,
+      "swap_model": "intfloat/e5-base-v2"
+    },
+    {
+      "R": 0.8568803713466899,
+      "anchor_fraction": 0.4,
+      "dataset": "ArguAna",
+      "encoder_family": "mpnet",
+      "floor_ndcg": 0.0214844137719648,
+      "name": "arguana_minilm_to_mpnet_af040",
+      "oracle_gap": 0.6301718305857023,
+      "oracle_margin_mean": -0.0612435446492728,
+      "oracle_ndcg": 0.651656244357667,
+      "ridge_ndcg": 0.5614662859764646,
+      "seed": 42,
+      "swap_model": "all-mpnet-base-v2"
+    },
+    {
+      "R": 0.7932414485431329,
+      "anchor_fraction": 0.4,
+      "dataset": "ArguAna",
+      "encoder_family": "bge-large",
+      "floor_ndcg": 0.007177942634556551,
+      "name": "arguana_minilm_to_bge_large_af040",
+      "oracle_gap": 0.7666943634907946,
+      "oracle_margin_mean": -0.018432674736551573,
+      "oracle_ndcg": 0.7738723061253511,
+      "ridge_ndcg": 0.6153516901198497,
+      "seed": 42,
+      "swap_model": "BAAI/bge-large-en-v1.5"
+    },
+    {
+      "R": 0.7466172771306891,
+      "anchor_fraction": 0.4,
+      "dataset": "ArguAna",
+      "encoder_family": "e5-base-v2",
+      "floor_ndcg": 0.005257747946428813,
+      "name": "arguana_minilm_to_e5_base_v2_af040",
+      "oracle_gap": 0.6824020836643042,
+      "oracle_margin_mean": -0.01640888796855299,
+      "oracle_ndcg": 0.6876598316107331,
+      "ridge_ndcg": 0.5147509335601804,
+      "seed": 42,
+      "swap_model": "intfloat/e5-base-v2"
+    }
+  ],
+  "schema_version": 2,
+  "success_bar_met": false,
+  "verdict": "NEGATIVE"
+}

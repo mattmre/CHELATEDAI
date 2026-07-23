@@ -1,0 +1,134 @@
+{
+  "canonical_reference_audit": {
+    "c3a_cross_seed_reference": {
+      "absolute_difference": 0.0056436878858855954,
+      "disposition": "superseded_not_a_tolerance_gate",
+      "finding": "The old reference was a cross-seed campaign mean. The seed-42 per-query value supersedes it and is outside the nominal tolerance.",
+      "old_cross_seed_mean_recovery": 0.2,
+      "seed_42_per_query_recovery": 0.19435631211411442,
+      "tolerance": 0.001
+    },
+    "ridge_waypoint_reproduction": {
+      "absolute_error": 0.0005713693342979109,
+      "actual_recovery": 0.8434286306657021,
+      "pass": true,
+      "target_recovery": 0.844,
+      "tolerance": 0.001
+    }
+  },
+  "dataset": "SciFact",
+  "floor_ndcg": 0.0,
+  "leakage_sensitivity": {
+    "audit": {
+      "eval_positive_docs_in_leakage_safe_fit": 0,
+      "eval_positive_docs_in_literal_fit": 28,
+      "eval_positive_docs_total": 62,
+      "leakage_safe_fit_count": 600,
+      "literal_fit_count": 600,
+      "literal_fit_share_of_eval_positive_docs": 0.45161290322580644
+    },
+    "fits": {
+      "leakage_safe_full_600": "first 600 seed-42 permutation documents after excluding every eval-positive document",
+      "literal_waypoint": "literal seed-42 half-corpus permutation"
+    },
+    "floor_ndcg": 0.0,
+    "methods": {
+      "mlp": {
+        "inflation_recovery_pp": 14.138726554633008,
+        "label": "residual MLP",
+        "leakage_safe_full_600": {
+          "eval_positive_docs_in_fit": 0,
+          "ndcg": 0.5451054010727805,
+          "recovery": 0.6749635176786221
+        },
+        "literal_frozen_score_max_abs_delta": 0.0,
+        "literal_waypoint": {
+          "eval_positive_docs_in_fit": 28,
+          "ndcg": 0.6592907756501849,
+          "recovery": 0.8163507832249521
+        }
+      },
+      "procrustes": {
+        "inflation_recovery_pp": 8.408211817368949,
+        "label": "closed-form orthogonal Procrustes",
+        "leakage_safe_full_600": {
+          "eval_positive_docs_in_fit": 0,
+          "ndcg": 0.5967599203911357,
+          "recovery": 0.738923471101392
+        },
+        "literal_frozen_score_max_abs_delta": 0.0,
+        "literal_waypoint": {
+          "eval_positive_docs_in_fit": 28,
+          "ndcg": 0.6646652449748285,
+          "recovery": 0.8230055892750815
+        }
+      },
+      "ridge": {
+        "inflation_recovery_pp": 5.4284330531711555,
+        "label": "ridge",
+        "leakage_safe_full_600": {
+          "eval_positive_docs_in_fit": 0,
+          "ndcg": 0.6373186238395446,
+          "recovery": 0.7891443001339905
+        },
+        "literal_frozen_score_max_abs_delta": 0.0,
+        "literal_waypoint": {
+          "eval_positive_docs_in_fit": 28,
+          "ndcg": 0.6811590403826878,
+          "recovery": 0.8434286306657021
+        }
+      }
+    },
+    "oracle_gap": 0.8076072066050948,
+    "oracle_ndcg": 0.8076072066050948,
+    "record_type": "d1_leakage_sensitivity"
+  },
+  "methods": {
+    "c3a": {
+      "delta_ndcg": 0.15696355831254788,
+      "ndcg": 0.15696355831254788,
+      "recovery": 0.19435631211411442
+    },
+    "mlp": {
+      "delta_ndcg": 0.6592907756501849,
+      "ndcg": 0.6592907756501849,
+      "recovery": 0.8163507832249521
+    },
+    "procrustes": {
+      "delta_ndcg": 0.6646652449748285,
+      "ndcg": 0.6646652449748285,
+      "recovery": 0.8230055892750815
+    },
+    "ridge": {
+      "delta_ndcg": 0.6811590403826878,
+      "ndcg": 0.6811590403826878,
+      "recovery": 0.8434286306657021
+    }
+  },
+  "old_scalar_audit": {
+    "finding": "The old scalar was a cross-seed campaign mean attached to the seed-42 eval split. The frozen per-query seed-42 result supersedes it.",
+    "fixed_split_per_query_ndcg": 0.15696355831254788,
+    "fixed_split_per_query_recovery": 0.19435631211411442,
+    "ndcg_difference": -0.003936441687452108,
+    "old_c3a_scalar_ndcg": 0.1609,
+    "old_scalar_implied_recovery": 0.19923051538429024
+  },
+  "oracle_gap": 0.8076072066050948,
+  "oracle_ndcg": 0.8076072066050948,
+  "query_count": 60,
+  "record_type": "d1_ladder",
+  "waypoint_audit": {
+    "eval_positive_docs_in_leakage_safe_fit": 0,
+    "eval_positive_docs_in_literal_fit": 28,
+    "eval_positive_docs_total": 62,
+    "leakage_safe_fit_count": 600,
+    "literal_fit_count": 600,
+    "literal_fit_share_of_eval_positive_docs": 0.45161290322580644,
+    "literal_recovery": {
+      "mlp": 0.8163507832249521,
+      "procrustes": 0.8230055892750815,
+      "ridge": 0.8434286306657021
+    },
+    "protocol_conflict": "The literal waypoint fit contains eval-positive documents. It is retained only as the reproduced headline protocol; the leakage-safe full-600 sensitivity excludes all eval-positive documents."
+  }
+}

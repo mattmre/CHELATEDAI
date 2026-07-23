@@ -1,0 +1,46 @@
+{
+  "auprc": 0.36529880394128067,
+  "auprc_status": "ok",
+  "cluster_predictions": 160,
+  "collapse_cluster_count": 16,
+  "dataset": "NFCorpus",
+  "per_seed": [
+    {
+      "auprc": 0.6825892857142857,
+      "auprc_status": "ok",
+      "eval_positive_clusters": 8,
+      "seed": 42,
+      "selected_gate_threshold": 0.4
+    },
+    {
+      "auprc": 0.13095238095238093,
+      "auprc_status": "ok",
+      "eval_positive_clusters": 2,
+      "seed": 1337,
+      "selected_gate_threshold": 0.4
+    },
+    {
+      "auprc": 0.24582084582084582,
+      "auprc_status": "ok",
+      "eval_positive_clusters": 6,
+      "seed": 7,
+      "selected_gate_threshold": 0.4
+    },
+    {
+      "auprc": 0.7236471861471861,
+      "auprc_status": "ok",
+      "eval_positive_clusters": 6,
+      "seed": 101,
+      "selected_gate_threshold": 0.4
+    },
+    {
+      "auprc": 0.2527146464646465,
+      "auprc_status": "ok",
+      "eval_positive_clusters": 4,
+      "seed": 202,
+      "selected_gate_threshold": 0.4
+    }
+  ],
+  "positive_clusters": 26,
+  "record_type": "d2_cell_detector"
+}

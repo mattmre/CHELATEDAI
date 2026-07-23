@@ -1,0 +1,454 @@
+{
+  "bootstrap_invalid_oracle_gap_fraction": 0.2376,
+  "collapse_cluster_count": 16,
+  "contrasts": {
+    "chelation_vs_cbie": {
+      "delta_ndcg": {
+        "ci_high": 0.024158217956644967,
+        "ci_low": -0.005430825835302827,
+        "estimate": 0.007640408937743981,
+        "half_width": 0.014794521895973897
+      },
+      "half_width": 0.014794521895973897,
+      "left": "chelation_primary",
+      "multiple_testing": {
+        "family_size": 3,
+        "holm_adjusted_p": 0.7361263873612639,
+        "holm_threshold": 0.025,
+        "p_value": 0.2997700229977002,
+        "rank": 2,
+        "reject": false
+      },
+      "p_value": 0.2997700229977002,
+      "recovery_point_advantage": {
+        "ci_high": null,
+        "ci_low": null,
+        "estimate": null,
+        "half_width": null,
+        "status": "blocked_invalid_or_nonpositive_oracle_gap"
+      },
+      "right": "cbie",
+      "seed_delta_ndcg": [
+        0.006521808877937185,
+        0.005537444697989891,
+        0.014534868127827338,
+        0.007269468518169009,
+        0.004338454466795705
+      ],
+      "seed_recovery_advantage": [
+        null,
+        1.1036995869682673,
+        18.22905189389735,
+        null,
+        0.5905958096832876
+      ]
+    },
+    "chelation_vs_global_ridge": {
+      "delta_ndcg": {
+        "ci_high": 0.003298639565049362,
+        "ci_low": -0.0083454581222384,
+        "estimate": -0.0017124304592714967,
+        "half_width": 0.005822048843643881
+      },
+      "half_width": 0.005822048843643881,
+      "left": "chelation_primary",
+      "multiple_testing": {
+        "family_size": 3,
+        "holm_adjusted_p": 0.7361263873612639,
+        "holm_threshold": 0.05,
+        "p_value": 0.6099390060993901,
+        "rank": 3,
+        "reject": false
+      },
+      "p_value": 0.6099390060993901,
+      "recovery_point_advantage": {
+        "ci_high": null,
+        "ci_low": null,
+        "estimate": null,
+        "half_width": null,
+        "status": "blocked_invalid_or_nonpositive_oracle_gap"
+      },
+      "right": "global_ridge",
+      "seed_delta_ndcg": [
+        -0.0025269143130421945,
+        -0.0004501551633847578,
+        -0.0012823180456837946,
+        0.0027215066934245247,
+        -0.0070242714676714835
+      ],
+      "seed_recovery_advantage": [
+        null,
+        -0.08972298505838679,
+        -1.6082321486287243,
+        null,
+        -0.9562173180876224
+      ]
+    },
+    "chelation_vs_hubness": {
+      "delta_ndcg": {
+        "ci_high": 0.027994191400486777,
+        "ci_low": -0.005429188953149711,
+        "estimate": 0.009687303410430559,
+        "half_width": 0.016711690176818245
+      },
+      "half_width": 0.016711690176818245,
+      "left": "chelation_primary",
+      "multiple_testing": {
+        "family_size": 3,
+        "holm_adjusted_p": 0.7361263873612639,
+        "holm_threshold": 0.016666666666666666,
+        "p_value": 0.24537546245375463,
+        "rank": 1,
+        "reject": false
+      },
+      "p_value": 0.24537546245375463,
+      "recovery_point_advantage": {
+        "ci_high": null,
+        "ci_low": null,
+        "estimate": null,
+        "half_width": null,
+        "status": "blocked_invalid_or_nonpositive_oracle_gap"
+      },
+      "right": "hubness",
+      "seed_delta_ndcg": [
+        0.01184930265977846,
+        0.012149609129437855,
+        0.010280425788926184,
+        0.009779311737766583,
+        0.004377867736243601
+      ],
+      "seed_recovery_advantage": [
+        null,
+        2.4216076745387896,
+        12.893299997604368,
+        null,
+        0.5959611562508265
+      ]
+    }
+  },
+  "data_fingerprint": {
+    "document_count": 1200,
+    "document_ids_sha256": "b30a56203402ce7f6947521bc06ce7f0069dd96bcb11dd1d8a9c5d678f422bd2",
+    "eval_query_count": 60,
+    "eval_query_ids_sha256": "25a9529f64c49206b48510506cc1ee6e38d4e4cc94f7b6f1004cf60e2449b620",
+    "validation_query_count": 40,
+    "validation_query_ids_sha256": "701e41d54f9af703fd2eb7d92126937dc60f43286f46f2479ce6271b02d40202"
+  },
+  "dataset": "SciFact",
+  "decision": {
+    "g2_pass": true,
+    "g3_interpreted": false,
+    "invalid_oracle_gap_fraction": 0.2376,
+    "invalid_oracle_gap_limit": 0.01,
+    "reason": "non-positive oracle-gap draws exceed the protocol limit",
+    "status": "INVALID_ORACLE_GAP_BOOTSTRAP",
+    "verdict": "NO_G3_VERDICT",
+    "win": false
+  },
+  "detector": {
+    "auprc": 0.15095741258108117,
+    "auprc_status": "ok",
+    "cluster_predictions": 160,
+    "collapse_cluster_count": 16,
+    "dataset": "SciFact",
+    "per_seed": [
+      {
+        "auprc": 1.0,
+        "auprc_status": "ok",
+        "eval_positive_clusters": 1,
+        "seed": 42,
+        "selected_gate_threshold": 0.13488118342326819
+      },
+      {
+        "auprc": 0.10608465608465609,
+        "auprc_status": "ok",
+        "eval_positive_clusters": 3,
+        "seed": 1337,
+        "selected_gate_threshold": 0.08315185561056944
+      },
+      {
+        "auprc": 0.125,
+        "auprc_status": "ok",
+        "eval_positive_clusters": 4,
+        "seed": 7,
+        "selected_gate_threshold": 1.0
+      },
+      {
+        "auprc": 0.047619047619047616,
+        "auprc_status": "ok",
+        "eval_positive_clusters": 1,
+        "seed": 101,
+        "selected_gate_threshold": 0.04520421264154448
+      },
+      {
+        "auprc": 0.09375,
+        "auprc_status": "ok",
+        "eval_positive_clusters": 3,
+        "seed": 202,
+        "selected_gate_threshold": 1.0
+      }
+    ],
+    "positive_clusters": 12,
+    "record_type": "d2_cell_detector"
+  },
+  "displacement": [
+    {
+      "chelation_alpha_0_05": {
+        "max_displacement": 0.004905052872808266,
+        "max_relative_displacement": 0.0052082327173445814,
+        "mean_displacement": 0.000352098941148531,
+        "mean_relative_displacement": 0.00037307227875968494,
+        "moved_fraction": 0.12
+      },
+      "chelation_primary": {
+        "max_displacement": 0.004905052872808266,
+        "max_relative_displacement": 0.0052082327173445814,
+        "mean_displacement": 0.000352098941148531,
+        "mean_relative_displacement": 0.00037307227875968494,
+        "moved_fraction": 0.12
+      },
+      "corruption_mean": 0.041249722205087686
+    },
+    {
+      "chelation_alpha_0_05": {
+        "max_displacement": 0.0033256191539816618,
+        "max_relative_displacement": 0.003325619143230511,
+        "mean_displacement": 6.58210280045361e-05,
+        "mean_relative_displacement": 6.683670337767146e-05,
+        "moved_fraction": 0.030833333333333334
+      },
+      "chelation_primary": {
+        "max_displacement": 0.0033256191539816618,
+        "max_relative_displacement": 0.003325619143230511,
+        "mean_displacement": 6.58210280045361e-05,
+        "mean_relative_displacement": 6.683670337767146e-05,
+        "moved_fraction": 0.030833333333333334
+      },
+      "corruption_mean": 0.039215195198694666
+    },
+    {
+      "chelation_alpha_0_05": {
+        "max_displacement": 0.0,
+        "max_relative_displacement": 0.0,
+        "mean_displacement": 0.0,
+        "mean_relative_displacement": 0.0,
+        "moved_fraction": 0.0
+      },
+      "chelation_primary": {
+        "max_displacement": 0.0,
+        "max_relative_displacement": 0.0,
+        "mean_displacement": 0.0,
+        "mean_relative_displacement": 0.0,
+        "moved_fraction": 0.0
+      },
+      "corruption_mean": 0.03904829302454226
+    },
+    {
+      "chelation_alpha_0_05": {
+        "max_displacement": 0.002064910797392013,
+        "max_relative_displacement": 0.002165062980676941,
+        "mean_displacement": 0.0004019436950926301,
+        "mean_relative_displacement": 0.0004199399580980225,
+        "moved_fraction": 0.37416666666666665
+      },
+      "chelation_primary": {
+        "max_displacement": 0.002064910797392013,
+        "max_relative_displacement": 0.002165062980676941,
+        "mean_displacement": 0.0004019436950926301,
+        "mean_relative_displacement": 0.0004199399580980225,
+        "moved_fraction": 0.37416666666666665
+      },
+      "corruption_mean": 0.04054138014392062
+    },
+    {
+      "chelation_alpha_0_05": {
+        "max_displacement": 0.0,
+        "max_relative_displacement": 0.0,
+        "mean_displacement": 0.0,
+        "mean_relative_displacement": 0.0,
+        "moved_fraction": 0.0
+      },
+      "chelation_primary": {
+        "max_displacement": 0.0,
+        "max_relative_displacement": 0.0,
+        "mean_displacement": 0.0,
+        "mean_relative_displacement": 0.0,
+        "moved_fraction": 0.0
+      },
+      "corruption_mean": 0.0405121919147383
+    }
+  ],
+  "g2": {
+    "contrast_half_widths": {
+      "chelation_vs_cbie": 0.014794521895973897,
+      "chelation_vs_global_ridge": 0.005822048843643881,
+      "chelation_vs_hubness": 0.016711690176818245
+    },
+    "family": [
+      "chelation_vs_cbie",
+      "chelation_vs_hubness",
+      "chelation_vs_global_ridge"
+    ],
+    "gate": "G2",
+    "median_half_width": 0.014794521895973897,
+    "pass": true,
+    "query_count": 60,
+    "rough_query_count_for_threshold": 60,
+    "threshold": 0.015
+  },
+  "harness_parity_max_abs": 0.0,
+  "leakage_audits": [
+    {
+      "contaminated_ids": [],
+      "fit_document_count": 549,
+      "known_positive_document_count": 101,
+      "positive_documents_in_fit": 0
+    },
+    {
+      "contaminated_ids": [],
+      "fit_document_count": 549,
+      "known_positive_document_count": 101,
+      "positive_documents_in_fit": 0
+    },
+    {
+      "contaminated_ids": [],
+      "fit_document_count": 549,
+      "known_positive_document_count": 101,
+      "positive_documents_in_fit": 0
+    },
+    {
+      "contaminated_ids": [],
+      "fit_document_count": 549,
+      "known_positive_document_count": 101,
+      "positive_documents_in_fit": 0
+    },
+    {
+      "contaminated_ids": [],
+      "fit_document_count": 549,
+      "known_positive_document_count": 101,
+      "positive_documents_in_fit": 0
+    }
+  ],
+  "min_oracle_gap": -0.004558789708978606,
+  "pack": {
+    "arrays": "research\\drift_recovery\\out\\d2\\cells\\scifact_c16\\cell_pack.npz",
+    "metadata": "research\\drift_recovery\\out\\d2\\cells\\scifact_c16\\cell_pack.json",
+    "sha256": "62ccd03e24795e0e15c5b699b442809ff5877bb0b585f37ec7c2207e20211bb0"
+  },
+  "parameter_budgets": [
+    {
+      "allocated_low_rank_scalar_budget_matched": true,
+      "chelation_allocated_low_rank_scalars": 27648,
+      "full_pipeline_free_parameter_match_claimed": false,
+      "not_counted": [
+        "routing centroids",
+        "chelation cluster probabilities",
+        "harm scorer coefficients",
+        "tied PCA factor degrees of freedom"
+      ],
+      "paired_local_allocated_low_rank_scalars": 27648
+    },
+    {
+      "allocated_low_rank_scalar_budget_matched": true,
+      "chelation_allocated_low_rank_scalars": 27648,
+      "full_pipeline_free_parameter_match_claimed": false,
+      "not_counted": [
+        "routing centroids",
+        "chelation cluster probabilities",
+        "harm scorer coefficients",
+        "tied PCA factor degrees of freedom"
+      ],
+      "paired_local_allocated_low_rank_scalars": 27648
+    },
+    {
+      "allocated_low_rank_scalar_budget_matched": true,
+      "chelation_allocated_low_rank_scalars": 27648,
+      "full_pipeline_free_parameter_match_claimed": false,
+      "not_counted": [
+        "routing centroids",
+        "chelation cluster probabilities",
+        "harm scorer coefficients",
+        "tied PCA factor degrees of freedom"
+      ],
+      "paired_local_allocated_low_rank_scalars": 27648
+    },
+    {
+      "allocated_low_rank_scalar_budget_matched": true,
+      "chelation_allocated_low_rank_scalars": 27648,
+      "full_pipeline_free_parameter_match_claimed": false,
+      "not_counted": [
+        "routing centroids",
+        "chelation cluster probabilities",
+        "harm scorer coefficients",
+        "tied PCA factor degrees of freedom"
+      ],
+      "paired_local_allocated_low_rank_scalars": 27648
+    },
+    {
+      "allocated_low_rank_scalar_budget_matched": true,
+      "chelation_allocated_low_rank_scalars": 27648,
+      "full_pipeline_free_parameter_match_claimed": false,
+      "not_counted": [
+        "routing centroids",
+        "chelation cluster probabilities",
+        "harm scorer coefficients",
+        "tied PCA factor degrees of freedom"
+      ],
+      "paired_local_allocated_low_rank_scalars": 27648
+    }
+  ],
+  "primary_movement_valid": true,
+  "record_type": "d2_decision_cell",
+  "run_fingerprint": {
+    "d2_source_sha256": "c4520e8cdba7b1d834d9eaf458dc403b5ce875d6bf7162811b5f7d73092678f0",
+    "harness_bridge_sha256": "70308a5dadf0540d8d6246cae3ba7cd40f6b8e360959b1c77056aa8aa374bae6",
+    "model": "sentence-transformers/all-MiniLM-L6-v2",
+    "model_revision": "1110a243fdf4706b3f48f1d95db1a4f5529b4d41",
+    "protocol_sha256": "3b1fb6aa83fc56154a4b1ed0aab599a1a88bd8869938e9863d2f3529a4f97d78",
+    "repo_sha": "34ce4b5632e0d9cd2a16c29e0e1acc42e645b9c2"
+  },
+  "seeds": [
+    42,
+    1337,
+    7,
+    101,
+    202
+  ],
+  "selected_hyperparameters": [
+    {
+      "chelation_primary_radial_gain": 0.05,
+      "detector_gate_threshold": 0.13488118342326819,
+      "global_ridge_regularization": 0.1,
+      "hubness_strength": 0.1,
+      "paired_local_regularization": 0.1
+    },
+    {
+      "chelation_primary_radial_gain": 0.05,
+      "detector_gate_threshold": 0.08315185561056944,
+      "global_ridge_regularization": 0.1,
+      "hubness_strength": 0.1,
+      "paired_local_regularization": 0.1
+    },
+    {
+      "chelation_primary_radial_gain": 0.05,
+      "detector_gate_threshold": 1.0,
+      "global_ridge_regularization": 0.1,
+      "hubness_strength": 0.1,
+      "paired_local_regularization": 0.1
+    },
+    {
+      "chelation_primary_radial_gain": 0.05,
+      "detector_gate_threshold": 0.04520421264154448,
+      "global_ridge_regularization": 0.1,
+      "hubness_strength": 0.1,
+      "paired_local_regularization": 0.1
+    },
+    {
+      "chelation_primary_radial_gain": 0.05,
+      "detector_gate_threshold": 1.0,
+      "global_ridge_regularization": 0.1,
+      "hubness_strength": 0.1,
+      "paired_local_regularization": 0.1
+    }
+  ]
+}

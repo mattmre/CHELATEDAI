@@ -1,0 +1,328 @@
+{
+  "bootstrap": {
+    "draws": 10000,
+    "floor_ndcg": 0.5362870538825983,
+    "invalid_oracle_gap_draws": 6086,
+    "invalid_oracle_gap_fraction": 0.6086,
+    "methods": {
+      "all_but_top": {
+        "delta_ndcg": {
+          "ci_high": 0.03575789447090899,
+          "ci_low": -0.01404420575526486,
+          "estimate": 0.00966527329838296,
+          "half_width": 0.024901050113086926
+        },
+        "ndcg": {
+          "ci_high": 0.6494557526984632,
+          "ci_low": 0.4404158251896937,
+          "estimate": 0.5459523271809813,
+          "half_width": 0.10451996375438477
+        },
+        "recovery": {
+          "ci_high": null,
+          "ci_low": null,
+          "estimate": null,
+          "half_width": null,
+          "status": "blocked_invalid_or_nonpositive_oracle_gap"
+        }
+      },
+      "cbie": {
+        "delta_ndcg": {
+          "ci_high": 0.046422772336489934,
+          "ci_low": -0.004551080320730879,
+          "estimate": 0.020213998014435908,
+          "half_width": 0.025486926328610406
+        },
+        "ndcg": {
+          "ci_high": 0.661062444343853,
+          "ci_low": 0.4504343708640282,
+          "estimate": 0.5565010518970342,
+          "half_width": 0.10531403673991238
+        },
+        "recovery": {
+          "ci_high": null,
+          "ci_low": null,
+          "estimate": null,
+          "half_width": null,
+          "status": "blocked_invalid_or_nonpositive_oracle_gap"
+        }
+      },
+      "chelation_alpha_0_05": {
+        "delta_ndcg": {
+          "ci_high": 0.0027953707263492244,
+          "ci_low": -0.0016611702837032393,
+          "estimate": 0.00027783995421404306,
+          "half_width": 0.002228270505026232
+        },
+        "ndcg": {
+          "ci_high": 0.6361366977916287,
+          "ci_low": 0.4349393941299801,
+          "estimate": 0.5365648938368124,
+          "half_width": 0.10059865183082431
+        },
+        "recovery": {
+          "ci_high": null,
+          "ci_low": null,
+          "estimate": null,
+          "half_width": null,
+          "status": "blocked_invalid_or_nonpositive_oracle_gap"
+        }
+      },
+      "chelation_primary": {
+        "delta_ndcg": {
+          "ci_high": 0.0027953707263492244,
+          "ci_low": -0.0016611702837032393,
+          "estimate": 0.00027783995421404306,
+          "half_width": 0.002228270505026232
+        },
+        "ndcg": {
+          "ci_high": 0.6361366977916287,
+          "ci_low": 0.4349393941299801,
+          "estimate": 0.5365648938368124,
+          "half_width": 0.10059865183082431
+        },
+        "recovery": {
+          "ci_high": null,
+          "ci_low": null,
+          "estimate": null,
+          "half_width": null,
+          "status": "blocked_invalid_or_nonpositive_oracle_gap"
+        }
+      },
+      "global_ridge": {
+        "delta_ndcg": {
+          "ci_high": 0.0001354173551059884,
+          "ci_low": -0.04832836195460927,
+          "estimate": -0.02207922965523723,
+          "half_width": 0.024231889654857626
+        },
+        "ndcg": {
+          "ci_high": 0.609655350632779,
+          "ci_low": 0.4170156378553015,
+          "estimate": 0.5142078242273611,
+          "half_width": 0.09631985638873874
+        },
+        "recovery": {
+          "ci_high": null,
+          "ci_low": null,
+          "estimate": null,
+          "half_width": null,
+          "status": "blocked_invalid_or_nonpositive_oracle_gap"
+        }
+      },
+      "hubness": {
+        "delta_ndcg": {
+          "ci_high": 0.015964216002971633,
+          "ci_low": -0.0419107732987366,
+          "estimate": -0.011275778178579055,
+          "half_width": 0.028937494650854118
+        },
+        "ndcg": {
+          "ci_high": 0.6242913814882423,
+          "ci_low": 0.4228366878287154,
+          "estimate": 0.5250112757040193,
+          "half_width": 0.10072734682976342
+        },
+        "recovery": {
+          "ci_high": null,
+          "ci_low": null,
+          "estimate": null,
+          "half_width": null,
+          "status": "blocked_invalid_or_nonpositive_oracle_gap"
+        }
+      },
+      "paired_local_adapter": {
+        "delta_ndcg": {
+          "ci_high": 0.005029284870556619,
+          "ci_low": -0.00022282652650236208,
+          "estimate": 0.0019591742824417446,
+          "half_width": 0.0026260556985294907
+        },
+        "ndcg": {
+          "ci_high": 0.6378024445431076,
+          "ci_low": 0.43698572481199116,
+          "estimate": 0.5382462281650401,
+          "half_width": 0.10040835986555824
+        },
+        "recovery": {
+          "ci_high": null,
+          "ci_low": null,
+          "estimate": null,
+          "half_width": null,
+          "status": "blocked_invalid_or_nonpositive_oracle_gap"
+        }
+      },
+      "zca": {
+        "delta_ndcg": {
+          "ci_high": 0.02968083447508789,
+          "ci_low": -0.037275168307987654,
+          "estimate": -0.002737886231867437,
+          "half_width": 0.03347800139153777
+        },
+        "ndcg": {
+          "ci_high": 0.6384069640323528,
+          "ci_low": 0.43065176830928714,
+          "estimate": 0.5335491676507309,
+          "half_width": 0.1038775978615328
+        },
+        "recovery": {
+          "ci_high": null,
+          "ci_low": null,
+          "estimate": null,
+          "half_width": null,
+          "status": "blocked_invalid_or_nonpositive_oracle_gap"
+        }
+      }
+    },
+    "oracle_gap": -0.000986876914481849,
+    "oracle_ndcg": 0.5353001769681165,
+    "query_count": 60,
+    "record_type": "d2_grouped_paired_query_bootstrap",
+    "seed": 20260630,
+    "seed_aggregation": "mean_each_query_across_seeds",
+    "seed_count": 5
+  },
+  "contrasts": {
+    "chelation_vs_cbie": {
+      "delta_ndcg": {
+        "ci_high": 0.004925196390601782,
+        "ci_low": -0.04609016347606654,
+        "estimate": -0.019936158060221865,
+        "half_width": 0.02550767993333416
+      },
+      "half_width": 0.02550767993333416,
+      "left": "chelation_primary",
+      "multiple_testing": {
+        "family_size": 3,
+        "holm_adjusted_p": 0.23477652234776522,
+        "holm_threshold": 0.025,
+        "p_value": 0.11738826117388261,
+        "rank": 2,
+        "reject": false
+      },
+      "p_value": 0.11738826117388261,
+      "recovery_point_advantage": {
+        "ci_high": null,
+        "ci_low": null,
+        "estimate": null,
+        "half_width": null,
+        "status": "blocked_invalid_or_nonpositive_oracle_gap"
+      },
+      "right": "cbie",
+      "seed_delta_ndcg": [
+        -0.011765789858789844,
+        -0.018950308683175043,
+        -0.027184983766660564,
+        -0.025790171544848528,
+        -0.015989536447635455
+      ],
+      "seed_recovery_advantage": [
+        null,
+        null,
+        -5.853271249540537,
+        -4.695849842759142,
+        null
+      ]
+    },
+    "chelation_vs_global_ridge": {
+      "delta_ndcg": {
+        "ci_high": 0.048356305874281455,
+        "ci_low": 0.00010165663802856929,
+        "estimate": 0.022357069609451274,
+        "half_width": 0.024127324618126444
+      },
+      "half_width": 0.024127324618126444,
+      "left": "chelation_primary",
+      "multiple_testing": {
+        "family_size": 3,
+        "holm_adjusted_p": 0.143985601439856,
+        "holm_threshold": 0.016666666666666666,
+        "p_value": 0.047995200479952004,
+        "rank": 1,
+        "reject": false
+      },
+      "p_value": 0.047995200479952004,
+      "recovery_point_advantage": {
+        "ci_high": null,
+        "ci_low": null,
+        "estimate": null,
+        "half_width": null,
+        "status": "blocked_invalid_or_nonpositive_oracle_gap"
+      },
+      "right": "global_ridge",
+      "seed_delta_ndcg": [
+        0.02299791687181496,
+        0.034898073568510046,
+        0.021298074979676174,
+        0.005741991108623057,
+        0.026849291518632024
+      ],
+      "seed_recovery_advantage": [
+        null,
+        null,
+        4.585745241532326,
+        1.0454962658027693,
+        null
+      ]
+    },
+    "chelation_vs_hubness": {
+      "delta_ndcg": {
+        "ci_high": 0.04217394146907476,
+        "ci_low": -0.014657835712121032,
+        "estimate": 0.011553618132793098,
+        "half_width": 0.028415888590597894
+      },
+      "half_width": 0.028415888590597894,
+      "left": "chelation_primary",
+      "multiple_testing": {
+        "family_size": 3,
+        "holm_adjusted_p": 0.44595540445955406,
+        "holm_threshold": 0.05,
+        "p_value": 0.44595540445955406,
+        "rank": 3,
+        "reject": false
+      },
+      "p_value": 0.44595540445955406,
+      "recovery_point_advantage": {
+        "ci_high": null,
+        "ci_low": null,
+        "estimate": null,
+        "half_width": null,
+        "status": "blocked_invalid_or_nonpositive_oracle_gap"
+      },
+      "right": "hubness",
+      "seed_delta_ndcg": [
+        0.013109046929823287,
+        0.011628988744589952,
+        0.010582375711522873,
+        0.012061167313944243,
+        0.010386511964084244
+      ],
+      "seed_recovery_advantage": [
+        null,
+        null,
+        2.27851949575403,
+        2.1960858436395263,
+        null
+      ]
+    }
+  },
+  "g2": {
+    "contrast_half_widths": {
+      "chelation_vs_cbie": 0.02550767993333416,
+      "chelation_vs_global_ridge": 0.024127324618126444,
+      "chelation_vs_hubness": 0.028415888590597894
+    },
+    "family": [
+      "chelation_vs_cbie",
+      "chelation_vs_hubness",
+      "chelation_vs_global_ridge"
+    ],
+    "gate": "G2",
+    "median_half_width": 0.02550767993333416,
+    "pass": false,
+    "query_count": 60,
+    "rough_query_count_for_threshold": 174,
+    "threshold": 0.015
+  }
+}

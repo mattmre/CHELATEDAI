@@ -1,0 +1,57 @@
+{
+  "coefficients": [
+    0.0,
+    0.01131625008568172,
+    0.005025478779538489,
+    0.012193610976652306,
+    0.010324334838451332,
+    0.006823300331879271,
+    -0.0018809286085349304,
+    -0.004415678462640223
+  ],
+  "feature_mean": [
+    0.0,
+    0.6333333333333333,
+    -0.09239943390889885,
+    0.0376355168700597,
+    0.43390251950848907,
+    0.5029277626508376,
+    -1.3224426026362115,
+    -1.0713881644742431
+  ],
+  "feature_names": [
+    "predicted_preservation_rate",
+    "oracle_margin_sign_rate",
+    "oracle_margin_q10",
+    "oracle_margin_q50",
+    "fit_error_norm_q50",
+    "fit_error_norm_q90",
+    "bound_slack_q10",
+    "bound_slack_q50"
+  ],
+  "feature_scale": [
+    1.0,
+    0.08498365855987973,
+    0.03918132734768731,
+    0.024688890076588303,
+    0.05436973206777003,
+    0.05691251365681683,
+    0.22890005687667256,
+    0.13754809298668377
+  ],
+  "format_version": 1,
+  "intercept": 0.7192397250322229,
+  "lower_coverage": 0.8,
+  "lower_offset": 0.11646917905115528,
+  "prediction_clip_high": 1.0,
+  "prediction_clip_low": 0.0,
+  "record_type": "recoverability_linear_calibration",
+  "regularization": 10.0,
+  "training_count": 4,
+  "training_regimes": [
+    "scifact_minilm_to_mpnet",
+    "nfcorpus_minilm_to_mpnet",
+    "scifact_minilm_to_bge_large",
+    "nfcorpus_minilm_to_bge_large"
+  ]
+}

@@ -1,0 +1,94 @@
+{
+  "environment": {
+    "HF_DATASETS_OFFLINE": "1",
+    "HF_HUB_OFFLINE": "1",
+    "device": "cuda"
+  },
+  "parity_tolerance": 1e-12,
+  "record_type": "d3_estimator_regime_manifest",
+  "regimes": [
+    {
+      "anchor_fraction": 0.4,
+      "dataset": "SciFact",
+      "document_count": 1200,
+      "frozen_ridge_recovery": 0.8434286306657018,
+      "harness_parity": {
+        "c3a": 0.0,
+        "floor": 0.0,
+        "mlp": 0.0,
+        "oracle": 0.0,
+        "procrustes": 0.0,
+        "ridge": 0.0
+      },
+      "leakage_safe_feature_refit_recovery": 0.7891443001339904,
+      "name": "scifact_minilm_to_mpnet",
+      "pack_prefix": "research\\drift_recovery\\out\\d1\\scifact_evalsplit_pack",
+      "pack_sha256": "14bc80356f2d77b74e48edd266e5071b162fc9d905034cddf31dc7d4747058ac",
+      "predicted_inversion_rate": 1.0,
+      "query_count": 60,
+      "safe_fit_count": 600,
+      "status": "available",
+      "swap_model": "all-mpnet-base-v2"
+    },
+    {
+      "anchor_fraction": 0.4,
+      "dataset": "NFCorpus",
+      "document_count": 2063,
+      "frozen_ridge_recovery": 0.647119786542357,
+      "harness_parity": {
+        "floor": 0.0,
+        "oracle": 0.0,
+        "ridge": 0.0
+      },
+      "leakage_safe_feature_refit_recovery": 0.647119786542357,
+      "name": "nfcorpus_minilm_to_mpnet",
+      "pack_prefix": "research\\drift_recovery\\out\\estimator\\packs\\nfcorpus_minilm_to_mpnet_pack",
+      "pack_sha256": "0e7e4354a12e28dcef370df044fe5a4cc3193b79aceddf6a0881c9c4911cf25d",
+      "predicted_inversion_rate": 1.0,
+      "query_count": 60,
+      "safe_fit_count": 869,
+      "status": "available",
+      "swap_model": "all-mpnet-base-v2"
+    },
+    {
+      "anchor_fraction": 0.4,
+      "dataset": "SciFact",
+      "document_count": 1200,
+      "frozen_ridge_recovery": 0.7223707722283974,
+      "harness_parity": {
+        "floor": 0.0,
+        "oracle": 0.0,
+        "ridge": 0.0
+      },
+      "leakage_safe_feature_refit_recovery": 0.7223707722283974,
+      "name": "scifact_minilm_to_bge_large",
+      "pack_prefix": "research\\drift_recovery\\out\\estimator\\packs\\scifact_minilm_to_bge_large_pack",
+      "pack_sha256": "642eb835d1bb62e772f1028dfe6dea7d13a9d9757c0922584cb0694d80b1cda8",
+      "predicted_inversion_rate": 1.0,
+      "query_count": 60,
+      "safe_fit_count": 600,
+      "status": "available",
+      "swap_model": "BAAI/bge-large-en-v1.5"
+    },
+    {
+      "anchor_fraction": 0.4,
+      "dataset": "NFCorpus",
+      "document_count": 2063,
+      "frozen_ridge_recovery": 0.6640397106924352,
+      "harness_parity": {
+        "floor": 0.0,
+        "oracle": 0.0,
+        "ridge": 0.0
+      },
+      "leakage_safe_feature_refit_recovery": 0.6640397106924352,
+      "name": "nfcorpus_minilm_to_bge_large",
+      "pack_prefix": "research\\drift_recovery\\out\\estimator\\packs\\nfcorpus_minilm_to_bge_large_pack",
+      "pack_sha256": "548fdb0bbfecb621ea3a80e14f8f07bce4fe1f680b4ec6585545af058431da13",
+      "predicted_inversion_rate": 1.0,
+      "query_count": 60,
+      "safe_fit_count": 869,
+      "status": "available",
+      "swap_model": "BAAI/bge-large-en-v1.5"
+    }
+  ]
+}

@@ -1,0 +1,53 @@
+{
+  "contrasts": {
+    "ridge_minus_c3a": {
+      "ci_high": 0.6411024373508039,
+      "ci_low": 0.39676356535306084,
+      "estimate": 0.52419548207014,
+      "half_width": 0.1221694359988715,
+      "left": "ridge",
+      "multiple_testing": {
+        "family_size": 2,
+        "holm_adjusted_p": 0.00039996000399960006,
+        "holm_threshold": 0.025,
+        "p_value": 0.00019998000199980003,
+        "rank": 1,
+        "reject": true
+      },
+      "p_value": 0.00019998000199980003,
+      "right": "c3a"
+    },
+    "ridge_minus_mlp": {
+      "ci_high": 0.07731676948496582,
+      "ci_low": -0.033337318231987344,
+      "estimate": 0.021868264732502918,
+      "half_width": 0.05532704385847659,
+      "left": "ridge",
+      "multiple_testing": {
+        "family_size": 2,
+        "holm_adjusted_p": 0.43095690430956907,
+        "holm_threshold": 0.05,
+        "p_value": 0.43095690430956907,
+        "rank": 2,
+        "reject": false
+      },
+      "p_value": 0.43095690430956907,
+      "right": "mlp"
+    }
+  },
+  "correction": "Holm",
+  "family": [
+    "ridge_minus_mlp",
+    "ridge_minus_c3a"
+  ],
+  "g2": {
+    "pass": false,
+    "primary_contrast": "ridge_minus_mlp",
+    "primary_delta_ndcg_half_width": 0.05532704385847659,
+    "rough_query_count_for_threshold": 817,
+    "scale_up_note": "Rough 1/sqrt(n) extrapolation only; it is not a prospective power calculation and must be re-estimated with pilot variance.",
+    "secondary_median_family_delta_ndcg_half_width": 0.08874823992867405,
+    "threshold": 0.015
+  },
+  "record_type": "d1_preregistered_contrasts"
+}

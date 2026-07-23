@@ -1,0 +1,263 @@
+{
+  "array_shapes": {
+    "Do": [
+      1200,
+      384
+    ],
+    "Dor": [
+      1200,
+      384
+    ],
+    "Qd": [
+      60,
+      384
+    ],
+    "doc_ids": [
+      1200
+    ],
+    "extra__leakage_safe_fit_idx": [
+      600
+    ],
+    "extra__method_documents__ridge": [
+      1200,
+      384
+    ],
+    "fit_idx": [
+      600
+    ],
+    "query_ids": [
+      60
+    ],
+    "score__floor": [
+      60
+    ],
+    "score__oracle": [
+      60
+    ],
+    "score__ridge": [
+      60
+    ]
+  },
+  "arrays_file": "arguana_minilm_to_bge_large_af040_pack.npz",
+  "arrays_sha256": "0ddd760d3577e9f8d84be37cc00a08a5e812ab3556ad0143a068cb2cf2fd77c0",
+  "format_version": 1,
+  "metadata": {
+    "anchor_fraction": 0.4,
+    "dataset": "ArguAna",
+    "drift_manifest": {
+      "drift": "query_encoder_swap",
+      "projection_checksum": "64dc8489744f51ef5b402526e8b715546a6e5f71f9eda63b50648af55098f08e",
+      "projection_seed": 42,
+      "store_dim": 384,
+      "swap_dim": 1024,
+      "swap_model": "BAAI/bge-large-en-v1.5"
+    },
+    "fit_contract": {
+      "eval_positive_docs_in_fit": 0,
+      "eval_qrels_used_by_optimizer": false,
+      "fit_count": 600,
+      "index": "fit_idx and extra_arrays.leakage_safe_fit_idx",
+      "regularization": 1.0
+    },
+    "harness_aggregate_ndcg": {
+      "floor": 0.007177942634556551,
+      "oracle": 0.7738723061253511,
+      "ridge": 0.6153516901198497
+    },
+    "k": 10,
+    "max_queries": 100,
+    "models": {
+      "old": "sentence-transformers/all-MiniLM-L6-v2",
+      "swap": "BAAI/bge-large-en-v1.5"
+    },
+    "ndcg": "binary merged-harness ndcg_at_k",
+    "recovery": {
+      "ridge": 0.7932414485431329
+    },
+    "sample_docs": 1200,
+    "seed": 42
+  },
+  "qrels": {
+    "test-environment-aeghhgwpe-con01a": {
+      "test-environment-aeghhgwpe-con01b": 1.0
+    },
+    "test-environment-aeghhgwpe-con03a": {
+      "test-environment-aeghhgwpe-con03b": 1.0
+    },
+    "test-environment-aeghhgwpe-pro01a": {
+      "test-environment-aeghhgwpe-pro01b": 1.0
+    },
+    "test-environment-aeghhgwpe-pro02a": {
+      "test-environment-aeghhgwpe-pro02b": 1.0
+    },
+    "test-environment-aeghhgwpe-pro03a": {
+      "test-environment-aeghhgwpe-pro03b": 1.0
+    },
+    "test-environment-aeghhgwpe-pro04a": {
+      "test-environment-aeghhgwpe-pro04b": 1.0
+    },
+    "test-environment-aiahwagit-con01a": {
+      "test-environment-aiahwagit-con01b": 1.0
+    },
+    "test-environment-aiahwagit-pro01a": {
+      "test-environment-aiahwagit-pro01b": 1.0
+    },
+    "test-environment-aiahwagit-pro03a": {
+      "test-environment-aiahwagit-pro03b": 1.0
+    },
+    "test-environment-aiahwagit-pro04a": {
+      "test-environment-aiahwagit-pro04b": 1.0
+    },
+    "test-environment-assgbatj-con01a": {
+      "test-environment-assgbatj-con01b": 1.0
+    },
+    "test-environment-assgbatj-con02a": {
+      "test-environment-assgbatj-con02b": 1.0
+    },
+    "test-environment-assgbatj-con03a": {
+      "test-environment-assgbatj-con03b": 1.0
+    },
+    "test-environment-assgbatj-con04a": {
+      "test-environment-assgbatj-con04b": 1.0
+    },
+    "test-environment-assgbatj-con05a": {
+      "test-environment-assgbatj-con05b": 1.0
+    },
+    "test-environment-assgbatj-pro02a": {
+      "test-environment-assgbatj-pro02b": 1.0
+    },
+    "test-environment-assgbatj-pro03a": {
+      "test-environment-assgbatj-pro03b": 1.0
+    },
+    "test-environment-assgbatj-pro04a": {
+      "test-environment-assgbatj-pro04b": 1.0
+    },
+    "test-environment-assgbatj-pro05a": {
+      "test-environment-assgbatj-pro05b": 1.0
+    },
+    "test-environment-chbwtlgcc-con02a": {
+      "test-environment-chbwtlgcc-con02b": 1.0
+    },
+    "test-environment-chbwtlgcc-con03a": {
+      "test-environment-chbwtlgcc-con03b": 1.0
+    },
+    "test-environment-chbwtlgcc-pro01a": {
+      "test-environment-chbwtlgcc-pro01b": 1.0
+    },
+    "test-environment-chbwtlgcc-pro03a": {
+      "test-environment-chbwtlgcc-pro03b": 1.0
+    },
+    "test-environment-ehwsnwu-con02a": {
+      "test-environment-ehwsnwu-con02b": 1.0
+    },
+    "test-environment-ehwsnwu-con03a": {
+      "test-environment-ehwsnwu-con03b": 1.0
+    },
+    "test-environment-ehwsnwu-pro01a": {
+      "test-environment-ehwsnwu-pro01b": 1.0
+    },
+    "test-environment-opecewiahw-con01a": {
+      "test-environment-opecewiahw-con01b": 1.0
+    },
+    "test-environment-opecewiahw-con02a": {
+      "test-environment-opecewiahw-con02b": 1.0
+    },
+    "test-environment-opecewiahw-con03a": {
+      "test-environment-opecewiahw-con03b": 1.0
+    },
+    "test-environment-opecewiahw-pro02a": {
+      "test-environment-opecewiahw-pro02b": 1.0
+    },
+    "test-health-ahiahbgbsp-con01a": {
+      "test-health-ahiahbgbsp-con01b": 1.0
+    },
+    "test-health-ahiahbgbsp-pro02a": {
+      "test-health-ahiahbgbsp-pro02b": 1.0
+    },
+    "test-health-ahiahbgbsp-pro04a": {
+      "test-health-ahiahbgbsp-pro04b": 1.0
+    },
+    "test-health-ahiahbgbsp-pro05a": {
+      "test-health-ahiahbgbsp-pro05b": 1.0
+    },
+    "test-health-dhgsshbesbc-con03a": {
+      "test-health-dhgsshbesbc-con03b": 1.0
+    },
+    "test-health-dhgsshbesbc-pro01a": {
+      "test-health-dhgsshbesbc-pro01b": 1.0
+    },
+    "test-health-dhgsshbesbc-pro03a": {
+      "test-health-dhgsshbesbc-pro03b": 1.0
+    },
+    "test-health-dhgsshbesbc-pro04a": {
+      "test-health-dhgsshbesbc-pro04b": 1.0
+    },
+    "test-health-dhiacihwph-con01a": {
+      "test-health-dhiacihwph-con01b": 1.0
+    },
+    "test-health-dhiacihwph-con03a": {
+      "test-health-dhiacihwph-con03b": 1.0
+    },
+    "test-health-dhiacihwph-pro02a": {
+      "test-health-dhiacihwph-pro02b": 1.0
+    },
+    "test-health-dhiacihwph-pro03a": {
+      "test-health-dhiacihwph-pro03b": 1.0
+    },
+    "test-health-dhiacihwph-pro04a": {
+      "test-health-dhiacihwph-pro04b": 1.0
+    },
+    "test-health-hdond-con01a": {
+      "test-health-hdond-con01b": 1.0
+    },
+    "test-health-hdond-con03a": {
+      "test-health-hdond-con03b": 1.0
+    },
+    "test-health-hdond-pro03a": {
+      "test-health-hdond-pro03b": 1.0
+    },
+    "test-health-hgwhwbjfs-con01a": {
+      "test-health-hgwhwbjfs-con01b": 1.0
+    },
+    "test-health-hgwhwbjfs-con03a": {
+      "test-health-hgwhwbjfs-con03b": 1.0
+    },
+    "test-health-hgwhwbjfs-pro01a": {
+      "test-health-hgwhwbjfs-pro01b": 1.0
+    },
+    "test-health-hgwhwbjfs-pro02a": {
+      "test-health-hgwhwbjfs-pro02b": 1.0
+    },
+    "test-health-hpehwadvoee-con02a": {
+      "test-health-hpehwadvoee-con02b": 1.0
+    },
+    "test-health-hpehwadvoee-con04a": {
+      "test-health-hpehwadvoee-con04b": 1.0
+    },
+    "test-health-hpehwadvoee-pro01a": {
+      "test-health-hpehwadvoee-pro01b": 1.0
+    },
+    "test-health-hpehwadvoee-pro02a": {
+      "test-health-hpehwadvoee-pro02b": 1.0
+    },
+    "test-health-hpehwadvoee-pro03a": {
+      "test-health-hpehwadvoee-pro03b": 1.0
+    },
+    "test-health-ppelfhwbpba-con01a": {
+      "test-health-ppelfhwbpba-con01b": 1.0
+    },
+    "test-health-ppelfhwbpba-con02a": {
+      "test-health-ppelfhwbpba-con02b": 1.0
+    },
+    "test-health-ppelfhwbpba-con03a": {
+      "test-health-ppelfhwbpba-con03b": 1.0
+    },
+    "test-health-ppelfhwbpba-pro02a": {
+      "test-health-ppelfhwbpba-pro02b": 1.0
+    },
+    "test-health-ppelfhwbpba-pro04a": {
+      "test-health-ppelfhwbpba-pro04b": 1.0
+    }
+  },
+  "record_type": "embedding_pack"
+}

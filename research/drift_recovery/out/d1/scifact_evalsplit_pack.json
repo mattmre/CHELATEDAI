@@ -1,0 +1,379 @@
+{
+  "array_shapes": {
+    "Do": [
+      1200,
+      384
+    ],
+    "Dor": [
+      1200,
+      384
+    ],
+    "Qd": [
+      60,
+      384
+    ],
+    "doc_ids": [
+      1200
+    ],
+    "extra__canonical_c3a_source": [
+      49,
+      384
+    ],
+    "extra__canonical_c3a_target": [
+      49,
+      384
+    ],
+    "extra__curve_c3a_query_ids": [
+      240
+    ],
+    "extra__curve_c3a_source": [
+      240,
+      384
+    ],
+    "extra__curve_c3a_target": [
+      240,
+      384
+    ],
+    "extra__leakage_safe_fit_idx": [
+      600
+    ],
+    "extra__method_documents__c3a": [
+      1200,
+      384
+    ],
+    "extra__method_documents__mlp": [
+      1200,
+      384
+    ],
+    "extra__method_documents__procrustes": [
+      1200,
+      384
+    ],
+    "extra__method_documents__ridge": [
+      1200,
+      384
+    ],
+    "fit_idx": [
+      600
+    ],
+    "query_ids": [
+      60
+    ],
+    "score__c3a": [
+      60
+    ],
+    "score__floor": [
+      60
+    ],
+    "score__mlp": [
+      60
+    ],
+    "score__oracle": [
+      60
+    ],
+    "score__procrustes": [
+      60
+    ],
+    "score__ridge": [
+      60
+    ]
+  },
+  "arrays_file": "scifact_evalsplit_pack.npz",
+  "arrays_sha256": "14bc80356f2d77b74e48edd266e5071b162fc9d905034cddf31dc7d4747058ac",
+  "format_version": 1,
+  "metadata": {
+    "anchor_fraction": 0.4,
+    "anchor_ids": [
+      "5",
+      "13",
+      "42",
+      "49",
+      "53",
+      "54",
+      "72",
+      "94",
+      "100",
+      "129",
+      "130",
+      "133",
+      "142",
+      "179",
+      "208",
+      "217",
+      "219",
+      "230",
+      "237",
+      "249",
+      "261",
+      "269",
+      "274",
+      "279",
+      "294",
+      "295",
+      "298",
+      "300",
+      "314",
+      "324",
+      "343",
+      "362",
+      "384",
+      "410",
+      "415",
+      "421",
+      "436",
+      "439",
+      "443",
+      "478"
+    ],
+    "canonical_c3a_pair_count": 49,
+    "canonical_tolerance": {
+      "c3a_absolute_error": 0.0056436878858855954,
+      "c3a_target": 0.2,
+      "ridge_absolute_error": 0.000571369334298133,
+      "ridge_target": 0.844,
+      "tolerance": 0.001
+    },
+    "dataset": "SciFact",
+    "drift_manifest": {
+      "drift": "query_encoder_swap",
+      "projection_checksum": "3984ab778d1b8b909dfd4a637e74c6588017e4b158487745f29103193bac4626",
+      "projection_seed": 42,
+      "store_dim": 384,
+      "swap_dim": 768,
+      "swap_model": "all-mpnet-base-v2"
+    },
+    "harness_aggregate_ndcg": {
+      "c3a": 0.15696355831254788,
+      "floor": 0.0,
+      "mlp": 0.6592907756501849,
+      "oracle": 0.8076072066050948,
+      "procrustes": 0.6646652449748284,
+      "ridge": 0.6811590403826876
+    },
+    "k": 10,
+    "learning_curve_c3a_pool": "one positive doc per non-eval SciFact query; eval IDs and eval qrels excluded",
+    "max_queries": 100,
+    "models": {
+      "old": "sentence-transformers/all-MiniLM-L6-v2",
+      "swap": "all-mpnet-base-v2"
+    },
+    "ndcg": "binary merged-harness ndcg_at_k",
+    "old_scalar_audit": {
+      "finding": "The old scalar was a cross-seed campaign mean attached to the seed-42 eval split. The frozen per-query seed-42 result supersedes it.",
+      "fixed_split_per_query_ndcg": 0.15696355831254788,
+      "fixed_split_per_query_recovery": 0.19435631211411442,
+      "ndcg_difference": -0.003936441687452108,
+      "old_c3a_scalar_ndcg": 0.1609,
+      "old_scalar_implied_recovery": 0.19923051538429024
+    },
+    "recovery": {
+      "c3a": 0.19435631211411442,
+      "mlp": 0.8163507832249521,
+      "procrustes": 0.8230055892750813,
+      "ridge": 0.8434286306657018
+    },
+    "sample_docs": 1200,
+    "seed": 42,
+    "waypoint_audit": {
+      "eval_positive_docs_in_leakage_safe_fit": 0,
+      "eval_positive_docs_in_literal_fit": 28,
+      "leakage_safe_fit_count": 600,
+      "literal_fit_count": 600,
+      "literal_recovery": {
+        "procrustes": 0.8230055892750813,
+        "ridge": 0.8434286306657018
+      },
+      "protocol_conflict": "The exact waypoint permutation contains eval-positive documents. Canonical ladder/bootstrap reproduction uses it; new learning-curve fits use the separate leakage_safe_fit_idx."
+    }
+  },
+  "qrels": {
+    "1": {
+      "31715818": 1.0
+    },
+    "113": {
+      "6157837": 1.0
+    },
+    "115": {
+      "33872649": 1.0
+    },
+    "118": {
+      "6372244": 1.0
+    },
+    "124": {
+      "4883040": 1.0
+    },
+    "127": {
+      "21598000": 1.0
+    },
+    "128": {
+      "8290953": 1.0
+    },
+    "132": {
+      "7975937": 1.0
+    },
+    "137": {
+      "26016929": 1.0
+    },
+    "141": {
+      "14437255": 1.0,
+      "6955746": 1.0
+    },
+    "143": {
+      "10582939": 1.0
+    },
+    "146": {
+      "10582939": 1.0
+    },
+    "148": {
+      "1084345": 1.0
+    },
+    "163": {
+      "18872233": 1.0
+    },
+    "171": {
+      "12670680": 1.0
+    },
+    "180": {
+      "16966326": 1.0
+    },
+    "183": {
+      "12827098": 1.0
+    },
+    "185": {
+      "18340282": 1.0
+    },
+    "198": {
+      "2177022": 1.0
+    },
+    "212": {
+      "22038539": 1.0
+    },
+    "213": {
+      "13625993": 1.0
+    },
+    "216": {
+      "21366394": 1.0
+    },
+    "218": {
+      "21366394": 1.0
+    },
+    "232": {
+      "10536636": 1.0
+    },
+    "233": {
+      "4388470": 1.0
+    },
+    "236": {
+      "4388470": 1.0
+    },
+    "238": {
+      "2251426": 1.0
+    },
+    "239": {
+      "14079881": 1.0
+    },
+    "248": {
+      "1568684": 1.0
+    },
+    "268": {
+      "970012": 1.0
+    },
+    "275": {
+      "14241418": 1.0,
+      "14819804": 1.0,
+      "4961038": 1.0
+    },
+    "3": {
+      "14717500": 1.0
+    },
+    "303": {
+      "4388470": 1.0
+    },
+    "312": {
+      "6173523": 1.0
+    },
+    "327": {
+      "17997584": 1.0
+    },
+    "338": {
+      "23349986": 1.0
+    },
+    "350": {
+      "16927286": 1.0
+    },
+    "354": {
+      "8774475": 1.0
+    },
+    "36": {
+      "11705328": 1.0,
+      "5152028": 1.0
+    },
+    "380": {
+      "19005293": 1.0
+    },
+    "385": {
+      "9767444": 1.0,
+      "9955779": 1.0
+    },
+    "386": {
+      "16495649": 1.0
+    },
+    "388": {
+      "1148122": 1.0
+    },
+    "399": {
+      "791050": 1.0
+    },
+    "411": {
+      "14924526": 1.0
+    },
+    "431": {
+      "28937856": 1.0
+    },
+    "437": {
+      "18399038": 1.0
+    },
+    "440": {
+      "4423559": 1.0
+    },
+    "452": {
+      "12804937": 1.0,
+      "464511": 1.0
+    },
+    "475": {
+      "18678095": 1.0
+    },
+    "48": {
+      "13734012": 1.0
+    },
+    "491": {
+      "56893404": 1.0
+    },
+    "50": {
+      "12580014": 1.0
+    },
+    "501": {
+      "17930286": 1.0
+    },
+    "51": {
+      "45638119": 1.0
+    },
+    "56": {
+      "4709641": 1.0
+    },
+    "57": {
+      "4709641": 1.0
+    },
+    "70": {
+      "4414547": 1.0,
+      "5956380": 1.0
+    },
+    "75": {
+      "4387784": 1.0
+    },
+    "99": {
+      "18810195": 1.0
+    }
+  },
+  "record_type": "embedding_pack"
+}

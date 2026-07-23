@@ -1,0 +1,452 @@
+{
+  "bootstrap_invalid_oracle_gap_fraction": 0.6086,
+  "collapse_cluster_count": 16,
+  "contrasts": {
+    "chelation_vs_cbie": {
+      "delta_ndcg": {
+        "ci_high": 0.004925196390601782,
+        "ci_low": -0.04609016347606654,
+        "estimate": -0.019936158060221865,
+        "half_width": 0.02550767993333416
+      },
+      "half_width": 0.02550767993333416,
+      "left": "chelation_primary",
+      "multiple_testing": {
+        "family_size": 3,
+        "holm_adjusted_p": 0.23477652234776522,
+        "holm_threshold": 0.025,
+        "p_value": 0.11738826117388261,
+        "rank": 2,
+        "reject": false
+      },
+      "p_value": 0.11738826117388261,
+      "recovery_point_advantage": {
+        "ci_high": null,
+        "ci_low": null,
+        "estimate": null,
+        "half_width": null,
+        "status": "blocked_invalid_or_nonpositive_oracle_gap"
+      },
+      "right": "cbie",
+      "seed_delta_ndcg": [
+        -0.011765789858789844,
+        -0.018950308683175043,
+        -0.027184983766660564,
+        -0.025790171544848528,
+        -0.015989536447635455
+      ],
+      "seed_recovery_advantage": [
+        null,
+        null,
+        -5.853271249540537,
+        -4.695849842759142,
+        null
+      ]
+    },
+    "chelation_vs_global_ridge": {
+      "delta_ndcg": {
+        "ci_high": 0.048356305874281455,
+        "ci_low": 0.00010165663802856929,
+        "estimate": 0.022357069609451274,
+        "half_width": 0.024127324618126444
+      },
+      "half_width": 0.024127324618126444,
+      "left": "chelation_primary",
+      "multiple_testing": {
+        "family_size": 3,
+        "holm_adjusted_p": 0.143985601439856,
+        "holm_threshold": 0.016666666666666666,
+        "p_value": 0.047995200479952004,
+        "rank": 1,
+        "reject": false
+      },
+      "p_value": 0.047995200479952004,
+      "recovery_point_advantage": {
+        "ci_high": null,
+        "ci_low": null,
+        "estimate": null,
+        "half_width": null,
+        "status": "blocked_invalid_or_nonpositive_oracle_gap"
+      },
+      "right": "global_ridge",
+      "seed_delta_ndcg": [
+        0.02299791687181496,
+        0.034898073568510046,
+        0.021298074979676174,
+        0.005741991108623057,
+        0.026849291518632024
+      ],
+      "seed_recovery_advantage": [
+        null,
+        null,
+        4.585745241532326,
+        1.0454962658027693,
+        null
+      ]
+    },
+    "chelation_vs_hubness": {
+      "delta_ndcg": {
+        "ci_high": 0.04217394146907476,
+        "ci_low": -0.014657835712121032,
+        "estimate": 0.011553618132793098,
+        "half_width": 0.028415888590597894
+      },
+      "half_width": 0.028415888590597894,
+      "left": "chelation_primary",
+      "multiple_testing": {
+        "family_size": 3,
+        "holm_adjusted_p": 0.44595540445955406,
+        "holm_threshold": 0.05,
+        "p_value": 0.44595540445955406,
+        "rank": 3,
+        "reject": false
+      },
+      "p_value": 0.44595540445955406,
+      "recovery_point_advantage": {
+        "ci_high": null,
+        "ci_low": null,
+        "estimate": null,
+        "half_width": null,
+        "status": "blocked_invalid_or_nonpositive_oracle_gap"
+      },
+      "right": "hubness",
+      "seed_delta_ndcg": [
+        0.013109046929823287,
+        0.011628988744589952,
+        0.010582375711522873,
+        0.012061167313944243,
+        0.010386511964084244
+      ],
+      "seed_recovery_advantage": [
+        null,
+        null,
+        2.27851949575403,
+        2.1960858436395263,
+        null
+      ]
+    }
+  },
+  "data_fingerprint": {
+    "document_count": 2500,
+    "document_ids_sha256": "619f238eba8cc7d148730410be359b71dd10c81eaa8c450dfd6528cea92b8546",
+    "eval_query_count": 60,
+    "eval_query_ids_sha256": "dfd9ad4d2818d34a5d265003652cc6977cf1de2ef2038ea8832a6d0270ac83db",
+    "validation_query_count": 40,
+    "validation_query_ids_sha256": "c30985c00a67c0f3ba57282886c874e6fa9115fde4915cced6d64d6cda4b156f"
+  },
+  "dataset": "NFCorpus",
+  "decision": {
+    "g2_pass": false,
+    "g3_interpreted": false,
+    "reason": "G2 median bootstrap half-width exceeds the preregistered threshold",
+    "status": "UNDERPOWERED_NEGATIVE",
+    "verdict": "NO_G3_VERDICT",
+    "win": false
+  },
+  "detector": {
+    "auprc": 0.3073012975212301,
+    "auprc_status": "ok",
+    "cluster_predictions": 160,
+    "collapse_cluster_count": 16,
+    "dataset": "NFCorpus",
+    "per_seed": [
+      {
+        "auprc": 0.3884548282177593,
+        "auprc_status": "ok",
+        "eval_positive_clusters": 8,
+        "seed": 42,
+        "selected_gate_threshold": 0.38058799774797025
+      },
+      {
+        "auprc": 0.5269230769230769,
+        "auprc_status": "ok",
+        "eval_positive_clusters": 4,
+        "seed": 1337,
+        "selected_gate_threshold": 0.16361771479565937
+      },
+      {
+        "auprc": 0.2618298439270306,
+        "auprc_status": "ok",
+        "eval_positive_clusters": 7,
+        "seed": 7,
+        "selected_gate_threshold": 0.6183261996894078
+      },
+      {
+        "auprc": 0.4701376191719995,
+        "auprc_status": "ok",
+        "eval_positive_clusters": 8,
+        "seed": 101,
+        "selected_gate_threshold": 0.17995735799004264
+      },
+      {
+        "auprc": 0.32154599213422747,
+        "auprc_status": "ok",
+        "eval_positive_clusters": 6,
+        "seed": 202,
+        "selected_gate_threshold": 0.3649767134775416
+      }
+    ],
+    "positive_clusters": 33,
+    "record_type": "d2_cell_detector"
+  },
+  "displacement": [
+    {
+      "chelation_alpha_0_05": {
+        "max_displacement": 0.02339974392286369,
+        "max_relative_displacement": 0.023399743467267753,
+        "mean_displacement": 0.002049355741816126,
+        "mean_relative_displacement": 0.0021317731906830904,
+        "moved_fraction": 0.2152
+      },
+      "chelation_primary": {
+        "max_displacement": 0.02339974392286369,
+        "max_relative_displacement": 0.023399743467267753,
+        "mean_displacement": 0.002049355741816126,
+        "mean_relative_displacement": 0.0021317731906830904,
+        "moved_fraction": 0.2152
+      },
+      "corruption_mean": 0.04371039301558844
+    },
+    {
+      "chelation_alpha_0_05": {
+        "max_displacement": 0.05000000254583624,
+        "max_relative_displacement": 0.05000000000000002,
+        "mean_displacement": 0.012681972031078695,
+        "mean_relative_displacement": 0.013191520386190092,
+        "moved_fraction": 0.3896
+      },
+      "chelation_primary": {
+        "max_displacement": 0.060014885682679084,
+        "max_relative_displacement": 0.06115959797871483,
+        "mean_displacement": 0.012722804425725364,
+        "mean_relative_displacement": 0.013234041233669655,
+        "moved_fraction": 0.3896
+      },
+      "corruption_mean": 0.04082121485878482
+    },
+    {
+      "chelation_alpha_0_05": {
+        "max_displacement": 0.02842391417261615,
+        "max_relative_displacement": 0.030302230068750997,
+        "mean_displacement": 0.0004443124638898866,
+        "mean_relative_displacement": 0.0004645291631235871,
+        "moved_fraction": 0.0284
+      },
+      "chelation_primary": {
+        "max_displacement": 0.02842391417261615,
+        "max_relative_displacement": 0.030302230068750997,
+        "mean_displacement": 0.0004443124638898866,
+        "mean_relative_displacement": 0.0004645291631235871,
+        "moved_fraction": 0.0284
+      },
+      "corruption_mean": 0.032982782189830084
+    },
+    {
+      "chelation_alpha_0_05": {
+        "max_displacement": 0.04783321803445667,
+        "max_relative_displacement": 0.05000000000000001,
+        "mean_displacement": 0.010067817273164095,
+        "mean_relative_displacement": 0.01052335076316876,
+        "moved_fraction": 0.396
+      },
+      "chelation_primary": {
+        "max_displacement": 0.06585457366198046,
+        "max_relative_displacement": 0.06909965411107165,
+        "mean_displacement": 0.010167841304503529,
+        "mean_relative_displacement": 0.01062924205891293,
+        "moved_fraction": 0.396
+      },
+      "corruption_mean": 0.041603423809258334
+    },
+    {
+      "chelation_alpha_0_05": {
+        "max_displacement": 0.04691650904212643,
+        "max_relative_displacement": 0.05,
+        "mean_displacement": 0.008370283317517182,
+        "mean_relative_displacement": 0.00873178737703731,
+        "moved_fraction": 0.4556
+      },
+      "chelation_primary": {
+        "max_displacement": 0.05010695389081183,
+        "max_relative_displacement": 0.053400130267387005,
+        "mean_displacement": 0.008371923034615357,
+        "mean_relative_displacement": 0.008733535760456547,
+        "moved_fraction": 0.4556
+      },
+      "corruption_mean": 0.03406503715563726
+    }
+  ],
+  "g2": {
+    "contrast_half_widths": {
+      "chelation_vs_cbie": 0.02550767993333416,
+      "chelation_vs_global_ridge": 0.024127324618126444,
+      "chelation_vs_hubness": 0.028415888590597894
+    },
+    "family": [
+      "chelation_vs_cbie",
+      "chelation_vs_hubness",
+      "chelation_vs_global_ridge"
+    ],
+    "gate": "G2",
+    "median_half_width": 0.02550767993333416,
+    "pass": false,
+    "query_count": 60,
+    "rough_query_count_for_threshold": 174,
+    "threshold": 0.015
+  },
+  "harness_parity_max_abs": 0.0,
+  "leakage_audits": [
+    {
+      "contaminated_ids": [],
+      "fit_document_count": 218,
+      "known_positive_document_count": 2063,
+      "positive_documents_in_fit": 0
+    },
+    {
+      "contaminated_ids": [],
+      "fit_document_count": 218,
+      "known_positive_document_count": 2063,
+      "positive_documents_in_fit": 0
+    },
+    {
+      "contaminated_ids": [],
+      "fit_document_count": 218,
+      "known_positive_document_count": 2063,
+      "positive_documents_in_fit": 0
+    },
+    {
+      "contaminated_ids": [],
+      "fit_document_count": 218,
+      "known_positive_document_count": 2063,
+      "positive_documents_in_fit": 0
+    },
+    {
+      "contaminated_ids": [],
+      "fit_document_count": 218,
+      "known_positive_document_count": 2063,
+      "positive_documents_in_fit": 0
+    }
+  ],
+  "min_oracle_gap": -0.009101934122341171,
+  "pack": {
+    "arrays": "research\\drift_recovery\\out\\d2\\cells\\nfcorpus_c16\\cell_pack.npz",
+    "metadata": "research\\drift_recovery\\out\\d2\\cells\\nfcorpus_c16\\cell_pack.json",
+    "sha256": "e50a71f26fef0e34a6ba9add1e5f541526fcf8ee8e194b04924655ca68929267"
+  },
+  "parameter_budgets": [
+    {
+      "allocated_low_rank_scalar_budget_matched": true,
+      "chelation_allocated_low_rank_scalars": 27648,
+      "full_pipeline_free_parameter_match_claimed": false,
+      "not_counted": [
+        "routing centroids",
+        "chelation cluster probabilities",
+        "harm scorer coefficients",
+        "tied PCA factor degrees of freedom"
+      ],
+      "paired_local_allocated_low_rank_scalars": 27648
+    },
+    {
+      "allocated_low_rank_scalar_budget_matched": true,
+      "chelation_allocated_low_rank_scalars": 27648,
+      "full_pipeline_free_parameter_match_claimed": false,
+      "not_counted": [
+        "routing centroids",
+        "chelation cluster probabilities",
+        "harm scorer coefficients",
+        "tied PCA factor degrees of freedom"
+      ],
+      "paired_local_allocated_low_rank_scalars": 27648
+    },
+    {
+      "allocated_low_rank_scalar_budget_matched": true,
+      "chelation_allocated_low_rank_scalars": 27648,
+      "full_pipeline_free_parameter_match_claimed": false,
+      "not_counted": [
+        "routing centroids",
+        "chelation cluster probabilities",
+        "harm scorer coefficients",
+        "tied PCA factor degrees of freedom"
+      ],
+      "paired_local_allocated_low_rank_scalars": 27648
+    },
+    {
+      "allocated_low_rank_scalar_budget_matched": true,
+      "chelation_allocated_low_rank_scalars": 27648,
+      "full_pipeline_free_parameter_match_claimed": false,
+      "not_counted": [
+        "routing centroids",
+        "chelation cluster probabilities",
+        "harm scorer coefficients",
+        "tied PCA factor degrees of freedom"
+      ],
+      "paired_local_allocated_low_rank_scalars": 27648
+    },
+    {
+      "allocated_low_rank_scalar_budget_matched": true,
+      "chelation_allocated_low_rank_scalars": 27648,
+      "full_pipeline_free_parameter_match_claimed": false,
+      "not_counted": [
+        "routing centroids",
+        "chelation cluster probabilities",
+        "harm scorer coefficients",
+        "tied PCA factor degrees of freedom"
+      ],
+      "paired_local_allocated_low_rank_scalars": 27648
+    }
+  ],
+  "primary_movement_valid": true,
+  "record_type": "d2_decision_cell",
+  "run_fingerprint": {
+    "d2_source_sha256": "c4520e8cdba7b1d834d9eaf458dc403b5ce875d6bf7162811b5f7d73092678f0",
+    "harness_bridge_sha256": "70308a5dadf0540d8d6246cae3ba7cd40f6b8e360959b1c77056aa8aa374bae6",
+    "model": "sentence-transformers/all-MiniLM-L6-v2",
+    "model_revision": "1110a243fdf4706b3f48f1d95db1a4f5529b4d41",
+    "protocol_sha256": "3b1fb6aa83fc56154a4b1ed0aab599a1a88bd8869938e9863d2f3529a4f97d78",
+    "repo_sha": "34ce4b5632e0d9cd2a16c29e0e1acc42e645b9c2"
+  },
+  "seeds": [
+    42,
+    1337,
+    7,
+    101,
+    202
+  ],
+  "selected_hyperparameters": [
+    {
+      "chelation_primary_radial_gain": 0.05,
+      "detector_gate_threshold": 0.38058799774797025,
+      "global_ridge_regularization": 0.1,
+      "hubness_strength": 0.1,
+      "paired_local_regularization": 0.1
+    },
+    {
+      "chelation_primary_radial_gain": 0.2,
+      "detector_gate_threshold": 0.16361771479565937,
+      "global_ridge_regularization": 0.1,
+      "hubness_strength": 0.1,
+      "paired_local_regularization": 0.1
+    },
+    {
+      "chelation_primary_radial_gain": 0.05,
+      "detector_gate_threshold": 0.6183261996894078,
+      "global_ridge_regularization": 0.1,
+      "hubness_strength": 0.1,
+      "paired_local_regularization": 0.1
+    },
+    {
+      "chelation_primary_radial_gain": 0.2,
+      "detector_gate_threshold": 0.17995735799004264,
+      "global_ridge_regularization": 0.1,
+      "hubness_strength": 0.1,
+      "paired_local_regularization": 0.1
+    },
+    {
+      "chelation_primary_radial_gain": 0.1,
+      "detector_gate_threshold": 0.3649767134775416,
+      "global_ridge_regularization": 0.1,
+      "hubness_strength": 0.1,
+      "paired_local_regularization": 0.1
+    }
+  ]
+}

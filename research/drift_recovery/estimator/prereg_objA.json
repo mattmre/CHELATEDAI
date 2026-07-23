@@ -1,0 +1,173 @@
+{
+  "record_type": "drift_recovery_objA_preregistration",
+  "schema_version": 1,
+  "preregistration_id": "objA-oracle-margin-block-loo-v1",
+  "frozen_at_utc": "2026-07-10T19:47:23Z",
+  "ordering_constraint": {
+    "frozen_before_new_pack_build": true,
+    "new_pack_builds_at_freeze": 0,
+    "note": "This file and prereg_objA.md are frozen before either FiQA2018 pack is built. The timestamp records the scope date; filesystem and artifact hashes provide the execution audit trail."
+  },
+  "primary_hypothesis": "A univariate OLS using oracle_margin_mean predicts ridge oracle-gap recovery R better than both frozen trivial nulls under blocked leave-one-out validation.",
+  "primary_predictor": {
+    "name": "oracle_margin_mean",
+    "model": "ordinary least squares with intercept",
+    "feature_count": 1,
+    "allowed_features": [
+      "oracle_margin_mean"
+    ],
+    "forbidden_fallbacks": [
+      "multi-feature maps",
+      "oracle_margin_q50",
+      "oracle_margin_sign_rate"
+    ],
+    "prediction_clipping": false
+  },
+  "target": {
+    "name": "R",
+    "definition": "(ridge_ndcg - floor_ndcg) / (oracle_ndcg - floor_ndcg)",
+    "ridge_regularization": 1.0,
+    "non_positive_oracle_gap": "Log the regime as unavailable and exclude it; do not alter the target or manufacture a positive gap."
+  },
+  "primary_metric": {
+    "name": "block-LOO Spearman(R_hat, R)",
+    "spearman": "Pearson correlation of average-tie ranks over all out-of-fold cell predictions and observed R values.",
+    "secondary_required_metric": "block-LOO mean absolute error over the same out-of-fold cells",
+    "undefined_metric_policy": "Record null if either ranked vector has zero variance; an undefined metric cannot satisfy a strict-beat comparison."
+  },
+  "nulls": [
+    {
+      "name": "oracle_gap_ols",
+      "definition": "Univariate OLS with intercept from oracle_gap to R, fit on the same training cells as the primary predictor."
+    },
+    {
+      "name": "mean_R",
+      "definition": "Training-cell mean R, computed independently inside each identical block-LOO fold."
+    }
+  ],
+  "beat_definition": "The primary predictor must have strictly greater Spearman and strictly lower MAE than each null. Ties, null metrics, and equality are failures.",
+  "block_loo": {
+    "dataset_block": {
+      "held_out_unit": "entire dataset",
+      "expected_unit_count_if_all_regimes_build": 3
+    },
+    "encoder_family_block": {
+      "held_out_unit": "entire encoder family",
+      "expected_unit_count_if_all_regimes_build": 2
+    },
+    "training_exclusion": "Every cell whose block label equals the held-out label is excluded from every model and null fit for that fold.",
+    "aggregation": "Concatenate exactly one out-of-fold prediction per available independent dataset x encoder-family pair, then compute Spearman and MAE at cell level while reporting held-out-unit count and independent-pair block-n.",
+    "hyperparameter_cells_are_not_blocks": true
+  },
+  "partial_spearman": {
+    "locked_definition": "Average-rank oracle_margin_mean, R, and oracle_gap across the available independent pairs. OLS-residualize ranked oracle_margin_mean and ranked R separately on an intercept plus ranked oracle_gap. Pearson-correlate the two residual vectors.",
+    "scope": "One full-sample descriptive partial correlation across independent dataset x encoder-family pairs; it is not substituted for either primary block-LOO metric.",
+    "additional_descriptives": [
+      "raw Spearman(oracle_margin_mean, R)",
+      "raw Spearman(oracle_gap, R)",
+      "raw Spearman difference: margin minus gap"
+    ]
+  },
+  "frozen_regimes": [
+    {
+      "name": "scifact_minilm_to_mpnet",
+      "dataset": "SciFact",
+      "encoder_family": "mpnet",
+      "swap_model": "all-mpnet-base-v2",
+      "anchor_fraction": 0.4,
+      "source": "reuse_existing",
+      "pack_prefix": "research/drift_recovery/out/d1/scifact_evalsplit_pack"
+    },
+    {
+      "name": "scifact_minilm_to_bge_large",
+      "dataset": "SciFact",
+      "encoder_family": "bge-large",
+      "swap_model": "BAAI/bge-large-en-v1.5",
+      "anchor_fraction": 0.4,
+      "source": "reuse_existing",
+      "pack_prefix": "research/drift_recovery/out/estimator/packs/scifact_minilm_to_bge_large_pack"
+    },
+    {
+      "name": "nfcorpus_minilm_to_mpnet",
+      "dataset": "NFCorpus",
+      "encoder_family": "mpnet",
+      "swap_model": "all-mpnet-base-v2",
+      "anchor_fraction": 0.4,
+      "source": "reuse_existing",
+      "pack_prefix": "research/drift_recovery/out/estimator/packs/nfcorpus_minilm_to_mpnet_pack"
+    },
+    {
+      "name": "nfcorpus_minilm_to_bge_large",
+      "dataset": "NFCorpus",
+      "encoder_family": "bge-large",
+      "swap_model": "BAAI/bge-large-en-v1.5",
+      "anchor_fraction": 0.4,
+      "source": "reuse_existing",
+      "pack_prefix": "research/drift_recovery/out/estimator/packs/nfcorpus_minilm_to_bge_large_pack"
+    },
+    {
+      "name": "fiqa2018_minilm_to_mpnet_af040",
+      "dataset": "FiQA2018",
+      "encoder_family": "mpnet",
+      "swap_model": "all-mpnet-base-v2",
+      "anchor_fraction": 0.4,
+      "source": "build_new",
+      "pack_prefix": "research/drift_recovery/out/estimator/packs/fiqa2018_minilm_to_mpnet_af040_pack"
+    },
+    {
+      "name": "fiqa2018_minilm_to_bge_large_af040",
+      "dataset": "FiQA2018",
+      "encoder_family": "bge-large",
+      "swap_model": "BAAI/bge-large-en-v1.5",
+      "anchor_fraction": 0.4,
+      "source": "build_new",
+      "pack_prefix": "research/drift_recovery/out/estimator/packs/fiqa2018_minilm_to_bge_large_af040_pack"
+    }
+  ],
+  "offline_scope": {
+    "source": "research/drift_recovery/out/estimator/offline_cache_scope.md",
+    "old_model": "sentence-transformers/all-MiniLM-L6-v2",
+    "expected_independent_pair_block_n": 6,
+    "expected_cell_n": 6,
+    "new_pack_count": 2,
+    "anchor_fraction_pseudoreplicates": 0,
+    "environment": {
+      "HF_HUB_OFFLINE": "1",
+      "HF_DATASETS_OFFLINE": "1",
+      "TRANSFORMERS_OFFLINE": "1"
+    },
+    "execution": "sequential",
+    "device": "shared modest GPU",
+    "oom_policy": "Use conservative batch sizes and release model/GPU memory between sequential regimes; do not parallelize pack builds."
+  },
+  "pseudo_replication_rule": "Drift-magnitude or anchor-fraction variants of an existing dataset and encoder-family pair may be logged as cells but do not increment independent-pair block-n and may not pad the primary analysis. No such variants are registered here.",
+  "success_bar": {
+    "operator": "AND",
+    "requirements": [
+      "margin beats oracle_gap_ols on Spearman and MAE under dataset-block LOO",
+      "margin beats mean_R on Spearman and MAE under dataset-block LOO",
+      "margin beats oracle_gap_ols on Spearman and MAE under encoder-family-block LOO",
+      "margin beats mean_R on Spearman and MAE under encoder-family-block LOO"
+    ],
+    "gap_failure_rule": "If margin fails to beat oracle_gap_ols under either block scheme on either required metric, the scientific result is NEGATIVE.",
+    "power_rule": "Power claims use independent-pair block-n, never hyperparameter cell count. The dataset and encoder holdout-unit counts are also reported."
+  },
+  "verdict_policy": {
+    "if_success_bar_met_with_all_six_pairs": "PROMISING-BUT-UNDERPOWERED",
+    "if_success_bar_not_met": "NEGATIVE",
+    "if_independent_pair_block_n_below_6": "UNDERPOWERED-NEGATIVE",
+    "positive_or_validated_label_allowed": false,
+    "reason": "The offline cache caps the experiment at three dataset holdout units and two encoder-family holdout units."
+  },
+  "required_reporting": [
+    "per-regime oracle_margin_mean, oracle_gap, floor_ndcg, and R",
+    "primary and both null out-of-fold predictions",
+    "block-LOO Spearman and MAE under both block schemes",
+    "strict pairwise beat decisions",
+    "partial Spearman controlling for oracle_gap",
+    "independent-pair block-n, cell-n, dataset holdout-unit count, and encoder-family holdout-unit count",
+    "FiQA-held-out behavior",
+    "all skipped or degenerate regimes with reasons",
+    "harness parity and leakage-fit audit"
+  ]
+}

@@ -1,2 +1,7 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# The recovered preregistrations are byte-locked by adjacent SHA-256 files.
+# Preserve their Markdown hard-break spaces without flagging them as errors.
+research/drift_recovery/estimator/prereg_objA.md whitespace=-trailing-space
+research/drift_recovery/estimator/prereg_objA_v2.md whitespace=-trailing-space

@@ -1,0 +1,96 @@
+protocol_name: lean-d2-regime-c-crossover
+protocol_version: 2
+preregistered_before_any_results: false
+locked_before_clean_confirmatory_rerun: true
+pilot_artifacts_excluded_from_decisions: true
+operational_amendments:
+  - "After SciFact completed but before any NFCorpus method fit, NFCorpus sample_docs was raised from 1200 to 2500 because the 1200-doc slice had zero non-positive documents and the binding leakage guard failed closed. No cell, query budget, method, seed, beta, HP grid, or gate changed."
+  - "The first SciFact pilot artifacts are excluded: review found fixed detector cutpoints could produce an identity primary arm, clean-space injection assignments leaked into routing, tied-score AP was order-dependent, parity was a self-repeat, and >1% invalid oracle-gap draws did not block G3. Version 2 fixes these before a clean four-cell rerun."
+scope:
+  datasets: [SciFact, NFCorpus]
+  seeds: [42, 1337, 7, 101, 202]
+  beta: 0.10
+  total_clusters: 32
+  collapsed_cluster_counts: [8, 16]
+  note: "K=32 is frozen so both corruption levels retain negative clusters for AUPRC."
+retrieval:
+  model: sentence-transformers/all-MiniLM-L6-v2
+  max_queries: 100
+  sample_docs: 1200
+  dataset_sample_docs:
+    SciFact: 1200
+    NFCorpus: 2500
+  anchor_validation_fraction: 0.40
+  ndcg_k: 10
+leakage:
+  fit_anchor_fraction_of_safe_documents: 0.50
+  exclude_all_qrel_positive_documents_from_fit: true
+  eval_qrels_available_to_fit: false
+  transform_all_documents: true
+  hp_selection_partition: anchor-validation
+detector:
+  target: counterfactual_per_cluster_ndcg_loss
+  positive_label: ndcg_drop_greater_than_1e-8
+  harm_threshold: 1.0e-8
+  gate_threshold_candidates: [0.40, 0.50, 0.60]
+  include_validation_probability_cutpoints: true
+  cluster_partition_source: deterministic_kmeans_on_corrupted_documents_only
+  tied_score_auprc: threshold_grouped_average_precision
+  pass_auprc: 0.80
+methods:
+  primary_arms: [global_ridge, cbie, hubness, chelation_primary]
+  diagnostic_arms: [paired_local_adapter]
+  exploratory_arms: [zca, all_but_top]
+  design_premise_stress_arms: [chelation_alpha_0_05]
+  global_ridge:
+    regularization_candidates: [0.1, 1.0, 10.0]
+  shared_adapter_budget:
+    global_rank: 4
+    local_rank: 1
+    routing_temperature: 0.25
+  paired_local_adapter:
+    regularization_candidates: [0.1, 1.0]
+  cbie:
+    cluster_count: 32
+    epsilon: 1.0e-4
+    routing_temperature: 0.25
+  hubness:
+    strength_candidates: [0.10, 0.25, 0.50]
+  zca:
+    epsilon: 1.0e-4
+  all_but_top:
+    component_count: 1
+  chelation_primary:
+    alpha: null
+    radial_gain_candidates: [0.05, 0.10, 0.20]
+    supervision: corrupted_geometry_plus_anchor_validation_harm_only
+  chelation_alpha_0_05:
+    alpha: 0.05
+    radial_gain: selected_primary_radial_gain
+    judged_by_g3: false
+statistics:
+  bootstrap_draws: 10000
+  bootstrap_seed: 20260630
+  confidence: 0.95
+  g2_median_half_width_threshold: 0.015
+  invalid_oracle_gap_draw_fraction_limit: 0.01
+  seed_aggregation: mean_each_query_across_five_seeds_before_paired_query_bootstrap
+  decision_cell: dataset_x_collapsed_cluster_count_with_five_seeds
+  holm_alpha: 0.05
+  holm_family:
+    - chelation_vs_cbie
+    - chelation_vs_hubness
+    - chelation_vs_global_ridge
+  family_scope: within_each_grouped_decision_cell
+g3:
+  judged_arm: chelation_primary
+  minimum_recovery_fraction_advantage: 0.05
+  minimum_absolute_ndcg_advantage: 0.02
+  require_both_paired_cis_exclude_zero: true
+  require_positive_sign_all_seeds: true
+  required_seed_count: 5
+  minimum_oracle_gap_each_seed: 0.05
+  require_all_holm_contrasts: true
+  require_detector_auprc: 0.80
+  primary_arm_design_validity: must_move_nonzero_mass_in_at_least_one_seed
+  g2_failure_status: UNDERPOWERED_NEGATIVE_NO_G3

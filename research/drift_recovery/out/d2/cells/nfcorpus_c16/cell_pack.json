@@ -1,0 +1,151 @@
+{
+  "array_shapes": {
+    "detector_harm_losses": [
+      5,
+      32
+    ],
+    "detector_probabilities": [
+      5,
+      32
+    ],
+    "query_ids": [
+      60
+    ],
+    "score__all_but_top": [
+      5,
+      60
+    ],
+    "score__cbie": [
+      5,
+      60
+    ],
+    "score__chelation_alpha_0_05": [
+      5,
+      60
+    ],
+    "score__chelation_primary": [
+      5,
+      60
+    ],
+    "score__floor": [
+      5,
+      60
+    ],
+    "score__global_ridge": [
+      5,
+      60
+    ],
+    "score__hubness": [
+      5,
+      60
+    ],
+    "score__oracle": [
+      5,
+      60
+    ],
+    "score__paired_local_adapter": [
+      5,
+      60
+    ],
+    "score__zca": [
+      5,
+      60
+    ],
+    "seed_ids": [
+      5
+    ]
+  },
+  "arrays_file": "cell_pack.npz",
+  "arrays_sha256": "e50a71f26fef0e34a6ba9add1e5f541526fcf8ee8e194b04924655ca68929267",
+  "format_version": 1,
+  "metadata": {
+    "beta": 0.1,
+    "collapse_cluster_count": 16,
+    "data_fingerprint": {
+      "document_count": 2500,
+      "document_ids_sha256": "619f238eba8cc7d148730410be359b71dd10c81eaa8c450dfd6528cea92b8546",
+      "eval_query_count": 60,
+      "eval_query_ids_sha256": "dfd9ad4d2818d34a5d265003652cc6977cf1de2ef2038ea8832a6d0270ac83db",
+      "validation_query_count": 40,
+      "validation_query_ids_sha256": "c30985c00a67c0f3ba57282886c874e6fa9115fde4915cced6d64d6cda4b156f"
+    },
+    "dataset": "NFCorpus",
+    "method_labels": {
+      "all_but_top": {
+        "component_count": 1
+      },
+      "cbie": {
+        "cluster_count": 32,
+        "epsilon": 0.0001,
+        "routing_temperature": 0.25
+      },
+      "chelation_alpha_0_05": {
+        "alpha": 0.05,
+        "judged_by_g3": false,
+        "radial_gain": "selected_primary_radial_gain"
+      },
+      "chelation_primary": {
+        "alpha": null,
+        "radial_gain_candidates": [
+          0.05,
+          0.1,
+          0.2
+        ],
+        "supervision": "corrupted_geometry_plus_anchor_validation_harm_only"
+      },
+      "design_premise_stress_arms": [
+        "chelation_alpha_0_05"
+      ],
+      "diagnostic_arms": [
+        "paired_local_adapter"
+      ],
+      "exploratory_arms": [
+        "zca",
+        "all_but_top"
+      ],
+      "global_ridge": {
+        "regularization_candidates": [
+          0.1,
+          1.0,
+          10.0
+        ]
+      },
+      "hubness": {
+        "strength_candidates": [
+          0.1,
+          0.25,
+          0.5
+        ]
+      },
+      "paired_local_adapter": {
+        "regularization_candidates": [
+          0.1,
+          1.0
+        ]
+      },
+      "primary_arms": [
+        "global_ridge",
+        "cbie",
+        "hubness",
+        "chelation_primary"
+      ],
+      "shared_adapter_budget": {
+        "global_rank": 4,
+        "local_rank": 1,
+        "routing_temperature": 0.25
+      },
+      "zca": {
+        "epsilon": 0.0001
+      }
+    },
+    "run_fingerprint": {
+      "d2_source_sha256": "c4520e8cdba7b1d834d9eaf458dc403b5ce875d6bf7162811b5f7d73092678f0",
+      "harness_bridge_sha256": "70308a5dadf0540d8d6246cae3ba7cd40f6b8e360959b1c77056aa8aa374bae6",
+      "model": "sentence-transformers/all-MiniLM-L6-v2",
+      "model_revision": "1110a243fdf4706b3f48f1d95db1a4f5529b4d41",
+      "protocol_sha256": "3b1fb6aa83fc56154a4b1ed0aab599a1a88bd8869938e9863d2f3529a4f97d78",
+      "repo_sha": "34ce4b5632e0d9cd2a16c29e0e1acc42e645b9c2"
+    }
+  },
+  "record_type": "d2_cell_pack"
+}

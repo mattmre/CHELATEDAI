@@ -1,0 +1,46 @@
+{
+  "auprc": 0.15095741258108117,
+  "auprc_status": "ok",
+  "cluster_predictions": 160,
+  "collapse_cluster_count": 16,
+  "dataset": "SciFact",
+  "per_seed": [
+    {
+      "auprc": 1.0,
+      "auprc_status": "ok",
+      "eval_positive_clusters": 1,
+      "seed": 42,
+      "selected_gate_threshold": 0.13488118342326819
+    },
+    {
+      "auprc": 0.10608465608465609,
+      "auprc_status": "ok",
+      "eval_positive_clusters": 3,
+      "seed": 1337,
+      "selected_gate_threshold": 0.08315185561056944
+    },
+    {
+      "auprc": 0.125,
+      "auprc_status": "ok",
+      "eval_positive_clusters": 4,
+      "seed": 7,
+      "selected_gate_threshold": 1.0
+    },
+    {
+      "auprc": 0.047619047619047616,
+      "auprc_status": "ok",
+      "eval_positive_clusters": 1,
+      "seed": 101,
+      "selected_gate_threshold": 0.04520421264154448
+    },
+    {
+      "auprc": 0.09375,
+      "auprc_status": "ok",
+      "eval_positive_clusters": 3,
+      "seed": 202,
+      "selected_gate_threshold": 1.0
+    }
+  ],
+  "positive_clusters": 12,
+  "record_type": "d2_cell_detector"
+}
