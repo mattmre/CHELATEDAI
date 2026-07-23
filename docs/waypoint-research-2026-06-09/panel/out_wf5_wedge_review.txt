@@ -1,0 +1,264 @@
+I'll read all four design documents in full, then cross-check the contradictions against the pilot source and supporting context.The paths may differ in this worktree — locating the four design docs and supporting files.Docs live in the main repo, not this worktree. Reading them from absolute paths.Next I'll verify the pilot source against the four contradictions and skim the supporting red-team/prereg material.# Adversarial design review — WITHIN-SPACE WEDGE TEST
+
+**Verdict: CUT**
+
+Same severity as HI-1. Power is not the problem. The design fails construct validity, baseline honesty, metric coherence, and decision value — and the four design docs already disagree hard enough that there is no single runnable experiment to freeze.
+
+I verified claims against the four docs and committed pilot/preflight source under `docs/waypoint-research-2026-06-09/panel/`. Where nobody measured a number, I say so.
+
+---
+
+## 1. The four docs disagree. Adjudication (not average)
+
+| Doc | Stated verdict | Is it right? |
+|---|---|---|
+| `wedge-power-analysis.md` | PROCEED-WITH-CHANGES | **Half right.** Power math is real; §6b correctly calls Tier 0 a theorem demo with ~0 decision value. The “proceed” half is wrong: Tier 1/2 do not escape the operator dilemma, and the pilot that underwrites “proceed” is baselined/solved in ways the other docs forbid. |
+| `wedge-operator-design.md` | **CUT** | **Right on the structural core.** Fair known-`D` comparison ⇒ theorem re-derivation; informative real-space comparison ⇒ needs dictionary learning that is gradient-based and/or non-identifiable. That dilemma is not dissolved by hygiene. |
+| `wedge-feature-construction.md` | BUILD A-ladder only; CUT Route B | **Right that Route B is a different wedge and should die.** Right that plain known-`D` Route A has decision value ≈ 0. The A0→A3 ladder is the *only* non-theorem question, but it is not a wedge *win* experiment — it is a kill-screen for exploitability, and the prior is that it fails. |
+| `wedge-baseline-design.md` | Conditional; accuracy@fixed-`d` ⇒ **CUT** | **Right on its own trigger.** Power analysis’s primary metric *is* accuracy delta at fixed `(d,m,k)`. Under baseline doc’s explicit rule, recommendation flips to CUT. Also right that headline bar must be closed-form oracle linear. |
+
+**Collective finding:** there is **no coherent single design** that simultaneously:
+1. uses a fair strongest-linear bar (`L1★` / `LIN_ORACLE`),
+2. uses a primary metric that is not a fixed-`d` accuracy delta (or else accepts baseline’s CUT trigger),
+3. is gradient-free on the letter the operator doc enforces,
+4. is not a known-`D` theorem demo, and
+5. is constructible without identifiable dictionary recovery.
+
+The docs do not average into PROCEED-WITH-CHANGES. They **collectively prove the cell is not runnable as a finding-producing experiment.** Power’s own §6b already concedes Tier 0; operator kills the fair known-`D` cell; baseline kills the power doc’s metric; feature construction kills Route B and demotes known-`D` to unreportable positive control.
+
+---
+
+## 2. Specific contradictions — verified
+
+### 2.1 Solver class — **CONFIRMED defect**
+
+Operator doc §3/§5: ISTA/FISTA are proximal-**gradient** and **excluded on the letter**; require LARS-homotopy / coordinate descent / OMP.
+
+Power doc §0 and committed `wedge_power_sim/wedge_pilot.py`:
+
+```36:52:D:\GITHUB\CHELATEDAI\docs\waypoint-research-2026-06-09\panel\wedge_power_sim\wedge_pilot.py
+def fista(A, X, lam, iters=200):
+    """Vectorised FISTA for 0.5||X - A S||^2 + lam ||S||_1 over columns of X."""
+    ...
+```
+
+Call site: `fista(..., iters=250)`. Preflight also uses FISTA.
+
+**Yes: the power analysis measured an operator the operator design disqualifies.**
+
+Does switching to LARS/OMP change effect/sd/cost? **I do not know — nobody ran that ablation.** Preflight 6 only validates FISTA vs `sklearn.Lasso` objective (not LARS path vs FISTA support-recovery deltas). Scientifically for *known Gaussian `D` deep in the Donoho–Tanner success phase*, BP/FISTA/OMP should all sit near exact recovery, so the **headline Δ ≈ 0.53 is unlikely to flip sign** — but that is an inference, not a measurement. Cost: LARS-homotopy and OMP have different complexity; the FLOP model `4·d·m·n·iters` is **FISTA-specific** and does **not** transfer.
+
+### 2.2 Which linear baseline was run — **CONFIRMED; power argument unanchored on the mandatory bar**
+
+| Source | Baseline |
+|---|---|
+| Operator §4 | Headline must be **`L1★`** (analytic). CS vs sample-fit ridge (**L0**) is **“flatly rigged.”** |
+| Baseline §2 | **`LIN_ORACLE`** = GLS / whitened matched filter closed form. Mandatory primary bar. |
+| Power pilot | **Full-fit multi-output ridge on 20,000 labelled samples**, λ on held-out 1k — classic **L0** |
+
+Verified in `wedge_pilot.py` `run_cell`: `np.linalg.solve(XXt + lam * I, XSt)` over a λ grid. No closed-form `Σ_x^{-1} d_j`. No `LIN_ORACLE`.
+
+Power’s claim that the ridge is “the *optimal* linear map” is **overstated**: it is a large-sample plug-in of multi-output MMSE linear regression, not the analytic oracle both other docs require, and the pilot never reports the gate gap `L0 − L1★`.
+
+**Headline effect Δ ≈ 0.5326 / “119× MDE” is measured only against L0.**
+
+**Δ against oracle linear (`L1★` / `LIN_ORACLE`): not computed anywhere in the four docs or committed pilot/preflight source.**  
+I will not invent it. At `n_train=20k`, `d=128`, L0 is *probably* close to L1★ for second-moment linear estimation — but “probably close” is not a measured bar. **Until `LIN_ORACLE` is instantiated, the power argument is unanchored against the baseline the other two docs declare mandatory.**
+
+Related L4 metric split (extra, load-bearing):
+
+| Instrument | Metric | Linear | CS | “Wedge” |
+|---|---|---|---|---|
+| Power pilot | top-k support-recovery fraction | ~0.48 | ~1.00 | **~0.53** |
+| Feature preflight | per-feature detection AUC | ~0.94–0.98 | ~1.00 | **~0.02–0.06** |
+
+Same generative family, **order-of-magnitude different “effects.”** Feature construction explicitly warns R² ~45× is a calibration artifact and AUC is the honest ranking wedge. Power leads with the metric that maximizes the gap. That is not fraud by itself, but it means “119× MDE” is partly **metric shopping**, not pure physics.
+
+### 2.3 Metric mismatch — **CONFIRMED; baseline’s own CUT trigger fires**
+
+Baseline §0 / §4: primary must be **minimum-dimension ratio** `Δ = log2 d*_LIN − log2 d*_NONLIN`. If chair insists on accuracy delta at fixed `d`, **recommendation flips to CUT**.
+
+Power §5: win = CI lower bound on **accuracy delta (M1)** at fixed `(128,4096,8) ≥ 0.15`.
+
+**Yes: by the baseline doc’s stated trigger, the power design is a CUT.**  
+(Power does get free `n` so it is not HI-1’s underpowered trap — it is the *mirror* trap of overpowered theorem demo. Baseline’s power concern is the wrong diagnosis for synthetic free-`n`, but its **metric diagnosis** still holds: fixed-`d` accuracy is the wrong primary for a theorem that is a statement about `d`.)
+
+### 2.4 Capacity-artifact gate — **ABSENT from power prereg**
+
+Operator §5: hard VOID if sparsity-blind kernel ridge (L2) also beats `L1★`.
+
+Power preregistered win conditions (§5): (1) effect bar ≥0.15 in wedge cells, (2) null-cell CI upper ≤0.05, (3) monotonicity. **No L2 / kernel-ridge / capacity-artifact gate.**
+
+So a “win” under power’s prereg is **not** distinguishable from the program’s six prior “elaborate structure ≈ more parameters” failures under the operator’s own falsifier.
+
+---
+
+## 3. The four questions
+
+### Q1. Winnable-in-principle AND falsifiable AND fairly baselined?
+
+Treat as three gates. **Fails 2 of 3 hard; the third is only “yes” in a degenerate sense.**
+
+**Winnable-in-principle (can the treatment lose?)**  
+- On **Tier 0 known-`D` Gaussian cells in the wedge band:** effectively **no**. Power admits the table could have been written from thresholds; interference heuristic predicted linear accuracy within 0.014; measured Δ ≈ 0.53 with l1 exact recovery ≈ 1.0. That is a **demonstration**, not an experiment. Mirror image of HI-1: HI-1 could never pass; this cannot honestly “discover” a pass.  
+- On **null/control cell:** treatment “loses” the *effect* (Δ→0) by design — that is a harness check, not a theory risk.  
+- On **sub-transition cells** (feature preflight): CS *can* lose to linear (measured negative wedges). That is real, but it is also the phase transition, not a surprise.  
+- On **estimated-`D` ladder:** treatment **can and is expected to lose**. That is the only interesting loss mode.
+
+**Falsifiable?**  
+I searched the four docs for HI-1-style pre-narration. Closest:
+
+- Operator: both branches of fair known-`D` are pre-known (theorem); W-0 NOT-KILL “changes nothing.”  
+- Power §6b: Tier 0 decision value ≈ 0.  
+- Feature §5.1: negative write-up is *allowed* as numbers (“threshold X, achieved Y”) — better than HI-1’s adjective narration, but the **prior is still “expect seventh fail-closed.”**  
+- Baseline F3/F4: genuine falsifiers *if* the `d*`-ratio design were run.
+
+There is **no single sentence that makes every outcome a win** the way HI-1’s “methodology hazard #6” did — **except** that the *motivating program action* (“pursue gradient-free nonlinear readout in frozen embeddings”) is already boxed: fair known-`D` win doesn’t license deployment; estimated-`D` loss is pre-expected; estimated-`D` win requires breaking non-identifiability. **Decision value for program direction ≈ 0 for the known-`D` cell; low and one-sided for S3/W-0.**
+
+Null-cell fail-closed and monotonicity are **genuine as harness checks**, not as theory risk: given Gaussian RIP dictionaries and the chosen grid, they are extremely hard to fail unless the code is broken. Power itself notes null Δ=0.005 is “significant” at n=10k — so significance is meaningless; only effect-size bars matter.
+
+**Fairly baselined?**  
+**No.** Strongest obliged bar:
+
+> **Closed-form oracle linear / GLS whitened matched filter**  
+> `w_j ∝ (D Σ_f Dᵀ + σ_ε² I)^{-1} d_j`  
+> (= operator’s `L1★` = baseline’s `LIN_ORACLE`)
+
+**Current numbers do not beat it because they never measured it.** They beat L0 ridge@20k on top-k support recovery. That is the wrong headline per both baseline and operator docs.
+
+**Q1 overall: FAIL.**
+
+---
+
+### Q2. Is the operator genuinely gradient-free?
+
+| Solver | Letter | Spirit |
+|---|---|---|
+| FISTA/ISTA | **Violates** (proximal gradient) | Mostly spirit-OK for *inference*: no weight training, fixed λ |
+| LARS-homotopy | Passes letter | Passes spirit |
+| Coordinate descent (soft-threshold) | Passes letter (operator says yes) | Passes spirit |
+| OMP | Passes letter cleanly | Passes spirit; needs explicit `k` |
+
+**Scientific vs terminological:** for the *known-`D` synthetic cells*, switching solvers is **terminological hygiene that almost certainly does not change the finding** (I have no head-to-head; inference only from phase-transition regime). It is **load-bearing for the program claim** “gradient-free nonlinear readout,” because shipping a FISTA pilot under that banner is an L3-class mislabel (operator §5.4 names this trap exactly).
+
+**Is “gradient-free” the right constraint?**  
+Partly **inherited framing doing limited work.** The real load-bearing constraint is: *can you obtain `D` without (a) ground truth and (b) non-identifiable / gradient dictionary learning?* Gradient-free on the **decoder** is cheap once `D` is known; the program’s six fail-closeds and mini-vec2vec framing make gradient-free *attractive*, but **decoder gradient-free is not the binding constraint** — dictionary construction is. If the constraint is only applied to FISTA vs LARS while handing over true `D`, **the constraint is doing no work.**
+
+**Smuggled fitted parameters (zero-learned-parameters claim is false as stated):**
+- Treatment: λ (fixed a priori in pilot — still a free design choice; preflight *tunes* λ on val); top-k readout uses true **`k`** (power threat #2); FISTA iters=250.
+- Baseline: λ grid, 20k labelled fit, multi-output `W ∈ R^{m×d}` — massively fitted.
+- Power’s fairness note (“baseline gets a tuned knob; treatment’s λ fixed”) is real but incomplete: **both arms get true `k` via top-k**, and treatment gets true `A`.
+
+**Ruling: letter violated by the only measured operator; spirit OK for decoder-only; constraint largely does no work given known `D`.**
+
+---
+
+### Q3. Is giving the operator the dictionary a cheat?
+
+**Ruling: not a cheat against `L1★` — and therefore uninformative.**  
+Operator §4 is correct. Information parity with oracle linear is fair; fairness **is** the theorem. That dilemma is real.
+
+**Dictionary-uncertainty ladder (A0→A3) as escape?**  
+**Partial escape only, then it inherits the problem.**
+
+- Escape: the *question* shifts from “does GKP hold?” (settled) to “does any achievable estimator reach the quality the wedge needs?” — open in principle, decisive in the negative.
+- Inheritance: feature’s own measured bar is **mean atom cosine ≳ ~0.98** (wedge dies between 0.98 and 0.93 under isotropic jitter). Non-identifiability literature predicts reconstruction-based learning fails to recover ground-truth atoms. Feature is candid: expect fail-closed.
+- Power’s isotropic jitter to eps=0.4 with Δ still 0.42 is **the easy perturbation** (power §6c / threat #5). **It carries almost no weight** for the documented failure mode (merge/split/rotate/permute). Feature says the same: 0.98 is a **lower bound** on required quality under optimistic noise.
+
+**Merge/split/rotate sweep:** decisive for *whether isotropic robustness generalizes*; it does **not** create a gradient-free identifiable estimator. It relocates and hardens the same problem.
+
+**Coherence sweep (Tier 0b):** **Yes — this is the first gate if anything runs.** Gaussian dictionaries are maximally CS-favourable (near-optimal RIP). Real embedding dictionaries are coherent. Power §6d admits this can CUT the line before GPU. Feature’s window-finding already shows CS *loses* outside a narrow ridge. **Coherence alone can kill the synthetic instrument’s external validity**; it should run before any “result” claim. It cannot by itself open a real-space path without `D`.
+
+**W-0 applicability screen:**  
+A screen with only one informative branch (KILL) is **worth ~2 CPU-hours only if permanently closing the wedge program has positive value.** Operator’s `decision value = P(KILL) × value(closing)` is the right frame. It is **not** worth running as a path to a positive wedge result. I would treat it as optional paperwork, not a research cell.
+
+**On “estimate `D` gradient-free then measure wedge”:**  
+That is the **only third cell** that is not pure theorem re-derivation. It is **not** a free escape: it is exactly the non-identifiability gauntlet, and feature’s S3 is the honest compression of the whole experiment into one number. Running S3 is a **close-the-line measurement**, not a “proceed with the wedge.”
+
+---
+
+### Q4. Is the power math sound?
+
+**Arithmetic: correct.**
+
+- Formula: `delta_MDE = (z_{α/2} + z_power) · sd_d / √n` — standard paired normal approximation.
+- Bonferroni: `α = 0.05/6` two-sided ⇒ critical tail `0.05/12` ⇒ `z = 2.6383` — verified (`scipy.stats.norm.ppf(1 - 0.05/12) ≈ 2.63826`).
+- Worked example: `(2.6383 + 0.8416) · 0.1284 / 100 = 0.004468` — verified.
+- 119×: `0.5326 / 0.00447 ≈ 119` — verified.
+
+**Assumptions / honesty:**
+
+| Issue | Ruling |
+|---|---|
+| Bonferroni over 6 **dependent** cells | **Conservative, not anti-conservative.** Shared dictionary structure, nested `d`, preregistered monotone order ⇒ positive dependence ⇒ true FWER control weaker than Bonferroni implies; MDE is slightly **overstated** (harder to clear significance). Irrelevant to effect-size bar 0.15. Holm or hierarchical testing would be cleaner; not load-bearing. |
+| `sd_d` under large-effect alternative | **Disclosed correctly (threat #3).** Under a small true effect, sd can differ. Rows at sd=0.30/0.50 bound the MDE *if* those sds obtain; they do **not** prove the pilot sd transfers to Tier 2. Acceptable for power *planning*; invalid as evidence the real effect is large. |
+| Pilot n=1000, single seed | **Inadequate to “fix” sd_d as a population quantity**; adequate only as a rough order-of-magnitude for planning (power threat #4 admits this). Confirmatory needs multi-seed. |
+| eps=0.05/0.10 bit-identical to eps=0 | **Expected, not a harness bug.** Same `A`, same test set, l1 already at ceiling; linear arm independent of eps. Those rows carry **no independent information**. No conclusion may lean on them — power states this. |
+| Bar 0.15 | **Reverse-engineered from the pilot, not set blind.** Justifications (“33.6× MDE80”, “30× null effect”) are *post hoc numerology* around a number the pilot already clears by ~3.5×. Before pilot, an honest bar for a *theorem demo* would either be “reproduce phase transition within ε” or a `d*`-ratio ≥2× — not “CI lower ≥ 0.15 on the metric that maximizes the gap.” I would **not** have set 0.15 pre-pilot without the 0.53 measurement in hand. |
+| FLOP extrapolation | **Sound for FISTA on contended CPU at the measured rate**, as order-of-magnitude. **Does not hold as written if solver becomes LARS/OMP** — different flop structure; 3090 “n=100k free” claim is FISTA-specific and still assumes the whole experiment remains FISTA@250. |
+
+**Power verdict:** math correct; **bar not honest as a pre-registered scientific threshold** — it is a post-pilot clearance number. More importantly, **power answers the wrong question**: free `n` and 119× MDE prove you can re-measure a theorem with absurd precision, which is the defect.
+
+---
+
+## 4. Deliverable rulings
+
+### Verdict: **CUT**
+
+### 1. Single highest-value change (replacement, not a patch list)
+
+**Do not run a “within-space wedge test” claiming gradient-free nonlinear beats linear.**
+
+Replace the cell with **one of**:
+
+- **Preferred (zero/near-zero compute):** **Close the direction** on the operator dilemma + non-identifiability result + six prior fail-closeds. Write methodology hazard: *the CS wedge is real as math and unusable as a gradient-free program lever without identifiable `D`.* That is the HI-1-class win.
+- **If a measured close is required for the paper trail (< few CPU/GPU hours):** run **only** feature-construction **S3** (can any estimator reach Hungarian-matched atom cosine ≳ 0.98 / retain ≥+0.02 AUC vs A0?) with A1 unreportable positive control — **expect fail-closed, pre-declare CLOSE on failure**. Optionally prepend coherence + W-0 kurtosis as free kill-switches. **No Tier 0 “result,” no Route B, no GPU embedding campaign, no NDCG primary.**
+
+Do **not** “PROCEED-WITH-CHANGES” into Tier 1/2 as currently written: that reopens the same cell under a new label.
+
+### 2. Strongest linear baseline obliged to beat
+
+**Name:** closed-form oracle linear — GLS / whitened matched filter  
+`w_j ∝ (D Σ_f Dᵀ + σ_ε² I)^{-1} d_j`  
+(= `L1★` / `LIN_ORACLE`)
+
+**Measured numbers that beat it:** **none.** Silent.
+
+### 3. Gradient-free ruling
+
+**Violated on the letter** (only measured operator is FISTA).  
+**Spirit OK for decoder-only, constraint largely does no work** once true `D` is given. “Zero learned parameters” is false as stated (λ, k-via-top-k, solver iters; baseline heavily fitted).
+
+### 4. Dictionary ruling
+
+**Not a cheat vs `L1★` — therefore uninformative** (theorem instantiation).  
+Estimated-`D` ladder is the only non-cheat informative path and is **expected to fail** the quality bar; isotropic jitter evidence is weak.
+
+### 5. Power verdict
+
+**Arithmetic correct. Bar reverse-engineered from pilot. Headline Δ unanchored to mandatory oracle baseline. Overpowered demo is a red flag, not a green light.**
+
+### 6. Explicit adjudication
+
+- **Operator design is the load-bearing correct verdict (CUT)** for the experiment as a program cell.  
+- **Baseline design is correct that fixed-`d` accuracy as primary + refusal of oracle bar ⇒ CUT.**  
+- **Feature construction is correct on Route B CUT and on known-`D` A1 being unreportable;** its BUILD of S3 is a *closing measurement*, not a rescue of the wedge test.  
+- **Power analysis is correct on free `n` and wrong to leave a path labeled PROCEED;** its own §6b already contains the CUT for Tier 0.
+
+### 7. Bottom line
+
+This is **not worth the compute as an experiment**. At known `D` it is dominated by Garg–Kleinberg–Peng / Donoho–Tanner (the pilot is a unit test of the phase transition on a Gaussian dictionary, baselined against L0 ridge with a letter-illegal FISTA solver and a metric that inflates the gap relative to AUC). At unknown `D` it is dominated by dictionary non-identifiability and a measured ~0.98 atom-cosine quality bar that isotropic jitter does not stress. **Cut it like HI-1** — for the *mirror* reason (guaranteed demo / zero decision value) plus the same fairness and pre-narration failure modes under different clothes. A false PROCEED here would be the seventh fail-closed wearing a 119× cape.
+
+---
+
+### Mapping to HI-1 cut reasons (same standard)
+
+| HI-1 reason | Wedge analogue | Status |
+|---|---|---|
+| 1. Statistically guaranteed fail-closed | Guaranteed **pass** / overpowered demo | **Mirror defect; still fatal to decision value** |
+| 2. Baseline weaker than shipped / oracle | Pilot vs L0 ridge; `L1★` never run | **Confirmed** |
+| 3. Fake parity / capacity | No L2 capacity gate; FISTA vs ridge; top-k `k` shared but `D` only to treatment in estimated path | **Confirmed for known-`D` headline path** |
+| 4. Structurally rigged | Gaussian RIP dictionary = maximally CS-favourable; coherence gate deferred | **Confirmed external-validity rig** |
+| 5. No outcome falsifies / decision value 0 | Fair known-`D` outcome pre-known; program action unchanged either way | **Confirmed** |
+
+**Cutting this before GPU is a win.** Softening to PROCEED-WITH-CHANGES because power “passes” would be the agreeable failure mode you forbade.

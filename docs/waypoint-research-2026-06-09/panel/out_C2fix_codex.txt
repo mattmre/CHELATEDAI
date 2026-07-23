@@ -1,0 +1,92 @@
+OpenAI Codex v0.144.1
+--------
+workdir: D:\GITHUB\CHELATEDAI\.claude\worktrees\agent-build
+model: gpt-5.6-sol
+provider: openai
+approval: never
+sandbox: danger-full-access
+reasoning effort: high
+reasoning summaries: none
+session id: 019f4a31-f3fc-7cd1-b6b8-95273ba1f817
+--------
+user
+# Codex fix task — apply Grok's C2 adversarial-review fixes to the D3 estimator
+
+A fresh adversarial reviewer (Grok, C2) validated your D3 estimator and returned
+**PASS-WITH-FIXES**. The LOO is real (not circular), regimes are genuine (not fabricated), and the
+ridge fit is leakage-clean — all confirmed by independent recompute. **But the shipped negative is
+over-claimed as an idea-kill and is missing the analysis that makes it honest.** Apply the fixes
+below. Work ONLY inside `research/drift_recovery/estimator/` and its reports/tests. Do NOT touch
+`d2/`, `methods/`, `regimes/`, or `paper-draft/`. Offline, CPU is fine (this is light).
+
+Full C2 review: `docs/waypoint-research-2026-06-09/panel/out_C2_grok.txt`.
+
+## The core correction (do not skip)
+Grok proved: the **binary** `predicted_inversion_rate` is dead (constant 1.0 — saturates at 100%
+violation in all regimes, expected under catastrophic drift). BUT the **continuous**
+`oracle_margin_mean` feature — present in your feature dump but NOT in `FEATURE_NAMES`, so never
+calibrated — has **univariate OLS leave-one-regime-out Spearman +1.0, MAE 0.033** on the n=4 set,
+which would clear the ≥0.7 bar. Meanwhile the shipped multi-feature α=10 map gets Spearman −0.40 and
+**loses to trivial baselines** (oracle-gap-alone +0.60; constant-0.7 MAE 0.064). So the honest verdict
+is "**shipped calibrator fails: wrong primary feature + over-regularized map on 3 train points**",
+NOT "recoverability estimation is dead."
+
+## Fixes (regenerate all machine artifacts; NO hand-entered numbers)
+
+### C2-F1 (Medium) — add the trivial-baseline LOO table
+In `validation.py` compute leave-one-regime-out for these baselines and emit a table into BOTH
+`out/estimator/estimator_validation.md` and `D3_REPORT.md`: (a) predict mean-train-R, (b) floor
+NDCG → R, (c) oracle-gap → R, (d) constant 0.7. Report each baseline's LOO Spearman + MAE + bin acc
+next to the shipped R̂. **State explicitly that the shipped R̂ does not beat these trivial
+baselines** (it is worse on rank than oracle-gap and worse on MAE than a constant).
+
+### C2-F2 (Medium) — report the continuous-feature signal; stop the premature idea-kill
+Add a univariate/continuous-feature LOO analysis: OLS on `oracle_margin_mean` alone (and optionally
+`oracle_margin_q50`, `oracle_margin_sign_rate`), reporting their LOO Spearman/MAE. Then either:
+  (a) add `oracle_margin_mean` to `FEATURE_NAMES` and re-run the calibrated map, OR
+  (b) explicitly scope it: "the shipped multi-feature α=10 calibrator fails; a univariate
+      oracle-margin residual signal ranks R on n=4 under simple OLS but is unvalidated at scale."
+Whichever you choose, the report's root-cause section must NOT say only "core inversion-rate signal
+saturated" — it must say the binary rate is dead AND the continuous margin is not, so the negative is
+about THIS calibrator, not the idea.
+
+### C2-F3 (Medium) — document the over-regularization
+Note in the report that α=10 with 8 features and n_train=3 shrinks coefficients toward ~0.01 and the
+intercept toward the train mean, so R̂ ≈ a shrunk mean whose residual noise anti-correlates with R
+(hence the −0.40). Add a weaker-α / univariate ablation showing this is a calibrator artifact.
+
+### C2-F4 (Low) — disclose n=4 underpowering and degenerate bins
+Add to both reports: "n=4 cannot support a high-power kill; the verdict is a locked-bar failure only,
+not a demonstration that recovery is unpredictable." Also disclose that all R ∈ [0.65, 0.84] so only
+medium/high bins are occupied and 75% bin accuracy ≈ the floor-only baseline (not near-success).
+
+### C2-F5 (Low) — harden the synthetic margin-bound test
+In `test_estimator.py` the synthetic path only asserts margin=0.4. Add assertions that hand-compute
+`e_r`, `e_j`, the slack `m − ‖q‖(‖e_r‖+‖e_j‖)`, and the resulting inversion flag on `_tiny_pack()`,
+so the bound is verified end-to-end, not just the raw margin.
+
+### C2-F6 (Low) — secondary leakage-safe-label LOO
+The SciFact regime uses the leaky D1 label R=0.8434 while features use the safe ridge fit. Grok
+recomputed that using R_safe=0.7891 labels still yields LOO Spearman −0.40. Add that as a secondary
+table so the label/feature mismatch is transparent (verify the −0.40 holds).
+
+## Deliverables
+1. Updated `estimator/` code + regenerated `out/estimator/estimator_validation.md`,
+   `out/estimator/D3_REPORT.md`, and any JSON, with the trivial-baseline + continuous-feature +
+   underpowering analysis. The verdict stays VALIDATION-NEGATIVE **for the shipped calibrator** but is
+   correctly scoped (not an idea-level kill).
+2. Run `python -m unittest research.drift_recovery.tests.test_estimator -v`; paste pass/fail.
+3. A short `out/estimator/C2_FIX_REPORT.md` mapping each fix C2-F1..F6 to file:line + the resulting
+   number, so the chair can verify without re-reading code.
+
+Be brutally honest. If adding `oracle_margin_mean` to the calibrated map actually clears the ≥0.7
+bar under honest LOO, say so and flip the verdict to the appropriate positive/mixed label with the
+n=4 caveat front and center — do not suppress a real signal to keep a tidy negative. Equally, do not
+inflate an n=4 univariate +1.0 into a validated estimator. Report the smallest concrete truth.
+
+
+warning: Skill descriptions were shortened to fit the 2% skills context budget. Codex can still see every skill, but some descriptions are shorter. Disable unused skills or plugins to leave more room for the rest.
+hook: SessionStart
+hook: SessionStart Completed
+ERROR: You've hit your usage limit. Visit https://chatgpt.com/codex/settings/usage to purchase more credits or try again at 3:48 AM.
+ERROR: You've hit your usage limit. Visit https://chatgpt.com/codex/settings/usage to purchase more credits or try again at 3:48 AM.

@@ -1,0 +1,35 @@
+I'll adversarially review the preflight CLOSE/PROCEED verdict from the frozen artifacts, starting with the report and any sibling JSON it references.Recomputing residual, admission, lambda selection, and leakage claims from the frozen grid and source.## Verdict: **PASS-WITH-FIXES**
+
+CLOSE is honest under the locked residual definition; the one-liner over-claims *why* residual stays small. Residual is **not** residual-after-global.
+
+### Checks (try-to-disprove)
+
+| Claim | Result | Evidence |
+|---|---|---|
+| Residual gate is after **GATED LOCAL** ridge (≥0.05), not global | **Holds** | `residual_band = oracle − method_ndcg[best_local]` with `best_local` chosen by anchor-dev MSE only (`preflight.py:567–591`, `:666`). JSON recompute: `residual_band ≡ oracle_minus_best_gated_local_ridge` on all 48 cells / 144 runs; 0 mismatches. |
+| Not secretly residual-after-global | **Holds** | Max residual overall **0.0328**; max residual-after-global can be **0.0746** (quadratic s=0.25, γ=0.60, n=4). Admission uses residual (local), not global. **0 cells** pass `residual ≥ 0.05`. |
+| Local ridge λ fairly tuned (like α) | **Holds, with audit gap** | Same `DEFAULT_LAMBDAS` grid; local selects shared λ/rank on **anchor train/dev MSE** (`fit_local_ridges` `preflight.py:228–248`), same boundary as global (`select_ridge_hyperparameters` `:148–191`). Not multi-fold CV — single stratified holdout — but parity with global is fair. Re-fit example (soft_fold, s=0.25, γ=1, n=4, seed=7): dense λ=0.1; low-rank λ=1e-6, rank=2. |
+| Clusters on **corrupted only** (no clean-ID routing) | **Holds** | `infer_corrupted_clusters(corrupted, …)` only (`preflight.py:480`). Fit audit forces `clean_cluster_ids_accepted: False` (`:270`). Protocol audit: **0** `clean_id_fit_violations`. Purity uses truth **diagnostics only** (`:438–449`, `:481–483`). |
+| Both warp families | **Holds** | Grid: `quadratic` + `soft_fold` (24 cells each); family CLOSE reasons match recomputed max small+sane residuals **0.0295** / **0.0328**. |
+| CLOSE vs PROCEED | **Holds** | Recomputed admission: **0 admitted**. Max residual any cell **0.0328 &lt; 0.05**. Report numbers match JSON. |
+| Operating point real/small if PROCEED | **N/A** | Verdict is CLOSE; no operating point. Displacement caps would have bound PROCEED if residual had cleared. |
+
+Detector honesty (disclosed, favors local closing): anchors only on truly harmed clusters → τ=1e-10 presence gate (`preflight_report.md:79`, `preflight.py:329–363`). That biases **toward** local success / **against** PROCEED, so CLOSE is conservative for Obj B, not gamed upward.
+
+### Defects (specific)
+
+1. **One-liner over-claims mechanism** — `research/drift_recovery/d2b_preflight/preflight.py:27–30` (surfaced in `preflight_report.md:5–6`).  
+   “Locality and gating matter; chelation’s … mechanism does not uniquely occupy the residual” is stronger than the residual math. On small+sane cells, residual is often **&lt;0.05 because absolute NDCG gaps are tiny**, not because local almost recovers oracle:
+   - quadratic strongest residual cell (s=0.25, γ=1, n=16): residual **0.0295 &gt; global 0.0275 &gt; floor 0.0232** → best local **worse than global and floor**.
+   - soft_fold strongest (s=0.25, γ=1, n=4): residual **0.0328** vs floor **0.0242** vs global **0.0646** → local beats global, still worse than floor.  
+   Across the grid, **24/48** cells have local residual **&gt; floor gap** (dev-selected local slightly hurts eval NDCG vs no-op). “Obj B fails constructively” under residual≥0.05 is fine; pinning it on locality/gating/chelation is soft prose overclaim.
+
+2. **Local selected λ not frozen in artifact** — `preflight.py:263–278` (`training_audit` omits `selected_lambda` / `selected_lambdas` even though `LocalRidgeModel` has them). Rank/dev MSE are stored; λ must be re-derived by re-running selection. Weakens offline audit of “fair CV-λ” without code re-exec.
+
+3. **Hardcoded, not checked, `clean_ids_used_by_fit: False`** — `preflight.py:605`, `:680`. True of the call graph, but the protocol counter cannot catch a future leak that still sets the flag false.
+
+Non-defects for this angle: residual ladder wiring; both families; corrupted-space k-means; shared detector disclosure; gate threshold 0.05 on **local** residual.
+
+### Bottom line
+
+**CLOSE is honest:** residual is residual-after-dev-selected **gated local** ridge, never residual-after-global; both warps were run; routing is corrupted-only; λ/rank get a fair anchor holdout grid; max residual **≈0.033 &lt; 0.05**. Fix the one-liner (and optionally freeze local λ in JSON) so the prose does not over-attribute small residual to locality/gating when several “strongest residual” cells leave local no better—or worse—than floor/global.

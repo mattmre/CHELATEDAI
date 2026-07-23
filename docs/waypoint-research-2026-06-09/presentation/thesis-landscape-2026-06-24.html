@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ChelatedAI — Thesis Landscape & Paper Readiness</title>
+<style>
+  :root{
+    --bg:#0a0e13; --bg2:#0e141b; --card:#141c25; --card2:#19222d;
+    --bd:#26323f; --bd2:#33424f;
+    --tx:#e7eef5; --mut:#93a4b8; --mut2:#6b7c91;
+    --green:#34d399; --green-bg:rgba(52,211,153,.10); --green-bd:rgba(52,211,153,.35);
+    --slate:#9fb1c6; --slate-bg:rgba(159,177,198,.08); --slate-bd:rgba(159,177,198,.28);
+    --amber:#fbbf24; --amber-bg:rgba(251,191,36,.10); --amber-bd:rgba(251,191,36,.34);
+    --red:#f87171; --red-bg:rgba(248,113,113,.10); --red-bd:rgba(248,113,113,.32);
+    --blue:#60a5fa; --blue-bg:rgba(96,165,250,.10);
+    --purple:#c084fc;
+    --r:14px; --shadow:0 1px 0 rgba(255,255,255,.03), 0 18px 40px -24px rgba(0,0,0,.8);
+    --mono:"SF Mono",ui-monospace,"Cascadia Code","JetBrains Mono",Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,system-ui,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:
+      radial-gradient(1200px 600px at 80% -10%,rgba(96,165,250,.07),transparent 60%),
+      radial-gradient(1000px 500px at -10% 10%,rgba(192,132,252,.05),transparent 55%),
+      var(--bg);
+    color:var(--tx);font-family:var(--sans);line-height:1.55;-webkit-font-smoothing:antialiased}
+  a{color:var(--blue);text-decoration:none}
+  .wrap{display:grid;grid-template-columns:248px 1fr;max-width:1280px;margin:0 auto;gap:0}
+  /* nav */
+  nav{position:sticky;top:0;align-self:start;height:100vh;overflow-y:auto;padding:26px 18px;border-right:1px solid var(--bd);background:linear-gradient(180deg,var(--bg2),transparent)}
+  nav .brand{font-weight:700;font-size:15px;letter-spacing:.2px;margin-bottom:2px}
+  nav .sub{color:var(--mut2);font-size:11.5px;margin-bottom:22px;font-family:var(--mono)}
+  nav a{display:block;color:var(--mut);font-size:13px;padding:7px 11px;border-radius:9px;margin:1px 0;border:1px solid transparent;transition:.15s}
+  nav a:hover{background:var(--card);color:var(--tx)}
+  nav a.on{background:var(--blue-bg);color:#cfe4ff;border-color:rgba(96,165,250,.25)}
+  nav a .n{color:var(--mut2);font-family:var(--mono);font-size:11px;margin-right:8px}
+  main{padding:38px 44px 120px;min-width:0}
+  section{margin-bottom:62px;scroll-margin-top:24px}
+  h1{font-size:30px;line-height:1.2;margin:0 0 6px;letter-spacing:-.4px}
+  h2{font-size:21px;margin:0 0 4px;letter-spacing:-.2px;display:flex;align-items:center;gap:11px}
+  h2 .ix{font-family:var(--mono);font-size:13px;color:var(--mut2);font-weight:600}
+  .lead{color:var(--mut);font-size:15px;max-width:74ch}
+  .eyebrow{font-family:var(--mono);font-size:11.5px;letter-spacing:1.5px;text-transform:uppercase;color:var(--blue);margin-bottom:14px}
+  .sec-intro{color:var(--mut);font-size:14px;max-width:80ch;margin:6px 0 22px}
+  /* hero */
+  .hero{border:1px solid var(--bd);background:linear-gradient(180deg,var(--card),var(--bg2));border-radius:var(--r);padding:34px 32px;box-shadow:var(--shadow)}
+  .hero .tag{display:inline-block;font-family:var(--mono);font-size:11px;color:var(--mut);border:1px solid var(--bd2);border-radius:999px;padding:4px 12px;margin-bottom:18px}
+  .hero p{color:var(--mut);max-width:78ch}
+  .pillrow{display:flex;flex-wrap:wrap;gap:8px;margin-top:20px}
+  .pill{font-size:12px;font-family:var(--mono);padding:6px 11px;border-radius:999px;border:1px solid var(--bd2);color:var(--mut)}
+  .pill b{color:var(--tx)}
+  /* legend / tiers */
+  .legend{display:flex;flex-wrap:wrap;gap:10px;margin:18px 0 0}
+  .key{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--mut);border:1px solid var(--bd);border-radius:10px;padding:7px 12px;background:var(--card)}
+  .dot{width:10px;height:10px;border-radius:3px}
+  .d-green{background:var(--green)} .d-slate{background:var(--slate)} .d-amber{background:var(--amber)} .d-red{background:var(--red)}
+  /* cards */
+  .grid{display:grid;gap:14px}
+  .g2{grid-template-columns:1fr 1fr}
+  .card{border:1px solid var(--bd);background:var(--card);border-radius:var(--r);padding:18px 19px;box-shadow:var(--shadow)}
+  .card h3{margin:0 0 7px;font-size:15px;letter-spacing:-.1px;display:flex;gap:9px;align-items:flex-start}
+  .card p{margin:0;color:var(--mut);font-size:13.5px}
+  .card .ev{margin-top:10px;font-size:12.5px;color:var(--mut2);font-family:var(--mono);background:var(--bg);border:1px solid var(--bd);border-left:3px solid var(--green);border-radius:8px;padding:9px 11px;line-height:1.5}
+  .card .ev.amb{border-left-color:var(--amber)}
+  .card .rel{margin-top:9px;font-size:12.5px;color:var(--mut2)}
+  .card .cite{font-family:var(--mono);font-size:11.5px;color:var(--slate);margin-top:8px;display:block}
+  .tier-green{border-left:3px solid var(--green-bd)}
+  .tier-slate{border-left:3px solid var(--slate-bd)}
+  .tier-amber{border-left:3px solid var(--amber-bd)}
+  /* badges */
+  .badge{font-family:var(--mono);font-size:10.5px;font-weight:600;letter-spacing:.4px;padding:3px 8px;border-radius:999px;white-space:nowrap;text-transform:uppercase}
+  .b-green{background:var(--green-bg);color:var(--green);border:1px solid var(--green-bd)}
+  .b-slate{background:var(--slate-bg);color:var(--slate);border:1px solid var(--slate-bd)}
+  .b-amber{background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-bd)}
+  .b-red{background:var(--red-bg);color:var(--red);border:1px solid var(--red-bd)}
+  .b-blue{background:var(--blue-bg);color:var(--blue);border:1px solid rgba(96,165,250,.3)}
+  /* filter buttons */
+  .filters{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 18px}
+  .fbtn{cursor:pointer;font-size:12.5px;font-family:var(--mono);padding:7px 13px;border-radius:999px;border:1px solid var(--bd2);background:var(--card);color:var(--mut);transition:.15s;user-select:none}
+  .fbtn:hover{color:var(--tx);border-color:var(--mut2)}
+  .fbtn.act{background:var(--blue-bg);color:#cfe4ff;border-color:rgba(96,165,250,.4)}
+  .hidden{display:none!important}
+  /* phase ladder */
+  .ladder{display:grid;gap:8px}
+  .rung{display:grid;grid-template-columns:42px 1fr auto;align-items:center;gap:14px;border:1px solid var(--bd);background:var(--card);border-radius:11px;padding:11px 15px;position:relative}
+  .rung .step{font-family:var(--mono);font-size:18px;font-weight:700;color:var(--mut2);text-align:center}
+  .rung .nm{font-size:13.5px}
+  .rung .nm small{display:block;color:var(--mut2);font-size:12px;margin-top:2px;font-weight:400}
+  .rung.is-paper{border-color:var(--green-bd);background:linear-gradient(90deg,var(--green-bg),var(--card) 55%)}
+  .rung.is-paper .step{color:var(--green)}
+  .st-done{color:var(--green)} .st-part{color:var(--amber)} .st-gate{color:var(--mut2)} .st-no{color:var(--mut2)}
+  /* table */
+  table{width:100%;border-collapse:collapse;font-size:13.5px;border:1px solid var(--bd);border-radius:var(--r);overflow:hidden}
+  th,td{padding:11px 13px;text-align:left;border-bottom:1px solid var(--bd)}
+  th{background:var(--bg2);font-size:11.5px;letter-spacing:.4px;text-transform:uppercase;color:var(--mut);font-weight:600}
+  td.num{font-family:var(--mono);text-align:right}
+  tr:last-child td{border-bottom:none}
+  .row-hi{background:var(--green-bg)}
+  .muted{color:var(--mut2)}
+  /* gap bars */
+  .gapwrap{display:grid;gap:16px;margin-top:6px}
+  .gap{border:1px solid var(--bd);background:var(--card);border-radius:12px;padding:15px 17px}
+  .gap .top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px}
+  .gap .top b{font-size:14px} .gap .top span{font-family:var(--mono);font-size:12px;color:var(--mut)}
+  .track{position:relative;height:26px;background:var(--bg);border:1px solid var(--bd);border-radius:7px;overflow:hidden}
+  .fill{position:absolute;left:0;top:0;bottom:0;border-radius:6px 0 0 6px}
+  .fill.sci{width:19%;background:linear-gradient(90deg,var(--green),#10b981)}
+  .fill.nf{width:2.25%;background:linear-gradient(90deg,var(--amber),#f59e0b);min-width:4px}
+  .track .lbl{position:absolute;right:9px;top:50%;transform:translateY(-50%);font-family:var(--mono);font-size:11px;color:var(--mut)}
+  .track .floor{position:absolute;left:0;top:0;bottom:0;border-right:1px dashed var(--bd2)}
+  /* seed vs bank diagram */
+  .sb{display:grid;grid-template-columns:1fr 60px 1fr;align-items:center;gap:10px;margin-top:8px}
+  .sb .box{border:1px solid var(--bd);border-radius:12px;padding:16px;background:var(--card);min-height:150px}
+  .sb .box.proven{border-color:var(--green-bd);background:linear-gradient(180deg,var(--green-bg),var(--card))}
+  .sb .box.todo{border-color:var(--amber-bd);background:linear-gradient(180deg,var(--amber-bg),var(--card))}
+  .sb .box h4{margin:0 0 8px;font-size:13.5px;display:flex;gap:8px;align-items:center}
+  .sb .box ul{margin:6px 0 0;padding-left:17px;color:var(--mut);font-size:12.5px}
+  .sb .box ul li{margin:3px 0}
+  .sb .arrow{text-align:center;color:var(--mut2);font-size:24px}
+  /* callout */
+  .callout{border:1px solid var(--bd);border-left:3px solid var(--blue);background:linear-gradient(90deg,var(--blue-bg),var(--card) 60%);border-radius:11px;padding:15px 18px;margin-top:14px;font-size:14px;color:var(--tx)}
+  .callout.warn{border-left-color:var(--red);background:linear-gradient(90deg,var(--red-bg),var(--card) 60%)}
+  .callout.amb{border-left-color:var(--amber);background:linear-gradient(90deg,var(--amber-bg),var(--card) 60%)}
+  .callout b{color:#fff}
+  /* steps forward */
+  .steps{counter-reset:s;display:grid;gap:11px}
+  .stp{display:grid;grid-template-columns:34px 1fr;gap:14px;border:1px solid var(--bd);background:var(--card);border-radius:11px;padding:14px 16px}
+  .stp .num{counter-increment:s;font-family:var(--mono);font-weight:700;color:var(--blue);font-size:16px}
+  .stp .num::before{content:counter(s)}
+  .stp h4{margin:0 0 4px;font-size:14px}
+  .stp p{margin:0;color:var(--mut);font-size:13px}
+  .stp.first{border-color:var(--green-bd)}
+  .caveats{display:grid;gap:9px}
+  .cav{display:grid;grid-template-columns:20px 1fr;gap:11px;font-size:13.5px;color:var(--mut);border-bottom:1px solid var(--bd);padding-bottom:9px}
+  .cav .m{color:var(--red);font-weight:700}
+  .foot{color:var(--mut2);font-size:12px;font-family:var(--mono);border-top:1px solid var(--bd);padding-top:18px;margin-top:10px}
+  .xref{font-family:var(--mono);font-size:11.5px;color:var(--mut2)}
+  @media(max-width:880px){.wrap{grid-template-columns:1fr}nav{display:none}main{padding:24px 18px 80px}.g2,.sb{grid-template-columns:1fr}.sb .arrow{display:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav>
+    <div class="brand">ChelatedAI</div>
+    <div class="sub">landscape · 2026-06-24</div>
+    <a href="#top"><span class="n">00</span>Where we are</a>
+    <a href="#map"><span class="n">01</span>Paper ↔ thesis map</a>
+    <a href="#posts"><span class="n">02</span>"Guidance posts"</a>
+    <a href="#known"><span class="n">03</span>Already known</a>
+    <a href="#novel"><span class="n">04</span>Truly novel (proven)</a>
+    <a href="#spec"><span class="n">05</span>Novel but unproven</a>
+    <a href="#numbers"><span class="n">06</span>The honest scorecard</a>
+    <a href="#present"><span class="n">07</span>Presentable today</a>
+    <a href="#forward"><span class="n">08</span>Path forward</a>
+    <a href="#caveats"><span class="n">09</span>Honest caveats</a>
+  </nav>
+
+  <main>
+    <!-- 00 -->
+    <section id="top">
+      <div class="eyebrow">Technical analyst review · invariant-verified against run artifacts</div>
+      <div class="hero">
+        <span class="tag">north-star: Liquified Lattice (self-annealing RAG/DAG)</span>
+        <h1>What we've actually proven, what's published already,<br>and what's still your idea.</h1>
+        <p>ChelatedAI treats retrieval failure as a <b>dynamic-systems</b> problem: a <b>frozen base model</b> wrapped in a <b>mutable correction layer</b> (adapters, masks, steering posts, pools) that self-anneals, disintegrates, and re-aligns as documents, feedback, and drift accumulate. The first paper tackles exactly one gate of that nine-step program — and clears it <b>partially</b>, but with two genuinely citable methodology findings.</p>
+        <div class="pillrow">
+          <span class="pill">paper = <b>Phase II · Step 14</b></span>
+          <span class="pill"><b>2</b> bankable findings</span>
+          <span class="pill"><b>2</b> datasets verified</span>
+          <span class="pill">recovery: <b>partial</b>, characterized ceiling</span>
+          <span class="pill">core thesis: <b>still unproven</b></span>
+        </div>
+        <div class="legend">
+          <div class="key"><span class="dot d-green"></span> Verified by runtime evidence</div>
+          <div class="key"><span class="dot d-slate"></span> Established prior art (not ours)</div>
+          <div class="key"><span class="dot d-amber"></span> Novel but unproven (speculation)</div>
+          <div class="key"><span class="dot d-red"></span> Honest caveat</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 01 -->
+    <section id="map">
+      <h2><span class="ix">01</span> Where the paper sits in the thesis</h2>
+      <p class="sec-intro">The Liquified Lattice vision is a 9-step program (Phase II, steps 9–17). The drift paper <b>is Step 14</b> — the evidence gate that's supposed to unlock the disintegration loop (13) and the GNN (15). You've partially cleared <b>one</b> rung of nine.</p>
+      <div class="ladder">
+        <div class="rung"><div class="step">9</div><div class="nm">Model-Scope shadow pilot + provenance<small>one bounded steering policy, persist/load round-trip</small></div><span class="badge b-green">done</span></div>
+        <div class="rung"><div class="step">10</div><div class="nm">SHIM substrate DoD<small>production seams for shims, not env-only research guards</small></div><span class="badge b-slate">not started</span></div>
+        <div class="rung"><div class="step">11</div><div class="nm">Annealing controller<small>one temperature schedule across sedimentation + online update + ES</small></div><span class="badge b-amber">partial</span></div>
+        <div class="rung"><div class="step">12</div><div class="nm">Evidence DAG schema<small>typed graph contract over the attribution pool (schema first, no GNN)</small></div><span class="badge b-slate">not started</span></div>
+        <div class="rung"><div class="step">13</div><div class="nm">Disintegration loop<small>drift-triggered prune + fitness-gated re-anneal</small></div><span class="badge b-slate">gated · not started</span></div>
+        <div class="rung is-paper"><div class="step">14</div><div class="nm">Concept-drift experiment &nbsp;<span class="badge b-green">◄ THE PAPER</span><small>injected drift fixture · measurable recovery within N anneal cycles</small></div><span class="badge b-amber">partial</span></div>
+        <div class="rung"><div class="step">15</div><div class="nm">GNN prototype<small>must beat a flat-pool baseline on the drift fixture</small></div><span class="badge b-slate">gated · not started</span></div>
+        <div class="rung"><div class="step">16</div><div class="nm">Quant-aware shim routing<small>adapter router + quantization promotion gate as a steering plane</small></div><span class="badge b-slate">not started</span></div>
+        <div class="rung"><div class="step">17</div><div class="nm">Disk pool slice<small>one precomputed shard read via block-graph with host parity</small></div><span class="badge b-slate">not started</span></div>
+      </div>
+      <div class="callout">The whole forward roadmap (13 → 15) was <b>gated on one thing</b>: a correction that actually changes retrieval. Until this sprint, the loop never moved a single vector. Step 14 is the first time it did — which is why this gate matters more than its modest numbers suggest.</div>
+    </section>
+
+    <!-- 02 -->
+    <section id="posts">
+      <h2><span class="ix">02</span> Your "guidance posts" idea — found and located</h2>
+      <p class="sec-intro">"Guidance posts" is your term for <b>steering posts</b>: a bank of anchor/reference vectors you steer toward at runtime. It's documented in <span class="xref">shims-steering-posts-deep-dive.md</span>. Here's your vocabulary translated to the field — and the honest verdict on what the paper does and doesn't cover.</p>
+      <table>
+        <tr><th>Your words</th><th>Field term</th><th>Status in the literature</th></tr>
+        <tr><td>"Blank shims"</td><td>Identity-initialized adapters</td><td><span class="badge b-slate">solved</span> LoRA zero-init, ControlNet, QLoRA — everywhere</td></tr>
+        <tr><td><b>"Guidance / steering posts"</b></td><td>Bank of anchor / steering vectors</td><td><span class="badge b-slate">just published</span> Steering Vector Fields (Feb 2026) — but static, over LLM activations</td></tr>
+        <tr><td>"Annealed routes"</td><td>Learned paths through the bank</td><td><span class="badge b-amber">open</span> FLAS flow-steering (May 2026) is the nearest cousin; no annealed-under-drift version</td></tr>
+        <tr><td>"Multivariate subgroupings"</td><td>Query-conditioned subspaces</td><td><span class="badge b-slate">covered</span> DIME / query-aware masking</td></tr>
+        <tr><td>"More flexible than matrix math"</td><td>Nonlinear / flow transport</td><td><span class="badge b-amber">needs precision</span> chained linear is still linear; only nonlinearity or branching buys flexibility</td></tr>
+      </table>
+      <div class="sb">
+        <div class="box proven">
+          <h4><span class="badge b-green">proven seed</span></h4>
+          <b style="font-size:13.5px">The supervision intuition</b>
+          <ul>
+            <li>The paper's held-out <b>anchor (query, doc) pairs</b> are exactly one fixed reference signal a post would encode.</li>
+            <li>Proven that a loop <b>must</b> have such pre-drift reference points to steer toward (§6 mechanism).</li>
+            <li>Occupies the <b>retrieval-pool domain</b> that steering papers don't touch.</li>
+          </ul>
+        </div>
+        <div class="arrow">→</div>
+        <div class="box todo">
+          <h4><span class="badge b-amber">unproven thesis</span></h4>
+          <b style="font-size:13.5px">The living bank itself</b>
+          <ul>
+            <li>A <b>bank</b> of posts (not one adapter)</li>
+            <li><b>Routes / trajectories</b> through them</li>
+            <li><b>Prune + re-anneal lifecycle</b> under drift</li>
+            <li>Applied to retrieval pools — <b>published nowhere</b></li>
+          </ul>
+        </div>
+      </div>
+      <div class="callout amb"><b>Verdict:</b> The paper proves the <b>seed</b> of guidance posts (you need anchors), not the <b>bank</b> (a living, pruned, re-annealed set of them). Don't conflate the two — the bank-with-a-lifecycle is your genuinely uncovered novelty, and it's still entirely unbuilt.</div>
+    </section>
+
+    <!-- 03 -->
+    <section id="known">
+      <h2><span class="ix">03</span> What we already know <span class="badge b-slate">prior art</span></h2>
+      <p class="sec-intro">Every individual ingredient of the thesis is published — several landed Feb–May 2026, so the space is hot and converging. These are not ours; they're the baselines and the surrounding field.</p>
+      <div class="grid g2">
+        <div class="card tier-slate"><h3>Post-hoc adapter on a frozen base</h3><p>Additive residual MLP on frozen embeddings (<span style="font-family:var(--mono)">new = orig + f(orig)</span>), API-only, supervised. Structurally identical to the chelation adapter family.</p><span class="cite">Search-Adaptor · ACL 2024 · arXiv:2310.08750</span></div>
+        <div class="card tier-slate"><h3>Per-query dimension masking</h3><p>Query-conditioned dimension selection on a frozen encoder; "Manifold Clustering" hypothesis. Nearly exactly <span style="font-family:var(--mono)">dimension_mask_predictor.py</span>.</p><span class="cite">DIME · SIGIR 2024 &nbsp;·&nbsp; query-aware masking · arXiv:2602.03306</span></div>
+        <div class="card tier-slate"><h3>Drift / semantic-shift detection</h3><p>Formal geometric-concentration statistic for embedding drift — but the remedy is text segmentation, <b>not</b> correction. The detect half is solved; the correct half is the differentiator.</p><span class="cite">Semantic Shift · arXiv:2603.21437</span></div>
+        <div class="card tier-slate"><h3>Index lifecycle under change</h3><p>Detect degraded partitions → targeted teardown + local re-cluster; cost-model repartitioning; brain-inspired deprioritization. The closest prior art to "disintegration" — but operates on <b>index structure, never embeddings</b>.</p><span class="cite">Ada-IVF · Quake · FreshDiskANN · SmartVector</span></div>
+        <div class="card tier-slate"><h3>Steering-vector banks ("posts")</h3><p>A bank of steering anchors; steer toward the K-nearest centroid; conditional firing. The literal published form of your steering posts — but a <b>static</b> bank over LLM activations.</p><span class="cite">SVF · arXiv:2602.01654 · CAST · SADI</span></div>
+        <div class="card tier-slate"><h3>Routing over adapter banks</h3><p>Dynamic MoE/LoRA routing; weighted sums over low-rank atoms; per-passage RAG routing. The one-shot router baseline — all <b>train-once-then-frozen</b>.</p><span class="cite">LD-MoLE · arXiv:2509.25684 · Queryable LoRA · arXiv:2605.08423</span></div>
+        <div class="card tier-slate"><h3>Flow / nonlinear warping</h3><p>Concept-conditioned velocity field for nonlinear activation transport. Nearest cousin to "annealed routes" — but offline for fixed concepts, not annealed under drift.</p><span class="cite">FLAS · arXiv:2605.05892</span></div>
+        <div class="card tier-slate"><h3>Graph memory + GNN-RAG · disk-resident</h3><p>Typed dynamic graph memory; GNN retrieval over KGs; near-storage ANN; flash-resident inference. Surrounds the Evidence-DAG and computational-storage directions.</p><span class="cite">Zep · HippoRAG 2 · GNN-RAG · DiskANN · "LLM in a Flash"</span></div>
+      </div>
+    </section>
+
+    <!-- 04 -->
+    <section id="novel">
+      <h2><span class="ix">04</span> What is truly novel — and proven <span class="badge b-green">runtime-verified</span></h2>
+      <p class="sec-intro">These four are genuinely new <i>and</i> backed by command-output evidence from the production code path. The first two are the real, citable value of the paper.</p>
+      <div class="grid">
+        <div class="card tier-green"><h3><span class="badge b-green">finding 1</span> The C2-oracle hazard</h3><p>The "obvious" maintenance baseline — re-embed affected docs with the <b>original frozen encoder</b> — is a <b>degenerate oracle</b> for synthetic vector drift: it inverts the perturbation exactly and returns to the pre-drift state. It's an upper bound masquerading as a baseline. Only an encoder/query <b>upgrade</b> defeats it; document-side model-swap does not. A whole class of drift studies could record a tautological "100% recovery" and mistake it for a result.</p><div class="ev">C2 == C0 at full float precision on BOTH datasets &nbsp;·&nbsp; SciFact 0.006 = 0.006 &nbsp;·&nbsp; NFCorpus 0.041 = 0.041 &nbsp;·&nbsp; max|baseline − final| = 0</div></div>
+        <div class="card tier-green"><h3><span class="badge b-green">finding 2</span> The supervision-signal mechanism</h3><p>An <b>unsupervised</b> homeostatic correction loop has no signal pointing back toward pre-drift geometry, so its loss-optimal correction is <b>near-identity</b> — "do almost nothing." Recovery <b>requires</b> an explicit pre-drift supervision channel (held-out anchor pairs). Same failure class as same-encoder distillation (teacher ≡ student).</p><div class="ev">Unbounded unsupervised correction norm ≈ 1.9e-4 (≈ identity) &nbsp;·&nbsp; the bounded ~1e-2 is just the bound floor, not learning &nbsp;·&nbsp; synthetic regime: correction_applied = 0/36, store byte-identical</div></div>
+        <div class="card tier-green"><h3><span class="badge b-green">apparatus</span> Reproducible harness + the encoder-upgrade arena</h3><p>Seeded deterministic drift injector with JSON-manifest reproducibility, a recovery-trajectory metric suite, and a pre-registered protocol. The <b>encoder-upgrade arena</b> (queries move to a new encoder; cached doc vectors stay in old space) is the design that defeats the oracle and gives the loop a real target.</p><div class="ev">Catastrophic drift reproduced: SciFact 0.819 → 0.006 · NFCorpus 0.598 → 0.041 &nbsp;·&nbsp; oracle ceiling: 0.813 / 0.612 &nbsp;·&nbsp; 2 datasets × 12 cycles × seeds {42,1337,7}</div></div>
+        <div class="card tier-green"><h3><span class="badge b-green">result</span> Supervised closed-loop <i>partial</i> recovery</h3><p>With the oracle defeated and InfoNCE supervision provided, the supervised bounded adapter <b>actually engages</b> and recovers a measurable fraction of catastrophic drift. <b>Honest qualifier:</b> recovery scales with budget on SciFact but <b>inverts on NFCorpus</b> (more steps hurt); unbounded beats bounded on SciFact but ties on NFCorpus.</p><div class="ev amb">Actuator fires 12/12 cycles · 3/3 seeds · both datasets · C3a &gt; C0 every seed &nbsp;·&nbsp; SciFact C3a 0.159 / C4a 0.206 &nbsp;·&nbsp; NFCorpus C3a 0.054 / C4a 0.054 &nbsp;·&nbsp; budget effect dataset-dependent</div></div>
+      </div>
+    </section>
+
+    <!-- 05 -->
+    <section id="spec">
+      <h2><span class="ix">05</span> Novel but unproven — the speculative core <span class="badge b-amber">not built</span></h2>
+      <p class="sec-intro">This is the heart of the thesis, and it is where the defensible long-term novelty lives. <b>None of it is implemented.</b> The paper uses a single bounded MLP adapter — none of the structures below.</p>
+      <div class="grid g2">
+        <div class="card tier-amber"><h3>Living bank of steering posts <span class="badge b-amber">gap #1</span></h3><p>A bank of anchor vectors over <b>retrieval pools</b> with a drift-driven <b>lifecycle</b>: posts pruned when detectors fire, then re-annealed. No published steering system manages the bank as a living structure — all are static. <b>This is the headline uncovered novelty.</b></p><div class="rel">your terms: guidance posts + disintegration + annealing</div></div>
+        <div class="card tier-amber"><h3>Annealed routes as trajectories <span class="badge b-amber">gap #3</span></h3><p>Multi-hop learned paths through the bank where the <b>path itself</b> is the annealed object (exploratory → stable), with conditional branching — which post you visit depends on where you are.</p><div class="rel">your terms: annealed routes + query-conditioned subspaces</div></div>
+        <div class="card tier-amber"><h3>Correction-geometry meta-space</h3><p>Model the space of corrections as a structured manifold (congruent/parallel subspaces, invariant intercepts) that <b>persists across base-model swaps</b> so only coordinates re-sync. Most conceptually novel of the five concepts; least developed. Testable kernel: do learned correction subspaces transfer across a model swap with only cheap re-alignment?</p><div class="rel">vs Procrustes / BCT / task-arithmetic — comparison not yet run</div></div>
+        <div class="card tier-amber"><h3>Evidence DAG with actuator nodes</h3><p>A typed query ↔ doc ↔ <b>correction</b> graph (adapters/masks/routes as nodes) with drift-triggered structural pruning, evolving toward a GNN that must beat a flat-pool baseline. <span class="muted">Prior-art comparison (Zep, HippoRAG 2) not yet adversarially verified.</span></p><div class="rel">Phase II steps 12 + 15</div></div>
+        <div class="card tier-amber"><h3>Index ↔ correction coupling</h3><p>Pool lifecycle <b>coupled</b> to embedding-correction training under one temperature controller — the unification Ada-IVF/Quake (index-only) and Search-Adaptor (correction-only) never combine. Weakest novelty form (combination) — only counts with end-to-end evidence.</p><div class="rel">your term: self-annealing lattice</div></div>
+        <div class="card tier-amber"><h3>The proving experiment <span class="badge b-blue">designed, not run</span></h3><p>An annealed-route bank recovers retrieval where a <b>frozen SVF-style static bank</b> degrades AND a <b>one-shot LD-MoLE router</b> degrades. The baselines are handed to us; the head-to-head that would prove the steering-post thesis has not been executed.</p><div class="rel">slots into Phase II step 14, next to Ada-IVF/Quake</div></div>
+      </div>
+    </section>
+
+    <!-- 06 -->
+    <section id="numbers">
+      <h2><span class="ix">06</span> The honest scorecard</h2>
+      <p class="sec-intro">Every number below was re-verified against the run manifests on 2026-06-24. The headline is real but modest — read the ceiling, not the multiplier.</p>
+      <table>
+        <tr><th>Condition</th><th class="num">SciFact</th><th class="num">NFCorpus</th><th>What it is</th></tr>
+        <tr><td>Baseline (pre-drift)</td><td class="num">0.819</td><td class="num">0.598</td><td class="muted">healthy retrieval before the encoder upgrade</td></tr>
+        <tr><td>C0 frozen</td><td class="num">0.006</td><td class="num">0.041</td><td class="muted">do nothing — catastrophic collapse</td></tr>
+        <tr><td>C2 re-embed (original encoder)</td><td class="num">0.006</td><td class="num">0.041</td><td class="muted">== C0 → the oracle is genuinely defeated</td></tr>
+        <tr class="row-hi"><td><b>C3a bounded supervised</b></td><td class="num"><b>0.159</b></td><td class="num"><b>0.054</b></td><td>the closed loop — fires 12/12, 3/3 seeds</td></tr>
+        <tr><td>C4a unbounded supervised</td><td class="num">0.206</td><td class="num">0.054</td><td class="muted">more on SciFact; equal on NFCorpus</td></tr>
+        <tr><td>C2O oracle (new encoder)</td><td class="num">0.813</td><td class="num">0.612</td><td class="muted">full re-embed — the recovery ceiling</td></tr>
+      </table>
+      <div class="gapwrap">
+        <div class="gap">
+          <div class="top"><b>Fraction of the oracle gap the loop actually closes</b><span>C0 → C3a, relative to C0 → oracle</span></div>
+          <div class="track"><div class="fill sci"></div><div class="lbl">SciFact &nbsp;<b style="color:var(--green)">19.0%</b></div></div>
+          <div class="track" style="margin-top:8px"><div class="fill nf"></div><div class="lbl">NFCorpus &nbsp;<b style="color:var(--amber)">2.25%</b></div></div>
+        </div>
+      </div>
+      <div class="callout warn"><b>Read this, not the "25×":</b> SciFact's "~25× over frozen" sounds huge only because C0 is ≈ 0.006 (near-zero). The honest framing is <b>fraction of the oracle gap closed: 19% on SciFact, 2.25% on NFCorpus</b>. It's a real partial recovery with a characterized ceiling — never full recovery.</div>
+      <div class="grid g2" style="margin-top:14px">
+        <div class="callout amb" style="margin:0"><b>The "12-cycle loop" is one-shot.</b> Every trajectory is a flat step function — the correction is fully applied at cycle 1 and re-applied identically for 11 more. Operationally it's a one-shot supervised realignment, not an iterating loop.</div>
+        <div class="callout amb" style="margin:0"><b>Budget sensitivity inverts.</b> More training steps <i>help</i> on SciFact (→0.182) but <i>hurt</i> on NFCorpus (30 steps best, →0.041 at 2000). Anchor-overfitting on the broader query distribution — a flagged open question.</div>
+      </div>
+    </section>
+
+    <!-- 07 -->
+    <section id="present">
+      <h2><span class="ix">07</span> What can honestly be presented today</h2>
+      <p class="sec-intro">Framed as a <b>methodology / harness paper</b> — a reusable framework + the oracle-baseline catch + a worked partial example — not "closed loop recovers drift." This is defensible right now, on two datasets.</p>
+      <div class="grid">
+        <div class="card tier-green"><h3>① A reproducible drift-recovery evaluation framework</h3><p>Seeded deterministic drift injector with manifest reproducibility, a recovery-trajectory metric suite, and a pre-registered protocol on two BEIR datasets. Releasable so others avoid the same traps.</p></div>
+        <div class="card tier-green"><h3>② The two hazards (the citable core)</h3><p>The C2-oracle catch + the supervision-signal mechanism. Both are general evaluation-design lessons that outlive this prototype — the strongest writable assets.</p></div>
+        <div class="card tier-green"><h3>③ The encoder-upgrade arena + an honest mixed/partial positive</h3><p>The design that defeats the oracle, plus a worked example where a supervised loop engages (12/12, 3/3 seeds, both datasets) and recovers a measurable, dataset-dependent fraction — explicitly never closing the gap to the oracle.</p></div>
+      </div>
+      <div class="callout"><b>Not presentable as proven:</b> the post-bank, annealed routes, the lifecycle, the meta-space, the DAG/GNN — and not "the closed loop recovers drift" (it partially does, in one arena, as a one-shot). Keep those in "future work / pre-registered."</div>
+    </section>
+
+    <!-- 08 -->
+    <section id="forward">
+      <h2><span class="ix">08</span> Path forward</h2>
+      <p class="sec-intro">Your decision today: <b>teacher-supervised C3b before arXiv</b>. Here's the honest ordering around it.</p>
+      <div class="steps">
+        <div class="stp first"><div class="num"></div><div><h4>Teacher-supervised C3b &nbsp;<span class="badge b-blue">your call · in progress next</span></h4><p>A second supervision source (teacher re-embedding of anchor docs) to strengthen the §6 story and probe the capacity ceiling. Named pre-registration item; the chosen gate on publishing.</p></div></div>
+        <div class="stp"><div class="num"></div><div><h4>Fix the 5 invariant/honesty items in the paper</h4><p>The NFCorpus eval-baseline divergence, "25× not 26×", state the 2.25% oracle-gap, disclose the one-shot trajectory, clarify the 60-query eval subset. ~1 hour of edits + one disclosure paragraph.</p></div></div>
+        <div class="stp"><div class="num"></div><div><h4>Clear carried debt + downgrade stale vision claims</h4><p>Close CD-247-01/02 (block-flag TTL), prune merged branches, and soften VISION/ROADMAP lines from "self-healing" to "partial recovery, characterized ceiling" — BHS Rule 2.</p></div></div>
+        <div class="stp"><div class="num"></div><div><h4>Build the post-bank proving experiment</h4><p>Annealed-route bank vs frozen-SVF static bank vs one-shot LD-MoLE router, on the drift fixture. <b>This is the head-to-head that converts your headline novelty from thesis to verified contribution.</b></p></div></div>
+        <div class="stp"><div class="num"></div><div><h4>Only then: Phase II steps 12 → 13 → 15</h4><p>Evidence DAG schema, disintegration loop, GNN. All assume a loop that changes retrieval — now first achieved, partially, in the encoder-upgrade arena.</p></div></div>
+        <div class="stp"><div class="num"></div><div><h4>Optional: bank a Zenodo DOI now</h4><p>A versioned artifact carries no "finished result" promise, so it timestamps the methodology contributions at zero credibility cost. Upgrade to arXiv after C3b.</p></div></div>
+      </div>
+    </section>
+
+    <!-- 09 -->
+    <section id="caveats">
+      <h2><span class="ix">09</span> Honest caveats <span class="badge b-red">brutal honesty</span></h2>
+      <div class="caveats">
+        <div class="cav"><span class="m">!</span><div>Recovery is <b>partial with a characterized ceiling</b>, not full. SciFact closes ~19% of the oracle gap; NFCorpus ~2.25%. The "25×" is large only because C0 ≈ 0.006.</div></div>
+        <div class="cav"><span class="m">!</span><div>The 12-cycle "closed loop" is a <b>flat step function</b> — operationally a one-shot supervised realignment, not an iterating loop.</div></div>
+        <div class="cav"><span class="m">!</span><div>In the separate <b>synthetic-drift regime the loop never engaged</b> (0/36, store byte-identical). That's an evaluation-design finding, not a recovery capability.</div></div>
+        <div class="cav"><span class="m">!</span><div>The paper proves exactly <b>one of three</b> deep-dive gaps (the retrieval-pool domain) and does it with the <b>established shim family</b> (a single bounded near-identity adapter). The two gaps that are the defensible novelty — living-bank lifecycle and routes-as-trajectories — are absent.</div></div>
+        <div class="cav"><span class="m">!</span><div>Concept-3 (Evidence DAG), Concept-4 (correction geometry), Concept-5 (computational storage) prior-art claims were <b>never adversarially vote-verified</b> — treat as unassessed, not confirmed-open.</div></div>
+        <div class="cav"><span class="m">!</span><div>The single adversarially-<b>confirmed</b> genuinely-open component is bounded / INT8-safe correction budgets (BoundedAdapter) — confirmed via a 0–3 refutation that Search-Adaptor already bounds corrections.</div></div>
+        <div class="cav"><span class="m">!</span><div>"More flexible than matrix multiplication" needs precision: chained linear transforms are still linear. Flexibility comes only from <b>nonlinearity between hops or conditional branching</b> — fiber-bundle language without theorems reads as decoration.</div></div>
+      </div>
+      <div class="foot">
+        Sources: run manifests under experiment_runs/drift-recovery/{swap,swap-nfcorpus}/ · paper-draft/main.md · novelty-assessment-five-concepts.md · shims-steering-posts-deep-dive.md · VISION_LIQUIFIED_LATTICE.md ·
+        verified by line-by-line artifact review + a 7-agent synthesis with an adversarial overclaim audit. Local-only strategy document — not committed.
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+  // scrollspy
+  const links=[...document.querySelectorAll('nav a')];
+  const secs=links.map(a=>document.querySelector(a.getAttribute('href')));
+  const obs=new IntersectionObserver(es=>{
+    es.forEach(e=>{if(e.isIntersecting){const id='#'+e.target.id;links.forEach(l=>l.classList.toggle('on',l.getAttribute('href')===id));}});
+  },{rootMargin:'-20% 0px -70% 0px'});
+  secs.forEach(s=>s&&obs.observe(s));
+</script>
+</body>
+</html>

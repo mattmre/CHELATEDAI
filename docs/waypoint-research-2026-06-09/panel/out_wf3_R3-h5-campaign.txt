@@ -1,0 +1,182 @@
+I'll inspect the #290 H5 head-to-head driver and related campaign docs so we can give exact PowerShell commands and the preregistered decision rules.The CLI entrypoint only runs the swap campaign — checking how H5 head-to-head is actually invoked and what H4/H2 dependencies exist.## H5/H4 recon — exact PowerShell
+
+### Critical CLI fact
+`python run_drift_recovery_swap_campaign.py` runs **only** PR-A4 swap matrix (`C0,C2,C2O,C3a,C4a` + budget sweep). It does **not** call `run_condition_head_to_head`. H5 is a **library entrypoint** — invoke via `python -c`.
+
+---
+
+### (1) Full H5 head-to-head — EXACT command
+
+**Default matrix (what the driver hardcodes):**
+| Item | Value |
+|------|--------|
+| Conditions | `C0`, `C2O`, `C5`, `C5s`, `C5r` |
+| Seeds | `42`, `1337`, `7` |
+| Cells | **15** (`5 × 3`) |
+| Arena | `query_encoder_swap` |
+| Task | **SciFact only** (default) |
+| cycles | 12 |
+| max_queries | 100 |
+| sample_docs | 1200 |
+| anchor_fraction | 0.4 |
+| model | `sentence-transformers/all-MiniLM-L6-v2` |
+| swap_model | `all-mpnet-base-v2` |
+| correction_steps/lr | **30 / 0.01** (not swept) |
+| **H4 `compound_cycles`** | **NOT included** — always default `False`; `_run_config` never sets it |
+
+```powershell
+# From repo root. Offline + real models.
+$env:HF_HUB_OFFLINE = "1"
+$env:HF_DATASETS_OFFLINE = "1"
+$env:TRANSFORMERS_OFFLINE = "1"
+$env:CHELATED_RUN_REAL_MODEL_TESTS = "1"
+
+python -c @"
+from run_drift_recovery_swap_campaign import (
+    SwapCampaignConfig, run_condition_head_to_head, POSTBANK_HEADTOHEAD_CONDITIONS, SEEDS,
+)
+from run_drift_recovery_experiment import _detect_device
+cfg = SwapCampaignConfig(
+    output_dir='experiment_runs/drift-recovery/post-bank-headtohead',
+    report_md='docs/drift-recovery-post-bank-headtohead-results-2026-06.md',
+    task='SciFact',
+    max_queries=100,
+    sample_docs=1200,
+    cycles=12,
+    anchor_fraction=0.4,
+    model='sentence-transformers/all-MiniLM-L6-v2',
+    swap_model='all-mpnet-base-v2',
+    device=_detect_device(),
+)
+print('device=', cfg.device)
+print('conditions=', POSTBANK_HEADTOHEAD_CONDITIONS)
+print('seeds=', SEEDS)
+run_condition_head_to_head(cfg)
+"@
+```
+
+**Optional NFCorpus twin** (same driver; not in default H5):
+
+```powershell
+python -c @"
+from run_drift_recovery_swap_campaign import SwapCampaignConfig, run_condition_head_to_head
+from run_drift_recovery_experiment import _detect_device
+cfg = SwapCampaignConfig(
+    output_dir='experiment_runs/drift-recovery/post-bank-headtohead-nfcorpus',
+    report_md='docs/drift-recovery-post-bank-headtohead-nfcorpus-results-2026-06.md',
+    task='NFCorpus',
+    max_queries=100, sample_docs=1200, cycles=12, anchor_fraction=0.4,
+    model='sentence-transformers/all-MiniLM-L6-v2',
+    swap_model='all-mpnet-base-v2',
+    device=_detect_device(),
+)
+run_condition_head_to_head(cfg)
+"@
+```
+
+**H4 is a separate ablation** (not part of #290 driver). CLI has **no** `--compound-cycles`. Example SciFact C4a one-shot vs compound (seed 42):
+
+```powershell
+python -c @"
+from pathlib import Path
+from run_drift_recovery_experiment import DriftRecoveryConfig, run_experiment, _detect_device
+base = dict(
+    task='SciFact', condition='C4a', drift='query_encoder_swap',
+    fraction=0.5, angle=25.0, sigma=0.05, cycles=12, seed=42,
+    max_queries=100, sample_docs=1200,
+    model='sentence-transformers/all-MiniLM-L6-v2',
+    swap_model='all-mpnet-base-v2', anchor_fraction=0.4,
+    correction_steps=30, correction_lr=0.01, device=_detect_device(),
+)
+for flag in (False, True):
+    out = f'experiment_runs/drift-recovery/h4-compound/C4a_compound{int(flag)}_seed42.json'
+    Path(out).parent.mkdir(parents=True, exist_ok=True)
+    r = run_experiment(DriftRecoveryConfig(**base, output=out, compound_cycles=flag))
+    print(flag, r['recovery']['trajectory'][-1]['ndcg'], out)
+"@
+```
+
+**H2 re-run (CD-H1-01 baselines — separate from H5):**
+
+```powershell
+# SciFact swap matrix + budget (overwrites docs/drift-recovery-swap-results-2026-06.md by default)
+python run_drift_recovery_swap_campaign.py `
+  --output-dir experiment_runs/drift-recovery/swap `
+  --report-md docs/drift-recovery-swap-results-2026-06.md `
+  --task SciFact
+
+# NFCorpus
+python run_drift_recovery_swap_campaign.py `
+  --output-dir experiment_runs/drift-recovery/swap-nfcorpus `
+  --report-md docs/drift-recovery-swap-nfcorpus-results-2026-06.md `
+  --task NFCorpus
+```
+
+---
+
+### (2) Expected runtime / GPU
+
+| Signal | Value |
+|--------|--------|
+| Prior SciFact **swap** campaign wall | **~1079 s (~18 min)** for 22 cells (`main 15 + budget 4 + confirm 3`) — from `swap-campaign-manifest-2026-06.json` |
+| H5 cells | **15** (no budget grid) |
+| Device | auto `cuda` if torch sees GPU (`_detect_device`) |
+| Cost skew | C5 trains **k=3** cluster adapters; C5 re-anneal can **rebuild bank** mid-run → heavier than C3a/C4a |
+
+**Estimate on RTX 3090, HF cache warm:** **~25–60 min** SciFact H5; NFCorpus similar ballpark if run. VRAM: MiniLM + mpnet + small MLP adapters — well under 3090 capacity.
+
+---
+
+### (3) Artifacts / doc generator
+
+**Written by the driver itself** (no separate `results(h5)` / results-doc generator script):
+
+| Artifact | Path |
+|----------|------|
+| Campaign manifest + verdict JSON | `{output_dir}/post-bank-headtohead-manifest-2026-06.json` (`record_type`: `post_bank_head_to_head_campaign`) |
+| Per-cell run JSON | `{output_dir}/headtohead/{C0\|C2O\|C5\|C5s\|C5r}_seed{42\|1337\|7}.json` |
+| Markdown report | `config.report_md` via `render_head_to_head_report` |
+
+Stdout: `{"manifest": "...", "report": "..."}`.
+
+There is **no** `results(h5)` commit path and **no** second generator — the report is the product of `run_condition_head_to_head`. Unit tests: `python -m unittest test_post_bank_head_to_head`.
+
+---
+
+### (4) Preregistered decision rule (H5 gate)
+
+From `_post_bank_verdict` / PR #290:
+
+```
+living_bank_wins  iff
+  C5, C5s, C5r all present
+  AND mean_final_ndcg(C5) > mean_final_ndcg(C5s)   # living_beats_static
+  AND mean_final_ndcg(C5) > mean_final_ndcg(C5r)   # living_beats_one_shot
+```
+
+- Metric: **mean final NDCG@10 over seeds** (strict `>`; **tie = loss**).
+- **Not** vs `C3a`/`C4a`. Those are **absent** from default H5 conditions. C0/C2O are floor/ceiling **context only** — they do not enter the gate.
+- H4 compound is **out of scope** for this verdict.
+
+---
+
+### (5) Gotchas + H2 ordering
+
+```powershell
+# Smoke (no GPU) before overnight:
+python -m unittest test_post_bank_head_to_head -v
+```
+
+1. **`python run_drift_recovery_swap_campaign.py` ≠ H5.** Must use `run_condition_head_to_head` via `python -c`.
+2. **No CLI for H5 / no `--compound-cycles`** on experiment or campaign parsers.
+3. **Default budget 30/0.01** under-fit for C3a historically; H5 post-bank uses same defaults — interpret vs that.
+4. **Datasets:** default SciFact only; multi-dataset needs repeated invocations.
+5. **Offline:** set `HF_HUB_OFFLINE` / `HF_DATASETS_OFFLINE` / `TRANSFORMERS_OFFLINE`; cache must already hold MiniLM + mpnet + task data.
+6. **Default report path** if you omit custom `report_md` is still `docs/drift-recovery-swap-results-2026-06.md` (swap default) — **override** or you clobber the swap doc with an H5 report.
+7. **`compound_cycles` does not apply to C5/C5s/C5r** (different apply path; PR #291).
+8. **H2 dependency:** H5 **does not load** H2/swap artifacts. It re-runs C0/C2O itself.  
+   - **H2 is required** only for **CD-H1-01** (stale **C3a** numbers in swap result docs after H1 fix `5b2379b`).  
+   - **Ordering:** H2 first if you care about paper §5 / C3a baselines; **not required** to start H5 numerics.  
+   - H5 vs C3a/C4a comparison is **not** in the preregistered gate — add conditions yourself or run H2 separately and compare offline.
+
+**Recommended GPU order if doing both:** H2 SciFact + NFCorpus (`run_swap_campaign` CLI) → H5 SciFact (`run_condition_head_to_head`) → optional H5 NFCorpus → optional H4 compound ablation.

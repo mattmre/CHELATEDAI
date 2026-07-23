@@ -1,0 +1,1358 @@
+Reading additional input from stdin...
+OpenAI Codex v0.144.1
+--------
+workdir: D:\GITHUB\CHELATEDAI\docs\waypoint-research-2026-06-09\panel
+model: gpt-5.6-sol
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: xhigh
+reasoning summaries: none
+session id: 019f49be-4eca-7c00-8993-4e42c99ac948
+--------
+user
+You are the technical build-plan lead. Analyze the plan brief provided on stdin and produce your concrete build plan. Do not modify files.
+
+<stdin>
+ROLE — TECHNICAL BUILD-PLAN LEAD (Codex): Produce the concrete engineering plan to build D1-D3: exact new files/modules, functions, interfaces, what to reuse from the merged harness, the crossover harness structure, the bootstrap-CI implementation, and the recoverability-estimator design. Give a phased build order with go/no-go gates. Be buildable and specific. Do not write code yet.
+
+# Build brief — 3 deliverables from the chelation roundtable (2026-06-30)
+
+We ran an adversarial panel (Grok 4.5 + Codex gpt-5.6-sol + Claude) on a drift-recovery research program.
+Consensus: the elaborate "chelation" corrector is DEAD as a drift/encoder-upgrade method; the within-model
+claim is untested (~10-15% odds); the honest products are a negative/methodology paper + one decisive test +
+one genuinely-new adjacent idea. We are now BUILDING three deliverables. Your job (this phase) is to analyze
+the ARCHITECTURE and produce/critique an IMPLEMENTATION PLAN — not to build yet.
+
+## Established facts (canonical, real runs — do not re-derive)
+- Arena: query-encoder-upgrade drift. Cached docs in MiniLM-L6 (384-d); queries re-embedded with mpnet-base
+  (768-d) → seeded projection to 384-d. Oracle = re-embed docs with new encoder. Metric: NDCG@10, recovery
+  R = (NDCG(corr)−NDCG(floor))/(NDCG(oracle)−NDCG(floor)).
+- SciFact eval-split canonical: ridge 84.4%, C3a (elaborate corrector) 20% → 4.2×; MLP 81% (≈ridge);
+  unregularized lstsq 67%; bound α=0.1 → 2.1%. Generalizes to bge-large + NFCorpus.
+- Panel's decisive corrections: (i) "encoder-upgrade is affine BY CONSTRUCTION" is FALSE — it's an empirical
+  fit, not a theorem (encoders are nonlinear; Procrustes dot-product preservation is an ASSUMPTION). (ii) The
+  "84% ceiling" is statistically UNSOUND as stated — ridge-vs-MLP is 0.027 NDCG with NO confidence intervals;
+  it is an *observed plateau*, not a ceiling. (iii) isotropy ≠ retrieval quality ("Is Anisotropy Truly
+  Harmful?" ACL 2023) — landmine under the within-model pivot. (iv) The near-identity bound is genuinely
+  disqualifying (α=0.05 → max 2.86° rotation; doc-side-only detector cannot observe a query-space rotation).
+
+## Existing assets
+- Merged harness (import-only) in a worktree at `D:\GITHUB\CHELATEDAI\.claude\worktrees\agent-build`
+  (origin/main, #291): `run_drift_recovery_experiment.py` (load_mteb_data, _split_anchor_eval, evaluate_*,
+  ndcg), `query_encoder_drift.py` (QueryEncoderDrift), `run_road_course_campaign.py` (select_road_course_slice).
+  Also topology_analyzer.py, isomer_detector.py, stability_tracker.py (chelation's detection machinery).
+- The paper + 19 experiment scripts + figures live (git-EXCLUDED, LOCAL-ONLY) in
+  `D:\GITHUB\CHELATEDAI\docs\waypoint-research-2026-06-09\` (`paper-draft/main.md`, `scripts/`, `figures/`).
+  Cached models: MiniLM-L6, mpnet-base, bge-large-en-v1.5, Qwen2.5-0.5B-Instruct. HF offline env available.
+
+## THE THREE DELIVERABLES TO PLAN
+
+### D1 — Fix + ship the negative/methodology paper
+- Add **10k paired-query bootstrap CIs** + an **anchor-count learning curve** for ridge vs MLP vs C3a; report
+  CIs everywhere; **downgrade "84% linear ceiling" → "observed plateau under this protocol."**
+- Write **§3 (System Under Test)** fully (adapter forward maps, the exact bound formula + floor, controller schedule).
+- Apply remaining panel corrections; relocate S1 to its own subsection (single-seed, dominated); strengthen
+  Reproducibility (commit SHAs, seeds, one repro command). Optional: LaTeX conversion for arXiv cs.IR.
+
+### D2 — The one honest crossover experiment (Codex's design)
+- Preregistered **Regime-U (real upgrade) × Regime-C (favorable synthetic heterogeneous collapse) crossover.**
+- Correctors: ridge, orthogonal Procrustes, residual MLP, per-cluster ridge K∈{2,4,8,16}, global+low-rank-local
+  residual w/ soft routing, graph-residual (kNN kernel-smoothed), bounded chelation α=0.05.
+- Regime-C baselines that MUST be beaten: global centering/ZCA, all-but-the-top, **CBIE (cluster-based isotropy)**,
+  local+global hubness scaling, plus the chelation topology/isomer detector (must PREDICT corrupted clusters,
+  AUPRC ≥0.80). Corruption: collapse 8/16 clusters toward centroid, β∈{0.05,0.10,0.20}.
+- Stats: 5 seeds, 10k paired bootstrap, Holm correction. **Win = ≥5 recovery pts AND ≥0.02 NDCG AND 95% CI
+  excludes 0 AND same sign in all 5 seeds.** Data scale: FEASIBLE subset first (SciFact/NFCorpus/Quora-subset),
+  full BEIR-Quora (522k) only if it runs. Kill criterion binding: if chelation can't beat CBIE/hubness in
+  Regime-C, terminate the mechanism.
+
+### D3 — Scope the recoverability certificate (the exceptional-potential idea; NOT chelation)
+- A calibrated estimator/theorem: from paired **Gram-distortion** + **query-margin distributions**, predict
+  BEFORE fitting whether an affine adapter will recover ~70/90/99% of retrieval. Prototype the estimator +
+  validate its predicted-vs-actual recovery on our existing runs. One-pager framing + a working predictor.
+
+## Your Phase-A deliverable (PLAN/ARCHITECTURE ONLY — do not build)
+1. A concrete module/file architecture for D1-D3 (what to reuse from the harness; new files; interfaces).
+2. Dependency graph + sequencing (what must precede what; what's parallelizable).
+3. Top risks + how the plan mitigates each (esp. the statistical-rigor + overfitting + scale risks the panel raised).
+4. A realistic scope cut: what's the MINIMUM that makes each deliverable honest & shippable vs the full version.
+5. Explicit go/no-go gates tied to the panel's kill criteria.
+Be concrete and buildable. Assume a single 3090 GPU, Windows, Python, the merged harness above.
+
+
+</stdin>
+warning: Skill descriptions were shortened to fit the 2% skills context budget. Codex can still see every skill, but some descriptions are shorter. Disable unused skills or plugins to leave more room for the rest.
+hook: SessionStart
+hook: SessionStart Completed
+codex
+I’m grounding this in the live CHELATEDAI harness and the local research tree, then I’ll map D1–D3 to exact modules, interfaces, dependencies, and binding gates. I’m using the architecture-patterns skill because the request is explicitly an implementation architecture and sequencing exercise; it will shape the module boundaries, but I’ll keep the output repo-specific and code-free.
+  → Read the architecture guidance and relevant CHELATEDAI memory pointers
+  • Inspect the merged harness and local paper/experiment assets
+  • Design exact D1-D3 modules, interfaces, reuse boundaries, and data contracts
+  • Define dependency order, minimum/full scope, risks, and go/no-go gates
+  • Cross-check the plan against existing assets and deliver the build plan
+exec
+"C:\\Program Files\\WindowsApps\\Microsoft.PowerShell_7.6.3.0_x64__8wekyb3d8bbwe\\pwsh.exe" -Command "Get-Content -Raw 'C:\\Users\\mattm\\.codex\\skills\\architecture-patterns\\SKILL.md'; rg -n -i \"CHELATEDAI|drift-recovery|waypoint|knob-sweep|PR #266\" 'C:\\Users\\mattm\\.codex\\memories\\MEMORY.md'" in D:\GITHUB\CHELATEDAI\docs\waypoint-research-2026-06-09\panel
+2026-07-10T01:57:33.343937Z ERROR codex_core::exec: exec error: windows sandbox: orchestrator_helper_launch_failed: setup refresh failed to launch helper: helper=codex-windows-sandbox-setup.exe, cwd=D:\GITHUB\CHELATEDAI\docs\waypoint-research-2026-06-09\panel, log=C:\Users\mattm\.codex\.sandbox\sandbox.2026-07-10.log, error=program not found
+2026-07-10T01:57:33.344212Z ERROR codex_core::tools::router: error=execution error: Io(Custom { kind: Other, error: "windows sandbox: orchestrator_helper_launch_failed: setup refresh failed to launch helper: helper=codex-windows-sandbox-setup.exe, cwd=D:\\GITHUB\\CHELATEDAI\\docs\\waypoint-research-2026-06-09\\panel, log=C:\\Users\\mattm\\.codex\\.sandbox\\sandbox.2026-07-10.log, error=program not found" })
+ exited -1 in 0ms:
+execution error: Io(Custom { kind: Other, error: "windows sandbox: orchestrator_helper_launch_failed: setup refresh failed to launch helper: helper=codex-windows-sandbox-setup.exe, cwd=D:\\GITHUB\\CHELATEDAI\\docs\\waypoint-research-2026-06-09\\panel, log=C:\\Users\\mattm\\.codex\\.sandbox\\sandbox.2026-07-10.log, error=program not found" })
+codex
+The first read-only inspection hit a local sandbox-launch failure (`codex-windows-sandbox-setup.exe` is missing), not a repository error. I’m retrying the same inspection through the available local command path; if the restriction persists, I’ll distinguish verified file facts from brief-supplied assumptions in the final plan.
+exec
+"C:\\Program Files\\WindowsApps\\Microsoft.PowerShell_7.6.3.0_x64__8wekyb3d8bbwe\\pwsh.exe" -NoProfile -Command "Get-Content -Raw 'C:\\Users\\mattm\\.codex\\skills\\architecture-patterns\\SKILL.md'" in D:\GITHUB\CHELATEDAI\docs\waypoint-research-2026-06-09\panel
+2026-07-10T01:57:43.050285Z ERROR codex_core::exec: exec error: windows sandbox: orchestrator_helper_launch_failed: setup refresh failed to launch helper: helper=codex-windows-sandbox-setup.exe, cwd=D:\GITHUB\CHELATEDAI\docs\waypoint-research-2026-06-09\panel, log=C:\Users\mattm\.codex\.sandbox\sandbox.2026-07-10.log, error=program not found
+2026-07-10T01:57:43.050504Z ERROR codex_core::tools::router: error=execution error: Io(Custom { kind: Other, error: "windows sandbox: orchestrator_helper_launch_failed: setup refresh failed to launch helper: helper=codex-windows-sandbox-setup.exe, cwd=D:\\GITHUB\\CHELATEDAI\\docs\\waypoint-research-2026-06-09\\panel, log=C:\\Users\\mattm\\.codex\\.sandbox\\sandbox.2026-07-10.log, error=program not found" })
+ exited -1 in 0ms:
+execution error: Io(Custom { kind: Other, error: "windows sandbox: orchestrator_helper_launch_failed: setup refresh failed to launch helper: helper=codex-windows-sandbox-setup.exe, cwd=D:\\GITHUB\\CHELATEDAI\\docs\\waypoint-research-2026-06-09\\panel, log=C:\\Users\\mattm\\.codex\\.sandbox\\sandbox.2026-07-10.log, error=program not found" })
+mcp: playwright/browser_navigate started
+mcp: playwright/browser_navigate (failed)
+user cancelled MCP tool call
+codex
+The architecture skill file and local repo reads remain unavailable because of the host sandbox failure, so I’m falling back to primary-source repository inspection where possible and treating the git-excluded paper tree as brief-specified rather than verified. The GitHub connector would make this kind of branch/file verification more reliable in future sessions, so I’m surfacing it as an optional install while continuing now.
+web search: 
+web search: site:github.com CHELATEDAI run_drift_recovery_experiment.py QueryEncoderDrift ...
+The local sandbox helper is missing, so live file reads and the selected skill file are unavailable. I will continue from the canonical brief, clearly labeling the proposed APIs and avoiding claims about unverified current signatures.
+  ✓ Read the architecture guidance and relevant CHELATEDAI memory pointers
+  ✓ Inspect the merged harness and local paper/experiment assets
+  → Design exact D1-D3 modules, interfaces, reuse boundaries, and data contracts
+  • Define dependency order, minimum/full scope, risks, and go/no-go gates
+  • Cross-check the plan against existing assets and deliver the build plan
+codex
+I have the core architecture now. I’m tightening two places where a vague plan would be dangerous: the exact statistical unit/family and the non-chelation baselines. I’ll define those as preregistered contracts so the build cannot silently tune on evaluation qrels or reinterpret a failed kill test.
+web search: 
+web search: cluster based isotropy enhancement CBIE sentence embeddings paper ...
+web search: 
+web search: 
+web search: 
+web search: 
+codex
+The build order is now fixed around one shared invariant: every method produces the same per-query record schema, and statistics, paper tables, crossover decisions, and the certificate all consume that schema. This removes the biggest reproducibility failure mode—separate metric implementations quietly disagreeing—and makes the chelation kill gate executable rather than rhetorical.
+Plan design and cross-check are complete. Live local API inspection could not be performed because the Windows sandbox helper is missing; the initial harness-parity gate explicitly closes that uncertainty before implementation.
+  ✓ Read the architecture guidance and relevant CHELATEDAI memory pointers
+  ✓ Inspect the merged harness and local paper/experiment assets
+  ✓ Design exact D1-D3 modules, interfaces, reuse boundaries, and data contracts
+  ✓ Define dependency order, minimum/full scope, risks, and go/no-go gates
+  ✓ Cross-check the plan against existing assets and deliver the build plan
+codex
+The build should be one tracked research package with immutable protocol files, one shared per-query result schema, and three thin deliverable layers. The merged harness remains import-only; no metric, split, or drift logic is copied.
+
+No files were modified. Live inspection was blocked by the missing Windows sandbox helper, so existing signatures below are brief-grounded and must pass Phase 0 parity before implementation. The selected architecture skill was unavailable for the same reason.
+
+## 1. Proposed file architecture
+
+All paths are relative to `D:\GITHUB\CHELATEDAI`.
+
+```text
+research/drift_recovery/
+├── __init__.py
+├── contracts.py
+├── protocol.py
+├── harness_bridge.py
+├── provenance.py
+├── artifacts.py
+├── embedding_cache.py
+├── retrieval.py
+├── cli.py
+│
+├── stats/
+│   ├── __init__.py
+│   ├── paired_bootstrap.py
+│   ├── multiple_testing.py
+│   └── learning_curve.py
+│
+├── regimes/
+│   ├── __init__.py
+│   ├── upgrade.py
+│   └── synthetic_collapse.py
+│
+├── methods/
+│   ├── __init__.py
+│   ├── base.py
+│   ├── affine.py
+│   ├── local_adapters.py
+│   ├── isotropy.py
+│   ├── hubness.py
+│   └── bounded_chelation.py
+│
+├── d1/
+│   ├── paper_stats.py
+│   └── render_paper_assets.py
+│
+├── d2/
+│   ├── detector_evaluation.py
+│   ├── crossover.py
+│   └── decisions.py
+│
+└── certificate/
+    ├── contracts.py
+    ├── features.py
+    ├── margin_bound.py
+    ├── calibration.py
+    ├── predictor.py
+    └── validation.py
+
+research/drift_recovery/protocols/
+├── d1_paper_v1.yaml
+├── crossover_v1.yaml
+├── certificate_v1.yaml
+└── repro_v1.yaml
+
+tests/research/drift_recovery/
+├── test_harness_parity.py
+├── test_paired_bootstrap.py
+├── test_recovery_metric.py
+├── test_learning_curve_splits.py
+├── test_synthetic_collapse.py
+├── test_method_leakage.py
+├── test_crossover_decisions.py
+├── test_certificate_features.py
+└── test_margin_bound.py
+```
+
+Generated runs go under:
+
+```text
+out/drift-recovery/<protocol-hash>/<run-id>/
+├── manifest.json
+├── status.json
+├── per_query.parquet
+├── aggregates.json
+├── contrasts.json
+├── timings.jsonl
+├── rankings/
+└── models/
+```
+
+Do not place durable evidence only in the currently git-excluded research directory. The paper may remain at `docs/waypoint-research-2026-06-09/paper-draft/main.md`, but its final source, generated tables, figures, protocol files, and provenance manifest must be explicitly tracked before shipment.
+
+## 2. Core contracts and harness reuse
+
+### Shared data contracts
+
+`contracts.py` defines:
+
+- `RetrievalCase`
+  - query/document IDs
+  - source/drifted queries
+  - target/old-space queries
+  - cached old documents
+  - optional oracle queries/documents
+  - qrels
+  - dataset/model/projection fingerprints
+
+- `ExperimentSplit`
+  - fixed evaluation IDs
+  - anchor-pool IDs
+  - nested anchor prefixes
+  - split hashes
+
+- `AnchorPairs`
+  - paired source and target embeddings
+  - no evaluation qrels
+
+- `PerQueryRecord`
+  - protocol, regime, dataset, condition, seed, method, query ID
+  - floor/oracle/method NDCG@10
+  - top-11 IDs and scores
+  - recovery numerator and denominator metadata
+
+- `RunManifest`
+  - repo and harness SHAs
+  - protocol SHA-256
+  - model revisions/cache hashes
+  - dataset and split hashes
+  - every component seed
+  - environment and exact command
+
+### Method interfaces
+
+Two interfaces are required because hubness methods operate on scores, not query vectors:
+
+- `QueryAdapter.fit(AnchorPairs, FitResources) -> FittedQueryAdapter`
+- `FittedQueryAdapter.transform(queries, RoutingContext) -> corrected_queries`
+- `ScoreTransform.fit(CorpusView, AnchorPairs) -> FittedScoreTransform`
+- `FittedScoreTransform.rank(queries, corpus, k) -> Rankings`
+
+`MethodRunner` composes either interface into the same `PerQueryRecord` output.
+
+No method may receive evaluation qrels during `fit`. Hyperparameter selection uses a separate anchor-validation partition and is frozen in the preregistration.
+
+### `harness_bridge.py`
+
+This is the only module allowed to import the merged harness.
+
+Principal functions:
+
+- `load_case(spec) -> RetrievalCase`
+  - wraps `load_mteb_data`
+
+- `make_split(case, split_spec) -> ExperimentSplit`
+  - wraps `_split_anchor_eval`
+  - hides the private API behind one compatibility boundary
+
+- `build_upgrade_case(spec) -> RetrievalCase`
+  - wraps `QueryEncoderDrift`
+
+- `select_feasible_slice(case, spec) -> RetrievalCase`
+  - wraps `select_road_course_slice`
+
+- `evaluate_legacy_method(name, case, split, config) -> list[PerQueryRecord]`
+  - wraps the existing `evaluate_*` functions
+
+- `canonical_ndcg(qrels, ranking, k=10)`
+  - delegates to the merged `ndcg`
+
+- `assert_harness_parity()`
+  - proves that mean per-query results reproduce the merged aggregate evaluator
+
+If the merged evaluator only returns aggregates, the bridge may collect rankings and call the same `ndcg`; it must not reimplement NDCG semantics. Parity tolerance: exact IDs and splits, numerical difference at most `1e-12` after matching dtype.
+
+## 3. D1 — Paper statistics and correction plan
+
+### Bootstrap implementation
+
+`stats/paired_bootstrap.py` provides:
+
+- `bootstrap_method_metrics(records, config)`
+- `bootstrap_contrast(records, lhs, rhs, config)`
+- `bootstrap_seed_aggregate(records, config)`
+- `validate_bootstrap_inputs(records)`
+
+For each bootstrap draw, resample query IDs with replacement and compute:
+
+\[
+R_m^{(b)}
+=
+\frac{\overline{N}_{m}^{(b)}-\overline{N}_{floor}^{(b)}}
+{\overline{N}_{oracle}^{(b)}-\overline{N}_{floor}^{(b)}}.
+\]
+
+This is a ratio of resampled query means, not a mean of per-query recovery ratios.
+
+Rules:
+
+- 10,000 deterministic paired-query draws.
+- Same query draw for floor, oracle, and every compared method.
+- 95% percentile CI for NDCG, recovery, ΔNDCG, and Δrecovery.
+- Never clip recovery or its denominator.
+- Mark a resample invalid if `oracle − floor ≤ ε`.
+- If more than 1% of draws are invalid, report recovery as unstable and block the claim.
+- Centered bootstrap null distribution supplies contrast p-values.
+- `multiple_testing.py` applies Holm correction to preregistered families.
+
+For five-seed results, evaluation IDs stay fixed. Average each query’s paired delta across seeds, bootstrap queries, and separately enforce the all-five-seeds sign rule. This avoids treating seed/query combinations as independent observations.
+
+### Anchor-count learning curve
+
+`learning_curve.py` supplies:
+
+- `make_nested_anchor_orders(anchor_pool, seeds)`
+- `evaluate_anchor_curve(case, methods, counts, seeds)`
+- `summarize_anchor_curve(records)`
+
+Protocol:
+
+- Counts: `{8, 16, 32, 64, 128}`.
+- Five fixed anchor-order seeds: `{17, 29, 43, 71, 101}`.
+- One fixed evaluation set.
+- Each larger count is a prefix containing the smaller count.
+- Ridge, residual MLP, and C3a use identical IDs at each point.
+- Unsupported counts are `NA`; the evaluation set is never reduced to make a count fit.
+- Plot point estimates, paired-query CI ribbons, and seed-level values.
+
+### Paper changes
+
+`d1/paper_stats.py` generates machine-readable tables. `render_paper_assets.py` turns them into Markdown tables and figures without embedding hand-entered numbers.
+
+Section 3 should be structured as:
+
+1. Arena and data flow.
+2. Regime-U construction and seeded projection.
+3. Adapter forward maps.
+4. C3a detector/controller pipeline.
+5. Exact near-identity bound and numerical floor.
+6. Controller schedule and stopping/rollback behavior.
+7. Retrieval evaluation, floor, oracle, and recovery.
+8. Anchor/evaluation separation.
+
+For the bound, document the actual implementation after inspection. The intended form to verify is:
+
+\[
+\delta'
+=
+\delta \min\left(
+1,
+\frac{\alpha\max(\lVert x\rVert_2,\epsilon)}
+{\max(\lVert\delta\rVert_2,\epsilon)}
+\right),
+\qquad
+f(x)=\operatorname{normalize}(x+\delta').
+\]
+
+Do not publish that formula unless it matches the merged implementation exactly.
+
+Mandatory prose corrections:
+
+- Replace “84% linear ceiling” with “observed plateau under this protocol.”
+- State that affine recoverability is empirical, not constructional.
+- State the assumptions behind any Procrustes argument.
+- Separate isotropy diagnostics from retrieval quality.
+- Move S1 to a standalone “single-seed, dominated exploratory result” subsection.
+- Attach CIs to every main numerical result and contrast.
+- Record both the research commit and merged-harness SHA.
+- Supply one offline reproduction command.
+
+LaTeX conversion is after content/statistical freeze; it is not on D1’s critical path.
+
+## 4. D2 — Crossover harness
+
+### Regime-U
+
+`regimes/upgrade.py` uses:
+
+- old MiniLM document cache;
+- projected mpnet/bge query embeddings from `QueryEncoderDrift`;
+- paired old/new anchor queries;
+- new-encoder query/document embeddings for the oracle;
+- one fixed evaluation set across all seeds and methods.
+
+Projection seed and feasible dataset slice are fixed. The five experimental seeds vary anchor ordering, optimizer initialization, routing, and synthetic choices—not the evaluation queries.
+
+### Regime-C
+
+`regimes/synthetic_collapse.py` provides:
+
+- `fit_reference_clusters(documents, k=16, training_ids)`
+- `select_corrupted_clusters(clusters, n=8, seed)`
+- `collapse_vectors(vectors, assignments, centroids, beta)`
+- `build_collapse_case(base_case, beta, seed)`
+- `validate_collapse_case(case)`
+
+Preregister the corruption as:
+
+\[
+T_\beta(x)
+=
+\operatorname{normalize}\left((1-\beta)x+\beta\mu_{c(x)}\right)
+\]
+
+for eight selected clusters; unselected clusters are unchanged.
+
+Conditions are `β ∈ {0.05, 0.10, 0.20}`. Tests must prove:
+
+- `β=0` is identity.
+- Only selected clusters move.
+- Distance to the assigned centroid decreases monotonically with β.
+- Cluster selection uses training data only.
+- Each eligible cluster has minimum training and evaluation support.
+
+Drifted queries are corrected toward the clean base space and retrieve against clean cached documents. Clean queries/documents define the oracle.
+
+To make Regime-C explicitly favorable to the detector, apply the same corruption to a held-out diagnostic document sample. The topology/isomer machinery receives clean-cache statistics and corrupted diagnostic embeddings, but never the eight binary corruption labels or evaluation qrels.
+
+### Methods
+
+`methods/affine.py`:
+
+- ridge affine map;
+- mean-centered orthogonal Procrustes;
+- canonical residual MLP from the merged harness.
+
+`methods/local_adapters.py`:
+
+- per-cluster ridge for `K={2,4,8,16}`;
+- global ridge plus soft-routed rank-4 local residuals, fixed `K=16`;
+- graph residual: global ridge plus cosine-kNN/Nadaraya–Watson residual interpolation.
+
+Local ridge falls back to the global map if a cluster lacks the preregistered minimum sample count. Soft-routing temperature, graph neighbor count, and regularization are selected only on anchor validation and then frozen.
+
+`methods/isotropy.py`:
+
+- global mean centering;
+- ZCA source-to-target alignment;
+- all-but-the-top;
+- CBIE.
+
+All-but-the-top removes the common mean and selected dominant global PCs, matching the original method’s basic operation. CBIE clusters embeddings, centers each cluster, then removes cluster-specific dominant PCs; the original CBIE work explicitly uses local clustering and PCA rather than a global isotropy transform. [All-but-the-Top paper](https://openreview.net/pdf?id=HkuGJ3kCb), [CBIE paper](https://aclanthology.org/2021.acl-short.73.pdf).
+
+`methods/hubness.py`:
+
+- NICDM/local scaling;
+- empirical mutual proximity/global scaling.
+
+These rerank distances rather than pretending to be affine adapters. Local scaling uses neighborhood-dependent scale parameters; mutual proximity uses each point’s distance distribution. [JMLR source](https://www.jmlr.org/papers/v13/schnitzer12a.html).
+
+`methods/bounded_chelation.py`:
+
+- imports `topology_analyzer.py`, `isomer_detector.py`, and `stability_tracker.py`;
+- exposes one cluster corruption score per cluster;
+- applies the paper’s frozen controller schedule;
+- enforces `α=0.05`;
+- has no outcome-driven schedule or alpha tuning.
+
+### Crossover execution
+
+`d2/crossover.py` provides:
+
+- `build_run_matrix(protocol)`
+- `run_cell(cell)`
+- `resume_run(run_id)`
+- `aggregate_crossover(run_ids)`
+- `evaluate_confirmatory_families(records)`
+
+One cell is:
+
+```text
+regime × dataset × beta-or-upgrade × seed × method
+```
+
+Runs are atomic and restartable. Encoding/cache construction is separate from method evaluation.
+
+Run ladder:
+
+1. Smoke: reduced documents/queries, one seed, β=0.10.
+2. Feasible: SciFact, NFCorpus, Quora subset; all methods, five seeds, all β.
+3. Full Quora: only after the scale gate.
+
+### Statistical and kill decisions
+
+The middle corruption `β=0.10` is the confirmatory Regime-C condition. The other β values are robustness analyses and cannot rescue a failed primary test.
+
+A comparison is a win only when all are true:
+
+- Δrecovery ≥ 0.05.
+- ΔNDCG@10 ≥ 0.02.
+- Both 95% paired-query CIs exclude zero.
+- Holm-adjusted `p < 0.05`.
+- Delta has the same sign in all five seeds.
+
+Primary chelation family:
+
+```text
+3 feasible datasets
+× {CBIE, local scaling, mutual proximity}
+× {ΔNDCG, Δrecovery}
+= 18 Holm-corrected tests
+```
+
+Binding gates:
+
+1. Detector gate: mean seed-level AUPRC must be at least 0.80 in every feasible `dataset × β` condition. CIs are reported.
+2. Mechanism gate: at β=0.10, chelation must achieve a qualifying win against all three baselines on at least two of three datasets, with no significant loss on the third.
+3. Failure of either gate kills chelation. No alpha sweep, detector redesign, alternative aggregation, or secondary-β rescue follows.
+4. The non-chelation local-adapter experiment continues and is publishable even when chelation is killed.
+
+## 5. D3 — Recoverability estimator
+
+### Input firewall
+
+`certificate/contracts.py` defines `CertificateInput` containing only:
+
+- paired source/target anchor embeddings;
+- cached old documents;
+- target-side anchor query rankings/scores;
+- anchor count and provenance.
+
+It explicitly excludes:
+
+- fitted adapter parameters;
+- corrected evaluation embeddings;
+- evaluation qrels;
+- observed recovery;
+- oracle evaluation rankings.
+
+A test must successfully run prediction after fitted-adapter artifacts are removed.
+
+### Gram and margin features
+
+`certificate/features.py` provides:
+
+- `center_and_shrink_whiten(X)`
+- `off_diagonal_gram(X)`
+- `gram_distortion(source, target)`
+- `query_margin_curve(queries, documents, k=10)`
+- `extract_certificate_features(input)`
+
+Features are deliberately small:
+
+- normalized Frobenius Gram distortion;
+- p50/p90/p99 rowwise Gram distortion;
+- whitened Gram distortion;
+- source/target effective rank and covariance condition number;
+- anchor-count-to-rank ratio;
+- boundary gap `score_10 − score_11`;
+- minimum adjacent gap across ranks 1–11;
+- margin survival curve on a fixed threshold grid.
+
+### Conditional bound
+
+`margin_bound.py` formalizes the defensible part:
+
+For unit-normalized documents, if a corrected query has target-space error at most `ε`, every document score changes by at most `ε`. Therefore, a query whose minimum relevant ranking gap exceeds `2ε` preserves its top-10 ordering.
+
+Gram distortion does not by itself prove such an `ε` for a nonlinear encoder upgrade. The proposed theorem work is:
+
+- exact equality of centered, whitened paired Grams plus rank assumptions implies an affine relation up to an orthogonal factor;
+- approximate equality yields an error bound multiplied by conditioning terms.
+
+Until that proof and its assumptions are independently checked, it must be labeled a conditional proposition, not a certificate theorem.
+
+### Calibrated predictor
+
+`calibration.py` maps the prefitting feature vector to an error proxy:
+
+\[
+\widehat{\epsilon}
+=
+g(d_{Gram}, q_{90}, q_{99}, \kappa, n/r),
+\]
+
+with a monotone, low-capacity calibrator. The margin survival curve then produces an initial recoverability estimate:
+
+\[
+\widehat R = \Pr(m_q > 2\widehat\epsilon).
+\]
+
+A grouped conformal residual correction supplies a conservative lower prediction bound. `predictor.py` returns:
+
+- point prediction;
+- interval/lower bound;
+- probabilities that recovery exceeds 0.70, 0.90, and 0.99;
+- highest supported tier;
+- OOD and abstention reasons.
+
+Validation must group by `dataset × encoder-pair`; seeds and anchor counts from one scenario may not cross folds. Compare against constant-mean and margin-only baselines.
+
+Certificate naming gate:
+
+- Predictor must beat the constant baseline by at least 10% grouped-CV MAE.
+- Spearman correlation with held-out recovery must exceed 0.60.
+- Nominal 90% interval coverage must land in 85–95%.
+- A tier is unsupported unless there are at least five independent scenarios on each side of its threshold.
+- If these fail, ship “recoverability-estimator prototype,” not “certificate.”
+- The 99% tier should be expected to abstain unless the run archive actually contains enough near-perfect independent cases.
+
+## 6. Dependency graph and build order
+
+```text
+Phase 0: harness/API audit + protocol/provenance contracts
+                     │
+                     ▼
+Phase 1: shared per-query records, retrieval, artifacts, bootstrap
+             ┌───────┴────────┐
+             ▼                ▼
+Phase 2: D1 stats/paper   Phase 3A: D2 regimes/methods
+                                  │
+                                  ▼
+                         Regime-C detector gate
+                                  │
+                                  ▼
+                         five-seed feasible crossover
+                                  │
+                                  ▼
+                          chelation kill decision
+             └──────────────┬──────────────┘
+                            ▼
+                 Phase 4: D3 run registry,
+                    estimator and validation
+                            │
+                            ▼
+                 Phase 5: shipment/reproduction
+```
+
+Practical schedule:
+
+- Phase 0: 1–2 engineering days.
+- Phase 1: 2–3 days.
+- D1: 3–5 days plus runs.
+- D2 implementation: 5–8 days; feasible runs likely several additional GPU days.
+- D3 prototype: 4–6 days.
+- Final artifact/repro audit: 1–2 days.
+- Full Quora is an optional additional compute phase.
+
+Paper prose, D2 method implementation, and D3 feature extraction are logically parallel after Phase 1, but GPU work remains serialized on the 3090.
+
+## 7. Go/no-go gates
+
+### Phase 0
+
+Go only if:
+
+- imports work from a clean origin/main checkout without hardcoding `.claude\worktrees\agent-build`;
+- harness SHA is captured;
+- canonical point estimates and split hashes reproduce;
+- per-query means equal harness aggregates;
+- model cache revisions are identifiable.
+
+### D1
+
+Go to shipment only if:
+
+- all main numerical claims have CIs;
+- nested anchor/eval splits pass leakage tests;
+- recovery denominators are stable;
+- “ceiling” and affine-theorem language are removed;
+- one offline command reproduces tables;
+- paper, code, tables, figures, and manifest are tracked.
+
+### D2
+
+Go from smoke to feasible only if:
+
+- every method returns valid, finite rankings;
+- no method sees evaluation qrels;
+- β and cluster invariants pass;
+- subset exact retrieval agrees with the existing evaluator;
+- restart/resume works.
+
+Go to full Quora only if:
+
+- measured pilot extrapolation fits declared wall-clock and disk budgets;
+- no dense query-by-522k score matrix is constructed;
+- embeddings are memory-mapped and retrieval is batched;
+- the full five-seed protocol can be completed. A one-seed full result is not a confirmatory replacement.
+
+### D3
+
+Go to “certificate” wording only if:
+
+- prediction runs before adapter fitting;
+- grouped validation passes;
+- tier support is adequate;
+- the conditional theorem assumptions are written and reviewed.
+
+Otherwise ship the estimator, its abstentions, and the negative validation honestly.
+
+## 8. Minimum honest scope versus full scope
+
+| Deliverable | Minimum shippable | Full version |
+|---|---|---|
+| D1 | SciFact ridge/MLP/C3a CIs, five-seed nested anchor curve, complete §3, corrections, tracked provenance and one repro command | CIs on every cross-dataset table, polished LaTeX/arXiv package |
+| D2 | All listed methods and required baselines on SciFact/NFCorpus/Quora-subset, five seeds, three β values, binding detector and kill gates | Full 522k Quora after the scale gate |
+| D3 | One-pager, feature extractor, prefitting predictor, grouped validation on usable existing runs, explicit abstention | Broader prospective encoder/dataset holdout and reviewed affine-error theorem |
+
+## Principal risks
+
+- **Statistical pseudo-replication:** fixed evaluation IDs, query-level pairing, seed-sign gate, grouped D3 validation.
+- **Outcome-driven tuning:** immutable preregistration hash; anchor-only validation; secondary conditions cannot rescue primary failure.
+- **Baseline underimplementation:** separate embedding and score-transform interfaces; CBIE and hubness methods follow their source definitions.
+- **Recovery denominator instability:** never clip; block unstable cells.
+- **Synthetic-regime favoritism:** disclose diagnostic document access and keep Regime-C claims separate from real upgrade claims.
+- **Scale/OOM:** encode once, memory-map CPU arrays, batch top-11 retrieval, serialize GPU jobs, make full Quora optional.
+- **Private harness API drift:** one bridge module and a mandatory parity test.
+- **Ignored/local-only evidence:** explicitly track final sources and manifests before any “shipped” claim.
+- **D3 overclaiming:** physics-informed low-capacity estimator, prefitting firewall, grouped holdouts, and default abstention when 90/99% support is absent.
+hook: Stop
+hook: Stop Completed
+tokens used
+124,436
+The build should be one tracked research package with immutable protocol files, one shared per-query result schema, and three thin deliverable layers. The merged harness remains import-only; no metric, split, or drift logic is copied.
+
+No files were modified. Live inspection was blocked by the missing Windows sandbox helper, so existing signatures below are brief-grounded and must pass Phase 0 parity before implementation. The selected architecture skill was unavailable for the same reason.
+
+## 1. Proposed file architecture
+
+All paths are relative to `D:\GITHUB\CHELATEDAI`.
+
+```text
+research/drift_recovery/
+├── __init__.py
+├── contracts.py
+├── protocol.py
+├── harness_bridge.py
+├── provenance.py
+├── artifacts.py
+├── embedding_cache.py
+├── retrieval.py
+├── cli.py
+│
+├── stats/
+│   ├── __init__.py
+│   ├── paired_bootstrap.py
+│   ├── multiple_testing.py
+│   └── learning_curve.py
+│
+├── regimes/
+│   ├── __init__.py
+│   ├── upgrade.py
+│   └── synthetic_collapse.py
+│
+├── methods/
+│   ├── __init__.py
+│   ├── base.py
+│   ├── affine.py
+│   ├── local_adapters.py
+│   ├── isotropy.py
+│   ├── hubness.py
+│   └── bounded_chelation.py
+│
+├── d1/
+│   ├── paper_stats.py
+│   └── render_paper_assets.py
+│
+├── d2/
+│   ├── detector_evaluation.py
+│   ├── crossover.py
+│   └── decisions.py
+│
+└── certificate/
+    ├── contracts.py
+    ├── features.py
+    ├── margin_bound.py
+    ├── calibration.py
+    ├── predictor.py
+    └── validation.py
+
+research/drift_recovery/protocols/
+├── d1_paper_v1.yaml
+├── crossover_v1.yaml
+├── certificate_v1.yaml
+└── repro_v1.yaml
+
+tests/research/drift_recovery/
+├── test_harness_parity.py
+├── test_paired_bootstrap.py
+├── test_recovery_metric.py
+├── test_learning_curve_splits.py
+├── test_synthetic_collapse.py
+├── test_method_leakage.py
+├── test_crossover_decisions.py
+├── test_certificate_features.py
+└── test_margin_bound.py
+```
+
+Generated runs go under:
+
+```text
+out/drift-recovery/<protocol-hash>/<run-id>/
+├── manifest.json
+├── status.json
+├── per_query.parquet
+├── aggregates.json
+├── contrasts.json
+├── timings.jsonl
+├── rankings/
+└── models/
+```
+
+Do not place durable evidence only in the currently git-excluded research directory. The paper may remain at `docs/waypoint-research-2026-06-09/paper-draft/main.md`, but its final source, generated tables, figures, protocol files, and provenance manifest must be explicitly tracked before shipment.
+
+## 2. Core contracts and harness reuse
+
+### Shared data contracts
+
+`contracts.py` defines:
+
+- `RetrievalCase`
+  - query/document IDs
+  - source/drifted queries
+  - target/old-space queries
+  - cached old documents
+  - optional oracle queries/documents
+  - qrels
+  - dataset/model/projection fingerprints
+
+- `ExperimentSplit`
+  - fixed evaluation IDs
+  - anchor-pool IDs
+  - nested anchor prefixes
+  - split hashes
+
+- `AnchorPairs`
+  - paired source and target embeddings
+  - no evaluation qrels
+
+- `PerQueryRecord`
+  - protocol, regime, dataset, condition, seed, method, query ID
+  - floor/oracle/method NDCG@10
+  - top-11 IDs and scores
+  - recovery numerator and denominator metadata
+
+- `RunManifest`
+  - repo and harness SHAs
+  - protocol SHA-256
+  - model revisions/cache hashes
+  - dataset and split hashes
+  - every component seed
+  - environment and exact command
+
+### Method interfaces
+
+Two interfaces are required because hubness methods operate on scores, not query vectors:
+
+- `QueryAdapter.fit(AnchorPairs, FitResources) -> FittedQueryAdapter`
+- `FittedQueryAdapter.transform(queries, RoutingContext) -> corrected_queries`
+- `ScoreTransform.fit(CorpusView, AnchorPairs) -> FittedScoreTransform`
+- `FittedScoreTransform.rank(queries, corpus, k) -> Rankings`
+
+`MethodRunner` composes either interface into the same `PerQueryRecord` output.
+
+No method may receive evaluation qrels during `fit`. Hyperparameter selection uses a separate anchor-validation partition and is frozen in the preregistration.
+
+### `harness_bridge.py`
+
+This is the only module allowed to import the merged harness.
+
+Principal functions:
+
+- `load_case(spec) -> RetrievalCase`
+  - wraps `load_mteb_data`
+
+- `make_split(case, split_spec) -> ExperimentSplit`
+  - wraps `_split_anchor_eval`
+  - hides the private API behind one compatibility boundary
+
+- `build_upgrade_case(spec) -> RetrievalCase`
+  - wraps `QueryEncoderDrift`
+
+- `select_feasible_slice(case, spec) -> RetrievalCase`
+  - wraps `select_road_course_slice`
+
+- `evaluate_legacy_method(name, case, split, config) -> list[PerQueryRecord]`
+  - wraps the existing `evaluate_*` functions
+
+- `canonical_ndcg(qrels, ranking, k=10)`
+  - delegates to the merged `ndcg`
+
+- `assert_harness_parity()`
+  - proves that mean per-query results reproduce the merged aggregate evaluator
+
+If the merged evaluator only returns aggregates, the bridge may collect rankings and call the same `ndcg`; it must not reimplement NDCG semantics. Parity tolerance: exact IDs and splits, numerical difference at most `1e-12` after matching dtype.
+
+## 3. D1 — Paper statistics and correction plan
+
+### Bootstrap implementation
+
+`stats/paired_bootstrap.py` provides:
+
+- `bootstrap_method_metrics(records, config)`
+- `bootstrap_contrast(records, lhs, rhs, config)`
+- `bootstrap_seed_aggregate(records, config)`
+- `validate_bootstrap_inputs(records)`
+
+For each bootstrap draw, resample query IDs with replacement and compute:
+
+\[
+R_m^{(b)}
+=
+\frac{\overline{N}_{m}^{(b)}-\overline{N}_{floor}^{(b)}}
+{\overline{N}_{oracle}^{(b)}-\overline{N}_{floor}^{(b)}}.
+\]
+
+This is a ratio of resampled query means, not a mean of per-query recovery ratios.
+
+Rules:
+
+- 10,000 deterministic paired-query draws.
+- Same query draw for floor, oracle, and every compared method.
+- 95% percentile CI for NDCG, recovery, ΔNDCG, and Δrecovery.
+- Never clip recovery or its denominator.
+- Mark a resample invalid if `oracle − floor ≤ ε`.
+- If more than 1% of draws are invalid, report recovery as unstable and block the claim.
+- Centered bootstrap null distribution supplies contrast p-values.
+- `multiple_testing.py` applies Holm correction to preregistered families.
+
+For five-seed results, evaluation IDs stay fixed. Average each query’s paired delta across seeds, bootstrap queries, and separately enforce the all-five-seeds sign rule. This avoids treating seed/query combinations as independent observations.
+
+### Anchor-count learning curve
+
+`learning_curve.py` supplies:
+
+- `make_nested_anchor_orders(anchor_pool, seeds)`
+- `evaluate_anchor_curve(case, methods, counts, seeds)`
+- `summarize_anchor_curve(records)`
+
+Protocol:
+
+- Counts: `{8, 16, 32, 64, 128}`.
+- Five fixed anchor-order seeds: `{17, 29, 43, 71, 101}`.
+- One fixed evaluation set.
+- Each larger count is a prefix containing the smaller count.
+- Ridge, residual MLP, and C3a use identical IDs at each point.
+- Unsupported counts are `NA`; the evaluation set is never reduced to make a count fit.
+- Plot point estimates, paired-query CI ribbons, and seed-level values.
+
+### Paper changes
+
+`d1/paper_stats.py` generates machine-readable tables. `render_paper_assets.py` turns them into Markdown tables and figures without embedding hand-entered numbers.
+
+Section 3 should be structured as:
+
+1. Arena and data flow.
+2. Regime-U construction and seeded projection.
+3. Adapter forward maps.
+4. C3a detector/controller pipeline.
+5. Exact near-identity bound and numerical floor.
+6. Controller schedule and stopping/rollback behavior.
+7. Retrieval evaluation, floor, oracle, and recovery.
+8. Anchor/evaluation separation.
+
+For the bound, document the actual implementation after inspection. The intended form to verify is:
+
+\[
+\delta'
+=
+\delta \min\left(
+1,
+\frac{\alpha\max(\lVert x\rVert_2,\epsilon)}
+{\max(\lVert\delta\rVert_2,\epsilon)}
+\right),
+\qquad
+f(x)=\operatorname{normalize}(x+\delta').
+\]
+
+Do not publish that formula unless it matches the merged implementation exactly.
+
+Mandatory prose corrections:
+
+- Replace “84% linear ceiling” with “observed plateau under this protocol.”
+- State that affine recoverability is empirical, not constructional.
+- State the assumptions behind any Procrustes argument.
+- Separate isotropy diagnostics from retrieval quality.
+- Move S1 to a standalone “single-seed, dominated exploratory result” subsection.
+- Attach CIs to every main numerical result and contrast.
+- Record both the research commit and merged-harness SHA.
+- Supply one offline reproduction command.
+
+LaTeX conversion is after content/statistical freeze; it is not on D1’s critical path.
+
+## 4. D2 — Crossover harness
+
+### Regime-U
+
+`regimes/upgrade.py` uses:
+
+- old MiniLM document cache;
+- projected mpnet/bge query embeddings from `QueryEncoderDrift`;
+- paired old/new anchor queries;
+- new-encoder query/document embeddings for the oracle;
+- one fixed evaluation set across all seeds and methods.
+
+Projection seed and feasible dataset slice are fixed. The five experimental seeds vary anchor ordering, optimizer initialization, routing, and synthetic choices—not the evaluation queries.
+
+### Regime-C
+
+`regimes/synthetic_collapse.py` provides:
+
+- `fit_reference_clusters(documents, k=16, training_ids)`
+- `select_corrupted_clusters(clusters, n=8, seed)`
+- `collapse_vectors(vectors, assignments, centroids, beta)`
+- `build_collapse_case(base_case, beta, seed)`
+- `validate_collapse_case(case)`
+
+Preregister the corruption as:
+
+\[
+T_\beta(x)
+=
+\operatorname{normalize}\left((1-\beta)x+\beta\mu_{c(x)}\right)
+\]
+
+for eight selected clusters; unselected clusters are unchanged.
+
+Conditions are `β ∈ {0.05, 0.10, 0.20}`. Tests must prove:
+
+- `β=0` is identity.
+- Only selected clusters move.
+- Distance to the assigned centroid decreases monotonically with β.
+- Cluster selection uses training data only.
+- Each eligible cluster has minimum training and evaluation support.
+
+Drifted queries are corrected toward the clean base space and retrieve against clean cached documents. Clean queries/documents define the oracle.
+
+To make Regime-C explicitly favorable to the detector, apply the same corruption to a held-out diagnostic document sample. The topology/isomer machinery receives clean-cache statistics and corrupted diagnostic embeddings, but never the eight binary corruption labels or evaluation qrels.
+
+### Methods
+
+`methods/affine.py`:
+
+- ridge affine map;
+- mean-centered orthogonal Procrustes;
+- canonical residual MLP from the merged harness.
+
+`methods/local_adapters.py`:
+
+- per-cluster ridge for `K={2,4,8,16}`;
+- global ridge plus soft-routed rank-4 local residuals, fixed `K=16`;
+- graph residual: global ridge plus cosine-kNN/Nadaraya–Watson residual interpolation.
+
+Local ridge falls back to the global map if a cluster lacks the preregistered minimum sample count. Soft-routing temperature, graph neighbor count, and regularization are selected only on anchor validation and then frozen.
+
+`methods/isotropy.py`:
+
+- global mean centering;
+- ZCA source-to-target alignment;
+- all-but-the-top;
+- CBIE.
+
+All-but-the-top removes the common mean and selected dominant global PCs, matching the original method’s basic operation. CBIE clusters embeddings, centers each cluster, then removes cluster-specific dominant PCs; the original CBIE work explicitly uses local clustering and PCA rather than a global isotropy transform. [All-but-the-Top paper](https://openreview.net/pdf?id=HkuGJ3kCb), [CBIE paper](https://aclanthology.org/2021.acl-short.73.pdf).
+
+`methods/hubness.py`:
+
+- NICDM/local scaling;
+- empirical mutual proximity/global scaling.
+
+These rerank distances rather than pretending to be affine adapters. Local scaling uses neighborhood-dependent scale parameters; mutual proximity uses each point’s distance distribution. [JMLR source](https://www.jmlr.org/papers/v13/schnitzer12a.html).
+
+`methods/bounded_chelation.py`:
+
+- imports `topology_analyzer.py`, `isomer_detector.py`, and `stability_tracker.py`;
+- exposes one cluster corruption score per cluster;
+- applies the paper’s frozen controller schedule;
+- enforces `α=0.05`;
+- has no outcome-driven schedule or alpha tuning.
+
+### Crossover execution
+
+`d2/crossover.py` provides:
+
+- `build_run_matrix(protocol)`
+- `run_cell(cell)`
+- `resume_run(run_id)`
+- `aggregate_crossover(run_ids)`
+- `evaluate_confirmatory_families(records)`
+
+One cell is:
+
+```text
+regime × dataset × beta-or-upgrade × seed × method
+```
+
+Runs are atomic and restartable. Encoding/cache construction is separate from method evaluation.
+
+Run ladder:
+
+1. Smoke: reduced documents/queries, one seed, β=0.10.
+2. Feasible: SciFact, NFCorpus, Quora subset; all methods, five seeds, all β.
+3. Full Quora: only after the scale gate.
+
+### Statistical and kill decisions
+
+The middle corruption `β=0.10` is the confirmatory Regime-C condition. The other β values are robustness analyses and cannot rescue a failed primary test.
+
+A comparison is a win only when all are true:
+
+- Δrecovery ≥ 0.05.
+- ΔNDCG@10 ≥ 0.02.
+- Both 95% paired-query CIs exclude zero.
+- Holm-adjusted `p < 0.05`.
+- Delta has the same sign in all five seeds.
+
+Primary chelation family:
+
+```text
+3 feasible datasets
+× {CBIE, local scaling, mutual proximity}
+× {ΔNDCG, Δrecovery}
+= 18 Holm-corrected tests
+```
+
+Binding gates:
+
+1. Detector gate: mean seed-level AUPRC must be at least 0.80 in every feasible `dataset × β` condition. CIs are reported.
+2. Mechanism gate: at β=0.10, chelation must achieve a qualifying win against all three baselines on at least two of three datasets, with no significant loss on the third.
+3. Failure of either gate kills chelation. No alpha sweep, detector redesign, alternative aggregation, or secondary-β rescue follows.
+4. The non-chelation local-adapter experiment continues and is publishable even when chelation is killed.
+
+## 5. D3 — Recoverability estimator
+
+### Input firewall
+
+`certificate/contracts.py` defines `CertificateInput` containing only:
+
+- paired source/target anchor embeddings;
+- cached old documents;
+- target-side anchor query rankings/scores;
+- anchor count and provenance.
+
+It explicitly excludes:
+
+- fitted adapter parameters;
+- corrected evaluation embeddings;
+- evaluation qrels;
+- observed recovery;
+- oracle evaluation rankings.
+
+A test must successfully run prediction after fitted-adapter artifacts are removed.
+
+### Gram and margin features
+
+`certificate/features.py` provides:
+
+- `center_and_shrink_whiten(X)`
+- `off_diagonal_gram(X)`
+- `gram_distortion(source, target)`
+- `query_margin_curve(queries, documents, k=10)`
+- `extract_certificate_features(input)`
+
+Features are deliberately small:
+
+- normalized Frobenius Gram distortion;
+- p50/p90/p99 rowwise Gram distortion;
+- whitened Gram distortion;
+- source/target effective rank and covariance condition number;
+- anchor-count-to-rank ratio;
+- boundary gap `score_10 − score_11`;
+- minimum adjacent gap across ranks 1–11;
+- margin survival curve on a fixed threshold grid.
+
+### Conditional bound
+
+`margin_bound.py` formalizes the defensible part:
+
+For unit-normalized documents, if a corrected query has target-space error at most `ε`, every document score changes by at most `ε`. Therefore, a query whose minimum relevant ranking gap exceeds `2ε` preserves its top-10 ordering.
+
+Gram distortion does not by itself prove such an `ε` for a nonlinear encoder upgrade. The proposed theorem work is:
+
+- exact equality of centered, whitened paired Grams plus rank assumptions implies an affine relation up to an orthogonal factor;
+- approximate equality yields an error bound multiplied by conditioning terms.
+
+Until that proof and its assumptions are independently checked, it must be labeled a conditional proposition, not a certificate theorem.
+
+### Calibrated predictor
+
+`calibration.py` maps the prefitting feature vector to an error proxy:
+
+\[
+\widehat{\epsilon}
+=
+g(d_{Gram}, q_{90}, q_{99}, \kappa, n/r),
+\]
+
+with a monotone, low-capacity calibrator. The margin survival curve then produces an initial recoverability estimate:
+
+\[
+\widehat R = \Pr(m_q > 2\widehat\epsilon).
+\]
+
+A grouped conformal residual correction supplies a conservative lower prediction bound. `predictor.py` returns:
+
+- point prediction;
+- interval/lower bound;
+- probabilities that recovery exceeds 0.70, 0.90, and 0.99;
+- highest supported tier;
+- OOD and abstention reasons.
+
+Validation must group by `dataset × encoder-pair`; seeds and anchor counts from one scenario may not cross folds. Compare against constant-mean and margin-only baselines.
+
+Certificate naming gate:
+
+- Predictor must beat the constant baseline by at least 10% grouped-CV MAE.
+- Spearman correlation with held-out recovery must exceed 0.60.
+- Nominal 90% interval coverage must land in 85–95%.
+- A tier is unsupported unless there are at least five independent scenarios on each side of its threshold.
+- If these fail, ship “recoverability-estimator prototype,” not “certificate.”
+- The 99% tier should be expected to abstain unless the run archive actually contains enough near-perfect independent cases.
+
+## 6. Dependency graph and build order
+
+```text
+Phase 0: harness/API audit + protocol/provenance contracts
+                     │
+                     ▼
+Phase 1: shared per-query records, retrieval, artifacts, bootstrap
+             ┌───────┴────────┐
+             ▼                ▼
+Phase 2: D1 stats/paper   Phase 3A: D2 regimes/methods
+                                  │
+                                  ▼
+                         Regime-C detector gate
+                                  │
+                                  ▼
+                         five-seed feasible crossover
+                                  │
+                                  ▼
+                          chelation kill decision
+             └──────────────┬──────────────┘
+                            ▼
+                 Phase 4: D3 run registry,
+                    estimator and validation
+                            │
+                            ▼
+                 Phase 5: shipment/reproduction
+```
+
+Practical schedule:
+
+- Phase 0: 1–2 engineering days.
+- Phase 1: 2–3 days.
+- D1: 3–5 days plus runs.
+- D2 implementation: 5–8 days; feasible runs likely several additional GPU days.
+- D3 prototype: 4–6 days.
+- Final artifact/repro audit: 1–2 days.
+- Full Quora is an optional additional compute phase.
+
+Paper prose, D2 method implementation, and D3 feature extraction are logically parallel after Phase 1, but GPU work remains serialized on the 3090.
+
+## 7. Go/no-go gates
+
+### Phase 0
+
+Go only if:
+
+- imports work from a clean origin/main checkout without hardcoding `.claude\worktrees\agent-build`;
+- harness SHA is captured;
+- canonical point estimates and split hashes reproduce;
+- per-query means equal harness aggregates;
+- model cache revisions are identifiable.
+
+### D1
+
+Go to shipment only if:
+
+- all main numerical claims have CIs;
+- nested anchor/eval splits pass leakage tests;
+- recovery denominators are stable;
+- “ceiling” and affine-theorem language are removed;
+- one offline command reproduces tables;
+- paper, code, tables, figures, and manifest are tracked.
+
+### D2
+
+Go from smoke to feasible only if:
+
+- every method returns valid, finite rankings;
+- no method sees evaluation qrels;
+- β and cluster invariants pass;
+- subset exact retrieval agrees with the existing evaluator;
+- restart/resume works.
+
+Go to full Quora only if:
+
+- measured pilot extrapolation fits declared wall-clock and disk budgets;
+- no dense query-by-522k score matrix is constructed;
+- embeddings are memory-mapped and retrieval is batched;
+- the full five-seed protocol can be completed. A one-seed full result is not a confirmatory replacement.
+
+### D3
+
+Go to “certificate” wording only if:
+
+- prediction runs before adapter fitting;
+- grouped validation passes;
+- tier support is adequate;
+- the conditional theorem assumptions are written and reviewed.
+
+Otherwise ship the estimator, its abstentions, and the negative validation honestly.
+
+## 8. Minimum honest scope versus full scope
+
+| Deliverable | Minimum shippable | Full version |
+|---|---|---|
+| D1 | SciFact ridge/MLP/C3a CIs, five-seed nested anchor curve, complete §3, corrections, tracked provenance and one repro command | CIs on every cross-dataset table, polished LaTeX/arXiv package |
+| D2 | All listed methods and required baselines on SciFact/NFCorpus/Quora-subset, five seeds, three β values, binding detector and kill gates | Full 522k Quora after the scale gate |
+| D3 | One-pager, feature extractor, prefitting predictor, grouped validation on usable existing runs, explicit abstention | Broader prospective encoder/dataset holdout and reviewed affine-error theorem |
+
+## Principal risks
+
+- **Statistical pseudo-replication:** fixed evaluation IDs, query-level pairing, seed-sign gate, grouped D3 validation.
+- **Outcome-driven tuning:** immutable preregistration hash; anchor-only validation; secondary conditions cannot rescue primary failure.
+- **Baseline underimplementation:** separate embedding and score-transform interfaces; CBIE and hubness methods follow their source definitions.
+- **Recovery denominator instability:** never clip; block unstable cells.
+- **Synthetic-regime favoritism:** disclose diagnostic document access and keep Regime-C claims separate from real upgrade claims.
+- **Scale/OOM:** encode once, memory-map CPU arrays, batch top-11 retrieval, serialize GPU jobs, make full Quora optional.
+- **Private harness API drift:** one bridge module and a mandatory parity test.
+- **Ignored/local-only evidence:** explicitly track final sources and manifests before any “shipped” claim.
+- **D3 overclaiming:** physics-informed low-capacity estimator, prefitting firewall, grouped holdouts, and default abstention when 90/99% support is absent.

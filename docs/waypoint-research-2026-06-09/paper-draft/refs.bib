@@ -1,0 +1,154 @@
+% References for embedding drift recovery paper (cs.IR)
+% Updated 2026-06-24 — all entries verified against primary sources
+
+% ---------------------------------------------------------------------------
+% Embedding adaptation for retrieval
+% ---------------------------------------------------------------------------
+
+@inproceedings{searchadaptor,
+  title     = {Search-Adaptor: Embedding Adaptation for Information Retrieval},
+  author    = {Yoon, Jinsung and Chen, Yanfei and Arik, Sercan O. and Pfister, Tomas},
+  booktitle = {Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics (ACL)},
+  year      = {2024},
+  publisher = {Association for Computational Linguistics},
+  eprint    = {2310.08750},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.IR},
+  note      = {arXiv:2310.08750}
+}
+
+% ---------------------------------------------------------------------------
+% Per-query / query-aware dimension selection and masking
+% ---------------------------------------------------------------------------
+
+@inproceedings{dime2024,
+  title     = {Dimension Importance Estimation for Dense Information Retrieval},
+  author    = {Faggioli, Guglielmo and Ferro, Nicola and Perego, Raffaele and Tonellotto, Nicola},
+  booktitle = {Proceedings of the 47th International ACM SIGIR Conference on Research and Development in Information Retrieval},
+  year      = {2024},
+  publisher = {ACM},
+  address   = {Washington DC, USA},
+  note      = {SIGIR 2024}
+}
+
+@misc{queryawasking2026,
+  title         = {Learning to Select: Query-Aware Adaptive Dimension Selection for Dense Retrieval},
+  author        = {Wu, Zhanyu and Zhang, Richong and Nie, Zhijie},
+  year          = {2026},
+  month         = feb,
+  eprint        = {2602.03306},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.IR},
+  note          = {arXiv:2602.03306}
+}
+
+% ---------------------------------------------------------------------------
+% Embedding shift / semantic drift
+% ---------------------------------------------------------------------------
+
+@misc{semshift2026,
+  title         = {Pooling and Semantic Shift: The Fundamental Challenges in Long Text Embedding and Retrieval},
+  author        = {Gao, Hang and Xu, Wujiang and Mei, Kai and Metaxas, Dimitris N.},
+  year          = {2026},
+  month         = mar,
+  eprint        = {2603.21437},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.IR},
+  note          = {arXiv:2603.21437}
+}
+
+% ---------------------------------------------------------------------------
+% Streaming / adaptive ANN index maintenance under drift
+% ---------------------------------------------------------------------------
+
+@misc{freshdiskann2021,
+  title         = {FreshDiskANN: A Fast and Accurate Graph-Based ANN Index for Streaming Similarity Search},
+  author        = {Singh, Aditi and Subramanya, Suhas Jayaram and Krishnaswamy, Ravishankar and Simhadri, Harsha Vardhan},
+  year          = {2021},
+  eprint        = {2105.09613},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.IR},
+  note          = {arXiv:2105.09613}
+}
+
+@misc{adaivf2024,
+  title         = {Incremental IVF Index Maintenance for Streaming Vector Search},
+  author        = {Mohoney, Jason and Pacaci, Anil and Chowdhury, Shihabur Rahman and Minhas, Umar Farooq and Pound, Jeffery and Renggli, Cedric and Reyhani, Nima and Ilyas, Ihab F. and Rekatsinas, Theodoros and Venkataraman, Shivaram},
+  year          = {2024},
+  month         = nov,
+  eprint        = {2411.00970},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.IR},
+  note          = {arXiv:2411.00970}
+}
+
+@misc{quake2026,
+  title         = {Quake: Adaptive Indexing for Vector Search},
+  author        = {Mohoney, Jason and Sarda, Devesh and Tang, Mengze and Chowdhury, Shihabur Rahman and Pacaci, Anil and Ilyas, Ihab F. and Rekatsinas, Theodoros and Venkataraman, Shivaram},
+  year          = {2026},
+  eprint        = {2506.03437},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.IR},
+  note          = {arXiv:2506.03437}
+}
+
+@misc{selfawaredvec2026,
+  title         = {Self-Aware Vector Embeddings for Retrieval-Augmented Generation: A Neuroscience-Inspired Framework for Temporal, Confidence-Weighted, and Relational Knowledge},
+  author        = {Xu, Naizhong},
+  year          = {2026},
+  month         = apr,
+  eprint        = {2604.20598},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.IR},
+  note          = {arXiv:2604.20598}
+}
+
+% ---------------------------------------------------------------------------
+% Activation steering / steering vector banks
+% ---------------------------------------------------------------------------
+
+@misc{steeringvf2026,
+  title         = {Steering Vector Fields for Context-Aware Inference-Time Control in Large Language Models},
+  author        = {Li, Jiaqian and Li, Yanshu and Huang, Kuan-Hao},
+  year          = {2026},
+  month         = feb,
+  eprint        = {2602.01654},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.CL},
+  note          = {arXiv:2602.01654}
+}
+
+@misc{flowsteering2026,
+  title         = {Beyond Steering Vector: Flow-based Activation Steering for Inference-Time Intervention},
+  author        = {Jin, Zehao and Deng, Ruixuan and Wang, Junran and Shen, Xinjie and Zhang, Chao},
+  year          = {2026},
+  month         = may,
+  eprint        = {2605.05892},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.CL},
+  note          = {arXiv:2605.05892}
+}
+
+% ---------------------------------------------------------------------------
+% Mixture-of-LoRA routing and queryable adapters
+% ---------------------------------------------------------------------------
+
+@misc{ldmole2024,
+  title         = {LD-MoLE: Learnable Dynamic Routing for Mixture of LoRA Experts},
+  author        = {Zhuang, Yuan and Shen, Yi and Bian, Yuexin and Su, Qing and Ji, Shihao and Shi, Yuanyuan and Miao, Fei},
+  year          = {2024},
+  eprint        = {2509.25684},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.LG},
+  note          = {arXiv:2509.25684}
+}
+
+@misc{queryablelora2026,
+  title         = {Queryable LoRA: Instruction-Regularized Routing Over Shared Low-Rank Update Atoms},
+  author        = {Vaidya, Omatharv Bharat and Jerzak, Connor T. and Ho, Nhat and Bajaj, Chandrajit},
+  year          = {2026},
+  eprint        = {2605.08423},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.LG},
+  note          = {arXiv:2605.08423}
+}

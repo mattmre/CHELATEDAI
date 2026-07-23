@@ -1,0 +1,77 @@
+I'll inspect the preflight aggregation, the sparse-local preflight tests, and the surrounding audit pattern so we can apply F1–F3 precisely.Inspecting how local ridges store cluster keys and how `run_preflight_cell` routes labels.Checking whether any small-cell config can satisfy `floor <= global`, and inspecting `LocalRidgeModel` cluster keys:Applying F1–F3: aggregation from run audits, sentinel routing test, and strengthened ladder margins (noting `floor <= global` isn't deterministic here).Running unit tests, then the preflight sweep with offline env vars.All tests passed. Running the preflight sweep and comparing grid numbers.## Fixes applied
+
+### F1 — production audit aggregation
+**`research/drift_recovery/d2b_preflight/preflight.py:697–700`**
+
+`_aggregate_cell` no longer hardcodes `"clean_ids_used_by_fit": False`. It is now the OR over per-run detector audits:
+
+```python
+"clean_ids_used_by_fit": bool(
+    any(bool(run["detector"]["clean_ids_used_by_fit"]) for run in runs)
+),
+```
+
+Same derivation pattern as the per-cell detector block at L616–621. A leak on any seed flips the aggregate flag.
+
+---
+
+### F2 — audit rename + behavioral sentinel routing test
+**`research/drift_recovery/tests/test_sparse_local_preflight.py`**
+
+| Change | Location |
+|--------|----------|
+| Renamed audit-only test → `test_fit_local_ridges_audit_records_clean_ids_not_accepted` | L133 |
+| Added `_SENTINEL_LABEL_BASE = 9000` | L127–129 |
+| **New** `test_run_preflight_local_ridge_keys_follow_inferred_routing` | L167–230 |
+
+The new test monkeypatches `infer_corrupted_clusters` to return round-robin labels in `{9000..9007}`, runs `run_preflight_cell`, and asserts `selected_lambdas_per_cluster` keys for both `local_dense` and `local_low_rank` are in the sentinel space and **disjoint** from clean ID space `{0..7}`.
+
+**Brutal honesty on F2:** The sentinel test **passed**. No production clean-ID routing leak was found. Fitted keys followed the patched inferred labels, not `regime.clean_cluster_ids`. Nothing to paper over.
+
+---
+
+### F3 — ladder margin strengthening
+**`research/drift_recovery/tests/test_sparse_local_preflight.py:285–401`**
+
+- Construction uses `gamma=2.0` (stronger warp than `_SMALL`’s 0.60).
+- Asserts `global residual >= 0.01` and `local_ndcg - global_ndcg >= 0.01`.
+- Asserts order **`global < local <= oracle`**.
+- **Does not** assert `floor <= global`. On this sparse-local non-affine cell, a single global ridge applied to all docs routinely lands **below** the corrupted floor (`floor ≈ 0.87`, `global ≈ 0.43` at gamma=2.0). That inequality is not deterministic on the small construction; documented in the test docstring. Floor is only checked as a float diagnostic.
+
+---
+
+## Verification
+
+### 1. Preflight sweep (offline env)
+```
+CLOSE
+Obj B fails constructively — under the residual>=0.05 gate no cell admits. ...
+```
+
+| Check | Result |
+|-------|--------|
+| Verdict | **CLOSE** (unchanged) |
+| Family reasons | quadratic 0.0295 / soft_fold 0.0328 (unchanged) |
+| Grid residual / mean NDCG | **Unchanged** vs pre-fix fingerprint (first/last cells match exactly) |
+| `clean_id_fit_violations` | 0 |
+| Local choice counts | dense 0 / low_rank 144 (unchanged) |
+
+F1 only touched audit metadata derivation; no numeric regeneration needed.
+
+### 2. Unit tests — full output
+
+```
+test_training_audit_hyperparameter_fields ... ok
+test_selection_source_and_eval_disjoint ... ok
+test_fit_local_ridges_audit_records_clean_ids_not_accepted ... ok
+test_run_preflight_detector_clean_ids_from_audits ... ok
+test_run_preflight_local_ridge_keys_follow_inferred_routing ... ok
+test_oracle_local_beats_global_on_residual ... ok
+test_quadratic_warp_properties ... ok
+test_soft_fold_warp_properties ... ok
+[... all test_d2_decisions + test_synthetic_collapse ...]
+----------------------------------------------------------------------
+Ran 31 tests in 0.177s
+
+OK
+```

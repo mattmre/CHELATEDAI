@@ -1,2 +1,5 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Archival recovery: preserve the ignored waypoint corpus byte-for-byte.
+docs/waypoint-research-2026-06-09/** -text whitespace=-blank-at-eol,-blank-at-eof

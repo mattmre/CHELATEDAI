@@ -1,0 +1,140 @@
+I'll adversarially review Obj A v2 from both directions: recompute block-LOO from frozen features, audit the six new packs for construction bugs, and check whether the rank inversion is real or artifactual.ArguAna margins are negative while R stays high — that alone can invert the rank relation. Next I'll audit pack construction and recompute block-LOO from frozen features.ArguAna qrels look structurally sound (1 pos/query, all present). Digging into margin definition, slice positive retention, and independent block-LOO recomputation next.PowerShell doesn't support heredocs — switching to a temp script for the pack audit and block-LOO recompute.Confirming ArguAna’s negative margins are domain-real (counterargument geometry), not a missing-positive bug. Cleaning up the temp audit script and writing the verdict.# Adversarial review — Obj A v2 NEGATIVE
+
+## Verdict: **PASS** (the NEGATIVE is real)
+
+Not FAIL. Packs are sound; metrics recompute exactly; the rank inversion is a genuine generalization failure of `oracle_margin_mean`, driven mainly by ArguAna’s domain geometry (negative mean oracle margins with high ridge R), not by qrel/slice/parity bugs.
+
+---
+
+## 1. Is the NEGATIVE an artifact? **No.**
+
+### Recomputed block-LOO (frozen features, same `objA.block_loo_analysis`)
+
+| Scheme | Predictor | Spearman (recomputed) | MAE | Claimed |
+|---|---|---:|---:|---|
+| dataset | margin | **−0.706294** | 0.149221 | −0.7063 / 0.1492 |
+| dataset | gap-only | **−0.496503** | 0.123874 | −0.4965 / 0.1239 |
+| dataset | mean_R | −0.518200 | 0.099588 | (matches report) |
+| encoder | margin | **−0.685315** | 0.105531 | −0.6853 / 0.1055 |
+| encoder | gap-only | **−0.447552** | 0.094335 | −0.4476 / 0.0943 |
+
+All |diff| vs rounded claims ≤ 5e−5. AND-bar fails on both schemes. Margin loses to gap-only on **both** Spearman and MAE under dataset-block LOO.
+
+Partial Spearman(margin, R | gap) recomputed **−0.1246**; raw Spearman(margin, R) **+0.0420** (near zero, not the v1 +0.89).
+
+### Six new packs — construction audit
+
+| Check | Result |
+|---|---|
+| Positives missing from slice | **0** on all 6 packs (ArguAna 60/60 1-pos queries present) |
+| ArguAna qrels | 1 positive/query, min=med=max=1; query_ids ↔ qrels exact match |
+| Oracle gaps (aggregate) | All **> 0** (0.56–0.79); no degenerate cells |
+| R range | 0.55–0.86 — sane, not 0/1 from broken qrels |
+| e5 dims | `swap_dim=768`, store 384; projection checksum matches other 768→384 packs (same seed/dim recipe as mpnet) |
+| Harness parity | **parity_max = 0** on all 6 (≤ 1e−12); re-extract margins/R match frozen features to 0.0 |
+| Leakage-safe fit | `eval_positive_docs_in_fit=0`; fit_n=600 (NFCorpus e5: 869) |
+| Prereg before packs | Hash lock matches `prereg_objA_v2.sha256`; latest prereg mtime **before** earliest new pack (`scifact_…e5….npz`) by ~10 min |
+
+ArguAna negative **mean** margins are not a wiring bug:
+
+- Re-extracted `oracle_margin_mean` = −0.061 / −0.018 / −0.016
+- Fraction of queries with negative top1-relevant − top1-competitor margin: **63% / 48% / 60%**
+- Oracle NDCG still **0.65–0.77** (positives often in top-k even when not rank-1)
+- Feature definition (`features.py` ~L170–192): best in-pack positive vs strongest non-relevant under oracle scores — raises if no in-pack positive
+
+That is **counterargument geometry** under cosine: non-relevant competitors can outscore the true counterargument at top-1 while the positive remains recoverable for NDCG@10 and for ridge.
+
+**Not an outlier artifact in the “R≈0 or R≈1 from missing qrel” sense.** ArguAna R is *high* (0.75–0.86), not collapsed.
+
+Minor non-bugs (do not flip verdict):
+
+- Eval query count is 60 everywhere (`max_queries=100` then 0.4 anchor split → 60 eval) — same recipe as v1 SciFact/FiQA.
+- NFCorpus e5 has 2063 docs (not 1200) — matches existing NFCorpus packs; `sample_docs=1200` metadata is the recipe flag.
+- Some per-query oracle−floor gaps are ≤0 (e.g. NFCorpus e5 `gap_min≈−0.23`); aggregate gap used for R remains positive. Pre-existing multi-rel / encoder-swap behavior, not v2-specific.
+
+---
+
+## 2. Is the NEGATIVE real? **Yes.**
+
+### v1 PROMISING and v2 NEGATIVE are consistent (same code path)
+
+On the **exact same 6 v1 cells** and the same `block_loo_analysis`:
+
+| | Dataset ρ | Encoder ρ | Beats both nulls |
+|---|---:|---:|---|
+| v1 claim | +0.8857 | +0.8286 | yes → PROMISING-BUT-UNDERPOWERED |
+| Recompute on v1 subset from frozen features | **+0.885714** | **+0.828571** | **True** |
+
+v2 did not change the metric code or the six reused packs’ metrics. It only expanded the regime set (ArguAna × 3 + e5 × 4). Regime R / margin for the six old cells are byte-stable vs `objA_validation.md`.
+
+### Honest generalization story
+
+| Slice | Spearman(margin, R) |
+|---|---:|
+| old 6 cells | **+0.886** |
+| new 6 cells alone | **−0.943** |
+| all 12 | **+0.042** |
+| ArguAna 3 | **−1.000** |
+| e5 4 | **−0.800** |
+
+Influence (dataset-block LOO, drop one dataset):
+
+| Drop | n | margin ρ |
+|---|---:|---:|
+| **ArguAna** | 9 | **+0.733** |
+| FiQA2018 | 9 | −0.833 |
+| NFCorpus | 9 | −0.733 |
+| SciFact | 9 | −0.867 |
+
+ArguAna is the **dominant** inversion driver: hold it out and the positive inventory pattern returns. That is not a reason to discard the NEGATIVE — the prereg **registered** ArguAna as a novel dataset block. The point of powered validation was exactly this holdout.
+
+Encoder-side: drop e5 still leaves ρ≈−0.36; e5 is a second, weaker invertor (low R on SciFact/FiQA e5 with tiny positive margins).
+
+**Mechanism (not a bug):** Under dataset LOO, training cells all have **positive** margin means. OLS learns a positive margin→R slope. ArguAna’s **negative** margins then predict low R (~0.42–0.55) while actual R is **high** (~0.75–0.86) — see OOF rows in `objA_v2_validation.json` L49–80. That systematically anti-ranks the novel block.
+
+So: v1 n=6 / 3×2 inventory **overfit** a within-family correlation; on novel dataset+encoder blocks the predictor does **not** generalize and **loses** to gap-only.
+
+---
+
+## 3. Per-regime (margin, R) — eyeball table
+
+Sorted by margin:
+
+| margin | R | gap | regime |
+|---:|---:|---:|---|
+| **−0.0612** | **0.857** | 0.630 | ArguAna × mpnet |
+| **−0.0184** | **0.793** | 0.767 | ArguAna × bge |
+| **−0.0164** | **0.747** | 0.682 | ArguAna × e5 |
+| +0.0024 | 0.602 | 0.562 | NFCorpus × e5 |
+| +0.0040 | 0.647 | 0.581 | NFCorpus × mpnet |
+| +0.0064 | 0.554 | 0.763 | FiQA × e5 |
+| +0.0079 | 0.664 | 0.591 | NFCorpus × bge |
+| +0.0122 | 0.597 | 0.788 | SciFact × e5 |
+| +0.0279 | 0.747 | 0.748 | FiQA × bge |
+| +0.0470 | 0.722 | 0.826 | SciFact × bge |
+| +0.0782 | 0.843 | 0.808 | SciFact × mpnet |
+| +0.0794 | 0.821 | 0.778 | FiQA × mpnet |
+
+Pattern: **lowest three margins = ArguAna = among the highest R**. That single block flips block-LOO ranking. No pack has pathological R≈0/1; no pack has non-positive aggregate oracle gap.
+
+Full-sample OLS slope margin→R is still mildly positive (+0.31 Pearson +0.12) — descriptive, not block-LOO. Rank association collapses; blocked OOF predictions invert.
+
+---
+
+## File:line anchors
+
+| Claim | Where |
+|---|---|
+| Frozen AND-bar / NEGATIVE label | `prereg_objA_v2.md` L20–21, L43–47; `objA_v2.py` `verdict_for_v2` ~L432–439 |
+| Block-LOO definition (shared v1/v2) | `estimator/objA.py` `block_loo_analysis` L190–278 |
+| Margin = best-pos − best-nonrel under oracle | `estimator/features.py` L170–192 |
+| Pack recipe / parity gate for new packs | `objA_v2.py` `_audit_pack_contract` L170–222 |
+| Prereg ordering audit | `objA_v2.py` `_ordering_audit` L225–259 |
+| Reported metrics | `out/estimator/objA_v2_validation.md` L15–34; JSON L30–45 |
+| v1 PROMISING numbers | `out/estimator/objA_validation.md` L15–22 |
+
+---
+
+## Bottom line (paper-quotable)
+
+**At the preregistered 4×3 powered scale, `oracle_margin_mean` fails the frozen AND-bar (dataset-block LOO ρ = −0.706, encoder-block ρ = −0.685) and loses to gap-only; the v1 +0.89 result was inventory-overfit to three datasets × two encoders, with ArguAna’s domain-real negative oracle margins and high ridge recovery as the main, non-artifactual inversion driver.**

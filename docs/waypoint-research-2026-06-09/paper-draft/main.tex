@@ -1,0 +1,227 @@
+\documentclass[12pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{hyperref}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{url}
+\usepackage{microtype}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue,
+  citecolor=blue,
+  urlcolor=blue
+}
+
+\title{A Reproducible Framework for Evaluating Closed-Loop\\
+Embedding-Drift Recovery --- and Why the Obvious Baseline Cheats}
+
+\author{Matt M.\\\textit{Independent Researcher}}
+
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+Retrieval-augmented systems silently degrade when their embedding store drifts away from the query encoder --- through corpus updates, encoder upgrades, or concept drift. A natural response is a closed loop: detect the degradation and apply a bounded, post-hoc correction to the stored representations without retraining the frozen base encoder. We present an open, fully reproducible framework for evaluating such loops under controlled, seeded drift, comprising (i) a deterministic drift injector with manifest-level reproducibility, (ii) a recovery-trajectory metric suite, and (iii) a pre-registered experimental protocol with severity calibration. Applying the framework to a detection-triggered bounded-adapter loop, we surface two findings of independent value to practitioners. First, the obvious maintenance baseline --- re-embedding affected documents with the original frozen encoder --- is a degenerate oracle for synthetic geometric drift: it inverts the perturbation by construction and returns exactly to the pre-drift state, so it cannot serve as a fair comparison point. Second, an unsupervised homeostatic correction loop has no supervision signal pointing back toward the pre-drift geometry, so its optimal correction is near-identity --- this failure is demonstrated mechanistically in the synthetic-drift regime. In the encoder-upgrade arena, where the oracle baseline is defeated and an explicit supervision channel is provided, the supervised closed loop does engage on both SciFact and NFCorpus (3/3 seeds each), recovering a measurable fraction of catastrophic drift with dataset-dependent budget sensitivity. We argue these evaluation-design hazards generalize beyond our prototype and release the framework so others can avoid them.
+\end{abstract}
+
+\section{Introduction}
+\label{sec:intro}
+
+Dense retrieval underpins modern RAG. Its standard operating assumption is that the embedding model is fixed and retrieval quality is an index problem. In deployment this assumption erodes: documents are added and edited, encoders are upgraded, and the semantic relationship between queries and stored vectors drifts. The failure is quiet --- recall degrades without any error --- which makes maintenance of the embedding store a first-class systems problem.
+
+One appealing maintenance strategy is a closed correction loop: monitor for drift, and when it is detected, apply a small bounded correction to the stored representations using a lightweight adapter, leaving the (possibly API-only) base encoder frozen. This is attractive because it is cheap, online, and composes with existing indexes. To our knowledge no published system demonstrates such a loop end-to-end against injected drift; the components exist in isolation (\S\ref{sec:related}) but the closed loop and its evaluation do not.
+
+This paper does not claim to fully close that loop. Instead it contributes the evaluation substrate such a claim would require, and reports two hazards we encountered that we believe generalize:
+
+\begin{enumerate}
+  \item A reproducible drift-recovery harness (\S\ref{sec:sut}--\S\ref{sec:framework}): deterministic, seeded drift injection with reproducible manifests; a recovery-trajectory metric suite; and a pre-registered protocol including a severity-calibration step that selects drift strength inside a documented ``discriminating band.''
+  \item The oracle-baseline hazard (\S\ref{sec:conditions}, \S\ref{sec:results}): the natural maintenance baseline (re-embed-with-frozen-encoder) trivially inverts synthetic vector drift, returning to the exact pre-drift state. It is an upper bound, not a baseline, and using it as the latter would manufacture an apparent ``win'' with no mechanism.
+  \item The supervision-signal hazard (\S\ref{sec:results}, \S\ref{sec:mechanism}): an unsupervised homeostatic loop optimizes toward a target computed from the already-drifted geometry, which encodes nothing about where vectors should be; its optimum is therefore near-identity. We show this mechanistically and argue any closed-loop recovery method needs an explicit supervision channel.
+\end{enumerate}
+
+We frame these primarily as methodology contributions. The unsupervised loop never engaged in the synthetic-drift regime, which speaks to evaluation design. In the encoder-upgrade arena --- where the oracle baseline is defeated and an explicit InfoNCE supervision channel is provided --- the supervised closed loop does engage on both datasets tested (SciFact and NFCorpus), demonstrating that a well-supervised variant can recover a measurable fraction of drift. The open questions remaining are richer supervision (C3b), larger scale, milder drift magnitudes, and the budget-inversion phenomenon observed on NFCorpus, which we discuss in \S\ref{sec:open}.
+
+\section{Related Work}
+\label{sec:related}
+
+\subsection{Post-hoc embedding correction with a frozen base}
+\label{sec:related-posthoc}
+
+Search-Adaptor~\cite{searchadaptor} learns an additive residual MLP on frozen embeddings ($\mathrm{new} = \mathrm{orig} + f(\mathrm{orig})$), requiring no model weights or gradients and working on API-only encoders --- structurally the adapter family we use. It is supervised and one-shot, with no drift detection, no online adaptation, and no bounded-correction mechanism.
+
+\subsection{Per-query dimension selection}
+\label{sec:related-dim}
+
+DIME~\cite{dime2024} and a query-aware masking method~\cite{queryawasking2026} select, per query, a subset of embedding dimensions with the encoder frozen, improving effectiveness. These motivate dimension-level correction but do not address drift or closed-loop maintenance.
+
+\subsection{Drift and collapse detection}
+\label{sec:related-drift}
+
+Semantic-shift detection~\cite{semshift2026} formalizes embedding concentration with a measurable statistic but remedies it by text segmentation, not representation correction.
+
+\subsection{Vector-index lifecycle under change}
+\label{sec:related-lifecycle}
+
+FreshDiskANN~\cite{freshdiskann2021}, Ada-IVF~\cite{adaivf2024}, and Quake~\cite{quake2026} maintain ANN index structure under streaming updates and drift via targeted repartition and cost-model restructuring. Xu~\cite{selfawaredvec2026} proposes a neuroscience-inspired lifecycle for vector embeddings covering temporal decay, confidence weighting, and relational knowledge. All operate on index structure or metadata; none corrects the embeddings themselves or couples maintenance to correction training. Ada-IVF is the closest analog to a ``maintenance'' baseline and motivates our C2 condition --- whose oracle pathology (\S\ref{sec:conditions}) is precisely what distinguishes structural maintenance from representation recovery.
+
+\subsection{Steering and adapter banks}
+\label{sec:related-steering}
+
+Steering Vector Fields~\cite{steeringvf2026} and flow-based activation steering~\cite{flowsteering2026} maintain banks of steering anchors for LLM activations; mixture-of-LoRA routing~\cite{ldmole2024,queryablelora2026} routes over banks of low-rank corrections. These target LLM hidden states, not retrieval-store geometry, and use static banks without a drift-triggered lifecycle.
+
+\subsection{Gap}
+\label{sec:related-gap}
+
+No prior work we found closes the detect $\to$ bounded-correct loop over a retrieval store and evaluates it against injected drift. Our contribution is the substrate to test such a claim honestly, plus two hazards that substrate reveals.
+
+\section{System Under Test}
+\label{sec:sut}
+
+We evaluate a research engine that wraps a frozen sentence-encoder (all-MiniLM-L6-v2, 384-dim) with: a Qdrant-backed vector store; a family of near-identity-initialized correction adapters (MLP, Procrustes, low-rank), optionally wrapped in a bounded adapter that caps per-vector correction magnitude; structural-drift detectors (topology, isomer, stability); and an annealing controller that maps a drift signal to a temperature and gates whether a correction cycle runs.
+
+Three adapter families are implemented, all initialized near-identity (weight standard deviation 0.001 to preserve base model quality): (i) MLP adapters with a single hidden layer; (ii) Procrustes adapters optimizing an orthogonal transform; (iii) low-rank adapters parameterized as $UV^\top$ with $U, V \in \mathbb{R}^{d \times r}$. A \texttt{BoundedAdapter} wrapper caps per-vector correction magnitude to a configurable maximum, making the correction interpretable as a small perturbation from the original representation.
+
+The intended closed loop is: detector emits a drift magnitude $\to$ controller decides \texttt{should\_correct} $\to$ a sedimentation cycle trains the bounded adapter $\to$ corrected vectors are written back to the store. Base encoder weights never change (a hard invariant of the system).
+
+\section{Experimental Framework}
+\label{sec:framework}
+
+\subsection{Drift injector}
+\label{sec:drift-injector}
+
+\texttt{DriftInjector} applies seeded drift to stored vectors with full reproducibility. Two modes are implemented: rotation (disjoint Givens rotations on random dimension pairs, a norm-preserving orthogonal transform) and noise (seeded Gaussian, renormalized). A fraction of points is selected deterministically; every injection emits a JSON manifest recording seed, injection index, affected ids, parameters, rotation pairs, and before/after checksums. Determinism is a tested invariant: identical seed and call sequence reproduce byte-identical vectors and manifests; validation errors raise before any RNG is consumed, so a failed call advances neither the RNG nor the sequence index.
+
+\subsection{Recovery metrics}
+\label{sec:recovery-metrics}
+
+\texttt{RecoveryTracker} records the per-cycle NDCG@10 trajectory after drift, the first cycle reaching a sustained recovery threshold (default 95\% of pre-drift baseline for two consecutive cycles), post-recovery stability, and a JSON-exportable trajectory for plotting.
+
+\subsection{Conditions and the oracle hazard}
+\label{sec:conditions}
+
+We compare five conditions over the drift: C0 frozen (no correction; lower bound); C1 static adapter trained once pre-drift; C2 maintenance (re-embed affected documents' raw text with the frozen original encoder); C3 the closed loop; C4 C3 without the correction bound. The intended reading is C2 $\approx$ ``structural maintenance baseline (Ada-IVF analog).''
+
+This reading is wrong, and that is a finding. For synthetic geometric drift on stored vectors, C2 re-embeds the unchanged source text with the unchanged encoder, which reproduces the exact pre-drift vector. Empirically C2 returns to the per-run baseline with $\max|\mathrm{baseline} - \mathrm{final}| = 0$ (tolerance $10^{-12}$) across every C2 run and both drift modes. C2 is therefore a degenerate oracle --- it inverts the perturbation by construction --- not a maintenance baseline. Any study that injects synthetic vector drift and uses re-embedding as its ``maintenance'' comparison will record a tautological 100\% recovery and may mistake it for a real result.
+
+The hazard is deeper than synthetic geometric drift. We initially expected that model-swap drift --- replacing a fraction of stored document vectors with embeddings from a different encoder --- would defeat the oracle. It does not: C2 re-embeds the affected documents' unchanged text with the original encoder, which restores the exact pre-drift vectors regardless of how the stored vectors were replaced. Any drift that only corrupts stored document vectors, while the document text and original encoder remain available, is perfectly invertible by C2. The only drift that defeats the oracle is one whose recovery target is not ``the original encoder's embedding of the available text'' --- i.e. an encoder/query upgrade: the eval queries move to a new encoder while the cached document vectors remain in the old space. C2's re-embed-with-the-original-encoder then leaves the documents in the old space, still misaligned with the upgraded query space, and cannot recover. We verify this property directly at the retrieval level (baseline accuracy $1.0 \to$ post-upgrade $< 0.5 \to$ C2 re-embed, a demonstrated no-op, stays degraded $\to$ re-embedding documents into the new query space recovers to $1.0$). The correct use of C2 is as a cheap-maintenance baseline that provably fails under encoder upgrade; the expensive full re-embed into the new space is the oracle upper bound.
+
+\subsection{Protocol and pre-registration}
+\label{sec:protocol}
+
+Two datasets are evaluated: SciFact (100 queries, 1200 sampled documents) and NFCorpus (same query/document sampling budget). Both use 12 correction cycles and seeds $\{42, 1337, 7\}$. Severity is calibrated by a scout that sweeps drift strength and selects, by a pre-declared rule, a setting whose frozen-C0 NDCG drop lands in an 8--20\% ``discriminating band'' (deep enough that recovery is non-trivial, shallow enough that correction is plausible); if no cell lands in-band the rule selects the closest and discloses it. The primary comparison is pre-registered: C3 vs C0 and C3 vs C2 on final NDCG@10 and recovery cycle.
+
+\section{Results}
+\label{sec:results}
+
+We report two regimes. In the synthetic-drift regime (rotation/noise on stored vectors) the unsupervised homeostatic loop never engaged --- \texttt{correction\_applied} = 0 of 36 cycles, store byte-identical --- because its target encodes no pre-drift geometry (\S\ref{sec:mechanism}); and the re-embed baseline is the degenerate oracle of \S\ref{sec:conditions}. That regime tests evaluation design, not recovery. The encoder-upgrade regime is where the thesis becomes testable, and where the supervised closed loop engages.
+
+\subsection{SciFact results (MiniLM \texorpdfstring{$\to$}{->} mpnet, 3 seeds)}
+\label{sec:scifact}
+
+The eval-query encoder is upgraded (mpnet projected into the MiniLM store dimension) while the cached document vectors stay in the original space. All conditions are scored on the same held-out eval subset (anchors reserved for supervision). Baseline (pre-upgrade) NDCG@10 $= 0.819$.
+
+\begin{table}[ht]
+\centering
+\caption{SciFact results under MiniLM $\to$ mpnet encoder upgrade (3 seeds).}
+\label{tab:scifact}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Condition} & \textbf{Final NDCG@10} & \textbf{vs frozen} \\
+\midrule
+C0 frozen & 0.006 & --- \\
+C2 maintenance (re-embed with original encoder) & 0.006 & no-op \\
+C3a bounded supervised closed loop & 0.159 & $+0.153$ ($\sim$26$\times$) \\
+C4a unbounded supervised closed loop & 0.206 & $+0.200$ \\
+C2O oracle (re-embed with new encoder) & 0.813 & upper bound \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Three findings: (1) The encoder upgrade is catastrophic and the re-embed maintenance baseline does not recover it. C0 and C2 both collapse to 0.006. (2) The detection-triggered bounded closed loop recovers a measurable fraction. C3a fires 3/3 seeds, lifting NDCG@10 from 0.006 to 0.159 --- approximately 26$\times$ over frozen, $\sim$20\% of the way to the oracle. (3) The shortfall is a capacity ceiling, not under-training. A C3a budget sweep (30--2000 Adam steps) rises then plateaus: 0.159, 0.173, 0.181, 0.182.
+
+\subsection{NFCorpus results (MiniLM \texorpdfstring{$\to$}{->} mpnet, 3 seeds)}
+\label{sec:nfcorpus}
+
+NFCorpus provides a second, independent replication with a harder, more diverse query distribution. Setup identical to \S\ref{sec:scifact}. Baseline NDCG@10 $= 0.598$.
+
+\begin{table}[ht]
+\centering
+\caption{NFCorpus results under MiniLM $\to$ mpnet encoder upgrade (3 seeds).}
+\label{tab:nfcorpus}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Condition} & \textbf{Final NDCG@10} & \textbf{vs frozen} \\
+\midrule
+C0 frozen & 0.041 & --- \\
+C2 maintenance & 0.041 & no-op \\
+C3a bounded supervised & 0.054 & $+0.013$ ($+32\%$) \\
+C4a unbounded supervised & 0.054 & $+0.013$ \\
+C2O oracle & 0.612 & upper bound \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Three findings: (1) Oracle-defeat replicates. (2) Loop fires 3/3 seeds, lifting from 0.041 to 0.054. (3) Budget sensitivity inverts: 30 steps best; more steps degrade (200 $\to$ 0.039, 1000 $\to$ 0.040, 2000 $\to$ 0.041). All budget levels fire corrections. Recovery saturates at cycle 1.
+
+\subsection{Cross-dataset comparison}
+\label{sec:cross-dataset}
+
+\begin{table}[ht]
+\centering
+\caption{Cross-dataset comparison of recovery under encoder upgrade.}
+\label{tab:cross}
+\begin{tabular}{lccccccc}
+\toprule
+\textbf{Dataset} & \textbf{Baseline} & \textbf{C0/C2} & \textbf{C3a} & \textbf{C4a} & \textbf{C2O} & \textbf{C3a vs frozen} & \textbf{Budget sensitivity} \\
+\midrule
+SciFact & 0.819 & 0.006 & 0.159 & 0.206 & 0.813 & $\sim$26$\times$ & more steps help \\
+NFCorpus & 0.598 & 0.041 & 0.054 & 0.054 & 0.612 & $\sim$32\% & fewer steps best \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Four findings: (1) Oracle defeat replicates on both at full floating-point precision. (2) Loop fires 3/3 seeds on both. C3a $>$ C0 per-seed individually. (3) Recovery magnitude differs: SciFact $\sim$20\% of oracle gap; NFCorpus smaller fraction. (4) Budget sensitivity inverts: anchor-InfoNCE sensitive to query distribution breadth.
+
+\subsection{Honest scope}
+\label{sec:honest-scope}
+
+Partial-recovery result with a characterized ceiling, on two datasets and a single severe drift magnitude. Recovery magnitude is dataset-dependent, budget sensitivity inverts across corpora, and the ceiling is well below a full re-embed on both.
+
+\section{Mechanism}
+\label{sec:mechanism}
+
+The correction cycle trains the adapter toward a homeostatic target computed from the current, already-drifted retrieved neighborhood --- it pushes a vector away from its present cluster centroid by a fixed magnitude. This target contains no information about the pre-drift geometry: no teacher embedding of the original text, no held-out pre-drift relevance pairs, no snapshot of the clean vector. Under such a target the loss-minimizing correction is near-identity, which we observe directly: the unbounded variant (C4) settles at a correction norm of $\sim$$1.9\times10^{-4}$, essentially the adapter's near-identity initialization. The bounded variant's reported $\sim$$10^{-2}$ norm is an artifact of the bound's floor rescaling a near-zero correction up to the minimum, not a learned recovery. We conclude that a closed loop of this form is structurally incapable of recovering injected drift regardless of tuning, because the optimum it converges to is ``do almost nothing.'' This is the same failure class as same-encoder distillation, where teacher $\equiv$ student yields zero learning signal. The implication for closed-loop design is concrete: the loop needs an explicit supervision channel that encodes the pre-drift target --- a teacher re-embedding, held-out relevance pairs, or a clean snapshot --- or it has nothing to aim at.
+
+\section{Open Questions}
+\label{sec:open}
+
+The encoder-upgrade arena and supervised correction (C3a/C4a) are completed and reported in \S\ref{sec:results}. Remaining open questions:
+\begin{enumerate}
+  \item Richer supervision (C3b): teacher-supervised variant.
+  \item Milder drift magnitudes.
+  \item Budget-inversion mechanism: whether anchor-pair count, query distribution breadth, or InfoNCE temperature scaling drives the NFCorpus degradation.
+  \item Larger scale: current runs use 1200 sampled documents per dataset.
+\end{enumerate}
+
+\section{Limitations}
+\label{sec:limitations}
+
+Two datasets (SciFact and NFCorpus), single base/swap encoder pair (MiniLM/mpnet), single severe encoder-upgrade magnitude, CPU/GPU research scale. Partial-recovery result with characterized ceiling. Unsupervised loop did not engage in synthetic-drift regime. Generalization to additional datasets, encoder pairs, and milder drift magnitudes is untested. Prototype-grade, author-led without institutional review; artifacts released for independent replication.
+
+\section{Reproducibility}
+\label{sec:reproducibility}
+
+All conditions are seeded; drift manifests carry checksums; the 30-run matrix, severity calibration, and 12-cell knob sweep are committed as JSON. Compute ran on GPU with \texttt{HF\_HUB\_OFFLINE=1}. Both datasets (SciFact and NFCorpus) were run with identical protocol; per-seed raw trajectories and campaign manifests are available in \texttt{experiment\_runs/drift-recovery/}.
+
+\bibliographystyle{plain}
+\bibliography{refs}
+
+\end{document}

@@ -1,0 +1,177 @@
+I'll act as the official Tier B scorer and try to disprove the FAIL-CLOSED claim—starting by reading the routing plane code, prereg, artifacts, and tests, then recomputing the gate math.On the right commit. Next I'll read the core implementation, prereg, results, and campaign artifacts.Next I'll dig into the promotion/gate logic and frozen artifacts, then recompute the CIs from stored per-query scores.I'll recompute the bootstrap CIs and split integrity from the frozen artifacts, and inspect fit/training parity.PowerShell doesn't support heredocs — writing a verification script and running it instead.Waiting for the audit script to finish loading the large manifest.CI math checks out; plane is real. Next I'll verify binding excludes global, recheck Arena B purity implications, run tests, and scan the BHS body.Home-correct domain routes beat global; cross-domain misroutes dominate the loss. Cleaning up temp scripts and finalizing the Tier B score.# Tier B — Rung 16 quant-aware routing (`5a3fbcc2`)
+
+**Agent:** grok-4.5 (fresh) · **Implementer claimed:** codex/Fable (commit Co-Authored Claude Opus 4.8)  
+**Goal:** try to **disprove** that FAIL-CLOSED is an honest, correctly-gated negative.
+
+---
+
+## Scorecard
+
+| Field | Value |
+|---|---|
+| **BHS_TIER_B** | **90** |
+| **BHS_TIER_B_SEVERITY** | **important** |
+| **Verdict** | **PASS-WITH-FIXES** |
+| **Bottom line** | **Honest correctly-gated negative** — not a mis-gated false negative; not a concealed ordering violation. Arena B “home turf” claim is **overstated** without domain-assignment purity disclosure. |
+
+Severity cap: important → Tier B capped at 90.
+
+---
+
+## What was checked (attacks 1–7)
+
+### 1. Is the negative real, or an empty/no-op plane?
+
+**Real trained multi-route plane. Not identity.**
+
+| Evidence | Arena A | Arena B |
+|---|---|---|
+| Adapter checksums | 4 unique | 4 unique |
+| SELECT usage | c0:6, c1:1, c2:5, global:18 | FiQA:16, NFC:16, Sci:29, global:29 |
+| REPORT usage | c0:4, c1:4, c2:9, global:13 | FiQA:19, NFC:15, Sci:26, global:30 |
+| Specialist ranked_ids vs single-global | **12/12 different** (SELECT), **17/17** (REPORT) | **61/61**, **60/60** different |
+| Multi-route binding | 3 specialists ≥10% | 3 specialists ≥10% |
+
+Arena A SELECT `plane − global = 0` with CI `[0,0]` is **not** a no-op: specialist routes change ranking, but NDCG is identical to global on all 30 SELECT queries (mostly joint zeros under sparse SciFact + swap). REPORT has 3 nonzero paired deltas and **plane loses** (−0.003332).
+
+### 2. Three-way split integrity
+
+**Clean.**
+
+| Check | Arena A | Arena B |
+|---|---|---|
+| Counts | 40 / 30 / 30 | 120 / 90 / 90 |
+| Pairwise disjoint | a∩s=a∩r=s∩r=**0** | same |
+| Exhaustive | 100 | 300 |
+| ID SHA recompute | match | match |
+| Fit uses only ANCHOR | 40/40, `leakage_safe=true` | 120/120 |
+| SELECT∩REPORT in scores | 0 | 0 |
+| Centroids / adapters | ANCHOR pairs only (`fit_quant_aware_plane` rejects non-ANCHOR) | same |
+
+Campaign embeds REPORT queries **after** exclusive selection-lock write (`run_quant_aware_routing_campaign.py`).
+
+### 3. PRIMARY baseline parity
+
+**Honest same-class / same-budget primary comparator.**
+
+- Same factory: bounded MLP, `min_correction=0.01`, `max_correction=0.5`
+- Same optimizer budget: Adam, InfoNCE, **2000 steps**, lr **0.1**, batch 64, seed 1616
+- Global trains on **all** ANCHOR pairs; specialists on **route-eligible** ANCHOR subsets (prereg “applicable” pairs; no extra route steps)
+- Shared graded NDCG@10 path for all conditions
+
+Not beaten by an unfairly stronger baseline class. Global gets more data by design.
+
+### 4. Gate arithmetic (recomputed from frozen per-query rows)
+
+**Exact match. Gate is not silently stricter than prereg.**
+
+Rule: `ci.lower > min_lift` with `min_lift=0.005`, 5000 resamples, seed 1617; plus quant survival + floor.
+
+| Arena | Recomputed δ | Recomputed 95% CI | Stored | `ci_passed` | quant | floor | SELECT gate |
+|---|---:|---|---|---|---|---|---|
+| A SELECT | 0.000000 | [0.000000, 0.000000] | match | False | 0.25 | True | **False** |
+| A REPORT | **−0.003332** | **[−0.051022, 0.041025]** | match | descriptive | — | — | FAIL-CLOSED |
+| B SELECT | −0.000899 | [−0.026005, 0.024604] | match | False | 0.75 | True | **False** |
+| B REPORT | −0.007383 | [−0.027989, 0.012247] | match | descriptive | — | — | FAIL-CLOSED |
+
+Independent quant recompute:
+- Arena A specialists: `fp32_gain_below_minimum` at 0/0 baseline (correct)
+- Arena B FiQA: retained **0.7634 < 0.80** (correct)
+
+Even if quant were ignored, **both arenas fail the CI min-lift alone**. REPORT cannot rescue. Dual-gate failure is not manufacturing FAIL-CLOSED from a real CI win.
+
+Binding uses `route_p_k` (specialists only; global excluded) — matches prereg “≥2 non-global routes ≥10%”.
+
+### 5. Provenance honesty
+
+**Disclosure is accurate; hashes hold. Not an ordering violation.**
+
+| Check | Result |
+|---|---|
+| Prereg file SHA | `7061f1f2…` matches |
+| Prereg canonical SHA | `48bad48f…` matches |
+| Lock `select_decision` ≡ manifest SELECT | critical fields match |
+| Lock `report_touched` | `false` |
+| Current lock file SHA ≡ consumed marker | A `c81b72a1…` / B `3c30e8c1…` |
+| Frozen REPORT canonical SHA ≡ consumed | A `883d72cc…` / B `8595e7a8…` |
+| Consumed markers | `backfilled_from_completed_manifest: true` (disclosed) |
+
+Results doc correctly states: locks pre-REPORT; later metadata hash annotation; REPORT-consumed backfill; post-run hardening without re-reading REPORT; numeric rows recomputable but not crypto-bound to final source bytes. **No evidence REPORT was read before SELECT lock.**
+
+Minor lineage note (not a verdict defect): frozen reason string uses `used_adapters`; current source says `retained_adapters` — consistent with post-run hardening disclosure.
+
+### 6. Arena B fairness (the real attack surface)
+
+**Clusters are domain-labeled for training, but serve-time centroid routing largely fails to keep domains.**
+
+REPORT domain → route purity:
+
+| Domain | Home purity | Note |
+|---|---:|---|
+| FiQA2018 | 9/30 = **30%** | heavy cross-route |
+| NFCorpus | 1/30 = **3.3%** | almost never home |
+| SciFact | 11/30 = **36.7%** | majority not home |
+
+**Loss attribution (REPORT plane − single-global):**
+
+| Bucket | n | mean Δ | sum Δ |
+|---|---:|---:|---:|
+| **Home-correct specialist** | 21 | **+0.0257** | **+0.539** |
+| **Cross-domain specialist** | 39 | **−0.0309** | **−1.204** |
+| Global fallback | 30 | 0.000 | 0.000 |
+
+So: specialists **help when correctly applied**; the plane loses because **centroid assignment under encoder-swap is anti-domain**. Commit/results call Arena B “fair-chance home turf” without this purity fact. That weakens the **strength** of the multi-domain negative; it does **not** invent a plane-level CI win (SELECT δ still −0.0009; home wins do not promote under the preregistered plane-level gate).
+
+### 7. BHS body honesty
+
+| Item | Assessment |
+|---|---|
+| Reported as NON-promotion / FAIL-CLOSED | Honest |
+| Artifact-ordering note | Accurate and hash-verified |
+| “Apparatus works and correctly declines” | Fair (tests + gate math) |
+| “Fair home turf … still did not beat” | **Overclaim** without purity disclosure |
+| `DEFERRED_SCOPE`: anti-aligned residual drift | Partly honest future scope; **understates** the intermediate finding that **assignment purity**, not only residual regime, blocked the multi-domain test |
+| Plane default OFF / only PROMOTED accepted | Confirmed in engine path + tests |
+
+---
+
+## Tests run
+
+```
+python -m unittest -v test_adapter_router test_quant_aware_routing
+→ Ran 24 tests in 0.422s  OK
+```
+
+---
+
+## Defect table
+
+| Sev | Location | Defect | Fix |
+|---|---|---|---|
+| **important** | Commit message + `docs/rung16-quant-aware-routing-results-2026-07.md` Arena B section | “Home turf” / “clusters = distinct domains” presented as fair multi-domain routing chance, but serve-time domain purity is 3–37% and home routes **beat** global while cross routes dominate the loss | Add REPORT (and preferably SELECT) domain×route purity table + home/cross/global Δ attribution; rephrase conclusion to: **preregistered centroid-margin domain plane failed**; do not claim domain structure was cleanly exercised |
+| **cosmetic** | Same DEFERRED_SCOPE line | “Anti-aligned residual drift” as sole deferred path skips the measured assignment bottleneck | Also name: oracle/domain-label routing ablation or better domain-separable centroids under swap — still non-promotional research, not a rescue of this REPORT |
+| **cosmetic** | Frozen SELECT reasons vs current `quant_aware_routing.py` | `used_adapters` vs `retained_adapters` string drift after freeze | Leave frozen artifacts; document string rename in lineage note only |
+
+No defect found that:
+- empties the plane,
+- leaks REPORT into fit/SELECT,
+- strengthens baseline unfairly beyond prereg,
+- tightens the CI rule past `lower > 0.005`,
+- or conceals REPORT-before-lock ordering.
+
+---
+
+## Bottom line
+
+**This is an honest, correctly-gated negative** of the **preregistered** quant-aware centroid-margin routing plane on both arenas. CIs and deltas recompute exactly from frozen per-query rows; multi-route binding is real; dual SELECT failures (CI + quant) are genuine; provenance disclosure matches hashes.
+
+It is **not** a mis-gated false negative of a plane that actually beat single-global under the prereg rule.
+
+**PASS-WITH-FIXES** because the Arena B narrative overclaims “fair home turf” while domain assignment collapsed — important for how hard the negative should be read, not for the FAIL-CLOSED bit itself.
+
+```
+BHS_TIER_B: 90
+BHS_TIER_B_SEVERITY: important
+BHS_TIER_B_AGENT: grok-4.5 (fresh Tier B, commit 5a3fbcc2)
+RESULT: PASS-WITH-FIXES
+```

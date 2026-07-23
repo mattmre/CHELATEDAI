@@ -1,0 +1,166 @@
+I'll red-team this Obj B pivot against the codebase and prior β-collapse lessons before answering BUILD / BUILD-WITH-CHANGES / CLOSE.# Adversarial red-team: sparse-local non-affine “home turf”
+
+**Verdict: BUILD-WITH-CHANGES**  
+Not CLOSE on pure theory (low-supervision regularization is empirical), and not BUILD as written (the design still smuggles structure, understates local-linear recovery, and treats shared machinery as chelation-specific).
+
+β-collapse failed for the right reason: the harm was essentially **cluster-affine** and, at β=0.10, **non-discriminating**. This pivot correctly targets sparse, non-global, non-affine harm. The failure mode to avoid next is the dual of β-collapse: **matching the warp to chelation’s inductive bias**, then calling a win against global ridge while the real competitor (gated local ridge) never gets a fair λ and a fair gate.
+
+---
+
+## Executive answer to the decisive question
+
+| Claimed edge | Non-tautological? | Survives fair co-primary? |
+|---|---|---|
+| Detector-gating on sparse harm | **No** — not chelation-specific | Local ridge gets the **same** hard/soft gate |
+| Bound α beats overfit local ridge at low *n* | **Maybe**, weak | Often **erased** by CV-tuned λ + rank budget |
+| Non-affine residual vs **global** map | **Yes** | Necessary but **not sufficient** |
+| Non-affine residual vs **local** ridge | **Only O(Hessian)·support²** | Often **below NDCG noise** if γ is “small” (prop. 4) |
+| Unpaired operation | **Yes, if held fixed** | Real product constraint; must not be hidden in “parameter match” |
+
+**Bottom line:** There is a *plausible* residual edge only if all of the following hold at once: (i) the inverse is **materially nonlinear on the support of each harmed cluster**, (ii) anchors/cluster are scarce enough that an **unregularized or poorly regularized** linear map hurts, and (iii) chelation’s capacity is **not just a reparameterized local linear residual** (your current D2 chelation arm is largely PCA/radial low-rank structure—close cousins of local ridge).  
+
+If a fair, detector-gated, λ-tuned, parameter-matched **local** ridge closes the dual residual, **Obj B closes** as: *no constructible regime where chelation’s mechanism beats a simpler local corrector*. That conclusion does **not** require a full GPU paper run—only a cheap preflight that forces that comparison.
+
+---
+
+## Q1 — Fair + discriminating, or still smuggling?
+
+**Partially discriminating against global maps; not yet fair against the real bar.**
+
+### What is good
+- Sparse *s* ∈ {0.15, 0.25} makes **blanket** correction costly → gating earns its keep *as a shared tool*.
+- Per-cluster **distinct** warps kill a single global *W* → global ridge/Procrustes should fail the dual residual. That is the right lesson from β-collapse.
+- Dual recovery object (oracle−floor **and** residual after best **global** map) is correct for *global* nulls.
+
+### Smuggled advantages / protocol holes
+
+**1. Properties 2 and 4 fight each other (load-bearing geometry).**  
+Local ridge is the first-order inverse of any smooth warp. For a radial map  
+\(r \mapsto r\,(1+\gamma f(r))\) composed with a small rotation, on a compact cluster the best local linear map leaves residual **O(γ² · curvature · radius²)**.  
+- To keep corrections “near-identity / small magnitude,” γ and cluster radius must be small → **local ridge residual may be tiny** even when global ridge fails.  
+- To push oracle−floor into **[0.05, 0.20]**, you often need γ large or clusters wide → either (a) the residual becomes ridge-visible and local ridge eats it, or (b) α-bounds **clip** the only nonlinear recovery chelation could do.  
+
+Calibrating only on oracle−floor (as in D1-style severity bands) **does not** guarantee a discriminating **oracle−local-ridge** residual. That residual must be a **pre-registered admission gate**, same severity as min oracle gap ≥ 0.05.
+
+**2. Radial warp + radial/PCA chelation is a method–harm match.**  
+Repo D2 chelation is unpaired detector-gated **radial / PCA expansion** (`DetectorGatedChelationAdapter`). Injecting per-cluster **smooth radial distortion** and then deploying radial de-collapse is the same class of tautology as “affine collapse vs Procrustes,” just one notch up.  
+- If the home-turf warp is radial, the co-primary must include a **radial local inverse** and a **generic local ridge**, and the *primary* chelation arm must be the product story (bounded residual adapter), not a hand-aligned radial oracle.  
+- Prefer a non-radial local non-affine family (quadratic form, soft piecewise map, mild fold) **or** freeze chelation architecture *before* choosing the warp and forbid retuning the warp class to the method.
+
+**3. “Low supervision” is the only remaining win axis—and it is easy to rig.**  
+Yes: with enough anchors, a parameter-matched local linear map will approximate the local Jacobian of the inverse well when γ is moderate. So **low *n* is the only plausible axis**.  
+It is a **real statistical phenomenon** (high-*d*, few pairs → overfit linear maps) **and** a **knob** if you:
+- fix *n* after seeing who wins,
+- give chelation α / early-stop / weight decay while ridge gets a default λ,
+- give chelation unpaired “structure” while ridge gets paired anchors (or vice versa),
+- use oracle clean cluster IDs for local ridge but noisy re-clustering for chelation.
+
+**4. Cluster identity leakage.**  
+Generative model: k-means on **clean** corpus, then warp. Fit-time methods must **not** receive clean assignments. Both local ridge and chelation re-cluster / soft-route on **corrupted** vectors only. Oracle clean partitions = diagnostic upper bound only.
+
+**5. Dual residual is incomplete as stated.**  
+Report three ladders, not two:
+1. oracle − floor  
+2. oracle − best **global** map  
+3. oracle − best **detector-gated local ridge** (co-primary)  
+
+(2) alone can still produce a fake “chelation home turf” whenever local ridge would have closed the gap.
+
+---
+
+## Q2 — Bound vs ridge λ: real or wishful?
+
+**Mostly wishful if λ is competent; real only under specific unpaired / capacity mismatches.**
+
+- Ridge λ **is** a bound in function space (shrinkage of the linear map toward 0 / identity, depending on parameterization).  
+- Cap-on-displacement α is a **different** regularizer (hard ball in residual norm). It helps when the hazard is **large erroneous steps**, not when the hazard is **wrong subspace**.  
+- For a **linear** target, CV ridge is (near) optimal among linear maps; a hard α-ball cannot systematically beat it.  
+- For a **nonlinear** residual, neither pure ridge nor pure α-ball is ideal: you need **nonlinear capacity**. Bounded near-identity MLP can win only if it actually uses that capacity **and** local ridge is restricted to linear.  
+- If chelation is low-rank residual / PCA radial (current D2 primary spirit), it is **not** a different hypothesis class from local ridge—it is a sibling. Then α vs λ is a **hyperparameter horse-race**, not a mechanism proof.
+
+**Fairness rule (non-negotiable):**  
+Same anchors, same param budget, **same selection protocol** for λ and α (and rank): nested CV or locked grid chosen on a **dev split of anchors**, never on eval queries. If after that local ridge wins or ties dual-CI, chelation has **no edge**.
+
+Also: “parameter-matched” without **λ-matched selection** is how you hand chelation a win. The reverse (untuned α, tuned λ) hands ridge a win. Preregister both.
+
+---
+
+## Q3 — Is detector-gating chelation-specific?
+
+**No. It is a free, shared outer product.**
+
+Anything of the form  
+`if detector(cluster) > τ: apply f_c else identity`  
+applies to CBIE, ridge, local ridge, hubness mitigation, etc.
+
+Gating is chelation-specific **only if**:
+- the detector is **trained jointly** with the corrector under an unpaired objective that baselines cannot share, **or**
+- the paper’s claim is explicitly “gating + bound + unpaired residual adapter as a **system**,” and every baseline gets the **same gate** in the co-primary table.
+
+Your decisive question already frames “detector-gatable local ridge.” Under that framing, **(ii) is not an edge**. Sparse harm justifies gating; it does not justify *chelating*.
+
+What *can* be real: **soft** gating / uncertainty-weighted fits when hard thresholds thrash. Still share that with local ridge (weighted local ridge is standard).
+
+---
+
+## Q4 — Verdict
+
+### **BUILD-WITH-CHANGES**
+
+Do **not** spend a full multi-seed GPU ladder until a **CPU/preflight falsifier** fails to kill the regime.
+
+### One-line paper conclusions (branch)
+
+| Outcome | Honest one-liner |
+|---|---|
+| Local ridge (+ same gate, CV λ) dominates residual recovery | *“In sparse local non-affine drift, detector-gated local linear correction captures the recoverable mass; bounded unpaired chelation is redundant.”* |
+| Chelation wins **only** vs global maps, loses to local ridge | *“Chelation is not justified by non-global harm alone; locality is; nonlinearity/bound did not buy extra NDCG.”* |
+| Chelation wins dual-CI vs gated local ridge under prereg low-*n* | *“Under scarce unpaired anchors, a bounded residual corrector recovers residual that local ridge leaves when both are detector-gated and budget-matched.”* |
+
+### Single most important design change
+
+**Make detector-gated, parameter-matched, λ-CV’d per-cluster local ridge the co-primary, and admit the regime only if mean(oracle NDCG − local_ridge NDCG) lands in a preregistered discriminating band (e.g. ≥ 0.05) *before* any chelation run.**  
+
+If that band is empty under small-magnitude warps, **CLOSE without GPU**—the “honest home turf” is not constructible under properties 1–4 simultaneously.
+
+### Co-primary baseline to beat
+
+**Gated local ridge (and gated local *low-rank* ridge under the same budget)**  
+- same detector scores / threshold policy  
+- same cluster inference on corrupted space  
+- same anchor budget & selection protocol  
+- λ (and rank) selected like α  
+- paired local ridge only as an **oracle-supervision diagnostic**, not as the headline loss for unpaired chelation  
+
+Secondary family stays: global ridge / Procrustes, CBIE/ZCA/all-but-top/hubness, clean oracle.
+
+### Mandatory BUILD changes (checklist)
+
+1. **Admission gate:** discriminating residual after **local** ridge, not only after global ridge.  
+2. **De-match method and harm:** non-radial warp **or** non-radial primary chelation; freeze architecture before warp class.  
+3. **Shared gate:** every corrector in the decision family is detector-gated with the same τ policy (and report ungated ablations separately).  
+4. **Hyperparameter parity:** nested selection for λ and α; no post-hoc *n*.  
+5. **Supervision parity:** state unpaired vs paired explicitly; parameter match ≠ supervision match.  
+6. **Preflight (no full GPU):** synthetic or tiny embedding toy where you can compute closed-form / dense local linear fits—if gated local ridge always swallows the residual under prop. 4 magnitudes, **Obj B closes**.  
+7. **Identity / no-op gate:** keep D2 lessons—min oracle gap, invalid-gap fraction, dual-CI, Holm family frozen, no eval-qrel leakage.
+
+### When I would flip to CLOSE *now* (no GPU)
+
+Close immediately if the product claim requires a **chelation-unique** edge and the only candidates were (gating) and (α vs λ). Both fail as unique mechanisms under a fair co-primary.  
+
+Keep BUILD-WITH-CHANGES only if the scientific claim is allowed to be:
+
+> “Does a **bounded unpaired residual adapter** recover **local nonlinear** residual that **gated local linear maps** leave under scarce anchors?”
+
+That is a narrower, non-tautological question. The proposal’s four properties almost state it—then oversell gating and under-specify the local-ridge residual gate.
+
+---
+
+## Short answers (for the architect)
+
+1. **Fair to local chelation vs global maps: yes. Discriminating vs local ridge: only if residual-after-local-ridge is enforced; low-supervision is the real axis and is easily rigged.**  
+2. **α-beat-overfit-ridge is usually wishful under CV λ; real only with nonlinear residual capacity + scarce anchors + parity.**  
+3. **Gating is not chelation-specific; give it to everyone.**  
+4. **BUILD-WITH-CHANGES** — change: **admission by residual vs gated local ridge**; co-primary: **that same gated local ridge**.
+
+If preflight shows that residual band is empty under small-magnitude non-affine warps, ship the CLOSE one-liner without burning GPU: **Obj B fails constructively—locality and gating matter; chelation’s bound/unpaired mechanism does not uniquely occupy the residual.**

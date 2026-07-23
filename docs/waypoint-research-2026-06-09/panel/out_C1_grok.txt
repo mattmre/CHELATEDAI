@@ -1,0 +1,152 @@
+I'll adversarially validate the D1 deliverable by reading the actual research artifacts and stats code, then stress-checking bootstrap correctness, leakage handling, and paper claims against runtime evidence.Next I'll inspect the harness bridge, leakage handling, and D1 stats pipeline for silent reintroduction of eval-positive docs.I'll verify harness NDCG/adapter definitions, pack leakage metadata, and recompute bootstrap numbers against the frozen scores.# Adversarial D1 Validation
+
+## Verdict: **PASS-WITH-FIXES** (paper-claim blockers; stats engine mostly sound)
+
+Numbers recompute exactly. Harness scoring parity is real. The bootstrap is not inventing CIs. What fails ship readiness is **protocol honesty in the headline result** (leakage retained, magnitude under-disclosed) and **inferential overclaim risk** on ridge−MLP / “ceiling.”
+
+Independent recompute matches artifacts: ridge recovery 84.34% [76.98, 91.01]; ridge−MLP Δ=0.0219 [−0.0333, 0.0773] Holm p=0.431; ridge−C3a Δ=0.524 Holm p=0.0004; G2 median half-width 0.0887; harness parity deltas all `0.0`. Tests: 4/4 OK.
+
+---
+
+## 1. Paired bootstrap — **PASS** (no CI-breaking bug found)
+
+| Requirement | Status | Evidence |
+|---|---|---|
+| Ratio-of-means recovery | OK | `paired_bootstrap.py:102–109` — `delta[valid]/gap_draw[valid]`, not mean of per-query ratios |
+| Same draws for floor/oracle/methods | OK | one `BootstrapDraws` / shared `indices` at `L65–101` |
+| Percentile CIs | OK | `np.quantile` at `L26–28` |
+| Invalid-draw handling | OK | gap ≤ ε invalidated; >1% hard-fails `L72–77`; this run invalid=0 |
+| Holm | OK | step-down + monotone adjusted p `multiple_testing.py:18–36`; family of 2 matches artifacts |
+| Paired contrasts | OK | shared `_method_draws`; two-sided MC sign p with +1 correction `L129–132` |
+
+**Non-blocking caveats (do not flip CIs here):**
+1. NDCG/Δ CIs use all draws; recovery uses valid only (`L107–109`). Moot with floor≡0 and invalid=0.
+2. p-values are percentile/sign-style (bootstrap centered at \(\hat\theta\)), not null-recentered. Consistent with CI inversion here (0 ∈ ridge−MLP CI; 0 ∉ ridge−C3a).
+3. Unit tests are thin: no assert that floor/oracle/methods share indices; no invalid-draw test (`tests/test_d1_stats.py:15–24`).
+
+**G2 definition nit:** `paper_stats.py:300–309` takes **median half-width of both contrasts**. ridge−MLP alone is 0.055, ridge−C3a 0.122 → median 0.089. Either way **G2 FAIL** vs 0.015. Rough scale-up: \(n \approx 60\times(0.055/0.015)^2 \approx 800+\) queries for ridge−MLP half-width ≤ 0.015.
+
+---
+
+## 2. Harness parity + leakage — **PASS-WITH-FIXES** (parity real; leakage material and under-sold)
+
+### What is real
+- `assert_harness_parity` recomputes binary NDCG@10 via `drift_recovery_metrics.ndcg_at_k` and `statistics.fmean` (`harness_bridge.py:35–112`).
+- Frozen pack reloads; all method aggregate deltas = 0.0.
+- Learning curves use `leakage_safe_fit_idx` and non-eval C3a anchors (`paper_stats.py:319–322`, `harness_bridge.py:167–179`).
+
+### What is not “safe”
+Canonical ladder/bootstrap **deliberately** use the literal waypoint half-corpus permutation that includes **eval-positive docs**:
+
+```132:136:research/drift_recovery/d1/paper_stats.py
+    # The frozen canonical ladder uses the literal waypoint recipe. The separate
+    # leakage-safe index is used for all new learning-curve fits and retained so
+    # the recipe/contract conflict is explicit rather than silently rewritten.
+    fit_idx = waypoint_fit_idx
+```
+
+Measured on the frozen pack:
+| Fit | Ridge recovery | Procrustes recovery |
+|---|---:|---:|
+| Literal (headline) | **84.3%** | 82.3% |
+| Leakage-safe full 600 | **78.9%** | **73.9%** |
+| **Leakage inflation** | **+5.4 pp** | **+8.4 pp** |
+
+- 28/600 fit docs are eval-positives (`ladder.json` `waypoint_audit`).
+- That is **45% of all 62 eval-positive docs** in the fit set.
+- Learning-curve ridge at n=128 (safe) is only ~62% recovery — **not** the same regime as the 84% headline.
+
+**ci_report** mentions the conflict in one soft sentence (`ci_report.md:24–25`). **`paper_edits.md` never mentions “leakage” at all** (verified). That is a ship blocker for chair application: the 84.3% number is not a clean held-out fit result.
+
+---
+
+## 3. “Ridge−MLP n.s. → linear ceiling” — **FAIL as inference** (absence of evidence)
+
+Headline numbers are fine as **descriptive** estimates. They do **not** support the old paper’s “establishing ~84% as a *linear post-hoc ceiling*.”
+
+| Fact | Implication |
+|---|---|
+| ΔNDCG ridge−MLP = 0.022 [−0.033, 0.077], Holm p=0.43 | Cannot reject equality |
+| CI includes **MLP better by up to 0.033** and ridge better by up to 0.077 | ≈ **−4 to +10 recovery points** on this gap — practically large |
+| G2 FAIL (0.089 ≫ 0.015) | Study is underpowered for the ceiling contrast on 60 queries |
+| Learning curve: ridge pulls ahead of MLP as n grows (safe panel) | Directional hint only; not a powered equality test |
+
+### Paper may claim
+- Point estimates + 95% paired bootstrap CIs on the **stated protocol**.
+- Ridge is the **highest observed** among {ridge, procrustes, mlp, c3a} here.
+- Ridge ≫ C3a (Holm-significant).
+- Ridge vs MLP **not distinguishable** at α=0.05 under this n.
+- G2 failed; residual gap is **not** an information-theoretic 16% floor.
+- Prefer “**observed plateau under this protocol**” over “ceiling.”
+
+### Paper must **not** claim
+- “MLP does not exceed ridge ⇒ linear post-hoc ceiling.”
+- “No nonlinear benefit” / “capacity is linear.”
+- “~84% is the recoverable upper bound” or “irreducible 16%.”
+- G2-powered precision on method contrasts.
+
+Non-significance is **absence of evidence**, not evidence of absence. `paper_edits.md` weakens “ceiling” wording and notes G2 fail, but **does not ban the invalid inference** explicitly.
+
+---
+
+## 4. Section 3 draft vs harness — **PASS** (formulas match; object confusion risk)
+
+Checked against live code:
+
+| Claim | Match? |
+|---|---|
+| Residual MLP \(x + W_2\mathrm{ReLU}(W_1x+b_1)+b_2\), width \(d/2\), init \(\mathcal N(0,10^{-3})\) | Yes — `chelation_adapter.py:19–40` |
+| §5.5 residual is separate GELU/1024 unbounded | Yes — `paper_stats.py:74–84` |
+| Cayley \(W=(I-A)(I+A)^{-1}\); code uses \((I+A)^{-1}(I-A)\) | Equal for skew \(A\) (max abs diff ~1e-16) |
+| Bounded map with \(10^{-10}\) floor, \(a=0.01\), \(b=0.5\) | Yes — `chelation_adapter.py:401–416` |
+| Controller defaults + supervised `max(0, baseline−current)`, \(c=0.5\) | Yes — `annealing_controller.py`, `run_drift_recovery_experiment.py:629–634` |
+
+**Must not invent in prose:** D1 ladder “procrustes” is **closed-form SVD orthogonal Procrustes** (`paper_stats.py:53–55`), **not** the trainable Cayley adapter in §3.1. Section 3 is SUT-accurate; ladder baseline naming is a different object.
+
+---
+
+## 5. `paper_edits.md` — **INCOMPLETE** (good skeleton, missing blockers)
+
+**Good:** ceiling→“observed plateau”; CI table; C3a 0.1609→0.1570; dual learning-curve axes; residual not irreducible; G2 failed.
+
+**Missing required chair lines (blockers):**
+
+1. **Leakage disclosure (mandatory):** canonical ridge/mlp/procrustes fit includes **28 eval-positive docs**; leakage-safe full-600 ridge is **~78.9%** (not 84.3%); headline bootstrap is on the **literal waypoint** recipe.
+2. **Inference ban:** forbid “n.s. ⇒ ceiling / no nonlinear headroom.”
+3. **Power ban:** with G2 fail, forbid claiming tight method equality or “plateau proven.”
+4. **Protocol dual-track:** main ladder = leaky waypoint reproduction; curves = leakage-safe nested prefixes; do not equate n=128 curve plateau with 600-doc headline.
+5. **Optional but honest:** also report leakage-safe 600-fit ridge/procrustes as sensitivity, or re-freeze primary numbers on safe fit if D1’s “primary” is meant to be clean.
+
+---
+
+## Blocking fixes before D1 ships
+
+| # | Severity | Fix | Where |
+|---|---|---|---|
+| F1 | **Blocker** | Add explicit leakage magnitude + leakage-safe sensitivity (or make safe fit primary) to `ci_report`, `paper_edits`, and any abstract/§5.5 number path | `paper_stats.py:render_ci_report` ~L452–454; `render_paper_edits` ~L616–626; pack already has `waypoint_audit` |
+| F2 | **Blocker** | Chair ban language: *“Do not interpret ridge−MLP non-significance as evidence of a linear ceiling or absence of nonlinear benefit. CI permits ± several recovery points; G2 failed.”* | `paper_edits.md` location-specific section |
+| F3 | **Blocker** | If paper still says “establishing linear ceiling” after edits, reject merge — edits currently only do noun-phrase replace, which is grammatically weak on abstract L23 | paper application, not just generator |
+| F4 | High | Name ladder Procrustes as **closed-form orthogonal Procrustes**, distinct from §3 Cayley adapter | `section3`/paper §5.5 caption |
+| F5 | Medium | Either enforce or drop `canonical_tolerance` for C3a (error **0.0056 > 0.001**); supersede narrative is OK but “within tolerance” is false | `paper_stats.py:182–188` |
+| F6 | Medium | Define G2 primary half-width as **ridge−MLP** (preregistered ceiling contrast), not median with ridge−C3a | `paper_stats.py:300–309` |
+| F7 | Low | Tests: shared bootstrap indices; invalid-draw gate; assert `eval_positive_docs_in_literal_fit == 28` and safe == 0; assert leakage-safe ridge recovery &lt; leaky | `tests/test_d1_stats.py` |
+
+---
+
+## What is solid enough to keep
+
+- Bootstrap engine for ratio-of-means recovery and paired percentile CIs.
+- Holm family of 2.
+- Exact pack↔NDCG harness parity.
+- C3a scalar audit (0.1609 was cross-seed mean; seed-42 per-query is 0.1570 / 19.4%).
+- Section 3 formula fidelity to implementation.
+- Learning-curve separation of supervision types (do not share x-axis).
+
+---
+
+## Bottom line
+
+**Stats code: shippable with minor hardening.**  
+**Findings as paper claims: not shippable without F1–F3.**
+
+The adversarial summary in one sentence: **the CIs are real; the 84.3% is a leaky-waypoint point estimate inflated ~5 pp vs a leakage-safe fit; ridge−MLP non-significance is underpowered noise, not a ceiling theorem.**

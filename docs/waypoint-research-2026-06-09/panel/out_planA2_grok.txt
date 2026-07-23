@@ -1,0 +1,16 @@
+I'll check the local panel notes so the sign-off is grounded in prior Phase-A positions, then give a terse verdict.## Sign-off (Grok)
+
+**(1) Verdict: RATIFY-WITH-CHANGES**
+
+**(2) Single binding change before build:**  
+**Decouple α=0.05 from the G3 kill arm.** Primary kill = **unpaired / detector-gated repair that can actually move mass** (unbounded, or α set so mean ‖x′−x‖ under β=0.10 is feasible). Report **α=0.05 as a separate design-premise stress test**, not the sole correction under G3. As written, β=0.10 + near-identity bound makes G3 a predetermined fail (FN-A), not a fair mechanism test.
+
+**(3) Remaining practical failure points (do not re-litigate the rest):**
+- **Detector path is still underspecified.** Acknowledging `IsomerDetector` is result-list Jaccard is not a design. Need an explicit cluster-level **harm scorer** (features → P(retrieval loss)), not a Jaccard relabel. Without that, AUPRC either cosplays the injection knob or fails by API.
+- **Primary family vs G3 is fuzzy.** “≤4 primary” lists ridge / local / CBIE / hubness; chelation sits beside them. Freeze the Holm family as: **chelation-vs-CBIE, chelation-vs-hubness** (± one pre-registered contrast). Everything else exploratory.
+- **G2 before G3 is implicit, not hard.** If half-width > ~0.015, **do not interpret G3** — grow queries or mark cell underpowered. Otherwise dual-CI “kill” is noise theater.
+
+Minor non-blockers: rename `certificate/` → `estimator/`; operator decision **(a)** is correct (tracked `research/drift_recovery/` + paper at submission; strategy folder stays excluded).
+
+**(4) Ordering & lean-D2 scope:**  
+**Yes — correct and binding.** P0=D1 → P1=D3 → P2=lean D2; SciFact+NFCorpus, β=0.10 only, ≤4 primaries, Quora/matrix/LaTeX post-gate only. Do not expand.

@@ -1,0 +1,109 @@
+I'll adversarial-review the D3 recoverability estimator by reading the reports and code, then recomputing Spearman and trivial baselines myself.Next I'll recompute Spearman and trivial baselines from the feature artifacts, and inspect tests for margin-bound and LOO correctness.I'll write a recomputation script and run it; PowerShell choked on the inline Python.Confirming a strong continuous-feature signal Codex under-reported; cleaning up the temp recompute script and finalizing the verdict.# D3 recoverability estimator — adversarial review
+
+## Verdict: **PASS-WITH-FIXES**
+
+The shipped leave-one-regime-out pipeline is real, leakage-guarded, and correctly fails the locked success bar. The negative is **not** a circular artifact. It is **under-analyzed**: a cheap continuous feature discriminates recovery under a less-crippled calibrator, and the shipped `R̂` loses to trivial baselines. That is framing / analysis debt, not fake LOO.
+
+---
+
+## Independent recompute (confirmed)
+
+| Held-out regime | Actual R | R̂ | Bin |
+|---|---:|---:|---|
+| scifact_minilm_to_mpnet | 0.8434 | 0.6840 | high/high |
+| nfcorpus_minilm_to_mpnet | 0.6471 | 0.7636 | medium/**high** |
+| scifact_minilm_to_bge_large | 0.7224 | 0.7559 | high/high |
+| nfcorpus_minilm_to_bge_large | 0.6640 | 0.6562 | medium/medium |
+
+- **Spearman(R̂, R) = −0.400** (matches `validation.json`)
+- **3-way bin accuracy = 75%**
+- Verdict under locked bar: **VALIDATION-NEGATIVE** — correct
+- 9/9 unit tests pass; 4 real offline packs load with `leakage_safe_fit_idx`
+
+---
+
+## Attack results
+
+### 1. Circularity — **not disproven as fake LOO**
+`leave_one_regime_out` trains only on the other regimes (`validation.py:63–83`). Feature mean/scale are fold-local (`calibration.py:90–107`). Features are pack-local (`features.py:152–262`). Held-out `R` does not enter its own prediction. Rebuilt LOO from feature JSONs matches the artifact.
+
+### 2. Trivial-predictor confound — **lands hard**
+
+| Predictor (LOO) | Spearman | MAE | Bin acc |
+|---|---:|---:|---:|
+| **Shipped multi-feature R̂ (α=10)** | **−0.40** | 0.079 | 0.75 |
+| Mean train R | −1.00 | 0.085 | 0.50 |
+| Floor NDCG → R | 0.00 | 0.124 | **0.75** |
+| Oracle gap → R | **+0.60** | **0.072** | — |
+| Constant 0.7 | n/a | **0.064** | 0.50 |
+| **OLS `oracle_margin_mean` alone** | **+1.00** | **0.033** | — |
+
+Shipped R̂ is **worse on rank than oracle-gap alone**, and **worse on MAE than a constant**. Bin accuracy 75% equals floor-only LOO. Report never states this → incomplete negative.
+
+### 3. Regime count honesty — **OK**
+4 real packs (SciFact/NFCorpus × mpnet/bge), offline-built, SHA in manifest, models recorded. Not fabricated. `≥3` bar met; **VALIDATION-NEGATIVE** (not SCOPING-NEGATIVE) is the right label for the locked rule.
+
+n=4 Spearman is still nearly noise (one swap flips sign). Report should say “failed locked bar on n=4 underpowered correlation,” not imply a high-power kill. Mild over-claim risk, not a FAIL.
+
+### 4. Leakage — **ridge path clean**
+`leakage_safe_fit_indices` rejects eval-positive docs (`features.py:45–68`). Ridge never receives qrels (`features.py:106–126`). SciFact locked label R=0.8434 is the leaky D1 waypoint while features use safe fit (R_safe=0.7891) — **disclosed** in `estimator_validation.md`. Label/feature mismatch hurts that regime; it is not validation circularity. Using R_safe labels still yields LOO Spearman −0.40.
+
+### 5. Margin-bound correctness — **formula OK; tests thin**
+Implemented as stated:  
+`slack = m − ‖q‖(‖e_r‖ + ‖e_j‖)` (`margin_bound.py:47–84`).  
+Hand arithmetic `0.6 − 1·(0.1+0.2) = 0.3` is correct. Synthetic pack margin `0.4` is hand-checkable. End-to-end slack on the tiny pack is consistent (manual = extracted = −0.0297 → inversion).  
+**Gap:** synthetic test never asserts error norms / slack / inversion (`test_estimator.py:102–112` only checks margin=0.4). Not tautological, but incomplete.
+
+After row-normalize, `‖q‖ ≡ 1`. With `‖e‖ ~ 0.4–0.5`, RHS ≫ typical margins (~0–0.08) → **100% violation is expected**, not surprising.
+
+### 6. Positive-or-negative framing — **negative is directionally honest; root cause is incomplete (Attack B)**
+
+Codex focus: binary inversion rate saturates at 100% everywhere. True.
+
+What they under-sold:
+
+| Feature | Univariate Spearman vs R | Notes |
+|---|---:|---|
+| `predicted_inversion_rate` | constant 1.0 | dead |
+| `oracle_margin_mean` | **+1.0** | **extracted, not in FEATURE_NAMES** |
+| `oracle_margin_q50` | +0.8 | in FEATURE_NAMES |
+| `oracle_margin_sign_rate` | +0.8 | in FEATURE_NAMES |
+| OLS LOO `margin_mean` | **+1.0**, MAE 0.033 | would clear Spearman ≥ 0.7 bar on this n=4 set |
+| Full FEATURE_NAMES α=10 LOO | −0.40 | shipped |
+| Full FEATURE_NAMES α=0.01 LOO | 0.00 | multi-feature still fails at n=3 |
+
+So: **wrong-feature (binary rate) is dead; continuous margin is not.**  
+The shipped map fails because (i) the primary advertised feature is constant, (ii) `oracle_margin_mean` is never calibrated (`calibration.py:13–22`), (iii) α=10 with 8 features and 3 train points shrinks toward the mean and scrambles rank. Framing “core signal saturated” as the whole story is incomplete.
+
+---
+
+## Blockers / findings
+
+| Sev | Location | Issue | Fix |
+|---|---|---|---|
+| **M** | `out/estimator/D3_REPORT.md` / `estimator_validation.md` (and renderers `run_estimator.py:309–423`) | No trivial-baseline table. Oracle-gap LOO Spearman **+0.60** and constant MAE **0.064** beat shipped R̂. Negative looks stronger than it is. | Add LOO baselines (mean R, floor NDCG, oracle gap, constant); state R̂ does not beat them. |
+| **M** | same + `calibration.py:13–22` | Root cause pinned to binary inversion rate only. Continuous `oracle_margin_mean` (in feature dump, **not** in `FEATURE_NAMES`) OLS-LOO Spearman **+1.0**. Negative is premature as an idea-kill. | Report continuous-feature LOO; either add `oracle_margin_mean` to the map or explicitly scope “shipped multi-feature α=10 calibrator fails; univariate margin_mean residual signal not validated at scale.” |
+| **M** | `calibration.py:23` + `validation.py:54–141` | α=10 + 8 features + n_train=3 → coefficients ~0.01, intercept≈mean. R̂ ≈ shrunk mean with noise that **anti-correlates**. | Document that the calibrator is effectively mean-reverting; try univariate / weaker α as ablation before claiming signal absence. |
+| **L** | `validation.py:12–13`, reports | Bins fixed at 1/3, 2/3; all R ∈ [0.65, 0.84] → only medium/high occupied. 75% bin acc ≈ floor baseline. | Disclose degenerate bin occupancy; do not treat 75% as near-success. |
+| **L** | reports | n=4 Spearman fragility not stated. | Add: “n=4 cannot support a high-power kill; verdict is locked-bar failure only.” |
+| **L** | `test_estimator.py:102–112` | Synthetic path does not hand-check slack / inversion from ridge errors. | Assert manual `e_r`, `e_j`, slack, inversion on `_tiny_pack()`. |
+| **L** | `run_estimator.py:241–247`, SciFact label | Features = safe ridge; label = leaky D1 R=0.8434. Disclosed, still muddy. | Prefer R_safe as secondary LOO table (already recomputed: still −0.40). |
+| **info** | `margin_bound.py` | Sufficient bound correctly implemented; saturation expected under catastrophic drift. | Keep; stop treating rate as the only recoverability feature. |
+
+No **CRITICAL** circularity, fabricated regimes, or ridge/qrel leakage found.
+
+---
+
+## Attack A/B/C summary
+
+| Attack | Outcome |
+|---|---|
+| **A. n=4 underpowered vs real kill** | Locked-bar **VALIDATION-NEGATIVE** is defensible. “Idea dead / high-power kill” would be over-claim. Report is closer to bar-failure than power-kill; needs explicit underpowering note. |
+| **B. Wrong-feature vs dead-idea** | Binary rate dead. Continuous margin **not** dead on this data. Negative on *shipped calibrator* OK; idea-level negative **premature**. |
+| **C. Trivial predictor** | R̂ does **not** beat mean/gap/constant. Margin features are not theater if used alone; multi-feature R̂ currently is. |
+
+---
+
+## Bottom line
+
+**The shipped multi-feature R̂ does not predict recovery: independently recomputed LOO Spearman is −0.40, and it loses to trivial baselines.** LOO is not circular and ridge fit is leakage-safe. The honest negative is narrower than the write-up: **this calibrator fails**; continuous oracle-margin structure still ranks R on n=4 under simple OLS, so treat the result as **wrong primary feature + over-regularized map on too few regimes**, not as a clean kill of recoverability estimation.

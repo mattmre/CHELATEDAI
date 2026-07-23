@@ -1,0 +1,31 @@
+I'll re-score this as a fresh Tier B agent: verifying the four hygiene/block-flag claims on `eb750958`, then assigning final BHS numbers only from that evidence.Confirming both swap trees are log-free and that `eb750958` changes nothing but the two untracks.## Tier B confirmation re-score (post-hygiene)
+
+**Agent independence:** Reviewer = grok-4.5 (this agent). Implementer/chair = Fable-5. Different agents — fresh-agent requirement met.
+
+### Confirmations (runtime evidence)
+
+| # | Check | Result |
+|---|--------|--------|
+| 1 | `git ls-files experiment_runs/drift-recovery/swap*/*.log` | **0** — no tracked `.log` under either swap tree |
+| 2 | `git show eb750958 --stat` | **Only** `swap-nfcorpus/campaign.log` + `swap-nfcorpus/campaign-completion.log` (D); **no** other paths, **no** `.py` |
+| 3 | `scripts/check_block_flag.py` | **CLEAR**, Carried Debt rows = **0**, RESULT PASS |
+| 4 | Regression of H5/H2/H4 / ROADMAP / L1 CD | **None from this commit** — `eb750958` is pure untrack (3849 deletions, two files); non-log path diff empty |
+
+**Swap trees now (tracked):**
+- `experiment_runs/drift-recovery/swap/swap-campaign-manifest-2026-06.json`
+- `experiment_runs/drift-recovery/swap-nfcorpus/swap-campaign-manifest-2026-06.json`
+
+→ Both manifest-only; L1 hygiene claim is true at PR granularity. Prior sole defect (residual #275 NFCorpus logs still tracked) is **closed**. No new defects found.
+
+### Final scores
+
+| Field | Value |
+|--------|--------|
+| **BHS_TIER_B** | **100** |
+| **BHS_TIER_B_SEVERITY** | **none** |
+| Prior defect | Closed by `eb750958` |
+| New defects | None |
+
+This is a **genuine 100**: the one low-severity hygiene gap that held the slice at 97 is fixed; nothing else regressed; block flag remains CLEAR with 0 CD rows.
+
+**Bottom line:** Hygiene fix closes the only prior defect; slice is clean → **BHS_TIER_B = 100**.

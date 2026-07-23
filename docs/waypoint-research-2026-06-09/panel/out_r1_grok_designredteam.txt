@@ -1,0 +1,73 @@
+I'll inspect the drift-recovery research code and prior estimator/D2 outputs so the red-team is grounded in what's actually implemented, not the writeup alone.# Design red-team (pre-GPU)
+
+Grounded in `estimator/features.py` (oracle-space margins), `run_estimator.py` (`R = (ridge−floor)/(oracle−floor)`), `baseline_analysis.py` / `D3_REPORT.md` (n=4 LOO), `regimes/synthetic_collapse.py` + `protocols/d2_crossover.yaml` + `out/d2/D2_REPORT.md` (β=0.10 degeneracy).
+
+---
+
+## Design 1 — scale-validate `oracle_margin_mean`
+
+**Verdict: `PROCEED-WITH-CHANGES`**
+
+### Fatal flaws / confounds
+1. **Near-tautology risk, not identity.** `oracle_margin_mean` is pure **oracle geometry + qrels** (`q·y_r* − max_j q·y_j*`), independent of the ridge residual. `R` is **fraction of oracle-gap closed by ridge**. On n=4, **oracle-gap→R already has LOO Spearman +0.60 and bin-acc 1.0**; margin_mean’s +1.0 can be “oracle ease tracks recoverability,” not a new recoverability mechanism.
+2. **Post-hoc feature cherry-pick.** Mean/q50/sign_rate were promoted *after* the multi-feature kill; locking three related margin stats still lets you report the best of a small family unless one primary is locked.
+3. **n=4 perfect rank is cheap.** Four distinct ranks → random perfect Spearman is 1/24; one swap kills +1.0. Not evidence it survives n=8.
+4. **Pseudo-replication.** Current cells = 2 datasets × 2 swaps. Expanding with drift magnitude × anchor fraction on the **same** (dataset, encoder) pairs inflates n without new generative factors. Honest effective n ≈ **# independent (dataset × encoder-family) blocks**, often ~3–5 even if “cells” = 8–16.
+5. **Target range confound.** All R ∈ ~[0.65, 0.84]; three-way bins are half-empty. Bin-acc ≥80% is easy to overstate.
+
+### Is the success bar honest or riggable?
+**Riggable as written.**  
+`Spearman ≥ 0.7 **OR** bin-acc ≥ 80%` is an OR-shop; bin-acc is soft with clustered R; **no requirement to beat oracle-gap-only (or floor-only)**; no block structure; no fixed primary metric; no pre-registered failure mode for “beats noise but loses to gap.”
+
+### Attacks (direct)
+| Q | Answer |
+|---|---|
+| (a) Proxy for gap/floor? | **Likely partially.** Prove increment via **nested LOO**: residualize `R` and margin on `oracle_gap` (and floor NDCG); require partial Spearman / ΔMAE vs gap-only OLS. Without that, “margin works” = rebranded gap. |
+| (b) Effective n at “≥8”? | Treat regimes as **nested**: LOO **blocks** (hold out whole dataset or whole encoder family), not every hyperparam cell. Report both cell-n and block-n; claim power only at block-n. |
+| (c) +1.0 → n=8? | **Prior should be skeptical.** Expect regression to ~gap-level (~0.6) or noise unless increment survives block-LOO. |
+| (d) Honest bar + anti-shopping | **Single primary:** univariate `oracle_margin_mean` OLS LOO Spearman; **must beat preregistered gap-only and mean-R baselines** on MAE *and* rank; secondary metrics descriptive only. Freeze FEATURE list + bins + success inequality **before** any new pack. No q50/sign_rate “if mean fails.” Optional: locked partial-correlation test for increment over gap. |
+
+### Highest-value single change
+**Make the preregistered null “oracle_gap → R (LOO OLS)” and require margin to **significantly beat** it under **block LOO** (dataset and/or encoder held out), not merely hit Spearman 0.7.**
+
+### Bottom line
+Scaling to ≥8 cells with margin preregistered is worth doing only if you stop treating n=4 +1.0 as a lead and stop using a soft OR bar. Without beating gap-only under independent blocks, you will “validate” a proxy for how easy oracle ranking is, re-label it recoverability prediction, and burn GPU for a circular story.
+
+---
+
+## Design 2 — β preflight, then D2 kill-screen
+
+**Verdict: `CUT` (as a chelation home-turf kill-screen). Unwinnable-by-construction for the scientific claim you want.**
+
+### Fatal flaws
+1. **Wrong generative model for the claim.** Collapse is `x ← x + β(c − x)` on cluster subsets (`synthetic_collapse.py`). That is **cluster-affine, clean-target-aligned** corruption. Global ridge / CBIE-style maps are the natural solution class; **bounded local chelation’s premise (sparse residual harm after global structure)** is not what this process generates.
+2. **β-calibration to gap ∈ [0.05, 0.20] rebuilds the C2/oracle hazard.** You select severities where **oracle − floor is large by construction**, i.e. regimes where **re-embed / ridge are a priori strong**. That does not create a fair test of detector-gated local correction; it creates a **recoverable global-map** regime.
+3. **No sweet spot for both discriminating and “local-chelation-fair”.**  
+   - Small β: current failure — gap ≈ 0 / negative, G3 a priori dead, chelation ≈ identity (`D2_REPORT.md`).  
+   - Large β: stronger **global** displacement toward centroids → **ridge/re-embed win the dual-CI family by design**; local/bounded arms look weak or identity.  
+   Discriminating gap ≠ fair turf for chelation; it is turf for the oracle-closing global map.
+4. **G2/G3 stack still answers the wrong question.** Even with locked dual-CI, you mostly learn “does detector-gated chelation beat ridge on ridge’s generative model?” Expected honest outcome: **ridge wins or NO_G3** — not an informative kill of the product idea, a **protocol/model miss**.
+
+### Attacks (direct)
+| Q | Answer |
+|---|---|
+| (a) Calibrate-β bias? | **Yes.** Conditioning on gap band selects cells where oracle is meaningfully better than floor → **methods that approximate oracle dominate**. Verdict is biased toward global correctors. |
+| (b) Any β both discriminating and fair to local/bounded? | **No credible β under this collapse law.** Severity only scales a map ridge is built to invert. |
+| (c) GPU worth it? | **Not for this objective.** Declare synthetic centroid-collapse **unfalsifiable / mis-specified as a chelation home-turf kill-screen** and cut the re-run. Keep β=0.10 artifacts as **regime-calibration failure documentation** only. |
+
+### Highest-value single change (if anything replaces it)
+**Do not β-sweep this corruption.** Replace the regime with a process that leaves a **non-affine residual after the best global map** (e.g. sparse doc-level adversarial moves, query-conditioned local swaps, or label-sensitive neighborhood collapse that **ridge on anchors cannot fit**), preregister that residual-gap (oracle vs ridge) not just oracle vs floor, then kill-screen. If you will not change the generative model, **do not spend GPU**.
+
+### Bottom line
+β preflight fixes a real protocol bug (G3 was unpassable at 0.10) but **fixes the wrong problem**. Making the gap large enough makes the screen **passable for global methods and still unfair or doomed for local chelation**. Cutting this re-run is the correct cheap kill; a severity sweep only buys a more expensive, still-biased “ridge wins on ridge-shaped drift” story.
+
+---
+
+## Cross-cutting
+
+| Design | Call | Do not spend GPU until… |
+|---|---|---|
+| 1 Margin predictor | PROCEED-WITH-CHANGES | Block-LOO + must-beat-gap-only preregistration written and frozen |
+| 2 β-calibrated D2 | **CUT** | Corruption model replaced so residual-after-ridge is the object of recovery |
+
+**Cheapest win:** kill Design 2’s GPU path now; invest the saved budget in Design 1 only under the nested null (gap-only baseline + block independence).

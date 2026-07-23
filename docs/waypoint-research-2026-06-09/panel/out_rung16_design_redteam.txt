@@ -1,0 +1,205 @@
+I'll ground the red-team in the actual router, quant gate, engine retrieval path, and swap-arena driver before attacking the dual-gate design.# Red-team verdict: Rung 16 quant-aware routing plane
+
+**Decision: `PROCEED-WITH-CHANGES`**
+
+Do not spend GPU on the design as written. The dual gate is selection-biased, the primary baseline is too weak, and the router does not enforce multi-route binding. With the changes below, rung 16 is still worth building as an **apparatus + preregistered fail-closed** slice — not as a presumed capability win.
+
+---
+
+## Grounding (what the code actually does)
+
+| Piece | Behavior that matters |
+|--------|------------------------|
+| `AdapterRouter.select` | Max centroid-cosine over registered routes. **No margin vs fallback.** If any routes exist, one always wins. |
+| `enable_adapter_routing` | Registers routes; inference swaps `self.adapter` for the selected one. There is **no** `enable_quant_aware_routing` yet. |
+| `QuantizationPromotionGate` | `retained_gain_ratio = (q − baseline) / (fp32 − baseline)`; pass if ratio ≥ **0.8**. Default `minimum_fp32_gain = 0.0`. |
+| Swap arena | Already has **anchor vs eval** (`anchor_fraction=0.4`) so C0/C2/C2O/C3a/C4a share one held-out scoring set. |
+| H5 precedent | Multi-post bank (living/static/one-shot) on the same swap arena: **living bank dual-gate FAIL**; C5r one-shot beat C5/C5s. Elaborate multi-route lifecycle lost to simpler structure. |
+
+That history is load-bearing: **routing apparatus exists; “routing wins” does not.**
+
+---
+
+## 1. Is the baseline honest?
+
+**No-route only is a rigged edge, not a meaningful win.**
+
+| Baseline | What a win means | Honest? |
+|----------|------------------|---------|
+| **No-route (frozen / C0-like)** | “Doing something beats doing nothing after encoder swap.” | Necessary floor; **not sufficient**. Any trained adapter with budget usually clears this once C3a is tuned. |
+| **Single-global-adapter (C3a-class, same budget, same anchors, same adapter class)** | “Specialization beats one well-tuned adapter.” | **This is the claim routing must make.** |
+| **Single best promoted route alone** (optional ablation) | “The plane’s multi-route structure adds value vs always using the strongest cluster adapter.” | Catches degenerate plane ≡ one route. |
+
+**Honest baseline set (preregister):**
+
+1. **No-route** — fail-closed floor (must not lose materially; ideally beat).  
+2. **Single-global** — **primary win condition** (must beat).  
+3. **Oracle / C2O** — ceiling context only, not a promotion target.  
+4. **(Report-only) single-best-route** — proves multi-route binding.
+
+Prior is right: **single-global is the harder, more honest baseline.** Beating no-route alone manufactures a “routing plane works” narrative that is just “we trained adapters.” H5 already showed multi-route structure can lose to simpler one-shot application on this arena.
+
+**Campaign gate (recommended):**
+
+```text
+PROMOTE plane iff NDCG_plane > NDCG_global  AND  NDCG_plane ≥ NDCG_no_route − ε
+  on locked TEST (ε preregistered, e.g. 0 or 0.005 absolute)
+else FAIL-CLOSED → ship empty plane / no-route
+```
+
+Not: promote iff plane beats no-route.
+
+---
+
+## 2. Leakage in “lift > 0”
+
+The proposal collapses **selection** and **scoring** onto one held-out split. That is the classic garden path: fit adapters on train, score every candidate on “held-out,” keep lift>0, then report that same number as the win.
+
+### Where eval leaks
+
+| Leak | Mechanism |
+|------|-----------|
+| **Centroid mine on eval docs** | Centroids from full corpus / eval-visible docs → routes indexed to the test distribution. |
+| **Adapter fit on eval queries/docs** | Per-cluster InfoNCE on non-disjoint anchors (H5 used anchors correctly; design must not regress). |
+| **Promote on same split as report** | “lift > 0 on held-out” then report that lift = **selection on test**. |
+| **Quant threshold tuned on report split** | Threshold search on the metric you publish. |
+| **Per-route threshold on score split** | Same as above for each of N routes. |
+| **Router degeneracy + re-eval** | Drop dead routes using eval usage, then re-score same eval. |
+
+### Leakage-safe partition (exact)
+
+Reuse the swap arena’s query split, then **split once more**:
+
+```text
+All queries (seeded):
+  ANCHOR  (fit)     ~40%   — fit per-cluster adapters + single-global adapter
+  SELECT  (val)     ~30%   — quant gate decisions, route promotion, MC correction,
+                              optional threshold/min-size knobs (LOCKED after this)
+  REPORT  (test)    ~30%   — ONE locked evaluation of the frozen plane vs baselines
+                             never used for fit, promote, or threshold
+
+Docs / centroids:
+  Cluster + mine centroids ONLY on ANCHOR docs (or ANCHOR-paired doc vectors).
+  Never re-cluster using SELECT/REPORT queries or their retrieved docs.
+
+Quant baseline_fitness:
+  Always no-route fitness on the SAME split the fitness is measured on
+  (SELECT for gate decision; REPORT only for post-hoc audit — never re-promote).
+```
+
+**Rule:** anything that can change *which routes ship* may touch **ANCHOR ∪ SELECT** only. **REPORT** is write-once evidence.
+
+The existing `anchor_fraction` two-way split is **not enough** for dual promotion + campaign claim: it isolates supervision from scoring for C3a, but rung 16 adds a **second selection stage** (which of N routes promote). That stage needs SELECT ≠ REPORT.
+
+---
+
+## 3. Multiple-comparisons rigging
+
+“Any of N cluster routes with lift > 0 on held-out” is pure forking-paths. With noisy NDCG on ~30–60 eval queries, **E[false promotions] ≈ N·α** with α≈0.5 under a null of zero true lift (sign noise), not α≈0.05.
+
+**Anti-rigging correction for gate (ii) — pick one, preregistered:**
+
+**Preferred (plane-level, not per-route):**
+
+1. Fit candidate routes on **ANCHOR**.  
+2. On **SELECT**, form the **full plane** under the proposed serving rule (centroid max).  
+3. Promote the **plane** only if  
+   - bootstrap (or paired query-level) CI for  
+     `Δ = NDCG_plane − NDCG_global` **excludes 0** (or lower bound > min_lift), **and**  
+   - quant survival holds for each **used** route (or for plane-level quant fitness).  
+4. Do **not** promote “any route with lift>0” independently and then stitch them.
+
+**If you keep per-route promotion (weaker):**
+
+- Family-wise: **Holm–Bonferroni** over N candidates on paired query ΔNDCG, α=0.05, **plus**  
+- **min lift magnitude** (e.g. absolute ΔNDCG ≥ 0.01 or ≥ half the no-route→global gap), **plus**  
+- **min cluster size** on ANCHOR (e.g. ≥ max(8, 5% of anchors)).
+
+Soft “lift > 0” with no family correction is how dual gates manufacture wins.
+
+---
+
+## 4. Does routing even bind?
+
+**As coded, no.** `AdapterRouter` always returns the max-cosine registered adapter. There is no “this route is worse than no-route → fallback,” no score margin, no temperature. A plane with K registered routes can still send **~100% of queries to one key**.
+
+That makes “routed plane” observationally identical to **single-global** (or single-best-route) while the report pretends multi-route specialization.
+
+**Binding proof (required instrumentation on SELECT + REPORT):**
+
+| Check | Fail-closed rule |
+|-------|------------------|
+| Route-usage histogram | Report `p_k`, entropy `H`, `n_used` |
+| Multi-route usage | Require **≥ K distinct routes** each used on ≥ m% of REPORT queries (preregister e.g. K≥2, m≥10%) **else plane is “degenerate” and cannot claim routing win** |
+| Ablation | `plane` vs `always best-route-from-SELECT` — if equal within ε, routing structure is vacuous |
+| Margin fallback | Optional but strong: only apply route if `cos(q, c*) − cos(q, c_global) ≥ δ`; else global/no-route |
+
+Without this, H5-style “router” results can reappear as a **disguised single adapter**.
+
+---
+
+## 5. Quant gate meaning — mostly soft, often near-vacuous
+
+```59:64:quantization_promotion_gate.py
+        if fp32_gain <= self.minimum_fp32_gain:
+            retained_ratio = 1.0 if quantized_gain >= fp32_gain else 0.0
+            passed = False
+        else:
+            retained_ratio = quantized_gain / fp32_gain
+            passed = retained_ratio >= self.retained_gain_threshold
+```
+
+**What it actually constrains:** “Of the FP32 *gain over baseline*, keep ≥80% after INT8 sim.” It does **not** require large absolute quality.
+
+| Scenario | Gate outcome |
+|----------|--------------|
+| Near-identity, fitness ≈ baseline, `baseline` honest | `fp32_gain ≈ 0` → **FAIL** (`fp32_gain_below_minimum`) |
+| Tiny real lift +0.002 FP32, +0.0017 quant, ratio 0.85 | **PASS** — noise-scale “survival” |
+| `baseline_fitness=0` and fitness = raw NDCG ~0.13 | Huge fake “gain,” ratio ~1 → **PASS** even if adapter is useless vs true no-route |
+| Default `minimum_fp32_gain=0.0` | Any ε>0 FP32 lift qualifies for the ratio test |
+
+So gate (i) is **not vacuous for true near-identity vs honest baseline**, but it **is vacuous as a quality bar** and **is vacuous if baseline is wrong**. Tests sometimes use `minimum_fp32_gain=0.01`; production default is **0.0**.
+
+**Design fix:** always pass **no-route NDCG on that split** as `baseline_fitness`; set `minimum_fp32_gain` to a **preregistered absolute NDCG floor** (or to “bootstrap lower bound of gain > 0”); measure FP32 and quant fitness via the same retrieval path (`simulate_int8` on adapted embeddings, as the engine already supports). Gate (i) alone will **not** select for specialization — only for quant-stable gains.
+
+---
+
+## 6. Winnable, or another dead end?
+
+**On the current swap arena, a true multi-route win over a well-tuned single-global is unlikely — and may be nearly unwinnable by construction.**
+
+Why:
+
+1. **Encoder-swap drift is largely global** (one query space shift vs frozen docs). One Procrustes/MLP on all anchors is the right inductive bias; cluster specialists mostly re-estimate the same map with less data → higher variance, same mean.  
+2. **H5 already stress-tested multi-post routing** on this arena: living bank failed dual gate; one-shot router beat static/living but still sat far below C2O and was not “beat single-global under dual promotion.”  
+3. **Capacity:** K small adapters each trained on |anchor|/K pairs underfit relative to one adapter on all anchors (same total steps). Routing needs **heterogeneous residual structure** that one adapter cannot represent without harming other modes.  
+4. **If the plane degenerates to one route**, single-global matches it by definition → no routing win.
+
+**Real regime where routed plane could win (if you ever need a positive):** multi-source or multi-domain corpus under **mode-specific** residual drift (e.g. mixed languages / tasks / partial re-embeds), with cluster residuals **anti-aligned** so a global compromise loses NDCG. That is **not** the default SciFact encoder-swap story.
+
+So rung 16 is still valid as:
+
+- wire `AdapterRouter` + quant gate + retrieval fitness into one promotion plane,  
+- preregister dual (really **triple**: quant + multi-route binding + beat global),  
+- **honest negative / empty plane** if nothing promotes,
+
+…but **not** as “we expect a capability win on GPU next week.”
+
+---
+
+## Deliverable summary
+
+| Item | Call |
+|------|------|
+| **Verdict** | **`PROCEED-WITH-CHANGES`** |
+| **Single highest-value change** | **Promote/report a frozen plane on a three-way split; primary win = beat single-global on locked REPORT, not “any route lift>0 vs no-route.”** (Plane-level SELECT decision + REPORT once.) |
+| **Leakage-safe partition** | **ANCHOR (fit adapters + centroids) / SELECT (quant + promote + MC / thresholds) / REPORT (one-shot baselines).** Centroids only from ANCHOR docs; never re-cluster on SELECT/REPORT. |
+| **Anti-rigging for gate (ii)** | **Plane-level ΔNDCG vs single-global with bootstrap CI excluding 0 (or Holm over routes + min lift + min cluster size if per-route).** Ban raw `lift > 0` on the report split. |
+| **Honest baseline set** | **No-route (floor) + single-global same budget (primary) + report single-best-route ablation; C2O ceiling only.** |
+| **Also require** | Route-usage histogram + **≥K used routes** or mark plane degenerate; quant gate with **honest no-route baseline** + non-zero `minimum_fp32_gain`. |
+
+---
+
+## Bottom line
+
+Rung 16 is **not** a free capability win waiting for GPU. Integrated as written, it is **riggable** (no-route baseline, lift>0 selection on the report split, soft quant ratio, non-binding max-cosine router) and, even if de-rigged, is **most likely a fail-closed-but-honest DONE** on the swap arena — same family of result as H5’s living bank. That is still a valid DONE if the plane ships empty and the dual gate refuses promotion. It is **unwinnable-as-a-routing-capability** if the only experiment is “cluster specialists vs one global on global encoder-swap.” **Do not GPU until SELECT≠REPORT, single-global is primary, and multi-route binding is enforced;** then run expecting (and accepting) an honest negative.

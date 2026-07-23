@@ -1,0 +1,19 @@
+Writing chair-ready paste blocks grounded in the frozen result docs.Fixing a stray fence at the end of the file.Draft is at:
+
+`D:\GITHUB\CHELATEDAI\docs\waypoint-research-2026-06-09\panel\l2-changelog-decision-draft.md`
+
+Chair-ready paste only; not applied to `CHANGELOG.md` or `docs/next-session.md`.
+
+### Block A (CHANGELOG `[Unreleased]`)
+Honest-negative findings:
+- **SciFact H5:** C5 == C5s **0.131135** (bit-identical); C5r **0.180862** beats living; **LIVING BANK WINS: False**
+- **NFCorpus H5:** C5 == C5s **0.046389**; living edges C5r **0.045817** but still **LIVING BANK WINS: False**
+- **H4 (single-seed 42):** `compound_cycles=True` **0.005258** vs `False` **0.236297** (~45× collapse)
+
+### Block B (next-session disposition)
+- Living/annealed post-bank line parked as **NON-PROMOTED** on the preregistered both-comparators gate
+- Rung-13/14 evidence; **C5s** is the honest post-bank baseline if any is kept
+- **No new Carried Debt / Deferred-Scope row** — closed research disposition, not unpaid work
+
+### Grounding / bans
+Numbers only from the three frozen docs; H4 labeled single-seed; no living-bank “wins” / “promising” / “validated”; no C2O ceiling claims.

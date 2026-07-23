@@ -1,0 +1,124 @@
+I'll read the L2 draft and the three source result docs, then adversarially check every number and the living-bank verdict logic.Source docs aren't in this worktree; locating them under the main CHELATEDAI tree.# Adversarial review: L2 CHANGELOG + decision draft
+
+## Verdict: **PASS-WITH-FIXES**
+
+Core H5 gate numbers, booleans, and H4 ablation figures match the three frozen sources. Verdict logic is correct. One non-source numeric label (`rung-13/14`) fails the “every number from sources only” rule. No living-bank upgrade, no C5==C5s softening, H4 magnitude is labeled single-seed.
+
+---
+
+## Number audit (draft → source)
+
+### SciFact H5 — `docs/drift-recovery-post-bank-headtohead-results-2026-06.md`
+
+| Draft claim | Source | OK? |
+|---|---|---|
+| Arena `query_encoder_swap` | L3 | Yes |
+| cycles 12 | L3 | Yes |
+| seeds [42, 1337, 7] | L3 | Yes |
+| C5 Final NDCG **0.131135** | table L13 | Yes |
+| C5s **0.131135** | table L15 | Yes |
+| C5r **0.180862** | table L14 | Yes |
+| C5 == C5s / bit-identical means | full means both `0.13113546862429465` (L19–20) | Yes |
+| living beats static **False** | L22 | Yes |
+| living beats one-shot **False** | L23 | Yes |
+| LIVING BANK WINS **False** | L24 | Yes |
+
+### NFCorpus H5 — `docs/drift-recovery-post-bank-headtohead-nfcorpus-results-2026-06.md`
+
+| Draft claim | Source | OK? |
+|---|---|---|
+| same arena / cycles / seeds framing | L3 | Yes |
+| C5 **0.046389** | table L13 | Yes |
+| C5s **0.046389** | table L15 | Yes |
+| C5r **0.045817** | table L14 | Yes |
+| living beats static **False** | L23 | Yes |
+| living beats one-shot **True** | L24 | Yes |
+| LIVING BANK WINS **False** | L25 | Yes |
+
+Rounding check: full means `0.046388663…` / `0.045816758…` → 6 dp matches tables.
+
+### H4 — `docs/drift-recovery-h4-compound-cycles-ablation-2026-07.md`
+
+| Draft claim | Source | OK? |
+|---|---|---|
+| SciFact C4a | L3 | Yes |
+| seed **42** | L4 | Yes |
+| cycles 12 | L4 | Yes |
+| `compound_cycles=False` **0.236297** | L12 | Yes |
+| `compound_cycles=True` **0.005258** | L13 | Yes |
+| ~**45×** (0.236 → 0.005) | L16 | Yes |
+| single-seed / magnitude one seed | L20 | Yes |
+
+---
+
+## Verdict logic (preregistered gate)
+
+Required: **LIVING BANK WINS ⇔ (C5 > C5s) ∧ (C5 > C5r)**.
+
+| Dataset | C5 > C5s | C5 > C5r | WINS | Draft | User expected detail |
+|---|---|---|---|---|---|
+| SciFact | False (tie) | False (0.131135 < 0.180862) | **False** | Matches | Loses both |
+| NFCorpus | False (tie) | True (0.046389 > 0.045817) | **False** | Matches | Ties static, beats one-shot |
+
+Block A bullets and Block B table are consistent with sources. Gate failure on both datasets is correctly reported as **False**.
+
+---
+
+## Soft-language / promotion traps (hunted)
+
+| Risk | Finding |
+|---|---|
+| Upgrade living bank toward a win | **Not found.** WINS = False both places; “Do not promote”; “NON-PROMOTED”; “park”. |
+| Soften C5 == C5s | **Not found.** Explicit `==`, SciFact “bit-identical means”, both “living beats static: **False**”, honest negative “adds nothing… ties C5s on both tasks”. |
+| “Living edges C5r” | Narrow True on NFCorpus only; still fails both-comparators gate. Not a WINS upgrade. |
+| H4 multi-seed inflation | **Not found.** Labeled **(single-seed)** in Block A; Block B “single-seed SciFact C4a seed 42”; “exact magnitude is one seed”. |
+| C2O ceiling laundering | **Not found** in paste blocks (chair note only forbids it). |
+
+---
+
+## Issue (only material fix)
+
+**Unsourced numbers in Block B header:** `rung-13/14`
+
+```text
+### Disposition — living / annealed post-bank corrector (H5; rung-13/14 evidence)
+```
+
+Neither `13` nor `14` appears in any of the three frozen result docs. Under the rule *any number not in a source doc = FAIL* (strict), this alone is a defect. Experimental content otherwise PASSes, so overall **PASS-WITH-FIXES** (not full FAIL: no wrong NDCG, no inverted gate, no win-washing).
+
+No other invented result metrics found in the paste blocks.
+
+---
+
+## Exact replacement text
+
+### Fix 1 — Block B heading only
+
+**Replace:**
+
+```markdown
+### Disposition — living / annealed post-bank corrector (H5; rung-13/14 evidence)
+```
+
+**With:**
+
+```markdown
+### Disposition — living / annealed post-bank corrector (H5)
+```
+
+(Optional equivalent if process context is wanted without unsourced integers: `### Disposition — living / annealed post-bank corrector (H5; frozen head-to-head evidence)` — still no numbers outside the three sources.)
+
+### Blocks A & B result tables/prose
+
+**No replacement required** for NDCG values, booleans, H4 figures, or gate wording after Fix 1.
+
+---
+
+## What failed to disprove
+
+- SciFact C5/C5s/C5r means and both-comparator Failures.
+- NFCorpus tie vs static + one-shot True + overall WINS False.
+- H4 0.236297 vs 0.005258, ~45×, seed 42, C4a, single-seed labeling.
+- Disposition NON-PROMOTED / C5s as honest baseline if anything is kept.
+
+**After applying Fix 1: treat as PASS for apply-to-panel.**

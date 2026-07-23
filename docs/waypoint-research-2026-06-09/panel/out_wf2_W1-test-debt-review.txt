@@ -1,0 +1,74 @@
+I'll adversarially review `tests/test_sparse_local_preflight.py`: read the tests and production paths they claim to cover, then run that suite plus the two D2 suites.## Adversarial review: `research/drift_recovery/tests/test_sparse_local_preflight.py`
+
+### Runtime
+
+| Suite | Result |
+|--------|--------|
+| `research.drift_recovery.tests.test_sparse_local_preflight -v` | **7/7 OK** (~0.5s) |
+| `test_d2_decisions` + `test_synthetic_collapse -v` | **23/23 OK** (~0.1s), no regression |
+
+---
+
+### 1. Non-affine / non-radial — **real, not tautological**
+
+`_best_affine_residual` (L41–51) does a real least-squares affine fit (`aug = [X 1]`, `lstsq`, MSE residual). Production warps are genuinely nonlinear (`apply_cluster_warp`: quadratic form / softplus hinge × fixed direction), so residual ≫ machine noise is expected.
+
+`_max_abs_radial_cosine` (L54–65) is a real geometric check of displacement vs `(x − center)`.
+
+`TestWarpProperties` (L68–124) also checks sparsity, harmed motion, and identity on clean clusters — those are behavioral.
+
+**Caveat:** thresholds (`1e-8`, `0.98`) are loose and single-seed (`seed=7`). Still falsifiable: a pure affine or pure radial warp would fail.
+
+---
+
+### 2. Clean-ID leakage — **mostly flag theater; would not catch a real routing leak**
+
+Production always hardcodes the audit bit:
+
+```274:274:research/drift_recovery/d2b_preflight/preflight.py
+        "clean_cluster_ids_accepted": False,
+```
+
+There is **no** inspection or rejection of clean labels in `fit_local_ridges`.
+
+| Test | What it actually checks |
+|------|-------------------------|
+| `test_fit_local_ridges_rejects_clean_ids` (L128–153) | Reads hardcoded `False`. Passes random labels, never clean IDs. **Name is false.** |
+| `test_run_preflight_detector_clean_ids_from_audits` (L155–206) | Happy path: flag is `False`. Patched path: forces audit `True` and checks detector OR-wiring (L618–621). **Wiring only.** |
+
+**What would still pass:** change `run_preflight_cell` to route with `regime.clean_cluster_ids` while leaving the audit flag `False` → suite still green. That is the load-bearing leak, and nothing behavioral catches it.
+
+Also, `_aggregate_cell` hardcodes `"clean_ids_used_by_fit": False` (preflight.py ~696), independent of per-run detector audits — sweep aggregation is not covered by these tests.
+
+---
+
+### 3. Sanity ladder — **weak ordering, not a real ladder with margins**
+
+`test_oracle_local_beats_global_on_residual` (L209–294):
+
+- Asserts `global_residual > 1e-6` (noise-scale, not substantive gap).
+- Asserts `local_ndcg > global_ndcg` only — **no minimum margin**.
+- Does **not** assert `floor < global < local < oracle` or compare residuals with a bound.
+- Oracle clean IDs for fit **and** apply (L222–266) — intentional upper bound, **not** production corrupted-space routing / detector gate.
+
+So: diagnostic “oracle-local can beat global once” on one tiny cell, not “sanity ladder with meaningful margins under the real protocol.”
+
+---
+
+### Other notes (not grade-driving)
+
+- Hygiene / audit tests (L297–404) mostly check recorded index sets and key presence; eval-disjoint is audit consistency, not “eval unused in MSE” by interception.
+- Coverage is offline/synthetic only (as advertised) — fine.
+
+---
+
+## Verdict: **PASS-WITH-FIXES**
+
+| Claim | Finding |
+|-------|---------|
+| Non-affine / non-radial | Real residual/geometry checks — **hold** |
+| Clean-ID leak catch | Flag + OR-wiring only; real clean-ID routing leak **not** caught — **L128–153, L155–174, preflight.py:274** |
+| Sanity ladder margins | Strict `local > global` only; residual floor `1e-6` — **L276–294** |
+| Suites | Preflight + D2 suites **pass** |
+
+**Bottom line:** Warp geometry coverage is real and suites are green, but “rejects clean IDs” and “sanity ladder with margins” overclaim — flag-only leakage and a one-sided inequality on an oracle-routed residual, not production-protocol proof.

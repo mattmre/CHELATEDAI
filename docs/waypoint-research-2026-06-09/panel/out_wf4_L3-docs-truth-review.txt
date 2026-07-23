@@ -1,0 +1,104 @@
+I'll adversarially verify every "delivered by #NNN" claim against git merges and check that steps 15–17 are truly unimplemented.Verifying PR merges on `origin/main` and grepping open-step claims.# Adversarial review: L3 docs-truth draft
+
+**Verdict: PASS-WITH-FIXES**
+
+`origin/main` tip is `34ce4b56` (#291). Every numbered “delivered by #NNN” PR used for DONE/PARTIAL apparatus is a real merge on `origin/main` with matching `git show --stat` contents. Steps **15 / 16 / 17** are correctly **OPEN**. No step is marked fully delivered without a merged PR.
+
+Fixes below are precision/caveat hygiene, not false-ship of unmerged work.
+
+---
+
+## Method
+
+- `git fetch origin main`; tip `34ce4b56` (#291)
+- `git log origin/main --oneline --grep="(#N)"` + `git show --stat` for cited PRs
+- Grep on `origin/main` for GNN / step-16 plane / pool-shard via `block_graph`
+- H5/H4 numbers checked against staged docs on worktree branch `lattice/phase2-continue-20260713` (path: `.claude/worktrees/relaxed-wozniak-271e04`)
+
+---
+
+## Per-step
+
+| Step | Draft status | Git / code check | Result |
+|------|--------------|------------------|--------|
+| **9** | DONE (fixture) | **#229** `790a6cc2` engine+dashboard bridge; **#228** `3844550f`; **#227** `c3d6ceae`; **#254** `9962cbb2` adds `persist_records` / `load_records` + `max_total_interventions` tests. Present on `origin/main`. | **OK** — do not read as live Qwen3.5-9B weights pilot (draft already hedges). |
+| **10** | DONE (substrate + #289) | **#284** `efe6d1be` RollbackPlan; **#285** `49b36046` `steering_route_promotion.py` + quant gate; **#286** `d8181f64` `production_steering_control.py` + DoD doc; **#289** `d1bfc090` observation-only correction. `resolve_production_mode` / `evaluate_steering_route_promotion` only in those modules + unit tests — **not** engine live path. | **OK** |
+| **11** | DONE (two modules) | **#260** `f0c643ae` `annealing_controller.py` + engine enable/observe; **#280** `9db098ea` `annealing_schedule.py`; **#283** imports schedule into post-bank lifecycle. | **OK** + honesty note stands: original exit “single module + online_updater + ES” is still **not** met; InfoNCE `temperature` in `online_updater` is unrelated. |
+| **12** | DONE | **#277** `81e3614b` `evidence_dag.py` + tests; docstring “no GNN”. | **OK** |
+| **13** | PARTIAL | **#279** `06f4f5cc` prune/re-anneal bank; **#281–#283** builder/runtime/conditions. No `isomer_detector` / `convergence_monitor` → Evidence DAG / pool prune wiring. | **OK** — correctly not DONE. |
+| **14** | DONE apparatus; H5 negative this-slice | Harness **#258–#266** (incl. **#259** metrics, **#261** replay, **#262** harness); swap line **#268–#276** (incl. **#273**); H3 **#287/#288**; H4 **#291**; H5 driver **#290**. H5 numbers match staged result docs (SciFact/NFCorpus/H4). | **OK** for apparatus. **Fix:** do not imply H5 results are on `main` (draft mostly careful; see caveats). |
+| **15** | OPEN | `git grep` `torch_geometric` / `import dgl` / `from dgl` / `GraphConv` on `origin/main` `*.py`: **empty** (only GNN forward-ref in `evidence_dag.py` docstring). | **OK — not delivered** |
+| **16** | OPEN (pieces only) | `adapter_router` + `enable_adapter_routing` exist; `QuantizationPromotionGate` in ES/distill/diagnostics/safety; **#285** is Model-Scope route quant+rollback, not `adapter_router` + retrieval-fitness steering plane. Co-import in `run_live_fire_diagnostics` / `run_safety_testbed` is diagnostics/testbed, not step-16 DoD. | **OK — not delivered** |
+| **17** | OPEN | `block_graph.py` is weight/activation computational-storage graph, not lattice pool-shard + host parity. No step-17 close claim on main. | **OK — not delivered** |
+
+---
+
+## Delivery claims: FAIL criteria
+
+**No FAIL.** Every “delivered by #NNN” used for DONE/PARTIAL is merged on `origin/main` with file stats that match the draft’s module claims.
+
+Ranges worth tightening (not false PR IDs, but sloppy attribution):
+
+1. **§3 continuous `#258–#276`**  
+   Includes **#267** (`705298b5` track0/CD-247 chore), which is **not** drift lattice.  
+   **Fix:** `#258–#266, #268–#276` (as in the step-14 table).
+
+2. **`#268–#276` bag**  
+   Includes non-product slices (**#269** flaky-test fix, **#271** opt-in smoke). Fine as “lineage,” misleading as “swap arena delivery set.”  
+   **Fix (optional):** core product PRs **#268, #270, #272–#276**; list test hygiene separately.
+
+---
+
+## Missed real deliveries?
+
+**None material for steps 9–17 status.**
+
+- **#259** (metrics) is covered under `#258–#266`.
+- **#273** is on main and belongs in the swap/H campaign line.
+- Pre-lattice `adapter_router` / `QuantizationPromotionGate` correctly **not** used to mark step 16 DONE.
+- Computational-storage `block_graph` work correctly **not** used to mark step 17 DONE.
+
+---
+
+## Open steps 15 / 16 / 17 (confirm OPEN)
+
+| Check | Evidence |
+|-------|----------|
+| **15 GNN** | No PyG/DGL/GraphConv prototype modules; only prose in `evidence_dag.py`. |
+| **16 integrated plane** | No production path that promotes via `adapter_router` **and** `QuantizationPromotionGate` **and** retrieval fitness as one steering plane. Closest: #285 (Model-Scope routes) + diagnostic co-use. |
+| **17 pool shard** | No precomputed retrieval pool shard read through `block_graph` with host parity; POC is graph weights/activations. |
+
+---
+
+## Caveat / prose fixes (required for clean chair apply)
+
+| # | Issue | Correction |
+|---|--------|------------|
+| C1 | H5/H4 artifacts described as on worktree branch; status is **staged (`A`), uncommitted**, branch `lattice/phase2-continue-20260713` **ahead 1** (`2b0fa044` H2 only). Tip of branch ≠ results commit yet. | §5: “H5/H4 results docs + manifests are **staged on worktree** `…/relaxed-wozniak-271e04` @ `lattice/phase2-continue-20260713`; **not committed**, not on `origin/main`.” |
+| C2 | §2.2 snapshot: “rungs **10–12** DONE” omits **9**. | “**9–12** DONE; **13** PARTIAL; **14** apparatus DONE / H5 negative; **15–17** OPEN.” |
+| C3 | §3 `#258–#276` | Split out **#267**. |
+| C4 | Step 11 “DONE for lattice rungs” is fine; original ROADMAP exit still fails on **online_updater + ES monopoly**. | Keep PARTIAL honesty in exit column (already present); optional stronger wording: “**not** wired into `online_updater` / ES as schedule owner.” |
+| C5 | H5 table numbers | **Match** frozen staged docs (SciFact 0.131135 / 0.180862; NFCorpus 0.046389 / 0.045817; H4 0.236297 vs 0.005258). No number fix. |
+
+---
+
+## Structural claims
+
+- Phase II table on `origin/main` really has only **Step | Track | Exit criteria** (no Status) — draft §0 **OK**.
+- **33** commits `bf23a47f..origin/main` — **OK**.
+- `2b0fa044` **not** ancestor of `origin/main` — **OK**.
+- One-line summary (rungs 10–12 done, 13 partial, 14 apparatus + H5 negative, 15–17 open) — **OK** once step **9** is included in the DONE set where status snapshots are written.
+
+---
+
+## Bottom line
+
+| | |
+|--|--|
+| **Verdict** | **PASS-WITH-FIXES** |
+| **False “delivered by #NNN”** | **None** |
+| **False OPEN (actually shipped)** | **None** for 15–17 |
+| **False DONE (missing PR)** | **None** |
+| **Must-fix before chair paste** | C1 (staged not merged), C2 (include step 9), C3 (#267 out of drift range) |
+
+Chair can apply ROADMAP/CHANGELOG paste after those three text fixes; no status row needs flipping from DONE→OPEN or OPEN→DONE based on this review.

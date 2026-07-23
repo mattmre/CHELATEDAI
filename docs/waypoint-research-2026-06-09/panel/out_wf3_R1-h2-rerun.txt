@@ -1,0 +1,131 @@
+I'll locate the swap-campaign driver, the H1 fix, and how the result docs are regenerated, then return exact PowerShell commands.## Driver / fix / generator
+
+| Piece | Location |
+|---|---|
+| Driver | `run_drift_recovery_swap_campaign.py` (PR #273) |
+| Per-run harness | `run_drift_recovery_experiment.run_experiment` |
+| H1 fix | `d5fc7dfa` / `5b2379b` — `_build_engine`: build-time adapter only for `{C3,C4}`; **C3a/C4a** ingest+baseline with near-identity |
+| Report generator | **same file**: `render_swap_report(manifest)` written at end of `run_swap_campaign` → `--report-md` |
+| Hardcoded matrix | `MAIN_CONDITIONS=(C0,C2,C2O,C3a,C4a)`, `SEEDS=(42,1337,7)`, `BUDGET_GRID=((30,0.01),(200,0.05),(1000,0.10),(2000,0.10))`, `SWEEP_SEED=42` + 3-seed best-budget confirm |
+
+No separate generator script. No CLI for seeds/conditions/budget (repro = defaults).
+
+---
+
+## (1) Exact PowerShell — both campaigns
+
+```powershell
+# Repo root = cwd. Branch already post-#276 main.
+Set-Location "D:\GITHUB\CHELATEDAI\.claude\worktrees\relaxed-wozniak-271e04"
+
+# Offline + CUDA visibility (campaign does NOT use CHELATED_RUN_REAL_MODEL_TESTS)
+$env:HF_HUB_OFFLINE = "1"
+$env:HF_DATASETS_OFFLINE = "1"
+$env:TRANSFORMERS_OFFLINE = "1"
+# optional if you ever need to force GPU when torch is weird:
+# $env:CUDA_VISIBLE_DEVICES = "0"
+
+python -c "import torch; print('cuda', torch.cuda.is_available(), torch.cuda.get_device_name(0) if torch.cuda.is_available() else None)"
+
+# --- SciFact (defaults match committed doc/manifest) ---
+python run_drift_recovery_swap_campaign.py `
+  --output-dir experiment_runs/drift-recovery/swap `
+  --report-md docs/drift-recovery-swap-results-2026-06.md `
+  --task SciFact `
+  --max-queries 100 `
+  --sample-docs 1200 `
+  --cycles 12 `
+  --anchor-fraction 0.4 `
+  --model sentence-transformers/all-MiniLM-L6-v2 `
+  --swap-model all-mpnet-base-v2
+
+# --- NFCorpus (same knobs; only output/report/task differ) ---
+python run_drift_recovery_swap_campaign.py `
+  --output-dir experiment_runs/drift-recovery/swap-nfcorpus `
+  --report-md docs/drift-recovery-swap-nfcorpus-results-2026-06.md `
+  --task NFCorpus `
+  --max-queries 100 `
+  --sample-docs 1200 `
+  --cycles 12 `
+  --anchor-fraction 0.4 `
+  --model sentence-transformers/all-MiniLM-L6-v2 `
+  --swap-model all-mpnet-base-v2
+```
+
+Minimal form (defaults = SciFact paths already):
+
+```powershell
+$env:HF_HUB_OFFLINE="1"; $env:HF_DATASETS_OFFLINE="1"; $env:TRANSFORMERS_OFFLINE="1"
+python run_drift_recovery_swap_campaign.py
+python run_drift_recovery_swap_campaign.py --task NFCorpus --output-dir experiment_runs/drift-recovery/swap-nfcorpus --report-md docs/drift-recovery-swap-nfcorpus-results-2026-06.md
+```
+
+Stdout end of each run:
+
+```text
+{"manifest": ".../swap-campaign-manifest-2026-06.json", "report": "docs/drift-recovery-swap-...-results-2026-06.md"}
+```
+
+**Run math (per dataset):** 5×3 main + 4 budget (seed 42) + 3 best-budget confirm = **22 real-model runs**.
+
+---
+
+## (2) Runtime + GPU
+
+| Dataset | Prior wall_clock | Estimate on RTX 3090 |
+|---|---|---|
+| SciFact | **1078.6 s ≈ 18 min** (`device: cuda` in `experiment_runs/drift-recovery/swap/swap-campaign-manifest-2026-06.json`) | ~15–25 min continuous |
+| NFCorpus | `wall_clock_seconds: null` (split run; docs note no wall timer) | ~20–40 min continuous (same 1200 docs / 100 queries / 12 cycles; denser labels can add a bit) |
+| **Both** | — | **~40–60 min** serial; do not parallelize on one GPU |
+
+**GPU footprint:** MiniLM-L6 (384) + mpnet-base-v2 (768) sequential load; in-memory Qdrant; **~2–6 GB VRAM** typical — 3090 is fine. Host RAM: models + 1200 docs + large JSON dumps (prior per-run JSONs tens of MB; full tree ~hundreds of MB–1+ GB).
+
+---
+
+## (3) Regenerated vs manual
+
+### Auto-written by the driver (overwrite)
+
+| Path | Role |
+|---|---|
+| `docs/drift-recovery-swap-results-2026-06.md` | SciFact report (`render_swap_report`) |
+| `docs/drift-recovery-swap-nfcorpus-results-2026-06.md` | NFCorpus report |
+| `experiment_runs/drift-recovery/swap/swap-campaign-manifest-2026-06.json` | SciFact manifest |
+| `experiment_runs/drift-recovery/swap-nfcorpus/swap-campaign-manifest-2026-06.json` | NFCorpus manifest |
+| `.../main/{C0,C2,C2O,C3a,C4a}_seed{42,1337,7}.json` | 15 main runs |
+| `.../budget/c3a_steps{30,200,1000,2000}_lr{0p01,0p05,0p1}_seed42.json` | 4 budget cells |
+| `.../budget-confirm/c3a_steps*_lr*_seed{42,1337,7}.json` | 3 confirm runs |
+
+Generator does **not** keep the CD-H1-01 supersession banner — clean tables only after H2.
+
+### Manual (not in driver)
+
+| Item | Action |
+|---|---|
+| **Paper §5 numbers** | **No paper/manuscript file in this repo** citing the tables. CD-H1-01 still requires a **manual** refresh of any external paper §5 that quotes C3a baseline/final / budget cells (SciFact C3a final was **0.159427**; NFCorpus C3a **0.053501** + pre-fix baseline skew). C0/C2/C2O/C4a tables should match old numbers (H1 claim). |
+| `docs/next-session.md` CD-H1-01 | Mark **CLOSED** after re-run + doc commit (driver won’t). |
+| Optional: `campaign.log` / `campaign-completion.log` | Historical only; driver doesn’t write them (redirect yourself if you want logs). |
+
+**Git:** `experiment_runs/` is **gitignored** (`.gitignore` L42/L79). Docs **are** tracked. Historical #274/#275 force-added JSON under `experiment_runs/` despite ignore — H2 can ship **docs only**, or `git add -f experiment_runs/drift-recovery/swap*` like before. Driver **never commits**.
+
+---
+
+## (4) Gotchas
+
+```powershell
+# Preflight (fail fast if offline cache incomplete)
+$env:HF_HUB_OFFLINE="1"; $env:HF_DATASETS_OFFLINE="1"; $env:TRANSFORMERS_OFFLINE="1"
+python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2'); SentenceTransformer('all-mpnet-base-v2'); print('models ok')"
+python -c "from datasets import load_dataset; load_dataset('mteb/scifact', 'default'); load_dataset('mteb/nfcorpus', 'default'); print('datasets ok')"
+```
+
+- **`CHELATED_RUN_REAL_MODEL_TESTS=1` is irrelevant** to this driver (unittest gate only).
+- **Do not use bash-style** `HF_HUB_OFFLINE=1 python ...` in PowerShell — use `$env:...` as above.
+- Seeds/conditions/budget **not CLI-overridable** — wrong matrix only if you edit the module.
+- **Overwrites** existing `main/`, `budget/`, `budget-confirm/`, manifest, and both `docs/drift-recovery-swap-*-results-2026-06.md`.
+- **Expect C3a change only** after H1: shared baseline with C0; final NDCG + budget table shift slightly. If C3a baseline ≠ C0/C2/C2O/C4a on NFCorpus, fix regressed.
+- Device auto: `_detect_device()` → `cuda` if torch sees GPU; no `--device` flag on swap campaign CLI.
+- Large per-run JSON artifacts; disk + git size if force-adding.
+- Best budget **re-selected** from seed-42 grid (SciFact historically **2000/0.10**; NFCorpus **30/0.01**); confirm phase uses whatever wins this re-run.
+- Sequential only; leave VRAM free (kill competing torch jobs).
+- Closure checklist: both commands green → verify C3a baseline equals peers → commit regenerated markdowns (+ optional force-add manifests) → close CD-H1-01 → **manually** patch paper §5.

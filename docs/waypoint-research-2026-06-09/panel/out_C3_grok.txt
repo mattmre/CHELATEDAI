@@ -1,0 +1,127 @@
+I'll adversarially re-check D2's code, decision artifacts, and recomputable metrics to try to disprove the kill-screen verdict.Digging into oracle-gap arrays, harm-label prevalence, run pipeline, and pilot diffs.Recomputing oracle gaps and label prevalence from pack arrays, and checking dual-CI and pilot differences.# C3 adversarial review — D2 kill-screen
+
+## Verdict: **PASS-WITH-FIXES**
+
+I **cannot disprove** the procedural outcome `NO_GLOBAL_G3_VERDICT_UNDERPOWERED_INVALID_OR_UNAVAILABLE`. Under the locked G2→G3 gates, no cell may issue a G3 win or kill claim. I **can** disprove the report’s framing that this is mainly “underpowered/invalid” without naming **β=0.10 regime degeneracy**. That omission is material soft-framing, not a false procedural verdict.
+
+---
+
+## Attack results
+
+### 1. Regime degeneracy — **sustained; under-disclosed**
+
+Recomputed seed oracle gaps (`oracle.mean − floor.mean` per seed) from `cell_pack.npz`:
+
+| Cell | seed gaps | min | point gap (mean oracle − floor) | invalid bootstrap fraction |
+|---|---|---:|---:|---:|
+| SciFact/8 | +0.0024, 0, +0.0004, +0.0004, +0.0061 | **0.0000** | +0.0019 | 1.53% |
+| SciFact/16 | 0, +0.0050, +0.0008, **−0.0046**, +0.0073 | **−0.0046** | +0.0017 | **23.76%** |
+| NFCorpus/8 | +0.0060, −0.0032, −0.0009, −0.0053, **−0.0078** | **−0.0078** | **−0.0022** (floor > oracle) | **76.15%** |
+| NFCorpus/16 | −0.0050, **−0.0091**, +0.0046, +0.0055, −0.0010 | **−0.0091** | **−0.0010** | **60.86%** |
+
+Every cell fails `g3.minimum_oracle_gap_each_seed: 0.05` by ~an order of magnitude (`decisions.py` oracle gate; protocol L92). NFCorpus point gaps are **negative** — mild collapse often does not hurt retrieval.
+
+β=0.10 is hardcoded with **no** severity / discriminating-band calibration:
+
+```12:12:research/drift_recovery/protocols/d2_crossover.yaml
+  beta: 0.10
+```
+
+```1:5:research/drift_recovery/regimes/synthetic_collapse.py
+"""Deterministic local semantic-collapse corruption for Regime-C.
+
+The corruption is intentionally modest: selected document clusters are pulled
+toward their own clean centroid by ``beta``.  It does not rotate the space,
+```
+
+Calling this mainly “underpowered” conflates **G2 CI half-width** (true for 3/4 cells) with **non-identifiable recovery** (min gap ≤ 0; invalid draws 24–76% on three cells). That is a **protocol miss** softened into power language. Honest wording: **β was mis-calibrated; G3 was a priori unpassable.**
+
+### 2. AUPRC 0.15–0.31 — **not a clean KILL; not meaningless single-class either**
+
+Harm labels **are** counterfactual NDCG loss, not injection membership (`detector_evaluation.py` L92–145; `crossover.py` L288–309). Recomputed prevalence:
+
+| Cell | positives / 160 | prevalence | AUPRC (recomputed = artifact) | per-seed pos |
+|---|---:|---:|---:|---|
+| SciFact/8 | 5 | 3.1% | 0.225 | 1, **0**, 1, **0**, 3 |
+| SciFact/16 | 12 | 7.5% | 0.151 | 1,3,4,1,3 |
+| NFCorpus/8 | 14 | 8.8% | 0.269 | 5,3,1,2,3 |
+| NFCorpus/16 | 33 | 20.6% | 0.307 | 8,4,7,8,6 |
+
+- Aggregate AUPRC is defined (`status=ok`); **not** pure single-class at cell level.
+- Two SciFact/8 seeds are `undefined_single_class`.
+- Median positive harm is ~3e-4–2e-3 — near the 1e-8 threshold noise floor.
+- AUPRC > prevalence (weak ranking signal), still ≪ 0.80.
+
+Locked G3 path if interpreted with AUPRC &lt; 0.80 → `KILL_CORRECTOR` (`decisions.py` L113–129), **not** “park as router” (that is detection-pass + correction-fail).
+
+**But** G2 / invalid-gap gates short-circuit first, so the report correctly does **not** claim a corrector kill. Claiming a real AUPRC kill **would over-claim**: you cannot kill a detector-gated mechanism for failing to rank harm when harm barely exists. AUPRC failure is **symptom of regime mildness**, not independent detector death.
+
+### 3. Hidden chelation “win”? — **no; dual-CI correctly fails**
+
+NFCorpus/16 `chel−ridge`: ΔNDCG **+0.0224**, CI **[0.0001, 0.0484]**, all five seeds positive — looks flattering.
+
+Fails dual / G3 axes:
+
+| Check | cbie | hubness | ridge |
+|---|---|---|---|
+| ΔNDCG ≥ 0.02 | **−0.0199** fail | +0.0116 fail | +0.0224 pass |
+| CI excludes 0 positive | includes 0 | includes 0 | barely pass |
+| Holm reject | false | false | false (adj p≈0.14) |
+| min oracle gap ≥ 0.05 | — | — | **fail (−0.009)** |
+| recovery advantage | blocked (invalid gaps) | blocked | blocked |
+
+Also: **CBIE beats chelation on both NFCorpus cells** (all seed Δs negative). Report does **not** claim a win. Not suppressed.
+
+**Stronger honesty issue:** on **both SciFact cells, all 5 seeds**, `max|chel_NDCG − floor_NDCG| = 0` (exact identity). Positive SciFact Δ vs CBIE/hubness is “do nothing beats bad adapters,” not recovery. Report’s “Primary movement” column (0.079 / 0.105) shows vector move fraction, **not** NDCG change — misleading.
+
+### 4. Locked rules — **mostly implemented; spot-checked**
+
+| Rule | Status | Where |
+|---|---|---|
+| G2 hard-gates G3 | **PASS** | `decisions.py` L84–92; test short-circuits empty contrasts |
+| Dual-CI (≥0.05 recovery, ≥0.02 NDCG, CI&gt;0, 5 same-sign seeds) | **PASS** | `decisions.py` L44–66 |
+| min oracle gap ≥ 0.05 each seed | **PASS** (binding, fails everywhere) | L121; protocol L92 |
+| Holm family | **PASS** as `{cbie, hubness, ridge}` | `FROZEN_CONTRASTS` L11–15; protocol L80–83. *Note: attack text said only cbie+hubness; code/protocol freeze **three** including ridge.* |
+| α=0.05 excluded from decision family | **PASS** | protocol L70; test L176–199 |
+| Harm = NDCG loss, not injection | **PASS** | `cluster_counterfactual_harm` |
+| Detector train/eval query split | **PASS** | `assert_query_partitions_disjoint` L21–26 |
+| No eval-qrel leakage into fit | **PASS** | `build_leakage_safe_anchor_indices` L119–142; audits show 0 contaminated |
+| Invalid oracle-gap fraction &gt; 1% blocks G3 | **PASS** | L93–103; SciFact/16 status `INVALID_ORACLE_GAP_BOOTSTRAP` |
+
+Minor code smell: `primary_movement_valid` is **any** seed with `moved_fraction > 0` (`crossover.py` L756–759), matching protocol “at least one seed,” but failure reason string says “every seed” (`decisions.py` L111). Vector move ≠ NDCG move (SciFact).
+
+### 5. Excluded pilot — **honest exclusion, not p-hacking**
+
+| | Pilot (invalidated) | v2 clean |
+|---|---|---|
+| SciFact/16 | G2 PASS → **`KILL_CORRECTOR`** | G2 PASS → **`NO_G3_VERDICT`** via invalid gap 23.76% |
+| Invalid gap gate | absent | present |
+| Protocol | bugs listed in `operational_amendments` | v2 fixes then rerun |
+
+Pilot kill with `min_oracle_gap = −0.0046` and ~24% non-positive gap draws was an **invalid G3 interpretation**. Excluding it after fixing identity-gate, clean-space routing, tied AUPRC, parity, and invalid-gap blocking is **correct**. Not relabeling to bury a win (there was no valid win). Slightly soft: “single most important caveat” is pilot exclusion (`D2_REPORT.md` L14), not regime degeneracy.
+
+---
+
+## Blocker table
+
+| Severity | Finding | file:line | Fix |
+|---|---|---|---|
+| **HIGH** | Verdict framing leads with underpowered/invalid; does not state β=0.10 left min oracle gap ≤0 everywhere and NFCorpus floor ≥ oracle | `D2_REPORT.md` L1–14; `protocols/d2_crossover.yaml` L12; `regimes/synthetic_collapse.py` L1–5 | Rewrite caveat: **regime mis-calibrated**; require severity/discriminating-band gate (oracle gap ≥ 0.05 all seeds) **before** confirmatory D2 |
+| **HIGH** | SciFact chelation is NDCG-identical to floor on all seeds; “Primary movement” implies action | `out/d2/cells/scifact_c*/cell_pack.npz`; `crossover.py` L906 | Report `max\|chel−floor\| NDCG` and flag identity arms; do not treat Δ vs CBIE/hub as recovery |
+| **MEDIUM** | AUPRC printed without prevalence / single-class seed count; easy to read as detector death | `D2_REPORT.md` L9–12; `crossover.py` L750–787 | Add positives/N, per-seed single-class, median harm; state AUPRC uninterpretable as kill under near-zero harm |
+| **MEDIUM** | Protocol miss: β locked without recoverability preflight (unlike D1-style calibration spirit) | `protocols/d2_crossover.yaml` L12, L86–96 | Add preregistered β-calibration step; abort if min gap &lt; threshold |
+| **LOW** | “Single most important caveat” = pilot exclusion | `crossover.py` L919–923 | Demote pilot; promote regime degeneracy |
+| **LOW** | `primary_movement_valid` reason says “every seed”; check is any seed; no NDCG identity check | `decisions.py` L111; `crossover.py` L756–759 | Align string; optionally require NDCG ≠ floor |
+
+Non-blockers (attacks that **failed** to disprove honesty):
+
+- No hidden chelation win; dual-CI + CBIE loss + Holm + gap all correctly fail.
+- Pilot exclusion is justified by real implementation bugs.
+- G2-before-G3, leakage, harm-label definition, α exclusion are real in code, not test-name theater.
+- 23/23 unit tests pass (re-ran).
+
+---
+
+## Bottom line
+
+**D2 is an honest procedural “no G3 verdict,” but the true scientific story is “inconclusive because β=0.10 was mis-calibrated (drift too mild / sometimes helpful) and recovery was non-identifiable” — not a clean “detector-gated chelation killed by AUPRC,” and the report softens that into underpowered/invalid plus a pilot caveat.**

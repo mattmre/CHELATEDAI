@@ -1,0 +1,124 @@
+I'll adversarially review the paper-updates draft against the two estimator/preflight artifacts and flag any number mismatches or overclaims.Artifacts aren't in this worktree; searching the main CHELATEDAI tree for them.# Adversarial review: paper-updates draft (2026-07-10)
+
+**Verdict: PASS-WITH-FIXES**
+
+The paste blocks are largely artifact-faithful: verdict wording is correct, FiQA is explicitly a rank-order **tie**, home-turf causal framing matches preflight, and §8 states underpowered holdouts + synthetic-only preflight. Two small number-fidelity issues in paste prose (not the number-audit table) need fixes before chair paste.
+
+---
+
+## 1. Number audit (vs `objA_validation.md` / JSON + `preflight_report.md`)
+
+| Draft claim | Source | Status |
+|---|---|---|
+| Dataset LOO Spearman **0.886** (←0.8857) | md table 0.8857 | OK (declared 3-dp) |
+| Dataset MAE **0.025** (←0.0252) | md 0.0252 | OK-ish; prefer **0.0252** or state 3-dp for MAE too |
+| Encoder LOO **0.829** (←0.8286), MAE **0.032** (←0.0324) | md | OK / same MAE note |
+| Gap-only dataset **−0.086** / **0.077** (← −0.0857 / 0.0773) | md | OK |
+| Gap-only encoder **0.429** / **0.070** (← 0.4286 / 0.0696) | md | OK |
+| Partial Spearman **0.79** (←0.7897) | md **0.7897** | OK |
+| FiQA both Spearman **1.0**; *n*=2 | **JSON only** `metrics_within_two_fiqa_cells` (md lists MAE only) | OK if JSON is frozen (draft freezes it); **not** in `objA_validation.md` alone |
+| FiQA MAE **0.026 vs 0.032** | JSON/md **0.0265 / 0.0321** | **FIX** — prose understates margin MAE (inflates win slightly) |
+| 3 dataset / 2 encoder / cell-n 6 | md Achieved scale | OK |
+| `PROMISING-BUT-UNDERPOWERED`; not validated; bar met | md L3; JSON | OK |
+| 48 cells, 144 seed-runs, quadratic / soft_fold | preflight table + audit line | OK (48 rows) |
+| Gate ≥0.05; strongest 0.0295 / 0.0328; max ≈0.033 | preflight Per-family | OK |
+| CLOSE; small gaps; local often ≯ floor; not ridge≻chelation | preflight callout | OK |
+| D2 β=0.10 non-discriminating, no G3 | `D2_REPORT.md` (frozen separately) | OK for Block 2/3 context |
+
+No invented grid sizes, no fake residual maxima, no invented LOO Spearmans.
+
+---
+
+## 2. L13 overclaim hunt
+
+| Banned / risky upgrade | Finding |
+|---|---|
+| Estimator → “validated” | **Clear.** Repeated “not validated” / `PROMISING-BUT-UNDERPOWERED`. |
+| “Ceiling” / irreducible | **Absent** in paste blocks. |
+| Local-ridge dominates chelation | **Explicitly denied** (Block 2 + checklist). |
+| Soften FiQA holdout | **Not softened.** Called a **tie** on Spearman; MAE lower only; matches `margin_beats_gap_on_both_within_fiqa: false`. |
+| Soft residual “win” | “No cell admitted” + max &lt; 0.05 — honest. |
+
+Residual journalistic heat only: bold lead-in **“closed without a second arena”** is stronger than the artifact token **CLOSE**, but the body immediately limits the claim (no discriminating residual; no ridge≻chelation; no second arena). Borderline tone, not a hard L13 FAIL.
+
+---
+
+## 3. Home-turf causal framing
+
+**Artifact:**
+
+> residuals are small mainly because the absolute recoverable NDCG gaps are small, and the dev-selected gated local ridge frequently does not even beat the no-op floor. This does NOT show local ridge dominates chelation…
+
+**Draft Block 2:**
+
+> residuals are small primarily because **absolute oracle–floor gaps are small** and the gated local ridge **often fails to beat the no-op floor**, not because we demonstrated that local ridge dominates…
+
+**Pass.** Matches required framing (small absolute gaps; local often ≯ floor).
+
+---
+
+## 4. §8 limitations honesty
+
+Block 3:
+
+- **3 dataset-level holdout units** + **PROMISING-BUT-UNDERPOWERED**, not validated  
+- FiQA rank-order **tie** disclosed  
+- **48 / 144**, max residual ≈ **0.033**, residual ≥0.05 gate  
+- **synthetic Gaussian-cluster only**  
+- D2 mild β=0.10 mis-calibrated; no constructive home-turf win and no powered synthetic kill  
+
+**Pass** on the two honesty axes you named. Optional completeness (not required to fail): §8 omits “two encoder-family holdout units” that `verdict_policy_note` and Block 1 already stress.
+
+---
+
+## 5. Required fixes (exact replacements)
+
+### Fix A — FiQA MAE (paste Block 1)
+
+**Offending:**
+
+> Within the two-cell FiQA2018 holdout alone, margin and gap-only both achieve perfect rank order (Spearman 1.0 on *n*=2) — a **tie** on the ranking metric, even though margin MAE is lower (0.026 vs 0.032)
+
+**Replace with:**
+
+> Within the two-cell FiQA2018 holdout alone, margin and gap-only both achieve perfect rank order (Spearman 1.0 on *n*=2) — a **tie** on the ranking metric, even though margin MAE is lower (0.0265 vs 0.0321)
+
+### Fix B — same numbers in §8 Block 3 (optional consistency; only if you add MAE there)
+
+Block 3 currently omits FiQA MAE (fine). No change required unless you later add those figures.
+
+### Fix C — optional tone: lead-in “closed” → artifact token
+
+**Offending (Block 2 title):**
+
+> **Home-turf residual (synthetic sparse-local non-affine preflight) — closed without a second arena.**
+
+**Replace with:**
+
+> **Home-turf residual (synthetic sparse-local non-affine preflight) — CLOSE: no admitting residual, no second arena.**
+
+### Fix D — optional MAE fidelity on LOO (if chair wants artifact digits, not 3-dp)
+
+**Offending fragments:**
+
+> (MAE 0.025) … (MAE 0.032) … (… MAE 0.077; … MAE 0.070)
+
+**Replace with:**
+
+> (MAE 0.0252) … (MAE 0.0324) … (… MAE 0.0773; … MAE 0.0696)
+
+(Or keep 3-dp but add one clause: “MAE rounded to three decimals.”)
+
+---
+
+## 6. Bottom line
+
+| Criterion | Result |
+|---|---|
+| Numbers traceable | **Almost all** — FiQA MAE paste is the only clear drift |
+| No validated / ceiling / ridge≻chelation | **Pass** |
+| FiQA not softened | **Pass** |
+| Home-turf causal framing | **Pass** |
+| §8: 3 dataset-blocks + synthetic-only | **Pass** |
+
+**PASS-WITH-FIXES** — apply **Fix A** (required) and preferably **Fix C** before pasting into `paper-draft/main.md`. After Fix A (and C if taken), this would clear a re-review to **PASS**.

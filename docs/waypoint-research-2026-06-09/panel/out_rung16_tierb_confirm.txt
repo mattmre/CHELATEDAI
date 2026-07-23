@@ -1,0 +1,83 @@
+I'll re-score rung 16 as an independent Tier B agent: recompute Arena B purity/attribution from the frozen manifest, verify the doc rephrasing and commit scope, and confirm tests still pass.Commit is docs-only with the DEFERRED_SCOPE amendment. Next I'll recompute purity/attribution from the frozen manifest and verify the Arena B wording.Recomputing Arena B purity and loss attribution from the frozen REPORT rows next.Tests are 24 OK. Digging into per-query REPORT rows in the frozen artifacts to recompute purity and Δ attribution.Recomputing purity and Δ attribution from frozen REPORT rows now.## Tier B confirmation re-score — rung 16 (`2c78195d`)
+
+**Agent:** grok-4.5 (fresh, independent)  
+**Parent claim:** Fable-5 implementer/chair on `5a3fbcc2` (prior BHS 90 / PASS-WITH-FIXES)  
+**Commit under review:** `2c78195d` on `lattice/rung16-routing-20260714`  
+**Scope of commit:** docs-only — `docs/rung16-quant-aware-routing-results-2026-07.md` (+31 lines)
+
+---
+
+### 1. Purity + attribution tables — **CONFIRMED (recomputed)**
+
+Recomputed independently from frozen Arena B REPORT rows in  
+`docs/rung16-quant-aware-routing-manifest-2026-07.json`  
+(`report.metrics.plane_fp32.rows` vs `single_global_fp32.rows`, n=90).
+
+| Domain | Home-routed | Purity | Match |
+|---|---:|---:|:---:|
+| FiQA2018 | 9/30 | 30.0% | ✓ |
+| NFCorpus | 1/30 | 3.3% | ✓ |
+| SciFact | 11/30 | 36.7% | ✓ |
+
+| Bucket | n | mean Δ | sum Δ | Match |
+|---|---:|---:|---:|:---:|
+| Home-correct specialist | 21 | **+0.0257** | +0.5391 | ✓ |
+| Cross-domain (misrouted) | 39 | **−0.0309** | −1.2035 | ✓ |
+| Global fallback | 30 | 0.0000 | 0.0000 | ✓ |
+| **Total** | 90 | **−0.007383** | — | ✓ |
+
+Exact recomputes: home mean `+0.025669` → `+0.0257`; cross `−0.030860` → `−0.0309`; total mean `−0.007383098…`. Misroutes = 39/(21+39) = **65%** of specialist-served queries. Doc tables match frozen rows.
+
+### 2. Rephrased conclusion — **CONFIRMED**
+
+Arena B section now states it did **not** cleanly exercise the home-turf hypothesis; what failed is the **preregistered centroid-margin domain plane**, not domain-specialized routing in general. Explicit binding-constraint line:
+
+> *“route assignment under encoder-swap drift, not specialist capacity.”*
+
+Verdict is still not rescued (SELECT δ / CI restated).
+
+### 3. DEFERRED_SCOPE in commit message — **CONFIRMED**
+
+Commit body amends DEFERRED_SCOPE to:
+- (a) oracle/domain-label routing ablation  
+- (b) domain-separable centroids that survive encoder swap  
+- plus the previously named anti-aligned residual drift regime  
+
+### 4. Verdict / SELECT / frozen artifacts unchanged — **CONFIRMED**
+
+- `git diff --name-status 5a3fbcc2 2c78195d` → only the results markdown  
+- Empty diff on all frozen JSON (manifest, selection locks, report-consumed, prereg)  
+- SELECT still: δ `−0.000899`, CI `[−0.026005, 0.024604]`, min_lift `0.005`, quant 0.75, floor True, gate **False**  
+- Arena B (and A) verdict still **FAIL-CLOSED**  
+- No decision/metric/query-id/verdict field mutation  
+
+### 5. Tests — **CONFIRMED**
+
+```text
+python -m unittest test_quant_aware_routing test_adapter_router
+Ran 24 tests in 0.392s
+OK
+```
+
+---
+
+### Residual from prior score
+
+| Prior finding | Status |
+|---|---|
+| **important:** Arena B purity overclaim | **CLOSED** — tables + rephrase + recomputed numbers |
+| **cosmetic:** DEFERRED_SCOPE understated assignment bottleneck | **CLOSED** in commit message as required |
+| **cosmetic:** `used_adapters` vs `retained_adapters` lineage string | **Still present as lineage note only** — not material to promotion math, not reopened as a defect for this docs fix |
+
+Nothing new broken. Important defect is genuinely closed by evidence, not cosmetics.
+
+---
+
+## Final Tier B score
+
+| Field | Value |
+|---|---|
+| **BHS_TIER_B** | **100** |
+| **BHS_TIER_B_SEVERITY** | none |
+| **Disposition** | PASS — important defect closed; docs-only correction preserves FAIL-CLOSED / SELECT / frozen artifacts |
+| **Bottom line** | Arena B now honestly reports anti-domain assignment collapse with verified purity/attribution; the preregistered plane still fails closed, and the score is 100. |

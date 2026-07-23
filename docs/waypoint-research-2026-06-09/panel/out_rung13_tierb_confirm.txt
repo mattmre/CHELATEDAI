@@ -1,0 +1,65 @@
+I'll independently re-score rung 13 from the fix commit: inspect the diff, verify each named gap, then run the unit tests myself.Diff looks plausible; next I'll read the production paths and run the unit suite to confirm each gap is really closed.Tests are green. Digging for residual defects: mode-absent path, dry-run mutation, and validate-after-prune/reanneal.# Tier B re-score — rung 13 (commit `77de3283`)
+
+**Agent:** grok-4.5 (independent)  
+**Implementer:** Fable-5 / codex  
+**Baseline:** first-cut `4e2927c1` → **94 / PASS-WITH-FIXES**  
+**Amended:** `77de3283` on `lattice/rung13-disintegration-20260714`  
+**Scope:** only the four named gaps + regression checks
+
+---
+
+## Gap verification
+
+| # | Named gap | Production fix | Test | Verdict |
+|---|-----------|----------------|------|---------|
+| 1 | L5 fail-closed untested | (already fail-closed) | `TestFailClosedRegressionSurface`: empty / unmatched query / immature convergence / wrong cluster → `pruned == []` | **Closed** |
+| 2 | Live-list mutation | `edge_snapshot = list(self._edges)` + `RuntimeError` if `len(self._edges)` changes before apply | `test_prune_rejects_a_mutating_scorer` | **Closed** |
+| 3 | Chelation `1-strength` mis-sign | `detector_signals_from_outputs` raises on non-`sedimentation` mode | `test_non_sedimentation_mode_is_rejected` | **Closed** |
+| 4 | Reanneal “recovery” overstated | — | asserts `states["cl1"] == "converged"` (plateau explicit) | **Closed** |
+
+### 1. Fail-closed regression surface
+Dedicated class with four load-bearing cases; each drives real `prune_edges` + `score_edge_fitness` and asserts `record["pruned"] == []` (empty also asserts edge count stays 4; unmatched/wrong-cluster assert empty fitness maps + unmatched provenance).
+
+### 2. Snapshot + mutating-scorer reject
+`prune_edges` scores over `list(self._edges)`, then refuses apply if length changed mid-pass. Test pops an edge mid-score and expects `RuntimeError` / `"mutated the DAG edge set"`.
+
+### 3. Non-sedimentation mode reject
+`mode is not None and str(mode) != expected_isomer_mode` → `ValueError`. Chelation fixture rejected. (Real `IsomerDetector` always emits `"mode"`; mode-absent crafted inputs still take the sedimentation map — residual edge, not the named gap.)
+
+### 4. Reanneal plateau semantics
+`test_reanneal_restores_edge_after_real_convergence_signal_recovers` now asserts provenance state `"converged"` before reanneal; name/semantics no longer over-claim loss improvement.
+
+---
+
+## Regression (ran here)
+
+```
+python -m unittest test_evidence_dag_disintegration test_evidence_dag -v
+...
+Ran 27 tests in 0.026s
+OK
+```
+
+Also exercised: `validate_evidence_dag` empty after prune and after reanneal; edge set restored to 4.
+
+---
+
+## Adversarial residual notes (not scoring gates)
+
+- Mutation guard is **length-based**; same-length content rewrite is not raised — but apply still installs `retained` from the snapshot, so the original silent unledgered-drop failure mode is gone.
+- `mode is None` with isomer rows would still use `1 - strength`; production detectors always set `mode`. Optional harden later, not a reopened named gap.
+
+None of these are cosmetic “tests only” or regressions of the four fixes.
+
+---
+
+## Final score
+
+| Field | Value |
+|-------|--------|
+| **BHS_TIER_B** | **100** |
+| **BHS_TIER_B_SEVERITY** | **none** |
+| **Disposition** | **PASS / merge-ready** (named gaps closed; suite green) |
+| **BHS_TIER_B_AGENT** | grok-4.5 |
+
+**Bottom line:** All four first-cut gaps are closed with real production + test evidence; **27 tests OK** and DAG validation holds after prune/reanneal — **genuine 100**.

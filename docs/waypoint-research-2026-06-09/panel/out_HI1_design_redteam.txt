@@ -1,0 +1,186 @@
+I'll red-team the HI-1 pre-registration from both sides. First I'll read the draft and the related research/rung-16 context in full.The draft path isn't where I expected — searching the worktree for the HI-1 prereg and related research packs.Found the draft on the main repo path. Reading it and the related research context there.Pulling pack sizes, prior NDCG variance, and the affine/linear baselines used in drift-recovery so the power math is real.# HI-1 Design Red-Team (pre-freeze, pre-GPU)
+
+Grounded in the draft prereg, D1 ladder/bootstrap artifacts (`query_count=60`, ridge−MLP half-width **0.055**, absolute NDCG half-width **~0.095**), leakage-safe affine ridge as the program’s actual strong baseline, rung-16 fail-closed CIs (REPORT deltas −0.003 / −0.007 with half-widths tens of NDCG points), and the draft’s own scope-gap disclosure.
+
+---
+
+## Verdict: **CUT**
+
+Not “probably fails.” As written it is **statistically unable to produce a legitimate POSITIVE** at realistic *n*, and **operator-structurally biased against G** in the exact stratum that defines the claim. Cutting this before GPU is the same class of win as cutting the β-sweep.
+
+---
+
+## A. Rigged-to-WIN
+
+### 1. UNKNOWN estimator — gameable? circular?
+
+**Not circular with G in a “harmonic always wins” sense.**  
+`u(q) = mean cosine distance to k=10 FIT docs` is computed in the **frozen store space before correction**, threshold frozen on CAL. That is real, pre-declared, and not outcome-contaminated. Good.
+
+**It does not mechanically favor G.** It does the opposite: UNKNOWN = low local support = **exactly where a FIT-built diffusion graph + Nyström is worst conditioned**. If anything this stratum **selects against** harmonic methods.
+
+**Residual shopping risk (mild, not fatal):**
+- 70th-percentile is arbitrary (60th/80th would re-label the set). Locked once = fine; if anyone reopens it after peeking, shopping is trivial.
+- Hard queries have higher NDCG variance → noisier Δ → makes **false positives harder**, not easier.
+- Secondary “isometry residual” is correctly demoted to descriptive; keep it that way. Promoting it post-hoc would be L4.
+
+**Sanity gate (L worse on UNKNOWN by ≥0.05 on CAL)** is a good REGIME-INVALID escape. It does **not** fix power or Nyström.
+
+### 2. Is L strong enough?
+
+**No. “Best of ridge / orthogonal Procrustes on CAL” is not the strongest linear baseline this program is obliged to beat.**
+
+From D1 on this same swap arena:
+- **Ridge already beats Procrustes and residual MLP** (NDCG ~0.681 vs 0.665 vs 0.659 on the literal protocol).
+- The honest production baseline in-repo is **leakage-safe affine ridge** `Wx + b` (`AffineRidgeAdapter`), not pure orthogonal Procrustes.
+- Orthogonal Procrustes is the **weaker** of the two named arms; “best of two” mostly means “ridge, and we checked Procrustes lost.”
+
+**Strongest linear baseline you must beat (name it and freeze it):**
+
+> **Leakage-safe full-FIT affine ridge (`y ≈ Wx + b`), λ selected on CAL only**,  
+> **plus a capacity-matched reduced-rank affine ridge** with rank `r` chosen on CAL over a grid that includes G’s harmonic dimension (and |A| if anchors act as a bottleneck).
+
+Optional honesty add-ons (still linear, still closed-form):  
+CCA / PLS with rank on CAL.  
+Do **not** let G’s only opponent be under-parameterized global ridge while G gets anchors + eigenmaps + Nyström + a second ridge in harmonic space.
+
+### 3. Parameter / budget “parity”
+
+**Stated parity is aspirational, not real.**
+
+| Side | Free knobs |
+|------|------------|
+| **L as written** | essentially one λ (or Procrustes with ~0 continuous knobs) |
+| **G** | \|A\|, anchor mining rule, graph-k, kernel/bandwidth, #eigenvectors, Nyström recipe, then Procrustes/ridge **inside** harmonic coords |
+
+G has a **multi-dimensional capacity + smoothing stack**. “Same CAL budget” only means same number of trial slots if you actually allocate them that way — the draft does not specify a matched search grid or DoF cap. Without that, a POSITIVE is easily a **capacity win**, not a “nonlinear geometry” win.
+
+### 4. Multiple comparisons / shopping
+
+**Frozen POSITIVE rule is conservative (anti-shopping for wins), not immune to narrative shopping after a NEGATIVE.**
+
+- Dual-dataset same-sign + LB≥0.01 + KNOWN floor + sanity gate → **hard to false-positive**.
+- Still two datasets, two strata, two estimators, OPERATOR-UNSTABLE, REGIME-INVALID → lots of **post-hoc story slots** (“almost,” “unstable but promising,” “secondary residual region…”). Those are fine if labeled descriptive; they are not wins.
+
+Primary H1 text is operationally OK. The danger is **soft rescue language**, not the decision inequality itself.
+
+---
+
+## B. Rigged-to-FAIL (equally disqualifying)
+
+### 5. Low-density / Nyström — unwinnable-by-construction?
+
+**Not in the β=0.10 sense** (oracle gap ≈ 0 ⇒ no method can recover).  
+Here the arena still has a large recoverable gap; ridge already closes most of it. Recovery is possible.
+
+**Yes in the operator-structural sense (near-unwinnable for *this* G on *this* stratum):**
+
+1. UNKNOWN is **defined** as low FIT support / high mean distance.
+2. Diffusion maps need **local sampling density** for a stable Laplacian spectrum.
+3. Nyström out-of-sample extension into a **low-density region of a graph built on FIT** is the textbook failure mode of spectral embeddings.
+4. Step 4 of G is “do Procrustes/ridge **in harmonic coordinates**” — so G is a **nonlinear coordinate change + linear map**. Where the coordinate change is poorly identified, G ≈ **worse ridge**.
+
+So: not “no structure exists,” but “**you asked a density-based operator to prove itself on the density-selected hard set after building the geometry only where density is high.**” That is the same *flavor* of design error as the β-screen (protocol selects a regime that defeats the method’s premise), even if the math is different.
+
+**If you refused to CUT and still ran alignment:**
+- Build the affinity graph on the **union of paired FIT points in both encoder spaces** (or joint anchor-relative cloud), not FIT-store-only then Nyström into OOD; **and/or**
+- Density-adaptive / self-tuning kernel; **and/or**
+- Drop Nyström-as-load-bearing and use a method that does not require extending eigenfunctions into sparse regions.
+
+Even with those fixes, power and scope issues remain.
+
+### 6. Power at realistic REPORT-UNKNOWN *n*
+
+**The draft’s “~20–30 UNKNOWN queries” is already optimistic; realistic SciFact-scale is worse.**
+
+| Total queries (style) | REPORT (30%) | EXPECTED UNKNOWN (~30% of REPORT) |
+|----------------------|--------------|-------------------------------------|
+| 60 (D1 pack) | 18 | **~5–6** |
+| 100 (rung-16 Arena A) | 30 | **~9** |
+| 300 (full SciFact-ish) | 90 | **~27** |
+
+Extrapolation from **this program’s own** D1 paired contrast (ridge−MLP half-width **0.055 at n=60**):
+
+| UNKNOWN *n* | ≈95% paired half-width | Point estimate needed so **LB ≥ +0.01** |
+|------------:|------------------------:|-----------------------------------------:|
+| 9 | ~0.14 | **~0.15** |
+| 18 | ~0.10 | **~0.11** |
+| 27–30 | ~0.08 | **~0.09** |
+| 60 | 0.055 | ~0.065 |
+| ~200 | ~0.03 | ~0.04 |
+| ~460 | ~0.02 | ~0.03 |
+| ~820 | ~0.015 | ~0.025 |
+
+To clear a **+0.01 lower bound** with non-laughable power you need either:
+- a **heroic true Δ** (≈0.10+ absolute NDCG on the hard stratum alone — larger than rung-16’s entire plane-vs-global effects), or  
+- **hundreds of UNKNOWN queries**, not tens.
+
+Rung-16 REPORT CIs already show the regime: plane−global **−0.003** with CI **[−0.051, +0.041]** at *n*=30 full REPORT — half-width ~0.05 **before** subsetting to UNKNOWN.
+
+**Conclusion:** at realistic REPORT-UNKNOWN *n*, the study is **underpowered to ever clear the written POSITIVE bar** unless G’s true effect is absurdly large. That is a **guaranteed fail-closed by design**, not an honest coin-flip. Same class of bug as needing 817 queries for a 0.015 ridge−MLP threshold in D1.
+
+Also: POSITIVE requires **both datasets** same sign with that LB — multiplies the underpowering.
+
+### 7. “G must not lose on KNOWN (Δ_known ≥ −0.005)”
+
+**Conceptually fair** (no robbing Peter).  
+**Statistically another random veto** at small *n*: KNOWN has more queries than UNKNOWN, but HW is still large vs 0.005. A true zero on KNOWN can fail −0.005 by noise.
+
+Not the main kill. Soften to “KNOWN not significantly worse” or descriptive only if you ever reopened this design; do not treat it as the headline issue.
+
+---
+
+## C. Falsifiability and scope
+
+### 8. Does HI-1 test the theory?
+
+**No. It tests a weaker analogy — and that analogy is already dominated by published/verified results.**
+
+| Claim layer | What is proven / known | What HI-1 tests |
+|-------------|------------------------|-----------------|
+| Superposition / CS wedge | **Within-space** nonlinear readout of *k*-sparse features can beat linear (Garg–Kleinberg–Peng; Engels et al.) | Not this |
+| Cross-space frozen alignment | mini-vec2vec: **linear gradient-free ≥ nonlinear adversarial** for unsupervised realignment; vec2vec OOD claim refuted | **This**, with extra spectral machinery |
+
+HI-1 failure would **not** touch the CS theorem (draft admits this).  
+HI-1 success would **not** establish the wedge either — it would show a particular spectral coordinate change helped alignment in low-support queries.
+
+**More decisive per GPU-hour:** a **within-space** test:
+
+> In one frozen embedding space with **known superposed / multi-dim features** (synthetic or Engels-style circular features), can a **gradient-free** harmonic / CS-style readout beat a **linear probe** on feature recovery (or on a retrieval label that depends on the nonlinear feature)?
+
+That attacks the *actual* wedge with far less protocol risk, no cross-encoder pack drama, and a metric with more power than NDCG@10 on 9 OOD queries.
+
+### 9. Still-unfalsifiable sentence
+
+H1 as an **operational inequality on REPORT UNKNOWN NDCG** is falsifiable (plus REGIME-INVALID / OPERATOR-UNSTABLE exits).
+
+The protected / unfalsifiable *scientific* move is this (§0 / §8 coupling):
+
+> “HI-1 is therefore explicitly a test of the analogy, and a failure is evidence about *the analogy*, not a refutation of the compressed-sensing theorem.”
+
+Combined with the NEGATIVE write-up framing, **no outcome of HI-1 can falsify the motivating theory**, and a NEGATIVE is pre-narrated as a “sixth hazard” methodology bullet. That is honest about scope — and it is also why spending GPU on HI-1 has low decision value: **you already know how you will interpret both sides.**
+
+Operationally soft phrase inside G:
+
+> “this is the ‘extend the known geometry into the unknown region’ step”
+
+presupposes that “known geometry” **extends**. OPERATOR-UNSTABLE partially covers implementation failure; it does not make the presupposition a hypothesis.
+
+---
+
+## Required deliverable box
+
+| Item | Answer |
+|------|--------|
+| **Call** | **`CUT`** |
+| **Single highest-value change** | **Do not run HI-1 as written.** If any residual curiosity budget remains, replace it with a **within-space gradient-free nonlinear vs linear probe** on a **known superposed feature** (direct wedge test). Do **not** “fix” HI-1 with a density-adaptive kernel alone — power + scope still kill it. |
+| **Strongest linear baseline to beat** | **Leakage-safe full-FIT affine ridge (`Wx+b`) with λ on CAL**, plus **CAL-chosen reduced-rank affine ridge** with rank grid covering G’s harmonic dimension (capacity-matched linear). Orthogonal Procrustes is optional and weaker. |
+| **Power at realistic REPORT-UNKNOWN *n*** | SciFact-like: **~9 UNKNOWN** (100-q split) to **~27** (300-q); optimistic draft **20–30** still has **paired HW ≈ 0.08–0.10**. Clearing **LB ≥ +0.01** needs point estimates **~0.09–0.15** — not achievable as a planned effect size. **Win threshold is not achievable** without *n* in the **hundreds of UNKNOWN queries** or a different primary metric/bar. |
+| **Unwinnable-by-construction?** | **Logically no** (gap exists; ridge works). **For G-as-specified on UNKNOWN-as-defined: yes, structurally near-unwinnable** (Nyström/spectral into density-selected OOD). **Statistically: yes, guaranteed fail-closed** at the written +0.01 LB. |
+| **Worth ~2 GPU-hours?** | **No.** Dominated by (i) mini-vec2vec / linear-alignment results for the cross-space question, (ii) five in-house fail-closeds against global linear, (iii) underpowered + operator-handicapped protocol. Spend the hours on the **within-space readout** if the wedge still matters; otherwise **cut entirely** and keep GPU for substrate work that does not need a miracle Δ. |
+
+---
+
+## Bottom line
+
+HI-1 is a well-written **fail-closed theater**: honest prior, good freeze/lock hygiene, good REGIME-INVALID gate — and then a primary stratum that **starves G of density**, a **win bar the paired bootstrap cannot clear at realistic *n***, a baseline that is **not the strongest linear map you already ship**, and a scientific target that is **only an analogy** to the one theorem that made the cell look exciting. The program has already learned, repeatedly, that elaborate structure loses to trivial global linear on this arena; the literature already says linear unsupervised alignment matches or beats nonlinear. Running HI-1 will almost certainly produce a sixth pre-narrated NEGATIVE that teaches nothing you cannot write today without touching the 3090. **Cut it.** If you still want a decisive coin-flip on the deep-research wedge, run the **within-space** gradient-free vs linear probe — that is the only cell that is both winnable in principle and not already dominated.

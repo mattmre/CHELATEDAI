@@ -1,0 +1,191 @@
+I'll ground the adversarial review in the actual harness, paper draft, and local experiment assets before attacking D1–D3.The plan files look like prompt stubs; I'll read the actual plan outputs and harness next.Codex's plan file looks truncated; I'll pull the certificate design and any completed plan fragments from the panel outputs.I have enough to critique the brief and the Codex protocol directly. Writing the adversarial review into the panel folder.# Adversarial plan review — D1 / D2 / D3
+
+Saved in full at `panel/planA_review_grok.md`. Below is the attack surface, the lean plan, and the recommendation.
+
+**Note:** Peer planA outputs are empty/incomplete (`out_planA_agy.txt` empty; `out_planA_codex.txt` died at sandbox start). This critique targets the **build brief + Codex panel protocol**, grounded in the paper, `ladder_evalsplit.py`, and the `#291` harness.
+
+---
+
+## Executive verdict
+
+**Ship D1 hard. Scope D3 to a calibrated estimator + one-pager. Run only a stripped D2 kill screen — do not implement the full Quora × 7-corrector × 6-baseline matrix.**
+
+The brief as written will not finish honestly on one 3090. Full D2 is also structured to produce **false negatives on chelation** and **false positives on “local > global”** unless several design defects are fixed first.
+
+---
+
+## 1. Where D2 gives false positives / false negatives
+
+### False positives (fake wins)
+
+| ID | Failure mode |
+|---|---|
+| **FP-A** | **Detector cosplay.** Corruption collapses 8/16 k-means clusters. Scoring AUPRC with features/labels from the *same* k-means recovers the injection knob, not retrieval risk. |
+| **FP-B** | **Local ridge is the DGP.** Regime-C is piecewise centroid collapse; per-cluster ridge with matching K is near-optimal by construction. That is not a chelation win (and Drift-Adapter already showed synthetic local gains). |
+| **FP-C** | **Baseline fishing.** Centroid collapse is CBIE/hubness’s toy. Beating a weak baseline after test-set HP search is selection bias. |
+| **FP-D** | **Recovery points without absolute NDCG.** 5 recovery pts on a 0.03 gap is 0.0015 NDCG. Dual thresholds must apply to the **same bootstrap CI**, with a minimum oracle gap (e.g. ≥0.05) or the cell is underpowered. |
+| **FP-E** | **Multiplicity.** 5 seeds × methods × β × K × datasets makes “same sign in 5 seeds” weak. Cap primary tests at ≤4; Holm the family. |
+
+### False negatives (unfair kills)
+
+| ID | Failure mode |
+|---|---|
+| **FN-A** | **α=0.05 is a setup.** ~2.86° max rotation; β=0.20 collapse can exceed the bound by construction. That kills the *bound*, not detection/routing. Primary kill should not be bound-only. |
+| **FN-B** | **API mismatch.** `IsomerDetector` scores result-list Jaccard, not corrupted doc clusters. Naive wiring → chance AUPRC → false “detectors failed.” |
+| **FN-C** | **Underpowered SciFact.** ~60 eval queries after anchor split → wide CIs; dual 0.02 NDCG bar may reject real effects. **Power analysis first** (G2). |
+| **FN-D** | **Narrative leak.** Paired local ridge in the “privileged” lane will be read as chelation winning. Kill criteria apply only to unpaired / detector-gated arms. |
+| **FN-E** | **Isotropy ≠ NDCG.** AUPRC 0.9 on “collapse” can still leave retrieval flat. Require **both** detection and correction axes. |
+
+### Structural holes
+
+1. **Full matrix will not finish.** Quora 522k exact retrieval × MLP widths × K-grid × graph-k × β×3 is a campaign, not a deliverable. “Feasible subset first” must be the *only* D2 until a go gate.
+2. **Regime-C ≠ natural within-model disease.** It is a one-shot synthetic gift. Fail → strong mechanism kill. Pass → still not proof the disease exists in production (that was E★: progressive corpus stress).
+
+---
+
+## 2. Where D1’s statistical fix falls short
+
+**10k paired-query bootstrap is necessary and not sufficient.**
+
+It buys CIs on fixed-split NDCG and on ridge−MLP / ridge−C3a deltas. It does **not** cover:
+
+1. **Map uncertainty** — fit half is one `seed=42` permutation (`ladder_evalsplit.py`); bootstrap is conditional on a fixed W  
+2. **Projection-seed uncertainty** — one `QueryEncoderDrift` seed  
+3. **MLP optimization uncertainty** — one train ≠ capacity ceiling  
+4. **A mathematical ceiling** — CIs around a plateau still do not make a ceiling  
+5. **Held-out reconstruction** — ranking plateau ≠ MSE plateau  
+
+**Concrete D1 holes in the assets:**
+
+- **C3a as scalar** (`C3A = 0.1609`) vs self-contained maps → bootstrap on ridge−C3a is theater until per-query scores share one NDCG implementation  
+- **Learning curve confounds** — C3a (query InfoNCE) and ridge (doc pairs) must not share a fake “n_anchors” x-axis; the +59 pt story is supervision type, not sample size  
+- **n ≈ 600 pairs, d = 384** — cannot claim saturation toward Drift-Adapter’s ~20k regime  
+- **Language is global** — abstract/intro/§5.5 still say “ceiling”; one §5.5 edit is not enough  
+- **§3 is still a stub** — methodology paper fails without bound formula + adapter maps  
+- **Repro is fake** — scripts are git-excluded with hardcoded `gpu-campaigns` paths  
+
+**Artifact-first D1:** freeze `Do, Dor, Qd, qrels, fit_idx, per-query scores` once; all stats offline.
+
+---
+
+## 3. Is D3 well-posed or hand-wavy?
+
+**Well-posed as a margin residual estimator. Hand-wavy as a “theorem / certificate / before fitting.”**
+
+Solid core (Codex margin idea):
+
+\[
+m = q^\top y_r - q^\top y_j > \|q\|(\|e_r\|+\|e_j\|)
+\]
+
+⇒ order preservation under residual \(e = Y - g(X)\). From paired calibration docs + query margins, predict inversion rate → recovery bands.
+
+**Hand-wavy if left as briefed:**
+
+| Phrase | Problem |
+|---|---|
+| “theorem” | Gram distortion alone does not imply NDCG; top-k dependence breaks free theorems |
+| “BEFORE fitting” | Affine residual **is** from fitting (or CV). Mean: before full re-embed / before committing corrector class |
+| “70/90/99%” bins | Too few regimes; overfit unless leave-one-regime-out |
+| “validate on existing runs” | Same-run calibration is circular; need held-out (bge / NFCorpus / n_anchor) |
+| “certificate” | Needs empirical coverage of a proved lower bound; default name = **estimator** |
+
+**Minimum non-hand-wavy D3:** cross-fitted residual + margin features → \(\hat R, \hat R_{lo}\); leave-one-regime-out; success bar (e.g. Spearman ≥ 0.7 or 80% three-way bin accuracy) **or** explicit failure note. **Depends on D1 packs, not D2.**
+
+---
+
+## 4. Over-scoped (will not finish)
+
+Cut from critical path:
+
+- Full BEIR-Quora 522k exact matrix  
+- MLP width sweep; full K∈{2,4,8,16}; graph residual k-sweep  
+- β full factorial (start β=0.10 only)  
+- D3 “theorem”; D1 LaTeX until stats land  
+- Living-bank revival; natural E★ stuffed into D2  
+
+Keep: **CBIE + one hubness + ZCA**; one residual MLP; global+low-rank-local (parameter-matched) as the local diagnostic.
+
+---
+
+## 5. Leanest rigorous plan
+
+### Architecture (minimal)
+
+**Reuse:** `load_mteb_data`, `_split_anchor_eval`, `QueryEncoderDrift`, `select_road_course_slice`, `ndcg_at_k`, bound/adapter path, topology cohesion features.
+
+**New (one package, not 15 root scripts):**
+
+```text
+artifacts.py      # EmbeddingPack / QueryScorePack
+maps.py           # ridge, procrustes, residual_mlp
+stats.py          # paired bootstrap, Holm, recovery R, learning curve
+recoverability.py # residual + margins → R̂
+regime_c.py       # centroid collapse + ZCA/CBIE/hubness
+detect_score.py   # preregistered cluster scores (harm labels)
+preregister_d2.md # frozen primary tests + kill rules
+runners: d1_*, d2_subset_*, d3_*
+```
+
+### Sequencing
+
+```text
+G0 artifacts → packs reproduce ladder within 1e-3
+     │
+     ├─ D1 stats + §3 + language  (P0)
+     ├─ D3 estimator on packs     (P1, parallel after G0)
+     └─ only then: lean D2        (P2)
+            └─ hard GO only if both kill axes pass on 2 datasets
+                 else terminate chelation; optional Quora never starts
+```
+
+### Minimum vs full
+
+| | Minimum honest | Full (only if min works) |
+|---|---|---|
+| **D1** | Packs, 10k bootstrap, 1 learning curve, §3, global “plateau” language, pack repro | Multi-seed W, bge CIs, LaTeX, residual decomposition |
+| **D2** | SciFact+NFCorpus, β=0.10, ≤4 primary methods, CBIE+hubness+ZCA, dual kill | Quora 522k, K-grid, graph, β sweep |
+| **D3** | Cross-fit residual+margin, leave-one-regime-out, one-pager | Proved bound + coverage certificate |
+
+### Binding gates
+
+1. **G0** packs reload OK  
+2. **G1** D1 shippable (CIs + plateau language + §3 + repro) — **no D2 before this**  
+3. **G2** power: median bootstrap half-width for primary ΔNDCG ≤ ~0.015, or grow query set  
+4. **G3 chelation kill:** fail if repair does not beat **both** CBIE and hubness under dual CI rule on two datasets, **or** AUPRC < 0.80 on **harm** labels (not injection cosplay). Detection-only pass → park as re-embed router, not corrector revival  
+5. **G5 D3:** held-out calibration bar or ship negative note  
+
+---
+
+## 6. Build-plan recommendation
+
+| Priority | What | Why |
+|---|---|---|
+| **P0** | **D1 minimum** | Highest EV; closes the hole reviewers will hit; nearly done |
+| **P1** | **D3 estimator** (not theorem) | Only exceptional-upside adjacent idea; small surface; uses D1 packs |
+| **P2** | **Lean D2 kill screen** | Honest last chelation test (~10–15% survival); cheap enough to finish |
+| **P3** | Quora / graph / zoo / LaTeX | Only after hard GO; likely never |
+
+**One line:** Execute D1 fully, D3 as a calibrated estimator, and a ruthlessly reduced D2 whose only job is a binding chelation kill — treat the full Codex matrix as a wishlist, not a build plan.
+
+**If forced to cut one deliverable:** cut full D2 before D1 or D3.  
+**If forced to one deliverable:** **D1 only.**
+
+### Suggested 1–2 week schedule (single 3090)
+
+1. **Days 1–2:** artifact packs + bootstrap + learning curve; start §3  
+2. **Days 2–4:** language pass + C3a query-level scores + pack repro → D1 shippable  
+3. **Days 3–5:** D3 features + leave-one-regime-out + one-pager  
+4. **Days 5–8:** preregister + lean Regime-C/U + G3 kill without negotiation  
+5. **Day 9:** write D2 outcome into Limitations (negative expected and valuable)  
+6. **Never:** rebuild living-bank; never start exact-522k Quora on the critical path  
+
+---
+
+### Brutal honesty on this review
+
+- Wall-clock costs are order-of-magnitude, not measured.  
+- “Harm labels” for detector AUPRC still need a precise operational definition at implement time.  
+- G2 (power) is load-bearing: skip it and the kill criteria become cosplay.
+
+If you want a next step, I can turn this into a single preregister markdown (`preregister_d2.md` + D1/D3 checklists) ready for implementers—still plan-only, no code.

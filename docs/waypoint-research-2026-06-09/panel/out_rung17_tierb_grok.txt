@@ -1,0 +1,124 @@
+I'll adversarially review the rung-17 disk pool slice: read the implementation and docs, verify block-graph traversal and FP16 bit-exact claims, then try to break parity/fail-closed behavior and run the regression tests.Reading `block_graph.py` and running independent FP16/parity attack scripts.Re-running the FP16 round-trip attack (fixed script) and regression tests; probing the NaN edge case further.Checking one more potential gap: whether `next_offset` is only validated or actually drives multi-block traversal under a non-linear link.# Tier B Adversarial Review — Rung 17 Disk Pool Slice
+
+**Commit:** `e12b7668`  
+**Branch:** `lattice/rung17-diskpool-20260714`  
+**Scorer:** grok-4.5 (independent) · implementer: codex/Fable  
+**Claim under attack:** one precomputed pool shard readable via `block_graph.py` with host parity  
+
+---
+
+## Verdict
+
+| Field | Value |
+|---|---|
+| **BHS_TIER_B** | **100** |
+| **BHS_TIER_B_SEVERITY** | none (blocking) · low notes only |
+| **Result** | **PASS** |
+
+**Bottom line:** This is a genuine parity-checked block-graph pool-shard read. Reconstruction goes through `read_block` and follows `next_offset`; the byte-as-exact-FP16-u8 path is bit-identical for real float32 bytes (including values that FP16 cannot store directly); verify fail-closes on corrupted payload / wrong ids / forged manifest hash. I could not disprove the exit claim.
+
+---
+
+## Attack results
+
+### 1. Real block-graph traversal vs shortcut — **NOT FAKED**
+
+`_decode_payload_via_block_graph` (`pool_shard.py:138–192`):
+
+- Loads payload as opaque bytes
+- Calls `read_block(payload, offset)` per block
+- Validates each cell as finite integer in `[0, 255]`
+- Checks `next_offset` against the expected linear chain and **sets** `offset = block.next_offset`
+- Crops to `raw_vector_bytes`, rejects non-zero padding
+
+Instrumented multi-block read (`n=200, d=400` → 2 blocks): `read_block` called at offsets `[0, 524296]`. No `np.load` / mmap / raw array reload.
+
+Direct `build_graph_payload` of float32 values is lossy (`0.1` → `0.09997…`); the same values survive the byte-lane path bit-exactly. So the encoding is load-bearing, not decorative.
+
+### 2. Bit-identical parity given FP16 quantize — **HOLDS**
+
+| Check | Result |
+|---|---|
+| Integers 0..255 exact in float16 | `max abs err = 0.0` |
+| Decode validation 0..255 | all pass |
+| Independent shapes `(7,13)`, `(1,1)`, `(64,64)`, `(100,700)` multi-block | `np.array_equal` + SHA256 match |
+| 100k random float32 bit patterns (byte equality) | **0 fails** |
+| Fixture SHA | `637bf79f…` matches doc |
+| Fixture includes non-FP16 values (`0.1`, `π`, …) | round-trip exact via byte lane |
+
+### 3. Parity fail-closed — **HOLDS** (no mismatch slip-through)
+
+| Attack | Outcome |
+|---|---|
+| Mutated host vectors | `AssertionError`, `vectors_match=False` |
+| Wrong / reordered ids | `AssertionError`, `ids_match=False` |
+| Corrupted payload cell (+1 on first FP16) | raises |
+| Corrupted padding lane | `ValueError: Non-zero block padding` |
+| Non-integer cell `1.5` | `ValueError: Invalid encoded byte` |
+| Broken `next_offset` | `ValueError: Invalid block-graph link` |
+
+I could not make `verify_pool_shard_parity` return success on non-matching host vs disk.
+
+### 4. Manifest integrity — **HOLDS for stated contract**
+
+`verify` hashes **disk-read** logical bytes and requires:
+
+`manifest_sha256 == disk_sha256 == in_memory_sha256` **and** ids **and** `array_equal`.
+
+| Attack | Outcome |
+|---|---|
+| Edit manifest hash to zeros | `manifest_hash_match=False` |
+| Corrupt disk, forge manifest to new disk hash | still fails `in_memory_hash_match` |
+| Corrupt disk, keep original manifest hash | fails (disk ≠ host) |
+| Id count ≠ shape[0] | `ValueError` on read |
+
+Note (non-blocking): a sidecar manifest can re-label the **same raw bytes** under a different shape with the same byte count if the caller’s host is also re-shaped to match. That is host collusion / trust of manifest metadata, not a parity bypass of vector bits. Manifest is not a full authenticated package over shape+ids+payload; parity is three-way vs a known host.
+
+### 5. Doc / commit honesty — **CLEAN**
+
+Disclosed: FP16-native block format, byte-lane encoding, 4× cell overhead, padding to 512×512, `EXPERIMENTAL=True` / not production retrieval, floor-tier smoke, deferred live engine integration. README lists `pool_shard.py` → production caller **none**. No overclaim as native float32 cells or live retrieval wiring.
+
+### 6. Regression — **GREEN**
+
+```
+python -m unittest test_pool_shard_parity -v   → Ran 4 tests OK
+python test_computational_storage_poc.py -v    → Ran 5 tests OK
+```
+
+---
+
+## Defect table
+
+| Sev | file:line | Issue | Fix |
+|---|---|---|---|
+| **low** | `pool_shard.py:268` | `np.array_equal` is IEEE value equality. NaN payloads are **byte-identical** after round-trip (SHA matches) but `verify` raises because `NaN != NaN`. False negative, not false positive. | Prefer bit equality: `vectors.tobytes() == disk.tobytes()` or `(view uint32 equal)` / `equal_nan=True` **plus** byte/SHA check. Only matters if NaN embeddings are in scope. |
+| **info** | `pool_shard.py:138–179` | Chain must be **linear sequential** (`expected_next` from block index). Arbitrary non-linear graphs rejected. Still a real `read_block` walk; not theater. | No fix required; document “linear chain only” if graph generality is ever claimed. |
+| **info** | manifest sidecar | Shape/ids not cryptographically bound to payload; same bytes can be re-shaped if host agrees. | Out of rung-17 scope; add manifest HMAC later if untrusted disk is a threat model. |
+
+None of these disprove “one precomputed pool shard readable via `block_graph` with host parity.”
+
+---
+
+## What failed to disprove
+
+| Exit claim | Evidence |
+|---|---|
+| Precomputed pool shard on disk | `write_pool_shard` → payload + `.manifest.json` |
+| Readable via `block_graph.py` | `read_block` per block, `next_offset` followed |
+| Host parity | SHA triple-match + ids + `array_equal`; independent random multi-block RT |
+| Not array-reload theater | No npz/npy/mmap of vectors; payload is FP16 block graph |
+| Bit-exact despite FP16 | 0..255 exact; 100k random float32 bytes survive |
+
+---
+
+## Score lines (copy for PR)
+
+```
+BHS_TIER_B: 100
+BHS_TIER_B_AGENT: grok-4.5 (independent Tier B; implementer = codex/Fable)
+BHS_TIER_B_SEVERITY: none blocking; low: NaN false-negative in verify via array_equal
+BHS_OFFICIAL: min(BHS_SELF_DRAFT, 100)
+RESULT: PASS
+```
+
+**One-liner:** Genuine parity-checked block-graph pool-shard read — not a format bypass; bit-exact claim holds for the byte-lane encoding (including non-FP16 float32 values and multi-block shards).

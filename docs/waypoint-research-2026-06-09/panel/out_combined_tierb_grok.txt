@@ -1,0 +1,137 @@
+I'll run a Tier B adversarial review against the committed `origin/main..HEAD` diff—recomputing NDCG from manifests and trying to disprove BHS-100 rather than trusting the commit prose.No production `.py` changes. Next I'll recompute NDCG from the committed manifests and cross-check the docs.Recomputing NDCG and verdicts directly from the committed manifests.H4 trajectory[0] matched for both compounds — digging into final NDCG and full H5 structure.H4 finals match after rounding. Recomputing H5/H2 from row data and verifying ROADMAP PR claims.Checking gitignore patterns, swap-doc↔manifest parity, and OPEN-step greps.Completing the score from the recomputes.# Tier B — Final Combined Review  
+**Branch:** `lattice/phase2-continue-20260713` (3 commits ahead of `origin/main`)  
+**Mode:** adversarial / try-to-disprove  
+**Diff scope:** docs + evidence only — **confirmed:** `git diff --name-only origin/main..HEAD` has **zero** `.py` files
+
+---
+
+## Verdict
+
+| Field | Value |
+|--------|--------|
+| **BHS_TIER_B** | **97** |
+| **Result** | **PASS-WITH-FIXES** |
+| **BHS_OFFICIAL path** | Not 100 until the hygiene prose/log residue is amended |
+
+**Bottom line:** Load-bearing NDCG, gates, CD closures, ROADMAP truth, and L1 fixes all recompute clean; one residual H2 hygiene overclaim (NFCorpus `campaign*.log` still tracked while commit body claims “manifests only / SciFact-consistent”) keeps this under 100 — amend-only, no re-run.
+
+---
+
+## Attack results (recomputed)
+
+### 1. L2 — Verdict numbers (PASS)
+
+**H5 SciFact** (`post-bank-headtohead-manifest-2026-06.json`):
+
+| Cond | Recomputed mean | Doc / CHANGELOG |
+|------|----------------:|-----------------|
+| C5 | `0.13113546862429465` | 0.131135 |
+| C5s | `0.13113546862429465` | 0.131135 |
+| C5r | `0.18086182834701145` | 0.180862 |
+
+- **C5 == C5s:** bit-identical per-seed finals  
+- **C5 > C5s:** False · **C5 > C5r:** False · **LIVING BANK WINS:** **False**  
+- Matches docs, Disposition table, CHANGELOG
+
+**H5 NFCorpus:**
+
+| Cond | Recomputed mean | Doc / CHANGELOG |
+|------|----------------:|-----------------|
+| C5 | `0.04638866344039569` | 0.046389 |
+| C5s | `0.04638866344039569` | 0.046389 |
+| C5r | `0.04581675856141487` | 0.045817 |
+
+- **C5 == C5s:** bit-identical · gate dual-fail · **LIVING BANK WINS:** **False**  
+- Living edges one-shot only (True) — as documented
+
+**H4** (trajectory final NDCG@10, seed 42):
+
+| `compound_cycles` | Exact | Doc |
+|-------------------|------:|-----|
+| False | `0.2362972795224009` | **0.236297** |
+| True | `0.005257747946428813` | **0.005258** |
+
+Ratio ≈ 44.9× (~45× claim holds). Files ~473 KB each (**&lt;1 MB**).
+
+**H2 swap main matrix:** doc tables match `main_summary` to 6 decimals on both datasets.  
+**H1 regression gate:** C3a baseline == C0/C2/C2O/C4a per seed (SciFact seed-42 all `0.793459…`; NFCorpus seed-42 all `0.555004…`).  
+**Contamination nuance:** old NFCorpus C3a baselines **differed** from C0; SciFact C3a was **already** equal pre-re-run. Confirmed.  
+**C0/C2/C2O finals:** bit-identical old→new both datasets. C4a variance as disclosed.
+
+### 2. L3 — Docs-truth ROADMAP (PASS)
+
+| Step | Status claim | Check |
+|------|--------------|--------|
+| 9–12 | DONE | Cited PRs (`#254`, `#260`, `#277`, `#284–#289`, `#280`, etc.) present on `origin/main` |
+| 13 | PARTIAL | Post-bank prune/re-anneal PRs present; isomer/convergence→DAG-prune **not** implemented (grep empty) |
+| 14 | DONE apparatus + H5 fail | Harness/H3/H4/H5 driver PRs on main; verdict honest negative |
+| 15 | OPEN | No PyG/DGL; only GNN forward-ref in `evidence_dag.py` |
+| 16 | OPEN (pieces exist) | `adapter_router` / `QuantizationPromotionGate` exist; not one closed lattice steering plane — framing honest |
+| 17 | OPEN | `block_graph` is comp-storage LLM graph, not pool-shard parity |
+
+No DONE without merged PR; no OPEN that is fully shipped.
+
+### 3. L1 fixes stuck (PASS)
+
+- Swap docs: **no** “C4a unchanged” / “from history” / supersession banner  
+- `CD-H1-01` / `CD-A2-01`: **CLOSED** with NFCorpus-was-contamination + SciFact-already-clean  
+- `config.swap_model == "all-mpnet-base-v2"`, `arena == query_encoder_swap` on both swap manifests
+
+### 4. Block flag + hygiene (PASS with one residue)
+
+| Check | Result |
+|--------|--------|
+| `scripts/check_block_flag.py` | **CLEAR**, **0** open carried-debt rows |
+| NFCorpus per-run JSONs | **0 tracked** (untracked); manifests retain full `main_rows` / budget rows |
+| H5 evidence | Manifests only tracked (~11 KB); per-run under `experiment_runs/` gitignore |
+| H4 | Two JSONs tracked, &lt;1 MB |
+| Production code | No root `.py` changes |
+
+**Residue:** under `swap-nfcorpus/` still tracked:
+
+- `campaign.log` (~191 KB)  
+- `campaign-completion.log` (~115 KB)  
+
+Unchanged since `#275` (not part of the 3-commit delta). H2 body claims *“Only the 14.5 KB summary manifests stay tracked”* and *“makes NFCorpus consistent with SciFact tracking policy”* — **false** while these logs remain (SciFact tracks manifest only).
+
+### 5. BHS bodies / overclaims
+
+| Claim class | Assessment |
+|-------------|------------|
+| H5/H4/H2 NDCG & gates | Accurate (recomputed) |
+| Living bank non-promoted | Accurate |
+| No production code | Accurate |
+| Floor-tier smoke | Disclosed |
+| H4 single-seed L5 | Disclosed |
+| H2 hygiene completeness | **Overclaim** (logs) |
+| L3 deferred stale CHANGELOG bullets (turn 3171 / SHIM-on-hold) | Disclosed in `DEFERRED_SCOPE` — OK |
+
+---
+
+## Defect table
+
+| Sev | Commit | Where | Issue | Fix (amend-only) |
+|-----|--------|-------|--------|------------------|
+| **LOW** (L13-light) | `2b0fa044` | H2 commit body hygiene paragraph; tracked tree `swap-nfcorpus/campaign*.log` | Prose says only manifests tracked / SciFact-consistent policy; two leftover #275 logs (~307 KB) remain tracked | **Preferred:** `git rm --cached` both logs + amend H2 message to match. **Alt:** amend prose only: “manifests + residual #275 campaign logs remain; per-run JSONs untracked.” |
+
+No L2 number defects. No L1 regression. No L3 DONE/OPEN inversion. No production-path stubs in this slice.
+
+---
+
+## Score rationale
+
+| Band | Why |
+|------|-----|
+| Not 100 | Real prose/artifact hygiene gap still present |
+| Not ≤95 | All preregistered numerical/gates/CD/ROADMAP attacks failed to break the slice |
+| **97** | One low-severity residual after L1 fixes stuck; amend closes it without re-runs |
+
+---
+
+## Required before merge (`BHS_OFFICIAL=100`)
+
+1. Amend `2b0fa044` (or a tiny follow-up amend on the tip that rewrites that H2 claim): untrack the two NFCorpus campaign logs **or** correct the H2 brutal-honesty sentence.  
+2. Re-run `scripts/check_block_flag.py` (should still CLEAR).  
+3. No campaign re-run needed; no ROADMAP/NDCG edits needed.
+
+**BHS_TIER_B: 97 · PASS-WITH-FIXES**

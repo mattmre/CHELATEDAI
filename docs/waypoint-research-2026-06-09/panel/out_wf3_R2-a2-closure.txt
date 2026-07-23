@@ -1,0 +1,84 @@
+I'll locate the gated real-model tests, A4 campaign driver, and the CD-A2-01 debt row so we can give exact PowerShell closure commands and artifact paths.## CD-A2-01 recon (exact closure)
+
+### Verdict
+
+| Question | Answer |
+|---|---|
+| Is H2 PR-A4 swap re-run enough alone? | **Yes for CD-A2-01.** Debt closes on the **real swap path via `run_drift_recovery_swap_campaign.py`** (loads `QueryEncoderDrift` **without** injected `swap_backend` → `_backend` → `create_embedding_backend("all-mpnet-base-v2")`). |
+| Must gated unittest also run? | **No for debt closure.** Optional belt-and-suspenders. Module: **`test_query_encoder_drift.py`**, class **`TestQueryEncoderDriftRealModelSmoke`**, method **`test_real_swap_model_path_produces_store_dim_unit_vectors`**. |
+| Does campaign read `CHELATED_RUN_REAL_MODEL_TESTS`? | **No.** Only the opt-in unittest does. Campaign always hits the real path. Env var in the debt row is legacy wording from the #271 gate. |
+
+H2 (SciFact + NFCorpus) also closes **CD-H1-01**; one SciFact PR-A4 run alone is enough for **CD-A2-01** if the manifest/report prove real `all-mpnet-base-v2` swap.
+
+---
+
+### (1) Exact PowerShell — closure path (H2 / PR-A4)
+
+```powershell
+cd D:\GITHUB\CHELATEDAI\.claude\worktrees\relaxed-wozniak-271e04
+
+$env:HF_HUB_OFFLINE = "1"
+$env:TRANSFORMERS_OFFLINE = "1"
+$env:HF_DATASETS_OFFLINE = "1"
+$env:CHELATED_RUN_REAL_MODEL_TESTS = "1"   # optional for campaign; required only for gated unittest below
+
+# SciFact (default) — primary CD-A2-01 artifact path
+python run_drift_recovery_swap_campaign.py `
+  --output-dir experiment_runs/drift-recovery/swap `
+  --report-md docs/drift-recovery-swap-results-2026-06.md `
+  --task SciFact `
+  --model sentence-transformers/all-MiniLM-L6-v2 `
+  --swap-model all-mpnet-base-v2
+
+# NFCorpus — needed for H2/CD-H1-01; also re-exercises the same swap path
+python run_drift_recovery_swap_campaign.py `
+  --output-dir experiment_runs/drift-recovery/swap-nfcorpus `
+  --report-md docs/drift-recovery-swap-nfcorpus-results-2026-06.md `
+  --task NFCorpus `
+  --model sentence-transformers/all-MiniLM-L6-v2 `
+  --swap-model all-mpnet-base-v2
+```
+
+**Optional gated unittest** (not required to close CD-A2-01; same production path, unit smoke only):
+
+```powershell
+$env:CHELATED_RUN_REAL_MODEL_TESTS = "1"
+$env:HF_HUB_OFFLINE = "1"
+$env:TRANSFORMERS_OFFLINE = "1"
+python -m unittest test_query_encoder_drift.TestQueryEncoderDriftRealModelSmoke -v
+```
+
+**Minimal CD-A2-01-only** (if you are not doing full H2):
+
+```powershell
+cd D:\GITHUB\CHELATEDAI\.claude\worktrees\relaxed-wozniak-271e04
+$env:HF_HUB_OFFLINE = "1"; $env:TRANSFORMERS_OFFLINE = "1"; $env:HF_DATASETS_OFFLINE = "1"
+python run_drift_recovery_swap_campaign.py --swap-model all-mpnet-base-v2
+```
+
+---
+
+### (2) Artifact to record (cite in debt row)
+
+| Role | Path |
+|---|---|
+| **Primary (must cite)** | `experiment_runs/drift-recovery/swap/swap-campaign-manifest-2026-06.json` |
+| **Auto report** | `docs/drift-recovery-swap-results-2026-06.md` |
+| **Per-run JSON** | `experiment_runs/drift-recovery/swap/main/*.json` (must show `drift: query_encoder_swap`, real models) |
+| **H2 second task** | `experiment_runs/drift-recovery/swap-nfcorpus/swap-campaign-manifest-2026-06.json` + `docs/drift-recovery-swap-nfcorpus-results-2026-06.md` |
+| **Optional unit evidence** | unittest stdout for `TestQueryEncoderDriftRealModelSmoke` (no committed artifact by design) |
+
+Manifest must show `config.swap_model == "all-mpnet-base-v2"`, `arena == "query_encoder_swap"`, `record_type == "drift_recovery_swap_campaign"`.
+
+---
+
+### (3) Exact `docs/next-session.md` Status cell replacement
+
+Replace the CD-A2-01 **Status** cell only (after campaigns + manifests are committed):
+
+```text
+| CD-A2-01 | The real swap-backend resolution path (`query_encoder_drift.QueryEncoderDrift._backend` → `embedding_backend.create_embedding_backend(swap_model_name)`, loading the real `all-mpnet-base-v2`) is no longer exercised by any default-CI test after the real-model smoke was made opt-in (gated on `CHELATED_RUN_REAL_MODEL_TESTS=1`) to stop a ~17-min HF-connection CI hang. It is covered only by mocked unit tests and the non-gating PR-A4 real-model campaign. L5 (untested production path in default CI). | PR for real-model-smoke opt-in (2026-06-14) | 1 cycle | NO — logic covered by stubs; real path deferred to PR-A4 campaign | **CLOSED** — PR-A4 H2 re-run exercised real `all-mpnet-base-v2` swap via `run_drift_recovery_swap_campaign.py` → `QueryEncoderDrift._backend` → `create_embedding_backend`; artifacts: `experiment_runs/drift-recovery/swap/swap-campaign-manifest-2026-06.json`, `docs/drift-recovery-swap-results-2026-06.md` (and NFCorpus twin if H2). Default CI still skips `test_query_encoder_drift.TestQueryEncoderDriftRealModelSmoke` unless `CHELATED_RUN_REAL_MODEL_TESTS=1` — that residual is intentional (non-gating). |
+```
+
+If you also ran the gated smoke, append to Status:  
+`+ opt-in smoke: `python -m unittest test_query_encoder_drift.TestQueryEncoderDriftRealModelSmoke -v` (pass).`

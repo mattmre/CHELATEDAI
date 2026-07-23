@@ -1,0 +1,60 @@
+I'll adversarially review the objA validation artifact: read the report and sibling JSON, recompute block-LOO margin vs gap-only, and check whether the verdict matches the numbers.Recomputing block-LOO from frozen JSON and inspecting the LOO implementation for circularity.PowerShell doesn't support heredocs; writing a recompute script instead.Removing the temporary recompute script, then delivering the adversarial verdict.## Adversarial review: objA-beats-gap
+
+**Verdict: PASS**
+
+### Independent recompute (from `objA_validation.json` regimes)
+
+Frozen feature JSONs match regimes at max abs diff **0** for `oracle_margin_mean`, `oracle_gap`, and `R` on all six cells.
+
+| Scheme | Predictor | Recomputed Spearman | Recomputed MAE | Δ vs artifact |
+|---|---|---:|---:|---|
+| dataset | `oracle_margin_mean` | **0.8857** | **0.0252** | ~0 |
+| dataset | `oracle_gap_ols` | **−0.0857** | **0.0773** | ~0 |
+| dataset | `mean_R` | **−0.7171** | **0.0853** | ~0 |
+| encoder_family | `oracle_margin_mean` | **0.8286** | **0.0324** | ~0 |
+| encoder_family | `oracle_gap_ols` | **0.4286** | **0.0696** | ~0 |
+| encoder_family | `mean_R` | **−0.2928** | **0.0807** | ~0 |
+
+Fold predictions match JSON rows (max abs ~1e-15). All **8** prereg AND-bar comparisons pass. Partial Spearman recomputed **0.7897** (matches).
+
+### Does margin still beat gap after FiQA, or did n=4 +1.0 collapse?
+
+**It still beats gap under the locked block-LOO; it did not collapse to gap-level.**
+
+- **n=4 dataset-block LOO** (SciFact+NFCorpus only): margin Spearman **1.0**, MAE **0.104**; gap Spearman **−1.0**, MAE **0.966**.
+- **n=6 with FiQA**: margin stays strong (**0.886 / 0.025** dataset; **0.829 / 0.032** encoder); gap remains worse on both metrics.
+- Descriptive full-sample Spearman: margin **0.886** vs gap **0.657** (delta **0.229**); partial (margin ⊥ gap ranks) **0.790**.
+- **FiQA whole-dataset holdout (n=2 cells):** margin MAE **0.0265** &lt; gap **0.0321**, but Spearman **tied at 1.0** → `margin_beats_gap_on_both_within_fiqa: false` is correct. One FiQA cell even has worse margin error (bge: 0.0435 vs gap 0.0030); aggregate FiQA MAE still favors margin because of the mpnet cell.
+
+So the old n=4 perfect ordering is descriptive history; after FiQA the primary block-LOO still strictly beats gap, and the artifact does **not** claim FiQA-only dual-metric win.
+
+### Is block-LOO circular?
+
+**No.** Implementation in `research/drift_recovery/estimator/objA.py` (`block_loo_analysis`, ~190–278):
+
+- Holds out whole `dataset` or whole `encoder_family`.
+- Fits OLS / mean-R only on `train_mask = ~held_mask`.
+- Predicts held-out cells from held-out features only.
+- Recompute: train/test name **overlap empty** on every fold; JSON `training_regimes` never includes the held-out regime.
+
+Not circular: features are oracle-side signals by design (same pack as `R`), but coefficients are not fit on the held-out cells. Full-sample partial Spearman is labeled descriptive and is not the success bar (`prereg_objA.md` L42–44).
+
+### Does the label match the numbers?
+
+| Claim | Match? |
+|---|---|
+| `success_bar_met: true` (8/8 strict beats) | Yes |
+| `verdict: PROMISING-BUT-UNDERPOWERED` (prereg: n=6 + bar met → never “validated”) | Yes |
+| `validated_positive: false` | Yes |
+| Not POSITIVE / not NEGATIVE / not UNDERPOWERED-NEGATIVE | Yes |
+| FiQA dual-metric fail disclosed | Yes (`objA_validation.md` L50–53; JSON L331; `objA_REPORT.md` L17) |
+
+Label is the prereg middle ground: bar met, underpowered by design (3 dataset / 2 encoder holdout units).
+
+### Defects
+
+**None material.** Numbers, comparisons, circularity hygiene, and verdict label all hold under recompute.
+
+### Bottom line
+
+The artifact is honest: with FiQA in the six-pair block-LOO, `oracle_margin_mean` still strictly beats the oracle-gap-only null on Spearman and MAE under both schemes, without fold circularity, and correctly refuses a validated-positive label while flagging the two-cell FiQA Spearman tie.

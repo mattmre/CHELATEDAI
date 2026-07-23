@@ -1,0 +1,147 @@
+I'll run a Tier B adversarial review on `5e95d97b`: recompute H1 baseline parity from both manifests, match doc numbers to `main_summary`, and verify CD-A2-01 / hygiene / block-flag claims from evidence only.Next I'll recompute baseline parity from both manifests and cross-check the docs against `main_summary`.Parity and summary structure look good so far; next I'll recompute per-seed baselines and verify the regenerated docs against the manifests.Hygiene claim is the next attack surface: gitignore coverage for untracked NFCorpus files and SciFact consistency.Verifying budget-table fields, the campaign driver's real swap path, and whether the "unchanged" / "from history" claims hold.# Tier B adversarial review — `5e95d97b`
+
+**Branch:** `lattice/phase2-continue-20260713`  
+**Scope:** docs + evidence only (27 files; no production code)  
+**BHS_TIER_B: 96**  
+**Verdict: PASS-WITH-FIXES**
+
+I recomputed baseline parity and doc↔manifest numbers from the committed manifests myself. Core debt closures hold. Two prose overclaims in the closure text fail strict honesty and block **100**.
+
+---
+
+## Attack results
+
+### 1. CD-H1-01 regression gate — **PASS**
+
+Recomputed from `main_rows` (`baseline_ndcg` per condition × seed). Exact equality (not approx):
+
+| Dataset | Seed | C0 = C2 = C2O = C3a = C4a baseline |
+|---------|------|-------------------------------------|
+| SciFact | 42 | **0.793459393536306** |
+| SciFact | 7 | **0.830505944155133** |
+| SciFact | 1337 | **0.832246654008101** |
+| NFCorpus | 42 | **0.555004421961640** |
+| NFCorpus | 7 | **0.644304706947434** |
+| NFCorpus | 1337 | **0.593617148224924** |
+
+**OVERALL PARITY: PASS** on both datasets.
+
+Pre/post check (parent vs `5e95d97b`):
+- **NFCorpus** old C3a baselines **differed** from C0/C2/C2O/C4a (contamination still present) → now match. This is the real H1 evidence.
+- **SciFact** old C3a baselines already matched (parity was already clean before this re-run). Re-run still regenerates finals/budget/docs; gate still holds on fresh artifacts.
+
+Supersession banners removed from both result docs — confirmed in diff.
+
+---
+
+### 2. Numbers vs docs — **PASS**
+
+Main Matrix cells vs `main_summary` (6 d.p. as printed): **exact match** for both docs.
+
+Budget tables + best-budget + three-seed confirm vs `budget_rows` / `budget_confirm_summary` / `best_budget`: **exact match**.
+
+| Doc | Condition | baseline | final | std | recovery | applied |
+|-----|-----------|----------|-------|-----|----------|---------|
+| SciFact | C3a | 0.818737 | 0.160864 | 0.003003 | 0/3 | 3/3 |
+| NFCorpus | C3a | 0.597642 | 0.052435 | 0.012268 | 0/3 | 3/3 |
+
+No hand-edited/stale matrix numbers found.
+
+---
+
+### 3. CD-A2-01 evidence — **PASS** (not smoke-only)
+
+SciFact manifest (cited evidence):
+
+| Field | Value |
+|-------|--------|
+| `config.swap_model` | `"all-mpnet-base-v2"` |
+| `arena` | `query_encoder_swap` |
+| `record_type` | `drift_recovery_swap_campaign` |
+| `config.device` | `cuda` |
+| `wall_clock_seconds` | ~2040 |
+
+NFCorpus manifest: same `swap_model` / `arena` / `record_type`; wall ~4366s.
+
+Production wiring (unchanged this commit, but this is what the campaign artifact implies):  
+`run_drift_recovery_swap_campaign.py` → `run_drift_recovery_experiment.py` → `QueryEncoderDrift(..., swap_model_name=config.swap_model)` → `_backend()` → `create_embedding_backend(swap_model_name)`.
+
+Closure is **not** smoke-only: campaign artifact is primary; opt-in smoke is additive. Residual L5 (default CI still skips real HF load) is disclosed as intentional — matches the debt’s original non-blocking framing.
+
+---
+
+### 4. Hygiene honesty — **PASS** (with one wording nits below)
+
+| Check | Result |
+|-------|--------|
+| (a) Manifests still hold per-condition/per-seed rows | **Yes** — 15 `main_rows` each + summaries/budget; docs do not need per-run JSONs |
+| (b) Untracked NFCorpus files gitignored | **Yes** — `.gitignore:79` `experiment_runs/`; `git check-ignore` hits both swap trees |
+| (c) SciFact per-run never tracked | **Yes** — `git ls-files` under `swap/` is only the manifest; no `swap/main/` history |
+| Count of deletions | **22** `D` paths under `swap-nfcorpus/{main,budget,budget-confirm}/` |
+
+Local disk still has regenerated per-run files (15 each under `main/`); they stay out of git via ignore. Good.
+
+---
+
+### 5. Block flag — **PASS**
+
+```
+scripts/check_block_flag.py
+Block flag state: CLEAR
+Carried Debt row count: 0
+RESULT: PASS
+```
+
+CD-H1-01 and CD-A2-01 are both `**CLOSED**`. No OPEN blocking row closed without evidence (both were **Blocking: NO**).
+
+---
+
+### 6. Brutal Honesty section — **partial fail (prose)**
+
+Honest / supported:
+- Docs+evidence only; no new L1/L4/L8 production stubs
+- 22 NFCorpus per-run untrack + SciFact policy consistency
+- L5 opt-in real-model smoke residual
+- Floor-tier smoke labeling
+
+**Overclaims (must fix for 100):**
+
+1. **“C0/C2/C2O/C4a unchanged as expected”** (commit body + CD-H1-01 CLOSED note) is **false for C4a**.  
+   C0/C2/C2O finals are bit-identical. **C4a finals changed** on re-run, e.g.:
+   - SciFact seed-42 C4a: `0.235859 → 0.236297`
+   - NFCorpus C4a mean: `0.054347 → 0.052922`  
+   H1 contamination fix is about **baselines**; C4a final drift is re-run noise, but “unchanged” is not true.
+
+2. **“Removes 25 MB … from history”** is false. `git rm` drops them from the **tree going forward**; blobs remain in prior commits (e.g. `#275`). Say “from the tracked tree,” not “history.”
+
+3. **Minor:** “NFCorpus ~0.048 vs 0.0535” undersells the actual **mean** final `0.052435` (per-seed ≈0.040 / 0.048 / 0.069). Prefer mean or explicit per-seed list.
+
+---
+
+## Defect table
+
+| Sev | Where | Defect | Fix |
+|-----|-------|--------|-----|
+| **M** | `docs/next-session.md` CD-H1-01 CLOSED + commit message | Claims C0/C2/C2O/**C4a** values unchanged; C4a finals moved | Reword: C0/C2/C2O bit-identical; C4a small re-run variance; only C3a **baselines** were the H1 contamination signal (clear on NFCorpus) |
+| **L** | Commit Brutal Honesty hygiene line | “from history” overclaim | “untracked from the tree / no longer force-tracked” |
+| **L** | CD-H1-01 CLOSED prose | `~0.048` vs mean `0.0524` | Use mean or seed list |
+
+No defects that falsify H1 parity, doc↔manifest match, CD-A2 campaign evidence, hygiene ignore policy, or block-flag CLEAR.
+
+---
+
+## What would make this 100
+
+Amend commit message / `docs/next-session.md` CD-H1-01 CLOSED text only:
+
+1. Drop “C4a unchanged”; state C0/C2/C2O identical, C4a small re-run delta.  
+2. Replace “from history” with “from the tracked tree.”  
+3. Optionally fix NFCorpus C3a final phrasing to mean `0.052435` (or per-seed).
+
+No need to re-run campaigns or restore the 22 JSONs for the debt closures.
+
+---
+
+## Bottom line
+
+**BHS_TIER_B: 96 · PASS-WITH-FIXES** — H1 baseline parity and doc/manifest numbers check out; CD-A2 is real campaign evidence, not smoke theater; hygiene and CLEAR block flag hold — fix the C4a-“unchanged” and “from history” overclaims before claiming BHS 100.

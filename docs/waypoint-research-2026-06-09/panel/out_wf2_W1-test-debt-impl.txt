@@ -1,0 +1,35 @@
+I'll read the preflight and sparse-local modules first so the tests match the real APIs, then add the unittest file and run it offline.Writing the test file against the real APIs, then running the unittest suite.Quadratic residual is non-zero but below the old absolute tolerance; tightening the check to a noise-relative floor that still fails for true affine maps.## Deliverable
+
+Added `research/drift_recovery/tests/test_sparse_local_preflight.py` (plain `unittest`, offline, CPU-only, small cells: 8 clusters × 12 docs, dim 8).
+
+| Area | What it checks |
+|------|----------------|
+| **Warp properties** | Harmed fraction = `s`; clean clusters identity; within-cluster map non-affine (LS affine residual) + non-radial (max \|cos\| vs centroid radius) for `quadratic` and `soft_fold` |
+| **No clean-ID leakage** | `fit_local_ridges.training_audit["clean_cluster_ids_accepted"] is False`; `run_preflight_cell` detector `clean_ids_used_by_fit` is False and flips True when audits are monkeypatched |
+| **Sanity ladder** | Best global ridge leaves residual; oracle-ID dense local NDCG strictly higher |
+| **Hyperparameter hygiene** | `selection_source == "anchor_dev_mse_only"`; eval ∩ (fit ∪ dev) = ∅ |
+| **Audit fields** | `selected_lambda`, `selected_rank` (None for dense), `selected_lambdas_per_cluster` |
+
+One test adjustment (not production): affine residual floor set to `1e-8` so small-γ quadratic clusters still pass while pure affine stays ~machine noise.
+
+No bugs found in `preflight.py`.
+
+## Full unittest output
+
+```
+$ env:HF_HUB_OFFLINE=1; python -m unittest research.drift_recovery.tests.test_sparse_local_preflight -v
+
+test_training_audit_hyperparameter_fields (research.drift_recovery.tests.test_sparse_local_preflight.TestAuditFields.test_training_audit_hyperparameter_fields) ... ok
+test_selection_source_and_eval_disjoint (research.drift_recovery.tests.test_sparse_local_preflight.TestHyperparameterHygiene.test_selection_source_and_eval_disjoint) ... ok
+test_fit_local_ridges_rejects_clean_ids (research.drift_recovery.tests.test_sparse_local_preflight.TestNoCleanIdLeakage.test_fit_local_ridges_rejects_clean_ids) ... ok
+test_run_preflight_detector_clean_ids_from_audits (research.drift_recovery.tests.test_sparse_local_preflight.TestNoCleanIdLeakage.test_run_preflight_detector_clean_ids_from_audits) ... ok
+test_oracle_local_beats_global_on_residual (research.drift_recovery.tests.test_sparse_local_preflight.TestSanityLadder.test_oracle_local_beats_global_on_residual)
+Diagnostic upper bound: dense local with true clean cluster IDs ... ok
+test_quadratic_warp_properties (research.drift_recovery.tests.test_sparse_local_preflight.TestWarpProperties.test_quadratic_warp_properties) ... ok
+test_soft_fold_warp_properties (research.drift_recovery.tests.test_sparse_local_preflight.TestWarpProperties.test_soft_fold_warp_properties) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.406s
+
+OK
+```

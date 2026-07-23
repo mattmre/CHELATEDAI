@@ -1,0 +1,31 @@
+I'll verify Phase II delivery against `ROADMAP_EXECUTION.md`, `CHANGELOG.md`, and git history, then draft chair-ready status edits with exact old→new text.ROADMAP table lacks a status column; I'll verify merged PRs and any existing draft, then propose exact old→new edits.Writing the chair-ready draft with git-verified PR mapping, exact ROADMAP old→new edits, and an honest CHANGELOG note.Chair-ready draft is at:
+
+`docs/waypoint-research-2026-06-09/panel/l3-docs-truth-draft.md`
+
+### Verified map (Phase II 9–17)
+
+| Step | Status | Evidence |
+|------|--------|----------|
+| **9** Model-Scope shadow | **DONE** (fixture) | #229 stack + #254; `persist_records`/`load_records` + `max_total_interventions` tests |
+| **10** SHIM DoD | **DONE** | #284/#285/#286 + DoD honesty **#289** (diagnostics observation-only) |
+| **11** Annealing | **DONE** (split) | #260 controller + #280 schedule (not one monopoly module) |
+| **12** Evidence DAG | **DONE** | #277 |
+| **13** Disintegration | **PARTIAL** | #279/#281–#283 post-bank prune/re-anneal; **not** `isomer_detector`/`convergence_monitor` → DAG prune |
+| **14** Concept-drift | **DONE apparatus** + **H5 negative** | #258–#276, H3 #287/#288, H4 #291, H5 driver #290; **this-slice VERDICT** |
+| **15** GNN | **OPEN** | No PyG/DGL code |
+| **16** Quant-aware routing plane | **OPEN** | Pieces exist; not integrated as `adapter_router` + quant gate + retrieval fitness |
+| **17** Disk pool | **OPEN** | No pool-shard/`block_graph` parity path |
+
+### H5 verdict (this slice, from frozen docs)
+
+- SciFact: C5==C5s **0.131135**; C5r **0.180862** → **LIVING BANK WINS = False**
+- NFCorpus: C5==C5s **0.046389**; C5r **0.045817** → gate still **False**
+- H4 single-seed: compound **0.005258** vs one-shot **0.236297** (~45× collapse)
+
+### Important caveats in the draft
+
+1. ROADMAP has **no Status column today** — draft proposes exact old→new full-table replacement with Status.
+2. H5 result docs are on the worktree (staged); **`origin/main` tip is still #291** — draft flags merge before mainline CHANGELOG claims.
+3. Step 13 must stay partial unless chair re-scopes exit criteria.
+
+CHANGELOG paste block and optional “What we are not doing” fix are in §§2–3 of that file for chair apply.

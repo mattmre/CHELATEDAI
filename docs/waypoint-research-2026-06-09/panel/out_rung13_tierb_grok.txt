@@ -1,0 +1,131 @@
+I'll adversarially review commit `4e2927c1` as Tier B: read the disintegration loop, evidence-DAG prune/ledger path, real detectors, and tests, then try to break the fail-closed and detector-mapping claims.Reading the full implementation and the real detector APIs next.Running tests and adversarial probes against the fail-closed and transaction claims.Checking the mutating-scorer edge case and whether `prune_edges` snapshots the edge list:# Tier B — Rung 13 disintegration loop (`4e2927c1`)
+
+**Agent:** grok-4.5 (fresh adversarial)  
+**Implementer:** codex/Fable (different)  
+**Branch:** `lattice/rung13-disintegration-20260714` @ `4e2927c1`  
+**Smoke re-run:** `python -m unittest test_evidence_dag_disintegration test_evidence_dag` → **Ran 21 tests, OK**
+
+---
+
+## Verdict
+
+| Field | Value |
+|--------|--------|
+| **BHS_TIER_B** | **94** |
+| **Disposition** | **PASS-WITH-FIXES** |
+| **BHS_TIER_B_SEVERITY** | max open: **MEDIUM** (L5 fail-closed untested); no HIGH/CRITICAL binding break |
+
+**Bottom line:** This **is** a real detector-driven fail-closed prune/reanneal loop that binds to actual `IsomerDetector` / `ConvergenceMonitor` fields — not theater. It is **not** BHS 100: the load-bearing fail-closed path has **no dedicated unit test**, and `prune_edges` is not fully transactional against a **mutating** scorer (only against a **raising** one).
+
+---
+
+## Attack results
+
+### 1. Score real or faked? — **REAL (failed to disprove)**
+
+| Claim | Evidence |
+|--------|----------|
+| Isomer strength ∈ [0,1], high = worse difference | `IsomerDetector.compute_isomer_strength` = `1 - Jaccard` (`isomer_detector.py:75–90`). Full set change → strength `1.0`; identical → `0.0`. |
+| `detect_*` emits per-query `strength` | `_detect_isomers` builds `{"query", "strength", ...}` (`isomer_detector.py:163–168`); both isomers and non_isomers carry strength. |
+| Mapping `fitness = 1 - strength` correct-signed | Collapse fixture: `q1` fitness `0.0`, `q2` fitness `1.0` via real `detect_sedimentation_isomers` → `detector_signals_from_outputs` → `score_edge_fitness`. Not constant/random. |
+| Convergence fields | `get_summary()` emits `epochs_without_improvement`, `patience`, `converged`, `min_epochs`, `total_epochs` (`convergence_monitor.py:128–145`). `_convergence_fitness` reads those exact keys (`evidence_dag_disintegration.py:49–60`). |
+
+Field names and signs match. Mapping is not hardcoded theater.
+
+**Note (not a mapping lie):** “Reanneal after recovery” in the convergence test is a **state flip to `converged=True`** with **no loss improvement** (flat `1.0` losses). Docs call that “stable early-stop plateau” — honest enough if you accept that semantics; the test name slightly overstates “recovers.”
+
+### 2. Fail-closed — **HOLDS in code; under-tested**
+
+Independent probes (not in the suite):
+
+| Input | Result |
+|--------|--------|
+| Empty isomer output `{}` | fitness stays 1.0 → **no prune** |
+| Unmatched isomer key (`ghost`) | `unmatched_query_keys` set; `isomer_query_fitness` empty → **no prune** |
+| Immature convergence (`total_epochs < min_epochs`) | fitness `1.0` / `insufficient_evidence` → **no prune** |
+| Wrong cluster id only | unmatched; `convergence_cluster_fitness` empty → **no prune** |
+| All-healthy isomer (identical pre/post) | suite `test_all_healthy_dag_is_noop` — genuine no-op |
+
+**Could not construct absent-evidence → prune** on the detector-scorer path. Core safety claim stands.
+
+**Gap:** suite never asserts empty / unmatched / immature → no prune (only healthy-signal no-op). That is L5 on a load-bearing claim.
+
+### 3. Transactional integrity — **raise-safe; mutate-unsafe**
+
+| Path | Result |
+|------|--------|
+| `prune_edges` scorer **raises** mid-loop | No edge mutation yet (`self._edges = retained` only after full score pass) → graph unchanged. |
+| `reanneal_edges` scorer **raises** while scoring | Scoring is pre-mutation (`scored_entries` loop); state unchanged (covered by test). |
+| `reanneal_edges` exception **during** mutation | `try/except` restores `_edges` + `_pruned_edge_ledger` (verified by forcing `validate_evidence_dag` to raise). |
+| Post-prune / post-reanneal `validate_evidence_dag` | Empty on happy path (suite + probes). |
+| Scorer **mutates** `dag._edges` during `prune_edges` | **Breaks.** Iteration is `for edge in self._edges` without a snapshot (`evidence_dag.py:170`). Clearing the list mid-score **drops unscored edges with no ledger entry**. |
+
+So the PR’s “scorer exception is transactional” claim is true; full “cannot leave DAG half-broken under any scorer” is not.
+
+### 4. Duplicate edge identity — **CORRECT**
+
+Occurrence ids `src|type|dst|0` / `|1`; both pruned and both reannealed; second reanneal is no-op; no double-restore after ledger clear. Suite + independent probe agree.
+
+### 5. Tests tautological? — **NO (real path exercised)**
+
+| Tests | Scorer |
+|--------|--------|
+| prune / healthy / dry-run / reanneal / artifact | Real `IsomerDetector.detect_sedimentation_isomers` + `detector_signals_from_outputs` + `score_edge_fitness` |
+| reanneal recovery | Real `ConvergenceMonitor.record_loss` / `get_summary` |
+| structural / reanneal-raise / duplicates | `lambda: 0.0` / `1.0` — appropriate for protection & transaction, **not** the only coverage |
+
+**9** disintegration tests (not 12); **21** with `test_evidence_dag`. Detector wiring is not untested.
+
+### 6. Private-attr coupling — **acceptable landmine**
+
+`reanneal_edges` writes `dag._edges` / `dag._pruned_edge_ledger`. Same-commit co-module extension; no public restore API. Fine for now; will break if DAG encapsulates later. Severity LOW.
+
+### 7. BHS body honesty — **mostly honest**
+
+- Real detector wiring: **true** (reverified).
+- Thresholds caller-supplied (L5 note): **true**.
+- Engine auto-prune deferred / `DEFERRED_SCOPE`: **true and well-scoped** (docs also say engine does not auto-invoke).
+- Floor-tier SMOKE labeled: **true**.
+- Self-draft 100: **slightly high** given missing fail-closed tests + mutate-scorer gap.
+
+---
+
+## Defect table
+
+| Sev | ID | file:line | Defect | Fix |
+|-----|-----|-----------|--------|-----|
+| **MEDIUM** | L5 | `test_evidence_dag_disintegration.py` (missing cases) | Load-bearing fail-closed (empty / unmatched / immature / bad cluster id → no prune) **works** but has **no unit test** | Add 3–4 tests that assert `pruned == []` and fitness `1.0` for those inputs |
+| **LOW** | L4-ish | `evidence_dag.py:170–222` | `prune_edges` iterates live `self._edges`; a mutating scorer can **drop unledgered edges** | Score over `list(self._edges)`; optionally refuse if `len(self._edges)` changes mid-pass |
+| **LOW** | honesty | `test_evidence_dag_disintegration.py:92–114` | “Recovery” is `converged=True` with flat loss, not improved loss | Rename or assert `state == "converged"` / document plateau semantics in the test |
+| **LOW** | API footgun | `evidence_dag_disintegration.py:81–90` | Same `1-strength` map for any `detect_*`; **chelation** high strength can mean “correction worked,” not “edge unfit” | Branch on `mode`, or document sedimentation-only and reject/warn on `chelation` |
+| **INFO** | coupling | `evidence_dag_disintegration.py:177–224` | Private ledger/edges mutation | Public `EvidenceDAG.restore_edges(...)` if API hardens |
+
+No HIGH/CRITICAL. No L1 scaffold. No L3 mock replacing production isomer/convergence modules on the main path.
+
+---
+
+## What I could not disprove
+
+- Fitness derives from real detector-emitted fields with correct signs for the sedimentation use case.
+- Missing / unmatched / immature signals cannot cause prune on the intended scorer path.
+- All-healthy DAG prune is a real no-op.
+- Raise-path transactionality for prune and reanneal.
+- Duplicate multi-edge prune/reanneal.
+- At least one end-to-end real detector → fitness → prune path in tests.
+- Engine auto-prune is honestly deferred.
+
+---
+
+## Official lines (for PR body)
+
+```
+BHS_TIER_B: 94
+BHS_TIER_B_AGENT: grok-4.5 (adversarial Tier B; implementer = codex/Fable — independent)
+BHS_TIER_B_SEVERITY: MEDIUM
+DISPOSITION: PASS-WITH-FIXES
+```
+
+**Not 100:** untested fail-closed regression surface + incomplete prune snapshot under mutating scorer.  
+**Not FAIL:** the loop binds; absent evidence does not prune; detector mapping is real.
+
+**Smallest concrete gap to clear for 100:** add fail-closed unit tests + snapshot edges in `prune_edges` before scoring.

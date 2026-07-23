@@ -1,0 +1,2130 @@
+OpenAI Codex v0.144.1
+--------
+workdir: D:\GITHUB\CHELATEDAI\.claude\worktrees\agent-build
+model: gpt-5.6-sol
+provider: openai
+approval: never
+sandbox: danger-full-access
+reasoning effort: low
+reasoning summaries: none
+session id: 019f4d86-dc49-72a2-bfa1-0991005b6fbe
+--------
+user
+# Codex offline-cache scope (enumerate only — build NOTHING)
+
+Determine what drift regimes can be built **fully offline** (HF_HUB_OFFLINE=1, HF_DATASETS_OFFLINE=1)
+toward a ≥8-regime target for the D3 recoverability-estimator validation. We currently have 4 regimes
+(SciFact/NFCorpus × MiniLM→mpnet / MiniLM→bge-large). Do NOT train, embed, or freeze anything. Just
+enumerate and report.
+
+## Tasks
+1. **Cached sentence-transformer / HF models.** List every model already present in the local HF cache
+   (`~/.cache/huggingface`, `HF_HOME`, and any repo-local cache) usable as an encoder — especially
+   candidates for NEW encoder-swap targets beyond mpnet/bge-large (e.g. gte, e5, bge-base/small,
+   gtr, minilm variants). Report exact model ids and that they load offline.
+2. **Cached datasets.** List which BEIR/MTEB retrieval datasets (corpus + queries + qrels) are cached
+   locally and loadable offline via the harness (`load_mteb_data` path) beyond SciFact/NFCorpus
+   (e.g. fiqa, arguana, scidocs, trec-covid, nfcorpus, scifact). Confirm each has qrels.
+3. **Achievable NEW regimes.** Cross datasets × encoder-swaps × (optionally) drift magnitudes ×
+   anchor-fractions and list the concrete NEW regimes buildable OFFLINE beyond the existing 4, enough
+   to reach ≥8 total. If ≥8 is NOT achievable offline, say so explicitly and report the max achievable
+   count + exactly which pieces (models/datasets) are missing from cache.
+4. **Feasibility verdict.** State whether the D3 ≥8-regime validation is FEASIBLE offline right now,
+   and if not, the smallest set of downloads that would unblock it (for the operator to fetch).
+
+## Deliverable
+Write `research/drift_recovery/out/estimator/offline_cache_scope.md` with: the model list, dataset
+list, the concrete achievable NEW-regime list toward ≥8, and the FEASIBLE / NOT-FEASIBLE verdict with
+the exact missing pieces if any. Be brutally honest — if only 4-6 regimes are achievable offline, say
+so; do NOT imply 8 are available if they are not. Build nothing.
+
+
+warning: Skill descriptions were shortened to fit the 2% skills context budget. Codex can still see every skill, but some descriptions are shorter. Disable unused skills or plugins to leave more room for the rest.
+hook: SessionStart
+hook: SessionStart Completed
+codex
+I’ll inspect the live cache and the harness without invoking any model/data-building paths. I’m using the repo’s CHELATEDAI memory only to honor its known offline/validator conventions; all cache conclusions will come from current filesystem checks.
+exec
+"C:\\Program Files\\WindowsApps\\Microsoft.PowerShell_7.6.3.0_x64__8wekyb3d8bbwe\\pwsh.exe" -Command "rg -n \"CHELATEDAI|drift-recovery|HF_HUB_OFFLINE|load_mteb_data\" C:\\Users\\mattm\\.codex\\memories\\MEMORY.md" in D:\GITHUB\CHELATEDAI\.claude\worktrees\agent-build
+ succeeded in 440ms:
+859:# Task Group: CHELATEDAI drift-recovery calibration and brutal-honesty process
+860:scope: CHELATEDAI drift-recovery diagnosis, severity calibration, knob-sweep execution, artifact durability, and strict PR-body handling; use when continuing drift-recovery experiments or preparing evidence-heavy PRs.
+861:applies_to: cwd=D:\GITHUB\CHELATEDAI; reuse_rule=safe for drift-recovery and repo-process guidance in CHELATEDAI, but experimental results and PR state should be rechecked from current artifacts
+867:- rollout_summaries/2026-06-11T15-10-39-PIMu-drift_recovery_pr6_pr8_calibration_knob_sweep_and_bhs_harden.md (cwd=D:\GITHUB\CHELATEDAI, rollout_path=C:\Users\mattm\.codex\sessions\2026\06\11\rollout-2026-06-11T11-10-39-019eb73c-3da3-7f70-9035-afd5a56ecb86.jsonl, updated_at=2026-06-12T14:48:16+00:00, thread_id=019eb73c-3da3-7f70-9035-afd5a56ecb86)
+871:- drift-recovery, severity-calibration, knob-sweep, calibration-manifest, HF_HUB_OFFLINE, experiment_runs, artifact durability, deterministic tie handling, validate_pr_brutal_honesty.py, PR #266, admin merge
+875:- the goal file required "diagnose last night's mixed drift-recovery result and re-run it calibrated" -> verify hypotheses from data before trusting prior summaries [Task 1]
+885:- The working offline smoke path on this host is `HF_HUB_OFFLINE=1` plus `python scripts/smoke_pipeline.py` [Task 1]
+
+exec
+"C:\\Program Files\\WindowsApps\\Microsoft.PowerShell_7.6.3.0_x64__8wekyb3d8bbwe\\pwsh.exe" -Command 'Get-ChildItem -Force; rg -n "def load_mteb_data|load_mteb_data|SciFact|NFCorpus|encoder" research scripts tests -g "*.py" -g "*.md" -g "*.json"' in D:\GITHUB\CHELATEDAI\.claude\worktrees\agent-build
+ succeeded in 735ms:
+
+    Directory: D:\GITHUB\CHELATEDAI\.claude\worktrees\agent-build
+
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d----            7/9/2026 11:36 PM                __pycache__
+d----            7/9/2026  9:52 PM                .github
+d----           7/10/2026 12:36 AM                .pytest_cache
+d----            7/9/2026 11:03 PM                .ruff_cache
+d----            7/9/2026  9:52 PM                artifacts
+d----            7/9/2026 11:52 PM                checkpoints
+d----            7/9/2026 11:35 PM                computational_storage_poc
+d----            7/9/2026  9:52 PM                dashboard
+d----            7/9/2026  9:52 PM                docs
+d----            7/9/2026 11:35 PM                experiment_runs
+d----            7/9/2026 11:36 PM                MagicMock
+d----            7/9/2026 10:24 PM                research
+d----            7/9/2026 11:35 PM                scripts
+d----            7/9/2026 11:35 PM                tests
+-a-h-            7/9/2026  9:52 PM             56 .git
+-a---            7/9/2026  9:52 PM             66 .gitattributes
+-a---            7/9/2026  9:52 PM           1253 .gitignore
+-a---            7/9/2026  9:52 PM          59865 .report.json
+-a---            7/9/2026  9:52 PM           5813 adapter_router.py
+-a---            7/9/2026 11:52 PM        2366160 adapter_weights.pt
+-a---            7/9/2026  9:52 PM           8412 adaptive_gate_orchestrator.py
+-a---            7/9/2026  9:52 PM          33262 adaptive_overlay.py
+-a---            7/9/2026  9:52 PM          40117 aep_orchestrator.py
+-a---            7/9/2026  9:52 PM          18331 analyze_drift_recovery.py
+-a---            7/9/2026  9:52 PM          11407 analyze_phase_c_results.py
+-a---            7/9/2026  9:52 PM           2047 annealing_controller.py
+-a---            7/9/2026  9:52 PM           5571 annealing_schedule.py
+-a---            7/9/2026  9:52 PM         129123 antigravity_engine.py
+-a---            7/9/2026  9:52 PM           4820 attnres_repeat_seed_decision.py
+-a---            7/9/2026  9:52 PM           4269 audit_evidence_index_freshness.py
+-a---            7/9/2026  9:52 PM           4244 audit_promotion_linkage.py
+-a---            7/9/2026  9:52 PM          12784 benchmark_beir_results.json
+-a---            7/9/2026  9:52 PM          28884 benchmark_beir.py
+-a---            7/9/2026  9:52 PM          18139 benchmark_comparative.py
+-a---            7/9/2026  9:52 PM          33995 benchmark_distillation.py
+-a---            7/9/2026  9:52 PM           8644 benchmark_evolution.py
+-a---            7/9/2026  9:52 PM          18832 benchmark_multitask.py
+-a---            7/9/2026  9:52 PM          16161 benchmark_rlm.py
+-a---            7/9/2026  9:52 PM          13459 benchmark_utils.py
+-a---            7/9/2026  9:52 PM          13246 build_attribution_pool.py
+-a---            7/9/2026  9:52 PM           9450 CHANGELOG.md
+-a---            7/9/2026  9:52 PM          13313 checkpoint_manager.py
+-a---            7/9/2026  9:52 PM          26988 chelation_adapter.py
+-a---            7/9/2026 11:52 PM         161731 chelation_debug.jsonl
+-a---            7/9/2026  9:52 PM          14662 chelation_logger.py
+-a---            7/9/2026  9:52 PM          18889 CLAUDE.md
+-a---            7/9/2026  9:52 PM           3530 cleanup_review_diagnostic.py
+-a---            7/9/2026  9:52 PM             58 CODEOWNERS
+-a---            7/9/2026  9:52 PM          11565 COMPLETION_SUMMARY.md
+-a---            7/9/2026  9:52 PM           6153 compute_budget_policy.py
+-a---            7/9/2026  9:52 PM          39035 config.py
+-a---            7/9/2026  9:52 PM           4848 convergence_monitor.py
+-a---            7/9/2026  9:52 PM          16493 cross_lingual_distillation.py
+-a---            7/9/2026  9:52 PM          84235 dashboard_server.py
+-a---            7/9/2026  9:52 PM           4721 default_promotion_preflight.py
+-a---            7/9/2026  9:52 PM           4507 device_profiles.py
+-a---            7/9/2026  9:52 PM           7668 dimension_mask_predictor.py
+-a---            7/9/2026  9:52 PM           4058 distributed_fitness_evaluator.py
+-a---            7/9/2026  9:52 PM          10803 drift_injector.py
+-a---            7/9/2026  9:52 PM           2951 drift_recovery_metrics.py
+-a---            7/9/2026  9:52 PM           2343 elite_archive.py
+-a---            7/9/2026  9:52 PM          11823 embedding_backend.py
+-a---            7/9/2026  9:52 PM           4908 embedding_quality.py
+-a---            7/9/2026  9:52 PM          14207 engine_scope_coverage.py
+-a---            7/9/2026  9:52 PM          14703 engine_scope_negatives.py
+-a---            7/9/2026  9:52 PM          13645 engine_scope.py
+-a---            7/9/2026  9:52 PM           4335 evaluator_fabric.py
+-a---            7/9/2026  9:52 PM           8566 evidence_contract.py
+-a---            7/9/2026  9:52 PM          12213 evidence_dag.py
+-a---            7/9/2026  9:52 PM           5514 evidence_index.json
+-a---            7/9/2026  9:52 PM          21574 evolution_strategies_optimizer.py
+-a---            7/9/2026  9:52 PM          17891 expectation_comparator.py
+-a---            7/9/2026  9:52 PM           2909 feature_direction_bank.py
+-a---            7/9/2026  9:52 PM          38973 findings.md
+-a---            7/9/2026  9:52 PM           8442 fitness_composition_orchestrator.py
+-a---            7/9/2026  9:52 PM           1530 fitness_interfaces.py
+-a---            7/9/2026  9:52 PM           5539 generate_evidence_index.py
+-a---            7/9/2026  9:52 PM          10683 integrated_diagnostics_report.py
+-a---            7/9/2026  9:52 PM          10036 isomer_detector.py
+-a---            7/9/2026  9:52 PM           4978 kalman_lr_scheduler.py
+-a---            7/9/2026  9:52 PM           3142 label_smoke_artifacts.py
+-a---            7/9/2026  9:52 PM          11389 language_detector.py
+-a---            7/9/2026  9:52 PM          17764 learned_mask_gate.py
+-a---            7/9/2026  9:52 PM           2965 learned_mask_policy.py
+-a---            7/9/2026  9:52 PM          28676 learned_reformulation_gate.py
+-a---            7/9/2026  9:52 PM          10774 LICENSE
+-a---            7/9/2026  9:52 PM           2684 model_hook_bus.py
+-a---            7/9/2026  9:52 PM           6836 model_scope_artifacts.py
+-a---            7/9/2026  9:52 PM           8412 model_scope_engine_bridge.py
+-a---            7/9/2026  9:52 PM           9035 model_scope_features.py
+-a---            7/9/2026  9:52 PM          22226 model_scope_memory.py
+-a---            7/9/2026  9:52 PM           9973 model_scope_runtime.py
+-a---            7/9/2026  9:52 PM          21416 model_scope_steering.py
+-a---            7/9/2026  9:52 PM          29130 model_scope_trainer.py
+-a---            7/9/2026  9:52 PM          31281 online_updater.py
+-a---            7/9/2026  9:52 PM           1338 phase_c_analysis.json
+-a---            7/9/2026  9:52 PM          89923 phase_c_results.json
+-a---            7/9/2026  9:52 PM           6547 plan_evidence_artifact_cleanup.py
+-a---            7/9/2026  9:52 PM         613446 poetry.lock
+-a---            7/9/2026  9:52 PM          11541 post_bank_conditions.py
+-a---            7/9/2026  9:52 PM           5531 post_bank_correction.py
+-a---            7/9/2026  9:52 PM           4272 post_bank_runtime.py
+-a---            7/9/2026  9:52 PM           7947 PR_DESCRIPTION.md
+-a---            7/9/2026  9:52 PM          43432 presentation.html
+-a---            7/9/2026  9:52 PM           3269 production_steering_control.py
+-a---            7/9/2026  9:52 PM          45606 progress.md
+-a---            7/9/2026  9:52 PM           7338 promotion_contract.py
+-a---            7/9/2026  9:52 PM           4578 pyproject.toml
+-a---            7/9/2026  9:52 PM           3573 quantization_promotion_gate.py
+-a---            7/9/2026  9:52 PM           5321 query_encoder_drift.py
+-a---            7/9/2026  9:52 PM           7779 query_reformulator.py
+-a---            7/9/2026  9:52 PM           8860 qwen_scope_adapter.py
+-a---            7/9/2026  9:52 PM          23407 README.md
+-a---            7/9/2026  9:52 PM          20821 recursive_decomposer.py
+-a---            7/9/2026  9:52 PM           5478 REFACTORING_PLAN.md
+-a---            7/9/2026  9:52 PM           3856 REFERENCES.md
+-a---            7/9/2026  9:52 PM           4405 reproducibility_context.py
+-a---            7/9/2026  9:52 PM            270 requirements.txt
+-a---            7/9/2026  9:52 PM           6506 research_pathway_analyzer.py
+-a---            7/9/2026  9:52 PM           8209 retrieval_fitness_evaluator.py
+-a---            7/9/2026  9:52 PM          15689 run_candidate_transfer_gate.py
+-a---            7/9/2026  9:52 PM           5007 run_default_promotion_evidence_chain.py
+-a---            7/9/2026  9:52 PM          10863 run_drift_recovery_calibration.py
+-a---            7/9/2026  9:52 PM          50856 run_drift_recovery_experiment.py
+-a---            7/9/2026  9:52 PM          13102 run_drift_recovery_knob_sweep.py
+-a---            7/9/2026  9:52 PM          18661 run_drift_recovery_swap_campaign.py
+-a---            7/9/2026  9:52 PM           7536 run_gate_train.py
+-a---            7/9/2026  9:52 PM          64226 run_golden_default_autopilot.py
+-a---            7/9/2026  9:52 PM           6424 run_large_sweep.py
+-a---            7/9/2026  9:52 PM           8685 run_learned_reformulation_autopilot.py
+-a---            7/9/2026  9:52 PM          24005 run_live_fire_diagnostics.py
+-a---            7/9/2026  9:52 PM          34350 run_model_scope_campaign.py
+-a---            7/9/2026  9:52 PM           5719 run_model_scope_overlay_smoke.py
+-a---            7/9/2026  9:52 PM           4815 run_overlay_model_scope_validation.py
+-a---            7/9/2026  9:52 PM           4839 run_overnight_campaign.py
+-a---            7/9/2026  9:52 PM          31045 run_phase_c_eval.py
+-a---            7/9/2026  9:52 PM          14949 run_repeatability_check.py
+-a---            7/9/2026  9:52 PM          25054 run_road_course_campaign.py
+-a---            7/9/2026  9:52 PM          14271 run_road_course_tuning_loop.py
+-a---            7/9/2026  9:52 PM          25554 run_safety_testbed.py
+-a---            7/9/2026  9:52 PM           6917 run_sweep.py
+-a---            7/9/2026  9:52 PM          48856 run_thousand_query_tuning.py
+-a---            7/9/2026  9:52 PM          21731 run_weight_refinement_campaign.py
+-a---            7/9/2026  9:52 PM            641 SECURITY.md
+-a---            7/9/2026  9:52 PM          11907 sedimentation_loss.py
+-a---            7/9/2026  9:52 PM           5652 sedimentation_trainer.py
+-a---            7/9/2026  9:52 PM          10264 sedimentation.py
+-a---            7/9/2026  9:52 PM          46271 self_healing_chelation.py
+-a---            7/9/2026  9:52 PM          11069 stability_tracker.py
+-a---            7/9/2026  9:52 PM          29992 static_mask_probe.py
+-a---            7/9/2026  9:52 PM           6929 steering_policy.py
+-a---            7/9/2026  9:52 PM          12014 steering_post_bank.py
+-a---            7/9/2026  9:52 PM           3710 steering_route_promotion.py
+-a---            7/9/2026  9:52 PM           2928 structural_health_score.py
+-a---            7/9/2026  9:52 PM          25463 sweep_results.json
+-a---            7/9/2026  9:52 PM           5353 synthetic_collapse_benchmark.py
+-a---            7/9/2026  9:52 PM           8181 task_plan.md
+-a---            7/9/2026  9:52 PM          26000 teacher_distillation.py
+-a---            7/9/2026  9:52 PM           4171 teacher_supervised_correction.py
+-a---            7/9/2026  9:52 PM           4437 teacher_weight_scheduler.py
+-a---            7/9/2026  9:52 PM          11174 TECHNICAL_ANALYSIS.md
+-a---            7/9/2026  9:52 PM          16988 test_adaptive_overlay.py
+-a---            7/9/2026  9:52 PM          23856 test_adaptive_threshold.py
+-a---            7/9/2026  9:52 PM          50085 test_aep_orchestrator.py
+-a---            7/9/2026  9:52 PM           7047 test_analyze_drift_recovery.py
+-a---            7/9/2026  9:52 PM          27197 test_analyze_phase_c_results.py
+-a---            7/9/2026  9:52 PM           6442 test_annealing_controller.py
+-a---            7/9/2026  9:52 PM           6293 test_annealing_schedule.py
+-a---            7/9/2026  9:52 PM           5799 test_antigravity_engine_model_scope.py
+-a---            7/9/2026  9:52 PM          37768 test_antigravity_engine.py
+-a---            7/9/2026  9:52 PM          14957 test_attnres_adapter.py
+-a---            7/9/2026  9:52 PM           2577 test_attnres_repeat_seed_decision.py
+-a---            7/9/2026  9:52 PM          17643 test_attribution_pool.py
+-a---            7/9/2026  9:52 PM           3201 test_audit_evidence_index_freshness.py
+-a---            7/9/2026  9:52 PM           6297 test_audit_findings.py
+-a---            7/9/2026  9:52 PM           2508 test_audit_promotion_linkage.py
+-a---            7/9/2026  9:52 PM          27804 test_benchmark_beir.py
+-a---            7/9/2026  9:52 PM          14801 test_benchmark_comparative.py
+-a---            7/9/2026  9:52 PM          19798 test_benchmark_distillation.py
+-a---            7/9/2026  9:52 PM          20534 test_benchmark_multitask.py
+-a---            7/9/2026  9:52 PM          16686 test_benchmark_rlm.py
+-a---            7/9/2026  9:52 PM           9738 test_benchmark_utils.py
+-a---            7/9/2026  9:52 PM          15484 test_bhs_validator.py
+-a---            7/9/2026  9:52 PM          23295 test_checkpoint_manager.py
+-a---            7/9/2026  9:52 PM          34993 test_chelation_logger.py
+-a---            7/9/2026  9:52 PM          15484 test_cleanup_review_diagnostic.py
+-a---            7/9/2026  9:52 PM           2197 test_computational_storage_emulation.py
+-a---            7/9/2026  9:52 PM           3914 test_computational_storage_hardware_evidence.py
+-a---            7/9/2026  9:52 PM           2705 test_computational_storage_payload.py
+-a---            7/9/2026  9:52 PM           4666 test_computational_storage_poc.py
+-a---            7/9/2026  9:52 PM           1468 test_computational_storage_population.py
+-a---            7/9/2026  9:52 PM           2107 test_compute_budget_policy.py
+-a---            7/9/2026  9:52 PM          10848 test_convergence_monitor.py
+-a---            7/9/2026  9:52 PM           4042 test_cpu_inference.py
+-a---            7/9/2026  9:52 PM          21640 test_cross_lingual_distillation.py
+-a---            7/9/2026  9:52 PM          50461 test_dashboard_server.py
+-a---            7/9/2026  9:52 PM           5102 test_default_promotion_evidence_chain.py
+-a---            7/9/2026  9:52 PM           3111 test_default_promotion_preflight.py
+-a---            7/9/2026  9:52 PM          10454 test_dimension_mask_predictor.py
+-a---            7/9/2026  9:52 PM           1270 test_disk_llm_estimator.py
+-a---            7/9/2026  9:52 PM           9826 test_drift_injector.py
+-a---            7/9/2026  9:52 PM           3575 test_drift_recovery_metrics.py
+-a---            7/9/2026  9:52 PM          15688 test_eggroll_strategic_platform.py
+-a---            7/9/2026  9:52 PM          20549 test_engine_scope_coverage.py
+-a---            7/9/2026  9:52 PM          22874 test_engine_scope_negatives.py
+-a---            7/9/2026  9:52 PM          11493 test_engine_scope.py
+-a---            7/9/2026  9:52 PM           1709 test_evaluator_fabric.py
+-a---            7/9/2026  9:52 PM           1953 test_evidence_contract.py
+-a---            7/9/2026  9:52 PM           6545 test_evidence_dag.py
+-a---            7/9/2026  9:52 PM           7580 test_evolution_strategies_optimizer.py
+-a---            7/9/2026  9:52 PM          14121 test_expectation_comparator.py
+-a---            7/9/2026  9:52 PM           4948 test_experimental_marker.py
+-a---            7/9/2026  9:52 PM           4751 test_generate_evidence_index.py
+-a---            7/9/2026  9:52 PM           4868 test_integrated_diagnostics_report.py
+-a---            7/9/2026  9:52 PM           2619 test_integrated_repo_runtime.py
+-a---            7/9/2026  9:52 PM          21305 test_integration_rlm.py
+-a---            7/9/2026  9:52 PM          11291 test_isomer_detector.py
+-a---            7/9/2026  9:52 PM          15940 test_kalman_lr.py
+-a---            7/9/2026  9:52 PM           9414 test_language_detector.py
+-a---            7/9/2026  9:52 PM           9044 test_learned_mask_gate.py
+-a---            7/9/2026  9:52 PM          11298 test_learned_reformulation_gate.py
+-a---            7/9/2026  9:52 PM           1487 test_live_fire_diagnostics.py
+-a---            7/9/2026  9:52 PM          10745 test_live_fire_flags.py
+-a---            7/9/2026  9:52 PM           1950 test_memory_compression.py
+-a---            7/9/2026  9:52 PM          17213 test_memory_optimization.py
+-a---            7/9/2026  9:52 PM           8572 test_model_hook_bus.py
+-a---            7/9/2026  9:52 PM          10812 test_model_scope_artifacts.py
+-a---            7/9/2026  9:52 PM          47829 test_model_scope_engine_bridge.py
+-a---            7/9/2026  9:52 PM          10749 test_model_scope_features.py
+-a---            7/9/2026  9:52 PM          25926 test_model_scope_memory.py
+-a---            7/9/2026  9:52 PM            845 test_model_scope_overlay_smoke.py
+-a---            7/9/2026  9:52 PM           5329 test_model_scope_rollback_plan.py
+-a---            7/9/2026  9:52 PM          30816 test_model_scope_runtime.py
+-a---            7/9/2026  9:52 PM          29223 test_model_scope_steering.py
+-a---            7/9/2026  9:52 PM          31070 test_model_scope_trainer.py
+-a---            7/9/2026  9:52 PM           2547 test_moe_reap.py
+-a---            7/9/2026  9:52 PM           2066 test_noise_injection.py
+-a---            7/9/2026  9:52 PM          26682 test_online_correction.py
+-a---            7/9/2026  9:52 PM           8075 test_online_updater.py
+-a---            7/9/2026  9:52 PM           2693 test_overlay_model_scope_validation.py
+-a---            7/9/2026  9:52 PM          10254 test_overlay_trainer_integration.py
+-a---            7/9/2026  9:52 PM           4448 test_packed_graph.py
+-a---            7/9/2026  9:52 PM          13663 test_phase_c_seed.py
+-a---            7/9/2026  9:52 PM           1066 test_phase7_system_evaluation.py
+-a---            7/9/2026  9:52 PM           6309 test_plan_evidence_artifact_cleanup.py
+-a---            7/9/2026  9:52 PM           8040 test_post_bank_conditions.py
+-a---            7/9/2026  9:52 PM           5130 test_post_bank_correction.py
+-a---            7/9/2026  9:52 PM           4442 test_post_bank_head_to_head.py
+-a---            7/9/2026  9:52 PM           4174 test_post_bank_runtime.py
+-a---            7/9/2026  9:52 PM           3246 test_production_steering_control.py
+-a---            7/9/2026  9:52 PM           8993 test_promotion_contract.py
+-a---            7/9/2026  9:52 PM           9548 test_query_encoder_drift.py
+-a---            7/9/2026  9:52 PM           7006 test_query_reformulation_policy.py
+-a---            7/9/2026  9:52 PM          15198 test_qwen_scope_adapter.py
+-a---            7/9/2026  9:52 PM          49532 test_recursive_decomposer.py
+-a---            7/9/2026  9:52 PM           4202 test_repo_graph_memory.py
+-a---            7/9/2026  9:52 PM           5914 test_research_pathway_analyzer.py
+-a---            7/9/2026  9:52 PM           5954 test_road_course_campaign.py
+-a---            7/9/2026  9:52 PM          28776 test_road_course_tuning_loop.py
+-a---            7/9/2026  9:52 PM           6276 test_run_candidate_transfer_gate.py
+-a---            7/9/2026  9:52 PM           5174 test_run_drift_recovery_calibration.py
+-a---            7/9/2026  9:52 PM          45680 test_run_drift_recovery_experiment.py
+-a---            7/9/2026  9:52 PM           6057 test_run_drift_recovery_knob_sweep.py
+-a---            7/9/2026  9:52 PM           5641 test_run_drift_recovery_swap_campaign.py
+-a---            7/9/2026  9:52 PM          16140 test_run_gate_train.py
+-a---            7/9/2026  9:52 PM          20419 test_run_golden_default_autopilot.py
+-a---            7/9/2026  9:52 PM          12809 test_run_model_scope_campaign.py
+-a---            7/9/2026  9:52 PM           2972 test_run_overnight_campaign.py
+-a---            7/9/2026  9:52 PM          25511 test_run_phase_c_eval.py
+-a---            7/9/2026  9:52 PM           6970 test_run_repeatability_check.py
+-a---            7/9/2026  9:52 PM           8328 test_run_weight_refinement_campaign.py
+-a---            7/9/2026  9:52 PM           3096 test_safety_calibration.py
+-a---            7/9/2026  9:52 PM           2200 test_safety_campaign_plan.py
+-a---            7/9/2026  9:52 PM           4440 test_safety_closed_course.py
+-a---            7/9/2026  9:52 PM          14858 test_safety_component_controls.py
+-a---            7/9/2026  9:52 PM           9184 test_safety_control_surfaces.py
+-a---            7/9/2026  9:52 PM           7381 test_safety_failure_injection.py
+-a---            7/9/2026  9:52 PM           8836 test_safety_instrumentation.py
+-a---            7/9/2026  9:52 PM           1737 test_safety_testbed.py
+-a---            7/9/2026  9:52 PM          16514 test_sedimentation_loss.py
+-a---            7/9/2026  9:52 PM          17580 test_sedimentation_trainer.py
+-a---            7/9/2026  9:52 PM          11449 test_self_healing_chelation.py
+-a---            7/9/2026  9:52 PM           7384 test_smoke_pipeline_ceiling.py
+-a---            7/9/2026  9:52 PM           3993 test_sparse_cpu_inference.py
+-a---            7/9/2026  9:52 PM           8442 test_stability_tracker.py
+-a---            7/9/2026  9:52 PM          16932 test_static_mask_probe.py
+-a---            7/9/2026  9:52 PM          11991 test_steering_policy.py
+-a---            7/9/2026  9:52 PM           9262 test_steering_post_bank.py
+-a---            7/9/2026  9:52 PM           4103 test_steering_route_promotion.py
+-a---            7/9/2026  9:52 PM           2153 test_structural_health_report.py
+-a---            7/9/2026  9:52 PM           5145 test_sweep_presets.py
+-a---            7/9/2026  9:52 PM           1214 test_synthetic_collapse_benchmark.py
+-a---            7/9/2026  9:52 PM          46329 test_teacher_distillation.py
+-a---            7/9/2026  9:52 PM           3216 test_teacher_supervised_correction.py
+-a---            7/9/2026  9:52 PM          11687 test_teacher_weight_scheduler.py
+-a---            7/9/2026  9:52 PM          13848 test_topology_analyzer.py
+-a---            7/9/2026  9:52 PM          51953 test_tts_engine_integration.py
+-a---            7/9/2026  9:52 PM          28359 test_tts_pipeline.py
+-a---            7/9/2026  9:52 PM          52956 test_unit_core.py
+-a---            7/9/2026  9:52 PM           7015 test_vector_store.py
+-a---            7/9/2026  9:52 PM          19612 test_vector_translator.py
+-a---            7/9/2026  9:52 PM          16204 test_vector_transport.py
+-a---            7/9/2026  9:52 PM          14865 topology_analyzer.py
+-a---            7/9/2026  9:52 PM           8107 train_gate_from_tuning_artifact.py
+-a---            7/9/2026  9:52 PM          12293 transport_validation.py
+-a---            7/9/2026  9:52 PM          11730 tts_pipeline.py
+-a---            7/9/2026  9:52 PM           3259 vector_store.py
+-a---            7/9/2026  9:52 PM          10266 vector_translator.py
+-a---            7/9/2026  9:52 PM           8045 vector_transport.py
+research\drift_recovery\d1\paper_stats.py:1:"""Build and analyze the frozen SciFact D1 embedding pack."""
+research\drift_recovery\d1\paper_stats.py:285:    print("[D1] loading exact SciFact eval split", flush=True)
+research\drift_recovery\d1\paper_stats.py:396:            "dataset": "SciFact",
+research\drift_recovery\d1\paper_stats.py:406:                "one positive doc per non-eval SciFact query; eval IDs and eval qrels excluded"
+research\drift_recovery\d1\paper_stats.py:474:        "dataset": "SciFact",
+research\drift_recovery\d1\paper_stats.py:652:        f"SciFact eval split: {bootstrap['query_count']} fixed queries; {bootstrap['draws']:,} deterministic paired draws. ",
+research\drift_recovery\d1\paper_stats.py:735:We evaluate a post-hoc correction layer placed between an embedding encoder and cosine retrieval. Let
+research\drift_recovery\d1\paper_stats.py:736:$x\in\mathbb{{R}}^d$ be an encoder output and $n(x)=x/\lVert x\rVert_2$ (with the implementation's
+research\drift_recovery\d1\paper_stats.py:813:For the supervised query-encoder-swap cycle, the actual drift signal is
+research\drift_recovery\d1\paper_stats.py:1119:        "dataset": "SciFact",
+research\drift_recovery\d2\crossover.py:920:        "Protocol v2 was locked only after an excluded SciFact pilot exposed invalid "
+research\drift_recovery\estimator\validation.py:145:        "held_out_axis": "regime (dataset / encoder family / anchor setting)",
+research\drift_recovery\harness_bridge.py:20:from benchmark_utils import canonicalize_id, load_mteb_data  # noqa: E402
+research\drift_recovery\harness_bridge.py:23:from query_encoder_drift import QueryEncoderDrift  # noqa: E402
+research\drift_recovery\harness_bridge.py:183:    corpus, queries, qrels = load_mteb_data("SciFact")
+research\drift_recovery\harness_bridge.py:185:        raise RuntimeError("offline SciFact cache is unavailable")
+research\drift_recovery\harness_bridge.py:232:    # Learning-curve query pool: one positive document per non-eval SciFact
+research\drift_recovery\harness_bridge.py:278:    corpus, queries, qrels = load_mteb_data(str(dataset))
+research\drift_recovery\harness_bridge.py:453:    """Run both cached encoders once and return arrays ready for freezing."""
+research\drift_recovery\regimes\synthetic_collapse.py:5:change the encoder, or expose retrieval labels.
+research\drift_recovery\run_estimator.py:69:        dataset="SciFact",
+research\drift_recovery\run_estimator.py:75:        dataset="NFCorpus",
+research\drift_recovery\run_estimator.py:80:        dataset="SciFact",
+research\drift_recovery\run_estimator.py:85:        dataset="NFCorpus",
+research\drift_recovery\run_estimator.py:112:    # SciFact supports the D1 half-corpus count.  NFCorpus has much denser
+research\drift_recovery\run_estimator.py:335:        "Held-out axis: **regime** (dataset / encoder family / anchor setting). "
+research\drift_recovery\out\d2\C3_FIX_REPORT.md:10:| HIGH | Verdict led with "underpowered/invalid"; did not name β=0.10 regime degeneracy | `D2_REPORT.md` rewritten: scientific verdict is now "inconclusive because β=0.10 was mis-calibrated (drift too mild)"; added per-cell oracle-gap column (min ≈0 / negative; NFCorpus point-means negative) and stated G3 was a priori unpassable + the missing severity-calibration preflight | machine: gaps min {+0.000, −0.005, −0.008, −0.009}, NFCorpus point-mean −0.002/−0.001 |
+research\drift_recovery\out\d2\C3_FIX_REPORT.md:11:| HIGH | SciFact chelation NDCG-identical to floor; "Primary movement" column implied action | Report now states max\|chel−floor\| NDCG = **0.0 across all 5 seeds on both SciFact cells** (≤5e−3 NFCorpus); dropped the misleading vector-displacement "Primary movement" column and explained it | machine: max\|chel−floor\| = 0.0e+00 (SciFact/8,16), 2.4e−4 / 4.7e−3 (NFCorpus) |
+research\drift_recovery\out\d2\C3_FIX_REPORT.md:12:| MEDIUM | AUPRC printed without prevalence / single-class context → reads as detector death | Report adds pos/N per cell (5/160…33/160), per-seed positives, 2 single-class seeds on SciFact/8, median harm near the 1e−8 floor; states AUPRC<0.80 is a symptom of regime mildness, not an independent kill; does NOT invoke the AUPRC→KILL path | machine: AUPRC {0.225,0.151,0.269,0.307}, prevalence 3–21% |
+research\drift_recovery\out\estimator\C2_FIX_REPORT.md:15:| C2-F6 (safe-label LOO) | The leaky-vs-safe SciFact label mismatch is already disclosed in `estimator_validation.md`; Grok verified the −0.40 LOO holds under R_safe=0.7891 labels too. No numbers changed. | `estimator_validation.md` legacy-label note |
+research\drift_recovery\out\estimator\D3_REPORT.md:62:**unvalidated**. The decisive next step is more regimes (≥8–10: more datasets, encoder families, drift
+research\drift_recovery\out\d2\run_manifest.json:14:    "NFCorpus": "1110a243fdf4706b3f48f1d95db1a4f5529b4d41",
+research\drift_recovery\out\d2\run_manifest.json:15:    "SciFact": "1110a243fdf4706b3f48f1d95db1a4f5529b4d41"
+research\drift_recovery\out\estimator\estimator_validation.md:3:Held-out axis: **regime** (dataset / encoder family / anchor setting). No regime's own measured recovery trains its held-out prediction.
+research\drift_recovery\out\d1\d1_summary.json:37:    "dataset": "SciFact",
+research\drift_recovery\out\d1\ci_report.md:3:SciFact eval split: 60 fixed queries; 10,000 deterministic paired draws. 
+research\drift_recovery\out\d2_invalidated_20260710T045434Z\d2_decision.md:9:| SciFact / 8 clusters | 0.0190 | FAIL | 0.043 | NO_G3_VERDICT |
+research\drift_recovery\out\d2_invalidated_20260710T045434Z\d2_decision.md:10:| SciFact / 16 clusters | 0.0148 | PASS | 0.082 | KILL_CORRECTOR |
+research\drift_recovery\out\d2_invalidated_20260710T045434Z\d2_decision.md:11:| NFCorpus / 8 clusters | 0.0276 | FAIL | 0.166 | NO_G3_VERDICT |
+research\drift_recovery\out\d2_invalidated_20260710T045434Z\d2_decision.md:12:| NFCorpus / 16 clusters | 0.0255 | FAIL | 0.365 | NO_G3_VERDICT |
+research\drift_recovery\out\d2_invalidated_20260710T045434Z\d2_decision.md:16:- SciFact / 8: minimum oracle gap 0.0000; decision `NO_G3_VERDICT`.
+research\drift_recovery\out\d2_invalidated_20260710T045434Z\d2_decision.md:18:- SciFact / 16: minimum oracle gap -0.0046; decision `KILL_CORRECTOR`.
+research\drift_recovery\out\d2_invalidated_20260710T045434Z\d2_decision.md:19:- NFCorpus / 8: minimum oracle gap -0.0078; decision `NO_G3_VERDICT`.
+research\drift_recovery\out\d2_invalidated_20260710T045434Z\d2_decision.md:21:- NFCorpus / 16: minimum oracle gap -0.0091; decision `NO_G3_VERDICT`.
+research\drift_recovery\out\estimator\nfcorpus_minilm_to_bge_large_features.json:755:    "dataset": "NFCorpus",
+research\drift_recovery\out\d1\ladder.json:19:  "dataset": "SciFact",
+research\drift_recovery\out\d2_invalidated_20260710T045434Z\D2_REPORT.md:9:| SciFact / 8 | FAIL (0.0190) | 0.043 | NO_G3_VERDICT |
+research\drift_recovery\out\d2_invalidated_20260710T045434Z\D2_REPORT.md:10:| SciFact / 16 | PASS (0.0148) | 0.082 | KILL_CORRECTOR |
+research\drift_recovery\out\d2_invalidated_20260710T045434Z\D2_REPORT.md:11:| NFCorpus / 8 | FAIL (0.0276) | 0.166 | NO_G3_VERDICT |
+research\drift_recovery\out\d2_invalidated_20260710T045434Z\D2_REPORT.md:12:| NFCorpus / 16 | FAIL (0.0255) | 0.365 | NO_G3_VERDICT |
+research\drift_recovery\out\d1\run_manifest.json:4:    "drift": "query_encoder_swap",
+research\drift_recovery\out\d1\run_manifest.json:40:    "dataset": "SciFact",
+research\drift_recovery\out\d2\d2_summary.json:139:      "dataset": "SciFact",
+research\drift_recovery\out\d2\d2_summary.json:153:        "dataset": "SciFact",
+research\drift_recovery\out\d2\d2_summary.json:591:      "dataset": "SciFact",
+research\drift_recovery\out\d2\d2_summary.json:607:        "dataset": "SciFact",
+research\drift_recovery\out\d2\d2_summary.json:1045:      "dataset": "NFCorpus",
+research\drift_recovery\out\d2\d2_summary.json:1059:        "dataset": "NFCorpus",
+research\drift_recovery\out\d2\d2_summary.json:1497:      "dataset": "NFCorpus",
+research\drift_recovery\out\d2\d2_summary.json:1511:        "dataset": "NFCorpus",
+research\drift_recovery\out\d2\D2_REPORT.md:14:NFCorpus it sometimes *helps* the floor. With no recoverable gap, **G3 was a priori unpassable**: the
+research\drift_recovery\out\d2\D2_REPORT.md:23:| SciFact/8  | 0.0190 (FAIL) | +0.0000 | +0.0019 | 1.53%  | **0.0e+00 (identity)** | 0.225 (5/160) | NO_G3_VERDICT |
+research\drift_recovery\out\d2\D2_REPORT.md:24:| SciFact/16 | 0.0148 (pass) | −0.0046 | +0.0017 | 23.76% (INVALID) | **0.0e+00 (identity)** | 0.151 (12/160) | NO_G3_VERDICT |
+research\drift_recovery\out\d2\D2_REPORT.md:25:| NFCorpus/8 | 0.0275 (FAIL) | −0.0078 | −0.0022 | 76.15% (INVALID) | 2.4e−04 | 0.269 (14/160) | NO_G3_VERDICT |
+research\drift_recovery\out\d2\D2_REPORT.md:26:| NFCorpus/16| 0.0255 (FAIL) | −0.0091 | −0.0010 | 60.86% (INVALID) | 4.7e−03 | 0.307 (33/160) | NO_G3_VERDICT |
+research\drift_recovery\out\d2\D2_REPORT.md:29:- **Chelation does essentially nothing here.** On *both* SciFact cells the detector-gated primary arm
+research\drift_recovery\out\d2\D2_REPORT.md:31:  NFCorpus it moves NDCG by ≤5e−3. Any positive Δ vs CBIE/hubness is "doing nothing beats a harmful
+research\drift_recovery\out\d2\D2_REPORT.md:36:  is 3–21%, median positive harm ~3e−4–2e−3 (near the 1e−8 label floor), and SciFact/8 has 2
+research\drift_recovery\out\d2\D2_REPORT.md:40:- **No hidden chelation win.** NFCorpus/16 `chel−ridge` looks flattering (ΔNDCG +0.022, CI
+research\drift_recovery\out\d2\D2_REPORT.md:42:  NFCorpus cells (all seed Δ negative), `chel−hubness` CI includes 0, Holm does not reject
+research\drift_recovery\out\d2\D2_REPORT.md:53:An earlier SciFact pilot was excluded because it issued an *invalid* `KILL_CORRECTOR` (it lacked the
+research\drift_recovery\out\d2_invalidated_20260710T045434Z\d2_summary.json:127:      "dataset": "SciFact",
+research\drift_recovery\out\d2_invalidated_20260710T045434Z\d2_summary.json:141:        "dataset": "SciFact",
+research\drift_recovery\out\d2_invalidated_20260710T045434Z\d2_summary.json:523:      "dataset": "SciFact",
+research\drift_recovery\out\d2_invalidated_20260710T045434Z\d2_summary.json:582:        "dataset": "SciFact",
+research\drift_recovery\out\d2_invalidated_20260710T045434Z\d2_summary.json:964:      "dataset": "NFCorpus",
+research\drift_recovery\out\d2_invalidated_20260710T045434Z\d2_summary.json:978:        "dataset": "NFCorpus",
+research\drift_recovery\out\d2_invalidated_20260710T045434Z\d2_summary.json:1360:      "dataset": "NFCorpus",
+research\drift_recovery\out\d2_invalidated_20260710T045434Z\d2_summary.json:1374:        "dataset": "NFCorpus",
+research\drift_recovery\out\d1\section3_draft.md:3:We evaluate a post-hoc correction layer placed between an embedding encoder and cosine retrieval. Let
+research\drift_recovery\out\d1\section3_draft.md:4:$x\in\mathbb{R}^d$ be an encoder output and $n(x)=x/\lVert x\rVert_2$ (with the implementation's
+research\drift_recovery\out\d1\section3_draft.md:81:For the supervised query-encoder-swap cycle, the actual drift signal is
+research\drift_recovery\out\d1\scifact_evalsplit_pack.json:136:    "dataset": "SciFact",
+research\drift_recovery\out\d1\scifact_evalsplit_pack.json:138:      "drift": "query_encoder_swap",
+research\drift_recovery\out\d1\scifact_evalsplit_pack.json:154:    "learning_curve_c3a_pool": "one positive doc per non-eval SciFact query; eval IDs and eval qrels excluded",
+research\drift_recovery\out\estimator\nfcorpus_minilm_to_mpnet_features.json:755:    "dataset": "NFCorpus",
+research\drift_recovery\out\d2\cells\scifact_c8\detector_auprc.json:6:  "dataset": "SciFact",
+research\drift_recovery\out\d2\cells\scifact_c8\cell_pack.json:72:    "dataset": "SciFact",
+research\drift_recovery\out\d2\d2_decision.md:9:| SciFact / 8 clusters | 0.0190 | 1.53% | 0.079 | 0.225 | NO_G3_VERDICT |
+research\drift_recovery\out\d2\d2_decision.md:10:| SciFact / 16 clusters | 0.0148 | 23.76% | 0.105 | 0.151 | NO_G3_VERDICT |
+research\drift_recovery\out\d2\d2_decision.md:11:| NFCorpus / 8 clusters | 0.0275 | 76.15% | 0.094 | 0.269 | NO_G3_VERDICT |
+research\drift_recovery\out\d2\d2_decision.md:12:| NFCorpus / 16 clusters | 0.0255 | 60.86% | 0.297 | 0.307 | NO_G3_VERDICT |
+research\drift_recovery\out\d2\d2_decision.md:16:- SciFact / 8: minimum oracle gap 0.0000; decision `NO_G3_VERDICT`.
+research\drift_recovery\out\d2\d2_decision.md:21:- SciFact / 16: minimum oracle gap -0.0046; decision `NO_G3_VERDICT`.
+research\drift_recovery\out\d2\d2_decision.md:26:- NFCorpus / 8: minimum oracle gap -0.0078; decision `NO_G3_VERDICT`.
+research\drift_recovery\out\d2\d2_decision.md:31:- NFCorpus / 16: minimum oracle gap -0.0091; decision `NO_G3_VERDICT`.
+research\drift_recovery\out\estimator\regime_manifest.json:12:      "dataset": "SciFact",
+research\drift_recovery\out\estimator\regime_manifest.json:35:      "dataset": "NFCorpus",
+research\drift_recovery\out\estimator\regime_manifest.json:55:      "dataset": "SciFact",
+research\drift_recovery\out\estimator\regime_manifest.json:75:      "dataset": "NFCorpus",
+research\drift_recovery\out\d2\cells\scifact_c8\decision.json:137:  "dataset": "SciFact",
+research\drift_recovery\out\d2\cells\scifact_c8\decision.json:151:    "dataset": "SciFact",
+research\drift_recovery\out\estimator\validation.json:8:  "held_out_axis": "regime (dataset / encoder family / anchor setting)",
+research\drift_recovery\out\estimator\scifact_minilm_to_bge_large_features.json:755:    "dataset": "SciFact",
+research\drift_recovery\out\d2_invalidated_20260710T045434Z\cells\scifact_c8\cell_pack.json:64:    "dataset": "SciFact",
+research\drift_recovery\out\estimator\scifact_minilm_to_mpnet_features.json:762:    "dataset": "SciFact",
+research\drift_recovery\out\d2_invalidated_20260710T045434Z\cells\nfcorpus_c8\cell_pack.json:64:    "dataset": "NFCorpus",
+research\drift_recovery\out\estimator\packs\scifact_minilm_to_bge_large_pack.json:46:    "dataset": "SciFact",
+research\drift_recovery\out\estimator\packs\scifact_minilm_to_bge_large_pack.json:48:      "drift": "query_encoder_swap",
+research\drift_recovery\out\d2_invalidated_20260710T045434Z\cells\nfcorpus_c8\decision.json:125:  "dataset": "NFCorpus",
+research\drift_recovery\out\d2_invalidated_20260710T045434Z\cells\nfcorpus_c8\decision.json:139:    "dataset": "NFCorpus",
+research\drift_recovery\out\d2_invalidated_20260710T045434Z\cells\scifact_c8\detector_auprc.json:6:  "dataset": "SciFact",
+research\drift_recovery\out\estimator\packs\nfcorpus_minilm_to_mpnet_pack.json:46:    "dataset": "NFCorpus",
+research\drift_recovery\out\estimator\packs\nfcorpus_minilm_to_mpnet_pack.json:48:      "drift": "query_encoder_swap",
+research\drift_recovery\out\d2_invalidated_20260710T045434Z\cells\scifact_c8\decision.json:125:  "dataset": "SciFact",
+research\drift_recovery\out\d2_invalidated_20260710T045434Z\cells\scifact_c8\decision.json:139:    "dataset": "SciFact",
+research\drift_recovery\out\d2_invalidated_20260710T045434Z\cells\nfcorpus_c8\detector_auprc.json:6:  "dataset": "NFCorpus",
+research\drift_recovery\out\d2_invalidated_20260710T045434Z\cells\scifact_c16\cell_pack.json:64:    "dataset": "SciFact",
+research\drift_recovery\out\estimator\packs\nfcorpus_minilm_to_bge_large_pack.json:46:    "dataset": "NFCorpus",
+research\drift_recovery\out\estimator\packs\nfcorpus_minilm_to_bge_large_pack.json:48:      "drift": "query_encoder_swap",
+research\drift_recovery\out\d2_invalidated_20260710T045434Z\cells\scifact_c16\detector_auprc.json:6:  "dataset": "SciFact",
+research\drift_recovery\out\d2_invalidated_20260710T045434Z\cells\scifact_c16\decision.json:125:  "dataset": "SciFact",
+research\drift_recovery\out\d2_invalidated_20260710T045434Z\cells\scifact_c16\decision.json:184:    "dataset": "SciFact",
+research\drift_recovery\out\d2_invalidated_20260710T045434Z\cells\nfcorpus_c16\detector_auprc.json:6:  "dataset": "NFCorpus",
+research\drift_recovery\out\d2\cells\nfcorpus_c16\decision.json:137:  "dataset": "NFCorpus",
+research\drift_recovery\out\d2\cells\nfcorpus_c16\decision.json:151:    "dataset": "NFCorpus",
+research\drift_recovery\out\d2_invalidated_20260710T045434Z\cells\nfcorpus_c16\decision.json:125:  "dataset": "NFCorpus",
+research\drift_recovery\out\d2_invalidated_20260710T045434Z\cells\nfcorpus_c16\decision.json:139:    "dataset": "NFCorpus",
+research\drift_recovery\out\d2\cells\nfcorpus_c16\cell_pack.json:72:    "dataset": "NFCorpus",
+research\drift_recovery\out\d2\cells\nfcorpus_c8\cell_pack.json:72:    "dataset": "NFCorpus",
+research\drift_recovery\out\d2\cells\nfcorpus_c16\detector_auprc.json:6:  "dataset": "NFCorpus",
+research\drift_recovery\out\d2\cells\nfcorpus_c8\decision.json:137:  "dataset": "NFCorpus",
+research\drift_recovery\out\d2\cells\nfcorpus_c8\decision.json:151:    "dataset": "NFCorpus",
+research\drift_recovery\out\d2_invalidated_20260710T045434Z\cells\nfcorpus_c16\cell_pack.json:64:    "dataset": "NFCorpus",
+research\drift_recovery\out\d2\cells\nfcorpus_c8\detector_auprc.json:6:  "dataset": "NFCorpus",
+research\drift_recovery\out\d2\cells\scifact_c16\detector_auprc.json:6:  "dataset": "SciFact",
+research\drift_recovery\out\d2\cells\scifact_c16\decision.json:137:  "dataset": "SciFact",
+research\drift_recovery\out\d2\cells\scifact_c16\decision.json:153:    "dataset": "SciFact",
+research\drift_recovery\out\d2\cells\scifact_c16\cell_pack.json:72:    "dataset": "SciFact",
+
+
+codex
+I found the estimator’s four existing regime artifacts. Next I’m separating “directory exists” from “actually complete enough for offline loading,” including qrels verification through the same `load_mteb_data` entry point.
+exec
+"C:\\Program Files\\WindowsApps\\Microsoft.PowerShell_7.6.3.0_x64__8wekyb3d8bbwe\\pwsh.exe" -Command '$env:HF_HOME; $env:HUGGINGFACE_HUB_CACHE; $env:HF_DATASETS_CACHE; Get-Content benchmark_utils.py | Select-Object -Skip 120 -First 170; Get-Content research/drift_recovery/run_estimator.py | Select-Object -First 145; Get-ChildItem -Force $HOME'"\\.cache\\huggingface -ErrorAction SilentlyContinue; Get-ChildItem -Recurse -Directory -Force -ErrorAction SilentlyContinue | Where-Object { "'$_.FullName -match '"'(huggingface|hf_cache|\\.cache)' } | Select-Object -ExpandProperty FullName" in D:\GITHUB\CHELATEDAI\.claude\worktrees\agent-build
+ succeeded in 1053ms:
+
+    target_path.parent.mkdir(parents=True, exist_ok=True)
+    backup_path = None
+
+    if target_path.exists():
+        backup_path = target_path.with_name(
+            f"{target_path.stem}.benchmark-backup-{uuid4().hex}{target_path.suffix}"
+        )
+        shutil.copy2(target_path, backup_path)
+        target_path.unlink()
+
+    try:
+        yield target_path
+    finally:
+        target_path.unlink(missing_ok=True)
+        if backup_path is not None and backup_path.exists():
+            shutil.move(str(backup_path), str(target_path))
+
+
+# =============================================================================
+# Metric Calculation (NDCG@k)
+# =============================================================================
+
+def dcg_at_k(r, k):
+    """
+    Discounted Cumulative Gain at rank k.
+    
+    Args:
+        r: Array-like of relevance scores (binary or graded)
+        k: Rank cutoff
+        
+    Returns:
+        float: DCG score
+    """
+    r = np.asarray(r, dtype=float)[:k]
+    if r.size:
+        return np.sum(r / np.log2(np.arange(2, r.size + 2)))
+    return 0.
+
+
+def ndcg_at_k(r, k):
+    """
+    Normalized Discounted Cumulative Gain at rank k.
+
+    Args:
+        r: Array-like of relevance scores (binary or graded)
+        k: Rank cutoff
+
+    Returns:
+        float: NDCG score in [0, 1]
+    """
+    dcg_max = dcg_at_k(sorted(r, reverse=True), k)
+    if not dcg_max:
+        return 0.
+    return dcg_at_k(r, k) / dcg_max
+
+
+# =============================================================================
+# Extended Metrics (Phase 6)
+# =============================================================================
+
+def mean_average_precision_at_k(retrieved_ids, relevant_ids, k=10):
+    """
+    Average Precision at rank k for a single query.
+
+    Args:
+        retrieved_ids: List of retrieved document IDs (ordered by rank)
+        relevant_ids: Set/list of relevant document IDs
+        k: Rank cutoff
+
+    Returns:
+        float: AP@k score
+    """
+    retrieved = list(retrieved_ids)[:k]
+    relevant_set = set(relevant_ids)
+
+    if not relevant_set:
+        return 0.0
+
+    num_relevant = 0
+    sum_precision = 0.0
+
+    for i, doc_id in enumerate(retrieved):
+        if doc_id in relevant_set:
+            num_relevant += 1
+            sum_precision += num_relevant / (i + 1)
+
+    if num_relevant == 0:
+        return 0.0
+
+    return sum_precision / min(len(relevant_set), k)
+
+
+def mean_reciprocal_rank(retrieved_ids, relevant_ids):
+    """
+    Reciprocal Rank for a single query.
+
+    Args:
+        retrieved_ids: List of retrieved document IDs (ordered by rank)
+        relevant_ids: Set/list of relevant document IDs
+
+    Returns:
+        float: RR score (1/rank of first relevant result, or 0)
+    """
+    relevant_set = set(relevant_ids)
+
+    for i, doc_id in enumerate(retrieved_ids):
+        if doc_id in relevant_set:
+            return 1.0 / (i + 1)
+
+    return 0.0
+
+
+def recall_at_k(retrieved_ids, relevant_ids, k=10):
+    """
+    Recall at rank k for a single query.
+
+    Args:
+        retrieved_ids: List of retrieved document IDs (ordered by rank)
+        relevant_ids: Set/list of relevant document IDs
+        k: Rank cutoff
+
+    Returns:
+        float: Recall@k score
+    """
+    retrieved_set = set(list(retrieved_ids)[:k])
+    relevant_set = set(relevant_ids)
+
+    if not relevant_set:
+        return 0.0
+
+    return len(retrieved_set & relevant_set) / len(relevant_set)
+
+
+# =============================================================================
+# MTEB Data Loading Helpers
+# =============================================================================
+
+def find_keys(obj, target_keys):
+    """
+    Recursively search a nested dict for a level containing all target_keys.
+    
+    Args:
+        obj: Object to search (typically a nested dict)
+        target_keys: List of keys that must all be present
+        
+    Returns:
+        dict or None: First dict containing all target_keys, or None if not found
+    """
+    if not isinstance(obj, dict):
+        return None
+    if all(k in obj for k in target_keys):
+        return obj
+    for k, v in obj.items():
+        found = find_keys(v, target_keys)
+        if found:
+            return found
+    return None
+
+
+def find_payload(obj, key):
+    """
+    Recursively search a nested dict for a specific key and return its value.
+    
+    Args:
+        obj: Object to search (typically a nested dict)
+        key: Key to find
+        
+    Returns:
+        Value associated with key, or None if not found
+"""Build D3 frozen regimes, calibrated estimator artifacts, and validation."""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import os
+import sys
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Dict, Mapping, Optional, Sequence
+
+import numpy as np
+
+os.environ.setdefault("HF_HUB_OFFLINE", "1")
+os.environ.setdefault("HF_DATASETS_OFFLINE", "1")
+os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
+
+if __package__ in {None, ""}:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
+from research.drift_recovery.artifacts import EmbeddingPack  # noqa: E402
+from research.drift_recovery.estimator.calibration import fit_calibration  # noqa: E402
+from research.drift_recovery.estimator.features import (  # noqa: E402
+    extract_regime_features,
+    fit_ridge_for_pack,
+    fit_ridge_map,
+)
+from research.drift_recovery.estimator.validation import leave_one_regime_out  # noqa: E402
+from research.drift_recovery.harness_bridge import (  # noqa: E402
+    aggregate_ndcg,
+    assert_harness_parity,
+    encode_retrieval_case,
+    load_retrieval_evalsplit,
+    per_query_ndcg,
+)
+from research.drift_recovery.stats.paired_bootstrap import (  # noqa: E402
+    BootstrapDraws,
+    paired_query_bootstrap,
+    strip_draws,
+)
+
+
+OLD_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
+MPNET_MODEL = "all-mpnet-base-v2"
+BGE_MODEL = "BAAI/bge-large-en-v1.5"
+DEFAULT_OUTPUT_DIR = Path("research/drift_recovery/out/estimator")
+DEFAULT_D1_PACK = Path("research/drift_recovery/out/d1/scifact_evalsplit_pack")
+
+
+@dataclass(frozen=True)
+class RegimeSpec:
+    name: str
+    dataset: str
+    swap_model: str
+    anchor_fraction: float = 0.4
+    seed: int = 42
+    existing_pack: Optional[Path] = None
+
+
+class RegimeUnavailableError(RuntimeError):
+    """An explicitly skippable offline dataset/model-cache miss."""
+
+
+REGIMES = (
+    RegimeSpec(
+        name="scifact_minilm_to_mpnet",
+        dataset="SciFact",
+        swap_model=MPNET_MODEL,
+        existing_pack=DEFAULT_D1_PACK,
+    ),
+    RegimeSpec(
+        name="nfcorpus_minilm_to_mpnet",
+        dataset="NFCorpus",
+        swap_model=MPNET_MODEL,
+    ),
+    RegimeSpec(
+        name="scifact_minilm_to_bge_large",
+        dataset="SciFact",
+        swap_model=BGE_MODEL,
+    ),
+    RegimeSpec(
+        name="nfcorpus_minilm_to_bge_large",
+        dataset="NFCorpus",
+        swap_model=BGE_MODEL,
+    ),
+)
+
+
+def _write_json(path: Path, payload: Mapping[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(payload, indent=2, sort_keys=True, allow_nan=False),
+        encoding="utf-8",
+    )
+
+
+def _safe_fit_index(
+    doc_ids: np.ndarray,
+    eval_qrels: Mapping[str, Mapping[str, float]],
+    seed: int,
+) -> np.ndarray:
+    positives = {
+        str(doc_id)
+        for relevance in eval_qrels.values()
+        for doc_id, score in relevance.items()
+        if float(score) > 0.0
+    }
+    order = np.random.default_rng(int(seed)).permutation(len(doc_ids))
+    safe_order = [index for index in order if str(doc_ids[index]) not in positives]
+    # SciFact supports the D1 half-corpus count.  NFCorpus has much denser
+    # relevance judgments, so its honest safe pool can be smaller.  Ridge is
+    # regularized and remains well-defined below the embedding dimension; the
+    # exact resulting n_anchor is a recorded regime axis rather than padded
+    # with eval-positive pairs.
+    fit_count = min(len(doc_ids) // 2, len(safe_order))
+    if fit_count < 2:
+        raise RuntimeError(
+            f"only {fit_count} non-eval-positive documents remain for leakage-safe ridge fit"
+        )
+    selected = safe_order[:fit_count]
+    return np.asarray(selected, dtype=np.int64)
+
+
+def _recovery(
+    floor_scores: Sequence[float],
+    oracle_scores: Sequence[float],
+    ridge_scores: Sequence[float],
+) -> Dict[str, float]:
+    floor = aggregate_ndcg(floor_scores)
+    oracle = aggregate_ndcg(oracle_scores)
+    ridge = aggregate_ndcg(ridge_scores)
+    gap = oracle - floor
+    if gap <= 1e-12:
+        raise RuntimeError(f"oracle gap is non-positive ({gap:.6g})")
+    return {
+        "floor_ndcg": floor,
+        "oracle_ndcg": oracle,
+        "ridge_ndcg": ridge,
+        "oracle_gap": gap,
+        "ridge_recovery": (ridge - floor) / gap,
+    }
+
+
+
+    Directory: C:\Users\mattm\.cache\huggingface
+
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d----           7/10/2026 12:57 AM                datasets
+d----           6/17/2026  8:14 AM                hub
+d----            1/2/2026 10:35 AM                modules
+d----            1/2/2026 12:06 PM                xet
+-a---           6/26/2026  8:16 AM              0 .check_for_update_done
+
+
+exec
+"C:\\Program Files\\WindowsApps\\Microsoft.PowerShell_7.6.3.0_x64__8wekyb3d8bbwe\\pwsh.exe" -Command 'rg -n "''^def load_mteb_data|load_dataset'"\\(\" benchmark_utils.py; Get-Content benchmark_utils.py | Select-Object -Skip 270 -First 125; Get-ChildItem "'$HOME'"\\.cache\\huggingface\\hub -Directory | Select-Object -ExpandProperty Name; Get-ChildItem "'$HOME'"\\.cache\\huggingface\\datasets -Directory | Select-Object -ExpandProperty Name" in D:\GITHUB\CHELATEDAI\.claude\worktrees\agent-build
+ succeeded in 680ms:
+302:def load_mteb_data(task_name: str) -> Tuple[Optional[Dict], Optional[Dict], Optional[Dict]]:
+        return None
+    if all(k in obj for k in target_keys):
+        return obj
+    for k, v in obj.items():
+        found = find_keys(v, target_keys)
+        if found:
+            return found
+    return None
+
+
+def find_payload(obj, key):
+    """
+    Recursively search a nested dict for a specific key and return its value.
+    
+    Args:
+        obj: Object to search (typically a nested dict)
+        key: Key to find
+        
+    Returns:
+        Value associated with key, or None if not found
+    """
+    if isinstance(obj, dict):
+        if key in obj:
+            return obj[key]
+        for v in obj.values():
+            res = find_payload(v, key)
+            if res is not None:
+                return res
+    return None
+
+
+def load_mteb_data(task_name: str) -> Tuple[Optional[Dict], Optional[Dict], Optional[Dict]]:
+    """
+    Load corpus, queries, and qrels from an MTEB retrieval task.
+    
+    This function handles various MTEB task formats and provides robust
+    extraction of corpus documents, queries, and relevance judgments.
+    
+    Args:
+        task_name: Name of the MTEB task (e.g., "SciFact", "NFCorpus")
+        
+    Returns:
+        Tuple of (corpus, queries, qrels) dicts, or (None, None, None) on error
+        - corpus: {doc_id: text} mapping
+        - queries: {query_id: text} mapping  
+        - qrels: {query_id: {doc_id: relevance_score}} mapping
+    """
+    if mteb is None:
+        print("ERROR: mteb package not installed. Run: pip install mteb")
+        return None, None, None
+    
+    try:
+        task = mteb.get_task(task_name)
+    except KeyError:
+        print(f"ERROR: Task '{task_name}' not found in MTEB registry!")
+        return None, None, None
+    except Exception as e:
+        print(f"ERROR: Failed to load MTEB task '{task_name}': {e}")
+        return None, None, None
+
+    task.load_data()
+
+    # Try to find the data root containing corpus and queries
+    targets = ['corpus', 'queries']
+    data_root = find_keys(task.dataset, targets)
+
+    if not data_root:
+        c_payload = find_payload(task.dataset, 'corpus')
+        q_payload = find_payload(task.dataset, 'queries')
+        r_payload = find_payload(task.dataset, 'relevant_docs')
+        if not r_payload:
+            r_payload = find_payload(task.dataset, 'test')
+    else:
+        c_payload = data_root.get('corpus')
+        q_payload = data_root.get('queries')
+        r_payload = data_root.get('relevant_docs')
+
+    corpus = {}
+    queries = {}
+    qrels = {}
+
+    # Parse corpus
+    if c_payload:
+        try:
+            for k, v in c_payload.items():
+                corpus[k] = v['text'] + " " + v['title']
+        except (AttributeError, TypeError):
+            for row in c_payload:
+                if '_id' in row:
+                    doc_id = row['_id']
+                elif 'id' in row:
+                    doc_id = row['id']
+                else:
+                    continue
+                text = row.get('text', '')
+                title = row.get('title', '')
+                corpus[doc_id] = text + " " + title
+        except Exception as e:
+            print(f"ERROR: Failed to parse corpus payload: {e}")
+
+    # Parse queries
+    if q_payload:
+        try:
+            for k, v in q_payload.items():
+                queries[k] = v['text']
+        except (AttributeError, TypeError):
+            for row in q_payload:
+                if '_id' in row:
+                    qid = row['_id']
+                elif 'id' in row:
+                    qid = row['id']
+                else:
+                    continue
+                queries[qid] = row.get('text', '')
+        except Exception as e:
+            print(f"ERROR: Failed to parse queries payload: {e}")
+
+    # Parse qrels (relevance judgments)
+    if r_payload:
+        try:
+            if isinstance(r_payload, dict):
+                for qid, docs in r_payload.items():
+                    qid = str(qid)
+                    qrels[qid] = {}
+                    if isinstance(docs, dict):
+.locks
+datasets--allenai--WildChat-1M
+datasets--climate_fever
+datasets--fever
+datasets--hotpot_qa
+datasets--lmsys--lmsys-chat-1m
+datasets--mteb--fiqa
+datasets--mteb--nfcorpus
+datasets--mteb--scifact
+datasets--RyokoAI--ShareGPT52K
+datasets--stablediffusiontutorials--LTX_workflows
+datasets--wikitext
+models--BAAI--bge-large-en-v1.5
+models--BAAI--bge-reranker-v2-m3
+models--bytkim--Qwen3.6-27B-MTP-pi-tune-GGUF
+models--colbert-ir--colbertv2.0
+models--Floppyshy--sulphur-2-runpod
+models--HauhauCS--Qwen3.6-27B-Uncensored-HauhauCS-Aggressive
+models--microsoft--infoxlm-large
+models--microsoft--layoutlmv3-base
+models--mradermacher--Ministral-3-14B-Instruct-2512-absolute-heresy-i1-GGUF
+models--nomic-ai--nomic-bert-2048
+models--nomic-ai--nomic-embed-text-v1
+models--nvidia--canary-qwen-2.5b
+models--PaddlePaddle--en_PP-OCRv5_mobile_rec
+models--PaddlePaddle--PP-LCNet_x1_0_doc_ori
+models--PaddlePaddle--PP-LCNet_x1_0_textline_ori
+models--PaddlePaddle--PP-OCRv5_server_det
+models--PaddlePaddle--UVDoc
+models--Qwen--Qwen2.5-0.5B-Instruct
+models--Qwen--Qwen3.5-0.8B-Base
+models--sentence-transformers--all-MiniLM-L6-v2
+models--sentence-transformers--all-mpnet-base-v2
+models--solailabs--wmt22-cometkiwi-da-int8
+models--tiny-random--qwen2.5
+models--unsloth--Qwen3.6-27B-GGUF
+models--unsloth--Qwen3.6-35B-A3B-GGUF
+models--vidore--colpali-v1.2
+json
+mteb___fiqa
+mteb___nfcorpus
+mteb___scifact
+wikitext
+
+exec
+"C:\\Program Files\\WindowsApps\\Microsoft.PowerShell_7.6.3.0_x64__8wekyb3d8bbwe\\pwsh.exe" -Command 'rg -n "SentenceTransformer|swap_model|local_files_only|encode_retrieval_case" research/drift_recovery/harness_bridge.py; Get-Content research/drift_recovery/harness_bridge.py | Select-Object -Skip 400 -First 110; Get-ChildItem $HOME'"\\.cache\\huggingface\\hub\\models--*\\snapshots -Directory | ForEach-Object { "'$repo=$_.Parent.Parent.Name -replace '"'"'^models--'"','' -replace '--','/'; "'$files=(Get-ChildItem $_.FullName -File | Select-Object -ExpandProperty Name) -join '"','; [PSCustomObject]@{Model="'$repo;Snapshot=$_.Name;Files=$files} } | Format-List' in D:\GITHUB\CHELATEDAI\.claude\worktrees\agent-build
+ succeeded in 1237ms:
+352:    from sentence_transformers import SentenceTransformer
+354:    model = SentenceTransformer(str(model_name), device=str(device))
+399:def encode_retrieval_case(
+401:    swap_model: str,
+411:    from sentence_transformers import SentenceTransformer
+413:    old = SentenceTransformer(str(old_model), device=device)
+424:        swap_model_name=str(swap_model),
+448:        "swap_model": str(swap_model),
+455:    from sentence_transformers import SentenceTransformer
+457:    old = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2", device=device)
+464:    drift = QueryEncoderDrift(store_dim=Do.shape[1], swap_model_name="all-mpnet-base-v2", seed=seed)
+488:        "swap_model": "all-mpnet-base-v2",
+    swap_model: str,
+    seed: int = 42,
+    device: str = "cuda",
+    old_model: str = "sentence-transformers/all-MiniLM-L6-v2",
+    batch_size: int = 64,
+) -> Dict[str, Any]:
+    """Encode one generic D3 regime with cached local models only."""
+
+    import gc
+
+    from sentence_transformers import SentenceTransformer
+
+    old = SentenceTransformer(str(old_model), device=device)
+    Do = np.asarray(
+        old.encode(
+            list(case["corpus_texts"]),
+            batch_size=int(batch_size),
+            show_progress_bar=True,
+        ),
+        dtype=np.float64,
+    )
+    drift = QueryEncoderDrift(
+        store_dim=int(Do.shape[1]),
+        swap_model_name=str(swap_model),
+        seed=int(seed),
+    )
+    # The first call fixes the seeded frozen projection.  The document oracle
+    # positions reuse that exact projection instance.
+    Qd = np.asarray(drift.embed_queries(list(case["eval_query_texts"])), dtype=np.float64)
+    Dor = np.asarray(drift.embed_queries(list(case["corpus_texts"])), dtype=np.float64)
+    manifest = drift.manifest()
+    del old
+    del drift
+    gc.collect()
+    try:
+        import torch
+
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+    except ImportError:
+        pass
+    return {
+        "Do": Do,
+        "Dor": Dor,
+        "Qd": Qd,
+        "drift_manifest": manifest,
+        "old_model": str(old_model),
+        "swap_model": str(swap_model),
+    }
+
+
+def encode_scifact_case(case: Mapping[str, Any], seed: int = 42, device: str = "cuda") -> Dict[str, Any]:
+    """Run both cached encoders once and return arrays ready for freezing."""
+
+    from sentence_transformers import SentenceTransformer
+
+    old = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2", device=device)
+    Do = np.asarray(
+        old.encode(case["corpus_texts"], batch_size=128, show_progress_bar=True), dtype=np.float64
+    )
+    curve_source = np.asarray(
+        old.encode(case["curve_pair_doc_texts"], batch_size=128, show_progress_bar=True), dtype=np.float64
+    )
+    drift = QueryEncoderDrift(store_dim=Do.shape[1], swap_model_name="all-mpnet-base-v2", seed=seed)
+    # One call fixes the projection; all later calls reuse exactly that instance.
+    Qd = np.asarray(drift.embed_queries(list(case["eval_query_texts"])), dtype=np.float64)
+    Dor = np.asarray(drift.embed_queries(list(case["corpus_texts"])), dtype=np.float64)
+    canonical_target = np.asarray(
+        drift.embed_queries(list(case["canonical_pair_query_texts"])), dtype=np.float64
+    )
+    curve_target = np.asarray(
+        drift.embed_queries(list(case["curve_pair_query_texts"])), dtype=np.float64
+    )
+    doc_lookup = {doc_id: index for index, doc_id in enumerate(case["doc_ids"])}
+    canonical_source = np.asarray(
+        [Do[doc_lookup[doc_id]] for doc_id in case["canonical_pair_doc_ids"]], dtype=np.float64
+    )
+    return {
+        "Do": Do,
+        "Dor": Dor,
+        "Qd": Qd,
+        "canonical_source": canonical_source,
+        "canonical_target": canonical_target,
+        "curve_source": curve_source,
+        "curve_target": curve_target,
+        "drift_manifest": drift.manifest(),
+        "old_model": "sentence-transformers/all-MiniLM-L6-v2",
+        "swap_model": "all-mpnet-base-v2",
+    }
+
+
+def train_c3a_documents(
+    all_documents: np.ndarray,
+    anchor_documents: np.ndarray,
+    anchor_queries: np.ndarray,
+    seed: int,
+    steps: int = 30,
+    learning_rate: float = 0.01,
+    min_correction: float = 0.01,
+    max_correction: float = 0.5,
+) -> np.ndarray:
+    """Run the merged C3a bounded adapter and InfoNCE training path."""
+
+    import torch
+
+    torch.manual_seed(int(seed))
+    adapter = create_adapter(
+        "mlp",
+        input_dim=int(all_documents.shape[1]),
+        bounded=True,
+
+Model    : hub
+Snapshot : snapshots
+Files    : 
+
+Model    : hub
+Snapshot : snapshots
+Files    : 
+
+Model    : hub
+Snapshot : snapshots
+Files    : 
+
+Model    : hub
+Snapshot : snapshots
+Files    : 
+
+Model    : hub
+Snapshot : snapshots
+Files    : 
+
+Model    : hub
+Snapshot : snapshots
+Files    : 
+
+Model    : hub
+Snapshot : snapshots
+Files    : 
+
+Model    : hub
+Snapshot : snapshots
+Files    : 
+
+Model    : hub
+Snapshot : snapshots
+Files    : 
+
+Model    : hub
+Snapshot : snapshots
+Files    : 
+
+Model    : hub
+Snapshot : snapshots
+Files    : 
+
+Model    : hub
+Snapshot : snapshots
+Files    : 
+
+Model    : hub
+Snapshot : snapshots
+Files    : 
+
+
+exec
+"C:\\Program Files\\WindowsApps\\Microsoft.PowerShell_7.6.3.0_x64__8wekyb3d8bbwe\\pwsh.exe" -Command '$base="$HOME'"\\.cache\\huggingface\\hub\"; Get-ChildItem "'$base -Directory -Filter '"'models--*' | ForEach-Object { "'$repo=$_.Name.Substring(8).Replace('"'--','/'); Get-ChildItem (Join-Path "'$_.FullName '"'snapshots') -Directory -ErrorAction SilentlyContinue | ForEach-Object { "'$cfg=Join-Path $_.FullName '"'config.json'; if(Test-Path "'$cfg){ $j=Get-Content $cfg -Raw | ConvertFrom-Json; [PSCustomObject]@{Model=$repo; Architecture=($j.architectures -join '"','); ModelType="'$j.model_type; Snapshot=$_.Name; WeightFiles=((Get-ChildItem $_.FullName -File | Where-Object Name -match '"'model.*(safetensors|bin)"'$'"' | Select-Object -ExpandProperty Name)-join ',')} } } } | Format-Table -AutoSize -Wrap" in D:\GITHUB\CHELATEDAI\.claude\worktrees\agent-build
+ succeeded in 867ms:
+
+Model                                   Architecture                        ModelType   Snapshot
+-----                                   ------------                        ---------   --------                       
+BAAI/bge-large-en-v1.5                  BertModel                           bert        d4aa6901d3a41ba39fb536a557fa166
+                                                                                        f842b0e09
+BAAI/bge-reranker-v2-m3                 XLMRobertaForSequenceClassification xlm-roberta 953dc6f6f85a1b2dbfca4c34a2796e7
+                                                                                        dde08d41e
+colbert-ir/colbertv2.0                  HF_ColBERT                          bert        c1e84128e85ef755c096a95bdb06b47
+                                                                                        793b13acf
+microsoft/layoutlmv3-base                                                   layoutlmv3  cfbbbff0762e6aab37086fdd4739ad1
+                                                                                        4fe7d5db4
+nomic-ai/nomic-embed-text-v1            NomicBertModel                      nomic_bert  eb6b20cd65fcbdf7a2bc4ebac97908b
+                                                                                        3b21da981
+nvidia/canary-qwen-2.5b                                                                 b1469e1bba1cfe140205529c79c434c
+                                                                                        a47180960
+Qwen/Qwen2.5-0.5B-Instruct              Qwen2ForCausalLM                    qwen2       7ae557604adf67be50417f59c2c2f16
+                                                                                        7def9a775
+Qwen/Qwen3.5-0.8B-Base                  Qwen3_5ForConditionalGeneration     qwen3_5     dc7cdfe2ee4154fa7e30f5b51ca41bf
+                                                                                        a40174e68
+sentence-transformers/all-MiniLM-L6-v2  BertModel                           bert        1110a243fdf4706b3f48f1d95db1a4f
+                                                                                        5529b4d41
+sentence-transformers/all-MiniLM-L6-v2  BertModel                           bert        c9745ed1d9f207416be6d2e6f8de32d
+                                                                                        1f16199bf
+sentence-transformers/all-mpnet-base-v2 MPNetForMaskedLM                    mpnet       e8c3b32edf5434bc2275fc9bab85f82
+                                                                                        640a19130
+
+
+exec
+"C:\\Program Files\\WindowsApps\\Microsoft.PowerShell_7.6.3.0_x64__8wekyb3d8bbwe\\pwsh.exe" -Command '$env:HF_HUB_OFFLINE='"'1'; "'$env:HF_DATASETS_OFFLINE='"'1'; "'$env:TRANSFORMERS_OFFLINE='"'1'; @'
+import gc, json, os
+from benchmark_utils import load_mteb_data
+for name in ['SciFact','NFCorpus','FiQA2018','FiQA','ArguAna','SCIDOCS','TRECCOVID']:
+    try:
+        c,q,r=load_mteb_data(name)
+        print('DATA',name, len(c or {}),len(q or {}),len(r or {}),sum(len(v) for v in (r or {}).values()))
+    except Exception as e: print('DATA',name,'ERROR',type(e).__name__,str(e)[:300])
+from sentence_transformers import SentenceTransformer
+for name,kwargs in [('sentence-transformers/all-MiniLM-L6-v2',{}),('sentence-transformers/all-mpnet-base-v2',{}),('BAAI/bge-large-en-v1.5',{}),('nomic-ai/nomic-embed-text-v1',{'trust_remote_code':True}),('microsoft/infoxlm-large',{}),('nomic-ai/nomic-bert-2048',{})]:
+    try:
+        m=SentenceTransformer(name,device='cpu',local_files_only=True,**kwargs)
+        print('MODEL',name,'OK',m.get_sentence_embedding_dimension())
+        del m; gc.collect()
+    except Exception as e: print('MODEL',name,'ERROR',type(e).__name__,str(e).replace('\\n',' ')[:500])
+'@ | python -" in D:\GITHUB\CHELATEDAI\.claude\worktrees\agent-build
+codex
+The live cache contains only three MTEB retrieval dataset repositories (`fiqa`, `nfcorpus`, `scifact`) and no cached ArguAna/SCIDOCS/TREC-COVID directories. I’m finishing offline constructor checks now; these instantiate loaders only and do not encode or train.
+ succeeded in 31181ms:
+DATA SciFact 5183 300 300 339
+DATA NFCorpus 3633 323 323 12334
+DATA FiQA2018 57638 648 648 1706
+ERROR: Task 'FiQA' not found in MTEB registry!
+DATA FiQA 0 0 0 0
+DATA ArguAna ERROR ConnectionError Couldn't reach 'mteb/arguana' on the Hub (OfflineModeIsEnabled)
+DATA SCIDOCS ERROR ConnectionError Couldn't reach 'mteb/scidocs' on the Hub (OfflineModeIsEnabled)
+DATA TRECCOVID ERROR ConnectionError Couldn't reach 'mteb/trec-covid' on the Hub (OfflineModeIsEnabled)
+MODEL sentence-transformers/all-MiniLM-L6-v2 OK 384
+MODEL sentence-transformers/all-mpnet-base-v2 OK 768
+MODEL BAAI/bge-large-en-v1.5 OK 1024
+MODEL nomic-ai/nomic-embed-text-v1 OK 768
+MODEL microsoft/infoxlm-large ERROR OSError We couldn't connect to 'https://huggingface.co' to load the files, and couldn't find them in the cached files. Check your internet connection or see how to run the library in offline mode at 'https://huggingface.co/docs/transformers/installation#offline-mode'.
+MODEL nomic-ai/nomic-bert-2048 ERROR OSError We couldn't connect to 'https://huggingface.co' to load the files, and couldn't find them in the cached files. Check your internet connection or see how to run the library in offline mode at 'https://huggingface.co/docs/transformers/installation#offline-mode'.
+Using the latest cached version of the dataset since mteb/scifact couldn't be found on the Hugging Face Hub (offline mode is enabled).
+Using the latest cached version of the dataset since mteb/scifact couldn't be found on the Hugging Face Hub (offline mode is enabled).
+Found the latest cached dataset configuration 'default' at C:\Users\mattm\.cache\huggingface\datasets\mteb___scifact\default\0.0.0\d56462d0e63a25450459c4f213e49ffdb866f7f9 (last modified on Thu Jan  1 20:14:01 2026).
+Using the latest cached version of the dataset since mteb/scifact couldn't be found on the Hugging Face Hub (offline mode is enabled).
+Found the latest cached dataset configuration 'default' at C:\Users\mattm\.cache\huggingface\datasets\mteb___scifact\default\0.0.0\d56462d0e63a25450459c4f213e49ffdb866f7f9 (last modified on Thu Jan  1 20:14:01 2026).
+Using the latest cached version of the dataset since mteb/scifact couldn't be found on the Hugging Face Hub (offline mode is enabled).
+Found the latest cached dataset configuration 'corpus' at C:\Users\mattm\.cache\huggingface\datasets\mteb___scifact\corpus\0.0.0\d56462d0e63a25450459c4f213e49ffdb866f7f9 (last modified on Thu Jan  1 20:16:39 2026).
+Using the latest cached version of the dataset since mteb/scifact couldn't be found on the Hugging Face Hub (offline mode is enabled).
+Found the latest cached dataset configuration 'corpus' at C:\Users\mattm\.cache\huggingface\datasets\mteb___scifact\corpus\0.0.0\d56462d0e63a25450459c4f213e49ffdb866f7f9 (last modified on Thu Jan  1 20:16:39 2026).
+Using the latest cached version of the dataset since mteb/scifact couldn't be found on the Hugging Face Hub (offline mode is enabled).
+Found the latest cached dataset configuration 'queries' at C:\Users\mattm\.cache\huggingface\datasets\mteb___scifact\queries\0.0.0\d56462d0e63a25450459c4f213e49ffdb866f7f9 (last modified on Thu Jan  1 20:16:08 2026).
+Using the latest cached version of the dataset since mteb/scifact couldn't be found on the Hugging Face Hub (offline mode is enabled).
+Found the latest cached dataset configuration 'queries' at C:\Users\mattm\.cache\huggingface\datasets\mteb___scifact\queries\0.0.0\d56462d0e63a25450459c4f213e49ffdb866f7f9 (last modified on Thu Jan  1 20:16:08 2026).
+Using the latest cached version of the dataset since mteb/nfcorpus couldn't be found on the Hugging Face Hub (offline mode is enabled).
+Using the latest cached version of the dataset since mteb/nfcorpus couldn't be found on the Hugging Face Hub (offline mode is enabled).
+Found the latest cached dataset configuration 'default' at C:\Users\mattm\.cache\huggingface\datasets\mteb___nfcorpus\default\0.0.0\ec0fa4fe99da2ff19ca1214b7966684033a58814 (last modified on Fri Jan  2 15:04:11 2026).
+Using the latest cached version of the dataset since mteb/nfcorpus couldn't be found on the Hugging Face Hub (offline mode is enabled).
+Found the latest cached dataset configuration 'default' at C:\Users\mattm\.cache\huggingface\datasets\mteb___nfcorpus\default\0.0.0\ec0fa4fe99da2ff19ca1214b7966684033a58814 (last modified on Fri Jan  2 15:04:11 2026).
+Using the latest cached version of the dataset since mteb/nfcorpus couldn't be found on the Hugging Face Hub (offline mode is enabled).
+Found the latest cached dataset configuration 'corpus' at C:\Users\mattm\.cache\huggingface\datasets\mteb___nfcorpus\corpus\0.0.0\ec0fa4fe99da2ff19ca1214b7966684033a58814 (last modified on Fri Jan  2 15:04:12 2026).
+Using the latest cached version of the dataset since mteb/nfcorpus couldn't be found on the Hugging Face Hub (offline mode is enabled).
+Found the latest cached dataset configuration 'corpus' at C:\Users\mattm\.cache\huggingface\datasets\mteb___nfcorpus\corpus\0.0.0\ec0fa4fe99da2ff19ca1214b7966684033a58814 (last modified on Fri Jan  2 15:04:12 2026).
+Using the latest cached version of the dataset since mteb/nfcorpus couldn't be found on the Hugging Face Hub (offline mode is enabled).
+Found the latest cached dataset configuration 'queries' at C:\Users\mattm\.cache\huggingface\datasets\mteb___nfcorpus\queries\0.0.0\ec0fa4fe99da2ff19ca1214b7966684033a58814 (last modified on Fri Jan  2 15:04:13 2026).
+Using the latest cached version of the dataset since mteb/nfcorpus couldn't be found on the Hugging Face Hub (offline mode is enabled).
+Found the latest cached dataset configuration 'queries' at C:\Users\mattm\.cache\huggingface\datasets\mteb___nfcorpus\queries\0.0.0\ec0fa4fe99da2ff19ca1214b7966684033a58814 (last modified on Fri Jan  2 15:04:13 2026).
+Using the latest cached version of the dataset since mteb/fiqa couldn't be found on the Hugging Face Hub (offline mode is enabled).
+Using the latest cached version of the dataset since mteb/fiqa couldn't be found on the Hugging Face Hub (offline mode is enabled).
+Found the latest cached dataset configuration 'default' at C:\Users\mattm\.cache\huggingface\datasets\mteb___fiqa\default\0.0.0\27a168819829fe9bcd655c2df245fb19452e8e06 (last modified on Fri Jan  2 15:08:17 2026).
+Using the latest cached version of the dataset since mteb/fiqa couldn't be found on the Hugging Face Hub (offline mode is enabled).
+Found the latest cached dataset configuration 'default' at C:\Users\mattm\.cache\huggingface\datasets\mteb___fiqa\default\0.0.0\27a168819829fe9bcd655c2df245fb19452e8e06 (last modified on Fri Jan  2 15:08:17 2026).
+Using the latest cached version of the dataset since mteb/fiqa couldn't be found on the Hugging Face Hub (offline mode is enabled).
+Found the latest cached dataset configuration 'corpus' at C:\Users\mattm\.cache\huggingface\datasets\mteb___fiqa\corpus\0.0.0\27a168819829fe9bcd655c2df245fb19452e8e06 (last modified on Fri Jan  2 15:08:20 2026).
+Using the latest cached version of the dataset since mteb/fiqa couldn't be found on the Hugging Face Hub (offline mode is enabled).
+Found the latest cached dataset configuration 'corpus' at C:\Users\mattm\.cache\huggingface\datasets\mteb___fiqa\corpus\0.0.0\27a168819829fe9bcd655c2df245fb19452e8e06 (last modified on Fri Jan  2 15:08:20 2026).
+Using the latest cached version of the dataset since mteb/fiqa couldn't be found on the Hugging Face Hub (offline mode is enabled).
+Found the latest cached dataset configuration 'queries' at C:\Users\mattm\.cache\huggingface\datasets\mteb___fiqa\queries\0.0.0\27a168819829fe9bcd655c2df245fb19452e8e06 (last modified on Fri Jan  2 15:08:21 2026).
+Using the latest cached version of the dataset since mteb/fiqa couldn't be found on the Hugging Face Hub (offline mode is enabled).
+Found the latest cached dataset configuration 'queries' at C:\Users\mattm\.cache\huggingface\datasets\mteb___fiqa\queries\0.0.0\27a168819829fe9bcd655c2df245fb19452e8e06 (last modified on Fri Jan  2 15:08:21 2026).
+C:\Users\mattm\.cache\huggingface\modules\transformers_modules\nomic_hyphen_ai\nomic_hyphen_bert_hyphen_2048\7710840340a098cfb869c4f65e87cf2b1b70caca\modeling_hf_nomic_bert.py:119: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  state_dict = loader(resolved_archive_file)
+<All keys matched successfully>
+No sentence-transformers model found with name microsoft/infoxlm-large. Creating a new one with mean pooling.
+No sentence-transformers model found with name nomic-ai/nomic-bert-2048. Creating a new one with mean pooling.
+
+exec
+"C:\\Program Files\\WindowsApps\\Microsoft.PowerShell_7.6.3.0_x64__8wekyb3d8bbwe\\pwsh.exe" -Command 'Get-Content query_encoder_drift.py | Select-Object -First 130; git status --short; Get-Content CLAUDE.md | Select-Object -First 80' in D:\GITHUB\CHELATEDAI\.claude\worktrees\agent-build
+ succeeded in 684ms:
+"""Query-side encoder-upgrade drift for retrieval-recovery experiments.
+
+This models the realistic failure mode an encoder upgrade introduces: the eval
+queries move to a *new* encoder while the document store remains cached in the
+*original* encoder's space. Retrieval degrades because queries and documents are
+no longer in the same representation.
+
+Crucially, this drift defeats the "re-embed maintenance" oracle (condition C2).
+C2 re-embeds the documents' unchanged text with the *original* frozen encoder,
+which reproduces the cached document vectors exactly — but those vectors are
+still in the old space and therefore still misaligned with the upgraded query
+space, so C2 does not recover retrieval. Only an adapter that re-aligns the
+cached document vectors toward the new query space (condition C3), or a full
+re-embed of the corpus with the *new* encoder (the expensive oracle upper
+bound), can recover. See
+docs/waypoint-research-2026-06-09/finding-oracle-survives-document-model-swap.md.
+"""
+
+from __future__ import annotations
+
+import hashlib
+from typing import Any, Dict, List, Optional
+
+import numpy as np
+
+
+class QueryEncoderDrift:
+    """Embeds query text with a swapped encoder projected into the store's space.
+
+    The projection is a FROZEN, seeded ``DimensionProjection`` and is part of the
+    drift definition — it is never trained. Outcomes are a deterministic function
+    of ``(seed, swap model, query text)``.
+    """
+
+    def __init__(
+        self,
+        store_dim: int,
+        swap_model_name: str = "all-mpnet-base-v2",
+        seed: int = 0,
+        swap_backend: Any = None,
+    ):
+        self.store_dim = int(store_dim)
+        self.swap_model_name = str(swap_model_name)
+        self.seed = int(seed)
+        self._swap_backend = swap_backend
+        self._projection = None
+        self._swap_dim: Optional[int] = None
+
+    def embed_queries(self, texts: List[str]) -> np.ndarray:
+        """Return drifted query embeddings of shape (len(texts), store_dim), L2-normalized."""
+        if not isinstance(texts, (list, tuple)) or len(texts) == 0:
+            raise ValueError("texts must be a non-empty sequence of strings")
+        backend = self._backend()
+        raw = np.asarray(backend.embed_raw(list(texts)), dtype=np.float32)
+        if raw.ndim != 2 or raw.shape[0] != len(texts):
+            raise ValueError(
+                f"swap backend returned shape {raw.shape}; expected ({len(texts)}, swap_dim)"
+            )
+        self._ensure_projection(int(raw.shape[1]))
+        projected = self._projection.project_numpy(raw)
+        return self._l2_normalize(np.asarray(projected, dtype=np.float32))
+
+    def manifest(self) -> dict:
+        """Reproducibility record. Call after at least one embed_queries()."""
+        if self._projection is None or self._swap_dim is None:
+            raise ValueError("manifest() requires at least one embed_queries() call first")
+        return {
+            "drift": "query_encoder_swap",
+            "swap_model": self.swap_model_name,
+            "projection_seed": self.seed,
+            "projection_checksum": self._projection_checksum(self._projection),
+            "swap_dim": int(self._swap_dim),
+            "store_dim": int(self.store_dim),
+        }
+
+    def _backend(self) -> Any:
+        if self._swap_backend is None:
+            from embedding_backend import create_embedding_backend
+
+            self._swap_backend = create_embedding_backend(self.swap_model_name)
+        return self._swap_backend
+
+    def _ensure_projection(self, swap_dim: int) -> None:
+        if self._projection is not None:
+            if swap_dim != self._swap_dim:
+                raise ValueError(
+                    f"swap backend changed dimension from {self._swap_dim} to {swap_dim}"
+                )
+            return
+        import torch
+
+        from teacher_distillation import DimensionProjection
+
+        # Seed torch's global RNG so DimensionProjection's near-identity init
+        # (which uses torch.randn_like) is reproducible. Frozen — never trained.
+        # Caveat: reproducibility relies on the global torch RNG between this
+        # seed call and the randn_like inside DimensionProjection. This is safe
+        # single-threaded (our case); a concurrent thread consuming the global
+        # torch RNG in that window could desync the init.
+        torch.manual_seed(int(self.seed))
+        projection = DimensionProjection(int(swap_dim), int(self.store_dim))
+        projection.eval()
+        for param in projection.parameters():
+            param.requires_grad_(False)
+        self._projection = projection
+        self._swap_dim = int(swap_dim)
+
+    @staticmethod
+    def _l2_normalize(matrix: np.ndarray) -> np.ndarray:
+        norms = np.linalg.norm(matrix, axis=1, keepdims=True)
+        norms = np.where(norms > 0.0, norms, 1.0)
+        return (matrix / norms).astype(np.float32)
+
+    @staticmethod
+    def _projection_checksum(projection: Any) -> str:
+        digest = hashlib.sha256()
+        state: Dict[str, Any] = projection.state_dict()
+        for name in sorted(state.keys()):
+            digest.update(name.encode("utf-8"))
+            digest.update(
+                np.ascontiguousarray(state[name].detach().cpu().numpy(), dtype=np.float32).tobytes()
+            )
+        return digest.hexdigest()
+?? research/
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Brutal Honesty Convention (load-bearing — read first)
+
+See `docs/conventions/brutal-honesty-rulebook.md` (v3.3 — v3.2 executable PR gates plus L13 soft-prose-claimed-as-mechanical and the v3.3 schema/prose/artifact drift validator. v3.2 baseline: Tier B independence enforcement via `BHS_*_AGENT` lines, severity caps on Tier B scores, `DEFERRED_SCOPE:` tracking, quantitative cycle definition, override structural barrier at BLOCKED, executable validators in `scripts/`).
+
+**Premise**: Assume every implementation/completion claim is false until independently proven by runtime evidence. Tests existing, routes existing, docs saying complete, PR text saying complete, agent claims, and even self-attested brutal-honesty sections are NOT evidence. Evidence is: command output from the production code path, real UI/API behavior, persistence/state mutation, artifact/replay/checkpoint surviving a fresh checkout, or an independent reviewer who tried to disprove and failed.
+
+**Five hard rules**:
+
+1. **Evidence rule.** Every PR with a "complete" claim includes `EVIDENCE:` and `SMOKE:` lines pointing at runtime evidence — not tests.
+2. **Visible means verified.** Incomplete code may live in the repo; it may NOT be presented as a working feature (no UI surfacing, no API doc, no release-note implication, no roadmap tick).
+3. **Mandatory PR brutal-honesty section.** Every PR body ends with a `## Brutal Honesty` section disclosing stubs (L1), escape conditionals (L2), mocks in production paths (L3), partial implementations (L4), untested production paths (L5/L8/L12), broad-catch swallowing (L11), and any other §1 instance with `file:line`. Empty answers must be justified, not omitted (template in §4 of the rulebook).
+4. **Adversarial cross-agent review.** Implementation slices are done by a fresh sub-agent; a second fresh sub-agent is given the diff + brutal-honesty section + EVIDENCE + smoke command + this rulebook, and is asked to **try to disprove** completion. Not verify — *disprove*.
+5. **One deterministic smoke path per repo.** `scripts/smoke.sh` (or equivalent) is the release gate. **Two honest tiers per §1 Rule 5**: Floor (import + surface-check through production code paths — the v3.2 minimum) is acceptable IF the PR body's SMOKE: line names which tier was run AND any ceiling-tier gap appears as a Carried Debt entry. Ceiling (true end-to-end against a real fixture) is the target. Claiming "smoke passed" at ceiling-tier when only floor-tier was run is itself L4 partial-as-complete. If smoke fails, the release is not ready regardless of test count.
+
+**Trigger phrases** (use these instead of "is this done?"): *"Be brutally honest." / "What did you fake to get here?" / "If I ran this on a fresh checkout right now, what would actually fail?" / "Tell me the smallest concrete thing that does NOT work yet." / "Show me the runtime evidence, not the test." / "If I disable this feature behind a flag, what visible behavior changes?"*
+
+**The Remediation Loop (meta-component, §6 of the rulebook; v3.1 closes the carry-forward loophole)** — applies to this repo:
+- **Tier A (per-PR)**: 5 iterations max. Implementer self-scores `BHS_SELF_DRAFT` after each. If self-score < 100 at iteration 5, the PR is **withdrawn or scope-reduced** — it does NOT ship at <100 hoping for carry-forward. Same gap surviving 2 iterations → escalate, don't loop more.
+- **Tier B (pre-merge — THE OFFICIAL SCORER)**: one fresh adversarial agent assigns `BHS_TIER_B` independently. `BHS_OFFICIAL = min(BHS_SELF_DRAFT, BHS_TIER_B)`. **Hard merge gate: only PRs with `BHS_OFFICIAL = 100` may merge.** No "ships with caveats" path. Self-vs-Tier-B gap > 5 → automatic L4 score-gaming disclosure.
+- **Tier C (cross-PR / session boundary)**: aggregate disclosures into `docs/next-session.md` "Carried Debt" with TTL = 1 cycle. Items not cleared in the next cycle flip the **block flag** to BLOCKED — the cycle after that forbids ALL new feature work until Carried Debt = 0. **No two-cycle slop.** Block flag is automatic from the math.
+- **BHS scale (only 100 ships)**: 100 = merges · 90–99 = does not merge, back to Tier A · 70–89 = does not merge, reduce scope · 50–69 = does not merge, scaffold-only allowed · 0–49 = draft, not a PR.
+- **Operator override**: rulebook can't prevent the operator from typing the merge command at <100; it makes the override visible (`OPERATOR_OVERRIDE:` line) and force-creates a top-priority carried-debt entry for the next cycle.
+- **PR body required lines**: `BHS_SELF_DRAFT`, `BHS_SELF_DRAFT_AGENT`, `BHS_TIER_B`, `BHS_TIER_B_AGENT`, `BHS_TIER_B_SEVERITY`, `BHS_OFFICIAL`, `CARRY_FORWARD`, `DEFERRED_SCOPE`, `LOOP_ITERATIONS`, `OPERATOR_OVERRIDE` (per §4 template).
+- **Why this is in CLAUDE.md, not in a skill or MCP server**: skills can fail to load, agents can spin up without MCP context, the convention can't. This file is auto-loaded every session — the convention is the meta-component.
+
+**Lie taxonomy L1–L13** is in §1 of the rulebook; quote by number when calling out a failure. Speculating is itself a lie — *"I don't know"* is the correct answer when there is no evidence.
+
+## Session Rules (enforced every session, no exceptions)
+
+### Rule 1 — Full Implementation Only
+Every slice, every phase, every PR must be **fully implemented**. No scaffolding, no stubs, no `pass`-body placeholders, no `TODO: implement` markers left in committed code. If a feature is too large for one PR, split it into genuinely shippable sub-slices — but each sub-slice must itself be complete and working, not a placeholder for future work.
+
+### Rule 2 — PR on Completion
+Every unit of completed work must land in a PR **before moving to the next task**. Do not accumulate dirty branches, uncommitted changes, or local-only work across sessions. The rule is: finish a slice → open PR → get it merged (or at minimum opened and green) → then start the next slice. Stale branches and deferred cleanup are not acceptable.
+
+### Rule 3 — No Placeholder Data or Fake Metrics
+Dashboards, frontends, and reporting surfaces must be wired to **real data pipelines**. Placeholder values, hard-coded demo numbers, mock metrics, and fake responses are forbidden in committed code. Every data field displayed to an operator must trace to an actual source artifact, live computation, or explicitly documented empty-state. The wiring from backend to frontend must be obvious and verifiable.
+
+## What This Project Is
+
+ChelatedAI is a research prototype for adaptive vector search with self-correcting embeddings. It detects "semantic collapse" in RAG systems (where unrelated concepts get similar embeddings) and fixes it through dynamic dimension masking and neural adaptation.
+
+## Dependencies & Setup
+
+Dependencies are managed via `pyproject.toml` (PEP 621) and `requirements.txt`:
+
+```bash
+pip install -r requirements.txt
+# Or install as editable package:
+pip install -e .
+```
+
+Optional: Ollama for Docker-based embeddings (`ollama:nomic-embed-text` model prefix).
+
+## CI Pipeline
+
+GitHub Actions workflow at `.github/workflows/test.yml`:
+- **Lint job:** `ruff check .` on Python 3.11
+- **Test job:** `unittest discover` across Python 3.9, 3.10, 3.11, 3.12 matrix
+
+GitHub Actions workflow at `.github/workflows/build_firmware.yml`:
+- **Firmware build job:** builds the RP2040/TinyUSB computational-storage firmware when `computational_storage_poc/firmware/**` changes and uploads UF2/ELF/BIN artifacts
+
+GitHub Actions workflow at `.github/workflows/test.yml` also includes:
+- **Computational-storage emulation job:** validates emulator semantics on hosted CI without privileged FUSE
+
+## Running Tests
+
+All tests use Python `unittest` (not pytest). CI does **not** install `pytest`, so do not add `pytest` imports or pytest-only fixtures to `test_*.py`. Run via CI or locally:
+
+```bash
+# Run a single test file
+python test_unit_core.py
+
+# Run a specific test class or method
+python -m unittest test_unit_core.TestChelationAdapter.test_adapter_forward_pass
+
+exec
+"C:\\Program Files\\WindowsApps\\Microsoft.PowerShell_7.6.3.0_x64__8wekyb3d8bbwe\\pwsh.exe" -Command "rg -n \"class.*Sentence|SentenceTransformer\\(\" embedding_backend.py; Get-Content embedding_backend.py | Select-Object -First 210" in D:\GITHUB\CHELATEDAI\.claude\worktrees\agent-build
+ succeeded in 949ms:
+268:        self.model = SentenceTransformer(model_name, device=device)
+"""
+Embedding Backend Abstraction (F-045)
+
+Provides a clean interface for different embedding providers (Ollama, local models),
+extracting the branching logic from AntigravityEngine.
+"""
+
+import numpy as np
+import torch
+from abc import ABC, abstractmethod
+from typing import List, Optional
+from chelation_logger import get_logger
+from config import ChelationConfig
+
+# Safe import for requests (used in Ollama mode)
+try:
+    import requests
+    REQUESTS_AVAILABLE = True
+except ImportError:
+    requests = None
+    REQUESTS_AVAILABLE = False
+
+
+class EmbeddingBackend(ABC):
+    """Abstract base class for embedding backends."""
+    
+    def __init__(self, model_name: str, logger=None):
+        """
+        Initialize embedding backend.
+        
+        Args:
+            model_name: Name/identifier of the embedding model
+            logger: Optional logger instance (creates new if None)
+        """
+        self.model_name = model_name
+        self.logger = logger or get_logger()
+        self._vector_size = None
+    
+    @abstractmethod
+    def get_vector_size(self) -> int:
+        """Return the embedding dimension size."""
+        pass
+    
+    @abstractmethod
+    def embed_raw(self, texts: List[str]) -> np.ndarray:
+        """
+        Generate raw embeddings for texts.
+        
+        Args:
+            texts: List of text strings to embed
+            
+        Returns:
+            numpy array of shape [len(texts), vector_size], dtype float32
+        """
+        pass
+    
+    @property
+    def vector_size(self) -> int:
+        """Get cached vector size."""
+        if self._vector_size is None:
+            self._vector_size = self.get_vector_size()
+        return self._vector_size
+
+
+class OllamaEmbeddingBackend(EmbeddingBackend):
+    """Ollama embedding backend using HTTP API."""
+    
+    def __init__(self, model_name: str, logger=None):
+        """
+        Initialize Ollama embedding backend.
+        
+        Args:
+            model_name: Ollama model name (e.g., 'nomic-embed-text')
+            logger: Optional logger instance
+        """
+        super().__init__(model_name, logger)
+        
+        # Check for requests availability
+        if not REQUESTS_AVAILABLE:
+            raise ImportError("'requests' library required for Ollama mode. Install with: pip install requests")
+        
+        self.ollama_url = ChelationConfig.OLLAMA_URL
+        self.logger.log_event(
+            "embedding_backend_init",
+            f"Initializing Ollama backend: {model_name}",
+            backend="ollama",
+            model_name=model_name,
+            url=self.ollama_url
+        )
+        
+        # Initialize vector size with fallback
+        self._vector_size = ChelationConfig.DEFAULT_VECTOR_SIZE
+        try:
+            test_vec = self.embed_raw(["test"])[0]
+            self._vector_size = len(test_vec)
+            self.logger.log_event(
+                "embedding_backend_ready",
+                f"Ollama backend connected. Vector size: {self._vector_size}",
+                vector_size=self._vector_size
+            )
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
+            raise ConnectionError(
+                f"Failed to connect to Ollama at {self.ollama_url}. Make sure Docker container is running!"
+            ) from e
+        except (requests.exceptions.RequestException, KeyError, ValueError, TypeError, IndexError) as e:
+            self.logger.log_error(
+                "connection",
+                f"Ollama connection test failed: {e}",
+                exception=e
+            )
+            self.logger.log_event(
+                "initialization",
+                "Vector size will be validated on first real embedding call",
+                level="WARNING"
+            )
+            # Keep default as fallback
+    
+    def get_vector_size(self) -> int:
+        """Return the embedding dimension size."""
+        return self._vector_size
+    
+    def _sanitize_text(self, text: str, doc_index: Optional[int] = None) -> str:
+        """Sanitize embedding input text for Ollama requests."""
+        if not isinstance(text, str):
+            text = str(text)
+        
+        if len(text) > ChelationConfig.OLLAMA_INPUT_MAX_CHARS:
+            self.logger.log_event(
+                "embedding_input_truncated",
+                f"Input text exceeded max length ({ChelationConfig.OLLAMA_INPUT_MAX_CHARS}), truncating.",
+                level="DEBUG",
+                doc_index=doc_index,
+                original_length=len(text),
+                truncated_length=ChelationConfig.OLLAMA_INPUT_MAX_CHARS,
+            )
+            text = text[:ChelationConfig.OLLAMA_INPUT_MAX_CHARS]
+        
+        # Replace non-printable control chars (except whitespace controls)
+        return "".join(c if (c.isprintable() or c in "\n\r\t") else " " for c in text)
+    
+    def embed_raw(self, texts: List[str]) -> np.ndarray:
+        """
+        Generate raw embeddings using Ollama API.
+        
+        Args:
+            texts: List of text strings to embed
+            
+        Returns:
+            numpy array of shape [len(texts), vector_size], dtype float32
+        """
+        if not texts:
+            return np.array([])
+        
+        embeddings = [None] * len(texts)
+        
+        def _get_embedding(i, txt):
+            txt = self._sanitize_text(txt, doc_index=i)
+            
+            # Helper to attempt embedding
+            def attempt(t):
+                try:
+                    res = requests.post(
+                        self.ollama_url,
+                        json={
+                            "model": self.model_name,
+                            "prompt": t,
+                            "options": {"num_ctx": ChelationConfig.OLLAMA_NUM_CTX}
+                        },
+                        timeout=ChelationConfig.OLLAMA_TIMEOUT
+                    )
+                    if res.status_code == 200:
+                        return res.json()["embedding"]
+                    else:
+                        # 500 error usually means context limit or model error
+                        return None
+                except requests.exceptions.Timeout:
+                    self.logger.log_error("timeout", f"Ollama timeout for doc {i}", doc_index=i)
+                    return None
+                except requests.exceptions.ConnectionError:
+                    self.logger.log_error("connection", f"Ollama connection lost for doc {i}", doc_index=i)
+                    return None
+                except KeyError as e:
+                    self.logger.log_error(
+                        "api_response",
+                        f"Ollama response missing 'embedding' key for doc {i}",
+                        exception=e,
+                        doc_index=i
+                    )
+                    return None
+                except Exception as e:
+                    self.logger.log_error(
+                        "embedding",
+                        f"Ollama unexpected error for doc {i}",
+                        exception=e,
+                        doc_index=i
+                    )
+                    return None
+            
+            # Try truncation levels from config
+            for limit in ChelationConfig.OLLAMA_TRUNCATION_LIMITS:
+                current_text = txt[:limit]
+                emb = attempt(current_text)
+                if emb is not None:
+                    break
+            
+            if emb is None:
+                self.logger.log_error(
+                    "embedding_failed",
+                    f"Failed to embed doc {i} after retries",
+                    doc_index=i
+
+exec
+"C:\\Program Files\\WindowsApps\\Microsoft.PowerShell_7.6.3.0_x64__8wekyb3d8bbwe\\pwsh.exe" -Command '$env:HF_HUB_OFFLINE='"'1'; "'$env:TRANSFORMERS_OFFLINE='"'1'; @'
+from sentence_transformers import SentenceTransformer
+try:
+ m=SentenceTransformer('nomic-ai/nomic-embed-text-v1',device='cpu',local_files_only=True)
+ print('OK',m.get_sentence_embedding_dimension())
+except Exception as e: print(type(e).__name__,str(e).replace('\\n',' ')[:1000])
+'@ | python -" in D:\GITHUB\CHELATEDAI\.claude\worktrees\agent-build
+ succeeded in 20434ms:
+ValueError nomic-ai/nomic-bert-2048 You can inspect the repository content at https://hf.co/nomic-ai/nomic-embed-text-v1. Please pass the argument `trust_remote_code=True` to allow custom code to be run.
+
+exec
+"C:\\Program Files\\WindowsApps\\Microsoft.PowerShell_7.6.3.0_x64__8wekyb3d8bbwe\\pwsh.exe" -Command "rg -n \"anchor_fraction\" research/drift_recovery/run_estimator.py research/drift_recovery -g '*.py'; rg -n \"drift magnitude|magnitude|severity\" research/drift_recovery/run_estimator.py research/drift_recovery/estimator -g '*.py'" in D:\GITHUB\CHELATEDAI\.claude\worktrees\agent-build
+2026-07-10T19:39:06.305302Z ERROR codex_core::tools::router: error=Exit code: 1
+Wall time: 0.6 seconds
+Output:
+research/drift_recovery/run_estimator.py:57:    anchor_fraction: float = 0.4
+research/drift_recovery/run_estimator.py:153:            anchor_fraction=spec.anchor_fraction,
+research/drift_recovery/run_estimator.py:217:            "anchor_fraction": spec.anchor_fraction,
+research/drift_recovery/run_estimator.py:470:                    "anchor_fraction": spec.anchor_fraction,
+research/drift_recovery/run_estimator.py:503:                "anchor_fraction": spec.anchor_fraction,
+research/drift_recovery\contracts.py:26:    anchor_fraction: float
+research/drift_recovery\harness_bridge.py:267:    anchor_fraction: float = 0.4,
+research/drift_recovery\harness_bridge.py:291:        float(anchor_fraction),
+research/drift_recovery\harness_bridge.py:338:        "anchor_fraction": float(anchor_fraction),
+research/drift_recovery\d1\paper_stats.py:400:            "anchor_fraction": 0.4,
+research/drift_recovery\d1\paper_stats.py:1121:        "anchor_fraction": 0.4,
+research/drift_recovery\estimator\features.py:246:            "anchor_fraction": float(pack.metadata.get("anchor_fraction", float("nan"))),
+research/drift_recovery\d2\crossover.py:276:        fraction=float(protocol["leakage"]["fit_anchor_fraction_of_safe_documents"]),
+research/drift_recovery\d2\crossover.py:1021:                anchor_fraction=float(protocol["retrieval"]["anchor_validation_fraction"]),
+research/drift_recovery\run_estimator.py:57:    anchor_fraction: float = 0.4
+research/drift_recovery\run_estimator.py:153:            anchor_fraction=spec.anchor_fraction,
+research/drift_recovery\run_estimator.py:217:            "anchor_fraction": spec.anchor_fraction,
+research/drift_recovery\run_estimator.py:470:                    "anchor_fraction": spec.anchor_fraction,
+research/drift_recovery\run_estimator.py:503:                "anchor_fraction": spec.anchor_fraction,
+research/drift_recovery\tests\test_estimator.py:74:            "anchor_fraction": 0.4,
+
+ exited 1 in 590ms:
+research/drift_recovery/run_estimator.py:57:    anchor_fraction: float = 0.4
+research/drift_recovery/run_estimator.py:153:            anchor_fraction=spec.anchor_fraction,
+research/drift_recovery/run_estimator.py:217:            "anchor_fraction": spec.anchor_fraction,
+research/drift_recovery/run_estimator.py:470:                    "anchor_fraction": spec.anchor_fraction,
+research/drift_recovery/run_estimator.py:503:                "anchor_fraction": spec.anchor_fraction,
+research/drift_recovery\contracts.py:26:    anchor_fraction: float
+research/drift_recovery\harness_bridge.py:267:    anchor_fraction: float = 0.4,
+research/drift_recovery\harness_bridge.py:291:        float(anchor_fraction),
+research/drift_recovery\harness_bridge.py:338:        "anchor_fraction": float(anchor_fraction),
+research/drift_recovery\d1\paper_stats.py:400:            "anchor_fraction": 0.4,
+research/drift_recovery\d1\paper_stats.py:1121:        "anchor_fraction": 0.4,
+research/drift_recovery\estimator\features.py:246:            "anchor_fraction": float(pack.metadata.get("anchor_fraction", float("nan"))),
+research/drift_recovery\d2\crossover.py:276:        fraction=float(protocol["leakage"]["fit_anchor_fraction_of_safe_documents"]),
+research/drift_recovery\d2\crossover.py:1021:                anchor_fraction=float(protocol["retrieval"]["anchor_validation_fraction"]),
+research/drift_recovery\run_estimator.py:57:    anchor_fraction: float = 0.4
+research/drift_recovery\run_estimator.py:153:            anchor_fraction=spec.anchor_fraction,
+research/drift_recovery\run_estimator.py:217:            "anchor_fraction": spec.anchor_fraction,
+research/drift_recovery\run_estimator.py:470:                    "anchor_fraction": spec.anchor_fraction,
+research/drift_recovery\run_estimator.py:503:                "anchor_fraction": spec.anchor_fraction,
+research/drift_recovery\tests\test_estimator.py:74:            "anchor_fraction": 0.4,
+
+codex
+The important constraint is now clear: `nomic-ai/nomic-embed-text-v1` is physically complete and loads offline only with `trust_remote_code=True`, but the current harness backend does not pass that option, so I will not count it as buildable “via the harness.” With FiQA plus two honest anchor-setting variants, ≥8 is still attainable from the current cache; without treating anchor setting as a distinct regime, the cache supports only six dataset×swap regimes.
+apply patch
+patch: completed
+D:\GITHUB\CHELATEDAI\.claude\worktrees\agent-build\research\drift_recovery\out\estimator\offline_cache_scope.md
+diff --git a/research/drift_recovery/out/estimator/offline_cache_scope.md b/research/drift_recovery/out/estimator/offline_cache_scope.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..04368210b10d4ad8d8a700586d3839421bfced80
+--- /dev/null
++++ b/research/drift_recovery/out/estimator/offline_cache_scope.md
+@@ -0,0 +1,55 @@
++# D3 offline-cache scope
++
++Scope date: 2026-07-10. This is an enumeration only. No model was trained, no text was embedded, and no pack was frozen. Offline checks used `HF_HUB_OFFLINE=1`, `HF_DATASETS_OFFLINE=1`, and `TRANSFORMERS_OFFLINE=1`. Model checks instantiated `SentenceTransformer` on CPU without calling `encode`; dataset checks called the repository's `benchmark_utils.load_mteb_data` and counted corpus, queries, and qrels.
++
++## Cached encoder models
++
++The active Hugging Face cache is `C:\Users\mattm\.cache\huggingface`. `HF_HOME`, `HUGGINGFACE_HUB_CACHE`, and `HF_DATASETS_CACHE` are unset, so their defaults resolve under that directory. No additional repo-local Hugging Face/model cache was found in this worktree.
++
++| Exact model id | Offline constructor result | Encoder-swap status for the current harness |
++|---|---:|---|
++| `sentence-transformers/all-MiniLM-L6-v2` | PASS, 384 dimensions | Usable offline; this is the old/store encoder, not a new swap target. |
++| `sentence-transformers/all-mpnet-base-v2` (also resolvable as `all-mpnet-base-v2`) | PASS, 768 dimensions | Usable offline; already represented in two existing regimes. |
++| `BAAI/bge-large-en-v1.5` | PASS, 1024 dimensions | Usable offline; already represented in two existing regimes. |
++| `nomic-ai/nomic-embed-text-v1` | PASS, 768 dimensions **only with `trust_remote_code=True`** | **Not usable by the current D3 harness as written.** `SentenceTransformerEmbeddingBackend` calls `SentenceTransformer(model_name, device=device)` without `trust_remote_code=True`; the exact harness-style constructor fails offline with a `ValueError` requesting that flag. Do not count this model toward immediately buildable regimes. |
++
++Other model directories in the hub cache are not valid new sentence-encoder swaps for this harness: `BAAI/bge-reranker-v2-m3` is a reranker/classifier; `colbert-ir/colbertv2.0` is a ColBERT late-interaction model; `microsoft/layoutlmv3-base` is a document-layout model; the Qwen entries are generative models; OCR, speech, GGUF, and multimodal entries are outside the sentence-transformer path. `microsoft/infoxlm-large` and `nomic-ai/nomic-bert-2048` have incomplete cache entries and fail offline construction.
++
++No cached `gte`, `e5`, `gtr`, `bge-base`, `bge-small`, or additional MiniLM sentence-transformer target was found.
++
++## Cached retrieval datasets
++
++These are the only cached MTEB retrieval datasets that load successfully through `load_mteb_data` with both offline flags enabled:
++
++| Harness task name | HF dataset id | Corpus | Queries | Queries with qrels | Qrel entries | Offline result |
++|---|---|---:|---:|---:|---:|---|
++| `SciFact` | `mteb/scifact` | 5,183 | 300 | 300 | 339 | PASS |
++| `NFCorpus` | `mteb/nfcorpus` | 3,633 | 323 | 323 | 12,334 | PASS |
++| `FiQA2018` | `mteb/fiqa` | 57,638 | 648 | 648 | 1,706 | PASS |
++
++`FiQA` is not the registered task name in the installed MTEB version; use `FiQA2018`.
++
++`ArguAna`, `SCIDOCS`, and `TRECCOVID` were checked through the same loader and fail in offline mode because `mteb/arguana`, `mteb/scidocs`, and `mteb/trec-covid` are absent. No other BEIR/MTEB retrieval dataset cache was found. SciFact and NFCorpus are listed for completeness but are not new dataset axes.
++
++## Concrete new regimes achievable offline
++
++The four existing regimes are SciFact/NFCorpus crossed with MiniLM -> mpnet and MiniLM -> bge-large, all at anchor fraction 0.4.
++
++The following four **new** regimes require no downloads and reach eight total:
++
++1. `fiqa2018_minilm_to_mpnet_af040`: `FiQA2018`, `sentence-transformers/all-MiniLM-L6-v2` -> `sentence-transformers/all-mpnet-base-v2`, anchor fraction 0.40.
++2. `fiqa2018_minilm_to_bge_large_af040`: `FiQA2018`, `sentence-transformers/all-MiniLM-L6-v2` -> `BAAI/bge-large-en-v1.5`, anchor fraction 0.40.
++3. `scifact_minilm_to_mpnet_af020`: `SciFact`, MiniLM -> mpnet, anchor fraction 0.20 (distinct from the existing 0.40 anchor setting).
++4. `nfcorpus_minilm_to_bge_large_af020`: `NFCorpus`, MiniLM -> bge-large, anchor fraction 0.20 (distinct from the existing 0.40 anchor setting).
++
++The harness and estimator contract explicitly treat anchor setting as part of the held-out regime axis, and `load_retrieval_evalsplit` accepts `anchor_fraction`. No unimplemented drift-magnitude axis is being assumed here. The exact 0.20 selection is proposed, not previously validated; building it would require adding regime specifications, which this enumeration deliberately does not do.
++
++Brutal-honesty boundary: if the scientific target requires eight unique **dataset x encoder-family** cells and does not accept anchor-fraction changes as separate regimes, the answer is **NOT FEASIBLE** from cache. Only six such cells are currently harness-buildable: the existing four plus FiQA2018 -> mpnet and FiQA2018 -> bge-large. Nomic is not counted because the current backend cannot construct it, and changing only an anchor fraction does not add a dataset or encoder family.
++
++## Verdict
++
++**FEASIBLE offline right now for the stated D3 definition, which names dataset / encoder family / anchor setting as the regime axis:** four cached-data/model regimes can be added to the existing four, as listed above, reaching exactly eight. This is a cache-feasibility verdict, not evidence that the regimes have been built or that their oracle gaps will be positive; `run_estimator.py` rejects non-positive oracle gaps, so successful eventual pack construction is not guaranteed by cache presence alone.
++
++For the stricter eight-unique-dataset/encoder-family interpretation, the maximum is **six**, and the smallest download-only unblock is one additional harness-compatible sentence-transformer target (for example `BAAI/bge-base-en-v1.5`, `intfloat/e5-base-v2`, or a GTE model) whose normal `SentenceTransformer(model_name)` constructor works offline after caching. Crossing that one target with SciFact and NFCorpus would add two cells and reach eight. Alternatively, downloading one additional retrieval dataset with corpus, queries, and qrels adds only two cells with the presently usable swap targets and also reaches eight.
++
++Missing requested examples: `mteb/arguana`, `mteb/scidocs`, `mteb/trec-covid`; all GTE/E5/GTR models; BGE base/small models; and extra MiniLM variants. Nomic needs no model download, but it needs a deliberate harness code change to opt into trusted remote code before it can honestly be counted.
+
+diff --git a/research/drift_recovery/out/estimator/offline_cache_scope.md b/research/drift_recovery/out/estimator/offline_cache_scope.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..04368210b10d4ad8d8a700586d3839421bfced80
+--- /dev/null
++++ b/research/drift_recovery/out/estimator/offline_cache_scope.md
+@@ -0,0 +1,55 @@
++# D3 offline-cache scope
++
++Scope date: 2026-07-10. This is an enumeration only. No model was trained, no text was embedded, and no pack was frozen. Offline checks used `HF_HUB_OFFLINE=1`, `HF_DATASETS_OFFLINE=1`, and `TRANSFORMERS_OFFLINE=1`. Model checks instantiated `SentenceTransformer` on CPU without calling `encode`; dataset checks called the repository's `benchmark_utils.load_mteb_data` and counted corpus, queries, and qrels.
++
++## Cached encoder models
++
++The active Hugging Face cache is `C:\Users\mattm\.cache\huggingface`. `HF_HOME`, `HUGGINGFACE_HUB_CACHE`, and `HF_DATASETS_CACHE` are unset, so their defaults resolve under that directory. No additional repo-local Hugging Face/model cache was found in this worktree.
++
++| Exact model id | Offline constructor result | Encoder-swap status for the current harness |
++|---|---:|---|
++| `sentence-transformers/all-MiniLM-L6-v2` | PASS, 384 dimensions | Usable offline; this is the old/store encoder, not a new swap target. |
++| `sentence-transformers/all-mpnet-base-v2` (also resolvable as `all-mpnet-base-v2`) | PASS, 768 dimensions | Usable offline; already represented in two existing regimes. |
++| `BAAI/bge-large-en-v1.5` | PASS, 1024 dimensions | Usable offline; already represented in two existing regimes. |
++| `nomic-ai/nomic-embed-text-v1` | PASS, 768 dimensions **only with `trust_remote_code=True`** | **Not usable by the current D3 harness as written.** `SentenceTransformerEmbeddingBackend` calls `SentenceTransformer(model_name, device=device)` without `trust_remote_code=True`; the exact harness-style constructor fails offline with a `ValueError` requesting that flag. Do not count this model toward immediately buildable regimes. |
++
++Other model directories in the hub cache are not valid new sentence-encoder swaps for this harness: `BAAI/bge-reranker-v2-m3` is a reranker/classifier; `colbert-ir/colbertv2.0` is a ColBERT late-interaction model; `microsoft/layoutlmv3-base` is a document-layout model; the Qwen entries are generative models; OCR, speech, GGUF, and multimodal entries are outside the sentence-transformer path. `microsoft/infoxlm-large` and `nomic-ai/nomic-bert-2048` have incomplete cache entries and fail offline construction.
++
++No cached `gte`, `e5`, `gtr`, `bge-base`, `bge-small`, or additional MiniLM sentence-transformer target was found.
++
++## Cached retrieval datasets
++
++These are the only cached MTEB retrieval datasets that load successfully through `load_mteb_data` with both offline flags enabled:
++
++| Harness task name | HF dataset id | Corpus | Queries | Queries with qrels | Qrel entries | Offline result |
++|---|---|---:|---:|---:|---:|---|
++| `SciFact` | `mteb/scifact` | 5,183 | 300 | 300 | 339 | PASS |
++| `NFCorpus` | `mteb/nfcorpus` | 3,633 | 323 | 323 | 12,334 | PASS |
++| `FiQA2018` | `mteb/fiqa` | 57,638 | 648 | 648 | 1,706 | PASS |
++
++`FiQA` is not the registered task name in the installed MTEB version; use `FiQA2018`.
++
++`ArguAna`, `SCIDOCS`, and `TRECCOVID` were checked through the same loader and fail in offline mode because `mteb/arguana`, `mteb/scidocs`, and `mteb/trec-covid` are absent. No other BEIR/MTEB retrieval dataset cache was found. SciFact and NFCorpus are listed for completeness but are not new dataset axes.
++
++## Concrete new regimes achievable offline
++
++The four existing regimes are SciFact/NFCorpus crossed with MiniLM -> mpnet and MiniLM -> bge-large, all at anchor fraction 0.4.
++
++The following four **new** regimes require no downloads and reach eight total:
++
++1. `fiqa2018_minilm_to_mpnet_af040`: `FiQA2018`, `sentence-transformers/all-MiniLM-L6-v2` -> `sentence-transformers/all-mpnet-base-v2`, anchor fraction 0.40.
++2. `fiqa2018_minilm_to_bge_large_af040`: `FiQA2018`, `sentence-transformers/all-MiniLM-L6-v2` -> `BAAI/bge-large-en-v1.5`, anchor fraction 0.40.
++3. `scifact_minilm_to_mpnet_af020`: `SciFact`, MiniLM -> mpnet, anchor fraction 0.20 (distinct from the existing 0.40 anchor setting).
++4. `nfcorpus_minilm_to_bge_large_af020`: `NFCorpus`, MiniLM -> bge-large, anchor fraction 0.20 (distinct from the existing 0.40 anchor setting).
++
++The harness and estimator contract explicitly treat anchor setting as part of the held-out regime axis, and `load_retrieval_evalsplit` accepts `anchor_fraction`. No unimplemented drift-magnitude axis is being assumed here. The exact 0.20 selection is proposed, not previously validated; building it would require adding regime specifications, which this enumeration deliberately does not do.
++
++Brutal-honesty boundary: if the scientific target requires eight unique **dataset x encoder-family** cells and does not accept anchor-fraction changes as separate regimes, the answer is **NOT FEASIBLE** from cache. Only six such cells are currently harness-buildable: the existing four plus FiQA2018 -> mpnet and FiQA2018 -> bge-large. Nomic is not counted because the current backend cannot construct it, and changing only an anchor fraction does not add a dataset or encoder family.
++
++## Verdict
++
++**FEASIBLE offline right now for the stated D3 definition, which names dataset / encoder family / anchor setting as the regime axis:** four cached-data/model regimes can be added to the existing four, as listed above, reaching exactly eight. This is a cache-feasibility verdict, not evidence that the regimes have been built or that their oracle gaps will be positive; `run_estimator.py` rejects non-positive oracle gaps, so successful eventual pack construction is not guaranteed by cache presence alone.
++
++For the stricter eight-unique-dataset/encoder-family interpretation, the maximum is **six**, and the smallest download-only unblock is one additional harness-compatible sentence-transformer target (for example `BAAI/bge-base-en-v1.5`, `intfloat/e5-base-v2`, or a GTE model) whose normal `SentenceTransformer(model_name)` constructor works offline after caching. Crossing that one target with SciFact and NFCorpus would add two cells and reach eight. Alternatively, downloading one additional retrieval dataset with corpus, queries, and qrels adds only two cells with the presently usable swap targets and also reaches eight.
++
++Missing requested examples: `mteb/arguana`, `mteb/scidocs`, `mteb/trec-covid`; all GTE/E5/GTR models; BGE base/small models; and extra MiniLM variants. Nomic needs no model download, but it needs a deliberate harness code change to opt into trusted remote code before it can honestly be counted.
+
+exec
+"C:\\Program Files\\WindowsApps\\Microsoft.PowerShell_7.6.3.0_x64__8wekyb3d8bbwe\\pwsh.exe" -Command 'Get-Content research/drift_recovery/out/estimator/offline_cache_scope.md; git status --short -- research/drift_recovery/out/estimator/offline_cache_scope.md' in D:\GITHUB\CHELATEDAI\.claude\worktrees\agent-build
+ succeeded in 652ms:
+# D3 offline-cache scope
+
+Scope date: 2026-07-10. This is an enumeration only. No model was trained, no text was embedded, and no pack was frozen. Offline checks used `HF_HUB_OFFLINE=1`, `HF_DATASETS_OFFLINE=1`, and `TRANSFORMERS_OFFLINE=1`. Model checks instantiated `SentenceTransformer` on CPU without calling `encode`; dataset checks called the repository's `benchmark_utils.load_mteb_data` and counted corpus, queries, and qrels.
+
+## Cached encoder models
+
+The active Hugging Face cache is `C:\Users\mattm\.cache\huggingface`. `HF_HOME`, `HUGGINGFACE_HUB_CACHE`, and `HF_DATASETS_CACHE` are unset, so their defaults resolve under that directory. No additional repo-local Hugging Face/model cache was found in this worktree.
+
+| Exact model id | Offline constructor result | Encoder-swap status for the current harness |
+|---|---:|---|
+| `sentence-transformers/all-MiniLM-L6-v2` | PASS, 384 dimensions | Usable offline; this is the old/store encoder, not a new swap target. |
+| `sentence-transformers/all-mpnet-base-v2` (also resolvable as `all-mpnet-base-v2`) | PASS, 768 dimensions | Usable offline; already represented in two existing regimes. |
+| `BAAI/bge-large-en-v1.5` | PASS, 1024 dimensions | Usable offline; already represented in two existing regimes. |
+| `nomic-ai/nomic-embed-text-v1` | PASS, 768 dimensions **only with `trust_remote_code=True`** | **Not usable by the current D3 harness as written.** `SentenceTransformerEmbeddingBackend` calls `SentenceTransformer(model_name, device=device)` without `trust_remote_code=True`; the exact harness-style constructor fails offline with a `ValueError` requesting that flag. Do not count this model toward immediately buildable regimes. |
+
+Other model directories in the hub cache are not valid new sentence-encoder swaps for this harness: `BAAI/bge-reranker-v2-m3` is a reranker/classifier; `colbert-ir/colbertv2.0` is a ColBERT late-interaction model; `microsoft/layoutlmv3-base` is a document-layout model; the Qwen entries are generative models; OCR, speech, GGUF, and multimodal entries are outside the sentence-transformer path. `microsoft/infoxlm-large` and `nomic-ai/nomic-bert-2048` have incomplete cache entries and fail offline construction.
+
+No cached `gte`, `e5`, `gtr`, `bge-base`, `bge-small`, or additional MiniLM sentence-transformer target was found.
+
+## Cached retrieval datasets
+
+These are the only cached MTEB retrieval datasets that load successfully through `load_mteb_data` with both offline flags enabled:
+
+| Harness task name | HF dataset id | Corpus | Queries | Queries with qrels | Qrel entries | Offline result |
+|---|---|---:|---:|---:|---:|---|
+| `SciFact` | `mteb/scifact` | 5,183 | 300 | 300 | 339 | PASS |
+| `NFCorpus` | `mteb/nfcorpus` | 3,633 | 323 | 323 | 12,334 | PASS |
+| `FiQA2018` | `mteb/fiqa` | 57,638 | 648 | 648 | 1,706 | PASS |
+
+`FiQA` is not the registered task name in the installed MTEB version; use `FiQA2018`.
+
+`ArguAna`, `SCIDOCS`, and `TRECCOVID` were checked through the same loader and fail in offline mode because `mteb/arguana`, `mteb/scidocs`, and `mteb/trec-covid` are absent. No other BEIR/MTEB retrieval dataset cache was found. SciFact and NFCorpus are listed for completeness but are not new dataset axes.
+
+## Concrete new regimes achievable offline
+
+The four existing regimes are SciFact/NFCorpus crossed with MiniLM -> mpnet and MiniLM -> bge-large, all at anchor fraction 0.4.
+
+The following four **new** regimes require no downloads and reach eight total:
+
+1. `fiqa2018_minilm_to_mpnet_af040`: `FiQA2018`, `sentence-transformers/all-MiniLM-L6-v2` -> `sentence-transformers/all-mpnet-base-v2`, anchor fraction 0.40.
+2. `fiqa2018_minilm_to_bge_large_af040`: `FiQA2018`, `sentence-transformers/all-MiniLM-L6-v2` -> `BAAI/bge-large-en-v1.5`, anchor fraction 0.40.
+3. `scifact_minilm_to_mpnet_af020`: `SciFact`, MiniLM -> mpnet, anchor fraction 0.20 (distinct from the existing 0.40 anchor setting).
+4. `nfcorpus_minilm_to_bge_large_af020`: `NFCorpus`, MiniLM -> bge-large, anchor fraction 0.20 (distinct from the existing 0.40 anchor setting).
+
+The harness and estimator contract explicitly treat anchor setting as part of the held-out regime axis, and `load_retrieval_evalsplit` accepts `anchor_fraction`. No unimplemented drift-magnitude axis is being assumed here. The exact 0.20 selection is proposed, not previously validated; building it would require adding regime specifications, which this enumeration deliberately does not do.
+
+Brutal-honesty boundary: if the scientific target requires eight unique **dataset x encoder-family** cells and does not accept anchor-fraction changes as separate regimes, the answer is **NOT FEASIBLE** from cache. Only six such cells are currently harness-buildable: the existing four plus FiQA2018 -> mpnet and FiQA2018 -> bge-large. Nomic is not counted because the current backend cannot construct it, and changing only an anchor fraction does not add a dataset or encoder family.
+
+## Verdict
+
+**FEASIBLE offline right now for the stated D3 definition, which names dataset / encoder family / anchor setting as the regime axis:** four cached-data/model regimes can be added to the existing four, as listed above, reaching exactly eight. This is a cache-feasibility verdict, not evidence that the regimes have been built or that their oracle gaps will be positive; `run_estimator.py` rejects non-positive oracle gaps, so successful eventual pack construction is not guaranteed by cache presence alone.
+
+For the stricter eight-unique-dataset/encoder-family interpretation, the maximum is **six**, and the smallest download-only unblock is one additional harness-compatible sentence-transformer target (for example `BAAI/bge-base-en-v1.5`, `intfloat/e5-base-v2`, or a GTE model) whose normal `SentenceTransformer(model_name)` constructor works offline after caching. Crossing that one target with SciFact and NFCorpus would add two cells and reach eight. Alternatively, downloading one additional retrieval dataset with corpus, queries, and qrels adds only two cells with the presently usable swap targets and also reaches eight.
+
+Missing requested examples: `mteb/arguana`, `mteb/scidocs`, `mteb/trec-covid`; all GTE/E5/GTR models; BGE base/small models; and extra MiniLM variants. Nomic needs no model download, but it needs a deliberate harness code change to opt into trusted remote code before it can honestly be counted.
+?? research/drift_recovery/out/estimator/offline_cache_scope.md
+
+diff --git a/research/drift_recovery/out/estimator/offline_cache_scope.md b/research/drift_recovery/out/estimator/offline_cache_scope.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..04368210b10d4ad8d8a700586d3839421bfced80
+--- /dev/null
++++ b/research/drift_recovery/out/estimator/offline_cache_scope.md
+@@ -0,0 +1,55 @@
++# D3 offline-cache scope
++
++Scope date: 2026-07-10. This is an enumeration only. No model was trained, no text was embedded, and no pack was frozen. Offline checks used `HF_HUB_OFFLINE=1`, `HF_DATASETS_OFFLINE=1`, and `TRANSFORMERS_OFFLINE=1`. Model checks instantiated `SentenceTransformer` on CPU without calling `encode`; dataset checks called the repository's `benchmark_utils.load_mteb_data` and counted corpus, queries, and qrels.
++
++## Cached encoder models
++
++The active Hugging Face cache is `C:\Users\mattm\.cache\huggingface`. `HF_HOME`, `HUGGINGFACE_HUB_CACHE`, and `HF_DATASETS_CACHE` are unset, so their defaults resolve under that directory. No additional repo-local Hugging Face/model cache was found in this worktree.
++
++| Exact model id | Offline constructor result | Encoder-swap status for the current harness |
++|---|---:|---|
++| `sentence-transformers/all-MiniLM-L6-v2` | PASS, 384 dimensions | Usable offline; this is the old/store encoder, not a new swap target. |
++| `sentence-transformers/all-mpnet-base-v2` (also resolvable as `all-mpnet-base-v2`) | PASS, 768 dimensions | Usable offline; already represented in two existing regimes. |
++| `BAAI/bge-large-en-v1.5` | PASS, 1024 dimensions | Usable offline; already represented in two existing regimes. |
++| `nomic-ai/nomic-embed-text-v1` | PASS, 768 dimensions **only with `trust_remote_code=True`** | **Not usable by the current D3 harness as written.** `SentenceTransformerEmbeddingBackend` calls `SentenceTransformer(model_name, device=device)` without `trust_remote_code=True`; the exact harness-style constructor fails offline with a `ValueError` requesting that flag. Do not count this model toward immediately buildable regimes. |
++
++Other model directories in the hub cache are not valid new sentence-encoder swaps for this harness: `BAAI/bge-reranker-v2-m3` is a reranker/classifier; `colbert-ir/colbertv2.0` is a ColBERT late-interaction model; `microsoft/layoutlmv3-base` is a document-layout model; the Qwen entries are generative models; OCR, speech, GGUF, and multimodal entries are outside the sentence-transformer path. `microsoft/infoxlm-large` and `nomic-ai/nomic-bert-2048` have incomplete cache entries and fail offline construction.
++
++No cached `gte`, `e5`, `gtr`, `bge-base`, `bge-small`, or additional MiniLM sentence-transformer target was found.
++
++## Cached retrieval datasets
++
++These are the only cached MTEB retrieval datasets that load successfully through `load_mteb_data` with both offline flags enabled:
++
++| Harness task name | HF dataset id | Corpus | Queries | Queries with qrels | Qrel entries | Offline result |
++|---|---|---:|---:|---:|---:|---|
++| `SciFact` | `mteb/scifact` | 5,183 | 300 | 300 | 339 | PASS |
++| `NFCorpus` | `mteb/nfcorpus` | 3,633 | 323 | 323 | 12,334 | PASS |
++| `FiQA2018` | `mteb/fiqa` | 57,638 | 648 | 648 | 1,706 | PASS |
++
++`FiQA` is not the registered task name in the installed MTEB version; use `FiQA2018`.
++
++`ArguAna`, `SCIDOCS`, and `TRECCOVID` were checked through the same loader and fail in offline mode because `mteb/arguana`, `mteb/scidocs`, and `mteb/trec-covid` are absent. No other BEIR/MTEB retrieval dataset cache was found. SciFact and NFCorpus are listed for completeness but are not new dataset axes.
++
++## Concrete new regimes achievable offline
++
++The four existing regimes are SciFact/NFCorpus crossed with MiniLM -> mpnet and MiniLM -> bge-large, all at anchor fraction 0.4.
++
++The following four **new** regimes require no downloads and reach eight total:
++
++1. `fiqa2018_minilm_to_mpnet_af040`: `FiQA2018`, `sentence-transformers/all-MiniLM-L6-v2` -> `sentence-transformers/all-mpnet-base-v2`, anchor fraction 0.40.
++2. `fiqa2018_minilm_to_bge_large_af040`: `FiQA2018`, `sentence-transformers/all-MiniLM-L6-v2` -> `BAAI/bge-large-en-v1.5`, anchor fraction 0.40.
++3. `scifact_minilm_to_mpnet_af020`: `SciFact`, MiniLM -> mpnet, anchor fraction 0.20 (distinct from the existing 0.40 anchor setting).
++4. `nfcorpus_minilm_to_bge_large_af020`: `NFCorpus`, MiniLM -> bge-large, anchor fraction 0.20 (distinct from the existing 0.40 anchor setting).
++
++The harness and estimator contract explicitly treat anchor setting as part of the held-out regime axis, and `load_retrieval_evalsplit` accepts `anchor_fraction`. No unimplemented drift-magnitude axis is being assumed here. The exact 0.20 selection is proposed, not previously validated; building it would require adding regime specifications, which this enumeration deliberately does not do.
++
++Brutal-honesty boundary: if the scientific target requires eight unique **dataset x encoder-family** cells and does not accept anchor-fraction changes as separate regimes, the answer is **NOT FEASIBLE** from cache. Only six such cells are currently harness-buildable: the existing four plus FiQA2018 -> mpnet and FiQA2018 -> bge-large. Nomic is not counted because the current backend cannot construct it, and changing only an anchor fraction does not add a dataset or encoder family.
++
++## Verdict
++
++**FEASIBLE offline right now for the stated D3 definition, which names dataset / encoder family / anchor setting as the regime axis:** four cached-data/model regimes can be added to the existing four, as listed above, reaching exactly eight. This is a cache-feasibility verdict, not evidence that the regimes have been built or that their oracle gaps will be positive; `run_estimator.py` rejects non-positive oracle gaps, so successful eventual pack construction is not guaranteed by cache presence alone.
++
++For the stricter eight-unique-dataset/encoder-family interpretation, the maximum is **six**, and the smallest download-only unblock is one additional harness-compatible sentence-transformer target (for example `BAAI/bge-base-en-v1.5`, `intfloat/e5-base-v2`, or a GTE model) whose normal `SentenceTransformer(model_name)` constructor works offline after caching. Crossing that one target with SciFact and NFCorpus would add two cells and reach eight. Alternatively, downloading one additional retrieval dataset with corpus, queries, and qrels adds only two cells with the presently usable swap targets and also reaches eight.
++
++Missing requested examples: `mteb/arguana`, `mteb/scidocs`, `mteb/trec-covid`; all GTE/E5/GTR models; BGE base/small models; and extra MiniLM variants. Nomic needs no model download, but it needs a deliberate harness code change to opt into trusted remote code before it can honestly be counted.
+
+codex
+Created [offline_cache_scope.md](D:/GITHUB/CHELATEDAI/.claude/worktrees/agent-build/research/drift_recovery/out/estimator/offline_cache_scope.md).
+
+Verdict:
+
+- FEASIBLE for eight regimes when anchor fraction is accepted as a regime axis.
+- Only six unique dataset × encoder-swap cells are currently harness-buildable.
+- FiQA2018 is cached with complete qrels.
+- Nomic is cached but excluded because the harness does not pass `trust_remote_code=True`.
+- No training, embedding, freezing, or regime construction was performed.
+
+
+diff --git a/research/drift_recovery/out/estimator/offline_cache_scope.md b/research/drift_recovery/out/estimator/offline_cache_scope.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..04368210b10d4ad8d8a700586d3839421bfced80
+--- /dev/null
++++ b/research/drift_recovery/out/estimator/offline_cache_scope.md
+@@ -0,0 +1,55 @@
++# D3 offline-cache scope
++
++Scope date: 2026-07-10. This is an enumeration only. No model was trained, no text was embedded, and no pack was frozen. Offline checks used `HF_HUB_OFFLINE=1`, `HF_DATASETS_OFFLINE=1`, and `TRANSFORMERS_OFFLINE=1`. Model checks instantiated `SentenceTransformer` on CPU without calling `encode`; dataset checks called the repository's `benchmark_utils.load_mteb_data` and counted corpus, queries, and qrels.
++
++## Cached encoder models
++
++The active Hugging Face cache is `C:\Users\mattm\.cache\huggingface`. `HF_HOME`, `HUGGINGFACE_HUB_CACHE`, and `HF_DATASETS_CACHE` are unset, so their defaults resolve under that directory. No additional repo-local Hugging Face/model cache was found in this worktree.
++
++| Exact model id | Offline constructor result | Encoder-swap status for the current harness |
++|---|---:|---|
++| `sentence-transformers/all-MiniLM-L6-v2` | PASS, 384 dimensions | Usable offline; this is the old/store encoder, not a new swap target. |
++| `sentence-transformers/all-mpnet-base-v2` (also resolvable as `all-mpnet-base-v2`) | PASS, 768 dimensions | Usable offline; already represented in two existing regimes. |
++| `BAAI/bge-large-en-v1.5` | PASS, 1024 dimensions | Usable offline; already represented in two existing regimes. |
++| `nomic-ai/nomic-embed-text-v1` | PASS, 768 dimensions **only with `trust_remote_code=True`** | **Not usable by the current D3 harness as written.** `SentenceTransformerEmbeddingBackend` calls `SentenceTransformer(model_name, device=device)` without `trust_remote_code=True`; the exact harness-style constructor fails offline with a `ValueError` requesting that flag. Do not count this model toward immediately buildable regimes. |
++
++Other model directories in the hub cache are not valid new sentence-encoder swaps for this harness: `BAAI/bge-reranker-v2-m3` is a reranker/classifier; `colbert-ir/colbertv2.0` is a ColBERT late-interaction model; `microsoft/layoutlmv3-base` is a document-layout model; the Qwen entries are generative models; OCR, speech, GGUF, and multimodal entries are outside the sentence-transformer path. `microsoft/infoxlm-large` and `nomic-ai/nomic-bert-2048` have incomplete cache entries and fail offline construction.
++
++No cached `gte`, `e5`, `gtr`, `bge-base`, `bge-small`, or additional MiniLM sentence-transformer target was found.
++
++## Cached retrieval datasets
++
++These are the only cached MTEB retrieval datasets that load successfully through `load_mteb_data` with both offline flags enabled:
++
++| Harness task name | HF dataset id | Corpus | Queries | Queries with qrels | Qrel entries | Offline result |
++|---|---|---:|---:|---:|---:|---|
++| `SciFact` | `mteb/scifact` | 5,183 | 300 | 300 | 339 | PASS |
++| `NFCorpus` | `mteb/nfcorpus` | 3,633 | 323 | 323 | 12,334 | PASS |
++| `FiQA2018` | `mteb/fiqa` | 57,638 | 648 | 648 | 1,706 | PASS |
++
++`FiQA` is not the registered task name in the installed MTEB version; use `FiQA2018`.
++
++`ArguAna`, `SCIDOCS`, and `TRECCOVID` were checked through the same loader and fail in offline mode because `mteb/arguana`, `mteb/scidocs`, and `mteb/trec-covid` are absent. No other BEIR/MTEB retrieval dataset cache was found. SciFact and NFCorpus are listed for completeness but are not new dataset axes.
++
++## Concrete new regimes achievable offline
++
++The four existing regimes are SciFact/NFCorpus crossed with MiniLM -> mpnet and MiniLM -> bge-large, all at anchor fraction 0.4.
++
++The following four **new** regimes require no downloads and reach eight total:
++
++1. `fiqa2018_minilm_to_mpnet_af040`: `FiQA2018`, `sentence-transformers/all-MiniLM-L6-v2` -> `sentence-transformers/all-mpnet-base-v2`, anchor fraction 0.40.
++2. `fiqa2018_minilm_to_bge_large_af040`: `FiQA2018`, `sentence-transformers/all-MiniLM-L6-v2` -> `BAAI/bge-large-en-v1.5`, anchor fraction 0.40.
++3. `scifact_minilm_to_mpnet_af020`: `SciFact`, MiniLM -> mpnet, anchor fraction 0.20 (distinct from the existing 0.40 anchor setting).
++4. `nfcorpus_minilm_to_bge_large_af020`: `NFCorpus`, MiniLM -> bge-large, anchor fraction 0.20 (distinct from the existing 0.40 anchor setting).
++
++The harness and estimator contract explicitly treat anchor setting as part of the held-out regime axis, and `load_retrieval_evalsplit` accepts `anchor_fraction`. No unimplemented drift-magnitude axis is being assumed here. The exact 0.20 selection is proposed, not previously validated; building it would require adding regime specifications, which this enumeration deliberately does not do.
++
++Brutal-honesty boundary: if the scientific target requires eight unique **dataset x encoder-family** cells and does not accept anchor-fraction changes as separate regimes, the answer is **NOT FEASIBLE** from cache. Only six such cells are currently harness-buildable: the existing four plus FiQA2018 -> mpnet and FiQA2018 -> bge-large. Nomic is not counted because the current backend cannot construct it, and changing only an anchor fraction does not add a dataset or encoder family.
++
++## Verdict
++
++**FEASIBLE offline right now for the stated D3 definition, which names dataset / encoder family / anchor setting as the regime axis:** four cached-data/model regimes can be added to the existing four, as listed above, reaching exactly eight. This is a cache-feasibility verdict, not evidence that the regimes have been built or that their oracle gaps will be positive; `run_estimator.py` rejects non-positive oracle gaps, so successful eventual pack construction is not guaranteed by cache presence alone.
++
++For the stricter eight-unique-dataset/encoder-family interpretation, the maximum is **six**, and the smallest download-only unblock is one additional harness-compatible sentence-transformer target (for example `BAAI/bge-base-en-v1.5`, `intfloat/e5-base-v2`, or a GTE model) whose normal `SentenceTransformer(model_name)` constructor works offline after caching. Crossing that one target with SciFact and NFCorpus would add two cells and reach eight. Alternatively, downloading one additional retrieval dataset with corpus, queries, and qrels adds only two cells with the presently usable swap targets and also reaches eight.
++
++Missing requested examples: `mteb/arguana`, `mteb/scidocs`, `mteb/trec-covid`; all GTE/E5/GTR models; BGE base/small models; and extra MiniLM variants. Nomic needs no model download, but it needs a deliberate harness code change to opt into trusted remote code before it can honestly be counted.
+
+hook: Stop
+hook: Stop Completed
+tokens used
+65,885
+Created [offline_cache_scope.md](D:/GITHUB/CHELATEDAI/.claude/worktrees/agent-build/research/drift_recovery/out/estimator/offline_cache_scope.md).
+
+Verdict:
+
+- FEASIBLE for eight regimes when anchor fraction is accepted as a regime axis.
+- Only six unique dataset × encoder-swap cells are currently harness-buildable.
+- FiQA2018 is cached with complete qrels.
+- Nomic is cached but excluded because the harness does not pass `trust_remote_code=True`.
+- No training, embedding, freezing, or regime construction was performed.
+
+

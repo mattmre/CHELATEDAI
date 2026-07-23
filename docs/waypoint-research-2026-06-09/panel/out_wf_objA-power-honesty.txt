@@ -1,0 +1,53 @@
+I'll adversarially review the power/pseudo-replication disclosure: read the validation artifact and referenced reports, then recompute block-n and anchor-fraction usage from frozen data.Reading the prereg and verdict logic in `objA.py` to recompute block-n and power policy.Recomputing pair counts and verdict rules from the frozen JSON to verify claims.## Adversarial review: power / pseudo-replication honesty
+
+**Verdict on this angle: PASS**
+
+### What was checked
+
+From frozen `research/drift_recovery/out/estimator/objA_validation.json` (+ `objA_validation.md`, `objA_REPORT.md`, prereg `prereg_objA.json` / code `estimator/objA.py`):
+
+| Claim in artifact | Recompute | Result |
+|---|---|---|
+| Independent dataset×encoder-family block-n = **6** | Unique `(dataset, encoder_family)` over 6 regimes | **Match** |
+| Cell-n = **6** | `len(regimes)` | **Match** |
+| Pseudo-replicate cells = **0** | `cell_n - pair_block_n` | **0** (no duplicate pairs) |
+| Whole-dataset holdout units = **3** | `{SciFact, NFCorpus, FiQA2018}` | **Match** |
+| Whole-encoder-family holdout units = **2** | `{mpnet, bge-large}` | **Match** |
+| Anchor-fraction variants not used to pad | All six `anchor_fraction == 0.4`; no second AF for same pair | **No padding** |
+| Not labeled POSITIVE / validated | `verdict=PROMISING-BUT-UNDERPOWERED`, `validated_positive=false` | **Match** |
+
+### Independent pairs (not hyperparam cells)
+
+```
+(SciFact, mpnet), (SciFact, bge-large),
+(NFCorpus, mpnet), (NFCorpus, bge-large),
+(FiQA2018, mpnet), (FiQA2018, bge-large)
+```
+
+Six distinct dataset×encoder-family pairs; FiQA names include `_af040` but that is a single fixed AF=0.4, not multiple AF cells of the same pair. Counts and LOO rows in the JSON are one prediction per pair (`cell_n == independent_pair_block_n`).
+
+Code enforces this:
+
+- `objA.py:335–339` — rejects dataset/encoder duplicates and non-0.40 anchors  
+- `objA.py:513–524` — `independent_pair_block_n = |{(dataset, encoder_family)}|`, `pseudo_replicate_cell_n = cell_n - pair_block_n`  
+- Prereg `pseudo_replication_rule` / `hyperparameter_cells_are_not_blocks: true`
+
+### POSITIVE vs PROMISING-BUT-UNDERPOWERED at 3 dataset blocks
+
+Success bar is met (`success_bar_met: true`), but prereg and runtime **forbid** POSITIVE/validated:
+
+- Prereg `verdict_policy.positive_or_validated_label_allowed: false`  
+- `if_success_bar_met_with_all_six_pairs` → `PROMISING-BUT-UNDERPOWERED`  
+- `objA.py:553–557` — on bar pass with `pair_block_n >= 6`, only `PROMISING-BUT-UNDERPOWERED`  
+- `objA.py:586` — `validated_positive: False` always  
+- Reason text matches 3 dataset / 2 encoder holdout caps
+
+So a met bar is correctly **not** upgraded to POSITIVE; it stays underpowered given only 3 dataset holdout units.
+
+### Defects (this angle)
+
+**None found.** No file:line dishonesty on power, pseudo-replication, AF padding, or POSITIVE labeling.
+
+### Bottom line
+
+**The power/pseudo-replication disclosure is honest:** block-n is six true dataset×encoder pairs with zero AF/hyperparam padding, and a met success bar is correctly left as **PROMISING-BUT-UNDERPOWERED** under the three-dataset offline cap.

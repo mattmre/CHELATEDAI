@@ -1,0 +1,24 @@
+{
+  "upload_type": "software",
+  "title": "A reproducible framework for evaluating closed-loop embedding-drift recovery (with two evaluation-design hazards)",
+  "description": "Open framework for evaluating detection-triggered, bounded, post-hoc correction loops over a retrieval store under controlled seeded drift. Includes a deterministic drift injector (manifest-level reproducibility), a recovery-trajectory metric suite, and a pre-registered protocol. Surfaces two evaluation-design hazards backed by runtime evidence: (1) the C2-oracle hazard — re-embedding with the original frozen encoder is a degenerate oracle for synthetic geometric drift, not a fair maintenance baseline; (2) the supervision-signal mechanism — an unsupervised homeostatic loop's loss-optimal correction is near-identity, so recovery requires an explicit pre-drift supervision channel. Includes a worked partial-recovery example on SciFact and NFCorpus in an encoder-upgrade arena. STAGED ARTIFACT — operator must confirm license/author and pull final numbers before upload.",
+  "creators": [
+    {
+      "name": "Matt M.",
+      "affiliation": "Independent Researcher"
+    }
+  ],
+  "keywords": [
+    "information retrieval",
+    "dense retrieval",
+    "embedding drift",
+    "concept drift",
+    "retrieval-augmented generation",
+    "evaluation methodology",
+    "reproducibility",
+    "bounded adapters"
+  ],
+  "license": "TBD-OPERATOR-CONFIRM",
+  "notes": "STAGED, NOT UPLOADED. Operator must (a) set a real license slug, (b) confirm creator name/ORCID, (c) pull final §5 numbers from the regenerated result docs, (d) reference the public repo commit/tag for provenance.",
+  "related_identifiers": []
+}

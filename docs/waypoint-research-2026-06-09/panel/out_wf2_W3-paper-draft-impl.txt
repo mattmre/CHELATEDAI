@@ -1,0 +1,19 @@
+I'll read the frozen estimator, preflight, and D2 reports first so every number in the draft is grounded.Artifacts aren't in this worktree path — searching the main repo and related trees.Checking power-honesty notes and paper §7/§8 structure for placement labels.Writing the chair-ready draft with all numbers grounded in the frozen artifacts.Draft is at:
+
+`D:\GITHUB\CHELATEDAI\docs\waypoint-research-2026-06-09\panel\paper-updates-2026-07-10-draft.md`
+
+**Paper itself was not modified.** Chair applies paste blocks only.
+
+### What’s in the draft
+
+| Block | Placement in `main.md` | Content grounded in |
+|---|---|---|
+| **1** | New subsection at end of **§7**, before §8 | Obj A freeze: pre-registered univariate `oracle_margin_mean`; block-LOO Spearman **0.886** (dataset) / **0.829** (encoder) vs gap-only; partial Spearman **0.79**; FiQA-only holdout **rank-order tie** (both Spearman 1.0 on *n*=2) with lower margin MAE; **3** dataset-blocks → **PROMISING-BUT-UNDERPOWERED**, not validated; what a powered test needs |
+| **2** | New §7 paragraph (home-turf / milder-drift theme) | Preflight **CLOSE**: **48** cells, **144** seed-runs, `quadratic` + `soft_fold`; residual gate **≥0.05** after fair CV-λ gated local ridge; max residual **≈0.033** (0.0295 / 0.0328); **corrected framing** (small absolute gaps + local often loses to floor — **not** local ridge dominates chelation); no second arena; brief D2 β=0.10 non-discriminating note |
+| **3** | §8 as new (vi)/(vii) | Underpowered estimator + synthetic-only preflight (1–2 sentence style) |
+
+### Bans respected
+No ceiling / irreducible / ridge≈MLP⇒linearity language; estimator stays **PROMISING-BUT-UNDERPOWERED**.
+
+### Number audit
+Bottom of the file maps every claim to `objA_validation.{md,json}`, `objA_REPORT.md`, `preflight_report.md`, and `D2_REPORT.md`.
