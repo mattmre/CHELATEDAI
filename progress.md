@@ -1,5 +1,60 @@
 # Progress Log
 
+## RB-7 continuation: 2026-07-24
+
+- Preregistered the `p=11` all-two-bin quantizer-origin null and the proof-first
+  primitive-root/CRT redundancy screen, preserving the no-campaign and no-OOM
+  scope lock.
+- Static resource estimation found that the naïve 50-cell exact grid would
+  require 141,004,800 work units. Each 2,048-pattern cell estimates 2,820,096
+  work units, so it already exceeds the 2,000,000 default even though estimated
+  peak model-array memory is only 2,408 bytes.
+- No exact pattern enumeration ran for that calculation. Work is proceeding
+  only on shared-enumeration or algebraic formulations that can refuse the
+  complete grid before allocation if aggregate bytes, work, pattern count, or
+  deadline is unsafe.
+- The final cached `p=11` implementation preflights at 54,432 model-level bytes
+  and 17,951,240 work units for all 50 cells. The stronger per-bin-origin
+  product grid estimates 59,734,280 work units and is refused above immutable
+  ceilings.
+- The first direct exact pass failed closed at the 25-second deadline because
+  it rebuilt one immutable decoder budget 102,400 times. Hoisting that object
+  produced one agent-owned result, but the first root reproduction still hit
+  the unchanged deadline, so neither result was promoted. The implementation
+  was reconditioned to cache invariant template/correction state and compute
+  one query FFT per pattern. The root-owned final reproduction then completed
+  in 22.359 seconds under the same deadline and reproduced the earlier numbers.
+- Final `p=11` result:
+  - unquantized within-orbit spreads are `4.16e-17` and `6.94e-17`;
+  - the ordinary between-orbit A-minus-B gap is `-0.0029146170`;
+  - 30/45 pair orderings reverse across common origins and no subset dominates
+    at every origin;
+  - maximum origin spread is `0.0048568741`, with boundary and zero-spectrum
+    mass reported separately;
+  - 16/16 cached/reference and resource-guard focused tests pass.
+- Added and independently validated the proof-first CRT screen:
+  - 23/23 focused tests, Ruff, and AST pass, including hostile numeric-subclass
+    and greater-than-64-bit input refusal before modular arithmetic;
+  - a final root-owned `p=4691` direct probe finished in 0.144 seconds;
+  - 3,310,582 estimated Python-object bytes and 2,176,160 work units;
+  - all four algebraic redundancy kills triggered while utility/cost remained
+    explicitly untested.
+- Added and independently validated the p=7 conditional-replacement normal
+  form:
+  - 14/14 focused tests, Ruff, and AST pass;
+  - a direct tiny probe verified affine `(3,6)` plus last-write-wins on every
+    binary payload;
+  - preflight is 99,072 estimated bytes and 29,808 work units under a one-second
+    deadline.
+- The three new suites pass together at 53/53 in 0.666 seconds. An earlier
+  combined invocation overlapped a live agent rename and failed with a witness
+  schema mismatch; it was discarded, the owner froze the files, and the exact
+  stable tree was rerun. No full campaign, real corpus, large-prime transform,
+  repeated timing campaign, or retained evidence generation ran.
+- The complete final bounded regression set passes 230/230 tests in 31.561
+  seconds. Scoped Ruff passes all six new code/test files, all six parse through
+  a read-only AST check, and `git diff --check` is clean.
+
 ## Resource-bounded expansion return: 2026-07-24
 
 - Recovered the live branch at

@@ -293,6 +293,78 @@
   - do not open queue (`PRW-Q1`) or living-state (`PRW-L1`) claims until real
     held-out retrieval survives the prerequisite gates.
 
+## Resource-Bounded Expansion RB-7 (2026-07-24 continuation)
+- Status: COMPLETE
+- Scope lock:
+  - no `full_config()`, 11,520-cell campaign, real corpus, 4091/4691 timing,
+    repeated hardware timing, persistent evidence artifact, or run with a
+    credible OOM path;
+  - every executable addition must preflight bytes, work, pattern count, and
+    deadline beneath the existing immutable ceilings;
+  - this slice may establish only a small-prime null or an algebraic
+    redundancy result, never production utility or novelty.
+- RB-7A — formalize the next discriminators:
+  - `PRW-H1Q`: after averaging or pairing over declared quantizer-grid origins,
+    no preregistered two-bin subset has a special recovery advantage at `p=11`
+    under matched coefficients, hypotheses, and exact BSC patterns;
+  - `PRW-C1A`: on nonzero indices of `Z_4691`, primitive-root/CRT
+    multiplicative pivots are coordinate relabelings of cyclic shifts in
+    exponent space; the Legendre character reduces further to a polarity bit
+    on the nonzero subgroup. The repository's bipolar carrier sets coordinate
+    zero to `+1`, so its full-array form also has one fixed-coordinate
+    exception.
+- RB-7B — bounded `p=11` quantizer/dither null:
+  - estimate the complete exact grid before launch and refuse it if the
+    aggregate work/deadline budget is unsafe;
+  - compare all matched two-bin subsets, multiple declared origins, and an
+    origin-averaged/dithered summary without allowing origin selection on the
+    evaluation rows;
+  - report rank stability, maximum origin spread, and effect sizes rather than
+    a winner.
+  - require the final cached batch path to match the public decoder on
+    preregistered representative patterns; a one-off result that cannot
+    reproduce under the unchanged 25-second deadline is not an accepted gate.
+- RB-7C — proof-first `PRW-C1` redundancy screen:
+  - implement only dependency-light exact finite-group checks needed to verify
+    the additive-exponent isomorphism, CRT round trip, flat-permutation
+    equivalence, and Legendre sign degeneracy;
+  - reduce any pure onion word of additive rotations and multiplicative pivots
+    to its canonical affine map `x -> a*x+b`; only a declared nonlinear or
+    conditional replacement may be treated as a mechanism outside that
+    standard permutation group;
+  - include explicit random-permutation and polarity-bit controls plus kill
+    criteria; do not benchmark large arrays.
+- RB-7D — bounded validation and hostile review:
+  - run focused deterministic tests, read-only syntax checks, scoped Ruff, and
+    tiny direct probes only;
+  - ask independent agents to attack resource accounting, multiple-comparison
+    handling, and the algebraic claim before recording a result.
+- RB-7E — conditional replacement normal-form screen, only after `PRW-C1A`:
+  - formalize `PRW-C1B`: a claimed layer-order effect must survive
+    canonicalization of affine pivots and conjugate sector labels, plus controls
+    matched on replacement count, mask size/overlap, condition bits, and search
+    branches;
+  - begin with exhaustive binary payloads at `p=7` and at most four operations;
+    refuse larger state spaces before enumeration;
+  - kill the mechanism when disjoint steps merely commute, overlapping steps
+    reduce to last-write-wins, or balanced random/conjugated masks match the
+    declared CRT sectors.
+  - scope the first result to fixed masks and constant replacement bits;
+    payload-, query-, or layer-state-dependent predicates remain a separate
+    hypothesis requiring their own matched branch/search budget.
+- RB-7 outcome:
+  - the cached `p=11` exact screen completed once under the unchanged deadline;
+    it supports two ordinary multiplicative ratio orbits and
+    quantizer-origin sensitivity, not a privileged frequency pair;
+  - CRT factor coordinates add no pivot states, the Legendre carrier reduces to
+    parity plus its declared fixed-zero exception, and pure rotation/pivot
+    layer words reduce to one affine map;
+  - the first fixed-mask, constant-bit replacement screen reduces exactly to
+    affine addressing plus last-write-wins; genuinely runtime-dependent
+    predicates remain untested;
+  - the three new focused suites pass 53/53 together. No full campaign, corpus,
+    large-prime transform/timing run, or retained scientific artifact ran.
+
 ## Errors Encountered
 | Error | Attempt | Resolution |
 |-------|---------|------------|
@@ -322,6 +394,7 @@
 | First compact live seal contained only values derivable from serialized evidence | 1 | Added a per-run 32-byte HMAC authority that is created before traversal and never serialized; the exact seal-reconstruction attack now fails authentication |
 | First direct PRW-H1 evidence print requested `aggregate_resource_guard`, a key used by the non-exact comparator rather than the exact BSC result | 1 | Inspected the exact result surface, used its canonical `resource_guard` field, and reran the bounded probe successfully |
 | Sandboxed `git ls-remote` could not reach GitHub | 1 | Confirmed branch absence through the authenticated GitHub connector; reserve networked Git publication for the narrowly approved push step |
+| A combined RB-7 validation overlapped an agent's in-progress witness-field rename and observed a transient `AttributeError` | 1 | Stopped treating the concurrent tree as evidence, waited for the owner to declare the files stable, then reran the exact combined tree successfully at 53/53 |
 
 ---
 

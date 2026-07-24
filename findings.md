@@ -1,5 +1,154 @@
 # Findings & Decisions
 
+## 2026-07-24 RB-7 Preregistration and Resource Screen
+- The next bounded Fourier discriminator is `PRW-H1Q`: at `p=11`, compare every
+  matched two-bin subset over a declared quantizer-origin grid, then report the
+  complete rank distribution, origin spread, and an origin-averaged diagnostic.
+  The evaluation may not choose a favorable subset or origin after seeing the
+  outcomes. A finite origin average is a grid-robustness diagnostic, not a
+  claim of stochastic dither unless the dither distribution and seed are
+  independently fixed.
+- There are five nonconjugate bins at `p=11`, hence ten two-bin subsets.
+  Four quantized origins plus one unquantized baseline produce 50 candidate
+  cells before controls. Calling the existing exact comparator independently
+  for all 50 would duplicate the same 2,048 BSC patterns and is not approved
+  until an aggregate bytes/work/deadline preflight passes. A shared streamed
+  enumeration is the preferred formulation.
+- A read-only estimator probe makes that refusal concrete. Each independent
+  cell estimates only 2,408 model-level peak bytes, but 2,820,096 work units,
+  already above the frozen 2,000,000 default. The naïve 50-cell grid totals
+  141,004,800 work units, above even the 50,000,000 hard ceiling. The bank
+  itself is tiny (541 estimated peak bytes and 44 work units), so memory is not
+  the problem; duplicated decoding work is. No exact pattern loop ran during
+  this estimate.
+- A dependency-free group-action check found that the ten unordered `p=11`
+  two-bin subsets form two multiplicative-relabeling orbits of five:
+  `{(1,2),(1,5),(2,4),(3,4),(3,5)}` and
+  `{(1,3),(1,4),(2,3),(2,5),(4,5)}`. The batch should report within-orbit
+  spread as a symmetry audit. This does not assume phase quantization preserves
+  the unquantized relabeling symmetry; breaking it by origin is itself a useful
+  artifact diagnostic.
+- Hostile analysis shows why a common four-origin grid is not a
+  symmetry-closed dither. A multiplier can map one selected frequency through a
+  negative representative (complex conjugation) while leaving the other
+  positive, which maps per-bin origins as `(alpha_1, alpha_2) ->
+  (+/- alpha_1, +/- alpha_2)`. The common-origin diagonal cannot represent all
+  such maps. The current upper-tie rounding rule can also break conjugation at
+  exact half-step boundaries. Consequently, the four common origins test
+  nuisance sensitivity only. A stronger invariant screen needs a declared
+  per-bin origin product grid, explicit boundary-hit accounting, or continuous
+  origin integration, all with a new aggregate resource preflight.
+- The final cached shared-stream preflight estimates 54,432 model-level bytes
+  and 17,951,240 work units for 2,048 patterns, 50 conditions, and 102,400
+  cached condition evaluations under one 25-second deadline. It computes one
+  template FFT, 2,048 query FFTs, and no public reference-decoder calls; focused
+  tests match the reference scores, winners, ties, margins, and abstentions.
+  The straightforward symmetry-closed `A4^2` extension would require 170
+  conditions, 348,160 cached evaluations, and 59,734,280 work units, exceeding
+  both the local 25,000,000 and upstream 50,000,000 hard ceilings, so that route
+  is explicitly refused.
+- The root-owned final exact run completed in 22.359 seconds beneath the
+  unchanged deadline. Unquantized accuracy is constant to floating precision
+  within each predicted orbit: orbit A mean `0.1202012759` with spread
+  `4.16e-17`, orbit B mean `0.1231158929` with spread `6.94e-17`; A minus B is
+  `-0.0029146170`. The between-orbit gap is ordinary ratio-class geometry, not
+  a special pair or resonance.
+- Across the four common quantizer origins, 30 of 45 pairwise orderings reverse
+  and no pair strictly dominates every other pair at every origin. Maximum
+  per-pair origin spread is `0.0048568741`; maximum absolute grid-average
+  change from the corresponding unquantized value is `0.0019161556`.
+  Origin `0.5` has up to `0.0306274866` boundary-near probability mass, while
+  `0.0009287012` zero-spectrum mass is separated and correctly abstains.
+  Therefore the bounded result supports within-orbit unquantized equivariance
+  and quantizer-origin sensitivity, not selected-frequency advantage.
+- The proof-first `PRW-C1A` screen is narrower than the earlier geometric
+  language: on the nonzero field elements, write `x = g^n` for a primitive root
+  `g`. Multiplication by `g^a` is then the additive shift
+  `n -> n + a (mod p-1)`; CRT coordinates merely relabel that shift
+  componentwise. For the mathematical Legendre character on nonzero elements,
+  the same action depends only on exponent parity and therefore reduces to a
+  polarity bit. The zero element is a separate fixed point.
+- The repository carrier uses a deliberately bipolar convention with coordinate
+  zero set to `+1`, whereas the number-theoretic character has value zero there.
+  Therefore an odd-exponent pivot flips every nonzero carrier coordinate while
+  leaving coordinate zero at `+1`: the exact full-array reduction is a polarity
+  bit plus one fixed-coordinate exception, not a literal global sign.
+- `PRW-C1A` can establish an exact redundancy or degeneracy result, but CRT
+  factorization alone does not establish compression, faster retrieval, or a
+  new matching primitive. Any surviving advantage must beat explicit flat
+  permutation and polarity-only controls at matched search opportunity.
+- Allowing one independently chosen shift in each CRT factor still gives only
+  `2 * 5 * 7 * 67 = 4,690` tuples, in bijection with one ordinary exponent
+  shift. It does not create an extra address dimension. Giving each of `L`
+  layers an independent pivot does create `4690^L` states, but that expansion
+  must be charged as `L * log2(4690)` control bits and a correspondingly larger
+  search space; it is not free capacity from the factorization.
+- A further proof-first reduction covers pure onion layering. Additive
+  rotations `T_b` and multiplicative pivots `M_a` generate the ordinary affine
+  group, with `M_a T_b M_a^-1 = T_(a*b)`. Every word containing only those
+  coordinate permutations collapses to one map `x -> a*x+b`, so ordering more
+  such layers cannot by itself create a new high-order memory. A mechanism can
+  escape this reduction only by inserting a declared nonlinear or conditional
+  replacement; that replacement must then be tested against balanced random
+  and conjugated sector-mask controls rather than attributing its effect to
+  CRT.
+- The effective multiplicative orbit is payload-dependent. For the punctured
+  Legendre character, the 2,345 quadratic-residue pivots form its stabilizer
+  and the orbit has only two states. Under the repository's bipolar
+  zero-coordinate convention those are still just the original array and the
+  common nonzero-coordinate complement with zero fixed.
+- For future replacement tests, CRT-axis shifts conjugate a sector replacement
+  into the same replacement at a shifted sector label. Disjoint overwrites
+  commute; overlapping overwrites can show ordinary last-write-wins effects.
+  Any claimed layer-order benefit must therefore match mask size, mask overlap,
+  condition bits, and random balanced/coset partitions, and must survive a
+  change of primitive-root address convention.
+- The exact `PRW-C1A` screen now passes a root-owned direct run in 0.144 seconds
+  with 3,310,582 estimated Python-object bytes and 2,176,160 work units
+  (neither is measured process RSS). The CRT tuple count and shared pivot count
+  are both exactly 4,690; the factorization creates no additional states.
+- Eight independently assigned layers have `4690^8 =
+  234089935364620159344100000000` possible control tuples and require about
+  97.563 control bits. Those tuples were counted, not enumerated, and no
+  payload-level independence or distinguishability was established. The
+  Legendre stabilizer/orbit is
+  `2345/2`, and the affine rotation-plus-pivot family has the ordinary upper
+  bound `4691 * 4690 = 22,000,790`.
+- Four algebraic kill criteria trigger: flat exponent-permutation relabeling,
+  no extra CRT states, Legendre parity plus the fixed-zero exception, and
+  affine collapse of rotation/pivot words. The systems control does not
+  trigger because learned-payload utility and implementation cost were not
+  tested. This closes new-group/new-CRT/new-onion-order interpretations, not a
+  possible learned-layout engineering benefit.
+- The `PRW-C1B` p=7 conditional-replacement screen also ran directly within a
+  99,072-byte/29,808-work estimate and one-second deadline. Its representative
+  four-operation program reduces to `x -> 3*x+6` followed by one exact
+  last-write-wins overwrite; the two effective masks each have size three and
+  overlap once. All 128 binary payloads confirm the normal form. Disjoint
+  overwrites commute; overlapping overwrites show only declared
+  last-write-wins order. The seeded random control matches mask
+  size/overlap and overwrite conjugacy, but does not claim full affine-program
+  or cost/utility equivalence.
+- This first replacement screen uses fixed address masks and constant
+  replacement bits. It does not test predicates or replacement functions that
+  depend on payload, query, or layer state, so it narrows only the static-mask
+  lane and does not kill the broader runtime-conditional hypothesis.
+- The final current-tree validation passes 16/16 quantizer-null tests, 23/23
+  CRT/algebra tests, and 14/14 conditional-replacement tests; the three suites
+  pass together at 53/53. The CRT suite includes hostile numeric-subclass and
+  greater-than-64-bit input paths so arbitrary big integers are refused before
+  modular arithmetic or work allocation. Scoped Ruff, read-only AST parsing,
+  and whitespace validation are separate correctness checks, not scientific
+  replication.
+- Folding those 53 checks into the prior eight-module regression set gives
+  230/230 passing tests in 31.561 seconds on the final current tree. This is a
+  low-memory deterministic regression run; it does not repeat the exhaustive
+  `p=11` grid or constitute powered evidence.
+- The accepted `p=11` run is one exact tiny synthetic grid, not a statistical
+  replicate, continuous-dither study, corpus run, campaign, or retained
+  evidence artifact. The `p=4691` result above is an algebraic table/check, not
+  a transform, retrieval, or timing benchmark.
+
 ## 2026-07-24 Resource-Bounded Return
 - Live recheck before new edits found
   `codex/prime-ring-onion-method-dev` at
