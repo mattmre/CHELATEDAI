@@ -50,6 +50,26 @@ This is the exact version of the “right-angle mesh,” “sector pairing,” a
 “protein-like edge bonding” ideas. A 3D drawing is not part of the hypothesis;
 only graph topology and cycle constraints are.
 
+### Prior-art boundary
+
+Graph-relative phase estimation is an established synchronization problem, not
+a new mathematical family. Singer's angular-synchronization formulation
+recovers node phases from noisy relative offsets, and later compact-group work
+explicitly includes finite cyclic groups and multiple representation channels:
+
+- [Angular Synchronization by Eigenvectors and Semidefinite Programming
+  (2011)](https://pmc.ncbi.nlm.nih.gov/articles/PMC3003935/)
+- [Message-passing algorithms for synchronization problems over compact groups
+  (2016)](https://arxiv.org/abs/1610.04583)
+- [Random Multitype Spanning Forests for Synchronization on Sparse Graphs
+  (2025)](https://epubs.siam.org/doi/full/10.1137/24M1649563)
+
+`PRW-G1` can therefore test only a narrower systems interaction: whether
+node-local PRW/OPPW carrier scores plus typed cyclic edge constraints produce a
+matched-resource retrieval or correction benefit. The graph, cyclic group,
+cycle-consistency objective, and any 3D visualization are not novelty
+candidates.
+
 ### Hypothesis
 
 At matched stored bytes, candidate count, channel uses, latency budget, and
@@ -73,6 +93,32 @@ assignments over:
 Use \(p\in\{7,11,31\}\), at most 12 nodes, at most 18 edges, and exact or
 dynamic-programming decoding only when the estimated peak is below 512 MiB.
 
+### Bounded result — 2026-07-24
+
+The exact tiny analyzer compares independent unary decoding, graph-coupled
+decoding, and a deterministic structure-matched edge-label permutation
+control over the same streamed \(p^{|V|}\) assignments. Thirteen focused tests
+and an independent exhaustive check over all 511 nonempty labeled simple
+graphs on three nodes at \(p=7\) passed.
+
+A planted triangle can be uniquely recovered by the graph score while the
+independent and shuffled-label controls fail, with a planted-margin gain of
+five in the toy construction. That observation does **not** survive the
+mechanism kill criterion: the connected, cycle-consistent difference graph is
+exactly one global phase plus fixed node offsets. The result is therefore
+`MECHANISM_COLLAPSES_TO_GLOBAL_PHASE`, not evidence for a new graph memory.
+
+The follow-up implements that explicit comparator by deriving canonical
+offsets \(o_0=0\) and searching the exact family
+\(x_i(z)=z+o_i\pmod p\). It filters the same streamed \(p^{|V|}\) assignment
+order while reporting its honest \(p\)-candidate denominator. In the helpful
+\(p=7\) case, the comparator and graph-coupled decoder have identical selected
+assignment, score, tie count, planted margin, and planted rank; every
+graph-minus-global effect is zero. Contradictory or disconnected graphs refuse
+the comparator. Fifteen focused tests and an independent brute-force audit of
+all 511 nonempty labeled three-node graphs pass. This closes the bounded
+graph-specific lane negatively.
+
 ## 3. PRW-H1 — multi-frequency phase signature
 
 ### Mechanism
@@ -89,6 +135,21 @@ when the magnitude is nonzero. Under rotation by \(a\),
 This is the operational meaning of “harmonic,” “resonance,” and “polar
 alignment.” It is ordinary phase synchronization. No physical resonance or
 quantization claim is implied.
+
+### Prior-art boundary
+
+Multi-frequency group/phase synchronization is also an established named
+family:
+
+- [Message-passing algorithms for synchronization problems over compact groups
+  (2016)](https://arxiv.org/abs/1610.04583)
+- [Multi-Frequency Phase Synchronization
+  (2019)](https://arxiv.org/abs/1901.08235)
+
+Accordingly, neither multiple Fourier bins nor their phase-consistency
+objective is a novelty candidate. The bounded experiment may only ask whether
+a frozen, quantized, resource-matched bin signature interacts usefully with the
+specific PRW carrier/type/mask construction.
 
 ### Hypothesis
 
@@ -110,6 +171,29 @@ matched stored coefficients, arithmetic operations, and false-unlock rate.
 - Performance follows only the number of searched bins.
 - Magnitude-only or randomized phases match the proposed signature.
 - Quantization destroys the effect at the frozen bit budget.
+
+### Bounded result — 2026-07-24
+
+The exact analyzer searches \(T p\) shared type/shift states for every
+condition and streams every binary-symmetric-channel corruption pattern for
+tiny banks. It uses immutable hard ceilings, caller-lowerable budgets, one
+deadline across all controls, and no packed-storage or speed claim.
+
+For \(p=7\), one type, one node, and all 128 corruption patterns, every
+two-bin subset of the three nonconjugate bins has identical unquantized exact
+accuracy at each of \(q\in\{.20,.35,.45\}\). Distinct bins outperform repeated
+copies of one bin under noise, which is generic redundancy rather than
+selected-frequency capacity or resonance.
+
+The stronger 8-bit check crossed all three two-bin subsets with quantizer-grid
+origins \(0,.25,.5,.75\). The selected-bin ranking changes with origin; the
+largest within-subset accuracy spread is about \(0.0083385070\). This kills a
+selected-frequency interpretation of the small quantized differences in this
+toy. The all-nonconjugate-bin diagnostic often scores higher but uses three
+coefficients rather than two, so it is not a matched superiority comparison.
+The bounded result is `GENERIC_REDUNDANCY_ONLY`; frequency selection, harmonic
+resonance, address expansion, packed-storage savings, and production utility
+remain unsupported.
 
 ## 4. PRW-D1 — prime ambient-dimension null
 
@@ -236,3 +320,35 @@ prior.
 
 No hypothesis may inherit support from a predecessor. Unit tests establish
 implementation correctness only.
+
+## 9. Current bounded execution boundary — 2026-07-24
+
+The graph and selected-frequency lanes have both produced negative small-prime
+results. `PRW-G1` collapses to the explicit global-phase-plus-fixed-offset
+comparator on connected, cycle-consistent labels. `PRW-H1` shows generic
+multi-bin redundancy, but no selected-bin advantage: unquantized two-bin sets
+tie and eight-bit rankings reverse with quantizer-grid origin.
+
+The lower-rate raw-sanity aggregation path is implemented but has **not** been
+scientifically executed. Its structural gate requires all twelve frozen
+`(seed,q)` cells, canonical planted-IID REPORT lineage, SELECT/REPORT stream
+separation, and a per-run HMAC authority that is never serialized. Rewriting a
+failure and reconstructing every seal from serialized fields now fails
+authentication. This prevents a retained artifact from certifying its own
+mutated summaries; it is not a claim of security against arbitrary code already
+executing inside the campaign process.
+
+The complete bounded research suite passes 177 tests. No full campaign, real
+corpus, large-prime timing, or retained evidence generation was run. Therefore:
+
+- graph-specific and selected-frequency interpretations are killed only in the
+  declared tiny domains;
+- the full raw-sanity criterion remains `UNEXECUTED_POWERED_EVIDENCE`;
+- no result supports novelty, production utility, cheaper training, better
+  RAG recall, or a high-prime dimensionality advantage.
+
+The next safe discriminator is a preregistered `p=11`
+quantizer-origin/dither null with an up-front work estimate. `PRW-C1` should
+receive an algebraic flat-permutation/polarity-bit redundancy screen before any
+implementation. `PRW-Q1` and `PRW-L1` remain blocked by their held-out retrieval
+precondition.

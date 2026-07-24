@@ -1,5 +1,134 @@
 # Progress Log
 
+## Resource-bounded expansion return: 2026-07-24
+
+- Recovered the live branch at
+  `08e3c2aeeb5c645a3c95f08a14ac101b226f8c9d`; it was clean and eight commits
+  ahead of `origin/main` before the new planning-ledger edits.
+- Re-ran the planning catch-up helper; it reported no unsynchronized context.
+- Re-read repository instructions and retained the strict distinction between
+  unit/property evidence and runtime/scientific evidence.
+- Added RB-6 to `task_plan.md` and opened non-overlapping lanes for:
+  - the complete lower-rate raw-sanity closure contract;
+  - a tiny `PRW-G1` graph-coupled cyclic-fiber analyzer;
+  - a tiny `PRW-H1` multi-frequency phase analyzer.
+- No powered campaign, real-corpus run, large-prime transform, timing campaign,
+  or retained artifact generation has been launched.
+- Environment note: the default WindowsApps PowerShell shim is still
+  access-denied; bounded commands are running through the stable Node runtime.
+- The first focused PRW-H1 invocation did not execute because system Python has
+  no NumPy. The failure is logged as environment-only. Recovered the prior
+  isolated dependencies at `C:\tmp\chelatedai-crsv-deps` (NumPy) and
+  `C:\tmp\chelatedai-lint-deps` (Ruff); no installation or download was needed.
+- Implemented `prime_ring_multifrequency.py` and its focused test suite:
+  - one shared type/shift state space for all frequency conditions;
+  - unit-energy phase scoring with conjugate-bin exclusion;
+  - matched random-bin and repeated-single-bin controls;
+  - magnitude-only, randomized-phase, and time-domain diagnostics;
+  - optional phase quantization;
+  - streamed exact BSC comparison for tiny state spaces;
+  - 64 MiB/10 second/2M-work defaults beneath immutable hard ceilings.
+- Validation so far: 17/17 PRW-H1 tests passed in 0.525 seconds and exact
+  two-file Ruff passed. A fresh hostile review is in progress.
+- Ran one additional artifact-free exact PRW-H1 toy sweep:
+  - `p=7`, one type, one node, 128 streamed BSC patterns;
+  - `q={0,.20,.35,.45}`, unquantized and 8-bit phase variants;
+  - 928 estimated peak bytes and 83,584 estimated work units per run;
+  - unquantized proposed/random two-bin sets tied exactly, while distinct bins
+    beat a repeated single bin under noise.
+- The first sweep bootstrap imported NumPy before adding the isolated path and
+  did not execute. The corrected bootstrap ran successfully; no artifact was
+  written.
+- Hostile PRW-H1 review found and root corrected early-allocation refusal,
+  ignored caller condition caps, Python 3.9 `bit_count` incompatibility,
+  tie-margin semantics, misleading magnitude accounting, random-control
+  collisions, and the missing all-frequency control.
+- After reconditioning, 21/21 focused PRW-H1 tests pass in 0.630 seconds and
+  exact two-file Ruff remains clean. Reviewer recheck remains pending.
+- Completed the second bounded PRW-H1 hardening pass:
+  - all eight conditions share one aggregate work/deadline budget;
+  - caller-sized bin collections are refused before cell access or iteration;
+  - query-normalization copies and transient Fourier buffers are preflighted;
+  - the full nonconjugate-bin control is explicit;
+  - quantizer-grid origin is a declared parameter, while magnitude-only and
+    time-domain controls are labeled inapplicable rather than falsely
+    quantized.
+- Added deterministic boundary, invalid-origin, four-origin compare/exact,
+  unquantized-equivalence, outcome-partition, and preallocation regression
+  tests. Current PRW-H1 validation is 37/37 tests in 2.669 seconds with exact
+  two-file Ruff clean and a final hostile-review verdict of no P0/P1/P2.
+- Ran the artifact-free all-subset quantizer falsifier:
+  - 9 unquantized baselines and 36 eight-bit exact cells;
+  - all three `p=7` two-bin subsets, all 128 BSC patterns, three noise rates,
+    and four quantizer origins;
+  - no run exceeded 1,288 estimated model-level bytes or 101,504 work units;
+  - unquantized subsets tied exactly, while quantized ranks changed with grid
+    origin and showed up to 0.0083385070 absolute accuracy spread.
+- Integrated the bounded `PRW-G1` lane without running a campaign and added the
+  required one-global-phase-plus-fixed-offset comparator. In the helpful
+  triangle it exactly equals the graph decoder on outcome, score, ties, margin,
+  and rank; all graph-minus-global effects are zero. Fifteen tests and focused
+  Ruff pass, and hostile brute force matched all 511 nonempty labeled
+  three-node graphs.
+- Hostile review found the first lower-rate raw-sanity gate could accept
+  fabricated mutable summaries despite its fail-closed label. Canonical cell,
+  campaign-contract, raw REPORT lineage, exact count/digest, and threshold
+  provenance checks are being added before that implementation is accepted.
+- Rechecked PRW-H1 model-array estimates at the largest allowed shape after
+  warming NumPy paths. Declared build/decode/eight-control peaks
+  (`579,871`/`790,448`/`846,000` bytes) exceed the corresponding `tracemalloc`
+  peaks (`532,903`/`755,648`/`826,096` bytes). This does not measure process RSS.
+- Closed the hostile-review P1/P2 on the lower-rate raw-sanity verifier:
+  canonical IDs and exact coordinates, campaign/stream binding, SELECT-only
+  threshold lineage, planted-IID-REPORT row provenance, strict count/digest
+  consistency, and no-refit behavior are now executable checks rather than
+  static labels.
+- Root's independent forged-truth probe found that a retained true/predicted
+  pair could initially be changed together if its row digest was recomputed.
+  Added canonical `_trial_truth` recomputation and a regression; the same probe
+  now fails closed with `raw_provenance_true_type_not_canonical`.
+- Validation after that reconditioning:
+  - 8/8 focused raw-sanity tests passed in 8.829 seconds;
+  - all 24 runner tests passed in 17.721 seconds;
+  - scoped Ruff and read-only AST parsing passed.
+  The all-runner suite uses tiny smoke/fabricated fixtures only and does not
+  invoke `full_config()`, execute the powered campaign, or retain an artifact.
+- A second independent hostile review reconstructed the first generation of
+  live seals entirely from rewritten serialized fields and changed a failing
+  raw-sanity result into a pass. That finding invalidated the first closure
+  claim.
+- Reconditioned the live-evidence boundary:
+  - create one HMAC-SHA256 authority before campaign traversal;
+  - keep its random 32-byte key, authority ID, and seals out of the artifact;
+  - bind every seal to the authority, cell, campaign, carrier provenance, raw
+    provenance, counts, and accuracy;
+  - reject absent/replacement authorities, invalid tags, SELECT/REPORT stream
+    collisions, missing/mutated carrier provenance, and seal misbinding.
+- Replayed the exact serialized reconstruction attack. It now returns
+  `INCOMPLETE_FAIL_CLOSED` with
+  `live_source_seal_authentication_failed`; the independent reviewer reports no
+  remaining P0/P1/P2 under the stated serialized-input-tampering boundary.
+- Final resource-bounded validation:
+  - 13/13 focused raw-sanity attack/contract tests passed in 17.605 seconds;
+  - 29/29 complete runner tests passed in 26.975 seconds;
+  - 177/177 tests across the eight relevant modules passed in 28.233 seconds;
+  - scoped Ruff, read-only AST parsing, and `git diff --check` passed.
+  The extra live-attestation objects are conservatively bounded at 26,624 bytes
+  (12 seals plus one authority), excluding cells, serialized audit rows, and
+  process RSS.
+- Re-ran the direct artifact-free mechanism probe through the production
+  analyzers:
+  - graph and global-phase assignments were both `[1,3,6]`, outcomes were
+    identical, planted-margin delta was `0`, and the global-phase-collapse kill
+    criterion fired at 65,600 estimated bytes / 36,913 work units;
+  - unquantized `p=7` two-bin accuracies were equal to numerical precision,
+    while the `(1,2)` versus `(2,3)` ranking reversed between quantizer origins
+    `0.5` and `0.75`, at 1,288 estimated bytes / 101,504 work units.
+- No powered campaign, real corpus, large-prime timing, repeated hardware
+  timing, full-size Rader transform, or persistent evidence generation ran.
+  The implementation slice is complete; the scientific gate remains
+  empirically unexecuted.
+
 ## Resource-bounded continuation: 2026-07-24
 
 - User authorized resuming the remaining roadmap while explicitly holding any

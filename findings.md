@@ -1,5 +1,205 @@
 # Findings & Decisions
 
+## 2026-07-24 Resource-Bounded Return
+- Live recheck before new edits found
+  `codex/prime-ring-onion-method-dev` at
+  `08e3c2aeeb5c645a3c95f08a14ac101b226f8c9d`, clean and eight commits ahead
+  of `origin/main`. This is local branch state only; no publication claim is
+  implied.
+- The previous checkpoint already implemented RB-1 matched controls, RB-2
+  finite intersection diagnostics, RB-3 correctness-first Rader transforms,
+  and typed remaining hypotheses. It did not establish novelty, systems
+  superiority, production value, or a scientific result.
+- The highest-information safe additions are currently:
+  1. fail-closed aggregation over every preregistered lower-rate raw-sanity cell
+     rather than only the pooled `q=0.45` cell;
+  2. a tiny graph-coupled cyclic-fiber test with a degree/edge-matched shuffled
+     graph control;
+  3. a tiny multi-frequency phase-signature test with matched energy and search
+     opportunity controls.
+- These additions can test whether apparent gains come from cross-node
+  coherence or frequency diversity, rather than extra energy, extra
+  hypotheses, or a favorable graph. They remain synthetic mechanism tests.
+- Repository brutal-honesty rules require runtime evidence for completion
+  claims. The current slice therefore distinguishes bounded unit/property
+  evidence from a powered campaign or real retrieval result.
+- The default WindowsApps PowerShell launcher again failed with access denied
+  after restart. The stable bundled Node runtime is being used for bounded
+  inspection and command execution; the failed launcher path will not be
+  retried.
+- The live file map contains no existing `prime_ring_graph_fibers.py` or
+  `prime_ring_multifrequency.py`. The relevant reusable primitives are the
+  validated carriers/rotations/correlations in `prime_ring_waypoint.py`, the
+  immutable finite-analysis caps in `prime_ring_intersection.py`, and the
+  matched-control aggregation in `run_prime_ring_waypoint_experiment.py`.
+- The formal ledger already defines `PRW-G1` as finite-group synchronization on
+  a graph and `PRW-H1` as normalized discrete-Fourier phase synchronization.
+  New code must preserve those ordinary mathematical meanings and may not turn
+  the visual "3D", "gravity", or "resonance" language into a physical claim.
+- A fresh primary-source collision check substantially narrows both ideas:
+  - Singer's 2011 angular-synchronization work already estimates node phases
+    from noisy graph-relative offsets, including consistency over general
+    compact groups.
+  - Perry, Wein, Bandeira, and Moitra (2016) explicitly treat compact-group
+    synchronization with multiple Fourier/representation channels.
+  - Gao and Zhao (2019) explicitly call the construction
+    "Multi-Frequency Phase Synchronization."
+  - Current sparse-graph work also uses connection/edge rotations and spanning
+    structures for angular synchronization.
+- Therefore neither graph-coupled cyclic fibers nor multi-frequency phase
+  synchronization is novel in isolation. A surviving contribution would have
+  to be a narrower interaction—such as the exact OPPW/type-mask construction,
+  a proved resource/error tradeoff, or a held-out retrieval/correction
+  advantage under matched controls.
+- New bounded analyzers should copy the established finite-analysis safety
+  pattern: immutable hard ceilings, caller budgets that may only lower those
+  ceilings, shape/work preflight before allocation, a monotonic deadline, and
+  `unittest`-only deterministic oracles compatible with Python 3.9.
+- The protocol deliberately uses only `q=0.45` for the pooled false-unlock
+  threshold cell, while separately requiring 100% raw type recovery at every
+  rate through `0.45`. The lower-rate fix must not create four primary
+  thresholds or reuse `REPORT` outcomes for selection; it should be a separate
+  construction/noise-model sanity aggregation over raw decoder outputs.
+- `PRW-H1` has a stronger null than initially stated. For prime `p`, any one
+  nonzero Fourier bin is invertible modulo `p` and already distinguishes every
+  clean cyclic shift. Multiple bins cannot add noiseless address capacity; they
+  can only add redundancy/robustness under corruption. For real signals, bins
+  `k` and `p-k` are conjugates rather than independent observations.
+- The new bounded Fourier harness therefore:
+  - restricts selected bins to `1..(p-1)/2`;
+  - searches exactly `type_count * p` shared type/shift states for every
+    condition;
+  - normalizes phase features to unit energy;
+  - includes same-count random bins, repeated-single-bin, single-bin,
+    magnitude-only, randomized-phase, and time-domain controls;
+  - supports explicit 1-16 bit phase quantization, including an 8-bit check;
+  - streams exact BSC patterns only for tiny state spaces.
+- The first PRW-H1 suite passed 17 deterministic tests in 0.525 seconds. This
+  proves bounded implementation properties only; no frequency-diversity
+  advantage was established.
+- A tiny exact `p=7`, one-type, one-node BSC sweep enumerated all 128 corruption
+  patterns at `q={0,.20,.35,.45}` with only 928 estimated peak bytes and 83,584
+  estimated work units per condition set:
+  - unquantized bins `(1,2)` and the same-count random control `(1,3)` had
+    identical exact accuracy at every rate;
+  - two distinct bins beat a repeated copy of one bin by `0.26112`, `0.109243`,
+    and `0.026715` probability at `q=.20`, `.35`, and `.45`;
+  - this is evidence for generic redundancy in this toy channel, not for a
+    special frequency selection, harmonic resonance, or new address capacity;
+  - 8-bit quantization introduced small bin-set differences (at most about
+    `0.00834` here), which is more plausibly a quantization/bin interaction than
+    a selected-bin result and requires all-bin/all-seed controls before any
+    interpretation;
+  - time-domain correlation used a different coefficient budget, so its toy
+    accuracy is diagnostic rather than a matched superiority comparison.
+- The lower-rate closure implementation is structurally separate from threshold
+  fitting. It selects exactly one retained completed cell per frozen
+  `(seed,q)` at the canonical 4691/Legendre/8-layer/typed16/payload-0.25
+  configuration, requires the expected raw REPORT group count and accuracy
+  exactly `1.0`, rejects missing/duplicate IDs and promotion-enabled records,
+  and feeds its fail-closed result into the dense and all-mandatory control
+  gates. Hostile review then showed that this first verifier trusted mutable
+  summaries: fabricated noncanonical IDs, coerced numeric types, near-matching
+  rates, and REPORT-derived threshold metadata could still close the gate.
+  Provenance hardening is therefore required before the implementation itself
+  can be called fail closed. The powered campaign remains unexecuted, so no
+  empirical gate is closed.
+- Fresh hostile review confirmed the PRW-H1 DFT sign/roll law across 2,100
+  noiseless cases, but found preflight, condition-cap, Python 3.9, tie-margin,
+  and accounting/control defects. Reconditioning now:
+  - refuses malformed shapes and caller-tightened byte/condition limits before
+    control construction or content scans;
+  - uses a Python 3.9-compatible population count;
+  - forces tied winners to margin zero;
+  - distinguishes logical coefficient slots, stored scalars, energy, and
+    arithmetic matching;
+  - exposes proposed/random-bin collisions; and
+  - includes the previously missing all-nonconjugate-frequency control.
+- The reconditioned PRW-H1 suite now passes 37/37 tests in 2.669 seconds with
+  clean focused Ruff. Final hostile review reports no P0, P1, or P2 findings.
+- The second PRW-H1 reconditioning also gives the whole multi-condition
+  comparison one aggregate work/deadline budget, guards the exported random-bin
+  helper before `np.arange`, renames "independent" bins to the accurate
+  "nonconjugate" term, counts bank-build magnitude temporaries, and states that
+  phase-bit tests still use float64/complex128 arithmetic with no packed
+  storage or speed claim. The focused suite remains 21/21 green in 0.523
+  seconds with clean Ruff.
+- A stronger artifact-free PRW-H1 falsifier exhaustively covered all three
+  two-bin subsets of the nonconjugate `p=7` bins, all 128 BSC patterns,
+  `q={.20,.35,.45}`, and 8-bit quantizer-grid origins
+  `{0,.25,.5,.75}`:
+  - all three unquantized two-bin subsets have exactly the same accuracy at
+    each rate;
+  - the apparent 8-bit bin ranking changes when only the quantizer origin
+    changes;
+  - the largest within-subset origin spreads are `0.0032768`, `0.0076534555`,
+    and `0.0083385070` at the three rates;
+  - the proposed two-bin subset trails the three-bin all-nonconjugate
+    diagnostic in 29 of 36 quantized cells, although that diagnostic has a
+    larger coefficient budget and is not a matched superiority comparator;
+  - each run is guarded at no more than 1,288 estimated model-level bytes and
+    101,504 work units.
+  This kills a selected-frequency or resonance interpretation for the toy
+  result. The distinct-bin gain over repeated copies remains ordinary
+  redundancy, and the small 8-bit differences are grid-origin artifacts or
+  interactions until stronger evidence says otherwise.
+- The bounded `PRW-G1` graph analyzer now includes that explicit
+  one-global-phase-plus-fixed-offset comparator. In the helpful `p=7`
+  triangle, its assignment, score, tie count, planted margin, and planted rank
+  are exactly identical to the graph-coupled decoder; every graph-minus-global
+  effect is zero. Fifteen tests, focused Ruff, and an independent exhaustive
+  check of all 511 nonempty labeled simple graphs on three nodes pass. The
+  earlier margin gain over independent/shuffled controls is fully explained by
+  restricting the decoder to the fixed-offset global-phase family, not by a
+  new graph-memory mechanism.
+- Warm model-array allocation checks at the largest permitted PRW-H1 shape
+  (`p=31`, 32 types, 12 nodes, 15 bins) now remain below their declared
+  estimates: bank construction measured 532,903 bytes versus a 579,871-byte
+  estimate, one decode measured 755,648 versus 790,448, and the eight-control
+  comparison measured 826,096 versus 846,000. These are `tracemalloc`
+  diagnostics for Python/NumPy allocations, not process RSS or a production
+  memory benchmark.
+- The lower-rate raw-sanity verifier now binds every accepted cell to a
+  canonical cell ID and campaign/stream-contract digest, requires exact Python
+  scalar types and exact frozen coordinates, enforces SELECT-only thresholds
+  with zero REPORT rows consumed, and recomputes row counts, group/order
+  digests, row digests, accuracy, and canonical trial truth from planted IID
+  REPORT lineage. An independent adversarial probe that changed both the
+  retained true and predicted types, then recomputed the row digest, initially
+  exposed one remaining gap; canonical `_trial_truth` recomputation now rejects
+  it with `raw_provenance_true_type_not_canonical`.
+- A second hostile attack showed that those digests still self-attested: after
+  rewriting a failed prediction, correctness, counts, accuracy, and row digest,
+  an attacker could reconstruct every old seal from serialized fields and turn
+  the gate into `COMPLETE_PASS`. The accepted design now creates one per-run
+  authority before campaign traversal, uses a random 32-byte HMAC-SHA256 key to
+  authenticate each cell/campaign/carrier/raw-provenance/count/accuracy tuple,
+  and never serializes the authority ID, key, or seals.
+- Replaying the exact reconstruction attack with an unkeyed digest now yields
+  `INCOMPLETE_FAIL_CLOSED`,
+  `live_source_seal_authentication_failed`, `contract_complete=False`, and
+  `gate_pass=False`. A replacement authority, missing or misbound seals,
+  mutated/missing carrier provenance, and a SELECT/REPORT tag collision also
+  fail closed. Independent hostile re-review reports no P0, P1, or P2 under the
+  explicit serialized-input-tampering boundary; arbitrary same-process code
+  execution is not claimed as a protected boundary.
+- The 12 seals are conservatively budgeted at 24,576 bytes and the authority at
+  2,048 bytes, for 26,624 estimated live-attestation bytes. This estimate is
+  scoped to the extra seal/authority objects, not process RSS, cells, or the
+  serialized raw-provenance rows already retained for auditability.
+- The final complete bounded runner suite passes 29/29 tests, and the combined
+  eight-module research suite passes 177/177 tests in 28.233 seconds. Scoped
+  Ruff, read-only AST parsing, and whitespace validation also pass. These use
+  only tiny smoke fixtures, exact small-prime enumeration, and fabricated
+  in-memory provenance records; they do not invoke `full_config()`, the
+  11,520-cell campaign, 4091/4691 timing, real retrieval, or retained evidence
+  generation. This validates gate behavior, not the raw-sanity scientific
+  criterion itself.
+- The best next low-risk discriminator is not more `p=7` parameter searching.
+  It is a preregistered, resource-estimated `p=11` quantizer-origin/dither null
+  followed by an algebraic `PRW-C1` redundancy screen. Neither may inherit
+  support from the current negative graph/Fourier results.
+
 ## 2026-07-23 Prime-Ring Onion-Lattice Findings
 - Live `origin/main` already contains thirteen lattice commits after the
   recovered brain-file-map branch:

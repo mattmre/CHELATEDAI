@@ -16,8 +16,10 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import hmac
 import json
 import math
+import secrets
 import time
 from dataclasses import asdict, dataclass, replace
 from itertools import product
@@ -50,6 +52,51 @@ PLANTED_MASK_FAMILIES = ("none", "shared", "typed16", "free256")
 DECODER_MASK_POLICIES = ("none", "shared", "typed16", "free256")
 SPLITS = ("SELECT", "REPORT")
 CORRUPTION_VARIANTS = ("iid", "block_correlated", "burst")
+RAW_SANITY_REQUIRED_BIT_FLIP_RATES = (0.0, 0.20, 0.35, 0.45)
+RAW_SANITY_REPORT_PLANTED_GROUPS = {
+    0.0: 3,
+    0.20: 3,
+    0.35: 3,
+    0.45: 1024,
+}
+CAMPAIGN_EVIDENCE_CONFIG_FIELDS = (
+    "seeds",
+    "lengths",
+    "carrier_families",
+    "layers",
+    "planted_mask_families",
+    "decoder_mask_policies",
+    "bit_flip_rates",
+    "payload_noise_rates",
+    "type_count",
+    "waypoints_per_type",
+    "select_planted",
+    "select_unrelated",
+    "report_planted",
+    "report_unrelated",
+    "recall_k",
+    "target_false_unlock_rate",
+    "control_min_true_unlock_recall",
+    "confidence_level",
+    "report_stream_tag",
+    "primary_select_planted",
+    "primary_select_unrelated",
+    "primary_report_planted",
+    "primary_report_unrelated",
+    "run_label",
+)
+RAW_SANITY_CELL_CONFIG_FIELDS = (
+    "seed",
+    "length",
+    "carrier_family",
+    "layers",
+    "planted_mask_family",
+    "decoder_mask_policy",
+    "bit_flip_rate",
+    "payload_noise_rate",
+)
+RAW_SANITY_LIVE_SEAL_ESTIMATED_BYTES = 2048
+RAW_SANITY_LIVE_AUTHORITY_ESTIMATED_BYTES = 2048
 CONTROL_HARD_MAX_ESTIMATED_BYTES = 512 * 1024 * 1024
 CONTROL_HARD_MAX_WORK_UNITS = 50_000_000
 DEFAULT_CONTROL_MIN_TRUE_UNLOCK_RECALL = 0.50
@@ -276,6 +323,29 @@ def _stream_manifest(config: CampaignConfig) -> Dict[str, Any]:
         "stream_ids": streams,
         "select_report_disjoint": len(set(streams.values())) == 3,
         "report_stream_tag": config.report_stream_tag,
+    }
+
+
+def _campaign_contract_manifest(config: CampaignConfig) -> Dict[str, Any]:
+    """Bind evidentiary settings and RNG domains independently of output path."""
+
+    config_values = asdict(config)
+    evidence_config = {
+        field: config_values[field]
+        for field in CAMPAIGN_EVIDENCE_CONFIG_FIELDS
+    }
+    stream_manifest = _stream_manifest(config)
+    payload = {
+        "protocol_id": PROTOCOL_ID,
+        "record_type": RECORD_TYPE,
+        "evidence_mode": EVIDENCE_MODE,
+        "evidence_config": evidence_config,
+        "stream_manifest": stream_manifest,
+    }
+    return {
+        "digest_algorithm": "sha256_canonical_json_v1",
+        "digest": _stable_digest(payload),
+        **payload,
     }
 
 
@@ -3133,6 +3203,11 @@ def _aggregate_cell(
     raw_type_accuracy = _mean_bool(
         row["type_correct"] for row in report_planted
     )
+    raw_type_accuracy_provenance = _raw_type_accuracy_provenance(
+        config,
+        spec,
+        report_planted,
+    )
     raw_phase_accuracy = _mean_bool(
         row["phase_exact"] for row in report_planted
     )
@@ -3182,6 +3257,9 @@ def _aggregate_cell(
     return {
         "cell_id": _cell_id(spec),
         "config": dict(spec),
+        "campaign_contract_digest": _campaign_contract_manifest(config)[
+            "digest"
+        ],
         "status": "completed",
         "primary_fur_cell": False,
         "primary_fur_seed_component": primary_component,
@@ -3201,6 +3279,9 @@ def _aggregate_cell(
             "block_correlated_group_count": len(report_block_correlated),
             "burst_group_count": len(report_burst),
             "raw_type_accuracy": raw_type_accuracy,
+            "raw_type_accuracy_provenance": (
+                raw_type_accuracy_provenance
+            ),
             "phase_exact_accuracy": raw_phase_accuracy,
             "phase_circular_error": _summary(
                 row["phase_circular_error"] for row in report_planted
@@ -3365,9 +3446,948 @@ def _aggregate_cell(
     }
 
 
+@dataclass(frozen=True)
+class _RawSanityLiveSeal:
+    """Compact in-process attestation derived from actual REPORT rows."""
+
+    schema_version: str
+    authority_id: str
+    cell_id: str
+    campaign_contract_digest: str
+    carrier_provenance_digest: str
+    raw_provenance_digest: str
+    trial_count: int
+    correct_count: int
+    raw_type_accuracy: float
+    authentication_tag: str
+
+
+class _RawSanityLiveAuthority:
+    """Per-run authority that never enters the retained campaign artifact."""
+
+    __slots__ = ("_authority_id", "_campaign_contract_digest", "_key")
+
+    def __init__(self, campaign_contract_digest: str) -> None:
+        if (
+            type(campaign_contract_digest) is not str
+            or len(campaign_contract_digest) != 64
+        ):
+            raise CampaignValidationError(
+                "raw sanity authority requires one campaign contract digest"
+            )
+        self._campaign_contract_digest = campaign_contract_digest
+        self._key = secrets.token_bytes(32)
+        self._authority_id = hashlib.sha256(
+            self._key + campaign_contract_digest.encode("ascii")
+        ).hexdigest()
+
+    @property
+    def authority_id(self) -> str:
+        return self._authority_id
+
+    @property
+    def campaign_contract_digest(self) -> str:
+        return self._campaign_contract_digest
+
+    def _authentication_tag(self, fields: Mapping[str, Any]) -> str:
+        payload = json.dumps(
+            fields,
+            sort_keys=True,
+            separators=(",", ":"),
+            allow_nan=False,
+        ).encode("utf-8")
+        return hmac.new(self._key, payload, hashlib.sha256).hexdigest()
+
+    def mint(
+        self,
+        *,
+        cell_id: str,
+        campaign_contract_digest: str,
+        carrier_provenance_digest: str,
+        raw_provenance_digest: str,
+        trial_count: int,
+        correct_count: int,
+        raw_type_accuracy: float,
+    ) -> _RawSanityLiveSeal:
+        fields = {
+            "schema_version": "1.1",
+            "authority_id": self._authority_id,
+            "cell_id": cell_id,
+            "campaign_contract_digest": campaign_contract_digest,
+            "carrier_provenance_digest": carrier_provenance_digest,
+            "raw_provenance_digest": raw_provenance_digest,
+            "trial_count": trial_count,
+            "correct_count": correct_count,
+            "raw_type_accuracy": raw_type_accuracy,
+        }
+        if campaign_contract_digest != self._campaign_contract_digest:
+            raise CampaignValidationError(
+                "raw sanity authority cannot mint across campaign contracts"
+            )
+        return _RawSanityLiveSeal(
+            **fields,
+            authentication_tag=self._authentication_tag(fields),
+        )
+
+    def verifies(self, seal: object) -> bool:
+        if type(seal) is not _RawSanityLiveSeal:
+            return False
+        fields = {
+            "schema_version": seal.schema_version,
+            "authority_id": seal.authority_id,
+            "cell_id": seal.cell_id,
+            "campaign_contract_digest": seal.campaign_contract_digest,
+            "carrier_provenance_digest": seal.carrier_provenance_digest,
+            "raw_provenance_digest": seal.raw_provenance_digest,
+            "trial_count": seal.trial_count,
+            "correct_count": seal.correct_count,
+            "raw_type_accuracy": seal.raw_type_accuracy,
+        }
+        return bool(
+            seal.authority_id == self._authority_id
+            and seal.campaign_contract_digest
+            == self._campaign_contract_digest
+            and hmac.compare_digest(
+                seal.authentication_tag,
+                self._authentication_tag(fields),
+            )
+        )
+
+
+def _raw_sanity_cell_coordinates(
+    cell_config: object,
+) -> Optional[Tuple[int, float]]:
+    """Return exact frozen coordinates only for the canonical sanity cell."""
+
+    if not isinstance(cell_config, Mapping):
+        return None
+    if set(cell_config) != set(RAW_SANITY_CELL_CONFIG_FIELDS):
+        return None
+    seed = cell_config.get("seed")
+    length = cell_config.get("length")
+    carrier_family = cell_config.get("carrier_family")
+    layers = cell_config.get("layers")
+    planted_mask_family = cell_config.get("planted_mask_family")
+    decoder_mask_policy = cell_config.get("decoder_mask_policy")
+    bit_flip_rate = cell_config.get("bit_flip_rate")
+    payload_noise_rate = cell_config.get("payload_noise_rate")
+    if type(seed) is not int or seed not in FROZEN_SEEDS:
+        return None
+    if type(length) is not int or length != 4691:
+        return None
+    if type(carrier_family) is not str or carrier_family != "legendre":
+        return None
+    if type(layers) is not int or layers != 8:
+        return None
+    if (
+        type(planted_mask_family) is not str
+        or planted_mask_family != "typed16"
+    ):
+        return None
+    if (
+        type(decoder_mask_policy) is not str
+        or decoder_mask_policy != "typed16"
+    ):
+        return None
+    if (
+        type(bit_flip_rate) is not float
+        or bit_flip_rate not in RAW_SANITY_REQUIRED_BIT_FLIP_RATES
+    ):
+        return None
+    if type(payload_noise_rate) is not float or payload_noise_rate != 0.25:
+        return None
+    return seed, bit_flip_rate
+
+
+def _raw_sanity_group_ids(seed: int, trial_count: int) -> list:
+    return [
+        _trial_group_id(seed, "REPORT", "planted", index)
+        for index in range(trial_count)
+    ]
+
+
+def _raw_type_accuracy_provenance(
+    config: CampaignConfig,
+    spec: Mapping[str, Any],
+    report_rows: Sequence[Mapping[str, Any]],
+) -> Optional[Dict[str, Any]]:
+    """Retain the exact pre-threshold IID REPORT rows behind raw accuracy."""
+
+    if config.run_label != "FULL_METHOD_DEV":
+        return None
+    coordinates = _raw_sanity_cell_coordinates(spec)
+    if coordinates is None:
+        return None
+    seed, bit_flip_rate = coordinates
+    expected_count = RAW_SANITY_REPORT_PLANTED_GROUPS[bit_flip_rate]
+    if len(report_rows) != expected_count:
+        raise CampaignValidationError(
+            "raw sanity provenance requires the frozen REPORT planted count"
+        )
+    expected_group_ids = _raw_sanity_group_ids(seed, expected_count)
+    provenance_rows = []
+    for index, row in enumerate(report_rows):
+        if not isinstance(row, Mapping):
+            raise CampaignValidationError(
+                "raw sanity provenance rows must be mappings"
+            )
+        query_provenance = row.get("query_provenance")
+        if not isinstance(query_provenance, Mapping):
+            raise CampaignValidationError(
+                "raw sanity provenance requires query provenance"
+            )
+        if (
+            row.get("split") != "REPORT"
+            or row.get("input_class") != "planted"
+            or row.get("group_id") != expected_group_ids[index]
+            or query_provenance.get("noise_variant") != "iid"
+            or query_provenance.get("representation")
+            != "raw_float64_ndarray"
+            or query_provenance.get("corruption")
+            != "independent_bernoulli_bit_flips"
+        ):
+            raise CampaignValidationError(
+                "raw sanity provenance requires canonical planted IID REPORT rows"
+            )
+        declared_rate = query_provenance.get(
+            "declared_global_flip_probability_or_fraction"
+        )
+        true_type = row.get("true_type")
+        predicted_type = row.get("predicted_type")
+        type_correct = row.get("type_correct")
+        if type(declared_rate) is not float or declared_rate != bit_flip_rate:
+            raise CampaignValidationError(
+                "raw sanity row declared bit-flip rate is not exact"
+            )
+        if (
+            type(true_type) is not int
+            or type(predicted_type) is not int
+            or type(type_correct) is not bool
+            or type_correct is not (predicted_type == true_type)
+        ):
+            raise CampaignValidationError(
+                "raw sanity row outcome types or correctness are invalid"
+            )
+        provenance_rows.append(
+            {
+                "group_id": expected_group_ids[index],
+                "split": "REPORT",
+                "input_class": "planted",
+                "noise_variant": "iid",
+                "representation": "raw_float64_ndarray",
+                "corruption": "independent_bernoulli_bit_flips",
+                "declared_bit_flip_rate": bit_flip_rate,
+                "threshold_applied": False,
+                "true_type": true_type,
+                "predicted_type": predicted_type,
+                "type_correct": type_correct,
+            }
+        )
+    correct_count = sum(row["type_correct"] for row in provenance_rows)
+    return {
+        "schema_version": "1.0",
+        "metric": "raw_type_accuracy",
+        "campaign_contract_digest": _campaign_contract_manifest(config)[
+            "digest"
+        ],
+        "source_split": "REPORT",
+        "input_class": "planted",
+        "noise_variant": "iid",
+        "threshold_applied": False,
+        "trial_count": expected_count,
+        "correct_count": correct_count,
+        "group_digest": _stable_digest(expected_group_ids),
+        "row_digest": _stable_digest(provenance_rows),
+        "rows": provenance_rows,
+    }
+
+
+def _raw_sanity_live_seal(
+    config: CampaignConfig,
+    spec: Mapping[str, Any],
+    report_rows: Sequence[Mapping[str, Any]],
+    carrier_provenance: Mapping[str, Any],
+    *,
+    authority: _RawSanityLiveAuthority,
+) -> Optional[_RawSanityLiveSeal]:
+    """Seal actual in-process rows without retaining them in the artifact."""
+
+    provenance = _raw_type_accuracy_provenance(
+        config,
+        spec,
+        report_rows,
+    )
+    if provenance is None:
+        return None
+    if not isinstance(carrier_provenance, Mapping):
+        raise CampaignValidationError(
+            "raw sanity live seal requires carrier provenance"
+        )
+    expected_shape = [config.type_count, 8, 4691]
+    expected_template_nbytes = config.type_count * 8 * 4691 * 8
+    carrier_checks = {
+        "representation": "prime_legendre_ring",
+        "template_factory": "make_template",
+        "ring_observation_labels_manually_constructed": False,
+        "base_shared_across_types": True,
+        "composite_control": False,
+        "template_dtype": "float64",
+        "template_shape": expected_shape,
+        "template_nbytes": expected_template_nbytes,
+        "base_nbytes": 4691 * 8,
+        "corrupted_queries_are_raw_array_copies": True,
+    }
+    if any(
+        carrier_provenance.get(field) != expected
+        for field, expected in carrier_checks.items()
+    ):
+        raise CampaignValidationError(
+            "raw sanity live seal requires canonical 4691 Legendre provenance"
+        )
+    correct_count = provenance["correct_count"]
+    trial_count = provenance["trial_count"]
+    return authority.mint(
+        cell_id=_cell_id(spec),
+        campaign_contract_digest=provenance[
+            "campaign_contract_digest"
+        ],
+        carrier_provenance_digest=_stable_digest(carrier_provenance),
+        raw_provenance_digest=_stable_digest(provenance),
+        trial_count=trial_count,
+        correct_count=correct_count,
+        raw_type_accuracy=float(correct_count / trial_count),
+    )
+
+
+def _raw_sanity_provenance_reasons(
+    provenance: object,
+    *,
+    config: CampaignConfig,
+    seed: int,
+    bit_flip_rate: float,
+    expected_count: int,
+    expected_campaign_digest: str,
+) -> Tuple[list, Optional[int], Optional[int]]:
+    """Validate and recompute every retained raw-metric provenance field."""
+
+    reasons = []
+    if not isinstance(provenance, Mapping):
+        return ["raw_type_accuracy_provenance_missing"], None, None
+    expected_fields = {
+        "schema_version",
+        "metric",
+        "campaign_contract_digest",
+        "source_split",
+        "input_class",
+        "noise_variant",
+        "threshold_applied",
+        "trial_count",
+        "correct_count",
+        "group_digest",
+        "row_digest",
+        "rows",
+    }
+    if set(provenance) != expected_fields:
+        reasons.append("raw_provenance_schema_mismatch")
+    for field, expected in (
+        ("schema_version", "1.0"),
+        ("metric", "raw_type_accuracy"),
+        ("campaign_contract_digest", expected_campaign_digest),
+        ("source_split", "REPORT"),
+        ("input_class", "planted"),
+        ("noise_variant", "iid"),
+    ):
+        if type(provenance.get(field)) is not str or provenance.get(
+            field
+        ) != expected:
+            reasons.append(f"raw_provenance_{field}_mismatch")
+    if provenance.get("threshold_applied") is not False:
+        reasons.append("raw_provenance_threshold_applied")
+
+    trial_count = provenance.get("trial_count")
+    correct_count = provenance.get("correct_count")
+    if type(trial_count) is not int or trial_count != expected_count:
+        reasons.append("raw_provenance_trial_count_mismatch")
+        validated_trial_count = None
+    else:
+        validated_trial_count = trial_count
+    if (
+        type(correct_count) is not int
+        or correct_count < 0
+        or correct_count > expected_count
+    ):
+        reasons.append("raw_provenance_correct_count_invalid")
+        validated_correct_count = None
+    else:
+        validated_correct_count = correct_count
+
+    rows = provenance.get("rows")
+    expected_group_ids = _raw_sanity_group_ids(seed, expected_count)
+    expected_row_fields = {
+        "group_id",
+        "split",
+        "input_class",
+        "noise_variant",
+        "representation",
+        "corruption",
+        "declared_bit_flip_rate",
+        "threshold_applied",
+        "true_type",
+        "predicted_type",
+        "type_correct",
+    }
+    rows_valid = isinstance(rows, list) and len(rows) == expected_count
+    if not rows_valid:
+        reasons.append("raw_provenance_rows_count_mismatch")
+    else:
+        observed_group_ids = []
+        derived_correct_count = 0
+        for index, row in enumerate(rows):
+            if not isinstance(row, Mapping) or set(row) != expected_row_fields:
+                rows_valid = False
+                reasons.append("raw_provenance_row_schema_mismatch")
+                break
+            group_id = row.get("group_id")
+            true_type = row.get("true_type")
+            predicted_type = row.get("predicted_type")
+            type_correct = row.get("type_correct")
+            canonical_truth = _trial_truth(
+                config,
+                seed,
+                "REPORT",
+                "planted",
+                index,
+                4691,
+            )
+            if type(group_id) is not str:
+                rows_valid = False
+                reasons.append("raw_provenance_group_id_type_invalid")
+                break
+            observed_group_ids.append(group_id)
+            if (
+                group_id != expected_group_ids[index]
+                or row.get("split") != "REPORT"
+                or row.get("input_class") != "planted"
+                or row.get("noise_variant") != "iid"
+                or row.get("representation") != "raw_float64_ndarray"
+                or row.get("corruption")
+                != "independent_bernoulli_bit_flips"
+                or type(row.get("declared_bit_flip_rate")) is not float
+                or row.get("declared_bit_flip_rate") != bit_flip_rate
+                or row.get("threshold_applied") is not False
+                or type(true_type) is not int
+                or type(predicted_type) is not int
+                or not 0 <= true_type < 16
+                or not 0 <= predicted_type < 16
+                or type(type_correct) is not bool
+                or type_correct is not (predicted_type == true_type)
+            ):
+                rows_valid = False
+                reasons.append("raw_provenance_row_contract_mismatch")
+                break
+            if true_type != int(canonical_truth["true_type"]):
+                rows_valid = False
+                reasons.append("raw_provenance_true_type_not_canonical")
+                break
+            derived_correct_count += int(type_correct)
+        if rows_valid:
+            if observed_group_ids != expected_group_ids:
+                rows_valid = False
+                reasons.append("raw_provenance_group_sequence_mismatch")
+            if provenance.get("group_digest") != _stable_digest(
+                expected_group_ids
+            ):
+                reasons.append("raw_provenance_group_digest_mismatch")
+            if provenance.get("row_digest") != _stable_digest(rows):
+                reasons.append("raw_provenance_row_digest_mismatch")
+            if validated_correct_count != derived_correct_count:
+                reasons.append("raw_provenance_correct_count_mismatch")
+    return reasons, validated_trial_count, validated_correct_count
+
+
+def _raw_sanity_cell_key(seed: int, bit_flip_rate: float) -> str:
+    return f"seed={seed}|q={bit_flip_rate:.2f}"
+
+
+def _aggregate_raw_sanity_sweep(
+    config: CampaignConfig,
+    cells: Sequence[Mapping[str, Any]],
+    *,
+    live_seals: Optional[Mapping[str, _RawSanityLiveSeal]] = None,
+    live_authority: Optional[_RawSanityLiveAuthority] = None,
+) -> Dict[str, Any]:
+    """Check the complete frozen dense raw-type sanity sweep, fail closed.
+
+    This consumes already-aggregated retained cells. It does not generate
+    observations, refit thresholds, or infer lower-rate behavior from q=0.45.
+    """
+
+    campaign_contract = _campaign_contract_manifest(config)
+    expected_campaign_digest = campaign_contract["digest"]
+    config_checks = {
+        "full_method_dev_run_label": (
+            type(config.run_label) is str
+            and config.run_label == "FULL_METHOD_DEV"
+        ),
+        "select_report_streams_disjoint": bool(
+            _stream_manifest(config)["select_report_disjoint"]
+        ),
+        "exact_live_seal_count": (
+            isinstance(live_seals, Mapping)
+            and len(live_seals)
+            == len(FROZEN_SEEDS)
+            * len(RAW_SANITY_REQUIRED_BIT_FLIP_RATES)
+        ),
+        "live_authority_matches_campaign": (
+            type(live_authority) is _RawSanityLiveAuthority
+            and live_authority.campaign_contract_digest
+            == expected_campaign_digest
+        ),
+        "frozen_seed_order": (
+            type(config.seeds) is tuple
+            and all(type(seed) is int for seed in config.seeds)
+            and config.seeds == FROZEN_SEEDS
+        ),
+        "all_required_rates_present": (
+            type(config.bit_flip_rates) is tuple
+            and all(
+                type(rate) is float for rate in config.bit_flip_rates
+            )
+            and all(
+                required in config.bit_flip_rates
+                for required in RAW_SANITY_REQUIRED_BIT_FLIP_RATES
+            )
+        ),
+        "length_4691_present": (
+            type(config.lengths) is tuple
+            and all(type(length) is int for length in config.lengths)
+            and 4691 in config.lengths
+        ),
+        "legendre_present": (
+            type(config.carrier_families) is tuple
+            and all(
+                type(family) is str
+                for family in config.carrier_families
+            )
+            and "legendre" in config.carrier_families
+        ),
+        "eight_layers_present": (
+            type(config.layers) is tuple
+            and all(type(layers) is int for layers in config.layers)
+            and 8 in config.layers
+        ),
+        "typed16_planted_present": (
+            type(config.planted_mask_families) is tuple
+            and all(
+                type(family) is str
+                for family in config.planted_mask_families
+            )
+            and "typed16" in config.planted_mask_families
+        ),
+        "typed16_decoder_present": (
+            type(config.decoder_mask_policies) is tuple
+            and all(
+                type(policy) is str
+                for policy in config.decoder_mask_policies
+            )
+            and "typed16" in config.decoder_mask_policies
+        ),
+        "payload_noise_0_25_present": (
+            type(config.payload_noise_rates) is tuple
+            and all(
+                type(rate) is float
+                for rate in config.payload_noise_rates
+            )
+            and 0.25 in config.payload_noise_rates
+        ),
+        "sixteen_types": (
+            type(config.type_count) is int and config.type_count == 16
+        ),
+        "eight_waypoints_per_type": (
+            type(config.waypoints_per_type) is int
+            and config.waypoints_per_type == 8
+        ),
+        "lower_rate_report_budget_is_three": (
+            type(config.report_planted) is int
+            and config.report_planted == 3
+        ),
+        "q_0_45_report_budget_is_1024": (
+            type(config.primary_report_planted) is int
+            and config.primary_report_planted == 1024
+        ),
+    }
+    config_contract_pass = all(config_checks.values())
+    buckets: Dict[Tuple[int, float], list] = {
+        (seed, rate): []
+        for seed in FROZEN_SEEDS
+        for rate in RAW_SANITY_REQUIRED_BIT_FLIP_RATES
+    }
+    for cell in cells:
+        if not isinstance(cell, Mapping):
+            continue
+        cell_config = cell.get("config")
+        coordinates = _raw_sanity_cell_coordinates(cell_config)
+        if coordinates is None:
+            continue
+        buckets[coordinates].append(cell)
+
+    summaries = []
+    missing_keys = []
+    duplicate_keys = []
+    invalid_keys = []
+    failed_accuracy_keys = []
+    for seed in FROZEN_SEEDS:
+        for rate in RAW_SANITY_REQUIRED_BIT_FLIP_RATES:
+            key = _raw_sanity_cell_key(seed, rate)
+            matched = buckets[(seed, rate)]
+            expected_groups = RAW_SANITY_REPORT_PLANTED_GROUPS[rate]
+            if not matched:
+                missing_keys.append(key)
+                summaries.append(
+                    {
+                        "key": key,
+                        "seed": seed,
+                        "bit_flip_rate": rate,
+                        "status": "MISSING",
+                        "expected_report_planted_groups": expected_groups,
+                        "contract_record_valid": False,
+                        "raw_sanity_pass": False,
+                    }
+                )
+                continue
+            if len(matched) != 1:
+                duplicate_keys.append(key)
+                summaries.append(
+                    {
+                        "key": key,
+                        "seed": seed,
+                        "bit_flip_rate": rate,
+                        "status": "DUPLICATE",
+                        "matched_cell_count": len(matched),
+                        "expected_report_planted_groups": expected_groups,
+                        "contract_record_valid": False,
+                        "raw_sanity_pass": False,
+                    }
+                )
+                continue
+            cell = matched[0]
+            cell_config = cell["config"]
+            report = cell.get("report")
+            threshold = cell.get("threshold")
+            reasons = []
+            if cell.get("status") != "completed":
+                reasons.append("cell_not_completed")
+            cell_id = cell.get("cell_id")
+            if type(cell_id) is not str or cell_id != _cell_id(cell_config):
+                reasons.append("cell_id_not_canonical")
+            live_seal = (
+                live_seals.get(cell_id)
+                if isinstance(live_seals, Mapping)
+                and type(cell_id) is str
+                else None
+            )
+            if type(live_seal) is not _RawSanityLiveSeal:
+                reasons.append("live_source_seal_missing_or_invalid")
+                live_seal = None
+            else:
+                if live_seal.schema_version != "1.1":
+                    reasons.append("live_source_seal_schema_mismatch")
+                if (
+                    type(live_authority) is not _RawSanityLiveAuthority
+                    or not live_authority.verifies(live_seal)
+                ):
+                    reasons.append("live_source_seal_authentication_failed")
+                if live_seal.cell_id != cell_id:
+                    reasons.append("live_source_seal_cell_id_mismatch")
+                if (
+                    live_seal.campaign_contract_digest
+                    != expected_campaign_digest
+                ):
+                    reasons.append(
+                        "live_source_seal_campaign_digest_mismatch"
+                    )
+            if (
+                type(cell.get("campaign_contract_digest")) is not str
+                or cell.get("campaign_contract_digest")
+                != expected_campaign_digest
+            ):
+                reasons.append("campaign_contract_digest_mismatch")
+            carrier_provenance = cell.get("carrier_provenance")
+            if not isinstance(carrier_provenance, Mapping):
+                reasons.append("carrier_provenance_missing")
+            elif (
+                live_seal is not None
+                and _stable_digest(carrier_provenance)
+                != live_seal.carrier_provenance_digest
+            ):
+                reasons.append("carrier_provenance_live_seal_mismatch")
+            if cell.get("promotion_eligible") is not False:
+                reasons.append("cell_promotion_not_locked_false")
+            expected_primary_component = rate == 0.45
+            if (
+                cell.get("primary_fur_seed_component")
+                is not expected_primary_component
+            ):
+                reasons.append("primary_component_role_mismatch")
+            if not isinstance(threshold, Mapping):
+                reasons.append("threshold_metadata_missing")
+            else:
+                if (
+                    type(threshold.get("source_split")) is not str
+                    or threshold.get("source_split") != "SELECT"
+                ):
+                    reasons.append("threshold_source_not_select")
+                if (
+                    type(threshold.get("report_rows_consumed")) is not int
+                    or threshold.get("report_rows_consumed") != 0
+                ):
+                    reasons.append(
+                        "threshold_report_rows_consumed_not_zero"
+                    )
+            if not isinstance(report, Mapping):
+                reasons.append("missing_report")
+                observed_groups = None
+                raw_accuracy = None
+                provenance_trial_count = None
+                provenance_correct_count = None
+            else:
+                observed_groups = report.get("planted_group_count")
+                if (
+                    type(observed_groups) is not int
+                    or observed_groups != expected_groups
+                ):
+                    reasons.append("report_planted_group_count_mismatch")
+                raw_value = report.get("raw_type_accuracy")
+                if (
+                    type(raw_value) is not float
+                    or not math.isfinite(raw_value)
+                    or not 0.0 <= raw_value <= 1.0
+                ):
+                    raw_accuracy = None
+                    reasons.append("raw_type_accuracy_not_finite_float")
+                else:
+                    raw_accuracy = raw_value
+                (
+                    provenance_reasons,
+                    provenance_trial_count,
+                    provenance_correct_count,
+                ) = _raw_sanity_provenance_reasons(
+                    report.get("raw_type_accuracy_provenance"),
+                    config=config,
+                    seed=seed,
+                    bit_flip_rate=rate,
+                    expected_count=expected_groups,
+                    expected_campaign_digest=expected_campaign_digest,
+                )
+                reasons.extend(provenance_reasons)
+                serialized_provenance = report.get(
+                    "raw_type_accuracy_provenance"
+                )
+                if (
+                    live_seal is not None
+                    and isinstance(serialized_provenance, Mapping)
+                    and _stable_digest(serialized_provenance)
+                    != live_seal.raw_provenance_digest
+                ):
+                    reasons.append(
+                        "serialized_provenance_live_seal_mismatch"
+                    )
+                if (
+                    raw_accuracy is not None
+                    and provenance_trial_count is not None
+                    and provenance_correct_count is not None
+                    and raw_accuracy
+                    != provenance_correct_count / provenance_trial_count
+                ):
+                    reasons.append(
+                        "raw_type_accuracy_provenance_inconsistent"
+                    )
+                if (
+                    live_seal is not None
+                    and (
+                        provenance_trial_count != live_seal.trial_count
+                        or provenance_correct_count
+                        != live_seal.correct_count
+                        or raw_accuracy != live_seal.raw_type_accuracy
+                    )
+                ):
+                    reasons.append(
+                        "raw_metric_live_source_seal_mismatch"
+                    )
+            valid = not reasons
+            raw_pass = bool(
+                valid
+                and raw_accuracy == 1.0
+                and provenance_correct_count == expected_groups
+            )
+            if not valid:
+                invalid_keys.append(key)
+            elif not raw_pass:
+                failed_accuracy_keys.append(key)
+            summaries.append(
+                {
+                    "key": key,
+                    "seed": seed,
+                    "bit_flip_rate": rate,
+                    "cell_id": cell.get("cell_id"),
+                    "status": (
+                        "PASS"
+                        if raw_pass
+                        else "RAW_ACCURACY_FAILURE"
+                        if valid
+                        else "INVALID"
+                    ),
+                    "expected_report_planted_groups": expected_groups,
+                    "observed_report_planted_groups": observed_groups,
+                    "raw_type_accuracy": raw_accuracy,
+                    "provenance_trial_count": provenance_trial_count,
+                    "provenance_correct_count": provenance_correct_count,
+                    "campaign_contract_digest": expected_campaign_digest,
+                    "contract_record_valid": valid,
+                    "raw_sanity_pass": raw_pass,
+                    "invalid_reasons": reasons,
+                }
+            )
+    observed_cell_ids = [
+        str(summary["cell_id"])
+        for summary in summaries
+        if type(summary.get("cell_id")) is str
+    ]
+    duplicate_cell_ids = sorted(
+        {
+            cell_id
+            for cell_id in observed_cell_ids
+            if observed_cell_ids.count(cell_id) > 1
+        }
+    )
+    contract_complete = bool(
+        config_contract_pass
+        and not missing_keys
+        and not duplicate_keys
+        and not duplicate_cell_ids
+        and not invalid_keys
+        and len(summaries)
+        == len(FROZEN_SEEDS) * len(RAW_SANITY_REQUIRED_BIT_FLIP_RATES)
+    )
+    gate_pass = bool(contract_complete and not failed_accuracy_keys)
+    rate_summaries = {}
+    for rate in RAW_SANITY_REQUIRED_BIT_FLIP_RATES:
+        rate_key = f"{rate:.2f}"
+        selected = [
+            summary
+            for summary in summaries
+            if summary["bit_flip_rate"] == rate
+        ]
+        rate_summaries[rate_key] = {
+            "required_seed_count": len(FROZEN_SEEDS),
+            "contract_record_count": sum(
+                bool(summary.get("contract_record_valid"))
+                for summary in selected
+            ),
+            "raw_type_accuracies": [
+                summary.get("raw_type_accuracy") for summary in selected
+            ],
+            "gate_pass": bool(
+                len(selected) == len(FROZEN_SEEDS)
+                and all(summary["raw_sanity_pass"] for summary in selected)
+            ),
+        }
+    if gate_pass:
+        status = "COMPLETE_PASS"
+    elif contract_complete:
+        status = "COMPLETE_RAW_SANITY_FAILURE"
+    else:
+        status = "INCOMPLETE_FAIL_CLOSED"
+    return {
+        "status": status,
+        "metric": "dense_report_raw_type_accuracy",
+        "required_raw_type_accuracy": 1.0,
+        "required_bit_flip_rates": list(
+            RAW_SANITY_REQUIRED_BIT_FLIP_RATES
+        ),
+        "required_seeds": list(FROZEN_SEEDS),
+        "required_cell_count": (
+            len(FROZEN_SEEDS) * len(RAW_SANITY_REQUIRED_BIT_FLIP_RATES)
+        ),
+        "expected_report_planted_groups_by_rate": {
+            f"{rate:.2f}": RAW_SANITY_REPORT_PLANTED_GROUPS[rate]
+            for rate in RAW_SANITY_REQUIRED_BIT_FLIP_RATES
+        },
+        "configuration_checks": config_checks,
+        "configuration_contract_pass": config_contract_pass,
+        "campaign_contract": campaign_contract,
+        "campaign_contract_digest": expected_campaign_digest,
+        "live_source_contract": {
+            "required": True,
+            "serialized_provenance_alone_sufficient": False,
+            "authentication": "per_run_hmac_sha256",
+            "authority_present": (
+                type(live_authority) is _RawSanityLiveAuthority
+            ),
+            "authority_secret_serialized": False,
+            "authority_id_serialized": False,
+            "authority_secret_bytes": 32,
+            "seal_count": (
+                len(live_seals)
+                if isinstance(live_seals, Mapping)
+                else 0
+            ),
+            "estimated_retained_bytes": (
+                len(live_seals) * RAW_SANITY_LIVE_SEAL_ESTIMATED_BYTES
+                if isinstance(live_seals, Mapping)
+                else 0
+            ),
+            "authority_estimated_retained_bytes": (
+                RAW_SANITY_LIVE_AUTHORITY_ESTIMATED_BYTES
+                if type(live_authority) is _RawSanityLiveAuthority
+                else 0
+            ),
+            "total_live_attestation_estimated_bytes": (
+                (
+                    len(live_seals) * RAW_SANITY_LIVE_SEAL_ESTIMATED_BYTES
+                    if isinstance(live_seals, Mapping)
+                    else 0
+                )
+                + (
+                    RAW_SANITY_LIVE_AUTHORITY_ESTIMATED_BYTES
+                    if type(live_authority) is _RawSanityLiveAuthority
+                    else 0
+                )
+            ),
+            "estimated_retained_bytes_scope": (
+                "live_seal_objects_only_not_cells_or_serialized_provenance"
+            ),
+            "estimated_retained_bytes_kind": (
+                "conservative_python_object_bound_not_process_rss"
+            ),
+            "additional_full_report_rows_retained_for_live_seal": False,
+            "serialized_raw_provenance_rows_retained_in_cells": True,
+            "live_seals_serialized_into_artifact": False,
+        },
+        "cell_summaries": summaries,
+        "rate_summaries": rate_summaries,
+        "missing_cell_keys": missing_keys,
+        "duplicate_cell_keys": duplicate_keys,
+        "duplicate_cell_ids": duplicate_cell_ids,
+        "invalid_cell_keys": invalid_keys,
+        "failed_raw_accuracy_cell_keys": failed_accuracy_keys,
+        "contract_complete": contract_complete,
+        "gate_pass": gate_pass,
+        "lower_rates_inferred_from_q_0_45": False,
+        "threshold_refit_performed": False,
+        "promotion_eligible": False,
+    }
+
+
 def _primary_aggregate(
     config: CampaignConfig,
     components: Sequence[Mapping[str, Any]],
+    *,
+    raw_sanity_cells: Optional[Sequence[Mapping[str, Any]]] = None,
+    raw_sanity_live_seals: Optional[
+        Mapping[str, _RawSanityLiveSeal]
+    ] = None,
+    raw_sanity_live_authority: Optional[_RawSanityLiveAuthority] = None,
 ) -> Dict[str, Any]:
     expected_seeds = set(FROZEN_SEEDS)
     observed_seeds = {int(component["seed"]) for component in components}
@@ -3550,10 +4570,17 @@ def _primary_aggregate(
     dense_raw_type_sanity_gate_pass = (
         dense_raw_type_accuracy == 1.0
     )
+    raw_sanity_sweep = _aggregate_raw_sanity_sweep(
+        config,
+        () if raw_sanity_cells is None else raw_sanity_cells,
+        live_seals=raw_sanity_live_seals,
+        live_authority=raw_sanity_live_authority,
+    )
     dense_primary_control_closed = bool(
         threshold.get("status") == "FROZEN"
         and fur_gate
         and dense_raw_type_sanity_gate_pass
+        and raw_sanity_sweep["gate_pass"]
         and dense_true_unlock_recall is not None
         and dense_true_unlock_recall
         >= config.control_min_true_unlock_recall
@@ -3572,14 +4599,24 @@ def _primary_aggregate(
         "report_true_unlock_recall": dense_true_unlock_recall,
         "dense_raw_type_accuracy": dense_raw_type_accuracy,
         "dense_raw_type_sanity_gate_required": 1.0,
-        "dense_raw_type_sanity_gate_scope": "at_q_0_45_only",
+        "dense_raw_type_sanity_gate_scope": "pooled_primary_q_0_45_endpoint",
         "dense_raw_type_sanity_gate_pass": (
             dense_raw_type_sanity_gate_pass
         ),
-        "through_q_0_45_raw_sanity_gate_complete": False,
+        "raw_sanity_sweep": raw_sanity_sweep,
+        "through_q_0_45_raw_sanity_contract_complete": (
+            raw_sanity_sweep["contract_complete"]
+        ),
+        "through_q_0_45_raw_sanity_gate_complete": (
+            raw_sanity_sweep["gate_pass"]
+        ),
         "through_q_0_45_raw_sanity_gate_blocker": (
-            "the pooled primary aggregate contains q=0.45 only; lower-rate "
-            "cells must be checked explicitly rather than inferred"
+            None
+            if raw_sanity_sweep["gate_pass"]
+            else (
+                "the exact 12-cell q={0.00,0.20,0.35,0.45} retained-cell "
+                f"contract did not pass: {raw_sanity_sweep['status']}"
+            )
         ),
         "minimum_true_unlock_recall_for_control_closure": (
             config.control_min_true_unlock_recall
@@ -3726,8 +4763,8 @@ def _campaign_verdicts(
         False,
     ):
         common_blockers.append(
-            "the 100% raw-type sanity gate is checked at q=0.45 only; "
-            "the frozen through-q=0.45 sweep remains unresolved"
+            "the frozen 12-cell q={0.00,0.20,0.35,0.45} 100% raw-type "
+            "sanity contract did not complete and pass"
         )
     return {
         "PRW-0": {
@@ -3813,16 +4850,22 @@ def run_campaign(
 
     config = validate_config(config)
     stream_manifest = _stream_manifest(config)
+    campaign_contract = _campaign_contract_manifest(config)
+    raw_sanity_live_authority = _RawSanityLiveAuthority(
+        campaign_contract["digest"]
+    )
     if not stream_manifest["select_report_disjoint"]:
         raise CampaignValidationError("BANK/SELECT/REPORT streams are not disjoint")
     construction = _construction_checks(config)
     cell_specs = expected_cell_specs(config)
     cells_by_id: Dict[str, Dict[str, Any]] = {}
+    raw_sanity_live_seals: Dict[str, _RawSanityLiveSeal] = {}
     for spec in cell_specs:
         reason = _cell_unavailable_reason(spec)
         cells_by_id[_cell_id(spec)] = {
             "cell_id": _cell_id(spec),
             "config": dict(spec),
+            "campaign_contract_digest": campaign_contract["digest"],
             "status": "unavailable" if reason else "pending",
             "unavailable_reason": reason,
             "promotion_eligible": False,
@@ -3939,7 +4982,8 @@ def run_campaign(
                                 "payload_noise_rate": float(payload_noise_rate),
                             }
                             try:
-                                cells_by_id[_cell_id(spec)] = _aggregate_cell(
+                                cell_id = _cell_id(spec)
+                                cells_by_id[cell_id] = _aggregate_cell(
                                     config,
                                     spec,
                                     base_result,
@@ -3955,10 +4999,24 @@ def run_campaign(
                                     codebook_manifest=codebook_manifest,
                                     carrier_provenance=carrier_provenance,
                                 )
+                                live_seal = _raw_sanity_live_seal(
+                                    config,
+                                    spec,
+                                    base_result["rows"][decoder_policy][
+                                        "REPORT"
+                                    ]["planted"],
+                                    carrier_provenance,
+                                    authority=raw_sanity_live_authority,
+                                )
+                                if live_seal is not None:
+                                    raw_sanity_live_seals[cell_id] = live_seal
                             except Exception as exc:  # retain the cell; never omit
                                 cells_by_id[_cell_id(spec)] = {
                                     "cell_id": _cell_id(spec),
                                     "config": spec,
+                                    "campaign_contract_digest": (
+                                        campaign_contract["digest"]
+                                    ),
                                     "status": "error",
                                     "error": {
                                         "type": type(exc).__name__,
@@ -3998,7 +5056,13 @@ def run_campaign(
                 "message": "grid cell remained pending after campaign traversal",
             }
     cells = [cells_by_id[_cell_id(spec)] for spec in cell_specs]
-    primary = _primary_aggregate(config, primary_components)
+    primary = _primary_aggregate(
+        config,
+        primary_components,
+        raw_sanity_cells=cells,
+        raw_sanity_live_seals=raw_sanity_live_seals,
+        raw_sanity_live_authority=raw_sanity_live_authority,
+    )
     verdicts = _campaign_verdicts(config, cells, construction, primary)
     status_counts: Dict[str, int] = {}
     for cell in cells:
@@ -4016,6 +5080,7 @@ def run_campaign(
         "rader_claim": False,
         "config": asdict(config),
         "rng_streams": stream_manifest,
+        "campaign_contract": campaign_contract,
         "threshold_governance": {
             "selection_split": "SELECT",
             "evaluation_split": "REPORT",
@@ -4030,6 +5095,15 @@ def run_campaign(
             "native_sparse_oppw_required": True,
             "equal_channel_use_repeated_bit_required": True,
             "full_pooled_control_gates_required": True,
+            "dense_raw_sanity_required_bit_flip_rates": list(
+                RAW_SANITY_REQUIRED_BIT_FLIP_RATES
+            ),
+            "dense_raw_sanity_required_cell_count": (
+                len(FROZEN_SEEDS)
+                * len(RAW_SANITY_REQUIRED_BIT_FLIP_RATES)
+            ),
+            "dense_raw_sanity_requires_exact_retained_cells": True,
+            "dense_raw_sanity_lower_rates_may_be_inferred": False,
             "minimum_true_unlock_recall_for_control_closure": (
                 config.control_min_true_unlock_recall
             ),

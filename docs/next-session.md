@@ -77,7 +77,7 @@ not-in-scope items. They appear here so the next planner sees them.
 
 | ID | Item | Source PR | Why deferred |
 |----|------|-----------|--------------|
-| _none yet_ | _—_ | _—_ | _—_ |
+| DS-PRW-001 | Powered 11,520-cell prime-ring campaign, real-corpus retrieval, 4091/4691 timing, repeated hardware timing, and persistent scientific evidence generation | bounded prime-ring method-development PR (pending) | Explicit user/resource guard prohibited credible OOM-risk work. Owner: operator plus Codex; target: next operator-approved, separately resource-reviewed research cycle. Current graph/Fourier results are tiny-domain negatives, and the raw-sanity scientific gate remains unexecuted. |
 
 ## Disposition — living / annealed post-bank corrector (H5)
 

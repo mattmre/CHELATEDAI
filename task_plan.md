@@ -240,6 +240,59 @@
     temporary artifact test; it did not invoke `full_config()` or update the
     repository evidence artifact.
 
+## Resource-Bounded Expansion (2026-07-24 return)
+- Status: COMPLETE (bounded method-development slice only)
+- User constraint remains unchanged: pursue useful checks, implementation, and
+  test coverage, but do not run anything with credible OOM risk.
+- RB-6A — recover and rank remaining information gaps:
+  - recheck the exact branch/head/worktree and current resource guards;
+  - audit the lower-rate matched-control closure gap, the small-prime theorem
+    diagnostics, and the unimplemented `PRW-G1`/`PRW-H1` mechanism tests;
+  - prefer additions that discriminate hypotheses rather than add parameters.
+- RB-6B — bounded implementation:
+  - close the `q in {0.00, 0.20, 0.35, 0.45}` raw-sanity aggregation contract
+    without invoking the powered campaign;
+  - implement at most one dependency-light, tiny-state mechanism harness for
+    graph-coupled cyclic fibers and/or multi-frequency phase signatures if the
+    overlap audit confirms it is not already present;
+  - preserve immutable 512 MiB, 120 second, and work-unit ceilings and add
+    smaller defaults for all new tests.
+- RB-6C — information-quality diagnostics:
+  - report paired effect sizes and interaction terms, not only winners;
+  - add negative controls that separate carrier autocorrelation, mask-bank
+    multiple comparisons, graph coupling, and frequency diversity;
+  - keep exploratory diagnostics visibly separate from promotion evidence.
+- RB-6D — bounded validation and hostile review:
+  - run only targeted deterministic unit/property tests, lint, AST/compile
+    checks that do not write large artifacts, and tiny exact enumerations;
+  - inspect peak allocation paths before executing every new test surface;
+  - leave powered, real-corpus, large-prime, repeated-timing, and persistent
+    evidence generation blocked.
+- RB-6 outcome:
+  - `PRW-G1` closes negatively in the tested connected/cycle-consistent domain:
+    the graph decoder is exactly one global phase plus fixed offsets.
+  - `PRW-H1` closes negatively for special-bin/resonance claims in the exact
+    `p=7` toy: unquantized two-bin sets tie, while eight-bit rankings reverse
+    with quantizer-grid origin.
+  - The lower-rate raw-sanity gate now requires canonical live REPORT lineage,
+    disjoint SELECT/REPORT streams, and seals authenticated by a per-run
+    nonserialized HMAC authority. Reconstructing all seals from rewritten
+    serialized evidence fails closed.
+  - Final bounded validation: 177 tests across the eight relevant modules pass
+    in 28.233 seconds; scoped Ruff, read-only AST parsing, and
+    `git diff --check` pass; independent hostile review reports no P0/P1/P2.
+  - No powered campaign, real corpus, 4091/4691 timing, repeated hardware
+    timing, full-size Rader transform, or retained evidence generation ran.
+    Therefore the scientific raw-sanity criterion and production utility remain
+    untested rather than closed.
+- Next safe information priorities after this slice is published:
+  - add a bounded `p=11` quantizer-origin/dither null only if its exact work
+    estimate remains within the existing immutable ceilings;
+  - algebraically screen `PRW-C1` against flat-permutation and polarity-bit
+    controls before implementing it;
+  - do not open queue (`PRW-Q1`) or living-state (`PRW-L1`) claims until real
+    held-out retrieval survives the prerequisite gates.
+
 ## Errors Encountered
 | Error | Attempt | Resolution |
 |-------|---------|------------|
@@ -260,6 +313,15 @@
 | First RB-1 `iid` rewrite used fixed-weight noise while retaining BSC labels | 1 | Restored independent Bernoulli draws for dense and repeated-bit paths; retained fixed-weight block/burst stressors with BSC inapplicability labels |
 | First RB-1 resource estimate omitted temporaries/co-resident ring buffers and checked context after allocation | 1 | Count unique resident NumPy arrays recursively, include fancy-index/work buffers, and refuse standalone-plus-context estimates before control allocation |
 | A diagnostic `rg` expression used an unescaped parenthesis | 1 | Reissued the read-only search with fixed-string matching; no code or evidence was affected |
+| The default system Python could not import NumPy for the new PRW-H1 tests | 1 | Do not repeat with system Python; locate and reuse the already isolated NumPy test dependency path from the earlier bounded continuation |
+| The first tiny PRW-H1 sweep imported NumPy in the same statement that preceded the isolated path insertion | 1 | Split bootstrap from imports so the dependency path is inserted before importing NumPy; no analysis executed and no artifact was written |
+| A PRW-H1 decoder-call search again used an unescaped regex parenthesis | 1 | Stop using regex for literal call searches; use `rg -F` fixed-string mode for the remainder of this session |
+| First agent-side raw-sanity test command omitted the repository import path and discovered zero tests | 1 | Corrected the isolated Python bootstrap, confirmed the expected test count, and reran the focused and complete bounded runner suites |
+| First resumed focused command assumed `pytest`, which this repository intentionally does not install | 1 | Switched to the repository-mandated `unittest` runner and kept all tests dependency-compatible |
+| A fixture formatting edit briefly tuple-wrapped serialized provenance | 1 | The focused gate suite failed immediately; corrected the fixture before accepting any result |
+| First compact live seal contained only values derivable from serialized evidence | 1 | Added a per-run 32-byte HMAC authority that is created before traversal and never serialized; the exact seal-reconstruction attack now fails authentication |
+| First direct PRW-H1 evidence print requested `aggregate_resource_guard`, a key used by the non-exact comparator rather than the exact BSC result | 1 | Inspected the exact result surface, used its canonical `resource_guard` field, and reran the bounded probe successfully |
+| Sandboxed `git ls-remote` could not reach GitHub | 1 | Confirmed branch absence through the authenticated GitHub connector; reserve networked Git publication for the narrowly approved push step |
 
 ---
 
