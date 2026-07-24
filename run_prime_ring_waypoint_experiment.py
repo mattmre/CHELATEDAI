@@ -49,6 +49,10 @@ CARRIER_FAMILIES = ("legendre", "rademacher")
 PLANTED_MASK_FAMILIES = ("none", "shared", "typed16", "free256")
 DECODER_MASK_POLICIES = ("none", "shared", "typed16", "free256")
 SPLITS = ("SELECT", "REPORT")
+CORRUPTION_VARIANTS = ("iid", "block_correlated", "burst")
+CONTROL_HARD_MAX_ESTIMATED_BYTES = 512 * 1024 * 1024
+CONTROL_HARD_MAX_WORK_UNITS = 50_000_000
+DEFAULT_CONTROL_MIN_TRUE_UNLOCK_RECALL = 0.50
 DEFAULT_OUTPUT = (
     Path("artifacts")
     / "method-dev"
@@ -87,6 +91,9 @@ class CampaignConfig:
     report_unrelated: int = 8
     recall_k: int = 5
     target_false_unlock_rate: float = 0.01
+    control_min_true_unlock_recall: float = (
+        DEFAULT_CONTROL_MIN_TRUE_UNLOCK_RECALL
+    )
     confidence_level: float = 0.975
     report_stream_tag: str = "REPORT-v1"
     output: str = str(DEFAULT_OUTPUT)
@@ -222,6 +229,14 @@ def validate_config(config: CampaignConfig) -> CampaignConfig:
     )
     if not 0.0 < target < 1.0:
         raise CampaignValidationError("target_false_unlock_rate must be in (0, 1)")
+    control_recall = _finite_float(
+        config.control_min_true_unlock_recall,
+        "control_min_true_unlock_recall",
+    )
+    if not 0.0 < control_recall <= 1.0:
+        raise CampaignValidationError(
+            "control_min_true_unlock_recall must be in (0, 1]"
+        )
     confidence = _finite_float(config.confidence_level, "confidence_level")
     if not 0.5 < confidence < 1.0:
         raise CampaignValidationError("confidence_level must be in (0.5, 1)")
@@ -663,6 +678,378 @@ def _decode_sparse_oppw(
     }
 
 
+def _control_resource_accounting(
+    components: Mapping[str, int],
+    *,
+    estimated_work_units: int,
+) -> Dict[str, Any]:
+    normalized = {
+        str(name): _plain_int(value, f"resource component {name}", 0)
+        for name, value in components.items()
+    }
+    estimated_bytes = int(sum(normalized.values()))
+    work_units = _plain_int(
+        estimated_work_units,
+        "estimated_work_units",
+        0,
+    )
+    if estimated_bytes > CONTROL_HARD_MAX_ESTIMATED_BYTES:
+        raise CampaignValidationError(
+            "control preflight exceeds the hard 512 MiB estimate ceiling: "
+            f"{estimated_bytes} > {CONTROL_HARD_MAX_ESTIMATED_BYTES}"
+        )
+    if work_units > CONTROL_HARD_MAX_WORK_UNITS:
+        raise CampaignValidationError(
+            "control preflight exceeds the hard work ceiling: "
+            f"{work_units} > {CONTROL_HARD_MAX_WORK_UNITS}"
+        )
+    return {
+        "kind": "conservative_simultaneous_live_array_estimate",
+        "standalone_estimated_peak_bytes": estimated_bytes,
+        "component_breakdown": normalized,
+        "estimated_work_units": work_units,
+        "hard_max_estimated_bytes": CONTROL_HARD_MAX_ESTIMATED_BYTES,
+        "hard_max_work_units": CONTROL_HARD_MAX_WORK_UNITS,
+        "measured_process_peak": False,
+        "harness_co_resident_dense_context_included": False,
+    }
+
+
+def _with_harness_dense_context(
+    resource: Mapping[str, Any],
+    *,
+    dense_context_bytes: int,
+) -> Dict[str, Any]:
+    context = _plain_int(
+        dense_context_bytes,
+        "dense_context_bytes",
+        0,
+    )
+    combined = int(resource["standalone_estimated_peak_bytes"]) + context
+    if combined > CONTROL_HARD_MAX_ESTIMATED_BYTES:
+        raise CampaignValidationError(
+            "control plus co-resident dense harness estimate exceeds the hard "
+            f"512 MiB ceiling: {combined} > "
+            f"{CONTROL_HARD_MAX_ESTIMATED_BYTES}"
+        )
+    return {
+        **resource,
+        "harness_co_resident_dense_context_included": True,
+        "harness_co_resident_dense_context_bytes": context,
+        "harness_estimated_peak_bytes": combined,
+    }
+
+
+def _unique_numpy_nbytes(*values: object) -> int:
+    seen_objects = set()
+    seen_arrays = set()
+
+    def visit(value: object) -> int:
+        object_id = id(value)
+        if isinstance(value, np.ndarray):
+            if object_id in seen_arrays:
+                return 0
+            seen_arrays.add(object_id)
+            return int(value.nbytes)
+        if object_id in seen_objects:
+            return 0
+        seen_objects.add(object_id)
+        if isinstance(value, Mapping):
+            return sum(visit(item) for item in value.values())
+        if isinstance(value, (tuple, list)):
+            return sum(visit(item) for item in value)
+        attributes = getattr(value, "__dict__", None)
+        if isinstance(attributes, dict):
+            return visit(attributes)
+        return 0
+
+    return int(sum(visit(value) for value in values))
+
+
+def _native_observation_resource(
+    signatures: np.ndarray,
+) -> Dict[str, Any]:
+    layers = int(signatures.shape[1])
+    return _control_resource_accounting(
+        {
+            "phase_signature_bank_int64": int(signatures.nbytes),
+            "positions_int64": layers * 8,
+            "substitution_mask_bool": layers,
+            "uniform_draw_float64": layers * 8,
+            "offsets_and_fancy_index_temporaries": layers * 8 * 4,
+        },
+        estimated_work_units=layers,
+    )
+
+
+def _native_decoder_resource(
+    signatures: np.ndarray,
+) -> Dict[str, Any]:
+    layers = int(signatures.shape[1])
+    type_count = int(signatures.shape[0])
+    return _control_resource_accounting(
+        {
+            "phase_signature_bank_int64": int(signatures.nbytes),
+            "observed_positions_int64": layers * 8,
+            "type_scores_float64": type_count * 8,
+            "type_shifts_int64": type_count * 8,
+            "per_type_unique_and_sort_workspace": layers * 8 * 8,
+            "per_type_boolean_workspace": layers,
+        },
+        estimated_work_units=int(
+            type_count
+            * layers
+            * max(1, math.ceil(math.log2(max(layers, 2))))
+        ),
+    )
+
+
+def _repeated_bit_resource(
+    codebook: np.ndarray,
+    length: int,
+    layers: int,
+) -> Dict[str, Any]:
+    total = layers * length
+    return _control_resource_accounting(
+        {
+            "repeated_bit_codebook_int8": int(codebook.nbytes),
+            "repeated_observation_float64": total * 8,
+            "repeat_construction_int8": total,
+            "iid_uniform_workspace_float64": total * 8,
+            "flip_mask_bool": total,
+            "fancy_index_selected_values_float64": total * 8,
+            "float64_codebook_matmul_copy": int(codebook.size * 8),
+            "layer_means_float64": layers * 8,
+            "type_scores_float64": int(codebook.shape[0] * 8),
+        },
+        estimated_work_units=int(
+            2 * total + codebook.shape[0] * layers
+        ),
+    )
+
+
+def _native_oppw_contract(length: int, layers: int) -> Dict[str, Any]:
+    return {
+        "representation": "one_pulse_per_layer_positions",
+        "physical_channel_uses": int(layers * length),
+        "pulse_amplitude": float(math.sqrt(length)),
+        "transmitted_energy": int(layers * length),
+        "noise_channel": (
+            "independent layer-symbol substitution with declared probability q; "
+            "a substituted pulse moves uniformly to one of p-1 other positions"
+        ),
+        "actual_query_storage": (
+            f"{layers} canonical residue positions represented as int64"
+        ),
+        "dense_phase_estimates_consumed": False,
+        "native_sparse_resource_baseline": True,
+    }
+
+
+def _observe_native_oppw(
+    config: CampaignConfig,
+    seed: int,
+    split: str,
+    truth: Mapping[str, Any],
+    signatures: np.ndarray,
+    input_class: str,
+    substitution_rate: float,
+) -> Tuple[np.ndarray, Dict[str, Any]]:
+    """Generate a native sparse phase observation without dense carriers."""
+
+    # The maximum signature need not span the ring, so obtain p from the
+    # declared trial contract rather than inferring it from observed residues.
+    length = int(truth["ring_length"])
+    layers = int(signatures.shape[1])
+    resource_accounting = _native_observation_resource(signatures)
+    stream_tag = "SELECT" if split == "SELECT" else config.report_stream_tag
+    rng = _stable_rng(
+        PROTOCOL_ID,
+        stream_tag,
+        seed,
+        truth["group_id"],
+        "native-oppw-symbol-channel",
+        layers,
+        length,
+    )
+    if input_class == "unrelated":
+        positions = rng.integers(
+            0, length, size=layers, dtype=np.int64
+        )
+        substitutions = np.zeros(layers, dtype=bool)
+    else:
+        positions = np.mod(
+            signatures[int(truth["true_type"])]
+            + int(truth["global_shift"]),
+            length,
+        ).astype(np.int64)
+        substitutions = rng.random(layers) < float(substitution_rate)
+        if np.any(substitutions):
+            offsets = rng.integers(
+                1, length, size=layers, dtype=np.int64
+            )
+            positions = positions.copy()
+            positions[substitutions] = (
+                positions[substitutions] + offsets[substitutions]
+            ) % length
+    positions = np.ascontiguousarray(positions, dtype=np.int64)
+    return positions, {
+        **_native_oppw_contract(length, layers),
+        "declared_symbol_substitution_rate": float(substitution_rate),
+        "observed_symbol_substitution_rate": float(
+            np.mean(substitutions)
+        ),
+        "substitution_count": int(np.count_nonzero(substitutions)),
+        "query_nbytes": int(positions.nbytes),
+        "resource_accounting": resource_accounting,
+    }
+
+
+def _decode_native_oppw(
+    positions: np.ndarray,
+    signatures: np.ndarray,
+    length: int,
+) -> Dict[str, Any]:
+    """Maximum pulse-overlap decoder over type and one shared shift."""
+
+    observed = np.asarray(positions, dtype=np.int64)
+    if observed.ndim != 1 or observed.size != signatures.shape[1]:
+        raise CampaignValidationError("native OPPW observation shape mismatch")
+    resource_accounting = _native_decoder_resource(signatures)
+    type_scores = np.empty(signatures.shape[0], dtype=np.float64)
+    type_shifts = np.empty(signatures.shape[0], dtype=np.int64)
+    for type_index, signature in enumerate(signatures):
+        deltas = np.mod(observed - signature, length)
+        values, counts = np.unique(deltas, return_counts=True)
+        maximum = int(np.max(counts))
+        candidate_shifts = values[counts == maximum]
+        type_scores[type_index] = maximum / signatures.shape[1]
+        type_shifts[type_index] = int(np.min(candidate_shifts))
+    winner, score, margin, tie_count = _top_two_semantics(type_scores)
+    return {
+        "predicted_type": winner,
+        "score": score,
+        "margin": margin,
+        "tie_count": tie_count,
+        "shared_shift": int(type_shifts[winner]),
+        "candidate_type_count": int(signatures.shape[0]),
+        "working_array_bytes": resource_accounting[
+            "standalone_estimated_peak_bytes"
+        ],
+        "resource_accounting": resource_accounting,
+        "baseline_family": "native_sparse_OPPW",
+        "native_sparse_resource_baseline": True,
+        "dense_phase_estimates_consumed": False,
+    }
+
+
+def _repeated_bit_codebook(
+    type_count: int, layers: int
+) -> Optional[np.ndarray]:
+    if layers == 1:
+        if type_count > 2:
+            return None
+        return np.asarray([[-1], [1]][:type_count], dtype=np.int8)
+    if layers == 8 and type_count <= 16:
+        return np.asarray(
+            policy_masks("typed16", 8)[:type_count], dtype=np.int8
+        )
+    return None
+
+
+def _equal_channel_repeated_bit_contract(
+    length: int, layers: int
+) -> Dict[str, Any]:
+    return {
+        "representation": "one_type_code_bit_repeated_p_times_per_layer",
+        "physical_channel_uses": int(layers * length),
+        "chip_amplitude": 1.0,
+        "transmitted_energy": int(layers * length),
+        "noise_channel": (
+            "independent Bernoulli bipolar chip flips with probability q"
+        ),
+        "global_phase_recovery": "NOT_DEFINED",
+        "equal_channel_uses_to_dense_carrier": True,
+        "equal_transmitted_energy_to_dense_carrier": True,
+    }
+
+
+def _observe_and_decode_repeated_bit(
+    config: CampaignConfig,
+    seed: int,
+    split: str,
+    truth: Mapping[str, Any],
+    input_class: str,
+    length: int,
+    layers: int,
+    flip_rate: float,
+) -> Dict[str, Any]:
+    codebook = _repeated_bit_codebook(config.type_count, layers)
+    if codebook is None:
+        return {
+            "status": "STRUCTURALLY_UNAVAILABLE",
+            "reason": (
+                f"{config.type_count} types cannot be represented by the "
+                f"declared {layers}-layer repeated-bit codebook"
+            ),
+            "contract": _equal_channel_repeated_bit_contract(length, layers),
+        }
+    resource_accounting = _repeated_bit_resource(
+        codebook,
+        length,
+        layers,
+    )
+    stream_tag = "SELECT" if split == "SELECT" else config.report_stream_tag
+    rng = _stable_rng(
+        PROTOCOL_ID,
+        stream_tag,
+        seed,
+        truth["group_id"],
+        "equal-channel-repeated-bit",
+        layers,
+        length,
+    )
+    if input_class == "unrelated":
+        observation = rng.choice(
+            np.array([-1.0, 1.0]), size=(layers, length)
+        )
+        flip_count = 0
+    else:
+        observation = np.repeat(
+            codebook[int(truth["true_type"]), :, np.newaxis],
+            length,
+            axis=1,
+        ).astype(np.float64)
+        flips = _draw_flip_mask(
+            observation.shape, flip_rate, "iid", rng
+        )
+        observation[flips] *= -1.0
+        flip_count = int(np.count_nonzero(flips))
+    layer_means = np.mean(observation, axis=1)
+    type_scores = (
+        np.matmul(codebook.astype(np.float64), layer_means) / layers
+    )
+    winner, score, margin, tie_count = _top_two_semantics(type_scores)
+    return {
+        "status": "COMPLETED",
+        "predicted_type": winner,
+        "score": score,
+        "margin": margin,
+        "tie_count": tie_count,
+        "phase_recovery": None,
+        "phase_recovery_status": "NOT_DEFINED_FOR_REPEATED_BIT_CONTROL",
+        "working_array_bytes": resource_accounting[
+            "standalone_estimated_peak_bytes"
+        ],
+        "resource_accounting": resource_accounting,
+        "observed_flip_count": flip_count,
+        "observed_flip_rate": float(
+            flip_count / (layers * length)
+        ),
+        "contract": _equal_channel_repeated_bit_contract(length, layers),
+    }
+
+
 def _trial_group_id(seed: int, split: str, input_class: str, index: int) -> str:
     if split not in SPLITS:
         raise CampaignValidationError(f"unknown split {split}")
@@ -689,6 +1076,7 @@ def _trial_truth(
             int(rng.integers(0, np.iinfo(np.uint64).max, dtype=np.uint64))
             % length
         ),
+        "ring_length": int(length),
         "mask_draw": int(rng.integers(0, 2**31 - 1)),
     }
 
@@ -710,6 +1098,7 @@ def _make_planted_query(
     ring_templates: Sequence[Any],
     planted_mask_family: str,
     bit_flip_rate: float,
+    noise_variant: str = "iid",
 ) -> Tuple[np.ndarray, Tuple[int, ...], Dict[str, Any]]:
     """Create an explicitly corrupted raw ndarray from one canonical template."""
 
@@ -726,6 +1115,10 @@ def _make_planted_query(
     )
     query = observed.carrier.copy()
     stream_tag = "SELECT" if split == "SELECT" else config.report_stream_tag
+    if noise_variant not in CORRUPTION_VARIANTS:
+        raise CampaignValidationError(
+            f"noise_variant must be one of {CORRUPTION_VARIANTS}"
+        )
     corruption_rng = _stable_rng(
         PROTOCOL_ID,
         stream_tag,
@@ -734,17 +1127,116 @@ def _make_planted_query(
         "bit-flips",
         source.shape[1],
         source.shape[0],
+        noise_variant,
     )
-    flips = corruption_rng.random(query.shape) < float(bit_flip_rate)
+    flips = _draw_flip_mask(
+        query.shape,
+        float(bit_flip_rate),
+        noise_variant,
+        corruption_rng,
+    )
     query[flips] *= -1.0
     return np.ascontiguousarray(query), mask, {
         "representation": "raw_float64_ndarray",
         "derived_from_canonical_template": True,
         "observation_factory": "observe_template",
-        "corruption": "independent_bipolar_bit_flips",
+        "corruption": {
+            "iid": "independent_bernoulli_bit_flips",
+            "block_correlated": "constant_weight_block_correlated_bit_flips",
+            "burst": "constant_weight_per_layer_cyclic_burst_flips",
+        }[noise_variant],
+        "noise_variant": noise_variant,
+        "correlation_geometry": {
+            "iid": "rate-independent random coordinate order",
+            "block_correlated": (
+                "rate-independent randomized contiguous blocks over the "
+                "layer-major flattened carrier"
+            ),
+            "burst": (
+                "one rate-independent cyclic contiguous burst origin per layer"
+            ),
+        }[noise_variant],
+        "flip_budget_contract": {
+            "iid": (
+                "independent Bernoulli draws per coordinate; realized count "
+                "is random and severities share nested uniforms"
+            ),
+            "block_correlated": (
+                "exact round(declared_rate * layers * ring_length) coordinates"
+            ),
+            "burst": (
+                "exact round(declared_rate * layers * ring_length) coordinates"
+            ),
+        }[noise_variant],
+        "bsc_binomial_theory_applicable": noise_variant == "iid",
+        "declared_global_flip_probability_or_fraction": float(
+            bit_flip_rate
+        ),
+        "observed_flip_rate": float(np.mean(flips)),
         "bit_flip_count": int(np.count_nonzero(flips)),
         "query_nbytes": int(query.nbytes),
     }
+
+
+def _draw_flip_mask(
+    shape: Tuple[int, int],
+    rate: float,
+    variant: str,
+    rng: np.random.Generator,
+) -> np.ndarray:
+    """Return nested deterministic draws under the declared noise law.
+
+    ``iid`` uses independent Bernoulli uniforms, preserving the BSC contract.
+    Structured variants use an exact global flip budget.  Every variant uses a
+    rate-independent base draw, so increasing severity nests the earlier set.
+    """
+
+    layers, length = shape
+    total = layers * length
+    if variant == "iid":
+        return np.asarray(rng.random(shape) < float(rate), dtype=bool)
+    target = int(round(float(rate) * total))
+    target = max(0, min(target, total))
+    mask = np.zeros(shape, dtype=bool)
+    if target == 0:
+        return mask
+    if variant == "block_correlated":
+        block_size = max(2, int(round(math.sqrt(length))))
+        block_starts = np.arange(0, total, block_size, dtype=np.int64)
+        ordered_blocks = block_starts[rng.permutation(block_starts.size)]
+        flat = mask.reshape(-1)
+        remaining = target
+        for start in ordered_blocks:
+            if remaining <= 0:
+                break
+            stop = min(int(start) + block_size, total)
+            take = min(stop - int(start), remaining)
+            flat[int(start) : int(start) + take] = True
+            remaining -= take
+        return mask
+    if variant == "burst":
+        base_quota, extra = divmod(target, layers)
+        starts = rng.integers(0, length, size=layers, dtype=np.int64)
+        # A rate-independent layer order receives the at-most-one extra chip.
+        extra_layers = set(
+            int(value) for value in rng.permutation(layers)[:extra]
+        )
+        for layer in range(layers):
+            quota = min(
+                length,
+                base_quota + (1 if layer in extra_layers else 0),
+            )
+            if quota:
+                indices = (
+                    int(starts[layer]) + np.arange(quota, dtype=np.int64)
+                ) % length
+                mask[layer, indices] = True
+        if int(np.count_nonzero(mask)) != target:
+            raise CampaignValidationError("burst flip budget construction failed")
+        return mask
+    raise CampaignValidationError(
+        f"noise_variant must be one of {CORRUPTION_VARIANTS}"
+    )
 
 
 def _make_unrelated_query(
@@ -1445,11 +1937,15 @@ def _trial_budgets(
                 "planted": config.primary_select_planted,
                 "unrelated": config.primary_select_unrelated,
                 "non_cyclic": config.select_planted,
+                "block_correlated": config.select_planted,
+                "burst": config.select_planted,
             },
             "REPORT": {
                 "planted": config.primary_report_planted,
                 "unrelated": config.primary_report_unrelated,
                 "non_cyclic": config.report_planted,
+                "block_correlated": config.report_planted,
+                "burst": config.report_planted,
             },
         }
     return {
@@ -1457,11 +1953,15 @@ def _trial_budgets(
             "planted": config.select_planted,
             "unrelated": config.select_unrelated,
             "non_cyclic": config.select_planted,
+            "block_correlated": config.select_planted,
+            "burst": config.select_planted,
         },
         "REPORT": {
             "planted": config.report_planted,
             "unrelated": config.report_unrelated,
             "non_cyclic": config.report_planted,
+            "block_correlated": config.report_planted,
+            "burst": config.report_planted,
         },
     }
 
@@ -1536,9 +2036,15 @@ def _run_base_group(
     payload_norms: np.ndarray,
     reference_ffts: np.ndarray,
     reference_norms: np.ndarray,
+    resident_context_bytes: int,
 ) -> Dict[str, Any]:
     """Run one observation group and return rows for every compatible decoder."""
 
+    resident_numpy_context = _plain_int(
+        resident_context_bytes,
+        "resident_context_bytes",
+        0,
+    )
     decoder_policies = tuple(
         policy
         for policy in config.decoder_mask_policies
@@ -1546,7 +2052,13 @@ def _run_base_group(
     )
     rows: Dict[str, Dict[str, Dict[str, list]]] = {
         policy: {
-            split: {"planted": [], "unrelated": [], "non_cyclic": []}
+            split: {
+                "planted": [],
+                "unrelated": [],
+                "non_cyclic": [],
+                "block_correlated": [],
+                "burst": [],
+            }
             for split in SPLITS
         }
         for policy in decoder_policies
@@ -1562,11 +2074,29 @@ def _run_base_group(
     budgets = _trial_budgets(config, primary_base_group=primary)
 
     for split in SPLITS:
-        for input_class in ("planted", "unrelated", "non_cyclic"):
+        for input_class in (
+            "planted",
+            "unrelated",
+            "non_cyclic",
+            "block_correlated",
+            "burst",
+        ):
             for index in range(budgets[split][input_class]):
-                truth = _trial_truth(
-                    config, seed, split, input_class, index, length
+                truth_class = (
+                    "planted"
+                    if input_class in ("block_correlated", "burst")
+                    else input_class
                 )
+                truth = _trial_truth(
+                    config, seed, split, truth_class, index, length
+                )
+                if input_class in ("block_correlated", "burst"):
+                    truth = {
+                        **truth,
+                        "group_id": _trial_group_id(
+                            seed, split, input_class, index
+                        ),
+                    }
                 if input_class == "unrelated":
                     query, query_provenance = _make_unrelated_query(
                         config,
@@ -1591,6 +2121,22 @@ def _run_base_group(
                     planted_mask = _draw_planted_mask(
                         planted_mask_family, layers, int(truth["mask_draw"])
                     )
+                elif input_class in ("block_correlated", "burst"):
+                    query, planted_mask, query_provenance = _make_planted_query(
+                        config,
+                        seed,
+                        split,
+                        truth,
+                        templates,
+                        ring_templates,
+                        planted_mask_family,
+                        bit_flip_rate,
+                        noise_variant=(
+                            "block_correlated"
+                            if input_class == "block_correlated"
+                            else "burst"
+                        ),
+                    )
                 else:
                     query, planted_mask, query_provenance = _make_planted_query(
                         config,
@@ -1602,6 +2148,109 @@ def _run_base_group(
                         planted_mask_family,
                         bit_flip_rate,
                     )
+
+                if input_class in ("planted", "unrelated"):
+                    control_context_bytes = int(
+                        resident_numpy_context + query.nbytes
+                    )
+                    native_observation_estimate = (
+                        _native_observation_resource(signatures)
+                    )
+                    native_decoder_estimate = _native_decoder_resource(
+                        signatures
+                    )
+                    native_standalone_peak = max(
+                        native_observation_estimate[
+                            "standalone_estimated_peak_bytes"
+                        ],
+                        native_decoder_estimate[
+                            "standalone_estimated_peak_bytes"
+                        ],
+                    )
+                    native_preflight = _with_harness_dense_context(
+                        {
+                            **native_decoder_estimate,
+                            "standalone_estimated_peak_bytes": int(
+                                native_standalone_peak
+                            ),
+                        },
+                        dense_context_bytes=control_context_bytes,
+                    )
+                    repeated_preflight = None
+                    repeated_preflight_codebook = _repeated_bit_codebook(
+                        config.type_count,
+                        layers,
+                    )
+                    if repeated_preflight_codebook is not None:
+                        repeated_preflight = _with_harness_dense_context(
+                            _repeated_bit_resource(
+                                repeated_preflight_codebook,
+                                length,
+                                layers,
+                            ),
+                            dense_context_bytes=control_context_bytes,
+                        )
+                    native_positions, native_provenance = _observe_native_oppw(
+                        config,
+                        seed,
+                        split,
+                        truth,
+                        signatures,
+                        input_class,
+                        bit_flip_rate,
+                    )
+                    native_oppw = _decode_native_oppw(
+                        native_positions, signatures, length
+                    )
+                    native_stage_peaks = (
+                        native_provenance["resource_accounting"][
+                            "standalone_estimated_peak_bytes"
+                        ],
+                        native_oppw["resource_accounting"][
+                            "standalone_estimated_peak_bytes"
+                        ],
+                    )
+                    native_oppw["resource_accounting"] = {
+                        **native_preflight,
+                        "observation_stage_estimated_peak_bytes": int(
+                            native_stage_peaks[0]
+                        ),
+                        "decoder_stage_estimated_peak_bytes": int(
+                            native_stage_peaks[1]
+                        ),
+                    }
+                    native_oppw["observation_contract"] = native_provenance
+                    repeated_bit = _observe_and_decode_repeated_bit(
+                        config,
+                        seed,
+                        split,
+                        truth,
+                        input_class,
+                        length,
+                        layers,
+                        bit_flip_rate,
+                    )
+                    if repeated_bit.get("status") == "COMPLETED":
+                        if repeated_preflight is None:
+                            raise CampaignValidationError(
+                                "completed repeated-bit control lacked preflight"
+                            )
+                        repeated_bit["resource_accounting"] = repeated_preflight
+                else:
+                    native_oppw = {
+                        "status": "NOT_APPLICABLE",
+                        "reason": (
+                            "control has its own frozen native symbol channel; "
+                            "dense-only corruption variant is not reused"
+                        ),
+                    }
+                    repeated_bit = {
+                        "status": "NOT_APPLICABLE",
+                        "reason": (
+                            "dense corruption variant is descriptive and not "
+                            "part of the repeated-bit threshold cell"
+                        ),
+                    }
 
                 correlation_started = time.perf_counter()
                 correlations = _correlation_bank(
@@ -1650,6 +2299,8 @@ def _run_base_group(
                             **oppw,
                             "latency_ms": oppw_ms,
                         },
+                        "native_oppw_control": native_oppw,
+                        "repeated_bit_control": repeated_bit,
                     }
                     if input_class != "unrelated":
                         true_type = int(truth["true_type"])
@@ -1683,6 +2334,28 @@ def _run_base_group(
                                 "oppw_phase_exact": (
                                     oppw["predicted_type"] == true_type
                                     and oppw["shared_shift"] == true_shift
+                                ),
+                                "native_oppw_type_correct": (
+                                    native_oppw.get("predicted_type")
+                                    == true_type
+                                    if native_oppw.get("status", "COMPLETED")
+                                    != "NOT_APPLICABLE"
+                                    else None
+                                ),
+                                "native_oppw_phase_exact": (
+                                    native_oppw.get("predicted_type")
+                                    == true_type
+                                    and native_oppw.get("shared_shift")
+                                    == true_shift
+                                    if native_oppw.get("status", "COMPLETED")
+                                    != "NOT_APPLICABLE"
+                                    else None
+                                ),
+                                "repeated_bit_type_correct": (
+                                    repeated_bit.get("predicted_type")
+                                    == true_type
+                                    if repeated_bit.get("status") == "COMPLETED"
+                                    else None
                                 ),
                             }
                         )
@@ -1729,20 +2402,28 @@ def _run_base_group(
 def _control_threshold_rows(
     rows: Sequence[Mapping[str, Any]], key: str
 ) -> list:
+    correctness_keys = {
+        "independent_control": "independent_type_correct",
+        "oppw_form_control": "oppw_type_correct",
+        "native_oppw_control": "native_oppw_type_correct",
+        "repeated_bit_control": "repeated_bit_type_correct",
+    }
+    if key not in correctness_keys:
+        raise CampaignValidationError(f"unknown control threshold key {key}")
     converted = []
     for row in rows:
         control = row[key]
+        if control.get("status") == "STRUCTURALLY_UNAVAILABLE":
+            continue
         converted.append(
             {
                 "split": row["split"],
                 "group_id": row["group_id"],
                 "score": control["score"],
                 "margin": control["margin"],
-                "type_correct": row.get(
-                    "independent_type_correct"
-                    if key == "independent_control"
-                    else "oppw_type_correct",
-                    False,
+                "type_correct": row.get(correctness_keys[key], False),
+                "resource_accounting": control.get(
+                    "resource_accounting"
                 ),
             }
         )
@@ -1964,6 +2645,16 @@ def _aggregate_control(
         cp_upper = clopper_pearson_upper(
             false_events, len(unlocked_unrelated), confidence_level
         )
+    resources = [
+        row["resource_accounting"]
+        for row in (
+            list(select_planted)
+            + list(select_unrelated)
+            + list(report_planted)
+            + list(report_unrelated)
+        )
+        if row.get("resource_accounting") is not None
+    ]
     return {
         "threshold": threshold,
         "report_type_accuracy": _mean_bool(
@@ -1980,6 +2671,42 @@ def _aggregate_control(
         "report_false_unlock_events": false_events,
         "report_unrelated_groups": len(report_unrelated),
         "report_false_unlock_cp_upper_97_5": cp_upper,
+        "resource_accounting": {
+            "status": "CONSERVATIVE_ESTIMATE_RETAINED",
+            "standalone_estimated_peak_bytes": (
+                _summary(
+                    resource["standalone_estimated_peak_bytes"]
+                    for resource in resources
+                )
+                if resources
+                else None
+            ),
+            "harness_estimated_peak_bytes": (
+                _summary(
+                    resource["harness_estimated_peak_bytes"]
+                    for resource in resources
+                    if "harness_estimated_peak_bytes" in resource
+                )
+                if any(
+                    "harness_estimated_peak_bytes" in resource
+                    for resource in resources
+                )
+                else None
+            ),
+            "estimated_work_units": (
+                _summary(
+                    resource["estimated_work_units"]
+                    for resource in resources
+                )
+                if resources
+                else None
+            ),
+            "measured_process_peak": False,
+            "hard_max_estimated_bytes": (
+                CONTROL_HARD_MAX_ESTIMATED_BYTES
+            ),
+            "hard_max_work_units": CONTROL_HARD_MAX_WORK_UNITS,
+        },
         "fur_gate_pass": bool(
             threshold.get("status") == "FROZEN"
             and
@@ -2225,6 +2952,8 @@ def _aggregate_cell(
     report_planted = rows["REPORT"]["planted"]
     report_unrelated = rows["REPORT"]["unrelated"]
     report_noncyclic = rows["REPORT"]["non_cyclic"]
+    report_block_correlated = rows["REPORT"]["block_correlated"]
+    report_burst = rows["REPORT"]["burst"]
     threshold = fit_select_thresholds(
         select_planted,
         select_unrelated,
@@ -2239,6 +2968,10 @@ def _aggregate_cell(
     )
     unlocked_unrelated, _ = _apply_threshold(report_unrelated, threshold)
     unlocked_noncyclic, _ = _apply_threshold(report_noncyclic, threshold)
+    unlocked_block_correlated, correct_block_correlated = _apply_threshold(
+        report_block_correlated, threshold
+    )
+    unlocked_burst, correct_burst = _apply_threshold(report_burst, threshold)
     if unlocked_unrelated is None:
         false_events = None
         cp_upper = None
@@ -2273,6 +3006,65 @@ def _aggregate_cell(
     independent["phase_recovery_status"] = (
         "NOT_DEFINED_FOR_INDEPENDENT_LAYER_CONTROL"
     )
+    native_oppw = _aggregate_control(
+        _control_threshold_rows(select_planted, "native_oppw_control"),
+        _control_threshold_rows(select_unrelated, "native_oppw_control"),
+        _control_threshold_rows(report_planted, "native_oppw_control"),
+        _control_threshold_rows(report_unrelated, "native_oppw_control"),
+        target_false_unlock_rate=config.target_false_unlock_rate,
+        confidence_level=config.confidence_level,
+        allow_smoke_point_estimate=(
+            config.run_label == "SMOKE_NON_EVIDENTIARY"
+        ),
+    )
+    native_oppw.update(
+        {
+            "status": "COMPLETED",
+            "phase_exact_accuracy": _mean_bool(
+                row["native_oppw_phase_exact"] for row in report_planted
+            ),
+            "contract": report_planted[0]["native_oppw_control"][
+                "observation_contract"
+            ],
+            "dense_phase_estimates_consumed": False,
+        }
+    )
+    repeated_available = (
+        select_planted[0]["repeated_bit_control"].get("status")
+        == "COMPLETED"
+    )
+    if repeated_available:
+        repeated_bit = _aggregate_control(
+            _control_threshold_rows(select_planted, "repeated_bit_control"),
+            _control_threshold_rows(
+                select_unrelated, "repeated_bit_control"
+            ),
+            _control_threshold_rows(report_planted, "repeated_bit_control"),
+            _control_threshold_rows(
+                report_unrelated, "repeated_bit_control"
+            ),
+            target_false_unlock_rate=config.target_false_unlock_rate,
+            confidence_level=config.confidence_level,
+            allow_smoke_point_estimate=(
+                config.run_label == "SMOKE_NON_EVIDENTIARY"
+            ),
+        )
+        repeated_bit.update(
+            {
+                "status": "COMPLETED",
+                "phase_recovery_status": (
+                    "NOT_DEFINED_FOR_REPEATED_BIT_CONTROL"
+                ),
+                "contract": report_planted[0]["repeated_bit_control"][
+                    "contract"
+                ],
+            }
+        )
+    else:
+        repeated_bit = {
+            **select_planted[0]["repeated_bit_control"],
+            "matched_resource_advantage_claim_eligible": False,
+        }
 
     payload_key = format(float(spec["payload_noise_rate"]), ".6f")
     payload_rows = [
@@ -2406,6 +3198,8 @@ def _aggregate_cell(
             "planted_group_count": len(report_planted),
             "unrelated_group_count": len(report_unrelated),
             "non_cyclic_group_count": len(report_noncyclic),
+            "block_correlated_group_count": len(report_block_correlated),
+            "burst_group_count": len(report_burst),
             "raw_type_accuracy": raw_type_accuracy,
             "phase_exact_accuracy": raw_phase_accuracy,
             "phase_circular_error": _summary(
@@ -2429,6 +3223,53 @@ def _aggregate_cell(
                 if unlocked_noncyclic is not None
                 else None
             ),
+            "correlated_noise_variants": {
+                "declared_global_flip_fraction": float(
+                    spec["bit_flip_rate"]
+                ),
+                "bsc_binomial_theory_applicable": False,
+                "block_correlated": {
+                    "observed_flip_rate": _summary(
+                        row["query_provenance"]["observed_flip_rate"]
+                        for row in report_block_correlated
+                    ),
+                    "raw_type_accuracy": _mean_bool(
+                        row["type_correct"]
+                        for row in report_block_correlated
+                    ),
+                    "true_unlock_recall": (
+                        _mean_bool(correct_block_correlated)
+                        if correct_block_correlated is not None
+                        else None
+                    ),
+                    "unlock_rate": (
+                        _mean_bool(unlocked_block_correlated)
+                        if unlocked_block_correlated is not None
+                        else None
+                    ),
+                },
+                "burst": {
+                    "observed_flip_rate": _summary(
+                        row["query_provenance"]["observed_flip_rate"]
+                        for row in report_burst
+                    ),
+                    "raw_type_accuracy": _mean_bool(
+                        row["type_correct"] for row in report_burst
+                    ),
+                    "true_unlock_recall": (
+                        _mean_bool(correct_burst)
+                        if correct_burst is not None
+                        else None
+                    ),
+                    "unlock_rate": (
+                        _mean_bool(unlocked_burst)
+                        if unlocked_burst is not None
+                        else None
+                    ),
+                },
+                "threshold_source": "iid SELECT only",
+                "promotion_eligible": False,
+            },
             "score_distribution_planted": _summary(
                 row["score"] for row in report_planted
             ),
@@ -2509,22 +3350,8 @@ def _aggregate_cell(
         "controls": {
             "independent_layers": independent,
             "oppw_phase_address_from_dense_estimates": oppw,
-            "native_sparse_oppw": {
-                "status": "MANDATORY_UNIMPLEMENTED",
-                "reason": (
-                    "matched sparse observation noise and energy contract "
-                    "not implemented"
-                ),
-                "resource_pareto_claim_eligible": False,
-            },
-            "equal_channel_use_repeated_bit": {
-                "status": "MANDATORY_UNIMPLEMENTED",
-                "reason": (
-                    "no frozen repeated-bit observation with matched channel "
-                    "uses, energy, and decoder budget"
-                ),
-                "matched_resource_advantage_claim_eligible": False,
-            },
+            "native_sparse_oppw": native_oppw,
+            "equal_channel_use_repeated_bit": repeated_bit,
         },
         "resources": resources,
         "construction_diagnostics": {
@@ -2599,6 +3426,101 @@ def _primary_aggregate(
             "one_pooled_threshold": True,
             "promotion_eligible": False,
         }
+    native_oppw = _aggregate_control(
+        _control_threshold_rows(select_planted, "native_oppw_control"),
+        _control_threshold_rows(select_unrelated, "native_oppw_control"),
+        _control_threshold_rows(report_planted, "native_oppw_control"),
+        _control_threshold_rows(report_unrelated, "native_oppw_control"),
+        target_false_unlock_rate=config.target_false_unlock_rate,
+        confidence_level=config.confidence_level,
+        allow_smoke_point_estimate=False,
+    )
+    native_oppw.update(
+        {
+            "status": "COMPLETED",
+            "phase_exact_accuracy": _mean_bool(
+                row["native_oppw_phase_exact"] for row in report_planted
+            ),
+            "contract": report_planted[0]["native_oppw_control"][
+                "observation_contract"
+            ],
+            "dense_phase_estimates_consumed": False,
+        }
+    )
+    repeated_rows = (
+        select_planted
+        + select_unrelated
+        + report_planted
+        + report_unrelated
+    )
+    repeated_available = all(
+        row["repeated_bit_control"].get("status") == "COMPLETED"
+        for row in repeated_rows
+    )
+    if repeated_available:
+        repeated_bit = _aggregate_control(
+            _control_threshold_rows(select_planted, "repeated_bit_control"),
+            _control_threshold_rows(select_unrelated, "repeated_bit_control"),
+            _control_threshold_rows(report_planted, "repeated_bit_control"),
+            _control_threshold_rows(report_unrelated, "repeated_bit_control"),
+            target_false_unlock_rate=config.target_false_unlock_rate,
+            confidence_level=config.confidence_level,
+            allow_smoke_point_estimate=False,
+        )
+        repeated_bit.update(
+            {
+                "status": "COMPLETED",
+                "phase_recovery_status": (
+                    "NOT_DEFINED_FOR_REPEATED_BIT_CONTROL"
+                ),
+                "contract": report_planted[0]["repeated_bit_control"][
+                    "contract"
+                ],
+            }
+        )
+    else:
+        unavailable = next(
+            row["repeated_bit_control"]
+            for row in repeated_rows
+            if row["repeated_bit_control"].get("status")
+            != "COMPLETED"
+        )
+        repeated_bit = {
+            **unavailable,
+            "matched_resource_advantage_claim_eligible": False,
+        }
+    native_control_closed = bool(
+        native_oppw["threshold"].get("status") == "FROZEN"
+        and native_oppw["fur_gate_pass"]
+        and native_oppw["report_true_unlock_recall"] is not None
+        and native_oppw["report_true_unlock_recall"]
+        >= config.control_min_true_unlock_recall
+    )
+    native_oppw["minimum_true_unlock_recall_for_closure"] = (
+        config.control_min_true_unlock_recall
+    )
+    native_oppw["true_unlock_recall_floor_gate_pass"] = bool(
+        native_oppw["report_true_unlock_recall"] is not None
+        and native_oppw["report_true_unlock_recall"]
+        >= config.control_min_true_unlock_recall
+    )
+    repeated_control_closed = bool(
+        repeated_available
+        and repeated_bit["threshold"].get("status") == "FROZEN"
+        and repeated_bit["fur_gate_pass"]
+        and repeated_bit["report_true_unlock_recall"] is not None
+        and repeated_bit["report_true_unlock_recall"]
+        >= config.control_min_true_unlock_recall
+    )
+    repeated_bit["minimum_true_unlock_recall_for_closure"] = (
+        config.control_min_true_unlock_recall
+    )
+    repeated_bit["true_unlock_recall_floor_gate_pass"] = bool(
+        repeated_available
+        and repeated_bit.get("report_true_unlock_recall") is not None
+        and repeated_bit["report_true_unlock_recall"]
+        >= config.control_min_true_unlock_recall
+    )
     threshold = fit_select_thresholds(
         select_planted,
         select_unrelated,
@@ -2619,6 +3541,23 @@ def _primary_aggregate(
             false_events, len(unrelated_unlocked), config.confidence_level
         )
         fur_gate = cp_upper <= config.target_false_unlock_rate
+    dense_true_unlock_recall = (
+        _mean_bool(report_correct) if report_correct is not None else None
+    )
+    dense_raw_type_accuracy = _mean_bool(
+        row.get("type_correct", False) for row in report_planted
+    )
+    dense_raw_type_sanity_gate_pass = (
+        dense_raw_type_accuracy == 1.0
+    )
+    dense_primary_control_closed = bool(
+        threshold.get("status") == "FROZEN"
+        and fur_gate
+        and dense_raw_type_sanity_gate_pass
+        and dense_true_unlock_recall is not None
+        and dense_true_unlock_recall
+        >= config.control_min_true_unlock_recall
+    )
     return {
         "status": (
             "REPORT_EVALUATED"
@@ -2630,8 +3569,20 @@ def _primary_aggregate(
         "one_pooled_threshold": True,
         "counts": actual_counts,
         "threshold": threshold,
-        "report_true_unlock_recall": (
-            _mean_bool(report_correct) if report_correct is not None else None
+        "report_true_unlock_recall": dense_true_unlock_recall,
+        "dense_raw_type_accuracy": dense_raw_type_accuracy,
+        "dense_raw_type_sanity_gate_required": 1.0,
+        "dense_raw_type_sanity_gate_scope": "at_q_0_45_only",
+        "dense_raw_type_sanity_gate_pass": (
+            dense_raw_type_sanity_gate_pass
+        ),
+        "through_q_0_45_raw_sanity_gate_complete": False,
+        "through_q_0_45_raw_sanity_gate_blocker": (
+            "the pooled primary aggregate contains q=0.45 only; lower-rate "
+            "cells must be checked explicitly rather than inferred"
+        ),
+        "minimum_true_unlock_recall_for_control_closure": (
+            config.control_min_true_unlock_recall
         ),
         "report_false_unlock_events": false_events,
         "report_false_unlock_rate": (
@@ -2642,7 +3593,35 @@ def _primary_aggregate(
         "report_false_unlock_cp_upper_97_5": cp_upper,
         "fur_gate_pass": fur_gate,
         "synthetic_method_dev_only": True,
-        "native_sparse_oppw_resource_control_closed": False,
+        "controls": {
+            "native_sparse_oppw": native_oppw,
+            "equal_channel_use_repeated_bit": repeated_bit,
+        },
+        "native_sparse_oppw_resource_control_closed": native_control_closed,
+        "equal_channel_use_repeated_bit_control_closed": (
+            repeated_control_closed
+        ),
+        "dense_primary_control_closed": dense_primary_control_closed,
+        "all_mandatory_controls_closed": bool(
+            dense_primary_control_closed
+            and native_control_closed
+            and repeated_control_closed
+        ),
+        "pairwise_noise_law_match": {
+            "dense_vs_equal_channel_repeated_bit": True,
+            "dense_vs_native_sparse_oppw": False,
+            "reason": (
+                "dense and repeated-bit paths use independent Bernoulli "
+                "bipolar chip flips; native OPPW uses symbol substitution"
+            ),
+        },
+        "matched_noise_comparison_ready": False,
+        "matched_noise_comparison_blocker": (
+            "the dense-versus-repeated-bit comparison has a matched Bernoulli "
+            "chip-flip law, but native OPPW uses a symbol-substitution channel; "
+            "a three-way or dense-versus-native superiority statement is not "
+            "a matched-noise claim"
+        ),
         "promotion_eligible": False,
     }
 
@@ -2728,11 +3707,28 @@ def _campaign_verdicts(
     common_blockers = [
         "synthetic METHOD_DEV cannot establish real retrieval utility",
         (
-            "native sparse OPPW baseline with matched noise/energy is "
-            "mandatory-unimplemented"
+            "native sparse OPPW and dense carriers have explicit equal "
+            "channel-use/energy accounting but different declared noise laws"
         ),
         "phase address is known OPPW-equivalent mathematics",
     ]
+    if smoke:
+        common_blockers.append(
+            "pooled full-run native OPPW and repeated-bit control gates were "
+            "not evaluated in smoke"
+        )
+    elif not primary.get("all_mandatory_controls_closed", False):
+        common_blockers.append(
+            "one or more mandatory pooled control gates did not close"
+        )
+    if not primary.get(
+        "through_q_0_45_raw_sanity_gate_complete",
+        False,
+    ):
+        common_blockers.append(
+            "the 100% raw-type sanity gate is checked at q=0.45 only; "
+            "the frozen through-q=0.45 sweep remains unresolved"
+        )
     return {
         "PRW-0": {
             "verdict": prw0,
@@ -2744,12 +3740,25 @@ def _campaign_verdicts(
                 "INCONCLUSIVE_SMOKE"
                 if smoke
                 else (
-                    "INCONCLUSIVE_CONTROL_GAP"
-                    if primary.get("fur_gate_pass")
-                    else "NO_GO_PRIMARY_GATE"
+                    "INCONCLUSIVE_SYNTHETIC_CONTROLS_CLOSED"
+                    if (
+                        primary.get("fur_gate_pass")
+                        and primary.get(
+                            "all_mandatory_controls_closed", False
+                        )
+                        and primary.get(
+                            "through_q_0_45_raw_sanity_gate_complete",
+                            False,
+                        )
+                    )
+                    else (
+                        "INCONCLUSIVE_CONTROL_GATE"
+                        if primary.get("fur_gate_pass")
+                        else "NO_GO_PRIMARY_GATE"
+                    )
                 )
             ),
-        "blockers": common_blockers,
+            "blockers": common_blockers,
             "promotion_eligible": False,
         },
         "PRW-2": {
@@ -2772,9 +3781,11 @@ def _campaign_verdicts(
         "PRW-4": {
             "verdict": "INCONCLUSIVE",
             "reason": (
-                "no native sparse resource baseline and no repeated hardware "
-                "timing campaign; equal-channel-use repeated-bit control is "
-                "unimplemented; theoretical packed bytes excluded from cost verdict"
+                "native sparse OPPW and equal-channel-use repeated-bit controls "
+                "are implemented with explicit contracts, but no full RB-1 or "
+                "repeated hardware timing campaign has closed; native OPPW uses "
+                "a distinct symbol-noise law; theoretical packed bytes remain "
+                "excluded from the cost verdict"
             ),
             "special_status_for_4691": False,
             "promotion_eligible": False,
@@ -2869,6 +3880,18 @@ def run_campaign(
             reference_norms = np.linalg.norm(templates, axis=2)
             payload_ffts = np.fft.rfft(payload_type_bank, axis=2)
             payload_norms = np.linalg.norm(payload_type_bank, axis=2)
+            resident_context_bytes = _unique_numpy_nbytes(
+                signatures,
+                templates,
+                base,
+                ring_templates,
+                payload_groups,
+                payload_type_bank,
+                reference_ffts,
+                reference_norms,
+                payload_ffts,
+                payload_norms,
+            )
             for planted_mask_family in config.planted_mask_families:
                 if (
                     _mask_availability(
@@ -2894,6 +3917,7 @@ def run_campaign(
                         payload_norms=payload_norms,
                         reference_ffts=reference_ffts,
                         reference_norms=reference_norms,
+                        resident_context_bytes=resident_context_bytes,
                     )
                     for decoder_policy in config.decoder_mask_policies:
                         if (
@@ -2980,7 +4004,7 @@ def run_campaign(
     for cell in cells:
         status_counts[cell["status"]] = status_counts.get(cell["status"], 0) + 1
     artifact = {
-        "schema_version": "1.0.0",
+        "schema_version": "1.1.0",
         "record_type": RECORD_TYPE,
         "protocol_id": PROTOCOL_ID,
         "evidence_mode": EVIDENCE_MODE,
@@ -3002,6 +4026,17 @@ def run_campaign(
             "confidence_level": config.confidence_level,
             "optional_stopping": False,
         },
+        "control_claim_governance": {
+            "native_sparse_oppw_required": True,
+            "equal_channel_use_repeated_bit_required": True,
+            "full_pooled_control_gates_required": True,
+            "minimum_true_unlock_recall_for_control_closure": (
+                config.control_min_true_unlock_recall
+            ),
+            "identical_noise_law_required_for_matched_noise_claim": True,
+            "hardware_timing_required_for_speed_or_cost_claim": True,
+            "matched_resource_advantage_claim_eligible": False,
+        },
         "construction_checks": construction,
         "grid_manifest": {
             "expected_cell_count": len(cell_specs),
@@ -3019,12 +4054,14 @@ def run_campaign(
             if config.run_label == "SMOKE_NON_EVIDENTIARY"
             else "full campaign remains synthetic METHOD_DEV",
             (
-                "OPPW phase-address control inherits dense phase estimates; "
-                "native sparse matched-resource baseline is unimplemented"
+                "native sparse OPPW is decoded from pulse positions without "
+                "dense phase estimates, but its symbol-substitution channel is "
+                "not identical to the dense bipolar chip-flip channel"
             ),
             (
-                "equal-channel-use repeated-bit control is unimplemented; "
-                "matched-resource advantage is fail-closed"
+                "equal-channel-use repeated-bit control represents at most "
+                "2 types for L=1 or 16 types for L=8 and is fail-closed "
+                "outside that declared codebook"
             ),
             (
                 "payload-only Recall@K is canonical-order dependent under "

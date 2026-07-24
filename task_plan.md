@@ -181,6 +181,65 @@
 - The first executable slice is isolated from production routing, correction,
   annealing, and the evidence DAG.
 
+## Resource-Bounded Continuation (2026-07-24)
+- Status: BOUNDED IMPLEMENTATION COMPLETE; POWERED VALIDATION HELD
+- User constraint: implement and validate remaining components, but do not
+  launch any run with credible OOM risk.
+- Hard execution guard:
+  - do not invoke `full_config()` or the 11,520-cell campaign;
+  - do not launch large importance-sampling, real-corpus, or repeated-hardware
+    campaigns;
+  - exact enumeration is limited initially to small primes and bounded banks;
+  - estimate peak resident/temporary bytes before every new benchmark;
+  - default bounded run ceiling is 512 MiB estimated peak and 120 seconds,
+    with fail-closed refusal above either ceiling unless the user later expands
+    the budget;
+  - unit tests and microbenchmarks must use deterministic seeds and leave no
+    inference-eligible artifact.
+- RB-1 — matched controls:
+  - Status: IMPLEMENTED; HOSTILE REVIEW AND BOUNDED INTEGRATION PASS
+  - implement a native sparse OPPW observation/decoder with an explicit
+    channel-use and energy contract;
+  - implement equal-channel-use repeated-bit and block/burst noise controls;
+  - keep all matched-resource claims false until these controls are exercised.
+  - Reconditioning closed three hostile-review failures: the `iid` path is
+    Bernoulli/BSC again, zero-recall controls fail closed under a frozen `0.50`
+    nontriviality floor, and standalone plus co-resident NumPy buffers are
+    guarded before control allocation.
+  - The pooled 100% raw-type sanity check is explicitly scoped to `q=0.45`;
+    the lower-rate "through q=0.45" sweep remains unresolved and blocks a
+    controls-closed scientific verdict.
+- RB-2 — `PRW-T1` finite enumerator:
+  - Status: IMPLEMENTED; HOSTILE REVIEW AND BOUNDED INTEGRATION PASS
+  - enumerate small-prime distance and disagreement-intersection spectra;
+  - compute exact pairwise/intersection probabilities, ordinary union bounds,
+    and Hunter spanning-tree corrections;
+  - add resource estimates and refuse oversized state spaces.
+  - Immutable 512 MiB, 120 second, pair, coordinate, and work ceilings now
+    preflight raw input shapes before normalization; analysis-local probability
+    caches are byte-accounted and nonpersistent.
+- RB-3 — Rader implementation slice:
+  - Status: IMPLEMENTED; HOSTILE REVIEW AND BOUNDED INTEGRATION PASS
+  - implement correctness-first prime-length cyclic correlation;
+  - validate against direct and generic FFT results on small primes;
+  - permit only bounded microbenchmarks; no 4091/4691 timing campaign yet.
+- RB-4 — remaining concept formalization:
+  - Status: COMPLETE
+  - turn 3D/protein-edge lattices, polar/harmonic subspaces, high-dimensional
+    bonding, and queue gravity into separate typed hypotheses;
+  - define nulls, observables, resource denominators, and kill criteria before
+    any implementation.
+- RB-5 — integration gate:
+  - Status: BOUNDED GATE PASS; POWERED/REAL-DATA GATE NOT RUN
+  - rerun focused PRW/CRSV tests and lint;
+  - perform hostile review of code and evidence labels;
+  - do not run the powered campaign until RB-1 through RB-4 are accepted.
+  - Current bounded evidence: 61 combined core/Rader/finite-theory tests,
+    16 runner tests, 31 CRSV tests, 4 prior theory tests, and exact focused Ruff
+    checks pass. The runner suite executed only tiny smoke fixtures and a
+    temporary artifact test; it did not invoke `full_config()` or update the
+    repository evidence artifact.
+
 ## Errors Encountered
 | Error | Attempt | Resolution |
 |-------|---------|------------|
@@ -196,6 +255,11 @@
 | First smoke encoded the carrier's type-relative phase into the separate payload and repeatedly rebuilt payload FFTs | 1 | Terminated the run, published no artifact, made payloads type-canonical/global-shift-only, cached/deduplicated scoring, and added leakage regressions |
 | Direct combinatorial Clopper-Pearson evaluation overflowed at preregistered sample sizes | 1 | Replaced it with a stable regularized-incomplete-beta inversion, cached threshold results, and verified full-size boundary probes |
 | Two corrected-smoke artifacts still had cost/temporary-byte label defects | 2 | Deleted both generated artifacts before use, split logical from deduplicated bytes, componentized conservative peaks, and regenerated the final artifact |
+| First RB-2 implementation treated 512 MiB as a caller-raiseable default and normalized inputs before preflight | 1 | Added immutable byte/time/work ceilings, shape-first refusal, a bounded analysis-local cache, and hostile spectrum/resource regressions |
+| First RB-1 pooled gate allowed an always-locked zero-recall decoder to count as closed | 1 | Added a frozen 0.50 control-recall floor, the dense 100% raw-type sanity check at q=0.45, and a fail-closed unresolved marker for the lower-rate sweep |
+| First RB-1 `iid` rewrite used fixed-weight noise while retaining BSC labels | 1 | Restored independent Bernoulli draws for dense and repeated-bit paths; retained fixed-weight block/burst stressors with BSC inapplicability labels |
+| First RB-1 resource estimate omitted temporaries/co-resident ring buffers and checked context after allocation | 1 | Count unique resident NumPy arrays recursively, include fancy-index/work buffers, and refuse standalone-plus-context estimates before control allocation |
+| A diagnostic `rg` expression used an unescaped parenthesis | 1 | Reissued the read-only search with fixed-string matching; no code or evidence was affected |
 
 ---
 

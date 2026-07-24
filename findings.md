@@ -290,6 +290,74 @@
   the very narrow `PRW-T1` intersection-spectrum theorem; the only plausible
   systems work is a matched-resource carrier-to-separate-payload gate that
   changes real held-out decisions. Neither has been validated.
+- Continuation decision on 2026-07-24: resume implementation, exact
+  small-prime analysis, and bounded microbenchmarks only. The powered campaign,
+  large importance sampling, real-corpus campaigns, and full-size Rader timing
+  remain held because they are unnecessary for the next correctness slices and
+  could create avoidable memory pressure.
+- The next useful work separates into three independent code lanes: matched
+  sparse/repetition/noise controls, a resource-guarded `PRW-T1` finite
+  intersection enumerator, and a correctness-first bounded Rader
+  implementation. Remaining harmonic/polar/3D/queue ideas require typed
+  hypotheses before code.
+- The remaining informal concepts are now separated in
+  `docs/research/prime-ring-remaining-hypotheses-2026-07.md`: graph-coupled
+  cyclic fibers (`PRW-G1`), Fourier-phase synchronization (`PRW-H1`), the prime
+  dimension null (`PRW-D1`), CRT payload pivots (`PRW-C1`), causal queue
+  potential (`PRW-Q1`), and reversible living state (`PRW-L1`). None inherits
+  support from the original ring construction.
+- RB-2 now has a finite, resource-guarded implementation in
+  `prime_ring_intersection.py`. It materializes only bounded small-prime
+  Legendre-by-mask banks, computes exact finite BSC pair and pair-intersection
+  probabilities, builds the Hunter maximum-spanning-tree correction, and can
+  brute-force the true event union only when the full noise-pattern count fits
+  the declared budget. It explicitly leaves the asymptotic claim false.
+- Eight bounded RB-2 tests pass, including direct noise-pattern oracles for the
+  binomial tail, pair-event intersection, and whole-bank union; no importance
+  sampling or large-prime bank was run.
+- RB-3 has a correctness-first Rader implementation and 13 small-prime tests
+  from the independent lane. Only `p=7`, `11`, and `31` correctness paths were
+  exercised; no 4091/4691 benchmark was launched.
+- The initial RB-1/RB-2 implementations did not survive hostile review
+  unchanged. Three RB-1 failures were corrected: fixed-weight noise had been
+  mislabeled as an independent BSC, an always-off decoder could close pooled
+  controls at zero recall, and resource accounting omitted live temporaries and
+  co-resident ring-template arrays while checking too late. RB-2 likewise
+  normalized arbitrary inputs before its nominal hard guard.
+- RB-1 now uses independent Bernoulli chip flips for both the dense carrier and
+  equal-channel-use repeated-bit control. Block and burst paths retain exact
+  global counts but are explicitly outside the binomial/BSC calculation. Native
+  OPPW remains a distinct symbol-substitution channel, so dense-versus-native
+  superiority is not a matched-noise claim.
+- Pooled control closure now requires a frozen threshold, the REPORT
+  false-unlock confidence gate, and true-unlock recall of at least `0.50`.
+  The dense primary path additionally requires 100% raw type accuracy in the
+  pooled `q=0.45` cell. The protocol's stronger "through q=0.45" lower-rate
+  sweep is not inferred from that endpoint and remains an explicit blocker.
+- RB-1 standalone and harness-co-resident NumPy-array estimates are now
+  preflighted before native/repeated control allocation under a hard 512 MiB
+  ceiling and a 50,000,000-work-unit ceiling. These are conservative array
+  estimates, not measured process RSS and not authority for a powered run.
+- RB-2 now exposes the full
+  `(d_i,d_j,|D_i intersection D_j|)` signature spectrum and nearest-event sum,
+  distinguishes competitor tie-or-better unions from final decoder error, and
+  accepts PRW-T1-specific labeling only for verified overlap-one,
+  `RM(1,3)`, `p congruent to 3 mod 4` banks. Its 512 MiB and 120-second hard
+  ceilings cannot be raised by a caller.
+- Final bounded validation on the reconditioned tree passed:
+  - 61 combined prime-ring core, Rader, and finite-intersection tests;
+  - 16 runner tests in 12.299 seconds, using only tiny smoke fixtures and a
+    temporary artifact test;
+  - 31 adjacent CRSV tests and 4 prior prime-ring theory tests;
+  - focused Ruff checks across all six new/changed Python implementation and
+    test files.
+- RB-3 ultimately has 14 focused tests (not 13) after resource-hostile review,
+  plus exhaustive odd-prime property checks through 101 reported by the lane.
+  No 4091/4691 transform or benchmark was run.
+- The bounded implementation result is still not a breakthrough result:
+  PRW-T1 remains a finite diagnostic rather than an asymptotic theorem, Rader
+  has no full-size performance evidence, matched controls have no powered
+  empirical result, and every novelty/production/promotion gate remains false.
 
 ---
 

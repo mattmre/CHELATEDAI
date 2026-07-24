@@ -1,5 +1,61 @@
 # Progress Log
 
+## Resource-bounded continuation: 2026-07-24
+
+- User authorized resuming the remaining roadmap while explicitly holding any
+  run that might OOM the machine.
+- Re-ran the planning-session catch-up helper; it returned no unsynced report.
+- Re-read the active plan, findings, and progress records.
+- Froze a conservative execution guard: no full campaign, large importance
+  sampling, real-corpus campaign, or full-size Rader timing; new bounded work
+  must estimate at most 512 MiB peak and 120 seconds before launch.
+- Opened parallel implementation lanes for matched controls, finite
+  intersection theory, and correctness-first Rader work. No intensive run has
+  been launched.
+- Completed RB-4 formalization in
+  `docs/research/prime-ring-remaining-hypotheses-2026-07.md`, replacing the
+  remaining 3D/protein, harmonic/polar, high-dimensional, CRT, queue-gravity,
+  and living-memory metaphors with typed mechanisms, controls, metrics,
+  dependencies, and kill criteria.
+- Implemented RB-2 in `prime_ring_intersection.py` with explicit hypothesis,
+  coordinate, pair-count, byte, and brute-force-pattern guards.
+- Added and passed 8/8 tiny RB-2 tests plus focused Ruff checks. The largest
+  test bank has six hypotheses over six coordinates and completes in
+  milliseconds.
+- Received the bounded RB-3 implementation from the parallel lane: 13/13
+  small-prime tests pass; hostile resource-accounting review is still in
+  progress and no large-prime timing was run.
+- Completed hostile reconditioning of RB-1:
+  - restored independent Bernoulli noise for the dense/repeated BSC lane;
+  - added native sparse OPPW and equal-channel-use repeated-bit controls;
+  - added deterministic nested block/burst stressors;
+  - made zero-recall, raw-recovery, false-unlock, and lower-rate-sweep gates
+    fail closed;
+  - moved conservative standalone/co-resident resource refusal ahead of
+    control allocation.
+- Completed hostile reconditioning of RB-2:
+  - raw shapes are refused before NumPy/Python normalization;
+  - hard byte/work/time ceilings cannot be raised;
+  - binomial caches are per-analysis and byte-accounted;
+  - exact all-pair and nearest-event intersection spectra are retained;
+  - generic event unions are no longer mislabeled final decoder errors or
+    PRW-T1-specific evidence.
+- Completed RB-3 hostile review with 14/14 focused tests, exact small-prime
+  direct/NumPy agreement, and no performance claim.
+- Final bounded validation:
+  - 61 combined core/Rader/finite-theory tests passed in 0.153 seconds;
+  - 16 runner tests passed in 12.299 seconds;
+  - 31 CRSV tests passed in 0.128 seconds;
+  - 4 prior prime-ring theory tests passed in 0.007 seconds;
+  - focused Ruff and AST checks passed.
+- The runner integration suite invoked only its tiny smoke fixtures and one
+  temporary-directory artifact regression. It did not invoke `full_config()`,
+  run an 11,520-cell campaign, benchmark 4091/4691, or modify the retained
+  repository evidence artifact.
+- Powered/real-data validation remains held. The lower-rate portion of the
+  "through q=0.45" sanity gate, measured process RSS, repeated hardware timing,
+  asymptotic PRW-T1 proof, and real held-out retrieval are still open.
+
 ## Restart resume: 2026-07-24
 
 - Recovered the isolated branch and every pre-restart research edit.

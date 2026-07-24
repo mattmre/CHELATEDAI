@@ -417,6 +417,26 @@ rather than being presented as partial support. Rate `0.49`, unrelated inputs,
 matched random carriers, and matched-resource controls are the informative
 stress conditions. These are still synthetic checks, not confirmatory utility.
 
+#### RB-1 pre-run control reconditioning (2026-07-24)
+
+Before any expanded campaign, the control gate is frozen to require true-unlock
+recall of at least `0.50` in addition to a frozen SELECT threshold and the
+REPORT false-unlock confidence gate. This is a nontriviality floor, not a
+support threshold: an always-locked decoder must not count as a closed control.
+The dense primary route, native sparse OPPW route, and equal-channel-use
+repeated-bit route must each clear it.
+
+The `iid` carrier and repeated-bit paths use independent Bernoulli chip flips,
+so the binary-symmetric-channel calculation remains applicable. The block and
+burst stress paths retain exact global flip counts but are explicitly outside
+that binomial model. Native OPPW uses symbol substitution and therefore cannot
+enter a matched-noise superiority claim against the dense chip channel.
+
+Control execution is refused when the conservative standalone or co-resident
+NumPy-array estimate exceeds `512 MiB`, or when the estimated control work
+exceeds `50,000,000` units. These estimates are not measured process RSS and do
+not authorize the expanded campaign.
+
 ### PRW-2 — payload-preserving waypoint unlock
 
 On payload collision groups spanning multiple types, phase routing plus

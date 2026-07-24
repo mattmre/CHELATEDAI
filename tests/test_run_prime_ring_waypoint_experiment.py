@@ -7,6 +7,7 @@ import tempfile
 import unittest
 from dataclasses import replace
 from pathlib import Path
+from unittest.mock import patch
 
 import numpy as np
 
@@ -15,14 +16,22 @@ from run_prime_ring_waypoint_experiment import (
     CampaignValidationError,
     _build_carrier_templates,
     _build_payload_groups,
+    _draw_flip_mask,
+    _decode_native_oppw,
     _make_planted_query,
     _materialize_payload_collision_bank,
+    _observe_and_decode_repeated_bit,
+    _observe_native_oppw,
     _payload_query,
     _phase_codebook,
     _prepare_payload_controls,
+    _primary_aggregate,
+    _run_base_group,
     _trial_truth,
+    _unique_numpy_nbytes,
     clopper_pearson_upper,
     expected_cell_specs,
+    full_config,
     run_campaign,
     validate_config,
 )
@@ -131,6 +140,7 @@ class TestPrimeRingWaypointCampaign(unittest.TestCase):
             replace(self.config, seeds=(7, 7)),
             replace(self.config, decoder_mask_policies=("unknown",)),
             replace(self.config, type_count=True),
+            replace(self.config, control_min_true_unlock_recall=0.0),
             replace(self.config, report_stream_tag=""),
         )
         for config in invalid:
@@ -146,7 +156,7 @@ class TestPrimeRingWaypointCampaign(unittest.TestCase):
             artifact["record_type"],
             "prime_ring_waypoint_method_dev_campaign",
         )
-        self.assertEqual(artifact["schema_version"], "1.0.0")
+        self.assertEqual(artifact["schema_version"], "1.1.0")
         self.assertEqual(artifact["evidence_mode"], "METHOD_DEV")
         self.assertEqual(artifact["run_label"], "SMOKE_NON_EVIDENTIARY")
         self.assertFalse(artifact["promotion_eligible"])
@@ -159,8 +169,183 @@ class TestPrimeRingWaypointCampaign(unittest.TestCase):
         self.assertFalse(
             artifact["verdicts"]["PRW-4"]["special_status_for_4691"]
         )
+        governance = artifact["control_claim_governance"]
+        self.assertTrue(governance["native_sparse_oppw_required"])
+        self.assertTrue(
+            governance["equal_channel_use_repeated_bit_required"]
+        )
+        self.assertFalse(
+            governance["matched_resource_advantage_claim_eligible"]
+        )
         encoded = json.dumps(artifact, allow_nan=False)
         self.assertIn("SMOKE_NON_EVIDENTIARY", encoded)
+
+    def test_primary_aggregate_closes_fabricated_pooled_control_gates(self):
+        config = full_config()
+        resource_accounting = {
+            "kind": "conservative_simultaneous_live_array_estimate",
+            "standalone_estimated_peak_bytes": 1024,
+            "harness_estimated_peak_bytes": 2048,
+            "estimated_work_units": 100,
+            "measured_process_peak": False,
+        }
+        native_contract = {
+            "physical_channel_uses": 8 * 4691,
+            "transmitted_energy": 8 * 4691,
+            "dense_phase_estimates_consumed": False,
+        }
+        repeated_contract = {
+            "physical_channel_uses": 8 * 4691,
+            "transmitted_energy": 8 * 4691,
+            "equal_channel_uses_to_dense_carrier": True,
+        }
+
+        def row(split, planted):
+            score = 1.0 if planted else 0.0
+            return {
+                "split": split,
+                "group_id": f"FABRICATED-{split}-{'P' if planted else 'U'}",
+                "score": score,
+                "margin": 1.0,
+                "type_correct": planted,
+                "native_oppw_control": {
+                    "status": "COMPLETED",
+                    "score": score,
+                    "margin": 1.0,
+                    "observation_contract": native_contract,
+                    "resource_accounting": resource_accounting,
+                },
+                "native_oppw_type_correct": planted,
+                "native_oppw_phase_exact": planted,
+                "repeated_bit_control": {
+                    "status": "COMPLETED",
+                    "score": score,
+                    "margin": 1.0,
+                    "contract": repeated_contract,
+                    "resource_accounting": resource_accounting,
+                },
+                "repeated_bit_type_correct": planted,
+            }
+
+        components = []
+        for seed in config.seeds:
+            components.append(
+                {
+                    "seed": seed,
+                    "rows": {
+                        "SELECT": {
+                            "planted": [row("SELECT", True)] * 512,
+                            "unrelated": [row("SELECT", False)] * 512,
+                        },
+                        "REPORT": {
+                            "planted": [row("REPORT", True)] * 1024,
+                            "unrelated": [row("REPORT", False)] * 1024,
+                        },
+                    },
+                }
+            )
+        frozen_threshold = {
+            "status": "FROZEN",
+            "source_split": "SELECT",
+            "score_threshold": 0.5,
+            "margin_threshold": 0.5,
+            "report_rows_consumed": 0,
+        }
+        with patch(
+            "run_prime_ring_waypoint_experiment.fit_select_thresholds",
+            return_value=frozen_threshold,
+        ):
+            aggregate = _primary_aggregate(config, components)
+        self.assertEqual(aggregate["status"], "REPORT_EVALUATED")
+        self.assertTrue(aggregate["fur_gate_pass"])
+        self.assertTrue(
+            aggregate["native_sparse_oppw_resource_control_closed"]
+        )
+        self.assertTrue(
+            aggregate["equal_channel_use_repeated_bit_control_closed"]
+        )
+        self.assertTrue(aggregate["dense_primary_control_closed"])
+        self.assertTrue(aggregate["dense_raw_type_sanity_gate_pass"])
+        self.assertFalse(
+            aggregate["through_q_0_45_raw_sanity_gate_complete"]
+        )
+        self.assertTrue(aggregate["all_mandatory_controls_closed"])
+        self.assertFalse(aggregate["matched_noise_comparison_ready"])
+        self.assertEqual(
+            aggregate["controls"]["native_sparse_oppw"]["status"],
+            "COMPLETED",
+        )
+        self.assertEqual(
+            aggregate["controls"]["equal_channel_use_repeated_bit"]["status"],
+            "COMPLETED",
+        )
+        self.assertFalse(aggregate["promotion_eligible"])
+        native_resources = aggregate["controls"]["native_sparse_oppw"][
+            "resource_accounting"
+        ]
+        self.assertEqual(
+            native_resources["estimated_work_units"]["mean"],
+            100.0,
+        )
+        self.assertIn("hard_max_work_units", native_resources)
+
+        def locked_row(split, planted):
+            return {
+                **row(split, planted),
+                "score": 0.0,
+                "type_correct": False,
+                "native_oppw_control": {
+                    **row(split, planted)["native_oppw_control"],
+                    "score": 0.0,
+                },
+                "native_oppw_type_correct": False,
+                "native_oppw_phase_exact": False,
+                "repeated_bit_control": {
+                    **row(split, planted)["repeated_bit_control"],
+                    "score": 0.0,
+                },
+                "repeated_bit_type_correct": False,
+            }
+
+        locked_components = []
+        for seed in config.seeds:
+            locked_components.append(
+                {
+                    "seed": seed,
+                    "rows": {
+                        "SELECT": {
+                            "planted": [locked_row("SELECT", True)] * 512,
+                            "unrelated": [
+                                locked_row("SELECT", False)
+                            ]
+                            * 512,
+                        },
+                        "REPORT": {
+                            "planted": [locked_row("REPORT", True)] * 1024,
+                            "unrelated": [
+                                locked_row("REPORT", False)
+                            ]
+                            * 1024,
+                        },
+                    },
+                }
+            )
+        with patch(
+            "run_prime_ring_waypoint_experiment.fit_select_thresholds",
+            return_value=frozen_threshold,
+        ):
+            locked = _primary_aggregate(config, locked_components)
+        self.assertTrue(locked["fur_gate_pass"])
+        self.assertEqual(locked["report_true_unlock_recall"], 0.0)
+        self.assertFalse(locked["dense_raw_type_sanity_gate_pass"])
+        self.assertFalse(locked["dense_primary_control_closed"])
+        self.assertFalse(
+            locked["native_sparse_oppw_resource_control_closed"]
+        )
+        self.assertFalse(
+            locked["equal_channel_use_repeated_bit_control_closed"]
+        )
+        self.assertFalse(locked["all_mandatory_controls_closed"])
 
     def test_4096_uses_true_generic_array_control_and_legendre_is_retained_unavailable(self):
         control_config = CampaignConfig(
@@ -238,7 +423,36 @@ class TestPrimeRingWaypointCampaign(unittest.TestCase):
         self.assertEqual(diagnostic["relative_mask_word_count"], 16)
         self.assertEqual(
             crossed["controls"]["equal_channel_use_repeated_bit"]["status"],
-            "MANDATORY_UNIMPLEMENTED",
+            "COMPLETED",
+        )
+        repeated_contract = crossed["controls"][
+            "equal_channel_use_repeated_bit"
+        ]["contract"]
+        self.assertEqual(repeated_contract["physical_channel_uses"], 8 * 31)
+        self.assertEqual(repeated_contract["transmitted_energy"], 8 * 31)
+        self.assertTrue(
+            repeated_contract["equal_channel_uses_to_dense_carrier"]
+        )
+        native = crossed["controls"]["native_sparse_oppw"]
+        self.assertEqual(native["status"], "COMPLETED")
+        self.assertFalse(native["dense_phase_estimates_consumed"])
+        self.assertEqual(native["contract"]["physical_channel_uses"], 8 * 31)
+        correlated = crossed["report"]["correlated_noise_variants"]
+        realized_rate = round(0.35 * 8 * 31) / (8 * 31)
+        for variant in ("block_correlated", "burst"):
+            self.assertEqual(
+                correlated[variant]["observed_flip_rate"]["mean"],
+                realized_rate,
+            )
+        self.assertEqual(correlated["threshold_source"], "iid SELECT only")
+        layer_one = next(
+            cell
+            for cell in completed
+            if cell["config"]["layers"] == 1
+        )
+        self.assertEqual(
+            layer_one["controls"]["equal_channel_use_repeated_bit"]["status"],
+            "STRUCTURALLY_UNAVAILABLE",
         )
         resources = crossed["resources"]
         self.assertEqual(
@@ -414,6 +628,268 @@ class TestPrimeRingWaypointCampaign(unittest.TestCase):
         low_cosine = np.sum(payload_clean * payload_low, axis=1)
         high_cosine = np.sum(payload_clean * payload_high, axis=1)
         self.assertTrue(np.all(low_cosine > high_cosine))
+
+    def test_correlated_corruptions_are_exact_deterministic_and_nested(self):
+        shape = (8, 31)
+        low_rate = 0.20
+        high_rate = 0.35
+        high_masks = {}
+        for variant in ("iid", "block_correlated", "burst"):
+            low = _draw_flip_mask(
+                shape,
+                low_rate,
+                variant,
+                np.random.default_rng(12345),
+            )
+            high = _draw_flip_mask(
+                shape,
+                high_rate,
+                variant,
+                np.random.default_rng(12345),
+            )
+            repeated = _draw_flip_mask(
+                shape,
+                high_rate,
+                variant,
+                np.random.default_rng(12345),
+            )
+            if variant == "iid":
+                self.assertEqual(low.dtype, np.dtype(np.bool_))
+                self.assertLessEqual(
+                    int(np.count_nonzero(low)),
+                    int(np.count_nonzero(high)),
+                )
+            else:
+                self.assertEqual(
+                    int(np.count_nonzero(low)),
+                    round(low_rate * np.prod(shape)),
+                )
+                self.assertEqual(
+                    int(np.count_nonzero(high)),
+                    round(high_rate * np.prod(shape)),
+                )
+            self.assertTrue(np.all(np.logical_or(~low, high)))
+            np.testing.assert_array_equal(high, repeated)
+            high_masks[variant] = high
+        self.assertFalse(
+            np.array_equal(
+                high_masks["iid"], high_masks["block_correlated"]
+            )
+        )
+        self.assertFalse(
+            np.array_equal(high_masks["iid"], high_masks["burst"])
+        )
+        for layer in high_masks["burst"]:
+            cyclic_transitions = np.count_nonzero(layer != np.roll(layer, 1))
+            self.assertLessEqual(cyclic_transitions, 2)
+
+    def test_native_sparse_oppw_uses_positions_and_recovers_noiseless_truth(self):
+        config = replace(
+            self.config,
+            lengths=(31,),
+            carrier_families=("legendre",),
+            layers=(8,),
+            type_count=3,
+        )
+        signatures, _manifest = _phase_codebook(31, 8, 3, 7)
+        truth = _trial_truth(config, 7, "REPORT", "planted", 4, 31)
+        positions, contract = _observe_native_oppw(
+            config,
+            7,
+            "REPORT",
+            truth,
+            signatures,
+            "planted",
+            0.0,
+        )
+        decoded = _decode_native_oppw(positions, signatures, 31)
+        self.assertEqual(positions.shape, (8,))
+        self.assertEqual(positions.nbytes, 8 * np.dtype(np.int64).itemsize)
+        self.assertEqual(decoded["predicted_type"], truth["true_type"])
+        self.assertEqual(decoded["shared_shift"], truth["global_shift"])
+        self.assertFalse(decoded["dense_phase_estimates_consumed"])
+        self.assertEqual(contract["physical_channel_uses"], 8 * 31)
+        self.assertEqual(contract["transmitted_energy"], 8 * 31)
+        self.assertEqual(contract["query_nbytes"], positions.nbytes)
+        observation_resource = contract["resource_accounting"]
+        self.assertEqual(
+            observation_resource["standalone_estimated_peak_bytes"],
+            sum(observation_resource["component_breakdown"].values()),
+        )
+        decoder_resource = decoded["resource_accounting"]
+        self.assertEqual(
+            decoder_resource["standalone_estimated_peak_bytes"],
+            sum(decoder_resource["component_breakdown"].values()),
+        )
+        self.assertFalse(decoder_resource["measured_process_peak"])
+        noisy_a, provenance_a = _observe_native_oppw(
+            config,
+            7,
+            "REPORT",
+            truth,
+            signatures,
+            "planted",
+            0.35,
+        )
+        noisy_b, provenance_b = _observe_native_oppw(
+            config,
+            7,
+            "REPORT",
+            truth,
+            signatures,
+            "planted",
+            0.35,
+        )
+        np.testing.assert_array_equal(noisy_a, noisy_b)
+        self.assertEqual(provenance_a, provenance_b)
+
+    def test_equal_channel_repeated_bit_is_deterministic_and_fail_closed(self):
+        config = replace(
+            self.config,
+            lengths=(31,),
+            carrier_families=("legendre",),
+            layers=(8,),
+            type_count=3,
+        )
+        truth = _trial_truth(config, 7, "REPORT", "planted", 5, 31)
+        clean = _observe_and_decode_repeated_bit(
+            config,
+            7,
+            "REPORT",
+            truth,
+            "planted",
+            31,
+            8,
+            0.0,
+        )
+        self.assertEqual(clean["status"], "COMPLETED")
+        self.assertEqual(clean["predicted_type"], truth["true_type"])
+        noisy_a = _observe_and_decode_repeated_bit(
+            config,
+            7,
+            "REPORT",
+            truth,
+            "planted",
+            31,
+            8,
+            0.20,
+        )
+        noisy_b = _observe_and_decode_repeated_bit(
+            config,
+            7,
+            "REPORT",
+            truth,
+            "planted",
+            31,
+            8,
+            0.20,
+        )
+        self.assertEqual(noisy_a, noisy_b)
+        self.assertEqual(
+            noisy_a["observed_flip_rate"],
+            noisy_a["observed_flip_count"] / (8 * 31),
+        )
+        contract = noisy_a["contract"]
+        self.assertEqual(contract["physical_channel_uses"], 8 * 31)
+        self.assertEqual(contract["transmitted_energy"], 8 * 31)
+        self.assertIn("independent Bernoulli", contract["noise_channel"])
+        repeated_resource = noisy_a["resource_accounting"]
+        self.assertEqual(
+            repeated_resource["standalone_estimated_peak_bytes"],
+            sum(repeated_resource["component_breakdown"].values()),
+        )
+        self.assertFalse(repeated_resource["measured_process_peak"])
+        unavailable = _observe_and_decode_repeated_bit(
+            config,
+            7,
+            "REPORT",
+            truth,
+            "planted",
+            31,
+            1,
+            0.20,
+        )
+        self.assertEqual(unavailable["status"], "STRUCTURALLY_UNAVAILABLE")
+        self.assertFalse(
+            unavailable.get("matched_resource_advantage_claim_eligible", False)
+        )
+
+    def test_control_context_guard_refuses_before_control_allocation(self):
+        config = replace(
+            self.config,
+            lengths=(31,),
+            carrier_families=("legendre",),
+            layers=(8,),
+            planted_mask_families=("typed16",),
+            decoder_mask_policies=("typed16",),
+            type_count=3,
+        )
+        signatures, _manifest = _phase_codebook(31, 8, 3, 7)
+        templates, base, _provenance, ring_templates = (
+            _build_carrier_templates(
+                31,
+                8,
+                "legendre",
+                signatures,
+                7,
+            )
+        )
+        payload_groups, _ = _build_payload_groups(7, 2, 8, 31)
+        payload_bank = _materialize_payload_collision_bank(
+            payload_groups,
+            config.type_count,
+        )
+        reference_ffts = np.fft.rfft(templates, axis=2)
+        reference_norms = np.linalg.norm(templates, axis=2)
+        payload_ffts = np.fft.rfft(payload_bank, axis=2)
+        payload_norms = np.linalg.norm(payload_bank, axis=2)
+        resident = _unique_numpy_nbytes(
+            signatures,
+            templates,
+            base,
+            ring_templates,
+            payload_groups,
+            payload_bank,
+            reference_ffts,
+            reference_norms,
+            payload_ffts,
+            payload_norms,
+        )
+        with (
+            patch(
+                "run_prime_ring_waypoint_experiment."
+                "CONTROL_HARD_MAX_ESTIMATED_BYTES",
+                1,
+            ),
+            patch(
+                "run_prime_ring_waypoint_experiment._observe_native_oppw"
+            ) as native_observer,
+            patch(
+                "run_prime_ring_waypoint_experiment."
+                "_observe_and_decode_repeated_bit"
+            ) as repeated_observer,
+        ):
+            with self.assertRaises(CampaignValidationError):
+                _run_base_group(
+                    config,
+                    seed=7,
+                    length=31,
+                    carrier_family="legendre",
+                    layers=8,
+                    planted_mask_family="typed16",
+                    bit_flip_rate=0.35,
+                    signatures=signatures,
+                    templates=templates,
+                    ring_templates=ring_templates,
+                    payload_type_bank=payload_bank,
+                    payload_ffts=payload_ffts,
+                    payload_norms=payload_norms,
+                    reference_ffts=reference_ffts,
+                    reference_norms=reference_norms,
+                    resident_context_bytes=resident,
+                )
+        native_observer.assert_not_called()
+        repeated_observer.assert_not_called()
 
     def test_json_artifact_is_written_with_every_cell(self):
         with tempfile.TemporaryDirectory(dir=Path.cwd()) as tempdir:
