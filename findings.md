@@ -1,5 +1,298 @@
 # Findings & Decisions
 
+## 2026-07-23 Prime-Ring Onion-Lattice Findings
+- Live `origin/main` already contains thirteen lattice commits after the
+  recovered brain-file-map branch:
+  - H6 temperature schedule (`#280`);
+  - H5 steering-post bank, post-bank construction/runtime/conditions, and
+    head-to-head driver (`#279`, `#281`-`#283`, `#290`);
+  - rollback-backed steering control and promotion routing (`#284`-`#286`);
+  - H3 teacher-supervised correction and C3b wiring (`#287`-`#288`);
+  - H4 compound-cycle control (`#291`).
+- Those commits provide implementation surfaces and unit coverage, but the
+  current audit has not yet found durable real H5 head-to-head wins or evidence
+  that H4 compounding improves retrieval. Existing test prose explicitly says
+  the H5 win question belongs to the campaign rather than the wiring test.
+- The local ignored waypoint-research folder contains newer July planning,
+  campaign evidence, paper drafts, novelty assessments, harmonic-invariance
+  preregistration, and lattice endgame documents. These are research context,
+  not automatically durable repository evidence.
+- Canonical BCC-1 recovery is v9 on `codex/semantic-cache-coherence-h1` at
+  `11d548bd`, with pack, manifest, result, protocol, prior-art manifest, runner,
+  and 171-test recovery evidence. The v8 preformat directory is superseded and
+  must not be used as the implementation base.
+- The same branch contains later commit `2b0fa044`, whose subject says the H2
+  reruns closed both `CD-H1-01` and `CD-A2-01`. Exact artifacts and flag
+  synchronization still require live audit before accepting that disposition.
+- July lattice endgame records state that the corrector question was answered
+  negatively and the powered estimator path also failed: annealing, living,
+  and bounded correctors matched or lost to trivial controls. This is a
+  disconfirming result, not a foundation for the prime-ring hypothesis.
+- The live H5 implementation explains at least one negative structurally:
+  `C5` and static `C5s` construct the same deterministic bounded bank, route
+  from the same pre-drift snapshot, and `C5` deterministically rebuilds pruned
+  posts from the same anchors/seed before applying them. They should tie, while
+  the existing strict gate requires `C5 > C5s`. That gate is unwinnable without
+  a genuinely state-changing router or bank update.
+- Hypothesis naming is already ambiguous: durable diagnostics use `H3` for the
+  confirmed C2 oracle-re-embed result, while later PRs reuse `H3` for unrun C3b
+  teacher distillation. New work must use a separate `PRW-*` registry and may
+  not inherit any bare `H3` status.
+- The merged H3-H6 additions are not complete campaign surfaces:
+  - run-level correction-norm aggregation omits C3b and C5 variants;
+  - bounded runtime C3b discards learning diagnostics and has no NDCG campaign;
+  - H6 controls only post-bank pruning, not the roadmap's shared
+    sedimentation/updater/ES schedule or high-temperature perturbation;
+  - H4/H5 campaign knobs are absent from the CLI and default campaign;
+  - their deferred GPU campaigns were not carried into `docs/next-session.md`.
+- Despite their `feat(lattice)` labels, the merged H3-H6 code contains no
+  mathematical lattice, DAG, sheaf, holonomy, ring, or 4691 mechanism. H5 is a
+  flat centroid-to-correction dictionary. The prime/onion mechanism therefore
+  has not been tested by those commits.
+- `codex/crsv-onion-method-dev` at `59378814` is an unmerged local branch whose
+  name and recovery placement indicate likely overlap with conditional
+  replacement/subdomain variance and onion-layer work. Audit it before adding
+  a second implementation.
+- The block-flag script mechanically passes `CLEAR` but reports two open carried
+  debts. Their June dates are older than the rulebook's one-cycle/five-day
+  limit, so the declared flag may be stale. New feature implementation remains
+  paused while exact debt disposition is reconstructed.
+- After fast-forwarding to the recovered canonical baseline, commit `2b0fa044`
+  supplies the real swap-path campaign evidence and closes both rows.
+  `scripts/check_block_flag.py` now reports `CLEAR`, zero carried-debt rows, and
+  `PASS`; isolated METHOD_DEV feature work is permitted.
+- The campaign now runs on isolated branch
+  `codex/prime-ring-onion-method-dev` at current `origin/main`; the user's
+  `feat/brain-file-map-b0-b1` commit remains preserved on its original branch.
+- `4691` is prime, `4691 mod 4 = 3`, and
+  `4691 - 1 = 2 * 5 * 7 * 67`.
+- The length-4691 bipolar Legendre sequence was checked exhaustively in the
+  current session: zero-shift correlation is `4691`; every one of the 4,690
+  nonzero additive shifts has correlation `-1`.
+- `4091` is also prime and `3 mod 4`, has the same Legendre property, and is a
+  mandatory hardware-friendly control.
+- Post-restart full-size exact verification passed for both carriers:
+  - `4091`: prime and all 4,090 nonzero autocorrelations equal `-1`;
+  - `4691`: prime and all 4,690 nonzero autocorrelations equal `-1`;
+  - `4690` factors exactly as `(2, 5, 7, 67)`;
+  - `2` is a primitive root modulo `4691`.
+- A full-size eight-layer quotient probe at `p=4691` produced:
+  - correct shared-shift score `1.0`;
+  - a wrong signature with at most one aligned layer scored
+    `0.12481347260712003`;
+  - observed margin `0.8751865273928799`;
+  - conservative analytic wrong-score bound `0.12518652739287997`.
+  This validates the noiseless separation construction, not semantic utility.
+- There are two distinct singleton/binary ideas:
+  - Rader separates `{0}` from the 4,690 nonzero field coordinates. This is one
+    anchor scalar per channel, not inherently one bit.
+  - `Z_4690 ~= Z_2 x Z_5 x Z_7 x Z_67`; the `Z_2` factor supplies one
+    multiplicative polarity character per ring.
+- Eight binary rings can therefore form an eight-bit cross-layer orientation
+  mask with 256 configurations. Free search over all masks also creates a
+  256-way false-match opportunity, so masks require type/provenance constraints
+  or multiple-comparison-corrected thresholds.
+- Additive phase recovery and multiplicative payload pivots are different:
+  - additive shifts create the 4,691 ideal Legendre alignments;
+  - multiplicative action on a pure Legendre carrier yields only the original
+    pattern or its sign inverse;
+  - CRT pivots must be tested on arbitrary/learned payloads.
+- With primitive root `2`, a nonzero exponent has CRT coordinates
+  `(n mod 2, n mod 5, n mod 7, n mod 67)`. Exact reconstruction is
+  `n = 2345*n2 + 1876*n5 + 2010*n7 + 3150*n67 (mod 4690)`.
+- Eight binary 4,691-bit planes occupy exactly 4,691 bytes only as a
+  theoretical bit-packed representation. The current semantic payload API uses
+  `float64`: one `8 x 4691` payload occupies 300,224 array bytes. Packed binary
+  accounting cannot be applied to those real-valued payloads.
+- The strongest existing-prior-art collision is Residue Hyperdimensional
+  Computing plus resonator decoding. HRR/FHRR, Legendre/Paley codes,
+  product-key memory, cellular sheaves, and low-rank adapters cover other
+  individual components.
+- The current defensible research target is the integration and causal
+  interaction of typed lattice consistency, constrained cross-layer phase,
+  queue-conditioned gating, and reversible local correction. It is not yet a
+  novel theory.
+- The diagonal-quotient phase signature has an exact known-code isomorphism.
+  Map phase vector `phi` to a one-pulse-per-wavelength 2D binary array
+  `B_phi(layer, position) = 1[position == phi[layer]]`. A global phase offset
+  is a common cyclic column shift, and the PRW overlap `kappa` is exactly the
+  shifted cross-correlation of two such arrays. This is the standard orbit and
+  correlation structure of OPPW two-dimensional optical orthogonal codes.
+- Consequently, standalone phase-address novelty is **refuted**. The dense
+  Legendre carrier converts the same OPPW overlap count into a bipolar
+  correlation score; it does not create a new address space.
+- `typed16` is also known: the eight Walsh/Hadamard rows and their negatives
+  are the 16-word first-order Reed-Muller/biorthogonal code `RM(1,3)` with
+  parameters `[8,4,4]`.
+- The surviving publishable questions are now limited to:
+  - a genuinely new finite-sample false-unlock/error theorem for the joint
+    dense decoder;
+  - a matched-resource Pareto advantage over sparse OPPW and ordinary
+    key-value routing;
+  - a preregistered positive higher-order interaction that is not explained by
+    the known components;
+  - a rigorous systems result joining routing, queue control, and reversible
+    provenance-scoped correction.
+- Hostile implementation review found no P0 defect and independently confirmed
+  the FFT shift convention, exact 4691 autocorrelation, quotient gauge,
+  overlap bound, `typed16` search, and `free256` factorization. It nevertheless
+  issued a NO-GO for PRW-1 through PRW-4 evidence until six P1 contracts close:
+  true end-to-end 4096 control, truthful payload storage, crossed planted and
+  decoder masks, fixed false-unlock sample/interval rules, distinct clean
+  templates and corrupted query types, and a frozen bank argmax/margin/unlock
+  evaluator.
+- The protocol now freezes a single primary false-unlock cell, disjoint
+  hash-derived `BANK`/`SELECT`/`REPORT` streams, exact SELECT/REPORT group
+  counts, a fixed score-margin grid, a lexicographic threshold rule, and a
+  one-sided 97.5% exact Clopper-Pearson upper bound. Runs below that contract
+  are explicitly `SMOKE_NON_EVIDENTIARY`.
+- Sparse OPPW decoding over the identical phase codebook is mandatory. Without
+  it, any dense-carrier advantage is `INCONCLUSIVE`.
+- A deeper reduction further narrows the theorem lane. Flattening every
+  type/shift/mask carrier into a bipolar codeword makes dense PRW correlation
+  exactly maximum-likelihood nearest-codeword decoding on a binary symmetric
+  channel. A fixed competitor at Hamming distance `d` ties or wins exactly
+  when at least `ceil(d/2)` of those differing coordinates flip.
+- With known matching orientation and `k` aligned layers, the exact Legendre
+  distance is `(L-k)*(p+1)/2`. The resulting pairwise error is an ordinary
+  binomial tail, and bank error admits the standard distance-spectrum union
+  bound. This means a generic finite-noise theorem is coding theory, not a new
+  memory theory; only a sharper structured distance spectrum or joint-decoder
+  result could remain mathematically interesting.
+- An independent small exact check at `p=31`, `L=4`, `k=2`, and bit-flip rate
+  `0.35` gave distance `32`, analytic tie-or-win probability
+  `0.05784490084795206`, and empirical frequency `0.057965` over 200,000
+  trials.
+- A post-restart local generic NumPy cyclic-correlation microbenchmark
+  (16 candidate types, 8 layers, 30 measured repetitions after warmup) found:
+  - length 4091: median `24.863 ms`, p95 `27.657 ms`;
+  - length 4096: median `5.351 ms`, p95 `6.859 ms`;
+  - length 4691: median `28.347 ms`, p95 `39.702 ms`.
+  On this generic CPU path, 4096 is about 5.30x faster than 4691. This is a
+  bounded kernel timing, not end-to-end latency and not a Rader implementation,
+  but it is direct negative pressure on `PRW-4`.
+- The exact code-distance analysis makes the old 90%-at-0.45 target
+  scientifically misleading. For `p=4691`, `L=8`, `kappa<=1`, `typed16`, and
+  bit-flip rate `0.45`, the wrong-type minimum-distance lower bound is `16418`.
+  Across 1,125,840 wrong type/shift/mask hypotheses, the Chernoff union bound is
+  about `1.66e-30`. Under the ideal simulator, anything materially below
+  perfect raw type recovery is evidence of a bug or violated model assumption,
+  not encouraging partial success.
+- A sparse OPPW code under the same per-coordinate BSC has distance only
+  `2*(8-1)=14` and a large pairwise error at rate `0.45`. That apparent dense
+  advantage is the ordinary consequence of expanding the code across roughly
+  `p/4` more Hamming distance/energy; it is not a matched-resource memory
+  breakthrough.
+- The only credible new mathematical conjecture left is sharper and much
+  narrower: for the frozen overlap-one Legendre-by-`RM(1,3)` bank, the total
+  wrong-type error may asymptotically equal nearest-state multiplicity times
+  the exact binomial pairwise tail. Testing it requires disagreement-set
+  intersections, Hunter's spanning-tree correction, and importance sampling.
+  The pairwise theorem itself is standard; only a proved sharp structured-bank
+  asymptotic could be a new decoder result.
+- Hostile runner review exposed and killed one tempting but invalid
+  composition: applying the type-relative phase signature to the supposedly
+  separate payload lets global payload-only search recover the type. Payload
+  collision groups must remain in identical type-canonical coordinates and
+  inherit only global transport; otherwise there is no carrier "unlock" to
+  test.
+- A pure shared Legendre ring cannot identify waypoints after maximizing over
+  rotation because all rotations are equivalent. It can be a phase/synchrony
+  carrier only; identity must live in a separate payload code or subspace.
+- Searching all 256 eight-layer polarity masks is algebraically equivalent to
+  summing per-layer absolute correlations. It is therefore a false-unlock
+  control, not a legitimate default router.
+- The existing evidence DAG rejects cycles by design. Any cyclic phase carrier
+  must remain inside an experimental router; waypoint lifecycle, correction,
+  pruning, and rollback should reuse the existing steering-post bank rather
+  than weakening evidence-DAG invariants.
+- The proposed prime-phase mechanism therefore has one especially useful
+  falsification target: it must make a query-conditioned route decision that
+  differs from the static bank while preserving immutable evidence and
+  rollback. Merely wrapping the same deterministic posts in rotations cannot
+  alter H5 outcomes.
+- A later off-baseline Rung-16 campaign is an even closer prior lane:
+  `5a3fbcc2` tested a quant-aware subdomain routing plane and failed its frozen
+  SELECT gate in both arenas. Plane-minus-single-global SELECT NDCG was
+  `0.000000` on SciFact and `-0.000899` on the mixed
+  SciFact/NFCorpus/FiQA2018 arena; corresponding REPORT deltas were
+  `-0.003332` and `-0.007383`. This is direct negative evidence against the
+  assumption that more conditional subdomain routes inherently improve
+  retrieval.
+- Commit `7e6c9118` records the adjacent living/annealing results:
+  - C5 living and C5s static are numerically identical on SciFact
+    (`0.131135`) and NFCorpus (`0.046389`);
+  - the one-shot C5r route beats living C5 on SciFact and is nearly tied on
+    NFCorpus; and
+  - the one-seed H4 compound-cycle ablation collapses NDCG from `0.236297` to
+    `0.005258`.
+  These runs do not test PRW phase coding, but they do falsify any inherited
+  premise that layering, living updates, or repeated correction is beneficial.
+- Consequently, a PRW key can earn a systems contribution only if its route
+  changes real held-out decisions and beats the single-global, direct-metadata,
+  static-bank, and one-shot controls. Cleaner indexing of an ineffective bank
+  is not a retrieval gain.
+- The original `feat/brain-file-map-b0-b1` branch remains preserved. Current
+  METHOD_DEV edits are isolated on `codex/prime-ring-onion-method-dev` and are
+  intentionally uncommitted while the runner and hostile review converge.
+- The strongest newly located primary-source collision is Nguyen Q. A.,
+  Györfi, and Massey (IEEE TIT, 1992): it maps each symbol of a `p`-ary outer
+  word to a cyclic shift of a length-`p` binary Legendre word. For
+  `p = 3 mod 4`, two unequal symbols contribute exactly `(p + 1) / 2` Hamming
+  distance, so its unmasked distance is exactly the PRW identity
+  `(L - r) * (p + 1) / 2`. This is more direct prior art than the OPPW
+  isomorphism alone.
+- No primary paper was found in the bounded audit that proves the exact
+  `PRW-T1` ratio-one asymptotic for the frozen overlap-one
+  Legendre-by-`RM(1,3)` bank. The defensible residual is narrow: freeze `q`,
+  tie handling, transmitted-state averaging, and a bank sequence, then prove
+  both aggregate nearest-event intersections and all farther-neighbor
+  contributions are little-o of
+  `A_min * beta_q(d_min)`. Standard pairwise tails, union bounds, and
+  conditional "negligible intersections imply exactness" are not novel.
+- The bounded exact-number literature audit found no application-specific
+  published use of `4691`. That is not evidence that none exists. Its known
+  properties remain generic: prime, `3 mod 4`, and a smooth `p - 1` useful only
+  if an actual Rader implementation wins a benchmark.
+- The final corrected smoke artifact is
+  `artifacts/method-dev/prime-ring/prime-ring-waypoint-v1.json`:
+  - `576/576` cells retained;
+  - `255` completed and `321` structurally unavailable;
+  - zero errors and zero false-unlock gate passes;
+  - `SMOKE_NON_EVIDENTIARY`, `METHOD_DEV`, promotion and production disabled;
+  - `PRW-1` through `PRW-3` inconclusive smoke, `PRW-4` inconclusive,
+    `RADER-1` untested, novelty not established.
+- The smoke's apparently perfect routed payload result at some cells is not a
+  scientific result: there are only three REPORT planted groups per seed,
+  thresholds are point-estimate-only, and identical cross-type payloads make
+  payload-only Recall@K canonical-tie dependent. The artifact explicitly marks
+  `K = 5 > T = 4` as not evidence of type retrieval.
+- Required controls remain fail-closed and unimplemented: a native sparse OPPW
+  observation with matched noise/energy, an equal-channel-use repeated-bit
+  code, block/burst noise, process RSS, repeated hardware timing, and the full
+  pooled 512/1024-per-class campaign.
+- The actual sample resource accounting now distinguishes, for the
+  `p=4691`, `L=8`, `T=4`, `W=4` cell, `4,803,584` logical type-expanded
+  payload bytes from `1,200,896` deduplicated stored payload bytes. Actual-cost
+  efficiency uses the deduplicated total, while FFT/product/routed temporary
+  peaks are conservative componentized estimates rather than process-RSS
+  measurements.
+- Final live validation passed:
+  - `49/49` PRW core, runner, and exact-reduction tests;
+  - `31/31` adjacent CRSV adversarial tests;
+  - focused Ruff checks clean;
+  - stable Clopper-Pearson probes at `n=1536` and `n=3072` invert to CDF
+    `0.025` within floating-point tolerance;
+  - block-flag gate `CLEAR`, zero carried debt.
+- Current verdict: there is no established groundbreaking computing result.
+  The broad rotating-prime/onion story reduced to known code constructions and
+  ordinary distance expansion. The only mathematically plausible new work is
+  the very narrow `PRW-T1` intersection-spectrum theorem; the only plausible
+  systems work is a matched-resource carrier-to-separate-payload gate that
+  changes real held-out decisions. Neither has been validated.
+
+---
+
 ## 2026-03-28 Disk-Resident LLM Feasibility Findings
 - The paper referenced in the user request was not attached in-session. The closest primary-source fit to the request is `LLM in a Flash`, so the current feasibility pass uses that as the working assumption.
 - ChelatedAI's current computational-storage path is still a transport and replay proof, not a transformer runtime.

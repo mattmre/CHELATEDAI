@@ -1,5 +1,172 @@
 # Progress Log
 
+## Restart resume: 2026-07-24
+
+- Recovered the isolated branch and every pre-restart research edit.
+- Confirmed the core module, 26-test suite, and formal protocol are intact; the
+  interrupted runner and artifact did not exist and are being rebuilt.
+- Re-ran the exact core suite after restart: 26 tests passed in 0.242 seconds.
+- Exhaustively re-verified the full `4091` and `4691` Legendre
+  autocorrelation identities and the `4691` primitive-root/CRT arithmetic.
+- Executed a full-size eight-layer quotient-separation probe and observed the
+  predicted roughly `0.87519` noiseless correct-versus-wrong margin.
+- Completed a hostile current-literature pass that identified the phase-code
+  construction exactly with OPPW 2D optical orthogonal codes and `typed16`
+  with `RM(1,3)`.
+- Reconditioned the novelty claim: mathematical phase-address novelty is
+  refuted; only joint-decoder theory or matched non-additive systems utility
+  remains open.
+- The system interpreter still lacks repository dependencies; NumPy remains
+  isolated under `C:\tmp\chelatedai-crsv-deps`.
+- Read-only syntax validation will replace `py_compile` because the managed
+  sandbox denied its `tests/__pycache__` write.
+- Installed Ruff only under `C:\tmp\chelatedai-lint-deps`; the core module and
+  its focused tests pass lint.
+- Completed a hostile core review: arithmetic/synchronization is GO, but
+  PRW-1 through PRW-4 interpretation remains NO-GO pending six P1 contract
+  fixes.
+- Hardened the formal protocol with separate planted/decoder mask factors,
+  truthful float64 and actual-array byte accounting, an end-to-end 4096
+  Rademacher control, mandatory sparse OPPW decoding, fixed bank semantics,
+  exact sample counts, a frozen threshold grid, and one-sided 97.5% exact
+  false-unlock bounds.
+- The resumed runner skeleton now preserves a complete Cartesian manifest and
+  domain-separated random streams; scorer, aggregation, tests, and the first
+  artifact are still being completed.
+- Audited adjacent off-baseline lattice results after the restart. Rung 16's
+  quant-aware subdomain routing plane failed closed in both recorded arenas;
+  H5 living banks tied their static copies; and the H4 compounded-correction
+  ablation collapsed. These are now mandatory negative baselines for any later
+  PRW queue/correction or RAG claim.
+- Derived and simulated the exact binary-code reduction for the dense decoder.
+  A 200,000-trial small-ring check matched the exact binomial pairwise-error
+  probability within sampling error, further reconditioning the putative new
+  theorem toward a standard code-distance result.
+- Benchmarked the existing generic batched FFT correlation path at all three
+  mandatory lengths. Length 4096 was roughly 5.30x faster than 4691 on median
+  kernel time; this does not test Rader but makes a special 4691 performance
+  claim unlikely without a separate implementation and accuracy win.
+- Stopped the first default smoke before artifact publication after hostile
+  review found payload type leakage and an explosive repeated cold-FFT control
+  path. Reconditioned the protocol so semantic payload collisions are
+  type-canonical and carry only global transport; the invalid run is not
+  evidence.
+- Closed the remaining runner contracts:
+  - paired bit-flip and payload-noise severities from rate-independent base
+    draws;
+  - numerically stable full-size Clopper-Pearson inversion with cached
+    threshold evaluations;
+  - crossed planted-mask/decoder-mask distance words;
+  - deduplicated payload FFT scoring and canonical cross-type tie semantics;
+  - logical-versus-actual storage separation;
+  - conservative componentized payload temporary-memory estimates;
+  - explicit fail-closed sparse-OPPW, repeated-bit, and Recall@K caveats.
+- Deleted each superseded generated smoke artifact before it could be cited,
+  then regenerated the final corrected artifact from the settled code.
+- Executed the final bounded smoke in 77 seconds:
+  - `576/576` retained;
+  - `255` completed, `321` structurally unavailable, zero errors;
+  - zero false-unlock gate passes;
+  - no primary aggregate, promotion, production, Rader, or novelty claim.
+- Added executable exact-reduction tests for:
+  - dense Legendre score as an affine transform of OPPW overlap;
+  - dense-versus-sparse Hamming distance and channel-use expansion;
+  - exact BSC pairwise binomial-majority error;
+  - the `p=4691`, `L=8`, overlap-one full-size distance and union-bound
+    implementation falsifier.
+- Final independent validation:
+  - `49/49` PRW tests passed;
+  - `31/31` CRSV tests passed;
+  - focused Ruff checks passed;
+  - full-size Clopper-Pearson numerical boundary probes passed;
+  - final hostile verdict is GO for corrected non-evidentiary smoke and NO-GO
+    for scientific validation, novelty, matched-resource advantage, or
+    promotion.
+- Completed a fresh bounded primary-literature audit. A 1992 binary
+  constant-weight cyclic-code construction is an exact collision with the
+  unmasked Legendre-inner phase bank. No exact published `PRW-T1` ratio-one
+  theorem or special application of `4691` was found; this is not a patent/FTO
+  conclusion.
+
+## Session: 2026-07-23 Prime-Ring Onion-Lattice METHOD_DEV
+
+### Recovery and scope lock
+- **Status:** in progress
+- Actions completed:
+  - Ran the planning-session recovery helper; it returned no unsynced context.
+  - Rebuilt live worktree and branch state.
+  - Read repository brutal-honesty, testing, and handoff instructions.
+  - Recovered the existing planning files without overwriting historical
+    sessions.
+  - Preserved `feat/brain-file-map-b0-b1` and moved this campaign onto isolated
+    branch `codex/prime-ring-onion-method-dev` based on refreshed
+    `origin/main`.
+  - Audited the thirteen newer lattice commits and identified existing H3-H6
+    implementation surfaces.
+  - Located ignored July waypoint-research materials and the recovered BCC-1
+    method-development pack for exact restart recovery.
+  - Recovered the canonical BCC-1 v9 branch/commit and marked the v8 recovery
+    directory superseded.
+  - Found the later H2 rerun commit that may close both stale carried-debt rows;
+    exact artifact audit is in progress.
+  - Located `codex/crsv-onion-method-dev` as a likely overlapping implementation
+    that must be evaluated before new code is written.
+  - Reframed the campaign after finding the prior corrector and powered
+    estimator results were negative.
+  - Fast-forwarded the isolated campaign branch to the recovered CRSV/BCC-1
+    baseline at `59378814`; the original user branch remains untouched.
+  - Installed NumPy only in `C:\tmp\chelatedai-crsv-deps` for test execution,
+    without changing the repository or system environment.
+  - Executed all 31 recovered CRSV adversarial tests successfully.
+  - Identified a structural reason the current H5 `C5 > C5s` gate cannot pass:
+    both routes apply the same deterministically reconstructed post bank.
+  - Audited H3-H6 campaign reachability, metric aggregation, and governance:
+    found hypothesis-ID collision, missing CLI/campaign paths, incomplete norm
+    aggregation, and deferred campaigns absent from carried-debt tracking.
+  - Confirmed the merged "lattice" code implements no actual lattice/ring/phase
+    object; it is reusable adapter-routing infrastructure, not evidence against
+    or for the prime/onion mechanism.
+  - Wrote the formal `CHELATEDAI-PRW-v0.1` protocol with a diagonal-quotient
+    relative-phase key, separate payload bank, exact nulls, controls,
+    thresholds, reconditioning rules, and a novelty interaction falsifier.
+  - Updated the prior-art boundary with residue HDC, resonator networks, linear
+    HDC codes, qFHRR, phase-associative memory, multi-reference alignment,
+    cyclic equivariant decoding, and Kronecker-rotation cleanup.
+  - Re-ran the live block-flag gate on the canonical recovered baseline:
+    `CLEAR`, zero carried-debt rows, `PASS`.
+  - Verified `4691` primality, congruence, factorization, Legendre
+    autocorrelation, and CRT mapping.
+  - Separated additive Legendre rotations, multiplicative CRT payload pivots,
+    zero/DC anchoring, and eight-layer polarity into independent mechanisms.
+  - Recorded a seven-phase falsification ladder in `task_plan.md`.
+- Current evidence boundary:
+  - arithmetic construction: verified;
+  - shared Legendre carrier as waypoint identity: disproved by rotational
+    equivalence;
+  - unconstrained 256-mask search: retained only as a false-unlock control;
+  - computational advantage: untested;
+  - retrieval/training benefit: untested;
+  - novelty: unestablished.
+- Validation pending:
+  - carried-debt age/disposition audit despite the mechanically `CLEAR` flag;
+  - exact branch/base audit;
+  - dependency and test preflight;
+  - mechanism implementation and hostile review.
+- Errors:
+  - Default WindowsApps PowerShell launcher returned access denied; the same
+    failing path will not be retried.
+  - The first isolated-branch attempt was blocked because the managed sandbox
+    makes `.git` read-only. No stash, switch, or Git mutation occurred.
+  - The same operation succeeded through the narrowly elevated Git path; the
+    stash was applied and dropped with all three planning edits preserved.
+  - The recovered CRSV worktree required a command-local Git safe-directory
+    declaration because it is owned by the interactive Windows account.
+  - The first CRSV test invocation used the system Python and failed during
+    collection because NumPy is absent. No CRSV test executed and no scientific
+    inference is drawn from that environment failure.
+
+---
+
 ## Session: 2026-03-28
 
 ### Disk-Resident LLM Feasibility

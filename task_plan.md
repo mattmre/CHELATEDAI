@@ -1,3 +1,204 @@
+# Active METHOD_DEV Campaign: Prime-Ring Onion-Lattice Memory
+
+## Goal
+- Unwind the current conjectures into independently falsifiable mechanisms.
+- Determine which mechanisms improve alignment, correction cost, and conjunctive
+  recall under matched compute and false-unlock budgets.
+- Isolate the smallest combination not already covered by Legendre codes,
+  holographic/VSA memory, resonator networks, residue HDC, product-key memory,
+  cellular sheaves, or parameter-efficient adapters.
+- End with an evidence-bounded theory, a disproof, or an explicit unresolved
+  result. No "novel", "breakthrough", or production claim is permitted from
+  arithmetic identities, unit tests, or synthetic wins alone.
+
+## Scope Lock
+- Evidence mode: `METHOD_DEV`.
+- Initial work is a dependency-light simulator and experiment protocol, not a
+  production retrieval path.
+- The semantic backbone remains outside the first mechanism tests.
+- "Gravity" means an explicit queue/occupancy potential only.
+- "Living memory" means confidence-gated, reversible derived-state updates with
+  immutable source evidence and rollback.
+- Additive Legendre rotations and multiplicative CRT pivots are separate
+  mechanisms and must never be reported as one effect.
+
+## Current Live State (2026-07-24 restart resume)
+- Session catch-up script completed with no unsynced report.
+- The campaign is isolated on `codex/prime-ring-onion-method-dev`, based on
+  refreshed `origin/main` at `34ce4b56`; the user's
+  `feat/brain-file-map-b0-b1` branch remains untouched.
+- The live block-flag gate is `CLEAR`, reports zero carried-debt rows, and
+  passes. New METHOD_DEV work is allowed.
+- Canonical BCC-1 recovery is v9 on `codex/semantic-cache-coherence-h1` at
+  `11d548bd`; the recovered v8 directory is superseded and audit-only.
+- `codex/crsv-onion-method-dev` at `59378814` may already implement part of the
+  proposed conditional-replacement/onion mechanism and is the next overlap
+  audit target.
+- The isolated branch has been fast-forwarded to that recovered baseline; CRSV
+  has 31/31 focused tests passing and the live block gate is `CLEAR` with zero
+  carried-debt rows.
+- The standalone diagonal-quotient phase-address novelty claim is refuted by an
+  exact OPPW 2D optical-code isomorphism. The campaign now asks only whether the
+  dense joint decoder has a new theorem or a matched systems advantage.
+- All implementation-contract P1s found by hostile review are now closed:
+  generic 4096 routing, strict template/observation types, causal payload
+  separation, crossed planted/decoder masks, paired severity draws, stable
+  full-size confidence bounds, deduplicated storage accounting, and
+  componentized peak-temporary estimates.
+- The corrected bounded smoke is GO as wiring evidence only: 576/576 cells
+  retained, 255 completed, 321 structurally unavailable, zero errors, and zero
+  false-unlock gate passes. Scientific validation, novelty, matched-resource
+  advantage, and promotion remain NO-GO.
+- The strongest direct prior-art collision is now the 1992
+  Legendre-inner/`p`-ary-outer binary constant-weight cyclic construction,
+  which has the same unmasked distance formula. Only `PRW-T1`'s exact
+  intersection-spectrum/ratio-one theorem or a matched systems interaction is
+  plausibly unresolved.
+
+## Falsification Ladder
+
+### Phase 0 — Recovery, gates, and theory ledger
+- Status: COMPLETE
+- Rebuild exact Git, block-flag, test-policy, and handoff truth.
+- Write a claim ledger with formal hypotheses, nulls, controls, metrics, and
+  promotion/kill criteria.
+- Audit canonical BCC-1 v9, `codex/crsv-onion-method-dev`, and the ignored July
+  lattice endgame materials before creating any overlapping harness.
+- Resolve whether the two June carried-debt rows require a stale flag flip or
+  already have closure evidence in newer local artifacts.
+- Treat the earlier corrector/estimator arc as a negative result: the
+  prime-ring router must earn an independent mechanism win and may not inherit
+  a positive premise.
+
+### Phase 1 — Arithmetic and code mechanism
+- Status: COMPLETE FOR CONSTRUCTION; NO SCIENTIFIC PROMOTION
+- Verify candidate lengths, primitive-root/CRT mappings, and exact Legendre
+  autocorrelation independently of learned data.
+- Controls: `4091`, `4691`, `4096`, neighboring composite lengths, random
+  bipolar sequences, and learned sequences.
+- Kill criterion: prime/Legendre effects disappear after code length, bit
+  budget, and admissible full-order shifts are controlled.
+- Core arithmetic/synchronization checks and the corrected smoke harness pass.
+  Exact tests lock the OPPW affine score map, channel-use distance expansion,
+  BSC binomial tail, and the full-size 4691 implementation falsifier.
+
+### Phase 2 — Single-ring unlocking
+- Status: BOUNDED SMOKE COMPLETE; FULL METHOD_DEV NOT RUN
+- Recover planted additive phase under controlled corruption and distractors.
+- Compare direct XOR/popcount, library FFT/Bluestein, and only then custom
+  Rader/Good-Thomas if justified.
+- Required metrics: phase recovery, peak/sidelobe margin, false unlocks,
+  latency, bytes, and scaling.
+
+### Phase 3 — Eight-layer orientation byte
+- Status: BOUNDED SMOKE COMPLETE; MATCHED ADVANTAGE UNRESOLVED
+- Compare no polarity, one shared polarity bit, eight free bits, a
+  type-constrained/error-correcting mask set, and external reversible
+  eight-channel mixing.
+- Correct for the 256-mask multiple-comparison opportunity.
+- Kill criterion: apparent recall gains vanish at matched false-unlock rate.
+
+### Phase 4 — CRT payload pivots
+- Status: NOT TESTED AS A PERFORMANCE MECHANISM
+- Test multiplicative `2 x 5 x 7 x 67` pivots only on learned/arbitrary
+  payloads; pure Legendre carriers are a required degeneracy control.
+- Kill criterion: additive shifts or ordinary learned permutations match the
+  pivot at lower cost.
+
+### Phase 5 — Waypoints and correction annealing
+- Freeze the backbone/reference representation.
+- Compare local waypoint adapters against no adapter, global correction, LoRA-
+  style low-rank correction, and nonrotating product-key waypoints.
+- Anneal soft assignments into hard unlocks with rollback and immutable source
+  provenance.
+- Required metrics: correction steps, trainable parameters, retained-task
+  performance, calibration, convergence/limit cycles, and memory drift.
+
+### Phase 6 — Conjunctive RAG/DAG recall
+- Promote only mechanisms that survived Phases 1-5.
+- Test semantic + relation + time + provenance conjunctions under fixed corpus,
+  generator, token, latency, and candidate budgets.
+- Required metrics: evidence-set F1, Recall@k, answer accuracy, contradiction
+  rate, provenance violations, false unlocks, latency, and storage.
+
+### Phase 7 — Novelty and theory verdict
+- Status: CORE CODE CONSTRUCTION KNOWN; `PRW-T1` UNRESOLVED
+- Compare the surviving mechanism against HRR/FHRR, resonator networks, residue
+  HDC, product-key memory, sheaf consistency, and parameter-efficient adapters.
+- Produce one of: `SUPPORTED_COMBINATION`, `KNOWN_COMBINATION`,
+  `MECHANISM_DISPROVED`, or `UNRESOLVED`.
+- The standalone diagonal-quotient phase-address claim is already
+  `KNOWN_COMBINATION`: it is isomorphic to an OPPW 2D optical orthogonal code.
+  Only a new joint-decoder theorem, matched Pareto win, or positive
+  higher-order systems interaction remains unresolved.
+
+## Working Hypotheses
+- All new IDs use the `PRW-*` namespace because the repository already has
+  conflicting meanings for bare `H3`.
+- `PRW-0`: arithmetic, autocorrelation, quotient-phase, mask-codebook, and CRT
+  invariants hold exactly.
+- `PRW-1`: a Legendre carrier recovers a planted shared cyclic phase under
+  preregistered corruption better than matched random carriers at a fixed
+  false-unlock rate.
+- `PRW-2`: a separate payload plus an interlayer relative-phase signature
+  identifies the planted waypoint; a shared carrier with independent
+  per-layer maximization remains at chance.
+- `PRW-3`: a constrained cross-layer mask codebook lowers false unlocks versus
+  free 256-mask search at matched true-unlock recall.
+- `PRW-4`: length 4691 improves utility per byte or latency over matched 4091,
+  4096, and random/composite controls.
+- `PRW-5`: only after PRW-1 through PRW-4 survive, a causal queue-aware router
+  improves held-out correction efficiency over the existing static H5 bank.
+- `RADER-1`: separately, an actual Rader implementation outperforms generic
+  correlation for prime length; generic NumPy FFT timings cannot test this.
+- `H-PRIME-DIM`: prime ambient dimension has no independent benefit. Expected
+  null; retained as a negative control.
+- `H-LEGENDRE-UNLOCK`: prime lengths congruent to `3 mod 4` improve planted
+  cyclic-phase recovery through ideal periodic autocorrelation.
+- `H-ORIENTATION-BYTE`: eight type-constrained per-layer polarity bits improve
+  conjunctive recall at fixed false-unlock rate.
+- `H-CRT-PIVOT`: factored multiplicative pivots improve matching for non-
+  Legendre structured payloads under matched latency.
+- `H-WAYPOINT-CORRECTION`: aligned local waypoint adapters reduce correction
+  cost and forgetting relative to global updates.
+- `H-ANNEALED-GATE`: deterministic annealing improves convergence/calibration
+  without increasing drift or false unlocks.
+- Candidate combined residue, not a novelty claim: a stateful cellular/sheaf
+  memory with prime-order cyclic fibers, typed interlayer holonomy, constrained
+  orientation masks, queue-conditioned alignment, and reversible
+  provenance-preserving correction.
+
+## Promotion Rules
+- Arithmetic verification establishes construction validity only.
+- Synthetic recovery establishes a mechanism only.
+- Cross-dataset held-out improvement establishes bounded utility only.
+- Novelty requires a fresh primary-source search plus claim-chart comparison.
+- No phase may inherit a claim from a failed predecessor.
+
+## Formal Protocol
+- The active specification is
+  `docs/research/prime-ring-waypoint-method-dev-protocol-2026-07.md`.
+- The first executable slice is isolated from production routing, correction,
+  annealing, and the evidence DAG.
+
+## Errors Encountered
+| Error | Attempt | Resolution |
+|-------|---------|------------|
+| Default WindowsApps PowerShell launcher failed with access denied | 1 | Switched read-only recovery and command execution to the bundled Node runtime; do not repeat the failed launcher path |
+| Initial repo-state read produced truncated combined output | 1 | Re-read required files with bounded line ranges |
+| Git branch isolation could not create `.git/index.lock` in the managed sandbox | 1 | Request the narrowly scoped Git stash/switch operation with elevated filesystem permission; do not bypass `.git` protection |
+| Recovered worktree triggered Git dubious-ownership protection | 1 | Used a command-local `safe.directory` override for that exact read-only worktree; did not change global Git configuration |
+| Default Python could not import NumPy for the CRSV test suite | 1 | Locate and use the repository's declared/managed Python environment before rerunning; this is an environment failure, not a mechanism result |
+| Post-restart `py_compile` could not write under `tests/__pycache__` | 1 | Use read-only AST parsing or `-B` validation; do not change test-directory permissions for a syntax check |
+| System Python has no Ruff module | 1 | Installed Ruff in a temporary isolated path; the current core and focused tests pass lint |
+| First full-size quotient probe imported NumPy before adding the isolated dependency path | 1 | Reordered the test-only import path setup; the corrected probe passed |
+| Node REPL probe referenced unavailable global `process` | 1 | Use explicit child-process options and static dependency paths; no repository action was affected |
+| First smoke encoded the carrier's type-relative phase into the separate payload and repeatedly rebuilt payload FFTs | 1 | Terminated the run, published no artifact, made payloads type-canonical/global-shift-only, cached/deduplicated scoring, and added leakage regressions |
+| Direct combinatorial Clopper-Pearson evaluation overflowed at preregistered sample sizes | 1 | Replaced it with a stable regularized-incomplete-beta inversion, cached threshold results, and verified full-size boundary probes |
+| Two corrected-smoke artifacts still had cost/temporary-byte label defects | 2 | Deleted both generated artifacts before use, split logical from deduplicated bytes, componentized conservative peaks, and regenerated the final artifact |
+
+---
+
 # Session 31 Task Plan: PR Fixes, Merges, and Feature Implementation
 
 ## Session 32 Addendum: Disk-Resident LLM Feasibility
