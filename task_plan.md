@@ -40,11 +40,23 @@
 - The standalone diagonal-quotient phase-address novelty claim is refuted by an
   exact OPPW 2D optical-code isomorphism. The campaign now asks only whether the
   dense joint decoder has a new theorem or a matched systems advantage.
-- All implementation-contract P1s found by hostile review are now closed:
+- Earlier core implementation-contract P1s are closed:
   generic 4096 routing, strict template/observation types, causal payload
   separation, crossed planted/decoder masks, paired severity draws, stable
   full-size confidence bounds, deduplicated storage accounting, and
   componentized peak-temporary estimates.
+- Final RB-8 review is green with no P0/P1/P2 findings after campaign-input
+  canonicalization, immutable wall/row/string/ring-length ceilings,
+  pre-publication deadline ordering, bounded streaming JSON, identifier-only
+  held-out wording, and exact orbit resource accounting.
+- The exact transmitted-state symmetry question is closed for the narrow
+  two-type/RM(1,3) bank: three explicit generators form one regular `32p`
+  orbit, so one representative carries every invariant PRW-T1 spectrum/bound
+  field. This is not an asymptotic, arbitrary-signature, or utility theorem.
+- The hardened 12-cell `p=4691` raw-sanity rerun is complete on the current
+  runner: `COMPLETE_PASS`, 0/3,072 report false unlocks, promotion false, and
+  novelty unconfirmed. The full 11,520-cell grid remains refused before
+  construction at 1,059,556,800 modeled bytes.
 - The corrected bounded smoke is GO as wiring evidence only: 576/576 cells
   retained, 255 completed, 321 structurally unavailable, zero errors, and zero
   false-unlock gate passes. Scientific validation, novelty, matched-resource
@@ -365,6 +377,93 @@
   - the three new focused suites pass 53/53 together. No full campaign, corpus,
     large-prime transform/timing run, or retained scientific artifact ran.
 
+## Full-Box Ordered-Cascade Validation RB-8 (2026-07-24)
+- Status: COMPLETE FOR BOUNDED METHOD_DEV; SCIENTIFIC PROMOTION REMAINS NO-GO
+- Authorization and guard:
+  - the user has explicitly made the full local machine available and asked to
+    run the new ordered-cascade tests plus the remaining research gates quickly;
+  - this expands the earlier 512 MiB/120-second default hold but does not waive
+    shape-first preflight, deterministic seeds, staged execution, deadline
+    checks, honest control matching, or process cleanup;
+  - remote publication, PR creation, production promotion, and novelty claims
+    remain out of scope.
+- RB-8A — quotient/observability exact audit:
+  - formalize the Ordered-Cascade Observability Hypothesis as a finite
+    distinguishability claim, not a claim that intrinsic dimension is unreal;
+  - at `p=7`, `L=4`, exhaust all `7^4=2,401` phase states and group them into
+    `7^3=343` global-gauge quotient classes;
+  - verify exact equality of declared scores, margins, ties, routes, and payload
+    reads within each quotient class, with an intentionally gauge-sensitive
+    anchored control that must fail the invariant;
+  - compute the global-gauge null direction and quotient response rank, keeping
+    branch indicators separate from continuous/intrinsic rank.
+  - Result: COMPLETE for the deliberately quotient-constructed observer;
+    2,401 states -> 343 exact behaviors, rank 3, one gauge-null dimension.
+    Independent/learned-observer invariance remains untested.
+- RB-8B — runtime-gate/branch accounting:
+  - exhaust the smallest `p=7` query/payload-dependent replacement family with
+    at most two predicate bits and four operations;
+  - compile every execution to a flat decision table with at most `2^b` static
+    affine-plus-last-write-wins leaves;
+  - match predicate bits, leaves, replacement count, mask size/overlap, search
+    opportunity, storage, and operations;
+  - kill the expressive-capacity claim if the compiled flat control is exact.
+  - Result: COMPLETE for fixed overwrite masks/values and two predicate bits;
+    all 1,024 exhaustive comparisons agree and the extra-state claim is killed.
+- RB-8C — `PRW-T1` structured intersection-spectrum scale check:
+  - reuse the accepted finite analyzer and preflight `p in {11,19,31}` before
+    allocating;
+  - evaluate one frozen crossover and proved state-orbit representatives,
+    reporting nearest-event intersection mass and farther-neighbor contribution
+    relative to `A_min * beta_q(d_min)`;
+  - compare exact/ordinary-union/Hunter results where feasible and matched
+    randomized banks; do not extrapolate an asymptotic theorem from three
+    primes.
+  - Result: `p=11,19,31` COMPLETE at frozen `q=0.20`; nearest-event clustering
+    falls sharply across all three primes, while farther-neighbor mass remains
+    order-one and non-monotone. The finite lead survives but the conjecture is
+    unresolved. Operation-aware guards admitted `p=31` without raising the
+    general scalar-work ceiling.
+- RB-8D — remaining full-box gates, staged by information value:
+  - inventory and preflight the lower-rate raw-sanity/powered campaign, the
+    4091/4691 Rader timing question, and the tiny held-out nonseparable-payload
+    systems gate;
+  - run cheap exact and production-path gates first; launch a larger campaign
+    only after its current implementation, bytes, work, artifact path, and
+    expected wall time are independently verified;
+  - stop and recondition any stage that shows swap pressure, runaway workers,
+    invalid evidence labels, or unmatched controls.
+  - Result: large-prime DFT timing does not support `RADER-1`; one-cell and
+    300-group campaign profilers are complete; the held-out nonseparable gate
+    kills extra capacity after the transcript is paid; campaign-wide safeguards
+    pass; and the targeted 12-cell powered run completed all cells under its
+    admitted preflight. The broad 11,520-cell grid remains preflight-refused at
+    1,059,556,800 modeled bytes.
+  - Final Rader result: COMPLETE for local DFT and cyclic-correlation
+    observations. `p=4691` DFT is competitive but its matched correlation is
+    slower; `p=4091` is substantially slower. The performance hypothesis is
+    not supported.
+  - Final targeted campaign result: COMPLETE as synthetic METHOD_DEV evidence.
+    Every required seed/rate cell passes the raw-type sanity contract, pooled
+    true-unlock recall is 1.0 with zero report false unlocks, and all mandatory
+    controls close. `PRW-1` through `PRW-4`, real retrieval utility, promotion,
+    and novelty remain inconclusive or not established.
+- RB-8E — evidence and review:
+  - run focused tests, the complete relevant regression suite, scoped Ruff,
+    read-only AST/compile checks, deterministic direct probes, and the
+    repository smoke path at its honestly named tier;
+  - require an independent hostile reviewer to try to disprove quotient
+    sufficiency, branch accounting, resource safety, and every claimed result;
+  - distinguish unit correctness, runtime witness, synthetic scientific
+    evidence, and held-out systems evidence in all records.
+  - Result: COMPLETE for the bounded scope. Final prime-ring discovery passes
+    286/286, scoped Ruff and Python 3.9 grammar checks pass, the block flag is
+    `CLEAR`, artifact structure/hashes are independently verified, and final
+    review has no P0/P1/P2 findings. Canonical floor/ceiling smoke passes in the
+    isolated dependency environment. Whole-repository discovery still has
+    missing-MTEB and order-sensitive environment failures and is not claimed
+    green.
+
 ## Errors Encountered
 | Error | Attempt | Resolution |
 |-------|---------|------------|
@@ -395,6 +494,7 @@
 | First direct PRW-H1 evidence print requested `aggregate_resource_guard`, a key used by the non-exact comparator rather than the exact BSC result | 1 | Inspected the exact result surface, used its canonical `resource_guard` field, and reran the bounded probe successfully |
 | Sandboxed `git ls-remote` could not reach GitHub | 1 | Confirmed branch absence through the authenticated GitHub connector; reserve networked Git publication for the narrowly approved push step |
 | A combined RB-7 validation overlapped an agent's in-progress witness-field rename and observed a transient `AttributeError` | 1 | Stopped treating the concurrent tree as evidence, waited for the owner to declare the files stable, then reran the exact combined tree successfully at 53/53 |
+| A Windows `rg` inventory used Unix-style globs for research and test files | 1 | Keep the partial literal-file results, then use `rg --files` or directory-scoped searches instead of shell globs on Windows |
 
 ---
 

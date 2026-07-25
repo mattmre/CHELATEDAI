@@ -77,7 +77,7 @@ not-in-scope items. They appear here so the next planner sees them.
 
 | ID | Item | Source PR | Why deferred |
 |----|------|-----------|--------------|
-| DS-PRW-001 | Powered 11,520-cell prime-ring campaign, real-corpus retrieval, 4091/4691 timing, repeated hardware timing, and persistent scientific evidence generation | bounded prime-ring method-development PR (pending) | Explicit user/resource guard prohibited credible OOM-risk work. Owner: operator plus Codex; target: next operator-approved, separately resource-reviewed research cycle. Current graph/Fourier results are tiny-domain negatives, and the raw-sanity scientific gate remains unexecuted. |
+| DS-PRW-001 | Full 11,520-cell prime-ring campaign, real-corpus retrieval, repeated hardware timing, and promotion-grade scientific evidence | bounded prime-ring method-development branch (local) | The bounded 12-cell `p=4691` raw-sanity campaign and separate 4091/4691 Rader harness executed on 2026-07-24. Raw sanity passed, but all utility claims remain inconclusive and the correlation-speed hypothesis failed locally. The full grid is now refused before construction at 1,059,556,800 modeled bytes; real-corpus, transcript-inference-cost, asymptotic farther-mass, and repeated-hardware tests remain. No novelty or production promotion is established. |
 
 ## Disposition — living / annealed post-bank corrector (H5)
 
@@ -135,6 +135,6 @@ priority Carried Debt entry; this log is the audit trail.
 
 ---
 
-**Last session**: 2026-06-13 — PR #267 Track 0 hygiene: closed CD-247-01 / CD-247-02 (last two open rows); Carried Debt now empty; block flag legitimately CLEAR. Prior: 2026-05-16 PR #244 reconciliation merge (BHS_OFFICIAL=55, OPERATOR_OVERRIDE).
+**Last session**: 2026-07-24 — resumed the local prime-ring METHOD_DEV branch after restart; completed the bounded raw-sanity and Rader runs, exact quotient/runtime/intersection/orbit screens, and hostile-review hardening. The strongest surviving lead is finite-prime nearest-event decorrelation; farther-neighbor mass remains order-one and non-monotone. No novelty, production, or public-release claim is established. Prior: 2026-06-13 PR #267 Track 0 hygiene closed CD-247-01 / CD-247-02.
 **2026-05-17**: PRs #249–#254 merged; 9 BHS Scope B audit Carried Debt rows (CD-MOD-001 through CD-TTS-002) closed.
-**Last validated by `check_block_flag.py`**: run after this commit
+**Last validated by `check_block_flag.py`**: 2026-07-24 local exact-tree validation; `CLEAR`, zero carried-debt rows

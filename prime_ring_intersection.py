@@ -30,7 +30,11 @@ HARD_MAX_HYPOTHESES = 1024
 HARD_MAX_COMPETITOR_PAIRS = 250_000
 HARD_MAX_COORDINATES = 100_000
 HARD_MAX_BRUTEFORCE_PATTERNS = 1 << 20
+# Scalar/Python work remains under the original ceiling.  The one explicitly
+# separated vector kernel is the dense int32 disagreement GEMM.
+# Its count is multiply-adds, not wall-clock time, FLOP/s, or a hardware claim.
 HARD_MAX_WORK_UNITS = 50_000_000
+HARD_MAX_VECTORIZED_INT32_MULTIPLY_ADDS = 64_000_000
 
 
 class PRWT1ValidationError(ValueError):
@@ -87,6 +91,9 @@ class EnumerationBudget:
     max_competitor_pairs: int = HARD_MAX_COMPETITOR_PAIRS
     max_coordinates: int = HARD_MAX_COORDINATES
     max_bruteforce_patterns: int = HARD_MAX_BRUTEFORCE_PATTERNS
+    max_vectorized_int32_multiply_adds: int = (
+        HARD_MAX_VECTORIZED_INT32_MULTIPLY_ADDS
+    )
 
     def __post_init__(self) -> None:
         for name in (
@@ -96,9 +103,15 @@ class EnumerationBudget:
             "max_competitor_pairs",
             "max_coordinates",
             "max_bruteforce_patterns",
+            "max_vectorized_int32_multiply_adds",
         ):
-            _plain_int(getattr(self, name), name, 1)
-        _positive_float(self.max_seconds, "max_seconds")
+            canonical = _plain_int(getattr(self, name), name, 1)
+            object.__setattr__(self, name, canonical)
+        canonical_seconds = _positive_float(
+            self.max_seconds,
+            "max_seconds",
+        )
+        object.__setattr__(self, "max_seconds", canonical_seconds)
         hard_caps = {
             "max_estimated_bytes": HARD_MAX_ESTIMATED_BYTES,
             "max_seconds": HARD_MAX_SECONDS,
@@ -107,6 +120,9 @@ class EnumerationBudget:
             "max_competitor_pairs": HARD_MAX_COMPETITOR_PAIRS,
             "max_coordinates": HARD_MAX_COORDINATES,
             "max_bruteforce_patterns": HARD_MAX_BRUTEFORCE_PATTERNS,
+            "max_vectorized_int32_multiply_adds": (
+                HARD_MAX_VECTORIZED_INT32_MULTIPLY_ADDS
+            ),
         }
         for name, hard_cap in hard_caps.items():
             if getattr(self, name) > hard_cap:
@@ -259,7 +275,20 @@ def estimate_analysis_work_units(
     competitor_count: int,
     coordinate_count: int,
 ) -> int:
-    """Conservatively bound vector, intersection, and pairwise work."""
+    """Bound non-GEMM scalar/Python work for one finite analysis.
+
+    The dense int32 disagreement matrix multiplication is deliberately absent
+    and is reported by
+    :func:`estimate_analysis_vectorized_int32_multiply_adds`.  The pair scan
+    and maximum-spanning-tree scan use the already materialized intersection
+    matrix, so charging every pair for every coordinate would count the GEMM
+    a second time.
+
+    Signature-specific binomial work is not knowable until the intersection
+    signatures have been enumerated.  ``analyze_legendre_mask_bank`` adds and
+    rechecks that exact data-dependent estimate before evaluating any
+    signature probabilities.
+    """
 
     hypotheses = _plain_int(
         hypothesis_count, "hypothesis_count", 1
@@ -273,9 +302,36 @@ def estimate_analysis_work_units(
     pairs = competitors * (competitors - 1) // 2
     return int(
         hypotheses * coordinates
-        + competitors * competitors * coordinates
-        + 3 * pairs * coordinates
+        + 8 * competitors * coordinates
+        + 64 * pairs
+        + 32 * competitors
+        + 16 * coordinates
     )
+
+
+def estimate_analysis_vectorized_int32_multiply_adds(
+    *,
+    competitor_count: int,
+    coordinate_count: int,
+) -> int:
+    """Count multiply-adds in the dense int32 disagreement GEMM.
+
+    This is an operation count for ``D @ D.T`` with shape
+    ``(competitors, coordinates)``.  It is not a timing model, FLOP count,
+    throughput estimate, memory measurement, or claim about the BLAS backend.
+    """
+
+    competitors = _plain_int(
+        competitor_count,
+        "competitor_count",
+        1,
+    )
+    coordinates = _plain_int(
+        coordinate_count,
+        "coordinate_count",
+        1,
+    )
+    return int(competitors * competitors * coordinates)
 
 
 def _enforce_build_budget(
@@ -315,6 +371,7 @@ def _enforce_analysis_budget(
     coordinates: int,
     estimated_bytes: int,
     estimated_work_units: int,
+    estimated_vectorized_int32_multiply_adds: int,
     budget: EnumerationBudget,
 ) -> None:
     _enforce_build_budget(
@@ -329,6 +386,16 @@ def _enforce_analysis_budget(
         raise PRWT1ResourceError(
             "competitor-pair count exceeds bounded enumeration budget: "
             f"{pairs} > {budget.max_competitor_pairs}"
+        )
+    if (
+        estimated_vectorized_int32_multiply_adds
+        > budget.max_vectorized_int32_multiply_adds
+    ):
+        raise PRWT1ResourceError(
+            "estimated vectorized int32 multiply-adds exceed bounded "
+            "enumeration budget: "
+            f"{estimated_vectorized_int32_multiply_adds} > "
+            f"{budget.max_vectorized_int32_multiply_adds}"
         )
 
 
@@ -1076,10 +1143,16 @@ def analyze_legendre_mask_bank(
         competitor_count=competitor_count,
         coordinate_count=bank.coordinate_count,
     )
-    estimated_work = estimate_analysis_work_units(
+    estimated_scalar_work = estimate_analysis_work_units(
         hypothesis_count=bank.hypothesis_count,
         competitor_count=competitor_count,
         coordinate_count=bank.coordinate_count,
+    )
+    estimated_vectorized_int32_multiply_adds = (
+        estimate_analysis_vectorized_int32_multiply_adds(
+            competitor_count=competitor_count,
+            coordinate_count=bank.coordinate_count,
+        )
     )
     if compute_bruteforce_union:
         patterns = 1 << bank.coordinate_count
@@ -1087,7 +1160,7 @@ def analyze_legendre_mask_bank(
             competitor_count
             * (((bank.coordinate_count + 7) // 8) + 192)
         )
-        estimated_work += int(
+        estimated_scalar_work += int(
             competitor_count * bank.coordinate_count
             + patterns * (competitor_count + 2)
         )
@@ -1096,7 +1169,10 @@ def analyze_legendre_mask_bank(
         competitors=competitor_count,
         coordinates=bank.coordinate_count,
         estimated_bytes=estimated,
-        estimated_work_units=estimated_work,
+        estimated_work_units=estimated_scalar_work,
+        estimated_vectorized_int32_multiply_adds=(
+            estimated_vectorized_int32_multiply_adds
+        ),
         budget=budget,
     )
     _check_deadline(deadline)
@@ -1157,13 +1233,30 @@ def analyze_legendre_mask_bank(
             for trials in required_binomial_trials
         )
     )
+    signature_probability_scalar_work = int(
+        sum(
+            16 * (signature[2] + 1)
+            for signature in signature_counts
+        )
+    )
+    binomial_table_scalar_work = int(
+        sum(24 * (trials + 1) for trials in required_binomial_trials)
+    )
+    final_estimated_scalar_work = int(
+        estimated_scalar_work
+        + signature_probability_scalar_work
+        + binomial_table_scalar_work
+    )
     total_estimated = estimated + binomial_cache_bytes
     _enforce_analysis_budget(
         hypotheses=bank.hypothesis_count,
         competitors=competitor_count,
         coordinates=bank.coordinate_count,
         estimated_bytes=total_estimated,
-        estimated_work_units=estimated_work,
+        estimated_work_units=final_estimated_scalar_work,
+        estimated_vectorized_int32_multiply_adds=(
+            estimated_vectorized_int32_multiply_adds
+        ),
         budget=budget,
     )
     binomial_cache = _BinomialCache(
@@ -1336,8 +1429,30 @@ def analyze_legendre_mask_bank(
         "resource_guard": {
             "estimated_peak_bytes": total_estimated,
             "max_estimated_bytes": budget.max_estimated_bytes,
-            "estimated_work_units": estimated_work,
+            # Backward-compatible aliases retain the original key names while
+            # making their now-scalar semantics explicit alongside the GEMM.
+            "estimated_work_units": final_estimated_scalar_work,
             "max_work_units": budget.max_work_units,
+            "estimated_scalar_work_units": final_estimated_scalar_work,
+            "max_scalar_work_units": budget.max_work_units,
+            "base_scalar_work_units": estimated_scalar_work,
+            "signature_probability_scalar_work_units": (
+                signature_probability_scalar_work
+            ),
+            "binomial_table_scalar_work_units": (
+                binomial_table_scalar_work
+            ),
+            "estimated_vectorized_int32_multiply_adds": (
+                estimated_vectorized_int32_multiply_adds
+            ),
+            "max_vectorized_int32_multiply_adds": (
+                budget.max_vectorized_int32_multiply_adds
+            ),
+            "vectorized_operation_scope": (
+                "int32_disagreement_matrix_times_its_transpose"
+            ),
+            "operation_categories_separate": True,
+            "operation_counts_are_not_time_calibration": True,
             "elapsed_seconds": float(elapsed),
             "max_seconds": budget.max_seconds,
             "binomial_cache_estimated_bytes": binomial_cache_bytes,

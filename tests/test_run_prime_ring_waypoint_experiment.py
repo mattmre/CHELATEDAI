@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import tempfile
 import unittest
 from dataclasses import replace
@@ -12,17 +13,28 @@ from unittest.mock import patch
 import numpy as np
 
 from run_prime_ring_waypoint_experiment import (
+    CAMPAIGN_HARD_MAX_JSON_STRING_CHARS,
+    CAMPAIGN_HARD_MAX_OUTPUT_PATH_CHARS,
+    CAMPAIGN_HARD_MAX_RETAINED_ROWS,
+    CAMPAIGN_HARD_MAX_RING_LENGTH,
+    CAMPAIGN_HARD_MAX_WALL_CLOCK_SECONDS,
     CampaignConfig,
+    CampaignExecutionBudget,
+    CampaignExecutionLimitError,
     CampaignValidationError,
     _RawSanityLiveAuthority,
     _RawSanityLiveSeal,
+    _atomic_write_json,
     _aggregate_raw_sanity_sweep,
     _build_carrier_templates,
     _build_payload_groups,
     _campaign_contract_manifest,
+    _campaign_execution_preflight,
+    _canonical_execution_budget,
     _cell_id,
     _draw_flip_mask,
     _decode_native_oppw,
+    _enforce_retained_row_cap,
     _make_planted_query,
     _materialize_payload_collision_bank,
     _observe_and_decode_repeated_bit,
@@ -39,9 +51,34 @@ from run_prime_ring_waypoint_experiment import (
     _unique_numpy_nbytes,
     clopper_pearson_upper,
     expected_cell_specs,
+    full_config,
     run_campaign,
     validate_config,
 )
+
+
+class _HostileInt(int):
+    def __mul__(self, _other):
+        return 0
+
+    def __rmul__(self, _other):
+        return 0
+
+
+class _HostileFloat(float):
+    def __mul__(self, _other):
+        return 0.0
+
+    def __rmul__(self, _other):
+        return 0.0
+
+
+class _HostileString(str):
+    def __mul__(self, _other):
+        return ""
+
+    def __rmul__(self, _other):
+        return ""
 
 
 def _tiny_config(**overrides) -> CampaignConfig:
@@ -399,6 +436,153 @@ class TestPrimeRingWaypointCampaign(unittest.TestCase):
                 with self.assertRaises(CampaignValidationError):
                     run_campaign(config, write_artifact=False)
 
+    def test_config_is_rebuilt_with_plain_canonical_values(self):
+        base = self.config
+        hostile = replace(
+            base,
+            seeds=tuple(_HostileInt(value) for value in base.seeds),
+            lengths=tuple(_HostileInt(value) for value in base.lengths),
+            carrier_families=tuple(
+                _HostileString(value)
+                for value in base.carrier_families
+            ),
+            layers=tuple(_HostileInt(value) for value in base.layers),
+            planted_mask_families=tuple(
+                _HostileString(value)
+                for value in base.planted_mask_families
+            ),
+            decoder_mask_policies=tuple(
+                _HostileString(value)
+                for value in base.decoder_mask_policies
+            ),
+            bit_flip_rates=tuple(
+                _HostileFloat(value)
+                for value in base.bit_flip_rates
+            ),
+            payload_noise_rates=tuple(
+                _HostileFloat(value)
+                for value in base.payload_noise_rates
+            ),
+            type_count=_HostileInt(base.type_count),
+            waypoints_per_type=_HostileInt(base.waypoints_per_type),
+            select_planted=_HostileInt(base.select_planted),
+            select_unrelated=_HostileInt(base.select_unrelated),
+            report_planted=_HostileInt(base.report_planted),
+            report_unrelated=_HostileInt(base.report_unrelated),
+            recall_k=_HostileInt(base.recall_k),
+            target_false_unlock_rate=_HostileFloat(
+                base.target_false_unlock_rate
+            ),
+            control_min_true_unlock_recall=_HostileFloat(
+                base.control_min_true_unlock_recall
+            ),
+            confidence_level=_HostileFloat(base.confidence_level),
+            report_stream_tag=_HostileString(base.report_stream_tag),
+            output=_HostileString(base.output),
+            primary_select_planted=_HostileInt(
+                base.primary_select_planted
+            ),
+            primary_select_unrelated=_HostileInt(
+                base.primary_select_unrelated
+            ),
+            primary_report_planted=_HostileInt(
+                base.primary_report_planted
+            ),
+            primary_report_unrelated=_HostileInt(
+                base.primary_report_unrelated
+            ),
+            run_label=_HostileString(base.run_label),
+        )
+        canonical = validate_config(hostile)
+        self.assertIs(type(canonical), CampaignConfig)
+        for values in (
+            canonical.seeds,
+            canonical.lengths,
+            canonical.layers,
+        ):
+            self.assertTrue(all(type(value) is int for value in values))
+        for values in (
+            canonical.carrier_families,
+            canonical.planted_mask_families,
+            canonical.decoder_mask_policies,
+        ):
+            self.assertTrue(all(type(value) is str for value in values))
+        for values in (
+            canonical.bit_flip_rates,
+            canonical.payload_noise_rates,
+        ):
+            self.assertTrue(all(type(value) is float for value in values))
+        for name in (
+            "type_count",
+            "waypoints_per_type",
+            "select_planted",
+            "select_unrelated",
+            "report_planted",
+            "report_unrelated",
+            "recall_k",
+            "primary_select_planted",
+            "primary_select_unrelated",
+            "primary_report_planted",
+            "primary_report_unrelated",
+        ):
+            self.assertIs(type(getattr(canonical, name)), int)
+        for name in (
+            "target_false_unlock_rate",
+            "control_min_true_unlock_recall",
+            "confidence_level",
+        ):
+            self.assertIs(type(getattr(canonical, name)), float)
+        for name in ("report_stream_tag", "output", "run_label"):
+            self.assertIs(type(getattr(canonical, name)), str)
+        self.assertEqual(canonical, validate_config(base))
+        self.assertEqual(
+            _campaign_execution_preflight(hostile),
+            _campaign_execution_preflight(base),
+        )
+
+    def test_config_string_and_tuple_caps_fail_before_preflight(self):
+        invalid = (
+            replace(
+                self.config,
+                output="x" * (CAMPAIGN_HARD_MAX_OUTPUT_PATH_CHARS + 1),
+            ),
+            replace(
+                self.config,
+                report_stream_tag="R" * 257,
+            ),
+            replace(
+                self.config,
+                run_label="L" * 129,
+            ),
+            replace(
+                self.config,
+                seeds=tuple(range(65)),
+            ),
+        )
+        for config in invalid:
+            with self.subTest(field_config=config):
+                with self.assertRaises(CampaignValidationError):
+                    validate_config(config)
+
+    def test_ring_length_ceiling_refuses_before_primality_work(self):
+        intended = validate_config(
+            replace(self.config, lengths=(4091, 4096, 4691))
+        )
+        self.assertEqual(intended.lengths, (4091, 4096, 4691))
+        oversized = replace(
+            self.config,
+            lengths=(CAMPAIGN_HARD_MAX_RING_LENGTH + 2,),
+        )
+        with patch(
+            "run_prime_ring_waypoint_experiment.is_prime_exact"
+        ) as primality:
+            with self.assertRaisesRegex(
+                CampaignValidationError,
+                "ring-length ceiling",
+            ):
+                _campaign_execution_preflight(oversized)
+        primality.assert_not_called()
+
     def test_artifact_schema_and_claim_boundaries(self):
         artifact = self.artifact
         self.assertEqual(
@@ -410,6 +594,28 @@ class TestPrimeRingWaypointCampaign(unittest.TestCase):
         self.assertEqual(artifact["run_label"], "SMOKE_NON_EVIDENTIARY")
         self.assertFalse(artifact["promotion_eligible"])
         self.assertFalse(artifact["rader_claim"])
+        self.assertEqual(
+            artifact["rader_campaign_status"],
+            "NOT_TESTED_BY_THIS_CAMPAIGN",
+        )
+        self.assertTrue(artifact["rader_implementation_present"])
+        self.assertFalse(
+            artifact["separate_rader_harness_results_ingested"]
+        )
+        self.assertEqual(
+            artifact["verdicts"]["RADER-1"]["verdict"],
+            "NOT_TESTED_BY_THIS_CAMPAIGN",
+        )
+        self.assertTrue(
+            artifact["verdicts"]["RADER-1"][
+                "rader_implementation_present"
+            ]
+        )
+        self.assertFalse(
+            artifact["verdicts"]["RADER-1"][
+                "separate_rader_harness_results_ingested"
+            ]
+        )
         self.assertEqual(artifact["novelty_claim_status"], "unconfirmed")
         self.assertEqual(
             artifact["primary_aggregate"]["status"],
@@ -1066,6 +1272,268 @@ class TestPrimeRingWaypointCampaign(unittest.TestCase):
                 artifact["grid_manifest"]["retained_cell_count"],
             )
             self.assertFalse(loaded["promotion_eligible"])
+
+
+class TestCampaignExecutionSafety(unittest.TestCase):
+    def test_full_and_targeted_preflight_models_are_exact(self):
+        full = _campaign_execution_preflight(full_config())
+        self.assertEqual(full["expected_cell_count"], 11520)
+        self.assertEqual(full["available_cell_count"], 5100)
+        self.assertEqual(full["expected_base_group_count"], 36)
+        self.assertEqual(full["available_base_group_count"], 30)
+        self.assertEqual(full["modeled_trial_count"], 21165)
+        self.assertEqual(full["modeled_retained_row_count"], 80559)
+        self.assertEqual(
+            full["modeled_decoder_retained_row_count"],
+            77460,
+        )
+        self.assertEqual(
+            full["modeled_serialized_raw_provenance_row_count"],
+            3099,
+        )
+        self.assertEqual(full["modeled_peak_live_retained_rows"], 15447)
+        self.assertFalse(full["allowed"])
+        self.assertGreater(
+            full["conservative_total_estimated_bytes"],
+            full["hard_modeled_ceiling_bytes"],
+        )
+        self.assertFalse(full["process_rss_measured"])
+        self.assertFalse(full["process_rss_limit_enforced"])
+        self.assertFalse(full["estimate_is_process_rss"])
+        self.assertEqual(
+            full["checkpoint_resume_status"],
+            "BLOCKED_NOT_IMPLEMENTED_IN_THIS_SLICE",
+        )
+
+        targeted = _campaign_execution_preflight(
+            _fabricated_full_contract_config()
+        )
+        self.assertEqual(targeted["expected_cell_count"], 12)
+        self.assertEqual(targeted["available_cell_count"], 12)
+        self.assertEqual(targeted["expected_base_group_count"], 3)
+        self.assertEqual(targeted["available_base_group_count"], 3)
+        self.assertEqual(targeted["modeled_trial_count"], 9549)
+        self.assertEqual(targeted["modeled_retained_row_count"], 12648)
+        self.assertEqual(
+            targeted["modeled_decoder_retained_row_count"],
+            9549,
+        )
+        self.assertEqual(
+            targeted["modeled_serialized_raw_provenance_row_count"],
+            3099,
+        )
+        self.assertEqual(
+            targeted["modeled_peak_live_retained_rows"],
+            6186,
+        )
+        self.assertTrue(targeted["allowed"])
+        self.assertLessEqual(
+            targeted["conservative_total_estimated_bytes"],
+            targeted["budget"]["max_estimated_bytes"],
+        )
+        self.assertFalse(targeted["campaign_arrays_allocated"])
+
+    def test_preflight_refuses_before_construction(self):
+        config = _fabricated_full_contract_config()
+        budget = CampaignExecutionBudget(max_retained_rows=12647)
+        with patch(
+            "run_prime_ring_waypoint_experiment._construction_checks"
+        ) as construction:
+            with self.assertRaisesRegex(
+                CampaignExecutionLimitError,
+                "allocation-free preflight",
+            ):
+                run_campaign(
+                    config,
+                    write_artifact=False,
+                    execution_budget=budget,
+                )
+        construction.assert_not_called()
+
+    def test_total_deadline_fails_before_construction(self):
+        config = _fabricated_full_contract_config()
+        budget = CampaignExecutionBudget(max_wall_clock_seconds=0.5)
+        with patch(
+            "run_prime_ring_waypoint_experiment.time.perf_counter",
+            side_effect=(100.0, 100.6),
+        ), patch(
+            "run_prime_ring_waypoint_experiment._construction_checks"
+        ) as construction:
+            with self.assertRaisesRegex(
+                CampaignExecutionLimitError,
+                "deadline exceeded",
+            ):
+                run_campaign(
+                    config,
+                    write_artifact=False,
+                    execution_budget=budget,
+                )
+        construction.assert_not_called()
+
+    def test_final_campaign_deadline_failure_prevents_publication(self):
+        checkpoints = []
+
+        def fail_only_at_campaign_complete(
+            _started_at,
+            _budget,
+            checkpoint,
+        ):
+            checkpoints.append(checkpoint)
+            if checkpoint == "campaign_complete":
+                raise CampaignExecutionLimitError(
+                    "deadline exceeded at campaign_complete"
+                )
+
+        with tempfile.TemporaryDirectory(dir=Path.cwd()) as tempdir:
+            output = Path(tempdir) / "must-not-exist.json"
+            config = replace(_tiny_config(), output=str(output))
+            with patch(
+                "run_prime_ring_waypoint_experiment."
+                "_check_campaign_deadline",
+                side_effect=fail_only_at_campaign_complete,
+            ), patch(
+                "run_prime_ring_waypoint_experiment._atomic_write_json"
+            ) as atomic_write:
+                with self.assertRaisesRegex(
+                    CampaignExecutionLimitError,
+                    "campaign_complete",
+                ):
+                    run_campaign(config, write_artifact=True)
+            self.assertEqual(checkpoints[-1], "campaign_complete")
+            self.assertEqual(checkpoints.count("campaign_complete"), 1)
+            atomic_write.assert_not_called()
+            self.assertFalse(output.exists())
+
+    def test_retained_row_cap_is_exact_and_hostile_budget_types_fail(self):
+        config = _fabricated_full_contract_config()
+        exact_budget = CampaignExecutionBudget(max_retained_rows=12648)
+        refused_budget = CampaignExecutionBudget(max_retained_rows=12647)
+        self.assertTrue(
+            _campaign_execution_preflight(
+                config,
+                exact_budget,
+            )["allowed"]
+        )
+        self.assertFalse(
+            _campaign_execution_preflight(
+                config,
+                refused_budget,
+            )["allowed"]
+        )
+        _enforce_retained_row_cap(12648, exact_budget)
+        with self.assertRaises(CampaignExecutionLimitError):
+            _enforce_retained_row_cap(12649, exact_budget)
+        for hostile_budget in (
+            CampaignExecutionBudget(max_retained_rows=True),
+            CampaignExecutionBudget(max_wall_clock_seconds=float("inf")),
+            CampaignExecutionBudget(max_estimated_bytes=512 * 1024 * 1024 + 1),
+            CampaignExecutionBudget(
+                max_wall_clock_seconds=(
+                    CAMPAIGN_HARD_MAX_WALL_CLOCK_SECONDS + 1.0
+                )
+            ),
+            CampaignExecutionBudget(
+                max_retained_rows=CAMPAIGN_HARD_MAX_RETAINED_ROWS + 1
+            ),
+            CampaignExecutionBudget(max_wall_clock_seconds=1 << 1000),
+            CampaignExecutionBudget(max_retained_rows=1 << 1000),
+        ):
+            with self.subTest(budget=hostile_budget):
+                with self.assertRaises(CampaignValidationError):
+                    _canonical_execution_budget(hostile_budget)
+        canonical = _canonical_execution_budget(CampaignExecutionBudget())
+        self.assertEqual(
+            canonical.max_wall_clock_seconds,
+            CAMPAIGN_HARD_MAX_WALL_CLOCK_SECONDS,
+        )
+        self.assertEqual(
+            canonical.max_retained_rows,
+            CAMPAIGN_HARD_MAX_RETAINED_ROWS,
+        )
+
+    def test_atomic_json_write_replaces_only_after_complete_temp_write(self):
+        with tempfile.TemporaryDirectory() as tempdir:
+            output = Path(tempdir) / "campaign.json"
+            output.write_text("old\n", encoding="utf-8")
+            artifact = {"status": "complete", "value": 7}
+            real_replace = os.replace
+            observed = {}
+
+            def checked_replace(source, destination):
+                source_path = Path(source)
+                self.assertEqual(
+                    output.read_text(encoding="utf-8"),
+                    "old\n",
+                )
+                self.assertEqual(source_path.parent, output.parent)
+                observed["source"] = source_path
+                real_replace(source, destination)
+
+            with patch(
+                "run_prime_ring_waypoint_experiment.os.replace",
+                side_effect=checked_replace,
+            ):
+                _atomic_write_json(output, artifact)
+
+            self.assertEqual(
+                json.loads(output.read_text(encoding="utf-8")),
+                artifact,
+            )
+            self.assertFalse(observed["source"].exists())
+            self.assertEqual(
+                list(output.parent.glob(f".{output.name}.*.tmp")),
+                [],
+            )
+
+            output.write_text("still-old\n", encoding="utf-8")
+            with patch(
+                "run_prime_ring_waypoint_experiment.os.replace",
+                side_effect=OSError("replace failed"),
+            ):
+                with self.assertRaisesRegex(OSError, "replace failed"):
+                    _atomic_write_json(output, artifact)
+            self.assertEqual(
+                output.read_text(encoding="utf-8"),
+                "still-old\n",
+            )
+            self.assertEqual(
+                list(output.parent.glob(f".{output.name}.*.tmp")),
+                [],
+            )
+
+    def test_atomic_json_refuses_actual_byte_and_string_overflow(self):
+        with tempfile.TemporaryDirectory() as tempdir:
+            output = Path(tempdir) / "bounded.json"
+            with self.assertRaisesRegex(
+                CampaignExecutionLimitError,
+                "max_encoded_bytes",
+            ):
+                _atomic_write_json(
+                    output,
+                    {"status": "complete", "value": 7},
+                    max_encoded_bytes=8,
+                )
+            self.assertFalse(output.exists())
+            self.assertEqual(
+                list(output.parent.glob(f".{output.name}.*.tmp")),
+                [],
+            )
+
+            huge = {
+                "value": "x"
+                * (CAMPAIGN_HARD_MAX_JSON_STRING_CHARS + 1)
+            }
+            with patch(
+                "run_prime_ring_waypoint_experiment."
+                "json.JSONEncoder.iterencode"
+            ) as encoder:
+                with self.assertRaisesRegex(
+                    CampaignExecutionLimitError,
+                    "character ceiling",
+                ):
+                    _atomic_write_json(output, huge)
+            encoder.assert_not_called()
+            self.assertFalse(output.exists())
 
 
 class TestRawSanitySweepContract(unittest.TestCase):

@@ -1,5 +1,182 @@
 # Progress Log
 
+## RB-8 full-box ordered-cascade validation: 2026-07-24
+
+- Recovered the clean local branch at `b7bbd576`, ten commits ahead of
+  `origin/main`; the session catch-up script reported no unsynchronized context.
+- Read the repository's live brutal-honesty convention and `docs/next-session.md`.
+  The executable block gate passes `CLEAR` with zero carried-debt rows.
+- The user explicitly expanded local compute authorization. Preregistered a
+  staged full-box pass covering exact quotient observability, branch-matched
+  runtime gates, the `PRW-T1` intersection-spectrum scale check, and a
+  resource-audited inventory of the remaining powered/timing/held-out gates.
+  Remote publication and novelty claims remain excluded.
+- Completed allocation-free preflight for the remaining named runs:
+  - the frozen `PRW-T1` bank at `p=11` estimates 10,136,976 analysis bytes and
+    6,822,464 work units; `p=19` estimates 30,252,944 bytes and 35,141,184 work
+    units, both within the current hard ceilings;
+  - `p=31` estimates 80,548,496 bytes but 152,591,424 work units, so the present
+    analyzer correctly refuses it above its 50,000,000-work hard ceiling;
+  - Rader benchmark preflight is only 1,079,824 estimated temporary bytes at
+    `p=4091` and 1,238,224 at `p=4691`;
+  - the default campaign contains 576 synthetic cells, while the full campaign
+    contains 11,520 cells and expands the primary budgets from single digits to
+    512/1,024 trials. It has no campaign-wide work/time preflight, so it is not
+    being launched before a timed lower-cost stage establishes scale.
+- One first allocation-free Python probe was malformed when multiline loop
+  syntax was flattened into one `-c` line. It performed no experiment. The
+  probe was rerun by passing the multiline program directly and completed.
+- RB-8A root reproduction is green:
+  - 33/33 combined quotient/runtime-gate tests pass in 1.038 seconds and scoped
+    Ruff is clean;
+  - the direct quotient probe enumerated 2,401 states, found exactly 343
+    seven-state gauge classes and 343 distinct invariant observations, measured
+    response rank 3 with a one-dimensional global-gauge kernel, and made the
+    anchored negative control detect all 2,058 nonzero gauge changes;
+  - this is a finite mechanics result for the deliberately quotient-constructed
+    observer, not evidence that an independently learned observer has the same
+    symmetry.
+- RB-8B root reproduction is green:
+  - all 512 payload/query executions and all 512 forced static-leaf reductions
+    agree with a flat table granted the same two-bit transcript;
+  - all four transcripts are reached, and the exact screen returns
+    `NO_EXTRA_STATE_BEYOND_PAID_BRANCH_TRANSCRIPT`;
+  - dynamically generated overwrite masks/values and a third predicate bit
+    remain outside this screen.
+- RB-8C ran at frozen `q=0.20` for structured and deterministic
+  distinct-signature controls:
+  - `p=11`: nearest-intersection/nearest-union ratio `0.256219`; farther/nearest
+    union ratio `0.360077`;
+  - `p=19`: nearest-intersection ratio falls to `0.017856`, but the
+    farther/nearest ratio rises to `0.403705`;
+  - after operation-aware accounting preserved the 50,000,000 scalar ceiling
+    and added a scoped 64,000,000 int32-GEMM ceiling, `p=31` completed in
+    0.219-0.250 seconds per representative at 80,583,888 modeled bytes,
+    9,190,584 scalar units, and 61,011,968 vectorized multiply-adds;
+  - `p=31` lowers the nearest-intersection ratio again to `0.000374874` and the
+    farther ratio to `0.240863`;
+  - type, shift, and mask representatives checked at `p=11` are identical, and
+    the matched distinct-signature controls reproduce the same spectra at all
+    three primes;
+  - a separate all-transmitted-state audit reran all 352 `p=11`
+    type/shift/mask states; every label-free numeric/spectral/bound payload had
+    the same SHA-256 digest, completing empirical state averaging at that prime
+    in 12.458 seconds. Equivariant nearest-state labels and nondeterministic
+    elapsed fields were intentionally excluded;
+  - an exact generator certificate now replaces that finite empirical
+    repetition for the declared two-type/RM(1,3) bank: additive shifts, mask
+    multiplication, and the type-swap involution form one regular orbit of all
+    `32p` transmitted states at `p=11,19,31`. Distances, intersection spectra,
+    BSC terms, union bounds, and Hunter weights are invariant under the action;
+  - the certificate preserves the exact `p=31` count of 4,674,304 generator
+    symbol checks while separately accounting 15,309,808 total work units.
+    Its conservative incremental peak is 3,576,192 bytes (3,822,464 bytes with
+    the live bank), above the 2,959,696-byte bounded trace, and its preflight
+    refuses memory, symbol, or total-work shortages before exact work begins;
+  - nearest-event decorrelation is now a genuinely promising mathematical lead,
+    but the required farther-neighbor term is non-negligible and non-monotone
+    across these three points. `PRW-T1` remains unresolved, not established.
+- RB-8D Rader timing reconditioned an initially favorable result:
+  - 14/14 correctness/resource tests pass;
+  - an un-warmed 30-repetition probe made `p=4691` appear 12-15% faster than
+    NumPy, but a warmed, order-balanced 30-block x 100-vector probe produced a
+    median paired ratio of `1.02805` (Rader slower), with Rader faster in only
+    10/30 blocks and at least 5% faster in only 3/30;
+  - `p=4091` is clearly slower in the balanced probe (median ratio `2.16371`);
+  - maximum observed transform error remained about `3.24e-13`. `RADER-1` is
+    not supported by this DFT-only runtime evidence.
+- The completed reproducible RADER-1 harness adds the retrieval-relevant
+  correlation path, 3 seeds, 18 warmed balanced blocks per operation, fresh
+  block inputs, and a durable atomic artifact:
+  - harness tests pass 11/11; all full-size correctness checks pass;
+  - `p=4091`: DFT median ratio `1.8400`, correlation ratio `2.9393`; Rader wins
+    only 1/18 DFT blocks and 0/18 correlation blocks;
+  - `p=4691`: DFT median ratio `0.9619` with 11/18 wins, but correlation ratio
+    `1.0398` with only 7/18 wins;
+  - the mixed `p=4691` DFT sign is consistent with timing noise seen in the
+    earlier 30-block probe, while the actual correlation path is slower.
+    `RADER-1` therefore fails for this implementation/runtime observation.
+  - Artifact:
+    `artifacts/method-dev/prime-ring/rader-4091-4691-benchmark-rb8.json`.
+- RB-8D held-out nonseparable systems gate is green as a falsifier:
+  - 16/16 focused tests, Ruff, and a root direct probe pass;
+  - six frozen `p in {7,11}`/seed runs use 64 training and 128 ID-disjoint
+    held-out examples each, with held-out unrelated examples and a shared
+    train-fitted threshold; this is not a distribution-shift or class-separation
+    claim because both partitions share the frozen synthetic generator;
+  - the conditional and paid-transcript flat routers agree on 768/768 held-out
+    cases and both reach 1.0 recall over 576 positive opportunities;
+  - weaker randomized, additive-metadata, and payload-only controls reach
+    `0.3333`, `0.5`, and `0.25` recall respectively, while all routers have
+    0/192 false unlocks;
+  - this kills extra capacity after paying for the two-bit transcript. The
+    remaining question is the cost/generalization of inferring that transcript;
+    `p=7/11` controls vector length only and tests no number-theoretic advantage.
+- Production-path campaign calibration at the exact `p=4691`, `L=8`,
+  typed-16 shape completed without artifact writes:
+  - 32 trial groups took 4.908 seconds;
+  - 300 trial groups took 19.494 seconds, or 0.06498 seconds/group including
+    setup;
+  - the targeted powered gate retains 9,549 observations. The runner now has
+    allocation-free preflight, plain-value canonicalization, immutable
+    wall/row/string/ring-length ceilings, streamed actual-byte-limited JSON,
+    total deadline, exact retained-row cap, and final-deadline-before-replace
+    ordering; root independently reproduces 39/39 campaign tests;
+  - the final hardened targeted run completed in 424.034 seconds and wrote
+    `artifacts/method-dev/prime-ring/prime-ring-raw-sanity-rb8.json`
+    atomically from runner SHA-256
+    `ec4bbfbeea05a5e5f0fcf2fa5b0d0809e1fd8286a878e30ed448c8e74a1adc32`;
+    the exact-tree preflight is 229,502,456 modeled bytes;
+  - all 12 cells completed, the frozen four-rate/three-seed raw-sanity sweep is
+    `COMPLETE_PASS`, pooled true-unlock recall is 1.0, report false unlocks are
+    0/3,072, and all mandatory controls close;
+  - the artifact remains METHOD_DEV-only: `PRW-1` through `PRW-4` are
+    inconclusive, promotion is false, and novelty is not established;
+  - the campaign process is no longer running. The highest periodic external
+    poll observed 173,236,224 working-set bytes, but this is not a continuous
+    process-peak measurement; the artifact correctly records RSS as unmeasured
+    and unenforced;
+  - the full 11,520-cell grid is refused before construction at
+    1,059,556,800 modeled bytes. Process RSS is still not measured, and
+    checkpoint/resume remains unimplemented.
+- Two initial direct-probe invocations used guessed helper/field names and
+  failed before producing results. The public signatures were read, the probe
+  was corrected, and only the final successful reproduction is evidence.
+- One attempted hardened rerun was stopped before artifact publication when
+  final review found that an oversized ring could reach trial-division
+  primality work before refusal. The immutable maximum is now 4,691; a
+  regression proves 4,693 is rejected without calling the primality routine.
+  The prior artifact remained intact until the final green rerun replaced it.
+- The managed shell launcher again failed with the already-known WindowsApps
+  access denial before starting the powered run. It was not retried. The same
+  explicit Python executable used by the validated probes launched PID `74112`
+  directly with file-backed logs instead.
+- The first Rader CLI invocation used the system Python without the isolated
+  NumPy dependency path and failed at import before benchmarking. The corrected
+  invocation loaded the validated dependency root and produced the artifact;
+  only that second run is evidence.
+- The orbit slice passes 14/14 independently on the stabilized exact tree.
+  The complete final exact-tree prime-ring discovery passes 286/286 in 25.589
+  seconds, including campaign, Rader, quotient, runtime-gate, held-out, orbit,
+  intersection, CRT, graph-fiber, conditional-replacement, and quantizer lanes.
+- Root parsed and independently asserted both generated JSON artifacts:
+  expected schemas, exact cell counts, unique IDs, completion status, frozen
+  raw-sanity result, promotion/novelty boundaries, all Rader correctness checks,
+  and sub-`1e-9` transform/correlation errors pass.
+- The first canonical smoke attempt failed honestly because the initial
+  isolated NumPy-only environment lacked `qdrant_client`. After installing the
+  missing dependencies into an isolated target and injecting the Windows trust
+  store, the fresh canonical floor and ceiling smoke passed: the cached
+  `all-MiniLM-L6-v2` model loaded at vector size 384, four documents were
+  ingested, the chelated vector was nonzero, and batch embedding passed.
+- Whole-repository discovery is still not green: the fullest local attempt
+  collected 3,209 tests and ended with 3 failures, 18 errors, and 11 skips,
+  dominated by missing MTEB and order-sensitive shared model/client state.
+  Fresh isolation clears the questioned production paths: 42/42 integration
+  plus Kalman tests pass, the TTS failure passes alone, and canonical smoke
+  passes. This is a repository-wide environment/order caveat, not a failure of
+  the 286-test prime-ring campaign surface.
+
 ## RB-7 continuation: 2026-07-24
 
 - Preregistered the `p=11` all-two-bin quantizer-origin null and the proof-first

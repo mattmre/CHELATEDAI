@@ -19,7 +19,9 @@ import hashlib
 import hmac
 import json
 import math
+import os
 import secrets
+import tempfile
 import time
 from dataclasses import asdict, dataclass, replace
 from itertools import product
@@ -99,6 +101,31 @@ RAW_SANITY_LIVE_SEAL_ESTIMATED_BYTES = 2048
 RAW_SANITY_LIVE_AUTHORITY_ESTIMATED_BYTES = 2048
 CONTROL_HARD_MAX_ESTIMATED_BYTES = 512 * 1024 * 1024
 CONTROL_HARD_MAX_WORK_UNITS = 50_000_000
+CAMPAIGN_HARD_MAX_ESTIMATED_BYTES = 512 * 1024 * 1024
+CAMPAIGN_DEFAULT_MAX_RETAINED_ROWS = 1_000_000
+CAMPAIGN_DEFAULT_MAX_WALL_CLOCK_SECONDS = 24.0 * 60.0 * 60.0
+CAMPAIGN_HARD_MAX_RETAINED_ROWS = CAMPAIGN_DEFAULT_MAX_RETAINED_ROWS
+CAMPAIGN_HARD_MAX_WALL_CLOCK_SECONDS = (
+    CAMPAIGN_DEFAULT_MAX_WALL_CLOCK_SECONDS
+)
+CAMPAIGN_HARD_MAX_INPUT_BITS = 64
+CAMPAIGN_HARD_MAX_FACTOR_VALUES = 64
+CAMPAIGN_HARD_MAX_RING_LENGTH = 4691
+CAMPAIGN_HARD_MAX_FACTOR_STRING_CHARS = 128
+CAMPAIGN_HARD_MAX_FACTOR_STRING_UTF8_BYTES = 512
+CAMPAIGN_HARD_MAX_REPORT_STREAM_TAG_CHARS = 256
+CAMPAIGN_HARD_MAX_REPORT_STREAM_TAG_UTF8_BYTES = 1024
+CAMPAIGN_HARD_MAX_OUTPUT_PATH_CHARS = 4096
+CAMPAIGN_HARD_MAX_OUTPUT_PATH_UTF8_BYTES = 16 * 1024
+CAMPAIGN_HARD_MAX_RUN_LABEL_CHARS = 128
+CAMPAIGN_HARD_MAX_RUN_LABEL_UTF8_BYTES = 512
+CAMPAIGN_HARD_MAX_JSON_STRING_CHARS = 1024 * 1024
+CAMPAIGN_HARD_MAX_JSON_NODES = 2_000_000
+CAMPAIGN_CONFIG_STRING_ARTIFACT_COPIES = 8
+CAMPAIGN_ESTIMATED_CELL_ARTIFACT_BYTES = 64 * 1024
+CAMPAIGN_ESTIMATED_RAW_PROVENANCE_ROW_BYTES = 512
+CAMPAIGN_ESTIMATED_LIVE_ROW_BYTES = 8 * 1024
+CAMPAIGN_ESTIMATED_ARTIFACT_BASE_BYTES = 1024 * 1024
 DEFAULT_CONTROL_MIN_TRUE_UNLOCK_RECALL = 0.50
 DEFAULT_OUTPUT = (
     Path("artifacts")
@@ -110,6 +137,21 @@ DEFAULT_OUTPUT = (
 
 class CampaignValidationError(ValueError):
     """Raised before execution when a campaign contract is malformed."""
+
+
+class CampaignExecutionLimitError(RuntimeError):
+    """Raised when a preflight, deadline, or retained-row limit is crossed."""
+
+
+@dataclass(frozen=True)
+class CampaignExecutionBudget:
+    """Hostile-safe hard limits for one campaign process."""
+
+    max_wall_clock_seconds: float = (
+        CAMPAIGN_DEFAULT_MAX_WALL_CLOCK_SECONDS
+    )
+    max_retained_rows: int = CAMPAIGN_DEFAULT_MAX_RETAINED_ROWS
+    max_estimated_bytes: int = CAMPAIGN_HARD_MAX_ESTIMATED_BYTES
 
 
 @dataclass(frozen=True)
@@ -175,7 +217,15 @@ def full_config(output: str = str(DEFAULT_OUTPUT)) -> CampaignConfig:
 def _plain_int(value: object, name: str, minimum: int = 0) -> int:
     if isinstance(value, (bool, np.bool_)) or not isinstance(value, (int, np.integer)):
         raise CampaignValidationError(f"{name} must be an integer")
-    result = int(value)
+    result = (
+        int.__int__(value)
+        if isinstance(value, int)
+        else int(value)
+    )
+    if result.bit_length() > CAMPAIGN_HARD_MAX_INPUT_BITS:
+        raise CampaignValidationError(
+            f"{name} exceeds the {CAMPAIGN_HARD_MAX_INPUT_BITS}-bit input ceiling"
+        )
     if result < minimum:
         raise CampaignValidationError(f"{name} must be >= {minimum}")
     return result
@@ -186,10 +236,50 @@ def _finite_float(value: object, name: str) -> float:
         value, (int, float, np.integer, np.floating)
     ):
         raise CampaignValidationError(f"{name} must be a finite number")
-    result = float(value)
+    if isinstance(value, (int, np.integer)):
+        result = float(_plain_int(value, name))
+    elif isinstance(value, float):
+        result = float.__float__(value)
+    else:
+        result = float(value)
     if not math.isfinite(result):
         raise CampaignValidationError(f"{name} must be a finite number")
     return result
+
+
+def _plain_string(
+    value: object,
+    name: str,
+    *,
+    max_length: int = CAMPAIGN_HARD_MAX_FACTOR_STRING_CHARS,
+    max_utf8_bytes: int = CAMPAIGN_HARD_MAX_FACTOR_STRING_UTF8_BYTES,
+) -> str:
+    if not isinstance(value, str):
+        raise CampaignValidationError(f"{name} must be a string")
+    result = str.__str__(value)
+    if type(result) is not str or not result:
+        raise CampaignValidationError(f"{name} must be a non-empty string")
+    if len(result) > max_length:
+        raise CampaignValidationError(
+            f"{name} exceeds the hard {max_length}-character ceiling"
+        )
+    if len(result.encode("utf-8")) > max_utf8_bytes:
+        raise CampaignValidationError(
+            f"{name} exceeds the hard {max_utf8_bytes}-byte UTF-8 ceiling"
+        )
+    return result
+
+
+def _bounded_raw_tuple(values: object, name: str) -> Tuple[Any, ...]:
+    if type(values) is not tuple:
+        raise CampaignValidationError(f"{name} must be a non-empty tuple")
+    if not values:
+        raise CampaignValidationError(f"{name} must be a non-empty tuple")
+    if len(values) > CAMPAIGN_HARD_MAX_FACTOR_VALUES:
+        raise CampaignValidationError(
+            f"{name} exceeds the hard {CAMPAIGN_HARD_MAX_FACTOR_VALUES}-value ceiling"
+        )
+    return values
 
 
 def _validated_tuple(
@@ -199,14 +289,31 @@ def _validated_tuple(
     allowed: Optional[Sequence[str]] = None,
     minimum: Optional[int] = None,
 ) -> Tuple[Any, ...]:
-    if isinstance(values, (str, bytes)):
-        raise CampaignValidationError(f"{name} must be a non-empty tuple")
-    try:
-        result = tuple(values)  # type: ignore[arg-type]
-    except TypeError as exc:
-        raise CampaignValidationError(f"{name} must be a non-empty tuple") from exc
-    if not result:
-        raise CampaignValidationError(f"{name} must be a non-empty tuple")
+    raw = _bounded_raw_tuple(values, name)
+    if minimum is not None:
+        result = tuple(
+            _plain_int(value, f"{name}[{index}]", minimum)
+            for index, value in enumerate(raw)
+        )
+    elif allowed is not None and all(
+        isinstance(value, str) for value in allowed
+    ):
+        result = tuple(
+            _plain_string(value, f"{name}[{index}]")
+            for index, value in enumerate(raw)
+        )
+    elif allowed is not None and all(
+        isinstance(value, int) and not isinstance(value, bool)
+        for value in allowed
+    ):
+        result = tuple(
+            _plain_int(value, f"{name}[{index}]")
+            for index, value in enumerate(raw)
+        )
+    else:
+        raise CampaignValidationError(
+            f"{name} has no canonical tuple element contract"
+        )
     if len(set(result)) != len(result):
         raise CampaignValidationError(f"{name} must not contain duplicates")
     if allowed is not None:
@@ -215,46 +322,69 @@ def _validated_tuple(
             raise CampaignValidationError(
                 f"{name} contains unsupported values: {unknown}"
             )
-    if minimum is not None:
-        for index, value in enumerate(result):
-            _plain_int(value, f"{name}[{index}]", minimum)
+    return result
+
+
+def _validated_float_tuple(
+    values: object,
+    name: str,
+    *,
+    upper: float,
+) -> Tuple[float, ...]:
+    raw = _bounded_raw_tuple(values, name)
+    result = tuple(
+        _finite_float(value, f"{name}[{index}]")
+        for index, value in enumerate(raw)
+    )
+    if len(set(result)) != len(result):
+        raise CampaignValidationError(f"{name} must not contain duplicates")
+    for index, number in enumerate(result):
+        if number < 0.0 or number >= upper:
+            raise CampaignValidationError(
+                f"{name}[{index}] must be in [0, {upper})"
+            )
     return result
 
 
 def validate_config(config: CampaignConfig) -> CampaignConfig:
     """Validate every factor up front; malformed campaigns fail closed."""
 
-    if not isinstance(config, CampaignConfig):
+    if type(config) is not CampaignConfig:
         raise CampaignValidationError("config must be CampaignConfig")
-    _validated_tuple(config.seeds, "seeds", minimum=0)
-    _validated_tuple(config.lengths, "lengths", minimum=7)
-    _validated_tuple(
+    seeds = _validated_tuple(config.seeds, "seeds", minimum=0)
+    lengths = _validated_tuple(config.lengths, "lengths", minimum=7)
+    if any(length > CAMPAIGN_HARD_MAX_RING_LENGTH for length in lengths):
+        raise CampaignValidationError(
+            "lengths exceed the hard campaign ring-length ceiling of "
+            f"{CAMPAIGN_HARD_MAX_RING_LENGTH}"
+        )
+    carrier_families = _validated_tuple(
         config.carrier_families,
         "carrier_families",
         allowed=CARRIER_FAMILIES,
     )
-    _validated_tuple(config.layers, "layers", allowed=(1, 8))
-    _validated_tuple(
+    layers = _validated_tuple(config.layers, "layers", allowed=(1, 8))
+    planted_mask_families = _validated_tuple(
         config.planted_mask_families,
         "planted_mask_families",
         allowed=PLANTED_MASK_FAMILIES,
     )
-    _validated_tuple(
+    decoder_mask_policies = _validated_tuple(
         config.decoder_mask_policies,
         "decoder_mask_policies",
         allowed=DECODER_MASK_POLICIES,
     )
-    for name, rates, upper in (
-        ("bit_flip_rates", config.bit_flip_rates, 0.5),
-        ("payload_noise_rates", config.payload_noise_rates, math.inf),
-    ):
-        _validated_tuple(rates, name)
-        for index, rate in enumerate(rates):
-            number = _finite_float(rate, f"{name}[{index}]")
-            if number < 0.0 or number >= upper:
-                raise CampaignValidationError(
-                    f"{name}[{index}] must be in [0, {upper})"
-                )
+    bit_flip_rates = _validated_float_tuple(
+        config.bit_flip_rates,
+        "bit_flip_rates",
+        upper=0.5,
+    )
+    payload_noise_rates = _validated_float_tuple(
+        config.payload_noise_rates,
+        "payload_noise_rates",
+        upper=math.inf,
+    )
+    integer_values = {}
     for name, value, minimum in (
         ("type_count", config.type_count, 2),
         ("waypoints_per_type", config.waypoints_per_type, 2),
@@ -268,8 +398,11 @@ def validate_config(config: CampaignConfig) -> CampaignConfig:
         ("primary_report_unrelated", config.primary_report_unrelated, 1),
         ("recall_k", config.recall_k, 1),
     ):
-        _plain_int(value, name, minimum)
-    if config.type_count > 64 or config.waypoints_per_type > 64:
+        integer_values[name] = _plain_int(value, name, minimum)
+    if (
+        integer_values["type_count"] > 64
+        or integer_values["waypoints_per_type"] > 64
+    ):
         raise CampaignValidationError("type and waypoint counts are bounded at 64")
     target = _finite_float(
         config.target_false_unlock_rate, "target_false_unlock_rate"
@@ -287,13 +420,51 @@ def validate_config(config: CampaignConfig) -> CampaignConfig:
     confidence = _finite_float(config.confidence_level, "confidence_level")
     if not 0.5 < confidence < 1.0:
         raise CampaignValidationError("confidence_level must be in (0.5, 1)")
-    if not isinstance(config.report_stream_tag, str) or not config.report_stream_tag:
-        raise CampaignValidationError("report_stream_tag must be a non-empty string")
-    if not isinstance(config.output, str) or not config.output:
-        raise CampaignValidationError("output must be a non-empty path")
-    if not isinstance(config.run_label, str) or not config.run_label:
-        raise CampaignValidationError("run_label must be a non-empty string")
-    return config
+    report_stream_tag = _plain_string(
+        config.report_stream_tag,
+        "report_stream_tag",
+        max_length=CAMPAIGN_HARD_MAX_REPORT_STREAM_TAG_CHARS,
+        max_utf8_bytes=CAMPAIGN_HARD_MAX_REPORT_STREAM_TAG_UTF8_BYTES,
+    )
+    output = _plain_string(
+        config.output,
+        "output",
+        max_length=CAMPAIGN_HARD_MAX_OUTPUT_PATH_CHARS,
+        max_utf8_bytes=CAMPAIGN_HARD_MAX_OUTPUT_PATH_UTF8_BYTES,
+    )
+    run_label = _plain_string(
+        config.run_label,
+        "run_label",
+        max_length=CAMPAIGN_HARD_MAX_RUN_LABEL_CHARS,
+        max_utf8_bytes=CAMPAIGN_HARD_MAX_RUN_LABEL_UTF8_BYTES,
+    )
+    return CampaignConfig(
+        seeds=seeds,
+        lengths=lengths,
+        carrier_families=carrier_families,
+        layers=layers,
+        planted_mask_families=planted_mask_families,
+        decoder_mask_policies=decoder_mask_policies,
+        bit_flip_rates=bit_flip_rates,
+        payload_noise_rates=payload_noise_rates,
+        type_count=integer_values["type_count"],
+        waypoints_per_type=integer_values["waypoints_per_type"],
+        select_planted=integer_values["select_planted"],
+        select_unrelated=integer_values["select_unrelated"],
+        report_planted=integer_values["report_planted"],
+        report_unrelated=integer_values["report_unrelated"],
+        recall_k=integer_values["recall_k"],
+        target_false_unlock_rate=target,
+        control_min_true_unlock_recall=control_recall,
+        confidence_level=confidence,
+        report_stream_tag=report_stream_tag,
+        output=output,
+        primary_select_planted=integer_values["primary_select_planted"],
+        primary_select_unrelated=integer_values["primary_select_unrelated"],
+        primary_report_planted=integer_values["primary_report_planted"],
+        primary_report_unrelated=integer_values["primary_report_unrelated"],
+        run_label=run_label,
+    )
 
 
 def _canonical_json(value: object) -> str:
@@ -2036,6 +2207,438 @@ def _trial_budgets(
     }
 
 
+def _canonical_execution_budget(
+    budget: Optional[CampaignExecutionBudget],
+) -> CampaignExecutionBudget:
+    if budget is None:
+        return CampaignExecutionBudget()
+    if type(budget) is not CampaignExecutionBudget:
+        raise CampaignValidationError(
+            "execution_budget must be CampaignExecutionBudget"
+        )
+    wall_clock = budget.max_wall_clock_seconds
+    if type(wall_clock) is int:
+        if wall_clock.bit_length() > CAMPAIGN_HARD_MAX_INPUT_BITS:
+            raise CampaignValidationError(
+                "max_wall_clock_seconds exceeds the hard input-bit ceiling"
+            )
+        canonical_wall_clock = float(wall_clock)
+    elif type(wall_clock) is float:
+        canonical_wall_clock = float.__float__(wall_clock)
+    else:
+        raise CampaignValidationError(
+            "max_wall_clock_seconds must be a positive finite number"
+        )
+    if (
+        not math.isfinite(canonical_wall_clock)
+        or canonical_wall_clock <= 0.0
+        or canonical_wall_clock > CAMPAIGN_HARD_MAX_WALL_CLOCK_SECONDS
+    ):
+        raise CampaignValidationError(
+            "max_wall_clock_seconds must be positive, finite, and no greater "
+            "than the hard campaign ceiling"
+        )
+    if (
+        type(budget.max_retained_rows) is not int
+        or budget.max_retained_rows.bit_length()
+        > CAMPAIGN_HARD_MAX_INPUT_BITS
+        or budget.max_retained_rows <= 0
+        or budget.max_retained_rows > CAMPAIGN_HARD_MAX_RETAINED_ROWS
+    ):
+        raise CampaignValidationError(
+            "max_retained_rows must be a positive integer no greater than "
+            "the hard campaign ceiling"
+        )
+    if (
+        type(budget.max_estimated_bytes) is not int
+        or budget.max_estimated_bytes.bit_length()
+        > CAMPAIGN_HARD_MAX_INPUT_BITS
+        or budget.max_estimated_bytes <= 0
+        or budget.max_estimated_bytes
+        > CAMPAIGN_HARD_MAX_ESTIMATED_BYTES
+    ):
+        raise CampaignValidationError(
+            "max_estimated_bytes must be a positive integer no greater "
+            "than the hard 512 MiB modeled ceiling"
+        )
+    return CampaignExecutionBudget(
+        max_wall_clock_seconds=canonical_wall_clock,
+        max_retained_rows=budget.max_retained_rows,
+        max_estimated_bytes=budget.max_estimated_bytes,
+    )
+
+
+def _modeled_base_group_fixed_array_bytes(
+    config: CampaignConfig,
+    *,
+    length: int,
+    layers: int,
+) -> Dict[str, int]:
+    """Conservatively model fixed NumPy arrays without allocating them."""
+
+    half_spectrum = length // 2 + 1
+    signatures = config.type_count * layers * 8
+    templates = config.type_count * layers * length * 8
+    base = length * 8
+    ring_template_copies = 2 * templates
+    payload_groups = config.waypoints_per_type * layers * length * 8
+    payload_bank = (
+        config.type_count
+        * config.waypoints_per_type
+        * layers
+        * length
+        * 8
+    )
+    reference_ffts = (
+        config.type_count * layers * half_spectrum * 16
+    )
+    reference_norms = config.type_count * layers * 8
+    payload_ffts = (
+        config.type_count
+        * config.waypoints_per_type
+        * layers
+        * half_spectrum
+        * 16
+    )
+    payload_norms = (
+        config.type_count
+        * config.waypoints_per_type
+        * layers
+        * 8
+    )
+    fft_and_decoder_headroom = 2 * max(
+        templates,
+        payload_bank,
+        payload_ffts,
+    )
+    components = {
+        "signatures_int64": signatures,
+        "templates_float64": templates,
+        "base_float64": base,
+        "ring_template_copy_allowance": ring_template_copies,
+        "payload_groups_float64": payload_groups,
+        "payload_collision_bank_float64": payload_bank,
+        "reference_ffts_complex128": reference_ffts,
+        "reference_norms_float64": reference_norms,
+        "payload_ffts_complex128": payload_ffts,
+        "payload_norms_float64": payload_norms,
+        "fft_and_decoder_headroom": fft_and_decoder_headroom,
+    }
+    return {**components, "total": sum(components.values())}
+
+
+def _config_string_utf8_bytes(config: CampaignConfig) -> int:
+    values = (
+        *config.carrier_families,
+        *config.planted_mask_families,
+        *config.decoder_mask_policies,
+        config.report_stream_tag,
+        config.output,
+        config.run_label,
+    )
+    return sum(len(value.encode("utf-8")) for value in values)
+
+
+def _campaign_execution_preflight(
+    config: CampaignConfig,
+    execution_budget: Optional[CampaignExecutionBudget] = None,
+) -> Dict[str, Any]:
+    """Return an allocation-free campaign model before any construction."""
+
+    config = validate_config(config)
+    budget = _canonical_execution_budget(execution_budget)
+    config_string_utf8_bytes = _config_string_utf8_bytes(config)
+    config_string_artifact_bytes = (
+        config_string_utf8_bytes
+        * CAMPAIGN_CONFIG_STRING_ARTIFACT_COPIES
+    )
+    expected_cell_count = math.prod(
+        (
+            len(config.seeds),
+            len(config.lengths),
+            len(config.carrier_families),
+            len(config.layers),
+            len(config.planted_mask_families),
+            len(config.decoder_mask_policies),
+            len(config.bit_flip_rates),
+            len(config.payload_noise_rates),
+        )
+    )
+    expected_base_group_count = math.prod(
+        (
+            len(config.seeds),
+            len(config.lengths),
+            len(config.carrier_families),
+            len(config.layers),
+        )
+    )
+    refusal_reasons = []
+    if expected_cell_count > 1_000_000:
+        refusal_reasons.append(
+            "expected cell count exceeds the hostile-safe preflight "
+            "enumeration ceiling of 1,000,000"
+        )
+        return {
+            "status": "REFUSED",
+            "allowed": False,
+            "refusal_reasons": refusal_reasons,
+            "expected_cell_count": expected_cell_count,
+            "available_cell_count": None,
+            "expected_base_group_count": expected_base_group_count,
+            "available_base_group_count": None,
+            "modeled_trial_count": None,
+            "modeled_retained_row_count": None,
+            "modeled_decoder_retained_row_count": None,
+            "modeled_serialized_raw_provenance_row_count": None,
+            "modeled_peak_live_retained_rows": None,
+            "modeled_fixed_array_peak_bytes": None,
+            "modeled_fixed_array_peak_components": {},
+            "modeled_live_row_peak_bytes": None,
+            "modeled_artifact_bytes": (
+                CAMPAIGN_ESTIMATED_ARTIFACT_BASE_BYTES
+                + expected_cell_count
+                * CAMPAIGN_ESTIMATED_CELL_ARTIFACT_BYTES
+                + config_string_artifact_bytes
+            ),
+            "modeled_config_string_utf8_bytes": (
+                config_string_utf8_bytes
+            ),
+            "modeled_config_string_artifact_bytes": (
+                config_string_artifact_bytes
+            ),
+            "conservative_total_estimated_bytes": None,
+            "budget": asdict(budget),
+            "hard_modeled_ceiling_bytes": (
+                CAMPAIGN_HARD_MAX_ESTIMATED_BYTES
+            ),
+            "campaign_arrays_allocated": False,
+            "process_rss_measured": False,
+            "process_rss_limit_enforced": False,
+            "estimate_is_process_rss": False,
+            "rss_limitation": (
+                "the 512 MiB ceiling covers modeled fixed arrays, live row "
+                "allowance, and artifact size; Python allocator, library "
+                "workspace, and process RSS are not measured"
+            ),
+            "checkpoint_resume_status": (
+                "BLOCKED_NOT_IMPLEMENTED_IN_THIS_SLICE"
+            ),
+        }
+
+    available_cell_count = 0
+    available_base_group_count = 0
+    modeled_trial_count = 0
+    modeled_retained_row_count = 0
+    modeled_raw_provenance_rows = 0
+    modeled_peak_live_retained_rows = 0
+    fixed_array_peak = 0
+    fixed_array_peak_components: Dict[str, int] = {}
+    for seed, length, carrier_family, layers in product(
+        config.seeds,
+        config.lengths,
+        config.carrier_families,
+        config.layers,
+    ):
+        if _carrier_availability(length, carrier_family) is not None:
+            continue
+        available_base_group_count += 1
+        fixed_components = _modeled_base_group_fixed_array_bytes(
+            config,
+            length=int(length),
+            layers=int(layers),
+        )
+        if fixed_components["total"] > fixed_array_peak:
+            fixed_array_peak = fixed_components["total"]
+            fixed_array_peak_components = fixed_components
+        decoder_count = sum(
+            _mask_availability(layers, policy, decoder=True) is None
+            for policy in config.decoder_mask_policies
+        )
+        for planted_mask_family in config.planted_mask_families:
+            if (
+                _mask_availability(
+                    layers,
+                    planted_mask_family,
+                    decoder=False,
+                )
+                is not None
+            ):
+                continue
+            for bit_flip_rate in config.bit_flip_rates:
+                primary = _primary_base_group(
+                    config,
+                    length=length,
+                    carrier_family=carrier_family,
+                    layers=layers,
+                    planted_mask_family=planted_mask_family,
+                    bit_flip_rate=bit_flip_rate,
+                )
+                budgets = _trial_budgets(
+                    config,
+                    primary_base_group=primary,
+                )
+                trial_count = sum(
+                    count
+                    for split_budgets in budgets.values()
+                    for count in split_budgets.values()
+                )
+                retained_count = trial_count * decoder_count
+                modeled_trial_count += trial_count
+                modeled_retained_row_count += retained_count
+                modeled_peak_live_retained_rows = max(
+                    modeled_peak_live_retained_rows,
+                    retained_count,
+                )
+                available_cell_count += (
+                    decoder_count * len(config.payload_noise_rates)
+                )
+                if (
+                    config.run_label == "FULL_METHOD_DEV"
+                    and seed in FROZEN_SEEDS
+                    and length == 4691
+                    and carrier_family == "legendre"
+                    and layers == 8
+                    and planted_mask_family == "typed16"
+                    and type(bit_flip_rate) is float
+                    and bit_flip_rate
+                    in RAW_SANITY_REQUIRED_BIT_FLIP_RATES
+                    and "typed16" in config.decoder_mask_policies
+                    and 0.25 in config.payload_noise_rates
+                ):
+                    modeled_raw_provenance_rows += (
+                        RAW_SANITY_REPORT_PLANTED_GROUPS[bit_flip_rate]
+                    )
+
+    modeled_decoder_retained_rows = modeled_retained_row_count
+    modeled_retained_row_count += modeled_raw_provenance_rows
+    modeled_peak_live_retained_rows += modeled_raw_provenance_rows
+    live_row_peak_bytes = (
+        modeled_peak_live_retained_rows
+        * CAMPAIGN_ESTIMATED_LIVE_ROW_BYTES
+    )
+    artifact_bytes = (
+        CAMPAIGN_ESTIMATED_ARTIFACT_BASE_BYTES
+        + expected_cell_count * CAMPAIGN_ESTIMATED_CELL_ARTIFACT_BYTES
+        + modeled_raw_provenance_rows
+        * CAMPAIGN_ESTIMATED_RAW_PROVENANCE_ROW_BYTES
+        + config_string_artifact_bytes
+    )
+    total_estimated_bytes = (
+        fixed_array_peak + live_row_peak_bytes + artifact_bytes
+    )
+    if available_cell_count == 0:
+        refusal_reasons.append("campaign has no structurally available cells")
+    if modeled_retained_row_count > budget.max_retained_rows:
+        refusal_reasons.append(
+            "modeled retained-row count exceeds max_retained_rows"
+        )
+    if total_estimated_bytes > budget.max_estimated_bytes:
+        refusal_reasons.append(
+            "conservative fixed-array/live-row/artifact estimate exceeds "
+            "max_estimated_bytes"
+        )
+    allowed = not refusal_reasons
+    return {
+        "status": "ALLOWED" if allowed else "REFUSED",
+        "allowed": allowed,
+        "refusal_reasons": refusal_reasons,
+        "expected_cell_count": expected_cell_count,
+        "available_cell_count": available_cell_count,
+        "expected_base_group_count": expected_base_group_count,
+        "available_base_group_count": available_base_group_count,
+        "modeled_trial_count": modeled_trial_count,
+        "modeled_retained_row_count": modeled_retained_row_count,
+        "modeled_decoder_retained_row_count": (
+            modeled_decoder_retained_rows
+        ),
+        "modeled_serialized_raw_provenance_row_count": (
+            modeled_raw_provenance_rows
+        ),
+        "modeled_peak_live_retained_rows": (
+            modeled_peak_live_retained_rows
+        ),
+        "modeled_fixed_array_peak_bytes": fixed_array_peak,
+        "modeled_fixed_array_peak_components": (
+            fixed_array_peak_components
+        ),
+        "modeled_live_row_peak_bytes": live_row_peak_bytes,
+        "modeled_artifact_bytes": artifact_bytes,
+        "modeled_config_string_utf8_bytes": config_string_utf8_bytes,
+        "modeled_config_string_artifact_bytes": (
+            config_string_artifact_bytes
+        ),
+        "conservative_total_estimated_bytes": total_estimated_bytes,
+        "budget": asdict(budget),
+        "hard_modeled_ceiling_bytes": (
+            CAMPAIGN_HARD_MAX_ESTIMATED_BYTES
+        ),
+        "campaign_arrays_allocated": False,
+        "process_rss_measured": False,
+        "process_rss_limit_enforced": False,
+        "estimate_is_process_rss": False,
+        "rss_limitation": (
+            "the 512 MiB ceiling covers modeled fixed arrays, live row "
+            "allowance, and artifact size; Python allocator, library "
+            "workspace, and process RSS are not measured or guaranteed"
+        ),
+        "checkpoint_resume_status": "BLOCKED_NOT_IMPLEMENTED_IN_THIS_SLICE",
+    }
+
+
+def _check_campaign_deadline(
+    started_at: float,
+    budget: CampaignExecutionBudget,
+    checkpoint: str,
+) -> float:
+    elapsed = time.perf_counter() - started_at
+    if elapsed > budget.max_wall_clock_seconds:
+        raise CampaignExecutionLimitError(
+            "campaign wall-clock deadline exceeded at "
+            f"{checkpoint}: {elapsed:.6f}s > "
+            f"{budget.max_wall_clock_seconds:.6f}s"
+        )
+    return elapsed
+
+
+def _base_result_retained_row_count(
+    base_result: Mapping[str, Any],
+) -> int:
+    rows = base_result.get("rows")
+    if not isinstance(rows, Mapping):
+        raise CampaignExecutionLimitError(
+            "base result omitted retained row mappings"
+        )
+    count = 0
+    for policy_rows in rows.values():
+        if not isinstance(policy_rows, Mapping):
+            raise CampaignExecutionLimitError(
+                "base result policy rows are malformed"
+            )
+        for split_rows in policy_rows.values():
+            if not isinstance(split_rows, Mapping):
+                raise CampaignExecutionLimitError(
+                    "base result split rows are malformed"
+                )
+            for retained_rows in split_rows.values():
+                if not isinstance(retained_rows, list):
+                    raise CampaignExecutionLimitError(
+                        "base result retained rows must be lists"
+                    )
+                count += len(retained_rows)
+    return count
+
+
+def _enforce_retained_row_cap(
+    retained_rows: int,
+    budget: CampaignExecutionBudget,
+) -> None:
+    if retained_rows > budget.max_retained_rows:
+        raise CampaignExecutionLimitError(
+            "campaign retained-row hard cap exceeded: "
+            f"{retained_rows} > {budget.max_retained_rows}"
+        )
+
+
 def _circular_error(observed: int, expected: int, length: int) -> int:
     delta = abs(int(observed) - int(expected)) % length
     return int(min(delta, length - delta))
@@ -2107,6 +2710,7 @@ def _run_base_group(
     reference_ffts: np.ndarray,
     reference_norms: np.ndarray,
     resident_context_bytes: int,
+    deadline_check: Optional[Any] = None,
 ) -> Dict[str, Any]:
     """Run one observation group and return rows for every compatible decoder."""
 
@@ -2144,6 +2748,8 @@ def _run_base_group(
     budgets = _trial_budgets(config, primary_base_group=primary)
 
     for split in SPLITS:
+        if deadline_check is not None:
+            deadline_check(f"base_group_split_{split}")
         for input_class in (
             "planted",
             "unrelated",
@@ -2152,6 +2758,10 @@ def _run_base_group(
             "burst",
         ):
             for index in range(budgets[split][input_class]):
+                if deadline_check is not None:
+                    deadline_check(
+                        f"base_group_{split}_{input_class}_{index}"
+                    )
                 truth_class = (
                     "planted"
                     if input_class in ("block_correlated", "burst")
@@ -4703,7 +5313,9 @@ def _construction_checks(config: CampaignConfig) -> Dict[str, Any]:
             "round_trips": round_trips,
             "all_pass": all(round_trips.values())
             and factor_integer_exact(4690) == moduli,
-            "rader_claim": False,
+            "rader_campaign_status": "NOT_TESTED_BY_THIS_CAMPAIGN",
+            "rader_implementation_present": True,
+            "separate_rader_harness_results_ingested": False,
         }
     all_legendre = all(
         value["exact_ideal_autocorrelation"] in (
@@ -4828,8 +5440,9 @@ def _campaign_verdicts(
             "promotion_eligible": False,
         },
         "RADER-1": {
-            "verdict": "NOT_TESTED_OUT_OF_SCOPE",
-            "rader_implementation_present": False,
+            "verdict": "NOT_TESTED_BY_THIS_CAMPAIGN",
+            "rader_implementation_present": True,
+            "separate_rader_harness_results_ingested": False,
             "promotion_eligible": False,
         },
         "novelty": {
@@ -4841,14 +5454,161 @@ def _campaign_verdicts(
     }
 
 
+def _validate_json_tree_bounds(value: object) -> None:
+    stack = [value]
+    visited = 0
+    while stack:
+        current = stack.pop()
+        visited += 1
+        if visited > CAMPAIGN_HARD_MAX_JSON_NODES:
+            raise CampaignExecutionLimitError(
+                "JSON artifact exceeds the hard node-count ceiling"
+            )
+        if current is None or type(current) in (bool,):
+            continue
+        if type(current) is int:
+            if current.bit_length() > CAMPAIGN_HARD_MAX_INPUT_BITS:
+                raise CampaignExecutionLimitError(
+                    "JSON artifact integer exceeds the hard input-bit ceiling"
+                )
+            continue
+        if type(current) is float:
+            if not math.isfinite(current):
+                raise CampaignValidationError(
+                    "JSON artifact contains a non-finite float"
+                )
+            continue
+        if type(current) is str:
+            if len(current) > CAMPAIGN_HARD_MAX_JSON_STRING_CHARS:
+                raise CampaignExecutionLimitError(
+                    "JSON artifact string exceeds the hard character ceiling"
+                )
+            continue
+        if type(current) is dict:
+            for key, item in current.items():
+                if type(key) is not str:
+                    raise CampaignValidationError(
+                        "JSON artifact object keys must be plain strings"
+                    )
+                if len(key) > CAMPAIGN_HARD_MAX_JSON_STRING_CHARS:
+                    raise CampaignExecutionLimitError(
+                        "JSON artifact key exceeds the hard character ceiling"
+                    )
+                stack.append(key)
+                stack.append(item)
+            continue
+        if type(current) in (list, tuple):
+            stack.extend(current)
+            continue
+        raise CampaignValidationError(
+            "JSON artifact contains a non-canonical value of type "
+            f"{type(current).__name__}"
+        )
+
+
+def _atomic_write_json(
+    output: Path,
+    artifact: Mapping[str, Any],
+    *,
+    deadline_check: Optional[Any] = None,
+    max_encoded_bytes: int = CAMPAIGN_HARD_MAX_ESTIMATED_BYTES,
+) -> None:
+    """Stream one bounded JSON artifact through a same-directory replace."""
+
+    output = Path(output)
+    output_text = str(output)
+    if (
+        len(output_text) > CAMPAIGN_HARD_MAX_OUTPUT_PATH_CHARS
+        or len(output_text.encode("utf-8"))
+        > CAMPAIGN_HARD_MAX_OUTPUT_PATH_UTF8_BYTES
+    ):
+        raise CampaignValidationError(
+            "output path exceeds the hard path-length ceiling"
+        )
+    if (
+        type(max_encoded_bytes) is not int
+        or max_encoded_bytes.bit_length() > CAMPAIGN_HARD_MAX_INPUT_BITS
+        or max_encoded_bytes <= 0
+        or max_encoded_bytes > CAMPAIGN_HARD_MAX_ESTIMATED_BYTES
+    ):
+        raise CampaignValidationError(
+            "max_encoded_bytes must be a positive plain integer no greater "
+            "than the hard modeled ceiling"
+        )
+    if deadline_check is not None:
+        deadline_check("before_artifact_json_encoding")
+    _validate_json_tree_bounds(artifact)
+    encoder = json.JSONEncoder(
+        indent=2,
+        sort_keys=True,
+        allow_nan=False,
+    )
+    output.parent.mkdir(parents=True, exist_ok=True)
+    temporary_path: Optional[Path] = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="wb",
+            dir=str(output.parent),
+            prefix=f".{output.name}.",
+            suffix=".tmp",
+            delete=False,
+        ) as temporary:
+            temporary_path = Path(temporary.name)
+            encoded_bytes = 0
+            for chunk in encoder.iterencode(artifact):
+                encoded = chunk.encode("utf-8")
+                encoded_bytes += len(encoded)
+                if encoded_bytes > max_encoded_bytes:
+                    raise CampaignExecutionLimitError(
+                        "encoded JSON artifact exceeds max_encoded_bytes"
+                    )
+                temporary.write(encoded)
+            if encoded_bytes + 1 > max_encoded_bytes:
+                raise CampaignExecutionLimitError(
+                    "encoded JSON artifact exceeds max_encoded_bytes"
+                )
+            temporary.write(b"\n")
+            temporary.flush()
+            os.fsync(temporary.fileno())
+        if deadline_check is not None:
+            deadline_check("after_artifact_json_encoding")
+        if deadline_check is not None:
+            deadline_check("before_artifact_atomic_replace")
+        os.replace(temporary_path, output)
+        temporary_path = None
+    finally:
+        if temporary_path is not None:
+            try:
+                temporary_path.unlink()
+            except FileNotFoundError:
+                pass
+
+
 def run_campaign(
     config: CampaignConfig,
     *,
     write_artifact: bool = True,
+    execution_budget: Optional[CampaignExecutionBudget] = None,
 ) -> Dict[str, Any]:
     """Execute the complete retained grid and optionally write its JSON artifact."""
 
+    started_at = time.perf_counter()
     config = validate_config(config)
+    canonical_budget = _canonical_execution_budget(execution_budget)
+    execution_preflight = _campaign_execution_preflight(
+        config,
+        canonical_budget,
+    )
+    if not execution_preflight["allowed"]:
+        raise CampaignExecutionLimitError(
+            "campaign refused by allocation-free preflight: "
+            + "; ".join(execution_preflight["refusal_reasons"])
+        )
+    _check_campaign_deadline(
+        started_at,
+        canonical_budget,
+        "after_preflight_before_construction",
+    )
     stream_manifest = _stream_manifest(config)
     campaign_contract = _campaign_contract_manifest(config)
     raw_sanity_live_authority = _RawSanityLiveAuthority(
@@ -4857,10 +5617,20 @@ def run_campaign(
     if not stream_manifest["select_report_disjoint"]:
         raise CampaignValidationError("BANK/SELECT/REPORT streams are not disjoint")
     construction = _construction_checks(config)
+    _check_campaign_deadline(
+        started_at,
+        canonical_budget,
+        "after_construction_checks",
+    )
     cell_specs = expected_cell_specs(config)
     cells_by_id: Dict[str, Dict[str, Any]] = {}
     raw_sanity_live_seals: Dict[str, _RawSanityLiveSeal] = {}
     for spec in cell_specs:
+        _check_campaign_deadline(
+            started_at,
+            canonical_budget,
+            "cell_manifest_initialization",
+        )
         reason = _cell_unavailable_reason(spec)
         cells_by_id[_cell_id(spec)] = {
             "cell_id": _cell_id(spec),
@@ -4872,6 +5642,7 @@ def run_campaign(
         }
 
     primary_components = []
+    retained_row_count = 0
     base_groups = product(
         config.seeds,
         config.lengths,
@@ -4879,6 +5650,11 @@ def run_campaign(
         config.layers,
     )
     for seed, length, carrier_family, layers in base_groups:
+        _check_campaign_deadline(
+            started_at,
+            canonical_budget,
+            "base_group_start",
+        )
         carrier_reason = _carrier_availability(length, carrier_family)
         if carrier_reason:
             continue
@@ -4935,7 +5711,17 @@ def run_campaign(
                 payload_ffts,
                 payload_norms,
             )
+            _check_campaign_deadline(
+                started_at,
+                canonical_budget,
+                "base_group_fixed_arrays_ready",
+            )
             for planted_mask_family in config.planted_mask_families:
+                _check_campaign_deadline(
+                    started_at,
+                    canonical_budget,
+                    "planted_mask_loop",
+                )
                 if (
                     _mask_availability(
                         layers, planted_mask_family, decoder=False
@@ -4944,6 +5730,11 @@ def run_campaign(
                 ):
                     continue
                 for bit_flip_rate in config.bit_flip_rates:
+                    _check_campaign_deadline(
+                        started_at,
+                        canonical_budget,
+                        "bit_flip_loop_before_base_result",
+                    )
                     base_result = _run_base_group(
                         config,
                         seed=seed,
@@ -4961,8 +5752,32 @@ def run_campaign(
                         reference_ffts=reference_ffts,
                         reference_norms=reference_norms,
                         resident_context_bytes=resident_context_bytes,
+                        deadline_check=lambda checkpoint: (
+                            _check_campaign_deadline(
+                                started_at,
+                                canonical_budget,
+                                checkpoint,
+                            )
+                        ),
+                    )
+                    retained_row_count += _base_result_retained_row_count(
+                        base_result
+                    )
+                    _enforce_retained_row_cap(
+                        retained_row_count,
+                        canonical_budget,
+                    )
+                    _check_campaign_deadline(
+                        started_at,
+                        canonical_budget,
+                        "bit_flip_loop_after_base_result",
                     )
                     for decoder_policy in config.decoder_mask_policies:
+                        _check_campaign_deadline(
+                            started_at,
+                            canonical_budget,
+                            "decoder_policy_loop",
+                        )
                         if (
                             _mask_availability(
                                 layers, decoder_policy, decoder=True
@@ -4971,6 +5786,11 @@ def run_campaign(
                         ):
                             continue
                         for payload_noise_rate in config.payload_noise_rates:
+                            _check_campaign_deadline(
+                                started_at,
+                                canonical_budget,
+                                "cell_loop_before_aggregation",
+                            )
                             spec = {
                                 "seed": int(seed),
                                 "length": int(length),
@@ -4983,7 +5803,7 @@ def run_campaign(
                             }
                             try:
                                 cell_id = _cell_id(spec)
-                                cells_by_id[cell_id] = _aggregate_cell(
+                                completed_cell = _aggregate_cell(
                                     config,
                                     spec,
                                     base_result,
@@ -4999,6 +5819,24 @@ def run_campaign(
                                     codebook_manifest=codebook_manifest,
                                     carrier_provenance=carrier_provenance,
                                 )
+                                cells_by_id[cell_id] = completed_cell
+                                serialized_provenance = completed_cell.get(
+                                    "report", {}
+                                ).get("raw_type_accuracy_provenance")
+                                if isinstance(
+                                    serialized_provenance,
+                                    Mapping,
+                                ) and isinstance(
+                                    serialized_provenance.get("rows"),
+                                    list,
+                                ):
+                                    retained_row_count += len(
+                                        serialized_provenance["rows"]
+                                    )
+                                    _enforce_retained_row_cap(
+                                        retained_row_count,
+                                        canonical_budget,
+                                    )
                                 live_seal = _raw_sanity_live_seal(
                                     config,
                                     spec,
@@ -5010,6 +5848,13 @@ def run_campaign(
                                 )
                                 if live_seal is not None:
                                     raw_sanity_live_seals[cell_id] = live_seal
+                                _check_campaign_deadline(
+                                    started_at,
+                                    canonical_budget,
+                                    "cell_loop_after_aggregation",
+                                )
+                            except CampaignExecutionLimitError:
+                                raise
                             except Exception as exc:  # retain the cell; never omit
                                 cells_by_id[_cell_id(spec)] = {
                                     "cell_id": _cell_id(spec),
@@ -5031,6 +5876,8 @@ def run_campaign(
                                 "rows": base_result["rows"]["typed16"],
                             }
                         )
+        except CampaignExecutionLimitError:
+            raise
         except Exception as exc:
             # Convert every pending descendant of this bank to an explicit error.
             for cell in cells_by_id.values():
@@ -5049,6 +5896,11 @@ def run_campaign(
                     }
 
     for cell in cells_by_id.values():
+        _check_campaign_deadline(
+            started_at,
+            canonical_budget,
+            "pending_cell_finalization",
+        )
         if cell["status"] == "pending":
             cell["status"] = "error"
             cell["error"] = {
@@ -5056,12 +5908,22 @@ def run_campaign(
                 "message": "grid cell remained pending after campaign traversal",
             }
     cells = [cells_by_id[_cell_id(spec)] for spec in cell_specs]
+    _check_campaign_deadline(
+        started_at,
+        canonical_budget,
+        "before_primary_aggregation",
+    )
     primary = _primary_aggregate(
         config,
         primary_components,
         raw_sanity_cells=cells,
         raw_sanity_live_seals=raw_sanity_live_seals,
         raw_sanity_live_authority=raw_sanity_live_authority,
+    )
+    _check_campaign_deadline(
+        started_at,
+        canonical_budget,
+        "after_primary_aggregation",
     )
     verdicts = _campaign_verdicts(config, cells, construction, primary)
     status_counts: Dict[str, int] = {}
@@ -5078,9 +5940,13 @@ def run_campaign(
         "promotion_eligible": False,
         "production_integration_permitted": False,
         "rader_claim": False,
+        "rader_campaign_status": "NOT_TESTED_BY_THIS_CAMPAIGN",
+        "rader_implementation_present": True,
+        "separate_rader_harness_results_ingested": False,
         "config": asdict(config),
         "rng_streams": stream_manifest,
         "campaign_contract": campaign_contract,
+        "execution_preflight": execution_preflight,
         "threshold_governance": {
             "selection_split": "SELECT",
             "evaluation_split": "REPORT",
@@ -5147,18 +6013,22 @@ def run_campaign(
         ],
         "timing_fields_nondeterministic": True,
     }
+    _check_campaign_deadline(
+        started_at,
+        canonical_budget,
+        "campaign_complete",
+    )
     if write_artifact:
         output = Path(config.output)
-        output.parent.mkdir(parents=True, exist_ok=True)
-        output.write_text(
-            json.dumps(
-                artifact,
-                indent=2,
-                sort_keys=True,
-                allow_nan=False,
-            )
-            + "\n",
-            encoding="utf-8",
+        _atomic_write_json(
+            output,
+            artifact,
+            deadline_check=lambda checkpoint: _check_campaign_deadline(
+                started_at,
+                canonical_budget,
+                checkpoint,
+            ),
+            max_encoded_bytes=canonical_budget.max_estimated_bytes,
         )
     return artifact
 

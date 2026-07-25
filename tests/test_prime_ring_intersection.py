@@ -7,17 +7,24 @@ import numpy as np
 
 from prime_ring_intersection import (
     HARD_MAX_ESTIMATED_BYTES,
+    HARD_MAX_COMPETITOR_PAIRS,
+    HARD_MAX_HYPOTHESES,
     HARD_MAX_SECONDS,
+    HARD_MAX_VECTORIZED_INT32_MULTIPLY_ADDS,
     HARD_MAX_WORK_UNITS,
     EnumerationBudget,
     PRWT1ResourceError,
     PRWT1ValidationError,
     _maximum_spanning_tree_weight,
+    _enforce_analysis_budget,
     analyze_legendre_mask_bank,
     binomial_upper_tail,
     brute_force_union_probability,
     build_legendre_mask_bank,
     bsc_pairwise_error,
+    estimate_analysis_peak_bytes,
+    estimate_analysis_vectorized_int32_multiply_adds,
+    estimate_analysis_work_units,
     pair_event_intersection_probability,
 )
 from prime_ring_waypoint import policy_masks
@@ -255,6 +262,28 @@ class TestLegendreIntersectionBank(unittest.TestCase):
                 "binomial_cache_estimated_bytes"
             ],
         )
+        guard = result["resource_guard"]
+        self.assertEqual(
+            guard["estimated_work_units"],
+            guard["estimated_scalar_work_units"],
+        )
+        self.assertEqual(
+            guard["max_work_units"],
+            guard["max_scalar_work_units"],
+        )
+        self.assertEqual(
+            guard["estimated_vectorized_int32_multiply_adds"],
+            result["competitor_count"] ** 2
+            * result["coordinate_count"],
+        )
+        self.assertEqual(
+            guard["max_vectorized_int32_multiply_adds"],
+            self.budget.max_vectorized_int32_multiply_adds,
+        )
+        self.assertTrue(guard["operation_categories_separate"])
+        self.assertTrue(
+            guard["operation_counts_are_not_time_calibration"]
+        )
 
     def test_bruteforce_kernel_matches_bank_result(self):
         planted = self.bank.templates[0]
@@ -404,6 +433,156 @@ class TestLegendreIntersectionBank(unittest.TestCase):
                     ((1, 1),),
                     budget=self.budget,
                 )
+
+    def test_every_budget_field_is_canonicalized_before_use(self):
+        class HostileInt(int):
+            def __gt__(self, _other):
+                return False
+
+            def __lt__(self, _other):
+                return False
+
+        class HostileFloat(float):
+            def __gt__(self, _other):
+                return False
+
+            def __lt__(self, _other):
+                return False
+
+        values = {
+            "max_estimated_bytes": 16 * 1024 * 1024,
+            "max_seconds": 10.0,
+            "max_work_units": 10_000_000,
+            "max_hypotheses": 1_000,
+            "max_competitor_pairs": 200_000,
+            "max_coordinates": 1_000,
+            "max_bruteforce_patterns": 1_024,
+            "max_vectorized_int32_multiply_adds": 63_000_000,
+        }
+        hostile = {
+            name: (
+                HostileFloat(value)
+                if name == "max_seconds"
+                else HostileInt(value)
+            )
+            for name, value in values.items()
+        }
+        budget = EnumerationBudget(**hostile)
+
+        for name, expected in values.items():
+            with self.subTest(name=name):
+                observed = getattr(budget, name)
+                expected_type = float if name == "max_seconds" else int
+                self.assertIs(type(observed), expected_type)
+                self.assertEqual(observed, expected)
+
+        hostile_oversized = (
+            (
+                "max_estimated_bytes",
+                HostileInt(HARD_MAX_ESTIMATED_BYTES + 1),
+            ),
+            ("max_seconds", HostileFloat(HARD_MAX_SECONDS + 0.01)),
+            ("max_work_units", HostileInt(HARD_MAX_WORK_UNITS + 1)),
+            (
+                "max_vectorized_int32_multiply_adds",
+                HostileInt(
+                    HARD_MAX_VECTORIZED_INT32_MULTIPLY_ADDS + 1
+                ),
+            ),
+        )
+        for name, value in hostile_oversized:
+            with self.subTest(oversized=name):
+                with self.assertRaises(PRWT1ValidationError):
+                    EnumerationBudget(**{name: value})
+
+    def test_p31_operation_aware_preflight_is_admitted_without_running_it(self):
+        hypotheses = 2 * 31 * 16
+        competitors = 31 * 16
+        coordinates = 8 * 31
+        scalar_work = estimate_analysis_work_units(
+            hypothesis_count=hypotheses,
+            competitor_count=competitors,
+            coordinate_count=coordinates,
+        )
+        vectorized_multiply_adds = (
+            estimate_analysis_vectorized_int32_multiply_adds(
+                competitor_count=competitors,
+                coordinate_count=coordinates,
+            )
+        )
+        estimated_bytes = estimate_analysis_peak_bytes(
+            hypothesis_count=hypotheses,
+            competitor_count=competitors,
+            coordinate_count=coordinates,
+        )
+
+        self.assertEqual(hypotheses, 992)
+        self.assertEqual(competitors, 496)
+        self.assertEqual(coordinates, 248)
+        self.assertEqual(scalar_work, 9_106_560)
+        self.assertLess(scalar_work, HARD_MAX_WORK_UNITS)
+        self.assertEqual(vectorized_multiply_adds, 61_011_968)
+        self.assertLessEqual(
+            vectorized_multiply_adds,
+            HARD_MAX_VECTORIZED_INT32_MULTIPLY_ADDS,
+        )
+        self.assertEqual(HARD_MAX_HYPOTHESES, 1_024)
+        self.assertEqual(HARD_MAX_COMPETITOR_PAIRS, 250_000)
+        self.assertEqual(HARD_MAX_ESTIMATED_BYTES, 512 * 1024 * 1024)
+        self.assertEqual(HARD_MAX_SECONDS, 120.0)
+        self.assertEqual(HARD_MAX_WORK_UNITS, 50_000_000)
+        self.assertIsNone(
+            _enforce_analysis_budget(
+                hypotheses=hypotheses,
+                competitors=competitors,
+                coordinates=coordinates,
+                estimated_bytes=estimated_bytes,
+                estimated_work_units=scalar_work,
+                estimated_vectorized_int32_multiply_adds=(
+                    vectorized_multiply_adds
+                ),
+                budget=EnumerationBudget(),
+            )
+        )
+
+    def test_vectorized_cap_is_scoped_and_fails_closed(self):
+        p31_vectorized = (
+            estimate_analysis_vectorized_int32_multiply_adds(
+                competitor_count=496,
+                coordinate_count=248,
+            )
+        )
+        limited = EnumerationBudget(
+            max_vectorized_int32_multiply_adds=61_000_000
+        )
+        with self.assertRaises(PRWT1ResourceError):
+            _enforce_analysis_budget(
+                hypotheses=992,
+                competitors=496,
+                coordinates=248,
+                estimated_bytes=100_000_000,
+                estimated_work_units=9_106_560,
+                estimated_vectorized_int32_multiply_adds=p31_vectorized,
+                budget=limited,
+            )
+        with self.assertRaises(PRWT1ResourceError):
+            _enforce_analysis_budget(
+                hypotheses=992,
+                competitors=496,
+                coordinates=248,
+                estimated_bytes=100_000_000,
+                estimated_work_units=9_106_560,
+                estimated_vectorized_int32_multiply_adds=(
+                    HARD_MAX_VECTORIZED_INT32_MULTIPLY_ADDS + 1
+                ),
+                budget=EnumerationBudget(),
+            )
+        with self.assertRaises(PRWT1ValidationError):
+            EnumerationBudget(
+                max_vectorized_int32_multiply_adds=(
+                    HARD_MAX_VECTORIZED_INT32_MULTIPLY_ADDS + 1
+                )
+            )
 
     def test_shape_preflight_refuses_before_cell_materialization(self):
         class ShapeOnlyRow(Sequence):

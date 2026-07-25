@@ -1,5 +1,122 @@
 # Findings & Decisions
 
+## 2026-07-24 RB-8 Full-Box Preflight
+- Available memory is not the limiting factor for the next exact mathematics:
+  `p=11` and `p=19` `PRW-T1` analyses are admitted by both byte and work
+  ceilings. The present `p=31` formulation is rejected for work, not memory:
+  152,591,424 estimated work units versus the immutable 50,000,000 ceiling.
+  Raising the ceiling would hide the duplicated pairwise work; a grouped or
+  symmetry-reduced formulation is the appropriate reconditioning.
+- The large-prime Rader tests are cheap enough to run directly after focused
+  correctness checks. Their conservative benchmark estimates are about 1.03
+  MiB (`p=4091`) and 1.18 MiB (`p=4691`), so they are timing questions rather
+  than memory-risk questions.
+- The full METHOD_DEV campaign is qualitatively different from the bounded
+  smoke: 11,520 retained cells versus 576, with primary SELECT/REPORT budgets
+  of 512/1,024 rather than 2-8. The implementation validates factor shapes but
+  exposes no campaign-wide work or wall-time estimator. A timed smoke or
+  reduced lower-rate slice is required before an honest full-run decision.
+- The formal quotient screen validates a precise but narrower claim than the
+  original language: for the declared global-addition action on
+  `Z_7^4`, an observer that factors through relative coordinates has 343
+  distinguishable behaviors, rank 3, and exactly one gauge-null direction.
+  The anchored observer separates every nonzero gauge move. This demonstrates
+  how apparent ambient dimension can be a coordinate redundancy; it does not
+  establish that higher-dimensional structure generally is a projection
+  artifact.
+- Runtime conditioning does not evade that accounting by itself. For arbitrary
+  explicit Boolean predicates over the seven-bit current state and two-bit
+  query, every accepted four-operation/two-gate program compiles exactly to at
+  most four affine-plus-last-write-wins leaves. Once the flat comparator is
+  granted the paid branch transcript, no extra behavioral state remains. Any
+  surviving claim must therefore come from learning/compression/cost, a
+  dynamically computed rewrite, or information not granted to the comparator.
+- The held-out XOR experiment makes that distinction concrete. Conditional
+  routing genuinely improves over payload-only and additive controls, including
+  perfect correction of their planted misses, but an exactly transcript-matched
+  four-leaf flat table reproduces every held-out decision. The useful object is
+  the learned two-bit transcript, not an additional hidden state after those
+  bits exist. The next defensible hypothesis is therefore about inference or
+  compression cost for the transcript, not superior representational capacity.
+  The synthetic `p=7/11` vector lengths do not test prime-ring arithmetic. Its
+  held-out split is example-ID disjoint only; it does not establish
+  distribution-shift or class-separation generalization.
+- The three-point `PRW-T1` scale result splits in strength. Nearest-event
+  clustering drops sharply from `0.256219` at `p=11`, to `0.017856` at `p=19`,
+  to `0.000374874` at `p=31`. That is the strongest surviving mathematical
+  signal in the current work. Farther-neighbor union mass, however, is
+  `0.360077`, `0.403705`, and `0.240863` relative to the nearest term: still
+  order-one and non-monotone. Since both terms must vanish, three finite points
+  do not establish the conjecture. Deterministic distinct-signature controls
+  are exactly equal at every prime, so the visible result is not special to the
+  ordered `0..7` phase signature.
+- Exhausting all 352 transmitted type/shift/mask states at `p=11` produced one
+  and only one digest for the label-free numeric/spectral/bound fields. Nearest
+  state IDs transform equivariantly rather than remaining literally equal, and
+  elapsed fields are nondeterministic. This closes empirical state averaging
+  for that finite bank without overstating byte-identical result dictionaries.
+- The corresponding algebra is now exact for the declared two-type/RM(1,3)
+  bank. Additive phase shifts, RM-mask multiplication, and a fixed type-swap
+  involution act regularly on all `32p` transmitted states at `p=11,19,31`;
+  therefore the distance vector, intersection spectrum, BSC terms, ordinary
+  union bound, and Hunter weight are state-invariant. This removes a finite
+  averaging ambiguity, but it neither proves asymptotic decay nor applies to
+  arbitrary phase signatures, decoder error, retrieval utility, or novelty.
+  The hardened `p=31` preflight counts 4,674,304 exact generator comparisons,
+  15,309,808 conservative total work units, and a 3,822,464-byte co-resident
+  peak model; all resource refusals occur before exact certificate work.
+- The `p=31` run did not require weakening general resource safety. The
+  analyzer now distinguishes 9,190,584 scalar/Python work units from
+  61,011,968 vectorized int32 multiply-adds, retains the original 50-million
+  scalar cap, and applies a narrow 64-million GEMM cap. This is operation
+  accounting, not elapsed-time or process-RSS calibration.
+- A more careful Rader probe reverses the tempting preliminary story. Warmed,
+  alternating-order blocks put `p=4691` at a median `1.02805x` NumPy time, not
+  a speedup; only 3/30 blocks meet a 5% improvement. `p=4091` is about `2.16x`
+  NumPy time. The smooth `4690` factorization may make Rader competitive, but
+  this implementation does not currently deliver a reproducible advantage.
+- The final matched harness resolves the systems-relevant version more clearly.
+  `p=4691` Rader DFT is locally competitive (`0.9619x` median NumPy time), but
+  its cyclic-correlation path is `1.0398x` and wins only 7/18 blocks.
+  `p=4091` correlation is `2.9393x` NumPy time and wins 0/18. Since retrieval
+  needs correlation rather than an isolated forward transform, the current
+  implementation fails RADER-1 even though the smooth 4690 convolution length
+  remains an engineering hint.
+- The exact-shape campaign profiler gives a useful scheduling estimate but not
+  a safety proof: 300 trial groups took 19.494 seconds. The targeted raw-sanity
+  slice retains 9,549 observations, while the full grid retains 21,165 and at
+  least roughly 110 MB of artifact data by the independent audit. The targeted
+  slice is the next admissible campaign only after global limits and atomic
+  output exist.
+- Campaign safety now changes that decision boundary. The exact targeted
+  preflight is allowed at 229,502,456 modeled bytes and 12,648 retained rows;
+  the broad grid is refused at 1,059,556,800 modeled bytes. The targeted run may
+  now execute under deadline, row-cap, and atomic-write controls, while lack of
+  measured RSS and checkpoint/resume remains explicit.
+- The final hardened targeted campaign completed in 424.034 seconds. All 12
+  preregistered `q in {0.00,0.20,0.35,0.45}` by seed
+  `{7,42,1337}` cells completed and passed the raw-type sanity contract.
+  The primary pooled report has recall `1.0`, zero false unlocks over 3,072
+  unrelated report groups, and a one-sided 97.5% Clopper-Pearson upper bound
+  of `0.00120009`. The equal-channel-use repeated-bit control reaches
+  `0.999349` recall; native sparse OPPW reaches `0.908203` recall and uses a
+  different symbol-substitution noise law, so a three-way superiority claim
+  remains invalid. The campaign correctly leaves `PRW-1` through `PRW-4`
+  inconclusive, promotion false, and novelty not established.
+- The final campaign artifact is 1,897,602 bytes with SHA-256
+  `fce8901e442bd4e1abece24e875d177db85b7c05bb330f8f13743135ee0755d1`.
+  The highest periodic external poll observed 173,236,224 working-set bytes,
+  but that is not a continuous process-peak measurement. The executable guard
+  did not measure or enforce process RSS, so its own evidence correctly labels
+  RSS unmeasured. Checkpoint/resume also remains explicitly unimplemented.
+- The separate Rader artifact is 24,896 bytes with SHA-256
+  `ae4d2af41070e9fa67f8428cfcec5284b92da53af6e62823a1fce9ca2807b0a2`.
+  The campaign now says `NOT_TESTED_BY_THIS_CAMPAIGN`, records that the Rader
+  implementation exists, and explicitly says the separate harness was not
+  ingested. The separate harness remains the timing evidence and rejects the
+  current correlation-speed hypothesis without making a general hardware
+  claim.
+
 ## 2026-07-24 RB-7 Preregistration and Resource Screen
 - The next bounded Fourier discriminator is `PRW-H1Q`: at `p=11`, compare every
   matched two-bin subset over a declared quantizer-origin grid, then report the

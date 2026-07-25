@@ -1,0 +1,834 @@
+{
+  "artifact_write": {
+    "atomic_replace": true,
+    "path_embedded_in_payload": false,
+    "requested": true
+  },
+  "artifact_write_included_in_total_elapsed": false,
+  "config": {
+    "atol": 1e-09,
+    "blocks": 6,
+    "dtype": "complex128",
+    "generic_numpy_length": 4096,
+    "primes": [
+      4091,
+      4691
+    ],
+    "rtol": 1e-10,
+    "seeds": [
+      10007,
+      20011,
+      30013
+    ],
+    "vectors_per_block": 2,
+    "warmup_repetitions": 1
+  },
+  "correctness_checks_passed": true,
+  "cost_claim": false,
+  "environment": {
+    "byteorder": "little",
+    "machine": "",
+    "numpy_fft_backend": "numpy.fft_backend_not_independently_verified",
+    "numpy_version": "2.4.6",
+    "platform": "Windows-10-10.0.26200-SP0",
+    "python_implementation": "CPython",
+    "python_version": "3.11.9"
+  },
+  "generic_numpy_context": {
+    "correctness_check_scope": "finite_shape_dtype_only_no_cross_method_comparator",
+    "cyclic_correlation_block_seconds": [
+      0.0002598000064608641,
+      0.0004780000017490238,
+      0.0004680999991251156,
+      0.00045279999903868884,
+      0.0004372000039438717,
+      0.0004524000032688491,
+      0.0004560000015771948,
+      0.0005038000017520972,
+      0.0004054000019095838,
+      0.00041450000571785495,
+      0.0004050999996252358,
+      0.00038979999953880906,
+      0.0005323000004864298,
+      0.0005526000022655353,
+      0.0004789000013261102,
+      0.00031829999352339655,
+      0.00026960000104736537,
+      0.00025550000282237306
+    ],
+    "cyclic_correlation_input_sha256_by_seed": [
+      "a239ef146799ec16e3102e61c77226a0c0c9646335e92c22568a69611f7366c1",
+      "d64868b828d8f85a60b76825da2f89b33dcb35f508ce1427b84ed05c33a94a0f",
+      "f4228897c78315905900b622f324d5fbad81969b24217a400d83b89560c9fba7"
+    ],
+    "cyclic_correlation_median_block_seconds": 0.0004448000036063604,
+    "dft_block_seconds": [
+      0.00010779999865917489,
+      0.0001556999995955266,
+      8.22000001790002e-05,
+      0.00011219999578315765,
+      0.00011360000644344836,
+      0.00011070000618929043,
+      0.00019590000010794029,
+      0.0002052000054391101,
+      0.00012599999899975955,
+      0.00015269999857991934,
+      0.0001264000020455569,
+      0.00015380000695586205,
+      0.00017720000323606655,
+      0.00023070000315783545,
+      0.00011609999637585133,
+      0.00014739999460289255,
+      0.0002091000060318038,
+      0.00026139999681618065
+    ],
+    "dft_input_sha256_by_seed": [
+      "a432bcbff547af49d8103f16a57e9d67adf9ba92d5e8986d1bb1d5ed16bc0ed1",
+      "704e7659a8d448e7f8bc889981420db392304c58c66fb06be0da7077064dacd6",
+      "8f60d4627e36aac99a04d96d87a832cd8b77cdb32c5d68134c65535f5d92dcc0"
+    ],
+    "dft_median_block_seconds": 0.00015004999659140594,
+    "dtype": "complex128",
+    "eligible_for_matched_prime_comparison": false,
+    "input_generation_included_in_method_timing": false,
+    "label": "GENERIC_NUMPY_CONTEXT_NOT_A_MATCHED_PRIME_COMPARATOR",
+    "length": 4096,
+    "warmup_performed": true
+  },
+  "hardware_generalization_claim": false,
+  "limitations": [
+    "CPU affinity, frequency scaling, thermal state, background load, and NumPy backend threads are not controlled.",
+    "The generic NumPy length is context only and is not paired with either prime-length input.",
+    "Correctness is numerical at the declared complex128 tolerance, not symbolic or bitwise equality.",
+    "Modeled work and allocation bytes are not time calibration, process RSS, allocator peaks, or hardware utilization."
+  ],
+  "method_contract": {
+    "balanced_interleaved_method_first_order": true,
+    "dtype": "complex128",
+    "generic_context_is_matched_prime_comparator": false,
+    "independent_input_per_block": true,
+    "input_generation_included_in_method_timing": false,
+    "matched_prime_comparison_label": "MATCHED_SAME_PRIME_LENGTH_DTYPE_INPUT_AND_TOLERANCE",
+    "plan_build_included_in_method_timing": false,
+    "plan_build_reported_separately": true,
+    "same_length_dtype_input_and_tolerance_required": true,
+    "timer": "time.perf_counter",
+    "warmup_performed": true
+  },
+  "novelty_claim": false,
+  "performance_claim": false,
+  "performance_disclaimer": "Block timings and sign counts are local observations, not a calibrated performance, speedup, cost, utility, hardware, or novelty claim.",
+  "prime_results": [
+    {
+      "comparisons": {
+        "cyclic_correlation": {
+          "atol": 1e-09,
+          "comparison_label": "MATCHED_SAME_PRIME_LENGTH_DTYPE_INPUT_AND_TOLERANCE",
+          "correctness_check_passed": true,
+          "dtype": "complex128",
+          "exact_tie_block_count": 0,
+          "independent_input_per_block": true,
+          "input_generation_included_in_method_timing": false,
+          "input_sha256_by_seed": [
+            "69f63087b3c74cabc46d1fe20abca4191eeca2e7f1b1bd5434895b4864f67d9a",
+            "65c51b14ed26ffd933593415906c3f994f06e05ea2a90c3dd3bac4f3ed77edec",
+            "c68b9bc8a92be0f0ebcd4e7e8ce099fd03beb79a95e8b034850a048e582fe8c5"
+          ],
+          "max_abs_error": 9.279862226685842e-13,
+          "numpy_block_seconds": [
+            0.0017851999946287833,
+            0.001436699996702373,
+            0.001469599999836646,
+            0.0022562000012840144,
+            0.0019064000007347204,
+            0.002411400004348252,
+            0.0024992000035126694,
+            0.001753200005623512,
+            0.0022559999997611158,
+            0.0023751999979140237,
+            0.0013854999997420236,
+            0.0016232000052696094,
+            0.0024876000024960376,
+            0.001644500000111293,
+            0.0024025000020628795,
+            0.002084899999317713,
+            0.0014880000017001294,
+            0.0017043000043486245
+          ],
+          "numpy_faster_block_count": 18,
+          "numpy_median_block_seconds": 0.0018457999976817518,
+          "operation": "cyclic_correlation",
+          "order_schedule_by_seed": [
+            [
+              [
+                "numpy",
+                "rader"
+              ],
+              [
+                "rader",
+                "numpy"
+              ],
+              [
+                "numpy",
+                "rader"
+              ],
+              [
+                "rader",
+                "numpy"
+              ],
+              [
+                "numpy",
+                "rader"
+              ],
+              [
+                "rader",
+                "numpy"
+              ]
+            ],
+            [
+              [
+                "rader",
+                "numpy"
+              ],
+              [
+                "numpy",
+                "rader"
+              ],
+              [
+                "rader",
+                "numpy"
+              ],
+              [
+                "numpy",
+                "rader"
+              ],
+              [
+                "rader",
+                "numpy"
+              ],
+              [
+                "numpy",
+                "rader"
+              ]
+            ],
+            [
+              [
+                "numpy",
+                "rader"
+              ],
+              [
+                "rader",
+                "numpy"
+              ],
+              [
+                "numpy",
+                "rader"
+              ],
+              [
+                "rader",
+                "numpy"
+              ],
+              [
+                "numpy",
+                "rader"
+              ],
+              [
+                "rader",
+                "numpy"
+              ]
+            ]
+          ],
+          "performance_claim": false,
+          "performance_disclaimer": "Block timings and sign counts are local observations, not a calibrated performance, speedup, cost, utility, hardware, or novelty claim.",
+          "plan_build_included_in_method_timing": false,
+          "rader_block_seconds": [
+            0.005071500003396068,
+            0.0049625000028754584,
+            0.004443900004844181,
+            0.0056457999962731265,
+            0.0060291000045253895,
+            0.005446199997095391,
+            0.005404499999713153,
+            0.005067799997050315,
+            0.0050688999981503,
+            0.005515900003956631,
+            0.004276500003470574,
+            0.005737100000260398,
+            0.004801700000825804,
+            0.005376799999794457,
+            0.007321700002648868,
+            0.006577100000868086,
+            0.006874500002595596,
+            0.0063752000060048886
+          ],
+          "rader_faster_block_count": 0,
+          "rader_median_block_seconds": 0.005425349998404272,
+          "rtol": 1e-10,
+          "same_dtype": true,
+          "same_input": true,
+          "same_length": true,
+          "same_tolerance": true,
+          "timed_block_count": 18,
+          "warmup_performed": true,
+          "warmup_repetitions_per_method": 1
+        },
+        "dft": {
+          "atol": 1e-09,
+          "comparison_label": "MATCHED_SAME_PRIME_LENGTH_DTYPE_INPUT_AND_TOLERANCE",
+          "correctness_check_passed": true,
+          "dtype": "complex128",
+          "exact_tie_block_count": 0,
+          "independent_input_per_block": true,
+          "input_generation_included_in_method_timing": false,
+          "input_sha256_by_seed": [
+            "3979e6294310dbcab9382f39e0ffd32db882ef2738896008457be60e9be5d7fa",
+            "1b603776ef287ec90b777ba9f4b4d1bf92b349d5185e2aa5afbd0805a6a590c2",
+            "1eea4dd2f1f0a2c7a9468f2d9a451e4bcf42a27854bf3e466c68ec765cef6fa3"
+          ],
+          "max_abs_error": 3.4954080877721605e-13,
+          "numpy_block_seconds": [
+            0.0008137999975588173,
+            0.0006180999989737757,
+            0.002634800002851989,
+            0.0007828000016161241,
+            0.0009935999987646937,
+            0.0007590000022901222,
+            0.0007741000008536503,
+            0.0006247999990591779,
+            0.0005095000014989637,
+            0.0006120999969425611,
+            0.0005392999955802225,
+            0.0008144000021275133,
+            0.0008928000024752691,
+            0.0006530000027851202,
+            0.0006548999954247847,
+            0.0005017000003135763,
+            0.0009561999977449887,
+            0.0007657999958610162
+          ],
+          "numpy_faster_block_count": 17,
+          "numpy_median_block_seconds": 0.0007623999990755692,
+          "operation": "dft",
+          "order_schedule_by_seed": [
+            [
+              [
+                "rader",
+                "numpy"
+              ],
+              [
+                "numpy",
+                "rader"
+              ],
+              [
+                "rader",
+                "numpy"
+              ],
+              [
+                "numpy",
+                "rader"
+              ],
+              [
+                "rader",
+                "numpy"
+              ],
+              [
+                "numpy",
+                "rader"
+              ]
+            ],
+            [
+              [
+                "numpy",
+                "rader"
+              ],
+              [
+                "rader",
+                "numpy"
+              ],
+              [
+                "numpy",
+                "rader"
+              ],
+              [
+                "rader",
+                "numpy"
+              ],
+              [
+                "numpy",
+                "rader"
+              ],
+              [
+                "rader",
+                "numpy"
+              ]
+            ],
+            [
+              [
+                "rader",
+                "numpy"
+              ],
+              [
+                "numpy",
+                "rader"
+              ],
+              [
+                "rader",
+                "numpy"
+              ],
+              [
+                "numpy",
+                "rader"
+              ],
+              [
+                "rader",
+                "numpy"
+              ],
+              [
+                "numpy",
+                "rader"
+              ]
+            ]
+          ],
+          "performance_claim": false,
+          "performance_disclaimer": "Block timings and sign counts are local observations, not a calibrated performance, speedup, cost, utility, hardware, or novelty claim.",
+          "plan_build_included_in_method_timing": false,
+          "rader_block_seconds": [
+            0.0012777000010828488,
+            0.0018361999973421916,
+            0.0014808999985689297,
+            0.0018140000029234216,
+            0.002154599998902995,
+            0.0023302000045077875,
+            0.0017186999975820072,
+            0.0013092000008327886,
+            0.001167999995232094,
+            0.0013029999972786754,
+            0.0012494999973569065,
+            0.0015023000014480203,
+            0.0012780999968526885,
+            0.0011438000001362525,
+            0.0012835999950766563,
+            0.0014234999980544671,
+            0.001382200003718026,
+            0.0015846000023884699
+          ],
+          "rader_faster_block_count": 1,
+          "rader_median_block_seconds": 0.0014028500008862466,
+          "rtol": 1e-10,
+          "same_dtype": true,
+          "same_input": true,
+          "same_length": true,
+          "same_tolerance": true,
+          "timed_block_count": 18,
+          "warmup_performed": true,
+          "warmup_repetitions_per_method": 1
+        }
+      },
+      "convolution_length": 4090,
+      "convolution_length_factorization": [
+        2,
+        5,
+        409
+      ],
+      "correctness_checks_passed": true,
+      "p": 4091,
+      "plan_build_reported_separately": true,
+      "plan_build_seconds": 0.004369299997051712,
+      "plan_reused_for_all_steady_state_blocks": true,
+      "primitive_root": 2
+    },
+    {
+      "comparisons": {
+        "cyclic_correlation": {
+          "atol": 1e-09,
+          "comparison_label": "MATCHED_SAME_PRIME_LENGTH_DTYPE_INPUT_AND_TOLERANCE",
+          "correctness_check_passed": true,
+          "dtype": "complex128",
+          "exact_tie_block_count": 0,
+          "independent_input_per_block": true,
+          "input_generation_included_in_method_timing": false,
+          "input_sha256_by_seed": [
+            "523eb53ef0b9bb8abeac9124fa022df30c6ea9c2e00dd412228e2474e3c0e1c8",
+            "95b5de614d3777884f40460faf6b3ba49636069474065e3b72ee4392ffae9e28",
+            "8dd1e1ff39def91e1ae56bfcded952c04ad0f4f219c76d2984975dee3480211b"
+          ],
+          "max_abs_error": 8.198074455012806e-13,
+          "numpy_block_seconds": [
+            0.003020800002559554,
+            0.002490499995474238,
+            0.0026397000037832186,
+            0.002384199993684888,
+            0.002796400003717281,
+            0.0019185000055585988,
+            0.001610799998161383,
+            0.0023175999958766624,
+            0.0017653000031714328,
+            0.002337400001124479,
+            0.0017733000058797188,
+            0.002162999997381121,
+            0.00149789999704808,
+            0.001506699998572003,
+            0.002131600005668588,
+            0.0017650000008870848,
+            0.00232279999909224,
+            0.002879799998481758
+          ],
+          "numpy_faster_block_count": 11,
+          "numpy_median_block_seconds": 0.0022402999966288917,
+          "operation": "cyclic_correlation",
+          "order_schedule_by_seed": [
+            [
+              [
+                "rader",
+                "numpy"
+              ],
+              [
+                "numpy",
+                "rader"
+              ],
+              [
+                "rader",
+                "numpy"
+              ],
+              [
+                "numpy",
+                "rader"
+              ],
+              [
+                "rader",
+                "numpy"
+              ],
+              [
+                "numpy",
+                "rader"
+              ]
+            ],
+            [
+              [
+                "numpy",
+                "rader"
+              ],
+              [
+                "rader",
+                "numpy"
+              ],
+              [
+                "numpy",
+                "rader"
+              ],
+              [
+                "rader",
+                "numpy"
+              ],
+              [
+                "numpy",
+                "rader"
+              ],
+              [
+                "rader",
+                "numpy"
+              ]
+            ],
+            [
+              [
+                "rader",
+                "numpy"
+              ],
+              [
+                "numpy",
+                "rader"
+              ],
+              [
+                "rader",
+                "numpy"
+              ],
+              [
+                "numpy",
+                "rader"
+              ],
+              [
+                "rader",
+                "numpy"
+              ],
+              [
+                "numpy",
+                "rader"
+              ]
+            ]
+          ],
+          "performance_claim": false,
+          "performance_disclaimer": "Block timings and sign counts are local observations, not a calibrated performance, speedup, cost, utility, hardware, or novelty claim.",
+          "plan_build_included_in_method_timing": false,
+          "rader_block_seconds": [
+            0.0025366000045323744,
+            0.0024033000008785166,
+            0.002773599997453857,
+            0.002162900003895629,
+            0.0033640999972703867,
+            0.0019606999994721264,
+            0.0018945000047096983,
+            0.0032562999986112118,
+            0.001796299999114126,
+            0.0022555999967153184,
+            0.0018032999942079186,
+            0.0024235000018961728,
+            0.0016508000044268556,
+            0.0014953000063542277,
+            0.0018755000055534765,
+            0.00265390000276966,
+            0.0032217999978456646,
+            0.002636499993968755
+          ],
+          "rader_faster_block_count": 7,
+          "rader_median_block_seconds": 0.0023294499987969175,
+          "rtol": 1e-10,
+          "same_dtype": true,
+          "same_input": true,
+          "same_length": true,
+          "same_tolerance": true,
+          "timed_block_count": 18,
+          "warmup_performed": true,
+          "warmup_repetitions_per_method": 1
+        },
+        "dft": {
+          "atol": 1e-09,
+          "comparison_label": "MATCHED_SAME_PRIME_LENGTH_DTYPE_INPUT_AND_TOLERANCE",
+          "correctness_check_passed": true,
+          "dtype": "complex128",
+          "exact_tie_block_count": 0,
+          "independent_input_per_block": true,
+          "input_generation_included_in_method_timing": false,
+          "input_sha256_by_seed": [
+            "1f6b443d13c9f9131bcb12ea5cacf14204bb7ed805aa9613dd484653723be38c",
+            "ca7979e61335e89c96857c0e52648622d4b1577e6acfbd6d781762996d38aa81",
+            "f0c21713864b979173362b2285cd9d85407e7a1b7be6a0666900cca52d9e9287"
+          ],
+          "max_abs_error": 2.957300718500272e-13,
+          "numpy_block_seconds": [
+            0.0005224999986239709,
+            0.0005168999996385537,
+            0.00048460000107297674,
+            0.0004864000002271496,
+            0.0005902000048081391,
+            0.0006050000010873191,
+            0.0005836999989696778,
+            0.0005288000029395334,
+            0.0006377999961841851,
+            0.0004868000032729469,
+            0.000487600002088584,
+            0.0004856999948970042,
+            0.0005474999998114072,
+            0.0005581000004895031,
+            0.0006166999955894426,
+            0.0006231000006664544,
+            0.0005365999968489632,
+            0.000498500005051028
+          ],
+          "numpy_faster_block_count": 7,
+          "numpy_median_block_seconds": 0.0005326999998942483,
+          "operation": "dft",
+          "order_schedule_by_seed": [
+            [
+              [
+                "numpy",
+                "rader"
+              ],
+              [
+                "rader",
+                "numpy"
+              ],
+              [
+                "numpy",
+                "rader"
+              ],
+              [
+                "rader",
+                "numpy"
+              ],
+              [
+                "numpy",
+                "rader"
+              ],
+              [
+                "rader",
+                "numpy"
+              ]
+            ],
+            [
+              [
+                "rader",
+                "numpy"
+              ],
+              [
+                "numpy",
+                "rader"
+              ],
+              [
+                "rader",
+                "numpy"
+              ],
+              [
+                "numpy",
+                "rader"
+              ],
+              [
+                "rader",
+                "numpy"
+              ],
+              [
+                "numpy",
+                "rader"
+              ]
+            ],
+            [
+              [
+                "numpy",
+                "rader"
+              ],
+              [
+                "rader",
+                "numpy"
+              ],
+              [
+                "numpy",
+                "rader"
+              ],
+              [
+                "rader",
+                "numpy"
+              ],
+              [
+                "numpy",
+                "rader"
+              ],
+              [
+                "rader",
+                "numpy"
+              ]
+            ]
+          ],
+          "performance_claim": false,
+          "performance_disclaimer": "Block timings and sign counts are local observations, not a calibrated performance, speedup, cost, utility, hardware, or novelty claim.",
+          "plan_build_included_in_method_timing": false,
+          "rader_block_seconds": [
+            0.0005073000065749511,
+            0.00047419999464182183,
+            0.0004690000059781596,
+            0.00047110000014072284,
+            0.0008817000052658841,
+            0.0006003000016789883,
+            0.0006210999999893829,
+            0.000504999996337574,
+            0.0005759999985457398,
+            0.00046999999904073775,
+            0.0004891000062343664,
+            0.0005154999962542206,
+            0.0004979999939678237,
+            0.0005726000017602928,
+            0.0005508999965968542,
+            0.0007038999974611215,
+            0.000509299999976065,
+            0.0005901999975321814
+          ],
+          "rader_faster_block_count": 11,
+          "rader_median_block_seconds": 0.0005123999981151428,
+          "rtol": 1e-10,
+          "same_dtype": true,
+          "same_input": true,
+          "same_length": true,
+          "same_tolerance": true,
+          "timed_block_count": 18,
+          "warmup_performed": true,
+          "warmup_repetitions_per_method": 1
+        }
+      },
+      "convolution_length": 4690,
+      "convolution_length_factorization": [
+        2,
+        5,
+        7,
+        67
+      ],
+      "correctness_checks_passed": true,
+      "p": 4691,
+      "plan_build_reported_separately": true,
+      "plan_build_seconds": 0.0018928999998024665,
+      "plan_reused_for_all_steady_state_blocks": true,
+      "primitive_root": 2
+    }
+  ],
+  "protocol_id": "RADER-1",
+  "resource_guard": {
+    "estimated_peak_bytes": 5562856,
+    "generic_input_generation_peak_bytes": 3145728,
+    "generic_numpy_length": 4096,
+    "generic_output_block_bytes": 360448,
+    "input_batches_materialized_one_seed_at_a_time": true,
+    "max_estimated_peak_bytes": 536870912,
+    "max_modeled_work_units": 400000000,
+    "max_seconds": 60.0,
+    "measured_process_peak": false,
+    "modeled_work_units": 300884380,
+    "prime_preflights": [
+      {
+        "convolution_length": 4090,
+        "estimated_live_peak_bytes": 4778088,
+        "factorization": [
+          2,
+          5,
+          409
+        ],
+        "input_generation_peak_bytes": 3141888,
+        "output_block_bytes": 360008,
+        "p": 4091,
+        "rader_correlation_temporary_bytes": 1276192
+      },
+      {
+        "convolution_length": 4690,
+        "estimated_live_peak_bytes": 5478888,
+        "factorization": [
+          2,
+          5,
+          7,
+          67
+        ],
+        "input_generation_peak_bytes": 3602688,
+        "output_block_bytes": 412808,
+        "p": 4691,
+        "rader_correlation_temporary_bytes": 1463392
+      }
+    ],
+    "protocol_id": "RADER-1",
+    "result_metadata_allowance_bytes": 83968,
+    "total_timed_vectors_per_operation": 72,
+    "total_warmup_vectors_per_operation": 6,
+    "work_components": [
+      [
+        "p4091_plan_build",
+        1022338
+      ],
+      [
+        "p4091_timed_warm_and_correctness",
+        120262194
+      ],
+      [
+        "p4691_plan_build",
+        1190838
+      ],
+      [
+        "p4691_timed_warm_and_correctness",
+        140070450
+      ],
+      [
+        "generic_numpy_context",
+        38338560
+      ]
+    ],
+    "work_model_is_time_calibration": false
+  },
+  "schema_version": "rader-1.v1",
+  "status": "BOUNDED_TIMING_OBSERVATIONS_ONLY",
+  "total_deadline_seconds": 60.0,
+  "total_elapsed_is_not_a_benchmark_calibration": true,
+  "total_elapsed_seconds": 0.4140763000032166
+}
