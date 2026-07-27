@@ -1,0 +1,405 @@
+{
+  "schema_version": 1,
+  "index_id": "legacy-ndcg-quarantine-v1",
+  "status": "ACTIVE_QUARANTINE",
+  "authored_date": "2026-07-27",
+  "defects": {
+    "MLR-NDCG-001": {
+      "summary": "drift_recovery_metrics.ndcg_at_k builds a retrieved binary relevance vector and delegates IDCG construction to benchmark_utils.ndcg_at_k, so IDCG is formed only from retrieved relevance rather than all positive qrels",
+      "affected_claims": [
+        "exact nDCG values",
+        "condition and comparator ordering",
+        "recovery gates and effect sizes",
+        "promotion, win, failure, rejection, or correctness claims derived from those metrics"
+      ],
+      "required_resolution": "Define a qrels-complete nDCG contract, migrate every drift caller, add regression coverage, perform corrected regeneration, and publish a hash-linked supersession map."
+    }
+  },
+  "immutability_policy": "Do not edit this v1 index or the listed historical artifacts to make a claim pass. A corrected campaign must create new artifacts and a new versioned index that records old-to-new supersession with exact hashes.",
+  "accepted_use_vocabulary": [
+    "historical_audit",
+    "configuration_audit",
+    "non_quantitative_runtime_structure",
+    "metric_defect_reproduction"
+  ],
+  "prohibited_use_vocabulary": [
+    "scientific_performance_claim",
+    "condition_or_comparator_ordering",
+    "promotion_or_rejection_decision",
+    "paper_table_abstract_or_release_claim"
+  ],
+  "artifact_count": 11,
+  "artifacts": [
+    {
+      "path": "docs/drift-recovery-h4-compound-cycles-ablation-2026-07.md",
+      "artifact_type": "historical_result_report",
+      "git_blob_sha1": "35a0bbad9e67acac3a26ada3c805182fc684a358",
+      "sha256": "65ea0b9d88ecc0055810a65efdffe020a666039e93601a0108a3b3789e3b25b8",
+      "defect_id": "MLR-NDCG-001",
+      "status": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure"
+      ],
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition": {
+        "state": "retained_sources_complete_for_listed_ablation",
+        "referenced_path_count": 2,
+        "missing_from_tip_count": 0,
+        "source_paths": [
+          "experiment_runs/drift-recovery/h4-compound/C4a_compound0_seed42.json",
+          "experiment_runs/drift-recovery/h4-compound/C4a_compound1_seed42.json"
+        ]
+      },
+      "supersession": {
+        "state": "awaiting_corrected_regeneration",
+        "replacement_path": null,
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "path": "experiment_runs/drift-recovery/h4-compound/C4a_compound0_seed42.json",
+      "artifact_type": "historical_raw_run",
+      "git_blob_sha1": "da3d8310a1531c1d95f23d7391f232f938dcd785",
+      "sha256": "5bdf87e25d668d9be747f1e7027a14b242c3468f64e595b13651cfc835cec524",
+      "defect_id": "MLR-NDCG-001",
+      "status": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition": {
+        "state": "self_contained_retained",
+        "referenced_path_count": 0,
+        "missing_from_tip_count": 0,
+        "source_paths": []
+      },
+      "supersession": {
+        "state": "awaiting_corrected_regeneration",
+        "replacement_path": null,
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "path": "experiment_runs/drift-recovery/h4-compound/C4a_compound1_seed42.json",
+      "artifact_type": "historical_raw_run",
+      "git_blob_sha1": "751488b09393ae4a6cdc9247d0564218d4ada5c4",
+      "sha256": "4c9d3964034d8b7a3b0f20bea165173fdf6e8d8514cf6351c3c2065c63523c17",
+      "defect_id": "MLR-NDCG-001",
+      "status": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition": {
+        "state": "self_contained_retained",
+        "referenced_path_count": 0,
+        "missing_from_tip_count": 0,
+        "source_paths": []
+      },
+      "supersession": {
+        "state": "awaiting_corrected_regeneration",
+        "replacement_path": null,
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "path": "docs/drift-recovery-post-bank-headtohead-results-2026-06.md",
+      "artifact_type": "historical_result_report",
+      "git_blob_sha1": "b0ca396cf272cb90947b5ee9610cdf6e4205645b",
+      "sha256": "fb476f917e2d0018387ea19162f4811e7176b79a3125161ece4579d9545dc384",
+      "defect_id": "MLR-NDCG-001",
+      "status": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure"
+      ],
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition": {
+        "state": "manifest_retained_raw_runs_missing_from_tip",
+        "referenced_path_count": 15,
+        "missing_from_tip_count": 15,
+        "source_paths": [
+          "experiment_runs/drift-recovery/post-bank-headtohead/post-bank-headtohead-manifest-2026-06.json"
+        ]
+      },
+      "supersession": {
+        "state": "awaiting_corrected_regeneration",
+        "replacement_path": null,
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "path": "experiment_runs/drift-recovery/post-bank-headtohead/post-bank-headtohead-manifest-2026-06.json",
+      "artifact_type": "historical_summary_manifest",
+      "git_blob_sha1": "f2545149fdaf8c0fefadf4242d01552247bdd00c",
+      "sha256": "5fe4446c01c7b4113218b167469d5151b293158da6da6c0e5525ae1fbd8726e5",
+      "defect_id": "MLR-NDCG-001",
+      "status": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition": {
+        "state": "referenced_raw_runs_missing_from_tip",
+        "referenced_path_count": 15,
+        "missing_from_tip_count": 15,
+        "source_paths": []
+      },
+      "supersession": {
+        "state": "awaiting_corrected_regeneration",
+        "replacement_path": null,
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "path": "docs/drift-recovery-post-bank-headtohead-nfcorpus-results-2026-06.md",
+      "artifact_type": "historical_result_report",
+      "git_blob_sha1": "3908a22246e5c6902f8bc7b8c7e87751b3d38db3",
+      "sha256": "e78039641fe13481aaa9da0d9f0dac705033a767ed561eb5929fc796f43e78a1",
+      "defect_id": "MLR-NDCG-001",
+      "status": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure"
+      ],
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition": {
+        "state": "manifest_retained_raw_runs_missing_from_tip",
+        "referenced_path_count": 15,
+        "missing_from_tip_count": 15,
+        "source_paths": [
+          "experiment_runs/drift-recovery/post-bank-headtohead-nfcorpus/post-bank-headtohead-manifest-2026-06.json"
+        ]
+      },
+      "supersession": {
+        "state": "awaiting_corrected_regeneration",
+        "replacement_path": null,
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "path": "experiment_runs/drift-recovery/post-bank-headtohead-nfcorpus/post-bank-headtohead-manifest-2026-06.json",
+      "artifact_type": "historical_summary_manifest",
+      "git_blob_sha1": "9e86b9054bd701d6e027924788e6606392655c59",
+      "sha256": "dca4aaff3e34d7f39fe5fb00512de59f3f36d8208a0cab422d3fa21924a0c1b7",
+      "defect_id": "MLR-NDCG-001",
+      "status": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition": {
+        "state": "referenced_raw_runs_missing_from_tip",
+        "referenced_path_count": 15,
+        "missing_from_tip_count": 15,
+        "source_paths": []
+      },
+      "supersession": {
+        "state": "awaiting_corrected_regeneration",
+        "replacement_path": null,
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "path": "docs/drift-recovery-swap-results-2026-06.md",
+      "artifact_type": "historical_result_report",
+      "git_blob_sha1": "6d27874407508677d496bd1317b25088bfdb0751",
+      "sha256": "cdcb1a81643825450dc2bf414248fc35b22c9a7554e3b6b36de8d387332ca3d0",
+      "defect_id": "MLR-NDCG-001",
+      "status": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure"
+      ],
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition": {
+        "state": "manifest_retained_raw_runs_missing_from_tip",
+        "referenced_path_count": 22,
+        "missing_from_tip_count": 22,
+        "source_paths": [
+          "experiment_runs/drift-recovery/swap/swap-campaign-manifest-2026-06.json"
+        ]
+      },
+      "supersession": {
+        "state": "awaiting_corrected_regeneration",
+        "replacement_path": null,
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "path": "experiment_runs/drift-recovery/swap/swap-campaign-manifest-2026-06.json",
+      "artifact_type": "historical_summary_manifest",
+      "git_blob_sha1": "885f27fa31e38293d810f6040a6cefc7404ab11c",
+      "sha256": "60c81d0693c4e6f1030c634373a72688422b690c483abcf10d6ad0e568c905cd",
+      "defect_id": "MLR-NDCG-001",
+      "status": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition": {
+        "state": "referenced_raw_runs_missing_from_tip",
+        "referenced_path_count": 22,
+        "missing_from_tip_count": 22,
+        "source_paths": []
+      },
+      "supersession": {
+        "state": "awaiting_corrected_regeneration",
+        "replacement_path": null,
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "path": "docs/drift-recovery-swap-nfcorpus-results-2026-06.md",
+      "artifact_type": "historical_result_report",
+      "git_blob_sha1": "3d8367f08f000b600e2c7518f54db36b7737e6fb",
+      "sha256": "8cc8d3c39b0aca2da7cb6fc5ae6b649561fd13f85bfc59d0c6861f20a3fa8010",
+      "defect_id": "MLR-NDCG-001",
+      "status": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure"
+      ],
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition": {
+        "state": "manifest_retained_raw_runs_missing_from_tip",
+        "referenced_path_count": 22,
+        "missing_from_tip_count": 22,
+        "source_paths": [
+          "experiment_runs/drift-recovery/swap-nfcorpus/swap-campaign-manifest-2026-06.json"
+        ]
+      },
+      "supersession": {
+        "state": "awaiting_corrected_regeneration",
+        "replacement_path": null,
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "path": "experiment_runs/drift-recovery/swap-nfcorpus/swap-campaign-manifest-2026-06.json",
+      "artifact_type": "historical_summary_manifest",
+      "git_blob_sha1": "b7af0282cea720d46c35367f6573fa423445655c",
+      "sha256": "b0e75fc0a6ee2b183af6eb21a01deddac3f47f05731a4f2ec485dc4138dad5d9",
+      "defect_id": "MLR-NDCG-001",
+      "status": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition": {
+        "state": "referenced_raw_runs_missing_from_tip",
+        "referenced_path_count": 22,
+        "missing_from_tip_count": 22,
+        "source_paths": []
+      },
+      "supersession": {
+        "state": "awaiting_corrected_regeneration",
+        "replacement_path": null,
+        "tracked_by": "CD-MLR-01"
+      }
+    }
+  ],
+  "backend_resolution_evidence": [
+    {
+      "claim": "The local all-mpnet-base-v2 backend resolved and reported vector size 768 during the retained NFCorpus campaign.",
+      "scope_limit": "This does not prove an H2-specific rerun, metric correctness, performance, ordering, recovery, or promotion.",
+      "source_commit": "efac48daae5358599eeeb055906083e423eb5072",
+      "source_path": "experiment_runs/drift-recovery/swap-nfcorpus/campaign-completion.log",
+      "git_blob_sha1": "e5ebca641969ca20c813045f5f0898e2881272d6",
+      "required_markers": [
+        "Initializing local backend: all-mpnet-base-v2",
+        "Local backend loaded. Vector size: 768"
+      ],
+      "production_path": [
+        "run_drift_recovery_experiment._build_query_encoder_drift",
+        "query_encoder_drift.QueryEncoderDrift.embed_queries",
+        "query_encoder_drift.QueryEncoderDrift._backend",
+        "embedding_backend.create_embedding_backend",
+        "embedding_backend.LocalEmbeddingBackend"
+      ]
+    }
+  ],
+  "tracked_debt": {
+    "carried_debt_id": "CD-MLR-01",
+    "deferred_scope_id": "DS-MLR-01"
+  }
+}

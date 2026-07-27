@@ -40,7 +40,7 @@ Merge gate: **CLEAR** for this sequence (`docs/next-session.md`). SHIM debts sta
 - No new doc-only shim cycles or 10-agent backlog slices.
 - No claiming SHIM-CD **CLOSED** without full substrate DoD.
 - No Model-Scope + full shim + EGGROLL at full throttle in parallel.
-- No GNN layer or disk-pool integration until Phase II steps 12–14 are honestly closed (schema **#277 DONE**; drift apparatus **DONE** with the H5 living-bank verdict a hard negative; disintegration **#279 PARTIAL** — do not start step 15 while claiming step 13 fully green without a chair re-scope).
+- No GNN layer or disk-pool integration until Phase II steps 12–14 are honestly closed (schema **#277 DONE**; drift apparatus **DONE**, but H2/H4/H5 quantitative evidence is `LEGACY_METRIC_LINEAGE_BLOCKED` and supports no promotion; disintegration **#279 PARTIAL** — do not start step 15 while claiming step 13 fully green without a chair re-scope).
 
 ---
 
@@ -53,10 +53,12 @@ Same one-track rule: finish each step before starting the next. Phase II does no
 
 **Status snapshot (2026-07, git-verified):** rungs **9–12 DONE**; **13 PARTIAL** (post-bank
 prune/re-anneal lifecycle only — not isomer/convergence → Evidence-DAG prune); **14 apparatus DONE**
-with the **H5 living-bank question closed as a hard negative** (LIVING BANK WINS = False on SciFact +
-NFCorpus); **15–17 OPEN**. Lattice apparatus PRs: #260, #277, #279–#291. Next executable feature work
-is step **15** only after chair re-scopes or closes the step **13** remainder — or **16/17** if the
-quant plane / disk pool is prioritized over GNN.
+while its H2/H4/H5 exact nDCG values, comparator orderings, and derived gates are
+`LEGACY_METRIC_LINEAGE_BLOCKED`. H5 and compounding remain conservatively non-promoted pending
+corrected regeneration; neither is a confirmed negative. **15–17 OPEN**. Lattice apparatus PRs:
+#260, #277, #279–#291. Next executable feature work is step **15** only after chair re-scopes or
+closes the step **13** remainder — or **16/17** if the quant plane / disk pool is prioritized over
+GNN.
 
 | Step | Track | Status | Exit criteria |
 |------|--------|--------|----------------|
@@ -65,7 +67,7 @@ quant plane / disk pool is prioritized over GNN.
 | 11 | **Annealing controller** | **DONE** (#260 engine controller + #280 post-bank schedule; schedule ownership split across two modules) | Temperature schedule(s) drive explore ↔ stabilize; unit tests prove high-T vs low-T behavior; engine wires the controller into sedimentation temperature; post-bank path uses `annealing_schedule` in the C5 lifecycle |
 | 12 | **Evidence DAG schema** | **DONE** (#277 `evidence_dag.py` + validator + JSON schema; no GNN) | Typed graph contract over `build_attribution_pool.py` output (nodes: query/cluster/actuator; edges: retrieval/intervention links); JSON schema + validator; no GNN required yet |
 | 13 | **Disintegration loop** | **PARTIAL** — post-bank prune/re-anneal DONE (#279 H5a, wired #281–#283); **NOT** isomer/convergence → Evidence-DAG edge prune | Delivered: fitness-gated prune + re-anneal on `SteeringPostBank` with lifecycle artifacts. Original exit named `isomer_detector` / `convergence_monitor` triggers on DAG edges/pool entries — **not implemented**. Re-scope exit to the post-bank mechanism, or implement that trigger. |
-| 14 | **Concept-drift experiment** | **DONE apparatus** (#258–#266 harness, #267 track-0 hygiene; swap arena #268–#276; H3 #287/#288; H4 #291; H5 driver #290). **H5 living-bank VERDICT: FAIL / non-promoted** (SciFact + NFCorpus) | Injected drift + recovery campaigns under `docs/drift-recovery-*.md`. Living annealed post-bank (C5) does **not** beat the frozen static bank + one-shot router gate. Compounding (`compound_cycles=True`) is catastrophic on the single-seed H4 ablation. |
+| 14 | **Concept-drift experiment** | **DONE apparatus** (#258–#266 harness, #267 track-0 hygiene; swap arena #268–#276; H3 #287/#288; H4 #291; H5 driver #290). Quantitative result lineage: **`LEGACY_METRIC_LINEAGE_BLOCKED`** | Campaign machinery and historical artifacts exist under `docs/drift-recovery-*.md`. The stored H2/H4/H5 nDCG values, comparator orderings, and gates are quarantined because IDCG used retrieved relevance rather than all positive qrels. H5 and compounding remain non-promoted; no accepted fail/win/rejection claim exists until corrected regeneration. |
 | 15 | **GNN prototype** | **OPEN** (no merged PR; no PyG/DGL code — only a docstring forward-ref in `evidence_dag.py`) | Lightweight GNN over evidence DAG (PyG or DGL); only after steps 12–14 green; must beat flat-pool baseline on drift fixture or fail closed |
 | 16 | **Quant-aware shim routing** | **OPEN** (pieces exist: `adapter_router`, `QuantizationPromotionGate`, route gate #285 — **not** integrated as one retrieval-fitness steering plane) | `adapter_router.py` + `QuantizationPromotionGate` integrated as steering plane; promotion requires quant survival + retrieval fitness |
 | 17 | **Disk pool slice** | **OPEN** (no pool-shard parity via `block_graph`; the computational-storage POC is a different graph) | One precomputed pool shard readable via `computational_storage_poc/block_graph.py` with host parity check; documented in storage track docs |
