@@ -45,19 +45,29 @@ outputs; it does not claim the engine automatically invokes it yet.
 
 `EvidenceDAG.prune_edges(scorer, threshold, dry_run=False)` scores every edge once,
 removes only scores strictly below the threshold, never removes nodes, validates
-the graph before and after mutation, and records removed immutable edges in a
-runtime-only ledger. `dry_run=True` reports identical proposed decisions without
+the graph before and after mutation, and records detached copies of removed edges
+in a runtime-only ledger. `dry_run=True` reports identical proposed decisions without
 changing the graph or ledger. Non-finite or out-of-range scores fail closed. A
-scorer that replaces, removes, reorders, or mutates edge attributes or the pruned
-ledger is rejected against a deep state snapshot in both normal and dry-run modes;
-the complete active-edge and ledger state is restored.
+scorer or protection callback that adds/removes/mutates nodes, replaces/removes/
+reorders/mutates edges, or mutates the pruned ledger is rejected against a joint
+state snapshot in both normal and dry-run modes. Nodes, active edges, and the
+ledger are restored together on returned mutation or exception.
 
 `reanneal_edges(dag, scorer, threshold, recovered_signal)` considers only ledgered
 edges. It rejects an invalid starting DAG before scoring. Scoring itself runs
-inside a deep transaction: callback mutation or exceptions restore both active
-edges and the ledger. It then restores scores at or above the threshold, validates
-each restoration, and keeps failed/low or individually invalid ledger edges in the
-ledger.
+inside the same complete transaction: callback mutation or exceptions restore
+nodes, active edges, and the ledger. It then restores scores at or above the
+threshold, validates each restoration, and keeps failed/low or individually
+invalid ledger edges in the ledger.
+
+Node and edge attributes follow the serialized schema: plain JSON objects composed
+only of string keys, null, booleans, strings, integers, finite floats, lists, and
+objects. Inputs are recursively validated and detached at ingestion; custom Python
+objects, container subclasses, tuples, non-finite floats, non-string keys, and
+cycles fail closed. Transaction snapshots use the same hook-free copier rather
+than Python `deepcopy`, so attribute objects cannot execute copy hooks. Ledgered
+edges and returned prune/re-anneal records are detached from live edge and nested
+attribute aliases.
 
 `write_disintegration_artifact` writes the prune and recovery thresholds, detector
 provenance, edge-level fitness before/after, pruned edges, re-annealed edges, and
@@ -67,8 +77,9 @@ protected skips as deterministic JSON using an atomic same-directory replace.
 
 The default protection treats `EdgeType.OPERATES_ON` as the current schema's
 structural actuator-to-cluster edge. Any edge with `required=True` or
-`structural=True` is also protected. A caller may supply a stricter downstream
-`protected_predicate`. Protected edges remain in the graph even when their detector
-score is low, and the artifact records the skip. With all detector signals healthy
-or with an explicitly sedimentation-mode empty result, every score is `1.0` and
-pruning is a no-op.
+`structural=True` is also protected. Mandatory protection is always ORed with a
+caller-supplied downstream `protected_predicate`, so the custom predicate can only
+add protection and cannot weaken it. Protected edges remain in the graph even when
+their detector score is low, and the artifact records the skip. With all detector
+signals healthy or with an explicitly sedimentation-mode empty result, every score
+is `1.0` and pruning is a no-op.

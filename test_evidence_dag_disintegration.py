@@ -26,6 +26,15 @@ from evidence_dag_disintegration import (
 from isomer_detector import IsomerDetector
 
 
+class _DeepcopyBomb:
+    def __init__(self):
+        self.calls = 0
+
+    def __deepcopy__(self, _memo):
+        self.calls += 1
+        raise AssertionError("arbitrary __deepcopy__ hook executed")
+
+
 def _dag() -> EvidenceDAG:
     dag = EvidenceDAG()
     dag.add_node("q1", NodeType.QUERY, query_id="qid-1", query_text="collapsed query")
@@ -143,6 +152,58 @@ class TestEvidenceDagDisintegration(unittest.TestCase):
         self.assertEqual(record["pruned"], [])
         self.assertEqual(len(record["protected_skips"]), 1)
 
+    def test_custom_protection_can_only_strengthen_mandatory_protection(self):
+        cases = (
+            ("operates_on", EdgeType.OPERATES_ON, NodeType.ACTUATOR, {}),
+            ("required", EdgeType.RETRIEVED_IN, NodeType.QUERY, {"required": True}),
+            ("structural", EdgeType.RETRIEVED_IN, NodeType.QUERY, {"structural": True}),
+        )
+        for label, edge_type, source_type, attrs in cases:
+            with self.subTest(label=label):
+                dag = EvidenceDAG()
+                dag.add_node("src", source_type)
+                dag.add_node("cl1", NodeType.CLUSTER)
+                dag.add_edge("src", "cl1", edge_type, **attrs)
+                before = dag.to_dict()
+
+                record = dag.prune_edges(
+                    lambda _edge: 0.0,
+                    threshold=0.5,
+                    protected_predicate=lambda _edge: False,
+                )
+
+                self.assertEqual(dag.to_dict(), before)
+                self.assertEqual(record["pruned"], [])
+                self.assertEqual(len(record["protected_skips"]), 1)
+
+        dag = EvidenceDAG()
+        dag.add_node("q1", NodeType.QUERY)
+        dag.add_node("cl1", NodeType.CLUSTER)
+        dag.add_edge("q1", "cl1", EdgeType.RETRIEVED_IN)
+        record = dag.prune_edges(
+            lambda _edge: 0.0,
+            threshold=0.5,
+            protected_predicate=lambda _edge: True,
+        )
+        self.assertEqual(record["pruned"], [])
+
+    def test_custom_protection_callback_mutation_is_transactional(self):
+        dag = _dag()
+        before = dag.to_dict()
+
+        def mutating_protection(_edge):
+            dag.add_node("injected", NodeType.QUERY)
+            return True
+
+        with self.assertRaisesRegex(RuntimeError, "mutated the DAG"):
+            dag.prune_edges(
+                lambda _edge: 0.0,
+                threshold=0.5,
+                protected_predicate=mutating_protection,
+            )
+        self.assertEqual(dag.to_dict(), before)
+        self.assertEqual(dag.pruned_edge_ledger, [])
+
     def test_reanneal_scorer_failure_is_transactional(self):
         dag = EvidenceDAG()
         for query_id in ("q1", "q2"):
@@ -224,6 +285,139 @@ class TestEvidenceDagDisintegration(unittest.TestCase):
         self.assertEqual(len(ledger), 1)
         self.assertFalse(ledger[0]["edge"].attrs.get("required", False))
         self.assertEqual(ledger[0]["fitness_at_prune"], 0.0)
+
+    def test_prune_ledger_and_record_are_detached_from_edge_aliases(self):
+        dag = EvidenceDAG()
+        dag.add_node("q1", NodeType.QUERY)
+        dag.add_node("cl1", NodeType.CLUSTER)
+        edge = dag.add_edge(
+            "q1",
+            "cl1",
+            EdgeType.RETRIEVED_IN,
+            payload={"layers": [{"weight": 1.0}]},
+        )
+        record = dag.prune_edges(lambda _edge: 0.0, threshold=0.5)
+
+        edge.attrs["payload"]["layers"][0]["weight"] = 9.0
+        self.assertEqual(
+            dag.pruned_edge_ledger[0]["edge"].attrs["payload"]["layers"][0]["weight"],
+            1.0,
+        )
+        self.assertEqual(record["pruned"][0]["attrs"]["payload"]["layers"][0]["weight"], 1.0)
+
+        record["pruned"][0]["attrs"]["payload"]["layers"][0]["weight"] = 8.0
+        record["scores"][0]["edge"]["attrs"]["payload"]["layers"][0]["weight"] = 7.0
+        self.assertEqual(
+            dag.pruned_edge_ledger[0]["edge"].attrs["payload"]["layers"][0]["weight"],
+            1.0,
+        )
+
+    def test_reanneal_state_and_record_are_detached_from_scorer_aliases(self):
+        for fitness in (0.0, 1.0):
+            with self.subTest(fitness=fitness):
+                dag = EvidenceDAG()
+                dag.add_node("q1", NodeType.QUERY)
+                dag.add_node("cl1", NodeType.CLUSTER)
+                dag.add_edge(
+                    "q1",
+                    "cl1",
+                    EdgeType.RETRIEVED_IN,
+                    payload={"layers": [{"weight": 1.0}]},
+                )
+                dag.prune_edges(lambda _edge: 0.0, threshold=0.5)
+                scorer_aliases = []
+
+                def retaining_scorer(edge, _signals):
+                    scorer_aliases.append(edge)
+                    return fitness
+
+                record = reanneal_edges(dag, retaining_scorer, 0.5, {})
+                scorer_aliases[0].attrs["payload"]["layers"][0]["weight"] = 9.0
+
+                if fitness == 1.0:
+                    stored_edge = dag.edges[0]
+                    record_edge = record["reannealed"][0]
+                else:
+                    stored_edge = dag.pruned_edge_ledger[0]["edge"]
+                    record_edge = record["retained_pruned"][0]
+                self.assertEqual(
+                    stored_edge.attrs["payload"]["layers"][0]["weight"],
+                    1.0,
+                )
+                self.assertEqual(
+                    record["scores"][0]["edge"]["attrs"]["payload"]["layers"][0]["weight"],
+                    1.0,
+                )
+
+                record_edge["attrs"]["payload"]["layers"][0]["weight"] = 8.0
+                record["scores"][0]["edge"]["attrs"]["payload"]["layers"][0]["weight"] = 7.0
+                self.assertEqual(
+                    stored_edge.attrs["payload"]["layers"][0]["weight"],
+                    1.0,
+                )
+
+    def test_reanneal_rejects_node_mutations_and_restores_full_state(self):
+        for mutation in ("add", "remove", "attrs"):
+            with self.subTest(mutation=mutation):
+                dag = _dag()
+                dag.prune_edges(
+                    lambda edge: 0.0 if edge.src == "q1" else 1.0,
+                    threshold=0.5,
+                )
+                before = deepcopy((dag.to_dict(), dag.pruned_edge_ledger))
+
+                def mutating_scorer(_edge, _signals):
+                    if mutation == "add":
+                        dag.add_node("injected", NodeType.QUERY)
+                    elif mutation == "remove":
+                        dag._nodes.pop("q2")
+                    else:
+                        dag.node("q1").attrs["query_id"] = "tampered"
+                    return 1.0
+
+                with self.assertRaisesRegex(RuntimeError, "mutated EvidenceDAG"):
+                    reanneal_edges(dag, mutating_scorer, 0.5, {})
+                self.assertEqual((dag.to_dict(), dag.pruned_edge_ledger), before)
+
+    def test_reanneal_exception_restores_node_edge_and_ledger_state(self):
+        dag = _dag()
+        dag.prune_edges(
+            lambda edge: 0.0 if edge.src == "q1" else 1.0,
+            threshold=0.5,
+        )
+        before = deepcopy((dag.to_dict(), dag.pruned_edge_ledger))
+
+        def mutating_raising_scorer(edge, _signals):
+            dag.add_node("injected", NodeType.QUERY)
+            dag._nodes.pop("q2")
+            dag.node("q1").attrs["query_id"] = "tampered"
+            dag._edges.clear()
+            edge.attrs["structural"] = True
+            dag._pruned_edge_ledger.clear()
+            raise RuntimeError("full-state detector failure")
+
+        with self.assertRaisesRegex(RuntimeError, "full-state detector failure"):
+            reanneal_edges(dag, mutating_raising_scorer, 0.5, {})
+        self.assertEqual((dag.to_dict(), dag.pruned_edge_ledger), before)
+
+    def test_reanneal_rejects_hostile_attrs_without_deepcopy_hooks(self):
+        dag = _dag()
+        dag.prune_edges(
+            lambda edge: 0.0 if edge.src == "q1" else 1.0,
+            threshold=0.5,
+        )
+        before = deepcopy((dag.to_dict(), dag.pruned_edge_ledger))
+        bomb = _DeepcopyBomb()
+
+        def hostile_scorer(edge, _signals):
+            edge.attrs["payload"] = bomb
+            return 1.0
+
+        with self.assertRaisesRegex(RuntimeError, "non-canonical"):
+            reanneal_edges(dag, hostile_scorer, 0.5, {})
+
+        self.assertEqual((dag.to_dict(), dag.pruned_edge_ledger), before)
+        self.assertEqual(bomb.calls, 0)
 
     def test_reanneal_rejects_an_invalid_dag_before_scoring(self):
         dag = _dag()
@@ -429,6 +623,59 @@ class TestFailClosedRegressionSurface(unittest.TestCase):
             dag.prune_edges(mutating_scorer, threshold=0.5)
         self.assertEqual(dag.to_dict(), before)
         self.assertEqual(dag.pruned_edge_ledger, [])
+
+    def test_prune_rejects_node_mutations_in_normal_and_dry_run(self):
+        for dry_run in (False, True):
+            for mutation in ("add", "remove", "attrs"):
+                with self.subTest(dry_run=dry_run, mutation=mutation):
+                    dag = _dag()
+                    before = deepcopy(dag.to_dict())
+                    mutated = False
+
+                    def mutating_scorer(_edge):
+                        nonlocal mutated
+                        if not mutated:
+                            mutated = True
+                            if mutation == "add":
+                                dag.add_node("injected", NodeType.QUERY)
+                            elif mutation == "remove":
+                                dag._nodes.pop("q2")
+                            else:
+                                dag.node("q1").attrs["query_id"] = "tampered"
+                        return 1.0
+
+                    with self.assertRaisesRegex(RuntimeError, "mutated the DAG"):
+                        dag.prune_edges(
+                            mutating_scorer,
+                            threshold=0.5,
+                            dry_run=dry_run,
+                        )
+                    self.assertEqual(dag.to_dict(), before)
+                    self.assertEqual(dag.pruned_edge_ledger, [])
+
+    def test_prune_exception_restores_full_state_in_normal_and_dry_run(self):
+        for dry_run in (False, True):
+            with self.subTest(dry_run=dry_run):
+                dag = _dag()
+                before = deepcopy(dag.to_dict())
+
+                def mutating_raising_scorer(edge):
+                    dag.add_node("injected", NodeType.QUERY)
+                    dag._nodes.pop("q2")
+                    dag.node("q1").attrs["query_id"] = "tampered"
+                    dag._edges.clear()
+                    edge.attrs["required"] = True
+                    dag._pruned_edge_ledger.append({"injected": True})
+                    raise RuntimeError("full-state scorer failure")
+
+                with self.assertRaisesRegex(RuntimeError, "full-state scorer failure"):
+                    dag.prune_edges(
+                        mutating_raising_scorer,
+                        threshold=0.5,
+                        dry_run=dry_run,
+                    )
+                self.assertEqual(dag.to_dict(), before)
+                self.assertEqual(dag.pruned_edge_ledger, [])
 
     def test_dry_run_rejects_structural_attr_mutation_and_restores_state(self):
         dag = EvidenceDAG()
