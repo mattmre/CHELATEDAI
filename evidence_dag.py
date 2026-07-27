@@ -59,15 +59,15 @@ def _copy_plain_json(value: Any, path: str, active: Optional[set] = None) -> Any
     conversion, equality, or copy hooks execute inside graph transactions.
     """
     value_type = type(value)
-    if value is None or value_type in (str, bool, int):
+    if value is None or value_type is str or value_type is bool or value_type is int:
         return value
     if value_type is float:
         if not isfinite(value):
             raise ValueError(f"{path} must contain only finite JSON numbers")
         return value
 
-    if value_type not in (list, dict):
-        raise TypeError(f"{path} must contain only plain JSON-compatible values; " f"got {value_type.__name__}")
+    if value_type is not list and value_type is not dict:
+        raise TypeError(f"{path} must contain only plain JSON-compatible values")
 
     active = set() if active is None else active
     identity = id(value)
@@ -81,7 +81,7 @@ def _copy_plain_json(value: Any, path: str, active: Optional[set] = None) -> Any
         copied: Dict[str, Any] = {}
         for key, item in value.items():
             if type(key) is not str:
-                raise TypeError(f"{path} keys must be plain strings; got {type(key).__name__}")
+                raise TypeError(f"{path} keys must be plain strings")
             copied[key] = _copy_plain_json(item, f"{path}.{key}", active)
         return copied
     finally:
@@ -93,6 +93,17 @@ def _canonical_attrs(attrs: Mapping[str, Any], owner: str) -> Dict[str, Any]:
     if type(copied) is not dict:  # defensive: attrs is an object in the schema
         raise TypeError(f"{owner}.attrs must be a plain JSON object")
     return copied
+
+
+def _bounded_threshold(value: Any) -> float:
+    value_type = type(value)
+    if value_type is not int and value_type is not float:
+        raise TypeError("threshold must be an exact built-in int or float")
+    if value_type is float and not isfinite(value):
+        raise ValueError("threshold must be finite and in [0.0, 1.0]")
+    if value < 0 or value > 1:
+        raise ValueError("threshold must be in [0.0, 1.0]")
+    return float(value)
 
 
 @dataclass(frozen=True)
@@ -189,8 +200,10 @@ class EvidenceDAG:
     def _clone_ledger_entry(cls, entry: Dict[str, Any]) -> Dict[str, Any]:
         if type(entry) is not dict:
             raise TypeError("EvidenceDAG pruned ledger entries must be plain dictionaries")
-        expected = {"edge_id", "edge", "fitness_at_prune", "threshold"}
-        if set(entry) != expected:
+        keys = list(entry)
+        if len(keys) != 4 or any(type(key) is not str for key in keys):
+            raise TypeError("EvidenceDAG pruned ledger entry fields must be exact plain strings")
+        if sorted(keys) != ["edge", "edge_id", "fitness_at_prune", "threshold"]:
             raise TypeError(
                 "EvidenceDAG pruned ledger entry fields must be exactly " "edge_id, edge, fitness_at_prune, threshold"
             )
@@ -285,14 +298,16 @@ class EvidenceDAG:
         """Score and remove edges with fitness strictly below ``threshold``.
 
         The scorer is called once per edge and must return a finite value in
-        ``[0, 1]``.  Nodes are never removed.  A dry run reports the same proposed
-        decisions without mutating either the edge list or the pruned-edge ledger.
-        Mandatory structural/required protection is always applied; a custom
-        predicate can add protection but cannot weaken the mandatory predicate.
+        ``[0, 1]``. It and the optional protection predicate receive independent
+        detached edge views. ``threshold`` must be an exact built-in int/float and
+        ``dry_run`` an exact bool. Nodes are never removed. A dry run reports the
+        same proposed decisions without mutating either the edge list or the
+        pruned-edge ledger. Mandatory structural/required protection is always
+        applied; a custom predicate can add protection but cannot weaken it.
         """
-        threshold = float(threshold)
-        if not 0.0 <= threshold <= 1.0:
-            raise ValueError(f"threshold must be in [0.0, 1.0], got {threshold}")
+        if type(dry_run) is not bool:
+            raise TypeError("dry_run must be an exact bool")
+        threshold = _bounded_threshold(threshold)
 
         # Canonicalize before structural validation so even a privately injected
         # object/subclass cannot execute attribute hooks through the validator.
@@ -314,7 +329,7 @@ class EvidenceDAG:
                 occurrence = occurrences.get(identity, 0)
                 occurrences[identity] = occurrence + 1
                 edge_id = self._edge_record_id(edge, occurrence)
-                fitness = float(scorer(edge))
+                fitness = float(scorer(self._clone_edge(edge)))
                 if fitness != fitness or not 0.0 <= fitness <= 1.0:
                     raise ValueError(
                         f"scorer returned non-finite/out-of-range fitness {fitness!r} " f"for edge {edge_id}"
@@ -322,7 +337,7 @@ class EvidenceDAG:
 
                 mandatory_protection = self.default_protected_predicate(edge)
                 custom_protection = (
-                    bool(protected_predicate(edge))
+                    bool(protected_predicate(self._clone_edge(edge)))
                     if protected_predicate is not None and not mandatory_protection
                     else False
                 )
@@ -374,12 +389,12 @@ class EvidenceDAG:
                     }
                 )
             else:
-                retained.append(edge)
+                retained.append(self._clone_edge(edge))
 
         record = {
             "record_type": "evidence_dag_prune",
             "threshold": threshold,
-            "dry_run": bool(dry_run),
+            "dry_run": dry_run,
             "edges_before": len(live_edges),
             "edges_after": len(retained),
             "scores": scores,

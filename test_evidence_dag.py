@@ -36,6 +36,27 @@ class _DeepcopyBomb:
         raise AssertionError("arbitrary __deepcopy__ hook executed")
 
 
+def _hostile_metaclass_value(hooks, on_hook, equality_result):
+    class HostileMeta(type):
+        __hash__ = type.__hash__
+
+        def __eq__(cls, _other):
+            hooks["eq"] += 1
+            on_hook()
+            return equality_result
+
+        @property
+        def __name__(cls):
+            hooks["name"] += 1
+            on_hook()
+            return "HostileValue"
+
+    class HostileValue(metaclass=HostileMeta):
+        pass
+
+    return HostileValue()
+
+
 class TestEvidenceDagContract(unittest.TestCase):
     def test_valid_dag_passes_validation_and_is_acyclic(self):
         dag = _valid_dag()
@@ -157,6 +178,27 @@ class TestEvidenceDagContract(unittest.TestCase):
                 with self.assertRaises(error_type):
                     dag.add_node("q1", NodeType.QUERY, payload=value)
 
+    def test_hostile_metaclass_hooks_cannot_influence_json_type_validation(self):
+        for equality_result in (False, True):
+            with self.subTest(equality_result=equality_result):
+                dag = EvidenceDAG()
+                hooks = {"eq": 0, "name": 0}
+
+                def mutate_dag():
+                    dag.add_node("injected", NodeType.QUERY)
+
+                hostile = _hostile_metaclass_value(
+                    hooks,
+                    mutate_dag,
+                    equality_result,
+                )
+                with self.assertRaisesRegex(TypeError, "plain JSON-compatible"):
+                    dag.add_node("q1", NodeType.QUERY, payload=hostile)
+
+                self.assertEqual(hooks, {"eq": 0, "name": 0})
+                self.assertIsNone(dag.node("injected"))
+                self.assertIsNone(dag.node("q1"))
+
     def test_transaction_preflight_rejects_injected_hostile_attrs_without_hooks(self):
         dag = _valid_dag()
         bomb = _DeepcopyBomb()
@@ -169,7 +211,7 @@ class TestEvidenceDagContract(unittest.TestCase):
         scorer.assert_not_called()
         self.assertEqual(bomb.calls, 0)
 
-    def test_transaction_rejects_callback_injected_hostile_attrs_without_hooks(self):
+    def test_callback_injected_hostile_attrs_are_isolated_without_hooks(self):
         dag = _valid_dag()
         before = dag.to_dict()
         bomb = _DeepcopyBomb()
@@ -182,10 +224,10 @@ class TestEvidenceDagContract(unittest.TestCase):
                 edge.attrs["payload"] = bomb
             return 1.0
 
-        with self.assertRaisesRegex(RuntimeError, "non-canonical"):
-            dag.prune_edges(hostile_scorer, threshold=0.5)
+        record = dag.prune_edges(hostile_scorer, threshold=0.5)
 
         self.assertEqual(dag.to_dict(), before)
+        self.assertEqual(record["pruned"], [])
         self.assertEqual(bomb.calls, 0)
 
 

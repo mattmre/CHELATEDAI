@@ -12,6 +12,7 @@ neutral fitness 1.0 so missing evidence can never cause destructive pruning.
 from __future__ import annotations
 
 import json
+from math import isfinite
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Mapping, Optional
 
@@ -19,10 +20,14 @@ from evidence_dag import EdgeType, EvidenceDAG, EvidenceEdge, NodeType, validate
 
 
 def _bounded_float(value: Any, name: str) -> float:
-    result = float(value)
-    if result != result or not 0.0 <= result <= 1.0:
-        raise ValueError(f"{name} must be finite and in [0.0, 1.0], got {value!r}")
-    return result
+    value_type = type(value)
+    if value_type is not int and value_type is not float:
+        raise TypeError(f"{name} must be an exact built-in int or float")
+    if value_type is float and not isfinite(value):
+        raise ValueError(f"{name} must be finite and in [0.0, 1.0]")
+    if value < 0 or value > 1:
+        raise ValueError(f"{name} must be in [0.0, 1.0]")
+    return float(value)
 
 
 def _query_join_keys(dag: EvidenceDAG) -> Dict[str, List[str]]:
@@ -84,15 +89,24 @@ def detector_signals_from_outputs(
     fail-closes (raises) on a non-sedimentation mode rather than silently
     mis-signalling. ``expected_isomer_mode`` is retained as an explicit guard
     for callers, but no override is accepted until another mode has its own
-    validated mapping; both it and the detector output must currently be exactly
-    ``"sedimentation"``.
+    validated mapping; both it and the detector output must currently be the exact
+    built-in string ``"sedimentation"``.
     """
+    if type(expected_isomer_mode) is not str:
+        raise ValueError(
+            "no validated isomer fitness mapping is registered unless "
+            "expected_isomer_mode is the exact built-in string 'sedimentation'"
+        )
     if expected_isomer_mode != "sedimentation":
         raise ValueError(
             "no validated isomer fitness mapping is registered for "
             f"{expected_isomer_mode!r}; only 'sedimentation' is supported"
         )
     mode = isomer_output.get("mode")
+    if type(mode) is not str:
+        raise ValueError(
+            "isomer output mode must be the exact built-in string " "'sedimentation'; mode='sedimentation' is required"
+        )
     if mode != "sedimentation":
         raise ValueError(
             "isomer output mode='sedimentation' is required for the validated "
@@ -190,7 +204,7 @@ def reanneal_edges(
     threshold: float,
     recovered_signal: Mapping[str, Any],
 ) -> Dict[str, Any]:
-    """Restore ledgered edges whose recovered detector fitness clears threshold."""
+    """Restore ledgered edges whose recovered fitness clears an exact numeric threshold."""
     threshold = _bounded_float(threshold, "threshold")
     state_snapshot = dag._snapshot_state()
     violations = validate_evidence_dag(dag)
