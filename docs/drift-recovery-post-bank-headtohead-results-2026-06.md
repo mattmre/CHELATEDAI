@@ -1,5 +1,11 @@
 # Drift Recovery — Post-Bank Head-to-Head (H5) — June 2026
 
+> [!WARNING]
+> **LEGACY_METRIC_LINEAGE_BLOCKED (2026-07-23).** Exact nDCG values,
+> comparator ordering, and derived gates below are historical diagnostics, not
+> accepted evidence, until corrected regeneration computes IDCG from all
+> positive qrels rather than only the retrieved relevance vector.
+
 Arena: `query_encoder_swap`. Task SciFact, cycles 12, seeds [42, 1337, 7].
 
 Conditions: C0 frozen (floor) · C2O oracle (ceiling) · **C5 living bank** · **C5s frozen static bank** · **C5r one-shot router**. All scored on the SAME eval subset.

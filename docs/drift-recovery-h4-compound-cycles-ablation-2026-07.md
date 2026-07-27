@@ -1,5 +1,11 @@
 # Drift Recovery — H4 compound-cycles ablation — July 2026
 
+> [!WARNING]
+> **LEGACY_METRIC_LINEAGE_BLOCKED (2026-07-23).** Exact nDCG values,
+> comparator ordering, and derived gates below are historical diagnostics, not
+> accepted evidence, until corrected regeneration computes IDCG from all
+> positive qrels rather than only the retrieved relevance vector.
+
 Arena: `query_encoder_swap`. Task SciFact, condition **C4a** (supervised unbounded adapter),
 seed 42, cycles 12, swap `all-MiniLM-L6-v2 → all-mpnet-base-v2`, correction 30 steps @ lr 0.01.
 
