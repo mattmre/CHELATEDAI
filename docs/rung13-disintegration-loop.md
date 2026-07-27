@@ -13,7 +13,9 @@ isomer fitness = 1 - isomer strength = Jaccard similarity
 ```
 
 A cluster's isomer component is the minimum fitness of its joined member queries.
-No exact join means neutral fitness `1.0`; a missing signal cannot trigger pruning.
+No exact join means neutral fitness `1.0`; an empty detector result with explicit
+`mode="sedimentation"` cannot trigger pruning. Missing mode fails closed with an
+exception, as does any mode override: no other sign convention is validated.
 
 `ConvergenceMonitor` exposes one training-run summary (`convergence_monitor.py:128`),
 not a per-query or per-cluster result. Selective scoring therefore requires callers
@@ -46,14 +48,16 @@ removes only scores strictly below the threshold, never removes nodes, validates
 the graph before and after mutation, and records removed immutable edges in a
 runtime-only ledger. `dry_run=True` reports identical proposed decisions without
 changing the graph or ledger. Non-finite or out-of-range scores fail closed. A
-scorer that replaces, removes, or reorders edges is rejected by comparing the
-complete ordered edge snapshot, and the original edge list is restored.
+scorer that replaces, removes, reorders, or mutates edge attributes or the pruned
+ledger is rejected against a deep state snapshot in both normal and dry-run modes;
+the complete active-edge and ledger state is restored.
 
 `reanneal_edges(dag, scorer, threshold, recovered_signal)` considers only ledgered
-edges. It rejects an invalid starting DAG before scoring, then re-scores each edge
-against recovered detector outputs, restores scores at or above the threshold,
-validates each restoration, and keeps failed/low or individually invalid ledger
-edges in the ledger.
+edges. It rejects an invalid starting DAG before scoring. Scoring itself runs
+inside a deep transaction: callback mutation or exceptions restore both active
+edges and the ledger. It then restores scores at or above the threshold, validates
+each restoration, and keeps failed/low or individually invalid ledger edges in the
+ledger.
 
 `write_disintegration_artifact` writes the prune and recovery thresholds, detector
 provenance, edge-level fitness before/after, pruned edges, re-annealed edges, and
@@ -66,4 +70,5 @@ structural actuator-to-cluster edge. Any edge with `required=True` or
 `structural=True` is also protected. A caller may supply a stricter downstream
 `protected_predicate`. Protected edges remain in the graph even when their detector
 score is low, and the artifact records the skip. With all detector signals healthy
-or absent, every score is `1.0` and pruning is a no-op.
+or with an explicitly sedimentation-mode empty result, every score is `1.0` and
+pruning is a no-op.

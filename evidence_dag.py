@@ -21,6 +21,7 @@ numpy/torch — so it is CI-cheap and import-safe everywhere.
 from __future__ import annotations
 
 import json
+from copy import deepcopy
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple
@@ -118,7 +119,7 @@ class EvidenceDAG:
     @property
     def pruned_edge_ledger(self) -> List[Dict[str, Any]]:
         """Return a defensive copy of edges eligible for re-annealing."""
-        return [dict(entry) for entry in self._pruned_edge_ledger]
+        return deepcopy(self._pruned_edge_ledger)
 
     @staticmethod
     def _edge_record_id(edge: EvidenceEdge, occurrence: int) -> str:
@@ -170,9 +171,10 @@ class EvidenceDAG:
         # Score over a snapshot so a scorer that mutates the DAG mid-pass cannot
         # drop unscored/unledgered edges; a mutating scorer is a caller bug and is
         # rejected below rather than silently corrupting the edge set.
-        edge_snapshot = list(self._edges)
+        live_edges = list(self._edges)
+        edge_snapshot, ledger_snapshot = deepcopy((self._edges, self._pruned_edge_ledger))
         try:
-            for edge in edge_snapshot:
+            for edge in live_edges:
                 identity = (edge.src, edge.edge_type.value, edge.dst)
                 occurrence = occurrences.get(identity, 0)
                 occurrences[identity] = occurrence + 1
@@ -210,23 +212,25 @@ class EvidenceDAG:
                     retained.append(edge)
         except Exception:
             self._edges = edge_snapshot
+            self._pruned_edge_ledger = ledger_snapshot
             raise
 
-        # Compare the ordered edge values, not just their count.  A scorer can
-        # replace or reorder entries while preserving list length; applying the
-        # snapshot decision in that state would silently discard its mutation.
-        if self._edges != edge_snapshot:
+        # Compare against a deep snapshot, not shared edge objects. A scorer can
+        # replace/reorder entries or mutate nested attrs and protection flags
+        # while preserving list length; every such mutation is transactional.
+        if self._edges != edge_snapshot or self._pruned_edge_ledger != ledger_snapshot:
             self._edges = edge_snapshot
+            self._pruned_edge_ledger = ledger_snapshot
             raise RuntimeError(
-                "scorer mutated the DAG edge set during prune_edges; refusing to apply "
-                "a prune computed over a stale snapshot"
+                "scorer mutated the DAG edge set or pruned ledger state during "
+                "prune_edges; refusing to apply a prune computed over a stale snapshot"
             )
 
         record = {
             "record_type": "evidence_dag_prune",
             "threshold": threshold,
             "dry_run": bool(dry_run),
-            "edges_before": len(edge_snapshot),
+            "edges_before": len(live_edges),
             "edges_after": len(retained),
             "scores": scores,
             "pruned": [entry["edge"].to_dict() for entry in proposed_ledger],

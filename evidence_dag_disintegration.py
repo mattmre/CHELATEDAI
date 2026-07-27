@@ -4,13 +4,15 @@ The integration is intentionally explicit about detector scope.  IsomerDetector
 emits per-query strengths, so those values are joined to DAG query nodes by exact
 ``node_id``, ``query_id``, or ``query_text``.  ConvergenceMonitor is run-global;
 selective edge scoring therefore accepts only summaries already keyed by cluster
-node id (one real monitor per cluster).  Missing, unmatched, and immature signals
-are neutral fitness 1.0 so missing evidence can never cause destructive pruning.
+node id (one real monitor per cluster).  Within an explicitly validated
+sedimentation-mode detector result, missing, unmatched, and immature entries are
+neutral fitness 1.0 so missing evidence can never cause destructive pruning.
 """
 
 from __future__ import annotations
 
 import json
+from copy import deepcopy
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Mapping, Optional
 
@@ -67,7 +69,7 @@ def detector_signals_from_outputs(
     convergence_by_cluster: Optional[Mapping[str, Mapping[str, Any]]] = None,
     *,
     provenance: Optional[Mapping[str, Any]] = None,
-    expected_isomer_mode: str = "sedimentation",
+    expected_isomer_mode: Optional[str] = "sedimentation",
 ) -> Dict[str, Any]:
     """Normalize actual detector outputs into edge-addressable fitness signals.
 
@@ -81,15 +83,21 @@ def detector_signals_from_outputs(
     ``mode="chelation"`` (standard vs chelated) a high strength can mean the
     correction *worked*, so that mapping would be inverted; this function
     fail-closes (raises) on a non-sedimentation mode rather than silently
-    mis-signalling. Pass ``expected_isomer_mode`` explicitly only with a
-    validated mapping for that mode.
+    mis-signalling. ``expected_isomer_mode`` is retained as an explicit guard
+    for callers, but no override is accepted until another mode has its own
+    validated mapping; both it and the detector output must currently be exactly
+    ``"sedimentation"``.
     """
-    mode = isomer_output.get("mode")
-    if mode is not None and str(mode) != expected_isomer_mode:
+    if expected_isomer_mode != "sedimentation":
         raise ValueError(
-            f"isomer fitness mapping (fitness = 1 - strength) is defined only for "
-            f"mode={expected_isomer_mode!r}; got mode={mode!r}. For 'chelation' mode a "
-            f"high strength can mean the correction worked, not that the edge is unfit."
+            "no validated isomer fitness mapping is registered for "
+            f"{expected_isomer_mode!r}; only 'sedimentation' is supported"
+        )
+    mode = isomer_output.get("mode")
+    if mode != "sedimentation":
+        raise ValueError(
+            "isomer output mode='sedimentation' is required for the validated "
+            f"fitness = 1 - strength mapping; got mode={mode!r}"
         )
     query_join = _query_join_keys(dag)
     query_fitness: Dict[str, float] = {}
@@ -137,7 +145,7 @@ def detector_signals_from_outputs(
         "provenance": {
             "isomer_detector": {
                 "module": "isomer_detector.IsomerDetector",
-                "mode": isomer_output.get("mode"),
+                "mode": mode,
                 "total_queries": isomer_output.get("total_queries"),
                 "unmatched_query_keys": sorted(set(unmatched_queries)),
                 "mapping": "fitness = 1 - emitted isomer strength (exact query join)",
@@ -189,21 +197,31 @@ def reanneal_edges(
     if violations:
         raise ValueError("cannot re-anneal on an invalid EvidenceDAG: " + "; ".join(violations))
     before = len(dag.edges)
-    original_edges = list(dag._edges)
-    original_ledger = list(dag._pruned_edge_ledger)
+    original_edges, original_ledger = deepcopy((dag._edges, dag._pruned_edge_ledger))
+    ledger_entries = list(dag._pruned_edge_ledger)
     remaining: List[Dict[str, Any]] = []
     scores: List[Dict[str, Any]] = []
     reannealed: List[Dict[str, Any]] = []
     skipped_invalid: List[Dict[str, Any]] = []
 
-    # Score the complete ledger before mutation.  A bad scorer can therefore
-    # never leave a half-restored graph with a stale ledger.
-    scored_entries = []
-    for ledger_entry in original_ledger:
-        fitness = _bounded_float(scorer(ledger_entry["edge"], recovered_signal), ledger_entry["edge_id"])
-        scored_entries.append((ledger_entry, fitness))
-
     try:
+        # Scoring is inside the transaction because the callback receives a live
+        # ledger edge and can otherwise mutate active edges or ledger attrs before
+        # any re-annealing begins.
+        scored_entries = []
+        for ledger_entry in ledger_entries:
+            fitness = _bounded_float(
+                scorer(ledger_entry["edge"], recovered_signal),
+                ledger_entry["edge_id"],
+            )
+            scored_entries.append((ledger_entry, fitness))
+
+        if dag._edges != original_edges or dag._pruned_edge_ledger != original_ledger:
+            raise RuntimeError(
+                "re-anneal scorer mutated EvidenceDAG active edges or pruned ledger "
+                "during scoring; refusing recovery from a stale snapshot"
+            )
+
         for ledger_entry, fitness in scored_entries:
             edge = ledger_entry["edge"]
             score_record = {
