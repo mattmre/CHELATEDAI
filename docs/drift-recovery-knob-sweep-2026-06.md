@@ -1,5 +1,15 @@
 # Drift Recovery C3 Knob Sweep - June 2026
 
+> [!WARNING]
+> **LEGACY_METRIC_LINEAGE_BLOCKED (2026-07-27; v2 blast-radius
+> reconditioning).** Every exact nDCG value, ranking, top-cell selection,
+> recovery verdict, and negative-result conclusion below is retained historical
+> diagnostic text, not accepted evidence. This surface was produced directly
+> or transitively from `drift_recovery_metrics.ndcg_at_k`, whose IDCG omitted
+> positive qrels outside the retrieved top-k. Do not use it for scientific,
+> promotion/rejection, paper, release, or roadmap claims until qrels-complete
+> regeneration and hash-linked supersession close `CD-MLR-01`.
+
 Manifest: `experiment_runs/drift-recovery/knob-sweep/knob-sweep-manifest-2026-06.json`.
 Scope: calibrated rotation setting only; all 12 seed-42 grid cells are reported.
 Selection policy: Top two cells by seed-42 final NDCG; ties are broken by lower trigger threshold, then profile name, then lower bound epsilon.

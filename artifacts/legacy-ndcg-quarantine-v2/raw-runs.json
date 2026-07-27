@@ -1,0 +1,2500 @@
+{
+  "artifact_count": 89,
+  "artifact_type": "historical_raw_run_json",
+  "artifacts": [
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "8c53fe408a676a6fe8701155e7f94bdbcbd55435",
+      "path": "experiment_runs/drift-recovery/calibrated/scifact_C0_noise_seed1337.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "calibration"
+      ],
+      "sha256": "e13120177285316c0366a538736a8b334cf82f5d3fdf3083abf8f1ee0467ccf7",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "2efee76f2369b999bb9213fcb430134cb3dcceeb",
+      "path": "experiment_runs/drift-recovery/calibrated/scifact_C0_noise_seed42.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "calibration"
+      ],
+      "sha256": "10fb96f03de24395b2acdb073411832346460c5bf6cde18d5bf06e176db30a68",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "322211e187daf5f70a1adeb0c943a40830d80d3e",
+      "path": "experiment_runs/drift-recovery/calibrated/scifact_C0_noise_seed7.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "calibration"
+      ],
+      "sha256": "e163ba64156dbf0135cbfe8ee1b385bd3988540f3b8a5532bbcbeda704e6fbb2",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "688caedb4531d1b39a0bdaa1f1a72b2ab203119c",
+      "path": "experiment_runs/drift-recovery/calibrated/scifact_C0_rotation_seed1337.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "calibration"
+      ],
+      "sha256": "6244e0f000c21e79f0f022bc2eb87030c90710f02dadf5105f93c798b0dc55ea",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "89e0989dff6ff9a3aaf44beae49d17150be974cd",
+      "path": "experiment_runs/drift-recovery/calibrated/scifact_C0_rotation_seed42.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "calibration"
+      ],
+      "sha256": "e137d697e1cb6f99b6c359375f0b4ba44dc599e09944d8aea307d7ec3de43b21",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "1cf391d69e061fcef922e952bdaa3c056002b394",
+      "path": "experiment_runs/drift-recovery/calibrated/scifact_C0_rotation_seed7.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "calibration"
+      ],
+      "sha256": "3b9aa852688613d2f716edf3c7579ee2a7397a9719dc4caeb3a1aae99a9f985d",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "8b8482409f59889eddf74ad44f9181fa93b60c12",
+      "path": "experiment_runs/drift-recovery/calibrated/scifact_C1_noise_seed1337.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "calibration"
+      ],
+      "sha256": "64ffd40ec4f7057defc2b65be5abba68af520318f5725843d0eff2a98851bfe3",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "2a998ccb8b1ffdd74cfb2d8fff21c0b79808fb9e",
+      "path": "experiment_runs/drift-recovery/calibrated/scifact_C1_noise_seed42.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "calibration"
+      ],
+      "sha256": "da2502cf5e04868bc5c51c6c82821e3d265905ade1db953de8a26526d5f2a0b0",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "2f4b7f8d5a76c7c19b7ad1300b430af655460189",
+      "path": "experiment_runs/drift-recovery/calibrated/scifact_C1_noise_seed7.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "calibration"
+      ],
+      "sha256": "c7881b10705982a867309d7e16f6c438d08e1754425c2648393ed0e6dd946560",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "cd3d5e0fff17bc9f7f236970571d210de670bc8a",
+      "path": "experiment_runs/drift-recovery/calibrated/scifact_C1_rotation_seed1337.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "calibration"
+      ],
+      "sha256": "b2fc817dd1073c6225e2e6b6eaa258ef99efc328183baaa3099aa15e3f5dfcf1",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "e3f7149cf15b2a5ce4152ff4d7c5c3de502c5f8e",
+      "path": "experiment_runs/drift-recovery/calibrated/scifact_C1_rotation_seed42.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "calibration"
+      ],
+      "sha256": "7cf07e0a385134a67d85bbd9da70c0d32416bc970c2a81e7bcd69c99805b8fbf",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "c0fd8af13a3f51d242ad395e3184cd5af9d327ff",
+      "path": "experiment_runs/drift-recovery/calibrated/scifact_C1_rotation_seed7.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "calibration"
+      ],
+      "sha256": "ca2354cd4a24277886288397a56b7049b940147346bda03b653a634c621a0adb",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "22b5bb8692a47e26135d53182a3033df68712a12",
+      "path": "experiment_runs/drift-recovery/calibrated/scifact_C2_noise_seed1337.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "calibration"
+      ],
+      "sha256": "f7aa824be11dcef4a0354742a0d23108b4974bc20df37f308390f168024e3874",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "35c44edcf4ba6ae0229eeb6d3bde29b03d1eae39",
+      "path": "experiment_runs/drift-recovery/calibrated/scifact_C2_noise_seed42.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "calibration"
+      ],
+      "sha256": "db05c9b6b2a135ce1befe3118dd5cc903afe3177d23f71bf3741e6d975cf0684",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "6ef6affad0093ef47350f65978ea70543cca35f3",
+      "path": "experiment_runs/drift-recovery/calibrated/scifact_C2_noise_seed7.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "calibration"
+      ],
+      "sha256": "9b4d5a44a5be2ea698ea46b5dc62820d87f48a59cc51c76b2d6011fa17479c35",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "0fa9efc632fb2989e3a8c9195806e9cafaad1a6a",
+      "path": "experiment_runs/drift-recovery/calibrated/scifact_C2_rotation_seed1337.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "calibration"
+      ],
+      "sha256": "b587d9f125fbfa0afe18d456a861020d5f885989b2dca04d429fc0a2edb93910",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "9182874c89414e5429fcbfde8ee15d7591e15f52",
+      "path": "experiment_runs/drift-recovery/calibrated/scifact_C2_rotation_seed42.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "calibration"
+      ],
+      "sha256": "3e51c3059f54dcf36952fbe0958c0edcb3fa5f1a6de03e2fed743c8337314f01",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "3469c0f63a184de0960355d711ee9953a0022878",
+      "path": "experiment_runs/drift-recovery/calibrated/scifact_C2_rotation_seed7.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "calibration"
+      ],
+      "sha256": "a193fe72429a8644717f0a1846c08aa364bc3d4369155f9519475910256dc557",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "38f95c2d3f2862f7dac2a57fc891085ab7c1d9b1",
+      "path": "experiment_runs/drift-recovery/calibrated/scifact_C3_noise_seed1337.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "calibration"
+      ],
+      "sha256": "f75a28bffc06a00b27e9d95bed4a1017a4fcb596a2db29a29421af89ad4de74a",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "bbc13de7f1152c3a158d2bc588f3a6ae0078792d",
+      "path": "experiment_runs/drift-recovery/calibrated/scifact_C3_noise_seed42.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "calibration"
+      ],
+      "sha256": "1d6bae0e355e33595c09e82d2ba70fb412cd7ef243cc0fee23340b4cfb774de7",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "180fc70742230c9a53ac1ef1fd8dd90bd20cb0a8",
+      "path": "experiment_runs/drift-recovery/calibrated/scifact_C3_noise_seed7.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "calibration"
+      ],
+      "sha256": "62d561f9ba502549ba9da92d900efd57b23e82605389d60e716c8959987820a5",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "629861083fec981ca58eec5ed824adebf4845365",
+      "path": "experiment_runs/drift-recovery/calibrated/scifact_C3_rotation_seed1337.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "calibration"
+      ],
+      "sha256": "98ec650117ee3fb746de089680f11f33361496b5b0666d0382fa466d701a069e",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "d0688d59bd34d98c3e3ef31308af9e7b01a9264a",
+      "path": "experiment_runs/drift-recovery/calibrated/scifact_C3_rotation_seed42.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "calibration"
+      ],
+      "sha256": "2093beb38290d7edc6d3e2c4cf563d09b3538d064288c027b8449e4c21ff3394",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "517db1ddd6411b317cc6a07870501167e0bf1ab4",
+      "path": "experiment_runs/drift-recovery/calibrated/scifact_C3_rotation_seed7.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "calibration"
+      ],
+      "sha256": "cf46d3d765fe502c0c8a659ef9de5b96369aba668bee3de31e4942b9bc478fc4",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "c097014e51317f47e42742897970283cb89879c1",
+      "path": "experiment_runs/drift-recovery/calibrated/scifact_C4_noise_seed1337.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "calibration"
+      ],
+      "sha256": "73d052ee8ebb5c01f4537492f5255331a62f84263e893c0b796d8df58dedca02",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "ffb4ec27a9f3346f8dbcc88e35d38d5a25ca0455",
+      "path": "experiment_runs/drift-recovery/calibrated/scifact_C4_noise_seed42.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "calibration"
+      ],
+      "sha256": "1d7795eb5ad6411b93d43a78d4d81eb9a1e5d2002a11ee8a07f937792603bb48",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "83d505bdb43db9534c54dd87bf11a9cf797cdc8c",
+      "path": "experiment_runs/drift-recovery/calibrated/scifact_C4_noise_seed7.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "calibration"
+      ],
+      "sha256": "28d38be634d5d2db4b0f47dd526ad0e3ef1a4ed3c0af161f18f37263a6cec345",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "26b4c160dfe189ab422b20e6a0c8d74576edc6d6",
+      "path": "experiment_runs/drift-recovery/calibrated/scifact_C4_rotation_seed1337.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "calibration"
+      ],
+      "sha256": "93c858d34e42d1e68c543d2758f29516e22b6bbbe80d116bf0dc0f72196068f6",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "904a541b7a06b8b965e7a6f95a333a2ea48021fc",
+      "path": "experiment_runs/drift-recovery/calibrated/scifact_C4_rotation_seed42.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "calibration"
+      ],
+      "sha256": "11fe2b771668269672c51fbf46edfa1907901b8e27033818d43012bfe6cfe7aa",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "ffc64b39940f501c40b534a431d83667cfcce59b",
+      "path": "experiment_runs/drift-recovery/calibrated/scifact_C4_rotation_seed7.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "calibration"
+      ],
+      "sha256": "228da9f1dd62f299da2418ddd9c390026e21ed9500433493ab0a0d282b03f65c",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "44df7fdd8e8c2ed85c52b0ad086f780d41dea737",
+      "path": "experiment_runs/drift-recovery/calibrated/scout_C0_noise_fraction0p5_sigma0p01_seed42.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "calibration"
+      ],
+      "sha256": "1af2f780e4ab440fe2ca232d319357776980c5301b2f97daa05a562e2f3a01ca",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "b56a4d1b4684cd33cd68367ed547f6028d4dbb3c",
+      "path": "experiment_runs/drift-recovery/calibrated/scout_C0_noise_fraction0p5_sigma0p02_seed42.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "calibration"
+      ],
+      "sha256": "e7dcdb81b8ff7ce8f4c2b72782faf81581e2ad875fc3d3e1993562b4f1640cab",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "5b5311604a7772691d59f84e0ce84b8f265ff0c7",
+      "path": "experiment_runs/drift-recovery/calibrated/scout_C0_noise_fraction0p5_sigma0p035_seed42.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "calibration"
+      ],
+      "sha256": "4bcb03ff0ce9cc574888ee29c3de1f6996b6e62a8534d937098ba27207611801",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "0b527be5bfb6e57d2ee194e54b67572711e859e8",
+      "path": "experiment_runs/drift-recovery/calibrated/scout_C0_rotation_fraction0p5_angle35_seed42.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "calibration"
+      ],
+      "sha256": "ec488bc88574cb2269686c036bf872eff2fc081dae1b360f69a7ccd66f4c6b14",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "7978f9c7870ff5033cb4c9a09c7976ad3166d750",
+      "path": "experiment_runs/drift-recovery/calibrated/scout_C0_rotation_fraction0p5_angle50_seed42.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "calibration"
+      ],
+      "sha256": "824fa261b95e80b01a8fc3c29cd795a11a0280d43efaf12008b8d66d14146a06",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "e355f14c3ebf7ee31594519098bc2c564c8f6e8e",
+      "path": "experiment_runs/drift-recovery/calibrated/scout_C0_rotation_fraction0p5_angle65_seed42.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "calibration"
+      ],
+      "sha256": "d9a3c2c16b50821d28af099f0819cb475e26e0f95eedbf4a07b6d910d0499bdc",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "6636b7e807e439e378ec1db52a61beac833766e8",
+      "path": "experiment_runs/drift-recovery/calibrated/scout_C0_rotation_fraction0p75_angle35_seed42.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "calibration"
+      ],
+      "sha256": "cbb8caaecc1901b6a5d38a3d8cca95732c3ea3bc560fe030440d224bddd91b33",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "afec269d088eb586120d0c86d71335ad2f40a00e",
+      "path": "experiment_runs/drift-recovery/calibrated/scout_C0_rotation_fraction0p75_angle50_seed42.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "calibration"
+      ],
+      "sha256": "2c4bdbc8c7a026076a395794671d923c889158a20a03140cab2dcb8246a9a84b",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "02038a8a11ab8e440eb6dd514f006433039c526b",
+      "path": "experiment_runs/drift-recovery/calibrated/scout_C0_rotation_fraction0p75_angle65_seed42.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "calibration"
+      ],
+      "sha256": "15843a20775c063c933b46318011bade638282d6f3b4c12ea2b3899641fdb452",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "da3d8310a1531c1d95f23d7391f232f938dcd785",
+      "path": "experiment_runs/drift-recovery/h4-compound/C4a_compound0_seed42.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "h4_compound"
+      ],
+      "sha256": "5bdf87e25d668d9be747f1e7027a14b242c3468f64e595b13651cfc835cec524",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "751488b09393ae4a6cdc9247d0564218d4ada5c4",
+      "path": "experiment_runs/drift-recovery/h4-compound/C4a_compound1_seed42.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "h4_compound"
+      ],
+      "sha256": "4c9d3964034d8b7a3b0f20bea165173fdf6e8d8514cf6351c3c2065c63523c17",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "ca9b0ddbd9ff62f0875cf1c4458a2f0f911a0f24",
+      "path": "experiment_runs/drift-recovery/knob-sweep/confirmation/c3_bound0p1_trigger0p05_default_seed1337.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "knob_sweep"
+      ],
+      "sha256": "a13c16ba9eb960433ba228f4ef83afca7c952adde12caaf6f222e9c50bd0748e",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "803600e686dea0f3608fddfc5685f5d227db29d7",
+      "path": "experiment_runs/drift-recovery/knob-sweep/confirmation/c3_bound0p1_trigger0p05_default_seed42.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "knob_sweep"
+      ],
+      "sha256": "1256f127f4bd101bff281958fc92b93214f135209b9d2e28c80eac189597895e",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "20fe3bf333ffc5d7e71ab6401659162e0d12c48a",
+      "path": "experiment_runs/drift-recovery/knob-sweep/confirmation/c3_bound0p1_trigger0p05_default_seed7.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "knob_sweep"
+      ],
+      "sha256": "b6e25a10f983197f36d54fe9049b1c18ea5b37af750c1520b9b2d4397e1fcc9b",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "2447f96dc445d484c539af55958adb50758b309e",
+      "path": "experiment_runs/drift-recovery/knob-sweep/confirmation/c3_bound0p1_trigger0p05_hotter_seed1337.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "knob_sweep"
+      ],
+      "sha256": "d44e6069e19cd842cd745506e232dde8eb42085291860ee235f4330652c67662",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "31ffe812004e6dfeb1ab944acd42208cc3f0ddf0",
+      "path": "experiment_runs/drift-recovery/knob-sweep/confirmation/c3_bound0p1_trigger0p05_hotter_seed42.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "knob_sweep"
+      ],
+      "sha256": "2b105ce96cf71d5ce6202cfbcf0874beafdd272bf0794c8226d301e8d4bd4a0a",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "ffb3a860be79d2f7d730530cbf0c37e076c15549",
+      "path": "experiment_runs/drift-recovery/knob-sweep/confirmation/c3_bound0p1_trigger0p05_hotter_seed7.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "knob_sweep"
+      ],
+      "sha256": "cf2e783fe3b19c56b5a5f79954c657bf6ae01a238acbc880790750e2f8b54c5c",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "bc97aa7a73b83f4bd5437962896f622f712817c2",
+      "path": "experiment_runs/drift-recovery/knob-sweep/grid/c3_bound0p01_trigger0p05_default_seed42.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "knob_sweep"
+      ],
+      "sha256": "2c2692b2c983ed64f1a4cb0b4375b4e4b5a66be74eff4eb813750242843ef81b",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "37f0a7b8edf08b24ee9ead7c0386a1c870e4a1c8",
+      "path": "experiment_runs/drift-recovery/knob-sweep/grid/c3_bound0p01_trigger0p05_hotter_seed42.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "knob_sweep"
+      ],
+      "sha256": "6ed5e9e52852b1917e941c9d0c0dec3a13c7be2c0aad90413458d33622e4dc54",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "b8d9827c5b26b3b7af003ec7c27e17ab5781d2ff",
+      "path": "experiment_runs/drift-recovery/knob-sweep/grid/c3_bound0p01_trigger0p15_default_seed42.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "knob_sweep"
+      ],
+      "sha256": "5517cfa3357b6cd699e532fa6815c7cef6ef7df071a985f9471e7c28d2960561",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "61c4689e983dbe136139ec5e132e5db1cc578acc",
+      "path": "experiment_runs/drift-recovery/knob-sweep/grid/c3_bound0p01_trigger0p15_hotter_seed42.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "knob_sweep"
+      ],
+      "sha256": "aa0aea9fbb617cac702504ee5bd89eb5fe8c05283bff840aae84227dbe96c802",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "4102bacd6a6bb9bdb543064dbd07b5f0aea9b679",
+      "path": "experiment_runs/drift-recovery/knob-sweep/grid/c3_bound0p05_trigger0p05_default_seed42.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "knob_sweep"
+      ],
+      "sha256": "b332d96c3497c91d2c58b84319aeedff7c0381ba69d4be2f50fffa161c24131c",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "393bc7aed2c84ac6546245c74ea94a0d5123fefe",
+      "path": "experiment_runs/drift-recovery/knob-sweep/grid/c3_bound0p05_trigger0p05_hotter_seed42.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "knob_sweep"
+      ],
+      "sha256": "0758dd100a0e36989e1e0a7b7b2427a82fb513848f9503055c1efaa6e0c6210a",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "7a8e525222ddbd3c8bcb989dd37a5a4517e8513e",
+      "path": "experiment_runs/drift-recovery/knob-sweep/grid/c3_bound0p05_trigger0p15_default_seed42.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "knob_sweep"
+      ],
+      "sha256": "3ab2531fe864b12758014bad4f4080bf30ca986851c463d8d033820e86ff656f",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "a66808ff3d9da620c03adf42d244fbfafd045977",
+      "path": "experiment_runs/drift-recovery/knob-sweep/grid/c3_bound0p05_trigger0p15_hotter_seed42.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "knob_sweep"
+      ],
+      "sha256": "dce2acf6a86759b5f0a2f4a4476f428b56fb015d05f23b34071bdb5c97503a99",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "3fa663efc07f3d90d269e8883b592c7b914abe1b",
+      "path": "experiment_runs/drift-recovery/knob-sweep/grid/c3_bound0p1_trigger0p05_default_seed42.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "knob_sweep"
+      ],
+      "sha256": "b2d344da3af4f4b649ee630f6d87b5db662ed43677156d024b2ca36b6cba136c",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "a2ce613678f1bd8d62e820094efda478ed77b20b",
+      "path": "experiment_runs/drift-recovery/knob-sweep/grid/c3_bound0p1_trigger0p05_hotter_seed42.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "knob_sweep"
+      ],
+      "sha256": "ccf28ccda12a2b14419ace02518d1bed97717dd3e2b80f62a1379c7f70e88f5c",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "f5734909c633846f700378d48bfd6545bcd7a229",
+      "path": "experiment_runs/drift-recovery/knob-sweep/grid/c3_bound0p1_trigger0p15_default_seed42.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "knob_sweep"
+      ],
+      "sha256": "268afc87755f9ecd9044a373db582d31265631d3b493ee218f6a0a8aee3424bd",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "8922300a73f60731cad8c8320a7b783443fdac5c",
+      "path": "experiment_runs/drift-recovery/knob-sweep/grid/c3_bound0p1_trigger0p15_hotter_seed42.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "knob_sweep"
+      ],
+      "sha256": "86b39b0ab707745b0ff1cdd9a85bc0d7dbf52d542ad62a8c6e2375def7d90e7c",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "90872c53c4319707725e90da0a9e035437444905",
+      "path": "experiment_runs/drift-recovery/scifact_C0_noise_seed1337.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "base_matrix"
+      ],
+      "sha256": "6e75f6e865f5fed93198cdf22376cbe62f1d58c53202213b1aa285746cf28854",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "428deb081d80e4ce6050042c841bd8c4218736a0",
+      "path": "experiment_runs/drift-recovery/scifact_C0_noise_seed42.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "base_matrix"
+      ],
+      "sha256": "fb4dfc565fb7a0f1a1b8b146b15f52aa51c223b223203fcdecb0f1e86776dfd2",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "9b41b252e82111d891322f1f3ce0999ee87d25d0",
+      "path": "experiment_runs/drift-recovery/scifact_C0_noise_seed7.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "base_matrix"
+      ],
+      "sha256": "78fb3cdcd820ff9d1719284bef4b0c1aa7bfc285e1c2815287f028e660c20d63",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "addd8cd7a2aef95148e380bd5962da48a222b4c6",
+      "path": "experiment_runs/drift-recovery/scifact_C0_rotation_seed1337.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "base_matrix"
+      ],
+      "sha256": "f1611a718678e594809db4b981c941c0b983d199b50b3baea8b6bd3508220f05",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "fa43be2db6e1af410a5d6cbe2945c35854c2d3b6",
+      "path": "experiment_runs/drift-recovery/scifact_C0_rotation_seed42.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "base_matrix"
+      ],
+      "sha256": "3ea1a7f8cab4c8036c7f09d64f9dee60a3443b5f2e9d370bef6f46a1c6b93745",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "10349b6af5f16afaa0b9dc19de1d6a1bf825ae23",
+      "path": "experiment_runs/drift-recovery/scifact_C0_rotation_seed7.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "base_matrix"
+      ],
+      "sha256": "d2e4de4dcaf6a1d2422fba9a496555ca7149e6b5950e637d7c9a0f2b7b77d954",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "954003baab1e4776467af38330ff7de454a227e2",
+      "path": "experiment_runs/drift-recovery/scifact_C1_noise_seed1337.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "base_matrix"
+      ],
+      "sha256": "3b7e06e94fe62b07c5b9dcd31115cd700d0ca2c164f044925287bbf65ab80762",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "ae179199fcac6d9402405e57725aaa131060f14e",
+      "path": "experiment_runs/drift-recovery/scifact_C1_noise_seed42.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "base_matrix"
+      ],
+      "sha256": "78a522736c48bfb668eddbecc0cb1a8c161f98c2510ad2735354a4ba99eab23a",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "4d20c99c79b66d14c148fc8309e9d5e7e216d489",
+      "path": "experiment_runs/drift-recovery/scifact_C1_noise_seed7.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "base_matrix"
+      ],
+      "sha256": "341ae156878ab7d4d0f59fb1d2478b56bee40054b7f9d243f49d0a26dfdfcc75",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "2c9ac62e1f1aebf42f1401f808ad462ec9fdc415",
+      "path": "experiment_runs/drift-recovery/scifact_C1_rotation_seed1337.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "base_matrix"
+      ],
+      "sha256": "93bed80f57234ef95297fbf3a15747b29b16dbf8ed4422b686b1e8f53f2cfda6",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "45fcea5128e5673d994f86ee270d74074b3c9366",
+      "path": "experiment_runs/drift-recovery/scifact_C1_rotation_seed42.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "base_matrix"
+      ],
+      "sha256": "d6cd4f1efb0e23acc056ae0d55805444d7189c6968d7517e11bd4b0d7dc21c37",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "ce90ded567fd44bb615e7249bc7c01791e06465d",
+      "path": "experiment_runs/drift-recovery/scifact_C1_rotation_seed7.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "base_matrix"
+      ],
+      "sha256": "12d0bc7e8f9de4a86b5dd31f79eb99d55c035afc90bc09188c458c80e05537de",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "0950e02020c07985840d8dd81d7773b3a0ee7012",
+      "path": "experiment_runs/drift-recovery/scifact_C2_noise_seed1337.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "base_matrix"
+      ],
+      "sha256": "e9b6aadfb4f47fb8c35f6924beeee5cc4546015cb4fc63323be9d7a7c2ae79b4",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "5cb14e08c536350306a366b47c59f1ecdd8503bf",
+      "path": "experiment_runs/drift-recovery/scifact_C2_noise_seed42.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "base_matrix"
+      ],
+      "sha256": "39d90f2a3e9be42d0980f24c1350fe79c1002e7f3fc39179c860e627328272f3",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "a8b95ba32242305ad75ea17a4e518a06476bc97f",
+      "path": "experiment_runs/drift-recovery/scifact_C2_noise_seed7.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "base_matrix"
+      ],
+      "sha256": "317cde04d51a5039d6306ede72351fe426c2aaef35f137a6acfd58cc9cd645b4",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "67c000cdcd9014a5f77c9ff53cd9a4e832deef31",
+      "path": "experiment_runs/drift-recovery/scifact_C2_rotation_seed1337.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "base_matrix"
+      ],
+      "sha256": "87ba5526dc9de859fd9dc4d45f51a069ca8d15cb3a0e250934fd8c7ffaf6cdbc",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "cf1222696847855f1e9b31b134bbfdb7335c74ff",
+      "path": "experiment_runs/drift-recovery/scifact_C2_rotation_seed42.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "base_matrix"
+      ],
+      "sha256": "fd267907581f79c3e4e852a6927545359766da20095a001b5dee34306a86b0c6",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "b41d703d976cd4a42d569328f21337a551b11d42",
+      "path": "experiment_runs/drift-recovery/scifact_C2_rotation_seed7.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "base_matrix"
+      ],
+      "sha256": "8cb65c9939b4a1e0c57e17332a91315554358b546f324f256dd14f6749e25d99",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "164a3eab1df638d08c3579780d41088b10a2442b",
+      "path": "experiment_runs/drift-recovery/scifact_C3_noise_seed1337.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "base_matrix"
+      ],
+      "sha256": "f0ac42e751767c5d4fdf615193ea5bd2938f422c507332aa1b2aedc6cc4e261b",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "23aff784ba1c223f99c7f9d8cfb682814861a25c",
+      "path": "experiment_runs/drift-recovery/scifact_C3_noise_seed42.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "base_matrix"
+      ],
+      "sha256": "91fd6e511d3bf40777d3c283a4417f626f91fe954438d04d2eae761be8222b1f",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "e92c6ab06eeaed9979d7aa9ca929a56e349db463",
+      "path": "experiment_runs/drift-recovery/scifact_C3_noise_seed7.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "base_matrix"
+      ],
+      "sha256": "fcfca2342d2a08afa66b9040154a7151bce06ac554c0924cfbaac629fbd8e459",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "0f5cb779344bedeb93d6a22ebda2bf31bf7252a5",
+      "path": "experiment_runs/drift-recovery/scifact_C3_rotation_seed1337.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "base_matrix"
+      ],
+      "sha256": "b99e00c382f7eaad34e0debc6d6582d6b67b89a2bb8e5c4f2c148abb305dec70",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "7bc2483c0162dbd2345de56b71e02b5c34e8bd42",
+      "path": "experiment_runs/drift-recovery/scifact_C3_rotation_seed42.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "base_matrix"
+      ],
+      "sha256": "0b572ddd0190cf462027dd31a5be595fba935b9acff0548627f79a15e136edb6",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "1e688f7ffc66818d6af453fba716b9db4aee4de8",
+      "path": "experiment_runs/drift-recovery/scifact_C3_rotation_seed7.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "base_matrix"
+      ],
+      "sha256": "bdb970951c2e2fab96cb907837388fc915121285b7db2e4f4a5ca9a63b1cfeaa",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "3df39c3a14b2431a16577ef61bd35a8c127db352",
+      "path": "experiment_runs/drift-recovery/scifact_C4_noise_seed1337.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "base_matrix"
+      ],
+      "sha256": "51c245f629f8989e8f0ef85dba6cc9a93c2aecbbb719ed5b19f38e5935614e0d",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "3f9b73084bb8e7bad4996594eda008fa4278b145",
+      "path": "experiment_runs/drift-recovery/scifact_C4_noise_seed42.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "base_matrix"
+      ],
+      "sha256": "9042b98306426c191b63d20949be1b23f2bada06d77a92b83b80f9992e8df29d",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "005e92708d72439b34d13edee7ccc4d5f912e10f",
+      "path": "experiment_runs/drift-recovery/scifact_C4_noise_seed7.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "base_matrix"
+      ],
+      "sha256": "4bbf2ef262f929e5ea8bb7b6332c550cd20d65ea0a2c5c4304253bc5cf0e86b0",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "05f9df8378799e8e3d52814f28bcf802dffc1513",
+      "path": "experiment_runs/drift-recovery/scifact_C4_rotation_seed1337.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "base_matrix"
+      ],
+      "sha256": "1b241ec10c1fc07d7450cd32d8f59613b0dfa5fcdf6f60f6f31f360865f9f780",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "d84289c19f9ca81a592f34b1b1fb62c621465fa5",
+      "path": "experiment_runs/drift-recovery/scifact_C4_rotation_seed42.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "base_matrix"
+      ],
+      "sha256": "14a043f914eed395b279016a630a926fc50493722f0424b66be8fe3ee43d6ae9",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure",
+        "metric_defect_reproduction"
+      ],
+      "artifact_type": "historical_raw_run_json",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "77c94054cfa3b76c1fd7ca6e276492a9e113f0af",
+      "path": "experiment_runs/drift-recovery/scifact_C4_rotation_seed7.json",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "base_matrix"
+      ],
+      "sha256": "a5d1f155bff5e323b5877ad43018c0c7b7da92a03845164948e1304c4a044d91",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    }
+  ],
+  "schema_version": "2.0.0",
+  "shard_id": "raw-runs"
+}

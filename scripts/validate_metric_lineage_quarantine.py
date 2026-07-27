@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate the immutable legacy nDCG quarantine/supersession sidecar."""
+"""Fail closed unless the complete v2 legacy nDCG quarantine is exact."""
 
 from __future__ import annotations
 
@@ -9,36 +9,108 @@ import json
 import subprocess
 import sys
 from pathlib import Path, PurePosixPath
-from typing import Any, Iterable, Optional
+from typing import Any, Dict, Iterable, Mapping, Optional, Sequence
+
+if __package__:
+    from .build_metric_lineage_quarantine_v2 import (
+        BACKEND_EVIDENCE,
+        BLOCKED_STATE,
+        FIRST_PASS_WARNING_DOCS,
+        INDEX_ID,
+        PROSE_TYPE,
+        ROOT,
+        SCHEMA_VERSION,
+        SOURCE_HEAD,
+        BuildError,
+        build_documents,
+    )
+else:
+    from build_metric_lineage_quarantine_v2 import (  # type: ignore[no-redef]
+        BACKEND_EVIDENCE,
+        BLOCKED_STATE,
+        FIRST_PASS_WARNING_DOCS,
+        INDEX_ID,
+        PROSE_TYPE,
+        ROOT,
+        SCHEMA_VERSION,
+        SOURCE_HEAD,
+        BuildError,
+        build_documents,
+    )
 
 
-ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_INDEX = ROOT / "artifacts" / "legacy-ndcg-quarantine-index-v1.json"
-EXPECTED_ARTIFACT_PATHS = {
-    "docs/drift-recovery-h4-compound-cycles-ablation-2026-07.md",
-    "docs/drift-recovery-post-bank-headtohead-nfcorpus-results-2026-06.md",
-    "docs/drift-recovery-post-bank-headtohead-results-2026-06.md",
-    "docs/drift-recovery-swap-nfcorpus-results-2026-06.md",
-    "docs/drift-recovery-swap-results-2026-06.md",
-    "experiment_runs/drift-recovery/h4-compound/C4a_compound0_seed42.json",
-    "experiment_runs/drift-recovery/h4-compound/C4a_compound1_seed42.json",
-    "experiment_runs/drift-recovery/post-bank-headtohead-nfcorpus/post-bank-headtohead-manifest-2026-06.json",
-    "experiment_runs/drift-recovery/post-bank-headtohead/post-bank-headtohead-manifest-2026-06.json",
-    "experiment_runs/drift-recovery/swap-nfcorpus/swap-campaign-manifest-2026-06.json",
-    "experiment_runs/drift-recovery/swap/swap-campaign-manifest-2026-06.json",
+DEFAULT_INDEX = ROOT / "artifacts" / "legacy-ndcg-quarantine-index-v2.json"
+EXACT_INDEX_KEYS = {
+    "schema_version",
+    "index_id",
+    "state",
+    "authored_date",
+    "source_head",
+    "defect",
+    "artifact_count",
+    "artifact_counts",
+    "artifact_shard_count",
+    "artifact_shards",
+    "raw_dispositions",
+    "accepted_use_vocabulary",
+    "prohibited_use_vocabulary",
+    "immutability_policy",
+    "preservation_contract",
+    "legacy_v1",
+    "backend_resolution_evidence",
+    "tracked_debt",
 }
-REQUIRED_ACCEPTED_USES = {"historical_audit", "configuration_audit"}
-REQUIRED_PROHIBITED_USES = {
-    "scientific_performance_claim",
-    "condition_or_comparator_ordering",
-    "promotion_or_rejection_decision",
-    "paper_table_abstract_or_release_claim",
+EXACT_SHARD_KEYS = {
+    "schema_version",
+    "shard_id",
+    "artifact_type",
+    "artifact_count",
+    "artifacts",
 }
-MANIFEST_ROW_KEYS = ("rows", "main_rows", "budget_rows", "budget_confirm_rows")
+EXACT_ARTIFACT_KEYS = {
+    "path",
+    "artifact_type",
+    "git_blob_sha1",
+    "sha256",
+    "defect_id",
+    "state",
+    "accepted_uses",
+    "prohibited_uses",
+    "raw_disposition_ids",
+    "supersession",
+}
+EXACT_PROSE_ARTIFACT_KEYS = EXACT_ARTIFACT_KEYS | {"provenance_versions"}
+CONTROL_SURFACE_MARKERS = {
+    "CHANGELOG.md": (
+        "LEGACY_METRIC_LINEAGE_BLOCKED",
+        "legacy-ndcg-quarantine-index-v2.json",
+        "113 affected tracked artifacts",
+        "not a confirmed negative",
+    ),
+    "docs/ROADMAP_EXECUTION.md": (
+        "LEGACY_METRIC_LINEAGE_BLOCKED",
+        "legacy-ndcg-quarantine-index-v2.json",
+        "113 affected tracked",
+        "no accepted fail/win/rejection claim exists",
+    ),
+    "docs/next-session.md": (
+        "CD-MLR-01",
+        "DS-MLR-01",
+        "legacy-ndcg-quarantine-index-v2.json",
+        "113/113 affected tracked artifacts",
+        "fail-closed validator",
+    ),
+    "docs/research/pr292-metric-lineage-reconditioning-2026-07.md": (
+        "113 tracked artifacts",
+        "ORIGINAL_PRE_RECONDITIONING_SOURCE",
+        "RECONDITIONED_WARNING_SURFACE",
+        "legacy-ndcg-quarantine-index-v2.json",
+    ),
+}
 
 
 class ValidationError(ValueError):
-    """Raised when the quarantine contract does not match repository evidence."""
+    """Raised when quarantine state differs from the closed v2 contract."""
 
 
 def _git(*args: str) -> bytes:
@@ -54,252 +126,286 @@ def _git(*args: str) -> bytes:
     return completed.stdout
 
 
-def _safe_repo_path(value: Any, *, field: str) -> tuple[str, Path]:
+def _safe_repo_path(value: Any, *, field: str) -> Path:
     if not isinstance(value, str) or not value:
         raise ValidationError(f"{field} must be a non-empty string")
     pure = PurePosixPath(value)
     if pure.is_absolute() or ".." in pure.parts or "\\" in value:
         raise ValidationError(f"{field} must be a safe POSIX repository-relative path: {value!r}")
-    path = ROOT.joinpath(*pure.parts)
-    return value, path
+    return ROOT.joinpath(*pure.parts)
 
 
-def _require_string_list(value: Any, *, field: str) -> list[str]:
-    if not isinstance(value, list) or not value or not all(isinstance(item, str) and item for item in value):
-        raise ValidationError(f"{field} must be a non-empty list of strings")
-    if len(value) != len(set(value)):
-        raise ValidationError(f"{field} contains duplicate values")
-    return value
+def _json_bytes(payload: Any) -> bytes:
+    return (json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False) + "\n").encode("utf-8")
 
 
-def _manifest_referenced_paths(payload: dict[str, Any]) -> list[str]:
-    paths: set[str] = set()
-    for key in MANIFEST_ROW_KEYS:
-        rows = payload.get(key, [])
-        if rows is None:
-            continue
-        if not isinstance(rows, list):
-            raise ValidationError(f"manifest field {key!r} must be a list")
-        for row in rows:
-            if not isinstance(row, dict) or not isinstance(row.get("path"), str):
-                raise ValidationError(f"manifest field {key!r} contains a row without a string path")
-            paths.add(row["path"])
-    return sorted(paths)
+def _sha256(content: bytes) -> str:
+    return hashlib.sha256(content).hexdigest()
 
 
-def _validate_raw_disposition(entry: dict[str, Any], artifact_path: Path) -> None:
-    raw = entry.get("raw_disposition")
-    if not isinstance(raw, dict):
-        raise ValidationError(f"{entry['path']}: raw_disposition must be an object")
-    for field in ("state", "referenced_path_count", "missing_from_tip_count", "source_paths"):
-        if field not in raw:
-            raise ValidationError(f"{entry['path']}: raw_disposition missing {field}")
-    if not isinstance(raw["state"], str) or not raw["state"]:
-        raise ValidationError(f"{entry['path']}: raw_disposition.state must be a non-empty string")
-    if not isinstance(raw["referenced_path_count"], int) or raw["referenced_path_count"] < 0:
-        raise ValidationError(f"{entry['path']}: referenced_path_count must be a non-negative integer")
-    if not isinstance(raw["missing_from_tip_count"], int) or raw["missing_from_tip_count"] < 0:
-        raise ValidationError(f"{entry['path']}: missing_from_tip_count must be a non-negative integer")
-    if not isinstance(raw["source_paths"], list):
-        raise ValidationError(f"{entry['path']}: raw_disposition.source_paths must be a list")
-    for source in raw["source_paths"]:
-        _source_value, source_path = _safe_repo_path(source, field=f"{entry['path']}.source_paths")
-        if not source_path.is_file():
-            raise ValidationError(f"{entry['path']}: retained source is missing: {source}")
+def _git_blob_sha1(content: bytes) -> str:
+    header = f"blob {len(content)}\0".encode("ascii")
+    return hashlib.sha1(header + content).hexdigest()  # noqa: S324 - Git object ID
 
-    if entry["artifact_type"] != "historical_summary_manifest":
-        return
-    payload = json.loads(artifact_path.read_text(encoding="utf-8"))
-    referenced = _manifest_referenced_paths(payload)
-    missing = [path for path in referenced if not ROOT.joinpath(*PurePosixPath(path).parts).is_file()]
-    if raw["referenced_path_count"] != len(referenced):
+
+def _require_exact_keys(
+    payload: Mapping[str, Any],
+    expected: set[str],
+    *,
+    field: str,
+) -> None:
+    observed = set(payload)
+    if observed != expected:
         raise ValidationError(
-            f"{entry['path']}: referenced_path_count={raw['referenced_path_count']} "
-            f"but manifest has {len(referenced)}"
-        )
-    if raw["missing_from_tip_count"] != len(missing):
-        raise ValidationError(
-            f"{entry['path']}: missing_from_tip_count={raw['missing_from_tip_count']} " f"but observed {len(missing)}"
+            f"{field} key enum mismatch; "
+            f"missing={sorted(expected - observed)}, "
+            f"extra={sorted(observed - expected)}"
         )
 
 
-def _validate_artifact(entry: Any) -> str:
+def _assert_exact(actual: Any, expected: Any, *, field: str) -> None:
+    if actual != expected:
+        raise ValidationError(
+            f"{field} does not match the exact v2 contract; " f"observed={actual!r}, expected={expected!r}"
+        )
+
+
+def _validate_warning_text(path: str, content: str) -> None:
+    first_lines = "\n".join(content.splitlines()[:16])
+    normalized = " ".join(line.lstrip("> ").strip() for line in first_lines.splitlines())
+    if "LEGACY_METRIC_LINEAGE_BLOCKED" not in first_lines:
+        raise ValidationError(f"{path}: quarantine warning must appear in the first 16 lines")
+    if "not accepted evidence" not in normalized.lower():
+        raise ValidationError(f"{path}: warning must say the retained claims are not accepted evidence")
+
+
+def _validate_control_surface_text(path: str, content: str) -> None:
+    markers = CONTROL_SURFACE_MARKERS.get(path)
+    if markers is None:
+        raise ValidationError(f"{path}: no closed control-surface marker enum")
+    lowered = content.lower()
+    for marker in markers:
+        if marker.lower() not in lowered:
+            raise ValidationError(f"{path}: missing required claim-boundary marker {marker!r}")
+
+
+def _validate_prose_versions(entry: Mapping[str, Any]) -> None:
+    path = str(entry["path"])
+    versions = entry.get("provenance_versions")
+    if not isinstance(versions, dict):
+        raise ValidationError(f"{path}: provenance_versions must be an object")
+    _require_exact_keys(
+        versions,
+        {"historical_source", "active_surface"},
+        field=f"{path}.provenance_versions",
+    )
+    historical = versions["historical_source"]
+    active = versions["active_surface"]
+    if not isinstance(historical, dict) or not isinstance(active, dict):
+        raise ValidationError(f"{path}: provenance version rows must be objects")
+    _require_exact_keys(
+        historical,
+        {"role", "commit", "git_blob_sha1", "sha256"},
+        field=f"{path}.historical_source",
+    )
+    _require_exact_keys(
+        active,
+        {
+            "role",
+            "warning_change_id",
+            "first_warning_commit",
+            "git_blob_sha1",
+            "sha256",
+        },
+        field=f"{path}.active_surface",
+    )
+    if historical["role"] != "ORIGINAL_PRE_RECONDITIONING_SOURCE":
+        raise ValidationError(f"{path}: invalid historical provenance role")
+    if active["role"] != "RECONDITIONED_WARNING_SURFACE":
+        raise ValidationError(f"{path}: invalid active provenance role")
+    if active["warning_change_id"] != "PR292_V2_BLAST_RADIUS_PASS":
+        raise ValidationError(f"{path}: invalid warning change id")
+    expected_first_commit = "4d49d9ce45cb5234ed9f1d5d7af1085e23001975" if path in FIRST_PASS_WARNING_DOCS else None
+    if active["first_warning_commit"] != expected_first_commit:
+        raise ValidationError(f"{path}: incorrect first warning commit")
+
+    commit = historical["commit"]
+    if not isinstance(commit, str) or len(commit) != 40:
+        raise ValidationError(f"{path}: historical source commit must be full SHA")
+    observed_blob = _git("rev-parse", f"{commit}:{path}").decode("ascii").strip()
+    if historical["git_blob_sha1"] != observed_blob:
+        raise ValidationError(f"{path}: historical source blob does not match commit")
+    historical_content = _git("cat-file", "blob", observed_blob)
+    if historical["sha256"] != _sha256(historical_content):
+        raise ValidationError(f"{path}: historical source SHA-256 mismatch")
+    if historical["git_blob_sha1"] == active["git_blob_sha1"]:
+        raise ValidationError(f"{path}: original source and warning surface must be distinct blobs")
+    if active["git_blob_sha1"] != entry["git_blob_sha1"]:
+        raise ValidationError(f"{path}: active provenance blob differs from artifact")
+    if active["sha256"] != entry["sha256"]:
+        raise ValidationError(f"{path}: active provenance SHA differs from artifact")
+
+
+def _validate_artifact_shape(entry: Any, artifact_type: str) -> str:
     if not isinstance(entry, dict):
-        raise ValidationError("each artifacts entry must be an object")
-    required = {
-        "path",
-        "artifact_type",
-        "git_blob_sha1",
-        "sha256",
-        "defect_id",
-        "status",
-        "accepted_uses",
-        "prohibited_uses",
-        "raw_disposition",
-        "supersession",
-    }
-    missing_fields = sorted(required - set(entry))
-    if missing_fields:
-        raise ValidationError(f"artifact entry missing fields: {', '.join(missing_fields)}")
-
-    path_value, path = _safe_repo_path(entry["path"], field="artifacts.path")
-    if not path.is_file():
-        raise ValidationError(f"{path_value}: artifact is missing")
-    if entry["defect_id"] != "MLR-NDCG-001":
-        raise ValidationError(f"{path_value}: unexpected defect_id {entry['defect_id']!r}")
-    if entry["status"] != "LEGACY_METRIC_LINEAGE_BLOCKED":
-        raise ValidationError(f"{path_value}: status must be LEGACY_METRIC_LINEAGE_BLOCKED")
-
-    content = path.read_bytes()
-    observed_sha256 = hashlib.sha256(content).hexdigest()
-    if entry["sha256"] != observed_sha256:
-        raise ValidationError(f"{path_value}: SHA-256 drift " f"(index={entry['sha256']}, observed={observed_sha256})")
-    observed_blob = _git("hash-object", "--no-filters", "--", path_value).decode("ascii").strip()
-    if entry["git_blob_sha1"] != observed_blob:
-        raise ValidationError(
-            f"{path_value}: Git blob drift " f"(index={entry['git_blob_sha1']}, observed={observed_blob})"
-        )
-
-    accepted = set(_require_string_list(entry["accepted_uses"], field=f"{path_value}.accepted_uses"))
-    prohibited = set(_require_string_list(entry["prohibited_uses"], field=f"{path_value}.prohibited_uses"))
-    if not REQUIRED_ACCEPTED_USES.issubset(accepted):
-        raise ValidationError(f"{path_value}: accepted_uses omits required audit uses")
-    if not REQUIRED_PROHIBITED_USES.issubset(prohibited):
-        raise ValidationError(f"{path_value}: prohibited_uses omits a required claim class")
-
-    supersession = entry["supersession"]
-    if not isinstance(supersession, dict):
-        raise ValidationError(f"{path_value}: supersession must be an object")
-    expected_supersession = {
-        "state": "awaiting_corrected_regeneration",
-        "replacement_path": None,
-        "tracked_by": "CD-MLR-01",
-    }
-    if supersession != expected_supersession:
-        raise ValidationError(f"{path_value}: supersession must remain pending CD-MLR-01")
-
-    _validate_raw_disposition(entry, path)
-    return path_value
+        raise ValidationError("each artifact row must be an object")
+    expected_keys = EXACT_PROSE_ARTIFACT_KEYS if artifact_type == PROSE_TYPE else EXACT_ARTIFACT_KEYS
+    path = str(entry.get("path", "<missing>"))
+    _require_exact_keys(entry, expected_keys, field=f"artifact[{path}]")
+    if entry["artifact_type"] != artifact_type:
+        raise ValidationError(f"{path}: artifact_type={entry['artifact_type']!r}, " f"expected {artifact_type!r}")
+    if entry["state"] != BLOCKED_STATE:
+        raise ValidationError(f"{path}: state must remain {BLOCKED_STATE}")
+    if artifact_type == PROSE_TYPE:
+        _validate_prose_versions(entry)
+    return path
 
 
 def _validate_backend_evidence(rows: Any) -> None:
-    if not isinstance(rows, list) or len(rows) != 1 or not isinstance(rows[0], dict):
-        raise ValidationError("backend_resolution_evidence must contain exactly one bounded evidence row")
+    _assert_exact(rows, [BACKEND_EVIDENCE], field="backend_resolution_evidence")
     row = rows[0]
-    for field in (
-        "claim",
-        "scope_limit",
-        "source_commit",
-        "source_path",
-        "git_blob_sha1",
-        "required_markers",
-        "production_path",
-    ):
-        if field not in row:
-            raise ValidationError(f"backend evidence missing {field}")
-    source_path, _unused = _safe_repo_path(row["source_path"], field="backend source_path")
+    source_path = row["source_path"]
+    _safe_repo_path(source_path, field="backend source_path")
     commit = row["source_commit"]
     blob = row["git_blob_sha1"]
-    if not isinstance(commit, str) or len(commit) != 40:
-        raise ValidationError("backend source_commit must be a full 40-character Git commit")
-    if not isinstance(blob, str) or len(blob) != 40:
-        raise ValidationError("backend git_blob_sha1 must be a full 40-character Git blob")
     observed_blob = _git("rev-parse", f"{commit}:{source_path}").decode("ascii").strip()
     if observed_blob != blob:
-        raise ValidationError(f"backend evidence blob drift (index={blob}, commit-path={observed_blob})")
-    completed = subprocess.run(
+        raise ValidationError("backend evidence commit:path blob drift")
+    ancestor = subprocess.run(
         ["git", "merge-base", "--is-ancestor", commit, "HEAD"],
         cwd=ROOT,
         check=False,
         capture_output=True,
     )
-    if completed.returncode != 0:
-        raise ValidationError(f"backend source commit {commit} is not reachable from HEAD")
+    if ancestor.returncode != 0:
+        raise ValidationError(f"backend source commit {commit} is not reachable")
     content = _git("cat-file", "blob", blob).decode("utf-8", errors="replace")
-    for marker in _require_string_list(row["required_markers"], field="backend required_markers"):
-        if marker not in content:
+    positions = []
+    for marker in row["required_markers"]:
+        position = content.find(marker)
+        if position < 0:
             raise ValidationError(f"backend evidence blob is missing marker: {marker!r}")
-    _require_string_list(row["production_path"], field="backend production_path")
-    prohibited_scope_terms = ("does not prove", "metric", "performance")
-    lowered_scope = str(row["scope_limit"]).lower()
-    if not all(term in lowered_scope for term in prohibited_scope_terms):
-        raise ValidationError("backend scope_limit must explicitly exclude metrics and performance")
+        positions.append(position)
+    if positions != sorted(positions) or len(set(positions)) != len(positions):
+        raise ValidationError("backend evidence markers must appear once in causal order")
 
 
-def _validate_authoritative_prose() -> None:
-    required_markers = {
-        "CHANGELOG.md": (
-            "LEGACY_METRIC_LINEAGE_BLOCKED",
-            "this is not a confirmed negative",
-            "do not currently prove",
-            "procedural only",
-        ),
-        "docs/ROADMAP_EXECUTION.md": (
-            "LEGACY_METRIC_LINEAGE_BLOCKED",
-            "neither is a confirmed negative",
-            "no accepted fail/win/rejection claim exists",
-        ),
-        "docs/next-session.md": (
-            "CD-MLR-01",
-            "DS-MLR-01",
-            "procedural supersession only",
-            "narrow procedural path proof only",
-        ),
-    }
-    for relative, markers in required_markers.items():
-        content = (ROOT / relative).read_text(encoding="utf-8").lower()
-        for marker in markers:
-            if marker.lower() not in content:
-                raise ValidationError(f"{relative}: missing required claim-boundary marker {marker!r}")
-
-    result_docs = [
-        "docs/drift-recovery-h4-compound-cycles-ablation-2026-07.md",
-        "docs/drift-recovery-post-bank-headtohead-nfcorpus-results-2026-06.md",
-        "docs/drift-recovery-post-bank-headtohead-results-2026-06.md",
-        "docs/drift-recovery-swap-nfcorpus-results-2026-06.md",
-        "docs/drift-recovery-swap-results-2026-06.md",
-    ]
-    for relative in result_docs:
-        first_lines = "\n".join((ROOT / relative).read_text(encoding="utf-8").splitlines()[:8])
-        if "LEGACY_METRIC_LINEAGE_BLOCKED" not in first_lines:
-            raise ValidationError(f"{relative}: quarantine warning must remain in the first eight lines")
+def _validate_repository_evidence(
+    index: Mapping[str, Any],
+    shards: Mapping[str, Mapping[str, Any]],
+) -> None:
+    preservation = index["preservation_contract"]
+    anchor = preservation["anchor_commit"]
+    preserved_types = set(preservation["byte_preserved_artifact_types"])
+    preserved_count = 0
+    for shard in shards.values():
+        artifact_type = shard["artifact_type"]
+        for entry in shard["artifacts"]:
+            path = entry["path"]
+            file_path = _safe_repo_path(path, field="artifact path")
+            content = file_path.read_bytes()
+            if entry["sha256"] != _sha256(content):
+                raise ValidationError(f"{path}: active SHA-256 drift")
+            if entry["git_blob_sha1"] != _git_blob_sha1(content):
+                raise ValidationError(f"{path}: active Git blob drift")
+            if artifact_type in preserved_types:
+                anchor_blob = _git("rev-parse", f"{anchor}:{path}").decode("ascii").strip()
+                if anchor_blob != entry["git_blob_sha1"]:
+                    raise ValidationError(f"{path}: historical JSON/PNG changed from {anchor}")
+                preserved_count += 1
+            if artifact_type == PROSE_TYPE:
+                _validate_warning_text(path, file_path.read_text(encoding="utf-8"))
+    if preserved_count != preservation["byte_preserved_artifact_count"]:
+        raise ValidationError("preservation artifact count differs from observed preserved rows")
+    for path in CONTROL_SURFACE_MARKERS:
+        content = _safe_repo_path(path, field="control surface").read_text(encoding="utf-8")
+        _validate_control_surface_text(path, content)
 
 
-def validate(index_path: Path = DEFAULT_INDEX) -> list[str]:
-    payload = json.loads(index_path.read_text(encoding="utf-8"))
-    if payload.get("schema_version") != 1:
-        raise ValidationError("schema_version must be exactly 1")
-    if payload.get("index_id") != "legacy-ndcg-quarantine-v1":
-        raise ValidationError("index_id must be legacy-ndcg-quarantine-v1")
-    if payload.get("status") != "ACTIVE_QUARANTINE":
-        raise ValidationError("status must remain ACTIVE_QUARANTINE")
-    if payload.get("artifact_count") != 11:
-        raise ValidationError("artifact_count must remain 11")
-    defects = payload.get("defects")
-    if not isinstance(defects, dict) or set(defects) != {"MLR-NDCG-001"}:
-        raise ValidationError("defects must define exactly MLR-NDCG-001")
-    if "all positive qrels" not in defects["MLR-NDCG-001"].get("summary", ""):
-        raise ValidationError("MLR-NDCG-001 summary must name the qrels-complete IDCG defect")
+def validate_payloads(
+    index: Mapping[str, Any],
+    shards: Mapping[str, Mapping[str, Any]],
+    *,
+    check_repository: bool = True,
+) -> Sequence[str]:
+    """Validate supplied payloads against the independently rebuilt contract."""
 
-    rows = payload.get("artifacts")
-    if not isinstance(rows, list) or len(rows) != payload["artifact_count"]:
-        raise ValidationError("artifacts length does not match artifact_count")
-    observed_paths = [_validate_artifact(row) for row in rows]
+    try:
+        expected_index, expected_shards = build_documents()
+    except BuildError as exc:
+        raise ValidationError(str(exc)) from exc
+
+    _require_exact_keys(index, EXACT_INDEX_KEYS, field="index")
+    _assert_exact(index.get("schema_version"), SCHEMA_VERSION, field="schema_version")
+    _assert_exact(index.get("index_id"), INDEX_ID, field="index_id")
+    _assert_exact(index.get("source_head"), SOURCE_HEAD, field="source_head")
+
+    expected_shard_paths = set(expected_shards)
+    if set(shards) != expected_shard_paths:
+        raise ValidationError(
+            "shard path enum mismatch; "
+            f"missing={sorted(expected_shard_paths - set(shards))}, "
+            f"extra={sorted(set(shards) - expected_shard_paths)}"
+        )
+
+    observed_paths = []
+    for shard_row in index["artifact_shards"]:
+        path = shard_row["path"]
+        if path not in shards:
+            raise ValidationError(f"index references missing shard: {path}")
+        shard = shards[path]
+        _require_exact_keys(shard, EXACT_SHARD_KEYS, field=f"shard[{path}]")
+        artifact_type = shard["artifact_type"]
+        rows = shard["artifacts"]
+        if not isinstance(rows, list):
+            raise ValidationError(f"{path}: artifacts must be a list")
+        if shard["artifact_count"] != len(rows):
+            raise ValidationError(f"{path}: fabricated shard artifact_count")
+        for entry in rows:
+            observed_paths.append(_validate_artifact_shape(entry, artifact_type))
+        content = _json_bytes(shard)
+        if shard_row["sha256"] != _sha256(content):
+            raise ValidationError(f"{path}: shard SHA-256 mismatch")
+        if shard_row["git_blob_sha1"] != _git_blob_sha1(content):
+            raise ValidationError(f"{path}: shard Git blob mismatch")
+
     if len(observed_paths) != len(set(observed_paths)):
-        raise ValidationError("artifacts contains duplicate paths")
-    if set(observed_paths) != EXPECTED_ARTIFACT_PATHS:
-        missing = sorted(EXPECTED_ARTIFACT_PATHS - set(observed_paths))
-        extra = sorted(set(observed_paths) - EXPECTED_ARTIFACT_PATHS)
-        raise ValidationError(f"artifact coverage mismatch; missing={missing}, extra={extra}")
+        raise ValidationError("duplicate artifact paths across shards")
+    if len(observed_paths) != index["artifact_count"]:
+        raise ValidationError("index artifact_count differs from observed paths")
 
-    _validate_backend_evidence(payload.get("backend_resolution_evidence"))
-    if payload.get("tracked_debt") != {
-        "carried_debt_id": "CD-MLR-01",
-        "deferred_scope_id": "DS-MLR-01",
-    }:
-        raise ValidationError("tracked_debt must bind CD-MLR-01 and DS-MLR-01")
-    _validate_authoritative_prose()
-    return observed_paths
+    _assert_exact(index, expected_index, field="complete index")
+    for path in expected_shard_paths:
+        _assert_exact(shards[path], expected_shards[path], field=f"shard[{path}]")
+
+    _validate_backend_evidence(index["backend_resolution_evidence"])
+    if check_repository:
+        _validate_repository_evidence(index, shards)
+    return sorted(observed_paths)
+
+
+def _read_json(path: Path) -> Dict[str, Any]:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise ValidationError(f"{path}: top-level JSON must be an object")
+    return payload
+
+
+def validate(index_path: Path = DEFAULT_INDEX) -> Sequence[str]:
+    index = _read_json(index_path)
+    shards: Dict[str, Dict[str, Any]] = {}
+    rows = index.get("artifact_shards")
+    if not isinstance(rows, list):
+        raise ValidationError("artifact_shards must be a list")
+    for row in rows:
+        if not isinstance(row, dict):
+            raise ValidationError("artifact_shards rows must be objects")
+        path_value = row.get("path")
+        shard_path = _safe_repo_path(path_value, field="artifact_shards.path")
+        if path_value in shards:
+            raise ValidationError(f"duplicate shard path: {path_value}")
+        shards[str(path_value)] = _read_json(shard_path)
+    return validate_payloads(index, shards)
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -308,7 +414,7 @@ def _parser() -> argparse.ArgumentParser:
         "--index",
         type=Path,
         default=DEFAULT_INDEX,
-        help="Versioned quarantine index to validate (default: repository v1 sidecar).",
+        help="v2 quarantine index (default: repository canonical v2 index).",
     )
     return parser
 
@@ -318,13 +424,19 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
     index_path = args.index if args.index.is_absolute() else ROOT / args.index
     try:
         paths = validate(index_path)
-    except (OSError, json.JSONDecodeError, ValidationError) as exc:
+    except (
+        OSError,
+        json.JSONDecodeError,
+        KeyError,
+        TypeError,
+        ValidationError,
+    ) as exc:
         print(f"METRIC_LINEAGE_QUARANTINE: FAIL: {exc}", file=sys.stderr)
         return 1
     print(
         "METRIC_LINEAGE_QUARANTINE: PASS "
-        f"(artifacts={len(paths)}, backend_evidence=1, "
-        "debt=CD-MLR-01, deferred=DS-MLR-01)"
+        f"(artifacts={len(paths)}/113, raw=89, aggregates=8, plots=6, "
+        "prose=10, backend_evidence=1, debt=CD-MLR-01, deferred=DS-MLR-01)"
     )
     return 0
 

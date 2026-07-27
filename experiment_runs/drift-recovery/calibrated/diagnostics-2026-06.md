@@ -1,5 +1,17 @@
 # Drift Recovery Diagnostics - June 2026
 
+> [!WARNING]
+> **LEGACY_METRIC_LINEAGE_BLOCKED (2026-07-27; v2 blast-radius
+> reconditioning).** The exact nDCG values, drops, recovery labels, and
+> H1/H2/H3 confirmations below are retained historical diagnostic text, not
+> accepted evidence. This generated surface was produced directly or
+> transitively from `drift_recovery_metrics.ndcg_at_k`, whose IDCG omitted
+> positive qrels outside the retrieved top-k. Non-metric fields remain usable
+> only for historical, configuration, or runtime-structure audit. Do not use
+> this report for scientific, promotion/rejection, paper, release, or roadmap
+> claims until qrels-complete regeneration and hash-linked supersession close
+> `CD-MLR-01`.
+
 Diagnostics JSON: `experiment_runs/drift-recovery/calibrated/diagnostics-2026-06.json`.
 Source artifact count: 30.
 

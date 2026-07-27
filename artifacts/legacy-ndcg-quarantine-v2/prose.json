@@ -1,0 +1,430 @@
+{
+  "artifact_count": 10,
+  "artifact_type": "historical_evidence_markdown",
+  "artifacts": [
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure"
+      ],
+      "artifact_type": "historical_evidence_markdown",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "99e3f03dd930d92368336f0eea83366ba6b692b7",
+      "path": "docs/drift-recovery-calibrated-results-2026-06.md",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "provenance_versions": {
+        "active_surface": {
+          "first_warning_commit": null,
+          "git_blob_sha1": "99e3f03dd930d92368336f0eea83366ba6b692b7",
+          "role": "RECONDITIONED_WARNING_SURFACE",
+          "sha256": "01d7bef75d90da6fcc4c3d17d63e2b90900fac3b902c4219c30550550e25c7ad",
+          "warning_change_id": "PR292_V2_BLAST_RADIUS_PASS"
+        },
+        "historical_source": {
+          "commit": "835f61992b96412589dff0403b3b43f0af0e52f7",
+          "git_blob_sha1": "9446986422792695e902bae0bf5cf880a487a9f4",
+          "role": "ORIGINAL_PRE_RECONDITIONING_SOURCE",
+          "sha256": "5275cf1b81218b3e9461898bff0ae0d24f2f69569f4759812333099ea7250fe6"
+        }
+      },
+      "raw_disposition_ids": [
+        "calibration"
+      ],
+      "sha256": "01d7bef75d90da6fcc4c3d17d63e2b90900fac3b902c4219c30550550e25c7ad",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure"
+      ],
+      "artifact_type": "historical_evidence_markdown",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "50afa29d02a2d6f8638df993e9e84c0767142a2d",
+      "path": "docs/drift-recovery-diagnostics-2026-06.md",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "provenance_versions": {
+        "active_surface": {
+          "first_warning_commit": null,
+          "git_blob_sha1": "50afa29d02a2d6f8638df993e9e84c0767142a2d",
+          "role": "RECONDITIONED_WARNING_SURFACE",
+          "sha256": "d9ace516995383c69564a94404c827910f29f9535a9e29c482a82cb44ab0f7c6",
+          "warning_change_id": "PR292_V2_BLAST_RADIUS_PASS"
+        },
+        "historical_source": {
+          "commit": "835f61992b96412589dff0403b3b43f0af0e52f7",
+          "git_blob_sha1": "2dc834a60379ef2da5706ae346b17d17bcc7f502",
+          "role": "ORIGINAL_PRE_RECONDITIONING_SOURCE",
+          "sha256": "ff64a824bbc6bd40ae736198cb187d2c12882907bc8a700ca159f121c8ffabe6"
+        }
+      },
+      "raw_disposition_ids": [
+        "base_matrix"
+      ],
+      "sha256": "d9ace516995383c69564a94404c827910f29f9535a9e29c482a82cb44ab0f7c6",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure"
+      ],
+      "artifact_type": "historical_evidence_markdown",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "35a0bbad9e67acac3a26ada3c805182fc684a358",
+      "path": "docs/drift-recovery-h4-compound-cycles-ablation-2026-07.md",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "provenance_versions": {
+        "active_surface": {
+          "first_warning_commit": "4d49d9ce45cb5234ed9f1d5d7af1085e23001975",
+          "git_blob_sha1": "35a0bbad9e67acac3a26ada3c805182fc684a358",
+          "role": "RECONDITIONED_WARNING_SURFACE",
+          "sha256": "65ea0b9d88ecc0055810a65efdffe020a666039e93601a0108a3b3789e3b25b8",
+          "warning_change_id": "PR292_V2_BLAST_RADIUS_PASS"
+        },
+        "historical_source": {
+          "commit": "eb7509583e81b6a62d13b82587398562e4bba09a",
+          "git_blob_sha1": "f1baddee9fae486626095c5dc7fe079acc52eda9",
+          "role": "ORIGINAL_PRE_RECONDITIONING_SOURCE",
+          "sha256": "c90a91c09a4a6795e00ab480c3aa2c91c0cfa965c1cf45a936781e863988b027"
+        }
+      },
+      "raw_disposition_ids": [
+        "h4_compound"
+      ],
+      "sha256": "65ea0b9d88ecc0055810a65efdffe020a666039e93601a0108a3b3789e3b25b8",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure"
+      ],
+      "artifact_type": "historical_evidence_markdown",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "7481297026bfe28cb89423b21bae975a317d9079",
+      "path": "docs/drift-recovery-knob-sweep-2026-06.md",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "provenance_versions": {
+        "active_surface": {
+          "first_warning_commit": null,
+          "git_blob_sha1": "7481297026bfe28cb89423b21bae975a317d9079",
+          "role": "RECONDITIONED_WARNING_SURFACE",
+          "sha256": "3684f0b78db8f16d2b2ebc4165ad63387a68b8b9aab84dd6ea8aff6e5123a962",
+          "warning_change_id": "PR292_V2_BLAST_RADIUS_PASS"
+        },
+        "historical_source": {
+          "commit": "835f61992b96412589dff0403b3b43f0af0e52f7",
+          "git_blob_sha1": "6cc7581205259b9a268992318b993ab6c0ec84e5",
+          "role": "ORIGINAL_PRE_RECONDITIONING_SOURCE",
+          "sha256": "49c388ccf0602171d24a8f081b24975846142c98e734be64fdbae2cb6469572b"
+        }
+      },
+      "raw_disposition_ids": [
+        "knob_sweep"
+      ],
+      "sha256": "3684f0b78db8f16d2b2ebc4165ad63387a68b8b9aab84dd6ea8aff6e5123a962",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure"
+      ],
+      "artifact_type": "historical_evidence_markdown",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "3908a22246e5c6902f8bc7b8c7e87751b3d38db3",
+      "path": "docs/drift-recovery-post-bank-headtohead-nfcorpus-results-2026-06.md",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "provenance_versions": {
+        "active_surface": {
+          "first_warning_commit": "4d49d9ce45cb5234ed9f1d5d7af1085e23001975",
+          "git_blob_sha1": "3908a22246e5c6902f8bc7b8c7e87751b3d38db3",
+          "role": "RECONDITIONED_WARNING_SURFACE",
+          "sha256": "e78039641fe13481aaa9da0d9f0dac705033a767ed561eb5929fc796f43e78a1",
+          "warning_change_id": "PR292_V2_BLAST_RADIUS_PASS"
+        },
+        "historical_source": {
+          "commit": "eb7509583e81b6a62d13b82587398562e4bba09a",
+          "git_blob_sha1": "1e0302e189b959e8674502b100d3e933d918045a",
+          "role": "ORIGINAL_PRE_RECONDITIONING_SOURCE",
+          "sha256": "b49ff73e4835f083f850f4dea771ce24bf37d18bf0b12bd7cc1f53db92af50b4"
+        }
+      },
+      "raw_disposition_ids": [
+        "post_bank_nfcorpus"
+      ],
+      "sha256": "e78039641fe13481aaa9da0d9f0dac705033a767ed561eb5929fc796f43e78a1",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure"
+      ],
+      "artifact_type": "historical_evidence_markdown",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "b0ca396cf272cb90947b5ee9610cdf6e4205645b",
+      "path": "docs/drift-recovery-post-bank-headtohead-results-2026-06.md",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "provenance_versions": {
+        "active_surface": {
+          "first_warning_commit": "4d49d9ce45cb5234ed9f1d5d7af1085e23001975",
+          "git_blob_sha1": "b0ca396cf272cb90947b5ee9610cdf6e4205645b",
+          "role": "RECONDITIONED_WARNING_SURFACE",
+          "sha256": "fb476f917e2d0018387ea19162f4811e7176b79a3125161ece4579d9545dc384",
+          "warning_change_id": "PR292_V2_BLAST_RADIUS_PASS"
+        },
+        "historical_source": {
+          "commit": "eb7509583e81b6a62d13b82587398562e4bba09a",
+          "git_blob_sha1": "aa51ddcf2955c688b8773ecb772f349f06c42e13",
+          "role": "ORIGINAL_PRE_RECONDITIONING_SOURCE",
+          "sha256": "0ca6a4bfe66185d40a0d608224a4446da55adb1a42ca45db63f45263dde10397"
+        }
+      },
+      "raw_disposition_ids": [
+        "post_bank_scifact"
+      ],
+      "sha256": "fb476f917e2d0018387ea19162f4811e7176b79a3125161ece4579d9545dc384",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure"
+      ],
+      "artifact_type": "historical_evidence_markdown",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "da4ed5642c0cc5a37afdbd3ea2695c6509941b96",
+      "path": "docs/drift-recovery-results-2026-06.md",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "provenance_versions": {
+        "active_surface": {
+          "first_warning_commit": null,
+          "git_blob_sha1": "da4ed5642c0cc5a37afdbd3ea2695c6509941b96",
+          "role": "RECONDITIONED_WARNING_SURFACE",
+          "sha256": "9fbcc66f82eabe36afa7b3a53a419aadc48d1590cca33df832532cff57d54962",
+          "warning_change_id": "PR292_V2_BLAST_RADIUS_PASS"
+        },
+        "historical_source": {
+          "commit": "835f61992b96412589dff0403b3b43f0af0e52f7",
+          "git_blob_sha1": "8e0c86d560a8a66d3377ea7c1722c3ac288eaacb",
+          "role": "ORIGINAL_PRE_RECONDITIONING_SOURCE",
+          "sha256": "698941a2a4da96c990c08e2f76412571d65aabee896f69a07f2346346bbc8581"
+        }
+      },
+      "raw_disposition_ids": [
+        "base_matrix",
+        "calibration",
+        "knob_sweep"
+      ],
+      "sha256": "9fbcc66f82eabe36afa7b3a53a419aadc48d1590cca33df832532cff57d54962",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure"
+      ],
+      "artifact_type": "historical_evidence_markdown",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "3d8367f08f000b600e2c7518f54db36b7737e6fb",
+      "path": "docs/drift-recovery-swap-nfcorpus-results-2026-06.md",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "provenance_versions": {
+        "active_surface": {
+          "first_warning_commit": "4d49d9ce45cb5234ed9f1d5d7af1085e23001975",
+          "git_blob_sha1": "3d8367f08f000b600e2c7518f54db36b7737e6fb",
+          "role": "RECONDITIONED_WARNING_SURFACE",
+          "sha256": "8cc8d3c39b0aca2da7cb6fc5ae6b649561fd13f85bfc59d0c6861f20a3fa8010",
+          "warning_change_id": "PR292_V2_BLAST_RADIUS_PASS"
+        },
+        "historical_source": {
+          "commit": "eb7509583e81b6a62d13b82587398562e4bba09a",
+          "git_blob_sha1": "fd6c0e5376fec06f2c9a37389ab04893baa0245d",
+          "role": "ORIGINAL_PRE_RECONDITIONING_SOURCE",
+          "sha256": "1faed1108a321f3d60e4cb09306e995295c6d01b5327c61d8f7e801bdd16929e"
+        }
+      },
+      "raw_disposition_ids": [
+        "swap_nfcorpus"
+      ],
+      "sha256": "8cc8d3c39b0aca2da7cb6fc5ae6b649561fd13f85bfc59d0c6861f20a3fa8010",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure"
+      ],
+      "artifact_type": "historical_evidence_markdown",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "6d27874407508677d496bd1317b25088bfdb0751",
+      "path": "docs/drift-recovery-swap-results-2026-06.md",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "provenance_versions": {
+        "active_surface": {
+          "first_warning_commit": "4d49d9ce45cb5234ed9f1d5d7af1085e23001975",
+          "git_blob_sha1": "6d27874407508677d496bd1317b25088bfdb0751",
+          "role": "RECONDITIONED_WARNING_SURFACE",
+          "sha256": "cdcb1a81643825450dc2bf414248fc35b22c9a7554e3b6b36de8d387332ca3d0",
+          "warning_change_id": "PR292_V2_BLAST_RADIUS_PASS"
+        },
+        "historical_source": {
+          "commit": "eb7509583e81b6a62d13b82587398562e4bba09a",
+          "git_blob_sha1": "61002b208c2e911c7325633105b29bb7b008f511",
+          "role": "ORIGINAL_PRE_RECONDITIONING_SOURCE",
+          "sha256": "3052986b16cd6f6ad71599db1896181d8e3e68d666664ac5e4e4523d9faa8867"
+        }
+      },
+      "raw_disposition_ids": [
+        "swap_scifact"
+      ],
+      "sha256": "cdcb1a81643825450dc2bf414248fc35b22c9a7554e3b6b36de8d387332ca3d0",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure"
+      ],
+      "artifact_type": "historical_evidence_markdown",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "28824c2872ac945d652073940aac478f672a656f",
+      "path": "experiment_runs/drift-recovery/calibrated/diagnostics-2026-06.md",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "provenance_versions": {
+        "active_surface": {
+          "first_warning_commit": null,
+          "git_blob_sha1": "28824c2872ac945d652073940aac478f672a656f",
+          "role": "RECONDITIONED_WARNING_SURFACE",
+          "sha256": "b55392792eddc700c157aafc22dd9b4c8aebb2b38e3331af7f50668da48d3578",
+          "warning_change_id": "PR292_V2_BLAST_RADIUS_PASS"
+        },
+        "historical_source": {
+          "commit": "835f61992b96412589dff0403b3b43f0af0e52f7",
+          "git_blob_sha1": "62698f4e6f452854f84ae3fb52ba81c3dbe87193",
+          "role": "ORIGINAL_PRE_RECONDITIONING_SOURCE",
+          "sha256": "1e9e2fbbedf2031146f3de965d6cd33db00446f47653a777ca3d8d1bd7fd31ee"
+        }
+      },
+      "raw_disposition_ids": [
+        "calibration"
+      ],
+      "sha256": "b55392792eddc700c157aafc22dd9b4c8aebb2b38e3331af7f50668da48d3578",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    }
+  ],
+  "schema_version": "2.0.0",
+  "shard_id": "prose"
+}

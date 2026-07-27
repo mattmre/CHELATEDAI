@@ -1,0 +1,170 @@
+{
+  "artifact_count": 6,
+  "artifact_type": "historical_plot_png",
+  "artifacts": [
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure"
+      ],
+      "artifact_type": "historical_plot_png",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "3888b976c8250ac0038f6040edd84ee070dfc2eb",
+      "path": "experiment_runs/drift-recovery/calibrated/scifact_noise_ndcg_diagnostics_mean.png",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "calibration"
+      ],
+      "sha256": "2fe831c22fc953037043da3ff71e8fb0a835706c2d3a0b7360167b22e9356cab",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure"
+      ],
+      "artifact_type": "historical_plot_png",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "11174b564d2ec0112dd5746b765f813c5902c715",
+      "path": "experiment_runs/drift-recovery/calibrated/scifact_rotation_ndcg_diagnostics_mean.png",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "calibration"
+      ],
+      "sha256": "a5e0ae7b6c5484343f6a03898856757526f8f9f78b64bd1c9ba1e127dbd5fa65",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure"
+      ],
+      "artifact_type": "historical_plot_png",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "8e2c52a0f213890aa6bff16d810cad67d6b2b41c",
+      "path": "experiment_runs/drift-recovery/scifact_noise_ndcg_diagnostics_mean.png",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "base_matrix"
+      ],
+      "sha256": "4903b122bba0651e79a3692e30f7cd264ef8a1efd3ed577ef3159fb75fc56293",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure"
+      ],
+      "artifact_type": "historical_plot_png",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "4ece540ad5a3d7fc68dfe18c2d5a121f007528ad",
+      "path": "experiment_runs/drift-recovery/scifact_noise_ndcg_mean_std.png",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "base_matrix"
+      ],
+      "sha256": "86e017b92007f30c481673cd7d51367f85683559cca7029f0a164fd5f8b09d99",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure"
+      ],
+      "artifact_type": "historical_plot_png",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "26d5f97e45227065c7344a714a84e9a470eaad65",
+      "path": "experiment_runs/drift-recovery/scifact_rotation_ndcg_diagnostics_mean.png",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "base_matrix"
+      ],
+      "sha256": "5d1ea3d0b24ee954deec1066dbdf7f7270ec9e121d4973a43d4baf3dbde8e80c",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    },
+    {
+      "accepted_uses": [
+        "historical_audit",
+        "configuration_audit",
+        "non_quantitative_runtime_structure"
+      ],
+      "artifact_type": "historical_plot_png",
+      "defect_id": "MLR-NDCG-001",
+      "git_blob_sha1": "c0ff4654e1bc9beb6345aaa4280bea0ea91e6986",
+      "path": "experiment_runs/drift-recovery/scifact_rotation_ndcg_mean_std.png",
+      "prohibited_uses": [
+        "scientific_performance_claim",
+        "condition_or_comparator_ordering",
+        "promotion_or_rejection_decision",
+        "paper_table_abstract_or_release_claim"
+      ],
+      "raw_disposition_ids": [
+        "base_matrix"
+      ],
+      "sha256": "186f1a0705fe277af5941b18ec38ec447fbb7b1c5e73565d5c28f25fc501d05f",
+      "state": "LEGACY_METRIC_LINEAGE_BLOCKED",
+      "supersession": {
+        "replacement_path": null,
+        "state": "awaiting_qrels_complete_regeneration",
+        "tracked_by": "CD-MLR-01"
+      }
+    }
+  ],
+  "schema_version": "2.0.0",
+  "shard_id": "plots"
+}

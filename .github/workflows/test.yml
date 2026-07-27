@@ -26,10 +26,16 @@ jobs:
         python-version: ["3.9", "3.10", "3.11", "3.12"]
     steps:
       - uses: actions/checkout@v4
+        with:
+          # The metric-lineage quarantine binds original report and backend
+          # evidence blobs at reachable historical commits.
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
           cache: "pip"
+      - name: Validate legacy metric-lineage quarantine
+        run: python scripts/validate_metric_lineage_quarantine.py
       - name: Install PyTorch CPU
         run: pip install torch --index-url https://download.pytorch.org/whl/cpu
       - name: Install dependencies

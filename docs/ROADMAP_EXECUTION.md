@@ -55,7 +55,10 @@ Same one-track rule: finish each step before starting the next. Phase II does no
 prune/re-anneal lifecycle only — not isomer/convergence → Evidence-DAG prune); **14 apparatus DONE**
 while its H2/H4/H5 exact nDCG values, comparator orderings, and derived gates are
 `LEGACY_METRIC_LINEAGE_BLOCKED`. H5 and compounding remain conservatively non-promoted pending
-corrected regeneration; neither is a confirmed negative. **15–17 OPEN**. Lattice apparatus PRs:
+corrected regeneration; neither is a confirmed negative. The complete
+`artifacts/legacy-ndcg-quarantine-index-v2.json` inventory fail-closes all 113 affected tracked
+artifacts (89 raw JSONs, 8 aggregate JSONs, 6 plots, and 10 prose surfaces); the prior v1 inventory
+is retained only as an incomplete predecessor. **15–17 OPEN**. Lattice apparatus PRs:
 #260, #277, #279–#291. Next executable feature work is step **15** only after chair re-scopes or
 closes the step **13** remainder — or **16/17** if the quant plane / disk pool is prioritized over
 GNN.

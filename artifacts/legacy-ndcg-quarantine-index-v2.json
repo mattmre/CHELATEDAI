@@ -1,0 +1,352 @@
+{
+  "accepted_use_vocabulary": [
+    "historical_audit",
+    "configuration_audit",
+    "non_quantitative_runtime_structure",
+    "metric_defect_reproduction"
+  ],
+  "artifact_count": 113,
+  "artifact_counts": {
+    "historical_aggregate_json": 8,
+    "historical_evidence_markdown": 10,
+    "historical_plot_png": 6,
+    "historical_raw_run_json": 89
+  },
+  "artifact_shard_count": 4,
+  "artifact_shards": [
+    {
+      "artifact_count": 89,
+      "artifact_type": "historical_raw_run_json",
+      "git_blob_sha1": "b5002a4b16b0e37d0f1104cb0a19f1f04dbe0558",
+      "path": "artifacts/legacy-ndcg-quarantine-v2/raw-runs.json",
+      "sha256": "872244c8da5d7b1ca1d4df2e46dde92b54de5a8f61d8b0a7dc2d80025eb06bd0",
+      "shard_id": "raw-runs"
+    },
+    {
+      "artifact_count": 8,
+      "artifact_type": "historical_aggregate_json",
+      "git_blob_sha1": "4bca7da6df30d306bec24de0526e67a343263043",
+      "path": "artifacts/legacy-ndcg-quarantine-v2/aggregates.json",
+      "sha256": "3d5098a183dca9b6703a3ccf010c5c1628a6a3635d07d3db4ff420d2f490d6db",
+      "shard_id": "aggregates"
+    },
+    {
+      "artifact_count": 6,
+      "artifact_type": "historical_plot_png",
+      "git_blob_sha1": "27000fda088004baaf8c20a1bc48084a5436c8a9",
+      "path": "artifacts/legacy-ndcg-quarantine-v2/plots.json",
+      "sha256": "cb64043171601aecd8bee6e14a7bd7bf824e35052553bfbdb31297430a191bda",
+      "shard_id": "plots"
+    },
+    {
+      "artifact_count": 10,
+      "artifact_type": "historical_evidence_markdown",
+      "git_blob_sha1": "efe547acbcdd0a3f096cc0ab79593ee290bcd5ca",
+      "path": "artifacts/legacy-ndcg-quarantine-v2/prose.json",
+      "sha256": "9f0d70f019df6e6b961421a7795c1cc944c6beb69000b51f5221f94672387d89",
+      "shard_id": "prose"
+    }
+  ],
+  "authored_date": "2026-07-27",
+  "backend_resolution_evidence": [
+    {
+      "claim": "The local all-mpnet-base-v2 backend resolved and reported vector size 768 during the retained NFCorpus campaign.",
+      "git_blob_sha1": "e5ebca641969ca20c813045f5f0898e2881272d6",
+      "production_path": [
+        "run_drift_recovery_experiment._build_query_encoder_drift",
+        "query_encoder_drift.QueryEncoderDrift.embed_queries",
+        "query_encoder_drift.QueryEncoderDrift._backend",
+        "embedding_backend.create_embedding_backend",
+        "embedding_backend.LocalEmbeddingBackend"
+      ],
+      "required_markers": [
+        "Initializing local backend: all-mpnet-base-v2",
+        "Local backend loaded. Vector size: 768"
+      ],
+      "scope_limit": "This proves only one real backend resolution in the retained NFCorpus campaign. It does not prove an H2-specific rerun, metric correctness, performance, condition ordering, recovery, promotion, or rejection.",
+      "source_commit": "efac48daae5358599eeeb055906083e423eb5072",
+      "source_path": "experiment_runs/drift-recovery/swap-nfcorpus/campaign-completion.log"
+    }
+  ],
+  "defect": {
+    "claim_boundary": "No exact nDCG value, ordering, selection, H1/H2/H3/H4/H5 verdict, promotion, rejection, or paper/release claim from this lineage is accepted before corrected regeneration.",
+    "id": "MLR-NDCG-001",
+    "summary": "drift_recovery_metrics.ndcg_at_k forms IDCG only from retrieved top-k relevance instead of the complete positive qrels set"
+  },
+  "immutability_policy": "Historical JSON and PNG artifacts remain byte-identical to 835f61992b96412589dff0403b3b43f0af0e52f7; prose keeps separate original-source and active warning-surface identities. Corrected results require new paths and an explicit old-to-new hash-linked supersession index.",
+  "index_id": "legacy-ndcg-quarantine-v2",
+  "legacy_v1": {
+    "artifact_count": 11,
+    "git_blob_sha1": "9232b57ca8e4c00544f3423722ac9c7311ee916b",
+    "path": "artifacts/legacy-ndcg-quarantine-index-v1.json",
+    "role": "INCOMPLETE_PREDECESSOR_PRESERVED_FOR_AUDIT",
+    "sha256": "9b8f6f9f86a4364e9fdc7a41bd47b4371d3989fd9b15d88d5e46dfaa9179b558"
+  },
+  "preservation_contract": {
+    "anchor_commit": "835f61992b96412589dff0403b3b43f0af0e52f7",
+    "byte_preserved_artifact_count": 103,
+    "byte_preserved_artifact_types": [
+      "historical_raw_run_json",
+      "historical_aggregate_json",
+      "historical_plot_png"
+    ]
+  },
+  "prohibited_use_vocabulary": [
+    "scientific_performance_claim",
+    "condition_or_comparator_ordering",
+    "promotion_or_rejection_decision",
+    "paper_table_abstract_or_release_claim"
+  ],
+  "raw_dispositions": [
+    {
+      "id": "base_matrix",
+      "missing_from_tip_count": 0,
+      "missing_paths": [],
+      "referenced_raw_count": 30,
+      "retained_paths": [
+        "experiment_runs/drift-recovery/scifact_C0_noise_seed1337.json",
+        "experiment_runs/drift-recovery/scifact_C0_noise_seed42.json",
+        "experiment_runs/drift-recovery/scifact_C0_noise_seed7.json",
+        "experiment_runs/drift-recovery/scifact_C0_rotation_seed1337.json",
+        "experiment_runs/drift-recovery/scifact_C0_rotation_seed42.json",
+        "experiment_runs/drift-recovery/scifact_C0_rotation_seed7.json",
+        "experiment_runs/drift-recovery/scifact_C1_noise_seed1337.json",
+        "experiment_runs/drift-recovery/scifact_C1_noise_seed42.json",
+        "experiment_runs/drift-recovery/scifact_C1_noise_seed7.json",
+        "experiment_runs/drift-recovery/scifact_C1_rotation_seed1337.json",
+        "experiment_runs/drift-recovery/scifact_C1_rotation_seed42.json",
+        "experiment_runs/drift-recovery/scifact_C1_rotation_seed7.json",
+        "experiment_runs/drift-recovery/scifact_C2_noise_seed1337.json",
+        "experiment_runs/drift-recovery/scifact_C2_noise_seed42.json",
+        "experiment_runs/drift-recovery/scifact_C2_noise_seed7.json",
+        "experiment_runs/drift-recovery/scifact_C2_rotation_seed1337.json",
+        "experiment_runs/drift-recovery/scifact_C2_rotation_seed42.json",
+        "experiment_runs/drift-recovery/scifact_C2_rotation_seed7.json",
+        "experiment_runs/drift-recovery/scifact_C3_noise_seed1337.json",
+        "experiment_runs/drift-recovery/scifact_C3_noise_seed42.json",
+        "experiment_runs/drift-recovery/scifact_C3_noise_seed7.json",
+        "experiment_runs/drift-recovery/scifact_C3_rotation_seed1337.json",
+        "experiment_runs/drift-recovery/scifact_C3_rotation_seed42.json",
+        "experiment_runs/drift-recovery/scifact_C3_rotation_seed7.json",
+        "experiment_runs/drift-recovery/scifact_C4_noise_seed1337.json",
+        "experiment_runs/drift-recovery/scifact_C4_noise_seed42.json",
+        "experiment_runs/drift-recovery/scifact_C4_noise_seed7.json",
+        "experiment_runs/drift-recovery/scifact_C4_rotation_seed1337.json",
+        "experiment_runs/drift-recovery/scifact_C4_rotation_seed42.json",
+        "experiment_runs/drift-recovery/scifact_C4_rotation_seed7.json"
+      ],
+      "retained_raw_count": 30,
+      "state": "ALL_REFERENCED_RAW_RETAINED"
+    },
+    {
+      "id": "calibration",
+      "missing_from_tip_count": 0,
+      "missing_paths": [],
+      "referenced_raw_count": 39,
+      "retained_paths": [
+        "experiment_runs/drift-recovery/calibrated/scifact_C0_noise_seed1337.json",
+        "experiment_runs/drift-recovery/calibrated/scifact_C0_noise_seed42.json",
+        "experiment_runs/drift-recovery/calibrated/scifact_C0_noise_seed7.json",
+        "experiment_runs/drift-recovery/calibrated/scifact_C0_rotation_seed1337.json",
+        "experiment_runs/drift-recovery/calibrated/scifact_C0_rotation_seed42.json",
+        "experiment_runs/drift-recovery/calibrated/scifact_C0_rotation_seed7.json",
+        "experiment_runs/drift-recovery/calibrated/scifact_C1_noise_seed1337.json",
+        "experiment_runs/drift-recovery/calibrated/scifact_C1_noise_seed42.json",
+        "experiment_runs/drift-recovery/calibrated/scifact_C1_noise_seed7.json",
+        "experiment_runs/drift-recovery/calibrated/scifact_C1_rotation_seed1337.json",
+        "experiment_runs/drift-recovery/calibrated/scifact_C1_rotation_seed42.json",
+        "experiment_runs/drift-recovery/calibrated/scifact_C1_rotation_seed7.json",
+        "experiment_runs/drift-recovery/calibrated/scifact_C2_noise_seed1337.json",
+        "experiment_runs/drift-recovery/calibrated/scifact_C2_noise_seed42.json",
+        "experiment_runs/drift-recovery/calibrated/scifact_C2_noise_seed7.json",
+        "experiment_runs/drift-recovery/calibrated/scifact_C2_rotation_seed1337.json",
+        "experiment_runs/drift-recovery/calibrated/scifact_C2_rotation_seed42.json",
+        "experiment_runs/drift-recovery/calibrated/scifact_C2_rotation_seed7.json",
+        "experiment_runs/drift-recovery/calibrated/scifact_C3_noise_seed1337.json",
+        "experiment_runs/drift-recovery/calibrated/scifact_C3_noise_seed42.json",
+        "experiment_runs/drift-recovery/calibrated/scifact_C3_noise_seed7.json",
+        "experiment_runs/drift-recovery/calibrated/scifact_C3_rotation_seed1337.json",
+        "experiment_runs/drift-recovery/calibrated/scifact_C3_rotation_seed42.json",
+        "experiment_runs/drift-recovery/calibrated/scifact_C3_rotation_seed7.json",
+        "experiment_runs/drift-recovery/calibrated/scifact_C4_noise_seed1337.json",
+        "experiment_runs/drift-recovery/calibrated/scifact_C4_noise_seed42.json",
+        "experiment_runs/drift-recovery/calibrated/scifact_C4_noise_seed7.json",
+        "experiment_runs/drift-recovery/calibrated/scifact_C4_rotation_seed1337.json",
+        "experiment_runs/drift-recovery/calibrated/scifact_C4_rotation_seed42.json",
+        "experiment_runs/drift-recovery/calibrated/scifact_C4_rotation_seed7.json",
+        "experiment_runs/drift-recovery/calibrated/scout_C0_noise_fraction0p5_sigma0p01_seed42.json",
+        "experiment_runs/drift-recovery/calibrated/scout_C0_noise_fraction0p5_sigma0p02_seed42.json",
+        "experiment_runs/drift-recovery/calibrated/scout_C0_noise_fraction0p5_sigma0p035_seed42.json",
+        "experiment_runs/drift-recovery/calibrated/scout_C0_rotation_fraction0p5_angle35_seed42.json",
+        "experiment_runs/drift-recovery/calibrated/scout_C0_rotation_fraction0p5_angle50_seed42.json",
+        "experiment_runs/drift-recovery/calibrated/scout_C0_rotation_fraction0p5_angle65_seed42.json",
+        "experiment_runs/drift-recovery/calibrated/scout_C0_rotation_fraction0p75_angle35_seed42.json",
+        "experiment_runs/drift-recovery/calibrated/scout_C0_rotation_fraction0p75_angle50_seed42.json",
+        "experiment_runs/drift-recovery/calibrated/scout_C0_rotation_fraction0p75_angle65_seed42.json"
+      ],
+      "retained_raw_count": 39,
+      "state": "ALL_REFERENCED_RAW_RETAINED"
+    },
+    {
+      "id": "knob_sweep",
+      "missing_from_tip_count": 0,
+      "missing_paths": [],
+      "referenced_raw_count": 18,
+      "retained_paths": [
+        "experiment_runs/drift-recovery/knob-sweep/confirmation/c3_bound0p1_trigger0p05_default_seed1337.json",
+        "experiment_runs/drift-recovery/knob-sweep/confirmation/c3_bound0p1_trigger0p05_default_seed42.json",
+        "experiment_runs/drift-recovery/knob-sweep/confirmation/c3_bound0p1_trigger0p05_default_seed7.json",
+        "experiment_runs/drift-recovery/knob-sweep/confirmation/c3_bound0p1_trigger0p05_hotter_seed1337.json",
+        "experiment_runs/drift-recovery/knob-sweep/confirmation/c3_bound0p1_trigger0p05_hotter_seed42.json",
+        "experiment_runs/drift-recovery/knob-sweep/confirmation/c3_bound0p1_trigger0p05_hotter_seed7.json",
+        "experiment_runs/drift-recovery/knob-sweep/grid/c3_bound0p01_trigger0p05_default_seed42.json",
+        "experiment_runs/drift-recovery/knob-sweep/grid/c3_bound0p01_trigger0p05_hotter_seed42.json",
+        "experiment_runs/drift-recovery/knob-sweep/grid/c3_bound0p01_trigger0p15_default_seed42.json",
+        "experiment_runs/drift-recovery/knob-sweep/grid/c3_bound0p01_trigger0p15_hotter_seed42.json",
+        "experiment_runs/drift-recovery/knob-sweep/grid/c3_bound0p05_trigger0p05_default_seed42.json",
+        "experiment_runs/drift-recovery/knob-sweep/grid/c3_bound0p05_trigger0p05_hotter_seed42.json",
+        "experiment_runs/drift-recovery/knob-sweep/grid/c3_bound0p05_trigger0p15_default_seed42.json",
+        "experiment_runs/drift-recovery/knob-sweep/grid/c3_bound0p05_trigger0p15_hotter_seed42.json",
+        "experiment_runs/drift-recovery/knob-sweep/grid/c3_bound0p1_trigger0p05_default_seed42.json",
+        "experiment_runs/drift-recovery/knob-sweep/grid/c3_bound0p1_trigger0p05_hotter_seed42.json",
+        "experiment_runs/drift-recovery/knob-sweep/grid/c3_bound0p1_trigger0p15_default_seed42.json",
+        "experiment_runs/drift-recovery/knob-sweep/grid/c3_bound0p1_trigger0p15_hotter_seed42.json"
+      ],
+      "retained_raw_count": 18,
+      "state": "ALL_REFERENCED_RAW_RETAINED"
+    },
+    {
+      "id": "swap_scifact",
+      "missing_from_tip_count": 22,
+      "missing_paths": [
+        "experiment_runs/drift-recovery/swap/budget-confirm/c3a_steps2000_lr0p1_seed1337.json",
+        "experiment_runs/drift-recovery/swap/budget-confirm/c3a_steps2000_lr0p1_seed42.json",
+        "experiment_runs/drift-recovery/swap/budget-confirm/c3a_steps2000_lr0p1_seed7.json",
+        "experiment_runs/drift-recovery/swap/budget/c3a_steps1000_lr0p1_seed42.json",
+        "experiment_runs/drift-recovery/swap/budget/c3a_steps2000_lr0p1_seed42.json",
+        "experiment_runs/drift-recovery/swap/budget/c3a_steps200_lr0p05_seed42.json",
+        "experiment_runs/drift-recovery/swap/budget/c3a_steps30_lr0p01_seed42.json",
+        "experiment_runs/drift-recovery/swap/main/C0_seed1337.json",
+        "experiment_runs/drift-recovery/swap/main/C0_seed42.json",
+        "experiment_runs/drift-recovery/swap/main/C0_seed7.json",
+        "experiment_runs/drift-recovery/swap/main/C2O_seed1337.json",
+        "experiment_runs/drift-recovery/swap/main/C2O_seed42.json",
+        "experiment_runs/drift-recovery/swap/main/C2O_seed7.json",
+        "experiment_runs/drift-recovery/swap/main/C2_seed1337.json",
+        "experiment_runs/drift-recovery/swap/main/C2_seed42.json",
+        "experiment_runs/drift-recovery/swap/main/C2_seed7.json",
+        "experiment_runs/drift-recovery/swap/main/C3a_seed1337.json",
+        "experiment_runs/drift-recovery/swap/main/C3a_seed42.json",
+        "experiment_runs/drift-recovery/swap/main/C3a_seed7.json",
+        "experiment_runs/drift-recovery/swap/main/C4a_seed1337.json",
+        "experiment_runs/drift-recovery/swap/main/C4a_seed42.json",
+        "experiment_runs/drift-recovery/swap/main/C4a_seed7.json"
+      ],
+      "referenced_raw_count": 22,
+      "retained_paths": [],
+      "retained_raw_count": 0,
+      "state": "ALL_REFERENCED_RAW_MISSING_FROM_TIP"
+    },
+    {
+      "id": "swap_nfcorpus",
+      "missing_from_tip_count": 22,
+      "missing_paths": [
+        "experiment_runs/drift-recovery/swap-nfcorpus/budget-confirm/c3a_steps30_lr0p01_seed1337.json",
+        "experiment_runs/drift-recovery/swap-nfcorpus/budget-confirm/c3a_steps30_lr0p01_seed42.json",
+        "experiment_runs/drift-recovery/swap-nfcorpus/budget-confirm/c3a_steps30_lr0p01_seed7.json",
+        "experiment_runs/drift-recovery/swap-nfcorpus/budget/c3a_steps1000_lr0p1_seed42.json",
+        "experiment_runs/drift-recovery/swap-nfcorpus/budget/c3a_steps2000_lr0p1_seed42.json",
+        "experiment_runs/drift-recovery/swap-nfcorpus/budget/c3a_steps200_lr0p05_seed42.json",
+        "experiment_runs/drift-recovery/swap-nfcorpus/budget/c3a_steps30_lr0p01_seed42.json",
+        "experiment_runs/drift-recovery/swap-nfcorpus/main/C0_seed1337.json",
+        "experiment_runs/drift-recovery/swap-nfcorpus/main/C0_seed42.json",
+        "experiment_runs/drift-recovery/swap-nfcorpus/main/C0_seed7.json",
+        "experiment_runs/drift-recovery/swap-nfcorpus/main/C2O_seed1337.json",
+        "experiment_runs/drift-recovery/swap-nfcorpus/main/C2O_seed42.json",
+        "experiment_runs/drift-recovery/swap-nfcorpus/main/C2O_seed7.json",
+        "experiment_runs/drift-recovery/swap-nfcorpus/main/C2_seed1337.json",
+        "experiment_runs/drift-recovery/swap-nfcorpus/main/C2_seed42.json",
+        "experiment_runs/drift-recovery/swap-nfcorpus/main/C2_seed7.json",
+        "experiment_runs/drift-recovery/swap-nfcorpus/main/C3a_seed1337.json",
+        "experiment_runs/drift-recovery/swap-nfcorpus/main/C3a_seed42.json",
+        "experiment_runs/drift-recovery/swap-nfcorpus/main/C3a_seed7.json",
+        "experiment_runs/drift-recovery/swap-nfcorpus/main/C4a_seed1337.json",
+        "experiment_runs/drift-recovery/swap-nfcorpus/main/C4a_seed42.json",
+        "experiment_runs/drift-recovery/swap-nfcorpus/main/C4a_seed7.json"
+      ],
+      "referenced_raw_count": 22,
+      "retained_paths": [],
+      "retained_raw_count": 0,
+      "state": "ALL_REFERENCED_RAW_MISSING_FROM_TIP"
+    },
+    {
+      "id": "post_bank_scifact",
+      "missing_from_tip_count": 15,
+      "missing_paths": [
+        "experiment_runs/drift-recovery/post-bank-headtohead/headtohead/C0_seed1337.json",
+        "experiment_runs/drift-recovery/post-bank-headtohead/headtohead/C0_seed42.json",
+        "experiment_runs/drift-recovery/post-bank-headtohead/headtohead/C0_seed7.json",
+        "experiment_runs/drift-recovery/post-bank-headtohead/headtohead/C2O_seed1337.json",
+        "experiment_runs/drift-recovery/post-bank-headtohead/headtohead/C2O_seed42.json",
+        "experiment_runs/drift-recovery/post-bank-headtohead/headtohead/C2O_seed7.json",
+        "experiment_runs/drift-recovery/post-bank-headtohead/headtohead/C5_seed1337.json",
+        "experiment_runs/drift-recovery/post-bank-headtohead/headtohead/C5_seed42.json",
+        "experiment_runs/drift-recovery/post-bank-headtohead/headtohead/C5_seed7.json",
+        "experiment_runs/drift-recovery/post-bank-headtohead/headtohead/C5r_seed1337.json",
+        "experiment_runs/drift-recovery/post-bank-headtohead/headtohead/C5r_seed42.json",
+        "experiment_runs/drift-recovery/post-bank-headtohead/headtohead/C5r_seed7.json",
+        "experiment_runs/drift-recovery/post-bank-headtohead/headtohead/C5s_seed1337.json",
+        "experiment_runs/drift-recovery/post-bank-headtohead/headtohead/C5s_seed42.json",
+        "experiment_runs/drift-recovery/post-bank-headtohead/headtohead/C5s_seed7.json"
+      ],
+      "referenced_raw_count": 15,
+      "retained_paths": [],
+      "retained_raw_count": 0,
+      "state": "ALL_REFERENCED_RAW_MISSING_FROM_TIP"
+    },
+    {
+      "id": "post_bank_nfcorpus",
+      "missing_from_tip_count": 15,
+      "missing_paths": [
+        "experiment_runs/drift-recovery/post-bank-headtohead-nfcorpus/headtohead/C0_seed1337.json",
+        "experiment_runs/drift-recovery/post-bank-headtohead-nfcorpus/headtohead/C0_seed42.json",
+        "experiment_runs/drift-recovery/post-bank-headtohead-nfcorpus/headtohead/C0_seed7.json",
+        "experiment_runs/drift-recovery/post-bank-headtohead-nfcorpus/headtohead/C2O_seed1337.json",
+        "experiment_runs/drift-recovery/post-bank-headtohead-nfcorpus/headtohead/C2O_seed42.json",
+        "experiment_runs/drift-recovery/post-bank-headtohead-nfcorpus/headtohead/C2O_seed7.json",
+        "experiment_runs/drift-recovery/post-bank-headtohead-nfcorpus/headtohead/C5_seed1337.json",
+        "experiment_runs/drift-recovery/post-bank-headtohead-nfcorpus/headtohead/C5_seed42.json",
+        "experiment_runs/drift-recovery/post-bank-headtohead-nfcorpus/headtohead/C5_seed7.json",
+        "experiment_runs/drift-recovery/post-bank-headtohead-nfcorpus/headtohead/C5r_seed1337.json",
+        "experiment_runs/drift-recovery/post-bank-headtohead-nfcorpus/headtohead/C5r_seed42.json",
+        "experiment_runs/drift-recovery/post-bank-headtohead-nfcorpus/headtohead/C5r_seed7.json",
+        "experiment_runs/drift-recovery/post-bank-headtohead-nfcorpus/headtohead/C5s_seed1337.json",
+        "experiment_runs/drift-recovery/post-bank-headtohead-nfcorpus/headtohead/C5s_seed42.json",
+        "experiment_runs/drift-recovery/post-bank-headtohead-nfcorpus/headtohead/C5s_seed7.json"
+      ],
+      "referenced_raw_count": 15,
+      "retained_paths": [],
+      "retained_raw_count": 0,
+      "state": "ALL_REFERENCED_RAW_MISSING_FROM_TIP"
+    },
+    {
+      "id": "h4_compound",
+      "missing_from_tip_count": 0,
+      "missing_paths": [],
+      "referenced_raw_count": 2,
+      "retained_paths": [
+        "experiment_runs/drift-recovery/h4-compound/C4a_compound0_seed42.json",
+        "experiment_runs/drift-recovery/h4-compound/C4a_compound1_seed42.json"
+      ],
+      "retained_raw_count": 2,
+      "state": "ALL_REFERENCED_RAW_RETAINED"
+    }
+  ],
+  "schema_version": "2.0.0",
+  "source_head": "835f61992b96412589dff0403b3b43f0af0e52f7",
+  "state": "ACTIVE_QUARANTINE",
+  "tracked_debt": {
+    "carried_debt_id": "CD-MLR-01",
+    "deferred_scope_id": "DS-MLR-01"
+  }
+}
