@@ -42,6 +42,30 @@ def _sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
+def _require_manifest_int(
+    manifest: dict[str, Any],
+    field: str,
+    *,
+    positive: bool = False,
+) -> int:
+    value = manifest[field]
+    # JSON booleans are ``int`` subclasses in Python. The on-disk schema
+    # requires the exact JSON integer type so ``true`` cannot stand in for 1.
+    if type(value) is not int:
+        qualifier = "a positive integer" if positive else "an integer"
+        raise ValueError(f"Manifest {field} must be {qualifier}, got {value!r}")
+    if positive and value <= 0:
+        raise ValueError(f"Manifest {field} must be a positive integer, got {value!r}")
+    return value
+
+
+def _require_manifest_shape(manifest: dict[str, Any]) -> list[int]:
+    shape = manifest["shape"]
+    if not isinstance(shape, list) or len(shape) != 2 or any(type(size) is not int or size <= 0 for size in shape):
+        raise ValueError(f"Manifest shape must be a two-element list of positive integers, got {shape!r}")
+    return shape
+
+
 def _validate_vectors_and_ids(vectors: np.ndarray, ids: Sequence[str]) -> list[str]:
     if not isinstance(vectors, np.ndarray):
         raise TypeError("vectors must be a numpy.ndarray")
@@ -130,25 +154,30 @@ def _load_manifest(shard_path: Path) -> dict[str, Any]:
     missing = sorted(required - manifest.keys())
     if missing:
         raise ValueError(f"Pool-shard manifest is missing fields: {missing}")
-    if manifest["format"] != FORMAT_NAME or manifest["version"] != FORMAT_VERSION:
-        raise ValueError(f"Unsupported pool-shard format/version: {manifest['format']!r}/{manifest['version']!r}")
+    version = _require_manifest_int(manifest, "version")
+    _require_manifest_int(manifest, "payload_blocks", positive=True)
+    _require_manifest_int(manifest, "raw_vector_bytes", positive=True)
+    _require_manifest_shape(manifest)
+    if manifest["format"] != FORMAT_NAME or version != FORMAT_VERSION:
+        raise ValueError(f"Unsupported pool-shard format/version: {manifest['format']!r}/{version!r}")
     if manifest["byte_encoding"] != BYTE_ENCODING or manifest["dtype"] != "float32":
         raise ValueError(f"Unsupported pool-shard encoding/dtype: {manifest['byte_encoding']!r}/{manifest['dtype']!r}")
     return manifest
 
 
 def _decode_payload_via_block_graph(payload: bytes, manifest: dict[str, Any]) -> bytes:
-    block_count = manifest["payload_blocks"]
-    raw_byte_count = manifest["raw_vector_bytes"]
-    if not isinstance(block_count, int) or block_count <= 0:
-        raise ValueError(f"Invalid payload_blocks: {block_count!r}")
-    if not isinstance(raw_byte_count, int) or raw_byte_count <= 0:
-        raise ValueError(f"Invalid raw_vector_bytes: {raw_byte_count!r}")
+    block_count = _require_manifest_int(manifest, "payload_blocks", positive=True)
+    raw_byte_count = _require_manifest_int(manifest, "raw_vector_bytes", positive=True)
+    required_block_count = (raw_byte_count + CELLS_PER_BLOCK - 1) // CELLS_PER_BLOCK
+    if block_count != required_block_count:
+        raise ValueError(
+            "Non-canonical payload_blocks: "
+            f"raw_vector_bytes={raw_byte_count} require exactly {required_block_count}, "
+            f"got {block_count}"
+        )
     expected_payload_bytes = block_count * TOTAL_BLOCK_BYTES
     if len(payload) != expected_payload_bytes:
         raise ValueError(f"Pool-shard payload length mismatch: expected {expected_payload_bytes}, got {len(payload)}")
-    if raw_byte_count > block_count * CELLS_PER_BLOCK:
-        raise ValueError(f"Manifest raw_vector_bytes {raw_byte_count} exceed {block_count} block capacity")
 
     decoded_chunks = []
     offset = 0
@@ -170,9 +199,10 @@ def _decode_payload_via_block_graph(payload: bytes, manifest: dict[str, Any]) ->
         offset = block.next_offset
 
     decoded_bytes = b"".join(decoded_chunks)
-    if any(decoded_bytes[raw_byte_count:]):
+    padding_view = memoryview(decoded_bytes)[raw_byte_count:]
+    if any(padding_view):
         first_nonzero_padding = next(
-            index for index, value in enumerate(decoded_bytes[raw_byte_count:], start=raw_byte_count) if value != 0
+            index for index, value in enumerate(padding_view, start=raw_byte_count) if value != 0
         )
         raise ValueError(
             f"Non-zero block padding at decoded byte {first_nonzero_padding}: "
@@ -190,9 +220,7 @@ def _read_pool_shard_with_manifest(path: str | Path) -> tuple[np.ndarray, list[s
         raise ValueError(f"Unable to read pool-shard payload {shard_path}: {exc}") from exc
 
     raw_vector_bytes = _decode_payload_via_block_graph(payload, manifest)
-    shape = manifest["shape"]
-    if not isinstance(shape, list) or len(shape) != 2 or any(not isinstance(size, int) or size <= 0 for size in shape):
-        raise ValueError(f"Invalid vector shape in manifest: {shape!r}")
+    shape = _require_manifest_shape(manifest)
     expected_raw_bytes = shape[0] * shape[1] * np.dtype(np.float32).itemsize
     if len(raw_vector_bytes) != expected_raw_bytes:
         raise ValueError(
