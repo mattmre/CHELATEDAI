@@ -55,7 +55,7 @@ the newer AEP/prime-ring truth.
 
 | Worktree | Branch/head | Preservation status |
 | --- | --- | --- |
-| primary | `codex/prime-ring-onion-method-dev` / pre-reconciliation bundle anchor `7dec564d` (`186590c8` evidence commit) | reviewed 38-path allowlist and first bookkeeping binding are committed locally; verified private bundle exists; this later documentation-only reconciliation is recorded post-commit in the private recovery index; push and exact remote equality proof remain |
+| primary | `codex/prime-ring-onion-method-dev` / V3 snapshot `8c7446fb` (pre-reconciliation anchor `7dec564d`; evidence `186590c8`) | reviewed 38-path allowlist and documentation reconciliation are committed locally; exact-head and 64-surface all-refs bundles plus V2-bound V3 validation pass; this acceptance-record update postdates V3 without changing source/evidence; push and exact remote equality proof remain |
 | `agent-build` | `codex/recover-drift-research-20260722` / `b831493a` | clean unique 209-file commit; verified full-history bundle; archive ref only until public-content review |
 | `h2-rerun` | `feat/h2-swap-rerun-clean` / `6c3e1847` | unique CUDA-guard commit; 24 local deletions remain untouched; five ignored outputs are hash-bound and privately archived |
 | `relaxed-wozniak-271e04` | `bf23a47f` | commit already contained by `main`; ignored raw evidence is covered by a verified ZIP |

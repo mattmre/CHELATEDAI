@@ -91,9 +91,10 @@ not-in-scope items. They appear here so the next planner sees them.
 The exact research/evidence tree has a local pre-reconciliation bundle anchor
 at `7dec564d`, with evidence commit `186590c8` and a verified private
 full-history bundle. This later documentation-only reconciliation is bound
-post-commit in the private recovery index without rewriting evidence. The
-private V2 residual manifest binds 2,584 files across ten total worktrees plus
-both stashes. No cleanup is authorized.
+post-commit in the private recovery index without rewriting evidence. Private
+V3 at snapshot head `8c7446fb` binds V2 and records 2,854 entries,
+1,829,320,221 bytes, ten total worktrees, two stashes, zero errors, and
+`cleanup_authorized: false`. No cleanup is authorized.
 
 1. Complete candidate `f2e41d42` supplies PR #292's 113/113 metric-lineage
    reconditioning and earned independent local candidate Tier B 100, making it

@@ -877,6 +877,11 @@ block gate has three first-cycle carried-debt rows, not zero.
     1,678,118,521 bytes, zero errors, ten worktrees, two stashes, and
     `cleanup_authorized: false`; exact stash refs/bundle, raw-evidence ZIPs,
     repair bundles, and the unique untracked source ZIP were verified;
+  - post-commit private V3 at snapshot head `8c7446fb` binds V2 and validates
+    2,854 entries, 1,829,320,221 bytes, ten total worktrees, two stashes, zero
+    errors, and `cleanup_authorized: false`; exact-head and 64-surface all-refs
+    bundles were independently verified. This later acceptance-record update
+    changes documentation only, not source/evidence or the V3 snapshot;
   - full Git integrity passes with `core.commitGraph=false`; the 17 prior
     missing-commit messages are isolated to fingerprinted stale commit-graph
     metadata. No GC, prune, commit-graph rewrite, stash drop, or worktree

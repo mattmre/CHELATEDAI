@@ -21,6 +21,7 @@ stash, dropped, pruned, garbage-collected, or published.
 | --- | --- | --- |
 | V1 | initial ignored/untracked inventory | `de539255ad4dde8c1df2a4e592cf4ba8e1444efc5be599031d9ab020b586d3fc` |
 | V2 | V1-bound inventory plus publication dispositions and tracked-dirty state | `4c1192a5fd77f75c5cd1309f2398755453c2fcaab376fc7571d2f85a4599e98b` |
+| V3 | V2-bound post-reconciliation snapshot at `8c7446fb` | `108efa75aeeda94d6ae8fad1210ee1c27d50b81d161148204e7f354c33ee5cf0` |
 
 V2 records:
 
@@ -39,7 +40,19 @@ An independent validator recomputed the schema, aggregate counts and bytes,
 unique `(worktree, relative path)` keys, entry digest, worktree-state digest,
 prior-manifest binding, and dirty-state structure. All checks passed.
 
-## Publication dispositions
+V3 additionally records 2,854 entries, 1,829,320,221 bytes, ten total
+worktrees, two stashes, and zero errors, with:
+
+- entry-manifest SHA-256
+  `ee3148af9015c423ef182c16995a2127b95f592439cbdfa9413e222b0e62630f`;
+- worktree-state SHA-256
+  `d6f8bd1833328376897fe26609b5a5b71fef2710b49709fd8e8c6e21e685f3c0`;
+- `cleanup_authorized: false`.
+
+This document-only V3 acceptance record postdates the immutable snapshot and
+does not change its source/evidence or residual payload.
+
+## V2 publication dispositions
 
 | Disposition | Files | Bytes | Public-repository action |
 | --- | ---: | ---: | --- |
@@ -54,6 +67,19 @@ prior-manifest binding, and dirty-state structure. All checks passed.
 
 The byte total includes private recovery copies by design. It is an inventory
 of what exists, not a claim that every byte is unique or should be uploaded.
+
+## V3 publication dispositions
+
+| Disposition | Files | Bytes | Public-repository action |
+| --- | ---: | ---: | --- |
+| `DO_NOT_PUBLISH_SENSITIVE` | 14 | 693,043,982 | Never push in current form |
+| `KEEP_PRIVATE_RECOVERY_DO_NOT_PUBLISH` | 36 | 489,918,549 | Keep as local recovery packages and manifests |
+| `PRIVATE_ARCHIVE_OR_EXTERNAL_STORAGE_REVIEW` | 348 | 456,661,426 | Models/databases require license, provenance, deserialization, and storage review |
+| `CURATE_PROVENANCE_BEFORE_PUBLICATION` | 205 | 87,344,649 | Publish only a reviewed, source-bound evidence subset |
+| `REPRODUCIBLE_DO_NOT_PUBLISH` | 2,028 | 38,275,481 | Rebuild from source; do not commit caches/build output |
+| `PRIVATE_LOCAL_STATE_DO_NOT_PUBLISH` | 9 | 21,450 | Keep local |
+| `REVIEW_BEFORE_PUBLICATION` | 213 | 64,042,605 | Resolve exact duplication, privacy, and license status first |
+| `SOURCE_RECONDITION_AND_REVIEW` | 1 | 12,079 | Preserve now; format, test, and review in a separate PR |
 
 ## Verified preservation results
 
