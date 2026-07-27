@@ -1,8 +1,9 @@
 import math
 import threading
 import unittest
+import warnings
 from functools import partial
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from adapter_router import AdapterRouter
 
@@ -136,6 +137,23 @@ class TestAdapterRouter(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "finite"):
                     router.margin_delta = value
                 self.assertEqual(router.margin_delta, 0.2)
+
+    def test_cosine_derived_arithmetic_remains_finite_for_extreme_vectors(self):
+        router = AdapterRouter(logger=MagicMock())
+        router.register("huge", [1e308, 1e308], "adapter")
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", RuntimeWarning)
+            route = router.select([1e308, 1e308])
+        self.assertEqual(route.key, "huge")
+        self.assertTrue(math.isfinite(route.score))
+        self.assertAlmostEqual(route.score, 1.0)
+
+    def test_cosine_rejects_nonfinite_derived_normalization(self):
+        router = AdapterRouter(logger=MagicMock())
+        router.register("route", [1.0, 0.0], "adapter")
+        with patch("adapter_router.np.linalg.norm", return_value=float("inf")):
+            with self.assertRaisesRegex(ValueError, "normalization.*finite"):
+                router.select([1.0, 0.0])
 
     def test_freeze_locks_margin_membership_and_centroids(self):
         router = AdapterRouter(margin_delta=0.2, logger=MagicMock())

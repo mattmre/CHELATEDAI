@@ -67,11 +67,15 @@ class QuantizationPromotionGate:
             raise ValueError("quantization promotion fitness values must be finite")
         fp32_gain = fp32_value - baseline_value
         quantized_gain = quantized_value - baseline_value
+        if not all(math.isfinite(value) for value in (fp32_gain, quantized_gain)):
+            raise ValueError("quantization promotion derived gains must be finite")
         if fp32_gain <= self.minimum_fp32_gain:
             retained_ratio = 1.0 if quantized_gain >= fp32_gain else 0.0
             passed = False
         else:
             retained_ratio = quantized_gain / fp32_gain
+            if not math.isfinite(retained_ratio):
+                raise ValueError("quantization promotion retained gain ratio must be finite")
             passed = retained_ratio >= self.retained_gain_threshold
         reasons = []
         if fp32_gain <= self.minimum_fp32_gain:

@@ -19,6 +19,7 @@ from quant_aware_routing import (
     RoutingPlaneConfig,
     ThreeWaySplit,
     fit_quant_aware_plane,
+    graded_ndcg_at_k,
     paired_query_bootstrap_ci,
     three_way_seeded_split,
 )
@@ -33,6 +34,10 @@ class FixedLinear(torch.nn.Module):
 
     def forward(self, inputs):
         return inputs @ self.matrix.T
+
+
+class InjectedCancellation(BaseException):
+    """Hostile non-Exception cancellation signal used by state-machine tests."""
 
 
 class TestSourceProvenance(unittest.TestCase):
@@ -121,7 +126,12 @@ def _permutation(first, second, dim=4):
     return matrix
 
 
-def _passing_plane(*, preregistration=None, include_unseen_bad_route=False):
+def _passing_plane(
+    *,
+    preregistration=None,
+    include_unseen_bad_route=False,
+    relevance_override=None,
+):
     document_ids = ("doc-a", "decoy-a", "doc-b", "decoy-b")
     documents = np.asarray(
         [
@@ -176,6 +186,8 @@ def _passing_plane(*, preregistration=None, include_unseen_bad_route=False):
         min_report_routes=2,
         min_report_route_fraction=0.10,
     )
+    if relevance_override is not None:
+        qrels[select_ids[0]] = {"doc-a": relevance_override}
     plane = QuantAwareRoutingPlane(
         router=router,
         adapters=adapters,
@@ -314,6 +326,78 @@ class TestFinitePromotionParameters(unittest.TestCase):
                 with self.subTest(metric_position=position, value=value):
                     with self.assertRaisesRegex(ValueError, "finite"):
                         gate.evaluate(*metrics[:2], baseline_fitness=metrics[2])
+
+    def test_quantization_gate_rejects_nonfinite_derived_values(self):
+        gate = QuantizationPromotionGate(logger=MagicMock())
+        with self.assertRaisesRegex(ValueError, "derived gains.*finite"):
+            gate.evaluate(1e308, 1e308, baseline_fitness=-1e308)
+        with self.assertRaisesRegex(ValueError, "retained gain ratio.*finite"):
+            gate.evaluate(5e-324, 1e308, baseline_fitness=0.0)
+
+    def test_k_requires_an_exact_positive_builtin_integer(self):
+        wrong_types = (None, True, False, 1.0, np.int64(1), "1")
+        for value in wrong_types:
+            with self.subTest(surface="ndcg", value=value):
+                with self.assertRaisesRegex(TypeError, "built-in int"):
+                    graded_ndcg_at_k(["doc"], {"doc": 1.0}, value)
+            for field_name in ("k", "route_k"):
+                with self.subTest(surface="config", field=field_name, value=value):
+                    with self.assertRaisesRegex(TypeError, "built-in int"):
+                        replace(
+                            RoutingPlaneConfig(),
+                            **{field_name: value},
+                        ).validate()
+        for value in (0, -1):
+            with self.subTest(surface="ndcg", value=value):
+                with self.assertRaisesRegex(ValueError, "must be >= 1"):
+                    graded_ndcg_at_k(["doc"], {"doc": 1.0}, value)
+            for field_name in ("k", "route_k"):
+                with self.subTest(surface="config", field=field_name, value=value):
+                    with self.assertRaisesRegex(ValueError, "must be >= 1"):
+                        replace(
+                            RoutingPlaneConfig(),
+                            **{field_name: value},
+                        ).validate()
+
+    def test_preregistration_route_k_is_not_silently_coerced(self):
+        preregistration = json.loads(
+            Path(__file__).resolve().with_name("prereg_rung16.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        preregistration["routing"]["k"] = 1.9
+        with self.assertRaisesRegex(TypeError, "route_k must be a built-in int"):
+            RoutingPlaneConfig.from_preregistration(preregistration)
+
+
+class TestRelevanceValidation(unittest.TestCase):
+    def test_relevance_rejects_nonfinite_and_unrepresentable_gains(self):
+        for value in (float("nan"), float("inf"), -float("inf")):
+            with self.subTest(surface="ndcg", value=value):
+                with self.assertRaisesRegex(ValueError, "relevance scores.*finite"):
+                    graded_ndcg_at_k(["doc"], {"doc": value}, 1)
+            with self.subTest(surface="plane", value=value):
+                with self.assertRaisesRegex(ValueError, "relevance scores.*finite"):
+                    _passing_plane(relevance_override=value)
+        with self.assertRaisesRegex(ValueError, "relevance gains.*finite"):
+            graded_ndcg_at_k(["doc"], {"doc": 1024.0}, 1)
+        with self.assertRaisesRegex(ValueError, "relevance gains.*finite"):
+            _passing_plane(relevance_override=1024.0)
+
+    def test_finite_relevance_that_overflows_aggregate_dcg_is_rejected(self):
+        relevance = {
+            "doc-a": 1023.0,
+            "doc-b": 1023.0,
+            "doc-c": 1023.0,
+        }
+        with self.assertRaisesRegex(ValueError, "DCG.*finite"):
+            graded_ndcg_at_k(
+                ["doc-a", "doc-b", "doc-c"],
+                relevance,
+                3,
+            )
+        with self.assertRaisesRegex(ValueError, "IDCG.*finite"):
+            graded_ndcg_at_k([], relevance, 3)
 
 
 class TestSelectionLockForensics(unittest.TestCase):
@@ -479,6 +563,38 @@ class TestQuantAwarePromotionPlane(unittest.TestCase):
         self.assertEqual(plane.state, "SELECT_FROZEN")
         self.assertEqual(result["router_state_sha256"], frozen_checksum)
 
+    def test_select_baseexceptions_cleanup_and_reraise_original_signal(self):
+        for signal in (
+            KeyboardInterrupt("keyboard cancellation"),
+            SystemExit(17),
+            InjectedCancellation("injected cancellation"),
+        ):
+            with self.subTest(signal=type(signal).__name__):
+                plane, select_vectors, _report_vectors = _passing_plane()
+                original_evaluate = plane._evaluate
+
+                def interrupt_select(*_args, **_kwargs):
+                    raise signal
+
+                plane._evaluate = interrupt_select
+                caught = None
+                try:
+                    plane.select(select_vectors)
+                except BaseException as exc:
+                    caught = exc
+                self.assertIs(caught, signal)
+                frozen_checksum = plane.router.state_checksum()
+                self.assertEqual(plane.state, "ANCHOR_READY")
+                self.assertTrue(plane.router.frozen)
+                self.assertEqual(plane._router_checksum, frozen_checksum)
+                self.assertFalse(plane.report_consumed)
+                self.assertIsNone(plane.provenance()["select"])
+
+                plane._evaluate = original_evaluate
+                retry = plane.select(select_vectors)
+                self.assertEqual(plane.state, "SELECT_FROZEN")
+                self.assertEqual(retry["router_state_sha256"], frozen_checksum)
+
     def test_concurrent_report_is_reserved_once_and_finalized_atomically(self):
         plane, select_vectors, report_vectors = _passing_plane()
         plane.select(select_vectors)
@@ -543,6 +659,38 @@ class TestQuantAwarePromotionPlane(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "REPORT_FAILED_CLOSED"):
             plane.report(report_vectors)
 
+    def test_report_baseexceptions_finalize_fail_closed_and_reraise_original_signal(self):
+        for signal in (
+            KeyboardInterrupt("keyboard cancellation"),
+            SystemExit(23),
+            InjectedCancellation("injected cancellation"),
+        ):
+            with self.subTest(signal=type(signal).__name__):
+                plane, select_vectors, report_vectors = _passing_plane()
+                plane.select(select_vectors)
+
+                def interrupt_report(*_args, **_kwargs):
+                    raise signal
+
+                plane._evaluate = interrupt_report
+                caught = None
+                try:
+                    plane.report(report_vectors)
+                except BaseException as exc:
+                    caught = exc
+                self.assertIs(caught, signal)
+                self.assertEqual(plane.state, "REPORT_FAILED_CLOSED")
+                self.assertTrue(plane.report_consumed)
+                self.assertEqual(plane.verdict, "FAIL-CLOSED")
+                provenance = plane.provenance()
+                self.assertEqual(
+                    provenance["report"]["error_type"],
+                    type(signal).__name__,
+                )
+                self.assertEqual(provenance["report"]["verdict"], "FAIL-CLOSED")
+                with self.assertRaisesRegex(RuntimeError, "REPORT_FAILED_CLOSED"):
+                    plane.report(report_vectors)
+
     def test_invalid_report_vectors_do_not_consume_the_one_shot_report(self):
         plane, select_vectors, report_vectors = _passing_plane()
         plane.select(select_vectors)
@@ -556,6 +704,34 @@ class TestQuantAwarePromotionPlane(unittest.TestCase):
         self.assertEqual(plane.state, "SELECT_FROZEN")
         self.assertFalse(plane.report_consumed)
         self.assertEqual(plane.report(report_vectors)["verdict"], "PROMOTED")
+
+    def test_retrieve_k_none_is_default_and_invalid_values_have_no_route_side_effect(self):
+        plane, select_vectors, report_vectors = _passing_plane()
+        plane.select(select_vectors)
+        plane.report(report_vectors)
+
+        default_result = plane.retrieve([1.0, 0.0, 0.0, 0.0], k=None)
+        explicit_result = plane.retrieve([1.0, 0.0, 0.0, 0.0], k=2)
+        self.assertEqual(len(default_result["ids"]), plane.config.k)
+        self.assertEqual(len(explicit_result["ids"]), 2)
+        usage_before = plane.router.get_usage_summary("SERVE")
+
+        for value in (True, False, 1.0, np.int64(1), "1"):
+            with self.subTest(value=value):
+                with self.assertRaisesRegex(TypeError, "built-in int"):
+                    plane.retrieve([1.0, 0.0, 0.0, 0.0], k=value)
+                self.assertEqual(
+                    plane.router.get_usage_summary("SERVE"),
+                    usage_before,
+                )
+        for value in (0, -1):
+            with self.subTest(value=value):
+                with self.assertRaisesRegex(ValueError, "must be >= 1"):
+                    plane.retrieve([1.0, 0.0, 0.0, 0.0], k=value)
+                self.assertEqual(
+                    plane.router.get_usage_summary("SERVE"),
+                    usage_before,
+                )
 
     def test_provenance_cannot_mutate_failed_select_into_promotion(self):
         plane, select_vectors, report_vectors = _passing_plane(include_unseen_bad_route=True)
