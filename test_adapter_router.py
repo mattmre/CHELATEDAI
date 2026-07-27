@@ -126,6 +126,17 @@ class TestAdapterRouter(unittest.TestCase):
         with self.assertRaises(ValueError):
             router.select([1.0, 0.0, 0.0])
 
+    def test_margin_rejects_nonfinite_values_at_construction_and_assignment(self):
+        for value in (float("nan"), float("inf"), -float("inf")):
+            with self.subTest(stage="construction", value=value):
+                with self.assertRaisesRegex(ValueError, "finite"):
+                    AdapterRouter(margin_delta=value, logger=MagicMock())
+            with self.subTest(stage="assignment", value=value):
+                router = AdapterRouter(margin_delta=0.2, logger=MagicMock())
+                with self.assertRaisesRegex(ValueError, "finite"):
+                    router.margin_delta = value
+                self.assertEqual(router.margin_delta, 0.2)
+
     def test_freeze_locks_margin_membership_and_centroids(self):
         router = AdapterRouter(margin_delta=0.2, logger=MagicMock())
         router.register("x", [1.0, 0.0], "x")

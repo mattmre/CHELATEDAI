@@ -25,6 +25,7 @@ import json
 import math
 import random
 from dataclasses import asdict, dataclass
+from threading import Lock
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
 
 import numpy as np
@@ -103,6 +104,32 @@ class RoutingPlaneConfig:
     adapter_max_correction: float = 0.5
 
     def validate(self) -> None:
+        floating_values = {
+            "anchor_fraction": self.anchor_fraction,
+            "select_fraction": self.select_fraction,
+            "report_fraction": self.report_fraction,
+            "margin_delta": self.margin_delta,
+            "min_report_route_fraction": self.min_report_route_fraction,
+            "confidence_level": self.confidence_level,
+            "min_lift": self.min_lift,
+            "max_floor_loss": self.max_floor_loss,
+            "quant_retained_gain": self.quant_retained_gain,
+            "quant_minimum_fp32_gain": self.quant_minimum_fp32_gain,
+            "quantile": self.quantile,
+            "adapter_learning_rate": self.adapter_learning_rate,
+            "adapter_min_correction": self.adapter_min_correction,
+            "adapter_max_correction": self.adapter_max_correction,
+        }
+        nonfinite = sorted(
+            name
+            for name, value in floating_values.items()
+            if not math.isfinite(float(value))
+        )
+        if nonfinite:
+            raise ValueError(
+                "routing promotion floating parameters must be finite: "
+                + ", ".join(nonfinite)
+            )
         fractions = (self.anchor_fraction, self.select_fraction, self.report_fraction)
         if any(value <= 0.0 for value in fractions) or not math.isclose(sum(fractions), 1.0, abs_tol=1e-9):
             raise ValueError("three-way split fractions must be positive and sum to 1")
@@ -130,6 +157,12 @@ class RoutingPlaneConfig:
             raise ValueError("invalid simulated INT8 configuration")
         if self.adapter_steps < 1 or self.adapter_learning_rate <= 0.0 or self.adapter_batch_size < 1:
             raise ValueError("adapter training budget must be positive")
+        if (
+            self.adapter_min_correction < 0.0
+            or self.adapter_max_correction <= 0.0
+            or self.adapter_min_correction > self.adapter_max_correction
+        ):
+            raise ValueError("adapter correction bounds must satisfy 0 <= min <= max")
 
     @classmethod
     def from_preregistration(cls, preregistration: Mapping[str, Any]) -> "RoutingPlaneConfig":
@@ -397,34 +430,55 @@ class QuantAwareRoutingPlane:
         self._report_result_checksum: Optional[str] = None
         self._final_state_checksum: Optional[str] = None
         self._final_verdict = "UNSELECTED"
+        self._state_lock = Lock()
+        self._state = "ANCHOR_READY"
 
     @property
     def select_gate_passed(self) -> bool:
+        self._require_stable_state()
         self._assert_decisions_frozen()
         self._assert_adapters_frozen()
         return bool(self._select_decision and self._select_decision.get("select_gate_passed"))
 
     @property
     def verdict(self) -> str:
+        self._require_stable_state()
         self._assert_decisions_frozen()
         self._assert_adapters_frozen()
         return self._final_verdict
 
     @property
     def promoted(self) -> bool:
-        return self._final_verdict == "PROMOTED"
+        return self.verdict == "PROMOTED"
 
     @property
     def report_consumed(self) -> bool:
-        return self._report_consumed
+        with self._state_lock:
+            return self._report_consumed
 
-    def _assert_decisions_frozen(self) -> None:
+    @property
+    def state(self) -> str:
+        with self._state_lock:
+            return self._state
+
+    def _require_stable_state(self) -> str:
+        state = self.state
+        if state in {"SELECTING", "REPORTING"}:
+            raise RuntimeError(f"routing plane transition is in progress ({state})")
+        return state
+
+    def _assert_select_frozen(self) -> None:
         if self._selection_frozen:
             if self._select_decision is None or self._select_decision_checksum is None:
                 raise RuntimeError("frozen SELECT decision is missing")
             if _json_sha256(self._select_decision) != self._select_decision_checksum:
                 raise RuntimeError("frozen SELECT promotion decision changed")
-        if self._report_consumed and self._report_result is not None:
+
+    def _assert_decisions_frozen(self) -> None:
+        self._assert_select_frozen()
+        if self._report_consumed:
+            if self._report_result is None:
+                raise RuntimeError("consumed REPORT result is missing")
             if self._report_result_checksum is None or self._final_state_checksum is None:
                 raise RuntimeError("frozen REPORT result checksum is missing")
             if _json_sha256(self._report_result) != self._report_result_checksum:
@@ -434,6 +488,8 @@ class QuantAwareRoutingPlane:
                 "report_result_sha256": self._report_result_checksum,
                 "report_consumed": self._report_consumed,
                 "verdict": self._final_verdict,
+                "router_state_sha256": self._router_checksum,
+                "plane_state": self.state,
             }
             if _json_sha256(final_state) != self._final_state_checksum:
                 raise RuntimeError("frozen final promotion state changed")
@@ -570,14 +626,42 @@ class QuantAwareRoutingPlane:
     def select(self, query_vectors: Mapping[Any, np.ndarray]) -> Dict[str, Any]:
         """Run and freeze the only promotion decision on SELECT."""
 
-        if self._selection_frozen:
-            raise RuntimeError("SELECT promotion is already frozen")
+        with self._state_lock:
+            if self._state != "ANCHOR_READY":
+                raise RuntimeError(f"SELECT is unavailable in plane state {self._state}")
         canonical_vectors = _canonical_query_vectors(query_vectors)
         expected = set(self.split.select_ids)
-        if set(canonical_vectors) != expected:
-            raise ValueError("SELECT evaluation requires exactly the frozen SELECT query IDs")
+        _validate_phase_query_vectors(
+            canonical_vectors,
+            expected,
+            self.document_embeddings.shape[1],
+            "SELECT",
+        )
         if expected & set(self.split.report_ids):
             raise RuntimeError("split corruption: SELECT overlaps REPORT")
+        with self._state_lock:
+            if self._state != "ANCHOR_READY":
+                raise RuntimeError(f"SELECT is unavailable in plane state {self._state}")
+            self._state = "SELECTING"
+        try:
+            return self._run_select(canonical_vectors, expected)
+        except Exception:
+            self._rollback_select_transition()
+            raise
+
+    def _run_select(
+        self,
+        canonical_vectors: Mapping[str, np.ndarray],
+        expected: set,
+    ) -> Dict[str, Any]:
+        """Execute one reserved SELECT transition."""
+
+        self._assert_adapters_frozen()
+        router_checksum = self.router.freeze()
+        if self._router_checksum is None:
+            self._router_checksum = router_checksum
+        elif router_checksum != self._router_checksum:
+            raise RuntimeError("router state changed between SELECT attempts")
         self._assert_adapters_frozen()
         self.router.reset_usage("SELECT")
 
@@ -710,30 +794,79 @@ class QuantAwareRoutingPlane:
             },
             "single_best_route": best_route,
             "single_route_select_scores": route_ablation_scores,
+            "router_state_sha256": self._router_checksum,
         }
+        self._assert_adapters_frozen()
         frozen_view_checksums = self._freeze_views()
         self._select_decision["adapted_document_view_sha256"] = frozen_view_checksums
         self._select_decision_checksum = _json_sha256(self._select_decision)
-        self._router_checksum = self.router.freeze()
         self._selection_frozen = True
         self._final_verdict = "SELECT-PASSED" if select_gate_passed else "FAIL-CLOSED-PENDING-REPORT"
+        self._assert_decisions_frozen()
+        self._assert_adapters_frozen()
+        with self._state_lock:
+            if self._state != "SELECTING":
+                raise RuntimeError(f"invalid SELECT finalization state {self._state}")
+            self._state = "SELECT_FROZEN"
         return json.loads(json.dumps(self._select_decision))
+
+    def _rollback_select_transition(self) -> None:
+        """Rollback transient SELECT data while retaining the frozen router."""
+
+        self.router.reset_usage("SELECT")
+        self._phase_query_ids["SELECT"] = set()
+        self._view_cache.clear()
+        self._view_cache_checksums = None
+        self._selection_frozen = False
+        self._select_decision = None
+        self._select_decision_checksum = None
+        self._report_consumed = False
+        self._report_result = None
+        self._report_result_checksum = None
+        self._final_state_checksum = None
+        self._final_verdict = "UNSELECTED"
+        with self._state_lock:
+            self._state = "ANCHOR_READY"
 
     def report(self, query_vectors: Mapping[Any, np.ndarray]) -> Dict[str, Any]:
         """Evaluate the frozen plane once; REPORT can only downgrade degeneracy."""
 
-        if not self._selection_frozen or self._select_decision is None:
-            raise RuntimeError("SELECT must be frozen before REPORT")
-        if self._report_consumed:
-            raise RuntimeError("REPORT split has already been consumed")
+        with self._state_lock:
+            if self._state != "SELECT_FROZEN":
+                raise RuntimeError(f"REPORT is unavailable in plane state {self._state}")
         self._assert_decisions_frozen()
         canonical_vectors = _canonical_query_vectors(query_vectors)
         expected = set(self.split.report_ids)
-        if set(canonical_vectors) != expected:
-            raise ValueError("REPORT evaluation requires exactly the frozen REPORT query IDs")
+        _validate_phase_query_vectors(
+            canonical_vectors,
+            expected,
+            self.document_embeddings.shape[1],
+            "REPORT",
+        )
         self._assert_adapters_frozen()
-        self._report_consumed = True
-        self._phase_query_ids["REPORT"] = set(expected)
+        with self._state_lock:
+            if self._state != "SELECT_FROZEN":
+                raise RuntimeError(f"REPORT is unavailable in plane state {self._state}")
+            self._state = "REPORTING"
+            self._report_consumed = True
+            self._phase_query_ids["REPORT"] = set(expected)
+        try:
+            return self._run_report(canonical_vectors)
+        except Exception as exc:
+            self._finalize_report_failure(exc)
+            raise
+
+    def _run_report(
+        self,
+        canonical_vectors: Mapping[str, np.ndarray],
+    ) -> Dict[str, Any]:
+        """Execute one atomically reserved REPORT transition."""
+
+        # REPORT is already atomically reserved and therefore intentionally has
+        # no result yet.  Verify the frozen SELECT decision here; public readers
+        # remain blocked while the plane is in REPORTING.
+        self._assert_select_frozen()
+        self._assert_adapters_frozen()
         self.router.reset_usage("REPORT")
 
         no_route = self._evaluate(canonical_vectors, self.split.report_ids, policy="no_route")
@@ -774,10 +907,11 @@ class QuantAwareRoutingPlane:
         binding_passed = len(binding_routes) >= self.config.min_report_routes
         if not binding_passed:
             verdict = "DEGENERATE"
-        elif self.select_gate_passed:
+        elif bool(self._select_decision.get("select_gate_passed")):
             verdict = "PROMOTED"
         else:
             verdict = "FAIL-CLOSED"
+        self._assert_adapters_frozen()
         self._final_verdict = verdict
         self._report_result = {
             "record_type": "rung16_frozen_report",
@@ -809,9 +943,42 @@ class QuantAwareRoutingPlane:
                 "report_result_sha256": self._report_result_checksum,
                 "report_consumed": self._report_consumed,
                 "verdict": self._final_verdict,
+                "router_state_sha256": self._router_checksum,
+                "plane_state": "FINALIZED",
             }
         )
+        with self._state_lock:
+            if self._state != "REPORTING":
+                raise RuntimeError(f"invalid REPORT finalization state {self._state}")
+            self._state = "FINALIZED"
+        self._assert_decisions_frozen()
         return json.loads(json.dumps(self._report_result))
+
+    def _finalize_report_failure(self, exc: Exception) -> None:
+        """Consume a failed REPORT attempt and preserve a terminal fail-closed record."""
+
+        self.router.reset_usage("REPORT")
+        self._final_verdict = "FAIL-CLOSED"
+        self._report_result = {
+            "record_type": "rung16_report_failure",
+            "verdict": "FAIL-CLOSED",
+            "report_is_descriptive_not_promotional": True,
+            "reason": "report_evaluation_exception",
+            "error_type": type(exc).__name__,
+        }
+        self._report_result_checksum = _json_sha256(self._report_result)
+        self._final_state_checksum = _json_sha256(
+            {
+                "select_decision_sha256": self._select_decision_checksum,
+                "report_result_sha256": self._report_result_checksum,
+                "report_consumed": self._report_consumed,
+                "verdict": self._final_verdict,
+                "router_state_sha256": self._router_checksum,
+                "plane_state": "REPORT_FAILED_CLOSED",
+            }
+        )
+        with self._state_lock:
+            self._state = "REPORT_FAILED_CLOSED"
 
     def retrieve(
         self,
@@ -841,6 +1008,7 @@ class QuantAwareRoutingPlane:
     def provenance(self) -> Dict[str, Any]:
         """Return JSON-safe immutable promotion and leakage provenance."""
 
+        state = self._require_stable_state()
         self._assert_decisions_frozen()
         self._assert_adapters_frozen()
         leakage_safe = (
@@ -867,7 +1035,8 @@ class QuantAwareRoutingPlane:
             "report": self._report_result,
             "report_consumed": self._report_consumed,
             "leakage_safe": bool(leakage_safe),
-            "verdict": self.verdict,
+            "verdict": self._final_verdict,
+            "plane_state": state,
         }
         return json.loads(json.dumps(provenance))
 
@@ -1087,6 +1256,28 @@ def _as_matrix(value: Any, name: str) -> np.ndarray:
 
 def _canonical_query_vectors(query_vectors: Mapping[Any, np.ndarray]) -> Dict[str, np.ndarray]:
     return {canonicalize_id(query_id): np.asarray(vector, dtype=np.float32) for query_id, vector in query_vectors.items()}
+
+
+def _validate_phase_query_vectors(
+    query_vectors: Mapping[str, np.ndarray],
+    expected_ids: set,
+    dimension: int,
+    phase: str,
+) -> None:
+    if set(query_vectors) != expected_ids:
+        raise ValueError(
+            f"{phase} evaluation requires exactly the frozen {phase} query IDs"
+        )
+    for query_id in sorted(expected_ids):
+        vector = np.asarray(query_vectors[query_id], dtype=np.float32)
+        if (
+            vector.ndim != 1
+            or vector.shape[0] != int(dimension)
+            or not np.all(np.isfinite(vector))
+        ):
+            raise ValueError(f"invalid {phase} query vector for {query_id}")
+        if float(np.linalg.norm(vector)) <= 0.0:
+            raise ValueError(f"{phase} query vector must be non-zero for {query_id}")
 
 
 def _ids_sha256(ids: Iterable[Any]) -> str:
