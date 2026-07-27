@@ -1,11 +1,62 @@
 import math
+import threading
 import unittest
+from functools import partial
 from unittest.mock import MagicMock
 
 from adapter_router import AdapterRouter
 
 
+class _BlockingIterable:
+    def __init__(self, entered, release):
+        self.entered = entered
+        self.release = release
+
+    def __iter__(self):
+        self.entered.set()
+        if not self.release.wait(timeout=5):
+            raise TimeoutError("test did not release blocked centroid conversion")
+        yield 0.0
+        yield 1.0
+
+
+class _BlockingFloat:
+    def __init__(self, entered, release, value):
+        self.entered = entered
+        self.release = release
+        self.value = value
+
+    def __float__(self):
+        self.entered.set()
+        if not self.release.wait(timeout=5):
+            raise TimeoutError("test did not release blocked margin conversion")
+        return self.value
+
+
 class TestAdapterRouter(unittest.TestCase):
+    def _freeze_during_mutation_preparation(self, router, mutation, entered, release):
+        errors = []
+
+        def mutate():
+            try:
+                mutation()
+            except Exception as exc:
+                errors.append(exc)
+
+        worker = threading.Thread(target=mutate)
+        worker.start()
+        try:
+            self.assertTrue(entered.wait(timeout=2))
+            frozen_checksum = router.freeze()
+        finally:
+            release.set()
+            worker.join(timeout=2)
+        self.assertFalse(worker.is_alive())
+        self.assertEqual(len(errors), 1)
+        self.assertIsInstance(errors[0], RuntimeError)
+        self.assertEqual(str(errors[0]), "adapter router is frozen")
+        self.assertEqual(router.state_checksum(), frozen_checksum)
+
     def test_legacy_nearest_centroid_and_empty_fallback(self):
         router = AdapterRouter(logger=MagicMock())
         fallback = router.select([1.0, 0.0], fallback=lambda: "default")
@@ -88,6 +139,44 @@ class TestAdapterRouter(unittest.TestCase):
             router.register("y", [0.0, 1.0], "y")
         with self.assertRaises(RuntimeError):
             router.register_global([1.0, 1.0], "global-2")
+
+    def test_freeze_is_atomic_with_route_registration(self):
+        for registration in ("specialist", "global"):
+            with self.subTest(registration=registration):
+                router = AdapterRouter(logger=MagicMock())
+                entered = threading.Event()
+                release = threading.Event()
+                centroid = _BlockingIterable(entered, release)
+                if registration == "specialist":
+                    mutation = partial(router.register, "late", centroid, "adapter")
+                else:
+                    mutation = partial(router.register_global, centroid, "adapter")
+
+                self._freeze_during_mutation_preparation(
+                    router,
+                    mutation,
+                    entered,
+                    release,
+                )
+                with self.assertRaises(ValueError):
+                    router.select([0.0, 1.0])
+
+    def test_freeze_is_atomic_with_margin_mutation(self):
+        router = AdapterRouter(margin_delta=0.2, logger=MagicMock())
+        entered = threading.Event()
+        release = threading.Event()
+        value = _BlockingFloat(entered, release, 0.4)
+
+        def mutate_margin():
+            router.margin_delta = value
+
+        self._freeze_during_mutation_preparation(
+            router,
+            mutate_margin,
+            entered,
+            release,
+        )
+        self.assertEqual(router.margin_delta, 0.2)
 
 
 if __name__ == "__main__":

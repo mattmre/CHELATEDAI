@@ -60,19 +60,26 @@ class AdapterRouter:
 
     @property
     def margin_delta(self) -> float:
-        return self._margin_delta
+        with self._lock:
+            return self._margin_delta
 
     @margin_delta.setter
     def margin_delta(self, value: float) -> None:
-        if self._frozen:
-            raise RuntimeError("adapter router is frozen")
-        if float(value) < 0.0:
+        with self._lock:
+            if self._frozen:
+                raise RuntimeError("adapter router is frozen")
+        converted = float(value)
+        if converted < 0.0:
             raise ValueError("margin_delta must be non-negative")
-        self._margin_delta = float(value)
+        with self._lock:
+            if self._frozen:
+                raise RuntimeError("adapter router is frozen")
+            self._margin_delta = converted
 
     def register(self, key: str, centroid: Iterable[float], adapter: Any) -> None:
-        if self._frozen:
-            raise RuntimeError("adapter router is frozen")
+        with self._lock:
+            if self._frozen:
+                raise RuntimeError("adapter router is frozen")
         if str(key) == "global":
             raise ValueError("'global' is reserved; use register_global()")
         vector = np.array(list(centroid), dtype=float)
@@ -81,19 +88,24 @@ class AdapterRouter:
         if not np.all(np.isfinite(vector)):
             raise ValueError("centroid must contain only finite values")
         with self._lock:
+            if self._frozen:
+                raise RuntimeError("adapter router is frozen")
             self._routes[key] = (vector, adapter)
 
     def register_global(self, centroid: Iterable[float], adapter: Any) -> None:
         """Register the single-global adapter used by the margin fallback."""
 
-        if self._frozen:
-            raise RuntimeError("adapter router is frozen")
+        with self._lock:
+            if self._frozen:
+                raise RuntimeError("adapter router is frozen")
         vector = np.array(list(centroid), dtype=float)
         if vector.ndim != 1 or vector.size == 0:
             raise ValueError("global centroid must be a non-empty 1D vector")
         if not np.all(np.isfinite(vector)):
             raise ValueError("global centroid must contain only finite values")
         with self._lock:
+            if self._frozen:
+                raise RuntimeError("adapter router is frozen")
             self._global_route = (vector, adapter)
 
     def freeze(self) -> str:
@@ -105,7 +117,8 @@ class AdapterRouter:
 
     @property
     def frozen(self) -> bool:
-        return self._frozen
+        with self._lock:
+            return self._frozen
 
     def state_checksum(self) -> str:
         """Hash promotion-critical routing state, excluding usage counters."""
@@ -149,6 +162,7 @@ class AdapterRouter:
         with self._lock:
             routes = list(self._routes.items())
             global_route = self._global_route
+            margin_delta = self._margin_delta
         if not routes and global_route is None:
             if fallback is None:
                 raise ValueError("no adapters registered and no fallback provided")
@@ -184,7 +198,7 @@ class AdapterRouter:
             global_centroid, global_adapter = global_route
             global_score = self._cosine(query, global_centroid, query_norm)
             margin = best_score - global_score if routes else None
-            if not routes or (margin is not None and margin < self.margin_delta):
+            if not routes or (margin is not None and margin < margin_delta):
                 best_key = "global"
                 best_score = global_score
                 best_adapter = global_adapter
@@ -198,7 +212,7 @@ class AdapterRouter:
                 "route_count": len(routes),
                 "global_score": global_score,
                 "margin": margin,
-                "margin_delta": self.margin_delta,
+                "margin_delta": margin_delta,
                 "used_margin_fallback": used_margin_fallback,
             },
         )
@@ -211,7 +225,7 @@ class AdapterRouter:
             route_count=len(routes),
             global_score=global_score,
             margin=margin,
-            margin_delta=self.margin_delta,
+            margin_delta=margin_delta,
             used_margin_fallback=used_margin_fallback,
             usage_scope=usage_scope,
             level="DEBUG",
