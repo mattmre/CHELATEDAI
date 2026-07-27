@@ -1,4 +1,5 @@
 """Offline unittest coverage for the rung-13 Evidence-DAG disintegration loop."""
+
 from __future__ import annotations
 
 import json
@@ -8,7 +9,13 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from convergence_monitor import ConvergenceMonitor
-from evidence_dag import EdgeType, EvidenceDAG, NodeType, validate_evidence_dag
+from evidence_dag import (
+    EdgeType,
+    EvidenceDAG,
+    EvidenceEdge,
+    NodeType,
+    validate_evidence_dag,
+)
 from evidence_dag_disintegration import (
     detector_signals_from_outputs,
     reanneal_edges,
@@ -49,9 +56,7 @@ class TestEvidenceDagDisintegration(unittest.TestCase):
     def test_flagged_edge_is_pruned_healthy_edges_remain_and_dag_is_valid(self):
         dag = _dag()
         signals = detector_signals_from_outputs(dag, _isomer_output(collapsed=True))
-        record = dag.prune_edges(
-            lambda edge: score_edge_fitness(edge, signals), threshold=0.5
-        )
+        record = dag.prune_edges(lambda edge: score_edge_fitness(edge, signals), threshold=0.5)
 
         self.assertEqual(record["edges_before"], 4)
         self.assertEqual(record["edges_after"], 3)
@@ -64,9 +69,7 @@ class TestEvidenceDagDisintegration(unittest.TestCase):
         dag = _dag()
         before = dag.to_dict()
         signals = detector_signals_from_outputs(dag, _isomer_output(collapsed=False))
-        record = dag.prune_edges(
-            lambda edge: score_edge_fitness(edge, signals), threshold=0.5
-        )
+        record = dag.prune_edges(lambda edge: score_edge_fitness(edge, signals), threshold=0.5)
         self.assertEqual(record["pruned"], [])
         self.assertEqual(record["edges_before"], record["edges_after"])
         self.assertEqual(dag.to_dict(), before)
@@ -76,15 +79,11 @@ class TestEvidenceDagDisintegration(unittest.TestCase):
         dag = _dag()
         before = dag.to_dict()
         signals = detector_signals_from_outputs(dag, _isomer_output(collapsed=True))
-        dry = dag.prune_edges(
-            lambda edge: score_edge_fitness(edge, signals), threshold=0.5, dry_run=True
-        )
+        dry = dag.prune_edges(lambda edge: score_edge_fitness(edge, signals), threshold=0.5, dry_run=True)
         self.assertEqual(dag.to_dict(), before)
         self.assertEqual(dag.pruned_edge_ledger, [])
 
-        actual = dag.prune_edges(
-            lambda edge: score_edge_fitness(edge, signals), threshold=0.5
-        )
+        actual = dag.prune_edges(lambda edge: score_edge_fitness(edge, signals), threshold=0.5)
         self.assertEqual(dry["scores"], actual["scores"])
         self.assertEqual(dry["pruned"], actual["pruned"])
         self.assertEqual(dry["edges_after"], actual["edges_after"])
@@ -95,24 +94,16 @@ class TestEvidenceDagDisintegration(unittest.TestCase):
         monitor.record_loss(1.0)
         monitor.record_loss(1.0)
         monitor.record_loss(1.0)
-        unstable = detector_signals_from_outputs(
-            dag, _isomer_output(collapsed=False), {"cl1": monitor.get_summary()}
-        )
-        prune = dag.prune_edges(
-            lambda edge: score_edge_fitness(edge, unstable), threshold=0.5
-        )
+        unstable = detector_signals_from_outputs(dag, _isomer_output(collapsed=False), {"cl1": monitor.get_summary()})
+        prune = dag.prune_edges(lambda edge: score_edge_fitness(edge, unstable), threshold=0.5)
         self.assertEqual(len(prune["pruned"]), 1)
 
         self.assertTrue(monitor.record_loss(1.0))
-        recovered = detector_signals_from_outputs(
-            dag, _isomer_output(collapsed=False), {"cl1": monitor.get_summary()}
-        )
+        recovered = detector_signals_from_outputs(dag, _isomer_output(collapsed=False), {"cl1": monitor.get_summary()})
         # The "recovery" here is a stable early-stop plateau (converged=True with a
         # flat loss), which the disintegration doc treats as stable/healthy. Assert
         # that semantics explicitly so the test name is not read as loss-improvement.
-        self.assertEqual(
-            recovered["provenance"]["convergence_monitor"]["states"]["cl1"], "converged"
-        )
+        self.assertEqual(recovered["provenance"]["convergence_monitor"]["states"]["cl1"], "converged")
         reanneal = reanneal_edges(dag, score_edge_fitness, 0.5, recovered)
         self.assertEqual(len(reanneal["reannealed"]), 1)
         self.assertEqual(len(dag.edges), 4)
@@ -130,9 +121,7 @@ class TestEvidenceDagDisintegration(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "rung13.json"
-            artifact = write_disintegration_artifact(
-                str(path), prune, reanneal, detector_provenance=low["provenance"]
-            )
+            artifact = write_disintegration_artifact(str(path), prune, reanneal, detector_provenance=low["provenance"])
             persisted = json.loads(path.read_text(encoding="utf-8"))
         self.assertEqual(persisted, artifact)
         self.assertTrue(artifact["pruned"])
@@ -177,6 +166,39 @@ class TestEvidenceDagDisintegration(unittest.TestCase):
         self.assertEqual(dag.to_dict(), before_edges)
         self.assertEqual(dag.pruned_edge_ledger, before_ledger)
 
+    def test_reanneal_rejects_an_invalid_dag_before_scoring(self):
+        dag = _dag()
+        dag.prune_edges(
+            lambda edge: 0.0 if edge.src == "q1" else 1.0,
+            threshold=0.5,
+        )
+        dag.add_edge("q2", "missing-cluster", EdgeType.RETRIEVED_IN)
+        before_edges = dag.to_dict()
+        before_ledger = dag.pruned_edge_ledger
+        scorer = MagicMock(return_value=1.0)
+
+        with self.assertRaisesRegex(ValueError, "cannot re-anneal on an invalid EvidenceDAG"):
+            reanneal_edges(dag, scorer, 0.5, {})
+
+        scorer.assert_not_called()
+        self.assertEqual(dag.to_dict(), before_edges)
+        self.assertEqual(dag.pruned_edge_ledger, before_ledger)
+
+    def test_reanneal_keeps_an_individually_invalid_ledger_edge_pruned(self):
+        dag = EvidenceDAG()
+        dag.add_node("q1", NodeType.QUERY)
+        dag.add_node("cl1", NodeType.CLUSTER)
+        dag.add_edge("q1", "cl1", EdgeType.RETRIEVED_IN)
+        dag.prune_edges(lambda _edge: 0.0, threshold=0.5)
+        dag._nodes.pop("q1")
+        self.assertEqual(validate_evidence_dag(dag), [])
+
+        record = reanneal_edges(dag, lambda _edge, _signals: 1.0, 0.5, {})
+
+        self.assertEqual(record["reannealed"], [])
+        self.assertEqual(len(record["skipped_invalid"]), 1)
+        self.assertEqual(len(dag.pruned_edge_ledger), 1)
+
     def test_duplicate_edges_are_all_reannealed(self):
         dag = EvidenceDAG()
         dag.add_node("q1", NodeType.QUERY)
@@ -204,9 +226,7 @@ class TestFailClosedRegressionSurface(unittest.TestCase):
     """Load-bearing claim: absent / unmatched / immature evidence can NEVER prune."""
 
     def _prune_count(self, dag, signals):
-        record = dag.prune_edges(
-            lambda edge: score_edge_fitness(edge, signals), threshold=0.5
-        )
+        record = dag.prune_edges(lambda edge: score_edge_fitness(edge, signals), threshold=0.5)
         return record["pruned"]
 
     def test_empty_isomer_output_prunes_nothing(self):
@@ -236,9 +256,7 @@ class TestFailClosedRegressionSurface(unittest.TestCase):
         monitor = ConvergenceMonitor(patience=3, min_epochs=5)
         monitor.record_loss(1.0)
         monitor.record_loss(1.0)  # total_epochs (2) < min_epochs (5)
-        signals = detector_signals_from_outputs(
-            dag, _isomer_output(collapsed=False), {"cl1": monitor.get_summary()}
-        )
+        signals = detector_signals_from_outputs(dag, _isomer_output(collapsed=False), {"cl1": monitor.get_summary()})
         self.assertEqual(
             signals["provenance"]["convergence_monitor"]["states"]["cl1"],
             "insufficient_evidence",
@@ -272,6 +290,7 @@ class TestFailClosedRegressionSurface(unittest.TestCase):
 
     def test_prune_rejects_a_mutating_scorer(self):
         dag = _dag()
+        before = dag.edges
 
         def mutating_scorer(edge):
             # A buggy caller that mutates the DAG mid-prune must be rejected, not
@@ -282,6 +301,51 @@ class TestFailClosedRegressionSurface(unittest.TestCase):
 
         with self.assertRaisesRegex(RuntimeError, "mutated the DAG edge set"):
             dag.prune_edges(mutating_scorer, threshold=0.5)
+        self.assertEqual(dag.edges, before)
+
+    def test_prune_rejects_same_length_edge_replacement(self):
+        dag = _dag()
+        before = dag.edges
+        mutated = False
+
+        def replacing_scorer(_edge):
+            nonlocal mutated
+            if not mutated:
+                mutated = True
+                dag._edges[-1] = EvidenceEdge("q1", "cl1", EdgeType.RETRIEVED_IN, {"replacement": True})
+            return 1.0
+
+        with self.assertRaisesRegex(RuntimeError, "mutated the DAG edge set"):
+            dag.prune_edges(replacing_scorer, threshold=0.5)
+        self.assertEqual(dag.edges, before)
+
+    def test_prune_scorer_exception_restores_edge_order(self):
+        dag = _dag()
+        before = dag.edges
+
+        def raising_scorer(_edge):
+            dag._edges.reverse()
+            raise RuntimeError("scorer failure")
+
+        with self.assertRaisesRegex(RuntimeError, "scorer failure"):
+            dag.prune_edges(raising_scorer, threshold=0.5)
+        self.assertEqual(dag.edges, before)
+
+    def test_dry_run_rejects_same_length_edge_reordering(self):
+        dag = _dag()
+        before = dag.edges
+        mutated = False
+
+        def reordering_scorer(_edge):
+            nonlocal mutated
+            if not mutated:
+                mutated = True
+                dag._edges.reverse()
+            return 1.0
+
+        with self.assertRaisesRegex(RuntimeError, "mutated the DAG edge set"):
+            dag.prune_edges(reordering_scorer, threshold=0.5, dry_run=True)
+        self.assertEqual(dag.edges, before)
 
 
 if __name__ == "__main__":
