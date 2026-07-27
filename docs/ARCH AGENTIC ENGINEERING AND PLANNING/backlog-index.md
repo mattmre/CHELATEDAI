@@ -8,6 +8,7 @@ Purpose: Track master backlog files across cycles.
 | AEP-2026-02-13 | 2026-02-13 | Full codebase | #5, #8, #9, #10, #11 | Copilot CLI | COMPLETE (55/55 resolved) | 2026-02-18 | [backlog-2026-02-13.md](backlog-2026-02-13.md) |
 | AEP-2026-04-30 | 2026-04-30 | Engine-Scope implementation planning and autonomous golden-default search redesign | `PR000` planning cycle plus follow-up implementation PRs | Codex | COMPLETE (implementation slices landed; no default promotion) | 2026-05-05 | [cycles/2026-04-30/backlog-2026-04-30.md](cycles/2026-04-30/backlog-2026-04-30.md) |
 | AEP-2026-05-01 | 2026-05-01 | Model-Scope implementation planning for true model hooks, sparse feature steering, segmented memory, and bounded overlay promotion | `PR000` planning cycle plus follow-up implementation PRs | Codex | COMPLETE (implementation slices landed; overlay promotion remains fail-closed) | 2026-05-05 | [cycles/2026-05-01/backlog-2026-05-01.md](cycles/2026-05-01/backlog-2026-05-01.md) |
+| AEP-20260727-7 | 2026-07-27 | Lossless preservation of the primary METHOD_DEV tree and all linked worktree, stash, recovery, experiment, and ignored residual surfaces before cleanup | `PR000` planning plus dependency-aware preservation PR/stack | Codex | IN PROGRESS (merge first; cleanup separately approved per item) |  | [cycles/2026-07-27/backlog-2026-07-27.md](cycles/2026-07-27/backlog-2026-07-27.md) |
 
 ## Session Logs
 | session | date | findings resolved | tests added | link |

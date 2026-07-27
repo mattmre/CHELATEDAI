@@ -6,8 +6,10 @@
 
 **Scientific claim status:** unconfirmed
 
-**Novelty claim status:** standalone phase-address novelty refuted; integrated
-systems interaction unresolved
+**Novelty claim status:** standalone phase-address novelty refuted;
+bounded `PRW-T1R` claim chart reconditioned to include the direct 1992
+Legendre-inner construction collision; specialist proof-equivalence/citation
+review and integrated systems interaction unresolved
 
 **Production integration:** prohibited
 
@@ -489,44 +491,196 @@ and benchmark exist.
 
 `RADER-1` is outside the first implementation slice.
 
-### PRW-T1 — sharp structured-bank error conjecture
+### PRW-T1 — nearest-only structured-bank conjecture (falsified in its
+tie-as-error event-union scope)
 
-This is the only newly formulated mathematical conjecture retained after the
-OPPW and binary-code reductions. For frozen overlap-one
-Legendre-by-`RM(1,3)` banks, let \(A_{\min}\) be the number of nearest wrong
-type/shift/mask states and let
-\(\beta_q(d)=\Pr[\operatorname{Bin}(d,q)\ge\lceil d/2\rceil]\).
-As \(p\) increases through primes congruent to `3 mod 4`, conjecture
+The historical conjecture retained only the 56 minimum-distance wrong-type
+competitors. For fixed \(q\in(0,1/2)\), primes \(p>7\) with
+\(p\equiv3\pmod4\), the frozen two-type/eight-layer `typed16` bank, and
 
 \[
-\Pr(\text{wrong-type bank error})
-=
-A_{\min}\beta_q(d_{\min})(1+o(1)).
+\beta_q(d)=\Pr[\operatorname{Bin}(d,q)\ge\lceil d/2\rceil],
+\qquad
+d_p=\frac{7p-1}{2},
 \]
 
-This requires fixing `q`, tie handling, transmitted-state averaging, and one
-explicit bank sequence, then proving both
+its nearest-only tie-as-error event-union interpretation was
 
 \[
-\sum_{i<j,\ i,j\text{ nearest}}\Pr(E_i\cap E_j)
-=o\!\left(A_{\min}\beta_q(d_{\min})\right)
+\Pr\!\left(\bigcup_{i\in W_p}E_i^{\ge}\right)
+=56\beta_q(d_p)(1+o(1)),
 \]
 
-and
+where \(E_i^{\ge}\) is the event that wrong-type competitor \(i\) ties or beats
+the transmitted codeword. The complete distance spectrum contains eight
+additional competitors at \(d_p+4\). Moreover,
 
 \[
-\sum_{d>d_{\min}}A_d\beta_q(d)
-=o\!\left(A_{\min}\beta_q(d_{\min})\right).
+\frac{8\beta_q(d_p+4)}{56\beta_q(d_p)}
+\longrightarrow
+\frac{[4q(1-q)]^2}{7}>0.
 \]
 
-Pairwise intersections becoming small one at a time is insufficient when the
-number of competitors grows with `p`. The first tests enumerate exact
-disagreement-set intersections at small primes, compare the ordinary union
-bound with Hunter's spanning-tree correction, and use preregistered importance
-sampling at larger primes. Failure of the ratio to stabilize, a non-negligible
-farther-distance contribution, or persistent clustering of nearest events
-kills `PRW-T1`. Even a proof would be a narrow decoder theorem, not a new
+Therefore the farther-shell little-\(o\) requirement and the nearest-only
+event-union normalization are false. The canonical status is
+`PRW-T1-NEAREST-ONLY-TE-EVENT-UNION: FALSIFIED`. This does not by itself settle
+an implementation's final class-error probability because the historical
+protocol did not freeze how equal-distance type ties are resolved.
+
+### PRW-T1R — reconditioned 64-state tie-as-error event-union theorem
+
+Let \(L_p\) contain the 56 competitors at \(d_p\) and the eight competitors at
+\(d_p+4\), and define
+
+\[
+B_p(q)=56\beta_q(d_p)+8\beta_q(d_p+4).
+\]
+
+For the exact domain above,
+
+\[
+\Pr\!\left(\bigcup_{i\in W_p}E_i^{\ge}\right)
+=B_p(q)(1+o(1)).
+\]
+
+The derivation fixes the bank's canonical index-zero transmitted state only to
+simplify notation. The explicit `A/B/C` Hamming-isometry actions act regularly
+on all `32p` transmitted states and preserve the wrong-type scope, distance,
+disagreement-intersection, pairwise-probability, and exact-event-union fields.
+The algebraic symmetry lemma in
+`docs/research/prime-ring-leading-shell-proof-2026-07.md`, Section 8, therefore
+extends the event-union theorem to every transmitted state in this exact frozen
+bank. The implemented decoder's type ordering is not invariant under the type
+swap, so this does not by itself extend the decoder corollary.
+
+Equivalently, the old nearest-only normalization converges to
+
+\[
+1+\frac{[4q(1-q)]^2}{7},
+\]
+
+not one. At \(q=0.20\), the omitted asymptotic correction is approximately
+`0.0585143`; the direct stable-tail value at \(p=4691\) is `0.0585072`.
+
+The proof has two finite certificates and two asymptotic steps:
+
+1. The complete wrong-type spectrum is
+   \[
+   \begin{array}{c|c}
+   \text{distance}&\text{multiplicity}\\ \hline
+   (7p-1)/2&56\\
+   (7p+7)/2&8\\
+   4p-4&p-8\\
+   4p&14(p-8)\\
+   4p+4&p-8\\
+   (9p-7)/2&8\\
+   (9p+1)/2&56
+   \end{array}
+   \]
+   and sums to \(16p\). Every nonleading state is at least
+   \(4p-4=d_p+(p-7)/2\) away. Standard binomial-tail bounds therefore make
+   their \(O(p)\)-state total \(o(B_p(q))\).
+2. The 64 leading states have exactly five pair classes. Their disagreement-set
+   intersection sizes and multiplicities are
+   \[
+   \left(\frac{3p-5}{2},84\right),
+   \left(\frac{3p-1}{2},1344\right),
+   \left(\frac{3p+3}{2},112\right),
+   \left(\frac{3p+3}{2},448\right),
+   \left(\frac{3p+3}{2},28\right),
+   \]
+   totaling \(\binom{64}{2}=2016\) pairs.
+3. For every class, partition flips into the common disagreement region and
+   the two exclusive regions. After division by \(p\), their sizes converge to
+   \(3/2,2,2\). A single leading event has rate
+   \(I_q=(7/2)D(1/2\|q)\). Its unique minimizer in the three-region
+   representation is \((1/2,1/2,q)\), which violates the second event
+   constraint whenever \(q<1/2\). Strict convexity of binary relative entropy
+   gives a joint rate \(J_q>I_q\). Hence every leading pair intersection is
+   \(o(B_p(q))\); the number of pairs is fixed.
+4. The first Bonferroni inequalities combine the vanishing nonleading mass and
+   pair-intersection sum to prove the displayed event-union theorem. Exact
+   finite pair-sum ratios at \(q=0.20\) fall from `0.290614` at \(p=11\), to
+   `0.0202668` at \(p=19\), `0.000425626` at \(p=31\), and approximately
+   `9.58e-6` at \(p=43\).
+
+Canonical status:
+
+- `PRW-T1R-TE-EVENT-UNION: CLOSED_INTERNAL_ANALYTIC_SCOPE`;
+- `PRW-T1D-CANONICAL-FIRST-TYPE0:
+  ANALYTIC_TIE_COROLLARY_COMPLETE`;
+- `PRW-T1D-ALL-STATES:
+  ANALYTIC_TIE_COROLLARY_COMPLETE_CURRENT_FLOAT_FFT_LINKAGE_FAILED`;
+- evidence remains `METHOD_DEV`, promotion is false, and novelty is not
+  established.
+
+The 2026-07-26 production-path audit constructed all 56 leading midpoint
+observations for both truth types at `p in {11,19,31}`. Exact Hamming and
+direct dot-product scoring produced `336/336` exact cross-type ties. The
+current float-FFT scorer, whose tie helper requires bit-exact floating
+equality, retained only `117/336` exact ties; margins up to
+`3.3306690738754696e-16` sometimes changed the selected type. Therefore the
+strict/inclusive theorem remains an abstract exact-Hamming corollary and must
+not be reported as a theorem about the current production scoring path.
+
+The theorem does not automatically extend to \(q=q_p\to1/2\), a growing layer
+count, arbitrary signatures or masks, other bank families, or a decoder whose
+tie policy has not been fixed. Even if the final decoder theorem is closed,
+this remains a narrow binary-code result rather than evidence for a new
 computing substrate.
+
+Convergence is especially nonuniform near \(q=1/2\). For example, at
+\(p=4691\) the nonleading-shell sum divided by \(B_p(q)\) is approximately
+`0.00834` at \(q=0.45\), but is still about `693` at \(q=0.49\). The latter
+does not contradict the pointwise fixed-\(q\) theorem; it prohibits presenting
+`p=4691` as a uniform finite-noise certificate.
+
+### PRW-T1D — canonical-first type-zero decoder corollary
+
+The experiment's production-path helper resolves an exact type-score tie in
+favor of the lowest canonical type ID. For the theorem's canonical transmitted
+state, whose type is zero, a wrong-type state must therefore strictly beat the
+transmitted codeword. Define
+
+\[
+\gamma_q(d)=\Pr[\operatorname{Bin}(d,q)>d/2],
+\qquad
+S_p(q)=56\gamma_q(d_p)+8\gamma_q(d_p+4).
+\]
+
+Then the canonical type-zero final class-decoder error satisfies
+
+\[
+\Pr(\text{decoded type}\ne0\mid\text{canonical type-zero truth})
+=S_p(q)(1+o(1)).
+\]
+
+The proof reuses `PRW-T1R`: strict leading intersections are subsets of the
+inclusive intersections and \(S_p(q)\) is a positive fixed-\(q\) fraction of
+\(B_p(q)\). The nontransmitted correct-type spectrum is
+
+\[
+(4p-4):(p-1),\qquad
+4p:14p,\qquad
+(4p+4):(p-1),\qquad
+8p:1.
+\]
+
+Its minimum is separated from \(d_p\) by \((p-7)/2\), so the probability that
+another correct-type state interferes is \(o(S_p(q))\). Finally, for even
+\(d_p\),
+
+\[
+\frac{S_p(q)}{B_p(q)}
+\longrightarrow \frac{q}{1-q}.
+\]
+
+At \(q=0.20\), canonical-first tie handling therefore retains asymptotically
+one quarter of the inclusive event-union leading constant. This closes only
+the canonical type-zero decoder corollary. With transmitted type one, the same
+deterministic ordering favors wrong type zero on ties. An all-state or balanced
+type theorem must explicitly combine that asymmetric policy with the missing
+all-state algebraic symmetry lemma.
 
 ### PRW-5 — later queue-conditioned correction
 
@@ -710,8 +864,8 @@ Close prior art covers every ingredient:
 Therefore primes, rotations, phase, codebooks, subspaces, associative memory,
 and queue-aware routing are not individually novel.
 
-The only candidate research contribution is the complete fail-closed
-composition:
+The complete fail-closed composition remains one candidate research
+contribution:
 
 > a constrained diagonal-quotient phase key that unlocks a separate semantic
 > payload bank, then participates in causal load-aware routing and reversible,
@@ -719,6 +873,18 @@ composition:
 
 Even that is a combination-novelty conjecture. A bounded search finding no
 identical paper is not proof of novelty or patent clearance.
+
+`PRW-T1R` is a second, much narrower mathematical candidate: the repaired
+64-state tie-as-error competitor-event union has an internally derived leading
+asymptotic for the frozen exact-Hamming bank. The bounded primary-source claim
+chart has now been performed and reconditioned to include the direct 1992
+Legendre-inner/`p`-ary-outer construction. It found no source in its declared
+search set stating the exact seven-shell/five-overlap relative event-union
+theorem, but absence from a bounded search is not novelty evidence.
+Independent proof/construction-equivalence review and specialist citation
+coverage remain required. Even if the theorem survives, it is a binary-code
+event-union result, not evidence for a new computing substrate or systems
+advantage.
 
 The phase-code portion itself is not combination-only or unresolved: it is both
 an OPPW representation and a direct instance of the known Legendre-inner,
@@ -757,6 +923,13 @@ subdomains, and beats matched known architectures.
 - If `PRW-3` fails, cut polarity layers.
 - If `PRW-4` fails, remove all special status from `4691`; retain the best
   ordinary length.
+- Replace the falsified 56-state `PRW-T1` normalization with `PRW-T1R` only in
+  its exact frozen tie-as-error event-union scope.
+- Do not call `PRW-T1R` a final decoder theorem until strict, adverse, or
+  randomized equal-distance ties are frozen and tested in the actual decoder.
+- Do not infer practical finite-prime accuracy near \(q=1/2\) from the
+  pointwise fixed-\(q\) asymptotic; convergence is not claimed uniform in
+  \(q\).
 - If the direct type lookup dominates, state that the phase carrier is useful
   only where a noisy distributed key is independently justified.
 - Do not open `PRW-5` until the isolated mechanism survives.

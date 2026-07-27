@@ -119,6 +119,61 @@ the comparator. Fifteen focused tests and an independent brute-force audit of
 all 511 nonempty labeled three-node graphs pass. This closes the bounded
 graph-specific lane negatively.
 
+## 2A. PRW-G2 — irreducible orbit-coded factor/hypergraph mesh
+
+### Status
+
+`BOUNDED_P7_ALGEBRAIC_SCREEN_COMPLETE / STATIC_ADVANTAGE_NOT_ESTABLISHED`.
+This is not a reopening of `PRW-G1`. Connected, cycle-consistent
+fixed-difference graphs remain closed because their scores reduce to a global
+phase plus fixed offsets. At `p=7`, constructed pair, three-way, frustrated,
+and query-interaction fixtures survive the necessary residual/reducibility
+checks; exact flat and factorized MAP agree; independent, shuffled-label,
+wrong-grouping, and matched-random controls pass; and no static advantage is
+established. `PRW-G2H` remains conditionally open because the current pairwise
+auxiliary construction is only an upper bound and no minimum auxiliary cost,
+compact orbit representation, or lower-work decoder advantage is proved.
+Stage 4 is blocked until that auxiliary/candidate gate is specified; it is not
+authorized merely by nonzero interaction residuals. `PRW-G2A` remains blocked.
+
+### Mechanism and falsifiable claim
+
+For candidate state \(h=(h_1,\ldots,h_n)\), use
+
+\[
+S(h\mid y,q)=\sum_v \ell_v(h_v;y_v,q)
+             +\sum_{A\in\mathcal F}\psi_A(h_A;q).
+\]
+
+The admissible sublanes are:
+
+- `PRW-G2P`: a pair factor with a nonzero double-centered interaction;
+- `PRW-G2H`: an arity-three factor with a nonzero highest-order
+  Möbius/ANOVA residual;
+- `PRW-G2Q`: query conditioning that changes an interaction rather than only
+  changing unary terms; and
+- explicitly noisy, frustrated, or multiple-latent-state variants for which
+  the `PRW-G1` reduction proof does not apply.
+
+The null is that an information-matched flattened code or matched generic
+factor model reproduces the decision, error, cost, and calibration behavior.
+The alternative requires a reproducible gain after charging factor
+descriptions, graph construction, oracle grouping, parameters, operations,
+wall time, and RSS. Required controls are independent nodes, explicit
+global-phase-plus-offset, flat same-information coding, shuffled factors,
+wrong grouping, and random factors.
+
+### First bounded gate
+
+Run exact enumeration only after `PRW-JO1` and, if nondegenerate, `PRW-A1`.
+Start with \(p\in\{7,11\}\), 3--6 nodes, factor arity at most 3, at most 8
+factors, and at most 200,000 joint assignments. Refuse any cell predicted to
+exceed 256 MiB peak memory, 25,000,000 scored operations, or 30 seconds. A
+static `PRW-G2` result must survive before opening adaptive `PRW-G2A`.
+
+The canonical hypotheses, controls, kill rules, and artifact contract are in
+`docs/research/prime-ring-orbit-plank-mesh-protocol-2026-07.md`.
+
 ## 3. PRW-H1 — multi-frequency phase signature
 
 ### Mechanism
@@ -402,13 +457,40 @@ prior.
 
 ## 8. Dependency and promotion order
 
-1. Validate matched PRW controls and finite code theory.
-2. Test `PRW-G1` and `PRW-H1` only on bounded synthetic cases.
-3. Treat pure `PRW-C1` permutation layering as algebraically closed; test only a
-   separately declared nonlinear or runtime-conditional mechanism.
-4. Run powered PRW mechanism tests only after resource review.
-5. Open `PRW-Q1` and `PRW-L1` only after real held-out retrieval survives.
-6. Treat `PRW-D1` as a null until a matched learned-dimension campaign exists.
+1. Retain the internally proved exact-Hamming `PRW-T1R` theorem and frozen
+   50/50 analytic tie corollary, but resolve the failed current float-FFT
+   production linkage through a declared numerical-tie contract and
+   exact-Hamming/direct/FFT boundary parity. Do not infer finite decoder error
+   from the leading-tail formulas.
+2. Treat the reconditioned primary-source chart as bounded literature
+   positioning only. It now includes the direct 1992 Legendre-inner
+   construction; independent proof/construction-equivalence and specialist
+   citation review remain required if publication novelty is pursued.
+3. Move the common latent-perturbation/common-channel controls ahead of new
+   mechanism claims so carrier comparisons share the same corruption law.
+4. Record `PRW-JO1` stacking/dimensionality as closed by exact flat identity.
+   Run known-design and unrestricted matched-work controls only for the
+   optional ordinary constrained-code residue.
+5. Before an A1 policy, compute a single full action-channel conjugacy over all
+   truths and freeze whether actions are physically selectable plus their
+   semantic/relabeling cost. Kill if actions are free global relabelings;
+   otherwise compare with matched random, cyclic, greedy, entropy-gain,
+   Chernoff/MaxEJS, and unrestricted actions.
+6. Treat the `PRW-G2` algebraic screen as complete: necessary pair/hyper/query
+   interactions exist, but static advantage is false.
+7. Before Stage 4, prove or bound pairwise auxiliary minimality for every
+   hyperfactor and name a concrete orbit-specific representation/decoder
+   advantage. Run one information-fair discriminator only if that survives.
+8. Open adaptive `PRW-G2A` only after a static factor survives; keep
+   information acquisition separate from computation scheduling.
+9. Then run the noisy/nonlinear quotient and broader transcript-inference
+   campaigns with matched generic learners, parameters, FLOPs, data, and
+   preregistered seeds.
+10. Run the bounded real-corpus gate before any relational-mesh retrieval
+    claim, and measure process-tree RSS plus checkpoint/kill/resume behavior
+    before expanding the campaign.
+11. Open `PRW-Q1` and `PRW-L1` only after real held-out retrieval survives.
+    Treat `PRW-D1` as a null until a matched learned-dimension campaign exists.
 
 No hypothesis may inherit support from a predecessor. Unit tests establish
 implementation correctness only.
@@ -454,3 +536,193 @@ opportunity charged explicitly, or (b) a tiny held-out learned/nonseparable
 payload comparison against flat and randomized controls after a fresh resource
 review. `PRW-Q1` and `PRW-L1` remain blocked by their held-out retrieval
 precondition.
+
+## 10. Current bounded execution boundary — 2026-07-25 RB-9
+
+This section supersedes the execution status in Section 9 without rewriting its
+historical 2026-07-24 record.
+
+The original 56-state nearest-only form of `PRW-T1` is falsified for the
+tie-as-error wrong-type competitor-event union. Eight states at
+\(d_p+4\), where \(d_p=(7p-1)/2\), contribute the positive limiting fraction
+\([4q(1-q)]^2/7\) relative to the nearest term. The reconditioned theorem uses
+
+\[
+B_p(q)=56\beta_q(d_p)+8\beta_q(d_p+4)
+\]
+
+and proves
+
+\[
+\Pr\!\left(\bigcup_i E_i^{\ge}\right)=B_p(q)(1+o(1))
+\]
+
+for fixed \(q\in(0,1/2)\), primes \(p>7\) congruent to `3 mod 4`, and every
+transmitted state in the frozen two-type/eight-layer `typed16` bank. The proof
+uses the complete seven-shell spectrum, a linear distance gap after the 64
+leading states, the five exact leading-pair classes, a strict joint
+large-deviation rate, Bonferroni, and an explicit regular Hamming-isometry
+action across all `32p` states.
+Status is `PRW-T1R-TE-EVENT-UNION: PROVED_ASYMPTOTIC_WITHIN_FROZEN_MODEL`.
+The production decoder's lowest-type-ID tie rule is resolved for canonical
+type-zero truth: its strict-win leading term is asymptotically
+`q/(1-q)` times the inclusive term, and correct-type competition is negligible.
+Type-one truth receives the adverse tie policy, so the balanced/all-state
+decoder theorem remains unresolved. The result is not licensed for
+\(q_p\to1/2\), growing layer count, arbitrary masks/signatures, or other banks.
+The formal proof note derives the state-equivariant event theorem; the remaining
+decoder gap is the asymmetric type-ordering path and transmitted-type mixture,
+not an event-union symmetry gap.
+
+Two systems screens also ran:
+
+- An exact modular-affine learner operating on raw `Z_7^4` coordinates
+  recovered the planted gauge-null rule on unseen gauges and withheld quotient
+  classes. Four independent rows are rank-deficient and the fifth exactly
+  identifies the five affine parameters. This is algebraic solver verification
+  in a favorable noiseless affine teacher/learner match, not evidence of
+  generic or neural invariance discovery.
+- A factorized Boolean learner given the correct causal groups reduced
+  finite training-search work on planted nonlinear transcript tasks. The
+  unrestricted flat learner chose a simpler direct-payload shortcut, while a
+  causal-only flat counterfactual also achieved shifted accuracy `1.0`. The
+  equal-complexity wrong-group factorization underperforms, so the remaining
+  signal is specifically the supplied correct grouping. True no-shift and
+  nuisance-remapping controls are now distinct and the run contract is hashed.
+  The factorized and flat learners have the same padded storage and inference
+  envelope. This is a candidate oracle structural-prior/search-cost signal
+  only, not an accuracy, capacity, compression, latency, or
+  inference-operation advantage.
+
+The remaining work is ranked by information value:
+
+1. Extend the tested canonical type-zero decoder corollary to type-one truth and
+   a frozen balanced mixture, then test the complete implemented decoder path.
+2. Build a fresh primary-source claim chart for the narrow `PRW-T1R` theorem.
+   Until then, novelty is unknown rather than established.
+3. Test noisy and nonlinear quotient tasks with a generic or neural learner,
+   matched parameters/FLOPs/data, and at least ten preregistered seeds.
+4. Test transcript inference with matched generic model classes, broader
+   teacher families, statistical seeds, and a nonconstructed shift; charge the
+   causal grouping as prior information.
+5. Compare carrier/control families through a common latent perturbation or
+   common binary channel. The present dense and sparse OPPW noise laws are not
+   matched.
+6. Run a bounded real-corpus pilot, beginning with cached SciFact and then
+   NFCorpus, using frozen embeddings and exact, ANN, direct-metadata,
+   product-key, random, payload-only, and OPPW controls at matched candidate,
+   storage, and latency budgets.
+7. Measure process-tree RSS and implement atomic content-addressed
+   checkpoint/kill/resume fault injection before any broader campaign.
+
+`PRW-Q1`, `PRW-L1`, queue-conditioned correction, and “living” waypoint state
+remain blocked until the real-retrieval gate survives. Do not rerun the refused
+11,520-cell grid, pure CRT/onion permutations, constructed quotient
+enumeration, the same local Rader benchmark, a third paid predicate bit alone,
+or a dense-versus-sparse comparison with mismatched corruption laws.
+
+## 11. Bounded RB-10 execution — 2026-07-25
+
+The bounded continuation separated four explicit hypotheses:
+
+1. `PRW-JO1`: fixed joint-plank orbit-spectrum coding;
+2. `PRW-A1`: posterior-guided plank acquisition;
+3. `PRW-G2`: irreducible orbit-coded pair and hypergraph factors; and
+4. `PRW-G2A`: adaptive factor acquisition after a static factor survives.
+
+The frozen type-mixture decoder prerequisite and bounded primary-source claim
+chart are complete. Three exact cells then executed sequentially under the
+shared RB-10 artifact/resource contract:
+
+- `PRW-JO1` at `p=11`, `K=2` reduces the aligned leading-shell multiplicity
+  from `56` to `19`, but 15 restricted schedules tie, complementary and
+  seeded-random controls match, and the stack is exactly the same longer code
+  as its flattened concatenation. Known-design and unrestricted matched-cost
+  controls remain open.
+- The `PRW-A1` action gate finds ten distinct ordered fixed-label fingerprints,
+  160 variable competitors, and crossovers in all 45 action pairs, while all
+  ten sorted distance multisets are identical. A posterior policy remains
+  blocked on semantic action/relabeling cost and exact generic controls.
+- `PRW-G2` at `p=7` contains constructed pair, three-way, frustrated, and
+  query-interaction residuals that do not collapse under the necessary
+  algebraic tests. Exact flat and factorized MAP agree, mandatory algebraic
+  controls match, and no static advantage is established. An information-fair
+  noisy recovery test is the only authorized next mesh step.
+- `PRW-G2A` remains blocked because no static mesh advantage exists.
+
+The retained evidence is
+`artifacts/method-dev/prime-ring/rb10-bounded-experiment-manifest.json` plus
+its three content-bound stage artifacts. Measured child peak RSS stayed near
+25 MiB, but the monitor is reactive rather than a hard kernel cap. These are
+bounded synthetic mechanics, not novelty, application, training, retrieval,
+cost, latency, or production evidence. The canonical protocol remains
+`docs/research/prime-ring-orbit-plank-mesh-protocol-2026-07.md`.
+
+## 12. Code-backed current boundary — 2026-07-26 RB-11
+
+This section supersedes Section 11's current queue without rewriting the RB-10
+execution history.
+
+### Decoder/theorem boundary
+
+The exact-Hamming proof note and 14 focused formula tests support
+`PRW-T1R-TE-EVENT-UNION` only as
+`CLOSED_INTERNAL_ANALYTIC_SCOPE`. The frozen type-zero strict, type-one
+inclusive, and 50/50 leading formulas are
+`ANALYTIC_TIE_COROLLARY_COMPLETE`.
+
+They do not bind the current float-FFT production decoder. For each
+`p in {11,19,31}`, both truth types, and all 56 leading competitors, a midpoint
+query was built with equal integer Hamming distance to the two competing types.
+Exact Hamming and direct dot-product scoring returned `336/336` ties. The
+float-FFT dense scorer returned only `117/336` bit-exact ties; roundoff margins
+up to `3.3306690738754696e-16` sometimes changed the winner. Therefore:
+
+- `CURRENT_FLOAT_FFT_PRODUCTION_LINKAGE = FAILED`;
+- the abstract event-union theorem is retained;
+- a numerical-tie contract plus exact/direct/FFT boundary parity is required
+  before production-decoder wording;
+- finite class-error importance sampling and a nonuniform near-half bound
+  remain separate validation tasks.
+
+### JO1/A1/G2 boundary
+
+- `PRW-JO1-STACKING-MECHANISM = CLOSED_BY_FLAT_IDENTITY`. All 38,610 checked
+  schedule/representative/competitor comparisons have identical summed-stack
+  and flattened Hamming distance. The `(1,5)` shell shaping is real but tied by
+  15 schedules and matched by complementary/random controls. Only ordinary
+  constrained-code comparison against missing known-design and unrestricted
+  matched-work controls remains optional.
+- `PRW-A1 = CONDITIONAL_OPEN`. Ten distinct fixed-label fingerprints and all
+  45 action-pair crossovers are validated. Equal radial distance multisets show
+  truth-local competitor permutations, but do not prove one global
+  prior-preserving state permutation or channel isometry. Full action-channel
+  conjugacy and real semantic action availability/cost are the next gate.
+- `PRW-G2 = NECESSARY_INTERACTIONS_VALIDATED / STATIC_ADVANTAGE_FALSE`.
+  Pair, strict three-way, and query-interaction residuals survive at `p=7` and
+  bounded `p=11` unit checks. Exact flat and factorized decisions agree.
+  `PRW-G2H` remains conditional only because
+  `minimal_auxiliary_cost_proved=false`; auxiliary minimality and a concrete
+  orbit-specific representation/decoder frontier precede Stage 4.
+- `PRW-G2A` remains blocked. Do not substitute ordinary message scheduling for
+  new-evidence acquisition; that is `PRW-G2S`.
+
+### Authoritative remaining queue
+
+0. Preserve the exact untracked source, tests, protocols, and four immutable
+   JSON artifacts in Git and publish the branch.
+1. Resolve the float-FFT numerical-tie contract and boundary parity.
+2. Independently audit the T1R proof and known-construction equivalence if a
+   paper is contemplated.
+3. Run the A1 global conjugacy/semantic-cost gate.
+4. Run the G2H auxiliary-minimality/named-candidate gate.
+5. Optionally close the ordinary JO1 code controls.
+6. Run noisy/nonlinear quotient, matched transcript, and common-channel
+   carrier/control experiments.
+7. Validate process-tree RSS and atomic checkpoint/kill/resume behavior.
+8. Run the bounded flat real-corpus pilot before any relational mesh.
+
+Do not rerun p=11 algebra alone, open G2A, scale primes/meshes, or revive
+onion/CRT/harmonic claims before these discriminators. No current result
+supports AI/RAG utility, lower training cost, production promotion, physical
+dimensionality, or a new computing substrate.

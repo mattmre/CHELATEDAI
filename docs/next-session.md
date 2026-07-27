@@ -77,7 +77,29 @@ not-in-scope items. They appear here so the next planner sees them.
 
 | ID | Item | Source PR | Why deferred |
 |----|------|-----------|--------------|
-| DS-PRW-001 | Full 11,520-cell prime-ring campaign, real-corpus retrieval, repeated hardware timing, and promotion-grade scientific evidence | bounded prime-ring method-development branch (local) | The bounded 12-cell `p=4691` raw-sanity campaign and separate 4091/4691 Rader harness executed on 2026-07-24. Raw sanity passed, but all utility claims remain inconclusive and the correlation-speed hypothesis failed locally. The full grid is now refused before construction at 1,059,556,800 modeled bytes; real-corpus, transcript-inference-cost, asymptotic farther-mass, and repeated-hardware tests remain. No novelty or production promotion is established. |
+| DS-PRW-001 | Full 11,520-cell prime-ring campaign, real-corpus retrieval, repeated hardware timing, and promotion-grade scientific evidence | bounded prime-ring method-development branch (local) | The bounded 12-cell `p=4691` raw-sanity campaign and separate 4091/4691 Rader harness executed on 2026-07-24. RB-9 on 2026-07-25 falsified the 56-state nearest-only event-union normalization and internally proved the repaired 64-state asymptotic for the frozen exact-Hamming bank. RB-10 derived the frozen 50/50 analytic tie corollary and ran 14 formula tests. RB-11 then found that all `336/336` constructed leading midpoints tie under exact-Hamming/direct scoring but only `117/336` remain bit-exact ties through the current float-FFT scorer; the analytic theorem survives, while production-decoder linkage fails pending a declared numerical-tie contract and boundary parity test. The bounded claim chart now includes the direct 1992 Legendre-inner construction collision; specialist proof-equivalence/citation review remains required. The full grid remains refused at 1,059,556,800 modeled bytes. After decoder scope is resolved, remaining work is generic noisy/nonlinear quotient learning, matched transcript tests, common-channel carrier controls, process-tree RSS/checkpoint/kill-resume, and then bounded flat real-corpus validation. No novelty or production promotion is established. |
+| DS-PRW-002 | Joint-plank orbit-spectrum coding, posterior-guided acquisition, and irreducible orbit-coded factor/hypergraph meshes (`PRW-JO1`, `PRW-A1`, `PRW-G2`, `PRW-G2A`) | RB-10 bounded implementation and execution (local) | Three exact cells executed on 2026-07-25 under a shared bounded artifact/resource contract and revalidated on 2026-07-26. `PRW-JO1` shell shaping is real but ties 15 restricted schedules plus complementary/random controls; stack and flat distances are identical for all 38,610 audited comparisons, closing stacking/dimensional novelty. Only an optional ordinary constrained-code comparison against known-design and unrestricted matched-cost controls remains. `PRW-A1` has fixed-label crossovers in all 45 action pairs and identical radial multisets, but this proves only truth-local relabelings—not one global prior-preserving channel isometry. Its next gate is full action-channel conjugacy plus real semantic action availability/cost; a policy runs only if that survives. `PRW-G2` has necessary pair/hyper/query interactions at `p=7` and bounded `p=11` unit evidence, while static advantage is false. Stage 4 is blocked until pairwise auxiliary minimality and a concrete orbit-specific representation/decoder advantage are specified. `PRW-G2A`, large meshes, and real relational retrieval remain unauthorized. |
+
+### Prime-ring METHOD_DEV resume order
+
+The exact RB-10/RB-11 source, tests, protocols, and four JSON evidence files
+exist only in the current dirty worktree. The manifest validates against the
+current bytes, but the files are untracked and the branch is unpublished.
+Before another experiment:
+
+1. Track, commit, and publish the exact tree without regenerating or editing the
+   four JSON artifacts.
+2. Preserve `PRW-T1R` as an internal exact-Hamming theorem and resolve the
+   production numerical-tie contract with exact-Hamming/direct/FFT boundary
+   parity. Do not call the current float-FFT path a proved decoder.
+3. Run the A1 global action-conjugacy/semantic-cost gate and the G2H
+   auxiliary-minimality/named-candidate gate. Kill only the sublane whose own
+   gate fails.
+4. Treat JO1 known/unrestricted controls as optional ordinary-code research,
+   not as evidence for stacking, dimensions, resonance, or living memory.
+5. Run noisy/nonlinear quotient, matched transcript, common-channel carrier,
+   process-tree RSS/checkpoint fault injection, and bounded flat real retrieval
+   in that order. Do not open G2A or relational retrieval before a static pass.
 
 ## Disposition — living / annealed post-bank corrector (H5)
 
@@ -135,6 +157,6 @@ priority Carried Debt entry; this log is the audit trail.
 
 ---
 
-**Last session**: 2026-07-24 — resumed the local prime-ring METHOD_DEV branch after restart; completed the bounded raw-sanity and Rader runs, exact quotient/runtime/intersection/orbit screens, and hostile-review hardening. The strongest surviving lead is finite-prime nearest-event decorrelation; farther-neighbor mass remains order-one and non-monotone. No novelty, production, or public-release claim is established. Prior: 2026-06-13 PR #267 Track 0 hygiene closed CD-247-01 / CD-247-02.
+**Last session**: 2026-07-26 — revalidated the local prime-ring METHOD_DEV work from source: 69/69 focused tests passed and the RB-10 manifest rebound successfully. The audit corrected an overclaim: the frozen 50/50 result is an internal exact-Hamming analytic tie corollary, not a validated production-decoder theorem. Across `p in {11,19,31}`, both truth types, and all 56 leading midpoint constructions, direct scoring preserved `336/336` exact ties while the current float-FFT path preserved `117/336`; tiny roundoff margins sometimes changed the winner. JO1 stacking is closed by exact flat identity while ordinary constrained-code controls remain optional; A1 remains conditional on global conjugacy and real action costs; G2H remains conditional on auxiliary/decoder-cost advantage and G2A is blocked. No new promotion-grade experiment ran. The exact code, tests, protocols, and artifacts remain local/untracked and must be preserved before continuation. Prior: 2026-06-13 PR #267 Track 0 hygiene closed CD-247-01 / CD-247-02.
 **2026-05-17**: PRs #249–#254 merged; 9 BHS Scope B audit Carried Debt rows (CD-MOD-001 through CD-TTS-002) closed.
-**Last validated by `check_block_flag.py`**: 2026-07-24 local exact-tree validation; `CLEAR`, zero carried-debt rows
+**Last validated by `check_block_flag.py`**: 2026-07-25 local exact-tree validation; `CLEAR`, zero carried-debt rows. The 2026-07-26 research audit did not change Carried Debt or rerun this gate.

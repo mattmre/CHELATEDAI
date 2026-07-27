@@ -1,5 +1,309 @@
 # Progress Log
 
+## RB-12 lossless preservation and merge campaign: 2026-07-27
+
+- User authorized a preservation-first GitHub merge campaign and explicitly
+  deferred all cleanup until after merge, with separate sign-off for each
+  worktree and residual item.
+- Read the planning-with-files and PR-management workflows, ran session
+  catch-up, reread the current planning/handoff surfaces, and recovered the
+  live starting topology.
+- Starting primary worktree:
+  `codex/prime-ring-onion-method-dev` at `41779be4`, 11 commits ahead of the
+  last observed `origin/main`, with the RB-11 modified/untracked inventory
+  intact.
+- Five linked worktrees were found:
+  `agent-build`, `h2-rerun`, `relaxed-wozniak-271e04`,
+  `semantic-cache-h1`, and `waypoint-recovery`. None has been removed, reset,
+  cleaned, regenerated, or otherwise mutated.
+- Read the complete ARCH-AEP overview, orchestrator briefing, workflow, and
+  tier-close checklist. The merge package must bind exact-head test evidence to
+  the authoritative tracker and cycle verification log, preserve one cohesive
+  PR theme, and record a phase summary; a push alone is not closure.
+- The first default-shell memory lookup failed because Windows selected the
+  access-denied WindowsApps PowerShell launcher. Recovery continued through the
+  installed PowerShell 7 runtime; the failed call made no repository change.
+- Opened ARCH-AEP cycle `AEP-20260727-7` with a scope lock, backlog, tracker,
+  verification log, and updated authoritative indexes/pointer. Cleanup is
+  represented as a deliberately blocked post-merge finding.
+- Refreshed GitHub: `origin/main` remains `34ce4b56`; the primary head is
+  exactly 11 commits ahead and zero behind, and no remote ref currently points
+  at `41779be4`.
+- Decomposed that stack:
+  - commits 1-4 are open PR #292 at exact head `eb750958`;
+  - commits 5-11 are the local semantic-cache/CRSV/prime-ring stack;
+  - the large deletion count is PR #292's reviewed untracking of raw campaign
+    data, whose blobs remain in Git history and local recovery archives.
+- Verified all three recovery bundles with `git bundle verify`; each contains a
+  complete history and resolves to its recorded branch head.
+- Recorded complete SHA-256 values for the four RB-10 JSONs and all recovery
+  packages. One hash command returned nonzero only because its glob also
+  selected the preserved v8 directory; all intended files were hashed and no
+  payload changed.
+- Completed the primary allowlist validation without regenerating retained
+  evidence:
+  - full prime-ring suite: `334/334` passed in 36.579 seconds;
+  - inherited semantic-cache/BCC1/CRSV suite: `202/202` passed in 112.197
+    seconds;
+  - workflow-equivalent offline full discovery: `3330/3330` passed, 11
+    skipped, in 144.059 seconds;
+  - Ruff lint passed; all 16 allowlisted new source/test files passed scoped
+    Ruff formatting; all 500 applicable Python files parsed under the Python
+    3.9 grammar; block flag was `CLEAR`; v3.3 schema drift and
+    `git diff --check` passed;
+  - an isolated wheel built successfully at 626,146 bytes with SHA-256
+    `053de47bba3ee76835459f2d6dd2e63238174759388b3ab9fdabce46f829925d`,
+    installed into a fresh external target, and imported all 26 newly
+    registered modules from outside the source tree.
+- The online smoke floor tier passed. The ceiling tier could not download its
+  Hugging Face model because this machine's TLS certificate chain was rejected.
+  TLS verification was not disabled. The first full discovery was interrupted
+  after its log proved it was repeatedly exhausting the same TLS retries; the
+  exact test process was verified and stopped, then identical discovery passed
+  against the existing offline cache. The clean hosted runner remains the
+  online acceptance authority.
+- Repository-wide `ruff format --check .` reports 258 historical files outside
+  this preservation diff. That non-CI baseline was not rewritten; doing so
+  would mix an unrelated mass-format change into evidence preservation.
+- Three isolated agents repaired the live comments on PRs #293-#295 and
+  committed only to their dedicated worktrees. Fresh independent reviewers
+  were then assigned before any push:
+  - PR #293 repair `b0d72d12` is not merge-ready. Tier B found a shallow
+    mutable-attribute snapshot, an unguarded/nontransactional re-anneal scorer,
+    and a bypassable sedimentation-mode precondition. The second repair
+    iteration is active.
+  - PR #295 repair `7a79b0ec` is not merge-ready pending finite-number
+    validation for routing margins and promotion thresholds discovered by
+    Tier B.
+  - PR #294 exact-head review is still pending at this checkpoint.
+- Current phase: explicit allowlist staging and independent PR repair/review.
+  No primary commit, push, PR mutation, merge, or cleanup has occurred yet.
+
+## RB-11 code-backed status reconciliation: 2026-07-26
+
+- Recovered the live dirty tree before editing any status surface:
+  - branch `codex/prime-ring-onion-method-dev` at `41779be4`, ahead of
+    `origin/main` by 11 commits;
+  - six modified planning/research files;
+  - four RB-10 JSONs, three research documents, eight source modules, and eight
+    focused test modules untracked;
+  - no RB-10 evidence is yet durable in a clean checkout or published branch.
+- Read the repository brutal-honesty rules, current task plan, findings,
+  progress, `docs/next-session.md`, hypothesis ledger, both prime-ring
+  protocols, code, tests, and artifact fields before changing the queue.
+- Code validation:
+  - `python -m unittest -v` over leading shell, JO1, A1, G2, RB-10 contract,
+    and sequential runner modules: 69 tests, all passed in 9.017 seconds;
+  - independent mesh audit: 24/24 JO1/A1/G2 tests passed;
+  - `validate_run_manifest(...)`: `True` against the retained manifest and all
+    three artifacts;
+  - all 38,610 audited fixed-stack versus flat Hamming distances match exactly.
+- Decoder boundary audit:
+  - first attempt failed before query construction because informal waypoint
+    ID `audit` violated the production ID contract;
+  - reran with `PRW-WP-AUDIT`;
+  - generated all 56 leading-shell midpoint observations for both truth types
+    at `p in {11,19,31}`;
+  - exact integer-Hamming and direct dot-product scoring returned `336/336`
+    cross-type ties;
+  - the current float-FFT dense path returned only `117/336` bit-exact ties;
+    remaining margins were at most `3.3306690738754696e-16` and sometimes
+    changed the winner;
+  - reconditioned status to internal exact-Hamming analytic theorem plus failed
+    current production linkage, rather than deleting the theorem.
+- Mesh/stack reconditioning:
+  - closed only JO1's stacking/dimensional mechanism; retained the ordinary
+    constrained-code residue until known/unrestricted controls decide it;
+  - retained A1 as conditional because truth-local multiset relabelings do not
+    yet prove a single global prior-preserving action isometry;
+  - retained G2H only on its unresolved pairwise-auxiliary minimum and named
+    representation/decoder-cost frontier; static advantage remains false and
+    G2A remains blocked.
+- Prior-art validation:
+  - checked the primary 1992 Nguyen--Györfi--Massey paper;
+  - confirmed its cyclic-shift `GF(p)` representation, Legendre inner distance
+    `(p+1)/2`, and outer-distance-times-inner-distance construction;
+  - added the direct construction collision to the bounded T1R claim chart
+    without claiming that it resolves the narrower event-union theorem.
+- Updated current planning, hypothesis, protocol, findings, progress, and
+  next-session surfaces. Historical dated sections remain in place and are
+  explicitly labeled as superseded where their current-status wording drifted.
+- Final post-edit validation:
+  - 69/69 focused tests passed again in 7.874 seconds;
+  - scoped Ruff check and Ruff format check passed;
+  - both changed Python files parsed with the Python 3.9 AST grammar;
+  - `git diff --check` passed;
+  - `scripts/check_block_flag.py` returned `CLEAR`, zero carried-debt rows;
+  - the untouched RB-10 manifest still returned `True`;
+  - the authoritative-surface stale-phrase scan returned no matches;
+  - the 11-file planning/protocol/proof/code/test status contract passed;
+  - the planning workflow correctly reports the campaign as still in progress
+    because the reconciled scientific queue remains open.
+- No experiment artifact was regenerated, no code mechanism was deleted, no
+  production behavior was changed, and no Git commit or publication occurred.
+
+## RB-10 bounded implementation and execution: 2026-07-25
+
+- Historical execution record. RB-11 above supersedes the former
+  production-decoder, Git-durability, and unconditional Stage-4 wording.
+- Closed the frozen all-state decoder prerequisite:
+  - extended `prime_ring_leading_shell.py` for type-one inclusive ties and the
+    frozen 50/50 mixture;
+  - updated
+    `docs/research/prime-ring-leading-shell-proof-2026-07.md`;
+  - reran 14/14 focused tests with the isolated NumPy dependency path.
+- Added the bounded primary-source claim chart
+  `docs/research/prime-ring-t1r-primary-claim-chart-2026-07.md`. Broad
+  union-bound, tie, cyclic/Legendre, active-testing, and factor-graph methods
+  are known; the exact narrow theorem/construction novelty status remains
+  unresolved.
+- Implemented the shared RB-10 contract in `prime_ring_rb10_contract.py`:
+  immutable byte/work/time/shape ceilings, explicit assignment-materialization
+  mode, bounded canonical serialization, artifact output caps, atomic writes,
+  deterministic digests, and a COMPLETE status boundary that explicitly does
+  not claim execution evidence by itself.
+- Implemented:
+  - `prime_ring_joint_orbit_spectrum.py` for exact `p=11`, `K=2` JO1 spectrum
+    enumeration over all 55 restricted schedules;
+  - `prime_ring_action_nondegeneracy.py` for the exact A1 fixed-label
+    fingerprint/crossover gate;
+  - `prime_ring_irreducible_factors.py` for exact `p in {7,11}` pair,
+    hyperfactor, frustrated-cycle, query-interaction, flat-equivalence,
+    treewidth, and matched-control screens;
+  - `run_prime_ring_rb10_experiments.py` for explicit-stage, sequential,
+    fresh-process execution with a prelaunch physical-memory floor, reactive
+    Windows peak-working-set monitoring, timeout termination, bounded atomic
+    artifacts, exact manifest-to-artifact rebinding, and failure manifests.
+- Fresh adversarial review initially found artifact-rebinding, reactive-cap
+  wording, control-binding, and tautological-control gaps. Those were fixed and
+  re-reviewed. Final verdict: GO, no remaining P0/P1; one fail-closed
+  post-loop recovery P2 remains documented.
+- Pre-execution validation:
+  - 55/55 focused RB-10 tests passed in 0.955 seconds;
+  - 14/14 focused all-state decoder tests passed in 5.617 seconds;
+  - scoped Ruff check passed;
+  - scoped Ruff format check passed for all ten files;
+  - Python 3.9 AST parsing passed for all ten files.
+- Executed exactly `jo1`, `a1`, and `g2-p7`, in that order:
+  - all three exited zero and wrote validated COMPLETE artifacts;
+  - measured peak working sets were 26,767,360, 26,345,472, and 26,087,424
+    bytes, respectively;
+  - elapsed times were 0.469, 0.312, and 0.156 seconds;
+  - no child exceeded 10% of the 256 MiB reactive threshold.
+- Durable evidence:
+  - `artifacts/method-dev/prime-ring/rb10-prw-jo1-exact-p11-k2.json`;
+  - `artifacts/method-dev/prime-ring/rb10-prw-a1-nondegeneracy-p11.json`;
+  - `artifacts/method-dev/prime-ring/rb10-prw-g2-algebraic-p7-n3.json`;
+  - `artifacts/method-dev/prime-ring/rb10-bounded-experiment-manifest.json`.
+- Disposition remains non-confirmatory:
+  - JO1 shell shaping is matched by restricted complementary/random controls
+    and exactly flattenable;
+  - A1 has fixed-label crossovers but complete multiset relabeling equivalence;
+  - G2 has irreducible algebraic fixtures but no static-control advantage.
+  No novelty, RAG, training, cost, latency, production, gravity, resonance, or
+  new-substrate claim is supported.
+
+## RB-10 orbit-plank and irreducible-mesh planning: 2026-07-25
+
+- Superseded as current status by the bounded execution section above; retained
+  as the preregistration history.
+- Audited the current prime-ring queue and preserved the existing RB-9
+  execution history.
+- Added the method-development preregistration
+  `docs/research/prime-ring-orbit-plank-mesh-protocol-2026-07.md`.
+- Added `PRW-JO1`, `PRW-A1`, `PRW-G2`, and `PRW-G2A` to `task_plan.md` with
+  dependency gates, equivalence controls, kill rules, and a fail-closed resource
+  envelope.
+- Added the irreducible-mesh definition and the ordered continuation to
+  `docs/research/prime-ring-remaining-hypotheses-2026-07.md`.
+- Added deferred queue item `DS-PRW-002` to `docs/next-session.md`.
+- Preserved `PRW-G1` as a negative bounded result and kept `PRW-Q1`, `PRW-L1`,
+  queue-conditioned correction, and “living memory” blocked behind real
+  retrieval.
+- Status: `PLANNED_NOT_EXECUTED`. No experiment, implementation, benchmark, or
+  scientific-evidence artifact was produced in this planning pass.
+- Validation: `git diff --check` passed. A cross-file consistency check
+  confirmed that all four hypothesis IDs occur in the canonical protocol,
+  task plan, hypothesis ledger, deferred queue, findings, and progress log;
+  the planned status, closed `PRW-G1` boundary, and immutable resource ceilings
+  are present.
+
+## RB-9 reconditioned theorem and learned-cost validation: 2026-07-25
+
+- Added `prime_ring_leading_shell.py` and
+  `tests/test_prime_ring_leading_shell.py`:
+  - derived the allocation-free complete wrong-type distance shell;
+  - cross-checked it against materialized banks at `p in {11,19,31}` and at
+    `p=4691` without materializing that large bank;
+  - enumerated the five exact pair orbits covering all 2,016 pairs among the 64
+    leading states;
+  - recorded the falsified nearest-only status and the reconditioned
+    tie-as-error event-union theorem;
+  - bound the production decoder's canonical-first tie rule for type-zero truth,
+    derived the strict-win leading term and its `q/(1-q)` limiting ratio to the
+    inclusive term, and proved correct-type competition negligible through its
+    exact four-shell spectrum;
+  - added `docs/research/prime-ring-leading-shell-proof-2026-07.md`, deriving
+    every shell and pair-orbit multiplicity plus the regular Hamming-isometry
+    action that transfers the event-union theorem across all `32p` transmitted
+    states;
+  - left the asymmetric type-one and balanced-type final-decoder extension
+    unresolved;
+  - checked stable finite binomial-tail ratios through `p=4691` and exact
+    pair-intersection ratios through the immutable `p=31` ceiling.
+- Added `prime_ring_learned_quotient.py` and
+  `tests/test_prime_ring_learned_quotient.py`:
+  - split 343 quotient classes into 274 training and 69 withheld classes before
+    example construction;
+  - compared unconstrained raw affine, gauge-augmented raw affine, explicit
+    quotient-oracle, and gauge-sensitive anchored models;
+  - recovered the planted raw coefficients `(6,1,2,5)` and bias `3` exactly
+    across seeds `{7,42,1337}`, with perfect unseen-gauge and withheld-class
+    accuracy and zero invariant-model orbit disagreement;
+  - proved that four independent rows remain rank four while the fifth row
+    reaches rank five and recovers the exact rule, reconditioning the result to
+    `NARROW_EXACT_AFFINE_SOLVER_RECOVERY_NON_CONFIRMATORY`;
+  - retained the result as non-confirmatory algebraic solver verification
+    because it is a planted noiseless affine teacher tested by an affine
+    learner, not a neural or generic model.
+- Added `prime_ring_transcript_cost.py` and
+  `tests/test_prime_ring_transcript_cost.py`:
+  - compared causal-group factorization with unrestricted flat feature search,
+    a causal-only flat counterfactual, an equal-complexity wrong-group
+    factorization, paid-transcript, payload-only, and deterministic-random
+    controls;
+  - exercised separable nulls, nonlinear XOR/parity cells, true no-shift,
+    nuisance-remapping, and a genuine spurious-reversal shift with disjoint raw
+    rows;
+  - showed that the unrestricted flat learner takes a simpler direct-payload
+    shortcut, while causal-only flat search also reaches shifted accuracy `1.0`;
+    the remaining finite signal is oracle structural prior versus modeled
+    training-search work only. Common padded storage and inference opportunity
+    are equal, so no accuracy, compression, capacity, latency, or
+    inference-operation win is claimed;
+  - retained and integrity-checked a canonical run contract and digest covering
+    decision thresholds, teachers, learners, train sizes, and resource limits.
+- Validation completed after formatting and cleanup:
+  - 45/45 new tests passed in 12.571 seconds;
+  - 362/362 related `test_prime_ring*.py`, `test_run_prime_ring*.py`, and
+    `test_crsv_experiment.py` regressions passed in 44.362 seconds;
+  - Ruff check and Ruff format check passed for all six new files;
+  - Python 3.9 AST parsing passed for all six new files.
+- A fresh direct runtime probe reproduced the `p=4691,q=0.20` adjacent ratio
+  `0.0585071601314`, strict/inclusive decoder ratio `0.249949262612`, exact
+  quotient publication gates `true`, and transcript run-contract integrity
+  `true`. Modeled bounds were 1,451,552 bytes / 307,548 work for quotient and
+  2,992,128 bytes / 13,289,336 work for transcript; neither is measured RSS.
+- `scripts/check_block_flag.py` passed `CLEAR` with zero carried-debt rows.
+- No intensive grid, real-corpus run, neural learner, measured process-tree RSS
+  experiment, retained promotion artifact, remote publication, or
+  whole-repository green claim was produced. The current work is bounded
+  METHOD_DEV evidence only.
+- Open next work is ordered as: actual decoder tie-policy binding and tests;
+  primary-source novelty claim chart; generic noisy/nonlinear quotient learning;
+  matched generic transcript inference; common-channel carrier controls;
+  bounded real-corpus retrieval; and checkpoint/RSS fault-injection hardening.
+
 ## RB-8 full-box ordered-cascade validation: 2026-07-24
 
 - Recovered the clean local branch at `b7bbd576`, ten commits ahead of
@@ -1239,7 +1543,7 @@
 | Timestamp | Error | Attempt | Resolution |
 |-----------|-------|---------|------------|
 | 2026-03-06 00:10 ET | `computational_storage_poc/fuse_fs.py` not found | 1 | Switch to file-layout discovery before assuming emulator implementation file names |
-| 2026-03-06 00:45 ET | `C:\Users\mattm\.claude\skills\planning-with-files\scripts\session-catchup.py` missing | 1 | Use direct repo-state inspection instead of the broken helper path |
+| 2026-03-06 00:45 ET | `%USERPROFILE%\.claude\skills\planning-with-files\scripts\session-catchup.py` missing | 1 | Use direct repo-state inspection instead of the broken helper path |
 | 2026-03-06 01:05 ET | `ruff check .github/workflows/test.yml` emitted YAML syntax errors | 1 | Remove the YAML file from Ruff scope and keep lint targeted to Python files |
 
 ## 5-Question Reboot Check

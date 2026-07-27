@@ -1,5 +1,347 @@
 # Findings & Decisions
 
+## 2026-07-27 Preservation and merge boundary
+
+- The immediate risk is durability, not scientific execution: RB-10/RB-11
+  source, tests, protocols, and bounded evidence are present and validated
+  locally but part of the exact tree is still untracked and unpublished.
+- The primary branch is not the whole preservation surface. Git reports five
+  additional linked worktrees on distinct branches, so a safe merge plan must
+  establish commit containment and independently inventory modified,
+  untracked, ignored, and stash-only content in each before declaring the work
+  preserved.
+- A clean primary status after a future commit will not prove that worktree-only
+  research or test data is safe. Completion requires both remote commit
+  reachability and an explicit residual ledger.
+- Cleanup is a separate authorization domain. Until the merged state is
+  verified, no worktree removal, ignored-file deletion, branch pruning,
+  artifact regeneration, reset, or stash dropping is permitted.
+- Repository workflow consequence: preservation commits are not considered
+  safely merged merely because a branch is pushed. ARCH-AEP requires an
+  explicit scope lock, one authoritative backlog/tracker, exact-head
+  verification evidence mirrored in the cycle log, a cohesive PR, and a phase
+  summary/closure record. The tracker pointer—not a guessed historical
+  tracker—is authoritative.
+- Human checkpoints are part of the documented workflow. The present user
+  request authorizes the preservation/merge scope; it does not authorize the
+  later cleanup checkpoint.
+- The current authoritative tracker points to the already-closed
+  `AEP-2026-05-01` Model-Scope cycle. Reusing it would blur historical closure;
+  RB-12 needs a new cycle ID/index entry, scope lock, tracker, backlog, and
+  verification log after the tracker index establishes the next global ID.
+- The primary worktree currently has exactly 23 untracked upload candidates.
+  Git also reports 1,654 ignored paths, including recovery bundles/zips,
+  retired-branch notes, caches, linked worktrees, and experiment outputs.
+  Ignore status is not a disposition: recovery and experiment surfaces require
+  content/containment review, while caches and bytecode are expected
+  reproducible candidates.
+- Two stashes exist and are part of the residual ledger:
+  `feat/brain-file-map-b0-b1: unrelated-wip` (2026-06-29) and
+  `feat/a4-swap-campaign` WIP (2026-06-21). Neither may be dropped or assumed
+  merged without inspecting its base, patch, untracked payload, and commit
+  containment.
+- The primary 11-commit stack has a real upstream dependency: its first four
+  commits are exactly the head of open PR #292
+  (`lattice/phase2-continue-20260713` at `eb750958`). The remaining seven
+  commits are the unpublished semantic-cache, CRSV, and prime-ring work.
+  Duplicating #292 inside a new independent PR would obscure review and merge
+  history; the merge plan must land #292 first or deliberately stack the new PR
+  on its exact head.
+- The apparent 957,566-line deletion in the primary comparison is almost
+  entirely PR #292's deliberate untracking of raw NFCorpus run JSON/log data.
+  This is not an unexplained loss: the deleted blobs remain in Git history,
+  PR #292 is already a durable GitHub ref, and the local recovery ZIP contains
+  the per-run data. Nevertheless, no local copy or recovery archive will be
+  removed in this cycle.
+- PR #292 is still open at `eb750958`; its current exact-head test, lint,
+  smoke, schema-drift, block-flag, GitGuardian, and corrected PR-body checks are
+  green, and Gemini reported no review comments. It must still be evaluated
+  against the current merge plan and exact PR body before merge.
+- Recovery branch size is GitHub-compatible by individual blob size even when
+  its bundle is not: the drift recovery commit's largest blob is about
+  16.1 MB, while the bundle itself is about 120.8 MB and cannot be committed as
+  an ordinary GitHub blob. Publishing the branch ref is therefore preferable
+  to uploading the bundle.
+- The ignored waypoint corpus is not an orphaned directory: the verified
+  recovery bundle contains a complete branch at `65ae99a4`, and the recovery
+  index reports 201 original files/62,042,044 bytes matched byte-for-byte.
+  Remote branch publication can preserve that corpus without force-adding the
+  locally excluded duplicate tree.
+- Independent upload audit interim:
+  - all four RB-10 JSON SHA-256 values and internal manifest/artifact digests
+    still recompute exactly;
+  - the JSONs total only about 28 KB and need no Git LFS;
+  - no credential/private-key pattern was found in the reviewed upload
+    candidates;
+  - one planning log contains a user-profile path and requires deliberate
+    retain/redact disposition;
+  - repository `LICENSE` says Apache-2.0 while `pyproject.toml` declares MIT,
+    and the eight new modules are absent from the explicit `py-modules` list;
+  - the retained JSON schema does not bind source commit, command,
+    interpreter/dependencies/OS, or raw-file SHA. Preserve the JSON bytes and
+    add companion provenance rather than rewriting evidence.
+
+## 2026-07-26 Code-Backed Closure Audit
+
+- This section is the current decision overlay. It preserves the dated RB-9 and
+  RB-10 records below but supersedes any wording that called the frozen
+  50/50 result a validated production-decoder theorem or described Stage 4 as
+  unconditionally queued.
+- Live validation:
+  - 69/69 focused leading-shell, JO1, A1, G2, RB-10 contract, and runner tests
+    passed in 9.017 seconds;
+  - the retained RB-10 manifest returned `True` when rebound to every current
+    artifact filename, digest, byte count, stage ID, and resource field;
+  - an independent mesh audit reran 24/24 focused tests and independently
+    checked all 38,610 stack-versus-flat distance comparisons;
+  - the four JSON evidence files were not regenerated or edited.
+- The decoder review found a real scope failure hidden by the former
+  "implemented decoder closed" wording. `prime_ring_leading_shell.py` derives
+  shell/tail formulas, sets the type-one inclusive ratio analytically, and
+  forms the 50/50 result by averaging strict and inclusive leading terms. Its
+  tests call the final tie helper on `[1.0, 1.0]`; they do not feed boundary
+  observations through the float-FFT dense decoder.
+- A bounded production-path audit constructed midpoint observations between a
+  representative truth and every one of its 56 leading wrong-type competitors,
+  for both truth types and `p in {11,19,31}`:
+
+  | p | truth type | exact/direct ties | float-FFT exact ties | FFT winner type 0 | FFT winner type 1 | largest absolute FFT margin |
+  |---:|---:|---:|---:|---:|---:|---:|
+  | 11 | 0 | 56/56 | 27/56 | 30 | 26 | `1.1102230246251565e-16` |
+  | 11 | 1 | 56/56 | 32/56 | 51 | 5 | `1.1102230246251565e-16` |
+  | 19 | 0 | 56/56 | 17/56 | 19 | 37 | `2.220446049250313e-16` |
+  | 19 | 1 | 56/56 | 7/56 | 8 | 48 | `3.3306690738754696e-16` |
+  | 31 | 0 | 56/56 | 15/56 | 22 | 34 | `1.1102230246251565e-16` |
+  | 31 | 1 | 56/56 | 19/56 | 56 | 0 | `1.1102230246251565e-16` |
+
+  Direct dot-product scoring agreed with exact integer Hamming distance on all
+  `336/336` ties. The float-FFT path preserved only `117/336` as bit-exact
+  ties. It uses bit-exact floating equality, so roundoff turns many
+  mathematical ties into strict numerical wins and can reverse the declared
+  canonical winner. Disposition:
+  - `PRW-T1R-TE-EVENT-UNION = CLOSED_INTERNAL_ANALYTIC_SCOPE`;
+  - `PRW-T1D-ALL-STATES = ANALYTIC_TIE_COROLLARY_COMPLETE`;
+  - `CURRENT_FLOAT_FFT_PRODUCTION_LINKAGE = FAILED`;
+  - finite class-error validation and independent proof review remain open.
+- `PRW-JO1` has two distinct dispositions that must not be conflated:
+  - stacking/dimensional mechanism: closed by the exact identity between a
+    fixed stack and its flattened longer code;
+  - constrained ordinary code design: conditional and likely negative, because
+    15 schedules tie and complementary/random controls match, but external
+    known-design and unrestricted matched-work controls remain unrun.
+- `PRW-A1` must not be killed from radial multiset equivalence alone. For every
+  audited truth the ten actions have distinct fixed-label fingerprints and all
+  45 action pairs have crossovers. The current result establishes truth-local
+  competitor permutations, not one global prior-preserving state permutation
+  or common channel isometry. The next exact gate is full action-channel
+  conjugacy plus real semantic action availability and cost. A policy campaign
+  is authorized only if that survives.
+- `PRW-G2` validates necessary interaction existence but not an advantage:
+  pair, strict three-way, and query-interaction residuals survive at `p=7` and
+  bounded `p=11` unit checks; exact flat and factorized decisions agree and
+  `static_control_advantage_established` is false. `PRW-G2H` remains narrowly
+  open because the recorded pairwise auxiliary reduction is only an upper
+  bound (`minimal_auxiliary_cost_proved=false`). Stage 4 requires an
+  auxiliary-minimality result and a concrete orbit-specific
+  representation/decoder frontier first. `PRW-G2A` remains blocked.
+- The primary Nguyen--Györfi--Massey paper was checked directly. It represents
+  `GF(p)` symbols by cyclic shifts of a binary `p`-tuple, proves the binary
+  distance is the outer-code distance times the inner representation distance,
+  and gives a Legendre representation with distance `(p+1)/2`. This is a
+  direct construction collision for the unmasked PRW distance identity. It
+  does not by itself settle the seven-shell/five-overlap event-union theorem,
+  so publication novelty remains a specialist proof-equivalence question.
+- Durability correction: the manifest and artifacts are content-valid on the
+  current tree, but all four JSONs, the RB-10 code/tests, and three research
+  documents are untracked. They are local evidence, not fresh-checkout or
+  published evidence.
+- Current execution order is therefore:
+  0. preserve the exact tree;
+  1. resolve the production numerical-tie contract;
+  2. independently audit the T1R proof/construction equivalence if publication
+     is pursued;
+  3. run the A1 global conjugacy/action-cost gate;
+  4. run the G2H auxiliary-minimality/named-candidate gate;
+  5. optionally close the ordinary JO1 code controls;
+  6. run noisy/nonlinear quotient, matched transcript, common-channel carrier,
+     RSS/checkpoint fault injection, and bounded flat real retrieval.
+
+## 2026-07-25 RB-10 Bounded Execution Findings
+
+- Historical execution record. The 2026-07-26 code-backed audit above
+  supersedes its decoder, durability, JO1, A1, and Stage-4 status wording.
+- The prerequisite gates are now closed at their declared METHOD_DEV scope:
+  `PRW-T1D-ALL-STATES` is proved for the frozen 50/50 type mixture, 14/14
+  focused decoder tests pass, and the primary-source `PRW-T1R` claim chart is
+  complete but leaves novelty unresolved.
+- Three exact cells ran sequentially in fresh Python child processes. The
+  content-rebound manifest is
+  `artifacts/method-dev/prime-ring/rb10-bounded-experiment-manifest.json`.
+  It reopens each artifact and checks its filename, digest, COMPLETE status,
+  byte length, modeled resource fields, and stage ID.
+- Memory was not remotely close to the 256 MiB reactive threshold:
+  - `PRW-JO1`: 26,767,360-byte peak working set, 0.469 seconds;
+  - `PRW-A1`: 26,345,472-byte peak working set, 0.312 seconds;
+  - `PRW-G2-p7`: 26,087,424-byte peak working set, 0.156 seconds.
+  The runner had approximately 23.44 GB available before execution and
+  requires at least 1 GiB before each child. The 10 ms RSS monitor is reactive,
+  not a hard kernel allocation cap; the safe conclusion applies to these tiny,
+  trusted, sequential cells, not arbitrary future experiments.
+- `PRW-JO1` produced a real but narrow shell-shaping fact. Schedule `(1,5)`
+  keeps minimum distance `76` and reduces its multiplicity from `56` to `19`;
+  its exact pairwise-tail union-bound surrogate is `0.637045` of aligned
+  repetition. This is not a unique construction result: 15 of 55 restricted
+  schedules tie, and the preregistered complementary `(1,10)` and seeded-random
+  `(3,8)` controls have the same spectrum. The stacked and flattened codewords
+  agree for every competitor. Known-design and unrestricted matched-cost
+  controls remain incomplete. Disposition:
+  `RESTRICTED_SHELL_SHAPING_LEAD_CONTROLS_INCOMPLETE`, non-promotional.
+- `PRW-A1` passes only a fixed-label action-nondegeneracy gate. The ten actions
+  have ten ordered semantic fingerprints, 160 of 351 competitors change
+  distance across actions, and all 45 action pairs contain a ranking
+  crossover. However, every action has the same sorted distance multiset.
+  Thus the apparent difference is a semantic competitor permutation unless
+  the labels, posterior, and action availability give it operational meaning.
+  No posterior policy, MaxEJS comparison, acquired-bit saving, selector saving,
+  or semantic-relabeling cost has been tested.
+- `PRW-G2-p7` confirms ordinary irreducible factor behavior, not an advantage.
+  The pair factor has a nonzero anchored mixed residual, the modular-sum
+  hyperfactor has a nonzero three-way Möbius residual, the ambiguous path has
+  four diagonal solution orbits rather than one fixed-offset orbit, and the
+  query can change an interaction rather than only a unary term. Exact flat
+  and factorized scores and selected MAP assignment agree. Independent,
+  shuffled-label, wrong-grouping, and deterministic matched-random controls
+  all satisfy their frozen counts; static advantage remains false. This
+  licenses only an information-fair noisy recovery discriminator at Stage 4.
+  It does not license `PRW-G2A`, approximate-message-passing, a real mesh, or a
+  novelty claim.
+- A fresh adversarial reviewer returned GO for the bounded execution after
+  contract fixes, with no remaining P0/P1. The remaining P2 is recovery-only:
+  a rare failure after all children finish but before the success manifest is
+  persisted can leave completed artifacts without a recovery manifest. This
+  fails closed because no COMPLETE manifest exists and requires a fresh output
+  directory.
+- Current bottom line: the execution found useful exact discriminators and a
+  restricted shell-shaping effect, but no groundbreaking or novel computing
+  mechanism. The most informative remaining work is to decide whether the
+  ordinary matched controls close `PRW-JO1`, whether semantic action costs make
+  `PRW-A1` operationally nontrivial, and whether `PRW-G2` improves noisy joint
+  recovery after identical information is granted to a flat comparator.
+
+## 2026-07-25 RB-10 Orbit-Plank and Irreducible-Mesh Planning
+
+- Superseded as current status by the bounded execution findings above; retained
+  as the preregistration history.
+- The new work is now separated into four falsifiable lanes:
+  - `PRW-JO1`: fixed joint-plank orbit-spectrum coding;
+  - `PRW-A1`: posterior-guided orbit/plank acquisition;
+  - `PRW-G2`: irreducible orbit-coded pair and hypergraph factors; and
+  - `PRW-G2A`: adaptive factor acquisition, conditional on a static factor
+    surviving.
+- Fixed planks concatenate into one longer code. The flattened identical
+  codebook is therefore a mandatory equivalence control; a gain over a weaker
+  single-plank baseline cannot support a new mechanism claim.
+- Adaptive next-plank selection is an instance of controlled sensing/active
+  sequential hypothesis testing. Chernoff, MaxEJS, mutual-information-greedy,
+  static, random, incremental-redundancy, and stop-only policies are mandatory
+  controls. The only residual candidate is an orbit-restricted action family
+  with nondegenerate observation laws and a new coverage, speed, or matched-cost
+  result.
+- `PRW-G1` remains closed for connected, cycle-consistent fixed-difference
+  graphs. `PRW-G2` admits only pair factors with nonzero double-centered
+  interaction, genuine higher-order residuals, query-dependent interaction
+  changes, or explicitly noisy/frustrated/multiple-latent variants.
+- The queue is proof-first and resource-bounded: close the type-one/balanced
+  decoder, finish the `PRW-T1R` primary-source claim chart, establish a common
+  channel, test `PRW-JO1`, conditionally test `PRW-A1`, algebraically screen
+  `PRW-G2`, then conditionally test static and adaptive meshes. Generic learning,
+  real retrieval, and broader scaling remain later gates.
+- The first mesh slice is limited to `p in {7,11}`, 3--6 nodes, arity at most
+  3, at most 8 factors, at most 200,000 exact assignments, 256 MiB modeled peak,
+  25,000,000 modeled work units, and 30 seconds per cell.
+- The canonical preregistration is
+  `docs/research/prime-ring-orbit-plank-mesh-protocol-2026-07.md`.
+- This was a planning and hypothesis-formalization pass only. No new
+  implementation or experiment was run, and no novelty, retrieval, training,
+  cost, speed, or production claim is supported.
+
+## 2026-07-25 RB-9 Reconditioned Theorem and Learned-Cost Screens
+
+- The original nearest-only `PRW-T1` event-union normalization is false in its
+  declared tie-as-error scope. For fixed \(q\in(0,1/2)\),
+  \(d_p=(7p-1)/2\), and the frozen two-type/eight-layer `typed16` bank, the
+  eight wrong-type states at \(d_p+4\) contribute a nonvanishing fraction:
+  \[
+  \frac{8\beta_q(d_p+4)}{56\beta_q(d_p)}
+  \longrightarrow \frac{[4q(1-q)]^2}{7}.
+  \]
+  The old normalized event union therefore tends to
+  \(1+[4q(1-q)]^2/7\), not one.
+- The repaired leading term is
+  \(B_p(q)=56\beta_q(d_p)+8\beta_q(d_p+4)\). The exact seven-shell distance
+  spectrum has a linear gap after those 64 states. The five exact leading-pair
+  classes cover all 2,016 pairs, and each joint event has a strictly larger
+  large-deviation rate than a single leading event. Bonferroni therefore gives
+  \[
+  \Pr\!\left(\bigcup_i E_i^{\ge}\right)=B_p(q)(1+o(1))
+  \]
+  for every transmitted state's wrong-type tie-or-better competitor-event union
+  in the frozen bank. Status is
+  `PRW-T1R-TE-EVENT-UNION: PROVED_ASYMPTOTIC`. The formal proof note now derives
+  all seven shell counts, all five overlap-class counts, and the regular
+  Hamming-isometry action transferring the theorem across all `32p` states.
+- At \(p=4691,q=0.20\), the direct stable-tail adjacent/nearest ratio is
+  `0.0585071601`, versus limiting correction `0.0585142857`; the other five
+  shells contribute approximately `5.55e-225` relative to the repaired leading
+  term. This is a numerical cross-check, not the proof. Convergence is not
+  uniform near \(q=1/2\): at the same prime the nonleading/leading ratio is
+  approximately `0.00834` for `q=0.45` but about `693` for `q=0.49`.
+- The production decoder's exact tie rule is now bound for canonical type-zero
+  truth: lowest canonical type ID wins, so wrong type one must strictly beat
+  the transmitted state. With
+  \(S_p=56\Pr[\operatorname{Bin}(d_p,q)>d_p/2]+
+  8\Pr[\operatorname{Bin}(d_p+4,q)>(d_p+4)/2]\), canonical class error is
+  \(S_p(1+o(1))\) and \(S_p/B_p\to q/(1-q)\). Status is
+  `PRW-T1D-CANONICAL-FIRST-TYPE0:
+  PROVED_ASYMPTOTIC_WITHIN_FROZEN_CANONICAL_STATE`. Type-one truth receives the
+  opposite tie treatment, so the balanced/all-state theorem remains open.
+- The raw-coordinate learned quotient screen recovers coefficients
+  `(6,1,2,5)` with zero coefficient sum modulo seven and bias `3` across seeds
+  `{7,42,1337}`. It is exact on unseen gauges and all gauges of 69 withheld
+  quotient classes; the gauge-sensitive anchored control has orbit
+  disagreement `1.0`. Four independent raw rows are rank four and the fifth
+  reaches rank five and exactly identifies the rule for every seed. The status
+  `NARROW_EXACT_AFFINE_SOLVER_RECOVERY_NON_CONFIRMATORY` is deliberately narrow:
+  this is algebraic solver verification because both teacher and learner are
+  noiseless modular affine, not evidence of empirical emergence.
+- The paid-transcript screen finds a candidate structural-prior/training-search
+  signal when the factorized learner is given the planted causal groups for
+  XOR/parity teachers under spurious reversal. The unrestricted flat learner's
+  shifted failure comes from choosing a simpler direct-payload shortcut under
+  its MDL tie-break, not from inadequate capacity. A causal-only flat
+  counterfactual also reaches shifted route accuracy `1.0`; its modeled search
+  work is `9.0x` and `118.2x` the factorized work in the two frozen nonlinear
+  cells. An equal-complexity wrong-group factorization underperforms, confirming
+  that the advantage comes from the supplied grouping rather than the
+  factorized form alone. True no-shift and split-hashed nuisance-remapping nulls
+  are now distinct, and the result retains a hashed run contract covering
+  teacher cells, thresholds, learners, train sizes, and resource limits.
+  Factorized and flat controls have the same padded storage and inference
+  envelope, and the paid-transcript control closes capacity once the bits are
+  supplied. Its reconditioned status is
+  `CANDIDATE_STRUCTURAL_PRIOR_TRAINING_SEARCH_SIGNAL_NON_CONFIRMATORY`.
+- Validation is green for the bounded slice: 45/45 new tests and 362/362
+  related prime-ring/CRSV regressions pass; scoped Ruff, Ruff format, and Python
+  3.9 AST parsing pass for all six new files. Whole-repository discovery,
+  measured RSS, checkpoint/resume, neural learning, real-corpus retrieval,
+  utility, and novelty are not validated by this result.
+- The highest-information next tests are, in order: final decoder tie policy;
+  a fresh primary-source `PRW-T1R` claim chart; noisy/nonlinear generic quotient
+  learning; matched generic transcript inference; a common-channel
+  carrier/control screen; a bounded real-corpus pilot; and process-tree
+  RSS/checkpoint fault injection. Queue-conditioned or “living” state remains
+  blocked until real retrieval survives.
+
 ## 2026-07-24 RB-8 Full-Box Preflight
 - Available memory is not the limiting factor for the next exact mathematics:
   `p=11` and `p=19` `PRW-T1` analyses are admitted by both byte and work
