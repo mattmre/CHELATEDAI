@@ -120,9 +120,7 @@ def detector_signals_from_outputs(
     convergence_fitness: Dict[str, float] = {}
     convergence_states: Dict[str, str] = {}
     unmatched_clusters: List[str] = []
-    cluster_ids = {
-        node.node_id for node in dag.nodes if node.node_type is NodeType.CLUSTER
-    }
+    cluster_ids = {node.node_id for node in dag.nodes if node.node_type is NodeType.CLUSTER}
     for cluster_id, summary in (convergence_by_cluster or {}).items():
         cluster_id = str(cluster_id)
         if cluster_id not in cluster_ids:
@@ -150,8 +148,7 @@ def detector_signals_from_outputs(
                 "states": convergence_states,
                 "unmatched_cluster_ids": sorted(set(unmatched_clusters)),
                 "mapping": (
-                    "immature or converged = 1; mature/non-converged = "
-                    "1 - epochs_without_improvement / patience"
+                    "immature or converged = 1; mature/non-converged = " "1 - epochs_without_improvement / patience"
                 ),
             },
             **dict(provenance or {}),
@@ -188,6 +185,9 @@ def reanneal_edges(
 ) -> Dict[str, Any]:
     """Restore ledgered edges whose recovered detector fitness clears threshold."""
     threshold = _bounded_float(threshold, "threshold")
+    violations = validate_evidence_dag(dag)
+    if violations:
+        raise ValueError("cannot re-anneal on an invalid EvidenceDAG: " + "; ".join(violations))
     before = len(dag.edges)
     original_edges = list(dag._edges)
     original_ledger = list(dag._pruned_edge_ledger)
@@ -200,9 +200,7 @@ def reanneal_edges(
     # never leave a half-restored graph with a stale ledger.
     scored_entries = []
     for ledger_entry in original_ledger:
-        fitness = _bounded_float(
-            scorer(ledger_entry["edge"], recovered_signal), ledger_entry["edge_id"]
-        )
+        fitness = _bounded_float(scorer(ledger_entry["edge"], recovered_signal), ledger_entry["edge_id"])
         scored_entries.append((ledger_entry, fitness))
 
     try:
@@ -261,20 +259,18 @@ def write_disintegration_artifact(
     """Write a deterministic before/after lifecycle artifact and return it."""
     if not detector_provenance:
         raise ValueError("detector_provenance must be a non-empty mapping")
-    recovered_by_id = {
-        item["edge_id"]: item for item in (reanneal_record or {}).get("scores", [])
-    }
+    recovered_by_id = {item["edge_id"]: item for item in (reanneal_record or {}).get("scores", [])}
     edge_fitness = []
     for item in prune_record.get("scores", []):
         recovered = recovered_by_id.get(item["edge_id"])
-        edge_fitness.append({
-            "edge_id": item["edge_id"],
-            "edge": item["edge"],
-            "fitness_before": item["fitness_before"],
-            "fitness_after": (
-                recovered["fitness_after"] if recovered is not None else item["fitness_after"]
-            ),
-        })
+        edge_fitness.append(
+            {
+                "edge_id": item["edge_id"],
+                "edge": item["edge"],
+                "fitness_before": item["fitness_before"],
+                "fitness_after": (recovered["fitness_after"] if recovered is not None else item["fitness_after"]),
+            }
+        )
     artifact = {
         "record_type": "evidence_dag_disintegration",
         "schema_version": 1,
@@ -284,9 +280,7 @@ def write_disintegration_artifact(
         },
         "detector_signal_provenance": dict(detector_provenance),
         "edges_before": prune_record.get("edges_before"),
-        "edges_after": (
-            (reanneal_record or {}).get("edges_after", prune_record.get("edges_after"))
-        ),
+        "edges_after": ((reanneal_record or {}).get("edges_after", prune_record.get("edges_after"))),
         "edge_fitness": edge_fitness,
         "pruned": list(prune_record.get("pruned", [])),
         "reannealed": list((reanneal_record or {}).get("reannealed", [])),

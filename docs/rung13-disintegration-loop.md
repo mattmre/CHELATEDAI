@@ -45,12 +45,15 @@ outputs; it does not claim the engine automatically invokes it yet.
 removes only scores strictly below the threshold, never removes nodes, validates
 the graph before and after mutation, and records removed immutable edges in a
 runtime-only ledger. `dry_run=True` reports identical proposed decisions without
-changing the graph or ledger. Non-finite or out-of-range scores fail closed.
+changing the graph or ledger. Non-finite or out-of-range scores fail closed. A
+scorer that replaces, removes, or reorders edges is rejected by comparing the
+complete ordered edge snapshot, and the original edge list is restored.
 
 `reanneal_edges(dag, scorer, threshold, recovered_signal)` considers only ledgered
-edges. It re-scores each edge against recovered detector outputs, restores scores
-at or above the threshold, validates each restoration, and keeps failed/low edges
-in the ledger.
+edges. It rejects an invalid starting DAG before scoring, then re-scores each edge
+against recovered detector outputs, restores scores at or above the threshold,
+validates each restoration, and keeps failed/low or individually invalid ledger
+edges in the ledger.
 
 `write_disintegration_artifact` writes the prune and recovery thresholds, detector
 provenance, edge-level fitness before/after, pruned edges, re-annealed edges, and
@@ -64,4 +67,3 @@ structural actuator-to-cluster edge. Any edge with `required=True` or
 `protected_predicate`. Protected edges remain in the graph even when their detector
 score is low, and the artifact records the skip. With all detector signals healthy
 or absent, every score is `1.0` and pruning is a no-op.
-

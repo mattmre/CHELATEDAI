@@ -33,9 +33,9 @@ class NodeType(str, Enum):
 
 
 class EdgeType(str, Enum):
-    RETRIEVED_IN = "retrieved_in"   # QUERY -> CLUSTER
-    CORRECTED_BY = "corrected_by"   # QUERY -> ACTUATOR
-    OPERATES_ON = "operates_on"     # ACTUATOR -> CLUSTER
+    RETRIEVED_IN = "retrieved_in"  # QUERY -> CLUSTER
+    CORRECTED_BY = "corrected_by"  # QUERY -> ACTUATOR
+    OPERATES_ON = "operates_on"  # ACTUATOR -> CLUSTER
 
 
 # Allowed (source, destination) node types per edge type. This is the typed-graph
@@ -171,41 +171,56 @@ class EvidenceDAG:
         # drop unscored/unledgered edges; a mutating scorer is a caller bug and is
         # rejected below rather than silently corrupting the edge set.
         edge_snapshot = list(self._edges)
-        for edge in edge_snapshot:
-            identity = (edge.src, edge.edge_type.value, edge.dst)
-            occurrence = occurrences.get(identity, 0)
-            occurrences[identity] = occurrence + 1
-            edge_id = self._edge_record_id(edge, occurrence)
-            fitness = float(scorer(edge))
-            if fitness != fitness or not 0.0 <= fitness <= 1.0:
-                raise ValueError(
-                    f"scorer returned non-finite/out-of-range fitness {fitness!r} "
-                    f"for edge {edge_id}"
-                )
+        try:
+            for edge in edge_snapshot:
+                identity = (edge.src, edge.edge_type.value, edge.dst)
+                occurrence = occurrences.get(identity, 0)
+                occurrences[identity] = occurrence + 1
+                edge_id = self._edge_record_id(edge, occurrence)
+                fitness = float(scorer(edge))
+                if fitness != fitness or not 0.0 <= fitness <= 1.0:
+                    raise ValueError(
+                        f"scorer returned non-finite/out-of-range fitness {fitness!r} " f"for edge {edge_id}"
+                    )
 
-            is_protected = bool(protect(edge))
-            would_prune = fitness < threshold and not is_protected
-            decision = "prune" if would_prune else (
-                "skip_protected" if fitness < threshold and is_protected else "keep"
-            )
-            score_record = {
-                "edge_id": edge_id,
-                "edge": edge.to_dict(),
-                "fitness_before": fitness,
-                "fitness_after": None if would_prune else fitness,
-                "decision": decision,
-                "protected": is_protected,
-            }
-            scores.append(score_record)
-            if would_prune:
-                proposed_ledger.append({
+                is_protected = bool(protect(edge))
+                would_prune = fitness < threshold and not is_protected
+                decision = (
+                    "prune" if would_prune else ("skip_protected" if fitness < threshold and is_protected else "keep")
+                )
+                score_record = {
                     "edge_id": edge_id,
-                    "edge": edge,
-                    "fitness_at_prune": fitness,
-                    "threshold": threshold,
-                })
-            else:
-                retained.append(edge)
+                    "edge": edge.to_dict(),
+                    "fitness_before": fitness,
+                    "fitness_after": None if would_prune else fitness,
+                    "decision": decision,
+                    "protected": is_protected,
+                }
+                scores.append(score_record)
+                if would_prune:
+                    proposed_ledger.append(
+                        {
+                            "edge_id": edge_id,
+                            "edge": edge,
+                            "fitness_at_prune": fitness,
+                            "threshold": threshold,
+                        }
+                    )
+                else:
+                    retained.append(edge)
+        except Exception:
+            self._edges = edge_snapshot
+            raise
+
+        # Compare the ordered edge values, not just their count.  A scorer can
+        # replace or reorder entries while preserving list length; applying the
+        # snapshot decision in that state would silently discard its mutation.
+        if self._edges != edge_snapshot:
+            self._edges = edge_snapshot
+            raise RuntimeError(
+                "scorer mutated the DAG edge set during prune_edges; refusing to apply "
+                "a prune computed over a stale snapshot"
+            )
 
         record = {
             "record_type": "evidence_dag_prune",
@@ -215,18 +230,11 @@ class EvidenceDAG:
             "edges_after": len(retained),
             "scores": scores,
             "pruned": [entry["edge"].to_dict() for entry in proposed_ledger],
-            "protected_skips": [
-                item["edge"] for item in scores if item["decision"] == "skip_protected"
-            ],
+            "protected_skips": [item["edge"] for item in scores if item["decision"] == "skip_protected"],
         }
         if dry_run:
             return record
 
-        if len(self._edges) != len(edge_snapshot):
-            raise RuntimeError(
-                "scorer mutated the DAG edge set during prune_edges; refusing to apply "
-                "a prune computed over a stale snapshot"
-            )
         original_edges = self._edges
         self._edges = retained
         post_violations = validate_evidence_dag(self)
@@ -259,7 +267,9 @@ class EvidenceDAG:
             dag.add_node(nid, NodeType(raw["type"]), **dict(raw.get("attrs", {})))
         for raw in data.get("edges", []):
             dag.add_edge(
-                str(raw["src"]), str(raw["dst"]), EdgeType(raw["type"]),
+                str(raw["src"]),
+                str(raw["dst"]),
+                EdgeType(raw["type"]),
                 **dict(raw.get("attrs", {})),
             )
         return dag
@@ -284,7 +294,7 @@ class EvidenceDAG:
             stack.append(node)
             for nxt in adj[node]:
                 if color[nxt] == GREY:
-                    return stack[stack.index(nxt):] + [nxt]
+                    return stack[stack.index(nxt) :] + [nxt]
                 if color[nxt] == WHITE:
                     found = dfs(nxt)
                     if found is not None:
@@ -411,10 +421,16 @@ def from_attribution_pool(pool: Mapping[str, Any]) -> EvidenceDAG:
         cluster_node_id = f"c:{task}:{profile}"
         actuator_node_id = f"a:{strategy}:{action or 'none'}"
 
-        dag.add_node(query_node_id, NodeType.QUERY,
-                     task=task, profile=profile, query_id=qid,
-                     query_text=row.get("query_text"), action=action or None,
-                     fault_class=row.get("fault_class"))
+        dag.add_node(
+            query_node_id,
+            NodeType.QUERY,
+            task=task,
+            profile=profile,
+            query_id=qid,
+            query_text=row.get("query_text"),
+            action=action or None,
+            fault_class=row.get("fault_class"),
+        )
         dag.add_node(cluster_node_id, NodeType.CLUSTER, task=task, profile=profile)
         dag.add_edge(query_node_id, cluster_node_id, EdgeType.RETRIEVED_IN)
 
