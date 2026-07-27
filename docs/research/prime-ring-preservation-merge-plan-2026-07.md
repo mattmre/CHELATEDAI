@@ -50,7 +50,7 @@ the newer AEP/prime-ring truth.
 
 | Worktree | Branch/head | Preservation status |
 | --- | --- | --- |
-| primary | `codex/prime-ring-onion-method-dev` / `41779be4` plus dirty tree | preserve reviewed paths in Git, commit, push, and verify exact remote SHA |
+| primary | `codex/prime-ring-onion-method-dev` / evidence commit `186590c8bde8311f39c17167110d5ba30b13a4fd` | reviewed 38-path allowlist is committed locally; bookkeeping commit, push, and exact remote equality proof remain |
 | `agent-build` | `codex/recover-drift-research-20260722` / `b831493a` | clean unique 209-file commit; verified full-history bundle; archive ref only until public-content review |
 | `h2-rerun` | `feat/h2-swap-rerun-clean` / `6c3e1847` | unique CUDA-guard commit; 24 local deletions must not be committed; five ignored outputs need a separate manifest |
 | `relaxed-wozniak-271e04` | `bf23a47f` | commit already contained by `main`; ignored raw evidence is covered by a verified ZIP |
@@ -124,10 +124,9 @@ producer history. The current audit environment is Python 3.11.9 on Windows
 environment; it is not retroactively claimed as the complete 2026-07-25
 producer environment.
 
-The Git commit containing source, tests, and these exact bytes will be added to
-this ledger after the first preservation commit. A second bookkeeping commit
-will bind that immutable evidence commit without creating a self-referential
-hash.
+The Git commit containing source, tests, and these exact bytes is
+`186590c8bde8311f39c17167110d5ba30b13a4fd`. This bookkeeping update binds that
+immutable evidence commit without creating a self-referential hash.
 
 ## 6. Ignored and external-only residuals
 
@@ -248,9 +247,11 @@ or relicensing claim.
 - Online smoke: floor pass; ceiling locally blocked by Hugging Face TLS
   certificate verification. TLS was not disabled. Clean hosted-runner coverage
   remains required before merge.
-- Committed-range Gitleaks: pass. Staged Gitleaks, staged object-size/mode
-  review, final allowlist comparison, preservation commit, and remote equality
-  proof remain open.
+- Committed-range and staged Gitleaks: pass. The final index matched the
+  38-path allowlist exactly, all staged objects were mode `100644`, and no
+  object approached 100 MB. Evidence/source commit
+  `186590c8bde8311f39c17167110d5ba30b13a4fd` is local. The bookkeeping commit
+  and remote equality proof remain open.
 
 ## 10. Dependency-aware merge order
 

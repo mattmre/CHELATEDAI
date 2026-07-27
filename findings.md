@@ -2,14 +2,16 @@
 
 ## 2026-07-27 Preservation and merge boundary
 
-- The immediate risk is durability, not scientific execution: RB-10/RB-11
-  source, tests, protocols, and bounded evidence are present and validated
-  locally but part of the exact tree is still untracked and unpublished.
-- The primary branch is not the whole preservation surface. Git reports five
-  additional linked worktrees on distinct branches, so a safe merge plan must
-  establish commit containment and independently inventory modified,
-  untracked, ignored, and stash-only content in each before declaring the work
-  preserved.
+- The immediate risk is durability, not scientific execution. The exact
+  38-path primary RB-10/RB-11 source, test, protocol, and bounded-evidence
+  allowlist is now preserved in local commit
+  `186590c8bde8311f39c17167110d5ba30b13a4fd`; remote publication and equality
+  proof remain.
+- The primary branch is not the whole preservation surface. Git initially
+  reported five additional linked worktrees on distinct branches, and three
+  dedicated PR-repair worktrees were later added. All are retained and
+  classified; unique branch publication and external residual manifests remain
+  separate work.
 - A clean primary status after a future commit will not prove that worktree-only
   research or test data is safe. Completion requires both remote commit
   reachability and an explicit residual ledger.
@@ -29,8 +31,10 @@
   `AEP-2026-05-01` Model-Scope cycle. Reusing it would blur historical closure;
   RB-12 needs a new cycle ID/index entry, scope lock, tracker, backlog, and
   verification log after the tracker index establishes the next global ID.
-- The primary worktree currently has exactly 23 untracked upload candidates.
-  Git also reports 1,654 ignored paths, including recovery bundles/zips,
+- The recovered primary worktree initially had exactly 23 untracked upload
+  candidates. The final primary allowlist grew to 38 paths after the cycle
+  records and preservation plan were added, and all 38 are now in
+  `186590c8`. Git also reported 1,654 ignored paths, including recovery bundles/zips,
   retired-branch notes, caches, linked worktrees, and experiment outputs.
   Ignore status is not a disposition: recovery and experiment surfaces require
   content/containment review, while caches and bytecode are expected
@@ -67,19 +71,23 @@
   index reports 201 original files/62,042,044 bytes matched byte-for-byte.
   Remote branch publication can preserve that corpus without force-adding the
   locally excluded duplicate tree.
-- Independent upload audit interim:
+- Primary upload audit result:
   - all four RB-10 JSON SHA-256 values and internal manifest/artifact digests
     still recompute exactly;
   - the JSONs total only about 28 KB and need no Git LFS;
   - no credential/private-key pattern was found in the reviewed upload
     candidates;
-  - one planning log contains a user-profile path and requires deliberate
-    retain/redact disposition;
-  - repository `LICENSE` says Apache-2.0 while `pyproject.toml` declares MIT,
-    and the eight new modules are absent from the explicit `py-modules` list;
+  - the one changed planning-log user-profile path was redacted to
+    `%USERPROFILE%`, and an added-line-only staged scan found no
+    literal user-profile path;
+  - repository `LICENSE` says Apache-2.0 while `pyproject.toml` declares MIT;
+    all 26 branch-added root modules are now registered and verified through an
+    isolated built-wheel import, but the license ambiguity remains an owner/
+    legal decision;
   - the retained JSON schema does not bind source commit, command,
-    interpreter/dependencies/OS, or raw-file SHA. Preserve the JSON bytes and
-    add companion provenance rather than rewriting evidence.
+    interpreter/dependencies/OS, or raw-file SHA. The companion preservation
+    ledger now binds its exact raw hashes and commit `186590c8`; it does not
+    invent missing historical producer metadata or rewrite the evidence.
 
 ## 2026-07-26 Code-Backed Closure Audit
 

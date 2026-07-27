@@ -83,12 +83,13 @@ not-in-scope items. They appear here so the next planner sees them.
 ### Prime-ring METHOD_DEV resume order
 
 The exact RB-10/RB-11 source, tests, protocols, and four JSON evidence files
-exist only in the current dirty worktree. The manifest validates against the
-current bytes, but the files are untracked and the branch is unpublished.
+are preserved in local commit
+`186590c8bde8311f39c17167110d5ba30b13a4fd`. The manifest validates against
+those bytes, but the branch is not yet verified on the remote.
 Before another experiment:
 
-1. Track, commit, and publish the exact tree without regenerating or editing the
-   four JSON artifacts.
+1. Publish the committed exact tree and prove remote SHA equality without
+   regenerating or editing the four JSON artifacts.
 2. Preserve `PRW-T1R` as an internal exact-Hamming theorem and resolve the
    production numerical-tie contract with exact-Hamming/direct/FFT boundary
    parity. Do not call the current float-FFT path a proved decoder.
@@ -157,6 +158,6 @@ priority Carried Debt entry; this log is the audit trail.
 
 ---
 
-**Last session**: 2026-07-26 — revalidated the local prime-ring METHOD_DEV work from source: 69/69 focused tests passed and the RB-10 manifest rebound successfully. The audit corrected an overclaim: the frozen 50/50 result is an internal exact-Hamming analytic tie corollary, not a validated production-decoder theorem. Across `p in {11,19,31}`, both truth types, and all 56 leading midpoint constructions, direct scoring preserved `336/336` exact ties while the current float-FFT path preserved `117/336`; tiny roundoff margins sometimes changed the winner. JO1 stacking is closed by exact flat identity while ordinary constrained-code controls remain optional; A1 remains conditional on global conjugacy and real action costs; G2H remains conditional on auxiliary/decoder-cost advantage and G2A is blocked. No new promotion-grade experiment ran. The exact code, tests, protocols, and artifacts remain local/untracked and must be preserved before continuation. Prior: 2026-06-13 PR #267 Track 0 hygiene closed CD-247-01 / CD-247-02.
+**Last session**: 2026-07-27 — completed the lossless primary-tree audit and preserved the exact 38-path prime-ring source/test/protocol/artifact allowlist in local commit `186590c8bde8311f39c17167110d5ba30b13a4fd`. Immutable hashes and manifest binding passed; focused suites passed 334/334 and 202/202; full offline-cache discovery passed 3330/3330 with 11 skips; lint, Python 3.9 grammar, block flag, schema drift, package import, staged secret, file-mode, object-size, and whitespace gates passed. Online ceiling smoke remains locally blocked by Hugging Face TLS verification and must pass on the hosted runner. Fresh Tier B rejected the first local repair heads for PRs #293-#295, so none was pushed or merged; repair loops remain active. No cleanup occurred. Prior scientific disposition remains: T1R is an internal exact-Hamming theorem, current float-FFT production linkage failed, JO1 stacking is closed by flat identity, A1/G2H are conditional, and G2A is blocked.
 **2026-05-17**: PRs #249–#254 merged; 9 BHS Scope B audit Carried Debt rows (CD-MOD-001 through CD-TTS-002) closed.
-**Last validated by `check_block_flag.py`**: 2026-07-25 local exact-tree validation; `CLEAR`, zero carried-debt rows. The 2026-07-26 research audit did not change Carried Debt or rerun this gate.
+**Last validated by `check_block_flag.py`**: 2026-07-27 local exact-tree validation; `CLEAR`, zero carried-debt rows.

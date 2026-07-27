@@ -77,7 +77,10 @@
     Tier B.
   - PR #294 exact-head review is still pending at this checkpoint.
 - Current phase: explicit allowlist staging and independent PR repair/review.
-  No primary commit, push, PR mutation, merge, or cleanup has occurred yet.
+  The exact 38-path evidence/source allowlist passed staged Gitleaks,
+  mode/size, whitespace, and personal-path checks and was committed locally as
+  `186590c8bde8311f39c17167110d5ba30b13a4fd`. Bookkeeping publication,
+  remote verification, PR mutation, merge, and cleanup have not yet occurred.
 
 ## RB-11 code-backed status reconciliation: 2026-07-26
 

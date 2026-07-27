@@ -836,6 +836,10 @@
   - fresh independent review found additional blockers in the first repaired
     heads for PRs #293 and #295. Those local commits remain unpushed and are not
     merge-authoritative; another repair/review loop is required.
+  - the exact 38-path primary allowlist passed staged Gitleaks, file-mode,
+    object-size, whitespace, and added-personal-path checks and was committed
+    locally as `186590c8bde8311f39c17167110d5ba30b13a4fd`; bookkeeping binding
+    and remote equality proof remain.
 
 ## RB-11 — Code-backed closure and queue reconciliation (2026-07-26)
 
@@ -925,7 +929,7 @@
 | Parallel validator orchestration masked the block-flag and schema results when online smoke failed on Hugging Face TLS verification | 1 | Reran both deterministic validators independently; both passed, and retained the smoke failure as an external limitation |
 | The first full unittest discovery spent its active time exhausting Hugging Face TLS retries | 1 | Verified the exact process command, stopped only that test PID, retained its external log, and reran identical discovery with the existing Hugging Face/Transformers/Datasets cache in offline mode; 3330 tests passed with 11 skips |
 | Repository-wide `ruff format --check .` reported 258 historical files outside the preservation diff | 1 | Did not create an unrelated mass-format rewrite; the repository's actual lint gate passed, and all 16 new allowlisted source/test files passed a scoped format check |
-| The first staged personal-path scan searched both added and removed diff lines and matched the removed pre-redaction path | 1 | Restricted the check to added lines excluding diff headers; zero newly added `C:\Users\mattm` paths remain |
+| The first staged personal-path scan searched both added and removed diff lines and matched the removed pre-redaction path | 1 | Restricted the check to added lines excluding diff headers; no literal user-profile path remains in the final tree |
 | Managed-sandbox `git status` could not read the user-global ignore file | 1 | The command still returned the explicit worktree inventory; validated the scoped files and `git diff --check` without changing global Git configuration |
 | Default WindowsApps PowerShell launcher failed with access denied | 1 | Switched read-only recovery and command execution to the bundled Node runtime; do not repeat the failed launcher path |
 | Initial repo-state read produced truncated combined output | 1 | Re-read required files with bounded line ranges |
