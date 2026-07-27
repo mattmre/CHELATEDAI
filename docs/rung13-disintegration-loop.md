@@ -15,7 +15,9 @@ isomer fitness = 1 - isomer strength = Jaccard similarity
 A cluster's isomer component is the minimum fitness of its joined member queries.
 No exact join means neutral fitness `1.0`; an empty detector result with explicit
 `mode="sedimentation"` cannot trigger pruning. Missing mode fails closed with an
-exception, as does any mode override: no other sign convention is validated.
+exception, as does any mode override or string subclass: both the expected and
+emitted modes must be the exact built-in string `"sedimentation"`, because no
+other sign convention is validated.
 
 `ConvergenceMonitor` exposes one training-run summary (`convergence_monitor.py:128`),
 not a per-query or per-cluster result. Selective scoring therefore requires callers
@@ -47,27 +49,33 @@ outputs; it does not claim the engine automatically invokes it yet.
 removes only scores strictly below the threshold, never removes nodes, validates
 the graph before and after mutation, and records detached copies of removed edges
 in a runtime-only ledger. `dry_run=True` reports identical proposed decisions without
-changing the graph or ledger. Non-finite or out-of-range scores fail closed. A
-scorer or protection callback that adds/removes/mutates nodes, replaces/removes/
-reorders/mutates edges, or mutates the pruned ledger is rejected against a joint
-state snapshot in both normal and dry-run modes. Nodes, active edges, and the
-ledger are restored together on returned mutation or exception.
+changing the graph or ledger. Thresholds must be exact built-in integers/floats,
+finite, and in `[0, 1]`; `dry_run` must be an exact built-in boolean. Invalid
+subclasses or objects fail before callbacks or conversion hooks. Scorer and custom
+protection callbacks receive separate detached edge views, so retaining or
+mutating a view cannot alter active, pruned, retained, or dry-run state. A callback
+that directly adds/removes/mutates nodes, replaces/removes/reorders/mutates private
+edges, or mutates the pruned ledger through another reference is rejected against
+a joint state snapshot. Nodes, active edges, and the ledger are restored together
+on returned mutation or exception.
 
 `reanneal_edges(dag, scorer, threshold, recovered_signal)` considers only ledgered
-edges. It rejects an invalid starting DAG before scoring. Scoring itself runs
-inside the same complete transaction: callback mutation or exceptions restore
-nodes, active edges, and the ledger. It then restores scores at or above the
-threshold, validates each restoration, and keeps failed/low or individually
-invalid ledger edges in the ledger.
+edges and applies the same exact built-in threshold contract. It rejects an
+invalid starting DAG before scoring. Scoring itself runs inside the same complete
+transaction: callback mutation or exceptions restore nodes, active edges, and the
+ledger. It then restores scores at or above the threshold, validates each
+restoration, and keeps failed/low or individually invalid ledger edges in the
+ledger.
 
 Node and edge attributes follow the serialized schema: plain JSON objects composed
 only of string keys, null, booleans, strings, integers, finite floats, lists, and
 objects. Inputs are recursively validated and detached at ingestion; custom Python
 objects, container subclasses, tuples, non-finite floats, non-string keys, and
 cycles fail closed. Transaction snapshots use the same hook-free copier rather
-than Python `deepcopy`, so attribute objects cannot execute copy hooks. Ledgered
-edges and returned prune/re-anneal records are detached from live edge and nested
-attribute aliases.
+than Python `deepcopy`; type checks use identity rather than equality and error
+paths do not inspect untrusted type metadata, so objects cannot execute copy,
+metaclass-equality, or type-name hooks. Ledgered edges and returned
+prune/re-anneal records are detached from live edge and nested attribute aliases.
 
 `write_disintegration_artifact` writes the prune and recovery thresholds, detector
 provenance, edge-level fitness before/after, pruned edges, re-annealed edges, and
