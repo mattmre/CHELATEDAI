@@ -61,11 +61,13 @@ vector bytes and requires all of the following:
 - manifest SHA256 equals disk-read SHA256;
 - in-memory SHA256 equals disk-read SHA256;
 - document ids match exactly and in order; and
-- `np.array_equal(in_memory_vectors, disk_vectors)` is true.
+- the C-order float32 vector bytes are exactly equal.
 
 Any mismatch raises with hashes, match flags, and the first id/vector diff.
 Structural payload corruption also raises. A parity failure is never converted
-to a negative result record.
+to a negative result record. The byte-exact comparison treats an identical NaN
+payload as equal while still distinguishing different NaN payload bits; mismatch
+diagnostics report both the array index and the differing element bytes.
 
 `retrieve_topk` uses float32 dot-product scores and stable descending sorting.
 Stable sorting makes tied scores preserve shard order deterministically.
@@ -83,7 +85,7 @@ in FP16, and three fixture queries.
 | Payload blocks | `1` |
 | Manifest / disk / host SHA256 | `637bf79f46866a5458b80bc521bd6db2ae9cf543e7036ab950668e3fe8c80973` |
 | Id equality | exact |
-| `np.array_equal` | `true` |
+| Byte equality | exact |
 | Query 1 top 3 | `doc-epsilon`, `doc-beta`, `doc-alpha` |
 | Query 2 top 3 | `doc-zeta`, `doc-gamma`, `doc-delta` |
 | Query 3 top 3 | `doc-zeta`, `doc-epsilon`, `doc-alpha` |
@@ -91,14 +93,10 @@ in FP16, and three fixture queries.
 | Corrupted logical payload byte | parity raises `AssertionError` |
 | Corrupted padding byte lane | shard read raises `ValueError` |
 
-Validation run on 2026-07-14:
+Validation re-run on 2026-07-27 after review hardening:
 
 ```text
-python -m unittest test_pool_shard_parity.py -v
-Ran 4 tests in 0.041s
-OK
-
-python -m unittest test_computational_storage_poc.py -v
-Ran 5 tests in 3.237s
+python -m unittest -v test_pool_shard_parity test_computational_storage_poc
+Ran 16 tests in 8.345s
 OK
 ```

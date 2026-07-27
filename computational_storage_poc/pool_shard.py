@@ -11,8 +11,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any
 
 import numpy as np
 
@@ -50,11 +51,14 @@ def _validate_vectors_and_ids(vectors: np.ndarray, ids: Sequence[str]) -> list[s
         raise ValueError(f"vectors must be 2D [n, d], got shape {vectors.shape}")
     if vectors.shape[0] == 0 or vectors.shape[1] == 0:
         raise ValueError(f"vectors must have non-zero n and d, got shape {vectors.shape}")
-    if not isinstance(ids, (list, tuple)) or any(not isinstance(doc_id, str) for doc_id in ids):
-        raise TypeError("ids must be a list or tuple of strings")
-    if len(ids) != vectors.shape[0]:
-        raise ValueError(f"ids length {len(ids)} does not match vector rows {vectors.shape[0]}")
-    return list(ids)
+    if isinstance(ids, (str, bytes)) or not isinstance(ids, Sequence):
+        raise TypeError("ids must be a non-text sequence of strings")
+    doc_ids = list(ids)
+    if any(not isinstance(doc_id, str) for doc_id in doc_ids):
+        raise TypeError("ids must be a non-text sequence of strings")
+    if len(doc_ids) != vectors.shape[0]:
+        raise ValueError(f"ids length {len(doc_ids)} does not match vector rows {vectors.shape[0]}")
+    return doc_ids
 
 
 def _encode_vector_bytes(raw_vector_bytes: bytes) -> bytes:
@@ -109,6 +113,8 @@ def _load_manifest(shard_path: Path) -> dict[str, Any]:
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     except (OSError, UnicodeError, json.JSONDecodeError) as exc:
         raise ValueError(f"Unable to read pool-shard manifest {manifest_path}: {exc}") from exc
+    if not isinstance(manifest, dict):
+        raise ValueError("Pool-shard manifest must be a JSON object")
 
     required = {
         "byte_encoding",
@@ -125,13 +131,9 @@ def _load_manifest(shard_path: Path) -> dict[str, Any]:
     if missing:
         raise ValueError(f"Pool-shard manifest is missing fields: {missing}")
     if manifest["format"] != FORMAT_NAME or manifest["version"] != FORMAT_VERSION:
-        raise ValueError(
-            f"Unsupported pool-shard format/version: {manifest['format']!r}/{manifest['version']!r}"
-        )
+        raise ValueError(f"Unsupported pool-shard format/version: {manifest['format']!r}/{manifest['version']!r}")
     if manifest["byte_encoding"] != BYTE_ENCODING or manifest["dtype"] != "float32":
-        raise ValueError(
-            f"Unsupported pool-shard encoding/dtype: {manifest['byte_encoding']!r}/{manifest['dtype']!r}"
-        )
+        raise ValueError(f"Unsupported pool-shard encoding/dtype: {manifest['byte_encoding']!r}/{manifest['dtype']!r}")
     return manifest
 
 
@@ -144,30 +146,19 @@ def _decode_payload_via_block_graph(payload: bytes, manifest: dict[str, Any]) ->
         raise ValueError(f"Invalid raw_vector_bytes: {raw_byte_count!r}")
     expected_payload_bytes = block_count * TOTAL_BLOCK_BYTES
     if len(payload) != expected_payload_bytes:
-        raise ValueError(
-            f"Pool-shard payload length mismatch: expected {expected_payload_bytes}, got {len(payload)}"
-        )
+        raise ValueError(f"Pool-shard payload length mismatch: expected {expected_payload_bytes}, got {len(payload)}")
     if raw_byte_count > block_count * CELLS_PER_BLOCK:
-        raise ValueError(
-            f"Manifest raw_vector_bytes {raw_byte_count} exceed {block_count} block capacity"
-        )
+        raise ValueError(f"Manifest raw_vector_bytes {raw_byte_count} exceed {block_count} block capacity")
 
     decoded_chunks = []
     offset = 0
     for block_index in range(block_count):
         block = read_block(payload, offset)
         cells = block.matrix.reshape(-1)
-        valid_u8_cells = (
-            np.isfinite(cells)
-            & (cells >= 0)
-            & (cells <= 255)
-            & (cells == np.floor(cells))
-        )
+        valid_u8_cells = np.isfinite(cells) & (cells >= 0) & (cells <= 255) & (cells == np.floor(cells))
         if not np.all(valid_u8_cells):
             bad_index = int(np.flatnonzero(~valid_u8_cells)[0])
-            raise ValueError(
-                f"Invalid encoded byte in block {block_index}, cell {bad_index}: {cells[bad_index]!r}"
-            )
+            raise ValueError(f"Invalid encoded byte in block {block_index}, cell {bad_index}: {cells[bad_index]!r}")
         decoded_chunks.append(cells.astype(np.uint8).tobytes())
 
         expected_next = 0 if block_index == block_count - 1 else (block_index + 1) * TOTAL_BLOCK_BYTES
@@ -181,9 +172,7 @@ def _decode_payload_via_block_graph(payload: bytes, manifest: dict[str, Any]) ->
     decoded_bytes = b"".join(decoded_chunks)
     if any(decoded_bytes[raw_byte_count:]):
         first_nonzero_padding = next(
-            index
-            for index, value in enumerate(decoded_bytes[raw_byte_count:], start=raw_byte_count)
-            if value != 0
+            index for index, value in enumerate(decoded_bytes[raw_byte_count:], start=raw_byte_count) if value != 0
         )
         raise ValueError(
             f"Non-zero block padding at decoded byte {first_nonzero_padding}: "
@@ -202,11 +191,7 @@ def _read_pool_shard_with_manifest(path: str | Path) -> tuple[np.ndarray, list[s
 
     raw_vector_bytes = _decode_payload_via_block_graph(payload, manifest)
     shape = manifest["shape"]
-    if (
-        not isinstance(shape, list)
-        or len(shape) != 2
-        or any(not isinstance(size, int) or size <= 0 for size in shape)
-    ):
+    if not isinstance(shape, list) or len(shape) != 2 or any(not isinstance(size, int) or size <= 0 for size in shape):
         raise ValueError(f"Invalid vector shape in manifest: {shape!r}")
     expected_raw_bytes = shape[0] * shape[1] * np.dtype(np.float32).itemsize
     if len(raw_vector_bytes) != expected_raw_bytes:
@@ -243,11 +228,31 @@ def _first_id_diff(expected: list[str], actual: list[str]) -> str:
 def _first_vector_diff(expected: np.ndarray, actual: np.ndarray) -> str:
     if expected.shape != actual.shape:
         return f"shape expected={expected.shape} actual={actual.shape}"
-    unequal = np.argwhere(expected != actual)
-    if unequal.size == 0:
+    if expected.dtype != actual.dtype:
+        return f"dtype expected={expected.dtype} actual={actual.dtype}"
+
+    expected_bytes = _vector_bytes(expected)
+    actual_bytes = _vector_bytes(actual)
+    if expected_bytes == actual_bytes:
         return "none"
-    index = tuple(int(value) for value in unequal[0])
-    return f"index={index} expected={expected[index]!r} actual={actual[index]!r}"
+
+    first_byte_offset = next(
+        index
+        for index, (expected_byte, actual_byte) in enumerate(zip(expected_bytes, actual_bytes))
+        if expected_byte != actual_byte
+    )
+    itemsize = expected.dtype.itemsize
+    flat_index = first_byte_offset // itemsize
+    index = tuple(int(value) for value in np.unravel_index(flat_index, expected.shape))
+    element_start = flat_index * itemsize
+    element_end = element_start + itemsize
+    expected_element_bytes = expected_bytes[element_start:element_end].hex()
+    actual_element_bytes = actual_bytes[element_start:element_end].hex()
+    return (
+        f"index={index} byte_offset={first_byte_offset} "
+        f"expected={expected[index]!r} actual={actual[index]!r} "
+        f"expected_bytes=0x{expected_element_bytes} actual_bytes=0x{actual_element_bytes}"
+    )
 
 
 def verify_pool_shard_parity(
@@ -270,9 +275,7 @@ def verify_pool_shard_parity(
     # Byte-exact comparison (not np.array_equal / IEEE value equality): a bit-exact
     # parity check must treat byte-identical NaN payloads as matching, and this is
     # the same semantics as the SHA256 check above.
-    vectors_match = (
-        in_memory_vectors.shape == disk_vectors.shape and in_memory_bytes == disk_bytes
-    )
+    vectors_match = in_memory_vectors.shape == disk_vectors.shape and in_memory_bytes == disk_bytes
 
     if not (manifest_hash_match and in_memory_hash_match and ids_match and vectors_match):
         raise AssertionError(
@@ -302,9 +305,7 @@ def retrieve_topk(query: np.ndarray, vectors: np.ndarray, ids: Sequence[str], k:
     doc_ids = _validate_vectors_and_ids(vectors, ids)
     query_array = np.asarray(query, dtype=np.float32)
     if query_array.ndim != 1 or query_array.shape[0] != vectors.shape[1]:
-        raise ValueError(
-            f"query must have shape ({vectors.shape[1]},), got {query_array.shape}"
-        )
+        raise ValueError(f"query must have shape ({vectors.shape[1]},), got {query_array.shape}")
     if not isinstance(k, int) or isinstance(k, bool) or k <= 0 or k > vectors.shape[0]:
         raise ValueError(f"k must be an integer in [1, {vectors.shape[0]}], got {k!r}")
 

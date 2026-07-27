@@ -4,6 +4,7 @@ import os
 import sys
 import tempfile
 import unittest
+from collections.abc import Sequence
 from pathlib import Path
 
 import numpy as np
@@ -37,6 +38,19 @@ FIXTURE_QUERIES = [
     np.array([-0.5, 1.0, 0.25, 0.75], dtype=np.float32),
     np.array([0.0, -1.0, 1.0, 1.0], dtype=np.float32),
 ]
+
+
+class DocIdSequence(Sequence[str]):
+    """Non-list sequence used to exercise the public Sequence[str] contract."""
+
+    def __init__(self, values):
+        self._values = tuple(values)
+
+    def __getitem__(self, index):
+        return self._values[index]
+
+    def __len__(self):
+        return len(self._values)
 
 
 class TestPoolShardParity(unittest.TestCase):
@@ -77,6 +91,40 @@ class TestPoolShardParity(unittest.TestCase):
                 disk_topk = retrieve_topk(query, disk_vectors, disk_ids, k=3)
                 self.assertEqual(disk_topk, in_memory_topk)
 
+    def test_write_accepts_non_list_sequence_of_strings(self):
+        sequence_ids = DocIdSequence(FIXTURE_IDS)
+
+        write_pool_shard(self.shard_path, FIXTURE_VECTORS, sequence_ids)
+        disk_vectors, disk_ids = read_pool_shard(self.shard_path)
+
+        self.assertEqual(disk_vectors.tobytes(order="C"), FIXTURE_VECTORS.tobytes(order="C"))
+        self.assertEqual(disk_ids, FIXTURE_IDS)
+
+    def test_write_rejects_text_scalars_and_non_string_members(self):
+        invalid_ids = (
+            "doc-alpha",
+            b"doc-alpha",
+            [*FIXTURE_IDS[:-1], 7],
+        )
+
+        for ids in invalid_ids:
+            with self.subTest(ids=ids):
+                with self.assertRaisesRegex(TypeError, "non-text sequence of strings"):
+                    write_pool_shard(self.shard_path, FIXTURE_VECTORS, ids)
+
+    def test_read_rejects_non_object_manifest_roots(self):
+        manifest_path = Path(f"{self.shard_path}.manifest.json")
+        non_object_roots = (None, True, 7, "manifest", ["manifest"])
+
+        for root in non_object_roots:
+            with self.subTest(root=root):
+                manifest_path.write_text(json.dumps(root), encoding="utf-8")
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "Pool-shard manifest must be a JSON object",
+                ):
+                    read_pool_shard(self.shard_path)
+
     def test_nan_payload_round_trips_byte_identically_and_parity_passes(self):
         # Byte-exact parity must treat a byte-identical NaN payload as matching
         # (np.array_equal would wrongly reject it since NaN != NaN). Also covers
@@ -96,6 +144,39 @@ class TestPoolShardParity(unittest.TestCase):
         parity = verify_pool_shard_parity(vectors, ids, self.shard_path)
         self.assertTrue(parity["vectors_match"])
         self.assertTrue(parity["in_memory_hash_match"])
+
+    def test_nan_diagnostic_skips_matching_nan_before_later_difference(self):
+        disk_vectors = np.array([[np.nan, 1.0]], dtype=np.float32)
+        in_memory_vectors = np.array([[np.nan, 2.0]], dtype=np.float32)
+        ids = ["doc-nan"]
+        write_pool_shard(self.shard_path, disk_vectors, ids)
+
+        with self.assertRaises(AssertionError) as raised:
+            verify_pool_shard_parity(in_memory_vectors, ids, self.shard_path)
+
+        diagnostic = str(raised.exception)
+        self.assertIn("index=(0, 1)", diagnostic)
+        self.assertNotIn("index=(0, 0) expected=np.float32(nan) actual=np.float32(nan)", diagnostic)
+
+    def test_nan_diagnostic_distinguishes_different_nan_payload_bits(self):
+        disk_vectors = np.array([[0x7FC00001]], dtype=np.uint32).view(np.float32)
+        in_memory_vectors = np.array([[0x7FC00002]], dtype=np.uint32).view(np.float32)
+        ids = ["doc-nan"]
+        write_pool_shard(self.shard_path, disk_vectors, ids)
+
+        with self.assertRaises(AssertionError) as raised:
+            verify_pool_shard_parity(in_memory_vectors, ids, self.shard_path)
+
+        diagnostic = str(raised.exception)
+        self.assertIn("index=(0, 0)", diagnostic)
+        self.assertIn(
+            f"expected_bytes=0x{in_memory_vectors.tobytes(order='C').hex()}",
+            diagnostic,
+        )
+        self.assertIn(
+            f"actual_bytes=0x{disk_vectors.tobytes(order='C').hex()}",
+            diagnostic,
+        )
 
     def test_verify_raises_on_mutated_vector_byte(self):
         write_pool_shard(self.shard_path, FIXTURE_VECTORS, FIXTURE_IDS)
