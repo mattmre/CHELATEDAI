@@ -142,13 +142,34 @@ class AdapterRouter:
         return digest.hexdigest()
 
     @staticmethod
-    def _cosine(query: np.ndarray, centroid: np.ndarray, query_norm: float) -> float:
-        if centroid.shape != query.shape:
+    def _unit_vector(vector: np.ndarray, name: str) -> Optional[np.ndarray]:
+        """Return a finite unit vector without overflowing on finite inputs."""
+
+        scale = float(np.max(np.abs(vector)))
+        if scale == 0.0:
+            return None
+        scaled = vector / scale
+        scaled_norm = float(np.linalg.norm(scaled))
+        if not math.isfinite(scaled_norm) or scaled_norm <= 0.0:
+            raise ValueError(f"{name} normalization must remain finite")
+        unit = scaled / scaled_norm
+        if not np.all(np.isfinite(unit)):
+            raise ValueError(f"{name} normalization must remain finite")
+        return unit
+
+    @classmethod
+    def _cosine(cls, query_unit: np.ndarray, centroid: np.ndarray) -> float:
+        if centroid.shape != query_unit.shape:
             raise ValueError(
-                f"centroid dimension {centroid.shape} does not match query dimension {query.shape}"
+                f"centroid dimension {centroid.shape} does not match query dimension {query_unit.shape}"
             )
-        centroid_norm = np.linalg.norm(centroid)
-        return 0.0 if centroid_norm == 0 else float(np.dot(query, centroid) / (query_norm * centroid_norm))
+        centroid_unit = cls._unit_vector(centroid, "centroid")
+        if centroid_unit is None:
+            return 0.0
+        score = float(np.dot(query_unit, centroid_unit))
+        if not math.isfinite(score):
+            raise ValueError("cosine similarity must remain finite")
+        return score
 
     def select(
         self,
@@ -179,15 +200,15 @@ class AdapterRouter:
             )
             return route
 
-        query_norm = np.linalg.norm(query)
-        if query_norm == 0:
+        query_unit = self._unit_vector(query, "query_vector")
+        if query_unit is None:
             raise ValueError("query_vector must be non-zero")
 
         best_key = None
         best_score = -float("inf")
         best_adapter = None
         for key, (centroid, adapter) in routes:
-            score = self._cosine(query, centroid, query_norm)
+            score = self._cosine(query_unit, centroid)
             if score > best_score:
                 best_key = key
                 best_score = score
@@ -198,8 +219,10 @@ class AdapterRouter:
         used_margin_fallback = False
         if global_route is not None:
             global_centroid, global_adapter = global_route
-            global_score = self._cosine(query, global_centroid, query_norm)
+            global_score = self._cosine(query_unit, global_centroid)
             margin = best_score - global_score if routes else None
+            if margin is not None and not math.isfinite(margin):
+                raise ValueError("routing margin must remain finite")
             if not routes or (margin is not None and margin < margin_delta):
                 best_key = "global"
                 best_score = global_score

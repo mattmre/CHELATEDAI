@@ -35,6 +35,16 @@ from benchmark_utils import canonicalize_id
 from quantization_promotion_gate import QuantizationPromotionGate
 
 
+def _positive_builtin_int(value: Any, name: str) -> int:
+    """Require an exact built-in integer, excluding bool and coercible values."""
+
+    if type(value) is not int:
+        raise TypeError(f"{name} must be a built-in int")
+    if value < 1:
+        raise ValueError(f"{name} must be >= 1")
+    return value
+
+
 @dataclass(frozen=True)
 class ThreeWaySplit:
     """Frozen query IDs for the ANCHOR/SELECT/REPORT protocol."""
@@ -133,8 +143,8 @@ class RoutingPlaneConfig:
         fractions = (self.anchor_fraction, self.select_fraction, self.report_fraction)
         if any(value <= 0.0 for value in fractions) or not math.isclose(sum(fractions), 1.0, abs_tol=1e-9):
             raise ValueError("three-way split fractions must be positive and sum to 1")
-        if self.k < 1 or self.route_k < 1:
-            raise ValueError("retrieval k and route_k must be >= 1")
+        _positive_builtin_int(self.k, "k")
+        _positive_builtin_int(self.route_k, "route_k")
         if self.min_cluster_documents < 1:
             raise ValueError("min_cluster_documents must be >= 1")
         if self.margin_delta < 0.0:
@@ -176,7 +186,7 @@ class RoutingPlaneConfig:
             anchor_fraction=float(split["anchor_fraction"]),
             select_fraction=float(split["select_fraction"]),
             report_fraction=float(split["report_fraction"]),
-            route_k=int(routing["k"]),
+            route_k=routing["k"],
             min_cluster_documents=int(routing["minimum_cluster_documents"]),
             margin_delta=float(routing["margin_delta"]),
             min_report_routes=int(routing["minimum_report_routes"]),
@@ -327,28 +337,55 @@ def paired_query_bootstrap_ci(
     )
 
 
+def _graded_gain(score: float) -> float:
+    try:
+        gain = math.pow(2.0, score) - 1.0
+    except OverflowError as exc:
+        raise ValueError("derived relevance gains must be finite") from exc
+    if not math.isfinite(gain):
+        raise ValueError("derived relevance gains must be finite")
+    return gain
+
+
+def _positive_relevance(relevance: Mapping[Any, float]) -> Dict[str, float]:
+    qrels: Dict[str, float] = {}
+    for doc_id, raw_score in relevance.items():
+        score = float(raw_score)
+        if not math.isfinite(score):
+            raise ValueError("relevance scores must be finite")
+        if score > 0.0:
+            _graded_gain(score)
+            qrels[canonicalize_id(doc_id)] = score
+    return qrels
+
+
 def graded_ndcg_at_k(ranked_ids: Sequence[Any], relevance: Mapping[Any, float], k: int = 10) -> float:
     """Correct graded NDCG whose IDCG uses the full query qrels."""
 
-    if k < 1:
-        raise ValueError("k must be >= 1")
-    qrels = {
-        canonicalize_id(doc_id): float(score)
-        for doc_id, score in relevance.items()
-        if float(score) > 0.0
-    }
+    validated_k = _positive_builtin_int(k, "k")
+    qrels = _positive_relevance(relevance)
     if not qrels:
         return 0.0
 
-    def _gain(score: float) -> float:
-        return (2.0 ** float(score)) - 1.0
-
     dcg = 0.0
-    for rank, doc_id in enumerate(list(ranked_ids)[:k], start=1):
-        dcg += _gain(qrels.get(canonicalize_id(doc_id), 0.0)) / math.log2(rank + 1.0)
-    ideal = sorted(qrels.values(), reverse=True)[:k]
-    idcg = sum(_gain(score) / math.log2(rank + 1.0) for rank, score in enumerate(ideal, start=1))
-    return float(dcg / idcg) if idcg > 0.0 else 0.0
+    for rank, doc_id in enumerate(list(ranked_ids)[:validated_k], start=1):
+        term = _graded_gain(qrels.get(canonicalize_id(doc_id), 0.0)) / math.log2(rank + 1.0)
+        dcg += term
+        if not math.isfinite(term) or not math.isfinite(dcg):
+            raise ValueError("derived relevance DCG must be finite")
+    ideal = sorted(qrels.values(), reverse=True)[:validated_k]
+    idcg = 0.0
+    for rank, score in enumerate(ideal, start=1):
+        term = _graded_gain(score) / math.log2(rank + 1.0)
+        idcg += term
+        if not math.isfinite(term) or not math.isfinite(idcg):
+            raise ValueError("derived relevance IDCG must be finite")
+    if idcg <= 0.0:
+        return 0.0
+    ndcg = dcg / idcg
+    if not math.isfinite(ndcg):
+        raise ValueError("derived NDCG must be finite")
+    return float(ndcg)
 
 
 class QuantAwareRoutingPlane:
@@ -386,11 +423,7 @@ class QuantAwareRoutingPlane:
                 raise ValueError("oracle document matrix shape must match base document matrix")
             self.oracle_document_embeddings = oracle
         self.qrels = {
-            canonicalize_id(query_id): {
-                canonicalize_id(doc_id): float(score)
-                for doc_id, score in relevance.items()
-                if float(score) > 0.0
-            }
+            canonicalize_id(query_id): _positive_relevance(relevance)
             for query_id, relevance in qrels.items()
         }
         self.split = split
@@ -645,7 +678,7 @@ class QuantAwareRoutingPlane:
             self._state = "SELECTING"
         try:
             return self._run_select(canonical_vectors, expected)
-        except Exception:
+        except BaseException:
             self._rollback_select_transition()
             raise
 
@@ -852,7 +885,7 @@ class QuantAwareRoutingPlane:
             self._phase_query_ids["REPORT"] = set(expected)
         try:
             return self._run_report(canonical_vectors)
-        except Exception as exc:
+        except BaseException as exc:
             self._finalize_report_failure(exc)
             raise
 
@@ -954,7 +987,7 @@ class QuantAwareRoutingPlane:
         self._assert_decisions_frozen()
         return json.loads(json.dumps(self._report_result))
 
-    def _finalize_report_failure(self, exc: Exception) -> None:
+    def _finalize_report_failure(self, exc: BaseException) -> None:
         """Consume a failed REPORT attempt and preserve a terminal fail-closed record."""
 
         self.router.reset_usage("REPORT")
@@ -994,10 +1027,15 @@ class QuantAwareRoutingPlane:
             raise RuntimeError(f"quant-aware routing plane is not promoted (verdict={self.verdict})")
         self._assert_decisions_frozen()
         self._assert_adapters_frozen()
+        retrieval_k = (
+            self.config.k
+            if k is None
+            else _positive_builtin_int(k, "k")
+        )
         query = np.asarray(list(query_vector), dtype=np.float32)
         route = self.router.select(query, usage_scope=usage_scope)
         view = self._view(route.key, bool(quantized))
-        result_ids = _rank_document_ids(query, view, self.document_ids, int(k or self.config.k))
+        result_ids = _rank_document_ids(query, view, self.document_ids, retrieval_k)
         return {
             "ids": result_ids,
             "route": route.to_dict(),
@@ -1229,20 +1267,50 @@ def _rank_document_ids(
     document_ids: Sequence[str],
     k: int,
 ) -> List[str]:
+    validated_k = _positive_builtin_int(k, "k")
     query = np.asarray(query_vector, dtype=np.float32)
-    norm = float(np.linalg.norm(query))
-    if norm <= 0.0:
+    query_unit = _finite_unit_vector(query, "query vector")
+    if query_unit is None:
         raise ValueError("query vector must be non-zero")
-    scores = normalized_documents @ (query / norm)
-    order = np.argsort(-scores, kind="mergesort")[: min(int(k), len(document_ids))]
+    scores = normalized_documents @ query_unit
+    if not np.all(np.isfinite(scores)):
+        raise ValueError("derived document scores must be finite")
+    order = np.argsort(-scores, kind="mergesort")[
+        : min(validated_k, len(document_ids))
+    ]
     return [str(document_ids[index]) for index in order]
 
 
 def _normalize_rows(matrix: np.ndarray) -> np.ndarray:
     values = _as_matrix(matrix, "embedding_matrix")
-    norms = np.linalg.norm(values, axis=1, keepdims=True)
-    norms = np.where(norms > 0.0, norms, 1.0)
-    return (values / norms).astype(np.float32)
+    scales = np.max(np.abs(values), axis=1, keepdims=True)
+    safe_scales = np.where(scales > 0.0, scales, 1.0)
+    scaled = values / safe_scales
+    scaled_norms = np.linalg.norm(scaled.astype(np.float64), axis=1, keepdims=True)
+    if not np.all(np.isfinite(scaled_norms)):
+        raise ValueError("embedding row normalization must remain finite")
+    safe_norms = np.where(scaled_norms > 0.0, scaled_norms, 1.0)
+    normalized = scaled.astype(np.float64) / safe_norms
+    if not np.all(np.isfinite(normalized)):
+        raise ValueError("embedding row normalization must remain finite")
+    return normalized.astype(np.float32)
+
+
+def _finite_unit_vector(vector: np.ndarray, name: str) -> Optional[np.ndarray]:
+    values = np.asarray(vector, dtype=np.float32)
+    if values.ndim != 1 or values.size == 0 or not np.all(np.isfinite(values)):
+        raise ValueError(f"{name} must be a non-empty finite 1D vector")
+    scale = float(np.max(np.abs(values)))
+    if scale == 0.0:
+        return None
+    scaled = values / scale
+    scaled_norm = float(np.linalg.norm(scaled.astype(np.float64)))
+    if not math.isfinite(scaled_norm) or scaled_norm <= 0.0:
+        raise ValueError(f"{name} normalization must remain finite")
+    unit = scaled.astype(np.float64) / scaled_norm
+    if not np.all(np.isfinite(unit)):
+        raise ValueError(f"{name} normalization must remain finite")
+    return unit.astype(np.float32)
 
 
 def _as_matrix(value: Any, name: str) -> np.ndarray:
@@ -1276,7 +1344,7 @@ def _validate_phase_query_vectors(
             or not np.all(np.isfinite(vector))
         ):
             raise ValueError(f"invalid {phase} query vector for {query_id}")
-        if float(np.linalg.norm(vector)) <= 0.0:
+        if _finite_unit_vector(vector, f"{phase} query vector") is None:
             raise ValueError(f"{phase} query vector must be non-zero for {query_id}")
 
 

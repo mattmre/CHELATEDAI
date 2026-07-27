@@ -30,16 +30,19 @@ freezes and retains its checksum before any SELECT evaluation, then checks route
 centroids, margin, configuration, qrels, split, documents, oracle, and preregistration through
 finalization. Atomic plane-level states serialize SELECT and the one-shot REPORT; a failed SELECT
 rolls back for a retry against the same frozen router, while a failed REPORT is consumed and made
-terminally fail-closed. Every floating promotion parameter rejects non-finite values. Every retained
-adapter is quant-gated even if SELECT did not route a query to it; encoder-swap serving requires an
-explicit query-vector provider; and future selection locks record source-file hashes plus a clean
-whole-repository Git tree identity. The final runner also defers REPORT-query embedding until after
-the durable SELECT lock. Both recorded arenas used every retained specialist and the global fallback
-on SELECT, so the broadened quant-gate scope covers the same four adapters and cannot change either
-recorded verdict. The original campaign manifest did not record a contemporaneous code/Git hash,
-however, and the runner was hardened after the run. Therefore the numeric artifacts are internally
-recomputable from their stored per-query rows but are not cryptographically attributable to the
-final source bytes. REPORT was not rerun to paper over that lineage limitation.
+terminally fail-closed. Cancellation-class `BaseException` signals take the same cleanup path and are
+then re-raised unchanged. Every floating promotion parameter, relevance input, and derived
+fitness/cosine/NDCG value must remain finite; retrieval `k` accepts only an exact positive built-in
+integer, with `None` as the sole default sentinel. Every retained adapter is quant-gated even if
+SELECT did not route a query to it; encoder-swap serving requires an explicit query-vector provider;
+and future selection locks record source-file hashes plus a clean whole-repository Git tree identity.
+The final runner also defers REPORT-query embedding until after the durable SELECT lock. Both
+recorded arenas used every retained specialist and the global fallback on SELECT, so the broadened
+quant-gate scope covers the same four adapters and cannot change either recorded verdict. The
+original campaign manifest did not record a contemporaneous code/Git hash, however, and the runner
+was hardened after the run. Therefore the numeric artifacts are internally recomputable from their
+stored per-query rows but are not cryptographically attributable to the final source bytes. REPORT
+was not rerun to paper over that lineage limitation.
 
 ## Arena A — default SciFact swap
 
