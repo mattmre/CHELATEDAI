@@ -12,7 +12,6 @@ neutral fitness 1.0 so missing evidence can never cause destructive pruning.
 from __future__ import annotations
 
 import json
-from copy import deepcopy
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Mapping, Optional
 
@@ -193,11 +192,11 @@ def reanneal_edges(
 ) -> Dict[str, Any]:
     """Restore ledgered edges whose recovered detector fitness clears threshold."""
     threshold = _bounded_float(threshold, "threshold")
+    state_snapshot = dag._snapshot_state()
     violations = validate_evidence_dag(dag)
     if violations:
         raise ValueError("cannot re-anneal on an invalid EvidenceDAG: " + "; ".join(violations))
-    before = len(dag.edges)
-    original_edges, original_ledger = deepcopy((dag._edges, dag._pruned_edge_ledger))
+    before = len(state_snapshot[1])
     ledger_entries = list(dag._pruned_edge_ledger)
     remaining: List[Dict[str, Any]] = []
     scores: List[Dict[str, Any]] = []
@@ -216,10 +215,16 @@ def reanneal_edges(
             )
             scored_entries.append((ledger_entry, fitness))
 
-        if dag._edges != original_edges or dag._pruned_edge_ledger != original_ledger:
+        try:
+            state_unchanged = dag._state_matches(state_snapshot)
+        except (TypeError, ValueError) as exc:
             raise RuntimeError(
-                "re-anneal scorer mutated EvidenceDAG active edges or pruned ledger "
-                "during scoring; refusing recovery from a stale snapshot"
+                "re-anneal scorer left non-canonical EvidenceDAG node, edge, or " "pruned ledger state during scoring"
+            ) from exc
+        if not state_unchanged:
+            raise RuntimeError(
+                "re-anneal scorer mutated EvidenceDAG nodes, active edges, or pruned "
+                "ledger during scoring; refusing recovery from a stale snapshot"
             )
 
         for ledger_entry, fitness in scored_entries:
@@ -232,17 +237,17 @@ def reanneal_edges(
                 "decision": "retain_pruned",
             }
             if fitness < threshold:
-                remaining.append(ledger_entry)
+                remaining.append(dag._clone_ledger_entry(ledger_entry))
                 scores.append(score_record)
                 continue
 
             # Duplicate equal edges are legal in EvidenceDAG.  Each ledger entry
             # represents one occurrence and must therefore be appended once.
-            dag._edges.append(edge)
+            dag._edges.append(dag._clone_edge(edge))
             violations = validate_evidence_dag(dag)
             if violations:
                 dag._edges.pop()
-                remaining.append(ledger_entry)
+                remaining.append(dag._clone_ledger_entry(ledger_entry))
                 score_record["decision"] = "skip_invalid"
                 score_record["violations"] = violations
                 skipped_invalid.append(edge.to_dict())
@@ -252,8 +257,7 @@ def reanneal_edges(
             scores.append(score_record)
         dag._pruned_edge_ledger = remaining
     except Exception:
-        dag._edges = original_edges
-        dag._pruned_edge_ledger = original_ledger
+        dag._restore_state(state_snapshot)
         raise
     return {
         "record_type": "evidence_dag_reanneal",

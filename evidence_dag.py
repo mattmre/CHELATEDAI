@@ -16,14 +16,17 @@ actuator -> cluster so the graph is acyclic by construction:
 The validator enforces: unique node ids, known node/edge types, edges referencing
 existing nodes, edge endpoint-type constraints, and acyclicity. Stdlib only — no
 numpy/torch — so it is CI-cheap and import-safe everywhere.
+
+Node and edge attributes are detached plain JSON values. This matches the external
+schema and keeps transaction snapshots free of arbitrary Python object hooks.
 """
 
 from __future__ import annotations
 
 import json
-from copy import deepcopy
 from dataclasses import dataclass, field
 from enum import Enum
+from math import isfinite
 from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple
 
 
@@ -48,14 +51,65 @@ EDGE_ENDPOINTS: Dict[EdgeType, Tuple[NodeType, NodeType]] = {
 }
 
 
+def _copy_plain_json(value: Any, path: str, active: Optional[set] = None) -> Any:
+    """Validate and detach a value from the supported plain-JSON attribute domain.
+
+    Exact built-in types are required deliberately. Accepting arbitrary Mapping,
+    Sequence, numeric, or string subclasses would let user-defined iteration,
+    conversion, equality, or copy hooks execute inside graph transactions.
+    """
+    value_type = type(value)
+    if value is None or value_type in (str, bool, int):
+        return value
+    if value_type is float:
+        if not isfinite(value):
+            raise ValueError(f"{path} must contain only finite JSON numbers")
+        return value
+
+    if value_type not in (list, dict):
+        raise TypeError(f"{path} must contain only plain JSON-compatible values; " f"got {value_type.__name__}")
+
+    active = set() if active is None else active
+    identity = id(value)
+    if identity in active:
+        raise ValueError(f"{path} must not contain cyclic containers")
+    active.add(identity)
+    try:
+        if value_type is list:
+            return [_copy_plain_json(item, f"{path}[{index}]", active) for index, item in enumerate(value)]
+
+        copied: Dict[str, Any] = {}
+        for key, item in value.items():
+            if type(key) is not str:
+                raise TypeError(f"{path} keys must be plain strings; got {type(key).__name__}")
+            copied[key] = _copy_plain_json(item, f"{path}.{key}", active)
+        return copied
+    finally:
+        active.remove(identity)
+
+
+def _canonical_attrs(attrs: Mapping[str, Any], owner: str) -> Dict[str, Any]:
+    copied = _copy_plain_json(attrs, f"{owner}.attrs")
+    if type(copied) is not dict:  # defensive: attrs is an object in the schema
+        raise TypeError(f"{owner}.attrs must be a plain JSON object")
+    return copied
+
+
 @dataclass(frozen=True)
 class EvidenceNode:
     node_id: str
     node_type: NodeType
     attrs: Mapping[str, Any] = field(default_factory=dict)
 
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "attrs", _canonical_attrs(self.attrs, "EvidenceNode"))
+
     def to_dict(self) -> Dict[str, Any]:
-        return {"id": self.node_id, "type": self.node_type.value, "attrs": dict(self.attrs)}
+        return {
+            "id": self.node_id,
+            "type": self.node_type.value,
+            "attrs": _canonical_attrs(self.attrs, "EvidenceNode"),
+        }
 
 
 @dataclass(frozen=True)
@@ -65,13 +119,23 @@ class EvidenceEdge:
     edge_type: EdgeType
     attrs: Mapping[str, Any] = field(default_factory=dict)
 
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "attrs", _canonical_attrs(self.attrs, "EvidenceEdge"))
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "src": self.src,
             "dst": self.dst,
             "type": self.edge_type.value,
-            "attrs": dict(self.attrs),
+            "attrs": _canonical_attrs(self.attrs, "EvidenceEdge"),
         }
+
+
+_DAGState = Tuple[
+    Dict[str, EvidenceNode],
+    List[EvidenceEdge],
+    List[Dict[str, Any]],
+]
 
 
 class EvidenceDAG:
@@ -105,6 +169,76 @@ class EvidenceDAG:
         self._edges.append(edge)
         return edge
 
+    @staticmethod
+    def _clone_node(node: EvidenceNode) -> EvidenceNode:
+        if type(node) is not EvidenceNode:
+            raise TypeError("EvidenceDAG node state must contain exact EvidenceNode instances")
+        if type(node.node_id) is not str or type(node.node_type) is not NodeType:
+            raise TypeError("EvidenceDAG node identity and type must be canonical")
+        return EvidenceNode(node.node_id, node.node_type, node.attrs)
+
+    @staticmethod
+    def _clone_edge(edge: EvidenceEdge) -> EvidenceEdge:
+        if type(edge) is not EvidenceEdge:
+            raise TypeError("EvidenceDAG edge state must contain exact EvidenceEdge instances")
+        if type(edge.src) is not str or type(edge.dst) is not str or type(edge.edge_type) is not EdgeType:
+            raise TypeError("EvidenceDAG edge identity and type must be canonical")
+        return EvidenceEdge(edge.src, edge.dst, edge.edge_type, edge.attrs)
+
+    @classmethod
+    def _clone_ledger_entry(cls, entry: Dict[str, Any]) -> Dict[str, Any]:
+        if type(entry) is not dict:
+            raise TypeError("EvidenceDAG pruned ledger entries must be plain dictionaries")
+        expected = {"edge_id", "edge", "fitness_at_prune", "threshold"}
+        if set(entry) != expected:
+            raise TypeError(
+                "EvidenceDAG pruned ledger entry fields must be exactly " "edge_id, edge, fitness_at_prune, threshold"
+            )
+        if type(entry["edge_id"]) is not str:
+            raise TypeError("EvidenceDAG pruned ledger edge_id must be a plain string")
+        return {
+            "edge_id": entry["edge_id"],
+            "edge": cls._clone_edge(entry["edge"]),
+            "fitness_at_prune": _copy_plain_json(
+                entry["fitness_at_prune"],
+                "EvidenceDAG.pruned_edge_ledger.fitness_at_prune",
+            ),
+            "threshold": _copy_plain_json(
+                entry["threshold"],
+                "EvidenceDAG.pruned_edge_ledger.threshold",
+            ),
+        }
+
+    @classmethod
+    def _clone_ledger(cls, ledger: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        if type(ledger) is not list:
+            raise TypeError("EvidenceDAG pruned ledger must be a plain list")
+        return [cls._clone_ledger_entry(entry) for entry in ledger]
+
+    def _snapshot_state(self) -> _DAGState:
+        """Return a detached, hook-free transaction snapshot of all graph state."""
+        if type(self._nodes) is not dict or type(self._edges) is not list:
+            raise TypeError("EvidenceDAG node and edge containers must be plain containers")
+
+        nodes: Dict[str, EvidenceNode] = {}
+        for node_id, node in self._nodes.items():
+            if type(node_id) is not str:
+                raise TypeError("EvidenceDAG node map keys must be plain strings")
+            cloned_node = self._clone_node(node)
+            if cloned_node.node_id != node_id:
+                raise TypeError("EvidenceDAG node map keys must match canonical node ids")
+            nodes[node_id] = cloned_node
+        edges = [self._clone_edge(edge) for edge in self._edges]
+        ledger = self._clone_ledger(self._pruned_edge_ledger)
+        return nodes, edges, ledger
+
+    def _restore_state(self, snapshot: _DAGState) -> None:
+        self._nodes, self._edges, self._pruned_edge_ledger = snapshot
+
+    def _state_matches(self, snapshot: _DAGState) -> bool:
+        """Compare current state only after canonical validation and detachment."""
+        return self._snapshot_state() == snapshot
+
     @property
     def nodes(self) -> List[EvidenceNode]:
         return list(self._nodes.values())
@@ -119,7 +253,7 @@ class EvidenceDAG:
     @property
     def pruned_edge_ledger(self) -> List[Dict[str, Any]]:
         """Return a defensive copy of edges eligible for re-annealing."""
-        return deepcopy(self._pruned_edge_ledger)
+        return self._clone_ledger(self._pruned_edge_ledger)
 
     @staticmethod
     def _edge_record_id(edge: EvidenceEdge, occurrence: int) -> str:
@@ -153,26 +287,27 @@ class EvidenceDAG:
         The scorer is called once per edge and must return a finite value in
         ``[0, 1]``.  Nodes are never removed.  A dry run reports the same proposed
         decisions without mutating either the edge list or the pruned-edge ledger.
-        The default fail-closed predicate protects structural/required edges.
+        Mandatory structural/required protection is always applied; a custom
+        predicate can add protection but cannot weaken the mandatory predicate.
         """
         threshold = float(threshold)
         if not 0.0 <= threshold <= 1.0:
             raise ValueError(f"threshold must be in [0.0, 1.0], got {threshold}")
+
+        # Canonicalize before structural validation so even a privately injected
+        # object/subclass cannot execute attribute hooks through the validator.
+        state_snapshot = self._snapshot_state()
         violations = validate_evidence_dag(self)
         if violations:
             raise ValueError("cannot prune an invalid EvidenceDAG: " + "; ".join(violations))
 
-        protect = protected_predicate or self.default_protected_predicate
         occurrences: Dict[Tuple[str, str, str], int] = {}
-        scores: List[Dict[str, Any]] = []
-        retained: List[EvidenceEdge] = []
-        proposed_ledger: List[Dict[str, Any]] = []
+        decisions: List[Tuple[EvidenceEdge, str, float, bool, bool]] = []
 
-        # Score over a snapshot so a scorer that mutates the DAG mid-pass cannot
-        # drop unscored/unledgered edges; a mutating scorer is a caller bug and is
-        # rejected below rather than silently corrupting the edge set.
+        # Preflight canonicalization is deliberately outside the callback boundary:
+        # it rejects hostile pre-existing attrs without invoking arbitrary copy
+        # hooks. Once callbacks begin, nodes, edges, and ledger are one transaction.
         live_edges = list(self._edges)
-        edge_snapshot, ledger_snapshot = deepcopy((self._edges, self._pruned_edge_ledger))
         try:
             for edge in live_edges:
                 identity = (edge.src, edge.edge_type.value, edge.dst)
@@ -185,46 +320,61 @@ class EvidenceDAG:
                         f"scorer returned non-finite/out-of-range fitness {fitness!r} " f"for edge {edge_id}"
                     )
 
-                is_protected = bool(protect(edge))
-                would_prune = fitness < threshold and not is_protected
-                decision = (
-                    "prune" if would_prune else ("skip_protected" if fitness < threshold and is_protected else "keep")
+                mandatory_protection = self.default_protected_predicate(edge)
+                custom_protection = (
+                    bool(protected_predicate(edge))
+                    if protected_predicate is not None and not mandatory_protection
+                    else False
                 )
-                score_record = {
+                is_protected = mandatory_protection or custom_protection
+                would_prune = fitness < threshold and not is_protected
+                decisions.append((edge, edge_id, fitness, is_protected, would_prune))
+
+            try:
+                state_unchanged = self._state_matches(state_snapshot)
+            except (TypeError, ValueError) as exc:
+                raise RuntimeError(
+                    "scorer or protection predicate left non-canonical EvidenceDAG " "state during prune_edges"
+                ) from exc
+            if not state_unchanged:
+                raise RuntimeError(
+                    "scorer or protection predicate mutated the DAG edge set, node "
+                    "set, or pruned ledger state during prune_edges; refusing to "
+                    "apply a prune computed over a stale snapshot"
+                )
+        except Exception:
+            self._restore_state(state_snapshot)
+            raise
+
+        scores: List[Dict[str, Any]] = []
+        retained: List[EvidenceEdge] = []
+        proposed_ledger: List[Dict[str, Any]] = []
+        for edge, edge_id, fitness, is_protected, would_prune in decisions:
+            decision = (
+                "prune" if would_prune else ("skip_protected" if fitness < threshold and is_protected else "keep")
+            )
+            edge_record = edge.to_dict()
+            scores.append(
+                {
                     "edge_id": edge_id,
-                    "edge": edge.to_dict(),
+                    "edge": edge_record,
                     "fitness_before": fitness,
                     "fitness_after": None if would_prune else fitness,
                     "decision": decision,
                     "protected": is_protected,
                 }
-                scores.append(score_record)
-                if would_prune:
-                    proposed_ledger.append(
-                        {
-                            "edge_id": edge_id,
-                            "edge": edge,
-                            "fitness_at_prune": fitness,
-                            "threshold": threshold,
-                        }
-                    )
-                else:
-                    retained.append(edge)
-        except Exception:
-            self._edges = edge_snapshot
-            self._pruned_edge_ledger = ledger_snapshot
-            raise
-
-        # Compare against a deep snapshot, not shared edge objects. A scorer can
-        # replace/reorder entries or mutate nested attrs and protection flags
-        # while preserving list length; every such mutation is transactional.
-        if self._edges != edge_snapshot or self._pruned_edge_ledger != ledger_snapshot:
-            self._edges = edge_snapshot
-            self._pruned_edge_ledger = ledger_snapshot
-            raise RuntimeError(
-                "scorer mutated the DAG edge set or pruned ledger state during "
-                "prune_edges; refusing to apply a prune computed over a stale snapshot"
             )
+            if would_prune:
+                proposed_ledger.append(
+                    {
+                        "edge_id": edge_id,
+                        "edge": self._clone_edge(edge),
+                        "fitness_at_prune": fitness,
+                        "threshold": threshold,
+                    }
+                )
+            else:
+                retained.append(edge)
 
         record = {
             "record_type": "evidence_dag_prune",
@@ -234,19 +384,22 @@ class EvidenceDAG:
             "edges_after": len(retained),
             "scores": scores,
             "pruned": [entry["edge"].to_dict() for entry in proposed_ledger],
-            "protected_skips": [item["edge"] for item in scores if item["decision"] == "skip_protected"],
+            "protected_skips": [
+                _copy_plain_json(item["edge"], "prune_record.protected_skips")
+                for item in scores
+                if item["decision"] == "skip_protected"
+            ],
         }
         if dry_run:
-            return record
+            return _copy_plain_json(record, "prune_record")
 
-        original_edges = self._edges
         self._edges = retained
         post_violations = validate_evidence_dag(self)
         if post_violations:
-            self._edges = original_edges
+            self._restore_state(state_snapshot)
             raise ValueError("prune would invalidate EvidenceDAG: " + "; ".join(post_violations))
         self._pruned_edge_ledger.extend(proposed_ledger)
-        return record
+        return _copy_plain_json(record, "prune_record")
 
     # -- serialization -------------------------------------------------------
     def to_dict(self) -> Dict[str, Any]:
@@ -268,13 +421,19 @@ class EvidenceDAG:
             if nid in seen:
                 raise ValueError(f"duplicate node id in serialized DAG: {nid!r}")
             seen.add(nid)
-            dag.add_node(nid, NodeType(raw["type"]), **dict(raw.get("attrs", {})))
+            attrs = raw.get("attrs", {})
+            if type(attrs) is not dict:
+                raise TypeError("serialized node attrs must be a plain JSON object")
+            dag.add_node(nid, NodeType(raw["type"]), **attrs)
         for raw in data.get("edges", []):
+            attrs = raw.get("attrs", {})
+            if type(attrs) is not dict:
+                raise TypeError("serialized edge attrs must be a plain JSON object")
             dag.add_edge(
                 str(raw["src"]),
                 str(raw["dst"]),
                 EdgeType(raw["type"]),
-                **dict(raw.get("attrs", {})),
+                **attrs,
             )
         return dag
 

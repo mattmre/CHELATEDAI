@@ -1,12 +1,15 @@
 """Tests for evidence_dag.py — the typed evidence-graph contract (Phase II rung 12)."""
+
 from __future__ import annotations
 
 import unittest
+from unittest.mock import MagicMock
 
 from evidence_dag import (
     EVIDENCE_DAG_JSON_SCHEMA,
     EdgeType,
     EvidenceDAG,
+    EvidenceEdge,
     NodeType,
     from_attribution_pool,
     validate_evidence_dag,
@@ -22,6 +25,15 @@ def _valid_dag() -> EvidenceDAG:
     dag.add_edge("q1", "a1", EdgeType.CORRECTED_BY)
     dag.add_edge("a1", "cl1", EdgeType.OPERATES_ON)
     return dag
+
+
+class _DeepcopyBomb:
+    def __init__(self):
+        self.calls = 0
+
+    def __deepcopy__(self, _memo):
+        self.calls += 1
+        raise AssertionError("arbitrary __deepcopy__ hook executed")
 
 
 class TestEvidenceDagContract(unittest.TestCase):
@@ -87,12 +99,94 @@ class TestEvidenceDagContract(unittest.TestCase):
             EvidenceDAG.from_dict(data)
 
     def test_json_schema_describes_node_and_edge_enums(self):
-        node_types = set(EVIDENCE_DAG_JSON_SCHEMA["properties"]["nodes"]["items"]
-                         ["properties"]["type"]["enum"])
+        node_types = set(EVIDENCE_DAG_JSON_SCHEMA["properties"]["nodes"]["items"]["properties"]["type"]["enum"])
         self.assertEqual(node_types, {t.value for t in NodeType})
-        edge_types = set(EVIDENCE_DAG_JSON_SCHEMA["properties"]["edges"]["items"]
-                         ["properties"]["type"]["enum"])
+        edge_types = set(EVIDENCE_DAG_JSON_SCHEMA["properties"]["edges"]["items"]["properties"]["type"]["enum"])
         self.assertEqual(edge_types, {t.value for t in EdgeType})
+
+    def test_attrs_are_canonicalized_to_detached_plain_json_values(self):
+        nested = {"layers": [{"weight": 1.0}], "enabled": True}
+        dag = EvidenceDAG()
+        node = dag.add_node("q1", NodeType.QUERY, payload=nested)
+        dag.add_node("cl1", NodeType.CLUSTER)
+        edge = dag.add_edge("q1", "cl1", EdgeType.RETRIEVED_IN, payload=nested)
+
+        nested["layers"][0]["weight"] = 9.0
+        self.assertEqual(node.attrs["payload"]["layers"][0]["weight"], 1.0)
+        self.assertEqual(edge.attrs["payload"]["layers"][0]["weight"], 1.0)
+
+        exported = dag.to_dict()
+        exported["nodes"][0]["attrs"]["payload"]["layers"][0]["weight"] = 8.0
+        exported["edges"][0]["attrs"]["payload"]["layers"][0]["weight"] = 7.0
+        self.assertEqual(dag.node("q1").attrs["payload"]["layers"][0]["weight"], 1.0)
+        self.assertEqual(dag.edges[0].attrs["payload"]["layers"][0]["weight"], 1.0)
+
+    def test_arbitrary_attr_objects_are_rejected_without_deepcopy_hooks(self):
+        for constructor in ("node", "edge", "direct_edge"):
+            with self.subTest(constructor=constructor):
+                bomb = _DeepcopyBomb()
+                dag = EvidenceDAG()
+                dag.add_node("q1", NodeType.QUERY)
+                dag.add_node("cl1", NodeType.CLUSTER)
+                with self.assertRaisesRegex(TypeError, "plain JSON-compatible"):
+                    if constructor == "node":
+                        dag.add_node("bad", NodeType.QUERY, payload=bomb)
+                    elif constructor == "edge":
+                        dag.add_edge("q1", "cl1", EdgeType.RETRIEVED_IN, payload=bomb)
+                    else:
+                        EvidenceEdge(
+                            "q1",
+                            "cl1",
+                            EdgeType.RETRIEVED_IN,
+                            {"payload": bomb},
+                        )
+                self.assertEqual(bomb.calls, 0)
+
+    def test_non_json_attr_shapes_fail_closed(self):
+        cyclic = []
+        cyclic.append(cyclic)
+        cases = (
+            ("tuple", (1, 2), TypeError),
+            ("non_string_key", {1: "value"}, TypeError),
+            ("non_finite", float("nan"), ValueError),
+            ("cycle", cyclic, ValueError),
+        )
+        for label, value, error_type in cases:
+            with self.subTest(label=label):
+                dag = EvidenceDAG()
+                with self.assertRaises(error_type):
+                    dag.add_node("q1", NodeType.QUERY, payload=value)
+
+    def test_transaction_preflight_rejects_injected_hostile_attrs_without_hooks(self):
+        dag = _valid_dag()
+        bomb = _DeepcopyBomb()
+        dag.edges[0].attrs["payload"] = bomb
+        scorer = MagicMock(return_value=1.0)
+
+        with self.assertRaisesRegex(TypeError, "plain JSON-compatible"):
+            dag.prune_edges(scorer, threshold=0.5)
+
+        scorer.assert_not_called()
+        self.assertEqual(bomb.calls, 0)
+
+    def test_transaction_rejects_callback_injected_hostile_attrs_without_hooks(self):
+        dag = _valid_dag()
+        before = dag.to_dict()
+        bomb = _DeepcopyBomb()
+        mutated = False
+
+        def hostile_scorer(edge):
+            nonlocal mutated
+            if not mutated:
+                mutated = True
+                edge.attrs["payload"] = bomb
+            return 1.0
+
+        with self.assertRaisesRegex(RuntimeError, "non-canonical"):
+            dag.prune_edges(hostile_scorer, threshold=0.5)
+
+        self.assertEqual(dag.to_dict(), before)
+        self.assertEqual(bomb.calls, 0)
 
 
 class TestFromAttributionPool(unittest.TestCase):
@@ -103,14 +197,38 @@ class TestFromAttributionPool(unittest.TestCase):
         # per-row action, so a builder matching it would silently drop real corrections.
         return {
             "query_attribution_rows": [
-                {"strategy": "probeA", "query_id": "q-1", "task": "SciFact",
-                 "profile": "default", "action": "FAST", "fault_class": None},
-                {"strategy": "probeA", "query_id": "q-2", "task": "SciFact",
-                 "profile": "default", "action": "CHELATE", "fault_class": "drift"},
-                {"strategy": "probeB", "query_id": "q-3", "task": "NFCorpus",
-                 "profile": "hotter", "action": "REFORMULATE", "fault_class": "collapse"},
-                {"strategy": "probeB", "query_id": "q-4", "task": "NFCorpus",
-                 "profile": "hotter", "action": "CHELATE_ALWAYS", "fault_class": "drift"},
+                {
+                    "strategy": "probeA",
+                    "query_id": "q-1",
+                    "task": "SciFact",
+                    "profile": "default",
+                    "action": "FAST",
+                    "fault_class": None,
+                },
+                {
+                    "strategy": "probeA",
+                    "query_id": "q-2",
+                    "task": "SciFact",
+                    "profile": "default",
+                    "action": "CHELATE",
+                    "fault_class": "drift",
+                },
+                {
+                    "strategy": "probeB",
+                    "query_id": "q-3",
+                    "task": "NFCorpus",
+                    "profile": "hotter",
+                    "action": "REFORMULATE",
+                    "fault_class": "collapse",
+                },
+                {
+                    "strategy": "probeB",
+                    "query_id": "q-4",
+                    "task": "NFCorpus",
+                    "profile": "hotter",
+                    "action": "CHELATE_ALWAYS",
+                    "fault_class": "drift",
+                },
             ]
         }
 
