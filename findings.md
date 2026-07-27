@@ -2,16 +2,54 @@
 
 ## 2026-07-27 Preservation and merge boundary
 
+- Current decision overlay after full residual and exact-head review:
+  - the locally committed primary line is recoverable at `7dec564d`, with the
+    immutable 38-path evidence/source commit at `186590c8` and a verified
+    full-history recovery bundle; it is not yet public or merged;
+  - the independently validated private V2 inventory binds 2,584
+    ignored/untracked files, 1,678,118,521 bytes, ten worktrees, two stashes,
+    zero errors, and `cleanup_authorized: false`;
+  - exact stash archive refs, rejected-candidate archive refs, incremental/full
+    Git bundles, raw-evidence ZIPs, a primary/H2 evidence ZIP containing 140
+    source payload files plus one internal manifest, and a one-entry
+    unique-source ZIP close the immediate machine-loss gaps without treating
+    any residual as disposable;
+  - PR #292 `835f6199` is rejected at Tier B 70/Critical. Replacement
+    `f2e41d42` now supplies 113/113 metric-lineage coverage, preserves all 103
+    historical JSON/PNG bytes, and passes 28 hostile validator mutations, but
+    remains a candidate. Second independent exact-candidate review approved its
+    content at local Tier B 100, making it content-ready for owner-approved
+    publication/CI. Current public-state BHS is still 70/Critical because #292
+    remains at `eb750958`, its body exposes stale invalid claims, and no hosted
+    run exists for `f2e41d42`;
+  - PR #293 `454e4a32` is rejected at 70/Critical after six iterations and must
+    be withdrawn; no replacement should be opened absent an authorized real
+    consumer;
+  - PR #294 `6e78cf41` reached 100 only on its original stacked/pre-transplant
+    head; independence analysis supports a new transplant branch/replacement
+    PR containing its own commits without replaying rejected #293, followed by
+    fresh exact-head review. Do not force-push or retarget public #294;
+  - PR #295 `730b305e` is rejected at 60/Critical after five iterations; the
+    current PR must be withdrawn. The reusable promotion plane, runner, engine
+    integration, and runtime claims are not mergeable.
+    The smallest defensible archive is eight independently hash-verified
+    preregistration/manifest/lock/marker/reconciliation blobs plus one newly
+    written narrowed disposition document in a separate replacement PR, based
+    directly on final #292 with no #295 commit cherry-picked.
+- No public push, force update, PR edit/close/open, merge, reset, restoration,
+  worktree removal, stash drop, commit-graph rewrite, GC, prune, or cleanup has
+  been performed. Explicit approval covers each public mutation, not merely
+  pushes. Cleanup remains a later item-by-item owner decision.
 - The immediate risk is durability, not scientific execution. The exact
   38-path primary RB-10/RB-11 source, test, protocol, and bounded-evidence
   allowlist is now preserved in local commit
   `186590c8bde8311f39c17167110d5ba30b13a4fd`; remote publication and equality
   proof remain.
 - The primary branch is not the whole preservation surface. Git initially
-  reported five additional linked worktrees on distinct branches, and three
-  dedicated PR-repair worktrees were later added. All are retained and
-  classified; unique branch publication and external residual manifests remain
-  separate work.
+  reported five additional linked worktrees on distinct branches, and four
+  dedicated PR-repair worktrees were later added. The primary plus those nine
+  linked worktrees make ten total. All are retained and classified; unique
+  branch publication and external residual manifests remain separate work.
 - A clean primary status after a future commit will not prove that worktree-only
   research or test data is safe. Completion requires both remote commit
   reachability and an explicit residual ledger.
@@ -27,10 +65,10 @@
 - Human checkpoints are part of the documented workflow. The present user
   request authorizes the preservation/merge scope; it does not authorize the
   later cleanup checkpoint.
-- The current authoritative tracker points to the already-closed
-  `AEP-2026-05-01` Model-Scope cycle. Reusing it would blur historical closure;
-  RB-12 needs a new cycle ID/index entry, scope lock, tracker, backlog, and
-  verification log after the tracker index establishes the next global ID.
+- The authoritative tracker pointer and indexes now select the open
+  `AEP-20260727-7` preservation cycle, with its scope lock, tracker, backlog,
+  and verification log. The already-closed `AEP-2026-05-01` Model-Scope cycle
+  remains historical and must not be reused.
 - The recovered primary worktree initially had exactly 23 untracked upload
   candidates. The final primary allowlist grew to 38 paths after the cycle
   records and preservation plan were added, and all 38 are now in
@@ -44,10 +82,11 @@
   `feat/a4-swap-campaign` WIP (2026-06-21). Neither may be dropped or assumed
   merged without inspecting its base, patch, untracked payload, and commit
   containment.
-- The primary 11-commit stack has a real upstream dependency: its first four
-  commits are exactly the head of open PR #292
-  (`lattice/phase2-continue-20260713` at `eb750958`). The remaining seven
-  commits are the unpublished semantic-cache, CRSV, and prime-ring work.
+- The pre-reconciliation primary 13-commit stack at `7dec564d` has a real
+  upstream dependency: its first four commits are exactly the head of open PR
+  #292 (`lattice/phase2-continue-20260713` at `eb750958`). The remaining nine
+  commits are the unpublished semantic-cache, CRSV, prime-ring, evidence, and
+  first bookkeeping work.
   Duplicating #292 inside a new independent PR would obscure review and merge
   history; the merge plan must land #292 first or deliberately stack the new PR
   on its exact head.
@@ -57,10 +96,14 @@
   PR #292 is already a durable GitHub ref, and the local recovery ZIP contains
   the per-run data. Nevertheless, no local copy or recovery archive will be
   removed in this cycle.
-- PR #292 is still open at `eb750958`; its current exact-head test, lint,
-  smoke, schema-drift, block-flag, GitGuardian, and corrected PR-body checks are
-  green, and Gemini reported no review comments. It must still be evaluated
-  against the current merge plan and exact PR body before merge.
+- Public PR #292 remains at `eb750958`; its old public checks do not validate
+  either local recondition candidate. Candidate `835f6199` was rejected at
+  Tier B 70/Critical because the sidecar omitted 102 of 113 affected artifacts,
+  failed to bind original versus annotated document blobs, and used a
+  fail-open validator. Superseding local candidate `f2e41d42` meets the
+  preservation, coverage, and hostile-test requirements, but it remains
+  unpublished; its public branch/body, hosted checks, and fresh
+  exact-public-head review must still close at 100 before merge.
 - Recovery branch size is GitHub-compatible by individual blob size even when
   its bundle is not: the drift recovery commit's largest blob is about
   16.1 MB, while the bundle itself is about 120.8 MB and cannot be committed as

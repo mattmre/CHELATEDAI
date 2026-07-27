@@ -7,10 +7,14 @@ Status: `IN_PROGRESS_PRESERVATION_FIRST`; cleanup is not authorized.
 ## 1. Decision
 
 The current work is recoverable, but it is not yet safe to call merged or
-clean. The immediate safe action is to publish the reviewed primary research
-tree and exact commit history. The existing lattice PR stack must then be
-repaired and merged in dependency order before the unpublished research stack
-can target `main`.
+clean. The immediate safe action is to finish the reviewed primary research
+tree, obtain explicit approval for its public destination/payload, and publish
+the exact commit history. The former linear lattice PR stack is no longer a
+valid merge chain: PR #293 exhausted its repair budget with reproducible
+critical integrity defects and must be withdrawn. PR #294 must use a new
+transplant branch/replacement PR. PR #295 must be withdrawn; only a separate
+evidence-only archive PR is presently defensible. These actions remain local
+plans until their exact public mutations are explicitly approved.
 
 No worktree, stash, ignored artifact, recovery package, branch, or unreachable
 object will be deleted, pruned, rewritten, or consolidated in this cycle.
@@ -22,24 +26,25 @@ for each residual item.
 - Public repository: `mattmre/CHELATEDAI`.
 - Default branch: `main`.
 - Refreshed `origin/main`: `34ce4b5632e0d9cd2a16c29e0e1acc42e645b9c2`.
-- Primary local branch before the preservation commit:
+- Pre-reconciliation primary durability anchor after the evidence and first
+  bookkeeping commits:
   `codex/prime-ring-onion-method-dev` at
-  `41779be47442fc74fcd93e0c68bd7ca9dc115b99`, exactly 11 commits ahead and
+  `7dec564de77b6efb03a82cb87405820284c7a8aa`, exactly 13 commits ahead and
   zero behind.
 - Commits 1-4 (`2b0fa044` through `eb750958`) are already the exact published
   head of open PR #292.
-- Commits 5-11 (`11d548bd` through `41779be4`) have no GitHub ref and are the
+- Commits 5-13 (`11d548bd` through `7dec564d`) have no GitHub ref and are the
   first publication priority.
-- No remote ref contains the primary pre-preservation head.
+- No remote ref contains the primary preservation head.
 
 ### Existing dependency stack
 
 | PR | Head | Dependency | Current disposition |
 | --- | --- | --- | --- |
-| #292 | `eb750958` | `main` | exact-head CI green; no unresolved review thread; owner/admin merge path required because ordinary approval is impossible |
-| #293 | `98e9dec4` remote; `b0d72d12` first local repair | #292 | fresh Tier B rejected the unpushed repair for three callback/state-integrity gaps; second repair active |
-| #294 | `12aa1be6` remote; `9d211613` first local repair | #293 | fresh Tier B rejected the unpushed repair for strict numeric typing and unbounded padding; second repair active |
-| #295 | `2c78195d` remote; `7a79b0ec` first local repair | #294 | fresh Tier B found finite-number and whole-SELECT/REPORT concurrency gaps; unpushed and not merge-ready |
+| #292 | `eb750958` public; `835f6199` rejected; `f2e41d42` complete local candidate | `main` | Local evidence is sound: 113/113 covered, all 103 historical JSON/PNG bytes preserved, 28 hostile cases pass, and second independent local candidate Tier B is 100, making it content-ready for owner-approved publication/CI. Current public-state BHS remains 70/Critical because GitHub is still at `eb750958`, the body publishes invalid legacy claims, and `f2e41d42` has no hosted runs. Public update/check/re-review requires explicit approval. |
+| #293 | `98e9dec4` public; `454e4a32` rejected local repair | #292 | Tier B 70/Critical at iteration 6: BaseException rollback corruption, deterministic concurrent lost updates, and forged/aliased provenance. No seventh repair; withdraw the current PR and open no replacement absent an authorized real consumer. |
+| #294 | `12aa1be6` public; `6e78cf41` local repair | formerly #293 | Tier B 100 on the original stacked/pre-transplant head, now archive-ref preserved. Its pool-shard code is independent; use a new transplant branch/replacement PR from final #292, with fresh exact-head gates. Do not force-push or retarget public #294. |
+| #295 | `2c78195d` public; `730b305e` rejected local iteration-5 candidate | formerly #294 | Tier B 60/Critical reproduced state-publication races, invalid no-global promotion, false promotion with incomplete REPORT qrels, non-finite/duplicate-ID metrics, publication-time provenance TOCTOU, and dimension-mismatch enablement. Withdraw current #295; optionally open a separate nine-file evidence-only PR from final #292. |
 
 The unpublished primary stack has no forecast conflict with #293 or #294. It
 has one expected textual conflict with #295 in the last-session line of
@@ -50,15 +55,16 @@ the newer AEP/prime-ring truth.
 
 | Worktree | Branch/head | Preservation status |
 | --- | --- | --- |
-| primary | `codex/prime-ring-onion-method-dev` / evidence commit `186590c8bde8311f39c17167110d5ba30b13a4fd` | reviewed 38-path allowlist is committed locally; bookkeeping commit, push, and exact remote equality proof remain |
+| primary | `codex/prime-ring-onion-method-dev` / pre-reconciliation bundle anchor `7dec564d` (`186590c8` evidence commit) | reviewed 38-path allowlist and first bookkeeping binding are committed locally; verified private bundle exists; this later documentation-only reconciliation is recorded post-commit in the private recovery index; push and exact remote equality proof remain |
 | `agent-build` | `codex/recover-drift-research-20260722` / `b831493a` | clean unique 209-file commit; verified full-history bundle; archive ref only until public-content review |
-| `h2-rerun` | `feat/h2-swap-rerun-clean` / `6c3e1847` | unique CUDA-guard commit; 24 local deletions must not be committed; five ignored outputs need a separate manifest |
+| `h2-rerun` | `feat/h2-swap-rerun-clean` / `6c3e1847` | unique CUDA-guard commit; 24 local deletions remain untouched; five ignored outputs are hash-bound and privately archived |
 | `relaxed-wozniak-271e04` | `bf23a47f` | commit already contained by `main`; ignored raw evidence is covered by a verified ZIP |
 | `semantic-cache-h1` | `codex/crsv-onion-method-dev` / `59378814` | fully contained by the primary branch; no separate merge is required |
-| `waypoint-recovery` | `codex/recover-waypoint-research-20260722` / `65ae99a4` | clean unique 203-file archival commit; verified full-history bundle; archive ref only until transcript/privacy review |
-| `pr293-fix` | local #293 branch / first repair `b0d72d12` | retained repair worktree; fresh Tier B rejected this head and second repair is active; do not publish until re-reviewed |
-| `pr294-fix` | local #294 branch / first repair `9d211613` | retained repair worktree; fresh Tier B rejected this head and second repair is active; do not publish until re-reviewed |
-| `pr295-fix` | local #295 branch / first repair `7a79b0ec` | retained repair worktree; fresh Tier B rejected this head; do not publish until reconditioned and re-reviewed |
+| `waypoint-recovery` | `codex/recover-waypoint-research-20260722` / `65ae99a4` | clean unique 203-file archival commit; 201 duplicate live files match the branch byte-for-byte; verified full-history bundle; raw agent-output transcripts require privacy/license review |
+| `pr292-recondition` | `codex/pr292-metric-lineage-recondition` / `f2e41d42` (`835f6199` rejected) | clean complete local candidate; 113/113 coverage and verified incremental bundle pass; local candidate Tier B 100 and content-ready for owner-approved publication/CI, current public state 70/Critical |
+| `pr293-fix` | `lattice/rung13-disintegration-20260714` / `454e4a32` | retained rejected worktree; full history is bundle/archive-ref preserved; no further repair on the current PR |
+| `pr294-fix` | `lattice/rung17-diskpool-20260714` / `6e78cf41` | clean original stacked/pre-transplant Tier-B-100 candidate; exact incremental bundle/archive ref; use a new transplant branch/replacement PR |
+| `pr295-fix` | `lattice/rung16-routing-20260714` / `730b305e` | clean rejected iteration-5 candidate; exact incremental bundle and local archive ref verified; withdraw current PR, optionally replace with evidence-only archive |
 
 No worktree is currently marked locked or prunable.
 
@@ -72,6 +78,7 @@ pre-commit gates in Section 9:
    - `docs/research/prime-ring-remaining-hypotheses-2026-07.md`;
    - `docs/research/prime-ring-waypoint-method-dev-protocol-2026-07.md`;
    - `docs/research/prime-ring-leading-shell-proof-2026-07.md`;
+   - `docs/research/lossless-residual-audit-2026-07.md`;
    - `docs/research/prime-ring-orbit-plank-mesh-protocol-2026-07.md`;
    - `docs/research/prime-ring-t1r-primary-claim-chart-2026-07.md`;
    - this plan;
@@ -132,17 +139,21 @@ immutable evidence commit without creating a self-referential hash.
 
 ### Preserve outside ordinary Git with a checksum manifest
 
-- `.claude/recovery/`: 10 files / 166,517,869 bytes, including three verified
-  full-history bundles and two verified evidence ZIPs.
-- Main `experiment_runs/`: 240 files / 183,607,122 bytes. At least 104
-  non-Git files outside the session-29 archive still need a source-path/hash
-  manifest.
-- `checkpoints/`: 315 files / 295,258,480 bytes; 169 distinct hashes.
-- Unique adapter-weight contents, `db_scifact_evolution`, four retired-session
-  notes, H2's five unique ignored outputs, and the unique agent checkpoint
-  metadata.
-- `scripts/scaffold_brain_dossier.py` until its hard-coded local path is
-  sanitized and its intended repository role is approved.
+- Private V2 inventory: 2,584 ignored/untracked files / 1,678,118,521 bytes
+  across ten worktrees, two stashes, zero errors, and explicit publication
+  dispositions. File SHA-256:
+  `4c1192a5fd77f75c5cd1309f2398755453c2fcaab376fc7571d2f85a4599e98b`.
+- Private recovery includes exact/incremental Git bundles, complete-history
+  stash refs/bundle, two older evidence ZIPs, and a new primary/H2 evidence ZIP
+  with 140 source payload files plus one internal manifest; all 141 ZIP entries
+  were verified.
+- Models/databases/checkpoints remain private/external-storage candidates.
+  Hash-only analysis found 344 model/checkpoint files but only 177 unique
+  contents, with 193,143,042 duplicate bytes; serialized tensors were not
+  loaded.
+- `scripts/scaffold_brain_dossier.py` is uniquely preserved in a verified
+  one-entry ZIP. It is secret-clean and parses/lints, but fails formatting and
+  lacks dedicated tests; recondition in a separate PR before publication.
 
 The 120,804,181-byte drift bundle is above GitHub's ordinary 100 MiB blob
 limit. Publishing the contained branch is preferable to committing the bundle,
@@ -150,9 +161,9 @@ but the branch remains private-to-local until its public-content scan passes.
 
 ### Sensitive; do not publish to this public repository
 
-- Five `chelation_debug.jsonl` files totaling approximately 691.7 MB; their
-  schema permits free-form query/message content and contains machine/runtime
-  metadata.
+- Fourteen V2 entries totaling 692,906,577 bytes are classified
+  `DO_NOT_PUBLISH_SENSITIVE`; they include free-form debug/terminal/local-state
+  surfaces that must not enter the public repository.
 - Local `.claude`/`.vscode` settings, terminal captures, credentials, and
   learned weights until separately reviewed.
 - Recovery bundles or raw agent transcripts before privacy/content-license
@@ -169,19 +180,17 @@ No residual in these categories is deleted in RB-12.
 
 ## 7. Stashes and unreachable-object lane
 
-- `stash@{0}` (`02b96bb6`):
-  eleven added implementation/test blobs already match current HEAD; seven
-  dossier versions are unique. Preserve only those seven on a dedicated rescue
-  ref after content review; do not apply the whole stash.
-- `stash@{1}` (`25e50b9b`):
-  one historical swap-results document is older than the current corrected
-  version. Retain audit-only and do not overwrite current HEAD.
+- `stash@{0}` (`02b96bb6`) and `stash@{1}` (`25e50b9b`) now have exact local
+  archive refs and a verified complete-history two-ref bundle. Neither stash
+  was applied or dropped. Seven dossier blobs remain unique to the first stash.
 
 Reachable refs pass `git fsck` when stale commit-graph use is disabled.
-The object database nevertheless contains 53,283 dangling commits, 1,706
-dangling trees, 30 dangling blobs, and 17 unreadable commit-graph entries.
+With commit-graph acceleration enabled, 17 missing commit IDs each emit two
+stale commit-graph errors. With `core.commitGraph=false`, full fsck exits zero
+with no missing objects, broken links, or invalid refs; dangling objects remain
+unpruned. The three split commit-graph files are privately hash-fingerprinted.
 No GC, prune, commit-graph rewrite, worktree cleanup, or stash drop is allowed
-until this lane is separately catalogued or snapshotted.
+without itemized owner signoff.
 
 ## 8. GitHub governance boundary
 
@@ -201,6 +210,12 @@ policy-compliant squash merge. If an admin bypass is used, the PR record must
 state the exact reason: preservation of reviewed work despite the
 single-collaborator approval deadlock. No failing test or unresolved review
 thread will be bypassed.
+
+Explicit approval is required before every public GitHub mutation, not merely
+a branch push. This includes push/force-with-lease, PR title/body/base edits,
+closing or withdrawing a PR, opening a replacement PR, resolving threads on
+behalf of the owner, and merging. Local branches, bundles, tests, plans, and
+read-only GitHub inspection do not imply approval for those mutations.
 
 The repository's root `LICENSE` is Apache-2.0 while `README.md` and
 `pyproject.toml` say MIT. This conflict predates RB-12. Changing the project
@@ -250,20 +265,55 @@ or relicensing claim.
 - Committed-range and staged Gitleaks: pass. The final index matched the
   38-path allowlist exactly, all staged objects were mode `100644`, and no
   object approached 100 MB. Evidence/source commit
-  `186590c8bde8311f39c17167110d5ba30b13a4fd` is local. The bookkeeping commit
-  and remote equality proof remain open.
+  `186590c8bde8311f39c17167110d5ba30b13a4fd` and bookkeeping commit
+  `7dec564de77b6efb03a82cb87405820284c7a8aa` are local. A verified private
+  full-history bundle exists. Public push and remote equality proof remain
+  blocked pending explicit approval of the public destination and exact
+  payload.
 
 ## 10. Dependency-aware merge order
 
-1. Publish and verify the primary branch for durability; do not open a
-   duplicate independent PR for the four #292 commits.
-2. Create an archive ref for #292, then merge #292 after its body and exact head
-   are rechecked.
+1. Finish the primary bookkeeping update, obtain explicit approval for the
+   exact public destination/payload, then publish and verify the primary branch;
+   do not open a duplicate independent PR for the four #292 commits.
+2. Local review of complete #292 candidate `f2e41d42` scored its content at
+   Tier B 100, making it content-ready for owner-approved publication/CI, while
+   the current public state remains 70/Critical. After explicit approval,
+   update the PR title/body, fast-forward its public branch to the exact SHA,
+   run hosted checks, and obtain a fresh exact-public-head review. Archive the
+   accepted head and merge only at 100.
 3. Land the small H2 CUDA-guard commit as a separate reviewed PR without the
    H2 worktree's 24 deletions.
-4. Repair, re-test, re-review, and merge #293.
-5. Repair, re-test, re-review, and merge #294.
-6. Repair the freeze/register race, re-test, re-review, and merge #295.
+4. Archive and withdraw current #293. Do not open a replacement now: a pure
+   detector-output normalizer would have no authorized production consumer and
+   would be scaffolding. If a real consumer is later authorized, start a fresh
+   reduced PR that excludes DAG mutation, re-annealing, trusted provenance,
+   transactional guarantees, and `DONE` claims; record the removed scope in
+   Deferred Scope and Carried Debt.
+5. Create a new #294 transplant branch/replacement PR from the final accepted
+   #292, preserving its old head on the archive ref. Do not force-push or
+   retarget public #294. Transplant only its own code commits rather than replaying
+   rejected #293 ancestry: `e12b7668`, `d8ccf70c`, `9d211613`, then
+   `6e78cf41`, all with `cherry-pick -x`. Do not transplant the stale
+   #293-dependent `12aa1be6` `DONE` documentation commit. Rebuild the roadmap
+   from final #292, then rerun exact-head tests, hosted checks, and Tier B.
+6. Archive and withdraw current #295. Iteration five
+   scored Tier B 60/Critical after reproducing state-publication races, invalid
+   no-global promotion, false promotion with incomplete REPORT qrels,
+   non-finite/duplicate-ID metric failures, publication-time provenance TOCTOU,
+   and dimension-mismatched engine enablement; no sixth repair loop is
+   permitted. A separate replacement may be evidence-only, or a later fresh
+   component PR may contain only isolated router-freeze and finite-arithmetic
+   work on a fresh branch. Code
+   independence is not safety acceptance: do not transplant the rejected
+   promotion-plane/engine chain. Preserve the four consumed lock/REPORT
+   artifacts byte-for-byte as historical fail-closed evidence; any new
+   campaign must use new identifiers and paths. The defensible archival
+   replacement is independent of #294: from final accepted #292, extract eight
+   exact preregistration/manifest/lock/marker/reconciliation blobs and write
+   one new narrowed disposition document. Do not cherry-pick any #295 commit
+   wholesale. Full withdrawal remains safer if the archival prose cannot avoid
+   implying accepted source attribution or metric validity.
 7. Reconcile `main` into the unpublished research branch, preserving the newer
    next-session/AEP state and all original commits on the archive ref.
 8. Split the large unpublished research history into reviewable PR themes if
@@ -272,8 +322,8 @@ or relicensing claim.
 9. Run exact-head Tier B and GitHub checks on every PR, merge in dependency
    order, and verify every merged/ref-only commit is reachable from either
    refreshed `main` or an explicit remote archive ref.
-10. Generate the post-merge residual ledger. Stop and request owner approval
-    separately for each proposed cleanup action.
+10. Reconcile the private V2 inventory into a final post-merge residual ledger.
+    Stop and request owner approval separately for each proposed cleanup action.
 
 ## 11. Cleanup approval contract
 

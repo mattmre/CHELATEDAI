@@ -2,6 +2,46 @@
 
 ## RB-12 lossless preservation and merge campaign: 2026-07-27
 
+- Continuation checkpoint after the machine restart:
+  - primary evidence commit `186590c8` and bookkeeping commit `7dec564d` are
+    local, 13 commits ahead of `origin/main`, and protected by a verified
+    full-history bundle;
+  - the independently validated private V2 residual manifest binds 2,584
+    ignored/untracked files, 1,678,118,521 bytes, ten worktrees, two stashes,
+    and `cleanup_authorized: false`, with zero inventory errors;
+  - both stashes now have exact local archive refs and a verified two-ref
+    complete-history bundle; neither stash was applied or dropped;
+  - the remaining primary/H2 evidence set is preserved in a verified private
+    ZIP with 140 source payload files plus one internal manifest (141 ZIP
+    entries), and the one unique untracked Python source is preserved in a
+    verified one-entry private ZIP for later reconditioning;
+  - full Git object validation passes with `core.commitGraph=false`; the 17
+    accelerated-path errors are isolated to privately fingerprinted stale
+    commit-graph metadata. No rewrite, GC, prune, or cleanup was performed.
+- Exact-head repair dispositions supersede the earlier active-loop snapshot:
+  - PR #292 candidate `835f6199` scored Tier B 70/Critical because only 11 of
+    113 affected artifacts were quarantined and its validator was fail-open; a
+    complete 113/113 conservative pass is now committed at `f2e41d42`, with
+    all 103 historical JSON/PNG bytes unchanged, 28 hostile validator cases
+    passing, explicit CI wiring, and a verified incremental recovery bundle;
+    a second independent exact-candidate review scored the local content Tier B
+    100, making it content-ready for owner-approved publication/CI. The current
+    public state remains 70/Critical because the PR still points to `eb750958`,
+    carries stale invalid metric/BHS claims, and has no `f2e41d42` hosted runs;
+  - PR #293 candidate `454e4a32` scored 70/Critical at iteration six after
+    deterministic rollback, lost-update, and provenance failures. Its bundle
+    and local archive ref are verified; no seventh repair will be attempted;
+  - PR #294 candidate `6e78cf41` scored 100 only before base replacement. Its
+    code is independent of rejected #293 and will be transplanted without the
+    rejected ancestry, then reviewed again;
+  - PR #295 candidate `730b305e` scored 60/Critical at iteration five after
+    deterministic false-promotion and state-integrity failures. Its bundle and
+    local archive ref are verified; no sixth repair will be attempted.
+- Every public mutation remains blocked on explicit approval of the exact
+  destination and payload: pushes, PR title/body/base edits, closes/
+  withdrawals, replacement PR opens, and merges. Cleanup remains excluded
+  until all accepted work is merged, a live residual ledger is regenerated,
+  and the owner approves one item at a time.
 - User authorized a preservation-first GitHub merge campaign and explicitly
   deferred all cleanup until after merge, with separate sign-off for each
   worktree and residual item.

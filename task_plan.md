@@ -22,7 +22,11 @@
 - Additive Legendre rotations and multiplicative CRT pivots are separate
   mechanisms and must never be reported as one effect.
 
-## Current Live State (2026-07-26 code-backed reconciliation)
+## Historical Live State (2026-07-26 code-backed reconciliation)
+
+This snapshot is retained for chronology and is superseded by the RB-12
+lossless-preservation section dated 2026-07-27 below. In particular, the current
+block gate has three first-cycle carried-debt rows, not zero.
 - Session catch-up script completed with no unsynced report.
 - The campaign is isolated on `codex/prime-ring-onion-method-dev`, based on
   refreshed `origin/main` at `34ce4b56`; the user's
@@ -784,7 +788,7 @@
   1. `COMPLETE` — rebuild exact local and GitHub truth: instructions,
      branches, open/closed PRs, linked worktrees, stashes, modified/untracked/
      ignored files, file sizes, Git LFS state, and remote containment.
-  2. `COMPLETE_FOR_PRIMARY_ALLOWLIST; RESIDUAL_MANIFEST_OPEN` — validate
+  2. `COMPLETE` — validate
      provenance and upload suitability: artifact
      digests/manifests, source-to-test linkage, generated-data reproducibility,
      secrets/privacy/licensing risk, path/size limits, and cross-worktree
@@ -792,12 +796,16 @@
   3. `COMPLETE` — write a durable preservation manifest and dependency-aware
      merge plan naming every included item, excluded item and reason, source
      branch/worktree, exact commit, validation command, and rollback/ref.
-  4. `IN_PROGRESS` — stage only reviewed files, inspect the staged diff and object
-     sizes, commit without rewriting retained evidence, push the exact branch,
-     and prove the remote ref with `git ls-remote`.
+  4. `LOCAL_COMMIT_AND_RECOVERY_COMPLETE; PUBLICATION_BLOCKED_ON_EXPLICIT_
+     APPROVAL` — stage only reviewed files, inspect the staged diff and object
+     sizes, commit without rewriting retained evidence, create/verify recovery
+     bundles, then push the exact branch and prove the remote ref with
+     `git ls-remote` only after the exact public destination/payload is approved.
   5. `IN_PROGRESS` — open/update the required PR stack, run repository gates and
      independent review on each exact head, resolve comments without scope
-     loss, and merge in the documented order.
+     loss, and merge in the documented order. Explicit approval is required
+     before every public mutation, including push, PR title/body/base edits,
+     close/withdraw actions, replacement PR creation, and merge.
   6. `PENDING` — verify merged commit reachability and clean-checkout evidence
      on refreshed `origin/main`; record every still-unmerged worktree, branch,
      stash, ignored file, and external-only residual.
@@ -805,13 +813,13 @@
      time. Do not execute cleanup in the merge campaign.
 - Known starting state:
   - primary worktree branch `codex/prime-ring-onion-method-dev` at
-    `41779be4`, 11 commits ahead of the last observed `origin/main`;
-  - six modified planning/research files plus four JSON evidence artifacts,
-    three research documents, eight source modules, and eight focused test
-    modules currently untracked;
-  - five additional linked worktrees exist and must be audited independently;
-  - current branch and remote/PR truth must be refreshed before selecting the
-    merge stack.
+    `7dec564d`, 13 commits ahead of `origin/main`;
+  - the 38-path primary source/evidence allowlist is committed and verified;
+  - ten total worktrees (the primary plus nine linked), two stashes, and 2,584
+    ignored/untracked files are bound by the private V2 residual ledger; only
+    H2's 24 known unstaged deletions are tracked-dirty;
+  - public PRs #292-#295 remain at stale remote heads; local repair histories
+    are preserved but are not merge-authoritative.
 - Current preservation evidence:
   - the four immutable RB-10 JSON artifacts retained their recorded raw
     SHA-256 values, and their envelope/manifest bindings revalidated without
@@ -833,13 +841,46 @@
     TLS verification was disabled. Isolated PR worktrees passed the same
     ceiling path with their cached model, and clean GitHub-runner validation
     remains mandatory before merge;
-  - fresh independent review found additional blockers in the first repaired
-    heads for PRs #293 and #295. Those local commits remain unpushed and are not
-    merge-authoritative; another repair/review loop is required.
+  - fresh independent review rejected PR #293 at `454e4a32` with Tier B
+    `70/Critical` after reproducing BaseException rollback corruption,
+    deterministic concurrent lost updates, and forged/aliased provenance.
+    Iteration count is six, so no seventh repair is permitted; withdraw the
+    current PR and open no replacement absent an authorized real consumer;
+  - fresh iteration-five review rejected PR #295 at `730b305e` with Tier B
+    `60/Critical` after
+    reproducing state-publication races, invalid no-global promotion,
+    false promotion with incomplete REPORT qrels, non-finite/duplicate-ID
+    metric failures, publication-time provenance TOCTOU, and
+    dimension-mismatched engine enablement. The rejected head is preserved by
+    exact bundle and local archive ref; withdraw the current PR, and optionally
+    open a separate nine-file evidence-only PR from final accepted #292. No
+    sixth repair is permitted;
+  - PR #294 reached Tier B 100 at original stacked/pre-transplant head
+    `6e78cf41`, but its score cannot be reused on a fresh transplant branch and
+    replacement PR from final accepted #292. Do not force-push or retarget the
+    public #294 branch;
+  - PR #292 recondition `835f6199` scored Tier B `70/Critical`: its sidecar
+    covered only 11 of 113 affected metric-lineage artifacts and its validator
+    was fail-open. Complete candidate `f2e41d42` now covers 113/113, preserves
+    all 103 historical JSON/PNG bytes, passes 28 hostile validator cases, and
+    has a verified incremental bundle. Second independent local review scored
+    the exact candidate Tier B 100, making it content-ready for owner-approved
+    publication/CI. Current public-state BHS remains `70/Critical` because #292
+    is still at `eb750958` with stale invalid claims and no `f2e41d42` hosted
+    runs. Exact push/body/check/re-review closure awaits explicit
+    public-mutation approval.
   - the exact 38-path primary allowlist passed staged Gitleaks, file-mode,
     object-size, whitespace, and added-personal-path checks and was committed
     locally as `186590c8bde8311f39c17167110d5ba30b13a4fd`; bookkeeping binding
-    and remote equality proof remain.
+    is `7dec564de77b6efb03a82cb87405820284c7a8aa`.
+  - private V2 residual inventory validation passed with 2,584 entries,
+    1,678,118,521 bytes, zero errors, ten worktrees, two stashes, and
+    `cleanup_authorized: false`; exact stash refs/bundle, raw-evidence ZIPs,
+    repair bundles, and the unique untracked source ZIP were verified;
+  - full Git integrity passes with `core.commitGraph=false`; the 17 prior
+    missing-commit messages are isolated to fingerprinted stale commit-graph
+    metadata. No GC, prune, commit-graph rewrite, stash drop, or worktree
+    cleanup is authorized.
 
 ## RB-11 — Code-backed closure and queue reconciliation (2026-07-26)
 
