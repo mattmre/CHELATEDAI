@@ -538,7 +538,11 @@ def _consumption_path(directory: Path, prereg_sha256: str, arena_key: str) -> Pa
 
 
 def _source_provenance(prereg_file: Path) -> Dict[str, Any]:
-    """Record the exact implementation bytes before any REPORT access."""
+    """Record exact implementation bytes and Git state before REPORT.
+
+    Git capture failures propagate intentionally: a campaign without an exact
+    commit and tracked-source status is not valid promotion evidence.
+    """
 
     source_root = Path(__file__).resolve().parent
     source_paths = (

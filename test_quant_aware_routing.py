@@ -1,7 +1,9 @@
-import math
 import inspect
+import math
+import subprocess
 import unittest
-from unittest.mock import MagicMock
+from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 import numpy as np
 import torch
@@ -16,7 +18,7 @@ from quant_aware_routing import (
     paired_query_bootstrap_ci,
     three_way_seeded_split,
 )
-from run_quant_aware_routing_campaign import run_arena
+from run_quant_aware_routing_campaign import _source_provenance, run_arena
 
 
 class FixedLinear(torch.nn.Module):
@@ -26,6 +28,43 @@ class FixedLinear(torch.nn.Module):
 
     def forward(self, inputs):
         return inputs @ self.matrix.T
+
+
+class TestSourceProvenance(unittest.TestCase):
+    def test_source_provenance_fails_closed_when_git_or_head_is_unavailable(self):
+        preregistration = Path(__file__).resolve().with_name("prereg_rung16.json")
+        failures = (
+            FileNotFoundError("git executable is unavailable"),
+            subprocess.CalledProcessError(128, ["git", "rev-parse", "HEAD"]),
+        )
+        for failure in failures:
+            with self.subTest(failure=type(failure).__name__):
+                with patch(
+                    "run_quant_aware_routing_campaign.subprocess.run",
+                    side_effect=failure,
+                ):
+                    with self.assertRaises(type(failure)):
+                        _source_provenance(preregistration)
+
+    def test_source_provenance_fails_closed_when_status_capture_fails(self):
+        preregistration = Path(__file__).resolve().with_name("prereg_rung16.json")
+        status_failure = subprocess.CalledProcessError(
+            128,
+            ["git", "status", "--porcelain"],
+        )
+        with patch(
+            "run_quant_aware_routing_campaign.subprocess.run",
+            side_effect=(
+                subprocess.CompletedProcess(
+                    ["git", "rev-parse", "HEAD"],
+                    0,
+                    stdout="deadbeef\n",
+                ),
+                status_failure,
+            ),
+        ):
+            with self.assertRaises(subprocess.CalledProcessError):
+                _source_provenance(preregistration)
 
 
 def _permutation(first, second, dim=4):
