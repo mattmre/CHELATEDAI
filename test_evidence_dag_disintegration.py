@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import tempfile
 import unittest
+from copy import deepcopy
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -166,6 +167,64 @@ class TestEvidenceDagDisintegration(unittest.TestCase):
         self.assertEqual(dag.to_dict(), before_edges)
         self.assertEqual(dag.pruned_edge_ledger, before_ledger)
 
+    def test_reanneal_rejects_callback_state_mutation_and_restores_deep_state(self):
+        dag = _dag()
+        dag.prune_edges(
+            lambda edge: 0.0 if edge.src == "q1" else 1.0,
+            threshold=0.5,
+        )
+        before_edges = deepcopy(dag.to_dict())
+        before_ledger = deepcopy(dag.pruned_edge_ledger)
+
+        def mutating_scorer(edge, _signals):
+            dag._edges.reverse()
+            edge.attrs["required"] = True
+            dag._pruned_edge_ledger.clear()
+            return 1.0
+
+        with self.assertRaisesRegex(RuntimeError, "mutated EvidenceDAG"):
+            reanneal_edges(dag, mutating_scorer, 0.5, {})
+
+        self.assertEqual(dag.to_dict(), before_edges)
+        self.assertEqual(dag.pruned_edge_ledger, before_ledger)
+
+    def test_reanneal_callback_exception_restores_deep_state(self):
+        dag = _dag()
+        dag.prune_edges(
+            lambda edge: 0.0 if edge.src == "q1" else 1.0,
+            threshold=0.5,
+        )
+        before_edges = deepcopy(dag.to_dict())
+        before_ledger = deepcopy(dag.pruned_edge_ledger)
+
+        def mutating_raising_scorer(edge, _signals):
+            dag._edges.clear()
+            edge.attrs["structural"] = True
+            dag._pruned_edge_ledger.clear()
+            raise RuntimeError("detector mutation failure")
+
+        with self.assertRaisesRegex(RuntimeError, "detector mutation failure"):
+            reanneal_edges(dag, mutating_raising_scorer, 0.5, {})
+
+        self.assertEqual(dag.to_dict(), before_edges)
+        self.assertEqual(dag.pruned_edge_ledger, before_ledger)
+
+    def test_pruned_ledger_property_is_deeply_defensive(self):
+        dag = _dag()
+        dag.prune_edges(
+            lambda edge: 0.0 if edge.src == "q1" else 1.0,
+            threshold=0.5,
+        )
+        exposed = dag.pruned_edge_ledger
+        exposed[0]["edge"].attrs["required"] = True
+        exposed[0]["fitness_at_prune"] = 1.0
+        exposed.clear()
+
+        ledger = dag.pruned_edge_ledger
+        self.assertEqual(len(ledger), 1)
+        self.assertFalse(ledger[0]["edge"].attrs.get("required", False))
+        self.assertEqual(ledger[0]["fitness_at_prune"], 0.0)
+
     def test_reanneal_rejects_an_invalid_dag_before_scoring(self):
         dag = _dag()
         dag.prune_edges(
@@ -231,9 +290,17 @@ class TestFailClosedRegressionSurface(unittest.TestCase):
 
     def test_empty_isomer_output_prunes_nothing(self):
         dag = _dag()
-        signals = detector_signals_from_outputs(dag, {})
+        signals = detector_signals_from_outputs(
+            dag,
+            {"mode": "sedimentation", "isomers": [], "non_isomers": []},
+        )
         self.assertEqual(self._prune_count(dag, signals), [])
         self.assertEqual(len(dag.edges), 4)
+
+    def test_missing_isomer_mode_is_rejected(self):
+        dag = _dag()
+        with self.assertRaisesRegex(ValueError, "mode.*sedimentation.*required"):
+            detector_signals_from_outputs(dag, {"isomers": [], "non_isomers": []})
 
     def test_unmatched_query_key_prunes_nothing(self):
         dag = _dag()
@@ -288,6 +355,22 @@ class TestFailClosedRegressionSurface(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "sedimentation"):
             detector_signals_from_outputs(dag, chelation)
 
+    def test_expected_mode_override_cannot_enable_unvalidated_mapping(self):
+        dag = _dag()
+        chelation = {
+            "isomers": [{"query": "collapsed query", "strength": 1.0}],
+            "non_isomers": [],
+            "mode": "chelation",
+        }
+        for override in (None, "chelation"):
+            with self.subTest(override=override):
+                with self.assertRaisesRegex(ValueError, "no validated"):
+                    detector_signals_from_outputs(
+                        dag,
+                        chelation,
+                        expected_isomer_mode=override,
+                    )
+
     def test_prune_rejects_a_mutating_scorer(self):
         dag = _dag()
         before = dag.edges
@@ -330,6 +413,38 @@ class TestFailClosedRegressionSurface(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "scorer failure"):
             dag.prune_edges(raising_scorer, threshold=0.5)
         self.assertEqual(dag.edges, before)
+
+    def test_prune_rejects_required_attr_mutation_and_restores_state(self):
+        dag = EvidenceDAG()
+        dag.add_node("q1", NodeType.QUERY)
+        dag.add_node("cl1", NodeType.CLUSTER)
+        dag.add_edge("q1", "cl1", EdgeType.RETRIEVED_IN, required=True)
+        before = deepcopy(dag.to_dict())
+
+        def mutating_scorer(edge):
+            edge.attrs["required"] = False
+            return 0.0
+
+        with self.assertRaisesRegex(RuntimeError, "mutated the DAG edge set"):
+            dag.prune_edges(mutating_scorer, threshold=0.5)
+        self.assertEqual(dag.to_dict(), before)
+        self.assertEqual(dag.pruned_edge_ledger, [])
+
+    def test_dry_run_rejects_structural_attr_mutation_and_restores_state(self):
+        dag = EvidenceDAG()
+        dag.add_node("q1", NodeType.QUERY)
+        dag.add_node("cl1", NodeType.CLUSTER)
+        dag.add_edge("q1", "cl1", EdgeType.RETRIEVED_IN, structural=True)
+        before = deepcopy(dag.to_dict())
+
+        def mutating_scorer(edge):
+            edge.attrs["structural"] = False
+            return 0.0
+
+        with self.assertRaisesRegex(RuntimeError, "mutated the DAG edge set"):
+            dag.prune_edges(mutating_scorer, threshold=0.5, dry_run=True)
+        self.assertEqual(dag.to_dict(), before)
+        self.assertEqual(dag.pruned_edge_ledger, [])
 
     def test_dry_run_rejects_same_length_edge_reordering(self):
         dag = _dag()
