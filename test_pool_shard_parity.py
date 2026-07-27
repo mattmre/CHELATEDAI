@@ -1,6 +1,7 @@
 import hashlib
 import json
 import os
+import struct
 import sys
 import tempfile
 import unittest
@@ -13,7 +14,9 @@ POC_DIR = os.path.join(os.path.dirname(__file__), "computational_storage_poc")
 if POC_DIR not in sys.path:
     sys.path.insert(0, POC_DIR)
 
+from block_graph import POINTER_BYTES, TOTAL_BLOCK_BYTES  # noqa: E402
 from pool_shard import (  # noqa: E402
+    CELLS_PER_BLOCK,
     read_pool_shard,
     retrieve_topk,
     verify_pool_shard_parity,
@@ -124,6 +127,79 @@ class TestPoolShardParity(unittest.TestCase):
                     "Pool-shard manifest must be a JSON object",
                 ):
                     read_pool_shard(self.shard_path)
+
+    def test_manifest_scalar_integer_fields_reject_bool_and_float(self):
+        base_manifest = write_pool_shard(self.shard_path, FIXTURE_VECTORS, FIXTURE_IDS)
+        manifest_path = Path(f"{self.shard_path}.manifest.json")
+
+        for field in ("version", "payload_blocks", "raw_vector_bytes"):
+            invalid_values = (True, float(base_manifest[field]))
+            for invalid_value in invalid_values:
+                with self.subTest(field=field, invalid_value=invalid_value):
+                    candidate = dict(base_manifest)
+                    candidate[field] = invalid_value
+                    manifest_path.write_text(json.dumps(candidate), encoding="utf-8")
+                    with self.assertRaisesRegex(
+                        ValueError,
+                        rf"Manifest {field} must be .*integer",
+                    ):
+                        read_pool_shard(self.shard_path)
+
+    def test_manifest_shape_components_require_exact_positive_integers(self):
+        base_manifest = write_pool_shard(self.shard_path, FIXTURE_VECTORS, FIXTURE_IDS)
+        manifest_path = Path(f"{self.shard_path}.manifest.json")
+        n, d = base_manifest["shape"]
+        invalid_shapes = (
+            [True, d],
+            [n, False],
+            [float(n), d],
+            [n, float(d)],
+        )
+
+        for invalid_shape in invalid_shapes:
+            with self.subTest(invalid_shape=invalid_shape):
+                candidate = dict(base_manifest)
+                candidate["shape"] = invalid_shape
+                manifest_path.write_text(json.dumps(candidate), encoding="utf-8")
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "Manifest shape must be a two-element list of positive integers",
+                ):
+                    read_pool_shard(self.shard_path)
+
+    def test_read_rejects_noncanonical_extra_zero_block(self):
+        manifest = write_pool_shard(self.shard_path, FIXTURE_VECTORS, FIXTURE_IDS)
+        payload = bytearray(self.shard_path.read_bytes())
+        payload[-POINTER_BYTES:] = struct.pack("<Q", TOTAL_BLOCK_BYTES)
+        payload.extend(bytes(TOTAL_BLOCK_BYTES))
+        self.shard_path.write_bytes(payload)
+
+        manifest["payload_blocks"] += 1
+        Path(f"{self.shard_path}.manifest.json").write_text(
+            json.dumps(manifest),
+            encoding="utf-8",
+        )
+
+        with self.assertRaisesRegex(ValueError, "Non-canonical payload_blocks"):
+            read_pool_shard(self.shard_path)
+        with self.assertRaisesRegex(ValueError, "Non-canonical payload_blocks"):
+            verify_pool_shard_parity(FIXTURE_VECTORS, FIXTURE_IDS, self.shard_path)
+
+    def test_round_trip_one_float_past_single_block_capacity(self):
+        float_count = CELLS_PER_BLOCK // np.dtype(np.float32).itemsize + 1
+        vectors = np.arange(float_count, dtype=np.float32).reshape(1, float_count)
+        ids = ["doc-multi-block"]
+
+        manifest = write_pool_shard(self.shard_path, vectors, ids)
+        disk_vectors, disk_ids = read_pool_shard(self.shard_path)
+        parity = verify_pool_shard_parity(vectors, ids, self.shard_path)
+
+        self.assertEqual(manifest["raw_vector_bytes"], CELLS_PER_BLOCK + 4)
+        self.assertEqual(manifest["payload_blocks"], 2)
+        self.assertEqual(self.shard_path.stat().st_size, 2 * TOTAL_BLOCK_BYTES)
+        self.assertEqual(disk_vectors.tobytes(order="C"), vectors.tobytes(order="C"))
+        self.assertEqual(disk_ids, ids)
+        self.assertTrue(parity["vectors_match"])
 
     def test_nan_payload_round_trips_byte_identically_and_parity_passes(self):
         # Byte-exact parity must treat a byte-identical NaN payload as matching

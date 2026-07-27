@@ -50,10 +50,17 @@ and every block is padded to the fixed block size. One block carries up to
 `read_pool_shard` reads the payload file as opaque flash bytes and traverses
 its graph links using `read_block`. It validates the payload length, each
 next-block offset, each decoded byte lane, the manifest byte count, shape, and
-id count, and zero-valued block padding before reconstructing the matrix. It does not use NPZ, NPY, mmap of a
-raw vector matrix, or any other array reload shortcut. `run_block_graph` is
-not appropriate here because it executes matrix multiplication; `read_block`
-is the block-graph API that reconstructs stored matrices.
+id count, and zero-valued block padding before reconstructing the matrix.
+Manifest `version`, `payload_blocks`, `raw_vector_bytes`, and both shape
+components must be exact JSON integers; booleans and floats fail with
+`ValueError`. The declared block count must equal
+`ceil(raw_vector_bytes / 262144)`, so padding is canonical and strictly less
+than one block. Padding is inspected through a zero-copy `memoryview`.
+
+The reader does not use NPZ, NPY, mmap of a raw vector matrix, or any other
+array reload shortcut. `run_block_graph` is not appropriate here because it
+executes matrix multiplication; `read_block` is the block-graph API that
+reconstructs stored matrices.
 
 `verify_pool_shard_parity` then computes the SHA256 of the disk-read logical
 vector bytes and requires all of the following:
@@ -92,11 +99,13 @@ in FP16, and three fixture queries.
 | All disk vs host top-k comparisons | exact |
 | Corrupted logical payload byte | parity raises `AssertionError` |
 | Corrupted padding byte lane | shard read raises `ValueError` |
+| Extra linked all-zero block | shard read raises `ValueError` |
+| One float past one-block capacity | two-block round trip and parity are exact |
 
 Validation re-run on 2026-07-27 after review hardening:
 
 ```text
 python -m unittest -v test_pool_shard_parity test_computational_storage_poc
-Ran 16 tests in 8.345s
+Ran 20 tests in 2.837s
 OK
 ```
