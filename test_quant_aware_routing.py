@@ -1,7 +1,11 @@
+import hashlib
 import inspect
+import json
 import math
 import subprocess
+import threading
 import unittest
+from dataclasses import replace
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -18,6 +22,7 @@ from quant_aware_routing import (
     paired_query_bootstrap_ci,
     three_way_seeded_split,
 )
+from quantization_promotion_gate import QuantizationPromotionGate
 from run_quant_aware_routing_campaign import _source_provenance, run_arena
 
 
@@ -31,40 +36,83 @@ class FixedLinear(torch.nn.Module):
 
 
 class TestSourceProvenance(unittest.TestCase):
+    def _git_runner(self, *, dirty_status="", failing_command=None):
+        repo_root = str(Path(__file__).resolve().parent)
+        tracked_files = "adapter_router.py\0quantization_promotion_gate.py\0"
+
+        def run(command, **_kwargs):
+            arguments = tuple(str(argument) for argument in command[1:])
+            if arguments == failing_command:
+                raise subprocess.CalledProcessError(128, command)
+            if arguments == ("rev-parse", "--show-toplevel"):
+                output = f"{repo_root}\n"
+            elif arguments[:3] == ("ls-files", "--error-unmatch", "--"):
+                output = ""
+            elif arguments == ("rev-parse", "HEAD"):
+                output = "deadbeef\n"
+            elif arguments == ("rev-parse", "HEAD^{tree}"):
+                output = "treebeef\n"
+            elif arguments == ("ls-files", "-z"):
+                output = tracked_files
+            elif arguments == ("status", "--porcelain=v1", "--untracked-files=no"):
+                output = dirty_status
+            else:
+                raise AssertionError(f"unexpected Git command: {command!r}")
+            return subprocess.CompletedProcess(command, 0, stdout=output)
+
+        return run
+
     def test_source_provenance_fails_closed_when_git_or_head_is_unavailable(self):
         preregistration = Path(__file__).resolve().with_name("prereg_rung16.json")
-        failures = (
-            FileNotFoundError("git executable is unavailable"),
-            subprocess.CalledProcessError(128, ["git", "rev-parse", "HEAD"]),
-        )
-        for failure in failures:
-            with self.subTest(failure=type(failure).__name__):
-                with patch(
-                    "run_quant_aware_routing_campaign.subprocess.run",
-                    side_effect=failure,
-                ):
-                    with self.assertRaises(type(failure)):
-                        _source_provenance(preregistration)
+        with patch(
+            "run_quant_aware_routing_campaign.subprocess.run",
+            side_effect=FileNotFoundError("git executable is unavailable"),
+        ):
+            with self.assertRaises(FileNotFoundError):
+                _source_provenance(preregistration)
+
+        with patch(
+            "run_quant_aware_routing_campaign.subprocess.run",
+            side_effect=self._git_runner(failing_command=("rev-parse", "HEAD")),
+        ):
+            with self.assertRaises(subprocess.CalledProcessError):
+                _source_provenance(preregistration)
 
     def test_source_provenance_fails_closed_when_status_capture_fails(self):
         preregistration = Path(__file__).resolve().with_name("prereg_rung16.json")
-        status_failure = subprocess.CalledProcessError(
-            128,
-            ["git", "status", "--porcelain"],
-        )
         with patch(
             "run_quant_aware_routing_campaign.subprocess.run",
-            side_effect=(
-                subprocess.CompletedProcess(
-                    ["git", "rev-parse", "HEAD"],
-                    0,
-                    stdout="deadbeef\n",
-                ),
-                status_failure,
+            side_effect=self._git_runner(
+                failing_command=("status", "--porcelain=v1", "--untracked-files=no")
             ),
         ):
             with self.assertRaises(subprocess.CalledProcessError):
                 _source_provenance(preregistration)
+
+    def test_source_provenance_rejects_dirty_tracked_dependency(self):
+        preregistration = Path(__file__).resolve().with_name("prereg_rung16.json")
+        with patch(
+            "run_quant_aware_routing_campaign.subprocess.run",
+            side_effect=self._git_runner(
+                dirty_status=" M quantization_promotion_gate.py\n"
+            ),
+        ):
+            with self.assertRaisesRegex(RuntimeError, "quantization_promotion_gate"):
+                _source_provenance(preregistration)
+
+    def test_source_provenance_binds_complete_clean_tracked_tree(self):
+        preregistration = Path(__file__).resolve().with_name("prereg_rung16.json")
+        with patch(
+            "run_quant_aware_routing_campaign.subprocess.run",
+            side_effect=self._git_runner(),
+        ):
+            provenance = _source_provenance(preregistration)
+        self.assertEqual(provenance["git_head"], "deadbeef")
+        self.assertEqual(provenance["git_tree"], "treebeef")
+        self.assertEqual(provenance["tracked_worktree_scope"], "entire_repository")
+        self.assertTrue(provenance["tracked_worktree_clean"])
+        self.assertEqual(provenance["tracked_file_count"], 2)
+        self.assertIn("quant_aware_routing.py", provenance["sha256"])
 
 
 def _permutation(first, second, dim=4):
@@ -216,6 +264,90 @@ class TestPairedBootstrap(unittest.TestCase):
             )
 
 
+class TestFinitePromotionParameters(unittest.TestCase):
+    def test_every_floating_routing_parameter_rejects_nonfinite_values(self):
+        config = RoutingPlaneConfig()
+        floating_fields = tuple(
+            name
+            for name, value in vars(config).items()
+            if isinstance(value, float)
+        )
+        self.assertEqual(
+            set(floating_fields),
+            {
+                "anchor_fraction",
+                "select_fraction",
+                "report_fraction",
+                "margin_delta",
+                "min_report_route_fraction",
+                "confidence_level",
+                "min_lift",
+                "max_floor_loss",
+                "quant_retained_gain",
+                "quant_minimum_fp32_gain",
+                "quantile",
+                "adapter_learning_rate",
+                "adapter_min_correction",
+                "adapter_max_correction",
+            },
+        )
+        for field_name in floating_fields:
+            for value in (float("nan"), float("inf"), -float("inf")):
+                with self.subTest(field=field_name, value=value):
+                    with self.assertRaisesRegex(ValueError, "finite"):
+                        replace(config, **{field_name: value}).validate()
+
+    def test_quantization_gate_rejects_nonfinite_configuration_and_inputs(self):
+        for value in (float("nan"), float("inf"), -float("inf")):
+            with self.subTest(parameter="retained_gain_threshold", value=value):
+                with self.assertRaisesRegex(ValueError, "finite"):
+                    QuantizationPromotionGate(retained_gain_threshold=value)
+            with self.subTest(parameter="minimum_fp32_gain", value=value):
+                with self.assertRaisesRegex(ValueError, "finite"):
+                    QuantizationPromotionGate(minimum_fp32_gain=value)
+
+        gate = QuantizationPromotionGate()
+        for position in range(3):
+            for value in (float("nan"), float("inf"), -float("inf")):
+                metrics = [1.0, 0.9, 0.0]
+                metrics[position] = value
+                with self.subTest(metric_position=position, value=value):
+                    with self.assertRaisesRegex(ValueError, "finite"):
+                        gate.evaluate(*metrics[:2], baseline_fitness=metrics[2])
+
+
+class TestSelectionLockForensics(unittest.TestCase):
+    def test_reconciliation_matches_preserved_historical_bytes(self):
+        root = Path(__file__).resolve().parent
+        reconciliation_path = (
+            root / "docs" / "rung16-selection-lock-hash-reconciliation-2026-07.json"
+        )
+        reconciliation = json.loads(reconciliation_path.read_text(encoding="utf-8"))
+        self.assertEqual(reconciliation["status"], "FORENSIC_MISMATCH_DISCLOSED")
+        self.assertEqual(len(reconciliation["records"]), 2)
+        for record in reconciliation["records"]:
+            with self.subTest(arena=record["arena"]):
+                lock_path = root / record["selection_lock_path"]
+                marker_path = root / record["marker_path"]
+                actual_lock_hash = hashlib.sha256(lock_path.read_bytes()).hexdigest()
+                actual_marker_hash = hashlib.sha256(marker_path.read_bytes()).hexdigest()
+                marker = json.loads(marker_path.read_text(encoding="utf-8"))
+                self.assertEqual(
+                    actual_lock_hash,
+                    record["selection_lock_actual_sha256"],
+                )
+                self.assertEqual(actual_marker_hash, record["marker_file_sha256"])
+                self.assertEqual(
+                    marker["selection_lock_sha256"],
+                    record["marker_claimed_selection_lock_sha256"],
+                )
+                self.assertNotEqual(
+                    actual_lock_hash,
+                    marker["selection_lock_sha256"],
+                )
+                self.assertFalse(record["match"])
+
+
 class TestQuantAwarePromotionPlane(unittest.TestCase):
     def test_plane_level_ci_quant_baselines_and_multi_route_binding_promote(self):
         plane, select_vectors, report_vectors = _passing_plane()
@@ -263,6 +395,167 @@ class TestQuantAwarePromotionPlane(unittest.TestCase):
         plane.router._margin_delta = 0.5
         with self.assertRaises(RuntimeError):
             plane.report(report_vectors)
+
+    def test_select_reservation_freezes_router_before_any_evaluation(self):
+        plane, select_vectors, report_vectors = _passing_plane()
+        entered = threading.Event()
+        release = threading.Event()
+        original_evaluate = plane._evaluate
+        results = []
+        errors = []
+
+        def blocked_evaluate(*args, **kwargs):
+            if not entered.is_set():
+                if not plane.router.frozen:
+                    raise AssertionError("router was not frozen before SELECT evaluation")
+                if plane._router_checksum != plane.router.state_checksum():
+                    raise AssertionError("SELECT did not retain the frozen router checksum")
+                entered.set()
+                if not release.wait(timeout=5):
+                    raise TimeoutError("test did not release SELECT evaluation")
+            return original_evaluate(*args, **kwargs)
+
+        def run_select():
+            try:
+                results.append(plane.select(select_vectors))
+            except Exception as exc:
+                errors.append(exc)
+
+        plane._evaluate = blocked_evaluate
+        worker = threading.Thread(target=run_select)
+        worker.start()
+        try:
+            self.assertTrue(entered.wait(timeout=2))
+            self.assertEqual(plane.state, "SELECTING")
+            frozen_checksum = plane.router.state_checksum()
+            competing_mutations = (
+                lambda: plane.router.register(
+                    "late-route",
+                    [1.0, 1.0, 0.0, 0.0],
+                    FixedLinear(np.eye(4, dtype=np.float32)),
+                ),
+                lambda: plane.router.register_global(
+                    [1.0, 1.0, 1.0, 1.0],
+                    FixedLinear(np.eye(4, dtype=np.float32)),
+                ),
+                lambda: setattr(plane.router, "margin_delta", 0.5),
+            )
+            for mutation in competing_mutations:
+                with self.assertRaisesRegex(RuntimeError, "frozen"):
+                    mutation()
+                self.assertEqual(plane.router.state_checksum(), frozen_checksum)
+            with self.assertRaisesRegex(RuntimeError, "SELECTING"):
+                plane.select(select_vectors)
+            with self.assertRaisesRegex(RuntimeError, "SELECTING"):
+                plane.report(report_vectors)
+        finally:
+            release.set()
+            worker.join(timeout=5)
+        self.assertFalse(worker.is_alive())
+        self.assertEqual(errors, [])
+        self.assertEqual(len(results), 1)
+        self.assertEqual(plane.state, "SELECT_FROZEN")
+        self.assertEqual(results[0]["router_state_sha256"], frozen_checksum)
+
+    def test_failed_select_rolls_back_for_retry_but_retains_frozen_router(self):
+        plane, select_vectors, _report_vectors = _passing_plane()
+        original_evaluate = plane._evaluate
+
+        def fail_select(*_args, **_kwargs):
+            raise RuntimeError("injected SELECT evaluation failure")
+
+        plane._evaluate = fail_select
+        with self.assertRaisesRegex(RuntimeError, "injected SELECT"):
+            plane.select(select_vectors)
+        frozen_checksum = plane.router.state_checksum()
+        self.assertTrue(plane.router.frozen)
+        self.assertEqual(plane.state, "ANCHOR_READY")
+        self.assertEqual(plane._router_checksum, frozen_checksum)
+        self.assertFalse(plane.report_consumed)
+        self.assertIsNone(plane.provenance()["select"])
+
+        plane._evaluate = original_evaluate
+        result = plane.select(select_vectors)
+        self.assertEqual(plane.state, "SELECT_FROZEN")
+        self.assertEqual(result["router_state_sha256"], frozen_checksum)
+
+    def test_concurrent_report_is_reserved_once_and_finalized_atomically(self):
+        plane, select_vectors, report_vectors = _passing_plane()
+        plane.select(select_vectors)
+        entered = threading.Event()
+        release = threading.Event()
+        original_evaluate = plane._evaluate
+        results = []
+        errors = []
+
+        def blocked_evaluate(*args, **kwargs):
+            if not entered.is_set():
+                entered.set()
+                if not release.wait(timeout=5):
+                    raise TimeoutError("test did not release REPORT evaluation")
+            return original_evaluate(*args, **kwargs)
+
+        def run_report():
+            try:
+                results.append(plane.report(report_vectors))
+            except Exception as exc:
+                errors.append(exc)
+
+        plane._evaluate = blocked_evaluate
+        worker = threading.Thread(target=run_report)
+        worker.start()
+        try:
+            self.assertTrue(entered.wait(timeout=2))
+            self.assertEqual(plane.state, "REPORTING")
+            self.assertTrue(plane.report_consumed)
+            with self.assertRaisesRegex(RuntimeError, "REPORTING"):
+                plane.report(report_vectors)
+            with self.assertRaisesRegex(RuntimeError, "REPORTING"):
+                plane.provenance()
+            with self.assertRaisesRegex(RuntimeError, "REPORTING"):
+                _ = plane.verdict
+        finally:
+            release.set()
+            worker.join(timeout=5)
+        self.assertFalse(worker.is_alive())
+        self.assertEqual(errors, [])
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["verdict"], "PROMOTED")
+        self.assertEqual(plane.state, "FINALIZED")
+        self.assertEqual(plane.verdict, "PROMOTED")
+
+    def test_report_exception_is_terminal_fail_closed_and_not_retryable(self):
+        plane, select_vectors, report_vectors = _passing_plane()
+        plane.select(select_vectors)
+
+        def fail_report(*_args, **_kwargs):
+            raise RuntimeError("injected REPORT evaluation failure")
+
+        plane._evaluate = fail_report
+        with self.assertRaisesRegex(RuntimeError, "injected REPORT"):
+            plane.report(report_vectors)
+        self.assertEqual(plane.state, "REPORT_FAILED_CLOSED")
+        self.assertTrue(plane.report_consumed)
+        self.assertEqual(plane.verdict, "FAIL-CLOSED")
+        provenance = plane.provenance()
+        self.assertEqual(provenance["report"]["error_type"], "RuntimeError")
+        self.assertEqual(provenance["report"]["verdict"], "FAIL-CLOSED")
+        with self.assertRaisesRegex(RuntimeError, "REPORT_FAILED_CLOSED"):
+            plane.report(report_vectors)
+
+    def test_invalid_report_vectors_do_not_consume_the_one_shot_report(self):
+        plane, select_vectors, report_vectors = _passing_plane()
+        plane.select(select_vectors)
+        invalid_vectors = dict(report_vectors)
+        invalid_vectors[next(iter(invalid_vectors))] = np.asarray(
+            [float("nan"), 0.0, 0.0, 0.0],
+            dtype=np.float32,
+        )
+        with self.assertRaisesRegex(ValueError, "invalid REPORT query vector"):
+            plane.report(invalid_vectors)
+        self.assertEqual(plane.state, "SELECT_FROZEN")
+        self.assertFalse(plane.report_consumed)
+        self.assertEqual(plane.report(report_vectors)["verdict"], "PROMOTED")
 
     def test_provenance_cannot_mutate_failed_select_into_promotion(self):
         plane, select_vectors, report_vectors = _passing_plane(include_unseen_bad_route=True)

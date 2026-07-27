@@ -13,22 +13,33 @@ raw preregistration file hash alongside the already-recorded canonical JSON hash
 file modification times reflect that hash annotation rather than their original pre-REPORT writes.
 No decision, metric, query ID, route usage, or verdict field changed.
 The completed manifest was then used to backfill per-arena REPORT-consumed markers at 12:31:28Z;
-they record the frozen-report and current selection-lock hashes and make subsequent default-runner
-processes refuse the already-consumed preregistration/arena pair. These markers strengthen future
-cross-process enforcement but are not presented as contemporaneous proof of the original REPORT call.
+they record frozen-report hashes and claimed selection-lock hashes and make subsequent default-runner
+processes refuse the already-consumed preregistration/arena pair. A 2026-07-27 read-only forensic
+recomputation found that neither marker's claimed selection-lock hash matches its current committed
+lock bytes: Arena A actual `13488c1133c906cd1483257b975bb568f4c245706a6120b012faca2c80729d39`
+versus claimed `c81b72a12fe87e56fcb12974a152d28a249dca8550e9354af244fc97dabbc10c`;
+Arena B actual `96bc3ab13952c562cc6676843f750dc3172aef668f0102f85394012013b9e65d`
+versus claimed `3c30e8c110789342175b3261f61704c3e0943e496dd315efa8b9393c255e023d`.
+The four historical files remain byte-for-byte preserved. The superseding audit is
+`docs/rung16-selection-lock-hash-reconciliation-2026-07.json`; it means the marker hash fields must
+not be used as integrity proof for the committed locks. The markers remain historical records of
+claimed one-shot consumption, not contemporaneous proof of the original REPORT call.
 
 Final adversarial review then hardened the implementation without re-reading REPORT: the router now
-freezes and checks route membership, centroids, margin, configuration, qrels, split, documents,
-oracle, and preregistration after SELECT; every retained adapter is quant-gated even if SELECT did
-not route a query to it; encoder-swap serving requires an explicit query-vector provider; and future
-selection locks record source-file hashes plus Git state. The final runner also defers REPORT-query
-embedding until after the durable SELECT lock. Both recorded arenas used every retained
-specialist and the global fallback on SELECT, so the broadened quant-gate scope covers the same four
-adapters and cannot change either recorded verdict. The original campaign manifest did not record a
-contemporaneous code/Git hash, however, and the runner was hardened after the run. Therefore the
-numeric artifacts are internally recomputable from their stored per-query rows but are not
-cryptographically attributable to the final source bytes. REPORT was not rerun to paper over that
-lineage limitation.
+freezes and retains its checksum before any SELECT evaluation, then checks route membership,
+centroids, margin, configuration, qrels, split, documents, oracle, and preregistration through
+finalization. Atomic plane-level states serialize SELECT and the one-shot REPORT; a failed SELECT
+rolls back for a retry against the same frozen router, while a failed REPORT is consumed and made
+terminally fail-closed. Every floating promotion parameter rejects non-finite values. Every retained
+adapter is quant-gated even if SELECT did not route a query to it; encoder-swap serving requires an
+explicit query-vector provider; and future selection locks record source-file hashes plus a clean
+whole-repository Git tree identity. The final runner also defers REPORT-query embedding until after
+the durable SELECT lock. Both recorded arenas used every retained specialist and the global fallback
+on SELECT, so the broadened quant-gate scope covers the same four adapters and cannot change either
+recorded verdict. The original campaign manifest did not record a contemporaneous code/Git hash,
+however, and the runner was hardened after the run. Therefore the numeric artifacts are internally
+recomputable from their stored per-query rows but are not cryptographically attributable to the
+final source bytes. REPORT was not rerun to paper over that lineage limitation.
 
 ## Arena A — default SciFact swap
 

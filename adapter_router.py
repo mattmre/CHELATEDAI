@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import math
 from collections import deque
 from dataclasses import dataclass, field
 from threading import Lock
@@ -46,11 +47,12 @@ class AdapterRouter:
     """
 
     def __init__(self, margin_delta: float = 0.0, logger=None):
-        if margin_delta < 0.0:
-            raise ValueError("margin_delta must be non-negative")
+        converted_margin = float(margin_delta)
+        if not math.isfinite(converted_margin) or converted_margin < 0.0:
+            raise ValueError("margin_delta must be finite and non-negative")
         self._routes: Dict[str, tuple[np.ndarray, Any]] = {}
         self._global_route: Optional[tuple[np.ndarray, Any]] = None
-        self._margin_delta = float(margin_delta)
+        self._margin_delta = converted_margin
         self._frozen = False
         self._lock = Lock()
         self._last_route_outcome: Optional[Dict[str, Any]] = None
@@ -69,8 +71,8 @@ class AdapterRouter:
             if self._frozen:
                 raise RuntimeError("adapter router is frozen")
         converted = float(value)
-        if converted < 0.0:
-            raise ValueError("margin_delta must be non-negative")
+        if not math.isfinite(converted) or converted < 0.0:
+            raise ValueError("margin_delta must be finite and non-negative")
         with self._lock:
             if self._frozen:
                 raise RuntimeError("adapter router is frozen")

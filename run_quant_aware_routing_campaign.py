@@ -541,10 +541,19 @@ def _source_provenance(prereg_file: Path) -> Dict[str, Any]:
     """Record exact implementation bytes and Git state before REPORT.
 
     Git capture failures propagate intentionally: a campaign without an exact
-    commit and tracked-source status is not valid promotion evidence.
+    commit, complete tracked-tree identity, and clean tracked worktree is not
+    valid promotion evidence.
     """
 
     source_root = Path(__file__).resolve().parent
+    repo_root_result = subprocess.run(
+        ["git", "rev-parse", "--show-toplevel"],
+        cwd=source_root,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    repo_root = Path(repo_root_result.stdout.strip()).resolve()
     source_paths = (
         source_root / "adapter_router.py",
         source_root / "quant_aware_routing.py",
@@ -552,31 +561,97 @@ def _source_provenance(prereg_file: Path) -> Dict[str, Any]:
         Path(__file__).resolve(),
         prereg_file.resolve(),
     )
-    hashes = {
-        (
-            str(path.relative_to(source_root)).replace("\\", "/")
-            if path.is_relative_to(source_root)
-            else str(path).replace("\\", "/")
-        ): hashlib.sha256(path.read_bytes()).hexdigest()
-        for path in source_paths
-    }
+    try:
+        relative_paths = tuple(path.relative_to(repo_root) for path in source_paths)
+    except ValueError as exc:
+        raise RuntimeError("all provenance inputs must live inside the Git repository") from exc
+    subprocess.run(
+        [
+            "git",
+            "ls-files",
+            "--error-unmatch",
+            "--",
+            *[str(path).replace("\\", "/") for path in relative_paths],
+        ],
+        cwd=repo_root,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
     head = subprocess.run(
         ["git", "rev-parse", "HEAD"],
+        cwd=repo_root,
         check=True,
         capture_output=True,
         text=True,
     ).stdout.strip()
-    status = subprocess.run(
-        ["git", "status", "--porcelain", "--", *[str(path) for path in source_paths]],
+    tree = subprocess.run(
+        ["git", "rev-parse", "HEAD^{tree}"],
+        cwd=repo_root,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    tracked_files_output = subprocess.run(
+        ["git", "ls-files", "-z"],
+        cwd=repo_root,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout
+    tracked_files = tuple(path for path in tracked_files_output.split("\0") if path)
+    status_command = ["git", "status", "--porcelain=v1", "--untracked-files=no"]
+    status_before = subprocess.run(
+        status_command,
+        cwd=repo_root,
         check=True,
         capture_output=True,
         text=True,
     ).stdout.splitlines()
+    if status_before:
+        raise RuntimeError(
+            "tracked worktree must be clean before provenance capture: "
+            + "; ".join(status_before)
+        )
+    hashes = {
+        str(relative_path).replace("\\", "/"): hashlib.sha256(path.read_bytes()).hexdigest()
+        for path, relative_path in zip(source_paths, relative_paths)
+    }
+    status_after = subprocess.run(
+        status_command,
+        cwd=repo_root,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.splitlines()
+    head_after = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=repo_root,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    if status_after:
+        raise RuntimeError(
+            "tracked worktree changed during provenance capture: "
+            + "; ".join(status_after)
+        )
+    if head_after != head:
+        raise RuntimeError("Git HEAD changed during provenance capture")
+    tracked_file_list_sha256 = hashlib.sha256(
+        "\0".join(tracked_files).encode("utf-8")
+    ).hexdigest()
     return {
         "captured_before_report": True,
+        "git_repo_root": ".",
         "git_head": head,
-        "tracked_source_clean": not bool(status),
-        "git_status_porcelain": status,
+        "git_tree": tree,
+        "tracked_worktree_scope": "entire_repository",
+        "tracked_worktree_clean": True,
+        "tracked_source_clean": True,
+        "git_status_porcelain": [],
+        "tracked_file_count": len(tracked_files),
+        "tracked_file_list_sha256": tracked_file_list_sha256,
         "sha256": hashes,
     }
 
