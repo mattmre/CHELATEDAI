@@ -1,5 +1,106 @@
 # Progress Log
 
+## 2026-08-02 — RB-14 queue-only observability extension
+
+- Loaded the planning-with-files workflow and ran its restart/catch-up helper;
+  it returned no unsynchronized-session report.
+- Inspected repository instructions, the brutal-honesty convention, current
+  worktree status, the authoritative RB-13 queue, and the Tier C handoff.
+- Confirmed that user-owned documentation changes and an untracked RB-13 queue
+  are already present; all edits in this slice preserve and extend them.
+- Completed a three-way read-only reconciliation of authoritative queue
+  placement, duplicate/overlap status, and concrete prior implementation/result
+  evidence.
+- Added `PRW-OBS1`, `PRW-COA1`, and `PRW-CTX1`, plus the constrained
+  `PRW-SPU1-TRANSPORT` confound subcell and optional
+  `PRW-EK7-COALITION` survivor ablation, to the authoritative local draft
+  queue with explicit dependencies, controls, nulls, falsifiers, evidence
+  states, and resource ceilings.
+- Synchronized `task_plan.md`, `findings.md`, and `docs/next-session.md`, then
+  completed a read-only status/dependency and prose consistency review.
+- A final adversarial read-only review found an ambiguous Wave-0 sequence and
+  an implicit coalition-RAG prerequisite. Reconciled the sequence as Wave 0A
+  plus later-authorized Wave 0B and replaced the implicit gate with the acyclic
+  `PRW-COA1` sanity, `PRW-CTX1` disposition, and unchanged EK7 entry gates.
+- The bounded adversarial recheck returned `PASS`: Wave 0A/0B is synchronized,
+  the coalition-RAG dependency is noncircular, and no new status contradiction
+  was found.
+- No implementation, test execution, experiment execution, Git publication,
+  PR mutation, merge, or cleanup was performed.
+
+## 2026-08-04 — RB-14 implementation and validation resumed
+
+- User authorized implementation and testing of the queued RB-14 lanes.
+- Scope is bounded CPU-only synthetic validation with no production-path change,
+  model download, GPU, concurrent experiment process, or OOM-risk campaign.
+- Implemented `observability_experiments.py` with bounded OBS1, COA1, CTX1,
+  coordinate-transport, and matched-token coalition-RAG surrogate stages, plus
+  `run_rb14_observability.py` for atomic JSON artifacts and a manifest.
+- Added 19 focused tests. The focused RB-14 suite plus existing CRSV tests pass:
+  `python -m unittest tests.test_observability_experiments
+  tests.test_crsv_experiment` -> `Ran 50 tests ... OK`.
+- Ran the bounded runner with seed `7`; all five stage sanity maps are true and
+  artifacts are retained under `artifacts/method-dev/rb14-observability/`.
+  Each artifact deliberately retains `scientific_claim_status=UNCONFIRMED`.
+- Re-ran the same bounded grid with seed `11` under the `seed-11` child
+  directory and recomputed all ten artifact digests successfully. This is not
+  a disjoint confirmation set because the fixture and estimator are unchanged.
+- The first full discovery attempt was stopped after a process check showed
+  about `709 MB` RSS. It produced only partial output (including a BCC-1
+  missing-manifest message) and no final summary, so the full suite is
+  unverified rather than green. No OOM or production-path mutation occurred.
+- Implementation phases 1–5 are complete for bounded synthetic sanity; phase 6
+  (status/findings/next-session reconciliation) is in progress. Candidate
+  survival, independent confirmation sets, live corpus/model evaluation, and
+  the unchanged EK7 entry gate remain outstanding.
+
+## RB-13 evidence-kernel and masked-subplane queue design: 2026-07-27
+
+- Read the repository and planning-with-files instructions.
+- Ran the restart/catch-up helper; it emitted no unsynchronized-session report.
+- Confirmed the worktree was clean before RB-13 edits on
+  `codex/prime-ring-onion-method-dev`, currently 15 commits ahead of
+  `origin/main`.
+- Started three independent read-only lanes:
+  - authoritative queue/handoff surface mapping;
+  - mathematical formalization and category-error audit;
+  - Donto-adjacent agent/brain memory experiment design.
+- Completed the three lanes and reconciled their outputs:
+  - repository mapping found direct CRSV/SRS-1 overlap and confirmed that fixed
+    stacking remains closed by JO1's flat identity;
+  - the mathematical audit separated decision deference, propagation
+    deflection, recurrent graph filtering, heterogeneous-space compatibility,
+    and discrete versus smooth optimization;
+  - the memory audit found that current stores are bounded mutable caches, not
+    an already-complete bitemporal evidence kernel.
+- Added the umbrella queue
+  `docs/research/evidence-kernel-masked-subplane-experiment-queue-2026-07.md`
+  with 16 stable `PRW-*` draft cards, explicit operators, controls, nulls,
+  pass/kill boundaries, dependencies, prior-art limits, and sequential
+  sub-1-GiB resource envelopes.
+- A fresh adversarial documentation review rejected the first draft rather
+  than allowing a premature preregistration claim. The reconditioned draft:
+  - separates output equivalence from dense/factorized compute and storage;
+  - removes typed-gate confounding from the bitemporal compatibility card;
+  - separates scalar relevance propagation from idempotent lineage-set
+    evidence;
+  - adds `PRW-BIL1` for explicit lattice orders, merge, and fixed points;
+  - centralizes exact card status/dependencies; and
+  - narrows classical Euler-Lagrange to a smooth continuum subproblem.
+- Added a cross-lane pointer without rewriting prior dispositions in
+  `docs/research/prime-ring-remaining-hypotheses-2026-07.md`.
+- Updated `task_plan.md` and `docs/next-session.md` with the authoritative
+  queue, dependency states, first wave, and resume guards.
+- Validated the reconditioned draft without an experiment campaign:
+  - `git diff --check` passed;
+  - the untracked queue has 16 unique expected card headings, no missing IDs,
+    and no trailing whitespace;
+  - `python scripts/check_block_flag.py` passed with `CLEAR` and the same three
+    first-cycle open carried-debt rows; and
+  - the fresh adversarial re-review returned `PASS` with no remaining blocker.
+- No experiment has been executed and no mechanism result is claimed in this
+  entry.
+
 ## RB-12 lossless preservation and merge campaign: 2026-07-27
 
 - Continuation checkpoint after the machine restart:

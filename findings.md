@@ -1,5 +1,183 @@
 # Findings & Decisions
 
+## 2026-08-04 RB-14 bounded implementation and sanity evidence
+
+- Implemented `observability_experiments.py` and the bounded runner
+  `run_rb14_observability.py`. The module is NumPy/stdlib only, streaming for
+  Gramian cells, deterministic by seed, atomic on artifact writes, and capped
+  by explicit dimension/probe/work/byte/time budgets. The production retrieval
+  path, model loading, corpus access, GPU, and concurrent fan-out were not used.
+- Added 19 focused `unittest` cases; the focused RB-14 suite and the existing
+  CRSV suite pass together: `50 tests`, `0.212s`, `OK`.
+- The bounded runner wrote five artifacts under
+  `artifacts/method-dev/rb14-observability/` with manifest digests. Every
+  artifact has `status=COMPLETE`, `evidence_state=VALIDATED` for the exact
+  synthetic sanity boundary, and `scientific_claim_status=UNCONFIRMED`.
+- Re-ran the same bounded grid at seed `11` under
+  `artifacts/method-dev/rb14-observability/seed-11/`; all five sanity maps were
+  again true and every stored artifact digest recomputed exactly. This is
+  seed robustness for the frozen fixture, not an independent scientific
+  confirmation set.
+- `PRW-OBS1`: in-span probes have zero planted off-span energy and never
+  discover the hidden coordinate; the bounded full-rank control reaches rank
+  16 and recovers it. This validates the identifiability guard, not a frontier
+  policy advantage.
+- `PRW-COA1`: singleton/top-k-below-degree masks remain exactly blind to pure
+  pair/triad terms; eligible pair/triad masks recover the planted coefficient.
+  This is a probe-support ceiling and does not upgrade the prior G2 result or
+  establish utility/synergy.
+- `PRW-CTX1`: naive singleton aggregation promotes the incompatible-witness
+  fixture, while provenance/context/propensity-aware qualification returns
+  `UNIDENTIFIED`; compatible shared-context positives promote; missing
+  propensity support abstains. This is an exact quantifier guard, not a causal
+  result from live data.
+- `PRW-SPU1-TRANSPORT`: anisotropic coordinate transport produces measurable
+  raw cosine drift, and a known inverse transport restores the latent metric
+  to numerical tolerance. It is a confound control only; it does not show a
+  new alignment method.
+- `PRW-EK7-COALITION`: matched-token individual top-k misses the conjunctive
+  query while a greedy complementary set recovers all required tokens under
+  the same document budget. This is a deterministic surrogate only and does
+  not pass the unchanged EK7 entry gate or prove RAG utility.
+- Full repository discovery was intentionally stopped after a live process
+  check showed roughly `709 MB` RSS, above the bounded single-slice envelope.
+  The process emitted partial output (including a BCC-1 missing-manifest
+  message) but no final summary; full-suite status is therefore **unverified**,
+  not green. No OOM or repository mutation occurred.
+
+## 2026-08-04 RB-14 implementation start
+
+- The live repository has no exact RB-14 implementation or accepted result
+  artifact. Existing CRSV code supplies reusable diagnostics, while the
+  `prime_ring_rb10_contract.py` envelope is specific to prime-ring stages and
+  should not be reused as if it were an observability contract.
+- The first implementation slice will be a standalone NumPy/stdlib module with
+  explicit budgets, deterministic seeds, streaming design-Gramian accounting,
+  and atomic JSON artifacts. It will cover the OBS1 and COA1 sanity gates before
+  any context, transport, or RAG integration work.
+- User authorization now permits implementation and testing, but the prior
+  G2 disposition remains fixed: pair/three-way residuals exist and static
+  advantage is false. New code must test observability/support, not relabel
+  interaction existence as a new mechanism result.
+- A first planning patch attempt failed because its progress-file context was
+  stale; no file was changed by that failure. The corrected plan update was
+  applied after rereading the live surfaces.
+
+## 2026-08-02 Open-span and coalitional observability queue reconciliation
+
+- The new dimensionality intuition resolves into two distinct observability
+  failures: untested directions outside the effective intervention span and
+  untested interactions inside a lifted pair/triad feature space. Boundedness,
+  deterministic oscillation, and embedding width are not the governing
+  properties; intervention-design rank and conditioning are.
+- Scalar decay, momentum, and perturbations restricted to an invariant known
+  span cannot add observable rank. Conversely, bounded full-rank or
+  persistently exciting designs can identify all declared linear directions.
+- Singleton probes cannot identify pure pair effects because every pair
+  feature is identically zero under top-1 activation. More generally, top-k
+  probes cannot identify an otherwise unstructured pure interaction of degree
+  greater than k.
+- Existing RB-13 cards provide nearby but nonidentical work: `PRW-SPU1`
+  supplies heterogeneous-space and Procrustes controls; `PRW-ISI1` tests
+  nuisance invariance versus material interventions; `PRW-REV1` includes
+  coordinate-map changes; and `PRW-EK7` is a survivor-only RAG integration.
+  The new cards must reuse these controls and dependencies rather than claim
+  the subjects are wholly unexplored.
+- The attached extremal-graph result is an analogy, not AI evidence. Its useful
+  warning is that singleton or aggregate compatibility need not establish a
+  jointly compatible layered structure.
+- This session is documentation-only. No protocol is frozen, no experiment
+  code is implemented, and no test or scientific experiment is run.
+- Read-only code/artifact reconciliation classifies all five exact RB-14 tests
+  as `PROPOSED`, with these preservation boundaries:
+  - no current sampler expands proposal support outside the declared span;
+  - the completed `PRW-G2` algebraic artifact already validates necessary pair
+    and strict three-way residuals while recording
+    `static_control_advantage_established=false`; RB-14 must test the missing
+    top-k observability ceiling rather than reimplement interaction arithmetic;
+  - no current experiment tests the quantifier failure in which components
+    are favorable under different contexts but lack one compatible joint
+    witness;
+  - query-swap, learned realignment, Procrustes, and representation bridges
+    exist, but legacy quantitative drift evidence is
+    `LEGACY_METRIC_LINEAGE_BLOCKED` and no accepted matched coordinate-transport
+    confound test exists; and
+  - recursive query decomposition fuses scores for individual documents but
+    does not score document sets for complementary joint sufficiency, and no
+    coalition-RAG result artifact exists.
+- The existing RB-13 queue header says `DRAFT_QUEUE`, while the prior task-plan
+  summary said `DRAFT_QUEUE_APPROVED`. Because RB-13 Section 1.1 is explicitly
+  authoritative and the user requested no implementation or testing, the
+  weaker `DRAFT_QUEUE` status governs this reconciliation.
+
+## 2026-07-27 RB-13 evidence-kernel and masked-subplane queue design
+
+- The planning-with-files catch-up helper returned no unsynchronized-session
+  report.
+- Before RB-13 documentation edits, Git reported
+  `codex/prime-ring-onion-method-dev...origin/main [ahead 15]` with no changed
+  worktree entries.
+- This lane must not revive earlier geometric language as a mechanism by
+  assertion. Each term will be retained only if it can be mapped to a typed
+  operator and a falsifiable contrast.
+- The literature audit places the broad evidence-first, bitemporal,
+  contradiction-preserving memory architecture close to existing public work,
+  especially Donto. Any CHELATEDAI contribution must therefore be framed as a
+  measured delta, not as invention of the broad architecture.
+- The current `ModelScopeMemoryStore`/`PersistentMemory` code is a bounded,
+  mutable cache contract rather than an append-only evidence kernel: capacity
+  can evict old entries, annotations mutate payloads, explicit promotion can
+  bypass a promotion-status evaluation, absent episode status can be treated as
+  promotable, and persistent keys can be overwritten or deleted. These are
+  compatibility gaps for RB-13, not automatically bugs in the existing
+  contract. `PRW-EK0` will characterize them before any redesign.
+- The mathematical terms separate into different operator classes:
+  - **deference** selects an answer/retrieve/verify/tool/human/abstain route;
+  - **deflection** attenuates or redirects graph messages;
+  - **reverberation** is bounded repeated propagation and cannot manufacture
+    independent witnesses from cyclic walks;
+  - **culling** is an ephemeral selection view, not evidence deletion; and
+  - heterogeneous **subplanes** are local spaces linked by explicit
+    compatibility maps, not extra physical dimensions.
+- Support and refutation must remain separate channels. Scalar subtraction
+  makes a highly contested claim observationally identical to an unknown claim.
+  `PRW-BIL1` now tests an explicit four-state evidence bilattice, its two
+  orders, meet/join operations, merge-order invariance, temporal correction,
+  and finite fixed-point behavior against scalar and paired-boolean controls.
+- Gelfand/Fomin and classical Euler-Lagrange are not incorrect. They apply to a
+  declared smooth continuum functional. A finite graph/sheaf Laplacian energy
+  instead has an ordinary finite-dimensional gradient/stationarity equation.
+  Neither is a whole-system optimizer for binary masks, top-k selection, graph
+  rewiring, variable-dimensional local spaces, provenance, or lattice-valued
+  evidence state. `PRW-VAR1` therefore compares the smooth relaxation with
+  exact, graph-cut/submodular, and proximal alternatives on small instances.
+- The apparent subplane route survives the prior JO1 flattening result only if
+  it contains a declared non-flat difference such as heterogeneous local
+  dimensions, missing views, data-dependent routing, nonlinear/time-varying
+  state, versioned coordinate maps, or a proved representation/decoder cost
+  frontier. `PRW-SPU0` is the expected-null flat-reduction guard; `PRW-SPU1`
+  is the information-matched heterogeneous-space test. Output equality is
+  separate from resource equality: a factorized stack and a dense flat map can
+  compute the same function with different bytes and operations, so both dense
+  and best factorized-flat controls are required.
+- Existing CRSV-1/LIR-1/SRS-1 code already covers principal angles, signed
+  additive interference, commutators, finite-horizon amplification, ordered
+  products, useful-signal atrophy, and a scale sweep on constructed examples.
+  RB-13 freezes these as predecessor controls and does not rename them as new
+  deference, deflection, culling, resonance, or variational evidence.
+- The narrow candidate worth testing is the combination of a claim-typed,
+  bitemporal, provenance-carrying, lattice-valued evidence kernel; paired
+  nuisance-invariance/material-intervention checks; source-idempotent,
+  correction-reversible query masks; reversible/versioned representation
+  views; and action authority kept separate from factual support. The
+  combination is still a conjecture and may reduce to ordinary temporal
+  memory, copy-aware truth discovery, graph filtering, multi-view learning,
+  truth maintenance, and selective prediction.
+- Sixteen independently disposed draft cards are now specified in
+  `docs/research/evidence-kernel-masked-subplane-experiment-queue-2026-07.md`.
+  Their per-card protocols are not yet frozen, no card has run, and no
+  scientific or novelty result is claimed.
+
 ## 2026-07-27 Preservation and merge boundary
 
 - Current decision overlay after full residual and exact-head review:

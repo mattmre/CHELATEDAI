@@ -726,3 +726,24 @@ Do not rerun p=11 algebra alone, open G2A, scale primes/meshes, or revive
 onion/CRT/harmonic claims before these discriminators. No current result
 supports AI/RAG utility, lower training cost, production promotion, physical
 dimensionality, or a new computing substrate.
+
+## 13. RB-13 cross-lane pointer — 2026-07-27
+
+The Donto-adjacent evidence-kernel, deference/deflection, reverberated-mask,
+subplane-unification, and variational-method ideas are queued separately at
+`docs/research/evidence-kernel-masked-subplane-experiment-queue-2026-07.md`.
+
+That queue does not alter any disposition in Sections 1--12:
+
+- fixed stacking remains closed by the JO1 flat identity;
+- CRSV-1/LIR-1/SRS-1 principal angles, signed interference, commutators,
+  finite-horizon gain, ordered products, useful-signal atrophy, and scale sweep
+  remain frozen predecessor baselines rather than RB-13 contributions;
+- `PRW-G2A` and relational mesh execution remain blocked; and
+- an evidence-kernel result supplies no evidence for a subplane/operator claim,
+  or vice versa.
+
+RB-13's draft first protocol-freezing wave is the characterization and
+algebraic guards `PRW-EK0`, `PRW-BIL1`, `PRW-SPU0`, and `PRW-VAR1`. No card
+protocol is frozen, no RB-13 experiment has executed, and none is permitted to
+inherit support from the prime-ring bounded artifacts.

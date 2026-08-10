@@ -1,5 +1,165 @@
 # Active METHOD_DEV Campaign: Prime-Ring Onion-Lattice Memory
 
+## RB-14 — Open-span and coalitional observability queue extension (2026-08-02)
+
+**Status:** `IMPLEMENTATION_IN_PROGRESS`; bounded dependency-light harness work
+is authorized for the five queued cards, while each card remains scientifically
+unconfirmed until its own runtime evidence exists
+
+**Goal:** add the newly formalized observability tests to the existing
+METHOD_DEV queue without replacing, relabeling, or lending support to prior
+prime-ring, mesh, PCHO, or evidence-kernel findings.
+
+**Scope lock:**
+
+- implement and validate only bounded, CPU-only synthetic harnesses for the
+  five RB-14 cards; do not alter the production retrieval path yet;
+- keep raw off-span discovery distinct from interaction-space/coalitional
+  discovery;
+- treat representation transport as a confound control, not evidence of
+  novelty;
+- preserve `PROPOSED`, `IMPLEMENTED_NOT_RUN`, and `VALIDATED` as separate
+  evidence states under the brutal-honesty convention;
+- one process at a time, no model download, no GPU, explicit modeled resource
+  ceilings, and stop before any OOM-risk campaign.
+
+**Requested queue lanes:**
+
+- bounded off-span/span-trap exploration;
+- pure pair/triad synergy and top-k interaction ceiling;
+- provenance-conditioned context-incompatibility testing;
+- coordinate/representation drift with transport alignment;
+- matched-token coalition retrieval for conjunctive RAG.
+
+**Reconciliation observations:**
+
+- The worktree already contains user-owned modifications to this plan,
+  `findings.md`, `progress.md`, `docs/next-session.md`, and the prime-ring
+  hypothesis ledger, plus an untracked RB-13 queue document. Preserve and
+  extend those files in place; do not reset, replace, or normalize them.
+- RB-13 Section 1.1 is the declared status/dependency source of truth for this
+  research lane. RB-14 additions remain subordinate to that dependency table;
+  their bounded synthetic artifacts may be described only as sanity evidence,
+  never as production or novelty evidence under the repository's brutal-
+  honesty rulebook.
+- `docs/next-session.md` gives preservation/publication work priority over all
+  METHOD_DEV execution. The newly run bounded cards remain subordinate to that
+  resume order; candidate-survival and production runs are still gated.
+- Existing `PRW-SPU1`, `PRW-ISI1`, `PRW-REV1`, and `PRW-EK7` provide nearby
+  controls or later integration targets; they do not yet establish the five
+  requested observability results. Final card wording must declare reuse and
+  dependencies instead of claiming those predecessor lanes are absent.
+- Queue placement will preserve the existing separation between algebraic
+  guards, independently falsifiable synthetic mechanisms, and survivor-only
+  integration. In particular, coordinate transport belongs after the existing
+  heterogeneous-space control, while coalition RAG is an optional named
+  survivor ablation attached to—but not conflated with—the final composite
+  pilot.
+
+**Current work:**
+
+- [x] Run the planning-with-files restart/catch-up check.
+- [x] Inspect repository instructions and pre-edit worktree state.
+- [x] Reconcile the five lanes with existing cards and evidence artifacts.
+- [x] Add nonduplicative queue cards with dependencies and falsifiers.
+- [x] Synchronize findings, progress, and next-session status surfaces.
+- [x] Review the documentation-only diff and preserve prior dispositions.
+- [x] Implement the shared bounded observability harness and OBS1/COA1.
+- [x] Run bounded OBS1/COA1 validation and retain complete artifacts.
+- [x] Implement and validate CTX1 plus the transport confound subcell.
+- [x] Implement and validate the deterministic coalition-RAG surrogate.
+- [x] Reconcile card statuses, findings, progress, and next-session evidence.
+
+**Implementation phases:**
+
+1. `COMPLETED`: inspect existing experiment/test conventions and freeze the
+   smallest executable interfaces without changing prior code.
+2. `COMPLETED`: implement `PRW-OBS1` and `PRW-COA1` in a dependency-light module,
+   including exact null-space sanity checks and bounded result manifests.
+3. `COMPLETED`: run separate bounded sanity cells for OBS1/COA1 and retain
+   artifacts; candidate-survival/independent confirmation remains open.
+4. `COMPLETED`: implement CTX1 and `PRW-SPU1-TRANSPORT` with matched controls;
+   their predecessor gates remain scientifically binding.
+5. `COMPLETED`: implement the deterministic coalition-RAG surrogate; defer any
+   real model/corpus run until its resource preflight is separately approved.
+6. `COMPLETED`: perform documentation/evidence reconciliation and stop for review
+   before any merge or public mutation.
+
+## RB-13 — Evidence-kernel and masked-subplane experiment queue (2026-07-27)
+
+**Status:** `IMPLEMENTATION_IN_PROGRESS`; RB-13 remains a draft dependency
+queue, while the five RB-14 lanes have bounded synthetic implementations and
+sanity artifacts. Candidate-survival protocols and scientific claims remain
+open.
+
+**Goal:** convert the Donto-adjacent evidence-memory lane and the new
+deference/deflection, reverberated-mask, subplane, and variational ideas into
+resource-bounded, independently falsifiable experiment cards without changing
+the currently validated disposition of earlier prime-ring hypotheses.
+
+**Scope lock:**
+
+- preserve the queue as the source of truth while implementing only bounded
+  synthetic RB-14 harnesses;
+- preserve prior negative, null, and positive results as recorded;
+- do not claim that metaphorical terms are mechanisms until an operator,
+  objective, baseline, null hypothesis, and measurable outcome exist;
+- keep every proposed run below an explicit memory/time preflight;
+- treat public systems such as Donto as prior art and a comparison target, not
+  as evidence that the proposed CHELATEDAI extension is novel or working.
+
+**Authoritative RB-13 draft queue:**
+
+The proposed formal objects, controls, nulls, pass/kill boundaries,
+dependencies, and resource ceilings are recorded at
+`docs/research/evidence-kernel-masked-subplane-experiment-queue-2026-07.md`.
+Its Section 1.1 table is the sole RB-13 status/dependency source of truth. This
+is an umbrella queue, not a runnable preregistration; every card retains its own
+disposition and no result may lend support to a different card by association.
+
+| Card(s) | Status | First gate |
+|---|---|---|
+| `PRW-EK0` | `QUEUED_METHOD_DEV` | characterize current cache/promotion semantics without changing them |
+| `PRW-BIL1` | `QUEUED_METHOD_DEV` | verify four-state merge, order, fixed-point, and temporal semantics |
+| `PRW-SPU0` | `QUEUED_METHOD_DEV` | reproduce the fixed-stack/flat-map reduction guard |
+| `PRW-VAR1` | `QUEUED_METHOD_DEV` | exact small-instance relaxation and integrality-gap audit |
+| `PRW-OBS1` | `QUEUED_METHOD_DEV` | distinguish bounded support from off-span rank deficiency |
+| `PRW-COA1` | `QUEUED_METHOD_DEV` | prove the top-k interaction-observability ceiling without rerunning G2 |
+| `PRW-EK1` | `BLOCKED_ON_PRW-EK0` | append-only bitemporal compatibility and deterministic replay |
+| `PRW-EK2` | `BLOCKED_ON_PRW-EK1` | independent-source/common-cause collapse |
+| `PRW-EK3` | `BLOCKED_ON_PRW-EK1` | claim-type mandatory-gate comparison |
+| `PRW-EK4` | `BLOCKED_ON_PRW-EK3_AND_PRW-BIL1` | factual support versus atomic action authority |
+| `PRW-EK5` | `BLOCKED_ON_PRW-EK1_PRW-EK2_AND_PRW-BIL1` | dependency-minimal demotion and repair |
+| `PRW-EK6` | `BLOCKED_ON_PRW-EK3` | independently checked reversible language view |
+| `PRW-DDF1` | `BLOCKED_ON_PRW-EK2` | selective routing versus dependency deflection |
+| `PRW-RCM1` | `BLOCKED_ON_PRW-EK2_AND_PRW-BIL1` | lineage-idempotent recurrent-mask comparison |
+| `PRW-ISI1` | `BLOCKED_ON_PRW-EK3` | paired nuisance-invariance/material-intervention test |
+| `PRW-SPU1` | `BLOCKED_ON_PRW-SPU0` | heterogeneous local-space test versus flat and established multi-view controls |
+| `PRW-CTX1` | `BLOCKED_ON_PRW-COA1_AND_PRW-EK2` | compatible shared-context and propensity qualification |
+| `PRW-SPU1-TRANSPORT` | `BLOCKED_ON_PRW-SPU1` | coordinate-transport confound subcell only |
+| `PRW-REV1` | `BLOCKED_ON_PRW-EK1_AND_PRW-RCM1` | correction-reversible masks over immutable history |
+| `PRW-EK7` | `BLOCKED_ON_REQUIRED_COMPONENT_DISPOSITIONS` | unchanged original survivor-only bounded agent/RAG entry gate; RB-14 optional subcells excluded |
+| `PRW-EK7-COALITION` | `BLOCKED_ON_PRW-COA1_SANITY_PRW-CTX1_DISPOSITION_AND_PRW-EK7_ENTRY_GATE` | optional matched-token coalition-RAG survivor ablation |
+
+Wave 0A is `PRW-EK0`, `PRW-BIL1`, `PRW-SPU0`, and exact-small `PRW-VAR1`.
+Wave 0B contains the independent `PRW-OBS1` and `PRW-COA1` guards; their
+bounded sanity harnesses have now run, but both remain subordinate to the
+preservation/publication resume order and require separate candidate-survival
+confirmation before any production or novelty claim. No push, PR mutation,
+merge, or cleanup is authorized by this queue update.
+
+**Current work:**
+
+- [x] Run the planning-with-files restart/catch-up check.
+- [x] Confirm the pre-edit Git worktree is clean.
+- [x] Reconcile the authoritative queue and handoff surfaces.
+- [x] Complete the mathematical category-error audit.
+- [x] Add queue-ready experiment cards, dependencies, kill criteria, and
+      resource ceilings.
+- [x] Update findings, progress, and next-session handoff consistently.
+- [x] Validate the documentation diff and bounded RB-14 artifacts without
+      running an intensive campaign.
+
 ## Goal
 - Unwind the current conjectures into independently falsifiable mechanisms.
 - Determine which mechanisms improve alignment, correction cost, and conjunctive

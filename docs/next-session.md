@@ -144,6 +144,98 @@ Before another experiment:
    process-tree RSS/checkpoint fault injection, and bounded flat real retrieval
    in that order. Do not open G2A or relational retrieval before a static pass.
 
+### RB-13/RB-14 METHOD_DEV status
+
+RB-13 remains a draft dependency queue, not Carried Debt, Deferred Scope, a
+runnable preregistration, or evidence that a mechanism works. Its
+status/dependency source of truth is Section 1.1 of
+`docs/research/evidence-kernel-masked-subplane-experiment-queue-2026-07.md`.
+The non-RB-14 cards still require their own protocol freeze and disposition.
+
+On 2026-08-04 the user authorized a bounded implementation pass for RB-14. The
+new module `observability_experiments.py` and runner
+`run_rb14_observability.py` execute only deterministic NumPy/stdlib synthetic
+cells. The focused RB-14 suite plus existing CRSV tests pass (`50 tests`, `OK`),
+and the runner wrote five atomic artifacts under
+`artifacts/method-dev/rb14-observability/` with manifest digests. Every stage
+is `VALIDATED` only for its exact synthetic sanity boundary; every stage keeps
+scientific and novelty status `UNCONFIRMED`.
+The same frozen grid was rerun at seed `11` under the `seed-11` child directory
+with exact digest recomputation; this is robustness of the fixture, not a
+disjoint confirmation set.
+
+- `PRW-OBS1` passes the in-span null and bounded full-rank recovery control; it
+  does not establish a frontier-policy advantage.
+- `PRW-COA1` passes the below-degree blindness and eligible pair/triad controls;
+  it does not rename the prior G2 interaction result or establish utility.
+- `PRW-CTX1` rejects incompatible singleton-witness composition, promotes a
+  compatible shared-context fixture, and abstains on missing propensity
+  support. Its real dependency on `PRW-EK2` remains.
+- `PRW-SPU1-TRANSPORT` demonstrates raw coordinate drift and exact recovery by
+  a known inverse transport. It remains a confound-control subcell blocked on
+  the full `PRW-SPU1` disposition.
+- `PRW-EK7-COALITION` shows a matched-token coalition surrogate recovering a
+  conjunction missed by individual top-k. It is not an EK7 result and remains
+  gated by `PRW-COA1`, the explicit CTX1 disposition, and the unchanged EK7
+  entry gate.
+
+Candidate-survival contrasts, disjoint confirmation sets, live corpus/model
+evaluation, and production integration are outstanding. The first full
+repository discovery attempt was stopped at roughly 709 MB RSS to honor the
+resource guard; it emitted no final summary, so full-suite status is
+unverified.
+
+The queue has independently disposed families and cross-cutting additions:
+
+- `PRW-EK0`--`PRW-EK7`: current-memory characterization, a Donto-adjacent
+  append-only bitemporal evidence-kernel bridge, source-genealogy collapse,
+  claim-typed gates, truth/authority separation, local demotion, reversible
+  language views, and a survivor-only agent/RAG composite;
+- `PRW-BIL1`, `PRW-DDF1`, `PRW-RCM1`, `PRW-ISI1`, `PRW-SPU0`, `PRW-SPU1`,
+  `PRW-VAR1`, and `PRW-REV1`: evidence-bilattice merge semantics, selective
+  deference, propagation deflection,
+  lineage-idempotent recurrent masks, paired invariance/intervention tests,
+  flat-reduction and heterogeneous-subplane controls, variational method
+  selection, and correction-reversible culling; and
+- `PRW-OBS1`, `PRW-COA1`, `PRW-CTX1`, `PRW-SPU1-TRANSPORT`, and
+  `PRW-EK7-COALITION`: off-span support, lifted interaction support,
+  context-compatible composition, coordinate-transport confounding, and an
+  optional matched-token coalition-RAG ablation. These now have bounded
+  synthetic implementation/sanity artifacts, but no candidate-survival or
+  production evidence.
+
+Resume RB-13 only after honoring the preservation/publication order above:
+
+1. Freeze separate SELECT/REPORT protocols for `PRW-EK0`, `PRW-BIL1`,
+   `PRW-SPU0`, and exact-small `PRW-VAR1`. A protocol must preserve the
+   Section 1.1 dependency table and its card's resource ceiling.
+2. Treat Wave 0B's `PRW-OBS1` and `PRW-COA1` harnesses as implemented sanity
+   guards, then freeze their candidate-survival contrasts separately after
+   Wave 0A and the required predecessor reviews.
+3. Only after the relevant protocol and preflight are frozen, run one card at a
+   time; report the entire scout grid and a disjoint confirmation set. Do not
+   treat the current synthetic artifacts as production or novelty evidence.
+4. Preserve JO1's stacking closure, G2's necessary-interaction/static-null
+   disposition, and the existing CRSV/SRS-1 diagnostics as
+   predecessor controls. Constant masks, fixed projectors, flat
+   concatenation, principal angles, signed interference, commutators,
+   finite-horizon gain, and scale-local peaks are not new RB-13 mechanisms.
+5. Never count repeated walks as independent evidence, scalar-cancel
+   support/refutation, or let query-time masks mutate stored evidence.
+6. Do not run `PRW-EK7` unless every required component has an explicit
+   disposition and the process-tree RSS/checkpoint/kill-resume guard is green.
+7. Keep `PRW-SPU1-TRANSPORT` a confound control and
+   `PRW-EK7-COALITION` an optional survivor ablation; neither may promote or
+   block an unrelated component by association.
+
+The mathematical disposition is already clear enough to prevent one category
+error: Gelfand/Fomin and classical Euler-Lagrange are valid for a declared
+smooth continuum functional. A finite graph/sheaf energy has an ordinary
+finite-dimensional stationarity equation. Neither supplies a whole-system
+optimizer for binary masks, top-k selection, graph rewiring, variable
+dimensions, or lattice-valued epistemic state without the relaxation and
+integrality/rounding-gap audit in `PRW-VAR1`.
+
 ## Disposition — living / annealed post-bank corrector (H5)
 
 **SUPERSEDED METRIC EVIDENCE — STILL NON-PROMOTED.** The July 2026
