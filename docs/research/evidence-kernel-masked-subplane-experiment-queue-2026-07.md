@@ -3,16 +3,18 @@
 **Queue ID:** `RB-13`
 
 **Status:** `IMPLEMENTATION_IN_PROGRESS`; the RB-13 dependency queue remains
-draft/non-preregistered, while the five RB-14 lanes now have bounded synthetic
-harnesses and sanity artifacts. No production, corpus, or novelty result is
-accepted by this document.
+draft/non-preregistered, the five RB-14 lanes have bounded synthetic harnesses
+and sanity artifacts, and RB-15 has frozen only a dependency-light nonlinear-
+sidecar Stage-A protocol. No production, corpus, or novelty result is accepted
+by this document.
 
-**Date:** 2026-07-27; RB-14 queue extension 2026-08-02
+**Date:** 2026-07-27; RB-14 queue extension 2026-08-02; RB-15 optional
+subcell extension 2026-08-12
 
 **Scope:** bounded synthetic characterization, falsification, and method
 selection for evidence-bearing agent memory, selective routing, graph
-propagation masks, heterogeneous local representation spaces, and bounded
-off-span/coalitional observability
+propagation masks, query-reset local attenuation sidecars, heterogeneous local
+representation spaces, and bounded off-span/coalitional observability
 
 **Scientific claim status:** unconfirmed
 
@@ -36,6 +38,7 @@ operators. It does not treat metaphors as mechanisms:
 | subplane | a declared local vector space, subspace, or coordinate chart |
 | unified area | a compatible global section or fiber-product state across local spaces |
 | resonance | prohibited unless a declared mode/frequency predicts held-out amplification; otherwise use `repeated propagation` or `transient amplification` |
+| nonlinear neutraliser | a query-reset auxiliary state with declared attachment map, energy/boundedness screen, and branch policy |
 
 For this queue, “Danto” is interpreted as the public **Donto** evidence-memory
 line because that is the agent/brain architecture discussed immediately before
@@ -67,13 +70,19 @@ This work must not reopen prior closed claims:
   expansion, while `PRW-COA1` and `PRW-CTX1` concern conditional joint tests.
   The original dormant-branch re-observation hypothesis retains its own
   disposition.
+- RB-15 transfers a nonlinear-neutraliser mechanism into a query-reset
+  auxiliary graph state. It does not establish off-span observability, unknown
+  direction discovery, objective truth, or evidence independence. Its full
+  source and prior-art audit is
+  `docs/research/nonlinear-neutraliser-subspace-transfer-2026-08.md`.
 
 RB-13 is an umbrella queue, not one coupled experiment. `PRW-EK*` cards concern
 the certified evidence-kernel lane. `PRW-BIL1`, `PRW-DDF1`, `PRW-RCM1`,
-`PRW-ISI1`, `PRW-SPU*`, `PRW-VAR1`, and `PRW-REV1` concern cross-cutting or
-masked-subplane operators. A result in one family supplies no evidence for
-another. Before execution, each card or tightly coupled family requires its own
-frozen protocol, inputs, SELECT/REPORT split, and disposition.
+`PRW-RCM1-NLN`, `PRW-ISI1`, `PRW-SPU*`, `PRW-VAR1`, and `PRW-REV1`
+concern cross-cutting or masked-subplane operators. A result in one family
+supplies no evidence for another. Before execution, each card or tightly
+coupled family requires its own frozen protocol, inputs, SELECT/REPORT split,
+and disposition.
 
 The existing CRSV predecessor boundary is stricter than a citation:
 
@@ -111,6 +120,7 @@ RB-13/RB-14 dependency source of truth:
 | `PRW-EK6` | `BLOCKED_ON_PRW-EK3` | `PRW-EK3` |
 | `PRW-DDF1` | `BLOCKED_ON_PRW-EK2` | `PRW-EK2` |
 | `PRW-RCM1` | `BLOCKED_ON_PRW-EK2_AND_PRW-BIL1` | `PRW-EK2`, `PRW-BIL1` |
+| `PRW-RCM1-NLN` | `BLOCKED_ON_PRW-RCM1_AND_PRW-ISI1` | `PRW-RCM1`, `PRW-ISI1`; frozen Stage-A mathematical sanity may run independently |
 | `PRW-ISI1` | `BLOCKED_ON_PRW-EK3` | `PRW-EK3` |
 | `PRW-SPU1` | `BLOCKED_ON_PRW-SPU0` | `PRW-SPU0` |
 | `PRW-CTX1` | `BLOCKED_ON_PRW-COA1_AND_PRW-EK2` | `PRW-COA1`, `PRW-EK2` |
@@ -124,6 +134,12 @@ the card has no code. The RB-14 implementation overlay is recorded in each
 card below: OBS1, COA1, CTX1, the transport subcell, and the coalition
 surrogate are implemented with exact bounded sanity artifacts, while their
 full predecessor and candidate-survival gates remain open.
+
+`PRW-RCM1-NLN` is an RB-15 optional subcell. Its source audit and exact
+Stage-A fixture are frozen, but the parent dependency status remains blocked.
+Stage A can validate only the numerical implementation, linear limit, passivity
+screen, hardening-response fixture, protected-channel decoupling, and matched
+attachment comparisons. It cannot validate graph-RAG utility or novelty.
 
 Every RB-14 addition has this status contract unless its card states the more
 specific implementation boundary:
@@ -834,6 +850,72 @@ convergence/cycle policy.
 **Ceiling:** \(n\leq5{,}000\), \(|E|\leq50{,}000\), \(K\leq8\), under 768 MiB
 RSS, under five minutes per seed.
 
+### `PRW-RCM1-NLN` — query-reset nonlinear attenuation sidecar
+
+**Purpose:** test whether a passive, locally attached nonlinear auxiliary state
+adds a useful state-dependent attenuation mechanism beyond matched adaptive
+graph filters and linear sidecars.
+
+**Dependencies:** `PRW-RCM1` and `PRW-ISI1` for candidate-survival work.
+The dependency-light Stage-A mathematical sanity protocol may run independently
+because it makes no graph-RAG, evidence, or novelty claim.
+
+**Implementation status:** `PROTOCOL_FROZEN_STAGE_A; NOT_RUN`. Source,
+formalism, exact first-run fixture, and prior-art collision audit:
+`docs/research/nonlinear-neutraliser-subspace-transfer-2026-08.md`.
+
+**Fixture:** Stage A uses frozen scalar Duffing and four-/five-node grounded
+path systems. Stage B, if authorized by predecessor dispositions, must use the
+`PRW-RCM1` copied-false-cluster/critical-bridge fixture and the paired
+protected-versus-nuisance contract from `PRW-ISI1`.
+
+**Controls:** no sidecar, ordinary diffusion/PPR plus top-k, query-conditioned
+edge damping/masking, a linear sidecar, GraphCON-style second-order dynamics,
+GRAND/GREAD-style nonlinear diffusion, ARMA/GRAMA-style recursive filtering,
+one equal-total-mass sidecar, and an equal-state-count co-located two-mode
+control.
+
+**Hypothesis:** on held-out evidence graphs and a preregistered amplitude,
+frequency, reflection, and propagation-depth grid, a SELECT-chosen query-reset
+passive nonlinear sidecar improves the declared nuisance-transmission or
+false-cluster-amplification frontier over every matched control while
+preserving critical bridge evidence, without unresolved multistability and
+within the declared operation/state budget.
+
+**Primary metrics:** linear-limit error, maximum positive unforced energy
+increment, hardening peak shift, protected-coordinate leakage, forward/reverse
+sweep discrepancy, harmonic content, transmission amplitude, critical-bridge
+recall, false-cluster amplification, branch count, operations, state bytes,
+p95 latency, and process-tree RSS.
+
+**Null:** after equalizing observations, attachment/certificate maps,
+parameters, state bytes, propagation steps, and tuning budget, the nonlinear
+sidecar adds no held-out value beyond the strongest matched control.
+
+**Stage-A pass boundary:** satisfy the frozen numerical tolerances, reproduce
+the upward hardening-response shift, retain every frequency/branch/failure
+cell, keep the protected channel decoupled, and report two distributed
+attachments against both equal-total-mass and equal-state-count controls. A
+pass validates only the harness and abstraction.
+
+**Candidate-survival boundary:** a future frozen REPORT set must show nonzero
+corrected endpoint improvement, no worse selective risk at matched coverage,
+at most one percentage point critical-bridge recall loss, no duplicated cyclic
+lineage, bounded discrete energy, no unresolved ranking branch, at most 1.5
+times the strongest control's operations/p95, and at most 2 times its
+auxiliary-state bytes.
+
+**Kill condition:** any matched linear/adaptive control ties or wins; benefit
+uses REPORT labels or an oracle nuisance map; protected evidence leaks;
+improvement exists only in a selected frequency/amplitude cell; two sidecars
+lose to a matched one-sidecar or co-located control; smaller-step or higher-
+harmonic checks reverse the result; multistability lacks a label-free branch
+policy; or query-local state mutates the evidence ledger.
+
+**Ceiling:** Stage A uses at most five host nodes, two sidecars, 37 frequency
+cells, 256 MiB process-tree RSS, and two minutes per deterministic run. Parent
+Stage-B/C ceilings remain unopened.
+
 ### `PRW-ISI1` — nuisance invariance versus intervention sensitivity
 
 **Purpose:** test whether deflecting nuisance variation preserves sensitivity
@@ -1298,10 +1380,13 @@ resource review described on each card.
 6. `PRW-DDF1` after `PRW-EK2`.
 7. `PRW-RCM1` after `PRW-EK2` and `PRW-BIL1`.
 8. `PRW-ISI1` after `PRW-EK3`.
-9. `PRW-SPU1` after `PRW-SPU0`.
-10. `PRW-CTX1` after `PRW-COA1` and `PRW-EK2`.
-11. `PRW-SPU1-TRANSPORT` after `PRW-SPU1`, only as a confound subcell.
-12. `PRW-REV1` after `PRW-EK1` and `PRW-RCM1`.
+9. `PRW-RCM1-NLN` after `PRW-RCM1` and `PRW-ISI1`; its frozen Stage-A
+   mathematical sanity is an independently runnable preflight, not a parent
+   disposition.
+10. `PRW-SPU1` after `PRW-SPU0`.
+11. `PRW-CTX1` after `PRW-COA1` and `PRW-EK2`.
+12. `PRW-SPU1-TRANSPORT` after `PRW-SPU1`, only as a confound subcell.
+13. `PRW-REV1` after `PRW-EK1` and `PRW-RCM1`.
 
 ### Wave 2 — survivor-only integration
 

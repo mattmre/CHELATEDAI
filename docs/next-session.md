@@ -228,6 +228,34 @@ Resume RB-13 only after honoring the preservation/publication order above:
    `PRW-EK7-COALITION` an optional survivor ablation; neither may promote or
    block an unrelated component by association.
 
+### RB-15 nonlinear-neutraliser transfer status
+
+The supplied Frances Fulton presentation has been traced to the 2025
+single-neutraliser journal model and reviewed in full. The exact source audit,
+formal graph-sidecar transfer, prior-art collision map, and frozen first-run
+fixture are in
+`docs/research/nonlinear-neutraliser-subspace-transfer-2026-08.md`.
+
+`PRW-RCM1-NLN` is an optional `PRW-RCM1` subcell, not a new promoted theory
+family. Candidate-survival work remains blocked on `PRW-RCM1` and
+`PRW-ISI1`. Only the CPU-only Stage-A mathematical sanity run is currently
+open. It may validate numerical consistency, a hardening-response fixture,
+passivity under the declared discretization, protected-channel decoupling,
+and matched attachment comparisons; it cannot validate off-span discovery,
+truth, graph-RAG utility, training cost, or novelty.
+
+Resume order for RB-15:
+
+1. Implement the frozen Stage-A fixture without changing a parameter after
+   seeing output and retain every frequency, reverse-sweep, failure, and
+   resource result.
+2. Run the focused tests and deterministic run IDs 7 and 11 under the declared
+   256 MiB/two-minute ceiling; produce atomic JSON plus digest manifest.
+3. Obtain an independent adversarial review of the implementation, evidence
+   boundary, and retained negative results.
+4. Do not open Stage B until the parent cards have explicit dispositions and a
+   separate SELECT/REPORT protocol is frozen.
+
 The mathematical disposition is already clear enough to prevent one category
 error: Gelfand/Fomin and classical Euler-Lagrange are valid for a declared
 smooth continuum functional. A finite graph/sheaf energy has an ordinary

@@ -1,5 +1,121 @@
 # Findings & Decisions
 
+## 2026-08-12 nonlinear-neutraliser attenuation audit
+
+- The supplied video is **"Frances Fulton | Wave Manipulation in Structures
+  with Attached Nonlinear Neutralisers"**, published by the Isaac Newton
+  Institute seminar-room channel. Search-engine indexing did not expose the
+  video content reliably, so the source chain must be recovered from YouTube
+  metadata/captions and then checked against primary papers or a thesis.
+- YouTube metadata dates the 29:54 talk to 11 August 2026, identifies Fulton
+  with the University of Auckland, and places it in INI programme `MWSW06`,
+  *Multiple Wave Scattering in Locally Resonant Materials with Degrees of
+  (Dis)Order*. The description points to INI seminar record `51186`; automatic
+  English captions are available.
+- The title makes this a plausible source for *passive nonlinear energy
+  transfer/attenuation*, not yet an answer to subspace observability. The key
+  audit question is whether the attachment changes reachable support, merely
+  redirects energy among already reachable modes, or dissipates/temporarily
+  captures response through amplitude-dependent coupling.
+- No CHELATEDAI card, result, or novelty disposition changes from the video
+  identity alone.
+- The primary publication behind the talk is Fulton, Sorokin, and Abdi,
+  *Elastic wave transmission through a semi-infinite rod with an attached
+  damped nonlinear neutraliser* (2025). Its stated system is a host rod plus a
+  local mass-spring-damper attachment with linear and cubic stiffness. The
+  publication studies first/second harmonics, stability, two incident waves,
+  phase, amplitude, attachment-to-boundary distance, and reflection. These
+  variables are materially narrower and better defined than the generic word
+  "attenuation."
+- Fulton's official research summary explicitly extends the single-attachment
+  analysis toward multiple Duffing absorbers. The talk captions describe the
+  key multi-attachment mechanism: a propagating wave changes amplitude and
+  phase at each attachment, so nominally identical nonlinear neutralisers see
+  different local forcing and therefore different amplitude-dependent
+  effective resonance. That is a *sequential state-dependent impedance
+  cascade*, not evidence for new spatial dimensions or discovery of an
+  unobserved semantic direction.
+- The leading CHELATEDAI transfer candidate is therefore a local auxiliary
+  state coupled to graph propagation whose restoring/culling response depends
+  nonlinearly on local residual amplitude. Its legitimacy will require a
+  named nuisance projection, a useful-signal projection, an energy or gain
+  functional, and a stability/passivity condition. Without those, phrases
+  such as "subspace neutraliser" remain metaphor only.
+- Early disposition: this mechanism may supply a concrete operator for
+  `PRW-RCM1`-style reverberation control and a state-conditioned control for
+  `PRW-DDF1`; it does not presently resolve `PRW-OBS1` off-span discovery,
+  `PRW-SPU1` coordinate transport, or `PRW-COA1` coalition observability.
+- The full 2026 talk is materially more cautious than its motivating picture.
+  Fulton derives an iterative two-neutraliser model in which scattering at the
+  second attachment is fed back to the first until a steady state is reached.
+  One Duffing branch can yield three real solutions; composing two attachments
+  can yield up to nine before duplicated branches proliferate under iteration.
+  The presented two-neutraliser result shows possible broadening at a 20%
+  reduction threshold, but also looping, isolas, jump states, unstable
+  solutions, and substantially longer computation.
+- The talk does **not** establish the proposed identical-component graded
+  metamaterial as a general attenuation win. Fulton reports that, for the
+  parameters shown, varying separation changed the response complexity but did
+  not broaden the transmission dip. She explicitly leaves a broad damping and
+  nonlinear-coefficient sweep, better duplicate-branch filtering, and higher
+  harmonics as future work.
+- The numerical comparison validates the analytical model mainly on stable
+  branches and has some local deviation. The experiment is for a *single*
+  neutraliser, not the two-neutraliser cascade: a clamped steel shim in an
+  aluminium base, with magnet mass, attached to a steel rod. Increasing drive
+  power shifts the observed dip upward as expected for a hardening Duffing
+  response; the slide shows sizeable error bars and only qualitative/parameter
+  consistency with theory.
+- Consequently, the strongest transferable idea is not "stack more nonlinear
+  layers." It is: attach small local state variables to a propagation path so
+  their state-dependent impedance changes the gain seen by later sites, while
+  explicitly measuring useful-signal retention, multistability, feedback
+  branch count, and convergence cost. The talk supplies both the candidate
+  mechanism and unusually relevant kill criteria.
+- Terminology correction: Fulton's device has both linear and cubic stiffness,
+  so it is closest to a Duffing-type nonlinear tuned vibration absorber or
+  neutraliser. It should not be promoted to a classical essentially nonlinear
+  energy sink with guaranteed one-way targeted energy transfer. Damping
+  dissipates energy; undamped nonlinear stiffness primarily stores,
+  redistributes, reflects, and frequency-converts it.
+- The AI/ML ingredients are not individually novel. `GraphCON` (ICML 2022)
+  already models node features as nonlinear controlled damped graph-coupled
+  oscillators; `GRAND` and `GREAD` cover nonlinear diffusion and
+  reaction-diffusion; `Wavy Transformer` (NeurIPS 2025) uses second-order wave
+  dynamics in attention; `SLGNN` evolves amplitude and phase; ARMA graph
+  filters and `GRAMA` supply recursive auxiliary/state-space filtering with
+  dynamically selected coefficients.
+- The RAG ingredients are also occupied. GNN-RAG learns query-relevant graph
+  propagation, while 2026 CatRAG uses query-conditioned edge weights and
+  Personalized PageRank to suppress hub drift and preserve bridge evidence.
+  A generic claim of "adaptive nonlinear attenuation on a graph" therefore
+  collides with prior art.
+- The still-distinct, **novelty-unconfirmed** candidate is narrower: leave the
+  primary evidence state untouched; attach resettable local sidecar states;
+  couple them only through a provenance/certificate-derived nuisance map; use
+  a passive hardening potential to make the response amplitude dependent; and
+  require useful-evidence retention, lineage idempotence, multistability
+  accounting, and query-time reversibility. No exact published collision was
+  found in the bounded search, but component-wise prior art is dense and a
+  specialist claim search remains mandatory before any novelty statement.
+- The formal candidate is now `PRW-RCM1-NLN`: a query-reset auxiliary state
+  coupled to a fixed query-conditioned graph operator through an outcome-blind
+  certificate map. With positive mass, damping, graph/attachment stiffness,
+  and hardening cubic coefficients, its continuous-time storage function has
+  nonpositive unforced derivative. This is a passivity screen, not a discrete
+  solver guarantee or utility result.
+- Protected evidence is an explicit nullspace obligation on the attachment
+  map, while the nuisance map may use declared provenance/dependency metadata
+  but not REPORT labels or answer correctness. The sidecar can attenuate only
+  directions it is told how to couple; it cannot expose an absent direction.
+- The exact first-run Stage-A fixture is frozen in
+  `docs/research/nonlinear-neutraliser-subspace-transfer-2026-08.md`. It
+  checks the linear limit, unforced energy, Duffing hardening shift, protected
+  leakage, full forward/reverse sweeps, and distributed attachments against
+  equal-total-mass and equal-state-count controls. Passing would validate only
+  the implementation and abstraction.
+
+
 ## 2026-08-04 RB-14 bounded implementation and sanity evidence
 
 - Implemented `observability_experiments.py` and the bounded runner

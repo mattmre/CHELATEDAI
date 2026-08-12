@@ -1,5 +1,59 @@
 # Progress Log
 
+## 2026-08-12 — nonlinear-neutraliser video/source review started
+
+- User supplied YouTube video `eQwG_xl-h_k` as a possible attenuation answer
+  for the subspace lane.
+- Confirmed the title and presenter through YouTube's metadata endpoint.
+- Recovered the duration, event/programme identity, INI seminar-record link,
+  and availability of automatic English captions. Temporary `yt-dlp` was
+  installed under `C:\tmp\chelatedai-video-audit-deps`; the first API request
+  hit a local TLS issuer-chain failure, and the public metadata request was
+  recovered with certificate checking disabled. Primary-source corroboration
+  remains mandatory.
+- Opened RB-15 as a source-to-equation-to-prior-art-to-CHELATEDAI audit. No
+  test, mechanism transfer, scientific claim, or production change has been
+  made yet.
+- Located the 2025 primary paper by Fulton, Sorokin, and Abdi and two primary
+  conference records describing the single- and multiple-absorber programme.
+  The source record now supports a precise working description: Duffing-type
+  local attachments create amplitude-dependent effective response, and
+  sequential attachments encounter different local amplitude/phase after
+  upstream scattering. Full equations, stability boundaries, experimental
+  results, and nearest-prior-art comparison remain under review.
+- Recovered and reviewed the complete timestamped 2026 talk transcript and key
+  slides from a local 360p progressive copy. This confirmed that the talk's new
+  contribution is an analytical/semi-analytical two-Duffing-neutraliser
+  feedback model; its physical experiment remains single-neutraliser.
+- Captured the reported negative and unresolved results rather than treating
+  the motivating graded-metamaterial picture as validation: spacing did not
+  broaden the dip in the shown parameter cell, nonlinear composition produced
+  loops/isolas/unstable branches, duplicate solutions made the iterative solver
+  expensive, and higher harmonics plus wider parameter sweeps remain open.
+- Completed the first component-level prior-art collision pass. Oscillatory
+  GNNs, nonlinear reaction-diffusion, graph wave dynamics, adaptive ARMA/state-
+  space graph models, and query-conditioned RAG traversal already occupy broad
+  versions of the idea. This forces the CHELATEDAI candidate into a narrower
+  sidecar-state plus certified-nuisance plus passivity formulation.
+- No public thesis, code, dataset, or peer-reviewed two-neutraliser paper was
+  located. The talk says the thesis submission was still forthcoming; the
+  2025 paper reports that no datasets were generated or analysed. The two-
+  neutraliser presentation must therefore be treated as current, unpublished
+  conference work rather than independently reproduced evidence.
+- Wrote the complete source/formal-transfer audit at
+  `docs/research/nonlinear-neutraliser-subspace-transfer-2026-08.md`, including
+  the energy inequality, protected/nuisance separation, exact hypothesis,
+  matched controls, candidate-survival gates, and kill conditions.
+- Added `PRW-RCM1-NLN` to the authoritative queue as an optional RB-15
+  subcell. Its parent candidate-survival lane remains blocked on `PRW-RCM1`
+  and `PRW-ISI1`; only its dependency-light Stage-A numerical sanity fixture
+  is frozen for execution.
+- Froze the first Stage-A parameters before running any output: scalar
+  hardening sweeps, four-/five-node grounded paths, linear and passivity
+  tolerances, matched one/distributed/co-located attachment controls,
+  deterministic run IDs 7 and 11, and strict CPU/RSS/time ceilings.
+
+
 ## 2026-08-02 — RB-14 queue-only observability extension
 
 - Loaded the planning-with-files workflow and ran its restart/catch-up helper;

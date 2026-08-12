@@ -1,5 +1,59 @@
 # Active METHOD_DEV Campaign: Prime-Ring Onion-Lattice Memory
 
+## RB-15 — nonlinear-neutraliser attenuation source audit (2026-08-12)
+
+**Status:** `STAGE_A_PROTOCOL_FROZEN`; the source audit and narrow mechanism
+transfer are documented, while execution, scientific value, and novelty remain
+unconfirmed
+
+**Goal:** fully review Frances Fulton's presentation, trace it to the primary
+mathematical/publication record, and determine whether nonlinear attached
+neutralisers supply a transferable attenuation operator for CHELATEDAI's
+subspace, graph-propagation, retrieval, or memory hypotheses.
+
+**Scope lock:**
+
+- distinguish the physical wave/structural-dynamics mechanism from a useful
+  mathematical abstraction and from an AI/ML implementation claim;
+- require an explicit state, coupling operator, conserved/dissipated quantity,
+  stability condition, control baseline, and falsifier before adding a test;
+- map any transfer separately to `PRW-DDF1`, `PRW-RCM1`, `PRW-SPU1`,
+  `PRW-OBS1`, and `PRW-COA1`; do not promote unrelated prime-ring or resonance
+  claims by analogy;
+- prefer the primary paper/thesis/code over the video summary and record
+  publication chronology and nearby prior art;
+- keep any first implementation bounded, synthetic, CPU-only, and outside the
+  production retrieval path.
+
+**Phases:**
+
+1. `COMPLETED`: recover video metadata/transcript and identify the primary
+   paper and conference record. The bounded search found no public thesis,
+   source code, dataset, or peer-reviewed two-neutraliser paper.
+2. `COMPLETED`: reconstruct the governing equations, assumptions, attenuation
+   result, stability/energy argument, and experimental boundaries.
+3. `COMPLETED`: compare the mechanism with established nonlinear energy sinks,
+   targeted energy transfer, metamaterials, graph filters, and adaptive
+   damping/gating literature. Component-level collisions are confirmed for
+   GraphCON, GRAND/GREAD, wave/oscillatory neural models, ARMA/GRAMA graph
+   filters, and query-conditioned graph RAG. The bounded search found no exact
+   combination collision, which is not proof of novelty.
+4. `COMPLETED`: produce a strict CHELATEDAI crosswalk: direct transfer,
+   mathematical analogy, category error, and genuinely missing experiment.
+5. `COMPLETED`: update the authoritative queue with only nonduplicative formal
+   hypotheses, controls, nulls, pass/kill criteria, and resource ceilings.
+6. `IN_PROGRESS`: implement and validate the frozen CPU-only Stage-A
+   mathematical sanity harness, then reconcile durable artifacts and handoff
+   surfaces while preserving scientific/novelty status as unconfirmed.
+
+**Errors encountered:**
+
+| Error | Attempt | Resolution |
+|---|---:|---|
+| Temporary `yt-dlp` install succeeded, but YouTube API retrieval failed because Python could not verify the local TLS issuer chain | 1 | Retry the public-source metadata/caption request with `yt-dlp --no-check-certificates`; retain the weaker transport-verification caveat and verify claims against independent primary sources |
+| Direct download of YouTube's Android-VR `399` 1080p stream returned HTTP 403, so no video file was created | 1 | Do not repeat that expiring client URL; inspect available progressive/web-client formats and use captions plus a lower progressive stream or source-site slides |
+| A second high-resolution attempt using the H.264 `137` 1080p stream also returned HTTP 403 | 1 | Stop high-resolution DASH retries; the progressive `18` 360p stream downloaded successfully and is sufficient when cross-checked against the open-access article equations |
+
 ## RB-14 — Open-span and coalitional observability queue extension (2026-08-02)
 
 **Status:** `IMPLEMENTATION_IN_PROGRESS`; bounded dependency-light harness work
