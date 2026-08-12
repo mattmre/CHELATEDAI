@@ -53,6 +53,7 @@ subspace, graph-propagation, retrieval, or memory hypotheses.
 | Temporary `yt-dlp` install succeeded, but YouTube API retrieval failed because Python could not verify the local TLS issuer chain | 1 | Retry the public-source metadata/caption request with `yt-dlp --no-check-certificates`; retain the weaker transport-verification caveat and verify claims against independent primary sources |
 | Direct download of YouTube's Android-VR `399` 1080p stream returned HTTP 403, so no video file was created | 1 | Do not repeat that expiring client URL; inspect available progressive/web-client formats and use captions plus a lower progressive stream or source-site slides |
 | A second high-resolution attempt using the H.264 `137` 1080p stream also returned HTTP 403 | 1 | Stop high-resolution DASH retries; the progressive `18` 360p stream downloaded successfully and is sufficient when cross-checked against the open-access article equations |
+| The frozen Stage-A prose did not spell out the exact protected-feature block construction or continuation initialization | 1 | Before any run output, freeze a two-feature block-diagonal protected control and independent forward/reverse warm-start conventions; change no numerical parameter |
 
 ## RB-14 — Open-span and coalitional observability queue extension (2026-08-02)
 

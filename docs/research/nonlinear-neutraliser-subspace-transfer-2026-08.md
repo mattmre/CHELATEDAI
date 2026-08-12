@@ -347,6 +347,12 @@ The first execution is frozen before inspecting its outputs:
   velocities at zero; run the exact-linear comparison to time 1.0 and the
   unforced energy trace to time 4.0 with step 0.001. Run 11 multiplies every
   nonzero initial displacement by -0.8;
+- for the protected-channel control, duplicate that four-node path into
+  block-diagonal nuisance and protected feature channels with identical host
+  operators. Point-attach the sidecar only to zero-based node 1 of the nuisance
+  channel and compare the protected trajectory with the matched no-sidecar
+  reference. This is the exact synthetic construction of an attachment map
+  that annihilates the protected feature channel;
 - hardening response control: the scalar forced Duffing relative-coordinate
   equation with mass 1, linear stiffness 1, damping 0.12, cubic stiffness 1,
   forcing amplitudes 0.05 and 0.30, and 37 equally spaced frequencies from
@@ -368,7 +374,10 @@ The first execution is frozen before inspecting its outputs:
   tolerance of 1e-9, and protected-coordinate leakage tolerance of 1e-12;
 - deterministic run identifiers 7 and 11 perturb only the declared initial
   displacement sign/scale; neither run may tune a parameter or discard a
-  frequency cell; and
+  frequency cell. Forward and reverse sweeps are independent continuations
+  from the run-specific initial state at their respective starting endpoint
+  and warm-start only their own subsequent cells; neither branch selects the
+  reported result; and
 - a 256 MiB process-tree RSS ceiling and two-minute wall-clock ceiling per run.
 
 If the scalar hardening peak does not move upward, a tolerance fails, or a run

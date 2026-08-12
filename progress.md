@@ -52,6 +52,12 @@
   hardening sweeps, four-/five-node grounded paths, linear and passivity
   tolerances, matched one/distributed/co-located attachment controls,
   deterministic run IDs 7 and 11, and strict CPU/RSS/time ceilings.
+- Before execution, clarified two parameter-free implementation conventions:
+  the protected control is a block-diagonal second feature channel on the same
+  four-node path, and forward/reverse sweeps are independent warm-started
+  continuations whose full outputs are retained. Primary-paper extraction also
+  corrected "first/second harmonics" to first-/second-order approximations,
+  with first and third harmonics in the higher-order approximation.
 
 
 ## 2026-08-02 — RB-14 queue-only observability extension

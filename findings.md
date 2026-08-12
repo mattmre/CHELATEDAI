@@ -23,7 +23,8 @@
   *Elastic wave transmission through a semi-infinite rod with an attached
   damped nonlinear neutraliser* (2025). Its stated system is a host rod plus a
   local mass-spring-damper attachment with linear and cubic stiffness. The
-  publication studies first/second harmonics, stability, two incident waves,
+  publication compares first- and second-order harmonic approximations (the
+  latter retains first and third harmonics), stability, two incident waves,
   phase, amplitude, attachment-to-boundary distance, and reflection. These
   variables are materially narrower and better defined than the generic word
   "attenuation."
