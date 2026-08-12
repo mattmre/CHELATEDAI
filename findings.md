@@ -91,6 +91,13 @@
   Personalized PageRank to suppress hub drift and preserve bridge evidence.
   A generic claim of "adaptive nonlinear attenuation on a graph" therefore
   collides with prior art.
+- A deeper exact-combination pass found an even closer collision:
+  Port-Hamiltonian Deep Graph Networks (ICLR 2025) already balance conservative
+  and dissipative graph information flow with energy-based guarantees, while
+  compositional port-Hamiltonian neural networks (L4DC 2023) already connect
+  learned nonlinear spring-mass-damper subsystems and retain cyclo-passivity.
+  Thus neither passive graph propagation nor compositional nonlinear
+  mechanical sidecars are novel ingredients here.
 - The still-distinct, **novelty-unconfirmed** candidate is narrower: leave the
   primary evidence state untouched; attach resettable local sidecar states;
   couple them only through a provenance/certificate-derived nuisance map; use
@@ -98,7 +105,10 @@
   require useful-evidence retention, lineage idempotence, multistability
   accounting, and query-time reversibility. No exact published collision was
   found in the bounded search, but component-wise prior art is dense and a
-  specialist claim search remains mandatory before any novelty statement.
+  specialist claim search remains mandatory before any novelty statement. The
+  possible distinction is evidence-specific query reset, certificate-limited
+  coupling, immutable provenance, and retrieval gates—not a new dynamics
+  family.
 - The formal candidate is now `PRW-RCM1-NLN`: a query-reset auxiliary state
   coupled to a fixed query-conditioned graph operator through an outcome-blind
   certificate map. With positive mass, damping, graph/attachment stiffness,

@@ -448,6 +448,8 @@ higher embedding dimension receive no new evidence from this source.
 | [Stuart-Landau GNN (2025 preprint)](https://arxiv.org/abs/2511.08094) | joint amplitude/phase oscillator dynamics and multistable synchronization | rules out novelty from amplitude-aware graph oscillators alone |
 | [ARMA graph filters](https://arxiv.org/abs/1602.04436) | distributed recursive graph filtering with stability conditions | a linear sidecar is largely a state-space/rational-filter realization |
 | [GRAMA (ICML 2025)](https://proceedings.mlr.press/v267/eliasof25a.html) | adaptive graph ARMA/state-space propagation with selective coefficients | rules out novelty from adaptive recursive coefficients or auxiliary state alone |
+| [Port-Hamiltonian Deep Graph Networks (ICLR 2025)](https://openreview.net/forum?id=03EkqSCKuO) | balances conservative and dissipative information flow in message-passing graphs with energy-based guarantees | rules out novelty from passivity-regulated graph propagation itself and is a mandatory architectural control |
+| [Compositional port-Hamiltonian neural networks (L4DC 2023)](https://proceedings.mlr.press/v211/neary23a.html) | composes learned nonlinear spring-mass-damper subsystems through known or learned interconnections while retaining cyclo-passivity | rules out novelty from modular passive mechanical sidecars or nonlinear attachment composition alone |
 | [GNN-RAG (ACL 2025)](https://aclanthology.org/2025.findings-acl.856/) | learned query-relevant graph propagation for efficient KG retrieval | mandatory live RAG control |
 | [CatRAG (2026 preprint)](https://arxiv.org/abs/2602.01965) | query-conditioned edge reweighting plus PPR to reduce hub drift and retain evidence chains | candidate must beat dynamic graph steering without using more semantic/oracle information |
 | [Fang et al. (2017)](https://www.nature.com/articles/s41467-017-00671-9) | experimental nonlinear metamaterial attenuation, chaos, multistate response, amplitude-dependent bands | confirms physical field maturity and makes "nonlinear broadband attenuation" non-novel |
@@ -455,8 +457,10 @@ higher embedding dimension receive no new evidence from this source.
 This search did not locate an exact paper combining all of: query-reset
 attached sidecars, certificate-limited nuisance coupling, a passive hardening
 potential, immutable provenance, and graph-RAG utility/branch gates. Absence
-from a bounded search is not proof of novelty. The components are individually
-mature, and the claim surface is narrow.
+from a bounded search is not proof of novelty. Port-Hamiltonian graph networks
+and compositional port-Hamiltonian subsystem learning materially occupy the
+closest mathematical architecture; the remaining distinction is evidence- and
+retrieval-specific rather than a new dynamics family.
 
 ## 10. Decision
 

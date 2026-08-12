@@ -35,6 +35,11 @@
   space graph models, and query-conditioned RAG traversal already occupy broad
   versions of the idea. This forces the CHELATEDAI candidate into a narrower
   sidecar-state plus certified-nuisance plus passivity formulation.
+- The follow-up collision pass found Port-Hamiltonian Deep Graph Networks and
+  compositional port-Hamiltonian neural subsystem learning. Those works occupy
+  energy-regulated graph propagation and passive nonlinear subsystem
+  composition, leaving only the evidence-specific query-reset/provenance/RAG
+  contract as a possible distinction.
 - No public thesis, code, dataset, or peer-reviewed two-neutraliser paper was
   located. The talk says the thesis submission was still forthcoming; the
   2025 paper reports that no datasets were generated or analysed. The two-
