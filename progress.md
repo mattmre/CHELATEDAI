@@ -58,6 +58,10 @@
   continuations whose full outputs are retained. Primary-paper extraction also
   corrected "first/second harmonics" to first-/second-order approximations,
   with first and third harmonics in the higher-order approximation.
+- Also froze all-zero starting states for both forced sweep directions. Run ID
+  11 changes only the four-node unforced/linear initial state, so repeated
+  forced-grid values across IDs are duplicate execution evidence, not a second
+  robustness result.
 
 
 ## 2026-08-02 — RB-14 queue-only observability extension

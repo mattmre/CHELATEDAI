@@ -375,9 +375,11 @@ The first execution is frozen before inspecting its outputs:
 - deterministic run identifiers 7 and 11 perturb only the declared initial
   displacement sign/scale; neither run may tune a parameter or discard a
   frequency cell. Forward and reverse sweeps are independent continuations
-  from the run-specific initial state at their respective starting endpoint
-  and warm-start only their own subsequent cells; neither branch selects the
-  reported result; and
+  from an all-zero state at their respective starting endpoint and warm-start
+  only their own subsequent cells; neither branch selects the reported result.
+  Run 11 changes only the explicitly declared nonzero four-node initial state,
+  so the forced grids are intentionally identical across run IDs and must not
+  be misreported as an independent robustness replication; and
 - a 256 MiB process-tree RSS ceiling and two-minute wall-clock ceiling per run.
 
 If the scalar hardening peak does not move upward, a tolerance fails, or a run
