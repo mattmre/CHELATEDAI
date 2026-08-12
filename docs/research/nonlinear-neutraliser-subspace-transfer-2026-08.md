@@ -288,7 +288,9 @@ beyond the strongest of:
 3. a linear sidecar ((kappa=0));
 4. GraphCON-style second-order primary-state dynamics;
 5. GRAND/GREAD-style nonlinear diffusion or reaction-diffusion;
-6. ARMA/GRAMA-style recursive state-space filtering.
+6. ARMA/GRAMA-style recursive state-space filtering;
+7. a port-Hamiltonian deep graph network; and
+8. a matched compositional port-Hamiltonian auxiliary-state model.
 
 ### Candidate-survival boundary
 
@@ -314,7 +316,8 @@ campaign.
 Kill or reduce the candidate if any one holds:
 
 - the linear sidecar, adaptive scalar gate, CatRAG-style query-conditioned
-  transition, GraphCON, GREAD, or GRAMA control matches it;
+  transition, GraphCON, GREAD, GRAMA, port-Hamiltonian graph, or compositional
+  port-Hamiltonian control matches it;
 - benefit requires an oracle nuisance map or answer labels;
 - the protected channel changes materially despite equal information;
 - improvement appears only at a selected amplitude/frequency/phase cell;

@@ -872,8 +872,9 @@ protected-versus-nuisance contract from `PRW-ISI1`.
 **Controls:** no sidecar, ordinary diffusion/PPR plus top-k, query-conditioned
 edge damping/masking, a linear sidecar, GraphCON-style second-order dynamics,
 GRAND/GREAD-style nonlinear diffusion, ARMA/GRAMA-style recursive filtering,
-one equal-total-mass sidecar, and an equal-state-count co-located two-mode
-control.
+a port-Hamiltonian deep graph network, a matched compositional
+port-Hamiltonian auxiliary-state model, one equal-total-mass sidecar, and an
+equal-state-count co-located two-mode control.
 
 **Hypothesis:** on held-out evidence graphs and a preregistered amplitude,
 frequency, reflection, and propagation-depth grid, a SELECT-chosen query-reset
