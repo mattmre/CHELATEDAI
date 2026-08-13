@@ -388,7 +388,9 @@ Kill or reduce the candidate if any one holds:
 Use a small path/mesh graph with scalar host dynamics and one or two attached
 sidecars. No model, corpus, GPU, or production retrieval path.
 
-The first execution is frozen before inspecting its outputs:
+The numerical grid, initial states, estimators, and pass/failure interpretation
+were fixed before the official artifact outputs, subject to the historical
+forcing-phase disclosure below:
 
 - float64 arithmetic and fixed-step classical RK4;
 - one four-node grounded path for the linear-limit, energy, and protected-
@@ -447,7 +449,10 @@ The first execution is frozen before inspecting its outputs:
   Run 11 changes only the explicitly declared nonzero four-node initial state,
   so the forced grids are intentionally identical across run IDs and must not
   be misreported as an independent robustness replication; and
-- a 256 MiB process-tree RSS ceiling and two-minute wall-clock ceiling per run.
+- a 256 MiB same-process peak-working-set/RSS screen and a two-minute post-hoc
+  numerical-computation-duration screen per run. These screens record a
+  failure after computation; they do not interrupt integration and do not
+  include serialization, atomic writing, or manifest verification.
 
 Measurement clarification: after an independent scratch calculation exposed a
 possible maximum at the frozen frequency boundary—but before the official
@@ -467,9 +472,18 @@ changing any grid or parameter:
   Nonfinite trajectories and censored peaks are retained as failed or
   unresolved, never repaired by widening the grid in this run.
 
+Historical protocol disclosure: the implementation resets local integration
+time to `t=0` at every frequency cell, so `A sin(omega t)` begins at phase zero
+while only the dynamic state is warm-started between cells. That convention
+was present in source before the official outputs but was not separately
+recorded in the frozen prose. Because forcing phase can affect nonlinear branch
+selection, the forced-grid outputs are execution evidence on that convention,
+not clean confirmatory preregistration. Any confirmatory successor must freeze
+and test its phase/continuation convention before output.
+
 If the scalar hardening peak does not move upward, a tolerance fails, or a run
-crosses its resource ceiling, record the failure. Do not change the frozen
-fixture in the same evidence generation.
+crosses either post-hoc resource screen, record the failure. Do not change the
+frozen fixture in the same evidence generation.
 
 Required checks:
 
@@ -571,15 +585,16 @@ The official CPU-only runs are retained at:
 
 - `artifacts/method-dev/rb15-nonlinear-neutralizer/run-7/` — stage artifact
   SHA-256
-  `eb2e78dabaedcfdb0ef1536d6af6a98d73e93f8917d02880fb8f19efcdbe7a25`;
+  `7a8dbe2107e88450d311835f27519f7c7fc7af4a00275a6ad151105141feafd5`;
 - `artifacts/method-dev/rb15-nonlinear-neutralizer/run-11/` — stage artifact
   SHA-256
-  `7a5525d82c22a5d1e5586f2c80bd76538f0e7e4a6ade0e6f0dd4259f88d82dd1`.
+  `2bd66d70383c75dbe29fa2b2ee2c5b393528c35b127a9a5dec7354d0f8a483d6`.
 
-Both manifests verify exact bytes, digest, duplicated claim/status fields, and
-resource gates. Run 7 used 115.05 seconds and 37,056,512 bytes peak working set;
-run 11 used 110.71 seconds and 37,134,336 bytes. Each retained 148 scalar and
-136 graph forced cells with no nonfinite trajectory. Forced scalar and graph
+Both v2 manifests verify exact bytes, digest, duplicated claim/status fields,
+and post-hoc resource screens. Run 7 recorded 111.30 seconds and 37,322,752
+bytes self peak working set; run 11 recorded 110.01 seconds and 36,995,072
+bytes. Each retained 148 scalar and 136 graph forced cells with no nonfinite
+trajectory. Forced scalar and graph
 subdocuments are exactly identical across run IDs, as required because run 11
 changes only the four-node initial-displacement fixture.
 
@@ -591,7 +606,7 @@ changes only the four-node initial-displacement fixture.
 | maximum positive sampled storage step | `0` | `0` | pass versus `1e-9`; fixture regression only |
 | protected relative leakage | `0` | `0` | pass versus `1e-12`; final state also bitwise equal |
 | co-located pair versus single full endpoint delta | `8.8818e-16` | identical forced grid | pass versus `1e-8`; factorization oracle only |
-| RSS / wall | pass / pass | pass / pass | bounded execution pass |
+| self peak RSS / computation duration | pass / pass | pass / pass | post-hoc screens only; no interrupting deadline |
 | bidirectional scalar hardening shift | unresolved | same forced grid | **frozen failure retained** |
 
 The low-drive forward and reverse sampled maxima are interior at frequency
@@ -624,6 +639,13 @@ The most important confound is now explicit: the frozen graph grid did not
 include a matched distributed **linear** pair. The observation could be caused
 by placement/distribution rather than cubic self-grading. It supports a new
 controlled test, not a nonlinear, RAG, or novelty claim.
+
+Independent Tier-B review reproduced the canonical artifacts and every
+reported metric, but rejected the initial stronger handoff wording because the
+phase reset was not separately preregistered and the resource measurements
+were post-hoc screens rather than enforced hard stops. Those are protocol-
+strength limitations, not evidence of numerical corruption; both are now
+machine-readable in the v2 artifacts.
 
 ### 10.3 Reconditioned prerequisite, not run
 

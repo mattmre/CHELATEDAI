@@ -242,8 +242,23 @@ family. Candidate-survival work remains blocked on `PRW-RCM1` and
 IDs 7 and 11. Both exact artifacts retain one frozen failure: the high-drive
 forward scalar maximum is boundary-censored at 1.60, so bidirectional hardening
 is unresolved. Linear, sampled-storage, protected-channel, co-location
-equivalence, RSS, and wall gates passed; scientific and novelty claims remain
+equivalence, and post-hoc self-RSS/computation-duration screens passed;
+scientific and novelty claims remain
 `UNCONFIRMED`.
+
+Tier-B independently reproduced the artifacts and metrics but found two
+protocol-strength gaps: local forcing phase resets to zero at every frequency
+cell while state is warm-started, and that phase convention was not separately
+preregistered; the two resource values are post-hoc screens, not interrupting
+process-tree/deadline guards. The v2 artifact contract discloses both. Current
+forced grids are execution evidence, not clean confirmatory evidence.
+
+Local validation is not a merge authorization: the repository smoke floor
+passes, but the ceiling currently fails before engine construction because the
+host cannot validate the Hugging Face TLS issuer while fetching
+`all-MiniLM-L6-v2`. Do not disable certificate verification. Require the hosted
+ceiling check (or a correctly installed local CA chain) before calling the PR
+merge-ready.
 
 The promising descriptive lead is distributed self-grading: identical
 attachments experienced materially different local amplitudes, phases, and
@@ -256,11 +271,13 @@ Resume order for RB-15:
 1. Preserve and verify both manifests under
    `artifacts/method-dev/rb15-nonlinear-neutralizer/`; do not widen or rerun the
    completed frozen grid as if it were confirmatory evidence.
-2. Complete the independent adversarial review of implementation, artifacts,
-   and the retained negative result.
+2. Preserve the completed independent adversarial review and its phase/resource
+   disclosures; do not relabel the v2 screens as enforced ceilings.
 3. If a new synthetic run is later authorized, preregister a distinct
    distribution-by-nonlinearity factorial with matched distributed-linear
-   control and aggregate/worst-case/hysteresis endpoints before output.
+   control, a frozen phase/continuation policy, a cooperative deadline if a
+   hard ceiling is claimed, and aggregate/worst-case/hysteresis endpoints
+   before output.
 4. Do not open Stage B until `PRW-RCM1` and `PRW-ISI1` have explicit
    dispositions and a separate SELECT/REPORT protocol is frozen.
 

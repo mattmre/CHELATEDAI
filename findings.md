@@ -156,11 +156,17 @@
   stiffness for every attachment. A distributed pair is "self-graded" only as
   a descriptive observation if its nominally identical attachments actually
   see different local responses; no utility claim follows from that difference.
-- The frozen Stage-A implementation and both official runs are complete under
-  `artifacts/method-dev/rb15-nonlinear-neutralizer/`. Run 7 used 115.05 seconds
-  and 37,056,512 bytes peak working set; run 11 used 110.71 seconds and
-  37,134,336 bytes. Both passed the 120-second/256-MiB gates, retained all 148
-  scalar and 136 graph cells, and had no nonfinite trajectory.
+- The Stage-A implementation and both v2 official artifacts are complete under
+  `artifacts/method-dev/rb15-nonlinear-neutralizer/`. Run 7 recorded 111.30
+  seconds and 37,322,752 bytes self peak working set; run 11 recorded 110.01
+  seconds and 36,995,072 bytes. Both passed the post-hoc 120-second/256-MiB
+  screens, retained all 148 scalar and 136 graph cells, and had no nonfinite
+  trajectory. These are not interrupting process-tree/deadline guards.
+- Tier-B reproduced both artifacts and every reported metric but found that
+  local forcing time/phase resets to zero at each warm-started frequency cell
+  without that convention having been separately preregistered. The v2
+  artifacts disclose it directly; current forced grids are execution evidence,
+  not clean confirmatory evidence.
 - Linear-limit error was `2.1903e-14` (run 7) and `1.7465e-14` (run 11), maximum
   positive sampled storage increment and protected leakage were exactly zero,
   and the protected final state was bitwise equal. These are frozen-fixture

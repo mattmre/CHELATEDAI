@@ -48,8 +48,9 @@ subspace, graph-propagation, retrieval, or memory hypotheses.
 6. `COMPLETED_WITH_FROZEN_FAILURE`: implemented and ran the frozen CPU-only
    Stage-A harness for run IDs 7 and 11. Both runs retained the preregistered
    high-amplitude forward boundary-censored peak; all other numerical,
-   integrity, and resource gates passed. Durable artifacts and handoff surfaces
-   are reconciled while scientific/novelty status remains unconfirmed.
+   integrity, and post-hoc resource screens passed. Durable artifacts and
+   handoff surfaces are reconciled while scientific/novelty status remains
+   unconfirmed.
 7. `PENDING_DEPENDENCIES_AND_NEW_PREREGISTRATION`: do not open Stage B. A
    future reconditioned synthetic contrast must first isolate distribution
    from nonlinearity with matched distributed-linear controls and predeclared
@@ -68,6 +69,7 @@ subspace, graph-propagation, retrieval, or memory hypotheses.
 | Endpoint transfer gain alone would not observe the talk's claimed identical-device self-grading mechanism | 1 | Before official execution, retain each attachment's local mismatch harmonics, phase, and descriptive Duffing effective stiffness without adding a threshold or changing the frozen fixture |
 | First official run attempt stopped before numerical execution because the Windows RSS probe called `GetProcessMemoryInfo` without 64-bit-safe API signatures | 1 | Declare `HANDLE`, `DWORD`, pointer, and `BOOL` types explicitly, add a live RSS regression, verify the empty output directory, and restart the unchanged run |
 | Second run-7 attempt completed the grid but strict JSON writing rejected NumPy scalar types in protected leakage; no artifact was written | 1 | Convert the two protected fields to native Python `float`/`bool`, add an end-to-end strict-JSON reduced-run regression, verify no partial files, and rerun unchanged |
+| Independent Tier-B review found that per-cell forcing phase reset was not separately frozen and the 120-second/RSS checks were post-hoc screens, not interrupting guards | 1 | Preserve the numerical result; disclose the phase convention as non-confirmatory, encode it in v2 artifact metadata/tests, and rename resource claims to their exact post-hoc scope before regenerating artifacts |
 
 ## RB-14 — Open-span and coalitional observability queue extension (2026-08-02)
 

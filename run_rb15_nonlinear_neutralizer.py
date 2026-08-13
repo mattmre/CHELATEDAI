@@ -25,7 +25,7 @@ from nonlinear_neutralizer_experiments import (
 )
 
 
-MANIFEST_SCHEMA = "CHELATEDAI-RB15-STAGE-A-MANIFEST-v1"
+MANIFEST_SCHEMA = "CHELATEDAI-RB15-STAGE-A-MANIFEST-v2"
 STAGE_FILENAME = "stage_a.json"
 MANIFEST_FILENAME = "manifest.json"
 
@@ -105,17 +105,19 @@ def _checked_member(output_directory: Path, member: object) -> Path:
     return candidate
 
 
-def _resource_gates(payload: Mapping[str, object]) -> Dict[str, object]:
+def _resource_screens(payload: Mapping[str, object]) -> Dict[str, object]:
     resource = payload.get("resource_usage")
     if not isinstance(resource, dict):
         raise ArtifactIntegrityError("stage payload is missing resource_usage")
-    gates = {
-        "rss_gate_passed": resource.get("rss_gate_passed"),
-        "wall_gate_passed": resource.get("wall_gate_passed"),
+    screens = {
+        "self_peak_rss_screen_passed": resource.get("self_peak_rss_screen_passed"),
+        "computation_duration_screen_passed": resource.get(
+            "computation_duration_screen_passed"
+        ),
     }
-    if any(type(value) is not bool for value in gates.values()):
-        raise ArtifactIntegrityError("stage payload has invalid resource gates")
-    return gates
+    if any(type(value) is not bool for value in screens.values()):
+        raise ArtifactIntegrityError("stage payload has invalid resource screens")
+    return screens
 
 
 def _build_manifest(payload: Mapping[str, object], stage_bytes: bytes) -> Dict[str, object]:
@@ -140,7 +142,7 @@ def _build_manifest(payload: Mapping[str, object], stage_bytes: bytes) -> Dict[s
         "scientific_claim_status": payload["scientific_claim_status"],
         "novelty_claim_status": payload["novelty_claim_status"],
         "failure_count": payload["failure_count"],
-        "resource_gates": _resource_gates(payload),
+        "resource_screens": _resource_screens(payload),
         "stage_artifact": {
             "path": STAGE_FILENAME,
             "sha256": _sha256(stage_bytes),
@@ -245,8 +247,8 @@ def verify_manifest(output_directory: Path) -> Tuple[Dict[str, object], Dict[str
         raise ArtifactIntegrityError("unexpected scientific claim status")
     if stage["novelty_claim_status"] != NOVELTY_CLAIM_STATUS:
         raise ArtifactIntegrityError("unexpected novelty claim status")
-    if manifest.get("resource_gates") != _resource_gates(stage):
-        raise ArtifactIntegrityError("manifest/stage resource-gate mismatch")
+    if manifest.get("resource_screens") != _resource_screens(stage):
+        raise ArtifactIntegrityError("manifest/stage resource-screen mismatch")
     return manifest, stage
 
 

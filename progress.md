@@ -104,17 +104,18 @@
   regression; no scientific parameter or result rule changed.
 - Completed official frozen runs 7 and 11 and verified both canonical artifact
   manifests, byte counts, and SHA-256 digests. Run 7 artifact digest is
-  `eb2e78dabaedcfdb0ef1536d6af6a98d73e93f8917d02880fb8f19efcdbe7a25`;
+  `7a8dbe2107e88450d311835f27519f7c7fc7af4a00275a6ad151105141feafd5`;
   run 11 is
-  `7a5525d82c22a5d1e5586f2c80bd76538f0e7e4a6ade0e6f0dd4259f88d82dd1`.
-- Both runs passed RSS/wall, linear, sampled-storage, protected-channel, and
-  co-location equivalence checks; both retained the same single failure:
+  `2bd66d70383c75dbe29fa2b2ee2c5b393528c35b127a9a5dec7354d0f8a483d6`.
+- Both runs passed the self-RSS/computation-duration screens plus linear,
+  sampled-storage, protected-channel, and co-location equivalence checks; both
+  retained the same single failure:
   high-amplitude forward scalar peak at the frozen 1.60 endpoint. All 284
   forced cells per run were finite. The scalar and graph forced subdocuments
   were byte-for-byte identical across run IDs, as required, with canonical
   digests
-  `e34160a83573a3d08eabbefdd81625ba408089b539c2970000ede8a807cef6d1`
-  and `85c146e88f25adf15d0c07070977cf42b1a3fc997f1d7c522edf52e45e573e2f`
+  `ff5e46d65d62f3fa4e8667c876f973c361f7bbe263a87fd65630527bfe3f2485`
+  and `ee34116743a418f951ce6db16cab3d122555b8b4b7c1dfad6a03b2220ab6a274`
   respectively.
 - Recorded the strongest positive as a descriptive self-grading witness, not
   a promotion: distributed identical attachments saw sharply different local
@@ -126,6 +127,21 @@
 - Closed Stage A as `COMPLETE_WITH_FROZEN_FAILURE`; queued only a future
   reconditioned distribution-by-nonlinearity factorial with predeclared
   aggregate/worst-case/hysteresis endpoints. Stage B remains blocked.
+- Independent Tier-B review reproduced both manifests, cell counts, ordering,
+  canonical digests, failures, and published metrics. It found no numerical
+  corruption, but capped the first handoff at 90/important because the source
+  resets forcing phase at each warm-started frequency cell without that
+  convention having been separately frozen in prose, and because the wall/RSS
+  limits were measured after computation rather than enforced during it.
+- Reconditioned the evidence contract without changing the numerical model:
+  v2 artifacts make the phase-zero-per-cell convention and its preregistration
+  limitation machine-readable, and call the resource values post-hoc
+  computation-duration/self-RSS screens rather than hard-stop guards.
+- Fresh repository smoke: the production-import floor passed. The Antigravity
+  Engine ceiling could not construct `all-MiniLM-L6-v2` because this host's
+  Python TLS chain rejects Hugging Face's issuer. Certificate checking was not
+  disabled. This is an external/local-environment blocker for merge readiness,
+  not an RB-15 numerical failure; hosted CI must provide the ceiling result.
 
 
 ## 2026-08-02 — RB-14 queue-only observability extension

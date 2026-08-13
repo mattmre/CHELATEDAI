@@ -47,6 +47,10 @@ PEAK_TIE_TOLERANCE = 1.0e-12
 
 MAX_RSS_BYTES = 256 * 1024 * 1024
 MAX_WALL_SECONDS = 120.0
+FORCING_PHASE_CONVENTION = (
+    "each frequency cell resets local integration time to t=0 and therefore "
+    "starts A*sin(omega*t) at phase 0; continuation warm-starts state only"
+)
 
 
 class StageAValidationError(ValueError):
@@ -733,6 +737,8 @@ def run_scalar_sweeps() -> Dict[str, object]:
             "branch_initialization": (
                 "all-zero at each direction endpoint; direction-local warm starts only"
             ),
+            "forcing_phase_at_each_frequency_cell_radians": 0.0,
+            "forcing_phase_convention": FORCING_PHASE_CONVENTION,
         },
         "branches": branches,
         "peak_summaries": peaks,
@@ -1091,6 +1097,8 @@ def run_graph_sweeps() -> Dict[str, object]:
             "branch_initialization": (
                 "all-zero at each direction endpoint; direction-local warm starts only"
             ),
+            "forcing_phase_at_each_frequency_cell_radians": 0.0,
+            "forcing_phase_convention": FORCING_PHASE_CONVENTION,
         },
         "configuration_totals": {
             name: _configuration_totals(system)
@@ -1215,23 +1223,34 @@ def run_stage_a(run_id: int) -> Dict[str, object]:
     failures.extend(scalar["failures"])
     failures.extend(graph["failures"])
     if peak_rss > MAX_RSS_BYTES:
-        failures.append({"check": "resource_rss", "reason": "RSS_CEILING_EXCEEDED"})
+        failures.append(
+            {"check": "resource_rss", "reason": "SELF_PEAK_RSS_SCREEN_EXCEEDED"}
+        )
     if wall_seconds > MAX_WALL_SECONDS:
-        failures.append({"check": "resource_wall", "reason": "WALL_CEILING_EXCEEDED"})
+        failures.append(
+            {
+                "check": "resource_duration",
+                "reason": "COMPUTATION_DURATION_SCREEN_EXCEEDED",
+            }
+        )
     resource = {
-        "wall_seconds": wall_seconds,
-        "wall_ceiling_seconds": MAX_WALL_SECONDS,
-        "wall_gate_passed": wall_seconds <= MAX_WALL_SECONDS,
+        "computation_wall_seconds": wall_seconds,
+        "computation_duration_screen_seconds": MAX_WALL_SECONDS,
+        "computation_duration_screen_passed": wall_seconds <= MAX_WALL_SECONDS,
+        "computation_duration_measurement_scope": (
+            "post-hoc run_stage_a numerical-computation duration; excludes "
+            "canonical serialization, atomic writes, and manifest verification"
+        ),
+        "deadline_enforced_during_integration": False,
         "initial_current_rss_bytes": initial_current_rss,
         "final_current_rss_bytes": final_current_rss,
         "self_peak_rss_bytes": peak_rss,
-        "process_tree_peak_rss_bytes": peak_rss,
-        "rss_ceiling_bytes": MAX_RSS_BYTES,
-        "rss_gate_passed": peak_rss <= MAX_RSS_BYTES,
+        "self_peak_rss_screen_bytes": MAX_RSS_BYTES,
+        "self_peak_rss_screen_passed": peak_rss <= MAX_RSS_BYTES,
         "rss_measurement_method": final_rss_method,
         "rss_method_consistent": rss_method == final_rss_method,
         "child_processes_created": 0,
-        "process_tree_scope": "self only because this harness creates no child process",
+        "rss_measurement_scope": "self only; this harness creates no child process",
         "rhs_evaluations": int(
             linear["rhs_evaluations"]
             + energy["rhs_evaluations"]
@@ -1259,6 +1278,20 @@ def run_stage_a(run_id: int) -> Dict[str, object]:
         "episode_fixed_attachment_map": True,
         "host_operator_symmetric": True,
         "forced_grid_identity_across_run_ids": True,
+        "protocol_disclosures": [
+            (
+                "The implementation reset forcing time/phase at every frequency "
+                "cell while warm-starting state. This convention existed in source "
+                "before official execution but was not separately recorded in the "
+                "frozen prose, so forced-grid results are execution evidence rather "
+                "than clean confirmatory preregistration."
+            ),
+            (
+                "The 120-second and 256-MiB values are post-hoc numerical-computation "
+                "and self-peak-RSS screens. They do not interrupt integration and do "
+                "not cover artifact serialization, writing, or verification."
+            ),
+        ],
         "run_id_boundary": (
             "run 11 changes only nonzero four-node initial displacements by "
             "-0.8; forced scalar/graph grids are intentionally identical and "
@@ -1299,6 +1332,8 @@ def run_stage_a(run_id: int) -> Dict[str, object]:
             "The protected cell is an exact block-diagonal synthetic invariant.",
             "Downstream response amplitude/gain is not a physical wave transmission coefficient.",
             "No AI, RAG, scientific, product, production, or novelty claim is supported.",
+            "The forcing-phase convention was not separately preregistered before the official outputs.",
+            "Resource values are post-hoc screens, not cooperative hard-stop guards.",
         ],
     }
 

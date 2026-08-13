@@ -90,6 +90,7 @@ class NonlinearNeutralizerCoreTests(unittest.TestCase):
         self.assertEqual(nln.TOTAL_PERIODS, 60)
         self.assertEqual(nln.STEPS_PER_PERIOD, 200)
         self.assertEqual(nln.MEASURE_PERIODS, 20)
+        self.assertIn("resets local integration time", nln.FORCING_PHASE_CONVENTION)
 
     def test_process_rss_probe_returns_finite_self_measurement(self):
         current, peak, method = nln._self_rss_bytes()
@@ -118,6 +119,13 @@ class NonlinearNeutralizerCoreTests(unittest.TestCase):
             for cell in branch
         ]
         self.assertEqual(len(scalar_cells), 8)
+        self.assertEqual(
+            scalar["fixture"]["forcing_phase_at_each_frequency_cell_radians"], 0.0
+        )
+        self.assertEqual(
+            graph["fixture"]["forcing_phase_convention"],
+            nln.FORCING_PHASE_CONVENTION,
+        )
         self.assertTrue(
             all(cell["convergence_assessment"] == "UNASSESSED_NO_FROZEN_GATE" for cell in scalar_cells)
         )
@@ -176,8 +184,8 @@ class NonlinearNeutralizerArtifactTests(unittest.TestCase):
             "novelty_claim_status": nln.NOVELTY_CLAIM_STATUS,
             "failure_count": 1,
             "resource_usage": {
-                "rss_gate_passed": True,
-                "wall_gate_passed": True,
+                "self_peak_rss_screen_passed": True,
+                "computation_duration_screen_passed": True,
             },
             "failures": [{"reason": "BOUNDARY_CENSORED_PEAK"}],
         }

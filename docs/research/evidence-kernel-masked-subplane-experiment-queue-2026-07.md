@@ -869,11 +869,16 @@ Source, formalism, exact first-run fixture, result, and prior-art collision audi
 
 **Stage-A evidence:** run IDs 7 and 11 are under
 `artifacts/method-dev/rb15-nonlinear-neutralizer/`. Both manifests pass exact
-byte/digest and resource verification, retain all 148 scalar and 136 graph
-cells, and record no nonfinite trajectory. Linear-limit, sampled-storage,
+byte/digest and post-hoc resource-screen verification, retain all 148 scalar
+and 136 graph cells, and record no nonfinite trajectory. Linear-limit, sampled-storage,
 protected-channel, and co-location equivalence checks passed. Both retain
 `BOUNDARY_CENSORED_PEAK` for the high-drive forward scalar sweep, so the
 required bidirectional hardening response is unresolved.
+
+The artifacts also disclose that local forcing time/phase resets to zero at
+every frequency cell while state alone is warm-started. That convention was in
+source before execution but was not separately preregistered, so the forced
+grids are execution evidence rather than clean confirmatory evidence.
 
 **Fixture:** Stage A uses frozen scalar Duffing and four-/five-node grounded
 path systems. Stage B, if authorized by predecessor dispositions, must use the
@@ -938,8 +943,11 @@ lose to a matched one-sidecar or co-located control; smaller-step or higher-
 harmonic checks reverse the result; multistability lacks a label-free branch
 policy; or query-local state mutates the evidence ledger.
 
-**Ceiling:** Stage A uses at most five host nodes, two sidecars, 37 frequency
-cells, 256 MiB process-tree RSS, and two minutes per deterministic run. Parent
+**Resource screen:** Stage A uses at most five host nodes, two sidecars, and 37
+frequency cells. It records same-process peak RSS against 256 MiB and numerical
+computation duration against two minutes after completion; neither is an
+interrupting process-tree/deadline guard. Any successor must add a cooperative
+deadline if it claims fail-closed enforcement. Parent
 Stage-B/C ceilings remain unopened.
 
 ### `PRW-ISI1` — nuisance invariance versus intervention sensitivity
