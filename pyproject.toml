@@ -35,6 +35,7 @@ chelatedai-research-pathways = "research_pathway_analyzer:main"
 chelatedai-static-mask-probe = "static_mask_probe:main"
 chelatedai-safety-testbed = "run_safety_testbed:main"
 chelatedai-model-scope-campaign = "run_model_scope_campaign:main"
+chelatedai-rb15-nonlinear-neutralizer = "run_rb15_nonlinear_neutralizer:main"
 chelatedai-overlay-model-scope-validation = "run_overlay_model_scope_validation:main"
 chelatedai-promotion-linkage-audit = "audit_promotion_linkage:main"
 chelatedai-default-promotion-preflight = "default_promotion_preflight:main"
@@ -90,6 +91,7 @@ py-modules = [
     "generate_evidence_index",
     "model_hook_bus",
     "model_scope_artifacts",
+    "nonlinear_neutralizer_experiments",
     "model_scope_features",
     "model_scope_memory",
     "model_scope_runtime",
@@ -108,6 +110,7 @@ py-modules = [
     "run_drift_recovery_knob_sweep",
     "run_live_fire_diagnostics",
     "run_model_scope_campaign",
+    "run_rb15_nonlinear_neutralizer",
     "run_default_promotion_evidence_chain",
     "run_overlay_model_scope_validation",
     "run_road_course_campaign",
