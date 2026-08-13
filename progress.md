@@ -92,6 +92,11 @@
   amplitude/phase seen by the second. Added report-only per-attachment mismatch
   harmonics, phase, and descriptive effective stiffness without changing the
   frozen grid, initialization, or pass gates.
+- The first run-7 launch stopped before any numerical cell or artifact because
+  the Windows RSS preflight lacked 64-bit-safe `ctypes` signatures. The output
+  directory was empty. Declared the Windows API types explicitly, confirmed a
+  live working-set reading, and added a regression before restarting the
+  scientifically unchanged frozen run.
 
 
 ## 2026-08-02 — RB-14 queue-only observability extension

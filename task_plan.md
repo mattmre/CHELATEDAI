@@ -59,6 +59,7 @@ subspace, graph-propagation, retrieval, or memory hypotheses.
 | Independent scratch audit exposed a likely high-amplitude maximum at the frozen upper frequency boundary and found that the original passivity/protection prose was too strong | 1 | Preserve the grid; disclose the pre-run output exposure; define least-squares harmonic, tie, settling-diagnostic, and boundary-censor rules; correct dissipativity/coercivity and protected-invariance assumptions |
 | Independent formal audit found that co-located half-parameter attachments are analytically equivalent to one full-parameter attachment and that the finite graph model omits the source's delayed reflection/branch solver | 1 | Freeze a 1e-8 whole-grid equivalence oracle and label Stage A a source-inspired execution-consistency fixture, not a faithful transfer or validation of the abstraction |
 | Endpoint transfer gain alone would not observe the talk's claimed identical-device self-grading mechanism | 1 | Before official execution, retain each attachment's local mismatch harmonics, phase, and descriptive Duffing effective stiffness without adding a threshold or changing the frozen fixture |
+| First official run attempt stopped before numerical execution because the Windows RSS probe called `GetProcessMemoryInfo` without 64-bit-safe API signatures | 1 | Declare `HANDLE`, `DWORD`, pointer, and `BOOL` types explicitly, add a live RSS regression, verify the empty output directory, and restart the unchanged run |
 
 ## RB-14 — Open-span and coalitional observability queue extension (2026-08-02)
 

@@ -91,6 +91,13 @@ class NonlinearNeutralizerCoreTests(unittest.TestCase):
         self.assertEqual(nln.STEPS_PER_PERIOD, 200)
         self.assertEqual(nln.MEASURE_PERIODS, 20)
 
+    def test_process_rss_probe_returns_finite_self_measurement(self):
+        current, peak, method = nln._self_rss_bytes()
+        self.assertGreater(current, 0)
+        self.assertGreaterEqual(peak, current)
+        self.assertIsInstance(method, str)
+        self.assertTrue(method)
+
     def test_reduced_sweeps_retain_cells_and_local_self_grading_fields(self):
         scalar_grid = np.asarray((0.8, 1.0), dtype=np.float64)
         graph_grid = np.asarray((0.8, 1.0), dtype=np.float64)

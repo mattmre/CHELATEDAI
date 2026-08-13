@@ -13,6 +13,7 @@ import ctypes
 import math
 import os
 import time
+from ctypes import wintypes
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Sequence, Tuple
@@ -1135,8 +1136,8 @@ def _self_rss_bytes() -> Tuple[int, int, str]:
     if os.name == "nt":
         class ProcessMemoryCounters(ctypes.Structure):
             _fields_ = [
-                ("cb", ctypes.c_ulong),
-                ("PageFaultCount", ctypes.c_ulong),
+                ("cb", wintypes.DWORD),
+                ("PageFaultCount", wintypes.DWORD),
                 ("PeakWorkingSetSize", ctypes.c_size_t),
                 ("WorkingSetSize", ctypes.c_size_t),
                 ("QuotaPeakPagedPoolUsage", ctypes.c_size_t),
@@ -1149,12 +1150,23 @@ def _self_rss_bytes() -> Tuple[int, int, str]:
 
         counters = ProcessMemoryCounters()
         counters.cb = ctypes.sizeof(counters)
-        process = ctypes.windll.kernel32.GetCurrentProcess()
-        success = ctypes.windll.psapi.GetProcessMemoryInfo(
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        psapi = ctypes.WinDLL("psapi", use_last_error=True)
+        kernel32.GetCurrentProcess.argtypes = []
+        kernel32.GetCurrentProcess.restype = wintypes.HANDLE
+        psapi.GetProcessMemoryInfo.argtypes = [
+            wintypes.HANDLE,
+            ctypes.POINTER(ProcessMemoryCounters),
+            wintypes.DWORD,
+        ]
+        psapi.GetProcessMemoryInfo.restype = wintypes.BOOL
+        process = kernel32.GetCurrentProcess()
+        success = psapi.GetProcessMemoryInfo(
             process, ctypes.byref(counters), counters.cb
         )
         if not success:
-            raise OSError("GetProcessMemoryInfo failed")
+            error_code = ctypes.get_last_error()
+            raise OSError(error_code, "GetProcessMemoryInfo failed")
         return (
             int(counters.WorkingSetSize),
             int(counters.PeakWorkingSetSize),
