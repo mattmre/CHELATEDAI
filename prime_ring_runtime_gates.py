@@ -102,6 +102,12 @@ def _plain_int(value: object, name: str, minimum: int = 0) -> int:
     return result
 
 
+def _population_count(value: object) -> int:
+    """Count set bits in a nonnegative integer using Python 3.9 stdlib."""
+
+    return bin(_plain_int(value, "population_count_value")).count("1")
+
+
 def _positive_seconds(value: object, name: str) -> float:
     if isinstance(value, bool) or not isinstance(value, Real):
         raise RuntimeGateValidationError(
@@ -454,8 +460,8 @@ def affine_parity_predicate(
         for state in range(PAYLOAD_COUNT):
             value = (
                 constant_bit
-                ^ ((query & query_bits).bit_count() & 1)
-                ^ ((state & state_bits).bit_count() & 1)
+                ^ (_population_count(query & query_bits) & 1)
+                ^ (_population_count(state & state_bits) & 1)
             )
             if value:
                 index = query * PAYLOAD_COUNT + state
@@ -816,7 +822,9 @@ def _control_charge(
     overwrites = _effective_overwrite_templates(operations)
     overlap = 0
     if len(overwrites) == 2:
-        overlap = (overwrites[0].mask & overwrites[1].mask).bit_count()
+        overlap = _population_count(
+            overwrites[0].mask & overwrites[1].mask
+        )
     common_storage = (
         dict(resource.component_bytes)["normalized_program"]
         + dict(resource.component_bytes)["explicit_predicate_tables"]
@@ -836,7 +844,7 @@ def _control_charge(
         replacement_templates=len(overwrites),
         maximum_replacement_applications=len(overwrites),
         replacement_mask_sizes=tuple(
-            overwrite.mask.bit_count() for overwrite in overwrites
+            _population_count(overwrite.mask) for overwrite in overwrites
         ),
         replacement_pair_overlap=overlap,
         leaf_searches_per_case=1,

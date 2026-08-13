@@ -76,6 +76,12 @@ def _plain_int(value: object, name: str, minimum: int = 0) -> int:
     return result
 
 
+def _population_count(value: object) -> int:
+    """Count set bits in a nonnegative integer using Python 3.9 stdlib."""
+
+    return bin(_plain_int(value, "population_count_value")).count("1")
+
+
 def _canonical_residue(value: object, name: str, *, nonzero: bool = False) -> int:
     result = _plain_int(value, name)
     if result >= MODULUS:
@@ -680,9 +686,12 @@ def _apply_overwrite_sequence(
 def _sector_profile(rules: Tuple[OverwriteRule, OverwriteRule]) -> SectorProfile:
     left, right = rules
     return SectorProfile(
-        mask_sizes=(left.mask.bit_count(), right.mask.bit_count()),
-        overlap_size=(left.mask & right.mask).bit_count(),
-        union_size=(left.mask | right.mask).bit_count(),
+        mask_sizes=(
+            _population_count(left.mask),
+            _population_count(right.mask),
+        ),
+        overlap_size=_population_count(left.mask & right.mask),
+        union_size=_population_count(left.mask | right.mask),
     )
 
 

@@ -15,7 +15,6 @@ from pathlib import Path
 from typing import Dict
 
 from observability_experiments import (
-    ObservabilityArtifact,
     make_coa1_artifact,
     make_coalition_rag_artifact,
     make_ctx1_artifact,

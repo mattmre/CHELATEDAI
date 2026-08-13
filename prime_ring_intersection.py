@@ -56,6 +56,12 @@ def _plain_int(value: object, name: str, minimum: int = 0) -> int:
     return result
 
 
+def _population_count(value: object) -> int:
+    """Count set bits in a nonnegative integer using Python 3.9 stdlib."""
+
+    return bin(_plain_int(value, "population_count_value")).count("1")
+
+
 def _probability(value: object, name: str = "crossover") -> float:
     if isinstance(value, (bool, np.bool_)) or not isinstance(
         value, (int, float, np.integer, np.floating)
@@ -1089,10 +1095,10 @@ def brute_force_union_probability(
         if pattern % 1024 == 0:
             _check_deadline(deadline)
         if any(
-            (pattern & event_mask).bit_count() >= threshold
+            _population_count(pattern & event_mask) >= threshold
             for event_mask, threshold in zip(event_masks, thresholds)
         ):
-            flips = pattern.bit_count()
+            flips = _population_count(pattern)
             probability += (
                 q**flips * (1.0 - q) ** (coordinates - flips)
             )

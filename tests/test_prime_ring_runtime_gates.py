@@ -71,8 +71,8 @@ class RuntimeGateExactScreenTests(unittest.TestCase):
             for state in range(PAYLOAD_COUNT):
                 expected = bool(
                     1
-                    ^ ((query & 0b01).bit_count() & 1)
-                    ^ ((state & 0b0000101).bit_count() & 1)
+                    ^ (bin(query & 0b01).count("1") & 1)
+                    ^ (bin(state & 0b0000101).count("1") & 1)
                 )
                 self.assertEqual(predicate.evaluate(query, state), expected)
 
@@ -80,7 +80,7 @@ class RuntimeGateExactScreenTests(unittest.TestCase):
         truth_bits = 0
         for query in range(QUERY_COUNT):
             for state in range(PAYLOAD_COUNT):
-                if query == 3 and state.bit_count() == 2:
+                if query == 3 and bin(state).count("1") == 2:
                     truth_bits |= 1 << (query * PAYLOAD_COUNT + state)
         predicate = RuntimePredicate(truth_bits)
         program = (
