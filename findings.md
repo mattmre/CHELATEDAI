@@ -150,6 +150,12 @@
   equal-total-physical-coefficient controls. The co-located pair is an exact
   equivalence oracle, not a distinct efficacy control. Passing would establish
   only execution consistency on the frozen fixtures.
+- Endpoint gain alone cannot test the source's most relevant multi-attachment
+  claim. Before official execution, Stage A therefore adds report-only local
+  mismatch amplitude, phase, third harmonic, and implied first-harmonic Duffing
+  stiffness for every attachment. A distributed pair is "self-graded" only as
+  a descriptive observation if its nominally identical attachments actually
+  see different local responses; no utility claim follows from that difference.
 
 
 ## 2026-08-04 RB-14 bounded implementation and sanity evidence

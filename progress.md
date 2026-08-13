@@ -87,6 +87,11 @@
   one full-parameter attachment, required an independently assembled linear
   oracle, and clarified that Stage A can establish only frozen-fixture
   execution consistency.
+- Also caught a measurement omission before official execution: endpoint
+  transfer gain cannot reveal whether the first attachment changes the local
+  amplitude/phase seen by the second. Added report-only per-attachment mismatch
+  harmonics, phase, and descriptive effective stiffness without changing the
+  frozen grid, initialization, or pass gates.
 
 
 ## 2026-08-02 — RB-14 queue-only observability extension

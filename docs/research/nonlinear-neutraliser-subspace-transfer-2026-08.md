@@ -427,7 +427,13 @@ The first execution is frozen before inspecting its outputs:
   final 20. Because identically initialized co-located half-parameter
   attachments are analytically equivalent to the single full-parameter
   attachment, require their entire sampled endpoint-amplitude grids to agree
-  within 1e-8; this is an equivalence oracle, not a distinct efficacy control;
+  within 1e-8; this is an equivalence oracle, not a distinct efficacy control.
+  Over the same final 20 periods, also retain every attachment's local relative
+  displacement (r_i=z_i-x_{node(i)}) fundamental and third harmonic, phase
+  relative to the sinusoidal force, and descriptive first-harmonic Duffing
+  stiffness (k_i+3\kappa_i|r_{i,1}|^2/4). These report-only fields test whether
+  distributed identical attachments actually experience the source's proposed
+  amplitude/phase self-grading; they add no selection rule or pass threshold;
 - a linear-limit final-state tolerance of 1e-6 against an independently
   constructed first-order state matrix and independently evaluated exact state
   transition that does not call the candidate RHS or state-matrix assembler,
@@ -476,7 +482,9 @@ Required checks:
 5. distributed attachments are compared against one attachment with equal
    total physical coefficients, while the co-located pair passes its analytic
    equivalence oracle;
-6. all frequency cells, unstable runs, nonconvergence, and reverse-sweep
+6. local attachment response is retained so sequential self-grading can be
+   distinguished from endpoint attenuation alone; and
+7. all frequency cells, unstable runs, nonconvergence, and reverse-sweep
    discrepancies are retained.
 
 Passing Stage A establishes execution consistency on the frozen synthetic
