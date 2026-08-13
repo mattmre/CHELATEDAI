@@ -97,6 +97,11 @@
   directory was empty. Declared the Windows API types explicitly, confirmed a
   live working-set reading, and added a regression before restarting the
   scientifically unchanged frozen run.
+- The second run-7 launch completed the grid in roughly 111 seconds but strict
+  JSON serialization rejected NumPy `float64`/`bool_` values in the protected
+  result. No artifact was written. Converted only those representation types
+  to native JSON scalars and added a reduced complete-payload strict-JSON
+  regression; no scientific parameter or result rule changed.
 
 
 ## 2026-08-02 — RB-14 queue-only observability extension

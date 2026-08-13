@@ -446,8 +446,10 @@ def run_protected_channel_check(run_id: int) -> Dict[str, object]:
         difference = candidate_state[4:8] - reference_state[:4]
         maximum_difference = max(maximum_difference, float(np.linalg.norm(difference)))
     final_difference = candidate_state[4:8] - reference_state[:4]
-    denominator = float(np.linalg.norm(reference_state[:4])) + np.finfo(np.float64).eps
-    relative_leakage = float(np.linalg.norm(final_difference)) / denominator
+    denominator = float(
+        float(np.linalg.norm(reference_state[:4])) + np.finfo(np.float64).eps
+    )
+    relative_leakage = float(float(np.linalg.norm(final_difference)) / denominator)
     coupling_to_protected_norm = 0.0
     off_block_operator_norm = float(
         np.linalg.norm(duplicated[:4, 4:]) + np.linalg.norm(duplicated[4:, :4])
@@ -461,7 +463,7 @@ def run_protected_channel_check(run_id: int) -> Dict[str, object]:
         ),
         "attachment_map_times_protected_norm": coupling_to_protected_norm,
         "off_block_operator_norm": off_block_operator_norm,
-        "passed": relative_leakage <= PROTECTED_LEAKAGE_TOLERANCE,
+        "passed": bool(relative_leakage <= PROTECTED_LEAKAGE_TOLERANCE),
         "rhs_evaluations": 8 * steps,
         "scope": (
             "exact synthetic block-diagonal invariant only; does not establish "

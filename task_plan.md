@@ -60,6 +60,7 @@ subspace, graph-propagation, retrieval, or memory hypotheses.
 | Independent formal audit found that co-located half-parameter attachments are analytically equivalent to one full-parameter attachment and that the finite graph model omits the source's delayed reflection/branch solver | 1 | Freeze a 1e-8 whole-grid equivalence oracle and label Stage A a source-inspired execution-consistency fixture, not a faithful transfer or validation of the abstraction |
 | Endpoint transfer gain alone would not observe the talk's claimed identical-device self-grading mechanism | 1 | Before official execution, retain each attachment's local mismatch harmonics, phase, and descriptive Duffing effective stiffness without adding a threshold or changing the frozen fixture |
 | First official run attempt stopped before numerical execution because the Windows RSS probe called `GetProcessMemoryInfo` without 64-bit-safe API signatures | 1 | Declare `HANDLE`, `DWORD`, pointer, and `BOOL` types explicitly, add a live RSS regression, verify the empty output directory, and restart the unchanged run |
+| Second run-7 attempt completed the grid but strict JSON writing rejected NumPy scalar types in protected leakage; no artifact was written | 1 | Convert the two protected fields to native Python `float`/`bool`, add an end-to-end strict-JSON reduced-run regression, verify no partial files, and rerun unchanged |
 
 ## RB-14 — Open-span and coalitional observability queue extension (2026-08-02)
 

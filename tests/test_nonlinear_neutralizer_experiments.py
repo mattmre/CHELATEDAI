@@ -150,6 +150,20 @@ class NonlinearNeutralizerCoreTests(unittest.TestCase):
             equivalence["tolerance"],
         )
 
+    def test_reduced_complete_payload_is_strict_json_serializable(self):
+        grid = np.asarray((0.8,), dtype=np.float64)
+        with patch.multiple(
+            nln,
+            TOTAL_PERIODS=2,
+            MEASURE_PERIODS=1,
+            STEPS_PER_PERIOD=20,
+            SCALAR_FREQUENCIES=grid,
+            GRAPH_FREQUENCIES=grid,
+        ):
+            payload = nln.run_stage_a(7)
+        encoded = json.dumps(payload, allow_nan=False, sort_keys=True)
+        self.assertIsInstance(encoded, str)
+
 
 class NonlinearNeutralizerArtifactTests(unittest.TestCase):
     @staticmethod
