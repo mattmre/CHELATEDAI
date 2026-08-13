@@ -40,6 +40,11 @@
   energy-regulated graph propagation and passive nonlinear subsystem
   composition, leaving only the evidence-specific query-reset/provenance/RAG
   contract as a possible distinction.
+- The adversarial source/novelty audit added bracket-based dissipative graph
+  dynamics, compositional port-Hamiltonian distributed control, the final ACL
+  2026 CatRAG paper, and MemORAI. It also narrowed the implementation to a
+  source-inspired Duffing analogue rather than the talk's delayed-reflection,
+  ordered-branch two-neutraliser solver.
 - No public thesis, code, dataset, or peer-reviewed two-neutraliser paper was
   located. The talk says the thesis submission was still forthcoming; the
   2025 paper reports that no datasets were generated or analysed. The two-
@@ -77,6 +82,11 @@
   maximum before the official run. Recorded this output exposure, froze an
   ordinary-least-squares harmonic metric and deterministic boundary/tie policy,
   and prohibited grid widening. A censored peak remains unresolved.
+- Before official execution, added an analytic whole-grid equivalence oracle
+  for two identically initialized co-located half-parameter attachments versus
+  one full-parameter attachment, required an independently assembled linear
+  oracle, and clarified that Stage A can establish only frozen-fixture
+  execution consistency.
 
 
 ## 2026-08-02 — RB-14 queue-only observability extension

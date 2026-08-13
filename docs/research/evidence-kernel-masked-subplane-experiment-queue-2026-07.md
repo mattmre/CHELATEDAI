@@ -137,9 +137,11 @@ full predecessor and candidate-survival gates remain open.
 
 `PRW-RCM1-NLN` is an RB-15 optional subcell. Its source audit and exact
 Stage-A fixture are frozen, but the parent dependency status remains blocked.
-Stage A can validate only the numerical implementation, linear limit, passivity
-screen, hardening-response fixture, protected-channel decoupling, and matched
-attachment comparisons. It cannot validate graph-RAG utility or novelty.
+Stage A can establish only execution consistency for the numerical
+implementation, linear limit, sampled continuous-storage-identity regression,
+hardening-response fixture, protected-channel decoupling, and matched
+attachment comparisons. It cannot prove discrete passivity, the general
+abstraction, source fidelity, graph-RAG utility, or novelty.
 
 Every RB-14 addition has this status contract unless its card states the more
 specific implementation boundary:

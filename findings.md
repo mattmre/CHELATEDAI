@@ -87,17 +87,22 @@
   filters and `GRAMA` supply recursive auxiliary/state-space filtering with
   dynamically selected coefficients.
 - The RAG ingredients are also occupied. GNN-RAG learns query-relevant graph
-  propagation, while 2026 CatRAG uses query-conditioned edge weights and
-  Personalized PageRank to suppress hub drift and preserve bridge evidence.
-  A generic claim of "adaptive nonlinear attenuation on a graph" therefore
-  collides with prior art.
+  propagation; the final Findings of ACL 2026 CatRAG paper uses
+  query-conditioned semantic edge weights and PPR-like traversal; and MemORAI
+  combines provenance-enriched graph memory with query-conditioned weighted
+  PageRank. A generic claim of "adaptive nonlinear attenuation," query-adaptive
+  retrieval, or provenance-aware graph steering therefore collides with prior
+  art.
 - A deeper exact-combination pass found an even closer collision:
   Port-Hamiltonian Deep Graph Networks (ICLR 2025) already balance conservative
   and dissipative graph information flow with energy-based guarantees, while
   compositional port-Hamiltonian neural networks (L4DC 2023) already connect
   learned nonlinear spring-mass-damper subsystems and retain cyclo-passivity.
-  Thus neither passive graph propagation nor compositional nonlinear
-  mechanical sidecars are novel ingredients here.
+  Bracket-based graph dynamics (NeurIPS 2023) and compositional
+  port-Hamiltonian distributed control (L4DC 2022) narrow this further. Thus
+  neither passive/dissipative graph propagation, local dynamic controller
+  memory, nor compositional nonlinear mechanical sidecars are novel
+  ingredients here.
 - The still-distinct, **novelty-unconfirmed** candidate is narrower: leave the
   primary evidence state untouched; attach resettable local sidecar states;
   couple them only through a provenance/certificate-derived nuisance map; use
@@ -115,6 +120,10 @@
   and hardening cubic coefficients, its continuous-time storage function has
   nonpositive unforced derivative. This is a passivity screen, not a discrete
   solver guarantee or utility result.
+- The finite graph model is a source-inspired Duffing attachment analogue,
+  not a faithful transfer of Fulton's two-neutraliser procedure: it omits
+  propagation delay, ordered reflection/scattering iteration, branch
+  enumeration, and radiation-induced terms from the rod reduction.
 - Independent mathematical review tightened that statement: the cancellation
   assumes a symmetric episode-fixed operator set, and nonincreasing
   semidefinite energy proves dissipativity, not bounded state or gain. A zero
@@ -126,8 +135,10 @@
   directions it is told how to couple; it cannot expose an absent direction.
 - The nullspace obligation alone is insufficient for exact protection: the
   host mass, damping, and propagation operators must also preserve the
-  protected subspace. Stage A now states the stronger block-diagonal synthetic
-  construction; live work must measure leakage.
+  protected subspace. A sufficient fixed-episode condition is
+  `C=C(I-P)` together with `[P,M]=[P,D]=[P,L]=0`. Stage A now states the
+  stronger block-diagonal synthetic construction; live work must measure
+  leakage.
 - An independent scratch calculation found that the frozen high-amplitude
   forward Duffing maximum may lie at the 1.60 grid boundary. The official grid
   will not be widened. Endpoint maxima are now explicitly censored/unresolved,
@@ -136,8 +147,9 @@
   `docs/research/nonlinear-neutraliser-subspace-transfer-2026-08.md`. It
   checks the linear limit, unforced energy, Duffing hardening shift, protected
   leakage, full forward/reverse sweeps, and distributed attachments against
-  equal-total-mass and equal-state-count controls. Passing would validate only
-  the implementation and abstraction.
+  equal-total-physical-coefficient controls. The co-located pair is an exact
+  equivalence oracle, not a distinct efficacy control. Passing would establish
+  only execution consistency on the frozen fixtures.
 
 
 ## 2026-08-04 RB-14 bounded implementation and sanity evidence

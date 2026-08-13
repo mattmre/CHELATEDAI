@@ -35,37 +35,51 @@ independent, or make stored claims true. Those remain separate problems.
 
 ## 2. Primary source chain and chronology
 
-1. [Fulton, *Wave Manipulation in Structures with Attached Nonlinear
-   Neutralisers*](https://www.youtube.com/watch?v=eQwG_xl-h_k), Isaac Newton
-   Institute seminar, 11 August 2026. The 29:54 talk presents current PhD work,
-   centered on two Duffing-type neutralisers attached to an axially vibrating
-   rod.
+1. Fulton,
+   [*Nonlinear periodically attached absorbers for vibration transmission
+   mitigation in linear structures*](https://www.otago.ac.nz/__data/assets/pdf_file/0021/556131/KOZWaves-2024-conference-booklet.pdf),
+   KOZWaves 2024, pp. 15-16. This record describes completed single-absorber
+   work and preliminary two-absorber work.
 2. Fulton, Sorokin, and Abdi,
    [*Elastic wave transmission through a semi-infinite rod with an attached
    damped nonlinear neutraliser*](https://doi.org/10.1007/s11071-025-11658-3),
    *Nonlinear Dynamics* 113 (2025), 28657-28673. This is the peer-reviewed
    single-neutraliser mathematical source.
-3. Fulton,
-   [*Nonlinear periodically attached absorbers for vibration transmission
-   mitigation in linear structures*](https://www.otago.ac.nz/__data/assets/pdf_file/0021/556131/KOZWaves-2024-conference-booklet.pdf),
-   KOZWaves 2024, pp. 15-16. This record describes completed single-absorber
-   work and preliminary two-absorber work.
-4. Sorokin, Fulton, and Thomsen,
+3. Sorokin, Fulton, and Thomsen,
    [*Theoretical and Experimental Analysis of Axial Wave Transmission in a Rod
    with a Nonlinear Absorber*](https://esmc2025.sciencesconf.org/593130/document),
    ESMC 2025. This record describes the Duffing model and the single-absorber
    experiment.
-5. Sorokin et al.,
+4. Sorokin et al.,
    [*Theoretical and experimental analysis of axial wave transmission in a rod
    with attached nonlinear absorbers*](https://www.kozwaves2026.org/booklet_050126.pdf),
    KOZWaves 2026, p. 28. This adds a reported autoparametric-pendulum line and
    experimental comparison with a linear absorber.
+5. [Fulton, *Wave Manipulation in Structures with Attached Nonlinear
+   Neutralisers*](https://www.youtube.com/watch?v=eQwG_xl-h_k),
+   [Isaac Newton Institute seminar record](https://www.newton.ac.uk/seminar/51186),
+   11 August 2026, accessed 12 August 2026. The 29:54 talk presents current PhD
+   work centered on two Duffing-type neutralisers attached to an axially
+   vibrating rod.
 
-No public thesis, source code, dataset, or peer-reviewed two-neutraliser paper
-was located in the bounded search. The talk says thesis submission was still
-forthcoming. The 2025 paper states that no datasets were generated or analysed.
-The multi-neutraliser results must therefore be treated as current conference
-work, not independently reproduced evidence.
+The video audit used the complete automatic English caption track and local
+frames. Load-bearing locations are: periodically attached concept at 03:15;
+two-neutraliser system at 04:55; iterative returned-wave method at 12:05;
+transmissibility results at 14:55; single/equal-/double-mass comparisons at
+17:20; duplicate-branch and spacing limitations at 19:22 and 27:30; the
+single-neutraliser experiment at 20:55-22:55; and harmonic/damping/parameter-
+sweep limitations at 25:10-26:20. Captions are an access aid, so mathematical
+claims are checked against the peer-reviewed paper rather than quoted as a
+standalone source.
+
+No public PhD thesis or technical report for this nonlinear-neutraliser project,
+source code, dataset, or peer-reviewed two-neutraliser paper was located in the
+University of Auckland repository and named source records as of 12 August
+2026. The talk says thesis submission was still forthcoming. The 2025 paper
+states that no datasets were generated or analysed. The multi-neutraliser
+results must therefore be treated as current conference work, not independently
+reproduced evidence. This bounded negative search is not a universal absence
+claim.
 
 ## 3. What the physical model actually says
 
@@ -179,6 +193,12 @@ input/output ports, and dissipation inequality would be a category error.
 
 ## 5. Formal CHELATEDAI transfer
 
+This is a **source-inspired Duffing attachment analogue**, not a faithful
+transfer of the paper's two-neutraliser solver. The finite-dimensional model
+below omits propagation delay, ordered reflection/scattering updates,
+fixed-point branch enumeration, and the radiation-induced terms in the rod
+reduction. Those omissions are deliberate and limit every Stage-A conclusion.
+
 ### 5.1 State and attachment map
 
 For a query (q), let:
@@ -236,9 +256,9 @@ Then the equal-and-opposite coupling gives
        -\dot r^\top D_r\dot r.
 \]
 
-With no input, (\dot E\leq0). This is the minimum dissipativity condition:
-the sidecar may store and return state, while declared damping removes energy;
-it may not create hidden unbounded gain.
+With no input, (\dot E\leq0). This establishes passivity of the continuous-time
+force-to-velocity port (s_q\mapsto\dot x) with storage (E): the sidecar may
+store and return state while declared damping removes energy.
 
 This identity alone does **not** prove bounded state or finite input/output
 gain. With semidefinite stiffness, unpenalized zero modes can drift while (E)
@@ -267,6 +287,19 @@ and invariance of (\operatorname{range}(U_{P,q})) under the host mass,
 damping, and propagation operators. The attachment nullspace condition alone
 does not make the protected subspace invariant. The Stage-A block-diagonal
 duplicate supplies this stronger construction explicitly.
+
+Equivalently, for an orthogonal projector (\Pi_{P,q}) and
+(\Pi_{Q,q}=I-\Pi_{P,q}), a sufficient episode-fixed condition is
+
+\[
+C_q=C_q\Pi_{Q,q},\qquad
+[\Pi_{P,q},M_x]=[\Pi_{P,q},D_x]=[\Pi_{P,q},L_q]=0.
+\]
+
+The first relation is the dimensionally explicit form of
+(\Pi_{P,q}C_q^\top=0); the commutators make the host operators preserve both
+blocks. Matching protected initial conditions and protected inputs are also
+required.
 
 Real representations will rarely satisfy exact orthogonality or operator
 invariance, so the live metric is protected leakage, not a verbal promise that
@@ -320,8 +353,11 @@ The future frozen protocol must require all of the following on REPORT:
 5. all unforced trajectories pass the discrete energy/boundedness screen;
 6. forward and reverse sweeps plus multiple initial states expose no unresolved
    output branch used by the ranking policy;
-7. at most (1.5\times) the strongest control's operations/p95 latency and at
-   most (2\times) its auxiliary state bytes.
+7. at most (1.5\times) the strongest stateful control's operations/p95 latency
+   and at most (2\times) its auxiliary state bytes, with the complete dynamic
+   state ((x,\dot x,z,\dot z)) and the attachment-certificate payload counted.
+   A ratio against a zero-auxiliary-state control is undefined and cannot be
+   used as the capacity gate.
 
 These are survival gates, not evidence that the method is useful. Practical
 effect-size and statistical thresholds must be frozen before any live corpus
@@ -379,17 +415,23 @@ The first execution is frozen before inspecting its outputs:
   period and measure the last 20 periods in both forward and reverse order;
 - graph attachment comparison: 17 equally spaced frequencies from 0.70
   through 1.50 at forcing amplitude 0.20, comparing no sidecar, one
-  equal-total-mass sidecar, two distributed half-mass sidecars, and two
-  co-located half-mass sidecars. The co-located control matches the two-
+  full-parameter sidecar, two distributed half-parameter sidecars, and two
+  co-located half-parameter sidecars. The co-located control matches the two-
   sidecar auxiliary-state count; all physical mass, linear stiffness, damping,
   and cubic coefficient totals are also reported. The single sidecar at
   zero-based node 2 uses totals (mass 0.40, linear stiffness 0.40, relative
   damping 0.064, cubic stiffness 1.00); distributed sidecars at nodes 1 and 3,
   and co-located sidecars at node 2, each split those totals equally. Force
-  node 0, measure the fundamental amplitude at node 4, and integrate 60 periods
-  per cell at 200 steps per period while measuring the final 20;
+  node 0, measure the endpoint fundamental transfer-gain amplitude at node 4,
+  and integrate 60 periods per cell at 200 steps per period while measuring the
+  final 20. Because identically initialized co-located half-parameter
+  attachments are analytically equivalent to the single full-parameter
+  attachment, require their entire sampled endpoint-amplitude grids to agree
+  within 1e-8; this is an equivalence oracle, not a distinct efficacy control;
 - a linear-limit final-state tolerance of 1e-6 against an independently
-  eigendecomposed state transition, maximum positive unforced energy-step
+  constructed first-order state matrix and independently evaluated exact state
+  transition that does not call the candidate RHS or state-matrix assembler,
+  maximum positive unforced energy-step
   tolerance of 1e-9, and protected-coordinate leakage tolerance of 1e-12;
 - deterministic run identifiers 7 and 11 perturb only the declared initial
   displacement sign/scale; neither run may tune a parameter or discard a
@@ -431,12 +473,18 @@ Required checks:
 3. increasing input amplitude moves the hardening response upward in frequency
    on the frozen fixture;
 4. a decoupled protected channel is bitwise or tolerance-identical;
-5. two attachments are compared against one equal-total-state attachment;
+5. distributed attachments are compared against one attachment with equal
+   total physical coefficients, while the co-located pair passes its analytic
+   equivalence oracle;
 6. all frequency cells, unstable runs, nonconvergence, and reverse-sweep
    discrepancies are retained.
 
-Passing Stage A validates the implementation and abstraction only. It cannot
-support an AI, RAG, or novelty claim.
+Passing Stage A establishes execution consistency on the frozen synthetic
+fixtures and catches selected sign, limit, and bookkeeping errors. It does not
+prove the abstraction, general protected-subspace invariance, continuous- or
+discrete-time passivity, source fidelity, AI/RAG utility, or novelty. The RK4
+storage trace is a fixture regression; RK4 itself is not a passivity-preserving
+integrator.
 
 ### Stage B — synthetic evidence graph
 
@@ -448,6 +496,13 @@ The same provenance/dependency information is supplied to all controls. Measure
 critical bridge recall, false-cluster amplification, contested/unknown
 discrimination, convergence, oscillation, branch count, operations, state
 bytes, and process-tree RSS.
+
+Before Stage B, freeze each attachment row's support and norm and require
+diagonal or explicitly block-local (M_z,D_r,K_r,\kappa). Record the information
+and tuning budget used to choose every attachment. Also define how any directed
+or row-stochastic PPR/CatRAG transition is converted into the symmetric PSD
+(L_q) required by the storage identity, quantify information lost by that
+conversion, and give every control the same semantic/model-call budget.
 
 ### Stage C — survivor-only graph RAG
 
@@ -487,8 +542,11 @@ higher embedding dimension receive no new evidence from this source.
 | [GRAMA (ICML 2025)](https://proceedings.mlr.press/v267/eliasof25a.html) | adaptive graph ARMA/state-space propagation with selective coefficients | rules out novelty from adaptive recursive coefficients or auxiliary state alone |
 | [Port-Hamiltonian Deep Graph Networks (ICLR 2025)](https://openreview.net/forum?id=03EkqSCKuO) | balances conservative and dissipative information flow in message-passing graphs with energy-based guarantees | rules out novelty from passivity-regulated graph propagation itself and is a mandatory architectural control |
 | [Compositional port-Hamiltonian neural networks (L4DC 2023)](https://proceedings.mlr.press/v211/neary23a.html) | composes learned nonlinear spring-mass-damper subsystems through known or learned interconnections while retaining cyclo-passivity | rules out novelty from modular passive mechanical sidecars or nonlinear attachment composition alone |
+| [Bracket-based graph dynamics (NeurIPS 2023)](https://papers.neurips.cc/paper_files/paper/2023/hash/7903af0a1cffb43dbb2f8160d110a5f3-Abstract-Conference.html) | graph networks with conserved energy or guaranteed positive dissipation | rules out novelty from energy-conserving/dissipative graph dynamics alone |
+| [Compositional port-Hamiltonian distributed control (L4DC 2022)](https://proceedings.mlr.press/v168/furieri22a.html) | nonlinear port-Hamiltonian networks with local dynamic controller memory and topology-independent stability guarantees | narrows claims based on local dynamic memory plus passive modular interconnection |
 | [GNN-RAG (ACL 2025)](https://aclanthology.org/2025.findings-acl.856/) | learned query-relevant graph propagation for efficient KG retrieval | mandatory live RAG control |
-| [CatRAG (2026 preprint)](https://arxiv.org/abs/2602.01965) | query-conditioned edge reweighting plus PPR to reduce hub drift and retain evidence chains | candidate must beat dynamic graph steering without using more semantic/oracle information |
+| [CatRAG (Findings of ACL 2026)](https://aclanthology.org/2026.findings-acl.290/) | query-conditioned semantic edge weighting, passage/key-fact enhancement, and PPR-like traversal | candidate must beat dynamic graph steering without using more semantic/oracle information |
+| [MemORAI (Findings of ACL 2026)](https://aclanthology.org/2026.findings-acl.1408/) | provenance-enriched graph memory with query-conditioned weighted PageRank | narrows any distinction based on provenance plus query-adaptive graph retrieval |
 | [Fang et al. (2017)](https://www.nature.com/articles/s41467-017-00671-9) | experimental nonlinear metamaterial attenuation, chaos, multistate response, amplitude-dependent bands | confirms physical field maturity and makes "nonlinear broadband attenuation" non-novel |
 
 This search did not locate an exact paper combining all of: query-reset

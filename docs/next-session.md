@@ -239,9 +239,10 @@ fixture are in
 `PRW-RCM1-NLN` is an optional `PRW-RCM1` subcell, not a new promoted theory
 family. Candidate-survival work remains blocked on `PRW-RCM1` and
 `PRW-ISI1`. Only the CPU-only Stage-A mathematical sanity run is currently
-open. It may validate numerical consistency, a hardening-response fixture,
-passivity under the declared discretization, protected-channel decoupling,
-and matched attachment comparisons; it cannot validate off-span discovery,
+open. It may establish numerical execution consistency, a hardening-response
+fixture, a sampled continuous-storage-identity regression, protected-channel
+decoupling, and matched attachment comparisons; it cannot prove discrete
+passivity, the general abstraction, source fidelity, off-span discovery,
 truth, graph-RAG utility, training cost, or novelty.
 
 Resume order for RB-15:
