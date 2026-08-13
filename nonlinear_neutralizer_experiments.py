@@ -584,7 +584,13 @@ def _scalar_cell(
     return result, state
 
 
-def _peak_summary(cells: Sequence[Dict[str, object]]) -> Dict[str, object]:
+def _peak_summary(
+    cells: Sequence[Dict[str, object]],
+    declared_frequencies: Sequence[float],
+) -> Dict[str, object]:
+    declared_grid = sorted(float(value) for value in declared_frequencies)
+    if not declared_grid:
+        raise StageAValidationError("declared peak grid must not be empty")
     finite_cells = [
         cell
         for cell in cells
@@ -611,8 +617,7 @@ def _peak_summary(cells: Sequence[Dict[str, object]]) -> Dict[str, object]:
     ]
     selected = min(tied, key=lambda cell: float(cell["frequency"]))
     frequency = float(selected["frequency"])
-    all_frequencies = sorted(float(cell["frequency"]) for cell in finite_cells)
-    boundary_censored = frequency in (all_frequencies[0], all_frequencies[-1])
+    boundary_censored = frequency in (declared_grid[0], declared_grid[-1])
     return {
         "resolved": not boundary_censored,
         "failure": "BOUNDARY_CENSORED_ARGMAX" if boundary_censored else None,
@@ -660,7 +665,9 @@ def run_scalar_sweeps() -> Dict[str, object]:
                         }
                     )
             branches[amplitude_key][direction] = cells
-            peaks[amplitude_key][direction] = _peak_summary(cells)
+            peaks[amplitude_key][direction] = _peak_summary(
+                cells, SCALAR_FREQUENCIES
+            )
         forward_by_frequency = {
             float(cell["frequency"]): cell
             for cell in branches[amplitude_key]["forward"]
@@ -740,18 +747,18 @@ def _graph_configurations() -> Dict[str, GraphSystem]:
     stiffness = grounded_path_stiffness(5)
     return {
         "no_sidecar": GraphSystem(stiffness, ()),
-        "single_equal_total_mass": GraphSystem(
+        "single_full_physical_coefficients": GraphSystem(
             stiffness,
             (Attachment(2, 0.40, 0.40, 0.064, 1.00),),
         ),
-        "two_distributed_half_mass": GraphSystem(
+        "two_distributed_half_parameters": GraphSystem(
             stiffness,
             (
                 Attachment(1, 0.20, 0.20, 0.032, 0.50),
                 Attachment(3, 0.20, 0.20, 0.032, 0.50),
             ),
         ),
-        "two_colocated_equal_state_count": GraphSystem(
+        "two_colocated_half_parameters": GraphSystem(
             stiffness,
             (
                 Attachment(2, 0.20, 0.20, 0.032, 0.50),
@@ -984,11 +991,11 @@ def run_graph_sweeps() -> Dict[str, object]:
                 )
                 for name, cells in indexed.items()
             }
-            distributed = amplitudes["two_distributed_half_mass"]
-            single = amplitudes["single_equal_total_mass"]
-            colocated = amplitudes["two_colocated_equal_state_count"]
-            single_cell = indexed["single_equal_total_mass"][value]
-            colocated_cell = indexed["two_colocated_equal_state_count"][value]
+            distributed = amplitudes["two_distributed_half_parameters"]
+            single = amplitudes["single_full_physical_coefficients"]
+            colocated = amplitudes["two_colocated_half_parameters"]
+            single_cell = indexed["single_full_physical_coefficients"][value]
+            colocated_cell = indexed["two_colocated_half_parameters"][value]
             local_single = None
             local_colocated: Optional[List[float]] = None
             if single_cell["finite_trajectory"] and colocated_cell["finite_trajectory"]:
@@ -1087,11 +1094,11 @@ def run_graph_sweeps() -> Dict[str, object]:
             for name, system in configurations.items()
         },
         "matching_boundary": {
-            "single_equal_total_mass": (
+            "single_full_physical_coefficients": (
                 "matches two-sidecar total auxiliary mass, attachment stiffness, "
                 "relative damping, and cubic coefficient; has one auxiliary mode"
             ),
-            "two_colocated_equal_state_count": (
+            "two_colocated_half_parameters": (
                 "matches distributed pair auxiliary-mode/state count and all "
                 "attachment coefficient totals"
             ),
