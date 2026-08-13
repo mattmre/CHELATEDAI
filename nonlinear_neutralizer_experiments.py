@@ -220,7 +220,7 @@ def total_energy(state: np.ndarray, system: GraphSystem) -> float:
 
 
 def _initial_displacements(run_id: int) -> Tuple[np.ndarray, float]:
-    if run_id not in RUN_IDS:
+    if type(run_id) is not int or run_id not in RUN_IDS:
         raise StageAValidationError("run_id must be exactly 7 or 11")
     host = np.asarray((0.10, -0.05, 0.02, 0.00), dtype=np.float64)
     sidecar = 0.03
@@ -1178,7 +1178,7 @@ def _self_rss_bytes() -> Tuple[int, int, str]:
 def run_stage_a(run_id: int) -> Dict[str, object]:
     """Execute the complete immutable RB-15 Stage-A fixture for run 7 or 11."""
 
-    if run_id not in RUN_IDS:
+    if type(run_id) is not int or run_id not in RUN_IDS:
         raise StageAValidationError("run_id must be exactly 7 or 11")
     started = time.perf_counter()
     initial_current_rss, initial_peak_rss, rss_method = _self_rss_bytes()
