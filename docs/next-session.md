@@ -238,24 +238,31 @@ fixture are in
 
 `PRW-RCM1-NLN` is an optional `PRW-RCM1` subcell, not a new promoted theory
 family. Candidate-survival work remains blocked on `PRW-RCM1` and
-`PRW-ISI1`. Only the CPU-only Stage-A mathematical sanity run is currently
-open. It may establish numerical execution consistency, a hardening-response
-fixture, a sampled continuous-storage-identity regression, protected-channel
-decoupling, and matched attachment comparisons; it cannot prove discrete
-passivity, the general abstraction, source fidelity, off-span discovery,
-truth, graph-RAG utility, training cost, or novelty.
+`PRW-ISI1`. The CPU-only Stage-A mathematical sanity run is complete for run
+IDs 7 and 11. Both exact artifacts retain one frozen failure: the high-drive
+forward scalar maximum is boundary-censored at 1.60, so bidirectional hardening
+is unresolved. Linear, sampled-storage, protected-channel, co-location
+equivalence, RSS, and wall gates passed; scientific and novelty claims remain
+`UNCONFIRMED`.
+
+The promising descriptive lead is distributed self-grading: identical
+attachments experienced materially different local amplitudes, phases, and
+effective stiffness, while the distributed graph cell was less branch-sensitive
+than the single/co-located controls. This is not yet attributable to
+nonlinearity because the frozen grid lacked a distributed-linear control.
 
 Resume order for RB-15:
 
-1. Implement the frozen Stage-A fixture without changing a parameter after
-   seeing output and retain every frequency, reverse-sweep, failure, and
-   resource result.
-2. Run the focused tests and deterministic run IDs 7 and 11 under the declared
-   256 MiB/two-minute ceiling; produce atomic JSON plus digest manifest.
-3. Obtain an independent adversarial review of the implementation, evidence
-   boundary, and retained negative results.
-4. Do not open Stage B until the parent cards have explicit dispositions and a
-   separate SELECT/REPORT protocol is frozen.
+1. Preserve and verify both manifests under
+   `artifacts/method-dev/rb15-nonlinear-neutralizer/`; do not widen or rerun the
+   completed frozen grid as if it were confirmatory evidence.
+2. Complete the independent adversarial review of implementation, artifacts,
+   and the retained negative result.
+3. If a new synthetic run is later authorized, preregister a distinct
+   distribution-by-nonlinearity factorial with matched distributed-linear
+   control and aggregate/worst-case/hysteresis endpoints before output.
+4. Do not open Stage B until `PRW-RCM1` and `PRW-ISI1` have explicit
+   dispositions and a separate SELECT/REPORT protocol is frozen.
 
 The mathematical disposition is already clear enough to prevent one category
 error: Gelfand/Fomin and classical Euler-Lagrange are valid for a declared

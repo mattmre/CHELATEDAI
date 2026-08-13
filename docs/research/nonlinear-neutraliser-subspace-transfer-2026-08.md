@@ -4,8 +4,8 @@
 
 **Date:** 2026-08-12
 
-**Status:** source review complete enough to freeze a bounded mathematical
-sanity test; scientific, product, and novelty claims remain unconfirmed
+**Status:** source review and bounded Stage A complete with one frozen unresolved
+gate; scientific, product, and novelty claims remain unconfirmed
 
 **Candidate subcell:** `PRW-RCM1-NLN`
 
@@ -565,13 +565,83 @@ and compositional port-Hamiltonian subsystem learning materially occupy the
 closest mathematical architecture; the remaining distinction is evidence- and
 retrieval-specific rather than a new dynamics family.
 
-## 10. Decision
+## 10. Frozen Stage-A result
 
-Add `PRW-RCM1-NLN` as a **nonpromoted optional subcell**, not as a new theory
-family. Authorize only the dependency-light Stage-A sanity harness in the
-current pass. Do not alter the production retrieval path and do not claim that
-the source solved subspace discovery, semantic truth, RAG recall, training
-cost, or computing history.
+The official CPU-only runs are retained at:
+
+- `artifacts/method-dev/rb15-nonlinear-neutralizer/run-7/` — stage artifact
+  SHA-256
+  `eb2e78dabaedcfdb0ef1536d6af6a98d73e93f8917d02880fb8f19efcdbe7a25`;
+- `artifacts/method-dev/rb15-nonlinear-neutralizer/run-11/` — stage artifact
+  SHA-256
+  `7a5525d82c22a5d1e5586f2c80bd76538f0e7e4a6ade0e6f0dd4259f88d82dd1`.
+
+Both manifests verify exact bytes, digest, duplicated claim/status fields, and
+resource gates. Run 7 used 115.05 seconds and 37,056,512 bytes peak working set;
+run 11 used 110.71 seconds and 37,134,336 bytes. Each retained 148 scalar and
+136 graph forced cells with no nonfinite trajectory. Forced scalar and graph
+subdocuments are exactly identical across run IDs, as required because run 11
+changes only the four-node initial-displacement fixture.
+
+### 10.1 Required checks
+
+| Check | Run 7 | Run 11 | Disposition |
+|---|---:|---:|---|
+| complete-state linear-limit L2 error | `2.1903e-14` | `1.7465e-14` | pass versus `1e-6` |
+| maximum positive sampled storage step | `0` | `0` | pass versus `1e-9`; fixture regression only |
+| protected relative leakage | `0` | `0` | pass versus `1e-12`; final state also bitwise equal |
+| co-located pair versus single full endpoint delta | `8.8818e-16` | identical forced grid | pass versus `1e-8`; factorization oracle only |
+| RSS / wall | pass / pass | pass / pass | bounded execution pass |
+| bidirectional scalar hardening shift | unresolved | same forced grid | **frozen failure retained** |
+
+The low-drive forward and reverse sampled maxima are interior at frequency
+1.05. The high-drive reverse maximum is interior at 1.30, but the high-drive
+forward maximum is still increasing at the declared upper endpoint 1.60.
+Therefore the run records `BOUNDARY_CENSORED_PEAK`; it does not call 1.60 a
+resolved resonance or widen the grid. The maximum scalar forward/reverse
+amplitude discrepancy is 1.2594 at that endpoint, reinforcing rather than
+removing the branch-policy concern.
+
+### 10.2 Promising but descriptive graph signal
+
+The local instrumentation directly observes the proposed self-grading effect.
+At frequency 1.10, the two nominally identical distributed attachments have
+fundamental mismatch amplitudes about 0.55754 and 0.03856, phases about 2.673
+and -0.714 radians relative to forcing, and descriptive first-harmonic
+effective stiffnesses about 0.3166 and 0.2006. The upstream/downstream local
+states are therefore materially different in this source-inspired finite graph
+analogue.
+
+Post-hoc whole-grid summaries are encouraging but are **not preregistered pass
+metrics**: the distributed pair lowers mean endpoint amplitude by about 18.8%
+against no sidecar in both directions, beats no sidecar at 14 of 17 frequencies
+in both directions, and has maximum forward/reverse discrepancy 0.00432 versus
+0.87307 for the single-full/co-located control. It does not dominate the single
+attachment: it wins only 11 of 17 forward and 10 of 17 reverse cells, while the
+single attachment gives the deeper localized minimum.
+
+The most important confound is now explicit: the frozen graph grid did not
+include a matched distributed **linear** pair. The observation could be caused
+by placement/distribution rather than cubic self-grading. It supports a new
+controlled test, not a nonlinear, RAG, or novelty claim.
+
+### 10.3 Reconditioned prerequisite, not run
+
+Before another synthetic output is inspected, cross placement
+(single/co-located/distributed) with cubic stiffness (zero/frozen), include the
+matched distributed-linear control, and freeze normalized frequency-integrated
+endpoint gain, worst-case endpoint gain, and maximum forward/reverse discrepancy
+as primary endpoints. Use held-out path and mesh placements and retain local
+self-grading only as a mechanism mediator. Stage B remains closed until
+`PRW-RCM1` and `PRW-ISI1` have explicit dispositions.
+
+## 11. Decision
+
+Keep `PRW-RCM1-NLN` as a **nonpromoted optional subcell**, not a new theory
+family. Stage A is complete with a retained unresolved hardening gate and one
+promising self-grading witness. Do not alter the production retrieval path or
+claim that the source solved subspace discovery, semantic truth, RAG recall,
+training cost, or computing history.
 
 The source's most valuable contribution to CHELATEDAI is a disciplined form of
 state-dependent attenuation plus a list of ways it can fail.

@@ -102,6 +102,30 @@
   result. No artifact was written. Converted only those representation types
   to native JSON scalars and added a reduced complete-payload strict-JSON
   regression; no scientific parameter or result rule changed.
+- Completed official frozen runs 7 and 11 and verified both canonical artifact
+  manifests, byte counts, and SHA-256 digests. Run 7 artifact digest is
+  `eb2e78dabaedcfdb0ef1536d6af6a98d73e93f8917d02880fb8f19efcdbe7a25`;
+  run 11 is
+  `7a5525d82c22a5d1e5586f2c80bd76538f0e7e4a6ade0e6f0dd4259f88d82dd1`.
+- Both runs passed RSS/wall, linear, sampled-storage, protected-channel, and
+  co-location equivalence checks; both retained the same single failure:
+  high-amplitude forward scalar peak at the frozen 1.60 endpoint. All 284
+  forced cells per run were finite. The scalar and graph forced subdocuments
+  were byte-for-byte identical across run IDs, as required, with canonical
+  digests
+  `e34160a83573a3d08eabbefdd81625ba408089b539c2970000ede8a807cef6d1`
+  and `85c146e88f25adf15d0c07070977cf42b1a3fc997f1d7c522edf52e45e573e2f`
+  respectively.
+- Recorded the strongest positive as a descriptive self-grading witness, not
+  a promotion: distributed identical attachments saw sharply different local
+  amplitude, phase, and implied stiffness. Post-hoc grid summaries suggest
+  broader and less branch-sensitive attenuation than a single/co-located
+  attachment, but the single attachment retains a deeper local notch and the
+  missing distributed-linear control prevents attributing the contrast to the
+  cubic term.
+- Closed Stage A as `COMPLETE_WITH_FROZEN_FAILURE`; queued only a future
+  reconditioned distribution-by-nonlinearity factorial with predeclared
+  aggregate/worst-case/hysteresis endpoints. Stage B remains blocked.
 
 
 ## 2026-08-02 — RB-14 queue-only observability extension

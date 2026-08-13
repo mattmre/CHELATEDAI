@@ -2,9 +2,10 @@
 
 ## RB-15 — nonlinear-neutraliser attenuation source audit (2026-08-12)
 
-**Status:** `STAGE_A_PROTOCOL_FROZEN`; the source audit and narrow mechanism
-transfer are documented, while execution, scientific value, and novelty remain
-unconfirmed
+**Status:** `STAGE_A_COMPLETE_WITH_FROZEN_FAILURE`; implementation and both
+bounded runs are complete, the source-inspired self-grading mechanism was
+observed descriptively, the required bidirectional hardening gate is unresolved,
+and scientific value/novelty remain unconfirmed
 
 **Goal:** fully review Frances Fulton's presentation, trace it to the primary
 mathematical/publication record, and determine whether nonlinear attached
@@ -44,9 +45,15 @@ subspace, graph-propagation, retrieval, or memory hypotheses.
    mathematical analogy, category error, and genuinely missing experiment.
 5. `COMPLETED`: update the authoritative queue with only nonduplicative formal
    hypotheses, controls, nulls, pass/kill criteria, and resource ceilings.
-6. `IN_PROGRESS`: implement and validate the frozen CPU-only Stage-A
-   mathematical sanity harness, then reconcile durable artifacts and handoff
-   surfaces while preserving scientific/novelty status as unconfirmed.
+6. `COMPLETED_WITH_FROZEN_FAILURE`: implemented and ran the frozen CPU-only
+   Stage-A harness for run IDs 7 and 11. Both runs retained the preregistered
+   high-amplitude forward boundary-censored peak; all other numerical,
+   integrity, and resource gates passed. Durable artifacts and handoff surfaces
+   are reconciled while scientific/novelty status remains unconfirmed.
+7. `PENDING_DEPENDENCIES_AND_NEW_PREREGISTRATION`: do not open Stage B. A
+   future reconditioned synthetic contrast must first isolate distribution
+   from nonlinearity with matched distributed-linear controls and predeclared
+   aggregate/worst-case/hysteresis endpoints.
 
 **Errors encountered:**
 

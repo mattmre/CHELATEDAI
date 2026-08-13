@@ -4,9 +4,9 @@
 
 **Status:** `IMPLEMENTATION_IN_PROGRESS`; the RB-13 dependency queue remains
 draft/non-preregistered, the five RB-14 lanes have bounded synthetic harnesses
-and sanity artifacts, and RB-15 has frozen only a dependency-light nonlinear-
-sidecar Stage-A protocol. No production, corpus, or novelty result is accepted
-by this document.
+and sanity artifacts, and RB-15 has completed its dependency-light nonlinear-
+sidecar Stage-A protocol with one frozen unresolved gate. No production,
+corpus, or novelty result is accepted by this document.
 
 **Date:** 2026-07-27; RB-14 queue extension 2026-08-02; RB-15 optional
 subcell extension 2026-08-12
@@ -136,7 +136,7 @@ surrogate are implemented with exact bounded sanity artifacts, while their
 full predecessor and candidate-survival gates remain open.
 
 `PRW-RCM1-NLN` is an RB-15 optional subcell. Its source audit and exact
-Stage-A fixture are frozen, but the parent dependency status remains blocked.
+Stage-A fixture have run, but the parent dependency status remains blocked.
 Stage A can establish only execution consistency for the numerical
 implementation, linear limit, sampled continuous-storage-identity regression,
 hardening-response fixture, protected-channel decoupling, and matched
@@ -862,9 +862,18 @@ graph filters and linear sidecars.
 The dependency-light Stage-A mathematical sanity protocol may run independently
 because it makes no graph-RAG, evidence, or novelty claim.
 
-**Implementation status:** `PROTOCOL_FROZEN_STAGE_A; NOT_RUN`. Source,
-formalism, exact first-run fixture, and prior-art collision audit:
+**Implementation status:**
+`STAGE_A_COMPLETE_WITH_FROZEN_FAILURE; SCIENTIFIC_AND_NOVELTY_UNCONFIRMED`.
+Source, formalism, exact first-run fixture, result, and prior-art collision audit:
 `docs/research/nonlinear-neutraliser-subspace-transfer-2026-08.md`.
+
+**Stage-A evidence:** run IDs 7 and 11 are under
+`artifacts/method-dev/rb15-nonlinear-neutralizer/`. Both manifests pass exact
+byte/digest and resource verification, retain all 148 scalar and 136 graph
+cells, and record no nonfinite trajectory. Linear-limit, sampled-storage,
+protected-channel, and co-location equivalence checks passed. Both retain
+`BOUNDARY_CENSORED_PEAK` for the high-drive forward scalar sweep, so the
+required bidirectional hardening response is unresolved.
 
 **Fixture:** Stage A uses frozen scalar Duffing and four-/five-node grounded
 path systems. Stage B, if authorized by predecessor dispositions, must use the
@@ -874,9 +883,9 @@ protected-versus-nuisance contract from `PRW-ISI1`.
 **Controls:** no sidecar, ordinary diffusion/PPR plus top-k, query-conditioned
 edge damping/masking, a linear sidecar, GraphCON-style second-order dynamics,
 GRAND/GREAD-style nonlinear diffusion, ARMA/GRAMA-style recursive filtering,
-a port-Hamiltonian deep graph network, a matched compositional
-port-Hamiltonian auxiliary-state model, one equal-total-mass sidecar, and an
-equal-state-count co-located two-mode control.
+a port-Hamiltonian deep graph network, a matched compositional port-Hamiltonian
+auxiliary-state model, one full-physical-coefficient sidecar, and a co-located
+two-half-parameter factorization control.
 
 **Hypothesis:** on held-out evidence graphs and a preregistered amplitude,
 frequency, reflection, and propagation-depth grid, a SELECT-chosen query-reset
@@ -887,7 +896,7 @@ within the declared operation/state budget.
 
 **Primary metrics:** linear-limit error, maximum positive unforced energy
 increment, hardening peak shift, protected-coordinate leakage, forward/reverse
-sweep discrepancy, harmonic content, transmission amplitude, critical-bridge
+sweep discrepancy, harmonic content, endpoint transfer gain, critical-bridge
 recall, false-cluster amplification, branch count, operations, state bytes,
 p95 latency, and process-tree RSS.
 
@@ -898,8 +907,22 @@ sidecar adds no held-out value beyond the strongest matched control.
 **Stage-A pass boundary:** satisfy the frozen numerical tolerances, reproduce
 the upward hardening-response shift, retain every frequency/branch/failure
 cell, keep the protected channel decoupled, and report two distributed
-attachments against both equal-total-mass and equal-state-count controls. A
-pass validates only the harness and abstraction.
+attachments against both equal-total-physical-coefficient and co-located
+factorization controls. A pass could establish only execution consistency on
+the frozen fixtures, not validate the abstraction.
+
+**Observed Stage-A disposition:** `FROZEN_GATE_UNRESOLVED`. The graph analogue
+shows descriptive local self-grading and the distributed pair has promising
+post-hoc breadth/branch-sensitivity summaries, but it does not dominate the
+single attachment and the missing distributed-linear control prevents a
+nonlinearity attribution. Do not promote or kill the parent from this result.
+
+**Reconditioned synthetic prerequisite (not run):** before any new output,
+cross single/co-located/distributed placement with zero versus frozen cubic
+stiffness, add the matched distributed-linear control, and preregister
+normalized frequency-integrated endpoint gain, worst-case endpoint gain, and
+maximum forward/reverse discrepancy. Require held-out path and mesh placements;
+no selected frequency cell may decide survival.
 
 **Candidate-survival boundary:** a future frozen REPORT set must show nonzero
 corrected endpoint improvement, no worse selective risk at matched coverage,
@@ -1383,9 +1406,9 @@ resource review described on each card.
 6. `PRW-DDF1` after `PRW-EK2`.
 7. `PRW-RCM1` after `PRW-EK2` and `PRW-BIL1`.
 8. `PRW-ISI1` after `PRW-EK3`.
-9. `PRW-RCM1-NLN` after `PRW-RCM1` and `PRW-ISI1`; its frozen Stage-A
-   mathematical sanity is an independently runnable preflight, not a parent
-   disposition.
+9. `PRW-RCM1-NLN` after `PRW-RCM1` and `PRW-ISI1`; its completed Stage-A
+   mathematical sanity retained one unresolved gate and is not a parent
+   disposition. The reconditioned synthetic prerequisite remains `NOT_RUN`.
 10. `PRW-SPU1` after `PRW-SPU0`.
 11. `PRW-CTX1` after `PRW-COA1` and `PRW-EK2`.
 12. `PRW-SPU1-TRANSPORT` after `PRW-SPU1`, only as a confound subcell.

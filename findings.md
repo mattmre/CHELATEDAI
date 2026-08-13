@@ -156,6 +156,48 @@
   stiffness for every attachment. A distributed pair is "self-graded" only as
   a descriptive observation if its nominally identical attachments actually
   see different local responses; no utility claim follows from that difference.
+- The frozen Stage-A implementation and both official runs are complete under
+  `artifacts/method-dev/rb15-nonlinear-neutralizer/`. Run 7 used 115.05 seconds
+  and 37,056,512 bytes peak working set; run 11 used 110.71 seconds and
+  37,134,336 bytes. Both passed the 120-second/256-MiB gates, retained all 148
+  scalar and 136 graph cells, and had no nonfinite trajectory.
+- Linear-limit error was `2.1903e-14` (run 7) and `1.7465e-14` (run 11), maximum
+  positive sampled storage increment and protected leakage were exactly zero,
+  and the protected final state was bitwise equal. These are frozen-fixture
+  execution checks, not a proof of general passivity or invariance.
+- The required scalar bidirectional hardening gate did **not** pass. Low-drive
+  forward/reverse maxima were interior at frequency 1.05. The high-drive
+  reverse maximum was interior at 1.30, but the forward maximum remained at
+  the declared upper endpoint 1.60 and was retained as
+  `BOUNDARY_CENSORED_PEAK`. Its forward/reverse amplitude discrepancy at 1.60
+  was `1.2594`. The outcome is unresolved, not repaired or promoted.
+- The co-located two-half system was numerically equivalent to one full
+  attachment across the complete graph grid: maximum endpoint-amplitude
+  delta `8.8818e-16`, local mismatch delta versus the single `2.2204e-16`, and
+  between-half local delta zero. This positively validates the factorization
+  oracle and provides no efficacy evidence.
+- The finite graph analogue did show the source's proposed **self-grading**:
+  at frequency 1.10, the distributed identical attachments had local mismatch
+  amplitudes about `0.55754` and `0.03856`, phases about `2.673` and `-0.714`
+  radians, and descriptive effective stiffnesses about `0.3166` and `0.2006`.
+  This is the most promising new observation from RB-15, but it is a local
+  mechanism witness rather than an AI/RAG advantage.
+- Exploratory whole-grid summaries, explicitly not preregistered endpoints,
+  add cautious support for testing distribution: the distributed pair lowered
+  mean endpoint amplitude by about 18.8% versus no sidecar in each direction,
+  beat no sidecar at 14/17 frequencies in each direction, and had maximum
+  forward/reverse discrepancy `0.00432` versus `0.87307` for the single/full
+  and co-located controls. It still did not dominate the single attachment:
+  it beat it at only 11/17 forward and 10/17 reverse cells, while the single
+  attachment produced the deeper localized minimum.
+- The graph result cannot attribute the broader/lower-discrepancy behavior to
+  nonlinearity because Stage A omitted a matched **distributed linear** control.
+  The next defensible synthetic protocol must cross placement
+  (single/co-located/distributed) with cubic stiffness (zero/frozen), freeze
+  normalized frequency-integrated gain, worst-case gain, and maximum
+  forward/reverse discrepancy as primary endpoints, then test held-out path
+  and mesh placements. Stage B/RAG remains blocked on `PRW-RCM1` and
+  `PRW-ISI1` regardless of this promising lead.
 
 
 ## 2026-08-04 RB-14 bounded implementation and sanity evidence
