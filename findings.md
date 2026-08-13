@@ -115,10 +115,23 @@
   and hardening cubic coefficients, its continuous-time storage function has
   nonpositive unforced derivative. This is a passivity screen, not a discrete
   solver guarantee or utility result.
+- Independent mathematical review tightened that statement: the cancellation
+  assumes a symmetric episode-fixed operator set, and nonincreasing
+  semidefinite energy proves dissipativity, not bounded state or gain. A zero
+  mode can drift unless the reachable state is coercively anchored or a
+  detectability/quotient argument is supplied.
 - Protected evidence is an explicit nullspace obligation on the attachment
   map, while the nuisance map may use declared provenance/dependency metadata
   but not REPORT labels or answer correctness. The sidecar can attenuate only
   directions it is told how to couple; it cannot expose an absent direction.
+- The nullspace obligation alone is insufficient for exact protection: the
+  host mass, damping, and propagation operators must also preserve the
+  protected subspace. Stage A now states the stronger block-diagonal synthetic
+  construction; live work must measure leakage.
+- An independent scratch calculation found that the frozen high-amplitude
+  forward Duffing maximum may lie at the 1.60 grid boundary. The official grid
+  will not be widened. Endpoint maxima are now explicitly censored/unresolved,
+  so a visually upward response cannot be promoted as a validated peak shift.
 - The exact first-run Stage-A fixture is frozen in
   `docs/research/nonlinear-neutraliser-subspace-transfer-2026-08.md`. It
   checks the linear limit, unforced energy, Duffing hardening shift, protected

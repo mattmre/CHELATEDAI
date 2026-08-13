@@ -67,6 +67,16 @@
   11 changes only the four-node unforced/linear initial state, so repeated
   forced-grid values across IDs are duplicate execution evidence, not a second
   robustness result.
+- Independent math review confirmed the coupling-sign cancellation but found
+  that the original prose overstated passivity as boundedness and understated
+  protected-subspace requirements. Corrected the formal audit to require an
+  episode-fixed symmetric operator set, distinguish dissipativity from
+  coercive boundedness, and require host-operator invariance as well as an
+  attachment nullspace.
+- That review's scratch Duffing calculation exposed a likely upper-boundary
+  maximum before the official run. Recorded this output exposure, froze an
+  ordinary-least-squares harmonic metric and deterministic boundary/tie policy,
+  and prohibited grid widening. A censored peak remains unresolved.
 
 
 ## 2026-08-02 — RB-14 queue-only observability extension

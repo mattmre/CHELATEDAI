@@ -213,8 +213,10 @@ ledger nodes, edges, versions, and provenance used to produce it.
 
 ### 5.2 Passivity screen
 
-Assume (M_x,M_z\succ0), (D_x,D_r\succeq0), (L_q,K_r\succeq0), and
-(kappa_j\geq0). Define
+Assume the displayed matrices are symmetric,
+(M_x,M_z\succ0), (D_x,D_r\succeq0), (L_q,K_r\succeq0),
+(kappa_j\geq0), and that (C_q) is fixed throughout the propagation episode.
+Define
 
 \[
 \begin{aligned}
@@ -234,32 +236,46 @@ Then the equal-and-opposite coupling gives
        -\dot r^\top D_r\dot r.
 \]
 
-With no input, (\dot E\leq0). This is the minimum admissibility condition:
+With no input, (\dot E\leq0). This is the minimum dissipativity condition:
 the sidecar may store and return state, while declared damping removes energy;
 it may not create hidden unbounded gain.
 
-This certificate is conditional. It can fail after discretization, with a
-nonsymmetric learned operator, negative cubic stiffness, outcome-dependent
-attachment maps, or numerical steps outside the integrator's stability region.
-Those are test obligations, not implementation details.
+This identity alone does **not** prove bounded state or finite input/output
+gain. With semidefinite stiffness, unpenalized zero modes can drift while (E)
+does not increase. Boundedness additionally needs coercivity on the reachable
+state (or an explicit quotient/detectability/anchoring argument). The Stage-A
+grounded path uses (L_q=L_{path}+0.20I\succ0), so its unforced fixture is
+coercive; that fact cannot be generalized to a live learned graph.
+
+The certificate is conditional. It can fail after discretization, with a
+nonsymmetric learned operator, a time-varying attachment map whose derivative
+is omitted, negative cubic stiffness, outcome-dependent attachment maps, or
+numerical steps outside the integrator's stability region. Those are test
+obligations, not implementation details.
 
 ### 5.3 Protected and nuisance components
 
-Let (P_q) select protected evidence and (Q_q) select a candidate nuisance
-component. An exact synthetic invariant cell requires
+Let (U_{P,q}) be a column basis for a protected subspace and let (\Pi_{P,q})
+be its orthogonal projector. Let (Q_q) select a candidate nuisance component.
+An exact decoupled synthetic cell requires at least
 
 \[
-C_qP_q=0.
+C_qU_{P,q}=0
 \]
 
-Real representations will rarely satisfy exact orthogonality, so the live
-metric is protected leakage, not a verbal promise that the two spaces are
-independent:
+and invariance of (\operatorname{range}(U_{P,q})) under the host mass,
+damping, and propagation operators. The attachment nullspace condition alone
+does not make the protected subspace invariant. The Stage-A block-diagonal
+duplicate supplies this stronger construction explicitly.
+
+Real representations will rarely satisfy exact orthogonality or operator
+invariance, so the live metric is protected leakage, not a verbal promise that
+the two spaces are independent:
 
 \[
 \epsilon_P=
-\frac{\|P_q(x_{\mathrm{candidate}}-x_{\mathrm{control}})\|_2}
-     {\|P_qx_{\mathrm{control}}\|_2+\varepsilon}.
+\frac{\|\Pi_{P,q}(x_{\mathrm{candidate}}-x_{\mathrm{control}})\|_2}
+     {\|\Pi_{P,q}x_{\mathrm{control}}\|_2+\varepsilon}.
 \]
 
 The nuisance map must be built without REPORT labels or answer correctness. A
@@ -384,6 +400,24 @@ The first execution is frozen before inspecting its outputs:
   so the forced grids are intentionally identical across run IDs and must not
   be misreported as an independent robustness replication; and
 - a 256 MiB process-tree RSS ceiling and two-minute wall-clock ceiling per run.
+
+Measurement clarification: after an independent scratch calculation exposed a
+possible maximum at the frozen frequency boundary—but before the official
+artifact run—the following deterministic interpretation was fixed without
+changing any grid or parameter:
+
+- fit each reported harmonic over every sample in the final 20 periods by
+  ordinary least squares on [1, sin(h omega t), cos(h omega t)]; report the
+  fitted amplitude, intercept, and residual RMSE for h=1 and h=3;
+- also report the absolute and relative fundamental-amplitude difference
+  between the first and second ten-period halves as a settling diagnostic; no
+  post-hoc settling threshold may delete a cell;
+- choose the lowest frequency when amplitudes tie within 1e-12; and
+- mark any argmax at either grid endpoint as BOUNDARY_CENSORED. A hardening
+  shift is validated only when the low- and high-amplitude peaks are interior
+  in both sweep directions and the high-amplitude peak is higher in both.
+  Nonfinite trajectories and censored peaks are retained as failed or
+  unresolved, never repaired by widening the grid in this run.
 
 If the scalar hardening peak does not move upward, a tolerance fails, or a run
 crosses its resource ceiling, record the failure. Do not change the frozen
