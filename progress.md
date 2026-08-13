@@ -140,8 +140,13 @@
 - Fresh repository smoke: the production-import floor passed. The Antigravity
   Engine ceiling could not construct `all-MiniLM-L6-v2` because this host's
   Python TLS chain rejects Hugging Face's issuer. Certificate checking was not
-  disabled. This is an external/local-environment blocker for merge readiness,
-  not an RB-15 numerical failure; hosted CI must provide the ceiling result.
+  disabled. Hosted CI subsequently passed Rule 5 smoke and full unit-test
+  discovery on Python 3.9, 3.10, 3.11, and 3.12, so the local TLS issue is not
+  a handoff blocker or an RB-15 numerical failure.
+- The consolidation PR remains draft-only at aggregate BHS 90/important despite
+  all hosted checks passing: its 159-file scientific/evidence surface has not
+  received an aggregate adversarial review. The exact repaired RB-15 slice was
+  independently reviewed at 100/none.
 
 
 ## 2026-08-02 — RB-14 queue-only observability extension

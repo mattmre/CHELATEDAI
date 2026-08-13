@@ -253,12 +253,14 @@ preregistered; the two resource values are post-hoc screens, not interrupting
 process-tree/deadline guards. The v2 artifact contract discloses both. Current
 forced grids are execution evidence, not clean confirmatory evidence.
 
-Local validation is not a merge authorization: the repository smoke floor
-passes, but the ceiling currently fails before engine construction because the
-host cannot validate the Hugging Face TLS issuer while fetching
-`all-MiniLM-L6-v2`. Do not disable certificate verification. Require the hosted
-ceiling check (or a correctly installed local CA chain) before calling the PR
-merge-ready.
+The local repository smoke floor passes, while this host's ceiling cannot
+validate the Hugging Face TLS issuer when fetching `all-MiniLM-L6-v2`; do not
+disable certificate verification. Hosted CI subsequently passed Rule 5 smoke,
+full unit-test discovery on Python 3.9 through 3.12, lint, and all honesty and
+computational-storage gates. The draft PR still is **not merge-ready**: its
+159-file consolidation lacks aggregate adversarial scientific/evidence review,
+so its aggregate BHS is 90/important even though the exact repaired RB-15 slice
+received 100/none.
 
 The promising descriptive lead is distributed self-grading: identical
 attachments experienced materially different local amplitudes, phases, and
