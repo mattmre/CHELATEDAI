@@ -1,9 +1,12 @@
 # Paired chelation intervention sanity protocol
 
-**Protocol ID:** `CHELATEDAI-PRW-ISI1-PAIRED-SANITY-v1`  
-**Stage ID:** `PRW-ISI1-PAIRED-SANITY`  
-**Frozen:** 2026-08-14, before the retained runner artifact  
-**Parent card:** `PRW-ISI1`  
+**Protocol ID:** `CHELATEDAI-PRW-ISI1-PAIRED-SANITY-v1`
+
+**Stage ID:** `PRW-ISI1-PAIRED-SANITY`
+
+**Frozen:** 2026-08-14, before the retained runner artifact
+
+**Parent card:** `PRW-ISI1`
 **Parent dependency status:** unchanged; full `PRW-ISI1` remains blocked on
 `PRW-EK3`.
 
