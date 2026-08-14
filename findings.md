@@ -1,5 +1,50 @@
 # Findings & Decisions
 
+## 2026-08-14 paired chelation intervention sanity
+
+- The Sophontic video adds no new ChelatedAI mechanism. Its useful technical
+  addition is an external restatement of the already queued `PRW-ISI1` test:
+  nuisance perturbations must preserve the answer, while load-bearing
+  interventions must change it in the declared way. Contrast sets and
+  behavioral perturbation testing remain established prior art, so neither the
+  perturbation idea nor exact-pair scoring is a novelty claim.
+- Frozen protocol `CHELATEDAI-PRW-ISI1-PAIRED-SANITY-v1` implements only a
+  dependency-light evaluator sanity layer. Full `PRW-ISI1` remains
+  `BLOCKED_ON_PRW-EK3`; no candidate deflection method, model, corpus, RAG
+  path, training run, or independent confirmation set was executed.
+- The first pre-retention focused test rejected the draft 10-second ceiling
+  because the cold production-engine import crossed it. Before retaining an
+  official artifact, the protocol was reconditioned to a 30-second ceiling
+  that includes the cold import. The nine-pair/five-dimensional numerical
+  fixture was not changed.
+- The retained runner invoked the existing
+  `AntigravityEngine._chelate_toxicity` variance-mask method without
+  constructing an engine, model, vector database, or learned mask. Its mask
+  `[1,1,1,1,0]` exactly matched the oracle nuisance mask.
+- On this deliberately constructed sanity fixture, the production and oracle
+  controls both achieved strict paired accuracy, balanced joint score, and
+  joint floor `1.0`; no projection scored `0.0` jointly. The production control
+  detected both frozen safety-critical material interventions, including the
+  two-atom evaluator case.
+- The decisive failure control was over-chelation. Removing every dimension
+  produced a constant answer and therefore relation-only nuisance invariance
+  `1.0`, but material relation accuracy `0.0`, missed-intervention rate `1.0`,
+  and balanced joint score `0.0`. This proves that the evaluator catches
+  “stable because dead” behavior on its frozen fixture; it does not prove that
+  production chelation improves real retrieval.
+- Artifact
+  `artifacts/method-dev/isi1-paired-intervention-sanity/paired_intervention_sanity.json`
+  is 21,045 bytes with SHA-256
+  `ecb0c501128fc8a62da392dd3ac6aac7a6511b0450c5fd90f1dc1e0379a48a22`;
+  its canonical payload digest is
+  `80987bfd8912984b876c64dd3b37e12af81ba47ca8ece7f1f3a580f1d884e175`.
+  The manifest hash recomputed exactly. The fixture modeled 169,256 bytes and
+  1,800 work units.
+- Scientific and novelty statuses remain `UNCONFIRMED`. The next meaningful
+  use of this evaluator is as a mandatory gate inside the eventual independent
+  `PRW-ISI1` SELECT/REPORT protocol, after `PRW-EK3`, against natural-language
+  contrast pairs and the strongest standard fine-tuning/contrastive controls.
+
 ## 2026-08-12 nonlinear-neutraliser attenuation audit
 
 - The supplied video is **"Frances Fulton | Wave Manipulation in Structures

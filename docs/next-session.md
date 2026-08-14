@@ -228,6 +228,48 @@ Resume RB-13 only after honoring the preservation/publication order above:
    `PRW-EK7-COALITION` an optional survivor ablation; neither may promote or
    block an unrelated component by association.
 
+### PRW-ISI1 paired chelation intervention sanity status
+
+The Sophontic perturbation framing does not add a new ChelatedAI mechanism. It
+independently restates the core test already queued as `PRW-ISI1`: nuisance
+changes must preserve an answer while material changes must produce the
+declared answer change. Established contrast-set and behavioral-testing work
+remains prior art for the broad evaluation idea.
+
+The dependency-light evaluator sanity protocol
+`CHELATEDAI-PRW-ISI1-PAIRED-SANITY-v1` is now implemented and executed. It
+invokes the existing production variance-chelation mask without constructing
+an engine, model, corpus, database, or learned predictor. The retained
+nine-pair/five-dimensional artifact and hash-bound manifest are under
+`artifacts/method-dev/isi1-paired-intervention-sanity/`.
+
+On the exact synthetic fixture, the production mask `[1,1,1,1,0]` matched the
+oracle nuisance mask. Both scored `1.0` on strict paired accuracy, balanced
+joint score, and joint floor; no projection scored `0.0` jointly. The
+constant-output over-chelation control had nuisance relation accuracy `1.0`
+but material relation accuracy and balanced joint score `0.0`, confirming that
+the evaluator rejects “stable because dead” behavior. These are fixture and
+metric semantics only; scientific and novelty statuses remain `UNCONFIRMED`.
+
+The initial draft 10-second ceiling failed on the cold production-engine
+import before any artifact was retained. The frozen retained protocol uses a
+30-second ceiling including cold import. Focused validation passes, but no
+independent Tier-B review has yet been performed for this new slice.
+
+Full `PRW-ISI1` remains `BLOCKED_ON_PRW-EK3`. Resume rules:
+
+1. Preserve the retained artifact and manifest bytes; do not relabel the
+   constructed fixture as natural-language or production evidence.
+2. After `PRW-EK3` has an explicit disposition, freeze a separate ISI1
+   SELECT/REPORT protocol with independent transformation and evaluator
+   generators.
+3. Carry exact paired correctness, nuisance violations, missed/false
+   interventions, safety-critical misses, balanced joint score, and joint
+   floor into that protocol. Do not accept relation-only invariance.
+4. Compare against no projection, nuisance projection, standard contrast-set
+   training, learned deflection, and certificate-gated deflection on a disjoint
+   confirmation set before making a mechanism claim.
+
 ### RB-15 nonlinear-neutraliser transfer status
 
 The supplied Frances Fulton presentation has been traced to the 2025

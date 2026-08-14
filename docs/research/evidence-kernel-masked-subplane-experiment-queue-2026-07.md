@@ -121,7 +121,7 @@ RB-13/RB-14 dependency source of truth:
 | `PRW-DDF1` | `BLOCKED_ON_PRW-EK2` | `PRW-EK2` |
 | `PRW-RCM1` | `BLOCKED_ON_PRW-EK2_AND_PRW-BIL1` | `PRW-EK2`, `PRW-BIL1` |
 | `PRW-RCM1-NLN` | `BLOCKED_ON_PRW-RCM1_AND_PRW-ISI1` | `PRW-RCM1`, `PRW-ISI1`; frozen Stage-A mathematical sanity may run independently |
-| `PRW-ISI1` | `BLOCKED_ON_PRW-EK3` | `PRW-EK3` |
+| `PRW-ISI1` | `BLOCKED_ON_PRW-EK3` | `PRW-EK3`; dependency-light paired evaluator sanity may run independently |
 | `PRW-SPU1` | `BLOCKED_ON_PRW-SPU0` | `PRW-SPU0` |
 | `PRW-CTX1` | `BLOCKED_ON_PRW-COA1_AND_PRW-EK2` | `PRW-COA1`, `PRW-EK2` |
 | `PRW-SPU1-TRANSPORT` | `BLOCKED_ON_PRW-SPU1` | `PRW-SPU1`; confound-control subcell only |
@@ -133,7 +133,9 @@ The table's `Status` column is the dependency/entry status, not a claim that
 the card has no code. The RB-14 implementation overlay is recorded in each
 card below: OBS1, COA1, CTX1, the transport subcell, and the coalition
 surrogate are implemented with exact bounded sanity artifacts, while their
-full predecessor and candidate-survival gates remain open.
+full predecessor and candidate-survival gates remain open. PRW-ISI1 also has a
+dependency-light paired evaluator sanity artifact; it does not execute or
+unblock the parent candidate mechanism.
 
 `PRW-RCM1-NLN` is an RB-15 optional subcell. Its source audit and exact
 Stage-A fixture have run, but the parent dependency status remains blocked.
@@ -957,6 +959,18 @@ to material changes.
 
 **Dependencies:** `PRW-EK3`.
 
+**Implementation status:**
+`PAIRED_EVALUATOR_SANITY_COMPLETE; CANDIDATE_WORK_BLOCKED; SCIENTIFIC_AND_NOVELTY_UNCONFIRMED`.
+Protocol:
+`docs/research/paired-chelation-intervention-sanity-protocol-2026-08.md`.
+Artifact:
+`artifacts/method-dev/isi1-paired-intervention-sanity/paired_intervention_sanity.json`.
+The exact-pair scorer, production variance-mask invocation, oracle ceiling,
+no-projection control, and constant-output over-chelation failure control have
+run on nine deterministic synthetic pairs. This validates only evaluator and
+fixture semantics. It does not execute the learned or certificate-gated
+deflection controls below and does not satisfy `PRW-EK3`.
+
 **Fixture:** paired meaning-preserving transformations and material
 state-changing interventions for every source claim.
 
@@ -1413,7 +1427,8 @@ resource review described on each card.
 5. `PRW-EK6` after `PRW-EK3`.
 6. `PRW-DDF1` after `PRW-EK2`.
 7. `PRW-RCM1` after `PRW-EK2` and `PRW-BIL1`.
-8. `PRW-ISI1` after `PRW-EK3`.
+8. `PRW-ISI1` after `PRW-EK3`; preserve the completed paired evaluator sanity
+   as a metric/fixture guard, not a predecessor disposition.
 9. `PRW-RCM1-NLN` after `PRW-RCM1` and `PRW-ISI1`; its completed Stage-A
    mathematical sanity retained one unresolved gate and is not a parent
    disposition. The reconditioned synthetic prerequisite remains `NOT_RUN`.
