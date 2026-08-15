@@ -2,7 +2,7 @@
 
 Auto-generated from `related_works.tsv` (source of truth).
 
-Totals: 84 works; strong=73; supporting=11; structural_duplicates=4.
+Totals: 88 works; strong=77; supporting=11; structural_duplicates=4.
 
 ## Strong works by claim
 ### c01 [chelation] - Post-hoc residual embedding correction (~x+delta(x)+L2 norm) improves retrieval in noisy neighborhoods without mutating frozen base weights
@@ -94,6 +94,7 @@ Totals: 84 works; strong=73; supporting=11; structural_duplicates=4.
 - w70 (math_foundation): Domain-Adversarial Training of Neural Networks (DANN) - arXiv:1505.07818 - verified on arXiv abs 2015-05-28; domain-invariant representation learning with gradient reversal; foundation for source-target drift adaptation and safe routing
 - w74 (relevant): AdapterFusion: Non-Destructive Task Composition for Transfer Learning - arXiv:2005.00247 - verified on arXiv abs 2020-05-01; separates task-specific adapter extraction from non-destructive composition, evaluates 16 NLU tasks, and avoids full-finetuning forgetting; direct adapter-retention comparator
 - w76 (relevant): SelfAug: Mitigating Catastrophic Forgetting in Retrieval-Augmented Generation via Distribution Self-Alignment - arXiv:2509.03934 - verified on arXiv abs 2025-09-04; aligns input-sequence logits to preserve semantic distribution, mitigating catastrophic forgetting in RAG fine-tuning with code released; input-anchored KL evidence for adapter retention
+- w88 (math_foundation): Future-KL Regularized GRPO: Process-Level Credit Assignment from f-Divergence Regularization - arXiv:2601.10201 - verified on arXiv abs 2026-01-15; shows GRPO local KL penalty misses on-policy future-regularization return-to-go; FRPO adds a future reverse-KL correction, denser token-level credit; improves pass@16 with lower policy drift; NOTE: this arXiv id is FRPO, not the PRL work mis-cited in loop_01 09 scan
 
 ### c10 [cross-lingual] - Language-aware teacher routing generalizes embedding correction across languages
 - w47 (relevant): Making Monolingual Sentence Embeddings Multilingual Using KD - arXiv:2004.09813 - Cross-lingual teacher distillation; basis for repo cross_lingual_distillation + language routing
@@ -164,11 +165,13 @@ Totals: 84 works; strong=73; supporting=11; structural_duplicates=4.
 - w23 (additive): ReST-MCTS-star - arXiv:2406.03816 - Process-reward-guided search + filtering; denser fitness signal than outcome-only
 - w29 (additive): A Survey of Process Reward Models - arXiv:2510.08049 - Process-supervision survey; verified on arXiv abs (v3 2026-04-29)
 - w77 (additive): Process-based Self-Rewarding Language Models - arXiv:2503.03746 - verified on arXiv abs 2025-03-05; long-thought reasoning + step-wise LLM-as-judge + step-wise preference optimization; process-dense credit assignment for self-edit acceptance
+- w88 (math_foundation): Future-KL Regularized GRPO: Process-Level Credit Assignment from f-Divergence Regularization - arXiv:2601.10201 - verified on arXiv abs 2026-01-15; shows GRPO local KL penalty misses on-policy future-regularization return-to-go; FRPO adds a future reverse-KL correction, denser token-level credit; improves pass@16 with lower policy drift; NOTE: this arXiv id is FRPO, not the PRL work mis-cited in loop_01 09 scan
 
 ### c22 [lattice] - Structuring the model/correction surface with an explicit geometric or structural shape (hyperbolic or geometric-algebra geometry, low-rank or sparse-activation templates) is a distinct paradigm from ambient Euclidean dense adapters and can improve capacity, efficiency, and stability
 - w79 (relevant): Poincare Embeddings for Learning Hierarchical Representations - arXiv:1705.08039 - verified on arXiv abs 2017-05-22; riemannian-optimized hyperbolic-space embeddings capturing hierarchy+similarity, outperforming Euclidean embeddings; geometric-shape paradigm evidence for the lattice correction surface
 - w80 (math_foundation): Geometric Clifford Algebra Networks - arXiv:2302.06594 - verified on arXiv abs 2023-02-13; Pin(p,q,r) group-action layers as learned geometric templates; superior 3D rigid-body and fluid-dynamics modeling; formal math foundation for geometric conventions in model shape
 - w84 (additive): Spark Transformer: Reactivating Sparsity in FFN and Attention - arXiv:2506.06644 - verified on arXiv abs 2025-06-07; top-k activation sparsity in FFN+attention with statistical top-k; 8% FFN neurons active, 2.5x FLOP reduction, up to 1.79x CPU decode wall-time speedup; architecture-shape paradigm that trains efficiently on CPUs
+- w85 (relevant): PointCHR: Point Cloud Analysis via Curvature-Aware Hyperbolic Rectification - arXiv:2607.24052 - verified on arXiv abs 2026-07-27 (ICML 2026); curvature-guided radial rectification projects high-curvature 3D points into higher-capacity hyperbolic boundary regions; mitigates representation crowding in Euclidean space; state-of-the-art on point-cloud benchmarks; recent evidence for the geometric model-shape paradigm
 
 ### c23 [computational-storage] - Storage-resident and CPU (non-GPU) processors can execute model-training stages — optimizer parameter updates, data selection, and fitness scoring — not just inference serving
 - w31 (additive): EGGROLL Evolution Strategies at the Hyperscale - https://eshyperspace.github.io/ - Low-rank E=A*B^T/sqrt(r) evolution strategies; int8 quantized training evidence; storage-sharded population fitness scoring; verified against paper PDF
@@ -176,9 +179,11 @@ Totals: 84 works; strong=73; supporting=11; structural_duplicates=4.
 - w82 (additive): ZeRO-Infinity: Breaking the GPU Memory Wall for Extreme Scale Deep Learning - arXiv:2104.07857 - verified on arXiv abs 2021-04-16; heterogeneous GPU+CPU+NVMe memory hierarchy for training, trillion-parameter fine-tune on single DGX-2, 25+ petaflops on 512 V100s; canonical CPU/NVMe training-tier evidence
 - w83 (relevant): STANNIS: Low-Power Acceleration of Deep Neural Network Training Using Computational Storage - arXiv:2002.07215 - verified on arXiv abs 2020-02-17; distributed in-storage DNN training on computational-storage clusters; up to 2.7x speedup, 69% energy reduction, negligible accuracy loss; private data never leaves storage
 - w84 (additive): Spark Transformer: Reactivating Sparsity in FFN and Attention - arXiv:2506.06644 - verified on arXiv abs 2025-06-07; top-k activation sparsity in FFN+attention with statistical top-k; 8% FFN neurons active, 2.5x FLOP reduction, up to 1.79x CPU decode wall-time speedup; architecture-shape paradigm that trains efficiently on CPUs
+- w86 (additive): GreedySnake: Accelerating SSD-Offloaded LLM Training with Efficient Scheduling and Optimizer Step Overlapping - arXiv:2512.17570 - verified on arXiv abs 2025-12-19 (v2 2026-01-24); vertical scheduling executes all microbatches of a layer before the next; overlaps optimizer step with forward pass; 1.96-2.53x saturated throughput vs ZeRO-Infinity on GPT-65B/175B (A100)
+- w87 (additive): MemAscend: System Memory Optimization for SSD-Offloaded LLM Fine-Tuning - arXiv:2505.23254 - verified on arXiv abs 2025-05-29 (v4 2026-01-31, IEEE TETC); removes fragmentation/pinned-buffer/filesystem overhead in SSD-offloaded fine-tuning; cuts peak system memory 55.7% on commodity SSD hardware without near-storage accelerators
 
 ## Category index
-### relevant (28)
+### relevant (29)
 - w06 [strong]: Matryoshka Representation Learning (arXiv:2205.13147)
 - w07 [strong]: Drift-Adapter (Orthogonal-Procrustes residual) (arXiv:2509.23471)
 - w08 [strong]: Online-Optimized RAG for Tool Use and Function Calling (arXiv:2509.20415)
@@ -207,6 +212,7 @@ Totals: 84 works; strong=73; supporting=11; structural_duplicates=4.
 - w78 [strong]: Wild-Time: A Benchmark of in-the-Wild Distribution Shift over Time (arXiv:2211.14238)
 - w79 [strong]: Poincare Embeddings for Learning Hierarchical Representations (arXiv:1705.08039)
 - w83 [strong]: STANNIS: Low-Power Acceleration of Deep Neural Network Training Using Computational Storage (arXiv:2002.07215)
+- w85 [strong]: PointCHR: Point Cloud Analysis via Curvature-Aware Hyperbolic Rectification (arXiv:2607.24052)
 
 ### cousin (19)
 - w05 [strong]: SimCSE (arXiv:2104.08821)
@@ -235,7 +241,7 @@ Totals: 84 works; strong=73; supporting=11; structural_duplicates=4.
 - w11 [strong]: CRAG Corrective Retrieval Augmented Generation (arXiv:2401.15884)
 - w75 [strong]: All-but-the-Top: Simple and Effective Postprocessing for Word Representations (arXiv:1702.01417)
 
-### additive (24)
+### additive (26)
 - w21 [strong]: Self-Rewarding Language Models (arXiv:2401.10020)
 - w22 [strong]: STaR: Bootstrapping Reasoning With Reasoning (arXiv:2203.14465)
 - w23 [strong]: ReST-MCTS-star (arXiv:2406.03816)
@@ -260,8 +266,10 @@ Totals: 84 works; strong=73; supporting=11; structural_duplicates=4.
 - w81 [strong]: Smart-Infinity: Fast Large Language Model Training using Near-Storage Processing on a Real System (arXiv:2403.06664)
 - w82 [strong]: ZeRO-Infinity: Breaking the GPU Memory Wall for Extreme Scale Deep Learning (arXiv:2104.07857)
 - w84 [strong]: Spark Transformer: Reactivating Sparsity in FFN and Attention (arXiv:2506.06644)
+- w86 [strong]: GreedySnake: Accelerating SSD-Offloaded LLM Training with Efficient Scheduling and Optimizer Step Overlapping (arXiv:2512.17570)
+- w87 [strong]: MemAscend: System Memory Optimization for SSD-Offloaded LLM Fine-Tuning (arXiv:2505.23254)
 
-### math_foundation (9)
+### math_foundation (10)
 - w01 [strong]: Elastic Weight Consolidation (arXiv:1612.00796)
 - w02 [strong]: Generalized Knowledge Distillation (GKD) (arXiv:2306.13649)
 - w35 [supporting]: GPTQ (arXiv:2210.17323)
@@ -271,4 +279,5 @@ Totals: 84 works; strong=73; supporting=11; structural_duplicates=4.
 - w70 [strong]: Domain-Adversarial Training of Neural Networks (DANN) (arXiv:1505.07818)
 - w71 [strong]: A Kernel Method for the Two-Sample Problem (MMD) (arXiv:0805.2368)
 - w80 [strong]: Geometric Clifford Algebra Networks (arXiv:2302.06594)
+- w88 [strong]: Future-KL Regularized GRPO: Process-Level Credit Assignment from f-Divergence Regularization (arXiv:2601.10201)
 
