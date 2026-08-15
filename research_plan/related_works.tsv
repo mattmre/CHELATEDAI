@@ -1,4 +1,5 @@
 id	category	strength	title	authors	ref	claims	notes
+w39	relevant	strong	DualG-MRAG: Decoupling Macro-Reasoning and Micro-Matching for Multimodal RAG	Tao/Sun/Yuan/Zhang/Li	arXiv:2607.28580	c12;c13	verified on arXiv abs 2026-07-30; GNN+DAG message passing with serialized evidence graph; lattice evidence-DAG match
 w01	math_foundation	strong	Elastic Weight Consolidation	Kirkpatrick et al.	arXiv:1612.00796	c07;c09	Retention/forgetting anchor; basis for retention gates and replay guards
 w02	math_foundation	strong	Generalized Knowledge Distillation (GKD)	Agarwal et al.	arXiv:2311.17031	c08;c09	On-policy distillation loss family incl. JSD options reused by SDPO/OPSD
 w03	structural_duplicate	strong	BERT-Whitening (How to Find Your Friendly Neighborhood)	Su et al.	arXiv:2105.00554	c03;c04	Post-hoc linear transform removing anisotropy; closest prior art to spectral chelation masking/centering
@@ -20,7 +21,7 @@ w18	cousin	supporting	DPR Dense Passage Retrieval	Karpukhin et al.	arXiv:2004.04
 w19	cousin	supporting	Sentence-BERT	Reimers and Gurevych	arXiv:1908.10084	c01;c10	Foundation embedding model used in experiments (REFERENCES.md)
 w20	cousin	supporting	SPLADE	Formal et al.	arXiv:2107.05720	c03	Sparse retrieval; dimension-selection importance
 w21	additive	strong	Self-Rewarding Language Models	Yuan et al.	arXiv:2401.10020	c07	Iterative self-judging improvement loop; outer-loop engine for self-healing
-w22	additive	strong	STaR Bootstrapping Reasoning With Reasoning	Zelikman et al.	arXiv:2203.14465	c05;c07	Rationalize-failures data synthesis for sample-efficient self-correction
+w22	additive	strong	STaR: Bootstrapping Reasoning With Reasoning	Zelikman et al.	arXiv:2203.14465	c05;c07	rationalize-failures data synthesis for sample-efficient self-correction (canonical id 2203.14465)
 w23	additive	strong	ReST-MCTS-star	Zhang et al.	arXiv:2406.03816	c07;c13	Process-reward-guided search + filtering; denser fitness signal than outcome-only
 w24	additive	strong	Constitutional AI	Bai et al.	arXiv:2212.08073	c07	Critique-revise self-edits against explicit principles
 w25	additive	strong	SDFT Self-Distillation Enables Continual Learning	Shenfeld et al.	arXiv:2601.19897	c07;c09	On-policy continual self-distillation with EMA teacher; verified on arXiv abs (MIT/ETH)
@@ -35,24 +36,24 @@ w33	cousin	supporting	LLM in a Flash	Alizadeh et al.	arXiv:2312.11514	c15	Window
 w34	cousin	supporting	FlexGen	Sheng et al.	arXiv:2303.06865	c15	Weight/activation offloading framework; basis for disk pool comparisons
 w35	math_foundation	supporting	GPTQ	Frantar et al.	arXiv:2210.17323	c02;c14	Post-training quantization; validation ground truth for quant-survival gates
 w36	math_foundation	supporting	CMA-ES and Natural Evolution Strategies	Hansen et al.	arXiv:1604.00772	c05;c13	Evolution-strategy math foundation (EGGROLL-adjacent)
-w37	cousin	supporting	Anisotropy of sentence embeddings (BERT without BERT)	Ethayarajh	arXiv:1907.12009	c04	Anisotropy evidence supporting center-of-mass centering rationale
+w37	cousin	supporting	Representation Degeneration Problem (anisotropy cone)	Gao/He/Tan/Qin/Wang/Liu	arXiv:1907.12009	c04	embedding anisotropy/degeneration evidence supporting center-of-mass centering rationale (verified on arXiv abs)
 w38	additive	strong	Exploratory Annealed Decoding (EAD)	Yang et al.	arXiv:2510.05251	c11	Explore-early/exploit-late token temperature schedule for RLVR; annealing rationale for lattice temperature controller
-w39	relevant	supporting	DualG-MRAG (GNN + Structured Evidence Graph)	DualG-MRAG authors	arXiv:2607.28580	c12;c13	GNN+DAG message passing + serialized evidence graph; most complete lattice evidence-DAG match; arXiv entry availability unverified
-w40	relevant	supporting	MemGraphRAG (hierarchical evidence graphs)	XMUDeepLIT	arXiv:2606.00610	c12;c13	Hierarchical index + source evidence graph for graph retrieval; arXiv availability unverified
-w41	relevant	supporting	LogicRAG (adaptive DAG retrieval)	LogicRAG authors	arXiv:2508.06105	c12	Query-specific DAG of subproblems with adaptive retrieval; evidence-DAG cousin; arXiv availability unverified
-w42	relevant	supporting	GNN-RAG	Mavromatis and Karypis	arXiv:2405.05539	c12;c13	GNN dense subgraph reasoner for KG RAG; prior art to lattice GNN prototype
-w43	cousin	strong	Molecular Structure of Thought	Li et al.	arXiv:2601.06002	c13	Behavioral topology over CoT bond types with drift-resistant reconnection; lattice disintegration analog; cited in repo molecular comparison
-w44	relevant	supporting	Random Dimension Removal	RDR authors	arXiv:2508.17744	c03	Removes 50% of dims with minimal loss; supports dimension-masking premise (repo molecular comparison)
-w45	relevant	supporting	Dimension-Mask-Layer	DML authors	arXiv:2506.14878	c03	Masks 40-50% dimensions with minimal loss; supports dimension-masking premise (repo molecular comparison)
-w46	relevant	strong	Query-Aware Adaptive Dimension Selection	QAADS authors	arXiv:2602.02196	c03;c02	Per-query dimension masking; distinct from MRL (w06). NOTE: repo REFERENCES labels 2602.03306 MRL; both cited in molecular comparison
+w39	relevant	strong	DualG-MRAG: Decoupling Macro-Reasoning and Micro-Matching for Multimodal RAG	Tao/Sun/Yuan/Zhang/Li	arXiv:2607.28580	c12;c13	verified on arXiv abs 2026-07-30; GNN+DAG message passing with serialized evidence graph; lattice evidence-DAG match
+w40	relevant	strong	MemGraphRAG: Memory-based Multi-Agent System for Graph RAG	Wu/Xiang/Tang/Chen/Zhang/Su	arXiv:2606.00610	c12;c13	verified on arXiv abs 2026-05-30; hierarchical index + source evidence graph for graph retrieval
+w41	relevant	strong	LogicRAG: You Don't Need Pre-built Graphs for RAG	Chen/Zhou/Yuan/Zhang/Cui/Chen/Xiao/Cao/Huang	arXiv:2508.06105	c12	verified on arXiv abs 2025-08-08; query-specific DAG of subproblems with adaptive retrieval; evidence-DAG cousin
+w42	relevant	strong	GNN-RAG: Graph Neural Retrieval for LLM Reasoning	Mavromatis/Karypis	arXiv:2405.20139	c12;c13	verified on arXiv abs 2024-05-30; GNN dense subgraph reasoner for KG RAG; prior art to lattice GNN prototype
+w43	cousin	strong	The Molecular Structure of Thought (Mole-Syn)	Chen et al.	arXiv:2601.06002	c13	verified on arXiv abs 2026-01-09; behavioral topology over CoT bond types; lattice disintegration/annealing analog
+w44	relevant	supporting	Random Dimension Removal	RDR authors	arXiv:2508.17744	c03	removes 50% of dims with minimal loss; supports dimension-masking premise (repo molecular comparison; id unverified)
+w45	relevant	supporting	Dimension-Mask-Layer	DML authors	arXiv:2510.15308	c03	masks 40-50% of dimensions with minimal loss; supports dimension-masking premise (repo molecular comparison; id as-cited)
+w46	relevant	strong	Learning to Select: Query-Aware Adaptive Dimension Selection for Dense Retrieval	Wu/Zhang/Nie	arXiv:2602.03306	c03;c02	verified on arXiv abs 2026-02-03; per-query dimension masking; REFERENCES.md mislabels this id as MRL (real MRL is w06)
 w47	relevant	strong	Making Monolingual Sentence Embeddings Multilingual Using KD	Reimers and Gurevych	arXiv:2004.09813	c10	Cross-lingual teacher distillation; basis for repo cross_lingual_distillation + language routing
 w48	relevant	strong	BGE-M3 with Self-Knowledge Distillation	Chen et al.	arXiv:2402.03216	c10;c05	Self-KD across dense/sparse/multivector heads; multilingual; cousin of hybrid distillation + cross-lingual
-w49	relevant	supporting	LaBSE Language-agnostic BERT Sentence Embedding	Feng et al.	arXiv:2012.03464	c10	Translation-ranked multilingual embeddings; cross-lingual routing baseline
-w50	additive	strong	Amplifying Effective CXL Memory Bandwidth for LLM Inference	CXL Jazz team	arXiv:2509.03377	c15	Tiered-memory CXL inference; ~43% throughput uplift, longer context at 65k tokens; real latency evidence beyond mock NVMe
-w51	additive	supporting	CXL-Enabled KV-Cache Management Beyond GPU Limits	CXL KV authors	arXiv:2511.00549	c15	KV-cache offload onto CXL/DRAM tiers; evidence for disk/tier pools serving inference
-w52	additive	supporting	Cost-Effective Near-Storage Processing Solution	NearStorage authors	arXiv:2502.09921	c15	Near-storage vector scoring; storage-sharded fitness evaluation analog
-w53	additive	supporting	HyMCache KV Cache Framework for Multi-Turn LLM Serving	HyMCache authors	arXiv:2607.18141	c15	Tiered KV cache memory management; infra evidence for disk pools
-w54	additive	supporting	Inference Tiered Memory Expansion with Disaggregated CXL Pooling	TieredMem authors	arXiv:2606.12556	c15	Pooled-memory expansion; infra evidence for disk pools; availability unverified
-w55	math_foundation	strong	Neural ODE / continuous normalizing flows	Chen et al.	arXiv:1806.07366	c04	Continuous-depth transform rationale for embedding correction as flow; math foundation for spectral/geometric chelation
-w56	relevant	strong	Temperature Scaling (On Calibration of Modern Neural Networks)	Guo et al.	arXiv:1706.04599	c04	Temperature parameter in spectral chelation ranking scores (REFERENCES.md)
-w57	cousin	strong	SAE sparse autoencoder feature steering	Bricken et al.	arXiv:2309.08600	c14;c12	Sparse feature directions for steering; basis for Model-Scope steering and lattice shims
+w49	relevant	supporting	LaBSE: Language-agnostic BERT Sentence Embedding	Feng/Yang/Cer/Arivazhagan/Wang	arXiv:2007.01852	c10	translation-ranked multilingual embeddings; cross-lingual routing baseline (verified on arXiv abs)
+w50	additive	strong	TRACE: Unlocking Effective CXL Bandwidth via Lossless Compression and Precision Scaling	Xie et al.	arXiv:2509.03377	c15	verified on arXiv abs 2025-09-03; BF16 KV footprint -46.9% lossless, 4.24x throughput at 128k tokens; real CXL tier latency evidence
+w51	additive	strong	Scalable PNM for 1M-Token LLM Inference: CXL-Enabled KV-Cache Management	Kim et al.	arXiv:2511.00321	c15	verified on arXiv abs 2025-10-31; PNM-KV/PnG-KV up to 21.9x throughput, 60x lower energy/token; disk/tier pool evidence
+w52	additive	strong	HILOS: A Cost-Effective Near-Storage Processing Solution for Offline Long-Context LLM Inference	Jang et al.	arXiv:2502.09921	c15	verified on arXiv abs 2025-02-14; real 16 SmartSSDs, up to 7.86x throughput, -85% energy; near-storage fitness scoring analog
+w53	additive	strong	HyMCache: A CXL Memory Rack for Multi-Turn LLM Serving	Jang et al.	arXiv:2607.18141	c15	verified on arXiv abs 2026-07-20; SSD-backed CXL-HM KV reuse; disk-scale pool infra evidence
+w54	additive	strong	ITME: Inference Tiered Memory Expansion with Disaggregated CXL-Hybrid Memories	Jang et al.	arXiv:2606.12556	c15	verified on arXiv abs 2026-06-10; SK Hynix CMM + FPGA prototype, up to 35.7% throughput; pooled-memory evidence
+w55	math_foundation	strong	Neural ODE / continuous normalizing flows	Chen et al.	arXiv:1806.07366	c04	continuous-depth transform rationale for embedding correction as flow; math foundation for spectral/geometric chelation
+w56	relevant	strong	Temperature Scaling: On Calibration of Modern Neural Networks	Guo et al.	arXiv:1706.04599	c04	temperature parameter in spectral chelation ranking scores (REFERENCES.md)
+w57	cousin	strong	Sparse Autoencoders Find Highly Interpretable Features in Language Models	Cunningham/Ewart/Riggs/Huben/Sharkey	arXiv:2309.08600	c14;c12	verified on arXiv abs 2023-09-15; sparse feature directions for steering; basis for Model-Scope steering and lattice shims
