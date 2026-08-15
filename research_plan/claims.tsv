@@ -20,3 +20,5 @@ c18	online-correction	Explicit KL divergence anchoring to a reference policy dur
 c19	sedimentation	Trust-region binary filtering of on-policy correction samples (MIS-PO-style) reduces gradient variance and collapse risk in adapter training versus sparse thresholded replay
 c20	self-healing	Constitutional critique-and-revise of proposed self-edit directives raises directive acceptance rate and long-cycle stability
 c21	evaluation	Process-reward (step-level) supervision gives denser credit assignment for self-edit acceptance than outcome-only fitness
+c22	lattice	Structuring the model/correction surface with an explicit geometric or structural shape (hyperbolic or geometric-algebra geometry, low-rank or sparse-activation templates) is a distinct paradigm from ambient Euclidean dense adapters and can improve capacity, efficiency, and stability
+c23	computational-storage	Storage-resident and CPU (non-GPU) processors can execute model-training stages — optimizer parameter updates, data selection, and fitness scoring — not just inference serving

@@ -2,7 +2,7 @@
 
 Auto-generated from `related_works.tsv` (source of truth).
 
-Totals: 78 works; strong=67; supporting=11; structural_duplicates=4.
+Totals: 84 works; strong=73; supporting=11; structural_duplicates=4.
 
 ## Strong works by claim
 ### c01 [chelation] - Post-hoc residual embedding correction (~x+delta(x)+L2 norm) improves retrieval in noisy neighborhoods without mutating frozen base weights
@@ -37,7 +37,7 @@ Totals: 78 works; strong=67; supporting=11; structural_duplicates=4.
 ### c05 [sedimentation] - Contrastive sedimentation on collapse-event logs tunes adapters for future retrieval
 - w05 (cousin): SimCSE - arXiv:2104.08821 - Unsupervised contrastive embeddings; baseline for sedimentation-style contrastive training
 - w22 (additive): STaR: Bootstrapping Reasoning With Reasoning - arXiv:2203.14465 - rationalize-failures data synthesis for sample-efficient self-correction (canonical id 2203.14465)
-- w31 (additive): EGGROLL Evolution Strategies at the Hyperscale - https://eshyperspace.github.io/ - Low-rank E=A*B^T/sqrt(r) evolution strategies; int8 quantized training evidence; verified against paper PDF
+- w31 (additive): EGGROLL Evolution Strategies at the Hyperscale - https://eshyperspace.github.io/ - Low-rank E=A*B^T/sqrt(r) evolution strategies; int8 quantized training evidence; storage-sharded population fitness scoring; verified against paper PDF
 - w48 (relevant): BGE-M3 with Self-Knowledge Distillation - arXiv:2402.03216 - Self-KD across dense/sparse/multivector heads; multilingual; cousin of hybrid distillation + cross-lingual
 - w60 (additive): DAPO: An Open-Source LLM Reinforcement Learning System at Scale - arXiv:2503.14476 - verified on arXiv abs 2025-03-21; Decoupled Clip-Higher + Dynamic Sampling + token-level PG prevent entropy collapse; annealing/stability rationale for online loops
 - w63 (relevant): GPL: Generative Pseudo Labeling for Unsupervised Domain Adaptation of Dense Retrieval - arXiv:2112.07577 - verified on arXiv abs 2021-12-14; query generation + pseudo labeling for unsupervised retrieval adaptation; domain-transfer analog to sedimentation; up to +9.3 nDCG@10
@@ -65,7 +65,7 @@ Totals: 78 works; strong=67; supporting=11; structural_duplicates=4.
 - w26 (additive): OPSD Self-Distilled Reasoner - arXiv:2601.18734 - Dense privileged-teacher on-policy distillation; verified (siyan-zhao/OPSD)
 - w27 (additive): SDPO Reinforcement Learning via Self-Distillation - arXiv:2601.20802 - Dense logit-level self-teacher advantages; verified (lasgroup/SDPO)
 - w29 (additive): A Survey of Process Reward Models - arXiv:2510.08049 - Process-supervision survey; verified on arXiv abs (v3 2026-04-29)
-- w31 (additive): EGGROLL Evolution Strategies at the Hyperscale - https://eshyperspace.github.io/ - Low-rank E=A*B^T/sqrt(r) evolution strategies; int8 quantized training evidence; verified against paper PDF
+- w31 (additive): EGGROLL Evolution Strategies at the Hyperscale - https://eshyperspace.github.io/ - Low-rank E=A*B^T/sqrt(r) evolution strategies; int8 quantized training evidence; storage-sharded population fitness scoring; verified against paper PDF
 - w32 (additive): SEAL Self-Adapting Language Models - arXiv:2506.10943 - Source of SEAL planner inspiration in repo; verified on arXiv; replaces wrong id 2412.01122
 - w64 (relevant): LoRA Learns Less and Forgets Less - arXiv:2405.09673 - verified on arXiv abs 2024-05-15; low-rank finetuning preserves base-model retention better than full finetuning; retention evidence for adapter-only correction path
 - w68 (additive): CoTTA: Continual Test-Time Domain Adaptation - arXiv:2203.13591 - verified on arXiv abs 2022-03-25; weight/augmentation averaging plus stochastic source restoration reduce error accumulation and forgetting under non-stationary shift
@@ -117,7 +117,7 @@ Totals: 78 works; strong=67; supporting=11; structural_duplicates=4.
 - w14 (cousin): GraphRAG - arXiv:2404.16130 - Evidence-graph RAG with preprocessing pools; closest structural cousin of lattice evidence DAG + precomputed pools
 - w23 (additive): ReST-MCTS-star - arXiv:2406.03816 - Process-reward-guided search + filtering; denser fitness signal than outcome-only
 - w29 (additive): A Survey of Process Reward Models - arXiv:2510.08049 - Process-supervision survey; verified on arXiv abs (v3 2026-04-29)
-- w31 (additive): EGGROLL Evolution Strategies at the Hyperscale - https://eshyperspace.github.io/ - Low-rank E=A*B^T/sqrt(r) evolution strategies; int8 quantized training evidence; verified against paper PDF
+- w31 (additive): EGGROLL Evolution Strategies at the Hyperscale - https://eshyperspace.github.io/ - Low-rank E=A*B^T/sqrt(r) evolution strategies; int8 quantized training evidence; storage-sharded population fitness scoring; verified against paper PDF
 - w39 (relevant): DualG-MRAG: Decoupling Macro-Reasoning and Micro-Matching for Multimodal RAG - arXiv:2607.28580 - verified on arXiv abs 2026-07-30; GNN+DAG message passing with serialized evidence graph; lattice evidence-DAG match
 - w40 (relevant): MemGraphRAG: Memory-based Multi-Agent System for Graph RAG - arXiv:2606.00610 - verified on arXiv abs 2026-05-30; hierarchical index + source evidence graph for graph retrieval
 - w42 (relevant): GNN-RAG: Graph Neural Retrieval for LLM Reasoning - arXiv:2405.20139 - verified on arXiv abs 2024-05-30; GNN dense subgraph reasoner for KG RAG; prior art to lattice GNN prototype
@@ -165,8 +165,20 @@ Totals: 78 works; strong=67; supporting=11; structural_duplicates=4.
 - w29 (additive): A Survey of Process Reward Models - arXiv:2510.08049 - Process-supervision survey; verified on arXiv abs (v3 2026-04-29)
 - w77 (additive): Process-based Self-Rewarding Language Models - arXiv:2503.03746 - verified on arXiv abs 2025-03-05; long-thought reasoning + step-wise LLM-as-judge + step-wise preference optimization; process-dense credit assignment for self-edit acceptance
 
+### c22 [lattice] - Structuring the model/correction surface with an explicit geometric or structural shape (hyperbolic or geometric-algebra geometry, low-rank or sparse-activation templates) is a distinct paradigm from ambient Euclidean dense adapters and can improve capacity, efficiency, and stability
+- w79 (relevant): Poincare Embeddings for Learning Hierarchical Representations - arXiv:1705.08039 - verified on arXiv abs 2017-05-22; riemannian-optimized hyperbolic-space embeddings capturing hierarchy+similarity, outperforming Euclidean embeddings; geometric-shape paradigm evidence for the lattice correction surface
+- w80 (math_foundation): Geometric Clifford Algebra Networks - arXiv:2302.06594 - verified on arXiv abs 2023-02-13; Pin(p,q,r) group-action layers as learned geometric templates; superior 3D rigid-body and fluid-dynamics modeling; formal math foundation for geometric conventions in model shape
+- w84 (additive): Spark Transformer: Reactivating Sparsity in FFN and Attention - arXiv:2506.06644 - verified on arXiv abs 2025-06-07; top-k activation sparsity in FFN+attention with statistical top-k; 8% FFN neurons active, 2.5x FLOP reduction, up to 1.79x CPU decode wall-time speedup; architecture-shape paradigm that trains efficiently on CPUs
+
+### c23 [computational-storage] - Storage-resident and CPU (non-GPU) processors can execute model-training stages — optimizer parameter updates, data selection, and fitness scoring — not just inference serving
+- w31 (additive): EGGROLL Evolution Strategies at the Hyperscale - https://eshyperspace.github.io/ - Low-rank E=A*B^T/sqrt(r) evolution strategies; int8 quantized training evidence; storage-sharded population fitness scoring; verified against paper PDF
+- w81 (additive): Smart-Infinity: Fast Large Language Model Training using Near-Storage Processing on a Real System - arXiv:2403.06664 - verified on arXiv abs 2024-03-11; SmartUpdate runs optimizer parameter updates on SmartSSD near-storage accelerators; up to 2.11x speedup over storage-offloaded training; PyTorch-integrated on real Samsung SmartSSD systems
+- w82 (additive): ZeRO-Infinity: Breaking the GPU Memory Wall for Extreme Scale Deep Learning - arXiv:2104.07857 - verified on arXiv abs 2021-04-16; heterogeneous GPU+CPU+NVMe memory hierarchy for training, trillion-parameter fine-tune on single DGX-2, 25+ petaflops on 512 V100s; canonical CPU/NVMe training-tier evidence
+- w83 (relevant): STANNIS: Low-Power Acceleration of Deep Neural Network Training Using Computational Storage - arXiv:2002.07215 - verified on arXiv abs 2020-02-17; distributed in-storage DNN training on computational-storage clusters; up to 2.7x speedup, 69% energy reduction, negligible accuracy loss; private data never leaves storage
+- w84 (additive): Spark Transformer: Reactivating Sparsity in FFN and Attention - arXiv:2506.06644 - verified on arXiv abs 2025-06-07; top-k activation sparsity in FFN+attention with statistical top-k; 8% FFN neurons active, 2.5x FLOP reduction, up to 1.79x CPU decode wall-time speedup; architecture-shape paradigm that trains efficiently on CPUs
+
 ## Category index
-### relevant (26)
+### relevant (28)
 - w06 [strong]: Matryoshka Representation Learning (arXiv:2205.13147)
 - w07 [strong]: Drift-Adapter (Orthogonal-Procrustes residual) (arXiv:2509.23471)
 - w08 [strong]: Online-Optimized RAG for Tool Use and Function Calling (arXiv:2509.20415)
@@ -193,6 +205,8 @@ Totals: 78 works; strong=67; supporting=11; structural_duplicates=4.
 - w74 [strong]: AdapterFusion: Non-Destructive Task Composition for Transfer Learning (arXiv:2005.00247)
 - w76 [strong]: SelfAug: Mitigating Catastrophic Forgetting in Retrieval-Augmented Generation via Distribution Self-Alignment (arXiv:2509.03934)
 - w78 [strong]: Wild-Time: A Benchmark of in-the-Wild Distribution Shift over Time (arXiv:2211.14238)
+- w79 [strong]: Poincare Embeddings for Learning Hierarchical Representations (arXiv:1705.08039)
+- w83 [strong]: STANNIS: Low-Power Acceleration of Deep Neural Network Training Using Computational Storage (arXiv:2002.07215)
 
 ### cousin (19)
 - w05 [strong]: SimCSE (arXiv:2104.08821)
@@ -221,7 +235,7 @@ Totals: 78 works; strong=67; supporting=11; structural_duplicates=4.
 - w11 [strong]: CRAG Corrective Retrieval Augmented Generation (arXiv:2401.15884)
 - w75 [strong]: All-but-the-Top: Simple and Effective Postprocessing for Word Representations (arXiv:1702.01417)
 
-### additive (21)
+### additive (24)
 - w21 [strong]: Self-Rewarding Language Models (arXiv:2401.10020)
 - w22 [strong]: STaR: Bootstrapping Reasoning With Reasoning (arXiv:2203.14465)
 - w23 [strong]: ReST-MCTS-star (arXiv:2406.03816)
@@ -243,8 +257,11 @@ Totals: 78 works; strong=67; supporting=11; structural_duplicates=4.
 - w60 [strong]: DAPO: An Open-Source LLM Reinforcement Learning System at Scale (arXiv:2503.14476)
 - w68 [strong]: CoTTA: Continual Test-Time Domain Adaptation (arXiv:2203.13591)
 - w77 [strong]: Process-based Self-Rewarding Language Models (arXiv:2503.03746)
+- w81 [strong]: Smart-Infinity: Fast Large Language Model Training using Near-Storage Processing on a Real System (arXiv:2403.06664)
+- w82 [strong]: ZeRO-Infinity: Breaking the GPU Memory Wall for Extreme Scale Deep Learning (arXiv:2104.07857)
+- w84 [strong]: Spark Transformer: Reactivating Sparsity in FFN and Attention (arXiv:2506.06644)
 
-### math_foundation (8)
+### math_foundation (9)
 - w01 [strong]: Elastic Weight Consolidation (arXiv:1612.00796)
 - w02 [strong]: Generalized Knowledge Distillation (GKD) (arXiv:2306.13649)
 - w35 [supporting]: GPTQ (arXiv:2210.17323)
@@ -253,4 +270,5 @@ Totals: 78 works; strong=67; supporting=11; structural_duplicates=4.
 - w69 [strong]: Deep CORAL: Correlation Alignment for Deep Domain Adaptation (arXiv:1607.01719)
 - w70 [strong]: Domain-Adversarial Training of Neural Networks (DANN) (arXiv:1505.07818)
 - w71 [strong]: A Kernel Method for the Two-Sample Problem (MMD) (arXiv:0805.2368)
+- w80 [strong]: Geometric Clifford Algebra Networks (arXiv:2302.06594)
 

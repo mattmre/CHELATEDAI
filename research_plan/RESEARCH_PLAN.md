@@ -1,7 +1,7 @@
 # ChelatedAI Related-Works Research Plan
 
 Ownership: this plan lives in the repo and is updated continuously.
-Status: active — iteration 15 continuation after segment 1 cap; corpus 21 claims; catalog 78 works / 67 strong / 100% claim coverage.
+Status: active — iteration 16 continuation after segment 1 cap; corpus 23 claims; catalog 84 works / 73 strong / 100% claim coverage.
 
 ## Objective
 
@@ -82,6 +82,15 @@ The OPSD program docs (loop_01 04/07/09/12/13) expose five materially new claims
 
 Remaining open gaps from the docs with candidate works not yet added: Prompt Distillation 2412.14964 and SelfAug-adjacent LoRA input-KL replay, Self-Evolving Agents 2510.16079 (experience distillation), Self-Distillation Performance Recovery 2604.15794, PRL 2601.10201. Note: `docs/next-session.md` is the BHS carried-debt ledger (engineering debt CD-001..CD-H1), not a research-claim source; its only research-adjacent items are the untested real-model swap path (CD-A2-01) and stale C3a campaign numbers (CD-H1-01).
 
+## Research fronts: CPU/SSD-processor training and geometric model shape (Iter 16)
+
+Two new repo-grounded claims added from the user-directed research direction plus existing repo grounding:
+
+- **c22** (lattice) — structuring the model/correction surface with an explicit geometric or structural shape (hyperbolic/geometric-algebra geometry, low-rank or sparse-activation templates) is a distinct paradigm from ambient Euclidean dense adapters. Caveat: the literal "8 perturbations/sides/3D" phrasing has no in-repo citation; grounded as EGGROLL's low-rank perturbation shape `E=A·Bᵀ/√r` + the liquified-lattice vision + curved/sparse shaped correction surface.
+- **23** (computational-storage) — storage-resident and CPU (non-GPU) processors can execute model-training stages (optimizer updates, data selection, fitness scoring), not just inference serving. Grounded in computational_storage_poc + EGGROLL storage-sharded scoring.
+
+Verified works added (all primary-source checked 2026-08-15): Poincaré Embeddings 1705.08039 (c22), Geometric Clifford Algebra Networks 2302.06594 (c22), Smart-Infinity 2403.06664 (c23; SmartUpdate on real SmartSSD, up to 2.11x training speedup), ZeRO-Infinity 2104.07857 (c23; GPU+CPU+NVMe training hierarchy), STANNIS 2002.07215 (c23; in-storage training, 2.7x speedup, 69% energy cut), Spark Transformer 2506.06644 (c22/c23; top-k activation sparsity, up to 1.79x CPU decode speedup). EGGROLL (w31) remapped to c23. Corpus 21->23 claims; catalog 78->84 works; strong 67->73; coverage 100.0%.
+
 
 ## Existing priorities and open questions
 
@@ -123,3 +132,4 @@ See loop_01 papers and REFERENCES.md for the embedded attribution. Key open rese
 - Iter 13 (2026-08-15): added AdapterFusion (2005.00247; non-destructive adapter composition and retention across 16 NLU tasks; c07/c09) after primary-source verification. Catalog target 74 unique works; strong 62; coverage target 100.0%.
 - Iter 14 (2026-08-15): verified and promoted Randomly Removing 50% of Dimensions in Text Embeddings (2508.17744; random removal up to 50% across 6 encoders and 26 retrieval/classification tasks; c03) from supporting to strong. Catalog remains 74 unique works; strong 63; coverage 100.0%.
 - Iter 15 (2026-08-15): mined previously-excluded docs: `next-session.md` is a BHS debt ledger (no research claims); `chelation_opsd_research/loop_01` yields 5 materially new claims (c17 asymmetric privileged-context distillation, c18 KL anchoring, c19 trust-region filtering, c20 constitutional critique, c21 process-reward credit). Remapped 7 existing strong works to the new claims (OPSD/SDPO→c17, SDFT→c18, MIS-PO→c19, Constitutional AI→c20, ReST-MCTS*/PRM survey→c21). Verified and added 4 gap-filling works: All-but-the-Top 1702.01417 (structural duplicate, c04), SelfAug 2509.03934 (c18/c09), Process-based Self-Rewarding 2503.03746 (c21/c07), Wild-Time 2211.14238 (c06/c13). Caught and rejected wrong-ID candidate 2211.14288 (not Wild-Time; geometry paper). Corpus 16→21 claims; catalog 74→78 works; strong 63→67; coverage 100.0%.
+- Iter 16 (2026-08-15): user-directed research pass on CPU/SSD-processor training and the geometric model-shape paradigm. Added repo-grounded claims c22 (geometric/structural model-shape paradigm; the literal 8 perturbations/sides/3D phrasing has no in-repo citation and is mapped via EGGROLL low-rank shape + liquified-lattice vision + hyperbolic/geometric-algebra/sparse templates) and c23 (storage/CPU processors execute training stages, not just inference serving). Verified + added 6 works from primary-source reads: Poincare Embeddings 1705.08039 (c22), GCANs 2302.06594 (c22), Smart-Infinity 2403.06664 (c23; up to 2.11x training speedup), ZeRO-Infinity 2104.07857 (c23; GPU+CPU+NVMe hierarchy), STANNIS 2002.07215 (c23; 2.7x speedup, 69% energy cut), Spark Transformer 2506.06644 (c22/c23; up to 1.79x CPU decode speedup). EGGROLL w31 remapped to c23. Corpus 21->23 claims; catalog 78->84 works; strong 67->73; coverage 100.0%.
