@@ -1,0 +1,17 @@
+cid	track	claim_text
+c01	chelation	Post-hoc residual embedding correction (~x+delta(x)+L2 norm) improves retrieval in noisy neighborhoods without mutating frozen base weights
+c02	chelation	Bounded corrections (~0.0078 INT8 quantization noise floor) keep adapters quantizable after training
+c03	dimension-masking	Learned per-dimension masks steer which embedding dimensions are corrected or masked
+c04	spectral-reranking	Center-of-mass / spectral centering reranks documents inside noisy neighborhoods
+c05	sedimentation	Contrastive sedimentation on collapse-event logs tunes adapters for future retrieval
+c06	drift-detection	Topology / isomer / structural signals expose degradation that ranking metrics alone miss
+c07	self-healing	Adapter-only self-healing recovers retrieval after induced drift (rotation 3/3 recovery@12; noise 0/3 on uncalibrated severity)
+c08	distillation	Teacher-guided (hybrid) distillation improves retrieval and transfers across SciFact / NFCorpus road-course runs
+c09	online-correction	Inference-time adapter / online updates improve quality without destabilizing retention and stability
+c10	cross-lingual	Language-aware teacher routing generalizes embedding correction across languages
+c11	lattice	Unified annealing temperature schedule (temperature controller) unifies explore/stabilize across sedimentation, ES, online updates
+c12	lattice	Evidence DAG over the attribution pool links query-doc-actuator relationships dynamically
+c13	lattice	Drift-triggered disintegration plus re-annealing keeps the pool healthy under sparsification without recall collapse
+c14	quantization	Steerable quant-surviving shims gate promotion of adapter routes (quantization survival + retrieval fitness)
+c15	computational-storage	Block-graph payloads with parity can serve retrieval / model shards from disk with host parity verified
+c16	evaluation	Multi-dataset (BEIR-style) evaluation shows retrieval adaptations generalize beyond SciFact
