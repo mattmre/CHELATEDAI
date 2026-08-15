@@ -2,7 +2,7 @@
 
 Auto-generated from related_works.tsv (source of truth; keep edits in TSV and regenerate).
 
-Totals: 65 works: relevant = 22, math_foundation = 5, structural_duplicate = 3, cousin = 16, additive = 19
+Totals: 66 works: relevant = 22, math_foundation = 5, structural_duplicate = 3, cousin = 17, additive = 19
 
 ## Strong works by claim
 ### c01 [chelation] - Post-hoc residual embedding correction (~x+delta(x)+L2 norm) improves retrieval in noisy neighborhoods without mutating frozen base weights
@@ -92,6 +92,7 @@ Totals: 65 works: relevant = 22, math_foundation = 5, structural_duplicate = 3, 
 - w41 (relevant): LogicRAG: You Don't Need Pre-built Graphs for RAG - arXiv:2508.06105 - verified on arXiv abs 2025-08-08; query-specific DAG of subproblems with adaptive retrieval; evidence-DAG cousin
 - w42 (relevant): GNN-RAG: Graph Neural Retrieval for LLM Reasoning - arXiv:2405.20139 - verified on arXiv abs 2024-05-30; GNN dense subgraph reasoner for KG RAG; prior art to lattice GNN prototype
 - w57 (cousin): Sparse Autoencoders Find Highly Interpretable Features in Language Models - arXiv:2309.08600 - verified on arXiv abs 2023-09-15; sparse feature directions for steering; basis for Model-Scope steering and lattice shims
+- w65 (cousin): LightRAG: Simple and Fast Retrieval-Augmented Generation - arXiv:2410.05779 - dual-level entity-relation graph retrieval; evidence-graph retrieval cousin; verified on arXiv abs
 
 ### c13 [lattice] - Drift-triggered disintegration plus re-annealing keeps the pool healthy under sparsification without recall collapse
 - w11 (structural_duplicate): CRAG Corrective Retrieval Augmented Generation - arXiv:2401.15884 - Retrieval correction/rerank-when-unstable; direct structural cousin of chelation trigger loop
@@ -105,6 +106,7 @@ Totals: 65 works: relevant = 22, math_foundation = 5, structural_duplicate = 3, 
 - w42 (relevant): GNN-RAG: Graph Neural Retrieval for LLM Reasoning - arXiv:2405.20139 - verified on arXiv abs 2024-05-30; GNN dense subgraph reasoner for KG RAG; prior art to lattice GNN prototype
 - w43 (cousin): The Molecular Structure of Thought (Mole-Syn) - arXiv:2601.06002 - verified on arXiv abs 2026-01-09; behavioral topology over CoT bond types; lattice disintegration/annealing analog
 - w58 (relevant): DriftLens: Unsupervised Concept Drift Detection from Deep Learning Representations in Real-time - arXiv:2406.17813 - verified on arXiv abs 2024-06-24; distribution-distance drift detection in embedding/representation space + per-label characterization; direct method for lattice drift-triggered disintegration and repo drift experiments
+- w65 (cousin): LightRAG: Simple and Fast Retrieval-Augmented Generation - arXiv:2410.05779 - dual-level entity-relation graph retrieval; evidence-graph retrieval cousin; verified on arXiv abs
 
 ### c14 [quantization] - Steerable quant-surviving shims gate promotion of adapter routes (quantization survival + retrieval fitness)
 - w13 (cousin): Self-RAG - arXiv:2310.11511 - Reflection tokens gate retrieval quality; cousin to SelfEditDirective evaluation gates
@@ -148,7 +150,7 @@ Totals: 65 works: relevant = 22, math_foundation = 5, structural_duplicate = 3, 
 - w62 [supporting]: A Survey on Contextualised Semantic Shift Detection - arXiv:2304.01666 - verified on arXiv abs 2023-04-04; word-level semantic shift detection with contextualised embeddings; drift-detection taxonomy
 - w63 [strong]: GPL: Generative Pseudo Labeling for Unsupervised Domain Adaptation of Dense Retrieval - arXiv:2112.07577 - verified on arXiv abs 2021-12-14; query generation + pseudo labeling for unsupervised retrieval adaptation; domain-transfer analog to sedimentation; up to +9.3 nDCG@10
 - w64 [strong]: LoRA Learns Less and Forgets Less - arXiv:2405.09673 - verified on arXiv abs 2024-05-15; low-rank finetuning preserves base-model retention better than full finetuning; retention evidence for adapter-only correction path
-### cousin - cousin - neighboring problem/approach (16)
+### cousin - cousin - neighboring problem/approach (17)
 - w05 [strong]: SimCSE - arXiv:2104.08821 - Unsupervised contrastive embeddings; baseline for sedimentation-style contrastive training
 - w09 [strong]: TTARAG Predict the Retrieval! - arXiv:2601.11443 - Test-time adaptation of RAG via prefix-suffix self-supervision; ICASSP 2026; verified on arXiv abs
 - w10 [strong]: Adaptive Semantic Prompt Caching with VectorQ - arXiv:2502.03771 - online-learned embedding similarity thresholds with correctness feedback; structural cousin of adaptive chelation threshold guard; verified on arXiv abs (NOTE: repo REFERENCES.md description differs from actual paper)
@@ -165,6 +167,7 @@ Totals: 65 works: relevant = 22, math_foundation = 5, structural_duplicate = 3, 
 - w43 [strong]: The Molecular Structure of Thought (Mole-Syn) - arXiv:2601.06002 - verified on arXiv abs 2026-01-09; behavioral topology over CoT bond types; lattice disintegration/annealing analog
 - w57 [strong]: Sparse Autoencoders Find Highly Interpretable Features in Language Models - arXiv:2309.08600 - verified on arXiv abs 2023-09-15; sparse feature directions for steering; basis for Model-Scope steering and lattice shims
 - w61 [strong]: Mixture-of-Depths: Dynamically Allocating Compute in Transformers - arXiv:2404.02258 - verified on arXiv abs 2024-04-02; top-k capacity-limited routing = steerable per-token compute gates; shim-routing analog
+- w65 [strong]: LightRAG: Simple and Fast Retrieval-Augmented Generation - arXiv:2410.05779 - dual-level entity-relation graph retrieval; evidence-graph retrieval cousin; verified on arXiv abs
 ### structural_duplicate - structural_duplicate - near-identical mechanism (3)
 - w03 [strong]: BERT-Whitening (How to Find Your Friendly Neighborhood) - arXiv:2105.00554 - Post-hoc linear transform removing anisotropy; closest prior art to spectral chelation masking/centering
 - w04 [strong]: BERT-flow (Sentence Embeddings of PLMs) - arXiv:2011.05864 - Normalizing-flow post-processing of embeddings; cousin of spectral centering
