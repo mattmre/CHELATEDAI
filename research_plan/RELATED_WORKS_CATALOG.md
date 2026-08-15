@@ -1,8 +1,8 @@
 # ChelatedAI Related Works - Human-Readable Catalog
 
-Auto-generated from `related_works.tsv` (source of truth; regenerate after catalog edits).
+Auto-generated from `related_works.tsv` (source of truth).
 
-Totals: 69 works; strong=57; supporting=12; structural_duplicates=3.
+Totals: 74 works; strong=62; supporting=12; structural_duplicates=3.
 
 ## Strong works by claim
 ### c01 [chelation] - Post-hoc residual embedding correction (~x+delta(x)+L2 norm) improves retrieval in noisy neighborhoods without mutating frozen base weights
@@ -30,6 +30,7 @@ Totals: 69 works; strong=57; supporting=12; structural_duplicates=3.
 - w04 (structural_duplicate): BERT-flow (Sentence Embeddings of PLMs) - arXiv:2011.05864 - Normalizing-flow post-processing of embeddings; cousin of spectral centering
 - w55 (math_foundation): Neural ODE / continuous normalizing flows - arXiv:1806.07366 - continuous-depth transform rationale for embedding correction as flow; math foundation for spectral/geometric chelation
 - w56 (relevant): Temperature Scaling: On Calibration of Modern Neural Networks - arXiv:1706.04599 - temperature parameter in spectral chelation ranking scores (REFERENCES.md)
+- w69 (math_foundation): Deep CORAL: Correlation Alignment for Deep Domain Adaptation - arXiv:1607.01719 - verified on arXiv abs 2016-07-06; aligns second-order source/target statistics with linear/nonlinear transforms; mathematical basis for covariance-aware embedding correction and drift thresholds
 
 ### c05 [sedimentation] - Contrastive sedimentation on collapse-event logs tunes adapters for future retrieval
 - w05 (cousin): SimCSE - arXiv:2104.08821 - Unsupervised contrastive embeddings; baseline for sedimentation-style contrastive training
@@ -45,6 +46,9 @@ Totals: 69 works; strong=57; supporting=12; structural_duplicates=3.
 - w66 (relevant): Test-Time Training with Self-Supervision for Generalization under Distribution Shifts - arXiv:1909.13231 - verified on arXiv abs 2019-09-29; self-supervised updates on unlabeled test samples, including online streams; foundational test-time adaptation analog
 - w67 (relevant): Tent: Fully Test-time Adaptation by Entropy Minimization - arXiv:2006.10726 - verified on arXiv abs 2020-06-18; source-free online affine adaptation; entropy objective is a caution for collapse-safe gates
 - w68 (additive): CoTTA: Continual Test-Time Domain Adaptation - arXiv:2203.13591 - verified on arXiv abs 2022-03-25; weight/augmentation averaging plus stochastic source restoration reduce error accumulation and forgetting under non-stationary shift
+- w69 (math_foundation): Deep CORAL: Correlation Alignment for Deep Domain Adaptation - arXiv:1607.01719 - verified on arXiv abs 2016-07-06; aligns second-order source/target statistics with linear/nonlinear transforms; mathematical basis for covariance-aware embedding correction and drift thresholds
+- w70 (math_foundation): Domain-Adversarial Training of Neural Networks (DANN) - arXiv:1505.07818 - verified on arXiv abs 2015-05-28; domain-invariant representation learning with gradient reversal; foundation for source-target drift adaptation and safe routing
+- w71 (math_foundation): A Kernel Method for the Two-Sample Problem (MMD) - arXiv:0805.2368 - verified on arXiv abs 2008-05-15; RKHS two-sample test with linear approximations; principled drift detector candidate for embedding windows
 
 ### c07 [self-healing] - Adapter-only self-healing recovers retrieval after induced drift (rotation 3/3 recovery@12; noise 0/3 on uncalibrated severity)
 - w01 (math_foundation): Elastic Weight Consolidation - arXiv:1612.00796 - Retention/forgetting anchor; basis for retention gates and replay guards
@@ -62,6 +66,7 @@ Totals: 69 works; strong=57; supporting=12; structural_duplicates=3.
 - w32 (additive): SEAL Self-Adapting Language Models - arXiv:2506.10943 - Source of SEAL planner inspiration in repo; verified on arXiv; replaces wrong id 2412.01122
 - w64 (relevant): LoRA Learns Less and Forgets Less - arXiv:2405.09673 - verified on arXiv abs 2024-05-15; low-rank finetuning preserves base-model retention better than full finetuning; retention evidence for adapter-only correction path
 - w68 (additive): CoTTA: Continual Test-Time Domain Adaptation - arXiv:2203.13591 - verified on arXiv abs 2022-03-25; weight/augmentation averaging plus stochastic source restoration reduce error accumulation and forgetting under non-stationary shift
+- w74 (relevant): AdapterFusion: Non-Destructive Task Composition for Transfer Learning - arXiv:2005.00247 - verified on arXiv abs 2020-05-01; separates task-specific adapter extraction from non-destructive composition, evaluates 16 NLU tasks, and avoids full-finetuning forgetting; direct adapter-retention comparator
 
 ### c08 [distillation] - Teacher-guided (hybrid) distillation improves retrieval and transfers across SciFact / NFCorpus road-course runs
 - w02 (math_foundation): Generalized Knowledge Distillation (GKD) - arXiv:2306.13649 - on-policy distillation with JSD from self-generated outputs; verified on arXiv abs 2023-06-23; basis for SDPO/OPSD stability
@@ -82,6 +87,8 @@ Totals: 69 works; strong=57; supporting=12; structural_duplicates=3.
 - w66 (relevant): Test-Time Training with Self-Supervision for Generalization under Distribution Shifts - arXiv:1909.13231 - verified on arXiv abs 2019-09-29; self-supervised updates on unlabeled test samples, including online streams; foundational test-time adaptation analog
 - w67 (relevant): Tent: Fully Test-time Adaptation by Entropy Minimization - arXiv:2006.10726 - verified on arXiv abs 2020-06-18; source-free online affine adaptation; entropy objective is a caution for collapse-safe gates
 - w68 (additive): CoTTA: Continual Test-Time Domain Adaptation - arXiv:2203.13591 - verified on arXiv abs 2022-03-25; weight/augmentation averaging plus stochastic source restoration reduce error accumulation and forgetting under non-stationary shift
+- w70 (math_foundation): Domain-Adversarial Training of Neural Networks (DANN) - arXiv:1505.07818 - verified on arXiv abs 2015-05-28; domain-invariant representation learning with gradient reversal; foundation for source-target drift adaptation and safe routing
+- w74 (relevant): AdapterFusion: Non-Destructive Task Composition for Transfer Learning - arXiv:2005.00247 - verified on arXiv abs 2020-05-01; separates task-specific adapter extraction from non-destructive composition, evaluates 16 NLU tasks, and avoids full-finetuning forgetting; direct adapter-retention comparator
 
 ### c10 [cross-lingual] - Language-aware teacher routing generalizes embedding correction across languages
 - w47 (relevant): Making Monolingual Sentence Embeddings Multilingual Using KD - arXiv:2004.09813 - Cross-lingual teacher distillation; basis for repo cross_lingual_distillation + language routing
@@ -93,7 +100,6 @@ Totals: 69 works; strong=57; supporting=12; structural_duplicates=3.
 
 ### c12 [lattice] - Evidence DAG over the attribution pool links query-doc-actuator relationships dynamically
 - w14 (cousin): GraphRAG - arXiv:2404.16130 - Evidence-graph RAG with preprocessing pools; closest structural cousin of lattice evidence DAG + precomputed pools
-- w39 (relevant): DualG-MRAG: Decoupling Macro-Reasoning and Micro-Matching for Multimodal RAG - arXiv:2607.28580 - verified on arXiv abs 2026-07-30; GNN+DAG message passing with serialized evidence graph; lattice evidence-DAG match
 - w39 (relevant): DualG-MRAG: Decoupling Macro-Reasoning and Micro-Matching for Multimodal RAG - arXiv:2607.28580 - verified on arXiv abs 2026-07-30; GNN+DAG message passing with serialized evidence graph; lattice evidence-DAG match
 - w40 (relevant): MemGraphRAG: Memory-based Multi-Agent System for Graph RAG - arXiv:2606.00610 - verified on arXiv abs 2026-05-30; hierarchical index + source evidence graph for graph retrieval
 - w41 (relevant): LogicRAG: You Don't Need Pre-built Graphs for RAG - arXiv:2508.06105 - verified on arXiv abs 2025-08-08; query-specific DAG of subproblems with adaptive retrieval; evidence-DAG cousin
@@ -108,7 +114,6 @@ Totals: 69 works; strong=57; supporting=12; structural_duplicates=3.
 - w29 (additive): A Survey of Process Reward Models - arXiv:2510.08049 - Process-supervision survey; verified on arXiv abs (v3 2026-04-29)
 - w31 (additive): EGGROLL Evolution Strategies at the Hyperscale - https://eshyperspace.github.io/ - Low-rank E=A*B^T/sqrt(r) evolution strategies; int8 quantized training evidence; verified against paper PDF
 - w39 (relevant): DualG-MRAG: Decoupling Macro-Reasoning and Micro-Matching for Multimodal RAG - arXiv:2607.28580 - verified on arXiv abs 2026-07-30; GNN+DAG message passing with serialized evidence graph; lattice evidence-DAG match
-- w39 (relevant): DualG-MRAG: Decoupling Macro-Reasoning and Micro-Matching for Multimodal RAG - arXiv:2607.28580 - verified on arXiv abs 2026-07-30; GNN+DAG message passing with serialized evidence graph; lattice evidence-DAG match
 - w40 (relevant): MemGraphRAG: Memory-based Multi-Agent System for Graph RAG - arXiv:2606.00610 - verified on arXiv abs 2026-05-30; hierarchical index + source evidence graph for graph retrieval
 - w42 (relevant): GNN-RAG: Graph Neural Retrieval for LLM Reasoning - arXiv:2405.20139 - verified on arXiv abs 2024-05-30; GNN dense subgraph reasoner for KG RAG; prior art to lattice GNN prototype
 - w43 (cousin): The Molecular Structure of Thought (Mole-Syn) - arXiv:2601.06002 - verified on arXiv abs 2026-01-09; behavioral topology over CoT bond types; lattice disintegration/annealing analog
@@ -120,6 +125,7 @@ Totals: 69 works; strong=57; supporting=12; structural_duplicates=3.
 - w28 (additive): MIS-PO filtered policy optimization (Step 3.5 Flash) - arXiv:2602.10604 - Binary token+trajectory ratio filtering for stable off-policy RL; verified on arXiv abs
 - w57 (cousin): Sparse Autoencoders Find Highly Interpretable Features in Language Models - arXiv:2309.08600 - verified on arXiv abs 2023-09-15; sparse feature directions for steering; basis for Model-Scope steering and lattice shims
 - w61 (cousin): Mixture-of-Depths: Dynamically Allocating Compute in Transformers - arXiv:2404.02258 - verified on arXiv abs 2024-04-02; top-k capacity-limited routing = steerable per-token compute gates; shim-routing analog
+- w72 (cousin): Switch Transformers: Scaling to Trillion Parameter Models with Simple and Efficient Sparsity - arXiv:2101.03961 - verified on arXiv abs 2021-01-11; capacity-constrained top-1 expert routing, load-balancing, lower-precision training, and stability controls; comparator for quant-surviving shim route selection
 
 ### c15 [computational-storage] - Block-graph payloads with parity can serve retrieval / model shards from disk with host parity verified
 - w50 (additive): TRACE: Unlocking Effective CXL Bandwidth via Lossless Compression and Precision Scaling - arXiv:2509.03377 - verified on arXiv abs 2025-09-03; BF16 KV footprint -46.9% lossless, 4.24x throughput at 128k tokens; real CXL tier latency evidence
@@ -132,6 +138,7 @@ Totals: 69 works; strong=57; supporting=12; structural_duplicates=3.
 - w15 (relevant): BEIR - arXiv:2104.08663 - Zero-shot retrieval benchmark suite used in repo (REFERENCES.md)
 - w16 (relevant): MTEB - arXiv:2210.07316 - Embedding benchmark suite used in repo (REFERENCES.md)
 - w63 (relevant): GPL: Generative Pseudo Labeling for Unsupervised Domain Adaptation of Dense Retrieval - arXiv:2112.07577 - verified on arXiv abs 2021-12-14; query generation + pseudo labeling for unsupervised retrieval adaptation; domain-transfer analog to sedimentation; up to +9.3 nDCG@10
+- w73 (cousin): Ragas: Automated Evaluation of Retrieval Augmented Generation - arXiv:2309.15217 - verified on arXiv abs 2023-09-26; reference-free RAG metrics separate retrieval relevance, context focus, faithfulness, and generation quality; task-centric evaluation cousin for BEIR/MTEB generalization
 
 ## Category index
 ### relevant (24)
@@ -140,7 +147,6 @@ Totals: 69 works; strong=57; supporting=12; structural_duplicates=3.
 - w08 [strong]: Online-Optimized RAG for Tool Use and Function Calling (arXiv:2509.20415)
 - w15 [strong]: BEIR (arXiv:2104.08663)
 - w16 [strong]: MTEB (arXiv:2210.07316)
-- w39 [strong]: DualG-MRAG: Decoupling Macro-Reasoning and Micro-Matching for Multimodal RAG (arXiv:2607.28580)
 - w39 [strong]: DualG-MRAG: Decoupling Macro-Reasoning and Micro-Matching for Multimodal RAG (arXiv:2607.28580)
 - w40 [strong]: MemGraphRAG: Memory-based Multi-Agent System for Graph RAG (arXiv:2606.00610)
 - w41 [strong]: LogicRAG: You Don't Need Pre-built Graphs for RAG (arXiv:2508.06105)
@@ -159,8 +165,9 @@ Totals: 69 works; strong=57; supporting=12; structural_duplicates=3.
 - w64 [strong]: LoRA Learns Less and Forgets Less (arXiv:2405.09673)
 - w66 [strong]: Test-Time Training with Self-Supervision for Generalization under Distribution Shifts (arXiv:1909.13231)
 - w67 [strong]: Tent: Fully Test-time Adaptation by Entropy Minimization (arXiv:2006.10726)
+- w74 [strong]: AdapterFusion: Non-Destructive Task Composition for Transfer Learning (arXiv:2005.00247)
 
-### cousin (17)
+### cousin (19)
 - w05 [strong]: SimCSE (arXiv:2104.08821)
 - w09 [strong]: TTARAG Predict the Retrieval! (arXiv:2601.11443)
 - w10 [strong]: Adaptive Semantic Prompt Caching with VectorQ (arXiv:2502.03771)
@@ -178,6 +185,8 @@ Totals: 69 works; strong=57; supporting=12; structural_duplicates=3.
 - w57 [strong]: Sparse Autoencoders Find Highly Interpretable Features in Language Models (arXiv:2309.08600)
 - w61 [strong]: Mixture-of-Depths: Dynamically Allocating Compute in Transformers (arXiv:2404.02258)
 - w65 [strong]: LightRAG: Simple and Fast Retrieval-Augmented Generation (arXiv:2410.05779)
+- w72 [strong]: Switch Transformers: Scaling to Trillion Parameter Models with Simple and Efficient Sparsity (arXiv:2101.03961)
+- w73 [strong]: Ragas: Automated Evaluation of Retrieval Augmented Generation (arXiv:2309.15217)
 
 ### structural_duplicate (3)
 - w03 [strong]: BERT-Whitening (How to Find Your Friendly Neighborhood) (arXiv:2105.00554)
@@ -206,10 +215,13 @@ Totals: 69 works; strong=57; supporting=12; structural_duplicates=3.
 - w60 [strong]: DAPO: An Open-Source LLM Reinforcement Learning System at Scale (arXiv:2503.14476)
 - w68 [strong]: CoTTA: Continual Test-Time Domain Adaptation (arXiv:2203.13591)
 
-### math_foundation (5)
+### math_foundation (8)
 - w01 [strong]: Elastic Weight Consolidation (arXiv:1612.00796)
 - w02 [strong]: Generalized Knowledge Distillation (GKD) (arXiv:2306.13649)
 - w35 [supporting]: GPTQ (arXiv:2210.17323)
 - w36 [supporting]: CMA-ES and Natural Evolution Strategies (arXiv:1604.00772)
 - w55 [strong]: Neural ODE / continuous normalizing flows (arXiv:1806.07366)
+- w69 [strong]: Deep CORAL: Correlation Alignment for Deep Domain Adaptation (arXiv:1607.01719)
+- w70 [strong]: Domain-Adversarial Training of Neural Networks (DANN) (arXiv:1505.07818)
+- w71 [strong]: A Kernel Method for the Two-Sample Problem (MMD) (arXiv:0805.2368)
 

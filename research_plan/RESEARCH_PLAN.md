@@ -1,7 +1,7 @@
 # ChelatedAI Related-Works Research Plan
 
 Ownership: this plan lives in the repo and is updated continuously.
-Status: baseline (iteration 0) — active.
+Status: active — iteration 13 research pass; current catalog target is 74 works / 62 strong / 100% claim coverage.
 
 ## Objective
 
@@ -19,7 +19,7 @@ Identify and curate related works — relevant, cousins, structural duplicates, 
 - docs/chelation_opsd_research/loop_01/01_literature_deep_dive.md — OPSD/SDPO/MIS-PO
 - docs/chelation_opsd_research/loop_01/09_related_research_scan.md — existing self-improvement scan with 12 upgrade patterns
 - docs/chelation_opsd_research/CHELATION_OPSD_RESEARCH_PLAN.md — 10-loop program
-- scout report research_processing/extract_claims_1.md for attnres/, evolution-strategies/, seal—eggroll/, etc. (pending output)
+- research_processing/extract_claims_1.md — compact claim extraction report for attnres/, evolution-strategies/, SEAL/EGGROLL, drift, storage, and evaluation docs
 
 ## Related-work categories and matching criteria
 
@@ -60,11 +60,11 @@ Rationale: objective is identification of strong supporting works; a fixed, doc-
 
 ## Related-work categories to target next (gaps, ascending priority)
 
-1. verify arXiv availability of supporting rows (DualG-MRAG, MemGraphRAG, LogicRAG, CXL/KV works) then promote to strong
-2. lattice shims / gating: MoE-style routing gates, sliced / conditional compute (claim c14 depth; w57 SAE adjacent)
-3. drift-detection: concept-drift benchmarks + continual-eval standards (claim c06/c13 depth)
-4. computational-storage: extract concrete latency numbers from CXL/near-storage works into plan tables
-5. cross-lingual: compare mBERT-KD recipe against repo cross_lingual_distillation module (c10)
+1. Verify remaining supporting/seed rows (RDR, LaBSE, DPR, and related entries) against primary sources before promotion.
+2. Compare additional structural duplicates across post-hoc correction, whitening/flow, corrective retrieval, and routed-compute mechanisms; document near-duplicate boundaries.
+3. Add drift-detection benchmarks and continual-evaluation standards around c06/c13, with explicit threshold calibration.
+4. Extract concrete end-to-end latency/energy values from computational-storage works and distinguish near-storage scoring from storage-resident model compute.
+5. Compare mBERT-KD, BGE-M3, and LaBSE recipes against the repo's `cross_lingual_distillation` module (c10).
 
 
 ## Existing priorities and open questions
@@ -101,3 +101,7 @@ See loop_01 papers and REFERENCES.md for the embedded attribution. Key open rese
 - Iter 7 (2026-08-15): added LoRA Learns Less and Forgets Less (2405.09673; retention evidence for low-rank correction; c07/c09); regenerated catalog. Catalog 65 works; strong 53. Coverage steady 100.0.
 - Iter 8 (2026-08-15): added LightRAG (2410.05779; graph+vector dual-level retrieval with incremental updates; lattice evidence-graph cousin; c12/c13). Catalog 66 works; strong 54. Coverage steady 100.0.
 - Iter 9 (2026-08-15): added verified test-time adaptation cluster: Test-Time Training 1909.13231 (self-supervised online updates), Tent 2006.10726 (entropy-minimization affine adaptation with collapse caution), CoTTA 2203.13591 (continual adaptation with source restoration/retention); catalog 69 works; strong 57; coverage steady 100.0.
+- Iter 10 (2026-08-15): added verified math-foundation works: Deep CORAL (1607.01719; covariance alignment; c04/c06), DANN (1505.07818; domain-invariant routing; c06/c09), and MMD (0805.2368; RKHS two-sample drift test; c06). After removing a duplicated pre-existing DualG-MRAG row, the catalog has 71 unique works; strong 59; coverage 100.0%.
+- Iter 11 (2026-08-15): removed a duplicated DualG-MRAG TSV row after uniqueness audit, then added Switch Transformers (2101.03961; capacity-constrained top-1 routing, load balancing, lower-precision stability; c14) after primary-source verification. Catalog target 72 unique works; strong 60; coverage target 100.0%.
+- Iter 12 (2026-08-15): added Ragas (2309.15217; reference-free retrieval/context/faithfulness evaluation; c16) after primary-source verification. Catalog 73 unique works; strong 61; coverage 100.0%.
+- Iter 13 (2026-08-15): added AdapterFusion (2005.00247; non-destructive adapter composition and retention across 16 NLU tasks; c07/c09) after primary-source verification. Catalog target 74 unique works; strong 62; coverage target 100.0%.
