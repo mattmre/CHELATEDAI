@@ -15,3 +15,8 @@ c13	lattice	Drift-triggered disintegration plus re-annealing keeps the pool heal
 c14	quantization	Steerable quant-surviving shims gate promotion of adapter routes (quantization survival + retrieval fitness)
 c15	computational-storage	Block-graph payloads with parity can serve retrieval / model shards from disk with host parity verified
 c16	evaluation	Multi-dataset (BEIR-style) evaluation shows retrieval adaptations generalize beyond SciFact
+c17	distillation	Asymmetric privileged-context self-distillation (teacher sees diagnostics, student does not) converts advisory self-edit directives into stable persistent adapter updates without mutating base weights
+c18	online-correction	Explicit KL divergence anchoring to a reference policy during adapter training prevents catastrophic forgetting across repeated self-edits
+c19	sedimentation	Trust-region binary filtering of on-policy correction samples (MIS-PO-style) reduces gradient variance and collapse risk in adapter training versus sparse thresholded replay
+c20	self-healing	Constitutional critique-and-revise of proposed self-edit directives raises directive acceptance rate and long-cycle stability
+c21	evaluation	Process-reward (step-level) supervision gives denser credit assignment for self-edit acceptance than outcome-only fitness

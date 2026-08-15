@@ -1,7 +1,7 @@
 # ChelatedAI Related-Works Research Plan
 
 Ownership: this plan lives in the repo and is updated continuously.
-Status: active — iteration 14 continuation after segment 1 cap; current catalog is 74 works / 63 strong / 100% claim coverage.
+Status: active — iteration 15 continuation after segment 1 cap; corpus 21 claims; catalog 78 works / 67 strong / 100% claim coverage.
 
 ## Objective
 
@@ -60,11 +60,27 @@ Rationale: objective is identification of strong supporting works; a fixed, doc-
 
 ## Related-work categories to target next (gaps, ascending priority)
 
-1. Verify remaining supporting/seed rows (RDR, LaBSE, DPR, and related entries) against primary sources before promotion.
+1. Verify remaining supporting/seed rows (LaBSE, DPR, SPLADE, GPTQ, CMA-ES, FlexGen, LLM-in-a-Flash) against primary sources before promotion.
 2. Compare additional structural duplicates across post-hoc correction, whitening/flow, corrective retrieval, and routed-compute mechanisms; document near-duplicate boundaries.
 3. Add drift-detection benchmarks and continual-evaluation standards around c06/c13, with explicit threshold calibration.
 4. Extract concrete end-to-end latency/energy values from computational-storage works and distinguish near-storage scoring from storage-resident model compute.
 5. Compare mBERT-KD, BGE-M3, and LaBSE recipes against the repo's `cross_lingual_distillation` module (c10).
+
+## Gap analysis (Iter 15, from chelation_opsd_research mining)
+
+The OPSD program docs (loop_01 04/07/09/12/13) expose five materially new claims (c17-c21) versus the original 16. Completed works with verifiable primary-source results cover each:
+
+| Gap / theory | New claim | Completed work(s) covering it |
+|---|---|---|
+| Advisory-only self-edit directives never become persistent adapter updates | c17 asymmetric privileged-context self-distillation | OPSD 2601.18734, SDPO 2601.20802 (already catalogued) |
+| Catastrophic forgetting during repeated self-edits / no explicit KL anchor | c18 KL/divergence anchoring | SDFT 2601.19897 (catalogued); SelfAug 2509.03934 (added, input-logit alignment, code released) |
+| Sample inefficiency / unstable sparse-thresholded sedimentation | c19 trust-region binary filtering | MIS-PO 2602.10604 (catalogued) |
+| Critique/revise quality of proposed directives | c20 constitutional self-critique | Constitutional AI 2212.08073 (catalogued) |
+| Outcome-only fitness gives sparse credit | c21 process-reward supervision | ReST-MCTS* 2406.03816 + PRM survey 2510.08049 (catalogued); Process-based Self-Rewarding 2503.03746 (added) |
+| Drift benchmarks / continual-eval standards for c06/c13 | — | Wild-Time 2211.14238 (added; Eval-Stream streaming protocol, ~20% ID→OOD drop) |
+| Spectral centering common-component removal | — | All-but-the-Top 1702.01417 (added; 4th structural duplicate) |
+
+Remaining open gaps from the docs with candidate works not yet added: Prompt Distillation 2412.14964 and SelfAug-adjacent LoRA input-KL replay, Self-Evolving Agents 2510.16079 (experience distillation), Self-Distillation Performance Recovery 2604.15794, PRL 2601.10201. Note: `docs/next-session.md` is the BHS carried-debt ledger (engineering debt CD-001..CD-H1), not a research-claim source; its only research-adjacent items are the untested real-model swap path (CD-A2-01) and stale C3a campaign numbers (CD-H1-01).
 
 
 ## Existing priorities and open questions
@@ -106,3 +122,4 @@ See loop_01 papers and REFERENCES.md for the embedded attribution. Key open rese
 - Iter 12 (2026-08-15): added Ragas (2309.15217; reference-free retrieval/context/faithfulness evaluation; c16) after primary-source verification. Catalog 73 unique works; strong 61; coverage 100.0%.
 - Iter 13 (2026-08-15): added AdapterFusion (2005.00247; non-destructive adapter composition and retention across 16 NLU tasks; c07/c09) after primary-source verification. Catalog target 74 unique works; strong 62; coverage target 100.0%.
 - Iter 14 (2026-08-15): verified and promoted Randomly Removing 50% of Dimensions in Text Embeddings (2508.17744; random removal up to 50% across 6 encoders and 26 retrieval/classification tasks; c03) from supporting to strong. Catalog remains 74 unique works; strong 63; coverage 100.0%.
+- Iter 15 (2026-08-15): mined previously-excluded docs: `next-session.md` is a BHS debt ledger (no research claims); `chelation_opsd_research/loop_01` yields 5 materially new claims (c17 asymmetric privileged-context distillation, c18 KL anchoring, c19 trust-region filtering, c20 constitutional critique, c21 process-reward credit). Remapped 7 existing strong works to the new claims (OPSD/SDPO→c17, SDFT→c18, MIS-PO→c19, Constitutional AI→c20, ReST-MCTS*/PRM survey→c21). Verified and added 4 gap-filling works: All-but-the-Top 1702.01417 (structural duplicate, c04), SelfAug 2509.03934 (c18/c09), Process-based Self-Rewarding 2503.03746 (c21/c07), Wild-Time 2211.14238 (c06/c13). Caught and rejected wrong-ID candidate 2211.14288 (not Wild-Time; geometry paper). Corpus 16→21 claims; catalog 74→78 works; strong 63→67; coverage 100.0%.
