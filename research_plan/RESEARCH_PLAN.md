@@ -1,7 +1,7 @@
 # ChelatedAI Related-Works Research Plan
 
 Ownership: this plan lives in the repo and is updated continuously.
-Status: active — iteration 13 research pass; current catalog target is 74 works / 62 strong / 100% claim coverage.
+Status: active — iteration 14 continuation after segment 1 cap; current catalog is 74 works / 63 strong / 100% claim coverage.
 
 ## Objective
 
@@ -105,3 +105,4 @@ See loop_01 papers and REFERENCES.md for the embedded attribution. Key open rese
 - Iter 11 (2026-08-15): removed a duplicated DualG-MRAG TSV row after uniqueness audit, then added Switch Transformers (2101.03961; capacity-constrained top-1 routing, load balancing, lower-precision stability; c14) after primary-source verification. Catalog target 72 unique works; strong 60; coverage target 100.0%.
 - Iter 12 (2026-08-15): added Ragas (2309.15217; reference-free retrieval/context/faithfulness evaluation; c16) after primary-source verification. Catalog 73 unique works; strong 61; coverage 100.0%.
 - Iter 13 (2026-08-15): added AdapterFusion (2005.00247; non-destructive adapter composition and retention across 16 NLU tasks; c07/c09) after primary-source verification. Catalog target 74 unique works; strong 62; coverage target 100.0%.
+- Iter 14 (2026-08-15): verified and promoted Randomly Removing 50% of Dimensions in Text Embeddings (2508.17744; random removal up to 50% across 6 encoders and 26 retrieval/classification tasks; c03) from supporting to strong. Catalog remains 74 unique works; strong 63; coverage 100.0%.

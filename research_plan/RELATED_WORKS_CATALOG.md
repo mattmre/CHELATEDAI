@@ -2,7 +2,7 @@
 
 Auto-generated from `related_works.tsv` (source of truth).
 
-Totals: 74 works; strong=62; supporting=12; structural_duplicates=3.
+Totals: 74 works; strong=63; supporting=11; structural_duplicates=3.
 
 ## Strong works by claim
 ### c01 [chelation] - Post-hoc residual embedding correction (~x+delta(x)+L2 norm) improves retrieval in noisy neighborhoods without mutating frozen base weights
@@ -23,6 +23,7 @@ Totals: 74 works; strong=62; supporting=12; structural_duplicates=3.
 - w03 (structural_duplicate): BERT-Whitening (How to Find Your Friendly Neighborhood) - arXiv:2105.00554 - Post-hoc linear transform removing anisotropy; closest prior art to spectral chelation masking/centering
 - w06 (relevant): Matryoshka Representation Learning - arXiv:2205.13147 - Per-dimension importance; basis for learned dimension mask predictor (REFERENCES.md)
 - w17 (cousin): ColBERT - arXiv:2004.12832 - Late interaction dimension-level operations; comparison point for dimension masking
+- w44 (relevant): Randomly Removing 50% of Dimensions in Text Embeddings has Minimal Impact on Retrieval and Classification Tasks - arXiv:2508.17744 - verified on arXiv abs 2025-08-25; random removal of up to 50% across 6 text encoders and 26 retrieval/classification tasks causes less than 10% performance drop; primary-source support for the repo dimension-masking premise
 - w46 (relevant): Learning to Select: Query-Aware Adaptive Dimension Selection for Dense Retrieval - arXiv:2602.03306 - verified on arXiv abs 2026-02-03; per-query dimension masking; REFERENCES.md mislabels this id as MRL (real MRL is w06)
 
 ### c04 [spectral-reranking] - Center-of-mass / spectral centering reranks documents inside noisy neighborhoods
@@ -151,7 +152,7 @@ Totals: 74 works; strong=62; supporting=12; structural_duplicates=3.
 - w40 [strong]: MemGraphRAG: Memory-based Multi-Agent System for Graph RAG (arXiv:2606.00610)
 - w41 [strong]: LogicRAG: You Don't Need Pre-built Graphs for RAG (arXiv:2508.06105)
 - w42 [strong]: GNN-RAG: Graph Neural Retrieval for LLM Reasoning (arXiv:2405.20139)
-- w44 [supporting]: Random Dimension Removal (arXiv:2508.17744)
+- w44 [strong]: Randomly Removing 50% of Dimensions in Text Embeddings has Minimal Impact on Retrieval and Classification Tasks (arXiv:2508.17744)
 - w45 [supporting]: Dimension Mask Layer: Optimizing Embedding Efficiency for Scalable ID-based Models (arXiv:2510.15308)
 - w46 [strong]: Learning to Select: Query-Aware Adaptive Dimension Selection for Dense Retrieval (arXiv:2602.03306)
 - w47 [strong]: Making Monolingual Sentence Embeddings Multilingual Using KD (arXiv:2004.09813)
