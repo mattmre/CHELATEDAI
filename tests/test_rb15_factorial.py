@@ -146,6 +146,10 @@ class RB15FactorialCoreTests(unittest.TestCase):
             MEASURE_PERIODS=1,
             STEPS_PER_PERIOD=20,
             MAX_COMPUTATION_SECONDS=30.0,
+        ), patch.object(
+            factorial,
+            "_self_rss_bytes",
+            return_value=(64 * 1024**2, 64 * 1024**2, "unit-test-fixture"),
         ):
             payload = factorial.run_factorial(7, reduced_fixture=True)
         encoded = json.dumps(payload, allow_nan=False, sort_keys=True)
