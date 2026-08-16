@@ -1,0 +1,3025 @@
+{
+  "arena": "arena_a_default_swap",
+  "preregistration_sha256": "48bad48fe78bc205b1e9c0abae8cc504ba067c27f2868548107b67a39f5c069a",
+  "preregistration_canonical_sha256": "48bad48fe78bc205b1e9c0abae8cc504ba067c27f2868548107b67a39f5c069a",
+  "preregistration_file_sha256": "7061f1f20e720a653172e9ae995989549d5d07b4ac603215ab3cbdc4ffc5ba15",
+  "record_type": "rung16_pre_report_selection_lock",
+  "report_touched": false,
+  "select_decision": {
+    "ci_passed": false,
+    "floor_passed": true,
+    "frozen": true,
+    "max_floor_loss": 0.005,
+    "metrics": {
+      "no_route": {
+        "evaluated_queries": 30,
+        "mean_ndcg": 0.0,
+        "policy": "no_route",
+        "rows": [
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::100",
+            "ranked_ids": [
+              "SciFact::46565968",
+              "SciFact::9629682",
+              "SciFact::22478394",
+              "SciFact::26026009",
+              "SciFact::313394",
+              "SciFact::4942718",
+              "SciFact::85394684",
+              "SciFact::3619931",
+              "SciFact::7421677",
+              "SciFact::13592721"
+            ],
+            "route": null,
+            "route_key": null
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::1100",
+            "ranked_ids": [
+              "SciFact::19701340",
+              "SciFact::33911859",
+              "SciFact::24351680",
+              "SciFact::8989616",
+              "SciFact::28592273",
+              "SciFact::11915280",
+              "SciFact::45153864",
+              "SciFact::20280410",
+              "SciFact::31019903",
+              "SciFact::952111"
+            ],
+            "route": null,
+            "route_key": null
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::1132",
+            "ranked_ids": [
+              "SciFact::6422576",
+              "SciFact::2988714",
+              "SciFact::4164929",
+              "SciFact::3899896",
+              "SciFact::4662264",
+              "SciFact::26104554",
+              "SciFact::26561572",
+              "SciFact::29124963",
+              "SciFact::25915873",
+              "SciFact::10703001"
+            ],
+            "route": null,
+            "route_key": null
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::1140",
+            "ranked_ids": [
+              "SciFact::19521501",
+              "SciFact::13916951",
+              "SciFact::7965928",
+              "SciFact::24828165",
+              "SciFact::8354687",
+              "SciFact::4345605",
+              "SciFact::9306247",
+              "SciFact::41087952",
+              "SciFact::21271817",
+              "SciFact::21380348"
+            ],
+            "route": null,
+            "route_key": null
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::1185",
+            "ranked_ids": [
+              "SciFact::1495563",
+              "SciFact::34338075",
+              "SciFact::10536636",
+              "SciFact::25515907",
+              "SciFact::50670403",
+              "SciFact::21623140",
+              "SciFact::142559798",
+              "SciFact::19804204",
+              "SciFact::22328290",
+              "SciFact::39652608"
+            ],
+            "route": null,
+            "route_key": null
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::1213",
+            "ranked_ids": [
+              "SciFact::4632921",
+              "SciFact::31902059",
+              "SciFact::11861374",
+              "SciFact::31803596",
+              "SciFact::10692412",
+              "SciFact::8994465",
+              "SciFact::2359152",
+              "SciFact::23974474",
+              "SciFact::45218443",
+              "SciFact::24980622"
+            ],
+            "route": null,
+            "route_key": null
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::132",
+            "ranked_ids": [
+              "SciFact::4421742",
+              "SciFact::8458567",
+              "SciFact::19521501",
+              "SciFact::25300664",
+              "SciFact::5304891",
+              "SciFact::27158570",
+              "SciFact::11569583",
+              "SciFact::29634262",
+              "SciFact::4410181",
+              "SciFact::4414547"
+            ],
+            "route": null,
+            "route_key": null
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::1336",
+            "ranked_ids": [
+              "SciFact::12315072",
+              "SciFact::3899896",
+              "SciFact::13639330",
+              "SciFact::17814815",
+              "SciFact::18924534",
+              "SciFact::3531388",
+              "SciFact::23983289",
+              "SciFact::40667066",
+              "SciFact::25915873",
+              "SciFact::13980338"
+            ],
+            "route": null,
+            "route_key": null
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::137",
+            "ranked_ids": [
+              "SciFact::21307488",
+              "SciFact::10538985",
+              "SciFact::59453688",
+              "SciFact::8734695",
+              "SciFact::883747",
+              "SciFact::34630025",
+              "SciFact::8790729",
+              "SciFact::30492966",
+              "SciFact::3765739",
+              "SciFact::35022568"
+            ],
+            "route": null,
+            "route_key": null
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::142",
+            "ranked_ids": [
+              "SciFact::2056197",
+              "SciFact::10314816",
+              "SciFact::1387104",
+              "SciFact::20758340",
+              "SciFact::40667066",
+              "SciFact::34615397",
+              "SciFact::29124963",
+              "SciFact::9745001",
+              "SciFact::20645538",
+              "SciFact::4632921"
+            ],
+            "route": null,
+            "route_key": null
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::171",
+            "ranked_ids": [
+              "SciFact::11557602",
+              "SciFact::33911859",
+              "SciFact::52176296",
+              "SciFact::20645538",
+              "SciFact::25141908",
+              "SciFact::3052642",
+              "SciFact::6945285",
+              "SciFact::23513818",
+              "SciFact::19708993",
+              "SciFact::46764350"
+            ],
+            "route": null,
+            "route_key": null
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::198",
+            "ranked_ids": [
+              "SciFact::14419116",
+              "SciFact::21063817",
+              "SciFact::5254741",
+              "SciFact::31803596",
+              "SciFact::20428155",
+              "SciFact::45638119",
+              "SciFact::23122306",
+              "SciFact::7029990",
+              "SciFact::37822406",
+              "SciFact::22025252"
+            ],
+            "route": null,
+            "route_key": null
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::212",
+            "ranked_ids": [
+              "SciFact::17119869",
+              "SciFact::6079486",
+              "SciFact::313394",
+              "SciFact::7357135",
+              "SciFact::35008773",
+              "SciFact::34316341",
+              "SciFact::6076903",
+              "SciFact::27134527",
+              "SciFact::3870062",
+              "SciFact::13235609"
+            ],
+            "route": null,
+            "route_key": null
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::216",
+            "ranked_ids": [
+              "SciFact::3052642",
+              "SciFact::18924534",
+              "SciFact::23122306",
+              "SciFact::4164929",
+              "SciFact::33986507",
+              "SciFact::10703001",
+              "SciFact::25300426",
+              "SciFact::25915873",
+              "SciFact::9629682",
+              "SciFact::350542"
+            ],
+            "route": null,
+            "route_key": null
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::217",
+            "ranked_ids": [
+              "SciFact::3052642",
+              "SciFact::9629682",
+              "SciFact::4164929",
+              "SciFact::23122306",
+              "SciFact::7521113",
+              "SciFact::10703001",
+              "SciFact::33986507",
+              "SciFact::25300426",
+              "SciFact::18924534",
+              "SciFact::350542"
+            ],
+            "route": null,
+            "route_key": null
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::237",
+            "ranked_ids": [
+              "SciFact::23704559",
+              "SciFact::34876410",
+              "SciFact::19851614",
+              "SciFact::24906548",
+              "SciFact::10650521",
+              "SciFact::12881593",
+              "SciFact::2159648",
+              "SciFact::40655970",
+              "SciFact::17973161",
+              "SciFact::34316341"
+            ],
+            "route": null,
+            "route_key": null
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::350",
+            "ranked_ids": [
+              "SciFact::26456326",
+              "SciFact::32787042",
+              "SciFact::485020",
+              "SciFact::13514898",
+              "SciFact::36288526",
+              "SciFact::3776162",
+              "SciFact::15997009",
+              "SciFact::2488880",
+              "SciFact::11016410",
+              "SciFact::3825750"
+            ],
+            "route": null,
+            "route_key": null
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::354",
+            "ranked_ids": [
+              "SciFact::15997009",
+              "SciFact::16787954",
+              "SciFact::9629682",
+              "SciFact::23972114",
+              "SciFact::85394684",
+              "SciFact::1922901",
+              "SciFact::22767022",
+              "SciFact::6076903",
+              "SciFact::17805221",
+              "SciFact::7925817"
+            ],
+            "route": null,
+            "route_key": null
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::362",
+            "ranked_ids": [
+              "SciFact::8734695",
+              "SciFact::31851367",
+              "SciFact::14584755",
+              "SciFact::27158570",
+              "SciFact::503050",
+              "SciFact::24523573",
+              "SciFact::2867345",
+              "SciFact::25816994",
+              "SciFact::3067015",
+              "SciFact::25515907"
+            ],
+            "route": null,
+            "route_key": null
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::410",
+            "ranked_ids": [
+              "SciFact::24414345",
+              "SciFact::20109325",
+              "SciFact::5558754",
+              "SciFact::3580005",
+              "SciFact::13734012",
+              "SciFact::31803596",
+              "SciFact::10675756",
+              "SciFact::31834381",
+              "SciFact::10703001",
+              "SciFact::26016929"
+            ],
+            "route": null,
+            "route_key": null
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::508",
+            "ranked_ids": [
+              "SciFact::24097933",
+              "SciFact::25938251",
+              "SciFact::15482274",
+              "SciFact::16787954",
+              "SciFact::32787042",
+              "SciFact::25104843",
+              "SciFact::26026009",
+              "SciFact::10703001",
+              "SciFact::20109325",
+              "SciFact::26016929"
+            ],
+            "route": null,
+            "route_key": null
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::527",
+            "ranked_ids": [
+              "SciFact::32827351",
+              "SciFact::11569583",
+              "SciFact::29467201",
+              "SciFact::7145763",
+              "SciFact::25670099",
+              "SciFact::4421742",
+              "SciFact::11289247",
+              "SciFact::10993232",
+              "SciFact::37249641",
+              "SciFact::23513818"
+            ],
+            "route": null,
+            "route_key": null
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::578",
+            "ranked_ids": [
+              "SciFact::10703001",
+              "SciFact::4856149",
+              "SciFact::12014458",
+              "SciFact::9154703",
+              "SciFact::3619931",
+              "SciFact::20280410",
+              "SciFact::42465769",
+              "SciFact::4311206",
+              "SciFact::32787042",
+              "SciFact::4421742"
+            ],
+            "route": null,
+            "route_key": null
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::690",
+            "ranked_ids": [
+              "SciFact::30464859",
+              "SciFact::6036535",
+              "SciFact::2121272",
+              "SciFact::25104843",
+              "SciFact::3776162",
+              "SciFact::19708993",
+              "SciFact::5586392",
+              "SciFact::168265642",
+              "SciFact::26047921",
+              "SciFact::40212412"
+            ],
+            "route": null,
+            "route_key": null
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::729",
+            "ranked_ids": [
+              "SciFact::24530633",
+              "SciFact::9629682",
+              "SciFact::1576955",
+              "SciFact::22428640",
+              "SciFact::18104691",
+              "SciFact::4421742",
+              "SciFact::23122306",
+              "SciFact::24906548",
+              "SciFact::6826636",
+              "SciFact::8994465"
+            ],
+            "route": null,
+            "route_key": null
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::770",
+            "ranked_ids": [
+              "SciFact::27166444",
+              "SciFact::46437558",
+              "SciFact::22038539",
+              "SciFact::32850528",
+              "SciFact::980196",
+              "SciFact::9976969",
+              "SciFact::58564850",
+              "SciFact::59453688",
+              "SciFact::5402581",
+              "SciFact::19701340"
+            ],
+            "route": null,
+            "route_key": null
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::847",
+            "ranked_ids": [
+              "SciFact::9500590",
+              "SciFact::4664540",
+              "SciFact::4632921",
+              "SciFact::4414547",
+              "SciFact::23985464",
+              "SciFact::19851614",
+              "SciFact::7046487",
+              "SciFact::2095573",
+              "SciFact::20220731",
+              "SciFact::42106119"
+            ],
+            "route": null,
+            "route_key": null
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::859",
+            "ranked_ids": [
+              "SciFact::350542",
+              "SciFact::2015929",
+              "SciFact::13514898",
+              "SciFact::10993232",
+              "SciFact::36288526",
+              "SciFact::26456326",
+              "SciFact::9272598",
+              "SciFact::13732033",
+              "SciFact::7965928",
+              "SciFact::19685306"
+            ],
+            "route": null,
+            "route_key": null
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::94",
+            "ranked_ids": [
+              "SciFact::33911859",
+              "SciFact::12443371",
+              "SciFact::4345605",
+              "SciFact::12513042",
+              "SciFact::3085264",
+              "SciFact::54440",
+              "SciFact::4464565",
+              "SciFact::2015929",
+              "SciFact::356218",
+              "SciFact::9154703"
+            ],
+            "route": null,
+            "route_key": null
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::975",
+            "ranked_ids": [
+              "SciFact::15879931",
+              "SciFact::4421742",
+              "SciFact::14864285",
+              "SciFact::20672596",
+              "SciFact::1576955",
+              "SciFact::8458567",
+              "SciFact::24524403",
+              "SciFact::34733465",
+              "SciFact::17438862",
+              "SciFact::7834603"
+            ],
+            "route": null,
+            "route_key": null
+          }
+        ]
+      },
+      "plane_fp32": {
+        "evaluated_queries": 30,
+        "mean_ndcg": 0.06028340862666778,
+        "policy": "plane",
+        "rows": [
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::100",
+            "ranked_ids": [
+              "SciFact::46565968",
+              "SciFact::8748720",
+              "SciFact::14717213",
+              "SciFact::31902059",
+              "SciFact::9629682",
+              "SciFact::3619931",
+              "SciFact::6826636",
+              "SciFact::45638119",
+              "SciFact::85394684",
+              "SciFact::4300851"
+            ],
+            "route": {
+              "adapter_type": "BoundedAdapter",
+              "key": "cluster:2",
+              "metadata": {
+                "global_score": 0.007863424654009818,
+                "margin": 0.03225267588691911,
+                "margin_delta": 0.02,
+                "route_count": 3,
+                "used_margin_fallback": false
+              },
+              "score": 0.04011610054092893
+            },
+            "route_key": "cluster:2"
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::1100",
+            "ranked_ids": [
+              "SciFact::45153864",
+              "SciFact::21616324",
+              "SciFact::19701340",
+              "SciFact::10538985",
+              "SciFact::46328296",
+              "SciFact::4138659",
+              "SciFact::23148978",
+              "SciFact::24586989",
+              "SciFact::39164524",
+              "SciFact::20288322"
+            ],
+            "route": {
+              "adapter_type": "BoundedAdapter",
+              "key": "global",
+              "metadata": {
+                "global_score": 0.07764265732907945,
+                "margin": -0.006600577157553883,
+                "margin_delta": 0.02,
+                "route_count": 3,
+                "used_margin_fallback": true
+              },
+              "score": 0.07764265732907945
+            },
+            "route_key": "global"
+          },
+          {
+            "ndcg": 0.21840743681816419,
+            "query_id": "SciFact::1132",
+            "ranked_ids": [
+              "SciFact::7521113",
+              "SciFact::24828165",
+              "SciFact::22521091",
+              "SciFact::2714623",
+              "SciFact::5633957",
+              "SciFact::33499189",
+              "SciFact::32101982",
+              "SciFact::36444198",
+              "SciFact::3531388",
+              "SciFact::301838"
+            ],
+            "route": {
+              "adapter_type": "BoundedAdapter",
+              "key": "global",
+              "metadata": {
+                "global_score": 0.0736248691974192,
+                "margin": 0.019953065410086485,
+                "margin_delta": 0.02,
+                "route_count": 3,
+                "used_margin_fallback": true
+              },
+              "score": 0.0736248691974192
+            },
+            "route_key": "global"
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::1140",
+            "ranked_ids": [
+              "SciFact::8082528",
+              "SciFact::4500832",
+              "SciFact::46328296",
+              "SciFact::6751418",
+              "SciFact::20428155",
+              "SciFact::20645538",
+              "SciFact::13916951",
+              "SciFact::25452937",
+              "SciFact::24414345",
+              "SciFact::9306247"
+            ],
+            "route": {
+              "adapter_type": "BoundedAdapter",
+              "key": "global",
+              "metadata": {
+                "global_score": 0.03461334238274263,
+                "margin": -0.00845138421216127,
+                "margin_delta": 0.02,
+                "route_count": 3,
+                "used_margin_fallback": true
+              },
+              "score": 0.03461334238274263
+            },
+            "route_key": "global"
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::1185",
+            "ranked_ids": [
+              "SciFact::19804204",
+              "SciFact::21623140",
+              "SciFact::2056197",
+              "SciFact::30464859",
+              "SciFact::46328296",
+              "SciFact::21616324",
+              "SciFact::10463997",
+              "SciFact::6157837",
+              "SciFact::1606628",
+              "SciFact::7005276"
+            ],
+            "route": {
+              "adapter_type": "BoundedAdapter",
+              "key": "cluster:2",
+              "metadata": {
+                "global_score": -0.05880454313692537,
+                "margin": 0.07947762953625558,
+                "margin_delta": 0.02,
+                "route_count": 3,
+                "used_margin_fallback": false
+              },
+              "score": 0.020673086399330208
+            },
+            "route_key": "cluster:2"
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::1213",
+            "ranked_ids": [
+              "SciFact::6251620",
+              "SciFact::27789588",
+              "SciFact::36444198",
+              "SciFact::10703001",
+              "SciFact::40590358",
+              "SciFact::4391121",
+              "SciFact::5531479",
+              "SciFact::5304891",
+              "SciFact::19708993",
+              "SciFact::1084345"
+            ],
+            "route": {
+              "adapter_type": "BoundedAdapter",
+              "key": "global",
+              "metadata": {
+                "global_score": 0.051001236800729585,
+                "margin": 0.008542364951270115,
+                "margin_delta": 0.02,
+                "route_count": 3,
+                "used_margin_fallback": true
+              },
+              "score": 0.051001236800729585
+            },
+            "route_key": "global"
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::132",
+            "ranked_ids": [
+              "SciFact::4421742",
+              "SciFact::27158570",
+              "SciFact::42782688",
+              "SciFact::4414547",
+              "SciFact::5304891",
+              "SciFact::10675756",
+              "SciFact::712078",
+              "SciFact::11861374",
+              "SciFact::22478394",
+              "SciFact::4391121"
+            ],
+            "route": {
+              "adapter_type": "BoundedAdapter",
+              "key": "cluster:0",
+              "metadata": {
+                "global_score": 0.04234399316242917,
+                "margin": 0.039053943217926275,
+                "margin_delta": 0.02,
+                "route_count": 3,
+                "used_margin_fallback": false
+              },
+              "score": 0.08139793638035545
+            },
+            "route_key": "cluster:0"
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::1336",
+            "ranked_ids": [
+              "SciFact::3391547",
+              "SciFact::3531388",
+              "SciFact::25141908",
+              "SciFact::7521113",
+              "SciFact::11349166",
+              "SciFact::43378932",
+              "SciFact::10976596",
+              "SciFact::36444198",
+              "SciFact::38886345",
+              "SciFact::12827098"
+            ],
+            "route": {
+              "adapter_type": "BoundedAdapter",
+              "key": "global",
+              "metadata": {
+                "global_score": 0.043573006804946454,
+                "margin": 0.014476291475445803,
+                "margin_delta": 0.02,
+                "route_count": 3,
+                "used_margin_fallback": true
+              },
+              "score": 0.043573006804946454
+            },
+            "route_key": "global"
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::137",
+            "ranked_ids": [
+              "SciFact::10536636",
+              "SciFact::313394",
+              "SciFact::8298120",
+              "SciFact::59453688",
+              "SciFact::21616324",
+              "SciFact::14584755",
+              "SciFact::19804204",
+              "SciFact::21307488",
+              "SciFact::13445579",
+              "SciFact::2958458"
+            ],
+            "route": {
+              "adapter_type": "BoundedAdapter",
+              "key": "global",
+              "metadata": {
+                "global_score": -0.01733050362652926,
+                "margin": 0.0113213323286649,
+                "margin_delta": 0.02,
+                "route_count": 3,
+                "used_margin_fallback": true
+              },
+              "score": -0.01733050362652926
+            },
+            "route_key": "global"
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::142",
+            "ranked_ids": [
+              "SciFact::38630735",
+              "SciFact::2056197",
+              "SciFact::39539647",
+              "SciFact::25045244",
+              "SciFact::20155713",
+              "SciFact::25761154",
+              "SciFact::9745001",
+              "SciFact::8354687",
+              "SciFact::24338780",
+              "SciFact::21185923"
+            ],
+            "route": {
+              "adapter_type": "BoundedAdapter",
+              "key": "cluster:1",
+              "metadata": {
+                "global_score": -0.011884650977839617,
+                "margin": 0.031566911686687446,
+                "margin_delta": 0.02,
+                "route_count": 3,
+                "used_margin_fallback": false
+              },
+              "score": 0.01968226070884783
+            },
+            "route_key": "cluster:1"
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::171",
+            "ranked_ids": [
+              "SciFact::970012",
+              "SciFact::17438862",
+              "SciFact::15879931",
+              "SciFact::10703001",
+              "SciFact::28015516",
+              "SciFact::16787954",
+              "SciFact::1122198",
+              "SciFact::5531479",
+              "SciFact::23124332",
+              "SciFact::9814332"
+            ],
+            "route": {
+              "adapter_type": "BoundedAdapter",
+              "key": "global",
+              "metadata": {
+                "global_score": 0.07677943928397975,
+                "margin": 0.0038510374857730345,
+                "margin_delta": 0.02,
+                "route_count": 3,
+                "used_margin_fallback": true
+              },
+              "score": 0.07677943928397975
+            },
+            "route_key": "global"
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::198",
+            "ranked_ids": [
+              "SciFact::7029990",
+              "SciFact::14419116",
+              "SciFact::24530633",
+              "SciFact::37822406",
+              "SciFact::34316341",
+              "SciFact::9038803",
+              "SciFact::5254741",
+              "SciFact::21063817",
+              "SciFact::21479575",
+              "SciFact::8989616"
+            ],
+            "route": {
+              "adapter_type": "BoundedAdapter",
+              "key": "cluster:0",
+              "metadata": {
+                "global_score": -0.046522357986949495,
+                "margin": 0.032685615821645086,
+                "margin_delta": 0.02,
+                "route_count": 3,
+                "used_margin_fallback": false
+              },
+              "score": -0.013836742165304412
+            },
+            "route_key": "cluster:0"
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::212",
+            "ranked_ids": [
+              "SciFact::17119869",
+              "SciFact::6722522",
+              "SciFact::25483562",
+              "SciFact::6076903",
+              "SciFact::13235609",
+              "SciFact::31851367",
+              "SciFact::14492964",
+              "SciFact::20943272",
+              "SciFact::6826636",
+              "SciFact::4409524"
+            ],
+            "route": {
+              "adapter_type": "BoundedAdapter",
+              "key": "global",
+              "metadata": {
+                "global_score": 0.05942525888435299,
+                "margin": 0.0007473942491749638,
+                "margin_delta": 0.02,
+                "route_count": 3,
+                "used_margin_fallback": true
+              },
+              "score": 0.05942525888435299
+            },
+            "route_key": "global"
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::216",
+            "ranked_ids": [
+              "SciFact::7521113",
+              "SciFact::36444198",
+              "SciFact::13916951",
+              "SciFact::3531388",
+              "SciFact::32101982",
+              "SciFact::24828165",
+              "SciFact::11253758",
+              "SciFact::2593298",
+              "SciFact::6251620",
+              "SciFact::4323425"
+            ],
+            "route": {
+              "adapter_type": "BoundedAdapter",
+              "key": "global",
+              "metadata": {
+                "global_score": 0.05285498839746295,
+                "margin": 0.013609009653805147,
+                "margin_delta": 0.02,
+                "route_count": 3,
+                "used_margin_fallback": true
+              },
+              "score": 0.05285498839746295
+            },
+            "route_key": "global"
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::217",
+            "ranked_ids": [
+              "SciFact::7521113",
+              "SciFact::36444198",
+              "SciFact::13916951",
+              "SciFact::32101982",
+              "SciFact::24828165",
+              "SciFact::3531388",
+              "SciFact::11253758",
+              "SciFact::3619931",
+              "SciFact::2593298",
+              "SciFact::22521091"
+            ],
+            "route": {
+              "adapter_type": "BoundedAdapter",
+              "key": "global",
+              "metadata": {
+                "global_score": 0.05160158296798712,
+                "margin": 0.010003797877337461,
+                "margin_delta": 0.02,
+                "route_count": 3,
+                "used_margin_fallback": true
+              },
+              "score": 0.05160158296798712
+            },
+            "route_key": "global"
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::237",
+            "ranked_ids": [
+              "SciFact::22767022",
+              "SciFact::1922901",
+              "SciFact::10650521",
+              "SciFact::23704559",
+              "SciFact::2121272",
+              "SciFact::4162857",
+              "SciFact::31304956",
+              "SciFact::31851367",
+              "SciFact::24356383",
+              "SciFact::20943272"
+            ],
+            "route": {
+              "adapter_type": "BoundedAdapter",
+              "key": "cluster:0",
+              "metadata": {
+                "global_score": 0.062378041430460184,
+                "margin": 0.04456820642320273,
+                "margin_delta": 0.02,
+                "route_count": 3,
+                "used_margin_fallback": false
+              },
+              "score": 0.10694624785366291
+            },
+            "route_key": "cluster:0"
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::350",
+            "ranked_ids": [
+              "SciFact::11016410",
+              "SciFact::26456326",
+              "SciFact::36089763",
+              "SciFact::36288526",
+              "SciFact::25141908",
+              "SciFact::2488880",
+              "SciFact::32787042",
+              "SciFact::15129362",
+              "SciFact::167469018",
+              "SciFact::29399239"
+            ],
+            "route": {
+              "adapter_type": "BoundedAdapter",
+              "key": "cluster:2",
+              "metadata": {
+                "global_score": 0.014785543339358026,
+                "margin": 0.027845521624482963,
+                "margin_delta": 0.02,
+                "route_count": 3,
+                "used_margin_fallback": false
+              },
+              "score": 0.04263106496384099
+            },
+            "route_key": "cluster:2"
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::354",
+            "ranked_ids": [
+              "SciFact::4361990",
+              "SciFact::46565968",
+              "SciFact::14591894",
+              "SciFact::4373445",
+              "SciFact::9507605",
+              "SciFact::22767022",
+              "SciFact::1782201",
+              "SciFact::18734652",
+              "SciFact::2121272",
+              "SciFact::9629682"
+            ],
+            "route": {
+              "adapter_type": "BoundedAdapter",
+              "key": "global",
+              "metadata": {
+                "global_score": 0.054960989216660414,
+                "margin": 0.0015269811498240249,
+                "margin_delta": 0.02,
+                "route_count": 3,
+                "used_margin_fallback": true
+              },
+              "score": 0.054960989216660414
+            },
+            "route_key": "global"
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::362",
+            "ranked_ids": [
+              "SciFact::8734695",
+              "SciFact::12839939",
+              "SciFact::2714623",
+              "SciFact::9021186",
+              "SciFact::23972114",
+              "SciFact::6722522",
+              "SciFact::17814815",
+              "SciFact::9433958",
+              "SciFact::3155374",
+              "SciFact::9257019"
+            ],
+            "route": {
+              "adapter_type": "BoundedAdapter",
+              "key": "global",
+              "metadata": {
+                "global_score": 0.029665745681080498,
+                "margin": -0.0044553089943264075,
+                "margin_delta": 0.02,
+                "route_count": 3,
+                "used_margin_fallback": true
+              },
+              "score": 0.029665745681080498
+            },
+            "route_key": "global"
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::410",
+            "ranked_ids": [
+              "SciFact::3580005",
+              "SciFact::11469078",
+              "SciFact::9244474",
+              "SciFact::4688277",
+              "SciFact::5558754",
+              "SciFact::1642727",
+              "SciFact::24906548",
+              "SciFact::31834381",
+              "SciFact::20109325",
+              "SciFact::24163770"
+            ],
+            "route": {
+              "adapter_type": "BoundedAdapter",
+              "key": "cluster:2",
+              "metadata": {
+                "global_score": 0.08111392940094697,
+                "margin": 0.036158488202523056,
+                "margin_delta": 0.02,
+                "route_count": 3,
+                "used_margin_fallback": false
+              },
+              "score": 0.11727241760347003
+            },
+            "route_key": "cluster:2"
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::508",
+            "ranked_ids": [
+              "SciFact::9754530",
+              "SciFact::24088502",
+              "SciFact::2988714",
+              "SciFact::32787042",
+              "SciFact::16787954",
+              "SciFact::5558754",
+              "SciFact::24097933",
+              "SciFact::22414304",
+              "SciFact::6422576",
+              "SciFact::26026009"
+            ],
+            "route": {
+              "adapter_type": "BoundedAdapter",
+              "key": "global",
+              "metadata": {
+                "global_score": 0.0186968552444376,
+                "margin": 0.009119767999830553,
+                "margin_delta": 0.02,
+                "route_count": 3,
+                "used_margin_fallback": true
+              },
+              "score": 0.0186968552444376
+            },
+            "route_key": "global"
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::527",
+            "ranked_ids": [
+              "SciFact::5944514",
+              "SciFact::38380061",
+              "SciFact::25670099",
+              "SciFact::37249641",
+              "SciFact::11141995",
+              "SciFact::7145763",
+              "SciFact::4423559",
+              "SciFact::16057926",
+              "SciFact::9539753",
+              "SciFact::17587795"
+            ],
+            "route": {
+              "adapter_type": "BoundedAdapter",
+              "key": "global",
+              "metadata": {
+                "global_score": -0.005253559616913483,
+                "margin": 0.012828896473384838,
+                "margin_delta": 0.02,
+                "route_count": 3,
+                "used_margin_fallback": true
+              },
+              "score": -0.005253559616913483
+            },
+            "route_key": "global"
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::578",
+            "ranked_ids": [
+              "SciFact::10703001",
+              "SciFact::4856149",
+              "SciFact::42465769",
+              "SciFact::12014458",
+              "SciFact::3619931",
+              "SciFact::9154703",
+              "SciFact::1386103",
+              "SciFact::15997009",
+              "SciFact::7521113",
+              "SciFact::22621251"
+            ],
+            "route": {
+              "adapter_type": "BoundedAdapter",
+              "key": "cluster:0",
+              "metadata": {
+                "global_score": 0.049608106619630395,
+                "margin": 0.021834610677734213,
+                "margin_delta": 0.02,
+                "route_count": 3,
+                "used_margin_fallback": false
+              },
+              "score": 0.07144271729736461
+            },
+            "route_key": "cluster:0"
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::690",
+            "ranked_ids": [
+              "SciFact::25104843",
+              "SciFact::9754530",
+              "SciFact::72580164",
+              "SciFact::22420524",
+              "SciFact::10703001",
+              "SciFact::3776162",
+              "SciFact::75636923",
+              "SciFact::24097933",
+              "SciFact::32850528",
+              "SciFact::30981192"
+            ],
+            "route": {
+              "adapter_type": "BoundedAdapter",
+              "key": "cluster:0",
+              "metadata": {
+                "global_score": -0.04580541926868877,
+                "margin": 0.03941354948542959,
+                "margin_delta": 0.02,
+                "route_count": 3,
+                "used_margin_fallback": false
+              },
+              "score": -0.006391869783259185
+            },
+            "route_key": "cluster:0"
+          },
+          {
+            "ndcg": 0.2890648263178879,
+            "query_id": "SciFact::729",
+            "ranked_ids": [
+              "SciFact::9629682",
+              "SciFact::32101982",
+              "SciFact::16630060",
+              "SciFact::18104691",
+              "SciFact::36444198",
+              "SciFact::6717533",
+              "SciFact::2015929",
+              "SciFact::4421742",
+              "SciFact::1122198",
+              "SciFact::26851674"
+            ],
+            "route": {
+              "adapter_type": "BoundedAdapter",
+              "key": "global",
+              "metadata": {
+                "global_score": 0.002735321935604877,
+                "margin": 0.014534483762425204,
+                "margin_delta": 0.02,
+                "route_count": 3,
+                "used_margin_fallback": true
+              },
+              "score": 0.002735321935604877
+            },
+            "route_key": "global"
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::770",
+            "ranked_ids": [
+              "SciFact::8428837",
+              "SciFact::22328290",
+              "SciFact::583260",
+              "SciFact::5402581",
+              "SciFact::41354899",
+              "SciFact::2158516",
+              "SciFact::19701340",
+              "SciFact::28107602",
+              "SciFact::14240343",
+              "SciFact::14626540"
+            ],
+            "route": {
+              "adapter_type": "BoundedAdapter",
+              "key": "cluster:2",
+              "metadata": {
+                "global_score": -0.02452306837459327,
+                "margin": 0.05385888450121552,
+                "margin_delta": 0.02,
+                "route_count": 3,
+                "used_margin_fallback": false
+              },
+              "score": 0.02933581612662225
+            },
+            "route_key": "cluster:2"
+          },
+          {
+            "ndcg": 0.3010299956639812,
+            "query_id": "SciFact::847",
+            "ranked_ids": [
+              "SciFact::32787042",
+              "SciFact::20649735",
+              "SciFact::37912677",
+              "SciFact::9745001",
+              "SciFact::13734012",
+              "SciFact::623486",
+              "SciFact::42377686",
+              "SciFact::32909242",
+              "SciFact::16787954",
+              "SciFact::15997009"
+            ],
+            "route": {
+              "adapter_type": "BoundedAdapter",
+              "key": "global",
+              "metadata": {
+                "global_score": 0.09128937891307821,
+                "margin": 0.003901992148083913,
+                "margin_delta": 0.02,
+                "route_count": 3,
+                "used_margin_fallback": true
+              },
+              "score": 0.09128937891307821
+            },
+            "route_key": "global"
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::859",
+            "ranked_ids": [
+              "SciFact::11569583",
+              "SciFact::2015929",
+              "SciFact::17919731",
+              "SciFact::7834603",
+              "SciFact::4421742",
+              "SciFact::120385993",
+              "SciFact::6826636",
+              "SciFact::23122306",
+              "SciFact::3067015",
+              "SciFact::38025907"
+            ],
+            "route": {
+              "adapter_type": "BoundedAdapter",
+              "key": "cluster:0",
+              "metadata": {
+                "global_score": -0.015005933881558482,
+                "margin": 0.07400234155578542,
+                "margin_delta": 0.02,
+                "route_count": 3,
+                "used_margin_fallback": false
+              },
+              "score": 0.05899640767422694
+            },
+            "route_key": "cluster:0"
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::94",
+            "ranked_ids": [
+              "SciFact::33911859",
+              "SciFact::3099497",
+              "SciFact::25069745",
+              "SciFact::16787954",
+              "SciFact::29124963",
+              "SciFact::50670403",
+              "SciFact::12443371",
+              "SciFact::10536636",
+              "SciFact::21598000",
+              "SciFact::4483571"
+            ],
+            "route": {
+              "adapter_type": "BoundedAdapter",
+              "key": "global",
+              "metadata": {
+                "global_score": 0.06759675313399757,
+                "margin": 0.007643927838781955,
+                "margin_delta": 0.02,
+                "route_count": 3,
+                "used_margin_fallback": true
+              },
+              "score": 0.06759675313399757
+            },
+            "route_key": "global"
+          },
+          {
+            "ndcg": 1.0,
+            "query_id": "SciFact::975",
+            "ranked_ids": [
+              "SciFact::5304891",
+              "SciFact::4391121",
+              "SciFact::5377059",
+              "SciFact::15879931",
+              "SciFact::45401535",
+              "SciFact::11415809",
+              "SciFact::17438862",
+              "SciFact::3672261",
+              "SciFact::27789588",
+              "SciFact::10675756"
+            ],
+            "route": {
+              "adapter_type": "BoundedAdapter",
+              "key": "global",
+              "metadata": {
+                "global_score": 0.06675240136719836,
+                "margin": 0.0025809336682722644,
+                "margin_delta": 0.02,
+                "route_count": 3,
+                "used_margin_fallback": true
+              },
+              "score": 0.06675240136719836
+            },
+            "route_key": "global"
+          }
+        ]
+      },
+      "plane_quantized": {
+        "evaluated_queries": 30,
+        "mean_ndcg": 0.0502490754378684,
+        "policy": "plane",
+        "rows": [
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::100",
+            "ranked_ids": [
+              "SciFact::46565968",
+              "SciFact::8748720",
+              "SciFact::14717213",
+              "SciFact::31902059",
+              "SciFact::6826636",
+              "SciFact::9629682",
+              "SciFact::45638119",
+              "SciFact::85394684",
+              "SciFact::3619931",
+              "SciFact::16812091"
+            ],
+            "route": {
+              "adapter_type": "BoundedAdapter",
+              "key": "cluster:2",
+              "metadata": {
+                "global_score": 0.007863424654009818,
+                "margin": 0.03225267588691911,
+                "margin_delta": 0.02,
+                "route_count": 3,
+                "used_margin_fallback": false
+              },
+              "score": 0.04011610054092893
+            },
+            "route_key": "cluster:2"
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::1100",
+            "ranked_ids": [
+              "SciFact::45153864",
+              "SciFact::21616324",
+              "SciFact::10538985",
+              "SciFact::19701340",
+              "SciFact::46328296",
+              "SciFact::4138659",
+              "SciFact::23148978",
+              "SciFact::24586989",
+              "SciFact::39164524",
+              "SciFact::20288322"
+            ],
+            "route": {
+              "adapter_type": "BoundedAdapter",
+              "key": "global",
+              "metadata": {
+                "global_score": 0.07764265732907945,
+                "margin": -0.006600577157553883,
+                "margin_delta": 0.02,
+                "route_count": 3,
+                "used_margin_fallback": true
+              },
+              "score": 0.07764265732907945
+            },
+            "route_key": "global"
+          },
+          {
+            "ndcg": 0.21840743681816419,
+            "query_id": "SciFact::1132",
+            "ranked_ids": [
+              "SciFact::7521113",
+              "SciFact::24828165",
+              "SciFact::22521091",
+              "SciFact::2714623",
+              "SciFact::5633957",
+              "SciFact::33499189",
+              "SciFact::32101982",
+              "SciFact::3531388",
+              "SciFact::36444198",
+              "SciFact::301838"
+            ],
+            "route": {
+              "adapter_type": "BoundedAdapter",
+              "key": "global",
+              "metadata": {
+                "global_score": 0.0736248691974192,
+                "margin": 0.019953065410086485,
+                "margin_delta": 0.02,
+                "route_count": 3,
+                "used_margin_fallback": true
+              },
+              "score": 0.0736248691974192
+            },
+            "route_key": "global"
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::1140",
+            "ranked_ids": [
+              "SciFact::8082528",
+              "SciFact::4500832",
+              "SciFact::46328296",
+              "SciFact::6751418",
+              "SciFact::20645538",
+              "SciFact::13916951",
+              "SciFact::20428155",
+              "SciFact::25452937",
+              "SciFact::24414345",
+              "SciFact::9306247"
+            ],
+            "route": {
+              "adapter_type": "BoundedAdapter",
+              "key": "global",
+              "metadata": {
+                "global_score": 0.03461334238274263,
+                "margin": -0.00845138421216127,
+                "margin_delta": 0.02,
+                "route_count": 3,
+                "used_margin_fallback": true
+              },
+              "score": 0.03461334238274263
+            },
+            "route_key": "global"
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::1185",
+            "ranked_ids": [
+              "SciFact::19804204",
+              "SciFact::21623140",
+              "SciFact::2056197",
+              "SciFact::30464859",
+              "SciFact::21616324",
+              "SciFact::10463997",
+              "SciFact::46328296",
+              "SciFact::6157837",
+              "SciFact::1606628",
+              "SciFact::7005276"
+            ],
+            "route": {
+              "adapter_type": "BoundedAdapter",
+              "key": "cluster:2",
+              "metadata": {
+                "global_score": -0.05880454313692537,
+                "margin": 0.07947762953625558,
+                "margin_delta": 0.02,
+                "route_count": 3,
+                "used_margin_fallback": false
+              },
+              "score": 0.020673086399330208
+            },
+            "route_key": "cluster:2"
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::1213",
+            "ranked_ids": [
+              "SciFact::6251620",
+              "SciFact::27789588",
+              "SciFact::36444198",
+              "SciFact::10703001",
+              "SciFact::40590358",
+              "SciFact::4391121",
+              "SciFact::5531479",
+              "SciFact::5304891",
+              "SciFact::19708993",
+              "SciFact::1084345"
+            ],
+            "route": {
+              "adapter_type": "BoundedAdapter",
+              "key": "global",
+              "metadata": {
+                "global_score": 0.051001236800729585,
+                "margin": 0.008542364951270115,
+                "margin_delta": 0.02,
+                "route_count": 3,
+                "used_margin_fallback": true
+              },
+              "score": 0.051001236800729585
+            },
+            "route_key": "global"
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::132",
+            "ranked_ids": [
+              "SciFact::4421742",
+              "SciFact::27158570",
+              "SciFact::4414547",
+              "SciFact::42782688",
+              "SciFact::10675756",
+              "SciFact::5304891",
+              "SciFact::712078",
+              "SciFact::11861374",
+              "SciFact::22478394",
+              "SciFact::4391121"
+            ],
+            "route": {
+              "adapter_type": "BoundedAdapter",
+              "key": "cluster:0",
+              "metadata": {
+                "global_score": 0.04234399316242917,
+                "margin": 0.039053943217926275,
+                "margin_delta": 0.02,
+                "route_count": 3,
+                "used_margin_fallback": false
+              },
+              "score": 0.08139793638035545
+            },
+            "route_key": "cluster:0"
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::1336",
+            "ranked_ids": [
+              "SciFact::3391547",
+              "SciFact::25141908",
+              "SciFact::3531388",
+              "SciFact::7521113",
+              "SciFact::43378932",
+              "SciFact::10976596",
+              "SciFact::11349166",
+              "SciFact::36444198",
+              "SciFact::38886345",
+              "SciFact::12827098"
+            ],
+            "route": {
+              "adapter_type": "BoundedAdapter",
+              "key": "global",
+              "metadata": {
+                "global_score": 0.043573006804946454,
+                "margin": 0.014476291475445803,
+                "margin_delta": 0.02,
+                "route_count": 3,
+                "used_margin_fallback": true
+              },
+              "score": 0.043573006804946454
+            },
+            "route_key": "global"
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::137",
+            "ranked_ids": [
+              "SciFact::10536636",
+              "SciFact::313394",
+              "SciFact::21616324",
+              "SciFact::8298120",
+              "SciFact::19804204",
+              "SciFact::59453688",
+              "SciFact::14584755",
+              "SciFact::21307488",
+              "SciFact::13445579",
+              "SciFact::2958458"
+            ],
+            "route": {
+              "adapter_type": "BoundedAdapter",
+              "key": "global",
+              "metadata": {
+                "global_score": -0.01733050362652926,
+                "margin": 0.0113213323286649,
+                "margin_delta": 0.02,
+                "route_count": 3,
+                "used_margin_fallback": true
+              },
+              "score": -0.01733050362652926
+            },
+            "route_key": "global"
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::142",
+            "ranked_ids": [
+              "SciFact::38630735",
+              "SciFact::2056197",
+              "SciFact::39539647",
+              "SciFact::25045244",
+              "SciFact::20155713",
+              "SciFact::25761154",
+              "SciFact::9745001",
+              "SciFact::8354687",
+              "SciFact::24338780",
+              "SciFact::21185923"
+            ],
+            "route": {
+              "adapter_type": "BoundedAdapter",
+              "key": "cluster:1",
+              "metadata": {
+                "global_score": -0.011884650977839617,
+                "margin": 0.031566911686687446,
+                "margin_delta": 0.02,
+                "route_count": 3,
+                "used_margin_fallback": false
+              },
+              "score": 0.01968226070884783
+            },
+            "route_key": "cluster:1"
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::171",
+            "ranked_ids": [
+              "SciFact::970012",
+              "SciFact::17438862",
+              "SciFact::15879931",
+              "SciFact::10703001",
+              "SciFact::28015516",
+              "SciFact::16787954",
+              "SciFact::1122198",
+              "SciFact::5531479",
+              "SciFact::23124332",
+              "SciFact::3761017"
+            ],
+            "route": {
+              "adapter_type": "BoundedAdapter",
+              "key": "global",
+              "metadata": {
+                "global_score": 0.07677943928397975,
+                "margin": 0.0038510374857730345,
+                "margin_delta": 0.02,
+                "route_count": 3,
+                "used_margin_fallback": true
+              },
+              "score": 0.07677943928397975
+            },
+            "route_key": "global"
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::198",
+            "ranked_ids": [
+              "SciFact::7029990",
+              "SciFact::14419116",
+              "SciFact::24530633",
+              "SciFact::37822406",
+              "SciFact::21063817",
+              "SciFact::9038803",
+              "SciFact::34316341",
+              "SciFact::5254741",
+              "SciFact::21479575",
+              "SciFact::8989616"
+            ],
+            "route": {
+              "adapter_type": "BoundedAdapter",
+              "key": "cluster:0",
+              "metadata": {
+                "global_score": -0.046522357986949495,
+                "margin": 0.032685615821645086,
+                "margin_delta": 0.02,
+                "route_count": 3,
+                "used_margin_fallback": false
+              },
+              "score": -0.013836742165304412
+            },
+            "route_key": "cluster:0"
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::212",
+            "ranked_ids": [
+              "SciFact::17119869",
+              "SciFact::6722522",
+              "SciFact::25483562",
+              "SciFact::6076903",
+              "SciFact::31851367",
+              "SciFact::13235609",
+              "SciFact::6826636",
+              "SciFact::4409524",
+              "SciFact::41087952",
+              "SciFact::22767022"
+            ],
+            "route": {
+              "adapter_type": "BoundedAdapter",
+              "key": "global",
+              "metadata": {
+                "global_score": 0.05942525888435299,
+                "margin": 0.0007473942491749638,
+                "margin_delta": 0.02,
+                "route_count": 3,
+                "used_margin_fallback": true
+              },
+              "score": 0.05942525888435299
+            },
+            "route_key": "global"
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::216",
+            "ranked_ids": [
+              "SciFact::7521113",
+              "SciFact::36444198",
+              "SciFact::13916951",
+              "SciFact::3531388",
+              "SciFact::11253758",
+              "SciFact::24828165",
+              "SciFact::32101982",
+              "SciFact::4856149",
+              "SciFact::2593298",
+              "SciFact::4323425"
+            ],
+            "route": {
+              "adapter_type": "BoundedAdapter",
+              "key": "global",
+              "metadata": {
+                "global_score": 0.05285498839746295,
+                "margin": 0.013609009653805147,
+                "margin_delta": 0.02,
+                "route_count": 3,
+                "used_margin_fallback": true
+              },
+              "score": 0.05285498839746295
+            },
+            "route_key": "global"
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::217",
+            "ranked_ids": [
+              "SciFact::7521113",
+              "SciFact::36444198",
+              "SciFact::13916951",
+              "SciFact::32101982",
+              "SciFact::24828165",
+              "SciFact::11253758",
+              "SciFact::3531388",
+              "SciFact::2593298",
+              "SciFact::3619931",
+              "SciFact::22521091"
+            ],
+            "route": {
+              "adapter_type": "BoundedAdapter",
+              "key": "global",
+              "metadata": {
+                "global_score": 0.05160158296798712,
+                "margin": 0.010003797877337461,
+                "margin_delta": 0.02,
+                "route_count": 3,
+                "used_margin_fallback": true
+              },
+              "score": 0.05160158296798712
+            },
+            "route_key": "global"
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::237",
+            "ranked_ids": [
+              "SciFact::22767022",
+              "SciFact::1922901",
+              "SciFact::10650521",
+              "SciFact::31304956",
+              "SciFact::2121272",
+              "SciFact::23704559",
+              "SciFact::4162857",
+              "SciFact::31851367",
+              "SciFact::24356383",
+              "SciFact::20943272"
+            ],
+            "route": {
+              "adapter_type": "BoundedAdapter",
+              "key": "cluster:0",
+              "metadata": {
+                "global_score": 0.062378041430460184,
+                "margin": 0.04456820642320273,
+                "margin_delta": 0.02,
+                "route_count": 3,
+                "used_margin_fallback": false
+              },
+              "score": 0.10694624785366291
+            },
+            "route_key": "cluster:0"
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::350",
+            "ranked_ids": [
+              "SciFact::11016410",
+              "SciFact::26456326",
+              "SciFact::36089763",
+              "SciFact::25141908",
+              "SciFact::32787042",
+              "SciFact::2488880",
+              "SciFact::167469018",
+              "SciFact::29124963",
+              "SciFact::36288526",
+              "SciFact::29399239"
+            ],
+            "route": {
+              "adapter_type": "BoundedAdapter",
+              "key": "cluster:2",
+              "metadata": {
+                "global_score": 0.014785543339358026,
+                "margin": 0.027845521624482963,
+                "margin_delta": 0.02,
+                "route_count": 3,
+                "used_margin_fallback": false
+              },
+              "score": 0.04263106496384099
+            },
+            "route_key": "cluster:2"
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::354",
+            "ranked_ids": [
+              "SciFact::4361990",
+              "SciFact::46565968",
+              "SciFact::14591894",
+              "SciFact::9507605",
+              "SciFact::4373445",
+              "SciFact::22767022",
+              "SciFact::18734652",
+              "SciFact::1782201",
+              "SciFact::2121272",
+              "SciFact::9629682"
+            ],
+            "route": {
+              "adapter_type": "BoundedAdapter",
+              "key": "global",
+              "metadata": {
+                "global_score": 0.054960989216660414,
+                "margin": 0.0015269811498240249,
+                "margin_delta": 0.02,
+                "route_count": 3,
+                "used_margin_fallback": true
+              },
+              "score": 0.054960989216660414
+            },
+            "route_key": "global"
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::362",
+            "ranked_ids": [
+              "SciFact::8734695",
+              "SciFact::12839939",
+              "SciFact::2714623",
+              "SciFact::23972114",
+              "SciFact::9021186",
+              "SciFact::6722522",
+              "SciFact::17814815",
+              "SciFact::9433958",
+              "SciFact::3155374",
+              "SciFact::42240424"
+            ],
+            "route": {
+              "adapter_type": "BoundedAdapter",
+              "key": "global",
+              "metadata": {
+                "global_score": 0.029665745681080498,
+                "margin": -0.0044553089943264075,
+                "margin_delta": 0.02,
+                "route_count": 3,
+                "used_margin_fallback": true
+              },
+              "score": 0.029665745681080498
+            },
+            "route_key": "global"
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::410",
+            "ranked_ids": [
+              "SciFact::3580005",
+              "SciFact::11469078",
+              "SciFact::9244474",
+              "SciFact::4688277",
+              "SciFact::1642727",
+              "SciFact::5558754",
+              "SciFact::24906548",
+              "SciFact::31834381",
+              "SciFact::20109325",
+              "SciFact::24163770"
+            ],
+            "route": {
+              "adapter_type": "BoundedAdapter",
+              "key": "cluster:2",
+              "metadata": {
+                "global_score": 0.08111392940094697,
+                "margin": 0.036158488202523056,
+                "margin_delta": 0.02,
+                "route_count": 3,
+                "used_margin_fallback": false
+              },
+              "score": 0.11727241760347003
+            },
+            "route_key": "cluster:2"
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::508",
+            "ranked_ids": [
+              "SciFact::9754530",
+              "SciFact::2988714",
+              "SciFact::32787042",
+              "SciFact::24088502",
+              "SciFact::24097933",
+              "SciFact::5558754",
+              "SciFact::16787954",
+              "SciFact::22414304",
+              "SciFact::6422576",
+              "SciFact::26026009"
+            ],
+            "route": {
+              "adapter_type": "BoundedAdapter",
+              "key": "global",
+              "metadata": {
+                "global_score": 0.0186968552444376,
+                "margin": 0.009119767999830553,
+                "margin_delta": 0.02,
+                "route_count": 3,
+                "used_margin_fallback": true
+              },
+              "score": 0.0186968552444376
+            },
+            "route_key": "global"
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::527",
+            "ranked_ids": [
+              "SciFact::5944514",
+              "SciFact::38380061",
+              "SciFact::25670099",
+              "SciFact::37249641",
+              "SciFact::11141995",
+              "SciFact::7145763",
+              "SciFact::16057926",
+              "SciFact::9539753",
+              "SciFact::4423559",
+              "SciFact::17587795"
+            ],
+            "route": {
+              "adapter_type": "BoundedAdapter",
+              "key": "global",
+              "metadata": {
+                "global_score": -0.005253559616913483,
+                "margin": 0.012828896473384838,
+                "margin_delta": 0.02,
+                "route_count": 3,
+                "used_margin_fallback": true
+              },
+              "score": -0.005253559616913483
+            },
+            "route_key": "global"
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::578",
+            "ranked_ids": [
+              "SciFact::10703001",
+              "SciFact::4856149",
+              "SciFact::42465769",
+              "SciFact::12014458",
+              "SciFact::3619931",
+              "SciFact::9154703",
+              "SciFact::1386103",
+              "SciFact::16787954",
+              "SciFact::22621251",
+              "SciFact::7521113"
+            ],
+            "route": {
+              "adapter_type": "BoundedAdapter",
+              "key": "cluster:0",
+              "metadata": {
+                "global_score": 0.049608106619630395,
+                "margin": 0.021834610677734213,
+                "margin_delta": 0.02,
+                "route_count": 3,
+                "used_margin_fallback": false
+              },
+              "score": 0.07144271729736461
+            },
+            "route_key": "cluster:0"
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::690",
+            "ranked_ids": [
+              "SciFact::25104843",
+              "SciFact::72580164",
+              "SciFact::22420524",
+              "SciFact::9754530",
+              "SciFact::10703001",
+              "SciFact::3776162",
+              "SciFact::24097933",
+              "SciFact::75636923",
+              "SciFact::32850528",
+              "SciFact::4506414"
+            ],
+            "route": {
+              "adapter_type": "BoundedAdapter",
+              "key": "cluster:0",
+              "metadata": {
+                "global_score": -0.04580541926868877,
+                "margin": 0.03941354948542959,
+                "margin_delta": 0.02,
+                "route_count": 3,
+                "used_margin_fallback": false
+              },
+              "score": -0.006391869783259185
+            },
+            "route_key": "cluster:0"
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::729",
+            "ranked_ids": [
+              "SciFact::9629682",
+              "SciFact::18104691",
+              "SciFact::16630060",
+              "SciFact::32101982",
+              "SciFact::36444198",
+              "SciFact::2015929",
+              "SciFact::6717533",
+              "SciFact::1122198",
+              "SciFact::4421742",
+              "SciFact::5123516"
+            ],
+            "route": {
+              "adapter_type": "BoundedAdapter",
+              "key": "global",
+              "metadata": {
+                "global_score": 0.002735321935604877,
+                "margin": 0.014534483762425204,
+                "margin_delta": 0.02,
+                "route_count": 3,
+                "used_margin_fallback": true
+              },
+              "score": 0.002735321935604877
+            },
+            "route_key": "global"
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::770",
+            "ranked_ids": [
+              "SciFact::8428837",
+              "SciFact::22328290",
+              "SciFact::583260",
+              "SciFact::41354899",
+              "SciFact::19701340",
+              "SciFact::5402581",
+              "SciFact::2158516",
+              "SciFact::14240343",
+              "SciFact::28107602",
+              "SciFact::9976969"
+            ],
+            "route": {
+              "adapter_type": "BoundedAdapter",
+              "key": "cluster:2",
+              "metadata": {
+                "global_score": -0.02452306837459327,
+                "margin": 0.05385888450121552,
+                "margin_delta": 0.02,
+                "route_count": 3,
+                "used_margin_fallback": false
+              },
+              "score": 0.02933581612662225
+            },
+            "route_key": "cluster:2"
+          },
+          {
+            "ndcg": 0.2890648263178879,
+            "query_id": "SciFact::847",
+            "ranked_ids": [
+              "SciFact::32787042",
+              "SciFact::20649735",
+              "SciFact::37912677",
+              "SciFact::9745001",
+              "SciFact::13734012",
+              "SciFact::623486",
+              "SciFact::42377686",
+              "SciFact::32909242",
+              "SciFact::15997009",
+              "SciFact::16787954"
+            ],
+            "route": {
+              "adapter_type": "BoundedAdapter",
+              "key": "global",
+              "metadata": {
+                "global_score": 0.09128937891307821,
+                "margin": 0.003901992148083913,
+                "margin_delta": 0.02,
+                "route_count": 3,
+                "used_margin_fallback": true
+              },
+              "score": 0.09128937891307821
+            },
+            "route_key": "global"
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::859",
+            "ranked_ids": [
+              "SciFact::11569583",
+              "SciFact::2015929",
+              "SciFact::17919731",
+              "SciFact::7834603",
+              "SciFact::4421742",
+              "SciFact::120385993",
+              "SciFact::6826636",
+              "SciFact::23122306",
+              "SciFact::3067015",
+              "SciFact::7029990"
+            ],
+            "route": {
+              "adapter_type": "BoundedAdapter",
+              "key": "cluster:0",
+              "metadata": {
+                "global_score": -0.015005933881558482,
+                "margin": 0.07400234155578542,
+                "margin_delta": 0.02,
+                "route_count": 3,
+                "used_margin_fallback": false
+              },
+              "score": 0.05899640767422694
+            },
+            "route_key": "cluster:0"
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::94",
+            "ranked_ids": [
+              "SciFact::33911859",
+              "SciFact::25069745",
+              "SciFact::3099497",
+              "SciFact::16787954",
+              "SciFact::29124963",
+              "SciFact::10536636",
+              "SciFact::4345605",
+              "SciFact::21598000",
+              "SciFact::50670403",
+              "SciFact::12443371"
+            ],
+            "route": {
+              "adapter_type": "BoundedAdapter",
+              "key": "global",
+              "metadata": {
+                "global_score": 0.06759675313399757,
+                "margin": 0.007643927838781955,
+                "margin_delta": 0.02,
+                "route_count": 3,
+                "used_margin_fallback": true
+              },
+              "score": 0.06759675313399757
+            },
+            "route_key": "global"
+          },
+          {
+            "ndcg": 1.0,
+            "query_id": "SciFact::975",
+            "ranked_ids": [
+              "SciFact::5304891",
+              "SciFact::4391121",
+              "SciFact::5377059",
+              "SciFact::15879931",
+              "SciFact::45401535",
+              "SciFact::11415809",
+              "SciFact::17438862",
+              "SciFact::3672261",
+              "SciFact::27789588",
+              "SciFact::10675756"
+            ],
+            "route": {
+              "adapter_type": "BoundedAdapter",
+              "key": "global",
+              "metadata": {
+                "global_score": 0.06675240136719836,
+                "margin": 0.0025809336682722644,
+                "margin_delta": 0.02,
+                "route_count": 3,
+                "used_margin_fallback": true
+              },
+              "score": 0.06675240136719836
+            },
+            "route_key": "global"
+          }
+        ]
+      },
+      "single_global_fp32": {
+        "evaluated_queries": 30,
+        "mean_ndcg": 0.06028340862666778,
+        "policy": "single_global",
+        "rows": [
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::100",
+            "ranked_ids": [
+              "SciFact::46565968",
+              "SciFact::25629722",
+              "SciFact::9629682",
+              "SciFact::5373138",
+              "SciFact::28809022",
+              "SciFact::24530633",
+              "SciFact::52868579",
+              "SciFact::31141365",
+              "SciFact::12130067",
+              "SciFact::12315072"
+            ],
+            "route": null,
+            "route_key": "global"
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::1100",
+            "ranked_ids": [
+              "SciFact::45153864",
+              "SciFact::21616324",
+              "SciFact::19701340",
+              "SciFact::10538985",
+              "SciFact::46328296",
+              "SciFact::4138659",
+              "SciFact::23148978",
+              "SciFact::24586989",
+              "SciFact::39164524",
+              "SciFact::20288322"
+            ],
+            "route": null,
+            "route_key": "global"
+          },
+          {
+            "ndcg": 0.21840743681816419,
+            "query_id": "SciFact::1132",
+            "ranked_ids": [
+              "SciFact::7521113",
+              "SciFact::24828165",
+              "SciFact::22521091",
+              "SciFact::2714623",
+              "SciFact::5633957",
+              "SciFact::33499189",
+              "SciFact::32101982",
+              "SciFact::36444198",
+              "SciFact::3531388",
+              "SciFact::301838"
+            ],
+            "route": null,
+            "route_key": "global"
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::1140",
+            "ranked_ids": [
+              "SciFact::8082528",
+              "SciFact::4500832",
+              "SciFact::46328296",
+              "SciFact::6751418",
+              "SciFact::20428155",
+              "SciFact::20645538",
+              "SciFact::13916951",
+              "SciFact::25452937",
+              "SciFact::24414345",
+              "SciFact::9306247"
+            ],
+            "route": null,
+            "route_key": "global"
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::1185",
+            "ranked_ids": [
+              "SciFact::21623140",
+              "SciFact::6157837",
+              "SciFact::21616324",
+              "SciFact::23908217",
+              "SciFact::1606628",
+              "SciFact::19804204",
+              "SciFact::25816994",
+              "SciFact::46328296",
+              "SciFact::3825750",
+              "SciFact::9288638"
+            ],
+            "route": null,
+            "route_key": "global"
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::1213",
+            "ranked_ids": [
+              "SciFact::6251620",
+              "SciFact::27789588",
+              "SciFact::36444198",
+              "SciFact::10703001",
+              "SciFact::40590358",
+              "SciFact::4391121",
+              "SciFact::5531479",
+              "SciFact::5304891",
+              "SciFact::19708993",
+              "SciFact::1084345"
+            ],
+            "route": null,
+            "route_key": "global"
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::132",
+            "ranked_ids": [
+              "SciFact::46328296",
+              "SciFact::5304891",
+              "SciFact::19708993",
+              "SciFact::27077180",
+              "SciFact::25300664",
+              "SciFact::34876410",
+              "SciFact::27158570",
+              "SciFact::20672596",
+              "SciFact::87758",
+              "SciFact::5586392"
+            ],
+            "route": null,
+            "route_key": "global"
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::1336",
+            "ranked_ids": [
+              "SciFact::3391547",
+              "SciFact::3531388",
+              "SciFact::25141908",
+              "SciFact::7521113",
+              "SciFact::11349166",
+              "SciFact::43378932",
+              "SciFact::10976596",
+              "SciFact::36444198",
+              "SciFact::38886345",
+              "SciFact::12827098"
+            ],
+            "route": null,
+            "route_key": "global"
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::137",
+            "ranked_ids": [
+              "SciFact::10536636",
+              "SciFact::313394",
+              "SciFact::8298120",
+              "SciFact::59453688",
+              "SciFact::21616324",
+              "SciFact::14584755",
+              "SciFact::19804204",
+              "SciFact::21307488",
+              "SciFact::13445579",
+              "SciFact::2958458"
+            ],
+            "route": null,
+            "route_key": "global"
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::142",
+            "ranked_ids": [
+              "SciFact::10314816",
+              "SciFact::25045244",
+              "SciFact::39539647",
+              "SciFact::20155713",
+              "SciFact::1386103",
+              "SciFact::12827098",
+              "SciFact::36444198",
+              "SciFact::40590358",
+              "SciFact::8354687",
+              "SciFact::20457190"
+            ],
+            "route": null,
+            "route_key": "global"
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::171",
+            "ranked_ids": [
+              "SciFact::970012",
+              "SciFact::17438862",
+              "SciFact::15879931",
+              "SciFact::10703001",
+              "SciFact::28015516",
+              "SciFact::16787954",
+              "SciFact::1122198",
+              "SciFact::5531479",
+              "SciFact::23124332",
+              "SciFact::9814332"
+            ],
+            "route": null,
+            "route_key": "global"
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::198",
+            "ranked_ids": [
+              "SciFact::5254741",
+              "SciFact::6404801",
+              "SciFact::15790930",
+              "SciFact::25141908",
+              "SciFact::20428155",
+              "SciFact::313394",
+              "SciFact::9767444",
+              "SciFact::5633957",
+              "SciFact::5867846",
+              "SciFact::22025252"
+            ],
+            "route": null,
+            "route_key": "global"
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::212",
+            "ranked_ids": [
+              "SciFact::17119869",
+              "SciFact::6722522",
+              "SciFact::25483562",
+              "SciFact::6076903",
+              "SciFact::13235609",
+              "SciFact::31851367",
+              "SciFact::14492964",
+              "SciFact::20943272",
+              "SciFact::6826636",
+              "SciFact::4409524"
+            ],
+            "route": null,
+            "route_key": "global"
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::216",
+            "ranked_ids": [
+              "SciFact::7521113",
+              "SciFact::36444198",
+              "SciFact::13916951",
+              "SciFact::3531388",
+              "SciFact::32101982",
+              "SciFact::24828165",
+              "SciFact::11253758",
+              "SciFact::2593298",
+              "SciFact::6251620",
+              "SciFact::4323425"
+            ],
+            "route": null,
+            "route_key": "global"
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::217",
+            "ranked_ids": [
+              "SciFact::7521113",
+              "SciFact::36444198",
+              "SciFact::13916951",
+              "SciFact::32101982",
+              "SciFact::24828165",
+              "SciFact::3531388",
+              "SciFact::11253758",
+              "SciFact::3619931",
+              "SciFact::2593298",
+              "SciFact::22521091"
+            ],
+            "route": null,
+            "route_key": "global"
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::237",
+            "ranked_ids": [
+              "SciFact::12881593",
+              "SciFact::2988714",
+              "SciFact::9283422",
+              "SciFact::22767022",
+              "SciFact::6422576",
+              "SciFact::4373445",
+              "SciFact::14591894",
+              "SciFact::20943272",
+              "SciFact::19708993",
+              "SciFact::5531479"
+            ],
+            "route": null,
+            "route_key": "global"
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::350",
+            "ranked_ids": [
+              "SciFact::11016410",
+              "SciFact::5633957",
+              "SciFact::37727521",
+              "SciFact::6820680",
+              "SciFact::13592721",
+              "SciFact::12014458",
+              "SciFact::7029990",
+              "SciFact::10976596",
+              "SciFact::15790930",
+              "SciFact::25737507"
+            ],
+            "route": null,
+            "route_key": "global"
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::354",
+            "ranked_ids": [
+              "SciFact::4361990",
+              "SciFact::46565968",
+              "SciFact::14591894",
+              "SciFact::4373445",
+              "SciFact::9507605",
+              "SciFact::22767022",
+              "SciFact::1782201",
+              "SciFact::18734652",
+              "SciFact::2121272",
+              "SciFact::9629682"
+            ],
+            "route": null,
+            "route_key": "global"
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::362",
+            "ranked_ids": [
+              "SciFact::8734695",
+              "SciFact::12839939",
+              "SciFact::2714623",
+              "SciFact::9021186",
+              "SciFact::23972114",
+              "SciFact::6722522",
+              "SciFact::17814815",
+              "SciFact::9433958",
+              "SciFact::3155374",
+              "SciFact::9257019"
+            ],
+            "route": null,
+            "route_key": "global"
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::410",
+            "ranked_ids": [
+              "SciFact::13734012",
+              "SciFact::5558754",
+              "SciFact::3580005",
+              "SciFact::27866735",
+              "SciFact::9244474",
+              "SciFact::10675756",
+              "SciFact::9167230",
+              "SciFact::3828508",
+              "SciFact::3776162",
+              "SciFact::24906548"
+            ],
+            "route": null,
+            "route_key": "global"
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::508",
+            "ranked_ids": [
+              "SciFact::9754530",
+              "SciFact::24088502",
+              "SciFact::2988714",
+              "SciFact::32787042",
+              "SciFact::16787954",
+              "SciFact::5558754",
+              "SciFact::24097933",
+              "SciFact::22414304",
+              "SciFact::6422576",
+              "SciFact::26026009"
+            ],
+            "route": null,
+            "route_key": "global"
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::527",
+            "ranked_ids": [
+              "SciFact::5944514",
+              "SciFact::38380061",
+              "SciFact::25670099",
+              "SciFact::37249641",
+              "SciFact::11141995",
+              "SciFact::7145763",
+              "SciFact::4423559",
+              "SciFact::16057926",
+              "SciFact::9539753",
+              "SciFact::17587795"
+            ],
+            "route": null,
+            "route_key": "global"
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::578",
+            "ranked_ids": [
+              "SciFact::9629682",
+              "SciFact::19708993",
+              "SciFact::14492964",
+              "SciFact::4423559",
+              "SciFact::2121272",
+              "SciFact::42465769",
+              "SciFact::33911859",
+              "SciFact::35008773",
+              "SciFact::7036529",
+              "SciFact::6076903"
+            ],
+            "route": null,
+            "route_key": "global"
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::690",
+            "ranked_ids": [
+              "SciFact::75636923",
+              "SciFact::25182647",
+              "SciFact::41310252",
+              "SciFact::8298120",
+              "SciFact::21641088",
+              "SciFact::50670403",
+              "SciFact::3776162",
+              "SciFact::33458992",
+              "SciFact::10209731",
+              "SciFact::39187170"
+            ],
+            "route": null,
+            "route_key": "global"
+          },
+          {
+            "ndcg": 0.2890648263178879,
+            "query_id": "SciFact::729",
+            "ranked_ids": [
+              "SciFact::9629682",
+              "SciFact::32101982",
+              "SciFact::16630060",
+              "SciFact::18104691",
+              "SciFact::36444198",
+              "SciFact::6717533",
+              "SciFact::2015929",
+              "SciFact::4421742",
+              "SciFact::1122198",
+              "SciFact::26851674"
+            ],
+            "route": null,
+            "route_key": "global"
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::770",
+            "ranked_ids": [
+              "SciFact::52180874",
+              "SciFact::14626540",
+              "SciFact::37912677",
+              "SciFact::6751418",
+              "SciFact::9745001",
+              "SciFact::13025574",
+              "SciFact::1373287",
+              "SciFact::19701340",
+              "SciFact::2296264",
+              "SciFact::11335781"
+            ],
+            "route": null,
+            "route_key": "global"
+          },
+          {
+            "ndcg": 0.3010299956639812,
+            "query_id": "SciFact::847",
+            "ranked_ids": [
+              "SciFact::32787042",
+              "SciFact::20649735",
+              "SciFact::37912677",
+              "SciFact::9745001",
+              "SciFact::13734012",
+              "SciFact::623486",
+              "SciFact::42377686",
+              "SciFact::32909242",
+              "SciFact::16787954",
+              "SciFact::15997009"
+            ],
+            "route": null,
+            "route_key": "global"
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::859",
+            "ranked_ids": [
+              "SciFact::2015929",
+              "SciFact::18734652",
+              "SciFact::18104691",
+              "SciFact::12869200",
+              "SciFact::9272598",
+              "SciFact::350542",
+              "SciFact::31591262",
+              "SciFact::16806763",
+              "SciFact::23122306",
+              "SciFact::6722522"
+            ],
+            "route": null,
+            "route_key": "global"
+          },
+          {
+            "ndcg": 0.0,
+            "query_id": "SciFact::94",
+            "ranked_ids": [
+              "SciFact::33911859",
+              "SciFact::3099497",
+              "SciFact::25069745",
+              "SciFact::16787954",
+              "SciFact::29124963",
+              "SciFact::50670403",
+              "SciFact::12443371",
+              "SciFact::10536636",
+              "SciFact::21598000",
+              "SciFact::4483571"
+            ],
+            "route": null,
+            "route_key": "global"
+          },
+          {
+            "ndcg": 1.0,
+            "query_id": "SciFact::975",
+            "ranked_ids": [
+              "SciFact::5304891",
+              "SciFact::4391121",
+              "SciFact::5377059",
+              "SciFact::15879931",
+              "SciFact::45401535",
+              "SciFact::11415809",
+              "SciFact::17438862",
+              "SciFact::3672261",
+              "SciFact::27789588",
+              "SciFact::10675756"
+            ],
+            "route": null,
+            "route_key": "global"
+          }
+        ]
+      }
+    },
+    "min_lift": 0.005,
+    "paired_bootstrap_ci": {
+      "confidence_level": 0.95,
+      "estimate": 0.0,
+      "lower": 0.0,
+      "query_count": 30,
+      "resamples": 5000,
+      "seed": 1617,
+      "upper": 0.0
+    },
+    "quant_decisions": {
+      "cluster:0": {
+        "baseline_fitness": 0.0,
+        "baseline_source": "no_route_same_select_subset",
+        "fp32_fitness": 0.0,
+        "fp32_gain": 0.0,
+        "passed": false,
+        "quantized_fitness": 0.0,
+        "quantized_gain": 0.0,
+        "query_count": 6,
+        "query_ids": [
+          "SciFact::132",
+          "SciFact::198",
+          "SciFact::237",
+          "SciFact::578",
+          "SciFact::690",
+          "SciFact::859"
+        ],
+        "reasons": [
+          "fp32_gain_below_minimum"
+        ],
+        "retained_gain_ratio": 1.0,
+        "threshold": 0.8
+      },
+      "cluster:1": {
+        "baseline_fitness": 0.0,
+        "baseline_source": "no_route_same_select_subset",
+        "fp32_fitness": 0.0,
+        "fp32_gain": 0.0,
+        "passed": false,
+        "quantized_fitness": 0.0,
+        "quantized_gain": 0.0,
+        "query_count": 1,
+        "query_ids": [
+          "SciFact::142"
+        ],
+        "reasons": [
+          "fp32_gain_below_minimum"
+        ],
+        "retained_gain_ratio": 1.0,
+        "threshold": 0.8
+      },
+      "cluster:2": {
+        "baseline_fitness": 0.0,
+        "baseline_source": "no_route_same_select_subset",
+        "fp32_fitness": 0.0,
+        "fp32_gain": 0.0,
+        "passed": false,
+        "quantized_fitness": 0.0,
+        "quantized_gain": 0.0,
+        "query_count": 5,
+        "query_ids": [
+          "SciFact::100",
+          "SciFact::1185",
+          "SciFact::350",
+          "SciFact::410",
+          "SciFact::770"
+        ],
+        "reasons": [
+          "fp32_gain_below_minimum"
+        ],
+        "retained_gain_ratio": 1.0,
+        "threshold": 0.8
+      },
+      "global": {
+        "baseline_fitness": 0.0,
+        "baseline_source": "no_route_same_select_subset",
+        "fp32_fitness": 0.10047234771111296,
+        "fp32_gain": 0.10047234771111296,
+        "passed": true,
+        "quantized_fitness": 0.083748459063114,
+        "quantized_gain": 0.083748459063114,
+        "query_count": 18,
+        "query_ids": [
+          "SciFact::1100",
+          "SciFact::1132",
+          "SciFact::1140",
+          "SciFact::1213",
+          "SciFact::1336",
+          "SciFact::137",
+          "SciFact::171",
+          "SciFact::212",
+          "SciFact::216",
+          "SciFact::217",
+          "SciFact::354",
+          "SciFact::362",
+          "SciFact::508",
+          "SciFact::527",
+          "SciFact::729",
+          "SciFact::847",
+          "SciFact::94",
+          "SciFact::975"
+        ],
+        "reasons": [],
+        "retained_gain_ratio": 0.8335473488080026,
+        "threshold": 0.8
+      }
+    },
+    "quant_pass_rate": 0.25,
+    "quant_passed": false,
+    "reasons": [
+      "plane_ci_lower_bound_not_above_min_lift",
+      "one_or_more_used_adapters_failed_quant_survival"
+    ],
+    "record_type": "rung16_select_promotion_decision",
+    "select_gate_passed": false,
+    "single_best_route": "cluster:2",
+    "single_route_select_scores": {
+      "cluster:0": 0.012895093574484722,
+      "cluster:1": 0.021030991785715252,
+      "cluster:2": 0.021509067114197
+    },
+    "usage": {
+      "entropy": 1.0403827810064954,
+      "entropy_nats": 1.0403827810064954,
+      "histogram": {
+        "cluster:0": 6,
+        "cluster:1": 1,
+        "cluster:2": 5,
+        "global": 18
+      },
+      "n_routes_used": 3,
+      "n_used": 4,
+      "p_k": {
+        "cluster:0": 0.2,
+        "cluster:1": 0.03333333333333333,
+        "cluster:2": 0.16666666666666666,
+        "global": 0.6
+      },
+      "route_histogram": {
+        "cluster:0": 6,
+        "cluster:1": 1,
+        "cluster:2": 5
+      },
+      "route_p_k": {
+        "cluster:0": 0.2,
+        "cluster:1": 0.03333333333333333,
+        "cluster:2": 0.16666666666666666
+      },
+      "scope": "SELECT",
+      "total": 30
+    }
+  },
+  "split": {
+    "anchor_count": 40,
+    "anchor_sha256": "a94fc612c0ed29c306ba5f3bf466298aaa44664efb76780a330e0a0b154bda91",
+    "report_count": 30,
+    "report_sha256": "6148f298d0f29ab5138fc1873131100e16b2789a8c46c53a55bfdd08e6ba0755",
+    "seed": 1616,
+    "select_count": 30,
+    "select_sha256": "da4b16af06f78326b52c14108011065cebe90c15558807cf14003a0800236bf0"
+  }
+}
