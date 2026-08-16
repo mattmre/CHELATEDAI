@@ -1,11 +1,41 @@
 # Active METHOD_DEV Campaign: Prime-Ring Onion-Lattice Memory
 
+## 2026-08-16 Spark execution closeout
+
+**Status:** `EXECUTED_WITH_MIXED_NEGATIVE_AND_INTEGRATION_RESULTS`
+
+- `QWEN-SCOPE-REAL-SMOKE`: complete on GBA1 with the pinned
+  `Qwen/Qwen3.5-2B-Base` and official layer-11 SAE. The real residual-stream
+  hook, 32,768-wide SAE, top-100 feature extraction, two-pass repeatability,
+  resource gates, atomic publication, and archive verification passed. This is
+  integration evidence only; model quality, training benefit, chelation utility,
+  and novelty remain untested.
+- `RB-15 / PRW-RCM1-NLN-FACTORIAL`: run IDs 7 and 11 completed on separate
+  Sparks. Both were killed by the frozen synthetic gates. The mean distributed
+  Duffing gain ratio passed, but the required interaction, worst-case excess,
+  hysteresis, and settling gates failed. The proposed distribution-by-
+  nonlinearity advantage does not survive this fixture.
+- `RB-13 Wave 0A`: the v8 SELECT and REPORT campaigns completed on GBA1 and
+  independently verified. `PRW-SPU0` reduces to ordinary factorization,
+  `PRW-BIL1` reduces to paired Boolean union, `PRW-EK0` requires an explicit
+  compatibility/migration design, and the `PRW-VAR1` cross-phase null fails.
+  Its surviving scope is routing a smooth method only to its declared state
+  subproblem. All results remain synthetic, non-independent-label evidence;
+  scientific and novelty claims remain `UNCONFIRMED`.
+- Preserve the v7 RB-13 quarantined pre-publication failure. It records
+  `status=INVALID_RUN`, `failure_category=RESOURCE_OR_DEADLINE`, and the first
+  complete EK0 stage artifact, but no campaign manifest or campaign status.
+- Next highest-value work is a preregistered real-model intervention using the
+  now-proven Qwen/SAE path. Do not spend another cycle rebranding the killed
+  synthetic mechanisms or treating the successful hook as a utility result.
+
 ## RB-15 — nonlinear-neutraliser attenuation source audit (2026-08-12)
 
-**Status:** `STAGE_A_COMPLETE_WITH_FROZEN_FAILURE`; implementation and both
-bounded runs are complete, the source-inspired self-grading mechanism was
-observed descriptively, the required bidirectional hardening gate is unresolved,
-and scientific value/novelty remain unconfirmed
+**Status:** `FACTORIAL_KILLED_ON_FROZEN_SYNTHETIC_GATES`; Stage A and the
+matched distribution-by-nonlinearity factorial are complete for run IDs 7 and
+11. The average distributed response improved, but the interaction,
+worst-case, hysteresis, and settling gates failed; scientific value/novelty
+remain unconfirmed.
 
 **Goal:** fully review Frances Fulton's presentation, trace it to the primary
 mathematical/publication record, and determine whether nonlinear attached
@@ -47,14 +77,12 @@ subspace, graph-propagation, retrieval, or memory hypotheses.
    hypotheses, controls, nulls, pass/kill criteria, and resource ceilings.
 6. `COMPLETED_WITH_FROZEN_FAILURE`: implemented and ran the frozen CPU-only
    Stage-A harness for run IDs 7 and 11. Both runs retained the preregistered
-   high-amplitude forward boundary-censored peak; all other numerical,
-   integrity, and post-hoc resource screens passed. Durable artifacts and
-   handoff surfaces are reconciled while scientific/novelty status remains
-   unconfirmed.
-7. `PENDING_DEPENDENCIES_AND_NEW_PREREGISTRATION`: do not open Stage B. A
-   future reconditioned synthetic contrast must first isolate distribution
-   from nonlinearity with matched distributed-linear controls and predeclared
-   aggregate/worst-case/hysteresis endpoints.
+   high-amplitude forward boundary-censored peak.
+7. `COMPLETED_AND_KILLED`: implemented the matched distribution-by-nonlinearity
+   factorial and ran IDs 7 and 11 on separate Sparks. Both failed the frozen
+   interaction, worst-case, hysteresis, and settling gates. Do not open Stage B
+   or repeat this contrast without a materially different preregistered
+   mechanism.
 
 **Errors encountered:**
 
@@ -158,10 +186,9 @@ prime-ring, mesh, PCHO, or evidence-kernel findings.
 
 ## RB-13 — Evidence-kernel and masked-subplane experiment queue (2026-07-27)
 
-**Status:** `IMPLEMENTATION_IN_PROGRESS`; RB-13 remains a draft dependency
-queue, while the five RB-14 lanes have bounded synthetic implementations and
-sanity artifacts. Candidate-survival protocols and scientific claims remain
-open.
+**Status:** `WAVE_0A_COMPLETE_WITH_REDUCTIONS_AND_NULL_FAILURE`; the v8
+SELECT/REPORT campaigns and portable archive verifier are complete. The broader
+RB-13 dependency queue and all production/scientific claims remain open.
 
 **Goal:** convert the Donto-adjacent evidence-memory lane and the new
 deference/deflection, reverberated-mask, subplane, and variational ideas into
@@ -190,10 +217,10 @@ disposition and no result may lend support to a different card by association.
 
 | Card(s) | Status | First gate |
 |---|---|---|
-| `PRW-EK0` | `QUEUED_METHOD_DEV` | characterize current cache/promotion semantics without changing them |
-| `PRW-BIL1` | `QUEUED_METHOD_DEV` | verify four-state merge, order, fixed-point, and temporal semantics |
-| `PRW-SPU0` | `QUEUED_METHOD_DEV` | reproduce the fixed-stack/flat-map reduction guard |
-| `PRW-VAR1` | `QUEUED_METHOD_DEV` | exact small-instance relaxation and integrality-gap audit |
+| `PRW-EK0` | `WAVE_0A_DISPOSED_REQUIRE_COMPATIBILITY_AND_MIGRATION_DESIGN` | synthetic characterization complete; live design work remains |
+| `PRW-BIL1` | `WAVE_0A_DISPOSED_REDUCE_TO_PAIRED_BOOLEAN_UNION` | do not claim a new algebra from this fixture |
+| `PRW-SPU0` | `WAVE_0A_DISPOSED_ORDINARY_FACTORIZATION_EQUIVALENCE` | heterogeneous `PRW-SPU1` remains a separate blocked question |
+| `PRW-VAR1` | `WAVE_0A_CROSS_PHASE_NULL_KILLED` | route the smooth method only to the declared state subproblem |
 | `PRW-OBS1` | `QUEUED_METHOD_DEV` | distinguish bounded support from off-span rank deficiency |
 | `PRW-COA1` | `QUEUED_METHOD_DEV` | prove the top-k interaction-observability ceiling without rerunning G2 |
 | `PRW-EK1` | `BLOCKED_ON_PRW-EK0` | append-only bitemporal compatibility and deterministic replay |

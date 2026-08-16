@@ -1190,11 +1190,19 @@ def _self_rss_bytes() -> Tuple[int, int, str]:
     else:
         peak_bytes = peak * 1024
     current_bytes = peak_bytes
+    method = "stdlib_resource_ru_maxrss"
     statm = Path("/proc/self/statm")
     if statm.is_file():
         fields = statm.read_text(encoding="ascii").split()
         current_bytes = int(fields[1]) * int(os.sysconf("SC_PAGE_SIZE"))
-    return current_bytes, peak_bytes, "stdlib_resource_ru_maxrss"
+        # ``statm`` and ``getrusage`` are separate samples.  On Linux/aarch64
+        # the later current-RSS sample can briefly exceed ru_maxrss.  A peak
+        # cannot truthfully be lower than a current sample, so retain the
+        # conservative maximum rather than returning an internally impossible
+        # pair or hiding the larger resident set from a resource ceiling.
+        peak_bytes = max(peak_bytes, current_bytes)
+        method = "stdlib_resource_ru_maxrss_plus_proc_statm_conservative_max"
+    return current_bytes, peak_bytes, method
 
 
 def run_stage_a(run_id: int) -> Dict[str, object]:

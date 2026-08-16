@@ -2176,3 +2176,36 @@
 - No test suite was rerun in the overnight session by user direction. Only lightweight non-test validation was recorded:
   - `python -m py_compile ...` for PR `#96`
   - `git diff --check` for PRs `#96`, `#97`, and `#98`
+
+## 2026-08-16 Spark campaign findings
+
+- **No groundbreaking performance result was established.** The overnight
+  campaign materially narrowed the theory space instead of validating the
+  umbrella chelation claim.
+- The real Qwen-Scope path is operational: the pinned 2B base model exposes the
+  expected layer-11 residual tensor, the official SAE accepts its 2,048-wide
+  states and produces a 32,768-wide sparse feature representation, and the
+  frozen top-100 extraction repeats exactly. This makes a small real-model
+  intervention experiment feasible; it does not show that an intervention is
+  useful.
+- The RB-15 matched factorial falsifies the proposed robust synthetic advantage
+  on its own frozen fixture. The average distributed Duffing gain ratio was
+  favorable (`~0.867 < 0.95`), but the interaction was effectively absent
+  (`~0.000254 < 0.05`) and worst-case excess (`~1.473`), hysteresis (`~1.663`),
+  and settling (`~0.182`) all exceeded their limits. The improvement is local
+  and unstable, not an additive general mechanism.
+- RB-13 Wave 0A mostly resolves evocative terminology into ordinary controls:
+  the flat stacked map is ordinary factorization, the tested evidence lattice
+  is equivalent to paired Boolean union, and smooth-mask selection is useful
+  only on declared state subproblems. It is not a universal substitute for
+  discrete selection or provenance constraints.
+- The EK0 finding is architectural rather than novel mathematics: current
+  mutable memory behavior requires explicit compatibility and migration rules
+  before it can satisfy the proposed evidence-kernel contract.
+- One VAR1 SELECT seed locally retained the smooth/hard-mask null, but the
+  corresponding-cell aggregate failed in SELECT, REPORT, and cross-phase. It
+  cannot be promoted as confirmation.
+- The most valuable next experiment is therefore not another synthetic lattice
+  metaphor. It is a frozen real-model causal intervention using the proven
+  Qwen/SAE path, with task-level quality, locality, collateral damage, latency,
+  memory, and matched random/activation-magnitude controls.

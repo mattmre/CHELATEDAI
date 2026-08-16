@@ -1,5 +1,6 @@
 import json
 import math
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -98,6 +99,37 @@ class NonlinearNeutralizerCoreTests(unittest.TestCase):
         self.assertGreaterEqual(peak, current)
         self.assertIsInstance(method, str)
         self.assertTrue(method)
+
+    def test_unix_rss_probe_never_reports_peak_below_later_current_sample(self):
+        fake_usage = type("Usage", (), {"ru_maxrss": 40_000})()
+        fake_resource = type(
+            "Resource",
+            (),
+            {
+                "RUSAGE_SELF": 0,
+                "getrusage": staticmethod(lambda target: fake_usage),
+            },
+        )()
+        fake_statm = type(
+            "Statm",
+            (),
+            {
+                "is_file": lambda self: True,
+                "read_text": lambda self, encoding: "10000 41000 0 0 0 0 0",
+            },
+        )()
+        fake_uname = type("U", (), {"sysname": "Linux"})()
+        with patch.object(nln.os, "name", "posix"):
+            with patch.object(nln.os, "uname", return_value=fake_uname, create=True):
+                with patch.object(
+                    nln.os, "sysconf", return_value=1024, create=True
+                ):
+                    with patch.dict(sys.modules, {"resource": fake_resource}):
+                        with patch.object(nln, "Path", return_value=fake_statm):
+                            current, peak, method = nln._self_rss_bytes()
+        self.assertEqual(current, 41_984_000)
+        self.assertEqual(peak, current)
+        self.assertIn("conservative_max", method)
 
     def test_reduced_sweeps_retain_cells_and_local_self_grading_fields(self):
         scalar_grid = np.asarray((0.8, 1.0), dtype=np.float64)

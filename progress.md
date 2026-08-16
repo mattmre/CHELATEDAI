@@ -1,5 +1,37 @@
 # Progress Log
 
+## 2026-08-16 — Dual-Spark bounded campaign completed
+
+- Staged an isolated CHELATEDAI research checkout on both DGX Sparks and used
+  GBA1 plus gx10-6724 as separate bounded test workers. The existing two-node
+  DeepSeek service was stopped for the GPU-backed smoke and reserved for exact
+  restoration after validation.
+- Implemented and adversarially hardened a real Qwen-Scope smoke against the
+  pinned `Qwen3.5-2B-Base` revision, official 32K SAE revision, and exact
+  layer-11 checkpoint digest. The GBA1 run passed in 19.51 seconds with about
+  4.49 GiB peak RSS and 3.62 GiB peak reserved CUDA memory. Repeated residual
+  and feature outputs were exact under the frozen tolerances. This closes only
+  the real hook/checkpoint/tensor integration question.
+- Implemented the RB-15 2x2 distribution-by-nonlinearity factorial and ran
+  deterministic IDs 7 and 11 in parallel on the two Sparks. Both completed all
+  170 cells and 2,040,000 RK4 steps with 8,332 resource checks. Both dispositions
+  are `FACTORIAL_KILLED_ON_FROZEN_SYNTHETIC_GATES`: mean distributed Duffing
+  gain passed, while the required interaction, worst-case excess, hysteresis,
+  and settling gates failed.
+- Implemented RB-13 Wave 0A with frozen SELECT/REPORT phases. The first v7
+  SELECT attempt failed closed at the EK0 RSS backstop and was quarantined. The
+  v8 resource-only calibration used the retained RSS measurement, not its stage
+  metrics; v8 then completed 12 entries per phase and verified cross-phase.
+- RB-13 dispositions are conservative: EK0 requires compatibility/migration
+  design, BIL1 reduces to paired Boolean union, SPU0 is ordinary factorization
+  equivalence, and VAR1's cross-phase null does not survive. No result supports
+  a production, general-utility, or novelty claim.
+- Added portable archive verification without weakening live exact verification.
+  It binds the Linux SELECT/REPORT manifest roots, exact file sets, schemas,
+  statuses, phase/seed/stage identities, finite values, and narrow measured
+  cross-platform float tolerances. Independent final review scored the Qwen,
+  RB-15, and RB-13 archive slices BHS 100.
+
 ## 2026-08-12 — nonlinear-neutraliser video/source review started
 
 - User supplied YouTube video `eQwG_xl-h_k` as a possible attenuation answer

@@ -19,7 +19,10 @@
 
 ## Block flag
 
-**Current**: `CLEAR` — no Carried Debt items have expired.
+**Current**: `BLOCKED` — `CD-MLR-01`, `CD-R13-01`, and `CD-R16-01` exceeded
+their one-cycle TTL after 2026-07-27. This research PR may be preserved for
+review, but no new feature work may merge until the expired debt is closed or
+an explicit rulebook-compliant operator disposition is recorded.
 
 When the flag is `BLOCKED`, no new feature work may merge until Carried Debt
 is empty. The flag is set automatically by `scripts/check_block_flag.py`:
@@ -57,9 +60,9 @@ authoritative source; everything else is advisory.
 | CD-TTS-001 | TTS-2 audit: grep of all 17 `run_*.py` runners for `enable_tts` or `--enable-tts` returns zero matches. TTSPipeline is library-callable only; no campaign runner can populate the dashboard TTS panel without external glue code. Visible-without-evidence pattern: panel + API exist, but no operationally-reachable activation path. L4 + L5. | BHS Scope B audit 2026-05-16 | 1 cycle | NO — short fix; dashboard already shows honest "not enabled" empty state | **CLOSED**: PR #252 — `--enable-tts`, `--no-tts-translation`, and `--no-tts-transport` flags wired into `run_road_course_campaign.py`; CLI wiring tested through real `main()` in `TestRunRoadCourseCampaignCLIWiring` |
 | CD-TTS-002 | TTS-1 audit: REM-C2 (per-inference signal clearing in `tts_pipeline.py:213-218`) and REM-H2 (`FeatureDirectionBank` Gaussian unit vectors) are fixed in code but no test would fail if either were reverted. Two of the four bug classes that triggered the post-merge remediation wave can silently regress. L5. | BHS Scope B audit 2026-05-16 | 1 cycle | NO — code is fixed; regression coverage is the gap | **CLOSED**: PR #252 — regression tests added for REM-C2 (cross-inference signal-accumulation guard) and REM-H2 (Gaussian direction-bank distribution test); both tests would fail if the corresponding fixes were reverted |
 | CD-H1-01 | The committed swap-campaign reports included C3a metrics generated before H1 commit `5b2379b` removed a build-time bounded adapter from the C3a construction path. The active report lineage therefore needed post-fix procedural supersession; the stored pre- or post-fix quantitative values are not accepted evidence. L13 (stale-docs). | H1 (PR pending) | 1 cycle | NO — report supersession was required; quantitative magnitude is not accepted | **CLOSED — procedural supersession only.** After the H1 code fix landed, the swap manifests and report files were replaced by the H2 lineage and the pre-H1 reports ceased to be the active report surface. This closure makes no quantitative claim: no stored baseline equality, final nDCG, effect size, condition ordering, or “run noise” attribution is accepted. All such values are `LEGACY_METRIC_LINEAGE_BLOCKED`; corrected caller migration and regeneration are tracked by CD-MLR-01 and DS-MLR-01. |
-| CD-MLR-01 | Repair drift-recovery metric lineage end to end: replace the retrieved-list IDCG helper with a qrels-complete graded/binary nDCG contract; migrate every drift caller; add regression coverage where relevant documents exceed retrieved hits; regenerate or explicitly retire every affected quantitative campaign whose claims are to be restored (including H2/H4/H5) with preserved environment/run provenance; and publish an explicit 113-entry old-artifact → corrected/retired-artifact supersession map with hashes. Until all acceptance points are met, exact values, comparator orderings, gates, promotions, rejections, and paper claims are prohibited. | PR #292 Tier-B reconditioning (2026-07-27) | 1 cycle | YES — blocks quantitative promotion/rejection and publication claims; first-cycle remediation debt | **OPEN — first cycle.** Complete immutable quarantine map candidate: `artifacts/legacy-ndcg-quarantine-index-v2.json` at local `f2e41d42` (113/113 affected tracked artifacts; v1 retained as an incomplete audit predecessor); fail-closed validator: `python scripts/validate_metric_lineage_quarantine.py`; explicit CI gate plus hostile mutation coverage: `test_validate_metric_lineage_quarantine.py`. Public PR #292 remains at `eb750958`, so this control is not yet GitHub-durable or merge-accepted. |
-| CD-R13-01 | Rejected PR #293 cannot safely provide callback-driven DAG mutation, pruning/re-annealing, transaction rollback, or caller-supplied trusted provenance: exact iteration-six probes reproduced BaseException partial mutation, concurrent lost updates, and forged/aliased provenance. | PR #293 Tier-B scope reduction (2026-07-27) | 1 cycle | NO — the unsafe implementation is excluded; this becomes a hard gate only if the scope is reintroduced | **OPEN — first cycle.** Preserve `454e4a32` for audit; any future implementation must start from a fresh branch and independently prove atomic mutation, rollback, concurrency, and owned immutable provenance. |
-| CD-R16-01 | Rejected PR #295 cannot safely provide a reusable promotion plane or engine activation path: exact iteration-five probes reproduced mixed-state publication/cancellation races, false promotion with incomplete REPORT qrels or no router-global route, invalid metric edge cases, publication-time provenance TOCTOU, and dimension-mismatched activation. | PR #295 Tier-B scope reduction (2026-07-27) | 1 cycle | NO — the unsafe implementation is excluded; this becomes a hard gate only if the scope is reintroduced | **OPEN — first cycle.** Preserve `730b305e` for audit; any future runtime implementation must independently prove atomic transitions/readers, complete qrels/global binding, bounded metrics, publication-time provenance, engine dimension/corpus identity, and an exact-head runtime smoke. |
+| CD-MLR-01 | Repair drift-recovery metric lineage end to end: replace the retrieved-list IDCG helper with a qrels-complete graded/binary nDCG contract; migrate every drift caller; add regression coverage where relevant documents exceed retrieved hits; regenerate or explicitly retire every affected quantitative campaign whose claims are to be restored (including H2/H4/H5) with preserved environment/run provenance; and publish an explicit 113-entry old-artifact → corrected/retired-artifact supersession map with hashes. Until all acceptance points are met, exact values, comparator orderings, gates, promotions, rejections, and paper claims are prohibited. | PR #292 Tier-B reconditioning (2026-07-27) | expired | YES — blocks quantitative promotion/rejection and publication claims | **OPEN — EXPIRED 2026-08-01.** Complete immutable quarantine map candidate: `artifacts/legacy-ndcg-quarantine-index-v2.json` at local `f2e41d42` (113/113 affected tracked artifacts; v1 retained as an incomplete audit predecessor); fail-closed validator: `python scripts/validate_metric_lineage_quarantine.py`; explicit CI gate plus hostile mutation coverage: `test_validate_metric_lineage_quarantine.py`. Public PR #292 remains at `eb750958`, so this control is not yet GitHub-durable or merge-accepted. |
+| CD-R13-01 | Rejected PR #293 cannot safely provide callback-driven DAG mutation, pruning/re-annealing, transaction rollback, or caller-supplied trusted provenance: exact iteration-six probes reproduced BaseException partial mutation, concurrent lost updates, and forged/aliased provenance. | PR #293 Tier-B scope reduction (2026-07-27) | expired | NO — the unsafe implementation is excluded; this becomes a hard gate only if the scope is reintroduced | **OPEN — EXPIRED 2026-08-01.** Preserve `454e4a32` for audit; any future implementation must start from a fresh branch and independently prove atomic mutation, rollback, concurrency, and owned immutable provenance. |
+| CD-R16-01 | Rejected PR #295 cannot safely provide a reusable promotion plane or engine activation path: exact iteration-five probes reproduced mixed-state publication/cancellation races, false promotion with incomplete REPORT qrels or no router-global route, invalid metric edge cases, publication-time provenance TOCTOU, and dimension-mismatched activation. | PR #295 Tier-B scope reduction (2026-07-27) | expired | NO — the unsafe implementation is excluded; this becomes a hard gate only if the scope is reintroduced | **OPEN — EXPIRED 2026-08-01.** Preserve `730b305e` for audit; any future runtime implementation must independently prove atomic transitions/readers, complete qrels/global binding, bounded metrics, publication-time provenance, engine dimension/corpus identity, and an exact-head runtime smoke. |
 
 **Schema**:
 - `ID`: stable identifier, prefix `CD-` + sequential number (CD-001, CD-002, ...).
@@ -144,13 +147,38 @@ Before another experiment:
    process-tree RSS/checkpoint fault injection, and bounded flat real retrieval
    in that order. Do not open G2A or relational retrieval before a static pass.
 
+### Qwen-Scope real-model next gate
+
+The pinned real-model/SAE integration smoke passed on GBA1. It proves the
+layer-11 hook, tensor shapes, official checkpoint load, sparse encoding,
+repeatability, and bounded resource envelope. It does **not** prove training,
+retrieval, steering, or chelation benefit.
+
+The next useful run is a small causal intervention preregistration with:
+
+1. a fixed downstream task and held-out evaluation split;
+2. matched random-feature and activation-magnitude controls;
+3. locality/collateral-damage metrics in addition to target quality;
+4. frozen latency, peak RSS, peak CUDA, and failure gates; and
+5. no promotion unless SELECT and disjoint REPORT both beat the controls.
+
 ### RB-13/RB-14 METHOD_DEV status
 
-RB-13 remains a draft dependency queue, not Carried Debt, Deferred Scope, a
-runnable preregistration, or evidence that a mechanism works. Its
-status/dependency source of truth is Section 1.1 of
-`docs/research/evidence-kernel-masked-subplane-experiment-queue-2026-07.md`.
-The non-RB-14 cards still require their own protocol freeze and disposition.
+RB-13 Wave 0A is complete under protocol v8; the broader dependency queue is
+still not evidence that a mechanism works. SELECT and REPORT each retain 12
+verified synthetic entries. The portable archive verifier confirms the copied
+Linux evidence without weakening the live exact verifier.
+
+- `PRW-EK0`: `REQUIRE_COMPATIBILITY_AND_MIGRATION_DESIGN`.
+- `PRW-BIL1`: `REDUCE_TO_PAIRED_BOOLEAN_UNION`.
+- `PRW-SPU0`: `ORDINARY_FACTORIZATION_EQUIVALENCE`.
+- `PRW-VAR1`: cross-phase null killed; disposition
+  `ROUTE_SMOOTH_METHOD_TO_DECLARED_STATE_SUBPROBLEM_ONLY`.
+
+These are synthetic, non-independent-label dispositions. Scientific and
+novelty claims remain `UNCONFIRMED`. The v7 pre-publication RSS failure remains
+quarantined with `status=INVALID_RUN` and
+`failure_category=RESOURCE_OR_DEADLINE`; it is not a campaign result.
 
 On 2026-08-04 the user authorized a bounded implementation pass for RB-14. The
 new module `observability_experiments.py` and runner
@@ -204,17 +232,16 @@ The queue has independently disposed families and cross-cutting additions:
   synthetic implementation/sanity artifacts, but no candidate-survival or
   production evidence.
 
-Resume RB-13 only after honoring the preservation/publication order above:
+Resume RB-13 only after honoring the completed Wave 0A dispositions:
 
-1. Freeze separate SELECT/REPORT protocols for `PRW-EK0`, `PRW-BIL1`,
-   `PRW-SPU0`, and exact-small `PRW-VAR1`. A protocol must preserve the
-   Section 1.1 dependency table and its card's resource ceiling.
+1. Preserve the exact v8 SELECT/REPORT artifacts and archive custody roots; do
+   not rerun or reinterpret them as real-model evidence.
 2. Treat Wave 0B's `PRW-OBS1` and `PRW-COA1` harnesses as implemented sanity
    guards, then freeze their candidate-survival contrasts separately after
-   Wave 0A and the required predecessor reviews.
-3. Only after the relevant protocol and preflight are frozen, run one card at a
-   time; report the entire scout grid and a disjoint confirmation set. Do not
-   treat the current synthetic artifacts as production or novelty evidence.
+   the required predecessor reviews.
+3. Do not advance SPU0, BIL1, or the broad VAR1 smooth-mask claim; their frozen
+   reductions/null have been disposed. Advance only a separately preregistered
+   heterogeneous SPU1 or declared state-subproblem test with matched controls.
 4. Preserve JO1's stacking closure, G2's necessary-interaction/static-null
    disposition, and the existing CRSV/SRS-1 diagnostics as
    predecessor controls. Constant masks, fixed projectors, flat
@@ -279,14 +306,11 @@ fixture are in
 `docs/research/nonlinear-neutraliser-subspace-transfer-2026-08.md`.
 
 `PRW-RCM1-NLN` is an optional `PRW-RCM1` subcell, not a new promoted theory
-family. Candidate-survival work remains blocked on `PRW-RCM1` and
-`PRW-ISI1`. The CPU-only Stage-A mathematical sanity run is complete for run
-IDs 7 and 11. Both exact artifacts retain one frozen failure: the high-drive
-forward scalar maximum is boundary-censored at 1.60, so bidirectional hardening
-is unresolved. Linear, sampled-storage, protected-channel, co-location
-equivalence, and post-hoc self-RSS/computation-duration screens passed;
-scientific and novelty claims remain
-`UNCONFIRMED`.
+family. Stage A and the matched 2x2 distribution-by-nonlinearity factorial are
+complete. Factorial run IDs 7 and 11 each completed 170 cells and both returned
+`FACTORIAL_KILLED_ON_FROZEN_SYNTHETIC_GATES`. Mean distributed Duffing gain
+passed, but interaction, worst-case excess, hysteresis, and settling failed.
+Scientific and novelty claims remain `UNCONFIRMED`.
 
 Tier-B independently reproduced the artifacts and metrics but found two
 protocol-strength gaps: local forcing phase resets to zero at every frequency
@@ -304,11 +328,9 @@ computational-storage gates. The draft PR still is **not merge-ready**: its
 so its aggregate BHS is 90/important even though the exact repaired RB-15 slice
 received 100/none.
 
-The promising descriptive lead is distributed self-grading: identical
-attachments experienced materially different local amplitudes, phases, and
-effective stiffness, while the distributed graph cell was less branch-sensitive
-than the single/co-located controls. This is not yet attributable to
-nonlinearity because the frozen grid lacked a distributed-linear control.
+The earlier descriptive self-grading lead did not survive as a robust matched
+factorial advantage. It may remain a local diagnostic, but it cannot support a
+general attenuation, retrieval, or training claim.
 
 Resume order for RB-15:
 
@@ -317,11 +339,9 @@ Resume order for RB-15:
    completed frozen grid as if it were confirmatory evidence.
 2. Preserve the completed independent adversarial review and its phase/resource
    disclosures; do not relabel the v2 screens as enforced ceilings.
-3. If a new synthetic run is later authorized, preregister a distinct
-   distribution-by-nonlinearity factorial with matched distributed-linear
-   control, a frozen phase/continuation policy, a cooperative deadline if a
-   hard ceiling is claimed, and aggregate/worst-case/hysteresis endpoints
-   before output.
+3. Do not repeat the completed factorial without a materially different,
+   preregistered mechanism and a reason its killed worst-case/hysteresis/settling
+   behavior should change.
 4. Do not open Stage B until `PRW-RCM1` and `PRW-ISI1` have explicit
    dispositions and a separate SELECT/REPORT protocol is frozen.
 
@@ -390,6 +410,13 @@ priority Carried Debt entry; this log is the audit trail.
 
 ---
 
-**Last session**: 2026-07-27 — completed the lossless primary/residual audit. The exact 38-path evidence/source allowlist is local at `186590c8`; pre-reconciliation durability anchor `7dec564d` and a verified full-history bundle protect the primary line, while this later documentation-only checkpoint is recorded post-commit in the private recovery index. Private V2 binds 2,584 ignored/untracked files, 1,678,118,521 bytes, ten total worktrees, two stashes, and no cleanup authority; exact archive refs/bundles and verified evidence/source ZIPs close the immediate local-loss gaps. PR #292 `835f6199` failed at Tier B 70/Critical; replacement `f2e41d42` now covers 113/113 affected artifacts, preserves all 103 historical JSON/PNG bytes, passes 28 hostile validator cases, and is independently recovery-bundled. Fresh review found no local artifact blocker but retained BHS 70/Critical because public #292 remains at `eb750958` with stale invalid claims and no `f2e41d42` hosted runs. PR #293 `454e4a32` failed at 70/Critical after six iterations and current #295 `730b305e` failed at 60/Critical after five; both are archive-ref preserved and must be withdrawn after explicit approval, not repaired again. PR #294 `6e78cf41` reached 100 only at its original stacked/pre-transplant head and requires a new transplant branch/replacement PR plus fresh review; do not force-push or retarget public #294. Nothing was pushed, publicly edited/closed/opened, merged, deleted, pruned, restored, reset, or cleaned. Prior scientific disposition remains: T1R is an internal exact-Hamming theorem, current float-FFT production linkage failed, JO1 stacking is closed by flat identity, A1/G2H are conditional, and G2A is blocked.
+**Last session**: 2026-08-16 — completed the dual-Spark Qwen integration,
+RB-15 factorial, and RB-13 Wave 0A campaigns; retained all bounded evidence,
+reconciled the negative/reduction findings, and restored the two-node DeepSeek
+service. The three unrelated 2026-07-27 Carried Debt rows were not closed by
+this work and are now truthfully expired, so the block flag is `BLOCKED`.
+**Previous session**: 2026-07-27 — completed the lossless primary/residual audit. The exact 38-path evidence/source allowlist is local at `186590c8`; pre-reconciliation durability anchor `7dec564d` and a verified full-history bundle protect the primary line, while this later documentation-only checkpoint is recorded post-commit in the private recovery index. Private V2 binds 2,584 ignored/untracked files, 1,678,118,521 bytes, ten total worktrees, two stashes, and no cleanup authority; exact archive refs/bundles and verified evidence/source ZIPs close the immediate local-loss gaps. PR #292 `835f6199` failed at Tier B 70/Critical; replacement `f2e41d42` now covers 113/113 affected artifacts, preserves all 103 historical JSON/PNG bytes, passes 28 hostile validator cases, and is independently recovery-bundled. Fresh review found no local artifact blocker but retained BHS 70/Critical because public #292 remains at `eb750958` with stale invalid claims and no `f2e41d42` hosted runs. PR #293 `454e4a32` failed at 70/Critical after six iterations and current #295 `730b305e` failed at 60/Critical after five; both are archive-ref preserved and must be withdrawn after explicit approval, not repaired again. PR #294 `6e78cf41` reached 100 only at its original stacked/pre-transplant head and requires a new transplant branch/replacement PR plus fresh review; do not force-push or retarget public #294. Nothing was pushed, publicly edited/closed/opened, merged, deleted, pruned, restored, reset, or cleaned. Prior scientific disposition remains: T1R is an internal exact-Hamming theorem, current float-FFT production linkage failed, JO1 stacking is closed by flat identity, A1/G2H are conditional, and G2A is blocked.
 **2026-05-17**: PRs #249–#254 merged; 9 BHS Scope B audit Carried Debt rows (CD-MOD-001 through CD-TTS-002) closed.
-**Last validated by `check_block_flag.py`**: 2026-07-27 local bookkeeping validation; `CLEAR`, three first-cycle open carried-debt rows (`CD-MLR-01`, `CD-R13-01`, `CD-R16-01`), none expired.
+**Last validated by `check_block_flag.py`**: 2026-08-16 local validation;
+`BLOCKED`, three expired open Carried Debt rows (`CD-MLR-01`, `CD-R13-01`,
+`CD-R16-01`).
