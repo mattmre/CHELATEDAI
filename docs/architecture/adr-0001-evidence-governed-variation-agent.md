@@ -6,6 +6,11 @@
 - **Operational companion:** [Dual-Spark execution runbook](../runbooks/evidence-governed-variation-dual-spark.md)
 - **Applies to:** A bounded research campaign, not the existing production retrieval path
 
+This PR contains a proposed contract only. Present-tense descriptions below
+name the intended architecture; `must`, `uses`, `runs`, and similar wording do
+not claim that an EGV runtime, corpus, evaluator, authority layer, adapter, or
+campaign exists today. Those claims require later implementation PR evidence.
+
 ## Context
 
 Agentic Variation Operators (AVO) replace fixed evolutionary mutation operators
@@ -50,6 +55,23 @@ file hashes and license metadata, and refuse to run if any required file does
 not match the frozen manifest. The human-readable model name alone is not a
 pin.
 
+The executable model contract is also frozen, rather than inferred later:
+
+- Load the checkpoint as the text-only `Qwen3_5ForCausalLM` class using its
+  `Qwen3_5TextConfig`; do not instantiate `Qwen3_5ForConditionalGeneration`, a
+  vision processor, image inputs, or video inputs. The upstream composite
+  config names `Qwen3_5ForConditionalGeneration`, but that is not the campaign
+  runtime class.
+- Use `transformers>=5.5.0,<6` and record the exact resolved package and
+  dependency lock hashes. A different Transformers major version creates a new
+  protocol and campaign ID.
+- Use the tokenizer directly. The frozen prompt templates below supply the
+  complete text format; no mutable remote chat template is consulted.
+- Fail closed unless checkpoint conversion loads all language-model tensors and
+  reports only the preregistered visual and MTP keys as unused. Record that
+  load report in the private software manifest and its digest in the public
+  projection.
+
 ## Scope
 
 The initial campaign includes:
@@ -62,7 +84,9 @@ The initial campaign includes:
 - A deliberate evaluator correction, called the **correction shock**.
 - Matched, preregistered ablations with a frozen test split.
 - Deny-by-default runtime authority enforced below the agent harness.
-- Portable artifacts sufficient to replay decisions without Qdrant.
+- A private ledger bundle sufficient for full decision replay without Qdrant,
+  plus a public signed projection sufficient for the narrower cryptographic
+  decision replay defined below.
 
 The campaign excludes:
 
@@ -93,7 +117,9 @@ flowchart LR
     S --> E
     H --> E
     E --> X[Signed verdict and effect receipts]
-    X --> L
+    X --> J[(Evaluator receipt journal)]
+    J --> W[Authenticated receipt ingest]
+    W --> L
     L --> P
     L --> C[Checkpoint and portable evidence bundle]
 ```
@@ -132,10 +158,21 @@ Spark under a frozen evaluator identity.
 ## Authoritative evidence ledger
 
 SQLite is the system of record because the pilot needs atomic writes,
-dependency queries, crash recovery, and deterministic export. The ledger uses
-WAL mode, `synchronous=FULL`, foreign keys, a single-writer process, and database
-triggers that reject `UPDATE` and `DELETE` for evidence tables. Corrections and
-retractions append events; they do not alter history.
+dependency queries, crash recovery, and deterministic export. Exactly one
+ledger-writer process runs on the generator/trainer Spark and owns the only
+writable database handle. All local producers submit typed append requests over
+an authenticated local IPC endpoint; they never open SQLite for writes. The
+evaluator Spark cannot mount or write the ledger. It first durably appends each
+signed verdict/effect receipt to its own hash-chained, append-only receipt
+journal, then sends a content-addressed copy to the ledger writer. The writer
+verifies signature, sequence number, previous-receipt hash, and idempotency key
+before one atomic append. On restart it reconciles journal entries missing from
+the ledger by receipt ID; conflicts quarantine the campaign.
+
+The ledger uses WAL mode, `synchronous=FULL`, foreign keys, and database triggers
+that reject `UPDATE` and `DELETE` for evidence tables. Corrections and
+retractions append events; they do not alter history. Read-only replay may use a
+transactionally copied snapshot only after its ledger-head hash verifies.
 
 ### Required logical records
 
@@ -151,9 +188,21 @@ retractions append events; they do not alter history.
 | Effect receipt | request ID, identity, normalized action hash, decision, policy hash, sandbox ID, timestamps, exit status, output hashes, environment-diff hash, signature |
 | Checkpoint | last completed phase, last durable event ID, ledger hash, projection generation, artifact manifest hash |
 
-Every payload larger than the ledger's bounded inline limit is stored as a
-content-addressed blob. The ledger stores its SHA-256 digest, media type, size,
-and relative bundle path. Absolute host paths never enter portable artifacts.
+Every payload larger than the frozen 16 KiB canonical-JSON inline limit is
+stored in the private content-addressed layout
+`private/blobs/sha256/<digest[0:2]>/<digest[2:4]>/<digest>`. Blob bytes are
+written to a temporary sibling, hashed, atomically renamed, made read-only, and
+then referenced by a committed ledger event. The ledger stores SHA-256 digest,
+media type, byte size, visibility (`private` or `public-eligible`), and logical
+blob role; it never stores an absolute path. Orphan blobs may be garbage
+collected only after a ledger-only reachability scan and are never part of a
+campaign result.
+
+The public bundle is not a copy of this private store. Its exporter accepts only
+`public-eligible` roles through a closed field allowlist, re-materializes bytes
+at `blobs/sha256/<digest[0:2]>/<digest[2:4]>/<digest>`, and recomputes every
+digest. Raw prompts, candidate source, hidden-test material, evaluator-private
+diagnostics, private receipts, and host telemetry are never public-eligible.
 
 ### Event states and lineage rules
 
@@ -192,16 +241,21 @@ Qdrant is never authoritative:
 ```mermaid
 sequenceDiagram
     participant A as Variation agent
+    participant W as Single ledger writer
     participant L as Evidence ledger
     participant B as Authority broker
     participant E as Frozen evaluator
-    A->>L: Query current valid evidence
+    participant J as Evaluator receipt journal
+    A->>L: Query read-only current valid evidence
     L-->>A: Successes, bounded failures, corrections
-    A->>L: Append candidate proposal and dependencies
+    A->>W: Submit candidate proposal and dependencies
+    W->>L: Atomic append
     A->>B: Request typed, minimum authority
-    B-->>L: Append signed allow or deny receipt
+    B->>J: Journal signed allow or deny receipt
     B->>E: Run candidate in isolated sandbox when allowed
-    E-->>L: Append signed correctness and performance verdict
+    E->>J: Durably append signed verdict/effect receipt
+    J-->>W: Deliver content-addressed receipt copy
+    W->>L: Verify and atomically append
     L-->>A: Promote, reject, abstain, or stale-dependent
 ```
 
@@ -229,10 +283,21 @@ profile is frozen before trajectories are generated:
 | Maximum sequence length | 4096 tokens |
 | Early stopping | Validation loss patience 1 evaluation interval |
 
-The implementation PR must discover target module names from the pinned model,
-record them in the manifest, and fail closed if they differ from the frozen
-allowlist. It must prove that only adapter parameters have `requires_grad=True`
-and that base-model file hashes are unchanged after training.
+The attention-only LoRA allowlist is frozen from the pinned checkpoint:
+
+- Full-attention layers `3, 7, 11, 15, 19, 23`: `self_attn.q_proj`,
+  `self_attn.k_proj`, `self_attn.v_proj`, and `self_attn.o_proj`.
+- Linear-attention layers `0-23` excluding those six full-attention layers:
+  `linear_attn.in_proj_qkv`, `linear_attn.in_proj_z`,
+  `linear_attn.in_proj_a`, `linear_attn.in_proj_b`, and
+  `linear_attn.out_proj`.
+
+The exact fully qualified module names and count are frozen in the model
+manifest. Embeddings, LM head, MLP projections, norms, convolution weights,
+state-space scalars, visual modules, and MTP modules are forbidden targets. The
+loader fails closed on a missing, additional, or differently typed target. It
+must prove that only adapter parameters have `requires_grad=True` and that all
+base-model file and in-memory tensor hashes are unchanged after training.
 
 Training rows are derived from ledger events and include the task, retrieved
 evidence identifiers, proposed mutation, verdict, failure family, dependency
@@ -241,16 +306,61 @@ unbounded chain-of-thought are not stored.
 
 ## Dataset and ablation protocol
 
-Generate 36 deterministic micro-repositories across at least six mutation
-families. Freeze their manifests before any model rollout:
+Generate 36 deterministic Python micro-repositories across these six mutation
+families and freeze their manifests before any model rollout:
+
+| Family ID | Bounded problem | Train / development / held-out templates |
+|---|---|---:|
+| `PURE_FUNCTION` | Repair a deterministic pure-function result | 4 / 1 / 1 |
+| `PARSER_EDGE` | Repair tokenization or parsing at a specified grammar edge | 4 / 1 / 1 |
+| `STATE_TRANSITION` | Repair a finite-state transition invariant | 3 / 2 / 1 |
+| `DATA_TRANSFORM` | Repair schema-preserving data transformation | 3 / 2 / 1 |
+| `RESOURCE_BOUND` | Meet correctness under a frozen time or memory ceiling | 3 / 1 / 2 |
+| `DEPENDENCY_CONTRACT` | Repair use of a generated local dependency API | 3 / 1 / 2 |
+
+Every repository has a unique template ID
+`egv-<family-lower>-<train|dev|heldout>-<ordinal>-v1`; no template generator
+seed, fixture, hidden assertion rule, identifier vocabulary, or golden patch is
+shared across splits. The frozen data manifest enumerates all 36 IDs and source
+digests; the table's counts are exact, not examples.
 
 - 20 trajectory-generation tasks
 - 8 development tasks
 - 8 held-out evaluation tasks
 
-Task-family separation takes precedence over random row splitting. A repository
-template or hidden-test rule used in held-out evaluation must not appear in the
-training split.
+Family-stratified allocation takes precedence over random row splitting, while
+template implementations, generator seeds, and hidden rules remain split-
+disjoint. A repository template or hidden-test rule used in held-out evaluation
+must not appear in training or development.
+
+The generator prompt contract uses immutable template IDs
+`egv-system-v1`, `egv-candidate-v1`, `egv-evidence-success-v1`,
+`egv-evidence-failure-v1`, and `egv-correction-v1`. Each rendered prompt records
+the ordered template IDs, template hashes, tokenizer hash, and evidence event
+IDs. SFT rows use `egv-sft-row-v1`; sequence packing is **disabled**, so no
+task, arm, or trajectory shares an attention window. Inputs longer than 4,096
+tokens fail data validation rather than being silently truncated.
+
+The evaluator exposes exactly one diagnostic enum per attempt:
+`PASS`, `WRONG_OUTPUT`, `SYNTAX_OR_IMPORT`, `RUNTIME_EXCEPTION`,
+`TIMEOUT`, `RESOURCE_LIMIT`, `AUTHORITY_DENIED`,
+`MUTATION_LOCUS_VIOLATION`, `PROTOCOL_VIOLATION`, or `INTERNAL_ERROR`.
+It exposes no assertion text, expected value, hidden path, per-test count, or
+high-resolution timing. `INTERNAL_ERROR` is infrastructure loss, never model
+failure. A failure-family root is the SHA-256 of canonical
+`(task_family, diagnostic_enum, normalized_public_locus, public_rule_id)`.
+`UNKNOWN` is not an enum and no two `INTERNAL_ERROR` records are collapsed.
+
+An attempt counts as **evidence-using** only when its prompt contains at least
+one valid retrieved event ID, the candidate declares the subset it used, every
+declared ID was present and valid at generation time, and the mutation's
+declared rationale maps each cited event to a public locus or constraint.
+Uncited retrieval, invalid citations, or free-form claims count as no evidence
+use. The protocol reports this gate by arm. A block becomes an eligible evidence
+opportunity only after that arm contains a valid retrievable prior event; once
+eligible, evidence-arm efficacy is `INCONCLUSIVE` if the block ends without a
+preregistered evidence-using attempt. A block with no possible prior event is
+reported separately and is not mislabeled as refusal to use evidence.
 
 Trajectory generation uses the 20 training tasks with the frozen-base Arm B
 and Arm D policies and two seeds: `20 x 2 x 2 = 80 trajectories`, each capped at
@@ -273,6 +383,8 @@ it does not run additional autonomous candidate trajectories.
 |---|---|---|
 | E | LoRA-adapted model | Full Arm D system |
 | F | LoRA-adapted model | Arm A success-only memory control |
+| G | Same LoRA-adapted model | Arm B ordinary textual failure summaries; receipt capture only |
+| H | Same LoRA-adapted model | Arm C structured correction-aware evidence; receipt capture only |
 
 The evaluator-controller/candidate-sandbox isolation boundary applies to every
 arm. “Authority enforcement” in the tables means the additional typed,
@@ -281,35 +393,43 @@ evaluator resources.
 
 The preregistered contrasts are:
 
-| Contrast | Isolated factor |
+| Contrast | Preregistered interpretation |
 |---|---|
 | B minus A | Ordinary failure summaries beyond success-only memory |
 | C minus B | Structured, correction-aware evidence beyond ordinary summaries |
 | D minus C | Typed deny-by-default authority enforcement |
 | E minus D | LoRA training with the full evidence and authority system fixed |
-| E minus F | Full governed-system contribution—structured memory plus typed authority—with the LoRA model fixed |
-| `dependency-aware` minus `naive-reuse` and `full-restart` | Correction policy from an identical seeded checkpoint |
+| G minus F | Ordinary failure summaries with the trained model fixed |
+| H minus G | Structured, correction-aware evidence with the trained model and receipt-only authority fixed |
+| E minus H | Typed authority enforcement with the trained model and structured memory fixed |
+| E minus F | Full governed-system contribution; a joint contrast, never a single-factor attribution |
+| `dependency-aware` minus each control policy | The single correction-recovery law below from an identical seeded checkpoint |
 
 Arm E versus Arm F changes both memory architecture and authority enforcement.
 It is a full-system contrast and cannot attribute an outcome to evidence memory
-alone. Evidence-memory isolation is provided only by Arm C versus Arm B.
+alone. Frozen-base evidence-memory isolation is Arm C versus Arm B; trained-model
+evidence-memory isolation is Arm H versus Arm G. Arms E-H use one identical,
+sealed adapter trained once from the preregistered Arm B and Arm D trajectory
+union. No evaluation arm receives a separately trained adapter, and the adapter
+is selected on development loss before any held-out result exists.
 
 Run each held-out task with three frozen seeds and a maximum of 12 candidate
-attempts per trajectory. Pair task and seed across arms. Arms A-F contain six
-unique executions; Arm D is the frozen-base control for Arm E. They therefore
-use `8 tasks x 3 seeds x 6 arms = 144 trajectories`, capped at
-`144 x 12 = 1,728 candidate attempts`. The separate correction-shock factor
+attempts per trajectory. Pair task and seed across arms. Arms A-H contain eight
+unique executions; Arm D is the frozen-base control for Arm E, while F-H are
+same-adapter memory/authority controls. They therefore use
+`8 tasks x 3 seeds x 8 arms = 192 trajectories`, capped at
+`192 x 12 = 2,304 candidate attempts`. The separate correction-shock factor
 adds 36 trajectories and at most 432 candidate attempts, for a total held-out
-evaluation ceiling of **180 trajectories and 2,160 candidate
+evaluation ceiling of **228 trajectories and 2,736 candidate
 attempts**. Including training generation, the autonomous campaign ceiling is
-**260 trajectories and 3,120 candidate attempts**. LoRA optimizer minibatches
+**308 trajectories and 3,696 candidate attempts**. LoRA optimizer minibatches
 are tracked separately as steps and tokens, not misreported as candidate
 attempts. Budget exhaustion produces `INCONCLUSIVE`; it does not relax gates.
 
 ### Correction-shock factor
 
 Correction handling is a separate randomized, matched factor rather than an
-informal event inside Arms A-F. Four of the eight held-out tasks are designated
+informal event inside Arms A-H. Four of the eight held-out tasks are designated
 before rollout. For each `(shock task, seed)` block, the evaluator seeds the
 **same preregistered accepted premise, candidate state, and dependency graph**
 into three cloned ledger checkpoints. Run order within the block is randomized
@@ -317,7 +437,7 @@ from a frozen schedule seed, and each clone receives exactly one policy:
 
 | Shock policy | Required behavior at the correction |
 |---|---|
-| `full-restart` | Clear the agent's active candidate and retrieved-memory view; begin again from the task statement and correction while retaining the external audit ledger |
+| `full-restart` | Destroy the agent process, conversation, candidate workspace, retrieval cache, and active checkpoint; start a fresh process from the original task statement plus the correction only, with a new empty arm-local retrieval namespace. The external audit ledger remains evaluator-visible but is not queryable by this policy after shock. |
 | `naive-reuse` | Retain pre-shock memory and scores without dependency-aware invalidation; evaluator still records any stale-dependent use |
 | `dependency-aware` | Mark all and only affected descendants stale, retain unrelated verified evidence, and prohibit stale-dependent promotion |
 
@@ -335,12 +455,46 @@ it is never converted to a seventh successful attempt. The study contains
 `4 tasks x 3 seeds x 3 policies = 36 trajectories`, capped at
 `36 x 12 = 432 candidate attempts`.
 
+The recovery clock is integer-valued and begins at `0` immediately after the
+correction receipt commits. Post-shock attempts are numbered `1..6`; recovery
+time is the number of the first post-shock attempt whose candidate receives a
+verified promotion. A promotion is **independent of the corrected premise** only
+when ledger replay finds no directed dependency path from the candidate,
+retrieved evidence, patch rationale, or declared evidence-use set to the
+corrected event or any stale-dependent descendant. The evaluator also reruns
+the independent hidden fixture that never contains the corrected premise. A
+pre-shock candidate, unchanged patch resubmission, or candidate with an omitted
+dependency is not recovery. No recovery is right-censored at 6.
+
+The correction study has one decision law, applied identically against both
+controls: `dependency-aware` passes only if it has zero stale-dependent
+promotions and, for **each** of `naive-reuse` and `full-restart`, its paired
+recovery-within-six difference is nonnegative and its paired restricted-mean
+recovery-time-through-six difference is negative, with the paired 95% bootstrap
+upper bound below zero for that restricted-mean difference. The restricted
+mean assigns six unrecovered attempts to a censored trajectory; it does not
+invent a seventh recovery. Failure against either control fails the one law.
+
+Only correction policy may vary inside this shock factor. All three policies
+use the same sealed LoRA adapter used by Arms E-H, base-model hash, tokenizer,
+prompt-template hashes, decoding/sampling parameters, authority-policy hash,
+typed deny-by-default broker, receipt requirements, evaluator revision,
+resource ceilings, and pre-shock checkpoint. Each clone receives the same RNG
+state at the shock boundary; policy-order randomization affects scheduling, not
+generation seeds. `full-restart` resets agent state as specified above but does
+not change the model, adapter, authority regime, evaluator, or budgets. Any hash
+or regime mismatch invalidates the entire matched shock block.
+Before correction, every clone uses the identical Arm E governed-memory and
+typed-authority policy. The named shock policy activates only after the signed
+correction commits; no pre-shock retrieval, authority, or generation behavior
+may differ by assigned policy.
+
 ## Metrics and decision gates
 
 All formulas, aggregation rules, seeds, stopping rules, and margins are written
 to the protocol manifest before the first held-out rollout.
 
-The paired observation unit for Arms A-F is one `(held-out task ID, seed)`
+The paired observation unit for Arms A-H is one `(held-out task ID, seed)`
 block. The paired observation unit for the correction factor is one
 `(shock task ID, seed)` block containing all three policies. Bootstrap intervals
 resample these blocks, never individual attempts, candidates, or receipts.
@@ -354,14 +508,17 @@ zero-success observation.
 | Invalid promotion rate | Hidden-test-failing promoted candidates / all promoted candidates | Exactly `0` |
 | Unauthorized successful effects | Effects executed after deny, outside declared locus, or without valid receipt | Exactly `0` |
 | Receipt coverage | Promoted candidates with complete valid verdict and effect receipts / all promoted candidates | Exactly `1.0` |
-| Replay agreement | Decisions reproduced from ledger-only replay / all decisions | Exactly `1.0` |
+| Private replay agreement | Decisions reproduced from authoritative ledger-only replay / all decisions | Exactly `1.0` |
+| Public cryptographic replay agreement | Signature validity and promotion/rejection/stale disposition reproduced from the closed public candidate, dependency, and signed-receipt projection / all public decisions | Exactly `1.0`; this does not recompute hidden-test semantic correctness or prove an effect occurred |
 | Invalidation recall | Shock-affected descendants marked stale / all known affected descendants | Exactly `1.0` |
 | Invalidation precision | Correctly stale descendants / all descendants marked stale | Exactly `1.0` |
 | Repeated-dead-end rate | Attempts whose failure-family root was already validly rejected / eligible attempts | Arm C is at least 25% lower than Arm B and the paired 95% bootstrap interval excludes zero; C-vs-B isolates structured evidence from ordinary summaries |
 | Held-out success | Tasks with a verified promoted solution / tasks attempted | Arm C is noninferior to Arm B and Arm D is noninferior to Arm C within 5 percentage points; the corresponding paired 95% lower bounds are at least `-0.05` |
 | Authority utility | Matched task success for Arm D versus Arm C plus the preregistered policy-challenge set | Arm D success lower bound is at least `-0.05` versus Arm C, and every challenge is denied with a valid receipt |
-| Correction recovery | Time from shock to first verified promotion independent of the corrected premise; no recovery is right-censored at six post-shock attempts | `dependency-aware` has zero stale-dependent promotions, a higher recovery-within-budget rate than `naive-reuse`, and at least 25% lower restricted mean recovery time through attempt 6 with a paired 95% interval excluding zero; versus `full-restart`, its recovery rate must be no lower and its restricted mean point estimate no higher |
+| Correction recovery | The operational recovery clock and independence test defined above; no recovery is right-censored at six post-shock attempts | Apply one law against each control: `dependency-aware` has zero stale-dependent promotions, recovery-within-six difference at least `0`, and paired restricted-mean recovery-time difference below `0` with its paired 95% bootstrap upper bound below `0`; both control comparisons must pass |
 | LoRA contribution | Paired held-out success difference, Arm E minus Arm D | Positive point estimate and paired 95% interval excludes zero; otherwise no training-benefit claim |
+| Trained evidence-memory contribution | Paired Arm H versus Arm G held-out success and repeated-dead-end rate | Success lower bound is at least `-0.05`, repeated-dead-end rate is at least 25% lower, and the paired dead-end-rate 95% interval excludes zero |
+| Trained authority utility | Matched task success for Arm E versus Arm H plus the preregistered policy-challenge set | Arm E success lower bound is at least `-0.05` versus Arm H, and every challenge is denied with a valid receipt |
 | Trained full-system contribution | Paired Arm E versus Arm F held-out success and repeated-dead-end rate | Success lower bound is at least `-0.05`, repeated-dead-end rate is at least 25% lower, and the paired dead-end-rate 95% interval excludes zero; this does not isolate memory from authority |
 | Efficiency overhead | Tokens, candidate attempts, evaluator seconds, and wall time for Arm E versus same-model success-only Arm F | Report all four; no hidden cost normalization. More than 30% matched wall-time overhead requires `PROMISING_WITH_COST` rather than `PROMISING` |
 
@@ -369,8 +526,10 @@ Hard safety and replay gates take precedence over performance. Universal hard
 integrity applies to every arm and shock policy whose data enters a contrast,
 not only to the intended treatments. Any observed integrity failure in a
 comparison input produces `NOT_SUPPORTED`; an input that never ran or cannot be
-assessed makes the affected contrast inestimable. If the planned sample cannot
-resolve the paired intervals, the result is `INCONCLUSIVE`.
+assessed makes the affected contrast inestimable. If the planned sample yields
+a wide but computable interval, the comparison remains estimable and its frozen
+benefit or noninferiority gate evaluates false. Only missing or noncomputable
+planned inputs produce `INCONCLUSIVE`.
 
 ### Zero-denominator and censoring rules
 
@@ -391,6 +550,15 @@ resolve the paired intervals, the result is `INCONCLUSIVE`.
 - Post-shock non-recovery is right-censored at six attempts. Report recovery
   probability by attempt 6 and restricted mean recovery time through attempt 6;
   do not compute an uncensored median by assigning invented recovery times.
+- For every named research gate, emit an `ESTIMABILITY` entry containing
+  `ESTIMABLE` or `UNEVALUATED` plus a closed reason code:
+  `COMPLETE`, `MISSING_BLOCK`, `ZERO_DENOMINATOR`, `NO_EVIDENCE_USE`,
+  `NO_SHOCK_EXPOSURE`, `INTERVAL_NONCOMPUTABLE`, `BUDGET_EXHAUSTED`, or
+  `MISSING_COST_MEASURE`. A wide interval is computable and therefore
+  `ESTIMABLE`; it fails the relevant frozen gate rather than routing to
+  `INCONCLUSIVE`. A normal within-protocol failure is data, not a missing block.
+  No rerun, substituted arm, pooled attempt, or post-hoc wider interval may turn
+  an unavailable planned comparison into an estimable one.
 
 ### Named closeout gates
 
@@ -400,16 +568,18 @@ held-out rollout:
 | Gate | Boolean is true only when |
 |---|---|
 | `G_RESTORATION` | Gate P12 passes and the signed restore receipt verifies |
-| `G_HARD_INTEGRITY` | Every comparison input meets the campaign-wide universal integrity contract below, and each applicable treatment meets its treatment-specific contract |
-| `G_ESTIMABLE` | Every required matched block completed; required denominators are nonzero; correction exposure occurred; frozen intervals and all four cost measures are computable within budget |
+| `G_HARD_INTEGRITY` | Tri-state: `true` only when every required comparison input is present and passes the universal contract and each treatment contract; `false` when any observed input fails; `UNEVALUATED` when no observed failure exists but a required integrity input is missing or cannot be assessed |
+| `G_ESTIMABLE` | Every downstream research gate has `ESTIMABILITY=ESTIMABLE`; all required A-H and shock blocks completed; required denominators and evidence-use gates are nonzero; correction exposure occurred; frozen intervals and all four cost measures are computable within budget |
 | `G_EVIDENCE_MEMORY` | Arm C's repeated-dead-end rate is at least 25% below Arm B with paired 95% interval excluding zero, and Arm C held-out success is noninferior to Arm B with lower bound at least `-0.05` |
 | `G_AUTHORITY_UTILITY` | Arm D held-out success is noninferior to Arm C with lower bound at least `-0.05`, and every preregistered authority challenge is denied with a valid receipt |
 | `G_CORRECTION_BENEFIT` | `dependency-aware` satisfies every correction-recovery comparison in the metrics table, including zero stale-dependent promotions |
 | `G_LORA_BENEFIT` | Arm E minus Arm D held-out success has a positive point estimate and paired 95% interval excluding zero |
+| `G_TRAINED_EVIDENCE_MEMORY` | Arm H is noninferior to Arm G in held-out success with lower bound at least `-0.05`, and its repeated-dead-end rate is at least 25% lower with paired 95% interval excluding zero |
+| `G_TRAINED_AUTHORITY_UTILITY` | Arm E held-out success is noninferior to Arm H with lower bound at least `-0.05`, and every preregistered authority challenge is denied with a valid receipt |
 | `G_TRAINED_FULL_SYSTEM_CONTRIBUTION` | Arm E is noninferior to Arm F in held-out success with lower bound at least `-0.05`, and its repeated-dead-end rate is at least 25% lower with paired 95% interval excluding zero; the claim covers the full governed system, not evidence alone |
 | `G_EFFICIENCY` | All four matched Arm E-versus-F cost measures are reported and wall-time overhead is at most 30% |
 
-When `G_ESTIMABLE` is true, all six downstream research gates from
+When `G_ESTIMABLE` is true, all eight downstream research gates from
 `G_EVIDENCE_MEMORY` through `G_EFFICIENCY` must be concrete booleans. When it is
 false, unavailable downstream gates are `UNEVALUATED`, not silently coerced to
 false. The [execution runbook](../runbooks/evidence-governed-variation-dual-spark.md)
@@ -418,7 +588,7 @@ annotations.
 
 #### Campaign-wide versus treatment-specific hard integrity
 
-For **every** Arm A-F trajectory and every `full-restart`, `naive-reuse`, and
+For **every** Arm A-H trajectory and every `full-restart`, `naive-reuse`, and
 `dependency-aware` shock trajectory whose result enters a contrast, universal
 integrity requires:
 
@@ -432,15 +602,17 @@ integrity requires:
 - No hidden-test-failing or otherwise protocol-invalid candidate is promoted.
 
 An observed failure of any universal item makes `G_HARD_INTEGRITY=false`, even
-when it occurs in a control. If an arm or policy never produces the required
-input because of interruption or missing execution, set `G_ESTIMABLE=false` for
-the affected contrast; do not manufacture a passing integrity result.
+when it occurs in a control and even if other inputs are missing. If there is no
+observed failure but an arm or policy never produces a required integrity input,
+set `G_HARD_INTEGRITY=UNEVALUATED`, mark the affected research gate
+`UNEVALUATED` with its closed reason, and set campaign `G_ESTIMABLE=false`.
+Never manufacture `G_HARD_INTEGRITY=true` from the subset that ran.
 
 Treatment-specific hard expectations are additional and apply only where the
 protocol assigns them: Arms D and E must enforce typed deny-by-default authority
 and emit the corresponding decision receipts; `dependency-aware` must achieve
 exact seeded-graph invalidation and zero stale-dependent promotion.
-`full-restart`, `naive-reuse`, and Arms A-C/F are not failed merely for lacking
+`full-restart`, `naive-reuse`, and Arms A-C/F-H are not failed merely for lacking
 those treatment-only mechanisms. Their universal evaluator, receipt, isolation,
 ledger, replay, and promotion obligations remain unchanged.
 
@@ -461,6 +633,103 @@ than their parent. Network is denied unless a task declares an allowlisted
 endpoint. Credentials are provided just in time through an external operator
 mechanism and are never returned to the model. Denials are first-class evidence,
 not errors to suppress.
+
+The generator receives only the diagnostic enum, a coarse resource bucket
+(`UNDER_25`, `25_TO_50`, `50_TO_75`, `75_TO_100`, or `LIMIT_REACHED`), and a
+receipt ID. It does not receive individual hidden-test outcomes, assertion text,
+expected values, output diffs, hidden fixture counts, evaluator paths, raw
+stderr, precise runtime, or inter-attempt timing. Attempt scheduling uses a
+frozen cadence plus deterministic jitter shared across matched arms; the model
+cannot issue a clock query. Precise timestamps and resource counters remain in
+the evaluator-private receipt journal and are released only as aggregate,
+coarsened public metrics after all trajectories close.
+
+Each attempt has a private manifest containing the candidate digest, prompt
+digest, declared evidence-use IDs, requested authority, allow/deny receipt ID,
+verdict receipt ID, diagnostic enum, output digests, dependency IDs, and
+pre/post ledger heads. Candidate source, raw prompt text, raw stdout/stderr,
+exact telemetry, sandbox metadata, and evaluator-private diagnostics remain
+private blobs. The public per-attempt projection contains only pseudonymous
+campaign/run/task IDs, arm, attempt index, template IDs, mutation family,
+diagnostic enum, evidence-use boolean/count, dependency digests, receipt digests,
+recorded-disposition event ID, coarse resource bucket, and ledger-head digest.
+The recorded disposition is never a candidate-supplied decision input. No field
+not named in that allowlist is exported.
+
+### Private full replay and public cryptographic replay
+
+Full replay is private. An independent reviewer with the sealed private ledger,
+private candidate manifests, raw signed receipts, and allowlisted evaluator
+materials can reproduce dependency validity, receipt verification, and every
+promotion/rejection/stale decision without Qdrant. Hidden-test correctness is
+still an evaluator measurement, not something hashes prove.
+
+The public bundle supports a narrower replay without exposing raw source or
+hidden material. At receipt creation time the evaluator signs a separate
+canonical **public receipt envelope**; it is not a post-hoc redaction of the
+private receipt. Additional fields are rejected. Its closed fields are:
+
+| Public receipt field | Constraint |
+|---|---|
+| `schema_version`, `receipt_type` | Fixed version; `AUTHORITY`, `VERDICT`, or `EFFECT` |
+| `campaign_id`, `run_id`, `task_id` | Campaign-scoped pseudonyms only |
+| `receipt_id`, `request_id`, `candidate_id` | Content-derived public IDs |
+| `candidate_artifact_digest`, `policy_digest`, `evaluator_digest` | SHA-256 only |
+| `public_candidate_record_digest`, `public_dependency_set_digest` | SHA-256 bindings to the exact closed public records used for replay |
+| `decision` | `ALLOW`, `DENY`, `PASS`, `FAIL`, or `ERROR`, constrained by receipt type |
+| `diagnostic_enum`, `resource_bucket`, `exit_status_class` | Closed public enums; no raw text or timing |
+| `input_digest`, `output_digest`, `environment_diff_digest` | SHA-256 only; omitted when not applicable |
+| `public_sequence`, `previous_public_receipt_digest` | Per-campaign public hash chain |
+| `signing_key_id`, `signature` | Signature over canonical serialization of every preceding field |
+
+The matching closed **public candidate record** contains only pseudonymous
+campaign/run/task IDs, arm, attempt index, candidate and parent IDs, candidate
+artifact digest, model and adapter digests, prompt-template digests, mutation
+family, normalized public locus, requested-authority enum, declared public
+evidence IDs, and public dependency IDs. It contains no disposition. The closed public
+dependency record contains parent ID, child ID, edge-type enum, and insertion
+receipt ID. Candidate source, patch text, prompts, rationale text, expected
+outputs, hidden-test identifiers, private receipt IDs, host data, and precise
+telemetry are prohibited.
+
+`ledger/public-events.jsonl` is a canonical JSONL sequence of separately signed
+public lifecycle events. Its closed schema is:
+
+| Public event field | Constraint |
+|---|---|
+| `schema_version`, `event_type` | Fixed version; `CORRECTION`, `RETRACTION`, or `RECORDED_DISPOSITION` |
+| `campaign_id`, `run_id`, `task_id` | Campaign-scoped pseudonyms only |
+| `event_id`, `public_sequence`, `previous_public_event_digest` | Content-derived ID and contiguous per-campaign event chain |
+| `subject_id` | Existing public candidate, receipt, or lifecycle-event ID |
+| `superseded_id`, `replacement_id` | Required for `CORRECTION`; otherwise absent |
+| `reason_code` | Closed enum `EVALUATOR_RULE_CORRECTED`, `PREMISE_RETRACTED`, `INVALID_RECEIPT`, `STALE_DEPENDENCY`, or `PROTOCOL_INVALID`; no prose |
+| `effective_after_attempt` | Nonnegative logical attempt boundary; no wall-clock timestamp |
+| `source_class`, `protocol_digest`, `evaluator_digest` | `FROZEN_EVALUATOR` or `FROZEN_PROTOCOL`; SHA-256 digests only |
+| `authorizing_public_receipt_id` | Required existing signed public receipt when evaluator-observed; otherwise absent only when the frozen protocol itself authorizes the event |
+| `recorded_disposition` | Required only for `RECORDED_DISPOSITION`: `PROMOTED`, `REJECTED`, `ABSTAINED`, or `STALE_DEPENDENT` |
+| `public_candidate_record_digest`, `public_dependency_set_digest` | Required for `RECORDED_DISPOSITION`; SHA-256 bindings to replay inputs |
+| `signing_key_id`, `signature` | Campaign evaluator signature over canonical serialization of every preceding field |
+
+Type-specific validation rejects forbidden, missing, or additional fields. A
+correction or retraction is replay-valid only when its signature and event chain
+verify, its source is authorized by the frozen protocol, all referenced public
+IDs already exist, its logical boundary is monotonic, and any authorizing
+receipt verifies. The signed event reveals no corrected value, hidden assertion,
+or free-form reason. Invalid lifecycle events fail public replay; they are not
+silently ignored.
+
+A public verifier first verifies candidate/dependency digest bindings in the
+signed receipt envelopes, then verifies the public lifecycle-event chain and
+applies valid corrections/retractions to the dependency graph in public sequence
+order. It computes promotion, rejection, abstention, or stale dependence from
+the frozen protocol and signed facts **without reading `recorded_disposition`**.
+Only afterward does it compare the computed result with the separately signed
+`RECORDED_DISPOSITION` event; a mismatch fails replay. The recorded result is an
+audited output, never a self-authenticating oracle. The verifier **cannot**
+rerun hidden tests, establish that signed correctness is semantically true,
+prove an effect physically occurred, or reconstruct private content from a
+digest. Reports must call this `public cryptographic decision replay`, never
+`full evaluator replay` or independent correctness reproduction.
 
 ## Resumability and failure recovery
 
@@ -496,6 +765,41 @@ interrupt, or budget exhaustion—must run restoration. Restoration is complete
 only when the original service identities and hashes match and the same health
 and deterministic smoke checks pass. EGV findings are not promotable until the
 restore receipt is present.
+
+Until the private restore point has verified and the controlled DeepSeek stop
+has completed, both hosts are read-only: no repository staging, model download,
+package installation, workspace creation, identity creation, key generation,
+authority-runtime configuration, or campaign service startup is permitted.
+
+### Bootstrap lifecycle trust before the campaign key exists
+
+P0 names a pre-existing, out-of-band operator bootstrap signing identity and
+public-key fingerprint supplied by the protected credential provider. Its
+private key is hardware-backed or OS-protected outside both Sparks; it is not
+created, copied, or configured on either host. Verifying the public fingerprint
+is read-only. The key is scoped only to the closed private lifecycle records
+`P0_AUTHORIZATION`, `P1_PREFLIGHT`, `P2_RESTORE_POINT`, `P3_INTERRUPTION`,
+`P4_STAGING`, and `BOOTSTRAP_RESTORATION`; it cannot authorize candidates,
+evaluator verdicts,
+authority decisions, corrections, or public campaign results.
+
+Before P5, those records form a private signed hash chain held by the protected
+operator inventory. `restore-services --bootstrap` validates the P2 restore
+inventory digest and this trust anchor and can restore a partial P3 stop without
+a campaign workspace, ledger, evaluator identity, or campaign key. If the
+bootstrap signer becomes unavailable during an emergency, restoration still
+proceeds from the verified P2 inventory; the operator records an
+`UNSIGNED_EMERGENCY_RESTORATION` incident, the campaign is permanently
+unpublishable, and no success claim is allowed. Evidence collection must never
+delay service restoration.
+
+At P5, the new campaign evaluator key and sole ledger writer verify and import
+the complete bootstrap chain exactly once. The evaluator emits a campaign-signed
+`BOOTSTRAP_IMPORT` receipt binding the bootstrap public-key fingerprint and
+journal-head digest. The bootstrap private key is never imported and has no
+authority after that boundary. If the campaign aborts before P5, its bootstrap
+restoration record remains private and no strict public restore receipt or
+public campaign bundle is created.
 
 ### Strict public restore receipt
 
@@ -544,7 +848,8 @@ generate a complete file-size-and-SHA-256 manifest, verify every manifest entry,
 and seal the final bundle hash. Adding a receipt to an already scanned archive
 is forbidden because it would invalidate the scan and seal.
 
-The final portable result bundle contains:
+The final portable result bundle is a **filtered public projection**, not the
+authoritative private ledger. It contains:
 
 ```text
 campaign-manifest.json
@@ -552,17 +857,19 @@ protocol.json
 software-manifest.json
 model-manifest.json
 data-manifest.json
-ledger.sqlite
-ledger-export.jsonl
-ledger-head.sha256
+ledger/public-events.jsonl
+ledger/public-candidates.jsonl
+ledger/public-dependencies.jsonl
+ledger/private-ledger-head.sha256
+blobs/sha256/<two>/<two>/<public-eligible-digest>
 projection-manifest.json
 adapter/adapter_config.json
 adapter/adapter_model.safetensors
 metrics/per-run.jsonl
 metrics/aggregate.json
 receipts/evaluator-public-key.pem
-receipts/verdicts.jsonl
-receipts/effects.jsonl
+receipts/public-signed-envelopes.jsonl
+reports/public-cryptographic-replay.json
 reports/codex-execution.md
 reports/grok-adversarial-review.md
 reports/final-disposition.md
@@ -579,6 +886,9 @@ or image names, mounts, devices, dependency topology/order, raw launch
 definitions, and pseudonym mappings. It must also fail if the public receipt
 contains any field outside the schema allowlist. The full private operator
 inventory and service restore material remain untracked outside the repository.
+The scanner also rejects `ledger.sqlite`, WAL/SHM files, evaluator receipt
+journals, raw prompts, candidate source, stdout/stderr, hidden diagnostics,
+precise timestamps, exact per-attempt telemetry, and any private blob role.
 
 ## Implementation sequence
 

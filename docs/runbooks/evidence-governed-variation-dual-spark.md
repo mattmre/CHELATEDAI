@@ -47,6 +47,8 @@ must define the following logical values without exposing them to the models:
 | `deepseek_service_set` | Existing services that must be captured and restored |
 | `authority_runtime` | OpenShell runtime identity and immutable version |
 | `credential_provider` | Existing out-of-band credential mechanism |
+| `bootstrap_signer` | Pre-existing out-of-band lifecycle signer; private key never enters either Spark |
+| `bootstrap_trust_fingerprint` | Public-key fingerprint authorized at P0 for closed private bootstrap records |
 
 Inventory validation must reject empty values, loopback destinations,
 trainer/evaluator aliasing, broad filesystem roots, and values containing
@@ -60,6 +62,7 @@ Later PRs must provide one top-level command surface with these subcommands:
 ```text
 python -m egv preflight
 python -m egv capture-services
+python -m egv stop-services
 python -m egv stage
 python -m egv freeze
 python -m egv generate-trajectories
@@ -72,9 +75,29 @@ python -m egv status
 ```
 
 Every subcommand must be idempotent, accept a campaign ID and protected
-inventory reference, write structured results to the authoritative ledger, and
-return nonzero on an unmet hard gate. No command may print credentials or dump
-the complete environment.
+inventory reference, and return nonzero on an unmet hard gate. Before the
+single ledger writer exists, commands append bootstrap-signed, hash-chained
+lifecycle results to the protected pre-ledger operator journal. Phase 5 verifies
+and ingests those records exactly once and emits a campaign-signed
+`BOOTSTRAP_IMPORT` receipt. Later commands write through the ledger writer. No
+command may print credentials or dump the complete environment.
+Before the controlled stop, the journal is written only through the out-of-band
+credential/provider storage named by inventory; neither Spark is modified.
+
+`stop-services` is the concrete Phase 3 contract. It additionally requires
+protected references to the P0 maintenance authorization, verified P2 restore
+inventory digest, and baseline smoke digest. It must revalidate those digests,
+rerun the baseline health/smoke probe, quiesce through the captured mechanism,
+stop the exact captured service set in reverse dependency order, reject any
+unplanned target or already-divergent identity, verify the stopped set and
+unrelated-process baseline, and journal a bootstrap-signed interruption receipt.
+A partial stop invokes `restore-services --bootstrap` immediately and returns
+nonzero. Secret
+values and raw service definitions remain in the protected inventory; none may
+be supplied as command-line values.
+`restore-services --bootstrap` must operate from the verified private restore
+inventory, bootstrap trust fingerprint, and pre-ledger journal even when
+`stage`, ledger initialization, and campaign-key creation have never run.
 
 ## Phase 0: authorize and freeze the maintenance window
 
@@ -87,9 +110,13 @@ the complete environment.
 5. Open a maintenance window that includes time for mandatory DeepSeek restore.
 6. Authenticate interactively through the existing SSH and privilege mechanism.
    Do not place credentials in scripts, shell history, agent messages, or logs.
+7. Verify read-only access to the pre-existing bootstrap public key, record its
+   fingerprint in the authorization, and prove the out-of-band signer can sign
+   and verify a nonce without copying or configuring its private key on a Spark.
 
 **Gate P0:** written operator authorization, exact source commit, distinct host
-identities, and a restore window. Otherwise stop.
+identities, restore window, and verified bootstrap trust fingerprint. Otherwise
+stop.
 
 ## Phase 1: read-only preflight
 
@@ -102,17 +129,25 @@ Collect a redacted preflight manifest from both machines:
 - Active listening-service identities without addresses.
 - Current GPU processes and workloads.
 - Repository and model-cache free space.
-- OpenShell or equivalent authority-runtime identity and version.
-- Ability to create an isolated campaign workspace under the exact inventory
-  path.
+- OpenShell or equivalent authority-runtime identity, version, policy-schema
+  version, and offline compatibility with the frozen campaign policy format.
+- Read-only validation that the inventory's workspace parent exists, is not a
+  broad root, and has the expected owner. Do not create the workspace yet.
 
 Do not install packages, stop processes, change networking, or modify services
 during preflight.
 
-**Gate P1:** both Sparks are healthy; the authority runtime is present and
-enforceable; required storage is available; no protected workload conflicts.
-If OpenShell or an equivalent below-harness enforcement layer is absent, the
-full authority arm is blocked. Prompt-only restrictions are not a fallback.
+**Gate P1 has one recorded outcome:** `P1_READY` only when both Sparks are
+healthy, the authority runtime is installed, its version/ABI and policy-schema
+are compatible with the frozen campaign format, required storage is available,
+and no protected workload conflicts; otherwise `P1_BLOCKED` with a closed reason
+code (`HOST_UNHEALTHY`, `AUTHORITY_RUNTIME_ABSENT`,
+`AUTHORITY_RUNTIME_INCOMPATIBLE`, `STORAGE_INSUFFICIENT`, `TIME_UNSYNCED`, or
+`PROTECTED_WORKLOAD_CONFLICT`). P1 does **not** claim enforcement works; Gate P5
+proves enforceability through isolated negative controls after the controlled
+stop. `P1_BLOCKED` stops the campaign before any host mutation. Prompt-only
+restrictions are not a fallback, and a reduced campaign without authority arms
+requires a new ADR and campaign ID.
 
 ## Phase 2: capture the DeepSeek restore point
 
@@ -127,6 +162,10 @@ Before stopping anything, capture in the private, untracked operator inventory:
 7. Listening-service names and expected service count.
 8. A resource baseline.
 
+Canonicalize and bootstrap-sign the private P2 restore-inventory digest and
+baseline smoke digest in the pre-ledger journal. The raw inventory remains
+private and outside both agent contexts.
+
 Validate the private restore inventory by resolving every referenced service
 and artifact. Keep it outside the repository, agent context, public ledger
 export, and artifact bundle. Campaign evidence receives only its SHA-256 digest
@@ -136,7 +175,28 @@ until Phase 12 creates the strict public restore receipt defined in ADR-0001.
 identity check, and smoke check. If any service cannot be restored from the
 captured information, do not interrupt it and do not start the campaign.
 
-## Phase 3: stage immutable inputs
+## Phase 3: controlled DeepSeek stop
+
+Gates P0-P2 authorize one mutation: stopping the captured service. They do not
+authorize campaign staging yet.
+
+1. Re-run the DeepSeek health and deterministic smoke check and require an
+   exact match to Phase 2.
+2. Quiesce requests using the captured supported mechanism.
+3. Stop services in reverse captured dependency order.
+4. Confirm the expected services are stopped without killing unrelated
+   processes.
+5. Record a bootstrap-signed `P3_INTERRUPTION` receipt and post-stop resource
+   baseline in the private pre-ledger journal.
+6. If any stop partially fails, execute `restore-services --bootstrap`
+   immediately using Phase 12's bootstrap branch; do not stage campaign files
+   or attempt an ad hoc repair.
+
+**Gate P3:** the verified restore point still matches, the controlled stop is
+complete, the interruption receipt verifies, and unrelated workloads remain
+unchanged. Otherwise restore and stop.
+
+## Phase 4: stage immutable inputs
 
 Stage the exact source commit independently on both Sparks. Do not copy an
 uncommitted worktree. The staging command must verify:
@@ -156,57 +216,63 @@ Sparks. A scanner must reject likely credentials, private keys, authentication
 files, cookies, private addresses, local usernames, absolute host paths, and
 unallowlisted source roots before transfer.
 
-Create distinct Unix identities or runtime identities for generator and
-evaluator duties. The generator and candidate-sandbox identities must have no
-read, write, directory-listing, mount, or discovery access to hidden tests,
-evaluator binaries, expected outputs, or the evaluator signing key.
+This is the first phase allowed to create campaign workspaces, download the
+pinned model, install locked dependencies, or copy public/generated inputs. No
+network, driver, kernel, container-runtime, or unrelated service configuration
+may change.
 
-**Gate P3:** both software manifests agree on the frozen inputs; model files
-match; source trees are clean; scanner reports zero prohibited findings.
+**Gate P4:** both software manifests agree on the frozen inputs; model files
+match; source trees are clean; scanner reports zero prohibited findings; and a
+bootstrap-signed `P4_STAGING` record binds both manifest digests in the private
+journal.
 
-## Phase 4: initialize the authority boundary
+## Phase 5: initialize the authority boundary
 
-On the evaluator Spark:
-
-1. Create separate evaluator-controller, hidden-evaluator-runner, and untrusted
-   per-run candidate-sandbox identities and namespaces.
-2. Create an ephemeral Ed25519 campaign signing key through the evaluator
-   controller identity.
-3. Export only the public key and key ID to the campaign manifest.
-4. Load the deny-by-default authority policy.
-5. Create isolated per-run sandboxes with bounded CPU, memory, storage, process,
+1. On the generator/trainer Spark, initialize the sole SQLite ledger-writer
+   process in bootstrap-import-only mode. It accepts no campaign events yet.
+2. On the evaluator Spark, create separate evaluator-controller,
+   hidden-evaluator-runner, and untrusted per-run candidate-sandbox identities
+   and namespaces.
+3. Create an ephemeral Ed25519 campaign signing key through the evaluator
+   controller identity and export only its public key and key ID.
+4. Verify the authorized bootstrap public-key fingerprint and complete private
+   P0-P4 journal chain. Emit a campaign-signed `BOOTSTRAP_IMPORT` receipt binding
+   that fingerprint and journal-head digest.
+5. Have the ledger writer verify the campaign key, bootstrap chain, and import
+   receipt, then atomically ingest each bootstrap record and the import receipt
+   exactly once. A mismatch quarantines initialization; the bootstrap signer
+   receives no campaign authority.
+6. Load the deny-by-default authority policy.
+7. Create isolated per-run sandboxes with bounded CPU, memory, storage, process,
    wall-time, and network budgets.
-6. Keep hidden tests, expected outputs, evaluator binaries, evaluator
+8. Keep hidden tests, expected outputs, evaluator binaries, evaluator
    configuration, and signing material entirely absent from the candidate
    namespace. Read-only mounts are not allowed.
-7. Configure the controller to receive content-addressed candidate artifacts,
+9. Configure the controller to receive content-addressed candidate artifacts,
    pass one opaque input at a time into the sandbox, and return candidate output
    to the distinct hidden-evaluator-runner identity for comparison. Expose only
    a signed verdict and bounded diagnostic code to the generator.
-8. Verify that child processes cannot exceed parent authority.
-9. Run negative controls that attempt to read, write, list, mount, or discover
-   hidden evaluator resources, plus denied process, network, credential, and
-   evaluator-mutation attempts.
-10. Confirm every allow and deny produces a verifiable signed receipt.
+10. Verify that child processes cannot exceed parent authority.
+11. Run negative controls that attempt to read, write, list, mount, or discover
+    hidden evaluator resources, plus denied process, network, credential, and
+    evaluator-mutation attempts.
+12. Configure the evaluator-private append-only receipt journal. Require each
+    record to carry campaign ID, monotonic sequence, previous-receipt hash,
+    idempotency key, payload digest, key ID, and signature before it is offered
+    to the remote single ledger writer.
+13. Confirm every allow and deny produces a journaled, verifiable signed receipt
+    and that duplicate delivery is idempotent while conflicting delivery is
+    quarantined.
 
-**Gate P4:** every sandbox access probe fails without revealing path contents or
+**Gate P5:** every sandbox access probe fails without revealing path contents or
 metadata, all other negative controls are denied, no denied effect succeeds,
-and all test receipts validate against the campaign public key.
-
-## Phase 5: capture, stop, and reserve the current model service
-
-Only after gates P0-P4 pass:
-
-1. Re-run the DeepSeek smoke check and confirm it matches Phase 2.
-2. Quiesce requests using the service's supported mechanism.
-3. Stop services in reverse dependency order.
-4. Confirm the expected services are stopped without killing unrelated
-   processes.
-5. Record a signed interruption receipt and resource baseline.
-6. Reserve the campaign resources; do not change networking or unrelated host
-   configuration.
-
-If any stop operation partially fails, immediately enter the restoration phase.
+all test receipts validate against the campaign public key, and journal-to-ledger
+reconciliation produces one ledger event per receipt. The bootstrap chain,
+fingerprint, and campaign-signed `BOOTSTRAP_IMPORT` receipt must also verify.
+Reserve campaign
+resources without changing networking or unrelated host configuration.
+P5 is the first gate that proves authority enforcement; P1 established only
+runtime availability and configuration compatibility.
 
 ## Phase 6: freeze the experimental protocol
 
@@ -220,8 +286,13 @@ The operator then freezes:
 
 - Dataset and task-family splits.
 - Hidden evaluator bundle.
-- Model and LoRA profile.
+- Model revision, `Qwen3_5ForCausalLM` text-only class,
+  `transformers>=5.5.0,<6` exact lock, tokenizer, attention-only LoRA allowlist,
+  and LoRA profile.
 - Prompt and retrieval-policy hashes.
+- All 36 `egv-<family>-<split>-<ordinal>-v1` template IDs, the five prompt
+  template IDs, `egv-sft-row-v1`, packing-disabled rule, diagnostic enum,
+  failure-family formula, and evidence-use gate from ADR-0001.
 - Arms, seed set, attempt limits, and stopping rules.
 - Correction-shock task IDs, schedule seed, identical accepted-premise and
   dependency-graph fixture, policy definitions, and dependency roots.
@@ -253,6 +324,9 @@ For every attempt:
 5. Append evaluator verdict, output hashes, effect receipt, and dependencies.
 6. Classify the failure family without deleting rejected attempts.
 7. Checkpoint the ledger head and projection generation.
+8. Persist the private attempt manifest and the closed-field public projection
+   separately; do not put raw prompt, patch, stdout/stderr, exact timing, hidden
+   diagnostics, or sandbox metadata in the public projection.
 
 Arm projections and conversation state are isolated. Cross-arm retrieval is a
 hard protocol violation.
@@ -273,6 +347,11 @@ Build training rows only from the frozen ledger cutoff. Filter out:
 Before training, record base-model hashes and the complete `requires_grad`
 parameter allowlist. Train at most three epochs using the ADR profile, with
 checkpointed optimizer, scheduler, RNG, and data-cursor state.
+Use `egv-sft-row-v1` with sequence packing disabled and reject overlength rows;
+never concatenate tasks, arms, or trajectories in one attention window.
+Build one deterministic row set from the frozen union of Arm B and Arm D
+training trajectories, train one adapter, and seal that identical adapter for
+Arms E-H. Do not train an arm-specific evaluation adapter.
 
 After training:
 
@@ -287,9 +366,9 @@ and selected checkpoint determined without held-out results.
 
 ## Phase 9: run matched held-out ablations
 
-Run Arms A-F on the eight held-out tasks using three paired seeds and no more
+Run Arms A-H on the eight held-out tasks using three paired seeds and no more
 than 12 candidate attempts per trajectory. This main ablation is exactly
-`8 x 3 x 6 = 144 trajectories` and at most `1,728 candidate attempts`.
+`8 x 3 x 8 = 192 trajectories` and at most `2,304 candidate attempts`.
 Schedule arms in balanced randomized order so thermal or time-of-day effects do
 not map to one treatment.
 
@@ -305,10 +384,21 @@ matched policies:
 Randomize policy execution order within each `(shock task, seed)` block from the
 frozen schedule seed. This factor is exactly `4 x 3 x 3 = 36 trajectories` and
 at most `432 candidate attempts`. The total held-out ceiling is therefore
-**180 trajectories and 2,160 candidate attempts**, not 144 trajectories.
-Together with Phase 7, the autonomous campaign ceiling is 260 trajectories and
-3,120 candidate attempts. LoRA optimizer minibatches are counted separately as
+**228 trajectories and 2,736 candidate attempts**, not 192 trajectories.
+Together with Phase 7, the autonomous campaign ceiling is 308 trajectories and
+3,696 candidate attempts. LoRA optimizer minibatches are counted separately as
 training steps and tokens.
+
+Freeze one shock execution profile shared by all three policies: the identical
+sealed Arms E-H LoRA adapter and base-model hashes, tokenizer and prompt hashes,
+decoding parameters, RNG state at shock, typed deny-by-default authority policy
+and broker, receipt contract, evaluator revision, resource ceilings, and
+pre-shock checkpoint. `full-restart` changes agent state only. A profile hash
+mismatch invalidates the complete `(shock task, seed)` block; it is not repaired
+by substituting a run.
+All clones use the identical Arm E governed-memory and typed-authority behavior
+before shock. The assigned correction policy becomes active only after the
+signed correction commits, so no pre-shock treatment behavior can diverge.
 
 The evaluator injects the correction immediately after attempt 6 in every shock
 trajectory. Early task success does not end a shock trajectory: freeze the best
@@ -316,7 +406,19 @@ solution, continue the evidence scenario to attempt 6, deliver the correction,
 and then run the assigned policy. The seeded pre-shock promoted candidate must
 depend on the corrected premise, guaranteeing exposure. Give each policy at
 most six post-shock attempts. A trajectory with no independent verified
-promotion by attempt 12 is right-censored at six post-shock attempts.
+promotion by attempt 12 is right-censored at six post-shock attempts. For
+`full-restart`, destroy the process, conversation, candidate workspace,
+retrieval cache, and active checkpoint; start a fresh process with only the
+original task and correction and an empty retrieval namespace. The audit ledger
+remains evaluator-visible but unavailable to that restarted agent.
+
+Commit the correction receipt, set the recovery clock to `0`, and number the six
+post-shock attempts `1..6`. Count recovery only when the first verified
+promotion has no replayed dependency path—from candidate, cited evidence,
+rationale, or retrieved events—to the corrected premise or any stale-dependent
+descendant, and passes the independent hidden fixture. Apply ADR-0001's one
+correction law against **both** controls; do not substitute a recovery-rate-only
+or point-estimate-only test.
 
 Record after every attempt:
 
@@ -326,6 +428,12 @@ Record after every attempt:
 - Retrieval event IDs and projection generation.
 - Authority decisions and signed receipts.
 - Hidden evaluator verdict references.
+- Private attempt-manifest digest and public-projection digest.
+
+Expose to the generator only the bounded diagnostic enum, receipt ID, and coarse
+resource bucket. Keep assertion text, expected values, per-test counts, raw
+stderr, precise duration, and inter-attempt timing evaluator-private. Use the
+frozen cadence and deterministic matched jitter so timing is not a side channel.
 
 For ordinary efficacy metrics, the paired observation unit is
 `(held-out task ID, seed)`. For correction metrics, it is
@@ -350,17 +458,32 @@ On the evaluator Spark:
 5. Compute paired bootstrap intervals with the frozen procedure.
 6. Record provisional decision inputs. Do not finalize the disposition until
    restoration succeeds in Phase 12.
+7. Materialize a provisional closed-field public candidate/dependency projection,
+   evaluator-signed public receipt envelopes, and the signed
+   `ledger/public-events.jsonl` correction/retraction/recorded-disposition chain
+   defined in ADR-0001.
+8. In a fresh verifier process with only that projection and the public key,
+   verify both public hash chains and signatures, apply signed corrections and
+   retractions to the bound dependency graph, compute each disposition without
+   reading `RECORDED_DISPOSITION`, and only then compare the computed result to
+   the signed recorded event. Record this separately as
+   `public cryptographic decision replay`; do not claim hidden-test correctness
+   or physical effect execution was independently reproduced.
 
 Before classification, materialize the named gate vector defined in ADR-0001:
 
-First audit universal integrity for every Arm A-F and every shock-policy input
+First audit universal integrity for every Arm A-H and every shock-policy input
 used by any contrast. Each input requires a valid frozen evaluator identity and
 signature, all required verdict/effect receipts, valid ledger and ledger-only
 replay, hidden-test isolation, split isolation, arm-state isolation, and zero
 protocol-invalid promotions. An observed failure anywhere—including a
-control—sets `G_HARD_INTEGRITY=false`. If a required input never ran or cannot
-be assessed, set `G_ESTIMABLE=false` for its contrast instead of treating
-integrity as passed.
+control—sets `G_HARD_INTEGRITY=false`, even when another required input is
+missing. If no observed failure exists but a required integrity input never ran
+or cannot be assessed, set `G_HARD_INTEGRITY=UNEVALUATED`, mark the affected
+research gate `UNEVALUATED` with ADR-0001's closed estimability reason, and set
+campaign `G_ESTIMABLE=false`. Only a complete passing input set may set
+`G_HARD_INTEGRITY=true`; do not rerun selectively, substitute another arm, pool
+attempts, or widen an interval after seeing outcomes.
 
 Then audit treatment-specific mechanics only where assigned: Arms D and E must
 enforce typed authority and emit decision receipts; `dependency-aware` must
@@ -371,12 +494,14 @@ mechanisms, but remain subject to every universal integrity rule.
 | Gate | Closeout value |
 |---|---|
 | `G_RESTORATION` | Boolean: P12 and its signed receipt pass |
-| `G_HARD_INTEGRITY` | Boolean: every comparison input passes universal integrity and each applicable treatment passes its assigned typed-authority or invalidation contract |
-| `G_ESTIMABLE` | Boolean: required matched blocks, denominators, exposures, intervals, budget, and cost measures are complete and computable |
+| `G_HARD_INTEGRITY` | Tri-state: `true` for a complete passing input set; `false` for any observed universal/treatment integrity failure; `UNEVALUATED` only when no observed failure exists but a required integrity input is missing or unassessable |
+| `G_ESTIMABLE` | Boolean: every downstream gate is `ESTIMABLE`; all A-H and shock matched blocks, denominators, evidence-use gates, exposures, intervals, budget, and cost measures are complete and computable |
 | `G_EVIDENCE_MEMORY` | Boolean: Arm C passes the frozen efficacy and noninferiority comparisons against Arm B |
 | `G_AUTHORITY_UTILITY` | Boolean: Arm D passes noninferiority against Arm C and every authority challenge is denied with a valid receipt |
 | `G_CORRECTION_BENEFIT` | Boolean: `dependency-aware` passes every frozen recovery comparison and has zero stale-dependent promotions |
 | `G_LORA_BENEFIT` | Boolean: Arm E passes the frozen benefit comparison against Arm D |
+| `G_TRAINED_EVIDENCE_MEMORY` | Boolean: Arm H passes the frozen success and dead-end comparisons against Arm G |
+| `G_TRAINED_AUTHORITY_UTILITY` | Boolean: Arm E passes noninferiority against Arm H and every authority challenge is denied with a valid receipt |
 | `G_TRAINED_FULL_SYSTEM_CONTRIBUTION` | Boolean: Arm E passes the frozen success and dead-end comparisons against Arm F; this is memory plus authority, not evidence-only attribution |
 | `G_EFFICIENCY` | Boolean: all four matched cost measures exist and Arm E-versus-F wall-time overhead is at most 30% |
 
@@ -388,37 +513,47 @@ Apply this ordered first-match tree:
 
 1. If `G_RESTORATION=false`, select **`RESTORATION_BLOCKED`**.
 2. Else if `G_HARD_INTEGRITY=false`, select **`NOT_SUPPORTED`**.
-3. Else if `G_ESTIMABLE=false`, select **`INCONCLUSIVE`**.
+3. Else if `G_HARD_INTEGRITY=UNEVALUATED` or `G_ESTIMABLE=false`, select
+   **`INCONCLUSIVE`**.
 4. Else if `G_EVIDENCE_MEMORY=false`, select
-   **`REDUCES_TO_ORDINARY_MEMORY`**.
+   **`EVIDENCE_MEMORY_NOT_DEMONSTRATED`**.
 5. Else if `G_AUTHORITY_UTILITY=false`, select
-   **`AUTHORITY_UTILITY_LOSS`**.
+   **`AUTHORITY_UTILITY_NOT_DEMONSTRATED`**.
 6. Else if `G_CORRECTION_BENEFIT=false`, select
-   **`NO_CORRECTION_BENEFIT`**.
-7. Else if `G_LORA_BENEFIT=false`, select **`NO_TRAINING_BENEFIT`**.
-8. Else if `G_TRAINED_FULL_SYSTEM_CONTRIBUTION=false`, select
-   **`NO_TRAINED_FULL_SYSTEM_CONTRIBUTION`**.
-9. Else if `G_EFFICIENCY=false`, select **`PROMISING_WITH_COST`**.
-10. Else select **`PROMISING`**.
+   **`CORRECTION_BENEFIT_NOT_DEMONSTRATED`**.
+7. Else if `G_LORA_BENEFIT=false`, select
+   **`TRAINING_BENEFIT_NOT_DEMONSTRATED`**.
+8. Else if `G_TRAINED_EVIDENCE_MEMORY=false`, select
+   **`TRAINED_EVIDENCE_NOT_DEMONSTRATED`**.
+9. Else if `G_TRAINED_AUTHORITY_UTILITY=false`, select
+   **`TRAINED_AUTHORITY_UTILITY_NOT_DEMONSTRATED`**.
+10. Else if `G_TRAINED_FULL_SYSTEM_CONTRIBUTION=false`, select
+   **`TRAINED_FULL_SYSTEM_NOT_DEMONSTRATED`**.
+11. Else if `G_EFFICIENCY=false`, select **`PROMISING_WITH_COST`**.
+12. Else select **`PROMISING`**.
 
 Every result record must also contain:
 
-- `GATE_VECTOR`: every named gate in the order above, using `true`, `false`, or
-  `UNEVALUATED` only as permitted by `G_ESTIMABLE`.
+- `GATE_VECTOR`: every named gate in the order above. `G_HARD_INTEGRITY` uses
+  the tri-state rule above; research gates use `true`, `false`, or `UNEVALUATED`
+  according to their own estimability records and are never defaulted to pass.
 - `FAILED_DOWNSTREAM_GATES`: every additional false gate after the branch that
   selected the primary disposition, not merely the first failure.
 - `UNEVALUATED_GATES`: every downstream gate unavailable because
   `G_ESTIMABLE=false`.
 
-For example, a memory failure combined with correction, LoRA, trained
-full-system, and cost failures remains `REDUCES_TO_ORDINARY_MEMORY`, but all
-four later failures must appear in `FAILED_DOWNSTREAM_GATES`. Ordering therefore
+For example, a memory failure combined with correction, LoRA, trained-evidence,
+trained-authority, trained-full-system, and cost failures remains
+`EVIDENCE_MEMORY_NOT_DEMONSTRATED`, but every later failure must appear in
+`FAILED_DOWNSTREAM_GATES`. Ordering therefore
 cannot hide mixed outcomes or support selection of the most favorable label.
 
 This tree is exhaustive for all complete, estimable boolean gate combinations:
 the first false gate maps to exactly one named failure/cost disposition, and the
 all-true vector maps to `PROMISING`. The restoration and inestimability branches
 also define the only allowed outcomes before a complete estimable vector exists.
+Every `*_NOT_DEMONSTRATED` label means the preregistered threshold was not met;
+it is not evidence that the true effect is exactly zero or harmful.
 
 Codex writes the execution report. Grok receives the frozen protocol, ledger
 export, metrics, and redacted receipts and attempts to find leakage, metric
@@ -442,6 +577,9 @@ or sealed. Run an early scan of both filenames and content for:
 - Raw environment dumps and shell histories.
 - Proprietary repository content or unapproved datasets.
 - Evaluator private-key material and hidden-test answers.
+- Raw SQLite/WAL/SHM files proposed for the public bundle, evaluator receipt
+  journals, raw prompts, candidate source, stdout/stderr, hidden diagnostics,
+  precise timestamps, exact per-attempt telemetry, or private blob roles.
 
 An early positive finding must be resolved at its source. Do not redact a ledger
 database in place; regenerate exports from allowlisted fields. Passing this
@@ -450,7 +588,35 @@ final manifest do not exist yet.
 
 ## Phase 12: mandatory DeepSeek restoration
 
-Restoration runs on every exit path, including interruption and failed gates:
+Restoration runs on every exit path, including interruption and failed gates.
+Choose the branch from durable state, never operator preference.
+
+### Bootstrap restoration branch: before P5 completes
+
+This branch is mandatory for a partial Phase 3 stop or any exit before the
+campaign ledger and evaluator key are established:
+
+1. Run `restore-services --bootstrap` directly from the verified private P2
+   restore inventory, P0 bootstrap trust fingerprint, and pre-ledger journal.
+   It must not require a campaign workspace, ledger, evaluator process, or
+   campaign key.
+2. If P4 or a partial P5 created campaign processes, stop only identities bound
+   by the staged software manifest and confirm they release model resources and
+   service ports. Do not target unrelated processes; record any ambiguity as a
+   restoration incident and continue the protected restore procedure.
+3. Restore the captured definitions in dependency order, verify service count,
+   executable/image/model/configuration identities, rerun the exact P2 health
+   and smoke checks, and compare the protected resource/listening baseline.
+4. Append a bootstrap-signed `BOOTSTRAP_RESTORATION` record to the private
+   journal. If the signer is unavailable, restore anyway, create a private
+   `UNSIGNED_EMERGENCY_RESTORATION` incident, and permanently prohibit campaign
+   publication. Evidence recording must never delay restoration.
+5. If P5 later succeeds, import the complete chain and bind it with
+   `BOOTSTRAP_IMPORT`. If the campaign exits before P5, keep the restoration
+   record private; there is no strict public restore receipt, public result, or
+   campaign bundle.
+
+### Campaign restoration branch: after P5 completes
 
 1. Stop EGV generators, trainers, evaluators, sandboxes, and Qdrant projections.
 2. Confirm no campaign process still owns model resources or service ports.
@@ -475,7 +641,8 @@ receives a restoration incident report. Do not declare the campaign complete.
 Only after Gate P12 passes:
 
 1. Finalize the primary disposition using Phase 10's ordered decision tree.
-2. Rebuild every public export from allowlisted authoritative sources, including
+2. Rebuild the closed-schema public event/candidate/dependency projections and only
+   `public-eligible` blobs from allowlisted authoritative sources, including
    the signed strict public restoration receipt. Do not reuse the provisional
    archive.
 3. Scan all paths and file contents again for the prohibited material listed in
@@ -485,7 +652,8 @@ Only after Gate P12 passes:
 5. Verify every manifest entry against the rebuilt bundle.
 6. Write `public-bundle.sha256` as the SHA-256 digest of the verified manifest.
    No file may change after this seal is written.
-7. Independently verify the seal and restore-receipt inclusion from a fresh
+7. Independently verify the seal, restore-receipt inclusion, public signed
+   envelope chain, and public cryptographic decision replay from a fresh
    extraction.
 8. Revoke and destroy the ephemeral evaluator private key only after all signed
    receipts, the final manifest, and the sealed bundle verify; retain only its
@@ -494,6 +662,13 @@ Only after Gate P12 passes:
 **Gate P13:** final scan has zero findings; manifest entries, bundle seal, and
 restore receipt verify; final disposition is present. Only this sealed bundle
 is eligible for commit or publication.
+
+The public bundle must not contain the authoritative `ledger.sqlite`, WAL/SHM
+files, the evaluator-private receipt journal, raw verdict/effect receipts, or
+any private blob. It contains only ADR-0001's closed-field public projections,
+public candidate/dependency records, separately signed public receipt envelopes,
+the public key, public cryptographic replay report, aggregate metrics, and
+public-eligible blobs under `blobs/sha256/<two>/<two>/<digest>`.
 
 ## Resuming an interrupted campaign
 
