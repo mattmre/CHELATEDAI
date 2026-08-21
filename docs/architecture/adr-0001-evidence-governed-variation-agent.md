@@ -674,7 +674,7 @@ private receipt. Additional fields are rejected. Its closed fields are:
 | `schema_version`, `receipt_type` | Fixed version; `AUTHORITY`, `VERDICT`, or `EFFECT` |
 | `campaign_id`, `run_id`, `task_id` | Campaign-scoped pseudonyms only |
 | `receipt_id`, `request_id`, `candidate_id` | Content-derived public IDs |
-| `candidate_artifact_digest`, `policy_digest`, `evaluator_digest` | SHA-256 only |
+| `candidate_artifact_digest`, `protocol_digest`, `policy_digest`, `evaluator_digest` | SHA-256 only |
 | `public_candidate_record_digest`, `public_dependency_set_digest` | SHA-256 bindings to the exact closed public records used for replay |
 | `decision` | `ALLOW`, `DENY`, `PASS`, `FAIL`, or `ERROR`, constrained by receipt type |
 | `diagnostic_enum`, `resource_bucket`, `exit_status_class` | Closed public enums; no raw text or timing |
@@ -697,7 +697,7 @@ public lifecycle events. Its closed schema is:
 
 | Public event field | Constraint |
 |---|---|
-| `schema_version`, `event_type` | Fixed version; `CORRECTION`, `RETRACTION`, or `RECORDED_DISPOSITION` |
+| `schema_version`, `event_type` | Fixed version; `CORRECTION`, `RETRACTION`, `RECORDED_DISPOSITION`, or terminal `PUBLIC_CHAIN_SEAL` |
 | `campaign_id`, `run_id`, `task_id` | Campaign-scoped pseudonyms only |
 | `event_id`, `public_sequence`, `previous_public_event_digest` | Content-derived ID and contiguous per-campaign event chain |
 | `subject_id` | Existing public candidate, receipt, or lifecycle-event ID |
@@ -708,6 +708,7 @@ public lifecycle events. Its closed schema is:
 | `authorizing_public_receipt_id` | Required existing signed public receipt when evaluator-observed; otherwise absent only when the frozen protocol itself authorizes the event |
 | `recorded_disposition` | Required only for `RECORDED_DISPOSITION`: `PROMOTED`, `REJECTED`, `ABSTAINED`, or `STALE_DEPENDENT` |
 | `public_candidate_record_digest`, `public_dependency_set_digest` | Required for `RECORDED_DISPOSITION`; SHA-256 bindings to replay inputs |
+| `public_receipt_head_digest`, `public_event_preseal_head_digest`, `public_candidate_collection_digest`, `public_dependency_collection_digest`, `public_restore_receipt_digest` | Required only for `PUBLIC_CHAIN_SEAL`; SHA-256 completeness bindings |
 | `signing_key_id`, `signature` | Campaign evaluator signature over canonical serialization of every preceding field |
 
 Type-specific validation rejects forbidden, missing, or additional fields. A
@@ -717,6 +718,22 @@ IDs already exist, its logical boundary is monotonic, and any authorizing
 receipt verifies. The signed event reveals no corrected value, hidden assertion,
 or free-form reason. Invalid lifecycle events fail public replay; they are not
 silently ignored.
+
+`CORRECTION` requires `superseded_id`, `replacement_id`, `reason_code`, and
+`effective_after_attempt`. `RETRACTION` requires `subject_id`, `reason_code`, and
+`effective_after_attempt` and forbids a replacement. `RECORDED_DISPOSITION`
+requires `subject_id`, `recorded_disposition`, and both public-record digests and
+forbids correction/retraction fields. Candidate records and each candidate's
+dependency set use canonical JSON with dependency IDs sorted lexicographically
+before their bound digests are computed.
+
+`PUBLIC_CHAIN_SEAL` is the final event, forbids `subject_id` and all
+correction/disposition fields, and binds the final public-receipt-chain head,
+the event-chain head immediately before the seal, canonical candidate and
+dependency collection digests, frozen public protocol digest, and strict public
+restore-receipt digest. A public replay requires exactly one valid terminal seal
+and rejects a missing record, trailing record, alternate protocol, or truncated
+prefix even when the remaining signatures verify.
 
 A public verifier first verifies candidate/dependency digest bindings in the
 signed receipt envelopes, then verifies the public lifecycle-event chain and
@@ -888,7 +905,9 @@ contains any field outside the schema allowlist. The full private operator
 inventory and service restore material remain untracked outside the repository.
 The scanner also rejects `ledger.sqlite`, WAL/SHM files, evaluator receipt
 journals, raw prompts, candidate source, stdout/stderr, hidden diagnostics,
-precise timestamps, exact per-attempt telemetry, and any private blob role.
+precise timestamps, exact per-attempt telemetry, bootstrap journal records,
+bootstrap signer/fingerprint metadata, `BOOTSTRAP_IMPORT` receipts, and any
+private blob role.
 
 ## Implementation sequence
 

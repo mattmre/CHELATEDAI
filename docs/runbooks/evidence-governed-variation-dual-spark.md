@@ -462,13 +462,19 @@ On the evaluator Spark:
    evaluator-signed public receipt envelopes, and the signed
    `ledger/public-events.jsonl` correction/retraction/recorded-disposition chain
    defined in ADR-0001.
-8. In a fresh verifier process with only that projection and the public key,
+8. In a fresh verifier process with only that projection, the frozen public
+   protocol, and the public key,
    verify both public hash chains and signatures, apply signed corrections and
    retractions to the bound dependency graph, compute each disposition without
    reading `RECORDED_DISPOSITION`, and only then compare the computed result to
    the signed recorded event. Record this separately as
    `public cryptographic decision replay`; do not claim hidden-test correctness
    or physical effect execution was independently reproduced.
+
+This Phase 10 projection is provisional and private because restoration and the
+terminal `PUBLIC_CHAIN_SEAL` do not yet exist. Phase 13 must rebuild it from
+authoritative sources, append the signed terminal seal, and rerun the verifier;
+the provisional files are never published in place.
 
 Before classification, materialize the named gate vector defined in ADR-0001:
 
@@ -580,6 +586,8 @@ or sealed. Run an early scan of both filenames and content for:
 - Raw SQLite/WAL/SHM files proposed for the public bundle, evaluator receipt
   journals, raw prompts, candidate source, stdout/stderr, hidden diagnostics,
   precise timestamps, exact per-attempt telemetry, or private blob roles.
+- Bootstrap journal records, bootstrap signer/public-key fingerprints,
+  bootstrap nonce material, or `BOOTSTRAP_IMPORT` receipts.
 
 An early positive finding must be resolved at its source. Do not redact a ledger
 database in place; regenerate exports from allowlisted fields. Passing this
@@ -633,29 +641,38 @@ campaign ledger and evaluator key are established:
    not modify or publish the provisional archive in place.
 
 **Gate P12:** the original service identity, hashes, health, and smoke response
-match. If they do not, campaign findings remain quarantined and the operator
-receives a restoration incident report. Do not declare the campaign complete.
+match. The bootstrap branch additionally requires a valid bootstrap-signed
+restoration record; the campaign branch requires the strict campaign-signed
+public restore receipt. An unsigned emergency may restore service but does not
+pass the evidence gate and permanently forbids publication. Any mismatch keeps
+campaign findings quarantined and creates a restoration incident. Do not declare
+the campaign complete.
 
 ## Phase 13: rebuild, scan, manifest, and seal the public bundle
 
-Only after Gate P12 passes:
+Only after Gate P12 passes through the campaign restoration branch and P5's
+campaign key/ledger boundary exists. A bootstrap-only restoration never enters
+Phase 13:
 
 1. Finalize the primary disposition using Phase 10's ordered decision tree.
 2. Rebuild the closed-schema public event/candidate/dependency projections and only
    `public-eligible` blobs from allowlisted authoritative sources, including
    the signed strict public restoration receipt. Do not reuse the provisional
    archive.
-3. Scan all paths and file contents again for the prohibited material listed in
+3. Append the campaign-signed terminal `PUBLIC_CHAIN_SEAL` event binding the
+   final public receipt/event heads, canonical candidate/dependency collection
+   digests, frozen public protocol digest, and public restore-receipt digest.
+4. Scan all paths and file contents again for the prohibited material listed in
    Phase 11. A finding forces source cleanup and a complete rebuild from step 2.
-4. Generate `public-bundle-manifest.json` containing the relative path, byte
+5. Generate `public-bundle-manifest.json` containing the relative path, byte
    size, and SHA-256 digest of every payload file except the seal file.
-5. Verify every manifest entry against the rebuilt bundle.
-6. Write `public-bundle.sha256` as the SHA-256 digest of the verified manifest.
+6. Verify every manifest entry against the rebuilt bundle.
+7. Write `public-bundle.sha256` as the SHA-256 digest of the verified manifest.
    No file may change after this seal is written.
-7. Independently verify the seal, restore-receipt inclusion, public signed
-   envelope chain, and public cryptographic decision replay from a fresh
-   extraction.
-8. Revoke and destroy the ephemeral evaluator private key only after all signed
+8. Independently verify the bundle seal, terminal public chain seal,
+   restore-receipt inclusion, public signed envelope chain, and public
+   cryptographic decision replay from a fresh extraction.
+9. Revoke and destroy the ephemeral evaluator private key only after all signed
    receipts, the final manifest, and the sealed bundle verify; retain only its
    public key.
 
