@@ -243,7 +243,7 @@ class TrainingDatasetTestCase(unittest.TestCase):
 
         def boundary_sensitive_counter(text):
             calls.append(text)
-            return 4097 if "Return JSON only." in text and '\"source\"' in text else 1
+            return 4097 if "Return exactly one JSON object" in text and '\"source\"' in text else 1
 
         with self.assertRaisesRegex(ValueError, "4096-token"):
             self.builder(ledger, token_counter=boundary_sensitive_counter).build(cutoff, [private])
