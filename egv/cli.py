@@ -30,7 +30,12 @@ from .public import (
 )
 from .pilot import run_two_process_smoke
 from .receipts import ReceiptSigner
-from .training import run_external_evaluator_once, run_production_training, run_training_smoke
+from .training import (
+    freeze_external_development_service,
+    run_external_evaluator_once,
+    run_production_training,
+    run_training_smoke,
+)
 from .variation import (
     PinnedModelLoader,
     VARIATION_PROTOCOL_DIGEST,
@@ -518,6 +523,16 @@ def build_parser() -> argparse.ArgumentParser:
     evaluator_once.add_argument("--development-dataset", required=True, type=Path)
     evaluator_once.add_argument("--private-key", required=True, type=Path)
     evaluator_once.add_argument("--device", default="cuda")
+    development_freeze = training_subparsers.add_parser(
+        "freeze-evaluator-service", help="freeze the exact private eight-row dev runtime and public service manifest"
+    )
+    development_freeze.add_argument("--campaign-id", required=True)
+    development_freeze.add_argument("--model-digest", required=True)
+    development_freeze.add_argument("--evaluator-seed", required=True, type=Path)
+    development_freeze.add_argument("--public-key", required=True, type=Path)
+    development_freeze.add_argument("--command", required=True, type=Path, dest="evaluator_command")
+    development_freeze.add_argument("--private-output", required=True, type=Path)
+    development_freeze.add_argument("--service-output", required=True, type=Path)
     training_contract = subparsers.add_parser(
         "train-lora", help="run production LoRA training from sealed local artifacts"
     )
@@ -713,6 +728,28 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                     device=args.device,
                 )
                 print(canonical_json(response))
+                return 0
+            if args.training_command == "freeze-evaluator-service":
+                from .evaluation.dataset import EvaluationCorpus
+                from .training import TrainingProtocol
+
+                corpus = EvaluationCorpus.generate(secret_seed_file=args.evaluator_seed)
+                service = freeze_external_development_service(
+                    corpus=corpus,
+                    campaign_id=args.campaign_id,
+                    model_digest=args.model_digest,
+                    protocol_digest=TrainingProtocol().digest,
+                    public_key_path=args.public_key,
+                    command=args.evaluator_command,
+                    private_output=args.private_output,
+                    service_output=args.service_output,
+                )
+                _json_output({
+                    "private_runtime": str(args.private_output),
+                    "service_manifest": str(args.service_output),
+                    "service_manifest_digest": service["service_manifest_digest"],
+                    "development_task_count": 8,
+                }, True)
                 return 0
             raise EGVError("unsupported training command: {}".format(args.training_command))
         if args.command == "commissioning":

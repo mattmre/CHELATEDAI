@@ -35,6 +35,149 @@ CHECKPOINT_SCHEMA = "egv-training-checkpoint-v1"
 DEVELOPMENT_RECEIPT_SCHEMA = "egv-development-loss-receipt-v1"
 DEVELOPMENT_GATEWAY_SCHEMA = "egv-development-loss-gateway-v1"
 EXTERNAL_DEVELOPMENT_SERVICE_SCHEMA = "egv-external-development-service-v1"
+PRIVATE_DEVELOPMENT_RUNTIME_SCHEMA = "egv-private-development-runtime-v1"
+
+
+def build_private_development_runtime(corpus: Any) -> Mapping[str, Any]:
+    """Build the exact eight evaluator-owned development prompts and targets."""
+
+    from ..evaluation.dataset import EvaluationCorpus
+    from ..variation.generator import CandidateContext, render_candidate_prompt
+
+    if type(corpus) is not EvaluationCorpus:
+        raise TrainingConfigurationError("private development builder requires the exact EvaluationCorpus")
+    repositories = tuple(sorted(corpus.split("dev"), key=lambda repo: repo.template_id))
+    if len(repositories) != 8:
+        raise TrainingIntegrityError("private development runtime requires exactly eight dev repositories")
+    rows = []
+    for repo in repositories:
+        public = repo.public_manifest_record()
+        context = CandidateContext(
+            campaign_id="egv-training",
+            run_id="development-loss",
+            seed=0,
+            arm_id="B",
+            task_id=repo.template_id,
+            family_id=repo.family_id,
+            public_locus=repo.public_locus,
+            public_rule_id=repo.public_rule_id,
+            attempt_index=1,
+            parent_candidate_id=None,
+            retrieval_records=(),
+            retrieval_digest=digest_for([]),
+            model_digest=digest_for("development-runtime-model-bound-at-service-freeze"),
+            adapter_digest=None,
+            prompt_digest=digest_for(public),
+        )
+        prompt = render_candidate_prompt(context)
+        target = canonical_json({
+            "declared_locus": repo.public_locus,
+            "evidence_ids": [],
+            "requested_authority": "EXECUTE_CANDIDATE",
+            "source": repo.corrected_source.decode("utf-8"),
+        })
+        row = TrainingRow.create(
+            task_id=repo.template_id,
+            task_family=repo.family_id,
+            split="dev",
+            prompt=prompt,
+            target=target,
+        )
+        row.validate(expected_split="dev")
+        rows.append({
+            "row_id": row.row_id,
+            "task_id": row.task_id,
+            "task_family": row.task_family,
+            "prompt": row.prompt,
+            "target": row.target,
+        })
+    rows = sorted(rows, key=lambda row: row["row_id"])
+    public_digest = collection_digest({
+        "row_id": row["row_id"],
+        "task_id": row["task_id"],
+        "task_family": row["task_family"],
+        "prompt_digest": digest_for(row["prompt"]),
+        "target_digest": digest_for(row["target"]),
+    } for row in rows)
+    return {
+        "schema_version": PRIVATE_DEVELOPMENT_RUNTIME_SCHEMA,
+        "development_manifest_digest": public_digest,
+        "rows": rows,
+    }
+
+
+def build_external_development_service_manifest(
+    private_runtime: Mapping[str, Any],
+    *,
+    campaign_id: str,
+    model_digest: str,
+    protocol_digest: str,
+    public_key_path: Path,
+    command: Path,
+) -> Mapping[str, Any]:
+    """Freeze a path-free public manifest for one private dev runtime."""
+
+    if not isinstance(private_runtime, Mapping) or set(private_runtime) != {
+        "schema_version", "development_manifest_digest", "rows"
+    } or private_runtime.get("schema_version") != PRIVATE_DEVELOPMENT_RUNTIME_SCHEMA:
+        raise TrainingIntegrityError("private development runtime is not closed")
+    rows = private_runtime["rows"]
+    if not isinstance(rows, list) or len(rows) != 8:
+        raise TrainingIntegrityError("private development runtime must contain exactly eight rows")
+    row_ids = sorted(row.get("row_id") for row in rows if isinstance(row, Mapping))
+    if len(row_ids) != 8 or len(set(row_ids)) != 8 or any(not isinstance(item, str) or not item for item in row_ids):
+        raise TrainingIntegrityError("private development row identities are invalid")
+    key_path = Path(public_key_path)
+    command_path = Path(command)
+    if any(path.is_symlink() or not path.is_file() for path in (key_path, command_path)):
+        raise TrainingDependencyError("evaluator public key and command must be regular files")
+    public_key = key_path.read_bytes()
+    unsigned = {
+        "schema_version": EXTERNAL_DEVELOPMENT_SERVICE_SCHEMA,
+        "campaign_id": str(campaign_id),
+        "evaluator_key_id": key_id_for_public_key(public_key),
+        "evaluator_public_key_digest": hashlib.sha256(public_key).hexdigest(),
+        "endpoint_digest": hashlib.sha256(command_path.read_bytes()).hexdigest(),
+        "development_manifest_digest": _require_digest(
+            private_runtime["development_manifest_digest"], "development_manifest_digest"
+        ),
+        "development_task_count": 8,
+        "development_row_ids": row_ids,
+        "model_digest": _require_digest(model_digest, "model_digest"),
+        "protocol_digest": _require_digest(protocol_digest, "protocol_digest"),
+    }
+    if not unsigned["campaign_id"]:
+        raise TrainingConfigurationError("external evaluator campaign ID is missing")
+    return {**unsigned, "service_manifest_digest": digest_for(unsigned)}
+
+
+def freeze_external_development_service(
+    *,
+    corpus: Any,
+    campaign_id: str,
+    model_digest: str,
+    protocol_digest: str,
+    public_key_path: Path,
+    command: Path,
+    private_output: Path,
+    service_output: Path,
+) -> Mapping[str, Any]:
+    runtime = build_private_development_runtime(corpus)
+    service = build_external_development_service_manifest(
+        runtime,
+        campaign_id=campaign_id,
+        model_digest=model_digest,
+        protocol_digest=protocol_digest,
+        public_key_path=public_key_path,
+        command=command,
+    )
+    for destination, value in ((Path(private_output), runtime), (Path(service_output), service)):
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        with destination.open("x", encoding="utf-8", newline="\n") as handle:
+            handle.write(canonical_json(value) + "\n")
+            handle.flush()
+            __import__("os").fsync(handle.fileno())
+    return service
 
 
 def model_state_digest_for_training(model: Any) -> str:
@@ -853,6 +996,10 @@ __all__ = [
     "DevelopmentLossGateway",
     "EXTERNAL_DEVELOPMENT_SERVICE_SCHEMA",
     "ExternalDevelopmentLossGateway",
+    "PRIVATE_DEVELOPMENT_RUNTIME_SCHEMA",
+    "build_external_development_service_manifest",
+    "build_private_development_runtime",
+    "freeze_external_development_service",
     "run_external_evaluator_once",
     "TrainingCheckpoint",
     "model_state_digest_for_training",
