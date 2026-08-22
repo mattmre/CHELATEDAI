@@ -13,6 +13,7 @@ import unittest
 
 from egv.canonical import canonical_json, digest_for
 from egv.cli import main
+from egv.evaluation.dataset import EvaluationCorpus
 from egv.receipts import ReceiptSigner, key_id_for_public_key
 from egv.training import (
     DevelopmentLossGateway,
@@ -27,6 +28,7 @@ from egv.training import (
     TrainingProtocol,
     TrainingRow,
     build_training_batch,
+    build_private_development_runtime,
     model_state_digest_for_training,
     seal_training_inputs,
     tokenize_training_row,
@@ -140,6 +142,45 @@ class TrainingRuntimeTests(unittest.TestCase):
             state_digest=state_digest,
             payload_digest=digest_for({"payload": epoch, "state": state_digest}),
         )
+
+    def test_private_development_builder_and_cli_freeze_exact_eight_rows(self):
+        with tempfile.TemporaryDirectory(prefix="egv-dev-freeze-") as temporary:
+            root = Path(temporary)
+            seed = root / "seed.bin"
+            seed.write_bytes(b"D" * 32)
+            corpus = EvaluationCorpus.generate(secret_seed_file=seed)
+            runtime = build_private_development_runtime(corpus)
+            self.assertEqual(len(runtime["rows"]), 8)
+            self.assertEqual({"dev"}, {corpus.get(row["task_id"]).split for row in runtime["rows"]})
+            public_key = root / "evaluator.pub"
+            public_key.write_bytes(self.signer.public_key_raw)
+            command = root / "evaluator.py"
+            command.write_text("print('sealed evaluator')\n", encoding="utf-8")
+            private_output = root / "private-development.json"
+            service_output = root / "service.json"
+            stdout = io.StringIO()
+            with redirect_stdout(stdout):
+                code = main([
+                    "training", "freeze-evaluator-service",
+                    "--campaign-id", "campaign-dev-freeze",
+                    "--model-digest", digest_for("model"),
+                    "--evaluator-seed", str(seed),
+                    "--public-key", str(public_key),
+                    "--command", str(command),
+                    "--private-output", str(private_output),
+                    "--service-output", str(service_output),
+                ])
+            self.assertEqual(code, 0)
+            private_value = json.loads(private_output.read_text(encoding="utf-8"))
+            service_value = json.loads(service_output.read_text(encoding="utf-8"))
+            self.assertEqual(private_value, runtime)
+            self.assertEqual(service_value["development_task_count"], 8)
+            self.assertEqual(service_value["development_row_ids"], sorted(row["row_id"] for row in runtime["rows"]))
+            serialized_service = canonical_json(service_value)
+            self.assertNotIn(str(seed), serialized_service)
+            self.assertNotIn("prompt", serialized_service)
+            self.assertNotIn("target", serialized_service)
+            self.assertNotIn("heldout", canonical_json(private_value).lower())
 
     def test_protocol_is_frozen_and_digest_changes_only_for_valid_default(self):
         self.protocol.validate()
