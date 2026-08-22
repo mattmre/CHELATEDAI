@@ -45,6 +45,20 @@ ADAPTER_TRANSFER_RESPONSE_SCHEMA = "egv-adapter-transfer-response-v1"
 ADAPTER_TRANSFER_LIMIT = 512 * 1024 * 1024
 
 
+def _decode_external_signature(value: Any) -> bytes:
+    if not isinstance(value, str) or not value:
+        raise TrainingIntegrityError("external evaluator signature is missing")
+    try:
+        signature = base64.b64decode(
+            (value + "=" * (-len(value) % 4)).encode("ascii"), altchars=b"-_", validate=True
+        )
+    except (ValueError, UnicodeError) as exc:
+        raise TrainingIntegrityError("external evaluator signature is invalid base64url") from exc
+    if len(signature) != 64 or base64.urlsafe_b64encode(signature).decode("ascii").rstrip("=") != value:
+        raise TrainingIntegrityError("external evaluator signature is not canonical Ed25519 base64url")
+    return signature
+
+
 def build_private_development_runtime(corpus: Any) -> Mapping[str, Any]:
     """Build the exact eight evaluator-owned development prompts and targets."""
 
@@ -183,12 +197,37 @@ def freeze_external_development_service(
         command=command,
         transfer_command=transfer_command,
     )
-    for destination, value in ((Path(private_output), runtime), (Path(service_output), service)):
+    destinations = (Path(private_output), Path(service_output))
+    resolved = tuple(path.resolve(strict=False) for path in destinations)
+    if (
+        resolved[0] == resolved[1]
+        or any(path.is_symlink() for path in destinations)
+        or (all(path.exists() for path in destinations) and os.path.samefile(*destinations))
+    ):
+        raise TrainingIntegrityError("private and public development outputs must be distinct non-aliased paths")
+    if any(path.exists() for path in destinations):
+        raise TrainingIntegrityError("development output already exists; refusing to overwrite frozen artifacts")
+
+    def publish_new(destination: Path, value: Mapping[str, Any]) -> None:
         destination.parent.mkdir(parents=True, exist_ok=True)
-        with destination.open("x", encoding="utf-8", newline="\n") as handle:
-            handle.write(canonical_json(value) + "\n")
-            handle.flush()
-            __import__("os").fsync(handle.fileno())
+        encoded = (canonical_json(value) + "\n").encode("utf-8")
+        descriptor, temporary_name = tempfile.mkstemp(prefix=".development-output-", dir=str(destination.parent))
+        temporary = Path(temporary_name)
+        try:
+            with os.fdopen(descriptor, "wb") as handle:
+                handle.write(encoded)
+                handle.flush()
+                os.fsync(handle.fileno())
+            os.link(str(temporary), str(destination))
+        finally:
+            temporary.unlink(missing_ok=True)
+
+    publish_new(destinations[0], runtime)
+    try:
+        publish_new(destinations[1], service)
+    except Exception:
+        destinations[0].unlink(missing_ok=True)
+        raise
     return service
 
 
@@ -696,6 +735,11 @@ class ExternalDevelopmentLossGateway:
         "development_row_ids",
         "model_digest", "protocol_digest", "service_manifest_digest",
     })
+    __slots__ = (
+        "_manifest", "_public_key", "_command", "_command_bytes", "_endpoint_digest",
+        "_command_suffix", "_transfer_command", "_transfer_command_bytes",
+        "_transfer_endpoint_digest", "_transfer_command_suffix", "_frozen_contract", "_frozen",
+    )
 
     def __init__(
         self, manifest_path: Path, *, public_key_path: Path, command: Path, transfer_command: Path
@@ -783,10 +827,6 @@ class ExternalDevelopmentLossGateway:
     def validate_production_boundary(self, *, expected_model_digest: str, expected_protocol_digest: str) -> None:
         if type(self) is not ExternalDevelopmentLossGateway:
             raise TrainingDependencyError("production evaluator client type changed")
-        if any(name in self.__dict__ for name in (
-            "evaluate", "verify_evaluation", "validate_production_boundary", "_invoke_pinned", "_transfer_adapter"
-        )):
-            raise TrainingDependencyError("external evaluator methods cannot be overridden")
         if (
             type(self).evaluate is not _ORIGINAL_EXTERNAL_DEVELOPMENT_EVALUATE
             or type(self).verify_evaluation is not _ORIGINAL_EXTERNAL_DEVELOPMENT_VERIFY
@@ -858,7 +898,10 @@ class ExternalDevelopmentLossGateway:
             raise TrainingDependencyError("external evaluator command returned no result object")
         return response
 
-    def _transfer_adapter(self, artifact: Any) -> str:
+    def _transfer_adapter(
+        self, artifact: Any, *, manifest: Mapping[str, Any], public_key: bytes,
+        command: Path, command_bytes: bytes, endpoint_digest: str, command_suffix: str,
+    ) -> str:
         from ..variation.adapter import ADAPTER_MANIFEST_NAME
 
         self.validate_production_boundary(
@@ -888,16 +931,16 @@ class ExternalDevelopmentLossGateway:
             })
         body = {
             "schema_version": ADAPTER_TRANSFER_REQUEST_SCHEMA,
-            "service_manifest_digest": self.gateway_digest,
+            "service_manifest_digest": manifest["service_manifest_digest"],
             "adapter_digest": artifact.digest,
             "files": files,
         }
         request = {**body, "request_digest": digest_for(body)}
         response = dict(self._invoke_pinned(
-            command=self._transfer_command,
-            command_bytes=self._transfer_command_bytes,
-            endpoint_digest=self._transfer_endpoint_digest,
-            suffix=self._transfer_command_suffix,
+            command=command,
+            command_bytes=command_bytes,
+            endpoint_digest=endpoint_digest,
+            suffix=command_suffix,
             request=request,
             timeout=3600,
         ))
@@ -908,19 +951,19 @@ class ExternalDevelopmentLossGateway:
         if set(response) != required or response.get("schema_version") != ADAPTER_TRANSFER_RESPONSE_SCHEMA:
             raise TrainingIntegrityError("external adapter transfer response is not closed")
         if (
-            response.get("service_manifest_digest") != self.gateway_digest
+            response.get("service_manifest_digest") != manifest["service_manifest_digest"]
             or response.get("request_digest") != request["request_digest"]
             or response.get("adapter_digest") != artifact.digest
             or response.get("adapter_reference") != artifact.digest
-            or response.get("signing_key_id") != self._manifest["evaluator_key_id"]
+            or response.get("signing_key_id") != manifest["evaluator_key_id"]
         ):
             raise TrainingIntegrityError("external adapter transfer response binding is invalid")
         unsigned = dict(response)
         try:
-            signature = base64.urlsafe_b64decode(str(unsigned.pop("signature")) + "==")
+            signature = _decode_external_signature(unsigned.pop("signature"))
             from ..receipts import load_public_key
 
-            load_public_key(self._public_key).verify(signature, canonical_bytes(unsigned))
+            load_public_key(public_key).verify(signature, canonical_bytes(unsigned))
         except Exception as exc:
             raise TrainingIntegrityError("external adapter transfer response signature is invalid") from exc
         return str(response["adapter_reference"])
@@ -932,6 +975,16 @@ class ExternalDevelopmentLossGateway:
         self.validate_production_boundary(
             expected_model_digest=checkpoint.model_digest, expected_protocol_digest=checkpoint.protocol_digest
         )
+        manifest = dict(self._manifest)
+        public_key = bytes(self._public_key)
+        evaluator_command = self._command
+        evaluator_command_bytes = bytes(self._command_bytes)
+        evaluator_endpoint_digest = self._endpoint_digest
+        evaluator_command_suffix = self._command_suffix
+        transfer_command = self._transfer_command
+        transfer_command_bytes = bytes(self._transfer_command_bytes)
+        transfer_endpoint_digest = self._transfer_endpoint_digest
+        transfer_command_suffix = self._transfer_command_suffix
         with tempfile.TemporaryDirectory(prefix="egv-dev-adapter-") as temporary:
             root = Path(temporary)
             try:
@@ -946,22 +999,29 @@ class ExternalDevelopmentLossGateway:
             )
             artifact = SealedAdapterArtifact(root)
             artifact.verify()
-            adapter_reference = self._transfer_adapter(artifact)
+            self.validate_production_boundary(
+                expected_model_digest=checkpoint.model_digest, expected_protocol_digest=checkpoint.protocol_digest
+            )
+            adapter_reference = self._transfer_adapter(
+                artifact, manifest=manifest, public_key=public_key,
+                command=transfer_command, command_bytes=transfer_command_bytes,
+                endpoint_digest=transfer_endpoint_digest, command_suffix=transfer_command_suffix,
+            )
             request = {
                 "schema_version": "egv-development-loss-request-v1",
-                "campaign_id": self._manifest["campaign_id"],
+                "campaign_id": manifest["campaign_id"],
                 "checkpoint_digest": validate_sha256(checkpoint_artifact_digest, "checkpoint_artifact_digest"),
                 "adapter_digest": artifact.digest,
                 "adapter_reference": adapter_reference,
                 "model_digest": checkpoint.model_digest,
                 "protocol_digest": checkpoint.protocol_digest,
-                "development_manifest_digest": self.development_manifest_digest,
-                "service_manifest_digest": self.gateway_digest,
+                "development_manifest_digest": manifest["development_manifest_digest"],
+                "service_manifest_digest": manifest["service_manifest_digest"],
             }
             try:
                 response = self._invoke_pinned(
-                    command=self._command, command_bytes=self._command_bytes,
-                    endpoint_digest=self._endpoint_digest, suffix=self._command_suffix,
+                    command=evaluator_command, command_bytes=evaluator_command_bytes,
+                    endpoint_digest=evaluator_endpoint_digest, suffix=evaluator_command_suffix,
                     request=request, timeout=3600,
                 )
             except TrainingError:
@@ -977,7 +1037,7 @@ class ExternalDevelopmentLossGateway:
             if not math.isfinite(loss) or loss < 0 or response["sample_count"] != 8:
                 raise TrainingIntegrityError("external development response has invalid aggregate metrics")
             receipt = dict(response["receipt"])
-            verify_receipt(receipt, self._public_key, expected_key_id=self._manifest["evaluator_key_id"])
+            verify_receipt(receipt, public_key, expected_key_id=manifest["evaluator_key_id"])
             expected_output_digest = digest_for({
                 "checkpoint_digest": checkpoint_artifact_digest, "adapter_digest": artifact.digest,
                 "loss": loss, "sample_count": 8,
@@ -985,16 +1045,16 @@ class ExternalDevelopmentLossGateway:
             if (
                 receipt.get("candidate_artifact_digest") != artifact.digest
                 or receipt.get("protocol_digest") != checkpoint.protocol_digest
-                or receipt.get("evaluator_digest") != self.gateway_digest
-                or receipt.get("input_digest") != self.development_manifest_digest
+                or receipt.get("evaluator_digest") != manifest["service_manifest_digest"]
+                or receipt.get("input_digest") != manifest["development_manifest_digest"]
                 or receipt.get("output_digest") != expected_output_digest
                 or receipt.get("decision") != "PASS"
             ):
                 raise TrainingIntegrityError("external development receipt binding is invalid")
             result = DevelopmentLossEvaluation(
                 checkpoint_artifact_digest, checkpoint.checkpoint_id, checkpoint.model_digest,
-                checkpoint.data_manifest_digest, self.development_manifest_digest,
-                checkpoint.protocol_digest, self.gateway_digest, loss, 8, receipt,
+                checkpoint.data_manifest_digest, manifest["development_manifest_digest"],
+                checkpoint.protocol_digest, manifest["service_manifest_digest"], loss, 8, receipt,
             )
             result.validate()
             return result

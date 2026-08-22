@@ -36,6 +36,7 @@ from egv.training import (
     run_production_training,
     receive_external_adapter,
 )
+from egv.training.development import _decode_external_signature
 from egv.variation.adapter import ADAPTER_MANIFEST_NAME, SealedAdapterArtifact, build_local_adapter_manifest
 from egv.variation.model import (
     MODEL_ARCHITECTURE,
@@ -185,6 +186,22 @@ class TrainingRuntimeTests(unittest.TestCase):
             self.assertNotIn("prompt", serialized_service)
             self.assertNotIn("target", serialized_service)
             self.assertNotIn("heldout", canonical_json(private_value).lower())
+            aliased_output = root / "aliased-private-public.json"
+            errors = io.StringIO()
+            with redirect_stderr(errors):
+                code = main([
+                    "training", "freeze-evaluator-service",
+                    "--campaign-id", "campaign-dev-freeze",
+                    "--model-digest", digest_for("model"),
+                    "--evaluator-seed", str(seed),
+                    "--public-key", str(public_key),
+                    "--command", str(command),
+                    "--transfer-command", str(command),
+                    "--private-output", str(aliased_output),
+                    "--service-output", str(aliased_output),
+                ])
+            self.assertEqual(code, 1)
+            self.assertFalse(aliased_output.exists())
 
     def test_protocol_is_frozen_and_digest_changes_only_for_valid_default(self):
         self.protocol.validate()
@@ -430,39 +447,12 @@ class TrainingRuntimeTests(unittest.TestCase):
             )
             with self.assertRaises(AttributeError):
                 gateway._command_bytes = b"mutable endpoint"
-            gateway.__dict__["_command_bytes"] = b"mutated through instance dictionary"
-            with self.assertRaises(TrainingIntegrityError):
-                gateway.validate_production_boundary(
-                    expected_model_digest=self.model_digest, expected_protocol_digest=self.protocol.digest
-                )
-            gateway.__dict__["_command_bytes"] = command.read_bytes()
+            self.assertFalse(hasattr(gateway, "__dict__"))
             with self.assertRaises(TypeError):
                 gateway._manifest["model_digest"] = digest_for("substituted-model")
             gateway.validate_production_boundary(
                 expected_model_digest=self.model_digest, expected_protocol_digest=self.protocol.digest
             )
-            snapshot = dict(gateway.__dict__)
-            gateway.__dict__.update({
-                "_command": root / "substituted-evaluator",
-                "_command_bytes": b"substituted evaluator",
-                "_endpoint_digest": hashlib.sha256(b"substituted evaluator").hexdigest(),
-                "_transfer_command": root / "substituted-transfer",
-                "_transfer_command_bytes": b"substituted transfer",
-                "_transfer_endpoint_digest": hashlib.sha256(b"substituted transfer").hexdigest(),
-                "_public_key": ReceiptSigner.generate().public_key_raw,
-            })
-            with self.assertRaises(TrainingIntegrityError):
-                gateway.validate_production_boundary(
-                    expected_model_digest=self.model_digest, expected_protocol_digest=self.protocol.digest
-                )
-            gateway.__dict__.clear()
-            gateway.__dict__.update(snapshot)
-            gateway.__dict__["evaluate"] = lambda *_args, **_kwargs: None
-            with self.assertRaises(TrainingDependencyError):
-                gateway.validate_production_boundary(
-                    expected_model_digest=self.model_digest, expected_protocol_digest=self.protocol.digest
-                )
-            del gateway.__dict__["evaluate"]
             original_invoke = ExternalDevelopmentLossGateway._invoke_pinned
             try:
                 ExternalDevelopmentLossGateway._invoke_pinned = staticmethod(lambda **_kwargs: {})
@@ -486,6 +476,13 @@ class TrainingRuntimeTests(unittest.TestCase):
                 ExternalDevelopmentLossGateway(
                     manifest_path, public_key_path=public_key, command=command, transfer_command=command
                 )
+
+    def test_external_signed_envelope_rejects_noncanonical_ed25519_alias(self) -> None:
+        encoded = self.signer.sign_bytes(b"external-envelope")
+        self.assertEqual(len(_decode_external_signature(encoded)), 64)
+        tail_alias = {"A": "B", "Q": "R", "g": "h", "w": "x"}
+        with self.assertRaisesRegex(TrainingIntegrityError, "canonical"):
+            _decode_external_signature(encoded[:-1] + tail_alias[encoded[-1]])
 
     def test_adapter_transfer_installs_content_addressed_tree_without_source_path(self):
         with tempfile.TemporaryDirectory(prefix="egv-adapter-transfer-") as temporary:

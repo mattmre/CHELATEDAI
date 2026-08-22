@@ -26,6 +26,7 @@ from egv.variation.remote import (
     REMOTE_VARIATION_SERVICE_SCHEMA,
     RemoteControllerEvaluationGateway,
     RemoteEvaluatorServiceManifest,
+    _decode_b64,
     _durable_remote_response,
     build_remote_evaluator_service_manifest,
 )
@@ -88,6 +89,13 @@ print(canonical_json(response))
 
 
 class RemoteEvaluatorCLITests(unittest.TestCase):
+    def test_remote_response_signature_requires_canonical_ed25519_base64url(self) -> None:
+        encoded = ReceiptSigner(b"R" * 32).sign_bytes(b"remote-envelope")
+        self.assertEqual(len(_decode_b64(encoded, "response signature", exact_length=64)), 64)
+        tail_alias = {"A": "B", "Q": "R", "g": "h", "w": "x"}
+        with self.assertRaisesRegex(VariationConfigurationError, "canonical"):
+            _decode_b64(encoded[:-1] + tail_alias[encoded[-1]], "response signature", exact_length=64)
+
     def test_evaluator_once_dispatches_without_nonexistent_adapter_store_argument(self) -> None:
         output = io.StringIO()
         with tempfile.TemporaryDirectory() as temporary, patch(

@@ -110,14 +110,17 @@ def _require_digest(value: Any, name: str) -> str:
         raise VariationConfigurationError(str(exc)) from exc
 
 
-def _decode_b64(value: Any, name: str) -> bytes:
+def _decode_b64(value: Any, name: str, *, exact_length: Optional[int] = None) -> bytes:
     if not isinstance(value, str) or not value:
         raise VariationConfigurationError("{} must be non-empty base64url".format(name))
     try:
         padded = value + "=" * (-len(value) % 4)
-        return base64.b64decode(padded.encode("ascii"), altchars=b"-_", validate=True)
+        decoded = base64.b64decode(padded.encode("ascii"), altchars=b"-_", validate=True)
     except (ValueError, UnicodeError) as exc:
         raise VariationConfigurationError("{} is not valid base64url".format(name)) from exc
+    if _encode_b64(decoded) != value or (exact_length is not None and len(decoded) != exact_length):
+        raise VariationConfigurationError("{} is not canonical base64url".format(name))
+    return decoded
 
 
 def _encode_b64(value: bytes) -> str:
@@ -382,7 +385,7 @@ def _verify_response_envelope(
     if response.get("signing_key_id") != manifest["evaluator_key_id"]:
         raise VariationConfigurationError("remote Variation response uses the wrong evaluator key")
     unsigned = dict(response)
-    signature = _decode_b64(unsigned.pop("signature"), "response signature")
+    signature = _decode_b64(unsigned.pop("signature"), "response signature", exact_length=64)
     try:
         load_public_key(public_key).verify(signature, canonical_bytes(unsigned))
     except Exception as exc:
