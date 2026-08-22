@@ -32,6 +32,7 @@ from .pilot import run_two_process_smoke
 from .receipts import ReceiptSigner
 from .training import (
     freeze_external_development_service,
+    receive_external_adapter,
     run_external_evaluator_once,
     run_production_training,
     run_training_smoke,
@@ -522,6 +523,7 @@ def build_parser() -> argparse.ArgumentParser:
     evaluator_once.add_argument("--model-root", required=True, type=Path)
     evaluator_once.add_argument("--development-dataset", required=True, type=Path)
     evaluator_once.add_argument("--private-key", required=True, type=Path)
+    evaluator_once.add_argument("--adapter-store", required=True, type=Path)
     evaluator_once.add_argument("--device", default="cuda")
     development_freeze = training_subparsers.add_parser(
         "freeze-evaluator-service", help="freeze the exact private eight-row dev runtime and public service manifest"
@@ -531,8 +533,15 @@ def build_parser() -> argparse.ArgumentParser:
     development_freeze.add_argument("--evaluator-seed", required=True, type=Path)
     development_freeze.add_argument("--public-key", required=True, type=Path)
     development_freeze.add_argument("--command", required=True, type=Path, dest="evaluator_command")
+    development_freeze.add_argument("--transfer-command", required=True, type=Path)
     development_freeze.add_argument("--private-output", required=True, type=Path)
     development_freeze.add_argument("--service-output", required=True, type=Path)
+    adapter_receive = training_subparsers.add_parser(
+        "receive-adapter", help="receive a sealed adapter into evaluator-owned content-addressed storage"
+    )
+    adapter_receive.add_argument("--service-manifest", required=True, type=Path)
+    adapter_receive.add_argument("--adapter-store", required=True, type=Path)
+    adapter_receive.add_argument("--private-key", required=True, type=Path)
     training_contract = subparsers.add_parser(
         "train-lora", help="run production LoRA training from sealed local artifacts"
     )
@@ -541,6 +550,7 @@ def build_parser() -> argparse.ArgumentParser:
     training_contract.add_argument("--development-manifest", required=True, type=Path)
     training_contract.add_argument("--evaluator-public-key", type=Path)
     training_contract.add_argument("--evaluator-command", type=Path)
+    training_contract.add_argument("--evaluator-transfer-command", type=Path)
     training_contract.add_argument("--output", type=Path)
     training_contract.add_argument("--device", default="cuda")
     training_contract.add_argument("--json", action="store_true", dest="as_json")
@@ -676,6 +686,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                     service_manifest=args.service_manifest,
                     evaluator_seed=args.evaluator_seed,
                     evaluator_private_key=args.private_key,
+                    adapter_store=args.adapter_store,
                     workspace=args.workspace,
                     state_root=args.state_root,
                 )
@@ -741,6 +752,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                     protocol_digest=TrainingProtocol().digest,
                     public_key_path=args.public_key,
                     command=args.evaluator_command,
+                    transfer_command=args.transfer_command,
                     private_output=args.private_output,
                     service_output=args.service_output,
                 )
@@ -750,6 +762,19 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                     "service_manifest_digest": service["service_manifest_digest"],
                     "development_task_count": 8,
                 }, True)
+                return 0
+            if args.training_command == "receive-adapter":
+                try:
+                    request = json.loads(sys.stdin.read())
+                except ValueError as exc:
+                    raise EGVError("external adapter transfer request is not valid JSON") from exc
+                response = receive_external_adapter(
+                    request,
+                    service_manifest=args.service_manifest,
+                    adapter_store=args.adapter_store,
+                    evaluator_private_key=args.private_key,
+                )
+                print(canonical_json(response))
                 return 0
             raise EGVError("unsupported training command: {}".format(args.training_command))
         if args.command == "commissioning":
@@ -801,7 +826,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 return 0
             raise EGVError("unsupported commissioning command: {}".format(args.commissioning_command))
         if args.command == "train-lora":
-            if args.evaluator_public_key is None or args.evaluator_command is None or args.output is None:
+            if (
+                args.evaluator_public_key is None or args.evaluator_command is None
+                or args.evaluator_transfer_command is None or args.output is None
+            ):
                 raise PhaseUnavailable(
                     "train-lora must fail closed without external evaluator authority: provide its frozen public key, "
                     "content-bound command, service manifest, and an output directory"
@@ -812,6 +840,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 evaluator_manifest=args.development_manifest,
                 evaluator_public_key=args.evaluator_public_key,
                 evaluator_command=args.evaluator_command,
+                evaluator_transfer_command=args.evaluator_transfer_command,
                 output_root=args.output,
                 device=args.device,
             )

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from contextlib import redirect_stdout, redirect_stderr
+import base64
 from dataclasses import replace
 import hashlib
 import io
@@ -33,7 +34,9 @@ from egv.training import (
     seal_training_inputs,
     tokenize_training_row,
     run_production_training,
+    receive_external_adapter,
 )
+from egv.variation.adapter import ADAPTER_MANIFEST_NAME, SealedAdapterArtifact, build_local_adapter_manifest
 from egv.variation.model import (
     MODEL_ARCHITECTURE,
     MODEL_CONFIG_CLASS,
@@ -167,6 +170,7 @@ class TrainingRuntimeTests(unittest.TestCase):
                     "--evaluator-seed", str(seed),
                     "--public-key", str(public_key),
                     "--command", str(command),
+                    "--transfer-command", str(command),
                     "--private-output", str(private_output),
                     "--service-output", str(service_output),
                 ])
@@ -408,6 +412,7 @@ class TrainingRuntimeTests(unittest.TestCase):
                 "evaluator_key_id": key_id_for_public_key(self.signer.public_key_raw),
                 "evaluator_public_key_digest": hashlib.sha256(self.signer.public_key_raw).hexdigest(),
                 "endpoint_digest": hashlib.sha256(command.read_bytes()).hexdigest(),
+                "transfer_endpoint_digest": hashlib.sha256(command.read_bytes()).hexdigest(),
                 "development_manifest_digest": self.manifest.development_digest,
                 "development_task_count": 8,
                 "development_row_ids": ["dev-{:02d}".format(index) for index in range(8)],
@@ -418,19 +423,85 @@ class TrainingRuntimeTests(unittest.TestCase):
             manifest_path = root / "service.json"
             manifest_path.write_text(canonical_json(manifest), encoding="utf-8")
             gateway = ExternalDevelopmentLossGateway(
-                manifest_path, public_key_path=public_key, command=command
+                manifest_path, public_key_path=public_key, command=command, transfer_command=command
             )
             gateway.validate_production_boundary(
                 expected_model_digest=self.model_digest, expected_protocol_digest=self.protocol.digest
             )
             command.write_bytes(b"#!/bin/sh\nexit 9\n")
             with self.assertRaises(TrainingIntegrityError):
-                ExternalDevelopmentLossGateway(manifest_path, public_key_path=public_key, command=command)
+                ExternalDevelopmentLossGateway(
+                    manifest_path, public_key_path=public_key, command=command, transfer_command=command
+                )
             command.write_bytes(b"#!/bin/sh\nexit 0\n")
             public_key.write_bytes(b"forged")
             with self.assertRaises(TrainingIntegrityError):
-                ExternalDevelopmentLossGateway(manifest_path, public_key_path=public_key, command=command)
+                ExternalDevelopmentLossGateway(
+                    manifest_path, public_key_path=public_key, command=command, transfer_command=command
+                )
 
+    def test_adapter_transfer_installs_content_addressed_tree_without_source_path(self):
+        with tempfile.TemporaryDirectory(prefix="egv-adapter-transfer-") as temporary:
+            root = Path(temporary)
+            adapter_root = root / "source-adapter"
+            adapter_root.mkdir()
+            (adapter_root / "adapter_config.json").write_text("{}", encoding="utf-8")
+            (adapter_root / "adapter_model.safetensors").write_bytes(b"sealed-transfer")
+            manifest = build_local_adapter_manifest(adapter_root)
+            (adapter_root / ADAPTER_MANIFEST_NAME).write_text(
+                canonical_json(manifest.to_dict()) + "\n", encoding="utf-8"
+            )
+            artifact = SealedAdapterArtifact(adapter_root)
+            artifact.verify()
+            command = root / "command.py"
+            command.write_text("print('unused')\n", encoding="utf-8")
+            public_key = root / "evaluator.pub"
+            private_key = root / "evaluator.key"
+            public_key.write_bytes(self.signer.public_key_raw)
+            private_key.write_bytes(self.signer.private_key_raw)
+            unsigned_service = {
+                "schema_version": "egv-external-development-service-v1",
+                "campaign_id": "campaign-transfer",
+                "evaluator_key_id": self.signer.key_id,
+                "evaluator_public_key_digest": hashlib.sha256(self.signer.public_key_raw).hexdigest(),
+                "endpoint_digest": hashlib.sha256(command.read_bytes()).hexdigest(),
+                "transfer_endpoint_digest": hashlib.sha256(command.read_bytes()).hexdigest(),
+                "development_manifest_digest": digest_for("dev"),
+                "development_task_count": 8,
+                "development_row_ids": ["dev-{:02d}".format(index) for index in range(8)],
+                "model_digest": self.model_digest,
+                "protocol_digest": self.protocol.digest,
+            }
+            service = {**unsigned_service, "service_manifest_digest": digest_for(unsigned_service)}
+            service_path = root / "service.json"
+            service_path.write_text(canonical_json(service), encoding="utf-8")
+            records = []
+            for path in sorted(adapter_root.rglob("*")):
+                if path.is_file():
+                    payload = path.read_bytes()
+                    records.append({
+                        "path": path.relative_to(adapter_root).as_posix(),
+                        "digest": hashlib.sha256(payload).hexdigest(),
+                        "content_b64": base64.urlsafe_b64encode(payload).decode().rstrip("="),
+                    })
+            body = {
+                "schema_version": "egv-adapter-transfer-request-v1",
+                "service_manifest_digest": service["service_manifest_digest"],
+                "adapter_digest": artifact.digest,
+                "files": records,
+            }
+            request = {**body, "request_digest": digest_for(body)}
+            response = receive_external_adapter(
+                request,
+                service_manifest=service_path,
+                adapter_store=root / "spark2-store",
+                evaluator_private_key=private_key,
+            )
+            self.assertEqual(response["adapter_reference"], artifact.digest)
+            installed = SealedAdapterArtifact(root / "spark2-store" / artifact.digest)
+            installed.verify()
+            self.assertEqual(installed.digest, artifact.digest)
+            self.assertNotIn(str(adapter_root), canonical_json(request))
     def test_external_evaluator_rehashes_endpoint_immediately_before_spawn(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -444,6 +515,7 @@ class TrainingRuntimeTests(unittest.TestCase):
                 "evaluator_key_id": key_id_for_public_key(self.signer.public_key_raw),
                 "evaluator_public_key_digest": hashlib.sha256(self.signer.public_key_raw).hexdigest(),
                 "endpoint_digest": hashlib.sha256(command.read_bytes()).hexdigest(),
+                "transfer_endpoint_digest": hashlib.sha256(command.read_bytes()).hexdigest(),
                 "development_manifest_digest": self.manifest.development_digest,
                 "development_task_count": 8,
                 "development_row_ids": ["dev-{:02d}".format(index) for index in range(8)],
@@ -455,7 +527,7 @@ class TrainingRuntimeTests(unittest.TestCase):
                 canonical_json({**unsigned, "service_manifest_digest": digest_for(unsigned)}), encoding="utf-8"
             )
             gateway = ExternalDevelopmentLossGateway(
-                manifest_path, public_key_path=public_key, command=command
+                manifest_path, public_key_path=public_key, command=command, transfer_command=command
             )
             command.write_bytes(b"#!/bin/sh\nexit 7\n")
             with self.assertRaisesRegex(TrainingIntegrityError, "changed before invocation"):
@@ -469,7 +541,9 @@ class TrainingRuntimeTests(unittest.TestCase):
             run_production_training(
                 model_root=Path("missing-model"), training_dataset=Path("missing-train"),
                 evaluator_manifest=Path("missing-service"), evaluator_public_key=Path("missing-key"),
-                evaluator_command=Path("missing-command"), output_root=Path("missing-output"), device="cpu",
+                evaluator_command=Path("missing-command"),
+                evaluator_transfer_command=Path("missing-transfer-command"),
+                output_root=Path("missing-output"), device="cpu",
             )
 
 
