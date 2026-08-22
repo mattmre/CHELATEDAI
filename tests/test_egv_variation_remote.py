@@ -5,10 +5,11 @@ import json
 import os
 from pathlib import Path
 import tempfile
+import threading
 import unittest
 from unittest.mock import patch
 
-from egv.canonical import GENESIS_HASH, canonical_json, digest_for
+from egv.canonical import GENESIS_HASH, canonical_bytes, canonical_json, digest_for
 from egv.evaluation.authority import AuthorityPolicy
 from egv.evaluation.dataset import EvaluationCorpus
 from egv.evaluation.sandbox import DockerSandboxConfig
@@ -20,6 +21,7 @@ from egv.variation.remote import (
     REMOTE_VARIATION_SERVICE_SCHEMA,
     RemoteControllerEvaluationGateway,
     RemoteEvaluatorServiceManifest,
+    _durable_remote_response,
     build_remote_evaluator_service_manifest,
 )
 
@@ -40,16 +42,19 @@ common = {
     "candidate_artifact_digest": request["candidate_artifact_digest"],
     "protocol_digest": request["protocol_digest"], "policy_digest": request["policy_digest"],
     "evaluator_digest": request["service_manifest_digest"],
+    "task_family": request["public_task_binding"]["family_id"],
+    "normalized_public_locus": request["public_task_binding"]["public_locus"],
+    "public_rule_id": request["public_task_binding"]["public_rule_id"],
 }
 sequence = request["receipt_sequence_start"]
 previous = request["previous_receipt_hash"]
 receipts = []
 for kind, fields in (
-    ("AUTHORITY", {"request_id": "authority-" + request["candidate_id"], "decision": "ALLOW"}),
-    ("VERDICT", {"request_id": "verdict-" + request["candidate_id"], "decision": "PASS",
+    ("AUTHORITY", {"request_id": "request-authority-" + request["candidate_id"], "decision": "ALLOW"}),
+    ("VERDICT", {"request_id": "request-verdict-" + request["candidate_id"], "decision": "PASS",
         "diagnostic_enum": "PASS", "resource_bucket": "UNDER_25", "exit_status_class": "SUCCESS",
         "input_digest": digest_for("evaluator-private"), "output_digest": digest_bytes(b"ok")}),
-    ("EFFECT", {"request_id": "effect-" + request["candidate_id"], "decision": "ALLOW",
+    ("EFFECT", {"request_id": "request-effect-" + request["candidate_id"], "decision": "ALLOW",
         "diagnostic_enum": "PASS", "normalized_action_hash": digest_for({"action":"execute_candidate","locus":request["declared_locus"]}),
         "sandbox_id": "sealed-sandbox", "started_at": "2026-08-22T00:00:00Z",
         "finished_at": "2026-08-22T00:00:01Z", "exit_status_class": "SUCCESS",
@@ -64,7 +69,8 @@ result = {
     "resource_bucket": "UNDER_25", "disposition": "PROMOTED", "infrastructure_loss": False,
     "receipt_ids": [item["receipt_id"] for item in receipts], "output_digest": digest_bytes(b"ok"),
 }
-unsigned = {"schema_version":"egv-remote-variation-response-v1", "request_digest":request["request_digest"],
+unsigned = {"schema_version":"egv-remote-variation-response-v1", "operation_digest":request["operation_digest"],
+    "request_digest":request["request_digest"],
     "service_manifest_digest":request["service_manifest_digest"], "result":result, "receipts":receipts,
     "signing_key_id":signer.key_id}
 mode = os.environ.get("EGV_REMOTE_TEST_MODE")
@@ -138,6 +144,43 @@ class RemoteVariationGatewayTests(unittest.TestCase):
             command=self.command,
         )
 
+    def durable_request(self, label: str) -> dict:
+        body = {
+            "operation_digest": digest_for({"operation": label}),
+            "receipt_sequence_start": 1,
+            "previous_receipt_hash": GENESIS_HASH,
+        }
+        return {**body, "request_digest": digest_for(body)}
+
+    def durable_builder(self, request: dict):
+        def build() -> dict:
+            receipt = self.signer.sign_receipt(
+                {
+                    "receipt_type": "AUTHORITY",
+                    "campaign_id": "campaign-remote-test",
+                    "run_id": "run-evaluation",
+                    "task_id": self.task["template_id"],
+                    "request_id": "request-authority-durable",
+                    "candidate_id": "candidate-durable",
+                    "decision": "DENY",
+                },
+                sequence=request["receipt_sequence_start"],
+                previous_receipt_hash=request["previous_receipt_hash"],
+                idempotency_key="durable:" + request["operation_digest"],
+            )
+            unsigned = {
+                "schema_version": "egv-remote-variation-response-v1",
+                "operation_digest": request["operation_digest"],
+                "request_digest": request["request_digest"],
+                "service_manifest_digest": self.manifest_value["service_manifest_digest"],
+                "result": {},
+                "receipts": [receipt],
+                "signing_key_id": self.signer.key_id,
+            }
+            return {**unsigned, "signature": self.signer.sign_bytes(canonical_bytes(unsigned))}
+
+        return build
+
     def test_remote_gateway_ingests_verified_chain_without_private_input_or_path(self) -> None:
         capture = self.root / "request.json"
         os.environ["EGV_REMOTE_TEST_CAPTURE"] = str(capture)
@@ -145,7 +188,7 @@ class RemoteVariationGatewayTests(unittest.TestCase):
             candidate_id="candidate-001",
             task_id=self.task["template_id"],
             source=b"def solve(value):\n    return value\n",
-            opaque_input={"never": "send-this-private-value"},
+            opaque_input=None,
             requested_authority="EXECUTE_CANDIDATE",
             declared_locus=self.task["public_locus"],
             candidate_source_path=str(self.root / "private" / "candidate.py"),
@@ -162,7 +205,7 @@ class RemoteVariationGatewayTests(unittest.TestCase):
         self.assertNotIn("send-this-private-value", serialized)
         self.assertNotIn("candidate.py", serialized)
         self.assertEqual(set(request), {
-            "schema_version", "request_digest", "service_manifest_digest", "campaign_id", "model_digest",
+            "schema_version", "operation_digest", "request_digest", "service_manifest_digest", "campaign_id", "model_digest",
             "protocol_digest", "policy_digest", "data_manifest_digest", "task_manifest_digest",
             "evaluator_digest", "docker_image_digest", "candidate_id", "task_id", "public_task_binding",
             "candidate_artifact_digest", "candidate_source_b64", "requested_authority", "declared_locus",
@@ -178,7 +221,7 @@ class RemoteVariationGatewayTests(unittest.TestCase):
                         candidate_id="candidate-" + mode,
                         task_id=self.task["template_id"],
                         source=b"def solve(value):\n    return value\n",
-                        opaque_input="private",
+                        opaque_input=None,
                         requested_authority="EXECUTE_CANDIDATE",
                         declared_locus=self.task["public_locus"],
                     )
@@ -209,13 +252,13 @@ class RemoteVariationGatewayTests(unittest.TestCase):
         with self.assertRaises(VariationConfigurationError):
             RemoteEvaluatorServiceManifest(malformed)
         gateway = self.gateway()
-        with patch("egv.variation.remote.subprocess.run", side_effect=__import__("subprocess").TimeoutExpired("remote", 600)):
+        with patch("egv.variation.remote._run_bounded_command", side_effect=VariationDependencyError("timeout")):
             with self.assertRaises(VariationDependencyError):
                 gateway.evaluate(
                     candidate_id="candidate-timeout",
                     task_id=self.task["template_id"],
                     source=b"def solve(value):\n    return value\n",
-                    opaque_input="private",
+                    opaque_input=None,
                     requested_authority="EXECUTE_CANDIDATE",
                     declared_locus=self.task["public_locus"],
                 )
@@ -294,6 +337,84 @@ class RemoteVariationGatewayTests(unittest.TestCase):
         with self.assertRaises(Exception):
             self.ledger.ingest_receipts_atomic([first, second], self.signer.public_key)
         self.assertEqual(self.ledger.receipts(), [])
+
+    def test_durable_evaluator_returns_byte_identical_cached_response_after_restart(self) -> None:
+        manifest = RemoteEvaluatorServiceManifest(self.manifest_value)
+        state_root = self.root / "durable-state"
+        request = self.durable_request("retry")
+        first = _durable_remote_response(
+            request,
+            manifest=manifest,
+            signer=self.signer,
+            state_root=state_root,
+            build_response=self.durable_builder(request),
+        )
+        called = []
+        resumed = {**request, "receipt_sequence_start": 2, "previous_receipt_hash": receipt_hash(first["receipts"][-1])}
+        resumed["request_digest"] = digest_for({key: value for key, value in resumed.items() if key != "request_digest"})
+        second = _durable_remote_response(
+            resumed,
+            manifest=manifest,
+            signer=self.signer,
+            state_root=state_root,
+            build_response=lambda: called.append(True),
+        )
+        self.assertEqual(canonical_bytes(first), canonical_bytes(second))
+        self.assertEqual(called, [])
+
+    def test_crash_after_execution_intent_quarantines_retry_without_reexecution(self) -> None:
+        manifest = RemoteEvaluatorServiceManifest(self.manifest_value)
+        state_root = self.root / "crash-state"
+        request = self.durable_request("crash")
+        executions = []
+
+        def crash_after_effect() -> dict:
+            executions.append("executed")
+            raise RuntimeError("simulated process loss after sandbox effect")
+
+        with self.assertRaises(RuntimeError):
+            _durable_remote_response(
+                request,
+                manifest=manifest,
+                signer=self.signer,
+                state_root=state_root,
+                build_response=crash_after_effect,
+            )
+        with self.assertRaises(VariationDependencyError):
+            _durable_remote_response(
+                request,
+                manifest=manifest,
+                signer=self.signer,
+                state_root=state_root,
+                build_response=crash_after_effect,
+            )
+        self.assertEqual(executions, ["executed"])
+
+    def test_concurrent_requests_cannot_sign_receipt_forks(self) -> None:
+        manifest = RemoteEvaluatorServiceManifest(self.manifest_value)
+        state_root = self.root / "fork-state"
+        requests = [self.durable_request("fork-a"), self.durable_request("fork-b")]
+        outcomes = []
+
+        def worker(request: dict) -> None:
+            try:
+                _durable_remote_response(
+                    request,
+                    manifest=manifest,
+                    signer=self.signer,
+                    state_root=state_root,
+                    build_response=self.durable_builder(request),
+                )
+                outcomes.append("complete")
+            except VariationConfigurationError:
+                outcomes.append("stale")
+
+        threads = [threading.Thread(target=worker, args=(request,)) for request in requests]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+        self.assertCountEqual(outcomes, ["complete", "stale"])
 
 
 if __name__ == "__main__":

@@ -301,6 +301,21 @@ class ModelCandidateGenerator:
         prompt = self._prompt(context)
         try:
             encoded = self.tokenizer(prompt, return_tensors="pt")
+            parameter = next(self.model.parameters())
+            device = parameter.device
+            if getattr(device, "type", str(device).split(":", 1)[0]) != "cuda":
+                raise VariationDependencyError("production candidate generation requires a CUDA-resident model")
+            if not isinstance(encoded, Mapping) or "input_ids" not in encoded:
+                raise VariationDependencyError("pinned tokenizer did not return tensor input_ids")
+            moved = {}
+            for name, value in encoded.items():
+                if not hasattr(value, "to"):
+                    raise VariationDependencyError("pinned tokenizer returned a non-tensor generation input")
+                tensor = value.to(device=device)
+                if getattr(tensor, "device", None) != device:
+                    raise VariationDependencyError("pinned tokenizer tensor did not move to the model device")
+                moved[name] = tensor
+            encoded = moved
             generated = self.model.generate(
                 **encoded,
                 max_new_tokens=self.max_new_tokens,

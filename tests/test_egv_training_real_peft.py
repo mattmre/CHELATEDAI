@@ -34,6 +34,7 @@ from egv.variation.model import (
     PinnedModelManifest,
     model_state_digest,
 )
+from egv.variation.generator import CandidateContext, ModelCandidateGenerator
 
 
 class _FullAttention(torch.nn.Module):
@@ -115,6 +116,64 @@ class _Tokenizer:
 
 @unittest.skipUnless(peft is not None and torch.cuda.is_available(), "real PEFT CUDA runtime unavailable")
 class RealPeftTrainingIntegrationTests(unittest.TestCase):
+    def test_candidate_generation_moves_one_prompt_to_cuda_model_device(self):
+        class _GenerationModel(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.anchor = torch.nn.Parameter(torch.zeros(1, device="cuda"))
+
+            def generate(self, *, input_ids, attention_mask, **_kwargs):
+                self.assertions = (input_ids.device, attention_mask.device)
+                suffix = torch.tensor([[9, 10]], device=self.anchor.device)
+                return torch.cat((input_ids, suffix), dim=1)
+
+        class _GenerationTokenizer:
+            def __call__(self, _prompt, *, return_tensors):
+                self.return_tensors = return_tensors
+                return {
+                    "input_ids": torch.tensor([[1, 2, 3]], device="cpu"),
+                    "attention_mask": torch.ones((1, 3), dtype=torch.long, device="cpu"),
+                }
+
+            def decode(self, _tokens, *, skip_special_tokens):
+                self.skip_special_tokens = skip_special_tokens
+                return canonical_json({
+                    "source": "def solve(value):\n    return value\n",
+                    "declared_locus": "module:solve",
+                    "requested_authority": "EXECUTE_CANDIDATE",
+                    "evidence_ids": [],
+                })
+
+        manifest = PinnedModelManifest(
+            repository=MODEL_REPOSITORY,
+            revision=MODEL_REVISION,
+            architecture=MODEL_ARCHITECTURE,
+            config_class=MODEL_CONFIG_CLASS,
+            transformers_version="5.13.1",
+            files={"weights.safetensors": "a" * 64},
+            license={"name": "test", "source": "local"},
+        )
+        model = _GenerationModel()
+        tokenizer = _GenerationTokenizer()
+        loaded = LoadedPinnedModel(
+            model=model,
+            tokenizer=tokenizer,
+            manifest=manifest,
+            manifest_digest=manifest.digest(),
+            file_hashes=dict(manifest.files),
+            load_report={},
+            base_state_digest=model_state_digest(model),
+        )
+        generator = ModelCandidateGenerator(loaded, model_digest=manifest.digest(), max_new_tokens=16)
+        context = CandidateContext(
+            "campaign", "run", 0, "C", "task", "PURE_FUNCTION", "module:solve", "rule",
+            1, None, (), digest_for("retrieval"), manifest.digest(), None, digest_for("prompt"),
+        )
+        proposal = generator.propose(context)
+        self.assertEqual(proposal.declared_locus, "module:solve")
+        self.assertEqual(model.assertions, (model.anchor.device, model.anchor.device))
+        self.assertEqual(tokenizer.return_tensors, "pt")
+
     def test_run_production_training_external_bridge_checkpoint_best_restore_and_reload(self):
         with tempfile.TemporaryDirectory(prefix="egv-real-peft-") as temporary:
             root = Path(temporary)

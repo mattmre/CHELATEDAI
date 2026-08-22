@@ -34,6 +34,7 @@ from .variation import (
     run_remote_evaluator_once,
     run_variation_smoke,
 )
+from .variation.remote import REMOTE_VARIATION_REQUEST_LIMIT
 
 
 SLICE2_PHASES = {
@@ -455,6 +456,7 @@ def build_parser() -> argparse.ArgumentParser:
     variation_evaluator_once.add_argument("--evaluator-seed", required=True, type=Path)
     variation_evaluator_once.add_argument("--private-key", required=True, type=Path)
     variation_evaluator_once.add_argument("--workspace", required=True, type=Path)
+    variation_evaluator_once.add_argument("--state-root", required=True, type=Path)
     variation_service_freeze = variation_subparsers.add_parser(
         "freeze-evaluator-service", help="freeze a path-free independent evaluator service manifest"
     )
@@ -568,9 +570,15 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 _json_output(loader.preflight(), args.as_json)
                 return 0
             if args.variation_command == "evaluator-once":
+                stdin_stream = getattr(sys.stdin, "buffer", sys.stdin)
+                raw_request = stdin_stream.read(REMOTE_VARIATION_REQUEST_LIMIT + 1)
+                if isinstance(raw_request, str):
+                    raw_request = raw_request.encode("utf-8")
+                if len(raw_request) > REMOTE_VARIATION_REQUEST_LIMIT:
+                    raise EGVError("remote Variation evaluator request exceeds the bounded input limit")
                 try:
-                    request = json.loads(sys.stdin.read())
-                except ValueError as exc:
+                    request = json.loads(raw_request.decode("utf-8"))
+                except (UnicodeError, ValueError) as exc:
                     raise EGVError("remote Variation evaluator request is not valid JSON") from exc
                 response = run_remote_evaluator_once(
                     request,
@@ -578,6 +586,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                     evaluator_seed=args.evaluator_seed,
                     evaluator_private_key=args.private_key,
                     workspace=args.workspace,
+                    state_root=args.state_root,
                 )
                 print(canonical_json(response))
                 return 0

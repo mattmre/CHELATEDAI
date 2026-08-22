@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+from contextlib import contextmanager
 import hashlib
 import json
 import os
@@ -11,10 +12,21 @@ import re
 import subprocess
 import sys
 import tempfile
-from typing import Any, Dict, Mapping, Optional
+import threading
+from typing import Any, Dict, Mapping, Optional, Sequence, Tuple
 
-from ..canonical import GENESIS_HASH, canonical_bytes, canonical_json, content_id, digest_bytes, digest_for, validate_sha256
+from ..canonical import (
+    GENESIS_HASH,
+    canonical_bytes,
+    canonical_json,
+    content_id,
+    digest_bytes,
+    digest_for,
+    failure_family_root,
+    validate_sha256,
+)
 from ..evaluation.controller import EvaluationResult, EvaluatorController, HiddenEvaluatorRunner
+from ..evaluation.diagnostics import Diagnostic, validate_diagnostic, validate_disposition, validate_resource_bucket
 from ..ledger import EvidenceLedger
 from ..receipts import ReceiptJournal, ReceiptSigner, key_id_for_public_key, load_public_key, receipt_hash, verify_receipt
 from .errors import VariationConfigurationError, VariationDependencyError
@@ -24,6 +36,9 @@ REMOTE_VARIATION_SERVICE_SCHEMA = "egv-remote-variation-service-v1"
 REMOTE_VARIATION_REQUEST_SCHEMA = "egv-remote-variation-request-v1"
 REMOTE_VARIATION_RESPONSE_SCHEMA = "egv-remote-variation-response-v1"
 REMOTE_VARIATION_TIMEOUT_SECONDS = 600
+REMOTE_VARIATION_REQUEST_LIMIT = 512 * 1024
+REMOTE_VARIATION_RESPONSE_LIMIT = 1024 * 1024
+REMOTE_VARIATION_STATE_SCHEMA = "egv-remote-variation-state-v1"
 
 _TASK_FIELDS = frozenset({"template_id", "family_id", "split", "ordinal", "source_digest", "public_rule_id", "public_locus"})
 _MANIFEST_FIELDS = frozenset(
@@ -50,6 +65,7 @@ _MANIFEST_FIELDS = frozenset(
 _REQUEST_FIELDS = frozenset(
     {
         "schema_version",
+        "operation_digest",
         "request_digest",
         "service_manifest_digest",
         "campaign_id",
@@ -74,6 +90,7 @@ _REQUEST_FIELDS = frozenset(
 _RESPONSE_FIELDS = frozenset(
     {
         "schema_version",
+        "operation_digest",
         "request_digest",
         "service_manifest_digest",
         "result",
@@ -103,6 +120,93 @@ def _decode_b64(value: Any, name: str) -> bytes:
 
 def _encode_b64(value: bytes) -> str:
     return base64.urlsafe_b64encode(value).decode("ascii").rstrip("=")
+
+
+@contextmanager
+def _exclusive_lock(path: Path):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    handle = path.open("a+")
+    try:
+        if os.name == "nt":
+            import msvcrt
+
+            handle.seek(0, os.SEEK_END)
+            if handle.tell() == 0:
+                handle.write("0")
+                handle.flush()
+            handle.seek(0)
+            msvcrt.locking(handle.fileno(), msvcrt.LK_LOCK, 1)
+        else:
+            import fcntl
+
+            fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
+        yield
+    finally:
+        try:
+            if os.name == "nt":
+                import msvcrt
+
+                handle.seek(0)
+                msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
+            else:
+                import fcntl
+
+                fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+        finally:
+            handle.close()
+
+
+def _run_bounded_command(invocation: Sequence[str], request_text: str) -> Tuple[int, bytes, bytes]:
+    """Execute with hard in-memory stdout/stderr caps and a frozen timeout."""
+
+    try:
+        process = subprocess.Popen(
+            list(invocation),
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+    except OSError as exc:
+        raise VariationDependencyError("remote Variation evaluator invocation failed") from exc
+    stdout = bytearray()
+    stderr = bytearray()
+    overflow = []
+
+    def drain(stream: Any, sink: bytearray, label: str) -> None:
+        while True:
+            chunk = stream.read(65536)
+            if not chunk:
+                break
+            if len(sink) + len(chunk) > REMOTE_VARIATION_RESPONSE_LIMIT:
+                overflow.append(label)
+                process.kill()
+                break
+            sink.extend(chunk)
+
+    threads = (
+        threading.Thread(target=drain, args=(process.stdout, stdout, "stdout"), daemon=True),
+        threading.Thread(target=drain, args=(process.stderr, stderr, "stderr"), daemon=True),
+    )
+    for thread in threads:
+        thread.start()
+    try:
+        assert process.stdin is not None
+        process.stdin.write(request_text.encode("utf-8"))
+        process.stdin.close()
+        process.wait(timeout=REMOTE_VARIATION_TIMEOUT_SECONDS)
+    except subprocess.TimeoutExpired as exc:
+        process.kill()
+        process.wait()
+        raise VariationDependencyError("remote Variation evaluator timed out") from exc
+    finally:
+        for thread in threads:
+            thread.join(timeout=5)
+        for stream in (process.stdout, process.stderr):
+            if stream is not None:
+                stream.close()
+    if overflow:
+        raise VariationDependencyError("remote Variation evaluator {} exceeded the bounded output limit".format(overflow[0]))
+    return int(process.returncode), bytes(stdout), bytes(stderr)
 
 
 def _validate_task_binding(value: Any) -> Dict[str, Any]:
@@ -259,6 +363,331 @@ def build_remote_evaluator_service_manifest(
     return result
 
 
+def _operation_digest(request: Mapping[str, Any]) -> str:
+    stable = dict(request)
+    for field in ("request_digest", "operation_digest", "receipt_sequence_start", "previous_receipt_hash"):
+        stable.pop(field, None)
+    return digest_for(stable)
+
+
+def _verify_response_envelope(
+    response: Mapping[str, Any], manifest: RemoteEvaluatorServiceManifest, public_key: Any
+) -> Dict[str, Any]:
+    if set(response) != _RESPONSE_FIELDS or response.get("schema_version") != REMOTE_VARIATION_RESPONSE_SCHEMA:
+        raise VariationConfigurationError("remote Variation response is not closed")
+    if response.get("service_manifest_digest") != manifest.digest:
+        raise VariationConfigurationError("remote Variation response has a stale service binding")
+    if response.get("signing_key_id") != manifest["evaluator_key_id"]:
+        raise VariationConfigurationError("remote Variation response uses the wrong evaluator key")
+    unsigned = dict(response)
+    signature = _decode_b64(unsigned.pop("signature"), "response signature")
+    try:
+        load_public_key(public_key).verify(signature, canonical_bytes(unsigned))
+    except Exception as exc:
+        raise VariationConfigurationError("remote Variation response signature is invalid") from exc
+    return dict(response)
+
+
+def _empty_remote_state(manifest: RemoteEvaluatorServiceManifest) -> Dict[str, Any]:
+    body = {
+        "schema_version": REMOTE_VARIATION_STATE_SCHEMA,
+        "service_manifest_digest": manifest.digest,
+        "evaluator_key_id": manifest["evaluator_key_id"],
+        "next_sequence": 1,
+        "receipt_head": GENESIS_HASH,
+        "operation_order": [],
+        "responses": {},
+        "pending_operation": None,
+    }
+    return {**body, "state_digest": digest_for(body)}
+
+
+def _load_remote_state(
+    path: Path, manifest: RemoteEvaluatorServiceManifest, public_key: Any
+) -> Dict[str, Any]:
+    temporary = path.with_name(path.name + ".tmp")
+    if temporary.exists():
+        raise VariationDependencyError("remote evaluator has an ambiguous interrupted state commit")
+    if not path.exists():
+        return _empty_remote_state(manifest)
+    if path.is_symlink() or not path.is_file():
+        raise VariationDependencyError("remote evaluator state must be a regular file")
+    try:
+        state = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise VariationDependencyError("remote evaluator state cannot be decoded") from exc
+    fields = {
+        "schema_version", "service_manifest_digest", "evaluator_key_id", "next_sequence",
+        "receipt_head", "operation_order", "responses", "pending_operation", "state_digest",
+    }
+    if not isinstance(state, Mapping) or set(state) != fields:
+        raise VariationDependencyError("remote evaluator state is not closed")
+    body = dict(state)
+    supplied = body.pop("state_digest")
+    if supplied != digest_for(body):
+        raise VariationDependencyError("remote evaluator state digest is invalid")
+    if (
+        body["schema_version"] != REMOTE_VARIATION_STATE_SCHEMA
+        or body["service_manifest_digest"] != manifest.digest
+        or body["evaluator_key_id"] != manifest["evaluator_key_id"]
+    ):
+        raise VariationDependencyError("remote evaluator state authority binding is stale")
+    order = body["operation_order"]
+    responses = body["responses"]
+    if not isinstance(order, list) or order != list(dict.fromkeys(order)) or not isinstance(responses, Mapping):
+        raise VariationDependencyError("remote evaluator operation cache is malformed")
+    if set(order) != set(responses):
+        raise VariationDependencyError("remote evaluator operation cache index differs from its responses")
+    pending = body["pending_operation"]
+    if pending is not None:
+        pending_fields = {
+            "operation_digest", "request_digest", "receipt_sequence_start", "previous_receipt_hash"
+        }
+        if not isinstance(pending, Mapping) or set(pending) != pending_fields:
+            raise VariationDependencyError("remote evaluator pending operation is malformed")
+        _require_digest(pending["operation_digest"], "pending operation digest")
+        _require_digest(pending["request_digest"], "pending request digest")
+        if (
+            pending["receipt_sequence_start"] != body["next_sequence"]
+            or pending["previous_receipt_hash"] != body["receipt_head"]
+            or pending["operation_digest"] in responses
+        ):
+            raise VariationDependencyError("remote evaluator pending operation anchor is inconsistent")
+    sequence = 1
+    previous = GENESIS_HASH
+    for operation in order:
+        response = _verify_response_envelope(responses[operation], manifest, public_key)
+        if response["operation_digest"] != operation:
+            raise VariationDependencyError("remote evaluator cached operation binding is invalid")
+        receipts = response["receipts"]
+        if not isinstance(receipts, list) or not receipts:
+            raise VariationDependencyError("remote evaluator cached receipt suffix is empty")
+        for receipt in receipts:
+            previous = verify_receipt(
+                receipt,
+                public_key,
+                expected_key_id=manifest["evaluator_key_id"],
+                expected_sequence=sequence,
+                expected_previous_hash=previous,
+            )
+            sequence += 1
+    if body["next_sequence"] != sequence or body["receipt_head"] != previous:
+        raise VariationDependencyError("remote evaluator cached receipt head is inconsistent")
+    return dict(state)
+
+
+def _write_remote_state(path: Path, state: Mapping[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_name(path.name + ".tmp")
+    with temporary.open("x", encoding="utf-8", newline="\n") as handle:
+        handle.write(canonical_json(state) + "\n")
+        handle.flush()
+        os.fsync(handle.fileno())
+    os.replace(str(temporary), str(path))
+    if os.name != "nt":
+        directory = os.open(str(path.parent), os.O_RDONLY)
+        try:
+            os.fsync(directory)
+        finally:
+            os.close(directory)
+
+
+def _durable_remote_response(
+    request: Mapping[str, Any],
+    *,
+    manifest: RemoteEvaluatorServiceManifest,
+    signer: ReceiptSigner,
+    state_root: Path,
+    build_response: Any,
+    validate_response: Any = None,
+) -> Mapping[str, Any]:
+    root = Path(state_root)
+    root.mkdir(parents=True, exist_ok=True)
+    state_path = root / "remote-evaluator-state.json"
+    with _exclusive_lock(root / "remote-evaluator-state.lock"):
+        state = _load_remote_state(state_path, manifest, signer.public_key)
+        operation = request["operation_digest"]
+        cached = state["responses"].get(operation)
+        if cached is not None:
+            if validate_response is not None:
+                validate_response(cached)
+            return dict(cached)
+        pending = state["pending_operation"]
+        if pending is not None:
+            raise VariationDependencyError(
+                "remote evaluator is quarantined after an ambiguous interrupted execution"
+            )
+        if (
+            request["receipt_sequence_start"] != state["next_sequence"]
+            or request["previous_receipt_hash"] != state["receipt_head"]
+        ):
+            raise VariationConfigurationError("remote evaluator rejected a stale or forked receipt anchor")
+        pending_body = {key: value for key, value in state.items() if key != "state_digest"}
+        pending_body["pending_operation"] = {
+            "operation_digest": operation,
+            "request_digest": request["request_digest"],
+            "receipt_sequence_start": request["receipt_sequence_start"],
+            "previous_receipt_hash": request["previous_receipt_hash"],
+        }
+        pending_state = {**pending_body, "state_digest": digest_for(pending_body)}
+        # The execution intent is durable before invoking Docker. A crash after this
+        # point deliberately quarantines the evaluator instead of re-executing an
+        # action whose effects cannot be proven absent.
+        _write_remote_state(state_path, pending_state)
+        response = _verify_response_envelope(build_response(), manifest, signer.public_key)
+        if response["operation_digest"] != operation or response["request_digest"] != request["request_digest"]:
+            raise VariationConfigurationError("remote evaluator response is not bound to the current operation")
+        sequence = state["next_sequence"]
+        previous = state["receipt_head"]
+        for receipt in response["receipts"]:
+            previous = verify_receipt(
+                receipt,
+                signer.public_key,
+                expected_key_id=manifest["evaluator_key_id"],
+                expected_sequence=sequence,
+                expected_previous_hash=previous,
+            )
+            sequence += 1
+        if validate_response is not None:
+            validate_response(response)
+        next_body = {key: value for key, value in state.items() if key != "state_digest"}
+        next_body["next_sequence"] = sequence
+        next_body["receipt_head"] = previous
+        next_body["operation_order"] = list(next_body["operation_order"]) + [operation]
+        next_body["responses"] = {**dict(next_body["responses"]), operation: response}
+        next_body["pending_operation"] = None
+        next_state = {**next_body, "state_digest": digest_for(next_body)}
+        _write_remote_state(state_path, next_state)
+        return response
+
+
+def _validate_remote_result_semantics(
+    *,
+    result_value: Any,
+    receipts: Sequence[Mapping[str, Any]],
+    manifest: RemoteEvaluatorServiceManifest,
+    task_binding: Mapping[str, Any],
+    candidate_id: str,
+    task_id: str,
+    artifact_digest: str,
+    declared_locus: str,
+) -> EvaluationResult:
+    """Validate the complete signed controller contract without mutating the ledger."""
+
+    if not isinstance(result_value, Mapping):
+        raise VariationConfigurationError("remote Variation result is not an object")
+    try:
+        normalized = dict(result_value)
+        normalized["receipt_ids"] = tuple(normalized["receipt_ids"])
+        result = EvaluationResult(**normalized)
+        validate_diagnostic(result.diagnostic_enum)
+        validate_resource_bucket(result.resource_bucket)
+        validate_disposition(result.disposition)
+        _require_digest(result.candidate_artifact_digest, "result candidate artifact digest")
+        _require_digest(result.output_digest, "result output digest")
+    except (KeyError, TypeError, ValueError) as exc:
+        raise VariationConfigurationError("remote Variation result contract is invalid") from exc
+    if type(result.infrastructure_loss) is not bool:
+        raise VariationConfigurationError("remote Variation infrastructure flag is invalid")
+    receipt_ids = tuple(receipt["receipt_id"] for receipt in receipts)
+    if (
+        result.candidate_id != candidate_id
+        or result.task_id != task_id
+        or result.candidate_artifact_digest != artifact_digest
+        or result.receipt_ids != receipt_ids
+    ):
+        raise VariationConfigurationError("remote Variation result differs from its signed request or receipts")
+    expected_common = {
+        "campaign_id": manifest["campaign_id"],
+        "run_id": "run-evaluation",
+        "task_id": task_id,
+        "candidate_id": candidate_id,
+        "candidate_artifact_digest": artifact_digest,
+        "protocol_digest": manifest["protocol_digest"],
+        "policy_digest": manifest["policy_digest"],
+        "evaluator_digest": manifest.digest,
+        "task_family": task_binding["family_id"],
+        "normalized_public_locus": task_binding["public_locus"],
+        "public_rule_id": task_binding["public_rule_id"],
+    }
+    for receipt in receipts:
+        for field, expected in expected_common.items():
+            if receipt.get(field) != expected:
+                raise VariationConfigurationError("remote Variation receipt {} binding is invalid".format(field))
+    types = [receipt["receipt_type"] for receipt in receipts]
+    if types not in (["AUTHORITY"], ["AUTHORITY", "VERDICT", "EFFECT"]):
+        raise VariationConfigurationError("remote Variation receipt chain has an invalid type order")
+    authority = receipts[0]
+    if authority.get("request_id") != "request-authority-{}".format(candidate_id):
+        raise VariationConfigurationError("remote Variation authority request identity is invalid")
+    empty_digest = digest_bytes(b"")
+    if len(receipts) == 1:
+        allowed = {
+            Diagnostic.PROTOCOL_VIOLATION.value: "REJECTED",
+            Diagnostic.MUTATION_LOCUS_VIOLATION.value: "REJECTED",
+            Diagnostic.AUTHORITY_DENIED.value: "ABSTAINED",
+            Diagnostic.INTERNAL_ERROR.value: "ABSTAINED",
+        }
+        if (
+            authority.get("decision") != "DENY"
+            or result.diagnostic_enum not in allowed
+            or result.disposition != allowed[result.diagnostic_enum]
+            or result.resource_bucket != "UNDER_25"
+            or result.output_digest != empty_digest
+        ):
+            raise VariationConfigurationError("remote Variation authority-only result is inconsistent")
+        receipt_diagnostic = authority.get("diagnostic_enum")
+        if result.diagnostic_enum == Diagnostic.AUTHORITY_DENIED.value:
+            if receipt_diagnostic is not None:
+                raise VariationConfigurationError("authority denial receipt disclosed an invalid diagnostic")
+        elif receipt_diagnostic != result.diagnostic_enum:
+            raise VariationConfigurationError("authority denial diagnostic differs from its result")
+    else:
+        verdict, effect = receipts[1:]
+        expected_action = digest_for({"action": "execute_candidate", "locus": declared_locus})
+        diagnostic = result.diagnostic_enum
+        infrastructure = diagnostic == Diagnostic.INTERNAL_ERROR.value
+        expected_verdict = "ERROR" if infrastructure else ("PASS" if diagnostic == Diagnostic.PASS.value else "FAIL")
+        expected_effect = "ERROR" if infrastructure else "ALLOW"
+        expected_disposition = (
+            "ABSTAINED" if infrastructure else ("PROMOTED" if diagnostic == Diagnostic.PASS.value else "REJECTED")
+        )
+        if (
+            authority.get("decision") != "ALLOW"
+            or verdict.get("request_id") != "request-verdict-{}".format(candidate_id)
+            or effect.get("request_id") != "request-effect-{}".format(candidate_id)
+            or verdict.get("decision") != expected_verdict
+            or effect.get("decision") != expected_effect
+            or verdict.get("diagnostic_enum") != diagnostic
+            or effect.get("diagnostic_enum") != diagnostic
+            or verdict.get("resource_bucket") != result.resource_bucket
+            or verdict.get("output_digest") != result.output_digest
+            or effect.get("normalized_action_hash") != expected_action
+            or result.disposition != expected_disposition
+        ):
+            raise VariationConfigurationError("remote Variation result disagrees with its signed controller chain")
+    incident = result.infrastructure_incident_id
+    root = result.failure_family_root
+    if result.diagnostic_enum == Diagnostic.INTERNAL_ERROR.value:
+        if not result.infrastructure_loss or not incident or not root:
+            raise VariationConfigurationError("remote Variation infrastructure loss is incomplete")
+        expected_root = failure_family_root(
+            task_binding["family_id"],
+            result.diagnostic_enum,
+            task_binding["public_locus"],
+            task_binding["public_rule_id"],
+            infrastructure_incident_id=incident,
+        )
+        if root != expected_root:
+            raise VariationConfigurationError("remote Variation infrastructure root is invalid")
+        for receipt in receipts:
+            if receipt.get("infrastructure_incident_id") != incident or receipt.get("failure_family_root") != root:
+                raise VariationConfigurationError("remote Variation receipt incident binding is inconsistent")
+    elif result.infrastructure_loss or incident is not None or root is not None:
+        raise VariationConfigurationError("remote Variation non-infrastructure result carries an incident")
+    return result
+
+
 class RemoteControllerEvaluationGateway:
     """Exact production client for a separately administered evaluator command."""
 
@@ -297,7 +726,6 @@ class RemoteControllerEvaluationGateway:
         self._command = paths[2].resolve()
         self._command_bytes = command_bytes
         self._command_suffix = paths[2].suffix.lower()
-        self._response_digests = set()
         self.evaluator_revision = manifest["evaluator_revision"]
         self.evaluator_digest = manifest["service_manifest_digest"]
         self.task_registry = manifest
@@ -362,6 +790,9 @@ class RemoteControllerEvaluationGateway:
 
     def _invoke(self, request: Mapping[str, Any]) -> Mapping[str, Any]:
         self.validate_runtime()
+        request_text = canonical_json(request)
+        if len(request_text.encode("utf-8")) > REMOTE_VARIATION_REQUEST_LIMIT:
+            raise VariationConfigurationError("remote Variation request exceeds the bounded input limit")
         with tempfile.TemporaryDirectory(prefix="egv-pinned-variation-endpoint-") as temporary:
             endpoint = Path(temporary) / (self.manifest["command_digest"] + self._command_suffix)
             with endpoint.open("xb") as handle:
@@ -372,24 +803,12 @@ class RemoteControllerEvaluationGateway:
             if hashlib.sha256(endpoint.read_bytes()).hexdigest() != self.manifest["command_digest"]:
                 raise VariationDependencyError("content-addressed remote evaluator copy failed verification")
             invocation = [sys.executable, str(endpoint)] if self._command_suffix == ".py" else [str(endpoint)]
-            try:
-                completed = subprocess.run(
-                    invocation,
-                    input=canonical_json(request),
-                    text=True,
-                    capture_output=True,
-                    timeout=REMOTE_VARIATION_TIMEOUT_SECONDS,
-                    check=False,
-                )
-            except (OSError, subprocess.SubprocessError) as exc:
-                raise VariationDependencyError("remote Variation evaluator invocation failed") from exc
-        if completed.returncode != 0:
+            returncode, stdout, _stderr = _run_bounded_command(invocation, request_text)
+        if returncode != 0:
             raise VariationDependencyError("remote Variation evaluator returned a nonzero exit status")
-        if len(completed.stdout.encode("utf-8")) > 1024 * 1024:
-            raise VariationDependencyError("remote Variation evaluator response exceeds the bounded output limit")
         try:
-            response = json.loads(completed.stdout)
-        except ValueError as exc:
+            response = json.loads(stdout.decode("utf-8"))
+        except (UnicodeError, ValueError) as exc:
             raise VariationDependencyError("remote Variation evaluator returned invalid JSON") from exc
         if not isinstance(response, Mapping):
             raise VariationDependencyError("remote Variation evaluator returned no result object")
@@ -406,15 +825,21 @@ class RemoteControllerEvaluationGateway:
         declared_locus: str,
         candidate_source_path: Optional[str] = None,
     ) -> EvaluationResult:
-        del opaque_input, candidate_source_path
+        del candidate_source_path
+        if opaque_input is not None:
+            raise VariationConfigurationError("remote evaluator boundary cannot receive evaluator-private input")
         task_binding = self.manifest.public_record(task_id)
         if task_binding is None:
             raise VariationConfigurationError("remote evaluator task is outside the frozen public registry")
         if task_binding["public_locus"] != declared_locus:
             raise VariationConfigurationError("remote evaluator task locus differs from the public registry")
         source_bytes = bytes(source)
+        from .loop import CANDIDATE_SOURCE_LIMIT
+
+        if not source_bytes or len(source_bytes) > CANDIDATE_SOURCE_LIMIT:
+            raise VariationConfigurationError("remote Variation candidate source exceeds the frozen byte ceiling")
         artifact_digest = digest_bytes(source_bytes)
-        body = {
+        stable_body = {
             "schema_version": REMOTE_VARIATION_REQUEST_SCHEMA,
             "service_manifest_digest": self.manifest.digest,
             "campaign_id": self.manifest["campaign_id"],
@@ -432,32 +857,31 @@ class RemoteControllerEvaluationGateway:
             "candidate_source_b64": _encode_b64(source_bytes),
             "requested_authority": requested_authority,
             "declared_locus": declared_locus,
+        }
+        operation = _operation_digest(stable_body)
+        body = {
+            **stable_body,
+            "operation_digest": operation,
             "receipt_sequence_start": self.ledger.receipt_next_sequence(),
             "previous_receipt_hash": self.ledger.receipt_head(),
         }
         request = {**body, "request_digest": digest_for(body)}
         response = dict(self._invoke(request))
-        if set(response) != _RESPONSE_FIELDS or response.get("schema_version") != REMOTE_VARIATION_RESPONSE_SCHEMA:
-            raise VariationConfigurationError("remote Variation response is not closed")
-        if response["request_digest"] != request["request_digest"] or response["service_manifest_digest"] != self.manifest.digest:
-            raise VariationConfigurationError("remote Variation response has stale request or service bindings")
-        if response["signing_key_id"] != self.manifest["evaluator_key_id"]:
-            raise VariationConfigurationError("remote Variation response uses the wrong evaluator key")
-        unsigned = dict(response)
-        signature = _decode_b64(unsigned.pop("signature"), "response signature")
-        try:
-            load_public_key(self._public_key).verify(signature, canonical_bytes(unsigned))
-        except Exception as exc:
-            raise VariationConfigurationError("remote Variation response signature is invalid") from exc
-        response_digest = digest_for(response)
-        if response_digest in self._response_digests:
-            raise VariationConfigurationError("remote Variation response replay detected")
+        response = _verify_response_envelope(response, self.manifest, self._public_key)
+        if response["operation_digest"] != operation:
+            raise VariationConfigurationError("remote Variation response has a stale operation binding")
         receipts = response["receipts"]
         if not isinstance(receipts, list) or not receipts:
             raise VariationConfigurationError("remote Variation response receipt chain is empty")
-        previous = request["previous_receipt_hash"]
-        sequence = request["receipt_sequence_start"]
-        receipt_ids = []
+        first = receipts[0]
+        if not isinstance(first, Mapping):
+            raise VariationConfigurationError("remote Variation receipt is not an object")
+        sequence = first.get("sequence")
+        previous = first.get("previous_receipt_hash")
+        if not isinstance(sequence, int) or isinstance(sequence, bool) or sequence < 1:
+            raise VariationConfigurationError("remote Variation receipt sequence is invalid")
+        if previous != GENESIS_HASH:
+            _require_digest(previous, "remote Variation previous receipt hash")
         receipt_values = []
         for receipt in receipts:
             if not isinstance(receipt, Mapping):
@@ -470,64 +894,39 @@ class RemoteControllerEvaluationGateway:
                 expected_sequence=sequence,
                 expected_previous_hash=previous,
             )
-            for field, expected_value in (
-                ("campaign_id", self.manifest["campaign_id"]),
-                ("task_id", task_id),
-                ("candidate_id", candidate_id),
-                ("candidate_artifact_digest", artifact_digest),
-                ("protocol_digest", self.manifest["protocol_digest"]),
-                ("policy_digest", self.manifest["policy_digest"]),
-                ("evaluator_digest", self.manifest.digest),
-            ):
-                if receipt_value.get(field) != expected_value:
-                    raise VariationConfigurationError("remote Variation receipt {} binding is invalid".format(field))
-            if self.ledger.receipt_by_id(receipt_value["receipt_id"]) is not None:
-                raise VariationConfigurationError("remote Variation receipt replay detected")
-            receipt_ids.append(receipt_value["receipt_id"])
             receipt_values.append(receipt_value)
             previous = complete
             sequence += 1
-        result_value = response["result"]
-        if not isinstance(result_value, Mapping):
-            raise VariationConfigurationError("remote Variation result is not an object")
-        try:
-            normalized_result = dict(result_value)
-            normalized_result["receipt_ids"] = tuple(normalized_result["receipt_ids"])
-            result = EvaluationResult(**normalized_result)
-        except (KeyError, TypeError, ValueError) as exc:
-            raise VariationConfigurationError("remote Variation result contract is invalid") from exc
+        result = _validate_remote_result_semantics(
+            result_value=response["result"],
+            receipts=receipt_values,
+            manifest=self.manifest,
+            task_binding=task_binding,
+            candidate_id=candidate_id,
+            task_id=task_id,
+            artifact_digest=artifact_digest,
+            declared_locus=declared_locus,
+        )
+        stored = [self.ledger.receipt_by_id(receipt["receipt_id"]) for receipt in receipt_values]
+        present = [item is not None for item in stored]
+        if any(present) and not all(present):
+            raise VariationConfigurationError("remote Variation receipt suffix is only partially present")
+        if all(present):
+            for existing, receipt in zip(stored, receipt_values):
+                assert existing is not None
+                if canonical_bytes(existing["receipt"]) != canonical_bytes(receipt):
+                    raise VariationConfigurationError("remote Variation cached receipt differs from the ledger")
+            return result
+        if response["request_digest"] != request["request_digest"]:
+            raise VariationConfigurationError("remote Variation response has a stale request binding")
         if (
-            result.candidate_id != candidate_id
-            or result.task_id != task_id
-            or result.candidate_artifact_digest != artifact_digest
-            or result.receipt_ids != tuple(receipt_ids)
-        ):
-            raise VariationConfigurationError("remote Variation result differs from its signed request or receipts")
-        receipt_types = [receipt["receipt_type"] for receipt in receipt_values]
-        if receipt_types not in (["AUTHORITY"], ["AUTHORITY", "VERDICT", "EFFECT"]):
-            raise VariationConfigurationError("remote Variation receipt chain has an invalid type order")
-        authority = receipt_values[0]
-        if len(receipt_values) == 1:
-            if authority["decision"] == "ALLOW" or result.disposition not in {"ABSTAINED", "REJECTED"}:
-                raise VariationConfigurationError("remote Variation authority-only result is inconsistent")
-        else:
-            verdict, effect = receipt_values[1:]
-            if authority["decision"] != "ALLOW":
-                raise VariationConfigurationError("remote Variation executed after denied authority")
-            if (
-                verdict.get("diagnostic_enum") != result.diagnostic_enum
-                or verdict.get("resource_bucket") != result.resource_bucket
-                or verdict.get("output_digest") != result.output_digest
-                or effect.get("diagnostic_enum") != result.diagnostic_enum
-            ):
-                raise VariationConfigurationError("remote Variation result disagrees with its signed verdict chain")
-        if (
-            self.ledger.receipt_head() != request["previous_receipt_hash"]
+            receipt_values[0]["previous_receipt_hash"] != request["previous_receipt_hash"]
+            or receipt_values[0]["sequence"] != request["receipt_sequence_start"]
+            or self.ledger.receipt_head() != request["previous_receipt_hash"]
             or self.ledger.receipt_next_sequence() != request["receipt_sequence_start"]
         ):
             raise VariationConfigurationError("authoritative receipt head changed during remote evaluation")
-        self.ledger.ingest_receipts_atomic(receipts, self._public_key)
-        self._response_digests.add(response_digest)
+        self.ledger.ingest_receipts_atomic(receipt_values, self._public_key)
         return result
 
 
@@ -543,12 +942,17 @@ def run_remote_evaluator_once(
     evaluator_seed: Path,
     evaluator_private_key: Path,
     workspace: Path,
+    state_root: Path,
 ) -> Mapping[str, Any]:
     """Run one request with evaluator-owned hidden inputs and Docker authority."""
 
     if not isinstance(request, Mapping) or set(request) != _REQUEST_FIELDS:
         raise VariationConfigurationError("remote Variation request is not closed")
     request_value = dict(request)
+    if len(canonical_bytes(request_value)) > REMOTE_VARIATION_REQUEST_LIMIT:
+        raise VariationConfigurationError("remote Variation request exceeds the bounded input limit")
+    if request_value.get("operation_digest") != _operation_digest(request_value):
+        raise VariationConfigurationError("remote Variation operation digest is invalid")
     unsigned_request = dict(request_value)
     supplied_request_digest = unsigned_request.pop("request_digest")
     if digest_for(unsigned_request) != supplied_request_digest:
@@ -571,9 +975,13 @@ def run_remote_evaluator_once(
     task_binding = manifest.public_record(str(request_value["task_id"]))
     if task_binding is None or request_value["public_task_binding"] != task_binding:
         raise VariationConfigurationError("remote Variation request task binding is invalid")
-    source = _decode_b64(request_value["candidate_source_b64"], "candidate source")
     from .loop import CANDIDATE_SOURCE_LIMIT, ControllerEvaluationGateway
 
+    encoded_source = request_value["candidate_source_b64"]
+    encoded_limit = ((CANDIDATE_SOURCE_LIMIT + 2) // 3) * 4
+    if not isinstance(encoded_source, str) or len(encoded_source) > encoded_limit:
+        raise VariationConfigurationError("remote Variation encoded candidate exceeds the frozen byte ceiling")
+    source = _decode_b64(encoded_source, "candidate source")
     if len(source) > CANDIDATE_SOURCE_LIMIT or digest_bytes(source) != request_value["candidate_artifact_digest"]:
         raise VariationConfigurationError("remote Variation candidate bytes violate the sealed request")
     seed_path = Path(evaluator_seed)
@@ -602,63 +1010,88 @@ def run_remote_evaluator_once(
     runtime = DockerEnforcedRuntime(config)
     sandbox = DockerCandidateSandbox(Path(workspace), config=config)
     runner = HiddenEvaluatorRunner.from_corpus(corpus, evaluator_revision=manifest["evaluator_revision"])
-    collected = []
-    with tempfile.TemporaryDirectory(prefix="egv-remote-receipts-") as journal_root:
-        journal = ReceiptJournal(Path(journal_root) / "receipts.jsonl", signer.public_key)
-        controller = EvaluatorController(
-            sandbox=sandbox,
-            hidden_runner=runner,
-            broker=AuthorityBroker(runtime, policy),
-            signer=signer,
-            journal=journal,
-            ingest=lambda receipt: collected.append(dict(receipt)),
-            campaign_id=manifest["campaign_id"],
-            protocol_digest=manifest["protocol_digest"],
-            policy_digest=manifest["policy_digest"],
-        )
-        local_result = ControllerEvaluationGateway(controller).evaluate(
-            candidate_id=str(request_value["candidate_id"]),
-            task_id=repo.template_id,
-            source=source,
-            opaque_input=repo.evaluator_input,
-            requested_authority=str(request_value["requested_authority"]),
-            declared_locus=str(request_value["declared_locus"]),
-        )
     sequence = request_value["receipt_sequence_start"]
     if not isinstance(sequence, int) or isinstance(sequence, bool) or sequence < 1:
         raise VariationConfigurationError("remote Variation receipt sequence anchor is invalid")
     previous = request_value["previous_receipt_hash"]
     if previous != GENESIS_HASH:
         _require_digest(previous, "previous receipt hash")
-    signed_receipts = []
-    for original in collected:
-        fields = dict(original)
-        for key in ("schema_version", "sequence", "previous_receipt_hash", "idempotency_key", "signing_key_id", "receipt_id", "signature"):
-            fields.pop(key, None)
-        fields["evaluator_digest"] = manifest.digest
-        receipt = signer.sign_receipt(
-            fields,
-            sequence=sequence,
-            previous_receipt_hash=previous,
-            idempotency_key=content_id(
-                "remote-variation-receipt",
-                {"request_digest": supplied_request_digest, "receipt_type": fields["receipt_type"]},
-            ),
-        )
-        signed_receipts.append(receipt)
-        previous = receipt_hash(receipt)
-        sequence += 1
-    result_value = local_result.to_dict()
-    result_value["receipt_ids"] = [receipt["receipt_id"] for receipt in signed_receipts]
-    response_unsigned = {
-        "schema_version": REMOTE_VARIATION_RESPONSE_SCHEMA,
-        "request_digest": supplied_request_digest,
-        "service_manifest_digest": manifest.digest,
-        "result": result_value,
-        "receipts": signed_receipts,
-        "signing_key_id": signer.key_id,
-    }
-    return {**response_unsigned, "signature": signer.sign_bytes(canonical_bytes(response_unsigned))}
+    def build_response() -> Mapping[str, Any]:
+        collected = []
+        with tempfile.TemporaryDirectory(prefix="egv-remote-receipts-") as journal_root:
+            journal = ReceiptJournal(Path(journal_root) / "receipts.jsonl", signer.public_key)
+            controller = EvaluatorController(
+                sandbox=sandbox,
+                hidden_runner=runner,
+                broker=AuthorityBroker(runtime, policy),
+                signer=signer,
+                journal=journal,
+                ingest=lambda receipt: collected.append(dict(receipt)),
+                campaign_id=manifest["campaign_id"],
+                protocol_digest=manifest["protocol_digest"],
+                policy_digest=manifest["policy_digest"],
+            )
+            local_result = ControllerEvaluationGateway(controller).evaluate(
+                candidate_id=str(request_value["candidate_id"]),
+                task_id=repo.template_id,
+                source=source,
+                opaque_input=repo.evaluator_input,
+                requested_authority=str(request_value["requested_authority"]),
+                declared_locus=str(request_value["declared_locus"]),
+            )
+        signed_receipts = []
+        current_sequence = sequence
+        current_previous = previous
+        for original in collected:
+            fields = dict(original)
+            for key in (
+                "schema_version", "sequence", "previous_receipt_hash", "idempotency_key",
+                "signing_key_id", "receipt_id", "signature",
+            ):
+                fields.pop(key, None)
+            fields["evaluator_digest"] = manifest.digest
+            receipt = signer.sign_receipt(
+                fields,
+                sequence=current_sequence,
+                previous_receipt_hash=current_previous,
+                idempotency_key=content_id(
+                    "remote-variation-receipt",
+                    {"operation_digest": request_value["operation_digest"], "receipt_type": fields["receipt_type"]},
+                ),
+            )
+            signed_receipts.append(receipt)
+            current_previous = receipt_hash(receipt)
+            current_sequence += 1
+        result_value = local_result.to_dict()
+        result_value["receipt_ids"] = [receipt["receipt_id"] for receipt in signed_receipts]
+        response_unsigned = {
+            "schema_version": REMOTE_VARIATION_RESPONSE_SCHEMA,
+            "operation_digest": request_value["operation_digest"],
+            "request_digest": supplied_request_digest,
+            "service_manifest_digest": manifest.digest,
+            "result": result_value,
+            "receipts": signed_receipts,
+            "signing_key_id": signer.key_id,
+        }
+        return {**response_unsigned, "signature": signer.sign_bytes(canonical_bytes(response_unsigned))}
+
+    return _durable_remote_response(
+        request_value,
+        manifest=manifest,
+        signer=signer,
+        state_root=state_root,
+        build_response=build_response,
+        validate_response=lambda response: _validate_remote_result_semantics(
+            result_value=response["result"],
+            receipts=response["receipts"],
+            manifest=manifest,
+            task_binding=task_binding,
+            candidate_id=str(request_value["candidate_id"]),
+            task_id=repo.template_id,
+            artifact_digest=str(request_value["candidate_artifact_digest"]),
+            declared_locus=str(request_value["declared_locus"]),
+        ),
+    )
 
 
 __all__ = [

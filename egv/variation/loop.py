@@ -116,6 +116,22 @@ class VariationTask:
             evaluator_input=repo.evaluator_input,
         )
 
+    @classmethod
+    def from_public_record(cls, record: Mapping[str, Any]) -> "VariationTask":
+        """Construct a Spark1-safe task that never materializes evaluator input."""
+
+        required = {"template_id", "family_id", "public_locus", "public_rule_id"}
+        if not isinstance(record, Mapping) or any(not isinstance(record.get(key), str) or not record[key] for key in required):
+            raise VariationConfigurationError("public Variation task record is incomplete")
+        return cls(
+            task_id=record["template_id"],
+            family_id=record["family_id"],
+            public_locus=record["public_locus"],
+            public_rule_id=record["public_rule_id"],
+            task_statement="Repair the bounded {} task at {}.".format(record["family_id"], record["public_locus"]),
+            evaluator_input=None,
+        )
+
     def public_dict(self) -> Dict[str, Any]:
         return {
             "task_id": self.task_id,
@@ -1228,6 +1244,10 @@ class _ProductionBoundedCandidateLoop(BoundedCandidateLoop):
         self._validate_production_boundary()
         self._validate_identity()
         self._validate_budget()
+        from .remote import RemoteControllerEvaluationGateway
+
+        if type(self.evaluator) is RemoteControllerEvaluationGateway and task.evaluator_input is not None:
+            raise VariationConfigurationError("remote Variation trajectories require a public-only task")
         return self._run_trajectory(task, seed=seed, resume_from=resume_from)
 
 
