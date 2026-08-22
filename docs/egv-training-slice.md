@@ -28,8 +28,9 @@ or changed field fails validation and changes no accepted protocol digest.
 
 ## Data and labels
 
-Training rows are exact `egv-training-row-v1` values and must be in the
-`train` split. Development rows are owned by `DevelopmentLossGateway` and must
+Training rows are exact `egv-training-row-v1` wrappers around immutable
+`egv-sft-row-v1` Evaluation records and must be in the `train` split.
+Development rows are owned by `DevelopmentLossGateway` and must
 be in the `dev` split. Held-out rows, held-out identifiers, and train/dev
 overlap are rejected. A sealed input envelope binds the model digest, private
 train-row bindings, development manifest, and protocol digest.

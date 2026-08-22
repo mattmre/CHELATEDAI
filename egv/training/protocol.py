@@ -20,6 +20,7 @@ TRAINING_PROTOCOL_SCHEMA = "egv-training-protocol-v1"
 TRAINING_ROW_SCHEMA = "egv-training-row-v1"
 TRAINING_MANIFEST_SCHEMA = "egv-training-data-manifest-v1"
 TRAINING_INPUT_SCHEMA = "egv-sealed-training-input-v1"
+SFT_SOURCE_SCHEMA = "egv-sft-row-v1"
 
 
 class TrainingError(EGVError):
@@ -205,6 +206,7 @@ class TrainingRow:
     prompt: str
     target: str
     source_event_ids: Tuple[str, ...] = ()
+    source_sft_row_digest: Optional[str] = None
     schema_version: str = TRAINING_ROW_SCHEMA
 
     def validate(self, *, expected_split: Optional[str] = None) -> None:
@@ -230,10 +232,15 @@ class TrainingRow:
             raise TrainingConfigurationError("source_event_ids must be sorted and unique")
         if not all(isinstance(item, str) and item for item in self.source_event_ids):
             raise TrainingConfigurationError("source_event_ids must contain non-empty IDs")
+        if self.source_sft_row_digest is not None:
+            try:
+                validate_sha256(self.source_sft_row_digest, "source_sft_row_digest")
+            except Exception as exc:
+                raise TrainingConfigurationError(str(exc)) from exc
 
     def to_dict(self) -> Dict[str, Any]:
         self.validate()
-        return {
+        result = {
             "schema_version": self.schema_version,
             "row_id": self.row_id,
             "task_id": self.task_id,
@@ -243,6 +250,9 @@ class TrainingRow:
             "target": self.target,
             "source_event_ids": list(self.source_event_ids),
         }
+        if self.source_sft_row_digest is not None:
+            result["source_sft_row_digest"] = self.source_sft_row_digest
+        return result
 
     @property
     def digest(self) -> str:
@@ -260,6 +270,7 @@ class TrainingRow:
             "target_digest": digest_for(self.target),
             "row_digest": self.digest,
             "source_event_ids": list(self.source_event_ids),
+            "source_sft_row_digest": self.source_sft_row_digest,
         }
 
     @classmethod
@@ -272,6 +283,7 @@ class TrainingRow:
         prompt: str,
         target: str,
         source_event_ids: Sequence[str] = (),
+        source_sft_row_digest: Optional[str] = None,
         row_id: Optional[str] = None,
     ) -> "TrainingRow":
         normalized_ids = tuple(sorted(set(source_event_ids)))
@@ -283,6 +295,8 @@ class TrainingRow:
             "target": target,
             "source_event_ids": list(normalized_ids),
         }
+        if source_sft_row_digest is not None:
+            body["source_sft_row_digest"] = source_sft_row_digest
         return cls(
             row_id=row_id or content_id("train-row", body),
             task_id=task_id,
@@ -291,12 +305,45 @@ class TrainingRow:
             prompt=prompt,
             target=target,
             source_event_ids=normalized_ids,
+            source_sft_row_digest=source_sft_row_digest,
+        )
+
+    @classmethod
+    def from_sft_record(
+        cls,
+        record: Mapping[str, Any],
+        *,
+        prompt: str,
+        target: str,
+    ) -> "TrainingRow":
+        """Bind a private prompt/completion to an immutable Evaluation SFT row."""
+
+        if record.get("schema_version") != SFT_SOURCE_SCHEMA:
+            raise TrainingConfigurationError("Training rows must originate from egv-sft-row-v1")
+        required = ("row_id", "task_id", "task_family", "split")
+        if any(not isinstance(record.get(name), str) or not record[name] for name in required):
+            raise TrainingConfigurationError("source SFT row lacks its closed identity fields")
+        if record["split"] != "train":
+            raise TrainingLeakageError("only train SFT rows may enter the Training runtime")
+        source_ids = record.get("retrieved_evidence_ids", ())
+        if not isinstance(source_ids, (list, tuple)) or not all(isinstance(item, str) for item in source_ids):
+            raise TrainingConfigurationError("source SFT evidence IDs are malformed")
+        return cls.create(
+            row_id=record["row_id"],
+            task_id=record["task_id"],
+            task_family=record["task_family"],
+            split="train",
+            prompt=prompt,
+            target=target,
+            source_event_ids=tuple(sorted(set(source_ids))),
+            source_sft_row_digest=digest_for(record),
         )
 
     @classmethod
     def from_mapping(cls, value: Mapping[str, Any]) -> "TrainingRow":
         required = {"schema_version", "row_id", "task_id", "task_family", "split", "prompt", "target", "source_event_ids"}
-        if set(value) != required:
+        optional = {"source_sft_row_digest"}
+        if set(value) not in (required, required | optional):
             raise TrainingConfigurationError("Training row has an unexpected field set")
         source_ids = value["source_event_ids"]
         if not isinstance(source_ids, (list, tuple)):
@@ -309,6 +356,7 @@ class TrainingRow:
             prompt=value["prompt"],
             target=value["target"],
             source_event_ids=tuple(source_ids),
+            source_sft_row_digest=value.get("source_sft_row_digest"),
             schema_version=value["schema_version"],
         )
         row.validate()
@@ -573,6 +621,7 @@ __all__ = [
     "TRAINING_MANIFEST_SCHEMA",
     "TRAINING_PROTOCOL_SCHEMA",
     "TRAINING_ROW_SCHEMA",
+    "SFT_SOURCE_SCHEMA",
     "TrainingConfigurationError",
     "TrainingDataManifest",
     "TrainingError",

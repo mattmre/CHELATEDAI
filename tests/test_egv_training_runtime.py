@@ -145,6 +145,21 @@ class TrainingRuntimeTests(unittest.TestCase):
         with self.assertRaises(TrainingConfigurationError):
             TrainingProtocol.from_mapping({"schema_version": self.protocol.schema_version})
 
+    def test_training_row_binds_immutable_evaluation_sft_record(self):
+        source = {
+            "schema_version": "egv-sft-row-v1",
+            "row_id": "sft_train_row_1",
+            "task_id": "egv-pure_function-train-1-v1",
+            "task_family": "PURE_FUNCTION",
+            "split": "train",
+            "retrieved_evidence_ids": ["event_1"],
+        }
+        row = TrainingRow.from_sft_record(source, prompt="private prompt", target="private target")
+        self.assertEqual(row.source_sft_row_digest, digest_for(source))
+        self.assertEqual(row.source_event_ids, ("event_1",))
+        with self.assertRaises((TrainingLeakageError, TrainingConfigurationError)):
+            TrainingRow.from_sft_record(dict(source, split="dev"), prompt="p", target="t")
+
     def test_prompt_labels_are_masked_and_no_packing_or_truncation_occurs(self):
         row = self.train_rows[0]
         tokenized = tokenize_training_row(row, _Tokenizer(), self.protocol)
