@@ -17,6 +17,7 @@ from ..evaluation.diagnostics import Diagnostic, validate_diagnostic, validate_d
 from ..evaluation.prompts import PROMPT_IDS, PromptRegistry
 from ..evaluation.sandbox import DockerCandidateSandbox, DockerSandboxConfig
 from ..ledger import EvidenceLedger
+from ..identities import commissioning_run_id
 from ..receipts import receipt_hash
 from .adapter import SealedAdapterArtifact, validate_applied_peft_model
 from .arms import ArmIsolation, ArmPolicy, arm_policy
@@ -24,6 +25,7 @@ from .checkpoint import CheckpointStore, VariationCheckpoint
 from .errors import VariationBudgetError, VariationCheckpointError, VariationConfigurationError, VariationDependencyError
 from .generator import CandidateContext, CandidateGenerator, CandidateProposal, ModelCandidateGenerator
 from .model import ADAPTER_ATTESTATION_SCHEMA, AdapterApplicationAttestation, MODEL_REVISION
+from .private import PrivateTrajectoryStore
 from .retrieval import EvidenceRetrievalPolicy, RetrievalResult, retrieval_policy
 from .remote import RemoteControllerEvaluationGateway
 
@@ -44,6 +46,7 @@ class _RuntimeIdentityRecord:
     evaluator: Any
     generator: Any
     isolation: Any
+    private_store: Any
 
 
 def _make_runtime_identity_authority():
@@ -409,7 +412,7 @@ class BoundedCandidateLoop:
     def __setattr__(self, name: str, value: Any) -> None:
         if name == "_max_attempts" and "_budget_contract" in self.__dict__:
             raise AttributeError("Variation attempt budget is immutable after construction")
-        if name in {"fixture_mode", "evaluator", "generator", "isolation"} and _runtime_identity_registered(self):
+        if name in {"fixture_mode", "evaluator", "generator", "isolation", "private_store"} and _runtime_identity_registered(self):
             raise AttributeError("Variation runtime identity is immutable after construction")
         super().__setattr__(name, value)
 
@@ -433,6 +436,7 @@ class BoundedCandidateLoop:
         adapter_artifact: Optional[SealedAdapterArtifact] = None,
         seed_set: Sequence[int] = (0, 1, 2),
         fixture_mode: bool = False,
+        private_store: Optional[PrivateTrajectoryStore] = None,
     ) -> None:
         if not isinstance(max_attempts, int) or isinstance(max_attempts, bool) or max_attempts <= 0 or max_attempts > MAX_CANDIDATE_ATTEMPTS:
             raise VariationBudgetError("candidate attempt budget must be between 1 and 12")
@@ -454,6 +458,9 @@ class BoundedCandidateLoop:
         self.adapter_digest = adapter_digest
         self.seed_set = tuple(sorted(set(int(seed) for seed in seed_set)))
         self.fixture_mode = fixture_mode
+        if private_store is not None and type(private_store) is not PrivateTrajectoryStore:
+            raise VariationDependencyError("private trajectory persistence requires the exact store type")
+        self.private_store = private_store
         if not self.seed_set or any(seed < 0 for seed in self.seed_set):
             raise VariationConfigurationError("Variation seed set must contain nonnegative integers")
         _require_digest(model_digest, "model digest")
@@ -520,6 +527,7 @@ class BoundedCandidateLoop:
                 evaluator=self.evaluator,
                 generator=self.generator,
                 isolation=self.isolation,
+                private_store=self.private_store,
             ),
         )
 
@@ -542,7 +550,8 @@ class BoundedCandidateLoop:
         evaluator = getattr(self, "evaluator", missing)
         generator = getattr(self, "generator", missing)
         isolation = getattr(self, "isolation", missing)
-        if any(value is missing for value in (fixture_mode, evaluator, generator, isolation)):
+        private_store = getattr(self, "private_store", missing)
+        if any(value is missing for value in (fixture_mode, evaluator, generator, isolation, private_store)):
             raise VariationDependencyError("Variation runtime identity fields are missing")
         if fixture_mode != record.fixture_mode:
             raise VariationDependencyError("Variation fixture mode changed after construction")
@@ -552,6 +561,8 @@ class BoundedCandidateLoop:
             raise VariationDependencyError("Variation generator identity changed after construction")
         if isolation is not record.isolation:
             raise VariationDependencyError("Variation isolation identity changed after construction")
+        if private_store is not record.private_store:
+            raise VariationDependencyError("Variation private trajectory store identity changed after construction")
 
     def _validate_construction_boundary(self) -> None:
         if type(self) in {_ProductionBoundedCandidateLoop, _FixtureBoundedCandidateLoop}:
@@ -587,8 +598,11 @@ class BoundedCandidateLoop:
             raise VariationDependencyError("fixture loop must be explicitly marked fixture mode")
 
     def _run_id(self, task_id: str, seed: int) -> str:
-        return "egv-run-{}".format(
-            digest_for({"campaign_id": self.campaign_id, "arm_id": self.policy.arm_id, "task_id": task_id, "seed": seed})[:40]
+        return commissioning_run_id(
+            campaign_id=self.campaign_id,
+            task_id=task_id,
+            arm_id=self.policy.arm_id,
+            seed=seed,
         )
 
     def _candidate_id(self, *, run_id: str, task_id: str, seed: int, attempt: int, parent: Optional[str]) -> str:
@@ -1125,6 +1139,8 @@ class BoundedCandidateLoop:
                     "candidate_artifact_digest": digest_bytes(proposal.source),
                 },
             )
+            if self.private_store is not None:
+                self.private_store.record(candidate_id=candidate_id, context=context, source=proposal.source)
             for evidence_id in proposal.evidence_ids:
                 self.ledger.append_dependency(
                     evidence_id,

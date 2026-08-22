@@ -5,7 +5,10 @@ from __future__ import annotations
 from collections import Counter
 from contextlib import contextmanager
 import json
+import os
+from pathlib import Path
 import re
+import tempfile
 from typing import Any, Callable, Dict, Iterable, Mapping, Tuple
 
 from ..canonical import canonical_json, content_id, digest_bytes, digest_for
@@ -30,6 +33,7 @@ _HOST_PATH_RE = re.compile(r"(?:[A-Za-z]:\\|/home/|/Users/|/root/)")
 _SECRET_RE = re.compile(
     r"(?i)(?:password|passwd|private[_ -]?key|api[_ -]?key|authorization)\s*[:=]\s*[^\s,;]{4,}"
 )
+SEALED_RUNTIME_DATASET_SCHEMA = "egv-sealed-training-runtime-input-v1"
 
 
 class TrajectoryDatasetBuilder:
@@ -420,4 +424,36 @@ class TrajectoryDatasetBuilder:
             return FrozenTrainingDataset(cutoff, tuple(examples), dict(excluded))
 
 
-__all__ = ["TrajectoryDatasetBuilder"]
+def seal_runtime_dataset(dataset: FrozenTrainingDataset, output: Path) -> Dict[str, Any]:
+    """Atomically write the exact private runtime artifact consumed by train-lora."""
+
+    if type(dataset) is not FrozenTrainingDataset:
+        raise TypeError("runtime dataset sealing requires the exact frozen dataset")
+    value = {
+        "schema_version": SEALED_RUNTIME_DATASET_SCHEMA,
+        "manifest": dataset.manifest(),
+        "private_rows": [row.private_record() for row in dataset.examples],
+    }
+    encoded = (canonical_json(value) + "\n").encode("utf-8")
+    target = Path(output)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    descriptor, name = tempfile.mkstemp(prefix=".sealed-training-", dir=str(target.parent))
+    temporary = Path(name)
+    try:
+        with os.fdopen(descriptor, "wb") as handle:
+            handle.write(encoded)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(str(temporary), str(target))
+    finally:
+        if temporary.exists():
+            temporary.unlink()
+    return {
+        "schema_version": "egv-sealed-training-runtime-report-v1",
+        "dataset_digest": dataset.digest,
+        "row_count": len(dataset.examples),
+        "output_digest": digest_bytes(encoded),
+    }
+
+
+__all__ = ["SEALED_RUNTIME_DATASET_SCHEMA", "TrajectoryDatasetBuilder", "seal_runtime_dataset"]

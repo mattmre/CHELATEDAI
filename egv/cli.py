@@ -10,6 +10,9 @@ import tempfile
 from typing import Any, Dict, Mapping, Optional, Sequence
 
 from .canonical import canonical_json, digest_for
+from .campaign.commissioning import prepare_commissioning
+from .campaign.errors import CampaignError
+from .campaign.runner import freeze_commissioning_dataset, run_commissioning
 from .evaluation.artifacts import freeze_evaluation
 from .evaluation.smoke import run_evaluation_smoke
 from .errors import EGVError, PhaseUnavailable
@@ -492,6 +495,46 @@ def build_parser() -> argparse.ArgumentParser:
     training_contract.add_argument("--device", default="cuda")
     training_contract.add_argument("--json", action="store_true", dest="as_json")
 
+    commissioning = subparsers.add_parser("commissioning", help="prepare and run the frozen 20/8/80 campaign")
+    commissioning_subparsers = commissioning.add_subparsers(dest="commissioning_command", required=True)
+    commissioning_prepare = commissioning_subparsers.add_parser(
+        "prepare", help="prepare separate trainer and evaluator commissioning inputs"
+    )
+    commissioning_prepare.add_argument("--campaign-id", required=True)
+    commissioning_prepare.add_argument("--model-digest", required=True)
+    commissioning_prepare.add_argument("--evaluator-seed", required=True, type=Path)
+    commissioning_prepare.add_argument("--trainer-output", required=True, type=Path)
+    commissioning_prepare.add_argument("--evaluator-output", required=True, type=Path)
+    commissioning_run = commissioning_subparsers.add_parser(
+        "run", help="run one frozen request or resume the complete 80-request matrix"
+    )
+    commissioning_run.add_argument("--trainer-inputs", required=True, type=Path)
+    commissioning_run.add_argument("--model-root", required=True, type=Path)
+    commissioning_run.add_argument("--ledger", required=True, type=Path)
+    commissioning_run.add_argument("--blob-root", required=True, type=Path)
+    commissioning_run.add_argument("--evaluator-manifest", required=True, type=Path)
+    commissioning_run.add_argument("--evaluator-public-key", required=True, type=Path)
+    commissioning_run.add_argument("--evaluator-command", required=True, type=Path)
+    commissioning_run.add_argument("--workspace", required=True, type=Path)
+    commissioning_run.add_argument("--journal", required=True, type=Path)
+    commissioning_run.add_argument("--source-commit", required=True)
+    commissioning_run.add_argument("--request-id")
+    commissioning_run.add_argument("--max-attempts", type=int, default=12)
+    commissioning_run.add_argument("--device", default="cuda")
+    commissioning_run.add_argument("--json", action="store_true", dest="as_json")
+    commissioning_freeze = commissioning_subparsers.add_parser(
+        "freeze-training", help="build the private train-lora dataset on the evaluator"
+    )
+    commissioning_freeze.add_argument("--trainer-inputs", required=True, type=Path)
+    commissioning_freeze.add_argument("--ledger", required=True, type=Path)
+    commissioning_freeze.add_argument("--blob-root", required=True, type=Path)
+    commissioning_freeze.add_argument("--private-store", required=True, type=Path)
+    commissioning_freeze.add_argument("--evaluator-seed", required=True, type=Path)
+    commissioning_freeze.add_argument("--evaluator-public-key", required=True, type=Path)
+    commissioning_freeze.add_argument("--model-root", required=True, type=Path)
+    commissioning_freeze.add_argument("--output", required=True, type=Path)
+    commissioning_freeze.add_argument("--json", action="store_true", dest="as_json")
+
     for phase in sorted(SLICE2_PHASES):
         phase_parser = subparsers.add_parser(phase, help=f"{phase} (outside Slice 2; fails closed)")
         phase_parser.add_argument("--campaign-id")
@@ -630,6 +673,49 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 print(canonical_json(response))
                 return 0
             raise EGVError("unsupported training command: {}".format(args.training_command))
+        if args.command == "commissioning":
+            if args.commissioning_command == "prepare":
+                from .evaluation.dataset import EvaluationCorpus
+
+                plan = prepare_commissioning(
+                    EvaluationCorpus.generate(secret_seed_file=args.evaluator_seed),
+                    campaign_id=args.campaign_id,
+                    model_manifest_digest=args.model_digest,
+                )
+                args.trainer_output.parent.mkdir(parents=True, exist_ok=True)
+                args.evaluator_output.parent.mkdir(parents=True, exist_ok=True)
+                args.trainer_output.write_text(canonical_json(plan.trainer_inputs()) + "\n", encoding="utf-8")
+                args.evaluator_output.write_text(canonical_json(plan.private_manifest()) + "\n", encoding="utf-8")
+                _json_output({
+                    "trainer_inputs_digest": plan.trainer_inputs()["trainer_inputs_digest"],
+                    "private_inputs_digest": digest_for(plan.private_manifest()),
+                    "request_count": len(plan.generation_requests),
+                    "live_model_executed": False,
+                }, True)
+                return 0
+            if args.commissioning_command == "run":
+                result = run_commissioning(
+                    trainer_inputs_path=args.trainer_inputs, model_root=args.model_root,
+                    ledger_path=args.ledger, blob_root=args.blob_root,
+                    evaluator_manifest=args.evaluator_manifest,
+                    evaluator_public_key=args.evaluator_public_key,
+                    evaluator_command=args.evaluator_command, workspace_root=args.workspace,
+                    journal_path=args.journal, source_commit=args.source_commit,
+                    request_id=args.request_id, max_attempts=args.max_attempts, device=args.device,
+                )
+                _json_output(result, args.as_json)
+                return 0
+            if args.commissioning_command == "freeze-training":
+                result = freeze_commissioning_dataset(
+                    trainer_inputs_path=args.trainer_inputs, ledger_path=args.ledger,
+                    blob_root=args.blob_root, private_store_root=args.private_store,
+                    evaluator_seed=args.evaluator_seed,
+                    evaluator_public_key=args.evaluator_public_key,
+                    model_root=args.model_root, output=args.output,
+                )
+                _json_output(result, args.as_json)
+                return 0
+            raise EGVError("unsupported commissioning command: {}".format(args.commissioning_command))
         if args.command == "train-lora":
             if args.evaluator_public_key is None or args.evaluator_command is None or args.output is None:
                 raise PhaseUnavailable(
@@ -653,7 +739,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 "private restore inventory, active DeepSeek workload, or hosted model was accessed"
             )
         raise EGVError(f"unsupported command: {args.command}")
-    except (EGVError, OSError, ValueError) as exc:
+    except (CampaignError, EGVError, OSError, ValueError) as exc:
         print(f"egv: {type(exc).__name__}: {exc}", file=sys.stderr)
         return 1
 

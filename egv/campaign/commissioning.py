@@ -14,6 +14,7 @@ from .trajectories import COMMISSIONING_ARMS, COMMISSIONING_SEEDS, GenerationReq
 
 
 COMMISSIONING_SCHEMA = "egv-commissioning-inputs-v1"
+TRAINER_INPUTS_SCHEMA = "egv-commissioning-trainer-inputs-v1"
 TRAIN_MANIFEST_SCHEMA = "egv-commissioning-train-tasks-v1"
 PRIVATE_DEV_MANIFEST_SCHEMA = "egv-commissioning-private-dev-v1"
 REQUEST_MANIFEST_SCHEMA = "egv-commissioning-generation-requests-v1"
@@ -226,6 +227,21 @@ class CommissioningPlan:
             "request_manifest": self.request_manifest,
         }
 
+    def trainer_inputs(self) -> Dict[str, Any]:
+        """Return the complete trainer bundle with no development identities or inputs."""
+
+        value = {
+            "schema_version": TRAINER_INPUTS_SCHEMA,
+            "campaign_id": self.campaign_id,
+            "corpus_manifest_digest": self.corpus_manifest_digest,
+            "model_manifest_digest": self.model_manifest_digest,
+            "variation_protocol_digest": self.variation_protocol_digest,
+            "train_manifest": self.train_manifest,
+            "request_manifest": self.request_manifest,
+        }
+        value["trainer_inputs_digest"] = digest_for(value)
+        return value
+
 
 def prepare_commissioning(
     corpus: EvaluationCorpus,
@@ -281,5 +297,5 @@ def prepare_commissioning(
 __all__ = [
     "COMMISSIONING_SCHEMA", "GENERATION_REQUEST_COUNT", "PRIVATE_DEV_MANIFEST_SCHEMA",
     "PRIVATE_DEV_TASK_COUNT", "REQUEST_MANIFEST_SCHEMA", "TRAIN_MANIFEST_SCHEMA", "TRAIN_TASK_COUNT",
-    "CommissioningPlan", "CommissioningPreparationError", "prepare_commissioning",
+    "CommissioningPlan", "CommissioningPreparationError", "TRAINER_INPUTS_SCHEMA", "prepare_commissioning",
 ]
