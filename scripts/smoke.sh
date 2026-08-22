@@ -183,13 +183,13 @@ if report.get("smoke") != "PASS":
     raise SystemExit("variation smoke did not report PASS")
 variation = report.get("variation") or {}
 attempts = variation.get("attempts") or []
-fields = (report.get("runtime_tier"), variation.get("terminal_status"), len(attempts))
-if fields[0] != "floor-fixture" or fields[1] != "PROMOTED" or len(attempts) < 1:
+fields = (report.get("runtime_tier"), variation.get("terminal_status"), len(attempts), report.get("campaign_path_exercised"))
+if fields[0] != "floor-fixture" or fields[1] != "PROMOTED" or len(attempts) < 1 or fields[3] is not False:
     raise SystemExit("variation smoke omitted a truthful tier, terminal status, or attempts")
-print("tier={}; terminal={}; attempts={}".format(*fields))
+print("tier={}; terminal={}; attempts={}; campaign_path_exercised={}".format(*fields))
 PY
         )"; then
-            VARIATION_RESULT="PASS (${VARIATION_SUMMARY}; fixture-only, no model/Docker/Spark/campaign claim)"
+            VARIATION_RESULT="PASS (${VARIATION_SUMMARY}; fixture-only, no model/Docker/Spark/Campaign claim)"
             echo "Variation slice PASS (${VARIATION_SUMMARY})"
         else
             VARIATION_RESULT="FAIL (runtime report omitted verifiable fields)"

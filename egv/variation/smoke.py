@@ -4,11 +4,13 @@ from __future__ import annotations
 
 from pathlib import Path
 import json
+import re
 import tempfile
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Mapping, Optional, Union
 
 from ..canonical import digest_for
-from ..evaluation.dataset import EVALUATOR_SEED_BYTES, EvaluationCorpus
+from ..evaluation.dataset import EVALUATOR_SEED_BYTES, EvaluationCorpus, PUBLIC_HELDOUT_TEMPLATE_IDS
+from ..evaluation.errors import LeakageError
 from ..ledger import EvidenceLedger
 from .arms import ArmIsolation
 from .fixture import FixtureEvaluationGateway
@@ -21,6 +23,47 @@ def _write_private_seed(path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(b"V" * EVALUATOR_SEED_BYTES)
     path.chmod(0o600)
+
+
+_PUBLIC_FORBIDDEN_KEYS = frozenset({"seed", "candidate_artifact_digest", "source_digest", "corrected_source_digest"})
+_PUBLIC_FORBIDDEN_TEXT = (
+    re.compile(r"(?i)(?:expected_output|golden_patch|hidden_rule_id|hidden_test|corpus[-_]seed|private[-_]seed)"),
+    re.compile(r"(?i)(?:/home/|/root/|/Users/|[A-Z]:\\|/tmp/|/var/|/etc/)"),
+)
+
+
+def scan_public_variation_report(payload: Mapping[str, Any]) -> Dict[str, Any]:
+    """Closed publishable-view scan for the Variation smoke artifact."""
+
+    findings = []
+
+    def visit(value: Any, path: str) -> None:
+        if isinstance(value, Mapping):
+            for key, child in value.items():
+                key_text = str(key)
+                if key_text in _PUBLIC_FORBIDDEN_KEYS or key_text.endswith("_source_digest"):
+                    findings.append("forbidden public field: {}".format(path + "/" + key_text))
+                visit(child, path + "/" + key_text)
+        elif isinstance(value, (list, tuple)):
+            for index, child in enumerate(value):
+                visit(child, "{}/{}".format(path, index))
+        elif isinstance(value, str):
+            for pattern in _PUBLIC_FORBIDDEN_TEXT:
+                if pattern.search(value):
+                    findings.append("forbidden public value at {}".format(path))
+            if any(template_id in value for template_id in PUBLIC_HELDOUT_TEMPLATE_IDS):
+                findings.append("held-out template ID leaked at {}".format(path))
+
+    visit(payload, "$")
+    if findings:
+        raise LeakageError("; ".join(sorted(set(findings))))
+    return {
+        "scanner": "egv-variation-public-v1",
+        "checked": True,
+        "findings": [],
+        "heldout_ids_checked": True,
+        "seed_and_candidate_source_fields_absent": True,
+    }
 
 
 def run_variation_smoke(output_root: Optional[Union[Path, str]] = None) -> Dict[str, Any]:
@@ -104,7 +147,7 @@ def run_variation_smoke(output_root: Optional[Union[Path, str]] = None) -> Dict[
                 "smoke": "PASS",
                 "runtime_tier": "floor-fixture",
                 "fixture_only": True,
-                "campaign_path_exercised": True,
+                "campaign_path_exercised": False,
                 "model_loader_exercised": False,
                 "model": {
                     "repository": "Qwen/Qwen3.5-2B-Base",
@@ -141,9 +184,13 @@ def run_variation_smoke(output_root: Optional[Union[Path, str]] = None) -> Dict[
             if output_root is not None:
                 output_path = root / "public" / "variation-smoke-report.json"
                 output_path.parent.mkdir(parents=True, exist_ok=True)
+                result["artifact"] = output_path.name
+                result["public_scan"] = scan_public_variation_report(result)
                 output_path.write_text(json.dumps(result, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
                 output_path.chmod(0o444)
-                result["artifact"] = output_path.name
+                scan_public_variation_report(json.loads(output_path.read_text(encoding="utf-8")))
+            else:
+                result["public_scan"] = scan_public_variation_report(result)
             return result
         finally:
             ledger.close()

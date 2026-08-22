@@ -133,7 +133,7 @@ class EvidenceRetrievalPolicy:
                 candidate = self._candidate_record(ledger, event)
                 if self.policy == "SUCCESS_ONLY" and candidate.recorded_disposition != "PROMOTED":
                     continue
-                if self.policy == "ORDINARY_FAILURE_SUMMARY" and candidate.recorded_disposition not in {"PROMOTED", "REJECTED"}:
+                if self.policy == "ORDINARY_FAILURE_SUMMARY" and candidate.recorded_disposition not in {"REJECTED", "ABSTAINED"}:
                     continue
                 records.append(candidate)
             elif self.policy == "CORRECTION_AWARE" and event_type in {"CORRECTION", "RETRACTION"}:

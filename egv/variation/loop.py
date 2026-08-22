@@ -3,17 +3,20 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import json
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Protocol, Sequence, Tuple
 
 from ..canonical import content_id, digest_bytes, digest_for, failure_family_root
 from ..evaluation.artifacts import ContentAddressedArtifactStore
-from ..evaluation.controller import EvaluationResult, EvaluatorController
+from ..evaluation.controller import EvaluationResult, EvaluatorController, HiddenEvaluatorRunner
 from ..evaluation.dataset import MicroRepo
 from ..evaluation.diagnostics import Diagnostic, validate_diagnostic, validate_disposition, validate_resource_bucket
 from ..evaluation.prompts import PROMPT_IDS, PromptRegistry
+from ..evaluation.sandbox import DockerCandidateSandbox
 from ..ledger import EvidenceLedger
 from ..receipts import receipt_hash
+from .adapter import SealedAdapterArtifact
 from .arms import ArmIsolation, ArmPolicy, arm_policy
 from .checkpoint import CheckpointStore, VariationCheckpoint
 from .errors import VariationBudgetError, VariationCheckpointError, VariationConfigurationError, VariationDependencyError
@@ -97,13 +100,34 @@ class ControllerEvaluationGateway:
     enforceable = True
 
     def __init__(self, controller: EvaluatorController) -> None:
-        if not getattr(controller.sandbox, "enforceable", False):
+        if not isinstance(controller, EvaluatorController):
+            raise VariationDependencyError("Variation production path requires the real EvaluatorController")
+        if not isinstance(controller.hidden_runner, HiddenEvaluatorRunner):
+            raise VariationDependencyError("Variation production path requires the real hidden evaluator runner")
+        if not isinstance(controller.sandbox, DockerCandidateSandbox) or not getattr(controller.sandbox, "enforceable", False):
             raise VariationDependencyError("Variation production path requires the enforceable Docker evaluator")
         self.controller = controller
-        self.evaluator_revision = controller.hidden_runner.evaluator_revision
+        self.hidden_runner = controller.hidden_runner
+        self.sandbox = controller.sandbox
+        self.evaluator_revision = self.hidden_runner.evaluator_revision
         self.evaluator_digest = digest_for(self.evaluator_revision)
 
+    def validate_runtime(self) -> None:
+        if not isinstance(self.controller, EvaluatorController):
+            raise VariationDependencyError("Variation production controller identity is invalid")
+        if not isinstance(self.controller.hidden_runner, HiddenEvaluatorRunner):
+            raise VariationDependencyError("Variation production hidden evaluator runner is unavailable")
+        if not isinstance(self.controller.sandbox, DockerCandidateSandbox) or not getattr(
+            self.controller.sandbox, "enforceable", False
+        ):
+            raise VariationDependencyError("Variation production Docker sandbox is unavailable")
+        if not getattr(self, "enforceable", False):
+            raise VariationDependencyError("Variation production gateway is not enforceable")
+        if self.controller.hidden_runner is not self.hidden_runner:
+            raise VariationDependencyError("Variation gateway hidden evaluator binding changed")
+
     def evaluate(self, **kwargs: Any) -> EvaluationResult:
+        self.validate_runtime()
         return self.controller.evaluate(**kwargs)
 
 
@@ -184,11 +208,9 @@ class VariationReport:
             "run_id": self.run_id,
             "arm_id": self.arm_id,
             "task_binding_digest": digest_for({"task_id": self.task_id}),
-            "seed": self.seed,
             "attempts": [
                 {
                     "attempt_index": attempt.attempt_index,
-                    "candidate_artifact_digest": attempt.candidate_artifact_digest,
                     "retrieval_digest": attempt.retrieval_digest,
                     "evidence_count": len(attempt.evidence_ids),
                     "diagnostic_enum": attempt.diagnostic_enum,
@@ -222,6 +244,11 @@ def _require_digest(value: str, label: str) -> None:
 class BoundedCandidateLoop:
     """One immutable, resumable candidate trajectory."""
 
+    def __setattr__(self, name: str, value: Any) -> None:
+        if name == "_max_attempts" and "_budget_contract" in self.__dict__:
+            raise AttributeError("Variation attempt budget is immutable after construction")
+        super().__setattr__(name, value)
+
     def __init__(
         self,
         *,
@@ -239,10 +266,11 @@ class BoundedCandidateLoop:
         arm_id: str,
         max_attempts: int = MAX_CANDIDATE_ATTEMPTS,
         adapter_digest: Optional[str] = None,
+        adapter_artifact: Optional[SealedAdapterArtifact] = None,
         seed_set: Sequence[int] = (0, 1, 2),
         fixture_mode: bool = False,
     ) -> None:
-        if max_attempts <= 0 or max_attempts > MAX_CANDIDATE_ATTEMPTS:
+        if not isinstance(max_attempts, int) or isinstance(max_attempts, bool) or max_attempts <= 0 or max_attempts > MAX_CANDIDATE_ATTEMPTS:
             raise VariationBudgetError("candidate attempt budget must be between 1 and 12")
         self.ledger = ledger
         self.evaluator = evaluator
@@ -256,7 +284,9 @@ class BoundedCandidateLoop:
         self.data_manifest_digest = data_manifest_digest
         self.policy_digest = policy_digest
         self.policy: ArmPolicy = arm_policy(arm_id)
-        self.max_attempts = max_attempts
+        self._max_attempts = max_attempts
+        self._budget_contract = digest_for({"max_attempts": max_attempts})
+        self.adapter_artifact = adapter_artifact
         self.adapter_digest = adapter_digest
         self.seed_set = tuple(sorted(set(int(seed) for seed in seed_set)))
         self.fixture_mode = fixture_mode
@@ -267,20 +297,53 @@ class BoundedCandidateLoop:
         _require_digest(policy_digest, "authority policy digest")
         if model_revision != MODEL_REVISION:
             raise VariationConfigurationError("Variation campaign must use the frozen Qwen model revision")
-        if self.policy.requires_adapter and not adapter_digest:
-            raise VariationDependencyError("LoRA arms require a sealed adapter; Training is not part of Variation")
-        if adapter_digest is not None:
-            _require_digest(adapter_digest, "adapter digest")
+        if self.policy.requires_adapter:
+            if adapter_artifact is None:
+                raise VariationDependencyError("LoRA arms require a sealed adapter artifact; Training is not part of Variation")
+            if not isinstance(adapter_artifact, SealedAdapterArtifact):
+                raise VariationDependencyError("LoRA arms require a SealedAdapterArtifact, not a digest-like object")
+            adapter_artifact.verify()
+            derived_adapter_digest = adapter_artifact.digest
+            if adapter_digest is not None and adapter_digest != derived_adapter_digest:
+                raise VariationConfigurationError("adapter digest differs from the sealed adapter manifest")
+            self.adapter_digest = derived_adapter_digest
+        elif adapter_digest is not None or adapter_artifact is not None:
+            raise VariationConfigurationError("base arms cannot carry a LoRA adapter")
         if getattr(generator, "model_digest", model_digest) != model_digest:
             raise VariationConfigurationError("candidate generator model digest differs from the frozen campaign")
-        if getattr(generator, "adapter_digest", adapter_digest) != adapter_digest:
+        if getattr(generator, "adapter_digest", self.adapter_digest) != self.adapter_digest:
             raise VariationConfigurationError("candidate generator adapter digest differs from the frozen campaign")
+        generator_adapter = getattr(generator, "adapter_artifact", None)
+        if (generator_adapter is None) != (adapter_artifact is None):
+            raise VariationDependencyError("candidate generator and Variation arm disagree about sealed adapter state")
+        if generator_adapter is not None and generator_adapter.digest != self.adapter_digest:
+            raise VariationConfigurationError("candidate generator sealed adapter differs from the frozen campaign")
         if getattr(generator, "test_only", False) and not fixture_mode:
             raise VariationDependencyError("test-only candidate generators cannot enter the production Variation path")
         if not fixture_mode and not isinstance(evaluator, ControllerEvaluationGateway):
             raise VariationDependencyError("production Variation requires ControllerEvaluationGateway")
         if not getattr(evaluator, "enforceable", False) and not fixture_mode:
             raise VariationDependencyError("non-enforceable evaluators are test-only and cannot run Variation")
+        self._validate_production_boundary()
+
+    @property
+    def max_attempts(self) -> int:
+        return self._max_attempts
+
+    def _validate_budget(self) -> None:
+        if not isinstance(self._max_attempts, int) or isinstance(self._max_attempts, bool):
+            raise VariationBudgetError("candidate attempt budget is not an integer")
+        if self._max_attempts < 1 or self._max_attempts > MAX_CANDIDATE_ATTEMPTS:
+            raise VariationBudgetError("candidate attempt budget must be between 1 and 12")
+        if digest_for({"max_attempts": self._max_attempts}) != self._budget_contract:
+            raise VariationBudgetError("candidate attempt budget changed after construction")
+
+    def _validate_production_boundary(self) -> None:
+        if self.fixture_mode:
+            return
+        if not isinstance(self.evaluator, ControllerEvaluationGateway):
+            raise VariationDependencyError("production Variation requires ControllerEvaluationGateway")
+        self.evaluator.validate_runtime()
 
     def _run_id(self, task_id: str, seed: int) -> str:
         return "egv-run-{}".format(
@@ -457,22 +520,40 @@ class BoundedCandidateLoop:
         task: VariationTask,
         run_id: str,
         seed: int,
+        attempts: Sequence[AttemptRecord],
         attempt: AttemptRecord,
         status: str,
     ) -> Path:
+        if not attempts or attempts[-1] != attempt:
+            raise VariationCheckpointError("checkpoint attempts are not ordered or do not end at the requested attempt")
         state_digest = digest_for(
             {
-                "attempt": attempt.to_dict(),
+                "attempts": [item.to_dict() for item in attempts],
                 "run_id": run_id,
                 "arm_id": self.policy.arm_id,
                 "task_id": task.task_id,
+                "status": status,
             }
         )
         projection_generation = digest_for(
-            {"ledger_head": attempt.ledger_head_hash, "arm_id": self.policy.arm_id, "run_id": run_id}
+            {
+                "ledger_head_event_id": self.ledger.ledger_head_event_id(),
+                "ledger_head_hash": self.ledger.ledger_head_hash(),
+                "arm_id": self.policy.arm_id,
+                "run_id": run_id,
+            }
         )
         artifact_manifest_hash = digest_for(
-            {"candidate_artifact_digest": attempt.candidate_artifact_digest, "attempt_index": attempt.attempt_index}
+            {
+                "artifacts": [
+                    {
+                        "attempt_index": item.attempt_index,
+                        "candidate_id": item.candidate_id,
+                        "candidate_artifact_digest": item.candidate_artifact_digest,
+                    }
+                    for item in attempts
+                ]
+            }
         )
         checkpoint = VariationCheckpoint(
             campaign_id=self.campaign_id,
@@ -483,7 +564,7 @@ class BoundedCandidateLoop:
             attempt_index=attempt.attempt_index,
             last_candidate_id=attempt.candidate_id,
             ledger_head_event_id=self.ledger.ledger_head_event_id(),
-            ledger_head_hash=attempt.ledger_head_hash,
+            ledger_head_hash=self.ledger.ledger_head_hash(),
             projection_generation=projection_generation,
             artifact_manifest_hash=artifact_manifest_hash,
             protocol_digest=VARIATION_PROTOCOL_DIGEST,
@@ -505,6 +586,8 @@ class BoundedCandidateLoop:
         return path
 
     def _validate_resume(self, checkpoint: VariationCheckpoint, *, task: VariationTask, run_id: str, seed: int) -> None:
+        """Validate a checkpoint against the durable ledger and private artifacts."""
+
         checkpoint.validate()
         expected = {
             "campaign_id": self.campaign_id,
@@ -520,12 +603,116 @@ class BoundedCandidateLoop:
         for field, value in expected.items():
             if getattr(checkpoint, field) != value:
                 raise VariationCheckpointError("resume checkpoint {} differs from current immutable input".format(field))
+        if checkpoint.ledger_head_event_id != self.ledger.ledger_head_event_id():
+            raise VariationCheckpointError("ledger head event differs from the durable Variation checkpoint")
         if checkpoint.ledger_head_hash != self.ledger.ledger_head_hash():
             raise VariationCheckpointError("ledger head differs from the durable Variation checkpoint")
         if checkpoint.attempt_index > self.max_attempts:
             raise VariationCheckpointError("resume checkpoint exceeds the current bounded attempt budget")
-        if checkpoint.status == "RUNNING" and checkpoint.attempt_index >= self.max_attempts:
-            raise VariationCheckpointError("running checkpoint has no remaining bounded candidate attempt")
+
+    def _validate_durable_attempts(
+        self,
+        attempts: Sequence[AttemptRecord],
+        *,
+        workspace: Path,
+        task: VariationTask,
+        run_id: str,
+        seed: int,
+        checkpoint: Optional[VariationCheckpoint] = None,
+    ) -> None:
+        if not attempts or len(attempts) > self.max_attempts:
+            raise VariationCheckpointError("durable Variation attempts are outside the frozen budget")
+        artifact_store = ContentAddressedArtifactStore(workspace.root / "candidates" / "artifacts")
+        previous_candidate: Optional[str] = None
+        for expected_index, attempt in enumerate(attempts, start=1):
+            if attempt.attempt_index != expected_index:
+                raise VariationCheckpointError("durable Variation attempt indices are not contiguous")
+            if attempt.candidate_id != self._candidate_id(
+                run_id=run_id,
+                task_id=task.task_id,
+                seed=seed,
+                attempt=attempt.attempt_index,
+                parent=previous_candidate,
+            ):
+                # The checkpoint seed is required for resume; the no-checkpoint
+                # path is only used with the deterministic run seed below.
+                if checkpoint is not None:
+                    raise VariationCheckpointError("durable candidate ID is not bound to the frozen run trajectory")
+            row = self.ledger.connection.execute(
+                "SELECT * FROM candidates WHERE candidate_id=?", (attempt.candidate_id,)
+            ).fetchone()
+            if row is None or row["campaign_id"] != self.campaign_id or row["run_id"] != run_id or row["task_id"] != task.task_id:
+                raise VariationCheckpointError("durable candidate is not bound to the Variation run")
+            if row["parent_candidate_id"] != previous_candidate:
+                raise VariationCheckpointError("durable candidate parent chain differs from the checkpoint")
+            try:
+                candidate_payload = json.loads(row["candidate_json"])
+            except (TypeError, ValueError) as exc:
+                raise VariationCheckpointError("durable candidate payload is not canonical JSON") from exc
+            metadata = candidate_payload.get("metadata")
+            if not isinstance(metadata, Mapping) or metadata.get("candidate_artifact_digest") != attempt.candidate_artifact_digest:
+                raise VariationCheckpointError("durable candidate is not bound to its source artifact digest")
+            try:
+                artifact_store.read(attempt.candidate_artifact_digest)
+            except Exception as exc:
+                raise VariationCheckpointError("durable candidate source artifact is missing or corrupt") from exc
+            if self.ledger.candidate_disposition(attempt.candidate_id) != attempt.disposition:
+                raise VariationCheckpointError("durable attempt disposition differs from the ledger projection")
+            for receipt_id in attempt.receipt_ids:
+                if self.ledger.receipt_by_id(receipt_id) is None:
+                    raise VariationCheckpointError("durable attempt references a missing receipt")
+            previous_candidate = attempt.candidate_id
+        if checkpoint is not None:
+            expected_state = digest_for(
+                {
+                    "attempts": [item.to_dict() for item in attempts],
+                    "run_id": run_id,
+                    "arm_id": self.policy.arm_id,
+                    "task_id": task.task_id,
+                    "status": checkpoint.status,
+                }
+            )
+            if checkpoint.state_digest != expected_state:
+                raise VariationCheckpointError("checkpoint state digest does not match durable attempts")
+            expected_artifacts = digest_for(
+                {
+                    "artifacts": [
+                        {
+                            "attempt_index": item.attempt_index,
+                            "candidate_id": item.candidate_id,
+                            "candidate_artifact_digest": item.candidate_artifact_digest,
+                        }
+                        for item in attempts
+                    ]
+                }
+            )
+            if checkpoint.artifact_manifest_hash != expected_artifacts:
+                raise VariationCheckpointError("checkpoint artifact manifest does not match durable attempts")
+            expected_projection = digest_for(
+                {
+                    "ledger_head_event_id": self.ledger.ledger_head_event_id(),
+                    "ledger_head_hash": self.ledger.ledger_head_hash(),
+                    "arm_id": self.policy.arm_id,
+                    "run_id": run_id,
+                }
+            )
+            if checkpoint.projection_generation != expected_projection:
+                raise VariationCheckpointError("checkpoint projection generation does not match the ledger head")
+            last_disposition = attempts[-1].disposition
+            last_diagnostic = attempts[-1].diagnostic_enum
+            if last_disposition == "PROMOTED" and last_diagnostic != Diagnostic.PASS.value:
+                raise VariationCheckpointError("promoted checkpoint is not bound to a PASS diagnostic")
+            if checkpoint.last_candidate_id != attempts[-1].candidate_id or checkpoint.attempt_index != len(attempts):
+                raise VariationCheckpointError("checkpoint cursor does not match durable attempts")
+            expected_status = "PROMOTED" if last_disposition == "PROMOTED" else None
+            if last_diagnostic == Diagnostic.INTERNAL_ERROR.value:
+                expected_status = "FAILED"
+            elif expected_status is None and len(attempts) == self.max_attempts:
+                expected_status = "BUDGET_EXHAUSTED"
+            elif expected_status is None and last_disposition == "REJECTED":
+                expected_status = "RUNNING"
+            if checkpoint.status != expected_status:
+                raise VariationCheckpointError("checkpoint terminal status is not derived from the ledger disposition")
 
     def _durable_attempts(self, *, run_id: str, task_id: str) -> List[AttemptRecord]:
         """Reconstruct attempts from the append-only ledger, never from a cache."""
@@ -572,6 +759,8 @@ class BoundedCandidateLoop:
         seed: int = 0,
         resume_from: Optional[Path] = None,
     ) -> VariationReport:
+        self._validate_budget()
+        self._validate_production_boundary()
         if seed < 0:
             raise VariationConfigurationError("Variation seed must be nonnegative")
         if seed not in self.seed_set:
@@ -594,13 +783,21 @@ class BoundedCandidateLoop:
         checkpoint: Optional[VariationCheckpoint] = None
         if resume_from is not None:
             checkpoint = CheckpointStore(workspace.checkpoints).load(Path(resume_from))
-        if checkpoint is not None:
-            self._validate_resume(checkpoint, task=task, run_id=run_id, seed=seed)
         attempts: List[AttemptRecord] = (
             self._durable_attempts(run_id=run_id, task_id=task.task_id) if checkpoint is not None else []
         )
+        if checkpoint is not None:
+            self._validate_resume(checkpoint, task=task, run_id=run_id, seed=seed)
+            self._validate_durable_attempts(
+                attempts,
+                workspace=workspace,
+                task=task,
+                run_id=run_id,
+                seed=seed,
+                checkpoint=checkpoint,
+            )
         start_attempt = checkpoint.attempt_index + 1 if checkpoint is not None else 1
-        if checkpoint is not None and checkpoint.status in {"PROMOTED", "REJECTED", "BUDGET_EXHAUSTED", "FAILED"}:
+        if checkpoint is not None and checkpoint.status in {"PROMOTED", "BUDGET_EXHAUSTED", "FAILED"}:
             return VariationReport(
                 self.campaign_id,
                 run_id,
@@ -686,6 +883,7 @@ class BoundedCandidateLoop:
                     "public_locus": task.public_locus,
                     "retrieval_digest": retrieval.evidence_digest,
                     "evidence_ids": list(proposal.evidence_ids),
+                    "candidate_artifact_digest": digest_bytes(proposal.source),
                 },
             )
             for evidence_id in proposal.evidence_ids:
@@ -721,19 +919,37 @@ class BoundedCandidateLoop:
             if result.infrastructure_loss or result.diagnostic_enum == Diagnostic.INTERNAL_ERROR.value:
                 terminal_status = "FAILED"
                 checkpoint_path = self._checkpoint(
-                    workspace=workspace, task=task, run_id=run_id, seed=seed, attempt=attempt, status=terminal_status
+                    workspace=workspace,
+                    task=task,
+                    run_id=run_id,
+                    seed=seed,
+                    attempts=attempts,
+                    attempt=attempt,
+                    status=terminal_status,
                 )
                 break
             if attempt.disposition == "PROMOTED":
                 terminal_status = "PROMOTED"
                 checkpoint_path = self._checkpoint(
-                    workspace=workspace, task=task, run_id=run_id, seed=seed, attempt=attempt, status=terminal_status
+                    workspace=workspace,
+                    task=task,
+                    run_id=run_id,
+                    seed=seed,
+                    attempts=attempts,
+                    attempt=attempt,
+                    status=terminal_status,
                 )
                 break
             if attempt_index == self.max_attempts:
                 terminal_status = "BUDGET_EXHAUSTED"
             checkpoint_path = self._checkpoint(
-                workspace=workspace, task=task, run_id=run_id, seed=seed, attempt=attempt, status=terminal_status
+                workspace=workspace,
+                task=task,
+                run_id=run_id,
+                seed=seed,
+                attempts=attempts,
+                attempt=attempt,
+                status=terminal_status,
             )
         if checkpoint_path is None:
             raise VariationCheckpointError("Variation loop ended without a durable checkpoint")

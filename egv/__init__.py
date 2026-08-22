@@ -73,6 +73,8 @@ from .public import (
     verify_public_projection,
 )
 from .variation import (
+    ADAPTER_MANIFEST_NAME,
+    ADAPTER_MANIFEST_SCHEMA,
     ARM_IDS,
     ArmIsolation,
     BoundedCandidateLoop,
@@ -87,16 +89,22 @@ from .variation import (
     MODEL_REVISION,
     PinnedModelLoader,
     PinnedModelManifest,
+    SealedAdapterArtifact,
+    SealedAdapterManifest,
     VariationCheckpoint,
     VariationReport,
     VariationRunner,
     VariationTask,
+    build_local_adapter_manifest,
     run_variation_smoke,
+    scan_public_variation_report,
 )
 
 
 __all__ = [
     "EvidenceLedger",
+    "ADAPTER_MANIFEST_NAME",
+    "ADAPTER_MANIFEST_SCHEMA",
     "ARM_IDS",
     "ArmIsolation",
     "AuthorityBroker",
@@ -145,6 +153,8 @@ __all__ = [
     "ReceiptError",
     "ReceiptSigner",
     "ReceiptVerificationError",
+    "SealedAdapterArtifact",
+    "SealedAdapterManifest",
     "VariationCheckpoint",
     "VariationReport",
     "VariationRunner",
@@ -174,6 +184,8 @@ __all__ = [
     "run_evaluation_smoke",
     "run_evaluation_two_process_smoke",
     "run_variation_smoke",
+    "build_local_adapter_manifest",
+    "scan_public_variation_report",
     "sha256_digest",
     "OptionalDependencyError",
     "PhaseUnavailable",

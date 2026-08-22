@@ -9,6 +9,7 @@ from typing import Any, Mapping, Optional, Protocol, Sequence, Tuple
 from ..canonical import digest_bytes, digest_for
 from ..evaluation.diagnostics import REQUESTED_AUTHORITIES
 from ..evaluation.prompts import PromptRegistry
+from .adapter import SealedAdapterArtifact
 from .errors import VariationConfigurationError, VariationDependencyError
 
 
@@ -79,6 +80,7 @@ class ModelCandidateGenerator:
         *,
         model_digest: str,
         adapter_digest: Optional[str] = None,
+        adapter_artifact: Optional[SealedAdapterArtifact] = None,
         prompt_registry: Optional[PromptRegistry] = None,
         max_new_tokens: int = 512,
     ) -> None:
@@ -89,11 +91,24 @@ class ModelCandidateGenerator:
         loaded_manifest_digest = getattr(loaded_model, "manifest_digest", None)
         if loaded_manifest_digest is not None and loaded_manifest_digest != model_digest:
             raise VariationConfigurationError("candidate generator model digest differs from the verified local manifest")
+        if adapter_artifact is not None:
+            if not isinstance(adapter_artifact, SealedAdapterArtifact):
+                raise VariationDependencyError("LoRA adapter must be a sealed adapter artifact, not a digest-like object")
+            adapter_artifact.verify()
+            if adapter_digest is None:
+                adapter_digest = adapter_artifact.digest
+            if adapter_digest != adapter_artifact.digest:
+                raise VariationConfigurationError("candidate generator adapter digest differs from the sealed artifact")
+            if getattr(loaded_model, "adapter_digest", None) != adapter_artifact.digest:
+                raise VariationDependencyError("sealed LoRA adapter was verified but not applied to the loaded model")
+        elif adapter_digest is not None:
+            raise VariationDependencyError("a LoRA digest without a sealed adapter artifact is not accepted")
         self.loaded_model = loaded_model
         self.model = loaded_model.model
         self.tokenizer = loaded_model.tokenizer
         self.model_digest = model_digest
         self.adapter_digest = adapter_digest
+        self.adapter_artifact = adapter_artifact
         self.prompt_registry = prompt_registry or PromptRegistry()
         self.max_new_tokens = max_new_tokens
 
@@ -199,11 +214,23 @@ class DeterministicFixtureGenerator:
         public_locus: Mapping[str, str],
         model_digest: str = digest_for("fixture-model"),
         adapter_digest: Optional[str] = None,
+        adapter_artifact: Optional[SealedAdapterArtifact] = None,
     ) -> None:
+        if adapter_artifact is not None:
+            if not isinstance(adapter_artifact, SealedAdapterArtifact):
+                raise VariationDependencyError("LoRA adapter must be a sealed adapter artifact, not a digest-like object")
+            adapter_artifact.verify()
+            if adapter_digest is None:
+                adapter_digest = adapter_artifact.digest
+            if adapter_digest != adapter_artifact.digest:
+                raise VariationConfigurationError("fixture adapter digest differs from the sealed artifact")
+        elif adapter_digest is not None:
+            raise VariationDependencyError("a LoRA digest without a sealed adapter artifact is not accepted")
         self.candidates = {task_id: tuple(bytes(source) for source in sources) for task_id, sources in candidates.items()}
         self.public_locus = dict(public_locus)
         self.model_digest = model_digest
         self.adapter_digest = adapter_digest
+        self.adapter_artifact = adapter_artifact
 
     def propose(self, context: CandidateContext) -> CandidateProposal:
         try:

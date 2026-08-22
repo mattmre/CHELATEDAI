@@ -12,7 +12,9 @@ import hashlib
 import importlib
 from importlib import metadata as importlib_metadata
 import json
+import os
 from pathlib import Path
+from contextlib import contextmanager
 from typing import Any, Dict, Mapping, Optional, Tuple
 
 from ..canonical import digest_for
@@ -163,6 +165,7 @@ class LoadedPinnedModel:
     file_hashes: Mapping[str, str]
     load_report: Mapping[str, Any]
     base_state_digest: Optional[str]
+    adapter_digest: Optional[str] = None
 
 
 def _hash_file(path: Path) -> str:
@@ -208,10 +211,22 @@ class PinnedModelLoader:
         except ValueError as exc:
             raise VariationConfigurationError("pinned model manifest is outside the model root") from exc
         manifest = PinnedModelManifest.from_file(manifest_path)
+        expected_paths = set(manifest.files)
+        actual_paths = {
+            path.relative_to(root).as_posix()
+            for path in root.rglob("*")
+            if path.is_file() and path.resolve() != manifest_path
+        }
+        if actual_paths != expected_paths:
+            extra = sorted(actual_paths - expected_paths)
+            missing = sorted(expected_paths - actual_paths)
+            raise VariationConfigurationError(
+                "pinned model tree is not exhaustive (extra={}, missing={})".format(extra, missing)
+            )
         file_hashes: Dict[str, str] = {}
         for relative_path, expected_digest in sorted(manifest.files.items()):
             path = _relative_file(root, relative_path)
-            if not path.is_file():
+            if not path.is_file() or path.is_symlink():
                 raise VariationConfigurationError("pinned model file is missing: {}".format(relative_path))
             actual_digest = _hash_file(path)
             if actual_digest != expected_digest:
@@ -240,45 +255,88 @@ class PinnedModelLoader:
         except importlib_metadata.PackageNotFoundError as exc:
             raise VariationDependencyError("transformers>=5.5,<6 is required for the pinned model") from exc
 
-    def load(self, *, device: str = "cpu", torch_dtype: Optional[Any] = None) -> LoadedPinnedModel:
+    @staticmethod
+    @contextmanager
+    def _offline_environment() -> Any:
+        """Force the Hugging Face stack offline for the complete load window."""
+
+        names = {
+            "HF_HUB_OFFLINE": "1",
+            "TRANSFORMERS_OFFLINE": "1",
+            "HF_DATASETS_OFFLINE": "1",
+            "HF_HUB_DISABLE_TELEMETRY": "1",
+        }
+        previous = {name: os.environ.get(name) for name in names}
+        try:
+            os.environ.update(names)
+            yield
+        finally:
+            for name, value in previous.items():
+                if value is None:
+                    os.environ.pop(name, None)
+                else:
+                    os.environ[name] = value
+
+    def load(
+        self,
+        *,
+        device: str = "cpu",
+        torch_dtype: Optional[Any] = None,
+        adapter_artifact: Optional[Any] = None,
+    ) -> LoadedPinnedModel:
         manifest, file_hashes = self.verify_manifest()
         installed_version = self._transformers_version()
         if not (TRANSFORMERS_MIN_VERSION <= _version_tuple(installed_version) < TRANSFORMERS_MAX_EXCLUSIVE):
             raise VariationDependencyError("installed Transformers is outside the frozen >=5.5,<6 contract")
-        try:
-            transformers = importlib.import_module("transformers")
-            causal_class = getattr(transformers, MODEL_ARCHITECTURE)
-            config_class = getattr(transformers, MODEL_CONFIG_CLASS)
-            tokenizer_class = getattr(transformers, "AutoTokenizer")
-        except (ImportError, AttributeError) as exc:
-            raise VariationDependencyError("installed Transformers lacks the frozen Qwen text-only classes") from exc
-        try:
-            config = config_class.from_pretrained(
-                str(self.model_root), revision=MODEL_REVISION, local_files_only=True, trust_remote_code=False
-            )
-            if type(config).__name__ != MODEL_CONFIG_CLASS:
-                raise VariationConfigurationError("checkpoint config is not Qwen3_5TextConfig")
-            load_kwargs: Dict[str, Any] = {
-                "config": config,
-                "revision": MODEL_REVISION,
-                "local_files_only": True,
-                "trust_remote_code": False,
-                "output_loading_info": True,
-            }
-            if torch_dtype is not None:
-                load_kwargs["torch_dtype"] = torch_dtype
-            loaded = causal_class.from_pretrained(str(self.model_root), **load_kwargs)
-            if isinstance(loaded, tuple) and len(loaded) == 2:
-                model, loading_info = loaded
-            else:
-                model, loading_info = loaded, {}
-            tokenizer = tokenizer_class.from_pretrained(
-                str(self.model_root), revision=MODEL_REVISION, local_files_only=True, trust_remote_code=False
-            )
-        except VariationConfigurationError:
-            raise
-        except Exception as exc:
-            raise VariationDependencyError("pinned text-only checkpoint failed local loading") from exc
+        if adapter_artifact is not None:
+            from .adapter import SealedAdapterArtifact
+
+            if not isinstance(adapter_artifact, SealedAdapterArtifact):
+                raise VariationDependencyError("model adapters must be sealed content-addressed artifacts")
+        with self._offline_environment():
+            try:
+                transformers = importlib.import_module("transformers")
+                causal_class = getattr(transformers, MODEL_ARCHITECTURE)
+                config_class = getattr(transformers, MODEL_CONFIG_CLASS)
+                tokenizer_class = getattr(transformers, "AutoTokenizer")
+            except (ImportError, AttributeError) as exc:
+                raise VariationDependencyError("installed Transformers lacks the frozen Qwen text-only classes") from exc
+            try:
+                config = config_class.from_pretrained(
+                    str(self.model_root), revision=MODEL_REVISION, local_files_only=True, trust_remote_code=False
+                )
+                if type(config).__name__ != MODEL_CONFIG_CLASS:
+                    raise VariationConfigurationError("checkpoint config is not Qwen3_5TextConfig")
+                load_kwargs: Dict[str, Any] = {
+                    "config": config,
+                    "revision": MODEL_REVISION,
+                    "local_files_only": True,
+                    "trust_remote_code": False,
+                    "output_loading_info": True,
+                }
+                if torch_dtype is not None:
+                    load_kwargs["torch_dtype"] = torch_dtype
+                loaded = causal_class.from_pretrained(str(self.model_root), **load_kwargs)
+                if isinstance(loaded, tuple) and len(loaded) == 2:
+                    model, loading_info = loaded
+                else:
+                    model, loading_info = loaded, {}
+                model_config = getattr(model, "config", None)
+                if type(model_config).__name__ != MODEL_CONFIG_CLASS:
+                    raise VariationConfigurationError("loaded model does not expose Qwen3_5TextConfig")
+                tokenizer = tokenizer_class.from_pretrained(
+                    str(self.model_root), revision=MODEL_REVISION, local_files_only=True, trust_remote_code=False
+                )
+                base_state_digest = _state_digest(model)
+                adapter_digest = None
+                if adapter_artifact is not None:
+                    adapter_digest = adapter_artifact.digest
+                    adapter_artifact.verify()
+                    model = adapter_artifact.apply_to(model)
+            except VariationConfigurationError:
+                raise
+            except Exception as exc:
+                raise VariationDependencyError("pinned text-only checkpoint failed local loading") from exc
         report = dict(loading_info) if isinstance(loading_info, Mapping) else {}
         missing = list(report.get("missing_keys", ()))
         unexpected = list(report.get("unexpected_keys", ()))
@@ -288,9 +346,6 @@ class PinnedModelLoader:
             raise VariationConfigurationError(
                 "checkpoint tensor load report is outside the frozen language-model/visual-MTP contract"
             )
-        model_config = getattr(model, "config", None)
-        if type(model_config).__name__ != MODEL_CONFIG_CLASS:
-            raise VariationConfigurationError("loaded model does not expose Qwen3_5TextConfig")
         if device != "cpu":
             try:
                 model = model.to(device)
@@ -303,7 +358,8 @@ class PinnedModelLoader:
             manifest_digest=manifest.digest(),
             file_hashes=file_hashes,
             load_report={"missing_keys": missing, "unexpected_keys": unexpected, "transformers_version": installed_version},
-            base_state_digest=_state_digest(model),
+            base_state_digest=base_state_digest,
+            adapter_digest=adapter_digest,
         )
 
 
@@ -321,8 +377,9 @@ def build_local_manifest(
     """
 
     files: Dict[str, str] = {}
+    manifest_path = (model_root / "model-manifest.json").resolve()
     for path in sorted(model_root.rglob("*")):
-        if path.is_file() and path.name != "model-manifest.json":
+        if path.is_file() and not path.is_symlink() and path.resolve() != manifest_path:
             files[str(path.relative_to(model_root))] = _hash_file(path)
     return PinnedModelManifest.from_mapping(
         {

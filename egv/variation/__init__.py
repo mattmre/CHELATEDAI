@@ -1,6 +1,13 @@
 """Evidence-Governed Variation slice."""
 
 from .arms import ARM_IDS, ArmIsolation, ArmPolicy, ArmWorkspace, arm_policy
+from .adapter import (
+    ADAPTER_MANIFEST_NAME,
+    ADAPTER_MANIFEST_SCHEMA,
+    SealedAdapterArtifact,
+    SealedAdapterManifest,
+    build_local_adapter_manifest,
+)
 from .checkpoint import CHECKPOINT_SCHEMA, CheckpointStore, VariationCheckpoint
 from .errors import (
     VariationBudgetError,
@@ -44,11 +51,13 @@ from .retrieval import (
     SuccessOnlyRetrieval,
     retrieval_policy,
 )
-from .smoke import run_variation_smoke
+from .smoke import run_variation_smoke, scan_public_variation_report
 
 
 __all__ = [
     "ARM_IDS",
+    "ADAPTER_MANIFEST_NAME",
+    "ADAPTER_MANIFEST_SCHEMA",
     "AttemptRecord",
     "ArmIsolation",
     "ArmPolicy",
@@ -78,6 +87,8 @@ __all__ = [
     "RETRIEVAL_POLICIES",
     "RetrievedEvidence",
     "RetrievalResult",
+    "SealedAdapterArtifact",
+    "SealedAdapterManifest",
     "SuccessOnlyRetrieval",
     "VARIATION_PROTOCOL_DIGEST",
     "VARIATION_PROTOCOL_SCHEMA",
@@ -93,6 +104,8 @@ __all__ = [
     "VariationTask",
     "arm_policy",
     "build_local_manifest",
+    "build_local_adapter_manifest",
     "retrieval_policy",
     "run_variation_smoke",
+    "scan_public_variation_report",
 ]

@@ -130,7 +130,7 @@ Evaluation path fails closed; it never pulls an image.
 `variation smoke` runs one bounded held-out fixture trajectory through the
 Evidence ledger: the first candidate is rejected, its failure is retrieved by
 the correction-aware policy, and the next candidate is promoted. It reports
-`runtime_tier=floor-fixture` and keeps its evaluator seed, hidden records,
+`runtime_tier=floor-fixture`, reports `campaign_path_exercised=false`, and keeps its evaluator seed, hidden records,
 receipts, ledger, checkpoints, and candidate source under private state. The
 production Variation path requires the exact local model manifest and the
 enforceable Docker Evaluation gateway; it has no fixture or network fallback.

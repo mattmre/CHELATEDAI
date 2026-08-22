@@ -16,6 +16,11 @@ The production generator is local-only and revision-pinned:
 | Config class | `Qwen3_5TextConfig` |
 | Transformers | `>=5.5,<6` |
 
+The core package retains Python 3.9 syntax compatibility. The pinned model
+stack is declared only for Python 3.10+ because Transformers 5.5+ does not
+publish a Python 3.9 runtime; Python 3.9 can run the dependency-light core
+and fixture paths, while model loading fails closed there.
+
 `PinnedModelLoader` requires a local `model-manifest.json` with SHA-256 hashes
 for every staged file and license metadata. It passes
 `local_files_only=True`, `trust_remote_code=False`, and the pinned revision to
@@ -59,9 +64,10 @@ The eight arm policies are frozen as follows:
 
 Each arm has a disjoint filesystem namespace and candidate-ID prefix. Retrieval
 filters by campaign, run, task, current ledger validity, and arm before a
-generator can cite an event. E-H require an adapter digest; the later Training
-slice is responsible for producing the sealed adapter, so an absent adapter
-fails closed.
+generator can cite an event. E-H require an exhaustive, content-addressed
+`SealedAdapterArtifact` bound to the frozen base-model revision. A hexadecimal
+digest alone is rejected; the later Training slice is responsible for producing
+and applying that sealed adapter, so an absent adapter fails closed.
 
 ## Evaluation boundary
 
@@ -85,8 +91,12 @@ The Variation smoke is `runtime_tier=floor-fixture`: it generates the frozen
 36-task corpus from an evaluator-private seed, runs one held-out task through
 the deterministic test-only gateway, demonstrates failure retrieval followed
 by promotion, and writes private state under `private/` and the redacted report
-under `public/`. The private seed, hidden values, receipts, ledger, and
-candidate source are not publishable artifacts. A real production run requires
+under `public/`. `campaign_path_exercised=false` means the later Campaign phase
+was not exercised; the fixture only creates the ledger records needed to test
+the Variation trajectory. The private seed, hidden values, receipts, ledger,
+and candidate source are not publishable artifacts. The closed public scanner
+re-reads the final JSON artifact and rejects seed fields, candidate-source
+digests, held-out IDs, private paths, and hidden-answer markers. A real production run requires
 the local pinned model and the configured digest-pinned Docker runtime; there
 is no network or image-pull fallback.
 

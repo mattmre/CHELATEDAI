@@ -13,27 +13,36 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from egv.canonical import canonical_json, digest_bytes, digest_for, failure_family_root
-from egv.evaluation.controller import EvaluationResult
+from egv.evaluation.authority import AuthorityBroker
+from egv.evaluation.controller import EvaluationResult, EvaluatorController, HiddenEvaluatorRunner
 from egv.evaluation.dataset import EvaluationCorpus, EVALUATOR_SEED_BYTES, FAMILY_SPECS
+from egv.evaluation.sandbox import DockerCandidateSandbox
+from egv.evaluation.errors import LeakageError
 from egv.ledger import EvidenceLedger
+from egv.receipts import ReceiptJournal, ReceiptSigner
 from egv.variation import (
+    ADAPTER_MANIFEST_NAME,
     ARM_IDS,
     ArmIsolation,
     BoundedCandidateLoop,
     CheckpointStore,
+    ControllerEvaluationGateway,
     DeterministicFixtureGenerator,
     MODEL_REVISION,
     PinnedModelLoader,
+    SealedAdapterArtifact,
     VariationBudgetError,
     VariationCheckpointError,
     VariationConfigurationError,
     VariationDependencyError,
     VariationIsolationError,
     VariationTask,
+    build_local_adapter_manifest,
     arm_policy,
     build_local_manifest,
     retrieval_policy,
     run_variation_smoke,
+    scan_public_variation_report,
 )
 from egv.variation.fixture import FixtureEvaluationGateway
 from egv.variation.generator import CandidateContext, CandidateProposal
@@ -113,6 +122,197 @@ class VariationTestCase(unittest.TestCase):
             self.ledger = None
             raise
         return runner, task, repo, isolation
+
+    def make_adapter_artifact(self) -> SealedAdapterArtifact:
+        root = self.root / "sealed-adapter"
+        root.mkdir(parents=True, exist_ok=True)
+        (root / "adapter_config.json").write_text('{"r":4,"lora_alpha":8}\n', encoding="utf-8")
+        (root / "adapter_model.safetensors").write_bytes(b"sealed-training-output")
+        manifest = build_local_adapter_manifest(root)
+        (root / ADAPTER_MANIFEST_NAME).write_text(canonical_json(manifest.to_dict()) + "\n", encoding="utf-8")
+        return SealedAdapterArtifact(root)
+
+    def test_controller_gateway_binds_real_controller_hidden_runner_and_docker(self) -> None:
+        hidden_runner = HiddenEvaluatorRunner.from_corpus(self.corpus, evaluator_revision="gateway-test-evaluator")
+        docker_sandbox = object.__new__(DockerCandidateSandbox)
+        signer = ReceiptSigner(b"G" * 32)
+        controller = EvaluatorController(
+            sandbox=docker_sandbox,
+            hidden_runner=hidden_runner,
+            broker=AuthorityBroker(None),
+            signer=signer,
+            journal=ReceiptJournal(self.root / "gateway-receipts.jsonl", signer.public_key),
+            ingest=lambda _receipt: None,
+            campaign_id="gateway-campaign",
+            protocol_digest=digest_for("gateway-protocol"),
+            policy_digest=digest_for("gateway-policy"),
+        )
+        gateway = ControllerEvaluationGateway(controller)
+        self.assertIs(gateway.hidden_runner, hidden_runner)
+        gateway.validate_runtime()
+        controller.sandbox = SimpleNamespace(enforceable=True)
+        with self.assertRaises(VariationDependencyError):
+            gateway.validate_runtime()
+        controller.sandbox = docker_sandbox
+        controller.hidden_runner = SimpleNamespace(evaluator_revision="forged")
+        with self.assertRaises(VariationDependencyError):
+            gateway.validate_runtime()
+
+    def test_production_run_revalidates_controller_and_docker_boundary(self) -> None:
+        hidden_runner = HiddenEvaluatorRunner.from_corpus(self.corpus, evaluator_revision="run-boundary-evaluator")
+        docker_sandbox = object.__new__(DockerCandidateSandbox)
+        signer = ReceiptSigner(b"R" * 32)
+        controller = EvaluatorController(
+            sandbox=docker_sandbox,
+            hidden_runner=hidden_runner,
+            broker=AuthorityBroker(None),
+            signer=signer,
+            journal=ReceiptJournal(self.root / "run-boundary-receipts.jsonl", signer.public_key),
+            ingest=lambda _receipt: None,
+            campaign_id="run-boundary-campaign",
+            protocol_digest=digest_for("run-boundary-protocol"),
+            policy_digest=digest_for("run-boundary-policy"),
+        )
+        gateway = ControllerEvaluationGateway(controller)
+        self.ledger = EvidenceLedger(
+            self.root / "run-boundary.sqlite",
+            blob_root=self.root / "run-boundary-blobs",
+            clock=lambda: "2026-08-22T00:00:00Z",
+        )
+        repo = self.corpus.hidden_repositories()[0]
+        task = VariationTask.from_microrepo(repo)
+        model_digest = digest_for({"production_model": MODEL_REVISION})
+        generator = SimpleNamespace(model_digest=model_digest, adapter_digest=None, test_only=False)
+        runner = BoundedCandidateLoop(
+            ledger=self.ledger,
+            evaluator=gateway,
+            generator=generator,
+            isolation=ArmIsolation(self.root / "run-boundary-arms", campaign_id="run-boundary-campaign"),
+            workspace_root=self.root / "run-boundary-state",
+            campaign_id="run-boundary-campaign",
+            source_commit="run-boundary-source",
+            model_revision=MODEL_REVISION,
+            model_digest=model_digest,
+            data_manifest_digest=self.corpus.manifest_digest(),
+            policy_digest=digest_for("run-boundary-policy"),
+            arm_id="D",
+            max_attempts=1,
+            seed_set=(0,),
+            fixture_mode=False,
+        )
+        controller.sandbox = SimpleNamespace(enforceable=True)
+        with self.assertRaises(VariationDependencyError):
+            runner.run(task, seed=0)
+
+    def test_forged_promoted_checkpoint_requires_promoted_ledger_candidate(self) -> None:
+        runner, task, repo, isolation = self.make_runner(max_attempts=3)
+
+        class StopBeforeSecond(DeterministicFixtureGenerator):
+            def propose(self, context):
+                if context.attempt_index == 2:
+                    raise RuntimeError("intentional interruption")
+                return super().propose(context)
+
+        public_source = dict(repo.source_files)["src/task.py"]
+        runner.generator = StopBeforeSecond(
+            {task.task_id: (public_source, repo.corrected_source)},
+            public_locus={task.task_id: task.public_locus},
+            model_digest=runner.model_digest,
+        )
+        with self.assertRaises(RuntimeError):
+            runner.run(task, seed=0)
+        checkpoint_path, checkpoint = CheckpointStore(isolation.workspace("C", runner._run_id(task.task_id, 0)).checkpoints).latest(
+            run_id=runner._run_id(task.task_id, 0)
+        )  # type: ignore[misc]
+        durable = runner._durable_attempts(run_id=runner._run_id(task.task_id, 0), task_id=task.task_id)
+        forged_state = digest_for(
+            {
+                "attempts": [item.to_dict() for item in durable],
+                "run_id": runner._run_id(task.task_id, 0),
+                "arm_id": "C",
+                "task_id": task.task_id,
+                "status": "PROMOTED",
+            }
+        )
+        forged = replace(checkpoint, status="PROMOTED", state_digest=forged_state)
+        forged_path = CheckpointStore(checkpoint_path.parent).save(forged)
+        with self.assertRaises(VariationCheckpointError):
+            runner.run(task, seed=0, resume_from=forged_path)
+
+    def test_checkpoint_rejects_unsupported_terminal_status(self) -> None:
+        runner, task, _repo, isolation = self.make_runner()
+        report = runner.run(task, seed=0)
+        path, checkpoint = CheckpointStore(isolation.workspace("C", report.run_id).checkpoints).latest(run_id=report.run_id)  # type: ignore[misc]
+        value = checkpoint.to_dict()
+        value["status"] = "REJECTED"
+        forged_path = path.parent / "checkpoint-{}.json".format(digest_for(value))
+        forged_path.write_text(canonical_json(value) + "\n", encoding="utf-8")
+        with self.assertRaises(VariationCheckpointError):
+            CheckpointStore(path.parent).load(forged_path)
+
+    def test_attempt_budget_is_read_only_and_revalidated_at_run_boundary(self) -> None:
+        runner, _task, _repo, _isolation = self.make_runner(max_attempts=12)
+        self.assertEqual(runner.max_attempts, 12)
+        with self.assertRaises(AttributeError):
+            runner.max_attempts = 13  # type: ignore[misc]
+        with self.assertRaises(AttributeError):
+            runner._max_attempts = 13  # type: ignore[misc]
+        object.__setattr__(runner, "_max_attempts", 13)  # adversarial bypass
+        with self.assertRaises(VariationBudgetError):
+            runner.run(_task, seed=0)
+
+    def test_lora_requires_verified_exhaustive_sealed_adapter_not_hex(self) -> None:
+        with self.assertRaises(VariationDependencyError):
+            self.make_runner(arm_id="E", max_attempts=1)
+        with self.assertRaises(VariationDependencyError):
+            DeterministicFixtureGenerator(
+                {"task": (b"def main(value):\n    return value\n",)},
+                public_locus={"task": "src/task.py:main"},
+                model_digest=digest_for("model"),
+                adapter_digest=digest_for("arbitrary-hex"),
+            )
+        artifact = self.make_adapter_artifact()
+        self.assertEqual(artifact.digest, artifact.manifest.digest)
+        self.assertEqual(set(artifact.verify()), set(artifact.manifest.files))
+        (artifact.root / "unexpected.bin").write_bytes(b"extra")
+        with self.assertRaises(VariationConfigurationError):
+            artifact.verify()
+
+    def test_nested_manifest_name_is_not_silently_excluded_from_exhaustive_adapter_tree(self) -> None:
+        artifact = self.make_adapter_artifact()
+        nested = artifact.root / "nested" / ADAPTER_MANIFEST_NAME
+        nested.parent.mkdir()
+        nested.write_text("unexpected nested manifest", encoding="utf-8")
+        with self.assertRaises(VariationConfigurationError):
+            artifact.verify()
+
+    def test_sealed_adapter_application_is_explicit_and_local_only(self) -> None:
+        artifact = self.make_adapter_artifact()
+        calls = {}
+
+        class PeftModel:
+            @classmethod
+            def from_pretrained(cls, model, root, **kwargs):
+                calls["args"] = (model, root, kwargs)
+                return "adapted-model"
+
+        with patch.dict(sys.modules, {"peft": SimpleNamespace(PeftModel=PeftModel)}):
+            self.assertEqual(artifact.apply_to("base-model"), "adapted-model")
+        self.assertEqual(calls["args"][0], "base-model")
+        self.assertTrue(calls["args"][2]["local_files_only"])
+        self.assertFalse(calls["args"][2]["is_trainable"])
+
+    def test_ordinary_failure_retrieval_excludes_promoted_success(self) -> None:
+        runner, task, _repo, isolation = self.make_runner()
+        report = runner.run(task, seed=0)
+        retrieved = retrieval_policy("ORDINARY_FAILURE_SUMMARY").retrieve(
+            self.ledger,
+            campaign_id=report.campaign_id,
+            arm_id="C",
+            task_id=task.task_id,
+            isolation=isolation,
+        )
+        self.assertEqual([record.recorded_disposition for record in retrieved.records], ["REJECTED"])
 
     def test_frozen_arm_policies_and_disjoint_namespaces(self) -> None:
         self.assertEqual(ARM_IDS, ("A", "B", "C", "D", "E", "F", "G", "H"))
@@ -221,7 +421,8 @@ class VariationTestCase(unittest.TestCase):
             for policy in ("SUCCESS_ONLY", "ORDINARY_FAILURE_SUMMARY", "CORRECTION_AWARE")
         }
         self.assertEqual(len(policy_records["SUCCESS_ONLY"].records), 1)
-        self.assertEqual(len(policy_records["ORDINARY_FAILURE_SUMMARY"].records), 2)
+        self.assertEqual(len(policy_records["ORDINARY_FAILURE_SUMMARY"].records), 1)
+        self.assertEqual(policy_records["ORDINARY_FAILURE_SUMMARY"].records[0].recorded_disposition, "REJECTED")
         self.assertEqual(len(policy_records["CORRECTION_AWARE"].records), 2)
 
     def test_resume_reconstructs_durable_attempts_without_duplicate_writes(self) -> None:
@@ -404,12 +605,18 @@ class VariationTestCase(unittest.TestCase):
         self.assertEqual(preflight["config_class"], MODEL_CONFIG_CLASS)
         self.assertEqual(preflight["network"], "disabled-local-files-only")
 
+        (model_root / "unlisted-extra.bin").write_bytes(b"must-not-be-ignored")
+        with self.assertRaises(VariationConfigurationError):
+            PinnedModelLoader(model_root).preflight()
+        (model_root / "unlisted-extra.bin").unlink()
+
         calls = {}
 
         class Qwen3_5TextConfig:
             @classmethod
             def from_pretrained(cls, *args, **kwargs):
                 calls["config"] = (args, kwargs)
+                calls.setdefault("offline", []).append(("config", __import__("os").environ.get("HF_HUB_OFFLINE"), __import__("os").environ.get("TRANSFORMERS_OFFLINE")))
                 return cls()
 
         class Qwen3_5ForCausalLM:
@@ -419,6 +626,7 @@ class VariationTestCase(unittest.TestCase):
             @classmethod
             def from_pretrained(cls, *args, **kwargs):
                 calls["model"] = (args, kwargs)
+                calls.setdefault("offline", []).append(("model", __import__("os").environ.get("HF_HUB_OFFLINE"), __import__("os").environ.get("TRANSFORMERS_OFFLINE")))
                 return cls(), {"missing_keys": [], "unexpected_keys": []}
 
             def state_dict(self):
@@ -428,6 +636,7 @@ class VariationTestCase(unittest.TestCase):
             @classmethod
             def from_pretrained(cls, *args, **kwargs):
                 calls["tokenizer"] = (args, kwargs)
+                calls.setdefault("offline", []).append(("tokenizer", __import__("os").environ.get("HF_HUB_OFFLINE"), __import__("os").environ.get("TRANSFORMERS_OFFLINE")))
                 return cls()
 
         fake_transformers = SimpleNamespace(
@@ -446,6 +655,7 @@ class VariationTestCase(unittest.TestCase):
         self.assertTrue(calls["model"][1]["local_files_only"])
         self.assertFalse(calls["model"][1]["trust_remote_code"])
         self.assertEqual(calls["tokenizer"][1]["revision"], MODEL_REVISION)
+        self.assertEqual(calls["offline"], [("config", "1", "1"), ("model", "1", "1"), ("tokenizer", "1", "1")])
 
         weights.write_bytes(b"tampered")
         with self.assertRaises(VariationConfigurationError):
@@ -487,6 +697,11 @@ class VariationTestCase(unittest.TestCase):
         self.assertNotIn("/home/", public_text)
         self.assertNotIn("egv-pure_function-heldout-1-v1", public_text)
         self.assertNotIn("receipt_ids", public_text)
+        self.assertNotIn('"seed":', public_text)
+        self.assertNotIn("candidate_artifact_digest", public_text)
+        self.assertNotIn("corrected_source_digest", public_text)
+        self.assertFalse(report["campaign_path_exercised"])
+        self.assertTrue(report["public_scan"]["checked"])
         self.assertEqual(public_path.stat().st_mode & 0o222, 0)
 
     def test_variation_smoke_public_artifact_is_byte_identical_across_fresh_roots(self) -> None:
@@ -516,6 +731,9 @@ class VariationTestCase(unittest.TestCase):
         self.assertNotIn('"expected_output"', completed.stdout)
         self.assertNotIn("egv-pure_function-heldout-1-v1", completed.stdout)
         self.assertNotIn("/home/", completed.stdout)
+        self.assertNotIn('"seed":', completed.stdout)
+        self.assertNotIn("candidate_artifact_digest", completed.stdout)
+        self.assertFalse(report["campaign_path_exercised"])
 
     def test_cli_model_preflight_verifies_local_manifest_without_loading(self) -> None:
         model_root = self.root / "cli-model"
@@ -535,6 +753,12 @@ class VariationTestCase(unittest.TestCase):
         report = json.loads(completed.stdout)
         self.assertEqual(report["revision"], MODEL_REVISION)
         self.assertEqual(report["network"], "disabled-local-files-only")
+
+    def test_public_variation_scanner_rejects_seed_and_candidate_source_fields(self) -> None:
+        with self.assertRaises(LeakageError):
+            scan_public_variation_report({"seed": 0})
+        with self.assertRaises(LeakageError):
+            scan_public_variation_report({"attempts": [{"candidate_artifact_digest": digest_for("source")}]})
 
     def test_public_variation_docs_match_the_closed_runtime_contract(self) -> None:
         root = Path(__file__).resolve().parents[1]

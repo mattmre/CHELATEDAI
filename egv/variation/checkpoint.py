@@ -81,7 +81,7 @@ class VariationCheckpoint:
             raise VariationCheckpointError("checkpoint last candidate ID must be a string or null")
         if self.ledger_head_event_id is not None and not isinstance(self.ledger_head_event_id, str):
             raise VariationCheckpointError("checkpoint ledger event ID must be a string or null")
-        if self.status not in {"RUNNING", "PROMOTED", "REJECTED", "BUDGET_EXHAUSTED", "FAILED"}:
+        if self.status not in {"RUNNING", "PROMOTED", "BUDGET_EXHAUSTED", "FAILED"}:
             raise VariationCheckpointError("Variation checkpoint status is outside the closed vocabulary")
         for name in (
             "ledger_head_hash",
@@ -99,6 +99,8 @@ class VariationCheckpoint:
                 int(value, 16)
             except ValueError as exc:
                 raise VariationCheckpointError("checkpoint {} must be hexadecimal".format(name)) from exc
+        if self.attempt_index == 0 or self.last_candidate_id is None:
+            raise VariationCheckpointError("Variation checkpoint must bind a completed candidate attempt")
 
     @classmethod
     def from_mapping(cls, value: Mapping[str, Any]) -> "VariationCheckpoint":
