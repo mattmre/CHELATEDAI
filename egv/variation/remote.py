@@ -72,6 +72,8 @@ _REQUEST_FIELDS = frozenset(
         "model_digest",
         "protocol_digest",
         "policy_digest",
+        "run_id",
+        "arm_policy_digest",
         "data_manifest_digest",
         "task_manifest_digest",
         "evaluator_digest",
@@ -571,6 +573,8 @@ def _validate_remote_result_semantics(
     task_id: str,
     artifact_digest: str,
     declared_locus: str,
+    run_id: str,
+    arm_policy_digest: str,
 ) -> EvaluationResult:
     """Validate the complete signed controller contract without mutating the ledger."""
 
@@ -599,12 +603,13 @@ def _validate_remote_result_semantics(
         raise VariationConfigurationError("remote Variation result differs from its signed request or receipts")
     expected_common = {
         "campaign_id": manifest["campaign_id"],
-        "run_id": "run-evaluation",
+        "run_id": run_id,
         "task_id": task_id,
         "candidate_id": candidate_id,
         "candidate_artifact_digest": artifact_digest,
         "protocol_digest": manifest["protocol_digest"],
         "policy_digest": manifest["policy_digest"],
+        "arm_policy_digest": arm_policy_digest,
         "evaluator_digest": manifest.digest,
         "task_family": task_binding["family_id"],
         "normalized_public_locus": task_binding["public_locus"],
@@ -839,6 +844,27 @@ class RemoteControllerEvaluationGateway:
         if not source_bytes or len(source_bytes) > CANDIDATE_SOURCE_LIMIT:
             raise VariationConfigurationError("remote Variation candidate source exceeds the frozen byte ceiling")
         artifact_digest = digest_bytes(source_bytes)
+        candidate = self.ledger.connection.execute(
+            "SELECT campaign_id,run_id,task_id,candidate_json FROM candidates WHERE candidate_id=?",
+            (candidate_id,),
+        ).fetchone()
+        if candidate is None:
+            run_id = "run-evaluation"
+            arm_policy_digest = digest_for("unbound-remote-evaluation-arm")
+        else:
+            try:
+                candidate_value = json.loads(candidate["candidate_json"])
+                if candidate["campaign_id"] != self.manifest["campaign_id"] or candidate["task_id"] != task_id:
+                    raise ValueError("candidate authority binding differs")
+                if candidate_value["metadata"]["candidate_artifact_digest"] != artifact_digest:
+                    raise ValueError("candidate artifact binding differs")
+                arm_id = candidate_value["metadata"]["arm_id"]
+                from .arms import arm_policy
+
+                arm_policy_digest = arm_policy(str(arm_id)).digest
+            except (KeyError, TypeError, ValueError) as exc:
+                raise VariationConfigurationError("remote Variation candidate arm binding is invalid") from exc
+            run_id = str(candidate["run_id"])
         stable_body = {
             "schema_version": REMOTE_VARIATION_REQUEST_SCHEMA,
             "service_manifest_digest": self.manifest.digest,
@@ -846,6 +872,8 @@ class RemoteControllerEvaluationGateway:
             "model_digest": self.manifest["model_digest"],
             "protocol_digest": self.manifest["protocol_digest"],
             "policy_digest": self.manifest["policy_digest"],
+            "run_id": run_id,
+            "arm_policy_digest": arm_policy_digest,
             "data_manifest_digest": self.manifest["data_manifest_digest"],
             "task_manifest_digest": self.manifest["task_manifest_digest"],
             "evaluator_digest": self.manifest["evaluator_digest"],
@@ -906,6 +934,8 @@ class RemoteControllerEvaluationGateway:
             task_id=task_id,
             artifact_digest=artifact_digest,
             declared_locus=declared_locus,
+            run_id=run_id,
+            arm_policy_digest=arm_policy_digest,
         )
         stored = [self.ledger.receipt_by_id(receipt["receipt_id"]) for receipt in receipt_values]
         present = [item is not None for item in stored]
@@ -972,6 +1002,9 @@ def run_remote_evaluator_once(
         expected = manifest.digest if field == "service_manifest_digest" else manifest[field]
         if request_value[field] != expected:
             raise VariationConfigurationError("remote Variation request {} binding is stale".format(field))
+    if not isinstance(request_value["run_id"], str) or not request_value["run_id"]:
+        raise VariationConfigurationError("remote Variation run binding is invalid")
+    _require_digest(request_value["arm_policy_digest"], "remote Variation arm policy digest")
     task_binding = manifest.public_record(str(request_value["task_id"]))
     if task_binding is None or request_value["public_task_binding"] != task_binding:
         raise VariationConfigurationError("remote Variation request task binding is invalid")
@@ -1050,6 +1083,8 @@ def run_remote_evaluator_once(
             ):
                 fields.pop(key, None)
             fields["evaluator_digest"] = manifest.digest
+            fields["run_id"] = request_value["run_id"]
+            fields["arm_policy_digest"] = request_value["arm_policy_digest"]
             receipt = signer.sign_receipt(
                 fields,
                 sequence=current_sequence,
@@ -1090,6 +1125,8 @@ def run_remote_evaluator_once(
             task_id=repo.template_id,
             artifact_digest=str(request_value["candidate_artifact_digest"]),
             declared_locus=str(request_value["declared_locus"]),
+            run_id=str(request_value["run_id"]),
+            arm_policy_digest=str(request_value["arm_policy_digest"]),
         ),
     )
 

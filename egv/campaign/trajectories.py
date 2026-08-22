@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, Mapping, Sequence, Tuple
 
 from ..canonical import content_id, digest_for, validate_sha256
+from ..evaluation.authority import AuthorityPolicy
 from ..identities import commissioning_run_id
 from ..receipts import verify_receipt
 from ..variation.arms import arm_policy
@@ -278,7 +279,8 @@ def validate_accepted_response(
             or receipt.get("task_id") != request.task_id
             or receipt.get("candidate_id") != response.candidate_id
             or receipt.get("protocol_digest") != request.variation_protocol_digest
-            or receipt.get("policy_digest") != request.arm_policy_digest
+            or receipt.get("policy_digest") != AuthorityPolicy.candidate_execution().digest
+            or receipt.get("arm_policy_digest") != request.arm_policy_digest
             or receipt.get("evaluator_digest") != pinned_evaluator_digest
             or receipt.get("candidate_artifact_digest") != response.candidate_artifact_digest
         ):

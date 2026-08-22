@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from pathlib import Path
 import sys
 import tempfile
@@ -389,6 +390,38 @@ def _json_output(value: Any, as_json: bool) -> None:
         print(value)
 
 
+def _commissioning_output_targets(trainer: Path, evaluator: Path) -> tuple[Path, Path]:
+    """Reject overlapping public/private destinations before publishing either file."""
+
+    targets = (Path(trainer), Path(evaluator))
+    resolved = tuple(path.resolve(strict=False) for path in targets)
+    if resolved[0] == resolved[1] or any(path.is_symlink() for path in targets):
+        raise CampaignError("commissioning trainer and evaluator outputs must be distinct non-aliased paths")
+    if all(path.exists() for path in targets) and os.path.samefile(targets[0], targets[1]):
+        raise CampaignError("commissioning trainer and evaluator outputs must not be hard-linked")
+    if any(path.exists() for path in targets):
+        raise CampaignError("commissioning output already exists; refusing to overwrite frozen inputs")
+    return targets
+
+
+def _atomic_publish_new_json(path: Path, value: Mapping[str, Any]) -> None:
+    """Publish canonical JSON atomically without replacing an existing destination."""
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    encoded = (canonical_json(value) + "\n").encode("utf-8")
+    descriptor, name = tempfile.mkstemp(prefix=".commissioning-output-", dir=str(path.parent))
+    temporary = Path(name)
+    try:
+        with os.fdopen(descriptor, "wb") as handle:
+            handle.write(encoded)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.link(str(temporary), str(path))
+    finally:
+        if temporary.exists():
+            temporary.unlink()
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Evidence-Governed Variation Evidence, Evaluation, and bounded Variation slices"
@@ -691,10 +724,15 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                     campaign_id=args.campaign_id,
                     model_manifest_digest=args.model_digest,
                 )
-                args.trainer_output.parent.mkdir(parents=True, exist_ok=True)
-                args.evaluator_output.parent.mkdir(parents=True, exist_ok=True)
-                args.trainer_output.write_text(canonical_json(plan.trainer_inputs()) + "\n", encoding="utf-8")
-                args.evaluator_output.write_text(canonical_json(plan.private_manifest()) + "\n", encoding="utf-8")
+                trainer_output, evaluator_output = _commissioning_output_targets(
+                    args.trainer_output, args.evaluator_output
+                )
+                _atomic_publish_new_json(trainer_output, plan.trainer_inputs())
+                try:
+                    _atomic_publish_new_json(evaluator_output, plan.private_manifest())
+                except Exception:
+                    trainer_output.unlink(missing_ok=True)
+                    raise
                 _json_output({
                     "trainer_inputs_digest": plan.trainer_inputs()["trainer_inputs_digest"],
                     "private_inputs_digest": digest_for(plan.private_manifest()),

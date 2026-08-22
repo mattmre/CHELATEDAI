@@ -9,13 +9,15 @@ import threading
 import unittest
 from unittest.mock import patch
 
-from egv.canonical import GENESIS_HASH, canonical_bytes, canonical_json, digest_for
+from egv.canonical import GENESIS_HASH, canonical_bytes, canonical_json, digest_bytes, digest_for
+from egv.campaign.trajectories import GenerationRequest, GenerationResponse, validate_accepted_response
 from egv.evaluation.authority import AuthorityPolicy
 from egv.evaluation.dataset import EvaluationCorpus
 from egv.evaluation.sandbox import DockerSandboxConfig
 from egv.ledger import EvidenceLedger
 from egv.receipts import ReceiptSigner, receipt_hash
 from egv.variation.errors import VariationConfigurationError, VariationDependencyError
+from egv.variation.arms import arm_policy
 from egv.variation.loop import VARIATION_PROTOCOL_DIGEST
 from egv.variation.remote import (
     REMOTE_VARIATION_SERVICE_SCHEMA,
@@ -37,10 +39,11 @@ if capture:
     open(capture, "w", encoding="utf-8").write(canonical_json(request))
 signer = ReceiptSigner(bytes.fromhex("__PRIVATE_KEY__"))
 common = {
-    "campaign_id": request["campaign_id"], "run_id": "run-evaluation",
+    "campaign_id": request["campaign_id"], "run_id": request["run_id"],
     "task_id": request["task_id"], "candidate_id": request["candidate_id"],
     "candidate_artifact_digest": request["candidate_artifact_digest"],
     "protocol_digest": request["protocol_digest"], "policy_digest": request["policy_digest"],
+    "arm_policy_digest": request["arm_policy_digest"],
     "evaluator_digest": request["service_manifest_digest"],
     "task_family": request["public_task_binding"]["family_id"],
     "normalized_public_locus": request["public_task_binding"]["public_locus"],
@@ -96,7 +99,7 @@ class RemoteVariationGatewayTests(unittest.TestCase):
         self.task = {
             "template_id": "task-heldout-001",
             "family_id": "family-test",
-            "split": "heldout",
+            "split": "train",
             "ordinal": 1,
             "source_digest": digest_for("source"),
             "public_rule_id": "rule-test",
@@ -142,6 +145,44 @@ class RemoteVariationGatewayTests(unittest.TestCase):
             manifest_path=self.manifest_path,
             public_key_path=self.key_path,
             command=self.command,
+        )
+
+    def register_commissioning_candidate(
+        self, request: GenerationRequest, candidate_id: str, source: bytes
+    ) -> None:
+        self.ledger.create_campaign(
+            request.campaign_id,
+            protocol_hash=request.variation_protocol_digest,
+            source_commit="commissioning-test",
+            model_revision="test-model",
+            data_manifest_hash=request.corpus_manifest_digest,
+            evaluator_hash=self.manifest_value["service_manifest_digest"],
+            policy_hash=AuthorityPolicy.candidate_execution().digest,
+            seed_set=(0, 1),
+        )
+        self.ledger.create_run(
+            request.run_id,
+            campaign_id=request.campaign_id,
+            arm=request.arm_id,
+            task_id=request.task_id,
+            seed=request.seed,
+            parent_checkpoint=None,
+            start_state="READY",
+            host_role="spark_trainer",
+            software_manifest_hash=digest_for("test-software"),
+        )
+        self.ledger.append_candidate(
+            candidate_id,
+            campaign_id=request.campaign_id,
+            run_id=request.run_id,
+            task_id=request.task_id,
+            parent_candidate_id=None,
+            mutation_family=request.task_family,
+            patch_hash=digest_for(source.decode("utf-8")),
+            requested_authority="EXECUTE_CANDIDATE",
+            prompt_hash=digest_for("prompt"),
+            model_hash=request.model_manifest_digest,
+            metadata={"arm_id": request.arm_id, "candidate_artifact_digest": digest_bytes(source)},
         )
 
     def durable_request(self, label: str) -> dict:
@@ -207,10 +248,61 @@ class RemoteVariationGatewayTests(unittest.TestCase):
         self.assertEqual(set(request), {
             "schema_version", "operation_digest", "request_digest", "service_manifest_digest", "campaign_id", "model_digest",
             "protocol_digest", "policy_digest", "data_manifest_digest", "task_manifest_digest",
+            "run_id", "arm_policy_digest",
             "evaluator_digest", "docker_image_digest", "candidate_id", "task_id", "public_task_binding",
             "candidate_artifact_digest", "candidate_source_b64", "requested_authority", "declared_locus",
             "receipt_sequence_start", "previous_receipt_hash",
         })
+
+    def test_remote_promotions_bind_commissioning_run_and_distinct_arm_policy_for_b_and_d(self) -> None:
+        for index, arm_id in enumerate(("B", "D")):
+            with self.subTest(arm_id=arm_id):
+                request = GenerationRequest.build(
+                    campaign_id=self.manifest_value["campaign_id"],
+                    task_record=self.task,
+                    corpus_manifest_digest=self.manifest_value["data_manifest_digest"],
+                    arm_id=arm_id,
+                    seed=index,
+                    model_manifest_digest=self.manifest_value["model_digest"],
+                    variation_protocol_digest=self.manifest_value["protocol_digest"],
+                )
+                source = "def solve(value):\n    return value + {}\n".format(index).encode("utf-8")
+                candidate_id = "candidate-commissioning-" + arm_id.lower()
+                self.register_commissioning_candidate(request, candidate_id, source)
+                result = self.gateway().evaluate(
+                    candidate_id=candidate_id,
+                    task_id=request.task_id,
+                    source=source,
+                    opaque_input=None,
+                    requested_authority="EXECUTE_CANDIDATE",
+                    declared_locus=self.task["public_locus"],
+                )
+                receipts = [self.ledger.receipt_by_id(item)["receipt"] for item in result.receipt_ids]
+                payload = {
+                    "schema_version": "egv-commissioning-generation-response-v1",
+                    "request_id": request.request_id,
+                    "candidate_id": candidate_id,
+                    "candidate_artifact_digest": result.candidate_artifact_digest,
+                    "model_output_digest": result.candidate_artifact_digest,
+                    "output_byte_count": len(source),
+                    "disposition": "PROMOTED",
+                    "receipts": receipts,
+                }
+                from egv.canonical import content_id
+
+                payload["response_id"] = content_id("genresp", payload)
+                accepted = validate_accepted_response(
+                    request,
+                    GenerationResponse.from_mapping(payload),
+                    evaluator_public_key=self.signer.public_key,
+                    evaluator_digest=self.manifest_value["service_manifest_digest"],
+                    expected_first_sequence=receipts[0]["sequence"],
+                    expected_previous_receipt_hash=receipts[0]["previous_receipt_hash"],
+                )
+                self.assertEqual(accepted["arm_id"], arm_id)
+                self.assertTrue(all(item["run_id"] == request.run_id for item in receipts))
+                self.assertTrue(all(item["arm_policy_digest"] == arm_policy(arm_id).digest for item in receipts))
+                self.assertTrue(all(item["policy_digest"] == AuthorityPolicy.candidate_execution().digest for item in receipts))
 
     def test_response_tamper_and_stale_binding_fail_before_ingestion(self) -> None:
         for mode in ("stale-request", "tamper-result"):

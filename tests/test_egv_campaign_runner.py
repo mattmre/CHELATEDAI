@@ -109,6 +109,51 @@ class CommissioningRunnerTests(unittest.TestCase):
             self.assertNotIn(repo.template_id, trainer_text)
             self.assertIn(repo.template_id, private_text)
 
+    def test_prepare_cli_rejects_same_output_before_writing_private_material(self) -> None:
+        shared = self.root / "shared.json"
+        code = main([
+            "commissioning", "prepare", "--campaign-id", "campaign-public",
+            "--model-digest", digest_for("model"), "--evaluator-seed", str(self.seed),
+            "--trainer-output", str(shared), "--evaluator-output", str(shared),
+        ])
+        self.assertEqual(code, 1)
+        self.assertFalse(shared.exists())
+
+    def test_prepare_cli_rejects_symlink_and_hardlink_output_aliases(self) -> None:
+        backing = self.root / "backing.json"
+        backing.write_text("preserve", encoding="utf-8")
+        symlink = self.root / "trainer-link.json"
+        try:
+            symlink.symlink_to(backing)
+        except OSError:
+            symlink = None
+        if symlink is not None:
+            private = self.root / "private.json"
+            code = main([
+                "commissioning", "prepare", "--campaign-id", "campaign-public",
+                "--model-digest", digest_for("model"), "--evaluator-seed", str(self.seed),
+                "--trainer-output", str(symlink), "--evaluator-output", str(private),
+            ])
+            self.assertEqual(code, 1)
+            self.assertFalse(private.exists())
+            self.assertEqual(backing.read_text(encoding="utf-8"), "preserve")
+        first = self.root / "first-hardlink.json"
+        second = self.root / "second-hardlink.json"
+        first.write_text("preserve", encoding="utf-8")
+        try:
+            import os
+
+            os.link(first, second)
+        except OSError:
+            return
+        code = main([
+            "commissioning", "prepare", "--campaign-id", "campaign-public",
+            "--model-digest", digest_for("model"), "--evaluator-seed", str(self.seed),
+            "--trainer-output", str(first), "--evaluator-output", str(second),
+        ])
+        self.assertEqual(code, 1)
+        self.assertEqual(first.read_text(encoding="utf-8"), "preserve")
+
     def test_sealed_runtime_dataset_uses_exact_train_lora_schema(self) -> None:
         cutoff = LedgerCutoff(
             "campaign-public", 1, "event-1", digest_for("event"), digest_for("receipt"), 1, "key-1"
