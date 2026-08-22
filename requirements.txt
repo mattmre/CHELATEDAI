@@ -8,5 +8,6 @@ mteb>=1.0
 scikit-learn>=1.5
 jsonschema>=4.0
 PyYAML>=6.0
+cryptography>=41.0
 # Optional: langdetect for cross-lingual distillation (falls back to heuristics if absent)
 # langdetect>=1.0.9

@@ -50,6 +50,18 @@ set -u  # treat unset vars as errors; do NOT set -e (we handle errors explicitly
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
+# Keep the smoke path usable on systems that expose only `python3` (the CI
+# contract uses `python`, but local evidence capture should not fail before it
+# reaches the production code path).
+if command -v python >/dev/null 2>&1; then
+    PYTHON_BIN="${PYTHON_BIN:-python}"
+elif command -v python3 >/dev/null 2>&1; then
+    PYTHON_BIN="${PYTHON_BIN:-python3}"
+else
+    echo "smoke.sh: neither python nor python3 is available" >&2
+    exit 2
+fi
+
 API_ONLY=0
 for arg in "$@"; do
     case "$arg" in
@@ -69,6 +81,7 @@ done
 
 # Status accumulator
 SMOKE_STATUS=0
+EGV_RESULT="NOT RUN"
 STAGE1_RESULT="NOT RUN"
 STAGE2_RESULT="NOT RUN"
 STAGE2_REASON=""
@@ -79,6 +92,20 @@ echo "Repo root: $REPO_ROOT"
 echo "Started:   $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 echo "========================================================================="
 
+# ----------------------------------------------------------------------------
+# Slice 2 EGV evidence-core smoke — explicit production path
+# ----------------------------------------------------------------------------
+echo
+echo "--- EGV evidence-core smoke (ledger + receipts + public replay) ---"
+if "$PYTHON_BIN" -m egv smoke --json --two-process; then
+    EGV_RESULT="PASS (floor-tier synthetic fixture; memory projection; Qdrant, real campaign, and service paths not exercised)"
+    echo "EGV evidence-core PASS"
+else
+    EGV_RESULT="FAIL"
+    SMOKE_STATUS=1
+    echo "EGV evidence-core FAIL" >&2
+fi
+
 # -----------------------------------------------------------------------------
 # Stage 1 — application/surface boot smoke (always runs)
 # -----------------------------------------------------------------------------
@@ -88,7 +115,7 @@ if [ -f "$REPO_ROOT/tests/test_e2e_smoke.py" ]; then
     # ChelatedAI uses stdlib unittest per CLAUDE.md Test Conventions; pytest is
     # not installed in CI. Invoke via -m unittest with the module path so
     # discovery does not depend on the caller's working directory.
-    if python -m unittest -v tests.test_e2e_smoke 2>&1; then
+    if "$PYTHON_BIN" -m unittest -v tests.test_e2e_smoke 2>&1; then
         STAGE1_RESULT="PASS"
         echo "Stage 1 PASS"
     else
@@ -133,7 +160,7 @@ elif [ ! -f "$REPO_ROOT/scripts/smoke_pipeline.py" ]; then
 else
     echo
     echo "--- Stage 2: production-pipeline smoke ---"
-    if python "$REPO_ROOT/scripts/smoke_pipeline.py"; then
+    if "$PYTHON_BIN" "$REPO_ROOT/scripts/smoke_pipeline.py"; then
         STAGE2_RESULT="PASS"
         echo "Stage 2 PASS"
     else
@@ -150,6 +177,7 @@ fi
 echo
 echo "========================================================================="
 echo "SMOKE SUMMARY"
+echo "  EGV evidence core:              $EGV_RESULT"
 echo "  Stage 1 (surface boot):       $STAGE1_RESULT"
 echo "  Stage 2 (production pipeline): $STAGE2_RESULT${STAGE2_REASON:+ ($STAGE2_REASON)}"
 echo "  Overall exit code:            $SMOKE_STATUS"
