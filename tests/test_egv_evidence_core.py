@@ -46,6 +46,7 @@ from egv.public import (
     public_dependency_id,
     public_dependency_set_digest,
     validate_public_candidate,
+    verify_public_receipt,
 )
 from egv.receipts import ReceiptJournal, ReceiptSigner, receipt_hash, verify_receipt
 
@@ -147,6 +148,13 @@ class TestCanonicalContentAddressing(unittest.TestCase):
             failure_family_root("PURE_FUNCTION", "WRONG_OUTPUT", "module:function", "rule-1"),
             digest_for(["PURE_FUNCTION", "WRONG_OUTPUT", "module:function", "rule-1"]),
         )
+
+    def test_internal_failure_root_is_incident_bound(self) -> None:
+        first = failure_family_root("PURE_FUNCTION", "INTERNAL_ERROR", "module:function", "rule-1", infrastructure_incident_id="incident-a")
+        second = failure_family_root("PURE_FUNCTION", "INTERNAL_ERROR", "module:function", "rule-1", infrastructure_incident_id="incident-b")
+        self.assertNotEqual(first, second)
+        with self.assertRaises(ValueError):
+            failure_family_root("PURE_FUNCTION", "INTERNAL_ERROR", "module:function", "rule-1")
 
 
 class TestAppendOnlyLedger(LedgerTestCase):
@@ -418,6 +426,145 @@ class TestAppendOnlyLedger(LedgerTestCase):
 
 
 class TestReceiptsAndJournal(LedgerTestCase):
+    def test_private_receipts_reject_closed_enum_escape(self) -> None:
+        self.add_campaign_run_candidate()
+        signer = ReceiptSigner(b"\x06" * 32)
+        with self.assertRaises(ReceiptVerificationError):
+            signer.sign_receipt(
+                {
+                    "receipt_type": "VERDICT",
+                    "campaign_id": "campaign-1",
+                    "run_id": "run-1",
+                    "task_id": "task-1",
+                    "candidate_id": "candidate-1",
+                    "request_id": "raw-status",
+                    "decision": "ERROR",
+                    "exit_status_class": "DOCKER_RUNTIME_FAILED",
+                },
+                sequence=1,
+                previous_receipt_hash=GENESIS_HASH,
+                idempotency_key="raw-status",
+            )
+
+    def test_internal_receipts_require_incident_and_bound_failure_root(self) -> None:
+        signer = ReceiptSigner(b"\x0b" * 32)
+        base = {
+            "receipt_type": "VERDICT",
+            "campaign_id": "campaign-1",
+            "run_id": "run-1",
+            "task_id": "task-1",
+            "candidate_id": "candidate-1",
+            "request_id": "internal-receipt",
+            "decision": "ERROR",
+            "diagnostic_enum": "INTERNAL_ERROR",
+        }
+        canonical = {
+            "task_family": "PURE_FUNCTION",
+            "normalized_public_locus": "module:function",
+            "public_rule_id": "rule-public-1",
+        }
+        incident = "incident-1"
+        exact_root = failure_family_root(
+            canonical["task_family"],
+            "INTERNAL_ERROR",
+            canonical["normalized_public_locus"],
+            canonical["public_rule_id"],
+            infrastructure_incident_id=incident,
+        )
+        four_tuple_root = digest_for(
+            [canonical["task_family"], "INTERNAL_ERROR", canonical["normalized_public_locus"], canonical["public_rule_id"]]
+        )
+        invalid_receipts = [
+            {**base, **canonical, "infrastructure_incident_id": incident},
+            {**base, **canonical, "failure_family_root": exact_root},
+            {**base, **canonical, "infrastructure_incident_id": incident, "failure_family_root": four_tuple_root},
+            {**base, **canonical, "infrastructure_incident_id": incident, "failure_family_root": digest_for("mismatch")},
+        ]
+        missing_canonical = {**base, **canonical, "infrastructure_incident_id": incident, "failure_family_root": exact_root}
+        missing_canonical.pop("public_rule_id")
+        invalid_receipts.append(missing_canonical)
+        for index, invalid in enumerate(invalid_receipts):
+            with self.assertRaises(ReceiptVerificationError):
+                signer.sign_receipt(
+                    invalid,
+                    sequence=1,
+                    previous_receipt_hash=GENESIS_HASH,
+                    idempotency_key="internal-invalid-" + str(index),
+                )
+        valid = signer.sign_receipt(
+            {
+                **base,
+                **canonical,
+                "infrastructure_incident_id": incident,
+                "failure_family_root": exact_root,
+            },
+            sequence=1,
+            previous_receipt_hash=GENESIS_HASH,
+            idempotency_key="internal-valid",
+        )
+        self.assertEqual(verify_receipt(valid, signer.public_key), receipt_hash(valid))
+
+    def test_public_internal_receipts_require_incident_and_bound_failure_root(self) -> None:
+        signer = ReceiptSigner(b"\x0c" * 32)
+        common = {
+            "campaign_id": "campaign-public-internal",
+            "run_id": "run-public-internal",
+            "task_id": "task-public-internal",
+            "candidate_id": "candidate-public-internal",
+            "candidate_artifact_digest": digest_for("artifact"),
+            "protocol_digest": digest_for("protocol"),
+            "policy_digest": digest_for("policy"),
+            "evaluator_digest": digest_for("evaluator"),
+            "public_candidate_record_digest": digest_for("candidate-record"),
+            "public_dependency_set_digest": digest_for("dependencies"),
+            "receipt_type": "VERDICT",
+            "request_id": "internal-public",
+            "decision": "ERROR",
+            "diagnostic_enum": "INTERNAL_ERROR",
+            "task_family": "PURE_FUNCTION",
+            "normalized_public_locus": "module:function",
+            "public_rule_id": "rule-public-1",
+        }
+        incident = "incident-public"
+        exact_root = failure_family_root(
+            common["task_family"],
+            "INTERNAL_ERROR",
+            common["normalized_public_locus"],
+            common["public_rule_id"],
+            infrastructure_incident_id=incident,
+        )
+        four_tuple_root = digest_for(
+            [common["task_family"], "INTERNAL_ERROR", common["normalized_public_locus"], common["public_rule_id"]]
+        )
+        invalid_receipts = [
+            {**common, "infrastructure_incident_id": incident},
+            {**common, "failure_family_root": exact_root},
+            {**common, "infrastructure_incident_id": incident, "failure_family_root": four_tuple_root},
+            {**common, "infrastructure_incident_id": incident, "failure_family_root": digest_for("mismatch")},
+        ]
+        missing_canonical = {**common, "infrastructure_incident_id": incident, "failure_family_root": exact_root}
+        missing_canonical.pop("public_rule_id")
+        invalid_receipts.append(missing_canonical)
+        for invalid in invalid_receipts:
+            with self.assertRaises(PublicSchemaError):
+                signer.sign_public_receipt(
+                    invalid,
+                    public_sequence=1,
+                )
+        valid = signer.sign_public_receipt(
+            {
+                **common,
+                "infrastructure_incident_id": incident,
+                "failure_family_root": exact_root,
+            },
+            public_sequence=1,
+        )
+        self.assertTrue(valid["signature"])
+        self.assertEqual(verify_public_receipt(valid, signer.public_key), digest_for(valid))
+        forged = dict(valid, failure_family_root=four_tuple_root)
+        with self.assertRaises(PublicSchemaError):
+            verify_public_receipt(forged, signer.public_key)
+
     def test_ed25519_chain_journal_and_idempotent_ingest(self) -> None:
         self.add_campaign_run_candidate()
         signer = ReceiptSigner(b"\x02" * 32)
@@ -567,8 +714,8 @@ class PublicFixture:
         restore = build_public_restore_receipt(
             {
                 "campaign_id": self.campaign_id,
-                "logical_service_set_id": "service-set-public",
-                "logical_service_ids": ["service-001"],
+                "logical_service_set_id": "svcset-public",
+                "logical_service_ids": ["svc-001"],
                 "private_inventory_digest": digest_for("inventory"),
                 "service_definition_set_digest": digest_for("definitions"),
                 "model_set_digest": digest_for("models"),
@@ -789,6 +936,10 @@ class TestClosedPublicReplay(unittest.TestCase):
             "https://example.invalid",
             "/srv/egv",
             "5432",
+            "host-01",
+            "qdrant-prod",
+            "spark-worker-1",
+            "service-001",
         ]
         for topology_value in topology_values:
             with self.subTest(topology_value=topology_value):
@@ -850,6 +1001,229 @@ class TestProjectionAndIPC(LedgerTestCase):
         manifest_two = projection.rebuild(self.ledger, lambda payload: [float(len(str(payload["value"]))), 1.0], embedding_model_revision="embed-v1")
         self.assertEqual(manifest_one, manifest_two)
         self.assertEqual(point.payload["source_event_id"], first["event_id"])
+
+    def test_projection_reserves_failure_root_validation_for_internal_errors(self) -> None:
+        common = {
+            "value": "failure-root",
+            "task_family": "PURE_FUNCTION",
+            "diagnostic_enum": "WRONG_OUTPUT",
+            "normalized_public_locus": "module:solve",
+            "public_rule_id": "rule-projection",
+        }
+        exact = failure_family_root(
+            common["task_family"],
+            common["diagnostic_enum"],
+            common["normalized_public_locus"],
+            common["public_rule_id"],
+        )
+        case_number = [0]
+
+        def rebuild(payload: dict) -> dict:
+            case_number[0] += 1
+            ledger = EvidenceLedger(
+                self.root / ("projection-root-{}.sqlite".format(case_number[0])),
+                blob_root=self.root / ("projection-root-blobs-{}".format(case_number[0])),
+            )
+            try:
+                ledger.append_event("VERDICT", payload, subject_id="projection-root")
+                projection = InMemoryProjection(collection_name="projection-root")
+                return projection.rebuild(
+                    ledger,
+                    lambda value: [1.0, 0.0],
+                    embedding_model_revision="embed-v1",
+                )
+            finally:
+                ledger.close()
+
+        ordinary_failure = rebuild(common)
+        self.assertEqual(ordinary_failure["point_count"], 1)
+
+        with self.assertRaises(ProjectionError):
+            rebuild({**common, "failure_family_root": exact})
+        with self.assertRaises(ProjectionError):
+            rebuild({**common, "failure_family_root": None})
+        with self.assertRaises(ProjectionError):
+            rebuild({**common, "infrastructure_incident_id": "incident-not-internal"})
+        with self.assertRaises(ProjectionError):
+            rebuild({**common, "diagnostic_enum": "INTERNAL_ERROR"})
+
+        valid = rebuild(
+            {
+                **common,
+                "diagnostic_enum": "INTERNAL_ERROR",
+                "infrastructure_incident_id": "incident-projection-root",
+                "failure_family_root": failure_family_root(
+                    common["task_family"],
+                    "INTERNAL_ERROR",
+                    common["normalized_public_locus"],
+                    common["public_rule_id"],
+                    infrastructure_incident_id="incident-projection-root",
+                ),
+            }
+        )
+        self.assertEqual(valid["point_count"], 1)
+
+        with self.assertRaises(ProjectionError):
+            rebuild({**common, "failure_family_root": digest_for("forged-root")})
+        with self.assertRaises(ProjectionError):
+            rebuild({key: value for key, value in {**common, "failure_family_root": exact}.items() if key != "public_rule_id"})
+        incident = "incident-projection-root"
+        internal_root = failure_family_root(
+            common["task_family"],
+            "INTERNAL_ERROR",
+            common["normalized_public_locus"],
+            common["public_rule_id"],
+            infrastructure_incident_id=incident,
+        )
+        with self.assertRaises(ProjectionError):
+            rebuild(
+                {
+                    **common,
+                    "diagnostic_enum": "INTERNAL_ERROR",
+                    "infrastructure_incident_id": incident,
+                }
+            )
+        with self.assertRaises(ProjectionError):
+            rebuild(
+                {
+                    **common,
+                    "diagnostic_enum": "INTERNAL_ERROR",
+                    "infrastructure_incident_id": incident,
+                    "failure_family_root": digest_for(
+                        [
+                            common["task_family"],
+                            "INTERNAL_ERROR",
+                            common["normalized_public_locus"],
+                            common["public_rule_id"],
+                        ]
+                    ),
+                }
+            )
+        root_for_a = failure_family_root(
+            common["task_family"],
+            "INTERNAL_ERROR",
+            common["normalized_public_locus"],
+            common["public_rule_id"],
+            infrastructure_incident_id="incident-a",
+        )
+        with self.assertRaises(ProjectionError):
+            rebuild(
+                {
+                    **common,
+                    "diagnostic_enum": "INTERNAL_ERROR",
+                    "infrastructure_incident_id": "incident-b",
+                    "failure_family_root": root_for_a,
+                }
+            )
+        internal = rebuild(
+            {
+                **common,
+                "diagnostic_enum": "INTERNAL_ERROR",
+                "infrastructure_incident_id": incident,
+                "failure_family_root": internal_root,
+            }
+        )
+        self.assertEqual(internal["point_count"], 1)
+
+    def test_ingest_receipt_nested_payload_is_rebuilt_and_root_checked(self) -> None:
+        self.add_campaign_run_candidate()
+        signer = ReceiptSigner(b"\x2a" * 32)
+        incident = "incident-nested-projection"
+        root = failure_family_root(
+            "PURE_FUNCTION",
+            "INTERNAL_ERROR",
+            "module:solve",
+            "rule-projection",
+            infrastructure_incident_id=incident,
+        )
+        receipt = signer.sign_receipt(
+            {
+                "receipt_type": "VERDICT",
+                "campaign_id": "campaign-1",
+                "run_id": "run-1",
+                "task_id": "task-1",
+                "candidate_id": "candidate-1",
+                "request_id": "request-nested-projection",
+                "candidate_artifact_digest": digest_for("artifact"),
+                "protocol_digest": digest_for("protocol"),
+                "policy_digest": digest_for("policy"),
+                "evaluator_digest": digest_for("evaluator"),
+                "task_family": "PURE_FUNCTION",
+                "diagnostic_enum": "INTERNAL_ERROR",
+                "normalized_public_locus": "module:solve",
+                "public_rule_id": "rule-projection",
+                "infrastructure_incident_id": incident,
+                "failure_family_root": root,
+                "decision": "ERROR",
+                "resource_bucket": "UNDER_25",
+                "exit_status_class": "INFRASTRUCTURE_LOSS",
+            },
+            sequence=1,
+            previous_receipt_hash=GENESIS_HASH,
+            idempotency_key="nested-projection",
+        )
+        event = self.ledger.ingest_receipt(receipt, signer.public_key)
+        projection = InMemoryProjection(collection_name="nested-receipt-projection")
+        manifest_one = projection.rebuild(
+            self.ledger,
+            lambda payload: [1.0, float(len(payload.get("diagnostic_enum", "")))],
+            embedding_model_revision="embed-v1",
+            campaign_id="campaign-1",
+        )
+        manifest_two = projection.rebuild(
+            self.ledger,
+            lambda payload: [1.0, float(len(payload.get("diagnostic_enum", "")))],
+            embedding_model_revision="embed-v1",
+            campaign_id="campaign-1",
+        )
+        self.assertEqual(manifest_one, manifest_two)
+        receipt_points = [
+            point for point in projection.points.values() if point.payload["source_event_id"] == event["event_id"]
+        ]
+        self.assertEqual(len(receipt_points), 1)
+        self.assertEqual(receipt_points[0].payload["failure_family_root"], root)
+
+        dummy_wrapper_event = self.ledger.append_event(
+            "RECEIPT",
+            {"receipt": receipt, "receipt_hash": digest_for("wrapper"), "failure_family_root": digest_for("dummy")},
+            campaign_id="campaign-1",
+            run_id="run-1",
+            task_id="task-1",
+            subject_id="candidate-1",
+        )
+        rebuilt = projection.rebuild(
+            self.ledger,
+            lambda payload: [1.0, float(len(payload.get("diagnostic_enum", "")))],
+            embedding_model_revision="embed-v1",
+            campaign_id="campaign-1",
+        )
+        self.assertEqual(rebuilt["point_count"], manifest_one["point_count"] + 1)
+        dummy_point_id = content_id(
+            "point",
+            {
+                "event_id": dummy_wrapper_event["event_id"],
+                "payload_hash": dummy_wrapper_event["payload_hash"],
+                "embedding_model_revision": "embed-v1",
+            },
+        )
+        self.assertEqual(projection.get(dummy_point_id).payload["failure_family_root"], root)
+
+        forged_nested = dict(receipt, failure_family_root=digest_for("dummy-nested-root"))
+        self.ledger.append_event(
+            "RECEIPT",
+            {"receipt": forged_nested, "receipt_hash": digest_for("forged-wrapper")},
+            campaign_id="campaign-1",
+            run_id="run-1",
+            task_id="task-1",
+            subject_id="candidate-1",
+        )
+        with self.assertRaises(ProjectionError):
+            projection.rebuild(
+                self.ledger,
+                lambda payload: [1.0, float(len(payload.get("diagnostic_enum", "")))],
+                embedding_model_revision="embed-v1",
+                campaign_id="campaign-1",
+            )
 
     def test_qdrant_is_explicitly_optional(self) -> None:
         if qdrant_available():

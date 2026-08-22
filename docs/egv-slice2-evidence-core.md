@@ -58,6 +58,9 @@ paths, and private topology are not public fields.
 ```text
 python -m egv smoke --json
 python -m egv smoke --json --two-process
+python -m egv evaluation freeze --output <new-empty-directory>
+python -m egv evaluation smoke --json
+python -m egv evaluation smoke --json --output <new-empty-directory>
 python -m egv status --ledger ledger.sqlite
 python -m egv export --ledger ledger.sqlite --output ledger.jsonl
 python -m egv replay --input ledger.jsonl --output replay.sqlite --json

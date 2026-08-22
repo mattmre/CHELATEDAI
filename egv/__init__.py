@@ -44,6 +44,22 @@ from .projection import (
 )
 from .receipts import ReceiptJournal, ReceiptSigner, receipt_hash, verify_receipt
 from .pilot import run_two_process_smoke
+from .evaluation import (
+    DIAGNOSTIC_ENUM,
+    PROMPT_IDS,
+    SFT_SCHEMA_VERSION,
+    AuthorityBroker,
+    AuthorityPolicy,
+    DockerCandidateSandbox,
+    DockerEnforcedRuntime,
+    CorrectionShockSuite,
+    EvaluationController,
+    EvaluationCorpus,
+    LocalEnforcedRuntime,
+    PromptRegistry,
+    run_evaluation_smoke,
+    run_evaluation_two_process_smoke,
+)
 from .public import (
     PublicCryptographicVerifier,
     PublicEventChain,
@@ -60,6 +76,14 @@ from .public import (
 
 __all__ = [
     "EvidenceLedger",
+    "AuthorityBroker",
+    "AuthorityPolicy",
+    "DockerCandidateSandbox",
+    "DockerEnforcedRuntime",
+    "CorrectionShockSuite",
+    "DIAGNOSTIC_ENUM",
+    "EvaluationController",
+    "EvaluationCorpus",
     "AppendOnlyViolation",
     "CanonicalizationError",
     "DependencyCycleError",
@@ -71,6 +95,7 @@ __all__ = [
     "LedgerBusyError",
     "LedgerError",
     "LedgerReadOnlyError",
+    "LocalEnforcedRuntime",
     "PublicCryptographicVerifier",
     "PublicEventChain",
     "PublicProjection",
@@ -85,6 +110,7 @@ __all__ = [
     "ReceiptError",
     "ReceiptSigner",
     "ReceiptVerificationError",
+    "SFT_SCHEMA_VERSION",
     "SingleWriterLedger",
     "build_public_event",
     "build_public_receipt_envelope",
@@ -106,10 +132,14 @@ __all__ = [
     "qdrant_available",
     "receipt_hash",
     "run_two_process_smoke",
+    "run_evaluation_smoke",
+    "run_evaluation_two_process_smoke",
     "sha256_digest",
     "OptionalDependencyError",
     "PhaseUnavailable",
     "ProjectionError",
+    "PROMPT_IDS",
+    "PromptRegistry",
     "UnknownReferenceError",
     "verify_receipt",
 ]

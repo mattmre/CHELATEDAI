@@ -6,11 +6,14 @@ This runbook defines how operators will stage, run, resume, and close the
 Evidence-Governed Variation (EGV) campaign described in
 [ADR-0001](../architecture/adr-0001-evidence-governed-variation-agent.md).
 
-> **Current Slice 2 status:** The bounded evidence-core floor is runnable in this
-> branch. Its smoke uses a deterministic synthetic fixture, an in-memory
-> projection, and CPU-only trainer/evaluator IPC; it does not exercise the real
-> campaign, Qdrant, service control, DeepSeek, or hosted models. Treat command
-> output as runtime evidence only when the output names its tier and limits.
+> **Current Slice 2 + Evaluation status:** The bounded evidence-core floor and
+> the complete CPU-only Evaluation slice are runnable in this branch. The
+> Evaluation smoke freezes 36 deterministic split-disjoint micro-repositories,
+> runs a hidden held-out comparator through the pinned Docker isolation adapter,
+> and exercises spawned trainer/evaluator IPC. It does not exercise the real
+> campaign, Qdrant campaign projection, service control, DeepSeek, hosted
+> models, or dual-Spark infrastructure. Treat command output as runtime
+> evidence only when it names its tier, Docker limits, and gaps.
 
 The runbook intentionally contains no host addresses, local usernames,
 passwords, tokens, private keys, or private workspace paths. Operators provide
@@ -67,6 +70,8 @@ python -m egv replay
 python -m egv verify-public
 python -m egv smoke --json
 python -m egv smoke --json --two-process
+python -m egv evaluation freeze --output <new-empty-output-directory>
+python -m egv evaluation smoke --json
 ```
 
 `status` reads an authoritative ledger, `export` writes deterministic ledger
@@ -79,8 +84,43 @@ unsealed provisional projection.
 The smoke commands are the only bounded execution paths in this slice.
 `--two-process` starts the local CPU-only trainer/evaluator fixture and proves
 that the evaluator can use only the `ingest_receipt` IPC method while the
-trainer remains the single SQLite writer. These commands use synthetic,
-deterministic evidence and do not authorize a dual-Spark campaign.
+trainer remains the single SQLite writer. Evaluator startup installs an
+immutable `sqlite3.connect` audit denial; the production evaluator attempts
+to construct an `EvidenceLedger` and records the real denial, without a
+ledger path or lock file. These commands use synthetic, deterministic
+evidence and do not authorize a dual-Spark campaign.
+`evaluation freeze` creates separate `frozen/`, `trainer/`, `public/`, and
+`evaluator-private/` views. The public frozen view contains only the closed
+summary, prompt manifest, and protocol; the complete data manifest, evaluator-only seed, held-out
+expected outputs, golden patches, and generated candidate source stay in the
+evaluator-private view. The root artifact manifest lists only publishable
+frozen/trainer/public files and is scanned after finalization. `evaluation smoke`
+reports the literal `ceiling-docker-evaluation-fixture` tier and its
+no-model/no-network limitations. Production candidate isolation is Docker
+only: cached pinned image, network none, read-only root, cap-drop ALL,
+no-new-privileges, uid/gid 65534, pids 64, memory 128m, and bounded noexec
+tmpfs. `RESOURCE_BOUND` held-out tasks use a frozen 64m cgroup ceiling and
+report `RESOURCE_LIMIT` with `LIMIT_REACHED` on an actual OOM kill. Candidate
+execution has a frozen 2-second timeout and 65,536-byte stdout ceiling; an
+output-cap result uses the distinct closed `OUTPUT_LIMIT` status/bucket. The
+Docker seccomp profile is deny-default and the post-load candidate filter
+explicitly denies filesystem mutation, process/network escape, memfd,
+`userfaultfd`, and `bpf`. No logical port or network listener is opened. Its
+The controller also requires the production `pure-return-v1` AST
+admission/decision precondition before Docker execution. Docker return code,
+stdout, and probe output are untrusted evidence; Docker does not authenticate
+candidate results. The evaluator-private hidden oracle is the decision
+authority after that precondition. Its two-process proof
+is a bounded local CPU fixture, not a claim that either Spark is available.
+The runner parent authenticates filter setup before candidate execution;
+candidate-controlled `os._exit(1)`, `os._exit(44)`, `SystemExit`, and unknown
+nonzero statuses are bounded candidate failures. Exit 44 and
+`INFRASTRUCTURE_LOSS` are reserved for a host-verified runner filter/setup
+sentinel. Every `INTERNAL_ERROR` receipt carries the canonical task-family,
+locus, and rule fields plus the exact incident-bound failure-family root.
+The local AST/subprocess helper is test-only and never counts as an enforcement
+backend. If the configured Docker image or pinned ID is absent/mismatched, the
+Evaluation path fails closed; it never pulls an image.
 
 The following later mutating, service-control, packaging, and model phases are
 recognized only so they fail closed with a nonzero `PhaseUnavailable` result;

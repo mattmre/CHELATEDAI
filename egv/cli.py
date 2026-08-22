@@ -10,6 +10,8 @@ import tempfile
 from typing import Any, Dict, Mapping, Optional, Sequence
 
 from .canonical import canonical_json, digest_for
+from .evaluation.artifacts import freeze_evaluation
+from .evaluation.smoke import run_evaluation_smoke
 from .errors import EGVError, PhaseUnavailable
 from .ledger import EvidenceLedger
 from .projection import InMemoryProjection
@@ -377,7 +379,7 @@ def _json_output(value: Any, as_json: bool) -> None:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Evidence-Governed Variation Slice 2 evidence core")
+    parser = argparse.ArgumentParser(description="Evidence-Governed Variation Slice 2 evidence core and Evaluation slice")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     smoke = subparsers.add_parser("smoke", help="run the deterministic evidence-core floor smoke")
@@ -412,6 +414,17 @@ def build_parser() -> argparse.ArgumentParser:
     verify.add_argument("--evaluator-digest")
     verify.add_argument("--allow-provisional", action="store_true")
     verify.add_argument("--json", action="store_true", dest="as_json")
+
+    evaluation = subparsers.add_parser("evaluation", help="run the bounded CPU-only Evaluation slice")
+    evaluation_subparsers = evaluation.add_subparsers(dest="evaluation_command", required=True)
+    evaluation_freeze = evaluation_subparsers.add_parser(
+        "freeze", help="materialize deterministic trainer, public, and evaluator-private artifacts"
+    )
+    evaluation_freeze.add_argument("--output", required=True, type=Path)
+    evaluation_freeze.add_argument("--json", action="store_true", dest="as_json")
+    evaluation_smoke = evaluation_subparsers.add_parser("smoke", help="run the CPU-only Evaluation production smoke")
+    evaluation_smoke.add_argument("--output", type=Path)
+    evaluation_smoke.add_argument("--json", action="store_true", dest="as_json")
 
     for phase in sorted(SLICE2_PHASES):
         phase_parser = subparsers.add_parser(phase, help=f"{phase} (outside Slice 2; fails closed)")
@@ -471,6 +484,15 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             )
             _json_output(report.to_dict(), args.as_json)
             return 0
+        if args.command == "evaluation":
+            if args.evaluation_command == "freeze":
+                report = freeze_evaluation(args.output)
+                _json_output(report.to_dict(), args.as_json)
+                return 0
+            if args.evaluation_command == "smoke":
+                _json_output(run_evaluation_smoke(args.output), args.as_json)
+                return 0
+            raise EGVError("unsupported evaluation command: {}".format(args.evaluation_command))
         if args.command in SLICE2_PHASES:
             raise PhaseUnavailable(
                 f"{args.command} is outside Slice 2 evidence core; no services, credentials, hidden tests, "
