@@ -26,6 +26,7 @@ from .public import (
 )
 from .pilot import run_two_process_smoke
 from .receipts import ReceiptSigner
+from .training import run_training_smoke
 from .variation import PinnedModelLoader, run_variation_smoke
 
 
@@ -36,7 +37,6 @@ SLICE2_PHASES = {
     "stage",
     "freeze",
     "generate-trajectories",
-    "train-lora",
     "evaluate",
     "redact-and-package",
     "restore-services",
@@ -443,6 +443,19 @@ def build_parser() -> argparse.ArgumentParser:
     model_preflight.add_argument("--manifest", type=Path)
     model_preflight.add_argument("--json", action="store_true", dest="as_json")
 
+    training = subparsers.add_parser("training", help="run the bounded EGV Training runtime")
+    training_subparsers = training.add_subparsers(dest="training_command", required=True)
+    training_smoke = training_subparsers.add_parser(
+        "smoke", help="run the CPU-only Training fixture smoke without a Qwen or promotion claim"
+    )
+    training_smoke.add_argument("--json", action="store_true", dest="as_json")
+    training_contract = subparsers.add_parser(
+        "train-lora", help="validate the production LoRA training contract; execution is fail-closed"
+    )
+    training_contract.add_argument("--model-root", required=True, type=Path)
+    training_contract.add_argument("--train-manifest", required=True, type=Path)
+    training_contract.add_argument("--development-manifest", required=True, type=Path)
+
     for phase in sorted(SLICE2_PHASES):
         phase_parser = subparsers.add_parser(phase, help=f"{phase} (outside Slice 2; fails closed)")
         phase_parser.add_argument("--campaign-id")
@@ -519,6 +532,17 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 _json_output(loader.preflight(), args.as_json)
                 return 0
             raise EGVError("unsupported variation command: {}".format(args.variation_command))
+        if args.command == "training":
+            if args.training_command == "smoke":
+                _json_output(run_training_smoke(), args.as_json)
+                return 0
+            raise EGVError("unsupported training command: {}".format(args.training_command))
+        if args.command == "train-lora":
+            raise PhaseUnavailable(
+                "train-lora production contract fail closed: it requires a sealed pinned Qwen model, sealed train data, "
+                "an evaluator-owned DevelopmentLossGateway, Python >=3.10, and PEFT; the CPU fixture does not claim "
+                "real Qwen execution or promotion"
+            )
         if args.command in SLICE2_PHASES:
             raise PhaseUnavailable(
                 f"{args.command} is outside Slice 2 evidence core; no services, credentials, hidden tests, "
