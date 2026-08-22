@@ -88,6 +88,11 @@ and emits the exact `egv-sealed-training-runtime-input-v1` artifact consumed by
 
 ## Initial go/no-go sequence
 
+The current sanitized live-pilot result and its evidence boundary are recorded
+in [EGV live pilot evidence — 2026-08-22](egv-live-pilot-evidence-2026-08-22.md).
+The first full model-reach attempt failed closed at the candidate-JSON contract,
+so the sequence below has not advanced past step 2.
+
 1. Verify the corrected remote gateway's persistent idempotency and receipt
    chain state.
 2. Run one Arm B request and verify its journal, checkpoint, sidecar, ledger,
