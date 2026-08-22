@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, Mapping, Sequence, Tuple
 
 from ..canonical import content_id, digest_for, validate_sha256
+from ..identities import commissioning_run_id
 from ..receipts import verify_receipt
 from ..variation.arms import arm_policy
 
@@ -109,9 +110,11 @@ class GenerationRequest:
         payload = {
             "schema_version": REQUEST_SCHEMA,
             "campaign_id": campaign_id,
-            "run_id": content_id(
-                "run",
-                {"campaign_id": campaign_id, "task_id": task_record["template_id"], "arm_id": arm_id, "seed": seed},
+            "run_id": commissioning_run_id(
+                campaign_id=campaign_id,
+                task_id=task_record["template_id"],
+                arm_id=arm_id,
+                seed=seed,
             ),
             "task_id": task_record["template_id"],
             "task_family": task_record["family_id"],
@@ -382,5 +385,5 @@ def reconcile_responses(
 __all__ = [
     "ACCEPTED_EVIDENCE_SCHEMA", "COMMISSIONING_ARMS", "COMMISSIONING_SEEDS",
     "CommissioningTrajectoryError", "GenerationRequest", "GenerationResponse", "REQUEST_SCHEMA",
-    "RESPONSE_SCHEMA", "reconcile_responses", "validate_accepted_response",
+    "RESPONSE_SCHEMA", "commissioning_run_id", "reconcile_responses", "validate_accepted_response",
 ]

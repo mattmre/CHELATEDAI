@@ -64,6 +64,7 @@ from .remote import (
     build_remote_evaluator_service_manifest,
     run_remote_evaluator_once,
 )
+from .private import PRIVATE_TRAJECTORY_SCHEMA, PrivateTrajectoryStore
 
 
 __all__ = [
@@ -98,6 +99,8 @@ __all__ = [
     "OrdinaryFailureRetrieval",
     "PinnedModelLoader",
     "PinnedModelManifest",
+    "PRIVATE_TRAJECTORY_SCHEMA",
+    "PrivateTrajectoryStore",
     "RETRIEVAL_POLICIES",
     "REMOTE_VARIATION_REQUEST_SCHEMA",
     "REMOTE_VARIATION_RESPONSE_SCHEMA",
