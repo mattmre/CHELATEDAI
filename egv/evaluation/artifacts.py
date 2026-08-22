@@ -37,20 +37,29 @@ class ContentAddressedArtifactStore:
         digest = digest_bytes(data)
         relative = Path("blobs") / "sha256" / digest[:2] / digest[2:4] / digest
         target = self.root / relative
-        target.parent.mkdir(parents=True, exist_ok=True)
-        if target.exists() and target.read_bytes() != data:
+        native_target = self._native_path(target)
+        native_target.parent.mkdir(parents=True, exist_ok=True)
+        if native_target.exists() and native_target.read_bytes() != data:
             raise ArtifactError("content-addressed artifact path already contains different bytes")
-        if not target.exists():
-            temporary = target.with_name(target.name + ".tmp")
+        if not native_target.exists():
+            temporary = native_target.with_name(native_target.name + ".tmp")
             temporary.write_bytes(data)
-            os.replace(str(temporary), str(target))
-            target.chmod(0o444)
+            os.replace(str(temporary), str(native_target))
+            native_target.chmod(0o444)
         return ArtifactRef(digest, len(data), relative.as_posix(), media_type, role)
+
+    @staticmethod
+    def _native_path(path: Path) -> Path:
+        if os.name == "nt":
+            resolved = str(path.resolve())
+            if not resolved.startswith("\\\\?\\"):
+                return Path("\\\\?\\" + resolved)
+        return path
 
     def read(self, digest: str) -> bytes:
         if not re.fullmatch(r"[0-9a-f]{64}", digest):
             raise ArtifactError("artifact digest must be a lowercase SHA-256 value")
-        path = self.root / "blobs" / "sha256" / digest[:2] / digest[2:4] / digest
+        path = self._native_path(self.root / "blobs" / "sha256" / digest[:2] / digest[2:4] / digest)
         if not path.exists():
             raise ArtifactError("content-addressed artifact is missing")
         data = path.read_bytes()

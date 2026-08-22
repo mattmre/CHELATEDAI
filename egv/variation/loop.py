@@ -25,6 +25,7 @@ from .errors import VariationBudgetError, VariationCheckpointError, VariationCon
 from .generator import CandidateContext, CandidateGenerator, CandidateProposal, ModelCandidateGenerator
 from .model import ADAPTER_ATTESTATION_SCHEMA, AdapterApplicationAttestation, MODEL_REVISION
 from .retrieval import EvidenceRetrievalPolicy, RetrievalResult, retrieval_policy
+from .remote import RemoteControllerEvaluationGateway
 
 
 _ORIGINAL_DOCKER_SANDBOX_EXECUTE = DockerCandidateSandbox.execute
@@ -163,6 +164,7 @@ class ControllerEvaluationGateway:
             raise VariationDependencyError("Variation production Docker sandbox failed integrity validation") from exc
         self.controller = controller
         self.hidden_runner = controller.hidden_runner
+        self.task_registry = self.hidden_runner
         self.sandbox = controller.sandbox
         self._pinned_controller = controller
         self._pinned_hidden_runner = controller.hidden_runner
@@ -496,12 +498,20 @@ class BoundedCandidateLoop:
             _validate_model_generator_identity(generator)
         if getattr(generator, "test_only", False) and not fixture_mode:
             raise VariationDependencyError("test-only candidate generators cannot enter the production Variation path")
-        if not fixture_mode and not isinstance(evaluator, ControllerEvaluationGateway):
-            raise VariationDependencyError("production Variation requires ControllerEvaluationGateway")
+        if not fixture_mode and type(evaluator) not in {ControllerEvaluationGateway, RemoteControllerEvaluationGateway}:
+            raise VariationDependencyError("production Variation requires an exact sealed Evaluation gateway")
         if not fixture_mode and type(generator) is not ModelCandidateGenerator:
             raise VariationDependencyError("production Variation requires the exact ModelCandidateGenerator")
         if not getattr(evaluator, "enforceable", False) and not fixture_mode:
             raise VariationDependencyError("non-enforceable evaluators are test-only and cannot run Variation")
+        if type(evaluator) is RemoteControllerEvaluationGateway:
+            evaluator.validate_campaign_bindings(
+                campaign_id=campaign_id,
+                model_digest=model_digest,
+                protocol_digest=VARIATION_PROTOCOL_DIGEST,
+                policy_digest=policy_digest,
+                data_manifest_digest=data_manifest_digest,
+            )
         self._validate_construction_boundary()
         _register_runtime_identity(
             self,
@@ -557,14 +567,15 @@ class BoundedCandidateLoop:
         if self.fixture_mode is not False:
             raise VariationDependencyError("production Variation cannot carry fixture mode")
         _validate_model_generator_identity(self.generator)
-        if not isinstance(self.evaluator, ControllerEvaluationGateway):
-            raise VariationDependencyError("production Variation requires ControllerEvaluationGateway")
-        if "validate_runtime" in self.evaluator.__dict__ or "evaluate" in self.evaluator.__dict__:
-            raise VariationDependencyError("production evaluator methods cannot be overridden")
-        if type(self.evaluator).validate_runtime is not _ORIGINAL_GATEWAY_VALIDATE_RUNTIME:
-            raise VariationDependencyError("production evaluator runtime validation method was altered")
-        if type(self.evaluator).evaluate is not _ORIGINAL_GATEWAY_EVALUATE:
-            raise VariationDependencyError("production evaluator evaluate method was altered")
+        if type(self.evaluator) not in {ControllerEvaluationGateway, RemoteControllerEvaluationGateway}:
+            raise VariationDependencyError("production Variation requires an exact sealed Evaluation gateway")
+        if type(self.evaluator) is ControllerEvaluationGateway:
+            if "validate_runtime" in self.evaluator.__dict__ or "evaluate" in self.evaluator.__dict__:
+                raise VariationDependencyError("production evaluator methods cannot be overridden")
+            if type(self.evaluator).validate_runtime is not _ORIGINAL_GATEWAY_VALIDATE_RUNTIME:
+                raise VariationDependencyError("production evaluator runtime validation method was altered")
+            if type(self.evaluator).evaluate is not _ORIGINAL_GATEWAY_EVALUATE:
+                raise VariationDependencyError("production evaluator evaluate method was altered")
         self.evaluator.validate_runtime()
 
     def _validate_fixture_boundary(self) -> None:
@@ -602,8 +613,8 @@ class BoundedCandidateLoop:
         )
 
     def _validate_task_binding(self, task: VariationTask) -> None:
-        hidden_runner = getattr(self.evaluator, "hidden_runner", None)
-        public_record = hidden_runner.public_record(task.task_id) if hidden_runner is not None else None
+        registry = getattr(self.evaluator, "task_registry", getattr(self.evaluator, "hidden_runner", None))
+        public_record = registry.public_record(task.task_id) if registry is not None else None
         if not isinstance(public_record, Mapping):
             raise VariationConfigurationError("Variation task is not present in the immutable Evaluation manifest")
         expected = {

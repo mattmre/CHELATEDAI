@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import replace
-import os
 from pathlib import Path
 import tempfile
 import unittest
@@ -94,7 +93,7 @@ class TrainingDatasetTestCase(unittest.TestCase):
             {
                 item.template_id: (
                     item.evaluator_input,
-                    canonical_bytes(item.expected_output) + (b"\r\n" if os.name == "nt" else b"\n"),
+                    canonical_bytes(item.expected_output) + b"\n",
                     item.hidden_spec.get("resource_limit"),
                 )
                 for item in self.corpus.repositories

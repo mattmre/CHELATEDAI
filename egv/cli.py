@@ -27,7 +27,13 @@ from .public import (
 from .pilot import run_two_process_smoke
 from .receipts import ReceiptSigner
 from .training import run_external_evaluator_once, run_production_training, run_training_smoke
-from .variation import PinnedModelLoader, run_variation_smoke
+from .variation import (
+    PinnedModelLoader,
+    VARIATION_PROTOCOL_DIGEST,
+    build_remote_evaluator_service_manifest,
+    run_remote_evaluator_once,
+    run_variation_smoke,
+)
 
 
 SLICE2_PHASES = {
@@ -442,6 +448,23 @@ def build_parser() -> argparse.ArgumentParser:
     model_preflight.add_argument("--model-root", required=True, type=Path)
     model_preflight.add_argument("--manifest", type=Path)
     model_preflight.add_argument("--json", action="store_true", dest="as_json")
+    variation_evaluator_once = variation_subparsers.add_parser(
+        "evaluator-once", help="run one independent Docker-backed Variation evaluation from stdin"
+    )
+    variation_evaluator_once.add_argument("--service-manifest", required=True, type=Path)
+    variation_evaluator_once.add_argument("--evaluator-seed", required=True, type=Path)
+    variation_evaluator_once.add_argument("--private-key", required=True, type=Path)
+    variation_evaluator_once.add_argument("--workspace", required=True, type=Path)
+    variation_service_freeze = variation_subparsers.add_parser(
+        "freeze-evaluator-service", help="freeze a path-free independent evaluator service manifest"
+    )
+    variation_service_freeze.add_argument("--campaign-id", required=True)
+    variation_service_freeze.add_argument("--model-digest", required=True)
+    variation_service_freeze.add_argument("--evaluator-revision", required=True)
+    variation_service_freeze.add_argument("--evaluator-seed", required=True, type=Path)
+    variation_service_freeze.add_argument("--public-key", required=True, type=Path)
+    variation_service_freeze.add_argument("--command", required=True, type=Path)
+    variation_service_freeze.add_argument("--output", required=True, type=Path)
 
     training = subparsers.add_parser("training", help="run the bounded EGV Training runtime")
     training_subparsers = training.add_subparsers(dest="training_command", required=True)
@@ -543,6 +566,48 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             if args.variation_command == "model-preflight":
                 loader = PinnedModelLoader(args.model_root, manifest_path=args.manifest)
                 _json_output(loader.preflight(), args.as_json)
+                return 0
+            if args.variation_command == "evaluator-once":
+                try:
+                    request = json.loads(sys.stdin.read())
+                except ValueError as exc:
+                    raise EGVError("remote Variation evaluator request is not valid JSON") from exc
+                response = run_remote_evaluator_once(
+                    request,
+                    service_manifest=args.service_manifest,
+                    evaluator_seed=args.evaluator_seed,
+                    evaluator_private_key=args.private_key,
+                    workspace=args.workspace,
+                )
+                print(canonical_json(response))
+                return 0
+            if args.variation_command == "freeze-evaluator-service":
+                from .evaluation.authority import AuthorityPolicy
+                from .evaluation.dataset import EvaluationCorpus
+                from .evaluation.sandbox import DockerSandboxConfig
+
+                corpus = EvaluationCorpus.generate(secret_seed_file=args.evaluator_seed)
+                manifest = build_remote_evaluator_service_manifest(
+                    campaign_id=args.campaign_id,
+                    model_digest=args.model_digest,
+                    protocol_digest=VARIATION_PROTOCOL_DIGEST,
+                    policy_digest=AuthorityPolicy.candidate_execution().digest,
+                    corpus=corpus,
+                    evaluator_revision=args.evaluator_revision,
+                    public_key_path=args.public_key,
+                    command=args.command,
+                    docker_config=DockerSandboxConfig.from_environment(),
+                )
+                args.output.parent.mkdir(parents=True, exist_ok=True)
+                args.output.write_text(canonical_json(manifest) + "\n", encoding="utf-8")
+                _json_output(
+                    {
+                        "service_manifest": str(args.output),
+                        "service_manifest_digest": manifest["service_manifest_digest"],
+                        "task_count": len(manifest["task_bindings"]),
+                    },
+                    True,
+                )
                 return 0
             raise EGVError("unsupported variation command: {}".format(args.variation_command))
         if args.command == "training":
