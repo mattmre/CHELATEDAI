@@ -112,9 +112,12 @@ def _b64_decode(value: Any, field: str = "signature") -> bytes:
         raise ReceiptVerificationError(f"{field} must be a non-empty base64url string")
     padded = value + "=" * (-len(value) % 4)
     try:
-        return base64.urlsafe_b64decode(padded.encode("ascii"))
+        decoded = base64.b64decode(padded.encode("ascii"), altchars=b"-_", validate=True)
     except (ValueError, UnicodeError) as exc:
         raise ReceiptVerificationError(f"{field} is not valid base64url") from exc
+    if len(decoded) != 64 or _b64_encode(decoded) != value:
+        raise ReceiptVerificationError(f"{field} is not canonical Ed25519 base64url")
+    return decoded
 
 
 def public_key_bytes(public_key: Any) -> bytes:

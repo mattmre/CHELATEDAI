@@ -503,6 +503,13 @@ class TestReceiptsAndJournal(LedgerTestCase):
             idempotency_key="internal-valid",
         )
         self.assertEqual(verify_receipt(valid, signer.public_key), receipt_hash(valid))
+        noncanonical = dict(valid)
+        tail_alias = {"A": "B", "Q": "R", "g": "h", "w": "x"}
+        noncanonical["signature"] = (
+            noncanonical["signature"][:-1] + tail_alias[noncanonical["signature"][-1]]
+        )
+        with self.assertRaisesRegex(ReceiptVerificationError, "canonical"):
+            verify_receipt(noncanonical, signer.public_key)
 
     def test_public_internal_receipts_require_incident_and_bound_failure_root(self) -> None:
         signer = ReceiptSigner(b"\x0c" * 32)

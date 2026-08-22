@@ -18,6 +18,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from types import MappingProxyType
 from typing import Any, Callable, Dict, Mapping, Sequence
 
 from ..canonical import GENESIS_HASH, canonical_bytes, canonical_json, collection_digest, content_id, digest_for, validate_sha256
@@ -732,16 +733,28 @@ class ExternalDevelopmentLossGateway:
         transfer_bytes = paths[3].read_bytes()
         if hashlib.sha256(transfer_bytes).hexdigest() != value["transfer_endpoint_digest"]:
             raise TrainingIntegrityError("external adapter transfer command differs from the frozen manifest")
-        self._manifest = dict(value)
-        self._public_key = public_key
-        self._command = paths[2].resolve()
-        self._command_bytes = command_bytes
-        self._endpoint_digest = value["endpoint_digest"]
-        self._command_suffix = paths[2].suffix.lower()
-        self._transfer_command = paths[3].resolve()
-        self._transfer_command_bytes = transfer_bytes
-        self._transfer_endpoint_digest = value["transfer_endpoint_digest"]
-        self._transfer_command_suffix = paths[3].suffix.lower()
+        object.__setattr__(self, "_manifest", MappingProxyType(dict(value)))
+        object.__setattr__(self, "_public_key", public_key)
+        object.__setattr__(self, "_command", paths[2].resolve())
+        object.__setattr__(self, "_command_bytes", command_bytes)
+        object.__setattr__(self, "_endpoint_digest", value["endpoint_digest"])
+        object.__setattr__(self, "_command_suffix", paths[2].suffix.lower())
+        object.__setattr__(self, "_transfer_command", paths[3].resolve())
+        object.__setattr__(self, "_transfer_command_bytes", transfer_bytes)
+        object.__setattr__(self, "_transfer_endpoint_digest", value["transfer_endpoint_digest"])
+        object.__setattr__(self, "_transfer_command_suffix", paths[3].suffix.lower())
+        object.__setattr__(self, "_frozen_contract", digest_for({
+            "manifest": supplied,
+            "key": hashlib.sha256(public_key).hexdigest(),
+            "command": hashlib.sha256(command_bytes).hexdigest(),
+            "transfer_command": hashlib.sha256(transfer_bytes).hexdigest(),
+        }))
+        object.__setattr__(self, "_frozen", True)
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        if getattr(self, "_frozen", False):
+            raise AttributeError("ExternalDevelopmentLossGateway is immutable")
+        object.__setattr__(self, name, value)
 
     @property
     def production(self) -> bool:
@@ -770,8 +783,47 @@ class ExternalDevelopmentLossGateway:
     def validate_production_boundary(self, *, expected_model_digest: str, expected_protocol_digest: str) -> None:
         if type(self) is not ExternalDevelopmentLossGateway:
             raise TrainingDependencyError("production evaluator client type changed")
+        if any(name in self.__dict__ for name in (
+            "evaluate", "verify_evaluation", "validate_production_boundary", "_invoke_pinned", "_transfer_adapter"
+        )):
+            raise TrainingDependencyError("external evaluator methods cannot be overridden")
+        if (
+            type(self).evaluate is not _ORIGINAL_EXTERNAL_DEVELOPMENT_EVALUATE
+            or type(self).verify_evaluation is not _ORIGINAL_EXTERNAL_DEVELOPMENT_VERIFY
+            or type(self).validate_production_boundary is not _ORIGINAL_EXTERNAL_DEVELOPMENT_VALIDATE
+            or type(self)._invoke_pinned is not _ORIGINAL_EXTERNAL_DEVELOPMENT_INVOKE
+            or type(self)._transfer_adapter is not _ORIGINAL_EXTERNAL_DEVELOPMENT_TRANSFER
+        ):
+            raise TrainingDependencyError("external evaluator implementation changed")
         if self.model_digest != expected_model_digest or self.protocol_digest != expected_protocol_digest:
             raise TrainingIntegrityError("external evaluator is bound to a different model or protocol")
+        manifest = dict(self._manifest)
+        supplied = manifest.pop("service_manifest_digest", None)
+        if set(self._manifest) != self._FIELDS or supplied != digest_for(manifest):
+            raise TrainingIntegrityError("external evaluator manifest changed after construction")
+        try:
+            current_command = self._command.read_bytes()
+            current_transfer = self._transfer_command.read_bytes()
+        except OSError as exc:
+            raise TrainingIntegrityError("external evaluator frozen resources are unavailable") from exc
+        if (
+            current_command != self._command_bytes
+            or hashlib.sha256(current_command).hexdigest() != self._endpoint_digest
+            or self._endpoint_digest != self._manifest["endpoint_digest"]
+            or current_transfer != self._transfer_command_bytes
+            or hashlib.sha256(current_transfer).hexdigest() != self._transfer_endpoint_digest
+            or self._transfer_endpoint_digest != self._manifest["transfer_endpoint_digest"]
+            or hashlib.sha256(self._public_key).hexdigest() != self._manifest["evaluator_public_key_digest"]
+            or key_id_for_public_key(self._public_key) != self._manifest["evaluator_key_id"]
+        ):
+            raise TrainingIntegrityError("external evaluator frozen resources changed")
+        if digest_for({
+            "manifest": supplied,
+            "key": hashlib.sha256(self._public_key).hexdigest(),
+            "command": hashlib.sha256(current_command).hexdigest(),
+            "transfer_command": hashlib.sha256(current_transfer).hexdigest(),
+        }) != self._frozen_contract:
+            raise TrainingIntegrityError("external evaluator frozen contract changed")
 
     @staticmethod
     def _invoke_pinned(
@@ -809,6 +861,9 @@ class ExternalDevelopmentLossGateway:
     def _transfer_adapter(self, artifact: Any) -> str:
         from ..variation.adapter import ADAPTER_MANIFEST_NAME
 
+        self.validate_production_boundary(
+            expected_model_digest=self.model_digest, expected_protocol_digest=self.protocol_digest
+        )
         artifact.verify()
         root = Path(artifact.root).resolve()
         relative_paths = sorted(set(artifact.manifest.files) | {ADAPTER_MANIFEST_NAME})
@@ -948,6 +1003,9 @@ class ExternalDevelopmentLossGateway:
         self, evaluation: DevelopmentLossEvaluation, *, checkpoint: TrainingCheckpoint,
         expected_model_digest: str, expected_data_manifest_digest: str, expected_protocol_digest: str,
     ) -> None:
+        self.validate_production_boundary(
+            expected_model_digest=expected_model_digest, expected_protocol_digest=expected_protocol_digest
+        )
         if (
             evaluation.model_digest != expected_model_digest
             or evaluation.data_manifest_digest != expected_data_manifest_digest
@@ -955,6 +1013,13 @@ class ExternalDevelopmentLossGateway:
         ):
             raise TrainingIntegrityError("external development evaluation binding changed")
         verify_receipt(dict(evaluation.receipt), self._public_key, expected_key_id=self._manifest["evaluator_key_id"])
+
+
+_ORIGINAL_EXTERNAL_DEVELOPMENT_EVALUATE = ExternalDevelopmentLossGateway.evaluate
+_ORIGINAL_EXTERNAL_DEVELOPMENT_VERIFY = ExternalDevelopmentLossGateway.verify_evaluation
+_ORIGINAL_EXTERNAL_DEVELOPMENT_VALIDATE = ExternalDevelopmentLossGateway.validate_production_boundary
+_ORIGINAL_EXTERNAL_DEVELOPMENT_INVOKE = ExternalDevelopmentLossGateway._invoke_pinned
+_ORIGINAL_EXTERNAL_DEVELOPMENT_TRANSFER = ExternalDevelopmentLossGateway._transfer_adapter
 
 
 def receive_external_adapter(

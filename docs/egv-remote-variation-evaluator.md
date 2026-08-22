@@ -41,7 +41,8 @@ python -m egv variation evaluator-once \
   --service-manifest <private-service-manifest.json> \
   --evaluator-seed <private-seed-file> \
   --private-key <evaluator-private-key> \
-  --workspace <private-sandbox-workspace>
+  --workspace <private-sandbox-workspace> \
+  --state-root <private-durable-state-directory>
 ```
 
 Operational paths belong in protected evaluator configuration, not this

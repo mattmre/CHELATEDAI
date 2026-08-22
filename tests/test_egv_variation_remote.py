@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import io
 import json
 import os
 from pathlib import Path
@@ -8,8 +9,10 @@ import tempfile
 import threading
 import unittest
 from unittest.mock import patch
+from contextlib import redirect_stdout
 
 from egv.canonical import GENESIS_HASH, canonical_bytes, canonical_json, digest_bytes, digest_for
+from egv.cli import main
 from egv.campaign.trajectories import GenerationRequest, GenerationResponse, validate_accepted_response
 from egv.evaluation.authority import AuthorityPolicy
 from egv.evaluation.dataset import EvaluationCorpus
@@ -82,6 +85,56 @@ response = {**unsigned, "signature":signer.sign_bytes(canonical_bytes(unsigned))
 if mode == "tamper-result": response["result"]["candidate_artifact_digest"] = digest_for("substitute")
 print(canonical_json(response))
 '''
+
+
+class RemoteEvaluatorCLITests(unittest.TestCase):
+    def test_evaluator_once_dispatches_without_nonexistent_adapter_store_argument(self) -> None:
+        output = io.StringIO()
+        with tempfile.TemporaryDirectory() as temporary, patch(
+            "egv.cli.run_remote_evaluator_once", return_value={"status": "PASS"}
+        ) as remote, patch("sys.stdin", io.StringIO("{}")), redirect_stdout(output):
+            root = Path(temporary)
+            code = main([
+                "variation", "evaluator-once",
+                "--service-manifest", str(root / "service.json"),
+                "--evaluator-seed", str(root / "seed.bin"),
+                "--private-key", str(root / "key.bin"),
+                "--workspace", str(root / "workspace"),
+                "--state-root", str(root / "state"),
+            ])
+        self.assertEqual(code, 0)
+        self.assertEqual(json.loads(output.getvalue()), {"status": "PASS"})
+        self.assertNotIn("adapter_store", remote.call_args.kwargs)
+
+    def test_freeze_service_command_option_does_not_overwrite_top_level_dispatch(self) -> None:
+        output = io.StringIO()
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            seed = root / "seed.bin"
+            key = root / "evaluator.pub"
+            command = root / "endpoint.py"
+            destination = root / "service.json"
+            seed.write_bytes(b"S" * 32)
+            key.write_bytes(b"K" * 32)
+            command.write_text("print('endpoint')\n", encoding="utf-8")
+            frozen = {"service_manifest_digest": digest_for("service"), "task_bindings": []}
+            with patch("egv.cli.build_remote_evaluator_service_manifest", return_value=frozen) as build, patch(
+                "egv.evaluation.sandbox.DockerSandboxConfig.from_environment", return_value=object()
+            ), redirect_stdout(output):
+                code = main([
+                    "variation", "freeze-evaluator-service",
+                    "--campaign-id", "campaign-cli",
+                    "--model-digest", digest_for("model"),
+                    "--evaluator-revision", "revision-cli",
+                    "--evaluator-seed", str(seed),
+                    "--public-key", str(key),
+                    "--command", str(command),
+                    "--output", str(destination),
+                ])
+            frozen_on_disk = json.loads(destination.read_text(encoding="utf-8"))
+        self.assertEqual(code, 0)
+        self.assertEqual(build.call_args.kwargs["command"], command)
+        self.assertEqual(frozen_on_disk, frozen)
 
 
 class RemoteVariationGatewayTests(unittest.TestCase):

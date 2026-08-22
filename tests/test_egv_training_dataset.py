@@ -177,6 +177,26 @@ class TrainingDatasetTestCase(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "authoritative run"):
             self.builder(ledger).build(cutoff, [forged])
 
+    def test_complete_freeze_requires_exact_frozen_request_run_coordinates(self):
+        ledger, cutoff, private = self.build_run()
+        expected = {
+            (private.context.run_id, private.context.task_id, private.context.arm_id, private.context.seed)
+        }
+        expected.update(
+            ("frozen-run-{}".format(index), "frozen-task-{}".format(index), "B", index)
+            for index in range(79)
+        )
+        builder = TrajectoryDatasetBuilder(
+            ledger,
+            self.corpus,
+            token_counter=self.token_count,
+            receipt_public_key=self.receipt_keys[id(ledger)],
+            require_complete=True,
+            expected_runs=expected,
+        )
+        with self.assertRaisesRegex(ValueError, "exact frozen commissioning requests"):
+            builder.build(cutoff, [private])
+
     def test_rejects_prompt_retrieval_digest_substitution(self):
         ledger, cutoff, private = self.build_run()
         forged = replace(private, context=replace(private.context, retrieval_digest=digest_for("forged")))

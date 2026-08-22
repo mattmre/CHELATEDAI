@@ -428,6 +428,53 @@ class TrainingRuntimeTests(unittest.TestCase):
             gateway.validate_production_boundary(
                 expected_model_digest=self.model_digest, expected_protocol_digest=self.protocol.digest
             )
+            with self.assertRaises(AttributeError):
+                gateway._command_bytes = b"mutable endpoint"
+            gateway.__dict__["_command_bytes"] = b"mutated through instance dictionary"
+            with self.assertRaises(TrainingIntegrityError):
+                gateway.validate_production_boundary(
+                    expected_model_digest=self.model_digest, expected_protocol_digest=self.protocol.digest
+                )
+            gateway.__dict__["_command_bytes"] = command.read_bytes()
+            with self.assertRaises(TypeError):
+                gateway._manifest["model_digest"] = digest_for("substituted-model")
+            gateway.validate_production_boundary(
+                expected_model_digest=self.model_digest, expected_protocol_digest=self.protocol.digest
+            )
+            snapshot = dict(gateway.__dict__)
+            gateway.__dict__.update({
+                "_command": root / "substituted-evaluator",
+                "_command_bytes": b"substituted evaluator",
+                "_endpoint_digest": hashlib.sha256(b"substituted evaluator").hexdigest(),
+                "_transfer_command": root / "substituted-transfer",
+                "_transfer_command_bytes": b"substituted transfer",
+                "_transfer_endpoint_digest": hashlib.sha256(b"substituted transfer").hexdigest(),
+                "_public_key": ReceiptSigner.generate().public_key_raw,
+            })
+            with self.assertRaises(TrainingIntegrityError):
+                gateway.validate_production_boundary(
+                    expected_model_digest=self.model_digest, expected_protocol_digest=self.protocol.digest
+                )
+            gateway.__dict__.clear()
+            gateway.__dict__.update(snapshot)
+            gateway.__dict__["evaluate"] = lambda *_args, **_kwargs: None
+            with self.assertRaises(TrainingDependencyError):
+                gateway.validate_production_boundary(
+                    expected_model_digest=self.model_digest, expected_protocol_digest=self.protocol.digest
+                )
+            del gateway.__dict__["evaluate"]
+            original_invoke = ExternalDevelopmentLossGateway._invoke_pinned
+            try:
+                ExternalDevelopmentLossGateway._invoke_pinned = staticmethod(lambda **_kwargs: {})
+                with self.assertRaises(TrainingDependencyError):
+                    gateway.validate_production_boundary(
+                        expected_model_digest=self.model_digest, expected_protocol_digest=self.protocol.digest
+                    )
+            finally:
+                ExternalDevelopmentLossGateway._invoke_pinned = staticmethod(original_invoke)
+            gateway.validate_production_boundary(
+                expected_model_digest=self.model_digest, expected_protocol_digest=self.protocol.digest
+            )
             command.write_bytes(b"#!/bin/sh\nexit 9\n")
             with self.assertRaises(TrainingIntegrityError):
                 ExternalDevelopmentLossGateway(
@@ -530,7 +577,7 @@ class TrainingRuntimeTests(unittest.TestCase):
                 manifest_path, public_key_path=public_key, command=command, transfer_command=command
             )
             command.write_bytes(b"#!/bin/sh\nexit 7\n")
-            with self.assertRaisesRegex(TrainingIntegrityError, "changed before invocation"):
+            with self.assertRaisesRegex(TrainingIntegrityError, "frozen resources changed"):
                 gateway.evaluate(
                     self._checkpoint(), model=_AdapterStagingModel(),
                     checkpoint_artifact_digest=digest_for("foundation-checkpoint"),

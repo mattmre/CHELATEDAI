@@ -398,6 +398,10 @@ def freeze_commissioning_dataset(
             token_counter=count_tokens,
             receipt_public_key=evaluator_public_key.read_bytes(),
             require_complete=True,
+            expected_runs=(
+                (request.run_id, request.task_id, request.arm_id, request.seed)
+                for request in inputs.requests
+            ),
         ).build(cutoff, attempts)
         result = seal_runtime_dataset(dataset, output)
     return {

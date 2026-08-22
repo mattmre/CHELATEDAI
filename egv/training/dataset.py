@@ -9,7 +9,7 @@ import os
 from pathlib import Path
 import re
 import tempfile
-from typing import Any, Callable, Dict, Iterable, Mapping, Tuple
+from typing import Any, Callable, Dict, Iterable, Mapping, Optional, Tuple
 
 from ..canonical import canonical_json, content_id, digest_bytes, digest_for
 from ..evaluation.dataset import EvaluationCorpus
@@ -48,6 +48,7 @@ class TrajectoryDatasetBuilder:
         receipt_public_key: Any,
         max_input_tokens: int = MAX_TRAINING_TOKENS,
         require_complete: bool = True,
+        expected_runs: Optional[Iterable[Tuple[str, str, str, int]]] = None,
     ) -> None:
         if not callable(token_counter):
             raise TypeError("training dataset requires the pinned tokenizer's token counter")
@@ -61,6 +62,9 @@ class TrajectoryDatasetBuilder:
         self.receipt_public_key = receipt_public_key
         self.max_input_tokens = max_input_tokens
         self.require_complete = bool(require_complete)
+        self.expected_runs = None if expected_runs is None else frozenset(expected_runs)
+        if self.expected_runs is not None and len(self.expected_runs) != 80:
+            raise ValueError("commissioning training freeze requires exactly 80 frozen run coordinates")
         self.prompt_registry = PromptRegistry()
 
     @contextmanager
@@ -110,10 +114,11 @@ class TrajectoryDatasetBuilder:
 
     def _validate_campaign_surface(self, cutoff: LedgerCutoff) -> None:
         rows = self.ledger.connection.execute(
-            "SELECT arm,task_id,seed FROM runs WHERE campaign_id=? ORDER BY task_id,arm,seed",
+            "SELECT run_id,arm,task_id,seed FROM runs WHERE campaign_id=? ORDER BY task_id,arm,seed",
             (cutoff.campaign_id,),
         ).fetchall()
         seen = set()
+        seen_runs = set()
         for row in rows:
             try:
                 repo = self.corpus.get(str(row["task_id"]))
@@ -127,7 +132,10 @@ class TrajectoryDatasetBuilder:
             if key in seen:
                 raise ValueError("training cutoff contains a duplicate task/arm/seed trajectory")
             seen.add(key)
+            seen_runs.add((str(row["run_id"]), *key))
         if self.require_complete:
+            if self.expected_runs is not None and seen_runs != self.expected_runs:
+                raise ValueError("training freeze differs from the exact frozen commissioning requests")
             train_ids = {repo.template_id for repo in self.corpus.split("train")}
             seeds = {seed for _task, _arm, seed in seen}
             if len(train_ids) != 20 or len(seeds) != 2:

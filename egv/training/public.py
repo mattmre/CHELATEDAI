@@ -76,7 +76,7 @@ _FORBIDDEN = (
     re.compile(r"(?i)password|passphrase|api[_ -]?key|access[_ -]?token|refresh[_ -]?token|auth[_ -]?token|\btoken\b|bearer\s+|client[_ -]?secret|private[_ -]?key|BEGIN\s+(?:RSA|OPENSSH|EC|ED25519)"),
     re.compile(r"(?i)username|user[_ -]?name|\buser\b|hostname|host[_ -]?name|\bhost\b|machine[_ -]?(?:name|id)|node[_ -]?(?:name|id)|[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}"),
     re.compile(r"(?i)(?:[A-Z]:[\\/]|/(?:home|root|Users|tmp|var|etc|proc|run|mnt)/|\\\\[A-Za-z0-9_.-]+\\|file://|ssh://|https?://)"),
-    re.compile(r"(?i)(?:localhost|\.local\b|gba1\b|gx10[-_A-Za-z0-9]*|spark[_ -]?(?:trainer|evaluator))"),
+    re.compile(r"(?i)(?:localhost|\.local\b|(?:dgx|gx\d+)[-_A-Za-z0-9]*|spark[_ -]?(?:trainer|evaluator))"),
     re.compile(r"(?<!\d)(?:10\.(?:\d{1,3}\.){2}\d{1,3}|192\.168\.(?:\d{1,3}\.)\d{1,3}|172\.(?:1[6-9]|2\d|3[01])\.(?:\d{1,3}\.)\d{1,3}|127\.(?:\d{1,3}\.){2}\d{1,3}|169\.254\.(?:\d{1,3}\.)\d{1,3})(?!\d)"),
     re.compile(r"(?i)(?:\[?(?:fc|fd|fe80)[0-9a-f:]+\]?|(?:^|\s)(?:\d{1,3}\.){3}\d{1,3}:\d{2,5}\b|\bport\b(?:\s*[:=]\s*\d{1,5})?)"),
     re.compile(r"(?i)timestamp|started[_ -]?at|ended[_ -]?at|wall[_ -]?clock|duration|latency|throughput|tokens?[_ -]?per[_ -]?second|gpu[_ -]?(?:util|memory|temperature)|vram|cpu[_ -]?util|process[_ -]?id|\bpid\b"),

@@ -507,7 +507,7 @@ def build_parser() -> argparse.ArgumentParser:
     variation_service_freeze.add_argument("--evaluator-revision", required=True)
     variation_service_freeze.add_argument("--evaluator-seed", required=True, type=Path)
     variation_service_freeze.add_argument("--public-key", required=True, type=Path)
-    variation_service_freeze.add_argument("--command", required=True, type=Path)
+    variation_service_freeze.add_argument("--command", required=True, type=Path, dest="evaluator_command")
     variation_service_freeze.add_argument("--output", required=True, type=Path)
 
     training = subparsers.add_parser("training", help="run the bounded EGV Training runtime")
@@ -686,7 +686,6 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                     service_manifest=args.service_manifest,
                     evaluator_seed=args.evaluator_seed,
                     evaluator_private_key=args.private_key,
-                    adapter_store=args.adapter_store,
                     workspace=args.workspace,
                     state_root=args.state_root,
                 )
@@ -706,7 +705,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                     corpus=corpus,
                     evaluator_revision=args.evaluator_revision,
                     public_key_path=args.public_key,
-                    command=args.command,
+                    command=args.evaluator_command,
                     docker_config=DockerSandboxConfig.from_environment(),
                 )
                 args.output.parent.mkdir(parents=True, exist_ok=True)
