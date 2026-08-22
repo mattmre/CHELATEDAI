@@ -1045,7 +1045,18 @@ def run_remote_evaluator_once(
         raise VariationConfigurationError("remote evaluator authority policy differs from the frozen campaign")
     runtime = DockerEnforcedRuntime(config)
     sandbox = DockerCandidateSandbox(Path(workspace), config=config)
-    runner = HiddenEvaluatorRunner.from_corpus(corpus, evaluator_revision=manifest["evaluator_revision"])
+    # Construct the oracle runner from the evaluator-owned sealed corpus for
+    # exactly this public task address. HiddenEvaluatorRunner.from_corpus is the
+    # held-out campaign runner and intentionally omits TRAIN; the remote service
+    # must support TRAIN trajectories without widening that held-out API.
+    try:
+        runner = HiddenEvaluatorRunner.for_remote_task(
+            corpus,
+            repo.template_id,
+            evaluator_revision=manifest["evaluator_revision"],
+        )
+    except ValueError as exc:
+        raise VariationConfigurationError("remote evaluator could not bind its private task oracle") from exc
     sequence = request_value["receipt_sequence_start"]
     if not isinstance(sequence, int) or isinstance(sequence, bool) or sequence < 1:
         raise VariationConfigurationError("remote Variation receipt sequence anchor is invalid")

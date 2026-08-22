@@ -74,6 +74,45 @@ class HiddenEvaluatorRunner:
             resource_limits=resource_limits,
         )
 
+    @classmethod
+    def for_remote_task(
+        cls,
+        corpus: Any,
+        task_id: str,
+        *,
+        evaluator_revision: str = "egv-evaluator-v1",
+    ) -> "HiddenEvaluatorRunner":
+        """Build an evaluator-private runner for one remotely requested task.
+
+        The remote service has already regenerated and validated its sealed
+        corpus.  Resolve the public task address inside that corpus, admit only
+        TRAIN or HELDOUT, and copy only that task's private input and oracle into
+        the runner.  In particular, this does not make TRAIN data part of the
+        held-out corpus API and never admits DEV tasks to the remote evaluator.
+        """
+
+        if not isinstance(task_id, str) or not task_id:
+            raise ValueError("remote evaluator task ID is invalid")
+        try:
+            repo = corpus.get(task_id)
+        except (AttributeError, KeyError) as exc:
+            raise ValueError("remote evaluator task is absent from the sealed corpus") from exc
+        if repo.template_id != task_id or repo.split not in {"train", "heldout"}:
+            raise ValueError("remote evaluator task split is not permitted")
+        return cls(
+            {
+                task_id: (
+                    repo.evaluator_input,
+                    canonical_bytes(repo.expected_output) + b"\n",
+                    repo.hidden_spec.get("resource_limit"),
+                )
+            },
+            evaluator_revision=evaluator_revision,
+            public_loci={task_id: repo.public_locus},
+            public_records={task_id: repo.public_manifest_record()},
+            resource_limits={task_id: repo.hidden_spec.get("resource_limit")},
+        )
+
     def locus_matches(self, task_id: str, declared_locus: str) -> bool:
         return self._public_loci.get(task_id) == declared_locus
 

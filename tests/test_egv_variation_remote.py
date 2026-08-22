@@ -16,7 +16,7 @@ from egv.cli import main
 from egv.campaign.trajectories import GenerationRequest, GenerationResponse, validate_accepted_response
 from egv.evaluation.authority import AuthorityPolicy
 from egv.evaluation.dataset import EvaluationCorpus
-from egv.evaluation.sandbox import DockerSandboxConfig
+from egv.evaluation.sandbox import DockerCandidateSandbox, DockerSandboxConfig, SandboxResult
 from egv.ledger import EvidenceLedger
 from egv.receipts import ReceiptSigner, receipt_hash
 from egv.variation.errors import VariationConfigurationError, VariationDependencyError
@@ -28,7 +28,10 @@ from egv.variation.remote import (
     RemoteEvaluatorServiceManifest,
     _decode_b64,
     _durable_remote_response,
+    _encode_b64,
+    _operation_digest,
     build_remote_evaluator_service_manifest,
+    run_remote_evaluator_once,
 )
 
 
@@ -465,6 +468,116 @@ class RemoteVariationGatewayTests(unittest.TestCase):
         self.assertNotIn("evaluator-private-seed", serialized)
         self.assertEqual({task["split"] for task in manifest["task_bindings"]}, {"train", "heldout"})
         self.assertNotIn("dev", {task["split"] for task in manifest["task_bindings"]})
+
+    def test_evaluator_once_signs_real_train_controller_receipts(self) -> None:
+        # The production evaluator is a separate receipt-only process. Close
+        # this test fixture's trainer-side ledger before exercising that exact
+        # controller cohosting guard in-process.
+        self.ledger.close()
+        seed = self.root / "sealed-seed.bin"
+        private_key = self.root / "sealed-private-key.bin"
+        command = self.root / "sealed-endpoint.py"
+        manifest_path = self.root / "sealed-service.json"
+        seed.write_bytes(b"T" * 32)
+        private_key.write_bytes(self.signer.private_key_raw)
+        command.write_text("# evaluator endpoint identity\n", encoding="utf-8")
+        corpus = EvaluationCorpus.generate(secret_seed_file=seed)
+        repo = corpus.split("train")[0]
+        config = DockerSandboxConfig()
+        with patch.object(DockerSandboxConfig, "verify_image", return_value=config.pinned_image_id):
+            manifest_value = build_remote_evaluator_service_manifest(
+                campaign_id="campaign-real-train",
+                model_digest=digest_for("model-real-train"),
+                protocol_digest=VARIATION_PROTOCOL_DIGEST,
+                policy_digest=AuthorityPolicy.candidate_execution().digest,
+                corpus=corpus,
+                evaluator_revision="remote-real-train-v1",
+                public_key_path=self.key_path,
+                command=command,
+                docker_config=config,
+            )
+        manifest_path.write_text(canonical_json(manifest_value) + "\n", encoding="utf-8")
+        source = b"def main(value):\n    return value\n"
+        stable = {
+            "schema_version": "egv-remote-variation-request-v1",
+            "service_manifest_digest": manifest_value["service_manifest_digest"],
+            "campaign_id": manifest_value["campaign_id"],
+            "model_digest": manifest_value["model_digest"],
+            "protocol_digest": manifest_value["protocol_digest"],
+            "policy_digest": manifest_value["policy_digest"],
+            "run_id": "run-real-train",
+            "arm_policy_digest": arm_policy("B").digest,
+            "data_manifest_digest": manifest_value["data_manifest_digest"],
+            "task_manifest_digest": manifest_value["task_manifest_digest"],
+            "evaluator_digest": manifest_value["evaluator_digest"],
+            "docker_image_digest": manifest_value["docker_image_digest"],
+            "candidate_id": "candidate-real-train",
+            "task_id": repo.template_id,
+            "public_task_binding": repo.public_manifest_record(),
+            "candidate_artifact_digest": digest_bytes(source),
+            "candidate_source_b64": _encode_b64(source),
+            "requested_authority": "EXECUTE_CANDIDATE",
+            "declared_locus": repo.public_locus,
+        }
+        body = {
+            **stable,
+            "operation_digest": _operation_digest(stable),
+            "receipt_sequence_start": 1,
+            "previous_receipt_hash": GENESIS_HASH,
+        }
+        request = {**body, "request_digest": digest_for(body)}
+        sandbox_result = SandboxResult(
+            digest_for("sandbox-real-train"),
+            digest_bytes(source),
+            "PASS",
+            "UNDER_25",
+            canonical_bytes(repo.expected_output) + b"\n",
+            "SUCCESS",
+            1,
+            {"backend": "docker-enforced-v1", "candidate_contract": "pure-return-v1"},
+        )
+
+        def mock_verify_image(_config):
+            return config.pinned_image_id
+
+        def mock_execute(_sandbox, _source, _opaque_input, **_kwargs):
+            return sandbox_result
+
+        # Preserve the gateway's frozen-method identity checks while replacing
+        # only the Docker boundary. The controller, private oracle comparison,
+        # signing, and response validation all remain real.
+        with patch.object(DockerSandboxConfig, "from_environment", return_value=config), patch.object(
+            DockerSandboxConfig, "verify_image", mock_verify_image
+        ), patch("egv.variation.loop._ORIGINAL_DOCKER_CONFIG_VERIFY_IMAGE", mock_verify_image), patch.object(
+            # Match the sandbox's own immutable identity sentinel as well.
+            # Both sentinels still reject any uncoordinated method mutation.
+            DockerCandidateSandbox, "execute", mock_execute
+        ), patch("egv.evaluation.sandbox._ORIGINAL_CONFIG_VERIFY_IMAGE", mock_verify_image), patch(
+            "egv.variation.loop._ORIGINAL_DOCKER_SANDBOX_EXECUTE", mock_execute
+        ), patch(
+            "egv.evaluation.sandbox._ORIGINAL_DOCKER_EXECUTE", mock_execute
+        ):
+            response = run_remote_evaluator_once(
+                request,
+                service_manifest=manifest_path,
+                evaluator_seed=seed,
+                evaluator_private_key=private_key,
+                workspace=self.root / "remote-workspace",
+                state_root=self.root / "remote-state",
+            )
+        self.assertEqual(response["result"]["diagnostic_enum"], "PASS")
+        self.assertEqual(response["result"]["disposition"], "PROMOTED")
+        self.assertEqual(len(response["receipts"]), 3)
+        for receipt in response["receipts"]:
+            self.assertEqual(receipt["run_id"], "run-real-train")
+            self.assertEqual(receipt["task_id"], repo.template_id)
+            self.assertEqual(receipt["task_family"], repo.family_id)
+            self.assertEqual(receipt["normalized_public_locus"], repo.public_locus)
+            self.assertEqual(receipt["public_rule_id"], repo.public_rule_id)
+            self.assertEqual(receipt["arm_policy_digest"], arm_policy("B").digest)
+        serialized = canonical_json(response)
+        self.assertNotIn(str(seed), serialized)
+        self.assertNotIn(canonical_json(repo.hidden_spec), serialized)
 
     def test_atomic_receipt_chain_rolls_back_if_later_signature_is_invalid(self) -> None:
         first = self.signer.sign_receipt(
