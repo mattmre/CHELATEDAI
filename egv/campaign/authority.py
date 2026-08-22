@@ -36,9 +36,17 @@ def _decode_signature(value: Any) -> bytes:
     if not isinstance(value, str) or not value:
         raise EvaluatorAuthorityError("evaluator signature is absent")
     try:
-        return base64.urlsafe_b64decode((value + "=" * (-len(value) % 4)).encode("ascii"))
+        decoded = base64.b64decode(
+            (value + "=" * (-len(value) % 4)).encode("ascii"),
+            altchars=b"-_",
+            validate=True,
+        )
     except (ValueError, UnicodeError) as exc:
         raise EvaluatorAuthorityError("evaluator signature is not base64url") from exc
+    canonical = base64.urlsafe_b64encode(decoded).decode("ascii").rstrip("=")
+    if len(decoded) != 64 or canonical != value:
+        raise EvaluatorAuthorityError("evaluator signature is not canonical Ed25519 base64url")
+    return decoded
 
 
 @dataclass(frozen=True)

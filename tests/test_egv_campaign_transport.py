@@ -204,7 +204,7 @@ class CampaignTransportTests(unittest.TestCase):
                     expected_previous_digest=None,
                 )
         raw = _receipt(self.signer, self.manifest).to_dict()
-        raw["signature"] = raw["signature"][:-2] + "AA"
+        raw["signature"] = ("A" if raw["signature"][0] != "A" else "B") + raw["signature"][1:]
         tampered = EvaluatorReceipt.from_mapping(raw)
         with self.assertRaisesRegex(EvaluatorAuthorityError, "signature"):
             self.authority.verify(
@@ -212,6 +212,13 @@ class CampaignTransportTests(unittest.TestCase):
                 artifact_set_digest=self.manifest.artifact_set_digest,
                 expected_sequence=1, expected_previous_digest=None,
             )
+        noncanonical = _receipt(self.signer, self.manifest).to_dict()
+        tail_alias = {"A": "B", "Q": "R", "g": "h", "w": "x"}
+        noncanonical["signature"] = (
+            noncanonical["signature"][:-1] + tail_alias[noncanonical["signature"][-1]]
+        )
+        with self.assertRaisesRegex(EvaluatorAuthorityError, "canonical"):
+            EvaluatorReceipt.from_mapping(noncanonical)
 
     def _coordinator(self):
         store = CampaignStateStore(self.root / "state.json")
