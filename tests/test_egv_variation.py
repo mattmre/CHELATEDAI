@@ -51,7 +51,7 @@ from egv.variation import (
     scan_public_variation_report,
 )
 from egv.variation.fixture import FixtureEvaluationGateway
-from egv.variation.generator import CandidateContext, CandidateProposal
+from egv.variation.generator import CandidateContext, CandidateProposal, render_candidate_prompt
 import egv.variation.loop as variation_loop
 from egv.variation.loop import CANDIDATE_SOURCE_LIMIT
 from egv.variation.model import MODEL_ARCHITECTURE, MODEL_CONFIG_CLASS, MODEL_MANIFEST_SCHEMA, MODEL_REPOSITORY
@@ -891,6 +891,46 @@ class VariationTestCase(unittest.TestCase):
             CandidateProposal(b"x" * (CANDIDATE_SOURCE_LIMIT + 1), context.public_locus, "READ_ONLY", (), digest_for("large"), {}).validate(
                 context, source_limit=CANDIDATE_SOURCE_LIMIT
             )
+
+    def test_model_prompt_and_source_only_repair_are_closed(self) -> None:
+        context = CandidateContext(
+            "campaign", "run", 0, "B", "task", "PURE_FUNCTION", "src/task.py:solve", "rule",
+            1, None, ({"event_id": "evt-2"}, {"event_id": "evt-1"}), digest_for("retrieval"),
+            digest_for("model"), None, digest_for("prompt"),
+        )
+        prompt = render_candidate_prompt(context)
+        self.assertIn('declared_locus must equal "src/task.py:solve"', prompt)
+        self.assertIn('requested_authority must equal "EXECUTE_CANDIDATE"', prompt)
+        self.assertIn('["evt-1", "evt-2"]', prompt)
+        self.assertIn("Do not use Markdown fences", prompt)
+
+        source = "def solve(value):\n    return value + 1"
+        repaired = ModelCandidateGenerator._parse_response(source, context)
+        self.assertEqual(repaired.source, source.encode("utf-8"))
+        self.assertEqual(repaired.declared_locus, context.public_locus)
+        self.assertEqual(repaired.requested_authority, "EXECUTE_CANDIDATE")
+        self.assertEqual(repaired.evidence_ids, ())
+        self.assertEqual(repaired.metadata["response_contract"], "source-only-repair-v1")
+        self.assertEqual(repaired.metadata["raw_response_digest"], digest_bytes(repaired.source))
+        repaired.validate(context, source_limit=CANDIDATE_SOURCE_LIMIT)
+
+        rejected = (
+            "Here is the answer.",
+            "```python\ndef solve(value):\n    return value\n```",
+            "{'source': 'not JSON'}",
+            "value = 1",
+            '{"source":"def solve(): pass"} trailing',
+        )
+        for raw in rejected:
+            with self.subTest(raw=raw), self.assertRaises(VariationDependencyError):
+                ModelCandidateGenerator._parse_response(raw, context)
+
+        bad_metadata = canonical_json({
+            "source": source, "declared_locus": context.public_locus,
+            "requested_authority": "EXECUTE_CANDIDATE", "evidence_ids": [], "metadata": [],
+        })
+        with self.assertRaises(VariationDependencyError):
+            ModelCandidateGenerator._parse_response(bad_metadata, context)
 
     def test_forged_task_metadata_cannot_cross_the_evaluation_manifest_boundary(self) -> None:
         runner, task, _repo, _isolation = self.make_runner()

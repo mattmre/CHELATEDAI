@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 from dataclasses import dataclass
 import json
 from typing import Any, Mapping, Optional, Protocol, Sequence, Tuple
@@ -119,6 +120,17 @@ def render_candidate_prompt(
     correction = registry.render(
         "egv-correction-v1", {"corrected_event_id": corrections[0] if corrections else "none"}
     )
+    available_evidence_ids = sorted(str(record["event_id"]) for record in context.retrieval_records)
+    response_contract = "".join((
+        "Return exactly one JSON object with this closed field set: "
+        '{"source": string, "declared_locus": string, "requested_authority": string, '
+        '"evidence_ids": array[string], optional "metadata": object}. '
+        "The source value must be the complete Python file encoded as a JSON string. "
+        "declared_locus must equal ", json.dumps(context.public_locus),
+        '. requested_authority must equal "EXECUTE_CANDIDATE". ',
+        "evidence_ids must be a sorted unique subset of ", json.dumps(available_evidence_ids), ". "
+        "Do not use Markdown fences, comments outside the object, or additional fields.",
+    ))
     return "\n".join(
         (
             registry.get("egv-system-v1").text,
@@ -126,7 +138,7 @@ def render_candidate_prompt(
             evidence,
             failure,
             correction,
-            "Return JSON only.",
+            response_contract,
         )
     )
 
@@ -277,30 +289,75 @@ class ModelCandidateGenerator:
         try:
             value = json.loads(stripped)
         except ValueError as exc:
-            raise VariationDependencyError("pinned model did not emit the closed candidate JSON contract") from exc
+            # The base checkpoint can produce a valid bounded Python module while
+            # omitting only the requested transport envelope. Repair exactly that
+            # representation error without extracting Markdown, prose, or fragments.
+            try:
+                parsed_source = ast.parse(stripped)
+            except (SyntaxError, ValueError) as source_exc:
+                raise VariationDependencyError(
+                    "pinned model did not emit the closed candidate JSON contract"
+                ) from source_exc
+            if not stripped or not any(
+                isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) for node in parsed_source.body
+            ):
+                raise VariationDependencyError("pinned model did not emit the closed candidate JSON contract") from exc
+            source_bytes = stripped.encode("utf-8")
+            return CandidateProposal(
+                source=source_bytes,
+                declared_locus=context.public_locus,
+                requested_authority="EXECUTE_CANDIDATE",
+                evidence_ids=(),
+                mutation_digest=digest_bytes(source_bytes),
+                metadata={
+                    "response_contract": "source-only-repair-v1",
+                    "raw_response_digest": digest_bytes(source_bytes),
+                },
+            )
         if not isinstance(value, Mapping):
             raise VariationDependencyError("pinned model candidate response is not a JSON object")
         required = {"source", "declared_locus", "requested_authority", "evidence_ids"}
         if set(value) - required - {"metadata"} or not required.issubset(value):
             raise VariationDependencyError("pinned model candidate response has an unexpected field set")
         source = value["source"]
+        declared_locus = value["declared_locus"]
+        requested_authority = value["requested_authority"]
         evidence = value["evidence_ids"]
-        if not isinstance(source, str) or not isinstance(evidence, list) or not all(isinstance(item, str) for item in evidence):
+        metadata = value.get("metadata", {})
+        if (
+            not isinstance(source, str)
+            or not isinstance(declared_locus, str)
+            or not isinstance(requested_authority, str)
+            or not isinstance(evidence, list)
+            or not all(isinstance(item, str) for item in evidence)
+            or not isinstance(metadata, Mapping)
+            or not all(isinstance(key, str) for key in metadata)
+        ):
             raise VariationDependencyError("pinned model candidate JSON has invalid source/evidence types")
         source_bytes = source.encode("utf-8")
         return CandidateProposal(
             source=source_bytes,
-            declared_locus=value["declared_locus"],
-            requested_authority=value["requested_authority"],
+            declared_locus=declared_locus,
+            requested_authority=requested_authority,
             evidence_ids=tuple(evidence),
             mutation_digest=digest_bytes(source_bytes),
-            metadata=dict(value.get("metadata") or {}),
+            metadata=dict(metadata),
         )
 
     def propose(self, context: CandidateContext) -> CandidateProposal:
         prompt = self._prompt(context)
         try:
-            encoded = self.tokenizer(prompt, return_tensors="pt")
+            apply_chat_template = getattr(self.tokenizer, "apply_chat_template", None)
+            if not callable(apply_chat_template):
+                raise VariationDependencyError("pinned Qwen tokenizer does not expose its official chat template")
+            encoded = apply_chat_template(
+                [{"role": "user", "content": prompt}],
+                add_generation_prompt=True,
+                tokenize=True,
+                return_dict=True,
+                return_tensors="pt",
+                enable_thinking=False,
+            )
             parameter = next(self.model.parameters())
             device = parameter.device
             if getattr(device, "type", str(device).split(":", 1)[0]) != "cuda":

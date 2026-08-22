@@ -128,8 +128,10 @@ class RealPeftTrainingIntegrationTests(unittest.TestCase):
                 return torch.cat((input_ids, suffix), dim=1)
 
         class _GenerationTokenizer:
-            def __call__(self, _prompt, *, return_tensors):
-                self.return_tensors = return_tensors
+            def apply_chat_template(self, messages, **kwargs):
+                self.messages = messages
+                self.kwargs = kwargs
+                self.return_tensors = kwargs["return_tensors"]
                 return {
                     "input_ids": torch.tensor([[1, 2, 3]], device="cpu"),
                     "attention_mask": torch.ones((1, 3), dtype=torch.long, device="cpu"),
@@ -173,6 +175,8 @@ class RealPeftTrainingIntegrationTests(unittest.TestCase):
         self.assertEqual(proposal.declared_locus, "module:solve")
         self.assertEqual(model.assertions, (model.anchor.device, model.anchor.device))
         self.assertEqual(tokenizer.return_tensors, "pt")
+        self.assertEqual(tokenizer.messages[0]["role"], "user")
+        self.assertEqual(tokenizer.kwargs["enable_thinking"], False)
 
     def test_run_production_training_external_bridge_checkpoint_best_restore_and_reload(self):
         with tempfile.TemporaryDirectory(prefix="egv-real-peft-") as temporary:
