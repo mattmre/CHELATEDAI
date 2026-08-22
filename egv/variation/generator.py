@@ -75,6 +75,62 @@ class CandidateGenerator(Protocol):
         ...
 
 
+def render_candidate_prompt(
+    context: CandidateContext,
+    *,
+    prompt_registry: Optional[PromptRegistry] = None,
+) -> str:
+    """Render the exact private candidate prompt from a frozen context.
+
+    Keeping this pure lets the training-data builder reproduce and validate
+    private prompts without constructing a model generator or reaching across
+    the evaluator boundary.
+    """
+
+    registry = prompt_registry or PromptRegistry()
+    failure_families = sorted(
+        {
+            str(record.get("failure_family_root") or record.get("diagnostic_enum"))
+            for record in context.retrieval_records
+            if record.get("failure_family_root") or record.get("diagnostic_enum")
+        }
+    )
+    corrections = sorted(
+        str(record["event_id"])
+        for record in context.retrieval_records
+        if record.get("event_type") in {"CORRECTION", "RETRACTION"}
+    )
+    candidate = registry.render(
+        "egv-candidate-v1",
+        {
+            "task_id": context.task_id,
+            "family_id": context.family_id,
+            "attempt_index": context.attempt_index,
+            "public_locus": context.public_locus,
+        },
+    )
+    evidence = registry.render(
+        "egv-evidence-success-v1",
+        {"evidence_ids": list(record["event_id"] for record in context.retrieval_records)},
+    )
+    failure = registry.render(
+        "egv-evidence-failure-v1", {"failure_families": failure_families or ["none"]}
+    )
+    correction = registry.render(
+        "egv-correction-v1", {"corrected_event_id": corrections[0] if corrections else "none"}
+    )
+    return "\n".join(
+        (
+            registry.get("egv-system-v1").text,
+            candidate,
+            evidence,
+            failure,
+            correction,
+            "Return JSON only.",
+        )
+    )
+
+
 class ModelCandidateGenerator:
     """Deterministic text-only generation with a closed JSON response contract."""
 
@@ -213,47 +269,7 @@ class ModelCandidateGenerator:
         validate_applied_peft_model(self.loaded_model.model, self.adapter_artifact)
 
     def _prompt(self, context: CandidateContext) -> str:
-        failure_families = sorted(
-            {
-                str(record.get("failure_family_root") or record.get("diagnostic_enum"))
-                for record in context.retrieval_records
-                if record.get("failure_family_root") or record.get("diagnostic_enum")
-            }
-        )
-        corrections = sorted(
-            str(record["event_id"])
-            for record in context.retrieval_records
-            if record.get("event_type") in {"CORRECTION", "RETRACTION"}
-        )
-        candidate = self.prompt_registry.render(
-            "egv-candidate-v1",
-            {
-                "task_id": context.task_id,
-                "family_id": context.family_id,
-                "attempt_index": context.attempt_index,
-                "public_locus": context.public_locus,
-            },
-        )
-        evidence = self.prompt_registry.render(
-            "egv-evidence-success-v1",
-            {"evidence_ids": list(record["event_id"] for record in context.retrieval_records)},
-        )
-        failure = self.prompt_registry.render(
-            "egv-evidence-failure-v1", {"failure_families": failure_families or ["none"]}
-        )
-        correction = self.prompt_registry.render(
-            "egv-correction-v1", {"corrected_event_id": corrections[0] if corrections else "none"}
-        )
-        return "\n".join(
-            (
-                self.prompt_registry.get("egv-system-v1").text,
-                candidate,
-                evidence,
-                failure,
-                correction,
-                "Return JSON only.",
-            )
-        )
+        return render_candidate_prompt(context, prompt_registry=self.prompt_registry)
 
     @staticmethod
     def _parse_response(text: str, context: CandidateContext) -> CandidateProposal:
@@ -358,4 +374,5 @@ __all__ = [
     "CandidateProposal",
     "DeterministicFixtureGenerator",
     "ModelCandidateGenerator",
+    "render_candidate_prompt",
 ]

@@ -26,6 +26,7 @@ from .public import (
 )
 from .pilot import run_two_process_smoke
 from .receipts import ReceiptSigner
+from .training import run_external_evaluator_once, run_production_training, run_training_smoke
 from .variation import PinnedModelLoader, run_variation_smoke
 
 
@@ -36,7 +37,6 @@ SLICE2_PHASES = {
     "stage",
     "freeze",
     "generate-trajectories",
-    "train-lora",
     "evaluate",
     "redact-and-package",
     "restore-services",
@@ -443,6 +443,32 @@ def build_parser() -> argparse.ArgumentParser:
     model_preflight.add_argument("--manifest", type=Path)
     model_preflight.add_argument("--json", action="store_true", dest="as_json")
 
+    training = subparsers.add_parser("training", help="run the bounded EGV Training runtime")
+    training_subparsers = training.add_subparsers(dest="training_command", required=True)
+    training_smoke = training_subparsers.add_parser(
+        "smoke", help="run the CPU-only Training fixture smoke without a Qwen or promotion claim"
+    )
+    training_smoke.add_argument("--json", action="store_true", dest="as_json")
+    evaluator_once = training_subparsers.add_parser(
+        "evaluator-once", help="run one evaluator-owned signed development-loss request from stdin"
+    )
+    evaluator_once.add_argument("--service-manifest", required=True, type=Path)
+    evaluator_once.add_argument("--model-root", required=True, type=Path)
+    evaluator_once.add_argument("--development-dataset", required=True, type=Path)
+    evaluator_once.add_argument("--private-key", required=True, type=Path)
+    evaluator_once.add_argument("--device", default="cuda")
+    training_contract = subparsers.add_parser(
+        "train-lora", help="run production LoRA training from sealed local artifacts"
+    )
+    training_contract.add_argument("--model-root", required=True, type=Path)
+    training_contract.add_argument("--train-manifest", required=True, type=Path)
+    training_contract.add_argument("--development-manifest", required=True, type=Path)
+    training_contract.add_argument("--evaluator-public-key", type=Path)
+    training_contract.add_argument("--evaluator-command", type=Path)
+    training_contract.add_argument("--output", type=Path)
+    training_contract.add_argument("--device", default="cuda")
+    training_contract.add_argument("--json", action="store_true", dest="as_json")
+
     for phase in sorted(SLICE2_PHASES):
         phase_parser = subparsers.add_parser(phase, help=f"{phase} (outside Slice 2; fails closed)")
         phase_parser.add_argument("--campaign-id")
@@ -519,6 +545,43 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 _json_output(loader.preflight(), args.as_json)
                 return 0
             raise EGVError("unsupported variation command: {}".format(args.variation_command))
+        if args.command == "training":
+            if args.training_command == "smoke":
+                _json_output(run_training_smoke(), args.as_json)
+                return 0
+            if args.training_command == "evaluator-once":
+                try:
+                    request = json.loads(sys.stdin.read())
+                except ValueError as exc:
+                    raise EGVError("external evaluator request is not valid JSON") from exc
+                response = run_external_evaluator_once(
+                    request,
+                    service_manifest=args.service_manifest,
+                    model_root=args.model_root,
+                    development_dataset=args.development_dataset,
+                    evaluator_private_key=args.private_key,
+                    device=args.device,
+                )
+                print(canonical_json(response))
+                return 0
+            raise EGVError("unsupported training command: {}".format(args.training_command))
+        if args.command == "train-lora":
+            if args.evaluator_public_key is None or args.evaluator_command is None or args.output is None:
+                raise PhaseUnavailable(
+                    "train-lora must fail closed without external evaluator authority: provide its frozen public key, "
+                    "content-bound command, service manifest, and an output directory"
+                )
+            result = run_production_training(
+                model_root=args.model_root,
+                training_dataset=args.train_manifest,
+                evaluator_manifest=args.development_manifest,
+                evaluator_public_key=args.evaluator_public_key,
+                evaluator_command=args.evaluator_command,
+                output_root=args.output,
+                device=args.device,
+            )
+            _json_output(result, args.as_json)
+            return 0
         if args.command in SLICE2_PHASES:
             raise PhaseUnavailable(
                 f"{args.command} is outside Slice 2 evidence core; no services, credentials, hidden tests, "

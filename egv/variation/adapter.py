@@ -123,6 +123,15 @@ def validate_applied_peft_model(model: Any, artifact: "SealedAdapterArtifact") -
     if actual_type != "LORA":
         raise VariationDependencyError("active PEFT config is not LORA")
     for key, expected in expected_config.items():
+        if key == "target_modules" and isinstance(expected, list):
+            actual_targets = runtime_config.get(key)
+            if (
+                not isinstance(actual_targets, list)
+                or len(actual_targets) != len(set(actual_targets))
+                or sorted(actual_targets) != sorted(expected)
+            ):
+                raise VariationDependencyError("active PEFT target modules differ from the sealed adapter config")
+            continue
         if key not in runtime_config or runtime_config[key] != expected:
             raise VariationDependencyError("active PEFT config is not bound to the sealed adapter config")
 
