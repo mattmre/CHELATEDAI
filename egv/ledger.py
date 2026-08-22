@@ -60,6 +60,33 @@ PROMOTED = "PROMOTED"
 REJECTED = "REJECTED"
 ABSTAINED = "ABSTAINED"
 
+_ACTIVE_WRITER_COUNT = 0
+_ACTIVE_WRITER_LOCK = threading.Lock()
+
+
+def active_writer_count() -> int:
+    """Return the number of writable ledger handles in this process.
+
+    Production evaluator construction uses this as a co-hosting guard.  The
+    count is process-local by design; the actual ledger writer remains a
+    separate OS process and is protected by the existing file lock.
+    """
+
+    with _ACTIVE_WRITER_LOCK:
+        return _ACTIVE_WRITER_COUNT
+
+
+def _register_writer() -> None:
+    global _ACTIVE_WRITER_COUNT
+    with _ACTIVE_WRITER_LOCK:
+        _ACTIVE_WRITER_COUNT += 1
+
+
+def _unregister_writer() -> None:
+    global _ACTIVE_WRITER_COUNT
+    with _ACTIVE_WRITER_LOCK:
+        _ACTIVE_WRITER_COUNT = max(0, _ACTIVE_WRITER_COUNT - 1)
+
 _EVENT_COLUMNS = (
     "sequence",
     "event_id",
@@ -402,6 +429,10 @@ class EvidenceLedger:
         else:
             self._conn.execute("PRAGMA query_only=ON")
         self.blob_store = BlobStore(blob_root) if blob_root is not None else None
+        self._writer_registered = False
+        if self._writable:
+            _register_writer()
+            self._writer_registered = True
 
     def _acquire_writer_lock(self, db_path: Path) -> None:
         lock_path = Path(str(db_path) + ".writer.lock")
@@ -427,6 +458,9 @@ class EvidenceLedger:
                 fcntl.flock(self._lock_handle.fileno(), fcntl.LOCK_UN)
             finally:
                 self._lock_handle.close()
+        if self._writer_registered:
+            _unregister_writer()
+            self._writer_registered = False
         self._closed = True
 
     def __enter__(self) -> "EvidenceLedger":
@@ -1812,7 +1846,12 @@ class EvidenceLedger:
                 expected_checkpoint_hash = durable_event[0]
             if checkpoint["ledger_hash"] != expected_checkpoint_hash:
                 raise IntegrityError(f"checkpoint {checkpoint['checkpoint_id']} ledger hash mismatch")
-        return {"event_count": len(events), "ledger_head_hash": previous, "receipt_count": self._conn.execute("SELECT COUNT(*) FROM receipts").fetchone()[0]}
+        return {
+            "event_count": len(events),
+            "ledger_head_hash": previous,
+            "receipt_count": self._conn.execute("SELECT COUNT(*) FROM receipts").fetchone()[0],
+            "chain_valid": True,
+        }
 
     # ---- deterministic export/replay -------------------------------------
     def export_jsonl(self, path: Optional[Union[str, Path]] = None) -> str:

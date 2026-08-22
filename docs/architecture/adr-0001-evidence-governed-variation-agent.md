@@ -349,7 +349,16 @@ It exposes no assertion text, expected value, hidden path, per-test count, or
 high-resolution timing. `INTERNAL_ERROR` is infrastructure loss, never model
 failure. A failure-family root is the SHA-256 of canonical
 `(task_family, diagnostic_enum, normalized_public_locus, public_rule_id)`.
-`UNKNOWN` is not an enum and no two `INTERNAL_ERROR` records are collapsed.
+For `INTERNAL_ERROR`, which denotes infrastructure loss rather than a model
+failure, the signed `infrastructure_incident_id` is appended as the fifth
+canonical component. `UNKNOWN` is not an enum and distinct infrastructure
+incidents are never collapsed. Every private/public receipt and SFT row with
+`INTERNAL_ERROR` carries both a non-empty `infrastructure_incident_id` and the
+the canonical `task_family`, `normalized_public_locus`, and `public_rule_id`
+fields; validators recompute the exact five-component root and reject a
+four-tuple, missing, or mismatched root. Candidate-controlled exit statuses
+including `os._exit(44)` are runtime failures; exit 44 is reserved for an
+authenticated runner-origin filter/setup sentinel.
 
 An attempt counts as **evidence-using** only when its prompt contains at least
 one valid retrieved event ID, the candidate declares the subset it used, every
@@ -635,7 +644,8 @@ mechanism and are never returned to the model. Denials are first-class evidence,
 not errors to suppress.
 
 The generator receives only the diagnostic enum, a coarse resource bucket
-(`UNDER_25`, `25_TO_50`, `50_TO_75`, `75_TO_100`, or `LIMIT_REACHED`), and a
+(`UNDER_25`, `25_TO_50`, `50_TO_75`, `75_TO_100`, `LIMIT_REACHED`, or the
+distinct `OUTPUT_LIMIT`), and a
 receipt ID. It does not receive individual hidden-test outcomes, assertion text,
 expected values, output diffs, hidden fixture counts, evaluator paths, raw
 stderr, precise runtime, or inter-attempt timing. Attempt scheduling uses a
@@ -677,7 +687,7 @@ private receipt. Additional fields are rejected. Its closed fields are:
 | `candidate_artifact_digest`, `protocol_digest`, `policy_digest`, `evaluator_digest` | SHA-256 only |
 | `public_candidate_record_digest`, `public_dependency_set_digest` | SHA-256 bindings to the exact closed public records used for replay |
 | `decision` | `ALLOW`, `DENY`, `PASS`, `FAIL`, or `ERROR`, constrained by receipt type |
-| `diagnostic_enum`, `resource_bucket`, `exit_status_class` | Closed public enums; no raw text or timing |
+| `diagnostic_enum`, `resource_bucket`, `exit_status_class` | Closed public enums; `resource_bucket` includes `LIMIT_REACHED` and distinct `OUTPUT_LIMIT`; no raw text or timing |
 | `input_digest`, `output_digest`, `environment_diff_digest` | SHA-256 only; omitted when not applicable |
 | `public_sequence`, `previous_public_receipt_digest` | Per-campaign public hash chain |
 | `signing_key_id`, `signature` | Signature over canonical serialization of every preceding field |

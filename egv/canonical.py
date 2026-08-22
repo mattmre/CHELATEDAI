@@ -15,7 +15,7 @@ import hashlib
 import json
 import math
 from pathlib import Path
-from typing import Any, Iterable, Mapping
+from typing import Any, Iterable, Mapping, Optional, Union
 
 from .errors import CanonicalizationError
 
@@ -158,13 +158,13 @@ def parse_canonical_jsonl(text: str, *, require_canonical: bool = True) -> list[
     return records
 
 
-def read_canonical_jsonl(path: str | Path, *, require_canonical: bool = True) -> list[Any]:
+def read_canonical_jsonl(path: Union[str, Path], *, require_canonical: bool = True) -> list[Any]:
     """Read and parse a canonical JSONL file."""
 
     return parse_canonical_jsonl(Path(path).read_text(encoding="utf-8"), require_canonical=require_canonical)
 
 
-def write_canonical_jsonl(path: str | Path, records: Iterable[Any]) -> Path:
+def write_canonical_jsonl(path: Union[str, Path], records: Iterable[Any]) -> Path:
     """Write canonical JSONL with a durable parent directory."""
 
     output = Path(path)
@@ -184,15 +184,26 @@ def failure_family_root(
     diagnostic_enum: str,
     normalized_public_locus: str,
     public_rule_id: str,
+    *,
+    infrastructure_incident_id: Optional[str] = None,
 ) -> str:
     """Return the ADR-0001 failure-family root digest.
 
-    The ordered four-tuple is intentional: copied failures with the same
-    public cause collapse to one family, while two ``INTERNAL_ERROR`` records
-    remain distinct when any public identity field differs.
+    The public failure identity is the ordered four-tuple from ADR-0001.  An
+    ``INTERNAL_ERROR`` is infrastructure loss rather than a model failure, so
+    its signed incident ID is appended as a fifth canonical component.  This
+    keeps ordinary model failures grouped while preventing infrastructure
+    incidents from collapsing into one public family.
     """
 
-    return digest_for([task_family, diagnostic_enum, normalized_public_locus, public_rule_id])
+    identity = [task_family, diagnostic_enum, normalized_public_locus, public_rule_id]
+    if diagnostic_enum == "INTERNAL_ERROR":
+        if not isinstance(infrastructure_incident_id, str) or not infrastructure_incident_id:
+            raise CanonicalizationError("INTERNAL_ERROR failure roots require a signed incident ID")
+        identity.append(infrastructure_incident_id)
+    elif infrastructure_incident_id is not None:
+        raise CanonicalizationError("only INTERNAL_ERROR failure roots may include an incident ID")
+    return digest_for(identity)
 
 
 def utc_now_iso() -> str:
