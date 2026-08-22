@@ -1,0 +1,98 @@
+"""Evidence-Governed Variation slice."""
+
+from .arms import ARM_IDS, ArmIsolation, ArmPolicy, ArmWorkspace, arm_policy
+from .checkpoint import CHECKPOINT_SCHEMA, CheckpointStore, VariationCheckpoint
+from .errors import (
+    VariationBudgetError,
+    VariationCheckpointError,
+    VariationConfigurationError,
+    VariationDependencyError,
+    VariationError,
+    VariationIsolationError,
+)
+from .generator import CandidateContext, CandidateGenerator, CandidateProposal, DeterministicFixtureGenerator, ModelCandidateGenerator
+from .loop import (
+    AttemptRecord,
+    BoundedCandidateLoop,
+    CANDIDATE_SOURCE_LIMIT,
+    ControllerEvaluationGateway,
+    MAX_CANDIDATE_ATTEMPTS,
+    VARIATION_PROTOCOL_DIGEST,
+    VARIATION_PROTOCOL_SCHEMA,
+    VariationReport,
+    VariationRunner,
+    VariationTask,
+)
+from .model import (
+    LoadedPinnedModel,
+    MODEL_ARCHITECTURE,
+    MODEL_CONFIG_CLASS,
+    MODEL_MANIFEST_SCHEMA,
+    MODEL_REPOSITORY,
+    MODEL_REVISION,
+    PinnedModelLoader,
+    PinnedModelManifest,
+    build_local_manifest,
+)
+from .retrieval import (
+    CorrectionAwareRetrieval,
+    EvidenceRetrievalPolicy,
+    OrdinaryFailureRetrieval,
+    RETRIEVAL_POLICIES,
+    RetrievedEvidence,
+    RetrievalResult,
+    SuccessOnlyRetrieval,
+    retrieval_policy,
+)
+from .smoke import run_variation_smoke
+
+
+__all__ = [
+    "ARM_IDS",
+    "AttemptRecord",
+    "ArmIsolation",
+    "ArmPolicy",
+    "ArmWorkspace",
+    "BoundedCandidateLoop",
+    "CANDIDATE_SOURCE_LIMIT",
+    "CHECKPOINT_SCHEMA",
+    "CandidateContext",
+    "CandidateGenerator",
+    "CandidateProposal",
+    "CheckpointStore",
+    "ControllerEvaluationGateway",
+    "CorrectionAwareRetrieval",
+    "DeterministicFixtureGenerator",
+    "EvidenceRetrievalPolicy",
+    "LoadedPinnedModel",
+    "MAX_CANDIDATE_ATTEMPTS",
+    "MODEL_ARCHITECTURE",
+    "MODEL_CONFIG_CLASS",
+    "MODEL_MANIFEST_SCHEMA",
+    "MODEL_REPOSITORY",
+    "MODEL_REVISION",
+    "ModelCandidateGenerator",
+    "OrdinaryFailureRetrieval",
+    "PinnedModelLoader",
+    "PinnedModelManifest",
+    "RETRIEVAL_POLICIES",
+    "RetrievedEvidence",
+    "RetrievalResult",
+    "SuccessOnlyRetrieval",
+    "VARIATION_PROTOCOL_DIGEST",
+    "VARIATION_PROTOCOL_SCHEMA",
+    "VariationBudgetError",
+    "VariationCheckpoint",
+    "VariationCheckpointError",
+    "VariationConfigurationError",
+    "VariationDependencyError",
+    "VariationError",
+    "VariationIsolationError",
+    "VariationReport",
+    "VariationRunner",
+    "VariationTask",
+    "arm_policy",
+    "build_local_manifest",
+    "retrieval_policy",
+    "run_variation_smoke",
+]

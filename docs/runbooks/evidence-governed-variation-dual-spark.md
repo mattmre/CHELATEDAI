@@ -6,14 +6,17 @@ This runbook defines how operators will stage, run, resume, and close the
 Evidence-Governed Variation (EGV) campaign described in
 [ADR-0001](../architecture/adr-0001-evidence-governed-variation-agent.md).
 
-> **Current Slice 2 + Evaluation status:** The bounded evidence-core floor and
-> the complete CPU-only Evaluation slice are runnable in this branch. The
+> **Current Slice 2 + Evaluation + Variation status:** The bounded evidence-core
+> floor, complete CPU-only Evaluation slice, and bounded Variation wiring are
+> runnable in this branch. The
 > Evaluation smoke freezes 36 deterministic split-disjoint micro-repositories,
 > runs a hidden held-out comparator through the pinned Docker isolation adapter,
 > and exercises spawned trainer/evaluator IPC. It does not exercise the real
 > campaign, Qdrant campaign projection, service control, DeepSeek, hosted
-> models, or dual-Spark infrastructure. Treat command output as runtime
-> evidence only when it names its tier, Docker limits, and gaps.
+> models, or dual-Spark infrastructure. Variation's default smoke is explicitly
+> `floor-fixture`: it exercises ledger/checkpoint/retrieval wiring with a
+> test-only CPU gateway and does not claim production authority. Treat command
+> output as runtime evidence only when it names its tier and gaps.
 
 The runbook intentionally contains no host addresses, local usernames,
 passwords, tokens, private keys, or private workspace paths. Operators provide
@@ -72,6 +75,8 @@ python -m egv smoke --json
 python -m egv smoke --json --two-process
 python -m egv evaluation freeze --output <new-empty-output-directory>
 python -m egv evaluation smoke --json
+python -m egv variation smoke --json
+python -m egv variation model-preflight --model-root <staged-model-root> --json
 ```
 
 `status` reads an authoritative ledger, `export` writes deterministic ledger
@@ -105,12 +110,12 @@ execution has a frozen 2-second timeout and 65,536-byte stdout ceiling; an
 output-cap result uses the distinct closed `OUTPUT_LIMIT` status/bucket. The
 Docker seccomp profile is deny-default and the post-load candidate filter
 explicitly denies filesystem mutation, process/network escape, memfd,
-`userfaultfd`, and `bpf`. No logical port or network listener is opened. Its
-The controller also requires the production `pure-return-v1` AST
+`userfaultfd`, and `bpf`. No logical port or network listener is opened. The
+controller also requires the production `pure-return-v1` AST
 admission/decision precondition before Docker execution. Docker return code,
 stdout, and probe output are untrusted evidence; Docker does not authenticate
 candidate results. The evaluator-private hidden oracle is the decision
-authority after that precondition. Its two-process proof
+authority after that precondition. The two-process proof
 is a bounded local CPU fixture, not a claim that either Spark is available.
 The runner parent authenticates filter setup before candidate execution;
 candidate-controlled `os._exit(1)`, `os._exit(44)`, `SystemExit`, and unknown
@@ -122,9 +127,19 @@ The local AST/subprocess helper is test-only and never counts as an enforcement
 backend. If the configured Docker image or pinned ID is absent/mismatched, the
 Evaluation path fails closed; it never pulls an image.
 
-The following later mutating, service-control, packaging, and model phases are
+`variation smoke` runs one bounded held-out fixture trajectory through the
+Evidence ledger: the first candidate is rejected, its failure is retrieved by
+the correction-aware policy, and the next candidate is promoted. It reports
+`runtime_tier=floor-fixture` and keeps its evaluator seed, hidden records,
+receipts, ledger, checkpoints, and candidate source under private state. The
+production Variation path requires the exact local model manifest and the
+enforceable Docker Evaluation gateway; it has no fixture or network fallback.
+`variation model-preflight` only verifies local model bytes and manifest
+metadata. E-H require a sealed adapter from the later Training slice.
+
+The following later mutating, service-control, packaging, training, and campaign phases are
 recognized only so they fail closed with a nonzero `PhaseUnavailable` result;
-they are not available Slice 2 commands:
+they are not available Variation commands:
 
 ```text
 python -m egv preflight

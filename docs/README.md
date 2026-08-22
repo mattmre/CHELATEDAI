@@ -24,6 +24,7 @@ If you need to understand the codebase quickly, read the docs in this order:
 | [RESEARCH_TRACKS.md](RESEARCH_TRACKS.md) | Research themes, status, open questions, and artifact pointers |
 | [architecture/adr-0001-evidence-governed-variation-agent.md](architecture/adr-0001-evidence-governed-variation-agent.md) | Proposed evidence-governed small-model variation architecture and preregistered decision gates |
 | [runbooks/evidence-governed-variation-dual-spark.md](runbooks/evidence-governed-variation-dual-spark.md) | Documentation-only dual-Spark campaign, resumability, security-receipt, and DeepSeek restoration runbook |
+| [egv-variation-slice.md](egv-variation-slice.md) | Bounded Variation candidate loop, pinned local model loader, arm isolation, resumable checkpoints, retrieval policies, and honest floor smoke |
 | [live-fire-diagnostics-2026-04-27.md](live-fire-diagnostics-2026-04-27.md) | Deterministic live-fire diagnostics results, calibration guidance, and next campaign priorities |
 | [llm-architecture-ai-engineering-adaptation-review-2026-04-27.md](llm-architecture-ai-engineering-adaptation-review-2026-04-27.md) | Modern LLM architecture and AI-engineering operations review mapped to ChelatedAI adaptation opportunities |
 | [COMPUTATIONAL_STORAGE_DRIVE_NODES.md](COMPUTATIONAL_STORAGE_DRIVE_NODES.md) | Detailed summary of hard-drive / storage-node experiments and current scope limits |
