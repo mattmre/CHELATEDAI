@@ -6,10 +6,11 @@ This runbook defines how operators will stage, run, resume, and close the
 Evidence-Governed Variation (EGV) campaign described in
 [ADR-0001](../architecture/adr-0001-evidence-governed-variation-agent.md).
 
-> **Important:** This is an activation plan for future implementation PRs. The
-> `egv` commands named below are the required command-line contract; they do not
-> exist in this documentation-only PR. Do not interpret this document as
-> runtime evidence.
+> **Current Slice 2 status:** The bounded evidence-core floor is runnable in this
+> branch. Its smoke uses a deterministic synthetic fixture, an in-memory
+> projection, and CPU-only trainer/evaluator IPC; it does not exercise the real
+> campaign, Qdrant, service control, DeepSeek, or hosted models. Treat command
+> output as runtime evidence only when the output names its tier and limits.
 
 The runbook intentionally contains no host addresses, local usernames,
 passwords, tokens, private keys, or private workspace paths. Operators provide
@@ -55,9 +56,35 @@ trainer/evaluator aliasing, broad filesystem roots, and values containing
 embedded credentials. The automation accepts inventory by file descriptor or
 protected local file, never a committed file or command-line secret.
 
-## Required implementation command contract
+## Slice 2 floor command subset
 
-Later PRs must provide one top-level command surface with these subcommands:
+The currently runnable, read-only or bounded floor paths are:
+
+```text
+python -m egv status
+python -m egv export
+python -m egv replay
+python -m egv verify-public
+python -m egv smoke --json
+python -m egv smoke --json --two-process
+```
+
+`status` reads an authoritative ledger, `export` writes deterministic ledger
+JSONL, and `replay` either verifies a ledger read-only or replays JSONL into a
+new ledger. `verify-public` performs closed cryptographic decision replay from
+an exported public projection. It requires a terminal public seal by default;
+`--allow-provisional` is the explicit public-CLI option for verifying an
+unsealed provisional projection.
+
+The smoke commands are the only bounded execution paths in this slice.
+`--two-process` starts the local CPU-only trainer/evaluator fixture and proves
+that the evaluator can use only the `ingest_receipt` IPC method while the
+trainer remains the single SQLite writer. These commands use synthetic,
+deterministic evidence and do not authorize a dual-Spark campaign.
+
+The following later mutating, service-control, packaging, and model phases are
+recognized only so they fail closed with a nonzero `PhaseUnavailable` result;
+they are not available Slice 2 commands:
 
 ```text
 python -m egv preflight
@@ -68,21 +95,15 @@ python -m egv freeze
 python -m egv generate-trajectories
 python -m egv train-lora
 python -m egv evaluate
-python -m egv replay
 python -m egv redact-and-package
 python -m egv restore-services
-python -m egv status
 ```
 
-Every subcommand must be idempotent, accept a campaign ID and protected
-inventory reference, and return nonzero on an unmet hard gate. Before the
-single ledger writer exists, commands append bootstrap-signed, hash-chained
-lifecycle results to the protected pre-ledger operator journal. Phase 5 verifies
-and ingests those records exactly once and emits a campaign-signed
-`BOOTSTRAP_IMPORT` receipt. Later commands write through the ledger writer. No
-command may print credentials or dump the complete environment.
-Before the controlled stop, the journal is written only through the out-of-band
-credential/provider storage named by inventory; neither Spark is modified.
+No unavailable phase accesses services, credentials, private restore
+inventory, active DeepSeek work, hidden tests, or hosted models. The eventual
+campaign implementation must retain the idempotency, protected-inventory,
+hard-gate, and journal requirements below; this floor does not claim that
+those future operations are implemented.
 
 `stop-services` is the concrete Phase 3 contract. It additionally requires
 protected references to the P0 maintenance authorization, verified P2 restore
@@ -738,6 +759,6 @@ evaluator. Restoration takes priority over finishing the experiment.
 
 This runbook does not authorize network reconfiguration, deletion of existing
 model data, credential rotation, use of private source material, publication of
-unscanned artifacts, or extension beyond the frozen campaign. It does not
-assert that the future `egv` commands work. Each implementation PR must produce
-its own runtime evidence and independent adversarial review.
+unscanned artifacts, or extension beyond the frozen campaign. Commands outside
+the Slice 2 floor subset above fail closed; each later implementation must
+produce its own runtime evidence and independent adversarial review.

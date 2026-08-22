@@ -38,6 +38,8 @@ if str(REPO_ROOT) not in sys.path:
 # Picked from the CLAUDE.md dependency graph: central engine, core deps, and
 # the surfaces operators interact with (dashboard, orchestrator, sedimentation).
 SURFACE_MODULES = (
+    "egv",
+    "egv.cli",
     "antigravity_engine",
     "chelation_adapter",
     "config",
