@@ -267,6 +267,7 @@ class RealPeftTrainingIntegrationTests(unittest.TestCase):
                 "from egv.canonical import content_id,digest_for\n"
                 "from egv.receipts import GENESIS_HASH,ReceiptSigner\n"
                 "request=json.loads(sys.stdin.read())\n"
+                "assert 'adapter_root' not in request and request['adapter_reference']==request['adapter_digest']\n"
                 "counter=Path({!r})\nindex=int(counter.read_text()) if counter.exists() else 0\ncounter.write_text(str(index+1))\n"
                 "loss=[0.1,0.4,0.5][min(index,2)]\n"
                 "signer=ReceiptSigner(__import__('base64').b64decode({!r}))\n"
@@ -278,6 +279,21 @@ class RealPeftTrainingIntegrationTests(unittest.TestCase):
                 ), encoding="utf-8"
             )
             command.chmod(0o700)
+            transfer_command = root / "transfer.py"
+            transfer_command.write_text(
+                "import base64,json,sys\n"
+                "from pathlib import Path\n"
+                "sys.path.insert(0,{!r})\n"
+                "from egv.canonical import canonical_bytes\n"
+                "from egv.receipts import ReceiptSigner\n"
+                "request=json.loads(sys.stdin.read())\n"
+                "signer=ReceiptSigner(base64.b64decode({!r}))\n"
+                "unsigned={{'schema_version':'egv-adapter-transfer-response-v1','service_manifest_digest':request['service_manifest_digest'],'request_digest':request['request_digest'],'adapter_digest':request['adapter_digest'],'adapter_reference':request['adapter_digest'],'signing_key_id':signer.key_id}}\n"
+                "print(json.dumps({{**unsigned,'signature':signer.sign_bytes(canonical_bytes(unsigned))}}))\n".format(
+                    str(Path.cwd()), base64.b64encode(signer.private_key_raw).decode()
+                ),
+                encoding="utf-8",
+            )
             from egv.training.protocol import TrainingProtocol
 
             protocol = TrainingProtocol()
@@ -286,6 +302,7 @@ class RealPeftTrainingIntegrationTests(unittest.TestCase):
                 "evaluator_key_id": key_id_for_public_key(signer.public_key_raw),
                 "evaluator_public_key_digest": hashlib.sha256(signer.public_key_raw).hexdigest(),
                 "endpoint_digest": hashlib.sha256(command.read_bytes()).hexdigest(),
+                "transfer_endpoint_digest": hashlib.sha256(transfer_command.read_bytes()).hexdigest(),
                 "development_manifest_digest": digest_for("private-dev"), "development_task_count": 8,
                 "development_row_ids": ["dev-{:02d}".format(index) for index in range(8)],
                 "model_digest": manifest_digest, "protocol_digest": protocol.digest,
@@ -297,7 +314,8 @@ class RealPeftTrainingIntegrationTests(unittest.TestCase):
                 result = run_production_training(
                     model_root=model_root, training_dataset=dataset_path,
                     evaluator_manifest=service_path, evaluator_public_key=public_key,
-                    evaluator_command=command, output_root=root / "output", device="cuda",
+                    evaluator_command=command, evaluator_transfer_command=transfer_command,
+                    output_root=root / "output", device="cuda",
                 )
             self.assertTrue(result["real_qwen_execution_claimed"])
             self.assertEqual(result["selected_loss"], 0.1)

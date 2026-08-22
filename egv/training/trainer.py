@@ -887,6 +887,7 @@ def run_production_training(
     evaluator_manifest: Path,
     evaluator_public_key: Path,
     evaluator_command: Path,
+    evaluator_transfer_command: Path,
     output_root: Path,
     device: str = "cuda",
 ) -> Mapping[str, Any]:
@@ -903,7 +904,8 @@ def run_production_training(
     dataset = _load_frozen_runtime_dataset(training_dataset)
     protocol = TrainingProtocol()
     gateway = ExternalDevelopmentLossGateway(
-        evaluator_manifest, public_key_path=evaluator_public_key, command=evaluator_command
+        evaluator_manifest, public_key_path=evaluator_public_key, command=evaluator_command,
+        transfer_command=evaluator_transfer_command,
     )
     try:
         import torch

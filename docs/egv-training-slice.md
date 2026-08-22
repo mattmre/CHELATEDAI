@@ -46,7 +46,7 @@ prompt, target, expected-output, or held-out content.
 ## Development selection
 
 The production gateway is an external evaluator client. Its executable bytes,
-public key/key ID, service manifest, model, protocol, campaign, and private
+adapter-transfer executable bytes, public key/key ID, service manifest, model, protocol, campaign, and private
 development digest are frozen before training. It evaluates a sealed adapter
 and returns a signed Ed25519 `VERDICT` receipt. The receipt is closed and binds the
 checkpoint, model, full data manifest, development manifest, protocol, gateway
@@ -71,7 +71,11 @@ its exact adapter tensors, saves a real PEFT adapter, requires its sealed digest
 to equal the signed development receipt, and reopens it through the pinned
 Variation model loader with a real PEFT attestation. The external evaluator
 command is rehashed before every call and executed only from a fresh
-content-addressed copy. Missing or substituted
+content-addressed copy. The trainer sends adapter bytes to the independently
+administered evaluator through a second digest-pinned command. Spark2 verifies
+and installs the complete sealed tree under its adapter digest, signs the
+content reference, and resolves that evaluator-local reference for loss
+evaluation. No Spark1-local adapter path crosses the boundary. Missing or substituted
 authority, data, target, model, checkpoint, or PEFT state fails closed.
 
 The honest CPU smoke is:
@@ -89,10 +93,19 @@ python -m egv train-lora \
   --development-manifest EVALUATOR_SERVICE.json \
   --evaluator-public-key EVALUATOR.pub \
   --evaluator-command EVALUATOR_EXECUTABLE \
+  --evaluator-transfer-command ADAPTER_TRANSFER_EXECUTABLE \
   --output OUTPUT_DIR \
   --device cuda \
   --json
 ```
+
+Spark2 freezes its exact eight-row private runtime and path-free public service
+manifest with `training freeze-evaluator-service`. Its transfer executable
+invokes `training receive-adapter --adapter-store ...`; its loss executable
+invokes `training evaluator-once --adapter-store ...`. Both commands are
+generic command boundaries: host addresses, credentials, evaluator seeds, and
+private filesystem paths are operator inputs and are never embedded in the
+repository or service manifest.
 
 The command is executable only when every sealed local artifact and external
 authority binding validates. It never falls back to a fixture. It does not

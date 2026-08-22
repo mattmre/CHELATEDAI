@@ -8,10 +8,13 @@ raw development or held-out content never enters the receipt or public report.
 from __future__ import annotations
 
 from dataclasses import dataclass
+import base64
 import hashlib
 import json
 import math
+import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -36,6 +39,9 @@ DEVELOPMENT_RECEIPT_SCHEMA = "egv-development-loss-receipt-v1"
 DEVELOPMENT_GATEWAY_SCHEMA = "egv-development-loss-gateway-v1"
 EXTERNAL_DEVELOPMENT_SERVICE_SCHEMA = "egv-external-development-service-v1"
 PRIVATE_DEVELOPMENT_RUNTIME_SCHEMA = "egv-private-development-runtime-v1"
+ADAPTER_TRANSFER_REQUEST_SCHEMA = "egv-adapter-transfer-request-v1"
+ADAPTER_TRANSFER_RESPONSE_SCHEMA = "egv-adapter-transfer-response-v1"
+ADAPTER_TRANSFER_LIMIT = 512 * 1024 * 1024
 
 
 def build_private_development_runtime(corpus: Any) -> Mapping[str, Any]:
@@ -114,6 +120,7 @@ def build_external_development_service_manifest(
     protocol_digest: str,
     public_key_path: Path,
     command: Path,
+    transfer_command: Path,
 ) -> Mapping[str, Any]:
     """Freeze a path-free public manifest for one private dev runtime."""
 
@@ -129,8 +136,9 @@ def build_external_development_service_manifest(
         raise TrainingIntegrityError("private development row identities are invalid")
     key_path = Path(public_key_path)
     command_path = Path(command)
-    if any(path.is_symlink() or not path.is_file() for path in (key_path, command_path)):
-        raise TrainingDependencyError("evaluator public key and command must be regular files")
+    transfer_path = Path(transfer_command)
+    if any(path.is_symlink() or not path.is_file() for path in (key_path, command_path, transfer_path)):
+        raise TrainingDependencyError("evaluator public key and commands must be regular files")
     public_key = key_path.read_bytes()
     unsigned = {
         "schema_version": EXTERNAL_DEVELOPMENT_SERVICE_SCHEMA,
@@ -138,6 +146,7 @@ def build_external_development_service_manifest(
         "evaluator_key_id": key_id_for_public_key(public_key),
         "evaluator_public_key_digest": hashlib.sha256(public_key).hexdigest(),
         "endpoint_digest": hashlib.sha256(command_path.read_bytes()).hexdigest(),
+        "transfer_endpoint_digest": hashlib.sha256(transfer_path.read_bytes()).hexdigest(),
         "development_manifest_digest": _require_digest(
             private_runtime["development_manifest_digest"], "development_manifest_digest"
         ),
@@ -159,6 +168,7 @@ def freeze_external_development_service(
     protocol_digest: str,
     public_key_path: Path,
     command: Path,
+    transfer_command: Path,
     private_output: Path,
     service_output: Path,
 ) -> Mapping[str, Any]:
@@ -170,6 +180,7 @@ def freeze_external_development_service(
         protocol_digest=protocol_digest,
         public_key_path=public_key_path,
         command=command,
+        transfer_command=transfer_command,
     )
     for destination, value in ((Path(private_output), runtime), (Path(service_output), service)):
         destination.parent.mkdir(parents=True, exist_ok=True)
@@ -680,13 +691,15 @@ class ExternalDevelopmentLossGateway:
 
     _FIELDS = frozenset({
         "schema_version", "campaign_id", "evaluator_key_id", "evaluator_public_key_digest",
-        "endpoint_digest", "development_manifest_digest", "development_task_count",
+        "endpoint_digest", "transfer_endpoint_digest", "development_manifest_digest", "development_task_count",
         "development_row_ids",
         "model_digest", "protocol_digest", "service_manifest_digest",
     })
 
-    def __init__(self, manifest_path: Path, *, public_key_path: Path, command: Path) -> None:
-        paths = tuple(Path(item) for item in (manifest_path, public_key_path, command))
+    def __init__(
+        self, manifest_path: Path, *, public_key_path: Path, command: Path, transfer_command: Path
+    ) -> None:
+        paths = tuple(Path(item) for item in (manifest_path, public_key_path, command, transfer_command))
         if any(path.is_symlink() or not path.is_file() for path in paths):
             raise TrainingDependencyError("external evaluator manifest, key, and command must be regular files")
         try:
@@ -716,12 +729,19 @@ class ExternalDevelopmentLossGateway:
         command_bytes = paths[2].read_bytes()
         if hashlib.sha256(command_bytes).hexdigest() != value["endpoint_digest"]:
             raise TrainingIntegrityError("external evaluator command identity differs from the frozen manifest")
+        transfer_bytes = paths[3].read_bytes()
+        if hashlib.sha256(transfer_bytes).hexdigest() != value["transfer_endpoint_digest"]:
+            raise TrainingIntegrityError("external adapter transfer command differs from the frozen manifest")
         self._manifest = dict(value)
         self._public_key = public_key
         self._command = paths[2].resolve()
         self._command_bytes = command_bytes
         self._endpoint_digest = value["endpoint_digest"]
         self._command_suffix = paths[2].suffix.lower()
+        self._transfer_command = paths[3].resolve()
+        self._transfer_command_bytes = transfer_bytes
+        self._transfer_endpoint_digest = value["transfer_endpoint_digest"]
+        self._transfer_command_suffix = paths[3].suffix.lower()
 
     @property
     def production(self) -> bool:
@@ -753,6 +773,103 @@ class ExternalDevelopmentLossGateway:
         if self.model_digest != expected_model_digest or self.protocol_digest != expected_protocol_digest:
             raise TrainingIntegrityError("external evaluator is bound to a different model or protocol")
 
+    @staticmethod
+    def _invoke_pinned(
+        *, command: Path, command_bytes: bytes, endpoint_digest: str, suffix: str,
+        request: Mapping[str, Any], timeout: int,
+    ) -> Mapping[str, Any]:
+        current = command.read_bytes()
+        if current != command_bytes or hashlib.sha256(current).hexdigest() != endpoint_digest:
+            raise TrainingIntegrityError("external evaluator command changed before invocation")
+        with tempfile.TemporaryDirectory(prefix="egv-pinned-endpoint-") as endpoint_temporary:
+            endpoint = Path(endpoint_temporary) / (endpoint_digest + suffix)
+            with endpoint.open("xb") as handle:
+                handle.write(command_bytes)
+                handle.flush()
+                os.fsync(handle.fileno())
+            endpoint.chmod(0o500)
+            invocation = [sys.executable, str(endpoint)] if suffix == ".py" else [str(endpoint)]
+            try:
+                completed = subprocess.run(
+                    invocation, input=canonical_json(request), text=True,
+                    capture_output=True, timeout=timeout, check=False,
+                )
+            except (OSError, subprocess.SubprocessError) as exc:
+                raise TrainingDependencyError("external evaluator command failed") from exc
+        if completed.returncode != 0:
+            raise TrainingDependencyError("external evaluator command returned a nonzero exit status")
+        try:
+            response = json.loads(completed.stdout)
+        except ValueError as exc:
+            raise TrainingDependencyError("external evaluator command returned invalid JSON") from exc
+        if not isinstance(response, Mapping):
+            raise TrainingDependencyError("external evaluator command returned no result object")
+        return response
+
+    def _transfer_adapter(self, artifact: Any) -> str:
+        from ..variation.adapter import ADAPTER_MANIFEST_NAME
+
+        artifact.verify()
+        root = Path(artifact.root).resolve()
+        relative_paths = sorted(set(artifact.manifest.files) | {ADAPTER_MANIFEST_NAME})
+        files = []
+        total = 0
+        for relative in relative_paths:
+            path = (root / relative).resolve()
+            try:
+                path.relative_to(root)
+            except ValueError as exc:
+                raise TrainingIntegrityError("sealed adapter transfer path escapes its root") from exc
+            if path.is_symlink() or not path.is_file():
+                raise TrainingIntegrityError("sealed adapter transfer contains a non-regular file")
+            payload = path.read_bytes()
+            total += len(payload)
+            if total > ADAPTER_TRANSFER_LIMIT:
+                raise TrainingIntegrityError("sealed adapter exceeds the cross-host transfer limit")
+            files.append({
+                "path": relative,
+                "digest": hashlib.sha256(payload).hexdigest(),
+                "content_b64": base64.urlsafe_b64encode(payload).decode("ascii").rstrip("="),
+            })
+        body = {
+            "schema_version": ADAPTER_TRANSFER_REQUEST_SCHEMA,
+            "service_manifest_digest": self.gateway_digest,
+            "adapter_digest": artifact.digest,
+            "files": files,
+        }
+        request = {**body, "request_digest": digest_for(body)}
+        response = dict(self._invoke_pinned(
+            command=self._transfer_command,
+            command_bytes=self._transfer_command_bytes,
+            endpoint_digest=self._transfer_endpoint_digest,
+            suffix=self._transfer_command_suffix,
+            request=request,
+            timeout=3600,
+        ))
+        required = {
+            "schema_version", "service_manifest_digest", "request_digest", "adapter_digest",
+            "adapter_reference", "signing_key_id", "signature",
+        }
+        if set(response) != required or response.get("schema_version") != ADAPTER_TRANSFER_RESPONSE_SCHEMA:
+            raise TrainingIntegrityError("external adapter transfer response is not closed")
+        if (
+            response.get("service_manifest_digest") != self.gateway_digest
+            or response.get("request_digest") != request["request_digest"]
+            or response.get("adapter_digest") != artifact.digest
+            or response.get("adapter_reference") != artifact.digest
+            or response.get("signing_key_id") != self._manifest["evaluator_key_id"]
+        ):
+            raise TrainingIntegrityError("external adapter transfer response binding is invalid")
+        unsigned = dict(response)
+        try:
+            signature = base64.urlsafe_b64decode(str(unsigned.pop("signature")) + "==")
+            from ..receipts import load_public_key
+
+            load_public_key(self._public_key).verify(signature, canonical_bytes(unsigned))
+        except Exception as exc:
+            raise TrainingIntegrityError("external adapter transfer response signature is invalid") from exc
+        return str(response["adapter_reference"])
+
     def evaluate(
         self, checkpoint: TrainingCheckpoint, *, model: Any, checkpoint_artifact_digest: str
     ) -> DevelopmentLossEvaluation:
@@ -774,47 +891,28 @@ class ExternalDevelopmentLossGateway:
             )
             artifact = SealedAdapterArtifact(root)
             artifact.verify()
+            adapter_reference = self._transfer_adapter(artifact)
             request = {
                 "schema_version": "egv-development-loss-request-v1",
                 "campaign_id": self._manifest["campaign_id"],
                 "checkpoint_digest": validate_sha256(checkpoint_artifact_digest, "checkpoint_artifact_digest"),
                 "adapter_digest": artifact.digest,
-                "adapter_root": str(root.resolve()),
+                "adapter_reference": adapter_reference,
                 "model_digest": checkpoint.model_digest,
                 "protocol_digest": checkpoint.protocol_digest,
                 "development_manifest_digest": self.development_manifest_digest,
                 "service_manifest_digest": self.gateway_digest,
             }
             try:
-                current_bytes = self._command.read_bytes()
-                if (
-                    current_bytes != self._command_bytes
-                    or hashlib.sha256(current_bytes).hexdigest() != self._endpoint_digest
-                ):
-                    raise TrainingIntegrityError("external evaluator command changed before invocation")
-                with tempfile.TemporaryDirectory(prefix="egv-pinned-endpoint-") as endpoint_temporary:
-                    endpoint = Path(endpoint_temporary) / (self._endpoint_digest + self._command_suffix)
-                    with endpoint.open("xb") as handle:
-                        handle.write(self._command_bytes)
-                        handle.flush()
-                        __import__("os").fsync(handle.fileno())
-                    endpoint.chmod(0o500)
-                    if hashlib.sha256(endpoint.read_bytes()).hexdigest() != self._endpoint_digest:
-                        raise TrainingIntegrityError("content-addressed evaluator copy failed verification")
-                    invocation = [sys.executable, str(endpoint)] if self._command_suffix == ".py" else [str(endpoint)]
-                    completed = subprocess.run(
-                        invocation, input=canonical_json(request), text=True,
-                        capture_output=True, timeout=3600, check=False,
-                    )
-                    if completed.returncode != 0:
-                        raise TrainingDependencyError("external development evaluator returned a nonzero exit status")
-                response = json.loads(completed.stdout)
+                response = self._invoke_pinned(
+                    command=self._command, command_bytes=self._command_bytes,
+                    endpoint_digest=self._endpoint_digest, suffix=self._command_suffix,
+                    request=request, timeout=3600,
+                )
             except TrainingError:
                 raise
             except (OSError, subprocess.SubprocessError, ValueError) as exc:
                 raise TrainingDependencyError("external development evaluator failed") from exc
-            if completed.returncode != 0 or not isinstance(response, Mapping):
-                raise TrainingDependencyError("external development evaluator returned no valid result")
             required = {"schema_version", "checkpoint_digest", "adapter_digest", "loss", "sample_count", "receipt"}
             if set(response) != required or response["schema_version"] != "egv-development-loss-response-v1":
                 raise TrainingIntegrityError("external development response is not closed")
@@ -859,9 +957,104 @@ class ExternalDevelopmentLossGateway:
         verify_receipt(dict(evaluation.receipt), self._public_key, expected_key_id=self._manifest["evaluator_key_id"])
 
 
+def receive_external_adapter(
+    request: Mapping[str, Any], *, service_manifest: Path, adapter_store: Path,
+    evaluator_private_key: Path,
+) -> Mapping[str, Any]:
+    """Receive one content-addressed adapter tree into evaluator-owned storage."""
+
+    required = {
+        "schema_version", "service_manifest_digest", "adapter_digest", "files", "request_digest"
+    }
+    if not isinstance(request, Mapping) or set(request) != required or request.get("schema_version") != ADAPTER_TRANSFER_REQUEST_SCHEMA:
+        raise TrainingIntegrityError("adapter transfer request is not closed")
+    body = dict(request)
+    supplied_request_digest = body.pop("request_digest")
+    if digest_for(body) != supplied_request_digest:
+        raise TrainingIntegrityError("adapter transfer request digest is invalid")
+    service_value = json.loads(Path(service_manifest).read_text(encoding="utf-8"))
+    if not isinstance(service_value, Mapping) or set(service_value) != ExternalDevelopmentLossGateway._FIELDS:
+        raise TrainingIntegrityError("adapter transfer service manifest is not closed")
+    unsigned_service = dict(service_value)
+    service_digest = unsigned_service.pop("service_manifest_digest")
+    if digest_for(unsigned_service) != service_digest or request["service_manifest_digest"] != service_digest:
+        raise TrainingIntegrityError("adapter transfer service binding is invalid")
+    signer = ReceiptSigner(Path(evaluator_private_key).read_bytes())
+    if signer.key_id != service_value["evaluator_key_id"]:
+        raise TrainingIntegrityError("adapter transfer signer differs from service authority")
+    files = request["files"]
+    if not isinstance(files, list) or not files:
+        raise TrainingIntegrityError("adapter transfer contains no files")
+    paths = []
+    total = 0
+    decoded = []
+    for record in files:
+        if not isinstance(record, Mapping) or set(record) != {"path", "digest", "content_b64"}:
+            raise TrainingIntegrityError("adapter transfer file record is not closed")
+        relative = record["path"]
+        encoded = record["content_b64"]
+        if (
+            not isinstance(relative, str) or not relative or "\\" in relative
+            or Path(relative).is_absolute() or ".." in Path(relative).parts
+            or relative in paths or not isinstance(encoded, str)
+        ):
+            raise TrainingIntegrityError("adapter transfer path or content is invalid")
+        if len(encoded) > ((ADAPTER_TRANSFER_LIMIT + 2) // 3) * 4:
+            raise TrainingIntegrityError("adapter transfer encoded file exceeds the limit")
+        try:
+            payload = base64.b64decode(encoded + "=" * (-len(encoded) % 4), altchars=b"-_", validate=True)
+        except (ValueError, UnicodeError) as exc:
+            raise TrainingIntegrityError("adapter transfer file is invalid base64url") from exc
+        total += len(payload)
+        if total > ADAPTER_TRANSFER_LIMIT or hashlib.sha256(payload).hexdigest() != record["digest"]:
+            raise TrainingIntegrityError("adapter transfer file digest or size is invalid")
+        paths.append(relative)
+        decoded.append((relative, payload))
+    store = Path(adapter_store).resolve()
+    store.mkdir(parents=True, exist_ok=True)
+    reference = validate_sha256(request["adapter_digest"], "adapter_digest")
+    destination = store / reference
+    if destination.exists():
+        from ..variation.adapter import SealedAdapterArtifact
+
+        existing = SealedAdapterArtifact(destination)
+        existing.verify()
+        if existing.digest != reference:
+            raise TrainingIntegrityError("content-addressed adapter store contains a conflicting artifact")
+    else:
+        temporary = Path(tempfile.mkdtemp(prefix=".incoming-adapter-", dir=str(store)))
+        try:
+            for relative, payload in decoded:
+                target = temporary / relative
+                target.parent.mkdir(parents=True, exist_ok=True)
+                with target.open("xb") as handle:
+                    handle.write(payload)
+                    handle.flush()
+                    os.fsync(handle.fileno())
+            from ..variation.adapter import SealedAdapterArtifact
+
+            incoming = SealedAdapterArtifact(temporary)
+            incoming.verify()
+            if incoming.digest != reference:
+                raise TrainingIntegrityError("transferred adapter differs from its content reference")
+            os.replace(str(temporary), str(destination))
+        finally:
+            if temporary.exists():
+                shutil.rmtree(temporary)
+    response_unsigned = {
+        "schema_version": ADAPTER_TRANSFER_RESPONSE_SCHEMA,
+        "service_manifest_digest": service_digest,
+        "request_digest": supplied_request_digest,
+        "adapter_digest": reference,
+        "adapter_reference": reference,
+        "signing_key_id": signer.key_id,
+    }
+    return {**response_unsigned, "signature": signer.sign_bytes(canonical_bytes(response_unsigned))}
+
+
 def run_external_evaluator_once(
     request: Mapping[str, Any], *, service_manifest: Path, model_root: Path,
-    development_dataset: Path, evaluator_private_key: Path, device: str = "cuda",
+    development_dataset: Path, evaluator_private_key: Path, adapter_store: Path, device: str = "cuda",
 ) -> Mapping[str, Any]:
     """Evaluator-side one-shot command; private rows and signing key stay here."""
 
@@ -869,7 +1062,7 @@ def run_external_evaluator_once(
         raise TrainingConfigurationError("external development evaluation is frozen to CUDA")
 
     required_request = {
-        "schema_version", "campaign_id", "checkpoint_digest", "adapter_digest", "adapter_root",
+        "schema_version", "campaign_id", "checkpoint_digest", "adapter_digest", "adapter_reference",
         "model_digest", "protocol_digest", "development_manifest_digest", "service_manifest_digest",
     }
     if not isinstance(request, Mapping) or set(request) != required_request:
@@ -893,7 +1086,10 @@ def run_external_evaluator_once(
     from ..variation.adapter import SealedAdapterArtifact
     from ..variation.model import PinnedModelLoader
 
-    artifact = SealedAdapterArtifact(Path(str(request["adapter_root"])))
+    adapter_reference = validate_sha256(request["adapter_reference"], "adapter_reference")
+    if adapter_reference != request["adapter_digest"]:
+        raise TrainingIntegrityError("development request adapter reference differs from its digest")
+    artifact = SealedAdapterArtifact(Path(adapter_store).resolve() / adapter_reference)
     artifact.verify()
     if artifact.digest != request["adapter_digest"]:
         raise TrainingIntegrityError("development request adapter digest differs from its sealed tree")
@@ -1000,6 +1196,7 @@ __all__ = [
     "build_external_development_service_manifest",
     "build_private_development_runtime",
     "freeze_external_development_service",
+    "receive_external_adapter",
     "run_external_evaluator_once",
     "TrainingCheckpoint",
     "model_state_digest_for_training",
