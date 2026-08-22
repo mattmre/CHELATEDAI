@@ -931,6 +931,12 @@ class VariationTestCase(unittest.TestCase):
         })
         with self.assertRaises(VariationDependencyError):
             ModelCandidateGenerator._parse_response(bad_metadata, context)
+        wrong_authority = canonical_json({
+            "source": source, "declared_locus": context.public_locus,
+            "requested_authority": "READ_ONLY", "evidence_ids": [], "metadata": {},
+        })
+        with self.assertRaisesRegex(VariationDependencyError, "wrong authority"):
+            ModelCandidateGenerator._parse_response(wrong_authority, context)
 
     def test_forged_task_metadata_cannot_cross_the_evaluation_manifest_boundary(self) -> None:
         runner, task, _repo, _isolation = self.make_runner()

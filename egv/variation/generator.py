@@ -334,6 +334,8 @@ class ModelCandidateGenerator:
             or not all(isinstance(key, str) for key in metadata)
         ):
             raise VariationDependencyError("pinned model candidate JSON has invalid source/evidence types")
+        if requested_authority != "EXECUTE_CANDIDATE":
+            raise VariationDependencyError("pinned model candidate JSON requests the wrong authority")
         source_bytes = source.encode("utf-8")
         return CandidateProposal(
             source=source_bytes,
