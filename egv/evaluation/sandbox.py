@@ -33,6 +33,7 @@ from .errors import ArtifactError, DockerConfigurationError, InfrastructureFailu
 
 DEFAULT_DOCKER_IMAGE = "edc-backbone:live"
 DEFAULT_DOCKER_IMAGE_ID = "sha256:06f0c2fa1954db8df5399ff935362563f0a74d5641e3240c42b2ff0aedcce156"
+_DOCKER_INIT_TOKEN = object()
 DOCKER_USER = "65534:65534"
 DOCKER_PIDS_LIMIT = 64
 DOCKER_MEMORY_LIMIT = "128m"
@@ -89,8 +90,17 @@ class DockerSandboxConfig:
         )
 
     def validate(self) -> None:
-        if not self.image_ref or any(character.isspace() for character in self.image_ref) or self.image_ref.startswith("-"):
+        if (
+            not isinstance(self.image_ref, str)
+            or not self.image_ref
+            or any(character.isspace() for character in self.image_ref)
+            or self.image_ref.startswith("-")
+        ):
             raise DockerConfigurationError("Docker image reference is invalid")
+        if not isinstance(self.docker_binary, str) or not self.docker_binary or any(
+            character.isspace() for character in self.docker_binary
+        ):
+            raise DockerConfigurationError("Docker executable reference is invalid")
         if not re.fullmatch(r"sha256:[0-9a-f]{64}", self.pinned_image_id):
             raise DockerConfigurationError("Docker image must be pinned to a SHA-256 image ID")
         if self.user != DOCKER_USER:
@@ -776,6 +786,91 @@ class DockerCandidateSandbox:
         self.seccomp_path = self.config.seccomp_profile(self.workspace)
         self.last_environment_diff: Mapping[str, Any] = {}
         self.last_negative_control_evidence: Dict[str, Mapping[str, Any]] = {}
+        self._configuration_digest = digest_for(dict(self.config.__dict__))
+        # An opaque seal distinguishes a genuinely initialized production
+        # sandbox from object.__new__ or a partially fabricated instance.
+        self._initialization_token = _DOCKER_INIT_TOKEN
+
+    def validate_production_integrity(self) -> None:
+        """Validate the immutable production Docker boundary.
+
+        The variation gateway repeats this check before construction is
+        accepted and before every evaluation.  It is deliberately stricter
+        than the test-only local helper contract.
+        """
+
+        if type(self) is not DockerCandidateSandbox:
+            raise DockerConfigurationError("production sandbox must be the exact DockerCandidateSandbox type")
+        if getattr(self, "_initialization_token", None) is not _DOCKER_INIT_TOKEN:
+            raise DockerConfigurationError("production sandbox initialization seal is missing")
+        if "execute" in self.__dict__:
+            raise DockerConfigurationError("production sandbox execute cannot be overridden on an instance")
+        if DockerCandidateSandbox.execute is not _ORIGINAL_DOCKER_EXECUTE:
+            raise DockerConfigurationError("production sandbox execute method was altered")
+        if "validate_production_integrity" in self.__dict__:
+            raise DockerConfigurationError("production sandbox integrity method cannot be overridden")
+        if DockerCandidateSandbox.validate_production_integrity is not _ORIGINAL_DOCKER_VALIDATE_INTEGRITY:
+            raise DockerConfigurationError("production sandbox integrity method was altered")
+        if DockerSandboxConfig.verify_image is not _ORIGINAL_CONFIG_VERIFY_IMAGE:
+            raise DockerConfigurationError("Docker image verification method was altered")
+        if DockerSandboxConfig.validate is not _ORIGINAL_CONFIG_VALIDATE:
+            raise DockerConfigurationError("Docker configuration validation method was altered")
+        required = (
+            "workspace",
+            "config",
+            "timeout_seconds",
+            "output_limit",
+            "image_id",
+            "docker_binary",
+            "artifacts",
+            "seccomp_path",
+            "last_environment_diff",
+            "last_negative_control_evidence",
+            "_configuration_digest",
+        )
+        if any(name not in self.__dict__ for name in required):
+            raise DockerConfigurationError("production sandbox required state is incomplete")
+        if not isinstance(self.workspace, Path) or not self.workspace.is_dir():
+            raise DockerConfigurationError("production sandbox workspace is unavailable")
+        if type(self.config) is not DockerSandboxConfig:
+            raise DockerConfigurationError("production sandbox config must be DockerSandboxConfig")
+        if "verify_image" in self.config.__dict__ or "validate" in self.config.__dict__:
+            raise DockerConfigurationError("Docker config methods cannot be overridden on an instance")
+        if digest_for(dict(self.config.__dict__)) != self._configuration_digest:
+            raise DockerConfigurationError("production Docker config changed after initialization")
+        self.config.validate()
+        if self.timeout_seconds != self.config.timeout_seconds:
+            raise DockerConfigurationError("production timeout does not match pinned config")
+        if self.output_limit != self.config.output_limit:
+            raise DockerConfigurationError("production output limit does not match pinned config")
+
+        verified_image_id = self.config.verify_image()
+        if verified_image_id != self.image_id:
+            raise DockerConfigurationError("sandbox image_id differs from the verified pinned image")
+        docker_binary = Path(self.docker_binary)
+        if docker_binary.is_symlink() or not docker_binary.is_file() or not os.access(docker_binary, os.X_OK):
+            raise DockerConfigurationError("production docker_binary is not a real executable")
+        located_binary = shutil.which(self.config.docker_binary)
+        if located_binary is None or Path(located_binary).resolve() != docker_binary.resolve():
+            raise DockerConfigurationError("production docker_binary is not the configured executable")
+
+        if type(self.artifacts) is not ContentAddressedArtifactStore:
+            raise DockerConfigurationError("production artifact store is not initialized")
+        expected_artifact_root = self.workspace / "source-artifacts"
+        if self.artifacts.root.resolve() != expected_artifact_root.resolve() or not expected_artifact_root.is_dir():
+            raise DockerConfigurationError("production artifact store root is not bound to the workspace")
+        expected_seccomp = self.workspace / "docker-seccomp-egv-v1.json"
+        if (
+            self.seccomp_path.resolve() != expected_seccomp.resolve()
+            or self.seccomp_path.is_symlink()
+            or not self.seccomp_path.is_file()
+            or bool(self.seccomp_path.stat().st_mode & 0o222)
+        ):
+            raise DockerConfigurationError("production seccomp profile is missing or mutable")
+        if not isinstance(self.last_environment_diff, Mapping) or not isinstance(
+            self.last_negative_control_evidence, Mapping
+        ):
+            raise DockerConfigurationError("production sandbox evidence state is invalid")
 
     def runtime_report(self) -> Dict[str, Any]:
         return {
@@ -1595,6 +1690,15 @@ class DockerCandidateSandbox:
         if not all(results.values()):
             raise InfrastructureFailure("Docker sandbox negative controls failed: {}".format(results))
         return results
+
+
+# Capture the production methods after class creation.  Runtime integrity
+# checks compare against these identities so a patched class method cannot
+# silently downgrade the Docker gate.
+_ORIGINAL_DOCKER_EXECUTE = DockerCandidateSandbox.execute
+_ORIGINAL_DOCKER_VALIDATE_INTEGRITY = DockerCandidateSandbox.validate_production_integrity
+_ORIGINAL_CONFIG_VERIFY_IMAGE = DockerSandboxConfig.verify_image
+_ORIGINAL_CONFIG_VALIDATE = DockerSandboxConfig.validate
 
 
 _LOCAL_RUNNER = r'''

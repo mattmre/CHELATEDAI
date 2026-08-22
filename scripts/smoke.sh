@@ -87,8 +87,10 @@ STAGE1_RESULT="NOT RUN"
 STAGE2_RESULT="NOT RUN"
 STAGE2_REASON=""
 EVALUATION_RESULT="NOT RUN"
+VARIATION_RESULT="NOT RUN"
 EVALUATION_JSON_FILE="$(mktemp "${TMPDIR:-/tmp}/egv-evaluation-smoke.XXXXXX.json")"
-trap 'rm -f "$EVALUATION_JSON_FILE"' EXIT
+VARIATION_JSON_FILE="$(mktemp "${TMPDIR:-/tmp}/egv-variation-smoke.XXXXXX.json")"
+trap 'rm -f "$EVALUATION_JSON_FILE" "$VARIATION_JSON_FILE"' EXIT
 
 echo "========================================================================="
 echo "Brutal Honesty Rulebook v3.3 Rule 5 smoke"
@@ -102,6 +104,7 @@ if [ "$API_ONLY" -eq 1 ]; then
     # for the full production smoke.
     EGV_RESULT="SKIPPED (--api-only before Slice 2 execution)"
     EVALUATION_RESULT="SKIPPED (--api-only before Docker evaluation)"
+    VARIATION_RESULT="SKIPPED (--api-only before Variation execution)"
     echo
     echo "--- Slice 2 execution: SKIPPED (--api-only selected before Docker) ---"
 else
@@ -162,6 +165,41 @@ PY
         EVALUATION_RESULT="FAIL"
         SMOKE_STATUS=1
         echo "Evaluation slice FAIL" >&2
+    fi
+
+    # ----------------------------------------------------------------------------
+    # Variation slice smoke — bounded ledger/retrieval/checkpoint trajectory
+    # ----------------------------------------------------------------------------
+    echo
+    echo "--- Variation slice smoke (fixture tier; production prerequisites remain explicit) ---"
+    if "$PYTHON_BIN" -m egv variation smoke --json | tee "$VARIATION_JSON_FILE"; then
+        if VARIATION_SUMMARY="$($PYTHON_BIN - "$VARIATION_JSON_FILE" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as handle:
+    report = json.load(handle)
+if report.get("smoke") != "PASS":
+    raise SystemExit("variation smoke did not report PASS")
+variation = report.get("variation") or {}
+attempts = variation.get("attempts") or []
+fields = (report.get("runtime_tier"), variation.get("terminal_status"), len(attempts), report.get("campaign_path_exercised"))
+if fields[0] != "floor-fixture" or fields[1] != "PROMOTED" or len(attempts) < 1 or fields[3] is not False:
+    raise SystemExit("variation smoke omitted a truthful tier, terminal status, or attempts")
+print("tier={}; terminal={}; attempts={}; campaign_path_exercised={}".format(*fields))
+PY
+        )"; then
+            VARIATION_RESULT="PASS (${VARIATION_SUMMARY}; fixture-only, no model/Docker/Spark/Campaign claim)"
+            echo "Variation slice PASS (${VARIATION_SUMMARY})"
+        else
+            VARIATION_RESULT="FAIL (runtime report omitted verifiable fields)"
+            SMOKE_STATUS=1
+            echo "Variation slice FAIL — runtime report could not be verified" >&2
+        fi
+    else
+        VARIATION_RESULT="FAIL"
+        SMOKE_STATUS=1
+        echo "Variation slice FAIL" >&2
     fi
 fi
 
@@ -243,6 +281,7 @@ echo "========================================================================="
 echo "SMOKE SUMMARY"
 echo "  EGV evidence core:              $EGV_RESULT"
 echo "  Evaluation slice:              $EVALUATION_RESULT"
+echo "  Variation slice:               $VARIATION_RESULT"
 echo "  Stage 1 (surface boot):       $STAGE1_RESULT"
 echo "  Stage 2 (production pipeline): $STAGE2_RESULT${STAGE2_REASON:+ ($STAGE2_REASON)}"
 echo "  Overall exit code:            $SMOKE_STATUS"

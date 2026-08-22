@@ -26,6 +26,7 @@
 | [ADR-0001: Evidence-Governed Variation Agent](architecture/adr-0001-evidence-governed-variation-agent.md) | Proposed small-model architecture combining an immutable evidence ledger, disposable Qdrant projection, LoRA-only training, enforceable authority, and dual-Spark evaluation |
 | [Evidence-Governed Variation Dual-Spark Runbook](runbooks/evidence-governed-variation-dual-spark.md) | Documentation-only activation, resumability, service restoration, evidence packaging, and matched-ablation plan for the proposed EGV campaign |
 | [EGV Evaluation Slice](egv-evaluation-slice.md) | Runnable CPU-only Evaluation contract, Docker isolation controls, private artifact layout, CLI smoke, and explicit later-slice limits |
+| [EGV Variation Slice](egv-variation-slice.md) | Bounded candidate loop, pinned local model loader, arm isolation, resumable checkpoints, retrieval policies, and honest floor smoke |
 | [Default-Promotion Evidence Runbook](default-promotion-evidence-runbook-2026-05-06.md) | Operator workflow for linked validation, promotion-linkage audit, repeat-seed decision, and fail-closed preflight evidence |
 | [Evidence Dashboard Runbook](evidence-dashboard-runbook-2026-05-06.md) | Operator guide for dashboard evidence panels, source APIs, artifact regeneration, and fail-closed interpretation |
 | [Evidence Artifact Retention Policy](evidence-artifact-retention-policy-2026-05-06.md) | Retention, regeneration, CI artifact, and safe-deletion policy for generated evidence outputs |

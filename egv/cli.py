@@ -26,6 +26,7 @@ from .public import (
 )
 from .pilot import run_two_process_smoke
 from .receipts import ReceiptSigner
+from .variation import PinnedModelLoader, run_variation_smoke
 
 
 SLICE2_PHASES = {
@@ -379,7 +380,9 @@ def _json_output(value: Any, as_json: bool) -> None:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Evidence-Governed Variation Slice 2 evidence core and Evaluation slice")
+    parser = argparse.ArgumentParser(
+        description="Evidence-Governed Variation Evidence, Evaluation, and bounded Variation slices"
+    )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     smoke = subparsers.add_parser("smoke", help="run the deterministic evidence-core floor smoke")
@@ -425,6 +428,20 @@ def build_parser() -> argparse.ArgumentParser:
     evaluation_smoke = evaluation_subparsers.add_parser("smoke", help="run the CPU-only Evaluation production smoke")
     evaluation_smoke.add_argument("--output", type=Path)
     evaluation_smoke.add_argument("--json", action="store_true", dest="as_json")
+
+    variation = subparsers.add_parser("variation", help="run the bounded EGV Variation slice")
+    variation_subparsers = variation.add_subparsers(dest="variation_command", required=True)
+    variation_smoke = variation_subparsers.add_parser(
+        "smoke", help="run the deterministic CPU-only Variation fixture smoke"
+    )
+    variation_smoke.add_argument("--output", type=Path)
+    variation_smoke.add_argument("--json", action="store_true", dest="as_json")
+    model_preflight = variation_subparsers.add_parser(
+        "model-preflight", help="verify a locally staged, revision-pinned model manifest without loading it"
+    )
+    model_preflight.add_argument("--model-root", required=True, type=Path)
+    model_preflight.add_argument("--manifest", type=Path)
+    model_preflight.add_argument("--json", action="store_true", dest="as_json")
 
     for phase in sorted(SLICE2_PHASES):
         phase_parser = subparsers.add_parser(phase, help=f"{phase} (outside Slice 2; fails closed)")
@@ -493,6 +510,15 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 _json_output(run_evaluation_smoke(args.output), args.as_json)
                 return 0
             raise EGVError("unsupported evaluation command: {}".format(args.evaluation_command))
+        if args.command == "variation":
+            if args.variation_command == "smoke":
+                _json_output(run_variation_smoke(args.output), args.as_json)
+                return 0
+            if args.variation_command == "model-preflight":
+                loader = PinnedModelLoader(args.model_root, manifest_path=args.manifest)
+                _json_output(loader.preflight(), args.as_json)
+                return 0
+            raise EGVError("unsupported variation command: {}".format(args.variation_command))
         if args.command in SLICE2_PHASES:
             raise PhaseUnavailable(
                 f"{args.command} is outside Slice 2 evidence core; no services, credentials, hidden tests, "
