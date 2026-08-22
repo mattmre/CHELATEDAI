@@ -53,6 +53,26 @@ from egv.projection import InMemoryProjection
 from egv.receipts import ReceiptJournal, ReceiptSigner, verify_receipt
 
 
+def _pinned_evaluation_runtime_available() -> bool:
+    """Return whether the exact frozen Docker fixture is locally usable.
+
+    Hosted test runners expose a Docker client but do not contain the private,
+    digest-pinned ``edc-backbone:live`` image.  Production Evaluation must not
+    pull or silently replace that image, so live-runtime tests are conditional
+    on the complete frozen runtime rather than merely the Docker executable.
+    """
+
+    try:
+        DockerSandboxConfig.from_environment().verify_image()
+    except DockerConfigurationError:
+        return False
+    return True
+
+
+PINNED_EVALUATION_RUNTIME_AVAILABLE = _pinned_evaluation_runtime_available()
+PINNED_EVALUATION_RUNTIME_REASON = "exact digest-pinned Evaluation Docker fixture is unavailable"
+
+
 class EvaluationTestCase(unittest.TestCase):
     def setUp(self) -> None:
         self.tempdir = tempfile.TemporaryDirectory(prefix="egv-evaluation-test-")
@@ -487,6 +507,7 @@ class TestAuthorityAndSandbox(EvaluationTestCase):
         finally:
             ledger.close()
 
+    @unittest.skipUnless(PINNED_EVALUATION_RUNTIME_AVAILABLE, PINNED_EVALUATION_RUNTIME_REASON)
     def test_authority_is_deny_by_default_and_network_is_absent(self) -> None:
         default = AuthorityBroker(None)
         with self.assertRaises(AuthorityDenied):
@@ -1191,6 +1212,7 @@ class TestAuthorityAndSandbox(EvaluationTestCase):
 
 
 class TestEvaluationLedgerIntegration(EvaluationTestCase):
+    @unittest.skipUnless(PINNED_EVALUATION_RUNTIME_AVAILABLE, PINNED_EVALUATION_RUNTIME_REASON)
     def test_signed_controller_ingest_materialization_and_key_pin(self) -> None:
         # The production controller now runs only in the spawned evaluator
         # process.  This test deliberately exercises that receipt-only path;
@@ -1463,6 +1485,7 @@ class TestCorrectionShock(EvaluationTestCase):
 
 
 class TestEvaluationSmokeAndCLI(EvaluationTestCase):
+    @unittest.skipUnless(PINNED_EVALUATION_RUNTIME_AVAILABLE, PINNED_EVALUATION_RUNTIME_REASON)
     def test_cpu_smoke_reports_actual_tier_and_no_hidden_public_leak(self) -> None:
         report = run_evaluation_smoke()
         self.assertIs(package_smoke, run_evaluation_smoke)
@@ -1518,6 +1541,7 @@ class TestEvaluationSmokeAndCLI(EvaluationTestCase):
         self.assertEqual(report["two_process"]["wrong_locus_diagnostic"], "MUTATION_LOCUS_VIOLATION")
         self.assertEqual(report["two_process"]["wrong_locus_disposition"], "REJECTED")
 
+    @unittest.skipUnless(PINNED_EVALUATION_RUNTIME_AVAILABLE, PINNED_EVALUATION_RUNTIME_REASON)
     def test_cli_evaluation_smoke_is_runnable_and_bounded(self) -> None:
         completed = subprocess.run(
             [sys.executable, "-m", "egv", "evaluation", "smoke", "--json"],
