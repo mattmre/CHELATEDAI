@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import replace
+import inspect
 from pathlib import Path
 import subprocess
 import sys
@@ -11,24 +12,29 @@ import tempfile
 import unittest
 from types import SimpleNamespace
 from unittest.mock import patch
+from weakref import WeakKeyDictionary
 
 from egv.canonical import canonical_json, digest_bytes, digest_for, failure_family_root
 from egv.evaluation.authority import AuthorityBroker
 from egv.evaluation.controller import EvaluationResult, EvaluatorController, HiddenEvaluatorRunner
 from egv.evaluation.dataset import EvaluationCorpus, EVALUATOR_SEED_BYTES, FAMILY_SPECS
 from egv.evaluation.sandbox import DockerCandidateSandbox
-from egv.evaluation.errors import LeakageError
+from egv.evaluation.errors import DockerConfigurationError, LeakageError
 from egv.ledger import EvidenceLedger
 from egv.receipts import ReceiptJournal, ReceiptSigner
 from egv.variation import (
     ADAPTER_MANIFEST_NAME,
     ARM_IDS,
     ArmIsolation,
+    AdapterApplicationAttestation,
     BoundedCandidateLoop,
     CheckpointStore,
     ControllerEvaluationGateway,
     DeterministicFixtureGenerator,
+    LoadedPinnedModel,
     MODEL_REVISION,
+    ModelCandidateGenerator,
+    PinnedModelManifest,
     PinnedModelLoader,
     SealedAdapterArtifact,
     VariationBudgetError,
@@ -46,6 +52,7 @@ from egv.variation import (
 )
 from egv.variation.fixture import FixtureEvaluationGateway
 from egv.variation.generator import CandidateContext, CandidateProposal
+import egv.variation.loop as variation_loop
 from egv.variation.loop import CANDIDATE_SOURCE_LIMIT
 from egv.variation.model import MODEL_ARCHITECTURE, MODEL_CONFIG_CLASS, MODEL_MANIFEST_SCHEMA, MODEL_REPOSITORY
 
@@ -74,6 +81,8 @@ class VariationTestCase(unittest.TestCase):
         max_attempts: int = 2,
         fixture_mode: bool = True,
         campaign_id: str = "variation-test-campaign",
+        generator_factory=None,
+        evaluator_factory=None,
     ):
         repo = self.corpus.hidden_repositories()[0]
         task = VariationTask.from_microrepo(repo)
@@ -86,18 +95,26 @@ class VariationTestCase(unittest.TestCase):
             blob_root=self.root / "ledger-blobs",
             clock=lambda: "2026-08-22T00:00:00Z",
         )
-        evaluator = FixtureEvaluationGateway(
-            self.corpus,
-            self.ledger,
-            self.root / "fixture-evaluator",
-            policy_digest=policy_digest,
-            campaign_id=campaign_id,
+        evaluator = (
+            evaluator_factory(self.corpus, self.ledger, policy_digest, campaign_id)
+            if evaluator_factory is not None
+            else FixtureEvaluationGateway(
+                self.corpus,
+                self.ledger,
+                self.root / "fixture-evaluator",
+                policy_digest=policy_digest,
+                campaign_id=campaign_id,
+            )
         )
         isolation = ArmIsolation(self.root / "arm-state", campaign_id=campaign_id)
-        generator = DeterministicFixtureGenerator(
-            {task.task_id: tuple(sources)},
-            public_locus={task.task_id: task.public_locus},
-            model_digest=model_digest,
+        generator = (
+            generator_factory(task, repo, model_digest)
+            if generator_factory is not None
+            else DeterministicFixtureGenerator(
+                {task.task_id: tuple(sources)},
+                public_locus={task.task_id: task.public_locus},
+                model_digest=model_digest,
+            )
         )
         try:
             runner = BoundedCandidateLoop(
@@ -126,15 +143,57 @@ class VariationTestCase(unittest.TestCase):
     def make_adapter_artifact(self) -> SealedAdapterArtifact:
         root = self.root / "sealed-adapter"
         root.mkdir(parents=True, exist_ok=True)
-        (root / "adapter_config.json").write_text('{"r":4,"lora_alpha":8}\n', encoding="utf-8")
+        (root / "adapter_config.json").write_text(
+            '{"lora_alpha":8,"peft_type":"LORA","r":4}\n', encoding="utf-8"
+        )
         (root / "adapter_model.safetensors").write_bytes(b"sealed-training-output")
         manifest = build_local_adapter_manifest(root)
         (root / ADAPTER_MANIFEST_NAME).write_text(canonical_json(manifest.to_dict()) + "\n", encoding="utf-8")
         return SealedAdapterArtifact(root)
 
+    def make_production_generator(self):
+        manifest = PinnedModelManifest(
+            repository="Qwen/Qwen3.5-2B-Base",
+            revision="b1485b2fa6dfa1287294f269f5fb618e03d52d7c",
+            architecture="Qwen3_5ForCausalLM",
+            config_class="Qwen3_5TextConfig",
+            transformers_version="5.5.0",
+            files={"weights.safetensors": "a" * 64},
+            license={"name": "test", "source": "test"},
+        )
+        manifest.validate_contract()
+        loaded = LoadedPinnedModel(
+            model=SimpleNamespace(),
+            tokenizer=SimpleNamespace(),
+            manifest=manifest,
+            manifest_digest=manifest.digest(),
+            file_hashes=dict(manifest.files),
+            load_report={},
+            base_state_digest=digest_for("base-state"),
+        )
+        return ModelCandidateGenerator(loaded, model_digest=manifest.digest()), manifest.digest()
+
     def test_controller_gateway_binds_real_controller_hidden_runner_and_docker(self) -> None:
         hidden_runner = HiddenEvaluatorRunner.from_corpus(self.corpus, evaluator_revision="gateway-test-evaluator")
-        docker_sandbox = object.__new__(DockerCandidateSandbox)
+        forged_signer = ReceiptSigner(b"F" * 32)
+        with self.assertRaises(VariationDependencyError):
+            ControllerEvaluationGateway(
+                EvaluatorController(
+                    sandbox=object.__new__(DockerCandidateSandbox),
+                    hidden_runner=hidden_runner,
+                    broker=AuthorityBroker(None),
+                    signer=forged_signer,
+                    journal=ReceiptJournal(self.root / "forged-gateway-receipts.jsonl", forged_signer.public_key),
+                    ingest=lambda _receipt: None,
+                    campaign_id="gateway-campaign",
+                    protocol_digest=digest_for("gateway-protocol"),
+                    policy_digest=digest_for("gateway-policy"),
+                )
+            )
+        try:
+            docker_sandbox = DockerCandidateSandbox(self.root / "gateway-docker")
+        except DockerConfigurationError as exc:
+            self.skipTest("cached pinned Docker image unavailable: {}".format(exc))
         signer = ReceiptSigner(b"G" * 32)
         controller = EvaluatorController(
             sandbox=docker_sandbox,
@@ -153,6 +212,35 @@ class VariationTestCase(unittest.TestCase):
         controller.sandbox = SimpleNamespace(enforceable=True)
         with self.assertRaises(VariationDependencyError):
             gateway.validate_runtime()
+
+    def test_controller_gateway_rejects_patched_instance_execute_and_image_binding(self) -> None:
+        hidden_runner = HiddenEvaluatorRunner.from_corpus(self.corpus, evaluator_revision="patched-gateway-evaluator")
+        try:
+            docker_sandbox = DockerCandidateSandbox(self.root / "patched-gateway-docker")
+        except DockerConfigurationError as exc:
+            self.skipTest("cached pinned Docker image unavailable: {}".format(exc))
+        patched_signer = ReceiptSigner(b"P" * 32)
+        controller = EvaluatorController(
+            sandbox=docker_sandbox,
+            hidden_runner=hidden_runner,
+            broker=AuthorityBroker(None),
+            signer=patched_signer,
+            journal=ReceiptJournal(
+                self.root / "patched-gateway-receipts.jsonl", patched_signer.public_key
+            ),
+            ingest=lambda _receipt: None,
+            campaign_id="patched-gateway-campaign",
+            protocol_digest=digest_for("patched-gateway-protocol"),
+            policy_digest=digest_for("patched-gateway-policy"),
+        )
+        gateway = ControllerEvaluationGateway(controller)
+        docker_sandbox.execute = lambda **_kwargs: None  # type: ignore[attr-defined]
+        with self.assertRaises(VariationDependencyError):
+            gateway.validate_runtime()
+        del docker_sandbox.__dict__["execute"]
+        docker_sandbox.image_id = "sha256:" + ("b" * 64)
+        with self.assertRaises(VariationDependencyError):
+            gateway.validate_runtime()
         controller.sandbox = docker_sandbox
         controller.hidden_runner = SimpleNamespace(evaluator_revision="forged")
         with self.assertRaises(VariationDependencyError):
@@ -160,7 +248,10 @@ class VariationTestCase(unittest.TestCase):
 
     def test_production_run_revalidates_controller_and_docker_boundary(self) -> None:
         hidden_runner = HiddenEvaluatorRunner.from_corpus(self.corpus, evaluator_revision="run-boundary-evaluator")
-        docker_sandbox = object.__new__(DockerCandidateSandbox)
+        try:
+            docker_sandbox = DockerCandidateSandbox(self.root / "run-boundary-docker")
+        except DockerConfigurationError as exc:
+            self.skipTest("cached pinned Docker image unavailable: {}".format(exc))
         signer = ReceiptSigner(b"R" * 32)
         controller = EvaluatorController(
             sandbox=docker_sandbox,
@@ -181,8 +272,7 @@ class VariationTestCase(unittest.TestCase):
         )
         repo = self.corpus.hidden_repositories()[0]
         task = VariationTask.from_microrepo(repo)
-        model_digest = digest_for({"production_model": MODEL_REVISION})
-        generator = SimpleNamespace(model_digest=model_digest, adapter_digest=None, test_only=False)
+        generator, model_digest = self.make_production_generator()
         runner = BoundedCandidateLoop(
             ledger=self.ledger,
             evaluator=gateway,
@@ -205,20 +295,21 @@ class VariationTestCase(unittest.TestCase):
             runner.run(task, seed=0)
 
     def test_forged_promoted_checkpoint_requires_promoted_ledger_candidate(self) -> None:
-        runner, task, repo, isolation = self.make_runner(max_attempts=3)
-
         class StopBeforeSecond(DeterministicFixtureGenerator):
             def propose(self, context):
                 if context.attempt_index == 2:
                     raise RuntimeError("intentional interruption")
                 return super().propose(context)
 
-        public_source = dict(repo.source_files)["src/task.py"]
-        runner.generator = StopBeforeSecond(
-            {task.task_id: (public_source, repo.corrected_source)},
-            public_locus={task.task_id: task.public_locus},
-            model_digest=runner.model_digest,
-        )
+        def generator_factory(task, repo, model_digest):
+            public_source = dict(repo.source_files)["src/task.py"]
+            return StopBeforeSecond(
+                {task.task_id: (public_source, repo.corrected_source)},
+                public_locus={task.task_id: task.public_locus},
+                model_digest=model_digest,
+            )
+
+        runner, task, repo, isolation = self.make_runner(max_attempts=3, generator_factory=generator_factory)
         with self.assertRaises(RuntimeError):
             runner.run(task, seed=0)
         checkpoint_path, checkpoint = CheckpointStore(isolation.workspace("C", runner._run_id(task.task_id, 0)).checkpoints).latest(
@@ -261,6 +352,124 @@ class VariationTestCase(unittest.TestCase):
         with self.assertRaises(VariationBudgetError):
             runner.run(_task, seed=0)
 
+    def test_runtime_identity_seal_rejects_fixture_evaluator_and_generator_swaps(self) -> None:
+        runner, task, _repo, _isolation = self.make_runner()
+        with self.assertRaises(AttributeError):
+            runner.fixture_mode = False  # type: ignore[misc]
+        with self.assertRaises(AttributeError):
+            runner.evaluator = object()  # type: ignore[misc]
+        with self.assertRaises(AttributeError):
+            runner.generator = object()  # type: ignore[misc]
+
+        forged_mode = runner
+        object.__setattr__(forged_mode, "fixture_mode", False)
+        with self.assertRaises(VariationDependencyError):
+            forged_mode.run(task, seed=0)
+        object.__setattr__(forged_mode, "fixture_mode", True)
+
+        forged_evaluator = runner
+        object.__setattr__(forged_evaluator, "evaluator", object())
+        with self.assertRaises(VariationDependencyError):
+            forged_evaluator.run(task, seed=0)
+        object.__setattr__(forged_evaluator, "evaluator", runner.evaluator)
+
+        forged_generator = runner
+        object.__setattr__(forged_generator, "generator", object())
+        with self.assertRaises(VariationDependencyError):
+            forged_generator.run(task, seed=0)
+
+    def test_runtime_identity_authority_rejects_wholesale_instance_dict_rewrite(self) -> None:
+        hidden_runner = HiddenEvaluatorRunner.from_corpus(self.corpus, evaluator_revision="dict-attack-evaluator")
+        try:
+            docker_sandbox = DockerCandidateSandbox(self.root / "dict-attack-docker")
+        except DockerConfigurationError as exc:
+            self.skipTest("cached pinned Docker image unavailable: {}".format(exc))
+        signer = ReceiptSigner(b"W" * 32)
+        controller = EvaluatorController(
+            sandbox=docker_sandbox,
+            hidden_runner=hidden_runner,
+            broker=AuthorityBroker(None),
+            signer=signer,
+            journal=ReceiptJournal(self.root / "dict-attack-receipts.jsonl", signer.public_key),
+            ingest=lambda _receipt: None,
+            campaign_id="dict-attack-campaign",
+            protocol_digest=digest_for("dict-attack-protocol"),
+            policy_digest=digest_for("dict-attack-policy"),
+        )
+        self.ledger = EvidenceLedger(
+            self.root / "dict-attack.sqlite",
+            blob_root=self.root / "dict-attack-blobs",
+            clock=lambda: "2026-08-22T00:00:00Z",
+        )
+        gateway = ControllerEvaluationGateway(controller)
+        generator, model_digest = self.make_production_generator()
+        repo = self.corpus.hidden_repositories()[0]
+        task = VariationTask.from_microrepo(repo)
+        isolation = ArmIsolation(self.root / "dict-attack-arms", campaign_id="dict-attack-campaign")
+        runner = BoundedCandidateLoop(
+            ledger=self.ledger,
+            evaluator=gateway,
+            generator=generator,
+            isolation=isolation,
+            workspace_root=self.root / "dict-attack-state",
+            campaign_id="dict-attack-campaign",
+            source_commit="dict-attack-source",
+            model_revision=MODEL_REVISION,
+            model_digest=model_digest,
+            data_manifest_digest=self.corpus.manifest_digest(),
+            policy_digest=digest_for("dict-attack-policy"),
+            arm_id="D",
+            max_attempts=1,
+            seed_set=(0,),
+            fixture_mode=False,
+        )
+        fixture_probe = BoundedCandidateLoop.__new__(BoundedCandidateLoop, fixture_mode=True)
+        self.assertIsNot(type(runner), type(fixture_probe))
+        self.assertIsNot(type(runner).run, type(fixture_probe).run)
+        self.assertNotIn("_validate_fixture_boundary", inspect.getsource(type(runner).run))
+        self.assertNotIn("fixture_mode", inspect.getsource(type(runner).run))
+        with self.assertRaises(TypeError):
+            runner.__class__ = type(fixture_probe)
+        fixture_evaluator = FixtureEvaluationGateway(
+            self.corpus,
+            self.ledger,
+            self.root / "dict-attack-fixture",
+            policy_digest=digest_for("dict-attack-policy"),
+            campaign_id="dict-attack-campaign",
+        )
+        fixture_generator = object()
+        fixture_isolation = object()
+        registry_cell = variation_loop._register_runtime_identity.__closure__[1]
+        self.assertIsInstance(registry_cell.cell_contents, WeakKeyDictionary)
+        registry_cell.cell_contents[runner] = variation_loop._RuntimeIdentityRecord(
+            True,
+            fixture_evaluator,
+            fixture_generator,
+            fixture_isolation,
+        )
+        forged = dict(runner.__dict__)
+        forged.update(
+            {
+                "fixture_mode": True,
+                "evaluator": fixture_evaluator,
+                "generator": fixture_generator,
+                "isolation": fixture_isolation,
+                "_frozen_fixture_mode": True,
+                "_frozen_evaluator": object(),
+                "_frozen_generator": object(),
+                "_frozen_isolation": object(),
+                "_identity_contract": digest_for("forged-wholesale-contract"),
+            }
+        )
+        runner.__dict__.clear()
+        runner.__dict__.update(forged)
+        with self.assertRaises(VariationDependencyError):
+            runner.run(task, seed=0)
+        self.assertEqual(
+            [event for event in self.ledger.current_valid_events() if event.get("event_type") == "VARIATION_ATTEMPT"],
+            [],
+        )
+
     def test_lora_requires_verified_exhaustive_sealed_adapter_not_hex(self) -> None:
         with self.assertRaises(VariationDependencyError):
             self.make_runner(arm_id="E", max_attempts=1)
@@ -278,6 +487,83 @@ class VariationTestCase(unittest.TestCase):
         with self.assertRaises(VariationConfigurationError):
             artifact.verify()
 
+    def test_lora_arm_rejects_duck_loaded_model_and_non_applied_adapter(self) -> None:
+        artifact = self.make_adapter_artifact()
+        generator, model_digest = self.make_production_generator()
+        with self.assertRaises(VariationDependencyError):
+            ModelCandidateGenerator(
+                generator.loaded_model,
+                model_digest=model_digest,
+                adapter_digest=artifact.digest,
+                adapter_artifact=artifact,
+            )
+        with self.assertRaises(VariationConfigurationError):
+            ModelCandidateGenerator(
+                SimpleNamespace(model=SimpleNamespace(), tokenizer=SimpleNamespace(), manifest_digest=model_digest),
+                model_digest=model_digest,
+            )
+
+    def test_importable_attestation_sentinel_cannot_authorize_dummy_model(self) -> None:
+        from egv.variation.model import ADAPTER_ATTESTATION_SCHEMA, _ADAPTER_ATTESTATION_TOKEN, model_state_digest
+
+        artifact = self.make_adapter_artifact()
+        base_generator, model_digest = self.make_production_generator()
+        dummy_model = SimpleNamespace(state_dict=lambda: {})
+        attestation = AdapterApplicationAttestation(
+            schema_version=ADAPTER_ATTESTATION_SCHEMA,
+            adapter_digest=artifact.digest,
+            base_model_manifest_digest=model_digest,
+            base_state_digest=digest_for("forged-base-state"),
+            applied_model_state_digest=model_state_digest(dummy_model),
+            issuer_token=_ADAPTER_ATTESTATION_TOKEN,
+        )
+        loaded = LoadedPinnedModel(
+            model=dummy_model,
+            tokenizer=base_generator.tokenizer,
+            manifest=base_generator.loaded_model.manifest,
+            manifest_digest=model_digest,
+            file_hashes=base_generator.loaded_model.file_hashes,
+            load_report={},
+            base_state_digest=digest_for("forged-base-state"),
+            adapter_digest=artifact.digest,
+            adapter_attestation=attestation,
+        )
+
+        class PeftModel:
+            pass
+
+        with patch.dict(sys.modules, {"peft": SimpleNamespace(PeftModel=PeftModel)}):
+            with self.assertRaises(VariationDependencyError):
+                ModelCandidateGenerator(
+                    loaded,
+                    model_digest=model_digest,
+                    adapter_digest=artifact.digest,
+                    adapter_artifact=artifact,
+                )
+
+    def test_model_and_adapter_manifests_reject_directory_symlinks(self) -> None:
+        model_root = self.root / "symlink-model"
+        model_root.mkdir()
+        (model_root / "weights.safetensors").write_bytes(b"model")
+        model_manifest = build_local_manifest(model_root, license_name="test", license_source="test")
+        (model_root / "model-manifest.json").write_text(
+            canonical_json(model_manifest.to_dict()) + "\n", encoding="utf-8"
+        )
+        outside = self.root / "outside-model"
+        outside.mkdir()
+        (outside / "secret.safetensors").write_bytes(b"outside")
+        (model_root / "linked-directory").symlink_to(outside, target_is_directory=True)
+        with self.assertRaises(VariationConfigurationError):
+            PinnedModelLoader(model_root).preflight()
+
+        artifact = self.make_adapter_artifact()
+        adapter_outside = self.root / "outside-adapter"
+        adapter_outside.mkdir()
+        (adapter_outside / "unexpected.bin").write_bytes(b"outside")
+        (artifact.root / "linked-directory").symlink_to(adapter_outside, target_is_directory=True)
+        with self.assertRaises(VariationConfigurationError):
+            artifact.verify()
+
     def test_nested_manifest_name_is_not_silently_excluded_from_exhaustive_adapter_tree(self) -> None:
         artifact = self.make_adapter_artifact()
         nested = artifact.root / "nested" / ADAPTER_MANIFEST_NAME
@@ -290,14 +576,27 @@ class VariationTestCase(unittest.TestCase):
         artifact = self.make_adapter_artifact()
         calls = {}
 
+        class AdapterConfig:
+            def to_dict(self):
+                return {"lora_alpha": 8, "peft_type": "LORA", "r": 4}
+
         class PeftModel:
+            def __init__(self, model):
+                self.model = model
+                self.peft_config = {"default": AdapterConfig()}
+                self.active_adapters = ["default"]
+
+            def state_dict(self):
+                return {"lora": b"applied"}
+
             @classmethod
             def from_pretrained(cls, model, root, **kwargs):
                 calls["args"] = (model, root, kwargs)
-                return "adapted-model"
+                return cls(model)
 
         with patch.dict(sys.modules, {"peft": SimpleNamespace(PeftModel=PeftModel)}):
-            self.assertEqual(artifact.apply_to("base-model"), "adapted-model")
+            applied = artifact.apply_to("base-model")
+        self.assertIsInstance(applied, PeftModel)
         self.assertEqual(calls["args"][0], "base-model")
         self.assertTrue(calls["args"][2]["local_files_only"])
         self.assertFalse(calls["args"][2]["is_trainable"])
@@ -441,20 +740,27 @@ class VariationTestCase(unittest.TestCase):
         self.assertEqual(len(self.ledger.receipts()), 6)
 
     def test_running_checkpoint_resumes_after_generator_interruption(self) -> None:
-        runner, task, repo, isolation = self.make_runner()
-
         class InterruptingGenerator(DeterministicFixtureGenerator):
+            interrupt = True
+
             def propose(self, context):
-                if context.attempt_index == 2:
+                if self.interrupt and context.attempt_index == 2:
                     raise RuntimeError("simulated trainer interruption")
                 return super().propose(context)
 
-        public_source = dict(repo.source_files)["src/task.py"]
-        runner.generator = InterruptingGenerator(
-            {task.task_id: (public_source, repo.corrected_source)},
-            public_locus={task.task_id: task.public_locus},
-            model_digest=runner.model_digest,
-        )
+        holder = {}
+
+        def generator_factory(task, repo, model_digest):
+            public_source = dict(repo.source_files)["src/task.py"]
+            generator = InterruptingGenerator(
+                {task.task_id: (public_source, repo.corrected_source)},
+                public_locus={task.task_id: task.public_locus},
+                model_digest=model_digest,
+            )
+            holder["generator"] = generator
+            return generator
+
+        runner, task, repo, isolation = self.make_runner(generator_factory=generator_factory)
         with self.assertRaises(RuntimeError):
             runner.run(task, seed=0)
         run_id = runner._run_id(task.task_id, 0)
@@ -463,18 +769,12 @@ class VariationTestCase(unittest.TestCase):
         self.assertIsNotNone(latest)
         checkpoint_path, checkpoint = latest  # type: ignore[misc]
         self.assertEqual(checkpoint.status, "RUNNING")
-        runner.generator = DeterministicFixtureGenerator(
-            {task.task_id: (public_source, repo.corrected_source)},
-            public_locus={task.task_id: task.public_locus},
-            model_digest=runner.model_digest,
-        )
+        holder["generator"].interrupt = False
         resumed = runner.run(task, seed=0, resume_from=checkpoint_path)
         self.assertTrue(resumed.promoted)
         self.assertEqual(len(resumed.attempts), 2)
 
     def test_infrastructure_loss_is_incident_bound_and_stops_the_loop(self) -> None:
-        runner, task, _repo, isolation = self.make_runner()
-        fixture = runner.evaluator
         incident = digest_for("variation-infrastructure-incident")
 
         class InfrastructureGateway:
@@ -486,6 +786,7 @@ class VariationTestCase(unittest.TestCase):
                 self.hidden_runner = hidden_runner
 
             def evaluate(self, *, candidate_id, task_id, source, **_kwargs):
+                record = self.hidden_runner.public_record(task_id)
                 return EvaluationResult(
                     candidate_id=candidate_id,
                     task_id=task_id,
@@ -498,15 +799,25 @@ class VariationTestCase(unittest.TestCase):
                     output_digest=digest_bytes(b""),
                     infrastructure_incident_id=incident,
                     failure_family_root=failure_family_root(
-                        task.family_id,
+                        record["family_id"],
                         "INTERNAL_ERROR",
-                        task.public_locus,
-                        task.public_rule_id,
+                        record["public_locus"],
+                        record["public_rule_id"],
                         infrastructure_incident_id=incident,
                     ),
                 )
 
-        runner.evaluator = InfrastructureGateway(fixture.hidden_runner)
+        def evaluator_factory(corpus, ledger, policy_digest, campaign_id):
+            fixture = FixtureEvaluationGateway(
+                corpus,
+                ledger,
+                self.root / "infrastructure-fixture-evaluator",
+                policy_digest=policy_digest,
+                campaign_id=campaign_id,
+            )
+            return InfrastructureGateway(fixture.hidden_runner)
+
+        runner, task, _repo, isolation = self.make_runner(evaluator_factory=evaluator_factory)
         report = runner.run(task, seed=0)
         self.assertEqual(report.terminal_status, "FAILED")
         self.assertEqual(len(report.attempts), 1)
@@ -603,7 +914,8 @@ class VariationTestCase(unittest.TestCase):
         self.assertEqual(preflight["revision"], MODEL_REVISION)
         self.assertEqual(preflight["architecture"], MODEL_ARCHITECTURE)
         self.assertEqual(preflight["config_class"], MODEL_CONFIG_CLASS)
-        self.assertEqual(preflight["network"], "disabled-local-files-only")
+        self.assertEqual(preflight["network"], "offline-environment-scoped-preflight")
+        self.assertEqual(set(preflight["offline_environment"].values()), {"1"})
 
         (model_root / "unlisted-extra.bin").write_bytes(b"must-not-be-ignored")
         with self.assertRaises(VariationConfigurationError):
@@ -682,6 +994,76 @@ class VariationTestCase(unittest.TestCase):
 
             PinnedModelManifest.from_mapping(value)
 
+    def test_loader_attests_real_adapter_application_and_generator_rechecks_state(self) -> None:
+        model_root = self.root / "attested-model"
+        model_root.mkdir()
+        (model_root / "weights.safetensors").write_bytes(b"attestation-model")
+        manifest = build_local_manifest(model_root, license_name="test", license_source="test")
+        (model_root / "model-manifest.json").write_text(canonical_json(manifest.to_dict()) + "\n", encoding="utf-8")
+        artifact = self.make_adapter_artifact()
+
+        class Qwen3_5TextConfig:
+            @classmethod
+            def from_pretrained(cls, *args, **kwargs):
+                return cls()
+
+        class BaseModel:
+            def __init__(self):
+                self.config = Qwen3_5TextConfig()
+
+            @classmethod
+            def from_pretrained(cls, *args, **kwargs):
+                return cls(), {"missing_keys": [], "unexpected_keys": []}
+
+            def state_dict(self):
+                return {"base": b"base-state"}
+
+        class AutoTokenizer:
+            @classmethod
+            def from_pretrained(cls, *args, **kwargs):
+                return cls()
+
+        class AdapterConfig:
+            def to_dict(self):
+                return {"lora_alpha": 8, "peft_type": "LORA", "r": 4}
+
+        class PeftModel:
+            def __init__(self, model):
+                self.config = model.config
+                self.peft_config = {"default": AdapterConfig()}
+                self.active_adapters = ["default"]
+
+            def state_dict(self):
+                return {"base": b"base-state", "lora": b"applied-lora"}
+
+            @classmethod
+            def from_pretrained(cls, model, root, **kwargs):
+                return cls(model)
+
+        fake_transformers = SimpleNamespace(
+            Qwen3_5TextConfig=Qwen3_5TextConfig,
+            Qwen3_5ForCausalLM=BaseModel,
+            AutoTokenizer=AutoTokenizer,
+        )
+        def import_local(name):
+            return fake_transformers if name == "transformers" else sys.modules[name]
+
+        with patch("egv.variation.model.importlib_metadata.version", return_value="5.5.0"), patch(
+            "egv.variation.model.importlib.import_module", side_effect=import_local
+        ), patch.dict(sys.modules, {"peft": SimpleNamespace(PeftModel=PeftModel)}):
+            loaded = PinnedModelLoader(model_root).load(adapter_artifact=artifact)
+        self.assertIsNotNone(loaded.adapter_attestation)
+        loaded.adapter_attestation.validate()  # type: ignore[union-attr]
+        self.assertEqual(loaded.adapter_attestation.adapter_digest, artifact.digest)  # type: ignore[union-attr]
+        with patch.dict(sys.modules, {"peft": SimpleNamespace(PeftModel=PeftModel)}):
+            generator = ModelCandidateGenerator(
+                loaded,
+                model_digest=manifest.digest(),
+                adapter_digest=artifact.digest,
+                adapter_artifact=artifact,
+            )
+            generator.validate_production_integrity()
+
     def test_variation_smoke_separates_private_state_and_public_report(self) -> None:
         output = self.root / "smoke-output"
         report = run_variation_smoke(output)
@@ -752,7 +1134,8 @@ class VariationTestCase(unittest.TestCase):
         self.assertEqual(completed.returncode, 0, completed.stderr)
         report = json.loads(completed.stdout)
         self.assertEqual(report["revision"], MODEL_REVISION)
-        self.assertEqual(report["network"], "disabled-local-files-only")
+        self.assertEqual(report["network"], "offline-environment-scoped-preflight")
+        self.assertEqual(set(report["offline_environment"].values()), {"1"})
 
     def test_public_variation_scanner_rejects_seed_and_candidate_source_fields(self) -> None:
         with self.assertRaises(LeakageError):

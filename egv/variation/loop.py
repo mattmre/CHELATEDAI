@@ -5,7 +5,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 import json
 from pathlib import Path
+from threading import RLock
 from typing import Any, Dict, List, Mapping, Optional, Protocol, Sequence, Tuple
+from weakref import WeakKeyDictionary
 
 from ..canonical import content_id, digest_bytes, digest_for, failure_family_root
 from ..evaluation.artifacts import ContentAddressedArtifactStore
@@ -13,16 +15,61 @@ from ..evaluation.controller import EvaluationResult, EvaluatorController, Hidde
 from ..evaluation.dataset import MicroRepo
 from ..evaluation.diagnostics import Diagnostic, validate_diagnostic, validate_disposition, validate_resource_bucket
 from ..evaluation.prompts import PROMPT_IDS, PromptRegistry
-from ..evaluation.sandbox import DockerCandidateSandbox
+from ..evaluation.sandbox import DockerCandidateSandbox, DockerSandboxConfig
 from ..ledger import EvidenceLedger
 from ..receipts import receipt_hash
-from .adapter import SealedAdapterArtifact
+from .adapter import SealedAdapterArtifact, validate_applied_peft_model
 from .arms import ArmIsolation, ArmPolicy, arm_policy
 from .checkpoint import CheckpointStore, VariationCheckpoint
 from .errors import VariationBudgetError, VariationCheckpointError, VariationConfigurationError, VariationDependencyError
-from .generator import CandidateContext, CandidateGenerator, CandidateProposal
-from .model import MODEL_REVISION
+from .generator import CandidateContext, CandidateGenerator, CandidateProposal, ModelCandidateGenerator
+from .model import ADAPTER_ATTESTATION_SCHEMA, AdapterApplicationAttestation, MODEL_REVISION
 from .retrieval import EvidenceRetrievalPolicy, RetrievalResult, retrieval_policy
+
+
+_ORIGINAL_DOCKER_SANDBOX_EXECUTE = DockerCandidateSandbox.execute
+_ORIGINAL_DOCKER_SANDBOX_INTEGRITY = DockerCandidateSandbox.validate_production_integrity
+_ORIGINAL_DOCKER_CONFIG_VERIFY_IMAGE = DockerSandboxConfig.verify_image
+_ORIGINAL_DOCKER_CONFIG_VALIDATE = DockerSandboxConfig.validate
+_ORIGINAL_MODEL_GENERATOR_PROPOSE = ModelCandidateGenerator.propose
+_ORIGINAL_MODEL_GENERATOR_INTEGRITY = ModelCandidateGenerator.validate_production_integrity
+
+
+@dataclass(frozen=True)
+class _RuntimeIdentityRecord:
+    """Canonical loop bindings held outside the writable loop instance."""
+
+    fixture_mode: bool
+    evaluator: Any
+    generator: Any
+    isolation: Any
+
+
+def _make_runtime_identity_authority():
+    records = WeakKeyDictionary()
+    lock = RLock()
+
+    def register(loop: Any, record: _RuntimeIdentityRecord) -> None:
+        with lock:
+            if loop in records:
+                raise VariationDependencyError("Variation runtime identity was already registered")
+            records[loop] = record
+
+    def get(loop: Any) -> _RuntimeIdentityRecord:
+        with lock:
+            try:
+                return records[loop]
+            except KeyError as exc:
+                raise VariationDependencyError("Variation runtime identity is not registered") from exc
+
+    def registered(loop: Any) -> bool:
+        with lock:
+            return loop in records
+
+    return register, get, registered
+
+
+_register_runtime_identity, _get_runtime_identity, _runtime_identity_registered = _make_runtime_identity_authority()
 
 
 MAX_CANDIDATE_ATTEMPTS = 12
@@ -36,6 +83,9 @@ VARIATION_PROTOCOL_DIGEST = digest_for(
         "candidate_source_limit": CANDIDATE_SOURCE_LIMIT,
         "success_stops_loop": True,
         "model_revision": MODEL_REVISION,
+        "production_backend": "docker-enforced-v1",
+        "production_generator": "ModelCandidateGenerator",
+        "adapter_attestation_schema": ADAPTER_ATTESTATION_SCHEMA,
         "prompt_ids": list(PROMPT_IDS),
         "prompt_manifest_digest": VARIATION_PROMPT_MANIFEST_DIGEST,
         "retrieval_policies": ["SUCCESS_ONLY", "ORDINARY_FAILURE_SUMMARY", "CORRECTION_AWARE"],
@@ -106,13 +156,57 @@ class ControllerEvaluationGateway:
             raise VariationDependencyError("Variation production path requires the real hidden evaluator runner")
         if not isinstance(controller.sandbox, DockerCandidateSandbox) or not getattr(controller.sandbox, "enforceable", False):
             raise VariationDependencyError("Variation production path requires the enforceable Docker evaluator")
+        self._validate_sandbox_method_identity(controller.sandbox)
+        try:
+            controller.sandbox.validate_production_integrity()
+        except Exception as exc:
+            raise VariationDependencyError("Variation production Docker sandbox failed integrity validation") from exc
         self.controller = controller
         self.hidden_runner = controller.hidden_runner
         self.sandbox = controller.sandbox
+        self._pinned_controller = controller
+        self._pinned_hidden_runner = controller.hidden_runner
+        self._pinned_sandbox = controller.sandbox
+        self._pinned_config = controller.sandbox.config
+        self._pinned_config_digest = digest_for(dict(controller.sandbox.config.__dict__))
+        self._pinned_image_id = controller.sandbox.image_id
+        self._pinned_docker_binary = controller.sandbox.docker_binary
+        self._pinned_artifacts = controller.sandbox.artifacts
         self.evaluator_revision = self.hidden_runner.evaluator_revision
         self.evaluator_digest = digest_for(self.evaluator_revision)
+        self._gateway_contract = digest_for(
+            {
+                "controller_type": type(controller).__qualname__,
+                "hidden_runner_type": type(controller.hidden_runner).__qualname__,
+                "sandbox_type": type(controller.sandbox).__qualname__,
+                "image_id": self._pinned_image_id,
+                "docker_binary": self._pinned_docker_binary,
+            }
+        )
+
+    @staticmethod
+    def _validate_sandbox_method_identity(sandbox: DockerCandidateSandbox) -> None:
+        if "execute" in sandbox.__dict__ or "validate_production_integrity" in sandbox.__dict__:
+            raise VariationDependencyError("Variation production sandbox methods cannot be overridden on an instance")
+        if type(sandbox).execute is not _ORIGINAL_DOCKER_SANDBOX_EXECUTE:
+            raise VariationDependencyError("Variation production Docker execute method was altered")
+        if type(sandbox).validate_production_integrity is not _ORIGINAL_DOCKER_SANDBOX_INTEGRITY:
+            raise VariationDependencyError("Variation production Docker integrity method was altered")
+        config = getattr(sandbox, "config", None)
+        if type(config) is not DockerSandboxConfig:
+            raise VariationDependencyError("Variation production Docker config type is invalid")
+        if DockerSandboxConfig.verify_image is not _ORIGINAL_DOCKER_CONFIG_VERIFY_IMAGE:
+            raise VariationDependencyError("Variation production Docker image verification method was altered")
+        if DockerSandboxConfig.validate is not _ORIGINAL_DOCKER_CONFIG_VALIDATE:
+            raise VariationDependencyError("Variation production Docker config validation method was altered")
 
     def validate_runtime(self) -> None:
+        if type(self) is not ControllerEvaluationGateway:
+            raise VariationDependencyError("Variation production gateway type is not frozen")
+        if "evaluate" in self.__dict__:
+            raise VariationDependencyError("Variation production gateway evaluate cannot be overridden")
+        if ControllerEvaluationGateway.evaluate is not _ORIGINAL_GATEWAY_EVALUATE:
+            raise VariationDependencyError("Variation production gateway evaluate method was altered")
         if not isinstance(self.controller, EvaluatorController):
             raise VariationDependencyError("Variation production controller identity is invalid")
         if not isinstance(self.controller.hidden_runner, HiddenEvaluatorRunner):
@@ -121,14 +215,47 @@ class ControllerEvaluationGateway:
             self.controller.sandbox, "enforceable", False
         ):
             raise VariationDependencyError("Variation production Docker sandbox is unavailable")
+        self._validate_sandbox_method_identity(self.controller.sandbox)
         if not getattr(self, "enforceable", False):
             raise VariationDependencyError("Variation production gateway is not enforceable")
+        if self.controller is not self._pinned_controller:
+            raise VariationDependencyError("Variation gateway controller binding changed")
         if self.controller.hidden_runner is not self.hidden_runner:
             raise VariationDependencyError("Variation gateway hidden evaluator binding changed")
+        if self.controller.hidden_runner is not self._pinned_hidden_runner:
+            raise VariationDependencyError("Variation gateway hidden evaluator identity changed")
+        if self.controller.sandbox is not self.sandbox or self.sandbox is not self._pinned_sandbox:
+            raise VariationDependencyError("Variation gateway Docker sandbox identity changed")
+        if self.sandbox.config is not self._pinned_config:
+            raise VariationDependencyError("Variation gateway Docker config binding changed")
+        if digest_for(dict(self.sandbox.config.__dict__)) != self._pinned_config_digest:
+            raise VariationDependencyError("Variation gateway Docker config contract changed")
+        if self.sandbox.image_id != self._pinned_image_id or self.sandbox.docker_binary != self._pinned_docker_binary:
+            raise VariationDependencyError("Variation gateway Docker image or binary binding changed")
+        if self.sandbox.artifacts is not self._pinned_artifacts:
+            raise VariationDependencyError("Variation gateway artifact store binding changed")
+        if digest_for(
+            {
+                "controller_type": type(self.controller).__qualname__,
+                "hidden_runner_type": type(self.controller.hidden_runner).__qualname__,
+                "sandbox_type": type(self.sandbox).__qualname__,
+                "image_id": self.sandbox.image_id,
+                "docker_binary": self.sandbox.docker_binary,
+            }
+        ) != self._gateway_contract:
+            raise VariationDependencyError("Variation production contract digest changed")
+        try:
+            self.sandbox.validate_production_integrity()
+        except Exception as exc:
+            raise VariationDependencyError("Variation production Docker sandbox failed runtime integrity validation") from exc
 
     def evaluate(self, **kwargs: Any) -> EvaluationResult:
         self.validate_runtime()
         return self.controller.evaluate(**kwargs)
+
+
+_ORIGINAL_GATEWAY_EVALUATE = ControllerEvaluationGateway.evaluate
+_ORIGINAL_GATEWAY_VALIDATE_RUNTIME = ControllerEvaluationGateway.validate_runtime
 
 
 @dataclass(frozen=True)
@@ -241,12 +368,47 @@ def _require_digest(value: str, label: str) -> None:
         raise VariationConfigurationError("{} must be hexadecimal".format(label)) from exc
 
 
+def _validate_model_generator_identity(generator: Any) -> None:
+    if type(generator) is not ModelCandidateGenerator:
+        raise VariationDependencyError("production/LoRA Variation requires the exact ModelCandidateGenerator")
+    if "propose" in generator.__dict__:
+        raise VariationDependencyError("production model generator propose cannot be overridden")
+    if type(generator).propose is not _ORIGINAL_MODEL_GENERATOR_PROPOSE:
+        raise VariationDependencyError("production model generator propose method was altered")
+    if "validate_production_integrity" in generator.__dict__:
+        raise VariationDependencyError("production model generator integrity cannot be overridden")
+    if type(generator).validate_production_integrity is not _ORIGINAL_MODEL_GENERATOR_INTEGRITY:
+        raise VariationDependencyError("production model generator integrity method was altered")
+    try:
+        generator.validate_production_integrity()
+    except Exception as exc:
+        if isinstance(exc, VariationDependencyError):
+            raise
+        raise VariationDependencyError("production model generator failed integrity validation") from exc
+    adapter_artifact = getattr(generator, "adapter_artifact", None)
+    if adapter_artifact is not None:
+        try:
+            validate_applied_peft_model(generator.loaded_model.model, adapter_artifact)
+        except Exception as exc:
+            if isinstance(exc, VariationDependencyError):
+                raise
+            raise VariationDependencyError("production model generator PEFT runtime validation failed") from exc
+
+
 class BoundedCandidateLoop:
     """One immutable, resumable candidate trajectory."""
+
+    def __new__(cls, *args: Any, **kwargs: Any) -> "BoundedCandidateLoop":
+        if cls is BoundedCandidateLoop:
+            target = _FixtureBoundedCandidateLoop if kwargs.get("fixture_mode", False) else _ProductionBoundedCandidateLoop
+            return object.__new__(target)
+        return object.__new__(cls)
 
     def __setattr__(self, name: str, value: Any) -> None:
         if name == "_max_attempts" and "_budget_contract" in self.__dict__:
             raise AttributeError("Variation attempt budget is immutable after construction")
+        if name in {"fixture_mode", "evaluator", "generator", "isolation"} and _runtime_identity_registered(self):
+            raise AttributeError("Variation runtime identity is immutable after construction")
         super().__setattr__(name, value)
 
     def __init__(
@@ -300,7 +462,7 @@ class BoundedCandidateLoop:
         if self.policy.requires_adapter:
             if adapter_artifact is None:
                 raise VariationDependencyError("LoRA arms require a sealed adapter artifact; Training is not part of Variation")
-            if not isinstance(adapter_artifact, SealedAdapterArtifact):
+            if type(adapter_artifact) is not SealedAdapterArtifact:
                 raise VariationDependencyError("LoRA arms require a SealedAdapterArtifact, not a digest-like object")
             adapter_artifact.verify()
             derived_adapter_digest = adapter_artifact.digest
@@ -318,13 +480,38 @@ class BoundedCandidateLoop:
             raise VariationDependencyError("candidate generator and Variation arm disagree about sealed adapter state")
         if generator_adapter is not None and generator_adapter.digest != self.adapter_digest:
             raise VariationConfigurationError("candidate generator sealed adapter differs from the frozen campaign")
+        if self.policy.requires_adapter:
+            if type(generator) is not ModelCandidateGenerator:
+                raise VariationDependencyError("LoRA arms require the exact ModelCandidateGenerator")
+            attestation = getattr(generator, "adapter_attestation", None)
+            if type(attestation) is not AdapterApplicationAttestation:
+                raise VariationDependencyError("LoRA arm has no loader-issued adapter application attestation")
+            attestation.validate()
+            if (
+                attestation.schema_version != ADAPTER_ATTESTATION_SCHEMA
+                or attestation.adapter_digest != self.adapter_digest
+                or attestation.base_model_manifest_digest != self.model_digest
+            ):
+                raise VariationDependencyError("LoRA arm adapter attestation is not bound to the frozen campaign")
+            _validate_model_generator_identity(generator)
         if getattr(generator, "test_only", False) and not fixture_mode:
             raise VariationDependencyError("test-only candidate generators cannot enter the production Variation path")
         if not fixture_mode and not isinstance(evaluator, ControllerEvaluationGateway):
             raise VariationDependencyError("production Variation requires ControllerEvaluationGateway")
+        if not fixture_mode and type(generator) is not ModelCandidateGenerator:
+            raise VariationDependencyError("production Variation requires the exact ModelCandidateGenerator")
         if not getattr(evaluator, "enforceable", False) and not fixture_mode:
             raise VariationDependencyError("non-enforceable evaluators are test-only and cannot run Variation")
-        self._validate_production_boundary()
+        self._validate_construction_boundary()
+        _register_runtime_identity(
+            self,
+            _RuntimeIdentityRecord(
+                fixture_mode=bool(self.fixture_mode),
+                evaluator=self.evaluator,
+                generator=self.generator,
+                isolation=self.isolation,
+            ),
+        )
 
     @property
     def max_attempts(self) -> int:
@@ -338,12 +525,55 @@ class BoundedCandidateLoop:
         if digest_for({"max_attempts": self._max_attempts}) != self._budget_contract:
             raise VariationBudgetError("candidate attempt budget changed after construction")
 
-    def _validate_production_boundary(self) -> None:
-        if self.fixture_mode:
+    def _validate_identity(self) -> None:
+        record = _get_runtime_identity(self)
+        missing = object()
+        fixture_mode = getattr(self, "fixture_mode", missing)
+        evaluator = getattr(self, "evaluator", missing)
+        generator = getattr(self, "generator", missing)
+        isolation = getattr(self, "isolation", missing)
+        if any(value is missing for value in (fixture_mode, evaluator, generator, isolation)):
+            raise VariationDependencyError("Variation runtime identity fields are missing")
+        if fixture_mode != record.fixture_mode:
+            raise VariationDependencyError("Variation fixture mode changed after construction")
+        if evaluator is not record.evaluator:
+            raise VariationDependencyError("Variation evaluator identity changed after construction")
+        if generator is not record.generator:
+            raise VariationDependencyError("Variation generator identity changed after construction")
+        if isolation is not record.isolation:
+            raise VariationDependencyError("Variation isolation identity changed after construction")
+
+    def _validate_construction_boundary(self) -> None:
+        if type(self) in {_ProductionBoundedCandidateLoop, _FixtureBoundedCandidateLoop}:
+            self._validate_production_boundary()
             return
+        raise VariationDependencyError("Variation loop concrete execution class is not recognized")
+
+    def _validate_production_boundary(self) -> None:
+        """Validate production unconditionally; this method has no fixture path."""
+
+        if type(self) is not _ProductionBoundedCandidateLoop:
+            raise VariationDependencyError("production Variation requires its concrete production loop class")
+        if self.fixture_mode is not False:
+            raise VariationDependencyError("production Variation cannot carry fixture mode")
+        _validate_model_generator_identity(self.generator)
         if not isinstance(self.evaluator, ControllerEvaluationGateway):
             raise VariationDependencyError("production Variation requires ControllerEvaluationGateway")
+        if "validate_runtime" in self.evaluator.__dict__ or "evaluate" in self.evaluator.__dict__:
+            raise VariationDependencyError("production evaluator methods cannot be overridden")
+        if type(self.evaluator).validate_runtime is not _ORIGINAL_GATEWAY_VALIDATE_RUNTIME:
+            raise VariationDependencyError("production evaluator runtime validation method was altered")
+        if type(self.evaluator).evaluate is not _ORIGINAL_GATEWAY_EVALUATE:
+            raise VariationDependencyError("production evaluator evaluate method was altered")
         self.evaluator.validate_runtime()
+
+    def _validate_fixture_boundary(self) -> None:
+        """Validate the test-only fixture path on its separate concrete class."""
+
+        if type(self) is not _FixtureBoundedCandidateLoop:
+            raise VariationDependencyError("fixture Variation requires its concrete fixture loop class")
+        if self.fixture_mode is not True:
+            raise VariationDependencyError("fixture loop must be explicitly marked fixture mode")
 
     def _run_id(self, task_id: str, seed: int) -> str:
         return "egv-run-{}".format(
@@ -752,15 +982,13 @@ class BoundedCandidateLoop:
     def retrieval_policy(self) -> EvidenceRetrievalPolicy:
         return retrieval_policy(self.policy.retrieval_policy)
 
-    def run(
+    def _run_trajectory(
         self,
         task: VariationTask,
         *,
         seed: int = 0,
         resume_from: Optional[Path] = None,
     ) -> VariationReport:
-        self._validate_budget()
-        self._validate_production_boundary()
         if seed < 0:
             raise VariationConfigurationError("Variation seed must be nonnegative")
         if seed not in self.seed_set:
@@ -969,6 +1197,48 @@ class BoundedCandidateLoop:
             self.policy.retrieval_policy,
             self.policy.authority_enforced and bool(getattr(self.evaluator, "enforceable", False)),
         )
+
+
+class _ProductionBoundedCandidateLoop(BoundedCandidateLoop):
+    """Concrete production trajectory with no fixture execution path."""
+
+    __slots__ = ("_production_layout_marker",)
+
+    def _validate_production_boundary(self) -> None:
+        super()._validate_production_boundary()
+
+    def run(
+        self,
+        task: VariationTask,
+        *,
+        seed: int = 0,
+        resume_from: Optional[Path] = None,
+    ) -> VariationReport:
+        self._validate_production_boundary()
+        self._validate_identity()
+        self._validate_budget()
+        return self._run_trajectory(task, seed=seed, resume_from=resume_from)
+
+
+class _FixtureBoundedCandidateLoop(BoundedCandidateLoop):
+    """Concrete fixture trajectory; this is the only fixture execution path."""
+
+    __slots__ = ("_fixture_layout_marker",)
+
+    def _validate_production_boundary(self) -> None:
+        self._validate_fixture_boundary()
+
+    def run(
+        self,
+        task: VariationTask,
+        *,
+        seed: int = 0,
+        resume_from: Optional[Path] = None,
+    ) -> VariationReport:
+        self._validate_production_boundary()
+        self._validate_identity()
+        self._validate_budget()
+        return self._run_trajectory(task, seed=seed, resume_from=resume_from)
 
 
 VariationRunner = BoundedCandidateLoop

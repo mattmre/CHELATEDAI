@@ -31,6 +31,8 @@ from .loop import (
     VariationTask,
 )
 from .model import (
+    ADAPTER_ATTESTATION_SCHEMA,
+    AdapterApplicationAttestation,
     LoadedPinnedModel,
     MODEL_ARCHITECTURE,
     MODEL_CONFIG_CLASS,
@@ -40,6 +42,7 @@ from .model import (
     PinnedModelLoader,
     PinnedModelManifest,
     build_local_manifest,
+    model_state_digest,
 )
 from .retrieval import (
     CorrectionAwareRetrieval,
@@ -58,6 +61,8 @@ __all__ = [
     "ARM_IDS",
     "ADAPTER_MANIFEST_NAME",
     "ADAPTER_MANIFEST_SCHEMA",
+    "ADAPTER_ATTESTATION_SCHEMA",
+    "AdapterApplicationAttestation",
     "AttemptRecord",
     "ArmIsolation",
     "ArmPolicy",
@@ -105,6 +110,7 @@ __all__ = [
     "arm_policy",
     "build_local_manifest",
     "build_local_adapter_manifest",
+    "model_state_digest",
     "retrieval_policy",
     "run_variation_smoke",
     "scan_public_variation_report",

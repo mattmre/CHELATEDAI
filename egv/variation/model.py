@@ -7,7 +7,7 @@ carry a closed manifest with file hashes before Transformers is imported.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import hashlib
 import importlib
 from importlib import metadata as importlib_metadata
@@ -28,6 +28,8 @@ MODEL_CONFIG_CLASS = "Qwen3_5TextConfig"
 TRANSFORMERS_MIN_VERSION = (5, 5, 0)
 TRANSFORMERS_MAX_EXCLUSIVE = (6, 0, 0)
 MODEL_MANIFEST_SCHEMA = "egv-pinned-model-v1"
+ADAPTER_ATTESTATION_SCHEMA = "egv-adapter-application-attestation-v1"
+_ADAPTER_ATTESTATION_TOKEN = object()
 _MANIFEST_FIELDS = frozenset(
     {
         "schema_version",
@@ -166,6 +168,51 @@ class LoadedPinnedModel:
     load_report: Mapping[str, Any]
     base_state_digest: Optional[str]
     adapter_digest: Optional[str] = None
+    adapter_attestation: Optional["AdapterApplicationAttestation"] = None
+
+
+@dataclass(frozen=True)
+class AdapterApplicationAttestation:
+    """Loader-issued proof that a sealed adapter was applied to this base."""
+
+    schema_version: str
+    adapter_digest: str
+    base_model_manifest_digest: str
+    base_state_digest: str
+    applied_model_state_digest: str
+    issuer_token: Any = field(default=None, repr=False, compare=False)
+
+    def to_dict(self) -> Dict[str, str]:
+        return {
+            "schema_version": self.schema_version,
+            "adapter_digest": self.adapter_digest,
+            "base_model_manifest_digest": self.base_model_manifest_digest,
+            "base_state_digest": self.base_state_digest,
+            "applied_model_state_digest": self.applied_model_state_digest,
+        }
+
+    def validate(self) -> None:
+        if self.schema_version != ADAPTER_ATTESTATION_SCHEMA:
+            raise VariationDependencyError("adapter application attestation schema is unsupported")
+        if self.issuer_token is not _ADAPTER_ATTESTATION_TOKEN:
+            raise VariationDependencyError("adapter application attestation was not issued by PinnedModelLoader")
+        for label, value in (
+            ("adapter digest", self.adapter_digest),
+            ("base model manifest digest", self.base_model_manifest_digest),
+            ("base state digest", self.base_state_digest),
+            ("applied model state digest", self.applied_model_state_digest),
+        ):
+            if not isinstance(value, str) or len(value) != 64:
+                raise VariationDependencyError("{} is not a SHA-256 digest".format(label))
+            try:
+                int(value, 16)
+            except ValueError as exc:
+                raise VariationDependencyError("{} is not hexadecimal".format(label)) from exc
+
+    @property
+    def digest(self) -> str:
+        self.validate()
+        return digest_for(self.to_dict())
 
 
 def _hash_file(path: Path) -> str:
@@ -194,6 +241,36 @@ def _state_digest(model: Any) -> Optional[str]:
     return digest_for(records)
 
 
+def model_state_digest(model: Any) -> Optional[str]:
+    """Return the deterministic state digest used by loader attestations."""
+
+    return _state_digest(model)
+
+
+def _regular_tree_files(root: Path, *, excluded: Optional[Path] = None) -> Tuple[Path, ...]:
+    """Enumerate an exhaustive tree and reject every non-regular entry."""
+
+    root = Path(root)
+    if root.is_symlink():
+        raise VariationConfigurationError("model/adapter root may not be a symlink")
+    resolved_root = root.resolve()
+    if not resolved_root.is_dir():
+        raise VariationConfigurationError("model/adapter root does not exist or is not a directory")
+    excluded_resolved = excluded.resolve() if excluded is not None else None
+    files = []
+    for path in sorted(resolved_root.rglob("*")):
+        if path.is_symlink():
+            raise VariationConfigurationError("model/adapter trees may not contain symlinks: {}".format(path.name[:48]))
+        if path.is_dir():
+            continue
+        if not path.is_file():
+            raise VariationConfigurationError("model/adapter trees may contain only regular files")
+        if excluded_resolved is not None and path.resolve() == excluded_resolved:
+            continue
+        files.append(path)
+    return tuple(files)
+
+
 class PinnedModelLoader:
     """Load only a locally staged, revision-verified Qwen text checkpoint."""
 
@@ -202,6 +279,8 @@ class PinnedModelLoader:
         self.manifest_path = manifest_path or self.model_root / "model-manifest.json"
 
     def verify_manifest(self) -> Tuple[PinnedModelManifest, Dict[str, str]]:
+        if self.model_root.is_symlink() or self.manifest_path.is_symlink():
+            raise VariationConfigurationError("pinned model root and manifest may not be symlinks")
         root = self.model_root.resolve()
         if not root.is_dir():
             raise VariationConfigurationError("pinned model root does not exist or is not a directory")
@@ -212,11 +291,7 @@ class PinnedModelLoader:
             raise VariationConfigurationError("pinned model manifest is outside the model root") from exc
         manifest = PinnedModelManifest.from_file(manifest_path)
         expected_paths = set(manifest.files)
-        actual_paths = {
-            path.relative_to(root).as_posix()
-            for path in root.rglob("*")
-            if path.is_file() and path.resolve() != manifest_path
-        }
+        actual_paths = {path.relative_to(root).as_posix() for path in _regular_tree_files(root, excluded=manifest_path)}
         if actual_paths != expected_paths:
             extra = sorted(actual_paths - expected_paths)
             missing = sorted(expected_paths - actual_paths)
@@ -235,7 +310,12 @@ class PinnedModelLoader:
         return manifest, file_hashes
 
     def preflight(self) -> Dict[str, Any]:
-        manifest, file_hashes = self.verify_manifest()
+        with self._offline_environment():
+            manifest, file_hashes = self.verify_manifest()
+            offline_environment = {
+                name: os.environ.get(name)
+                for name in ("HF_HUB_OFFLINE", "TRANSFORMERS_OFFLINE", "HF_DATASETS_OFFLINE", "HF_HUB_DISABLE_TELEMETRY")
+            }
         return {
             "repository": manifest.repository,
             "revision": manifest.revision,
@@ -245,7 +325,8 @@ class PinnedModelLoader:
             "file_count": len(file_hashes),
             "file_hashes": file_hashes,
             "license": dict(manifest.license),
-            "network": "disabled-local-files-only",
+            "network": "offline-environment-scoped-preflight",
+            "offline_environment": offline_environment,
         }
 
     @staticmethod
@@ -291,7 +372,7 @@ class PinnedModelLoader:
         if adapter_artifact is not None:
             from .adapter import SealedAdapterArtifact
 
-            if not isinstance(adapter_artifact, SealedAdapterArtifact):
+            if type(adapter_artifact) is not SealedAdapterArtifact:
                 raise VariationDependencyError("model adapters must be sealed content-addressed artifacts")
         with self._offline_environment():
             try:
@@ -329,10 +410,31 @@ class PinnedModelLoader:
                 )
                 base_state_digest = _state_digest(model)
                 adapter_digest = None
+                adapter_attestation = None
                 if adapter_artifact is not None:
                     adapter_digest = adapter_artifact.digest
                     adapter_artifact.verify()
-                    model = adapter_artifact.apply_to(model)
+                    if base_state_digest is None:
+                        raise VariationDependencyError("adapter application requires a measurable base model state")
+                    adapted_model = adapter_artifact.apply_to(model)
+                    if adapted_model is None:
+                        raise VariationDependencyError("sealed adapter application returned no model")
+                    from .adapter import validate_applied_peft_model
+
+                    validate_applied_peft_model(adapted_model, adapter_artifact)
+                    model = adapted_model
+                    applied_state_digest = _state_digest(model)
+                    if applied_state_digest is None:
+                        raise VariationDependencyError("adapter application did not expose a measurable model state")
+                    adapter_attestation = AdapterApplicationAttestation(
+                        schema_version=ADAPTER_ATTESTATION_SCHEMA,
+                        adapter_digest=adapter_digest,
+                        base_model_manifest_digest=manifest.digest(),
+                        base_state_digest=base_state_digest,
+                        applied_model_state_digest=applied_state_digest,
+                        issuer_token=_ADAPTER_ATTESTATION_TOKEN,
+                    )
+                    adapter_attestation.validate()
             except VariationConfigurationError:
                 raise
             except Exception as exc:
@@ -351,6 +453,8 @@ class PinnedModelLoader:
                 model = model.to(device)
             except Exception as exc:
                 raise VariationDependencyError("pinned model could not move to the requested device") from exc
+        if adapter_attestation is not None and _state_digest(model) != adapter_attestation.applied_model_state_digest:
+            raise VariationDependencyError("adapter application attestation no longer matches model state")
         return LoadedPinnedModel(
             model=model,
             tokenizer=tokenizer,
@@ -360,6 +464,7 @@ class PinnedModelLoader:
             load_report={"missing_keys": missing, "unexpected_keys": unexpected, "transformers_version": installed_version},
             base_state_digest=base_state_digest,
             adapter_digest=adapter_digest,
+            adapter_attestation=adapter_attestation,
         )
 
 
@@ -376,11 +481,11 @@ def build_local_manifest(
     operator must supply truthful license metadata before using the manifest.
     """
 
+    model_root = Path(model_root)
     files: Dict[str, str] = {}
-    manifest_path = (model_root / "model-manifest.json").resolve()
-    for path in sorted(model_root.rglob("*")):
-        if path.is_file() and not path.is_symlink() and path.resolve() != manifest_path:
-            files[str(path.relative_to(model_root))] = _hash_file(path)
+    manifest_path = model_root / "model-manifest.json"
+    for path in _regular_tree_files(model_root, excluded=manifest_path):
+        files[str(path.relative_to(model_root.resolve()))] = _hash_file(path)
     return PinnedModelManifest.from_mapping(
         {
             "schema_version": MODEL_MANIFEST_SCHEMA,
@@ -396,6 +501,8 @@ def build_local_manifest(
 
 
 __all__ = [
+    "ADAPTER_ATTESTATION_SCHEMA",
+    "AdapterApplicationAttestation",
     "LoadedPinnedModel",
     "MODEL_ARCHITECTURE",
     "MODEL_CONFIG_CLASS",
@@ -407,4 +514,5 @@ __all__ = [
     "TRANSFORMERS_MAX_EXCLUSIVE",
     "TRANSFORMERS_MIN_VERSION",
     "build_local_manifest",
+    "model_state_digest",
 ]

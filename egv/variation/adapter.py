@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import hashlib
+import importlib
 import json
 from pathlib import Path
 from typing import Any, Dict, Mapping, Optional, Tuple
@@ -21,6 +22,109 @@ ADAPTER_MANIFEST_SCHEMA = "egv-sealed-lora-adapter-v1"
 ADAPTER_MANIFEST_NAME = "adapter-manifest.json"
 _REQUIRED_FILES = frozenset({"adapter_config.json", "adapter_model.safetensors"})
 _MANIFEST_FIELDS = frozenset({"schema_version", "base_model_revision", "adapter_type", "files"})
+
+
+def _normalize_config_value(value: Any) -> Any:
+    """Convert PEFT config values to the same JSON-shaped form as the file."""
+
+    enum_value = getattr(value, "value", None)
+    if enum_value is not None and enum_value is not value:
+        return _normalize_config_value(enum_value)
+    if isinstance(value, Mapping):
+        return {str(key): _normalize_config_value(item) for key, item in value.items()}
+    if isinstance(value, (tuple, list, set, frozenset)):
+        normalized = [_normalize_config_value(item) for item in value]
+        return sorted(normalized, key=lambda item: repr(item)) if isinstance(value, (set, frozenset)) else normalized
+    if isinstance(value, (str, int, float, bool)) or value is None:
+        return value
+    raise VariationDependencyError("PEFT adapter config contains an unsupported value")
+
+
+def _peft_runtime() -> Tuple[Any, Tuple[type, ...]]:
+    try:
+        peft = importlib.import_module("peft")
+    except ImportError as exc:
+        raise VariationDependencyError("sealed LoRA adapter requires the local PEFT runtime") from exc
+    classes = tuple(
+        candidate
+        for candidate in (
+            getattr(peft, "PeftModel", None),
+            getattr(peft, "PeftModelForCausalLM", None),
+        )
+        if isinstance(candidate, type)
+    )
+    if not classes:
+        raise VariationDependencyError("local PEFT runtime exposes no supported PeftModel type")
+    return peft, classes
+
+
+def _sealed_adapter_config(root: Path) -> Mapping[str, Any]:
+    path = _safe_relative(root, "adapter_config.json")
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise VariationConfigurationError("sealed adapter config cannot be read") from exc
+    if not isinstance(value, Mapping):
+        raise VariationConfigurationError("sealed adapter config must be a JSON object")
+    normalized = _normalize_config_value(value)
+    if not isinstance(normalized, Mapping):
+        raise VariationConfigurationError("sealed adapter config is not object-shaped")
+    return normalized
+
+
+def validate_applied_peft_model(model: Any, artifact: "SealedAdapterArtifact") -> None:
+    """Require a real PEFT wrapper and an active config bound to the sealed tree."""
+
+    if type(artifact) is not SealedAdapterArtifact:
+        raise VariationDependencyError("PEFT validation requires the exact sealed adapter artifact")
+    artifact.verify()
+    _peft, supported_types = _peft_runtime()
+    if not isinstance(model, supported_types):
+        raise VariationDependencyError("sealed adapter model is not a local PeftModel/PeftModelForCausalLM instance")
+    state_dict = getattr(model, "state_dict", None)
+    if not callable(state_dict):
+        raise VariationDependencyError("applied PEFT model does not expose measurable state")
+    try:
+        state = state_dict()
+    except Exception as exc:
+        raise VariationDependencyError("applied PEFT model state cannot be inspected") from exc
+    if not isinstance(state, Mapping) or not state:
+        raise VariationDependencyError("applied PEFT model state is empty or not mapping-shaped")
+
+    active = getattr(model, "active_adapters", None)
+    if callable(active):
+        active = active()
+    if active is None:
+        active = getattr(model, "active_adapter", None)
+        if callable(active):
+            active = active()
+    if isinstance(active, str):
+        active_names = (active,)
+    elif isinstance(active, (tuple, list, set, frozenset)):
+        active_names = tuple(str(item) for item in active)
+    else:
+        active_names = ()
+    if len(active_names) != 1 or not active_names[0]:
+        raise VariationDependencyError("sealed adapter model does not expose exactly one active adapter")
+
+    configs = getattr(model, "peft_config", None)
+    if not isinstance(configs, Mapping) or active_names[0] not in configs:
+        raise VariationDependencyError("active PEFT adapter has no matching runtime config")
+    runtime_config = configs[active_names[0]]
+    to_dict = getattr(runtime_config, "to_dict", None)
+    if callable(to_dict):
+        runtime_config = to_dict()
+    if not isinstance(runtime_config, Mapping):
+        raise VariationDependencyError("active PEFT config is not mapping-shaped")
+    runtime_config = _normalize_config_value(runtime_config)
+    expected_config = dict(_sealed_adapter_config(Path(artifact.root).resolve()))
+    expected_config.setdefault("peft_type", "LORA")
+    actual_type = str(runtime_config.get("peft_type", "")).upper()
+    if actual_type != "LORA":
+        raise VariationDependencyError("active PEFT config is not LORA")
+    for key, expected in expected_config.items():
+        if key not in runtime_config or runtime_config[key] != expected:
+            raise VariationDependencyError("active PEFT config is not bound to the sealed adapter config")
 
 
 def _sha256(path: Path) -> str:
@@ -42,6 +146,30 @@ def _safe_relative(root: Path, value: str) -> Path:
     if candidate.name == ADAPTER_MANIFEST_NAME or ".." in Path(value).parts:
         raise VariationConfigurationError("adapter manifest cannot hash itself or parent paths")
     return candidate
+
+
+def _regular_tree_files(root: Path, *, excluded: Optional[Path] = None) -> Tuple[Path, ...]:
+    """Enumerate an exhaustive adapter tree without following links."""
+
+    root = Path(root)
+    if root.is_symlink():
+        raise VariationConfigurationError("sealed adapter root may not be a symlink")
+    resolved_root = root.resolve()
+    if not resolved_root.is_dir():
+        raise VariationConfigurationError("sealed adapter root does not exist or is not a directory")
+    excluded_resolved = excluded.resolve() if excluded is not None else None
+    files = []
+    for path in sorted(resolved_root.rglob("*")):
+        if path.is_symlink():
+            raise VariationConfigurationError("sealed adapter tree may not contain symlinks: {}".format(path.name[:48]))
+        if path.is_dir():
+            continue
+        if not path.is_file():
+            raise VariationConfigurationError("sealed adapter tree may contain only regular files")
+        if excluded_resolved is not None and path.resolve() == excluded_resolved:
+            continue
+        files.append(path)
+    return tuple(files)
 
 
 @dataclass(frozen=True)
@@ -126,10 +254,14 @@ class SealedAdapterArtifact:
     manifest_path: Optional[Path] = None
 
     def _paths(self) -> Tuple[Path, Path, SealedAdapterManifest]:
-        root = self.root.resolve()
+        raw_root = Path(self.root)
+        raw_manifest = self.manifest_path or raw_root / ADAPTER_MANIFEST_NAME
+        if raw_root.is_symlink() or raw_manifest.is_symlink():
+            raise VariationConfigurationError("sealed adapter root and manifest may not be symlinks")
+        root = raw_root.resolve()
         if not root.is_dir():
             raise VariationConfigurationError("sealed adapter root does not exist")
-        manifest_path = (self.manifest_path or root / ADAPTER_MANIFEST_NAME).resolve()
+        manifest_path = raw_manifest.resolve()
         try:
             manifest_path.relative_to(root)
         except ValueError as exc:
@@ -149,11 +281,7 @@ class SealedAdapterArtifact:
     def verify(self) -> Mapping[str, str]:
         root, manifest_path, manifest = self._paths()
         expected_paths = set(manifest.files)
-        actual_paths = {
-            path.relative_to(root).as_posix()
-            for path in root.rglob("*")
-            if path.is_file() and path.resolve() != manifest_path
-        }
+        actual_paths = {path.relative_to(root).as_posix() for path in _regular_tree_files(root, excluded=manifest_path)}
         if actual_paths != expected_paths:
             extra = sorted(actual_paths - expected_paths)
             missing = sorted(expected_paths - actual_paths)
@@ -175,13 +303,12 @@ class SealedAdapterArtifact:
         """Apply the verified adapter through an explicit local PEFT boundary."""
 
         self.verify()
+        peft, supported_types = _peft_runtime()
+        adapter_model = getattr(peft, "PeftModel", None) or getattr(peft, "PeftModelForCausalLM", None)
+        if not isinstance(adapter_model, type) or not hasattr(adapter_model, "from_pretrained"):
+            raise VariationDependencyError("local PEFT runtime cannot apply the sealed adapter")
         try:
-            peft = __import__("peft", fromlist=["PeftModel"])
-            adapter_model = getattr(peft, "PeftModel")
-        except (ImportError, AttributeError) as exc:
-            raise VariationDependencyError("sealed LoRA adapter requires the local PEFT runtime") from exc
-        try:
-            return adapter_model.from_pretrained(
+            applied = adapter_model.from_pretrained(
                 model,
                 str(self.root),
                 local_files_only=True,
@@ -189,6 +316,10 @@ class SealedAdapterArtifact:
             )
         except Exception as exc:
             raise VariationDependencyError("sealed LoRA adapter failed local application") from exc
+        if not isinstance(applied, supported_types):
+            raise VariationDependencyError("sealed adapter application did not return a local PEFT model")
+        validate_applied_peft_model(applied, self)
+        return applied
 
 
 def build_local_adapter_manifest(root: Path) -> SealedAdapterManifest:
@@ -196,11 +327,11 @@ def build_local_adapter_manifest(root: Path) -> SealedAdapterManifest:
 
     from .model import MODEL_REVISION
 
+    root = Path(root)
     files: Dict[str, str] = {}
-    manifest_path = (root / ADAPTER_MANIFEST_NAME).resolve()
-    for path in sorted(root.rglob("*")):
-        if path.is_file() and path.resolve() != manifest_path:
-            files[path.relative_to(root).as_posix()] = _sha256(path)
+    manifest_path = root / ADAPTER_MANIFEST_NAME
+    for path in _regular_tree_files(root, excluded=manifest_path):
+        files[path.relative_to(root.resolve()).as_posix()] = _sha256(path)
     return SealedAdapterManifest.from_mapping(
         {
             "schema_version": ADAPTER_MANIFEST_SCHEMA,
@@ -217,4 +348,5 @@ __all__ = [
     "SealedAdapterArtifact",
     "SealedAdapterManifest",
     "build_local_adapter_manifest",
+    "validate_applied_peft_model",
 ]

@@ -16,6 +16,9 @@ The production generator is local-only and revision-pinned:
 | Config class | `Qwen3_5TextConfig` |
 | Transformers | `>=5.5,<6` |
 
+PEFT is declared as `>=0.15.2,<1` for Python 3.10+; it is not an optional
+test shim for production LoRA arms.
+
 The core package retains Python 3.9 syntax compatibility. The pinned model
 stack is declared only for Python 3.10+ because Transformers 5.5+ does not
 publish a Python 3.9 runtime; Python 3.9 can run the dependency-light core
@@ -26,7 +29,10 @@ for every staged file and license metadata. It passes
 `local_files_only=True`, `trust_remote_code=False`, and the pinned revision to
 the exact text-only classes. Missing, changed, incompatible, or incomplete
 model material fails closed; this branch does not download a model or include
-model weights.
+model weights. `model-preflight` reports
+`network=offline-environment-scoped-preflight` together with the four offline
+environment variables active during that verification window; it does not
+claim a process-wide network firewall.
 
 ## Candidate contract
 
@@ -65,9 +71,15 @@ The eight arm policies are frozen as follows:
 Each arm has a disjoint filesystem namespace and candidate-ID prefix. Retrieval
 filters by campaign, run, task, current ledger validity, and arm before a
 generator can cite an event. E-H require an exhaustive, content-addressed
-`SealedAdapterArtifact` bound to the frozen base-model revision. A hexadecimal
-digest alone is rejected; the later Training slice is responsible for producing
-and applying that sealed adapter, so an absent adapter fails closed.
+`SealedAdapterArtifact` bound to the frozen base-model revision plus a
+`PinnedModelLoader`-issued application attestation binding the adapter digest,
+base manifest/state, and applied model state. Loader, generator, and loop
+validation additionally require an actual local
+`peft.PeftModel`/`PeftModelForCausalLM` instance with one active LORA adapter
+whose runtime config matches the sealed `adapter_config.json`. A hexadecimal
+digest, dummy artifact, importable sentinel, or non-applied adapter is
+rejected; the later Training slice is responsible for producing and applying
+that sealed adapter, so an absent adapter fails closed.
 
 ## Evaluation boundary
 
@@ -78,6 +90,17 @@ only for the explicitly labelled floor fixture. Docker isolation and the
 Evaluation hidden oracle remain the authority boundary. A fixture smoke never
 claims Docker enforcement, model inference, a GPU, Qdrant, Spark, a campaign,
 or a hosted service. A missing enforceable backend must fail closed.
+
+`BoundedCandidateLoop(...)` is a compatibility factory: it returns distinct
+private production and fixture concrete classes with distinct `run` methods.
+The production method has no fixture early-return path and unconditionally
+revalidates the Docker gateway, model generator, and authority before any
+evaluation. The trusted-host boundary is explicit: arbitrary Python already
+executing in the controller process can inspect or rewrite that process's
+heap, frames, closures, classes, and registries. In-process seals are not a
+defense against that capability; candidate execution and hidden authority
+therefore remain separate Docker/evaluator process boundaries, and fixture
+execution is structurally unavailable from a production loop object.
 
 ## CLI and smoke
 

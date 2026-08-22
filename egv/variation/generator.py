@@ -9,8 +9,12 @@ from typing import Any, Mapping, Optional, Protocol, Sequence, Tuple
 from ..canonical import digest_bytes, digest_for
 from ..evaluation.diagnostics import REQUESTED_AUTHORITIES
 from ..evaluation.prompts import PromptRegistry
-from .adapter import SealedAdapterArtifact
+from .adapter import SealedAdapterArtifact, validate_applied_peft_model
 from .errors import VariationConfigurationError, VariationDependencyError
+from .model import AdapterApplicationAttestation, LoadedPinnedModel, PinnedModelManifest, model_state_digest
+
+
+_MODEL_GENERATOR_INIT_TOKEN = object()
 
 
 @dataclass(frozen=True)
@@ -74,6 +78,20 @@ class CandidateGenerator(Protocol):
 class ModelCandidateGenerator:
     """Deterministic text-only generation with a closed JSON response contract."""
 
+    def __setattr__(self, name: str, value: Any) -> None:
+        if "_initialization_token" in self.__dict__ and name in {
+            "loaded_model",
+            "model",
+            "tokenizer",
+            "model_digest",
+            "adapter_digest",
+            "adapter_artifact",
+            "adapter_attestation",
+            "max_new_tokens",
+        }:
+            raise AttributeError("production model generator contract is immutable after construction")
+        super().__setattr__(name, value)
+
     def __init__(
         self,
         loaded_model: Any,
@@ -86,21 +104,37 @@ class ModelCandidateGenerator:
     ) -> None:
         if max_new_tokens <= 0 or max_new_tokens > 2048:
             raise VariationConfigurationError("model generation budget is outside the bounded contract")
-        if not hasattr(loaded_model, "model") or not hasattr(loaded_model, "tokenizer"):
+        if type(loaded_model) is not LoadedPinnedModel:
             raise VariationConfigurationError("ModelCandidateGenerator requires LoadedPinnedModel")
-        loaded_manifest_digest = getattr(loaded_model, "manifest_digest", None)
-        if loaded_manifest_digest is not None and loaded_manifest_digest != model_digest:
+        if type(loaded_model.manifest) is not PinnedModelManifest:
+            raise VariationDependencyError("LoadedPinnedModel manifest must be the frozen PinnedModelManifest")
+        loaded_model.manifest.validate_contract()
+        if loaded_model.manifest.digest() != loaded_model.manifest_digest or loaded_model.manifest_digest != model_digest:
             raise VariationConfigurationError("candidate generator model digest differs from the verified local manifest")
         if adapter_artifact is not None:
-            if not isinstance(adapter_artifact, SealedAdapterArtifact):
+            if type(adapter_artifact) is not SealedAdapterArtifact:
                 raise VariationDependencyError("LoRA adapter must be a sealed adapter artifact, not a digest-like object")
             adapter_artifact.verify()
             if adapter_digest is None:
                 adapter_digest = adapter_artifact.digest
             if adapter_digest != adapter_artifact.digest:
                 raise VariationConfigurationError("candidate generator adapter digest differs from the sealed artifact")
-            if getattr(loaded_model, "adapter_digest", None) != adapter_artifact.digest:
+            if loaded_model.adapter_digest != adapter_artifact.digest:
                 raise VariationDependencyError("sealed LoRA adapter was verified but not applied to the loaded model")
+            attestation = loaded_model.adapter_attestation
+            if type(attestation) is not AdapterApplicationAttestation:
+                raise VariationDependencyError("sealed LoRA adapter lacks a loader-issued application attestation")
+            attestation.validate()
+            if (
+                attestation.adapter_digest != adapter_artifact.digest
+                or attestation.base_model_manifest_digest != loaded_model.manifest_digest
+                or attestation.base_state_digest != loaded_model.base_state_digest
+                or model_state_digest(loaded_model.model) != attestation.applied_model_state_digest
+            ):
+                raise VariationDependencyError("sealed LoRA adapter application attestation is not bound to the loaded model")
+            validate_applied_peft_model(loaded_model.model, adapter_artifact)
+        elif loaded_model.adapter_digest is not None or loaded_model.adapter_attestation is not None:
+            raise VariationDependencyError("a loaded model with an applied adapter requires the matching sealed artifact")
         elif adapter_digest is not None:
             raise VariationDependencyError("a LoRA digest without a sealed adapter artifact is not accepted")
         self.loaded_model = loaded_model
@@ -109,8 +143,74 @@ class ModelCandidateGenerator:
         self.model_digest = model_digest
         self.adapter_digest = adapter_digest
         self.adapter_artifact = adapter_artifact
+        self.adapter_attestation = loaded_model.adapter_attestation
         self.prompt_registry = prompt_registry or PromptRegistry()
         self.max_new_tokens = max_new_tokens
+        self._initialization_token = _MODEL_GENERATOR_INIT_TOKEN
+        self._generator_contract = digest_for(
+            {
+                "loaded_model_id": id(self.loaded_model),
+                "model_id": id(self.model),
+                "tokenizer_id": id(self.tokenizer),
+                "model_digest": self.model_digest,
+                "adapter_digest": self.adapter_digest,
+                "adapter_artifact_id": id(self.adapter_artifact) if self.adapter_artifact is not None else None,
+                "max_new_tokens": self.max_new_tokens,
+            }
+        )
+
+    def validate_production_integrity(self) -> None:
+        """Revalidate the exact initialized model/adapter boundary."""
+
+        if type(self) is not ModelCandidateGenerator:
+            raise VariationDependencyError("production Variation requires the exact ModelCandidateGenerator type")
+        if getattr(self, "_initialization_token", None) is not _MODEL_GENERATOR_INIT_TOKEN:
+            raise VariationDependencyError("model generator initialization seal is missing")
+        if "propose" in self.__dict__:
+            raise VariationDependencyError("model generator propose cannot be overridden on an instance")
+        if ModelCandidateGenerator.propose is not _ORIGINAL_MODEL_GENERATOR_PROPOSE:
+            raise VariationDependencyError("model generator propose method was altered")
+        if type(self.loaded_model) is not LoadedPinnedModel or type(self.loaded_model.manifest) is not PinnedModelManifest:
+            raise VariationDependencyError("model generator loaded model identity is invalid")
+        self.loaded_model.manifest.validate_contract()
+        if self.loaded_model.manifest.digest() != self.loaded_model.manifest_digest:
+            raise VariationDependencyError("model generator manifest digest is not self-consistent")
+        if self.loaded_model.manifest_digest != self.model_digest:
+            raise VariationDependencyError("model generator model digest binding changed")
+        expected_contract = digest_for(
+            {
+                "loaded_model_id": id(self.loaded_model),
+                "model_id": id(self.model),
+                "tokenizer_id": id(self.tokenizer),
+                "model_digest": self.model_digest,
+                "adapter_digest": self.adapter_digest,
+                "adapter_artifact_id": id(self.adapter_artifact) if self.adapter_artifact is not None else None,
+                "max_new_tokens": self.max_new_tokens,
+            }
+        )
+        if self._generator_contract != expected_contract:
+            raise VariationDependencyError("model generator contract changed after construction")
+        if self.adapter_artifact is None:
+            if self.adapter_digest is not None or self.loaded_model.adapter_digest is not None or self.loaded_model.adapter_attestation is not None:
+                raise VariationDependencyError("base model generator carries unexpected adapter state")
+            return
+        if type(self.adapter_artifact) is not SealedAdapterArtifact:
+            raise VariationDependencyError("model generator adapter identity is not SealedAdapterArtifact")
+        self.adapter_artifact.verify()
+        if self.adapter_digest != self.adapter_artifact.digest or self.loaded_model.adapter_digest != self.adapter_artifact.digest:
+            raise VariationDependencyError("model generator adapter digest binding changed")
+        attestation = self.adapter_attestation
+        if type(attestation) is not AdapterApplicationAttestation:
+            raise VariationDependencyError("model generator adapter attestation is not loader-issued")
+        attestation.validate()
+        if (
+            attestation.adapter_digest != self.adapter_artifact.digest
+            or attestation.base_model_manifest_digest != self.loaded_model.manifest_digest
+            or attestation.base_state_digest != self.loaded_model.base_state_digest
+            or model_state_digest(self.loaded_model.model) != attestation.applied_model_state_digest
+        ):
+            raise VariationDependencyError("model generator adapter application is not bound to current model state")
+        validate_applied_peft_model(self.loaded_model.model, self.adapter_artifact)
 
     def _prompt(self, context: CandidateContext) -> str:
         failure_families = sorted(
@@ -200,6 +300,9 @@ class ModelCandidateGenerator:
         proposal = self._parse_response(text, context)
         proposal.validate(context, source_limit=256 * 1024)
         return proposal
+
+
+_ORIGINAL_MODEL_GENERATOR_PROPOSE = ModelCandidateGenerator.propose
 
 
 class DeterministicFixtureGenerator:

@@ -135,7 +135,26 @@ receipts, ledger, checkpoints, and candidate source under private state. The
 production Variation path requires the exact local model manifest and the
 enforceable Docker Evaluation gateway; it has no fixture or network fallback.
 `variation model-preflight` only verifies local model bytes and manifest
-metadata. E-H require a sealed adapter from the later Training slice.
+metadata; its `network` field is the scoped
+`offline-environment-scoped-preflight` claim, with the active offline
+environment variables returned as evidence. E-H require a sealed adapter from
+the later Training slice and a loader-issued adapter-application attestation
+binding the base and post-application model state. The loader, generator, and
+loop also require the applied object to be an actual local
+`peft.PeftModel`/`PeftModelForCausalLM` instance with one active LORA adapter
+whose runtime config matches the sealed `adapter_config.json`; an importable
+attestation sentinel or digest alone is not an adapter.
+
+The public `BoundedCandidateLoop(...)` constructor is a compatibility factory
+for distinct private production and fixture concrete classes. Their `run`
+methods are separate; the production method has no fixture early return and
+revalidates the exact Docker gateway, model generator, and authority before
+evaluation. This does not claim to defend against arbitrary Python already
+running in the trusted controller process: such code can inspect or rewrite
+host heap, frames, closures, classes, and registries. Candidate execution and
+hidden authority therefore rely on the separate Docker/evaluator process
+boundary, while fixture execution is structurally unavailable from a
+production loop object.
 
 The following later mutating, service-control, packaging, training, and campaign phases are
 recognized only so they fail closed with a nonzero `PhaseUnavailable` result;
