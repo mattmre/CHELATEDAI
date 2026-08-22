@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 import json
+import io
 from pathlib import Path
 from types import SimpleNamespace
 import tempfile
 import unittest
+from unittest import mock
+from contextlib import redirect_stdout
 
-from egv.canonical import digest_for
+from egv.canonical import content_id, digest_for
 from egv.campaign.commissioning import prepare_commissioning
 from egv.campaign.runner import (
     CommissioningRunError,
@@ -64,6 +67,75 @@ class CommissioningRunnerTests(unittest.TestCase):
         changed["campaign_id"] = "different"
         with self.assertRaises(CommissioningRunError):
             CommissioningTrainerInputs(changed)
+
+    @staticmethod
+    def _redigest_trainer_inputs(value: dict) -> dict:
+        value.pop("trainer_inputs_digest", None)
+        value["trainer_inputs_digest"] = digest_for(value)
+        return value
+
+    def test_trainer_bundle_rejects_duplicate_request_envelope(self) -> None:
+        value = json.loads(json.dumps(self.plan.trainer_inputs()))
+        requests = value["request_manifest"]["requests"]
+        requests[0] = dict(requests[1])
+        requests.sort(key=lambda item: item["request_id"])
+        self._redigest_trainer_inputs(value)
+        with self.assertRaisesRegex(CommissioningRunError, "matrix or canonical bindings"):
+            CommissioningTrainerInputs(value)
+
+    def test_trainer_bundle_rejects_substituted_run_identity(self) -> None:
+        value = json.loads(json.dumps(self.plan.trainer_inputs()))
+        request = dict(value["request_manifest"]["requests"][0])
+        request["run_id"] = "egv-run-substituted"
+        request.pop("request_id")
+        request["request_id"] = content_id("genreq", request)
+        value["request_manifest"]["requests"][0] = request
+        value["request_manifest"]["requests"].sort(key=lambda item: item["request_id"])
+        self._redigest_trainer_inputs(value)
+        with self.assertRaisesRegex(CommissioningRunError, "matrix or canonical bindings"):
+            CommissioningTrainerInputs(value)
+
+    def test_trainer_bundle_rejects_missing_or_substituted_declared_seed(self) -> None:
+        for seeds in ([0], [0, 2]):
+            with self.subTest(seeds=seeds):
+                value = json.loads(json.dumps(self.plan.trainer_inputs()))
+                value["request_manifest"]["seeds"] = seeds
+                self._redigest_trainer_inputs(value)
+                with self.assertRaisesRegex(CommissioningRunError, "request manifest is invalid"):
+                    CommissioningTrainerInputs(value)
+
+    def test_training_evaluator_cli_forwards_adapter_store(self) -> None:
+        paths = {
+            "service_manifest": self.root / "service.json",
+            "model_root": self.root / "model",
+            "development_dataset": self.root / "development.json",
+            "private_key": self.root / "private.key",
+            "adapter_store": self.root / "adapters",
+        }
+        output = io.StringIO()
+        with mock.patch(
+            "egv.cli.run_external_evaluator_once", autospec=True, return_value={"status": "ok"}
+        ) as evaluator, mock.patch("sys.stdin", io.StringIO('{"request": "fixture"}')), redirect_stdout(output):
+            code = main([
+                "training", "evaluator-once",
+                "--service-manifest", str(paths["service_manifest"]),
+                "--model-root", str(paths["model_root"]),
+                "--development-dataset", str(paths["development_dataset"]),
+                "--private-key", str(paths["private_key"]),
+                "--adapter-store", str(paths["adapter_store"]),
+                "--device", "cpu",
+            ])
+        self.assertEqual(code, 0)
+        evaluator.assert_called_once_with(
+            {"request": "fixture"},
+            service_manifest=paths["service_manifest"],
+            model_root=paths["model_root"],
+            development_dataset=paths["development_dataset"],
+            evaluator_private_key=paths["private_key"],
+            adapter_store=paths["adapter_store"],
+            device="cpu",
+        )
+        self.assertEqual(json.loads(output.getvalue()), {"status": "ok"})
 
     def test_private_sidecar_round_trip_is_content_bound_and_conflict_rejected(self) -> None:
         store = PrivateTrajectoryStore(self.root / "private")

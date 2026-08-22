@@ -735,6 +735,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                     model_root=args.model_root,
                     development_dataset=args.development_dataset,
                     evaluator_private_key=args.private_key,
+                    adapter_store=args.adapter_store,
                     device=args.device,
                 )
                 print(canonical_json(response))

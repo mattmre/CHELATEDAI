@@ -28,11 +28,19 @@ from ..training.contracts import LedgerCutoff
 from ..training.dataset import TrajectoryDatasetBuilder, seal_runtime_dataset
 from .commissioning import (
     GENERATION_REQUEST_COUNT,
+    REQUEST_MANIFEST_SCHEMA,
     TRAINER_INPUTS_SCHEMA,
     TRAIN_MANIFEST_SCHEMA,
 )
 from .errors import CampaignError
-from .trajectories import GenerationRequest, GenerationResponse, validate_accepted_response
+from .trajectories import (
+    COMMISSIONING_ARMS,
+    COMMISSIONING_SEEDS,
+    CommissioningTrajectoryError,
+    GenerationRequest,
+    GenerationResponse,
+    validate_accepted_response,
+)
 
 
 RUN_JOURNAL_SCHEMA = "egv-commissioning-run-journal-v1"
@@ -77,9 +85,18 @@ class CommissioningTrainerInputs:
             raise CommissioningRunError("commissioning trainer task records are not closed train records")
         if not isinstance(requests, Mapping) or set(requests) != {
             "schema_version", "request_count", "arms", "seeds", "requests"
-        } or requests["request_count"] != GENERATION_REQUEST_COUNT:
+        } or (
+            requests["schema_version"] != REQUEST_MANIFEST_SCHEMA
+            or requests["request_count"] != GENERATION_REQUEST_COUNT
+            or requests["arms"] != list(COMMISSIONING_ARMS)
+            or requests["seeds"] != list(COMMISSIONING_SEEDS)
+            or not isinstance(requests["requests"], list)
+        ):
             raise CommissioningRunError("commissioning request manifest is invalid")
-        parsed = tuple(GenerationRequest.from_mapping(item) for item in requests["requests"])
+        try:
+            parsed = tuple(GenerationRequest.from_mapping(item) for item in requests["requests"])
+        except (CommissioningTrajectoryError, TypeError, ValueError) as exc:
+            raise CommissioningRunError("commissioning request envelope is invalid") from exc
         if len(parsed) != GENERATION_REQUEST_COUNT or tuple(item.request_id for item in parsed) != tuple(
             sorted(item.request_id for item in parsed)
         ):
@@ -87,6 +104,24 @@ class CommissioningTrainerInputs:
         tasks = {item["template_id"]: dict(item) for item in train["tasks"]}
         if len(tasks) != 20:
             raise CommissioningRunError("commissioning training task identities are ambiguous")
+        expected = []
+        for task in train["tasks"]:
+            for arm_id in COMMISSIONING_ARMS:
+                for seed in COMMISSIONING_SEEDS:
+                    expected.append(
+                        GenerationRequest.build(
+                            campaign_id=value["campaign_id"],
+                            task_record=task,
+                            corpus_manifest_digest=value["corpus_manifest_digest"],
+                            arm_id=arm_id,
+                            seed=seed,
+                            model_manifest_digest=value["model_manifest_digest"],
+                            variation_protocol_digest=value["variation_protocol_digest"],
+                        )
+                    )
+        expected.sort(key=lambda item: item.request_id)
+        if tuple(item.to_dict() for item in parsed) != tuple(item.to_dict() for item in expected):
+            raise CommissioningRunError("commissioning request matrix or canonical bindings differ")
         for request in parsed:
             task = tasks.get(request.task_id)
             if (
