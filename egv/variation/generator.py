@@ -16,6 +16,13 @@ from .model import AdapterApplicationAttestation, LoadedPinnedModel, PinnedModel
 
 
 _MODEL_GENERATOR_INIT_TOKEN = object()
+_ORIGINAL_PROMPT_REGISTRY_VALIDATE = PromptRegistry.validate
+_ORIGINAL_PROMPT_REGISTRY_RENDER = PromptRegistry.render
+MODEL_RESPONSE_CONTRACTS = (
+    "closed-json-v1",
+    "source-only-v1",
+    "source-only-prefill-v1",
+)
 
 
 @dataclass(frozen=True)
@@ -35,6 +42,9 @@ class CandidateContext:
     model_digest: str
     adapter_digest: Optional[str]
     prompt_digest: str
+    task_statement: Optional[str] = None
+    initial_source: Optional[str] = None
+    initial_source_digest: Optional[str] = None
 
 
 @dataclass(frozen=True)
@@ -80,6 +90,7 @@ def render_candidate_prompt(
     context: CandidateContext,
     *,
     prompt_registry: Optional[PromptRegistry] = None,
+    response_contract: str = "closed-json-v1",
 ) -> str:
     """Render the exact private candidate prompt from a frozen context.
 
@@ -88,6 +99,8 @@ def render_candidate_prompt(
     the evaluator boundary.
     """
 
+    if response_contract not in MODEL_RESPONSE_CONTRACTS:
+        raise VariationConfigurationError("unknown model response contract")
     registry = prompt_registry or PromptRegistry()
     failure_families = sorted(
         {
@@ -121,16 +134,43 @@ def render_candidate_prompt(
         "egv-correction-v1", {"corrected_event_id": corrections[0] if corrections else "none"}
     )
     available_evidence_ids = sorted(str(record["event_id"]) for record in context.retrieval_records)
-    response_contract = "".join((
-        "Return exactly one JSON object with this closed field set: "
-        '{"source": string, "declared_locus": string, "requested_authority": string, '
-        '"evidence_ids": array[string], optional "metadata": object}. '
-        "The source value must be the complete Python file encoded as a JSON string. "
-        "declared_locus must equal ", json.dumps(context.public_locus),
-        '. requested_authority must equal "EXECUTE_CANDIDATE". ',
-        "evidence_ids must be a sorted unique subset of ", json.dumps(available_evidence_ids), ". "
-        "Do not use Markdown fences, comments outside the object, or additional fields.",
-    ))
+    if response_contract == "closed-json-v1":
+        response_instruction = "".join((
+            "Return exactly one JSON object with this closed field set: "
+            '{"source": string, "declared_locus": string, "requested_authority": string, '
+            '"evidence_ids": array[string], optional "metadata": object}. '
+            "The source value must be the complete Python file encoded as a JSON string. "
+            "declared_locus must equal ", json.dumps(context.public_locus),
+            '. requested_authority must equal "EXECUTE_CANDIDATE". ',
+            "evidence_ids must be a sorted unique subset of ", json.dumps(available_evidence_ids), ". "
+            "Do not use Markdown fences, comments outside the object, or additional fields.",
+        ))
+    else:
+        evidence = "".join((
+            "Use the verified evidence context associated with ",
+            json.dumps(available_evidence_ids),
+            ". Do not emit evidence IDs or transport metadata in the Python file; "
+            "the trusted host conservatively binds every presented evidence ID.",
+        ))
+        if (
+            not isinstance(context.task_statement, str)
+            or not context.task_statement.strip()
+            or not isinstance(context.initial_source, str)
+            or not context.initial_source.strip()
+            or digest_bytes(context.initial_source.encode("utf-8")) != context.initial_source_digest
+        ):
+            raise VariationConfigurationError(
+                "source-only response contract requires exact task statement and source bytes"
+            )
+        response_instruction = "".join((
+            "Task statement: ", context.task_statement, "\n",
+            "Current complete Python file:\n", context.initial_source, "\n",
+            "Return only the complete Python file for ", json.dumps(context.public_locus), ". "
+            "Begin with Python source and end with Python source. "
+            "Do not return JSON, Markdown fences, explanations, prose, or transport metadata. "
+            "The trusted host supplies the locus, authority, evidence binding, and digest after "
+            "the entire response parses as one Python module.",
+        ))
     return "\n".join(
         (
             registry.get("egv-system-v1").text,
@@ -138,7 +178,7 @@ def render_candidate_prompt(
             evidence,
             failure,
             correction,
-            response_contract,
+            response_instruction,
         )
     )
 
@@ -156,6 +196,10 @@ class ModelCandidateGenerator:
             "adapter_artifact",
             "adapter_attestation",
             "max_new_tokens",
+            "prompt_registry",
+            "prompt_manifest_digest",
+            "chat_template_digest",
+            "response_contract",
         }:
             raise AttributeError("production model generator contract is immutable after construction")
         super().__setattr__(name, value)
@@ -169,9 +213,12 @@ class ModelCandidateGenerator:
         adapter_artifact: Optional[SealedAdapterArtifact] = None,
         prompt_registry: Optional[PromptRegistry] = None,
         max_new_tokens: int = 512,
+        response_contract: str = "closed-json-v1",
     ) -> None:
         if max_new_tokens <= 0 or max_new_tokens > 2048:
             raise VariationConfigurationError("model generation budget is outside the bounded contract")
+        if response_contract not in MODEL_RESPONSE_CONTRACTS:
+            raise VariationConfigurationError("unknown model response contract")
         if type(loaded_model) is not LoadedPinnedModel:
             raise VariationConfigurationError("ModelCandidateGenerator requires LoadedPinnedModel")
         if type(loaded_model.manifest) is not PinnedModelManifest:
@@ -213,7 +260,16 @@ class ModelCandidateGenerator:
         self.adapter_artifact = adapter_artifact
         self.adapter_attestation = loaded_model.adapter_attestation
         self.prompt_registry = prompt_registry or PromptRegistry()
+        if response_contract != "closed-json-v1" and type(self.prompt_registry) is not PromptRegistry:
+            raise VariationDependencyError("experimental source contract requires the exact PromptRegistry")
+        self.prompt_registry.validate()
+        self.prompt_manifest_digest = self.prompt_registry.manifest_digest()
+        chat_template = getattr(self.tokenizer, "chat_template", None)
+        if response_contract != "closed-json-v1" and (not isinstance(chat_template, str) or not chat_template):
+            raise VariationDependencyError("experimental source contract requires pinned chat-template bytes")
+        self.chat_template_digest = digest_bytes(chat_template.encode("utf-8")) if isinstance(chat_template, str) else None
         self.max_new_tokens = max_new_tokens
+        self.response_contract = response_contract
         self._initialization_token = _MODEL_GENERATOR_INIT_TOKEN
         self._generator_contract = digest_for(
             {
@@ -224,6 +280,10 @@ class ModelCandidateGenerator:
                 "adapter_digest": self.adapter_digest,
                 "adapter_artifact_id": id(self.adapter_artifact) if self.adapter_artifact is not None else None,
                 "max_new_tokens": self.max_new_tokens,
+                "prompt_registry_id": id(self.prompt_registry),
+                "prompt_manifest_digest": self.prompt_manifest_digest,
+                "chat_template_digest": self.chat_template_digest,
+                "response_contract": self.response_contract,
             }
         )
 
@@ -234,10 +294,17 @@ class ModelCandidateGenerator:
             raise VariationDependencyError("production Variation requires the exact ModelCandidateGenerator type")
         if getattr(self, "_initialization_token", None) is not _MODEL_GENERATOR_INIT_TOKEN:
             raise VariationDependencyError("model generator initialization seal is missing")
-        if "propose" in self.__dict__:
-            raise VariationDependencyError("model generator propose cannot be overridden on an instance")
+        if any(name in self.__dict__ for name in ("propose", "_prompt", "_render_chat", "prompt_digest_for")):
+            raise VariationDependencyError("model generator prompt/propose cannot be overridden on an instance")
         if ModelCandidateGenerator.propose is not _ORIGINAL_MODEL_GENERATOR_PROPOSE:
             raise VariationDependencyError("model generator propose method was altered")
+        if ModelCandidateGenerator._prompt is not _ORIGINAL_MODEL_GENERATOR_PROMPT:
+            raise VariationDependencyError("model generator prompt method was altered")
+        if (
+            ModelCandidateGenerator._render_chat is not _ORIGINAL_MODEL_GENERATOR_RENDER_CHAT
+            or ModelCandidateGenerator.prompt_digest_for is not _ORIGINAL_MODEL_GENERATOR_PROMPT_DIGEST
+        ):
+            raise VariationDependencyError("model generator chat rendering method was altered")
         if type(self.loaded_model) is not LoadedPinnedModel or type(self.loaded_model.manifest) is not PinnedModelManifest:
             raise VariationDependencyError("model generator loaded model identity is invalid")
         self.loaded_model.manifest.validate_contract()
@@ -254,10 +321,30 @@ class ModelCandidateGenerator:
                 "adapter_digest": self.adapter_digest,
                 "adapter_artifact_id": id(self.adapter_artifact) if self.adapter_artifact is not None else None,
                 "max_new_tokens": self.max_new_tokens,
+                "prompt_registry_id": id(self.prompt_registry),
+                "prompt_manifest_digest": self.prompt_manifest_digest,
+                "chat_template_digest": self.chat_template_digest,
+                "response_contract": self.response_contract,
             }
         )
         if self._generator_contract != expected_contract:
             raise VariationDependencyError("model generator contract changed after construction")
+        self.prompt_registry.validate()
+        if self.prompt_registry.manifest_digest() != self.prompt_manifest_digest:
+            raise VariationDependencyError("model generator prompt manifest binding changed")
+        if self.response_contract != "closed-json-v1":
+            if (
+                type(self.prompt_registry) is not PromptRegistry
+                or PromptRegistry.validate is not _ORIGINAL_PROMPT_REGISTRY_VALIDATE
+                or PromptRegistry.render is not _ORIGINAL_PROMPT_REGISTRY_RENDER
+            ):
+                raise VariationDependencyError("experimental source prompt registry implementation changed")
+            chat_template = getattr(self.tokenizer, "chat_template", None)
+            if (
+                not isinstance(chat_template, str)
+                or digest_bytes(chat_template.encode("utf-8")) != self.chat_template_digest
+            ):
+                raise VariationDependencyError("experimental source chat-template bytes changed")
         if self.adapter_artifact is None:
             if self.adapter_digest is not None or self.loaded_model.adapter_digest is not None or self.loaded_model.adapter_attestation is not None:
                 raise VariationDependencyError("base model generator carries unexpected adapter state")
@@ -281,11 +368,80 @@ class ModelCandidateGenerator:
         validate_applied_peft_model(self.loaded_model.model, self.adapter_artifact)
 
     def _prompt(self, context: CandidateContext) -> str:
-        return render_candidate_prompt(context, prompt_registry=self.prompt_registry)
+        return render_candidate_prompt(
+            context,
+            prompt_registry=self.prompt_registry,
+            response_contract=self.response_contract,
+        )
+
+    def _render_chat(self, context: CandidateContext) -> str:
+        apply_chat_template = getattr(self.tokenizer, "apply_chat_template", None)
+        if not callable(apply_chat_template):
+            raise VariationDependencyError("pinned Qwen tokenizer does not expose its official chat template")
+        messages = [{"role": "user", "content": self._prompt(context)}]
+        kwargs = {"tokenize": False, "enable_thinking": False}
+        if self.response_contract == "source-only-prefill-v1":
+            if not isinstance(context.initial_source, str) or not context.initial_source.splitlines():
+                raise VariationConfigurationError("source-only prefill requires exact initial source")
+            messages.append({"role": "assistant", "content": context.initial_source.splitlines()[0] + "\n"})
+            kwargs.update({"add_generation_prompt": False, "continue_final_message": True})
+        else:
+            kwargs["add_generation_prompt"] = True
+        rendered = apply_chat_template(messages, **kwargs)
+        if not isinstance(rendered, str) or not rendered:
+            raise VariationDependencyError("pinned Qwen chat template did not render exact text")
+        return rendered
+
+    def prompt_digest_for(self, context: CandidateContext) -> str:
+        return digest_bytes(self._render_chat(context).encode("utf-8"))
 
     @staticmethod
-    def _parse_response(text: str, context: CandidateContext) -> CandidateProposal:
+    def _parse_response(
+        text: str,
+        context: CandidateContext,
+        *,
+        response_contract: str = "closed-json-v1",
+    ) -> CandidateProposal:
+        raw_response_bytes = text.encode("utf-8")
         stripped = text.strip()
+        if response_contract not in MODEL_RESPONSE_CONTRACTS:
+            raise VariationConfigurationError("unknown model response contract")
+        if response_contract in {"source-only-v1", "source-only-prefill-v1"}:
+            try:
+                parsed_source = ast.parse(stripped)
+            except (SyntaxError, ValueError) as exc:
+                raise VariationDependencyError(
+                    "pinned model did not emit the complete source-only candidate contract"
+                ) from exc
+            expected_function = context.public_locus.rsplit(":", 1)[-1]
+            defined_functions = {
+                node.name
+                for node in parsed_source.body
+                if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+            }
+            if (
+                not stripped
+                or not expected_function.isidentifier()
+                or expected_function not in defined_functions
+            ):
+                raise VariationDependencyError(
+                    "pinned model did not emit the complete source-only candidate contract"
+                )
+            source_bytes = stripped.encode("utf-8")
+            return CandidateProposal(
+                source=source_bytes,
+                declared_locus=context.public_locus,
+                requested_authority="EXECUTE_CANDIDATE",
+                evidence_ids=tuple(
+                    sorted({str(record["event_id"]) for record in context.retrieval_records})
+                ),
+                mutation_digest=digest_bytes(source_bytes),
+                metadata={
+                    "response_contract": response_contract,
+                    "raw_response_digest": digest_bytes(raw_response_bytes),
+                    "normalized_source_digest": digest_bytes(source_bytes),
+                },
+            )
         try:
             value = json.loads(stripped)
         except ValueError as exc:
@@ -347,19 +503,32 @@ class ModelCandidateGenerator:
         )
 
     def propose(self, context: CandidateContext) -> CandidateProposal:
-        prompt = self._prompt(context)
         try:
-            apply_chat_template = getattr(self.tokenizer, "apply_chat_template", None)
-            if not callable(apply_chat_template):
-                raise VariationDependencyError("pinned Qwen tokenizer does not expose its official chat template")
-            encoded = apply_chat_template(
-                [{"role": "user", "content": prompt}],
-                add_generation_prompt=True,
-                tokenize=True,
-                return_dict=True,
-                return_tensors="pt",
-                enable_thinking=False,
-            )
+            if self.response_contract == "closed-json-v1":
+                apply_chat_template = getattr(self.tokenizer, "apply_chat_template", None)
+                if not callable(apply_chat_template):
+                    raise VariationDependencyError("pinned Qwen tokenizer does not expose its official chat template")
+                encoded = apply_chat_template(
+                    [{"role": "user", "content": self._prompt(context)}],
+                    add_generation_prompt=True,
+                    tokenize=True,
+                    return_dict=True,
+                    return_tensors="pt",
+                    enable_thinking=False,
+                )
+            else:
+                rendered_chat = self._render_chat(context)
+                if digest_bytes(rendered_chat.encode("utf-8")) != context.prompt_digest:
+                    raise VariationDependencyError("candidate prompt bytes differ from the frozen prompt digest")
+                tokenize = getattr(self.tokenizer, "__call__", None)
+                if not callable(tokenize):
+                    raise VariationDependencyError("pinned Qwen tokenizer is not callable")
+                encoded = tokenize(
+                    rendered_chat,
+                    add_special_tokens=False,
+                    return_tensors="pt",
+                    return_attention_mask=True,
+                )
             parameter = next(self.model.parameters())
             device = parameter.device
             if getattr(device, "type", str(device).split(":", 1)[0]) != "cuda":
@@ -385,14 +554,23 @@ class ModelCandidateGenerator:
             input_length = int(encoded["input_ids"].shape[-1])
             tokens = generated[0][input_length:]
             text = self.tokenizer.decode(tokens, skip_special_tokens=True)
+            if self.response_contract == "source-only-prefill-v1":
+                text = context.initial_source.splitlines()[0] + "\n" + text
         except Exception as exc:
             raise VariationDependencyError("pinned model candidate generation failed") from exc
-        proposal = self._parse_response(text, context)
+        proposal = self._parse_response(
+            text,
+            context,
+            response_contract=self.response_contract,
+        )
         proposal.validate(context, source_limit=256 * 1024)
         return proposal
 
 
 _ORIGINAL_MODEL_GENERATOR_PROPOSE = ModelCandidateGenerator.propose
+_ORIGINAL_MODEL_GENERATOR_PROMPT = ModelCandidateGenerator._prompt
+_ORIGINAL_MODEL_GENERATOR_RENDER_CHAT = ModelCandidateGenerator._render_chat
+_ORIGINAL_MODEL_GENERATOR_PROMPT_DIGEST = ModelCandidateGenerator.prompt_digest_for
 
 
 class DeterministicFixtureGenerator:
@@ -447,6 +625,7 @@ __all__ = [
     "CandidateGenerator",
     "CandidateProposal",
     "DeterministicFixtureGenerator",
+    "MODEL_RESPONSE_CONTRACTS",
     "ModelCandidateGenerator",
     "render_candidate_prompt",
 ]

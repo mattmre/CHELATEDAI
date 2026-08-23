@@ -18,6 +18,7 @@ from egv.canonical import canonical_json, digest_bytes, digest_for, failure_fami
 from egv.evaluation.authority import AuthorityBroker
 from egv.evaluation.controller import EvaluationResult, EvaluatorController, HiddenEvaluatorRunner
 from egv.evaluation.dataset import EvaluationCorpus, EVALUATOR_SEED_BYTES, FAMILY_SPECS
+from egv.evaluation.prompts import PromptRegistry
 from egv.evaluation.sandbox import DockerCandidateSandbox
 from egv.evaluation.errors import DockerConfigurationError, LeakageError
 from egv.ledger import EvidenceLedger
@@ -904,6 +905,23 @@ class VariationTestCase(unittest.TestCase):
         self.assertIn('["evt-1", "evt-2"]', prompt)
         self.assertIn("Do not use Markdown fences", prompt)
 
+        initial_source = "def solve(value):\n    return value"
+        source_context = replace(
+            context,
+            task_statement="Repair the bounded function without changing its public API.",
+            initial_source=initial_source,
+            initial_source_digest=digest_bytes(initial_source.encode("utf-8")),
+        )
+        source_prompt = render_candidate_prompt(
+            source_context,
+            response_contract="source-only-v1",
+        )
+        self.assertIn(initial_source, source_prompt)
+        self.assertIn(source_context.task_statement, source_prompt)
+        self.assertIn("trusted host supplies", source_prompt)
+        with self.assertRaises(VariationConfigurationError):
+            render_candidate_prompt(context, response_contract="source-only-v1")
+
         source = "def solve(value):\n    return value + 1"
         repaired = ModelCandidateGenerator._parse_response(source, context)
         self.assertEqual(repaired.source, source.encode("utf-8"))
@@ -913,6 +931,36 @@ class VariationTestCase(unittest.TestCase):
         self.assertEqual(repaired.metadata["response_contract"], "source-only-repair-v1")
         self.assertEqual(repaired.metadata["raw_response_digest"], digest_bytes(repaired.source))
         repaired.validate(context, source_limit=CANDIDATE_SOURCE_LIMIT)
+
+        source_only = ModelCandidateGenerator._parse_response(
+            source,
+            source_context,
+            response_contract="source-only-v1",
+        )
+        self.assertEqual(source_only.source, source.encode("utf-8"))
+        self.assertEqual(source_only.declared_locus, source_context.public_locus)
+        self.assertEqual(source_only.requested_authority, "EXECUTE_CANDIDATE")
+        self.assertEqual(source_only.evidence_ids, ("evt-1", "evt-2"))
+        self.assertEqual(source_only.metadata["response_contract"], "source-only-v1")
+        prefilled = ModelCandidateGenerator._parse_response(
+            source,
+            source_context,
+            response_contract="source-only-prefill-v1",
+        )
+        self.assertEqual(prefilled.source, source.encode("utf-8"))
+        self.assertEqual(prefilled.metadata["response_contract"], "source-only-prefill-v1")
+        for raw in (
+            "Here is the answer.",
+            "```python\n" + source + "\n```",
+            "value = 1",
+            "def wrong_locus(value):\n    return value",
+        ):
+            with self.subTest(source_only_raw=raw), self.assertRaises(VariationDependencyError):
+                ModelCandidateGenerator._parse_response(
+                    raw,
+                    source_context,
+                    response_contract="source-only-v1",
+                )
 
         rejected = (
             "Here is the answer.",
@@ -937,6 +985,128 @@ class VariationTestCase(unittest.TestCase):
         })
         with self.assertRaisesRegex(VariationDependencyError, "wrong authority"):
             ModelCandidateGenerator._parse_response(wrong_authority, context)
+
+    def test_source_prefill_uses_continue_final_message_and_exact_chat_digest(self) -> None:
+        base, model_digest = self.make_production_generator()
+
+        class ChatTokenizer:
+            chat_template = "frozen-test-chat-template"
+
+            def apply_chat_template(self, messages, **kwargs):
+                self.messages = messages
+                self.kwargs = kwargs
+                return "<exact-chat>" + messages[-1]["content"]
+
+        tokenizer = ChatTokenizer()
+        loaded = LoadedPinnedModel(
+            model=base.model,
+            tokenizer=tokenizer,
+            manifest=base.loaded_model.manifest,
+            manifest_digest=model_digest,
+            file_hashes=base.loaded_model.file_hashes,
+            load_report={},
+            base_state_digest=base.loaded_model.base_state_digest,
+        )
+        generator = ModelCandidateGenerator(
+            loaded,
+            model_digest=model_digest,
+            response_contract="source-only-prefill-v1",
+        )
+        initial_source = "def solve(value):\n    return value"
+        context = CandidateContext(
+            "campaign", "run", 0, "B", "task", "PURE_FUNCTION", "src/task.py:solve", "rule",
+            1, None, (), digest_for("retrieval"), model_digest, None, digest_for("placeholder"),
+            "Repair the bounded function.", initial_source, digest_bytes(initial_source.encode("utf-8")),
+        )
+        digest = generator.prompt_digest_for(context)
+        self.assertEqual(len(digest), 64)
+        self.assertEqual(tokenizer.messages[-1], {"role": "assistant", "content": "def solve(value):\n"})
+        self.assertTrue(tokenizer.kwargs["continue_final_message"])
+        self.assertFalse(tokenizer.kwargs["add_generation_prompt"])
+        self.assertFalse(tokenizer.kwargs["tokenize"])
+        with self.assertRaises(AttributeError):
+            generator.prompt_registry = PromptRegistry()
+
+    def test_source_prefill_propose_reassembles_and_seals_exact_generation(self) -> None:
+        class Device:
+            type = "cuda"
+
+        device = Device()
+
+        class Tensor:
+            def __init__(self, values, tensor_device=None):
+                self.values = list(values)
+                self.device = tensor_device
+                self.shape = (1, len(self.values))
+
+            def to(self, *, device):
+                return Tensor(self.values, device)
+
+        class Model:
+            def parameters(self):
+                return iter((SimpleNamespace(device=device),))
+
+            def generate(self, **kwargs):
+                self.kwargs = kwargs
+                input_values = kwargs["input_ids"].values
+                return [input_values + [91, 92]]
+
+        class Tokenizer:
+            chat_template = "frozen-prefill-template-v1"
+
+            def apply_chat_template(self, messages, **kwargs):
+                self.messages = messages
+                self.chat_kwargs = kwargs
+                return "<chat>" + messages[-1]["content"]
+
+            def __call__(self, text, **kwargs):
+                self.rendered = text
+                self.tokenize_kwargs = kwargs
+                return {"input_ids": Tensor([1, 2]), "attention_mask": Tensor([1, 1])}
+
+            def decode(self, tokens, *, skip_special_tokens):
+                self.decoded_tokens = list(tokens)
+                self.skip_special_tokens = skip_special_tokens
+                return "    return value + 1\n"
+
+        base, model_digest = self.make_production_generator()
+        model = Model()
+        tokenizer = Tokenizer()
+        loaded = LoadedPinnedModel(
+            model=model,
+            tokenizer=tokenizer,
+            manifest=base.loaded_model.manifest,
+            manifest_digest=model_digest,
+            file_hashes=base.loaded_model.file_hashes,
+            load_report={},
+            base_state_digest=digest_for("base-state"),
+        )
+        generator = ModelCandidateGenerator(
+            loaded,
+            model_digest=model_digest,
+            response_contract="source-only-prefill-v1",
+        )
+        initial_source = "def solve(value):\n    return value"
+        context = CandidateContext(
+            "campaign", "run", 0, "B", "task", "PURE_FUNCTION", "src/task.py:solve", "rule",
+            1, None, ({"event_id": "evt-2"}, {"event_id": "evt-1"}), digest_for("retrieval"),
+            model_digest, None, digest_for("placeholder"), "Repair the bounded function.",
+            initial_source, digest_bytes(initial_source.encode("utf-8")),
+        )
+        context = replace(context, prompt_digest=generator.prompt_digest_for(context))
+        proposal = generator.propose(context)
+        expected = b"def solve(value):\n    return value + 1"
+        self.assertEqual(proposal.source, expected)
+        self.assertEqual(proposal.evidence_ids, ("evt-1", "evt-2"))
+        self.assertEqual(proposal.metadata["raw_response_digest"], digest_bytes(expected + b"\n"))
+        self.assertEqual(proposal.metadata["normalized_source_digest"], digest_bytes(expected))
+        self.assertEqual(tokenizer.decoded_tokens, [91, 92])
+        self.assertTrue(tokenizer.chat_kwargs["continue_final_message"])
+        self.assertFalse(tokenizer.chat_kwargs["add_generation_prompt"])
+        generator.validate_production_integrity()
+        tokenizer.chat_template = "mutated-template"
+        with self.assertRaisesRegex(VariationDependencyError, "chat-template bytes changed"):
+            generator.validate_production_integrity()
 
     def test_forged_task_metadata_cannot_cross_the_evaluation_manifest_boundary(self) -> None:
         runner, task, _repo, _isolation = self.make_runner()

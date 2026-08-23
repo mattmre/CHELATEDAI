@@ -31,13 +31,15 @@ def _context_dict(context: CandidateContext) -> Dict[str, Any]:
 
 def _context_from_mapping(value: Mapping[str, Any]) -> CandidateContext:
     fields = tuple(CandidateContext.__dataclass_fields__)
-    if not isinstance(value, Mapping) or set(value) != set(fields):
+    legacy_fields = fields[:-3]
+    if not isinstance(value, Mapping) or set(value) != set(legacy_fields):
         raise VariationCheckpointError("private candidate context is not closed")
     payload = dict(value)
     records = payload.get("retrieval_records")
     if not isinstance(records, list) or any(not isinstance(item, Mapping) for item in records):
         raise VariationCheckpointError("private candidate retrieval records are malformed")
     payload["retrieval_records"] = tuple(dict(item) for item in records)
+    payload.update({"task_statement": None, "initial_source": None, "initial_source_digest": None})
     return CandidateContext(**payload)
 
 

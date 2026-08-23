@@ -72,6 +72,32 @@ the completion in protected storage and publishes shape and digest metadata.
 That evidence will determine whether the next change belongs in prompt/schema
 construction, constrained decoding, or a narrowly justified parser rule.
 
+## Private raw-generation diagnostic
+
+The bounded diagnostic completed after this note was first published. The
+pinned model produced a short structured response that did not reach the token
+ceiling. It contained one syntactically valid JSON root followed by a malformed
+structured suffix.
+The valid root had the wrong closed field set and failed the required type,
+locus, authority, evidence, and final proposal gates. The suffix could not be
+partitioned into additional JSON roots, and the entire response was not a
+Python module.
+
+This rules out fragment extraction as a safe repair. The evidence supports a
+prompt/schema-adherence problem: the base model was asked both to generate a
+complete Python file and to encode that file inside a governance envelope.
+The next canary therefore separates responsibilities. Qwen generates only the
+complete Python module; trusted deterministic code supplies and validates the
+locus, authority, evidence dependency set, and content digest. The existing
+JSON commissioning contract remains unchanged until the source-only canary has
+independent evidence and a fully versioned integration path.
+
+The diagnostic terminal receipt digest is
+`f1ba143074574fcc595e2f48589049e0e7f69668968ab33833c17f95d8a4bc0b`.
+The closed shape receipt digest is
+`879b0b9cc8934effe900d1061a0f3e9c8ad450653614dcc826d6381c6ac7382e`.
+Raw completion bytes remain private and are not published.
+
 ## Public boundary
 
 This document intentionally excludes machine identities, addresses, operator
