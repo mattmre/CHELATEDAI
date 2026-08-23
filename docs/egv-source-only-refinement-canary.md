@@ -25,6 +25,14 @@ presented evidence ID, and computes the mutation digest. Candidate admission
 still requires the complete response to parse as Python and to define the
 function named by the public locus.
 
+The experimental evidence API retains three distinct byte sequences from the
+same sealed generation call: the exact rendered prompt, the model-decoded
+continuation, and the full contract response after the declared host prefill is
+reassembled. Each sequence has its own digest. Validation reconstructs the
+prefilled response, reparses the entire contract response, and requires the
+resulting proposal to match exactly. The API is unavailable to
+`closed-json-v1`; that legacy path does not claim rendered-prompt evidence.
+
 ## Boundary
 
 These contracts are experimental and are not wired into the current production

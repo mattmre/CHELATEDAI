@@ -17,7 +17,14 @@ from .errors import (
     VariationError,
     VariationIsolationError,
 )
-from .generator import CandidateContext, CandidateGenerator, CandidateProposal, DeterministicFixtureGenerator, ModelCandidateGenerator
+from .generator import (
+    CandidateContext,
+    CandidateGenerationEvidence,
+    CandidateGenerator,
+    CandidateProposal,
+    DeterministicFixtureGenerator,
+    ModelCandidateGenerator,
+)
 from .loop import (
     AttemptRecord,
     BoundedCandidateLoop,
@@ -81,6 +88,7 @@ __all__ = [
     "CANDIDATE_SOURCE_LIMIT",
     "CHECKPOINT_SCHEMA",
     "CandidateContext",
+    "CandidateGenerationEvidence",
     "CandidateGenerator",
     "CandidateProposal",
     "CheckpointStore",

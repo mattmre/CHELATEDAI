@@ -52,7 +52,12 @@ from egv.variation import (
     scan_public_variation_report,
 )
 from egv.variation.fixture import FixtureEvaluationGateway
-from egv.variation.generator import CandidateContext, CandidateProposal, render_candidate_prompt
+from egv.variation.generator import (
+    CandidateContext,
+    CandidateGenerationEvidence,
+    CandidateProposal,
+    render_candidate_prompt,
+)
 import egv.variation.loop as variation_loop
 from egv.variation.loop import CANDIDATE_SOURCE_LIMIT
 from egv.variation.model import MODEL_ARCHITECTURE, MODEL_CONFIG_CLASS, MODEL_MANIFEST_SCHEMA, MODEL_REPOSITORY
@@ -1094,16 +1099,66 @@ class VariationTestCase(unittest.TestCase):
             initial_source, digest_bytes(initial_source.encode("utf-8")),
         )
         context = replace(context, prompt_digest=generator.prompt_digest_for(context))
-        proposal = generator.propose(context)
+        generation = generator.propose_with_evidence(context)
+        proposal = generation.proposal
         expected = b"def solve(value):\n    return value + 1"
+        self.assertEqual(generation.decoded_model_response, b"    return value + 1\n")
+        self.assertEqual(
+            generation.decoded_model_response_digest,
+            digest_bytes(b"    return value + 1\n"),
+        )
+        self.assertEqual(generation.contract_response, expected + b"\n")
+        self.assertEqual(generation.contract_response_digest, digest_bytes(expected + b"\n"))
+        self.assertTrue(generation.rendered_prompt)
+        self.assertEqual(digest_bytes(generation.rendered_prompt), context.prompt_digest)
+        self.assertEqual(generation.rendered_prompt_digest, context.prompt_digest)
+        self.assertEqual(generation.response_contract, "source-only-prefill-v1")
         self.assertEqual(proposal.source, expected)
         self.assertEqual(proposal.evidence_ids, ("evt-1", "evt-2"))
-        self.assertEqual(proposal.metadata["raw_response_digest"], digest_bytes(expected + b"\n"))
+        self.assertEqual(proposal.metadata["contract_response_digest"], digest_bytes(expected + b"\n"))
         self.assertEqual(proposal.metadata["normalized_source_digest"], digest_bytes(expected))
         self.assertEqual(tokenizer.decoded_tokens, [91, 92])
         self.assertTrue(tokenizer.chat_kwargs["continue_final_message"])
         self.assertFalse(tokenizer.chat_kwargs["add_generation_prompt"])
+        self.assertEqual(generator.propose(context), proposal)
+        unrelated = b"def solve(value):\n    return value - 1\n"
+        with self.assertRaises(VariationDependencyError):
+            replace(
+                generation,
+                contract_response=unrelated,
+                contract_response_digest=digest_bytes(unrelated),
+            ).validate(context)
+        with self.assertRaises(VariationDependencyError):
+            replace(
+                generation,
+                decoded_model_response=b"    return value - 1\n",
+                decoded_model_response_digest=digest_bytes(b"    return value - 1\n"),
+            ).validate(context)
+        with self.assertRaises(VariationDependencyError):
+            replace(generation, response_contract="source-only-v1").validate(context)
+        different_source = b"def solve(value):\n    return value + 2"
+        with self.assertRaises(VariationDependencyError):
+            replace(
+                generation,
+                proposal=replace(
+                    proposal,
+                    source=different_source,
+                    mutation_digest=digest_bytes(different_source),
+                ),
+            ).validate(context)
+        with self.assertRaises(VariationDependencyError):
+            replace(
+                generation,
+                proposal=replace(proposal, metadata={**proposal.metadata, "contract_response_digest": "0" * 64}),
+            ).validate(context)
         generator.validate_production_integrity()
+        original_evidence_validate = CandidateGenerationEvidence.validate
+        try:
+            CandidateGenerationEvidence.validate = lambda self, context: None
+            with self.assertRaisesRegex(VariationDependencyError, "evidence-generation method was altered"):
+                generator.validate_production_integrity()
+        finally:
+            CandidateGenerationEvidence.validate = original_evidence_validate
         tokenizer.chat_template = "mutated-template"
         with self.assertRaisesRegex(VariationDependencyError, "chat-template bytes changed"):
             generator.validate_production_integrity()
