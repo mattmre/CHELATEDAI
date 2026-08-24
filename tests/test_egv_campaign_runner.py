@@ -10,7 +10,7 @@ import unittest
 from unittest import mock
 from contextlib import redirect_stdout
 
-from egv.canonical import canonical_json, content_id, digest_for
+from egv.canonical import canonical_bytes, canonical_json, content_id, digest_for
 from egv.campaign.commissioning import prepare_commissioning
 from egv.campaign.runner import (
     CommissioningRunError,
@@ -246,15 +246,60 @@ class CommissioningRunnerTests(unittest.TestCase):
     def test_run_journal_is_idempotent_and_bound_to_inputs(self) -> None:
         request = self.plan.generation_requests[0]
         path = self.root / "run.json"
-        journal = CommissioningRunJournal(path, trainer_inputs_digest=self.plan.trainer_inputs()["trainer_inputs_digest"])
-        result = {"request_id": request.request_id, "terminal_status": "PROMOTED"}
+        journal = CommissioningRunJournal(
+            path,
+            trainer_inputs_digest=self.plan.trainer_inputs()["trainer_inputs_digest"],
+            requests=self.plan.generation_requests,
+        )
+        result = {
+            "request_id": request.request_id,
+            "run_id": request.run_id,
+            "terminal_status": "BUDGET_EXHAUSTED",
+            "report_digest": None,
+            "response": None,
+            "generation_failure_digest": digest_for("last-source-contract-failure"),
+            "source_contract_failure_count": 1,
+        }
         journal.commit(request, result)
         journal.commit(request, result)
         self.assertEqual(journal.completed(request.request_id), result)
         with self.assertRaises(CommissioningRunError):
-            journal.commit(request, {**result, "terminal_status": "FAILED"})
+            journal.commit(
+                request,
+                {**result, "generation_failure_digest": digest_for("conflicting-failure")},
+            )
         with self.assertRaises(CommissioningRunError):
-            CommissioningRunJournal(path, trainer_inputs_digest=digest_for("other"))
+            CommissioningRunJournal(
+                path,
+                trainer_inputs_digest=digest_for("other"),
+                requests=self.plan.generation_requests,
+            )
+
+    def test_run_journal_rejects_unknown_partial_and_interrupted_records(self) -> None:
+        requests = self.plan.generation_requests
+        trainer_digest = self.plan.trainer_inputs()["trainer_inputs_digest"]
+        path = self.root / "strict-run.json"
+        journal = CommissioningRunJournal(
+            path,
+            trainer_inputs_digest=trainer_digest,
+            requests=requests,
+        )
+        value = journal.load()
+        value["completed"] = {"unknown-request": {}}
+        path.write_bytes(canonical_bytes(value))
+        with self.assertRaisesRegex(CommissioningRunError, "unknown request"):
+            journal.load()
+
+        value["completed"] = {requests[0].request_id: {"request_id": requests[0].request_id}}
+        path.write_bytes(canonical_bytes(value))
+        with self.assertRaisesRegex(CommissioningRunError, "closed record"):
+            journal.load()
+
+        value["completed"] = {}
+        path.write_bytes(canonical_bytes(value))
+        (self.root / ".commissioning-run-interrupted").write_text("partial", encoding="utf-8")
+        with self.assertRaisesRegex(CommissioningRunError, "interrupted ambiguous"):
+            journal.load()
 
     def test_prepare_cli_writes_separate_public_trainer_and_private_evaluator_inputs(self) -> None:
         trainer = self.root / "trainer.json"

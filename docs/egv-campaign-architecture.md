@@ -165,8 +165,8 @@ phase is executable end to end.
 | P6 | Freeze protocol | Dataset/splits, model, LoRA profile, policies, seeds, budgets, metrics, adversarial review digest | Protocol digest can be bound into receipts |
 | P7 | Generate training trajectories | Complete lineage and receipts, replay match, no development/held-out access | Versioned source-only B/D runner, private raw evidence, bounded failure resume, and signed remote-evaluator admission; live campaign evidence still required |
 | P8 | Train and seal LoRA | Frozen accepted rows, unchanged base, LoRA-only mutation, deterministic checkpoint selection, no split leakage | Training freeze, bounded LoRA runtime, external development selection, and adapter sealing are implemented; no live adapter result exists yet |
-| P9 | Run held-out ablations | Matched A-H and correction experiments, fixed budgets/order, independent signed verdicts | Signed scheduler/journal/analyzer primitives exist; real shock-task mapping, coordinate runner, telemetry, authority challenges, and evaluator reconciliation remain integration work |
-| P10 | Replay and disposition | Ledger-only replay, paired metrics, complete gate vector, conservative ordered disposition | Strict gate/disposition analysis exists; production public projection and cryptographic replay remain integration work |
+| P9 | Run held-out ablations | Matched A-H and correction experiments, fixed budgets/order, independent signed verdicts | Main/shock coordinate runtimes, content-bound verifier/reconciliation, signed scheduler/journal, analyzer, and fail-closed local CLI seams exist; deployment-specific model/engine hooks and live cross-node proof remain required |
+| P10 | Replay and disposition | Ledger-only replay, paired metrics, complete gate vector, conservative ordered disposition | Strict gate/disposition analysis and complete-private-record finalization exist; production public projection, cryptographic replay, and live evidence remain integration work |
 | P11 | Build provisional private package | Allowlist export and early secret/private-data scan; explicitly not publishable | Planned packaging implementation |
 | P12 | Restore protected service | Dependency-order restore, exact identity/count/configuration, original health and deterministic smoke | Typed restore plan and verification snapshot |
 | P13 | Rebuild and seal public bundle | Restoration receipt included, fresh allowlist export, zero scan findings, manifest and terminal chain seal | Planned packaging and public verifier integration |
@@ -395,8 +395,11 @@ adversarial review support the bounded claim.
 
 ## Known limitations
 
-- The current campaign package is a library of control-plane primitives, not an
-  end-to-end CLI or host runner.
+- The current campaign package includes a bounded local/content-bound held-out
+  CLI, but not a host-discovering, SSH, or end-to-end deployment runner. Its
+  closed source-reviewed runtime registry is an integration boundary, not proof
+  that a model or either Spark executed. The public registry is intentionally
+  fail-closed until a concrete deployment integration is reviewed.
 - The injected executor adapter for the existing host lifecycle wrappers is not
   present in this branch.
 - State mutation uses a cross-process lock, generation-checked compare-and-swap,
@@ -411,12 +414,13 @@ adversarial review support the bounded claim.
   receipt before clearing the durable restore requirement. The final public
   chain seal still requires the live commissioning evidence bundle.
 - The B/D trajectory runner, training freeze/runtime, and strict held-out
-  scheduler/analyzer now exist as separate reviewed slices. They have not yet
-  produced live campaign or model-quality evidence. The A-H coordinate runner,
-  mapping of the four correction-shock blocks onto real held-out tasks, exact
-  token/time/cost telemetry, authority-challenge execution, evaluator
-  reconciliation, public cryptographic replay, and packaging remain production
-  integration work.
+  scheduler/analyzer now exist as separate reviewed slices. Main and correction-
+  shock coordinate runtime contracts, measured telemetry fields, authority-
+  challenge evidence fields, and content-bound evaluator reconciliation are
+  implemented behind explicit callables. They have not yet produced live
+  campaign or model-quality evidence; concrete model/engine integrations, live
+  cross-node transport proof, public cryptographic replay, and packaging remain
+  production work.
 - Commissioning preparation emits only pending generation requests. It cannot
   manufacture accepted trajectories: completion requires real model output and
   a contiguous signed ALLOW/PASS/ALLOW evaluator receipt chain. Reconciliation

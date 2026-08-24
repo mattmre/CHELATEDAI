@@ -6,7 +6,7 @@ import json
 import os
 from pathlib import Path
 import tempfile
-from typing import Any, Dict, Mapping, Optional
+from typing import Any, Dict, Mapping, Optional, Sequence
 
 from ..canonical import canonical_bytes, content_id, digest_bytes, digest_for
 from ..evaluation.authority import AuthorityPolicy
@@ -269,12 +269,29 @@ class CommissioningTrainerSources:
 
 
 class CommissioningRunJournal:
-    """Atomic idempotency journal; a completed request is never re-executed."""
+    """Atomic journal whose terminal records remain subordinate to durable evidence."""
 
-    def __init__(self, path: Path, *, trainer_inputs_digest: str) -> None:
+    _RECORD_FIELDS = {
+        "request_id", "run_id", "terminal_status", "report_digest", "response",
+        "generation_failure_digest", "source_contract_failure_count",
+    }
+
+    def __init__(
+        self,
+        path: Path,
+        *,
+        trainer_inputs_digest: str,
+        requests: Sequence[GenerationRequest],
+    ) -> None:
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.trainer_inputs_digest = trainer_inputs_digest
+        if any(type(request) is not GenerationRequest for request in requests):
+            raise CommissioningRunError("commissioning journal requires exact frozen requests")
+        self.requests = {request.request_id: request for request in requests}
+        if len(self.requests) != len(requests):
+            raise CommissioningRunError("commissioning journal request identities are duplicated")
+        self._validate_no_interrupted_writes()
         if not self.path.exists():
             self._write({
                 "schema_version": RUN_JOURNAL_SCHEMA,
@@ -283,7 +300,103 @@ class CommissioningRunJournal:
             })
         self.load()
 
+    def _validate_no_interrupted_writes(self) -> None:
+        if any(self.path.parent.glob(".commissioning-run-*")):
+            raise CommissioningRunError("commissioning journal contains an interrupted ambiguous write")
+
+    @staticmethod
+    def _is_digest(value: Any) -> bool:
+        if not isinstance(value, str) or len(value) != 64 or value != value.lower():
+            return False
+        try:
+            int(value, 16)
+        except ValueError:
+            return False
+        return True
+
+    def _validate_record(
+        self,
+        request_id: str,
+        value: Any,
+    ) -> Dict[str, Any]:
+        request = self.requests.get(request_id)
+        if request is None:
+            raise CommissioningRunError("commissioning journal contains an unknown request")
+        if not isinstance(value, Mapping) or set(value) != self._RECORD_FIELDS:
+            raise CommissioningRunError("commissioning journal completion is not a closed record")
+        record = dict(value)
+        status = record["terminal_status"]
+        failure_count = record["source_contract_failure_count"]
+        if (
+            record["request_id"] != request.request_id
+            or record["run_id"] != request.run_id
+            or status not in {"PROMOTED", "BUDGET_EXHAUSTED", "FAILED"}
+            or not isinstance(failure_count, int)
+            or isinstance(failure_count, bool)
+            or failure_count < 0
+            or failure_count > 12
+        ):
+            raise CommissioningRunError("commissioning journal completion differs from its frozen request")
+        report_digest = record["report_digest"]
+        failure_digest = record["generation_failure_digest"]
+        response = record["response"]
+        source_failure_terminal = report_digest is None
+        if source_failure_terminal:
+            if (
+                status != "BUDGET_EXHAUSTED"
+                or not self._is_digest(failure_digest)
+                or failure_count < 1
+                or response is not None
+            ):
+                raise CommissioningRunError("commissioning source-contract terminal record is invalid")
+            return record
+        if not self._is_digest(report_digest) or failure_digest is not None:
+            raise CommissioningRunError("commissioning report terminal record has invalid digests")
+        if status != "PROMOTED":
+            if response is not None:
+                raise CommissioningRunError("non-promoted commissioning record carries a response")
+            return record
+        if not isinstance(response, Mapping) or set(response) != {"response", "accepted_evidence"}:
+            raise CommissioningRunError("promoted commissioning journal response is not closed")
+        try:
+            envelope = GenerationResponse.from_mapping(response["response"])
+        except (CommissioningTrajectoryError, TypeError, ValueError) as exc:
+            raise CommissioningRunError("promoted commissioning journal response is invalid") from exc
+        accepted = response["accepted_evidence"]
+        receipt_digests = accepted.get("receipt_digests") if isinstance(accepted, Mapping) else None
+        accepted_fields = {
+            "schema_version", "request_id", "response_id", "campaign_id", "task_id", "arm_id",
+            "seed", "candidate_id", "candidate_artifact_digest", "receipt_chain_anchor",
+            "receipt_digests", "disposition", "diagnostic_enum",
+        }
+        if (
+            envelope.request_id != request.request_id
+            or not isinstance(accepted, Mapping)
+            or set(accepted) != accepted_fields
+            or accepted.get("schema_version") != "egv-commissioning-accepted-evidence-v1"
+            or accepted.get("request_id") != request.request_id
+            or accepted.get("response_id") != envelope.response_id
+            or accepted.get("campaign_id") != request.campaign_id
+            or accepted.get("task_id") != request.task_id
+            or accepted.get("arm_id") != request.arm_id
+            or accepted.get("seed") != request.seed
+            or accepted.get("candidate_id") != envelope.candidate_id
+            or accepted.get("candidate_artifact_digest") != envelope.candidate_artifact_digest
+            or accepted.get("disposition") != "PROMOTED"
+            or accepted.get("diagnostic_enum") != "PASS"
+            or not self._is_digest(accepted.get("receipt_chain_anchor"))
+            or not isinstance(receipt_digests, list)
+            or len(receipt_digests) != 3
+            or any(not self._is_digest(item) for item in receipt_digests)
+            or len(set(receipt_digests)) != 3
+        ):
+            raise CommissioningRunError("promoted commissioning accepted evidence is invalid")
+        return record
+
     def load(self) -> Dict[str, Any]:
+        self._validate_no_interrupted_writes()
+        if self.path.is_symlink() or not self.path.is_file():
+            raise CommissioningRunError("commissioning run journal must be a regular file")
         try:
             raw = self.path.read_bytes()
             value = json.loads(raw.decode("utf-8"))
@@ -297,16 +410,26 @@ class CommissioningRunJournal:
             or not isinstance(value["completed"], Mapping)
         ):
             raise CommissioningRunError("commissioning run journal differs from frozen inputs")
+        completed = value["completed"]
+        for completed_request_id, record in completed.items():
+            if not isinstance(completed_request_id, str):
+                raise CommissioningRunError("commissioning journal request key is invalid")
+            self._validate_record(completed_request_id, record)
         return value
 
     def completed(self, request_id: str) -> Optional[Mapping[str, Any]]:
+        if request_id not in self.requests:
+            raise CommissioningRunError("commissioning journal lookup is not a frozen request")
         value = self.load()["completed"].get(request_id)
-        return dict(value) if isinstance(value, Mapping) else None
+        return dict(value) if value is not None else None
 
     def commit(self, request: GenerationRequest, result: Mapping[str, Any]) -> None:
+        frozen = self.requests.get(request.request_id)
+        if frozen is None or frozen.to_dict() != request.to_dict():
+            raise CommissioningRunError("commissioning journal commit is not bound to a frozen request")
         value = self.load()
         completed = dict(value["completed"])
-        record = dict(result)
+        record = self._validate_record(request.request_id, result)
         prior = completed.get(request.request_id)
         if prior is not None and prior != record:
             raise CommissioningRunError("commissioning request journal has conflicting completion")
@@ -315,6 +438,7 @@ class CommissioningRunJournal:
         self._write(value)
 
     def _write(self, value: Mapping[str, Any]) -> None:
+        self._validate_no_interrupted_writes()
         encoded = canonical_bytes(value)
         descriptor, name = tempfile.mkstemp(prefix=".commissioning-run-", dir=str(self.path.parent))
         temporary = Path(name)
@@ -400,6 +524,42 @@ def _response_for(
     return {"response": response.to_dict(), "accepted_evidence": accepted}
 
 
+def _stable_report_digest(
+    request: GenerationRequest,
+    report: Any,
+    *,
+    checkpoint_store: CheckpointStore,
+) -> str:
+    """Digest only the immutable per-request terminal projection, never a later global head."""
+
+    checkpoint_path = Path(report.checkpoint_path)
+    checkpoint = checkpoint_store.load(checkpoint_path)
+    if (
+        checkpoint.run_id != request.run_id
+        or checkpoint.campaign_id != request.campaign_id
+        or checkpoint.task_id != request.task_id
+        or checkpoint.arm_id != request.arm_id
+        or checkpoint.seed != request.seed
+        or checkpoint.status != report.terminal_status
+        or checkpoint.attempt_index != report.attempts[-1].attempt_index
+        or checkpoint.last_candidate_id != report.attempts[-1].candidate_id
+    ):
+        raise CommissioningRunError("commissioning report differs from its terminal checkpoint")
+    return digest_for(
+        {
+            "schema_version": "egv-commissioning-terminal-projection-v1",
+            "request_digest": request.digest,
+            "checkpoint": checkpoint.to_dict(),
+            "attempts": [attempt.to_dict() for attempt in report.attempts],
+            "terminal_status": report.terminal_status,
+            "model_digest": report.model_digest,
+            "adapter_digest": report.adapter_digest,
+            "retrieval_policy": report.retrieval_policy,
+            "authority_enforced": report.authority_enforced,
+        }
+    )
+
+
 def run_commissioning(
     *,
     trainer_inputs_path: Path,
@@ -453,6 +613,7 @@ def run_commissioning(
     journal = CommissioningRunJournal(
         journal_path,
         trainer_inputs_digest=inputs._value["trainer_inputs_digest"],
+        requests=inputs.requests,
     )
     results = []
     with EvidenceLedger(ledger_path, blob_root=blob_root) as ledger:
@@ -464,10 +625,6 @@ def run_commissioning(
         )
         ledger.verify_receipt_chain(evaluator_public_key.read_bytes())
         for request in selected:
-            prior = journal.completed(request.request_id)
-            if prior is not None:
-                results.append(prior)
-                continue
             task = _task_for(request, inputs.tasks[request.task_id])
             initial_source = sources.source_for(request.task_id)
             runner = BoundedCandidateLoop(
@@ -493,8 +650,35 @@ def run_commissioning(
             if runner._run_id(task.task_id, request.seed) != request.run_id:
                 raise CommissioningRunError("Variation run identity differs from frozen request")
             workspace = isolation.workspace(request.arm_id, request.run_id)
-            latest = CheckpointStore(workspace.checkpoints).latest(run_id=request.run_id)
+            checkpoint_store = CheckpointStore(workspace.checkpoints)
+            latest = checkpoint_store.latest(run_id=request.run_id)
             resume_from = latest[0] if latest is not None else None
+            prior = journal.completed(request.request_id)
+            if prior is not None:
+                if prior["report_digest"] is None:
+                    durable_failures = private_store.source_contract_failures(
+                        run_id=request.run_id,
+                        task_id=request.task_id,
+                        arm_id=request.arm_id,
+                    )
+                    if (
+                        not durable_failures
+                        or len(durable_failures) != prior["source_contract_failure_count"]
+                        or durable_failures[-1]["record_digest"]
+                        != prior["generation_failure_digest"]
+                        or durable_failures[-1]["attempt_index"] != max_attempts
+                    ):
+                        raise CommissioningRunError(
+                            "journaled source-contract terminal state lacks exact durable failures"
+                        )
+                elif (
+                    latest is None
+                    or latest[1].status != prior["terminal_status"]
+                    or latest[1].run_id != request.run_id
+                ):
+                    raise CommissioningRunError(
+                        "journaled report terminal state lacks its exact latest checkpoint"
+                    )
             try:
                 report = runner.run(task, seed=request.seed, resume_from=resume_from)
             except SourceContractBudgetExhausted as exc:
@@ -507,7 +691,12 @@ def run_commissioning(
                     "generation_failure_digest": exc.last_failure_digest,
                     "source_contract_failure_count": exc.failure_count,
                 }
-                journal.commit(request, record)
+                if prior is not None and canonical_bytes(prior) != canonical_bytes(record):
+                    raise CommissioningRunError(
+                        "commissioning journal differs from revalidated source-contract evidence"
+                    )
+                if prior is None:
+                    journal.commit(request, record)
                 results.append(record)
                 continue
             ledger.verify_receipt_chain(evaluator_public_key.read_bytes())
@@ -523,7 +712,11 @@ def run_commissioning(
                 "request_id": request.request_id,
                 "run_id": request.run_id,
                 "terminal_status": report.terminal_status,
-                "report_digest": digest_for(report.to_dict()),
+                "report_digest": _stable_report_digest(
+                    request,
+                    report,
+                    checkpoint_store=checkpoint_store,
+                ),
                 "response": accepted,
                 "generation_failure_digest": None,
                 "source_contract_failure_count": len(
@@ -534,7 +727,12 @@ def run_commissioning(
                     )
                 ),
             }
-            journal.commit(request, record)
+            if prior is not None and canonical_bytes(prior) != canonical_bytes(record):
+                raise CommissioningRunError(
+                    "commissioning journal differs from revalidated terminal evidence"
+                )
+            if prior is None:
+                journal.commit(request, record)
             results.append(record)
     completed = len(journal.load()["completed"])
     failures = sum(

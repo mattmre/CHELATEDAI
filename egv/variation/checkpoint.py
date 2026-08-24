@@ -7,7 +7,7 @@ import json
 import os
 from pathlib import Path
 import tempfile
-from typing import Any, Dict, Mapping, Optional, Tuple
+from typing import Any, Dict, List, Mapping, Optional, Tuple
 
 from ..canonical import canonical_bytes, digest_for
 from .errors import VariationCheckpointError
@@ -138,7 +138,12 @@ class CheckpointStore:
         self.root = Path(root).resolve()
         self.root.mkdir(parents=True, exist_ok=True)
 
+    def _validate_no_interrupted_writes(self) -> None:
+        if any(self.root.glob(".checkpoint-*")):
+            raise VariationCheckpointError("checkpoint store contains an interrupted ambiguous write")
+
     def save(self, checkpoint: VariationCheckpoint) -> Path:
+        self._validate_no_interrupted_writes()
         checkpoint.validate()
         path = self.root / "checkpoint-{}.json".format(checkpoint.digest)
         encoded = canonical_bytes(checkpoint.to_dict())
@@ -165,6 +170,7 @@ class CheckpointStore:
         return path
 
     def load(self, path: Path) -> VariationCheckpoint:
+        self._validate_no_interrupted_writes()
         candidate_path = Path(path).resolve()
         try:
             candidate_path.relative_to(self.root)
@@ -185,15 +191,29 @@ class CheckpointStore:
         return checkpoint
 
     def latest(self, *, run_id: Optional[str] = None) -> Optional[Tuple[Path, VariationCheckpoint]]:
+        candidates = self.inventory(run_id=run_id)
+        return candidates[-1] if candidates else None
+
+    def inventory(self, *, run_id: Optional[str] = None) -> List[Tuple[Path, VariationCheckpoint]]:
+        """Load the complete unambiguous checkpoint history for one isolated run."""
+
+        self._validate_no_interrupted_writes()
         candidates = []
         for path in sorted(self.root.glob("checkpoint-*.json")):
             checkpoint = self.load(path)
-            if run_id is None or checkpoint.run_id == run_id:
-                candidates.append((path, checkpoint))
-        if not candidates:
-            return None
+            if run_id is not None and checkpoint.run_id != run_id:
+                raise VariationCheckpointError(
+                    "checkpoint store contains a checkpoint for a different isolated run"
+                )
+            candidates.append((path, checkpoint))
+        by_attempt: Dict[Tuple[str, int], int] = {}
+        for _path, checkpoint in candidates:
+            key = (checkpoint.run_id, checkpoint.attempt_index)
+            by_attempt[key] = by_attempt.get(key, 0) + 1
+        if any(count > 1 for count in by_attempt.values()):
+            raise VariationCheckpointError("checkpoint store has multiple states for one run attempt")
         candidates.sort(key=lambda item: (item[1].attempt_index, item[1].digest))
-        return candidates[-1]
+        return candidates
 
 
 __all__ = ["CHECKPOINT_SCHEMA", "CheckpointStore", "VariationCheckpoint"]

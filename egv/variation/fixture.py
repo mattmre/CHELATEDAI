@@ -6,6 +6,7 @@ requires :class:`ControllerEvaluationGateway` over the Docker evaluator.
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any, Optional
 
@@ -16,6 +17,7 @@ from ..evaluation.diagnostics import Diagnostic
 from ..evaluation.sandbox import LocalTestSandbox
 from ..receipts import ReceiptJournal, ReceiptSigner, receipt_hash
 from .errors import VariationConfigurationError
+from .arms import arm_policy
 from .loop import VARIATION_PROTOCOL_DIGEST
 
 
@@ -51,9 +53,24 @@ class FixtureEvaluationGateway:
         record = self.hidden_runner.public_record(task_id)
         if record is None:
             raise VariationConfigurationError("fixture evaluator task is outside the frozen hidden corpus")
-        return {
+        candidate = self.ledger.connection.execute(
+            "SELECT run_id,candidate_json FROM candidates WHERE candidate_id=?",
+            (candidate_id,),
+        ).fetchone()
+        run_id = "run-evaluation-fixture"
+        arm_policy_digest = None
+        if candidate is not None:
+            try:
+                run_id = str(candidate["run_id"])
+                candidate_value = json.loads(candidate["candidate_json"])
+                arm_policy_digest = arm_policy(candidate_value["metadata"]["arm_id"]).digest
+            except (KeyError, TypeError, ValueError) as exc:
+                raise VariationConfigurationError(
+                    "fixture evaluator candidate arm/run binding is invalid"
+                ) from exc
+        common = {
             "campaign_id": self.campaign_id,
-            "run_id": "run-evaluation-fixture",
+            "run_id": run_id,
             "task_id": task_id,
             "candidate_id": candidate_id,
             "candidate_artifact_digest": artifact_digest,
@@ -64,6 +81,9 @@ class FixtureEvaluationGateway:
             "normalized_public_locus": record["public_locus"],
             "public_rule_id": record["public_rule_id"],
         }
+        if arm_policy_digest is not None:
+            common["arm_policy_digest"] = arm_policy_digest
+        return common
 
     def _append_receipt(self, fields: dict[str, Any], *, idempotency_key: str) -> dict[str, Any]:
         previous = self.journal.receipts()
