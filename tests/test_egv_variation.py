@@ -597,10 +597,11 @@ class VariationTestCase(unittest.TestCase):
         registry_cell = variation_loop._register_runtime_identity.__closure__[1]
         self.assertIsInstance(registry_cell.cell_contents, WeakKeyDictionary)
         registry_cell.cell_contents[runner] = variation_loop._RuntimeIdentityRecord(
-            True,
-            fixture_evaluator,
-            fixture_generator,
-            fixture_isolation,
+            fixture_mode=True,
+            evaluator=fixture_evaluator,
+            generator=fixture_generator,
+            isolation=fixture_isolation,
+            private_store=runner.private_store,
         )
         forged = dict(runner.__dict__)
         forged.update(

@@ -381,7 +381,7 @@ class HeldoutCliTests(unittest.TestCase):
     def test_key_admission_rejects_hardlinks_symlinks_special_files_and_wrong_size(self):
         hardlink = self.root / "hardlinked-public-key.bin"
         try:
-            hardlink.hardlink_to(self.public_key_path)
+            os.link(self.public_key_path, hardlink)
         except OSError:
             hardlink = None
         base = [
