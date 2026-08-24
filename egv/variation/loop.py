@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import json
 from pathlib import Path
 from threading import RLock
@@ -23,7 +23,13 @@ from .adapter import SealedAdapterArtifact, validate_applied_peft_model
 from .arms import ArmIsolation, ArmPolicy, arm_policy
 from .checkpoint import CheckpointStore, VariationCheckpoint
 from .errors import VariationBudgetError, VariationCheckpointError, VariationConfigurationError, VariationDependencyError
-from .generator import CandidateContext, CandidateGenerator, CandidateProposal, ModelCandidateGenerator
+from .generator import (
+    CandidateContext,
+    CandidateGenerationFailure,
+    CandidateGenerator,
+    CandidateProposal,
+    ModelCandidateGenerator,
+)
 from .model import ADAPTER_ATTESTATION_SCHEMA, AdapterApplicationAttestation, MODEL_REVISION
 from .private import PrivateTrajectoryStore
 from .retrieval import EvidenceRetrievalPolicy, RetrievalResult, retrieval_policy
@@ -95,6 +101,16 @@ VARIATION_PROTOCOL_DIGEST = digest_for(
         "retrieval_policies": ["SUCCESS_ONLY", "ORDINARY_FAILURE_SUMMARY", "CORRECTION_AWARE"],
     }
 )
+
+
+class SourceContractBudgetExhausted(VariationBudgetError):
+    """The final bounded attempt failed the immutable source-only contract."""
+
+    def __init__(self, *, run_id: str, failure_count: int, last_failure_digest: str) -> None:
+        super().__init__("source-only response contract exhausted the bounded attempt budget")
+        self.run_id = run_id
+        self.failure_count = failure_count
+        self.last_failure_digest = last_failure_digest
 
 
 @dataclass(frozen=True)
@@ -428,6 +444,11 @@ class BoundedCandidateLoop:
     def __setattr__(self, name: str, value: Any) -> None:
         if name == "_max_attempts" and "_budget_contract" in self.__dict__:
             raise AttributeError("Variation attempt budget is immutable after construction")
+        if name in {
+            "initial_source", "initial_source_digest", "response_contract_digest",
+            "generation_profile_digest",
+        } and "_source_contract_seal" in self.__dict__:
+            raise AttributeError("Variation source response contract is immutable after construction")
         if name in {"fixture_mode", "evaluator", "generator", "isolation", "private_store"} and _runtime_identity_registered(self):
             raise AttributeError("Variation runtime identity is immutable after construction")
         super().__setattr__(name, value)
@@ -453,6 +474,9 @@ class BoundedCandidateLoop:
         seed_set: Sequence[int] = (0, 1, 2),
         fixture_mode: bool = False,
         private_store: Optional[PrivateTrajectoryStore] = None,
+        initial_source: Optional[bytes] = None,
+        response_contract_digest: Optional[str] = None,
+        generation_profile_digest: Optional[str] = None,
     ) -> None:
         if not isinstance(max_attempts, int) or isinstance(max_attempts, bool) or max_attempts <= 0 or max_attempts > MAX_CANDIDATE_ATTEMPTS:
             raise VariationBudgetError("candidate attempt budget must be between 1 and 12")
@@ -477,6 +501,48 @@ class BoundedCandidateLoop:
         if private_store is not None and type(private_store) is not PrivateTrajectoryStore:
             raise VariationDependencyError("private trajectory persistence requires the exact store type")
         self.private_store = private_store
+        generator_response_contract = getattr(generator, "response_contract", "closed-json-v1")
+        generator_response_contract_digest = getattr(generator, "response_contract_digest", None)
+        if generator_response_contract == "closed-json-v1":
+            if (
+                initial_source is not None
+                or response_contract_digest is not None
+                or generation_profile_digest is not None
+            ):
+                raise VariationConfigurationError("closed-JSON Variation cannot carry source-only inputs")
+            self.initial_source = None
+            self.initial_source_digest = None
+            self.response_contract_digest = generator_response_contract_digest
+            self.generation_profile_digest = None
+        else:
+            generator_generation_profile_digest = getattr(generator, "generation_profile_digest", None)
+            if (
+                not isinstance(initial_source, bytes)
+                or not initial_source
+                or len(initial_source) > CANDIDATE_SOURCE_LIMIT
+                or type(private_store) is not PrivateTrajectoryStore
+                or not isinstance(response_contract_digest, str)
+                or response_contract_digest != generator_response_contract_digest
+                or not isinstance(generation_profile_digest, str)
+                or generation_profile_digest != generator_generation_profile_digest
+            ):
+                raise VariationConfigurationError(
+                    "source-only Variation requires exact source bytes, generation profile, contract digest, and private evidence store"
+                )
+            try:
+                initial_source.decode("utf-8")
+            except UnicodeDecodeError as exc:
+                raise VariationConfigurationError("source-only Variation source is not UTF-8") from exc
+            self.initial_source = bytes(initial_source)
+            self.initial_source_digest = digest_bytes(initial_source)
+            self.response_contract_digest = response_contract_digest
+            self.generation_profile_digest = generation_profile_digest
+        self._source_contract_seal = digest_for({
+            "response_contract": generator_response_contract,
+            "response_contract_digest": self.response_contract_digest,
+            "initial_source_digest": self.initial_source_digest,
+            "generation_profile_digest": self.generation_profile_digest,
+        })
         if not self.seed_set or any(seed < 0 for seed in self.seed_set):
             raise VariationConfigurationError("Variation seed set must contain nonnegative integers")
         _require_digest(model_digest, "model digest")
@@ -579,6 +645,16 @@ class BoundedCandidateLoop:
             raise VariationDependencyError("Variation isolation identity changed after construction")
         if private_store is not record.private_store:
             raise VariationDependencyError("Variation private trajectory store identity changed after construction")
+        expected_source_seal = digest_for({
+            "response_contract": getattr(self.generator, "response_contract", "closed-json-v1"),
+            "response_contract_digest": self.response_contract_digest,
+            "initial_source_digest": (
+                digest_bytes(self.initial_source) if isinstance(self.initial_source, bytes) else None
+            ),
+            "generation_profile_digest": self.generation_profile_digest,
+        })
+        if expected_source_seal != self._source_contract_seal:
+            raise VariationDependencyError("Variation source response contract changed after construction")
 
     def _validate_construction_boundary(self) -> None:
         if type(self) in {_ProductionBoundedCandidateLoop, _FixtureBoundedCandidateLoop}:
@@ -800,15 +876,17 @@ class BoundedCandidateLoop:
     ) -> Path:
         if not attempts or attempts[-1] != attempt:
             raise VariationCheckpointError("checkpoint attempts are not ordered or do not end at the requested attempt")
-        state_digest = digest_for(
-            {
-                "attempts": [item.to_dict() for item in attempts],
-                "run_id": run_id,
-                "arm_id": self.policy.arm_id,
-                "task_id": task.task_id,
-                "status": status,
-            }
-        )
+        failures = self._source_contract_failure_records(run_id=run_id, task_id=task.task_id)
+        state_value = {
+            "attempts": [item.to_dict() for item in attempts],
+            "run_id": run_id,
+            "arm_id": self.policy.arm_id,
+            "task_id": task.task_id,
+            "status": status,
+        }
+        if failures:
+            state_value["source_contract_failures"] = [dict(item) for item in failures]
+        state_digest = digest_for(state_value)
         projection_generation = digest_for(
             {
                 "ledger_head_event_id": self.ledger.ledger_head_event_id(),
@@ -817,9 +895,8 @@ class BoundedCandidateLoop:
                 "run_id": run_id,
             }
         )
-        artifact_manifest_hash = digest_for(
-            {
-                "artifacts": [
+        artifact_value = {
+            "artifacts": [
                     {
                         "attempt_index": item.attempt_index,
                         "candidate_id": item.candidate_id,
@@ -827,8 +904,12 @@ class BoundedCandidateLoop:
                     }
                     for item in attempts
                 ]
-            }
-        )
+        }
+        if failures:
+            artifact_value["source_contract_failure_digests"] = [
+                item["record_digest"] for item in failures
+            ]
+        artifact_manifest_hash = digest_for(artifact_value)
         checkpoint = VariationCheckpoint(
             campaign_id=self.campaign_id,
             run_id=run_id,
@@ -884,6 +965,22 @@ class BoundedCandidateLoop:
         if checkpoint.attempt_index > self.max_attempts:
             raise VariationCheckpointError("resume checkpoint exceeds the current bounded attempt budget")
 
+    def _source_contract_failure_records(
+        self,
+        *,
+        run_id: str,
+        task_id: str,
+    ) -> Tuple[Mapping[str, Any], ...]:
+        if getattr(self.generator, "response_contract", "closed-json-v1") == "closed-json-v1":
+            return tuple()
+        if type(self.private_store) is not PrivateTrajectoryStore:
+            raise VariationCheckpointError("source-only resume lacks its private evidence store")
+        return self.private_store.source_contract_failures(
+            run_id=run_id,
+            task_id=task_id,
+            arm_id=self.policy.arm_id,
+        )
+
     def _validate_durable_attempts(
         self,
         attempts: Sequence[AttemptRecord],
@@ -892,15 +989,38 @@ class BoundedCandidateLoop:
         task: VariationTask,
         run_id: str,
         seed: int,
+        failures: Sequence[Mapping[str, Any]] = (),
         checkpoint: Optional[VariationCheckpoint] = None,
     ) -> None:
-        if not attempts or len(attempts) > self.max_attempts:
+        if (not attempts and not failures) or len(attempts) + len(failures) > self.max_attempts:
             raise VariationCheckpointError("durable Variation attempts are outside the frozen budget")
         artifact_store = ContentAddressedArtifactStore(workspace.root / "candidates" / "artifacts")
+        candidate_indices = {attempt.attempt_index for attempt in attempts}
+        failure_by_index = {int(item["attempt_index"]): item for item in failures}
+        if len(candidate_indices) != len(attempts) or candidate_indices & set(failure_by_index):
+            raise VariationCheckpointError("durable candidate and source-failure attempt indices conflict")
+        all_indices = sorted(candidate_indices | set(failure_by_index))
+        if all_indices != list(range(1, max(all_indices) + 1)):
+            raise VariationCheckpointError("durable Variation attempt indices are not contiguous")
         previous_candidate: Optional[str] = None
-        for expected_index, attempt in enumerate(attempts, start=1):
-            if attempt.attempt_index != expected_index:
-                raise VariationCheckpointError("durable Variation attempt indices are not contiguous")
+        attempts_by_index = {attempt.attempt_index: attempt for attempt in attempts}
+        for expected_index in all_indices:
+            failure = failure_by_index.get(expected_index)
+            if failure is not None:
+                expected_failure_id = self._candidate_id(
+                    run_id=run_id,
+                    task_id=task.task_id,
+                    seed=seed,
+                    attempt=expected_index,
+                    parent=previous_candidate,
+                )
+                if (
+                    failure.get("candidate_id") != expected_failure_id
+                    or failure.get("parent_candidate_id") != previous_candidate
+                ):
+                    raise VariationCheckpointError("source-contract failure is not bound to trajectory lineage")
+                continue
+            attempt = attempts_by_index[expected_index]
             if attempt.candidate_id != self._candidate_id(
                 run_id=run_id,
                 task_id=task.task_id,
@@ -944,22 +1064,29 @@ class BoundedCandidateLoop:
                     "arm_id": self.policy.arm_id,
                     "task_id": task.task_id,
                     "status": checkpoint.status,
+                    **(
+                        {"source_contract_failures": [dict(item) for item in failures]}
+                        if failures else {}
+                    ),
                 }
             )
             if checkpoint.state_digest != expected_state:
                 raise VariationCheckpointError("checkpoint state digest does not match durable attempts")
-            expected_artifacts = digest_for(
-                {
-                    "artifacts": [
+            expected_artifact_value = {
+                "artifacts": [
                         {
                             "attempt_index": item.attempt_index,
                             "candidate_id": item.candidate_id,
                             "candidate_artifact_digest": item.candidate_artifact_digest,
                         }
-                        for item in attempts
+                    for item in attempts
                     ]
-                }
-            )
+            }
+            if failures:
+                expected_artifact_value["source_contract_failure_digests"] = [
+                    item["record_digest"] for item in failures
+                ]
+            expected_artifacts = digest_for(expected_artifact_value)
             if checkpoint.artifact_manifest_hash != expected_artifacts:
                 raise VariationCheckpointError("checkpoint artifact manifest does not match durable attempts")
             expected_projection = digest_for(
@@ -976,12 +1103,12 @@ class BoundedCandidateLoop:
             last_diagnostic = attempts[-1].diagnostic_enum
             if last_disposition == "PROMOTED" and last_diagnostic != Diagnostic.PASS.value:
                 raise VariationCheckpointError("promoted checkpoint is not bound to a PASS diagnostic")
-            if checkpoint.last_candidate_id != attempts[-1].candidate_id or checkpoint.attempt_index != len(attempts):
+            if checkpoint.last_candidate_id != attempts[-1].candidate_id or checkpoint.attempt_index != attempts[-1].attempt_index:
                 raise VariationCheckpointError("checkpoint cursor does not match durable attempts")
             expected_status = "PROMOTED" if last_disposition == "PROMOTED" else None
             if last_diagnostic == Diagnostic.INTERNAL_ERROR.value:
                 expected_status = "FAILED"
-            elif expected_status is None and len(attempts) == self.max_attempts:
+            elif expected_status is None and max(all_indices) == self.max_attempts:
                 expected_status = "BUDGET_EXHAUSTED"
             elif expected_status is None and last_disposition == "REJECTED":
                 expected_status = "RUNNING"
@@ -1055,8 +1182,10 @@ class BoundedCandidateLoop:
         checkpoint: Optional[VariationCheckpoint] = None
         if resume_from is not None:
             checkpoint = CheckpointStore(workspace.checkpoints).load(Path(resume_from))
+        failures = self._source_contract_failure_records(run_id=run_id, task_id=task.task_id)
         attempts: List[AttemptRecord] = (
-            self._durable_attempts(run_id=run_id, task_id=task.task_id) if checkpoint is not None else []
+            self._durable_attempts(run_id=run_id, task_id=task.task_id)
+            if checkpoint is not None or failures else []
         )
         if checkpoint is not None:
             self._validate_resume(checkpoint, task=task, run_id=run_id, seed=seed)
@@ -1066,9 +1195,18 @@ class BoundedCandidateLoop:
                 task=task,
                 run_id=run_id,
                 seed=seed,
+                failures=failures,
                 checkpoint=checkpoint,
             )
-        start_attempt = checkpoint.attempt_index + 1 if checkpoint is not None else 1
+        elif failures:
+            self._validate_durable_attempts(
+                attempts,
+                workspace=workspace,
+                task=task,
+                run_id=run_id,
+                seed=seed,
+                failures=failures,
+            )
         if checkpoint is not None and checkpoint.status in {"PROMOTED", "BUDGET_EXHAUSTED", "FAILED"}:
             return VariationReport(
                 self.campaign_id,
@@ -1086,7 +1224,21 @@ class BoundedCandidateLoop:
                 self.policy.retrieval_policy,
                 self.policy.authority_enforced and bool(getattr(self.evaluator, "enforceable", False)),
             )
-        last_candidate_id = checkpoint.last_candidate_id if checkpoint is not None else None
+        cursor = max(
+            [attempt.attempt_index for attempt in attempts]
+            + [int(item["attempt_index"]) for item in failures]
+            + [0]
+        )
+        if cursor >= self.max_attempts and failures and (
+            not attempts or attempts[-1].disposition != "PROMOTED"
+        ):
+            raise SourceContractBudgetExhausted(
+                run_id=run_id,
+                failure_count=len(failures),
+                last_failure_digest=str(failures[-1]["record_digest"]),
+            )
+        start_attempt = cursor + 1
+        last_candidate_id = attempts[-1].candidate_id if attempts else None
         checkpoint_path: Optional[Path] = Path(resume_from) if resume_from is not None else None
         terminal_status = "RUNNING"
         for attempt_index in range(start_attempt, self.max_attempts + 1):
@@ -1097,17 +1249,21 @@ class BoundedCandidateLoop:
                 task_id=task.task_id,
                 isolation=self.isolation,
             )
-            prompt_digest = digest_for(
-                {
-                    "schema_version": "egv-variation-prompt-context-v1",
-                    "prompt_ids": list(PROMPT_IDS),
-                    "prompt_manifest_digest": VARIATION_PROMPT_MANIFEST_DIGEST,
-                    "task": task.public_dict(),
-                    "seed": seed,
-                    "attempt_index": attempt_index,
-                    "retrieval_digest": retrieval.evidence_digest,
-                }
-            )
+            response_contract = getattr(self.generator, "response_contract", "closed-json-v1")
+            if response_contract == "closed-json-v1":
+                prompt_digest = digest_for(
+                    {
+                        "schema_version": "egv-variation-prompt-context-v1",
+                        "prompt_ids": list(PROMPT_IDS),
+                        "prompt_manifest_digest": VARIATION_PROMPT_MANIFEST_DIGEST,
+                        "task": task.public_dict(),
+                        "seed": seed,
+                        "attempt_index": attempt_index,
+                        "retrieval_digest": retrieval.evidence_digest,
+                    }
+                )
+            else:
+                prompt_digest = digest_for("unrendered-source-only-attempt")
             context = CandidateContext(
                 self.campaign_id,
                 run_id,
@@ -1124,9 +1280,16 @@ class BoundedCandidateLoop:
                 self.model_digest,
                 self.adapter_digest,
                 prompt_digest,
+                task.task_statement,
+                self.initial_source.decode("utf-8") if self.initial_source is not None else None,
+                self.initial_source_digest,
+                response_contract,
+                self.response_contract_digest or getattr(self.generator, "response_contract_digest", ""),
+                self.generation_profile_digest,
             )
-            proposal = self.generator.propose(context)
-            proposal.validate(context, source_limit=CANDIDATE_SOURCE_LIMIT)
+            if response_contract != "closed-json-v1":
+                prompt_digest = self.generator.prompt_digest_for(context)
+                context = replace(context, prompt_digest=prompt_digest)
             candidate_id = self._candidate_id(
                 run_id=run_id,
                 task_id=task.task_id,
@@ -1134,6 +1297,51 @@ class BoundedCandidateLoop:
                 attempt=attempt_index,
                 parent=last_candidate_id,
             )
+            generation_evidence_digest = None
+            if response_contract == "closed-json-v1":
+                proposal = self.generator.propose(context)
+            else:
+                try:
+                    generation = self.generator.propose_with_evidence(context)
+                except CandidateGenerationFailure as exc:
+                    if self.private_store is None:
+                        raise VariationDependencyError(
+                            "source-only generation failure has no private evidence store"
+                        ) from exc
+                    self.private_store.record_generation_failure(
+                        candidate_id=candidate_id,
+                        context=context,
+                        evidence=exc.evidence,
+                    )
+                    exc.candidate_id = candidate_id
+                    if exc.evidence.stage != "RESPONSE_CONTRACT":
+                        raise
+                    failures = self._source_contract_failure_records(
+                        run_id=run_id,
+                        task_id=task.task_id,
+                    )
+                    self._validate_durable_attempts(
+                        attempts,
+                        workspace=workspace,
+                        task=task,
+                        run_id=run_id,
+                        seed=seed,
+                        failures=failures,
+                    )
+                    if attempt_index == self.max_attempts:
+                        raise SourceContractBudgetExhausted(
+                            run_id=run_id,
+                            failure_count=len(failures),
+                            last_failure_digest=str(failures[-1]["record_digest"]),
+                        ) from exc
+                    continue
+                generation_evidence_digest = self.private_store.record_generation_success(
+                    candidate_id=candidate_id,
+                    context=context,
+                    evidence=generation,
+                )
+                proposal = generation.proposal
+            proposal.validate(context, source_limit=CANDIDATE_SOURCE_LIMIT)
             artifact_path = self._write_candidate_artifact(workspace.root, proposal.source)
             self.ledger.append_candidate(
                 candidate_id,
@@ -1156,6 +1364,10 @@ class BoundedCandidateLoop:
                     "retrieval_digest": retrieval.evidence_digest,
                     "evidence_ids": list(proposal.evidence_ids),
                     "candidate_artifact_digest": digest_bytes(proposal.source),
+                    "response_contract": context.response_contract,
+                    "response_contract_digest": context.response_contract_digest,
+                    "generation_evidence_digest": generation_evidence_digest,
+                    "generation_profile_digest": context.generation_profile_digest,
                 },
             )
             if self.private_store is not None:
@@ -1301,6 +1513,7 @@ __all__ = [
     "ControllerEvaluationGateway",
     "EvaluationGateway",
     "MAX_CANDIDATE_ATTEMPTS",
+    "SourceContractBudgetExhausted",
     "VARIATION_PROTOCOL_DIGEST",
     "VARIATION_PROTOCOL_SCHEMA",
     "VariationReport",

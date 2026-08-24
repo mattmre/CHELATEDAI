@@ -17,7 +17,11 @@ from ..evaluation.prompts import PROMPT_IDS, PromptRegistry
 from ..evaluation.sft import build_sft_row, validate_sft_row
 from ..ledger import STALE_DEPENDENT, RETRACTED
 from ..receipts import key_id_for_public_key, receipt_hash
-from ..variation.generator import CandidateContext, render_candidate_prompt
+from ..variation.generator import (
+    CandidateContext,
+    SOURCE_ONLY_RESPONSE_CONTRACT_DIGEST,
+    render_candidate_prompt,
+)
 from ..variation.loop import VariationTask
 from .contracts import (
     FrozenTrainingDataset,
@@ -44,11 +48,12 @@ class TrajectoryDatasetBuilder:
         ledger: Any,
         corpus: EvaluationCorpus,
         *,
-        token_counter: Callable[[str], int],
+        token_counter: Callable[[str, str], int],
         receipt_public_key: Any,
         max_input_tokens: int = MAX_TRAINING_TOKENS,
         require_complete: bool = True,
         expected_runs: Optional[Iterable[Tuple[str, str, str, int]]] = None,
+        generation_profile_digest: Optional[str] = None,
     ) -> None:
         if not callable(token_counter):
             raise TypeError("training dataset requires the pinned tokenizer's token counter")
@@ -65,6 +70,17 @@ class TrajectoryDatasetBuilder:
         self.expected_runs = None if expected_runs is None else frozenset(expected_runs)
         if self.expected_runs is not None and len(self.expected_runs) != 80:
             raise ValueError("commissioning training freeze requires exactly 80 frozen run coordinates")
+        if generation_profile_digest is not None and (
+            not isinstance(generation_profile_digest, str)
+            or len(generation_profile_digest) != 64
+        ):
+            raise ValueError("training generation profile digest is invalid")
+        if generation_profile_digest is not None:
+            try:
+                int(generation_profile_digest, 16)
+            except ValueError as exc:
+                raise ValueError("training generation profile digest is not hexadecimal") from exc
+        self.generation_profile_digest = generation_profile_digest
         self.prompt_registry = PromptRegistry()
 
     @contextmanager
@@ -212,19 +228,37 @@ class TrajectoryDatasetBuilder:
         if metadata.get("retrieval_digest") != context.retrieval_digest:
             raise ValueError("candidate metadata retrieval digest differs from private context")
         task = VariationTask.from_microrepo(repo)
-        expected_context_digest = digest_for(
-            {
-                "schema_version": "egv-variation-prompt-context-v1",
-                "prompt_ids": list(PROMPT_IDS),
-                "prompt_manifest_digest": self.prompt_registry.manifest_digest(),
-                "task": task.public_dict(),
-                "seed": context.seed,
-                "attempt_index": context.attempt_index,
-                "retrieval_digest": context.retrieval_digest,
-            }
-        )
-        if context.prompt_digest != expected_context_digest or row["prompt_hash"] != expected_context_digest:
-            raise ValueError("candidate prompt context digest is not reproducible")
+        if context.response_contract == "source-only-v1":
+            source_files = {path: data.decode("utf-8") for path, data in repo.source_files}
+            exact_source = source_files.get("src/task.py")
+            if (
+                context.response_contract_digest != SOURCE_ONLY_RESPONSE_CONTRACT_DIGEST
+                or metadata.get("response_contract") != context.response_contract
+                or metadata.get("response_contract_digest") != context.response_contract_digest
+                or metadata.get("generation_profile_digest") != context.generation_profile_digest
+                or context.generation_profile_digest != self.generation_profile_digest
+                or context.task_statement != task.task_statement
+                or context.initial_source != exact_source
+                or context.initial_source_digest != digest_bytes(exact_source.encode("utf-8"))
+                or row["prompt_hash"] != context.prompt_digest
+                or not isinstance(context.prompt_digest, str)
+                or len(context.prompt_digest) != 64
+            ):
+                raise ValueError("source-only candidate prompt binding is not reproducible")
+        else:
+            expected_context_digest = digest_for(
+                {
+                    "schema_version": "egv-variation-prompt-context-v1",
+                    "prompt_ids": list(PROMPT_IDS),
+                    "prompt_manifest_digest": self.prompt_registry.manifest_digest(),
+                    "task": task.public_dict(),
+                    "seed": context.seed,
+                    "attempt_index": context.attempt_index,
+                    "retrieval_digest": context.retrieval_digest,
+                }
+            )
+            if context.prompt_digest != expected_context_digest or row["prompt_hash"] != expected_context_digest:
+                raise ValueError("candidate prompt context digest is not reproducible")
 
     def _forbidden_fragments(self) -> Tuple[str, ...]:
         values = set()
@@ -274,6 +308,14 @@ class TrajectoryDatasetBuilder:
         metadata = candidate_payload.get("metadata")
         if not isinstance(metadata, Mapping):
             raise ValueError("candidate is missing its closed Variation metadata")
+        if private.context.response_contract == "source-only-v1":
+            if (
+                not isinstance(private.generation_evidence_digest, str)
+                or metadata.get("generation_evidence_digest") != private.generation_evidence_digest
+            ):
+                raise ValueError("source-only generation evidence differs from the immutable ledger metadata")
+        elif private.generation_evidence_digest is not None:
+            raise ValueError("legacy closed-JSON trajectory unexpectedly carries generation evidence")
         self._validate_context(context, row, metadata, cutoff)
         valid_event_ids = {event["event_id"] for event in self.ledger.current_valid_events()}
         if row["event_id"] not in valid_event_ids:
@@ -323,19 +365,43 @@ class TrajectoryDatasetBuilder:
         if not effect.get("output_digest") or not effect.get("environment_diff_digest"):
             return None
 
-        prompt = render_candidate_prompt(context, prompt_registry=self.prompt_registry)
-        target = canonical_json(
-            {
-                "declared_locus": context.public_locus,
-                "evidence_ids": list(cited),
-                "requested_authority": row["requested_authority"],
-                "source": private.candidate_source.decode("utf-8"),
-            }
+        if context.response_contract == "source-only-v1":
+            if (
+                not isinstance(private.rendered_prompt, bytes)
+                or not private.rendered_prompt
+                or digest_bytes(private.rendered_prompt) != context.prompt_digest
+            ):
+                raise ValueError("source-only training row lacks the exact rendered model prompt")
+            try:
+                prompt = private.rendered_prompt.decode("utf-8")
+            except UnicodeDecodeError as exc:
+                raise ValueError("source-only rendered model prompt is not UTF-8") from exc
+        else:
+            if private.rendered_prompt is not None:
+                raise ValueError("legacy closed-JSON trajectory unexpectedly carries rendered prompt bytes")
+            prompt = render_candidate_prompt(
+                context,
+                prompt_registry=self.prompt_registry,
+                response_contract=context.response_contract,
+            )
+        target = (
+            private.candidate_source.decode("utf-8")
+            if context.response_contract == "source-only-v1"
+            else canonical_json(
+                {
+                    "declared_locus": context.public_locus,
+                    "evidence_ids": list(cited),
+                    "requested_authority": row["requested_authority"],
+                    "source": private.candidate_source.decode("utf-8"),
+                }
+            )
         )
         self._reject_private_leakage(prompt, target)
-        # Count the exact concatenated training sequence once so tokenizer
-        # boundary/special-token behavior cannot hide an overlength example.
-        token_count = self.token_counter(prompt + target)
+        # Count the same separately-tokenized prompt/target boundary (including
+        # target EOS) that ``tokenize_training_row`` uses at runtime. BPE is not
+        # compositional across string concatenation, so prompt + target is not
+        # an acceptable proxy for this ceiling.
+        token_count = self.token_counter(prompt, target)
         if not isinstance(token_count, int) or isinstance(token_count, bool) or token_count < 1:
             raise ValueError("pinned tokenizer returned an invalid token count")
         if token_count > self.max_input_tokens:

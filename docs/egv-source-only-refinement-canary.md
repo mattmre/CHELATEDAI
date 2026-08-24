@@ -35,18 +35,27 @@ resulting proposal to match exactly. The API is unavailable to
 
 ## Boundary
 
-These contracts are experimental and are not wired into the current production
-commissioning, private-sidecar, training-freeze, or promotion protocol. The
-existing `closed-json-v1` path and its durable schemas remain compatible. A
-successful canary is evidence for a separately versioned integration, not an
-implicit migration.
+`source-only-v1` is now the explicitly versioned commissioning contract for the
+frozen B/D campaign. It is bound to a separate exact train-source bundle, one
+immutable generation profile, the actual rendered-chat digest for every
+attempt, private raw success/failure evidence, ledger candidate metadata, and
+the training freeze. A response-contract failure consumes a bounded attempt
+without inventing a candidate or evaluator receipt; prompt/model integrity
+failures remain fatal. The legacy `closed-json-v1` path remains compatible and
+does not acquire rendered-prompt claims retroactively.
+
+`source-only-prefill-v1` remains a canary-only alternative. It is not selected
+by commissioning and a successful prefill canary would still require its own
+separately reviewed migration before entering training or promotion.
 
 ## Two-Spark execution plan
 
 - Stop DeepSeek once inside one bounded outer campaign and restore it once at
   every terminal path.
-- Run one pinned Qwen worker per Spark concurrently, one source-only variant per
-  worker, with one generation each and no retry.
+- For the paired canary comparison, run one pinned Qwen worker per Spark
+  concurrently, one source-only variant per worker, with one generation each.
+  This is separate from production `source-only-v1` commissioning, whose frozen
+  budget is 12 attempts and whose response-contract retries are durable.
 - Use per-node local leases and one-use markers bound to one campaign digest,
   absolute deadlines, independent watchdog cleanup, and an all-workers-absent
   barrier before restoration.

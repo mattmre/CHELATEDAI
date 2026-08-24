@@ -163,10 +163,10 @@ phase is executable end to end.
 | P4 | Stage frozen inputs | Clean exact source, pinned model/data/software/evaluator manifests, zero prohibited scan findings | Content-addressed staging |
 | P5 | Establish evaluator authority | Independent key, negative controls, signed receipt chain, one ledger event per receipt | Pinned evaluator public-key verification |
 | P6 | Freeze protocol | Dataset/splits, model, LoRA profile, policies, seeds, budgets, metrics, adversarial review digest | Protocol digest can be bound into receipts |
-| P7 | Generate training trajectories | Complete lineage and receipts, replay match, no development/held-out access | Planned integration with Variation and ledger slices |
-| P8 | Train and seal LoRA | Frozen accepted rows, unchanged base, LoRA-only mutation, deterministic checkpoint selection, no split leakage | Planned Training integration |
-| P9 | Run held-out ablations | Matched A-H and correction experiments, fixed budgets/order, independent signed verdicts | Planned Evaluation/Variation integration |
-| P10 | Replay and disposition | Ledger-only replay, paired metrics, complete gate vector, conservative ordered disposition | Planned replay/disposition implementation |
+| P7 | Generate training trajectories | Complete lineage and receipts, replay match, no development/held-out access | Versioned source-only B/D runner, private raw evidence, bounded failure resume, and signed remote-evaluator admission; live campaign evidence still required |
+| P8 | Train and seal LoRA | Frozen accepted rows, unchanged base, LoRA-only mutation, deterministic checkpoint selection, no split leakage | Training freeze, bounded LoRA runtime, external development selection, and adapter sealing are implemented; no live adapter result exists yet |
+| P9 | Run held-out ablations | Matched A-H and correction experiments, fixed budgets/order, independent signed verdicts | Signed scheduler/journal/analyzer primitives exist; real shock-task mapping, coordinate runner, telemetry, authority challenges, and evaluator reconciliation remain integration work |
+| P10 | Replay and disposition | Ledger-only replay, paired metrics, complete gate vector, conservative ordered disposition | Strict gate/disposition analysis exists; production public projection and cryptographic replay remain integration work |
 | P11 | Build provisional private package | Allowlist export and early secret/private-data scan; explicitly not publishable | Planned packaging implementation |
 | P12 | Restore protected service | Dependency-order restore, exact identity/count/configuration, original health and deterministic smoke | Typed restore plan and verification snapshot |
 | P13 | Rebuild and seal public bundle | Restoration receipt included, fresh allowlist export, zero scan findings, manifest and terminal chain seal | Planned packaging and public verifier integration |
@@ -410,8 +410,13 @@ adversarial review support the bounded claim.
 - Restoration verifies the repository's canonical signed public-restoration
   receipt before clearing the durable restore requirement. The final public
   chain seal still requires the live commissioning evidence bundle.
-- Training, trajectory generation, matched ablations, correction study,
-  disposition, and packaging remain separate integration work.
+- The B/D trajectory runner, training freeze/runtime, and strict held-out
+  scheduler/analyzer now exist as separate reviewed slices. They have not yet
+  produced live campaign or model-quality evidence. The A-H coordinate runner,
+  mapping of the four correction-shock blocks onto real held-out tasks, exact
+  token/time/cost telemetry, authority-challenge execution, evaluator
+  reconciliation, public cryptographic replay, and packaging remain production
+  integration work.
 - Commissioning preparation emits only pending generation requests. It cannot
   manufacture accepted trajectories: completion requires real model output and
   a contiguous signed ALLOW/PASS/ALLOW evaluator receipt chain. Reconciliation

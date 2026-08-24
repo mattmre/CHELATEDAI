@@ -8,7 +8,7 @@ from pathlib import Path
 import tempfile
 from typing import Any, Dict, Mapping, Optional
 
-from ..canonical import canonical_bytes, content_id, digest_for
+from ..canonical import canonical_bytes, content_id, digest_bytes, digest_for
 from ..evaluation.authority import AuthorityPolicy
 from ..evaluation.dataset import EvaluationCorpus
 from ..ledger import EvidenceLedger
@@ -22,15 +22,22 @@ from ..variation import (
     RemoteControllerEvaluationGateway,
     VariationTask,
 )
-from ..variation.loop import VARIATION_PROTOCOL_DIGEST
+from ..variation.generator import (
+    SOURCE_ONLY_RESPONSE_CONTRACT_DIGEST,
+    model_generation_profile_digest,
+)
+from ..variation.loop import SourceContractBudgetExhausted, VARIATION_PROTOCOL_DIGEST
 from ..variation.model import MODEL_REVISION
 from ..training.contracts import LedgerCutoff
 from ..training.dataset import TrajectoryDatasetBuilder, seal_runtime_dataset
+from ..training.protocol import training_sequence_token_count
 from .commissioning import (
     GENERATION_REQUEST_COUNT,
     REQUEST_MANIFEST_SCHEMA,
+    COMMISSIONING_RESPONSE_CONTRACT,
     TRAINER_INPUTS_SCHEMA,
     TRAIN_MANIFEST_SCHEMA,
+    TRAIN_SOURCE_MANIFEST_SCHEMA,
 )
 from .errors import CampaignError
 from .trajectories import (
@@ -57,7 +64,9 @@ class CommissioningTrainerInputs:
     def __init__(self, value: Mapping[str, Any]) -> None:
         fields = {
             "schema_version", "campaign_id", "corpus_manifest_digest", "model_manifest_digest",
-            "variation_protocol_digest", "train_manifest", "request_manifest", "trainer_inputs_digest",
+            "variation_protocol_digest", "response_contract", "response_contract_digest",
+            "generation_profile_digest", "trainer_sources_digest", "train_manifest", "request_manifest",
+            "trainer_inputs_digest",
         }
         if not isinstance(value, Mapping) or set(value) != fields:
             raise CommissioningRunError("commissioning trainer inputs are not closed")
@@ -67,6 +76,11 @@ class CommissioningTrainerInputs:
             raise CommissioningRunError("commissioning trainer inputs digest is invalid")
         if value["variation_protocol_digest"] != VARIATION_PROTOCOL_DIGEST:
             raise CommissioningRunError("commissioning trainer protocol is stale")
+        if (
+            value["response_contract"] != COMMISSIONING_RESPONSE_CONTRACT
+            or value["response_contract_digest"] != SOURCE_ONLY_RESPONSE_CONTRACT_DIGEST
+        ):
+            raise CommissioningRunError("commissioning trainer response contract is stale")
         train = value["train_manifest"]
         requests = value["request_manifest"]
         if not isinstance(train, Mapping) or set(train) != {
@@ -117,6 +131,7 @@ class CommissioningTrainerInputs:
                             seed=seed,
                             model_manifest_digest=value["model_manifest_digest"],
                             variation_protocol_digest=value["variation_protocol_digest"],
+                            generation_profile_digest=value["generation_profile_digest"],
                         )
                     )
         expected.sort(key=lambda item: item.request_id)
@@ -131,6 +146,9 @@ class CommissioningTrainerInputs:
                 or request.task_record_digest != digest_for(task)
                 or request.corpus_manifest_digest != value["corpus_manifest_digest"]
                 or request.model_manifest_digest != value["model_manifest_digest"]
+                or request.response_contract != value["response_contract"]
+                or request.response_contract_digest != value["response_contract_digest"]
+                or request.generation_profile_digest != value["generation_profile_digest"]
             ):
                 raise CommissioningRunError("commissioning request differs from trainer inputs")
         self._value = dict(value)
@@ -158,6 +176,96 @@ class CommissioningTrainerInputs:
     @property
     def model_manifest_digest(self) -> str:
         return self._value["model_manifest_digest"]
+
+    @property
+    def trainer_sources_digest(self) -> str:
+        return self._value["trainer_sources_digest"]
+
+    @property
+    def generation_profile_digest(self) -> str:
+        return self._value["generation_profile_digest"]
+
+
+class CommissioningTrainerSources:
+    """Exact public train source bytes, separate from evaluator-private inputs."""
+
+    def __init__(self, value: Mapping[str, Any], *, trainer_inputs: CommissioningTrainerInputs) -> None:
+        fields = {
+            "schema_version", "campaign_id", "corpus_manifest_digest", "task_count", "tasks",
+            "trainer_sources_digest",
+        }
+        if not isinstance(value, Mapping) or set(value) != fields:
+            raise CommissioningRunError("commissioning trainer source bundle is not closed")
+        unsigned = dict(value)
+        supplied = unsigned.pop("trainer_sources_digest")
+        if (
+            value["schema_version"] != TRAIN_SOURCE_MANIFEST_SCHEMA
+            or digest_for(unsigned) != supplied
+            or supplied != trainer_inputs.trainer_sources_digest
+            or value["campaign_id"] != trainer_inputs.campaign_id
+            or value["corpus_manifest_digest"] != trainer_inputs.corpus_manifest_digest
+            or value["task_count"] != len(trainer_inputs.tasks)
+            or not isinstance(value["tasks"], list)
+        ):
+            raise CommissioningRunError("commissioning trainer source bundle digest or identity is invalid")
+        sources: Dict[str, str] = {}
+        expected_ids = list(trainer_inputs.tasks)
+        actual_ids = []
+        for record in value["tasks"]:
+            if not isinstance(record, Mapping) or set(record) != {
+                "template_id", "repository_source_digest", "source_files"
+            }:
+                raise CommissioningRunError("commissioning trainer source record is not closed")
+            task_id = record["template_id"]
+            files = record["source_files"]
+            if (
+                not isinstance(task_id, str)
+                or not isinstance(files, list)
+                or len(files) != 2
+                or any(not isinstance(item, Mapping) or set(item) != {"path", "content_utf8"} for item in files)
+                or [item.get("path") for item in files] != ["README.md", "src/task.py"]
+                or any(not isinstance(item.get("content_utf8"), str) or not item["content_utf8"] for item in files)
+            ):
+                raise CommissioningRunError("commissioning trainer source files are missing or invalid")
+            source_map = {item["path"]: item["content_utf8"] for item in files}
+            task_record = trainer_inputs.tasks.get(task_id)
+            if (
+                task_record is None
+                or record["repository_source_digest"] != task_record["source_digest"]
+                or digest_for(source_map) != task_record["source_digest"]
+            ):
+                raise CommissioningRunError("commissioning trainer source bytes differ from the public task record")
+            actual_ids.append(task_id)
+            sources[task_id] = source_map["src/task.py"]
+        if actual_ids != expected_ids or len(sources) != len(expected_ids):
+            raise CommissioningRunError("commissioning trainer source bundle is missing, duplicated, or unordered")
+        self._value = dict(value)
+        self.sources = sources
+
+    @classmethod
+    def from_path(
+        cls,
+        path: Path,
+        *,
+        trainer_inputs: CommissioningTrainerInputs,
+    ) -> "CommissioningTrainerSources":
+        target = Path(path)
+        if target.is_symlink() or not target.is_file():
+            raise CommissioningRunError("commissioning trainer source bundle must be a regular non-symlink file")
+        try:
+            raw = target.read_bytes()
+            value = json.loads(raw.decode("utf-8"))
+        except (OSError, UnicodeError, ValueError) as exc:
+            raise CommissioningRunError("commissioning trainer source bundle cannot be decoded") from exc
+        if canonical_bytes(value) + b"\n" != raw:
+            raise CommissioningRunError("commissioning trainer source bundle is not canonical")
+        return cls(value, trainer_inputs=trainer_inputs)
+
+    def source_for(self, task_id: str) -> str:
+        try:
+            return self.sources[task_id]
+        except KeyError as exc:
+            raise CommissioningRunError("commissioning task has no exact trainer source") from exc
 
 
 class CommissioningRunJournal:
@@ -253,7 +361,22 @@ def _response_for(
             receipts.append(dict(stored["receipt"]))
     if [item.get("receipt_type") for item in receipts] != ["AUTHORITY", "VERDICT", "EFFECT"]:
         raise CommissioningRunError("promoted commissioning attempt lacks its exact receipt chain")
-    source = private_store.load_attempts([attempt.candidate_id])[0].candidate_source
+    private_attempt = private_store.load_attempts([attempt.candidate_id])[0]
+    candidate_row = ledger.connection.execute(
+        "SELECT candidate_json FROM candidates WHERE candidate_id=?",
+        (attempt.candidate_id,),
+    ).fetchone()
+    try:
+        candidate_metadata = json.loads(candidate_row["candidate_json"])["metadata"]
+    except (KeyError, TypeError, ValueError) as exc:
+        raise CommissioningRunError("promoted candidate lacks immutable generation metadata") from exc
+    if (
+        not isinstance(candidate_metadata, Mapping)
+        or candidate_metadata.get("generation_evidence_digest")
+        != private_attempt.generation_evidence_digest
+    ):
+        raise CommissioningRunError("promoted candidate differs from its private generation evidence")
+    source = private_attempt.candidate_source
     payload = {
         "schema_version": "egv-commissioning-generation-response-v1",
         "request_id": request.request_id,
@@ -280,6 +403,7 @@ def _response_for(
 def run_commissioning(
     *,
     trainer_inputs_path: Path,
+    trainer_sources_path: Path,
     model_root: Path,
     ledger_path: Path,
     blob_root: Path,
@@ -296,6 +420,10 @@ def run_commissioning(
     """Run one or all frozen requests; reruns skip journaled terminal requests."""
 
     inputs = CommissioningTrainerInputs.from_path(trainer_inputs_path)
+    sources = CommissioningTrainerSources.from_path(
+        trainer_sources_path,
+        trainer_inputs=inputs,
+    )
     selected = tuple(item for item in inputs.requests if request_id is None or item.request_id == request_id)
     if not selected:
         raise CommissioningRunError("requested commissioning request ID is not frozen")
@@ -308,7 +436,18 @@ def run_commissioning(
     loaded = PinnedModelLoader(model_root).load(device=device, torch_dtype=torch.bfloat16)
     if loaded.manifest_digest != inputs.model_manifest_digest:
         raise CommissioningRunError("loaded model differs from commissioning inputs")
-    generator = ModelCandidateGenerator(loaded, model_digest=loaded.manifest_digest)
+    generator = ModelCandidateGenerator(
+        loaded,
+        model_digest=loaded.manifest_digest,
+        response_contract=COMMISSIONING_RESPONSE_CONTRACT,
+    )
+    if (
+        generator.response_contract_digest != inputs._value["response_contract_digest"]
+        or generator.generation_profile_digest != inputs.generation_profile_digest
+    ):
+        raise CommissioningRunError(
+            "loaded generator differs from the frozen commissioning response or generation profile"
+        )
     isolation = ArmIsolation(workspace_root, campaign_id=inputs.campaign_id)
     private_store = PrivateTrajectoryStore(Path(workspace_root) / "private-trajectories")
     journal = CommissioningRunJournal(
@@ -330,6 +469,7 @@ def run_commissioning(
                 results.append(prior)
                 continue
             task = _task_for(request, inputs.tasks[request.task_id])
+            initial_source = sources.source_for(request.task_id)
             runner = BoundedCandidateLoop(
                 ledger=ledger,
                 evaluator=gateway,
@@ -346,13 +486,30 @@ def run_commissioning(
                 max_attempts=max_attempts,
                 seed_set=(0, 1),
                 private_store=private_store,
+                initial_source=initial_source.encode("utf-8"),
+                response_contract_digest=request.response_contract_digest,
+                generation_profile_digest=request.generation_profile_digest,
             )
             if runner._run_id(task.task_id, request.seed) != request.run_id:
                 raise CommissioningRunError("Variation run identity differs from frozen request")
             workspace = isolation.workspace(request.arm_id, request.run_id)
             latest = CheckpointStore(workspace.checkpoints).latest(run_id=request.run_id)
             resume_from = latest[0] if latest is not None else None
-            report = runner.run(task, seed=request.seed, resume_from=resume_from)
+            try:
+                report = runner.run(task, seed=request.seed, resume_from=resume_from)
+            except SourceContractBudgetExhausted as exc:
+                record = {
+                    "request_id": request.request_id,
+                    "run_id": request.run_id,
+                    "terminal_status": "BUDGET_EXHAUSTED",
+                    "report_digest": None,
+                    "response": None,
+                    "generation_failure_digest": exc.last_failure_digest,
+                    "source_contract_failure_count": exc.failure_count,
+                }
+                journal.commit(request, record)
+                results.append(record)
+                continue
             ledger.verify_receipt_chain(evaluator_public_key.read_bytes())
             accepted = _response_for(
                 request,
@@ -368,17 +525,36 @@ def run_commissioning(
                 "terminal_status": report.terminal_status,
                 "report_digest": digest_for(report.to_dict()),
                 "response": accepted,
+                "generation_failure_digest": None,
+                "source_contract_failure_count": len(
+                    private_store.source_contract_failures(
+                        run_id=request.run_id,
+                        task_id=request.task_id,
+                        arm_id=request.arm_id,
+                    )
+                ),
             }
             journal.commit(request, record)
             results.append(record)
     completed = len(journal.load()["completed"])
+    failures = sum(
+        bool(item.get("generation_failure_digest"))
+        for item in journal.load()["completed"].values()
+    )
     return {
         "schema_version": RUN_REPORT_SCHEMA,
         "campaign_id": inputs.campaign_id,
         "selected_request_count": len(selected),
         "completed_request_count": completed,
         "total_request_count": GENERATION_REQUEST_COUNT,
-        "status": "COMPLETE" if completed == GENERATION_REQUEST_COUNT else "PENDING",
+        "generation_failure_count": failures,
+        "status": (
+            "TERMINAL_WITH_FAILURES"
+            if completed == GENERATION_REQUEST_COUNT and failures
+            else "COMPLETE"
+            if completed == GENERATION_REQUEST_COUNT
+            else "PENDING"
+        ),
         "results": results,
     }
 
@@ -407,14 +583,26 @@ def freeze_commissioning_dataset(
     try:
         from transformers import AutoTokenizer
 
-        tokenizer = AutoTokenizer.from_pretrained(
-            str(model_root), revision=MODEL_REVISION, local_files_only=True, trust_remote_code=False
-        )
+        with loader._offline_environment():
+            tokenizer = AutoTokenizer.from_pretrained(
+                str(model_root), revision=MODEL_REVISION, local_files_only=True, trust_remote_code=False
+            )
     except Exception as exc:
         raise CommissioningRunError("frozen tokenizer could not be loaded") from exc
+    chat_template = getattr(tokenizer, "chat_template", None)
+    if not isinstance(chat_template, str) or not chat_template:
+        raise CommissioningRunError("frozen tokenizer lacks exact chat-template bytes")
+    generation_profile_digest = model_generation_profile_digest(
+        COMMISSIONING_RESPONSE_CONTRACT,
+        model_manifest_digest=manifest.digest(),
+        chat_template_digest=digest_bytes(chat_template.encode("utf-8")),
+        max_new_tokens=512,
+    )
+    if generation_profile_digest != inputs.generation_profile_digest:
+        raise CommissioningRunError("frozen tokenizer differs from the commissioning generation profile")
 
-    def count_tokens(text: str) -> int:
-        return len(tokenizer(text, add_special_tokens=False, truncation=False)["input_ids"])
+    def count_tokens(prompt: str, target: str) -> int:
+        return training_sequence_token_count(prompt, target, tokenizer)
 
     private_store = PrivateTrajectoryStore(private_store_root)
     with EvidenceLedger(ledger_path, blob_root=blob_root, create=False) as ledger:
@@ -437,6 +625,7 @@ def freeze_commissioning_dataset(
                 (request.run_id, request.task_id, request.arm_id, request.seed)
                 for request in inputs.requests
             ),
+            generation_profile_digest=inputs.generation_profile_digest,
         ).build(cutoff, attempts)
         result = seal_runtime_dataset(dataset, output)
     return {
@@ -449,5 +638,6 @@ def freeze_commissioning_dataset(
 
 __all__ = [
     "CommissioningRunError", "CommissioningRunJournal", "CommissioningTrainerInputs",
+    "CommissioningTrainerSources",
     "RUN_JOURNAL_SCHEMA", "RUN_REPORT_SCHEMA", "freeze_commissioning_dataset", "run_commissioning",
 ]

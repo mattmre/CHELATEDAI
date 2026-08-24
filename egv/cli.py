@@ -10,7 +10,7 @@ import sys
 import tempfile
 from typing import Any, Dict, Mapping, Optional, Sequence
 
-from .canonical import canonical_json, digest_for
+from .canonical import canonical_json, digest_bytes, digest_for
 from .campaign.commissioning import prepare_commissioning
 from .campaign.errors import CampaignError
 from .campaign.runner import freeze_commissioning_dataset, run_commissioning
@@ -38,12 +38,14 @@ from .training import (
     run_training_smoke,
 )
 from .variation import (
+    MODEL_REVISION,
     PinnedModelLoader,
     VARIATION_PROTOCOL_DIGEST,
     build_remote_evaluator_service_manifest,
     run_remote_evaluator_once,
     run_variation_smoke,
 )
+from .variation.generator import model_generation_profile_digest
 from .variation.remote import REMOTE_VARIATION_REQUEST_LIMIT
 
 
@@ -396,18 +398,51 @@ def _json_output(value: Any, as_json: bool) -> None:
         print(value)
 
 
-def _commissioning_output_targets(trainer: Path, evaluator: Path) -> tuple[Path, Path]:
-    """Reject overlapping public/private destinations before publishing either file."""
+def _commissioning_output_targets(*outputs: Path) -> tuple[Path, ...]:
+    """Reject overlapping frozen destinations before publishing any file."""
 
-    targets = (Path(trainer), Path(evaluator))
+    targets = tuple(Path(output) for output in outputs)
+    if len(targets) < 2:
+        raise CampaignError("commissioning requires distinct frozen output paths")
     resolved = tuple(path.resolve(strict=False) for path in targets)
-    if resolved[0] == resolved[1] or any(path.is_symlink() for path in targets):
-        raise CampaignError("commissioning trainer and evaluator outputs must be distinct non-aliased paths")
-    if all(path.exists() for path in targets) and os.path.samefile(targets[0], targets[1]):
-        raise CampaignError("commissioning trainer and evaluator outputs must not be hard-linked")
+    if len(set(resolved)) != len(resolved) or any(path.is_symlink() for path in targets):
+        raise CampaignError("commissioning outputs must be distinct non-aliased paths")
+    existing = [path for path in targets if path.exists()]
+    for index, left in enumerate(existing):
+        if any(os.path.samefile(left, right) for right in existing[index + 1 :]):
+            raise CampaignError("commissioning outputs must not be hard-linked")
     if any(path.exists() for path in targets):
         raise CampaignError("commissioning output already exists; refusing to overwrite frozen inputs")
     return targets
+
+
+def _commissioning_generation_profile(model_root: Path, model_digest: str) -> str:
+    root = Path(model_root)
+    loader = PinnedModelLoader(root)
+    manifest, _files = loader.verify_manifest()
+    if manifest.digest() != model_digest:
+        raise CampaignError("commissioning model root differs from the declared model digest")
+    try:
+        from transformers import AutoTokenizer
+
+        with loader._offline_environment():
+            tokenizer = AutoTokenizer.from_pretrained(
+                str(root),
+                revision=MODEL_REVISION,
+                local_files_only=True,
+                trust_remote_code=False,
+            )
+    except Exception as exc:
+        raise CampaignError("commissioning tokenizer cannot be loaded from the pinned offline model") from exc
+    chat_template = getattr(tokenizer, "chat_template", None)
+    if not isinstance(chat_template, str) or not chat_template:
+        raise CampaignError("commissioning tokenizer lacks pinned chat-template bytes")
+    return model_generation_profile_digest(
+        "source-only-v1",
+        model_manifest_digest=model_digest,
+        chat_template_digest=digest_bytes(chat_template.encode("utf-8")),
+        max_new_tokens=512,
+    )
 
 
 def _atomic_publish_new_json(path: Path, value: Mapping[str, Any]) -> None:
@@ -562,13 +597,16 @@ def build_parser() -> argparse.ArgumentParser:
     )
     commissioning_prepare.add_argument("--campaign-id", required=True)
     commissioning_prepare.add_argument("--model-digest", required=True)
+    commissioning_prepare.add_argument("--model-root", required=True, type=Path)
     commissioning_prepare.add_argument("--evaluator-seed", required=True, type=Path)
     commissioning_prepare.add_argument("--trainer-output", required=True, type=Path)
+    commissioning_prepare.add_argument("--trainer-sources-output", required=True, type=Path)
     commissioning_prepare.add_argument("--evaluator-output", required=True, type=Path)
     commissioning_run = commissioning_subparsers.add_parser(
         "run", help="run one frozen request or resume the complete 80-request matrix"
     )
     commissioning_run.add_argument("--trainer-inputs", required=True, type=Path)
+    commissioning_run.add_argument("--trainer-sources", required=True, type=Path)
     commissioning_run.add_argument("--model-root", required=True, type=Path)
     commissioning_run.add_argument("--ledger", required=True, type=Path)
     commissioning_run.add_argument("--blob-root", required=True, type=Path)
@@ -785,26 +823,35 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                     EvaluationCorpus.generate(secret_seed_file=args.evaluator_seed),
                     campaign_id=args.campaign_id,
                     model_manifest_digest=args.model_digest,
+                    generation_profile_digest=_commissioning_generation_profile(
+                        args.model_root, args.model_digest
+                    ),
                 )
-                trainer_output, evaluator_output = _commissioning_output_targets(
-                    args.trainer_output, args.evaluator_output
+                trainer_output, trainer_sources_output, evaluator_output = _commissioning_output_targets(
+                    args.trainer_output, args.trainer_sources_output, args.evaluator_output
                 )
                 _atomic_publish_new_json(trainer_output, plan.trainer_inputs())
                 try:
+                    _atomic_publish_new_json(trainer_sources_output, plan.trainer_source_manifest)
                     _atomic_publish_new_json(evaluator_output, plan.private_manifest())
                 except Exception:
                     trainer_output.unlink(missing_ok=True)
+                    trainer_sources_output.unlink(missing_ok=True)
+                    evaluator_output.unlink(missing_ok=True)
                     raise
                 _json_output({
                     "trainer_inputs_digest": plan.trainer_inputs()["trainer_inputs_digest"],
+                    "trainer_sources_digest": plan.trainer_sources_digest,
                     "private_inputs_digest": digest_for(plan.private_manifest()),
+                    "generation_profile_digest": plan.generation_profile_digest,
                     "request_count": len(plan.generation_requests),
                     "live_model_executed": False,
                 }, True)
                 return 0
             if args.commissioning_command == "run":
                 result = run_commissioning(
-                    trainer_inputs_path=args.trainer_inputs, model_root=args.model_root,
+                    trainer_inputs_path=args.trainer_inputs,
+                    trainer_sources_path=args.trainer_sources, model_root=args.model_root,
                     ledger_path=args.ledger, blob_root=args.blob_root,
                     evaluator_manifest=args.evaluator_manifest,
                     evaluator_public_key=args.evaluator_public_key,

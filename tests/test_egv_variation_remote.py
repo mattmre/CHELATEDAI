@@ -21,7 +21,7 @@ from egv.ledger import EvidenceLedger
 from egv.receipts import ReceiptSigner, receipt_hash
 from egv.variation.errors import VariationConfigurationError, VariationDependencyError
 from egv.variation.arms import arm_policy
-from egv.variation.generator import CandidateProposal
+from egv.variation.generator import CandidateProposal, model_generation_profile_digest
 from egv.variation.loop import BoundedCandidateLoop, VARIATION_PROTOCOL_DIGEST, VariationTask
 from egv.variation.retrieval import RetrievalResult
 from egv.variation.remote import (
@@ -331,6 +331,11 @@ class RemoteVariationGatewayTests(unittest.TestCase):
                     seed=index,
                     model_manifest_digest=self.manifest_value["model_digest"],
                     variation_protocol_digest=self.manifest_value["protocol_digest"],
+                    generation_profile_digest=model_generation_profile_digest(
+                        "source-only-v1",
+                        model_manifest_digest=self.manifest_value["model_digest"],
+                        chat_template_digest=digest_for("remote-test-chat-template"),
+                    ),
                 )
                 source = "def solve(value):\n    return value + {}\n".format(index).encode("utf-8")
                 candidate_id = "candidate-commissioning-" + arm_id.lower()

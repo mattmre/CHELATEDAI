@@ -9,15 +9,18 @@ from typing import Any, Dict, Mapping, Tuple
 from ..canonical import digest_for, validate_sha256
 from ..evaluation.dataset import EvaluationCorpus, FAMILY_SPECS
 from ..variation.arms import arm_policy
+from ..variation.generator import SOURCE_ONLY_RESPONSE_CONTRACT_DIGEST
 from ..variation.loop import VARIATION_PROTOCOL_DIGEST, VariationTask
 from .trajectories import COMMISSIONING_ARMS, COMMISSIONING_SEEDS, GenerationRequest
 
 
 COMMISSIONING_SCHEMA = "egv-commissioning-inputs-v1"
-TRAINER_INPUTS_SCHEMA = "egv-commissioning-trainer-inputs-v1"
+TRAINER_INPUTS_SCHEMA = "egv-commissioning-trainer-inputs-v2"
 TRAIN_MANIFEST_SCHEMA = "egv-commissioning-train-tasks-v1"
+TRAIN_SOURCE_MANIFEST_SCHEMA = "egv-commissioning-train-sources-v1"
 PRIVATE_DEV_MANIFEST_SCHEMA = "egv-commissioning-private-dev-v1"
-REQUEST_MANIFEST_SCHEMA = "egv-commissioning-generation-requests-v1"
+REQUEST_MANIFEST_SCHEMA = "egv-commissioning-generation-requests-v2"
+COMMISSIONING_RESPONSE_CONTRACT = "source-only-v1"
 TRAIN_TASK_COUNT = 20
 PRIVATE_DEV_TASK_COUNT = 8
 GENERATION_REQUEST_COUNT = 80
@@ -44,7 +47,9 @@ class CommissioningPlan:
     corpus_manifest_digest: str
     model_manifest_digest: str
     variation_protocol_digest: str
+    generation_profile_digest: str
     train_records: Tuple[Mapping[str, Any], ...]
+    _trainer_source_records: Tuple[Mapping[str, Any], ...] = field(repr=False)
     generation_requests: Tuple[GenerationRequest, ...]
     _private_dev_records: Tuple[Mapping[str, Any], ...] = field(repr=False)
     _private_dev_tasks: Tuple[VariationTask, ...] = field(repr=False)
@@ -55,13 +60,24 @@ class CommissioningPlan:
             raise CommissioningPreparationError("unsupported commissioning input schema")
         if not isinstance(self.campaign_id, str) or not self.campaign_id or "/" in self.campaign_id or "\\" in self.campaign_id:
             raise CommissioningPreparationError("campaign ID is not a bounded public identifier")
-        for name in ("corpus_manifest_digest", "model_manifest_digest", "variation_protocol_digest"):
+        for name in (
+            "corpus_manifest_digest", "model_manifest_digest", "variation_protocol_digest",
+            "generation_profile_digest",
+        ):
             _digest(getattr(self, name), name)
         if self.variation_protocol_digest != VARIATION_PROTOCOL_DIGEST:
             raise CommissioningPreparationError("commissioning protocol differs from frozen Variation protocol")
-        if not isinstance(self.train_records, tuple) or not isinstance(self._private_dev_records, tuple):
+        if (
+            not isinstance(self.train_records, tuple)
+            or not isinstance(self._trainer_source_records, tuple)
+            or not isinstance(self._private_dev_records, tuple)
+        ):
             raise CommissioningPreparationError("commissioning task manifests must be immutable tuples")
-        if len(self.train_records) != TRAIN_TASK_COUNT or len(self._private_dev_records) != PRIVATE_DEV_TASK_COUNT:
+        if (
+            len(self.train_records) != TRAIN_TASK_COUNT
+            or len(self._trainer_source_records) != TRAIN_TASK_COUNT
+            or len(self._private_dev_records) != PRIVATE_DEV_TASK_COUNT
+        ):
             raise CommissioningPreparationError("commissioning task counts differ from the frozen 20/8 allocation")
         if any(not isinstance(record, Mapping) or set(record) != _PUBLIC_TASK_FIELDS for record in self.train_records):
             raise CommissioningPreparationError("training task record is not the closed public evaluation schema")
@@ -75,6 +91,45 @@ class CommissioningPlan:
             "train_records",
             tuple(MappingProxyType(dict(record)) for record in self.train_records),
         )
+        normalized_sources = []
+        train_by_id = {record["template_id"]: record for record in self.train_records}
+        for source_record in self._trainer_source_records:
+            if not isinstance(source_record, Mapping) or set(source_record) != {
+                "template_id", "repository_source_digest", "source_files"
+            }:
+                raise CommissioningPreparationError("trainer source record is not closed")
+            source_files = source_record["source_files"]
+            if (
+                not isinstance(source_files, (tuple, list))
+                or len(source_files) != 2
+                or any(not isinstance(item, Mapping) or set(item) != {"path", "content_utf8"} for item in source_files)
+            ):
+                raise CommissioningPreparationError("trainer source file records are not closed")
+            paths = [item["path"] for item in source_files]
+            if paths != ["README.md", "src/task.py"] or any(
+                not isinstance(item["content_utf8"], str) or not item["content_utf8"] for item in source_files
+            ):
+                raise CommissioningPreparationError("trainer source files differ from the frozen micro-repository layout")
+            task_record = train_by_id.get(source_record["template_id"])
+            source_map = {item["path"]: item["content_utf8"] for item in source_files}
+            if (
+                task_record is None
+                or source_record["repository_source_digest"] != task_record["source_digest"]
+                or digest_for(source_map) != task_record["source_digest"]
+            ):
+                raise CommissioningPreparationError("trainer source bytes differ from the public task digest")
+            normalized_sources.append(
+                MappingProxyType({
+                    "template_id": source_record["template_id"],
+                    "repository_source_digest": source_record["repository_source_digest"],
+                    "source_files": tuple(MappingProxyType(dict(item)) for item in source_files),
+                })
+            )
+        if [record["template_id"] for record in normalized_sources] != [
+            record["template_id"] for record in self.train_records
+        ]:
+            raise CommissioningPreparationError("trainer source records are missing, duplicated, or unordered")
+        object.__setattr__(self, "_trainer_source_records", tuple(normalized_sources))
         object.__setattr__(
             self,
             "_private_dev_records",
@@ -135,6 +190,7 @@ class CommissioningPlan:
                 or request.corpus_manifest_digest != self.corpus_manifest_digest
                 or request.model_manifest_digest != self.model_manifest_digest
                 or request.variation_protocol_digest != self.variation_protocol_digest
+                or request.generation_profile_digest != self.generation_profile_digest
             ):
                 raise CommissioningPreparationError("generation request differs from frozen commissioning inputs")
 
@@ -155,6 +211,29 @@ class CommissioningPlan:
     @property
     def train_manifest_digest(self) -> str:
         return digest_for(self.train_manifest)
+
+    @property
+    def trainer_source_manifest(self) -> Dict[str, Any]:
+        value = {
+            "schema_version": TRAIN_SOURCE_MANIFEST_SCHEMA,
+            "campaign_id": self.campaign_id,
+            "corpus_manifest_digest": self.corpus_manifest_digest,
+            "task_count": TRAIN_TASK_COUNT,
+            "tasks": [
+                {
+                    "template_id": record["template_id"],
+                    "repository_source_digest": record["repository_source_digest"],
+                    "source_files": [dict(item) for item in record["source_files"]],
+                }
+                for record in self._trainer_source_records
+            ],
+        }
+        value["trainer_sources_digest"] = digest_for(value)
+        return value
+
+    @property
+    def trainer_sources_digest(self) -> str:
+        return self.trainer_source_manifest["trainer_sources_digest"]
 
     @property
     def private_dev_manifest(self) -> Dict[str, Any]:
@@ -200,8 +279,12 @@ class CommissioningPlan:
             "corpus_manifest_digest": self.corpus_manifest_digest,
             "model_manifest_digest": self.model_manifest_digest,
             "variation_protocol_digest": self.variation_protocol_digest,
+            "response_contract": COMMISSIONING_RESPONSE_CONTRACT,
+            "response_contract_digest": SOURCE_ONLY_RESPONSE_CONTRACT_DIGEST,
+            "generation_profile_digest": self.generation_profile_digest,
             "train_task_count": TRAIN_TASK_COUNT,
             "train_manifest_digest": self.train_manifest_digest,
+            "trainer_sources_digest": self.trainer_sources_digest,
             "private_dev_task_count": PRIVATE_DEV_TASK_COUNT,
             "private_dev_manifest_digest": self.private_dev_manifest_digest,
             "generation_request_count": GENERATION_REQUEST_COUNT,
@@ -223,6 +306,10 @@ class CommissioningPlan:
             "schema_version": "egv-commissioning-private-inputs-v1",
             "public_manifest_digest": digest_for(self.public_manifest()),
             "train_manifest": self.train_manifest,
+            "trainer_sources_digest": self.trainer_sources_digest,
+            "response_contract": COMMISSIONING_RESPONSE_CONTRACT,
+            "response_contract_digest": SOURCE_ONLY_RESPONSE_CONTRACT_DIGEST,
+            "generation_profile_digest": self.generation_profile_digest,
             "private_dev_manifest": self.private_dev_manifest,
             "request_manifest": self.request_manifest,
         }
@@ -236,6 +323,10 @@ class CommissioningPlan:
             "corpus_manifest_digest": self.corpus_manifest_digest,
             "model_manifest_digest": self.model_manifest_digest,
             "variation_protocol_digest": self.variation_protocol_digest,
+            "response_contract": COMMISSIONING_RESPONSE_CONTRACT,
+            "response_contract_digest": SOURCE_ONLY_RESPONSE_CONTRACT_DIGEST,
+            "generation_profile_digest": self.generation_profile_digest,
+            "trainer_sources_digest": self.trainer_sources_digest,
             "train_manifest": self.train_manifest,
             "request_manifest": self.request_manifest,
         }
@@ -248,6 +339,7 @@ def prepare_commissioning(
     *,
     campaign_id: str,
     model_manifest_digest: str,
+    generation_profile_digest: str,
     variation_protocol_digest: str = VARIATION_PROTOCOL_DIGEST,
 ) -> CommissioningPlan:
     """Freeze exact corpus-derived inputs without running a model or evaluator."""
@@ -257,6 +349,7 @@ def prepare_commissioning(
     corpus.validate()
     corpus_digest = corpus.manifest_digest()
     _digest(model_manifest_digest, "model manifest digest")
+    _digest(generation_profile_digest, "generation profile digest")
     if variation_protocol_digest != VARIATION_PROTOCOL_DIGEST:
         raise CommissioningPreparationError("commissioning cannot substitute the Variation protocol")
     train_repositories = corpus.split("train")
@@ -264,6 +357,17 @@ def prepare_commissioning(
     if len(train_repositories) != TRAIN_TASK_COUNT or len(dev_repositories) != PRIVATE_DEV_TASK_COUNT:
         raise CommissioningPreparationError("evaluator corpus does not provide exact 20/8 commissioning splits")
     train_records = tuple(repo.public_manifest_record() for repo in train_repositories)
+    trainer_source_records = tuple(
+        {
+            "template_id": repo.template_id,
+            "repository_source_digest": repo.source_digest,
+            "source_files": tuple(
+                {"path": path, "content_utf8": data.decode("utf-8")}
+                for path, data in repo.source_files
+            ),
+        }
+        for repo in train_repositories
+    )
     private_dev_records = tuple(repo.private_manifest_record() for repo in dev_repositories)
     private_dev_tasks = tuple(VariationTask.from_microrepo(repo) for repo in dev_repositories)
     requests = []
@@ -279,6 +383,7 @@ def prepare_commissioning(
                         seed=seed,
                         model_manifest_digest=model_manifest_digest,
                         variation_protocol_digest=variation_protocol_digest,
+                        generation_profile_digest=generation_profile_digest,
                     )
                 )
     requests.sort(key=lambda request: request.request_id)
@@ -287,7 +392,9 @@ def prepare_commissioning(
         corpus_manifest_digest=corpus_digest,
         model_manifest_digest=model_manifest_digest,
         variation_protocol_digest=variation_protocol_digest,
+        generation_profile_digest=generation_profile_digest,
         train_records=train_records,
+        _trainer_source_records=trainer_source_records,
         generation_requests=tuple(requests),
         _private_dev_records=private_dev_records,
         _private_dev_tasks=private_dev_tasks,
@@ -296,6 +403,7 @@ def prepare_commissioning(
 
 __all__ = [
     "COMMISSIONING_SCHEMA", "GENERATION_REQUEST_COUNT", "PRIVATE_DEV_MANIFEST_SCHEMA",
-    "PRIVATE_DEV_TASK_COUNT", "REQUEST_MANIFEST_SCHEMA", "TRAIN_MANIFEST_SCHEMA", "TRAIN_TASK_COUNT",
+    "PRIVATE_DEV_TASK_COUNT", "REQUEST_MANIFEST_SCHEMA", "TRAIN_MANIFEST_SCHEMA", "TRAIN_SOURCE_MANIFEST_SCHEMA",
+    "TRAIN_TASK_COUNT", "COMMISSIONING_RESPONSE_CONTRACT",
     "CommissioningPlan", "CommissioningPreparationError", "TRAINER_INPUTS_SCHEMA", "prepare_commissioning",
 ]

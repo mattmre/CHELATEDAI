@@ -34,6 +34,8 @@ from .protocol import (
     TrainingRow,
     build_training_batch,
     seal_training_inputs,
+    training_sequence_token_count,
+    training_sequence_token_ids,
     tokenize_training_row,
 )
 from .trainer import LoRATrainer, TRAINING_RUNTIME_SCHEMA, TrainingRunReport, run_production_training, run_training_smoke
@@ -76,5 +78,7 @@ __all__ = [
     "run_training_smoke",
     "run_production_training",
     "seal_training_inputs",
+    "training_sequence_token_count",
+    "training_sequence_token_ids",
     "tokenize_training_row",
 ]

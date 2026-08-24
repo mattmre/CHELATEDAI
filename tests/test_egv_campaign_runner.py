@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import io
+import os
 from pathlib import Path
 from types import SimpleNamespace
 import tempfile
@@ -9,12 +10,13 @@ import unittest
 from unittest import mock
 from contextlib import redirect_stdout
 
-from egv.canonical import content_id, digest_for
+from egv.canonical import canonical_json, content_id, digest_for
 from egv.campaign.commissioning import prepare_commissioning
 from egv.campaign.runner import (
     CommissioningRunError,
     CommissioningRunJournal,
     CommissioningTrainerInputs,
+    CommissioningTrainerSources,
 )
 from egv.cli import main
 from egv.evaluation.dataset import EvaluationCorpus
@@ -22,7 +24,7 @@ from egv.identities import commissioning_run_id
 from egv.training.contracts import FrozenTrainingDataset, LedgerCutoff
 from egv.training.dataset import SEALED_RUNTIME_DATASET_SCHEMA, seal_runtime_dataset
 from egv.variation.arms import arm_policy
-from egv.variation.generator import CandidateContext
+from egv.variation.generator import CandidateContext, model_generation_profile_digest
 from egv.variation.loop import BoundedCandidateLoop
 from egv.variation.private import PrivateTrajectoryStore
 
@@ -34,10 +36,17 @@ class CommissioningRunnerTests(unittest.TestCase):
         self.seed = self.root / "seed.bin"
         self.seed.write_bytes(bytes(range(32)))
         self.corpus = EvaluationCorpus.generate(secret_seed_file=self.seed)
+        self.model_digest = digest_for("model")
+        self.generation_profile_digest = model_generation_profile_digest(
+            "source-only-v1",
+            model_manifest_digest=self.model_digest,
+            chat_template_digest=digest_for("pinned-chat-template"),
+        )
         self.plan = prepare_commissioning(
             self.corpus,
             campaign_id="campaign-public",
-            model_manifest_digest=digest_for("model"),
+            model_manifest_digest=self.model_digest,
+            generation_profile_digest=self.generation_profile_digest,
         )
 
     def tearDown(self) -> None:
@@ -74,6 +83,16 @@ class CommissioningRunnerTests(unittest.TestCase):
         value["trainer_inputs_digest"] = digest_for(value)
         return value
 
+    @staticmethod
+    def _redigest_trainer_sources(value: dict) -> dict:
+        value.pop("trainer_sources_digest", None)
+        value["trainer_sources_digest"] = digest_for(value)
+        return value
+
+    @staticmethod
+    def _write_canonical(path: Path, value: dict) -> None:
+        path.write_text(canonical_json(value) + "\n", encoding="utf-8")
+
     def test_trainer_bundle_rejects_duplicate_request_envelope(self) -> None:
         value = json.loads(json.dumps(self.plan.trainer_inputs()))
         requests = value["request_manifest"]["requests"]
@@ -103,6 +122,55 @@ class CommissioningRunnerTests(unittest.TestCase):
                 self._redigest_trainer_inputs(value)
                 with self.assertRaisesRegex(CommissioningRunError, "request manifest is invalid"):
                     CommissioningTrainerInputs(value)
+
+    def test_trainer_sources_reject_tampered_exact_source_even_when_bundle_is_redigested(self) -> None:
+        sources = json.loads(json.dumps(self.plan.trainer_source_manifest))
+        sources["tasks"][0]["source_files"][1]["content_utf8"] += "\n# tampered\n"
+        self._redigest_trainer_sources(sources)
+        trainer = json.loads(json.dumps(self.plan.trainer_inputs()))
+        trainer["trainer_sources_digest"] = sources["trainer_sources_digest"]
+        self._redigest_trainer_inputs(trainer)
+        inputs = CommissioningTrainerInputs(trainer)
+        with self.assertRaisesRegex(CommissioningRunError, "source bytes differ"):
+            CommissioningTrainerSources(sources, trainer_inputs=inputs)
+
+    def test_trainer_sources_reject_missing_task_even_when_bundle_is_redigested(self) -> None:
+        sources = json.loads(json.dumps(self.plan.trainer_source_manifest))
+        sources["tasks"].pop()
+        sources["task_count"] = len(sources["tasks"])
+        self._redigest_trainer_sources(sources)
+        trainer = json.loads(json.dumps(self.plan.trainer_inputs()))
+        trainer["trainer_sources_digest"] = sources["trainer_sources_digest"]
+        self._redigest_trainer_inputs(trainer)
+        inputs = CommissioningTrainerInputs(trainer)
+        with self.assertRaisesRegex(CommissioningRunError, "digest or identity"):
+            CommissioningTrainerSources(sources, trainer_inputs=inputs)
+
+    def test_trainer_sources_reject_symlink_bundle(self) -> None:
+        backing = self.root / "trainer-sources-backing.json"
+        link = self.root / "trainer-sources-link.json"
+        self._write_canonical(backing, self.plan.trainer_source_manifest)
+        try:
+            link.symlink_to(backing)
+        except OSError as exc:
+            self.skipTest("source-bundle symlink creation is unavailable: {}".format(exc))
+        with self.assertRaisesRegex(CommissioningRunError, "regular non-symlink"):
+            CommissioningTrainerSources.from_path(
+                link,
+                trainer_inputs=CommissioningTrainerInputs(self.plan.trainer_inputs()),
+            )
+
+    def test_trainer_inputs_reject_response_contract_and_generation_profile_mismatch(self) -> None:
+        for field, replacement in (
+            ("response_contract", "closed-json-v1"),
+            ("generation_profile_digest", digest_for("substituted-generation-profile")),
+        ):
+            with self.subTest(field=field):
+                trainer = json.loads(json.dumps(self.plan.trainer_inputs()))
+                trainer[field] = replacement
+                self._redigest_trainer_inputs(trainer)
+                with self.assertRaises(CommissioningRunError):
+                    CommissioningTrainerInputs(trainer)
 
     def test_training_evaluator_cli_forwards_adapter_store(self) -> None:
         paths = {
@@ -152,6 +220,29 @@ class CommissioningRunnerTests(unittest.TestCase):
         with self.assertRaises(Exception):
             store.record(candidate_id="candidate-1", context=context, source=b"return 2\n")
 
+    def test_private_store_rejects_symlink_root(self) -> None:
+        backing = self.root / "private-backing"
+        backing.mkdir()
+        linked_root = self.root / "private-linked-root"
+        try:
+            linked_root.symlink_to(backing, target_is_directory=True)
+        except OSError as exc:
+            self.skipTest("directory symlink creation is unavailable: {}".format(exc))
+        with self.assertRaisesRegex(Exception, "link or reparse"):
+            PrivateTrajectoryStore(linked_root)
+
+    def test_private_store_rejects_precreated_linked_record_directory(self) -> None:
+        root = self.root / "private-linked-records"
+        external = self.root / "external-records"
+        root.mkdir()
+        external.mkdir()
+        try:
+            (root / "records").symlink_to(external, target_is_directory=True)
+        except OSError as exc:
+            self.skipTest("directory symlink creation is unavailable: {}".format(exc))
+        with self.assertRaisesRegex(Exception, "contained directory"):
+            PrivateTrajectoryStore(root)
+
     def test_run_journal_is_idempotent_and_bound_to_inputs(self) -> None:
         request = self.plan.generation_requests[0]
         path = self.root / "run.json"
@@ -167,27 +258,45 @@ class CommissioningRunnerTests(unittest.TestCase):
 
     def test_prepare_cli_writes_separate_public_trainer_and_private_evaluator_inputs(self) -> None:
         trainer = self.root / "trainer.json"
+        sources = self.root / "trainer-sources.json"
         evaluator = self.root / "evaluator.json"
-        code = main([
-            "commissioning", "prepare", "--campaign-id", "campaign-public",
-            "--model-digest", digest_for("model"), "--evaluator-seed", str(self.seed),
-            "--trainer-output", str(trainer), "--evaluator-output", str(evaluator),
-        ])
+        with mock.patch(
+            "egv.cli._commissioning_generation_profile",
+            return_value=self.generation_profile_digest,
+        ):
+            code = main([
+                "commissioning", "prepare", "--campaign-id", "campaign-public",
+                "--model-digest", self.model_digest, "--model-root", str(self.root / "model"),
+                "--evaluator-seed", str(self.seed), "--trainer-output", str(trainer),
+                "--trainer-sources-output", str(sources), "--evaluator-output", str(evaluator),
+            ])
         self.assertEqual(code, 0)
         CommissioningTrainerInputs.from_path(trainer)
+        CommissioningTrainerSources.from_path(
+            sources,
+            trainer_inputs=CommissioningTrainerInputs.from_path(trainer),
+        )
         trainer_text = trainer.read_text(encoding="utf-8")
+        source_text = sources.read_text(encoding="utf-8")
         private_text = evaluator.read_text(encoding="utf-8")
         for repo in self.corpus.split("dev"):
             self.assertNotIn(repo.template_id, trainer_text)
+            self.assertNotIn(repo.template_id, source_text)
             self.assertIn(repo.template_id, private_text)
 
     def test_prepare_cli_rejects_same_output_before_writing_private_material(self) -> None:
         shared = self.root / "shared.json"
-        code = main([
-            "commissioning", "prepare", "--campaign-id", "campaign-public",
-            "--model-digest", digest_for("model"), "--evaluator-seed", str(self.seed),
-            "--trainer-output", str(shared), "--evaluator-output", str(shared),
-        ])
+        with mock.patch(
+            "egv.cli._commissioning_generation_profile",
+            return_value=self.generation_profile_digest,
+        ):
+            code = main([
+                "commissioning", "prepare", "--campaign-id", "campaign-public",
+                "--model-digest", self.model_digest, "--model-root", str(self.root / "model"),
+                "--evaluator-seed", str(self.seed), "--trainer-output", str(shared),
+                "--trainer-sources-output", str(self.root / "sources.json"),
+                "--evaluator-output", str(shared),
+            ])
         self.assertEqual(code, 1)
         self.assertFalse(shared.exists())
 
@@ -201,11 +310,17 @@ class CommissioningRunnerTests(unittest.TestCase):
             symlink = None
         if symlink is not None:
             private = self.root / "private.json"
-            code = main([
-                "commissioning", "prepare", "--campaign-id", "campaign-public",
-                "--model-digest", digest_for("model"), "--evaluator-seed", str(self.seed),
-                "--trainer-output", str(symlink), "--evaluator-output", str(private),
-            ])
+            with mock.patch(
+                "egv.cli._commissioning_generation_profile",
+                return_value=self.generation_profile_digest,
+            ):
+                code = main([
+                    "commissioning", "prepare", "--campaign-id", "campaign-public",
+                    "--model-digest", self.model_digest, "--model-root", str(self.root / "model"),
+                    "--evaluator-seed", str(self.seed), "--trainer-output", str(symlink),
+                    "--trainer-sources-output", str(self.root / "sources-symlink.json"),
+                    "--evaluator-output", str(private),
+                ])
             self.assertEqual(code, 1)
             self.assertFalse(private.exists())
             self.assertEqual(backing.read_text(encoding="utf-8"), "preserve")
@@ -213,16 +328,20 @@ class CommissioningRunnerTests(unittest.TestCase):
         second = self.root / "second-hardlink.json"
         first.write_text("preserve", encoding="utf-8")
         try:
-            import os
-
             os.link(first, second)
         except OSError:
             return
-        code = main([
-            "commissioning", "prepare", "--campaign-id", "campaign-public",
-            "--model-digest", digest_for("model"), "--evaluator-seed", str(self.seed),
-            "--trainer-output", str(first), "--evaluator-output", str(second),
-        ])
+        with mock.patch(
+            "egv.cli._commissioning_generation_profile",
+            return_value=self.generation_profile_digest,
+        ):
+            code = main([
+                "commissioning", "prepare", "--campaign-id", "campaign-public",
+                "--model-digest", self.model_digest, "--model-root", str(self.root / "model"),
+                "--evaluator-seed", str(self.seed), "--trainer-output", str(first),
+                "--trainer-sources-output", str(self.root / "sources-hardlink.json"),
+                "--evaluator-output", str(second),
+            ])
         self.assertEqual(code, 1)
         self.assertEqual(first.read_text(encoding="utf-8"), "preserve")
 

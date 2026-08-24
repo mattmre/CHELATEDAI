@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from dataclasses import replace
 import inspect
 from pathlib import Path
@@ -14,7 +15,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 from weakref import WeakKeyDictionary
 
-from egv.canonical import canonical_json, digest_bytes, digest_for, failure_family_root
+from egv.canonical import canonical_bytes, canonical_json, digest_bytes, digest_for, failure_family_root
 from egv.evaluation.authority import AuthorityBroker
 from egv.evaluation.controller import EvaluationResult, EvaluatorController, HiddenEvaluatorRunner
 from egv.evaluation.dataset import EvaluationCorpus, EVALUATOR_SEED_BYTES, FAMILY_SPECS
@@ -23,6 +24,8 @@ from egv.evaluation.sandbox import DockerCandidateSandbox
 from egv.evaluation.errors import DockerConfigurationError, LeakageError
 from egv.ledger import EvidenceLedger
 from egv.receipts import ReceiptJournal, ReceiptSigner
+from egv.training.contracts import LedgerCutoff
+from egv.training.dataset import TrajectoryDatasetBuilder
 from egv.variation import (
     ADAPTER_MANIFEST_NAME,
     ARM_IDS,
@@ -37,7 +40,9 @@ from egv.variation import (
     ModelCandidateGenerator,
     PinnedModelManifest,
     PinnedModelLoader,
+    PrivateTrajectoryStore,
     SealedAdapterArtifact,
+    SourceContractBudgetExhausted,
     VariationBudgetError,
     VariationCheckpointError,
     VariationConfigurationError,
@@ -178,6 +183,140 @@ class VariationTestCase(unittest.TestCase):
             base_state_digest=digest_for("base-state"),
         )
         return ModelCandidateGenerator(loaded, model_digest=manifest.digest()), manifest.digest()
+
+    def make_source_contract_runner(self, responses, *, max_attempts: int = 12):
+        class Device:
+            type = "cuda"
+
+        device = Device()
+
+        class Tensor:
+            def __init__(self, values, tensor_device=None):
+                self.values = list(values)
+                self.device = tensor_device
+                self.shape = (1, len(self.values))
+
+            def to(self, *, device):
+                return Tensor(self.values, device)
+
+        class Model:
+            def __init__(self):
+                self.generate_calls = 0
+
+            def parameters(self):
+                return iter((SimpleNamespace(device=device),))
+
+            def generate(self, **kwargs):
+                self.generate_calls += 1
+                return [kwargs["input_ids"].values + [100 + self.generate_calls]]
+
+        class Tokenizer:
+            chat_template = "source-contract-retry-template-v1"
+
+            def __init__(self, values):
+                self.responses = list(values)
+                self.decode_calls = 0
+
+            def apply_chat_template(self, messages, **kwargs):
+                return "<sealed-chat>\n" + messages[0]["content"]
+
+            def __call__(self, text, **kwargs):
+                return {"input_ids": Tensor([1, 2]), "attention_mask": Tensor([1, 1])}
+
+            def decode(self, tokens, *, skip_special_tokens):
+                self.decode_calls += 1
+                if not self.responses:
+                    raise AssertionError("source-contract test generated beyond its frozen response sequence")
+                return self.responses.pop(0)
+
+        base, model_digest = self.make_production_generator()
+        model = Model()
+        tokenizer = Tokenizer(responses)
+        loaded = LoadedPinnedModel(
+            model=model,
+            tokenizer=tokenizer,
+            manifest=base.loaded_model.manifest,
+            manifest_digest=model_digest,
+            file_hashes=base.loaded_model.file_hashes,
+            load_report={},
+            base_state_digest=base.loaded_model.base_state_digest,
+        )
+        generator = ModelCandidateGenerator(
+            loaded,
+            model_digest=model_digest,
+            response_contract="source-only-v1",
+        )
+        repo = self.corpus.split("train")[0]
+        task = VariationTask.from_microrepo(repo)
+        initial_source = dict(repo.source_files)["src/task.py"]
+        campaign_id = "source-contract-retry-campaign"
+        policy_digest = digest_for({"policy": "source-contract-retry-v1"})
+        self.ledger = EvidenceLedger(
+            self.root / "source-contract-ledger.sqlite",
+            blob_root=self.root / "source-contract-ledger-blobs",
+            clock=lambda: "2026-08-24T00:00:00Z",
+        )
+        class TrainFixtureGateway(FixtureEvaluationGateway):
+            def _common(self, *, task_id, candidate_id, artifact_digest):
+                value = super()._common(
+                    task_id=task_id,
+                    candidate_id=candidate_id,
+                    artifact_digest=artifact_digest,
+                )
+                row = self.ledger.connection.execute(
+                    "SELECT run_id FROM candidates WHERE candidate_id=?",
+                    (candidate_id,),
+                ).fetchone()
+                value["run_id"] = str(row["run_id"])
+                return value
+
+        evaluator = TrainFixtureGateway(
+            self.corpus,
+            self.ledger,
+            self.root / "source-contract-evaluator",
+            policy_digest=policy_digest,
+            campaign_id=campaign_id,
+        )
+        evaluator.hidden_runner = HiddenEvaluatorRunner(
+            {
+                item.template_id: (
+                    item.evaluator_input,
+                    canonical_bytes(item.expected_output) + b"\n",
+                    item.hidden_spec.get("resource_limit"),
+                )
+                for item in self.corpus.repositories
+            },
+            evaluator_revision=evaluator.evaluator_revision,
+            public_loci={item.template_id: item.public_locus for item in self.corpus.repositories},
+            public_records={
+                item.template_id: item.public_manifest_record()
+                for item in self.corpus.repositories
+            },
+        )
+        isolation = ArmIsolation(self.root / "source-contract-arm-state", campaign_id=campaign_id)
+        private_store = PrivateTrajectoryStore(self.root / "source-contract-private")
+        runner = BoundedCandidateLoop(
+            ledger=self.ledger,
+            evaluator=evaluator,
+            generator=generator,
+            isolation=isolation,
+            workspace_root=self.root / "source-contract-variation-state",
+            campaign_id=campaign_id,
+            source_commit="source-contract-test-source",
+            model_revision=MODEL_REVISION,
+            model_digest=model_digest,
+            data_manifest_digest=self.corpus.manifest_digest(),
+            policy_digest=policy_digest,
+            arm_id="B",
+            max_attempts=max_attempts,
+            seed_set=(0,),
+            fixture_mode=True,
+            private_store=private_store,
+            initial_source=initial_source,
+            response_contract_digest=generator.response_contract_digest,
+            generation_profile_digest=generator.generation_profile_digest,
+        )
+        return runner, task, repo, generator, tokenizer, model, private_store
 
     def test_controller_gateway_binds_real_controller_hidden_runner_and_docker(self) -> None:
         hidden_runner = HiddenEvaluatorRunner.from_corpus(self.corpus, evaluator_revision="gateway-test-evaluator")
@@ -1022,6 +1161,8 @@ class VariationTestCase(unittest.TestCase):
             "campaign", "run", 0, "B", "task", "PURE_FUNCTION", "src/task.py:solve", "rule",
             1, None, (), digest_for("retrieval"), model_digest, None, digest_for("placeholder"),
             "Repair the bounded function.", initial_source, digest_bytes(initial_source.encode("utf-8")),
+            "source-only-prefill-v1", generator.response_contract_digest,
+            generator.generation_profile_digest,
         )
         digest = generator.prompt_digest_for(context)
         self.assertEqual(len(digest), 64)
@@ -1097,6 +1238,8 @@ class VariationTestCase(unittest.TestCase):
             1, None, ({"event_id": "evt-2"}, {"event_id": "evt-1"}), digest_for("retrieval"),
             model_digest, None, digest_for("placeholder"), "Repair the bounded function.",
             initial_source, digest_bytes(initial_source.encode("utf-8")),
+            "source-only-prefill-v1", generator.response_contract_digest,
+            generator.generation_profile_digest,
         )
         context = replace(context, prompt_digest=generator.prompt_digest_for(context))
         generation = generator.propose_with_evidence(context)
@@ -1162,6 +1305,158 @@ class VariationTestCase(unittest.TestCase):
         tokenizer.chat_template = "mutated-template"
         with self.assertRaisesRegex(VariationDependencyError, "chat-template bytes changed"):
             generator.validate_production_integrity()
+
+    def test_source_contract_invalid_first_attempt_advances_to_valid_second_attempt(self) -> None:
+        valid = self.corpus.split("train")[0].corrected_source.decode("utf-8")
+        runner, task, repo, generator, tokenizer, model, private_store = self.make_source_contract_runner(
+            ["not valid Python", valid],
+            max_attempts=2,
+        )
+        self.assertEqual(repo.corrected_source.decode("utf-8"), valid)
+        report = runner.run(task, seed=0)
+        self.assertEqual(report.terminal_status, "PROMOTED")
+        self.assertEqual([item.attempt_index for item in report.attempts], [2])
+        failures = private_store.source_contract_failures(
+            run_id=report.run_id,
+            task_id=task.task_id,
+            arm_id="B",
+        )
+        self.assertEqual([item["attempt_index"] for item in failures], [1])
+        self.assertEqual(tokenizer.decode_calls, 2)
+        self.assertEqual(model.generate_calls, 2)
+        row = self.ledger.connection.execute(
+            "SELECT candidate_json,prompt_hash FROM candidates WHERE candidate_id=?",
+            (report.attempts[0].candidate_id,),
+        ).fetchone()
+        metadata = json.loads(row["candidate_json"])["metadata"]
+        self.assertEqual(metadata["generation_profile_digest"], generator.generation_profile_digest)
+        private_attempt = private_store.load_attempts([report.attempts[0].candidate_id])[0]
+        self.assertEqual(digest_bytes(private_attempt.rendered_prompt), row["prompt_hash"])
+
+    def test_source_contract_resume_after_persisted_invalid_response_starts_at_second_attempt(self) -> None:
+        valid = self.corpus.split("train")[0].corrected_source.decode("utf-8")
+        runner, task, _repo, _generator, tokenizer, model, private_store = self.make_source_contract_runner(
+            ["not valid Python", valid],
+            max_attempts=2,
+        )
+        original = PrivateTrajectoryStore.record_generation_failure
+        crashed = {"value": False}
+
+        def persist_then_crash(store, **kwargs):
+            result = original(store, **kwargs)
+            if store is private_store and not crashed["value"]:
+                crashed["value"] = True
+                raise RuntimeError("injected crash after immutable failure persistence")
+            return result
+
+        with patch.object(PrivateTrajectoryStore, "record_generation_failure", new=persist_then_crash):
+            with self.assertRaisesRegex(RuntimeError, "injected crash"):
+                runner.run(task, seed=0)
+        self.assertEqual(
+            self.ledger.connection.execute("SELECT COUNT(*) FROM candidates").fetchone()[0],
+            0,
+        )
+        report = runner.run(task, seed=0)
+        self.assertEqual(report.terminal_status, "PROMOTED")
+        self.assertEqual([item.attempt_index for item in report.attempts], [2])
+        self.assertEqual(tokenizer.decode_calls, 2)
+        self.assertEqual(model.generate_calls, 2)
+
+    def test_source_contract_twelve_invalid_responses_fail_closed_and_resume_does_not_regenerate(self) -> None:
+        runner, task, _repo, _generator, tokenizer, model, private_store = self.make_source_contract_runner(
+            ["not valid Python"] * 12,
+            max_attempts=12,
+        )
+        with self.assertRaises(SourceContractBudgetExhausted) as raised:
+            runner.run(task, seed=0)
+        self.assertEqual(raised.exception.failure_count, 12)
+        failures = private_store.source_contract_failures(
+            run_id=raised.exception.run_id,
+            task_id=task.task_id,
+            arm_id="B",
+        )
+        self.assertEqual([item["attempt_index"] for item in failures], list(range(1, 13)))
+        self.assertEqual(
+            self.ledger.connection.execute("SELECT COUNT(*) FROM candidates").fetchone()[0],
+            0,
+        )
+        calls = (tokenizer.decode_calls, model.generate_calls)
+        with self.assertRaises(SourceContractBudgetExhausted):
+            runner.run(task, seed=0)
+        self.assertEqual((tokenizer.decode_calls, model.generate_calls), calls)
+
+    def test_source_contract_generation_evidence_is_bound_to_ledger_and_exact_freeze_prompt(self) -> None:
+        valid = self.corpus.split("train")[0].corrected_source.decode("utf-8")
+        runner, task, _repo, generator, _tokenizer, _model, private_store = self.make_source_contract_runner(
+            [valid],
+            max_attempts=1,
+        )
+        report = runner.run(task, seed=0)
+        private = private_store.load_attempts([report.attempts[0].candidate_id])[0]
+        row = self.ledger.connection.execute(
+            "SELECT candidate_json FROM candidates WHERE candidate_id=?",
+            (private.candidate_id,),
+        ).fetchone()
+        metadata = json.loads(row["candidate_json"])["metadata"]
+        self.assertEqual(private.generation_evidence_digest, metadata["generation_evidence_digest"])
+        cutoff = LedgerCutoff.capture(self.ledger, campaign_id=report.campaign_id)
+        builder = TrajectoryDatasetBuilder(
+            self.ledger,
+            self.corpus,
+            token_counter=lambda prompt, target: len(prompt) + len(target) + 1,
+            receipt_public_key=runner.evaluator.signer.public_key,
+            require_complete=False,
+            generation_profile_digest=generator.generation_profile_digest,
+        )
+        dataset = builder.build(cutoff, [private])
+        self.assertEqual(dataset.examples[0].prompt.encode("utf-8"), private.rendered_prompt)
+        forged = replace(private, generation_evidence_digest=digest_for("forged-generation-record"))
+        with self.assertRaisesRegex(ValueError, "generation evidence"):
+            builder.build(cutoff, [forged])
+
+    def test_private_generation_and_trajectory_hardlinks_fail_closed(self) -> None:
+        valid = self.corpus.split("train")[0].corrected_source.decode("utf-8")
+        runner, task, _repo, _generator, _tokenizer, _model, private_store = self.make_source_contract_runner(
+            [valid],
+            max_attempts=1,
+        )
+        report = runner.run(task, seed=0)
+        candidate_id = report.attempts[0].candidate_id
+        record = private_store.records / (candidate_id + ".json")
+        record_alias = self.root / "record-hardlink.json"
+        try:
+            os.link(record, record_alias)
+        except OSError as exc:
+            self.skipTest("hardlink creation is unavailable: {}".format(exc))
+        with self.assertRaisesRegex(Exception, "linked or not regular"):
+            private_store.load_attempts([candidate_id])
+        record_alias.chmod(0o600)
+        record_alias.unlink()
+        record.chmod(0o400)
+        generation = private_store.generation_records / (candidate_id + ".json")
+        generation_alias = self.root / "generation-hardlink.json"
+        os.link(generation, generation_alias)
+        with self.assertRaisesRegex(Exception, "linked or not regular"):
+            private_store.load_attempts([candidate_id])
+        generation_alias.chmod(0o600)
+        generation_alias.unlink()
+        generation.chmod(0o400)
+
+    def test_private_generation_proposal_source_substitution_fails_closed(self) -> None:
+        valid = self.corpus.split("train")[0].corrected_source.decode("utf-8")
+        runner, task, _repo, _generator, _tokenizer, _model, private_store = self.make_source_contract_runner(
+            [valid],
+            max_attempts=1,
+        )
+        report = runner.run(task, seed=0)
+        candidate_id = report.attempts[0].candidate_id
+        path = private_store.generation_records / (candidate_id + ".json")
+        value = json.loads(path.read_text(encoding="utf-8"))
+        value["proposal_source_digest"] = digest_for("substituted-proposal-source")
+        path.chmod(0o600)
+        path.write_text(canonical_json(value), encoding="utf-8")
+        with self.assertRaisesRegex(Exception, "proposal differs"):
+            private_store.load_attempts([candidate_id])
 
     def test_forged_task_metadata_cannot_cross_the_evaluation_manifest_boundary(self) -> None:
         runner, task, _repo, _isolation = self.make_runner()

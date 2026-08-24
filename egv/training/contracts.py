@@ -110,12 +110,20 @@ class PrivateTrajectoryAttempt:
     candidate_id: str
     context: Any
     candidate_source: bytes
+    rendered_prompt: bytes | None = None
+    generation_evidence_digest: str | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.candidate_id, str) or not self.candidate_id:
             raise ValueError("private trajectory candidate_id must be non-empty")
         if not isinstance(self.candidate_source, bytes) or not self.candidate_source:
             raise ValueError("private trajectory candidate source must be non-empty bytes")
+        if self.rendered_prompt is not None and (
+            not isinstance(self.rendered_prompt, bytes) or not self.rendered_prompt
+        ):
+            raise ValueError("private rendered prompt must be non-empty bytes when supplied")
+        if self.generation_evidence_digest is not None:
+            _digest(self.generation_evidence_digest, "private generation evidence digest")
 
 
 @dataclass(frozen=True)

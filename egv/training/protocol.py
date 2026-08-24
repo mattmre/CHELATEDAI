@@ -536,14 +536,32 @@ def _token_ids(tokenizer: Any, text: str) -> Tuple[int, ...]:
     return tuple(values)
 
 
-def tokenize_training_row(row: TrainingRow, tokenizer: Any, protocol: TrainingProtocol) -> TokenizedTrainingExample:
-    row.validate(expected_split="train")
-    protocol.validate()
-    prompt_ids = _token_ids(tokenizer, row.prompt)
-    target_ids = list(_token_ids(tokenizer, row.target))
+def training_sequence_token_ids(
+    prompt: str,
+    target: str,
+    tokenizer: Any,
+) -> Tuple[Tuple[int, ...], Tuple[int, ...]]:
+    """Tokenize the exact un-packed SFT boundary used by the trainer."""
+
+    if not isinstance(prompt, str) or not prompt or not isinstance(target, str) or not target:
+        raise TrainingConfigurationError("Training prompt and target must be non-empty text")
+    prompt_ids = _token_ids(tokenizer, prompt)
+    target_ids = list(_token_ids(tokenizer, target))
     eos_token_id = getattr(tokenizer, "eos_token_id", None)
     if isinstance(eos_token_id, int) and (not target_ids or target_ids[-1] != eos_token_id):
         target_ids.append(eos_token_id)
+    return prompt_ids, tuple(target_ids)
+
+
+def training_sequence_token_count(prompt: str, target: str, tokenizer: Any) -> int:
+    prompt_ids, target_ids = training_sequence_token_ids(prompt, target, tokenizer)
+    return len(prompt_ids) + len(target_ids)
+
+
+def tokenize_training_row(row: TrainingRow, tokenizer: Any, protocol: TrainingProtocol) -> TokenizedTrainingExample:
+    row.validate(expected_split="train")
+    protocol.validate()
+    prompt_ids, target_ids = training_sequence_token_ids(row.prompt, row.target, tokenizer)
     total = len(prompt_ids) + len(target_ids)
     if total > protocol.max_sequence_length:
         raise TrainingConfigurationError(
@@ -551,9 +569,9 @@ def tokenize_training_row(row: TrainingRow, tokenizer: Any, protocol: TrainingPr
         )
     example = TokenizedTrainingExample(
         row_id=row.row_id,
-        input_ids=prompt_ids + tuple(target_ids),
+        input_ids=prompt_ids + target_ids,
         attention_mask=(1,) * total,
-        labels=(-100,) * len(prompt_ids) + tuple(target_ids),
+        labels=(-100,) * len(prompt_ids) + target_ids,
     )
     example.validate(protocol)
     return example
@@ -589,5 +607,7 @@ __all__ = [
     "TrainingDependencyError",
     "build_training_batch",
     "seal_training_inputs",
+    "training_sequence_token_count",
+    "training_sequence_token_ids",
     "tokenize_training_row",
 ]

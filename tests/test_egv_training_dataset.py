@@ -17,6 +17,7 @@ from egv.errors import ReceiptVerificationError
 from egv.receipts import ReceiptSigner
 from egv.training.contracts import LedgerCutoff, PrivateTrajectoryAttempt
 from egv.training.dataset import TrajectoryDatasetBuilder
+from egv.training.protocol import training_sequence_token_count
 from egv.variation.arms import ArmIsolation
 from egv.variation.fixture import FixtureEvaluationGateway
 from egv.variation.generator import CandidateContext, DeterministicFixtureGenerator
@@ -67,8 +68,8 @@ class TrainingDatasetTestCase(unittest.TestCase):
         self.tempdir.cleanup()
 
     @staticmethod
-    def token_count(text: str) -> int:
-        return max(1, len(text.split()))
+    def token_count(prompt: str, target: str) -> int:
+        return max(1, len(prompt.split())) + max(1, len(target.split())) + 1
 
     def build_run(self, *, source=None, arm="B", seed=3):
         campaign = "training-data-test"
@@ -241,13 +242,39 @@ class TrainingDatasetTestCase(unittest.TestCase):
         ledger, cutoff, private = self.build_run()
         calls = []
 
-        def boundary_sensitive_counter(text):
-            calls.append(text)
-            return 4097 if "Return exactly one JSON object" in text and '\"source\"' in text else 1
+        def boundary_sensitive_counter(prompt, target):
+            calls.append((prompt, target))
+            return 4097 if "Return exactly one JSON object" in prompt and '\"source\"' in target else 1
 
         with self.assertRaisesRegex(ValueError, "4096-token"):
             self.builder(ledger, token_counter=boundary_sensitive_counter).build(cutoff, [private])
         self.assertEqual(len(calls), 1)
+
+    def test_freeze_counts_the_exact_runtime_prompt_target_and_eos_boundary(self):
+        ledger, cutoff, private = self.build_run()
+
+        class BoundaryTokenizer:
+            eos_token_id = 99
+
+            def __init__(self):
+                self.calls = []
+
+            def __call__(self, text, *, add_special_tokens, truncation):
+                self.calls.append(text)
+                return {"input_ids": [11, 12] if len(self.calls) == 1 else [21]}
+
+        tokenizer = BoundaryTokenizer()
+        dataset = self.builder(
+            ledger,
+            token_counter=lambda prompt, target: training_sequence_token_count(
+                prompt,
+                target,
+                tokenizer,
+            ),
+        ).build(cutoff, [private])
+        row = dataset.examples[0]
+        self.assertEqual(tokenizer.calls, [row.prompt, row.target])
+        self.assertEqual(row.input_token_count, 4)
 
     def test_failed_rejected_candidate_is_never_a_positive_target(self):
         repo = self.corpus.split("train")[0]

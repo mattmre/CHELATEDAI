@@ -10,9 +10,10 @@ from ..evaluation.authority import AuthorityPolicy
 from ..identities import commissioning_run_id
 from ..receipts import verify_receipt
 from ..variation.arms import arm_policy
+from ..variation.generator import SOURCE_ONLY_RESPONSE_CONTRACT_DIGEST
 
 
-REQUEST_SCHEMA = "egv-commissioning-generation-request-v1"
+REQUEST_SCHEMA = "egv-commissioning-generation-request-v2"
 RESPONSE_SCHEMA = "egv-commissioning-generation-response-v1"
 ACCEPTED_EVIDENCE_SCHEMA = "egv-commissioning-accepted-evidence-v1"
 COMMISSIONING_ARMS = ("B", "D")
@@ -22,6 +23,8 @@ _REQUEST_FIELDS = frozenset(
         "schema_version", "request_id", "campaign_id", "run_id", "task_id", "task_family",
         "task_record_digest", "corpus_manifest_digest", "arm_id", "arm_policy_digest", "seed",
         "model_manifest_digest", "variation_protocol_digest", "status",
+        "response_contract", "response_contract_digest",
+        "generation_profile_digest",
     }
 )
 _RESPONSE_FIELDS = frozenset(
@@ -63,6 +66,9 @@ class GenerationRequest:
     seed: int
     model_manifest_digest: str
     variation_protocol_digest: str
+    response_contract: str
+    response_contract_digest: str
+    generation_profile_digest: str
     request_id: str
     status: str = "PENDING"
     schema_version: str = REQUEST_SCHEMA
@@ -78,9 +84,15 @@ class GenerationRequest:
             raise CommissioningTrajectoryError("commissioning generation seed is outside the frozen set")
         for field in (
             "task_record_digest", "corpus_manifest_digest", "arm_policy_digest",
-            "model_manifest_digest", "variation_protocol_digest",
+            "model_manifest_digest", "variation_protocol_digest", "response_contract_digest",
+            "generation_profile_digest",
         ):
             _digest(getattr(self, field), field)
+        if (
+            self.response_contract != "source-only-v1"
+            or self.response_contract_digest != SOURCE_ONLY_RESPONSE_CONTRACT_DIGEST
+        ):
+            raise CommissioningTrajectoryError("generation request differs from the frozen source-only contract")
         if self.arm_policy_digest != arm_policy(self.arm_id).digest:
             raise CommissioningTrajectoryError("request arm policy differs from frozen Variation policy")
         unsigned = self.to_dict()
@@ -99,6 +111,7 @@ class GenerationRequest:
         seed: int,
         model_manifest_digest: str,
         variation_protocol_digest: str,
+        generation_profile_digest: str,
     ) -> "GenerationRequest":
         if not isinstance(task_record, Mapping) or task_record.get("split") != "train":
             raise CommissioningTrajectoryError("generation requests require an immutable train task record")
@@ -126,6 +139,9 @@ class GenerationRequest:
             "seed": seed,
             "model_manifest_digest": model_manifest_digest,
             "variation_protocol_digest": variation_protocol_digest,
+            "response_contract": "source-only-v1",
+            "response_contract_digest": SOURCE_ONLY_RESPONSE_CONTRACT_DIGEST,
+            "generation_profile_digest": generation_profile_digest,
             "status": "PENDING",
         }
         payload["request_id"] = content_id("genreq", payload)
@@ -152,6 +168,9 @@ class GenerationRequest:
             "seed": self.seed,
             "model_manifest_digest": self.model_manifest_digest,
             "variation_protocol_digest": self.variation_protocol_digest,
+            "response_contract": self.response_contract,
+            "response_contract_digest": self.response_contract_digest,
+            "generation_profile_digest": self.generation_profile_digest,
             "status": self.status,
         }
 
