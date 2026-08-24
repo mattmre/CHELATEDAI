@@ -230,7 +230,13 @@ def _state_digest(model: Any) -> Optional[str]:
     records = []
     for name, tensor in sorted(state_dict().items()):
         try:
-            material = tensor.detach().cpu().numpy().tobytes()
+            value = tensor.detach().cpu().contiguous()
+            try:
+                import torch
+
+                material = value.view(dtype=torch.uint8).numpy().tobytes()
+            except Exception:
+                material = value.numpy().tobytes()
             shape = tuple(int(value) for value in tensor.shape)
             dtype = str(tensor.dtype)
         except AttributeError:
@@ -245,6 +251,32 @@ def model_state_digest(model: Any) -> Optional[str]:
     """Return the deterministic state digest used by loader attestations."""
 
     return _state_digest(model)
+
+
+def model_tensor_hashes(model: Any) -> Mapping[str, str]:
+    """Return closed per-tensor hashes for Training's immutability proof."""
+
+    state_dict = getattr(model, "state_dict", None)
+    if not callable(state_dict):
+        raise VariationDependencyError("model does not expose a measurable tensor state")
+    hashes: Dict[str, str] = {}
+    for name, tensor in sorted(state_dict().items()):
+        try:
+            value = tensor.detach().cpu().contiguous()
+            import torch
+
+            material = value.view(dtype=torch.uint8).numpy().tobytes()
+            record = {
+                "shape": tuple(int(item) for item in value.shape),
+                "dtype": str(value.dtype),
+                "digest": hashlib.sha256(material).hexdigest(),
+            }
+        except Exception as exc:
+            raise VariationDependencyError("model tensor cannot be hashed deterministically: {}".format(name)) from exc
+        hashes[str(name)] = digest_for(record)
+    if not hashes:
+        raise VariationDependencyError("model exposes no measurable tensors")
+    return hashes
 
 
 def _regular_tree_files(root: Path, *, excluded: Optional[Path] = None) -> Tuple[Path, ...]:
@@ -515,4 +547,5 @@ __all__ = [
     "TRANSFORMERS_MIN_VERSION",
     "build_local_manifest",
     "model_state_digest",
+    "model_tensor_hashes",
 ]

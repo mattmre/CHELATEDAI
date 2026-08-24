@@ -17,6 +17,7 @@ from ..evaluation.diagnostics import Diagnostic, validate_diagnostic, validate_d
 from ..evaluation.prompts import PROMPT_IDS, PromptRegistry
 from ..evaluation.sandbox import DockerCandidateSandbox, DockerSandboxConfig
 from ..ledger import EvidenceLedger
+from ..identities import commissioning_run_id
 from ..receipts import receipt_hash
 from .adapter import SealedAdapterArtifact, validate_applied_peft_model
 from .arms import ArmIsolation, ArmPolicy, arm_policy
@@ -24,7 +25,9 @@ from .checkpoint import CheckpointStore, VariationCheckpoint
 from .errors import VariationBudgetError, VariationCheckpointError, VariationConfigurationError, VariationDependencyError
 from .generator import CandidateContext, CandidateGenerator, CandidateProposal, ModelCandidateGenerator
 from .model import ADAPTER_ATTESTATION_SCHEMA, AdapterApplicationAttestation, MODEL_REVISION
+from .private import PrivateTrajectoryStore
 from .retrieval import EvidenceRetrievalPolicy, RetrievalResult, retrieval_policy
+from .remote import RemoteControllerEvaluationGateway
 
 
 _ORIGINAL_DOCKER_SANDBOX_EXECUTE = DockerCandidateSandbox.execute
@@ -43,6 +46,7 @@ class _RuntimeIdentityRecord:
     evaluator: Any
     generator: Any
     isolation: Any
+    private_store: Any
 
 
 def _make_runtime_identity_authority():
@@ -115,6 +119,22 @@ class VariationTask:
             evaluator_input=repo.evaluator_input,
         )
 
+    @classmethod
+    def from_public_record(cls, record: Mapping[str, Any]) -> "VariationTask":
+        """Construct a Spark1-safe task that never materializes evaluator input."""
+
+        required = {"template_id", "family_id", "public_locus", "public_rule_id"}
+        if not isinstance(record, Mapping) or any(not isinstance(record.get(key), str) or not record[key] for key in required):
+            raise VariationConfigurationError("public Variation task record is incomplete")
+        return cls(
+            task_id=record["template_id"],
+            family_id=record["family_id"],
+            public_locus=record["public_locus"],
+            public_rule_id=record["public_rule_id"],
+            task_statement="Repair the bounded {} task at {}.".format(record["family_id"], record["public_locus"]),
+            evaluator_input=None,
+        )
+
     def public_dict(self) -> Dict[str, Any]:
         return {
             "task_id": self.task_id,
@@ -163,6 +183,7 @@ class ControllerEvaluationGateway:
             raise VariationDependencyError("Variation production Docker sandbox failed integrity validation") from exc
         self.controller = controller
         self.hidden_runner = controller.hidden_runner
+        self.task_registry = self.hidden_runner
         self.sandbox = controller.sandbox
         self._pinned_controller = controller
         self._pinned_hidden_runner = controller.hidden_runner
@@ -407,7 +428,7 @@ class BoundedCandidateLoop:
     def __setattr__(self, name: str, value: Any) -> None:
         if name == "_max_attempts" and "_budget_contract" in self.__dict__:
             raise AttributeError("Variation attempt budget is immutable after construction")
-        if name in {"fixture_mode", "evaluator", "generator", "isolation"} and _runtime_identity_registered(self):
+        if name in {"fixture_mode", "evaluator", "generator", "isolation", "private_store"} and _runtime_identity_registered(self):
             raise AttributeError("Variation runtime identity is immutable after construction")
         super().__setattr__(name, value)
 
@@ -431,6 +452,7 @@ class BoundedCandidateLoop:
         adapter_artifact: Optional[SealedAdapterArtifact] = None,
         seed_set: Sequence[int] = (0, 1, 2),
         fixture_mode: bool = False,
+        private_store: Optional[PrivateTrajectoryStore] = None,
     ) -> None:
         if not isinstance(max_attempts, int) or isinstance(max_attempts, bool) or max_attempts <= 0 or max_attempts > MAX_CANDIDATE_ATTEMPTS:
             raise VariationBudgetError("candidate attempt budget must be between 1 and 12")
@@ -452,6 +474,9 @@ class BoundedCandidateLoop:
         self.adapter_digest = adapter_digest
         self.seed_set = tuple(sorted(set(int(seed) for seed in seed_set)))
         self.fixture_mode = fixture_mode
+        if private_store is not None and type(private_store) is not PrivateTrajectoryStore:
+            raise VariationDependencyError("private trajectory persistence requires the exact store type")
+        self.private_store = private_store
         if not self.seed_set or any(seed < 0 for seed in self.seed_set):
             raise VariationConfigurationError("Variation seed set must contain nonnegative integers")
         _require_digest(model_digest, "model digest")
@@ -496,12 +521,20 @@ class BoundedCandidateLoop:
             _validate_model_generator_identity(generator)
         if getattr(generator, "test_only", False) and not fixture_mode:
             raise VariationDependencyError("test-only candidate generators cannot enter the production Variation path")
-        if not fixture_mode and not isinstance(evaluator, ControllerEvaluationGateway):
-            raise VariationDependencyError("production Variation requires ControllerEvaluationGateway")
+        if not fixture_mode and type(evaluator) not in {ControllerEvaluationGateway, RemoteControllerEvaluationGateway}:
+            raise VariationDependencyError("production Variation requires an exact sealed Evaluation gateway")
         if not fixture_mode and type(generator) is not ModelCandidateGenerator:
             raise VariationDependencyError("production Variation requires the exact ModelCandidateGenerator")
         if not getattr(evaluator, "enforceable", False) and not fixture_mode:
             raise VariationDependencyError("non-enforceable evaluators are test-only and cannot run Variation")
+        if type(evaluator) is RemoteControllerEvaluationGateway:
+            evaluator.validate_campaign_bindings(
+                campaign_id=campaign_id,
+                model_digest=model_digest,
+                protocol_digest=VARIATION_PROTOCOL_DIGEST,
+                policy_digest=policy_digest,
+                data_manifest_digest=data_manifest_digest,
+            )
         self._validate_construction_boundary()
         _register_runtime_identity(
             self,
@@ -510,6 +543,7 @@ class BoundedCandidateLoop:
                 evaluator=self.evaluator,
                 generator=self.generator,
                 isolation=self.isolation,
+                private_store=self.private_store,
             ),
         )
 
@@ -532,7 +566,8 @@ class BoundedCandidateLoop:
         evaluator = getattr(self, "evaluator", missing)
         generator = getattr(self, "generator", missing)
         isolation = getattr(self, "isolation", missing)
-        if any(value is missing for value in (fixture_mode, evaluator, generator, isolation)):
+        private_store = getattr(self, "private_store", missing)
+        if any(value is missing for value in (fixture_mode, evaluator, generator, isolation, private_store)):
             raise VariationDependencyError("Variation runtime identity fields are missing")
         if fixture_mode != record.fixture_mode:
             raise VariationDependencyError("Variation fixture mode changed after construction")
@@ -542,6 +577,8 @@ class BoundedCandidateLoop:
             raise VariationDependencyError("Variation generator identity changed after construction")
         if isolation is not record.isolation:
             raise VariationDependencyError("Variation isolation identity changed after construction")
+        if private_store is not record.private_store:
+            raise VariationDependencyError("Variation private trajectory store identity changed after construction")
 
     def _validate_construction_boundary(self) -> None:
         if type(self) in {_ProductionBoundedCandidateLoop, _FixtureBoundedCandidateLoop}:
@@ -557,14 +594,15 @@ class BoundedCandidateLoop:
         if self.fixture_mode is not False:
             raise VariationDependencyError("production Variation cannot carry fixture mode")
         _validate_model_generator_identity(self.generator)
-        if not isinstance(self.evaluator, ControllerEvaluationGateway):
-            raise VariationDependencyError("production Variation requires ControllerEvaluationGateway")
-        if "validate_runtime" in self.evaluator.__dict__ or "evaluate" in self.evaluator.__dict__:
-            raise VariationDependencyError("production evaluator methods cannot be overridden")
-        if type(self.evaluator).validate_runtime is not _ORIGINAL_GATEWAY_VALIDATE_RUNTIME:
-            raise VariationDependencyError("production evaluator runtime validation method was altered")
-        if type(self.evaluator).evaluate is not _ORIGINAL_GATEWAY_EVALUATE:
-            raise VariationDependencyError("production evaluator evaluate method was altered")
+        if type(self.evaluator) not in {ControllerEvaluationGateway, RemoteControllerEvaluationGateway}:
+            raise VariationDependencyError("production Variation requires an exact sealed Evaluation gateway")
+        if type(self.evaluator) is ControllerEvaluationGateway:
+            if "validate_runtime" in self.evaluator.__dict__ or "evaluate" in self.evaluator.__dict__:
+                raise VariationDependencyError("production evaluator methods cannot be overridden")
+            if type(self.evaluator).validate_runtime is not _ORIGINAL_GATEWAY_VALIDATE_RUNTIME:
+                raise VariationDependencyError("production evaluator runtime validation method was altered")
+            if type(self.evaluator).evaluate is not _ORIGINAL_GATEWAY_EVALUATE:
+                raise VariationDependencyError("production evaluator evaluate method was altered")
         self.evaluator.validate_runtime()
 
     def _validate_fixture_boundary(self) -> None:
@@ -576,8 +614,11 @@ class BoundedCandidateLoop:
             raise VariationDependencyError("fixture loop must be explicitly marked fixture mode")
 
     def _run_id(self, task_id: str, seed: int) -> str:
-        return "egv-run-{}".format(
-            digest_for({"campaign_id": self.campaign_id, "arm_id": self.policy.arm_id, "task_id": task_id, "seed": seed})[:40]
+        return commissioning_run_id(
+            campaign_id=self.campaign_id,
+            task_id=task_id,
+            arm_id=self.policy.arm_id,
+            seed=seed,
         )
 
     def _candidate_id(self, *, run_id: str, task_id: str, seed: int, attempt: int, parent: Optional[str]) -> str:
@@ -602,8 +643,8 @@ class BoundedCandidateLoop:
         )
 
     def _validate_task_binding(self, task: VariationTask) -> None:
-        hidden_runner = getattr(self.evaluator, "hidden_runner", None)
-        public_record = hidden_runner.public_record(task.task_id) if hidden_runner is not None else None
+        registry = getattr(self.evaluator, "task_registry", getattr(self.evaluator, "hidden_runner", None))
+        public_record = registry.public_record(task.task_id) if registry is not None else None
         if not isinstance(public_record, Mapping):
             raise VariationConfigurationError("Variation task is not present in the immutable Evaluation manifest")
         expected = {
@@ -640,6 +681,9 @@ class BoundedCandidateLoop:
         result: EvaluationResult,
         attempt_index: int,
     ) -> AttemptRecord:
+        # Evaluation gateways authenticate and admit signed receipts. This
+        # loop boundary deliberately materializes their verdict/effect rows;
+        # candidate_disposition must not be read from a bare gateway call.
         expected_artifact_digest = digest_bytes(proposal.source)
         if result.candidate_id != candidate_id or result.task_id != task.task_id:
             raise VariationCheckpointError("evaluator result is not bound to the requested candidate/task")
@@ -1114,6 +1158,8 @@ class BoundedCandidateLoop:
                     "candidate_artifact_digest": digest_bytes(proposal.source),
                 },
             )
+            if self.private_store is not None:
+                self.private_store.record(candidate_id=candidate_id, context=context, source=proposal.source)
             for evidence_id in proposal.evidence_ids:
                 self.ledger.append_dependency(
                     evidence_id,
@@ -1217,6 +1263,10 @@ class _ProductionBoundedCandidateLoop(BoundedCandidateLoop):
         self._validate_production_boundary()
         self._validate_identity()
         self._validate_budget()
+        from .remote import RemoteControllerEvaluationGateway
+
+        if type(self.evaluator) is RemoteControllerEvaluationGateway and task.evaluator_input is not None:
+            raise VariationConfigurationError("remote Variation trajectories require a public-only task")
         return self._run_trajectory(task, seed=seed, resume_from=resume_from)
 
 

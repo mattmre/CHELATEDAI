@@ -4,12 +4,16 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from pathlib import Path
 import sys
 import tempfile
 from typing import Any, Dict, Mapping, Optional, Sequence
 
 from .canonical import canonical_json, digest_for
+from .campaign.commissioning import prepare_commissioning
+from .campaign.errors import CampaignError
+from .campaign.runner import freeze_commissioning_dataset, run_commissioning
 from .evaluation.artifacts import freeze_evaluation
 from .evaluation.smoke import run_evaluation_smoke
 from .errors import EGVError, PhaseUnavailable
@@ -26,7 +30,21 @@ from .public import (
 )
 from .pilot import run_two_process_smoke
 from .receipts import ReceiptSigner
-from .variation import PinnedModelLoader, run_variation_smoke
+from .training import (
+    freeze_external_development_service,
+    receive_external_adapter,
+    run_external_evaluator_once,
+    run_production_training,
+    run_training_smoke,
+)
+from .variation import (
+    PinnedModelLoader,
+    VARIATION_PROTOCOL_DIGEST,
+    build_remote_evaluator_service_manifest,
+    run_remote_evaluator_once,
+    run_variation_smoke,
+)
+from .variation.remote import REMOTE_VARIATION_REQUEST_LIMIT
 
 
 SLICE2_PHASES = {
@@ -36,7 +54,6 @@ SLICE2_PHASES = {
     "stage",
     "freeze",
     "generate-trajectories",
-    "train-lora",
     "evaluate",
     "redact-and-package",
     "restore-services",
@@ -379,6 +396,38 @@ def _json_output(value: Any, as_json: bool) -> None:
         print(value)
 
 
+def _commissioning_output_targets(trainer: Path, evaluator: Path) -> tuple[Path, Path]:
+    """Reject overlapping public/private destinations before publishing either file."""
+
+    targets = (Path(trainer), Path(evaluator))
+    resolved = tuple(path.resolve(strict=False) for path in targets)
+    if resolved[0] == resolved[1] or any(path.is_symlink() for path in targets):
+        raise CampaignError("commissioning trainer and evaluator outputs must be distinct non-aliased paths")
+    if all(path.exists() for path in targets) and os.path.samefile(targets[0], targets[1]):
+        raise CampaignError("commissioning trainer and evaluator outputs must not be hard-linked")
+    if any(path.exists() for path in targets):
+        raise CampaignError("commissioning output already exists; refusing to overwrite frozen inputs")
+    return targets
+
+
+def _atomic_publish_new_json(path: Path, value: Mapping[str, Any]) -> None:
+    """Publish canonical JSON atomically without replacing an existing destination."""
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    encoded = (canonical_json(value) + "\n").encode("utf-8")
+    descriptor, name = tempfile.mkstemp(prefix=".commissioning-output-", dir=str(path.parent))
+    temporary = Path(name)
+    try:
+        with os.fdopen(descriptor, "wb") as handle:
+            handle.write(encoded)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.link(str(temporary), str(path))
+    finally:
+        if temporary.exists():
+            temporary.unlink()
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Evidence-Governed Variation Evidence, Evaluation, and bounded Variation slices"
@@ -442,6 +491,109 @@ def build_parser() -> argparse.ArgumentParser:
     model_preflight.add_argument("--model-root", required=True, type=Path)
     model_preflight.add_argument("--manifest", type=Path)
     model_preflight.add_argument("--json", action="store_true", dest="as_json")
+    variation_evaluator_once = variation_subparsers.add_parser(
+        "evaluator-once", help="run one independent Docker-backed Variation evaluation from stdin"
+    )
+    variation_evaluator_once.add_argument("--service-manifest", required=True, type=Path)
+    variation_evaluator_once.add_argument("--evaluator-seed", required=True, type=Path)
+    variation_evaluator_once.add_argument("--private-key", required=True, type=Path)
+    variation_evaluator_once.add_argument("--workspace", required=True, type=Path)
+    variation_evaluator_once.add_argument("--state-root", required=True, type=Path)
+    variation_service_freeze = variation_subparsers.add_parser(
+        "freeze-evaluator-service", help="freeze a path-free independent evaluator service manifest"
+    )
+    variation_service_freeze.add_argument("--campaign-id", required=True)
+    variation_service_freeze.add_argument("--model-digest", required=True)
+    variation_service_freeze.add_argument("--evaluator-revision", required=True)
+    variation_service_freeze.add_argument("--evaluator-seed", required=True, type=Path)
+    variation_service_freeze.add_argument("--public-key", required=True, type=Path)
+    variation_service_freeze.add_argument("--command", required=True, type=Path, dest="evaluator_command")
+    variation_service_freeze.add_argument("--output", required=True, type=Path)
+
+    training = subparsers.add_parser("training", help="run the bounded EGV Training runtime")
+    training_subparsers = training.add_subparsers(dest="training_command", required=True)
+    training_smoke = training_subparsers.add_parser(
+        "smoke", help="run the CPU-only Training fixture smoke without a Qwen or promotion claim"
+    )
+    training_smoke.add_argument("--json", action="store_true", dest="as_json")
+    evaluator_once = training_subparsers.add_parser(
+        "evaluator-once", help="run one evaluator-owned signed development-loss request from stdin"
+    )
+    evaluator_once.add_argument("--service-manifest", required=True, type=Path)
+    evaluator_once.add_argument("--model-root", required=True, type=Path)
+    evaluator_once.add_argument("--development-dataset", required=True, type=Path)
+    evaluator_once.add_argument("--private-key", required=True, type=Path)
+    evaluator_once.add_argument("--adapter-store", required=True, type=Path)
+    evaluator_once.add_argument("--device", default="cuda")
+    development_freeze = training_subparsers.add_parser(
+        "freeze-evaluator-service", help="freeze the exact private eight-row dev runtime and public service manifest"
+    )
+    development_freeze.add_argument("--campaign-id", required=True)
+    development_freeze.add_argument("--model-digest", required=True)
+    development_freeze.add_argument("--evaluator-seed", required=True, type=Path)
+    development_freeze.add_argument("--public-key", required=True, type=Path)
+    development_freeze.add_argument("--command", required=True, type=Path, dest="evaluator_command")
+    development_freeze.add_argument("--transfer-command", required=True, type=Path)
+    development_freeze.add_argument("--private-output", required=True, type=Path)
+    development_freeze.add_argument("--service-output", required=True, type=Path)
+    adapter_receive = training_subparsers.add_parser(
+        "receive-adapter", help="receive a sealed adapter into evaluator-owned content-addressed storage"
+    )
+    adapter_receive.add_argument("--service-manifest", required=True, type=Path)
+    adapter_receive.add_argument("--adapter-store", required=True, type=Path)
+    adapter_receive.add_argument("--private-key", required=True, type=Path)
+    training_contract = subparsers.add_parser(
+        "train-lora", help="run production LoRA training from sealed local artifacts"
+    )
+    training_contract.add_argument("--model-root", required=True, type=Path)
+    training_contract.add_argument("--train-manifest", required=True, type=Path)
+    training_contract.add_argument("--development-manifest", required=True, type=Path)
+    training_contract.add_argument("--evaluator-public-key", type=Path)
+    training_contract.add_argument("--evaluator-command", type=Path)
+    training_contract.add_argument("--evaluator-transfer-command", type=Path)
+    training_contract.add_argument("--output", type=Path)
+    training_contract.add_argument("--device", default="cuda")
+    training_contract.add_argument("--json", action="store_true", dest="as_json")
+
+    commissioning = subparsers.add_parser("commissioning", help="prepare and run the frozen 20/8/80 campaign")
+    commissioning_subparsers = commissioning.add_subparsers(dest="commissioning_command", required=True)
+    commissioning_prepare = commissioning_subparsers.add_parser(
+        "prepare", help="prepare separate trainer and evaluator commissioning inputs"
+    )
+    commissioning_prepare.add_argument("--campaign-id", required=True)
+    commissioning_prepare.add_argument("--model-digest", required=True)
+    commissioning_prepare.add_argument("--evaluator-seed", required=True, type=Path)
+    commissioning_prepare.add_argument("--trainer-output", required=True, type=Path)
+    commissioning_prepare.add_argument("--evaluator-output", required=True, type=Path)
+    commissioning_run = commissioning_subparsers.add_parser(
+        "run", help="run one frozen request or resume the complete 80-request matrix"
+    )
+    commissioning_run.add_argument("--trainer-inputs", required=True, type=Path)
+    commissioning_run.add_argument("--model-root", required=True, type=Path)
+    commissioning_run.add_argument("--ledger", required=True, type=Path)
+    commissioning_run.add_argument("--blob-root", required=True, type=Path)
+    commissioning_run.add_argument("--evaluator-manifest", required=True, type=Path)
+    commissioning_run.add_argument("--evaluator-public-key", required=True, type=Path)
+    commissioning_run.add_argument("--evaluator-command", required=True, type=Path)
+    commissioning_run.add_argument("--workspace", required=True, type=Path)
+    commissioning_run.add_argument("--journal", required=True, type=Path)
+    commissioning_run.add_argument("--source-commit", required=True)
+    commissioning_run.add_argument("--request-id")
+    commissioning_run.add_argument("--max-attempts", type=int, default=12)
+    commissioning_run.add_argument("--device", default="cuda")
+    commissioning_run.add_argument("--json", action="store_true", dest="as_json")
+    commissioning_freeze = commissioning_subparsers.add_parser(
+        "freeze-training", help="build the private train-lora dataset on the evaluator"
+    )
+    commissioning_freeze.add_argument("--trainer-inputs", required=True, type=Path)
+    commissioning_freeze.add_argument("--ledger", required=True, type=Path)
+    commissioning_freeze.add_argument("--blob-root", required=True, type=Path)
+    commissioning_freeze.add_argument("--private-store", required=True, type=Path)
+    commissioning_freeze.add_argument("--evaluator-seed", required=True, type=Path)
+    commissioning_freeze.add_argument("--evaluator-public-key", required=True, type=Path)
+    commissioning_freeze.add_argument("--model-root", required=True, type=Path)
+    commissioning_freeze.add_argument("--output", required=True, type=Path)
+    commissioning_freeze.add_argument("--json", action="store_true", dest="as_json")
 
     for phase in sorted(SLICE2_PHASES):
         phase_parser = subparsers.add_parser(phase, help=f"{phase} (outside Slice 2; fails closed)")
@@ -518,14 +670,189 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 loader = PinnedModelLoader(args.model_root, manifest_path=args.manifest)
                 _json_output(loader.preflight(), args.as_json)
                 return 0
+            if args.variation_command == "evaluator-once":
+                stdin_stream = getattr(sys.stdin, "buffer", sys.stdin)
+                raw_request = stdin_stream.read(REMOTE_VARIATION_REQUEST_LIMIT + 1)
+                if isinstance(raw_request, str):
+                    raw_request = raw_request.encode("utf-8")
+                if len(raw_request) > REMOTE_VARIATION_REQUEST_LIMIT:
+                    raise EGVError("remote Variation evaluator request exceeds the bounded input limit")
+                try:
+                    request = json.loads(raw_request.decode("utf-8"))
+                except (UnicodeError, ValueError) as exc:
+                    raise EGVError("remote Variation evaluator request is not valid JSON") from exc
+                response = run_remote_evaluator_once(
+                    request,
+                    service_manifest=args.service_manifest,
+                    evaluator_seed=args.evaluator_seed,
+                    evaluator_private_key=args.private_key,
+                    workspace=args.workspace,
+                    state_root=args.state_root,
+                )
+                print(canonical_json(response))
+                return 0
+            if args.variation_command == "freeze-evaluator-service":
+                from .evaluation.authority import AuthorityPolicy
+                from .evaluation.dataset import EvaluationCorpus
+                from .evaluation.sandbox import DockerSandboxConfig
+
+                corpus = EvaluationCorpus.generate(secret_seed_file=args.evaluator_seed)
+                manifest = build_remote_evaluator_service_manifest(
+                    campaign_id=args.campaign_id,
+                    model_digest=args.model_digest,
+                    protocol_digest=VARIATION_PROTOCOL_DIGEST,
+                    policy_digest=AuthorityPolicy.candidate_execution().digest,
+                    corpus=corpus,
+                    evaluator_revision=args.evaluator_revision,
+                    public_key_path=args.public_key,
+                    command=args.evaluator_command,
+                    docker_config=DockerSandboxConfig.from_environment(),
+                )
+                args.output.parent.mkdir(parents=True, exist_ok=True)
+                args.output.write_text(canonical_json(manifest) + "\n", encoding="utf-8")
+                _json_output(
+                    {
+                        "service_manifest": str(args.output),
+                        "service_manifest_digest": manifest["service_manifest_digest"],
+                        "task_count": len(manifest["task_bindings"]),
+                    },
+                    True,
+                )
+                return 0
             raise EGVError("unsupported variation command: {}".format(args.variation_command))
+        if args.command == "training":
+            if args.training_command == "smoke":
+                _json_output(run_training_smoke(), args.as_json)
+                return 0
+            if args.training_command == "evaluator-once":
+                try:
+                    request = json.loads(sys.stdin.read())
+                except ValueError as exc:
+                    raise EGVError("external evaluator request is not valid JSON") from exc
+                response = run_external_evaluator_once(
+                    request,
+                    service_manifest=args.service_manifest,
+                    model_root=args.model_root,
+                    development_dataset=args.development_dataset,
+                    evaluator_private_key=args.private_key,
+                    adapter_store=args.adapter_store,
+                    device=args.device,
+                )
+                print(canonical_json(response))
+                return 0
+            if args.training_command == "freeze-evaluator-service":
+                from .evaluation.dataset import EvaluationCorpus
+                from .training import TrainingProtocol
+
+                corpus = EvaluationCorpus.generate(secret_seed_file=args.evaluator_seed)
+                service = freeze_external_development_service(
+                    corpus=corpus,
+                    campaign_id=args.campaign_id,
+                    model_digest=args.model_digest,
+                    protocol_digest=TrainingProtocol().digest,
+                    public_key_path=args.public_key,
+                    command=args.evaluator_command,
+                    transfer_command=args.transfer_command,
+                    private_output=args.private_output,
+                    service_output=args.service_output,
+                )
+                _json_output({
+                    "private_runtime": str(args.private_output),
+                    "service_manifest": str(args.service_output),
+                    "service_manifest_digest": service["service_manifest_digest"],
+                    "development_task_count": 8,
+                }, True)
+                return 0
+            if args.training_command == "receive-adapter":
+                try:
+                    request = json.loads(sys.stdin.read())
+                except ValueError as exc:
+                    raise EGVError("external adapter transfer request is not valid JSON") from exc
+                response = receive_external_adapter(
+                    request,
+                    service_manifest=args.service_manifest,
+                    adapter_store=args.adapter_store,
+                    evaluator_private_key=args.private_key,
+                )
+                print(canonical_json(response))
+                return 0
+            raise EGVError("unsupported training command: {}".format(args.training_command))
+        if args.command == "commissioning":
+            if args.commissioning_command == "prepare":
+                from .evaluation.dataset import EvaluationCorpus
+
+                plan = prepare_commissioning(
+                    EvaluationCorpus.generate(secret_seed_file=args.evaluator_seed),
+                    campaign_id=args.campaign_id,
+                    model_manifest_digest=args.model_digest,
+                )
+                trainer_output, evaluator_output = _commissioning_output_targets(
+                    args.trainer_output, args.evaluator_output
+                )
+                _atomic_publish_new_json(trainer_output, plan.trainer_inputs())
+                try:
+                    _atomic_publish_new_json(evaluator_output, plan.private_manifest())
+                except Exception:
+                    trainer_output.unlink(missing_ok=True)
+                    raise
+                _json_output({
+                    "trainer_inputs_digest": plan.trainer_inputs()["trainer_inputs_digest"],
+                    "private_inputs_digest": digest_for(plan.private_manifest()),
+                    "request_count": len(plan.generation_requests),
+                    "live_model_executed": False,
+                }, True)
+                return 0
+            if args.commissioning_command == "run":
+                result = run_commissioning(
+                    trainer_inputs_path=args.trainer_inputs, model_root=args.model_root,
+                    ledger_path=args.ledger, blob_root=args.blob_root,
+                    evaluator_manifest=args.evaluator_manifest,
+                    evaluator_public_key=args.evaluator_public_key,
+                    evaluator_command=args.evaluator_command, workspace_root=args.workspace,
+                    journal_path=args.journal, source_commit=args.source_commit,
+                    request_id=args.request_id, max_attempts=args.max_attempts, device=args.device,
+                )
+                _json_output(result, args.as_json)
+                return 0
+            if args.commissioning_command == "freeze-training":
+                result = freeze_commissioning_dataset(
+                    trainer_inputs_path=args.trainer_inputs, ledger_path=args.ledger,
+                    blob_root=args.blob_root, private_store_root=args.private_store,
+                    evaluator_seed=args.evaluator_seed,
+                    evaluator_public_key=args.evaluator_public_key,
+                    model_root=args.model_root, output=args.output,
+                )
+                _json_output(result, args.as_json)
+                return 0
+            raise EGVError("unsupported commissioning command: {}".format(args.commissioning_command))
+        if args.command == "train-lora":
+            if (
+                args.evaluator_public_key is None or args.evaluator_command is None
+                or args.evaluator_transfer_command is None or args.output is None
+            ):
+                raise PhaseUnavailable(
+                    "train-lora must fail closed without external evaluator authority: provide its frozen public key, "
+                    "content-bound command, service manifest, and an output directory"
+                )
+            result = run_production_training(
+                model_root=args.model_root,
+                training_dataset=args.train_manifest,
+                evaluator_manifest=args.development_manifest,
+                evaluator_public_key=args.evaluator_public_key,
+                evaluator_command=args.evaluator_command,
+                evaluator_transfer_command=args.evaluator_transfer_command,
+                output_root=args.output,
+                device=args.device,
+            )
+            _json_output(result, args.as_json)
+            return 0
         if args.command in SLICE2_PHASES:
             raise PhaseUnavailable(
                 f"{args.command} is outside Slice 2 evidence core; no services, credentials, hidden tests, "
                 "private restore inventory, active DeepSeek workload, or hosted model was accessed"
             )
         raise EGVError(f"unsupported command: {args.command}")
-    except (EGVError, OSError, ValueError) as exc:
+    except (CampaignError, EGVError, OSError, ValueError) as exc:
         print(f"egv: {type(exc).__name__}: {exc}", file=sys.stderr)
         return 1
 

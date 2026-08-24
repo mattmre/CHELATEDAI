@@ -1,8 +1,14 @@
 # EGV Variation slice
 
+Production Variation supports the original local Docker controller and an
+exact sealed independent evaluator command. See
+`docs/egv-remote-variation-evaluator.md` for its trust manifest, private-input
+separation, receipt-chain protocol, deployment commands, and runtime evidence
+boundary.
+
 This document describes the bounded Variation implementation in this branch.
-It composes the merged Evidence ledger/receipt boundary with the merged
-Evaluation controller. Training and Campaign remain unavailable here.
+It composes the merged Evidence ledger/receipt, Evaluation, Training, and
+Campaign foundations.
 
 ## Frozen inputs
 
@@ -45,7 +51,8 @@ public task metadata and retrieved event summaries only; evaluator input and
 expected output remain in the evaluator process.
 
 The loop creates or reuses the Evidence campaign/run, appends candidate and
-dependency records, sends the opaque input through the Evaluation gateway,
+dependency records, invokes the Evaluation gateway (with opaque input retained
+only by a local evaluator or resolved on the independent evaluator),
 materializes signed authority/verdict/effect receipts, and checks that the
 ledger disposition agrees with the evaluator result. A non-read authority
 promotion therefore requires the signed EFFECT receipt accepted by the ledger.
@@ -78,15 +85,18 @@ validation additionally require an actual local
 `peft.PeftModel`/`PeftModelForCausalLM` instance with one active LORA adapter
 whose runtime config matches the sealed `adapter_config.json`. A hexadecimal
 digest, dummy artifact, importable sentinel, or non-applied adapter is
-rejected; the later Training slice is responsible for producing and applying
-that sealed adapter, so an absent adapter fails closed.
+rejected; the Training runtime produces and applies that sealed adapter, while
+an absent or unverified adapter fails closed.
 
 ## Evaluation boundary
 
-Production Variation accepts only `ControllerEvaluationGateway` over the
-enforceable Docker Evaluation sandbox. The controller is the sole path to the
-hidden evaluator and receipt ingestion; a test-only local helper is available
-only for the explicitly labelled floor fixture. Docker isolation and the
+Production Variation accepts only the exact local
+`ControllerEvaluationGateway` or exact sealed
+`RemoteControllerEvaluationGateway`. Both terminate in the enforceable Docker
+Evaluation sandbox. The evaluator controller is the sole path to the hidden
+oracle; remote receipts cross back only after complete signature/binding checks
+and atomic ledger admission. A test-only local helper remains available only
+for the explicitly labelled floor fixture. Docker isolation and the
 Evaluation hidden oracle remain the authority boundary. A fixture smoke never
 claims Docker enforcement, model inference, a GPU, Qdrant, Spark, a campaign,
 or a hosted service. A missing enforceable backend must fail closed.
@@ -94,7 +104,7 @@ or a hosted service. A missing enforceable backend must fail closed.
 `BoundedCandidateLoop(...)` is a compatibility factory: it returns distinct
 private production and fixture concrete classes with distinct `run` methods.
 The production method has no fixture early-return path and unconditionally
-revalidates the Docker gateway, model generator, and authority before any
+revalidates the sealed gateway, model generator, and authority before any
 evaluation. The trusted-host boundary is explicit: arbitrary Python already
 executing in the controller process can inspect or rewrite that process's
 heap, frames, closures, classes, and registries. In-process seals are not a

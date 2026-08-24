@@ -8,11 +8,13 @@ from .lifecycle import DeepSeekLifecycleController
 from .state import CampaignState, CampaignStateStore
 from .transport import ArtifactStagingStore, TransferManifest
 from .trajectories import GenerationRequest, GenerationResponse, reconcile_responses
+from .runner import CommissioningTrainerInputs, freeze_commissioning_dataset, run_commissioning
 
 __all__ = [
     "ArtifactStagingStore",
     "CampaignCoordinator",
     "CommissioningPlan",
+    "CommissioningTrainerInputs",
     "CampaignState",
     "CampaignStateStore",
     "DeepSeekLifecycleController",
@@ -23,5 +25,7 @@ __all__ = [
     "ProtectedRestoreInventory",
     "TransferManifest",
     "prepare_commissioning",
+    "freeze_commissioning_dataset",
     "reconcile_responses",
+    "run_commissioning",
 ]

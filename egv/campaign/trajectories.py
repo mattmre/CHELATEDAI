@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from typing import Any, Dict, Mapping, Sequence, Tuple
 
 from ..canonical import content_id, digest_for, validate_sha256
+from ..evaluation.authority import AuthorityPolicy
+from ..identities import commissioning_run_id
 from ..receipts import verify_receipt
 from ..variation.arms import arm_policy
 
@@ -109,9 +111,11 @@ class GenerationRequest:
         payload = {
             "schema_version": REQUEST_SCHEMA,
             "campaign_id": campaign_id,
-            "run_id": content_id(
-                "run",
-                {"campaign_id": campaign_id, "task_id": task_record["template_id"], "arm_id": arm_id, "seed": seed},
+            "run_id": commissioning_run_id(
+                campaign_id=campaign_id,
+                task_id=task_record["template_id"],
+                arm_id=arm_id,
+                seed=seed,
             ),
             "task_id": task_record["template_id"],
             "task_family": task_record["family_id"],
@@ -275,7 +279,8 @@ def validate_accepted_response(
             or receipt.get("task_id") != request.task_id
             or receipt.get("candidate_id") != response.candidate_id
             or receipt.get("protocol_digest") != request.variation_protocol_digest
-            or receipt.get("policy_digest") != request.arm_policy_digest
+            or receipt.get("policy_digest") != AuthorityPolicy.candidate_execution().digest
+            or receipt.get("arm_policy_digest") != request.arm_policy_digest
             or receipt.get("evaluator_digest") != pinned_evaluator_digest
             or receipt.get("candidate_artifact_digest") != response.candidate_artifact_digest
         ):
@@ -382,5 +387,5 @@ def reconcile_responses(
 __all__ = [
     "ACCEPTED_EVIDENCE_SCHEMA", "COMMISSIONING_ARMS", "COMMISSIONING_SEEDS",
     "CommissioningTrajectoryError", "GenerationRequest", "GenerationResponse", "REQUEST_SCHEMA",
-    "RESPONSE_SCHEMA", "reconcile_responses", "validate_accepted_response",
+    "RESPONSE_SCHEMA", "commissioning_run_id", "reconcile_responses", "validate_accepted_response",
 ]

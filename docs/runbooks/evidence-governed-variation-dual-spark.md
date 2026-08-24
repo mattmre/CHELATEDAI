@@ -1,5 +1,11 @@
 # Evidence-Governed Variation: Dual-Spark Execution Runbook
 
+The executable independent-evaluator boundary is documented in
+`docs/egv-remote-variation-evaluator.md`. Spark 1 uses the sealed remote
+gateway; Spark 2 owns the seed, hidden inputs, expected outputs, private signing
+key, and Docker sandbox. Infrastructure-specific SSH/herdr details remain in
+protected operator configuration and are never committed or published.
+
 ## Purpose and current status
 
 This runbook defines how operators will stage, run, resume, and close the

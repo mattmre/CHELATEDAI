@@ -17,7 +17,14 @@ from .errors import (
     VariationError,
     VariationIsolationError,
 )
-from .generator import CandidateContext, CandidateGenerator, CandidateProposal, DeterministicFixtureGenerator, ModelCandidateGenerator
+from .generator import (
+    CandidateContext,
+    CandidateGenerationEvidence,
+    CandidateGenerator,
+    CandidateProposal,
+    DeterministicFixtureGenerator,
+    ModelCandidateGenerator,
+)
 from .loop import (
     AttemptRecord,
     BoundedCandidateLoop,
@@ -55,6 +62,16 @@ from .retrieval import (
     retrieval_policy,
 )
 from .smoke import run_variation_smoke, scan_public_variation_report
+from .remote import (
+    REMOTE_VARIATION_REQUEST_SCHEMA,
+    REMOTE_VARIATION_RESPONSE_SCHEMA,
+    REMOTE_VARIATION_SERVICE_SCHEMA,
+    RemoteControllerEvaluationGateway,
+    RemoteEvaluatorServiceManifest,
+    build_remote_evaluator_service_manifest,
+    run_remote_evaluator_once,
+)
+from .private import PRIVATE_TRAJECTORY_SCHEMA, PrivateTrajectoryStore
 
 
 __all__ = [
@@ -71,6 +88,7 @@ __all__ = [
     "CANDIDATE_SOURCE_LIMIT",
     "CHECKPOINT_SCHEMA",
     "CandidateContext",
+    "CandidateGenerationEvidence",
     "CandidateGenerator",
     "CandidateProposal",
     "CheckpointStore",
@@ -89,7 +107,14 @@ __all__ = [
     "OrdinaryFailureRetrieval",
     "PinnedModelLoader",
     "PinnedModelManifest",
+    "PRIVATE_TRAJECTORY_SCHEMA",
+    "PrivateTrajectoryStore",
     "RETRIEVAL_POLICIES",
+    "REMOTE_VARIATION_REQUEST_SCHEMA",
+    "REMOTE_VARIATION_RESPONSE_SCHEMA",
+    "REMOTE_VARIATION_SERVICE_SCHEMA",
+    "RemoteControllerEvaluationGateway",
+    "RemoteEvaluatorServiceManifest",
     "RetrievedEvidence",
     "RetrievalResult",
     "SealedAdapterArtifact",
@@ -110,8 +135,10 @@ __all__ = [
     "arm_policy",
     "build_local_manifest",
     "build_local_adapter_manifest",
+    "build_remote_evaluator_service_manifest",
     "model_state_digest",
     "retrieval_policy",
     "run_variation_smoke",
+    "run_remote_evaluator_once",
     "scan_public_variation_report",
 ]

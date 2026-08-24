@@ -1748,7 +1748,7 @@ try:
     if not callable(main):
         raise RuntimeError('candidate must define main(value)')
     result = main(json.load(sys.stdin))
-    sys.stdout.write(json.dumps(result, sort_keys=True, separators=(',', ':')) + '\n')
+    sys.stdout.buffer.write((json.dumps(result, sort_keys=True, separators=(',', ':')) + '\n').encode('utf-8'))
 except _LocalAuthorityDenied as exc:
     sys.stderr.write(str(exc) + '\n')
     sys.exit(41)

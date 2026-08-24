@@ -21,6 +21,7 @@ from egv.campaign.trajectories import (
     validate_accepted_response,
 )
 from egv.evaluation.dataset import EvaluationCorpus, FAMILY_SPECS
+from egv.evaluation.authority import AuthorityPolicy
 from egv.receipts import ReceiptSigner, receipt_hash
 from egv.variation.arms import arm_policy
 from egv.variation.loop import VARIATION_PROTOCOL_DIGEST
@@ -41,7 +42,8 @@ def _signed_receipts(request: GenerationRequest, signer: ReceiptSigner, artifact
         "candidate_id": candidate_id,
         "candidate_artifact_digest": artifact_digest,
         "protocol_digest": request.variation_protocol_digest,
-        "policy_digest": request.arm_policy_digest,
+        "policy_digest": AuthorityPolicy.candidate_execution().digest,
+        "arm_policy_digest": request.arm_policy_digest,
         "evaluator_digest": digest_for("commissioning-evaluator"),
         "exit_status_class": "SUCCESS",
     }
