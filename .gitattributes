@@ -1,2 +1,6 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# These evidence-bound Markdown files use intentional two-space hard breaks.
+docs/research/rb13-wave0a-method-dev-protocol-2026-08-15.md text eol=lf whitespace=-blank-at-eol
+docs/research/rb13-wave0a-portable-archive-verifier-addendum-2026-08-16.md text eol=lf whitespace=-blank-at-eol

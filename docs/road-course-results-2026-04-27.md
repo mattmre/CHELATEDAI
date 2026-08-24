@@ -1,5 +1,11 @@
 # Road-Course Results And Default Threshold Decision
 
+> [!WARNING]
+> **LEGACY_METRIC_LINEAGE_BLOCKED (2026-07-23).** Retrieval-metric values and
+> any threshold decision derived from them are historical diagnostics, not
+> accepted evidence, until the caller is migrated and regenerated under
+> `docs/research/metric-lineage-repair-protocol-2026-07.md`.
+
 This run used the smallest standard local embedding model path already used by the repository: `sentence-transformers/all-MiniLM-L6-v2`.
 
 ## Campaigns run

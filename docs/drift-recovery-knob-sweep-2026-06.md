@@ -1,5 +1,11 @@
 # Drift Recovery C3 Knob Sweep - June 2026
 
+> [!WARNING]
+> **LEGACY_METRIC_LINEAGE_BLOCKED (2026-07-23).** Exact nDCG values,
+> selection ordering, and derived gates below are historical diagnostics, not
+> accepted evidence, until corrected regeneration. See
+> `docs/research/metric-lineage-repair-protocol-2026-07.md`.
+
 Manifest: `experiment_runs/drift-recovery/knob-sweep/knob-sweep-manifest-2026-06.json`.
 Scope: calibrated rotation setting only; all 12 seed-42 grid cells are reported.
 Selection policy: Top two cells by seed-42 final NDCG; ties are broken by lower trigger threshold, then profile name, then lower bound epsilon.

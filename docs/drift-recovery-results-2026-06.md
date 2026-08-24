@@ -1,5 +1,11 @@
 # Drift Recovery Results - June 2026
 
+> [!WARNING]
+> **LEGACY_METRIC_LINEAGE_BLOCKED (2026-07-23).** Exact nDCG values,
+> comparator ordering, and derived gates below are historical diagnostics, not
+> accepted evidence, until corrected regeneration. See
+> `docs/research/metric-lineage-repair-protocol-2026-07.md`.
+
 Source artifacts: `experiment_runs/drift-recovery/scifact_C*_{rotation,noise}_seed*.json`.
 Matrix: SciFact, conditions C0-C4, drift fraction 0.5, rotation angle 25 degrees, noise sigma 0.05, seeds 42/1337/7, `--max-queries 100 --sample-docs 1200 --cycles 12`.
 Device recorded in run configs: cuda. (Compute ran on GPU; `HF_HUB_OFFLINE=1` was set

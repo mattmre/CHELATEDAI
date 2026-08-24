@@ -1,5 +1,11 @@
 # Drift Recovery Calibrated Severity Results - June 2026
 
+> [!WARNING]
+> **LEGACY_METRIC_LINEAGE_BLOCKED (2026-07-23).** Exact nDCG values,
+> comparator ordering, and derived gates below are historical diagnostics, not
+> accepted evidence, until corrected regeneration. See
+> `docs/research/metric-lineage-repair-protocol-2026-07.md`.
+
 Manifest: `experiment_runs/drift-recovery/calibrated/calibration-manifest-2026-06.json`.
 Choice rule: Among scout cells, choose a setting inside the 8-20% baseline-drop zone closest to 12%; if none land in-zone, choose the closest overall and disclose that.
 

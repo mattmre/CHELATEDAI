@@ -1,5 +1,1218 @@
 # Progress Log
 
+## 2026-08-16 — Dual-Spark bounded campaign completed
+
+- Staged an isolated CHELATEDAI research checkout on both DGX Sparks and used
+  GBA1 plus gx10-6724 as separate bounded test workers. The existing two-node
+  DeepSeek service was stopped for the GPU-backed smoke and reserved for exact
+  restoration after validation.
+- Implemented and adversarially hardened a real Qwen-Scope smoke against the
+  pinned `Qwen3.5-2B-Base` revision, official 32K SAE revision, and exact
+  layer-11 checkpoint digest. The GBA1 run passed in 19.51 seconds with about
+  4.49 GiB peak RSS and 3.62 GiB peak reserved CUDA memory. Repeated residual
+  and feature outputs were exact under the frozen tolerances. This closes only
+  the real hook/checkpoint/tensor integration question.
+- Implemented the RB-15 2x2 distribution-by-nonlinearity factorial and ran
+  deterministic IDs 7 and 11 in parallel on the two Sparks. Both completed all
+  170 cells and 2,040,000 RK4 steps with 8,332 resource checks. Both dispositions
+  are `FACTORIAL_KILLED_ON_FROZEN_SYNTHETIC_GATES`: mean distributed Duffing
+  gain passed, while the required interaction, worst-case excess, hysteresis,
+  and settling gates failed.
+- Implemented RB-13 Wave 0A with frozen SELECT/REPORT phases. The first v7
+  SELECT attempt failed closed at the EK0 RSS backstop and was quarantined. The
+  v8 resource-only calibration used the retained RSS measurement, not its stage
+  metrics; v8 then completed 12 entries per phase and verified cross-phase.
+- RB-13 dispositions are conservative: EK0 requires compatibility/migration
+  design, BIL1 reduces to paired Boolean union, SPU0 is ordinary factorization
+  equivalence, and VAR1's cross-phase null does not survive. No result supports
+  a production, general-utility, or novelty claim.
+- Added portable archive verification without weakening live exact verification.
+  It binds the Linux SELECT/REPORT manifest roots, exact file sets, schemas,
+  statuses, phase/seed/stage identities, finite values, and narrow measured
+  cross-platform float tolerances. Independent final review scored the Qwen,
+  RB-15, and RB-13 archive slices BHS 100.
+
+## 2026-08-12 — nonlinear-neutraliser video/source review started
+
+- User supplied YouTube video `eQwG_xl-h_k` as a possible attenuation answer
+  for the subspace lane.
+- Confirmed the title and presenter through YouTube's metadata endpoint.
+- Recovered the duration, event/programme identity, INI seminar-record link,
+  and availability of automatic English captions. Temporary `yt-dlp` was
+  installed under `C:\tmp\chelatedai-video-audit-deps`; the first API request
+  hit a local TLS issuer-chain failure, and the public metadata request was
+  recovered with certificate checking disabled. Primary-source corroboration
+  remains mandatory.
+- Opened RB-15 as a source-to-equation-to-prior-art-to-CHELATEDAI audit. No
+  test, mechanism transfer, scientific claim, or production change has been
+  made yet.
+- Located the 2025 primary paper by Fulton, Sorokin, and Abdi and two primary
+  conference records describing the single- and multiple-absorber programme.
+  The source record now supports a precise working description: Duffing-type
+  local attachments create amplitude-dependent effective response, and
+  sequential attachments encounter different local amplitude/phase after
+  upstream scattering. Full equations, stability boundaries, experimental
+  results, and nearest-prior-art comparison remain under review.
+- Recovered and reviewed the complete timestamped 2026 talk transcript and key
+  slides from a local 360p progressive copy. This confirmed that the talk's new
+  contribution is an analytical/semi-analytical two-Duffing-neutraliser
+  feedback model; its physical experiment remains single-neutraliser.
+- Captured the reported negative and unresolved results rather than treating
+  the motivating graded-metamaterial picture as validation: spacing did not
+  broaden the dip in the shown parameter cell, nonlinear composition produced
+  loops/isolas/unstable branches, duplicate solutions made the iterative solver
+  expensive, and higher harmonics plus wider parameter sweeps remain open.
+- Completed the first component-level prior-art collision pass. Oscillatory
+  GNNs, nonlinear reaction-diffusion, graph wave dynamics, adaptive ARMA/state-
+  space graph models, and query-conditioned RAG traversal already occupy broad
+  versions of the idea. This forces the CHELATEDAI candidate into a narrower
+  sidecar-state plus certified-nuisance plus passivity formulation.
+- The follow-up collision pass found Port-Hamiltonian Deep Graph Networks and
+  compositional port-Hamiltonian neural subsystem learning. Those works occupy
+  energy-regulated graph propagation and passive nonlinear subsystem
+  composition, leaving only the evidence-specific query-reset/provenance/RAG
+  contract as a possible distinction.
+- The adversarial source/novelty audit added bracket-based dissipative graph
+  dynamics, compositional port-Hamiltonian distributed control, the final ACL
+  2026 CatRAG paper, and MemORAI. It also narrowed the implementation to a
+  source-inspired Duffing analogue rather than the talk's delayed-reflection,
+  ordered-branch two-neutraliser solver.
+- No public thesis, code, dataset, or peer-reviewed two-neutraliser paper was
+  located. The talk says the thesis submission was still forthcoming; the
+  2025 paper reports that no datasets were generated or analysed. The two-
+  neutraliser presentation must therefore be treated as current, unpublished
+  conference work rather than independently reproduced evidence.
+- Wrote the complete source/formal-transfer audit at
+  `docs/research/nonlinear-neutraliser-subspace-transfer-2026-08.md`, including
+  the energy inequality, protected/nuisance separation, exact hypothesis,
+  matched controls, candidate-survival gates, and kill conditions.
+- Added `PRW-RCM1-NLN` to the authoritative queue as an optional RB-15
+  subcell. Its parent candidate-survival lane remains blocked on `PRW-RCM1`
+  and `PRW-ISI1`; only its dependency-light Stage-A numerical sanity fixture
+  is frozen for execution.
+- Froze the first Stage-A parameters before running any output: scalar
+  hardening sweeps, four-/five-node grounded paths, linear and passivity
+  tolerances, matched one/distributed/co-located attachment controls,
+  deterministic run IDs 7 and 11, and strict CPU/RSS/time ceilings.
+- Before execution, clarified two parameter-free implementation conventions:
+  the protected control is a block-diagonal second feature channel on the same
+  four-node path, and forward/reverse sweeps are independent warm-started
+  continuations whose full outputs are retained. Primary-paper extraction also
+  corrected "first/second harmonics" to first-/second-order approximations,
+  with first and third harmonics in the higher-order approximation.
+- Also froze all-zero starting states for both forced sweep directions. Run ID
+  11 changes only the four-node unforced/linear initial state, so repeated
+  forced-grid values across IDs are duplicate execution evidence, not a second
+  robustness result.
+- Independent math review confirmed the coupling-sign cancellation but found
+  that the original prose overstated passivity as boundedness and understated
+  protected-subspace requirements. Corrected the formal audit to require an
+  episode-fixed symmetric operator set, distinguish dissipativity from
+  coercive boundedness, and require host-operator invariance as well as an
+  attachment nullspace.
+- That review's scratch Duffing calculation exposed a likely upper-boundary
+  maximum before the official run. Recorded this output exposure, froze an
+  ordinary-least-squares harmonic metric and deterministic boundary/tie policy,
+  and prohibited grid widening. A censored peak remains unresolved.
+- Before official execution, added an analytic whole-grid equivalence oracle
+  for two identically initialized co-located half-parameter attachments versus
+  one full-parameter attachment, required an independently assembled linear
+  oracle, and clarified that Stage A can establish only frozen-fixture
+  execution consistency.
+- Also caught a measurement omission before official execution: endpoint
+  transfer gain cannot reveal whether the first attachment changes the local
+  amplitude/phase seen by the second. Added report-only per-attachment mismatch
+  harmonics, phase, and descriptive effective stiffness without changing the
+  frozen grid, initialization, or pass gates.
+- The first run-7 launch stopped before any numerical cell or artifact because
+  the Windows RSS preflight lacked 64-bit-safe `ctypes` signatures. The output
+  directory was empty. Declared the Windows API types explicitly, confirmed a
+  live working-set reading, and added a regression before restarting the
+  scientifically unchanged frozen run.
+- The second run-7 launch completed the grid in roughly 111 seconds but strict
+  JSON serialization rejected NumPy `float64`/`bool_` values in the protected
+  result. No artifact was written. Converted only those representation types
+  to native JSON scalars and added a reduced complete-payload strict-JSON
+  regression; no scientific parameter or result rule changed.
+- Completed official frozen runs 7 and 11 and verified both canonical artifact
+  manifests, byte counts, and SHA-256 digests. Run 7 artifact digest is
+  `7a8dbe2107e88450d311835f27519f7c7fc7af4a00275a6ad151105141feafd5`;
+  run 11 is
+  `2bd66d70383c75dbe29fa2b2ee2c5b393528c35b127a9a5dec7354d0f8a483d6`.
+- Both runs passed the self-RSS/computation-duration screens plus linear,
+  sampled-storage, protected-channel, and co-location equivalence checks; both
+  retained the same single failure:
+  high-amplitude forward scalar peak at the frozen 1.60 endpoint. All 284
+  forced cells per run were finite. The scalar and graph forced subdocuments
+  were byte-for-byte identical across run IDs, as required, with canonical
+  digests
+  `ff5e46d65d62f3fa4e8667c876f973c361f7bbe263a87fd65630527bfe3f2485`
+  and `ee34116743a418f951ce6db16cab3d122555b8b4b7c1dfad6a03b2220ab6a274`
+  respectively.
+- Recorded the strongest positive as a descriptive self-grading witness, not
+  a promotion: distributed identical attachments saw sharply different local
+  amplitude, phase, and implied stiffness. Post-hoc grid summaries suggest
+  broader and less branch-sensitive attenuation than a single/co-located
+  attachment, but the single attachment retains a deeper local notch and the
+  missing distributed-linear control prevents attributing the contrast to the
+  cubic term.
+- Closed Stage A as `COMPLETE_WITH_FROZEN_FAILURE`; queued only a future
+  reconditioned distribution-by-nonlinearity factorial with predeclared
+  aggregate/worst-case/hysteresis endpoints. Stage B remains blocked.
+- Independent Tier-B review reproduced both manifests, cell counts, ordering,
+  canonical digests, failures, and published metrics. It found no numerical
+  corruption, but capped the first handoff at 90/important because the source
+  resets forcing phase at each warm-started frequency cell without that
+  convention having been separately frozen in prose, and because the wall/RSS
+  limits were measured after computation rather than enforced during it.
+- Reconditioned the evidence contract without changing the numerical model:
+  v2 artifacts make the phase-zero-per-cell convention and its preregistration
+  limitation machine-readable, and call the resource values post-hoc
+  computation-duration/self-RSS screens rather than hard-stop guards.
+- Fresh repository smoke: the production-import floor passed. The Antigravity
+  Engine ceiling could not construct `all-MiniLM-L6-v2` because this host's
+  Python TLS chain rejects Hugging Face's issuer. Certificate checking was not
+  disabled. Hosted CI subsequently passed Rule 5 smoke and full unit-test
+  discovery on Python 3.9, 3.10, 3.11, and 3.12, so the local TLS issue is not
+  a handoff blocker or an RB-15 numerical failure.
+- The consolidation PR remains draft-only at aggregate BHS 90/important despite
+  all hosted checks passing: its 159-file scientific/evidence surface has not
+  received an aggregate adversarial review. The exact repaired RB-15 slice was
+  independently reviewed at 100/none.
+
+
+## 2026-08-02 — RB-14 queue-only observability extension
+
+- Loaded the planning-with-files workflow and ran its restart/catch-up helper;
+  it returned no unsynchronized-session report.
+- Inspected repository instructions, the brutal-honesty convention, current
+  worktree status, the authoritative RB-13 queue, and the Tier C handoff.
+- Confirmed that user-owned documentation changes and an untracked RB-13 queue
+  are already present; all edits in this slice preserve and extend them.
+- Completed a three-way read-only reconciliation of authoritative queue
+  placement, duplicate/overlap status, and concrete prior implementation/result
+  evidence.
+- Added `PRW-OBS1`, `PRW-COA1`, and `PRW-CTX1`, plus the constrained
+  `PRW-SPU1-TRANSPORT` confound subcell and optional
+  `PRW-EK7-COALITION` survivor ablation, to the authoritative local draft
+  queue with explicit dependencies, controls, nulls, falsifiers, evidence
+  states, and resource ceilings.
+- Synchronized `task_plan.md`, `findings.md`, and `docs/next-session.md`, then
+  completed a read-only status/dependency and prose consistency review.
+- A final adversarial read-only review found an ambiguous Wave-0 sequence and
+  an implicit coalition-RAG prerequisite. Reconciled the sequence as Wave 0A
+  plus later-authorized Wave 0B and replaced the implicit gate with the acyclic
+  `PRW-COA1` sanity, `PRW-CTX1` disposition, and unchanged EK7 entry gates.
+- The bounded adversarial recheck returned `PASS`: Wave 0A/0B is synchronized,
+  the coalition-RAG dependency is noncircular, and no new status contradiction
+  was found.
+- No implementation, test execution, experiment execution, Git publication,
+  PR mutation, merge, or cleanup was performed.
+
+## 2026-08-04 — RB-14 implementation and validation resumed
+
+- User authorized implementation and testing of the queued RB-14 lanes.
+- Scope is bounded CPU-only synthetic validation with no production-path change,
+  model download, GPU, concurrent experiment process, or OOM-risk campaign.
+- Implemented `observability_experiments.py` with bounded OBS1, COA1, CTX1,
+  coordinate-transport, and matched-token coalition-RAG surrogate stages, plus
+  `run_rb14_observability.py` for atomic JSON artifacts and a manifest.
+- Added 19 focused tests. The focused RB-14 suite plus existing CRSV tests pass:
+  `python -m unittest tests.test_observability_experiments
+  tests.test_crsv_experiment` -> `Ran 50 tests ... OK`.
+- Ran the bounded runner with seed `7`; all five stage sanity maps are true and
+  artifacts are retained under `artifacts/method-dev/rb14-observability/`.
+  Each artifact deliberately retains `scientific_claim_status=UNCONFIRMED`.
+- Re-ran the same bounded grid with seed `11` under the `seed-11` child
+  directory and recomputed all ten artifact digests successfully. This is not
+  a disjoint confirmation set because the fixture and estimator are unchanged.
+- The first full discovery attempt was stopped after a process check showed
+  about `709 MB` RSS. It produced only partial output (including a BCC-1
+  missing-manifest message) and no final summary, so the full suite is
+  unverified rather than green. No OOM or production-path mutation occurred.
+- Implementation phases 1–5 are complete for bounded synthetic sanity; phase 6
+  (status/findings/next-session reconciliation) is in progress. Candidate
+  survival, independent confirmation sets, live corpus/model evaluation, and
+  the unchanged EK7 entry gate remain outstanding.
+
+## RB-13 evidence-kernel and masked-subplane queue design: 2026-07-27
+
+- Read the repository and planning-with-files instructions.
+- Ran the restart/catch-up helper; it emitted no unsynchronized-session report.
+- Confirmed the worktree was clean before RB-13 edits on
+  `codex/prime-ring-onion-method-dev`, currently 15 commits ahead of
+  `origin/main`.
+- Started three independent read-only lanes:
+  - authoritative queue/handoff surface mapping;
+  - mathematical formalization and category-error audit;
+  - Donto-adjacent agent/brain memory experiment design.
+- Completed the three lanes and reconciled their outputs:
+  - repository mapping found direct CRSV/SRS-1 overlap and confirmed that fixed
+    stacking remains closed by JO1's flat identity;
+  - the mathematical audit separated decision deference, propagation
+    deflection, recurrent graph filtering, heterogeneous-space compatibility,
+    and discrete versus smooth optimization;
+  - the memory audit found that current stores are bounded mutable caches, not
+    an already-complete bitemporal evidence kernel.
+- Added the umbrella queue
+  `docs/research/evidence-kernel-masked-subplane-experiment-queue-2026-07.md`
+  with 16 stable `PRW-*` draft cards, explicit operators, controls, nulls,
+  pass/kill boundaries, dependencies, prior-art limits, and sequential
+  sub-1-GiB resource envelopes.
+- A fresh adversarial documentation review rejected the first draft rather
+  than allowing a premature preregistration claim. The reconditioned draft:
+  - separates output equivalence from dense/factorized compute and storage;
+  - removes typed-gate confounding from the bitemporal compatibility card;
+  - separates scalar relevance propagation from idempotent lineage-set
+    evidence;
+  - adds `PRW-BIL1` for explicit lattice orders, merge, and fixed points;
+  - centralizes exact card status/dependencies; and
+  - narrows classical Euler-Lagrange to a smooth continuum subproblem.
+- Added a cross-lane pointer without rewriting prior dispositions in
+  `docs/research/prime-ring-remaining-hypotheses-2026-07.md`.
+- Updated `task_plan.md` and `docs/next-session.md` with the authoritative
+  queue, dependency states, first wave, and resume guards.
+- Validated the reconditioned draft without an experiment campaign:
+  - `git diff --check` passed;
+  - the untracked queue has 16 unique expected card headings, no missing IDs,
+    and no trailing whitespace;
+  - `python scripts/check_block_flag.py` passed with `CLEAR` and the same three
+    first-cycle open carried-debt rows; and
+  - the fresh adversarial re-review returned `PASS` with no remaining blocker.
+- No experiment has been executed and no mechanism result is claimed in this
+  entry.
+
+## RB-12 lossless preservation and merge campaign: 2026-07-27
+
+- Continuation checkpoint after the machine restart:
+  - primary evidence commit `186590c8` and bookkeeping commit `7dec564d` are
+    local, 13 commits ahead of `origin/main`, and protected by a verified
+    full-history bundle;
+  - the independently validated private V2 residual manifest binds 2,584
+    ignored/untracked files, 1,678,118,521 bytes, ten worktrees, two stashes,
+    and `cleanup_authorized: false`, with zero inventory errors;
+  - both stashes now have exact local archive refs and a verified two-ref
+    complete-history bundle; neither stash was applied or dropped;
+  - the remaining primary/H2 evidence set is preserved in a verified private
+    ZIP with 140 source payload files plus one internal manifest (141 ZIP
+    entries), and the one unique untracked Python source is preserved in a
+    verified one-entry private ZIP for later reconditioning;
+  - full Git object validation passes with `core.commitGraph=false`; the 17
+    accelerated-path errors are isolated to privately fingerprinted stale
+    commit-graph metadata. No rewrite, GC, prune, or cleanup was performed.
+- Exact-head repair dispositions supersede the earlier active-loop snapshot:
+  - PR #292 candidate `835f6199` scored Tier B 70/Critical because only 11 of
+    113 affected artifacts were quarantined and its validator was fail-open; a
+    complete 113/113 conservative pass is now committed at `f2e41d42`, with
+    all 103 historical JSON/PNG bytes unchanged, 28 hostile validator cases
+    passing, explicit CI wiring, and a verified incremental recovery bundle;
+    a second independent exact-candidate review scored the local content Tier B
+    100, making it content-ready for owner-approved publication/CI. The current
+    public state remains 70/Critical because the PR still points to `eb750958`,
+    carries stale invalid metric/BHS claims, and has no `f2e41d42` hosted runs;
+  - PR #293 candidate `454e4a32` scored 70/Critical at iteration six after
+    deterministic rollback, lost-update, and provenance failures. Its bundle
+    and local archive ref are verified; no seventh repair will be attempted;
+  - PR #294 candidate `6e78cf41` scored 100 only before base replacement. Its
+    code is independent of rejected #293 and will be transplanted without the
+    rejected ancestry, then reviewed again;
+  - PR #295 candidate `730b305e` scored 60/Critical at iteration five after
+    deterministic false-promotion and state-integrity failures. Its bundle and
+    local archive ref are verified; no sixth repair will be attempted.
+- Every public mutation remains blocked on explicit approval of the exact
+  destination and payload: pushes, PR title/body/base edits, closes/
+  withdrawals, replacement PR opens, and merges. Cleanup remains excluded
+  until all accepted work is merged, a live residual ledger is regenerated,
+  and the owner approves one item at a time.
+- User authorized a preservation-first GitHub merge campaign and explicitly
+  deferred all cleanup until after merge, with separate sign-off for each
+  worktree and residual item.
+- Read the planning-with-files and PR-management workflows, ran session
+  catch-up, reread the current planning/handoff surfaces, and recovered the
+  live starting topology.
+- Starting primary worktree:
+  `codex/prime-ring-onion-method-dev` at `41779be4`, 11 commits ahead of the
+  last observed `origin/main`, with the RB-11 modified/untracked inventory
+  intact.
+- Five linked worktrees were found:
+  `agent-build`, `h2-rerun`, `relaxed-wozniak-271e04`,
+  `semantic-cache-h1`, and `waypoint-recovery`. None has been removed, reset,
+  cleaned, regenerated, or otherwise mutated.
+- Read the complete ARCH-AEP overview, orchestrator briefing, workflow, and
+  tier-close checklist. The merge package must bind exact-head test evidence to
+  the authoritative tracker and cycle verification log, preserve one cohesive
+  PR theme, and record a phase summary; a push alone is not closure.
+- The first default-shell memory lookup failed because Windows selected the
+  access-denied WindowsApps PowerShell launcher. Recovery continued through the
+  installed PowerShell 7 runtime; the failed call made no repository change.
+- Opened ARCH-AEP cycle `AEP-20260727-7` with a scope lock, backlog, tracker,
+  verification log, and updated authoritative indexes/pointer. Cleanup is
+  represented as a deliberately blocked post-merge finding.
+- Refreshed GitHub: `origin/main` remains `34ce4b56`; the primary head is
+  exactly 11 commits ahead and zero behind, and no remote ref currently points
+  at `41779be4`.
+- Decomposed that stack:
+  - commits 1-4 are open PR #292 at exact head `eb750958`;
+  - commits 5-11 are the local semantic-cache/CRSV/prime-ring stack;
+  - the large deletion count is PR #292's reviewed untracking of raw campaign
+    data, whose blobs remain in Git history and local recovery archives.
+- Verified all three recovery bundles with `git bundle verify`; each contains a
+  complete history and resolves to its recorded branch head.
+- Recorded complete SHA-256 values for the four RB-10 JSONs and all recovery
+  packages. One hash command returned nonzero only because its glob also
+  selected the preserved v8 directory; all intended files were hashed and no
+  payload changed.
+- Completed the primary allowlist validation without regenerating retained
+  evidence:
+  - full prime-ring suite: `334/334` passed in 36.579 seconds;
+  - inherited semantic-cache/BCC1/CRSV suite: `202/202` passed in 112.197
+    seconds;
+  - workflow-equivalent offline full discovery: `3330/3330` passed, 11
+    skipped, in 144.059 seconds;
+  - Ruff lint passed; all 16 allowlisted new source/test files passed scoped
+    Ruff formatting; all 500 applicable Python files parsed under the Python
+    3.9 grammar; block flag was `CLEAR`; v3.3 schema drift and
+    `git diff --check` passed;
+  - an isolated wheel built successfully at 626,146 bytes with SHA-256
+    `053de47bba3ee76835459f2d6dd2e63238174759388b3ab9fdabce46f829925d`,
+    installed into a fresh external target, and imported all 26 newly
+    registered modules from outside the source tree.
+- The online smoke floor tier passed. The ceiling tier could not download its
+  Hugging Face model because this machine's TLS certificate chain was rejected.
+  TLS verification was not disabled. The first full discovery was interrupted
+  after its log proved it was repeatedly exhausting the same TLS retries; the
+  exact test process was verified and stopped, then identical discovery passed
+  against the existing offline cache. The clean hosted runner remains the
+  online acceptance authority.
+- Repository-wide `ruff format --check .` reports 258 historical files outside
+  this preservation diff. That non-CI baseline was not rewritten; doing so
+  would mix an unrelated mass-format change into evidence preservation.
+- Three isolated agents repaired the live comments on PRs #293-#295 and
+  committed only to their dedicated worktrees. Fresh independent reviewers
+  were then assigned before any push:
+  - PR #293 repair `b0d72d12` is not merge-ready. Tier B found a shallow
+    mutable-attribute snapshot, an unguarded/nontransactional re-anneal scorer,
+    and a bypassable sedimentation-mode precondition. The second repair
+    iteration is active.
+  - PR #295 repair `7a79b0ec` is not merge-ready pending finite-number
+    validation for routing margins and promotion thresholds discovered by
+    Tier B.
+  - PR #294 exact-head review is still pending at this checkpoint.
+- Current phase: explicit allowlist staging and independent PR repair/review.
+  The exact 38-path evidence/source allowlist passed staged Gitleaks,
+  mode/size, whitespace, and personal-path checks and was committed locally as
+  `186590c8bde8311f39c17167110d5ba30b13a4fd`. Bookkeeping publication,
+  remote verification, PR mutation, merge, and cleanup have not yet occurred.
+
+## RB-11 code-backed status reconciliation: 2026-07-26
+
+- Recovered the live dirty tree before editing any status surface:
+  - branch `codex/prime-ring-onion-method-dev` at `41779be4`, ahead of
+    `origin/main` by 11 commits;
+  - six modified planning/research files;
+  - four RB-10 JSONs, three research documents, eight source modules, and eight
+    focused test modules untracked;
+  - no RB-10 evidence is yet durable in a clean checkout or published branch.
+- Read the repository brutal-honesty rules, current task plan, findings,
+  progress, `docs/next-session.md`, hypothesis ledger, both prime-ring
+  protocols, code, tests, and artifact fields before changing the queue.
+- Code validation:
+  - `python -m unittest -v` over leading shell, JO1, A1, G2, RB-10 contract,
+    and sequential runner modules: 69 tests, all passed in 9.017 seconds;
+  - independent mesh audit: 24/24 JO1/A1/G2 tests passed;
+  - `validate_run_manifest(...)`: `True` against the retained manifest and all
+    three artifacts;
+  - all 38,610 audited fixed-stack versus flat Hamming distances match exactly.
+- Decoder boundary audit:
+  - first attempt failed before query construction because informal waypoint
+    ID `audit` violated the production ID contract;
+  - reran with `PRW-WP-AUDIT`;
+  - generated all 56 leading-shell midpoint observations for both truth types
+    at `p in {11,19,31}`;
+  - exact integer-Hamming and direct dot-product scoring returned `336/336`
+    cross-type ties;
+  - the current float-FFT dense path returned only `117/336` bit-exact ties;
+    remaining margins were at most `3.3306690738754696e-16` and sometimes
+    changed the winner;
+  - reconditioned status to internal exact-Hamming analytic theorem plus failed
+    current production linkage, rather than deleting the theorem.
+- Mesh/stack reconditioning:
+  - closed only JO1's stacking/dimensional mechanism; retained the ordinary
+    constrained-code residue until known/unrestricted controls decide it;
+  - retained A1 as conditional because truth-local multiset relabelings do not
+    yet prove a single global prior-preserving action isometry;
+  - retained G2H only on its unresolved pairwise-auxiliary minimum and named
+    representation/decoder-cost frontier; static advantage remains false and
+    G2A remains blocked.
+- Prior-art validation:
+  - checked the primary 1992 Nguyen--Györfi--Massey paper;
+  - confirmed its cyclic-shift `GF(p)` representation, Legendre inner distance
+    `(p+1)/2`, and outer-distance-times-inner-distance construction;
+  - added the direct construction collision to the bounded T1R claim chart
+    without claiming that it resolves the narrower event-union theorem.
+- Updated current planning, hypothesis, protocol, findings, progress, and
+  next-session surfaces. Historical dated sections remain in place and are
+  explicitly labeled as superseded where their current-status wording drifted.
+- Final post-edit validation:
+  - 69/69 focused tests passed again in 7.874 seconds;
+  - scoped Ruff check and Ruff format check passed;
+  - both changed Python files parsed with the Python 3.9 AST grammar;
+  - `git diff --check` passed;
+  - `scripts/check_block_flag.py` returned `CLEAR`, zero carried-debt rows;
+  - the untouched RB-10 manifest still returned `True`;
+  - the authoritative-surface stale-phrase scan returned no matches;
+  - the 11-file planning/protocol/proof/code/test status contract passed;
+  - the planning workflow correctly reports the campaign as still in progress
+    because the reconciled scientific queue remains open.
+- No experiment artifact was regenerated, no code mechanism was deleted, no
+  production behavior was changed, and no Git commit or publication occurred.
+
+## RB-10 bounded implementation and execution: 2026-07-25
+
+- Historical execution record. RB-11 above supersedes the former
+  production-decoder, Git-durability, and unconditional Stage-4 wording.
+- Closed the frozen all-state decoder prerequisite:
+  - extended `prime_ring_leading_shell.py` for type-one inclusive ties and the
+    frozen 50/50 mixture;
+  - updated
+    `docs/research/prime-ring-leading-shell-proof-2026-07.md`;
+  - reran 14/14 focused tests with the isolated NumPy dependency path.
+- Added the bounded primary-source claim chart
+  `docs/research/prime-ring-t1r-primary-claim-chart-2026-07.md`. Broad
+  union-bound, tie, cyclic/Legendre, active-testing, and factor-graph methods
+  are known; the exact narrow theorem/construction novelty status remains
+  unresolved.
+- Implemented the shared RB-10 contract in `prime_ring_rb10_contract.py`:
+  immutable byte/work/time/shape ceilings, explicit assignment-materialization
+  mode, bounded canonical serialization, artifact output caps, atomic writes,
+  deterministic digests, and a COMPLETE status boundary that explicitly does
+  not claim execution evidence by itself.
+- Implemented:
+  - `prime_ring_joint_orbit_spectrum.py` for exact `p=11`, `K=2` JO1 spectrum
+    enumeration over all 55 restricted schedules;
+  - `prime_ring_action_nondegeneracy.py` for the exact A1 fixed-label
+    fingerprint/crossover gate;
+  - `prime_ring_irreducible_factors.py` for exact `p in {7,11}` pair,
+    hyperfactor, frustrated-cycle, query-interaction, flat-equivalence,
+    treewidth, and matched-control screens;
+  - `run_prime_ring_rb10_experiments.py` for explicit-stage, sequential,
+    fresh-process execution with a prelaunch physical-memory floor, reactive
+    Windows peak-working-set monitoring, timeout termination, bounded atomic
+    artifacts, exact manifest-to-artifact rebinding, and failure manifests.
+- Fresh adversarial review initially found artifact-rebinding, reactive-cap
+  wording, control-binding, and tautological-control gaps. Those were fixed and
+  re-reviewed. Final verdict: GO, no remaining P0/P1; one fail-closed
+  post-loop recovery P2 remains documented.
+- Pre-execution validation:
+  - 55/55 focused RB-10 tests passed in 0.955 seconds;
+  - 14/14 focused all-state decoder tests passed in 5.617 seconds;
+  - scoped Ruff check passed;
+  - scoped Ruff format check passed for all ten files;
+  - Python 3.9 AST parsing passed for all ten files.
+- Executed exactly `jo1`, `a1`, and `g2-p7`, in that order:
+  - all three exited zero and wrote validated COMPLETE artifacts;
+  - measured peak working sets were 26,767,360, 26,345,472, and 26,087,424
+    bytes, respectively;
+  - elapsed times were 0.469, 0.312, and 0.156 seconds;
+  - no child exceeded 10% of the 256 MiB reactive threshold.
+- Durable evidence:
+  - `artifacts/method-dev/prime-ring/rb10-prw-jo1-exact-p11-k2.json`;
+  - `artifacts/method-dev/prime-ring/rb10-prw-a1-nondegeneracy-p11.json`;
+  - `artifacts/method-dev/prime-ring/rb10-prw-g2-algebraic-p7-n3.json`;
+  - `artifacts/method-dev/prime-ring/rb10-bounded-experiment-manifest.json`.
+- Disposition remains non-confirmatory:
+  - JO1 shell shaping is matched by restricted complementary/random controls
+    and exactly flattenable;
+  - A1 has fixed-label crossovers but complete multiset relabeling equivalence;
+  - G2 has irreducible algebraic fixtures but no static-control advantage.
+  No novelty, RAG, training, cost, latency, production, gravity, resonance, or
+  new-substrate claim is supported.
+
+## RB-10 orbit-plank and irreducible-mesh planning: 2026-07-25
+
+- Superseded as current status by the bounded execution section above; retained
+  as the preregistration history.
+- Audited the current prime-ring queue and preserved the existing RB-9
+  execution history.
+- Added the method-development preregistration
+  `docs/research/prime-ring-orbit-plank-mesh-protocol-2026-07.md`.
+- Added `PRW-JO1`, `PRW-A1`, `PRW-G2`, and `PRW-G2A` to `task_plan.md` with
+  dependency gates, equivalence controls, kill rules, and a fail-closed resource
+  envelope.
+- Added the irreducible-mesh definition and the ordered continuation to
+  `docs/research/prime-ring-remaining-hypotheses-2026-07.md`.
+- Added deferred queue item `DS-PRW-002` to `docs/next-session.md`.
+- Preserved `PRW-G1` as a negative bounded result and kept `PRW-Q1`, `PRW-L1`,
+  queue-conditioned correction, and “living memory” blocked behind real
+  retrieval.
+- Status: `PLANNED_NOT_EXECUTED`. No experiment, implementation, benchmark, or
+  scientific-evidence artifact was produced in this planning pass.
+- Validation: `git diff --check` passed. A cross-file consistency check
+  confirmed that all four hypothesis IDs occur in the canonical protocol,
+  task plan, hypothesis ledger, deferred queue, findings, and progress log;
+  the planned status, closed `PRW-G1` boundary, and immutable resource ceilings
+  are present.
+
+## RB-9 reconditioned theorem and learned-cost validation: 2026-07-25
+
+- Added `prime_ring_leading_shell.py` and
+  `tests/test_prime_ring_leading_shell.py`:
+  - derived the allocation-free complete wrong-type distance shell;
+  - cross-checked it against materialized banks at `p in {11,19,31}` and at
+    `p=4691` without materializing that large bank;
+  - enumerated the five exact pair orbits covering all 2,016 pairs among the 64
+    leading states;
+  - recorded the falsified nearest-only status and the reconditioned
+    tie-as-error event-union theorem;
+  - bound the production decoder's canonical-first tie rule for type-zero truth,
+    derived the strict-win leading term and its `q/(1-q)` limiting ratio to the
+    inclusive term, and proved correct-type competition negligible through its
+    exact four-shell spectrum;
+  - added `docs/research/prime-ring-leading-shell-proof-2026-07.md`, deriving
+    every shell and pair-orbit multiplicity plus the regular Hamming-isometry
+    action that transfers the event-union theorem across all `32p` transmitted
+    states;
+  - left the asymmetric type-one and balanced-type final-decoder extension
+    unresolved;
+  - checked stable finite binomial-tail ratios through `p=4691` and exact
+    pair-intersection ratios through the immutable `p=31` ceiling.
+- Added `prime_ring_learned_quotient.py` and
+  `tests/test_prime_ring_learned_quotient.py`:
+  - split 343 quotient classes into 274 training and 69 withheld classes before
+    example construction;
+  - compared unconstrained raw affine, gauge-augmented raw affine, explicit
+    quotient-oracle, and gauge-sensitive anchored models;
+  - recovered the planted raw coefficients `(6,1,2,5)` and bias `3` exactly
+    across seeds `{7,42,1337}`, with perfect unseen-gauge and withheld-class
+    accuracy and zero invariant-model orbit disagreement;
+  - proved that four independent rows remain rank four while the fifth row
+    reaches rank five and recovers the exact rule, reconditioning the result to
+    `NARROW_EXACT_AFFINE_SOLVER_RECOVERY_NON_CONFIRMATORY`;
+  - retained the result as non-confirmatory algebraic solver verification
+    because it is a planted noiseless affine teacher tested by an affine
+    learner, not a neural or generic model.
+- Added `prime_ring_transcript_cost.py` and
+  `tests/test_prime_ring_transcript_cost.py`:
+  - compared causal-group factorization with unrestricted flat feature search,
+    a causal-only flat counterfactual, an equal-complexity wrong-group
+    factorization, paid-transcript, payload-only, and deterministic-random
+    controls;
+  - exercised separable nulls, nonlinear XOR/parity cells, true no-shift,
+    nuisance-remapping, and a genuine spurious-reversal shift with disjoint raw
+    rows;
+  - showed that the unrestricted flat learner takes a simpler direct-payload
+    shortcut, while causal-only flat search also reaches shifted accuracy `1.0`;
+    the remaining finite signal is oracle structural prior versus modeled
+    training-search work only. Common padded storage and inference opportunity
+    are equal, so no accuracy, compression, capacity, latency, or
+    inference-operation win is claimed;
+  - retained and integrity-checked a canonical run contract and digest covering
+    decision thresholds, teachers, learners, train sizes, and resource limits.
+- Validation completed after formatting and cleanup:
+  - 45/45 new tests passed in 12.571 seconds;
+  - 362/362 related `test_prime_ring*.py`, `test_run_prime_ring*.py`, and
+    `test_crsv_experiment.py` regressions passed in 44.362 seconds;
+  - Ruff check and Ruff format check passed for all six new files;
+  - Python 3.9 AST parsing passed for all six new files.
+- A fresh direct runtime probe reproduced the `p=4691,q=0.20` adjacent ratio
+  `0.0585071601314`, strict/inclusive decoder ratio `0.249949262612`, exact
+  quotient publication gates `true`, and transcript run-contract integrity
+  `true`. Modeled bounds were 1,451,552 bytes / 307,548 work for quotient and
+  2,992,128 bytes / 13,289,336 work for transcript; neither is measured RSS.
+- `scripts/check_block_flag.py` passed `CLEAR` with zero carried-debt rows.
+- No intensive grid, real-corpus run, neural learner, measured process-tree RSS
+  experiment, retained promotion artifact, remote publication, or
+  whole-repository green claim was produced. The current work is bounded
+  METHOD_DEV evidence only.
+- Open next work is ordered as: actual decoder tie-policy binding and tests;
+  primary-source novelty claim chart; generic noisy/nonlinear quotient learning;
+  matched generic transcript inference; common-channel carrier controls;
+  bounded real-corpus retrieval; and checkpoint/RSS fault-injection hardening.
+
+## RB-8 full-box ordered-cascade validation: 2026-07-24
+
+- Recovered the clean local branch at `b7bbd576`, ten commits ahead of
+  `origin/main`; the session catch-up script reported no unsynchronized context.
+- Read the repository's live brutal-honesty convention and `docs/next-session.md`.
+  The executable block gate passes `CLEAR` with zero carried-debt rows.
+- The user explicitly expanded local compute authorization. Preregistered a
+  staged full-box pass covering exact quotient observability, branch-matched
+  runtime gates, the `PRW-T1` intersection-spectrum scale check, and a
+  resource-audited inventory of the remaining powered/timing/held-out gates.
+  Remote publication and novelty claims remain excluded.
+- Completed allocation-free preflight for the remaining named runs:
+  - the frozen `PRW-T1` bank at `p=11` estimates 10,136,976 analysis bytes and
+    6,822,464 work units; `p=19` estimates 30,252,944 bytes and 35,141,184 work
+    units, both within the current hard ceilings;
+  - `p=31` estimates 80,548,496 bytes but 152,591,424 work units, so the present
+    analyzer correctly refuses it above its 50,000,000-work hard ceiling;
+  - Rader benchmark preflight is only 1,079,824 estimated temporary bytes at
+    `p=4091` and 1,238,224 at `p=4691`;
+  - the default campaign contains 576 synthetic cells, while the full campaign
+    contains 11,520 cells and expands the primary budgets from single digits to
+    512/1,024 trials. It has no campaign-wide work/time preflight, so it is not
+    being launched before a timed lower-cost stage establishes scale.
+- One first allocation-free Python probe was malformed when multiline loop
+  syntax was flattened into one `-c` line. It performed no experiment. The
+  probe was rerun by passing the multiline program directly and completed.
+- RB-8A root reproduction is green:
+  - 33/33 combined quotient/runtime-gate tests pass in 1.038 seconds and scoped
+    Ruff is clean;
+  - the direct quotient probe enumerated 2,401 states, found exactly 343
+    seven-state gauge classes and 343 distinct invariant observations, measured
+    response rank 3 with a one-dimensional global-gauge kernel, and made the
+    anchored negative control detect all 2,058 nonzero gauge changes;
+  - this is a finite mechanics result for the deliberately quotient-constructed
+    observer, not evidence that an independently learned observer has the same
+    symmetry.
+- RB-8B root reproduction is green:
+  - all 512 payload/query executions and all 512 forced static-leaf reductions
+    agree with a flat table granted the same two-bit transcript;
+  - all four transcripts are reached, and the exact screen returns
+    `NO_EXTRA_STATE_BEYOND_PAID_BRANCH_TRANSCRIPT`;
+  - dynamically generated overwrite masks/values and a third predicate bit
+    remain outside this screen.
+- RB-8C ran at frozen `q=0.20` for structured and deterministic
+  distinct-signature controls:
+  - `p=11`: nearest-intersection/nearest-union ratio `0.256219`; farther/nearest
+    union ratio `0.360077`;
+  - `p=19`: nearest-intersection ratio falls to `0.017856`, but the
+    farther/nearest ratio rises to `0.403705`;
+  - after operation-aware accounting preserved the 50,000,000 scalar ceiling
+    and added a scoped 64,000,000 int32-GEMM ceiling, `p=31` completed in
+    0.219-0.250 seconds per representative at 80,583,888 modeled bytes,
+    9,190,584 scalar units, and 61,011,968 vectorized multiply-adds;
+  - `p=31` lowers the nearest-intersection ratio again to `0.000374874` and the
+    farther ratio to `0.240863`;
+  - type, shift, and mask representatives checked at `p=11` are identical, and
+    the matched distinct-signature controls reproduce the same spectra at all
+    three primes;
+  - a separate all-transmitted-state audit reran all 352 `p=11`
+    type/shift/mask states; every label-free numeric/spectral/bound payload had
+    the same SHA-256 digest, completing empirical state averaging at that prime
+    in 12.458 seconds. Equivariant nearest-state labels and nondeterministic
+    elapsed fields were intentionally excluded;
+  - an exact generator certificate now replaces that finite empirical
+    repetition for the declared two-type/RM(1,3) bank: additive shifts, mask
+    multiplication, and the type-swap involution form one regular orbit of all
+    `32p` transmitted states at `p=11,19,31`. Distances, intersection spectra,
+    BSC terms, union bounds, and Hunter weights are invariant under the action;
+  - the certificate preserves the exact `p=31` count of 4,674,304 generator
+    symbol checks while separately accounting 15,309,808 total work units.
+    Its conservative incremental peak is 3,576,192 bytes (3,822,464 bytes with
+    the live bank), above the 2,959,696-byte bounded trace, and its preflight
+    refuses memory, symbol, or total-work shortages before exact work begins;
+  - nearest-event decorrelation is now a genuinely promising mathematical lead,
+    but the required farther-neighbor term is non-negligible and non-monotone
+    across these three points. `PRW-T1` remains unresolved, not established.
+- RB-8D Rader timing reconditioned an initially favorable result:
+  - 14/14 correctness/resource tests pass;
+  - an un-warmed 30-repetition probe made `p=4691` appear 12-15% faster than
+    NumPy, but a warmed, order-balanced 30-block x 100-vector probe produced a
+    median paired ratio of `1.02805` (Rader slower), with Rader faster in only
+    10/30 blocks and at least 5% faster in only 3/30;
+  - `p=4091` is clearly slower in the balanced probe (median ratio `2.16371`);
+  - maximum observed transform error remained about `3.24e-13`. `RADER-1` is
+    not supported by this DFT-only runtime evidence.
+- The completed reproducible RADER-1 harness adds the retrieval-relevant
+  correlation path, 3 seeds, 18 warmed balanced blocks per operation, fresh
+  block inputs, and a durable atomic artifact:
+  - harness tests pass 11/11; all full-size correctness checks pass;
+  - `p=4091`: DFT median ratio `1.8400`, correlation ratio `2.9393`; Rader wins
+    only 1/18 DFT blocks and 0/18 correlation blocks;
+  - `p=4691`: DFT median ratio `0.9619` with 11/18 wins, but correlation ratio
+    `1.0398` with only 7/18 wins;
+  - the mixed `p=4691` DFT sign is consistent with timing noise seen in the
+    earlier 30-block probe, while the actual correlation path is slower.
+    `RADER-1` therefore fails for this implementation/runtime observation.
+  - Artifact:
+    `artifacts/method-dev/prime-ring/rader-4091-4691-benchmark-rb8.json`.
+- RB-8D held-out nonseparable systems gate is green as a falsifier:
+  - 16/16 focused tests, Ruff, and a root direct probe pass;
+  - six frozen `p in {7,11}`/seed runs use 64 training and 128 ID-disjoint
+    held-out examples each, with held-out unrelated examples and a shared
+    train-fitted threshold; this is not a distribution-shift or class-separation
+    claim because both partitions share the frozen synthetic generator;
+  - the conditional and paid-transcript flat routers agree on 768/768 held-out
+    cases and both reach 1.0 recall over 576 positive opportunities;
+  - weaker randomized, additive-metadata, and payload-only controls reach
+    `0.3333`, `0.5`, and `0.25` recall respectively, while all routers have
+    0/192 false unlocks;
+  - this kills extra capacity after paying for the two-bit transcript. The
+    remaining question is the cost/generalization of inferring that transcript;
+    `p=7/11` controls vector length only and tests no number-theoretic advantage.
+- Production-path campaign calibration at the exact `p=4691`, `L=8`,
+  typed-16 shape completed without artifact writes:
+  - 32 trial groups took 4.908 seconds;
+  - 300 trial groups took 19.494 seconds, or 0.06498 seconds/group including
+    setup;
+  - the targeted powered gate retains 9,549 observations. The runner now has
+    allocation-free preflight, plain-value canonicalization, immutable
+    wall/row/string/ring-length ceilings, streamed actual-byte-limited JSON,
+    total deadline, exact retained-row cap, and final-deadline-before-replace
+    ordering; root independently reproduces 39/39 campaign tests;
+  - the final hardened targeted run completed in 424.034 seconds and wrote
+    `artifacts/method-dev/prime-ring/prime-ring-raw-sanity-rb8.json`
+    atomically from runner SHA-256
+    `ec4bbfbeea05a5e5f0fcf2fa5b0d0809e1fd8286a878e30ed448c8e74a1adc32`;
+    the exact-tree preflight is 229,502,456 modeled bytes;
+  - all 12 cells completed, the frozen four-rate/three-seed raw-sanity sweep is
+    `COMPLETE_PASS`, pooled true-unlock recall is 1.0, report false unlocks are
+    0/3,072, and all mandatory controls close;
+  - the artifact remains METHOD_DEV-only: `PRW-1` through `PRW-4` are
+    inconclusive, promotion is false, and novelty is not established;
+  - the campaign process is no longer running. The highest periodic external
+    poll observed 173,236,224 working-set bytes, but this is not a continuous
+    process-peak measurement; the artifact correctly records RSS as unmeasured
+    and unenforced;
+  - the full 11,520-cell grid is refused before construction at
+    1,059,556,800 modeled bytes. Process RSS is still not measured, and
+    checkpoint/resume remains unimplemented.
+- Two initial direct-probe invocations used guessed helper/field names and
+  failed before producing results. The public signatures were read, the probe
+  was corrected, and only the final successful reproduction is evidence.
+- One attempted hardened rerun was stopped before artifact publication when
+  final review found that an oversized ring could reach trial-division
+  primality work before refusal. The immutable maximum is now 4,691; a
+  regression proves 4,693 is rejected without calling the primality routine.
+  The prior artifact remained intact until the final green rerun replaced it.
+- The managed shell launcher again failed with the already-known WindowsApps
+  access denial before starting the powered run. It was not retried. The same
+  explicit Python executable used by the validated probes launched PID `74112`
+  directly with file-backed logs instead.
+- The first Rader CLI invocation used the system Python without the isolated
+  NumPy dependency path and failed at import before benchmarking. The corrected
+  invocation loaded the validated dependency root and produced the artifact;
+  only that second run is evidence.
+- The orbit slice passes 14/14 independently on the stabilized exact tree.
+  The complete final exact-tree prime-ring discovery passes 286/286 in 25.589
+  seconds, including campaign, Rader, quotient, runtime-gate, held-out, orbit,
+  intersection, CRT, graph-fiber, conditional-replacement, and quantizer lanes.
+- Root parsed and independently asserted both generated JSON artifacts:
+  expected schemas, exact cell counts, unique IDs, completion status, frozen
+  raw-sanity result, promotion/novelty boundaries, all Rader correctness checks,
+  and sub-`1e-9` transform/correlation errors pass.
+- The first canonical smoke attempt failed honestly because the initial
+  isolated NumPy-only environment lacked `qdrant_client`. After installing the
+  missing dependencies into an isolated target and injecting the Windows trust
+  store, the fresh canonical floor and ceiling smoke passed: the cached
+  `all-MiniLM-L6-v2` model loaded at vector size 384, four documents were
+  ingested, the chelated vector was nonzero, and batch embedding passed.
+- Whole-repository discovery is still not green: the fullest local attempt
+  collected 3,209 tests and ended with 3 failures, 18 errors, and 11 skips,
+  dominated by missing MTEB and order-sensitive shared model/client state.
+  Fresh isolation clears the questioned production paths: 42/42 integration
+  plus Kalman tests pass, the TTS failure passes alone, and canonical smoke
+  passes. This is a repository-wide environment/order caveat, not a failure of
+  the 286-test prime-ring campaign surface.
+
+## RB-7 continuation: 2026-07-24
+
+- Preregistered the `p=11` all-two-bin quantizer-origin null and the proof-first
+  primitive-root/CRT redundancy screen, preserving the no-campaign and no-OOM
+  scope lock.
+- Static resource estimation found that the naïve 50-cell exact grid would
+  require 141,004,800 work units. Each 2,048-pattern cell estimates 2,820,096
+  work units, so it already exceeds the 2,000,000 default even though estimated
+  peak model-array memory is only 2,408 bytes.
+- No exact pattern enumeration ran for that calculation. Work is proceeding
+  only on shared-enumeration or algebraic formulations that can refuse the
+  complete grid before allocation if aggregate bytes, work, pattern count, or
+  deadline is unsafe.
+- The final cached `p=11` implementation preflights at 54,432 model-level bytes
+  and 17,951,240 work units for all 50 cells. The stronger per-bin-origin
+  product grid estimates 59,734,280 work units and is refused above immutable
+  ceilings.
+- The first direct exact pass failed closed at the 25-second deadline because
+  it rebuilt one immutable decoder budget 102,400 times. Hoisting that object
+  produced one agent-owned result, but the first root reproduction still hit
+  the unchanged deadline, so neither result was promoted. The implementation
+  was reconditioned to cache invariant template/correction state and compute
+  one query FFT per pattern. The root-owned final reproduction then completed
+  in 22.359 seconds under the same deadline and reproduced the earlier numbers.
+- Final `p=11` result:
+  - unquantized within-orbit spreads are `4.16e-17` and `6.94e-17`;
+  - the ordinary between-orbit A-minus-B gap is `-0.0029146170`;
+  - 30/45 pair orderings reverse across common origins and no subset dominates
+    at every origin;
+  - maximum origin spread is `0.0048568741`, with boundary and zero-spectrum
+    mass reported separately;
+  - 16/16 cached/reference and resource-guard focused tests pass.
+- Added and independently validated the proof-first CRT screen:
+  - 23/23 focused tests, Ruff, and AST pass, including hostile numeric-subclass
+    and greater-than-64-bit input refusal before modular arithmetic;
+  - a final root-owned `p=4691` direct probe finished in 0.144 seconds;
+  - 3,310,582 estimated Python-object bytes and 2,176,160 work units;
+  - all four algebraic redundancy kills triggered while utility/cost remained
+    explicitly untested.
+- Added and independently validated the p=7 conditional-replacement normal
+  form:
+  - 14/14 focused tests, Ruff, and AST pass;
+  - a direct tiny probe verified affine `(3,6)` plus last-write-wins on every
+    binary payload;
+  - preflight is 99,072 estimated bytes and 29,808 work units under a one-second
+    deadline.
+- The three new suites pass together at 53/53 in 0.666 seconds. An earlier
+  combined invocation overlapped a live agent rename and failed with a witness
+  schema mismatch; it was discarded, the owner froze the files, and the exact
+  stable tree was rerun. No full campaign, real corpus, large-prime transform,
+  repeated timing campaign, or retained evidence generation ran.
+- The complete final bounded regression set passes 230/230 tests in 31.561
+  seconds. Scoped Ruff passes all six new code/test files, all six parse through
+  a read-only AST check, and `git diff --check` is clean.
+
+## Resource-bounded expansion return: 2026-07-24
+
+- Recovered the live branch at
+  `08e3c2aeeb5c645a3c95f08a14ac101b226f8c9d`; it was clean and eight commits
+  ahead of `origin/main` before the new planning-ledger edits.
+- Re-ran the planning catch-up helper; it reported no unsynchronized context.
+- Re-read repository instructions and retained the strict distinction between
+  unit/property evidence and runtime/scientific evidence.
+- Added RB-6 to `task_plan.md` and opened non-overlapping lanes for:
+  - the complete lower-rate raw-sanity closure contract;
+  - a tiny `PRW-G1` graph-coupled cyclic-fiber analyzer;
+  - a tiny `PRW-H1` multi-frequency phase analyzer.
+- No powered campaign, real-corpus run, large-prime transform, timing campaign,
+  or retained artifact generation has been launched.
+- Environment note: the default WindowsApps PowerShell shim is still
+  access-denied; bounded commands are running through the stable Node runtime.
+- The first focused PRW-H1 invocation did not execute because system Python has
+  no NumPy. The failure is logged as environment-only. Recovered the prior
+  isolated dependencies at `C:\tmp\chelatedai-crsv-deps` (NumPy) and
+  `C:\tmp\chelatedai-lint-deps` (Ruff); no installation or download was needed.
+- Implemented `prime_ring_multifrequency.py` and its focused test suite:
+  - one shared type/shift state space for all frequency conditions;
+  - unit-energy phase scoring with conjugate-bin exclusion;
+  - matched random-bin and repeated-single-bin controls;
+  - magnitude-only, randomized-phase, and time-domain diagnostics;
+  - optional phase quantization;
+  - streamed exact BSC comparison for tiny state spaces;
+  - 64 MiB/10 second/2M-work defaults beneath immutable hard ceilings.
+- Validation so far: 17/17 PRW-H1 tests passed in 0.525 seconds and exact
+  two-file Ruff passed. A fresh hostile review is in progress.
+- Ran one additional artifact-free exact PRW-H1 toy sweep:
+  - `p=7`, one type, one node, 128 streamed BSC patterns;
+  - `q={0,.20,.35,.45}`, unquantized and 8-bit phase variants;
+  - 928 estimated peak bytes and 83,584 estimated work units per run;
+  - unquantized proposed/random two-bin sets tied exactly, while distinct bins
+    beat a repeated single bin under noise.
+- The first sweep bootstrap imported NumPy before adding the isolated path and
+  did not execute. The corrected bootstrap ran successfully; no artifact was
+  written.
+- Hostile PRW-H1 review found and root corrected early-allocation refusal,
+  ignored caller condition caps, Python 3.9 `bit_count` incompatibility,
+  tie-margin semantics, misleading magnitude accounting, random-control
+  collisions, and the missing all-frequency control.
+- After reconditioning, 21/21 focused PRW-H1 tests pass in 0.630 seconds and
+  exact two-file Ruff remains clean. Reviewer recheck remains pending.
+- Completed the second bounded PRW-H1 hardening pass:
+  - all eight conditions share one aggregate work/deadline budget;
+  - caller-sized bin collections are refused before cell access or iteration;
+  - query-normalization copies and transient Fourier buffers are preflighted;
+  - the full nonconjugate-bin control is explicit;
+  - quantizer-grid origin is a declared parameter, while magnitude-only and
+    time-domain controls are labeled inapplicable rather than falsely
+    quantized.
+- Added deterministic boundary, invalid-origin, four-origin compare/exact,
+  unquantized-equivalence, outcome-partition, and preallocation regression
+  tests. Current PRW-H1 validation is 37/37 tests in 2.669 seconds with exact
+  two-file Ruff clean and a final hostile-review verdict of no P0/P1/P2.
+- Ran the artifact-free all-subset quantizer falsifier:
+  - 9 unquantized baselines and 36 eight-bit exact cells;
+  - all three `p=7` two-bin subsets, all 128 BSC patterns, three noise rates,
+    and four quantizer origins;
+  - no run exceeded 1,288 estimated model-level bytes or 101,504 work units;
+  - unquantized subsets tied exactly, while quantized ranks changed with grid
+    origin and showed up to 0.0083385070 absolute accuracy spread.
+- Integrated the bounded `PRW-G1` lane without running a campaign and added the
+  required one-global-phase-plus-fixed-offset comparator. In the helpful
+  triangle it exactly equals the graph decoder on outcome, score, ties, margin,
+  and rank; all graph-minus-global effects are zero. Fifteen tests and focused
+  Ruff pass, and hostile brute force matched all 511 nonempty labeled
+  three-node graphs.
+- Hostile review found the first lower-rate raw-sanity gate could accept
+  fabricated mutable summaries despite its fail-closed label. Canonical cell,
+  campaign-contract, raw REPORT lineage, exact count/digest, and threshold
+  provenance checks are being added before that implementation is accepted.
+- Rechecked PRW-H1 model-array estimates at the largest allowed shape after
+  warming NumPy paths. Declared build/decode/eight-control peaks
+  (`579,871`/`790,448`/`846,000` bytes) exceed the corresponding `tracemalloc`
+  peaks (`532,903`/`755,648`/`826,096` bytes). This does not measure process RSS.
+- Closed the hostile-review P1/P2 on the lower-rate raw-sanity verifier:
+  canonical IDs and exact coordinates, campaign/stream binding, SELECT-only
+  threshold lineage, planted-IID-REPORT row provenance, strict count/digest
+  consistency, and no-refit behavior are now executable checks rather than
+  static labels.
+- Root's independent forged-truth probe found that a retained true/predicted
+  pair could initially be changed together if its row digest was recomputed.
+  Added canonical `_trial_truth` recomputation and a regression; the same probe
+  now fails closed with `raw_provenance_true_type_not_canonical`.
+- Validation after that reconditioning:
+  - 8/8 focused raw-sanity tests passed in 8.829 seconds;
+  - all 24 runner tests passed in 17.721 seconds;
+  - scoped Ruff and read-only AST parsing passed.
+  The all-runner suite uses tiny smoke/fabricated fixtures only and does not
+  invoke `full_config()`, execute the powered campaign, or retain an artifact.
+- A second independent hostile review reconstructed the first generation of
+  live seals entirely from rewritten serialized fields and changed a failing
+  raw-sanity result into a pass. That finding invalidated the first closure
+  claim.
+- Reconditioned the live-evidence boundary:
+  - create one HMAC-SHA256 authority before campaign traversal;
+  - keep its random 32-byte key, authority ID, and seals out of the artifact;
+  - bind every seal to the authority, cell, campaign, carrier provenance, raw
+    provenance, counts, and accuracy;
+  - reject absent/replacement authorities, invalid tags, SELECT/REPORT stream
+    collisions, missing/mutated carrier provenance, and seal misbinding.
+- Replayed the exact serialized reconstruction attack. It now returns
+  `INCOMPLETE_FAIL_CLOSED` with
+  `live_source_seal_authentication_failed`; the independent reviewer reports no
+  remaining P0/P1/P2 under the stated serialized-input-tampering boundary.
+- Final resource-bounded validation:
+  - 13/13 focused raw-sanity attack/contract tests passed in 17.605 seconds;
+  - 29/29 complete runner tests passed in 26.975 seconds;
+  - 177/177 tests across the eight relevant modules passed in 28.233 seconds;
+  - scoped Ruff, read-only AST parsing, and `git diff --check` passed.
+  The extra live-attestation objects are conservatively bounded at 26,624 bytes
+  (12 seals plus one authority), excluding cells, serialized audit rows, and
+  process RSS.
+- Re-ran the direct artifact-free mechanism probe through the production
+  analyzers:
+  - graph and global-phase assignments were both `[1,3,6]`, outcomes were
+    identical, planted-margin delta was `0`, and the global-phase-collapse kill
+    criterion fired at 65,600 estimated bytes / 36,913 work units;
+  - unquantized `p=7` two-bin accuracies were equal to numerical precision,
+    while the `(1,2)` versus `(2,3)` ranking reversed between quantizer origins
+    `0.5` and `0.75`, at 1,288 estimated bytes / 101,504 work units.
+- No powered campaign, real corpus, large-prime timing, repeated hardware
+  timing, full-size Rader transform, or persistent evidence generation ran.
+  The implementation slice is complete; the scientific gate remains
+  empirically unexecuted.
+
+## Resource-bounded continuation: 2026-07-24
+
+- User authorized resuming the remaining roadmap while explicitly holding any
+  run that might OOM the machine.
+- Re-ran the planning-session catch-up helper; it returned no unsynced report.
+- Re-read the active plan, findings, and progress records.
+- Froze a conservative execution guard: no full campaign, large importance
+  sampling, real-corpus campaign, or full-size Rader timing; new bounded work
+  must estimate at most 512 MiB peak and 120 seconds before launch.
+- Opened parallel implementation lanes for matched controls, finite
+  intersection theory, and correctness-first Rader work. No intensive run has
+  been launched.
+- Completed RB-4 formalization in
+  `docs/research/prime-ring-remaining-hypotheses-2026-07.md`, replacing the
+  remaining 3D/protein, harmonic/polar, high-dimensional, CRT, queue-gravity,
+  and living-memory metaphors with typed mechanisms, controls, metrics,
+  dependencies, and kill criteria.
+- Implemented RB-2 in `prime_ring_intersection.py` with explicit hypothesis,
+  coordinate, pair-count, byte, and brute-force-pattern guards.
+- Added and passed 8/8 tiny RB-2 tests plus focused Ruff checks. The largest
+  test bank has six hypotheses over six coordinates and completes in
+  milliseconds.
+- Received the bounded RB-3 implementation from the parallel lane: 13/13
+  small-prime tests pass; hostile resource-accounting review is still in
+  progress and no large-prime timing was run.
+- Completed hostile reconditioning of RB-1:
+  - restored independent Bernoulli noise for the dense/repeated BSC lane;
+  - added native sparse OPPW and equal-channel-use repeated-bit controls;
+  - added deterministic nested block/burst stressors;
+  - made zero-recall, raw-recovery, false-unlock, and lower-rate-sweep gates
+    fail closed;
+  - moved conservative standalone/co-resident resource refusal ahead of
+    control allocation.
+- Completed hostile reconditioning of RB-2:
+  - raw shapes are refused before NumPy/Python normalization;
+  - hard byte/work/time ceilings cannot be raised;
+  - binomial caches are per-analysis and byte-accounted;
+  - exact all-pair and nearest-event intersection spectra are retained;
+  - generic event unions are no longer mislabeled final decoder errors or
+    PRW-T1-specific evidence.
+- Completed RB-3 hostile review with 14/14 focused tests, exact small-prime
+  direct/NumPy agreement, and no performance claim.
+- Final bounded validation:
+  - 61 combined core/Rader/finite-theory tests passed in 0.153 seconds;
+  - 16 runner tests passed in 12.299 seconds;
+  - 31 CRSV tests passed in 0.128 seconds;
+  - 4 prior prime-ring theory tests passed in 0.007 seconds;
+  - focused Ruff and AST checks passed.
+- The runner integration suite invoked only its tiny smoke fixtures and one
+  temporary-directory artifact regression. It did not invoke `full_config()`,
+  run an 11,520-cell campaign, benchmark 4091/4691, or modify the retained
+  repository evidence artifact.
+- Powered/real-data validation remains held. The lower-rate portion of the
+  "through q=0.45" sanity gate, measured process RSS, repeated hardware timing,
+  asymptotic PRW-T1 proof, and real held-out retrieval are still open.
+
+## Restart resume: 2026-07-24
+
+- Recovered the isolated branch and every pre-restart research edit.
+- Confirmed the core module, 26-test suite, and formal protocol are intact; the
+  interrupted runner and artifact did not exist and are being rebuilt.
+- Re-ran the exact core suite after restart: 26 tests passed in 0.242 seconds.
+- Exhaustively re-verified the full `4091` and `4691` Legendre
+  autocorrelation identities and the `4691` primitive-root/CRT arithmetic.
+- Executed a full-size eight-layer quotient-separation probe and observed the
+  predicted roughly `0.87519` noiseless correct-versus-wrong margin.
+- Completed a hostile current-literature pass that identified the phase-code
+  construction exactly with OPPW 2D optical orthogonal codes and `typed16`
+  with `RM(1,3)`.
+- Reconditioned the novelty claim: mathematical phase-address novelty is
+  refuted; only joint-decoder theory or matched non-additive systems utility
+  remains open.
+- The system interpreter still lacks repository dependencies; NumPy remains
+  isolated under `C:\tmp\chelatedai-crsv-deps`.
+- Read-only syntax validation will replace `py_compile` because the managed
+  sandbox denied its `tests/__pycache__` write.
+- Installed Ruff only under `C:\tmp\chelatedai-lint-deps`; the core module and
+  its focused tests pass lint.
+- Completed a hostile core review: arithmetic/synchronization is GO, but
+  PRW-1 through PRW-4 interpretation remains NO-GO pending six P1 contract
+  fixes.
+- Hardened the formal protocol with separate planted/decoder mask factors,
+  truthful float64 and actual-array byte accounting, an end-to-end 4096
+  Rademacher control, mandatory sparse OPPW decoding, fixed bank semantics,
+  exact sample counts, a frozen threshold grid, and one-sided 97.5% exact
+  false-unlock bounds.
+- The resumed runner skeleton now preserves a complete Cartesian manifest and
+  domain-separated random streams; scorer, aggregation, tests, and the first
+  artifact are still being completed.
+- Audited adjacent off-baseline lattice results after the restart. Rung 16's
+  quant-aware subdomain routing plane failed closed in both recorded arenas;
+  H5 living banks tied their static copies; and the H4 compounded-correction
+  ablation collapsed. These are now mandatory negative baselines for any later
+  PRW queue/correction or RAG claim.
+- Derived and simulated the exact binary-code reduction for the dense decoder.
+  A 200,000-trial small-ring check matched the exact binomial pairwise-error
+  probability within sampling error, further reconditioning the putative new
+  theorem toward a standard code-distance result.
+- Benchmarked the existing generic batched FFT correlation path at all three
+  mandatory lengths. Length 4096 was roughly 5.30x faster than 4691 on median
+  kernel time; this does not test Rader but makes a special 4691 performance
+  claim unlikely without a separate implementation and accuracy win.
+- Stopped the first default smoke before artifact publication after hostile
+  review found payload type leakage and an explosive repeated cold-FFT control
+  path. Reconditioned the protocol so semantic payload collisions are
+  type-canonical and carry only global transport; the invalid run is not
+  evidence.
+- Closed the remaining runner contracts:
+  - paired bit-flip and payload-noise severities from rate-independent base
+    draws;
+  - numerically stable full-size Clopper-Pearson inversion with cached
+    threshold evaluations;
+  - crossed planted-mask/decoder-mask distance words;
+  - deduplicated payload FFT scoring and canonical cross-type tie semantics;
+  - logical-versus-actual storage separation;
+  - conservative componentized payload temporary-memory estimates;
+  - explicit fail-closed sparse-OPPW, repeated-bit, and Recall@K caveats.
+- Deleted each superseded generated smoke artifact before it could be cited,
+  then regenerated the final corrected artifact from the settled code.
+- Executed the final bounded smoke in 77 seconds:
+  - `576/576` retained;
+  - `255` completed, `321` structurally unavailable, zero errors;
+  - zero false-unlock gate passes;
+  - no primary aggregate, promotion, production, Rader, or novelty claim.
+- Added executable exact-reduction tests for:
+  - dense Legendre score as an affine transform of OPPW overlap;
+  - dense-versus-sparse Hamming distance and channel-use expansion;
+  - exact BSC pairwise binomial-majority error;
+  - the `p=4691`, `L=8`, overlap-one full-size distance and union-bound
+    implementation falsifier.
+- Final independent validation:
+  - `49/49` PRW tests passed;
+  - `31/31` CRSV tests passed;
+  - focused Ruff checks passed;
+  - full-size Clopper-Pearson numerical boundary probes passed;
+  - final hostile verdict is GO for corrected non-evidentiary smoke and NO-GO
+    for scientific validation, novelty, matched-resource advantage, or
+    promotion.
+- Completed a fresh bounded primary-literature audit. A 1992 binary
+  constant-weight cyclic-code construction is an exact collision with the
+  unmasked Legendre-inner phase bank. No exact published `PRW-T1` ratio-one
+  theorem or special application of `4691` was found; this is not a patent/FTO
+  conclusion.
+
+## Session: 2026-07-23 Prime-Ring Onion-Lattice METHOD_DEV
+
+### Recovery and scope lock
+- **Status:** in progress
+- Actions completed:
+  - Ran the planning-session recovery helper; it returned no unsynced context.
+  - Rebuilt live worktree and branch state.
+  - Read repository brutal-honesty, testing, and handoff instructions.
+  - Recovered the existing planning files without overwriting historical
+    sessions.
+  - Preserved `feat/brain-file-map-b0-b1` and moved this campaign onto isolated
+    branch `codex/prime-ring-onion-method-dev` based on refreshed
+    `origin/main`.
+  - Audited the thirteen newer lattice commits and identified existing H3-H6
+    implementation surfaces.
+  - Located ignored July waypoint-research materials and the recovered BCC-1
+    method-development pack for exact restart recovery.
+  - Recovered the canonical BCC-1 v9 branch/commit and marked the v8 recovery
+    directory superseded.
+  - Found the later H2 rerun commit that may close both stale carried-debt rows;
+    exact artifact audit is in progress.
+  - Located `codex/crsv-onion-method-dev` as a likely overlapping implementation
+    that must be evaluated before new code is written.
+  - Reframed the campaign after finding the prior corrector and powered
+    estimator results were negative.
+  - Fast-forwarded the isolated campaign branch to the recovered CRSV/BCC-1
+    baseline at `59378814`; the original user branch remains untouched.
+  - Installed NumPy only in `C:\tmp\chelatedai-crsv-deps` for test execution,
+    without changing the repository or system environment.
+  - Executed all 31 recovered CRSV adversarial tests successfully.
+  - Identified a structural reason the current H5 `C5 > C5s` gate cannot pass:
+    both routes apply the same deterministically reconstructed post bank.
+  - Audited H3-H6 campaign reachability, metric aggregation, and governance:
+    found hypothesis-ID collision, missing CLI/campaign paths, incomplete norm
+    aggregation, and deferred campaigns absent from carried-debt tracking.
+  - Confirmed the merged "lattice" code implements no actual lattice/ring/phase
+    object; it is reusable adapter-routing infrastructure, not evidence against
+    or for the prime/onion mechanism.
+  - Wrote the formal `CHELATEDAI-PRW-v0.1` protocol with a diagonal-quotient
+    relative-phase key, separate payload bank, exact nulls, controls,
+    thresholds, reconditioning rules, and a novelty interaction falsifier.
+  - Updated the prior-art boundary with residue HDC, resonator networks, linear
+    HDC codes, qFHRR, phase-associative memory, multi-reference alignment,
+    cyclic equivariant decoding, and Kronecker-rotation cleanup.
+  - Re-ran the live block-flag gate on the canonical recovered baseline:
+    `CLEAR`, zero carried-debt rows, `PASS`.
+  - Verified `4691` primality, congruence, factorization, Legendre
+    autocorrelation, and CRT mapping.
+  - Separated additive Legendre rotations, multiplicative CRT payload pivots,
+    zero/DC anchoring, and eight-layer polarity into independent mechanisms.
+  - Recorded a seven-phase falsification ladder in `task_plan.md`.
+- Current evidence boundary:
+  - arithmetic construction: verified;
+  - shared Legendre carrier as waypoint identity: disproved by rotational
+    equivalence;
+  - unconstrained 256-mask search: retained only as a false-unlock control;
+  - computational advantage: untested;
+  - retrieval/training benefit: untested;
+  - novelty: unestablished.
+- Validation pending:
+  - carried-debt age/disposition audit despite the mechanically `CLEAR` flag;
+  - exact branch/base audit;
+  - dependency and test preflight;
+  - mechanism implementation and hostile review.
+- Errors:
+  - Default WindowsApps PowerShell launcher returned access denied; the same
+    failing path will not be retried.
+  - The first isolated-branch attempt was blocked because the managed sandbox
+    makes `.git` read-only. No stash, switch, or Git mutation occurred.
+  - The same operation succeeded through the narrowly elevated Git path; the
+    stash was applied and dropped with all three planning edits preserved.
+  - The recovered CRSV worktree required a command-local Git safe-directory
+    declaration because it is owned by the interactive Windows account.
+  - The first CRSV test invocation used the system Python and failed during
+    collection because NumPy is absent. No CRSV test executed and no scientific
+    inference is drawn from that environment failure.
+
+---
+
 ## Session: 2026-03-28
 
 ### Disk-Resident LLM Feasibility
@@ -655,7 +1868,7 @@
 | Timestamp | Error | Attempt | Resolution |
 |-----------|-------|---------|------------|
 | 2026-03-06 00:10 ET | `computational_storage_poc/fuse_fs.py` not found | 1 | Switch to file-layout discovery before assuming emulator implementation file names |
-| 2026-03-06 00:45 ET | `C:\Users\mattm\.claude\skills\planning-with-files\scripts\session-catchup.py` missing | 1 | Use direct repo-state inspection instead of the broken helper path |
+| 2026-03-06 00:45 ET | `%USERPROFILE%\.claude\skills\planning-with-files\scripts\session-catchup.py` missing | 1 | Use direct repo-state inspection instead of the broken helper path |
 | 2026-03-06 01:05 ET | `ruff check .github/workflows/test.yml` emitted YAML syntax errors | 1 | Remove the YAML file from Ruff scope and keep lint targeted to Python files |
 
 ## 5-Question Reboot Check

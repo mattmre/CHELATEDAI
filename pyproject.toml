@@ -40,6 +40,7 @@ chelatedai-research-pathways = "research_pathway_analyzer:main"
 chelatedai-static-mask-probe = "static_mask_probe:main"
 chelatedai-safety-testbed = "run_safety_testbed:main"
 chelatedai-model-scope-campaign = "run_model_scope_campaign:main"
+chelatedai-rb15-nonlinear-neutralizer = "run_rb15_nonlinear_neutralizer:main"
 chelatedai-overlay-model-scope-validation = "run_overlay_model_scope_validation:main"
 chelatedai-promotion-linkage-audit = "audit_promotion_linkage:main"
 chelatedai-default-promotion-preflight = "default_promotion_preflight:main"
@@ -98,6 +99,7 @@ py-modules = [
     "generate_evidence_index",
     "model_hook_bus",
     "model_scope_artifacts",
+    "nonlinear_neutralizer_experiments",
     "model_scope_features",
     "model_scope_memory",
     "model_scope_runtime",
@@ -116,6 +118,7 @@ py-modules = [
     "run_drift_recovery_knob_sweep",
     "run_live_fire_diagnostics",
     "run_model_scope_campaign",
+    "run_rb15_nonlinear_neutralizer",
     "run_default_promotion_evidence_chain",
     "run_overlay_model_scope_validation",
     "run_road_course_campaign",
@@ -137,6 +140,32 @@ py-modules = [
     "teacher_distillation",
     "teacher_weight_scheduler",
     "vector_store",
+    "bcc1_experiment",
+    "crsv_experiment",
+    "prime_ring_action_nondegeneracy",
+    "prime_ring_conditional_replacements",
+    "prime_ring_crt_pivots",
+    "prime_ring_graph_fibers",
+    "prime_ring_heldout_payload",
+    "prime_ring_intersection",
+    "prime_ring_intersection_orbits",
+    "prime_ring_irreducible_factors",
+    "prime_ring_joint_orbit_spectrum",
+    "prime_ring_leading_shell",
+    "prime_ring_learned_quotient",
+    "prime_ring_multifrequency",
+    "prime_ring_quantizer_null",
+    "prime_ring_quotient_observability",
+    "prime_ring_rader",
+    "prime_ring_rb10_contract",
+    "prime_ring_runtime_gates",
+    "prime_ring_transcript_cost",
+    "prime_ring_waypoint",
+    "representation_space",
+    "run_prime_ring_rader_benchmark",
+    "run_prime_ring_rb10_experiments",
+    "run_prime_ring_waypoint_experiment",
+    "semantic_cache_resolver",
 ]
 packages = ["egv", "egv.evaluation", "egv.variation", "egv.training", "egv.campaign"]
 
