@@ -192,8 +192,15 @@ def validate_public_candidate(record: Mapping[str, Any]) -> Dict[str, Any]:
         _require_pseudonymous_id(record["parent_candidate_id"], "parent_candidate_id")
     if not isinstance(record["attempt_index"], int) or isinstance(record["attempt_index"], bool) or record["attempt_index"] < 0:
         raise PublicSchemaError("attempt_index must be a nonnegative integer")
-    for field in ("candidate_artifact_digest", "model_digest", "adapter_digest"):
+    for field in ("candidate_artifact_digest", "model_digest"):
         _require_digest(record[field], field)
+    if record["arm"] in {"A", "B", "C", "D"}:
+        if record["adapter_digest"] is not None:
+            raise PublicSchemaError("base-model arms must project adapter_digest as null")
+    elif record["arm"] in {"E", "F", "G", "H"}:
+        _require_digest(record["adapter_digest"], "adapter_digest")
+    else:
+        raise PublicSchemaError("public candidate arm is outside the frozen A-H contract")
     if not isinstance(record["prompt_template_digests"], list) or not record["prompt_template_digests"]:
         raise PublicSchemaError("prompt_template_digests must be a non-empty array")
     for digest in record["prompt_template_digests"]:

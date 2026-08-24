@@ -43,7 +43,13 @@ assigns one stable idempotency key per coordinate. A crash after dispatch leaves
 `DISPATCHING`; only a signed reconciliation may make that coordinate safe to
 retry. Journal records are atomically replaced individual objects, and an
 atomically replaced index binds their canonical hash chain, avoiding torn JSONL
-admission.
+admission. The scheduler holds one cross-process campaign lock across recovery,
+dispatch, journal admission, and the terminal operation transition. Journal
+append and per-coordinate operation transitions also have their own
+cross-process transaction locks, so independently started scheduler processes
+cannot both dispatch the same absent coordinate. Every scheduler, operation,
+command-build, and verifier-run admission reconstructs the sealed protocol and
+rejects in-memory coordinate or binding substitution.
 
 ## Public and private outputs
 
@@ -59,6 +65,56 @@ canonical evaluator-signed restoration receipt. It re-verifies both, recomputes
 the aggregate analysis rather than accepting a caller-provided report, and
 binds exact-result and restoration digests. It is private evidence and must not
 be copied into the public repository as a live artifact.
+
+## Bounded command-line workflow
+
+The `heldout` command group exposes only the implemented local/content-bound
+seams:
+
+```text
+python -m egv.cli heldout prepare ...
+python -m egv.cli heldout freeze-evaluator-service ...
+python -m egv.cli heldout evaluator-once ...
+python -m egv.cli heldout run ...
+python -m egv.cli heldout finalize ...
+```
+
+- `prepare` deterministically freezes the protocol and the exact public
+  trainer inputs/source bundle from an evaluator-owned seed. It refuses to
+  replace any frozen output. Frozen JSON, seed, and key inputs must be bounded
+  single-link regular files whose entire path traverses no symlink or reparse
+  ancestor. If the multi-output publication fails, already published members
+  are moved out of their public paths into uniquely named recoverable rollback
+  quarantine directories. Rollback never unlinks an output pathname; a file
+  another process substituted at that path is preserved with its exact file
+  identity and restored without replacing any newer occupant. Quarantines are
+  private operator evidence and must be reviewed before manual removal.
+- `freeze-evaluator-service` writes the path-free identity manifest derived
+  from that exact protocol.
+- `evaluator-once` accepts one bounded JSON command on standard input. It
+  requires an evaluator private key and a name from the source-reviewed closed
+  evaluator-integration registry. User-controlled module imports are rejected.
+  The public registry currently contains only an intentionally fail-closed
+  sentinel; a real evaluator integration must land as reviewed source before
+  use. The command provides no network transport.
+- `run` resumes the canonical schedule and requires explicit local
+  names from the source-reviewed runner, verifier, and reconciler registries.
+  The public registries currently contain only fail-closed sentinels. Omitting,
+  misnaming, or attempting to import an arbitrary module fails closed.
+- `finalize` refuses partial evidence. It writes a private record only after
+  all 228 signed outcomes and a matching signed restoration receipt verify.
+
+These commands do not discover hosts, open SSH connections, load a model by
+implication, restore services, create replay evidence, or publish a package.
+An operator-controlled wrapper may carry canonical command/response bytes over
+an approved channel, but live cross-node execution must be demonstrated and
+recorded separately.
+
+The current local evidence consists of unit tests for protocol scheduling,
+runtime derivation, shock recovery, content-bound verifier behavior, analysis,
+and CLI fail-closed behavior. Exact pass counts belong in the immutable PR/test
+record after the complete tree is rerun; this document does not turn fixture
+passes into live campaign evidence.
 
 ## Claim boundary
 

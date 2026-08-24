@@ -672,7 +672,7 @@ class PublicFixture:
             "parent_candidate_id": None,
             "candidate_artifact_digest": self.artifact_digest,
             "model_digest": digest_for("public-model"),
-            "adapter_digest": digest_for("public-adapter"),
+            "adapter_digest": None,
             "prompt_template_digests": [digest_for("public-template")],
             "mutation_family": "PURE_FUNCTION",
             "normalized_public_locus": "module:function",

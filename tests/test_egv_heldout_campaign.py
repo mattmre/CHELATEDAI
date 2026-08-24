@@ -1,13 +1,18 @@
 from __future__ import annotations
 
 from collections import Counter
+from concurrent.futures import ThreadPoolExecutor
 import json
 from pathlib import Path
 import re
 import tempfile
+import threading
+import time
 import unittest
+from unittest.mock import patch
 
 from egv.canonical import canonical_json, digest_for
+from egv.evaluation.dataset import PUBLIC_HELDOUT_TEMPLATE_IDS
 from egv.experiment import heldout as heldout_module
 from egv.experiment.heldout import (
     CoordinateOperationStore,
@@ -30,6 +35,23 @@ from egv.receipts import ReceiptSigner
 
 
 SIGNER = ReceiptSigner(b"Q" * 32)
+
+
+def _task_records():
+    records = []
+    for task_id in sorted(PUBLIC_HELDOUT_TEMPLATE_IDS):
+        body = task_id.removeprefix("egv-").removesuffix("-v1")
+        family, _split, ordinal = body.rsplit("-", 2)
+        records.append({
+            "template_id": task_id,
+            "family_id": family.upper(),
+            "split": "heldout",
+            "ordinal": int(ordinal),
+            "source_digest": digest_for({"public-source": task_id}),
+            "public_rule_id": "rule-{}".format(task_id),
+            "public_locus": "module:{}".format(task_id),
+        })
+    return records
 
 
 def _raises(exception, *, match):
@@ -61,6 +83,7 @@ def _protocol(schedule_seed=90210, seeds=(11, 29, 47), campaign_id="egv-campaign
         evaluator_public_key=SIGNER.public_key,
         schedule_seed=schedule_seed,
         bootstrap_seed=44119,
+        heldout_task_records=_task_records(),
         seeds=seeds,
     )
 
@@ -557,6 +580,93 @@ def test_public_report_contains_no_exact_private_inputs():
 
 
 class HeldoutCampaignTests(unittest.TestCase):
+    def test_protocol_digest_reads_use_the_sealed_immutable_snapshot(self):
+        protocol = _protocol()
+        expected = protocol.digest
+        with patch.object(heldout_module, "digest_for", wraps=heldout_module.digest_for) as digest_spy:
+            self.assertTrue(all(protocol.digest == expected for _ in range(1000)))
+        self.assertEqual(digest_spy.call_count, 0)
+
+    def test_concurrent_schedulers_dispatch_one_external_effect(self):
+        protocol = _protocol()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            journals = [HeldoutJournal(root / "journal", protocol) for _ in range(2)]
+            stores = [CoordinateOperationStore(root / "operations", protocol) for _ in range(2)]
+            start = threading.Barrier(2)
+            calls = []
+            calls_lock = threading.Lock()
+
+            def runner(_coordinate):
+                with calls_lock:
+                    calls.append("dispatch")
+                time.sleep(0.05)
+                raise RuntimeError("simulated lost response")
+
+            def reconcile(_coordinate, state):
+                envelope = build_signed_reconciliation(
+                    protocol,
+                    state,
+                    SIGNER,
+                    decision="UNKNOWN",
+                    result_envelope=None,
+                    receipt_collection_root=digest_for("concurrent-reconcile-receipts"),
+                    ledger_head_digest=digest_for("concurrent-reconcile-ledger"),
+                )
+                return {"reconciliation_envelope": envelope, "result_envelope": None}
+
+            def invoke(index):
+                start.wait()
+                try:
+                    run_pending_coordinates(
+                        protocol,
+                        journals[index],
+                        stores[index],
+                        runner,
+                        lambda _coordinate, raw: raw,
+                        reconcile,
+                    )
+                except Exception as exc:  # Expected simulated interruption/quarantine.
+                    return exc
+                return None
+
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                outcomes = list(pool.map(invoke, range(2)))
+
+            self.assertEqual(calls, ["dispatch"])
+            self.assertEqual(sum(isinstance(item, RuntimeError) for item in outcomes), 1)
+            self.assertEqual(sum(isinstance(item, HeldoutProtocolError) for item in outcomes), 1)
+
+    def test_protocol_rejects_malformed_nested_task_record_scalars(self):
+        bindings = {
+            name: digest_for({"binding": name})
+            for name in FrozenHeldoutProtocol.REQUIRED_BINDINGS
+        }
+        cases = (
+            ("ordinal", {"not": "an integer"}),
+            ("ordinal", True),
+            ("ordinal", 0),
+            ("template_id", ""),
+            ("family_id", ""),
+            ("split", ""),
+            ("source_digest", "not-a-digest"),
+            ("public_rule_id", ""),
+            ("public_locus", ""),
+        )
+        for field, replacement in cases:
+            with self.subTest(field=field, replacement=replacement):
+                records = _task_records()
+                records[0][field] = replacement
+                with self.assertRaises((HeldoutProtocolError, TypeError, ValueError)):
+                    FrozenHeldoutProtocol.build(
+                        campaign_id="egv-campaign-1234567890abcdef",
+                        bindings=bindings,
+                        evaluator_public_key=SIGNER.public_key,
+                        schedule_seed=90210,
+                        bootstrap_seed=44119,
+                        heldout_task_records=records,
+                    )
+
     def test_schedule(self):
         test_schedule_is_exact_deterministic_balanced_and_canonical_seeded()
 

@@ -11,14 +11,14 @@ comparisons.
 from __future__ import annotations
 
 import base64
-from dataclasses import dataclass
-from functools import cached_property
+from dataclasses import dataclass, field as dataclass_field
 import json
 import os
 from pathlib import Path
 import random
 import re
 import tempfile
+from types import MappingProxyType
 from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple, Union
 
 from ..canonical import (
@@ -30,14 +30,15 @@ from ..canonical import (
     digest_for,
     validate_sha256,
 )
-from ..evaluation.dataset import PUBLIC_HELDOUT_TEMPLATE_IDS
+from ..campaign.state import _exclusive_path_lock
+from ..evaluation.dataset import FAMILY_BY_ID, PUBLIC_HELDOUT_TEMPLATE_IDS
 from ..evaluation.shock import SHOCK_POLICIES, SHOCK_SEEDS, SHOCK_TASK_IDS
 from ..public import verify_public_restore_receipt
 from ..receipts import key_id_for_public_key, load_public_key, public_key_bytes
 from ..variation.arms import ARM_IDS, arm_policy
 
 
-PROTOCOL_SCHEMA = "egv-heldout-protocol-v1"
+PROTOCOL_SCHEMA = "egv-heldout-protocol-v2"
 COORDINATE_SCHEMA = "egv-heldout-coordinate-v1"
 RESULT_SCHEMA = "egv-heldout-result-v1"
 JOURNAL_SCHEMA = "egv-heldout-journal-record-v1"
@@ -191,9 +192,12 @@ class FrozenHeldoutProtocol:
     bootstrap_seed: int
     bootstrap_replicates: int
     heldout_task_ids: Tuple[str, ...]
+    heldout_task_records: Tuple[Mapping[str, Any], ...]
+    heldout_task_records_digest: str
     seeds: Tuple[int, ...]
     shock_task_ids: Tuple[str, ...]
     coordinates: Tuple[HeldoutCoordinate, ...]
+    _sealed_protocol_digest: str = dataclass_field(init=False, repr=False, compare=False)
 
     REQUIRED_BINDINGS = (
         "base_model_digest",
@@ -211,6 +215,13 @@ class FrozenHeldoutProtocol:
         "restore_inventory_digest",
     )
 
+    def __post_init__(self) -> None:
+        # Every nested container retained by build() is immutable.  Seal the
+        # content-derived digest once so ordinary reads do not re-serialize the
+        # 228-coordinate manifest.  Execution admission still calls
+        # validate_current(), which reconstructs and compares the full content.
+        object.__setattr__(self, "_sealed_protocol_digest", digest_for(self._unsigned_dict()))
+
     @classmethod
     def build(
         cls,
@@ -220,6 +231,7 @@ class FrozenHeldoutProtocol:
         evaluator_public_key: Any,
         schedule_seed: int,
         bootstrap_seed: int,
+        heldout_task_records: Sequence[Mapping[str, Any]],
         heldout_task_ids: Sequence[str] = tuple(sorted(PUBLIC_HELDOUT_TEMPLATE_IDS)),
         seeds: Sequence[int] = DEFAULT_SEEDS,
         shock_task_ids: Sequence[str] = SHOCK_TASK_IDS,
@@ -235,6 +247,46 @@ class FrozenHeldoutProtocol:
         tasks = tuple(heldout_task_ids)
         if len(tasks) != 8 or set(tasks) != set(PUBLIC_HELDOUT_TEMPLATE_IDS):
             raise HeldoutProtocolError("heldout_task_ids must be the exact eight frozen public addresses")
+        task_record_fields = {
+            "template_id", "family_id", "split", "ordinal", "source_digest",
+            "public_rule_id", "public_locus",
+        }
+        clean_task_records: List[Mapping[str, Any]] = []
+        if not isinstance(heldout_task_records, Sequence) or isinstance(
+            heldout_task_records, (str, bytes, bytearray)
+        ):
+            raise HeldoutProtocolError("heldout_task_records must be the exact ordered public records")
+        for index, raw_record in enumerate(heldout_task_records):
+            _require_closed_keys(raw_record, task_record_fields, "held-out task record")
+            for field in ("template_id", "family_id", "split", "public_rule_id", "public_locus"):
+                if type(raw_record[field]) is not str or not raw_record[field]:
+                    raise HeldoutProtocolError("held-out task record {} must be a nonempty string".format(field))
+            if raw_record["split"] != "heldout":
+                raise HeldoutProtocolError("held-out task record split must be heldout")
+            if type(raw_record["ordinal"]) is not int or raw_record["ordinal"] <= 0:
+                raise HeldoutProtocolError("held-out task record ordinal must be a positive integer")
+            if raw_record["family_id"] not in FAMILY_BY_ID or raw_record["template_id"] != (
+                "egv-{}-heldout-{}-v1".format(
+                    raw_record["family_id"].lower(), raw_record["ordinal"]
+                )
+            ):
+                raise HeldoutProtocolError("held-out task record family, ordinal, and address disagree")
+            source_digest = validate_sha256(raw_record["source_digest"], "held-out task source digest")
+            expected_task_id = tasks[index] if index < len(tasks) else None
+            if raw_record["template_id"] != expected_task_id:
+                raise HeldoutProtocolError("held-out task records are missing, reordered, or substituted")
+            clean_task_records.append(MappingProxyType({
+                "template_id": raw_record["template_id"],
+                "family_id": raw_record["family_id"],
+                "split": raw_record["split"],
+                "ordinal": raw_record["ordinal"],
+                "source_digest": source_digest,
+                "public_rule_id": raw_record["public_rule_id"],
+                "public_locus": raw_record["public_locus"],
+            }))
+        if len(clean_task_records) != len(tasks):
+            raise HeldoutProtocolError("held-out task records are missing, reordered, or substituted")
+        task_records_digest = digest_for([dict(record) for record in clean_task_records])
         frozen_seeds = tuple(seeds)
         if frozen_seeds != tuple(SHOCK_SEEDS):
             raise HeldoutProtocolError("seeds must be the exact canonical frozen sequence (11, 29, 47)")
@@ -249,7 +301,7 @@ class FrozenHeldoutProtocol:
 
         coordinates = _build_coordinates(
             campaign_id=campaign_id,
-            bindings=clean_bindings,
+            bindings=MappingProxyType(dict(clean_bindings)),
             schedule_seed=schedule_seed,
             heldout_task_ids=tasks,
             seeds=frozen_seeds,
@@ -257,25 +309,60 @@ class FrozenHeldoutProtocol:
         )
         return cls(
             campaign_id=campaign_id,
-            bindings=clean_bindings,
+            bindings=MappingProxyType(dict(clean_bindings)),
             evaluator_public_key_hex=public_key_raw.hex(),
             evaluator_key_id=evaluator_key_id,
             schedule_seed=schedule_seed,
             bootstrap_seed=bootstrap_seed,
             bootstrap_replicates=bootstrap_replicates,
             heldout_task_ids=tasks,
+            heldout_task_records=tuple(clean_task_records),
+            heldout_task_records_digest=task_records_digest,
             seeds=frozen_seeds,
             shock_task_ids=shock_tasks,
             coordinates=coordinates,
         )
 
-    @cached_property
+    @property
     def digest(self) -> str:
-        return digest_for(self._unsigned_dict())
+        return self._sealed_protocol_digest
 
-    @cached_property
+    @property
     def _coordinates_by_id(self) -> Mapping[str, HeldoutCoordinate]:
-        return {coordinate.coordinate_id: coordinate for coordinate in self.coordinates}
+        return MappingProxyType({coordinate.coordinate_id: coordinate for coordinate in self.coordinates})
+
+    def validate_current(self) -> str:
+        """Rebuild the full protocol projection and reject in-memory substitution."""
+
+        rebuilt = type(self).build(
+            campaign_id=self.campaign_id,
+            bindings=dict(self.bindings),
+            evaluator_public_key=bytes.fromhex(self.evaluator_public_key_hex),
+            schedule_seed=self.schedule_seed,
+            bootstrap_seed=self.bootstrap_seed,
+            heldout_task_records=[dict(record) for record in self.heldout_task_records],
+            heldout_task_ids=self.heldout_task_ids,
+            seeds=self.seeds,
+            shock_task_ids=self.shock_task_ids,
+            bootstrap_replicates=self.bootstrap_replicates,
+        )
+        current_projection = self._unsigned_dict()
+        if (
+            rebuilt._unsigned_dict() != current_projection
+            or rebuilt.digest != self._sealed_protocol_digest
+        ):
+            raise HeldoutProtocolError(
+                "current held-out protocol failed immutable admission: "
+                "it differs from its frozen reconstruction"
+            )
+        if self.heldout_task_records_digest != digest_for(
+            [dict(record) for record in self.heldout_task_records]
+        ):
+            raise HeldoutProtocolError(
+                "current held-out protocol failed immutable admission: "
+                "task-record commitment is invalid"
+            )
+        return rebuilt.digest
 
     def _unsigned_dict(self) -> Dict[str, Any]:
         return {
@@ -290,6 +377,8 @@ class FrozenHeldoutProtocol:
             "bootstrap_method": "paired-block-percentile-v1",
             "confidence_level": 0.95,
             "heldout_task_ids": list(self.heldout_task_ids),
+            "heldout_task_records": [dict(record) for record in self.heldout_task_records],
+            "heldout_task_records_digest": self.heldout_task_records_digest,
             "seeds": list(self.seeds),
             "shock_task_ids": list(self.shock_task_ids),
             "max_attempts": MAX_ATTEMPTS,
@@ -887,6 +976,18 @@ class HeldoutJournal:
             )
             self._orphans[orphan["coordinate_id"]] = orphan
 
+    def reload(self) -> None:
+        """Reload the complete journal while holding an external transaction lock."""
+
+        self.protocol.validate_current()
+        self._reload_locked()
+
+    def _reload_locked(self) -> None:
+        self._records.clear()
+        self._by_coordinate.clear()
+        self._orphans.clear()
+        self._load()
+
     @property
     def envelopes(self) -> Tuple[Dict[str, Any], ...]:
         return tuple(dict(record["envelope"]) for record in self._records)
@@ -910,6 +1011,13 @@ class HeldoutJournal:
             raise HeldoutProtocolError("coordinate has no indexed signed result") from exc
 
     def append(self, raw_envelope: Mapping[str, Any]) -> Dict[str, Any]:
+        """Append exactly once under a cross-process journal transaction."""
+
+        with _exclusive_path_lock(self.path / ".journal.lock"):
+            self.reload()
+            return self._append_locked(raw_envelope)
+
+    def _append_locked(self, raw_envelope: Mapping[str, Any]) -> Dict[str, Any]:
         envelope = verify_signed_result_envelope(self.protocol, raw_envelope)
         coordinate_id = envelope["coordinate_id"]
         if coordinate_id in self._by_coordinate:
@@ -966,6 +1074,64 @@ class HeldoutJournal:
         return dict(record)
 
 
+def validate_coordinate_operation_state(
+    protocol: FrozenHeldoutProtocol,
+    coordinate_id: str,
+    raw: Mapping[str, Any],
+) -> Dict[str, Any]:
+    """Validate the closed durable operation-state contract and proof invariants."""
+
+    keys = (
+        "schema_version", "campaign_id", "protocol_digest", "coordinate_id", "idempotency_key",
+        "state", "revision", "previous_state_digest", "envelope_digest", "reconciliation_digest",
+        "state_digest",
+    )
+    _require_closed_keys(raw, keys, "coordinate operation state")
+    value = dict(raw)
+    expected_idempotency = content_id(
+        "idem", {"protocol_digest": protocol.digest, "coordinate_id": coordinate_id}
+    )
+    if (
+        value["schema_version"] != OPERATION_SCHEMA
+        or value["campaign_id"] != protocol.campaign_id
+        or value["protocol_digest"] != protocol.digest
+        or value["coordinate_id"] != coordinate_id
+        or value["idempotency_key"] != expected_idempotency
+        or value["state"] not in CoordinateOperationStore.STATES
+        or type(value["revision"]) is not int
+        or value["revision"] < 1
+    ):
+        raise HeldoutProtocolError("coordinate operation state binding mismatch")
+    previous = value["previous_state_digest"]
+    if value["revision"] == 1:
+        if previous != GENESIS_HASH:
+            raise HeldoutProtocolError("initial operation state must begin at the genesis digest")
+    elif previous == GENESIS_HASH:
+        raise HeldoutProtocolError("revised operation state must bind its predecessor")
+    else:
+        validate_sha256(previous, "previous_state_digest")
+    envelope_digest = value["envelope_digest"]
+    reconciliation_digest = value["reconciliation_digest"]
+    if envelope_digest is not None:
+        validate_sha256(envelope_digest, "envelope_digest")
+    if reconciliation_digest is not None:
+        validate_sha256(reconciliation_digest, "reconciliation_digest")
+    state = value["state"]
+    if state == "DISPATCHING" and (envelope_digest is not None or reconciliation_digest is not None):
+        raise HeldoutProtocolError("dispatching operation cannot carry a terminal proof")
+    if state == "COMPLETED" and envelope_digest is None:
+        raise HeldoutProtocolError("completed operation state requires a signed envelope digest")
+    if state in {"NOT_EXECUTED", "QUARANTINED"} and (
+        envelope_digest is not None or reconciliation_digest is None
+    ):
+        raise HeldoutProtocolError("reconciled operation state has invalid proof fields")
+    supplied_digest = value["state_digest"]
+    validate_sha256(supplied_digest, "state_digest")
+    if supplied_digest != digest_for({key: item for key, item in value.items() if key != "state_digest"}):
+        raise HeldoutProtocolError("coordinate operation state digest mismatch")
+    return canonical_value(value)
+
+
 class CoordinateOperationStore:
     """Durable per-coordinate dispatch state with one stable idempotency key."""
 
@@ -995,31 +1161,28 @@ class CoordinateOperationStore:
         if not path.exists():
             return None
         value = _read_canonical_object(path, "coordinate operation state")
-        _require_closed_keys(value, self.KEYS, "coordinate operation state")
-        unsigned = dict(value)
-        state_digest = unsigned.pop("state_digest")
-        if state_digest != digest_for(unsigned):
-            raise HeldoutProtocolError("coordinate operation state digest mismatch")
-        if (
-            value["schema_version"] != OPERATION_SCHEMA
-            or value["campaign_id"] != self.protocol.campaign_id
-            or value["protocol_digest"] != self.protocol.digest
-            or value["coordinate_id"] != coordinate_id
-            or value["idempotency_key"] != self.idempotency_key(coordinate_id)
-            or value["state"] not in self.STATES
-            or type(value["revision"]) is not int
-            or value["revision"] < 1
-        ):
-            raise HeldoutProtocolError("coordinate operation state binding mismatch")
-        for field in ("previous_state_digest",):
-            if value[field] != GENESIS_HASH:
-                validate_sha256(value[field], field)
-        for field in ("envelope_digest", "reconciliation_digest"):
-            if value[field] is not None:
-                validate_sha256(value[field], field)
-        return value
+        return validate_coordinate_operation_state(self.protocol, coordinate_id, value)
 
     def transition(
+        self,
+        coordinate_id: str,
+        state: str,
+        *,
+        expected_state_digest: Optional[str],
+        envelope_digest: Optional[str] = None,
+        reconciliation_digest: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        self.protocol.validate_current()
+        with _exclusive_path_lock(self.path / ".locks" / (coordinate_id + ".lock")):
+            return self._transition_locked(
+                coordinate_id,
+                state,
+                expected_state_digest=expected_state_digest,
+                envelope_digest=envelope_digest,
+                reconciliation_digest=reconciliation_digest,
+            )
+
+    def _transition_locked(
         self,
         coordinate_id: str,
         state: str,
@@ -1063,14 +1226,16 @@ class CoordinateOperationStore:
         return value
 
     def begin(self, coordinate_id: str) -> Dict[str, Any]:
-        current = self.load(coordinate_id)
-        if current is not None and current["state"] != "NOT_EXECUTED":
-            raise HeldoutProtocolError("coordinate cannot dispatch from its durable operation state")
-        return self.transition(
-            coordinate_id,
-            "DISPATCHING",
-            expected_state_digest=current["state_digest"] if current else None,
-        )
+        self.protocol.validate_current()
+        with _exclusive_path_lock(self.path / ".locks" / (coordinate_id + ".lock")):
+            current = self.load(coordinate_id)
+            if current is not None and current["state"] != "NOT_EXECUTED":
+                raise HeldoutProtocolError("coordinate cannot dispatch from its durable operation state")
+            return self._transition_locked(
+                coordinate_id,
+                "DISPATCHING",
+                expected_state_digest=current["state_digest"] if current else None,
+            )
 
 
 RECONCILIATION_KEYS = (
@@ -1215,6 +1380,40 @@ def run_pending_coordinates(
     *,
     halt_on_integrity_failure: bool = True,
 ) -> Dict[str, Any]:
+    """Serialize recovery, dispatch, journaling, and operation transitions."""
+
+    protocol.validate_current()
+    if journal.protocol.digest != protocol.digest or operation_store.protocol.digest != protocol.digest:
+        raise HeldoutProtocolError("journal and runner protocol differ")
+    with _exclusive_path_lock(journal.path / ".scheduler.lock"):
+        validated_protocols = set()
+        for current_protocol in (protocol, journal.protocol, operation_store.protocol):
+            identity = id(current_protocol)
+            if identity not in validated_protocols:
+                current_protocol.validate_current()
+                validated_protocols.add(identity)
+        journal._reload_locked()
+        return _run_pending_coordinates_locked(
+            protocol,
+            journal,
+            operation_store,
+            runner,
+            result_verifier,
+            reconciler,
+            halt_on_integrity_failure=halt_on_integrity_failure,
+        )
+
+
+def _run_pending_coordinates_locked(
+    protocol: FrozenHeldoutProtocol,
+    journal: HeldoutJournal,
+    operation_store: CoordinateOperationStore,
+    runner: CoordinateRunner,
+    result_verifier: CoordinateResultVerifier,
+    reconciler: CoordinateReconciler,
+    *,
+    halt_on_integrity_failure: bool = True,
+) -> Dict[str, Any]:
     """Run pending coordinates through independent runtime and verifier hooks.
 
     ``runner`` may operate the candidate generator, but its output is never
@@ -1224,12 +1423,11 @@ def run_pending_coordinates(
     replace those cryptographic and semantic checks.
     """
 
-    if journal.protocol.digest != protocol.digest or operation_store.protocol.digest != protocol.digest:
-        raise HeldoutProtocolError("journal and runner protocol differ")
     started = 0
     skipped = 0
     reconciled = 0
     for coordinate in protocol.coordinates:
+        protocol.validate_current()
         coordinate_input = coordinate.to_dict(protocol.digest, protocol.campaign_id)
         coordinate_input["idempotency_key"] = operation_store.idempotency_key(coordinate.coordinate_id)
         operation = operation_store.load(coordinate.coordinate_id)
