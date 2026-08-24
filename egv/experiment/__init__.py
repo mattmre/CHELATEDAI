@@ -14,7 +14,27 @@ from .heldout import (
     verify_signed_result_envelope,
 )
 from .remote import HeldoutVerifierServiceManifest, run_heldout_verifier_once
-from .runtime import build_trainer_evidence_package, ordered_public_heldout_task_records
+from .runtime import (
+    HeldoutTrainerInputs,
+    HeldoutTrainerSources,
+    build_trainer_evidence_package,
+    ordered_public_heldout_task_records,
+)
+from .production import (
+    PRODUCTION_INTEGRATION_NAME,
+    DigestPinnedJsonExecutor,
+    ProductionDeploymentPaths,
+    ProductionHeldoutSchedulerAdapters,
+    ProductionObservationVerifier,
+    ProductionQwenLoopBuilders,
+    ProductionVariationRouterManifest,
+    SealedHeldoutDeploymentManifest,
+    build_production_heldout_runtime,
+    build_production_observation_verifier,
+    build_production_source_manifest,
+    build_production_variation_router_command,
+    run_routed_remote_variation_once,
+)
 
 __all__ = [
     "CoordinateOperationStore",
@@ -23,13 +43,28 @@ __all__ = [
     "HeldoutJournal",
     "HeldoutProtocolError",
     "HeldoutVerifierServiceManifest",
+    "HeldoutTrainerInputs",
+    "HeldoutTrainerSources",
+    "PRODUCTION_INTEGRATION_NAME",
+    "DigestPinnedJsonExecutor",
+    "ProductionDeploymentPaths",
+    "ProductionHeldoutSchedulerAdapters",
+    "ProductionObservationVerifier",
+    "ProductionQwenLoopBuilders",
+    "ProductionVariationRouterManifest",
+    "SealedHeldoutDeploymentManifest",
     "analyze_heldout_campaign",
     "build_private_campaign_record",
     "build_signed_reconciliation",
     "build_signed_result_envelope",
     "build_trainer_evidence_package",
+    "build_production_heldout_runtime",
+    "build_production_observation_verifier",
+    "build_production_source_manifest",
+    "build_production_variation_router_command",
     "ordered_public_heldout_task_records",
     "run_heldout_verifier_once",
+    "run_routed_remote_variation_once",
     "run_pending_coordinates",
     "verify_signed_result_envelope",
 ]
