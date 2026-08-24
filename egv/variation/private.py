@@ -715,7 +715,11 @@ class PrivateTrajectoryStore:
             ) from exc
         return value
 
-    def legacy_generation_bundles(self) -> Tuple[LegacyGenerationBundle, ...]:
+    def legacy_generation_bundles(
+        self,
+        *,
+        require_preserved_orphan: bool = False,
+    ) -> Tuple[LegacyGenerationBundle, ...]:
         """Return only complete legacy records with no durable intent.
 
         A record with an intent but no start is never legacy.  A record with a
@@ -723,6 +727,10 @@ class PrivateTrajectoryStore:
         this migration and is revalidated from the immutable record/sidecar.
         """
 
+        if type(require_preserved_orphan) is not bool:
+            raise VariationCheckpointError(
+                "legacy generation preserved-orphan requirement is invalid"
+            )
         self._validate_store_layout()
         self._validate_no_interrupted_evidence_writes()
         def closed_json_ids(root: Path) -> set[str]:
@@ -765,7 +773,8 @@ class PrivateTrajectoryStore:
                 raise VariationCheckpointError(
                     "private generation legacy inventory contains multiple orphans"
                 )
-            expected_artifacts = set(self._legacy_bundle_artifact_digests(bundles[0]))
+            referenced_artifacts = self._legacy_bundle_artifact_digests(bundles[0])
+            expected_artifacts = set(referenced_artifacts)
             artifact_files = [
                 path for path in self.artifacts.root.rglob("*") if path.is_file()
             ]
@@ -806,6 +815,15 @@ class PrivateTrajectoryStore:
                 raise VariationCheckpointError(
                     "private generation legacy artifact inventory exceeds the preserved boundary"
                 )
+            if require_preserved_orphan and (
+                len(referenced_artifacts) != 3
+                or len(orphan_artifacts) != 1
+                or len(actual_artifacts) != 4
+            ):
+                raise VariationCheckpointError(
+                    "commissioned legacy recovery requires exactly three distinct referenced "
+                    "artifacts and one distinct orphan artifact"
+                )
             bundles[0] = replace(
                 bundles[0],
                 orphan_artifact_digests=orphan_artifacts,
@@ -820,6 +838,14 @@ class PrivateTrajectoryStore:
                 raise VariationCheckpointError(
                     "legacy orphan-artifact manifest inventory is not exact"
                 )
+            if (
+                require_preserved_orphan
+                and (start_ids or manifest_ids)
+                and manifest_ids != expected_manifest_ids
+            ):
+                raise VariationCheckpointError(
+                    "commissioned legacy recovery lacks its mandatory orphan-artifact manifest"
+                )
             if manifest_ids:
                 self._load_legacy_orphan_manifest(bundles[0])
         return tuple(bundles)
@@ -831,12 +857,15 @@ class PrivateTrajectoryStore:
         generation_record_digest: str,
         trajectory_record_digest: str,
         replay_proof_digest: str,
+        require_preserved_orphan: bool = False,
     ) -> str:
         """Write deterministic start/intent records after external proof."""
 
         if type(bundle) is not LegacyGenerationBundle:
             raise VariationCheckpointError("legacy generation migration bundle type is invalid")
-        current_bundles = self.legacy_generation_bundles()
+        current_bundles = self.legacy_generation_bundles(
+            require_preserved_orphan=require_preserved_orphan,
+        )
         if (
             current_bundles != (bundle,)
             or generation_record_digest != bundle.generation_record_digest

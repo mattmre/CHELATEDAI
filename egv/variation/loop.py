@@ -1959,7 +1959,9 @@ class BoundedCandidateLoop:
         if getattr(self.generator, "response_contract", "closed-json-v1") != "closed-json-v1":
             if type(self.private_store) is not PrivateTrajectoryStore:
                 raise VariationCheckpointError("source-only recovery lacks its exact private evidence store")
-            legacy_bundles = self.private_store.legacy_generation_bundles()
+            legacy_bundles = self.private_store.legacy_generation_bundles(
+                require_preserved_orphan=not self.fixture_mode,
+            )
             if legacy_bundles:
                 # This is a one-orphan compatibility boundary, not a general
                 # legacy import path.  The authenticated evaluator cache must
@@ -2439,6 +2441,7 @@ class BoundedCandidateLoop:
                     generation_record_digest=legacy_bundle.generation_record_digest,
                     trajectory_record_digest=legacy_bundle.trajectory_record_digest,
                     replay_proof_digest=legacy_replay_proof_digest,
+                    require_preserved_orphan=not self.fixture_mode,
                 )
             attempt = self._materialize_result(
                 task=task,

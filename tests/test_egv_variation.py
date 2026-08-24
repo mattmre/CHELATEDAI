@@ -1795,6 +1795,19 @@ class VariationTestCase(unittest.TestCase):
                 sum(event["event_type"] == "VARIATION_ATTEMPT" for event in self.ledger.current_valid_events()),
                 0,
             )
+            calls_before_recovery = (model.generate_calls, tokenizer.decode_calls)
+            with self.assertRaisesRegex(
+                VariationCheckpointError,
+                "exactly three distinct referenced artifacts and one distinct orphan artifact",
+            ):
+                runner.run(task, seed=0)
+            self.assertEqual((model.generate_calls, tokenizer.decode_calls), calls_before_recovery)
+            self.assertEqual(counters, {"invocations": 1, "effects": 1, "dropped": True})
+            orphan_ref = private_store._put_artifact(
+                b"commissioned-live-shape-orphan",
+                media_type="application/octet-stream",
+                role="commissioned-legacy-orphan",
+            )
             report = runner.run(task, seed=0)
         self.assertTrue(report.promoted)
         self.assertEqual(counters, {"invocations": 2, "effects": 1, "dropped": True})
@@ -1805,6 +1818,13 @@ class VariationTestCase(unittest.TestCase):
             1,
         )
         self.assertEqual(self.ledger.connection.execute("SELECT COUNT(*) FROM checkpoints").fetchone()[0], 1)
+        manifest = json.loads(
+            (private_store.legacy_orphan_manifests / (candidate_id + ".json")).read_text(
+                encoding="utf-8"
+            )
+        )
+        self.assertEqual(manifest["orphan_artifact_digests"], [orphan_ref.digest])
+        self.assertEqual(len(manifest["referenced_artifact_digests"]), 3)
 
     def test_source_contract_resume_revalidates_attempt_before_missing_checkpoint(self) -> None:
         valid = self.corpus.split("train")[0].corrected_source.decode("utf-8")
