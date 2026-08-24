@@ -1378,6 +1378,7 @@ class VariationTestCase(unittest.TestCase):
         runner, task, _repo, _generator, tokenizer, model, private_store = self.make_source_contract_runner(
             [valid], max_attempts=1
         )
+        self.assertFalse(private_store.legacy_orphan_manifests.exists())
         original = PrivateTrajectoryStore.record_generation_success
         crashed = {"value": False}
 
@@ -1781,6 +1782,19 @@ class VariationTestCase(unittest.TestCase):
             with self.assertRaisesRegex(VariationDependencyError, "drop verified"):
                 runner.run(task, seed=0)
             self.assertEqual(self.ledger.connection.execute("SELECT COUNT(*) FROM receipts").fetchone()[0], 3)
+            candidate_id = str(
+                self.ledger.connection.execute("SELECT candidate_id FROM candidates").fetchone()[0]
+            )
+            for root in (private_store.generation_starts, private_store.generation_intents):
+                path = root / (candidate_id + ".json")
+                path.chmod(0o600)
+                path.unlink()
+            self.assertEqual(self.ledger.connection.execute("SELECT COUNT(*) FROM verdicts").fetchone()[0], 0)
+            self.assertEqual(self.ledger.connection.execute("SELECT COUNT(*) FROM effect_receipts").fetchone()[0], 0)
+            self.assertEqual(
+                sum(event["event_type"] == "VARIATION_ATTEMPT" for event in self.ledger.current_valid_events()),
+                0,
+            )
             report = runner.run(task, seed=0)
         self.assertTrue(report.promoted)
         self.assertEqual(counters, {"invocations": 2, "effects": 1, "dropped": True})
@@ -1832,6 +1846,725 @@ class VariationTestCase(unittest.TestCase):
             1,
         )
         self.assertEqual(self.ledger.connection.execute("SELECT COUNT(*) FROM checkpoints").fetchone()[0], 1)
+
+    def test_legacy_generation_record_migrates_only_after_authenticated_cache_replay(self) -> None:
+        valid = self.corpus.split("train")[0].corrected_source.decode("utf-8")
+        runner, task, _repo, _generator, tokenizer, model, private_store = self.make_source_contract_runner(
+            [valid], max_attempts=1
+        )
+        gateway_type = type(runner.evaluator)
+        original_evaluate = gateway_type.evaluate
+        original_materialize = variation_loop.BoundedCandidateLoop._materialize_result
+        state = {"calls": 0, "result": None, "crashed": False}
+
+        def cached_evaluate(gateway, **kwargs):
+            state["calls"] += 1
+            if state["result"] is None:
+                state["result"] = original_evaluate(gateway, **kwargs)
+            return state["result"]
+
+        def materialize_then_crash(loop, **kwargs):
+            if loop is runner and not state["crashed"]:
+                state["crashed"] = True
+                raise RuntimeError("crash before legacy materialization")
+            return original_materialize(loop, **kwargs)
+
+        with patch.object(gateway_type, "evaluate", new=cached_evaluate), patch.object(
+            variation_loop.BoundedCandidateLoop,
+            "_materialize_result",
+            new=materialize_then_crash,
+        ):
+            with self.assertRaisesRegex(RuntimeError, "legacy materialization"):
+                runner.run(task, seed=0)
+            candidate_id = str(
+                self.ledger.connection.execute("SELECT candidate_id FROM candidates").fetchone()[0]
+            )
+            for root in (private_store.generation_starts, private_store.generation_intents):
+                path = root / (candidate_id + ".json")
+                path.chmod(0o600)
+                path.unlink()
+            self.assertEqual(self.ledger.connection.execute("SELECT COUNT(*) FROM receipts").fetchone()[0], 3)
+            self.assertEqual(self.ledger.connection.execute("SELECT COUNT(*) FROM checkpoints").fetchone()[0], 0)
+            self.assertEqual(self.ledger.connection.execute("SELECT COUNT(*) FROM verdicts").fetchone()[0], 0)
+            self.assertEqual(self.ledger.connection.execute("SELECT COUNT(*) FROM effect_receipts").fetchone()[0], 0)
+            self.assertEqual(
+                sum(event["event_type"] == "VARIATION_ATTEMPT" for event in self.ledger.current_valid_events()),
+                0,
+            )
+            report = runner.run(task, seed=0)
+        self.assertTrue(report.promoted)
+        self.assertEqual(state["calls"], 2)
+        self.assertEqual((model.generate_calls, tokenizer.decode_calls), (1, 1))
+        self.assertTrue((private_store.generation_starts / (candidate_id + ".json")).is_file())
+        self.assertTrue((private_store.generation_intents / (candidate_id + ".json")).is_file())
+        self.assertFalse(private_store.legacy_orphan_manifests.exists())
+        self.assertEqual(self.ledger.connection.execute("SELECT COUNT(*) FROM receipts").fetchone()[0], 3)
+        self.assertEqual(
+            sum(event["event_type"] == "VARIATION_ATTEMPT" for event in self.ledger.current_valid_events()),
+            1,
+        )
+        self.assertEqual(self.ledger.connection.execute("SELECT COUNT(*) FROM checkpoints").fetchone()[0], 1)
+
+    def test_legacy_generation_does_not_migrate_when_cached_replay_fails(self) -> None:
+        valid = self.corpus.split("train")[0].corrected_source.decode("utf-8")
+        runner, task, _repo, _generator, tokenizer, model, private_store = self.make_source_contract_runner(
+            [valid], max_attempts=1
+        )
+        gateway_type = type(runner.evaluator)
+        original_evaluate = gateway_type.evaluate
+        original_materialize = variation_loop.BoundedCandidateLoop._materialize_result
+        state = {"result": None, "crashed": False}
+
+        def cached_evaluate(gateway, **kwargs):
+            if state["result"] is None:
+                state["result"] = original_evaluate(gateway, **kwargs)
+            return state["result"]
+
+        def crash_before_materialize(loop, **kwargs):
+            if loop is runner and not state["crashed"]:
+                state["crashed"] = True
+                raise RuntimeError("crash before legacy replay proof")
+            return original_materialize(loop, **kwargs)
+
+        with patch.object(gateway_type, "evaluate", new=cached_evaluate), patch.object(
+            variation_loop.BoundedCandidateLoop,
+            "_materialize_result",
+            new=crash_before_materialize,
+        ):
+            with self.assertRaisesRegex(RuntimeError, "legacy replay proof"):
+                runner.run(task, seed=0)
+        candidate_id = str(
+            self.ledger.connection.execute("SELECT candidate_id FROM candidates").fetchone()[0]
+        )
+        for root in (private_store.generation_starts, private_store.generation_intents):
+            path = root / (candidate_id + ".json")
+            path.chmod(0o600)
+            path.unlink()
+        calls = (model.generate_calls, tokenizer.decode_calls)
+
+        def unavailable_replay(_gateway, **_kwargs):
+            raise VariationDependencyError("cached evaluator replay unavailable")
+
+        with patch.object(gateway_type, "evaluate", new=unavailable_replay):
+            with self.assertRaisesRegex(VariationDependencyError, "replay unavailable"):
+                runner.run(task, seed=0)
+        self.assertEqual((model.generate_calls, tokenizer.decode_calls), calls)
+        self.assertFalse((private_store.generation_starts / (candidate_id + ".json")).exists())
+        self.assertFalse((private_store.generation_intents / (candidate_id + ".json")).exists())
+        self.assertFalse(private_store.legacy_orphan_manifests.exists())
+        self.assertEqual(self.ledger.connection.execute("SELECT COUNT(*) FROM verdicts").fetchone()[0], 0)
+        self.assertEqual(self.ledger.connection.execute("SELECT COUNT(*) FROM effect_receipts").fetchone()[0], 0)
+        self.assertEqual(self.ledger.connection.execute("SELECT COUNT(*) FROM checkpoints").fetchone()[0], 0)
+
+    def test_legacy_rejected_generation_migrates_without_repeating_attempt_one(self) -> None:
+        repo = self.corpus.split("train")[0]
+        rejected_source = dict(repo.source_files)["src/task.py"].decode("utf-8")
+        runner, task, _repo, _generator, tokenizer, model, private_store = self.make_source_contract_runner(
+            [rejected_source], max_attempts=1
+        )
+        gateway_type = type(runner.evaluator)
+        original_evaluate = gateway_type.evaluate
+        original_materialize = variation_loop.BoundedCandidateLoop._materialize_result
+        state = {"calls": 0, "result": None, "crashed": False}
+
+        def cached_evaluate(gateway, **kwargs):
+            state["calls"] += 1
+            if state["result"] is None:
+                state["result"] = original_evaluate(gateway, **kwargs)
+            return state["result"]
+
+        def materialize_then_crash(loop, **kwargs):
+            if loop is runner and not state["crashed"]:
+                state["crashed"] = True
+                raise RuntimeError("crash before rejected legacy materialization")
+            return original_materialize(loop, **kwargs)
+
+        with patch.object(gateway_type, "evaluate", new=cached_evaluate), patch.object(
+            variation_loop.BoundedCandidateLoop,
+            "_materialize_result",
+            new=materialize_then_crash,
+        ):
+            with self.assertRaisesRegex(RuntimeError, "rejected legacy materialization"):
+                runner.run(task, seed=0)
+            self.assertEqual(
+                sum(event["event_type"] == "VARIATION_ATTEMPT" for event in self.ledger.current_valid_events()),
+                0,
+            )
+            candidate_id = str(
+                self.ledger.connection.execute("SELECT candidate_id FROM candidates").fetchone()[0]
+            )
+            for root in (private_store.generation_starts, private_store.generation_intents):
+                path = root / (candidate_id + ".json")
+                path.chmod(0o600)
+                path.unlink()
+            report = runner.run(task, seed=0)
+        self.assertEqual(report.terminal_status, "BUDGET_EXHAUSTED")
+        self.assertEqual(state["calls"], 2)
+        self.assertEqual((model.generate_calls, tokenizer.decode_calls), (1, 1))
+        self.assertEqual(self.ledger.connection.execute("SELECT COUNT(*) FROM receipts").fetchone()[0], 3)
+        self.assertEqual(
+            sum(event["event_type"] == "VARIATION_ATTEMPT" for event in self.ledger.current_valid_events()),
+            1,
+        )
+        self.assertEqual(self.ledger.connection.execute("SELECT COUNT(*) FROM checkpoints").fetchone()[0], 1)
+
+    def test_legacy_rejected_generation_continues_to_attempt_two_in_same_process(self) -> None:
+        repo = self.corpus.split("train")[0]
+        rejected_source = dict(repo.source_files)["src/task.py"].decode("utf-8")
+        promoted_source = repo.corrected_source.decode("utf-8")
+        runner, task, _repo, _generator, tokenizer, model, private_store = self.make_source_contract_runner(
+            [rejected_source, promoted_source], max_attempts=2
+        )
+        gateway_type = type(runner.evaluator)
+        original_evaluate = gateway_type.evaluate
+        original_materialize = variation_loop.BoundedCandidateLoop._materialize_result
+        state = {"cache": {}, "effects": 0, "calls": 0, "crashed": False}
+
+        def cached_evaluate(gateway, **kwargs):
+            state["calls"] += 1
+            candidate_id = kwargs["candidate_id"]
+            if candidate_id not in state["cache"]:
+                state["effects"] += 1
+                state["cache"][candidate_id] = original_evaluate(gateway, **kwargs)
+            return state["cache"][candidate_id]
+
+        def crash_before_first_materialization(loop, **kwargs):
+            if loop is runner and not state["crashed"]:
+                state["crashed"] = True
+                raise RuntimeError("crash before rejected attempt one materialization")
+            return original_materialize(loop, **kwargs)
+
+        with patch.object(gateway_type, "evaluate", new=cached_evaluate), patch.object(
+            variation_loop.BoundedCandidateLoop,
+            "_materialize_result",
+            new=crash_before_first_materialization,
+        ):
+            with self.assertRaisesRegex(RuntimeError, "attempt one materialization"):
+                runner.run(task, seed=0)
+        first_candidate_id = str(
+            self.ledger.connection.execute("SELECT candidate_id FROM candidates").fetchone()[0]
+        )
+        first_receipts = tuple(canonical_bytes(receipt) for receipt in self.ledger.receipts())
+        for root in (private_store.generation_starts, private_store.generation_intents):
+            path = root / (first_candidate_id + ".json")
+            path.chmod(0o600)
+            path.unlink()
+        with patch.object(gateway_type, "evaluate", new=cached_evaluate):
+            report = runner.run(task, seed=0)
+        self.assertTrue(report.promoted)
+        self.assertEqual(report.terminal_status, "PROMOTED")
+        self.assertEqual([attempt.attempt_index for attempt in report.attempts], [1, 2])
+        self.assertEqual([attempt.disposition for attempt in report.attempts], ["REJECTED", "PROMOTED"])
+        self.assertEqual((model.generate_calls, tokenizer.decode_calls), (2, 2))
+        self.assertEqual((state["calls"], state["effects"]), (3, 2))
+        self.assertEqual(self.ledger.connection.execute("SELECT COUNT(*) FROM receipts").fetchone()[0], 6)
+        self.assertEqual(
+            tuple(canonical_bytes(receipt) for receipt in self.ledger.receipts()[:3]),
+            first_receipts,
+        )
+        self.assertEqual(
+            sum(event["event_type"] == "VARIATION_ATTEMPT" for event in self.ledger.current_valid_events()),
+            2,
+        )
+        self.assertEqual(self.ledger.connection.execute("SELECT COUNT(*) FROM checkpoints").fetchone()[0], 2)
+
+    def test_legacy_generation_migration_resumes_after_start_write(self) -> None:
+        valid = self.corpus.split("train")[0].corrected_source.decode("utf-8")
+        runner, task, _repo, _generator, tokenizer, model, private_store = self.make_source_contract_runner(
+            [valid], max_attempts=1
+        )
+        gateway_type = type(runner.evaluator)
+        original_evaluate = gateway_type.evaluate
+        original_materialize = variation_loop.BoundedCandidateLoop._materialize_result
+        crashed = {"value": False, "result": None}
+
+        def cached_evaluate(gateway, **kwargs):
+            if crashed["result"] is None:
+                crashed["result"] = original_evaluate(gateway, **kwargs)
+            return crashed["result"]
+
+        def materialize_then_crash(loop, **kwargs):
+            if loop is runner and not crashed["value"]:
+                crashed["value"] = True
+                raise RuntimeError("crash before legacy migration")
+            return original_materialize(loop, **kwargs)
+
+        with patch.object(gateway_type, "evaluate", new=cached_evaluate), patch.object(
+            variation_loop.BoundedCandidateLoop,
+            "_materialize_result",
+            new=materialize_then_crash,
+        ):
+            with self.assertRaisesRegex(RuntimeError, "legacy migration"):
+                runner.run(task, seed=0)
+        candidate_id = str(
+            self.ledger.connection.execute("SELECT candidate_id FROM candidates").fetchone()[0]
+        )
+        for root in (private_store.generation_starts, private_store.generation_intents):
+            path = root / (candidate_id + ".json")
+            path.chmod(0o600)
+            path.unlink()
+        original_write_once = PrivateTrajectoryStore._write_once
+        migration_drop = {"value": False}
+
+        def drop_before_intent(store, path, value, **kwargs):
+            if (
+                store is private_store
+                and path.parent == private_store.generation_intents
+                and not migration_drop["value"]
+            ):
+                migration_drop["value"] = True
+                raise RuntimeError("drop after migrated start")
+            return original_write_once(store, path, value, **kwargs)
+
+        calls = (model.generate_calls, tokenizer.decode_calls)
+        with patch.object(gateway_type, "evaluate", new=cached_evaluate), patch.object(
+            PrivateTrajectoryStore, "_write_once", new=drop_before_intent
+        ):
+            with self.assertRaisesRegex(RuntimeError, "migrated start"):
+                runner.run(task, seed=0)
+        self.assertTrue((private_store.generation_starts / (candidate_id + ".json")).is_file())
+        self.assertFalse((private_store.generation_intents / (candidate_id + ".json")).exists())
+        self.assertEqual((model.generate_calls, tokenizer.decode_calls), calls)
+        with patch.object(gateway_type, "evaluate", new=cached_evaluate):
+            report = runner.run(task, seed=0)
+        self.assertTrue(report.promoted)
+        self.assertTrue((private_store.generation_intents / (candidate_id + ".json")).is_file())
+        self.assertEqual((model.generate_calls, tokenizer.decode_calls), calls)
+        self.assertEqual(self.ledger.connection.execute("SELECT COUNT(*) FROM receipts").fetchone()[0], 3)
+        self.assertEqual(self.ledger.connection.execute("SELECT COUNT(*) FROM checkpoints").fetchone()[0], 1)
+
+    def test_legacy_generation_migration_rejects_intent_without_start(self) -> None:
+        valid = self.corpus.split("train")[0].corrected_source.decode("utf-8")
+        runner, task, _repo, _generator, tokenizer, model, private_store = self.make_source_contract_runner(
+            [valid], max_attempts=1
+        )
+        original_materialize = variation_loop.BoundedCandidateLoop._materialize_result
+        crashed = {"value": False}
+
+        def materialize_then_crash(loop, **kwargs):
+            if loop is runner and not crashed["value"]:
+                crashed["value"] = True
+                raise RuntimeError("crash before partial legacy set")
+            return original_materialize(loop, **kwargs)
+
+        with patch.object(
+            variation_loop.BoundedCandidateLoop,
+            "_materialize_result",
+            new=materialize_then_crash,
+        ):
+            with self.assertRaisesRegex(RuntimeError, "partial legacy set"):
+                runner.run(task, seed=0)
+        candidate_id = str(
+            self.ledger.connection.execute("SELECT candidate_id FROM candidates").fetchone()[0]
+        )
+        start_path = private_store.generation_starts / (candidate_id + ".json")
+        start_path.chmod(0o600)
+        start_path.unlink()
+        calls = (model.generate_calls, tokenizer.decode_calls)
+        with self.assertRaisesRegex(VariationCheckpointError, "impossible partial set"):
+            runner.run(task, seed=0)
+        self.assertEqual((model.generate_calls, tokenizer.decode_calls), calls)
+        self.assertFalse(start_path.exists())
+        self.assertTrue((private_store.generation_intents / (candidate_id + ".json")).is_file())
+        self.assertEqual(self.ledger.connection.execute("SELECT COUNT(*) FROM checkpoints").fetchone()[0], 0)
+
+    def test_legacy_generation_migration_rejects_mismatched_existing_start(self) -> None:
+        valid = self.corpus.split("train")[0].corrected_source.decode("utf-8")
+        runner, task, _repo, _generator, tokenizer, model, private_store = self.make_source_contract_runner(
+            [valid], max_attempts=1
+        )
+        original_materialize = variation_loop.BoundedCandidateLoop._materialize_result
+        crashed = {"value": False}
+
+        def materialize_then_crash(loop, **kwargs):
+            if loop is runner and not crashed["value"]:
+                crashed["value"] = True
+                raise RuntimeError("crash before mismatched migrated start")
+            return original_materialize(loop, **kwargs)
+
+        with patch.object(
+            variation_loop.BoundedCandidateLoop,
+            "_materialize_result",
+            new=materialize_then_crash,
+        ):
+            with self.assertRaisesRegex(RuntimeError, "mismatched migrated start"):
+                runner.run(task, seed=0)
+        candidate_id = str(
+            self.ledger.connection.execute("SELECT candidate_id FROM candidates").fetchone()[0]
+        )
+        intent_path = private_store.generation_intents / (candidate_id + ".json")
+        intent_path.chmod(0o600)
+        intent_path.unlink()
+        start_path = private_store.generation_starts / (candidate_id + ".json")
+        start = json.loads(start_path.read_text(encoding="utf-8"))
+        start["context"]["task_id"] = "crossed-start-task"
+        start_path.chmod(0o600)
+        start_path.write_bytes(canonical_bytes(start))
+        calls = (model.generate_calls, tokenizer.decode_calls)
+        with self.assertRaisesRegex(VariationCheckpointError, "crossed its durable start"):
+            runner.run(task, seed=0)
+        self.assertEqual((model.generate_calls, tokenizer.decode_calls), calls)
+        self.assertFalse(intent_path.exists())
+        self.assertEqual(self.ledger.connection.execute("SELECT COUNT(*) FROM checkpoints").fetchone()[0], 0)
+
+    def test_legacy_generation_migration_rejects_missing_raw_cas_before_write(self) -> None:
+        valid = self.corpus.split("train")[0].corrected_source.decode("utf-8")
+        runner, task, _repo, _generator, tokenizer, model, private_store = self.make_source_contract_runner(
+            [valid], max_attempts=1
+        )
+        original_materialize = variation_loop.BoundedCandidateLoop._materialize_result
+        crashed = {"value": False}
+
+        def materialize_then_crash(loop, **kwargs):
+            if loop is runner and not crashed["value"]:
+                crashed["value"] = True
+                raise RuntimeError("crash before missing legacy CAS")
+            return original_materialize(loop, **kwargs)
+
+        with patch.object(
+            variation_loop.BoundedCandidateLoop,
+            "_materialize_result",
+            new=materialize_then_crash,
+        ):
+            with self.assertRaisesRegex(RuntimeError, "missing legacy CAS"):
+                runner.run(task, seed=0)
+        candidate_id = str(
+            self.ledger.connection.execute("SELECT candidate_id FROM candidates").fetchone()[0]
+        )
+        for root in (private_store.generation_starts, private_store.generation_intents):
+            path = root / (candidate_id + ".json")
+            path.chmod(0o600)
+            path.unlink()
+        generation = json.loads(
+            (private_store.generation_records / (candidate_id + ".json")).read_text(encoding="utf-8")
+        )
+        missing_digest = generation["contract_response_digest"]
+        missing_path = (
+            private_store.artifacts.root
+            / "blobs"
+            / "sha256"
+            / missing_digest[:2]
+            / missing_digest[2:4]
+            / missing_digest
+        )
+        missing_path.chmod(0o600)
+        missing_path.unlink()
+        calls = (model.generate_calls, tokenizer.decode_calls)
+        with self.assertRaises(VariationCheckpointError):
+            runner.run(task, seed=0)
+        self.assertEqual((model.generate_calls, tokenizer.decode_calls), calls)
+        self.assertFalse((private_store.generation_starts / (candidate_id + ".json")).exists())
+        self.assertFalse((private_store.generation_intents / (candidate_id + ".json")).exists())
+        self.assertEqual(self.ledger.connection.execute("SELECT COUNT(*) FROM checkpoints").fetchone()[0], 0)
+
+    def test_legacy_generation_migration_rejects_extra_sidecar_before_write(self) -> None:
+        valid = self.corpus.split("train")[0].corrected_source.decode("utf-8")
+        runner, task, _repo, _generator, tokenizer, model, private_store = self.make_source_contract_runner(
+            [valid], max_attempts=1
+        )
+        original_materialize = variation_loop.BoundedCandidateLoop._materialize_result
+        crashed = {"value": False}
+
+        def crash_before_materialize(loop, **kwargs):
+            if loop is runner and not crashed["value"]:
+                crashed["value"] = True
+                raise RuntimeError("crash before extra legacy sidecar")
+            return original_materialize(loop, **kwargs)
+
+        with patch.object(
+            variation_loop.BoundedCandidateLoop,
+            "_materialize_result",
+            new=crash_before_materialize,
+        ):
+            with self.assertRaisesRegex(RuntimeError, "extra legacy sidecar"):
+                runner.run(task, seed=0)
+        candidate_id = str(
+            self.ledger.connection.execute("SELECT candidate_id FROM candidates").fetchone()[0]
+        )
+        for root in (private_store.generation_starts, private_store.generation_intents):
+            path = root / (candidate_id + ".json")
+            path.chmod(0o600)
+            path.unlink()
+        source_sidecar = private_store.records / (candidate_id + ".json")
+        (private_store.records / "unexpected-sidecar.json").write_bytes(source_sidecar.read_bytes())
+        calls = (model.generate_calls, tokenizer.decode_calls)
+        with self.assertRaisesRegex(VariationCheckpointError, "mixed with another generation state"):
+            runner.run(task, seed=0)
+        self.assertEqual((model.generate_calls, tokenizer.decode_calls), calls)
+        self.assertFalse((private_store.generation_starts / (candidate_id + ".json")).exists())
+        self.assertFalse((private_store.generation_intents / (candidate_id + ".json")).exists())
+        self.assertEqual(self.ledger.connection.execute("SELECT COUNT(*) FROM verdicts").fetchone()[0], 0)
+        self.assertEqual(self.ledger.connection.execute("SELECT COUNT(*) FROM effect_receipts").fetchone()[0], 0)
+
+    def test_legacy_generation_migration_manifests_single_orphan_cas(self) -> None:
+        valid = self.corpus.split("train")[0].corrected_source.decode("utf-8")
+        runner, task, _repo, _generator, tokenizer, model, private_store = self.make_source_contract_runner(
+            [valid], max_attempts=1
+        )
+        gateway_type = type(runner.evaluator)
+        original_evaluate = gateway_type.evaluate
+        original_materialize = variation_loop.BoundedCandidateLoop._materialize_result
+        state = {"result": None, "crashed": False}
+
+        def cached_evaluate(gateway, **kwargs):
+            if state["result"] is None:
+                state["result"] = original_evaluate(gateway, **kwargs)
+            return state["result"]
+
+        def crash_before_materialize(loop, **kwargs):
+            if loop is runner and not state["crashed"]:
+                state["crashed"] = True
+                raise RuntimeError("crash before orphan legacy CAS")
+            return original_materialize(loop, **kwargs)
+
+        with patch.object(gateway_type, "evaluate", new=cached_evaluate), patch.object(
+            variation_loop.BoundedCandidateLoop,
+            "_materialize_result",
+            new=crash_before_materialize,
+        ):
+            with self.assertRaisesRegex(RuntimeError, "orphan legacy CAS"):
+                runner.run(task, seed=0)
+        candidate_id = str(
+            self.ledger.connection.execute("SELECT candidate_id FROM candidates").fetchone()[0]
+        )
+        for root in (private_store.generation_starts, private_store.generation_intents):
+            path = root / (candidate_id + ".json")
+            path.chmod(0o600)
+            path.unlink()
+        orphan_ref = private_store._put_artifact(
+            b"orphan-private-cas",
+            media_type="application/octet-stream",
+            role="adversarial-orphan",
+        )
+        calls = (model.generate_calls, tokenizer.decode_calls)
+        with patch.object(gateway_type, "evaluate", new=cached_evaluate):
+            report = runner.run(task, seed=0)
+        self.assertTrue(report.promoted)
+        self.assertEqual((model.generate_calls, tokenizer.decode_calls), calls)
+        manifest_path = private_store.legacy_orphan_manifests / (candidate_id + ".json")
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        self.assertEqual(manifest["orphan_artifact_digests"], [orphan_ref.digest])
+        self.assertTrue((private_store.generation_starts / (candidate_id + ".json")).is_file())
+        self.assertTrue((private_store.generation_intents / (candidate_id + ".json")).is_file())
+        self.assertEqual(
+            len(private_store.successful_generations(run_id=report.run_id, task_id=task.task_id, arm_id="B")),
+            1,
+        )
+        manifest_raw = manifest_path.read_bytes()
+        manifest_path.chmod(0o600)
+        manifest_path.unlink()
+        with self.assertRaisesRegex(VariationCheckpointError, "lacks its orphan-artifact manifest"):
+            private_store.successful_generations(run_id=report.run_id, task_id=task.task_id, arm_id="B")
+        manifest_path.write_bytes(manifest_raw)
+        tampered_manifest = json.loads(manifest_raw.decode("utf-8"))
+        tampered_manifest["replay_proof_digest"] = "0" * 64
+        manifest_path.write_bytes(canonical_bytes(tampered_manifest))
+        with self.assertRaisesRegex(VariationCheckpointError, "manifest binding is invalid"):
+            private_store.successful_generations(run_id=report.run_id, task_id=task.task_id, arm_id="B")
+
+    def test_legacy_generation_migration_rejects_second_orphan_cas_before_write(self) -> None:
+        valid = self.corpus.split("train")[0].corrected_source.decode("utf-8")
+        runner, task, _repo, _generator, tokenizer, model, private_store = self.make_source_contract_runner(
+            [valid], max_attempts=1
+        )
+        original_materialize = variation_loop.BoundedCandidateLoop._materialize_result
+        crashed = {"value": False}
+
+        def crash_before_materialize(loop, **kwargs):
+            if loop is runner and not crashed["value"]:
+                crashed["value"] = True
+                raise RuntimeError("crash before second orphan legacy CAS")
+            return original_materialize(loop, **kwargs)
+
+        with patch.object(
+            variation_loop.BoundedCandidateLoop,
+            "_materialize_result",
+            new=crash_before_materialize,
+        ):
+            with self.assertRaisesRegex(RuntimeError, "second orphan legacy CAS"):
+                runner.run(task, seed=0)
+        candidate_id = str(
+            self.ledger.connection.execute("SELECT candidate_id FROM candidates").fetchone()[0]
+        )
+        for root in (private_store.generation_starts, private_store.generation_intents):
+            path = root / (candidate_id + ".json")
+            path.chmod(0o600)
+            path.unlink()
+        for index in (1, 2):
+            private_store._put_artifact(
+                "orphan-private-cas-{}".format(index).encode("utf-8"),
+                media_type="application/octet-stream",
+                role="adversarial-orphan",
+            )
+        calls = (model.generate_calls, tokenizer.decode_calls)
+        with self.assertRaisesRegex(VariationCheckpointError, "exceeds the preserved boundary"):
+            runner.run(task, seed=0)
+        self.assertEqual((model.generate_calls, tokenizer.decode_calls), calls)
+        self.assertFalse((private_store.generation_starts / (candidate_id + ".json")).exists())
+        self.assertFalse((private_store.generation_intents / (candidate_id + ".json")).exists())
+        self.assertFalse((private_store.legacy_orphan_manifests / (candidate_id + ".json")).exists())
+
+    def test_legacy_generation_migration_resumes_after_manifest_before_start(self) -> None:
+        valid = self.corpus.split("train")[0].corrected_source.decode("utf-8")
+        runner, task, _repo, _generator, tokenizer, model, private_store = self.make_source_contract_runner(
+            [valid], max_attempts=1
+        )
+        gateway_type = type(runner.evaluator)
+        original_evaluate = gateway_type.evaluate
+        original_materialize = variation_loop.BoundedCandidateLoop._materialize_result
+        state = {"result": None, "crashed": False}
+
+        def cached_evaluate(gateway, **kwargs):
+            if state["result"] is None:
+                state["result"] = original_evaluate(gateway, **kwargs)
+            return state["result"]
+
+        def crash_before_materialize(loop, **kwargs):
+            if loop is runner and not state["crashed"]:
+                state["crashed"] = True
+                raise RuntimeError("crash before orphan-manifest migration")
+            return original_materialize(loop, **kwargs)
+
+        with patch.object(gateway_type, "evaluate", new=cached_evaluate), patch.object(
+            variation_loop.BoundedCandidateLoop,
+            "_materialize_result",
+            new=crash_before_materialize,
+        ):
+            with self.assertRaisesRegex(RuntimeError, "orphan-manifest migration"):
+                runner.run(task, seed=0)
+        candidate_id = str(
+            self.ledger.connection.execute("SELECT candidate_id FROM candidates").fetchone()[0]
+        )
+        for root in (private_store.generation_starts, private_store.generation_intents):
+            path = root / (candidate_id + ".json")
+            path.chmod(0o600)
+            path.unlink()
+        private_store._put_artifact(
+            b"preserved-orphan-before-start",
+            media_type="application/octet-stream",
+            role="adversarial-orphan",
+        )
+        original_record_start = PrivateTrajectoryStore.record_generation_start
+        dropped = {"value": False}
+
+        def drop_after_manifest(store, **kwargs):
+            if store is private_store and not dropped["value"]:
+                dropped["value"] = True
+                manifest_path = store.legacy_orphan_manifests / (candidate_id + ".json")
+                self.assertTrue(manifest_path.is_file())
+                raise RuntimeError("drop after orphan manifest")
+            return original_record_start(store, **kwargs)
+
+        calls = (model.generate_calls, tokenizer.decode_calls)
+        with patch.object(gateway_type, "evaluate", new=cached_evaluate), patch.object(
+            PrivateTrajectoryStore,
+            "record_generation_start",
+            new=drop_after_manifest,
+        ):
+            with self.assertRaisesRegex(RuntimeError, "after orphan manifest"):
+                runner.run(task, seed=0)
+        manifest_path = private_store.legacy_orphan_manifests / (candidate_id + ".json")
+        self.assertTrue(manifest_path.is_file())
+        self.assertFalse((private_store.generation_starts / (candidate_id + ".json")).exists())
+        self.assertFalse((private_store.generation_intents / (candidate_id + ".json")).exists())
+        self.assertEqual((model.generate_calls, tokenizer.decode_calls), calls)
+        self.assertEqual(self.ledger.connection.execute("SELECT COUNT(*) FROM verdicts").fetchone()[0], 0)
+        self.assertEqual(self.ledger.connection.execute("SELECT COUNT(*) FROM effect_receipts").fetchone()[0], 0)
+        with patch.object(gateway_type, "evaluate", new=cached_evaluate):
+            report = runner.run(task, seed=0)
+        self.assertTrue(report.promoted)
+        self.assertEqual((model.generate_calls, tokenizer.decode_calls), calls)
+        self.assertTrue((private_store.generation_starts / (candidate_id + ".json")).is_file())
+        self.assertTrue((private_store.generation_intents / (candidate_id + ".json")).is_file())
+
+    def test_legacy_generation_migration_rejects_crossed_sidecar_before_write(self) -> None:
+        valid = self.corpus.split("train")[0].corrected_source.decode("utf-8")
+        runner, task, _repo, _generator, tokenizer, model, private_store = self.make_source_contract_runner(
+            [valid], max_attempts=1
+        )
+        gateway_type = type(runner.evaluator)
+        original_evaluate = gateway_type.evaluate
+        original_materialize = variation_loop.BoundedCandidateLoop._materialize_result
+        state = {"result": None, "crashed": False}
+
+        def cached_evaluate(gateway, **kwargs):
+            if state["result"] is None:
+                state["result"] = original_evaluate(gateway, **kwargs)
+            return state["result"]
+
+        def materialize_then_crash(loop, **kwargs):
+            if loop is runner and not state["crashed"]:
+                state["crashed"] = True
+                raise RuntimeError("crash before legacy tamper")
+            return original_materialize(loop, **kwargs)
+
+        with patch.object(gateway_type, "evaluate", new=cached_evaluate), patch.object(
+            variation_loop.BoundedCandidateLoop,
+            "_materialize_result",
+            new=materialize_then_crash,
+        ):
+            with self.assertRaisesRegex(RuntimeError, "legacy tamper"):
+                runner.run(task, seed=0)
+            candidate_id = str(
+                self.ledger.connection.execute("SELECT candidate_id FROM candidates").fetchone()[0]
+            )
+            for root in (private_store.generation_starts, private_store.generation_intents):
+                path = root / (candidate_id + ".json")
+                path.chmod(0o600)
+                path.unlink()
+            sidecar_path = private_store.records / (candidate_id + ".json")
+            sidecar = json.loads(sidecar_path.read_text(encoding="utf-8"))
+            sidecar["context"]["run_id"] = "crossed-legacy-run"
+            sidecar_path.chmod(0o600)
+            sidecar_path.write_bytes(canonical_bytes(sidecar))
+            calls = (model.generate_calls, tokenizer.decode_calls)
+            with self.assertRaisesRegex(VariationCheckpointError, "crossed its frozen context"):
+                runner.run(task, seed=0)
+        self.assertEqual((model.generate_calls, tokenizer.decode_calls), calls)
+        self.assertFalse((private_store.generation_starts / (candidate_id + ".json")).exists())
+        self.assertFalse((private_store.generation_intents / (candidate_id + ".json")).exists())
+        self.assertEqual(self.ledger.connection.execute("SELECT COUNT(*) FROM receipts").fetchone()[0], 3)
+        self.assertEqual(self.ledger.connection.execute("SELECT COUNT(*) FROM checkpoints").fetchone()[0], 0)
+
+    def test_legacy_generation_migration_rejects_missing_receipt_before_write(self) -> None:
+        valid = self.corpus.split("train")[0].corrected_source.decode("utf-8")
+        runner, task, _repo, _generator, tokenizer, model, private_store = self.make_source_contract_runner(
+            [valid], max_attempts=1
+        )
+        original_materialize = variation_loop.BoundedCandidateLoop._materialize_result
+        crashed = {"value": False}
+
+        def materialize_then_crash(loop, **kwargs):
+            if loop is runner and not crashed["value"]:
+                crashed["value"] = True
+                raise RuntimeError("crash before receipt deletion")
+            return original_materialize(loop, **kwargs)
+
+        with patch.object(
+            variation_loop.BoundedCandidateLoop,
+            "_materialize_result",
+            new=materialize_then_crash,
+        ):
+            with self.assertRaisesRegex(RuntimeError, "receipt deletion"):
+                runner.run(task, seed=0)
+        candidate_id = str(
+            self.ledger.connection.execute("SELECT candidate_id FROM candidates").fetchone()[0]
+        )
+        for root in (private_store.generation_starts, private_store.generation_intents):
+            path = root / (candidate_id + ".json")
+            path.chmod(0o600)
+            path.unlink()
+        self.ledger.connection.execute("DROP TRIGGER receipts_no_delete")
+        self.ledger.connection.execute(
+            "DELETE FROM receipts WHERE receipt_id=(SELECT receipt_id FROM receipts ORDER BY sequence LIMIT 1)"
+        )
+        calls = (model.generate_calls, tokenizer.decode_calls)
+        with self.assertRaisesRegex(VariationCheckpointError, "pre-materialization boundary"):
+            runner.run(task, seed=0)
+        self.assertEqual((model.generate_calls, tokenizer.decode_calls), calls)
+        self.assertFalse((private_store.generation_starts / (candidate_id + ".json")).exists())
+        self.assertFalse((private_store.generation_intents / (candidate_id + ".json")).exists())
+        self.assertEqual(self.ledger.connection.execute("SELECT COUNT(*) FROM checkpoints").fetchone()[0], 0)
 
     def test_source_contract_resume_rejects_changed_result_with_unchanged_receipts_and_attempt(self) -> None:
         valid = self.corpus.split("train")[0].corrected_source.decode("utf-8")

@@ -9,7 +9,7 @@ from threading import RLock
 from typing import Any, Dict, List, Mapping, Optional, Protocol, Sequence, Tuple
 from weakref import WeakKeyDictionary
 
-from ..canonical import canonical_json, content_id, digest_bytes, digest_for, failure_family_root
+from ..canonical import GENESIS_HASH, canonical_json, content_id, digest_bytes, digest_for, failure_family_root
 from ..evaluation.artifacts import ContentAddressedArtifactStore
 from ..evaluation.controller import EvaluationResult, EvaluatorController, HiddenEvaluatorRunner
 from ..evaluation.dataset import MicroRepo
@@ -31,7 +31,7 @@ from .generator import (
     ModelCandidateGenerator,
 )
 from .model import ADAPTER_ATTESTATION_SCHEMA, AdapterApplicationAttestation, MODEL_REVISION
-from .private import PrivateTrajectoryStore
+from .private import LegacyGenerationBundle, PrivateTrajectoryStore
 from .retrieval import EvidenceRetrievalPolicy, RetrievalResult, RetrievedEvidence, retrieval_policy
 from .remote import RemoteControllerEvaluationGateway
 
@@ -1108,6 +1108,176 @@ class BoundedCandidateLoop:
         elif incident_receipts:
             raise VariationCheckpointError("durable non-infrastructure receipt carries an incident")
 
+    def _legacy_pre_materialization_receipt_ids(
+        self,
+        bundle: LegacyGenerationBundle,
+        *,
+        task: VariationTask,
+        run_id: str,
+    ) -> Tuple[str, ...]:
+        """Read-only proof for the one preserved pre-materialization orphan."""
+
+        if type(bundle) is not LegacyGenerationBundle:
+            raise VariationCheckpointError("legacy generation migration bundle type is invalid")
+        candidate_id = bundle.candidate_id
+        candidate_ids = [
+            str(row["candidate_id"])
+            for row in self.ledger.connection.execute(
+                "SELECT candidate_id FROM candidates ORDER BY candidate_id",
+            ).fetchall()
+        ]
+        receipt_rows = self.ledger.connection.execute(
+            "SELECT receipt_id,sequence,payload_json FROM receipts ORDER BY sequence",
+        ).fetchall()
+        try:
+            receipts = [json.loads(row["payload_json"]) for row in receipt_rows]
+        except (TypeError, ValueError) as exc:
+            raise VariationCheckpointError("legacy evaluator receipt suffix is unreadable") from exc
+        projection_counts = {
+            "campaigns": self.ledger.connection.execute("SELECT COUNT(*) FROM campaigns").fetchone()[0] != 1,
+            "runs": self.ledger.connection.execute("SELECT COUNT(*) FROM runs").fetchone()[0] != 1,
+            "verdicts": self.ledger.connection.execute("SELECT COUNT(*) FROM verdicts").fetchone()[0],
+            "effects": self.ledger.connection.execute("SELECT COUNT(*) FROM effect_receipts").fetchone()[0],
+            "checkpoints": self.ledger.connection.execute("SELECT COUNT(*) FROM checkpoints").fetchone()[0],
+            "corrections": self.ledger.connection.execute("SELECT COUNT(*) FROM corrections").fetchone()[0],
+            "retractions": self.ledger.connection.execute("SELECT COUNT(*) FROM retractions").fetchone()[0],
+            "quarantines": self.ledger.connection.execute("SELECT COUNT(*) FROM quarantines").fetchone()[0],
+            "projection_queue": self.ledger.connection.execute(
+                "SELECT COUNT(*) FROM projection_queue"
+            ).fetchone()[0],
+            "blobs": self.ledger.connection.execute("SELECT COUNT(*) FROM blobs").fetchone()[0],
+            "quarantined_meta": self.ledger.connection.execute(
+                "SELECT value FROM meta WHERE key='quarantined'"
+            ).fetchone()[0]
+            != "0",
+            "attempts": sum(
+                1
+                for event in self.ledger.current_valid_events()
+                if event.get("event_type") == "VARIATION_ATTEMPT"
+                and event.get("run_id") == run_id
+                and event.get("task_id") == task.task_id
+            ),
+        }
+        expected_dependencies = {
+            (evidence_id, candidate_id, "EVIDENCE_USED")
+            for evidence_id in bundle.evidence.proposal.evidence_ids
+        }
+        actual_dependencies = {
+            (str(row["parent_id"]), str(row["child_id"]), str(row["edge_type"]))
+            for row in self.ledger.connection.execute(
+                "SELECT parent_id,child_id,edge_type FROM dependencies",
+            ).fetchall()
+        }
+        receipt_ids = tuple(str(row["receipt_id"]) for row in receipt_rows)
+        current_events = self.ledger.current_valid_events()
+        if (
+            candidate_ids != [candidate_id]
+            or bundle.context.attempt_index != 1
+            or bundle.context.parent_candidate_id is not None
+            or bundle.context.run_id != run_id
+            or bundle.context.task_id != task.task_id
+            or bundle.context.arm_id != self.policy.arm_id
+            or len(receipts) != 3
+            or [int(row["sequence"]) for row in receipt_rows] != [1, 2, 3]
+            or [receipt.get("receipt_type") for receipt in receipts]
+            != ["AUTHORITY", "VERDICT", "EFFECT"]
+            or receipts[0].get("previous_receipt_hash") != GENESIS_HASH
+            or any(receipt.get("receipt_id") != receipt_id for receipt, receipt_id in zip(receipts, receipt_ids))
+            or any(projection_counts.values())
+            or actual_dependencies != expected_dependencies
+            or [event.get("event_type") for event in current_events]
+            != ["CAMPAIGN", "RUN", "CANDIDATE", "RECEIPT", "RECEIPT", "RECEIPT"]
+        ):
+            raise VariationCheckpointError(
+                "legacy generation migration is outside the preserved pre-materialization boundary"
+            )
+        return receipt_ids
+
+    def _validate_legacy_cached_result(
+        self,
+        bundle: LegacyGenerationBundle,
+        *,
+        task: VariationTask,
+        run_id: str,
+        retrieval: RetrievalResult,
+        result: EvaluationResult,
+        expected_receipt_ids: Tuple[str, ...],
+        ledger_head_before_replay: str,
+    ) -> str:
+        """Require an exact cache replay before legacy private evidence mutates."""
+
+        proposal = bundle.evidence.proposal
+        if (
+            self.ledger.ledger_head_hash() != ledger_head_before_replay
+            or result.candidate_id != bundle.candidate_id
+            or result.task_id != task.task_id
+            or result.candidate_artifact_digest != digest_bytes(proposal.source)
+            or tuple(result.receipt_ids) != expected_receipt_ids
+            or len(set(result.receipt_ids)) != len(result.receipt_ids)
+        ):
+            raise VariationCheckpointError(
+                "legacy evaluator replay changed or crossed the preserved orphan"
+            )
+        try:
+            validate_diagnostic(result.diagnostic_enum)
+            validate_resource_bucket(result.resource_bucket)
+            validate_disposition(result.disposition)
+        except ValueError as exc:
+            raise VariationCheckpointError(
+                "legacy evaluator replay uses a value outside the closed contract"
+            ) from exc
+        if result.diagnostic_enum == Diagnostic.INTERNAL_ERROR.value:
+            if not result.infrastructure_loss or not result.infrastructure_incident_id or not result.failure_family_root:
+                raise VariationCheckpointError("legacy evaluator replay lacks its infrastructure proof")
+        elif result.infrastructure_loss or result.infrastructure_incident_id or result.failure_family_root:
+            raise VariationCheckpointError("legacy evaluator replay carries crossed infrastructure proof")
+        provisional = AttemptRecord(
+            bundle.context.attempt_index,
+            bundle.candidate_id,
+            result.candidate_artifact_digest,
+            retrieval.evidence_digest,
+            tuple(proposal.evidence_ids),
+            result.diagnostic_enum,
+            result.resource_bucket,
+            result.disposition,
+            tuple(result.receipt_ids),
+            ledger_head_before_replay,
+        )
+        self._validate_attempt_receipts(provisional, task=task, run_id=run_id)
+        projected_disposition = self.ledger.candidate_disposition(bundle.candidate_id)
+        allowed_projection = {
+            "PROMOTED": {"PROMOTED", "ABSTAINED"},
+            "REJECTED": {"REJECTED"},
+            "ABSTAINED": {"ABSTAINED"},
+        }.get(result.disposition)
+        if allowed_projection is None or projected_disposition not in allowed_projection:
+            raise VariationCheckpointError(
+                "legacy evaluator replay differs from the authenticated receipt projection"
+            )
+        try:
+            self.ledger.verify_integrity()
+        except Exception as exc:
+            raise VariationCheckpointError(
+                "legacy evaluator replay failed full ledger integrity validation"
+            ) from exc
+        return digest_for({
+            "schema_version": "egv-legacy-replay-proof-v1",
+            "candidate_id": bundle.candidate_id,
+            "generation_record_digest": bundle.generation_record_digest,
+            "trajectory_record_digest": bundle.trajectory_record_digest,
+            "orphan_artifact_digests": list(bundle.orphan_artifact_digests),
+            "ledger_head_hash": ledger_head_before_replay,
+            "receipt_ids": list(result.receipt_ids),
+            "candidate_artifact_digest": result.candidate_artifact_digest,
+            "diagnostic_enum": result.diagnostic_enum,
+            "resource_bucket": result.resource_bucket,
+            "disposition": result.disposition,
+            "output_digest": result.output_digest,
+            "infrastructure_loss": result.infrastructure_loss,
+            "infrastructure_incident_id": result.infrastructure_incident_id,
+            "failure_family_root": result.failure_family_root,
+        })
+
     def _materialize_result(
         self,
         *,
@@ -1783,8 +1953,46 @@ class BoundedCandidateLoop:
             host_role="spark_trainer",
             software_manifest_hash=digest_for({"model": self.model_digest, "protocol": VARIATION_PROTOCOL_DIGEST}),
         )
-        failures = self._source_contract_failure_records(run_id=run_id, task_id=task.task_id)
         attempts: List[AttemptRecord] = self._durable_attempts(run_id=run_id, task_id=task.task_id)
+        legacy_bundle: Optional[LegacyGenerationBundle] = None
+        legacy_receipt_ids: Tuple[str, ...] = tuple()
+        if getattr(self.generator, "response_contract", "closed-json-v1") != "closed-json-v1":
+            if type(self.private_store) is not PrivateTrajectoryStore:
+                raise VariationCheckpointError("source-only recovery lacks its exact private evidence store")
+            legacy_bundles = self.private_store.legacy_generation_bundles()
+            if legacy_bundles:
+                # This is a one-orphan compatibility boundary, not a general
+                # legacy import path.  The authenticated evaluator cache must
+                # replay exactly before start/intent evidence is synthesized.
+                if (
+                    checkpoint_history
+                    or len(legacy_bundles) != 1
+                    or attempts
+                    or (
+                        not self.fixture_mode
+                        and type(self.evaluator) is not RemoteControllerEvaluationGateway
+                    )
+                ):
+                    raise VariationCheckpointError(
+                        "legacy generation migration is outside the preserved orphan boundary"
+                    )
+                legacy_bundle = legacy_bundles[0]
+                legacy_receipt_ids = self._legacy_pre_materialization_receipt_ids(
+                    legacy_bundle,
+                    task=task,
+                    run_id=run_id,
+                )
+                try:
+                    self.ledger.verify_integrity()
+                except Exception as exc:
+                    raise VariationCheckpointError(
+                        "legacy generation migration ledger failed full integrity validation"
+                    ) from exc
+        failures = (
+            tuple()
+            if legacy_bundle is not None
+            else self._source_contract_failure_records(run_id=run_id, task_id=task.task_id)
+        )
         try:
             self.ledger.verify_integrity()
         except Exception as exc:
@@ -1860,11 +2068,21 @@ class BoundedCandidateLoop:
         if response_contract != "closed-json-v1":
             if type(self.private_store) is not PrivateTrajectoryStore:
                 raise VariationCheckpointError("source-only recovery lacks its exact private evidence store")
-            successful_generations = self.private_store.successful_generations(
-                run_id=run_id,
-                task_id=task.task_id,
-                arm_id=self.policy.arm_id,
-            )
+            if legacy_bundle is not None:
+                successful_generations = (
+                    (
+                        legacy_bundle.candidate_id,
+                        legacy_bundle.context,
+                        legacy_bundle.evidence,
+                        legacy_bundle.generation_record_digest,
+                    ),
+                )
+            else:
+                successful_generations = self.private_store.successful_generations(
+                    run_id=run_id,
+                    task_id=task.task_id,
+                    arm_id=self.policy.arm_id,
+                )
             success_ids = {item[0] for item in successful_generations}
             if not completed_candidate_ids.issubset(success_ids):
                 raise VariationCheckpointError("durable source-only attempt lacks successful generation evidence")
@@ -2170,6 +2388,14 @@ class BoundedCandidateLoop:
                     )
                     proposal = generation.proposal
             proposal.validate(context, source_limit=CANDIDATE_SOURCE_LIMIT)
+            legacy_recovery = (
+                legacy_bundle is not None
+                and recovering
+                and candidate_id == legacy_bundle.candidate_id
+            )
+            legacy_head_before_replay = (
+                self.ledger.ledger_head_hash() if legacy_recovery else ""
+            )
             artifact_path = self._persist_candidate(
                 workspace=workspace.root,
                 task=task,
@@ -2181,6 +2407,10 @@ class BoundedCandidateLoop:
                 generation_evidence_digest=generation_evidence_digest,
                 recovering=recovering,
             )
+            if legacy_recovery and self.ledger.ledger_head_hash() != legacy_head_before_replay:
+                raise VariationCheckpointError(
+                    "legacy candidate reconciliation changed the preserved ledger"
+                )
             result = self.evaluator.evaluate(
                 candidate_id=candidate_id,
                 task_id=task.task_id,
@@ -2190,6 +2420,26 @@ class BoundedCandidateLoop:
                 declared_locus=proposal.declared_locus,
                 candidate_source_path=artifact_path,
             )
+            if legacy_recovery:
+                if type(self.private_store) is not PrivateTrajectoryStore:
+                    raise VariationCheckpointError(
+                        "legacy evaluator replay lacks its exact private evidence store"
+                    )
+                legacy_replay_proof_digest = self._validate_legacy_cached_result(
+                    legacy_bundle,
+                    task=task,
+                    run_id=run_id,
+                    retrieval=retrieval,
+                    result=result,
+                    expected_receipt_ids=legacy_receipt_ids,
+                    ledger_head_before_replay=legacy_head_before_replay,
+                )
+                self.private_store.commit_legacy_generation_bundle(
+                    legacy_bundle,
+                    generation_record_digest=legacy_bundle.generation_record_digest,
+                    trajectory_record_digest=legacy_bundle.trajectory_record_digest,
+                    replay_proof_digest=legacy_replay_proof_digest,
+                )
             attempt = self._materialize_result(
                 task=task,
                 run_id=run_id,

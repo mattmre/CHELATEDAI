@@ -673,6 +673,32 @@ class RemoteVariationGatewayTests(unittest.TestCase):
         self.assertEqual(canonical_bytes(first), canonical_bytes(second))
         self.assertEqual(called, [])
 
+    def test_durable_evaluator_rejects_uncached_operation_at_stale_anchor_before_effect(self) -> None:
+        manifest = RemoteEvaluatorServiceManifest(self.manifest_value)
+        state_root = self.root / "stale-anchor-state"
+        first_request = self.durable_request("first-operation")
+        _durable_remote_response(
+            first_request,
+            manifest=manifest,
+            signer=self.signer,
+            state_root=state_root,
+            build_response=self.durable_builder(first_request),
+        )
+        uncached_request = self.durable_request("uncached-operation")
+        effects = []
+        with self.assertRaisesRegex(
+            VariationConfigurationError,
+            "stale or forked receipt anchor",
+        ):
+            _durable_remote_response(
+                uncached_request,
+                manifest=manifest,
+                signer=self.signer,
+                state_root=state_root,
+                build_response=lambda: effects.append("executed"),
+            )
+        self.assertEqual(effects, [])
+
     def test_crash_after_execution_intent_quarantines_retry_without_reexecution(self) -> None:
         manifest = RemoteEvaluatorServiceManifest(self.manifest_value)
         state_root = self.root / "crash-state"

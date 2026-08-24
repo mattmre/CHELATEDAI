@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+from dataclasses import dataclass, replace
 import json
 import os
 from pathlib import Path
@@ -27,6 +28,8 @@ PRIVATE_TRAJECTORY_SCHEMA = "egv-private-trajectory-sidecar-v2"
 PRIVATE_GENERATION_SCHEMA = "egv-private-generation-evidence-v1"
 PRIVATE_GENERATION_START_SCHEMA = "egv-private-generation-start-v1"
 PRIVATE_GENERATION_INTENT_SCHEMA = "egv-private-generation-intent-v1"
+LEGACY_PRIVATE_GENERATION_INTENT_SCHEMA = "egv-private-generation-intent-legacy-migration-v1"
+LEGACY_ORPHAN_ARTIFACTS_SCHEMA = "egv-private-legacy-orphan-artifacts-v1"
 _PRIVATE_GENERATION_FIELDS = frozenset({
     "schema_version", "candidate_id", "status", "context", "response_contract",
     "response_contract_digest", "generation_profile_digest", "rendered_prompt_digest",
@@ -39,7 +42,27 @@ _PRIVATE_GENERATION_INTENT_FIELDS = frozenset({
     "decoded_model_response_b64", "contract_response_b64", "proposal_source_digest",
     "failure_stage", "error_code",
 })
+_LEGACY_PRIVATE_GENERATION_INTENT_FIELDS = frozenset(
+    set(_PRIVATE_GENERATION_INTENT_FIELDS) | {"legacy_orphan_manifest_digest"}
+)
 _PRIVATE_GENERATION_START_FIELDS = frozenset({"schema_version", "candidate_id", "context"})
+
+
+@dataclass(frozen=True)
+class LegacyGenerationBundle:
+    """Fully revalidated pre-write-ahead generation and trajectory evidence.
+
+    This contract exists only to migrate the single preserved live orphan that
+    predates generation starts/intents.  Ledger, candidate, artifact, and
+    receipt authority remain the caller's responsibility before commit.
+    """
+
+    candidate_id: str
+    context: CandidateContext
+    evidence: CandidateGenerationEvidence
+    generation_record_digest: str
+    trajectory_record_digest: str
+    orphan_artifact_digests: Tuple[str, ...] = tuple()
 
 
 def _context_dict(context: CandidateContext) -> Dict[str, Any]:
@@ -111,6 +134,7 @@ class PrivateTrajectoryStore:
         self._ensure_directory(self.generation_starts, containment_root=self.root)
         self.generation_intents = self.root / "generation-intents"
         self._ensure_directory(self.generation_intents, containment_root=self.root)
+        self.legacy_orphan_manifests = self.root / "legacy-orphan-artifacts"
         artifacts_root = self.root / "artifacts"
         self._ensure_directory(artifacts_root, containment_root=self.root)
         self.artifacts = ContentAddressedArtifactStore(artifacts_root)
@@ -217,6 +241,11 @@ class PrivateTrajectoryStore:
         self._validate_directory_chain(self.generation_records, containment_root=self.root)
         self._validate_directory_chain(self.generation_starts, containment_root=self.root)
         self._validate_directory_chain(self.generation_intents, containment_root=self.root)
+        if self.legacy_orphan_manifests.exists() or self.legacy_orphan_manifests.is_symlink():
+            self._validate_directory_chain(
+                self.legacy_orphan_manifests,
+                containment_root=self.root,
+            )
         self._validate_directory_chain(self.artifacts.root, containment_root=self.root)
 
     def _validate_no_interrupted_evidence_writes(self) -> None:
@@ -225,8 +254,9 @@ class PrivateTrajectoryStore:
             (self.generation_records, ".private-generation-*"),
             (self.generation_starts, ".private-generation-start-*"),
             (self.generation_intents, ".private-generation-intent-*"),
+            (self.legacy_orphan_manifests, ".legacy-orphan-artifacts-*"),
         ):
-            if any(root.glob(pattern)):
+            if root.exists() and any(root.glob(pattern)):
                 raise VariationCheckpointError("private evidence contains an interrupted ambiguous write")
 
     def _put_artifact(self, data: bytes, *, media_type: str, role: str):
@@ -378,13 +408,47 @@ class PrivateTrajectoryStore:
             value = json.loads(raw.decode("utf-8"))
         except (OSError, UnicodeError, ValueError) as exc:
             raise VariationCheckpointError("private generation intent is missing or unreadable") from exc
+        schema_version = value.get("schema_version")
+        standard_intent = (
+            schema_version == PRIVATE_GENERATION_INTENT_SCHEMA
+            and set(value) == _PRIVATE_GENERATION_INTENT_FIELDS
+        )
+        legacy_intent = (
+            schema_version == LEGACY_PRIVATE_GENERATION_INTENT_SCHEMA
+            and set(value) == _LEGACY_PRIVATE_GENERATION_INTENT_FIELDS
+        )
         if (
             canonical_bytes(value) != raw
-            or set(value) != _PRIVATE_GENERATION_INTENT_FIELDS
-            or value.get("schema_version") != PRIVATE_GENERATION_INTENT_SCHEMA
+            or not (standard_intent or legacy_intent)
             or value.get("candidate_id") != candidate_id
         ):
             raise VariationCheckpointError("private generation intent is not canonical and closed")
+        if legacy_intent:
+            manifest_digest = value.get("legacy_orphan_manifest_digest")
+            try:
+                manifest_raw = self._read_regular_file(
+                    self.legacy_orphan_manifests / (candidate_id + ".json"),
+                    containment_root=self.legacy_orphan_manifests,
+                )
+            except VariationCheckpointError as exc:
+                raise VariationCheckpointError(
+                    "legacy generation intent lacks its orphan-artifact manifest"
+                ) from exc
+            if (
+                not isinstance(manifest_digest, str)
+                or len(manifest_digest) != 64
+                or manifest_digest != manifest_digest.lower()
+                or digest_bytes(manifest_raw) != manifest_digest
+            ):
+                raise VariationCheckpointError(
+                    "legacy generation intent orphan-artifact manifest binding is invalid"
+                )
+            try:
+                int(manifest_digest, 16)
+            except ValueError as exc:
+                raise VariationCheckpointError(
+                    "legacy generation intent orphan-artifact manifest digest is invalid"
+                ) from exc
         context_value = value.get("context")
         if not isinstance(context_value, Mapping):
             raise VariationCheckpointError("private generation intent lacks its exact context")
@@ -478,6 +542,390 @@ class PrivateTrajectoryStore:
         )
         return digest_bytes(self._read_regular_file(path, containment_root=self.generation_records))
 
+    def _load_legacy_generation_bundle(self, candidate_id: str) -> LegacyGenerationBundle:
+        """Revalidate a complete success record plus exact trajectory sidecar.
+
+        The method deliberately does not write.  A caller with ledger access
+        must independently validate the candidate/effect boundary before
+        :meth:`commit_legacy_generation_bundle` is allowed to synthesize the
+        missing write-ahead records.
+        """
+
+        self._validate_candidate_id(candidate_id)
+        generation_path = self.generation_records / (candidate_id + ".json")
+        trajectory_path = self.records / (candidate_id + ".json")
+        try:
+            generation_raw = self._read_regular_file(
+                generation_path, containment_root=self.generation_records
+            )
+            generation = json.loads(generation_raw.decode("utf-8"))
+            trajectory_raw = self._read_regular_file(
+                trajectory_path, containment_root=self.records
+            )
+            trajectory = json.loads(trajectory_raw.decode("utf-8"))
+        except (OSError, UnicodeError, ValueError) as exc:
+            raise VariationCheckpointError(
+                "legacy generation migration lacks complete private evidence"
+            ) from exc
+        if (
+            canonical_bytes(generation) != generation_raw
+            or set(generation) != _PRIVATE_GENERATION_FIELDS
+            or generation.get("schema_version") != PRIVATE_GENERATION_SCHEMA
+            or generation.get("candidate_id") != candidate_id
+            or generation.get("status") != "SUCCESS"
+            or generation.get("failure_stage") is not None
+            or generation.get("error_code") is not None
+            or canonical_bytes(trajectory) != trajectory_raw
+            or set(trajectory) != {"schema_version", "candidate_id", "context", "source_digest"}
+            or trajectory.get("schema_version")
+            not in {PRIVATE_TRAJECTORY_SCHEMA, LEGACY_PRIVATE_TRAJECTORY_SCHEMA}
+            or trajectory.get("candidate_id") != candidate_id
+        ):
+            raise VariationCheckpointError(
+                "legacy generation migration evidence is not canonical and closed"
+            )
+        context_value = generation.get("context")
+        if not isinstance(context_value, Mapping):
+            raise VariationCheckpointError("legacy generation migration lacks its exact context")
+        context = _context_from_mapping(context_value)
+        if (
+            context.response_contract == "closed-json-v1"
+            or trajectory.get("context") != _context_dict(context)
+            or generation.get("response_contract") != context.response_contract
+            or generation.get("response_contract_digest") != context.response_contract_digest
+            or generation.get("generation_profile_digest") != context.generation_profile_digest
+            or generation.get("rendered_prompt_digest") != context.prompt_digest
+        ):
+            raise VariationCheckpointError(
+                "legacy generation migration crossed its frozen context"
+            )
+        artifacts: Dict[str, bytes] = {}
+        for field in (
+            "rendered_prompt_digest",
+            "decoded_model_response_digest",
+            "contract_response_digest",
+        ):
+            artifact_digest = generation.get(field)
+            if not isinstance(artifact_digest, str):
+                raise VariationCheckpointError(
+                    "legacy generation migration lacks exact raw evidence"
+                )
+            artifact = self._read_artifact(artifact_digest)
+            if digest_bytes(artifact) != artifact_digest:
+                raise VariationCheckpointError(
+                    "legacy generation migration raw evidence is corrupt"
+                )
+            artifacts[field] = artifact
+        try:
+            contract_text = artifacts["contract_response_digest"].decode("utf-8")
+            proposal = ModelCandidateGenerator._parse_response(
+                contract_text,
+                context,
+                response_contract=context.response_contract,
+            )
+            evidence = CandidateGenerationEvidence(
+                proposal=proposal,
+                decoded_model_response=artifacts["decoded_model_response_digest"],
+                decoded_model_response_digest=str(generation["decoded_model_response_digest"]),
+                contract_response=artifacts["contract_response_digest"],
+                contract_response_digest=str(generation["contract_response_digest"]),
+                rendered_prompt=artifacts["rendered_prompt_digest"],
+                rendered_prompt_digest=str(generation["rendered_prompt_digest"]),
+                response_contract=context.response_contract,
+            )
+            evidence.validate(context)
+        except Exception as exc:
+            raise VariationCheckpointError(
+                "legacy generation migration cannot reconstruct its exact proposal"
+            ) from exc
+        source_digest = digest_bytes(proposal.source)
+        if (
+            generation.get("proposal_source_digest") != source_digest
+            or trajectory.get("source_digest") != source_digest
+            or self._read_artifact(source_digest) != proposal.source
+        ):
+            raise VariationCheckpointError(
+                "legacy generation migration proposal differs from its trajectory"
+            )
+        return LegacyGenerationBundle(
+            candidate_id=candidate_id,
+            context=context,
+            evidence=evidence,
+            generation_record_digest=digest_bytes(generation_raw),
+            trajectory_record_digest=digest_bytes(trajectory_raw),
+        )
+
+    @staticmethod
+    def _legacy_bundle_artifact_digests(bundle: LegacyGenerationBundle) -> Tuple[str, ...]:
+        return tuple(sorted({
+            digest_bytes(bundle.evidence.rendered_prompt),
+            digest_bytes(bundle.evidence.decoded_model_response),
+            digest_bytes(bundle.evidence.contract_response),
+            digest_bytes(bundle.evidence.proposal.source),
+        }))
+
+    def _load_legacy_orphan_manifest(
+        self,
+        bundle: LegacyGenerationBundle,
+    ) -> Mapping[str, Any]:
+        path = self.legacy_orphan_manifests / (bundle.candidate_id + ".json")
+        try:
+            raw = self._read_regular_file(
+                path,
+                containment_root=self.legacy_orphan_manifests,
+            )
+            value = json.loads(raw.decode("utf-8"))
+        except (OSError, UnicodeError, ValueError) as exc:
+            raise VariationCheckpointError(
+                "legacy orphan-artifact manifest is missing or unreadable"
+            ) from exc
+        required = {
+            "schema_version",
+            "candidate_id",
+            "generation_record_digest",
+            "trajectory_record_digest",
+            "referenced_artifact_digests",
+            "orphan_artifact_digests",
+            "replay_proof_digest",
+        }
+        proof_digest = value.get("replay_proof_digest")
+        if (
+            canonical_bytes(value) != raw
+            or set(value) != required
+            or value.get("schema_version") != LEGACY_ORPHAN_ARTIFACTS_SCHEMA
+            or value.get("candidate_id") != bundle.candidate_id
+            or value.get("generation_record_digest") != bundle.generation_record_digest
+            or value.get("trajectory_record_digest") != bundle.trajectory_record_digest
+            or value.get("referenced_artifact_digests")
+            != list(self._legacy_bundle_artifact_digests(bundle))
+            or value.get("orphan_artifact_digests")
+            != list(bundle.orphan_artifact_digests)
+            or not isinstance(proof_digest, str)
+            or len(proof_digest) != 64
+            or proof_digest != proof_digest.lower()
+        ):
+            raise VariationCheckpointError(
+                "legacy orphan-artifact manifest is not canonical and content-bound"
+            )
+        try:
+            int(proof_digest, 16)
+        except ValueError as exc:
+            raise VariationCheckpointError(
+                "legacy orphan-artifact replay proof digest is invalid"
+            ) from exc
+        return value
+
+    def legacy_generation_bundles(self) -> Tuple[LegacyGenerationBundle, ...]:
+        """Return only complete legacy records with no durable intent.
+
+        A record with an intent but no start is never legacy.  A record with a
+        start but no intent is accepted only as a resumable interruption of
+        this migration and is revalidated from the immutable record/sidecar.
+        """
+
+        self._validate_store_layout()
+        self._validate_no_interrupted_evidence_writes()
+        def closed_json_ids(root: Path) -> set[str]:
+            entries = list(root.iterdir())
+            if any(not path.is_file() or path.suffix != ".json" for path in entries):
+                raise VariationCheckpointError(
+                    "private generation legacy inventory contains an unexpected entry"
+                )
+            return {path.stem for path in entries}
+
+        record_ids = closed_json_ids(self.generation_records)
+        start_ids = closed_json_ids(self.generation_starts)
+        intent_ids = closed_json_ids(self.generation_intents)
+        trajectory_ids = closed_json_ids(self.records)
+        if intent_ids - start_ids:
+            raise VariationCheckpointError(
+                "private generation legacy inventory contains an impossible partial set"
+            )
+        legacy_ids = record_ids - intent_ids
+        if legacy_ids and (
+            intent_ids
+            or not start_ids.issubset(legacy_ids)
+            or trajectory_ids != legacy_ids
+        ):
+            raise VariationCheckpointError(
+                "private generation legacy inventory is mixed with another generation state"
+            )
+        bundles = []
+        for candidate_id in sorted(legacy_ids):
+            bundle = self._load_legacy_generation_bundle(candidate_id)
+            if candidate_id in start_ids:
+                start_context, _start_digest = self._load_generation_start(candidate_id)
+                if start_context != bundle.context:
+                    raise VariationCheckpointError(
+                        "legacy generation migration crossed its durable start"
+                    )
+            bundles.append(bundle)
+        if bundles:
+            if len(bundles) != 1:
+                raise VariationCheckpointError(
+                    "private generation legacy inventory contains multiple orphans"
+                )
+            expected_artifacts = set(self._legacy_bundle_artifact_digests(bundles[0]))
+            artifact_files = [
+                path for path in self.artifacts.root.rglob("*") if path.is_file()
+            ]
+            actual_artifacts = {path.name for path in artifact_files}
+            for path in artifact_files:
+                digest = path.name
+                expected_path = (
+                    self.artifacts.root
+                    / "blobs"
+                    / "sha256"
+                    / digest[:2]
+                    / digest[2:4]
+                    / digest
+                )
+                try:
+                    valid_digest = (
+                        len(digest) == 64
+                        and digest == digest.lower()
+                        and path.resolve(strict=True) == expected_path.resolve(strict=True)
+                        and digest_bytes(
+                            self._read_regular_file(path, containment_root=self.artifacts.root)
+                        )
+                        == digest
+                    )
+                    int(digest, 16)
+                except (OSError, ValueError):
+                    valid_digest = False
+                if not valid_digest:
+                    raise VariationCheckpointError(
+                        "private generation legacy artifact inventory contains an invalid object"
+                    )
+            orphan_artifacts = tuple(sorted(actual_artifacts - expected_artifacts))
+            if (
+                len(artifact_files) != len(actual_artifacts)
+                or not expected_artifacts.issubset(actual_artifacts)
+                or len(orphan_artifacts) > 1
+            ):
+                raise VariationCheckpointError(
+                    "private generation legacy artifact inventory exceeds the preserved boundary"
+                )
+            bundles[0] = replace(
+                bundles[0],
+                orphan_artifact_digests=orphan_artifacts,
+            )
+            manifest_ids = (
+                closed_json_ids(self.legacy_orphan_manifests)
+                if self.legacy_orphan_manifests.exists()
+                else set()
+            )
+            expected_manifest_ids = {bundles[0].candidate_id} if orphan_artifacts else set()
+            if not manifest_ids.issubset(expected_manifest_ids):
+                raise VariationCheckpointError(
+                    "legacy orphan-artifact manifest inventory is not exact"
+                )
+            if manifest_ids:
+                self._load_legacy_orphan_manifest(bundles[0])
+        return tuple(bundles)
+
+    def commit_legacy_generation_bundle(
+        self,
+        bundle: LegacyGenerationBundle,
+        *,
+        generation_record_digest: str,
+        trajectory_record_digest: str,
+        replay_proof_digest: str,
+    ) -> str:
+        """Write deterministic start/intent records after external proof."""
+
+        if type(bundle) is not LegacyGenerationBundle:
+            raise VariationCheckpointError("legacy generation migration bundle type is invalid")
+        current_bundles = self.legacy_generation_bundles()
+        if (
+            current_bundles != (bundle,)
+            or generation_record_digest != bundle.generation_record_digest
+            or trajectory_record_digest != bundle.trajectory_record_digest
+            or not isinstance(replay_proof_digest, str)
+            or len(replay_proof_digest) != 64
+            or replay_proof_digest != replay_proof_digest.lower()
+        ):
+            raise VariationCheckpointError(
+                "legacy generation migration authority differs from current evidence"
+            )
+        try:
+            int(replay_proof_digest, 16)
+        except ValueError as exc:
+            raise VariationCheckpointError(
+                "legacy generation migration replay proof digest is invalid"
+            ) from exc
+        if (self.generation_intents / (bundle.candidate_id + ".json")).exists():
+            raise VariationCheckpointError("legacy generation migration intent already exists")
+        legacy_manifest_digest = None
+        if bundle.orphan_artifact_digests:
+            self._ensure_directory(
+                self.legacy_orphan_manifests,
+                containment_root=self.root,
+            )
+            manifest_path = self.legacy_orphan_manifests / (bundle.candidate_id + ".json")
+            self._write_once(
+                manifest_path,
+                {
+                    "schema_version": LEGACY_ORPHAN_ARTIFACTS_SCHEMA,
+                    "candidate_id": bundle.candidate_id,
+                    "generation_record_digest": bundle.generation_record_digest,
+                    "trajectory_record_digest": bundle.trajectory_record_digest,
+                    "referenced_artifact_digests": list(
+                        self._legacy_bundle_artifact_digests(bundle)
+                    ),
+                    "orphan_artifact_digests": list(bundle.orphan_artifact_digests),
+                    "replay_proof_digest": replay_proof_digest,
+                },
+                prefix=".legacy-orphan-artifacts-",
+                containment_root=self.legacy_orphan_manifests,
+            )
+            legacy_manifest_digest = digest_bytes(
+                self._read_regular_file(
+                    manifest_path,
+                    containment_root=self.legacy_orphan_manifests,
+                )
+            )
+        self.record_generation_start(candidate_id=bundle.candidate_id, context=bundle.context)
+        intent = {
+            "schema_version": (
+                LEGACY_PRIVATE_GENERATION_INTENT_SCHEMA
+                if legacy_manifest_digest is not None
+                else PRIVATE_GENERATION_INTENT_SCHEMA
+            ),
+            "candidate_id": bundle.candidate_id,
+            "status": "SUCCESS",
+            "context": _context_dict(bundle.context),
+            "response_contract": bundle.context.response_contract,
+            "response_contract_digest": bundle.context.response_contract_digest,
+            "generation_profile_digest": bundle.context.generation_profile_digest,
+            "rendered_prompt_b64": self._encode_intent_bytes(
+                bundle.evidence.rendered_prompt, "rendered prompt"
+            ),
+            "decoded_model_response_b64": self._encode_intent_bytes(
+                bundle.evidence.decoded_model_response, "decoded response"
+            ),
+            "contract_response_b64": self._encode_intent_bytes(
+                bundle.evidence.contract_response, "contract response"
+            ),
+            "proposal_source_digest": digest_bytes(bundle.evidence.proposal.source),
+            "failure_stage": None,
+            "error_code": None,
+        }
+        if legacy_manifest_digest is not None:
+            intent["legacy_orphan_manifest_digest"] = legacy_manifest_digest
+        self._write_once(
+            self.generation_intents / (bundle.candidate_id + ".json"),
+            intent,
+            prefix=".private-generation-intent-",
+            containment_root=self.generation_intents,
+        )
+        reproduced = self._complete_generation_intent(bundle.candidate_id)
+        if reproduced != bundle.generation_record_digest:
+            raise VariationCheckpointError(
+                "legacy generation migration did not reproduce its immutable record"
+            )
+        return reproduced
+
     def _reconcile_generation_intents(self) -> None:
         """Finish every intent, then require an exact closed artifact inventory."""
 
@@ -523,6 +971,107 @@ class PrivateTrajectoryStore:
             ):
                 raise VariationCheckpointError("private trajectory inventory is not canonical and closed")
             referenced.add(value["source_digest"])
+        manifest_entries = (
+            list(self.legacy_orphan_manifests.iterdir())
+            if self.legacy_orphan_manifests.exists()
+            else []
+        )
+        if any(not path.is_file() or path.suffix != ".json" for path in manifest_entries):
+            raise VariationCheckpointError(
+                "legacy orphan-artifact manifest inventory contains an unexpected entry"
+            )
+        manifest_orphans = set()
+        for path in sorted(manifest_entries):
+            candidate_id = path.stem
+            if candidate_id not in intent_ids:
+                raise VariationCheckpointError(
+                    "legacy orphan-artifact manifest lacks a complete generation"
+                )
+            try:
+                raw = self._read_regular_file(
+                    path,
+                    containment_root=self.legacy_orphan_manifests,
+                )
+                value = json.loads(raw.decode("utf-8"))
+                generation_raw = self._read_regular_file(
+                    self.generation_records / (candidate_id + ".json"),
+                    containment_root=self.generation_records,
+                )
+                generation_value = json.loads(generation_raw.decode("utf-8"))
+                trajectory_raw = self._read_regular_file(
+                    self.records / (candidate_id + ".json"),
+                    containment_root=self.records,
+                )
+                intent_value, _intent_context, _intent_raw_values = self._load_generation_intent(
+                    candidate_id
+                )
+            except (OSError, UnicodeError, ValueError) as exc:
+                raise VariationCheckpointError(
+                    "legacy orphan-artifact manifest evidence is unreadable"
+                ) from exc
+            required = {
+                "schema_version",
+                "candidate_id",
+                "generation_record_digest",
+                "trajectory_record_digest",
+                "referenced_artifact_digests",
+                "orphan_artifact_digests",
+                "replay_proof_digest",
+            }
+            referenced_values = [
+                generation_value.get("rendered_prompt_digest"),
+                generation_value.get("decoded_model_response_digest"),
+                generation_value.get("contract_response_digest"),
+                generation_value.get("proposal_source_digest"),
+            ]
+            if any(not isinstance(digest, str) for digest in referenced_values):
+                raise VariationCheckpointError(
+                    "legacy orphan-artifact generation references are invalid"
+                )
+            expected_referenced = sorted(set(referenced_values))
+            orphan_values = value.get("orphan_artifact_digests")
+            proof_digest = value.get("replay_proof_digest")
+            if (
+                canonical_bytes(value) != raw
+                or set(value) != required
+                or value.get("schema_version") != LEGACY_ORPHAN_ARTIFACTS_SCHEMA
+                or value.get("candidate_id") != candidate_id
+                or value.get("generation_record_digest") != digest_bytes(generation_raw)
+                or value.get("trajectory_record_digest") != digest_bytes(trajectory_raw)
+                or value.get("referenced_artifact_digests") != expected_referenced
+                or generation_value.get("status") != "SUCCESS"
+                or intent_value.get("schema_version")
+                != LEGACY_PRIVATE_GENERATION_INTENT_SCHEMA
+                or intent_value.get("legacy_orphan_manifest_digest") != digest_bytes(raw)
+                or not isinstance(orphan_values, list)
+                or len(orphan_values) != 1
+                or orphan_values != sorted(set(orphan_values))
+                or any(
+                    not isinstance(digest, str)
+                    or len(digest) != 64
+                    or digest != digest.lower()
+                    or digest in expected_referenced
+                    for digest in orphan_values
+                )
+                or not isinstance(proof_digest, str)
+                or len(proof_digest) != 64
+                or proof_digest != proof_digest.lower()
+            ):
+                raise VariationCheckpointError(
+                    "legacy orphan-artifact manifest is not canonical and content-bound"
+                )
+            try:
+                for digest in orphan_values + [proof_digest]:
+                    int(digest, 16)
+            except ValueError as exc:
+                raise VariationCheckpointError(
+                    "legacy orphan-artifact manifest contains an invalid digest"
+                ) from exc
+            if manifest_orphans.intersection(orphan_values):
+                raise VariationCheckpointError(
+                    "legacy orphan-artifact manifests overlap"
+                )
+            manifest_orphans.update(orphan_values)
         for path in sorted(self.artifacts.root.rglob("*.tmp")):
             digest = path.name[:-4]
             target = path.with_name(digest)
@@ -554,7 +1103,15 @@ class PrivateTrajectoryStore:
             except ValueError as exc:
                 raise VariationCheckpointError("private artifact inventory digest is invalid") from exc
             actual.add(digest)
-        if not referenced.issubset(actual) or not actual.issubset(referenced | optional_referenced):
+        if manifest_orphans.intersection(referenced | optional_referenced):
+            raise VariationCheckpointError(
+                "legacy orphan-artifact manifest overlaps operational evidence"
+            )
+        allowed_artifacts = referenced | optional_referenced | manifest_orphans
+        if (
+            not (referenced | manifest_orphans).issubset(actual)
+            or not actual.issubset(allowed_artifacts)
+        ):
             raise VariationCheckpointError("private artifact inventory contains missing or orphaned evidence")
 
     def _record_generation(
@@ -1049,6 +1606,6 @@ class PrivateTrajectoryStore:
 
 
 __all__ = [
-    "LEGACY_PRIVATE_TRAJECTORY_SCHEMA", "PRIVATE_GENERATION_SCHEMA",
+    "LEGACY_PRIVATE_TRAJECTORY_SCHEMA", "LegacyGenerationBundle", "PRIVATE_GENERATION_SCHEMA",
     "PRIVATE_TRAJECTORY_SCHEMA", "PrivateTrajectoryStore",
 ]
