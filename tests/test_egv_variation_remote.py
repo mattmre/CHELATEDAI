@@ -21,7 +21,9 @@ from egv.ledger import EvidenceLedger
 from egv.receipts import ReceiptSigner, receipt_hash
 from egv.variation.errors import VariationConfigurationError, VariationDependencyError
 from egv.variation.arms import arm_policy
-from egv.variation.loop import VARIATION_PROTOCOL_DIGEST
+from egv.variation.generator import CandidateProposal
+from egv.variation.loop import BoundedCandidateLoop, VARIATION_PROTOCOL_DIGEST, VariationTask
+from egv.variation.retrieval import RetrievalResult
 from egv.variation.remote import (
     REMOTE_VARIATION_SERVICE_SCHEMA,
     RemoteControllerEvaluationGateway,
@@ -318,7 +320,7 @@ class RemoteVariationGatewayTests(unittest.TestCase):
             "receipt_sequence_start", "previous_receipt_hash",
         })
 
-    def test_remote_promotions_bind_commissioning_run_and_distinct_arm_policy_for_b_and_d(self) -> None:
+    def test_remote_promotions_bind_commissioning_run_arm_policy_and_materialized_disposition(self) -> None:
         for index, arm_id in enumerate(("B", "D")):
             with self.subTest(arm_id=arm_id):
                 request = GenerationRequest.build(
@@ -367,6 +369,44 @@ class RemoteVariationGatewayTests(unittest.TestCase):
                 self.assertTrue(all(item["run_id"] == request.run_id for item in receipts))
                 self.assertTrue(all(item["arm_policy_digest"] == arm_policy(arm_id).digest for item in receipts))
                 self.assertTrue(all(item["policy_digest"] == AuthorityPolicy.candidate_execution().digest for item in receipts))
+
+                # The remote gateway owns authenticated receipt admission. The
+                # bounded loop owns the verdict/effect projections used for a
+                # durable candidate disposition. Exercise that production
+                # handoff explicitly so a valid remote PASS chain cannot remain
+                # ABSTAINED merely because the gateway itself is projection-free.
+                runner = object.__new__(BoundedCandidateLoop)
+                runner.ledger = self.ledger
+                runner.evaluator = self.gateway()
+                runner.policy = arm_policy(arm_id)
+                runner.campaign_id = request.campaign_id
+                task = VariationTask.from_public_record(self.task)
+                proposal = CandidateProposal(
+                    source=source,
+                    declared_locus=task.public_locus,
+                    requested_authority="EXECUTE_CANDIDATE",
+                    evidence_ids=(),
+                    mutation_digest=digest_for({"candidate": candidate_id}),
+                    metadata={"arm_id": arm_id},
+                )
+                retrieval = RetrievalResult(
+                    policy=runner.policy.retrieval_policy,
+                    arm_id=arm_id,
+                    task_id=task.task_id,
+                    records=(),
+                    evidence_digest=digest_for([]),
+                )
+                attempt = runner._materialize_result(
+                    task=task,
+                    run_id=request.run_id,
+                    candidate_id=candidate_id,
+                    proposal=proposal,
+                    retrieval=retrieval,
+                    result=result,
+                    attempt_index=1,
+                )
+                self.assertEqual(attempt.disposition, "PROMOTED")
+                self.assertEqual(self.ledger.candidate_disposition(candidate_id), "PROMOTED")
 
     def test_response_tamper_and_stale_binding_fail_before_ingestion(self) -> None:
         for mode in ("stale-request", "tamper-result"):

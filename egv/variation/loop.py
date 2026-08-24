@@ -681,6 +681,9 @@ class BoundedCandidateLoop:
         result: EvaluationResult,
         attempt_index: int,
     ) -> AttemptRecord:
+        # Evaluation gateways authenticate and admit signed receipts. This
+        # loop boundary deliberately materializes their verdict/effect rows;
+        # candidate_disposition must not be read from a bare gateway call.
         expected_artifact_digest = digest_bytes(proposal.source)
         if result.candidate_id != candidate_id or result.task_id != task.task_id:
             raise VariationCheckpointError("evaluator result is not bound to the requested candidate/task")
