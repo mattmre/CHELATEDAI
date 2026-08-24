@@ -2,8 +2,10 @@ from __future__ import annotations
 
 from collections import Counter
 import json
-
-import pytest
+from pathlib import Path
+import re
+import tempfile
+import unittest
 
 from egv.canonical import canonical_json, digest_for
 from egv.experiment import heldout as heldout_module
@@ -28,6 +30,24 @@ from egv.receipts import ReceiptSigner
 
 
 SIGNER = ReceiptSigner(b"Q" * 32)
+
+
+def _raises(exception, *, match):
+    return unittest.TestCase().assertRaisesRegex(exception, re.compile(match))
+
+
+class _MonkeyPatch:
+    def __init__(self):
+        self._originals = []
+
+    def setattr(self, target, name, value):
+        if not any(item[0] is target and item[1] == name for item in self._originals):
+            self._originals.append((target, name, getattr(target, name)))
+        setattr(target, name, value)
+
+    def undo(self):
+        for target, name, value in reversed(self._originals):
+            setattr(target, name, value)
 
 
 def _protocol(schedule_seed=90210, seeds=(11, 29, 47), campaign_id="egv-campaign-0123456789abcdef"):
@@ -218,7 +238,7 @@ def test_schedule_is_exact_deterministic_balanced_and_canonical_seeded():
     assert protocol.digest == _protocol().digest
     assert protocol.digest != _protocol(schedule_seed=90211).digest
     assert protocol.seeds == (11, 29, 47)
-    with pytest.raises(HeldoutProtocolError, match="canonical frozen sequence"):
+    with _raises(HeldoutProtocolError, match="canonical frozen sequence"):
         _protocol(seeds=(47, 29, 11))
     main = [item for item in protocol.coordinates if item.phase == MAIN_PHASE]
     shock = [item for item in protocol.coordinates if item.phase == SHOCK_PHASE]
@@ -228,9 +248,8 @@ def test_schedule_is_exact_deterministic_balanced_and_canonical_seeded():
         assert Counter(item.within_block_order for item in shock if item.treatment == policy) == Counter({i: 4 for i in range(3)})
 
 
-@pytest.mark.parametrize("campaign_id", ["192.0.2.24", "spark-01", "egv-heldout-test-campaign", "a" * 200])
 def test_public_campaign_id_must_be_bounded_and_pseudonymous(campaign_id):
-    with pytest.raises(HeldoutProtocolError, match="pseudonymous"):
+    with _raises(HeldoutProtocolError, match="pseudonymous"):
         _protocol(campaign_id=campaign_id)
 
 
@@ -238,22 +257,22 @@ def test_closed_result_counts_and_shock_bindings_fail_closed():
     protocol = _protocol()
     coordinate = protocol.coordinates[0]
     result = _base_result(protocol, coordinate)
-    with pytest.raises(HeldoutProtocolError, match="frozen schedule"):
+    with _raises(HeldoutProtocolError, match="frozen schedule"):
         validate_result(protocol, dict(result, profile_digest=digest_for("substitution")))
-    with pytest.raises(HeldoutProtocolError, match="non-closed schema"):
+    with _raises(HeldoutProtocolError, match="non-closed schema"):
         validate_result(protocol, dict(result, private_path="/private/path"))
     result["eligible_attempts"] = result["costs"]["candidate_attempts"] + 1
-    with pytest.raises(HeldoutProtocolError, match="eligible_attempts"):
+    with _raises(HeldoutProtocolError, match="eligible_attempts"):
         validate_result(protocol, result)
     result = _base_result(protocol, coordinate)
     result["evidence_opportunities"] = 0
     result["evidence_using_attempts"] = 1
-    with pytest.raises(HeldoutProtocolError, match="evidence-use|evidence_using"):
+    with _raises(HeldoutProtocolError, match="evidence-use|evidence_using"):
         validate_result(protocol, result)
     shock = next(item for item in protocol.coordinates if item.phase == SHOCK_PHASE)
     result = _base_result(protocol, shock)
     result["pre_shock_dependency_graph_digest"] = digest_for("substituted-graph")
-    with pytest.raises(HeldoutProtocolError, match="frozen block"):
+    with _raises(HeldoutProtocolError, match="frozen block"):
         validate_result(protocol, result)
 
 
@@ -264,16 +283,16 @@ def test_signed_envelope_binds_exact_result_coordinate_receipts_and_ledger():
     assert verify_signed_result_envelope(protocol, envelope) == envelope
     tampered = dict(envelope)
     tampered["result"] = dict(envelope["result"], signature_valid=False)
-    with pytest.raises(HeldoutProtocolError, match="result_digest|signature"):
+    with _raises(HeldoutProtocolError, match="result_digest|signature"):
         verify_signed_result_envelope(protocol, tampered)
     tampered = dict(envelope, receipt_collection_root=digest_for("other-receipts"))
-    with pytest.raises(HeldoutProtocolError, match="ID|signature"):
+    with _raises(HeldoutProtocolError, match="ID|signature"):
         verify_signed_result_envelope(protocol, tampered)
     forged_signature = dict(envelope)
     forged_signature["signature"] = ("A" if envelope["signature"][0] != "A" else "B") + envelope["signature"][1:]
-    with pytest.raises(HeldoutProtocolError, match="invalid evaluator Ed25519 signature"):
+    with _raises(HeldoutProtocolError, match="invalid evaluator Ed25519 signature"):
         verify_signed_result_envelope(protocol, forged_signature)
-    with pytest.raises(HeldoutProtocolError, match="frozen evaluator key"):
+    with _raises(HeldoutProtocolError, match="frozen evaluator key"):
         build_signed_result_envelope(
             protocol,
             result,
@@ -288,19 +307,19 @@ def test_atomic_journal_resumes_rejects_duplicates_and_detects_tamper(tmp_path):
     root = tmp_path / "journal"
     envelope = _sign(protocol, _base_result(protocol, protocol.coordinates[0]))
     out_of_order = _sign(protocol, _base_result(protocol, protocol.coordinates[1]))
-    with pytest.raises(HeldoutProtocolError, match="frozen execution order"):
+    with _raises(HeldoutProtocolError, match="frozen execution order"):
         HeldoutJournal(tmp_path / "out-of-order", protocol).append(out_of_order)
     journal = HeldoutJournal(root, protocol)
     journal.append(envelope)
     resumed = HeldoutJournal(root, protocol)
     assert resumed.completed_coordinate_ids == {protocol.coordinates[0].coordinate_id}
-    with pytest.raises(HeldoutProtocolError, match="already"):
+    with _raises(HeldoutProtocolError, match="already"):
         resumed.append(envelope)
     record_path = next((root / "records").glob("*.json"))
     record = json.loads(record_path.read_text(encoding="utf-8"))
     record["envelope_digest"] = digest_for("tampered")
     record_path.write_text(canonical_json(record), encoding="utf-8")
-    with pytest.raises(HeldoutProtocolError, match="binding mismatch"):
+    with _raises(HeldoutProtocolError, match="binding mismatch"):
         HeldoutJournal(root, protocol)
 
 
@@ -317,7 +336,7 @@ def test_atomic_journal_recovers_one_complete_orphan_record(monkeypatch, tmp_pat
         original(path, value)
 
     monkeypatch.setattr(heldout_module, "_atomic_write_json", fail_index)
-    with pytest.raises(OSError, match="simulated crash"):
+    with _raises(OSError, match="simulated crash"):
         journal.append(envelope)
     monkeypatch.setattr(heldout_module, "_atomic_write_json", original)
     recovered = HeldoutJournal(root, protocol)
@@ -336,7 +355,7 @@ def test_unknown_external_effect_is_reconciled_and_quarantined_before_rerun(tmp_
         calls.append(coordinate["idempotency_key"])
         raise RuntimeError("lost response after dispatch")
 
-    with pytest.raises(RuntimeError, match="lost response"):
+    with _raises(RuntimeError, match="lost response"):
         run_pending_coordinates(protocol, journal, operations, runner, lambda _c, raw: raw, lambda _c, _s: {})
     first = protocol.coordinates[0]
     operation = operations.load(first.coordinate_id)
@@ -354,7 +373,7 @@ def test_unknown_external_effect_is_reconciled_and_quarantined_before_rerun(tmp_
         )
         return {"reconciliation_envelope": envelope, "result_envelope": None}
 
-    with pytest.raises(HeldoutProtocolError, match="quarantined without rerun"):
+    with _raises(HeldoutProtocolError, match="quarantined without rerun"):
         run_pending_coordinates(protocol, journal, operations, runner, lambda _c, raw: raw, reconcile)
     assert calls == [operations.idempotency_key(first.coordinate_id)]
     assert operations.load(first.coordinate_id)["state"] == "QUARANTINED"
@@ -389,7 +408,7 @@ def test_signed_not_executed_reconciliation_retries_same_idempotency_key(tmp_pat
     def verifier(_coordinate, raw):
         return _sign(protocol, raw)
 
-    with pytest.raises(RuntimeError, match="stop after"):
+    with _raises(RuntimeError, match="stop after"):
         run_pending_coordinates(protocol, journal, operations, runner, verifier, reconcile)
     assert seen[0] == operations.idempotency_key(first.coordinate_id)
     assert journal.completed_coordinate_ids == {first.coordinate_id}
@@ -415,7 +434,7 @@ def test_missing_duplicate_and_zero_promotion_inputs_fail_closed():
     report = _analyze(protocol, missing)
     assert report["DISPOSITION"] == "INCONCLUSIVE"
     assert report["GATE_VECTOR"]["G_HARD_INTEGRITY"] == "UNEVALUATED"
-    with pytest.raises(HeldoutProtocolError, match="duplicate"):
+    with _raises(HeldoutProtocolError, match="duplicate"):
         _analyze(protocol, envelopes + [envelopes[0]])
 
     changed = _zero_treatment_promotions(envelopes, protocol, {"C"})
@@ -448,15 +467,6 @@ def test_matched_shock_fact_mismatch_invalidates_entire_block():
     assert report["correction_shock"]["matched_block_valid"] is False
 
 
-@pytest.mark.parametrize(
-    "updates",
-    [
-        {"signature_valid": False},
-        {"effect_receipts_required": 1, "effect_receipts_valid": 0},
-        {"treatment_isolation_valid": False},
-        {"private_replay_agreements": 0},
-    ],
-)
 def test_signed_observed_integrity_failures_are_not_supported(updates):
     protocol = _protocol()
     coordinate = next(item for item in protocol.coordinates if item.phase == MAIN_PHASE and item.treatment == "E")
@@ -481,7 +491,7 @@ def test_zero_denominator_budget_and_right_censoring_rules():
     shock = next(item for item in protocol.coordinates if item.phase == SHOCK_PHASE and item.treatment == "dependency-aware")
     invalid = _base_result(protocol, shock)
     invalid.update({"recovered_within_six": False, "recovery_attempt": 7})
-    with pytest.raises(HeldoutProtocolError, match="null recovery_attempt"):
+    with _raises(HeldoutProtocolError, match="null recovery_attempt"):
         validate_result(protocol, invalid)
     censored = _mutate(
         envelopes,
@@ -494,7 +504,7 @@ def test_zero_denominator_budget_and_right_censoring_rules():
         independent_hidden_fixture_passed=False,
     )
     comparison = _analyze(protocol, censored)["correction_shock"]["comparisons"]["full-restart"]
-    assert comparison["restricted_mean_time_difference"]["point"] == pytest.approx(-55 / 12)
+    assert abs(comparison["restricted_mean_time_difference"]["point"] - (-55 / 12)) < 1e-12
 
 
 def test_restoration_requires_valid_signed_exact_receipt():
@@ -504,14 +514,14 @@ def test_restoration_requires_valid_signed_exact_receipt():
     assert blocked["DISPOSITION"] == "RESTORATION_BLOCKED"
     receipt = _restore_receipt(protocol)
     tampered = dict(receipt, smoke_matches_baseline=False)
-    with pytest.raises(HeldoutProtocolError, match="signature or schema"):
+    with _raises(HeldoutProtocolError, match="signature or schema"):
         analyze_heldout_campaign(protocol, envelopes, restoration_receipt=tampered)
     wrong_inventory_payload = dict(receipt)
     for field in ("schema_version", "receipt_id", "signing_key_id", "signature"):
         wrong_inventory_payload.pop(field)
     wrong_inventory_payload["private_inventory_digest"] = digest_for("other-inventory")
     wrong_inventory = build_public_restore_receipt(wrong_inventory_payload, SIGNER)
-    with pytest.raises(HeldoutProtocolError, match="frozen complete restore"):
+    with _raises(HeldoutProtocolError, match="frozen complete restore"):
         analyze_heldout_campaign(protocol, envelopes, restoration_receipt=wrong_inventory)
 
 
@@ -525,11 +535,11 @@ def test_private_record_recomputes_analysis_and_binds_exact_signed_inputs():
     )
     assert private["signed_result_envelopes_digest"] == digest_for(private["signed_result_envelopes"])
     assert private["restoration_receipt_digest"] == private["aggregate_analysis"]["restoration_receipt_digest"]
-    with pytest.raises(HeldoutProtocolError, match="all 228"):
+    with _raises(HeldoutProtocolError, match="all 228"):
         build_private_campaign_record(protocol, envelopes[:-1], restoration)
     tampered = list(envelopes)
     tampered[0] = dict(tampered[0], ledger_head_digest=digest_for("tampered"))
-    with pytest.raises(HeldoutProtocolError, match="ID|signature"):
+    with _raises(HeldoutProtocolError, match="ID|signature"):
         build_private_campaign_record(protocol, tampered, restoration)
 
 
@@ -544,3 +554,81 @@ def test_public_report_contains_no_exact_private_inputs():
         assert coordinate.profile_digest not in public_text
     assert "receipt_collection_root" not in public_text
     assert "ledger_head_digest" not in public_text
+
+
+class HeldoutCampaignTests(unittest.TestCase):
+    def test_schedule(self):
+        test_schedule_is_exact_deterministic_balanced_and_canonical_seeded()
+
+    def test_campaign_id_ip(self):
+        test_public_campaign_id_must_be_bounded_and_pseudonymous("192.0.2.24")
+
+    def test_campaign_id_host(self):
+        test_public_campaign_id_must_be_bounded_and_pseudonymous("spark-01")
+
+    def test_campaign_id_descriptive(self):
+        test_public_campaign_id_must_be_bounded_and_pseudonymous("egv-heldout-test-campaign")
+
+    def test_campaign_id_oversized(self):
+        test_public_campaign_id_must_be_bounded_and_pseudonymous("a" * 200)
+
+    def test_closed_results(self):
+        test_closed_result_counts_and_shock_bindings_fail_closed()
+
+    def test_signed_envelope(self):
+        test_signed_envelope_binds_exact_result_coordinate_receipts_and_ledger()
+
+    def test_atomic_journal(self):
+        with tempfile.TemporaryDirectory() as directory:
+            test_atomic_journal_resumes_rejects_duplicates_and_detects_tamper(Path(directory))
+
+    def test_atomic_journal_orphan(self):
+        monkeypatch = _MonkeyPatch()
+        try:
+            with tempfile.TemporaryDirectory() as directory:
+                test_atomic_journal_recovers_one_complete_orphan_record(monkeypatch, Path(directory))
+        finally:
+            monkeypatch.undo()
+
+    def test_unknown_effect(self):
+        with tempfile.TemporaryDirectory() as directory:
+            test_unknown_external_effect_is_reconciled_and_quarantined_before_rerun(Path(directory))
+
+    def test_not_executed_retry(self):
+        with tempfile.TemporaryDirectory() as directory:
+            test_signed_not_executed_reconciliation_retries_same_idempotency_key(Path(directory))
+
+    def test_complete_fixture(self):
+        test_complete_signed_fixture_is_promising_and_order_independent()
+
+    def test_missing_duplicate_zero(self):
+        test_missing_duplicate_and_zero_promotion_inputs_fail_closed()
+
+    def test_shock_mismatch(self):
+        test_matched_shock_fact_mismatch_invalidates_entire_block()
+
+    def test_integrity_signature(self):
+        test_signed_observed_integrity_failures_are_not_supported({"signature_valid": False})
+
+    def test_integrity_effect_receipts(self):
+        test_signed_observed_integrity_failures_are_not_supported(
+            {"effect_receipts_required": 1, "effect_receipts_valid": 0}
+        )
+
+    def test_integrity_treatment_isolation(self):
+        test_signed_observed_integrity_failures_are_not_supported({"treatment_isolation_valid": False})
+
+    def test_integrity_private_replay(self):
+        test_signed_observed_integrity_failures_are_not_supported({"private_replay_agreements": 0})
+
+    def test_zero_denominator(self):
+        test_zero_denominator_budget_and_right_censoring_rules()
+
+    def test_restoration(self):
+        test_restoration_requires_valid_signed_exact_receipt()
+
+    def test_private_record(self):
+        test_private_record_recomputes_analysis_and_binds_exact_signed_inputs()
+
+    def test_public_report(self):
+        test_public_report_contains_no_exact_private_inputs()
