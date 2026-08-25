@@ -19,19 +19,18 @@
 
 ## Active EGV campaign handoff — 2026-08-24
 
-- PR #305 implementation head `8669dcd77821d43a54601fffdcbd4668c8315e2f`
-  is pushed and green across lint, Python 3.9–3.12, smoke, schema, PR-body, and
-  security checks. The only failing check is the truthful §6.3 block-flag gate.
-  A public evidence addendum records the dual-Spark exact-source acceptance and
-  the terminal research outcome; its validator and independent review must pass
-  at the final committed head before merge.
-- PR #306 remains a stacked draft. Its ten-path held-out production overlay was
-  committed locally as `f2f43caa` after an independent exact-overlay review found
-  zero Critical, High, Medium, or Low defects at raw diff SHA-256
-  `1c2c2d8ba18c45e7f2aa07a3d76a14e34dc4a2a9e7b23ebd01ff8714b6ab38a2`.
-  The adversarial suite ran 123 tests successfully with 6 expected platform
-  skips. It still requires rebase onto final PR #305, immutable-head Linux/process
-  acceptance, a fresh exact-head review, and green GitHub checks before merge.
+- PR #305 merged under the recorded owner override as merge commit
+  `88b4858471a59553d073cc6fac87a216c6e86260`. Its final exact head
+  `64e60c3fe0264a26415ec9cdd83a2b548ff1eaff` passed Python 3.9–3.12,
+  lint, smoke, schema, PR-body, security, local evidence validation, dual-Spark
+  acceptance, and an independent zero-finding exact-head review. The §6.3 gate
+  remained truthfully failed because the repository block flag is `BLOCKED`.
+- PR #306 is rebased onto that merge. Its accepted production code head is
+  `fe40b1b9b442ab9e9af38765aa0266b4f9b3843f`, tree
+  `1a92b331570afcc359208fc47c7eaf53f9a68079`. Local review found zero defects;
+  each accelerator then ran 366 Linux/process tests with 354 passes, 12 expected
+  platform skips, and zero failures or errors. Final documentation, exact-head
+  review, GitHub checks, and merge under the same bounded override remain.
 - Primary outcome: 80/80 terminal `BUDGET_EXHAUSTED`, 960 attempts, 343
   evaluated candidates, zero correct candidates, zero promotions.
 - Freezer outcome: 343/343 excluded, zero rows, zero represented tasks,
@@ -43,12 +42,11 @@
   `8669dcd7`; both also rejected the genuine zero-row freezer artifact before
   model or evaluator path use and created no output. This is implementation and
   fail-closed acceptance, not evidence of Qwen training or utility.
-- Resume order: freeze, review, commit, and push the #305 evidence addendum;
-  obtain a final exact-head review; then rebase #306, repeat exact-head Linux and
-  process-boundary acceptance, review, and push. Publish or merge only with the
-  bounded operator override recorded below. Restore the operator-owned inference
-  service only after both campaign gates finish, using the private handoff rather
-  than public repository data.
+- Resume order: freeze and independently review the final #306 documentation;
+  push the exact rebased head, require green GitHub checks, and merge only under
+  the bounded operator override recorded below. Then restore and verify the
+  operator-owned inference service using the private handoff rather than public
+  repository data.
 - Do not claim live cross-host trainer/evaluator transport unless that exact path
   is implemented and evidenced. Do not manufacture LoRA rows or substitute base
   output for missing trained arms.
@@ -147,9 +145,10 @@ entry; this log is the audit trail.
 | #244 | 55 | reconciliation foundation must land so follow-up cycle can implement CD-244-01..05 against canonical main | mattmre | `docs/next-session.md` Carried Debt CD-244-01..05 |
 | #245 | 85 | three Tier B iterations converged on rubric-depth gameability (length-based not semantic); per §6.1 same-gap-2-iterations rule, escalating to Tier C as CD-245-01 rather than looping further | mattmre | `docs/next-session.md` Carried Debt CD-245-01 |
 | #305 | 100 | bounded EGV/Qwen campaign may complete under strict testing and truthful negative-result reporting while unrelated historical debts remain visibly open | mattmre | [authenticated owner approval](https://github.com/mattmre/CHELATEDAI/pull/305#issuecomment-5413061747) |
+| #306 | 100 | reviewed held-out production runtime may land as the separately gated completion of the same bounded campaign while unrelated historical debts remain visibly open | mattmre | [authenticated owner approval for PR #305 and #306](https://github.com/mattmre/CHELATEDAI/pull/305#issuecomment-5413061747) |
 
 ---
 
-**Last session**: 2026-08-25 — EGV/Qwen campaign closing under the narrowly scoped PR #305/#306 operator override; CD-A2-01 and CD-H1-01 remain open and the block flag remains truthfully BLOCKED.
+**Last session**: 2026-08-25 — PR #305 merged; PR #306 reached accepted-code and dual-Spark Linux acceptance with final documentation, exact-head review, hosted checks, and merge still pending under the narrowly scoped PR #305/#306 operator override. CD-A2-01 and CD-H1-01 remain open and the block flag remains truthfully BLOCKED.
 **2026-05-17**: PRs #249–#254 merged; 9 BHS Scope B audit Carried Debt rows (CD-MOD-001 through CD-TTS-002) closed.
 **Last validated by `check_block_flag.py`**: run after this commit

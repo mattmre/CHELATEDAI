@@ -326,3 +326,24 @@ performance, or that any research gate passed. Those claims require
 all 228 exact live coordinates, authenticated receipts and replay evidence, a
 sealed adapter and protocol, independent review, and a matching signed
 restoration receipt.
+
+## Dual-accelerator Linux acceptance — 2026-08-25
+
+The production implementation was rebased onto merged PR #305 and frozen at
+code head `fe40b1b9b442ab9e9af38765aa0266b4f9b3843f`, tree
+`1a92b331570afcc359208fc47c7eaf53f9a68079`. That tree is byte-identical to the
+independently reviewed pre-merge candidate deployed to both accelerators.
+
+Each accelerator ran the same 16-module held-out, Variation, training, and
+correction-shock suite in an ephemeral Python 3.12 CUDA container with the
+source mounted read-only. Each ran 366 tests: 354 passed, 12 platform-specific
+tests were intentionally skipped, and zero tests failed or errored. The
+accepted run used an init reaper for descendant-process canaries and mounted
+the host Docker integrity inputs required by the nested sandbox test. The
+public-safe machine-readable record is
+`docs/evidence/egv-heldout-production-2026-08-25/spark-dual-linux-acceptance.json`.
+
+This acceptance proves the reviewed implementation behaves consistently on
+both Linux accelerator hosts. It is not a live two-host transport test. It did
+not execute Qwen trajectories, create an adapter, run matched model evaluation,
+or establish model utility or production readiness.
