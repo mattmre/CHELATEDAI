@@ -9,10 +9,13 @@ import json
 import os
 from pathlib import Path
 import re
+import signal
+import stat
 import subprocess
 import sys
 import tempfile
 import threading
+import time
 from typing import Any, Dict, Mapping, Optional, Sequence, Tuple
 
 from ..canonical import (
@@ -161,56 +164,741 @@ def _exclusive_lock(path: Path):
             handle.close()
 
 
-def _run_bounded_command(invocation: Sequence[str], request_text: str) -> Tuple[int, bytes, bytes]:
-    """Execute with hard in-memory stdout/stderr caps and a frozen timeout."""
+def _path_has_link_or_reparse_component(path: Path) -> bool:
+    """Return whether an absolute path traverses a link/reparse component."""
+
+    cursor = Path(path)
+    while True:
+        metadata = os.lstat(cursor)
+        attributes = int(getattr(metadata, "st_file_attributes", 0))
+        if stat.S_ISLNK(metadata.st_mode) or attributes & 0x400:
+            return True
+        if cursor.parent == cursor:
+            return False
+        cursor = cursor.parent
+
+
+def _read_open_executable(fd: int, path: Path, expected_digest: str) -> None:
+    """Verify executable bytes and pathname identity through one open file."""
+
+    opened_before = os.fstat(fd)
+    named = os.stat(path, follow_symlinks=False)
+    if (
+        not stat.S_ISREG(opened_before.st_mode)
+        or int(getattr(opened_before, "st_nlink", 0)) != 1
+        or (opened_before.st_dev, opened_before.st_ino) != (named.st_dev, named.st_ino)
+    ):
+        raise VariationDependencyError("pinned Python executable identity is invalid")
+    os.lseek(fd, 0, os.SEEK_SET)
+    digest = hashlib.sha256()
+    observed = 0
+    while True:
+        chunk = os.read(fd, 1024 * 1024)
+        if not chunk:
+            break
+        observed += len(chunk)
+        digest.update(chunk)
+    opened_after = os.fstat(fd)
+    named_after = os.stat(path, follow_symlinks=False)
+    if (
+        (opened_after.st_dev, opened_after.st_ino, opened_after.st_size)
+        != (opened_before.st_dev, opened_before.st_ino, opened_before.st_size)
+        or (named_after.st_dev, named_after.st_ino)
+        != (opened_before.st_dev, opened_before.st_ino)
+        or observed != opened_before.st_size
+        or digest.hexdigest() != expected_digest
+    ):
+        raise VariationDependencyError("pinned Python executable changed or differs from its manifest")
+    os.lseek(fd, 0, os.SEEK_SET)
+
+
+@contextmanager
+def pinned_python_invocation(path: Path, expected_digest: str):
+    """Hold one verified Python identity through process creation.
+
+    POSIX copies the verified bytes into a sealed anonymous executable and
+    launches that object through ``/proc/self/fd``.  Windows holds
+    a read-only handle that denies write/delete sharing while ``CreateProcess``
+    opens the verified pathname.  This boundary addresses pathname replacement;
+    it is not a defense against same-user process injection or memory tampering.
+    """
+
+    supplied = Path(path)
+    target = Path(os.path.abspath(os.fspath(supplied)))
+    try:
+        expected = validate_sha256(expected_digest, "pinned Python executable digest")
+        if not supplied.is_absolute() or _path_has_link_or_reparse_component(target):
+            raise VariationDependencyError("pinned Python executable path is not direct")
+    except (OSError, ValueError) as exc:
+        raise VariationDependencyError("pinned Python executable identity is unavailable") from exc
+
+    if os.name == "nt":
+        import ctypes
+        import msvcrt
+        from ctypes import wintypes
+
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        create_file = kernel32.CreateFileW
+        create_file.argtypes = (
+            wintypes.LPCWSTR,
+            wintypes.DWORD,
+            wintypes.DWORD,
+            wintypes.LPVOID,
+            wintypes.DWORD,
+            wintypes.DWORD,
+            wintypes.HANDLE,
+        )
+        create_file.restype = wintypes.HANDLE
+        close_handle = kernel32.CloseHandle
+        close_handle.argtypes = (wintypes.HANDLE,)
+        close_handle.restype = wintypes.BOOL
+        handle = create_file(
+            str(target),
+            0x80000000,  # GENERIC_READ
+            0x00000001,  # FILE_SHARE_READ: deny write and delete sharing
+            None,
+            3,  # OPEN_EXISTING
+            0x00200000,  # FILE_FLAG_OPEN_REPARSE_POINT
+            None,
+        )
+        invalid_handle = ctypes.c_void_p(-1).value
+        if handle == invalid_handle:
+            raise VariationDependencyError("pinned Python executable could not be locked") from ctypes.WinError(
+                ctypes.get_last_error()
+            )
+        fd: Optional[int] = None
+        try:
+            fd = msvcrt.open_osfhandle(int(handle), os.O_RDONLY | getattr(os, "O_BINARY", 0))
+            handle = None
+            _read_open_executable(fd, target, expected)
+        except BaseException as exc:
+            cleanup_errors = []
+            if fd is not None:
+                try:
+                    os.close(fd)
+                except BaseException as cleanup_error:
+                    cleanup_errors.append(cleanup_error)
+                fd = None
+            elif handle not in (None, invalid_handle):
+                try:
+                    _close_windows_handle(
+                        close_handle,
+                        handle,
+                        "pinned Python executable",
+                    )
+                except BaseException as cleanup_error:
+                    cleanup_errors.append(cleanup_error)
+                handle = None
+            if isinstance(exc, OSError):
+                error = VariationDependencyError(
+                    "pinned Python executable identity is unavailable"
+                )
+                _preserve_cleanup_context(error, cleanup_errors)
+                raise error from exc
+            _preserve_cleanup_context(exc, cleanup_errors)
+            raise
+        try:
+            yield str(target), {}
+        except BaseException as primary:
+            cleanup_errors = []
+            if fd is not None:
+                try:
+                    os.close(fd)
+                except BaseException as cleanup_error:
+                    cleanup_errors.append(cleanup_error)
+            elif handle not in (None, invalid_handle):
+                try:
+                    _close_windows_handle(
+                        close_handle,
+                        handle,
+                        "pinned Python executable",
+                    )
+                except BaseException as cleanup_error:
+                    cleanup_errors.append(cleanup_error)
+            _preserve_cleanup_context(primary, cleanup_errors)
+            raise
+        else:
+            if fd is not None:
+                os.close(fd)
+            elif handle not in (None, invalid_handle):
+                _close_windows_handle(
+                    close_handle,
+                    handle,
+                    "pinned Python executable",
+                )
+        return
+
+    flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        fd = os.open(target, flags)
+    except OSError as exc:
+        raise VariationDependencyError("pinned Python executable could not be opened") from exc
+    memfd: Optional[int] = None
+    try:
+        try:
+            _read_open_executable(fd, target, expected)
+        except OSError as exc:
+            raise VariationDependencyError("pinned Python executable identity is unavailable") from exc
+        if not hasattr(os, "memfd_create") or not Path("/proc/self/fd").is_dir():
+            raise VariationDependencyError("immutable pinned Python execution is unavailable")
+        import fcntl
+
+        memfd_flags = getattr(os, "MFD_CLOEXEC", 0x0001) | getattr(os, "MFD_ALLOW_SEALING", 0x0002)
+        mfd_exec = getattr(os, "MFD_EXEC", 0x0010)
+        try:
+            memfd = os.memfd_create("egv-pinned-python", flags=memfd_flags | mfd_exec)
+        except OSError as exc:
+            if exc.errno not in {getattr(os, "EINVAL", 22), getattr(os, "ENOSYS", 38)}:
+                raise VariationDependencyError("immutable pinned Python object could not be created") from exc
+            try:
+                memfd = os.memfd_create("egv-pinned-python", flags=memfd_flags)
+            except OSError as fallback_exc:
+                raise VariationDependencyError("immutable pinned Python object could not be created") from fallback_exc
+        os.lseek(fd, 0, os.SEEK_SET)
+        copied_digest = hashlib.sha256()
+        copied_size = 0
+        while True:
+            chunk = os.read(fd, 1024 * 1024)
+            if not chunk:
+                break
+            view = memoryview(chunk)
+            while view:
+                written = os.write(memfd, view)
+                if written <= 0:
+                    raise VariationDependencyError("immutable pinned Python copy was incomplete")
+                view = view[written:]
+            copied_digest.update(chunk)
+            copied_size += len(chunk)
+        if copied_digest.hexdigest() != expected or copied_size != os.fstat(fd).st_size:
+            raise VariationDependencyError("immutable pinned Python copy differs from its manifest")
+        os.fchmod(memfd, 0o500)
+        required_seals = (
+            getattr(fcntl, "F_SEAL_WRITE", 0x0008)
+            | getattr(fcntl, "F_SEAL_GROW", 0x0004)
+            | getattr(fcntl, "F_SEAL_SHRINK", 0x0002)
+            | getattr(fcntl, "F_SEAL_SEAL", 0x0001)
+        )
+        try:
+            fcntl.fcntl(memfd, getattr(fcntl, "F_ADD_SEALS", 1033), required_seals)
+            observed_seals = fcntl.fcntl(memfd, getattr(fcntl, "F_GET_SEALS", 1034))
+        except OSError as exc:
+            raise VariationDependencyError("immutable pinned Python object could not be sealed") from exc
+        if observed_seals & required_seals != required_seals:
+            raise VariationDependencyError("immutable pinned Python object seals are incomplete")
+        os.lseek(memfd, 0, os.SEEK_SET)
+        sealed_digest = hashlib.sha256()
+        sealed_size = 0
+        while True:
+            chunk = os.read(memfd, 1024 * 1024)
+            if not chunk:
+                break
+            sealed_digest.update(chunk)
+            sealed_size += len(chunk)
+        if sealed_digest.hexdigest() != expected or sealed_size != copied_size:
+            raise VariationDependencyError("sealed pinned Python object failed verification")
+        os.lseek(memfd, 0, os.SEEK_SET)
+        yield "/proc/self/fd/{}".format(memfd), {"pass_fds": (memfd,)}
+    except BaseException as primary:
+        cleanup_errors = []
+        for descriptor in (memfd, fd):
+            if descriptor is not None:
+                try:
+                    os.close(descriptor)
+                except BaseException as cleanup_error:
+                    cleanup_errors.append(cleanup_error)
+        _preserve_cleanup_context(primary, cleanup_errors)
+        raise
+    else:
+        cleanup_errors = []
+        for descriptor in (memfd, fd):
+            if descriptor is not None:
+                try:
+                    os.close(descriptor)
+                except BaseException as cleanup_error:
+                    cleanup_errors.append(cleanup_error)
+        if cleanup_errors:
+            error = VariationDependencyError(
+                "pinned Python executable identity cleanup failed"
+            )
+            _preserve_cleanup_context(error, cleanup_errors)
+            raise error from cleanup_errors[0]
+
+
+def _terminate_bounded_process_tree(
+    process: subprocess.Popen[Any], windows_job: Any = None, *, deadline: Optional[float] = None
+) -> None:
+    """Terminate and reap the complete evaluator process tree."""
+
+    cleanup_errors = []
+    if os.name == "nt":
+        if windows_job is not None:
+            try:
+                import ctypes
+                from ctypes import wintypes
+
+                kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+                terminate_job = kernel32.TerminateJobObject
+                terminate_job.argtypes = (wintypes.HANDLE, wintypes.UINT)
+                terminate_job.restype = wintypes.BOOL
+                if not terminate_job(windows_job, 1):
+                    raise ctypes.WinError(ctypes.get_last_error())
+            except BaseException as exc:
+                cleanup_errors.append(exc)
+        elif process.poll() is None:
+            try:
+                process.kill()
+            except BaseException as exc:
+                cleanup_errors.append(exc)
+    else:
+        if not all(
+            hasattr(os, name)
+            for name in ("waitid", "P_PID", "WEXITED", "WNOHANG", "WNOWAIT")
+        ):
+            cleanup_errors.append(
+                VariationDependencyError("pid-safe evaluator cleanup anchor is unavailable")
+            )
+        else:
+            try:
+                os.waitid(  # type: ignore[attr-defined]
+                    os.P_PID,  # type: ignore[attr-defined]
+                    process.pid,
+                    os.WEXITED | os.WNOHANG | os.WNOWAIT,  # type: ignore[attr-defined]
+                )
+            except ChildProcessError as exc:
+                primary = VariationDependencyError(
+                    "remote Variation evaluator leader anchor was lost before group cleanup"
+                )
+                primary.__cause__ = exc
+                cleanup_errors.append(primary)
+            except BaseException as exc:
+                cleanup_errors.append(exc)
+            else:
+                try:
+                    os.killpg(process.pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+                except BaseException as exc:
+                    cleanup_errors.append(exc)
+    cleanup_deadline = deadline if deadline is not None else time.monotonic() + 5
+    try:
+        process.wait(timeout=max(0.0, cleanup_deadline - time.monotonic()))
+    except BaseException as exc:
+        cleanup_errors.append(exc)
+    if cleanup_errors:
+        error = VariationDependencyError(
+            "remote Variation evaluator process-tree cleanup failed"
+        )
+        _preserve_cleanup_context(error, cleanup_errors)
+        raise error from cleanup_errors[0]
+
+
+def _bounded_process_exited_without_reap(process: subprocess.Popen[Any]) -> bool:
+    """Observe POSIX leader exit while retaining its PID/process-group anchor."""
+
+    if os.name == "nt":
+        return process.poll() is not None
+    if not all(hasattr(os, name) for name in ("waitid", "P_PID", "WEXITED", "WNOHANG", "WNOWAIT")):
+        raise VariationDependencyError("pid-safe evaluator exit observation is unavailable")
+    try:
+        return os.waitid(  # type: ignore[attr-defined]
+            os.P_PID, process.pid, os.WEXITED | os.WNOHANG | os.WNOWAIT  # type: ignore[attr-defined]
+        ) is not None
+    except ChildProcessError as exc:
+        raise VariationDependencyError("remote Variation evaluator leader was reaped outside containment") from exc
+
+
+def _preserve_cleanup_context(error: BaseException, cleanup_errors: Sequence[BaseException]) -> None:
+    """Attach secondary cleanup evidence without relying on Python 3.11 notes."""
+
+    if cleanup_errors:
+        existing = tuple(getattr(error, "cleanup_context", ()))
+        flattened = []
+        for cleanup_error in cleanup_errors:
+            flattened.append(str(cleanup_error))
+            flattened.extend(tuple(getattr(cleanup_error, "cleanup_context", ())))
+        setattr(
+            error,
+            "cleanup_context",
+            existing + tuple(flattened),
+        )
+
+
+def _assign_process_to_windows_job(assign_job: Any, windows_job: Any, process_handle: Any) -> None:
+    """Assign a still-suspended process so fault injection can prove fallback cleanup."""
+
+    if not assign_job(windows_job, process_handle):
+        import ctypes
+
+        raise ctypes.WinError(ctypes.get_last_error())
+
+
+def _close_windows_handle(close_handle: Any, handle: Any, label: str) -> None:
+    """Close one owned Windows handle and fail if ownership was not released."""
+
+    if not close_handle(handle):
+        import ctypes
+
+        native_error = ctypes.WinError(ctypes.get_last_error())
+        raise OSError("{} close failed: {}".format(label, native_error)) from native_error
+
+
+@contextmanager
+def _owned_windows_handle(close_handle: Any, handle: Any, label: str):
+    """Preserve a primary error while validating cleanup of a temporary handle."""
 
     try:
+        yield handle
+    except BaseException as primary:
+        try:
+            _close_windows_handle(close_handle, handle, label)
+        except BaseException as cleanup_error:
+            _preserve_cleanup_context(primary, (cleanup_error,))
+        raise
+    else:
+        _close_windows_handle(close_handle, handle, label)
+
+
+def _cleanup_failed_windows_start(
+    process: Optional[subprocess.Popen[Any]],
+    windows_job: Any,
+    *,
+    job_assigned: bool,
+    close_handle: Any,
+    deadline: float,
+) -> Tuple[BaseException, ...]:
+    """Clean only the owned failed-start process and Job Object resources."""
+
+    cleanup_errors = []
+    if process is not None:
+        if job_assigned:
+            try:
+                _terminate_bounded_process_tree(process, windows_job, deadline=deadline)
+            except BaseException as exc:
+                cleanup_errors.append(exc)
+        else:
+            try:
+                # The process is still suspended and unassigned. Popen.kill uses
+                # its owned process handle, not a reusable ambient PID/PGID.
+                process.kill()
+            except BaseException as exc:
+                cleanup_errors.append(exc)
+            try:
+                process.wait(timeout=max(0.0, deadline - time.monotonic()))
+            except BaseException as exc:
+                cleanup_errors.append(exc)
+        for stream in (process.stdin, process.stdout, process.stderr):
+            if stream is not None:
+                try:
+                    stream.close()
+                except BaseException as exc:
+                    cleanup_errors.append(exc)
+    if windows_job is not None:
+        try:
+            _close_windows_handle(close_handle, windows_job, "evaluator Job Object")
+        except BaseException as exc:
+            cleanup_errors.append(exc)
+    return tuple(cleanup_errors)
+
+
+def _start_bounded_process(
+    invocation: Sequence[str], popen_kwargs: Mapping[str, Any], *, deadline: float
+) -> Tuple[subprocess.Popen[Any], Any]:
+    """Start an evaluator in a containment boundary before it can execute."""
+
+    options = dict(popen_kwargs)
+    windows_job = None
+    if os.name != "nt":
+        if time.monotonic() >= deadline:
+            raise OSError("remote Variation evaluator startup deadline elapsed")
+        options["start_new_session"] = True
+        return subprocess.Popen(
+            list(invocation), stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, **options
+        ), None
+
+    import ctypes
+    from ctypes import wintypes
+
+    creationflags = int(options.pop("creationflags", 0)) | 0x00000200 | 0x00000004
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    create_job = kernel32.CreateJobObjectW
+    create_job.argtypes = (wintypes.LPVOID, wintypes.LPCWSTR)
+    create_job.restype = wintypes.HANDLE
+    set_job = kernel32.SetInformationJobObject
+    set_job.argtypes = (wintypes.HANDLE, ctypes.c_int, wintypes.LPVOID, wintypes.DWORD)
+    set_job.restype = wintypes.BOOL
+    assign_job = kernel32.AssignProcessToJobObject
+    assign_job.argtypes = (wintypes.HANDLE, wintypes.HANDLE)
+    assign_job.restype = wintypes.BOOL
+    create_snapshot = kernel32.CreateToolhelp32Snapshot
+    create_snapshot.argtypes = (wintypes.DWORD, wintypes.DWORD)
+    create_snapshot.restype = wintypes.HANDLE
+    open_thread = kernel32.OpenThread
+    open_thread.argtypes = (wintypes.DWORD, wintypes.BOOL, wintypes.DWORD)
+    open_thread.restype = wintypes.HANDLE
+    resume_thread = kernel32.ResumeThread
+    resume_thread.argtypes = (wintypes.HANDLE,)
+    resume_thread.restype = wintypes.DWORD
+    terminate_job = kernel32.TerminateJobObject
+    terminate_job.argtypes = (wintypes.HANDLE, wintypes.UINT)
+    terminate_job.restype = wintypes.BOOL
+    close_handle = kernel32.CloseHandle
+    close_handle.argtypes = (wintypes.HANDLE,)
+    close_handle.restype = wintypes.BOOL
+
+    windows_job = create_job(None, None)
+    if not windows_job:
+        raise ctypes.WinError(ctypes.get_last_error())
+
+    class _Basic(ctypes.Structure):
+        _fields_ = (("PerProcessUserTimeLimit", ctypes.c_longlong), ("PerJobUserTimeLimit", ctypes.c_longlong),
+                    ("LimitFlags", wintypes.DWORD), ("MinimumWorkingSetSize", ctypes.c_size_t),
+                    ("MaximumWorkingSetSize", ctypes.c_size_t), ("ActiveProcessLimit", wintypes.DWORD),
+                    ("Affinity", ctypes.c_size_t), ("PriorityClass", wintypes.DWORD), ("SchedulingClass", wintypes.DWORD))
+
+    class _Io(ctypes.Structure):
+        _fields_ = tuple((name, ctypes.c_ulonglong) for name in (
+            "ReadOperationCount", "WriteOperationCount", "OtherOperationCount",
+            "ReadTransferCount", "WriteTransferCount", "OtherTransferCount"))
+
+    class _Extended(ctypes.Structure):
+        _fields_ = (("BasicLimitInformation", _Basic), ("IoInfo", _Io),
+                    ("ProcessMemoryLimit", ctypes.c_size_t), ("JobMemoryLimit", ctypes.c_size_t),
+                    ("PeakProcessMemoryUsed", ctypes.c_size_t), ("PeakJobMemoryUsed", ctypes.c_size_t))
+
+    info = _Extended()
+    info.BasicLimitInformation.LimitFlags = 0x00002000
+    if not set_job(windows_job, 9, ctypes.byref(info), ctypes.sizeof(info)):
+        primary = ctypes.WinError(ctypes.get_last_error())
+        try:
+            _close_windows_handle(close_handle, windows_job, "evaluator Job Object")
+        except BaseException as cleanup_error:
+            _preserve_cleanup_context(primary, (cleanup_error,))
+        raise primary
+    if time.monotonic() >= deadline:
+        primary = OSError("remote Variation evaluator startup deadline elapsed")
+        try:
+            _close_windows_handle(close_handle, windows_job, "evaluator Job Object")
+        except BaseException as cleanup_error:
+            _preserve_cleanup_context(primary, (cleanup_error,))
+        raise primary
+    process = None
+    job_assigned = False
+    try:
         process = subprocess.Popen(
-            list(invocation),
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            list(invocation), stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            creationflags=creationflags, **options
+        )
+        _assign_process_to_windows_job(assign_job, windows_job, wintypes.HANDLE(process._handle))
+        job_assigned = True
+        # Python closes the primary thread handle, so locate and resume it.
+        snapshot = create_snapshot(0x00000004, 0)
+        if snapshot == ctypes.c_void_p(-1).value:
+            raise ctypes.WinError(ctypes.get_last_error())
+
+        class _ThreadEntry(ctypes.Structure):
+            _fields_ = (("dwSize", wintypes.DWORD), ("cntUsage", wintypes.DWORD),
+                        ("th32ThreadID", wintypes.DWORD), ("th32OwnerProcessID", wintypes.DWORD),
+                        ("tpBasePri", ctypes.c_long), ("tpDeltaPri", ctypes.c_long), ("dwFlags", wintypes.DWORD))
+
+        thread_first = kernel32.Thread32First
+        thread_first.argtypes = (wintypes.HANDLE, ctypes.POINTER(_ThreadEntry))
+        thread_first.restype = wintypes.BOOL
+        thread_next = kernel32.Thread32Next
+        thread_next.argtypes = (wintypes.HANDLE, ctypes.POINTER(_ThreadEntry))
+        thread_next.restype = wintypes.BOOL
+
+        with _owned_windows_handle(
+            close_handle,
+            snapshot,
+            "evaluator thread snapshot",
+        ):
+            entry = _ThreadEntry()
+            entry.dwSize = ctypes.sizeof(entry)
+            found = []
+            present = thread_first(snapshot, ctypes.byref(entry))
+            while present:
+                if int(entry.th32OwnerProcessID) == process.pid:
+                    found.append(int(entry.th32ThreadID))
+                present = thread_next(snapshot, ctypes.byref(entry))
+        if len(found) != 1:
+            raise OSError("suspended evaluator has no unique primary thread")
+        thread_handle = open_thread(0x0002, False, found[0])
+        if not thread_handle:
+            raise ctypes.WinError(ctypes.get_last_error())
+        with _owned_windows_handle(
+            close_handle,
+            thread_handle,
+            "evaluator primary thread",
+        ):
+            if resume_thread(thread_handle) != 1:
+                raise OSError("suspended evaluator thread has an invalid suspend count")
+        return process, windows_job
+    except BaseException as primary:
+        cleanup_errors = _cleanup_failed_windows_start(
+            process,
+            windows_job,
+            job_assigned=job_assigned,
+            close_handle=close_handle,
+            deadline=time.monotonic() + 5,
+        )
+        _preserve_cleanup_context(primary, cleanup_errors)
+        raise
+
+
+def _run_bounded_command(
+    invocation: Sequence[str],
+    request_text: str,
+    *,
+    popen_kwargs: Optional[Mapping[str, Any]] = None,
+) -> Tuple[int, bytes, bytes]:
+    """Execute with hard in-memory stdout/stderr caps and a frozen timeout."""
+
+    started_at = time.monotonic()
+    deadline = started_at + REMOTE_VARIATION_TIMEOUT_SECONDS
+    try:
+        process, windows_job = _start_bounded_process(
+            invocation, dict(popen_kwargs or {}), deadline=deadline
         )
     except OSError as exc:
-        raise VariationDependencyError("remote Variation evaluator invocation failed") from exc
+        error: VariationDependencyError
+        if time.monotonic() >= deadline:
+            error = VariationDependencyError("remote Variation evaluator timed out")
+        else:
+            error = VariationDependencyError(
+                "remote Variation evaluator invocation failed"
+            )
+        _preserve_cleanup_context(error, (exc,))
+        raise error from exc
     stdout = bytearray()
     stderr = bytearray()
     overflow = []
+    cleanup_errors = []
+    timeout_error: Optional[subprocess.TimeoutExpired] = None
+    writer_errors: list[BaseException] = []
+    reader_errors: list[BaseException] = []
+    request_complete = threading.Event()
 
     def drain(stream: Any, sink: bytearray, label: str) -> None:
-        while True:
-            chunk = stream.read(65536)
-            if not chunk:
-                break
-            if len(sink) + len(chunk) > REMOTE_VARIATION_RESPONSE_LIMIT:
-                overflow.append(label)
-                process.kill()
-                break
-            sink.extend(chunk)
+        try:
+            while True:
+                chunk = stream.read(65536)
+                if not chunk:
+                    break
+                if len(sink) + len(chunk) > REMOTE_VARIATION_RESPONSE_LIMIT:
+                    overflow.append(label)
+                    break
+                sink.extend(chunk)
+        except BaseException as exc:
+            reader_errors.append(exc)
 
-    threads = (
-        threading.Thread(target=drain, args=(process.stdout, stdout, "stdout"), daemon=True),
-        threading.Thread(target=drain, args=(process.stderr, stderr, "stderr"), daemon=True),
-    )
+    def write_request() -> None:
+        try:
+            assert process.stdin is not None
+            request = request_text.encode("utf-8")
+            written = process.stdin.write(request)
+            process.stdin.flush()
+            if written != len(request):
+                raise OSError("remote Variation evaluator consumed an incomplete request")
+            request_complete.set()
+        except BaseException as exc:
+            writer_errors.append(exc)
+        finally:
+            try:
+                if process.stdin is not None:
+                    process.stdin.close()
+            except BaseException as exc:
+                writer_errors.append(exc)
+
+    startup_timed_out = time.monotonic() >= deadline
+    if startup_timed_out:
+        timeout_error = subprocess.TimeoutExpired(list(invocation), REMOTE_VARIATION_TIMEOUT_SECONDS)
+        reader_threads: Tuple[threading.Thread, ...] = ()
+        threads: Tuple[threading.Thread, ...] = ()
+    else:
+        reader_threads = (
+            threading.Thread(target=drain, args=(process.stdout, stdout, "stdout"), daemon=True),
+            threading.Thread(target=drain, args=(process.stderr, stderr, "stderr"), daemon=True),
+        )
+        writer_thread = threading.Thread(target=write_request, daemon=True)
+        threads = (*reader_threads, writer_thread)
     for thread in threads:
         thread.start()
     try:
-        assert process.stdin is not None
-        process.stdin.write(request_text.encode("utf-8"))
-        process.stdin.close()
-        process.wait(timeout=REMOTE_VARIATION_TIMEOUT_SECONDS)
-    except subprocess.TimeoutExpired as exc:
-        process.kill()
-        process.wait()
-        raise VariationDependencyError("remote Variation evaluator timed out") from exc
+        while timeout_error is None and not overflow and not writer_errors and not reader_errors:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                timeout_error = subprocess.TimeoutExpired(list(invocation), REMOTE_VARIATION_TIMEOUT_SECONDS)
+                break
+            if _bounded_process_exited_without_reap(process):
+                break
+            time.sleep(min(remaining, 0.05))
     finally:
+        # Always terminate the containment boundary: a successful or failed
+        # parent may leave descendants alive or holding inherited pipes.
+        cleanup_deadline = time.monotonic() + 5
+        try:
+            _terminate_bounded_process_tree(process, windows_job, deadline=cleanup_deadline)
+        except VariationDependencyError as exc:
+            cleanup_errors.append(exc)
         for thread in threads:
-            thread.join(timeout=5)
-        for stream in (process.stdout, process.stderr):
-            if stream is not None:
-                stream.close()
+            thread.join(timeout=max(0.0, cleanup_deadline - time.monotonic()))
+        if any(thread.is_alive() for thread in threads):
+            cleanup_errors.append(VariationDependencyError("remote Variation evaluator I/O cleanup did not complete"))
+        for thread, stream in zip(reader_threads, (process.stdout, process.stderr)):
+            if not thread.is_alive() and stream is not None:
+                try:
+                    stream.close()
+                except BaseException as exc:
+                    cleanup_errors.append(exc)
+        if startup_timed_out:
+            for stream in (process.stdin, process.stdout, process.stderr):
+                if stream is not None:
+                    try:
+                        stream.close()
+                    except BaseException as exc:
+                        cleanup_errors.append(exc)
+        if os.name == "nt" and windows_job is not None:
+            import ctypes
+            from ctypes import wintypes
+
+            kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+            close_handle = kernel32.CloseHandle
+            close_handle.argtypes = (wintypes.HANDLE,)
+            close_handle.restype = wintypes.BOOL
+            try:
+                _close_windows_handle(
+                    close_handle,
+                    windows_job,
+                    "remote Variation evaluator Job Object",
+                )
+            except BaseException as exc:
+                cleanup_errors.append(exc)
+    if timeout_error is not None:
+        error = VariationDependencyError("remote Variation evaluator timed out")
+        _preserve_cleanup_context(error, cleanup_errors)
+        raise error from timeout_error
     if overflow:
-        raise VariationDependencyError("remote Variation evaluator {} exceeded the bounded output limit".format(overflow[0]))
+        error = VariationDependencyError(
+            "remote Variation evaluator {} exceeded the bounded output limit".format(overflow[0])
+        )
+        _preserve_cleanup_context(error, cleanup_errors)
+        raise error
+    if writer_errors or not request_complete.is_set():
+        error = VariationDependencyError("remote Variation evaluator request write did not complete")
+        _preserve_cleanup_context(error, cleanup_errors)
+        if writer_errors:
+            raise error from writer_errors[0]
+        raise error
+    if reader_errors:
+        error = VariationDependencyError("remote Variation evaluator response read did not complete")
+        _preserve_cleanup_context(error, cleanup_errors)
+        raise error from reader_errors[0]
+    if cleanup_errors:
+        error = VariationDependencyError(
+            "remote Variation evaluator process-tree cleanup failed"
+        )
+        _preserve_cleanup_context(error, cleanup_errors)
+        raise error from cleanup_errors[0]
     return int(process.returncode), bytes(stdout), bytes(stderr)
 
 
@@ -708,6 +1396,8 @@ class RemoteControllerEvaluationGateway:
         manifest_path: Path,
         public_key_path: Path,
         command: Path,
+        python_executable: Optional[Path] = None,
+        python_digest: Optional[str] = None,
         timeout_seconds: int = REMOTE_VARIATION_TIMEOUT_SECONDS,
     ) -> None:
         if type(self) is not RemoteControllerEvaluationGateway:
@@ -719,6 +1409,8 @@ class RemoteControllerEvaluationGateway:
             raise VariationDependencyError("remote evaluator manifest, key, and command must be regular files")
         if timeout_seconds != REMOTE_VARIATION_TIMEOUT_SECONDS:
             raise VariationConfigurationError("remote evaluator timeout differs from the frozen boundary")
+        if (python_executable is None) != (python_digest is None):
+            raise VariationConfigurationError("remote evaluator Python path and digest must be bound together")
         manifest = RemoteEvaluatorServiceManifest.from_path(paths[0])
         public_key = paths[1].read_bytes()
         if hashlib.sha256(public_key).hexdigest() != manifest["evaluator_public_key_digest"]:
@@ -734,6 +1426,12 @@ class RemoteControllerEvaluationGateway:
         self._command = paths[2].resolve()
         self._command_bytes = command_bytes
         self._command_suffix = paths[2].suffix.lower()
+        self._python_executable = None if python_executable is None else Path(python_executable)
+        self._python_digest = None
+        if self._python_executable is not None:
+            self._python_digest = _require_digest(python_digest, "remote evaluator Python executable digest")
+            with pinned_python_invocation(self._python_executable, self._python_digest):
+                pass
         self.evaluator_revision = manifest["evaluator_revision"]
         self.evaluator_digest = manifest["service_manifest_digest"]
         self.task_registry = manifest
@@ -742,6 +1440,7 @@ class RemoteControllerEvaluationGateway:
                 "manifest": manifest.digest,
                 "key": hashlib.sha256(public_key).hexdigest(),
                 "command": hashlib.sha256(command_bytes).hexdigest(),
+                "python": self._python_digest,
             }
         )
         self._pinned_ledger = ledger
@@ -787,11 +1486,15 @@ class RemoteControllerEvaluationGateway:
         current = self._command.read_bytes()
         if current != self._command_bytes or hashlib.sha256(current).hexdigest() != self.manifest["command_digest"]:
             raise VariationDependencyError("remote evaluator command changed after construction")
+        if self._python_executable is not None and self._python_digest is not None:
+            with pinned_python_invocation(self._python_executable, self._python_digest):
+                pass
         if digest_for(
             {
                 "manifest": self.manifest.digest,
                 "key": hashlib.sha256(self._public_key).hexdigest(),
                 "command": hashlib.sha256(current).hexdigest(),
+                "python": self._python_digest,
             }
         ) != self._frozen_contract:
             raise VariationDependencyError("remote evaluator frozen contract changed")
@@ -810,8 +1513,19 @@ class RemoteControllerEvaluationGateway:
             endpoint.chmod(0o500)
             if hashlib.sha256(endpoint.read_bytes()).hexdigest() != self.manifest["command_digest"]:
                 raise VariationDependencyError("content-addressed remote evaluator copy failed verification")
-            invocation = [sys.executable, str(endpoint)] if self._command_suffix == ".py" else [str(endpoint)]
-            returncode, stdout, _stderr = _run_bounded_command(invocation, request_text)
+            if self._python_executable is not None and self._python_digest is not None:
+                with pinned_python_invocation(self._python_executable, self._python_digest) as (
+                    pinned_python,
+                    popen_kwargs,
+                ):
+                    returncode, stdout, _stderr = _run_bounded_command(
+                        [pinned_python, "-I", "-S", str(endpoint)],
+                        request_text,
+                        popen_kwargs=popen_kwargs,
+                    )
+            else:
+                invocation = [sys.executable, str(endpoint)] if self._command_suffix == ".py" else [str(endpoint)]
+                returncode, stdout, _stderr = _run_bounded_command(invocation, request_text)
         if returncode != 0:
             raise VariationDependencyError("remote Variation evaluator returned a nonzero exit status")
         try:

@@ -44,6 +44,7 @@ class _Engine:
         self.cache = cache if cache is not None else {}
         self.effects = effects if effects is not None else []
         self.state_candidate = state_candidate
+        self.observed_keys = set()
 
     @staticmethod
     def observation(key, promoted=False, passed=False):
@@ -56,6 +57,7 @@ class _Engine:
 
     def pre_correction_attempt(self, attempt, *, idempotency_key):
         self.pre_calls.append(attempt)
+        self.observed_keys.add(idempotency_key)
         if idempotency_key in self.cache:
             return self.cache[idempotency_key]
         observation = self.observation(idempotency_key, promoted=attempt == 2)
@@ -73,6 +75,10 @@ class _Engine:
     def restore_from_journal(self, journal):
         self.pre_calls = list(range(1, journal["pre_attempts"] + 1))
         self.post_calls = list(range(1, journal["post_attempts"] + 1))
+        self.observed_keys = {
+            item["operation_id"]
+            for item in journal["pre_observations"] + journal["post_observations"]
+        }
 
     def commit_correction(self, correction_event_digest, *, idempotency_key):
         assert len(correction_event_digest) == 64
@@ -87,6 +93,7 @@ class _Engine:
 
     def post_correction_attempt(self, attempt, *, idempotency_key):
         self.post_calls.append(attempt)
+        self.observed_keys.add(idempotency_key)
         if idempotency_key in self.cache:
             return self.cache[idempotency_key]
         if attempt == self.fail_post:
@@ -101,13 +108,16 @@ class _Engine:
         return observation
 
     def reconcile_attempt(self, idempotency_key):
-        return self.cache.get(idempotency_key)
+        observation = self.cache.get(idempotency_key)
+        if observation is not None:
+            self.observed_keys.add(idempotency_key)
+        return observation
 
     def ledger_head_hash(self): return self.ledger.ledger_head_hash()
     def ledger_integrity(self): return self.ledger.verify_integrity()
 
     def verification_evidence(self):
-        count = len(self.pre_calls) + len(self.post_calls)
+        count = len(self.observed_keys)
         return ShockVerificationEvidence(
             True, True, count, count, count, count, 0,
             digest_for("correction-receipt"), digest_for("policy-receipt"),

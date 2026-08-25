@@ -609,6 +609,7 @@ class CorrectionShockCoordinateRunner:
             item.receipt_valid and item.verdict_receipt_digest is not None
             for item in all_observations
         )
+        evaluated_attempts = verification.public_replay_decisions
         promoted = sum(item.promoted for item in all_observations)
         invalid_promotions = sum(
             item.promoted and (
@@ -639,8 +640,8 @@ class CorrectionShockCoordinateRunner:
             "profile_digest": coordinate.profile_digest,
             "status": status,
             "evaluator_identity_valid": verification.evaluator_identity_valid,
-            "signature_valid": receipt_valid == len(all_observations),
-            "verdict_receipts_required": len(all_observations),
+            "signature_valid": receipt_valid == evaluated_attempts,
+            "verdict_receipts_required": evaluated_attempts,
             "verdict_receipts_valid": receipt_valid,
             "effect_receipts_required": promoted,
             "effect_receipts_valid": effect_receipts_valid,

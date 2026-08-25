@@ -192,6 +192,17 @@ Evaluation & Analysis Modules
 ## Git Workflow Notes
 
 - The repository branch policy may still show PRs as blocked even after all required checks are green. Session 23 required admin merges for `#80`, `#83`, and `#82`.
+- On Windows, update long GitHub PR bodies from a real UTF-8 body file and then
+  re-fetch and validate the live body. A PowerShell string pipeline can submit
+  an empty body even when `gh pr edit` reports success.
+- When a stacked base branch was deleted after merge, fetch `main` by itself
+  before rebasing. Including the deleted branch in the same fetch can leave the
+  local `origin/main` stale even though later commands continue.
+- Linux descendant-process tests inside an ephemeral container need an init
+  reaper so exited children do not remain visible as zombies. Mount the Docker
+  integrity inputs only for the reviewed nested-sandbox canary; keep source
+  read-only and do not classify a harness-misconfigured first run as a product
+  defect.
 - Session 27 required admin merges for `#90`, `#91`, `#92`, and `#93` even after all required checks passed.
 - `gh pr merge` can fail if a local worktree is holding `main`. Before merging stacked PRs, remove/prune merged worktrees or switch them off `main`.
 - The computational-storage split is complete on `main` as of 2026-03-06: `#86` landed the validation foundation, `#87` landed the payload transport path, and `#88` landed the session-wrap docs.

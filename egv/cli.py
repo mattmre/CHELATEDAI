@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -37,8 +38,18 @@ from .experiment import (
     FrozenHeldoutProtocol,
     HeldoutJournal,
     HeldoutProtocolError,
+    HeldoutTrainerInputs,
+    HeldoutTrainerSources,
     HeldoutVerifierServiceManifest,
+    PRODUCTION_INTEGRATION_NAME,
+    ProductionDeploymentPaths,
+    ProductionVariationRouterManifest,
+    SealedHeldoutDeploymentManifest,
     build_private_campaign_record,
+    build_production_heldout_runtime,
+    build_production_observation_verifier,
+    build_production_source_manifest,
+    build_production_variation_router_command,
     build_trainer_evidence_package,
     ordered_public_heldout_task_records,
     run_heldout_verifier_once,
@@ -83,13 +94,29 @@ def _fail_closed_integration(*_args: Any, **_kwargs: Any) -> Any:
     raise PhaseUnavailable("the selected held-out integration is intentionally unavailable")
 
 
+def _production_requires_sealed_config(*_args: Any, **_kwargs: Any) -> Any:
+    raise PhaseUnavailable("the production held-out integration requires explicit sealed CLI configuration")
+
+
 # Public CLI names are closed. Deployment-specific integrations must be added
 # to reviewed source; a user-controlled module path is never imported.
-HELDOUT_OBSERVATION_VERIFIERS = {"fail-closed-v1": _fail_closed_integration}
+HELDOUT_OBSERVATION_VERIFIERS = {
+    "fail-closed-v1": _fail_closed_integration,
+    PRODUCTION_INTEGRATION_NAME: _production_requires_sealed_config,
+}
 HELDOUT_RECONCILIATION_PROBES = {"fail-closed-v1": _fail_closed_integration}
-HELDOUT_COORDINATE_RUNNERS = {"fail-closed-v1": _fail_closed_integration}
-HELDOUT_RESULT_VERIFIERS = {"fail-closed-v1": _fail_closed_integration}
-HELDOUT_RECONCILERS = {"fail-closed-v1": _fail_closed_integration}
+HELDOUT_COORDINATE_RUNNERS = {
+    "fail-closed-v1": _fail_closed_integration,
+    PRODUCTION_INTEGRATION_NAME: _production_requires_sealed_config,
+}
+HELDOUT_RESULT_VERIFIERS = {
+    "fail-closed-v1": _fail_closed_integration,
+    PRODUCTION_INTEGRATION_NAME: _production_requires_sealed_config,
+}
+HELDOUT_RECONCILERS = {
+    "fail-closed-v1": _fail_closed_integration,
+    PRODUCTION_INTEGRATION_NAME: _production_requires_sealed_config,
+}
 
 
 def _sha(label: str) -> str:
@@ -355,7 +382,9 @@ def run_core_smoke() -> Dict[str, Any]:
                 signer,
             )
             public_projection.set_restore_receipt(restore)
-            chain = PublicEventChain(signer, campaign_id=campaign_id, protocol_digest=protocol_digest, evaluator_digest=evaluator_digest)
+            chain = PublicEventChain(
+                signer, campaign_id=campaign_id, protocol_digest=protocol_digest, evaluator_digest=evaluator_digest
+            )
             chain.append_recorded_disposition(
                 run_id=run_id,
                 task_id=task_id,
@@ -502,6 +531,31 @@ def _atomic_publish_new_json(path: Path, value: Mapping[str, Any]) -> tuple[int,
     return created_identity
 
 
+def _atomic_publish_new_bytes(path: Path, value: bytes) -> tuple[int, int]:
+    """Publish immutable non-JSON bytes with the same no-replace boundary."""
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    descriptor, name = tempfile.mkstemp(prefix=".frozen-command-", dir=str(path.parent))
+    temporary = Path(name)
+    created_identity: Optional[tuple[int, int]] = None
+    try:
+        with os.fdopen(descriptor, "wb") as handle:
+            handle.write(value)
+            handle.flush()
+            os.fsync(handle.fileno())
+            created_identity = _file_identity(os.fstat(handle.fileno()), "new frozen command")
+        os.link(str(temporary), str(path))
+    finally:
+        if temporary.exists():
+            try:
+                temporary.unlink()
+            except OSError:
+                pass
+    if created_identity is None:
+        raise HeldoutProtocolError("new frozen command identity is unavailable")
+    return created_identity
+
+
 def _file_identity(file_stat: os.stat_result, label: str) -> tuple[int, int]:
     """Return a stable portable file identity or fail closed."""
 
@@ -528,9 +582,7 @@ def _reject_reparse_ancestors(path: Path, label: str) -> None:
             ancestor_stat = ancestor.lstat()
         except OSError as exc:
             raise HeldoutProtocolError("{} ancestor is unavailable".format(label)) from exc
-        if ancestor.is_symlink() or bool(
-            getattr(ancestor_stat, "st_file_attributes", 0) & reparse_flag
-        ):
+        if ancestor.is_symlink() or bool(getattr(ancestor_stat, "st_file_attributes", 0) & reparse_flag):
             raise HeldoutProtocolError("{} must not traverse a symlink or reparse ancestor".format(label))
 
 
@@ -609,9 +661,7 @@ def _read_regular_bytes(
     exact_size: Optional[int] = None,
     private: bool = False,
 ) -> bytes:
-    raw, _identity = _read_regular_file(
-        path, label, limit=limit, exact_size=exact_size, private=private
-    )
+    raw, _identity = _read_regular_file(path, label, limit=limit, exact_size=exact_size, private=private)
     return raw
 
 
@@ -633,11 +683,24 @@ def _load_heldout_protocol(path: Path) -> FrozenHeldoutProtocol:
 
     value = _load_canonical_json(path, "held-out protocol")
     required = {
-        "schema_version", "campaign_id", "bindings", "evaluator_public_key_hex",
-        "evaluator_key_id", "schedule_seed", "bootstrap_seed", "bootstrap_replicates",
-        "bootstrap_method", "confidence_level", "heldout_task_ids", "seeds",
-        "heldout_task_records", "heldout_task_records_digest",
-        "shock_task_ids", "max_attempts", "max_post_shock_attempts", "coordinates",
+        "schema_version",
+        "campaign_id",
+        "bindings",
+        "evaluator_public_key_hex",
+        "evaluator_key_id",
+        "schedule_seed",
+        "bootstrap_seed",
+        "bootstrap_replicates",
+        "bootstrap_method",
+        "confidence_level",
+        "heldout_task_ids",
+        "seeds",
+        "heldout_task_records",
+        "heldout_task_records_digest",
+        "shock_task_ids",
+        "max_attempts",
+        "max_post_shock_attempts",
+        "coordinates",
         "protocol_digest",
     }
     if set(value) != required:
@@ -659,8 +722,88 @@ def _load_heldout_protocol(path: Path) -> FrozenHeldoutProtocol:
     return protocol
 
 
+_PRODUCTION_PATH_ARGUMENTS = (
+    "trainer_inputs",
+    "trainer_sources",
+    "service_manifest",
+    "model_root",
+    "adapter_root",
+    "variation_evaluator_manifest",
+    "variation_evaluator_public_key",
+    "variation_evaluator_command",
+    "variation_receipt_router_manifest",
+    "heldout_evaluator_command",
+    "python_executable",
+)
+
+
+def _production_paths_from_args(args: Any) -> ProductionDeploymentPaths:
+    missing = [name for name in _PRODUCTION_PATH_ARGUMENTS if getattr(args, name, None) is None]
+    if missing:
+        raise HeldoutProtocolError(
+            "production held-out integration is missing explicit sealed arguments: {}".format(
+                ", ".join("--" + name.replace("_", "-") for name in missing)
+            )
+        )
+    return ProductionDeploymentPaths(
+        protocol=args.protocol,
+        trainer_inputs=args.trainer_inputs,
+        trainer_sources=args.trainer_sources,
+        heldout_service_manifest=args.service_manifest,
+        model_root=args.model_root,
+        adapter_root=args.adapter_root,
+        variation_evaluator_manifest=args.variation_evaluator_manifest,
+        variation_evaluator_public_key=args.variation_evaluator_public_key,
+        variation_evaluator_command=args.variation_evaluator_command,
+        variation_receipt_router_manifest=args.variation_receipt_router_manifest,
+        heldout_evaluator_command=args.heldout_evaluator_command,
+        python_executable=args.python_executable,
+    )
+
+
+def _load_production_packages(
+    args: Any,
+    protocol: FrozenHeldoutProtocol,
+) -> tuple[HeldoutTrainerInputs, HeldoutTrainerSources, SealedHeldoutDeploymentManifest, ProductionDeploymentPaths]:
+    paths = _production_paths_from_args(args)
+    inputs = HeldoutTrainerInputs(
+        _load_canonical_json(paths.trainer_inputs, "held-out trainer inputs"),
+        protocol=protocol,
+    )
+    sources = HeldoutTrainerSources(
+        _load_canonical_json(paths.trainer_sources, "held-out trainer sources"),
+        trainer_inputs=inputs,
+    )
+    deployment_path = getattr(args, "deployment_manifest", None)
+    if deployment_path is None:
+        raise HeldoutProtocolError("production held-out integration requires --deployment-manifest")
+    deployment = SealedHeldoutDeploymentManifest.from_path(deployment_path)
+    deployment.admit(
+        protocol=protocol,
+        trainer_inputs=inputs,
+        trainer_sources=sources,
+        paths=paths,
+    )
+    return inputs, sources, deployment, paths
+
+
+def _add_production_path_arguments(parser: argparse.ArgumentParser, *, service_present: bool = False) -> None:
+    parser.add_argument("--trainer-inputs", type=Path)
+    parser.add_argument("--trainer-sources", type=Path)
+    if not service_present:
+        parser.add_argument("--service-manifest", type=Path)
+    parser.add_argument("--model-root", type=Path)
+    parser.add_argument("--adapter-root", type=Path)
+    parser.add_argument("--variation-evaluator-manifest", type=Path)
+    parser.add_argument("--variation-evaluator-public-key", type=Path)
+    parser.add_argument("--variation-evaluator-command", type=Path)
+    parser.add_argument("--variation-receipt-router-manifest", type=Path)
+    parser.add_argument("--heldout-evaluator-command", type=Path)
+    parser.add_argument("--python-executable", type=Path)
+
+
 def _approved_integration(registry: Mapping[str, Any], name: str, label: str) -> Any:
-    """Resolve only a source-reviewed integration name from a closed registry."""
+    """Resolve only a built-in integration name from a closed registry."""
 
     value = registry.get(name)
     if value is None or not callable(value):
@@ -740,9 +883,7 @@ def _publish_json_transaction(outputs: Sequence[tuple[Path, Mapping[str, Any]]])
         for target, (_declared_path, value), expected in zip(targets, outputs, encoded):
             created_identity = _atomic_publish_new_json(target, value)
             published.append((target, expected, created_identity))
-            actual, identity = _read_regular_file(
-                target, "new frozen output", limit=len(expected)
-            )
+            actual, identity = _read_regular_file(target, "new frozen output", limit=len(expected))
             if identity != created_identity or actual != expected:
                 raise HeldoutProtocolError("new frozen output differs after publication")
     except Exception:
@@ -756,9 +897,7 @@ def _publish_json_transaction(outputs: Sequence[tuple[Path, Mapping[str, Any]]])
                     # Another process owns the current pathname.  Never move,
                     # replace, or unlink it as part of our rollback.
                     continue
-                quarantine_root = Path(
-                    tempfile.mkdtemp(prefix=".egv-rollback-quarantine-", dir=str(target.parent))
-                )
+                quarantine_root = Path(tempfile.mkdtemp(prefix=".egv-rollback-quarantine-", dir=str(target.parent)))
                 quarantined = quarantine_root / target.name
                 os.replace(str(target), str(quarantined))
                 moved_identity = _file_identity(quarantined.lstat(), "quarantined frozen output")
@@ -876,6 +1015,36 @@ def build_parser() -> argparse.ArgumentParser:
     variation_service_freeze.add_argument("--public-key", required=True, type=Path)
     variation_service_freeze.add_argument("--command", required=True, type=Path, dest="evaluator_command")
     variation_service_freeze.add_argument("--output", required=True, type=Path)
+    variation_router_command = variation_subparsers.add_parser(
+        "write-receipt-router-command",
+        help="write the reviewed evaluator-private receipt-chain router without overwriting",
+    )
+    variation_router_command.add_argument("--service-manifest-path", required=True, type=Path)
+    variation_router_command.add_argument("--evaluator-seed", required=True, type=Path)
+    variation_router_command.add_argument("--private-key", required=True, type=Path)
+    variation_router_command.add_argument("--workspace", required=True, type=Path)
+    variation_router_command.add_argument("--state-root", required=True, type=Path)
+    variation_router_command.add_argument("--egv-package-root", required=True, type=Path)
+    variation_router_command.add_argument("--source-commit", required=True)
+    variation_router_command.add_argument("--python-executable", required=True, type=Path)
+    variation_router_command.add_argument("--bootstrap-executable", required=True, type=Path)
+    variation_router_command.add_argument(
+        "--runtime-import-root",
+        required=True,
+        action="append",
+        type=Path,
+        dest="runtime_import_roots",
+    )
+    variation_router_command.add_argument("--output", required=True, type=Path)
+    variation_router_command.add_argument("--json", action="store_true", dest="as_json")
+    variation_router_manifest = variation_subparsers.add_parser(
+        "freeze-receipt-router-manifest",
+        help="freeze the path-free routing capability for an exact reviewed command",
+    )
+    variation_router_manifest.add_argument("--service-manifest", required=True, type=Path)
+    variation_router_manifest.add_argument("--command", required=True, type=Path)
+    variation_router_manifest.add_argument("--output", required=True, type=Path)
+    variation_router_manifest.add_argument("--json", action="store_true", dest="as_json")
 
     training = subparsers.add_parser("training", help="run the bounded EGV Training runtime")
     training_subparsers = training.add_subparsers(dest="training_command", required=True)
@@ -975,9 +1144,7 @@ def build_parser() -> argparse.ArgumentParser:
     commissioning_freeze.add_argument("--output", required=True, type=Path)
     commissioning_freeze.add_argument("--json", action="store_true", dest="as_json")
 
-    heldout = subparsers.add_parser(
-        "heldout", help="freeze and run the local content-bound held-out campaign runtime"
-    )
+    heldout = subparsers.add_parser("heldout", help="freeze and run the local content-bound held-out campaign runtime")
     heldout_subparsers = heldout.add_subparsers(dest="heldout_command", required=True)
     heldout_prepare = heldout_subparsers.add_parser(
         "prepare", help="freeze the held-out protocol and exact public trainer source package"
@@ -999,6 +1166,19 @@ def build_parser() -> argparse.ArgumentParser:
     heldout_service.add_argument("--protocol", required=True, type=Path)
     heldout_service.add_argument("--output", required=True, type=Path)
     heldout_service.add_argument("--json", action="store_true", dest="as_json")
+    heldout_production = heldout_subparsers.add_parser(
+        "freeze-production-deployment",
+        help="seal exact Qwen, adapter, evaluator-command, and runtime bytes for production",
+    )
+    heldout_production.add_argument("--protocol", required=True, type=Path)
+    heldout_production.add_argument("--service-manifest", required=True, type=Path)
+    _add_production_path_arguments(heldout_production, service_present=True)
+    heldout_production.add_argument("--source-commit", required=True)
+    heldout_production.add_argument("--device", choices=("cuda", "cpu"), default="cuda")
+    heldout_production.add_argument("--torch-dtype", choices=("bfloat16", "float16", "float32"), default="bfloat16")
+    heldout_production.add_argument("--max-new-tokens", type=int, default=512)
+    heldout_production.add_argument("--output", required=True, type=Path)
+    heldout_production.add_argument("--json", action="store_true", dest="as_json")
     heldout_evaluator = heldout_subparsers.add_parser(
         "evaluator-once", help="process one local content-bound evaluator command from stdin"
     )
@@ -1008,6 +1188,8 @@ def build_parser() -> argparse.ArgumentParser:
     heldout_evaluator.add_argument("--state-root", required=True, type=Path)
     heldout_evaluator.add_argument("--observation-verifier", required=True)
     heldout_evaluator.add_argument("--reconciliation-probe")
+    heldout_evaluator.add_argument("--deployment-manifest", type=Path)
+    _add_production_path_arguments(heldout_evaluator, service_present=True)
     heldout_run = heldout_subparsers.add_parser(
         "run", help="resume the frozen schedule through explicitly supplied local runtime hooks"
     )
@@ -1017,6 +1199,10 @@ def build_parser() -> argparse.ArgumentParser:
     heldout_run.add_argument("--runner", required=True)
     heldout_run.add_argument("--result-verifier", required=True)
     heldout_run.add_argument("--reconciler", required=True)
+    heldout_run.add_argument("--deployment-manifest", type=Path)
+    _add_production_path_arguments(heldout_run)
+    heldout_run.add_argument("--runtime-root", type=Path)
+    heldout_run.add_argument("--dispatch-root", type=Path)
     heldout_run.add_argument("--continue-after-integrity-failure", action="store_true")
     heldout_run.add_argument("--json", action="store_true", dest="as_json")
     heldout_finalize = heldout_subparsers.add_parser(
@@ -1151,6 +1337,49 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                     True,
                 )
                 return 0
+            if args.variation_command == "write-receipt-router-command":
+                config = {
+                    "schema_version": "egv-variation-receipt-router-config-v1",
+                    "service_manifest": str(args.service_manifest_path.resolve(strict=False)),
+                    "evaluator_seed": str(args.evaluator_seed.resolve(strict=False)),
+                    "evaluator_private_key": str(args.private_key.resolve(strict=False)),
+                    "workspace": str(args.workspace.resolve(strict=False)),
+                    "state_root": str(args.state_root.resolve(strict=False)),
+                    "egv_package_root": str(args.egv_package_root.resolve(strict=True)),
+                    "egv_source_manifest": build_production_source_manifest(
+                        args.egv_package_root.resolve(strict=True),
+                        args.source_commit,
+                    ),
+                    "python_executable": str(args.python_executable.resolve(strict=True)),
+                    "bootstrap_executable": str(args.bootstrap_executable.resolve(strict=True)),
+                    "runtime_import_roots": [str(path.resolve(strict=True)) for path in args.runtime_import_roots],
+                }
+                command = build_production_variation_router_command(config)
+                _atomic_publish_new_bytes(args.output, command)
+                _json_output(
+                    {
+                        "command": str(args.output),
+                        "command_digest": hashlib.sha256(command).hexdigest(),
+                        "capability": "content-addressed-receipt-chain-fork-v1",
+                    },
+                    args.as_json,
+                )
+                return 0
+            if args.variation_command == "freeze-receipt-router-manifest":
+                router = ProductionVariationRouterManifest.freeze(
+                    service_manifest=args.service_manifest,
+                    command=args.command,
+                )
+                _atomic_publish_new_json(args.output, router.to_dict())
+                _json_output(
+                    {
+                        "routing_manifest": str(args.output),
+                        "routing_manifest_digest": router.digest,
+                        "capability": router.to_dict()["capability"],
+                    },
+                    args.as_json,
+                )
+                return 0
             raise EGVError("unsupported variation command: {}".format(args.variation_command))
         if args.command == "training":
             if args.training_command == "smoke":
@@ -1187,12 +1416,15 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                     private_output=args.private_output,
                     service_output=args.service_output,
                 )
-                _json_output({
-                    "private_runtime": str(args.private_output),
-                    "service_manifest": str(args.service_output),
-                    "service_manifest_digest": service["service_manifest_digest"],
-                    "development_task_count": 8,
-                }, True)
+                _json_output(
+                    {
+                        "private_runtime": str(args.private_output),
+                        "service_manifest": str(args.service_output),
+                        "service_manifest_digest": service["service_manifest_digest"],
+                        "development_task_count": 8,
+                    },
+                    True,
+                )
                 return 0
             if args.training_command == "receive-adapter":
                 try:
@@ -1214,9 +1446,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                     EvaluationCorpus.generate(secret_seed_file=args.evaluator_seed),
                     campaign_id=args.campaign_id,
                     model_manifest_digest=args.model_digest,
-                    generation_profile_digest=_commissioning_generation_profile(
-                        args.model_root, args.model_digest
-                    ),
+                    generation_profile_digest=_commissioning_generation_profile(args.model_root, args.model_digest),
                 )
                 trainer_output, trainer_sources_output, evaluator_output = _commissioning_output_targets(
                     args.trainer_output, args.trainer_sources_output, args.evaluator_output
@@ -1230,35 +1460,47 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                     trainer_sources_output.unlink(missing_ok=True)
                     evaluator_output.unlink(missing_ok=True)
                     raise
-                _json_output({
-                    "trainer_inputs_digest": plan.trainer_inputs()["trainer_inputs_digest"],
-                    "trainer_sources_digest": plan.trainer_sources_digest,
-                    "private_inputs_digest": digest_for(plan.private_manifest()),
-                    "generation_profile_digest": plan.generation_profile_digest,
-                    "request_count": len(plan.generation_requests),
-                    "live_model_executed": False,
-                }, True)
+                _json_output(
+                    {
+                        "trainer_inputs_digest": plan.trainer_inputs()["trainer_inputs_digest"],
+                        "trainer_sources_digest": plan.trainer_sources_digest,
+                        "private_inputs_digest": digest_for(plan.private_manifest()),
+                        "generation_profile_digest": plan.generation_profile_digest,
+                        "request_count": len(plan.generation_requests),
+                        "live_model_executed": False,
+                    },
+                    True,
+                )
                 return 0
             if args.commissioning_command == "run":
                 result = run_commissioning(
                     trainer_inputs_path=args.trainer_inputs,
-                    trainer_sources_path=args.trainer_sources, model_root=args.model_root,
-                    ledger_path=args.ledger, blob_root=args.blob_root,
+                    trainer_sources_path=args.trainer_sources,
+                    model_root=args.model_root,
+                    ledger_path=args.ledger,
+                    blob_root=args.blob_root,
                     evaluator_manifest=args.evaluator_manifest,
                     evaluator_public_key=args.evaluator_public_key,
-                    evaluator_command=args.evaluator_command, workspace_root=args.workspace,
-                    journal_path=args.journal, source_commit=args.source_commit,
-                    request_id=args.request_id, max_attempts=args.max_attempts, device=args.device,
+                    evaluator_command=args.evaluator_command,
+                    workspace_root=args.workspace,
+                    journal_path=args.journal,
+                    source_commit=args.source_commit,
+                    request_id=args.request_id,
+                    max_attempts=args.max_attempts,
+                    device=args.device,
                 )
                 _json_output(result, args.as_json)
                 return 0
             if args.commissioning_command == "freeze-training":
                 result = freeze_commissioning_dataset(
-                    trainer_inputs_path=args.trainer_inputs, ledger_path=args.ledger,
-                    blob_root=args.blob_root, private_store_root=args.private_store,
+                    trainer_inputs_path=args.trainer_inputs,
+                    ledger_path=args.ledger,
+                    blob_root=args.blob_root,
+                    private_store_root=args.private_store,
                     evaluator_seed=args.evaluator_seed,
                     evaluator_public_key=args.evaluator_public_key,
-                    model_root=args.model_root, output=args.output,
+                    model_root=args.model_root,
+                    output=args.output,
                 )
                 _json_output(result, args.as_json)
                 return 0
@@ -1295,11 +1537,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                     protocol,
                     generation_profile_digest=args.generation_profile_digest,
                 )
-                _publish_json_transaction((
-                    (outputs[0], protocol.to_private_dict()),
-                    (outputs[1], trainer_inputs),
-                    (outputs[2], trainer_sources),
-                ))
+                _publish_json_transaction(
+                    (
+                        (outputs[0], protocol.to_private_dict()),
+                        (outputs[1], trainer_inputs),
+                        (outputs[2], trainer_sources),
+                    )
+                )
                 _json_output(
                     {
                         "protocol_digest": protocol.digest,
@@ -1319,6 +1563,43 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                     args.as_json,
                 )
                 return 0
+            if args.heldout_command == "freeze-production-deployment":
+                protocol = _load_heldout_protocol(args.protocol)
+                paths = _production_paths_from_args(args)
+                inputs = HeldoutTrainerInputs(
+                    _load_canonical_json(paths.trainer_inputs, "held-out trainer inputs"),
+                    protocol=protocol,
+                )
+                sources = HeldoutTrainerSources(
+                    _load_canonical_json(paths.trainer_sources, "held-out trainer sources"),
+                    trainer_inputs=inputs,
+                )
+                deployment = SealedHeldoutDeploymentManifest.freeze(
+                    protocol=protocol,
+                    trainer_inputs=inputs,
+                    trainer_sources=sources,
+                    paths=paths,
+                    source_commit=args.source_commit,
+                    device=args.device,
+                    torch_dtype=args.torch_dtype,
+                    max_new_tokens=args.max_new_tokens,
+                )
+                deployment.admit(
+                    protocol=protocol,
+                    trainer_inputs=inputs,
+                    trainer_sources=sources,
+                    paths=paths,
+                )
+                _atomic_publish_new_json(args.output, deployment.to_dict())
+                _json_output(
+                    {
+                        "deployment_manifest": str(args.output),
+                        "deployment_manifest_digest": deployment.digest,
+                        "integration_name": PRODUCTION_INTEGRATION_NAME,
+                    },
+                    args.as_json,
+                )
+                return 0
             if args.heldout_command == "evaluator-once":
                 protocol = _load_heldout_protocol(args.protocol)
                 manifest = HeldoutVerifierServiceManifest.load(
@@ -1329,16 +1610,26 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                     ),
                     protocol,
                 )
-                signer = ReceiptSigner(_read_ed25519_key(
-                    args.private_key, "held-out evaluator private key", private=True
-                ))
+                signer = ReceiptSigner(
+                    _read_ed25519_key(args.private_key, "held-out evaluator private key", private=True)
+                )
                 if signer.key_id != protocol.evaluator_key_id:
                     raise HeldoutProtocolError("held-out private key differs from the frozen evaluator")
-                observation_verifier = _approved_integration(
-                    HELDOUT_OBSERVATION_VERIFIERS,
-                    args.observation_verifier,
-                    "held-out observation verifier",
-                )
+                if args.observation_verifier == PRODUCTION_INTEGRATION_NAME:
+                    inputs, sources, deployment, paths = _load_production_packages(args, protocol)
+                    observation_verifier = build_production_observation_verifier(
+                        protocol=protocol,
+                        trainer_inputs=inputs,
+                        trainer_sources=sources,
+                        deployment=deployment,
+                        paths=paths,
+                    )
+                else:
+                    observation_verifier = _approved_integration(
+                        HELDOUT_OBSERVATION_VERIFIERS,
+                        args.observation_verifier,
+                        "held-out observation verifier",
+                    )
                 reconciliation_probe = (
                     _approved_integration(
                         HELDOUT_RECONCILIATION_PROBES,
@@ -1366,15 +1657,38 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 protocol = _load_heldout_protocol(args.protocol)
                 journal = HeldoutJournal(args.journal, protocol)
                 operations = CoordinateOperationStore(args.operations, protocol)
-                runner = _approved_integration(
-                    HELDOUT_COORDINATE_RUNNERS, args.runner, "held-out coordinate runner"
-                )
-                result_verifier = _approved_integration(
-                    HELDOUT_RESULT_VERIFIERS, args.result_verifier, "held-out result verifier"
-                )
-                reconciler = _approved_integration(
-                    HELDOUT_RECONCILERS, args.reconciler, "held-out reconciler"
-                )
+                selected = (args.runner, args.result_verifier, args.reconciler)
+                if PRODUCTION_INTEGRATION_NAME in selected:
+                    if selected != (PRODUCTION_INTEGRATION_NAME,) * 3:
+                        raise HeldoutProtocolError(
+                            "production runner, verifier, and reconciler must be selected together"
+                        )
+                    if args.runtime_root is None or args.dispatch_root is None:
+                        raise HeldoutProtocolError(
+                            "production held-out run requires --runtime-root and --dispatch-root"
+                        )
+                    inputs, sources, deployment, paths = _load_production_packages(args, protocol)
+                    runtime = build_production_heldout_runtime(
+                        protocol=protocol,
+                        trainer_inputs=inputs,
+                        trainer_sources=sources,
+                        deployment=deployment,
+                        paths=paths,
+                        runtime_root=args.runtime_root,
+                        operation_store=operations,
+                        dispatch_root=args.dispatch_root,
+                    )
+                    runner = runtime.adapters.runner
+                    result_verifier = runtime.adapters.result_verifier
+                    reconciler = runtime.adapters.reconciler
+                else:
+                    runner = _approved_integration(
+                        HELDOUT_COORDINATE_RUNNERS, args.runner, "held-out coordinate runner"
+                    )
+                    result_verifier = _approved_integration(
+                        HELDOUT_RESULT_VERIFIERS, args.result_verifier, "held-out result verifier"
+                    )
+                    reconciler = _approved_integration(HELDOUT_RECONCILERS, args.reconciler, "held-out reconciler")
                 try:
                     result = run_pending_coordinates(
                         protocol,
@@ -1395,9 +1709,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 restoration = _load_canonical_json(
                     args.restoration_receipt, "held-out restoration receipt", limit=262_144
                 )
-                private_record = build_private_campaign_record(
-                    protocol, journal.envelopes, restoration
-                )
+                private_record = build_private_campaign_record(protocol, journal.envelopes, restoration)
                 _atomic_publish_new_json(args.private_output, private_record)
                 analysis = private_record["aggregate_analysis"]
                 _json_output(
@@ -1414,8 +1726,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             raise EGVError("unsupported heldout command: {}".format(args.heldout_command))
         if args.command == "train-lora":
             if (
-                args.evaluator_public_key is None or args.evaluator_command is None
-                or args.evaluator_transfer_command is None or args.output is None
+                args.evaluator_public_key is None
+                or args.evaluator_command is None
+                or args.evaluator_transfer_command is None
+                or args.output is None
                 or args.sealed_training_artifact_sha256 is None
                 or args.sealed_training_dataset_digest is None
             ):
