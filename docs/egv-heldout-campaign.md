@@ -329,21 +329,44 @@ restoration receipt.
 
 ## Dual-accelerator Linux acceptance — 2026-08-25
 
-The production implementation was rebased onto merged PR #305 and frozen at
-code head `fe40b1b9b442ab9e9af38765aa0266b4f9b3843f`, tree
-`1a92b331570afcc359208fc47c7eaf53f9a68079`. That tree is byte-identical to the
-independently reviewed pre-merge candidate deployed to both accelerators.
+The accepted implementation/test identity is head
+`9345ad3c16ed23623fba1255b1de5106e1c17a8e`, tree
+`852823ad6c5a8297d8c566d30eb0b3e0be728396`. Production code was frozen at
+head `fe40b1b9b442ab9e9af38765aa0266b4f9b3843f`, tree
+`1a92b331570afcc359208fc47c7eaf53f9a68079`; the later changes are limited to
+public documentation, evidence, reusable operator guidance, and one test-only
+writable-temporary-directory correction.
 
-Each accelerator ran the same 16-module held-out, Variation, training, and
-correction-shock suite in an ephemeral Python 3.12 CUDA container with the
-source mounted read-only. Each ran 366 tests: 354 passed, 12 platform-specific
-tests were intentionally skipped, and zero tests failed or errored. The
-accepted run used an init reaper for descendant-process canaries and mounted
-the host Docker integrity inputs required by the nested sandbox test. The
-public-safe machine-readable record is
+Each accelerator independently ran the same 16-module held-out, Variation,
+training, and correction-shock suite in an ephemeral Python 3.12 CUDA container
+with the source mounted read-only. Accelerator 1 completed in 144.352 seconds
+and accelerator 2 in 149.119 seconds. Each ran 366 tests: 354 passed, 12
+platform-specific tests were intentionally skipped, and zero tests failed or
+errored. The exact source archive SHA-256 was
+`54b76ccdb5ecc4b6609471d876bec0a32d80998c33c4ba06a52731ed9b92c391`.
+The harness recipe was reconstructed from the reviewed public acceptance
+contract because the prior ephemeral containers were unavailable for exact
+inspection. It used an init reaper, no network, a read-only source mount, GPU
+access, and the reviewed Docker integrity inputs. An independent read-only
+exact-head review returned GO with zero Critical, High, Medium, or Low findings.
+The public-safe machine-readable record is
 `docs/evidence/egv-heldout-production-2026-08-25/spark-dual-linux-acceptance.json`.
+
+The commissioning campaign ended in a valid terminal negative result: 80/80
+coordinates reached `BUDGET_EXHAUSTED` after 960 attempts. Of 343 evaluated
+candidates, zero were correct and zero were promoted. The freezer excluded
+343/343 candidates, admitted zero rows representing zero tasks, and returned
+`NO_ADMISSIBLE_TRAINING_SET`. Consequently, no research adapter was created and
+the trained and matched-evaluation arms remain `UNEVALUATED`.
 
 This acceptance proves the reviewed implementation behaves consistently on
 both Linux accelerator hosts. It is not a live two-host transport test. It did
 not execute Qwen trajectories, create an adapter, run matched model evaluation,
-or establish model utility or production readiness.
+or establish model utility or production readiness. No private endpoint, path,
+credential, prompt, model output, or deployment topology is part of this public
+record.
+
+After this acceptance, the operator-owned inference service was restored.
+Public-safe health, expected model-list, metrics, and minimal chat checks passed.
+Deployment identity, runtime layout, and recovery details are retained only in
+the private operator handoff.

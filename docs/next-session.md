@@ -25,12 +25,19 @@
   lint, smoke, schema, PR-body, security, local evidence validation, dual-Spark
   acceptance, and an independent zero-finding exact-head review. The §6.3 gate
   remained truthfully failed because the repository block flag is `BLOCKED`.
-- PR #306 is rebased onto that merge. Its accepted production code head is
-  `fe40b1b9b442ab9e9af38765aa0266b4f9b3843f`, tree
-  `1a92b331570afcc359208fc47c7eaf53f9a68079`. Local review found zero defects;
-  each accelerator then ran 366 Linux/process tests with 354 passes, 12 expected
-  platform skips, and zero failures or errors. Final documentation, exact-head
-  review, GitHub checks, and merge under the same bounded override remain.
+- PR #306's accepted implementation/test identity is head
+  `9345ad3c16ed23623fba1255b1de5106e1c17a8e`, tree
+  `852823ad6c5a8297d8c566d30eb0b3e0be728396`. Production paths remain frozen at
+  head `fe40b1b9b442ab9e9af38765aa0266b4f9b3843f`, tree
+  `1a92b331570afcc359208fc47c7eaf53f9a68079`; the later code change is test-only.
+- The hosted Python 3.9–3.12 matrix and every non-§6.3 check passed. The sole
+  failed check is the expected §6.3 block-flag gate; the repository remains
+  truthfully `BLOCKED` under the recorded bounded override.
+- An independent read-only exact-head review returned GO with zero Critical,
+  High, Medium, or Low findings. It was not submitted as a GitHub approval.
+- Both accelerators independently passed the exact-head 366-test suite: 354
+  passed, 12 expected platform skips, zero failures, and zero errors per
+  accelerator.
 - Primary outcome: 80/80 terminal `BUDGET_EXHAUSTED`, 960 attempts, 343
   evaluated candidates, zero correct candidates, zero promotions.
 - Freezer outcome: 343/343 excluded, zero rows, zero represented tasks,
@@ -42,11 +49,16 @@
   `8669dcd7`; both also rejected the genuine zero-row freezer artifact before
   model or evaluator path use and created no output. This is implementation and
   fail-closed acceptance, not evidence of Qwen training or utility.
-- Resume order: freeze and independently review the final #306 documentation;
-  push the exact rebased head, require green GitHub checks, and merge only under
-  the bounded operator override recorded below. Then restore and verify the
-  operator-owned inference service using the private handoff rather than public
-  repository data.
+- The operator-owned inference service was restored after accelerator
+  acceptance. Public-safe health, expected model-list, metrics, and minimal chat
+  checks passed, and zero campaign workloads remain active. Deployment identity,
+  runtime layout, and recovery details are kept in the untracked operator
+  handoff.
+- Closeout order: freeze and independently review this final documentation,
+  rerun hosted checks on its exact head, record the PR disposition under the
+  bounded operator override. If this record is present on `main`, PR #306 has
+  completed that merge step; use the live PR record for the resulting merge
+  commit.
 - Do not claim live cross-host trainer/evaluator transport unless that exact path
   is implemented and evidenced. Do not manufacture LoRA rows or substitute base
   output for missing trained arms.
@@ -149,6 +161,6 @@ entry; this log is the audit trail.
 
 ---
 
-**Last session**: 2026-08-25 — PR #305 merged; PR #306 reached accepted-code and dual-Spark Linux acceptance with final documentation, exact-head review, hosted checks, and merge still pending under the narrowly scoped PR #305/#306 operator override. CD-A2-01 and CD-H1-01 remain open and the block flag remains truthfully BLOCKED.
+**Last session**: 2026-08-25 — PR #305 merged; PR #306 reached terminal-negative research disposition, exact-head hosted and dual-Spark acceptance, and independent zero-finding review. Its final documentation and owner-authorized disposition are recorded by the PR #306 head and live PR record. CD-A2-01 and CD-H1-01 remain open and the block flag remains truthfully BLOCKED.
 **2026-05-17**: PRs #249–#254 merged; 9 BHS Scope B audit Carried Debt rows (CD-MOD-001 through CD-TTS-002) closed.
 **Last validated by `check_block_flag.py`**: run after this commit

@@ -1,12 +1,15 @@
 {
   "schema": "egv.public-safe.heldout-linux-acceptance.v1",
-  "generated_at_utc": "2026-08-25T16:20:25Z",
+  "generated_at_utc": "2026-08-25T17:21:43Z",
   "source_identity": {
-    "accepted_code_head": "fe40b1b9b442ab9e9af38765aa0266b4f9b3843f",
-    "accepted_code_tree": "1a92b331570afcc359208fc47c7eaf53f9a68079",
-    "deployed_equivalent_head": "adc8b85714c99d87233321e2625e90a35cccdd30",
-    "deployed_archive_sha256": "f94bbcbd57617068334c67fabd7f5e34d3e9887cbb3038d6a80dc6ed6aa342ca",
-    "tree_equivalence_verified": true
+    "accepted_implementation_test_head": "9345ad3c16ed23623fba1255b1de5106e1c17a8e",
+    "accepted_implementation_test_tree": "852823ad6c5a8297d8c566d30eb0b3e0be728396",
+    "production_code_head": "fe40b1b9b442ab9e9af38765aa0266b4f9b3843f",
+    "production_code_tree": "1a92b331570afcc359208fc47c7eaf53f9a68079",
+    "production_paths_changed_after_production_code_head": false,
+    "source_archive_sha256": "54b76ccdb5ecc4b6609471d876bec0a32d80998c33c4ba06a52731ed9b92c391",
+    "source_archive_gzip_sha256": "abe121d46fdf16bd6bfaea23545bce7b4f6013f47d9ebdb04f211aeb8a3a4c2b",
+    "harness_recipe_origin": "reconstructed from the reviewed public acceptance contract; prior ephemeral containers were unavailable for exact inspection"
   },
   "runtime": {
     "python": "3.12",
@@ -45,12 +48,14 @@
     {
       "role": "accelerator_1",
       "image_content_id": "sha256:c93524830d44ed74c91d51118d3f101123a58f49d288afa3719dbe4928aa698c",
+      "duration_seconds": 144.352,
       "exit_code": 0,
       "status": "PASS"
     },
     {
       "role": "accelerator_2",
       "image_content_id": "sha256:703c0a608af9eb1f67004a62f1effe330d148a3a8dc38122ef541a119b732494",
+      "duration_seconds": 149.119,
       "exit_code": 0,
       "status": "PASS"
     }
