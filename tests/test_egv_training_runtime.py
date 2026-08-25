@@ -11,6 +11,7 @@ import json
 import os
 from pathlib import Path
 import stat
+import sys
 from types import SimpleNamespace
 import tempfile
 import unittest
@@ -62,6 +63,29 @@ from egv.variation.model import (
     LoadedPinnedModel,
     PinnedModelManifest,
 )
+
+
+requires_production_python = unittest.skipIf(
+    sys.version_info < (3, 10),
+    "post-floor production boundary requires Python >=3.10",
+)
+
+
+class ProductionPythonFloorTests(unittest.TestCase):
+    def test_production_training_rejects_python_39_before_reading_artifacts(self):
+        with (
+            patch("egv.training.trainer.sys.version_info", (3, 9, 0)),
+            self.assertRaisesRegex(TrainingDependencyError, "Python >=3.10"),
+        ):
+            run_production_training(
+                model_root=Path("missing-model"), training_dataset=Path("missing-train"),
+                evaluator_manifest=Path("missing-service"), evaluator_public_key=Path("missing-key"),
+                evaluator_command=Path("missing-command"),
+                evaluator_transfer_command=Path("missing-transfer-command"),
+                output_root=Path("missing-output"),
+                expected_training_artifact_sha256=digest_for("artifact"),
+                expected_training_dataset_digest=digest_for("dataset"), device="cuda",
+            )
 
 
 class _Tokenizer:
@@ -737,6 +761,7 @@ class TrainingRuntimeTests(unittest.TestCase):
         with self.assertRaisesRegex(TrainingIntegrityError, "canonical"):
             _decode_external_signature(encoded[:-1] + tail_alias[encoded[-1]])
 
+    @requires_production_python
     def test_direct_production_constructor_binds_exact_private_evaluator_scratch(self):
         with tempfile.TemporaryDirectory(prefix="egv-direct-production-boundary-") as temporary:
             root = Path(temporary)
@@ -1322,6 +1347,7 @@ class TrainingRuntimeTests(unittest.TestCase):
                 expected_training_dataset_digest=digest_for("dataset"), device="cpu",
             )
 
+    @requires_production_python
     def test_production_training_requires_a_new_output_root_before_input_read(self):
         with tempfile.TemporaryDirectory(prefix="egv-training-output-") as temporary:
             root = Path(temporary)
@@ -1423,6 +1449,7 @@ class TrainingRuntimeTests(unittest.TestCase):
             self.assertEqual(marker.read_text(encoding="utf-8"), "foreign")
             self.assertFalse(destination.exists())
 
+    @requires_production_python
     def test_genuine_zero_row_freezer_artifact_fails_before_model_or_output(self):
         with tempfile.TemporaryDirectory(prefix="egv-training-zero-") as temporary:
             root = Path(temporary)
@@ -1458,6 +1485,7 @@ class TrainingRuntimeTests(unittest.TestCase):
             self.assertFalse(output.exists())
             self.assertEqual(list(root.glob(".egv-training-private-*")), [])
 
+    @requires_production_python
     def test_sealed_training_handoff_rejects_raw_and_semantic_substitution(self):
         with tempfile.TemporaryDirectory(prefix="egv-training-substitution-") as temporary:
             root = Path(temporary)
@@ -1500,6 +1528,7 @@ class TrainingRuntimeTests(unittest.TestCase):
             self.assertFalse((root / "raw-output").exists())
             self.assertFalse((root / "semantic-output").exists())
 
+    @requires_production_python
     def test_sealed_training_reader_rejects_hardlinks_before_model_or_output(self):
         with tempfile.TemporaryDirectory(prefix="egv-training-hardlink-") as temporary:
             root = Path(temporary)
@@ -1528,6 +1557,7 @@ class TrainingRuntimeTests(unittest.TestCase):
                 )
             self.assertFalse(output.exists())
 
+    @requires_production_python
     def test_sealed_training_reader_rejects_leaf_swap_before_open(self):
         with tempfile.TemporaryDirectory(prefix="egv-training-swap-") as temporary:
             root = Path(temporary)
@@ -1569,6 +1599,7 @@ class TrainingRuntimeTests(unittest.TestCase):
             self.assertTrue(swapped)
             self.assertFalse(output.exists())
 
+    @requires_production_python
     def test_sealed_training_reader_rejects_parent_and_leaf_links_or_reparse_points(self):
         with tempfile.TemporaryDirectory(prefix="egv-training-reparse-") as temporary:
             root = Path(temporary)
@@ -1631,6 +1662,7 @@ class TrainingRuntimeTests(unittest.TestCase):
                         invoke_with_fake_link(link_path, output, transform)
                     self.assertFalse(output.exists())
 
+    @requires_production_python
     def test_sealed_training_reader_enforces_explicit_byte_ceiling(self):
         with tempfile.TemporaryDirectory(prefix="egv-training-ceiling-") as temporary:
             root = Path(temporary)
