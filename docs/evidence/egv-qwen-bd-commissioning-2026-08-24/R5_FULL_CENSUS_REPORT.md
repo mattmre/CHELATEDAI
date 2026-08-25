@@ -57,7 +57,7 @@ These results support a narrow conclusion: response formatting was a real transp
 - R5 aggregate SHA-256: `dfff9543251c58406f12e3aa49b493dd3c852823a7061ab2364f188a50027b95`
 - Spark 2 CPU/Qdrant smoke SHA-256: `c208be009d8d2c8c5fa0be1dd7dd7637e4ae942b30dc27268ff977dd87d87a0b`
 - Spark 2 exact-source recovery/commissioning validation SHA-256: `38a8a19dfcd3f8b16a7551a90d7d7728d8e4cc10fa6ae791549dd4c932d99b1e`
-- Validation record SHA-256: `c62b03fe79186c0675294000a439a0afb58d9ec72e2bb3935efb5fef50c6ad07`
-- Validator SHA-256: `43042ba7fea82da69220a412ff7c1aee321b4e04c1b864507466a8d09f5602cc`
+- Validation record SHA-256: `f44e2ca70ed7ce3bfe022880d1c845b5df6221f2d0222ae2932921f42d7471dc`
+- Validator SHA-256: `9f7ed92cfc186f74a22fb4c33fc492614bb17d471a1b8711640dad9d747a7ddf`
 
 The JSON artifacts use canonical bytes, exact SHA-256 pins, and recursively checked closed object schemas. The included validator runs both the targeted public-safety scan and Gitleaks; it found no raw prompts/source fields, private identifier fields, private paths/topology, credentials, or secret findings. The redacted aggregate cannot independently recompute the private row-level campaign result.

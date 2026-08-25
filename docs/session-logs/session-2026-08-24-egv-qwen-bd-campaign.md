@@ -44,40 +44,51 @@ from trainer-supplied raw bytes, explicit non-resumable legacy schemas, bounded
 process containment, and fail-closed recovery. Replay evidence does not prove
 that the recorded bytes originated from a model.
 
-Fresh adversarial review found additional direct-API/private-tree, Windows
-cleanup, and Python 3.9/3.10 compatibility gaps during session wrap. They were
-returned to their implementers before publication. The repaired seven-path
-training implementation previously received exact-diff `GO`; its
-ResourceWarning-as-error suite passed 45 tests with 3 genuine PEFT/CUDA skips,
-and its wider suite passed 99 tests with the same 3 skips. Later documentation
-and public-safety corrections superseded that reviewed diff identity. The
-current composite candidate must receive a new exact review before it is called
-approved for Spark acceptance or publication. The held-out reviewer found
-additional inventory/cleanup-evidence gaps after its first repaired freeze. The
-exact snapshot at raw diff SHA-256
-`ec56ef561a0b36ba7130cb8ecdf3e28d55abad164ef665e82860bf3bd5a332a0`
-received `NEEDS CHANGES`: post-`Popen` child cleanup can leak, simultaneous
-cleanup failures can lose evidence, unexpected non-JSON inventory entries are
-ignored, and some native handle closes are unchecked. Its broad suite passed
-112 tests with 6 platform skips, but the targeted fault evidence keeps it HOLD.
+Fresh adversarial review of the corrected 20-path composite found no remaining
+code, privacy, identity, reproducibility-language, governance-state, or
+cross-host-claim defect. That exact candidate was committed as
+`1dd45c6ee567ffa48ea41d74959582f1a3015cfa`. The first hosted matrix then found
+one test-harness mismatch: eight post-production-floor tests expected later
+guards under Python 3.9 even though production correctly requires Python 3.10+.
+Commit `8669dcd77821d43a54601fffdcbd4668c8315e2f` skips only those post-floor
+assertions on 3.9 and adds a dependency-independent test of the floor itself.
+Independent review matched the eight methods to all 11 hosted errors and issued
+`GO`; production code was unchanged.
+
+The exact `8669dcd7` source archive was byte-matched across both accelerators.
+Each offline, read-only-source container passed six real PEFT/CUDA and Linux
+publication tests. The genuine 343-candidate, zero-row freezer artifact was
+then supplied with both exact digests and deliberately missing downstream
+dependencies. Both runs reached the exact 20-task rejection and produced no
+adapter output. These are implementation and negative-gate proofs, not a
+research adapter or model-quality result.
+
+The stacked held-out lane separately repaired the original process cleanup,
+inventory, and native-handle findings. A later independent adversarial pass
+found one additional cleanup-only multi-error evidence loss in both local and
+remote boundaries. That defect and its fault-injection tests are repaired in
+the current PR #306 overlay; a fresh exact-tree review remains required before
+that overlay is committed.
 
 ## Infrastructure at wrap
 
-Both accelerator nodes were last observed ready and idle. The operator-owned
+Both accelerator nodes were observed ready and completed the exact acceptance
+band. The operator-owned
 inference service remains intentionally stopped while the campaign gates are
 open. Its restore identity and verification procedure are retained only in the
 private local handoff; no private topology or credentials are present here.
 
 ## Public evidence
 
-The six machine-readable evidence records are canonical, closed-schema, and
+The seven machine-readable evidence records are canonical, closed-schema, and
 exact-byte pinned. The two reports and validator are required bundle members;
-the six records, two reports, and `validation.json` are targeted-privacy-scanned,
-and the full bundle including the validator is Gitleaks-clean. The current
-composite candidate still requires fresh exact review after the later
-documentation and scanner corrections. It deliberately distinguishes publicly exposed,
-schema/self-consistency-validated counters from private seal context and
-historical exact-source rejection from the pending hardened pre-model proof.
+the seven records, two reports, and `validation.json` are targeted-privacy-scanned,
+and the full bundle including the validator is Gitleaks-clean. The final
+evidence addendum still requires fresh exact review before publication. It
+deliberately distinguishes publicly exposed, schema/self-consistency-validated
+counters from private seal context, historical exact-source rejection from the
+later hardened proof, and tiny-model implementation acceptance from research
+model evidence.
 The redacted bundle does not contain row-level campaign inputs and cannot
 independently recompute the private campaign result.
 
@@ -89,35 +100,31 @@ Reviewed artifact hashes:
 - first accelerator CPU/Qdrant smoke: `6163661009da9770d7cdcc1d786e3f9842c8e0e11cea6cb2900fdbdb50303c77`
 - second accelerator CPU/Qdrant smoke: `c208be009d8d2c8c5fa0be1dd7dd7637e4ae942b30dc27268ff977dd87d87a0b`
 - second accelerator focused recovery validation: `38a8a19dfcd3f8b16a7551a90d7d7728d8e4cc10fa6ae791549dd4c932d99b1e`
-- validation record: `c62b03fe79186c0675294000a439a0afb58d9ec72e2bb3935efb5fef50c6ad07`
-- validator: `43042ba7fea82da69220a412ff7c1aee321b4e04c1b864507466a8d09f5602cc`
+- dual-accelerator GPU/Linux acceptance: `6c2a87543c134f364a1da844bacf3156d3718f2a755efda4406a29999c88565d`
+- validation record: `f44e2ca70ed7ce3bfe022880d1c845b5df6221f2d0222ae2932921f42d7471dc`
+- validator: `9f7ed92cfc186f74a22fb4c33fc492614bb17d471a1b8711640dad9d747a7ddf`
 
 ## Pull requests at wrap
 
 - PR #305 remains the main commissioning/training PR.
 - PR #306 remains a stacked draft for production held-out/shock integration.
-- PR #305's historical training-only candidate received exact-diff `GO`, but
-  the current composite candidate has later documentation/privacy corrections
-  and requires fresh exact review. Neither PR is merge-ready until that review
-  and the remaining accelerator/Linux acceptance are recorded, and PR #306's
-  rejected held-out candidate is repaired and freshly reviewed.
+- PR #305's implementation candidate and Python-floor repair received independent
+  `GO`, and its exact dual-accelerator acceptance is recorded. The evidence-only
+  addendum and hosted exact-head matrix remain to be frozen and reviewed.
+- PR #306's repaired overlay remains uncommitted pending fresh exact review,
+  rebase onto the final PR #305 head, and Linux/process acceptance.
 - No administrative bypass substitutes for those technical gates.
 
 ## Next session
 
-1. Commit the reviewed training/evidence candidate on PR #305 and preserve its
-   exact reviewed identity in the commit evidence.
-2. On the exact PR #305 SHA, run the genuine zero-row artifact and prove rejection
-   before private staging, evaluator, CUDA, model load, or output creation.
-3. Run bounded real-PEFT/CUDA and Linux native no-replace implementation
-   acceptance. These are implementation tests, not research-adapter evidence.
-4. Push/check PR #305. Repair the four held-out blockers, freeze and independently
-   review the new candidate, then rebase PR #306 onto the final PR #305 head.
-5. Run the exact held-out Linux/process acceptance for PR #306 and repeat its
-   exact-diff review after the rebase.
-6. Publish the reviewed public-safe bundle and update both PR bodies with exact
-   results and explicit boundaries.
-7. Merge only after exact technical gates. Restore and verify the operator's
+1. Freeze, independently review, commit, and run the hosted matrix for the final
+   PR #305 evidence addendum.
+2. Finish the fresh exact-tree review of the repaired PR #306 overlay, then
+   commit it and rebase it onto the final PR #305 head.
+3. Run exact held-out Linux/process acceptance for PR #306 and repeat exact-head
+   review after the rebase.
+4. Update both PR bodies with exact results and explicit claim boundaries.
+5. Merge only after exact technical gates. Restore and verify the operator's
    pre-existing inference service as the final infrastructure step.
 
 ## Explicit boundaries

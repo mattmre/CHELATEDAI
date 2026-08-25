@@ -19,48 +19,43 @@
 
 ## Active EGV campaign handoff — 2026-08-24
 
-- PR #305 public head remains `8f1955abe8a214cc6f469547d3cc1bbddbf7d1ec`
-  and is HOLD pending a committed training/evidence candidate plus exact Spark
-  acceptance. Its local seven-path training overlay is frozen at raw diff
-  previously received an independent exact-diff `GO`. Documentation and
-  public-safety validation were subsequently corrected, so that historical
-  exact-diff identity is superseded and the current composite candidate requires
-  a fresh exact review. The focused adversarial suite passed 45 tests with 3
-  expected PEFT/CUDA skips, and the wider regression suite passed 99 tests with
-  the same 3 skips. This is local overlay evidence, not yet PR-head or Spark
-  acceptance evidence; signed-commit and review rules remain.
-- PR #306 public head remains the stacked draft
-  `771cf019bc0162a3dcca3726417e790831c4d380`. Its local held-out overlay is
-  frozen at raw diff SHA-256
-  `ec56ef561a0b36ba7130cb8ecdf3e28d55abad164ef665e82860bf3bd5a332a0`
-  and received an exact-diff `NEEDS CHANGES` verdict. It is not PR-head evidence.
-  Reproduced blockers are post-`Popen` child cleanup, complete multi-error cleanup
-  preservation, unexpected private-inventory entry rejection, and unchecked
-  native-handle close failures. The rejected snapshot passed 112 tests with 6
-  platform skips; passing tests do not override the targeted fault evidence.
+- PR #305 implementation head `8669dcd77821d43a54601fffdcbd4668c8315e2f`
+  is pushed and green across lint, Python 3.9–3.12, smoke, schema, PR-body, and
+  security checks. The only failing check is the truthful §6.3 block-flag gate.
+  A public evidence addendum records the dual-Spark exact-source acceptance and
+  the terminal research outcome; its validator and independent review must pass
+  at the final committed head before merge.
+- PR #306 remains a stacked draft. Its ten-path held-out production overlay was
+  committed locally as `f2f43caa` after an independent exact-overlay review found
+  zero Critical, High, Medium, or Low defects at raw diff SHA-256
+  `1c2c2d8ba18c45e7f2aa07a3d76a14e34dc4a2a9e7b23ebd01ff8714b6ab38a2`.
+  The adversarial suite ran 123 tests successfully with 6 expected platform
+  skips. It still requires rebase onto final PR #305, immutable-head Linux/process
+  acceptance, a fresh exact-head review, and green GitHub checks before merge.
 - Primary outcome: 80/80 terminal `BUDGET_EXHAUSTED`, 960 attempts, 343
   evaluated candidates, zero correct candidates, zero promotions.
 - Freezer outcome: 343/343 excluded, zero rows, zero represented tasks,
   `NO_ADMISSIBLE_TRAINING_SET`. No research adapter exists; trained arms and
   matched trained-versus-base results remain `UNEVALUATED`.
 - Public-safe evidence is under
-  `docs/evidence/egv-qwen-bd-commissioning-2026-08-24/`; its current validator
-  passes, but later scanner/prose corrections superseded the historical
-  exact-byte review and require fresh composite review. The exact-source freezer
-  record correctly leaves hardened pre-model proof pending.
-- Resume order: commit the reviewed #305 training/evidence candidate; run exact
-  zero-row pre-model/no-output Spark proof plus PEFT/CUDA/Linux implementation
-  acceptance; push/check #305; close the four held-out blockers and freeze/review
-  its new diff; rebase #306 onto final #305; repeat exact review and Linux
-  acceptance; then publish/merge with truthful evidence. Restore the
-  operator-owned inference service only after the campaign gates finish, using
-  the private handoff rather than public repository data.
+  `docs/evidence/egv-qwen-bd-commissioning-2026-08-24/`. Both Sparks ran six
+  identical offline/read-only-source GPU implementation tests at exact source
+  `8669dcd7`; both also rejected the genuine zero-row freezer artifact before
+  model or evaluator path use and created no output. This is implementation and
+  fail-closed acceptance, not evidence of Qwen training or utility.
+- Resume order: freeze, review, commit, and push the #305 evidence addendum;
+  obtain a final exact-head review; then rebase #306, repeat exact-head Linux and
+  process-boundary acceptance, review, and push. Publish or merge only with the
+  bounded operator override recorded below. Restore the operator-owned inference
+  service only after both campaign gates finish, using the private handoff rather
+  than public repository data.
 - Do not claim live cross-host trainer/evaluator transport unless that exact path
   is implemented and evidenced. Do not manufacture LoRA rows or substitute base
   output for missing trained arms.
 
-This handoff records unfinished research acceptance, not BHS Carried Debt, and
-does not change the existing block-flag calculation below.
+The campaign evidence itself is not BHS Carried Debt. The narrowly scoped
+operator override is recorded separately as CD-305-01 below and does not change
+the existing block-flag calculation.
 
 ## Block flag
 
@@ -69,8 +64,9 @@ past their TTL. The operator has directed the active EGV campaign to continue,
 but this status must not be represented as `CLEAR` or used as evidence that the
 repository governance gate passed.
 
-When the flag is `BLOCKED`, no new feature work may merge until Carried Debt
-is empty. The flag is set automatically by `scripts/check_block_flag.py`:
+When the flag is `BLOCKED`, no new feature work may merge until Carried Debt is
+empty unless a separately documented operator override satisfies the rulebook.
+The flag is set automatically by `scripts/check_block_flag.py`:
 - `CLEAR` if no Carried Debt rows OR all open rows are still in their first
   cycle (TTL not yet expired).
 - `BLOCKED` if any open Carried Debt row has survived a full cycle without
@@ -84,6 +80,7 @@ authoritative source; everything else is advisory.
 
 | ID | Item | Source | TTL | Blocking | Status |
 |----|------|--------|-----|----------|--------|
+| CD-305-01 | The operator-authorized BLOCKED-state exception is limited to PR #305 and its stacked PR #306; it must not be reused for later feature work, and CD-A2-01 plus CD-H1-01 remain unresolved. | PR #305 override (2026-08-25) | 1 cycle | YES — prevents silent reuse of the campaign-specific override | **OPEN — first cycle** — close only after PR #305/#306 disposition is recorded and the next feature cycle either clears CD-A2-01 plus CD-H1-01 or obtains a new separately scoped override. |
 | CD-001 | smoke_pipeline.py ceiling-tier not yet implemented; floor-tier only (`run_ceiling_smoke()` returns sentinel 2). Ceiling gap = no real end-to-end fixture exercise of AntigravityEngine | kit install 2026-05-10 | 1 cycle | NO — honestly disclosed per Rule 5 | **CLOSED** by PR <pending consolidation PR> — `run_ceiling_smoke()` now constructs `AntigravityEngine(qdrant_location=":memory:", model_name="all-MiniLM-L6-v2")`, ingests 4 docs, runs `get_chelated_vector()` + `embed()` against the production code path, asserts non-zero vector with `vector_size=384`; honest skip path retained for envs missing torch / sentence-transformers / qdrant; covered by `test_smoke_pipeline_ceiling.py` (8 tests) |
 | CD-002 | `scripts/smoke.sh` Stage 1 exits non-zero: `tests/test_e2e_smoke.py` does not exist; smoke.sh is the `bash`-mode entry point but the repo has no e2e smoke test file. The Python `smoke_pipeline.py` path (used by CI and operator) is unaffected. | kit v3.3 upgrade 2026-05-12 | 1 cycle | NO — CI uses `smoke_pipeline.py` directly; gap is only in the `bash scripts/smoke.sh` code path | **CLOSED** by PR <pending consolidation PR> — added `tests/test_e2e_smoke.py` (unittest surface-boot covering `antigravity_engine` + 8 load-bearing modules and the `AntigravityEngine` entry-point class); swapped `smoke.sh` Stage 1 invocation from `python -m pytest tests/test_e2e_smoke.py` to `python -m unittest -v tests.test_e2e_smoke` per CLAUDE.md (CI has no pytest) |
 | CD-244-01 | `scripts/bhs_validator.py:43-50` `validate_pr_brutal_honesty()` returns hardcoded `BHSResult(score=0.0)`; `:53-58` `run_smoke_pipeline()` always returns `True`. AEP orchestrator hooks call these so `summary["avg_bhs_score"]` is always `0.0`. L1 + L4. Violates Session Rule #1. | PR #244 (2026-05-16) | 1 cycle | YES — load-bearing stub | **CLOSED** by PR #245 |
@@ -140,17 +137,19 @@ Tier B reports if the trend looks suspicious.
 
 ## Operator overrides log
 
-Every PR merged at `BHS_OFFICIAL < 100` (i.e. with `OPERATOR_OVERRIDE:`
-populated) gets a permanent row here. The override creates an automatic top-
-priority Carried Debt entry; this log is the audit trail.
+Every PR merged with `OPERATOR_OVERRIDE:` populated—whether for
+`BHS_OFFICIAL < 100` or for a pre-existing `BLOCKED` repository state—gets a
+permanent row here. The override creates an automatic top-priority Carried Debt
+entry; this log is the audit trail.
 
 | PR | BHS_OFFICIAL at merge | Override reason | Override author | Out-of-band ref |
 |----|----------------------|-----------------|-----------------|-----------------|
 | #244 | 55 | reconciliation foundation must land so follow-up cycle can implement CD-244-01..05 against canonical main | mattmre | `docs/next-session.md` Carried Debt CD-244-01..05 |
 | #245 | 85 | three Tier B iterations converged on rubric-depth gameability (length-based not semantic); per §6.1 same-gap-2-iterations rule, escalating to Tier C as CD-245-01 rather than looping further | mattmre | `docs/next-session.md` Carried Debt CD-245-01 |
+| #305 | 100 | bounded EGV/Qwen campaign may complete under strict testing and truthful negative-result reporting while unrelated historical debts remain visibly open | mattmre | [authenticated owner approval](https://github.com/mattmre/CHELATEDAI/pull/305#issuecomment-5413061747) |
 
 ---
 
-**Last session**: 2026-06-13 — PR #267 Track 0 hygiene: closed CD-247-01 / CD-247-02 (last two open rows); Carried Debt now empty; block flag legitimately CLEAR. Prior: 2026-05-16 PR #244 reconciliation merge (BHS_OFFICIAL=55, OPERATOR_OVERRIDE).
+**Last session**: 2026-08-25 — EGV/Qwen campaign closing under the narrowly scoped PR #305/#306 operator override; CD-A2-01 and CD-H1-01 remain open and the block flag remains truthfully BLOCKED.
 **2026-05-17**: PRs #249–#254 merged; 9 BHS Scope B audit Carried Debt rows (CD-MOD-001 through CD-TTS-002) closed.
 **Last validated by `check_block_flag.py`**: run after this commit

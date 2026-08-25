@@ -169,6 +169,19 @@ The honest CPU smoke is:
 python -m egv training smoke --json
 ```
 
+Immutable implementation acceptance was also run at commit
+`8669dcd77821d43a54601fffdcbd4668c8315e2f` in offline, read-only-source
+containers on both accelerators. On each machine, six tests passed with CUDA
+available: the exact 114-target PEFT inventory, prompt-device movement, the
+checkpoint/evaluation/restore/reload path, Linux no-replace publication and
+destination-claim rejection, and a synthetic zero-row pre-model guard. The
+genuine campaign freezer artifact was then supplied with its exact raw and
+semantic digests while model/evaluator paths were deliberately absent; both
+runs reached the 20-task selection rejection and created no adapter output.
+`spark-dual-gpu-linux-acceptance.json` records the public-safe result. These are
+implementation proofs with a tiny synthetic PEFT model plus a zero-row negative
+gate, not Qwen training, model utility, promotion, or live cross-host evidence.
+
 The production contract surface is exposed as:
 
 ```bash

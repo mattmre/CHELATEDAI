@@ -16,6 +16,7 @@ if not __debug__:
 
 ROOT = Path(__file__).resolve().parent
 EXACT_SOURCE_COMMIT = "8f1955abe8a214cc6f469547d3cc1bbddbf7d1ec"
+ACCEPTANCE_SOURCE_COMMIT = "8669dcd77821d43a54601fffdcbd4668c8315e2f"
 EXPECTED_SHA256 = {
     "primary-aggregate-80of80.json": "32370e4c85f52d1d6a77a718a41dff77b969582af8e0579894c07463b56b35b2",
     "freezer-gate-80of80.json": "36b86371819baa699eab2af20156892b8aaedf143ab2b92c0b2a31925db4419b",
@@ -23,6 +24,7 @@ EXPECTED_SHA256 = {
     "spark1-cpu-qdrant-smoke.json": "6163661009da9770d7cdcc1d786e3f9842c8e0e11cea6cb2900fdbdb50303c77",
     "spark2-cpu-qdrant-smoke.json": "c208be009d8d2c8c5fa0be1dd7dd7637e4ae942b30dc27268ff977dd87d87a0b",
     "spark2-focused-recovery-validation.json": "38a8a19dfcd3f8b16a7551a90d7d7728d8e4cc10fa6ae791549dd4c932d99b1e",
+    "spark-dual-gpu-linux-acceptance.json": "6c2a87543c134f364a1da844bacf3156d3718f2a755efda4406a29999c88565d",
 }
 PUBLIC_CONTENT_FILES = (
     *EXPECTED_SHA256,
@@ -874,6 +876,122 @@ assert focused["reported_skip_count"] == 0
 assert focused["exit_code"] == 0 and focused["passed"] is True
 assert len(focused["selected_modules"]) == 6
 
+dual, dual_digest = load_and_validate_bytes("spark-dual-gpu-linux-acceptance.json")
+require_keys(
+    dual,
+    {
+        "accelerators",
+        "claim_bounds",
+        "genuine_zero_row",
+        "recorded_utc",
+        "schema",
+        "selected_tests",
+        "source_archive_sha256",
+        "source_commit",
+    },
+    "dual",
+)
+require_utc(dual["recorded_utc"], "dual.recorded_utc")
+require_git_sha(dual["source_commit"], "dual.source_commit")
+require_sha256(dual["source_archive_sha256"], "dual.source_archive_sha256")
+require_string_list(dual["claim_bounds"], "dual.claim_bounds")
+require_string_list(dual["selected_tests"], "dual.selected_tests")
+if not isinstance(dual["accelerators"], list) or len(dual["accelerators"]) != 2:
+    raise AssertionError("dual.accelerators: expected two records")
+for index, value in enumerate(dual["accelerators"], 1):
+    accelerator = require_keys(
+        value,
+        {"accelerator_index", "image_digest", "implementation_acceptance", "runtime"},
+        f"dual.accelerators.{index}",
+    )
+    require_sha256(accelerator["image_digest"], f"dual.accelerators.{index}.image_digest")
+    acceptance = require_keys(
+        accelerator["implementation_acceptance"],
+        {
+            "exit_code",
+            "network_disabled",
+            "passed",
+            "read_only_source",
+            "reported_skip_count",
+            "reported_test_count",
+        },
+        f"dual.accelerators.{index}.implementation_acceptance",
+    )
+    runtime = require_keys(
+        accelerator["runtime"],
+        {"cuda_available", "device", "peft", "python", "torch", "transformers"},
+        f"dual.accelerators.{index}.runtime",
+    )
+    assert accelerator["accelerator_index"] == index
+    assert acceptance == {
+        "exit_code": 0,
+        "network_disabled": True,
+        "passed": True,
+        "read_only_source": True,
+        "reported_skip_count": 0,
+        "reported_test_count": 6,
+    }
+    assert runtime == {
+        "cuda_available": True,
+        "device": "NVIDIA GB10",
+        "peft": "0.20.0",
+        "python": "3.12.13",
+        "torch": "2.11.0+cu130",
+        "transformers": "5.13.1",
+    }
+
+zero_row = require_keys(
+    dual["genuine_zero_row"],
+    {
+        "artifact_sha256",
+        "candidate_count",
+        "dataset_digest",
+        "distinct_task_count",
+        "expected_error",
+        "per_accelerator",
+        "row_count",
+        "status",
+    },
+    "dual.genuine_zero_row",
+)
+require_sha256(zero_row["artifact_sha256"], "dual.genuine_zero_row.artifact_sha256")
+require_sha256(zero_row["dataset_digest"], "dual.genuine_zero_row.dataset_digest")
+if not isinstance(zero_row["per_accelerator"], list) or len(zero_row["per_accelerator"]) != 2:
+    raise AssertionError("dual.genuine_zero_row.per_accelerator: expected two records")
+for index, value in enumerate(zero_row["per_accelerator"], 1):
+    proof = require_keys(
+        value,
+        {
+            "accelerator_index",
+            "adapter_output_absent_after",
+            "adapter_output_absent_before",
+            "exit_code",
+            "gpu_exposed",
+            "missing_dependency_paths_unresolved",
+            "passed",
+        },
+        f"dual.genuine_zero_row.per_accelerator.{index}",
+    )
+    assert proof == {
+        "accelerator_index": index,
+        "adapter_output_absent_after": True,
+        "adapter_output_absent_before": True,
+        "exit_code": 1,
+        "gpu_exposed": True,
+        "missing_dependency_paths_unresolved": True,
+        "passed": True,
+    }
+assert dual["schema"] == "egv.public-safe.dual-gpu-linux-acceptance.v1"
+assert dual["source_commit"] == ACCEPTANCE_SOURCE_COMMIT
+assert len(dual["selected_tests"]) == 6
+assert zero_row["artifact_sha256"] == freezer["output_digest"]
+assert zero_row["dataset_digest"] == freezer["dataset_digest"]
+assert zero_row["candidate_count"] == 343
+assert zero_row["distinct_task_count"] == 0
+assert zero_row["row_count"] == 0
+assert zero_row["status"] == "NO_ADMISSIBLE_TRAINING_SET"
+assert zero_row["expected_error"] == "production selection requires exactly 20 frozen training tasks"
+
 assert {
     freezer["source_commit"],
     r5["source_commit"],
@@ -906,6 +1024,7 @@ result = {
         "spark1-cpu-qdrant-smoke.json": spark1_smoke_digest,
         "spark2-cpu-qdrant-smoke.json": smoke_digest,
         "spark2-focused-recovery-validation.json": focused_digest,
+        "spark-dual-gpu-linux-acceptance.json": dual_digest,
     },
     "canonical_json": True,
     "closed_schema": True,

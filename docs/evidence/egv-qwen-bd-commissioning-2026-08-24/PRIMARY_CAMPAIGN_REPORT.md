@@ -74,14 +74,16 @@ an adapter, substituting base-model output for a trained arm, or reporting a
 trained-versus-base held-out comparison would be invalid. No research adapter
 was created and the trained arms remain unevaluated.
 
-This exact-source gate is historical evidence of the zero-row rejection, not
-the still-pending hardened pre-model proof. Its machine record deliberately
-sets `accepted_pre_model_rejection=false`, `pre_model_no_model_claimed=false`,
-and `hardened_overlay_pending=true`: the original source ordered evaluator,
-CUDA, and model initialization before the task-count rejection. The final
-hardened overlay must be tested separately on an exact committed revision and
-must prove rejection before evaluator, CUDA, model loading, or output creation.
-Until that separate artifact exists, no stronger pre-model claim is made.
+The exact-source freezer record remains historical and deliberately retains
+`accepted_pre_model_rejection=false`, `pre_model_no_model_claimed=false`, and
+`hardened_overlay_pending=true`. A later hardened implementation was tested
+separately at immutable commit
+`8669dcd77821d43a54601fffdcbd4668c8315e2f` on both accelerators. Each run
+consumed the same digest-pinned genuine zero-row artifact, exposed CUDA, supplied
+nonexistent model/evaluator dependencies, and reached the exact 20-task
+selection rejection with no adapter output before or after. This establishes
+the hardened gate's pre-dependency/no-output behavior for that artifact. It does
+not create a training result or revise the frozen campaign.
 
 ## What the result supports
 
@@ -119,6 +121,10 @@ treatment, but must not retroactively alter this frozen negative result.
 - `spark1-cpu-qdrant-smoke.json` and `spark2-cpu-qdrant-smoke.json` — independent
   deterministic CPU and local Qdrant acceptance only. These do not claim model
   inference or cross-node trainer/evaluator transport.
+- `spark-dual-gpu-linux-acceptance.json` — both-accelerator real PEFT/CUDA and
+  Linux no-replace implementation acceptance plus the genuine zero-row
+  pre-dependency/no-output proof. Its tiny synthetic PEFT model is an
+  implementation test, not Qwen training or utility evidence.
 
 Every public JSON artifact uses a closed schema and is scanned for raw
 prompt/source fields, private identifiers, credentials, paths, endpoints, and
