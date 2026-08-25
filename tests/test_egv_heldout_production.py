@@ -4184,7 +4184,7 @@ class HeldoutProductionTests(unittest.TestCase):
                                 shock_terminal_missing=missing_kind,
                             ):
                                 copied_runtime = Path(
-                                    tempfile.mkdtemp(prefix="es", dir=Path.cwd().anchor)
+                                    tempfile.mkdtemp(prefix="es", dir=temporary_root)
                                 )
                                 self.addCleanup(
                                     shutil.rmtree,
