@@ -12,7 +12,7 @@ from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
-from egv.canonical import canonical_bytes, canonical_json, digest_for
+from egv.canonical import canonical_bytes, canonical_json, content_id, digest_for
 from egv.evaluation.authority import AuthorityPolicy
 from egv.evaluation.dataset import EvaluationCorpus
 from egv.evaluation.sandbox import DockerSandboxConfig
@@ -26,6 +26,11 @@ from egv.experiment.runtime import (
 from egv.experiment.shock_engine import (
     ProductionShockAttemptEngine,
     ProductionShockEngineFactory,
+)
+from egv.experiment.shock_runtime import (
+    CorrectionShockCoordinateRunner,
+    ShockRuntimeContext,
+    ShockRuntimeJournal,
 )
 from egv.ledger import EvidenceLedger
 from egv.receipts import ReceiptSigner
@@ -59,6 +64,7 @@ RESPONDER = r'''from __future__ import annotations
 import json
 from pathlib import Path
 import sys
+sys.path[:0] = __RUNTIME_IMPORT_ROOTS__
 from egv.canonical import canonical_bytes, canonical_json, content_id, digest_bytes, digest_for
 from egv.receipts import ReceiptSigner, receipt_hash
 
@@ -173,6 +179,8 @@ class _Tokenizer:
 
     def __init__(self) -> None:
         self.function_name = "solve"
+        self.decode_calls = 0
+        self.invalid_decode_calls: set[int] = set()
 
     def apply_chat_template(self, messages, **kwargs):
         if kwargs.get("tokenize") is False:
@@ -186,6 +194,9 @@ class _Tokenizer:
 
     def decode(self, _tokens, *, skip_special_tokens):
         assert skip_special_tokens is True
+        self.decode_calls += 1
+        if self.decode_calls in self.invalid_decode_calls:
+            return "this is not valid Python source !!!"
         return f"def {self.function_name}(value):\n    return value"
 
 
@@ -253,11 +264,16 @@ def _generator(adapter_root: Path | None = None) -> tuple[ModelCandidateGenerato
     )
 
 
-def _protocol(corpus: EvaluationCorpus) -> FrozenHeldoutProtocol:
+def _protocol(
+    corpus: EvaluationCorpus,
+    *,
+    binding_overrides: dict[str, str] | None = None,
+) -> FrozenHeldoutProtocol:
     bindings = {
         name: digest_for({"binding": name})
         for name in FrozenHeldoutProtocol.REQUIRED_BINDINGS
     }
+    bindings.update(binding_overrides or {})
     signer = ReceiptSigner(b"H" * 32)
     return FrozenHeldoutProtocol.build(
         campaign_id="egv-campaign-1234567890abcdef",
@@ -286,7 +302,14 @@ class ShockEngineTests(unittest.TestCase):
         seed = self.root / "heldout-seed.bin"
         seed.write_bytes(b"Z" * 32)
         self.corpus = EvaluationCorpus.generate(secret_seed_file=seed)
-        self.protocol = _protocol(self.corpus)
+        self.generator, self.model = _generator(self.root / "sealed-adapter")
+        self.protocol = _protocol(
+            self.corpus,
+            binding_overrides={
+                "base_model_digest": self.generator.model_digest,
+                "adapter_digest": self.generator.adapter_digest,
+            },
+        )
         raw_inputs, raw_sources = build_trainer_evidence_package(
             self.corpus,
             self.protocol,
@@ -294,21 +317,24 @@ class ShockEngineTests(unittest.TestCase):
         )
         self.inputs = HeldoutTrainerInputs(raw_inputs, protocol=self.protocol)
         self.sources = HeldoutTrainerSources(raw_sources, trainer_inputs=self.inputs)
-        self.generator, self.model = _generator(self.root / "sealed-adapter")
         self.signer = ReceiptSigner(b"R" * 32)
         self.public_key = self.root / "evaluator.pub"
         self.public_key.write_bytes(self.signer.public_key_raw)
         self.remote_state = self.root / "remote-state"
         self.command = self.root / "remote-evaluator.py"
         self.command.write_text(
-            RESPONDER.replace("__PRIVATE_KEY__", self.signer.private_key_raw.hex()).replace(
-                "__STATE_ROOT__", repr(str(self.remote_state))
+            RESPONDER.replace("__PRIVATE_KEY__", self.signer.private_key_raw.hex())
+            .replace("__STATE_ROOT__", repr(str(self.remote_state)))
+            .replace(
+                "__RUNTIME_IMPORT_ROOTS__",
+                repr([repository_root, *(entry for entry in sys.path if entry and entry != repository_root)]),
             ),
             encoding="utf-8",
         )
         self.data_manifest_digest = self.corpus.manifest_digest()
         self.manifests = {}
         self.ledgers: list[EvidenceLedger] = []
+        self.short_temporaries: list[tempfile.TemporaryDirectory] = []
 
     def tearDown(self) -> None:
         for ledger in self.ledgers:
@@ -324,6 +350,8 @@ class ShockEngineTests(unittest.TestCase):
             sys.modules.pop("peft", None)
         else:
             sys.modules["peft"] = self.old_peft
+        for temporary in self.short_temporaries:
+            temporary.cleanup()
         self.temporary.cleanup()
 
     def coordinate(self, treatment: str, *, block_id: str | None = None):
@@ -365,24 +393,29 @@ class ShockEngineTests(unittest.TestCase):
         self.manifests[key] = path
         return path
 
-    def engine(self, coordinate, root: Path) -> tuple[ProductionShockAttemptEngine, EvidenceLedger]:
-        root.mkdir(parents=True, exist_ok=True)
-        ledger = EvidenceLedger(root / "ledger.sqlite3")
-        self.ledgers.append(ledger)
+    def production_factory(self, coordinate) -> ProductionShockEngineFactory:
         self.generator.tokenizer.function_name = self.inputs.tasks[coordinate.task_id][
             "public_locus"
         ].rsplit(":", 1)[-1]
-        factory = ProductionShockEngineFactory(
+        return ProductionShockEngineFactory(
             generator=self.generator,
             evaluator_manifest=self.manifest(coordinate),
             evaluator_public_key=self.public_key,
             evaluator_command=self.command,
+            evaluator_python_executable=Path(sys.executable).resolve(),
+            evaluator_python_digest=hashlib.sha256(Path(sys.executable).resolve().read_bytes()).hexdigest(),
             source_commit="test-shock-source-commit",
             model_revision=MODEL_REVISION,
             data_manifest_digest=self.data_manifest_digest,
             response_contract_digest=self.generator.response_contract_digest,
             generation_profile_digest=self.generator.generation_profile_digest,
         )
+
+    def engine(self, coordinate, root: Path) -> tuple[ProductionShockAttemptEngine, EvidenceLedger]:
+        root.mkdir(parents=True, exist_ok=True)
+        ledger = EvidenceLedger(root / "ledger.sqlite3")
+        self.ledgers.append(ledger)
+        factory = self.production_factory(coordinate)
         engine = factory(
             coordinate=coordinate,
             task_record=dict(self.inputs.tasks[coordinate.task_id]),
@@ -456,6 +489,284 @@ class ShockEngineTests(unittest.TestCase):
         path = self.remote_state / "effect-count.txt"
         return int(path.read_text(encoding="ascii")) if path.exists() else 0
 
+    def short_runtime_root(self, prefix: str) -> Path:
+        temporary = tempfile.TemporaryDirectory(
+            prefix=prefix,
+            dir=Path(__file__).resolve().parents[2],
+        )
+        self.short_temporaries.append(temporary)
+        return Path(temporary.name)
+
+    def ready_generation_failure_campaign(self, name: str):
+        coordinate = self.coordinate("dependency-aware")
+        self.generator.tokenizer.invalid_decode_calls.add(1)
+        engine, ledger = self.engine(coordinate, self.root / name)
+        self.run_pre(engine, coordinate)
+        self.commit_and_activate(engine, coordinate)
+        engine.verification_evidence()
+        failure = next(
+            event
+            for event in ledger.events()
+            if event["event_type"] == "SHOCK_GENERATION_FAILURE"
+        )
+        records = {
+            int(record["attempt"]): record
+            for record in engine.operation_store.records()
+            if record["phase"] == "PRE"
+        }
+        return engine, ledger, failure, records
+
+    @staticmethod
+    def private_tree_snapshot(store: PrivateTrajectoryStore):
+        return tuple(
+            (
+                path.relative_to(store.root).as_posix(),
+                hashlib.sha256(path.read_bytes()).hexdigest(),
+            )
+            for path in sorted(store.root.rglob("*"))
+            if path.is_file()
+        )
+
+    def assert_terminal_private_gap_is_not_healed(
+        self,
+        *,
+        engine: ProductionShockAttemptEngine,
+        ledger: EvidenceLedger,
+        operation_id: str,
+        missing_path: Path,
+        error: str,
+    ) -> None:
+        missing_path.chmod(0o600)
+        missing_path.unlink()
+        before_private = self.private_tree_snapshot(engine.private_store)
+        before_export = ledger.export_jsonl()
+        before_head = ledger.ledger_head_hash()
+        before_operation = engine.operation_store.load(operation_id)
+        before_model_calls = self.model.calls
+        before_effects = self.effect_count()
+
+        with self.assertRaisesRegex(HeldoutProtocolError, error):
+            engine.reconcile_attempt(operation_id)
+
+        self.assertFalse(missing_path.exists())
+        self.assertEqual(self.private_tree_snapshot(engine.private_store), before_private)
+        self.assertEqual(ledger.export_jsonl(), before_export)
+        self.assertEqual(ledger.ledger_head_hash(), before_head)
+        self.assertEqual(engine.operation_store.load(operation_id), before_operation)
+        self.assertEqual(self.model.calls, before_model_calls)
+        self.assertEqual(self.effect_count(), before_effects)
+
+    def generated_operation(self, name: str):
+        coordinate = self.coordinate("dependency-aware")
+        engine, ledger = self.engine(coordinate, self.root / name)
+        key = self.attempt_key(coordinate, "PRE", 1)
+        with patch.object(
+            engine.operation_store,
+            "complete",
+            side_effect=RuntimeError("crash after generated checkpoint"),
+        ):
+            with self.assertRaisesRegex(RuntimeError, "generated checkpoint"):
+                engine.pre_correction_attempt(1, idempotency_key=key)
+        state = engine.operation_store.load(key)
+        assert state is not None
+        self.assertEqual(state["status"], "GENERATED")
+        return engine, ledger, key, state
+
+    @staticmethod
+    def append_spurious_failure_event(
+        ledger: EvidenceLedger,
+        template,
+        *,
+        payload,
+        subject_id: str,
+        idempotency_key: str,
+    ) -> None:
+        ledger.append_event(
+            "SHOCK_GENERATION_FAILURE",
+            payload,
+            campaign_id=template["campaign_id"],
+            run_id=template["run_id"],
+            task_id=template["task_id"],
+            subject_id=subject_id,
+            source_class="PINNED_MODEL",
+            disposition="REJECTED",
+            idempotency_key=idempotency_key,
+        )
+
+    def assert_corrupt_failure_dependency_rejected(self, field: str) -> None:
+        coordinate = self.coordinate("dependency-aware")
+        self.generator.tokenizer.invalid_decode_calls.add(1)
+        engine, ledger = self.engine(
+            coordinate, self.root / ("failure-dependency-" + field)
+        )
+        original_append = ledger.append_dependency
+        injected = False
+
+        def append_corrupt_dependency(parent_id, child_id, *, edge_type, **kwargs):
+            nonlocal injected
+            if injected:
+                return original_append(
+                    parent_id,
+                    child_id,
+                    edge_type=edge_type,
+                    **kwargs,
+                )
+            injected = True
+            dependency_payload = {
+                "parent_id": parent_id,
+                "child_id": child_id,
+                "edge_type": edge_type,
+            }
+            event_payload = dict(dependency_payload)
+            campaign_id = kwargs["campaign_id"]
+            run_id = kwargs["run_id"]
+            task_id = kwargs["task_id"]
+            subject_id = child_id
+            idempotency_key = kwargs["idempotency_key"]
+            source_class = "FROZEN_PROTOCOL"
+            disposition = "OBSERVED"
+            if field == "campaign":
+                campaign_id = None
+            elif field == "run":
+                run_id = None
+            elif field == "task":
+                task_id = None
+            elif field == "subject":
+                subject_id = parent_id
+            elif field == "payload":
+                event_payload["parent_id"] = child_id
+            elif field == "idempotency":
+                idempotency_key = "wrong-failure-dependency:" + child_id
+            elif field == "source":
+                source_class = "PINNED_MODEL"
+            elif field == "disposition":
+                disposition = "REJECTED"
+            else:
+                raise AssertionError("unknown dependency corruption field")
+            event = ledger.append_event(
+                "DEPENDENCY",
+                event_payload,
+                campaign_id=campaign_id,
+                run_id=run_id,
+                task_id=task_id,
+                subject_id=subject_id,
+                source_class=source_class,
+                disposition=disposition,
+                idempotency_key=idempotency_key,
+            )
+            dependency_id = content_id("dep", dependency_payload)
+            ledger.connection.execute(
+                "INSERT INTO dependencies"
+                "(dependency_id,parent_id,child_id,edge_type,insertion_event_id) "
+                "VALUES(?,?,?,?,?)",
+                (
+                    dependency_id,
+                    parent_id,
+                    child_id,
+                    edge_type,
+                    event["event_id"],
+                ),
+            )
+            ledger.connection.commit()
+            return {
+                "dependency_id": dependency_id,
+                **dependency_payload,
+                "insertion_event_id": event["event_id"],
+            }
+
+        key = self.attempt_key(coordinate, "PRE", 1)
+        with patch.object(
+            ledger,
+            "append_dependency",
+            side_effect=append_corrupt_dependency,
+        ):
+            with self.assertRaisesRegex(
+                HeldoutProtocolError, "dependency insertion event binding"
+            ):
+                engine.pre_correction_attempt(1, idempotency_key=key)
+        self.assertEqual(self.model.calls, 1)
+        self.assertEqual(self.effect_count(), 0)
+        ledger.close()
+
+    def assert_terminal_failure_missing_evidence_rejected_without_healing(
+        self,
+        *,
+        event_only: bool,
+    ) -> None:
+        coordinate = self.coordinate("dependency-aware")
+        self.generator.tokenizer.invalid_decode_calls.add(1)
+        engine, ledger = self.engine(
+            coordinate,
+            self.root
+            / ("terminal-failure-event-only" if event_only else "terminal-failure-empty"),
+        )
+        key = self.attempt_key(coordinate, "PRE", 1)
+
+        def persist_event_only(state, context, evidence, evidence_digest):
+            if not event_only:
+                return None
+            payload = engine._generation_failure_payload(
+                state, context, evidence, evidence_digest
+            )
+            return ledger.append_event(
+                "SHOCK_GENERATION_FAILURE",
+                payload,
+                campaign_id=self.protocol.campaign_id,
+                run_id=state["run_id"],
+                task_id=coordinate.task_id,
+                subject_id=state["candidate_id"],
+                source_class="PINNED_MODEL",
+                disposition="REJECTED",
+                idempotency_key="shock-generation-failure:" + state["operation_id"],
+            )
+
+        with patch.object(
+            engine,
+            "_persist_generation_failure",
+            side_effect=persist_event_only,
+        ), patch.object(
+            engine,
+            "_validate_generation_failure_inventory",
+            return_value=None,
+        ):
+            engine.pre_correction_attempt(1, idempotency_key=key)
+        terminal = engine.operation_store.load(key)
+        assert terminal is not None
+        self.assertEqual(terminal["status"], "GENERATION_FAILED")
+        before_export = ledger.export_jsonl()
+        before_head = ledger.ledger_head_hash()
+        before_operation = dict(terminal)
+        before_counts = (
+            ledger.connection.execute(
+                "SELECT COUNT(*) FROM events WHERE event_type='SHOCK_GENERATION_FAILURE'"
+            ).fetchone()[0],
+            ledger.connection.execute(
+                "SELECT COUNT(*) FROM dependencies WHERE child_id=?",
+                (terminal["candidate_id"],),
+            ).fetchone()[0],
+        )
+        expected_error = "dependency set is incomplete" if event_only else "bound event"
+        with self.assertRaisesRegex(HeldoutProtocolError, expected_error):
+            engine.reconcile_attempt(key)
+        self.assertEqual(ledger.export_jsonl(), before_export)
+        self.assertEqual(ledger.ledger_head_hash(), before_head)
+        self.assertEqual(engine.operation_store.load(key), before_operation)
+        self.assertEqual(
+            (
+                ledger.connection.execute(
+                    "SELECT COUNT(*) FROM events WHERE event_type='SHOCK_GENERATION_FAILURE'"
+                ).fetchone()[0],
+                ledger.connection.execute(
+                    "SELECT COUNT(*) FROM dependencies WHERE child_id=?",
+                    (terminal["candidate_id"],),
+                ).fetchone()[0],
+            ),
+            before_counts,
+        )
+        self.assertEqual(self.model.calls, 1)
+        self.assertEqual(self.effect_count(), 0)
+        ledger.close()
+
     def test_exact_six_pre_attempts_continue_after_early_promotion(self) -> None:
         coordinate = self.coordinate("dependency-aware")
         engine, ledger = self.engine(coordinate, self.root / "exact")
@@ -474,6 +785,14 @@ class ShockEngineTests(unittest.TestCase):
         self.assertEqual(self.effect_count(), 6)
         ledger.close()
 
+    def test_terminal_attempt_replay_cannot_bypass_missing_earlier_attempt_range(self) -> None:
+        coordinate = self.coordinate("dependency-aware")
+        engine, ledger = self.engine(coordinate, self.root / "terminal-gap")
+        with patch.object(engine, "_terminal_records", return_value=({"attempt": 3},)):
+            with self.assertRaisesRegex(HeldoutProtocolError, "order"):
+                engine._assert_attempt_order("PRE", 3)
+        ledger.close()
+
     def test_evaluator_crash_reconciles_without_second_model_or_remote_effect(self) -> None:
         coordinate = self.coordinate("dependency-aware")
         root = self.root / "resume"
@@ -485,6 +804,9 @@ class ShockEngineTests(unittest.TestCase):
         self.assertEqual(self.model.calls, 1)
         self.assertEqual(self.effect_count(), 1)
         self.assertEqual(len(ledger.receipts()), 3)
+        generated = engine.operation_store.load(key)
+        assert generated is not None
+        self.assertEqual(generated["status"], "GENERATED")
         ledger.close()
 
         resumed, resumed_ledger = self.engine(coordinate, root)
@@ -494,6 +816,56 @@ class ShockEngineTests(unittest.TestCase):
         self.assertEqual(self.effect_count(), 1)
         self.assertEqual(len(resumed_ledger.receipts()), 3)
         resumed_ledger.close()
+
+    def test_generated_operation_missing_private_record_is_rejected_without_healing(
+        self,
+    ) -> None:
+        engine, ledger, key, state = self.generated_operation(
+            "generated-missing-private-record"
+        )
+        record = engine.private_store.generation_records / (
+            str(state["candidate_id"]) + ".json"
+        )
+
+        self.assert_terminal_private_gap_is_not_healed(
+            engine=engine,
+            ledger=ledger,
+            operation_id=key,
+            missing_path=record,
+            error="shock model call has no recoverable generation result",
+        )
+        ledger.close()
+
+    def test_generated_operation_missing_private_artifact_is_rejected_without_healing(
+        self,
+    ) -> None:
+        engine, ledger, key, state = self.generated_operation(
+            "generated-missing-private-artifact"
+        )
+        record = json.loads(
+            (
+                engine.private_store.generation_records
+                / (str(state["candidate_id"]) + ".json")
+            ).read_text(encoding="utf-8")
+        )
+        artifact_digest = str(record["contract_response_digest"])
+        artifact = (
+            engine.private_store.artifacts.root
+            / "blobs"
+            / "sha256"
+            / artifact_digest[:2]
+            / artifact_digest[2:4]
+            / artifact_digest
+        )
+
+        self.assert_terminal_private_gap_is_not_healed(
+            engine=engine,
+            ledger=ledger,
+            operation_id=key,
+            missing_path=artifact,
+            error="shock model call has no recoverable generation result",
+        )
+        ledger.close()
 
     def test_unrecorded_model_effect_fails_closed_instead_of_regenerating(self) -> None:
         coordinate = self.coordinate("dependency-aware")
@@ -557,6 +929,42 @@ class ShockEngineTests(unittest.TestCase):
         self.assertIsNotNone(observation)
         self.assertEqual(self.model.calls, 1)
         self.assertEqual(self.effect_count(), 1)
+        resumed_ledger.close()
+
+    def test_generated_checkpoint_completes_missing_downstream_materialization(self) -> None:
+        coordinate = self.coordinate("dependency-aware")
+        root = self.root / "generated-before-downstream"
+        engine, ledger = self.engine(coordinate, root)
+        key = self.attempt_key(coordinate, "PRE", 1)
+        with patch.object(
+            engine,
+            "_finish_operation",
+            side_effect=RuntimeError("crash after durable generated checkpoint"),
+        ):
+            with self.assertRaisesRegex(RuntimeError, "durable generated checkpoint"):
+                engine.pre_correction_attempt(1, idempotency_key=key)
+        state = engine.operation_store.load(key)
+        assert state is not None
+        self.assertEqual(state["status"], "GENERATED")
+        self.assertIsNone(
+            ledger.connection.execute(
+                "SELECT candidate_id FROM candidates WHERE candidate_id=?",
+                (state["candidate_id"],),
+            ).fetchone()
+        )
+        self.assertEqual(self.model.calls, 1)
+        self.assertEqual(self.effect_count(), 0)
+        ledger.close()
+
+        resumed, resumed_ledger = self.engine(coordinate, root)
+        observation = resumed.reconcile_attempt(key)
+        self.assertIsNotNone(observation)
+        completed = resumed.operation_store.load(key)
+        assert completed is not None
+        self.assertEqual(completed["status"], "COMPLETE")
+        self.assertEqual(self.model.calls, 1)
+        self.assertEqual(self.effect_count(), 1)
+        self.assertEqual(len(resumed_ledger.receipts()), 3)
         resumed_ledger.close()
 
     def test_dependency_aware_marks_exact_closure_and_excludes_stale_pre_candidates(self) -> None:
@@ -703,8 +1111,664 @@ class ShockEngineTests(unittest.TestCase):
             "evaluation_result"
         ]["receipt_ids"][1]
         path.write_bytes(canonical_bytes(substituted))
-        with self.assertRaisesRegex(HeldoutProtocolError, "evaluator replay changed"):
+        with self.assertRaisesRegex(HeldoutProtocolError, "receipt suffix crossed"):
             engine.reconcile_attempt(key)
+        ledger.close()
+
+    def test_pre_generation_failure_is_terminal_and_six_attempts_continue(self) -> None:
+        coordinate = self.coordinate("dependency-aware")
+        root = self.root / "pre-generation-failure"
+        self.generator.tokenizer.invalid_decode_calls.add(1)
+        engine, ledger = self.engine(coordinate, root)
+        key = self.attempt_key(coordinate, "PRE", 1)
+
+        failure = engine.pre_correction_attempt(1, idempotency_key=key)
+        self.assertFalse(failure.promoted)
+        self.assertFalse(failure.receipt_valid)
+        self.assertEqual(failure.diagnostic_enum, "PROTOCOL_VIOLATION")
+        self.assertEqual(failure.tokens, 0)
+        self.assertEqual(failure.evaluator_seconds, 0.0)
+        self.assertIsNone(failure.verdict_receipt_digest)
+        self.assertIsNone(failure.effect_receipt_digest)
+        state = engine.operation_store.load(key)
+        assert state is not None
+        self.assertEqual(state["status"], "GENERATION_FAILED")
+        self.assertIsNone(state["candidate_source_digest"])
+        self.assertIsNone(state["evaluation_result"])
+        context, private_failure, private_digest = engine.private_store.load_generation_failure(
+            state["candidate_id"]
+        )
+        self.assertEqual(private_failure.stage, "RESPONSE_CONTRACT")
+        self.assertEqual(private_digest, state["generation_evidence_digest"])
+        self.assertEqual(digest_for(asdict(context)), state["context_digest"])
+        self.assertIsNone(
+            ledger.connection.execute(
+                "SELECT candidate_id FROM candidates WHERE candidate_id=?",
+                (state["candidate_id"],),
+            ).fetchone()
+        )
+        self.assertEqual(len(ledger.receipts()), 0)
+        self.assertEqual(self.effect_count(), 0)
+
+        replay = engine.pre_correction_attempt(1, idempotency_key=key)
+        self.assertEqual(replay, failure)
+        self.assertEqual(self.model.calls, 1)
+        observations = [failure]
+        for attempt in range(2, 7):
+            observations.append(
+                engine.pre_correction_attempt(
+                    attempt,
+                    idempotency_key=self.attempt_key(coordinate, "PRE", attempt),
+                )
+            )
+        self.assertEqual(len(observations), 6)
+        self.assertEqual(self.model.calls, 6)
+        self.assertEqual(self.effect_count(), 5)
+        self.assertEqual(len(ledger.receipts()), 15)
+        second = engine.operation_store.load(self.attempt_key(coordinate, "PRE", 2))
+        assert second is not None
+        second_context, _second_generation, _second_digest = (
+            engine.private_store.load_generation_success(second["candidate_id"])
+        )
+        self.assertNotIn(
+            state["candidate_id"],
+            {str(item["subject_id"]) for item in second_context.retrieval_records},
+        )
+        frozen = engine.freeze_pre_shock_state()
+        self.assertEqual(
+            [item["status"] for item in frozen.candidate_state["candidates"]],
+            ["GENERATION_FAILED"] + ["COMPLETE"] * 5,
+        )
+        _state, affected = self.commit_and_activate(engine, coordinate)
+        self.assertIn(state["candidate_id"], affected)
+        self.assertEqual(ledger.event_disposition(state["candidate_id"]), "STALE_DEPENDENT")
+        verification = engine.verification_evidence()
+        self.assertEqual(verification.private_replay_decisions, 6)
+        self.assertEqual(verification.private_replay_agreements, 6)
+        self.assertEqual(verification.public_replay_decisions, 5)
+        self.assertEqual(verification.public_replay_agreements, 5)
+        ledger.close()
+
+    def test_generation_failure_checkpoint_crash_replays_without_duplicate_effect(self) -> None:
+        coordinate = self.coordinate("dependency-aware")
+        root = self.root / "failure-crash-replay"
+        self.generator.tokenizer.invalid_decode_calls.add(1)
+        engine, ledger = self.engine(coordinate, root)
+        key = self.attempt_key(coordinate, "PRE", 1)
+        with patch.object(
+            engine.operation_store,
+            "generation_failed",
+            side_effect=RuntimeError("crash after private failure checkpoint"),
+        ):
+            with self.assertRaisesRegex(RuntimeError, "private failure checkpoint"):
+                engine.pre_correction_attempt(1, idempotency_key=key)
+        self.assertEqual(self.model.calls, 1)
+        self.assertEqual(self.effect_count(), 0)
+        self.assertEqual(len(ledger.receipts()), 0)
+        started = engine.operation_store.load(key)
+        assert started is not None
+        self.assertEqual(started["status"], "STARTED")
+        engine.private_store.load_generation_failure(started["candidate_id"])
+        ledger.close()
+
+        resumed, resumed_ledger = self.engine(coordinate, root)
+        observation = resumed.reconcile_attempt(key)
+        self.assertIsNotNone(observation)
+        assert observation is not None
+        self.assertFalse(observation.receipt_valid)
+        self.assertEqual(resumed.reconcile_attempt(key), observation)
+        self.assertEqual(self.model.calls, 1)
+        self.assertEqual(self.effect_count(), 0)
+        self.assertEqual(len(resumed_ledger.receipts()), 0)
+        terminal = resumed.operation_store.load(key)
+        assert terminal is not None
+        self.assertEqual(terminal["status"], "GENERATION_FAILED")
+        failure_events = [
+            event
+            for event in resumed_ledger.events()
+            if event["event_type"] == "SHOCK_GENERATION_FAILURE"
+        ]
+        self.assertEqual(len(failure_events), 1)
+        self.assertEqual(failure_events[0]["subject_id"], terminal["candidate_id"])
+        self.assertNotIn("error_code", failure_events[0]["payload"])
+        self.assertNotIn("decoded_model_response", failure_events[0]["payload"])
+        resumed_ledger.close()
+
+    def test_terminal_failure_missing_event_is_rejected_without_healing(self) -> None:
+        self.assert_terminal_failure_missing_evidence_rejected_without_healing(
+            event_only=False
+        )
+
+    def test_terminal_failure_missing_dependency_is_rejected_without_healing(self) -> None:
+        self.assert_terminal_failure_missing_evidence_rejected_without_healing(
+            event_only=True
+        )
+
+    def test_terminal_failure_missing_private_record_is_rejected_without_healing(
+        self,
+    ) -> None:
+        coordinate = self.coordinate("dependency-aware")
+        self.generator.tokenizer.invalid_decode_calls.add(1)
+        engine, ledger = self.engine(
+            coordinate, self.root / "terminal-failure-missing-private-record"
+        )
+        key = self.attempt_key(coordinate, "PRE", 1)
+        engine.pre_correction_attempt(1, idempotency_key=key)
+        state = engine.operation_store.load(key)
+        assert state is not None
+        record = engine.private_store.generation_records / (
+            str(state["candidate_id"]) + ".json"
+        )
+
+        self.assert_terminal_private_gap_is_not_healed(
+            engine=engine,
+            ledger=ledger,
+            operation_id=key,
+            missing_path=record,
+            error="terminal shock generation failure lacks exact private replay evidence",
+        )
+        ledger.close()
+
+    def test_terminal_failure_missing_private_artifact_is_rejected_without_healing(
+        self,
+    ) -> None:
+        coordinate = self.coordinate("dependency-aware")
+        self.generator.tokenizer.invalid_decode_calls.add(1)
+        engine, ledger = self.engine(
+            coordinate, self.root / "terminal-failure-missing-private-artifact"
+        )
+        key = self.attempt_key(coordinate, "PRE", 1)
+        engine.pre_correction_attempt(1, idempotency_key=key)
+        state = engine.operation_store.load(key)
+        assert state is not None
+        record = json.loads(
+            (
+                engine.private_store.generation_records
+                / (str(state["candidate_id"]) + ".json")
+            ).read_text(encoding="utf-8")
+        )
+        artifact_digest = str(record["contract_response_digest"])
+        artifact = (
+            engine.private_store.artifacts.root
+            / "blobs"
+            / "sha256"
+            / artifact_digest[:2]
+            / artifact_digest[2:4]
+            / artifact_digest
+        )
+
+        self.assert_terminal_private_gap_is_not_healed(
+            engine=engine,
+            ledger=ledger,
+            operation_id=key,
+            missing_path=artifact,
+            error="terminal shock generation failure lacks exact private replay evidence",
+        )
+        ledger.close()
+
+    def test_terminal_success_missing_generation_record_is_rejected_without_healing(
+        self,
+    ) -> None:
+        coordinate = self.coordinate("dependency-aware")
+        engine, ledger = self.engine(
+            coordinate, self.root / "terminal-success-missing-generation-record"
+        )
+        key = self.attempt_key(coordinate, "PRE", 1)
+        engine.pre_correction_attempt(1, idempotency_key=key)
+        state = engine.operation_store.load(key)
+        assert state is not None
+        record = engine.private_store.generation_records / (
+            str(state["candidate_id"]) + ".json"
+        )
+
+        self.assert_terminal_private_gap_is_not_healed(
+            engine=engine,
+            ledger=ledger,
+            operation_id=key,
+            missing_path=record,
+            error="shock model call has no recoverable generation result",
+        )
+        ledger.close()
+
+    def test_terminal_success_missing_private_artifact_is_rejected_without_healing(
+        self,
+    ) -> None:
+        coordinate = self.coordinate("dependency-aware")
+        engine, ledger = self.engine(
+            coordinate, self.root / "terminal-success-missing-private-artifact"
+        )
+        key = self.attempt_key(coordinate, "PRE", 1)
+        engine.pre_correction_attempt(1, idempotency_key=key)
+        state = engine.operation_store.load(key)
+        assert state is not None
+        record = json.loads(
+            (
+                engine.private_store.generation_records
+                / (str(state["candidate_id"]) + ".json")
+            ).read_text(encoding="utf-8")
+        )
+        artifact_digest = str(record["contract_response_digest"])
+        artifact = (
+            engine.private_store.artifacts.root
+            / "blobs"
+            / "sha256"
+            / artifact_digest[:2]
+            / artifact_digest[2:4]
+            / artifact_digest
+        )
+
+        self.assert_terminal_private_gap_is_not_healed(
+            engine=engine,
+            ledger=ledger,
+            operation_id=key,
+            missing_path=artifact,
+            error="shock model call has no recoverable generation result",
+        )
+        ledger.close()
+
+    def test_terminal_success_missing_trajectory_record_is_rejected_without_healing(
+        self,
+    ) -> None:
+        coordinate = self.coordinate("dependency-aware")
+        engine, ledger = self.engine(
+            coordinate, self.root / "terminal-success-missing-trajectory-record"
+        )
+        key = self.attempt_key(coordinate, "PRE", 1)
+        engine.pre_correction_attempt(1, idempotency_key=key)
+        state = engine.operation_store.load(key)
+        assert state is not None
+        record = engine.private_store.records / (
+            str(state["candidate_id"]) + ".json"
+        )
+
+        self.assert_terminal_private_gap_is_not_healed(
+            engine=engine,
+            ledger=ledger,
+            operation_id=key,
+            missing_path=record,
+            error="terminal shock candidate lacks its private trajectory",
+        )
+        ledger.close()
+
+    def test_duplicate_generation_failure_event_is_rejected(self) -> None:
+        engine, ledger, failure, records = self.ready_generation_failure_campaign(
+            "duplicate-failure-event"
+        )
+        failed = records[1]
+        self.append_spurious_failure_event(
+            ledger,
+            failure,
+            payload=dict(failure["payload"]),
+            subject_id=failed["candidate_id"],
+            idempotency_key="duplicate-shock-generation-failure:" + failed["operation_id"],
+        )
+        with self.assertRaisesRegex(HeldoutProtocolError, "event inventory"):
+            engine.verification_evidence()
+        ledger.close()
+
+    def test_failure_dependency_wrong_campaign_is_rejected(self) -> None:
+        self.assert_corrupt_failure_dependency_rejected("campaign")
+
+    def test_failure_dependency_wrong_run_is_rejected(self) -> None:
+        self.assert_corrupt_failure_dependency_rejected("run")
+
+    def test_failure_dependency_wrong_task_is_rejected(self) -> None:
+        self.assert_corrupt_failure_dependency_rejected("task")
+
+    def test_failure_dependency_wrong_subject_is_rejected(self) -> None:
+        self.assert_corrupt_failure_dependency_rejected("subject")
+
+    def test_failure_dependency_wrong_payload_is_rejected(self) -> None:
+        self.assert_corrupt_failure_dependency_rejected("payload")
+
+    def test_failure_dependency_wrong_idempotency_is_rejected(self) -> None:
+        self.assert_corrupt_failure_dependency_rejected("idempotency")
+
+    def test_failure_dependency_wrong_source_is_rejected(self) -> None:
+        self.assert_corrupt_failure_dependency_rejected("source")
+
+    def test_failure_dependency_wrong_disposition_is_rejected(self) -> None:
+        self.assert_corrupt_failure_dependency_rejected("disposition")
+
+    def test_orphan_generation_failure_event_is_rejected(self) -> None:
+        engine, ledger, failure, _records = self.ready_generation_failure_campaign(
+            "orphan-failure-event"
+        )
+        orphan_operation = digest_for("orphan-shock-operation")
+        orphan_candidate = "egv-candidate-orphan-generation-failure"
+        payload = dict(failure["payload"])
+        payload["operation_id"] = orphan_operation
+        payload["candidate_id"] = orphan_candidate
+        self.append_spurious_failure_event(
+            ledger,
+            failure,
+            payload=payload,
+            subject_id=orphan_candidate,
+            idempotency_key="shock-generation-failure:" + orphan_operation,
+        )
+        with self.assertRaisesRegex(HeldoutProtocolError, "event inventory"):
+            engine.verification_evidence()
+        ledger.close()
+
+    def test_cross_operation_generation_failure_event_is_rejected(self) -> None:
+        engine, ledger, failure, records = self.ready_generation_failure_campaign(
+            "cross-operation-failure-event"
+        )
+        failed = records[1]
+        complete = records[2]
+        payload = dict(failure["payload"])
+        payload["operation_id"] = complete["operation_id"]
+        self.append_spurious_failure_event(
+            ledger,
+            failure,
+            payload=payload,
+            subject_id=failed["candidate_id"],
+            idempotency_key="shock-generation-failure:" + complete["operation_id"],
+        )
+        with self.assertRaisesRegex(HeldoutProtocolError, "event inventory"):
+            engine.verification_evidence()
+        ledger.close()
+
+    def test_complete_operation_generation_failure_event_is_rejected(self) -> None:
+        engine, ledger, failure, records = self.ready_generation_failure_campaign(
+            "complete-operation-failure-event"
+        )
+        complete = records[2]
+        payload = dict(failure["payload"])
+        payload["operation_id"] = complete["operation_id"]
+        payload["candidate_id"] = complete["candidate_id"]
+        self.append_spurious_failure_event(
+            ledger,
+            failure,
+            payload=payload,
+            subject_id=complete["candidate_id"],
+            idempotency_key="complete-shock-generation-failure:" + complete["operation_id"],
+        )
+        with self.assertRaisesRegex(HeldoutProtocolError, "event inventory"):
+            engine.verification_evidence()
+        ledger.close()
+
+    def test_reserved_failure_event_namespace_wrong_type_for_complete_is_rejected(
+        self,
+    ) -> None:
+        engine, ledger, failure, records = self.ready_generation_failure_campaign(
+            "wrong-type-complete-failure-event"
+        )
+        complete = records[2]
+        payload = dict(failure["payload"])
+        payload.update(
+            {
+                "operation_id": complete["operation_id"],
+                "phase": complete["phase"],
+                "attempt": complete["attempt"],
+                "candidate_id": complete["candidate_id"],
+                "run_id": complete["run_id"],
+                "context_digest": complete["context_digest"],
+                "generation_evidence_digest": complete[
+                    "generation_evidence_digest"
+                ],
+            }
+        )
+        ledger.append_event(
+            "NOT_A_GENERATION_FAILURE",
+            payload,
+            campaign_id=self.protocol.campaign_id,
+            run_id=complete["run_id"],
+            task_id=self.coordinate("dependency-aware").task_id,
+            subject_id=complete["candidate_id"],
+            source_class="PINNED_MODEL",
+            disposition="REJECTED",
+            idempotency_key=(
+                "shock-generation-failure:"
+                + complete["operation_id"]
+                + ":wrong-type"
+            ),
+        )
+        with self.assertRaisesRegex(HeldoutProtocolError, "event inventory"):
+            engine.verification_evidence()
+        ledger.close()
+
+    def test_spurious_failure_dependency_event_inventory_is_rejected(self) -> None:
+        engine, ledger, _failure, records = self.ready_generation_failure_campaign(
+            "spurious-failure-dependency-event"
+        )
+        failed = records[1]
+        dependency = next(
+            event
+            for event in ledger.events()
+            if event["event_type"] == "DEPENDENCY"
+            and event["subject_id"] == failed["candidate_id"]
+        )
+        ledger.append_event(
+            "DEPENDENCY",
+            dict(dependency["payload"]),
+            campaign_id=dependency["campaign_id"],
+            run_id=dependency["run_id"],
+            task_id=dependency["task_id"],
+            subject_id=dependency["subject_id"],
+            source_class=dependency["source_class"],
+            disposition=dependency["disposition"],
+            idempotency_key=dependency["idempotency_key"] + ":duplicate",
+        )
+        with self.assertRaisesRegex(
+            HeldoutProtocolError, "dependency event inventory"
+        ):
+            engine.verification_evidence()
+        ledger.close()
+
+    def test_outgoing_dependency_from_failed_subject_is_rejected(self) -> None:
+        engine, ledger, _failure, records = self.ready_generation_failure_campaign(
+            "outgoing-failure-dependency"
+        )
+        failed = records[1]
+        policy = next(
+            event
+            for event in ledger.events()
+            if event["event_type"] == "SHOCK_POLICY_ACTIVATION"
+        )
+        ledger.append_dependency(
+            failed["candidate_id"],
+            policy["event_id"],
+            edge_type="FORGED_OUTGOING_FAILURE_EDGE",
+            campaign_id=self.protocol.campaign_id,
+            run_id=failed["run_id"],
+            task_id=self.coordinate("dependency-aware").task_id,
+            idempotency_key="forged-outgoing-failure-dependency",
+        )
+        with self.assertRaisesRegex(
+            HeldoutProtocolError, "dependency event inventory"
+        ):
+            engine.verification_evidence()
+        ledger.close()
+
+    def test_reserved_failure_dependency_namespace_wrong_event_type_is_rejected(self) -> None:
+        engine, ledger, _failure, records = self.ready_generation_failure_campaign(
+            "wrong-type-failure-dependency-event"
+        )
+        failed = records[1]
+        dependency = next(
+            event
+            for event in ledger.events()
+            if event["event_type"] == "DEPENDENCY"
+            and event["subject_id"] == failed["candidate_id"]
+        )
+        ledger.append_event(
+            "FORGED_FAILURE_DEPENDENCY",
+            dict(dependency["payload"]),
+            campaign_id=dependency["campaign_id"],
+            run_id=dependency["run_id"],
+            task_id=dependency["task_id"],
+            subject_id=dependency["subject_id"],
+            source_class="FROZEN_PROTOCOL",
+            disposition="OBSERVED",
+            idempotency_key=(
+                "shock-failure-dependency:wrong-event-type:" + failed["candidate_id"]
+            ),
+        )
+        with self.assertRaisesRegex(
+            HeldoutProtocolError, "dependency event inventory"
+        ):
+            engine.verification_evidence()
+        ledger.close()
+
+    def test_runner_restart_accepts_exact_pre_generation_failure_journal(self) -> None:
+        coordinate = self.coordinate("dependency-aware")
+        runtime_root = self.short_runtime_root(".egv-rpf-")
+        self.generator.tokenizer.invalid_decode_calls.add(1)
+        runner = CorrectionShockCoordinateRunner(
+            ShockRuntimeContext(
+                self.protocol,
+                self.inputs,
+                self.sources,
+                runtime_root,
+                self.production_factory(coordinate),
+            )
+        )
+        original_advance = ShockRuntimeJournal.advance
+        crashed = False
+
+        def crash_after_failure_checkpoint(journal, **updates):
+            nonlocal crashed
+            cursor = original_advance(journal, **updates)
+            if (
+                not crashed
+                and updates.get("pre_attempts") == 1
+                and updates.get("pending_attempt") is None
+            ):
+                crashed = True
+                raise RuntimeError("crash after PRE failure journal checkpoint")
+            return cursor
+
+        with patch.object(
+            ShockRuntimeJournal,
+            "advance",
+            new=crash_after_failure_checkpoint,
+        ):
+            with self.assertRaisesRegex(RuntimeError, "PRE failure journal checkpoint"):
+                runner(coordinate)
+        self.assertEqual(self.model.calls, 1)
+        self.assertEqual(self.effect_count(), 0)
+
+        result = runner(coordinate)
+        self.assertEqual(result["costs"]["candidate_attempts"], 7)
+        self.assertEqual(result["eligible_attempts"], 7)
+        self.assertEqual(result["verdict_receipts_required"], 6)
+        self.assertEqual(result["verdict_receipts_valid"], 6)
+        self.assertIs(result["signature_valid"], True)
+        self.assertEqual(result["recovery_attempt"], 1)
+        self.assertEqual(self.model.calls, 7)
+        self.assertEqual(self.effect_count(), 6)
+        journal = ShockRuntimeJournal(
+            runtime_root / coordinate.coordinate_id / "shock-journal.json",
+            coordinate,
+        ).load()
+        self.assertEqual(journal["pre_attempts"], 6)
+        self.assertFalse(journal["pre_observations"][0]["receipt_valid"])
+
+    def test_runner_restart_accepts_exact_post_generation_failure_journal(self) -> None:
+        coordinate = self.coordinate("dependency-aware")
+        runtime_root = self.short_runtime_root(".egv-rof-")
+        self.generator.tokenizer.invalid_decode_calls.update(range(7, 13))
+        runner = CorrectionShockCoordinateRunner(
+            ShockRuntimeContext(
+                self.protocol,
+                self.inputs,
+                self.sources,
+                runtime_root,
+                self.production_factory(coordinate),
+            )
+        )
+        original_advance = ShockRuntimeJournal.advance
+        crashed = False
+
+        def crash_after_failure_checkpoint(journal, **updates):
+            nonlocal crashed
+            cursor = original_advance(journal, **updates)
+            if (
+                not crashed
+                and updates.get("post_attempts") == 1
+                and updates.get("pending_attempt") is None
+            ):
+                crashed = True
+                raise RuntimeError("crash after POST failure journal checkpoint")
+            return cursor
+
+        with patch.object(
+            ShockRuntimeJournal,
+            "advance",
+            new=crash_after_failure_checkpoint,
+        ):
+            with self.assertRaisesRegex(RuntimeError, "POST failure journal checkpoint"):
+                runner(coordinate)
+        self.assertEqual(self.model.calls, 7)
+        self.assertEqual(self.effect_count(), 6)
+
+        result = runner(coordinate)
+        self.assertEqual(result["costs"]["candidate_attempts"], 12)
+        self.assertEqual(result["eligible_attempts"], 12)
+        self.assertEqual(result["verdict_receipts_required"], 6)
+        self.assertEqual(result["verdict_receipts_valid"], 6)
+        self.assertIs(result["signature_valid"], True)
+        self.assertIs(result["recovered_within_six"], False)
+        self.assertEqual(self.model.calls, 12)
+        self.assertEqual(self.effect_count(), 6)
+        journal = ShockRuntimeJournal(
+            runtime_root / coordinate.coordinate_id / "shock-journal.json",
+            coordinate,
+        ).load()
+        self.assertEqual(journal["post_attempts"], 6)
+        self.assertTrue(
+            all(not observation["receipt_valid"] for observation in journal["post_observations"])
+        )
+
+    def test_six_post_generation_failures_are_counted_and_never_retrieved(self) -> None:
+        coordinate = self.coordinate("dependency-aware")
+        engine, ledger = self.engine(coordinate, self.root / "post-generation-failures")
+        self.run_pre(engine, coordinate)
+        self.commit_and_activate(engine, coordinate)
+        self.generator.tokenizer.invalid_decode_calls.update(range(7, 13))
+
+        observations = []
+        for attempt in range(1, 7):
+            observations.append(
+                engine.post_correction_attempt(
+                    attempt,
+                    idempotency_key=self.attempt_key(coordinate, "POST", attempt),
+                )
+            )
+        self.assertTrue(all(not item.promoted for item in observations))
+        self.assertTrue(all(not item.receipt_valid for item in observations))
+        self.assertTrue(all(not item.independent_hidden_fixture_passed for item in observations))
+        self.assertEqual(self.model.calls, 12)
+        self.assertEqual(self.effect_count(), 6)
+        self.assertEqual(len(ledger.receipts()), 18)
+        post_records = [
+            item for item in engine.operation_store.records() if item["phase"] == "POST"
+        ]
+        self.assertEqual(len(post_records), 6)
+        self.assertTrue(all(item["status"] == "GENERATION_FAILED" for item in post_records))
+        failure_ids = {str(item["candidate_id"]) for item in post_records}
+        for record in post_records:
+            context, _failure, _digest = engine.private_store.load_generation_failure(
+                record["candidate_id"]
+            )
+            retrieved = {str(item["subject_id"]) for item in context.retrieval_records}
+            self.assertTrue(failure_ids.isdisjoint(retrieved))
+            self.assertIsNone(
+                ledger.connection.execute(
+                    "SELECT candidate_id FROM candidates WHERE candidate_id=?",
+                    (record["candidate_id"],),
+                ).fetchone()
+            )
+        last_key = self.attempt_key(coordinate, "POST", 6)
+        self.assertEqual(engine.reconcile_attempt(last_key), observations[-1])
+        self.assertEqual(self.model.calls, 12)
+        self.assertEqual(self.effect_count(), 6)
+        verification = engine.verification_evidence()
+        self.assertEqual(verification.private_replay_decisions, 12)
+        self.assertEqual(verification.private_replay_agreements, 12)
+        self.assertEqual(verification.public_replay_decisions, 6)
+        self.assertEqual(verification.public_replay_agreements, 6)
         ledger.close()
 
     def test_production_factory_rejects_base_generator_without_trained_adapter(self) -> None:
@@ -716,6 +1780,8 @@ class ShockEngineTests(unittest.TestCase):
                 evaluator_manifest=self.manifest(coordinate),
                 evaluator_public_key=self.public_key,
                 evaluator_command=self.command,
+                evaluator_python_executable=Path(sys.executable).resolve(),
+                evaluator_python_digest=hashlib.sha256(Path(sys.executable).resolve().read_bytes()).hexdigest(),
                 source_commit="test-source",
                 model_revision=MODEL_REVISION,
                 data_manifest_digest=self.data_manifest_digest,

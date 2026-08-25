@@ -19,7 +19,14 @@ import tempfile
 from typing import Any, Dict, Mapping, Optional, Sequence, Tuple
 
 from ..campaign.state import _exclusive_path_lock
-from ..canonical import canonical_bytes, content_id, digest_bytes, digest_for, validate_sha256
+from ..canonical import (
+    canonical_bytes,
+    canonical_json,
+    content_id,
+    digest_bytes,
+    digest_for,
+    validate_sha256,
+)
 from ..evaluation.authority import AuthorityPolicy
 from ..evaluation.controller import EvaluationResult
 from ..evaluation.diagnostics import Diagnostic, validate_diagnostic, validate_disposition, validate_resource_bucket
@@ -30,6 +37,7 @@ from ..variation.arms import ArmIsolation, arm_policy
 from ..variation.generator import (
     CandidateContext,
     CandidateGenerationFailure,
+    CandidateGenerationFailureEvidence,
     CandidateGenerationEvidence,
     CandidateProposal,
     ModelCandidateGenerator,
@@ -49,7 +57,9 @@ SHOCK_PREMISE_SCHEMA = "egv-production-shock-premise-v1"
 SHOCK_CORRECTION_SCHEMA = "egv-production-shock-correction-v1"
 SHOCK_POLICY_SCHEMA = "egv-production-shock-policy-v1"
 SHOCK_UNRELATED_SCHEMA = "egv-production-shock-unrelated-evidence-v1"
+SHOCK_GENERATION_FAILURE_SCHEMA = "egv-production-shock-generation-failure-v1"
 _OPERATION_STATUSES = {"STARTED", "GENERATED", "GENERATION_FAILED", "COMPLETE"}
+_TERMINAL_OPERATION_STATUSES = {"GENERATION_FAILED", "COMPLETE"}
 _OPERATION_FIELDS = {
     "schema_version",
     "coordinate_id",
@@ -107,6 +117,37 @@ def _result_from_mapping(value: Mapping[str, Any]) -> EvaluationResult:
     except TypeError as exc:
         raise HeldoutProtocolError("durable shock evaluation result is malformed") from exc
     return result
+
+
+def _failure_diagnostic(evidence: CandidateGenerationFailureEvidence) -> str:
+    """Map a closed generation-failure stage to the frozen diagnostic vocabulary."""
+
+    evidence_stage = str(evidence.stage)
+    if evidence_stage in {"PROMPT_INTEGRITY", "RESPONSE_CONTRACT"}:
+        return Diagnostic.PROTOCOL_VIOLATION.value
+    if evidence_stage in {"PROMPT_RENDER", "MODEL_GENERATION"}:
+        return Diagnostic.INTERNAL_ERROR.value
+    raise HeldoutProtocolError("shock generation failure stage is outside the closed vocabulary")
+
+
+def _validate_failure_observation(observation: ShockAttemptObservation) -> None:
+    observation.validate()
+    if (
+        observation.promoted
+        or observation.receipt_valid
+        or observation.tokens != 0
+        or float(observation.evaluator_seconds) != 0.0
+        or observation.evidence_used
+        or observation.authority_challenge
+        or observation.valid_authority_denial
+        or observation.promoted_node_ids
+        or observation.independent_hidden_fixture_passed
+        or observation.verdict_receipt_digest is not None
+        or observation.effect_receipt_digest is not None
+        or observation.diagnostic_enum
+        not in {Diagnostic.PROTOCOL_VIOLATION.value, Diagnostic.INTERNAL_ERROR.value}
+    ):
+        raise HeldoutProtocolError("terminal shock generation failure carries evaluator or promotion claims")
 
 
 class DurableShockOperationStore:
@@ -199,6 +240,18 @@ class DurableShockOperationStore:
             _require_digest(value["rng_state_evidence_digest"], "actual RNG evidence digest")
             if digest_for(dict(value["rng_state_evidence"])) != value["rng_state_evidence_digest"]:
                 raise HeldoutProtocolError("actual RNG evidence digest mismatch")
+        elif failed:
+            if value["evaluation_result"] is not None:
+                raise HeldoutProtocolError("failed shock generation carries an evaluator result")
+            observation = ShockAttemptObservation.from_mapping(value["observation"])
+            _validate_failure_observation(observation)
+            if observation.operation_id != value["operation_id"]:
+                raise HeldoutProtocolError("failed shock observation crossed its operation")
+            if not isinstance(value["rng_state_evidence"], Mapping):
+                raise HeldoutProtocolError("failed shock generation lacks actual RNG evidence")
+            _require_digest(value["rng_state_evidence_digest"], "actual RNG evidence digest")
+            if digest_for(dict(value["rng_state_evidence"])) != value["rng_state_evidence_digest"]:
+                raise HeldoutProtocolError("actual RNG evidence digest mismatch")
         elif any(value[field] is not None for field in (
             "evaluation_result", "observation", "rng_state_evidence", "rng_state_evidence_digest"
         )):
@@ -266,7 +319,17 @@ class DurableShockOperationStore:
             },
         )
 
-    def generation_failed(self, operation_id: str, *, evidence_digest: str) -> Dict[str, Any]:
+    def generation_failed(
+        self,
+        operation_id: str,
+        *,
+        evidence_digest: str,
+        observation: ShockAttemptObservation,
+        rng_state_evidence: Mapping[str, Any],
+    ) -> Dict[str, Any]:
+        terminal_observation = observation
+        _validate_failure_observation(terminal_observation)
+        evidence = dict(rng_state_evidence)
         return self._transition(
             operation_id,
             allowed={"STARTED", "GENERATION_FAILED"},
@@ -275,6 +338,10 @@ class DurableShockOperationStore:
                 "generation_evidence_digest": _require_digest(
                     evidence_digest, "generation failure evidence digest"
                 ),
+                "evaluation_result": None,
+                "observation": terminal_observation.to_dict(),
+                "rng_state_evidence": evidence,
+                "rng_state_evidence_digest": digest_for(evidence),
             },
         )
 
@@ -338,6 +405,8 @@ class ProductionShockEngineFactory:
     evaluator_manifest: Path
     evaluator_public_key: Path
     evaluator_command: Path
+    evaluator_python_executable: Path
+    evaluator_python_digest: str
     source_commit: str
     model_revision: str
     data_manifest_digest: str
@@ -359,6 +428,7 @@ class ProductionShockEngineFactory:
         ):
             raise HeldoutProtocolError("production shock generator differs from its source-only profile")
         _require_digest(self.data_manifest_digest, "shock data manifest digest")
+        _require_digest(self.evaluator_python_digest, "shock evaluator Python executable digest")
         if not isinstance(self.source_commit, str) or not self.source_commit:
             raise HeldoutProtocolError("production shock source commit is missing")
 
@@ -371,6 +441,8 @@ class ProductionShockEngineFactory:
             manifest_path=Path(self.evaluator_manifest),
             public_key_path=Path(self.evaluator_public_key),
             command=Path(self.evaluator_command),
+            python_executable=Path(self.evaluator_python_executable),
+            python_digest=self.evaluator_python_digest,
         )
         return ProductionShockAttemptEngine(
             **kwargs,
@@ -632,8 +704,20 @@ class ProductionShockAttemptEngine:
         self.isolation.assert_candidate_id(self.arm_id, candidate_id)
         return candidate_id
 
-    def _complete_records(self, phase: Optional[str] = None) -> Tuple[Dict[str, Any], ...]:
-        records = tuple(record for record in self.operation_store.records() if record["status"] == "COMPLETE")
+    def _terminal_records(self, phase: Optional[str] = None) -> Tuple[Dict[str, Any], ...]:
+        records = tuple(
+            record
+            for record in self.operation_store.records()
+            if record["status"] in _TERMINAL_OPERATION_STATUSES
+        )
+        if phase is not None:
+            records = tuple(record for record in records if record["phase"] == phase)
+        return tuple(sorted(records, key=lambda item: (item["phase"], item["attempt"])))
+
+    def _successful_records(self, phase: Optional[str] = None) -> Tuple[Dict[str, Any], ...]:
+        records = tuple(
+            record for record in self.operation_store.records() if record["status"] == "COMPLETE"
+        )
         if phase is not None:
             records = tuple(record for record in records if record["phase"] == phase)
         return tuple(sorted(records, key=lambda item: (item["phase"], item["attempt"])))
@@ -641,13 +725,16 @@ class ProductionShockAttemptEngine:
     def _assert_attempt_order(self, phase: str, attempt: int) -> None:
         if type(attempt) is not int or not 1 <= attempt <= 6:
             raise HeldoutProtocolError("shock attempt is outside 1..6")
-        completed = {record["attempt"] for record in self._complete_records(phase)}
-        if completed != set(range(1, attempt)) and attempt not in completed:
+        completed = {record["attempt"] for record in self._terminal_records(phase)}
+        required_prior = set(range(1, attempt))
+        if not required_prior.issubset(completed) or (
+            attempt not in completed and completed != required_prior
+        ):
             raise HeldoutProtocolError("shock attempt order skipped or repeated an unresolved coordinate")
         if phase == "POST" and attempt not in completed:
             prior_observations = tuple(
                 ShockAttemptObservation.from_mapping(record["observation"])
-                for record in self._complete_records("POST")
+                for record in self._terminal_records("POST")
             )
             recovered = any(
                 observation.promoted and observation.independent_hidden_fixture_passed
@@ -662,7 +749,7 @@ class ProductionShockAttemptEngine:
         ):
             raise HeldoutProtocolError("pre-correction generation was attempted after correction")
         if phase == "POST":
-            if len(self._complete_records("PRE")) != 6 or self._policy_receipt(required=False) is None:
+            if len(self._terminal_records("PRE")) != 6 or self._policy_receipt(required=False) is None:
                 raise HeldoutProtocolError("post-correction attempt lacks exact correction/policy evidence")
 
     def _event(self, event_id: str) -> Mapping[str, Any]:
@@ -781,13 +868,13 @@ class ProductionShockAttemptEngine:
 
     def _parent_candidate(self, phase: str) -> Optional[str]:
         if phase == "PRE":
-            records = self._complete_records("PRE")
+            records = self._successful_records("PRE")
             return str(records[-1]["candidate_id"]) if records else None
-        post = self._complete_records("POST")
+        post = self._successful_records("POST")
         if post:
             return str(post[-1]["candidate_id"])
         if self.coordinate.treatment == "naive-reuse":
-            pre = self._complete_records("PRE")
+            pre = self._successful_records("PRE")
             return str(pre[-1]["candidate_id"]) if pre else None
         return None
 
@@ -868,8 +955,12 @@ class ProductionShockAttemptEngine:
                 context=context,
                 evidence=exc.evidence,
             )
-            self.operation_store.generation_failed(idempotency_key, evidence_digest=evidence_digest)
-            raise HeldoutProtocolError("pinned Qwen shock generation failed with durable private evidence") from exc
+            return self._finish_generation_failure(
+                self.operation_store.load(idempotency_key) or {},
+                context,
+                exc.evidence,
+                evidence_digest,
+            )
         evidence_digest = self.private_store.record_generation_success(
             candidate_id=candidate_id,
             context=context,
@@ -906,15 +997,44 @@ class ProductionShockAttemptEngine:
             or state["run_id"] != expected_run
         ):
             raise HeldoutProtocolError("shock operation crossed its frozen attempt identity")
-        if state["status"] == "GENERATION_FAILED":
-            raise HeldoutProtocolError("shock generation is durably failed and cannot be regenerated")
         candidate_id = str(state["candidate_id"])
+        if state["status"] == "GENERATION_FAILED":
+            try:
+                context, failure, evidence_digest = (
+                    self.private_store.load_generation_failure_read_only(candidate_id)
+                )
+            except Exception as exc:
+                raise HeldoutProtocolError(
+                    "terminal shock generation failure lacks exact private replay evidence"
+                ) from exc
+            return self._validate_generation_failure_operation(
+                state, context, failure, evidence_digest
+            )
         try:
-            context, evidence, evidence_digest = self.private_store.load_generation_success(candidate_id)
-        except Exception as exc:
-            raise HeldoutProtocolError(
-                "shock model call has no recoverable generation result; duplicate generation is forbidden"
-            ) from exc
+            if state["status"] in {"GENERATED", "COMPLETE"}:
+                context, evidence, evidence_digest = (
+                    self.private_store.load_generation_success_read_only(candidate_id)
+                )
+            else:
+                context, evidence, evidence_digest = (
+                    self.private_store.load_generation_success(candidate_id)
+                )
+        except Exception as success_exc:
+            if state["status"] != "STARTED":
+                raise HeldoutProtocolError(
+                    "shock model call has no recoverable generation result; duplicate generation is forbidden"
+                ) from success_exc
+            try:
+                context, failure, evidence_digest = self.private_store.load_generation_failure(
+                    candidate_id
+                )
+            except Exception as failure_exc:
+                raise HeldoutProtocolError(
+                    "shock model call has no recoverable generation result; duplicate generation is forbidden"
+                ) from failure_exc
+            if _context_digest(context) != state["context_digest"]:
+                raise HeldoutProtocolError("recovered shock generation failure crossed its exact context")
+            return self._finish_generation_failure(state, context, failure, evidence_digest)
         if _context_digest(context) != state["context_digest"]:
             raise HeldoutProtocolError("recovered shock generation crossed its exact context")
         if state["status"] == "STARTED":
@@ -942,19 +1062,14 @@ class ProductionShockAttemptEngine:
         assert correction is not None
         return str(self._replacement_event()["event_id"])
 
-    def _persist_candidate(
+    def _candidate_payload(
         self,
         state: Mapping[str, Any],
         context: CandidateContext,
         evidence: CandidateGenerationEvidence,
         evidence_digest: str,
-    ) -> None:
+    ) -> Dict[str, Any]:
         proposal = evidence.proposal
-        candidate_id = str(state["candidate_id"])
-        if tuple(proposal.evidence_ids) != tuple(
-            sorted(str(item["event_id"]) for item in context.retrieval_records)
-        ):
-            raise HeldoutProtocolError("shock source-only proposal omitted or substituted presented evidence")
         metadata = {
             "schema_version": "egv-production-shock-candidate-v1",
             "arm_id": self.arm_id,
@@ -971,23 +1086,61 @@ class ProductionShockAttemptEngine:
             "generation_profile_digest": context.generation_profile_digest,
             "shock_operation_id": state["operation_id"],
         }
-        self.ledger.append_candidate(
-            candidate_id,
-            campaign_id=self.campaign_id,
-            run_id=str(state["run_id"]),
-            task_id=self.coordinate.task_id,
-            parent_candidate_id=context.parent_candidate_id,
-            mutation_family=str(self.task_record["family_id"]),
-            patch_hash=proposal.mutation_digest,
-            requested_authority=proposal.requested_authority,
-            prompt_hash=context.prompt_digest,
-            model_hash=self.base_model_digest,
-            adapter_hash=self.adapter_digest,
-            metadata=metadata,
-        )
-        self.private_store.record(candidate_id=candidate_id, context=context, source=proposal.source)
+        return {
+            "candidate_id": str(state["candidate_id"]),
+            "campaign_id": self.campaign_id,
+            "run_id": str(state["run_id"]),
+            "task_id": self.coordinate.task_id,
+            "parent_candidate_id": context.parent_candidate_id,
+            "mutation_family": str(self.task_record["family_id"]),
+            "patch_hash": proposal.mutation_digest,
+            "requested_authority": proposal.requested_authority,
+            "prompt_hash": context.prompt_digest,
+            "model_hash": self.base_model_digest,
+            "adapter_hash": self.adapter_digest,
+            "metadata": metadata,
+        }
+
+    def _candidate_dependencies(
+        self,
+        state: Mapping[str, Any],
+        context: CandidateContext,
+        proposal: CandidateProposal,
+    ) -> set[tuple[str, str]]:
         expected = {(item, "EVIDENCE_USED") for item in proposal.evidence_ids}
         expected.add((self._lineage_parent(state, context), "SHOCK_LINEAGE"))
+        return expected
+
+    def _persist_candidate(
+        self,
+        state: Mapping[str, Any],
+        context: CandidateContext,
+        evidence: CandidateGenerationEvidence,
+        evidence_digest: str,
+    ) -> None:
+        proposal = evidence.proposal
+        candidate_id = str(state["candidate_id"])
+        if tuple(proposal.evidence_ids) != tuple(
+            sorted(str(item["event_id"]) for item in context.retrieval_records)
+        ):
+            raise HeldoutProtocolError("shock source-only proposal omitted or substituted presented evidence")
+        payload = self._candidate_payload(state, context, evidence, evidence_digest)
+        self.ledger.append_candidate(
+            candidate_id,
+            campaign_id=str(payload["campaign_id"]),
+            run_id=str(payload["run_id"]),
+            task_id=str(payload["task_id"]),
+            parent_candidate_id=payload["parent_candidate_id"],
+            mutation_family=str(payload["mutation_family"]),
+            patch_hash=str(payload["patch_hash"]),
+            requested_authority=str(payload["requested_authority"]),
+            prompt_hash=str(payload["prompt_hash"]),
+            model_hash=str(payload["model_hash"]),
+            adapter_hash=payload["adapter_hash"],
+            metadata=payload["metadata"],
+        )
+        self.private_store.record(candidate_id=candidate_id, context=context, source=proposal.source)
+        expected = self._candidate_dependencies(state, context, proposal)
         existing = {
             (str(row["parent_id"]), str(row["edge_type"]))
             for row in self.ledger.connection.execute(
@@ -1014,6 +1167,448 @@ class ProductionShockAttemptEngine:
         }
         if final != expected:
             raise HeldoutProtocolError("shock candidate dependency set is incomplete")
+
+    def _generation_failure_payload(
+        self,
+        state: Mapping[str, Any],
+        context: CandidateContext,
+        evidence: CandidateGenerationFailureEvidence,
+        evidence_digest: str,
+    ) -> Dict[str, Any]:
+        evidence.validate(context)
+        raw_digests = [
+            value
+            for value in (
+                evidence.rendered_prompt_digest,
+                evidence.decoded_model_response_digest,
+                evidence.contract_response_digest,
+            )
+            if value is not None
+        ]
+        return {
+            "schema_version": SHOCK_GENERATION_FAILURE_SCHEMA,
+            "block_id": self.coordinate.block_id if state["phase"] == "PRE" else None,
+            "coordinate_id": self.coordinate.coordinate_id if state["phase"] == "POST" else None,
+            "treatment": self.coordinate.treatment if state["phase"] == "POST" else None,
+            "operation_id": state["operation_id"],
+            "phase": state["phase"],
+            "attempt": state["attempt"],
+            "candidate_id": state["candidate_id"],
+            "run_id": state["run_id"],
+            "context_digest": _context_digest(context),
+            "generation_evidence_digest": _require_digest(
+                evidence_digest, "generation failure evidence digest"
+            ),
+            "failure_stage": evidence.stage,
+            "diagnostic_enum": _failure_diagnostic(evidence),
+            "response_contract_digest": context.response_contract_digest,
+            "generation_profile_digest": context.generation_profile_digest,
+            "raw_artifact_count": len(raw_digests),
+            "raw_artifact_digest_root": digest_for(raw_digests),
+            "error_code_digest": digest_for({"error_code": evidence.error_code}),
+        }
+
+    def _assert_generation_failure_has_no_external_effect(self, candidate_id: str) -> None:
+        tables = ("candidates", "receipts", "verdicts", "effect_receipts")
+        for table in tables:
+            count = self.ledger.connection.execute(
+                "SELECT COUNT(*) FROM {} WHERE candidate_id=?".format(table),
+                (candidate_id,),
+            ).fetchone()[0]
+            if int(count) != 0:
+                raise HeldoutProtocolError(
+                    "terminal shock generation failure materialized candidate or evaluator effects"
+                )
+        attempt_events = self.ledger.connection.execute(
+            "SELECT COUNT(*) FROM events WHERE event_type='SHOCK_ATTEMPT' AND subject_id=?",
+            (candidate_id,),
+        ).fetchone()[0]
+        if int(attempt_events) != 0:
+            raise HeldoutProtocolError(
+                "terminal shock generation failure materialized an evaluated attempt"
+            )
+
+    def _expected_generation_failure_dependencies(
+        self,
+        state: Mapping[str, Any],
+        context: CandidateContext,
+    ) -> set[tuple[str, str]]:
+        expected = {
+            (str(item["event_id"]), "EVIDENCE_USED") for item in context.retrieval_records
+        }
+        expected.add((self._lineage_parent(state, context), "SHOCK_LINEAGE"))
+        return expected
+
+    @staticmethod
+    def _generation_failure_dependency_idempotency(
+        parent_id: str,
+        child_id: str,
+        edge_type: str,
+    ) -> str:
+        return "shock-failure-dependency:{}:{}:{}".format(
+            parent_id, child_id, edge_type
+        )
+
+    def _validate_generation_failure_dependency_bindings(
+        self,
+        state: Mapping[str, Any],
+        context: CandidateContext,
+    ) -> tuple[set[str], set[str]]:
+        candidate_id = str(state["candidate_id"])
+        expected = self._expected_generation_failure_dependencies(state, context)
+        rows = tuple(
+            dict(row)
+            for row in self.ledger.connection.execute(
+                "SELECT dependency_id,parent_id,child_id,edge_type,insertion_event_id "
+                "FROM dependencies WHERE child_id=?",
+                (candidate_id,),
+            ).fetchall()
+        )
+        actual_edges = {
+            (str(row["parent_id"]), str(row["edge_type"])) for row in rows
+        }
+        if len(rows) != len(expected) or actual_edges != expected:
+            raise HeldoutProtocolError(
+                "shock generation failure dependency set is incomplete"
+            )
+
+        dependency_ids = set()
+        insertion_event_ids = set()
+        for row in rows:
+            parent_id = str(row["parent_id"])
+            child_id = str(row["child_id"])
+            edge_type = str(row["edge_type"])
+            payload = {
+                "parent_id": parent_id,
+                "child_id": child_id,
+                "edge_type": edge_type,
+            }
+            expected_dependency_id = content_id("dep", payload)
+            expected_idempotency = self._generation_failure_dependency_idempotency(
+                parent_id, child_id, edge_type
+            )
+            try:
+                insertion_event = self._event(str(row["insertion_event_id"]))
+            except Exception as exc:
+                raise HeldoutProtocolError(
+                    "shock generation failure dependency lacks its insertion event"
+                ) from exc
+            if (
+                row["dependency_id"] != expected_dependency_id
+                or child_id != candidate_id
+                or insertion_event.get("event_type") != "DEPENDENCY"
+                or insertion_event.get("campaign_id") != self.campaign_id
+                or insertion_event.get("run_id") != state["run_id"]
+                or insertion_event.get("task_id") != self.coordinate.task_id
+                or insertion_event.get("subject_id") != candidate_id
+                or insertion_event.get("payload") != payload
+                or insertion_event.get("source_class") != "FROZEN_PROTOCOL"
+                or insertion_event.get("disposition") != "OBSERVED"
+                or insertion_event.get("idempotency_key") != expected_idempotency
+            ):
+                raise HeldoutProtocolError(
+                    "shock generation failure dependency insertion event binding differs"
+                )
+            dependency_ids.add(expected_dependency_id)
+            insertion_event_ids.add(str(insertion_event["event_id"]))
+        if len(dependency_ids) != len(expected) or len(insertion_event_ids) != len(expected):
+            raise HeldoutProtocolError(
+                "shock generation failure dependency inventory is not one-to-one"
+            )
+        return dependency_ids, insertion_event_ids
+
+    def _assert_generation_failure_event_binding(
+        self,
+        event: Mapping[str, Any],
+        *,
+        state: Mapping[str, Any],
+        payload: Mapping[str, Any],
+    ) -> None:
+        candidate_id = str(state["candidate_id"])
+        if (
+            event.get("event_type") != "SHOCK_GENERATION_FAILURE"
+            or event.get("campaign_id") != self.campaign_id
+            or event.get("run_id") != state["run_id"]
+            or event.get("task_id") != self.coordinate.task_id
+            or event.get("subject_id") != candidate_id
+            or event.get("payload") != dict(payload)
+            or event.get("source_class") != "PINNED_MODEL"
+            or event.get("disposition") != "REJECTED"
+            or event.get("idempotency_key")
+            != "shock-generation-failure:" + str(state["operation_id"])
+        ):
+            raise HeldoutProtocolError(
+                "shock generation failure event crossed its exact attempt binding"
+            )
+
+    def _persist_generation_failure(
+        self,
+        state: Mapping[str, Any],
+        context: CandidateContext,
+        evidence: CandidateGenerationFailureEvidence,
+        evidence_digest: str,
+    ) -> Mapping[str, Any]:
+        candidate_id = str(state["candidate_id"])
+        self._assert_generation_failure_has_no_external_effect(candidate_id)
+        payload = self._generation_failure_payload(state, context, evidence, evidence_digest)
+        event = self.ledger.append_event(
+            "SHOCK_GENERATION_FAILURE",
+            payload,
+            campaign_id=self.campaign_id,
+            run_id=str(state["run_id"]),
+            task_id=self.coordinate.task_id,
+            subject_id=candidate_id,
+            source_class="PINNED_MODEL",
+            disposition="REJECTED",
+            idempotency_key="shock-generation-failure:" + str(state["operation_id"]),
+        )
+        self._assert_generation_failure_event_binding(event, state=state, payload=payload)
+        expected_dependencies = self._expected_generation_failure_dependencies(state, context)
+        existing = {
+            (str(row["parent_id"]), str(row["edge_type"]))
+            for row in self.ledger.connection.execute(
+                "SELECT parent_id,edge_type FROM dependencies WHERE child_id=?",
+                (candidate_id,),
+            ).fetchall()
+        }
+        if not existing.issubset(expected_dependencies):
+            raise HeldoutProtocolError("shock generation failure carries an unexpected dependency")
+        for parent, edge_type in sorted(expected_dependencies):
+            self.ledger.append_dependency(
+                parent,
+                candidate_id,
+                edge_type=edge_type,
+                campaign_id=self.campaign_id,
+                run_id=str(state["run_id"]),
+                task_id=self.coordinate.task_id,
+                idempotency_key=self._generation_failure_dependency_idempotency(
+                    parent, candidate_id, edge_type
+                ),
+            )
+        self._validate_generation_failure_dependency_bindings(state, context)
+        self._assert_generation_failure_has_no_external_effect(candidate_id)
+        return event
+
+    def _validate_generation_failure_inventory(self) -> None:
+        operations = self.operation_store.records()
+        failed = tuple(
+            state for state in operations if state["status"] == "GENERATION_FAILED"
+        )
+        ledger_events = tuple(self.ledger.events())
+
+        def is_generation_failure_event(event: Mapping[str, Any]) -> bool:
+            payload = event.get("payload")
+            return (
+                event.get("event_type") == "SHOCK_GENERATION_FAILURE"
+                or str(event.get("idempotency_key", "")).startswith(
+                    "shock-generation-failure:"
+                )
+                or (
+                    isinstance(payload, Mapping)
+                    and payload.get("schema_version")
+                    == SHOCK_GENERATION_FAILURE_SCHEMA
+                )
+            )
+
+        failure_events = tuple(
+            event
+            for event in ledger_events
+            if is_generation_failure_event(event)
+        )
+        failed_operation_ids = {str(state["operation_id"]) for state in failed}
+        failed_subjects = {str(state["candidate_id"]) for state in failed}
+        if len(failed_operation_ids) != len(failed) or len(failed_subjects) != len(failed):
+            raise HeldoutProtocolError(
+                "terminal shock generation failure operation inventory is not one-to-one"
+            )
+
+        expected_event_ids = set()
+        expected_dependency_ids = set()
+        expected_dependency_event_ids = set()
+        for state in failed:
+            candidate_id = str(state["candidate_id"])
+            try:
+                context, evidence, evidence_digest = (
+                    self.private_store.load_generation_failure_read_only(candidate_id)
+                )
+            except Exception as exc:
+                raise HeldoutProtocolError(
+                    "terminal shock generation failure inventory lacks private evidence"
+                ) from exc
+            if (
+                state["generation_evidence_digest"] != evidence_digest
+                or state["candidate_source_digest"] is not None
+                or state["evaluation_result"] is not None
+                or _context_digest(context) != state["context_digest"]
+            ):
+                raise HeldoutProtocolError(
+                    "terminal shock generation failure inventory differs from durable evidence"
+                )
+            payload = self._generation_failure_payload(
+                state, context, evidence, evidence_digest
+            )
+            idempotency_key = "shock-generation-failure:" + str(state["operation_id"])
+            matching = tuple(
+                event
+                for event in failure_events
+                if event.get("idempotency_key") == idempotency_key
+            )
+            if len(matching) != 1:
+                raise HeldoutProtocolError(
+                    "terminal shock generation failure lacks exactly one bound event"
+                )
+            event = matching[0]
+            self._assert_generation_failure_event_binding(
+                event, state=state, payload=payload
+            )
+            dependency_ids, dependency_event_ids = (
+                self._validate_generation_failure_dependency_bindings(state, context)
+            )
+            expected_dependency_ids.update(dependency_ids)
+            expected_dependency_event_ids.update(dependency_event_ids)
+            expected_event_ids.add(str(event["event_id"]))
+
+        actual_event_ids = {str(event["event_id"]) for event in failure_events}
+        actual_subjects = {str(event.get("subject_id")) for event in failure_events}
+        actual_operation_bindings = {
+            str(event.get("idempotency_key", "")).removeprefix(
+                "shock-generation-failure:"
+            )
+            for event in failure_events
+        }
+        if (
+            len(failure_events) != len(failed)
+            or actual_event_ids != expected_event_ids
+            or actual_subjects != failed_subjects
+            or actual_operation_bindings != failed_operation_ids
+        ):
+            raise HeldoutProtocolError(
+                "shock generation failure event inventory differs from failed operations"
+            )
+
+        def is_relevant_dependency_event(event: Mapping[str, Any]) -> bool:
+            payload = event.get("payload")
+            payload = payload if isinstance(payload, Mapping) else {}
+            reserved = str(event.get("idempotency_key", "")).startswith(
+                "shock-failure-dependency:"
+            )
+            dependency_shaped = (
+                event.get("event_type") == "DEPENDENCY"
+                or reserved
+                or any(key in payload for key in ("parent_id", "child_id", "edge_type"))
+            )
+            return dependency_shaped and (
+                event.get("subject_id") in failed_subjects
+                or payload.get("parent_id") in failed_subjects
+                or payload.get("child_id") in failed_subjects
+                or reserved
+            )
+
+        relevant_dependency_events = tuple(
+            event
+            for event in ledger_events
+            if is_relevant_dependency_event(event)
+        )
+        relevant_dependency_event_ids = {
+            str(event["event_id"]) for event in relevant_dependency_events
+        }
+        dependency_rows = tuple(
+            dict(row)
+            for row in self.ledger.connection.execute(
+                "SELECT dependency_id,parent_id,child_id,edge_type,insertion_event_id "
+                "FROM dependencies"
+            ).fetchall()
+        )
+        relevant_dependency_rows = tuple(
+            row
+            for row in dependency_rows
+            if str(row["parent_id"]) in failed_subjects
+            or str(row["child_id"]) in failed_subjects
+            or str(row["insertion_event_id"]) in relevant_dependency_event_ids
+        )
+        actual_dependency_ids = {
+            str(row["dependency_id"]) for row in relevant_dependency_rows
+        }
+        actual_dependency_insertion_ids = {
+            str(row["insertion_event_id"]) for row in relevant_dependency_rows
+        }
+        if (
+            len(relevant_dependency_rows) != len(expected_dependency_ids)
+            or len(relevant_dependency_events) != len(expected_dependency_event_ids)
+            or actual_dependency_ids != expected_dependency_ids
+            or actual_dependency_insertion_ids != expected_dependency_event_ids
+            or relevant_dependency_event_ids != expected_dependency_event_ids
+        ):
+            raise HeldoutProtocolError(
+                "shock generation failure dependency event inventory differs"
+            )
+
+    def _generation_failure_observation(
+        self,
+        state: Mapping[str, Any],
+        evidence: CandidateGenerationFailureEvidence,
+    ) -> ShockAttemptObservation:
+        observation = ShockAttemptObservation(
+            promoted=False,
+            diagnostic_enum=_failure_diagnostic(evidence),
+            receipt_valid=False,
+            tokens=0,
+            evaluator_seconds=0.0,
+            evidence_used=False,
+            authority_challenge=False,
+            valid_authority_denial=False,
+            promoted_node_ids=tuple(),
+            independent_hidden_fixture_passed=False,
+            verdict_receipt_digest=None,
+            effect_receipt_digest=None,
+            operation_id=str(state["operation_id"]),
+        )
+        _validate_failure_observation(observation)
+        return observation
+
+    def _finish_generation_failure(
+        self,
+        state: Mapping[str, Any],
+        context: CandidateContext,
+        evidence: CandidateGenerationFailureEvidence,
+        evidence_digest: str,
+    ) -> ShockAttemptObservation:
+        if state["status"] != "STARTED" or _context_digest(context) != state["context_digest"]:
+            raise HeldoutProtocolError("shock generation failure crossed its durable start state")
+        self._persist_generation_failure(state, context, evidence, evidence_digest)
+        observation = self._generation_failure_observation(state, evidence)
+        self.operation_store.generation_failed(
+            str(state["operation_id"]),
+            evidence_digest=evidence_digest,
+            observation=observation,
+            rng_state_evidence=self._rng_evidence(),
+        )
+        self._validate_generation_failure_inventory()
+        return observation
+
+    def _validate_generation_failure_operation(
+        self,
+        state: Mapping[str, Any],
+        context: CandidateContext,
+        evidence: CandidateGenerationFailureEvidence,
+        evidence_digest: str,
+    ) -> ShockAttemptObservation:
+        if (
+            state["status"] != "GENERATION_FAILED"
+            or state["generation_evidence_digest"] != evidence_digest
+            or state["candidate_source_digest"] is not None
+            or state["evaluation_result"] is not None
+            or _context_digest(context) != state["context_digest"]
+        ):
+            raise HeldoutProtocolError("terminal shock generation failure differs from private replay")
+        rebuilt = self._generation_failure_observation(state, evidence)
+        stored = ShockAttemptObservation.from_mapping(state["observation"])
+        _validate_failure_observation(stored)
+        if rebuilt != stored:
+            raise HeldoutProtocolError("terminal shock generation failure observation differs from replay")
+        self._assert_generation_failure_has_no_external_effect(str(state["candidate_id"]))
+        self._validate_generation_failure_inventory()
+        return stored
 
     def _receipt_suffix(self, result: EvaluationResult, *, run_id: str) -> Tuple[Mapping[str, Any], ...]:
         receipts = []
@@ -1314,6 +1909,336 @@ class ProductionShockAttemptEngine:
         )
         return observation
 
+    def _validate_complete_candidate_projection(
+        self,
+        state: Mapping[str, Any],
+        context: CandidateContext,
+        evidence: CandidateGenerationEvidence,
+        evidence_digest: str,
+    ) -> None:
+        candidate_id = str(state["candidate_id"])
+        proposal = evidence.proposal
+        expected_evidence_ids = tuple(
+            sorted(str(item["event_id"]) for item in context.retrieval_records)
+        )
+        if tuple(proposal.evidence_ids) != expected_evidence_ids:
+            raise HeldoutProtocolError(
+                "terminal shock candidate omitted or substituted presented evidence"
+            )
+        try:
+            trajectory_context, trajectory_source, _trajectory_digest = (
+                self.private_store.load_trajectory_read_only(candidate_id)
+            )
+        except Exception as exc:
+            raise HeldoutProtocolError(
+                "terminal shock candidate lacks its private trajectory"
+            ) from exc
+        if trajectory_context != context or trajectory_source != proposal.source:
+            raise HeldoutProtocolError(
+                "terminal shock private trajectory differs from generation replay"
+            )
+
+        expected_payload = self._candidate_payload(
+            state, context, evidence, evidence_digest
+        )
+        row = self.ledger.connection.execute(
+            "SELECT * FROM candidates WHERE candidate_id=?", (candidate_id,)
+        ).fetchone()
+        scalar_fields = (
+            "candidate_id",
+            "campaign_id",
+            "run_id",
+            "task_id",
+            "parent_candidate_id",
+            "mutation_family",
+            "patch_hash",
+            "requested_authority",
+            "prompt_hash",
+            "model_hash",
+            "adapter_hash",
+        )
+        if (
+            row is None
+            or any(row[field] != expected_payload[field] for field in scalar_fields)
+            or row["candidate_json"] != canonical_json(expected_payload)
+        ):
+            raise HeldoutProtocolError(
+                "terminal shock candidate ledger projection is missing or substituted"
+            )
+        candidate_event = self._event(str(row["event_id"]))
+        if (
+            candidate_event.get("event_type") != "CANDIDATE"
+            or candidate_event.get("payload") != expected_payload
+            or candidate_event.get("campaign_id") != self.campaign_id
+            or candidate_event.get("run_id") != state["run_id"]
+            or candidate_event.get("task_id") != self.coordinate.task_id
+            or candidate_event.get("subject_id") != candidate_id
+            or candidate_event.get("source_class") is not None
+            or candidate_event.get("disposition") != "OBSERVED"
+            or candidate_event.get("idempotency_key") is not None
+        ):
+            raise HeldoutProtocolError(
+                "terminal shock candidate event projection is substituted"
+            )
+
+        expected_dependencies = self._candidate_dependencies(
+            state, context, proposal
+        )
+        dependency_rows = tuple(
+            dict(row)
+            for row in self.ledger.connection.execute(
+                "SELECT dependency_id,parent_id,child_id,edge_type,insertion_event_id "
+                "FROM dependencies WHERE child_id=? ORDER BY dependency_id",
+                (candidate_id,),
+            ).fetchall()
+        )
+        actual_dependencies = {
+            (str(row["parent_id"]), str(row["edge_type"]))
+            for row in dependency_rows
+        }
+        if (
+            len(dependency_rows) != len(expected_dependencies)
+            or actual_dependencies != expected_dependencies
+        ):
+            raise HeldoutProtocolError(
+                "terminal shock candidate dependency set is incomplete or substituted"
+            )
+        for dependency in dependency_rows:
+            parent_id = str(dependency["parent_id"])
+            edge_type = str(dependency["edge_type"])
+            payload = {
+                "parent_id": parent_id,
+                "child_id": candidate_id,
+                "edge_type": edge_type,
+            }
+            insertion = self._event(str(dependency["insertion_event_id"]))
+            if (
+                dependency["dependency_id"] != content_id("dep", payload)
+                or dependency["child_id"] != candidate_id
+                or insertion.get("event_type") != "DEPENDENCY"
+                or insertion.get("payload") != payload
+                or insertion.get("campaign_id") != self.campaign_id
+                or insertion.get("run_id") != state["run_id"]
+                or insertion.get("task_id") != self.coordinate.task_id
+                or insertion.get("subject_id") != candidate_id
+                or insertion.get("source_class") != "FROZEN_PROTOCOL"
+                or insertion.get("disposition") != "OBSERVED"
+                or insertion.get("idempotency_key")
+                != "shock-dependency:{}:{}:{}".format(
+                    parent_id, candidate_id, edge_type
+                )
+            ):
+                raise HeldoutProtocolError(
+                    "terminal shock candidate dependency event is substituted"
+                )
+
+    def _validate_complete_result_projection(
+        self,
+        state: Mapping[str, Any],
+        proposal: CandidateProposal,
+        result: EvaluationResult,
+    ) -> Tuple[Mapping[str, Any], ...]:
+        candidate_id = str(state["candidate_id"])
+        if (
+            result.candidate_id != candidate_id
+            or result.task_id != self.coordinate.task_id
+            or result.candidate_artifact_digest != digest_bytes(proposal.source)
+        ):
+            raise HeldoutProtocolError(
+                "terminal shock evaluator result crossed candidate/task/source"
+            )
+        try:
+            validate_diagnostic(result.diagnostic_enum)
+            validate_resource_bucket(result.resource_bucket)
+            validate_disposition(result.disposition)
+        except ValueError as exc:
+            raise HeldoutProtocolError(
+                "terminal shock result is outside the closed evaluator vocabulary"
+            ) from exc
+        receipts = self._receipt_suffix(result, run_id=str(state["run_id"]))
+        receipt_rows = tuple(
+            dict(row)
+            for row in self.ledger.connection.execute(
+                "SELECT * FROM receipts WHERE candidate_id=? ORDER BY sequence",
+                (candidate_id,),
+            ).fetchall()
+        )
+        if tuple(row["receipt_id"] for row in receipt_rows) != tuple(
+            result.receipt_ids
+        ):
+            raise HeldoutProtocolError(
+                "terminal shock candidate receipt inventory is incomplete or duplicated"
+            )
+        for row, receipt in zip(receipt_rows, receipts):
+            complete_hash = receipt_hash(receipt)
+            receipt_event = self._event(str(row["event_id"]))
+            if (
+                row["receipt_hash"] != complete_hash
+                or row["receipt_type"] != receipt["receipt_type"]
+                or row["campaign_id"] != self.campaign_id
+                or row["run_id"] != state["run_id"]
+                or row["task_id"] != self.coordinate.task_id
+                or row["candidate_id"] != candidate_id
+                or row["idempotency_key"] != receipt["idempotency_key"]
+                or row["previous_receipt_hash"]
+                != receipt["previous_receipt_hash"]
+                or row["payload_json"] != canonical_json(receipt)
+                or receipt_event.get("event_type") != "RECEIPT"
+                or receipt_event.get("payload")
+                != {"receipt": dict(receipt), "receipt_hash": complete_hash}
+                or receipt_event.get("campaign_id") != self.campaign_id
+                or receipt_event.get("run_id") != state["run_id"]
+                or receipt_event.get("task_id") != self.coordinate.task_id
+                or receipt_event.get("subject_id") != candidate_id
+                or receipt_event.get("source_class") != "FROZEN_EVALUATOR"
+                or receipt_event.get("disposition") != "VERIFIED"
+                or receipt_event.get("idempotency_key")
+                != "receipt:" + str(receipt["idempotency_key"])
+            ):
+                raise HeldoutProtocolError(
+                    "terminal shock signed receipt projection is substituted"
+                )
+
+        verdict = receipts[1]
+        verdict_id = content_id(
+            "shock-verdict",
+            {"operation_id": state["operation_id"], "receipt_id": verdict["receipt_id"]},
+        )
+        expected_verdict = {
+            "verdict_id": verdict_id,
+            "candidate_id": candidate_id,
+            "correctness": result.diagnostic_enum == Diagnostic.PASS.value,
+            "performance": {"resource_bucket": result.resource_bucket},
+            "hidden_test_set_hash": digest_for(
+                {"evaluator": self.evaluator.evaluator_digest, "task": self.coordinate.task_id}
+            ),
+            "evaluator_revision": self.evaluator.evaluator_revision,
+            "receipt_id": verdict["receipt_id"],
+            "signed_receipt_hash": receipt_hash(verdict),
+        }
+        verdict_rows = tuple(
+            self.ledger.connection.execute(
+                "SELECT * FROM verdicts WHERE candidate_id=?", (candidate_id,)
+            ).fetchall()
+        )
+        if len(verdict_rows) != 1:
+            raise HeldoutProtocolError(
+                "terminal shock verdict inventory is incomplete or duplicated"
+            )
+        verdict_row = verdict_rows[0]
+        verdict_event = self._event(str(verdict_row["event_id"]))
+        if (
+            verdict_row["verdict_id"] != verdict_id
+            or verdict_row["receipt_id"] != verdict["receipt_id"]
+            or verdict_row["correctness"] != int(expected_verdict["correctness"])
+            or verdict_row["performance_json"]
+            != canonical_json(expected_verdict["performance"])
+            or verdict_row["hidden_test_set_hash"]
+            != expected_verdict["hidden_test_set_hash"]
+            or verdict_row["evaluator_revision"] != self.evaluator.evaluator_revision
+            or verdict_row["signed_receipt_hash"]
+            != expected_verdict["signed_receipt_hash"]
+            or verdict_event.get("event_type") != "VERDICT"
+            or verdict_event.get("payload") != expected_verdict
+            or verdict_event.get("campaign_id") != self.campaign_id
+            or verdict_event.get("run_id") != state["run_id"]
+            or verdict_event.get("task_id") != self.coordinate.task_id
+            or verdict_event.get("subject_id") != candidate_id
+            or verdict_event.get("source_class") != "FROZEN_EVALUATOR"
+            or verdict_event.get("disposition") != "VERIFIED"
+            or verdict_event.get("idempotency_key") is not None
+        ):
+            raise HeldoutProtocolError(
+                "terminal shock verdict projection is substituted"
+            )
+
+        effect = receipts[2]
+        expected_effect = {
+            "request_id": str(effect["request_id"]),
+            "candidate_id": candidate_id,
+            "identity": str(effect.get("identity", "remote-frozen-evaluator")),
+            "normalized_action_hash": str(effect["normalized_action_hash"]),
+            "decision": str(effect["decision"]),
+            "policy_hash": str(effect["policy_digest"]),
+            "sandbox_id": str(effect["sandbox_id"]),
+            "started_at": str(effect["started_at"]),
+            "finished_at": str(effect["finished_at"]),
+            "exit_status_class": str(effect["exit_status_class"]),
+            "output_hash": effect.get("output_digest"),
+            "environment_diff_hash": effect.get("environment_diff_digest"),
+            "signature": str(effect["signature"]),
+            "receipt_id": str(effect["receipt_id"]),
+        }
+        effect_rows = tuple(
+            self.ledger.connection.execute(
+                "SELECT * FROM effect_receipts WHERE candidate_id=?", (candidate_id,)
+            ).fetchall()
+        )
+        if len(effect_rows) != 1:
+            raise HeldoutProtocolError(
+                "terminal shock effect inventory is incomplete or duplicated"
+            )
+        effect_row = effect_rows[0]
+        effect_event = self._event(str(effect_row["event_id"]))
+        if (
+            any(effect_row[key] != value for key, value in expected_effect.items())
+            or effect_event.get("event_type") != "EFFECT_RECEIPT"
+            or effect_event.get("payload") != expected_effect
+            or effect_event.get("campaign_id") != self.campaign_id
+            or effect_event.get("run_id") != state["run_id"]
+            or effect_event.get("task_id") != self.coordinate.task_id
+            or effect_event.get("subject_id") != candidate_id
+            or effect_event.get("source_class") != "FROZEN_EVALUATOR"
+            or effect_event.get("disposition") != "VERIFIED"
+            or effect_event.get("idempotency_key") is not None
+        ):
+            raise HeldoutProtocolError(
+                "terminal shock effect projection is substituted"
+            )
+
+        attempt_payload = {
+            "schema_version": SHOCK_ATTEMPT_EVENT_SCHEMA,
+            "operation_id": state["operation_id"],
+            "phase": state["phase"],
+            "attempt": state["attempt"],
+            "candidate_id": candidate_id,
+            "candidate_artifact_digest": result.candidate_artifact_digest,
+            "diagnostic_enum": result.diagnostic_enum,
+            "resource_bucket": result.resource_bucket,
+            "disposition": result.disposition,
+            "receipt_ids": list(result.receipt_ids),
+        }
+        attempt_key = "shock-attempt:" + str(state["operation_id"])
+        attempt_events = tuple(
+            event
+            for event in self.ledger.events()
+            if (
+                event.get("event_type") == "SHOCK_ATTEMPT"
+                and event.get("subject_id") == candidate_id
+            )
+            or event.get("idempotency_key") == attempt_key
+        )
+        if len(attempt_events) != 1:
+            raise HeldoutProtocolError(
+                "terminal shock attempt event inventory is incomplete or duplicated"
+            )
+        attempt_event = attempt_events[0]
+        if (
+            attempt_event.get("event_type") != "SHOCK_ATTEMPT"
+            or attempt_event.get("payload") != attempt_payload
+            or attempt_event.get("campaign_id") != self.campaign_id
+            or attempt_event.get("run_id") != state["run_id"]
+            or attempt_event.get("task_id") != self.coordinate.task_id
+            or attempt_event.get("subject_id") != candidate_id
+            or attempt_event.get("source_class") != "FROZEN_EVALUATOR"
+            or attempt_event.get("disposition") != "VERIFIED"
+            or attempt_event.get("idempotency_key") != attempt_key
+        ):
+            raise HeldoutProtocolError(
+                "terminal shock attempt event projection is substituted"
+            )
+        return receipts
+
     def _validate_complete_operation(
         self,
         state: Mapping[str, Any],
@@ -1322,24 +2247,20 @@ class ProductionShockAttemptEngine:
         evidence_digest: str,
     ) -> ShockAttemptObservation:
         if (
-            state["generation_evidence_digest"] != evidence_digest
+            state["status"] != "COMPLETE"
+            or state["generation_evidence_digest"] != evidence_digest
             or state["candidate_source_digest"] != digest_bytes(evidence.proposal.source)
         ):
             raise HeldoutProtocolError("complete shock operation differs from private generation replay")
-        self._persist_candidate(state, context, evidence, evidence_digest)
-        stored_result = _result_from_mapping(state["evaluation_result"])
-        before = tuple(self.ledger.receipts())
-        replay = self.evaluator.evaluate(
-            candidate_id=str(state["candidate_id"]),
-            task_id=self.coordinate.task_id,
-            source=evidence.proposal.source,
-            opaque_input=None,
-            requested_authority=evidence.proposal.requested_authority,
-            declared_locus=evidence.proposal.declared_locus,
+        if _context_digest(context) != state["context_digest"]:
+            raise HeldoutProtocolError("complete shock operation crossed its exact context")
+        self._validate_complete_candidate_projection(
+            state, context, evidence, evidence_digest
         )
-        if replay.to_dict() != stored_result.to_dict() or tuple(self.ledger.receipts()) != before:
-            raise HeldoutProtocolError("completed shock evaluator replay changed or duplicated its effect")
-        receipts = self._materialize_result(state, evidence.proposal, stored_result)
+        stored_result = _result_from_mapping(state["evaluation_result"])
+        receipts = self._validate_complete_result_projection(
+            state, evidence.proposal, stored_result
+        )
         rebuilt = self._observation(state, context, evidence.proposal, stored_result, receipts)
         stored = ShockAttemptObservation.from_mapping(state["observation"])
         if rebuilt != stored:
@@ -1347,16 +2268,17 @@ class ProductionShockAttemptEngine:
         return stored
 
     def freeze_pre_shock_state(self) -> PreShockState:
-        records = self._complete_records("PRE")
+        records = self._terminal_records("PRE")
         if len(records) != 6 or [item["attempt"] for item in records] != list(range(1, 7)):
-            raise HeldoutProtocolError("actual pre-shock state requires exactly six completed attempts")
+            raise HeldoutProtocolError("actual pre-shock state requires exactly six terminal attempts")
+        self._validate_generation_failure_inventory()
         premise_id = str(self._premise_event()["event_id"])
         unrelated = {
             str(event["event_id"])
             for event in self._unrelated_evidence_events()
         }
-        candidate_ids = {str(record["candidate_id"]) for record in records}
-        nodes = candidate_ids | unrelated | {premise_id}
+        attempt_node_ids = {str(record["candidate_id"]) for record in records}
+        nodes = attempt_node_ids | unrelated | {premise_id}
         candidate_aliases = {
             str(row["event_id"]): str(row["candidate_id"])
             for row in self.ledger.connection.execute(
@@ -1381,14 +2303,23 @@ class ProductionShockAttemptEngine:
                 {
                     "attempt": record["attempt"],
                     "candidate_id": record["candidate_id"],
+                    "status": record["status"],
                     "candidate_source_digest": record["candidate_source_digest"],
                     "generation_evidence_digest": record["generation_evidence_digest"],
-                    "evaluation_result_digest": digest_for(record["evaluation_result"]),
+                    "evaluation_result_digest": (
+                        digest_for(record["evaluation_result"])
+                        if record["evaluation_result"] is not None
+                        else None
+                    ),
                     "observation_digest": digest_for(record["observation"]),
                 }
                 for record in records
             ],
-            "latest_candidate_id": records[-1]["candidate_id"],
+            "latest_candidate_id": (
+                self._successful_records("PRE")[-1]["candidate_id"]
+                if self._successful_records("PRE")
+                else None
+            ),
             "unrelated_evidence_ids": sorted(unrelated),
             "actual_rng_state_evidence_digest": records[-1]["rng_state_evidence_digest"],
         }
@@ -1416,12 +2347,45 @@ class ProductionShockAttemptEngine:
                 raise HeldoutProtocolError("shock runtime journal attempt cursor is malformed")
             for attempt, raw in enumerate(observations, start=1):
                 state = self.operation_store.load(self._operation_id(phase, attempt))
-                if state is None or state["status"] != "COMPLETE" or state["observation"] != raw:
+                if state is None or state["status"] not in _TERMINAL_OPERATION_STATUSES:
                     raise HeldoutProtocolError("shock runtime journal lacks exact durable operation evidence")
+                journal_observation = ShockAttemptObservation.from_mapping(raw)
+                if state["observation"] != journal_observation.to_dict():
+                    raise HeldoutProtocolError("shock runtime journal lacks exact durable operation evidence")
+                candidate_id = str(state["candidate_id"])
+                if state["status"] == "GENERATION_FAILED":
+                    try:
+                        context, failure, evidence_digest = (
+                            self.private_store.load_generation_failure_read_only(candidate_id)
+                        )
+                    except Exception as exc:
+                        raise HeldoutProtocolError(
+                            "journaled shock generation failure lacks exact private replay evidence"
+                        ) from exc
+                    replayed = self._validate_generation_failure_operation(
+                        state, context, failure, evidence_digest
+                    )
+                else:
+                    try:
+                        context, evidence, evidence_digest = (
+                            self.private_store.load_generation_success_read_only(candidate_id)
+                        )
+                    except Exception as exc:
+                        raise HeldoutProtocolError(
+                            "journaled shock generation success lacks exact private replay evidence"
+                        ) from exc
+                    replayed = self._validate_complete_operation(
+                        state, context, evidence, evidence_digest
+                    )
+                if replayed != journal_observation:
+                    raise HeldoutProtocolError(
+                        "shock runtime journal observation differs from durable replay"
+                    )
         if journal.get("correction_committed") and self._correction_receipt(required=False) is None:
             raise HeldoutProtocolError("journaled shock correction lacks durable ledger evidence")
         if journal.get("policy_activated") and self._policy_receipt(required=False) is None:
             raise HeldoutProtocolError("journaled shock policy lacks durable ledger evidence")
+        self._validate_generation_failure_inventory()
 
     def _event_by_idempotency(self, key: str) -> Optional[Mapping[str, Any]]:
         rows = [event for event in self.ledger.events() if event.get("idempotency_key") == key]
@@ -1430,7 +2394,7 @@ class ProductionShockAttemptEngine:
         return rows[0] if rows else None
 
     def commit_correction(self, correction_event_digest: str, *, idempotency_key: str) -> None:
-        if len(self._complete_records("PRE")) != 6:
+        if len(self._terminal_records("PRE")) != 6:
             raise HeldoutProtocolError("shock correction cannot precede exact attempt six")
         if correction_event_digest != self.coordinate.correction_event_digest:
             raise HeldoutProtocolError("shock correction differs from preregistered event digest")
@@ -1506,7 +2470,21 @@ class ProductionShockAttemptEngine:
         if treatment == "dependency-aware":
             if supplied != affected:
                 raise HeldoutProtocolError("dependency-aware invalidation differs from exact affected closure")
-            if any(self.ledger.candidate_disposition(node) != "STALE_DEPENDENT" for node in supplied):
+            candidate_ids = {
+                str(row["candidate_id"])
+                for row in self.ledger.connection.execute(
+                    "SELECT candidate_id FROM candidates"
+                ).fetchall()
+            }
+            dispositions = {
+                node: (
+                    self.ledger.candidate_disposition(node)
+                    if node in candidate_ids
+                    else self.ledger.event_disposition(node)
+                )
+                for node in supplied
+            }
+            if any(value != "STALE_DEPENDENT" for value in dispositions.values()):
                 raise HeldoutProtocolError("dependency-aware invalidation did not materialize stale descendants")
         elif supplied:
             raise HeldoutProtocolError("restart/reuse policy cannot carry dependency invalidations")
@@ -1576,21 +2554,40 @@ class ProductionShockAttemptEngine:
         return self.ledger.verify_integrity()
 
     def verification_evidence(self) -> ShockVerificationEvidence:
-        records = self._complete_records()
-        if len(self._complete_records("PRE")) != 6 or not records:
+        records = self._terminal_records()
+        if len(self._terminal_records("PRE")) != 6 or not records:
             raise HeldoutProtocolError("shock verification lacks exact completed attempt evidence")
         private_agreements = 0
         public_agreements = 0
+        public_decisions = 0
         for state in records:
+            if state["status"] == "GENERATION_FAILED":
+                try:
+                    context, failure, evidence_digest = (
+                        self.private_store.load_generation_failure_read_only(
+                            str(state["candidate_id"])
+                        )
+                    )
+                except Exception as exc:
+                    raise HeldoutProtocolError("shock private failure replay evidence is incomplete") from exc
+                self._validate_generation_failure_operation(
+                    state, context, failure, evidence_digest
+                )
+                private_agreements += 1
+                continue
             try:
-                context, evidence, evidence_digest = self.private_store.load_generation_success(
-                    str(state["candidate_id"])
+                context, evidence, evidence_digest = (
+                    self.private_store.load_generation_success_read_only(
+                        str(state["candidate_id"])
+                    )
                 )
             except Exception as exc:
                 raise HeldoutProtocolError("shock private replay evidence is incomplete") from exc
-            private_agreements += 1
             self._validate_complete_operation(state, context, evidence, evidence_digest)
+            private_agreements += 1
+            public_decisions += 1
             public_agreements += 1
+        self._validate_generation_failure_inventory()
         receipts = self.ledger.receipts()
         unauthorized = 0
         by_candidate: Dict[str, list[Mapping[str, Any]]] = {}
@@ -1612,7 +2609,7 @@ class ProductionShockAttemptEngine:
             hidden_test_isolation_valid=True,
             private_replay_decisions=len(records),
             private_replay_agreements=private_agreements,
-            public_replay_decisions=len(records),
+            public_replay_decisions=public_decisions,
             public_replay_agreements=public_agreements,
             unauthorized_successful_effects=unauthorized,
             correction_receipt_digest=self._event_receipt_digest(correction),
@@ -1626,5 +2623,6 @@ __all__ = [
     "DurableShockOperationStore",
     "ProductionShockAttemptEngine",
     "ProductionShockEngineFactory",
+    "SHOCK_GENERATION_FAILURE_SCHEMA",
     "SHOCK_OPERATION_SCHEMA",
 ]

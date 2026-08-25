@@ -8,6 +8,7 @@ import json
 import os
 from pathlib import Path
 import stat
+import sys
 import tempfile
 from typing import Any, Dict, Iterable, Mapping, Optional, Tuple
 
@@ -25,27 +26,87 @@ from .generator import (
 
 LEGACY_PRIVATE_TRAJECTORY_SCHEMA = "egv-private-trajectory-sidecar-v1"
 PRIVATE_TRAJECTORY_SCHEMA = "egv-private-trajectory-sidecar-v2"
-PRIVATE_GENERATION_SCHEMA = "egv-private-generation-evidence-v1"
+PRIVATE_GENERATION_SCHEMA = "egv-private-generation-evidence-v2"
 PRIVATE_GENERATION_START_SCHEMA = "egv-private-generation-start-v1"
-PRIVATE_GENERATION_INTENT_SCHEMA = "egv-private-generation-intent-v1"
-LEGACY_PRIVATE_GENERATION_INTENT_SCHEMA = "egv-private-generation-intent-legacy-migration-v1"
+PRIVATE_GENERATION_INTENT_SCHEMA = "egv-private-generation-intent-v2"
+LEGACY_PRIVATE_GENERATION_INTENT_SCHEMA = "egv-private-generation-intent-legacy-migration-v2"
 LEGACY_ORPHAN_ARTIFACTS_SCHEMA = "egv-private-legacy-orphan-artifacts-v1"
 _PRIVATE_GENERATION_FIELDS = frozenset({
     "schema_version", "candidate_id", "status", "context", "response_contract",
     "response_contract_digest", "generation_profile_digest", "rendered_prompt_digest",
     "decoded_model_response_digest", "contract_response_digest", "proposal_source_digest",
-    "failure_stage", "error_code",
+    "failure_stage", "error_code", "replay_error_chain",
 })
 _PRIVATE_GENERATION_INTENT_FIELDS = frozenset({
     "schema_version", "candidate_id", "status", "context", "response_contract",
     "response_contract_digest", "generation_profile_digest", "rendered_prompt_b64",
     "decoded_model_response_b64", "contract_response_b64", "proposal_source_digest",
-    "failure_stage", "error_code",
+    "failure_stage", "error_code", "replay_error_chain",
 })
 _LEGACY_PRIVATE_GENERATION_INTENT_FIELDS = frozenset(
     set(_PRIVATE_GENERATION_INTENT_FIELDS) | {"legacy_orphan_manifest_digest"}
 )
 _PRIVATE_GENERATION_START_FIELDS = frozenset({"schema_version", "candidate_id", "context"})
+_REPLAY_EXCEPTION_CHAIN_LIMIT = 16
+
+
+def replay_exception_chain_classification(
+    error: BaseException,
+    *,
+    ambient_exception: Optional[BaseException] = None,
+) -> Tuple[str, ...]:
+    """Return one exact bounded outer-to-inner exception classification."""
+
+    chain = []
+    seen = set()
+    cursor: Optional[BaseException] = error
+    while cursor is not None:
+        if id(cursor) in seen or len(chain) >= _REPLAY_EXCEPTION_CHAIN_LIMIT:
+            raise VariationCheckpointError("response-contract replay exception chain is cyclic or too deep")
+        seen.add(id(cursor))
+        name = type(cursor).__name__
+        if not name or len(name) > 128:
+            raise VariationCheckpointError("response-contract replay exception type is invalid")
+        chain.append(name)
+        next_error = cursor.__cause__ if cursor.__cause__ is not None else cursor.__context__
+        if next_error is ambient_exception:
+            break
+        cursor = next_error
+    return tuple(chain)
+
+
+def response_contract_replay_error_chain(
+    context: CandidateContext,
+    contract_response: bytes,
+) -> Tuple[str, ...]:
+    """Replay trainer-supplied contract bytes and classify the exact failure chain."""
+
+    if not isinstance(contract_response, bytes) or not contract_response:
+        raise VariationCheckpointError("response-contract replay lacks exact contract bytes")
+    ambient_exception = sys.exc_info()[1]
+    try:
+        proposal = ModelCandidateGenerator._parse_response(
+            contract_response.decode("utf-8"),
+            context,
+            response_contract=context.response_contract,
+        )
+        proposal.validate(context, source_limit=256 * 1024)
+    except Exception as exc:
+        return replay_exception_chain_classification(
+            exc,
+            ambient_exception=ambient_exception,
+        )
+    raise VariationCheckpointError("response-contract failure unexpectedly succeeds on replay")
+
+
+def _generation_replay_error_chain(
+    context: CandidateContext,
+    failure_stage: Any,
+    contract_response: Any,
+) -> Optional[list[str]]:
+    if failure_stage != "RESPONSE_CONTRACT":
+        return None
+    return list(response_contract_replay_error_chain(context, contract_response))
 
 
 @dataclass(frozen=True)
@@ -259,6 +320,37 @@ class PrivateTrajectoryStore:
             if root.exists() and any(root.glob(pattern)):
                 raise VariationCheckpointError("private evidence contains an interrupted ambiguous write")
 
+    def _closed_json_inventory(self, root: Path, label: str) -> Tuple[Path, ...]:
+        """Return an exact single-link JSON-file inventory for one evidence root."""
+
+        self._validate_directory_chain(root, containment_root=self.root)
+        try:
+            entries = tuple(root.iterdir())
+        except OSError as exc:
+            raise VariationCheckpointError(
+                "{} inventory is unreadable".format(label)
+            ) from exc
+        for path in entries:
+            try:
+                metadata = os.lstat(path)
+            except OSError as exc:
+                raise VariationCheckpointError(
+                    "{} inventory metadata is unreadable".format(label)
+                ) from exc
+            if (
+                self._link_like(metadata)
+                or not stat.S_ISREG(metadata.st_mode)
+                or int(getattr(metadata, "st_nlink", 0)) != 1
+            ):
+                raise VariationCheckpointError(
+                    "{} inventory entry is linked or not regular".format(label)
+                )
+            if path.suffix != ".json":
+                raise VariationCheckpointError(
+                    "{} inventory contains an unexpected entry".format(label)
+                )
+        return tuple(sorted(entries))
+
     def _put_artifact(self, data: bytes, *, media_type: str, role: str):
         self._validate_store_layout()
         digest = digest_bytes(data)
@@ -326,6 +418,41 @@ class PrivateTrajectoryStore:
             prefix=".private-trajectory-",
             containment_root=self.records,
         )
+
+    def load_trajectory_read_only(
+        self, candidate_id: str
+    ) -> Tuple[CandidateContext, bytes, str]:
+        """Validate one terminal trajectory sidecar without repairing evidence."""
+
+        self._validate_store_layout()
+        self._validate_no_interrupted_evidence_writes()
+        self._validate_candidate_id(candidate_id)
+        path = self.records / (candidate_id + ".json")
+        try:
+            raw = self._read_regular_file(path, containment_root=self.records)
+            value = json.loads(raw.decode("utf-8"))
+        except (OSError, UnicodeError, ValueError) as exc:
+            raise VariationCheckpointError(
+                "private trajectory sidecar is missing or unreadable"
+            ) from exc
+        if (
+            canonical_bytes(value) != raw
+            or set(value)
+            != {"schema_version", "candidate_id", "context", "source_digest"}
+            or value.get("schema_version")
+            not in {PRIVATE_TRAJECTORY_SCHEMA, LEGACY_PRIVATE_TRAJECTORY_SCHEMA}
+            or value.get("candidate_id") != candidate_id
+            or not isinstance(value.get("context"), Mapping)
+            or not isinstance(value.get("source_digest"), str)
+        ):
+            raise VariationCheckpointError(
+                "private trajectory sidecar is not canonical and closed"
+            )
+        context = _context_from_mapping(value["context"])
+        source = self._read_artifact(value["source_digest"])
+        if digest_bytes(source) != value["source_digest"]:
+            raise VariationCheckpointError("private trajectory source digest is invalid")
+        return context, source, digest_bytes(raw)
 
     def _put_optional(self, value: Any, *, role: str) -> Any:
         if value is None:
@@ -478,6 +605,7 @@ class PrivateTrajectoryStore:
             if (
                 value.get("failure_stage") is not None
                 or value.get("error_code") is not None
+                or value.get("replay_error_chain") is not None
                 or not isinstance(value.get("proposal_source_digest"), str)
                 or any(item is None for item in raw_values.values())
             ):
@@ -492,8 +620,38 @@ class PrivateTrajectoryStore:
         else:
             raise VariationCheckpointError("private generation intent status is outside the closed vocabulary")
         rendered = raw_values["rendered_prompt"]
-        if rendered is not None and digest_bytes(rendered) != context.prompt_digest:
-            raise VariationCheckpointError("private generation intent prompt differs from its context")
+        stage = value.get("failure_stage")
+        expected_presence = {
+            ("SUCCESS", None): (True, True, True),
+            ("FAILED", "PROMPT_RENDER"): (False, False, False),
+            ("FAILED", "PROMPT_INTEGRITY"): (True, False, False),
+            ("FAILED", "MODEL_GENERATION"): (True, False, False),
+            ("FAILED", "RESPONSE_CONTRACT"): (True, True, True),
+        }.get((status, stage))
+        if tuple(item is not None for item in raw_values.values()) != expected_presence:
+            raise VariationCheckpointError("private generation intent artifact shape differs from its stage")
+        if rendered is not None:
+            rendered_digest = digest_bytes(rendered)
+            if stage == "PROMPT_INTEGRITY":
+                if rendered_digest == context.prompt_digest:
+                    raise VariationCheckpointError(
+                        "private prompt-integrity intent does not preserve differing prompt bytes"
+                    )
+            elif rendered_digest != context.prompt_digest:
+                raise VariationCheckpointError("private generation intent prompt differs from its context")
+        expected_replay_error_chain = _generation_replay_error_chain(
+            context,
+            stage,
+            raw_values["contract_response"],
+        )
+        if value.get("replay_error_chain") != expected_replay_error_chain:
+            raise VariationCheckpointError(
+                "private generation intent replay exception chain is not exact"
+            )
+        if expected_replay_error_chain is not None and value.get("error_code") != expected_replay_error_chain[0]:
+            raise VariationCheckpointError(
+                "private generation intent outer failure classification is not exact"
+            )
         return dict(value), context, raw_values
 
     def _complete_generation_intent(self, candidate_id: str) -> str:
@@ -518,6 +676,7 @@ class PrivateTrajectoryStore:
             "proposal_source_digest": value["proposal_source_digest"],
             "failure_stage": value["failure_stage"],
             "error_code": value["error_code"],
+            "replay_error_chain": value["replay_error_chain"],
         }
         path = self.generation_records / (candidate_id + ".json")
         if path.exists():
@@ -575,6 +734,7 @@ class PrivateTrajectoryStore:
             or generation.get("status") != "SUCCESS"
             or generation.get("failure_stage") is not None
             or generation.get("error_code") is not None
+            or generation.get("replay_error_chain") is not None
             or canonical_bytes(trajectory) != trajectory_raw
             or set(trajectory) != {"schema_version", "candidate_id", "context", "source_digest"}
             or trajectory.get("schema_version")
@@ -939,6 +1099,7 @@ class PrivateTrajectoryStore:
             "proposal_source_digest": digest_bytes(bundle.evidence.proposal.source),
             "failure_stage": None,
             "error_code": None,
+            "replay_error_chain": None,
         }
         if legacy_manifest_digest is not None:
             intent["legacy_orphan_manifest_digest"] = legacy_manifest_digest
@@ -955,23 +1116,52 @@ class PrivateTrajectoryStore:
             )
         return reproduced
 
-    def _reconcile_generation_intents(self) -> None:
-        """Finish every intent, then require an exact closed artifact inventory."""
+    def _reconcile_generation_intents(self, *, repair: bool = True) -> None:
+        """Reconcile or read-only validate the exact closed generation inventory."""
 
         self._validate_store_layout()
         self._validate_no_interrupted_evidence_writes()
+        intent_paths = self._closed_json_inventory(
+            self.generation_intents,
+            "private generation intent",
+        )
+        start_paths = self._closed_json_inventory(
+            self.generation_starts,
+            "private generation start",
+        )
+        record_paths = self._closed_json_inventory(
+            self.generation_records,
+            "private generation record",
+        )
+        trajectory_paths = self._closed_json_inventory(
+            self.records,
+            "private trajectory",
+        )
         intent_ids = set()
-        for path in sorted(self.generation_intents.glob("*.json")):
+        for path in intent_paths:
             candidate_id = path.stem
             self._load_generation_intent(candidate_id)
-            self._complete_generation_intent(candidate_id)
+            if repair:
+                self._complete_generation_intent(candidate_id)
             intent_ids.add(candidate_id)
+        if repair:
+            # Completing a durable intent publishes its generation and
+            # trajectory records. Re-close both inventories after repair so
+            # the equality check observes exactly what was durably published.
+            record_paths = self._closed_json_inventory(
+                self.generation_records,
+                "private generation record",
+            )
+            trajectory_paths = self._closed_json_inventory(
+                self.records,
+                "private trajectory",
+            )
         start_ids = set()
-        for path in sorted(self.generation_starts.glob("*.json")):
+        for path in start_paths:
             candidate_id = path.stem
             self._load_generation_start(candidate_id)
             start_ids.add(candidate_id)
-        record_ids = {path.stem for path in self.generation_records.glob("*.json")}
+        record_ids = {path.stem for path in record_paths}
         if record_ids != intent_ids or start_ids != intent_ids:
             raise VariationCheckpointError(
                 "private generation starts, intents, and records are incomplete or ambiguous"
@@ -984,7 +1174,7 @@ class PrivateTrajectoryStore:
             proposal_digest = intent_value.get("proposal_source_digest")
             if isinstance(proposal_digest, str):
                 optional_referenced.add(proposal_digest)
-        for path in sorted(self.records.glob("*.json")):
+        for path in trajectory_paths:
             try:
                 raw = self._read_regular_file(path, containment_root=self.records)
                 value = json.loads(raw.decode("utf-8"))
@@ -1102,6 +1292,10 @@ class PrivateTrajectoryStore:
                 )
             manifest_orphans.update(orphan_values)
         for path in sorted(self.artifacts.root.rglob("*.tmp")):
+            if not repair:
+                raise VariationCheckpointError(
+                    "private artifact store contains an interrupted write"
+                )
             digest = path.name[:-4]
             target = path.with_name(digest)
             if (
@@ -1154,6 +1348,7 @@ class PrivateTrajectoryStore:
         contract_response: Any,
         failure_stage: Any,
         error_code: Any,
+        replay_error_chain: Any,
         proposal_source_digest: Any,
     ) -> str:
         self._validate_store_layout()
@@ -1170,10 +1365,28 @@ class PrivateTrajectoryStore:
             except ValueError as exc:
                 raise VariationCheckpointError("private generation profile digest is not hexadecimal") from exc
         if status == "SUCCESS":
-            if failure_stage is not None or error_code is not None or proposal_source_digest is None:
+            if (
+                failure_stage is not None
+                or error_code is not None
+                or replay_error_chain is not None
+                or proposal_source_digest is None
+            ):
                 raise VariationCheckpointError("private generation success fields are inconsistent")
         elif status == "FAILED":
-            if not isinstance(failure_stage, str) or not isinstance(error_code, str) or proposal_source_digest is not None:
+            if (
+                not isinstance(failure_stage, str)
+                or not isinstance(error_code, str)
+                or proposal_source_digest is not None
+                or (
+                    failure_stage == "RESPONSE_CONTRACT"
+                    and (
+                        not isinstance(replay_error_chain, list)
+                        or not replay_error_chain
+                        or replay_error_chain[0] != error_code
+                    )
+                )
+                or (failure_stage != "RESPONSE_CONTRACT" and replay_error_chain is not None)
+            ):
                 raise VariationCheckpointError("private generation failure fields are inconsistent")
         else:
             raise VariationCheckpointError("private generation status is outside the closed vocabulary")
@@ -1195,6 +1408,7 @@ class PrivateTrajectoryStore:
             "proposal_source_digest": proposal_source_digest,
             "failure_stage": failure_stage,
             "error_code": error_code,
+            "replay_error_chain": replay_error_chain,
         }
         path = self.generation_intents / (candidate_id + ".json")
         self._write_once(
@@ -1224,6 +1438,7 @@ class PrivateTrajectoryStore:
             contract_response=evidence.contract_response,
             failure_stage=None,
             error_code=None,
+            replay_error_chain=None,
             proposal_source_digest=digest_bytes(evidence.proposal.source),
         )
 
@@ -1237,6 +1452,11 @@ class PrivateTrajectoryStore:
         if type(evidence) is not CandidateGenerationFailureEvidence:
             raise VariationCheckpointError("private generation failure evidence type is invalid")
         evidence.validate(context)
+        replay_error_chain = _generation_replay_error_chain(
+            context,
+            evidence.stage,
+            evidence.contract_response,
+        )
         return self._record_generation(
             candidate_id=candidate_id,
             context=context,
@@ -1246,6 +1466,7 @@ class PrivateTrajectoryStore:
             contract_response=evidence.contract_response,
             failure_stage=evidence.stage,
             error_code=evidence.error_code,
+            replay_error_chain=replay_error_chain,
             proposal_source_digest=None,
         )
 
@@ -1287,8 +1508,11 @@ class PrivateTrajectoryStore:
         self._read_regular_file(path, containment_root=self.generation_records)
         return True
 
-    def load_generation_success(
-        self, candidate_id: str
+    def _load_generation_success(
+        self,
+        candidate_id: str,
+        *,
+        repair: bool,
     ) -> Tuple[CandidateContext, CandidateGenerationEvidence, str]:
         """Reconstruct one successful proposal from immutable raw evidence.
 
@@ -1299,7 +1523,7 @@ class PrivateTrajectoryStore:
         receipts or mutable process state.
         """
 
-        self._reconcile_generation_intents()
+        self._reconcile_generation_intents(repair=repair)
         self._validate_store_layout()
         self._validate_candidate_id(candidate_id)
         path = self.generation_records / (candidate_id + ".json")
@@ -1316,6 +1540,7 @@ class PrivateTrajectoryStore:
             or value.get("status") != "SUCCESS"
             or value.get("failure_stage") is not None
             or value.get("error_code") is not None
+            or value.get("replay_error_chain") is not None
         ):
             raise VariationCheckpointError("private generation success is not canonical and closed")
         context_value = value.get("context")
@@ -1373,12 +1598,27 @@ class PrivateTrajectoryStore:
             raise VariationCheckpointError("private generation proposal differs from its durable source digest")
         return context, evidence, digest_bytes(raw)
 
-    def load_generation_failure(
+    def load_generation_success(
         self, candidate_id: str
+    ) -> Tuple[CandidateContext, CandidateGenerationEvidence, str]:
+        return self._load_generation_success(candidate_id, repair=True)
+
+    def load_generation_success_read_only(
+        self, candidate_id: str
+    ) -> Tuple[CandidateContext, CandidateGenerationEvidence, str]:
+        """Validate terminal success evidence without completing intents or artifacts."""
+
+        return self._load_generation_success(candidate_id, repair=False)
+
+    def _load_generation_failure(
+        self,
+        candidate_id: str,
+        *,
+        repair: bool,
     ) -> Tuple[CandidateContext, CandidateGenerationFailureEvidence, str]:
         """Load and revalidate one exact failed generation record."""
 
-        self._reconcile_generation_intents()
+        self._reconcile_generation_intents(repair=repair)
         self._validate_store_layout()
         self._validate_candidate_id(candidate_id)
         path = self.generation_records / (candidate_id + ".json")
@@ -1428,26 +1668,49 @@ class PrivateTrajectoryStore:
                 error_code=value.get("error_code"),
             )
             evidence.validate(context)
+            expected_replay_error_chain = _generation_replay_error_chain(
+                context,
+                evidence.stage,
+                evidence.contract_response,
+            )
         except Exception as exc:
             raise VariationCheckpointError("private generation failure cannot revalidate its raw evidence") from exc
         if (
             value.get("response_contract") != context.response_contract
             or value.get("response_contract_digest") != context.response_contract_digest
             or value.get("generation_profile_digest") != context.generation_profile_digest
+            or value.get("replay_error_chain") != expected_replay_error_chain
+            or (
+                expected_replay_error_chain is not None
+                and value.get("error_code") != expected_replay_error_chain[0]
+            )
         ):
             raise VariationCheckpointError("private generation failure differs from its frozen context")
         return context, evidence, digest_bytes(raw)
 
-    def successful_generations(
+    def load_generation_failure(
+        self, candidate_id: str
+    ) -> Tuple[CandidateContext, CandidateGenerationFailureEvidence, str]:
+        return self._load_generation_failure(candidate_id, repair=True)
+
+    def load_generation_failure_read_only(
+        self, candidate_id: str
+    ) -> Tuple[CandidateContext, CandidateGenerationFailureEvidence, str]:
+        """Validate terminal failure evidence without completing intents or artifacts."""
+
+        return self._load_generation_failure(candidate_id, repair=False)
+
+    def _successful_generations(
         self,
         *,
         run_id: str,
         task_id: str,
         arm_id: str,
+        repair: bool,
     ) -> Tuple[Tuple[str, CandidateContext, CandidateGenerationEvidence, str], ...]:
         """Load every successful generation bound to one trajectory."""
 
-        self._reconcile_generation_intents()
+        self._reconcile_generation_intents(repair=repair)
         self._validate_store_layout()
         self._validate_no_interrupted_evidence_writes()
         found = []
@@ -1479,7 +1742,10 @@ class PrivateTrajectoryStore:
                 raise VariationCheckpointError("private generation evidence has an unknown durable status")
             if value.get("status") != "SUCCESS":
                 continue
-            loaded_context, evidence, record_digest = self.load_generation_success(str(candidate_id))
+            loaded_context, evidence, record_digest = self._load_generation_success(
+                str(candidate_id),
+                repair=repair,
+            )
             if loaded_context != context:
                 raise VariationCheckpointError("private generation context changed while loading")
             found.append((str(candidate_id), context, evidence, record_digest))
@@ -1489,16 +1755,49 @@ class PrivateTrajectoryStore:
             raise VariationCheckpointError("successful private generation attempt indices are duplicated")
         return tuple(found)
 
-    def source_contract_failures(
+    def successful_generations(
         self,
         *,
         run_id: str,
         task_id: str,
         arm_id: str,
+    ) -> Tuple[Tuple[str, CandidateContext, CandidateGenerationEvidence, str], ...]:
+        """Load successful generations, repairing an interrupted STARTED write."""
+
+        return self._successful_generations(
+            run_id=run_id,
+            task_id=task_id,
+            arm_id=arm_id,
+            repair=True,
+        )
+
+    def successful_generations_read_only(
+        self,
+        *,
+        run_id: str,
+        task_id: str,
+        arm_id: str,
+    ) -> Tuple[Tuple[str, CandidateContext, CandidateGenerationEvidence, str], ...]:
+        """Validate terminal successful-generation inventory without repairing it."""
+
+        return self._successful_generations(
+            run_id=run_id,
+            task_id=task_id,
+            arm_id=arm_id,
+            repair=False,
+        )
+
+    def _source_contract_failures(
+        self,
+        *,
+        run_id: str,
+        task_id: str,
+        arm_id: str,
+        repair: bool,
     ) -> Tuple[Mapping[str, Any], ...]:
         """Load immutable source-contract failures for exact bounded resume."""
 
-        self._reconcile_generation_intents()
+        self._reconcile_generation_intents(repair=repair)
         self._validate_store_layout()
         self._validate_no_interrupted_evidence_writes()
         failures = []
@@ -1539,12 +1838,27 @@ class PrivateTrajectoryStore:
                 or value.get("proposal_source_digest") is not None
             ):
                 raise VariationCheckpointError("source-contract failure binding is invalid")
+            raw_artifacts = {}
             for field in (
                 "rendered_prompt_digest", "decoded_model_response_digest", "contract_response_digest"
             ):
                 artifact_digest = value.get(field)
-                if not isinstance(artifact_digest, str) or digest_bytes(self._read_artifact(artifact_digest)) != artifact_digest:
+                if not isinstance(artifact_digest, str):
                     raise VariationCheckpointError("source-contract failure raw evidence is missing or corrupt")
+                artifact = self._read_artifact(artifact_digest)
+                if digest_bytes(artifact) != artifact_digest:
+                    raise VariationCheckpointError("source-contract failure raw evidence is missing or corrupt")
+                raw_artifacts[field] = artifact
+            expected_replay_error_chain = _generation_replay_error_chain(
+                context,
+                value.get("failure_stage"),
+                raw_artifacts["contract_response_digest"],
+            )
+            if (
+                value.get("replay_error_chain") != expected_replay_error_chain
+                or value.get("error_code") != expected_replay_error_chain[0]
+            ):
+                raise VariationCheckpointError("source-contract failure replay classification is invalid")
             failures.append({
                 "attempt_index": context.attempt_index,
                 "candidate_id": value["candidate_id"],
@@ -1557,6 +1871,38 @@ class PrivateTrajectoryStore:
         if len(indices) != len(set(indices)):
             raise VariationCheckpointError("source-contract failure attempt indices are duplicated")
         return tuple(failures)
+
+    def source_contract_failures(
+        self,
+        *,
+        run_id: str,
+        task_id: str,
+        arm_id: str,
+    ) -> Tuple[Mapping[str, Any], ...]:
+        """Load source-contract failures, repairing an interrupted STARTED write."""
+
+        return self._source_contract_failures(
+            run_id=run_id,
+            task_id=task_id,
+            arm_id=arm_id,
+            repair=True,
+        )
+
+    def source_contract_failures_read_only(
+        self,
+        *,
+        run_id: str,
+        task_id: str,
+        arm_id: str,
+    ) -> Tuple[Mapping[str, Any], ...]:
+        """Validate terminal source-contract-failure inventory without repairing it."""
+
+        return self._source_contract_failures(
+            run_id=run_id,
+            task_id=task_id,
+            arm_id=arm_id,
+            repair=False,
+        )
 
     def load_attempts(self, candidate_ids: Iterable[str]) -> Tuple[object, ...]:
         from ..training.contracts import PrivateTrajectoryAttempt
@@ -1603,6 +1949,7 @@ class PrivateTrajectoryStore:
                     or generation.get("generation_profile_digest") != context.generation_profile_digest
                     or generation.get("failure_stage") is not None
                     or generation.get("error_code") is not None
+                    or generation.get("replay_error_chain") is not None
                 ):
                     raise VariationCheckpointError("source-only generation evidence differs from trajectory")
                 for field in (
@@ -1636,5 +1983,6 @@ class PrivateTrajectoryStore:
 
 __all__ = [
     "LEGACY_PRIVATE_TRAJECTORY_SCHEMA", "LegacyGenerationBundle", "PRIVATE_GENERATION_SCHEMA",
-    "PRIVATE_TRAJECTORY_SCHEMA", "PrivateTrajectoryStore",
+    "PRIVATE_TRAJECTORY_SCHEMA", "PrivateTrajectoryStore", "replay_exception_chain_classification",
+    "response_contract_replay_error_chain",
 ]

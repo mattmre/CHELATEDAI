@@ -5,8 +5,12 @@ import io
 import json
 import os
 from pathlib import Path
+import shutil
+import subprocess
+import sys
 import tempfile
 import threading
+import time
 import unittest
 from unittest.mock import patch
 from contextlib import redirect_stdout
@@ -29,11 +33,15 @@ from egv.variation.remote import (
     RemoteControllerEvaluationGateway,
     RemoteEvaluatorServiceManifest,
     _decode_b64,
+    _bounded_process_exited_without_reap,
     _durable_remote_response,
     _encode_b64,
     _operation_digest,
     build_remote_evaluator_service_manifest,
     run_remote_evaluator_once,
+    pinned_python_invocation,
+    _run_bounded_command,
+    _terminate_bounded_process_tree,
 )
 
 
@@ -151,6 +159,494 @@ class RemoteEvaluatorCLITests(unittest.TestCase):
 
 
 class RemoteVariationGatewayTests(unittest.TestCase):
+
+    @unittest.skipUnless(os.name == "nt", "Windows unassigned suspended-child cleanup canary")
+    def test_windows_job_assignment_failure_directly_kills_and_reaps_suspended_child(self) -> None:
+        started = []
+        real_popen = subprocess.Popen
+
+        def capture_start(*args, **kwargs):
+            process = real_popen(*args, **kwargs)
+            started.append(process)
+            return process
+
+        with patch("egv.variation.remote.subprocess.Popen", side_effect=capture_start), patch(
+            "egv.variation.remote._assign_process_to_windows_job",
+            side_effect=OSError("fault-injected assignment failure"),
+        ):
+            with self.assertRaisesRegex(VariationDependencyError, "invocation failed"):
+                _run_bounded_command([sys.executable, "-c", "import time; time.sleep(60)"], "{}")
+        self.assertEqual(len(started), 1)
+        self.assertIsNotNone(started[0].poll())
+
+    @unittest.skipUnless(os.name == "nt", "Windows failed-start cleanup propagation canary")
+    def test_windows_unassigned_cleanup_failures_remain_attached_to_start_error(self) -> None:
+        process = unittest.mock.Mock(pid=12345)
+        process._handle = 12345
+        process.stdin = unittest.mock.Mock()
+        process.stdout = unittest.mock.Mock()
+        process.stderr = unittest.mock.Mock()
+        process.kill.side_effect = OSError("fault-injected direct kill failure")
+        process.wait.side_effect = subprocess.TimeoutExpired(["remote"], 5)
+        with patch(
+            "egv.variation.remote.subprocess.Popen",
+            return_value=process,
+        ), patch(
+            "egv.variation.remote._assign_process_to_windows_job",
+            side_effect=OSError("fault-injected assignment failure"),
+        ):
+            with self.assertRaisesRegex(VariationDependencyError, "invocation failed") as raised:
+                _run_bounded_command([sys.executable, "-c", "pass"], "{}")
+        startup_error = raised.exception.__cause__
+        self.assertIsInstance(startup_error, OSError)
+        self.assertEqual(
+            getattr(startup_error, "cleanup_context", ()),
+            (
+                "fault-injected direct kill failure",
+                "Command '['remote']' timed out after 5 seconds",
+            ),
+        )
+        process.kill.assert_called_once()
+        process.wait.assert_called_once()
+
+    @unittest.skipUnless(os.name == "nt", "Windows owned-resource cleanup fault matrix")
+    def test_windows_failed_start_cleanup_reports_wait_stream_and_handle_failures(self) -> None:
+        from egv.variation import remote as remote_module
+
+        for wait_error in (
+            subprocess.TimeoutExpired(["remote"], 5),
+            OSError("fault-injected wait failure"),
+        ):
+            with self.subTest(wait_error=type(wait_error).__name__):
+                process = unittest.mock.Mock(pid=12345)
+                process.stdin = unittest.mock.Mock()
+                process.stdout = unittest.mock.Mock()
+                process.stderr = unittest.mock.Mock()
+                process.wait.side_effect = wait_error
+                process.stderr.close.side_effect = OSError(
+                    "fault-injected stderr close failure"
+                )
+                close_handle = unittest.mock.Mock(return_value=False)
+                errors = remote_module._cleanup_failed_windows_start(
+                    process,
+                    9876,
+                    job_assigned=False,
+                    close_handle=close_handle,
+                    deadline=time.monotonic() + 1,
+                )
+                self.assertIn(wait_error, errors)
+                self.assertTrue(
+                    any("stderr close failure" in str(error) for error in errors)
+                )
+                self.assertTrue(
+                    any("Job Object close failed" in str(error) for error in errors)
+                )
+                process.kill.assert_called_once()
+                process.wait.assert_called_once()
+                close_handle.assert_called_once_with(9876)
+
+    @unittest.skipUnless(os.name == "nt", "Windows assigned-tree cleanup fault canary")
+    def test_windows_failed_start_propagates_assigned_tree_termination_failure(self) -> None:
+        from egv.variation import remote as remote_module
+
+        process = unittest.mock.Mock(pid=12345)
+        process.stdin = unittest.mock.Mock()
+        process.stdout = unittest.mock.Mock()
+        process.stderr = unittest.mock.Mock()
+        close_handle = unittest.mock.Mock(return_value=True)
+        tree_error = VariationDependencyError("fault-injected process-tree cleanup failure")
+        with patch(
+            "egv.variation.remote._terminate_bounded_process_tree",
+            side_effect=tree_error,
+        ) as terminate_tree:
+            errors = remote_module._cleanup_failed_windows_start(
+                process,
+                9876,
+                job_assigned=True,
+                close_handle=close_handle,
+                deadline=time.monotonic() + 1,
+            )
+        self.assertIn(tree_error, errors)
+        terminate_tree.assert_called_once()
+        process.kill.assert_not_called()
+        process.wait.assert_not_called()
+        close_handle.assert_called_once_with(9876)
+
+    def test_late_native_startup_fails_as_timeout_before_request_io(self) -> None:
+        from egv.variation import remote as remote_module
+
+        real_start = remote_module._start_bounded_process
+
+        def delayed_start(*args, **kwargs):
+            process = real_start(*args, **kwargs)
+            time.sleep(0.1)
+            return process
+
+        with patch("egv.variation.remote.REMOTE_VARIATION_TIMEOUT_SECONDS", 0.05), patch(
+            "egv.variation.remote._start_bounded_process", side_effect=delayed_start
+        ):
+            with self.assertRaisesRegex(VariationDependencyError, "timed out"):
+                _run_bounded_command([sys.executable, "-c", "import time; time.sleep(60)"], "{}")
+
+    @unittest.skipIf(os.name == "nt", "POSIX waitid ordering canary")
+    def test_posix_observes_exit_without_reap_then_kills_group_before_wait(self) -> None:
+        process = unittest.mock.Mock(pid=12345)
+        process.poll.side_effect = AssertionError("poll must not reap the POSIX leader")
+        with patch("egv.variation.remote.os.waitid", return_value=object()) as waitid:
+            self.assertTrue(_bounded_process_exited_without_reap(process))
+        waitid.assert_called_once()
+        order = []
+        process.wait.side_effect = lambda timeout: order.append(("wait", timeout))
+        with patch(
+            "egv.variation.remote.os.waitid",
+            side_effect=lambda *args: order.append(("waitid", args[1])) or object(),
+        ), patch(
+            "egv.variation.remote.os.killpg",
+            side_effect=lambda pid, sig: order.append(("killpg", pid)),
+        ):
+            _terminate_bounded_process_tree(process, deadline=time.monotonic() + 1)
+        self.assertEqual([item[0] for item in order], ["waitid", "killpg", "wait"])
+
+    @unittest.skipIf(os.name == "nt", "POSIX lost-anchor cleanup canary")
+    def test_posix_lost_leader_anchor_never_signals_recycled_process_group(self) -> None:
+        process = unittest.mock.Mock(pid=12345)
+        process.wait.return_value = 0
+        with patch(
+            "egv.variation.remote.os.waitid",
+            side_effect=ChildProcessError("fault-injected lost leader"),
+        ), patch("egv.variation.remote.os.killpg") as killpg:
+            with self.assertRaisesRegex(VariationDependencyError, "cleanup failed"):
+                _terminate_bounded_process_tree(process, deadline=time.monotonic() + 1)
+        killpg.assert_not_called()
+        process.wait.assert_called_once()
+
+    def test_process_tree_cleanup_retains_simultaneous_termination_and_wait_failures(self) -> None:
+        process = unittest.mock.Mock(pid=12345)
+        process.wait.side_effect = OSError("fault-injected cleanup wait failure")
+        if os.name == "nt":
+            process.poll.return_value = None
+            process.kill.side_effect = OSError(
+                "fault-injected cleanup termination failure"
+            )
+            with self.assertRaisesRegex(
+                VariationDependencyError,
+                "process-tree cleanup failed",
+            ) as raised:
+                _terminate_bounded_process_tree(
+                    process,
+                    deadline=time.monotonic() + 1,
+                )
+        else:
+            with patch(
+                "egv.variation.remote.os.waitid",
+                return_value=object(),
+            ), patch(
+                "egv.variation.remote.os.killpg",
+                side_effect=OSError(
+                    "fault-injected cleanup termination failure"
+                ),
+            ):
+                with self.assertRaisesRegex(
+                    VariationDependencyError,
+                    "process-tree cleanup failed",
+                ) as raised:
+                    _terminate_bounded_process_tree(
+                        process,
+                        deadline=time.monotonic() + 1,
+                    )
+        self.assertEqual(
+            getattr(raised.exception, "cleanup_context", ()),
+            (
+                "fault-injected cleanup termination failure",
+                "fault-injected cleanup wait failure",
+            ),
+        )
+        process.wait.assert_called_once()
+
+    def test_late_startup_failure_remains_primary_with_flattened_cleanup_evidence(self) -> None:
+        startup_error = OSError("fault-injected native startup failure")
+        setattr(
+            startup_error,
+            "cleanup_context",
+            (
+                "fault-injected termination cleanup failure",
+                "fault-injected wait cleanup failure",
+            ),
+        )
+        with patch(
+            "egv.variation.remote.REMOTE_VARIATION_TIMEOUT_SECONDS",
+            0.05,
+        ), patch(
+            "egv.variation.remote.time.monotonic",
+            side_effect=(0.0, 1.0),
+        ), patch(
+            "egv.variation.remote._start_bounded_process",
+            side_effect=startup_error,
+        ):
+            with self.assertRaisesRegex(
+                VariationDependencyError,
+                "timed out",
+            ) as raised:
+                _run_bounded_command([sys.executable, "-c", "pass"], "{}")
+        self.assertIs(raised.exception.__cause__, startup_error)
+        self.assertEqual(
+            getattr(raised.exception, "cleanup_context", ()),
+            (
+                "fault-injected native startup failure",
+                "fault-injected termination cleanup failure",
+                "fault-injected wait cleanup failure",
+            ),
+        )
+
+    @unittest.skipUnless(os.name == "nt", "Windows owned-handle cleanup canary")
+    def test_owned_windows_handle_preserves_close_failure_on_primary_error(self) -> None:
+        from egv.variation import remote as remote_module
+
+        close_handle = unittest.mock.Mock(return_value=False)
+        primary = OSError("fault-injected primary startup failure")
+        with self.assertRaises(OSError) as raised:
+            with remote_module._owned_windows_handle(
+                close_handle,
+                12345,
+                "evaluator primary thread",
+            ):
+                raise primary
+        self.assertIs(raised.exception, primary)
+        self.assertTrue(
+            any(
+                "primary thread close failed" in item
+                for item in getattr(primary, "cleanup_context", ())
+            )
+        )
+
+    @unittest.skipUnless(os.name == "nt", "Windows pinned-identity raw-handle canary")
+    def test_pinned_python_raw_handle_close_failure_remains_attached(self) -> None:
+        kernel32 = unittest.mock.Mock()
+        kernel32.CreateFileW.return_value = 12345
+        kernel32.CloseHandle.return_value = False
+        conversion_error = OSError("fault-injected descriptor conversion failure")
+        executable = Path(sys.executable).resolve()
+        executable_digest = hashlib.sha256(executable.read_bytes()).hexdigest()
+        with patch("ctypes.WinDLL", return_value=kernel32), patch(
+            "msvcrt.open_osfhandle",
+            side_effect=conversion_error,
+        ):
+            with self.assertRaisesRegex(
+                VariationDependencyError,
+                "identity is unavailable",
+            ) as raised:
+                with pinned_python_invocation(executable, executable_digest):
+                    self.fail("pinned identity unexpectedly yielded")
+        self.assertIs(raised.exception.__cause__, conversion_error)
+        self.assertTrue(
+            any(
+                "pinned Python executable close failed" in item
+                for item in getattr(raised.exception, "cleanup_context", ())
+            )
+        )
+        kernel32.CloseHandle.assert_called_once_with(12345)
+
+    def test_primary_overflow_preserves_cleanup_context_without_exception_notes(self) -> None:
+        from egv.variation import remote as remote_module
+
+        real_cleanup = remote_module._terminate_bounded_process_tree
+
+        def cleanup_then_report(*args, **kwargs):
+            real_cleanup(*args, **kwargs)
+            raise VariationDependencyError("fault-injected secondary cleanup error")
+
+        command = [sys.executable, "-c", "import sys; sys.stdout.write('X'*4096); sys.stdout.flush()"]
+        with patch("egv.variation.remote.REMOTE_VARIATION_RESPONSE_LIMIT", 128), patch(
+            "egv.variation.remote._terminate_bounded_process_tree", side_effect=cleanup_then_report
+        ):
+            with self.assertRaisesRegex(VariationDependencyError, "stdout exceeded") as raised:
+                _run_bounded_command(command, "{}")
+        self.assertEqual(
+            getattr(raised.exception, "cleanup_context", ()),
+            ("fault-injected secondary cleanup error",),
+        )
+
+    def test_cleanup_only_failure_preserves_every_secondary_cleanup_error(self) -> None:
+        process = unittest.mock.Mock(pid=12345)
+        process.returncode = 0
+        process.stdin = unittest.mock.Mock()
+        process.stdout = unittest.mock.Mock()
+        process.stderr = unittest.mock.Mock()
+        process.stdin.write.side_effect = lambda value: len(value)
+        process.stdout.read.return_value = b""
+        process.stderr.read.return_value = b""
+        process.stdout.close.side_effect = OSError(
+            "fault-injected stdout close failure"
+        )
+        process.stderr.close.side_effect = OSError(
+            "fault-injected stderr close failure"
+        )
+        tree_error = VariationDependencyError(
+            "fault-injected process-tree cleanup wrapper"
+        )
+        setattr(
+            tree_error,
+            "cleanup_context",
+            (
+                "fault-injected tree termination failure",
+                "fault-injected tree wait failure",
+            ),
+        )
+
+        with patch(
+            "egv.variation.remote._start_bounded_process",
+            return_value=(process, None),
+        ), patch(
+            "egv.variation.remote._bounded_process_exited_without_reap",
+            return_value=True,
+        ), patch(
+            "egv.variation.remote._terminate_bounded_process_tree",
+            side_effect=tree_error,
+        ):
+            with self.assertRaisesRegex(
+                VariationDependencyError,
+                "process-tree cleanup failed",
+            ) as raised:
+                _run_bounded_command(["fault-injected-remote"], "{}")
+
+        self.assertIs(raised.exception.__cause__, tree_error)
+        self.assertEqual(
+            getattr(raised.exception, "cleanup_context", ()),
+            (
+                "fault-injected process-tree cleanup wrapper",
+                "fault-injected tree termination failure",
+                "fault-injected tree wait failure",
+                "fault-injected stdout close failure",
+                "fault-injected stderr close failure",
+            ),
+        )
+        process.stdin.close.assert_called_once()
+        process.stdout.close.assert_called_once()
+        process.stderr.close.assert_called_once()
+
+    @unittest.skipUnless(os.name == "nt", "Windows Job Object containment canary")
+    def test_bounded_command_windows_job_contains_remote_descendant(self) -> None:
+        import ctypes
+        from ctypes import wintypes
+
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        open_process = kernel32.OpenProcess
+        open_process.argtypes = (wintypes.DWORD, wintypes.BOOL, wintypes.DWORD)
+        open_process.restype = wintypes.HANDLE
+        wait_for_single = kernel32.WaitForSingleObject
+        wait_for_single.argtypes = (wintypes.HANDLE, wintypes.DWORD)
+        wait_for_single.restype = wintypes.DWORD
+        close_handle = kernel32.CloseHandle
+        close_handle.argtypes = (wintypes.HANDLE,)
+        close_handle.restype = wintypes.BOOL
+
+        with tempfile.TemporaryDirectory() as temporary:
+            pid_file = Path(temporary) / "windows-descendant.pid"
+            child = "import time; time.sleep(60)"
+            script = (
+                "import pathlib,subprocess,sys\n"
+                "p=subprocess.Popen([sys.executable,'-c',%r])\n" % child
+                + "pathlib.Path(%r).write_text(str(p.pid),encoding='ascii')\n" % str(pid_file)
+                + "sys.stdout.write('{}'); sys.stdout.flush()\n"
+            )
+            code, stdout, _stderr = _run_bounded_command([sys.executable, "-c", script], "{}")
+            self.assertEqual(code, 0)
+            self.assertEqual(stdout, b"{}")
+            self.assertTrue(pid_file.exists())
+            pid = int(pid_file.read_text(encoding="ascii"))
+            handle = open_process(0x00100000, False, pid)  # SYNCHRONIZE
+            if handle:
+                try:
+                    self.assertEqual(wait_for_single(handle, 3000), 0)  # WAIT_OBJECT_0
+                finally:
+                    close_handle(handle)
+            else:
+                self.assertEqual(ctypes.get_last_error(), 87)  # ERROR_INVALID_PARAMETER: PID is gone
+
+    def test_bounded_command_times_out_when_child_never_reads_maximum_request(self) -> None:
+        command = [sys.executable, "-c", "import time; time.sleep(60)"]
+        request = "X" * (512 * 1024)
+        started = time.monotonic()
+        with patch("egv.variation.remote.REMOTE_VARIATION_TIMEOUT_SECONDS", 0.2):
+            with self.assertRaisesRegex(VariationDependencyError, "timed out"):
+                _run_bounded_command(command, request)
+        self.assertLess(time.monotonic() - started, 6.0)
+
+    @unittest.skipIf(os.name == "nt", "POSIX process-group containment canary")
+    def test_bounded_command_contains_descendants_on_timeout_overflow_and_success(self) -> None:
+        def wait_gone(pid_file: Path) -> None:
+            deadline = time.monotonic() + 3
+            while not pid_file.exists() and time.monotonic() < deadline:
+                time.sleep(0.01)
+            self.assertTrue(pid_file.exists())
+            pid = int(pid_file.read_text(encoding="ascii"))
+            while time.monotonic() < deadline:
+                try:
+                    os.kill(pid, 0)
+                except ProcessLookupError:
+                    return
+                time.sleep(0.02)
+            self.fail("descendant process survived containment cleanup")
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            for mode in ("timeout", "overflow", "success"):
+                with self.subTest(mode=mode):
+                    pid_file = root / (mode + ".pid")
+                    child = "import time; time.sleep(60)"
+                    tail = {
+                        "timeout": "time.sleep(60)",
+                        "overflow": "sys.stdout.write('X'*4096); sys.stdout.flush()",
+                        "success": "sys.stdout.write('{}'); sys.stdout.flush()",
+                    }[mode]
+                    script = (
+                        "import pathlib,subprocess,sys,time\n"
+                        "p=subprocess.Popen([sys.executable,'-c',%r])\n" % child
+                        + "pathlib.Path(%r).write_text(str(p.pid),encoding='ascii')\n" % str(pid_file)
+                        + tail
+                        + "\n"
+                    )
+                    command = [sys.executable, "-c", script]
+                    timeout_value = 0.2 if mode == "timeout" else 5
+                    response_limit = 128 if mode == "overflow" else 1024 * 1024
+                    with patch("egv.variation.remote.REMOTE_VARIATION_TIMEOUT_SECONDS", timeout_value), patch(
+                        "egv.variation.remote.REMOTE_VARIATION_RESPONSE_LIMIT", response_limit
+                    ):
+                        if mode == "success":
+                            code, stdout, _stderr = _run_bounded_command(command, "{}")
+                            self.assertEqual(code, 0)
+                            self.assertEqual(stdout, b"{}")
+                        else:
+                            with self.assertRaises(VariationDependencyError):
+                                _run_bounded_command(command, "{}")
+                    wait_gone(pid_file)
+
+    @unittest.skipIf(os.name == "nt", "sealed memfd execution is POSIX-specific")
+    def test_pinned_python_uses_sealed_immutable_copy_and_launches_it(self) -> None:
+        import fcntl
+
+        with tempfile.TemporaryDirectory() as temporary:
+            source = Path(temporary) / "python-copy"
+            shutil.copy2(Path(sys.executable).resolve(), source)
+            expected_bytes = source.read_bytes()
+            expected_digest = hashlib.sha256(expected_bytes).hexdigest()
+            with pinned_python_invocation(source.resolve(), expected_digest) as (executable, kwargs):
+                fd = kwargs["pass_fds"][0]
+                self.assertFalse(os.get_inheritable(fd))
+                source.write_bytes(b"X" * len(expected_bytes))
+                os.lseek(fd, 0, os.SEEK_SET)
+                self.assertEqual(hashlib.sha256(os.read(fd, len(expected_bytes))).hexdigest(), expected_digest)
+                with self.assertRaises(OSError):
+                    os.write(fd, b"mutation")
+                seals = fcntl.fcntl(fd, getattr(fcntl, "F_GET_SEALS", 1034))
+                required = 0x0001 | 0x0002 | 0x0004 | 0x0008
+                self.assertEqual(seals & required, required)
+                completed = subprocess.run(
+                    [executable, "-c", "print('sealed-launch-ok')"],
+                    pass_fds=(fd,), capture_output=True, text=True, check=True,
+                )
+                self.assertEqual(completed.stdout.strip(), "sealed-launch-ok")
+
     def setUp(self) -> None:
         self.temporary = tempfile.TemporaryDirectory(prefix="egv-remote-variation-")
         self.root = Path(self.temporary.name)

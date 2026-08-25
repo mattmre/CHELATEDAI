@@ -21,49 +21,74 @@ import os
 from pathlib import Path
 import re
 import shlex
+import signal
 import stat
 import subprocess
 import sys
 import tempfile
 import threading
+from time import monotonic
 from types import MappingProxyType
 from typing import Any, Dict, Mapping, Optional, Sequence, Tuple
 
 from ..canonical import (
     GENESIS_HASH,
     canonical_bytes,
+    canonical_json,
     content_id,
     digest_bytes,
     digest_for,
+    failure_family_root,
+    parse_canonical_jsonl,
     validate_sha256,
 )
 from ..evaluation.authority import AuthorityPolicy
-from ..ledger import EvidenceLedger
+from ..evaluation.diagnostics import Diagnostic, validate_diagnostic, validate_disposition, validate_resource_bucket
+from ..identities import commissioning_run_id
+from ..ledger import EvidenceLedger, INLINE_PAYLOAD_LIMIT
 from ..receipts import ReceiptSigner, load_public_key, receipt_hash
 from ..variation.adapter import ADAPTER_MANIFEST_NAME, SealedAdapterArtifact
 from ..variation.arms import arm_policy
-from ..variation.generator import ModelCandidateGenerator, SOURCE_ONLY_RESPONSE_CONTRACT_DIGEST
-from ..variation.generator import model_generation_profile_digest
+from ..variation.checkpoint import VariationCheckpoint
+from ..variation.generator import (
+    CandidateContext,
+    CandidateGenerationEvidence,
+    CandidateGenerationFailureEvidence,
+    ModelCandidateGenerator,
+    SOURCE_ONLY_RESPONSE_CONTRACT_DIGEST,
+    model_generation_profile_digest,
+    render_candidate_prompt,
+)
 from ..variation.loop import (
     MAX_CANDIDATE_ATTEMPTS,
     VARIATION_PROTOCOL_DIGEST,
     AttemptRecord,
     BoundedCandidateLoop,
+    SourceContractBudgetExhausted,
     VariationReport,
 )
 from ..variation.model import MODEL_REVISION, PinnedModelLoader
-from ..variation.private import PrivateTrajectoryStore
+from ..variation.private import (
+    PRIVATE_GENERATION_SCHEMA,
+    PrivateTrajectoryStore,
+    replay_exception_chain_classification,
+    response_contract_replay_error_chain,
+)
+from ..variation.retrieval import retrieval_policy
 from ..variation.remote import (
     REMOTE_VARIATION_REQUEST_LIMIT,
     REMOTE_VARIATION_TIMEOUT_SECONDS,
     RemoteControllerEvaluationGateway,
     RemoteEvaluatorServiceManifest,
+    _bounded_process_exited_without_reap,
+    pinned_python_invocation,
     run_remote_evaluator_once,
     _validate_remote_result_semantics,
 )
-from ..variation.errors import VariationConfigurationError
+from ..variation.errors import VariationConfigurationError, VariationDependencyError
 from .heldout import (
     MAIN_PHASE,
+    RESULT_SCHEMA,
     SHOCK_PHASE,
     CoordinateOperationStore,
     FrozenHeldoutProtocol,
@@ -96,20 +121,70 @@ from .shock_runtime import (
 
 
 PRODUCTION_INTEGRATION_NAME = "qwen-heldout-production-v1"
-DEPLOYMENT_MANIFEST_SCHEMA = "egv-heldout-production-deployment-v1"
-MAIN_EVIDENCE_SCHEMA = "egv-heldout-main-evidence-v1"
-SHOCK_EVIDENCE_SCHEMA = "egv-heldout-shock-evidence-v1"
-OBSERVATION_SCHEMA = "egv-heldout-production-observation-v1"
+DEPLOYMENT_MANIFEST_SCHEMA = "egv-heldout-production-deployment-v2"
+HELDOUT_EVALUATOR_EXECUTION_MODE = "python-json-v1"
+MAIN_EVIDENCE_SCHEMA = "egv-heldout-main-evidence-v2"
+SHOCK_EVIDENCE_SCHEMA = "egv-heldout-shock-evidence-v2"
+OBSERVATION_SCHEMA = "egv-heldout-production-observation-v2"
 DISPATCH_RECORD_SCHEMA = "egv-heldout-production-dispatch-v1"
 PRODUCTION_REQUEST_LIMIT = 8 * 1024 * 1024
 PRODUCTION_RESPONSE_LIMIT = 8 * 1024 * 1024
 PRODUCTION_STDERR_LIMIT = 256 * 1024
+_WINDOWS_CREATE_SUSPENDED = 0x00000004
 RECEIPT_ROUTER_SCHEMA = "egv-variation-receipt-router-v1"
 RECEIPT_ROUTER_CAPABILITY = "content-addressed-receipt-chain-fork-v1"
 RECEIPT_ROUTER_CONFIG_SCHEMA = "egv-variation-receipt-router-config-v1"
 RECEIPT_ROUTER_STATE_SCHEMA = "egv-remote-variation-state-v1"
 PRODUCTION_SOURCE_MANIFEST_SCHEMA = "egv-production-source-manifest-v1"
 SOURCE_ISOLATION_SCOPE = "variation-router-only-v1"
+_SHOCK_LEDGER_EVENT_TYPES = frozenset(
+    {
+        "CAMPAIGN",
+        "RUN",
+        "SHOCK_PREMISE",
+        "SHOCK_UNRELATED_ROOT",
+        "SHOCK_UNRELATED_EVIDENCE",
+        "CANDIDATE",
+        "SHOCK_GENERATION_FAILURE",
+        "RECEIPT",
+        "VERDICT",
+        "EFFECT_RECEIPT",
+        "SHOCK_ATTEMPT",
+        "DEPENDENCY",
+        "SHOCK_CORRECTED_PREMISE",
+        "CORRECTION",
+        "SHOCK_CORRECTION_COMMIT",
+        "SHOCK_POLICY_ACTIVATION",
+    }
+)
+_LEDGER_EVENT_EXPORT_FIELDS = frozenset(
+    {
+        "record_type",
+        "ledger_schema_version",
+        "sequence",
+        "event_id",
+        "campaign_id",
+        "run_id",
+        "task_id",
+        "event_type",
+        "transaction_time",
+        "valid_time",
+        "subject_id",
+        "payload_hash",
+        "payload_json",
+        "blob_digest",
+        "source_class",
+        "disposition",
+        "evaluator_identity",
+        "idempotency_key",
+        "previous_hash",
+        "event_hash",
+        "payload",
+    }
+)
+_LEDGER_CHECKPOINT_EXPORT_FIELDS = frozenset(
+    {"record_type", "ledger_schema_version", "checkpoint"}
+)
 _SOURCE_COMMIT = re.compile(r"[0-9a-f]{40}")
 _ROUTER_CONFIG_FIELDS = (
     "schema_version",
@@ -183,6 +258,38 @@ class _ExpectedVariationManifest:
         return self._values[key]
 
 
+def _main_run_id(protocol: FrozenHeldoutProtocol, coordinate: HeldoutCoordinate) -> str:
+    return commissioning_run_id(
+        campaign_id=protocol.campaign_id,
+        task_id=coordinate.task_id,
+        arm_id=coordinate.treatment,
+        seed=coordinate.seed,
+    )
+
+
+def _main_candidate_id(
+    protocol: FrozenHeldoutProtocol,
+    coordinate: HeldoutCoordinate,
+    *,
+    run_id: str,
+    attempt: int,
+    parent: Optional[str],
+) -> str:
+    return "egv-candidate-{}-{}-{}".format(
+        protocol.campaign_id,
+        coordinate.treatment,
+        digest_for(
+            {
+                "run_id": run_id,
+                "task_id": coordinate.task_id,
+                "seed": coordinate.seed,
+                "attempt": attempt,
+                "parent": parent,
+            }
+        )[:40],
+    )
+
+
 def _shock_run_id(protocol: FrozenHeldoutProtocol, coordinate: HeldoutCoordinate, phase: str) -> str:
     if phase == "PRE":
         return content_id(
@@ -214,6 +321,53 @@ def _shock_candidate_id(
 def _closed(value: Mapping[str, Any], fields: Sequence[str], label: str) -> None:
     if not isinstance(value, Mapping) or set(value) != set(fields):
         raise HeldoutProtocolError("{} is not a closed object".format(label))
+
+
+def _exact_event_envelope(
+    event: Optional[Mapping[str, Any]],
+    *,
+    event_type: str,
+    payload: Mapping[str, Any],
+    campaign_id: Optional[str],
+    run_id: Optional[str],
+    task_id: Optional[str],
+    subject_id: Optional[str],
+    source_class: Optional[str],
+    disposition: Optional[str],
+    evaluator_identity: Optional[str],
+    idempotency_key: Optional[str],
+) -> bool:
+    """Compare the complete immutable semantic envelope of one ledger event."""
+
+    payload_bytes = canonical_bytes(payload)
+    payload_hash = digest_bytes(payload_bytes)
+    immutable = {
+        "event_type": event_type,
+        "campaign_id": campaign_id,
+        "run_id": run_id,
+        "task_id": task_id,
+        "valid_time": None,
+        "subject_id": subject_id,
+        "payload_hash": payload_hash,
+        "payload_json": (
+            payload_bytes.decode("utf-8")
+            if len(payload_bytes) <= INLINE_PAYLOAD_LIMIT
+            else None
+        ),
+        "blob_digest": payload_hash if len(payload_bytes) > INLINE_PAYLOAD_LIMIT else None,
+        "source_class": source_class,
+        "disposition": disposition,
+        "evaluator_identity": evaluator_identity,
+        "idempotency_key": idempotency_key,
+    }
+    expected = {
+        **immutable,
+        "event_id": content_id("evt", immutable),
+        "payload": dict(payload),
+    }
+    return event is not None and all(
+        event.get(key) == value for key, value in expected.items()
+    )
 
 
 def _link_like(metadata: os.stat_result) -> bool:
@@ -564,7 +718,7 @@ class _SourceOnlyEgvFinder(importlib.abc.MetaPathFinder):
             if expected is None:
                 raise RuntimeError(\"EGV module import is absent from the admitted source manifest\")
             return importlib.util.spec_from_file_location(fullname, module_source, loader=_VerifiedSourceLoader(fullname, module_source, expected))
-        return None
+        raise RuntimeError("EGV import is absent from the admitted source manifest")
 
 config = json.loads(base64.urlsafe_b64decode(CONFIG_B64 + \"=\" * (-len(CONFIG_B64) % 4)))
 package_root = Path(config[\"egv_package_root\"])
@@ -938,7 +1092,7 @@ class ProductionDeploymentPaths:
     variation_evaluator_command: Path
     variation_receipt_router_manifest: Path
     heldout_evaluator_command: Path
-    python_executable: Path = Path(sys.executable)
+    python_executable: Path = Path(sys.executable).resolve()
 
     def artifact_paths(self) -> Mapping[str, Path]:
         return MappingProxyType(
@@ -973,8 +1127,10 @@ class SealedHeldoutDeploymentManifest:
         "trained_model_digest",
         "adapter_digest",
         "model_revision",
+        "evaluator_revision",
         "generation_profile_digest",
         "response_contract_digest",
+        "heldout_evaluator_execution_mode",
         "source_commit",
         "source_isolation_scope",
         "device",
@@ -996,6 +1152,7 @@ class SealedHeldoutDeploymentManifest:
             value["schema_version"] != DEPLOYMENT_MANIFEST_SCHEMA
             or value["integration_name"] != PRODUCTION_INTEGRATION_NAME
             or value["source_isolation_scope"] != SOURCE_ISOLATION_SCOPE
+            or value["heldout_evaluator_execution_mode"] != HELDOUT_EVALUATOR_EXECUTION_MODE
             or supplied != digest_for(unsigned)
         ):
             raise HeldoutProtocolError("production deployment manifest digest is invalid")
@@ -1010,8 +1167,15 @@ class SealedHeldoutDeploymentManifest:
             "response_contract_digest",
         ):
             validate_sha256(value[field], field)
-        if value["model_revision"] != MODEL_REVISION or not _SOURCE_COMMIT.fullmatch(str(value["source_commit"])):
-            raise HeldoutProtocolError("production model revision or source commit is not immutable")
+        if (
+            value["model_revision"] != MODEL_REVISION
+            or not isinstance(value["evaluator_revision"], str)
+            or not value["evaluator_revision"]
+            or not _SOURCE_COMMIT.fullmatch(str(value["source_commit"]))
+        ):
+            raise HeldoutProtocolError(
+                "production model/evaluator revision or source commit is not immutable"
+            )
         if value["device"] not in {"cuda", "cpu"} or value["torch_dtype"] not in {"bfloat16", "float16", "float32"}:
             raise HeldoutProtocolError("production device or tensor dtype is unsupported")
         ints = (
@@ -1086,6 +1250,14 @@ class SealedHeldoutDeploymentManifest:
             name: _artifact_record(path, "production artifact {}".format(name))
             for name, path in paths.artifact_paths().items()
         }
+        try:
+            variation = RemoteEvaluatorServiceManifest.from_path(
+                Path(paths.variation_evaluator_manifest)
+            )
+        except VariationConfigurationError as exc:
+            raise HeldoutProtocolError(
+                "production Variation evaluator manifest is invalid"
+            ) from exc
         unsigned: Dict[str, Any] = {
             "schema_version": DEPLOYMENT_MANIFEST_SCHEMA,
             "integration_name": PRODUCTION_INTEGRATION_NAME,
@@ -1097,8 +1269,10 @@ class SealedHeldoutDeploymentManifest:
             "trained_model_digest": protocol.bindings["trained_model_digest"],
             "adapter_digest": protocol.bindings["adapter_digest"],
             "model_revision": MODEL_REVISION,
+            "evaluator_revision": variation["evaluator_revision"],
             "generation_profile_digest": trainer_inputs.generation_profile_digest,
             "response_contract_digest": SOURCE_ONLY_RESPONSE_CONTRACT_DIGEST,
+            "heldout_evaluator_execution_mode": HELDOUT_EVALUATOR_EXECUTION_MODE,
             "source_commit": source_commit,
             "source_isolation_scope": SOURCE_ISOLATION_SCOPE,
             "device": device,
@@ -1185,9 +1359,287 @@ class SealedHeldoutDeploymentManifest:
                 raise HeldoutProtocolError("remote Variation evaluator {} binding mismatch".format(field))
         if variation.digest != protocol.bindings["evaluator_digest"]:
             raise HeldoutProtocolError("remote Variation evaluator digest differs from the held-out protocol")
+        if variation["evaluator_revision"] != self["evaluator_revision"]:
+            raise HeldoutProtocolError(
+                "remote Variation evaluator revision differs from the sealed deployment"
+            )
         for record in protocol.heldout_task_records:
             if variation.public_record(record["template_id"]) != dict(record):
                 raise HeldoutProtocolError("remote Variation evaluator lacks an exact held-out task binding")
+
+
+def _preserve_process_cleanup_context(
+    error: BaseException, cleanup_errors: Sequence[BaseException]
+) -> None:
+    """Attach every secondary process-cleanup failure to its primary error."""
+
+    if cleanup_errors:
+        existing = tuple(getattr(error, "cleanup_context", ()))
+        flattened = []
+        for cleanup_error in cleanup_errors:
+            flattened.append(str(cleanup_error))
+            flattened.extend(tuple(getattr(cleanup_error, "cleanup_context", ())))
+        setattr(error, "cleanup_context", existing + tuple(flattened))
+
+
+def _close_windows_native_handle(close_handle: Any, handle: Any, label: str) -> None:
+    """Close one owned native handle and prove that ownership was released."""
+
+    if not close_handle(handle):
+        import ctypes
+
+        native_error = ctypes.WinError(ctypes.get_last_error())
+        raise OSError("{} close failed: {}".format(label, native_error)) from native_error
+
+
+def _close_windows_native_handles(
+    close_handle: Any,
+    handles: Sequence[Tuple[Any, str]],
+) -> Tuple[BaseException, ...]:
+    """Attempt every owned native-handle close and retain every failure."""
+
+    cleanup_errors = []
+    for handle, label in handles:
+        if handle:
+            try:
+                _close_windows_native_handle(close_handle, handle, label)
+            except BaseException as exc:
+                cleanup_errors.append(exc)
+    return tuple(cleanup_errors)
+
+
+def _assign_kill_on_close_job(process: subprocess.Popen[bytes]) -> int:
+    """Place one Windows subprocess tree in a kill-on-close Job Object."""
+
+    if os.name != "nt":
+        raise OSError("Windows Job Objects are unavailable on this platform")
+    import ctypes
+    from ctypes import wintypes
+
+    class _BasicLimitInformation(ctypes.Structure):
+        _fields_ = (
+            ("PerProcessUserTimeLimit", ctypes.c_longlong),
+            ("PerJobUserTimeLimit", ctypes.c_longlong),
+            ("LimitFlags", wintypes.DWORD),
+            ("MinimumWorkingSetSize", ctypes.c_size_t),
+            ("MaximumWorkingSetSize", ctypes.c_size_t),
+            ("ActiveProcessLimit", wintypes.DWORD),
+            ("Affinity", ctypes.c_size_t),
+            ("PriorityClass", wintypes.DWORD),
+            ("SchedulingClass", wintypes.DWORD),
+        )
+
+    class _IoCounters(ctypes.Structure):
+        _fields_ = (
+            ("ReadOperationCount", ctypes.c_ulonglong),
+            ("WriteOperationCount", ctypes.c_ulonglong),
+            ("OtherOperationCount", ctypes.c_ulonglong),
+            ("ReadTransferCount", ctypes.c_ulonglong),
+            ("WriteTransferCount", ctypes.c_ulonglong),
+            ("OtherTransferCount", ctypes.c_ulonglong),
+        )
+
+    class _ExtendedLimitInformation(ctypes.Structure):
+        _fields_ = (
+            ("BasicLimitInformation", _BasicLimitInformation),
+            ("IoInfo", _IoCounters),
+            ("ProcessMemoryLimit", ctypes.c_size_t),
+            ("JobMemoryLimit", ctypes.c_size_t),
+            ("PeakProcessMemoryUsed", ctypes.c_size_t),
+            ("PeakJobMemoryUsed", ctypes.c_size_t),
+        )
+
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel32.CreateJobObjectW.argtypes = (ctypes.c_void_p, wintypes.LPCWSTR)
+    kernel32.CreateJobObjectW.restype = wintypes.HANDLE
+    kernel32.SetInformationJobObject.argtypes = (
+        wintypes.HANDLE,
+        ctypes.c_int,
+        ctypes.c_void_p,
+        wintypes.DWORD,
+    )
+    kernel32.SetInformationJobObject.restype = wintypes.BOOL
+    kernel32.AssignProcessToJobObject.argtypes = (wintypes.HANDLE, wintypes.HANDLE)
+    kernel32.AssignProcessToJobObject.restype = wintypes.BOOL
+    kernel32.CloseHandle.argtypes = (wintypes.HANDLE,)
+    kernel32.CloseHandle.restype = wintypes.BOOL
+    job = kernel32.CreateJobObjectW(None, None)
+    if not job:
+        raise ctypes.WinError(ctypes.get_last_error())
+    info = _ExtendedLimitInformation()
+    info.BasicLimitInformation.LimitFlags = 0x00002000  # JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
+    if not kernel32.SetInformationJobObject(job, 9, ctypes.byref(info), ctypes.sizeof(info)):
+        primary = ctypes.WinError(ctypes.get_last_error())
+        try:
+            _close_windows_native_handle(kernel32.CloseHandle, job, "pinned evaluator Job Object")
+        except BaseException as cleanup_error:
+            _preserve_process_cleanup_context(primary, (cleanup_error,))
+        raise primary
+    process_handle = wintypes.HANDLE(int(process._handle))  # type: ignore[attr-defined]
+    if not kernel32.AssignProcessToJobObject(job, process_handle):
+        primary = ctypes.WinError(ctypes.get_last_error())
+        try:
+            _close_windows_native_handle(kernel32.CloseHandle, job, "pinned evaluator Job Object")
+        except BaseException as cleanup_error:
+            _preserve_process_cleanup_context(primary, (cleanup_error,))
+        raise primary
+    return int(job)
+
+
+def _terminate_process_tree(process: subprocess.Popen[bytes], windows_job: Optional[int]) -> None:
+    """Terminate the complete admitted subprocess tree without an ambient shell."""
+
+    if os.name == "nt":
+        if windows_job is not None:
+            import ctypes
+            from ctypes import wintypes
+
+            kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+            kernel32.TerminateJobObject.argtypes = (wintypes.HANDLE, wintypes.UINT)
+            kernel32.TerminateJobObject.restype = wintypes.BOOL
+            if not kernel32.TerminateJobObject(wintypes.HANDLE(windows_job), 1):
+                raise ctypes.WinError(ctypes.get_last_error())
+        elif process.poll() is None:
+            process.kill()
+        return
+    if not all(
+        hasattr(os, name)
+        for name in ("waitid", "P_PID", "WEXITED", "WNOHANG", "WNOWAIT")
+    ):
+        raise OSError("pid-safe pinned-command cleanup anchor is unavailable")
+    try:
+        os.waitid(  # type: ignore[attr-defined]
+            os.P_PID,  # type: ignore[attr-defined]
+            process.pid,
+            os.WEXITED | os.WNOHANG | os.WNOWAIT,  # type: ignore[attr-defined]
+        )
+    except ChildProcessError as exc:
+        raise OSError("pinned-command leader anchor was lost before group cleanup") from exc
+    try:
+        os.killpg(process.pid, signal.SIGKILL)
+    except ProcessLookupError:
+        pass
+
+
+def _close_windows_job(handle: int) -> None:
+    """Close a Windows Job Object, terminating any surviving descendants."""
+
+    if os.name != "nt":
+        return
+    import ctypes
+    from ctypes import wintypes
+
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel32.CloseHandle.argtypes = (wintypes.HANDLE,)
+    kernel32.CloseHandle.restype = wintypes.BOOL
+    _close_windows_native_handle(
+        kernel32.CloseHandle,
+        wintypes.HANDLE(handle),
+        "pinned evaluator Job Object",
+    )
+
+
+def _resume_windows_process(process_id: int) -> None:
+    """Resume the sole primary thread of a newly suspended Windows process."""
+
+    if os.name != "nt":
+        raise OSError("Windows thread control is unavailable on this platform")
+    import ctypes
+    from ctypes import wintypes
+
+    class _ThreadEntry32(ctypes.Structure):
+        _fields_ = (
+            ("dwSize", wintypes.DWORD),
+            ("cntUsage", wintypes.DWORD),
+            ("th32ThreadID", wintypes.DWORD),
+            ("th32OwnerProcessID", wintypes.DWORD),
+            ("tpBasePri", wintypes.LONG),
+            ("tpDeltaPri", wintypes.LONG),
+            ("dwFlags", wintypes.DWORD),
+        )
+
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel32.CreateToolhelp32Snapshot.argtypes = (wintypes.DWORD, wintypes.DWORD)
+    kernel32.CreateToolhelp32Snapshot.restype = wintypes.HANDLE
+    kernel32.Thread32First.argtypes = (wintypes.HANDLE, ctypes.POINTER(_ThreadEntry32))
+    kernel32.Thread32First.restype = wintypes.BOOL
+    kernel32.Thread32Next.argtypes = (wintypes.HANDLE, ctypes.POINTER(_ThreadEntry32))
+    kernel32.Thread32Next.restype = wintypes.BOOL
+    kernel32.OpenThread.argtypes = (wintypes.DWORD, wintypes.BOOL, wintypes.DWORD)
+    kernel32.OpenThread.restype = wintypes.HANDLE
+    kernel32.ResumeThread.argtypes = (wintypes.HANDLE,)
+    kernel32.ResumeThread.restype = wintypes.DWORD
+    kernel32.CloseHandle.argtypes = (wintypes.HANDLE,)
+    kernel32.CloseHandle.restype = wintypes.BOOL
+    snapshot = kernel32.CreateToolhelp32Snapshot(0x00000004, 0)
+    invalid = ctypes.c_void_p(-1).value
+    if not snapshot or int(snapshot) == invalid:
+        raise ctypes.WinError(ctypes.get_last_error())
+    thread_handle = None
+    primary_error: Optional[BaseException] = None
+    try:
+        entry = _ThreadEntry32()
+        entry.dwSize = ctypes.sizeof(entry)
+        present = kernel32.Thread32First(snapshot, ctypes.byref(entry))
+        owner_thread_ids = []
+        while present:
+            if int(entry.th32OwnerProcessID) == process_id:
+                owner_thread_ids.append(int(entry.th32ThreadID))
+            present = kernel32.Thread32Next(snapshot, ctypes.byref(entry))
+        if len(owner_thread_ids) != 1:
+            raise OSError("suspended pinned command does not have exactly one primary thread")
+        thread_handle = kernel32.OpenThread(0x0002, False, owner_thread_ids[0])
+        if not thread_handle:
+            raise ctypes.WinError(ctypes.get_last_error())
+        previous_count = int(kernel32.ResumeThread(thread_handle))
+        if previous_count == 0xFFFFFFFF:
+            raise ctypes.WinError(ctypes.get_last_error())
+        if previous_count != 1:
+            raise OSError("suspended pinned command primary thread has an invalid suspend count")
+    except BaseException as exc:
+        primary_error = exc
+    cleanup_errors = _close_windows_native_handles(
+        kernel32.CloseHandle,
+        (
+            (thread_handle, "pinned evaluator primary thread"),
+            (snapshot, "pinned evaluator thread snapshot"),
+        ),
+    )
+    if primary_error is not None:
+        _preserve_process_cleanup_context(primary_error, cleanup_errors)
+        raise primary_error
+    if cleanup_errors:
+        error = OSError("pinned evaluator native handle cleanup failed")
+        _preserve_process_cleanup_context(error, cleanup_errors)
+        raise error from cleanup_errors[0]
+
+
+def _cleanup_process_before_containment(
+    process: subprocess.Popen[bytes], *, deadline: float
+) -> Tuple[BaseException, ...]:
+    """Clean a process created before its identity/Job containment completed."""
+
+    cleanup_errors = []
+    try:
+        if os.name == "nt":
+            # The process is still suspended and unassigned. Popen.kill uses
+            # the owned process handle, rather than a reusable ambient PID.
+            process.kill()
+        else:
+            _terminate_process_tree(process, None)
+    except BaseException as exc:
+        cleanup_errors.append(exc)
+    try:
+        process.wait(timeout=max(0.0, deadline - monotonic()))
+    except BaseException as exc:
+        cleanup_errors.append(exc)
+    for stream in (process.stdin, process.stdout, process.stderr):
+        if stream is not None:
+            try:
+                stream.close()
+            except BaseException as exc:
+                cleanup_errors.append(exc)
+    return tuple(cleanup_errors)
 
 
 class DigestPinnedJsonExecutor:
@@ -1203,6 +1655,7 @@ class DigestPinnedJsonExecutor:
         timeout_seconds: int = REMOTE_VARIATION_TIMEOUT_SECONDS,
         request_limit: int = PRODUCTION_REQUEST_LIMIT,
         response_limit: int = PRODUCTION_RESPONSE_LIMIT,
+        execution_mode: str = HELDOUT_EVALUATOR_EXECUTION_MODE,
     ) -> None:
         self.command = Path(command).resolve()
         self.python_executable = Path(python_executable).resolve()
@@ -1211,6 +1664,9 @@ class DigestPinnedJsonExecutor:
         self.timeout_seconds = timeout_seconds
         self.request_limit = request_limit
         self.response_limit = response_limit
+        if execution_mode != HELDOUT_EVALUATOR_EXECUTION_MODE:
+            raise HeldoutProtocolError("pinned executor execution mode is unsupported")
+        self.execution_mode = execution_mode
         self._command_bytes = _regular_single_link_bytes(self.command, "pinned JSON command")
         if hashlib.sha256(self._command_bytes).hexdigest() != self.command_digest:
             raise HeldoutProtocolError("pinned JSON command digest mismatch")
@@ -1243,7 +1699,7 @@ class DigestPinnedJsonExecutor:
         if len(request_bytes) > self.request_limit:
             raise HeldoutProtocolError("pinned executor request exceeds its byte limit")
         with tempfile.TemporaryDirectory(prefix="egv-heldout-command-") as directory:
-            endpoint = Path(directory) / (self.command_digest + self.command.suffix.lower())
+            endpoint = Path(directory) / self.command_digest
             with endpoint.open("xb") as handle:
                 handle.write(command_bytes)
                 handle.flush()
@@ -1251,65 +1707,223 @@ class DigestPinnedJsonExecutor:
             endpoint.chmod(0o500)
             if hashlib.sha256(endpoint.read_bytes()).hexdigest() != self.command_digest:
                 raise HeldoutProtocolError("content-addressed command copy failed verification")
-            invocation = (
-                [str(self.python_executable), str(endpoint)]
-                if self.command.suffix.lower() == ".py"
-                else [str(endpoint)]
-            )
-            try:
-                process = subprocess.Popen(
-                    invocation,
+            hard_deadline = monotonic() + self.timeout_seconds
+            execution_deadline = hard_deadline
+            popen_kwargs: Dict[str, Any] = {}
+            if os.name == "nt":
+                popen_kwargs["creationflags"] = (
+                    subprocess.CREATE_NEW_PROCESS_GROUP | _WINDOWS_CREATE_SUSPENDED
+                )
+            else:
+                popen_kwargs["start_new_session"] = True
+
+            def start_process(invocation: Sequence[str], identity_kwargs: Mapping[str, Any]) -> subprocess.Popen:
+                options = {**popen_kwargs, **dict(identity_kwargs)}
+                return subprocess.Popen(
+                    list(invocation),
                     stdin=subprocess.PIPE,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
                     env={},
+                    bufsize=0,
+                    **options,
                 )
-            except OSError as exc:
-                raise HeldoutProtocolError("pinned evaluator command could not start") from exc
+
+            process: Optional[subprocess.Popen[bytes]] = None
+            try:
+                with pinned_python_invocation(self.python_executable, self.python_digest) as (
+                    pinned_python,
+                    identity_kwargs,
+                ):
+                    process = start_process([pinned_python, str(endpoint)], identity_kwargs)
+            except BaseException as exc:
+                if process is not None:
+                    cleanup_errors = _cleanup_process_before_containment(
+                        process,
+                        deadline=monotonic() + 5,
+                    )
+                    if isinstance(exc, (OSError, VariationDependencyError)):
+                        error = HeldoutProtocolError(
+                            "pinned evaluator command could not complete verified startup"
+                        )
+                        _preserve_process_cleanup_context(error, cleanup_errors)
+                        raise error from exc
+                    _preserve_process_cleanup_context(exc, cleanup_errors)
+                    raise
+                if isinstance(exc, (OSError, VariationDependencyError)):
+                    raise HeldoutProtocolError("pinned evaluator command could not start") from exc
+                raise
+            assert process is not None
+            windows_job: Optional[int] = None
+            if os.name == "nt":
+                try:
+                    windows_job = _assign_kill_on_close_job(process)
+                    _resume_windows_process(process.pid)
+                except OSError as exc:
+                    startup_cleanup_errors: list[BaseException] = []
+                    try:
+                        if windows_job is not None:
+                            _terminate_process_tree(process, windows_job)
+                        else:
+                            process.kill()
+                    except BaseException as cleanup_exc:
+                        startup_cleanup_errors.append(cleanup_exc)
+                    try:
+                        process.wait(timeout=max(0.001, hard_deadline - monotonic()))
+                    except BaseException as cleanup_exc:
+                        startup_cleanup_errors.append(cleanup_exc)
+                    finally:
+                        for stream in (process.stdin, process.stdout, process.stderr):
+                            if stream is not None:
+                                try:
+                                    stream.close()
+                                except BaseException as cleanup_exc:
+                                    startup_cleanup_errors.append(cleanup_exc)
+                        if windows_job is not None:
+                            try:
+                                _close_windows_job(windows_job)
+                            except BaseException as cleanup_exc:
+                                startup_cleanup_errors.append(cleanup_exc)
+                    if startup_cleanup_errors:
+                        error = HeldoutProtocolError(
+                            "pinned evaluator failed-start cleanup did not complete"
+                        )
+                        _preserve_process_cleanup_context(error, startup_cleanup_errors)
+                        raise error from exc
+                    raise HeldoutProtocolError(
+                        "pinned evaluator command could not enter its bounded process tree"
+                    ) from exc
             stdout = bytearray()
             stderr = bytearray()
-            overflow = []
+            overflow: list[str] = []
+            writer_errors: list[BaseException] = []
+            reader_errors: list[BaseException] = []
+            cleanup_errors: list[BaseException] = []
+            request_complete = threading.Event()
 
             def drain(stream: Any, sink: bytearray, limit: int, label: str) -> None:
-                while True:
-                    chunk = stream.read(65536)
-                    if not chunk:
-                        return
-                    if len(sink) + len(chunk) > limit:
-                        overflow.append(label)
-                        process.kill()
-                        return
-                    sink.extend(chunk)
+                try:
+                    while True:
+                        chunk = stream.read(65536)
+                        if not chunk:
+                            return
+                        if len(sink) + len(chunk) > limit:
+                            overflow.append(label)
+                            return
+                        sink.extend(chunk)
+                except BaseException as exc:
+                    reader_errors.append(exc)
 
-            readers = (
-                threading.Thread(
-                    target=drain, args=(process.stdout, stdout, self.response_limit, "stdout"), daemon=True
-                ),
-                threading.Thread(
-                    target=drain, args=(process.stderr, stderr, PRODUCTION_STDERR_LIMIT, "stderr"), daemon=True
-                ),
-            )
-            for reader in readers:
-                reader.start()
+            def write_request() -> None:
+                try:
+                    assert process.stdin is not None
+                    written = process.stdin.write(request_bytes)
+                    process.stdin.flush()
+                    if written != len(request_bytes):
+                        raise OSError("pinned evaluator request write was incomplete")
+                    request_complete.set()
+                except BaseException as exc:
+                    writer_errors.append(exc)
+                finally:
+                    if process.stdin is not None:
+                        try:
+                            process.stdin.close()
+                        except BaseException as exc:
+                            writer_errors.append(exc)
+
+            startup_timed_out = monotonic() >= execution_deadline
+            if startup_timed_out:
+                readers: Tuple[threading.Thread, ...] = ()
+                workers: Tuple[threading.Thread, ...] = ()
+            else:
+                readers = (
+                    threading.Thread(
+                        target=drain, args=(process.stdout, stdout, self.response_limit, "stdout"), daemon=True
+                    ),
+                    threading.Thread(
+                        target=drain, args=(process.stderr, stderr, PRODUCTION_STDERR_LIMIT, "stderr"), daemon=True
+                    ),
+                )
+                writer = threading.Thread(target=write_request, daemon=True)
+                workers = (writer, *readers)
+                for worker in workers:
+                    worker.start()
+
+            primary_error: Optional[HeldoutProtocolError] = None
             try:
-                assert process.stdin is not None
-                process.stdin.write(request_bytes)
-                process.stdin.close()
-                process.wait(timeout=self.timeout_seconds)
-            except subprocess.TimeoutExpired as exc:
-                process.kill()
-                process.wait()
-                raise HeldoutProtocolError("pinned evaluator command timed out") from exc
-            finally:
-                for reader in readers:
-                    reader.join(timeout=5)
-                for stream in (process.stdout, process.stderr):
-                    if stream is not None:
+                while not startup_timed_out and not overflow and not writer_errors and not reader_errors:
+                    if monotonic() >= execution_deadline:
+                        primary_error = HeldoutProtocolError("pinned evaluator command timed out")
+                        break
+                    if _bounded_process_exited_without_reap(process):
+                        break
+                    threading.Event().wait(min(0.05, max(0.0, execution_deadline - monotonic())))
+            except VariationDependencyError as exc:
+                primary_error = HeldoutProtocolError("pinned evaluator process exit could not be observed safely")
+                primary_error.__cause__ = exc
+            if startup_timed_out:
+                primary_error = HeldoutProtocolError("pinned evaluator command timed out")
+
+            # Kill the group/Job before reaping its leader. A valid parent may
+            # leave descendants holding inherited pipes; those descendants do
+            # not turn a complete canonical response into a false timeout.
+            cleanup_deadline = monotonic() + 5
+            try:
+                _terminate_process_tree(process, windows_job)
+            except BaseException as exc:
+                cleanup_errors.append(exc)
+            try:
+                process.wait(timeout=max(0.0, cleanup_deadline - monotonic()))
+            except (OSError, subprocess.TimeoutExpired) as exc:
+                cleanup_errors.append(exc)
+            for worker in workers:
+                worker.join(timeout=max(0.0, cleanup_deadline - monotonic()))
+            if any(worker.is_alive() for worker in workers):
+                cleanup_errors.append(OSError("pinned evaluator I/O worker remained alive"))
+            streams = (
+                (process.stdout, readers[0] if readers else None),
+                (process.stderr, readers[1] if readers else None),
+            )
+            for stream, worker in streams:
+                if stream is not None and (worker is None or not worker.is_alive()):
+                    try:
                         stream.close()
-            if overflow:
-                raise HeldoutProtocolError("pinned evaluator {} exceeded its byte limit".format(overflow[0]))
-            if process.returncode != 0:
-                raise HeldoutProtocolError("pinned evaluator command returned a nonzero status")
+                    except BaseException as exc:
+                        cleanup_errors.append(exc)
+            if startup_timed_out and process.stdin is not None:
+                try:
+                    process.stdin.close()
+                except BaseException as exc:
+                    cleanup_errors.append(exc)
+            if windows_job is not None:
+                try:
+                    _close_windows_job(windows_job)
+                except BaseException as exc:
+                    cleanup_errors.append(exc)
+
+            if primary_error is None:
+                if overflow:
+                    primary_error = HeldoutProtocolError(
+                        "pinned evaluator {} exceeded its byte limit".format(overflow[0])
+                    )
+                elif writer_errors or not request_complete.is_set():
+                    primary_error = HeldoutProtocolError(
+                        "pinned evaluator command did not consume its complete request"
+                    )
+                elif reader_errors:
+                    primary_error = HeldoutProtocolError("pinned evaluator response read did not complete")
+                elif process.returncode != 0:
+                    primary_error = HeldoutProtocolError("pinned evaluator command returned a nonzero status")
+            if primary_error is not None:
+                if cleanup_errors:
+                    _preserve_process_cleanup_context(primary_error, cleanup_errors)
+                raise primary_error
+            if cleanup_errors:
+                error = HeldoutProtocolError(
+                    "pinned evaluator process-tree cleanup failed"
+                )
+                _preserve_process_cleanup_context(error, cleanup_errors)
+                raise error from cleanup_errors[0]
         try:
             response = json.loads(bytes(stdout).decode("utf-8"))
         except (UnicodeError, ValueError) as exc:
@@ -1414,6 +2028,8 @@ class ProductionQwenLoopBuilders:
             manifest_path=Path(self.paths.variation_evaluator_manifest),
             public_key_path=Path(self.paths.variation_evaluator_public_key),
             command=Path(self.paths.variation_evaluator_command),
+            python_executable=Path(self.paths.python_executable),
+            python_digest=self.deployment["artifacts"]["python_executable"]["sha256"],
         )
         evaluator.validate_campaign_bindings(
             campaign_id=self.protocol.campaign_id,
@@ -1522,12 +2138,25 @@ def _replay_facts(
     public_agreements = 0
     evaluator_seconds = 0.0
     used_receipt_ids: set[str] = set()
+    attempt_indices = [attempt.attempt_index for attempt in attempts]
+    candidate_ids = [attempt.candidate_id for attempt in attempts]
+    if (
+        len(attempt_indices) != len(set(attempt_indices))
+        or attempt_indices != sorted(attempt_indices)
+        or len(candidate_ids) != len(set(candidate_ids))
+    ):
+        raise HeldoutProtocolError("Variation attempts are duplicated or out of order")
     for attempt in attempts:
         candidate_receipts = grouped.get(attempt.candidate_id, tuple())
         actual_ids = tuple(item.get("receipt_id") for item in candidate_receipts)
-        if actual_ids != attempt.receipt_ids:
+        normalized_ids = tuple(str(item) for item in actual_ids)
+        if (
+            actual_ids != attempt.receipt_ids
+            or len(normalized_ids) != len(set(normalized_ids))
+            or used_receipt_ids.intersection(normalized_ids)
+        ):
             raise HeldoutProtocolError("attempt receipt IDs differ from the authoritative signed suffix")
-        used_receipt_ids.update(str(item) for item in actual_ids)
+        used_receipt_ids.update(normalized_ids)
         report_promoted = attempt.disposition == "PROMOTED"
         private_promoted = ledger.candidate_disposition(attempt.candidate_id) == "PROMOTED"
         public_promoted = _receipt_promoted(candidate_receipts)
@@ -1549,6 +2178,156 @@ def _replay_facts(
             item.get("receipt_type") == "EFFECT" and item.get("decision") == "ALLOW" and not authority_allowed
             for item in candidate_receipts
         )
+    decisions = len(attempts)
+    return (
+        decisions,
+        private_agreements,
+        decisions,
+        public_agreements,
+        challenges,
+        valid_denials,
+        unauthorized,
+        evaluator_seconds,
+    )
+
+
+def _replay_main_receipts(
+    ledger: EvidenceLedger,
+    attempts: Sequence[AttemptRecord],
+    *,
+    protocol: FrozenHeldoutProtocol,
+    coordinate: HeldoutCoordinate,
+    task_record: Mapping[str, Any],
+    run_id: str,
+) -> Tuple[int, int, int, int, int, int, int, float]:
+    receipts = tuple(ledger.receipts())
+    receipt_ids = tuple(str(receipt.get("receipt_id")) for receipt in receipts)
+    flattened = tuple(receipt_id for attempt in attempts for receipt_id in attempt.receipt_ids)
+    if (
+        len(receipt_ids) != len(set(receipt_ids))
+        or flattened != receipt_ids
+        or len(flattened) != len(set(flattened))
+    ):
+        raise HeldoutProtocolError("main attempt receipt suffixes are reused, missing, or out of order")
+    by_id = {str(receipt["receipt_id"]): receipt for receipt in receipts}
+    policy = arm_policy(coordinate.treatment)
+    private_agreements = 0
+    public_agreements = 0
+    evaluator_seconds = 0.0
+    challenges = 0
+    valid_denials = 0
+    unauthorized = 0
+    for attempt in attempts:
+        suffix = tuple(by_id[receipt_id] for receipt_id in attempt.receipt_ids)
+        receipt_types = [receipt.get("receipt_type") for receipt in suffix]
+        if receipt_types not in (["AUTHORITY"], ["AUTHORITY", "VERDICT", "EFFECT"]):
+            raise HeldoutProtocolError("main attempt receipt suffix type order is invalid")
+        for index, receipt in enumerate(suffix):
+            expected_type = receipt_types[index]
+            if (
+                receipt.get("campaign_id") != protocol.campaign_id
+                or receipt.get("run_id") != run_id
+                or receipt.get("task_id") != coordinate.task_id
+                or receipt.get("candidate_id") != attempt.candidate_id
+                or receipt.get("candidate_artifact_digest") != attempt.candidate_artifact_digest
+                or receipt.get("protocol_digest") != VARIATION_PROTOCOL_DIGEST
+                or receipt.get("policy_digest") != protocol.bindings["policy_manifest_digest"]
+                or receipt.get("arm_policy_digest") != policy.digest
+                or receipt.get("evaluator_digest") != protocol.bindings["evaluator_digest"]
+                or receipt.get("task_family") != task_record["family_id"]
+                or receipt.get("normalized_public_locus") != task_record["public_locus"]
+                or receipt.get("public_rule_id") != task_record["public_rule_id"]
+                or receipt.get("request_id")
+                != "request-{}-{}".format(str(expected_type).lower(), attempt.candidate_id)
+            ):
+                raise HeldoutProtocolError("main signed receipt crossed its exact coordinate or candidate binding")
+            if index and (
+                receipt.get("sequence") != suffix[index - 1].get("sequence") + 1
+                or receipt.get("previous_receipt_hash") != receipt_hash(suffix[index - 1])
+            ):
+                raise HeldoutProtocolError("main signed receipt suffix is not contiguous")
+        try:
+            validate_diagnostic(attempt.diagnostic_enum)
+            validate_resource_bucket(attempt.resource_bucket)
+            validate_disposition(attempt.disposition)
+        except ValueError as exc:
+            raise HeldoutProtocolError("main attempt uses a value outside the closed evaluator contract") from exc
+        authority = suffix[0]
+        authority_denied = authority.get("decision") == "DENY"
+        challenges += int(authority_denied)
+        if len(suffix) == 1:
+            allowed = {
+                Diagnostic.PROTOCOL_VIOLATION.value: "REJECTED",
+                Diagnostic.MUTATION_LOCUS_VIOLATION.value: "REJECTED",
+                Diagnostic.AUTHORITY_DENIED.value: "ABSTAINED",
+                Diagnostic.INTERNAL_ERROR.value: "ABSTAINED",
+            }
+            valid = (
+                authority_denied
+                and allowed.get(attempt.diagnostic_enum) == attempt.disposition
+                and attempt.resource_bucket == "UNDER_25"
+                and (
+                    authority.get("diagnostic_enum") is None
+                    if attempt.diagnostic_enum == Diagnostic.AUTHORITY_DENIED.value
+                    else authority.get("diagnostic_enum") == attempt.diagnostic_enum
+                )
+            )
+            if not valid:
+                raise HeldoutProtocolError("main authority-only receipt disagrees with its attempt")
+            valid_denials += 1
+        else:
+            authority, verdict, effect = suffix
+            infrastructure = attempt.diagnostic_enum == Diagnostic.INTERNAL_ERROR.value
+            expected_verdict = (
+                "ERROR"
+                if infrastructure
+                else "PASS" if attempt.diagnostic_enum == Diagnostic.PASS.value else "FAIL"
+            )
+            expected_disposition = (
+                "ABSTAINED"
+                if infrastructure
+                else "PROMOTED" if attempt.diagnostic_enum == Diagnostic.PASS.value else "REJECTED"
+            )
+            if (
+                authority.get("decision") != "ALLOW"
+                or verdict.get("decision") != expected_verdict
+                or effect.get("decision") != ("ERROR" if infrastructure else "ALLOW")
+                or verdict.get("diagnostic_enum") != attempt.diagnostic_enum
+                or effect.get("diagnostic_enum") != attempt.diagnostic_enum
+                or verdict.get("resource_bucket") != attempt.resource_bucket
+                or verdict.get("output_digest") != effect.get("output_digest")
+                or effect.get("normalized_action_hash")
+                != digest_for({"action": "execute_candidate", "locus": task_record["public_locus"]})
+                or attempt.disposition != expected_disposition
+            ):
+                raise HeldoutProtocolError("main signed verdict/effect suffix disagrees with its attempt")
+            evaluator_seconds += _signed_effect_seconds(effect)
+            unauthorized += int(effect.get("decision") == "ALLOW" and authority.get("decision") != "ALLOW")
+        incident_receipts = [
+            receipt
+            for receipt in suffix
+            if receipt.get("infrastructure_incident_id") is not None
+            or receipt.get("failure_family_root") is not None
+        ]
+        if attempt.diagnostic_enum == Diagnostic.INTERNAL_ERROR.value:
+            incidents = {receipt.get("infrastructure_incident_id") for receipt in incident_receipts}
+            roots = {receipt.get("failure_family_root") for receipt in incident_receipts}
+            if len(incidents) != 1 or len(roots) != 1 or None in incidents or None in roots:
+                raise HeldoutProtocolError("main infrastructure receipt suffix is inconsistent")
+            expected_root = failure_family_root(
+                task_record["family_id"],
+                attempt.diagnostic_enum,
+                task_record["public_locus"],
+                task_record["public_rule_id"],
+                infrastructure_incident_id=next(iter(incidents)),
+            )
+            if roots != {expected_root}:
+                raise HeldoutProtocolError("main infrastructure failure root is invalid")
+        elif incident_receipts:
+            raise HeldoutProtocolError("main non-infrastructure attempt carries incident evidence")
+        report_promoted = attempt.disposition == "PROMOTED"
+        private_agreements += int(ledger.candidate_disposition(attempt.candidate_id) == attempt.disposition)
+        public_agreements += int(_receipt_promoted(suffix) == report_promoted)
     decisions = len(attempts)
     return (
         decisions,
@@ -1584,6 +2363,250 @@ def _runtime_evidence_from_mapping(value: Mapping[str, Any]) -> HeldoutRuntimeEv
         raise HeldoutProtocolError("held-out runtime evidence cannot be reconstructed") from exc
     evidence.validate()
     return evidence
+
+
+def _derive_source_exhausted_main_result(
+    protocol: FrozenHeldoutProtocol,
+    coordinate: HeldoutCoordinate,
+    report: VariationReport,
+    evidence: HeldoutRuntimeEvidence,
+    *,
+    total_attempt_count: int,
+    wall_time_seconds: float,
+) -> Dict[str, Any]:
+    evidence.validate()
+    policy = arm_policy(coordinate.treatment)
+    if (
+        coordinate.phase != MAIN_PHASE
+        or report.terminal_status != "BUDGET_EXHAUSTED"
+        or report.checkpoint_path != "source-contract-budget-exhausted"
+        or type(total_attempt_count) is not int
+        or total_attempt_count != MAX_CANDIDATE_ATTEMPTS
+        or wall_time_seconds < 0
+    ):
+        raise HeldoutProtocolError("source-contract terminal result is outside the frozen main budget")
+    if report.attempts:
+        result = derive_verified_main_result(
+            protocol,
+            coordinate,
+            report,
+            evidence,
+            wall_time_seconds=wall_time_seconds,
+        )
+        result["evidence_opportunities"] = (
+            max(0, total_attempt_count - 1)
+            if policy.retrieval_policy != "SUCCESS_ONLY"
+            else 0
+        )
+        result["costs"]["candidate_attempts"] = total_attempt_count
+        return validate_result(protocol, result)
+    return validate_result(
+        protocol,
+        {
+            "schema_version": RESULT_SCHEMA,
+            "coordinate_id": coordinate.coordinate_id,
+            "campaign_id": protocol.campaign_id,
+            "protocol_digest": protocol.digest,
+            "phase": coordinate.phase,
+            "task_id": coordinate.task_id,
+            "seed": coordinate.seed,
+            "treatment": coordinate.treatment,
+            "profile_digest": coordinate.profile_digest,
+            "status": "BUDGET_EXHAUSTED",
+            "evaluator_identity_valid": True,
+            "signature_valid": True,
+            "verdict_receipts_required": 0,
+            "verdict_receipts_valid": 0,
+            "effect_receipts_required": 0,
+            "effect_receipts_valid": 0,
+            "ledger_integrity_valid": True,
+            "private_replay_decisions": 0,
+            "private_replay_agreements": 0,
+            "public_replay_decisions": 0,
+            "public_replay_agreements": 0,
+            "hidden_test_isolation_valid": True,
+            "split_isolation_valid": True,
+            "treatment_isolation_valid": True,
+            "promoted_candidates": 0,
+            "invalid_promotions": 0,
+            "unauthorized_successful_effects": 0,
+            "receipt_covered_promotions": 0,
+            "authority_enforced": policy.authority_enforced,
+            "authority_decision_receipts_valid": True,
+            "success": None,
+            "eligible_attempts": 0,
+            "repeated_dead_end_attempts": 0,
+            "evidence_opportunities": max(0, total_attempt_count - 1)
+            if policy.retrieval_policy != "SUCCESS_ONLY"
+            else 0,
+            "evidence_using_attempts": 0,
+            "authority_challenges": 0,
+            "authority_challenges_valid_denials": 0,
+            "costs": {
+                "tokens": evidence.tokens,
+                "candidate_attempts": total_attempt_count,
+                "evaluator_seconds": float(evidence.evaluator_seconds),
+                "wall_time_seconds": float(wall_time_seconds),
+            },
+        },
+    )
+
+
+def _generation_context_value(context: CandidateContext) -> Dict[str, Any]:
+    value = asdict(context)
+    value["retrieval_records"] = [dict(item) for item in context.retrieval_records]
+    return value
+
+
+def _successful_generation_record(
+    candidate_id: str,
+    context: CandidateContext,
+    generation: Any,
+) -> Dict[str, Any]:
+    return {
+        "schema_version": PRIVATE_GENERATION_SCHEMA,
+        "candidate_id": candidate_id,
+        "status": "SUCCESS",
+        "context": _generation_context_value(context),
+        "response_contract": context.response_contract,
+        "response_contract_digest": context.response_contract_digest,
+        "generation_profile_digest": context.generation_profile_digest,
+        "rendered_prompt_digest": generation.rendered_prompt_digest,
+        "decoded_model_response_digest": generation.decoded_model_response_digest,
+        "contract_response_digest": generation.contract_response_digest,
+        "proposal_source_digest": digest_bytes(generation.proposal.source),
+        "failure_stage": None,
+        "error_code": None,
+        "replay_error_chain": None,
+    }
+
+
+def _failed_generation_record(
+    candidate_id: str,
+    context: CandidateContext,
+    failure: Any,
+) -> Dict[str, Any]:
+    return {
+        "schema_version": PRIVATE_GENERATION_SCHEMA,
+        "candidate_id": candidate_id,
+        "status": "FAILED",
+        "context": _generation_context_value(context),
+        "response_contract": context.response_contract,
+        "response_contract_digest": context.response_contract_digest,
+        "generation_profile_digest": context.generation_profile_digest,
+        "rendered_prompt_digest": failure.rendered_prompt_digest,
+        "decoded_model_response_digest": failure.decoded_model_response_digest,
+        "contract_response_digest": failure.contract_response_digest,
+        "proposal_source_digest": None,
+        "failure_stage": failure.stage,
+        "error_code": failure.error_code,
+        "replay_error_chain": (
+            list(response_contract_replay_error_chain(context, failure.contract_response))
+            if failure.stage == "RESPONSE_CONTRACT"
+            else None
+        ),
+    }
+
+
+_GENERATION_RECORD_FIELDS = (
+    "schema_version",
+    "candidate_id",
+    "status",
+    "context",
+    "response_contract",
+    "response_contract_digest",
+    "generation_profile_digest",
+    "rendered_prompt_digest",
+    "decoded_model_response_digest",
+    "contract_response_digest",
+    "proposal_source_digest",
+    "failure_stage",
+    "error_code",
+    "replay_error_chain",
+)
+
+
+def _projection_event_ids(ledger: EvidenceLedger) -> set[str]:
+    identifiers: set[str] = set()
+    for table, column in (
+        ("campaigns", "event_id"),
+        ("runs", "event_id"),
+        ("candidates", "event_id"),
+        ("verdicts", "event_id"),
+        ("effect_receipts", "event_id"),
+        ("dependencies", "insertion_event_id"),
+        ("corrections", "event_id"),
+        ("retractions", "event_id"),
+        ("receipts", "event_id"),
+    ):
+        identifiers.update(
+            str(row[column])
+            for row in ledger.connection.execute(
+                "SELECT {} FROM {} ORDER BY {}".format(column, table, column)
+            ).fetchall()
+        )
+    return identifiers
+
+
+def _require_closed_event_inventory(
+    ledger: EvidenceLedger,
+    *,
+    domain_event_ids: Sequence[str],
+    label: str,
+) -> None:
+    events = ledger.events()
+    for event in events:
+        payload = event.get("payload")
+        if not isinstance(payload, Mapping) or not _exact_event_envelope(
+            event,
+            event_type=event.get("event_type"),
+            payload=payload,
+            campaign_id=event.get("campaign_id"),
+            run_id=event.get("run_id"),
+            task_id=event.get("task_id"),
+            subject_id=event.get("subject_id"),
+            source_class=event.get("source_class"),
+            disposition=event.get("disposition"),
+            evaluator_identity=event.get("evaluator_identity"),
+            idempotency_key=event.get("idempotency_key"),
+        ):
+            raise HeldoutProtocolError(
+                "{} ledger event storage or content identity is not canonical".format(label)
+            )
+    actual = {str(event["event_id"]) for event in events}
+    domain = set(domain_event_ids)
+    projected = _projection_event_ids(ledger)
+    if (
+        len(actual) != len(events)
+        or domain & projected
+        or actual != domain | projected
+        or ledger.connection.execute("SELECT COUNT(*) FROM projection_queue").fetchone()[0]
+        or ledger.connection.execute("SELECT COUNT(*) FROM quarantines").fetchone()[0]
+    ):
+        raise HeldoutProtocolError("{} ledger contains unaccounted evidence or projections".format(label))
+
+
+def _candidate_prompt_digest(tokenizer: Any, context: CandidateContext) -> str:
+    apply_chat_template = getattr(tokenizer, "apply_chat_template", None)
+    if not callable(apply_chat_template):
+        raise HeldoutProtocolError("pinned tokenizer cannot reproduce the candidate generation prompt")
+    try:
+        rendered = apply_chat_template(
+            [
+                {
+                    "role": "user",
+                    "content": render_candidate_prompt(context, response_contract="source-only-v1"),
+                }
+            ],
+            add_generation_prompt=True,
+            tokenize=False,
+            enable_thinking=False,
+        )
+    except Exception as exc:
+        raise HeldoutProtocolError("pinned tokenizer cannot reproduce the candidate generation prompt") from exc
+    if not isinstance(rendered, str) or not rendered:
+        raise HeldoutProtocolError("pinned tokenizer returned an invalid candidate generation prompt")
+    return digest_bytes(rendered.encode("utf-8"))
 
 
 def _report_from_mapping(value: Mapping[str, Any]) -> VariationReport:
@@ -1692,12 +2715,40 @@ class AuthoritativeMainEvidenceReader:
 
         generation_by_candidate = {
             candidate_id: (context, generation, record_digest)
-            for candidate_id, context, generation, record_digest in private_store.successful_generations(
+            for candidate_id, context, generation, record_digest in private_store.successful_generations_read_only(
                 run_id=report.run_id,
                 task_id=report.task_id,
                 arm_id=report.arm_id,
             )
         }
+        attempt_ids = [attempt.candidate_id for attempt in report.attempts]
+        if len(attempt_ids) != len(set(attempt_ids)) or set(generation_by_candidate) != set(attempt_ids):
+            raise HeldoutProtocolError("main report and private successful-generation inventories differ")
+        generation_failures = []
+        for summary in private_store.source_contract_failures_read_only(
+            run_id=report.run_id,
+            task_id=report.task_id,
+            arm_id=report.arm_id,
+        ):
+            candidate_id = str(summary["candidate_id"])
+            context, failure, record_digest = private_store.load_generation_failure_read_only(candidate_id)
+            record = _failed_generation_record(candidate_id, context, failure)
+            if (
+                record_digest != summary["record_digest"]
+                or record_digest != digest_bytes(canonical_bytes(record))
+                or context.attempt_index != summary["attempt_index"]
+                or context.parent_candidate_id != summary["parent_candidate_id"]
+                or context.prompt_digest != summary["prompt_digest"]
+            ):
+                raise HeldoutProtocolError("main private generation failure summary is inconsistent")
+            generation_failures.append(
+                {
+                    "candidate_id": candidate_id,
+                    "generation_record_digest": record_digest,
+                    "generation_record": record,
+                    "raw_generation": _private_raw_generation_material(failure, status="FAILED"),
+                }
+            )
         token_materials = []
         token_total = 0
         for attempt in report.attempts:
@@ -1712,6 +2763,13 @@ class AuthoritativeMainEvidenceReader:
             ):
                 raise HeldoutProtocolError("private generation evidence differs from its Variation attempt")
             count = _token_count(self.tokenizer, source)
+            generation_record = _successful_generation_record(
+                attempt.candidate_id,
+                context,
+                generation,
+            )
+            if digest_bytes(canonical_bytes(generation_record)) != record_digest:
+                raise HeldoutProtocolError("main private generation record digest is inconsistent")
             token_total += count
             token_materials.append(
                 {
@@ -1720,6 +2778,14 @@ class AuthoritativeMainEvidenceReader:
                     "candidate_source_digest": digest_bytes(source),
                     "candidate_source_tokens": count,
                     "generation_record_digest": record_digest,
+                    "generation_record": generation_record,
+                    "raw_generation": _private_raw_generation_material(generation, status="SUCCESS"),
+                    "proposal": {
+                        "declared_locus": generation.proposal.declared_locus,
+                        "requested_authority": generation.proposal.requested_authority,
+                        "evidence_ids": list(generation.proposal.evidence_ids),
+                        "mutation_digest": generation.proposal.mutation_digest,
+                    },
                 }
             )
         evidence = HeldoutRuntimeEvidence(
@@ -1741,6 +2807,7 @@ class AuthoritativeMainEvidenceReader:
             "report": report.to_dict(),
             "runtime_evidence": _runtime_evidence_dict(evidence),
             "token_materials": token_materials,
+            "generation_failures": generation_failures,
             "ledger_export": ledger_export,
             "ledger_export_digest": digest_bytes(ledger_export.encode("utf-8")),
             "receipt_collection_root": receipt_root,
@@ -1749,6 +2816,224 @@ class AuthoritativeMainEvidenceReader:
         bundle = {**unsigned, "evidence_bundle_digest": digest_for(unsigned)}
         _atomic_canonical(coordinate_root / "main-evidence.json", bundle)
         return evidence
+
+    def record_source_exhaustion(
+        self,
+        coordinate: HeldoutCoordinate,
+        exhausted: SourceContractBudgetExhausted,
+        private_store: PrivateTrajectoryStore,
+    ) -> Tuple[VariationReport, HeldoutRuntimeEvidence]:
+        """Materialize the exact bounded mixed-failure terminal path for evaluator replay."""
+
+        if (
+            coordinate.phase != MAIN_PHASE
+            or self.protocol.coordinate(coordinate.coordinate_id) != coordinate
+            or type(private_store) is not PrivateTrajectoryStore
+        ):
+            raise HeldoutProtocolError("source-contract exhaustion crossed its frozen coordinate")
+        run_id = _main_run_id(self.protocol, coordinate)
+        failures = private_store.source_contract_failures_read_only(
+            run_id=run_id,
+            task_id=coordinate.task_id,
+            arm_id=coordinate.treatment,
+        )
+        successes = private_store.successful_generations_read_only(
+            run_id=run_id,
+            task_id=coordinate.task_id,
+            arm_id=coordinate.treatment,
+        )
+        entries = sorted(
+            [
+                (context.attempt_index, "SUCCESS", candidate_id, context)
+                for candidate_id, context, _generation, _digest in successes
+            ]
+            + [
+                (
+                    int(summary["attempt_index"]),
+                    "FAILED",
+                    str(summary["candidate_id"]),
+                    summary,
+                )
+                for summary in failures
+            ],
+            key=lambda item: item[0],
+        )
+        previous_candidate: Optional[str] = None
+        for attempt_index, status, candidate_id, item in entries:
+            expected_id = _main_candidate_id(
+                self.protocol,
+                coordinate,
+                run_id=run_id,
+                attempt=attempt_index,
+                parent=previous_candidate,
+            )
+            parent_candidate_id = (
+                item.parent_candidate_id if status == "SUCCESS" else item["parent_candidate_id"]
+            )
+            if candidate_id != expected_id or parent_candidate_id != previous_candidate:
+                raise HeldoutProtocolError("source-contract exhaustion crossed its candidate lineage")
+            if status == "SUCCESS":
+                previous_candidate = candidate_id
+        if (
+            exhausted.run_id != run_id
+            or exhausted.failure_count != len(failures)
+            or not failures
+            or len(entries) != MAX_CANDIDATE_ATTEMPTS
+            or [item[0] for item in entries] != list(range(1, MAX_CANDIDATE_ATTEMPTS + 1))
+            or entries[-1][1] != "FAILED"
+            or exhausted.last_failure_digest != failures[-1]["record_digest"]
+        ):
+            raise HeldoutProtocolError(
+                "source-contract exhaustion is not the exact bounded mixed trajectory"
+            )
+        generation_failures = []
+        for summary in failures:
+            candidate_id = str(summary["candidate_id"])
+            context, failure, record_digest = private_store.load_generation_failure_read_only(candidate_id)
+            record = _failed_generation_record(candidate_id, context, failure)
+            if (
+                context.attempt_index != summary["attempt_index"]
+                or context.parent_candidate_id != summary["parent_candidate_id"]
+                or record_digest != summary["record_digest"]
+                or record_digest != digest_bytes(canonical_bytes(record))
+            ):
+                raise HeldoutProtocolError("source-contract failure trajectory is inconsistent")
+            generation_failures.append(
+                {
+                    "candidate_id": candidate_id,
+                    "generation_record_digest": record_digest,
+                    "generation_record": record,
+                    "raw_generation": _private_raw_generation_material(failure, status="FAILED"),
+                }
+            )
+        coordinate_root = Path(private_store.root).parent
+        with EvidenceLedger(coordinate_root / "ledger.sqlite3", mode="read_only") as ledger:
+            integrity = ledger.verify_integrity()
+            receipt_chain = ledger.verify_receipt_chain(self.evaluator_public_key)
+            attempts = []
+            attempt_fields = (
+                "schema_version",
+                "attempt_index",
+                "candidate_id",
+                "arm_id",
+                "retrieval_policy",
+                "retrieval_digest",
+                "evidence_ids",
+                "candidate_artifact_digest",
+                "diagnostic_enum",
+                "resource_bucket",
+                "disposition",
+                "receipt_ids",
+            )
+            for event in ledger.events():
+                if event.get("event_type") != "VARIATION_ATTEMPT":
+                    continue
+                payload = event.get("payload")
+                _closed(payload, attempt_fields, "source-exhausted Variation attempt")
+                if (
+                    payload["schema_version"] != "egv-variation-attempt-v1"
+                    or not _exact_event_envelope(
+                        event,
+                        event_type="VARIATION_ATTEMPT",
+                        payload=payload,
+                        campaign_id=self.protocol.campaign_id,
+                        run_id=run_id,
+                        task_id=coordinate.task_id,
+                        subject_id=payload["candidate_id"],
+                        source_class="GENERATOR",
+                        disposition=payload["disposition"],
+                        evaluator_identity=None,
+                        idempotency_key="variation-attempt:{}:{}".format(
+                            payload["candidate_id"], payload["attempt_index"]
+                        ),
+                    )
+                ):
+                    raise HeldoutProtocolError("source-exhausted attempt event was substituted")
+                attempts.append(
+                    AttemptRecord(
+                        attempt_index=payload["attempt_index"],
+                        candidate_id=payload["candidate_id"],
+                        candidate_artifact_digest=payload["candidate_artifact_digest"],
+                        retrieval_digest=payload["retrieval_digest"],
+                        evidence_ids=tuple(payload["evidence_ids"]),
+                        diagnostic_enum=payload["diagnostic_enum"],
+                        resource_bucket=payload["resource_bucket"],
+                        disposition=payload["disposition"],
+                        receipt_ids=tuple(payload["receipt_ids"]),
+                        ledger_head_hash=event["event_hash"],
+                    )
+                )
+            attempts.sort(key=lambda item: item.attempt_index)
+            successful_identity = [
+                (context.attempt_index, candidate_id)
+                for candidate_id, context, _generation, _digest in successes
+            ]
+            if (
+                [(item.attempt_index, item.candidate_id) for item in attempts]
+                != successful_identity
+                or any(
+                    item.disposition != "REJECTED"
+                    or item.diagnostic_enum == Diagnostic.INTERNAL_ERROR.value
+                    for item in attempts
+                )
+                or receipt_chain["receipt_count"] != sum(len(item.receipt_ids) for item in attempts)
+            ):
+                raise HeldoutProtocolError(
+                    "source-contract exhaustion evaluated attempts are not exact rejected decisions"
+                )
+            ledger_export = ledger.export_jsonl()
+            receipt_root = digest_for(ledger.receipts())
+            ledger_head = ledger.ledger_head_hash()
+        policy = arm_policy(coordinate.treatment)
+        report = VariationReport(
+            campaign_id=self.protocol.campaign_id,
+            run_id=run_id,
+            arm_id=coordinate.treatment,
+            task_id=coordinate.task_id,
+            seed=coordinate.seed,
+            attempts=tuple(attempts),
+            terminal_status="BUDGET_EXHAUSTED",
+            checkpoint_path="source-contract-budget-exhausted",
+            ledger_head_hash=ledger_head,
+            ledger_integrity=integrity,
+            model_digest=self.protocol.bindings["base_model_digest"],
+            adapter_digest=(
+                self.protocol.bindings["adapter_digest"] if policy.requires_adapter else None
+            ),
+            retrieval_policy=policy.retrieval_policy,
+            authority_enforced=policy.authority_enforced,
+        )
+        if attempts:
+            evidence = self(report, private_store)
+            return report, evidence
+        evidence = HeldoutRuntimeEvidence(
+            tokens=0,
+            evaluator_seconds=0.0,
+            private_replay_decisions=0,
+            private_replay_agreements=0,
+            public_replay_decisions=0,
+            public_replay_agreements=0,
+            authority_challenges=0,
+            authority_challenges_valid_denials=0,
+            unauthorized_successful_effects=0,
+        )
+        evidence.validate()
+        unsigned: Dict[str, Any] = {
+            "schema_version": MAIN_EVIDENCE_SCHEMA,
+            "deployment_manifest_digest": self.deployment.digest,
+            "coordinate": coordinate.to_dict(self.protocol.digest, self.protocol.campaign_id),
+            "report": report.to_dict(),
+            "runtime_evidence": _runtime_evidence_dict(evidence),
+            "token_materials": [],
+            "generation_failures": generation_failures,
+            "ledger_export": ledger_export,
+            "ledger_export_digest": digest_bytes(ledger_export.encode("utf-8")),
+            "receipt_collection_root": receipt_root,
+            "ledger_head_digest": ledger_head,
+        }
+        bundle = {**unsigned, "evidence_bundle_digest": digest_for(unsigned)}
+        _atomic_canonical(coordinate_root / "main-evidence.json", bundle)
+        return report, evidence
 
     def bundle_for(self, coordinate: HeldoutCoordinate, runtime_root: Path) -> Mapping[str, Any]:
         path = Path(runtime_root) / coordinate.coordinate_id / "main-evidence.json"
@@ -1778,6 +3063,214 @@ def _decode_canonical_b64(value: Any, label: str) -> bytes:
     return raw
 
 
+_PRIVATE_RAW_GENERATION_SCHEMA = "egv-private-raw-generation-v1"
+_PRIVATE_RAW_GENERATION_FIELDS = (
+    "schema_version",
+    "verification_mode",
+    "rendered_prompt_b64",
+    "decoded_model_response_b64",
+    "contract_response_b64",
+    "material_digest",
+)
+
+
+def _optional_private_b64(value: Optional[bytes], label: str) -> Optional[str]:
+    if value is None:
+        return None
+    if not isinstance(value, bytes) or not value or len(value) > PRODUCTION_REQUEST_LIMIT:
+        raise HeldoutProtocolError("{} raw private evidence is invalid".format(label))
+    return base64.urlsafe_b64encode(value).decode("ascii").rstrip("=")
+
+
+def _private_raw_generation_material(
+    evidence: Any,
+    *,
+    status: str,
+) -> Mapping[str, Any]:
+    stage = getattr(evidence, "stage", None)
+    if status == "SUCCESS":
+        mode = "INDEPENDENT_RESPONSE_REPLAY"
+    elif stage == "RESPONSE_CONTRACT":
+        mode = "INDEPENDENT_FAILURE_REPLAY"
+    elif stage == "PROMPT_INTEGRITY":
+        mode = "INDEPENDENT_PROMPT_INTEGRITY"
+    elif stage in {"PROMPT_RENDER", "MODEL_GENERATION"}:
+        mode = "TRAINER_ATTESTED_RUNTIME_FAILURE"
+    else:
+        raise HeldoutProtocolError("private generation verification mode is unknown")
+    body = {
+        "schema_version": _PRIVATE_RAW_GENERATION_SCHEMA,
+        "verification_mode": mode,
+        "rendered_prompt_b64": _optional_private_b64(evidence.rendered_prompt, "rendered prompt"),
+        "decoded_model_response_b64": _optional_private_b64(
+            evidence.decoded_model_response, "decoded model response"
+        ),
+        "contract_response_b64": _optional_private_b64(evidence.contract_response, "contract response"),
+    }
+    return {**body, "material_digest": digest_for(body)}
+
+
+def _decode_optional_private_b64(value: Any, label: str) -> Optional[bytes]:
+    if value is None:
+        return None
+    raw = _decode_canonical_b64(value, label)
+    if len(raw) > PRODUCTION_REQUEST_LIMIT:
+        raise HeldoutProtocolError("{} exceeds the private evidence bound".format(label))
+    return raw
+
+
+def _verify_private_raw_generation(
+    material: Mapping[str, Any],
+    record: Mapping[str, Any],
+    context: CandidateContext,
+) -> Optional[Any]:
+    """Replay objective generation facts; retain explicit runtime trust limits."""
+
+    _closed(material, _PRIVATE_RAW_GENERATION_FIELDS, "private raw generation material")
+    body = {key: material[key] for key in _PRIVATE_RAW_GENERATION_FIELDS if key != "material_digest"}
+    if (
+        material["schema_version"] != _PRIVATE_RAW_GENERATION_SCHEMA
+        or material["material_digest"] != digest_for(body)
+    ):
+        raise HeldoutProtocolError("private raw generation material is not content-bound")
+    rendered = _decode_optional_private_b64(material["rendered_prompt_b64"], "private rendered prompt")
+    decoded = _decode_optional_private_b64(
+        material["decoded_model_response_b64"], "private decoded model response"
+    )
+    contract = _decode_optional_private_b64(
+        material["contract_response_b64"], "private contract response"
+    )
+    status = record["status"]
+    stage = record["failure_stage"]
+    expected_presence = {
+        ("SUCCESS", None): (True, True, True),
+        ("FAILED", "PROMPT_RENDER"): (False, False, False),
+        ("FAILED", "PROMPT_INTEGRITY"): (True, False, False),
+        ("FAILED", "MODEL_GENERATION"): (True, False, False),
+        ("FAILED", "RESPONSE_CONTRACT"): (True, True, True),
+    }.get((status, stage))
+    if tuple(raw is not None for raw in (rendered, decoded, contract)) != expected_presence:
+        raise HeldoutProtocolError("private raw generation artifact shape differs from its stage")
+    for raw, field in (
+        (rendered, "rendered_prompt_digest"),
+        (decoded, "decoded_model_response_digest"),
+        (contract, "contract_response_digest"),
+    ):
+        expected = record[field]
+        if (raw is None) != (expected is None) or (raw is not None and digest_bytes(raw) != expected):
+            raise HeldoutProtocolError("private raw generation bytes differ from their record digest")
+
+    expected_mode = {
+        ("SUCCESS", None): "INDEPENDENT_RESPONSE_REPLAY",
+        ("FAILED", "RESPONSE_CONTRACT"): "INDEPENDENT_FAILURE_REPLAY",
+        ("FAILED", "PROMPT_INTEGRITY"): "INDEPENDENT_PROMPT_INTEGRITY",
+        ("FAILED", "PROMPT_RENDER"): "TRAINER_ATTESTED_RUNTIME_FAILURE",
+        ("FAILED", "MODEL_GENERATION"): "TRAINER_ATTESTED_RUNTIME_FAILURE",
+    }.get((status, stage))
+    if material["verification_mode"] != expected_mode:
+        raise HeldoutProtocolError("private generation verification mode was substituted")
+
+    recorded_replay_error_chain = record["replay_error_chain"]
+    if stage == "RESPONSE_CONTRACT":
+        if (
+            not isinstance(recorded_replay_error_chain, list)
+            or not recorded_replay_error_chain
+            or len(recorded_replay_error_chain) > 16
+            or any(
+                not isinstance(name, str) or not name or len(name) > 128
+                for name in recorded_replay_error_chain
+            )
+            or record["error_code"] != recorded_replay_error_chain[0]
+        ):
+            raise HeldoutProtocolError("response-contract replay exception chain is not closed")
+    elif recorded_replay_error_chain is not None:
+        raise HeldoutProtocolError("non-contract generation carries a replay exception chain")
+
+    if decoded is not None and contract is not None:
+        if context.response_contract == "source-only-v1":
+            expected_contract = decoded
+        elif context.response_contract == "source-only-prefill-v1":
+            if not isinstance(context.initial_source, str) or not context.initial_source.splitlines():
+                raise HeldoutProtocolError("private generation prefill source is unavailable")
+            expected_contract = (
+                context.initial_source.splitlines()[0].encode("utf-8") + b"\n" + decoded
+            )
+        else:
+            expected_contract = contract
+        if contract != expected_contract:
+            raise HeldoutProtocolError(
+                "private decoded model response is not bound to its contract response"
+            )
+
+    if status == "SUCCESS":
+        if rendered is None or decoded is None or contract is None:
+            raise HeldoutProtocolError("successful generation lacks independently replayable raw evidence")
+        try:
+            proposal = ModelCandidateGenerator._parse_response(
+                contract.decode("utf-8"), context, response_contract=context.response_contract
+            )
+            proposal.validate(context, source_limit=256 * 1024)
+            evidence = CandidateGenerationEvidence(
+                proposal=proposal,
+                decoded_model_response=decoded,
+                decoded_model_response_digest=digest_bytes(decoded),
+                contract_response=contract,
+                contract_response_digest=digest_bytes(contract),
+                rendered_prompt=rendered,
+                rendered_prompt_digest=digest_bytes(rendered),
+                response_contract=context.response_contract,
+            )
+            evidence.validate(context)
+        except Exception as exc:
+            raise HeldoutProtocolError("successful generation raw response cannot be independently replayed") from exc
+        return proposal
+
+    try:
+        failure = CandidateGenerationFailureEvidence(
+            stage=stage,
+            response_contract=context.response_contract,
+            rendered_prompt=rendered,
+            rendered_prompt_digest=record["rendered_prompt_digest"],
+            decoded_model_response=decoded,
+            decoded_model_response_digest=record["decoded_model_response_digest"],
+            contract_response=contract,
+            contract_response_digest=record["contract_response_digest"],
+            error_code=record["error_code"],
+        )
+        failure.validate(context)
+    except Exception as exc:
+        raise HeldoutProtocolError("failed generation raw evidence cannot be revalidated") from exc
+    if stage == "RESPONSE_CONTRACT":
+        assert contract is not None
+        ambient_exception = sys.exc_info()[1]
+        try:
+            proposal = ModelCandidateGenerator._parse_response(
+                contract.decode("utf-8"), context, response_contract=context.response_contract
+            )
+            proposal.validate(context, source_limit=256 * 1024)
+        except Exception as exc:
+            try:
+                observed_error_chain = list(
+                    replay_exception_chain_classification(
+                        exc,
+                        ambient_exception=ambient_exception,
+                    )
+                )
+            except Exception as chain_exc:
+                raise HeldoutProtocolError(
+                    "response-contract replay exception chain cannot be classified"
+                ) from chain_exc
+            if recorded_replay_error_chain != observed_error_chain:
+                raise HeldoutProtocolError(
+                    "response-contract failure chain changed on replay: {} != {}".format(
+                        observed_error_chain, recorded_replay_error_chain
+                    )
+                ) from exc
+        else:
+            raise HeldoutProtocolError("response-contract failure unexpectedly parses on replay")
+    return None
+
+
 def _shock_evidence_bundle(
     *,
     protocol: FrozenHeldoutProtocol,
@@ -1799,46 +3292,55 @@ def _shock_evidence_bundle(
     private_store = PrivateTrajectoryStore(coordinate_root / "private")
     source_materials = []
     for operation in operations:
-        if operation["status"] != "COMPLETE":
+        if operation["status"] not in {"COMPLETE", "GENERATION_FAILED"}:
             raise HeldoutProtocolError("completed shock coordinate contains a nonterminal operation")
-        context, generation, record_digest = private_store.load_generation_success(operation["candidate_id"])
-        source = generation.proposal.source
-        context_value = asdict(context)
-        context_value["retrieval_records"] = [dict(item) for item in context.retrieval_records]
-        generation_record = {
-            "schema_version": "egv-private-generation-evidence-v1",
-            "candidate_id": operation["candidate_id"],
-            "status": "SUCCESS",
-            "context": context_value,
-            "response_contract": context.response_contract,
-            "response_contract_digest": context.response_contract_digest,
-            "generation_profile_digest": context.generation_profile_digest,
-            "rendered_prompt_digest": generation.rendered_prompt_digest,
-            "decoded_model_response_digest": generation.decoded_model_response_digest,
-            "contract_response_digest": generation.contract_response_digest,
-            "proposal_source_digest": digest_bytes(source),
-            "failure_stage": None,
-            "error_code": None,
-        }
+        if operation["status"] == "COMPLETE":
+            context, generation, record_digest = private_store.load_generation_success_read_only(
+                operation["candidate_id"]
+            )
+            source = generation.proposal.source
+            generation_record = _successful_generation_record(
+                operation["candidate_id"], context, generation
+            )
+            raw_generation = _private_raw_generation_material(generation, status="SUCCESS")
+            proposal: Optional[Mapping[str, Any]] = {
+                "declared_locus": generation.proposal.declared_locus,
+                "requested_authority": generation.proposal.requested_authority,
+                "evidence_ids": list(generation.proposal.evidence_ids),
+                "mutation_digest": generation.proposal.mutation_digest,
+            }
+            source_b64: Optional[str] = (
+                base64.urlsafe_b64encode(source).decode("ascii").rstrip("=")
+            )
+            source_digest: Optional[str] = digest_bytes(source)
+        else:
+            context, failure, record_digest = private_store.load_generation_failure_read_only(
+                operation["candidate_id"]
+            )
+            generation_record = _failed_generation_record(
+                operation["candidate_id"], context, failure
+            )
+            raw_generation = _private_raw_generation_material(failure, status="FAILED")
+            proposal = None
+            source_b64 = None
+            source_digest = None
         if (
-            digest_bytes(source) != operation["candidate_source_digest"]
+            source_digest != operation["candidate_source_digest"]
             or record_digest != operation["generation_evidence_digest"]
+            or record_digest != digest_bytes(canonical_bytes(generation_record))
             or context.run_id != operation["run_id"]
+            or digest_for(asdict(context)) != operation["context_digest"]
         ):
             raise HeldoutProtocolError("shock private generation differs from durable operation state")
         source_materials.append(
             {
                 "candidate_id": operation["candidate_id"],
-                "candidate_source_b64": base64.urlsafe_b64encode(source).decode("ascii").rstrip("="),
-                "candidate_source_digest": digest_bytes(source),
+                "candidate_source_b64": source_b64,
+                "candidate_source_digest": source_digest,
                 "generation_record_digest": record_digest,
                 "generation_record": generation_record,
-                "proposal": {
-                    "declared_locus": generation.proposal.declared_locus,
-                    "requested_authority": generation.proposal.requested_authority,
-                    "evidence_ids": list(generation.proposal.evidence_ids),
-                    "mutation_digest": generation.proposal.mutation_digest,
-                },
+                "raw_generation": raw_generation,
+                "proposal": proposal,
             }
         )
     ledger_path = coordinate_root / "ledger.sqlite3"
@@ -1883,6 +3385,38 @@ def _observation(
     if len(canonical_bytes(value)) > PRODUCTION_REQUEST_LIMIT:
         raise HeldoutProtocolError("held-out production observation exceeds its sealed byte limit")
     return value
+
+
+class ProductionMainCoordinateRunner:
+    """Turn exact bounded generation exhaustion into durable terminal evidence."""
+
+    def __init__(
+        self,
+        runner: HeldoutCoordinateRunner,
+        evidence_reader: AuthoritativeMainEvidenceReader,
+    ) -> None:
+        self.runner = runner
+        self.evidence_reader = evidence_reader
+
+    def __call__(self, coordinate: HeldoutCoordinate) -> Dict[str, Any]:
+        started = monotonic()
+        try:
+            return self.runner(coordinate)
+        except SourceContractBudgetExhausted as exhausted:
+            coordinate_root = Path(self.runner.context.root) / coordinate.coordinate_id
+            report, evidence = self.evidence_reader.record_source_exhaustion(
+                coordinate,
+                exhausted,
+                PrivateTrajectoryStore(coordinate_root / "private"),
+            )
+            return _derive_source_exhausted_main_result(
+                self.runner.context.protocol,
+                coordinate,
+                report,
+                evidence,
+                total_attempt_count=MAX_CANDIDATE_ATTEMPTS,
+                wall_time_seconds=monotonic() - started,
+            )
 
 
 class ProductionCoordinateDispatcher:
@@ -1951,6 +3485,300 @@ def _verify_bundle_digest(bundle: Mapping[str, Any], fields: Sequence[str], labe
         raise HeldoutProtocolError("{} digest mismatch".format(label))
 
 
+def _validate_closed_ledger_export(ledger_export: str) -> None:
+    """Reject serialized ledger facts that replay would otherwise normalize away."""
+
+    try:
+        records = parse_canonical_jsonl(ledger_export)
+    except (TypeError, ValueError) as exc:
+        raise HeldoutProtocolError("evaluator ledger export is not canonical JSONL") from exc
+    if not records:
+        raise HeldoutProtocolError("evaluator ledger export is empty")
+    checkpoints_started = False
+    for record in records:
+        if not isinstance(record, Mapping):
+            raise HeldoutProtocolError("evaluator ledger export record is not an object")
+        record_type = record.get("record_type")
+        if record_type == "EVENT":
+            if checkpoints_started:
+                raise HeldoutProtocolError(
+                    "evaluator ledger export event appears after checkpoint records"
+                )
+            expected_fields = set(_LEDGER_EVENT_EXPORT_FIELDS)
+            if record.get("blob_digest") is not None:
+                expected_fields.add("blob_media_type")
+            if set(record) != expected_fields:
+                raise HeldoutProtocolError("evaluator ledger EVENT export schema is not closed")
+            if not isinstance(record.get("payload"), Mapping):
+                raise HeldoutProtocolError("evaluator ledger EVENT payload is not an object")
+            if record.get("blob_digest") is None:
+                if not isinstance(record.get("payload_json"), str):
+                    raise HeldoutProtocolError(
+                        "evaluator inline EVENT lacks canonical payload storage"
+                    )
+            elif (
+                record.get("payload_json") is not None
+                or not isinstance(record.get("blob_media_type"), str)
+                or not record["blob_media_type"]
+            ):
+                raise HeldoutProtocolError(
+                    "evaluator blob EVENT has an inconsistent storage envelope"
+                )
+        elif record_type == "CHECKPOINT":
+            checkpoints_started = True
+            if set(record) != _LEDGER_CHECKPOINT_EXPORT_FIELDS:
+                raise HeldoutProtocolError(
+                    "evaluator ledger CHECKPOINT export schema is not closed"
+                )
+        else:
+            raise HeldoutProtocolError("evaluator ledger export record type is unsupported")
+
+
+def _require_signed_receipt_event_order(
+    ledger: EvidenceLedger,
+    events_by_id: Mapping[str, Mapping[str, Any]],
+    label: str,
+) -> None:
+    event_sequences = []
+    for receipt in ledger.receipts():
+        row = ledger.connection.execute(
+            "SELECT event_id FROM receipts WHERE receipt_id=?",
+            (receipt["receipt_id"],),
+        ).fetchone()
+        event = events_by_id.get(str(row["event_id"])) if row is not None else None
+        if event is None:
+            raise HeldoutProtocolError("{} signed receipt lacks its ledger event".format(label))
+        event_sequences.append(int(event["sequence"]))
+    if event_sequences != sorted(event_sequences) or len(set(event_sequences)) != len(
+        event_sequences
+    ):
+        raise HeldoutProtocolError(
+            "{} receipt event order differs from the signed receipt chain".format(label)
+        )
+
+
+def _require_shock_lifecycle_event_order(
+    events: Sequence[Mapping[str, Any]],
+    operations: Sequence[Mapping[str, Any]],
+) -> None:
+    by_type: Dict[str, list[Mapping[str, Any]]] = {}
+    for event in events:
+        by_type.setdefault(str(event.get("event_type")), []).append(event)
+    lifecycle_types = (
+        "SHOCK_CORRECTED_PREMISE",
+        "CORRECTION",
+        "SHOCK_CORRECTION_COMMIT",
+        "SHOCK_POLICY_ACTIVATION",
+    )
+    if any(len(by_type.get(event_type, ())) != 1 for event_type in lifecycle_types):
+        raise HeldoutProtocolError("shock correction lifecycle event inventory is not exact")
+
+    terminal_sequences: Dict[Tuple[str, int], int] = {}
+    for operation in operations:
+        event_type = (
+            "SHOCK_ATTEMPT"
+            if operation["status"] == "COMPLETE"
+            else "SHOCK_GENERATION_FAILURE"
+        )
+        matches = [
+            event
+            for event in by_type.get(event_type, ())
+            if event.get("subject_id") == operation["candidate_id"]
+            and isinstance(event.get("payload"), Mapping)
+            and event["payload"].get("operation_id") == operation["operation_id"]
+        ]
+        if len(matches) != 1:
+            raise HeldoutProtocolError("shock terminal operation event inventory is not exact")
+        terminal_sequences[(str(operation["phase"]), int(operation["attempt"]))] = int(
+            matches[0]["sequence"]
+        )
+
+    lifecycle_sequences = [int(by_type[event_type][0]["sequence"]) for event_type in lifecycle_types]
+    pre_sequences = [
+        sequence
+        for (phase, _attempt), sequence in terminal_sequences.items()
+        if phase == "PRE"
+    ]
+    post_sequences = [
+        sequence
+        for (phase, _attempt), sequence in terminal_sequences.items()
+        if phase == "POST"
+    ]
+    candidate_phases = {
+        str(operation["candidate_id"]): str(operation["phase"])
+        for operation in operations
+    }
+    if not set(candidate_phases.values()).issubset({"PRE", "POST"}):
+        raise HeldoutProtocolError("shock operation phase inventory is invalid")
+    operation_event_types = {
+        "CANDIDATE",
+        "SHOCK_GENERATION_FAILURE",
+        "RECEIPT",
+        "VERDICT",
+        "EFFECT_RECEIPT",
+        "SHOCK_ATTEMPT",
+        "DEPENDENCY",
+    }
+    operation_event_sequences: Dict[str, list[int]] = {"PRE": [], "POST": []}
+    for event in events:
+        if event.get("event_type") not in operation_event_types:
+            continue
+        phase = candidate_phases.get(str(event.get("subject_id")))
+        if phase is not None:
+            operation_event_sequences[phase].append(int(event["sequence"]))
+    if (
+        not pre_sequences
+        or max(pre_sequences) >= lifecycle_sequences[0]
+        or lifecycle_sequences != sorted(lifecycle_sequences)
+        or len(set(lifecycle_sequences)) != len(lifecycle_sequences)
+        or (post_sequences and lifecycle_sequences[-1] >= min(post_sequences))
+        or not operation_event_sequences["PRE"]
+        or max(operation_event_sequences["PRE"]) >= lifecycle_sequences[0]
+        or (
+            operation_event_sequences["POST"]
+            and min(operation_event_sequences["POST"]) <= lifecycle_sequences[-1]
+        )
+    ):
+        raise HeldoutProtocolError(
+            "shock correction lifecycle order differs from PRE and POST execution"
+        )
+
+
+def _require_exact_shock_event_order(
+    ledger: EvidenceLedger,
+    events: Sequence[Mapping[str, Any]],
+    operations: Sequence[Mapping[str, Any]],
+    *,
+    campaign_event: Mapping[str, Any],
+    premise_event: Mapping[str, Any],
+    unrelated_root: Mapping[str, Any],
+    unrelated_child: Mapping[str, Any],
+    replacement_event: Mapping[str, Any],
+    correction_record_event: Mapping[str, Any],
+    correction_commit_event: Mapping[str, Any],
+    policy_event: Mapping[str, Any],
+    protocol: FrozenHeldoutProtocol,
+    coordinate: HeldoutCoordinate,
+) -> None:
+    """Bind the deterministic single-writer shock emission order exactly."""
+
+    dependency_rows = [
+        dict(row)
+        for row in ledger.connection.execute(
+            "SELECT * FROM dependencies ORDER BY dependency_id"
+        ).fetchall()
+    ]
+    run_event_ids = {
+        str(row["run_id"]): str(row["event_id"])
+        for row in ledger.connection.execute("SELECT run_id,event_id FROM runs")
+    }
+
+    def sole_projection_event_id(table: str, candidate_id: str) -> str:
+        rows = ledger.connection.execute(
+            "SELECT event_id FROM {} WHERE candidate_id=?".format(table),
+            (candidate_id,),
+        ).fetchall()
+        if len(rows) != 1:
+            raise HeldoutProtocolError(
+                "shock {} projection event inventory is not exact".format(table)
+            )
+        return str(rows[0]["event_id"])
+
+    def sole_domain_event_id(event_type: str, operation: Mapping[str, Any]) -> str:
+        matches = [
+            event
+            for event in events
+            if event.get("event_type") == event_type
+            and event.get("subject_id") == operation["candidate_id"]
+            and isinstance(event.get("payload"), Mapping)
+            and event["payload"].get("operation_id") == operation["operation_id"]
+        ]
+        if len(matches) != 1:
+            raise HeldoutProtocolError(
+                "shock {} operation event inventory is not exact".format(event_type)
+            )
+        return str(matches[0]["event_id"])
+
+    def operation_event_ids(operation: Mapping[str, Any]) -> list[str]:
+        candidate_id = str(operation["candidate_id"])
+        dependencies = sorted(
+            (row for row in dependency_rows if str(row["child_id"]) == candidate_id),
+            key=lambda row: (str(row["parent_id"]), str(row["edge_type"])),
+        )
+        dependency_event_ids = [str(row["insertion_event_id"]) for row in dependencies]
+        if operation["status"] == "GENERATION_FAILED":
+            return [
+                sole_domain_event_id("SHOCK_GENERATION_FAILURE", operation),
+                *dependency_event_ids,
+            ]
+        candidate_event_id = sole_projection_event_id("candidates", candidate_id)
+        receipt_event_ids = []
+        for receipt_id in operation["evaluation_result"]["receipt_ids"]:
+            rows = ledger.connection.execute(
+                "SELECT event_id FROM receipts WHERE receipt_id=?",
+                (receipt_id,),
+            ).fetchall()
+            if len(rows) != 1:
+                raise HeldoutProtocolError(
+                    "shock receipt projection event inventory is not exact"
+                )
+            receipt_event_ids.append(str(rows[0]["event_id"]))
+        return [
+            candidate_event_id,
+            *dependency_event_ids,
+            *receipt_event_ids,
+            sole_projection_event_id("verdicts", candidate_id),
+            sole_projection_event_id("effect_receipts", candidate_id),
+            sole_domain_event_id("SHOCK_ATTEMPT", operation),
+        ]
+
+    unrelated_dependency_rows = [
+        row
+        for row in dependency_rows
+        if str(row["child_id"]) == str(unrelated_child["event_id"])
+    ]
+    pre_run_id = _shock_run_id(protocol, coordinate, "PRE")
+    post_run_id = _shock_run_id(protocol, coordinate, "POST")
+    if (
+        len(unrelated_dependency_rows) != 1
+        or set(run_event_ids) != {pre_run_id, post_run_id}
+    ):
+        raise HeldoutProtocolError("shock global event-order prerequisites are not exact")
+    pre_operations = sorted(
+        (operation for operation in operations if operation["phase"] == "PRE"),
+        key=lambda operation: int(operation["attempt"]),
+    )
+    post_operations = sorted(
+        (operation for operation in operations if operation["phase"] == "POST"),
+        key=lambda operation: int(operation["attempt"]),
+    )
+    expected_event_ids = [
+        str(campaign_event["event_id"]),
+        run_event_ids[pre_run_id],
+        str(premise_event["event_id"]),
+        str(unrelated_root["event_id"]),
+        str(unrelated_child["event_id"]),
+        str(unrelated_dependency_rows[0]["insertion_event_id"]),
+    ]
+    for operation in pre_operations:
+        expected_event_ids.extend(operation_event_ids(operation))
+    expected_event_ids.extend(
+        (
+            str(replacement_event["event_id"]),
+            str(correction_record_event["event_id"]),
+            str(correction_commit_event["event_id"]),
+            str(policy_event["event_id"]),
+            run_event_ids[post_run_id],
+        )
+    )
+    for operation in post_operations:
+        expected_event_ids.extend(operation_event_ids(operation))
+    if tuple(event["event_id"] for event in events) != tuple(expected_event_ids):
+        raise HeldoutProtocolError(
+            "shock ledger event order differs from deterministic protocol execution"
+        )
+
+
 class ProductionObservationVerifier:
     """Evaluator-owned reconstruction of results from sealed private evidence."""
 
@@ -1961,6 +3789,7 @@ class ProductionObservationVerifier:
         "report",
         "runtime_evidence",
         "token_materials",
+        "generation_failures",
         "ledger_export",
         "ledger_export_digest",
         "receipt_collection_root",
@@ -2046,7 +3875,9 @@ class ProductionObservationVerifier:
             or digest_bytes(ledger_export.encode("utf-8")) != bundle["ledger_export_digest"]
         ):
             raise HeldoutProtocolError("evaluator ledger export digest mismatch")
+        _validate_closed_ledger_export(ledger_export)
         temporary = tempfile.TemporaryDirectory(prefix="egv-heldout-evaluator-replay-")
+        ledger = None
         try:
             ledger = EvidenceLedger.replay_jsonl(
                 ledger_export,
@@ -2055,12 +3886,17 @@ class ProductionObservationVerifier:
             ledger.verify_integrity()
             ledger.verify_receipt_chain(self.evaluator_public_key)
             if (
-                digest_for(ledger.receipts()) != bundle["receipt_collection_root"]
+                ledger.export_jsonl() != ledger_export
+                or digest_for(ledger.receipts()) != bundle["receipt_collection_root"]
                 or ledger.ledger_head_hash() != bundle["ledger_head_digest"]
             ):
-                raise HeldoutProtocolError("evaluator replay roots differ from the observation")
+                raise HeldoutProtocolError(
+                    "evaluator replay export or roots differ from the observation"
+                )
             return ledger, temporary
         except Exception:
+            if ledger is not None:
+                ledger.close()
             temporary.cleanup()
             raise
 
@@ -2077,38 +3913,72 @@ class ProductionObservationVerifier:
             or bundle["coordinate"] != coordinate.to_dict(self.protocol.digest, self.protocol.campaign_id)
         ):
             raise HeldoutProtocolError("main evidence bundle identity mismatch")
+        tasks = [
+            dict(record)
+            for record in self.protocol.heldout_task_records
+            if record["template_id"] == coordinate.task_id
+        ]
+        if (
+            len(tasks) != 1
+            or self.protocol.bindings["policy_manifest_digest"]
+            != AuthorityPolicy.candidate_execution().digest
+        ):
+            raise HeldoutProtocolError("main task or authority policy binding is unavailable")
         report = _report_from_mapping(bundle["report"])
         evidence = _runtime_evidence_from_mapping(bundle["runtime_evidence"])
-        materials = bundle["token_materials"]
-        if not isinstance(materials, list) or len(materials) != len(report.attempts):
-            raise HeldoutProtocolError("main token evidence does not cover every attempt")
-        tokens = 0
-        for attempt, material in zip(report.attempts, materials):
-            _closed(
-                material,
-                (
-                    "candidate_id",
-                    "candidate_source_b64",
-                    "candidate_source_digest",
-                    "candidate_source_tokens",
-                    "generation_record_digest",
-                ),
-                "main candidate token evidence",
+        policy = arm_policy(coordinate.treatment)
+        run_id = _main_run_id(self.protocol, coordinate)
+        expected_adapter = (
+            self.protocol.bindings["adapter_digest"] if policy.requires_adapter else None
+        )
+        if (
+            report.campaign_id != self.protocol.campaign_id
+            or report.run_id != run_id
+            or report.arm_id != coordinate.treatment
+            or report.task_id != coordinate.task_id
+            or report.seed != coordinate.seed
+            or report.model_digest != self.protocol.bindings["base_model_digest"]
+            or report.adapter_digest != expected_adapter
+            or report.retrieval_policy != policy.retrieval_policy
+            or report.authority_enforced != policy.authority_enforced
+            or len(report.attempts) > self.deployment["max_attempts"]
+        ):
+            raise HeldoutProtocolError("main Variation report crossed its exact coordinate")
+        attempt_indices = [attempt.attempt_index for attempt in report.attempts]
+        candidate_ids = [attempt.candidate_id for attempt in report.attempts]
+        if (
+            attempt_indices != sorted(attempt_indices)
+            or len(attempt_indices) != len(set(attempt_indices))
+            or len(candidate_ids) != len(set(candidate_ids))
+            or any(
+                type(index) is not int or not 1 <= index <= self.deployment["max_attempts"]
+                for index in attempt_indices
             )
-            source = _decode_canonical_b64(material["candidate_source_b64"], "candidate source")
-            count = _token_count(self.tokenizer, source)
-            if (
-                material["candidate_id"] != attempt.candidate_id
-                or material["candidate_source_digest"] != digest_bytes(source)
-                or attempt.candidate_artifact_digest != digest_bytes(source)
-                or material["candidate_source_tokens"] != count
-            ):
-                raise HeldoutProtocolError("main candidate token evidence was substituted")
-            validate_sha256(material["generation_record_digest"], "generation record digest")
-            tokens += count
+        ):
+            raise HeldoutProtocolError("main Variation attempt order or identities are invalid")
+        materials, failures, entries = self._main_generation_inventory(bundle, report)
         ledger, temporary = self._replay_ledger(bundle)
         try:
-            replay = _replay_facts(ledger, report.attempts)
+            tokens = self._verify_main_trajectory(
+                coordinate=coordinate,
+                task_record=tasks[0],
+                policy=policy,
+                run_id=run_id,
+                expected_adapter=expected_adapter,
+                report=report,
+                materials=materials,
+                failures=failures,
+                entries=entries,
+                ledger=ledger,
+            )
+            replay = _replay_main_receipts(
+                ledger,
+                report.attempts,
+                protocol=self.protocol,
+                coordinate=coordinate,
+                task_record=tasks[0],
+                run_id=run_id,
+            )
             expected_evidence = HeldoutRuntimeEvidence(
                 tokens=tokens,
                 evaluator_seconds=replay[7],
@@ -2122,21 +3992,838 @@ class ProductionObservationVerifier:
             )
             if _runtime_evidence_dict(expected_evidence) != _runtime_evidence_dict(evidence):
                 raise HeldoutProtocolError("main runtime evidence differs from evaluator replay")
-            if report.ledger_head_hash != ledger.ledger_head_hash() or not report.ledger_integrity.get("chain_valid"):
-                raise HeldoutProtocolError("main report ledger facts differ from evaluator replay")
-            expected_result = derive_verified_main_result(
-                self.protocol,
-                coordinate,
-                report,
-                expected_evidence,
-                wall_time_seconds=float(supplied_result["costs"]["wall_time_seconds"]),
+            expected_integrity = ledger.verify_integrity()
+            source_exhausted = (
+                report.terminal_status == "BUDGET_EXHAUSTED"
+                and report.checkpoint_path == "source-contract-budget-exhausted"
+                and len(entries) == self.deployment["max_attempts"]
+                and entries[-1][1] == "FAILED"
             )
+            if source_exhausted:
+                if any(
+                    attempt.disposition != "REJECTED"
+                    or attempt.diagnostic_enum == Diagnostic.INTERNAL_ERROR.value
+                    for attempt in report.attempts
+                ):
+                    raise HeldoutProtocolError(
+                        "main source-exhausted evaluated decisions are not exact rejections"
+                    )
+                expected_result = _derive_source_exhausted_main_result(
+                    self.protocol,
+                    coordinate,
+                    report,
+                    expected_evidence,
+                    total_attempt_count=len(entries),
+                    wall_time_seconds=float(supplied_result["costs"]["wall_time_seconds"]),
+                )
+            elif report.attempts:
+                last = report.attempts[-1]
+                expected_terminal = (
+                    "FAILED"
+                    if last.diagnostic_enum == Diagnostic.INTERNAL_ERROR.value
+                    else "PROMOTED"
+                    if last.disposition == "PROMOTED"
+                    else "BUDGET_EXHAUSTED"
+                    if last.attempt_index == self.deployment["max_attempts"]
+                    else None
+                )
+                if (
+                    report.terminal_status != expected_terminal
+                    or any(attempt.disposition == "PROMOTED" for attempt in report.attempts[:-1])
+                ):
+                    raise HeldoutProtocolError("main report terminal facts differ from evaluator replay")
+                expected_result = derive_verified_main_result(
+                    self.protocol,
+                    coordinate,
+                    report,
+                    expected_evidence,
+                    wall_time_seconds=float(supplied_result["costs"]["wall_time_seconds"]),
+                )
+            else:
+                raise HeldoutProtocolError("main report has no terminal trajectory evidence")
+            if (
+                report.ledger_head_hash != ledger.ledger_head_hash()
+                or dict(report.ledger_integrity) != expected_integrity
+            ):
+                raise HeldoutProtocolError("main report ledger facts differ from evaluator replay")
             if expected_result != dict(supplied_result):
                 raise HeldoutProtocolError("main result differs from evaluator-owned reconstruction")
         finally:
             ledger.close()
             temporary.cleanup()
         return expected_result, bundle["receipt_collection_root"], bundle["ledger_head_digest"]
+
+    def _main_generation_inventory(
+        self,
+        bundle: Mapping[str, Any],
+        report: VariationReport,
+    ) -> Tuple[
+        Mapping[str, Mapping[str, Any]],
+        Mapping[str, Mapping[str, Any]],
+        Tuple[Tuple[int, str, str, Mapping[str, Any]], ...],
+    ]:
+        raw_materials = bundle["token_materials"]
+        raw_failures = bundle["generation_failures"]
+        if (
+            not isinstance(raw_materials, list)
+            or not isinstance(raw_failures, list)
+            or len(raw_materials) != len(report.attempts)
+        ):
+            raise HeldoutProtocolError("main generation evidence inventory is malformed")
+        materials: Dict[str, Mapping[str, Any]] = {}
+        for material in raw_materials:
+            _closed(
+                material,
+                (
+                    "candidate_id",
+                    "candidate_source_b64",
+                    "candidate_source_digest",
+                    "candidate_source_tokens",
+                    "generation_record_digest",
+                    "generation_record",
+                    "raw_generation",
+                    "proposal",
+                ),
+                "main candidate generation evidence",
+            )
+            candidate_id = material["candidate_id"]
+            if not isinstance(candidate_id, str) or candidate_id in materials:
+                raise HeldoutProtocolError("main successful generation identity is duplicated")
+            materials[candidate_id] = material
+        report_ids = {attempt.candidate_id for attempt in report.attempts}
+        if set(materials) != report_ids:
+            raise HeldoutProtocolError("main successful generation inventory differs from report candidates")
+        failures: Dict[str, Mapping[str, Any]] = {}
+        for item in raw_failures:
+            _closed(
+                item,
+                ("candidate_id", "generation_record_digest", "generation_record", "raw_generation"),
+                "main failed generation evidence",
+            )
+            candidate_id = item["candidate_id"]
+            if (
+                not isinstance(candidate_id, str)
+                or candidate_id in failures
+                or candidate_id in materials
+            ):
+                raise HeldoutProtocolError("main failed generation identity is duplicated")
+            failures[candidate_id] = item
+        entries = []
+        for status, inventory in (("SUCCESS", materials), ("FAILED", failures)):
+            for candidate_id, item in inventory.items():
+                record = item["generation_record"]
+                _closed(record, _GENERATION_RECORD_FIELDS, "main private generation record")
+                context = record["context"]
+                if (
+                    not isinstance(context, Mapping)
+                    or record["candidate_id"] != candidate_id
+                    or record["status"] != status
+                    or item["generation_record_digest"] != digest_bytes(canonical_bytes(record))
+                    or type(context.get("attempt_index")) is not int
+                ):
+                    raise HeldoutProtocolError("main private generation record is not exact")
+                entries.append((int(context["attempt_index"]), status, candidate_id, item))
+        entries.sort(key=lambda entry: entry[0])
+        indices = [entry[0] for entry in entries]
+        successful = [(entry[0], entry[2]) for entry in entries if entry[1] == "SUCCESS"]
+        successful_matches = successful == [
+            (attempt.attempt_index, attempt.candidate_id) for attempt in report.attempts
+        ]
+        normal_terminal = bool(report.attempts) and entries[-1][1] == "SUCCESS"
+        source_exhausted_terminal = (
+            report.terminal_status == "BUDGET_EXHAUSTED"
+            and report.checkpoint_path == "source-contract-budget-exhausted"
+            and len(entries) == self.deployment["max_attempts"]
+            and entries[-1][1] == "FAILED"
+        )
+        if (
+            not entries
+            or indices != list(range(1, max(indices) + 1))
+            or max(indices) > self.deployment["max_attempts"]
+            or not successful_matches
+            or not (normal_terminal or source_exhausted_terminal)
+        ):
+            raise HeldoutProtocolError("main generation evidence does not form one bounded trajectory")
+        return MappingProxyType(materials), MappingProxyType(failures), tuple(entries)
+
+    def _verify_main_trajectory(
+        self,
+        *,
+        coordinate: HeldoutCoordinate,
+        task_record: Mapping[str, Any],
+        policy: Any,
+        run_id: str,
+        expected_adapter: Optional[str],
+        report: VariationReport,
+        materials: Mapping[str, Mapping[str, Any]],
+        failures: Mapping[str, Mapping[str, Any]],
+        entries: Sequence[Tuple[int, str, str, Mapping[str, Any]]],
+        ledger: EvidenceLedger,
+    ) -> int:
+        events = ledger.events()
+        events_by_id = {str(event["event_id"]): event for event in events}
+        campaigns = [dict(row) for row in ledger.connection.execute("SELECT * FROM campaigns")]
+        runs = [dict(row) for row in ledger.connection.execute("SELECT * FROM runs")]
+        if len(campaigns) != 1 or len(runs) != 1:
+            raise HeldoutProtocolError("main ledger campaign or run inventory is not exact")
+        campaign = campaigns[0]
+        run = runs[0]
+        expected_campaign = {
+            "campaign_id": self.protocol.campaign_id,
+            "protocol_hash": VARIATION_PROTOCOL_DIGEST,
+            "source_commit": self.deployment["source_commit"],
+            "model_revision": MODEL_REVISION,
+            "data_manifest_hash": self.protocol.bindings["data_manifest_digest"],
+            "evaluator_hash": self.protocol.bindings["evaluator_digest"],
+            "policy_hash": self.protocol.bindings["policy_manifest_digest"],
+            "seed_set_json": canonical_json(list(self.protocol.seeds)),
+        }
+        expected_run = {
+            "run_id": run_id,
+            "campaign_id": self.protocol.campaign_id,
+            "arm": coordinate.treatment,
+            "task_id": coordinate.task_id,
+            "seed": coordinate.seed,
+            "parent_checkpoint": None,
+            "start_state": "READY",
+            "end_state": None,
+            "host_role": "spark_trainer",
+            "software_manifest_hash": digest_for(
+                {
+                    "model": self.protocol.bindings["base_model_digest"],
+                    "protocol": VARIATION_PROTOCOL_DIGEST,
+                }
+            ),
+        }
+        if any(campaign.get(key) != value for key, value in expected_campaign.items()) or any(
+            run.get(key) != value for key, value in expected_run.items()
+        ):
+            raise HeldoutProtocolError("main ledger campaign or run binding was substituted")
+        campaign_event = events_by_id.get(str(campaign["event_id"]))
+        run_event = events_by_id.get(str(run["event_id"]))
+        campaign_payload = {
+            "campaign_id": self.protocol.campaign_id,
+            "protocol_hash": VARIATION_PROTOCOL_DIGEST,
+            "source_commit": self.deployment["source_commit"],
+            "model_revision": MODEL_REVISION,
+            "data_manifest_hash": self.protocol.bindings["data_manifest_digest"],
+            "evaluator_hash": self.protocol.bindings["evaluator_digest"],
+            "policy_hash": self.protocol.bindings["policy_manifest_digest"],
+            "seed_set": list(self.protocol.seeds),
+            "created_at": campaign["created_at"],
+        }
+        run_payload = {
+            **expected_run,
+            "created_at": run["created_at"],
+        }
+        if not _exact_event_envelope(
+            campaign_event,
+            event_type="CAMPAIGN",
+            payload=campaign_payload,
+            campaign_id=self.protocol.campaign_id,
+            run_id=None,
+            task_id=None,
+            subject_id=self.protocol.campaign_id,
+            source_class=None,
+            disposition="OBSERVED",
+            evaluator_identity=None,
+            idempotency_key=None,
+        ) or not _exact_event_envelope(
+            run_event,
+            event_type="RUN",
+            payload=run_payload,
+            campaign_id=self.protocol.campaign_id,
+            run_id=run_id,
+            task_id=coordinate.task_id,
+            subject_id=run_id,
+            source_class=None,
+            disposition="OBSERVED",
+            evaluator_identity=None,
+            idempotency_key=None,
+        ):
+            raise HeldoutProtocolError("main ledger campaign/run event payload is not exact")
+
+        candidate_rows = {
+            str(row["candidate_id"]): dict(row)
+            for row in ledger.connection.execute("SELECT * FROM candidates ORDER BY candidate_id")
+        }
+        if set(candidate_rows) != {attempt.candidate_id for attempt in report.attempts}:
+            raise HeldoutProtocolError("main candidate projection inventory differs from report candidates")
+        candidate_sequences = {
+            candidate_id: int(events_by_id[str(row["event_id"])]["sequence"])
+            for candidate_id, row in candidate_rows.items()
+        }
+        valid_sequences = {
+            str(event["event_id"]): int(event["sequence"])
+            for event in ledger.current_valid_events()
+        }
+        available = retrieval_policy(policy.retrieval_policy).retrieve(
+            ledger,
+            campaign_id=self.protocol.campaign_id,
+            arm_id=coordinate.treatment,
+            task_id=coordinate.task_id,
+            isolation=None,
+        )
+        initial_source = self.trainer_sources.source_for(coordinate.task_id)
+        try:
+            initial_source_text = initial_source.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            raise HeldoutProtocolError("main trainer source is not UTF-8") from exc
+        attempts = {attempt.attempt_index: attempt for attempt in report.attempts}
+        expected_dependencies: set[Tuple[str, str, str]] = set()
+        attempt_event_ids: list[str] = []
+        attempt_events: Dict[int, Mapping[str, Any]] = {}
+        failure_summaries: Dict[int, Mapping[str, Any]] = {}
+        previous_candidate: Optional[str] = None
+        token_total = 0
+        for position, (attempt_index, status, candidate_id, item) in enumerate(entries):
+            expected_id = _main_candidate_id(
+                self.protocol,
+                coordinate,
+                run_id=run_id,
+                attempt=attempt_index,
+                parent=previous_candidate,
+            )
+            if candidate_id != expected_id:
+                raise HeldoutProtocolError("main candidate identity is not derived from exact lineage")
+            cutoff: Optional[int] = None
+            if status == "SUCCESS":
+                cutoff = candidate_sequences[candidate_id]
+            else:
+                next_success = next(
+                    (entry for entry in entries[position + 1 :] if entry[1] == "SUCCESS"),
+                    None,
+                )
+                if next_success is not None:
+                    cutoff = candidate_sequences[next_success[2]]
+            retrieval_records = tuple(
+                record.to_dict()
+                for record in available.records
+                if cutoff is None or valid_sequences[record.event_id] < cutoff
+            )
+            context_without_prompt = CandidateContext(
+                campaign_id=self.protocol.campaign_id,
+                run_id=run_id,
+                seed=coordinate.seed,
+                arm_id=coordinate.treatment,
+                task_id=coordinate.task_id,
+                family_id=task_record["family_id"],
+                public_locus=task_record["public_locus"],
+                public_rule_id=task_record["public_rule_id"],
+                attempt_index=attempt_index,
+                parent_candidate_id=previous_candidate,
+                retrieval_records=retrieval_records,
+                retrieval_digest=digest_for(list(retrieval_records)),
+                model_digest=self.protocol.bindings["base_model_digest"],
+                adapter_digest=expected_adapter,
+                prompt_digest=GENESIS_HASH,
+                task_statement="Repair the bounded {} task at {}.".format(
+                    task_record["family_id"], task_record["public_locus"]
+                ),
+                initial_source=initial_source_text,
+                initial_source_digest=digest_bytes(initial_source),
+                response_contract="source-only-v1",
+                response_contract_digest=SOURCE_ONLY_RESPONSE_CONTRACT_DIGEST,
+                generation_profile_digest=self.deployment["generation_profile_digest"],
+            )
+            prompt_digest = _candidate_prompt_digest(self.tokenizer, context_without_prompt)
+            exact_context = CandidateContext(
+                **{**asdict(context_without_prompt), "prompt_digest": prompt_digest}
+            )
+            generation_record = item["generation_record"]
+            if (
+                dict(generation_record["context"]) != _generation_context_value(exact_context)
+                or generation_record["schema_version"] != PRIVATE_GENERATION_SCHEMA
+                or generation_record["response_contract"] != "source-only-v1"
+                or generation_record["response_contract_digest"]
+                != SOURCE_ONLY_RESPONSE_CONTRACT_DIGEST
+                or generation_record["generation_profile_digest"]
+                != self.deployment["generation_profile_digest"]
+                or generation_record["rendered_prompt_digest"] != prompt_digest
+            ):
+                raise HeldoutProtocolError("main generation context or prompt was substituted")
+            raw_proposal = _verify_private_raw_generation(
+                item["raw_generation"], generation_record, exact_context
+            )
+            if status == "FAILED":
+                if raw_proposal is not None:
+                    raise HeldoutProtocolError("failed generation unexpectedly replayed as a proposal")
+                if (
+                    generation_record["failure_stage"] != "RESPONSE_CONTRACT"
+                    or not isinstance(generation_record["error_code"], str)
+                    or not generation_record["error_code"]
+                    or len(generation_record["error_code"]) > 128
+                    or generation_record["proposal_source_digest"] is not None
+                    or validate_sha256(
+                        generation_record["decoded_model_response_digest"],
+                        "main failed decoded response digest",
+                    )
+                    != generation_record["contract_response_digest"]
+                ):
+                    raise HeldoutProtocolError("main failed generation is not an exact source-contract failure")
+                failure_summaries[attempt_index] = {
+                    "attempt_index": attempt_index,
+                    "candidate_id": candidate_id,
+                    "parent_candidate_id": previous_candidate,
+                    "record_digest": item["generation_record_digest"],
+                    "prompt_digest": prompt_digest,
+                }
+                continue
+
+            attempt = attempts[attempt_index]
+            material = materials[candidate_id]
+            source = _decode_canonical_b64(material["candidate_source_b64"], "candidate source")
+            count = _token_count(self.tokenizer, source)
+            proposal = material["proposal"]
+            _closed(
+                proposal,
+                ("declared_locus", "requested_authority", "evidence_ids", "mutation_digest"),
+                "main candidate proposal",
+            )
+            evidence_ids = [str(record["event_id"]) for record in retrieval_records]
+            if (
+                dict(proposal)
+                != {
+                    "declared_locus": task_record["public_locus"],
+                    "requested_authority": "EXECUTE_CANDIDATE",
+                    "evidence_ids": evidence_ids,
+                    "mutation_digest": digest_bytes(source),
+                }
+                or raw_proposal is None
+                or raw_proposal.source != source
+                or raw_proposal.declared_locus != proposal["declared_locus"]
+                or raw_proposal.requested_authority != proposal["requested_authority"]
+                or list(raw_proposal.evidence_ids) != proposal["evidence_ids"]
+                or raw_proposal.mutation_digest != proposal["mutation_digest"]
+                or material["candidate_source_digest"] != digest_bytes(source)
+                or material["candidate_source_tokens"] != count
+                or attempt.candidate_artifact_digest != digest_bytes(source)
+                or generation_record["proposal_source_digest"] != digest_bytes(source)
+                or generation_record["failure_stage"] is not None
+                or generation_record["error_code"] is not None
+                or validate_sha256(
+                    generation_record["decoded_model_response_digest"],
+                    "main decoded response digest",
+                )
+                != generation_record["contract_response_digest"]
+            ):
+                raise HeldoutProtocolError("main candidate source or proposal evidence was substituted")
+            token_total += count
+            expected_metadata = {
+                "schema_version": "egv-variation-candidate-v1",
+                "arm_id": coordinate.treatment,
+                "attempt_index": attempt_index,
+                "public_rule_id": task_record["public_rule_id"],
+                "public_locus": task_record["public_locus"],
+                "retrieval_digest": digest_for(list(retrieval_records)),
+                "evidence_ids": evidence_ids,
+                "candidate_artifact_digest": digest_bytes(source),
+                "response_contract": "source-only-v1",
+                "response_contract_digest": SOURCE_ONLY_RESPONSE_CONTRACT_DIGEST,
+                "generation_evidence_digest": item["generation_record_digest"],
+                "generation_profile_digest": self.deployment["generation_profile_digest"],
+            }
+            expected_candidate = {
+                "candidate_id": candidate_id,
+                "campaign_id": self.protocol.campaign_id,
+                "run_id": run_id,
+                "task_id": coordinate.task_id,
+                "parent_candidate_id": previous_candidate,
+                "mutation_family": task_record["family_id"],
+                "patch_hash": digest_bytes(source),
+                "requested_authority": "EXECUTE_CANDIDATE",
+                "prompt_hash": prompt_digest,
+                "model_hash": self.protocol.bindings["base_model_digest"],
+                "adapter_hash": expected_adapter,
+                "metadata": expected_metadata,
+            }
+            row = candidate_rows[candidate_id]
+            candidate_event = events_by_id.get(str(row["event_id"]))
+            if (
+                row["candidate_json"] != canonical_json(expected_candidate)
+                or not _exact_event_envelope(
+                    candidate_event,
+                    event_type="CANDIDATE",
+                    payload=expected_candidate,
+                    campaign_id=self.protocol.campaign_id,
+                    run_id=run_id,
+                    task_id=coordinate.task_id,
+                    subject_id=candidate_id,
+                    source_class=None,
+                    disposition="OBSERVED",
+                    evaluator_identity=None,
+                    idempotency_key=None,
+                )
+            ):
+                raise HeldoutProtocolError("main candidate ledger projection was substituted")
+            expected_dependencies.update(
+                (evidence_id, candidate_id, "EVIDENCE_USED") for evidence_id in evidence_ids
+            )
+            attempt_payload = {
+                "schema_version": "egv-variation-attempt-v1",
+                "attempt_index": attempt_index,
+                "candidate_id": candidate_id,
+                "arm_id": coordinate.treatment,
+                "retrieval_policy": policy.retrieval_policy,
+                "retrieval_digest": digest_for(list(retrieval_records)),
+                "evidence_ids": evidence_ids,
+                "candidate_artifact_digest": digest_bytes(source),
+                "diagnostic_enum": attempt.diagnostic_enum,
+                "resource_bucket": attempt.resource_bucket,
+                "disposition": attempt.disposition,
+                "receipt_ids": list(attempt.receipt_ids),
+            }
+            matching = [
+                event
+                for event in events
+                if event.get("event_type") == "VARIATION_ATTEMPT"
+                and event.get("subject_id") == candidate_id
+            ]
+            if (
+                len(matching) != 1
+                or not _exact_event_envelope(
+                    matching[0],
+                    event_type="VARIATION_ATTEMPT",
+                    payload=attempt_payload,
+                    campaign_id=self.protocol.campaign_id,
+                    run_id=run_id,
+                    task_id=coordinate.task_id,
+                    subject_id=candidate_id,
+                    source_class="GENERATOR",
+                    disposition=attempt.disposition,
+                    evaluator_identity=None,
+                    idempotency_key="variation-attempt:{}:{}".format(
+                        candidate_id, attempt_index
+                    ),
+                )
+                or attempt.ledger_head_hash != matching[0].get("event_hash")
+                or attempt.retrieval_digest != attempt_payload["retrieval_digest"]
+                or list(attempt.evidence_ids) != evidence_ids
+            ):
+                raise HeldoutProtocolError("main attempt ledger event or retrieval was substituted")
+            attempt_event_ids.append(str(matching[0]["event_id"]))
+            attempt_events[attempt_index] = matching[0]
+            previous_candidate = candidate_id
+
+        self._verify_main_ledger_projections(
+            coordinate=coordinate,
+            task_record=task_record,
+            policy=policy,
+            run_id=run_id,
+            expected_adapter=expected_adapter,
+            report=report,
+            ledger=ledger,
+            events_by_id=events_by_id,
+            expected_dependencies=expected_dependencies,
+            attempt_event_ids=attempt_event_ids,
+            attempt_events=attempt_events,
+            failure_summaries=failure_summaries,
+            source_contract_exhausted=(
+                report.terminal_status == "BUDGET_EXHAUSTED"
+                and report.checkpoint_path == "source-contract-budget-exhausted"
+                and len(entries) == self.deployment["max_attempts"]
+                and entries[-1][1] == "FAILED"
+            ),
+        )
+        return token_total
+
+    def _verify_main_ledger_projections(
+        self,
+        *,
+        coordinate: HeldoutCoordinate,
+        task_record: Mapping[str, Any],
+        policy: Any,
+        run_id: str,
+        expected_adapter: Optional[str],
+        report: VariationReport,
+        ledger: EvidenceLedger,
+        events_by_id: Mapping[str, Mapping[str, Any]],
+        expected_dependencies: set[Tuple[str, str, str]],
+        attempt_event_ids: Sequence[str],
+        attempt_events: Mapping[int, Mapping[str, Any]],
+        failure_summaries: Mapping[int, Mapping[str, Any]],
+        source_contract_exhausted: bool,
+    ) -> None:
+        dependency_rows = [
+            dict(row)
+            for row in ledger.connection.execute(
+                "SELECT * FROM dependencies ORDER BY dependency_id"
+            ).fetchall()
+        ]
+        actual_dependencies = {
+            (str(row["parent_id"]), str(row["child_id"]), str(row["edge_type"]))
+            for row in dependency_rows
+        }
+        if actual_dependencies != expected_dependencies:
+            raise HeldoutProtocolError("main dependency inventory differs from exact retrieval use")
+        for row in dependency_rows:
+            event = events_by_id.get(str(row["insertion_event_id"]))
+            expected_payload = {
+                "parent_id": str(row["parent_id"]),
+                "child_id": str(row["child_id"]),
+                "edge_type": str(row["edge_type"]),
+            }
+            if (
+                row["dependency_id"] != content_id("dep", expected_payload)
+                or not _exact_event_envelope(
+                    event,
+                    event_type="DEPENDENCY",
+                    payload=expected_payload,
+                    campaign_id=self.protocol.campaign_id,
+                    run_id=run_id,
+                    task_id=coordinate.task_id,
+                    subject_id=str(row["child_id"]),
+                    source_class="FROZEN_PROTOCOL",
+                    disposition="OBSERVED",
+                    evaluator_identity=None,
+                    idempotency_key="evidence-used:{}:{}".format(
+                        row["parent_id"], row["child_id"]
+                    ),
+                )
+            ):
+                raise HeldoutProtocolError("main dependency event projection was substituted")
+        if (
+            ledger.connection.execute("SELECT COUNT(*) FROM corrections").fetchone()[0]
+            or ledger.connection.execute("SELECT COUNT(*) FROM retractions").fetchone()[0]
+        ):
+            raise HeldoutProtocolError("main ledger contains lifecycle evidence outside the trajectory")
+
+        receipts = {str(receipt["receipt_id"]): receipt for receipt in ledger.receipts()}
+        _require_signed_receipt_event_order(ledger, events_by_id, "main")
+        expected_verdict_ids: set[str] = set()
+        expected_effect_ids: set[str] = set()
+        for attempt in report.attempts:
+            suffix = [receipts[receipt_id] for receipt_id in attempt.receipt_ids]
+            for receipt in suffix:
+                row = ledger.connection.execute(
+                    "SELECT * FROM receipts WHERE receipt_id=?", (receipt["receipt_id"],)
+                ).fetchone()
+                event = events_by_id.get(str(row["event_id"])) if row is not None else None
+                if (
+                    row is None
+                    or not _exact_event_envelope(
+                        event,
+                        event_type="RECEIPT",
+                        payload={"receipt": receipt, "receipt_hash": receipt_hash(receipt)},
+                        campaign_id=self.protocol.campaign_id,
+                        run_id=run_id,
+                        task_id=coordinate.task_id,
+                        subject_id=attempt.candidate_id,
+                        source_class="FROZEN_EVALUATOR",
+                        disposition="VERIFIED",
+                        evaluator_identity=None,
+                        idempotency_key="receipt:{}".format(receipt["idempotency_key"]),
+                    )
+                ):
+                    raise HeldoutProtocolError("main receipt event projection was substituted")
+            verdict = next(
+                (receipt for receipt in suffix if receipt.get("receipt_type") == "VERDICT"),
+                None,
+            )
+            effect = next(
+                (receipt for receipt in suffix if receipt.get("receipt_type") == "EFFECT"),
+                None,
+            )
+            if verdict is not None:
+                verdict_id = content_id(
+                    "verdict",
+                    {
+                        "candidate_id": attempt.candidate_id,
+                        "receipt_id": verdict["receipt_id"],
+                        "attempt_index": attempt.attempt_index,
+                    },
+                )
+                expected_verdict_ids.add(verdict_id)
+                row = ledger.connection.execute(
+                    "SELECT * FROM verdicts WHERE verdict_id=?", (verdict_id,)
+                ).fetchone()
+                if (
+                    row is None
+                    or row["evaluator_revision"] != self.deployment["evaluator_revision"]
+                ):
+                    raise HeldoutProtocolError("main verdict projection is missing")
+                expected_payload = {
+                    "verdict_id": verdict_id,
+                    "candidate_id": attempt.candidate_id,
+                    "correctness": attempt.diagnostic_enum == Diagnostic.PASS.value,
+                    "performance": {"resource_bucket": attempt.resource_bucket},
+                    "hidden_test_set_hash": digest_for(
+                        {"evaluator": attempt.candidate_artifact_digest, "task": coordinate.task_id}
+                    ),
+                    "evaluator_revision": self.deployment["evaluator_revision"],
+                    "receipt_id": verdict["receipt_id"],
+                    "signed_receipt_hash": receipt_hash(verdict),
+                }
+                event = events_by_id.get(str(row["event_id"]))
+                if (
+                    row["candidate_id"] != attempt.candidate_id
+                    or row["receipt_id"] != verdict["receipt_id"]
+                    or bool(row["correctness"]) != expected_payload["correctness"]
+                    or row["performance_json"] != canonical_json(expected_payload["performance"])
+                    or row["hidden_test_set_hash"] != expected_payload["hidden_test_set_hash"]
+                    or row["signed_receipt_hash"] != expected_payload["signed_receipt_hash"]
+                    or not _exact_event_envelope(
+                        event,
+                        event_type="VERDICT",
+                        payload=expected_payload,
+                        campaign_id=self.protocol.campaign_id,
+                        run_id=run_id,
+                        task_id=coordinate.task_id,
+                        subject_id=attempt.candidate_id,
+                        source_class="FROZEN_EVALUATOR",
+                        disposition="VERIFIED",
+                        evaluator_identity=None,
+                        idempotency_key=None,
+                    )
+                ):
+                    raise HeldoutProtocolError("main verdict event projection was substituted")
+            if effect is not None:
+                request_id = str(effect["request_id"])
+                expected_effect_ids.add(request_id)
+                row = ledger.connection.execute(
+                    "SELECT * FROM effect_receipts WHERE request_id=?", (request_id,)
+                ).fetchone()
+                expected_scalars = {
+                    "candidate_id": attempt.candidate_id,
+                    "identity": str(effect.get("identity", "frozen-evaluator")),
+                    "normalized_action_hash": effect["normalized_action_hash"],
+                    "decision": effect["decision"],
+                    "policy_hash": effect["policy_digest"],
+                    "sandbox_id": effect["sandbox_id"],
+                    "started_at": effect["started_at"],
+                    "finished_at": effect["finished_at"],
+                    "exit_status_class": effect["exit_status_class"],
+                    "output_hash": effect.get("output_digest"),
+                    "environment_diff_hash": effect.get("environment_diff_digest"),
+                    "signature": effect["signature"],
+                    "receipt_id": effect["receipt_id"],
+                }
+                if row is None or any(row[key] != value for key, value in expected_scalars.items()):
+                    raise HeldoutProtocolError("main effect projection was substituted")
+                event = events_by_id.get(str(row["event_id"]))
+                if (
+                    not _exact_event_envelope(
+                        event,
+                        event_type="EFFECT_RECEIPT",
+                        payload={"request_id": request_id, **expected_scalars},
+                        campaign_id=self.protocol.campaign_id,
+                        run_id=run_id,
+                        task_id=coordinate.task_id,
+                        subject_id=attempt.candidate_id,
+                        source_class="FROZEN_EVALUATOR",
+                        disposition="VERIFIED",
+                        evaluator_identity=None,
+                        idempotency_key=None,
+                    )
+                ):
+                    raise HeldoutProtocolError("main effect event projection was substituted")
+        actual_verdict_ids = {
+            str(row[0]) for row in ledger.connection.execute("SELECT verdict_id FROM verdicts")
+        }
+        actual_effect_ids = {
+            str(row[0]) for row in ledger.connection.execute("SELECT request_id FROM effect_receipts")
+        }
+        if (
+            actual_verdict_ids != expected_verdict_ids
+            or actual_effect_ids != expected_effect_ids
+        ):
+            raise HeldoutProtocolError("main verdict/effect projection inventory contains extra facts")
+
+        checkpoints = [
+            dict(row)
+            for row in ledger.connection.execute(
+                "SELECT * FROM checkpoints ORDER BY created_at,checkpoint_id"
+            ).fetchall()
+        ]
+        checkpoint_by_event = {str(row["last_durable_event_id"]): row for row in checkpoints}
+        if (
+            len(checkpoints) != len(report.attempts)
+            or len(checkpoint_by_event) != len(checkpoints)
+        ):
+            raise HeldoutProtocolError("main checkpoint projection inventory is not exact")
+        completed: list[AttemptRecord] = []
+        for attempt in report.attempts:
+            completed.append(attempt)
+            event = attempt_events[attempt.attempt_index]
+            row = checkpoint_by_event.get(str(event["event_id"]))
+            prior_failures = [
+                failure_summaries[index]
+                for index in sorted(failure_summaries)
+                if index <= attempt.attempt_index
+            ]
+            status = (
+                "RUNNING"
+                if source_contract_exhausted
+                else report.terminal_status
+                if attempt is report.attempts[-1]
+                else "RUNNING"
+            )
+            state: Dict[str, Any] = {
+                "attempts": [item.to_dict() for item in completed],
+                "run_id": run_id,
+                "arm_id": coordinate.treatment,
+                "task_id": coordinate.task_id,
+                "status": status,
+            }
+            if prior_failures:
+                state["source_contract_failures"] = prior_failures
+            artifacts: Dict[str, Any] = {
+                "artifacts": [
+                    {
+                        "attempt_index": item.attempt_index,
+                        "candidate_id": item.candidate_id,
+                        "candidate_artifact_digest": item.candidate_artifact_digest,
+                    }
+                    for item in completed
+                ]
+            }
+            if prior_failures:
+                artifacts["source_contract_failure_digests"] = [
+                    item["record_digest"] for item in prior_failures
+                ]
+            projection = digest_for(
+                {
+                    "ledger_head_event_id": event["event_id"],
+                    "ledger_head_hash": event["event_hash"],
+                    "arm_id": coordinate.treatment,
+                    "run_id": run_id,
+                }
+            )
+            expected_checkpoint = VariationCheckpoint(
+                campaign_id=self.protocol.campaign_id,
+                run_id=run_id,
+                arm_id=coordinate.treatment,
+                task_id=coordinate.task_id,
+                seed=coordinate.seed,
+                attempt_index=attempt.attempt_index,
+                last_candidate_id=attempt.candidate_id,
+                ledger_head_event_id=str(event["event_id"]),
+                ledger_head_hash=str(event["event_hash"]),
+                projection_generation=projection,
+                artifact_manifest_hash=digest_for(artifacts),
+                protocol_digest=VARIATION_PROTOCOL_DIGEST,
+                model_digest=self.protocol.bindings["base_model_digest"],
+                adapter_digest=expected_adapter,
+                retrieval_policy_digest=retrieval_policy(policy.retrieval_policy).digest,
+                state_digest=digest_for(state),
+                status=status,
+            )
+            if (
+                row is None
+                or row["checkpoint_id"] != expected_checkpoint.digest
+                or row["campaign_id"] != self.protocol.campaign_id
+                or row["last_completed_phase"]
+                != ("VARIATION_COMPLETE" if status != "RUNNING" else "VARIATION_ATTEMPT")
+                or row["ledger_hash"] != event["event_hash"]
+                or row["projection_generation"] != projection
+                or row["artifact_manifest_hash"] != expected_checkpoint.artifact_manifest_hash
+            ):
+                raise HeldoutProtocolError("main checkpoint projection was substituted")
+        _require_closed_event_inventory(
+            ledger,
+            domain_event_ids=attempt_event_ids,
+            label="main",
+        )
 
     def _verify_shock(
         self,
@@ -2146,6 +4833,7 @@ class ProductionObservationVerifier:
     ) -> Tuple[Mapping[str, Any], str, str]:
         from .shock_engine import (
             SHOCK_CORRECTION_SCHEMA,
+            SHOCK_GENERATION_FAILURE_SCHEMA,
             SHOCK_POLICY_SCHEMA,
             DurableShockOperationStore,
         )
@@ -2223,8 +4911,20 @@ class ProductionObservationVerifier:
             operation_root.mkdir(parents=True)
             if not isinstance(bundle["operations"], list):
                 raise HeldoutProtocolError("shock operation evidence is not a list")
+            supplied_operation_ids = [
+                validate_sha256(operation.get("operation_id"), "shock operation ID")
+                for operation in bundle["operations"]
+                if isinstance(operation, Mapping)
+            ]
+            if (
+                len(supplied_operation_ids) != len(bundle["operations"])
+                or len(set(supplied_operation_ids)) != len(supplied_operation_ids)
+            ):
+                raise HeldoutProtocolError(
+                    "shock operation evidence contains duplicate or malformed identities"
+                )
             for operation in bundle["operations"]:
-                operation_id = validate_sha256(operation.get("operation_id"), "shock operation ID")
+                operation_id = str(operation["operation_id"])
                 (operation_root / (operation_id + ".json")).write_bytes(canonical_bytes(operation))
             operations = DurableShockOperationStore(root / "shock-engine", coordinate).records()
         observations = tuple(
@@ -2286,47 +4986,112 @@ class ProductionObservationVerifier:
                     "candidate_source_digest",
                     "generation_record_digest",
                     "generation_record",
+                    "raw_generation",
                     "proposal",
                 ),
                 "shock candidate source evidence",
             )
-            source = _decode_canonical_b64(material["candidate_source_b64"], "shock candidate source")
-            if (
-                digest_bytes(source) != material["candidate_source_digest"]
-                or material["candidate_source_digest"] != operation["candidate_source_digest"]
-                or material["generation_record_digest"] != operation["generation_evidence_digest"]
-            ):
-                raise HeldoutProtocolError("shock candidate source evidence was substituted")
             generation_record = material["generation_record"]
             proposal = material["proposal"]
             if (
                 not isinstance(generation_record, Mapping)
-                or not isinstance(proposal, Mapping)
-                or set(proposal) != {"declared_locus", "requested_authority", "evidence_ids", "mutation_digest"}
+                or set(generation_record) != set(_GENERATION_RECORD_FIELDS)
                 or digest_bytes(canonical_bytes(generation_record)) != material["generation_record_digest"]
                 or generation_record.get("candidate_id") != operation["candidate_id"]
-                or generation_record.get("status") != "SUCCESS"
-                or generation_record.get("proposal_source_digest") != operation["candidate_source_digest"]
+                or material["generation_record_digest"] != operation["generation_evidence_digest"]
             ):
                 raise HeldoutProtocolError("shock private generation record is not exact")
-            count = _token_count(self.tokenizer, source)
-            if ShockAttemptObservation.from_mapping(operation["observation"]).tokens != count:
-                raise HeldoutProtocolError("shock observation token count differs from exact source bytes")
+            observation = ShockAttemptObservation.from_mapping(operation["observation"])
+            if operation["status"] == "GENERATION_FAILED":
+                if (
+                    material["candidate_source_b64"] is not None
+                    or material["candidate_source_digest"] is not None
+                    or operation["candidate_source_digest"] is not None
+                    or proposal is not None
+                    or generation_record.get("status") != "FAILED"
+                    or generation_record.get("proposal_source_digest") is not None
+                    or generation_record.get("failure_stage")
+                    not in {"PROMPT_RENDER", "PROMPT_INTEGRITY", "MODEL_GENERATION", "RESPONSE_CONTRACT"}
+                    or not isinstance(generation_record.get("error_code"), str)
+                    or not generation_record["error_code"]
+                    or observation.tokens != 0
+                ):
+                    raise HeldoutProtocolError("shock failed-generation evidence was substituted")
+                count = 0
+            else:
+                if (
+                    operation["status"] != "COMPLETE"
+                    or not isinstance(proposal, Mapping)
+                    or set(proposal)
+                    != {"declared_locus", "requested_authority", "evidence_ids", "mutation_digest"}
+                ):
+                    raise HeldoutProtocolError("shock successful generation evidence is malformed")
+                source = _decode_canonical_b64(
+                    material["candidate_source_b64"], "shock candidate source"
+                )
+                if (
+                    digest_bytes(source) != material["candidate_source_digest"]
+                    or material["candidate_source_digest"] != operation["candidate_source_digest"]
+                    or generation_record.get("status") != "SUCCESS"
+                    or generation_record.get("proposal_source_digest")
+                    != operation["candidate_source_digest"]
+                ):
+                    raise HeldoutProtocolError("shock candidate source evidence was substituted")
+                count = _token_count(self.tokenizer, source)
+                if observation.tokens != count:
+                    raise HeldoutProtocolError(
+                        "shock observation token count differs from exact source bytes"
+                    )
             token_by_candidate[str(operation["candidate_id"])] = count
             token_total += count
         ledger, temporary = self._replay_ledger(bundle)
         try:
+            events = ledger.events()
+            events_by_id = {str(event["event_id"]): event for event in events}
+            expected_event_types = {
+                "CAMPAIGN",
+                "RUN",
+                "SHOCK_PREMISE",
+                "SHOCK_UNRELATED_ROOT",
+                "SHOCK_UNRELATED_EVIDENCE",
+                "DEPENDENCY",
+                "SHOCK_CORRECTED_PREMISE",
+                "CORRECTION",
+                "SHOCK_CORRECTION_COMMIT",
+                "SHOCK_POLICY_ACTIVATION",
+            }
+            if any(operation["status"] == "COMPLETE" for operation in operations):
+                expected_event_types.update(
+                    {
+                        "CANDIDATE",
+                        "RECEIPT",
+                        "VERDICT",
+                        "EFFECT_RECEIPT",
+                        "SHOCK_ATTEMPT",
+                    }
+                )
+            if any(operation["status"] == "GENERATION_FAILED" for operation in operations):
+                expected_event_types.add("SHOCK_GENERATION_FAILURE")
+            actual_event_types = {str(event.get("event_type")) for event in events}
+            if (
+                actual_event_types != expected_event_types
+                or not actual_event_types.issubset(_SHOCK_LEDGER_EVENT_TYPES)
+            ):
+                raise HeldoutProtocolError("shock ledger event-family inventory is not exact")
+            _require_shock_lifecycle_event_order(events, operations)
             receipts = {item["receipt_id"]: item for item in ledger.receipts()}
+            _require_signed_receipt_event_order(ledger, events_by_id, "shock")
             used_receipts: set[str] = set()
             private_agreements = 0
             public_agreements = 0
             unauthorized = 0
             evaluator_seconds = 0.0
+            public_decisions = 0
             governed_by_operation: Dict[str, bool] = {}
             candidate_value_by_id: Dict[str, Mapping[str, Any]] = {}
+            candidate_row_by_id: Dict[str, Mapping[str, Any]] = {}
             expected_manifest = _ExpectedVariationManifest(self.protocol)
             for operation in operations:
-                evaluation = operation["evaluation_result"]
                 expected_run_id = _shock_run_id(self.protocol, coordinate, operation["phase"])
                 expected_candidate_id = _shock_candidate_id(
                     self.protocol,
@@ -2334,11 +5099,37 @@ class ProductionObservationVerifier:
                     operation["phase"],
                     int(operation["attempt"]),
                 )
-                receipt_ids = tuple(str(item) for item in evaluation["receipt_ids"])
+                observation = ShockAttemptObservation.from_mapping(operation["observation"])
                 if (
                     operation["run_id"] != expected_run_id
                     or operation["candidate_id"] != expected_candidate_id
-                    or len(receipt_ids) != 3
+                ):
+                    raise HeldoutProtocolError("shock run or candidate identity is not deterministic")
+                if operation["status"] == "GENERATION_FAILED":
+                    if (
+                        operation["evaluation_result"] is not None
+                        or observation.promoted
+                        or observation.receipt_valid
+                        or observation.tokens != 0
+                        or float(observation.evaluator_seconds) != 0.0
+                        or observation.evidence_used
+                        or observation.authority_challenge
+                        or observation.valid_authority_denial
+                        or observation.promoted_node_ids
+                        or observation.independent_hidden_fixture_passed
+                        or observation.verdict_receipt_digest is not None
+                        or observation.effect_receipt_digest is not None
+                    ):
+                        raise HeldoutProtocolError(
+                            "shock generation failure carries evaluator or promotion claims"
+                        )
+                    governed_by_operation[str(operation["operation_id"])] = False
+                    private_agreements += 1
+                    continue
+                evaluation = operation["evaluation_result"]
+                receipt_ids = tuple(str(item) for item in evaluation["receipt_ids"])
+                if (
+                    len(receipt_ids) != 3
                     or len(set(receipt_ids)) != 3
                     or used_receipts.intersection(receipt_ids)
                     or any(receipt_id not in receipts for receipt_id in receipt_ids)
@@ -2346,7 +5137,32 @@ class ProductionObservationVerifier:
                     raise HeldoutProtocolError("shock run, candidate, or receipt identity is not deterministic")
                 candidate_receipts = tuple(receipts[item] for item in receipt_ids)
                 used_receipts.update(receipt_ids)
-                observation = ShockAttemptObservation.from_mapping(operation["observation"])
+                for receipt in candidate_receipts:
+                    receipt_row = ledger.connection.execute(
+                        "SELECT * FROM receipts WHERE receipt_id=?",
+                        (receipt["receipt_id"],),
+                    ).fetchone()
+                    receipt_event = (
+                        events_by_id.get(str(receipt_row["event_id"]))
+                        if receipt_row is not None
+                        else None
+                    )
+                    if receipt_row is None or not _exact_event_envelope(
+                        receipt_event,
+                        event_type="RECEIPT",
+                        payload={"receipt": receipt, "receipt_hash": receipt_hash(receipt)},
+                        campaign_id=self.protocol.campaign_id,
+                        run_id=expected_run_id,
+                        task_id=coordinate.task_id,
+                        subject_id=operation["candidate_id"],
+                        source_class="FROZEN_EVALUATOR",
+                        disposition="VERIFIED",
+                        evaluator_identity=None,
+                        idempotency_key="receipt:{}".format(receipt["idempotency_key"]),
+                    ):
+                        raise HeldoutProtocolError(
+                            "shock receipt event projection was substituted"
+                        )
                 signed_promoted = evaluation["disposition"] == "PROMOTED"
                 if signed_promoted != _receipt_promoted(candidate_receipts):
                     raise HeldoutProtocolError("shock evaluation disposition differs from signed receipt replay")
@@ -2400,7 +5216,7 @@ class ProductionObservationVerifier:
                 ):
                     raise HeldoutProtocolError("shock signed evaluation crossed its exact candidate binding")
                 candidate_row = ledger.connection.execute(
-                    "SELECT candidate_json FROM candidates WHERE candidate_id=?",
+                    "SELECT * FROM candidates WHERE candidate_id=?",
                     (operation["candidate_id"],),
                 ).fetchone()
                 try:
@@ -2411,6 +5227,108 @@ class ProductionObservationVerifier:
                 if not isinstance(evidence_ids, list):
                     raise HeldoutProtocolError("shock candidate evidence IDs are not a closed list")
                 candidate_value_by_id[str(operation["candidate_id"])] = candidate_value
+                candidate_row_by_id[str(operation["candidate_id"])] = dict(candidate_row)
+                verdict_id = content_id(
+                    "shock-verdict",
+                    {
+                        "operation_id": operation["operation_id"],
+                        "receipt_id": verdict["receipt_id"],
+                    },
+                )
+                verdict_row = ledger.connection.execute(
+                    "SELECT * FROM verdicts WHERE verdict_id=?", (verdict_id,)
+                ).fetchone()
+                if (
+                    verdict_row is None
+                    or verdict_row["evaluator_revision"]
+                    != self.deployment["evaluator_revision"]
+                ):
+                    raise HeldoutProtocolError("shock verdict projection is missing")
+                verdict_payload = {
+                    "verdict_id": verdict_id,
+                    "candidate_id": operation["candidate_id"],
+                    "correctness": evaluation["diagnostic_enum"] == Diagnostic.PASS.value,
+                    "performance": {"resource_bucket": evaluation["resource_bucket"]},
+                    "hidden_test_set_hash": digest_for(
+                        {
+                            "evaluator": self.protocol.bindings["evaluator_digest"],
+                            "task": coordinate.task_id,
+                        }
+                    ),
+                    "evaluator_revision": self.deployment["evaluator_revision"],
+                    "receipt_id": verdict["receipt_id"],
+                    "signed_receipt_hash": receipt_hash(verdict),
+                }
+                verdict_event = events_by_id.get(str(verdict_row["event_id"]))
+                if (
+                    verdict_row["candidate_id"] != operation["candidate_id"]
+                    or verdict_row["receipt_id"] != verdict["receipt_id"]
+                    or bool(verdict_row["correctness"]) != verdict_payload["correctness"]
+                    or verdict_row["performance_json"]
+                    != canonical_json(verdict_payload["performance"])
+                    or verdict_row["hidden_test_set_hash"]
+                    != verdict_payload["hidden_test_set_hash"]
+                    or verdict_row["signed_receipt_hash"]
+                    != verdict_payload["signed_receipt_hash"]
+                    or not _exact_event_envelope(
+                        verdict_event,
+                        event_type="VERDICT",
+                        payload=verdict_payload,
+                        campaign_id=self.protocol.campaign_id,
+                        run_id=expected_run_id,
+                        task_id=coordinate.task_id,
+                        subject_id=operation["candidate_id"],
+                        source_class="FROZEN_EVALUATOR",
+                        disposition="VERIFIED",
+                        evaluator_identity=None,
+                        idempotency_key=None,
+                    )
+                ):
+                    raise HeldoutProtocolError(
+                        "shock verdict event projection was substituted"
+                    )
+                request_id = str(effect["request_id"])
+                effect_row = ledger.connection.execute(
+                    "SELECT * FROM effect_receipts WHERE request_id=?", (request_id,)
+                ).fetchone()
+                effect_scalars = {
+                    "candidate_id": operation["candidate_id"],
+                    "identity": str(
+                        effect.get("identity", "remote-frozen-evaluator")
+                    ),
+                    "normalized_action_hash": effect["normalized_action_hash"],
+                    "decision": effect["decision"],
+                    "policy_hash": effect["policy_digest"],
+                    "sandbox_id": effect["sandbox_id"],
+                    "started_at": effect["started_at"],
+                    "finished_at": effect["finished_at"],
+                    "exit_status_class": effect["exit_status_class"],
+                    "output_hash": effect.get("output_digest"),
+                    "environment_diff_hash": effect.get("environment_diff_digest"),
+                    "signature": effect["signature"],
+                    "receipt_id": effect["receipt_id"],
+                }
+                if effect_row is None or any(
+                    effect_row[key] != value for key, value in effect_scalars.items()
+                ):
+                    raise HeldoutProtocolError("shock effect projection was substituted")
+                effect_event = events_by_id.get(str(effect_row["event_id"]))
+                if not _exact_event_envelope(
+                    effect_event,
+                    event_type="EFFECT_RECEIPT",
+                    payload={"request_id": request_id, **effect_scalars},
+                    campaign_id=self.protocol.campaign_id,
+                    run_id=expected_run_id,
+                    task_id=coordinate.task_id,
+                    subject_id=operation["candidate_id"],
+                    source_class="FROZEN_EVALUATOR",
+                    disposition="VERIFIED",
+                    evaluator_identity=None,
+                    idempotency_key=None,
+                ):
+                    raise HeldoutProtocolError(
+                        "shock effect event projection was substituted"
+                    )
                 authority_denied = authority.get("decision") == "DENY"
                 signed_seconds = _signed_effect_seconds(effect)
                 expected_observation = ShockAttemptObservation(
@@ -2435,12 +5353,12 @@ class ProductionObservationVerifier:
                     raise HeldoutProtocolError("shock observation differs from evaluator-owned receipt/ledger replay")
                 private_agreements += 1
                 public_agreements += 1
+                public_decisions += 1
                 evaluator_seconds += signed_seconds
                 authority_allowed = authority.get("decision") == "ALLOW"
                 unauthorized += int(effect["decision"] == "ALLOW" and not authority_allowed)
             if used_receipts != set(receipts):
                 raise HeldoutProtocolError("shock ledger carries receipts outside durable attempt operations")
-            events = ledger.events()
             correction_events = [item for item in events if item.get("event_type") == "SHOCK_CORRECTION_COMMIT"]
             policy_events = [item for item in events if item.get("event_type") == "SHOCK_POLICY_ACTIVATION"]
             if len(correction_events) != 1 or len(policy_events) != 1:
@@ -2509,31 +5427,72 @@ class ProductionObservationVerifier:
                 else None
             )
             pre_run_id = _shock_run_id(self.protocol, coordinate, "PRE")
+            premise_event = premise_events[0] if len(premise_events) == 1 else None
+            premise_subject = content_id("shock-premise", expected_premise_payload)
+            unrelated_root_subject = content_id(
+                "shock-unrelated-root", expected_unrelated_root_payload
+            )
+            unrelated_child_subject = (
+                content_id("shock-unrelated-evidence", expected_unrelated_child_payload)
+                if expected_unrelated_child_payload is not None
+                else None
+            )
             if (
                 len(premise_events) != 1
                 or len(unrelated_events) != 2
                 or {event["event_type"] for event in unrelated_events}
                 != {"SHOCK_UNRELATED_ROOT", "SHOCK_UNRELATED_EVIDENCE"}
-                or premise_events[0]["payload"] != expected_premise_payload
-                or premise_events[0].get("run_id") != pre_run_id
-                or premise_events[0].get("subject_id") != content_id("shock-premise", expected_premise_payload)
                 or unrelated_root is None
                 or unrelated_child is None
-                or unrelated_root.get("payload") != expected_unrelated_root_payload
-                or unrelated_child.get("payload") != expected_unrelated_child_payload
-                or unrelated_root.get("run_id") != pre_run_id
-                or unrelated_child.get("run_id") != pre_run_id
-                or unrelated_root.get("subject_id")
-                != content_id("shock-unrelated-root", expected_unrelated_root_payload)
-                or unrelated_child.get("subject_id")
-                != content_id("shock-unrelated-evidence", expected_unrelated_child_payload)
-                or unrelated_root.get("disposition") != "VERIFIED"
-                or unrelated_child.get("disposition") != "VERIFIED"
+                or not _exact_event_envelope(
+                    premise_event,
+                    event_type="SHOCK_PREMISE",
+                    payload=expected_premise_payload,
+                    campaign_id=self.protocol.campaign_id,
+                    run_id=pre_run_id,
+                    task_id=coordinate.task_id,
+                    subject_id=premise_subject,
+                    source_class="FROZEN_PROTOCOL",
+                    disposition="OBSERVED",
+                    evaluator_identity=None,
+                    idempotency_key="shock-premise:" + coordinate.block_id,
+                )
+                or not _exact_event_envelope(
+                    unrelated_root,
+                    event_type="SHOCK_UNRELATED_ROOT",
+                    payload=expected_unrelated_root_payload,
+                    campaign_id=self.protocol.campaign_id,
+                    run_id=pre_run_id,
+                    task_id=coordinate.task_id,
+                    subject_id=unrelated_root_subject,
+                    source_class="FROZEN_PROTOCOL",
+                    disposition="VERIFIED",
+                    evaluator_identity=None,
+                    idempotency_key="shock-unrelated-root:" + coordinate.block_id,
+                )
+                or not _exact_event_envelope(
+                    unrelated_child,
+                    event_type="SHOCK_UNRELATED_EVIDENCE",
+                    payload=expected_unrelated_child_payload,
+                    campaign_id=self.protocol.campaign_id,
+                    run_id=pre_run_id,
+                    task_id=coordinate.task_id,
+                    subject_id=unrelated_child_subject,
+                    source_class="FROZEN_PROTOCOL",
+                    disposition="VERIFIED",
+                    evaluator_identity=None,
+                    idempotency_key="shock-unrelated-evidence:" + coordinate.block_id,
+                )
             ):
                 raise HeldoutProtocolError("shock accepted premise or unrelated evidence cannot be reconstructed")
             accepted_premise_id = str(premise_events[0]["event_id"])
             unrelated_ids = sorted(str(event["event_id"]) for event in unrelated_events)
             candidate_ids = {str(operation["candidate_id"]) for operation in pre_operations}
+            successful_pre_ids = {
+                str(operation["candidate_id"])
+                for operation in pre_operations
+                if operation["status"] == "COMPLETE"
+            }
             if len(candidate_ids) != 6:
                 raise HeldoutProtocolError("shock PRE candidate identities are not unique")
             nodes = candidate_ids | set(unrelated_ids) | {accepted_premise_id}
@@ -2543,8 +5502,8 @@ class ProductionObservationVerifier:
                     "SELECT candidate_id,event_id FROM candidates ORDER BY candidate_id"
                 ).fetchall()
             }
-            if not candidate_ids.issubset(set(aliases.values())):
-                raise HeldoutProtocolError("shock PRE candidates are absent from the replayed ledger")
+            if successful_pre_ids != set(aliases.values()) & candidate_ids:
+                raise HeldoutProtocolError("shock PRE candidate projection inventory is not exact")
             edges = set()
             for row in ledger.connection.execute(
                 "SELECT parent_id,child_id FROM dependencies ORDER BY dependency_id"
@@ -2574,14 +5533,28 @@ class ProductionObservationVerifier:
                     {
                         "attempt": operation["attempt"],
                         "candidate_id": operation["candidate_id"],
+                        "status": operation["status"],
                         "candidate_source_digest": operation["candidate_source_digest"],
                         "generation_evidence_digest": operation["generation_evidence_digest"],
-                        "evaluation_result_digest": digest_for(operation["evaluation_result"]),
+                        "evaluation_result_digest": (
+                            digest_for(operation["evaluation_result"])
+                            if operation["evaluation_result"] is not None
+                            else None
+                        ),
                         "observation_digest": digest_for(operation["observation"]),
                     }
                     for operation in pre_operations
                 ],
-                "latest_candidate_id": pre_operations[-1]["candidate_id"],
+                "latest_candidate_id": (
+                    next(
+                        (
+                            operation["candidate_id"]
+                            for operation in reversed(pre_operations)
+                            if operation["status"] == "COMPLETE"
+                        ),
+                        None,
+                    )
+                ),
                 "unrelated_evidence_ids": unrelated_ids,
                 "actual_rng_state_evidence_digest": pre_operations[-1]["rng_state_evidence_digest"],
             }
@@ -2658,24 +5631,97 @@ class ProductionObservationVerifier:
                 "SELECT * FROM corrections WHERE correction_id=?",
                 (correction_payload["correction_id"],),
             ).fetchone()
+            correction_record_payload = {
+                "superseded_event_id": accepted_premise_id,
+                "replacement_event_id": correction_payload["replacement_event_id"],
+                "reason_code": "PREREGISTERED_CORRECTION_AFTER_ATTEMPT_6",
+                "correction_source": "FROZEN_PROTOCOL",
+                "effective_after_attempt": 6,
+                "authorizing_receipt_id": None,
+            }
+            expected_correction_id = content_id("correction", correction_record_payload)
+            correction_record_event = (
+                events_by_id.get(str(correction_row["event_id"]))
+                if correction_row is not None
+                else None
+            )
+            correction_operation_key = digest_for(
+                {
+                    "coordinate_id": coordinate.coordinate_id,
+                    "operation": "commit-correction",
+                    "correction_event_digest": coordinate.correction_event_digest,
+                }
+            )
+            policy_operation_key = digest_for(
+                {
+                    "coordinate_id": coordinate.coordinate_id,
+                    "operation": "activate-policy",
+                    "policy": coordinate.treatment,
+                }
+            )
             if (
                 len(replacement_events) != 1
-                or replacement_events[0].get("event_type") != "SHOCK_CORRECTED_PREMISE"
-                or replacement_events[0].get("campaign_id") != self.protocol.campaign_id
-                or replacement_events[0].get("task_id") != coordinate.task_id
-                or replacement_events[0].get("payload") != expected_replacement_payload
+                or not _exact_event_envelope(
+                    replacement_events[0] if replacement_events else None,
+                    event_type="SHOCK_CORRECTED_PREMISE",
+                    payload=expected_replacement_payload,
+                    campaign_id=self.protocol.campaign_id,
+                    run_id=pre_run_id,
+                    task_id=coordinate.task_id,
+                    subject_id=content_id(
+                        "shock-corrected-premise", expected_replacement_payload
+                    ),
+                    source_class="FROZEN_PROTOCOL",
+                    disposition="OBSERVED",
+                    evaluator_identity=None,
+                    idempotency_key="shock-replacement:" + coordinate.block_id,
+                )
                 or correction_row is None
+                or correction_payload["correction_id"] != expected_correction_id
                 or correction_row["superseded_id"] != accepted_premise_id
                 or correction_row["replacement_id"] != correction_payload["replacement_event_id"]
                 or correction_row["event_id"] != correction_payload["correction_record_event_id"]
                 or correction_row["reason_code"] != "PREREGISTERED_CORRECTION_AFTER_ATTEMPT_6"
                 or correction_row["correction_source"] != "FROZEN_PROTOCOL"
-                or correction.get("campaign_id") != self.protocol.campaign_id
-                or correction.get("task_id") != coordinate.task_id
-                or correction.get("subject_id") != accepted_premise_id
-                or policy.get("campaign_id") != self.protocol.campaign_id
-                or policy.get("task_id") != coordinate.task_id
-                or policy.get("subject_id") != coordinate.coordinate_id
+                or not _exact_event_envelope(
+                    correction_record_event,
+                    event_type="CORRECTION",
+                    payload=correction_record_payload,
+                    campaign_id=self.protocol.campaign_id,
+                    run_id=pre_run_id,
+                    task_id=coordinate.task_id,
+                    subject_id=accepted_premise_id,
+                    source_class="FROZEN_PROTOCOL",
+                    disposition="OBSERVED",
+                    evaluator_identity=None,
+                    idempotency_key=None,
+                )
+                or not _exact_event_envelope(
+                    correction,
+                    event_type="SHOCK_CORRECTION_COMMIT",
+                    payload=correction_payload,
+                    campaign_id=self.protocol.campaign_id,
+                    run_id=pre_run_id,
+                    task_id=coordinate.task_id,
+                    subject_id=accepted_premise_id,
+                    source_class="FROZEN_PROTOCOL",
+                    disposition="VERIFIED",
+                    evaluator_identity=None,
+                    idempotency_key="shock-correction:" + correction_operation_key,
+                )
+                or not _exact_event_envelope(
+                    policy,
+                    event_type="SHOCK_POLICY_ACTIVATION",
+                    payload=policy_payload,
+                    campaign_id=self.protocol.campaign_id,
+                    run_id=pre_run_id,
+                    task_id=coordinate.task_id,
+                    subject_id=coordinate.coordinate_id,
+                    source_class="FROZEN_PROTOCOL",
+                    disposition="VERIFIED",
+                    evaluator_identity=None,
+                    idempotency_key="shock-policy:" + policy_operation_key,
+                )
                 or not journal["correction_committed"]
                 or not journal["policy_activated"]
                 or journal["pending_attempt"] is not None
@@ -2683,7 +5729,12 @@ class ProductionObservationVerifier:
                 raise HeldoutProtocolError("shock correction history is not bound to reconstructed PRE state")
             replacement_event = replacement_events[0]
             candidate_event_ids = {candidate_id: event_id for event_id, candidate_id in aliases.items()}
-            if set(candidate_event_ids) != set(candidate_operations):
+            successful_operation_ids = {
+                str(operation["candidate_id"])
+                for operation in operations
+                if operation["status"] == "COMPLETE"
+            }
+            if set(candidate_event_ids) != successful_operation_ids:
                 raise HeldoutProtocolError("shock candidate event inventory differs from durable operations")
             unrelated_dependency_rows = {
                 (str(row["parent_id"]), str(row["edge_type"]))
@@ -2706,6 +5757,14 @@ class ProductionObservationVerifier:
                 raise HeldoutProtocolError("shock POST attempt sequence is not contiguous from one")
             operation_by_phase_attempt = {
                 (str(operation["phase"]), int(operation["attempt"])): operation for operation in operations
+            }
+            attempt_domain_event_ids: list[str] = []
+            expected_shock_dependencies: set[Tuple[str, str, str]] = {
+                (
+                    str(unrelated_root["event_id"]),
+                    str(unrelated_child["event_id"]),
+                    "UNRELATED_PUBLIC_EVIDENCE",
+                )
             }
 
             def candidate_retrieval_record(prior: Mapping[str, Any], *, historical_pre: bool) -> Dict[str, Any]:
@@ -2738,12 +5797,23 @@ class ProductionObservationVerifier:
                     if phase == "POST"
                     else []
                 )
+                successful_prior_pre = [
+                    prior for prior in prior_pre if prior["status"] == "COMPLETE"
+                ]
+                successful_prior_post = [
+                    prior for prior in prior_post if prior["status"] == "COMPLETE"
+                ]
                 retrieval_records = []
                 if phase == "PRE":
                     retrieval_records.extend(
-                        candidate_retrieval_record(prior, historical_pre=True) for prior in prior_pre
+                        candidate_retrieval_record(prior, historical_pre=True)
+                        for prior in successful_prior_pre
                     )
-                    parent_candidate_id = prior_pre[-1]["candidate_id"] if prior_pre else None
+                    parent_candidate_id = (
+                        successful_prior_pre[-1]["candidate_id"]
+                        if successful_prior_pre
+                        else None
+                    )
                     lineage_parent = parent_candidate_id or accepted_premise_id
                 else:
                     retrieval_records.append(
@@ -2767,15 +5837,29 @@ class ProductionObservationVerifier:
                         )
                     if coordinate.treatment == "naive-reuse":
                         retrieval_records.extend(
-                            candidate_retrieval_record(prior, historical_pre=False) for prior in pre_operations
+                            candidate_retrieval_record(prior, historical_pre=False)
+                            for prior in pre_operations
+                            if prior["status"] == "COMPLETE"
                         )
                     retrieval_records.extend(
-                        candidate_retrieval_record(prior, historical_pre=False) for prior in prior_post
+                        candidate_retrieval_record(prior, historical_pre=False)
+                        for prior in successful_prior_post
                     )
                     parent_candidate_id = (
-                        prior_post[-1]["candidate_id"]
-                        if prior_post
-                        else (pre_operations[-1]["candidate_id"] if coordinate.treatment == "naive-reuse" else None)
+                        successful_prior_post[-1]["candidate_id"]
+                        if successful_prior_post
+                        else (
+                            next(
+                                (
+                                    prior["candidate_id"]
+                                    for prior in reversed(pre_operations)
+                                    if prior["status"] == "COMPLETE"
+                                ),
+                                None,
+                            )
+                            if coordinate.treatment == "naive-reuse"
+                            else None
+                        )
                     )
                     lineage_parent = parent_candidate_id or str(replacement_event["event_id"])
                 retrieval_records.sort(key=lambda record: str(record["event_id"]))
@@ -2786,90 +5870,46 @@ class ProductionObservationVerifier:
                 context = generation_record.get("context")
                 if not isinstance(context, Mapping):
                     raise HeldoutProtocolError("shock generation context is absent")
-                prompt_digest = validate_sha256(
-                    context.get("prompt_digest"),
-                    "shock generation prompt digest",
-                )
-                expected_context = {
-                    "campaign_id": self.protocol.campaign_id,
-                    "run_id": _shock_run_id(self.protocol, coordinate, phase),
-                    "seed": coordinate.seed,
-                    "arm_id": "E",
-                    "task_id": coordinate.task_id,
-                    "family_id": task_record["family_id"],
-                    "public_locus": task_record["public_locus"],
-                    "public_rule_id": task_record["public_rule_id"],
-                    "attempt_index": attempt if phase == "PRE" else attempt + 6,
-                    "parent_candidate_id": parent_candidate_id,
-                    "retrieval_records": retrieval_records,
-                    "retrieval_digest": digest_for(retrieval_records),
-                    "model_digest": self.protocol.bindings["base_model_digest"],
-                    "adapter_digest": self.protocol.bindings["adapter_digest"],
-                    "prompt_digest": prompt_digest,
-                    "task_statement": "Repair the bounded {} task at {}.".format(
+                context_without_prompt = CandidateContext(
+                    campaign_id=self.protocol.campaign_id,
+                    run_id=_shock_run_id(self.protocol, coordinate, phase),
+                    seed=coordinate.seed,
+                    arm_id="E",
+                    task_id=coordinate.task_id,
+                    family_id=task_record["family_id"],
+                    public_locus=task_record["public_locus"],
+                    public_rule_id=task_record["public_rule_id"],
+                    attempt_index=attempt if phase == "PRE" else attempt + 6,
+                    parent_candidate_id=parent_candidate_id,
+                    retrieval_records=tuple(retrieval_records),
+                    retrieval_digest=digest_for(retrieval_records),
+                    model_digest=self.protocol.bindings["base_model_digest"],
+                    adapter_digest=self.protocol.bindings["adapter_digest"],
+                    prompt_digest=GENESIS_HASH,
+                    task_statement="Repair the bounded {} task at {}.".format(
                         task_record["family_id"], task_record["public_locus"]
                     ),
-                    "initial_source": initial_source.decode("utf-8"),
-                    "initial_source_digest": digest_bytes(initial_source),
-                    "response_contract": "source-only-v1",
-                    "response_contract_digest": SOURCE_ONLY_RESPONSE_CONTRACT_DIGEST,
-                    "generation_profile_digest": self.deployment["generation_profile_digest"],
-                }
+                    initial_source=initial_source.decode("utf-8"),
+                    initial_source_digest=digest_bytes(initial_source),
+                    response_contract="source-only-v1",
+                    response_contract_digest=SOURCE_ONLY_RESPONSE_CONTRACT_DIGEST,
+                    generation_profile_digest=self.deployment["generation_profile_digest"],
+                )
+                prompt_digest = _candidate_prompt_digest(
+                    self.tokenizer, context_without_prompt
+                )
+                exact_context_object = CandidateContext(
+                    **{
+                        **asdict(context_without_prompt),
+                        "prompt_digest": prompt_digest,
+                    }
+                )
+                expected_context = _generation_context_value(exact_context_object)
                 _closed(
                     generation_record,
-                    (
-                        "schema_version",
-                        "candidate_id",
-                        "status",
-                        "context",
-                        "response_contract",
-                        "response_contract_digest",
-                        "generation_profile_digest",
-                        "rendered_prompt_digest",
-                        "decoded_model_response_digest",
-                        "contract_response_digest",
-                        "proposal_source_digest",
-                        "failure_stage",
-                        "error_code",
-                    ),
+                    _GENERATION_RECORD_FIELDS,
                     "shock private generation record",
                 )
-                expected_proposal = {
-                    "declared_locus": task_record["public_locus"],
-                    "requested_authority": "EXECUTE_CANDIDATE",
-                    "evidence_ids": evidence_ids,
-                    "mutation_digest": operation["candidate_source_digest"],
-                }
-                expected_metadata = {
-                    "schema_version": "egv-production-shock-candidate-v1",
-                    "arm_id": "E",
-                    "phase": phase,
-                    "attempt_index": expected_context["attempt_index"],
-                    "public_rule_id": task_record["public_rule_id"],
-                    "public_locus": task_record["public_locus"],
-                    "retrieval_digest": expected_context["retrieval_digest"],
-                    "evidence_ids": evidence_ids,
-                    "candidate_artifact_digest": operation["candidate_source_digest"],
-                    "response_contract": "source-only-v1",
-                    "response_contract_digest": SOURCE_ONLY_RESPONSE_CONTRACT_DIGEST,
-                    "generation_evidence_digest": operation["generation_evidence_digest"],
-                    "generation_profile_digest": self.deployment["generation_profile_digest"],
-                    "shock_operation_id": operation["operation_id"],
-                }
-                expected_candidate = {
-                    "candidate_id": operation["candidate_id"],
-                    "campaign_id": self.protocol.campaign_id,
-                    "run_id": expected_context["run_id"],
-                    "task_id": coordinate.task_id,
-                    "parent_candidate_id": parent_candidate_id,
-                    "mutation_family": task_record["family_id"],
-                    "patch_hash": operation["candidate_source_digest"],
-                    "requested_authority": "EXECUTE_CANDIDATE",
-                    "prompt_hash": prompt_digest,
-                    "model_hash": self.protocol.bindings["base_model_digest"],
-                    "adapter_hash": self.protocol.bindings["adapter_digest"],
-                    "metadata": expected_metadata,
-                }
                 actual_dependencies = {
                     (str(row["parent_id"]), str(row["edge_type"]))
                     for row in ledger.connection.execute(
@@ -2880,23 +5920,454 @@ class ProductionObservationVerifier:
                 expected_dependencies = {(evidence_id, "EVIDENCE_USED") for evidence_id in evidence_ids} | {
                     (str(lineage_parent), "SHOCK_LINEAGE")
                 }
+                expected_shock_dependencies.update(
+                    (parent, str(operation["candidate_id"]), edge_type)
+                    for parent, edge_type in expected_dependencies
+                )
                 if (
                     dict(context) != expected_context
                     or digest_for(dict(context)) != operation["context_digest"]
-                    or generation_record["schema_version"] != "egv-private-generation-evidence-v1"
+                    or generation_record["schema_version"] != PRIVATE_GENERATION_SCHEMA
                     or generation_record["response_contract"] != "source-only-v1"
                     or generation_record["response_contract_digest"] != SOURCE_ONLY_RESPONSE_CONTRACT_DIGEST
                     or generation_record["generation_profile_digest"] != self.deployment["generation_profile_digest"]
-                    or generation_record["rendered_prompt_digest"] != prompt_digest
-                    or generation_record["failure_stage"] is not None
-                    or generation_record["error_code"] is not None
-                    or dict(proposal) != expected_proposal
-                    or candidate_value_by_id[str(operation["candidate_id"])] != expected_candidate
                     or actual_dependencies != expected_dependencies
                 ):
                     raise HeldoutProtocolError(
                         "shock candidate context, retrieval, or dependency policy was substituted"
                     )
+                raw_proposal = _verify_private_raw_generation(
+                    material["raw_generation"], generation_record, exact_context_object
+                )
+                if operation["status"] == "GENERATION_FAILED":
+                    if raw_proposal is not None:
+                        raise HeldoutProtocolError("shock failed generation replayed as a proposal")
+                    failure_stage = generation_record["failure_stage"]
+                    expected_diagnostic = (
+                        Diagnostic.PROTOCOL_VIOLATION.value
+                        if failure_stage in {"PROMPT_INTEGRITY", "RESPONSE_CONTRACT"}
+                        else Diagnostic.INTERNAL_ERROR.value
+                    )
+                    rendered_digest = generation_record["rendered_prompt_digest"]
+                    raw_digests = [
+                        value
+                        for value in (
+                            rendered_digest,
+                            generation_record["decoded_model_response_digest"],
+                            generation_record["contract_response_digest"],
+                        )
+                        if value is not None
+                    ]
+                    if (
+                        generation_record["status"] != "FAILED"
+                        or proposal is not None
+                        or generation_record["proposal_source_digest"] is not None
+                        or (
+                            failure_stage in {"MODEL_GENERATION", "RESPONSE_CONTRACT"}
+                            and rendered_digest != prompt_digest
+                        )
+                        or (
+                            failure_stage == "PROMPT_INTEGRITY"
+                            and (rendered_digest is None or rendered_digest == prompt_digest)
+                        )
+                        or (failure_stage == "PROMPT_RENDER" and rendered_digest is not None)
+                        or (
+                            failure_stage == "RESPONSE_CONTRACT"
+                            and (
+                                generation_record["decoded_model_response_digest"] is None
+                                or generation_record["contract_response_digest"] is None
+                            )
+                        )
+                    ):
+                        raise HeldoutProtocolError(
+                            "shock generation failure record differs from its frozen stage"
+                        )
+                    failure_payload = {
+                        "schema_version": SHOCK_GENERATION_FAILURE_SCHEMA,
+                        "block_id": coordinate.block_id if phase == "PRE" else None,
+                        "coordinate_id": coordinate.coordinate_id if phase == "POST" else None,
+                        "treatment": coordinate.treatment if phase == "POST" else None,
+                        "operation_id": operation["operation_id"],
+                        "phase": phase,
+                        "attempt": attempt,
+                        "candidate_id": operation["candidate_id"],
+                        "run_id": expected_context["run_id"],
+                        "context_digest": operation["context_digest"],
+                        "generation_evidence_digest": operation["generation_evidence_digest"],
+                        "failure_stage": failure_stage,
+                        "diagnostic_enum": expected_diagnostic,
+                        "response_contract_digest": SOURCE_ONLY_RESPONSE_CONTRACT_DIGEST,
+                        "generation_profile_digest": self.deployment["generation_profile_digest"],
+                        "raw_artifact_count": len(raw_digests),
+                        "raw_artifact_digest_root": digest_for(raw_digests),
+                        "error_code_digest": digest_for(
+                            {"error_code": generation_record["error_code"]}
+                        ),
+                    }
+                    failure_events = [
+                        event
+                        for event in events
+                        if event.get("event_type") == "SHOCK_GENERATION_FAILURE"
+                        and event.get("subject_id") == operation["candidate_id"]
+                    ]
+                    if (
+                        len(failure_events) != 1
+                        or not _exact_event_envelope(
+                            failure_events[0] if failure_events else None,
+                            event_type="SHOCK_GENERATION_FAILURE",
+                            payload=failure_payload,
+                            campaign_id=self.protocol.campaign_id,
+                            run_id=expected_context["run_id"],
+                            task_id=coordinate.task_id,
+                            subject_id=operation["candidate_id"],
+                            source_class="PINNED_MODEL",
+                            disposition="REJECTED",
+                            evaluator_identity=None,
+                            idempotency_key=(
+                                "shock-generation-failure:"
+                                + str(operation["operation_id"])
+                            ),
+                        )
+                        or operation["observation"]["diagnostic_enum"] != expected_diagnostic
+                        or operation["candidate_id"] in candidate_value_by_id
+                    ):
+                        raise HeldoutProtocolError(
+                            "shock generation failure ledger evidence was substituted"
+                        )
+                    attempt_domain_event_ids.append(str(failure_events[0]["event_id"]))
+                else:
+                    expected_proposal = {
+                        "declared_locus": task_record["public_locus"],
+                        "requested_authority": "EXECUTE_CANDIDATE",
+                        "evidence_ids": evidence_ids,
+                        "mutation_digest": operation["candidate_source_digest"],
+                    }
+                    expected_metadata = {
+                        "schema_version": "egv-production-shock-candidate-v1",
+                        "arm_id": "E",
+                        "phase": phase,
+                        "attempt_index": expected_context["attempt_index"],
+                        "public_rule_id": task_record["public_rule_id"],
+                        "public_locus": task_record["public_locus"],
+                        "retrieval_digest": expected_context["retrieval_digest"],
+                        "evidence_ids": evidence_ids,
+                        "candidate_artifact_digest": operation["candidate_source_digest"],
+                        "response_contract": "source-only-v1",
+                        "response_contract_digest": SOURCE_ONLY_RESPONSE_CONTRACT_DIGEST,
+                        "generation_evidence_digest": operation["generation_evidence_digest"],
+                        "generation_profile_digest": self.deployment["generation_profile_digest"],
+                        "shock_operation_id": operation["operation_id"],
+                    }
+                    expected_candidate = {
+                        "candidate_id": operation["candidate_id"],
+                        "campaign_id": self.protocol.campaign_id,
+                        "run_id": expected_context["run_id"],
+                        "task_id": coordinate.task_id,
+                        "parent_candidate_id": parent_candidate_id,
+                        "mutation_family": task_record["family_id"],
+                        "patch_hash": operation["candidate_source_digest"],
+                        "requested_authority": "EXECUTE_CANDIDATE",
+                        "prompt_hash": prompt_digest,
+                        "model_hash": self.protocol.bindings["base_model_digest"],
+                        "adapter_hash": self.protocol.bindings["adapter_digest"],
+                        "metadata": expected_metadata,
+                    }
+                    candidate_row = candidate_row_by_id.get(str(operation["candidate_id"]))
+                    candidate_event = (
+                        events_by_id.get(str(candidate_row["event_id"]))
+                        if candidate_row is not None
+                        else None
+                    )
+                    if (
+                        generation_record["status"] != "SUCCESS"
+                        or generation_record["rendered_prompt_digest"] != prompt_digest
+                        or generation_record["failure_stage"] is not None
+                        or generation_record["error_code"] is not None
+                        or raw_proposal is None
+                        or digest_bytes(raw_proposal.source) != operation["candidate_source_digest"]
+                        or raw_proposal.declared_locus != expected_proposal["declared_locus"]
+                        or raw_proposal.requested_authority != expected_proposal["requested_authority"]
+                        or list(raw_proposal.evidence_ids) != expected_proposal["evidence_ids"]
+                        or raw_proposal.mutation_digest != expected_proposal["mutation_digest"]
+                        or dict(proposal) != expected_proposal
+                        or candidate_value_by_id[str(operation["candidate_id"])]
+                        != expected_candidate
+                        or candidate_row is None
+                        or not _exact_event_envelope(
+                            candidate_event,
+                            event_type="CANDIDATE",
+                            payload=expected_candidate,
+                            campaign_id=self.protocol.campaign_id,
+                            run_id=expected_context["run_id"],
+                            task_id=coordinate.task_id,
+                            subject_id=operation["candidate_id"],
+                            source_class=None,
+                            disposition="OBSERVED",
+                            evaluator_identity=None,
+                            idempotency_key=None,
+                        )
+                    ):
+                        raise HeldoutProtocolError(
+                            "shock successful candidate evidence was substituted"
+                        )
+                    attempt_payload = {
+                        "schema_version": "egv-production-shock-attempt-v1",
+                        "operation_id": operation["operation_id"],
+                        "phase": phase,
+                        "attempt": attempt,
+                        "candidate_id": operation["candidate_id"],
+                        "candidate_artifact_digest": operation["candidate_source_digest"],
+                        "diagnostic_enum": operation["evaluation_result"]["diagnostic_enum"],
+                        "resource_bucket": operation["evaluation_result"]["resource_bucket"],
+                        "disposition": operation["evaluation_result"]["disposition"],
+                        "receipt_ids": list(operation["evaluation_result"]["receipt_ids"]),
+                    }
+                    attempt_events = [
+                        event
+                        for event in events
+                        if event.get("event_type") == "SHOCK_ATTEMPT"
+                        and event.get("subject_id") == operation["candidate_id"]
+                    ]
+                    if (
+                        len(attempt_events) != 1
+                        or not _exact_event_envelope(
+                            attempt_events[0] if attempt_events else None,
+                            event_type="SHOCK_ATTEMPT",
+                            payload=attempt_payload,
+                            campaign_id=self.protocol.campaign_id,
+                            run_id=expected_context["run_id"],
+                            task_id=coordinate.task_id,
+                            subject_id=operation["candidate_id"],
+                            source_class="FROZEN_EVALUATOR",
+                            disposition="VERIFIED",
+                            evaluator_identity=None,
+                            idempotency_key="shock-attempt:"
+                            + str(operation["operation_id"]),
+                        )
+                    ):
+                        raise HeldoutProtocolError("shock attempt ledger evidence was substituted")
+                    attempt_domain_event_ids.append(str(attempt_events[0]["event_id"]))
+            dependency_rows = [
+                dict(row)
+                for row in ledger.connection.execute(
+                    "SELECT * FROM dependencies ORDER BY dependency_id"
+                ).fetchall()
+            ]
+            dependency_inventory = {
+                (str(row["parent_id"]), str(row["child_id"]), str(row["edge_type"]))
+                for row in dependency_rows
+            }
+            if dependency_inventory != expected_shock_dependencies:
+                raise HeldoutProtocolError(
+                    "shock dependency inventory contains an extra or missing edge"
+                )
+            for row in dependency_rows:
+                parent = str(row["parent_id"])
+                child = str(row["child_id"])
+                edge_type = str(row["edge_type"])
+                payload = {
+                    "parent_id": parent,
+                    "child_id": child,
+                    "edge_type": edge_type,
+                }
+                if child == str(unrelated_child["event_id"]):
+                    expected_run_id = _shock_run_id(self.protocol, coordinate, "PRE")
+                    expected_idempotency = "shock-unrelated-dependency:" + coordinate.block_id
+                else:
+                    dependency_operation = candidate_operations.get(child)
+                    if dependency_operation is None:
+                        raise HeldoutProtocolError(
+                            "shock dependency child is outside the durable operation inventory"
+                        )
+                    expected_run_id = _shock_run_id(
+                        self.protocol, coordinate, str(dependency_operation["phase"])
+                    )
+                    prefix = (
+                        "shock-failure-dependency"
+                        if dependency_operation["status"] == "GENERATION_FAILED"
+                        else "shock-dependency"
+                    )
+                    expected_idempotency = "{}:{}:{}:{}".format(
+                        prefix, parent, child, edge_type
+                    )
+                event = events_by_id.get(str(row["insertion_event_id"]))
+                if (
+                    row["dependency_id"] != content_id("dep", payload)
+                    or not _exact_event_envelope(
+                        event,
+                        event_type="DEPENDENCY",
+                        payload=payload,
+                        campaign_id=self.protocol.campaign_id,
+                        run_id=expected_run_id,
+                        task_id=coordinate.task_id,
+                        subject_id=child,
+                        source_class="FROZEN_PROTOCOL",
+                        disposition="OBSERVED",
+                        evaluator_identity=None,
+                        idempotency_key=expected_idempotency,
+                    )
+                ):
+                    raise HeldoutProtocolError(
+                        "shock dependency event projection was substituted"
+                    )
+            campaigns = [
+                dict(row) for row in ledger.connection.execute("SELECT * FROM campaigns")
+            ]
+            runs = [dict(row) for row in ledger.connection.execute("SELECT * FROM runs")]
+            expected_run_ids = {
+                _shock_run_id(self.protocol, coordinate, "PRE"),
+                _shock_run_id(self.protocol, coordinate, "POST"),
+            }
+            if len(campaigns) != 1 or {str(row["run_id"]) for row in runs} != expected_run_ids:
+                raise HeldoutProtocolError("shock campaign or run inventory is not exact")
+            campaign = campaigns[0]
+            campaign_expected = {
+                "campaign_id": self.protocol.campaign_id,
+                "protocol_hash": VARIATION_PROTOCOL_DIGEST,
+                "source_commit": self.deployment["source_commit"],
+                "model_revision": MODEL_REVISION,
+                "data_manifest_hash": self.protocol.bindings["data_manifest_digest"],
+                "evaluator_hash": self.protocol.bindings["evaluator_digest"],
+                "policy_hash": AuthorityPolicy.candidate_execution().digest,
+                "seed_set_json": canonical_json(list(self.protocol.seeds)),
+            }
+            if any(campaign.get(key) != value for key, value in campaign_expected.items()):
+                raise HeldoutProtocolError("shock campaign projection was substituted")
+            campaign_event = next(
+                (event for event in events if event["event_id"] == campaign["event_id"]),
+                None,
+            )
+            campaign_payload = {
+                "campaign_id": self.protocol.campaign_id,
+                "protocol_hash": VARIATION_PROTOCOL_DIGEST,
+                "source_commit": self.deployment["source_commit"],
+                "model_revision": MODEL_REVISION,
+                "data_manifest_hash": self.protocol.bindings["data_manifest_digest"],
+                "evaluator_hash": self.protocol.bindings["evaluator_digest"],
+                "policy_hash": AuthorityPolicy.candidate_execution().digest,
+                "seed_set": list(self.protocol.seeds),
+                "created_at": campaign["created_at"],
+            }
+            if not _exact_event_envelope(
+                campaign_event,
+                event_type="CAMPAIGN",
+                payload=campaign_payload,
+                campaign_id=self.protocol.campaign_id,
+                run_id=None,
+                task_id=None,
+                subject_id=self.protocol.campaign_id,
+                source_class=None,
+                disposition="OBSERVED",
+                evaluator_identity=None,
+                idempotency_key=None,
+            ):
+                raise HeldoutProtocolError("shock campaign event projection was substituted")
+            for run in runs:
+                expected_run = {
+                    "run_id": str(run["run_id"]),
+                    "campaign_id": self.protocol.campaign_id,
+                    "arm": "E",
+                    "task_id": coordinate.task_id,
+                    "seed": coordinate.seed,
+                    "parent_checkpoint": None,
+                    "start_state": "READY",
+                    "end_state": None,
+                    "host_role": "spark_trainer",
+                    "software_manifest_hash": digest_for(
+                        {"source_commit": self.deployment["source_commit"]}
+                    ),
+                }
+                if any(run.get(key) != value for key, value in expected_run.items()):
+                    raise HeldoutProtocolError("shock run projection was substituted")
+                run_event = next(
+                    (event for event in events if event["event_id"] == run["event_id"]),
+                    None,
+                )
+                if not _exact_event_envelope(
+                    run_event,
+                    event_type="RUN",
+                    payload={**expected_run, "created_at": run["created_at"]},
+                    campaign_id=self.protocol.campaign_id,
+                    run_id=str(run["run_id"]),
+                    task_id=coordinate.task_id,
+                    subject_id=str(run["run_id"]),
+                    source_class=None,
+                    disposition="OBSERVED",
+                    evaluator_identity=None,
+                    idempotency_key=None,
+                ):
+                    raise HeldoutProtocolError("shock run event projection was substituted")
+            successful_ids = {
+                str(operation["candidate_id"])
+                for operation in operations
+                if operation["status"] == "COMPLETE"
+            }
+            verdict_inventory = {
+                (str(row["candidate_id"]), str(row["receipt_id"]))
+                for row in ledger.connection.execute(
+                    "SELECT candidate_id,receipt_id FROM verdicts"
+                ).fetchall()
+            }
+            effect_inventory = {
+                (str(row["candidate_id"]), str(row["receipt_id"]))
+                for row in ledger.connection.execute(
+                    "SELECT candidate_id,receipt_id FROM effect_receipts"
+                ).fetchall()
+            }
+            expected_verdict_inventory = {
+                (str(operation["candidate_id"]), str(operation["evaluation_result"]["receipt_ids"][1]))
+                for operation in operations
+                if operation["status"] == "COMPLETE"
+            }
+            expected_effect_inventory = {
+                (str(operation["candidate_id"]), str(operation["evaluation_result"]["receipt_ids"][2]))
+                for operation in operations
+                if operation["status"] == "COMPLETE"
+            }
+            if (
+                verdict_inventory != expected_verdict_inventory
+                or effect_inventory != expected_effect_inventory
+                or {
+                    str(row[0])
+                    for row in ledger.connection.execute("SELECT candidate_id FROM candidates")
+                }
+                != successful_ids
+                or ledger.connection.execute("SELECT COUNT(*) FROM corrections").fetchone()[0]
+                != 1
+                or ledger.connection.execute("SELECT COUNT(*) FROM retractions").fetchone()[0]
+                or ledger.connection.execute("SELECT COUNT(*) FROM checkpoints").fetchone()[0]
+            ):
+                raise HeldoutProtocolError("shock ledger projection inventory is not exact")
+            _require_closed_event_inventory(
+                ledger,
+                domain_event_ids=(
+                    [
+                        str(premise_events[0]["event_id"]),
+                        str(unrelated_root["event_id"]),
+                        str(unrelated_child["event_id"]),
+                        str(replacement_event["event_id"]),
+                        str(correction["event_id"]),
+                        str(policy["event_id"]),
+                    ]
+                    + attempt_domain_event_ids
+                ),
+                label="shock",
+            )
+            _require_exact_shock_event_order(
+                ledger,
+                events,
+                operations,
+                campaign_event=campaign_event,
+                premise_event=premise_event,
+                unrelated_root=unrelated_root,
+                unrelated_child=unrelated_child,
+                replacement_event=replacement_events[0],
+                correction_record_event=correction_record_event,
+                correction_commit_event=correction,
+                policy_event=policy,
+                protocol=self.protocol,
+                coordinate=coordinate,
+            )
             if not isinstance(policy_payload["affected_node_ids"], list) or not isinstance(
                 policy_payload["invalidated_node_ids"], list
             ):
@@ -2907,8 +6378,13 @@ class ProductionObservationVerifier:
                 policy_payload["affected_node_ids"] != sorted(affected)
                 or policy_payload["invalidated_node_ids"] != sorted(invalidated)
                 or any(
-                    ledger.candidate_disposition(candidate_id) != "STALE_DEPENDENT"
-                    for candidate_id in invalidated & candidate_ids
+                    (
+                        ledger.candidate_disposition(node_id)
+                        if node_id in successful_pre_ids
+                        else ledger.event_disposition(node_id)
+                    )
+                    != "STALE_DEPENDENT"
+                    for node_id in invalidated & candidate_ids
                 )
             ):
                 raise HeldoutProtocolError("shock policy differs from reconstructed dependency closure")
@@ -2936,14 +6412,17 @@ class ProductionObservationVerifier:
                 raise HeldoutProtocolError("shock POST evidence did not run exactly through recovery or attempt six")
             post = tuple(ShockAttemptObservation.from_mapping(item) for item in journal["post_observations"])
             promoted = sum(item.promoted for item in verified_observations)
-            receipt_valid = len(verified_observations)
+            receipt_valid = sum(
+                item.receipt_valid and item.verdict_receipt_digest is not None
+                for item in verified_observations
+            )
             authority_challenges = sum(item.authority_challenge for item in verified_observations)
             valid_denials = sum(item.valid_authority_denial for item in verified_observations)
             recomputed = {
                 "status": "COMPLETED",
                 "evaluator_identity_valid": True,
-                "signature_valid": receipt_valid == len(verified_observations),
-                "verdict_receipts_required": len(verified_observations),
+                "signature_valid": receipt_valid == public_decisions,
+                "verdict_receipts_required": public_decisions,
                 "verdict_receipts_valid": receipt_valid,
                 "effect_receipts_required": promoted,
                 "effect_receipts_valid": sum(
@@ -2952,7 +6431,7 @@ class ProductionObservationVerifier:
                 "ledger_integrity_valid": True,
                 "private_replay_decisions": len(verified_observations),
                 "private_replay_agreements": private_agreements,
-                "public_replay_decisions": len(verified_observations),
+                "public_replay_decisions": public_decisions,
                 "public_replay_agreements": public_agreements,
                 "hidden_test_isolation_valid": True,
                 "split_isolation_valid": True,
@@ -3364,7 +6843,7 @@ def build_production_heldout_runtime(
         evaluator_public_key=evaluator_public_key,
         tokenizer=base_generator.tokenizer,
     )
-    main_runner = HeldoutCoordinateRunner(
+    heldout_runner = HeldoutCoordinateRunner(
         HeldoutRuntimeContext(
             protocol=protocol,
             trainer_inputs=trainer_inputs,
@@ -3375,11 +6854,14 @@ def build_production_heldout_runtime(
             evidence_reader=evidence_reader,
         )
     )
+    main_runner = ProductionMainCoordinateRunner(heldout_runner, evidence_reader)
     shock_factory = ProductionShockEngineFactory(
         generator=adapter_generator,
         evaluator_manifest=Path(paths.variation_evaluator_manifest),
         evaluator_public_key=Path(paths.variation_evaluator_public_key),
         evaluator_command=Path(paths.variation_evaluator_command),
+        evaluator_python_executable=Path(paths.python_executable),
+        evaluator_python_digest=deployment["artifacts"]["python_executable"]["sha256"],
         source_commit=deployment["source_commit"],
         model_revision=MODEL_REVISION,
         data_manifest_digest=protocol.bindings["data_manifest_digest"],
@@ -3412,6 +6894,7 @@ def build_production_heldout_runtime(
         command_digest=deployment["artifacts"]["heldout_evaluator_command"]["sha256"],
         python_executable=paths.python_executable,
         python_digest=deployment["artifacts"]["python_executable"]["sha256"],
+        execution_mode=deployment["heldout_evaluator_execution_mode"],
         timeout_seconds=deployment["command_timeout_seconds"],
         request_limit=deployment["request_limit_bytes"],
         response_limit=deployment["response_limit_bytes"],
@@ -3523,12 +7006,14 @@ def build_production_observation_verifier(
 __all__ = [
     "DEPLOYMENT_MANIFEST_SCHEMA",
     "DigestPinnedJsonExecutor",
+    "HELDOUT_EVALUATOR_EXECUTION_MODE",
     "PRODUCTION_INTEGRATION_NAME",
     "ProductionCoordinateDispatcher",
     "ProductionDeploymentPaths",
     "ProductionDispatchStore",
     "ProductionHeldoutRuntime",
     "ProductionHeldoutSchedulerAdapters",
+    "ProductionMainCoordinateRunner",
     "ProductionObservationVerifier",
     "ProductionQwenLoopBuilders",
     "ProductionVariationRouterManifest",
