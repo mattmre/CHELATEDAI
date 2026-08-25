@@ -21,7 +21,7 @@ from egv.ledger import EvidenceLedger
 from egv.receipts import ReceiptSigner, receipt_hash
 from egv.variation.errors import VariationConfigurationError, VariationDependencyError
 from egv.variation.arms import arm_policy
-from egv.variation.generator import CandidateProposal
+from egv.variation.generator import CandidateProposal, model_generation_profile_digest
 from egv.variation.loop import BoundedCandidateLoop, VARIATION_PROTOCOL_DIGEST, VariationTask
 from egv.variation.retrieval import RetrievalResult
 from egv.variation.remote import (
@@ -331,6 +331,11 @@ class RemoteVariationGatewayTests(unittest.TestCase):
                     seed=index,
                     model_manifest_digest=self.manifest_value["model_digest"],
                     variation_protocol_digest=self.manifest_value["protocol_digest"],
+                    generation_profile_digest=model_generation_profile_digest(
+                        "source-only-v1",
+                        model_manifest_digest=self.manifest_value["model_digest"],
+                        chat_template_digest=digest_for("remote-test-chat-template"),
+                    ),
                 )
                 source = "def solve(value):\n    return value + {}\n".format(index).encode("utf-8")
                 candidate_id = "candidate-commissioning-" + arm_id.lower()
@@ -667,6 +672,32 @@ class RemoteVariationGatewayTests(unittest.TestCase):
         )
         self.assertEqual(canonical_bytes(first), canonical_bytes(second))
         self.assertEqual(called, [])
+
+    def test_durable_evaluator_rejects_uncached_operation_at_stale_anchor_before_effect(self) -> None:
+        manifest = RemoteEvaluatorServiceManifest(self.manifest_value)
+        state_root = self.root / "stale-anchor-state"
+        first_request = self.durable_request("first-operation")
+        _durable_remote_response(
+            first_request,
+            manifest=manifest,
+            signer=self.signer,
+            state_root=state_root,
+            build_response=self.durable_builder(first_request),
+        )
+        uncached_request = self.durable_request("uncached-operation")
+        effects = []
+        with self.assertRaisesRegex(
+            VariationConfigurationError,
+            "stale or forked receipt anchor",
+        ):
+            _durable_remote_response(
+                uncached_request,
+                manifest=manifest,
+                signer=self.signer,
+                state_root=state_root,
+                build_response=lambda: effects.append("executed"),
+            )
+        self.assertEqual(effects, [])
 
     def test_crash_after_execution_intent_quarantines_retry_without_reexecution(self) -> None:
         manifest = RemoteEvaluatorServiceManifest(self.manifest_value)

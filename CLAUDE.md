@@ -40,6 +40,25 @@ Every unit of completed work must land in a PR **before moving to the next task*
 ### Rule 3 — No Placeholder Data or Fake Metrics
 Dashboards, frontends, and reporting surfaces must be wired to **real data pipelines**. Placeholder values, hard-coded demo numbers, mock metrics, and fake responses are forbidden in committed code. Every data field displayed to an operator must trace to an actual source artifact, live computation, or explicitly documented empty-state. The wiring from backend to frontend must be obvious and verifiable.
 
+## EGV Research Integrity Rules
+
+- A sealed freezer with zero eligible rows is a valid terminal research result.
+  Report `NO_ADMISSIBLE_TRAINING_SET`; do not fabricate rows, an adapter, or a
+  trained-versus-base comparison. Trained arms remain `UNEVALUATED`.
+- Production training must reject an ineligible or undersized dataset before
+  private staging, evaluator construction, CUDA checks, model loading, or output
+  creation. Tests must prove the ordering, not merely the final exception.
+- Keep private campaign seals distinct from public reproducer fields. Public
+  reports may summarize privately verified facts only when they explicitly say
+  which details are not independently reproduced by the public artifact.
+- Public evidence must use canonical closed-schema records with exact byte
+  pins, fail-closed semantic validation, and scans excluding prompts, generated
+  source, task identities, credentials, endpoints, paths, host labels, and
+  deployment topology.
+- A local or dual-host implementation test is not evidence of live cross-host
+  trainer/evaluator transport. Claim that boundary only after the exact route is
+  executed and its receipt/artifact chain is independently verified.
+
 ## What This Project Is
 
 ChelatedAI is a research prototype for adaptive vector search with self-correcting embeddings. It detects "semantic collapse" in RAG systems (where unrelated concepts get similar embeddings) and fixes it through dynamic dimension masking and neural adaptation.

@@ -34,9 +34,21 @@ from .protocol import (
     TrainingRow,
     build_training_batch,
     seal_training_inputs,
+    training_sequence_token_count,
+    training_sequence_token_ids,
     tokenize_training_row,
 )
-from .trainer import LoRATrainer, TRAINING_RUNTIME_SCHEMA, TrainingRunReport, run_production_training, run_training_smoke
+from .trainer import (
+    LORA_CHANGE_ATTESTATION_SCHEMA,
+    LORA_SEALED_BINDING_SCHEMA,
+    LoRATrainer,
+    TRAINING_RUNTIME_SCHEMA,
+    TrainingRunReport,
+    build_lora_change_attestation,
+    build_lora_sealed_binding,
+    run_production_training,
+    run_training_smoke,
+)
 
 
 __all__ = [
@@ -53,6 +65,8 @@ __all__ = [
     "receive_external_adapter",
     "run_external_evaluator_once",
     "LORA_TARGET_MODULES",
+    "LORA_CHANGE_ATTESTATION_SCHEMA",
+    "LORA_SEALED_BINDING_SCHEMA",
     "LoRATrainer",
     "SealedTrainingInputs",
     "TokenizedTrainingExample",
@@ -72,9 +86,13 @@ __all__ = [
     "TrainingRow",
     "TrainingRunReport",
     "build_training_batch",
+    "build_lora_change_attestation",
+    "build_lora_sealed_binding",
     "model_state_digest_for_training",
     "run_training_smoke",
     "run_production_training",
     "seal_training_inputs",
+    "training_sequence_token_count",
+    "training_sequence_token_ids",
     "tokenize_training_row",
 ]

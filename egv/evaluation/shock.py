@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, Iterable, List, Mapping, Set, Tuple
+from typing import Any, Dict, Iterable, List, Mapping, Optional, Set, Tuple
 
 from ..canonical import content_id, digest_for
 from .errors import ShockMismatchError
@@ -11,10 +11,10 @@ from .errors import ShockMismatchError
 
 SHOCK_POLICIES = ("full-restart", "naive-reuse", "dependency-aware")
 SHOCK_TASK_IDS = (
-    "egv-shock-task-01",
-    "egv-shock-task-02",
-    "egv-shock-task-03",
-    "egv-shock-task-04",
+    "egv-data_transform-heldout-1-v1",
+    "egv-dependency_contract-heldout-1-v1",
+    "egv-parser_edge-heldout-1-v1",
+    "egv-state_transition-heldout-1-v1",
 )
 SHOCK_SEEDS = (11, 29, 47)
 POST_SHOCK_ATTEMPTS = (1, 2, 3, 4, 5, 6)
@@ -132,7 +132,13 @@ class ShockFixture:
             raise ShockMismatchError("correction root cannot be an affected descendant")
 
     @classmethod
-    def create(cls, task_id: str, seed: int) -> "ShockFixture":
+    def create(
+        cls,
+        task_id: str,
+        seed: int,
+        *,
+        profile: Optional[ShockProfile] = None,
+    ) -> "ShockFixture":
         if task_id not in SHOCK_TASK_IDS or seed not in SHOCK_SEEDS:
             raise ShockMismatchError("shock fixture is outside the frozen task/seed design")
         accepted = "premise-{}-{}".format(task_id[-2:], seed)
@@ -147,16 +153,24 @@ class ShockFixture:
                 (unrelated_root, unrelated_child),
             )
         )
-        profile = ShockProfile(
-            model_digest=digest_for("shock-model-v1"),
-            adapter_digest=digest_for("shock-adapter-v1"),
-            authority_policy_digest=digest_for("shock-authority-policy-v1"),
-            evaluator_digest=digest_for("shock-evaluator-v1"),
-            rng_state_digest=digest_for({"task_id": task_id, "seed": seed, "boundary": "attempt-6"}),
-            budget_profile_digest=digest_for({"max_attempts": 12, "post_shock_attempts": 6, "task_id": task_id}),
-            prompt_manifest_digest=digest_for("shock-prompts-v1"),
-            protocol_digest=digest_for("egv-evaluation-protocol-v1"),
+        expected_rng_state_digest = digest_for(
+            {"task_id": task_id, "seed": seed, "boundary": "attempt-6"}
         )
+        if profile is None:
+            profile = ShockProfile(
+                model_digest=digest_for("shock-model-v1"),
+                adapter_digest=digest_for("shock-adapter-v1"),
+                authority_policy_digest=digest_for("shock-authority-policy-v1"),
+                evaluator_digest=digest_for("shock-evaluator-v1"),
+                rng_state_digest=expected_rng_state_digest,
+                budget_profile_digest=digest_for(
+                    {"max_attempts": 12, "post_shock_attempts": 6, "task_id": task_id}
+                ),
+                prompt_manifest_digest=digest_for("shock-prompts-v1"),
+                protocol_digest=digest_for("egv-evaluation-protocol-v1"),
+            )
+        elif profile.rng_state_digest != expected_rng_state_digest:
+            raise ShockMismatchError("shock profile RNG state differs from the attempt-6 boundary")
         correction_event_id = content_id(
             "correction",
             {"task_id": task_id, "seed": seed, "accepted_premise_id": accepted, "attempt": 6},

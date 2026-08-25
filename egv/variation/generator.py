@@ -23,6 +23,103 @@ MODEL_RESPONSE_CONTRACTS = (
     "source-only-v1",
     "source-only-prefill-v1",
 )
+MODEL_RESPONSE_CONTRACT_SCHEMA = "egv-model-response-contract-v1"
+MODEL_GENERATION_PROFILE_SCHEMA = "egv-model-generation-profile-v1"
+
+
+def model_response_contract_manifest(response_contract: str) -> Mapping[str, Any]:
+    """Return the immutable host/model response boundary for one contract."""
+
+    if response_contract not in MODEL_RESPONSE_CONTRACTS:
+        raise VariationConfigurationError("unknown model response contract")
+    common = {
+        "schema_version": MODEL_RESPONSE_CONTRACT_SCHEMA,
+        "response_contract": response_contract,
+        "prompt_manifest_digest": PromptRegistry().manifest_digest(),
+        "generation_mode": "deterministic-greedy-v1",
+        "max_candidate_source_bytes": 256 * 1024,
+    }
+    if response_contract == "closed-json-v1":
+        return {
+            **common,
+            "response_shape": "closed-json-candidate-envelope-v1",
+            "host_binding": "model-declared-locus-authority-evidence-v1",
+        }
+    return {
+        **common,
+        "response_shape": "complete-python-module-v1",
+        "host_binding": "trusted-locus-execute-authority-all-presented-evidence-v1",
+        "source_input": "exact-src-task-py-utf8-v1",
+        "python_admission": "whole-response-ast-and-public-locus-v1",
+    }
+
+
+def model_response_contract_digest(response_contract: str) -> str:
+    return digest_for(model_response_contract_manifest(response_contract))
+
+
+def model_generation_profile_manifest(
+    response_contract: str,
+    *,
+    model_manifest_digest: str,
+    chat_template_digest: str,
+    max_new_tokens: int = 512,
+) -> Mapping[str, Any]:
+    if response_contract not in MODEL_RESPONSE_CONTRACTS:
+        raise VariationConfigurationError("unknown model response contract")
+    if (
+        not isinstance(model_manifest_digest, str)
+        or len(model_manifest_digest) != 64
+        or not isinstance(chat_template_digest, str)
+        or len(chat_template_digest) != 64
+        or not isinstance(max_new_tokens, int)
+        or isinstance(max_new_tokens, bool)
+        or max_new_tokens <= 0
+        or max_new_tokens > 2048
+    ):
+        raise VariationConfigurationError("model generation profile inputs are invalid")
+    try:
+        int(model_manifest_digest, 16)
+        int(chat_template_digest, 16)
+    except ValueError as exc:
+        raise VariationConfigurationError("model generation profile digests are not hexadecimal") from exc
+    return {
+        "schema_version": MODEL_GENERATION_PROFILE_SCHEMA,
+        "model_manifest_digest": model_manifest_digest,
+        "response_contract": response_contract,
+        "response_contract_digest": model_response_contract_digest(response_contract),
+        "prompt_manifest_digest": PromptRegistry().manifest_digest(),
+        "chat_template_digest": chat_template_digest,
+        "max_new_tokens": max_new_tokens,
+        "enable_thinking": False,
+        "do_sample": False,
+        "num_beams": 1,
+        "skip_special_tokens": True,
+        "source_only_chat_mode": (
+            "assistant-continuation" if response_contract == "source-only-prefill-v1" else "generation-prompt"
+        ),
+    }
+
+
+def model_generation_profile_digest(
+    response_contract: str,
+    *,
+    model_manifest_digest: str,
+    chat_template_digest: str,
+    max_new_tokens: int = 512,
+) -> str:
+    return digest_for(
+        model_generation_profile_manifest(
+            response_contract,
+            model_manifest_digest=model_manifest_digest,
+            chat_template_digest=chat_template_digest,
+            max_new_tokens=max_new_tokens,
+        )
+    )
+
+
+CLOSED_JSON_RESPONSE_CONTRACT_DIGEST = model_response_contract_digest("closed-json-v1")
+SOURCE_ONLY_RESPONSE_CONTRACT_DIGEST = model_response_contract_digest("source-only-v1")
 
 
 @dataclass(frozen=True)
@@ -45,6 +142,9 @@ class CandidateContext:
     task_statement: Optional[str] = None
     initial_source: Optional[str] = None
     initial_source_digest: Optional[str] = None
+    response_contract: str = "closed-json-v1"
+    response_contract_digest: str = CLOSED_JSON_RESPONSE_CONTRACT_DIGEST
+    generation_profile_digest: Optional[str] = None
 
 
 @dataclass(frozen=True)
@@ -92,6 +192,11 @@ class CandidateGenerationEvidence:
     def validate(self, context: CandidateContext) -> None:
         if self.response_contract not in MODEL_RESPONSE_CONTRACTS:
             raise VariationDependencyError("candidate generation evidence has an unknown response contract")
+        if (
+            context.response_contract != self.response_contract
+            or context.response_contract_digest != model_response_contract_digest(self.response_contract)
+        ):
+            raise VariationDependencyError("candidate generation evidence differs from its frozen response contract")
         if not isinstance(self.decoded_model_response, bytes) or not self.decoded_model_response:
             raise VariationDependencyError("candidate generation evidence has an empty decoded model response")
         if digest_bytes(self.decoded_model_response) != self.decoded_model_response_digest:
@@ -148,6 +253,71 @@ class CandidateGenerationEvidence:
             or self.proposal.metadata.get("normalized_source_digest") != digest_bytes(self.proposal.source)
         ):
             raise VariationDependencyError("candidate generation proposal metadata is not evidence-bound")
+
+
+@dataclass(frozen=True)
+class CandidateGenerationFailureEvidence:
+    """Private evidence for a deterministic generation/contract failure."""
+
+    stage: str
+    response_contract: str
+    rendered_prompt: Optional[bytes]
+    rendered_prompt_digest: Optional[str]
+    decoded_model_response: Optional[bytes]
+    decoded_model_response_digest: Optional[str]
+    contract_response: Optional[bytes]
+    contract_response_digest: Optional[str]
+    error_code: str
+
+    def validate(self, context: CandidateContext) -> None:
+        if self.stage not in {
+            "PROMPT_RENDER", "PROMPT_INTEGRITY", "MODEL_GENERATION", "RESPONSE_CONTRACT"
+        }:
+            raise VariationDependencyError("candidate generation failure stage is unknown")
+        if (
+            self.response_contract != context.response_contract
+            or context.response_contract_digest != model_response_contract_digest(self.response_contract)
+            or self.response_contract == "closed-json-v1"
+        ):
+            raise VariationDependencyError("candidate generation failure differs from its frozen response contract")
+        if not isinstance(self.error_code, str) or not self.error_code or len(self.error_code) > 128:
+            raise VariationDependencyError("candidate generation failure code is invalid")
+        pairs = (
+            (self.rendered_prompt, self.rendered_prompt_digest, "rendered prompt"),
+            (self.decoded_model_response, self.decoded_model_response_digest, "decoded response"),
+            (self.contract_response, self.contract_response_digest, "contract response"),
+        )
+        for raw, supplied, label in pairs:
+            if raw is None:
+                if supplied is not None:
+                    raise VariationDependencyError("candidate generation failure {} digest is orphaned".format(label))
+                continue
+            if not isinstance(raw, bytes) or not isinstance(supplied, str) or digest_bytes(raw) != supplied:
+                raise VariationDependencyError("candidate generation failure {} digest mismatch".format(label))
+        if self.stage in {"MODEL_GENERATION", "RESPONSE_CONTRACT"}:
+            if (
+                not self.rendered_prompt
+                or self.rendered_prompt_digest != context.prompt_digest
+            ):
+                raise VariationDependencyError("candidate generation failure is not bound to the rendered prompt")
+        elif self.stage == "PROMPT_INTEGRITY" and (
+            not self.rendered_prompt
+            or self.rendered_prompt_digest == context.prompt_digest
+        ):
+            raise VariationDependencyError("prompt-integrity failure does not preserve the differing prompt bytes")
+        if self.stage == "RESPONSE_CONTRACT" and (
+            not self.decoded_model_response or not self.contract_response
+        ):
+            raise VariationDependencyError("response-contract failure lacks raw model evidence")
+
+
+class CandidateGenerationFailure(VariationDependencyError):
+    """Fail-closed generation error carrying only durable private evidence."""
+
+    def __init__(self, evidence: CandidateGenerationFailureEvidence) -> None:
+        super().__init__("pinned model candidate generation failed closed")
+        self.evidence = evidence
+        self.candidate_id: Optional[str] = None
 
 
 class CandidateGenerator(Protocol):
@@ -274,6 +444,8 @@ class ModelCandidateGenerator:
             "prompt_manifest_digest",
             "chat_template_digest",
             "response_contract",
+            "response_contract_digest",
+            "generation_profile_digest",
         }:
             raise AttributeError("production model generator contract is immutable after construction")
         super().__setattr__(name, value)
@@ -344,6 +516,20 @@ class ModelCandidateGenerator:
         self.chat_template_digest = digest_bytes(chat_template.encode("utf-8")) if isinstance(chat_template, str) else None
         self.max_new_tokens = max_new_tokens
         self.response_contract = response_contract
+        self.response_contract_digest = model_response_contract_digest(response_contract)
+        if self.chat_template_digest is None:
+            # closed-json-v1 keeps its historical tokenizing path and has no
+            # exact rendered-prompt claim; a stable null-equivalent digest
+            # still closes the generation profile.
+            profile_chat_digest = digest_for("no-chat-template-digest-claim")
+        else:
+            profile_chat_digest = self.chat_template_digest
+        self.generation_profile_digest = model_generation_profile_digest(
+            response_contract,
+            model_manifest_digest=self.model_digest,
+            chat_template_digest=profile_chat_digest,
+            max_new_tokens=self.max_new_tokens,
+        )
         self._initialization_token = _MODEL_GENERATOR_INIT_TOKEN
         self._generator_contract = digest_for(
             {
@@ -358,6 +544,8 @@ class ModelCandidateGenerator:
                 "prompt_manifest_digest": self.prompt_manifest_digest,
                 "chat_template_digest": self.chat_template_digest,
                 "response_contract": self.response_contract,
+                "response_contract_digest": self.response_contract_digest,
+                "generation_profile_digest": self.generation_profile_digest,
             }
         )
 
@@ -413,10 +601,22 @@ class ModelCandidateGenerator:
                 "prompt_manifest_digest": self.prompt_manifest_digest,
                 "chat_template_digest": self.chat_template_digest,
                 "response_contract": self.response_contract,
+                "response_contract_digest": self.response_contract_digest,
+                "generation_profile_digest": self.generation_profile_digest,
             }
         )
         if self._generator_contract != expected_contract:
             raise VariationDependencyError("model generator contract changed after construction")
+        if self.response_contract_digest != model_response_contract_digest(self.response_contract):
+            raise VariationDependencyError("model generator response-contract digest changed")
+        profile_chat_digest = self.chat_template_digest or digest_for("no-chat-template-digest-claim")
+        if self.generation_profile_digest != model_generation_profile_digest(
+            self.response_contract,
+            model_manifest_digest=self.model_digest,
+            chat_template_digest=profile_chat_digest,
+            max_new_tokens=self.max_new_tokens,
+        ):
+            raise VariationDependencyError("model generator generation profile changed")
         self.prompt_registry.validate()
         if self.prompt_registry.manifest_digest() != self.prompt_manifest_digest:
             raise VariationDependencyError("model generator prompt manifest binding changed")
@@ -481,6 +681,12 @@ class ModelCandidateGenerator:
         return rendered
 
     def prompt_digest_for(self, context: CandidateContext) -> str:
+        if (
+            context.response_contract != self.response_contract
+            or context.response_contract_digest != self.response_contract_digest
+            or context.generation_profile_digest != self.generation_profile_digest
+        ):
+            raise VariationConfigurationError("candidate context differs from the frozen model generation profile")
         return digest_bytes(self._render_chat(context).encode("utf-8"))
 
     @staticmethod
@@ -685,7 +891,95 @@ class ModelCandidateGenerator:
                 "generation evidence is available only for experimental source-only contracts"
             )
         self.validate_production_integrity()
-        return self._propose_with_evidence(context)
+        if (
+            context.response_contract != self.response_contract
+            or context.response_contract_digest != self.response_contract_digest
+            or context.generation_profile_digest != self.generation_profile_digest
+        ):
+            raise VariationConfigurationError("candidate context differs from the frozen model generation profile")
+        try:
+            rendered_prompt = self._render_chat(context).encode("utf-8")
+        except Exception as exc:
+            failure = CandidateGenerationFailureEvidence(
+                stage="PROMPT_RENDER",
+                response_contract=self.response_contract,
+                rendered_prompt=None,
+                rendered_prompt_digest=None,
+                decoded_model_response=None,
+                decoded_model_response_digest=None,
+                contract_response=None,
+                contract_response_digest=None,
+                error_code=type(exc).__name__,
+            )
+            failure.validate(context)
+            raise CandidateGenerationFailure(failure) from exc
+        if digest_bytes(rendered_prompt) != context.prompt_digest:
+            failure = CandidateGenerationFailureEvidence(
+                stage="PROMPT_INTEGRITY",
+                response_contract=self.response_contract,
+                rendered_prompt=rendered_prompt,
+                rendered_prompt_digest=digest_bytes(rendered_prompt),
+                decoded_model_response=None,
+                decoded_model_response_digest=None,
+                contract_response=None,
+                contract_response_digest=None,
+                error_code="PromptDigestMismatch",
+            )
+            failure.validate(context)
+            raise CandidateGenerationFailure(failure)
+        try:
+            decoded_text, contract_text, generated_prompt = self._generate_text(context)
+        except Exception as exc:
+            failure = CandidateGenerationFailureEvidence(
+                stage="MODEL_GENERATION",
+                response_contract=self.response_contract,
+                rendered_prompt=rendered_prompt,
+                rendered_prompt_digest=digest_bytes(rendered_prompt),
+                decoded_model_response=None,
+                decoded_model_response_digest=None,
+                contract_response=None,
+                contract_response_digest=None,
+                error_code=type(exc).__name__,
+            )
+            failure.validate(context)
+            raise CandidateGenerationFailure(failure) from exc
+        decoded = decoded_text.encode("utf-8")
+        contract = contract_text.encode("utf-8")
+        if generated_prompt != rendered_prompt:
+            raise VariationDependencyError("candidate generation returned different rendered-prompt evidence")
+        try:
+            proposal = self._parse_response(
+                contract_text,
+                context,
+                response_contract=self.response_contract,
+            )
+            proposal.validate(context, source_limit=256 * 1024)
+        except Exception as exc:
+            failure = CandidateGenerationFailureEvidence(
+                stage="RESPONSE_CONTRACT",
+                response_contract=self.response_contract,
+                rendered_prompt=rendered_prompt,
+                rendered_prompt_digest=digest_bytes(rendered_prompt),
+                decoded_model_response=decoded,
+                decoded_model_response_digest=digest_bytes(decoded),
+                contract_response=contract,
+                contract_response_digest=digest_bytes(contract),
+                error_code=type(exc).__name__,
+            )
+            failure.validate(context)
+            raise CandidateGenerationFailure(failure) from exc
+        evidence = CandidateGenerationEvidence(
+            proposal=proposal,
+            decoded_model_response=decoded,
+            decoded_model_response_digest=digest_bytes(decoded),
+            contract_response=contract,
+            contract_response_digest=digest_bytes(contract),
+            rendered_prompt=rendered_prompt,
+            rendered_prompt_digest=digest_bytes(rendered_prompt),
+            response_contract=self.response_contract,
+        )
+        evidence.validate(context)
+        return evidence
 
 
 _ORIGINAL_MODEL_GENERATOR_PROPOSE = ModelCandidateGenerator.propose
@@ -747,12 +1041,22 @@ class DeterministicFixtureGenerator:
 
 
 __all__ = [
+    "CLOSED_JSON_RESPONSE_CONTRACT_DIGEST",
     "CandidateContext",
     "CandidateGenerationEvidence",
+    "CandidateGenerationFailure",
+    "CandidateGenerationFailureEvidence",
     "CandidateGenerator",
     "CandidateProposal",
     "DeterministicFixtureGenerator",
+    "MODEL_GENERATION_PROFILE_SCHEMA",
+    "MODEL_RESPONSE_CONTRACT_SCHEMA",
     "MODEL_RESPONSE_CONTRACTS",
     "ModelCandidateGenerator",
+    "SOURCE_ONLY_RESPONSE_CONTRACT_DIGEST",
+    "model_generation_profile_digest",
+    "model_generation_profile_manifest",
+    "model_response_contract_digest",
+    "model_response_contract_manifest",
     "render_candidate_prompt",
 ]

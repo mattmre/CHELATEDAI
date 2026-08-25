@@ -25,6 +25,7 @@ from egv.evaluation.authority import AuthorityPolicy
 from egv.receipts import ReceiptSigner, receipt_hash
 from egv.variation.arms import arm_policy
 from egv.variation.loop import VARIATION_PROTOCOL_DIGEST
+from egv.variation.generator import model_generation_profile_digest
 
 
 def _corpus(root: Path) -> EvaluationCorpus:
@@ -99,10 +100,16 @@ class CommissioningInputTests(unittest.TestCase):
         self.root = Path(self.temporary.name)
         self.corpus = _corpus(self.root)
         self.model_digest = digest_for("pinned-qwen-model-manifest")
+        self.generation_profile_digest = model_generation_profile_digest(
+            "source-only-v1",
+            model_manifest_digest=self.model_digest,
+            chat_template_digest=digest_for("pinned-chat-template"),
+        )
         self.plan = prepare_commissioning(
             self.corpus,
             campaign_id="campaign-public",
             model_manifest_digest=self.model_digest,
+            generation_profile_digest=self.generation_profile_digest,
         )
         self.signer = ReceiptSigner.generate()
 
@@ -137,6 +144,7 @@ class CommissioningInputTests(unittest.TestCase):
             self.corpus,
             campaign_id="campaign-public",
             model_manifest_digest=self.model_digest,
+            generation_profile_digest=self.generation_profile_digest,
         )
         self.assertEqual(self.plan.public_manifest(), second.public_manifest())
         self.assertEqual(self.plan.private_manifest(), second.private_manifest())
@@ -175,6 +183,7 @@ class CommissioningInputTests(unittest.TestCase):
                 seed=0,
                 model_manifest_digest=self.model_digest,
                 variation_protocol_digest=VARIATION_PROTOCOL_DIGEST,
+                generation_profile_digest=self.generation_profile_digest,
             )
         train = self.corpus.split("train")[0].public_manifest_record()
         for arm_id, seed in (("A", 0), ("B", 2)):
@@ -187,12 +196,14 @@ class CommissioningInputTests(unittest.TestCase):
                     seed=seed,
                     model_manifest_digest=self.model_digest,
                     variation_protocol_digest=VARIATION_PROTOCOL_DIGEST,
+                    generation_profile_digest=self.generation_profile_digest,
                 )
         with self.assertRaisesRegex(CommissioningPreparationError, "protocol"):
             prepare_commissioning(
                 self.corpus,
                 campaign_id="campaign-public",
                 model_manifest_digest=self.model_digest,
+                generation_profile_digest=self.generation_profile_digest,
                 variation_protocol_digest=digest_for("substituted"),
             )
 

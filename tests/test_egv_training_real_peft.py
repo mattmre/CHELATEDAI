@@ -11,7 +11,7 @@ from unittest.mock import patch
 import torch
 
 try:
-    import peft  # noqa: F401
+    import peft
     from transformers import PretrainedConfig, PreTrainedModel
     from transformers.modeling_outputs import CausalLMOutput
 except ImportError:  # pragma: no cover - dependency-gated production lane
@@ -23,7 +23,8 @@ except ImportError:  # pragma: no cover - dependency-gated production lane
 from egv.canonical import canonical_json, content_id, digest_bytes, digest_for
 from egv.receipts import ReceiptSigner, key_id_for_public_key
 from egv.training.contracts import LedgerCutoff, TrainingExample
-from egv.training.targets import FULL_ATTENTION_LAYERS
+from egv.training.protocol import TrainingProtocol
+from egv.training.targets import FROZEN_LORA_TARGETS, FULL_ATTENTION_LAYERS
 from egv.training.trainer import SEALED_RUNTIME_DATASET_SCHEMA, run_production_training
 from egv.variation.model import (
     MODEL_ARCHITECTURE,
@@ -112,6 +113,33 @@ class _Tokenizer:
         if add_special_tokens or truncation:
             raise AssertionError("mutable tokenization")
         return {"input_ids": [2 + (len(item) % 29) for item in text.split()]}
+
+
+@unittest.skipUnless(peft is not None, "real PEFT runtime unavailable")
+class PeftInventoryContractTests(unittest.TestCase):
+    def test_real_peft_state_dict_matches_exact_default_adapter_pair_inventory(self):
+        protocol = TrainingProtocol()
+        model = peft.get_peft_model(
+            _TinyCausalLM(_TinyConfig()),
+            peft.LoraConfig(
+                r=protocol.lora_rank,
+                lora_alpha=protocol.lora_alpha,
+                lora_dropout=protocol.lora_dropout,
+                target_modules=list(FROZEN_LORA_TARGETS),
+                bias="none",
+                task_type="CAUSAL_LM",
+            ),
+        )
+        actual = {name for name in model.state_dict() if "lora_" in name}
+        expected = {
+            "base_model.model." + target_name + suffix
+            for target_name in FROZEN_LORA_TARGETS
+            for suffix in (
+                ".lora_A.default.weight",
+                ".lora_B.default.weight",
+            )
+        }
+        self.assertEqual(actual, expected)
 
 
 @unittest.skipUnless(peft is not None and torch.cuda.is_available(), "real PEFT CUDA runtime unavailable")
@@ -257,7 +285,7 @@ class RealPeftTrainingIntegrationTests(unittest.TestCase):
             dataset_path.write_text(canonical_json({
                 "schema_version": SEALED_RUNTIME_DATASET_SCHEMA, "manifest": dataset.manifest(),
                 "private_rows": [row.private_record() for row in dataset.examples],
-            }), encoding="utf-8")
+            }) + "\n", encoding="utf-8")
 
             signer = ReceiptSigner.generate()
             public_key = root / "evaluator.pub"
@@ -319,12 +347,34 @@ class RealPeftTrainingIntegrationTests(unittest.TestCase):
                     model_root=model_root, training_dataset=dataset_path,
                     evaluator_manifest=service_path, evaluator_public_key=public_key,
                     evaluator_command=command, evaluator_transfer_command=transfer_command,
-                    output_root=root / "output", device="cuda",
+                    output_root=root / "output",
+                    expected_training_artifact_sha256=hashlib.sha256(dataset_path.read_bytes()).hexdigest(),
+                    expected_training_dataset_digest=dataset.digest, device="cuda",
                 )
             self.assertTrue(result["real_qwen_execution_claimed"])
             self.assertEqual(result["selected_loss"], 0.1)
             self.assertEqual(result["adapter_manifest_digest"], result["development_evaluations"][0]["receipt"]["candidate_artifact_digest"])
+            self.assertGreater(
+                result["lora_change_attestation"]["effective_delta_changed_target_count"],
+                0,
+            )
+            binding = result["lora_sealed_binding"]
+            self.assertEqual(
+                binding["lora_change_attestation_digest"],
+                result["lora_change_attestation"]["attestation_digest"],
+            )
+            self.assertEqual(
+                binding["selected_checkpoint_artifact_digest"],
+                result["checkpoint_artifact_digest"],
+            )
+            self.assertEqual(
+                binding["base_immutability_proof_digest"],
+                result["base_immutability_proof_digest"],
+            )
+            self.assertEqual(binding["sealed_adapter_digest"], result["adapter_manifest_digest"])
             self.assertTrue((root / "output" / "adapter" / "adapter_model.safetensors").is_file())
+            self.assertEqual(Path(result["adapter_root"]), root / "output" / "adapter")
+            self.assertEqual(list(root.glob(".egv-training-private-*")), [])
 
 
 if __name__ == "__main__":

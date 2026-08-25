@@ -17,12 +17,56 @@
   BLOCKED automatically.
 -->
 
+## Active EGV campaign handoff — 2026-08-24
+
+- PR #305 implementation head `8669dcd77821d43a54601fffdcbd4668c8315e2f`
+  is pushed and green across lint, Python 3.9–3.12, smoke, schema, PR-body, and
+  security checks. The only failing check is the truthful §6.3 block-flag gate.
+  A public evidence addendum records the dual-Spark exact-source acceptance and
+  the terminal research outcome; its validator and independent review must pass
+  at the final committed head before merge.
+- PR #306 remains a stacked draft. Its ten-path held-out production overlay was
+  committed locally as `f2f43caa` after an independent exact-overlay review found
+  zero Critical, High, Medium, or Low defects at raw diff SHA-256
+  `1c2c2d8ba18c45e7f2aa07a3d76a14e34dc4a2a9e7b23ebd01ff8714b6ab38a2`.
+  The adversarial suite ran 123 tests successfully with 6 expected platform
+  skips. It still requires rebase onto final PR #305, immutable-head Linux/process
+  acceptance, a fresh exact-head review, and green GitHub checks before merge.
+- Primary outcome: 80/80 terminal `BUDGET_EXHAUSTED`, 960 attempts, 343
+  evaluated candidates, zero correct candidates, zero promotions.
+- Freezer outcome: 343/343 excluded, zero rows, zero represented tasks,
+  `NO_ADMISSIBLE_TRAINING_SET`. No research adapter exists; trained arms and
+  matched trained-versus-base results remain `UNEVALUATED`.
+- Public-safe evidence is under
+  `docs/evidence/egv-qwen-bd-commissioning-2026-08-24/`. Both Sparks ran six
+  identical offline/read-only-source GPU implementation tests at exact source
+  `8669dcd7`; both also rejected the genuine zero-row freezer artifact before
+  model or evaluator path use and created no output. This is implementation and
+  fail-closed acceptance, not evidence of Qwen training or utility.
+- Resume order: freeze, review, commit, and push the #305 evidence addendum;
+  obtain a final exact-head review; then rebase #306, repeat exact-head Linux and
+  process-boundary acceptance, review, and push. Publish or merge only with the
+  bounded operator override recorded below. Restore the operator-owned inference
+  service only after both campaign gates finish, using the private handoff rather
+  than public repository data.
+- Do not claim live cross-host trainer/evaluator transport unless that exact path
+  is implemented and evidenced. Do not manufacture LoRA rows or substitute base
+  output for missing trained arms.
+
+The campaign evidence itself is not BHS Carried Debt. The narrowly scoped
+operator override is recorded separately as CD-305-01 below and does not change
+the existing block-flag calculation.
+
 ## Block flag
 
-**Current**: `CLEAR` — no Carried Debt items have expired.
+**Current**: `BLOCKED` — two one-cycle Carried Debt items from June remain open
+past their TTL. The operator has directed the active EGV campaign to continue,
+but this status must not be represented as `CLEAR` or used as evidence that the
+repository governance gate passed.
 
-When the flag is `BLOCKED`, no new feature work may merge until Carried Debt
-is empty. The flag is set automatically by `scripts/check_block_flag.py`:
+When the flag is `BLOCKED`, no new feature work may merge until Carried Debt is
+empty unless a separately documented operator override satisfies the rulebook.
+The flag is set automatically by `scripts/check_block_flag.py`:
 - `CLEAR` if no Carried Debt rows OR all open rows are still in their first
   cycle (TTL not yet expired).
 - `BLOCKED` if any open Carried Debt row has survived a full cycle without
@@ -36,6 +80,7 @@ authoritative source; everything else is advisory.
 
 | ID | Item | Source | TTL | Blocking | Status |
 |----|------|--------|-----|----------|--------|
+| CD-305-01 | The operator-authorized BLOCKED-state exception is limited to PR #305 and its stacked PR #306; it must not be reused for later feature work, and CD-A2-01 plus CD-H1-01 remain unresolved. | PR #305 override (2026-08-25) | 1 cycle | YES — prevents silent reuse of the campaign-specific override | **OPEN — first cycle** — close only after PR #305/#306 disposition is recorded and the next feature cycle either clears CD-A2-01 plus CD-H1-01 or obtains a new separately scoped override. |
 | CD-001 | smoke_pipeline.py ceiling-tier not yet implemented; floor-tier only (`run_ceiling_smoke()` returns sentinel 2). Ceiling gap = no real end-to-end fixture exercise of AntigravityEngine | kit install 2026-05-10 | 1 cycle | NO — honestly disclosed per Rule 5 | **CLOSED** by PR <pending consolidation PR> — `run_ceiling_smoke()` now constructs `AntigravityEngine(qdrant_location=":memory:", model_name="all-MiniLM-L6-v2")`, ingests 4 docs, runs `get_chelated_vector()` + `embed()` against the production code path, asserts non-zero vector with `vector_size=384`; honest skip path retained for envs missing torch / sentence-transformers / qdrant; covered by `test_smoke_pipeline_ceiling.py` (8 tests) |
 | CD-002 | `scripts/smoke.sh` Stage 1 exits non-zero: `tests/test_e2e_smoke.py` does not exist; smoke.sh is the `bash`-mode entry point but the repo has no e2e smoke test file. The Python `smoke_pipeline.py` path (used by CI and operator) is unaffected. | kit v3.3 upgrade 2026-05-12 | 1 cycle | NO — CI uses `smoke_pipeline.py` directly; gap is only in the `bash scripts/smoke.sh` code path | **CLOSED** by PR <pending consolidation PR> — added `tests/test_e2e_smoke.py` (unittest surface-boot covering `antigravity_engine` + 8 load-bearing modules and the `AntigravityEngine` entry-point class); swapped `smoke.sh` Stage 1 invocation from `python -m pytest tests/test_e2e_smoke.py` to `python -m unittest -v tests.test_e2e_smoke` per CLAUDE.md (CI has no pytest) |
 | CD-244-01 | `scripts/bhs_validator.py:43-50` `validate_pr_brutal_honesty()` returns hardcoded `BHSResult(score=0.0)`; `:53-58` `run_smoke_pipeline()` always returns `True`. AEP orchestrator hooks call these so `summary["avg_bhs_score"]` is always `0.0`. L1 + L4. Violates Session Rule #1. | PR #244 (2026-05-16) | 1 cycle | YES — load-bearing stub | **CLOSED** by PR #245 |
@@ -46,7 +91,7 @@ authoritative source; everything else is advisory.
 | CD-245-01 | `scripts/bhs_validator.py` `_score_finding` rubric is length-based + keyword-based, not semantic. Three Tier B iterations (92/96/85) converged on this: `"xxxxxxxxxxxx"` (12 identical chars) passes the min-content check; padded keyword-bait can hit score 100 without committed prose. L13 (soft-prose-claimed-as-mechanical). Per rulebook §6.1, same gap class surviving 2 iterations escalates — flagging as Tier C debt rather than looping further. | PR #245 (2026-05-16) | 1 cycle | NO — rubric depth research, not an L1/L4 in production data flow | **CLOSED** by PR #248 — Candidate A + B per research-agent recommendation: entropy/unique-token/dominant-token content-quality penalty in `scripts/bhs_validator.py::_content_quality_penalty` (drops `"xxxxxxxxxxxx"` to 85), `_score_finding` renamed to `_score_finding_structure` with backwards-compat alias, scope documented in `docs/bhs-rubric-scope.md`, operator audit script at `scripts/audit_findings.py` for periodic human sample-grade. Residual diverse-but-meaningless gap (`"foo bar baz qux at handler.py:42"` still scores 100) is honestly acknowledged in the scope doc and asserted in `test_bhs_validator.py::test_diverse_but_meaningless_prose_acknowledged_gap_scores_100` so any future "we closed it" claim must actually change the rubric. |
 | CD-247-01 | `aep_orchestrator.py:678, 966` carry inline `# BHS v3.3 placeholder hook` / `# BHS v3.3 placeholder (to be expanded)` comments; PR #245 replaced the underlying validator with a real implementation but the comments now misrepresent the integration state. Stale-docs L13-light. | post-consolidation audit (2026-05-16) | 1 cycle | NO — docs drift, no behaviour change | **CLOSED** by PR #267 (Track 0 hygiene) — both comments refreshed: `aep_orchestrator.py:678` now states the validator is the real PR #245 implementation attaching advisory scores (gating not enforced), and `:966` states the floor-tier smoke gate runs the real `run_smoke_pipeline`. |
 | CD-247-02 | Six broad-`except Exception` swallow sites across production code (`antigravity_engine.py:1080-1081, 2460-2461`; `run_phase_c_eval.py:433-434`; `checkpoint_manager.py:372`; `engine_scope_coverage.py:35`; `run_weight_refinement_campaign.py:443/589/626`) silently absorb errors with `pass` or `return None`. Per L11, even benign optional-path swallows should at minimum log at debug. | post-consolidation audit (2026-05-16) | 1 cycle | NO — audited as deliberate non-critical paths | **CLOSED** by PR #267 (Track 0 hygiene) — audited all six citations against current `main`; only `run_phase_c_eval.py:433-434` was a genuine broad swallow and is now narrowed to log the exception type. The other five citations were stale/over-flagged and verified to need no change: `antigravity_engine.py` sites already `log_error` or are L11-disclosed (lines moved; current broad-excepts at 283/1135/1326/2541/2576/2808/2815 all log); `checkpoint_manager.py:371` is `except ValueError: pass` inside a `__main__` demo block; `engine_scope_coverage.py:34` is already a narrow `except (TypeError, ValueError)` with a fallback return; `run_weight_refinement_campaign.py` contains no `except Exception` at the cited lines. Honest disposition: no cosmetic edits manufactured to satisfy stale citations. |
-| CD-A2-01 | The real swap-backend resolution path (`query_encoder_drift.QueryEncoderDrift._backend` → `embedding_backend.create_embedding_backend(swap_model_name)`, loading the real `all-mpnet-base-v2`) is no longer exercised by any default-CI test after the real-model smoke was made opt-in (gated on `CHELATED_RUN_REAL_MODEL_TESTS=1`) to stop a ~17-min HF-connection CI hang. It is covered only by mocked unit tests and the non-gating PR-A4 real-model campaign. L5 (untested production path in default CI). | PR for real-model-smoke opt-in (2026-06-14) | 1 cycle | NO — logic covered by stubs; real path deferred to PR-A4 campaign | **OPEN** — closed by the PR-A4 real-model campaign actually running the `all-mpnet-base-v2` swap path on a networked/cached machine (`CHELATED_RUN_REAL_MODEL_TESTS=1`) and recording the artifact. |
+| CD-A2-01 | The real swap-backend resolution path (`query_encoder_drift.QueryEncoderDrift._backend` → `embedding_backend.create_embedding_backend(swap_model_name)`, loading the real `all-mpnet-base-v2`) is no longer exercised by any default-CI test after the real-model smoke was made opt-in (gated on `CHELATED_RUN_REAL_MODEL_TESTS=1`) to stop a ~17-min HF-connection CI hang. It is covered only by mocked unit tests and the non-gating PR-A4 real-model campaign. L5 (untested production path in default CI). | PR for real-model-smoke opt-in (2026-06-14) | expired | YES — expired debt blocks new feature merges absent an explicit operator override | **OPEN — expired (BLOCKED)** — closed by the PR-A4 real-model campaign actually running the `all-mpnet-base-v2` swap path on a networked/cached machine (`CHELATED_RUN_REAL_MODEL_TESTS=1`) and recording the artifact. |
 | CD-MOD-001 | MOD-1 audit: `model_scope_runtime.LocalModelRuntime.load()` real `transformers.AutoModelForCausalLM.from_pretrained` branch has zero test coverage; every test injects a `MagicMock` loader. The `Qwen3.5-9B` pilot load (Phase 1 AC1) is unverified end-to-end. L5 + L8. | BHS Scope B audit 2026-05-16 | 1 cycle | NO — Model-Scope cycle phase scored 72; tracked under cycle-wide remediation | **CLOSED**: PR #250 — `ActivationEvent` gains `raw_tensor_shape` field; `TestRunInferenceTryBranchDiscrimination` covers real try-branch via sentinel patch; integration test added under `@skipUnless(CHELATED_INTEGRATION_MODEL)` for actual `AutoModelForCausalLM.from_pretrained` path with `sshleifer/tiny-gpt2` |
 | CD-MOD-002 | MOD-2 audit: `qwen_scope_adapter.py` has no `hf_hub_download`, no HuggingFace repo string, no checksum; every SAE test uses `np.random.default_rng(42).random(...)` as the weight matrix. `QwenScopeAdapter.extract_features` projects only 3-4 scalar activation stats, not residual-stream tensors. Phase 2 AC ("Qwen3.5-9B sparse features from hooked residual states") not demonstrated. L4 + L1 + L5. | BHS Scope B audit 2026-05-16 | 1 cycle | NO — critical-severity but POC-bounded; honestly disclosed | **CLOSED**: PR #250 — `QwenScopeLayerSAE.from_file` real checkpoint path covered by `TestQwenScopeLayerSAEFromFile` (creates synthetic `.pt` fixture via `torch.save`, loads, calls `encode`, asserts output shapes and top-k sparsity); `extract_features()` docstring explicitly discloses operation on activation STATISTICS, not raw tensors (L13 resolved) |
 | CD-MOD-003 | MOD-3 audit: `model_scope_steering` `InterventionRecord` lives in `self._records: List[...]` only; no `persist()`/`to_disk()` method. On fresh checkout all provenance is lost. Phase 3 AC3 ("provenance records show what feature, layer, and policy caused intervention") half-met: structure exists, durability does not. L4. | BHS Scope B audit 2026-05-16 | 1 cycle | NO — cosmetic vs durability | **CLOSED**: PR #254 — `SteeringActuator` gains `persist_records(path)` / `load_records(path)` (JSON Lines); provenance survives process restart; 10 new tests including fresh-instance round-trip |
@@ -56,7 +101,7 @@ authoritative source; everything else is advisory.
 | CD-ENG-002 | ENG-4 audit: `engine_scope_negatives` "clustering" is dict-bucketing on exact-string signature equality, not a real distance/cluster algorithm; module hard-codes `generator` field but has no synthesis path (only mining); no committed `golden_runs/` artifact and no replay-twice-and-diff determinism test. Phase 4 ACs met only via mining path; the "synthetic" framing is prose-soft. L13 + L5. | BHS Scope B audit 2026-05-16 | 1 cycle | NO — mining-only is acceptable per AC; framing is the gap | **CLOSED**: PR #251 — `mine_hard_negative_families()` docstring explicitly names algorithm "deterministic fault-class grouping" (not clustering); `test_build_hard_negative_replay_artifact_is_deterministic` calls builder twice and asserts identical `family_id` assignments and row ordering; label-fix regression guard added |
 | CD-TTS-001 | TTS-2 audit: grep of all 17 `run_*.py` runners for `enable_tts` or `--enable-tts` returns zero matches. TTSPipeline is library-callable only; no campaign runner can populate the dashboard TTS panel without external glue code. Visible-without-evidence pattern: panel + API exist, but no operationally-reachable activation path. L4 + L5. | BHS Scope B audit 2026-05-16 | 1 cycle | NO — short fix; dashboard already shows honest "not enabled" empty state | **CLOSED**: PR #252 — `--enable-tts`, `--no-tts-translation`, and `--no-tts-transport` flags wired into `run_road_course_campaign.py`; CLI wiring tested through real `main()` in `TestRunRoadCourseCampaignCLIWiring` |
 | CD-TTS-002 | TTS-1 audit: REM-C2 (per-inference signal clearing in `tts_pipeline.py:213-218`) and REM-H2 (`FeatureDirectionBank` Gaussian unit vectors) are fixed in code but no test would fail if either were reverted. Two of the four bug classes that triggered the post-merge remediation wave can silently regress. L5. | BHS Scope B audit 2026-05-16 | 1 cycle | NO — code is fixed; regression coverage is the gap | **CLOSED**: PR #252 — regression tests added for REM-C2 (cross-inference signal-accumulation guard) and REM-H2 (Gaussian direction-bank distribution test); both tests would fail if the corresponding fixes were reverted |
-| CD-H1-01 | The committed swap-campaign result docs (`docs/drift-recovery-swap-results-2026-06.md`, `docs/drift-recovery-swap-nfcorpus-results-2026-06.md`) carry C3a baseline AND final NDCG (+ the C3a budget sweep) generated before the H1 fix (commit `5b2379b`), which removed a build-time bounded adapter that contaminated C3a's ingested vectors / pre-correction baseline. C3a's ingest, baseline, and trained-adapter snapshot all shift after the fix; C0/C2/C2O/C4a are unaffected. The stale C3a numbers are disclosed inline in both docs. L13 (stale-docs). | H1 (PR pending) | 1 cycle | NO — disclosed inline in both result docs; C3a-only, small magnitude | **OPEN** — closed by H2: re-run both swap campaigns (SciFact + NFCorpus) with the H1 fix, regenerate both auto-generated result docs, and refresh the paper §5 numbers. |
+| CD-H1-01 | The committed swap-campaign result docs (`docs/drift-recovery-swap-results-2026-06.md`, `docs/drift-recovery-swap-nfcorpus-results-2026-06.md`) carry C3a baseline AND final NDCG (+ the C3a budget sweep) generated before the H1 fix (commit `5b2379b`), which removed a build-time bounded adapter that contaminated C3a's ingested vectors / pre-correction baseline. C3a's ingest, baseline, and trained-adapter snapshot all shift after the fix; C0/C2/C2O/C4a are unaffected. The stale C3a numbers are disclosed inline in both docs. L13 (stale-docs). | H1 (PR pending) | expired | YES — expired debt blocks new feature merges absent an explicit operator override | **OPEN — expired (BLOCKED)** — closed by H2: re-run both swap campaigns (SciFact + NFCorpus) with the H1 fix, regenerate both auto-generated result docs, and refresh the paper §5 numbers. |
 
 **Schema**:
 - `ID`: stable identifier, prefix `CD-` + sequential number (CD-001, CD-002, ...).
@@ -92,17 +137,19 @@ Tier B reports if the trend looks suspicious.
 
 ## Operator overrides log
 
-Every PR merged at `BHS_OFFICIAL < 100` (i.e. with `OPERATOR_OVERRIDE:`
-populated) gets a permanent row here. The override creates an automatic top-
-priority Carried Debt entry; this log is the audit trail.
+Every PR merged with `OPERATOR_OVERRIDE:` populated—whether for
+`BHS_OFFICIAL < 100` or for a pre-existing `BLOCKED` repository state—gets a
+permanent row here. The override creates an automatic top-priority Carried Debt
+entry; this log is the audit trail.
 
 | PR | BHS_OFFICIAL at merge | Override reason | Override author | Out-of-band ref |
 |----|----------------------|-----------------|-----------------|-----------------|
 | #244 | 55 | reconciliation foundation must land so follow-up cycle can implement CD-244-01..05 against canonical main | mattmre | `docs/next-session.md` Carried Debt CD-244-01..05 |
 | #245 | 85 | three Tier B iterations converged on rubric-depth gameability (length-based not semantic); per §6.1 same-gap-2-iterations rule, escalating to Tier C as CD-245-01 rather than looping further | mattmre | `docs/next-session.md` Carried Debt CD-245-01 |
+| #305 | 100 | bounded EGV/Qwen campaign may complete under strict testing and truthful negative-result reporting while unrelated historical debts remain visibly open | mattmre | [authenticated owner approval](https://github.com/mattmre/CHELATEDAI/pull/305#issuecomment-5413061747) |
 
 ---
 
-**Last session**: 2026-06-13 — PR #267 Track 0 hygiene: closed CD-247-01 / CD-247-02 (last two open rows); Carried Debt now empty; block flag legitimately CLEAR. Prior: 2026-05-16 PR #244 reconciliation merge (BHS_OFFICIAL=55, OPERATOR_OVERRIDE).
+**Last session**: 2026-08-25 — EGV/Qwen campaign closing under the narrowly scoped PR #305/#306 operator override; CD-A2-01 and CD-H1-01 remain open and the block flag remains truthfully BLOCKED.
 **2026-05-17**: PRs #249–#254 merged; 9 BHS Scope B audit Carried Debt rows (CD-MOD-001 through CD-TTS-002) closed.
 **Last validated by `check_block_flag.py`**: run after this commit
