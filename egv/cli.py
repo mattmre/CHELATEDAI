@@ -914,6 +914,16 @@ def build_parser() -> argparse.ArgumentParser:
     )
     training_contract.add_argument("--model-root", required=True, type=Path)
     training_contract.add_argument("--train-manifest", required=True, type=Path)
+    training_contract.add_argument(
+        "--sealed-training-artifact-sha256",
+        required=True,
+        help="exact output_digest returned by the evaluator-side training freezer",
+    )
+    training_contract.add_argument(
+        "--sealed-training-dataset-digest",
+        required=True,
+        help="exact dataset_digest returned by the evaluator-side training freezer",
+    )
     training_contract.add_argument("--development-manifest", required=True, type=Path)
     training_contract.add_argument("--evaluator-public-key", type=Path)
     training_contract.add_argument("--evaluator-command", type=Path)
@@ -1406,10 +1416,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             if (
                 args.evaluator_public_key is None or args.evaluator_command is None
                 or args.evaluator_transfer_command is None or args.output is None
+                or args.sealed_training_artifact_sha256 is None
+                or args.sealed_training_dataset_digest is None
             ):
                 raise PhaseUnavailable(
                     "train-lora must fail closed without external evaluator authority: provide its frozen public key, "
-                    "content-bound command, service manifest, and an output directory"
+                    "content-bound command, service manifest, operator-captured sealed-training artifact SHA-256 and "
+                    "semantic dataset digest, and a newly absent output directory"
                 )
             result = run_production_training(
                 model_root=args.model_root,
@@ -1419,6 +1432,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 evaluator_command=args.evaluator_command,
                 evaluator_transfer_command=args.evaluator_transfer_command,
                 output_root=args.output,
+                expected_training_artifact_sha256=args.sealed_training_artifact_sha256,
+                expected_training_dataset_digest=args.sealed_training_dataset_digest,
                 device=args.device,
             )
             _json_output(result, args.as_json)
