@@ -93,7 +93,6 @@ _PUBLIC_TASK_FIELDS = frozenset(
         "public_spec_digest",
         "starter_source",
         "starter_source_digest",
-        "reference_source_digest",
         "record_digest",
     }
 )
@@ -336,7 +335,6 @@ _STARTER_SOURCE = (
 
 def _record_core(task_id: str, family_id: str, split: str, ordinal: int) -> Dict[str, Any]:
     spec = _public_spec(task_id, family_id)
-    reference_source = _reference_source_for_spec(spec)
     starter_source = _STARTER_SOURCE
     record: Dict[str, Any] = {
         "schema_version": LEARNABLE_TASK_VERSION,
@@ -349,7 +347,6 @@ def _record_core(task_id: str, family_id: str, split: str, ordinal: int) -> Dict
         "public_spec_digest": digest_for(spec),
         "starter_source": starter_source,
         "starter_source_digest": digest_bytes(starter_source.encode("utf-8")),
-        "reference_source_digest": digest_bytes(reference_source),
     }
     record["record_digest"] = digest_for(record)
     return record
@@ -386,9 +383,6 @@ def validate_public_task_record(record: Mapping[str, Any]) -> Dict[str, Any]:
     starter_violation = validate_candidate_source_contract(starter.encode("utf-8"))
     if starter_violation is not None:
         raise ValueError("starter source violates pure-return-v1")
-    reference = _reference_source_for_spec(expected_spec)
-    if record.get("reference_source_digest") != digest_bytes(reference):
-        raise ValueError("reference source digest mismatch")
     if record.get("record_digest") != _digest_without(record, "record_digest"):
         raise ValueError("public task record digest mismatch")
     return canonical_value(record)
@@ -398,10 +392,7 @@ def build_reference_source(public_task_record: Mapping[str, Any]) -> bytes:
     """Build a solution from the closed public task record and nothing else."""
 
     record = validate_public_task_record(public_task_record)
-    source = _reference_source_for_spec(record["public_spec"])
-    if digest_bytes(source) != record["reference_source_digest"]:
-        raise ValueError("reference source differs from the frozen public binding")
-    return source
+    return _reference_source_for_spec(record["public_spec"])
 
 
 def _read_secret_seed(secret_seed_file: Optional[Union[Path, str]]) -> bytes:
