@@ -4,18 +4,22 @@ from dataclasses import replace
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from egv.canonical import canonical_bytes
+from egv.cli import main
 from egv.evaluation.diagnostics import Diagnostic
 from egv.evaluation.learnable import LearnableCorpusV2
 from egv.evaluation.learnable_runtime import (
     CORPUS_VALIDATION_SCOPE,
+    _corpus_validation_accepted,
     build_corpus_validation_permit,
     build_learnable_hidden_runner,
     run_production_solvability_proof,
     runtime_manifest,
 )
 from egv.evaluation.sandbox import DockerSandboxConfig
+from egv.errors import EGVError
 
 
 class LearnableProductionRuntimeTests(unittest.TestCase):
@@ -78,9 +82,9 @@ class LearnableProductionRuntimeTests(unittest.TestCase):
             {address.controller_task_id for address in first} & {address.controller_task_id for address in train}
         )
 
-    def test_production_proof_refuses_any_nonblind_scope_before_docker(self):
+    def test_direct_in_process_production_proof_is_disabled(self):
         permit = build_corpus_validation_permit(self.corpus, self.config)
-        with self.assertRaisesRegex(ValueError, "frozen to the blind split"):
+        with self.assertRaisesRegex(EGVError, "three spawned stages"):
             run_production_solvability_proof(
                 self.corpus,
                 self.root / "proof",
@@ -88,6 +92,88 @@ class LearnableProductionRuntimeTests(unittest.TestCase):
                 splits=("dev",),
                 config=self.config,
             )
+
+    def test_production_acceptance_requires_every_proof_surface(self):
+        accepted = {
+            "reference_pass_count": 36,
+            "reference_total": 36,
+            "starter_rejection_count": 18,
+            "starter_total": 18,
+            "receipt_count": 162,
+            "receipt_delivery_count": 162,
+            "receipt_chain_valid": True,
+            "negative_controls": {"network": True, "source_read_only": True},
+        }
+        self.assertTrue(_corpus_validation_accepted(**accepted))
+        mutations = {
+            "reference_pass_count": 35,
+            "starter_rejection_count": 17,
+            "receipt_count": 159,
+            "receipt_delivery_count": 159,
+            "receipt_chain_valid": False,
+            "negative_controls": {"network": False},
+        }
+        for field, value in mutations.items():
+            with self.subTest(field=field):
+                rejected = dict(accepted)
+                rejected[field] = value
+                self.assertFalse(_corpus_validation_accepted(**rejected))
+
+    def test_cli_routes_external_paths_to_spawned_gate_without_constructing_corpus(self):
+        key_paths = []
+        for name in ("controller-private", "controller-public", "freeze-private", "freeze-public"):
+            path = self.root / (name + ".key")
+            path.write_bytes(b"k" * 32)
+            key_paths.append(path)
+        workspace = self.root / "cli-workspace"
+        output = self.root / "cli-report.json"
+        report = {
+            "production_acceptance": True,
+            "disposition": "GO_CORPUS_VALIDATION",
+            "result_digest": "a" * 64,
+            "total_evaluation_count": 394,
+            "receipt_count": 1182,
+            "task_bearing_model_requests_permitted": False,
+        }
+        with (
+            patch(
+                "egv.cli.DockerSandboxConfig.from_environment",
+                return_value=self.config,
+            ),
+            patch("egv.cli.run_gate_a_corpus_validation", return_value=report) as run,
+            patch(
+                "egv.cli.LearnableCorpusV2",
+                create=True,
+            ) as corpus_type,
+        ):
+            code = main(
+                [
+                    "evaluation",
+                    "corpus-proof",
+                    "--evaluator-seed",
+                    str(self.seed),
+                    "--controller-private-key",
+                    str(key_paths[0]),
+                    "--controller-public-key",
+                    str(key_paths[1]),
+                    "--freeze-private-key",
+                    str(key_paths[2]),
+                    "--freeze-public-key",
+                    str(key_paths[3]),
+                    "--workspace",
+                    str(workspace),
+                    "--output",
+                    str(output),
+                    "--package-root",
+                    str(Path.cwd()),
+                    "--source-commit",
+                    "a" * 40,
+                    "--json",
+                ]
+            )
+        self.assertEqual(code, 0)
+        run.assert_called_once()
+        corpus_type.generate.assert_not_called()
 
 
 if __name__ == "__main__":

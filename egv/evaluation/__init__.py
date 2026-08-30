@@ -69,6 +69,7 @@ from .learnable_runtime import (
     LearnableCaseAddress,
     build_corpus_validation_permit,
     build_learnable_hidden_runner,
+    run_gate_a_corpus_validation,
     run_production_solvability_proof,
     runtime_manifest,
 )
@@ -176,6 +177,7 @@ __all__ = [
     "run_evaluation_smoke",
     "run_evaluation_two_process_smoke",
     "run_local_solvability_proof",
+    "run_gate_a_corpus_validation",
     "run_production_solvability_proof",
     "runtime_manifest",
     "scan_public_artifacts",

@@ -18,6 +18,8 @@ from .campaign.errors import CampaignError
 from .campaign.runner import freeze_commissioning_dataset, run_commissioning
 from .evaluation.artifacts import freeze_evaluation
 from .evaluation.dataset import EvaluationCorpus
+from .evaluation.learnable_gate import run_gate_a_corpus_validation
+from .evaluation.sandbox import DockerSandboxConfig
 from .evaluation.smoke import run_evaluation_smoke
 from .errors import EGVError, PhaseUnavailable
 from .ledger import EvidenceLedger
@@ -983,6 +985,20 @@ def build_parser() -> argparse.ArgumentParser:
     evaluation_smoke = evaluation_subparsers.add_parser("smoke", help="run the CPU-only Evaluation production smoke")
     evaluation_smoke.add_argument("--output", type=Path)
     evaluation_smoke.add_argument("--json", action="store_true", dest="as_json")
+    evaluation_corpus_proof = evaluation_subparsers.add_parser(
+        "corpus-proof",
+        help="run the exact Gate-A learnable-v2 corpus validation through the pinned production sandbox",
+    )
+    evaluation_corpus_proof.add_argument("--evaluator-seed", required=True, type=Path)
+    evaluation_corpus_proof.add_argument("--controller-private-key", required=True, type=Path)
+    evaluation_corpus_proof.add_argument("--controller-public-key", required=True, type=Path)
+    evaluation_corpus_proof.add_argument("--freeze-private-key", required=True, type=Path)
+    evaluation_corpus_proof.add_argument("--freeze-public-key", required=True, type=Path)
+    evaluation_corpus_proof.add_argument("--workspace", required=True, type=Path)
+    evaluation_corpus_proof.add_argument("--output", required=True, type=Path)
+    evaluation_corpus_proof.add_argument("--package-root", required=True, type=Path)
+    evaluation_corpus_proof.add_argument("--source-commit", required=True)
+    evaluation_corpus_proof.add_argument("--json", action="store_true", dest="as_json")
 
     variation = subparsers.add_parser("variation", help="run the bounded EGV Variation slice")
     variation_subparsers = variation.add_subparsers(dest="variation_command", required=True)
@@ -1280,6 +1296,32 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             if args.evaluation_command == "smoke":
                 _json_output(run_evaluation_smoke(args.output), args.as_json)
                 return 0
+            if args.evaluation_command == "corpus-proof":
+                config = DockerSandboxConfig.from_environment()
+                report = run_gate_a_corpus_validation(
+                    args.evaluator_seed,
+                    args.controller_private_key,
+                    args.controller_public_key,
+                    args.freeze_private_key,
+                    args.freeze_public_key,
+                    args.workspace,
+                    args.output,
+                    args.package_root,
+                    args.source_commit,
+                    config=config,
+                )
+                _json_output(
+                    {
+                        "production_acceptance": report["production_acceptance"],
+                        "disposition": report["disposition"],
+                        "result_digest": report["result_digest"],
+                        "total_evaluation_count": report["total_evaluation_count"],
+                        "receipt_count": report["receipt_count"],
+                        "task_bearing_model_requests_permitted": report["task_bearing_model_requests_permitted"],
+                    },
+                    args.as_json,
+                )
+                return 0
             raise EGVError("unsupported evaluation command: {}".format(args.evaluation_command))
         if args.command == "variation":
             if args.variation_command == "smoke":
@@ -1312,7 +1354,6 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 return 0
             if args.variation_command == "freeze-evaluator-service":
                 from .evaluation.authority import AuthorityPolicy
-                from .evaluation.sandbox import DockerSandboxConfig
 
                 corpus = EvaluationCorpus.generate(secret_seed_file=args.evaluator_seed)
                 manifest = build_remote_evaluator_service_manifest(

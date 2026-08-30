@@ -124,6 +124,12 @@ class CorpusFreezeBundleTests(unittest.TestCase):
         self.assertEqual(validated["controller_key_id"], self.controller_signer.key_id)
         self.assertEqual(validated["freeze_signer_key_id"], self.freeze_signer.key_id)
 
+    def test_evaluator_revision_must_be_an_exact_sha256_source_manifest_digest(self):
+        with self.assertRaises(ValueError):
+            self._build(evaluator_revision="reviewed-but-not-a-source-digest")
+        with self.assertRaises(ValueError):
+            self._validate(evaluator_revision="reviewed-but-not-a-source-digest")
+
     def test_bundle_never_serializes_private_key_material(self):
         serialized = canonical_json(self.bundle)
         for signer in (self.freeze_signer, self.controller_signer):

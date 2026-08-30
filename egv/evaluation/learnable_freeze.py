@@ -267,6 +267,7 @@ def build_corpus_freeze_bundle(
         blind_solver_version=blind_solver_version,
     )
     revision = _nonempty_text(evaluator_revision, "evaluator revision")
+    validate_sha256(revision, "evaluator revision")
     controller_key = _validate_public_key_only(controller_public_key, "controller public key")
     if freeze_signer.key_id != key_id_for_public_key(freeze_signer.public_key):
         raise ValueError("freeze signer key ID is not bound to its Ed25519 public key")
@@ -311,6 +312,7 @@ def validate_corpus_freeze_bundle(
         blind_solver_version=blind_solver_version,
     )
     revision = _nonempty_text(evaluator_revision, "evaluator revision")
+    validate_sha256(revision, "evaluator revision")
     controller_key = _validate_public_key_only(controller_public_key, "controller public key")
     freeze_key = _validate_public_key_only(freeze_public_key, "freeze public key")
     expected_core = _freeze_core(

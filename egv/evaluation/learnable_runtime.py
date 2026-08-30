@@ -14,28 +14,50 @@ from pathlib import Path
 from typing import Any, Dict, Mapping, Optional, Sequence, Tuple, Union
 
 from ..canonical import canonical_bytes, digest_bytes, digest_for
-from ..receipts import ReceiptJournal, ReceiptSigner
-from .artifacts import ContentAddressedArtifactStore
-from .authority import AuthorityBroker, AuthorityPolicy, DockerEnforcedRuntime
+from ..errors import EGVError
 from .controller import EvaluationResult, EvaluatorController, HiddenEvaluatorRunner
-from .diagnostics import Diagnostic
 from .learnable import (
-    SPLITS_V2,
     LearnableCorpusV2,
     LearnableTask,
-    build_reference_source,
     validate_learnable_manifest,
     validate_learnable_private_manifest,
     validate_model_visible_package,
 )
-from .sandbox import DockerCandidateSandbox, DockerSandboxConfig
+from .learnable_freeze import CORPUS_VALIDATION_SCOPE
+from .sandbox import DockerSandboxConfig
 
 
 LEARNABLE_RUNTIME_VERSION = "egv-learnable-production-runtime-v2"
 LEARNABLE_CORPUS_VALIDATION_VERSION = "egv-learnable-corpus-validation-proof-v2"
 LEARNABLE_CORPUS_PERMIT_VERSION = "egv-learnable-corpus-validation-permit-v1"
-CORPUS_VALIDATION_SCOPE = "REFERENCE_AND_STARTER_ONLY_NO_MODEL_REQUESTS"
 PUBLIC_LOCUS = "module:main"
+
+
+def _corpus_validation_accepted(
+    *,
+    reference_pass_count: int,
+    reference_total: int,
+    starter_rejection_count: int,
+    starter_total: int,
+    receipt_count: int,
+    receipt_delivery_count: int,
+    receipt_chain_valid: bool,
+    negative_controls: Mapping[str, bool],
+) -> bool:
+    """Compute the production disposition from every required proof surface."""
+
+    expected_receipt_count = 3 * (reference_total + starter_total)
+    return bool(
+        reference_total > 0
+        and starter_total > 0
+        and reference_pass_count == reference_total
+        and starter_rejection_count == starter_total
+        and receipt_chain_valid
+        and receipt_count == expected_receipt_count
+        and receipt_delivery_count == expected_receipt_count
+        and negative_controls
+        and all(negative_controls.values())
+    )
 
 
 @dataclass(frozen=True)
@@ -101,26 +123,9 @@ class CorpusValidationPermit:
 def runtime_manifest(config: DockerSandboxConfig) -> Dict[str, Any]:
     """Return the closed, endpoint-free production sandbox contract."""
 
-    config.validate()
-    manifest: Dict[str, Any] = {
-        "schema_version": LEARNABLE_RUNTIME_VERSION,
-        "backend": "docker-enforced-v1",
-        "image_ref": config.image_ref,
-        "pinned_image_id": config.pinned_image_id,
-        "candidate_contract": "pure-return-v1",
-        "network": "none",
-        "read_only_root": True,
-        "cap_drop": "ALL",
-        "no_new_privileges": True,
-        "user": config.user,
-        "pids_limit": config.pids_limit,
-        "memory_limit": config.memory_limit,
-        "tmpfs_size": config.tmpfs_size,
-        "timeout_seconds": config.timeout_seconds,
-        "output_limit": config.output_limit,
-    }
-    manifest["manifest_digest"] = digest_for(manifest)
-    return manifest
+    from .learnable_gate import build_gate_a_runtime_manifest
+
+    return build_gate_a_runtime_manifest(config)
 
 
 def build_corpus_validation_permit(
@@ -242,10 +247,11 @@ def _evaluate_task_source(
     results = []
     for address in selected:
         case = case_by_ordinal[address.case_ordinal]
-        candidate_id = "{}-{}-{}".format(
-            candidate_kind,
-            digest_for({"public_task_id": task.task_id, "source_digest": source_digest})[:24],
-            address.case_ordinal,
+        candidate_id = build_learnable_candidate_id(
+            candidate_kind=candidate_kind,
+            public_task_id=task.task_id,
+            source_digest=source_digest,
+            case_ordinal=address.case_ordinal,
         )
         results.append(
             controller.evaluate(
@@ -257,6 +263,22 @@ def _evaluate_task_source(
             )
         )
     return tuple(results)
+
+
+def build_learnable_candidate_id(
+    *,
+    candidate_kind: str,
+    public_task_id: str,
+    source_digest: str,
+    case_ordinal: int,
+) -> str:
+    """Derive the exact candidate identity shared by execution and replay."""
+
+    return "{}-{}-{}".format(
+        candidate_kind,
+        digest_for({"public_task_id": public_task_id, "source_digest": source_digest})[:24],
+        case_ordinal,
+    )
 
 
 def run_production_solvability_proof(
@@ -274,120 +296,18 @@ def run_production_solvability_proof(
     later task-bearing campaign gate.
     """
 
-    selected_splits = tuple(splits)
-    if selected_splits != ("blind",) or any(split not in SPLITS_V2 for split in selected_splits):
-        raise ValueError("production corpus proof is frozen to the blind split")
-    selected_config = config or DockerSandboxConfig.from_environment()
-    permit.validate(corpus, selected_config)
-    root = Path(workspace)
-    root.mkdir(parents=True, exist_ok=True)
-    tasks = tuple(task for split in selected_splits for task in corpus.split(split))
-
-    # Build every reference solely from validated model-visible packages before
-    # any hidden case is addressed by the controller adapter.
-    reference_sources: Dict[str, bytes] = {}
-    starter_sources: Dict[str, bytes] = {}
-    for task in tasks:
-        package = validate_model_visible_package(corpus.model_visible_package(task.task_id))
-        reference_sources[task.task_id] = build_reference_source(package["task"])
-        starter_sources[task.task_id] = str(package["task"]["starter_source"]).encode("utf-8")
-
-    hidden_runner, addresses = build_learnable_hidden_runner(tasks)
-    sandbox = DockerCandidateSandbox(root / "sandbox", config=selected_config)
-    sandbox.validate_production_integrity()
-    negative_controls = sandbox.negative_controls(root / "private" / "hidden-never-mounted.json")
-    runtime = DockerEnforcedRuntime(selected_config)
-    policy = AuthorityPolicy.candidate_execution()
-    signer = ReceiptSigner.generate()
-    journal = ReceiptJournal(root / "private" / "receipts.jsonl", signer.public_key)
-    delivered: list[Dict[str, Any]] = []
-    protocol_digest = digest_for(
-        {
-            "schema_version": LEARNABLE_CORPUS_VALIDATION_VERSION,
-            "permit_digest": permit.permit_digest,
-            "split": "blind",
-        }
-    )
-    controller = EvaluatorController(
-        sandbox=sandbox,
-        hidden_runner=hidden_runner,
-        broker=AuthorityBroker(runtime, policy),
-        signer=signer,
-        journal=journal,
-        ingest=lambda receipt: delivered.append(dict(receipt)),
-        campaign_id="egv-learnable-v2-corpus-validation",
-        protocol_digest=protocol_digest,
-        policy_digest=policy.digest,
-        artifact_store=ContentAddressedArtifactStore(root / "private" / "artifacts"),
+    raise EGVError(
+        "direct in-process corpus proof is disabled; use run_gate_a_corpus_validation "
+        "with external freeze/controller keys and three spawned stages"
     )
 
-    reference_results = []
-    starter_results = []
-    family_counts: Dict[str, Dict[str, int]] = {
-        task.family_id: {"reference_passed": 0, "reference_total": 0, "starter_rejected": 0, "starter_total": 0}
-        for task in tasks
-    }
-    for task in tasks:
-        task_reference = _evaluate_task_source(
-            controller,
-            task,
-            addresses,
-            reference_sources[task.task_id],
-            candidate_kind="reference",
-        )
-        task_starter = _evaluate_task_source(
-            controller,
-            task,
-            addresses,
-            starter_sources[task.task_id],
-            candidate_kind="starter",
-            case_limit=1,
-        )
-        reference_results.extend(task_reference)
-        starter_results.extend(task_starter)
-        family = family_counts[task.family_id]
-        family["reference_total"] += len(task_reference)
-        family["reference_passed"] += sum(result.diagnostic_enum == Diagnostic.PASS.value for result in task_reference)
-        family["starter_total"] += len(task_starter)
-        family["starter_rejected"] += sum(
-            result.diagnostic_enum == Diagnostic.WRONG_OUTPUT.value for result in task_starter
-        )
 
-    journal_evidence = journal.verify()
-    reference_pass_count = sum(result.diagnostic_enum == Diagnostic.PASS.value for result in reference_results)
-    starter_rejection_count = sum(result.diagnostic_enum == Diagnostic.WRONG_OUTPUT.value for result in starter_results)
-    report: Dict[str, Any] = {
-        "schema_version": LEARNABLE_CORPUS_VALIDATION_VERSION,
-        "evidence_scope": "production-corpus-validation-no-model-quality-claim",
-        "production_acceptance": True,
-        "task_bearing_model_requests_permitted": False,
-        "permit_digest": permit.permit_digest,
-        "public_manifest_digest": corpus.public_manifest()["manifest_digest"],
-        "private_manifest_digest": corpus.private_manifest()["manifest_digest"],
-        "runtime_manifest_digest": runtime_manifest(selected_config)["manifest_digest"],
-        "split": "blind",
-        "task_count": len(tasks),
-        "hidden_case_count": len(reference_results),
-        "reference_pass_count": reference_pass_count,
-        "reference_all_hidden_cases_passed": reference_pass_count == len(reference_results),
-        "starter_control_count": len(starter_results),
-        "starter_wrong_output_count": starter_rejection_count,
-        "starter_controls_rejected": starter_rejection_count == len(starter_results),
-        "family_counts": family_counts,
-        "builder_input": "validated-closed-model-visible-package-only",
-        "hidden_cases_passed_to_builder": False,
-        "receipt_count": journal_evidence["count"],
-        "receipt_chain_head": journal_evidence["head"],
-        "receipt_chain_valid": journal_evidence["chain_valid"],
-        "receipt_delivery_count": len(delivered),
-        "sandbox_negative_control_count": len(negative_controls),
-        "sandbox_negative_controls_all_passed": all(negative_controls.values()),
-        "sandbox_negative_controls_digest": digest_for(negative_controls),
-        "hidden_values_exposed": False,
-        "private_paths_exposed": False,
-    }
-    report["proof_digest"] = digest_for(report)
-    return report
+def run_gate_a_corpus_validation(*args: Any, **kwargs: Any) -> Dict[str, Any]:
+    """Compatibility export for the spawn-only Gate-A production entrypoint."""
+
+    from .learnable_gate import run_gate_a_corpus_validation as run_spawned_gate
+
+    return run_spawned_gate(*args, **kwargs)
 
 
 __all__ = [
@@ -398,7 +318,9 @@ __all__ = [
     "LEARNABLE_RUNTIME_VERSION",
     "LearnableCaseAddress",
     "build_corpus_validation_permit",
+    "build_learnable_candidate_id",
     "build_learnable_hidden_runner",
     "run_production_solvability_proof",
+    "run_gate_a_corpus_validation",
     "runtime_manifest",
 ]
