@@ -29,6 +29,7 @@ from .sandbox import LocalTestSandbox, validate_candidate_source_contract
 LEARNABLE_DATA_VERSION = "egv-learnable-data-v2"
 LEARNABLE_TASK_VERSION = "egv-learnable-task-v2"
 LEARNABLE_SPEC_VERSION = "egv-learnable-public-spec-v2"
+LEARNABLE_DSL_VERSION = "egv-public-expression-dsl-v1"
 LEARNABLE_PRIVATE_VERSION = "egv-learnable-private-v2"
 LEARNABLE_MODEL_PACKAGE_VERSION = "egv-learnable-model-package-v2"
 LEARNABLE_LOCAL_PROOF_VERSION = "egv-learnable-local-proof-v2"
@@ -132,64 +133,189 @@ def _public_material(task_id: str) -> bytes:
     return hashlib.sha256(("egv-learnable-public-v2|" + task_id).encode("utf-8")).digest()
 
 
+def _literal(value: Any) -> Dict[str, Any]:
+    return {"op": "literal", "value": value}
+
+
+def _input(*path: str) -> Dict[str, Any]:
+    return {"op": "input", "path": list(path)}
+
+
+def _variable(name: str, *path: str) -> Dict[str, Any]:
+    return {"op": "variable", "name": name, "path": list(path)}
+
+
+def _object(**fields: Any) -> Dict[str, Any]:
+    return {
+        "op": "object",
+        "fields": [{"name": name, "value": value} for name, value in fields.items()],
+    }
+
+
 def _public_spec(task_id: str, family_id: str) -> Dict[str, Any]:
     material = _public_material(task_id)
     common = {
         "schema_version": LEARNABLE_SPEC_VERSION,
+        "expression_language": LEARNABLE_DSL_VERSION,
         "family_id": family_id,
         "task_scope": task_id,
         "input_contract": {
             "closed_fields": ["case_nonce", "payload", "task_scope"],
+            "case_nonce": {"type": "text", "length": 20},
             "task_scope_must_match": True,
         },
     }
     if family_id == "PURE_FUNCTION":
+        bias = 5 + material[0] % 19
         common.update(
             {
-                "operation": "double-plus-bias",
-                "parameters": {"bias": 5 + material[0] % 19},
+                "parameters": {"bias": bias},
+                "payload_contract": {"type": "integer", "exclude_boolean": True},
                 "output_contract": ["case_nonce", "task_scope", "value"],
+                "program": _object(
+                    case_nonce=_input("case_nonce"),
+                    task_scope=_input("task_scope"),
+                    value={
+                        "op": "add_integers",
+                        "items": [_input("payload"), _input("payload"), _literal(bias)],
+                    },
+                ),
             }
         )
     elif family_id == "PARSER_EDGE":
         delimiters = ("::", "||", "~|~")
+        delimiter = delimiters[material[0] % len(delimiters)]
         common.update(
             {
-                "operation": "split-preserve-empty",
-                "parameters": {"delimiter": delimiters[material[0] % len(delimiters)]},
+                "parameters": {"delimiter": delimiter},
+                "payload_contract": {"type": "text"},
                 "output_contract": ["case_nonce", "task_scope", "tokens"],
+                "program": _object(
+                    case_nonce=_input("case_nonce"),
+                    task_scope=_input("task_scope"),
+                    tokens={
+                        "op": "split_text",
+                        "text": _input("payload"),
+                        "delimiter": _literal(delimiter),
+                    },
+                ),
             }
         )
     elif family_id == "STATE_TRANSITION":
+        advance_by = 1 + material[0] % 7
         common.update(
             {
-                "operation": "reset-or-advance",
-                "parameters": {"advance_by": 1 + material[0] % 7},
+                "parameters": {"advance_by": advance_by},
+                "payload_contract": {
+                    "type": "closed_object",
+                    "fields": {
+                        "event": {"type": "enum", "values": ["reset", "advance"]},
+                        "state": {"type": "integer", "exclude_boolean": True},
+                    },
+                },
                 "output_contract": ["case_nonce", "state", "task_scope"],
+                "program": _object(
+                    case_nonce=_input("case_nonce"),
+                    state={
+                        "op": "if_equal",
+                        "left": _input("payload", "event"),
+                        "right": _literal("reset"),
+                        "then": _literal(0),
+                        "else": {
+                            "op": "add_integers",
+                            "items": [_input("payload", "state"), _literal(advance_by)],
+                        },
+                    },
+                    task_scope=_input("task_scope"),
+                ),
             }
         )
     elif family_id == "DATA_TRANSFORM":
         common.update(
             {
-                "operation": "sort-and-double-values",
                 "parameters": {"sort_key": "key"},
+                "payload_contract": {
+                    "type": "non_empty_list",
+                    "items": {
+                        "type": "closed_object",
+                        "fields": {
+                            "key": {"type": "text"},
+                            "value": {"type": "integer", "exclude_boolean": True},
+                        },
+                    },
+                },
                 "output_contract": ["case_nonce", "rows", "task_scope"],
+                "program": _object(
+                    case_nonce=_input("case_nonce"),
+                    rows={
+                        "op": "map_list",
+                        "items": {
+                            "op": "sort_objects",
+                            "items": _input("payload"),
+                            "key": "key",
+                        },
+                        "variable": "row",
+                        "body": _object(
+                            key=_variable("row", "key"),
+                            value={
+                                "op": "add_integers",
+                                "items": [
+                                    _variable("row", "value"),
+                                    _variable("row", "value"),
+                                ],
+                            },
+                        ),
+                    },
+                    task_scope=_input("task_scope"),
+                ),
             }
         )
     elif family_id == "RESOURCE_BOUND":
+        max_items = 16 + material[0] % 17
         common.update(
             {
-                "operation": "bounded-sum-and-count",
-                "parameters": {"max_items": 16 + material[0] % 17},
+                "parameters": {"max_items": max_items},
+                "payload_contract": {
+                    "type": "list",
+                    "max_items": max_items,
+                    "items": {"type": "integer", "exclude_boolean": True},
+                },
                 "output_contract": ["case_nonce", "count", "sum", "task_scope"],
+                "program": _object(
+                    case_nonce=_input("case_nonce"),
+                    count={"op": "list_length", "items": _input("payload")},
+                    sum={"op": "sum_integers", "items": _input("payload")},
+                    task_scope=_input("task_scope"),
+                ),
             }
         )
     elif family_id == "DEPENDENCY_CONTRACT":
+        default = "missing:" + task_id
         common.update(
             {
-                "operation": "mapping-get-with-public-default",
-                "parameters": {"default": "missing:" + task_id},
+                "parameters": {"default": default},
+                "payload_contract": {
+                    "type": "closed_object",
+                    "fields": {
+                        "dependencies": {
+                            "type": "mapping",
+                            "key_type": "text",
+                            "value_type": "json",
+                        },
+                        "key": {"type": "text"},
+                    },
+                },
                 "output_contract": ["case_nonce", "task_scope", "value"],
+                "program": _object(
+                    case_nonce=_input("case_nonce"),
+                    task_scope=_input("task_scope"),
+                    value={
+                        "op": "mapping_get",
+                        "mapping": _input("payload", "dependencies"),
+                        "key": _input("payload", "key"),
+                        "default": _literal(default),
+                    },
+                ),
             }
         )
     else:
@@ -207,7 +333,163 @@ def _validate_runtime_input(spec: Mapping[str, Any], runtime_input: Any) -> Mapp
     nonce = runtime_input.get("case_nonce")
     if not isinstance(nonce, str) or len(nonce) != 20:
         raise ValueError("runtime input case nonce is invalid")
+    payload = runtime_input["payload"]
+    family_id = spec.get("family_id")
+    if family_id == "PURE_FUNCTION":
+        if not isinstance(payload, int) or isinstance(payload, bool):
+            raise ValueError("PURE_FUNCTION payload must be an integer")
+    elif family_id == "PARSER_EDGE":
+        if not isinstance(payload, str):
+            raise ValueError("PARSER_EDGE payload must be text")
+    elif family_id == "STATE_TRANSITION":
+        if not isinstance(payload, Mapping) or set(payload) != {"event", "state"}:
+            raise ValueError("STATE_TRANSITION payload is invalid")
+        if payload["event"] not in {"reset", "advance"}:
+            raise ValueError("STATE_TRANSITION event is invalid")
+        if not isinstance(payload["state"], int) or isinstance(payload["state"], bool):
+            raise ValueError("STATE_TRANSITION state must be an integer")
+    elif family_id == "DATA_TRANSFORM":
+        if not isinstance(payload, list) or not payload:
+            raise ValueError("DATA_TRANSFORM payload must be a non-empty list")
+        for row in payload:
+            if not isinstance(row, Mapping) or set(row) != {"key", "value"}:
+                raise ValueError("DATA_TRANSFORM row is invalid")
+            if not isinstance(row["key"], str):
+                raise ValueError("DATA_TRANSFORM row key must be text")
+            if not isinstance(row["value"], int) or isinstance(row["value"], bool):
+                raise ValueError("DATA_TRANSFORM row value must be an integer")
+    elif family_id == "RESOURCE_BOUND":
+        max_items = spec["payload_contract"]["max_items"]
+        if not isinstance(payload, list) or len(payload) > max_items:
+            raise ValueError("RESOURCE_BOUND payload exceeds the public bound")
+        if any(not isinstance(item, int) or isinstance(item, bool) for item in payload):
+            raise ValueError("RESOURCE_BOUND items must be integers")
+    elif family_id == "DEPENDENCY_CONTRACT":
+        if not isinstance(payload, Mapping) or set(payload) != {"dependencies", "key"}:
+            raise ValueError("DEPENDENCY_CONTRACT payload is invalid")
+        dependencies = payload["dependencies"]
+        if not isinstance(dependencies, Mapping) or not all(
+            isinstance(key, str) for key in dependencies
+        ):
+            raise ValueError("DEPENDENCY_CONTRACT dependencies must be a text-keyed mapping")
+        if not isinstance(payload["key"], str):
+            raise ValueError("DEPENDENCY_CONTRACT key must be text")
+    else:
+        raise ValueError("unknown learnable-v2 family")
     return runtime_input
+
+
+_EXPRESSION_FIELDS = {
+    "literal": {"op", "value"},
+    "input": {"op", "path"},
+    "variable": {"op", "name", "path"},
+    "object": {"op", "fields"},
+    "add_integers": {"op", "items"},
+    "split_text": {"op", "text", "delimiter"},
+    "if_equal": {"op", "left", "right", "then", "else"},
+    "sort_objects": {"op", "items", "key"},
+    "map_list": {"op", "items", "variable", "body"},
+    "list_length": {"op", "items"},
+    "sum_integers": {"op", "items"},
+    "mapping_get": {"op", "mapping", "key", "default"},
+}
+
+
+def _expression_path(root: Any, path: Any) -> Any:
+    if not isinstance(path, list) or any(not isinstance(part, str) or not part for part in path):
+        raise ValueError("public expression path is invalid")
+    current = root
+    for part in path:
+        if not isinstance(current, Mapping) or part not in current:
+            raise ValueError("public expression path is unavailable")
+        current = current[part]
+    return current
+
+
+def _evaluate_expression(node: Any, runtime_input: Mapping[str, Any], variables: Mapping[str, Any]) -> Any:
+    if not isinstance(node, Mapping):
+        raise ValueError("public expression node must be an object")
+    op = node.get("op")
+    if op not in _EXPRESSION_FIELDS or set(node) != _EXPRESSION_FIELDS[op]:
+        raise ValueError("public expression node is not closed or uses an unknown operator")
+    if op == "literal":
+        return canonical_value(node["value"])
+    if op == "input":
+        return _expression_path(runtime_input, node["path"])
+    if op == "variable":
+        name = node["name"]
+        if not isinstance(name, str) or name not in variables:
+            raise ValueError("public expression variable is unavailable")
+        return _expression_path(variables[name], node["path"])
+    if op == "object":
+        fields = node["fields"]
+        if not isinstance(fields, list):
+            raise ValueError("public object fields must be a list")
+        result: Dict[str, Any] = {}
+        for field in fields:
+            if not isinstance(field, Mapping) or set(field) != {"name", "value"}:
+                raise ValueError("public object field is not closed")
+            name = field["name"]
+            if not isinstance(name, str) or not name or name in result:
+                raise ValueError("public object field name is invalid or duplicated")
+            result[name] = _evaluate_expression(field["value"], runtime_input, variables)
+        return result
+    if op == "add_integers":
+        items = node["items"]
+        if not isinstance(items, list) or not items:
+            raise ValueError("add_integers requires a non-empty item list")
+        values = [_evaluate_expression(item, runtime_input, variables) for item in items]
+        if any(not isinstance(item, int) or isinstance(item, bool) for item in values):
+            raise ValueError("add_integers operands must be integers")
+        return sum(values)
+    if op == "split_text":
+        text = _evaluate_expression(node["text"], runtime_input, variables)
+        delimiter = _evaluate_expression(node["delimiter"], runtime_input, variables)
+        if not isinstance(text, str) or not isinstance(delimiter, str) or not delimiter:
+            raise ValueError("split_text operands must be text with a non-empty delimiter")
+        return text.split(delimiter)
+    if op == "if_equal":
+        left = _evaluate_expression(node["left"], runtime_input, variables)
+        right = _evaluate_expression(node["right"], runtime_input, variables)
+        branch = node["then"] if left == right else node["else"]
+        return _evaluate_expression(branch, runtime_input, variables)
+    if op == "sort_objects":
+        items = _evaluate_expression(node["items"], runtime_input, variables)
+        key = node["key"]
+        if not isinstance(items, list) or not isinstance(key, str) or not key:
+            raise ValueError("sort_objects operands are invalid")
+        if any(not isinstance(item, Mapping) or key not in item for item in items):
+            raise ValueError("sort_objects item lacks the public key")
+        return sorted(items, key=lambda item: item[key])
+    if op == "map_list":
+        items = _evaluate_expression(node["items"], runtime_input, variables)
+        variable = node["variable"]
+        if not isinstance(items, list) or not isinstance(variable, str) or not variable:
+            raise ValueError("map_list operands are invalid")
+        return [
+            _evaluate_expression(node["body"], runtime_input, {**variables, variable: item})
+            for item in items
+        ]
+    if op == "list_length":
+        items = _evaluate_expression(node["items"], runtime_input, variables)
+        if not isinstance(items, list):
+            raise ValueError("list_length operand must be a list")
+        return len(items)
+    if op == "sum_integers":
+        items = _evaluate_expression(node["items"], runtime_input, variables)
+        if not isinstance(items, list) or any(
+            not isinstance(item, int) or isinstance(item, bool) for item in items
+        ):
+            raise ValueError("sum_integers operand must be an integer list")
+        return sum(items)
+    if op == "mapping_get":
+        mapping = _evaluate_expression(node["mapping"], runtime_input, variables)
+        key = _evaluate_expression(node["key"], runtime_input, variables)
+        default = _evaluate_expression(node["default"], runtime_input, variables)
+        if not isinstance(mapping, Mapping):
+            raise ValueError("mapping_get mapping operand must be an object")
+        return mapping.get(key, default)
+    raise AssertionError("validated public expression operator was not handled")
 
 
 def solve_public_spec(public_spec: Mapping[str, Any], runtime_input: Any) -> Any:
@@ -220,106 +502,71 @@ def solve_public_spec(public_spec: Mapping[str, Any], runtime_input: Any) -> Any
     if not isinstance(task_scope, str) or public_spec != _public_spec(task_scope, str(family_id)):
         raise ValueError("public spec differs from the frozen functional contract")
     value = _validate_runtime_input(public_spec, runtime_input)
-    payload = value["payload"]
-    nonce = value["case_nonce"]
-    if family_id == "PURE_FUNCTION":
-        if not isinstance(payload, int) or isinstance(payload, bool):
-            raise ValueError("PURE_FUNCTION payload must be an integer")
-        result = payload + payload + public_spec["parameters"]["bias"]
-        return {"case_nonce": nonce, "task_scope": task_scope, "value": result}
-    if family_id == "PARSER_EDGE":
-        if not isinstance(payload, str):
-            raise ValueError("PARSER_EDGE payload must be text")
-        tokens = payload.split(public_spec["parameters"]["delimiter"])
-        return {"case_nonce": nonce, "task_scope": task_scope, "tokens": tokens}
-    if family_id == "STATE_TRANSITION":
-        if not isinstance(payload, Mapping) or set(payload) != {"event", "state"}:
-            raise ValueError("STATE_TRANSITION payload is invalid")
-        if not isinstance(payload["state"], int) or isinstance(payload["state"], bool):
-            raise ValueError("STATE_TRANSITION state must be an integer")
-        if payload["event"] == "reset":
-            state = 0
-        elif payload["event"] == "advance":
-            state = payload["state"] + public_spec["parameters"]["advance_by"]
-        else:
-            raise ValueError("STATE_TRANSITION event is invalid")
-        return {"case_nonce": nonce, "state": state, "task_scope": task_scope}
-    if family_id == "DATA_TRANSFORM":
-        if not isinstance(payload, list) or not payload:
-            raise ValueError("DATA_TRANSFORM payload must be a non-empty list")
-        if any(not isinstance(row, Mapping) or set(row) != {"key", "value"} for row in payload):
-            raise ValueError("DATA_TRANSFORM row is invalid")
-        rows = [
-            {"key": row["key"], "value": row["value"] + row["value"]}
-            for row in sorted(payload, key=lambda row: row["key"])
-        ]
-        return {"case_nonce": nonce, "rows": rows, "task_scope": task_scope}
-    if family_id == "RESOURCE_BOUND":
-        if not isinstance(payload, list) or len(payload) > public_spec["parameters"]["max_items"]:
-            raise ValueError("RESOURCE_BOUND payload exceeds the public bound")
-        if any(not isinstance(item, int) or isinstance(item, bool) for item in payload):
-            raise ValueError("RESOURCE_BOUND items must be integers")
-        return {"case_nonce": nonce, "count": len(payload), "sum": sum(payload), "task_scope": task_scope}
-    if family_id == "DEPENDENCY_CONTRACT":
-        if not isinstance(payload, Mapping) or set(payload) != {"dependencies", "key"}:
-            raise ValueError("DEPENDENCY_CONTRACT payload is invalid")
-        dependencies = payload["dependencies"]
-        if not isinstance(dependencies, Mapping) or not isinstance(payload["key"], str):
-            raise ValueError("DEPENDENCY_CONTRACT mapping or key is invalid")
-        result = dependencies.get(payload["key"], public_spec["parameters"]["default"])
-        return {"case_nonce": nonce, "task_scope": task_scope, "value": result}
-    raise ValueError("unknown learnable-v2 family")
+    return canonical_value(_evaluate_expression(public_spec["program"], value, {}))
+
+
+def _compile_expression(node: Mapping[str, Any], variables: Mapping[str, str]) -> str:
+    op = node["op"]
+    if op == "literal":
+        return repr(node["value"])
+    if op == "input":
+        return "value" + "".join("[{!r}]".format(part) for part in node["path"])
+    if op == "variable":
+        name = variables[node["name"]]
+        return name + "".join("[{!r}]".format(part) for part in node["path"])
+    if op == "object":
+        return "{" + ", ".join(
+            "{!r}: {}".format(field["name"], _compile_expression(field["value"], variables))
+            for field in node["fields"]
+        ) + "}"
+    if op == "add_integers":
+        return "(" + " + ".join(_compile_expression(item, variables) for item in node["items"]) + ")"
+    if op == "split_text":
+        return "{}.split({})".format(
+            _compile_expression(node["text"], variables),
+            _compile_expression(node["delimiter"], variables),
+        )
+    if op == "if_equal":
+        return "({} if {} == {} else {})".format(
+            _compile_expression(node["then"], variables),
+            _compile_expression(node["left"], variables),
+            _compile_expression(node["right"], variables),
+            _compile_expression(node["else"], variables),
+        )
+    if op == "sort_objects":
+        return "sorted({}, key=lambda _sort_item: _sort_item[{!r}])".format(
+            _compile_expression(node["items"], variables), node["key"]
+        )
+    if op == "map_list":
+        variable = node["variable"]
+        python_name = "_map_{}".format(variable)
+        return "[{} for {} in {}]".format(
+            _compile_expression(node["body"], {**variables, variable: python_name}),
+            python_name,
+            _compile_expression(node["items"], variables),
+        )
+    if op == "list_length":
+        return "len({})".format(_compile_expression(node["items"], variables))
+    if op == "sum_integers":
+        return "sum({})".format(_compile_expression(node["items"], variables))
+    if op == "mapping_get":
+        return "{}.get({}, {})".format(
+            _compile_expression(node["mapping"], variables),
+            _compile_expression(node["key"], variables),
+            _compile_expression(node["default"], variables),
+        )
+    raise ValueError("unknown public expression operator")
 
 
 def _reference_source_for_spec(public_spec: Mapping[str, Any]) -> bytes:
-    family_id = public_spec["family_id"]
     scope = public_spec["task_scope"]
-    prefix = (
+    source_text = (
         "def main(value):\n"
         "    if value.get('task_scope') != {!r}:\n"
         "        return {{'error': 'wrong-task'}}\n"
-    ).format(scope)
-    if family_id == "PURE_FUNCTION":
-        body = (
-            "    payload = value['payload']\n"
-            "    return {{'case_nonce': value['case_nonce'], 'task_scope': {!r}, "
-            "'value': payload + payload + {!r}}}\n"
-        ).format(scope, public_spec["parameters"]["bias"])
-    elif family_id == "PARSER_EDGE":
-        body = (
-            "    return {{'case_nonce': value['case_nonce'], 'task_scope': {!r}, "
-            "'tokens': value['payload'].split({!r})}}\n"
-        ).format(scope, public_spec["parameters"]["delimiter"])
-    elif family_id == "STATE_TRANSITION":
-        body = (
-            "    payload = value['payload']\n"
-            "    if payload['event'] == 'reset':\n"
-            "        state = 0\n"
-            "    else:\n"
-            "        state = payload['state'] + {!r}\n"
-            "    return {{'case_nonce': value['case_nonce'], 'state': state, 'task_scope': {!r}}}\n"
-        ).format(public_spec["parameters"]["advance_by"], scope)
-    elif family_id == "DATA_TRANSFORM":
-        body = (
-            "    rows = [{{'key': row['key'], 'value': row['value'] + row['value']}} "
-            "for row in sorted(value['payload'], key=lambda row: row['key'])]\n"
-            "    return {{'case_nonce': value['case_nonce'], 'rows': rows, 'task_scope': {!r}}}\n"
-        ).format(scope)
-    elif family_id == "RESOURCE_BOUND":
-        body = (
-            "    payload = value['payload']\n"
-            "    return {{'case_nonce': value['case_nonce'], 'count': len(payload), "
-            "'sum': sum(payload), 'task_scope': {!r}}}\n"
-        ).format(scope)
-    elif family_id == "DEPENDENCY_CONTRACT":
-        body = (
-            "    payload = value['payload']\n"
-            "    result = payload['dependencies'].get(payload['key'], {!r})\n"
-            "    return {{'case_nonce': value['case_nonce'], 'task_scope': {!r}, 'value': result}}\n"
-        ).format(public_spec["parameters"]["default"], scope)
-    else:
-        raise ValueError("unknown learnable-v2 family")
-    source = (prefix + body).encode("utf-8")
+        "    return {}\n"
+    ).format(scope, _compile_expression(public_spec["program"], {}))
+    source = source_text.encode("utf-8")
     violation = validate_candidate_source_contract(source)
     if violation is not None:
         raise ValueError("reference source violates pure-return-v1: {}".format(violation))
@@ -378,7 +625,9 @@ def validate_public_task_record(record: Mapping[str, Any]) -> Dict[str, Any]:
     if record.get("public_spec_digest") != digest_for(expected_spec):
         raise ValueError("public spec digest mismatch")
     starter = record.get("starter_source")
-    if not isinstance(starter, str) or record.get("starter_source_digest") != digest_bytes(starter.encode("utf-8")):
+    if starter != _STARTER_SOURCE:
+        raise ValueError("starter source differs from the frozen task specification")
+    if record.get("starter_source_digest") != digest_bytes(_STARTER_SOURCE.encode("utf-8")):
         raise ValueError("starter source digest mismatch")
     starter_violation = validate_candidate_source_contract(starter.encode("utf-8"))
     if starter_violation is not None:
@@ -602,14 +851,30 @@ class LearnableCorpusV2:
             source = build_reference_source(task.public_record)
             public_strings = _strings(task.public_record["public_spec"])
             for case in task.hidden_cases:
-                if case.input_digest != digest_for(case.input_value):
+                regenerated_input = _hidden_input(
+                    self._secret_seed, task.public_record, case.ordinal
+                )
+                if case.input_value != regenerated_input:
+                    raise ValueError(
+                        "learnable-v2 hidden input differs from evaluator-seed regeneration"
+                    )
+                regenerated_input_digest = digest_for(regenerated_input)
+                if case.input_digest != regenerated_input_digest:
                     raise ValueError("learnable-v2 hidden input digest mismatch")
                 expected_case_id = "case_{}".format(
-                    digest_for({"task_id": task.task_id, "ordinal": case.ordinal, "input_digest": case.input_digest})
+                    digest_for(
+                        {
+                            "task_id": task.task_id,
+                            "ordinal": case.ordinal,
+                            "input_digest": regenerated_input_digest,
+                        }
+                    )
                 )
                 if case.case_id != expected_case_id:
                     raise ValueError("learnable-v2 hidden case ID mismatch")
-                public_expected = solve_public_spec(task.public_record["public_spec"], case.input_value)
+                public_expected = solve_public_spec(
+                    task.public_record["public_spec"], regenerated_input
+                )
                 if case.expected_output != public_expected:
                     raise ValueError("secret-dependent target rejected: expected output is not public-input derivable")
                 if case.expected_output_digest != digest_for(public_expected):

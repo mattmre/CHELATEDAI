@@ -1,4 +1,5 @@
 from dataclasses import replace
+import json
 import tempfile
 from pathlib import Path
 import unittest
@@ -9,6 +10,7 @@ from egv.evaluation.learnable import (
     HIDDEN_CASES_PER_TASK,
     INCOMPATIBLE_V1_VERSION,
     LEARNABLE_DATA_VERSION,
+    LEARNABLE_DSL_VERSION,
     LEARNABLE_LOCAL_PROOF_VERSION,
     SPLITS_V2,
     STAGE_A_TASK_IDS,
@@ -81,6 +83,19 @@ class TestLearnableCorpusContract(LearnableEvaluationTestCase):
                     solve_public_spec(task.public_record["public_spec"], case.input_value),
                 )
                 self.assertEqual(case.expected_output_digest, digest_for(case.expected_output))
+
+    def test_public_spec_contains_serialized_executable_expression(self) -> None:
+        for task in self.corpus.tasks:
+            spec = json.loads(canonical_json(task.public_record["public_spec"]))
+            self.assertEqual(spec["expression_language"], LEARNABLE_DSL_VERSION)
+            self.assertEqual(spec["program"]["op"], "object")
+            self.assertNotIn("operation", spec)
+            for case in task.hidden_cases:
+                serialized_input = json.loads(canonical_json(case.input_value))
+                self.assertEqual(
+                    case.expected_output,
+                    solve_public_spec(spec, serialized_input),
+                )
 
     def test_public_and_private_manifests_are_closed_and_bound(self) -> None:
         public = validate_learnable_manifest(self.corpus.public_manifest(), self.corpus)
@@ -191,6 +206,23 @@ class TestLearnableAdversarialValidation(LearnableEvaluationTestCase):
         with self.assertRaisesRegex(ValueError, "public task record digest mismatch"):
             validate_public_task_record(tampered_digest)
 
+    def test_substituted_self_hashed_starter_source_is_rejected(self) -> None:
+        task = self.corpus.tasks[0]
+        tampered = dict(task.public_record)
+        substituted = "def main(value):\n    return {'attacker': True}\n"
+        tampered["starter_source"] = substituted
+        tampered["starter_source_digest"] = digest_bytes(substituted.encode("utf-8"))
+        tampered["record_digest"] = digest_for(
+            {key: value for key, value in tampered.items() if key != "record_digest"}
+        )
+        with self.assertRaisesRegex(ValueError, "starter source differs"):
+            validate_public_task_record(tampered)
+
+    def test_hidden_inputs_are_bound_to_evaluator_seed(self) -> None:
+        wrong_seed = bytes(reversed(range(32)))
+        with self.assertRaisesRegex(ValueError, "evaluator-seed regeneration"):
+            LearnableCorpusV2(self.corpus.tasks, wrong_seed)
+
     def test_manifest_reordering_and_tamper_fail_closed(self) -> None:
         manifest = self.corpus.public_manifest()
         reordered = dict(manifest)
@@ -225,7 +257,7 @@ class TestLearnableAdversarialValidation(LearnableEvaluationTestCase):
         )
         replacement = LearnableTask(dev_task.public_record, (overlapping,) + dev_task.hidden_cases[1:])
         tasks = [replacement if task.task_id == dev_task.task_id else task for task in self.corpus.tasks]
-        with self.assertRaisesRegex(ValueError, "split overlap in case_nonces"):
+        with self.assertRaisesRegex(ValueError, "evaluator-seed regeneration"):
             LearnableCorpusV2(tasks, self.seed)
 
     def test_tampered_private_digest_fails_closed(self) -> None:
