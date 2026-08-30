@@ -19,14 +19,16 @@ import threading
 from typing import Any, Callable, Dict, Mapping, Optional, Sequence, Tuple
 
 from ..canonical import GENESIS_HASH, canonical_bytes, digest_for, validate_sha256
+from ..errors import OptionalDependencyError, ReceiptVerificationError
 from ..receipts import key_id_for_public_key, public_key_bytes, receipt_hash, verify_receipt
 from .errors import CampaignError
 from .state import _durable_replace, _exclusive_path_lock
 
 
-SCHEDULER_STATE_SCHEMA = "egv-campaign-scheduler-state-v3"
+SCHEDULER_STATE_SCHEMA = "egv-campaign-scheduler-state-v4"
 SCHEDULER_PUBLIC_SCHEMA = "egv-campaign-scheduler-public-v3"
 SCHEDULER_JOURNAL_SCHEMA = "egv-campaign-scheduler-transition-journal-v1"
+SCHEDULER_EFFECT_FENCE_SCHEMA = "egv-campaign-scheduler-effect-fence-v1"
 STATE_AUTHORITY = "TRUSTED_LOCAL_CONTROL_PLANE_NON_AUTHORITATIVE"
 CLAIM_BOUNDARY = "ENGINEERING_ONLY_NO_MODEL_QUALITY_OR_LIVE_DISTRIBUTED_CLAIM"
 PROGRESS_CHECKPOINT_MS = 5 * 60 * 1000
@@ -48,7 +50,7 @@ PROGRESS_KINDS = {
 RESOURCE_POOLS = frozenset({"ACCELERATOR", "CPU"})
 TASK_OWNER_ROLES = frozenset({"CONTROLLER", "EVALUATOR", "REVIEWER", "TRAINER"})
 TASK_KINDS = frozenset({"GENERATION", "EVALUATION", "DIAGNOSTIC", "TRAINING", "VALIDATION", "PROMOTION", "REVIEW"})
-WORKER_CAPABILITIES = TASK_KINDS | frozenset({"CANCEL"})
+WORKER_CAPABILITIES = TASK_KINDS | frozenset({"CANCEL", "OBSERVE"})
 TASK_STAGES = frozenset({"SCREENING", "POST_SCREEN", "DIAGNOSTIC"})
 POST_SCREEN_KINDS = frozenset({"TRAINING", "VALIDATION", "PROMOTION"})
 TASK_STATUSES = frozenset({"PENDING", "RUNNING", "COMPLETED", "FAILED", "CANCELLED"})
@@ -108,6 +110,7 @@ _STATE_FIELDS = frozenset(
         "state_authority",
         "campaign_id",
         "plan_digest",
+        "effect_fence_instance_id",
         "sequence",
         "created_ms",
         "updated_ms",
@@ -151,6 +154,8 @@ _TASK_SPEC_FIELDS = frozenset(
         "request_index",
         "promotion_key",
         "promotion_authority_node_id",
+        "manifest_ordinal",
+        "counterbalance_rank",
         "node_priority_tuple",
     }
 )
@@ -199,6 +204,9 @@ _ATTEMPT_FIELDS = frozenset(
         "sandbox_digest",
         "manifest_digest",
         "monotonic_counter",
+        "execution_idempotency_key",
+        "progress_observations",
+        "termination_observation",
     }
 )
 _ARM_STATE_FIELDS = frozenset(
@@ -283,6 +291,43 @@ _PUBLIC_AGGREGATE_FIELDS = frozenset(
         "max_avoidable_idle_streak_ms",
         "avoidable_idle_defect",
     }
+)
+
+_EXTERNAL_OBSERVATION_RECEIPT_FIELDS = frozenset(
+    {
+        "schema_version",
+        "receipt_type",
+        "campaign_id",
+        "run_id",
+        "task_id",
+        "receipt_id",
+        "request_id",
+        "candidate_id",
+        "decision",
+        "sequence",
+        "previous_receipt_hash",
+        "idempotency_key",
+        "signing_key_id",
+        "signature",
+        "input_digest",
+        "output_digest",
+        "resource_bucket",
+        "effect_kind",
+        "protocol_digest",
+        "policy_digest",
+        "arm_policy_digest",
+        "evaluator_digest",
+        "candidate_artifact_digest",
+        "environment_diff_digest",
+        "normalized_action_hash",
+        "public_dependency_set_digest",
+        "sandbox_id",
+        "exit_status_class",
+    }
+)
+
+_TERMINATION_EXIT_CLASSES = frozenset(
+    {"SUCCESS", "NONZERO", "TIMEOUT", "SIGNAL", "RESOURCE_LIMIT", "OUTPUT_LIMIT", "INFRASTRUCTURE_LOSS"}
 )
 
 
@@ -375,6 +420,8 @@ class SchedulerTask:
     owner_role: str
     input_digest: str
     stage: str
+    manifest_ordinal: int
+    counterbalance_rank: int
     dependencies: Tuple[str, ...] = tuple()
     arm_id: Optional[str] = None
     request_index: Optional[int] = None
@@ -434,6 +481,8 @@ class SchedulerTask:
                 raise CampaignSchedulerError("promotion authority must be an intended direct dependency")
         elif self.promotion_key is not None or self.promotion_authority_node_id is not None:
             raise CampaignSchedulerError("only a promotion task may carry promotion authority")
+        _require_nonnegative_int(self.manifest_ordinal, "scheduler task manifest ordinal")
+        _require_nonnegative_int(self.counterbalance_rank, "scheduler task counterbalance rank")
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -448,15 +497,24 @@ class SchedulerTask:
             "request_index": self.request_index,
             "promotion_key": self.promotion_key,
             "promotion_authority_node_id": self.promotion_authority_node_id,
+            "manifest_ordinal": self.manifest_ordinal,
+            "counterbalance_rank": self.counterbalance_rank,
             "node_priority_tuple": list(self.node_priority_tuple),
         }
 
     @property
-    def node_priority_tuple(self) -> Tuple[int, int, int, str]:
+    def node_priority_tuple(self) -> Tuple[int, int, int, int, int, str]:
         stage_rank = {"SCREENING": 0, "DIAGNOSTIC": 1, "POST_SCREEN": 2}[self.stage]
         kind_rank = {kind: index for index, kind in enumerate(sorted(TASK_KINDS))}[self.kind]
         request_rank = self.request_index if self.request_index is not None else 2**31 - 1
-        return (stage_rank, request_rank, kind_rank, self.node_id)
+        return (
+            stage_rank,
+            request_rank,
+            self.manifest_ordinal,
+            self.counterbalance_rank,
+            kind_rank,
+            self.node_id,
+        )
 
 
 @dataclass(frozen=True)
@@ -480,9 +538,15 @@ class SchedulerPlan:
         ):
             raise CampaignSchedulerError("scheduler plan requires exact validated records")
         worker_ids = [worker.worker_id for worker in workers]
+        worker_key_ids = [worker.to_dict()["signing_key_id"] for worker in workers]
         node_ids = [task.node_id for task in tasks]
         if len(worker_ids) != len(set(worker_ids)) or len(node_ids) != len(set(node_ids)):
             raise CampaignSchedulerError("scheduler plan identities must be unique")
+        if len(worker_key_ids) != len(set(worker_key_ids)):
+            raise CampaignSchedulerError("scheduler worker signing authorities must be cryptographically distinct")
+        priority_seals = [(task.manifest_ordinal, task.counterbalance_rank) for task in tasks]
+        if len(priority_seals) != len(set(priority_seals)):
+            raise CampaignSchedulerError("scheduler task manifest/counterbalance priority seals must be unique")
         known_nodes = set(node_ids)
         by_node = {task.node_id: task for task in tasks}
         for task in tasks:
@@ -580,6 +644,7 @@ class Dispatch:
     attempt: int
     attempt_id: str
     resolved_input_digest: str
+    execution_idempotency_key: str
 
 
 @dataclass(frozen=True)
@@ -626,6 +691,8 @@ def _task_from_node(row: Mapping[str, Any]) -> SchedulerTask:
         request_index=row["request_index"],
         promotion_key=row["promotion_key"],
         promotion_authority_node_id=row["promotion_authority_node_id"],
+        manifest_ordinal=row["manifest_ordinal"],
+        counterbalance_rank=row["counterbalance_rank"],
     )
     if row["node_priority_tuple"] != list(task.node_priority_tuple):
         raise CampaignSchedulerError("scheduler node priority differs from its sealed task identity")
@@ -638,8 +705,9 @@ def _plan_from_state(state: Mapping[str, Any]) -> SchedulerPlan:
     return SchedulerPlan(state["campaign_id"], workers, tasks)
 
 
-def _initial_state(plan: SchedulerPlan, now_ms: int) -> Dict[str, Any]:
+def _initial_state(plan: SchedulerPlan, now_ms: int, *, effect_fence_instance_id: str) -> Dict[str, Any]:
     _require_nonnegative_int(now_ms, "scheduler start time")
+    _require_digest(effect_fence_instance_id, "external effect fence instance ID")
     workers = []
     for worker in sorted(plan.workers, key=lambda item: item.worker_id):
         workers.append(
@@ -690,6 +758,7 @@ def _initial_state(plan: SchedulerPlan, now_ms: int) -> Dict[str, Any]:
         "state_authority": STATE_AUTHORITY,
         "campaign_id": plan.campaign_id,
         "plan_digest": plan.digest,
+        "effect_fence_instance_id": effect_fence_instance_id,
         "sequence": 0,
         "created_ms": now_ms,
         "updated_ms": now_ms,
@@ -745,6 +814,17 @@ def _attempt_control_bindings(
         "task": frozen_task,
     }
     lease_id = digest_for({**base, "authority": "BOUNDED_EXECUTION_LEASE"})
+    execution_idempotency_key = digest_for(
+        {
+            "campaign_id": state["campaign_id"],
+            "plan_digest": state["plan_digest"],
+            "effect_fence_instance_id": state["effect_fence_instance_id"],
+            "node_id": node["node_id"],
+            "attempt": attempt_number,
+            "worker_id": worker["worker_id"],
+            "authority": "EXTERNAL_EXECUTION_IDEMPOTENCY",
+        }
+    )
     return {
         "checkpoint_digest": checkpoint_digest,
         "budget_limit": MAX_STALL_RETRIES + 1,
@@ -763,6 +843,7 @@ def _attempt_control_bindings(
         "sandbox_digest": digest_for({"resource_pool": node["resource_pool"], "isolation": "UNPROVEN"}),
         "manifest_digest": digest_for({"plan_digest": state["plan_digest"], "node": frozen_task}),
         "monotonic_counter": attempt_number,
+        "execution_idempotency_key": execution_idempotency_key,
     }
 
 
@@ -825,6 +906,190 @@ def _receipt_actor(
     return actor
 
 
+def _external_observer(
+    state: Mapping[str, Any], attempt: Mapping[str, Any], receipt: Mapping[str, Any]
+) -> Mapping[str, Any]:
+    matches = [
+        worker
+        for worker in state["workers"]
+        if worker["signing_key_id"] == receipt.get("signing_key_id") and "OBSERVE" in worker["capabilities"]
+    ]
+    if len(matches) != 1 or matches[0]["worker_id"] == attempt["worker_id"]:
+        raise CampaignSchedulerError("external observation lacks one independent observer authority")
+    return matches[0]
+
+
+def _verify_progress_observation(
+    state: Mapping[str, Any],
+    node: Mapping[str, Any],
+    attempt: Mapping[str, Any],
+    receipt: Mapping[str, Any],
+) -> Dict[str, Any]:
+    value = dict(_require_closed(receipt, _EXTERNAL_OBSERVATION_RECEIPT_FIELDS, "external progress observation"))
+    actor = _external_observer(state, attempt, value)
+    observations = attempt["progress_observations"]
+    expected_sequence = len(observations) + 1
+    previous_receipt = receipt_hash(observations[-1]) if observations else GENESIS_HASH
+    previous_artifact = observations[-1]["output_digest"] if observations else attempt["resolved_input_digest"]
+    progress_kind = PROGRESS_KINDS[node["kind"]]
+    expected_policy = digest_for(
+        {
+            "attempt_id": attempt["attempt_id"],
+            "progress_kind": progress_kind,
+            "external_counter": expected_sequence,
+            "previous_artifact_digest": previous_artifact,
+        }
+    )
+    expected_action = digest_for(
+        {
+            "attempt_id": attempt["attempt_id"],
+            "progress_kind": progress_kind,
+            "external_counter": expected_sequence,
+            "previous_artifact_digest": previous_artifact,
+            "artifact_digest": value["output_digest"],
+            "manifest_digest": attempt["manifest_digest"],
+        }
+    )
+    bindings = (
+        value["receipt_type"] == "EFFECT",
+        value["decision"] == "ALLOW",
+        value["effect_kind"] == "EXTERNAL_PROGRESS_OBSERVATION",
+        value["campaign_id"] == state["campaign_id"],
+        value["run_id"] == state["campaign_id"],
+        value["task_id"] == node["node_id"],
+        value["request_id"] == attempt["attempt_id"],
+        value["candidate_id"] == attempt["attempt_id"],
+        value["input_digest"] == previous_artifact,
+        value["output_digest"] != previous_artifact,
+        value["resource_bucket"] == node["resource_pool"],
+        value["protocol_digest"] == attempt["protocol_digest"],
+        value["policy_digest"] == expected_policy,
+        value["arm_policy_digest"] == attempt["checkpoint_digest"],
+        value["evaluator_digest"] == digest_for({"observer_signing_key_id": actor["signing_key_id"]}),
+        value["candidate_artifact_digest"] == value["output_digest"],
+        value["environment_diff_digest"] == attempt["sandbox_digest"],
+        value["normalized_action_hash"] == expected_action,
+        value["public_dependency_set_digest"] == attempt["manifest_digest"],
+        value["sandbox_id"] == attempt["lease_id"],
+        value["exit_status_class"] == "NOT_APPLICABLE",
+        value["idempotency_key"]
+        == digest_for(
+            {
+                "attempt_id": attempt["attempt_id"],
+                "external_counter": expected_sequence,
+                "effect_kind": "EXTERNAL_PROGRESS_OBSERVATION",
+            }
+        ),
+    )
+    if not all(bindings):
+        raise CampaignSchedulerError("external progress observation is not bound to advancing artifact evidence")
+    _require_digest(value["output_digest"], "external progress artifact digest")
+    try:
+        verify_receipt(
+            value,
+            bytes.fromhex(actor["public_key_hex"]),
+            expected_key_id=actor["signing_key_id"],
+            expected_sequence=expected_sequence,
+            expected_previous_hash=previous_receipt,
+        )
+    except (OptionalDependencyError, ReceiptVerificationError, ValueError) as exc:
+        raise CampaignSchedulerError("external progress observation signature or counter chain is invalid") from exc
+    return value
+
+
+def _verify_termination_observation(
+    state: Mapping[str, Any],
+    node: Mapping[str, Any],
+    attempt: Mapping[str, Any],
+    receipt: Mapping[str, Any],
+) -> Dict[str, Any]:
+    value = dict(_require_closed(receipt, _EXTERNAL_OBSERVATION_RECEIPT_FIELDS, "external termination observation"))
+    actor = _external_observer(state, attempt, value)
+    expected_action = digest_for(
+        {
+            "attempt_id": attempt["attempt_id"],
+            "observed_execution_state": "TERMINATED",
+            "termination_digest": value["output_digest"],
+            "lease_id": attempt["lease_id"],
+            "required_release_digest": attempt["release_digest"],
+            "lease_revocation_digest": value["arm_policy_digest"],
+            "fencing_token_digest": value["policy_digest"],
+            "runtime_checkpoint_digest": value["candidate_artifact_digest"],
+            "resource_teardown_digest": value["environment_diff_digest"],
+            "exit_status_class": value["exit_status_class"],
+        }
+    )
+    externally_supplied = {
+        value["output_digest"],
+        value["arm_policy_digest"],
+        value["policy_digest"],
+        value["candidate_artifact_digest"],
+        value["environment_diff_digest"],
+    }
+    scheduler_placeholders = {
+        attempt["checkpoint_digest"],
+        attempt["release_digest"],
+        attempt["sandbox_digest"],
+        attempt["manifest_digest"],
+        attempt["isolation_digest"],
+        attempt["capability_digest"],
+        attempt["model_digest"],
+        attempt["protocol_digest"],
+        attempt["lease_id"],
+    }
+    bindings = (
+        value["receipt_type"] == "EFFECT",
+        value["decision"] == "ALLOW",
+        value["effect_kind"] == "EXTERNAL_TERMINATION_OBSERVATION",
+        value["campaign_id"] == state["campaign_id"],
+        value["run_id"] == state["campaign_id"],
+        value["task_id"] == node["node_id"],
+        value["request_id"] == attempt["attempt_id"],
+        value["candidate_id"] == attempt["attempt_id"],
+        value["input_digest"] == attempt["lease_id"],
+        value["resource_bucket"] == node["resource_pool"],
+        value["protocol_digest"] == attempt["protocol_digest"],
+        value["evaluator_digest"] == digest_for({"observer_signing_key_id": actor["signing_key_id"]}),
+        value["normalized_action_hash"] == expected_action,
+        value["public_dependency_set_digest"] == attempt["manifest_digest"],
+        value["sandbox_id"] == attempt["lease_id"],
+        value["exit_status_class"] in _TERMINATION_EXIT_CLASSES,
+        len(externally_supplied) == 5,
+        not externally_supplied & scheduler_placeholders,
+        value["idempotency_key"]
+        == digest_for(
+            {
+                "attempt_id": attempt["attempt_id"],
+                "effect_kind": "EXTERNAL_TERMINATION_OBSERVATION",
+                "lease_id": attempt["lease_id"],
+            }
+        ),
+    )
+    if not all(bindings):
+        raise CampaignSchedulerError(
+            "external termination observation lacks termination, revocation, fencing, checkpoint, or teardown evidence"
+        )
+    for field in (
+        "output_digest",
+        "arm_policy_digest",
+        "policy_digest",
+        "candidate_artifact_digest",
+        "environment_diff_digest",
+    ):
+        _require_digest(value[field], "external termination {}".format(field))
+    try:
+        verify_receipt(
+            value,
+            bytes.fromhex(actor["public_key_hex"]),
+            expected_key_id=actor["signing_key_id"],
+            expected_sequence=1,
+            expected_previous_hash=GENESIS_HASH,
+        )
+    except (OptionalDependencyError, ReceiptVerificationError, ValueError) as exc:
+        raise CampaignSchedulerError("external termination observation signature is invalid") from exc
+    return value
+
+
 def _verify_activity_receipt(
     state: Mapping[str, Any],
     node: Mapping[str, Any],
@@ -832,6 +1097,7 @@ def _verify_activity_receipt(
     receipt: Mapping[str, Any],
     *,
     expected_effect: Optional[str] = None,
+    external_observation: Optional[Mapping[str, Any]] = None,
 ) -> Tuple[Dict[str, Any], str]:
     value = dict(_require_closed(receipt, _SIGNED_ACTIVITY_RECEIPT_FIELDS, "scheduler activity receipt"))
     effect_kind = value["effect_kind"]
@@ -847,6 +1113,12 @@ def _verify_activity_receipt(
     expected_sequence = len(attempt["receipts"]) + 1
     previous = receipt_hash(attempt["receipts"][-1]) if attempt["receipts"] else GENESIS_HASH
     actor = _receipt_actor(state, node, attempt, value)
+    if (
+        effect_kind == "SCHEDULER_CANCELLATION"
+        and external_observation is not None
+        and actor["signing_key_id"] == external_observation.get("signing_key_id")
+    ):
+        raise CampaignSchedulerError("cancellation authority and external termination observer must be independent")
     expected_type = "VERDICT" if effect_kind == "SCHEDULER_VERDICT" else "EFFECT"
     expected_decisions = {
         "SCHEDULER_PROGRESS": {"ALLOW"},
@@ -856,19 +1128,14 @@ def _verify_activity_receipt(
         "SCHEDULER_VERDICT": {"PASS", "FAIL"},
     }
     expected_progress_kind = PROGRESS_KINDS[node["kind"]] if effect_kind == "SCHEDULER_PROGRESS" else "NONE"
-    expected_progress_digest = digest_for(
-        {
-            "attempt_id": attempt["attempt_id"],
-            "node_progress_kind": expected_progress_kind,
-            "progress_ordinal": expected_sequence,
-            "previous_progress_digest": (
-                attempt["receipts"][-1]["output_digest"]
-                if attempt["receipts"] and attempt["receipts"][-1]["effect_kind"] == "SCHEDULER_PROGRESS"
-                else GENESIS_HASH
-            ),
-            "manifest_digest": attempt["manifest_digest"],
-        }
-    )
+    if effect_kind in {"SCHEDULER_PROGRESS", "SCHEDULER_CANCELLATION"}:
+        if external_observation is None:
+            raise CampaignSchedulerError("scheduler progress and cancellation require external observation evidence")
+        external_observation_digest = receipt_hash(external_observation)
+    elif external_observation is not None:
+        raise CampaignSchedulerError("external observation was supplied for an unrelated scheduler effect")
+    else:
+        external_observation_digest = None
     expected_policy_digest = digest_for(
         {
             field: attempt[field]
@@ -881,6 +1148,7 @@ def _verify_activity_receipt(
                 "release_digest",
                 "model_digest",
                 "monotonic_counter",
+                "execution_idempotency_key",
             )
         }
     )
@@ -894,6 +1162,19 @@ def _verify_activity_receipt(
             "decision": value["decision"],
             "output_digest": value["output_digest"],
             "release_digest": attempt["release_digest"],
+        }
+    )
+    if effect_kind == "SCHEDULER_PROGRESS":
+        expected_output_digest = external_observation["output_digest"]
+    elif effect_kind == "SCHEDULER_CANCELLATION":
+        expected_output_digest = external_observation_digest
+    else:
+        expected_output_digest = value["output_digest"]
+    expected_action_hash = digest_for(
+        {
+            "progress_kind": expected_progress_kind,
+            "terminal_binding": expected_terminal_binding,
+            "external_observation_digest": external_observation_digest,
         }
     )
     bindings = (
@@ -911,10 +1192,9 @@ def _verify_activity_receipt(
         value["arm_policy_digest"] == attempt["checkpoint_digest"],
         value["evaluator_digest"] == attempt["evaluator_digest"],
         value["candidate_artifact_digest"] == value["output_digest"],
-        effect_kind != "SCHEDULER_PROGRESS" or value["output_digest"] == expected_progress_digest,
+        value["output_digest"] == expected_output_digest,
         value["environment_diff_digest"] == expected_environment_digest,
-        value["normalized_action_hash"]
-        == digest_for({"progress_kind": expected_progress_kind, "terminal_binding": expected_terminal_binding}),
+        value["normalized_action_hash"] == expected_action_hash,
         value["public_dependency_set_digest"] == attempt["manifest_digest"],
         value["sandbox_id"] == attempt["lease_id"],
         value["idempotency_key"]
@@ -923,6 +1203,7 @@ def _verify_activity_receipt(
                 "attempt_id": attempt["attempt_id"],
                 "sequence": expected_sequence,
                 "effect_kind": effect_kind,
+                "external_observation_digest": external_observation_digest,
             }
         ),
     )
@@ -937,7 +1218,7 @@ def _verify_activity_receipt(
             expected_sequence=expected_sequence,
             expected_previous_hash=previous,
         )
-    except Exception as exc:
+    except (OptionalDependencyError, ReceiptVerificationError, ValueError) as exc:
         raise CampaignSchedulerError("scheduler activity receipt signature or chain is invalid") from exc
     return value, verified_digest
 
@@ -946,16 +1227,46 @@ def _validate_attempt_receipts(state: Mapping[str, Any], node: Mapping[str, Any]
     receipts = attempt["receipts"]
     if not isinstance(receipts, list):
         raise CampaignSchedulerError("attempt receipts must be a list")
-    replay = {**attempt, "receipts": []}
+    observations = attempt["progress_observations"]
+    if not isinstance(observations, list):
+        raise CampaignSchedulerError("attempt progress observations must be a list")
+    termination = attempt["termination_observation"]
+    if termination is not None and not isinstance(termination, Mapping):
+        raise CampaignSchedulerError("attempt termination observation must be an object")
+    replay = {**attempt, "receipts": [], "progress_observations": [], "termination_observation": None}
     terminal_effect = None
+    progress_index = 0
     for index, receipt in enumerate(receipts):
-        verified, _ = _verify_activity_receipt(state, node, replay, receipt)
+        effect = receipt.get("effect_kind") if isinstance(receipt, Mapping) else None
+        external_observation = None
+        if effect == "SCHEDULER_PROGRESS":
+            if progress_index >= len(observations):
+                raise CampaignSchedulerError("progress receipt lacks its external observation")
+            external_observation = _verify_progress_observation(state, node, replay, observations[progress_index])
+        elif effect == "SCHEDULER_CANCELLATION":
+            if termination is None:
+                raise CampaignSchedulerError("cancellation receipt lacks external termination observation")
+            external_observation = _verify_termination_observation(state, node, replay, termination)
+        verified, _ = _verify_activity_receipt(
+            state,
+            node,
+            replay,
+            receipt,
+            external_observation=external_observation,
+        )
         effect = verified["effect_kind"]
         if terminal_effect is not None or (effect != "SCHEDULER_PROGRESS" and index != len(receipts) - 1):
             raise CampaignSchedulerError("attempt receipt chain continued after terminal evidence")
         if effect != "SCHEDULER_PROGRESS":
             terminal_effect = effect
         replay["receipts"].append(verified)
+        if effect == "SCHEDULER_PROGRESS":
+            replay["progress_observations"].append(external_observation)
+            progress_index += 1
+        elif effect == "SCHEDULER_CANCELLATION":
+            replay["termination_observation"] = external_observation
+    if progress_index != len(observations):
+        raise CampaignSchedulerError("external progress observations outnumber signed progress receipts")
     expected_terminal = {
         "RUNNING": None,
         "COMPLETED": ("SCHEDULER_VERDICT" if node["kind"] in {"EVALUATION", "VALIDATION"} else "SCHEDULER_COMPLETION"),
@@ -965,6 +1276,8 @@ def _validate_attempt_receipts(state: Mapping[str, Any], node: Mapping[str, Any]
     }[attempt["disposition"]]
     if terminal_effect != expected_terminal:
         raise CampaignSchedulerError("attempt disposition differs from signed terminal evidence")
+    if (termination is not None) != (expected_terminal == "SCHEDULER_CANCELLATION"):
+        raise CampaignSchedulerError("termination observation differs from attempt disposition")
 
 
 def _checkpoint_projection(state: Mapping[str, Any], arm_id: str) -> Dict[str, Any]:
@@ -1002,6 +1315,7 @@ def _validate_state(state: Any) -> Dict[str, Any]:
         raise CampaignSchedulerError("scheduler state identity or authority is invalid")
     _require_internal_id(state["campaign_id"], "scheduler campaign ID")
     _require_digest(state["plan_digest"], "scheduler plan digest")
+    _require_digest(state["effect_fence_instance_id"], "external effect fence instance ID")
     _require_nonnegative_int(state["sequence"], "scheduler state sequence")
     created_ms = _require_nonnegative_int(state["created_ms"], "scheduler creation time")
     updated_ms = _require_nonnegative_int(state["updated_ms"], "scheduler update time")
@@ -1269,12 +1583,16 @@ class _SchedulerStateStore:
         self.lock_path = self.path.with_name(self.path.name + ".lock")
         self.journal_path = self.path.with_name(self.path.name + ".transitions")
 
-    def create(self, plan: SchedulerPlan, *, now_ms: int) -> Dict[str, Any]:
+    def create(self, plan: SchedulerPlan, *, effect_fence_instance_id: str, now_ms: int) -> Dict[str, Any]:
         with _PROCESS_MUTEX:
             with _exclusive_path_lock(self.lock_path):
                 if self.path.exists() or self.journal_path.exists():
                     raise CampaignSchedulerError("scheduler state is already initialized")
-                state = _initial_state(plan, now_ms)
+                state = _initial_state(
+                    plan,
+                    now_ms,
+                    effect_fence_instance_id=effect_fence_instance_id,
+                )
                 _validate_state(state)
                 self._atomic_write(state)
                 self._append_journal(state)
@@ -1312,7 +1630,7 @@ class _SchedulerStateStore:
         journal = self._load_journal()
         latest = journal[-1]
         if latest["sequence"] != state["sequence"] or latest["state_digest"] != digest_for(state):
-            raise CampaignSchedulerError("scheduler state does not match the authoritative transition journal head")
+            raise CampaignSchedulerError("scheduler state does not match the local transition journal head")
         return state
 
     def _load_journal(self) -> list:
@@ -1394,6 +1712,178 @@ class _SchedulerStateStore:
         finally:
             if temporary.exists():
                 temporary.unlink()
+
+
+class _ExternalEffectFence:
+    """Independent local idempotency journal outside the scheduler rollback pair.
+
+    This is deliberately a separate authority path supplied by the caller.  It
+    prevents the scheduler from redispatching an execution after only the state
+    and transition journal are coherently restored.  It is not a transparency
+    log and does not survive an operator rolling back this authority too.
+    """
+
+    _FIELDS = frozenset(
+        {
+            "schema_version",
+            "sequence",
+            "campaign_id",
+            "plan_digest",
+            "effect_fence_instance_id",
+            "execution_idempotency_key",
+            "binding_digest",
+            "previous_entry_digest",
+        }
+    )
+
+    def __init__(
+        self,
+        path: Path,
+        *,
+        campaign_id: str,
+        plan_digest: str,
+        expected_instance_id: Optional[str] = None,
+    ) -> None:
+        self.path = Path(path)
+        self.lock_path = self.path.with_name(self.path.name + ".lock")
+        self.campaign_id = campaign_id
+        self.plan_digest = plan_digest
+        entries = self._load()
+        header = entries[0]
+        if header["campaign_id"] != campaign_id or header["plan_digest"] != plan_digest:
+            raise CampaignSchedulerError("external effect fence is bound to a different campaign plan")
+        self.instance_id = header["effect_fence_instance_id"]
+        if expected_instance_id is not None and self.instance_id != expected_instance_id:
+            raise CampaignSchedulerError("external effect fence instance differs from the pinned scheduler authority")
+
+    @classmethod
+    def create(cls, path: Path, *, campaign_id: str, plan_digest: str) -> "_ExternalEffectFence":
+        path = Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        lock_path = path.with_name(path.name + ".lock")
+        with _PROCESS_MUTEX:
+            with _exclusive_path_lock(lock_path):
+                if path.exists():
+                    raise CampaignSchedulerError("external effect fence is already initialized")
+                instance_id = digest_for(
+                    {
+                        "campaign_id": campaign_id,
+                        "plan_digest": plan_digest,
+                        "instance_nonce": os.urandom(32).hex(),
+                    }
+                )
+                header = {
+                    "schema_version": SCHEDULER_EFFECT_FENCE_SCHEMA,
+                    "sequence": 0,
+                    "campaign_id": campaign_id,
+                    "plan_digest": plan_digest,
+                    "effect_fence_instance_id": instance_id,
+                    "execution_idempotency_key": GENESIS_HASH,
+                    "binding_digest": digest_for(
+                        {
+                            "campaign_id": campaign_id,
+                            "plan_digest": plan_digest,
+                            "effect_fence_instance_id": instance_id,
+                            "authority": "EXTERNAL_EXECUTION_IDEMPOTENCY",
+                        }
+                    ),
+                    "previous_entry_digest": GENESIS_HASH,
+                }
+                descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+                with os.fdopen(descriptor, "wb", closefd=True) as handle:
+                    handle.write(canonical_bytes(header) + b"\n")
+                    handle.flush()
+                    os.fsync(handle.fileno())
+        return cls(path, campaign_id=campaign_id, plan_digest=plan_digest)
+
+    def _load(self) -> list:
+        if not self.path.exists() or self.path.is_symlink() or not self.path.is_file():
+            raise CampaignSchedulerError("external effect fence must be a regular existing file")
+        try:
+            raw_lines = self.path.read_bytes().splitlines(keepends=True)
+        except OSError as exc:
+            raise CampaignSchedulerError("external effect fence cannot be read") from exc
+        if not raw_lines:
+            raise CampaignSchedulerError("external effect fence is empty")
+        entries = []
+        previous = GENESIS_HASH
+        seen = set()
+        instance_id = None
+        for expected_sequence, raw in enumerate(raw_lines):
+            if not raw.endswith(b"\n"):
+                raise CampaignSchedulerError("external effect fence has a torn tail")
+            try:
+                entry = json.loads(raw[:-1].decode("utf-8"))
+            except (UnicodeError, ValueError) as exc:
+                raise CampaignSchedulerError("external effect fence cannot be decoded") from exc
+            if not isinstance(entry, Mapping) or set(entry) != self._FIELDS:
+                raise CampaignSchedulerError("external effect fence entry is not closed")
+            if expected_sequence == 0:
+                instance_id = _require_digest(
+                    entry["effect_fence_instance_id"],
+                    "external effect fence instance ID",
+                )
+            if (
+                entry["schema_version"] != SCHEDULER_EFFECT_FENCE_SCHEMA
+                or entry["sequence"] != expected_sequence
+                or entry["previous_entry_digest"] != previous
+                or entry["campaign_id"] != self.campaign_id
+                or entry["plan_digest"] != self.plan_digest
+                or entry["effect_fence_instance_id"] != instance_id
+            ):
+                raise CampaignSchedulerError("external effect fence chain or identity is invalid")
+            _require_digest(entry["execution_idempotency_key"], "external execution idempotency key")
+            _require_digest(entry["binding_digest"], "external execution binding digest")
+            if expected_sequence and entry["execution_idempotency_key"] in seen:
+                raise CampaignSchedulerError("external effect fence contains a duplicate execution key")
+            if raw != canonical_bytes(entry) + b"\n":
+                raise CampaignSchedulerError("external effect fence is not canonical")
+            seen.add(entry["execution_idempotency_key"])
+            previous = digest_for(entry)
+            entries.append(entry)
+        return entries
+
+    def claim_many(self, claims: Mapping[str, str]) -> None:
+        if not isinstance(claims, Mapping):
+            raise CampaignSchedulerError("external effect fence claims must be a mapping")
+        normalized = []
+        for execution_key, binding_digest in sorted(claims.items()):
+            _require_digest(execution_key, "external execution idempotency key")
+            _require_digest(binding_digest, "external execution binding digest")
+            normalized.append((execution_key, binding_digest))
+        with _PROCESS_MUTEX:
+            with _exclusive_path_lock(self.lock_path):
+                entries = self._load()
+                existing = {entry["execution_idempotency_key"]: entry for entry in entries[1:]}
+                for execution_key, binding_digest in normalized:
+                    if execution_key in existing:
+                        if existing[execution_key]["binding_digest"] != binding_digest:
+                            raise CampaignSchedulerError(
+                                "external execution idempotency key conflicts with prior binding"
+                            )
+                        raise CampaignSchedulerError("external execution idempotency fence rejects replayed dispatch")
+                if not normalized:
+                    return
+                previous = digest_for(entries[-1])
+                sequence = len(entries)
+                descriptor = os.open(self.path, os.O_WRONLY | os.O_APPEND)
+                with os.fdopen(descriptor, "ab", closefd=True) as handle:
+                    for execution_key, binding_digest in normalized:
+                        entry = {
+                            "schema_version": SCHEDULER_EFFECT_FENCE_SCHEMA,
+                            "sequence": sequence,
+                            "campaign_id": self.campaign_id,
+                            "plan_digest": self.plan_digest,
+                            "effect_fence_instance_id": self.instance_id,
+                            "execution_idempotency_key": execution_key,
+                            "binding_digest": binding_digest,
+                            "previous_entry_digest": previous,
+                        }
+                        handle.write(canonical_bytes(entry) + b"\n")
+                        previous = digest_for(entry)
+                        sequence += 1
+                    handle.flush()
+                    os.fsync(handle.fileno())
 
 
 def _task_ready(state: Mapping[str, Any], node: Mapping[str, Any]) -> bool:
@@ -1584,16 +2074,51 @@ def _settle_state(state: Dict[str, Any], *, now_ms: int) -> None:
 class CampaignScheduler:
     """Durable scheduler over logical workers and authenticated activity receipts."""
 
-    def __init__(self, state_path: Path) -> None:
+    def __init__(self, state_path: Path, *, effect_fence_path: Path) -> None:
         self._store = _SchedulerStateStore(Path(state_path))
-        self._store.load()
+        state = self._store.load()
+        forbidden = {
+            self._store.path.resolve(),
+            self._store.journal_path.resolve(),
+            self._store.lock_path.resolve(),
+        }
+        if Path(effect_fence_path).resolve() in forbidden:
+            raise CampaignSchedulerError("external effect fence must not reuse a scheduler state path")
+        self._effect_fence = _ExternalEffectFence(
+            Path(effect_fence_path),
+            campaign_id=state["campaign_id"],
+            plan_digest=state["plan_digest"],
+            expected_instance_id=state["effect_fence_instance_id"],
+        )
 
     @classmethod
-    def initialize(cls, state_path: Path, plan: SchedulerPlan, *, now_ms: int = 0) -> "CampaignScheduler":
+    def initialize(
+        cls,
+        state_path: Path,
+        plan: SchedulerPlan,
+        *,
+        effect_fence_path: Path,
+        now_ms: int = 0,
+    ) -> "CampaignScheduler":
         if type(plan) is not SchedulerPlan:
             raise CampaignSchedulerError("scheduler initialization requires an exact validated plan")
-        _SchedulerStateStore(Path(state_path)).create(plan, now_ms=now_ms)
-        return cls(state_path)
+        state_store = _SchedulerStateStore(Path(state_path))
+        if state_store.path.exists() or state_store.journal_path.exists():
+            raise CampaignSchedulerError("scheduler state is already initialized")
+        forbidden = {state_store.path.resolve(), state_store.journal_path.resolve(), state_store.lock_path.resolve()}
+        if Path(effect_fence_path).resolve() in forbidden:
+            raise CampaignSchedulerError("external effect fence must not reuse a scheduler state path")
+        effect_fence = _ExternalEffectFence.create(
+            Path(effect_fence_path),
+            campaign_id=plan.campaign_id,
+            plan_digest=plan.digest,
+        )
+        _SchedulerStateStore(Path(state_path)).create(
+            plan,
+            effect_fence_instance_id=effect_fence.instance_id,
+            now_ms=now_ms,
+        )
+        return cls(state_path, effect_fence_path=effect_fence_path)
 
     def snapshot(self) -> Dict[str, Any]:
         return self._store.load()
@@ -1638,7 +2163,8 @@ class CampaignScheduler:
             ready = [node for node in state["nodes"] if _task_ready(state, node)]
             matching = _maximum_matching(state, ready, available)
             workers = _workers_by_id(state)
-            dispatches = []
+            prepared = []
+            fence_claims = {}
             for node_id in sorted(matching):
                 node = _nodes_by_id(state)[node_id]
                 worker_id = matching[node_id]
@@ -1654,6 +2180,21 @@ class CampaignScheduler:
                     }
                 )
                 control_bindings = _attempt_control_bindings(state, node, workers[worker_id], attempt_number)
+                execution_key = control_bindings["execution_idempotency_key"]
+                fence_claims[execution_key] = digest_for(
+                    {
+                        "attempt_id": attempt_id,
+                        "worker_id": worker_id,
+                        "resolved_input_digest": resolved,
+                        "lease_id": control_bindings["lease_id"],
+                        "manifest_digest": control_bindings["manifest_digest"],
+                    }
+                )
+                prepared.append((node_id, worker_id, resolved, attempt_number, attempt_id, control_bindings))
+            self._effect_fence.claim_many(fence_claims)
+            dispatches = []
+            for node_id, worker_id, resolved, attempt_number, attempt_id, control_bindings in prepared:
+                node = _nodes_by_id(state)[node_id]
                 node["status"] = "RUNNING"
                 node["assigned_worker_id"] = worker_id
                 node["attempt_count"] = attempt_number
@@ -1675,11 +2216,22 @@ class CampaignScheduler:
                         "finished_ms": None,
                         "disposition": "RUNNING",
                         "receipts": [],
+                        "progress_observations": [],
+                        "termination_observation": None,
                         **control_bindings,
                     }
                 )
                 workers[worker_id]["avoidable_idle_streak_ms"] = 0
-                dispatches.append(Dispatch(node_id, worker_id, attempt_number, attempt_id, resolved))
+                dispatches.append(
+                    Dispatch(
+                        node_id,
+                        worker_id,
+                        attempt_number,
+                        attempt_id,
+                        resolved,
+                        control_bindings["execution_idempotency_key"],
+                    )
+                )
             return tuple(dispatches)
 
         return self._store.transact(transition)
@@ -1690,6 +2242,7 @@ class CampaignScheduler:
         *,
         worker_id: str,
         receipt: Mapping[str, Any],
+        observation_receipt: Mapping[str, Any],
         now_ms: int,
     ) -> Dict[str, Any]:
         _require_internal_id(node_id, "scheduler node ID")
@@ -1704,14 +2257,27 @@ class CampaignScheduler:
             if attempt["receipts"] and canonical_bytes(attempt["receipts"][-1]) == canonical_bytes(receipt):
                 if attempt["receipts"][-1]["effect_kind"] != "SCHEDULER_PROGRESS":
                     raise CampaignSchedulerError("terminal receipt cannot be replayed as progress")
+                if not attempt["progress_observations"] or canonical_bytes(
+                    attempt["progress_observations"][-1]
+                ) != canonical_bytes(observation_receipt):
+                    raise CampaignSchedulerError("progress retry conflicts with its external observation")
                 return deepcopy(node)
-            verified, _ = _verify_activity_receipt(state, node, attempt, receipt, expected_effect="SCHEDULER_PROGRESS")
+            observation = _verify_progress_observation(state, node, attempt, observation_receipt)
+            verified, _ = _verify_activity_receipt(
+                state,
+                node,
+                attempt,
+                receipt,
+                expected_effect="SCHEDULER_PROGRESS",
+                external_observation=observation,
+            )
             evidence_digest = verified["output_digest"]
             if evidence_digest in node["progress_evidence_digests"]:
                 raise CampaignSchedulerError("progress receipt did not advance stored evidence")
             if len(node["progress_evidence_digests"]) >= MAX_PROGRESS_EVIDENCE_DIGESTS:
                 raise CampaignSchedulerError("progress evidence history reached its frozen bound")
             attempt["receipts"].append(verified)
+            attempt["progress_observations"].append(observation)
             attempt["last_progress_ms"] = now_ms
             node["progress_evidence_digests"].append(evidence_digest)
             node["progress_digest"] = evidence_digest
@@ -1816,9 +2382,12 @@ class CampaignScheduler:
         *,
         now_ms: int,
         cancellation_receipts: Mapping[str, Mapping[str, Any]],
+        termination_observations: Mapping[str, Mapping[str, Any]],
     ) -> Tuple[StallRecovery, ...]:
         if not isinstance(cancellation_receipts, Mapping):
             raise CampaignSchedulerError("stall recovery requires a cancellation receipt mapping")
+        if not isinstance(termination_observations, Mapping):
+            raise CampaignSchedulerError("stall recovery requires a termination observation mapping")
 
         def transition(state: Dict[str, Any]) -> Tuple[StallRecovery, ...]:
             _accrue_utilization(state, now_ms)
@@ -1829,18 +2398,28 @@ class CampaignScheduler:
             ]
             if set(cancellation_receipts) != {node["node_id"] for node in stalled}:
                 raise CampaignSchedulerError("stall recovery requires exact bounded cancellation evidence")
+            if set(termination_observations) != {node["node_id"] for node in stalled}:
+                raise CampaignSchedulerError("stall recovery requires exact external termination evidence")
             recoveries = []
             worker_ids = [worker["worker_id"] for worker in state["workers"]]
             for node in sorted(stalled, key=lambda item: item["node_id"]):
                 attempt = node["attempt_receipts"][-1]
+                observation = _verify_termination_observation(
+                    state,
+                    node,
+                    attempt,
+                    termination_observations[node["node_id"]],
+                )
                 verified, _ = _verify_activity_receipt(
                     state,
                     node,
                     attempt,
                     cancellation_receipts[node["node_id"]],
                     expected_effect="SCHEDULER_CANCELLATION",
+                    external_observation=observation,
                 )
                 attempt["receipts"].append(verified)
+                attempt["termination_observation"] = observation
                 attempt["last_progress_ms"] = now_ms
                 attempt["finished_ms"] = now_ms
                 previous_worker = node["assigned_worker_id"]
