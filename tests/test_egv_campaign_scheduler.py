@@ -42,7 +42,13 @@ def _task(
     request_index=None,
     promotion_key=None,
     promotion_authority_node_id=None,
+    manifest_ordinal=None,
+    counterbalance_rank=None,
 ) -> SchedulerTask:
+    if manifest_ordinal is None:
+        manifest_ordinal = int(_sha("manifest-ordinal:{}".format(node_id))[:12], 16)
+    if counterbalance_rank is None:
+        counterbalance_rank = int(_sha("counterbalance-rank:{}".format(node_id))[:12], 16)
     return SchedulerTask(
         node_id=node_id,
         kind=kind,
@@ -55,6 +61,8 @@ def _task(
         request_index=request_index,
         promotion_key=promotion_key,
         promotion_authority_node_id=promotion_authority_node_id,
+        manifest_ordinal=manifest_ordinal,
+        counterbalance_rank=counterbalance_rank,
     )
 
 
@@ -71,6 +79,7 @@ class CampaignSchedulerTest(unittest.TestCase):
         self.temporary = tempfile.TemporaryDirectory()
         self.root = Path(self.temporary.name)
         self.state_path = self.root / "scheduler-state.json"
+        self.effect_fence_path = self.root / "external-authority" / "effect-fence.jsonl"
         self.signers = {}
 
     def tearDown(self) -> None:
@@ -85,6 +94,7 @@ class CampaignSchedulerTest(unittest.TestCase):
         return CampaignScheduler.initialize(
             self.state_path,
             SchedulerPlan("campaign-scheduler-test", tuple(workers), tuple(tasks)),
+            effect_fence_path=self.effect_fence_path,
             now_ms=0,
         )
 
@@ -97,6 +107,7 @@ class CampaignSchedulerTest(unittest.TestCase):
         output_digest=None,
         decision=None,
         signer_id=None,
+        observation_receipt=None,
     ) -> dict:
         state = scheduler.snapshot()
         node = next(item for item in state["nodes"] if item["node_id"] == node_id)
@@ -114,29 +125,11 @@ class CampaignSchedulerTest(unittest.TestCase):
                 "SCHEDULER_CANCELLATION": "ALLOW",
                 "SCHEDULER_VERDICT": "PASS",
             }[effect_kind]
-        if effect_kind == "SCHEDULER_PROGRESS" and output_digest is None:
-            progress_kind = {
-                "GENERATION": "GENERATED_ARTIFACT",
-                "EVALUATION": "EVALUATION_ARTIFACT",
-                "DIAGNOSTIC": "DIAGNOSTIC_ARTIFACT",
-                "TRAINING": "TRAINING_CHECKPOINT",
-                "VALIDATION": "VALIDATION_ARTIFACT",
-                "PROMOTION": "PROMOTION_ARTIFACT",
-                "REVIEW": "REVIEW_ARTIFACT",
-            }[node["kind"]]
-            output_digest = digest_for(
-                {
-                    "attempt_id": attempt["attempt_id"],
-                    "node_progress_kind": progress_kind,
-                    "progress_ordinal": sequence,
-                    "previous_progress_digest": (
-                        attempt["receipts"][-1]["output_digest"]
-                        if attempt["receipts"] and attempt["receipts"][-1]["effect_kind"] == "SCHEDULER_PROGRESS"
-                        else GENESIS_HASH
-                    ),
-                    "manifest_digest": attempt["manifest_digest"],
-                }
-            )
+        external_observation_digest = receipt_hash(observation_receipt) if observation_receipt is not None else None
+        if effect_kind == "SCHEDULER_PROGRESS" and output_digest is None and observation_receipt is not None:
+            output_digest = observation_receipt["output_digest"]
+        if effect_kind == "SCHEDULER_CANCELLATION" and output_digest is None and observation_receipt is not None:
+            output_digest = external_observation_digest
         fields = {
             "receipt_type": receipt_type,
             "campaign_id": state["campaign_id"],
@@ -187,6 +180,7 @@ class CampaignSchedulerTest(unittest.TestCase):
                             "release_digest",
                             "model_digest",
                             "monotonic_counter",
+                            "execution_idempotency_key",
                         )
                     }
                 ),
@@ -197,7 +191,11 @@ class CampaignSchedulerTest(unittest.TestCase):
                     {field: attempt[field] for field in ("isolation_digest", "capability_digest", "sandbox_digest")}
                 ),
                 "normalized_action_hash": digest_for(
-                    {"progress_kind": progress_kind, "terminal_binding": terminal_binding}
+                    {
+                        "progress_kind": progress_kind,
+                        "terminal_binding": terminal_binding,
+                        "external_observation_digest": external_observation_digest,
+                    }
                 ),
                 "public_dependency_set_digest": attempt["manifest_digest"],
                 "sandbox_id": attempt["lease_id"],
@@ -212,6 +210,162 @@ class CampaignSchedulerTest(unittest.TestCase):
                     "attempt_id": attempt["attempt_id"],
                     "sequence": sequence,
                     "effect_kind": effect_kind,
+                    "external_observation_digest": external_observation_digest,
+                }
+            ),
+        )
+
+    def progress_observation(
+        self,
+        scheduler: CampaignScheduler,
+        node_id: str,
+        *,
+        observer_id: str,
+        artifact_digest=None,
+    ) -> dict:
+        state = scheduler.snapshot()
+        node = next(item for item in state["nodes"] if item["node_id"] == node_id)
+        attempt = node["attempt_receipts"][-1]
+        observations = attempt["progress_observations"]
+        sequence = len(observations) + 1
+        previous_receipt = receipt_hash(observations[-1]) if observations else GENESIS_HASH
+        previous_artifact = observations[-1]["output_digest"] if observations else attempt["resolved_input_digest"]
+        artifact_digest = artifact_digest or _sha("observed-artifact:{}:{}".format(node_id, sequence))
+        progress_kind = {
+            "GENERATION": "GENERATED_ARTIFACT",
+            "EVALUATION": "EVALUATION_ARTIFACT",
+            "DIAGNOSTIC": "DIAGNOSTIC_ARTIFACT",
+            "TRAINING": "TRAINING_CHECKPOINT",
+            "VALIDATION": "VALIDATION_ARTIFACT",
+            "PROMOTION": "PROMOTION_ARTIFACT",
+            "REVIEW": "REVIEW_ARTIFACT",
+        }[node["kind"]]
+        signer = self.signers[observer_id]
+        fields = {
+            "receipt_type": "EFFECT",
+            "campaign_id": state["campaign_id"],
+            "run_id": state["campaign_id"],
+            "task_id": node_id,
+            "request_id": attempt["attempt_id"],
+            "candidate_id": attempt["attempt_id"],
+            "decision": "ALLOW",
+            "input_digest": previous_artifact,
+            "output_digest": artifact_digest,
+            "resource_bucket": node["resource_pool"],
+            "effect_kind": "EXTERNAL_PROGRESS_OBSERVATION",
+            "protocol_digest": attempt["protocol_digest"],
+            "policy_digest": digest_for(
+                {
+                    "attempt_id": attempt["attempt_id"],
+                    "progress_kind": progress_kind,
+                    "external_counter": sequence,
+                    "previous_artifact_digest": previous_artifact,
+                }
+            ),
+            "arm_policy_digest": attempt["checkpoint_digest"],
+            "evaluator_digest": digest_for({"observer_signing_key_id": signer.key_id}),
+            "candidate_artifact_digest": artifact_digest,
+            "environment_diff_digest": attempt["sandbox_digest"],
+            "normalized_action_hash": digest_for(
+                {
+                    "attempt_id": attempt["attempt_id"],
+                    "progress_kind": progress_kind,
+                    "external_counter": sequence,
+                    "previous_artifact_digest": previous_artifact,
+                    "artifact_digest": artifact_digest,
+                    "manifest_digest": attempt["manifest_digest"],
+                }
+            ),
+            "public_dependency_set_digest": attempt["manifest_digest"],
+            "sandbox_id": attempt["lease_id"],
+            "exit_status_class": "NOT_APPLICABLE",
+        }
+        return signer.sign_receipt(
+            fields,
+            sequence=sequence,
+            previous_receipt_hash=previous_receipt,
+            idempotency_key=digest_for(
+                {
+                    "attempt_id": attempt["attempt_id"],
+                    "external_counter": sequence,
+                    "effect_kind": "EXTERNAL_PROGRESS_OBSERVATION",
+                }
+            ),
+        )
+
+    def termination_observation(
+        self,
+        scheduler: CampaignScheduler,
+        node_id: str,
+        *,
+        observer_id: str,
+        evidence_prefix="external",
+        use_scheduler_placeholders=False,
+    ) -> dict:
+        state = scheduler.snapshot()
+        node = next(item for item in state["nodes"] if item["node_id"] == node_id)
+        attempt = node["attempt_receipts"][-1]
+        signer = self.signers[observer_id]
+        evidence = {
+            "termination_digest": _sha("{}:termination".format(evidence_prefix)),
+            "lease_revocation_digest": _sha("{}:lease-revocation".format(evidence_prefix)),
+            "fencing_token_digest": _sha("{}:fencing-token".format(evidence_prefix)),
+            "runtime_checkpoint_digest": _sha("{}:runtime-checkpoint".format(evidence_prefix)),
+            "resource_teardown_digest": _sha("{}:resource-teardown".format(evidence_prefix)),
+        }
+        if use_scheduler_placeholders:
+            evidence = {
+                "termination_digest": attempt["release_digest"],
+                "lease_revocation_digest": attempt["checkpoint_digest"],
+                "fencing_token_digest": attempt["sandbox_digest"],
+                "runtime_checkpoint_digest": attempt["manifest_digest"],
+                "resource_teardown_digest": attempt["isolation_digest"],
+            }
+        fields = {
+            "receipt_type": "EFFECT",
+            "campaign_id": state["campaign_id"],
+            "run_id": state["campaign_id"],
+            "task_id": node_id,
+            "request_id": attempt["attempt_id"],
+            "candidate_id": attempt["attempt_id"],
+            "decision": "ALLOW",
+            "input_digest": attempt["lease_id"],
+            "output_digest": evidence["termination_digest"],
+            "resource_bucket": node["resource_pool"],
+            "effect_kind": "EXTERNAL_TERMINATION_OBSERVATION",
+            "protocol_digest": attempt["protocol_digest"],
+            "policy_digest": evidence["fencing_token_digest"],
+            "arm_policy_digest": evidence["lease_revocation_digest"],
+            "evaluator_digest": digest_for({"observer_signing_key_id": signer.key_id}),
+            "candidate_artifact_digest": evidence["runtime_checkpoint_digest"],
+            "environment_diff_digest": evidence["resource_teardown_digest"],
+            "normalized_action_hash": digest_for(
+                {
+                    "attempt_id": attempt["attempt_id"],
+                    "observed_execution_state": "TERMINATED",
+                    "termination_digest": evidence["termination_digest"],
+                    "lease_id": attempt["lease_id"],
+                    "required_release_digest": attempt["release_digest"],
+                    "lease_revocation_digest": evidence["lease_revocation_digest"],
+                    "fencing_token_digest": evidence["fencing_token_digest"],
+                    "runtime_checkpoint_digest": evidence["runtime_checkpoint_digest"],
+                    "resource_teardown_digest": evidence["resource_teardown_digest"],
+                    "exit_status_class": "SIGNAL",
+                }
+            ),
+            "public_dependency_set_digest": attempt["manifest_digest"],
+            "sandbox_id": attempt["lease_id"],
+            "exit_status_class": "SIGNAL",
+        }
+        return signer.sign_receipt(
+            fields,
+            sequence=1,
+            previous_receipt_hash=GENESIS_HASH,
+            idempotency_key=digest_for(
+                {
+                    "attempt_id": attempt["attempt_id"],
+                    "effect_kind": "EXTERNAL_TERMINATION_OBSERVATION",
+                    "lease_id": attempt["lease_id"],
                 }
             ),
         )
@@ -342,7 +496,10 @@ class CampaignSchedulerTest(unittest.TestCase):
             decision="PASS",
             signer_id="trainer-a",
         )
-        with self.assertRaisesRegex(CampaignSchedulerError, "bound to this exact attempt|signature or chain"):
+        with self.assertRaisesRegex(
+            CampaignSchedulerError,
+            "bound to this exact attempt|signature or chain|external progress observation",
+        ):
             scheduler.complete(
                 evaluation.node_id,
                 worker_id=evaluation.worker_id,
@@ -353,27 +510,51 @@ class CampaignSchedulerTest(unittest.TestCase):
         self.assertFalse(completed["semantic_passed"])
         self.assertEqual(completed["output_digest"], signed["output_digest"])
 
+    def test_logical_workers_cannot_fake_independence_with_one_signing_key(self) -> None:
+        signer = ReceiptSigner.generate()
+        workers = (
+            SchedulerWorker("reviewer-a", "CPU", "REVIEWER", ("REVIEW",), signer.public_key_raw),
+            SchedulerWorker("observer-a", "CPU", "CONTROLLER", ("OBSERVE",), signer.public_key_raw),
+        )
+        with self.assertRaisesRegex(CampaignSchedulerError, "cryptographically distinct"):
+            SchedulerPlan(
+                "duplicate-key-plan",
+                workers,
+                (_task("review", "REVIEW", "CPU", "REVIEWER"),),
+            )
+
     def test_progress_requires_advancing_signed_evidence_and_emits_control_actions(self) -> None:
         scheduler = self.initialize(
-            (self.worker("trainer-a", "ACCELERATOR", "TRAINER", ("GENERATION",)),),
+            (
+                self.worker("trainer-a", "ACCELERATOR", "TRAINER", ("GENERATION",)),
+                self.worker("observer-a", "CPU", "CONTROLLER", ("OBSERVE",)),
+            ),
             (_task("generation", "GENERATION", "ACCELERATOR", "TRAINER"),),
         )
         dispatch = scheduler.dispatch_ready(now_ms=0)[0]
+        observation = self.progress_observation(
+            scheduler,
+            "generation",
+            observer_id="observer-a",
+        )
         receipt = self.receipt(
             scheduler,
             "generation",
             "SCHEDULER_PROGRESS",
+            observation_receipt=observation,
         )
         scheduler.record_progress(
             "generation",
             worker_id=dispatch.worker_id,
             receipt=receipt,
+            observation_receipt=observation,
             now_ms=1,
         )
         exact_retry = scheduler.record_progress(
             "generation",
             worker_id=dispatch.worker_id,
             receipt=receipt,
+            observation_receipt=observation,
             now_ms=1,
         )
         self.assertEqual(exact_retry["last_progress_ms"], 1)
@@ -384,20 +565,28 @@ class CampaignSchedulerTest(unittest.TestCase):
             "SCHEDULER_PROGRESS",
             output_digest=_sha("metadata-heartbeat-churn"),
         )
-        with self.assertRaisesRegex(CampaignSchedulerError, "bound to this exact attempt"):
+        with self.assertRaisesRegex(
+            CampaignSchedulerError,
+            "bound to this exact attempt|external progress observation",
+        ):
             scheduler.record_progress(
                 "generation",
                 worker_id=dispatch.worker_id,
                 receipt=repeated,
+                observation_receipt=observation,
                 now_ms=2,
             )
         tampered = deepcopy(repeated)
         tampered["output_digest"] = _sha("tampered-after-signing")
-        with self.assertRaisesRegex(CampaignSchedulerError, "bound to this exact attempt|signature or chain"):
+        with self.assertRaisesRegex(
+            CampaignSchedulerError,
+            "bound to this exact attempt|signature or chain|external progress observation",
+        ):
             scheduler.record_progress(
                 "generation",
                 worker_id=dispatch.worker_id,
                 receipt=tampered,
+                observation_receipt=observation,
                 now_ms=2,
             )
         self.assertEqual(scheduler.controller_actions(now_ms=PROGRESS_CHECKPOINT_MS), tuple())
@@ -407,11 +596,50 @@ class CampaignSchedulerTest(unittest.TestCase):
         stalled = scheduler.controller_actions(now_ms=STALL_TIMEOUT_MS + 1)
         self.assertEqual(stalled[0].action, "CANCEL_STALLED_ATTEMPT")
 
+    def test_scheduler_derived_signed_heartbeats_cannot_extend_stall_deadline(self) -> None:
+        scheduler = self.initialize(
+            (
+                self.worker("trainer-a", "ACCELERATOR", "TRAINER", ("GENERATION",)),
+                self.worker("observer-a", "CPU", "CONTROLLER", ("OBSERVE",)),
+            ),
+            (_task("generation", "GENERATION", "ACCELERATOR", "TRAINER"),),
+        )
+        dispatch = scheduler.dispatch_ready(now_ms=0)[0]
+        attempt = _node(scheduler, "generation")["attempt_receipts"][-1]
+        legacy_digest = digest_for(
+            {
+                "attempt_id": attempt["attempt_id"],
+                "node_progress_kind": "GENERATED_ARTIFACT",
+                "progress_ordinal": 1,
+                "previous_progress_digest": GENESIS_HASH,
+                "manifest_digest": attempt["manifest_digest"],
+            }
+        )
+        legacy = self.receipt(
+            scheduler,
+            "generation",
+            "SCHEDULER_PROGRESS",
+            output_digest=legacy_digest,
+        )
+        for now_ms in (STALL_TIMEOUT_MS - 3, STALL_TIMEOUT_MS - 2, STALL_TIMEOUT_MS - 1):
+            with self.assertRaisesRegex(CampaignSchedulerError, "external progress observation"):
+                scheduler.record_progress(
+                    "generation",
+                    worker_id=dispatch.worker_id,
+                    receipt=legacy,
+                    observation_receipt=legacy,
+                    now_ms=now_ms,
+                )
+        self.assertEqual(_node(scheduler, "generation")["last_progress_ms"], 0)
+        actions = scheduler.controller_actions(now_ms=STALL_TIMEOUT_MS)
+        self.assertEqual([action.action for action in actions], ["CANCEL_STALLED_ATTEMPT"])
+
     def test_stall_cancellation_retry_receipts_survive_restart_and_fail_closed(self) -> None:
         workers = (
             self.worker("trainer-a", "ACCELERATOR", "TRAINER", ("GENERATION",)),
             self.worker("trainer-b", "ACCELERATOR", "TRAINER", ("GENERATION",)),
             self.worker("controller-a", "CPU", "CONTROLLER", ("CANCEL",)),
+            self.worker("observer-a", "CPU", "CONTROLLER", ("OBSERVE",)),
         )
         scheduler = self.initialize(
             workers,
@@ -419,7 +647,11 @@ class CampaignSchedulerTest(unittest.TestCase):
         )
         first = scheduler.dispatch_ready(now_ms=0)[0]
         with self.assertRaisesRegex(CampaignSchedulerError, "exact bounded cancellation"):
-            scheduler.recover_stalls(now_ms=STALL_TIMEOUT_MS, cancellation_receipts={})
+            scheduler.recover_stalls(
+                now_ms=STALL_TIMEOUT_MS,
+                cancellation_receipts={},
+                termination_observations={},
+            )
 
         forged = self.receipt(
             scheduler,
@@ -427,23 +659,32 @@ class CampaignSchedulerTest(unittest.TestCase):
             "SCHEDULER_CANCELLATION",
             signer_id=first.worker_id,
         )
+        termination = self.termination_observation(
+            scheduler,
+            "generation",
+            observer_id="observer-a",
+            evidence_prefix="first",
+        )
         with self.assertRaisesRegex(CampaignSchedulerError, "controller capability"):
             scheduler.recover_stalls(
                 now_ms=STALL_TIMEOUT_MS,
                 cancellation_receipts={"generation": forged},
+                termination_observations={"generation": termination},
             )
         cancellation = self.receipt(
             scheduler,
             "generation",
             "SCHEDULER_CANCELLATION",
             signer_id="controller-a",
+            observation_receipt=termination,
         )
         recovery = scheduler.recover_stalls(
             now_ms=STALL_TIMEOUT_MS,
             cancellation_receipts={"generation": cancellation},
+            termination_observations={"generation": termination},
         )
         self.assertEqual(recovery[0].disposition, "RETRY_PENDING")
-        scheduler = CampaignScheduler(self.state_path)
+        scheduler = CampaignScheduler(self.state_path, effect_fence_path=self.effect_fence_path)
         retried_node = _node(scheduler, "generation")
         self.assertEqual(retried_node["attempt_receipts"][0]["disposition"], "STALL_RETRY")
         self.assertEqual(
@@ -452,19 +693,84 @@ class CampaignSchedulerTest(unittest.TestCase):
         )
         second = scheduler.dispatch_ready(now_ms=STALL_TIMEOUT_MS)[0]
         self.assertNotEqual(second.worker_id, first.worker_id)
+        second_termination = self.termination_observation(
+            scheduler,
+            "generation",
+            observer_id="observer-a",
+            evidence_prefix="second",
+        )
         second_cancel = self.receipt(
             scheduler,
             "generation",
             "SCHEDULER_CANCELLATION",
             signer_id="controller-a",
+            observation_receipt=second_termination,
         )
         terminal = scheduler.recover_stalls(
             now_ms=2 * STALL_TIMEOUT_MS,
             cancellation_receipts={"generation": second_cancel},
+            termination_observations={"generation": second_termination},
         )
         self.assertEqual(terminal[0].disposition, "FAILED_CLOSED")
         self.assertEqual(_node(scheduler, "generation")["terminal_reason"], "STALL_RETRY_EXHAUSTED")
         self.assertEqual(len(_node(scheduler, "generation")["attempt_receipts"]), 2)
+
+    def test_cancellation_metadata_without_external_termination_fence_and_teardown_fails(self) -> None:
+        scheduler = self.initialize(
+            (
+                self.worker("trainer-a", "ACCELERATOR", "TRAINER", ("GENERATION",)),
+                self.worker("trainer-b", "ACCELERATOR", "TRAINER", ("GENERATION",)),
+                self.worker("controller-a", "CPU", "CONTROLLER", ("CANCEL", "OBSERVE")),
+                self.worker("observer-a", "CPU", "CONTROLLER", ("OBSERVE",)),
+            ),
+            (_task("generation", "GENERATION", "ACCELERATOR", "TRAINER"),),
+        )
+        scheduler.dispatch_ready(now_ms=0)
+        same_authority_observation = self.termination_observation(
+            scheduler,
+            "generation",
+            observer_id="controller-a",
+            evidence_prefix="same-authority",
+        )
+        same_authority_cancellation = self.receipt(
+            scheduler,
+            "generation",
+            "SCHEDULER_CANCELLATION",
+            signer_id="controller-a",
+            observation_receipt=same_authority_observation,
+        )
+        with self.assertRaisesRegex(CampaignSchedulerError, "must be independent"):
+            scheduler.recover_stalls(
+                now_ms=STALL_TIMEOUT_MS,
+                cancellation_receipts={"generation": same_authority_cancellation},
+                termination_observations={"generation": same_authority_observation},
+            )
+        fake_observation = self.termination_observation(
+            scheduler,
+            "generation",
+            observer_id="observer-a",
+            evidence_prefix="ignored",
+            use_scheduler_placeholders=True,
+        )
+        cancellation = self.receipt(
+            scheduler,
+            "generation",
+            "SCHEDULER_CANCELLATION",
+            signer_id="controller-a",
+            observation_receipt=fake_observation,
+        )
+        with self.assertRaisesRegex(
+            CampaignSchedulerError,
+            "lacks termination, revocation, fencing, checkpoint, or teardown evidence",
+        ):
+            scheduler.recover_stalls(
+                now_ms=STALL_TIMEOUT_MS,
+                cancellation_receipts={"generation": cancellation},
+                termination_observations={"generation": fake_observation},
+            )
+        node = _node(scheduler, "generation")
+        self.assertEqual(node["status"], "RUNNING")
+        self.assertEqual(node["attempt_count"], 1)
 
     def test_least_options_maximum_matching_respects_retry_exclusion(self) -> None:
         workers = (
@@ -472,6 +778,7 @@ class CampaignSchedulerTest(unittest.TestCase):
             self.worker("z-flex", "ACCELERATOR", "TRAINER", ("GENERATION",)),
             self.worker("reviewer-a", "CPU", "REVIEWER", ("REVIEW",)),
             self.worker("controller-a", "CPU", "CONTROLLER", ("CANCEL",)),
+            self.worker("observer-a", "CPU", "CONTROLLER", ("OBSERVE",)),
         )
         scheduler = self.initialize(
             workers,
@@ -490,15 +797,23 @@ class CampaignSchedulerTest(unittest.TestCase):
         initial = {item.node_id: item for item in scheduler.dispatch_ready(now_ms=0)}
         self.assertEqual(initial["retry-node"].worker_id, "a-flex")
         self.complete_dispatch(scheduler, initial["gate"], now_ms=STALL_TIMEOUT_MS)
+        termination = self.termination_observation(
+            scheduler,
+            "retry-node",
+            observer_id="observer-a",
+            evidence_prefix="retry-node",
+        )
         cancellation = self.receipt(
             scheduler,
             "retry-node",
             "SCHEDULER_CANCELLATION",
             signer_id="controller-a",
+            observation_receipt=termination,
         )
         scheduler.recover_stalls(
             now_ms=STALL_TIMEOUT_MS,
             cancellation_receipts={"retry-node": cancellation},
+            termination_observations={"retry-node": termination},
         )
         matched = {item.node_id: item.worker_id for item in scheduler.dispatch_ready(now_ms=STALL_TIMEOUT_MS)}
         self.assertEqual(matched, {"general-node": "a-flex", "retry-node": "z-flex"})
@@ -508,7 +823,7 @@ class CampaignSchedulerTest(unittest.TestCase):
             (self.worker("reviewer-a", "CPU", "REVIEWER", ("REVIEW",)),),
             (_task("review", "REVIEW", "CPU", "REVIEWER"),),
         )
-        resumed = CampaignScheduler(self.state_path)
+        resumed = CampaignScheduler(self.state_path, effect_fence_path=self.effect_fence_path)
         with ThreadPoolExecutor(max_workers=2) as pool:
             results = list(pool.map(lambda item: item.dispatch_ready(now_ms=0), (scheduler, resumed)))
         self.assertEqual(sum(len(result) for result in results), 1)
@@ -688,7 +1003,34 @@ class CampaignSchedulerTest(unittest.TestCase):
         scheduler.dispatch_ready(now_ms=0)
         self.state_path.write_bytes(stale_valid_state)
         with self.assertRaisesRegex(CampaignSchedulerError, "transition journal head"):
-            CampaignScheduler(self.state_path)
+            CampaignScheduler(self.state_path, effect_fence_path=self.effect_fence_path)
+
+    def test_coherent_state_and_journal_rollback_cannot_redispatch_external_effect(self) -> None:
+        workers = (self.worker("reviewer-a", "CPU", "REVIEWER", ("REVIEW",)),)
+        tasks = (_task("review", "REVIEW", "CPU", "REVIEWER"),)
+        scheduler = self.initialize(workers, tasks)
+        stale_state = self.state_path.read_bytes()
+        journal_path = self.state_path.with_name(self.state_path.name + ".transitions")
+        stale_journal = journal_path.read_bytes()
+        dispatch = scheduler.dispatch_ready(now_ms=0)[0]
+        self.complete_dispatch(scheduler, dispatch, now_ms=1)
+        self.state_path.write_bytes(stale_state)
+        journal_path.write_bytes(stale_journal)
+
+        alternate_fence = self.root / "different-authority" / "effect-fence.jsonl"
+        CampaignScheduler.initialize(
+            self.root / "alternate-state.json",
+            SchedulerPlan("campaign-scheduler-test", workers, tasks),
+            effect_fence_path=alternate_fence,
+            now_ms=0,
+        )
+        with self.assertRaisesRegex(CampaignSchedulerError, "differs from the pinned scheduler authority"):
+            CampaignScheduler(self.state_path, effect_fence_path=alternate_fence)
+
+        resumed = CampaignScheduler(self.state_path, effect_fence_path=self.effect_fence_path)
+        with self.assertRaisesRegex(CampaignSchedulerError, "idempotency fence rejects replayed dispatch"):
+            resumed.dispatch_ready(now_ms=0)
+        self.assertEqual(_node(resumed, "review")["attempt_count"], 0)
 
     def test_matching_is_lexicographically_minimal_under_sealed_priority(self) -> None:
         scheduler = self.initialize(
@@ -697,12 +1039,51 @@ class CampaignSchedulerTest(unittest.TestCase):
                 self.worker("b-reviewer", "CPU", "REVIEWER", ("REVIEW",)),
             ),
             (
-                _task("a-task", "REVIEW", "CPU", "REVIEWER"),
-                _task("b-task", "REVIEW", "CPU", "REVIEWER"),
+                _task(
+                    "a-task",
+                    "REVIEW",
+                    "CPU",
+                    "REVIEWER",
+                    manifest_ordinal=1,
+                    counterbalance_rank=1,
+                ),
+                _task(
+                    "b-task",
+                    "REVIEW",
+                    "CPU",
+                    "REVIEWER",
+                    manifest_ordinal=2,
+                    counterbalance_rank=0,
+                ),
             ),
         )
         matched = {dispatch.node_id: dispatch.worker_id for dispatch in scheduler.dispatch_ready(now_ms=0)}
         self.assertEqual(matched, {"a-task": "a-reviewer", "b-task": "b-reviewer"})
+
+    def test_manifest_ordinal_and_counterbalance_rank_precede_alphabetic_task_identity(self) -> None:
+        scheduler = self.initialize(
+            (self.worker("reviewer-a", "CPU", "REVIEWER", ("REVIEW",)),),
+            (
+                _task(
+                    "a-alphabetic-second",
+                    "REVIEW",
+                    "CPU",
+                    "REVIEWER",
+                    manifest_ordinal=7,
+                    counterbalance_rank=2,
+                ),
+                _task(
+                    "z-counterbalanced-first",
+                    "REVIEW",
+                    "CPU",
+                    "REVIEWER",
+                    manifest_ordinal=7,
+                    counterbalance_rank=1,
+                ),
+            ),
+        )
+        dispatches = scheduler.dispatch_ready(now_ms=0)
+        self.assertEqual([dispatch.node_id for dispatch in dispatches], ["z-counterbalanced-first"])
 
     def test_retry_preserves_budget_lineage_and_all_frozen_control_bindings(self) -> None:
         scheduler = self.initialize(
@@ -710,14 +1091,28 @@ class CampaignSchedulerTest(unittest.TestCase):
                 self.worker("trainer-a", "ACCELERATOR", "TRAINER", ("GENERATION",)),
                 self.worker("trainer-b", "ACCELERATOR", "TRAINER", ("GENERATION",)),
                 self.worker("controller-a", "CPU", "CONTROLLER", ("CANCEL",)),
+                self.worker("observer-a", "CPU", "CONTROLLER", ("OBSERVE",)),
             ),
             (_task("generation", "GENERATION", "ACCELERATOR", "TRAINER"),),
         )
         scheduler.dispatch_ready(now_ms=0)
-        cancellation = self.receipt(scheduler, "generation", "SCHEDULER_CANCELLATION", signer_id="controller-a")
+        termination = self.termination_observation(
+            scheduler,
+            "generation",
+            observer_id="observer-a",
+            evidence_prefix="retry-lineage",
+        )
+        cancellation = self.receipt(
+            scheduler,
+            "generation",
+            "SCHEDULER_CANCELLATION",
+            signer_id="controller-a",
+            observation_receipt=termination,
+        )
         scheduler.recover_stalls(
             now_ms=STALL_TIMEOUT_MS,
             cancellation_receipts={"generation": cancellation},
+            termination_observations={"generation": termination},
         )
         scheduler.dispatch_ready(now_ms=STALL_TIMEOUT_MS)
         node = _node(scheduler, "generation")
@@ -820,7 +1215,7 @@ class CampaignSchedulerTest(unittest.TestCase):
         self.assertIsNotNone(promotion_dispatch)
         self.assertEqual(_node(scheduler, "post-promotion")["status"], "COMPLETED")
         sequence = scheduler.snapshot()["sequence"]
-        resumed = CampaignScheduler(self.state_path)
+        resumed = CampaignScheduler(self.state_path, effect_fence_path=self.effect_fence_path)
         exact_retry = resumed.complete(
             "post-promotion",
             worker_id=promotion_dispatch.worker_id,
@@ -934,19 +1329,45 @@ class CampaignSchedulerTest(unittest.TestCase):
         value["state_authority"] = "AUTHORITATIVE"
         self.state_path.write_bytes(canonical_bytes(value))
         with self.assertRaisesRegex(CampaignSchedulerError, "authority"):
-            CampaignScheduler(self.state_path)
+            CampaignScheduler(self.state_path, effect_fence_path=self.effect_fence_path)
 
-    def test_persisted_signed_receipt_tamper_and_accounting_drift_fail_closed(self) -> None:
+    def test_legacy_v3_state_is_rejected_instead_of_silently_migrated(self) -> None:
         scheduler = self.initialize(
             (self.worker("reviewer-a", "CPU", "REVIEWER", ("REVIEW",)),),
             (_task("review", "REVIEW", "CPU", "REVIEWER"),),
         )
+        value = scheduler.snapshot()
+        value["schema_version"] = "egv-campaign-scheduler-state-v3"
+        value.pop("effect_fence_instance_id")
+        self.state_path.write_bytes(canonical_bytes(value))
+        with self.assertRaisesRegex(CampaignSchedulerError, "closed schema"):
+            CampaignScheduler(self.state_path, effect_fence_path=self.effect_fence_path)
+
+    def test_persisted_signed_receipt_tamper_and_accounting_drift_fail_closed(self) -> None:
+        scheduler = self.initialize(
+            (
+                self.worker("reviewer-a", "CPU", "REVIEWER", ("REVIEW",)),
+                self.worker("observer-a", "CPU", "CONTROLLER", ("OBSERVE",)),
+            ),
+            (_task("review", "REVIEW", "CPU", "REVIEWER"),),
+        )
         dispatch = scheduler.dispatch_ready(now_ms=0)[0]
-        receipt = self.receipt(scheduler, "review", "SCHEDULER_PROGRESS")
+        observation = self.progress_observation(
+            scheduler,
+            "review",
+            observer_id="observer-a",
+        )
+        receipt = self.receipt(
+            scheduler,
+            "review",
+            "SCHEDULER_PROGRESS",
+            observation_receipt=observation,
+        )
         scheduler.record_progress(
             "review",
             worker_id=dispatch.worker_id,
             receipt=receipt,
+            observation_receipt=observation,
             now_ms=1,
         )
         value = scheduler.snapshot()
@@ -955,7 +1376,7 @@ class CampaignSchedulerTest(unittest.TestCase):
         with self.assertRaisesRegex(
             CampaignSchedulerError, "bound to this exact attempt|signature or chain|transition journal head"
         ):
-            CampaignScheduler(self.state_path)
+            CampaignScheduler(self.state_path, effect_fence_path=self.effect_fence_path)
 
         accounting_path = self.root / "accounting-state.json"
         scheduler = CampaignScheduler.initialize(
@@ -965,6 +1386,7 @@ class CampaignSchedulerTest(unittest.TestCase):
                 (self.worker("reviewer-b", "CPU", "REVIEWER", ("REVIEW",)),),
                 (_task("review-b", "REVIEW", "CPU", "REVIEWER"),),
             ),
+            effect_fence_path=self.root / "external-authority" / "accounting-fence.jsonl",
             now_ms=0,
         )
         scheduler.public_report(now_ms=10, worker_aliases={"reviewer-b": "slot-b"})
@@ -972,7 +1394,10 @@ class CampaignSchedulerTest(unittest.TestCase):
         value["workers"][0]["idle_ms"] += 1
         accounting_path.write_bytes(canonical_bytes(value))
         with self.assertRaisesRegex(CampaignSchedulerError, "does not reconcile"):
-            CampaignScheduler(accounting_path)
+            CampaignScheduler(
+                accounting_path,
+                effect_fence_path=self.root / "external-authority" / "accounting-fence.jsonl",
+            )
 
 
 if __name__ == "__main__":
