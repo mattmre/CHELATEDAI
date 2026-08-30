@@ -1,14 +1,16 @@
 # EGV AVO/Nemotron recommissioning preregistration
 
 Status: amended preregistration; blocked pending the v2 corpus, frozen manifests,
-blind solvability proof, and fresh exact-head independent review. No model,
-training, or utility result exists.
+blind solvability proof, and fresh exact-head independent review. No
+model-capability, training, or utility result exists.
 
 Original freeze: 2026-08-25
 
 Critical-review amendment: 2026-08-29
 
-## Amendment 1: solvability and experimental-identification repair
+Follow-up specification amendment: 2026-08-29
+
+## Amendments 1-2: validity and deterministic-execution repair
 
 A fresh Tier-B review scored the original draft **58/100** and identified a
 critical experimental-validity defect: the inherited `source-only-v1` corpus
@@ -26,14 +28,17 @@ This amendment was made before any task-bearing Nemotron request. It:
 - treats Lightning and Super as complete model-bundle contrasts, not as a clean
   parameter-count intervention;
 - freezes task ordering, seeds, resets, feedback, budgets, stopping, retries,
-  held-out analysis, training-treatment separation, and scheduler comparison;
-  and
-- blocks all task-bearing execution until this amendment and its required
-  manifests receive an independent exact-head review.
+  held-out analysis, training-treatment separation, scheduler comparison,
+  resource isolation, and timing; and
+- separates non-model corpus validation from model task-bearing execution so
+  neither clearance depends circularly on work that it prohibits.
 
 Changing any confirmatory rule below after model-visible task execution begins
 creates a new campaign ID and requires a dated amendment that reports what was
-already observed. It may not be described as the same preregistered study.
+already observed. Changing a corpus-validation rule after
+`GO_CORPUS_VALIDATION` similarly requires a new corpus-validation run and new
+receipt digests. Neither change may be described as the same preregistered
+study.
 
 ## Why a new campaign is required
 
@@ -135,6 +140,43 @@ Before any campaign arm sees a v2 task, a corpus manifest must freeze:
 - a proof that evaluator-private material affects task selection and checking
   only, never the mapping from visible input to accepted output.
 
+### Two non-circular clearance gates
+
+`GO_CORPUS_VALIDATION` and `GO_TASK_BEARING` are different, ordered decisions.
+Neither label may be inferred from file presence, a self-review, a passing unit
+test, or the other label.
+
+Here, a **model-task-bearing request** is an inference request to `L` or `S`
+that contains a v2 corpus task or task-derived material. The non-model oracle
+and blind solver do execute corpus tasks, but only as the separately governed
+Gate-A validation runs; they are never campaign-arm or model requests.
+
+An independent exact-head reviewer may return `GO_CORPUS_VALIDATION` only after
+the amendment plus the frozen corpus, 18-task slice, evaluator-author solver,
+blind-solver source digest, evaluator, production sandbox/controller, receipt
+schema, and prohibited-data-scan manifests have no unresolved critical or
+major solvability, leakage, or boundary finding. That clearance permits only:
+
+- the evaluator-author oracle check over the corpus; and
+- the already-frozen, non-model blind solver over the 18-task slice through the
+  production sandbox/controller path.
+
+It does not permit a model call containing a corpus task, `P0` or `P1`
+execution, Stage A, trajectory collection, training, development evaluation,
+or held-out evaluation. Failure changes the corpus digest and revokes the
+clearance; it is never repaired by inspecting expected outputs and rerunning
+under the same identity.
+
+`GO_TASK_BEARING` is considered only after the oracle and blind-solvability
+receipts are sealed and validated. A fresh independent reviewer must inspect
+the exact amended commit, all frozen campaign manifests, the 18/18 receipts,
+the prohibited-data scan, rendered prompt/feedback projections, reset and
+budget proofs, model-bundle admission receipts, and scheduler/restart proofs.
+Only an explicit `GO_TASK_BEARING` with no unresolved critical or major
+experimental-validity, leakage, promotion, restart, resource-isolation,
+timing, or analysis finding permits the first model request containing v2 task
+material.
+
 ### Blind model-visible-only solvability proof
 
 An implementation team that did not author the evaluator receives exactly the
@@ -144,8 +186,9 @@ hidden fixture, evaluator seed, private manifest field, or evaluator filesystem
 access. Before seeing evaluator-private records, that team freezes a solver
 source digest.
 
-The frozen solver then runs through the **production candidate sandbox and
-controller path**, not an in-process shortcut, on every task in a precommitted
+After `GO_CORPUS_VALIDATION`, the frozen solver runs through the **production
+candidate sandbox and controller path**, not an in-process shortcut, on every
+task in a precommitted
 18-task solvability slice containing three tasks from each of six families. The
 gate passes only if all 18 tasks produce the exact accepted output, every
 receipt binds the solver and task digests, and the prohibited-data scan is
@@ -162,15 +205,20 @@ are discarded rather than used to tune the task construction.
 
 The study tests a model-bundle factor and a protocol factor before training.
 
-- **H1 — model-bundle capability:** the frozen Super bundle produces more exact
-  semantic passes than the frozen Lightning bundle under the same protocol.
-  This contrast includes weights, tokenizer, chat template, precision, engine
-  compatibility, and bundle-specific serving settings; it is not identified as
-  an effect of parameter count alone.
-- **H2 — harness capability:** an AVO-inspired persistent variation loop
-  produces more exact passes than a matched static generate-and-retry loop with
-  the same model bundle and total model-token, model-action, candidate, and
-  wall-clock ceilings.
+- **H1 — model-bundle capability:** the confirmatory endpoint is the paired
+  exact-pass difference `S1 - L1` under the persistent protocol. The frozen
+  Super bundle is predicted to exceed the frozen Lightning bundle. The
+  corresponding static-protocol contrast `S0 - L0` is secondary and
+  descriptive. These contrasts include weights, tokenizer, chat template,
+  precision, engine compatibility, serving settings, and the frozen logical
+  worker assignment; they are not identified as effects of parameter count
+  alone.
+- **H2 — harness capability:** the confirmatory endpoint is the paired
+  exact-pass difference `L1 - L0` within the Lightning bundle. The
+  AVO-inspired persistent variation loop is predicted to exceed the matched
+  static generate-and-retry loop under the same total model-token,
+  model-action, candidate, and wall-clock ceilings. The corresponding Super
+  contrast `S1 - S0` is secondary and descriptive.
 - **H3 — interaction:** model-bundle and harness effects interact; the harness
   difference is not assumed to be constant across bundles.
 - **H4 — trainability:** verified successful Lightning trajectories provide a
@@ -179,9 +227,13 @@ The study tests a model-bundle factor and a protocol factor before training.
 - **H5 — held-out improvement:** a frozen Lightning LoRA improves paired
   held-out semantic correctness over the unmodified Lightning AVO arm without
   evaluator-boundary or task-family regression.
-- **H6 — work conservation:** dependency-aware scheduling reduces avoidable
-  idle accelerator time and exposes stalls without changing scientific
-  outcomes.
+- **H6 — trace-conditioned deterministic replay:** conditional on the sealed
+  campaign DAG and the observed readiness, compatibility, duration, stall, and
+  retry trace, deterministic work-conserving replay yields less avoidable
+  compatible-worker idle time than deterministic serial FIFO replay. Terminal
+  scientific outcomes are held fixed by construction. H6 is an engineering
+  replay result, not a randomized live-scheduler effect or model-quality
+  claim.
 
 H1-H3 can be answered even if H4-H5 fail. `Q0` is historical descriptive
 context only and cannot answer any hypothesis. H6 is an engineering result and
@@ -194,7 +246,7 @@ inference engine, generation settings, and license digest must be frozen before
 the first model-bearing request.
 
 | ID | Intended role | Candidate family | Mutation |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `L` | execution/LoRA | Nemotron 3.5 Lightning | frozen base |
 | `S` | planning ceiling | Nemotron 3 Super | frozen base |
 | `Q0` | history only | Qwen 3.5 2B Base | no rerun |
@@ -252,8 +304,8 @@ frozen task, bundle identity, evaluator, split, metric, or budget.
 
 ### Matched budgets
 
-Before the first task-bearing request, a hashed protocol manifest records one
-literal budget tuple for each bundle:
+Before the first model-task-bearing request, a hashed protocol manifest records
+one literal budget tuple for each bundle:
 
 ```text
 (maximum model calls, maximum input tokens, maximum generated tokens,
@@ -305,7 +357,7 @@ is not part of this experiment.
 Before LoRA training, run the following matched 2 x 2 screen:
 
 | Arm | Model | Protocol | Purpose |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `L0` | Lightning | `P0` static | Lightning-bundle static baseline |
 | `L1` | Lightning | `P1` AVO-inspired | harness effect on trainable model |
 | `S0` | Super | `P0` static | Super-bundle static condition |
@@ -335,10 +387,12 @@ that within-arm order. Each coordinate allows at most six executed candidates.
 Wrong, timed-out, aborted, or missing terminal outcomes are failures.
 
 The zero-signal rule is final: after coordinate 6, an arm with zero exact passes
-is labeled `ZERO_SIGNAL_STAGE_A`, its remaining six coordinates are not run,
-and those six outcomes are recorded as missing/fail for the Stage-A gate. Logs
-may be examined after termination, but the arm cannot resume under this
-campaign ID. Any repair requires a new amendment and campaign.
+is labeled `ZERO_SIGNAL_STAGE_A` and its remaining six coordinates are sealed
+as `NOT_RUN_ZERO_SIGNAL`. They are not scored, counted as failures, or imputed
+as zero-valued observations. The arm fails admission by rule, is excluded from
+Stage B and held-out evaluation, and cannot resume under this campaign ID.
+Logs may be examined after termination, but any repair requires a new amendment
+and campaign.
 
 An arm that survives the checkpoint crosses the semantic floor only if all 12
 coordinates finish and it produces at least three exact passes across at least
@@ -356,11 +410,26 @@ training-data eligible only if it yields at least
 and four task families. Missing coordinates are failures. These are
 dataset-diversity thresholds, not a claim that the model is generally capable.
 
-If `L1` misses the threshold but `S1` crosses it, verified `S1` trajectories may
-be used as teacher demonstrations for Lightning. Each target must still execute
+An arm stopped in Stage A contributes no Stage-B or held-out observations.
+Every contrast requiring that arm is `UNEVALUATED_STOPPED_ARM`; an arm whose
+bundle never passed admission is instead `UNEVALUATED_RESOURCE_BOUND`. No unrun
+coordinate is imputed and alpha is not reassigned. Specifically, `S1 - L1`
+requires both `S1` and `L1`, `L1 - L0` requires both `L1` and `L0`, the two
+secondary contrasts require their named pairs, and H3 requires all four base
+arms.
+
+Teacher SFT is allowed only when `L1` crossed Stage A, completed its prescribed
+Stage-B coordinates without an unresolved integrity failure, and produced
+fewer than 24 verified success trajectories, while `S1` crossed Stage A and met
+the full 24-trajectory/10-task/four-family threshold in Stage B. Verified `S1`
+trajectories may then be used as teacher demonstrations for Lightning. If `L1`
+has at least 24 successes but misses only the task- or family-diversity
+threshold, teacher SFT is not allowed. Each teacher target must still execute
 correctly under the deterministic evaluator, carry full teacher provenance,
-and remain confined to the training split. Teacher generation and student
-training become an explicitly separate treatment.
+and remain confined to the training split. If `L1` fails Stage A, no teacher
+SFT or other confirmatory Lightning-adapter promotion is allowed because the
+predeclared unmodified `L1` held-out comparator is absent. Teacher generation
+and student training are always an explicitly separate treatment.
 
 ## Training treatments
 
@@ -387,24 +456,93 @@ behavior. A desired target-module or hyperparameter change after Stage A begins
 terminates the adapter treatment under this campaign ID and requires a new
 preregistration.
 
-The following datasets and adapters remain separate:
+### Canonical records, serialization, and objectives
 
-1. **`SELF_SFT`:** verified `L1` successes only, with exact typed final targets.
-2. **`TEACHER_SFT`:** verified `S1` successes only, admitted solely under the
-   predeclared `L1`-ineligible/`S1`-eligible condition. Every target carries
-   teacher provenance and passes deterministic replay. It is never pooled with
-   `SELF_SFT`.
-3. **`PREFERENCE`:** verified success/failure pairs from the same frozen source
-   treatment and coordinate-matching rule. It trains a separate preference
-   adapter and is never merged, stacked, or averaged with either SFT adapter
-   before evaluation.
+A source coordinate is one Stage-B `(arm, task_id, generation_seed)` tuple.
+For every source coordinate, the canonical success is the lowest attempt index
+whose contract-admitted typed final candidate receives an exact semantic pass.
+At most that one success and its model-visible same-coordinate prefix may enter
+an SFT dataset; later or byte-distinct successes from the coordinate are
+discarded from training. The canonical trajectory ends at that success and
+contains only the public task/runtime material and the messages, actions,
+candidate sources, and allowed feedback that the source arm itself saw before
+and at that attempt. It contains no private evaluator field or cross-coordinate
+state.
+
+Every training record uses UTF-8 and LF newlines. Structured fields use RFC
+8785 JSON Canonicalization Scheme bytes. The frozen Lightning chat-template
+function renders the ordered normalized messages; the assistant target is the
+canonical typed final envelope, and the tokenizer appends exactly one EOS. The
+manifest binds the normalizer, chat-template, tokenizer, BOS/EOS behavior, and
+resulting token-ID digest for every record. If prompt plus target exceeds the
+frozen sequence length, earliest prompt tokens are removed from the left while
+the complete target and EOS are retained. A target that cannot fit by itself is
+ineligible and is reported; no task-dependent summarizer or alternate
+truncation is allowed. If serialization losses reduce a treatment below its
+eligibility threshold, that treatment is ineligible.
+
+`SELF_SFT` uses only canonical `L1` successes and is eligible only when `L1`
+meets the Stage-B 24-trajectory/10-task/four-family threshold. `TEACHER_SFT`
+uses only canonical `S1` successes and is eligible only under the narrower
+teacher condition specified in Stage B: `L1` passed Stage A and completed Stage
+B with fewer than 24 successes, while `S1` met the full threshold. Teacher
+messages are normalized
+to the same typed role schema and rendered with the frozen Lightning template;
+every target carries the `S1` model-bundle and source-coordinate digests and
+passes deterministic replay. `SELF_SFT` and `TEACHER_SFT` are never pooled.
+
+Both SFT treatments minimize target-only causal language-model cross-entropy:
+for each optimizer update, sum negative log probabilities over every unmasked
+final-assistant target token including EOS across all accumulated microbatches,
+then divide once by that update's total unmasked-target-token count. All prompt
+and padding tokens are masked. The language-model-loss coefficient is exactly
+`1.0`, label smoothing is `0.0`, and preference, KL, and auxiliary-loss
+coefficients are `0.0`.
+
+`PREFERENCE` uses `L1` only. For each coordinate, the chosen response is the
+canonical success. The rejected response is the greatest lower attempt index
+that is contract-admitted, is an exact semantic failure, and precedes that
+success. A coordinate lacking either response contributes no pair. Both
+responses are typed final envelopes and share the frozen initial `P1` public
+task/runtime prompt with no feedback or lineage appended. At most one pair per
+coordinate is admitted. The treatment requires at least 24 pairs spanning at
+least 10 tasks and four families; it is otherwise ineligible.
+
+The preference objective is reference-based DPO with sequence log probability
+equal to the sum over response tokens including EOS:
+
+```text
+-log sigmoid(0.1 * ((log p_adapter(chosen) - log p_base(chosen))
+                  - (log p_adapter(rejected) - log p_base(rejected))))
+```
+
+The frozen, unmodified Lightning bundle with every adapter disabled is the
+read-only reference policy. DPO coefficient is `1.0`, beta is `0.1`, label
+smoothing is `0.0`, and auxiliary SFT, KL, and other loss coefficients are
+`0.0`. Each optimizer update is the arithmetic mean of the displayed per-pair
+loss over all pairs in its accumulated microbatches; the response log
+probabilities in the formula are token sums, not length-normalized means. No
+reference cache generated under a different bundle digest is valid.
+The preference adapter is never merged, stacked, or averaged with either SFT
+adapter before evaluation.
+
+Each eligible treatment has exactly one confirmatory adapter replicate. Its
+single RNG seed is `2026082911` for `SELF_SFT`, `2026082912` for
+`TEACHER_SFT`, or `2026082913` for `PREFERENCE`; that value initializes Python,
+NumPy, framework CPU, and accelerator RNGs. Canonically ordered records are
+permuted once per epoch using `numpy.random.Generator(PCG64(seed +
+zero_based_epoch))`. No second seed, checkpoint, or replicate is selected.
+An infrastructure retry must resume the same sealed data cursor, optimizer,
+scheduler, scaler, and RNG states; an unrecoverable run is `UNEVALUATED`, not
+restarted as a new replicate.
 
 If more than one treatment is eligible, each produces a separately named
 adapter, dataset digest, optimizer ledger, and held-out arm. Development and
 held-out evaluator outputs never enter optimizer inputs, retrieval memory, or
 model prompts. Base weights are read-only. Adapter tensor inventory, data
 cursor, optimizer state, RNG state, and exact dataset digests must survive
-reload.
+reload. The final optimizer step is the sole confirmatory checkpoint, with no
+development-score or evaluator-driven selection.
 
 ## Held-out evaluation
 
@@ -425,28 +563,36 @@ underpowered and cannot expand after seeing results.
 
 Before Stage A begins, `heldout-v2-manifest.json` must freeze all 120 opaque task
 identities, family labels, literal task order, the three seeds in the order
-above, corpus/evaluator/sandbox digests, and arm order. Its private identity
-projection is unavailable to every model, trainer, retrieval store, and
-development process. No held-out task may appear in the solvability slice,
-Stage A, Stage B, development, or training datasets.
+above, corpus/evaluator/sandbox digests, the canonical arm list, and the
+counterbalancing algorithm below. Its private identity projection is
+unavailable to every model, trainer, retrieval store, and development process.
+No held-out task may appear in the solvability slice, Stage A, Stage B,
+development, or training datasets.
 
-The confirmatory held-out arms are:
+The eligible confirmatory held-out arms are:
 
-- unmodified Lightning with `P0` (`L0`);
-- unmodified Lightning with `P1` (`L1`);
-- unmodified Super with `P0` (`S0`);
-- unmodified Super with `P1` (`S1`); and
+- each of unmodified `L0`, `L1`, `S0`, and `S1` that crossed its own Stage-A
+  floor; and
 - every eligible, frozen Lightning training treatment with `P1`, each as a
   distinct arm.
+
+The canonical held-out arm list is `L0`, `L1`, `S0`, `S1`, `SELF_SFT`,
+`TEACHER_SFT`, `PREFERENCE`; filtering removes Stage-A-stopped or
+resource-bound base arms and ineligible or failed training treatments without
+changing the order. A removed arm contributes no held-out row. Every contrast
+that depends on it is `UNEVALUATED` with the applicable stopped-arm,
+resource-bound, or treatment-ineligible reason; no pass/fail value, confidence
+interval, or synthetic comparator is imputed.
 
 The evaluator runs the same task/seed coordinates, order, reset rules, feedback,
 and within-bundle budgets for every applicable arm. For the primary binary
 outcome, an observation equals `1` if **any** candidate passes the exact
 semantic evaluator within that coordinate's frozen aggregate budget; otherwise
-it equals `0`. A missing, aborted, timed-out, crashed, or selectively skipped
-coordinate is `0`. Selective reruns are forbidden. A predeclared exact rerun is
-a complete new pass over all 120 tasks, three seeds, and confirmatory arms from
-sealed initial state.
+it equals `0`. Within an admitted held-out arm, a missing, aborted, timed-out,
+crashed, or selectively skipped coordinate is `0`. Stage-A-stopped arms are not
+admitted and therefore are not assigned 360 zeros. Selective reruns are
+forbidden. A predeclared exact rerun is a complete new pass over all 120 tasks,
+three seeds, and the same admitted confirmatory arms from sealed initial state.
 
 Primary metric: paired exact semantic pass rate. Secondary metrics: distinct
 tasks solved, family-stratified pass rate, attempts and actions to first pass,
@@ -455,42 +601,67 @@ wall time, evaluator time, and accelerator busy/idle time.
 
 ### Frozen paired analysis
 
-For any trained arm `A`, define
-`d(task, seed) = pass_A(task, seed) - pass_L1(task, seed)`. The reported paired
-difference is the arithmetic mean of all 360 values. The deterministic
-task-clustered bootstrap is:
+For any named contrast `A - B`, define
+`d(task, seed) = pass_A(task, seed) - pass_B(task, seed)`. Its point estimate is
+the arithmetic mean of all 360 paired values. The deterministic bootstrap is
+both task-clustered and family-stratified:
 
-1. initialize `numpy.random.Generator(PCG64(2026082901))`;
-2. for each of 100,000 replicates, sample 120 task indices with replacement;
-3. for every sampled task, retain all three seed-level `d` values and compute
-   their mean; then compute the mean across the 120 sampled task means; and
-4. sort the 100,000 replicate means ascending.
+1. order the six families and the 20 tasks within each family exactly as in the
+   held-out manifest, and initialize a fresh
+   `numpy.random.Generator(PCG64(contrast_seed))`;
+2. for each of 100,000 replicates and each family in manifest order, sample 20
+   task positions with replacement from that family;
+3. retain all three seed-level `d` values for each sampled task, average those
+   three values to a task mean, and take the unweighted mean of all 120 sampled
+   task means, thereby retaining exactly one-sixth weight per family; and
+4. sort the 100,000 replicate means ascending. For probability `p`, the
+   nearest-rank quantile is element `ceil(p * 100000)` in one-based indexing.
 
-If `m` trained treatments enter held-out evaluation, the multiplicity-adjusted
-lower endpoint for every treatment is the empirical quantile at
-`0.025 / m`, selected by the nearest-rank rule (`ceil(p * 100000)`, one-based).
-This is a conservative familywise 95% lower bound across `SELF_SFT`,
-`TEACHER_SFT`, and `PREFERENCE`; ineligible treatments do not enter `m`.
-Unadjusted 2.5% and 97.5% endpoints are also reported descriptively.
+The independent bootstrap streams are frozen as follows:
 
-The model-bundle effect is reported separately under `P0` (`S0 - L0`) and `P1`
-(`S1 - L1`). The protocol effect is reported separately within Lightning
-(`L1 - L0`) and Super (`S1 - S0`). The difference-in-differences interaction is
-`(S1 - S0) - (L1 - L0)`. Each uses the same task-clustered bootstrap algorithm
-and reports its interval, but H1-H3 remain model-bundle/task-distribution
-claims. The interaction is descriptive unless a separate power analysis was
-precommitted; no post-hoc significance label is allowed.
+| Analysis key | Contrast seed |
+| --- | ---: |
+| `H1_P1_MODEL` (`S1 - L1`) | `2026082901` |
+| `H2_L_HARNESS` (`L1 - L0`) | `2026082902` |
+| `DESC_P0_MODEL` (`S0 - L0`) | `2026082903` |
+| `DESC_S_HARNESS` (`S1 - S0`) | `2026082904` |
+| `DESC_INTERACTION` | `2026082905` |
+| `PROMOTE_SELF_SFT` (`SELF_SFT - L1`) | `2026082921` |
+| `PROMOTE_TEACHER_SFT` (`TEACHER_SFT - L1`) | `2026082922` |
+| `PROMOTE_PREFERENCE` (`PREFERENCE - L1`) | `2026082923` |
+
+H1 and H2 form one confirmatory family with familywise one-sided alpha `0.05`.
+A fixed Bonferroni allocation gives each hypothesis alpha `0.025`; alpha is not
+recycled if the other contrast is unavailable. The decision interval for each
+is the one-sided interval `[q_0.025, +infinity)`. H1 is supported only if the
+`S1 - L1` lower endpoint is greater than zero; H2 is supported only if the
+`L1 - L0` lower endpoint is greater than zero. If either named arm was excluded
+after Stage A, that hypothesis is `UNEVALUATED_STOPPED_ARM`, not accepted or
+rejected; a resource-bound arm produces the corresponding
+`UNEVALUATED_RESOURCE_BOUND` status. The `S0 - L0` and `S1 - S0` contrasts and the
+`(S1 - S0) - (L1 - L0)` interaction report descriptive `q_0.025` to
+`q_0.975` intervals only. H3 has no confirmatory alpha or significance label.
+
+For a trained arm `A`, the comparator is always unmodified `L1`. If `m`
+trained treatments enter held-out evaluation, the multiplicity-adjusted lower
+endpoint for every treatment is `q_(0.025 / m)` from its named bootstrap
+stream. Ineligible treatments do not enter `m`, and alpha is not reassigned
+after held-out execution begins. Unadjusted `q_0.025` and `q_0.975` endpoints
+are also reported descriptively.
 
 A trained arm is **not** promoted unless all of these hold:
 
 - paired exact-pass improvement over unmodified `L1` is at least 10 percentage
   points across all 360 observations;
-- its multiplicity-adjusted task-clustered lower endpoint is greater than zero;
-- no task family loses more than one exact pass;
+- its multiplicity-adjusted family-stratified task-clustered lower endpoint is
+  greater than zero;
+- for every family `f`, the paired net exact-pass count
+  `sum_{20 tasks in f, 3 seeds}(pass_A - pass_L1)` is at least `-1`;
 - no evaluator-boundary, leakage, replay, base-mutation, scheduling-integrity,
   or restoration gate fails; and
-- the result survives the one complete exact rerun from sealed artifacts under
-  the same rule.
+- the one complete exact rerun from sealed artifacts independently satisfies
+  every rule above; original and rerun observations are reported separately
+  and are never pooled.
 
 The count, identities, families, seeds, arms, budgets, metrics, and analysis may
 not expand or change in response to observed results. If realized uncertainty
@@ -506,33 +677,120 @@ Public artifacts use logical roles only:
 - accelerator worker B runs Super inference or an independent matched arm;
 - trusted CPU workers run deterministic evaluation, orchestration, artifact
   validation, review preparation, and privacy/security scans; and
-- the scheduler dispatches every ready DAG node without waiting for unrelated
-  lanes.
+- the scheduler dispatches as many ready DAG nodes as the currently free,
+  compatible logical workers can accept without waiting for unrelated lanes.
 
-Every lane persists owner, input digest, start time, last-progress time,
-resource assignment, output digest, monotonically increasing progress counter,
-heartbeat time, retry count, and terminal reason. Active jobs emit a signed
-heartbeat every 30 seconds. Three consecutive missed heartbeats mark the job
-`SUSPECT`; a 10-minute interval with neither a higher progress counter nor a new
-sealed output receipt marks it `STALLED`. Repeated heartbeats with unchanged
-progress do not postpone the stall deadline.
+At each scheduling event, the controller constructs a bipartite graph of ready
+nodes and free workers from the frozen compatibility manifest. It dispatches
+exactly the maximum-cardinality matching. If more than one maximum matching
+exists, choose the lexicographically smallest ordered list of
+`(node_priority_tuple, logical_worker_id)` pairs. The node priority tuple is
+sealed in the DAG manifest and incorporates manifest ordinal and the frozen
+counterbalance rank below. Thus `WORK_CONSERVING` dispatches up to the number
+of compatible free workers; it never means that more nodes are launched than
+the isolation policy permits.
 
-Each coordinate permits one infrastructure retry from its latest sealed
-checkpoint with the same isolation key and generation seed. Model calls,
-tokens, actions, and candidate receipts committed before the stall remain
-charged; a restart does not reset scientific budgets. The scheduler suppresses
-duplicates by the full coordinate/input/checkpoint digest. A second stall, an
-unverifiable checkpoint, or a conflicting duplicate terminates the coordinate
-as missing/fail. Scientific failures and evaluator rejections are never
+The closed `scheduler-receipt-v2` JSON Schema and its digest are frozen before
+`GO_TASK_BEARING`; unknown properties are rejected and every field is present,
+with `null` permitted only where the schema explicitly allows it. Each receipt
+binds at least the schema and campaign IDs, split/stage, full isolation key,
+DAG-node and node-kind IDs, input and predecessor-receipt digests, model,
+protocol, evaluator, sandbox, and manifest digests, logical worker and worker-
+capability digests, resource-lease digest, sequence number, event kind,
+controller monotonic nanoseconds, UTC audit timestamp, progress counter,
+model-call/token/action/candidate budget counters, retry count, checkpoint and
+output digests, terminal reason, and signature. Signing covers the RFC 8785
+canonical private receipt with its required `signature` field set to `null`;
+the signed value is then inserted and the final private-receipt digest is
+computed. A public projection records that original receipt digest while
+receiving its own projection digest after private topology fields are redacted.
+
+An accepted progress receipt must increment both the sequence number and
+progress counter by exactly one, name the preceding receipt digest, and bind a
+new content-addressed checkpoint or terminal output. Heartbeats use their own
+event kind and may advance receipt sequence but never the progress counter.
+Active jobs emit a sealed heartbeat every 30 seconds. Three consecutive missed
+heartbeats mark the job `SUSPECT`; a 10-minute interval with neither an accepted
+progress receipt nor a terminal receipt marks it `STALLED`. Repeated heartbeats
+with unchanged progress do not postpone the stall deadline.
+
+Each coordinate permits one infrastructure retry from its latest accepted
+checkpoint receipt with the same isolation key and generation seed. A valid
+checkpoint binds the conversation/lineage state, candidate workspace, tool and
+sandbox state, supervisor state, generation and framework RNG states, budget
+counters, and previous output receipts. Model calls, tokens, actions, and
+candidate receipts committed before the stall remain charged; a restart does
+not reset scientific budgets or wall time. The scheduler suppresses duplicates
+by the full coordinate/input/checkpoint digest and accepts only one successor
+for a predecessor receipt. A second stall, an unverifiable checkpoint, a
+counter rollback, or conflicting successor terminates the coordinate as
+missing/fail. Scientific failures and evaluator rejections are never
 classified as infrastructure retries.
+
+### Timing, isolation, warmup, and arm order
+
+All scientific durations use the controller's monotonic clock; UTC timestamps
+are audit labels only. For a coordinate, queue delay begins when the node
+becomes dependency-ready and ends at the coordinate start defined below,
+including time awaiting a lease and the required reset/attestation. Bundle load
+and warmup are separate prerequisite DAG nodes rather than coordinate queue
+time. They are excluded from the coordinate wall-clock ceiling but included in
+campaign makespan, service-overhead, and H6 replay metrics.
+
+A coordinate starts immediately before the controller sends its first
+model-bearing request, after its worker lease, empty-state reset, immutable
+bundle attestation, and warm-service receipt are sealed. It stops at the first
+sealed exact pass or, if none occurs, when the earliest model-call, token,
+action, executed-candidate, or wall-clock ceiling is reached, the final allowed
+candidate is evaluated, or an unrecoverable terminal failure is sealed. All
+model latency, model-service waiting after start, harness/tool work, candidate
+execution, evaluator time, checkpointing, stall detection, retry recovery, and
+reload time between start and stop count against coordinate wall time. The
+clock is never paused.
+
+The resource manifest freezes each logical worker's hardware/driver/runtime
+digest, model-service configuration, CPU and memory quota, accelerator lease,
+and permitted concurrency. A model service has exclusive use of its assigned
+accelerator during measured execution; training and inference never overlap on
+that accelerator, no unrelated accelerator workload is permitted, and at most
+one model-bearing coordinate runs per model service. Candidate sandboxes and
+evaluators use identical frozen CPU/memory/process/time quotas across arms and
+cannot access an accelerator. A lease conflict, unrecorded workload, quota
+change, or compatibility drift is an integrity failure for affected
+coordinates and cannot be fixed by a selective rerun. The fixed logical-worker
+assignment remains part of the disclosed model-bundle contrast.
+
+After every cold bundle load or allowed reload, run exactly one frozen non-task
+health generation followed by two frozen non-task warmup generations with
+generation seeds `2026082900` and `2026082901`, in that order. Their prompt and
+rendered-token digests are frozen in the model manifest and contain no corpus,
+task-derived, evaluator, or training material. They are excluded from
+coordinate budgets and scientific outcomes but included in service-overhead
+reporting. No per-arm or data-dependent warmup is allowed.
+
+Arm execution is counterbalanced independently within each model service. For
+the participating arms on a service, preserve their order from the canonical
+list and assign zero-based indices. For `n` arms, define the first Williams row
+as `w[0] = 0`; for `k = 1..n-1`, `w[k] = (k + 1) / 2` when `k` is odd and
+`w[k] = n - (k / 2)` when `k` is even. Row `r` adds `r` modulo `n` to every
+index. If `n` is odd, append the reverse of every row. A coordinate with
+zero-based manifest ordinal `j` uses row
+`j modulo row_count`. Every arm in that service's row for coordinate `j` must
+reach a terminal state before the service begins coordinate `j + 1`; the two
+different model services have no cross-service barrier and may run
+concurrently. Stage A uses the original base-arm rows and removes a stopped arm
+without recomputing them. Stage B and held-out execution compute and seal their
+rows once from the admitted arms before that stage starts. This changes only
+cross-arm dispatch priority; each arm's frozen task/seed order is unchanged.
 
 ### Model-load and service exceptions
 
-Bundle admission occurs before task-bearing execution and permits at most two
-load attempts, each with a 30-minute deadline, followed by one fixed non-task
-health prompt. Load time and that prompt do not enter coordinate budgets. If a
-bundle fails both attempts, it is `UNEVALUATED_RESOURCE_BOUND`; no arm using it
-starts and no substitute model is allowed.
+Bundle admission occurs before model-task-bearing execution and permits at most
+two load attempts, each with a 30-minute deadline, followed by the fixed health
+and two-warmup sequence above. Load and warmup time do not enter coordinate
+budgets. If a bundle fails both attempts, it is
+`UNEVALUATED_RESOURCE_BOUND`; no arm using it starts and no substitute model is
+allowed.
 
 After held-out execution begins, one reload from the same immutable bundle is
 allowed after an infrastructure loss. Coordinates already sealed remain
@@ -548,22 +806,30 @@ work is tracked in GitHub issue #307.
 
 ### Scheduling comparator for H6
 
-H6 compares two deterministic schedulers over the same sealed campaign DAG:
+H6 compares two deterministic replays over the same sealed campaign DAG and
+closed-schema receipt trace:
 
 - `FIFO_SERIAL`: one global manifest-order queue; it starts the next ready node
   only after the current node reaches a terminal state; and
-- `WORK_CONSERVING`: whenever a compatible worker is free, dispatch every ready
-  node in manifest ordinal order, breaking ties by arm ID and task ID.
+- `WORK_CONSERVING`: at each scheduling event, apply the frozen
+  maximum-cardinality compatible matching and lexicographic tie-breaker above.
 
 The live campaign uses `WORK_CONSERVING`. Afterward, a deterministic
-discrete-event replay applies both policies to the recorded node readiness,
-compatibility, observed service durations, stalls, and retry durations. It
-reports makespan, compatible-worker idle minutes while work was ready, queue
-delay, retry recovery time, and duplicate-suppression count. The comparator may
-not alter model outputs or be used as quality evidence. H6 is supported only if
-the replay validator reproduces the observed work-conserving schedule and the
-work-conserving policy has lower avoidable accelerator-idle time without a
-higher missing-coordinate count. Otherwise H6 is negative or unevaluated.
+discrete-event replay applies both policies to the recorded dependency-release
+events, compatibility, resource availability, observed node service durations,
+stalls, and retry durations. The replay copies every node's terminal reason and
+scientific output digest unchanged; it may alter only dispatch and completion
+times implied by the frozen durations. Each observed duration remains attached
+to its node even if replay assigns another compatible logical worker; no
+worker-specific duration is estimated. It reports makespan, compatible-worker
+idle minutes while work was ready, queue delay, retry recovery time, and
+duplicate-suppression count. H6 is supported only if a clean replay first
+reproduces the observed work-conserving dispatch/terminal timeline from the
+sealed receipts and the counterfactual work-conserving replay has strictly less
+avoidable compatible-worker idle time than `FIFO_SERIAL`. Equal or higher idle
+time is a negative H6 result; receipt discontinuity or failed reproduction is
+`UNEVALUATED_REPLAY_INVALID`. No scheduler replay may be used as quality or
+causal live-performance evidence.
 
 This scheduling architecture does not claim live cross-node trainer/evaluator
 transport. Such a claim requires observed exact-byte transfer, remote
@@ -586,19 +852,27 @@ scans run on every publishable artifact.
 
 - **The v2 blind solver misses any solvability task:** the corpus is invalid;
   no capability arm may run.
-- **`L0` and `L1` both miss the Stage-A floor while `S` crosses it:** the
-  Lightning bundle misses the measured floor. Apply the predeclared
-  `TEACHER_SFT` condition without attributing the gap solely to size.
-- **`L1` beats `L0` while the bundle is fixed:** report evidence for a harness
-  contribution on this task distribution.
-- **`S0` beats `L0` while the protocol is fixed:** report evidence for a
-  model-bundle contribution on this task distribution.
+- **`L1` misses the Stage-A floor:** exclude it from Stage B and held-out,
+  prohibit every Lightning adapter treatment including teacher SFT, and mark
+  every dependent contrast `UNEVALUATED_STOPPED_ARM`.
+- **`L1` passes Stage A, completes Stage B with fewer than 24 verified
+  successes, and `S1` is Stage-B eligible:** apply the predeclared
+  `TEACHER_SFT` treatment without attributing the gap solely to model size. If
+  `L1` has at least 24 successes but fails only diversity, teacher SFT remains
+  ineligible.
+- **The one-sided lower endpoint for `L1 - L0` is greater than zero:** support
+  H2 for a harness contribution on this task distribution. A positive point
+  estimate alone is insufficient.
+- **The one-sided lower endpoint for `S1 - L1` is greater than zero:** support
+  H1 for a model-bundle contribution on this task distribution. A positive
+  `S0 - L0` point estimate or interval is descriptive only.
 - **`S1` exceeds the additive expectation of bundle and harness effects:**
   report the frozen interaction estimate and interval. Do not call it
-  confirmatory unless separately powered.
-- **Every arm fails Stage A after the blind gate passed:** stop, report a
-  negative bundle/protocol result, and independently audit the production
-  render and feedback path before a new campaign.
+  confirmatory in this campaign.
+- **Every arm fails Stage A after the blind gate passed:** stop, report that
+  every tested arm missed the predeclared semantic floor, mark H1-H3
+  unevaluated, and independently audit the production render and feedback path
+  before a new campaign. Do not infer a comparative bundle or protocol effect.
 - **Eligible trajectories exist but LoRA does not improve held-out `L1`:**
   report a negative trainability/generalization result; do not promote.
 - **LoRA improves but a safety, replay, or leakage gate fails:** quarantine the
@@ -608,34 +882,72 @@ scans run on every publishable artifact.
 
 ## Required pre-run proof
 
-Before a task-bearing campaign request starts:
+### Gate A: `GO_CORPUS_VALIDATION`
 
-1. commit this amendment and freeze hashes for the corpus, blind-solvability,
-   Stage-A, Stage-B, held-out, model-bundle, protocol/budget,
-   Lightning-training, scheduler, evaluator, and sandbox manifests;
-2. prove every v2 task has one deterministic expected output from its public
-   specification and runtime input, reject visible collisions with different
-   targets, and verify an evaluator-author oracle candidate on every task;
-3. pass the 18/18 blind model-visible-only solvability gate through the exact
-   production sandbox/controller path;
-4. prove all four base-arm prompts, feedback projections, reset boundaries, and
-   typed contracts render from the frozen manifests without private material;
-5. prove bundle load, one non-task health generation, candidate execution,
-   receipt binding, heartbeat/stall classification, restart, budget continuity,
-   and duplicate-suppression paths;
+Before any oracle or blind-solver production execution:
+
+1. commit this amendment and freeze the corpus generator, public/private corpus
+   manifests, 18-task slice, evaluator-author solver, blind-solver source,
+   evaluator, production sandbox/controller, closed receipt schema, and
+   prohibited-data-scan digests;
+2. statically verify that every expected output is defined solely by its public
+   specification and runtime input and reject model-visible collisions with
+   different targets; and
+3. obtain an independent exact-head review that explicitly returns
+   `GO_CORPUS_VALIDATION` with no unresolved critical or major solvability,
+   leakage, evaluator-boundary, sandbox, receipt-integrity, or scan finding.
+
+That clearance permits the evaluator-author oracle run and the frozen 18-task
+blind-solver run only. Both must use the exact production sandbox/controller,
+and both must finish with sealed exact-output and prohibited-data-scan receipts.
+
+### Gate B: `GO_TASK_BEARING`
+
+Before the first model-bearing campaign request:
+
+1. validate the evaluator-author oracle on every v2 task and the blind solver
+   on all 18/18 solvability tasks, with receipt-chain and scan verification;
+2. freeze hashes for the Stage-A, Stage-B, held-out, model-bundle,
+   protocol/budget, Lightning-training, scheduler, evaluator, sandbox,
+   resource, timing, warmup, counterbalance, receipt-schema, and analysis
+   manifests;
+3. prove all four base-arm prompts, feedback projections, reset boundaries, and
+   typed contracts render without a model call from the frozen manifests and
+   contain no private material;
+4. prove bundle load, the fixed non-task health/warmup sequence, candidate
+   execution on a frozen non-corpus synthetic fixture, receipt binding,
+   heartbeat/stall classification, restart, budget and wall-clock continuity,
+   duplicate suppression, maximum-cardinality dispatch, resource leases, and
+   counterbalanced ordering on a non-corpus synthetic DAG;
+5. prove on frozen non-corpus synthetic records that each training treatment's
+   selection rule emits at most one canonical trajectory or pair per
+   coordinate and uses the frozen serialization, objective, reference policy,
+   coefficients, seeds, and no checkpoint/replicate selection;
 6. freeze repository, model, tokenizer, chat template, engine, precision, task,
-   evaluator, sandbox, seed, feedback, state, budget, LoRA, and analysis digests;
+   evaluator, sandbox, seed, feedback, state, budget, LoRA, scheduler, resource,
+   timing, and analysis digests;
 7. capture the protected-service restore state when a service stop is actually
    required; and
 8. obtain a fresh independent exact-head review that explicitly returns
    `GO_TASK_BEARING` with no unresolved critical or major experimental-validity,
-   leakage, promotion, restart, or analysis finding.
+   leakage, promotion, restart, resource-isolation, timing, scheduler, receipt,
+   training, or analysis finding.
+
+Gate-B rendering and systems proofs may use only their frozen non-corpus
+synthetic fixtures. They may not contain a v2 task, task-derived example,
+expected output, evaluator feedback, or trajectory; otherwise they are an
+unauthorized corpus or model-task-bearing execution and cannot support
+clearance.
 
 The adversarial review must attempt corpus underdetermination, task/split
 leakage, hidden-feedback exposure, state carryover, stale promotion, evaluator
 gaming, deadlock, heartbeat-without-progress, duplicate work, selective rerun,
-budget reset, model-bundle drift, training-treatment pooling, and false progress.
-An unreviewed manifest change revokes `GO_TASK_BEARING`.
+budget or clock reset, model-bundle drift, resource contention, arm-order drift,
+training-treatment pooling, pair/trajectory duplication, reference-policy
+drift, checkpoint selection, and false progress. An unreviewed Gate-A artifact
+change revokes `GO_CORPUS_VALIDATION` and invalidates its receipts. Any
+unreviewed campaign-manifest or validated-proof change revokes
+`GO_TASK_BEARING`.
 
 ## Amendment and independent-review record
 
@@ -647,17 +959,32 @@ findings concerned bundle attribution, unmetered supervisor latitude,
 cross-coordinate state, under-specified held-out analysis, adaptive training
 choices, and non-deterministic stall/retry handling.
 
+A follow-up independent review of the first amended draft found two remaining
+critical specification defects: corpus validation depended circularly on a
+task-bearing clearance, and a Stage-A-stopped arm was nevertheless required in
+held-out contrasts. It also required fixed confirmatory endpoints and alpha,
+family-stratified resampling, exact training-record and objective rules,
+receipt-bound replay semantics, and fixed timing/resource/order controls. This
+second amendment addresses those design findings; it does not represent a
+passing re-review.
+
 At the time of this amendment, no task-bearing Nemotron request, v2 trajectory,
 adapter training step, or held-out observation had run. Model inventory, weight
-download, bundle load, and a fixed non-task health prompt do not count as
-task-bearing only when they contain no corpus task, task-derived example,
-evaluator feedback, or expected-output material.
+download, bundle load, and the fixed non-task health/warmup sequence do not
+count as model-task-bearing only when they contain no corpus task, task-derived
+example, evaluator feedback, or expected-output material.
 
-This amendment is a **design repair**, not clearance to execute. The first
-task-bearing request remains prohibited until every pre-run proof above is
+At the time of this follow-up amendment, the manifests, receipt chains, blind
+production proof, scheduler replay, adapters, and held-out results required
+above are obligations, not asserted artifacts. Neither
+`GO_CORPUS_VALIDATION` nor `GO_TASK_BEARING` has been granted.
+
+This amendment is a **design repair**, not clearance to execute. Gate A permits
+only the two non-model corpus-validation runs after its own independent review;
+the first model-bearing request remains prohibited until every Gate-B proof is
 sealed and a new reviewer evaluates the exact amended commit plus all frozen
-manifest digests. The original 58/100 review remains part of the evidence
-history and may not be replaced or hidden by the later disposition.
+manifest and receipt digests. The original 58/100 review remains part of the
+evidence history and may not be replaced or hidden by the later disposition.
 
 ## Claim boundary
 
