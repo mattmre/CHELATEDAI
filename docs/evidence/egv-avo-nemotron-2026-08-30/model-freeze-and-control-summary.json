@@ -1,0 +1,95 @@
+{
+  "schema_version": "egv-nemotron-model-freeze-and-control-v1",
+  "evidence_scope": "bounded-public-fixture-controls-and-immutable-model-identity-not-task-bearing-research",
+  "observed_utc_date": "2026-08-30",
+  "engine": {
+    "name": "vLLM",
+    "version": "0.27.1",
+    "image_repository_digest": "sha256:0a51ea5b4ae2dc5d81890e5173f54203d2a3ae0cfffe51b8fd2afd4391bfd967",
+    "architecture": "arm64"
+  },
+  "shared_runtime_controls": {
+    "max_model_len": 8192,
+    "max_num_sequences": 1,
+    "kv_cache_dtype": "bfloat16",
+    "moe_backend": "marlin",
+    "mamba_backend": "flashinfer",
+    "mamba_cache_mode": "align",
+    "prefix_caching": true,
+    "reasoning_parser": "nemotron_v3",
+    "tool_call_parser": "qwen3_coder",
+    "automatic_tool_choice": true
+  },
+  "models": {
+    "L": {
+      "repository": "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4",
+      "revision": "cc84af2fe71647d87f4486c064f320e1e7535243",
+      "snapshot_identity_receipt_digest": "9dcdd7a600765da210a4d9a65f8639d624467140c59c07f0987adf33c5f50c37",
+      "content_manifest_digest": "5b2136ce761d5608d086faffc65bf3fff3098423e2e455c0f2ed2546cd7c4cac",
+      "weight_manifest_digest": "8b968c79cca6f8a85cb525980f077320b78a2e35fde5bba79d7d698c0d1086b2",
+      "weight_shards": 52,
+      "weight_bytes": 21561882284,
+      "precision": "NVFP4 weights with bfloat16 KV cache",
+      "tokenizer_json_sha256": "623c34567aebb18582765289fbe23d901c62704d6518d71866e0e58db892b5b7",
+      "tokenizer_config_sha256": "10f93eabcb9b1602fbb991d6308e787ce1df28ee9cd7a1c6d1e8c3f338b957bc",
+      "special_tokens_map_sha256": "e9435fefd6d838fd9fcbbc44b97a8e3ff322be7f6dfb7e4fd2468586574bb52b",
+      "chat_template_sha256": "58933db77d3099b4f78c55a38347a72e1ea05b97d6bd8f38775303dc0194e0a9",
+      "license": {
+        "name": "OpenMDW-1.1",
+        "source": "pinned snapshot LICENSE",
+        "url": "https://openmdw.ai/license/1-1/",
+        "sha256": "d7c8a9e5d1896d0a9588319cc7b1433e64645ad6d9e55632c30b78d8c038c23b"
+      },
+      "control_report_digest": "4b534deef8e9e3663f509399fb016a844016350096f6c9168e1db9fda7b919bd",
+      "control_exact_passes": 2,
+      "control_case_count": 5,
+      "control_observation": "three fixtures exhausted the 1024-token completion budget or failed to produce parseable final JSON"
+    },
+    "S": {
+      "repository": "nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-NVFP4",
+      "revision": "ff433f5493e25d631c9f12b5d55c674229923d02",
+      "snapshot_identity_receipt_digest": "57bdbfeb5f02d5ac00d96e2792ef79aaedafc81da661cc3ed9cf2645fcb6d4e5",
+      "content_manifest_digest": "1ab66e2a19621fc8a08e2478e0de4cf1ff333961ae8c95777343bcdf738d9f6e",
+      "weight_manifest_digest": "7c02e5f85f266f083faca4bb40e2785d43cd352a8b6263175c2d4e520ec19892",
+      "weight_shards": 17,
+      "weight_bytes": 80317948856,
+      "precision": "NVFP4 weights with bfloat16 KV cache",
+      "tokenizer_json_sha256": "623c34567aebb18582765289fbe23d901c62704d6518d71866e0e58db892b5b7",
+      "tokenizer_config_sha256": "10f93eabcb9b1602fbb991d6308e787ce1df28ee9cd7a1c6d1e8c3f338b957bc",
+      "special_tokens_map_sha256": "e9435fefd6d838fd9fcbbc44b97a8e3ff322be7f6dfb7e4fd2468586574bb52b",
+      "chat_template_sha256": "575fb74f54ed264df9047d0ecce3c98938aae953fb4f50356675706264cbb68a",
+      "license": {
+        "name": "NVIDIA Nemotron Open Model License",
+        "source": "official license PDF retrieved for the frozen model-card link",
+        "url": "https://www.nvidia.com/content/dam/en-zz/Solutions/license-agreements/enterprise-software/NVIDIA-Nemotron-Open-Model-License-12-12-25.pdf",
+        "last_modified": "2025-12-15",
+        "bytes": 66058,
+        "sha256": "2ffd837856bb99d4cee13d17f0b597ecfeb95c38e30abc08d3dffef7d589881d"
+      },
+      "control_report_digest": "53a13cf47a35ed0069b435fe5be8f221a589fc533fcb37c635b3ea47343bb138",
+      "control_exact_passes": 5,
+      "control_case_count": 5,
+      "control_observation": "all five strict public fixtures returned exact schema-valid JSON"
+    }
+  },
+  "control_generation": {
+    "temperature": 0,
+    "seed": 1729,
+    "max_completion_tokens": 1024,
+    "strict_json_schema": true,
+    "matched_case_count": 5
+  },
+  "runtime_observations": [
+    "both exact served model IDs and HTTP health checks were observed",
+    "the protected non-model workload remained healthy while both model controls ran",
+    "NVFP4 execution used weight-only Marlin because native FP4 compute was unavailable",
+    "Mamba prefix caching was reported experimental by the inference engine"
+  ],
+  "publication_boundary": {
+    "private_endpoints_paths_hosts_and_topology_omitted": true,
+    "raw_prompts_hidden_tasks_seeds_signing_material_and_candidate_source_omitted": true,
+    "task_bearing_campaign_started": false,
+    "model_quality_or_training_claim_supported": false,
+    "interpretation": "S demonstrated the stronger bounded single-turn ceiling; L requires the repaired iterative protocol to determine whether execution feedback overcomes its final-answer budget failures"
+  }
+}
