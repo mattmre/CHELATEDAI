@@ -10,7 +10,9 @@ Critical-review amendment: 2026-08-29
 
 Follow-up specification amendment: 2026-08-29
 
-## Amendments 1-2: validity and deterministic-execution repair
+Determinism-review amendment: 2026-08-29
+
+## Amendments 1-3: validity and deterministic-execution repair
 
 A fresh Tier-B review scored the original draft **58/100** and identified a
 critical experimental-validity defect: the inherited `source-only-v1` corpus
@@ -192,9 +194,11 @@ task in a precommitted
 18-task solvability slice containing three tasks from each of six families. The
 gate passes only if all 18 tasks produce the exact accepted output, every
 receipt binds the solver and task digests, and the prohibited-data scan is
-clean. A single wrong, missing, timed-out, or boundary-violating result fails
-the gate. The slice is corpus-validation evidence only and is excluded from
-Stage A, Stage B, training, development, and held-out evaluation.
+clean. A wrong output, scientific timeout, or boundary violation fails the gate
+immediately. An infrastructure-classified missing or timed-out node may consume
+its single frozen retry; recurrence fails the gate. The slice is
+corpus-validation evidence only and is excluded from Stage A, Stage B,
+training, development, and held-out evaluation.
 
 The evaluator-author oracle solution must also pass every v2 task, but that
 white-box check cannot substitute for the blind gate. If either check fails,
@@ -706,47 +710,124 @@ computed. A public projection records that original receipt digest while
 receiving its own projection digest after private topology fields are redacted.
 
 An accepted progress receipt must increment both the sequence number and
-progress counter by exactly one, name the preceding receipt digest, and bind a
-new content-addressed checkpoint or terminal output. Heartbeats use their own
-event kind and may advance receipt sequence but never the progress counter.
-Active jobs emit a sealed heartbeat every 30 seconds. Three consecutive missed
-heartbeats mark the job `SUSPECT`; a 10-minute interval with neither an accepted
-progress receipt nor a terminal receipt marks it `STALLED`. Repeated heartbeats
-with unchanged progress do not postpone the stall deadline.
+progress counter by exactly one, name the preceding receipt digest, and satisfy
+the frozen predicate for its node kind:
 
-Each coordinate permits one infrastructure retry from its latest accepted
-checkpoint receipt with the same isolation key and generation seed. A valid
-checkpoint binds the conversation/lineage state, candidate workspace, tool and
-sandbox state, supervisor state, generation and framework RNG states, budget
-counters, and previous output receipts. Model calls, tokens, actions, and
-candidate receipts committed before the stall remain charged; a restart does
-not reset scientific budgets or wall time. The scheduler suppresses duplicates
-by the full coordinate/input/checkpoint digest and accepts only one successor
-for a predecessor receipt. A second stall, an unverifiable checkpoint, a
-counter rollback, or conflicting successor terminates the coordinate as
-missing/fail. Scientific failures and evaluator rejections are never
-classified as infrastructure retries.
+- `COORDINATE` progress is exactly one completed model call with bound
+  request/response and debited token digests, one completed tool action with
+  bound action/result/exit/resource digests, or one completed candidate
+  evaluation with bound candidate/evaluator/outcome digests;
+- `TRAINING_TREATMENT` progress is exactly one optimizer update committed
+  **and** a forward-moving data cursor, with before/after optimizer, scheduler,
+  scaler, RNG, cursor, and adapter-state digests;
+- `BUNDLE_ADMISSION` or `SERVICE_RUNTIME` progress is one completed frozen load
+  phase, health generation, or warmup generation with its attestation and
+  output digest;
+- `CORPUS_VALIDATION` progress is one completed oracle/blind-solver evaluation
+  with solver, task, evaluator, sandbox, and outcome digests; and
+- `ARTIFACT_VALIDATION` progress is one completed manifest-named artifact check
+  with input, validator, and pass/fail output digests;
+- `ANALYSIS_REPLAY` has no intermediate progress event: only its completed,
+  schema-valid terminal replay report counts; and
+- `CONTROLLER_RUNTIME` progress is one completed dispatch or terminalization
+  state transition binding the ready-set, dependency, matching, worker-lease,
+  and resulting scheduler-state digests.
+
+A terminal event additionally binds the validated terminal output and reason.
+A new timestamp, log line, heartbeat, reserialized metadata object, checkpoint
+name, or content digest that does not satisfy the applicable completed-work
+predicate is not progress. A checkpoint may accompany genuine progress but can
+never create progress by itself. Unknown node kinds or progress-event kinds are
+rejected.
+
+Heartbeats use their own event kind and may advance receipt sequence but never
+the progress counter. Active jobs emit a sealed heartbeat every 30 seconds.
+Three consecutive missed heartbeats mark the job `SUSPECT`; a 10-minute
+interval with neither an accepted genuine-progress receipt nor a terminal
+receipt marks it `STALLED`. Repeated heartbeats and metadata-only checkpoint
+churn do not postpone the stall deadline.
+
+Every DAG node permits at most one infrastructure retry from its latest
+accepted checkpoint receipt under the same input and isolation digests.
+If no genuine-progress checkpoint exists, that sole retry restarts from the
+sealed initial-node state; it never fabricates an intermediate checkpoint.
+`BUNDLE_ADMISSION` therefore has two total load attempts: the initial attempt
+plus one retry. After admission, each immutable bundle service has one reload
+ceiling for the **entire campaign**, regardless of whether loss occurs before
+Stage A, during Stage A/B or training, or during held-out evaluation. The
+controller runtime likewise has at most one infrastructure restart for the
+campaign. A retry or reload is a ceiling, not an entitlement: semantic failure,
+evaluator rejection, an invalid output, or policy denial never triggers it.
+
+The exhausted dispositions are frozen:
+
+- `CORPUS_VALIDATION` becomes
+  `CORPUS_VALIDATION_FAILED_INFRASTRUCTURE`; Gate A fails and no campaign arm
+  starts.
+- `BUNDLE_ADMISSION` becomes `UNEVALUATED_RESOURCE_BOUND`; all dependent arms
+  are excluded without substitution.
+- `SERVICE_RUNTIME` before held-out becomes `UNEVALUATED_SERVICE_LOSS`; the
+  active consumer receives its own coordinate or training exhausted
+  disposition, unstarted dependent nodes are
+  `NOT_RUN_UPSTREAM_INFRASTRUCTURE`, and dependent held-out contrasts are
+  unevaluated rather than imputed.
+- `COORDINATE` becomes `MISSING_INFRASTRUCTURE_RETRY_EXHAUSTED`; it is a
+  stage-gate failure, or `0` only when the arm was already admitted to held-out
+  evaluation.
+- `TRAINING_TREATMENT` becomes `UNEVALUATED_TRAINING_INFRASTRUCTURE`; no new
+  seed, replicate, or checkpoint may replace it and no held-out adapter arm is
+  created.
+- `ARTIFACT_VALIDATION` or `ANALYSIS_REPLAY` becomes
+  `UNEVALUATED_ARTIFACT_INVALID`; no promotion, hypothesis support, or replay
+  claim may depend on it.
+- `CONTROLLER_RUNTIME` becomes `ABORTED_CONTROLLER_RETRY_EXHAUSTED`; remaining
+  nodes are not run and confirmatory hypotheses are unevaluated.
+
+If fatal `SERVICE_RUNTIME` loss occurs after an arm enters held-out evaluation,
+its unfinished coordinates remain missing and score `0` under the frozen
+held-out rule, but every affected confirmatory contrast is
+`UNEVALUATED_SERVICE_LOSS` and promotion is blocked. Sealed partial results are
+reported descriptively. No selective rerun is allowed.
+
+A valid checkpoint binds the conversation/lineage state, candidate workspace,
+tool and sandbox state, supervisor state, generation and framework RNG states,
+budget counters, training data cursor/optimizer state where applicable, and
+previous output receipts. Committed calls, tokens, actions, candidates, and
+optimizer updates remain charged; a restart does not reset scientific budgets
+or wall time. The scheduler suppresses duplicates by the full
+node/input/checkpoint digest and accepts only one successor for a predecessor
+receipt. A second stall, unverifiable checkpoint, counter rollback, or
+conflicting successor applies the exhausted disposition above.
 
 ### Timing, isolation, warmup, and arm order
 
 All scientific durations use the controller's monotonic clock; UTC timestamps
 are audit labels only. For a coordinate, queue delay begins when the node
 becomes dependency-ready and ends at the coordinate start defined below,
-including time awaiting a lease and the required reset/attestation. Bundle load
-and warmup are separate prerequisite DAG nodes rather than coordinate queue
-time. They are excluded from the coordinate wall-clock ceiling but included in
-campaign makespan, service-overhead, and H6 replay metrics.
+including time awaiting a lease and the task-neutral reset/attestation. Bundle
+load and warmup are separate prerequisite DAG nodes rather than coordinate
+queue time. They are excluded from the coordinate wall-clock ceiling but
+included in campaign makespan, service-overhead, and H6 replay metrics.
 
-A coordinate starts immediately before the controller sends its first
-model-bearing request, after its worker lease, empty-state reset, immutable
-bundle attestation, and warm-service receipt are sealed. It stops at the first
-sealed exact pass or, if none occurs, when the earliest model-call, token,
-action, executed-candidate, or wall-clock ceiling is reached, the final allowed
-candidate is evaluated, or an unrecoverable terminal failure is sealed. All
-model latency, model-service waiting after start, harness/tool work, candidate
-execution, evaluator time, checkpointing, stall detection, retry recovery, and
-reload time between start and stop count against coordinate wall time. The
-clock is never paused.
+Only task-neutral work may occur before coordinate start: acquire the frozen
+resource lease, reset an empty generic worker/process namespace, attest the
+immutable bundle and runtime, and verify the already-completed warm-service
+receipt. The controller then seals the coordinate-start receipt and monotonic
+start timestamp **before** it reads or materializes task-specific payload bytes,
+renders or tokenizes a task prompt, initializes `P0`/`P1`, a supervisor,
+lineage, world state, or task workspace, queries or opens task retrieval state,
+or performs any other protocol/task computation. Task identity and content
+digests may be present in the scheduler envelope solely to select and bind the
+node; their payloads may not be opened or transformed before the start receipt.
+
+A coordinate stops at the first sealed exact pass or, if none occurs, when the
+earliest model-call, token, action, executed-candidate, or wall-clock ceiling is
+reached, the final allowed candidate is evaluated, or an unrecoverable terminal
+failure is sealed. All task rendering/tokenization, protocol and supervisor
+initialization, retrieval, lineage/world-state operations, model latency,
+model-service waiting, harness/tool work, candidate execution, evaluator time,
+checkpointing, stall detection, retry recovery, and reload time after start
+count against coordinate wall time. The clock is never paused.
 
 The resource manifest freezes each logical worker's hardware/driver/runtime
 digest, model-service configuration, CPU and memory quota, accelerator lease,
@@ -792,13 +873,15 @@ budgets. If a bundle fails both attempts, it is
 `UNEVALUATED_RESOURCE_BOUND`; no arm using it starts and no substitute model is
 allowed.
 
-After held-out execution begins, one reload from the same immutable bundle is
-allowed after an infrastructure loss. Coordinates already sealed remain
-sealed; an active coordinate resumes only from a verified checkpoint under the
-single-retry rule. Reload time is reported separately and does not erase
-avoidable-idle time. A digest change, second reload failure, or inability to
-restore a protected service blocks promotion. It cannot be repaired by
-selectively rerunning failed held-out coordinates.
+After admission, the one campaign-wide reload defined above may restore the
+same immutable bundle after infrastructure loss in any stage, including before
+held-out execution. Coordinates already sealed remain sealed; an active node
+resumes only from its verified checkpoint and consumes that node's single
+retry. Reload time is reported separately, counts against an already-started
+coordinate's wall clock, and does not erase avoidable-idle time. A digest
+change, exhausted reload, or inability to restore a protected service applies
+the frozen `SERVICE_RUNTIME` disposition and cannot be repaired by selectively
+rerunning coordinates.
 
 Any avoidable accelerator idle interval over five minutes while a compatible
 runnable DAG node exists is a campaign defect. The measurable implementation
@@ -815,21 +898,42 @@ closed-schema receipt trace:
   maximum-cardinality compatible matching and lexicographic tie-breaker above.
 
 The live campaign uses `WORK_CONSERVING`. Afterward, a deterministic
-discrete-event replay applies both policies to the recorded dependency-release
-events, compatibility, resource availability, observed node service durations,
-stalls, and retry durations. The replay copies every node's terminal reason and
-scientific output digest unchanged; it may alter only dispatch and completion
-times implied by the frozen durations. Each observed duration remains attached
-to its node even if replay assigns another compatible logical worker; no
-worker-specific duration is estimated. It reports makespan, compatible-worker
-idle minutes while work was ready, queue delay, retry recovery time, and
-duplicate-suppression count. H6 is supported only if a clean replay first
-reproduces the observed work-conserving dispatch/terminal timeline from the
-sealed receipts and the counterfactual work-conserving replay has strictly less
-avoidable compatible-worker idle time than `FIFO_SERIAL`. Equal or higher idle
-time is a negative H6 result; receipt discontinuity or failed reproduction is
-`UNEVALUATED_REPLAY_INVALID`. No scheduler replay may be used as quality or
-causal live-performance evidence.
+discrete-event replay applies both policies to the sealed DAG edges, root-node
+exogenous release times, compatibility, observed node service durations,
+stalls, and retry durations. The only recorded calendar events replayed at
+their original campaign-relative offsets are exogenous worker/service
+availability and failure/recovery intervals. Recorded child dependency-release,
+dispatch, and completion timestamps are validation targets, never readiness
+inputs. A failure enters the exogenous stream only when its sealed
+infrastructure classification is independent of node content; otherwise it
+remains attached to that node's fixed service/terminal trace and is not replayed
+as a calendar event.
+
+For each policy, a root becomes ready at its frozen exogenous release. Every
+non-root release is recomputed endogenously as the replayed completion time of
+its last required predecessor; a failed required predecessor instead applies
+the frozen upstream-failure disposition and never releases the child. A node
+may dispatch only when every required predecessor has reached its required
+terminal state and a compatible worker is available. The validator rejects any
+trace in which `dispatch_time(node)` is earlier than any required predecessor's
+replayed completion time, or in which worker availability, compatibility, or
+the counterbalanced stage barrier is violated.
+
+The replay copies every node's terminal reason and scientific output digest
+unchanged; it may alter only dispatch and completion times implied by the frozen
+durations and exogenous availability/failure intervals. Each observed duration
+remains attached to its node even if replay assigns another compatible logical
+worker; no worker-specific duration is estimated. It reports makespan,
+compatible-worker idle minutes while work was ready, queue delay, retry
+recovery time, and duplicate-suppression count.
+
+H6 is supported only if a clean replay first reproduces the observed
+work-conserving dispatch/terminal timeline from the sealed receipts and the
+counterfactual work-conserving replay has strictly less avoidable
+compatible-worker idle time than `FIFO_SERIAL`. Equal or higher idle time is a
+negative H6 result; a pre-predecessor dispatch, receipt discontinuity, or failed
+reproduction is `UNEVALUATED_REPLAY_INVALID`. No scheduler replay may be used
+as quality or causal live-performance evidence.
 
 This scheduling architecture does not claim live cross-node trainer/evaluator
 transport. Such a claim requires observed exact-byte transfer, remote
@@ -856,7 +960,8 @@ scans run on every publishable artifact.
   prohibit every Lightning adapter treatment including teacher SFT, and mark
   every dependent contrast `UNEVALUATED_STOPPED_ARM`.
 - **`L1` passes Stage A, completes Stage B with fewer than 24 verified
-  successes, and `S1` is Stage-B eligible:** apply the predeclared
+  successes, and `S1` yields at least 24 verified Stage-B trajectories spanning
+  at least 10 tasks and four task families:** apply the predeclared
   `TEACHER_SFT` treatment without attributing the gap solely to model size. If
   `L1` has at least 24 successes but fails only diversity, teacher SFT remains
   ineligible.
@@ -916,9 +1021,12 @@ Before the first model-bearing campaign request:
    contain no private material;
 4. prove bundle load, the fixed non-task health/warmup sequence, candidate
    execution on a frozen non-corpus synthetic fixture, receipt binding,
-   heartbeat/stall classification, restart, budget and wall-clock continuity,
-   duplicate suppression, maximum-cardinality dispatch, resource leases, and
-   counterbalanced ordering on a non-corpus synthetic DAG;
+   heartbeat/stall classification, node-kind genuine-progress rejection of
+   metadata-only churn, every retry/reload disposition, the pre-render
+   coordinate clock boundary, budget and wall-clock continuity, duplicate
+   suppression, maximum-cardinality dispatch, resource leases, endogenous
+   dependency release with no pre-predecessor dispatch, and counterbalanced
+   ordering on a non-corpus synthetic DAG;
 5. prove on frozen non-corpus synthetic records that each training treatment's
    selection rule emits at most one canonical trajectory or pair per
    coordinate and uses the frozen serialization, objective, reference policy,
@@ -941,10 +1049,13 @@ clearance.
 
 The adversarial review must attempt corpus underdetermination, task/split
 leakage, hidden-feedback exposure, state carryover, stale promotion, evaluator
-gaming, deadlock, heartbeat-without-progress, duplicate work, selective rerun,
-budget or clock reset, model-bundle drift, resource contention, arm-order drift,
-training-treatment pooling, pair/trajectory duplication, reference-policy
-drift, checkpoint selection, and false progress. An unreviewed Gate-A artifact
+gaming, deadlock, heartbeat-without-progress, metadata-only checkpoint churn,
+task computation before coordinate start, uncovered node-kind retry, pre-heldout
+service-loss ambiguity, duplicate work, selective rerun, budget or clock reset,
+pre-predecessor dispatch, recorded-ready-time reuse, model-bundle drift,
+resource contention, arm-order drift, training-treatment pooling,
+pair/trajectory duplication, reference-policy drift, checkpoint selection, and
+false progress. An unreviewed Gate-A artifact
 change revokes `GO_CORPUS_VALIDATION` and invalidates its receipts. Any
 unreviewed campaign-manifest or validated-proof change revokes
 `GO_TASK_BEARING`.
@@ -967,6 +1078,14 @@ family-stratified resampling, exact training-record and objective rules,
 receipt-bound replay semantics, and fixed timing/resource/order controls. This
 second amendment addresses those design findings; it does not represent a
 passing re-review.
+
+The next exact-head review found remaining deterministic-execution gaps: the
+coordinate clock began after potentially task-specific setup, checkpoint churn
+could masquerade as progress, retry/reload handling did not cover training and
+pre-heldout service loss, and H6 reused observed dependency-release times
+instead of recomputing them. Amendment 3 freezes the earlier clock boundary,
+node-kind work predicates, exhaustive retry dispositions, and endogenous replay
+dependency releases. It likewise does not represent a passing re-review.
 
 At the time of this amendment, no task-bearing Nemotron request, v2 trajectory,
 adapter training step, or held-out observation had run. Model inventory, weight
