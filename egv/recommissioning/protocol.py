@@ -1,11 +1,21 @@
-"""Model-visible contracts for the repaired static and AVO-inspired pilots."""
+"""Immutable, model-visible contracts for the repaired Nemotron pilots.
+
+The classes in this module deliberately separate model-visible material from
+private evaluator records and public redacted receipts. A prompt is rendered
+only from a validated learnable-v2 package and same-coordinate feedback. Its
+content address binds the coordinate, task, model profile, token budget, seed,
+and exact messages, so generation code never accepts caller-supplied chat
+messages or evidence identifiers.
+"""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, Mapping, Sequence, Tuple
+import json
+import re
+from typing import Any, Dict, Mapping, Optional, Sequence, Tuple
 
-from ..canonical import canonical_json, digest_bytes, digest_for
+from ..canonical import canonical_json, canonical_value, digest_bytes, digest_for
 
 
 class RecommissioningProtocolError(ValueError):
@@ -25,6 +35,138 @@ DIAGNOSTIC_IDS = (
     "PROTOCOL_VIOLATION",
 )
 
+_DIGEST = re.compile(r"[0-9a-f]{64}")
+_PRIVATE_VOCABULARY = (
+    "expected_output",
+    "expected output",
+    "golden_patch",
+    "golden patch",
+    "oracle_token",
+    "oracle token",
+    "evaluator_seed",
+    "evaluator seed",
+    "private_key",
+    "private key",
+    "hidden path",
+)
+_MAX_JSON_DEPTH = 16
+_MAX_JSON_NODES = 4096
+_MAX_PUBLIC_SPEC_BYTES = 64 * 1024
+_MAX_SOURCE_CHARACTERS = 64 * 1024
+_MAX_SUMMARY_CHARACTERS = 1024
+
+
+def _require_digest(value: Any, label: str) -> str:
+    if not isinstance(value, str) or _DIGEST.fullmatch(value) is None:
+        raise RecommissioningProtocolError("{} is not a full lowercase SHA-256 digest".format(label))
+    return value
+
+
+def _require_text(value: Any, label: str, *, max_characters: int, allow_empty: bool = False) -> str:
+    if not isinstance(value, str) or (not allow_empty and not value.strip()) or len(value) > max_characters:
+        raise RecommissioningProtocolError("{} is empty or exceeds its character ceiling".format(label))
+    try:
+        value.encode("utf-8", errors="strict")
+    except UnicodeEncodeError as exc:
+        raise RecommissioningProtocolError("{} contains invalid Unicode".format(label)) from exc
+    if "\x00" in value:
+        raise RecommissioningProtocolError("{} contains a NUL character".format(label))
+    return value
+
+
+def _validate_bounded_json(value: Any, label: str, *, byte_ceiling: int) -> Any:
+    """Validate a detached JSON tree with explicit depth, node, and UTF-8 bounds."""
+
+    nodes = 0
+
+    def visit(item: Any, depth: int) -> None:
+        nonlocal nodes
+        nodes += 1
+        if nodes > _MAX_JSON_NODES:
+            raise RecommissioningProtocolError("{} exceeds the JSON node ceiling".format(label))
+        if depth > _MAX_JSON_DEPTH:
+            raise RecommissioningProtocolError("{} exceeds the JSON depth ceiling".format(label))
+        if item is None or type(item) in {bool, int}:  # bool is intentionally not treated as an integer.
+            return
+        if isinstance(item, float):
+            raise RecommissioningProtocolError("{} may not contain floating-point values".format(label))
+        if isinstance(item, str):
+            _require_text(item, label + " string", max_characters=16 * 1024, allow_empty=True)
+            return
+        if isinstance(item, Mapping):
+            for key, child in item.items():
+                _require_text(key, label + " key", max_characters=256)
+                visit(child, depth + 1)
+            return
+        if isinstance(item, (list, tuple)):
+            for child in item:
+                visit(child, depth + 1)
+            return
+        raise RecommissioningProtocolError("{} contains a non-JSON value".format(label))
+
+    visit(value, 0)
+    detached = canonical_value(value)
+    if len(canonical_json(detached).encode("utf-8")) > byte_ceiling:
+        raise RecommissioningProtocolError("{} exceeds the canonical UTF-8 byte ceiling".format(label))
+    return detached
+
+
+@dataclass(frozen=True)
+class TokenBudget:
+    """Frozen per-request and per-coordinate token/time limits."""
+
+    max_prompt_tokens: int
+    max_completion_tokens: int
+    max_total_tokens: int
+    max_coordinate_tokens: int
+    hard_timeout_ms: int
+    seed: int
+
+    def validate(self, *, max_model_len: Optional[int] = None) -> None:
+        values = (
+            (self.max_prompt_tokens, "prompt-token", 1, 131072),
+            (self.max_completion_tokens, "completion-token", 1, 8192),
+            (self.max_total_tokens, "total-token", 2, 131072),
+            (self.max_coordinate_tokens, "coordinate-token", 2, 1048576),
+            (self.hard_timeout_ms, "hard-timeout", 1, 600000),
+            (self.seed, "seed", 0, 2**31 - 1),
+        )
+        for value, label, minimum, maximum in values:
+            if type(value) is not int or not minimum <= value <= maximum:
+                raise RecommissioningProtocolError("{} budget is outside the frozen range".format(label))
+        if self.max_prompt_tokens + self.max_completion_tokens > self.max_total_tokens:
+            raise RecommissioningProtocolError("request token ceilings exceed the frozen total")
+        if self.max_total_tokens > self.max_coordinate_tokens:
+            raise RecommissioningProtocolError("request total exceeds the coordinate token ceiling")
+        if max_model_len is not None:
+            if type(max_model_len) is not int or max_model_len < 1:
+                raise RecommissioningProtocolError("model context length is malformed")
+            if self.max_total_tokens > max_model_len:
+                raise RecommissioningProtocolError("request total exceeds the frozen model context")
+
+    def manifest(self) -> Dict[str, Any]:
+        self.validate()
+        return {
+            "schema_version": "egv-recommissioning-token-budget-v2",
+            "max_prompt_tokens": self.max_prompt_tokens,
+            "max_completion_tokens": self.max_completion_tokens,
+            "max_total_tokens": self.max_total_tokens,
+            "max_coordinate_tokens": self.max_coordinate_tokens,
+            "hard_timeout_ms": self.hard_timeout_ms,
+            "seed": self.seed,
+            "temperature": 0.0,
+            "n": 1,
+        }
+
+    @property
+    def digest(self) -> str:
+        return digest_for(self.manifest())
+
+
+# Backward-compatible spelling for callers of the first draft. The value is
+# now the stronger prompt/total/coordinate budget, not the old partial budget.
+GenerationBudget = TokenBudget
+
 
 @dataclass(frozen=True)
 class PilotCoordinate:
@@ -41,163 +183,478 @@ class PilotCoordinate:
             (self.task_id, "task ID"),
             (self.task_family, "task family"),
         ):
-            if (
-                not isinstance(value, str)
-                or not value
-                or len(value) > 128
-                or any(character in value for character in ("/", "\\", "\x00"))
-            ):
+            _require_text(value, label, max_characters=128)
+            if any(character in value for character in ("/", "\\")):
                 raise RecommissioningProtocolError("{} is not a bounded identity".format(label))
         if self.model_bundle not in MODEL_BUNDLE_IDS:
             raise RecommissioningProtocolError("coordinate uses an unknown model bundle")
         if self.protocol_id not in PROTOCOL_IDS:
             raise RecommissioningProtocolError("coordinate uses an unknown protocol")
-        if not isinstance(self.seed, int) or self.seed < 0 or self.seed > 2**31 - 1:
+        if type(self.seed) is not int or self.seed < 0 or self.seed > 2**31 - 1:
             raise RecommissioningProtocolError("coordinate seed is outside the frozen range")
+
+    def identity_record(self) -> Dict[str, Any]:
+        self.validate()
+        return {
+            "campaign_id": self.campaign_id,
+            "model_bundle": self.model_bundle,
+            "protocol_id": self.protocol_id,
+            "task_id": self.task_id,
+            "task_family": self.task_family,
+            "seed": self.seed,
+        }
 
     @property
     def coordinate_id(self) -> str:
-        self.validate()
-        return digest_for(
-            {
-                "campaign_id": self.campaign_id,
-                "model_bundle": self.model_bundle,
-                "protocol_id": self.protocol_id,
-                "task_id": self.task_id,
-                "task_family": self.task_family,
-                "seed": self.seed,
-            }
-        )
+        return digest_for(self.identity_record())
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, init=False)
 class VisibleTaskPackage:
+    """Immutable adapter over one exact closed learnable-v2 model package."""
+
     task_id: str
     task_family: str
-    public_specification: str
+    split: str
+    ordinal: int
+    public_spec_json: str
     initial_source: str
-    public_examples: Tuple[Mapping[str, Any], ...]
     public_locus: str
-    manifest_digest: str
+    original_package_digest: str
+    original_task_record_digest: str
+    corpus_manifest_digest: str
+    public_spec_digest: str
+    initial_source_digest: str
+    adapter_kind: str
 
-    def public_manifest(self) -> Dict[str, Any]:
+    @classmethod
+    def _from_values(cls, **values: Any) -> "VisibleTaskPackage":
+        result = object.__new__(cls)
+        for field_name in cls.__dataclass_fields__:  # type: ignore[attr-defined]
+            object.__setattr__(result, field_name, values[field_name])
+        result.validate()
+        return result
+
+    @classmethod
+    def from_learnable_v2(
+        cls, validated_package: Mapping[str, Any], corpus_manifest_digest: str
+    ) -> "VisibleTaskPackage":
+        """Revalidate and retain every original learnable-v2 content binding."""
+
+        try:
+            from ..evaluation.learnable import validate_model_visible_package
+
+            package = validate_model_visible_package(validated_package)
+        except (ImportError, KeyError, ValueError, TypeError) as exc:
+            raise RecommissioningProtocolError("learnable-v2 model package failed closed validation") from exc
+        _require_digest(corpus_manifest_digest, "corpus manifest digest")
+        task = package["task"]
+        spec = task["public_spec"]
+        return cls._from_values(
+            task_id=task["task_id"],
+            task_family=task["family_id"],
+            split=task["split"],
+            ordinal=task["ordinal"],
+            public_spec_json=canonical_json(spec),
+            initial_source=task["starter_source"],
+            public_locus="module:main",
+            original_package_digest=package["package_digest"],
+            original_task_record_digest=task["record_digest"],
+            corpus_manifest_digest=corpus_manifest_digest,
+            public_spec_digest=task["public_spec_digest"],
+            initial_source_digest=task["starter_source_digest"],
+            adapter_kind="LEARNABLE_V2",
+        )
+
+    @classmethod
+    def for_test(
+        cls,
+        *,
+        task_id: str,
+        task_family: str,
+        public_spec: Mapping[str, Any],
+        initial_source: str,
+        split: str = "train",
+        ordinal: int = 1,
+        public_locus: str = "module:main",
+    ) -> "VisibleTaskPackage":
+        """Construct a visibly test-only fixture; production runners must not call this."""
+
+        spec = _validate_bounded_json(public_spec, "test public specification", byte_ceiling=_MAX_PUBLIC_SPEC_BYTES)
+        source_digest = digest_bytes(initial_source.encode("utf-8"))
+        task_core = {
+            "schema_version": "egv-test-visible-task-v1",
+            "task_id": task_id,
+            "family_id": task_family,
+            "split": split,
+            "ordinal": ordinal,
+            "public_spec": spec,
+            "public_spec_digest": digest_for(spec),
+            "starter_source": initial_source,
+            "starter_source_digest": source_digest,
+        }
+        record_digest = digest_for(task_core)
+        package_core = {
+            "schema_version": "egv-test-model-package-v1",
+            "task": {**task_core, "record_digest": record_digest},
+        }
+        return cls._from_values(
+            task_id=task_id,
+            task_family=task_family,
+            split=split,
+            ordinal=ordinal,
+            public_spec_json=canonical_json(spec),
+            initial_source=initial_source,
+            public_locus=public_locus,
+            original_package_digest=digest_for(package_core),
+            original_task_record_digest=record_digest,
+            corpus_manifest_digest=digest_for("test-corpus-manifest"),
+            public_spec_digest=digest_for(spec),
+            initial_source_digest=source_digest,
+            adapter_kind="TEST_ONLY",
+        )
+
+    @property
+    def structured_public_spec(self) -> Dict[str, Any]:
+        return json.loads(self.public_spec_json)
+
+    def model_visible_record(self) -> Dict[str, Any]:
         return {
-            "schema_version": "egv-learnable-visible-task-v2",
+            "schema_version": "egv-recommissioning-model-visible-task-v2",
+            "adapter_kind": self.adapter_kind,
             "task_id": self.task_id,
             "task_family": self.task_family,
-            "public_specification": self.public_specification,
+            "split": self.split,
+            "ordinal": self.ordinal,
+            "public_spec": self.structured_public_spec,
             "initial_source": self.initial_source,
-            "public_examples": [dict(example) for example in self.public_examples],
             "public_locus": self.public_locus,
+            "original_package_digest": self.original_package_digest,
+            "original_task_record_digest": self.original_task_record_digest,
+            "corpus_manifest_digest": self.corpus_manifest_digest,
+            "public_spec_digest": self.public_spec_digest,
+            "initial_source_digest": self.initial_source_digest,
         }
 
-    def validate(self, coordinate: PilotCoordinate) -> None:
-        coordinate.validate()
-        if self.task_id != coordinate.task_id or self.task_family != coordinate.task_family:
-            raise RecommissioningProtocolError("visible task package differs from its coordinate")
-        for value, label, ceiling in (
-            (self.public_specification, "public specification", 32 * 1024),
-            (self.initial_source, "initial source", 256 * 1024),
-            (self.public_locus, "public locus", 512),
+    @property
+    def task_package_digest(self) -> str:
+        return digest_for(self.model_visible_record())
+
+    @property
+    def manifest_digest(self) -> str:
+        """Compatibility name for the first draft."""
+
+        return self.task_package_digest
+
+    def validate(self, coordinate: Optional[PilotCoordinate] = None) -> None:
+        _require_text(self.task_id, "task ID", max_characters=128)
+        _require_text(self.task_family, "task family", max_characters=128)
+        _require_text(self.split, "task split", max_characters=32)
+        if type(self.ordinal) is not int or self.ordinal < 1 or self.ordinal > 10000:
+            raise RecommissioningProtocolError("task ordinal is outside the frozen range")
+        if coordinate is not None:
+            coordinate.validate()
+            if self.task_id != coordinate.task_id or self.task_family != coordinate.task_family:
+                raise RecommissioningProtocolError("visible task package differs from its coordinate")
+        try:
+            spec = json.loads(self.public_spec_json)
+        except (UnicodeError, ValueError) as exc:
+            raise RecommissioningProtocolError("public specification is not canonical JSON") from exc
+        if canonical_json(spec) != self.public_spec_json:
+            raise RecommissioningProtocolError("public specification JSON is not canonical")
+        _validate_bounded_json(spec, "public specification", byte_ceiling=_MAX_PUBLIC_SPEC_BYTES)
+        _require_text(self.initial_source, "initial source", max_characters=_MAX_SOURCE_CHARACTERS)
+        _require_text(self.public_locus, "public locus", max_characters=128)
+        if self.public_locus != "module:main":
+            raise RecommissioningProtocolError("learnable-v2 public locus must be module:main")
+        for value, label in (
+            (self.original_package_digest, "original package digest"),
+            (self.original_task_record_digest, "original task-record digest"),
+            (self.corpus_manifest_digest, "corpus manifest digest"),
+            (self.public_spec_digest, "public-spec digest"),
+            (self.initial_source_digest, "initial-source digest"),
         ):
-            if not isinstance(value, str) or not value.strip() or len(value.encode("utf-8")) > ceiling:
-                raise RecommissioningProtocolError("{} is empty or exceeds its byte ceiling".format(label))
-        if (
-            not isinstance(self.public_examples, tuple)
-            or len(self.public_examples) > 8
-            or any(not isinstance(example, Mapping) for example in self.public_examples)
-        ):
-            raise RecommissioningProtocolError("public examples are outside the frozen envelope")
-        if not isinstance(self.manifest_digest, str) or len(self.manifest_digest) != 64:
-            raise RecommissioningProtocolError("visible task manifest digest is malformed")
-        if self.manifest_digest != digest_for(self.public_manifest()):
-            raise RecommissioningProtocolError("visible task manifest digest does not bind the package")
-        prohibited = ("expected_output", "golden_patch", "oracle_token", "evaluator_seed", "private_key")
-        visible = "\n".join(
-            (
-                self.public_specification,
-                self.initial_source,
-                canonical_json(list(self.public_examples)),
-                self.public_locus,
-            )
-        ).lower()
-        if any(token in visible for token in prohibited):
+            _require_digest(value, label)
+        if self.public_spec_digest != digest_for(spec):
+            raise RecommissioningProtocolError("public-spec digest does not bind the structured specification")
+        if self.initial_source_digest != digest_bytes(self.initial_source.encode("utf-8")):
+            raise RecommissioningProtocolError("initial-source digest does not bind the source")
+        from ..evaluation.sandbox import validate_candidate_source_contract
+
+        source_violation = validate_candidate_source_contract(self.initial_source.encode("utf-8"))
+        if source_violation is not None:
+            raise RecommissioningProtocolError("initial source violates pure-return-v1: {}".format(source_violation))
+        if self.adapter_kind not in {"LEARNABLE_V2", "TEST_ONLY"}:
+            raise RecommissioningProtocolError("task adapter kind is not closed")
+        visible = canonical_json(self.model_visible_record()).lower()
+        if any(token in visible for token in _PRIVATE_VOCABULARY):
             raise RecommissioningProtocolError("visible task package contains evaluator-private vocabulary")
 
 
 @dataclass(frozen=True)
-class AttemptFeedback:
-    coordinate_id: str
-    evidence_id: str
-    attempt_index: int
-    diagnostic: str
-    source_digest: str
-    source: str
-    public_summary: str
+class ChatMessage:
+    """One immutable model-visible chat message."""
+
+    role: str
+    content: str
 
     def validate(self) -> None:
-        if not isinstance(self.coordinate_id, str) or len(self.coordinate_id) != 64:
-            raise RecommissioningProtocolError("feedback coordinate digest is malformed")
-        if not isinstance(self.evidence_id, str) or not self.evidence_id or len(self.evidence_id) > 128:
-            raise RecommissioningProtocolError("feedback evidence ID is not bounded")
-        if not isinstance(self.attempt_index, int) or self.attempt_index < 1 or self.attempt_index > 6:
-            raise RecommissioningProtocolError("feedback attempt index is outside Stage-A budget")
-        if self.diagnostic not in DIAGNOSTIC_IDS:
-            raise RecommissioningProtocolError("feedback diagnostic is outside the visible enum")
-        if not isinstance(self.source_digest, str) or len(self.source_digest) != 64:
-            raise RecommissioningProtocolError("feedback source digest is malformed")
-        if (
-            not isinstance(self.source, str)
-            or not self.source.strip()
-            or len(self.source.encode("utf-8")) > 64 * 1024
-            or digest_bytes(self.source.encode("utf-8")) != self.source_digest
-        ):
-            raise RecommissioningProtocolError("feedback source bytes do not match the bounded digest")
-        if not isinstance(self.public_summary, str) or len(self.public_summary.encode("utf-8")) > 1024:
-            raise RecommissioningProtocolError("feedback summary exceeds the byte ceiling")
-        lowered = self.public_summary.lower()
-        if any(token in lowered for token in ("expected output", "golden", "oracle", "evaluator seed", "hidden path")):
-            raise RecommissioningProtocolError("feedback summary contains evaluator-private material")
+        if self.role not in {"system", "user"}:
+            raise RecommissioningProtocolError("prompt contains an unapproved chat role")
+        _require_text(self.content, "chat content", max_characters=256 * 1024)
 
-    def record(self) -> Dict[str, Any]:
+    def record(self) -> Dict[str, str]:
         self.validate()
-        return {
-            "coordinate_id": self.coordinate_id,
-            "evidence_id": self.evidence_id,
-            "attempt_index": self.attempt_index,
-            "diagnostic": self.diagnostic,
-            "source_digest": self.source_digest,
-            "source": self.source,
-            "public_summary": self.public_summary,
-        }
+        return {"role": self.role, "content": self.content}
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, init=False)
 class PromptEnvelope:
+    """Content-addressed immutable prompt and all experimental bindings."""
+
     coordinate_id: str
+    model_bundle: str
+    task_id: str
+    public_locus: str
+    task_adapter_kind: str
+    task_package_digest: str
+    model_profile_digest: str
+    budget_digest: str
+    seed: int
     protocol_id: str
     attempt_index: int
     visible_evidence_ids: Tuple[str, ...]
-    messages: Tuple[Mapping[str, str], ...]
+    messages: Tuple[ChatMessage, ...]
     prompt_digest: str
+
+    @classmethod
+    def _build(cls, **values: Any) -> "PromptEnvelope":
+        core = {
+            "schema_version": "egv-recommissioning-prompt-envelope-v2",
+            "coordinate_id": values["coordinate_id"],
+            "model_bundle": values["model_bundle"],
+            "task_id": values["task_id"],
+            "public_locus": values["public_locus"],
+            "task_adapter_kind": values["task_adapter_kind"],
+            "task_package_digest": values["task_package_digest"],
+            "model_profile_digest": values["model_profile_digest"],
+            "budget_digest": values["budget_digest"],
+            "seed": values["seed"],
+            "protocol_id": values["protocol_id"],
+            "attempt_index": values["attempt_index"],
+            "visible_evidence_ids": list(values["visible_evidence_ids"]),
+            "messages": [message.record() for message in values["messages"]],
+        }
+        values["prompt_digest"] = digest_for(core)
+        result = object.__new__(cls)
+        for field_name in cls.__dataclass_fields__:  # type: ignore[attr-defined]
+            object.__setattr__(result, field_name, values[field_name])
+        result.validate()
+        return result
+
+    def core_record(self) -> Dict[str, Any]:
+        return {
+            "schema_version": "egv-recommissioning-prompt-envelope-v2",
+            "coordinate_id": self.coordinate_id,
+            "model_bundle": self.model_bundle,
+            "task_id": self.task_id,
+            "public_locus": self.public_locus,
+            "task_adapter_kind": self.task_adapter_kind,
+            "task_package_digest": self.task_package_digest,
+            "model_profile_digest": self.model_profile_digest,
+            "budget_digest": self.budget_digest,
+            "seed": self.seed,
+            "protocol_id": self.protocol_id,
+            "attempt_index": self.attempt_index,
+            "visible_evidence_ids": list(self.visible_evidence_ids),
+            "messages": [message.record() for message in self.messages],
+        }
+
+    def validate(
+        self,
+        *,
+        coordinate: Optional[PilotCoordinate] = None,
+        task: Optional[VisibleTaskPackage] = None,
+        model_profile_digest: Optional[str] = None,
+        budget: Optional[TokenBudget] = None,
+    ) -> None:
+        for value, label in (
+            (self.coordinate_id, "prompt coordinate digest"),
+            (self.task_package_digest, "prompt task-package digest"),
+            (self.model_profile_digest, "prompt model-profile digest"),
+            (self.budget_digest, "prompt budget digest"),
+            (self.prompt_digest, "prompt digest"),
+        ):
+            _require_digest(value, label)
+        _require_text(self.task_id, "prompt task ID", max_characters=128)
+        if self.model_bundle not in MODEL_BUNDLE_IDS:
+            raise RecommissioningProtocolError("prompt model bundle is not closed")
+        if self.public_locus != "module:main":
+            raise RecommissioningProtocolError("prompt public locus is outside learnable-v2")
+        if self.task_adapter_kind not in {"LEARNABLE_V2", "TEST_ONLY"}:
+            raise RecommissioningProtocolError("prompt task adapter kind is not closed")
+        if self.protocol_id not in PROTOCOL_IDS:
+            raise RecommissioningProtocolError("prompt protocol is not closed")
+        if type(self.seed) is not int or self.seed < 0 or self.seed > 2**31 - 1:
+            raise RecommissioningProtocolError("prompt seed is outside the frozen range")
+        if type(self.attempt_index) is not int or not 1 <= self.attempt_index <= 6:
+            raise RecommissioningProtocolError("prompt attempt index is outside the six-candidate budget")
+        if not isinstance(self.visible_evidence_ids, tuple) or list(self.visible_evidence_ids) != sorted(
+            set(self.visible_evidence_ids)
+        ):
+            raise RecommissioningProtocolError("prompt evidence IDs are not sorted and unique")
+        if any(not isinstance(value, str) or len(value) > 96 for value in self.visible_evidence_ids):
+            raise RecommissioningProtocolError("prompt evidence ID is not bounded")
+        if not isinstance(self.messages, tuple) or len(self.messages) != 2:
+            raise RecommissioningProtocolError("prompt must contain exactly two immutable messages")
+        for message in self.messages:
+            if not isinstance(message, ChatMessage):
+                raise RecommissioningProtocolError("prompt messages must use the immutable ChatMessage type")
+            message.validate()
+        if tuple(message.role for message in self.messages) != ("system", "user"):
+            raise RecommissioningProtocolError("prompt roles differ from the frozen order")
+        if digest_for(self.core_record()) != self.prompt_digest:
+            raise RecommissioningProtocolError("prompt digest does not bind the complete immutable envelope")
+        if coordinate is not None:
+            coordinate.validate()
+            expected = (
+                coordinate.coordinate_id,
+                coordinate.model_bundle,
+                coordinate.task_id,
+                coordinate.protocol_id,
+                coordinate.seed,
+            )
+            actual = (self.coordinate_id, self.model_bundle, self.task_id, self.protocol_id, self.seed)
+            if actual != expected:
+                raise RecommissioningProtocolError("prompt differs from its coordinate binding")
+        if task is not None:
+            task.validate(coordinate)
+            if (
+                self.task_package_digest != task.task_package_digest
+                or self.task_id != task.task_id
+                or self.public_locus != task.public_locus
+                or self.task_adapter_kind != task.adapter_kind
+            ):
+                raise RecommissioningProtocolError("prompt differs from its task-package binding")
+        if model_profile_digest is not None and self.model_profile_digest != _require_digest(
+            model_profile_digest, "expected model-profile digest"
+        ):
+            raise RecommissioningProtocolError("prompt differs from its model-profile binding")
+        if budget is not None:
+            budget.validate()
+            if self.budget_digest != budget.digest or self.seed != budget.seed:
+                raise RecommissioningProtocolError("prompt differs from its budget or seed binding")
+
+
+@dataclass(frozen=True, init=False)
+class AttemptFeedback:
+    """Model-visible feedback bound to the exact preceding private evaluation."""
+
+    coordinate_id: str
+    task_package_digest: str
+    model_profile_digest: str
+    attempt_index: int
+    prior_prompt_digest: str
+    generation_receipt_digest: str
+    evaluator_receipt_digest: str
+    candidate_digest: str
+    source_digest: str
+    source: str
+    diagnostic: str
+    public_summary: str
+    previous_feedback_digest: Optional[str]
+    feedback_digest: str
+
+    @property
+    def evidence_id(self) -> str:
+        return "egv-feedback-" + self.feedback_digest
+
+    def core_record(self) -> Dict[str, Any]:
+        return {
+            "schema_version": "egv-recommissioning-feedback-v2",
+            "coordinate_id": self.coordinate_id,
+            "task_package_digest": self.task_package_digest,
+            "model_profile_digest": self.model_profile_digest,
+            "attempt_index": self.attempt_index,
+            "prior_prompt_digest": self.prior_prompt_digest,
+            "generation_receipt_digest": self.generation_receipt_digest,
+            "evaluator_receipt_digest": self.evaluator_receipt_digest,
+            "candidate_digest": self.candidate_digest,
+            "source_digest": self.source_digest,
+            "source": self.source,
+            "diagnostic": self.diagnostic,
+            "public_summary": self.public_summary,
+            "previous_feedback_digest": self.previous_feedback_digest,
+        }
+
+    def model_visible_record(self) -> Dict[str, Any]:
+        self.validate()
+        return {**self.core_record(), "evidence_id": self.evidence_id, "feedback_digest": self.feedback_digest}
+
+    def public_redacted_record(self) -> Dict[str, Any]:
+        self.validate()
+        value = self.core_record()
+        value.pop("source")
+        return {**value, "evidence_id": self.evidence_id, "feedback_digest": self.feedback_digest}
+
+    def validate(self) -> None:
+        for value, label in (
+            (self.coordinate_id, "feedback coordinate digest"),
+            (self.task_package_digest, "feedback task-package digest"),
+            (self.model_profile_digest, "feedback model-profile digest"),
+            (self.prior_prompt_digest, "feedback prior-prompt digest"),
+            (self.generation_receipt_digest, "feedback generation-receipt digest"),
+            (self.evaluator_receipt_digest, "feedback evaluator-receipt digest"),
+            (self.candidate_digest, "feedback candidate digest"),
+            (self.source_digest, "feedback source digest"),
+            (self.feedback_digest, "feedback digest"),
+        ):
+            _require_digest(value, label)
+        if self.previous_feedback_digest is not None:
+            _require_digest(self.previous_feedback_digest, "previous feedback digest")
+        if type(self.attempt_index) is not int or not 1 <= self.attempt_index <= 6:
+            raise RecommissioningProtocolError("feedback attempt index is outside the frozen budget")
+        if self.diagnostic not in DIAGNOSTIC_IDS:
+            raise RecommissioningProtocolError("feedback diagnostic is outside the visible enum")
+        _require_text(self.source, "feedback source", max_characters=_MAX_SOURCE_CHARACTERS)
+        if digest_bytes(self.source.encode("utf-8")) != self.source_digest:
+            raise RecommissioningProtocolError("feedback source bytes do not match the bounded digest")
+        _require_text(
+            self.public_summary,
+            "feedback summary",
+            max_characters=_MAX_SUMMARY_CHARACTERS,
+            allow_empty=True,
+        )
+        lowered = self.public_summary.lower()
+        if any(token in lowered for token in _PRIVATE_VOCABULARY):
+            raise RecommissioningProtocolError("feedback summary contains evaluator-private material")
+        if digest_for(self.core_record()) != self.feedback_digest:
+            raise RecommissioningProtocolError("feedback digest does not bind the full lineage record")
 
 
 def _feedback_records(
-    feedback: Sequence[AttemptFeedback], *, coordinate_id: str
+    feedback: Sequence[AttemptFeedback],
+    *,
+    coordinate: PilotCoordinate,
+    task: VisibleTaskPackage,
+    model_profile_digest: str,
 ) -> Tuple[Dict[str, Any], ...]:
     records = []
-    seen = set()
-    for item in feedback:
+    previous: Optional[str] = None
+    for expected_index, item in enumerate(feedback, start=1):
+        if not isinstance(item, AttemptFeedback):
+            raise RecommissioningProtocolError("feedback lineage contains an untyped record")
         item.validate()
-        if item.coordinate_id != coordinate_id:
-            raise RecommissioningProtocolError("feedback crossed an arm/task/seed coordinate boundary")
-        if item.attempt_index in seen:
-            raise RecommissioningProtocolError("feedback contains duplicate attempt indices")
-        seen.add(item.attempt_index)
-        records.append(item.record())
-    records.sort(key=lambda value: value["attempt_index"])
-    if [record["attempt_index"] for record in records] != list(range(1, len(records) + 1)):
-        raise RecommissioningProtocolError("feedback is not a contiguous same-coordinate lineage")
+        if (
+            item.coordinate_id != coordinate.coordinate_id
+            or item.task_package_digest != task.task_package_digest
+            or item.model_profile_digest != model_profile_digest
+        ):
+            raise RecommissioningProtocolError("feedback crossed an arm/task/seed/model coordinate boundary")
+        if item.attempt_index != expected_index or item.previous_feedback_digest != previous:
+            raise RecommissioningProtocolError("feedback is not a contiguous full-digest lineage")
+        records.append(item.model_visible_record())
+        previous = item.feedback_digest
     return tuple(records)
 
 
@@ -205,32 +662,42 @@ def render_prompt(
     coordinate: PilotCoordinate,
     task: VisibleTaskPackage,
     *,
+    model_profile_digest: str,
+    budget: TokenBudget,
     attempt_index: int,
     feedback: Sequence[AttemptFeedback] = (),
 ) -> PromptEnvelope:
-    """Render P0 or P1 while enforcing the same task/seed/split reset boundary.
-
-    The caller owns one fresh feedback sequence per coordinate.  This function
-    accepts no campaign-global memory and therefore cannot silently carry state
-    across arms, tasks, seeds, or evaluation splits.
-    """
+    """Render a frozen P0/P1 prompt from one exact coordinate and lineage."""
 
     coordinate.validate()
     task.validate(coordinate)
-    if not isinstance(attempt_index, int) or attempt_index < 1 or attempt_index > 6:
+    _require_digest(model_profile_digest, "model-profile digest")
+    budget.validate()
+    if budget.seed != coordinate.seed:
+        raise RecommissioningProtocolError("budget seed differs from the coordinate seed")
+    if type(attempt_index) is not int or not 1 <= attempt_index <= 6:
         raise RecommissioningProtocolError("attempt index is outside the frozen six-candidate budget")
-    records = _feedback_records(feedback, coordinate_id=coordinate.coordinate_id)
+    records = _feedback_records(
+        feedback,
+        coordinate=coordinate,
+        task=task,
+        model_profile_digest=model_profile_digest,
+    )
     if len(records) != attempt_index - 1:
         raise RecommissioningProtocolError("feedback lineage does not match the next attempt")
-    if coordinate.protocol_id == "P0" and len(records) > 1:
-        visible_records = records[-1:]
+    if coordinate.protocol_id == "P0" and records:
+        latest = dict(records[-1])
+        # P0 is the static control: it receives the immediately preceding
+        # candidate/diagnostic only, not even the prior-lineage pointer.
+        latest.pop("previous_feedback_digest", None)
+        visible_records = (latest,)
     else:
         visible_records = records
     visible_ids = tuple(sorted(record["evidence_id"] for record in visible_records))
     system = (
-        "You are a bounded code-repair variation operator. The public specification is authoritative. "
-        "Return one schema-constrained candidate only. Never request hidden tests, expected values, "
-        "credentials, network access, filesystem discovery, or evaluator authority."
+        "You are a bounded code-repair variation operator. The structured public specification is "
+        "authoritative. Return one schema-constrained candidate only. Never emit tool calls or request "
+        "hidden tests, expected values, credentials, network access, filesystem discovery, or evaluator authority."
     )
     protocol = {
         "P0": (
@@ -238,76 +705,141 @@ def render_prompt(
             "only the immediately preceding bounded diagnostic. Do not infer persistent memory."
         ),
         "P1": (
-            "AVO-inspired treatment: inspect the same-coordinate lineage, avoid repeated source digests, "
-            "state a short falsifiable change summary, and choose PROPOSE, EDIT, CRITIQUE, or COMMIT. "
+            "AVO-inspired treatment: inspect the same-coordinate full-digest lineage, avoid repeated source "
+            "digests, state a short falsifiable change summary, and choose PROPOSE, EDIT, CRITIQUE, or COMMIT. "
             "The supervisor is deterministic and supplies no extra model call or private information."
         ),
     }[coordinate.protocol_id]
     user_value = {
-        "schema_version": "egv-recommissioning-visible-prompt-v1",
-        "coordinate_id": coordinate.coordinate_id,
-        "protocol_id": coordinate.protocol_id,
+        "schema_version": "egv-recommissioning-model-visible-prompt-v2",
+        "coordinate": {**coordinate.identity_record(), "coordinate_id": coordinate.coordinate_id},
+        "task": task.model_visible_record(),
+        "task_package_digest": task.task_package_digest,
+        "model_profile_digest": model_profile_digest,
+        "budget_digest": budget.digest,
         "attempt_index": attempt_index,
-        "task": {
-            **task.public_manifest(),
-            "manifest_digest": task.manifest_digest,
-        },
         "visible_feedback": list(visible_records),
         "response_contract": {
             "fields": ["action", "source", "summary", "evidence_ids"],
-            "source": "complete Python module implementing the public locus",
+            "source_contract": "pure-return-v1 complete Python module",
+            "public_locus": task.public_locus,
             "evidence_ids": list(visible_ids),
+            "tool_calls": "forbidden",
         },
     }
     messages = (
-        {"role": "system", "content": system},
-        {"role": "user", "content": protocol + "\n" + canonical_json(user_value)},
+        ChatMessage("system", system),
+        ChatMessage("user", protocol + "\n" + canonical_json(user_value)),
     )
-    digest = digest_for([dict(message) for message in messages])
-    return PromptEnvelope(
+    return PromptEnvelope._build(
         coordinate_id=coordinate.coordinate_id,
+        model_bundle=coordinate.model_bundle,
+        task_id=task.task_id,
+        public_locus=task.public_locus,
+        task_adapter_kind=task.adapter_kind,
+        task_package_digest=task.task_package_digest,
+        model_profile_digest=model_profile_digest,
+        budget_digest=budget.digest,
+        seed=coordinate.seed,
         protocol_id=coordinate.protocol_id,
         attempt_index=attempt_index,
         visible_evidence_ids=visible_ids,
         messages=messages,
-        prompt_digest=digest,
     )
 
 
 def lineage_feedback(
     *,
     coordinate: PilotCoordinate,
-    attempt_index: int,
+    task: VisibleTaskPackage,
+    model_profile_digest: str,
+    prior_prompt: PromptEnvelope,
+    generation_receipt: Mapping[str, Any],
+    evaluator_receipt: Mapping[str, Any],
+    candidate: Any,
     diagnostic: str,
-    source: str,
     public_summary: str,
+    previous_feedback: Optional[AttemptFeedback] = None,
 ) -> AttemptFeedback:
+    """Bind visible feedback to exact prompt, generation, evaluation, and source."""
+
+    # Local import prevents a module cycle while still requiring the concrete
+    # client types at the trust boundary.
+    from .client import PublicGenerationReceipt, TypedCandidateResponse
+
     coordinate.validate()
-    source_digest = digest_bytes(source.encode("utf-8"))
-    evidence_id = "egv-feedback-{}-{}-{}".format(
-        coordinate.coordinate_id[:12], attempt_index, source_digest[:12]
+    task.validate(coordinate)
+    _require_digest(model_profile_digest, "model-profile digest")
+    prior_prompt.validate(
+        coordinate=coordinate,
+        task=task,
+        model_profile_digest=model_profile_digest,
     )
-    result = AttemptFeedback(
-        coordinate.coordinate_id,
-        evidence_id,
-        attempt_index,
-        diagnostic,
-        source_digest,
-        source,
-        public_summary,
-    )
+    if not isinstance(candidate, TypedCandidateResponse):
+        raise RecommissioningProtocolError("feedback candidate is not a typed response")
+    candidate.validate(public_locus=task.public_locus, visible_evidence_ids=prior_prompt.visible_evidence_ids)
+    public_candidate = candidate.public_redacted_record()
+    candidate_digest = digest_for(public_candidate)
+    receipt = PublicGenerationReceipt.validate_record(generation_receipt)
+    for field, expected in (
+        ("coordinate_id", coordinate.coordinate_id),
+        ("task_package_digest", task.task_package_digest),
+        ("model_profile_digest", model_profile_digest),
+        ("prompt_digest", prior_prompt.prompt_digest),
+        ("candidate_digest", candidate_digest),
+        ("source_digest", candidate.source_digest),
+    ):
+        if receipt[field] != expected:
+            raise RecommissioningProtocolError("generation receipt differs from feedback {} binding".format(field))
+    evaluator = _validate_bounded_json(evaluator_receipt, "evaluator receipt", byte_ceiling=256 * 1024)
+    if not isinstance(evaluator, Mapping) or not evaluator:
+        raise RecommissioningProtocolError("evaluator receipt must be a non-empty closed record")
+    if previous_feedback is not None:
+        previous_feedback.validate()
+        if previous_feedback.coordinate_id != coordinate.coordinate_id:
+            raise RecommissioningProtocolError("previous feedback crossed a coordinate boundary")
+        if previous_feedback.attempt_index != prior_prompt.attempt_index - 1:
+            raise RecommissioningProtocolError("previous feedback is not the immediate lineage parent")
+        previous_digest = previous_feedback.feedback_digest
+    else:
+        if prior_prompt.attempt_index != 1:
+            raise RecommissioningProtocolError("later feedback requires its immediate lineage parent")
+        previous_digest = None
+    values = {
+        "coordinate_id": coordinate.coordinate_id,
+        "task_package_digest": task.task_package_digest,
+        "model_profile_digest": model_profile_digest,
+        "attempt_index": prior_prompt.attempt_index,
+        "prior_prompt_digest": prior_prompt.prompt_digest,
+        "generation_receipt_digest": receipt["receipt_digest"],
+        "evaluator_receipt_digest": digest_for(evaluator),
+        "candidate_digest": candidate_digest,
+        "source_digest": candidate.source_digest,
+        "source": candidate.source,
+        "diagnostic": diagnostic,
+        "public_summary": public_summary,
+        "previous_feedback_digest": previous_digest,
+    }
+    core = {"schema_version": "egv-recommissioning-feedback-v2", **values}
+    values["feedback_digest"] = digest_for(core)
+    result = object.__new__(AttemptFeedback)
+    for field_name in AttemptFeedback.__dataclass_fields__:  # type: ignore[attr-defined]
+        object.__setattr__(result, field_name, values[field_name])
     result.validate()
     return result
 
 
 __all__ = [
     "AttemptFeedback",
+    "ChatMessage",
     "DIAGNOSTIC_IDS",
+    "GenerationBudget",
     "MODEL_BUNDLE_IDS",
     "PROTOCOL_IDS",
     "PilotCoordinate",
     "PromptEnvelope",
     "RecommissioningProtocolError",
+    "TokenBudget",
     "VisibleTaskPackage",
     "lineage_feedback",
     "render_prompt",
