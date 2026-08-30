@@ -19,7 +19,7 @@ from urllib import error, request
 
 SCHEMA_VERSION = "egv-model-control-matrix-v1"
 SEED = 1729
-MAX_TOKENS = 1024
+DEFAULT_MAX_TOKENS = 1024
 SYSTEM_MESSAGE = (
     "Follow the user instruction exactly. Return only the JSON object required "
     "by the supplied strict response schema."
@@ -125,7 +125,13 @@ CASES = (
 )
 
 
-def _run_case(base_url: str, model: str, case: dict[str, Any], timeout: float) -> dict[str, Any]:
+def _run_case(
+    base_url: str,
+    model: str,
+    case: dict[str, Any],
+    timeout: float,
+    max_tokens: int,
+) -> dict[str, Any]:
     messages = [
         {"role": "system", "content": SYSTEM_MESSAGE},
         {"role": "user", "content": case["instruction"]},
@@ -135,7 +141,7 @@ def _run_case(base_url: str, model: str, case: dict[str, Any], timeout: float) -
         "messages": messages,
         "temperature": 0,
         "seed": SEED,
-        "max_tokens": MAX_TOKENS,
+        "max_tokens": max_tokens,
         "response_format": {
             "type": "json_schema",
             "json_schema": {
@@ -196,7 +202,10 @@ def main() -> int:
     parser.add_argument("--precision", required=True)
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--timeout", default=180.0, type=float)
+    parser.add_argument("--max-tokens", default=DEFAULT_MAX_TOKENS, type=int)
     args = parser.parse_args()
+    if not 1 <= args.max_tokens <= 8192:
+        parser.error("--max-tokens must be between 1 and 8192")
 
     health_started = time.monotonic()
     health_call = request.Request(args.base_url.rstrip("/") + "/health", method="GET")
@@ -212,7 +221,15 @@ def main() -> int:
     cases = []
     for case in CASES:
         try:
-            cases.append(_run_case(args.base_url, args.model, case, args.timeout))
+            cases.append(
+                _run_case(
+                    args.base_url,
+                    args.model,
+                    case,
+                    args.timeout,
+                    args.max_tokens,
+                )
+            )
         except (RuntimeError, error.URLError, TimeoutError):
             cases.append(
                 {
@@ -236,7 +253,7 @@ def main() -> int:
         "generation": {
             "temperature": 0,
             "seed": SEED,
-            "max_tokens": MAX_TOKENS,
+            "max_tokens": args.max_tokens,
             "strict_json_schema": True,
         },
         "service": {

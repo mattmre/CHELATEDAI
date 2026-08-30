@@ -40,10 +40,13 @@
         "url": "https://openmdw.ai/license/1-1/",
         "sha256": "d7c8a9e5d1896d0a9588319cc7b1433e64645ad6d9e55632c30b78d8c038c23b"
       },
-      "control_report_digest": "4b534deef8e9e3663f509399fb016a844016350096f6c9168e1db9fda7b919bd",
-      "control_exact_passes": 2,
+      "control_report_digest": "3465bc8aad3f1f65acb925337e7d79963b082b5d376dfc7afda6c5fcc308f13d",
+      "control_exact_passes": 5,
       "control_case_count": 5,
-      "control_observation": "three fixtures exhausted the 1024-token completion budget or failed to produce parseable final JSON"
+      "control_prompt_tokens": 306,
+      "control_completion_tokens": 6614,
+      "control_elapsed_seconds": 86.847371,
+      "control_observation": "all five fixtures passed at the frozen 4096-token ceiling; the 1024-token control passed 2/5 and the 2048-token calibration passed 4/5 because reasoning consumed the smaller ceilings before final JSON"
     },
     "S": {
       "repository": "nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-NVFP4",
@@ -66,18 +69,58 @@
         "bytes": 66058,
         "sha256": "2ffd837856bb99d4cee13d17f0b597ecfeb95c38e30abc08d3dffef7d589881d"
       },
-      "control_report_digest": "53a13cf47a35ed0069b435fe5be8f221a589fc533fcb37c635b3ea47343bb138",
+      "control_report_digest": "059a5953b8d0ce1eeb604ccd0f7c1de86bd9f42de137db965fc350c6400e942e",
       "control_exact_passes": 5,
       "control_case_count": 5,
+      "control_prompt_tokens": 306,
+      "control_completion_tokens": 926,
+      "control_elapsed_seconds": 59.399128,
       "control_observation": "all five strict public fixtures returned exact schema-valid JSON"
     }
   },
   "control_generation": {
     "temperature": 0,
     "seed": 1729,
-    "max_completion_tokens": 1024,
+    "max_completion_tokens": 4096,
     "strict_json_schema": true,
-    "matched_case_count": 5
+    "matched_case_count": 5,
+    "pre_task_budget_calibration": [
+      {
+        "model": "L",
+        "max_completion_tokens": 1024,
+        "exact_passes": 2,
+        "case_count": 5,
+        "report_digest": "4b534deef8e9e3663f509399fb016a844016350096f6c9168e1db9fda7b919bd"
+      },
+      {
+        "model": "L",
+        "max_completion_tokens": 2048,
+        "exact_passes": 4,
+        "case_count": 5,
+        "report_digest": "eea916265a55c3b6e3f7cf46b8508244e45f832d079c9283cf5563439ab7524c"
+      },
+      {
+        "model": "L",
+        "max_completion_tokens": 4096,
+        "exact_passes": 5,
+        "case_count": 5,
+        "report_digest": "3465bc8aad3f1f65acb925337e7d79963b082b5d376dfc7afda6c5fcc308f13d"
+      },
+      {
+        "model": "S",
+        "max_completion_tokens": 1024,
+        "exact_passes": 5,
+        "case_count": 5,
+        "report_digest": "53a13cf47a35ed0069b435fe5be8f221a589fc533fcb37c635b3ea47343bb138"
+      },
+      {
+        "model": "S",
+        "max_completion_tokens": 4096,
+        "exact_passes": 5,
+        "case_count": 5,
+        "report_digest": "059a5953b8d0ce1eeb604ccd0f7c1de86bd9f42de137db965fc350c6400e942e"
+      }
+    ]
   },
   "runtime_observations": [
     "both exact served model IDs and HTTP health checks were observed",
@@ -90,6 +133,6 @@
     "raw_prompts_hidden_tasks_seeds_signing_material_and_candidate_source_omitted": true,
     "task_bearing_campaign_started": false,
     "model_quality_or_training_claim_supported": false,
-    "interpretation": "S demonstrated the stronger bounded single-turn ceiling; L requires the repaired iterative protocol to determine whether execution feedback overcomes its final-answer budget failures"
+    "interpretation": "both models cleared the public control matrix at the frozen 4096-token ceiling; S used materially fewer completion tokens, while task-distribution and protocol effects remain untested"
   }
 }
