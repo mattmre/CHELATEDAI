@@ -52,8 +52,11 @@ learnable-v2 corpus manifest may use the production adapter kind. The retained
 proof binds the full canonical manifest, exact task index, task record, package,
 and corpus digest, and is revalidated whenever the task is used. No process-local
 underscore token or object-identity capability supplies authority. `render_prompt`
-is the canonical renderer, while the production client independently rejects
-the explicit test-only adapter kind.
+is the canonical renderer. Callers cannot supply message text to the envelope
+constructor: both construction and every later validation deterministically
+rebuild the system and user messages from the retained validated coordinate,
+task, budget, attempt, and feedback lineage. The production client independently
+rejects the explicit test-only adapter kind.
 
 `PinnedTokenizerRenderer.from_local_tokenizer` computes the tokenizer pin from
 a recursively enumerated, sorted manifest of every regular file under the

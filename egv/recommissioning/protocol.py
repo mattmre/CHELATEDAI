@@ -643,6 +643,10 @@ class PromptEnvelope:
     visible_evidence_ids: Tuple[str, ...]
     messages: Tuple[ChatMessage, ...]
     prompt_digest: str
+    _coordinate: PilotCoordinate = field(repr=False, compare=False)
+    _task: VisibleTaskPackage = field(repr=False, compare=False)
+    _budget: TokenBudget = field(repr=False, compare=False)
+    _feedback: Tuple[AttemptFeedback, ...] = field(repr=False, compare=False)
 
     @classmethod
     def _build(
@@ -653,8 +657,7 @@ class PromptEnvelope:
         model_profile_digest: str,
         budget: TokenBudget,
         attempt_index: int,
-        visible_evidence_ids: Tuple[str, ...],
-        messages: Tuple[ChatMessage, ...],
+        feedback: Sequence[AttemptFeedback] = (),
     ) -> "PromptEnvelope":
         if not isinstance(coordinate, PilotCoordinate) or not isinstance(task, VisibleTaskPackage):
             raise RecommissioningProtocolError("prompt construction requires validated coordinate and task objects")
@@ -664,6 +667,15 @@ class PromptEnvelope:
         budget.validate()
         if budget.seed != coordinate.seed:
             raise RecommissioningProtocolError("prompt budget seed differs from its coordinate")
+        frozen_feedback = tuple(feedback)
+        visible_evidence_ids, messages = _canonical_prompt_material(
+            coordinate=coordinate,
+            task=task,
+            model_profile_digest=model_profile_digest,
+            budget=budget,
+            attempt_index=attempt_index,
+            feedback=frozen_feedback,
+        )
         values = {
             "coordinate_id": coordinate.coordinate_id,
             "model_bundle": coordinate.model_bundle,
@@ -681,6 +693,10 @@ class PromptEnvelope:
             "attempt_index": attempt_index,
             "visible_evidence_ids": visible_evidence_ids,
             "messages": messages,
+            "_coordinate": coordinate,
+            "_task": task,
+            "_budget": budget,
+            "_feedback": frozen_feedback,
         }
         core = {
             "schema_version": "egv-recommissioning-prompt-envelope-v2",
@@ -742,6 +758,24 @@ class PromptEnvelope:
         model_profile_digest: Optional[str] = None,
         budget: Optional[TokenBudget] = None,
     ) -> None:
+        if (
+            not isinstance(self._coordinate, PilotCoordinate)
+            or not isinstance(self._task, VisibleTaskPackage)
+            or not isinstance(self._budget, TokenBudget)
+            or not isinstance(self._feedback, tuple)
+        ):
+            raise RecommissioningProtocolError("prompt lost its validated canonical-render inputs")
+        self._coordinate.validate()
+        self._task.validate(self._coordinate)
+        self._budget.validate()
+        canonical_evidence_ids, canonical_messages = _canonical_prompt_material(
+            coordinate=self._coordinate,
+            task=self._task,
+            model_profile_digest=self.model_profile_digest,
+            budget=self._budget,
+            attempt_index=self.attempt_index,
+            feedback=self._feedback,
+        )
         for value, label in (
             (self.coordinate_id, "prompt coordinate digest"),
             (self.task_package_digest, "prompt task-package digest"),
@@ -780,49 +814,57 @@ class PromptEnvelope:
             message.validate()
         if tuple(message.role for message in self.messages) != ("system", "user"):
             raise RecommissioningProtocolError("prompt roles differ from the frozen order")
+        if self.visible_evidence_ids != canonical_evidence_ids or self.messages != canonical_messages:
+            raise RecommissioningProtocolError("prompt messages differ from the canonical deterministic render")
         if digest_for(self.core_record()) != self.prompt_digest:
             raise RecommissioningProtocolError("prompt digest does not bind the complete immutable envelope")
-        if coordinate is not None:
-            coordinate.validate()
-            expected = (
-                coordinate.coordinate_id,
-                coordinate.model_bundle,
-                coordinate.task_id,
-                coordinate.protocol_id,
-                coordinate.seed,
-                coordinate.generation_receipt_key_id,
-                coordinate.evaluator_key_id,
-                coordinate.evaluator_profile_digest,
-            )
-            actual = (
-                self.coordinate_id,
-                self.model_bundle,
-                self.task_id,
-                self.protocol_id,
-                self.seed,
-                self.generation_receipt_key_id,
-                self.evaluator_key_id,
-                self.evaluator_profile_digest,
-            )
-            if actual != expected:
-                raise RecommissioningProtocolError("prompt differs from its coordinate binding")
-        if task is not None:
-            task.validate(coordinate)
-            if (
-                self.task_package_digest != task.task_package_digest
-                or self.task_id != task.task_id
-                or self.public_locus != task.public_locus
-                or self.task_adapter_kind != task.adapter_kind
-            ):
-                raise RecommissioningProtocolError("prompt differs from its task-package binding")
+        bound_coordinate = coordinate or self._coordinate
+        bound_coordinate.validate()
+        expected = (
+            self._coordinate.coordinate_id,
+            self._coordinate.model_bundle,
+            self._coordinate.task_id,
+            self._coordinate.protocol_id,
+            self._coordinate.seed,
+            self._coordinate.generation_receipt_key_id,
+            self._coordinate.evaluator_key_id,
+            self._coordinate.evaluator_profile_digest,
+        )
+        actual = (
+            self.coordinate_id,
+            self.model_bundle,
+            self.task_id,
+            self.protocol_id,
+            self.seed,
+            self.generation_receipt_key_id,
+            self.evaluator_key_id,
+            self.evaluator_profile_digest,
+        )
+        if actual != expected:
+            raise RecommissioningProtocolError("prompt differs from its coordinate binding")
+        if self._coordinate.identity_record() != bound_coordinate.identity_record():
+            raise RecommissioningProtocolError("prompt canonical coordinate differs from its supplied coordinate")
+        bound_task = task or self._task
+        if task is not None and self._task.task_package_digest != task.task_package_digest:
+            raise RecommissioningProtocolError("prompt canonical task-package differs from its supplied task")
+        bound_task.validate(bound_coordinate)
+        if (
+            self.task_package_digest != self._task.task_package_digest
+            or self.task_id != self._task.task_id
+            or self.public_locus != self._task.public_locus
+            or self.task_adapter_kind != self._task.adapter_kind
+        ):
+            raise RecommissioningProtocolError("prompt differs from its task-package binding")
         if model_profile_digest is not None and self.model_profile_digest != _require_digest(
             model_profile_digest, "expected model-profile digest"
         ):
             raise RecommissioningProtocolError("prompt differs from its model-profile binding")
-        if budget is not None:
-            budget.validate()
-            if self.budget_digest != budget.digest or self.seed != budget.seed:
-                raise RecommissioningProtocolError("prompt differs from its budget or seed binding")
+        bound_budget = budget or self._budget
+        bound_budget.validate()
+        if self.budget_digest != self._budget.digest or self.seed != self._budget.seed:
+            raise RecommissioningProtocolError("prompt differs from its budget or seed binding")
+        if self._budget.digest != bound_budget.digest:
+            raise RecommissioningProtocolError("prompt canonical budget differs from its supplied budget")
 
 
 @dataclass(frozen=True, init=False)
@@ -942,7 +984,7 @@ def _feedback_records(
     return tuple(records)
 
 
-def render_prompt(
+def _canonical_prompt_material(
     coordinate: PilotCoordinate,
     task: VisibleTaskPackage,
     *,
@@ -950,9 +992,8 @@ def render_prompt(
     budget: TokenBudget,
     attempt_index: int,
     feedback: Sequence[AttemptFeedback] = (),
-) -> PromptEnvelope:
-    """Render a frozen P0/P1 prompt from one exact coordinate and lineage."""
-
+) -> Tuple[Tuple[str, ...], Tuple[ChatMessage, ...]]:
+    """Derive the only accepted model-visible messages from validated inputs."""
     coordinate.validate()
     task.validate(coordinate)
     _require_digest(model_profile_digest, "model-profile digest")
@@ -1016,14 +1057,27 @@ def render_prompt(
         ChatMessage("system", system),
         ChatMessage("user", protocol + "\n" + canonical_json(user_value)),
     )
+    return visible_ids, messages
+
+
+def render_prompt(
+    coordinate: PilotCoordinate,
+    task: VisibleTaskPackage,
+    *,
+    model_profile_digest: str,
+    budget: TokenBudget,
+    attempt_index: int,
+    feedback: Sequence[AttemptFeedback] = (),
+) -> PromptEnvelope:
+    """Render a frozen P0/P1 prompt from one exact coordinate and lineage."""
+
     return PromptEnvelope._build(
         coordinate=coordinate,
         task=task,
         model_profile_digest=model_profile_digest,
         budget=budget,
         attempt_index=attempt_index,
-        visible_evidence_ids=visible_ids,
-        messages=messages,
+        feedback=feedback,
     )
 
 

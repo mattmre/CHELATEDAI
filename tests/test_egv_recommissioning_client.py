@@ -394,7 +394,7 @@ class RequestAndBudgetTests(unittest.TestCase):
         service = _service(profile=profile)
         ledger = InMemoryCoordinateTokenLedger.for_test()
         tokenization = _tokenization(envelope, profile)
-        with self.assertRaisesRegex(Exception, "prompt digest"):
+        with self.assertRaisesRegex(Exception, "canonical deterministic render"):
             service.build_request(forged, budget, tokenization, ledger)
 
     def test_request_rejects_profile_budget_seed_and_tokenizer_substitution(self):

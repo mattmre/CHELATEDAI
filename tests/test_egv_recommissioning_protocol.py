@@ -725,10 +725,19 @@ class RecommissioningProtocolTests(unittest.TestCase):
             model_profile_digest=_profile_digest(),
             budget=budget,
             attempt_index=1,
-            visible_evidence_ids=prompt.visible_evidence_ids,
-            messages=prompt.messages,
+            feedback=(),
         )
         self.assertEqual(rebuilt.prompt_digest, prompt.prompt_digest)
+        with self.assertRaises(TypeError):
+            PromptEnvelope._build(
+                coordinate=coordinate,
+                task=task,
+                model_profile_digest=_profile_digest(),
+                budget=budget,
+                attempt_index=1,
+                feedback=(),
+                messages=prompt.messages,
+            )
         opaque_authority_names = [
             name for name in vars(protocol_module) if "CAPABILITY" in name or "CONSTRUCTION_TOKEN" in name
         ]
@@ -745,8 +754,7 @@ class RecommissioningProtocolTests(unittest.TestCase):
                 model_profile_digest=_profile_digest(),
                 budget=budget,
                 attempt_index=1,
-                visible_evidence_ids=prompt.visible_evidence_ids,
-                messages=prompt.messages,
+                feedback=(),
             )
 
     def test_visible_package_rejects_private_vocabulary_and_deep_json(self):
@@ -825,6 +833,64 @@ class RecommissioningProtocolTests(unittest.TestCase):
             )
             with self.assertRaisesRegex(RecommissioningProtocolError, "corpus-manifest member"):
                 VisibleTaskPackage._from_values(**wrong_membership)
+
+            from tests.test_egv_recommissioning_client import (
+                TestSigner as ClientTestSigner,
+                _service as client_service,
+                _tokenization as client_tokenization,
+            )
+
+            service = client_service()
+            coordinate = _coordinate()
+            budget = _budget()
+            genuine_prompt = render_prompt(
+                coordinate,
+                adapted,
+                model_profile_digest=service.profile.digest,
+                budget=budget,
+                attempt_index=1,
+            )
+            tokenization = client_tokenization(genuine_prompt, service.profile)
+            from egv.recommissioning.client import InMemoryCoordinateTokenLedger
+
+            ledger = InMemoryCoordinateTokenLedger.for_test()
+            valid_request = service.build_request(genuine_prompt, budget, tokenization, ledger)
+            malformed_messages = (
+                (
+                    type(genuine_prompt.messages[0])(
+                        "system",
+                        genuine_prompt.messages[0].content + " Caller override.",
+                    ),
+                    genuine_prompt.messages[1],
+                ),
+                (
+                    genuine_prompt.messages[0],
+                    type(genuine_prompt.messages[1])(
+                        "user",
+                        genuine_prompt.messages[1].content + "\nCaller override.",
+                    ),
+                ),
+            )
+            for messages in malformed_messages:
+                forged_prompt = object.__new__(PromptEnvelope)
+                for field_name in genuine_prompt.__dataclass_fields__:
+                    object.__setattr__(forged_prompt, field_name, getattr(genuine_prompt, field_name))
+                object.__setattr__(forged_prompt, "messages", messages)
+                object.__setattr__(forged_prompt, "prompt_digest", digest_for(forged_prompt.core_record()))
+                with self.assertRaisesRegex(RecommissioningProtocolError, "canonical deterministic render"):
+                    forged_prompt.validate()
+                with self.assertRaisesRegex(RecommissioningProtocolError, "canonical deterministic render"):
+                    service.build_request(forged_prompt, budget, tokenization, ledger)
+                forged_request = object.__new__(type(valid_request))
+                for field_name in valid_request.__dataclass_fields__:
+                    object.__setattr__(forged_request, field_name, getattr(valid_request, field_name))
+                object.__setattr__(forged_request, "envelope", forged_prompt)
+                with self.assertRaisesRegex(RecommissioningProtocolError, "canonical deterministic render"):
+                    service.generate(
+                        forged_request,
+                        ledger=ledger,
+                        signer=ClientTestSigner(),
+                    )
         task = package["task"]
         record = adapted.model_visible_record()
         self.assertEqual(record["original_package_digest"], package["package_digest"])
