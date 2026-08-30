@@ -3,7 +3,7 @@ import tempfile
 from pathlib import Path
 import unittest
 
-from egv.canonical import canonical_json, digest_for
+from egv.canonical import canonical_json, digest_bytes, digest_for
 from egv.evaluation.learnable import (
     FAMILY_SPECS_V2,
     HIDDEN_CASES_PER_TASK,
@@ -112,11 +112,20 @@ class TestLearnablePublicOnlySolvability(LearnableEvaluationTestCase):
         for task in self.corpus.tasks:
             source = build_reference_source(task.public_record)
             self.assertIsNone(validate_candidate_source_contract(source))
-            self.assertEqual(task.public_record["reference_source_digest"], __import__("hashlib").sha256(source).hexdigest())
+            self.assertNotIn("reference_source_digest", task.public_record)
             source_text = source.decode("utf-8")
             for case in task.hidden_cases:
                 self.assertNotIn(case.input_value["case_nonce"], source_text)
                 self.assertNotIn(canonical_json(case.expected_output), source_text)
+
+    def test_reference_solution_fingerprint_is_absent_from_public_surfaces(self) -> None:
+        task = self.corpus.split("blind")[0]
+        reference_digest = digest_bytes(build_reference_source(task.public_record))
+        public_manifest_text = canonical_json(self.corpus.public_manifest())
+        model_package_text = canonical_json(self.corpus.model_visible_package(task.task_id))
+        for text in (public_manifest_text, model_package_text):
+            self.assertNotIn("reference_source_digest", text)
+            self.assertNotIn(reference_digest, text)
 
     def test_blind_model_visible_package_passes_every_hidden_case_locally(self) -> None:
         report = run_local_solvability_proof(self.corpus, self.root / "local-proof", splits=("blind",))
@@ -178,8 +187,8 @@ class TestLearnableAdversarialValidation(LearnableEvaluationTestCase):
             validate_public_task_record(tampered_spec)
 
         tampered_digest = dict(task.public_record)
-        tampered_digest["reference_source_digest"] = "0" * 64
-        with self.assertRaisesRegex(ValueError, "reference source digest mismatch"):
+        tampered_digest["record_digest"] = "0" * 64
+        with self.assertRaisesRegex(ValueError, "public task record digest mismatch"):
             validate_public_task_record(tampered_digest)
 
     def test_manifest_reordering_and_tamper_fail_closed(self) -> None:
