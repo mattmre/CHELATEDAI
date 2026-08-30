@@ -10,12 +10,14 @@ messages or evidence identifiers.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+import base64
+from dataclasses import dataclass, field
 import json
 import re
 from typing import Any, Dict, Mapping, Optional, Sequence, Tuple
 
-from ..canonical import canonical_json, canonical_value, digest_bytes, digest_for
+from ..canonical import canonical_bytes, canonical_json, canonical_value, digest_bytes, digest_for
+from ..receipts import key_id_for_public_key, load_public_key, public_key_bytes
 
 
 class RecommissioningProtocolError(ValueError):
@@ -54,11 +56,28 @@ _MAX_JSON_NODES = 4096
 _MAX_PUBLIC_SPEC_BYTES = 64 * 1024
 _MAX_SOURCE_CHARACTERS = 64 * 1024
 _MAX_SUMMARY_CHARACTERS = 1024
+_PUBLIC_TASK_REF = re.compile(r"task_[0-9a-f]{64}")
+_SENSITIVE_PUBLIC_PATTERNS = (
+    re.compile(r"(?i)\b(?:api[-_ ]?key|credential|password|passwd|secret|bearer|authorization)\b"),
+    re.compile(r"(?i)\bsk-[a-z0-9_-]{8,}\b"),
+    re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----"),
+    re.compile(r"(?i)(?:[a-z]:[\\/]|\\\\|/(?:home|users|var|tmp|etc|opt|srv)/)"),
+    re.compile(r"(?i)\b(?:https?|ssh|file)://|\blocalhost\b|\b127\.0\.0\.1\b|::1"),
+    re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b"),
+    re.compile(r"(?i)\b[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}\b"),
+    re.compile(r"(?i)\b(?:worker|node|spark|trainer|evaluator|router|gateway|postgres|qdrant|redis)[-_]?\d+\b"),
+)
 
 
 def _require_digest(value: Any, label: str) -> str:
     if not isinstance(value, str) or _DIGEST.fullmatch(value) is None:
         raise RecommissioningProtocolError("{} is not a full lowercase SHA-256 digest".format(label))
+    return value
+
+
+def _require_key_id(value: Any, label: str) -> str:
+    if not isinstance(value, str) or re.fullmatch(r"key_[0-9a-f]{64}", value) is None:
+        raise RecommissioningProtocolError("{} is not a content-derived Ed25519 key ID".format(label))
     return value
 
 
@@ -72,6 +91,92 @@ def _require_text(value: Any, label: str, *, max_characters: int, allow_empty: b
     if "\x00" in value:
         raise RecommissioningProtocolError("{} contains a NUL character".format(label))
     return value
+
+
+def _decode_ed25519_signature(value: Any, label: str) -> bytes:
+    if not isinstance(value, str) or not value:
+        raise RecommissioningProtocolError("{} must be canonical Ed25519 base64url".format(label))
+    padded = value + "=" * (-len(value) % 4)
+    try:
+        decoded = base64.b64decode(padded.encode("ascii"), altchars=b"-_", validate=True)
+    except (ValueError, UnicodeError) as exc:
+        raise RecommissioningProtocolError("{} must be canonical Ed25519 base64url".format(label)) from exc
+    canonical = base64.urlsafe_b64encode(decoded).decode("ascii").rstrip("=")
+    if len(decoded) != 64 or canonical != value:
+        raise RecommissioningProtocolError("{} must be canonical Ed25519 base64url".format(label))
+    return decoded
+
+
+def _public_key_identity(public_key: Any, label: str) -> Tuple[bytes, str]:
+    try:
+        raw = public_key_bytes(public_key)
+        return raw, key_id_for_public_key(raw)
+    except Exception as exc:
+        raise RecommissioningProtocolError("{} is not a valid Ed25519 public key".format(label)) from exc
+
+
+def _signer_identity(signer: Any, label: str) -> Tuple[bytes, str]:
+    if not callable(getattr(signer, "sign_bytes", None)) or not hasattr(signer, "public_key"):
+        raise RecommissioningProtocolError("{} does not expose an Ed25519 signing interface".format(label))
+    raw, expected_key_id = _public_key_identity(signer.public_key, label + " public key")
+    if getattr(signer, "key_id", None) != expected_key_id:
+        raise RecommissioningProtocolError("{} key ID is not derived from its public key".format(label))
+    return raw, expected_key_id
+
+
+def _verify_ed25519(
+    *,
+    public_key: Any,
+    key_id: Any,
+    signature: Any,
+    payload: Mapping[str, Any],
+    label: str,
+) -> bytes:
+    raw, expected_key_id = _public_key_identity(public_key, label + " public key")
+    if key_id != expected_key_id:
+        raise RecommissioningProtocolError("{} uses an unexpected signing key".format(label))
+    try:
+        load_public_key(raw).verify(
+            _decode_ed25519_signature(signature, label + " signature"),
+            canonical_bytes(payload),
+        )
+    except RecommissioningProtocolError:
+        raise
+    except Exception as exc:
+        raise RecommissioningProtocolError("{} Ed25519 signature is invalid".format(label)) from exc
+    return raw
+
+
+def _reject_sensitive_public_text(value: str, label: str) -> None:
+    _require_text(value, label, max_characters=_MAX_SUMMARY_CHARACTERS, allow_empty=True)
+    lowered = value.lower()
+    if any(token in lowered for token in _PRIVATE_VOCABULARY) or any(
+        pattern.search(value) for pattern in _SENSITIVE_PUBLIC_PATTERNS
+    ):
+        raise RecommissioningProtocolError("{} contains prohibited private material".format(label))
+
+
+def _scan_public_projection(value: Any, label: str) -> None:
+    if isinstance(value, str):
+        if any(pattern.search(value) for pattern in _SENSITIVE_PUBLIC_PATTERNS):
+            raise RecommissioningProtocolError("{} contains prohibited public data".format(label))
+        return
+    if isinstance(value, Mapping):
+        for key, child in value.items():
+            if key == "signature" or key.endswith("_digest"):
+                continue
+            _scan_public_projection(child, label)
+        return
+    if isinstance(value, (list, tuple)):
+        for child in value:
+            _scan_public_projection(child, label)
+
+
+def public_task_ref(task_package_digest: str) -> str:
+    """Return the only task identifier admitted to a public projection."""
+
+    digest = _require_digest(task_package_digest, "task-package digest for public reference")
+    return "task_" + digest_for({"task_package_digest": digest})
 
 
 def _validate_bounded_json(value: Any, label: str, *, byte_ceiling: int) -> Any:
@@ -176,6 +281,9 @@ class PilotCoordinate:
     task_id: str
     task_family: str
     seed: int
+    generation_receipt_key_id: str
+    evaluator_key_id: str
+    evaluator_profile_digest: str
 
     def validate(self) -> None:
         for value, label in (
@@ -192,6 +300,9 @@ class PilotCoordinate:
             raise RecommissioningProtocolError("coordinate uses an unknown protocol")
         if type(self.seed) is not int or self.seed < 0 or self.seed > 2**31 - 1:
             raise RecommissioningProtocolError("coordinate seed is outside the frozen range")
+        _require_key_id(self.generation_receipt_key_id, "coordinate generation-receipt key ID")
+        _require_key_id(self.evaluator_key_id, "coordinate evaluator key ID")
+        _require_digest(self.evaluator_profile_digest, "coordinate evaluator-profile digest")
 
     def identity_record(self) -> Dict[str, Any]:
         self.validate()
@@ -202,6 +313,9 @@ class PilotCoordinate:
             "task_id": self.task_id,
             "task_family": self.task_family,
             "seed": self.seed,
+            "generation_receipt_key_id": self.generation_receipt_key_id,
+            "evaluator_key_id": self.evaluator_key_id,
+            "evaluator_profile_digest": self.evaluator_profile_digest,
         }
 
     @property
@@ -223,9 +337,12 @@ class VisibleTaskPackage:
     original_package_digest: str
     original_task_record_digest: str
     corpus_manifest_digest: str
+    corpus_task_index: int
+    corpus_membership_digest: str
     public_spec_digest: str
     initial_source_digest: str
     adapter_kind: str
+    _validated_corpus_manifest_json: Optional[str] = field(repr=False, compare=False)
 
     @classmethod
     def _from_values(cls, **values: Any) -> "VisibleTaskPackage":
@@ -237,18 +354,36 @@ class VisibleTaskPackage:
 
     @classmethod
     def from_learnable_v2(
-        cls, validated_package: Mapping[str, Any], corpus_manifest_digest: str
+        cls, validated_package: Mapping[str, Any], validated_corpus_manifest: Mapping[str, Any]
     ) -> "VisibleTaskPackage":
-        """Revalidate and retain every original learnable-v2 content binding."""
+        """Revalidate a package and prove exact membership in the full corpus manifest."""
 
         try:
-            from ..evaluation.learnable import validate_model_visible_package
+            from ..evaluation.learnable import validate_learnable_manifest, validate_model_visible_package
 
             package = validate_model_visible_package(validated_package)
+            corpus_manifest = validate_learnable_manifest(validated_corpus_manifest)
         except (ImportError, KeyError, ValueError, TypeError) as exc:
-            raise RecommissioningProtocolError("learnable-v2 model package failed closed validation") from exc
-        _require_digest(corpus_manifest_digest, "corpus manifest digest")
+            raise RecommissioningProtocolError(
+                "learnable-v2 package or corpus manifest failed closed validation"
+            ) from exc
         task = package["task"]
+        matching_indexes = [
+            index for index, manifest_task in enumerate(corpus_manifest["tasks"]) if manifest_task == task
+        ]
+        if matching_indexes != [
+            next(
+                (
+                    index
+                    for index, manifest_task in enumerate(corpus_manifest["tasks"])
+                    if manifest_task.get("task_id") == task["task_id"]
+                ),
+                -1,
+            )
+        ]:
+            raise RecommissioningProtocolError("learnable-v2 package is not an exact unique corpus-manifest member")
+        task_index = matching_indexes[0]
+        corpus_manifest_digest = corpus_manifest["manifest_digest"]
         spec = task["public_spec"]
         return cls._from_values(
             task_id=task["task_id"],
@@ -261,9 +396,20 @@ class VisibleTaskPackage:
             original_package_digest=package["package_digest"],
             original_task_record_digest=task["record_digest"],
             corpus_manifest_digest=corpus_manifest_digest,
+            corpus_task_index=task_index,
+            corpus_membership_digest=digest_for(
+                {
+                    "schema_version": "egv-learnable-corpus-membership-v1",
+                    "corpus_manifest_digest": corpus_manifest_digest,
+                    "corpus_task_index": task_index,
+                    "task_record_digest": task["record_digest"],
+                    "package_digest": package["package_digest"],
+                }
+            ),
             public_spec_digest=task["public_spec_digest"],
             initial_source_digest=task["starter_source_digest"],
             adapter_kind="LEARNABLE_V2",
+            _validated_corpus_manifest_json=canonical_json(corpus_manifest),
         )
 
     @classmethod
@@ -309,9 +455,20 @@ class VisibleTaskPackage:
             original_package_digest=digest_for(package_core),
             original_task_record_digest=record_digest,
             corpus_manifest_digest=digest_for("test-corpus-manifest"),
+            corpus_task_index=0,
+            corpus_membership_digest=digest_for(
+                {
+                    "schema_version": "egv-test-corpus-membership-v1",
+                    "corpus_manifest_digest": digest_for("test-corpus-manifest"),
+                    "corpus_task_index": 0,
+                    "task_record_digest": record_digest,
+                    "package_digest": digest_for(package_core),
+                }
+            ),
             public_spec_digest=digest_for(spec),
             initial_source_digest=source_digest,
             adapter_kind="TEST_ONLY",
+            _validated_corpus_manifest_json=None,
         )
 
     @property
@@ -332,6 +489,8 @@ class VisibleTaskPackage:
             "original_package_digest": self.original_package_digest,
             "original_task_record_digest": self.original_task_record_digest,
             "corpus_manifest_digest": self.corpus_manifest_digest,
+            "corpus_task_index": self.corpus_task_index,
+            "corpus_membership_digest": self.corpus_membership_digest,
             "public_spec_digest": self.public_spec_digest,
             "initial_source_digest": self.initial_source_digest,
         }
@@ -352,6 +511,8 @@ class VisibleTaskPackage:
         _require_text(self.split, "task split", max_characters=32)
         if type(self.ordinal) is not int or self.ordinal < 1 or self.ordinal > 10000:
             raise RecommissioningProtocolError("task ordinal is outside the frozen range")
+        if type(self.corpus_task_index) is not int or not 0 <= self.corpus_task_index < 10000:
+            raise RecommissioningProtocolError("corpus task index is outside the frozen range")
         if coordinate is not None:
             coordinate.validate()
             if self.task_id != coordinate.task_id or self.task_family != coordinate.task_family:
@@ -371,6 +532,7 @@ class VisibleTaskPackage:
             (self.original_package_digest, "original package digest"),
             (self.original_task_record_digest, "original task-record digest"),
             (self.corpus_manifest_digest, "corpus manifest digest"),
+            (self.corpus_membership_digest, "corpus membership digest"),
             (self.public_spec_digest, "public-spec digest"),
             (self.initial_source_digest, "initial-source digest"),
         ):
@@ -386,6 +548,58 @@ class VisibleTaskPackage:
             raise RecommissioningProtocolError("initial source violates pure-return-v1: {}".format(source_violation))
         if self.adapter_kind not in {"LEARNABLE_V2", "TEST_ONLY"}:
             raise RecommissioningProtocolError("task adapter kind is not closed")
+        if self.adapter_kind == "LEARNABLE_V2":
+            if not isinstance(self._validated_corpus_manifest_json, str):
+                raise RecommissioningProtocolError("learnable-v2 task lost its full corpus-manifest proof")
+            try:
+                from ..evaluation.learnable import validate_learnable_manifest
+
+                corpus_manifest = validate_learnable_manifest(json.loads(self._validated_corpus_manifest_json))
+            except (ImportError, KeyError, ValueError, TypeError) as exc:
+                raise RecommissioningProtocolError("learnable-v2 corpus-manifest proof failed validation") from exc
+            if canonical_json(corpus_manifest) != self._validated_corpus_manifest_json:
+                raise RecommissioningProtocolError("learnable-v2 corpus-manifest proof is not canonical")
+            if corpus_manifest["manifest_digest"] != self.corpus_manifest_digest:
+                raise RecommissioningProtocolError("task corpus-manifest digest differs from its full proof")
+            try:
+                manifest_task = corpus_manifest["tasks"][self.corpus_task_index]
+            except (IndexError, KeyError, TypeError) as exc:
+                raise RecommissioningProtocolError("task corpus membership index is invalid") from exc
+            expected_task_bindings = {
+                "task_id": self.task_id,
+                "family_id": self.task_family,
+                "split": self.split,
+                "ordinal": self.ordinal,
+                "public_spec": spec,
+                "public_spec_digest": self.public_spec_digest,
+                "starter_source": self.initial_source,
+                "starter_source_digest": self.initial_source_digest,
+                "record_digest": self.original_task_record_digest,
+            }
+            for field_name, expected_value in expected_task_bindings.items():
+                if manifest_task.get(field_name) != expected_value:
+                    raise RecommissioningProtocolError("task differs from corpus-manifest member {}".format(field_name))
+            package_core = {"schema_version": "egv-learnable-model-package-v2", "task": manifest_task}
+            if digest_for(package_core) != self.original_package_digest:
+                raise RecommissioningProtocolError("task package digest differs from its corpus-manifest member")
+        elif self._validated_corpus_manifest_json is not None:
+            raise RecommissioningProtocolError("test task may not carry production corpus-manifest authority")
+        membership_schema = (
+            "egv-learnable-corpus-membership-v1"
+            if self.adapter_kind == "LEARNABLE_V2"
+            else "egv-test-corpus-membership-v1"
+        )
+        expected_membership = digest_for(
+            {
+                "schema_version": membership_schema,
+                "corpus_manifest_digest": self.corpus_manifest_digest,
+                "corpus_task_index": self.corpus_task_index,
+                "task_record_digest": self.original_task_record_digest,
+                "package_digest": self.original_package_digest,
+            }
+        )
+        if self.corpus_membership_digest != expected_membership:
+            raise RecommissioningProtocolError("task package lacks an exact corpus-membership proof")
         visible = canonical_json(self.model_visible_record()).lower()
         if any(token in visible for token in _PRIVATE_VOCABULARY):
             raise RecommissioningProtocolError("visible task package contains evaluator-private vocabulary")
@@ -421,6 +635,9 @@ class PromptEnvelope:
     model_profile_digest: str
     budget_digest: str
     seed: int
+    generation_receipt_key_id: str
+    evaluator_key_id: str
+    evaluator_profile_digest: str
     protocol_id: str
     attempt_index: int
     visible_evidence_ids: Tuple[str, ...]
@@ -428,7 +645,43 @@ class PromptEnvelope:
     prompt_digest: str
 
     @classmethod
-    def _build(cls, **values: Any) -> "PromptEnvelope":
+    def _build(
+        cls,
+        *,
+        coordinate: PilotCoordinate,
+        task: VisibleTaskPackage,
+        model_profile_digest: str,
+        budget: TokenBudget,
+        attempt_index: int,
+        visible_evidence_ids: Tuple[str, ...],
+        messages: Tuple[ChatMessage, ...],
+    ) -> "PromptEnvelope":
+        if not isinstance(coordinate, PilotCoordinate) or not isinstance(task, VisibleTaskPackage):
+            raise RecommissioningProtocolError("prompt construction requires validated coordinate and task objects")
+        coordinate.validate()
+        task.validate(coordinate)
+        _require_digest(model_profile_digest, "model-profile digest")
+        budget.validate()
+        if budget.seed != coordinate.seed:
+            raise RecommissioningProtocolError("prompt budget seed differs from its coordinate")
+        values = {
+            "coordinate_id": coordinate.coordinate_id,
+            "model_bundle": coordinate.model_bundle,
+            "task_id": task.task_id,
+            "public_locus": task.public_locus,
+            "task_adapter_kind": task.adapter_kind,
+            "task_package_digest": task.task_package_digest,
+            "model_profile_digest": model_profile_digest,
+            "budget_digest": budget.digest,
+            "seed": coordinate.seed,
+            "generation_receipt_key_id": coordinate.generation_receipt_key_id,
+            "evaluator_key_id": coordinate.evaluator_key_id,
+            "evaluator_profile_digest": coordinate.evaluator_profile_digest,
+            "protocol_id": coordinate.protocol_id,
+            "attempt_index": attempt_index,
+            "visible_evidence_ids": visible_evidence_ids,
+            "messages": messages,
+        }
         core = {
             "schema_version": "egv-recommissioning-prompt-envelope-v2",
             "coordinate_id": values["coordinate_id"],
@@ -440,6 +693,9 @@ class PromptEnvelope:
             "model_profile_digest": values["model_profile_digest"],
             "budget_digest": values["budget_digest"],
             "seed": values["seed"],
+            "generation_receipt_key_id": values["generation_receipt_key_id"],
+            "evaluator_key_id": values["evaluator_key_id"],
+            "evaluator_profile_digest": values["evaluator_profile_digest"],
             "protocol_id": values["protocol_id"],
             "attempt_index": values["attempt_index"],
             "visible_evidence_ids": list(values["visible_evidence_ids"]),
@@ -449,7 +705,12 @@ class PromptEnvelope:
         result = object.__new__(cls)
         for field_name in cls.__dataclass_fields__:  # type: ignore[attr-defined]
             object.__setattr__(result, field_name, values[field_name])
-        result.validate()
+        result.validate(
+            coordinate=coordinate,
+            task=task,
+            model_profile_digest=model_profile_digest,
+            budget=budget,
+        )
         return result
 
     def core_record(self) -> Dict[str, Any]:
@@ -464,6 +725,9 @@ class PromptEnvelope:
             "model_profile_digest": self.model_profile_digest,
             "budget_digest": self.budget_digest,
             "seed": self.seed,
+            "generation_receipt_key_id": self.generation_receipt_key_id,
+            "evaluator_key_id": self.evaluator_key_id,
+            "evaluator_profile_digest": self.evaluator_profile_digest,
             "protocol_id": self.protocol_id,
             "attempt_index": self.attempt_index,
             "visible_evidence_ids": list(self.visible_evidence_ids),
@@ -497,6 +761,9 @@ class PromptEnvelope:
             raise RecommissioningProtocolError("prompt protocol is not closed")
         if type(self.seed) is not int or self.seed < 0 or self.seed > 2**31 - 1:
             raise RecommissioningProtocolError("prompt seed is outside the frozen range")
+        _require_key_id(self.generation_receipt_key_id, "prompt generation-receipt key ID")
+        _require_key_id(self.evaluator_key_id, "prompt evaluator key ID")
+        _require_digest(self.evaluator_profile_digest, "prompt evaluator-profile digest")
         if type(self.attempt_index) is not int or not 1 <= self.attempt_index <= 6:
             raise RecommissioningProtocolError("prompt attempt index is outside the six-candidate budget")
         if not isinstance(self.visible_evidence_ids, tuple) or list(self.visible_evidence_ids) != sorted(
@@ -523,8 +790,20 @@ class PromptEnvelope:
                 coordinate.task_id,
                 coordinate.protocol_id,
                 coordinate.seed,
+                coordinate.generation_receipt_key_id,
+                coordinate.evaluator_key_id,
+                coordinate.evaluator_profile_digest,
             )
-            actual = (self.coordinate_id, self.model_bundle, self.task_id, self.protocol_id, self.seed)
+            actual = (
+                self.coordinate_id,
+                self.model_bundle,
+                self.task_id,
+                self.protocol_id,
+                self.seed,
+                self.generation_receipt_key_id,
+                self.evaluator_key_id,
+                self.evaluator_profile_digest,
+            )
             if actual != expected:
                 raise RecommissioningProtocolError("prompt differs from its coordinate binding")
         if task is not None:
@@ -553,6 +832,7 @@ class AttemptFeedback:
     coordinate_id: str
     task_package_digest: str
     model_profile_digest: str
+    evaluator_profile_digest: str
     attempt_index: int
     prior_prompt_digest: str
     generation_receipt_digest: str
@@ -575,6 +855,7 @@ class AttemptFeedback:
             "coordinate_id": self.coordinate_id,
             "task_package_digest": self.task_package_digest,
             "model_profile_digest": self.model_profile_digest,
+            "evaluator_profile_digest": self.evaluator_profile_digest,
             "attempt_index": self.attempt_index,
             "prior_prompt_digest": self.prior_prompt_digest,
             "generation_receipt_digest": self.generation_receipt_digest,
@@ -595,13 +876,23 @@ class AttemptFeedback:
         self.validate()
         value = self.core_record()
         value.pop("source")
-        return {**value, "evidence_id": self.evidence_id, "feedback_digest": self.feedback_digest}
+        value.pop("public_summary")
+        value["schema_version"] = "egv-recommissioning-public-feedback-v3"
+        record = {
+            **value,
+            "public_summary_digest": digest_bytes(self.public_summary.encode("utf-8")),
+            "evidence_id": self.evidence_id,
+            "feedback_digest": self.feedback_digest,
+        }
+        _scan_public_projection(record, "public feedback projection")
+        return record
 
     def validate(self) -> None:
         for value, label in (
             (self.coordinate_id, "feedback coordinate digest"),
             (self.task_package_digest, "feedback task-package digest"),
             (self.model_profile_digest, "feedback model-profile digest"),
+            (self.evaluator_profile_digest, "feedback evaluator-profile digest"),
             (self.prior_prompt_digest, "feedback prior-prompt digest"),
             (self.generation_receipt_digest, "feedback generation-receipt digest"),
             (self.evaluator_receipt_digest, "feedback evaluator-receipt digest"),
@@ -619,15 +910,7 @@ class AttemptFeedback:
         _require_text(self.source, "feedback source", max_characters=_MAX_SOURCE_CHARACTERS)
         if digest_bytes(self.source.encode("utf-8")) != self.source_digest:
             raise RecommissioningProtocolError("feedback source bytes do not match the bounded digest")
-        _require_text(
-            self.public_summary,
-            "feedback summary",
-            max_characters=_MAX_SUMMARY_CHARACTERS,
-            allow_empty=True,
-        )
-        lowered = self.public_summary.lower()
-        if any(token in lowered for token in _PRIVATE_VOCABULARY):
-            raise RecommissioningProtocolError("feedback summary contains evaluator-private material")
+        _reject_sensitive_public_text(self.public_summary, "feedback summary")
         if digest_for(self.core_record()) != self.feedback_digest:
             raise RecommissioningProtocolError("feedback digest does not bind the full lineage record")
 
@@ -649,6 +932,7 @@ def _feedback_records(
             item.coordinate_id != coordinate.coordinate_id
             or item.task_package_digest != task.task_package_digest
             or item.model_profile_digest != model_profile_digest
+            or item.evaluator_profile_digest != coordinate.evaluator_profile_digest
         ):
             raise RecommissioningProtocolError("feedback crossed an arm/task/seed/model coordinate boundary")
         if item.attempt_index != expected_index or item.previous_feedback_digest != previous:
@@ -716,6 +1000,7 @@ def render_prompt(
         "task": task.model_visible_record(),
         "task_package_digest": task.task_package_digest,
         "model_profile_digest": model_profile_digest,
+        "evaluator_profile_digest": coordinate.evaluator_profile_digest,
         "budget_digest": budget.digest,
         "attempt_index": attempt_index,
         "visible_feedback": list(visible_records),
@@ -732,20 +1017,137 @@ def render_prompt(
         ChatMessage("user", protocol + "\n" + canonical_json(user_value)),
     )
     return PromptEnvelope._build(
-        coordinate_id=coordinate.coordinate_id,
-        model_bundle=coordinate.model_bundle,
-        task_id=task.task_id,
-        public_locus=task.public_locus,
-        task_adapter_kind=task.adapter_kind,
-        task_package_digest=task.task_package_digest,
+        coordinate=coordinate,
+        task=task,
         model_profile_digest=model_profile_digest,
-        budget_digest=budget.digest,
-        seed=coordinate.seed,
-        protocol_id=coordinate.protocol_id,
+        budget=budget,
         attempt_index=attempt_index,
         visible_evidence_ids=visible_ids,
         messages=messages,
     )
+
+
+_EVALUATOR_RECEIPT_FIELDS = {
+    "schema_version",
+    "coordinate_id",
+    "task_package_digest",
+    "model_profile_digest",
+    "evaluator_profile_digest",
+    "attempt_index",
+    "prior_prompt_digest",
+    "generation_receipt_digest",
+    "candidate_digest",
+    "source_digest",
+    "diagnostic",
+    "decision",
+    "public_summary_digest",
+    "signing_key_id",
+    "receipt_digest",
+    "signature",
+}
+
+
+@dataclass(frozen=True, init=False)
+class SignedEvaluatorReceipt:
+    """Closed Ed25519 evaluator verdict bound to one generated candidate."""
+
+    record_json: str
+    public_key_raw: bytes = field(repr=False)
+
+    @classmethod
+    def build(
+        cls,
+        *,
+        coordinate_id: str,
+        task_package_digest: str,
+        model_profile_digest: str,
+        evaluator_profile_digest: str,
+        attempt_index: int,
+        prior_prompt_digest: str,
+        generation_receipt_digest: str,
+        candidate_digest: str,
+        source_digest: str,
+        diagnostic: str,
+        public_summary: str,
+        signer: Any,
+    ) -> "SignedEvaluatorReceipt":
+        public_key_raw, signing_key_id = _signer_identity(signer, "evaluator receipt signer")
+        _reject_sensitive_public_text(public_summary, "evaluator public summary")
+        unsigned = {
+            "schema_version": "egv-recommissioning-signed-evaluator-receipt-v1",
+            "coordinate_id": coordinate_id,
+            "task_package_digest": task_package_digest,
+            "model_profile_digest": model_profile_digest,
+            "evaluator_profile_digest": evaluator_profile_digest,
+            "attempt_index": attempt_index,
+            "prior_prompt_digest": prior_prompt_digest,
+            "generation_receipt_digest": generation_receipt_digest,
+            "candidate_digest": candidate_digest,
+            "source_digest": source_digest,
+            "diagnostic": diagnostic,
+            "decision": "PASS" if diagnostic == "PASS" else "FAIL",
+            "public_summary_digest": digest_bytes(public_summary.encode("utf-8")),
+            "signing_key_id": signing_key_id,
+        }
+        receipt_digest = digest_for(unsigned)
+        signable = {**unsigned, "receipt_digest": receipt_digest}
+        signature = signer.sign_bytes(canonical_bytes(signable))
+        return cls.from_record({**signable, "signature": signature}, public_key=public_key_raw)
+
+    @classmethod
+    def from_record(cls, record: Mapping[str, Any], *, public_key: Any) -> "SignedEvaluatorReceipt":
+        normalized = cls.validate_record(record, public_key=public_key)
+        raw, _key_id = _public_key_identity(public_key, "evaluator receipt public key")
+        result = object.__new__(cls)
+        object.__setattr__(result, "record_json", canonical_json(normalized))
+        object.__setattr__(result, "public_key_raw", raw)
+        return result
+
+    @classmethod
+    def validate_record(cls, record: Mapping[str, Any], *, public_key: Any) -> Dict[str, Any]:
+        if not isinstance(record, Mapping) or set(record) != _EVALUATOR_RECEIPT_FIELDS:
+            raise RecommissioningProtocolError("evaluator receipt is not a closed signed record")
+        if record.get("schema_version") != "egv-recommissioning-signed-evaluator-receipt-v1":
+            raise RecommissioningProtocolError("evaluator receipt schema is unsupported")
+        for field_name in (
+            "coordinate_id",
+            "task_package_digest",
+            "model_profile_digest",
+            "evaluator_profile_digest",
+            "prior_prompt_digest",
+            "generation_receipt_digest",
+            "candidate_digest",
+            "source_digest",
+            "public_summary_digest",
+            "receipt_digest",
+        ):
+            _require_digest(record[field_name], "evaluator receipt " + field_name)
+        if type(record["attempt_index"]) is not int or not 1 <= record["attempt_index"] <= 6:
+            raise RecommissioningProtocolError("evaluator receipt attempt index is outside the frozen budget")
+        if record["diagnostic"] not in DIAGNOSTIC_IDS:
+            raise RecommissioningProtocolError("evaluator receipt diagnostic is outside the closed enum")
+        expected_decision = "PASS" if record["diagnostic"] == "PASS" else "FAIL"
+        if record["decision"] != expected_decision:
+            raise RecommissioningProtocolError("evaluator receipt decision disagrees with its diagnostic")
+        unsigned = {key: value for key, value in record.items() if key not in {"receipt_digest", "signature"}}
+        if digest_for(unsigned) != record["receipt_digest"]:
+            raise RecommissioningProtocolError("evaluator receipt digest does not bind the signed record")
+        signable = {key: value for key, value in record.items() if key != "signature"}
+        _verify_ed25519(
+            public_key=public_key,
+            key_id=record["signing_key_id"],
+            signature=record["signature"],
+            payload=signable,
+            label="evaluator receipt",
+        )
+        return canonical_value(record)
+
+    @property
+    def receipt_digest(self) -> str:
+        return self.public_record()["receipt_digest"]
+
+    def public_record(self) -> Dict[str, Any]:
+        return self.validate_record(json.loads(self.record_json), public_key=self.public_key_raw)
 
 
 def lineage_feedback(
@@ -755,7 +1157,11 @@ def lineage_feedback(
     model_profile_digest: str,
     prior_prompt: PromptEnvelope,
     generation_receipt: Mapping[str, Any],
+    generation_receipt_public_key: Any,
+    service_attestation: Mapping[str, Any],
+    controller_public_key: Any,
     evaluator_receipt: Mapping[str, Any],
+    evaluator_receipt_public_key: Any,
     candidate: Any,
     diagnostic: str,
     public_summary: str,
@@ -765,7 +1171,7 @@ def lineage_feedback(
 
     # Local import prevents a module cycle while still requiring the concrete
     # client types at the trust boundary.
-    from .client import PublicGenerationReceipt, TypedCandidateResponse
+    from .client import PublicGenerationReceipt, ServiceAttestation, TypedCandidateResponse
 
     coordinate.validate()
     task.validate(coordinate)
@@ -780,20 +1186,78 @@ def lineage_feedback(
     candidate.validate(public_locus=task.public_locus, visible_evidence_ids=prior_prompt.visible_evidence_ids)
     public_candidate = candidate.public_redacted_record()
     candidate_digest = digest_for(public_candidate)
-    receipt = PublicGenerationReceipt.validate_record(generation_receipt)
-    for field, expected in (
+    receipt = PublicGenerationReceipt.validate_record(
+        generation_receipt,
+        public_key=generation_receipt_public_key,
+    )
+    if receipt["signing_key_id"] != coordinate.generation_receipt_key_id:
+        raise RecommissioningProtocolError("generation receipt key differs from the frozen coordinate")
+    try:
+        attestation = ServiceAttestation.from_record(
+            service_attestation,
+            controller_public_key=controller_public_key,
+        )
+        attestation.validate()
+    except Exception as exc:
+        raise RecommissioningProtocolError("generation lineage lacks a controller-rooted service attestation") from exc
+    generation_public_key_raw, generation_key_id = _public_key_identity(
+        generation_receipt_public_key,
+        "generation receipt public key",
+    )
+    if (
+        generation_public_key_raw != attestation.generation_receipt_public_key_raw
+        or generation_key_id != attestation.generation_receipt_key_id
+        or attestation.generation_receipt_key_id != coordinate.generation_receipt_key_id
+        or attestation.model_profile_digest != model_profile_digest
+    ):
+        raise RecommissioningProtocolError("generation lineage crossed its controller-rooted service authority")
+    for field_name, expected in (
         ("coordinate_id", coordinate.coordinate_id),
+        ("model_bundle", coordinate.model_bundle),
+        ("task_ref", public_task_ref(task.task_package_digest)),
+        ("public_locus", task.public_locus),
+        ("task_adapter_kind", task.adapter_kind),
         ("task_package_digest", task.task_package_digest),
         ("model_profile_digest", model_profile_digest),
+        ("service_attestation_digest", attestation.attestation_digest),
+        ("service_observation_digest", attestation.service_observation["observation_digest"]),
+        ("controller_key_id", attestation.launch_record["controller_key_id"]),
+        ("service_key_id", attestation.launch_record["service_key_id"]),
+        ("generation_receipt_key_id", attestation.generation_receipt_key_id),
+        ("runtime_config_digest", attestation.runtime_config_digest),
+        ("launch_receipt_digest", attestation.launch_receipt_digest),
+        ("budget_digest", prior_prompt.budget_digest),
+        ("seed", prior_prompt.seed),
+        ("attempt_index", prior_prompt.attempt_index),
         ("prompt_digest", prior_prompt.prompt_digest),
         ("candidate_digest", candidate_digest),
         ("source_digest", candidate.source_digest),
     ):
-        if receipt[field] != expected:
-            raise RecommissioningProtocolError("generation receipt differs from feedback {} binding".format(field))
-    evaluator = _validate_bounded_json(evaluator_receipt, "evaluator receipt", byte_ceiling=256 * 1024)
-    if not isinstance(evaluator, Mapping) or not evaluator:
-        raise RecommissioningProtocolError("evaluator receipt must be a non-empty closed record")
+        if receipt[field_name] != expected:
+            raise RecommissioningProtocolError("generation receipt differs from feedback {} binding".format(field_name))
+    evaluator = SignedEvaluatorReceipt.validate_record(
+        evaluator_receipt,
+        public_key=evaluator_receipt_public_key,
+    )
+    if evaluator["signing_key_id"] != coordinate.evaluator_key_id:
+        raise RecommissioningProtocolError("evaluator receipt key differs from the frozen coordinate")
+    evaluator_expected = {
+        "coordinate_id": coordinate.coordinate_id,
+        "task_package_digest": task.task_package_digest,
+        "model_profile_digest": model_profile_digest,
+        "evaluator_profile_digest": coordinate.evaluator_profile_digest,
+        "attempt_index": prior_prompt.attempt_index,
+        "prior_prompt_digest": prior_prompt.prompt_digest,
+        "generation_receipt_digest": receipt["receipt_digest"],
+        "candidate_digest": candidate_digest,
+        "source_digest": candidate.source_digest,
+        "diagnostic": diagnostic,
+        "decision": "PASS" if diagnostic == "PASS" else "FAIL",
+        "public_summary_digest": digest_bytes(public_summary.encode("utf-8")),
+    }
+    for field_name, expected in evaluator_expected.items():
+        if evaluator[field_name] != expected:
+            raise RecommissioningProtocolError("evaluator receipt differs from feedback {} binding".format(field_name))
     if previous_feedback is not None:
         previous_feedback.validate()
         if previous_feedback.coordinate_id != coordinate.coordinate_id:
@@ -809,6 +1273,7 @@ def lineage_feedback(
         "coordinate_id": coordinate.coordinate_id,
         "task_package_digest": task.task_package_digest,
         "model_profile_digest": model_profile_digest,
+        "evaluator_profile_digest": coordinate.evaluator_profile_digest,
         "attempt_index": prior_prompt.attempt_index,
         "prior_prompt_digest": prior_prompt.prompt_digest,
         "generation_receipt_digest": receipt["receipt_digest"],
@@ -839,8 +1304,10 @@ __all__ = [
     "PilotCoordinate",
     "PromptEnvelope",
     "RecommissioningProtocolError",
+    "SignedEvaluatorReceipt",
     "TokenBudget",
     "VisibleTaskPackage",
     "lineage_feedback",
+    "public_task_ref",
     "render_prompt",
 ]

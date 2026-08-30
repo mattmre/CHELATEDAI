@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import replace
-import hashlib
-import hmac
 import json
 import os
 import tempfile
@@ -10,14 +8,17 @@ import time
 import unittest
 from urllib import request as urllib_request
 
-from egv.canonical import canonical_json, digest_for
+from egv.canonical import canonical_json, digest_bytes, digest_for
+from egv.receipts import ReceiptSigner
 from egv.recommissioning.client import (
     AttestedLoopbackService,
     FileCoordinateTokenLedger,
     InMemoryCoordinateTokenLedger,
     ModelServiceProfile,
+    PinnedTokenizerRenderer,
     PublicGenerationReceipt,
     RecommissioningClientError,
+    ServiceAttestation,
     TokenizationPreflight,
     TrustedLaunchReceipt,
     TypedCandidateResponse,
@@ -28,6 +29,7 @@ from egv.recommissioning.protocol import PilotCoordinate, TokenBudget, VisibleTa
 
 
 MODEL_ID = "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4"
+CHAT_TEMPLATE = "<egv-chat-template-v1>"
 
 
 def _profile(**updates):
@@ -40,7 +42,10 @@ def _profile(**updates):
         "precision": "NVFP4",
         "kv_cache_dtype": "fp8",
         "tokenizer_digest": digest_for("pinned-tokenizer"),
-        "chat_template_digest": digest_for("pinned-chat-template"),
+        "tokenizer_implementation_digest": PinnedTokenizerRenderer.digest_tokenizer_implementation(FakeTokenizer()),
+        "chat_template_digest": digest_bytes(CHAT_TEMPLATE.encode("utf-8")),
+        "weights_digest": digest_for("pinned-weights"),
+        "license_digest": digest_for("pinned-license"),
     }
     values.update(updates)
     return ModelServiceProfile(**values)
@@ -67,6 +72,9 @@ def _coordinate(**updates):
         "task_id": "egv-learnable-pure-function-train-001-v2",
         "task_family": "PURE_FUNCTION",
         "seed": 7,
+        "generation_receipt_key_id": TestSigner().key_id,
+        "evaluator_key_id": ReceiptSigner(bytes.fromhex("22" * 32)).key_id,
+        "evaluator_profile_digest": digest_for("frozen-evaluator-profile"),
     }
     values.update(updates)
     return PilotCoordinate(**values)
@@ -104,14 +112,28 @@ def _envelope(profile=None, budget=None, coordinate=None):
     )
 
 
+class FakeTokenizer:
+    chat_template = CHAT_TEMPLATE
+
+    def __init__(self, prompt_tokens=37):
+        self.prompt_tokens = prompt_tokens
+        self.calls = []
+
+    def apply_chat_template(self, conversation, *, tokenize, add_generation_prompt):
+        self.calls.append((conversation, tokenize, add_generation_prompt))
+        rendered = "<chat>" + canonical_json(conversation) + "<assistant>"
+        if tokenize:
+            return list(range(self.prompt_tokens))
+        return rendered
+
+
 def _tokenization(envelope, profile=None, prompt_tokens=37):
     profile = profile or _profile()
-    rendered = "<chat>" + canonical_json([message.record() for message in envelope.messages])
+    renderer = PinnedTokenizerRenderer.for_test(profile, FakeTokenizer(prompt_tokens))
     return TokenizationPreflight.from_pinned_renderer(
         envelope,
         profile,
-        rendered_prompt=rendered,
-        token_ids=tuple(range(prompt_tokens)),
+        renderer,
     )
 
 
@@ -127,6 +149,7 @@ class FakeTransport:
         sleep_seconds=0.0,
         bool_usage=False,
         duplicate_candidate_key=False,
+        attestation_sleep_seconds=0.0,
     ):
         self.served_model = served_model
         self.cited_evidence = cited_evidence if cited_evidence is not None else []
@@ -141,7 +164,14 @@ class FakeTransport:
         self.sleep_seconds = sleep_seconds
         self.bool_usage = bool_usage
         self.duplicate_candidate_key = duplicate_candidate_key
+        self.attestation_sleep_seconds = attestation_sleep_seconds
         self.calls = []
+        self.trusted = None
+        self.profile = None
+
+    def configure_trust(self, trusted, profile):
+        self.trusted = trusted
+        self.profile = profile
 
     def __call__(self, method, path, body, timeout):
         self.calls.append((method, path, body, timeout))
@@ -149,6 +179,12 @@ class FakeTransport:
             return 200, b""
         if path == "/v1/models":
             return 200, canonical_json({"data": [{"id": self.served_model}]}).encode("utf-8")
+        if path == "/v1/egv/attestation":
+            if self.attestation_sleep_seconds:
+                time.sleep(self.attestation_sleep_seconds)
+            if self.trusted is None or self.profile is None:
+                raise AssertionError("test transport trust was not configured")
+            return 200, canonical_json(self.trusted.build_test_service_observation(self.profile)).encode("utf-8")
         if path == "/v1/chat/completions":
             if self.sleep_seconds:
                 time.sleep(self.sleep_seconds)
@@ -180,18 +216,31 @@ class FakeTransport:
 
 
 class TestSigner:
-    key_id = "test-signing-key"
+    def __init__(self):
+        self._signer = ReceiptSigner(bytes.fromhex("11" * 32))
+
+    @property
+    def key_id(self):
+        return self._signer.key_id
+
+    @property
+    def public_key(self):
+        return self._signer.public_key
 
     def sign_bytes(self, payload):
-        return hmac.new(b"test-public-receipt-key", payload, hashlib.sha256).hexdigest()
+        return self._signer.sign_bytes(payload)
 
 
 def _service(transport=None, profile=None):
     profile = profile or _profile()
+    signer = TestSigner()
+    trusted = TrustedLaunchReceipt.for_test(profile, generation_signer=signer)
+    transport = transport or FakeTransport()
+    transport.configure_trust(trusted, profile)
     return AttestedLoopbackService.for_test(
         profile,
-        transport or FakeTransport(),
-        TrustedLaunchReceipt.for_test(profile),
+        transport,
+        trusted,
     )
 
 
@@ -208,7 +257,48 @@ class ModelServiceProfileTests(unittest.TestCase):
         manifest = profile.public_manifest()
         self.assertNotIn("endpoint", manifest)
         self.assertEqual(manifest["chat_template_digest"], profile.chat_template_digest)
+        self.assertEqual(
+            manifest["tokenizer_implementation_digest"],
+            profile.tokenizer_implementation_digest,
+        )
         self.assertEqual(profile.digest, profile.digest)
+
+    def test_public_model_profile_is_closed_and_scanned_before_projection(self):
+        manifest = _profile().public_manifest()
+        self.assertEqual(ModelServiceProfile.from_public_manifest(manifest), _profile())
+        with self.assertRaisesRegex(RecommissioningClientError, "closed public record"):
+            ModelServiceProfile.from_public_manifest({**manifest, "endpoint": "opaque"})
+        with self.assertRaisesRegex(RecommissioningClientError, "prohibited public data"):
+            _profile(model_id="https://credential.invalid/private").public_manifest()
+
+        service = _service()
+        forged_record = service.attestation.public_record()
+        observation = forged_record["service_observation"]
+        observation["model_profile"]["model_id"] = "https://credential.invalid/private"
+        observation["model_profile_digest"] = digest_for(observation["model_profile"])
+        unsigned = {key: value for key, value in observation.items() if key not in {"observation_digest", "signature"}}
+        signable = {**unsigned, "observation_digest": digest_for(unsigned)}
+        forged_record["service_observation"] = {
+            **signable,
+            "signature": service._trusted._test_service_signer.sign_bytes(canonical_json(signable).encode("utf-8")),
+        }
+        outer_core = {key: value for key, value in forged_record.items() if key != "attestation_digest"}
+        forged_record["attestation_digest"] = digest_for(outer_core)
+        forged_attestation = object.__new__(ServiceAttestation)
+        object.__setattr__(forged_attestation, "record_json", canonical_json(forged_record))
+        object.__setattr__(
+            forged_attestation,
+            "controller_public_key_raw",
+            service.attestation.controller_public_key_raw,
+        )
+        object.__setattr__(
+            forged_attestation,
+            "service_public_key_raw",
+            service.attestation.service_public_key_raw,
+        )
+        service.attestation = forged_attestation
+        with self.assertRaisesRegex(RecommissioningClientError, "prohibited public data"):
+            service.attest()
 
     def test_loopback_transport_rejects_public_credentials_and_disables_proxies(self):
         for endpoint in (
@@ -223,7 +313,9 @@ class ModelServiceProfileTests(unittest.TestCase):
         os.environ["HTTP_PROXY"] = "http://192.0.2.9:3128"
         try:
             transport = UrllibLoopbackTransport("http://127.0.0.1:18000")
-            proxy_handlers = [handler for handler in transport._opener.handlers if isinstance(handler, urllib_request.ProxyHandler)]
+            proxy_handlers = [
+                handler for handler in transport._opener.handlers if isinstance(handler, urllib_request.ProxyHandler)
+            ]
             self.assertTrue(all(handler.proxies == {} for handler in proxy_handlers))
         finally:
             if old_proxy is None:
@@ -233,16 +325,20 @@ class ModelServiceProfileTests(unittest.TestCase):
 
     def test_production_launch_authority_is_externally_supplied_and_private(self):
         profile = _profile()
-        record = {
-            "schema_version": "egv-trusted-launch-receipt-v1",
-            "model_profile_digest": profile.digest,
-            "runtime_config_digest": digest_for("closed-runtime"),
-            "launch_receipt_digest": digest_for("controller-issued-receipt"),
-            "service_nonce": "controller-service-nonce",
-        }
-        trusted = TrustedLaunchReceipt.from_controller_record(record, issuer_token=b"a" * 32)
+        issued = TrustedLaunchReceipt.for_test(profile, generation_signer=TestSigner())
+        trusted = TrustedLaunchReceipt.from_controller_record(
+            issued.public_record(),
+            controller_public_key=issued.controller_public_key_raw,
+        )
         self.assertFalse(trusted.test_only)
-        self.assertNotIn("issuer_token", trusted.public_binding_record())
+        self.assertNotIn("controller_public_key_raw", trusted.public_binding_record())
+        forged = issued.public_record()
+        forged["runtime_config_digest"] = digest_for("attacker-runtime")
+        with self.assertRaisesRegex(RecommissioningClientError, "digest does not bind"):
+            TrustedLaunchReceipt.from_controller_record(
+                forged,
+                controller_public_key=issued.controller_public_key_raw,
+            )
         with self.assertRaises(RecommissioningClientError):
             AttestedLoopbackService(None, profile, FakeTransport(), trusted, None, test_only=False)
 
@@ -257,15 +353,30 @@ class RequestAndBudgetTests(unittest.TestCase):
         public = result.public_receipt.public_record()
         private = result.private_record.private_record()
         self.assertEqual(public["coordinate_id"], request.envelope.coordinate_id)
+        self.assertEqual(
+            public["task_ref"], "task_" + digest_for({"task_package_digest": request.envelope.task_package_digest})
+        )
+        self.assertNotIn(request.envelope.task_id, canonical_json(public))
         self.assertEqual(public["task_package_digest"], request.envelope.task_package_digest)
         self.assertEqual(public["prompt_digest"], request.envelope.prompt_digest)
         self.assertEqual(public["service_attestation_digest"], service.attestation.attestation_digest)
         self.assertEqual(public["prompt_tokens"], 37)
+        self.assertIn("total_elapsed_ms", public)
+        self.assertNotIn("elapsed_ms", public)
+        self.assertEqual(public["coordinate_debit_count"], request.envelope.attempt_index)
+        self.assertEqual(public["controller_key_id"], service._trusted.controller_key_id)
+        self.assertEqual(public["service_key_id"], service._trusted.service_key_id)
+        self.assertEqual(public["generation_receipt_key_id"], TestSigner().key_id)
         self.assertNotIn("source", public)
         self.assertNotIn("request_json", public)
         self.assertEqual(json.loads(private["candidate_json"])["source"], result.candidate.source)
-        self.assertNotIn(service.attestation.issuer_token.hex(), canonical_json(private))
-        self.assertEqual(PublicGenerationReceipt.validate_record(public)["receipt_digest"], public["receipt_digest"])
+        self.assertEqual(
+            PublicGenerationReceipt.validate_record(
+                public,
+                public_key=service._trusted.generation_receipt_public_key_raw,
+            )["receipt_digest"],
+            public["receipt_digest"],
+        )
         self.assertEqual(transport.last_request["response_format"]["type"], "json_schema")
 
     def test_prompt_tampering_is_rejected_even_with_original_digest(self):
@@ -350,6 +461,42 @@ class RequestAndBudgetTests(unittest.TestCase):
         with self.assertRaisesRegex(RecommissioningClientError, "typed GenerationRequest"):
             service.generate(request.envelope, ledger=ledger, signer=TestSigner())
 
+    def test_attempt_sequence_and_request_replay_are_fail_closed(self):
+        service = _service()
+        ledger = InMemoryCoordinateTokenLedger.for_test()
+        first = _request(service, ledger)
+        ledger.debit(first)
+        replay_bound_to_advanced_state = _request(
+            service,
+            ledger,
+            budget=first.budget,
+            envelope=first.envelope,
+            tokenization=first.tokenization,
+        )
+        with self.assertRaisesRegex(RecommissioningClientError, "next undebited"):
+            ledger.debit(replay_bound_to_advanced_state)
+        with self.assertRaisesRegex(RecommissioningClientError, "changed after request construction"):
+            ledger.debit(first)
+
+    def test_generation_deadline_covers_coordinate_ledger_debit(self):
+        service = _service()
+        delegate = InMemoryCoordinateTokenLedger.for_test()
+
+        class SlowLedger:
+            durable = False
+
+            def snapshot(self, coordinate_id, budget):
+                return delegate.snapshot(coordinate_id, budget)
+
+            def debit(self, request, *, deadline_ns=None):
+                time.sleep(0.02)
+                return delegate.debit(request, deadline_ns=deadline_ns)
+
+        ledger = SlowLedger()
+        budget = _budget(hard_timeout_ms=1)
+        with self.assertRaisesRegex(RecommissioningClientError, "hard elapsed"):
+            service.generate(_request(service, ledger, budget=budget), ledger=ledger, signer=TestSigner())
+
     def test_production_boundary_rejects_test_only_task_even_for_prebuilt_request(self):
         service = _service()
         test_ledger = InMemoryCoordinateTokenLedger.for_test()
@@ -407,14 +554,274 @@ class ResponseBoundaryTests(unittest.TestCase):
         with self.assertRaisesRegex(RecommissioningClientError, "served model identity"):
             _service(FakeTransport(served_model="substituted/model"))
 
+    def test_attestation_rejects_same_model_id_with_wrong_revision_launch(self):
+        expected = _profile()
+        wrong_revision = _profile(model_revision="d" * 40)
+        trusted = TrustedLaunchReceipt.for_test(wrong_revision, generation_signer=TestSigner())
+        transport = FakeTransport(served_model=expected.model_id)
+        transport.configure_trust(trusted, wrong_revision)
+        with self.assertRaisesRegex(RecommissioningClientError, "trusted launch receipt differs"):
+            AttestedLoopbackService.for_test(expected, transport, trusted)
+
+    def test_service_attestation_contains_signed_full_immutable_profile(self):
+        service = _service()
+        observation = service.attestation.service_observation
+        self.assertEqual(observation["model_profile"], service.profile.public_manifest())
+        self.assertEqual(observation["model_profile"]["model_revision"], service.profile.model_revision)
+        self.assertEqual(observation["model_profile"]["weights_digest"], service.profile.weights_digest)
+        self.assertEqual(observation["model_profile"]["license_digest"], service.profile.license_digest)
+        tampered = service.attestation.public_record()
+        tampered["service_observation"]["model_profile"]["model_revision"] = "e" * 40
+        with self.assertRaises(RecommissioningClientError):
+            type(service.attestation).from_record(
+                tampered,
+                controller_public_key=service._trusted.controller_public_key_raw,
+            )
+
+    def test_service_attestation_rejects_resigned_profile_outside_controller_launch(self):
+        service = _service()
+        record = service.attestation.public_record()
+        wrong_profile = _profile(model_revision="d" * 40)
+        original = record["service_observation"]
+        unsigned = {
+            "schema_version": original["schema_version"],
+            "model_profile": wrong_profile.public_manifest(),
+            "model_profile_digest": wrong_profile.digest,
+            "runtime_config_digest": original["runtime_config_digest"],
+            "launch_receipt_digest": original["launch_receipt_digest"],
+            "service_nonce": original["service_nonce"],
+            "service_key_id": original["service_key_id"],
+        }
+        signable = {**unsigned, "observation_digest": digest_for(unsigned)}
+        record["service_observation"] = {
+            **signable,
+            "signature": service._trusted._test_service_signer.sign_bytes(canonical_json(signable).encode("utf-8")),
+        }
+        core = {key: value for key, value in record.items() if key != "attestation_digest"}
+        record["attestation_digest"] = digest_for(core)
+        with self.assertRaisesRegex(RecommissioningClientError, "controller-authorized model profile"):
+            ServiceAttestation.from_record(
+                record,
+                controller_public_key=service._trusted.controller_public_key_raw,
+            )
+
     def test_public_receipt_self_digest_rejects_tampering(self):
         service = _service()
         ledger = InMemoryCoordinateTokenLedger.for_test()
         result = service.generate(_request(service, ledger), ledger=ledger, signer=TestSigner())
         tampered = result.public_receipt.public_record()
-        tampered["task_id"] = "different-task"
+        tampered["task_ref"] = "task_" + "0" * 64
         with self.assertRaisesRegex(RecommissioningClientError, "digest does not bind"):
-            PublicGenerationReceipt.validate_record(tampered)
+            PublicGenerationReceipt.validate_record(
+                tampered,
+                public_key=service._trusted.generation_receipt_public_key_raw,
+            )
+
+    def test_public_receipt_rejects_forged_signature_and_unpinned_key(self):
+        service = _service()
+        ledger = InMemoryCoordinateTokenLedger.for_test()
+        result = service.generate(_request(service, ledger), ledger=ledger, signer=TestSigner())
+        forged = result.public_receipt.public_record()
+        attacker = ReceiptSigner.generate()
+        signable = {key: value for key, value in forged.items() if key != "signature"}
+        forged["signature"] = attacker.sign_bytes(canonical_json(signable).encode("utf-8"))
+        with self.assertRaisesRegex(RecommissioningClientError, "signature is invalid"):
+            PublicGenerationReceipt.validate_record(
+                forged,
+                public_key=service._trusted.generation_receipt_public_key_raw,
+            )
+        with self.assertRaisesRegex(RecommissioningClientError, "controller-pinned key"):
+            service.generate(
+                _request(service, InMemoryCoordinateTokenLedger.for_test()),
+                ledger=InMemoryCoordinateTokenLedger.for_test(),
+                signer=attacker,
+            )
+
+    def test_public_receipt_rejects_resigned_limits_that_disagree_with_budget_digest(self):
+        service = _service()
+        ledger = InMemoryCoordinateTokenLedger.for_test()
+        result = service.generate(_request(service, ledger), ledger=ledger, signer=TestSigner())
+        record = result.public_receipt.public_record()
+        record["max_completion_tokens"] += 1
+        record["coordinate_reserved_tokens"] += 1
+        unsigned = {key: value for key, value in record.items() if key not in {"receipt_digest", "signature"}}
+        signable = {**unsigned, "receipt_digest": digest_for(unsigned)}
+        record = {
+            **signable,
+            "signature": TestSigner().sign_bytes(canonical_json(signable).encode("utf-8")),
+        }
+        with self.assertRaisesRegex(RecommissioningClientError, "invalid frozen budget|budget digest"):
+            PublicGenerationReceipt.validate_record(record, public_key=TestSigner().public_key)
+
+    def test_public_receipt_reconstructs_every_frozen_budget_limit(self):
+        service = _service()
+        ledger = InMemoryCoordinateTokenLedger.for_test()
+        original = service.generate(_request(service, ledger), ledger=ledger, signer=TestSigner()).public_receipt
+        for field_name in (
+            "max_prompt_tokens",
+            "max_completion_tokens",
+            "max_total_tokens",
+            "max_coordinate_tokens",
+            "hard_timeout_ms",
+            "seed",
+        ):
+            with self.subTest(field_name=field_name):
+                record = original.public_record()
+                core = {
+                    key: value
+                    for key, value in record.items()
+                    if key not in {"signing_key_id", "receipt_digest", "signature"}
+                }
+                core[field_name] += 1
+                with self.assertRaisesRegex(RecommissioningClientError, "frozen budget|budget digest"):
+                    PublicGenerationReceipt.build(
+                        core,
+                        TestSigner(),
+                        pinned_public_key=TestSigner().public_key,
+                    )
+
+    def test_generate_wall_clock_budget_includes_service_revalidation(self):
+        transport = FakeTransport(attestation_sleep_seconds=0.08)
+        service = _service(transport)
+        budget = _budget(hard_timeout_ms=1)
+        ledger = InMemoryCoordinateTokenLedger.for_test()
+        with self.assertRaisesRegex(RecommissioningClientError, "elapsed-time budget"):
+            service.generate(
+                _request(service, ledger, budget=budget, envelope=_envelope(service.profile, budget)),
+                ledger=ledger,
+                signer=TestSigner(),
+            )
+
+    def test_public_candidate_projection_rejects_credential_or_path_evidence_ids(self):
+        candidate = TypedCandidateResponse.parse(
+            {
+                "action": "COMMIT",
+                "source": "def main(value):\n    return value\n",
+                "summary": "bounded",
+                "evidence_ids": ["credential sk-secret at C:/private/host.txt"],
+            },
+            visible_evidence_ids=("credential sk-secret at C:/private/host.txt",),
+            public_locus="module:main",
+        )
+        with self.assertRaisesRegex(RecommissioningClientError, "prohibited public data"):
+            candidate.public_redacted_record()
+
+
+class PinnedTokenizerRendererTests(unittest.TestCase):
+    def test_local_adapter_reads_assets_and_invokes_exact_chat_renderer(self):
+        with tempfile.TemporaryDirectory() as directory:
+            asset = os.path.join(directory, "tokenizer.json")
+            with open(asset, "wb") as handle:
+                handle.write(b'{"version":"test"}')
+            asset_names = ("tokenizer.json",)
+            tokenizer_digest = PinnedTokenizerRenderer.digest_local_tokenizer_assets(directory, asset_names)
+            profile = _profile(tokenizer_digest=tokenizer_digest)
+            tokenizer = FakeTokenizer(prompt_tokens=11)
+            renderer = PinnedTokenizerRenderer.from_local_tokenizer(
+                profile,
+                tokenizer,
+                tokenizer_root=directory,
+                asset_names=asset_names,
+            )
+            envelope = _envelope(profile)
+            preflight = TokenizationPreflight.from_pinned_renderer(envelope, profile, renderer)
+            self.assertEqual(preflight.prompt_tokens, 11)
+            self.assertEqual(preflight.renderer_mode, "PINNED_LOCAL")
+            self.assertEqual([call[1] for call in tokenizer.calls], [False, True])
+            with open(asset, "ab") as handle:
+                handle.write(b"tamper")
+            with self.assertRaisesRegex(RecommissioningClientError, "assets changed"):
+                renderer.render(envelope, profile)
+
+    def test_preflight_rejects_duck_typed_renderer_and_raw_artifact_injection(self):
+        profile = _profile()
+        envelope = _envelope(profile)
+
+        class ForgedRenderer:
+            def render(self, _envelope, _profile):
+                return b"attacker", (1,)
+
+        with self.assertRaisesRegex(RecommissioningClientError, "concrete pinned renderer"):
+            TokenizationPreflight.from_pinned_renderer(envelope, profile, ForgedRenderer())
+        with self.assertRaises(TypeError):
+            TokenizationPreflight.from_pinned_renderer(
+                envelope,
+                profile,
+                rendered_prompt="attacker",
+                token_ids=(1,),
+            )
+
+    def test_local_tokenizer_inventory_is_exhaustive_and_implementation_bound(self):
+        with tempfile.TemporaryDirectory() as directory:
+            first = os.path.join(directory, "tokenizer.json")
+            second = os.path.join(directory, "tokenizer_config.json")
+            with open(first, "wb") as handle:
+                handle.write(b'{"version":"test"}')
+            with open(second, "wb") as handle:
+                handle.write(b'{"padding_side":"left"}')
+            with self.assertRaisesRegex(RecommissioningClientError, "exhaustive inventory"):
+                PinnedTokenizerRenderer.digest_local_tokenizer_assets(directory, ("tokenizer.json",))
+            tokenizer = FakeTokenizer(prompt_tokens=11)
+            asset_digest = PinnedTokenizerRenderer.digest_local_tokenizer_assets(directory)
+            profile = _profile(tokenizer_digest=asset_digest)
+            renderer = PinnedTokenizerRenderer.from_local_tokenizer(
+                profile,
+                tokenizer,
+                tokenizer_root=directory,
+            )
+            self.assertEqual(renderer.tokenizer_implementation_digest, profile.tokenizer_implementation_digest)
+            with self.assertRaisesRegex(RecommissioningClientError, "implementation differs"):
+                PinnedTokenizerRenderer.from_local_tokenizer(
+                    replace(profile, tokenizer_implementation_digest=digest_for("substituted-implementation")),
+                    tokenizer,
+                    tokenizer_root=directory,
+                )
+
+    def test_added_tokens_mutation_cannot_change_ids_while_renderer_validates(self):
+        with tempfile.TemporaryDirectory() as directory:
+            tokenizer_path = os.path.join(directory, "tokenizer.json")
+            added_tokens_path = os.path.join(directory, "added_tokens.json")
+            with open(tokenizer_path, "wb") as handle:
+                handle.write(b'{"version":"test"}')
+            with open(added_tokens_path, "wb") as handle:
+                handle.write(b'{"<extra>":128}')
+            with self.assertRaisesRegex(RecommissioningClientError, "exhaustive inventory"):
+                PinnedTokenizerRenderer.digest_local_tokenizer_assets(directory, ("tokenizer.json",))
+
+            tokenizer = FakeTokenizer(prompt_tokens=11)
+            profile = _profile(tokenizer_digest=PinnedTokenizerRenderer.digest_local_tokenizer_assets(directory))
+            renderer = PinnedTokenizerRenderer.from_local_tokenizer(
+                profile,
+                tokenizer,
+                tokenizer_root=directory,
+            )
+            before_ids = tokenizer.apply_chat_template([], tokenize=True, add_generation_prompt=True)
+            with open(added_tokens_path, "wb") as handle:
+                handle.write(b'{"<extra>":128,"<attacker>":129}')
+            tokenizer.prompt_tokens = 12
+            after_ids = tokenizer.apply_chat_template([], tokenize=True, add_generation_prompt=True)
+            self.assertNotEqual(before_ids, after_ids)
+            with self.assertRaisesRegex(RecommissioningClientError, "assets changed"):
+                renderer.render(_envelope(profile), profile)
+
+
+class PackageExportsTests(unittest.TestCase):
+    def test_package_exports_every_recommissioning_trust_boundary(self):
+        import egv.recommissioning as package
+
+        for name in (
+            "PinnedTokenizerRenderer",
+            "PublicGenerationReceipt",
+            "ServiceAttestation",
+            "SignedEvaluatorReceipt",
+            "TrustedLaunchReceipt",
+            "VisibleTaskPackage",
+            "lineage_feedback",
+            "public_task_ref",
+        ):
+            with self.subTest(name=name):
+                self.assertIn(name, package.__all__)
+                self.assertIsNotNone(getattr(package, name))
 
 
 if __name__ == "__main__":

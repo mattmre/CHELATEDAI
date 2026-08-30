@@ -12,6 +12,7 @@ from .client import (
     GenerationResult,
     InMemoryCoordinateTokenLedger,
     ModelServiceProfile,
+    PinnedTokenizerRenderer,
     PrivateGenerationRecord,
     PublicGenerationReceipt,
     RecommissioningClientError,
@@ -32,9 +33,11 @@ from .protocol import (
     PilotCoordinate,
     PromptEnvelope,
     RecommissioningProtocolError,
+    SignedEvaluatorReceipt,
     TokenBudget,
     VisibleTaskPackage,
     lineage_feedback,
+    public_task_ref,
     render_prompt,
 )
 
@@ -55,6 +58,7 @@ __all__ = [
     "InMemoryCoordinateTokenLedger",
     "MODEL_BUNDLE_IDS",
     "ModelServiceProfile",
+    "PinnedTokenizerRenderer",
     "PROTOCOL_IDS",
     "PilotCoordinate",
     "PrivateGenerationRecord",
@@ -63,6 +67,7 @@ __all__ = [
     "RecommissioningClientError",
     "RecommissioningProtocolError",
     "ServiceAttestation",
+    "SignedEvaluatorReceipt",
     "TokenBudget",
     "TokenizationPreflight",
     "TrustedLaunchReceipt",
@@ -71,5 +76,6 @@ __all__ = [
     "VisibleTaskPackage",
     "candidate_response_schema",
     "lineage_feedback",
+    "public_task_ref",
     "render_prompt",
 ]
