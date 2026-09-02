@@ -21,7 +21,7 @@ from datetime import datetime
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, unquote, urlparse
 
 from plan_evidence_artifact_cleanup import plan_evidence_artifact_cleanup
 from computational_storage_poc.disk_llm_estimator import (
@@ -1531,7 +1531,30 @@ class DashboardHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         # Set the directory to serve static files from
         super().__init__(*args, directory=os.path.dirname(os.path.abspath(__file__)), **kwargs)
-    
+
+    # AEP-20260902-STATIC-01: the static fallback below is rooted at the repo
+    # root, so without confinement it serves the whole tree (incl. .git/HEAD
+    # and sources). Confine it to this allowlist; everything else 404s.
+    _STATIC_ALLOW_PREFIXES = ("/dashboard/",)
+
+    @staticmethod
+    def _is_static_path_allowed(raw_path: str) -> bool:
+        """True only for static paths the fallback is allowed to serve."""
+        no_query = raw_path.split("?", 1)[0].split("#", 1)[0]
+        try:
+            decoded = unquote(no_query)
+        except Exception:
+            return False
+        if "\x00" in decoded:
+            return False
+        decoded = decoded.replace("\\", "/")
+        if not decoded.startswith(DashboardHandler._STATIC_ALLOW_PREFIXES):
+            return False
+        for part in decoded.split("/"):
+            if part == ".." or part.startswith("."):
+                return False
+        return True
+
     def do_GET(self):
         """Handle GET requests for API endpoints and static files."""
         parsed_path = urlparse(self.path)
@@ -1585,8 +1608,29 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             # Redirect to dashboard page
             self.serve_dashboard()
         else:
-            # Serve static files
+            # AEP-20260902-STATIC-01: confine the static fallback (repo-root
+            # directory) to the /dashboard/ asset prefix; all other paths
+            # 404 with no bytes leaked (AC1/AC2). App routes above are
+            # unaffected (AC3).
+            if not self._is_static_path_allowed(path):
+                self.send_error_response(404, "Not found")
+                return
             super().do_GET()
+
+    def do_HEAD(self):
+        """Mirror do_GET guards for HEAD (same auth + static confinement)."""
+        path = urlparse(self.path).path
+        if not self._is_api_authorized():
+            self.send_error_response(401, "Unauthorized")
+            return
+        if path.startswith("/api/") or path in ("/", "/dashboard",
+                                                 "/dashboard/"):
+            self.send_error_response(405, "Method not allowed")
+            return
+        if not self._is_static_path_allowed(path):
+            self.send_error_response(404, "Not found")
+            return
+        super().do_HEAD()
 
     def _is_api_authorized(self) -> bool:
         """Validate API access token when dashboard token auth is configured."""
