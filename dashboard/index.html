@@ -471,6 +471,15 @@
       return Array.isArray(value) ? value : [];
     }
 
+    function escapeHTML(value) {
+      return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
     // --- TEST LOGIC ---
     async function loadTestResults() {
       try {
@@ -479,7 +488,7 @@
         
         if (data.data_status === 'not_generated') {
           document.getElementById('test-rows').innerHTML =
-            `<tr><td colspan="3">⚠ ${data.reason || 'Run tests to generate .report.json'}</td></tr>`;
+            `<tr><td colspan="3">⚠ ${escapeHTML(data.reason || 'Run tests to generate .report.json')}</td></tr>`;
           return;
         }
 
@@ -500,9 +509,9 @@
            const tr = document.createElement('tr');
            let color = t.outcome === 'passed' ? 'green' : (t.outcome === 'failed' ? 'red' : 'orange');
            tr.innerHTML = `
-             <td style="color: ${color}; font-weight: bold; text-transform: uppercase;">${t.outcome}</td>
-             <td>${t.nodeid}</td>
-             <td>${t.call ? t.call.duration.toFixed(3) + 's' : '-'}</td>
+             <td style="color: ${color}; font-weight: bold; text-transform: uppercase;">${escapeHTML(t.outcome)}</td>
+             <td>${escapeHTML(t.nodeid)}</td>
+             <td>${escapeHTML(t.call ? t.call.duration.toFixed(3) + 's' : '-')}</td>
            `;
            rows.appendChild(tr);
         });
@@ -819,7 +828,7 @@
         source.textContent = 'Source: ' + (data.source || '-');
       } catch (e) {
         console.error('Error loading disk-LLM estimate', e);
-        rows.innerHTML = '<tr><td colspan="2">Error loading disk-LLM estimate: ' + String(e.message || e) + '</td></tr>';
+        rows.innerHTML = '<tr><td colspan="2">Error loading disk-LLM estimate: ' + escapeHTML(e.message || e) + '</td></tr>';
         source.textContent = '';
       }
     }
@@ -918,15 +927,15 @@
           const tr = document.createElement('tr');
           tr.innerHTML = `
             <td>#${i+1}</td>
-            <td><strong>${r.config.noise_scale}</strong></td>
-            <td>${r.config.learning_rate}</td>
-            <td>${r.config.threshold}</td>
-            <td>${r.config.epochs}</td>
-            <td>${r.config.push_magnitude}</td>
-            <td>${r.metrics.baseline_ndcg.toFixed(4)}</td>
-            <td>${r.metrics.post_ndcg.toFixed(4)}</td>
+            <td><strong>${escapeHTML(r.config.noise_scale)}</strong></td>
+            <td>${escapeHTML(r.config.learning_rate)}</td>
+            <td>${escapeHTML(r.config.threshold)}</td>
+            <td>${escapeHTML(r.config.epochs)}</td>
+            <td>${escapeHTML(r.config.push_magnitude)}</td>
+            <td>${escapeHTML(r.metrics.baseline_ndcg.toFixed(4))}</td>
+            <td>${escapeHTML(r.metrics.post_ndcg.toFixed(4))}</td>
             <td style="color: ${r.metrics.gain > 0 ? 'green' : 'red'}; font-weight: bold;">
-              ${r.metrics.gain > 0 ? '+' : ''}${r.metrics.gain.toFixed(5)}
+              ${r.metrics.gain > 0 ? '+' : ''}${escapeHTML(r.metrics.gain.toFixed(5))}
             </td>
           `;
           tbody.appendChild(tr);
