@@ -33,6 +33,15 @@ from computational_storage_poc.disk_llm_estimator import (
 # Global configuration
 LOG_FILE_PATH = "chelation_events.jsonl"
 DASHBOARD_TOKEN = os.getenv("CHELATED_DASHBOARD_TOKEN", "").strip()
+# AEP-20260902-AUTH-01: explicit opt-in open mode for loopback dev/test only.
+# Default is fail-closed: with no token configured, API requests are denied (401)
+# unless CHELATED_DASHBOARD_ALLOW_UNAUTHENTICATED=1 is set. Rotation: replace the
+# CHELATED_DASHBOARD_TOKEN value and restart the server; browser clients pick up
+# the new token via ?token= (stored in sessionStorage) or localStorage.
+DASHBOARD_ALLOW_UNAUTHENTICATED = (
+    os.getenv("CHELATED_DASHBOARD_ALLOW_UNAUTHENTICATED", "").strip().lower()
+    in {"1", "true", "yes", "on"}
+)
 DASHBOARD_CORS_ORIGIN = os.getenv("CHELATED_DASHBOARD_CORS_ORIGIN", "").strip()
 CAMPAIGN_HISTORY_ROOT = "experiment_runs"
 VALIDATION_HISTORY_ROOT = "experiment_runs"
@@ -517,6 +526,38 @@ def get_inline_dashboard_html():
     </div>
 
     <script>
+        // AEP-20260902-AUTH-01: send Bearer token on same-origin /api/* calls.
+        // Token source: ?token= URL param (persisted to sessionStorage) wins, then
+        // sessionStorage, then localStorage. Only relative /api/ URLs are tagged.
+        (function () {
+            function dashboardToken() {
+                try {
+                    var q = new URLSearchParams(window.location.search).get('token');
+                    if (q) { window.sessionStorage.setItem('chelated_dashboard_token', q); return q; }
+                    return window.sessionStorage.getItem('chelated_dashboard_token')
+                        || window.localStorage.getItem('chelated_dashboard_token') || '';
+                } catch (e) { return ''; }
+            }
+            var token = dashboardToken();
+            if (!token || typeof window.fetch !== 'function') return;
+            var rawFetch = window.fetch.bind(window);
+            window.fetch = function (url, opts) {
+                opts = opts || {};
+                if (typeof url === 'string' && url.indexOf('/api/') === 0) {
+                    var headers = {};
+                    if (opts.headers) {
+                        if (typeof opts.headers.forEach === 'function') {
+                            opts.headers.forEach(function (v, k) { headers[k] = v; });
+                        } else {
+                            for (var k in opts.headers) { headers[k] = opts.headers[k]; }
+                        }
+                    }
+                    headers['Authorization'] = 'Bearer ' + token;
+                    opts.headers = headers;
+                }
+                return rawFetch(url, opts);
+            };
+        })();
         let currentData = {
             summary: null,
             events: null
@@ -1538,7 +1579,7 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         path = parsed_path.path
         query_params = parse_qs(parsed_path.query)
 
-        if DASHBOARD_TOKEN and not self._is_api_authorized():
+        if not self._is_api_authorized():
             self.send_error_response(401, "Unauthorized")
             return
         
@@ -1589,9 +1630,11 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             super().do_GET()
 
     def _is_api_authorized(self) -> bool:
-        """Validate API access token when dashboard token auth is configured."""
+        """Validate API access token. Fail-closed: with no token configured,
+        only an explicit CHELATED_DASHBOARD_ALLOW_UNAUTHENTICATED=1 opts into
+        open mode (AEP-20260902-AUTH-01)."""
         if not DASHBOARD_TOKEN:
-            return True
+            return DASHBOARD_ALLOW_UNAUTHENTICATED
         auth_header = ""
         if hasattr(self, "headers") and self.headers is not None:
             auth_header = self.headers.get("Authorization", "")
@@ -2066,7 +2109,13 @@ def run_server(host: str = "127.0.0.1", port: int = 8080, log_file: str = LOG_FI
     print(f"  Host: {host}")
     print(f"  Port: {port}")
     print(f"  Log file: {log_file}")
-    print(f"  Token auth: {'enabled' if DASHBOARD_TOKEN else 'disabled'}")
+    if DASHBOARD_TOKEN:
+        auth_mode = "enabled"
+    elif DASHBOARD_ALLOW_UNAUTHENTICATED:
+        auth_mode = "open (explicit CHELATED_DASHBOARD_ALLOW_UNAUTHENTICATED=1)"
+    else:
+        auth_mode = "fail-closed (no token)"
+    print(f"  Token auth: {auth_mode}")
     print(f"  Dashboard URL: http://{host}:{port}/dashboard/")
     print("\nAPI Endpoints:")
     print(f"  GET http://{host}:{port}/api/events?limit=N")

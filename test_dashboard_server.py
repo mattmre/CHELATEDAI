@@ -4,6 +4,7 @@ Unit tests for dashboard_server.py
 Tests the helper functions and API handler behavior using mocks and temporary files.
 """
 
+import contextlib
 import json
 import os
 import tempfile
@@ -16,7 +17,23 @@ import dashboard_server
 
 # Normalize auth defaults for deterministic tests
 dashboard_server.DASHBOARD_TOKEN = ""
+dashboard_server.DASHBOARD_ALLOW_UNAUTHENTICATED = False
 dashboard_server.DASHBOARD_CORS_ORIGIN = ""
+
+
+@contextlib.contextmanager
+def _explicit_open_mode():
+    """Opt into the documented unauthenticated open mode (AEP-20260902-AUTH-01).
+
+    Routing tests use this to declare the open mode they assume; production
+    default is fail-closed.
+    """
+    old = dashboard_server.DASHBOARD_ALLOW_UNAUTHENTICATED
+    dashboard_server.DASHBOARD_ALLOW_UNAUTHENTICATED = True
+    try:
+        yield
+    finally:
+        dashboard_server.DASHBOARD_ALLOW_UNAUTHENTICATED = old
 
 
 class TestLoadEvents(unittest.TestCase):
@@ -744,14 +761,16 @@ class TestPhaseCHandlers(unittest.TestCase):
         handler = self._make_handler()
         handler.handle_api_phase_c_results = MagicMock()
         handler.path = "/api/phase_c_results"
-        handler.do_GET()
+        with _explicit_open_mode():
+            handler.do_GET()
         handler.handle_api_phase_c_results.assert_called_once()
 
     def test_do_get_routes_phase_c_analysis(self):
         handler = self._make_handler()
         handler.handle_api_phase_c_analysis = MagicMock()
         handler.path = "/api/phase_c_analysis"
-        handler.do_GET()
+        with _explicit_open_mode():
+            handler.do_GET()
         handler.handle_api_phase_c_analysis.assert_called_once()
 
 
@@ -1013,12 +1032,15 @@ class TestDashboardSecurity(unittest.TestCase):
 
     def setUp(self):
         self._old_dashboard_token = dashboard_server.DASHBOARD_TOKEN
+        self._old_dashboard_open = dashboard_server.DASHBOARD_ALLOW_UNAUTHENTICATED
         self._old_dashboard_cors = dashboard_server.DASHBOARD_CORS_ORIGIN
         dashboard_server.DASHBOARD_TOKEN = ""
+        dashboard_server.DASHBOARD_ALLOW_UNAUTHENTICATED = False
         dashboard_server.DASHBOARD_CORS_ORIGIN = ""
 
     def tearDown(self):
         dashboard_server.DASHBOARD_TOKEN = self._old_dashboard_token
+        dashboard_server.DASHBOARD_ALLOW_UNAUTHENTICATED = self._old_dashboard_open
         dashboard_server.DASHBOARD_CORS_ORIGIN = self._old_dashboard_cors
 
     def _make_handler(self):
@@ -1062,6 +1084,34 @@ class TestDashboardSecurity(unittest.TestCase):
         dashboard_server.DASHBOARD_TOKEN = ""
         with self.assertRaises(ValueError):
             dashboard_server.run_server(host="0.0.0.0", port=8080, log_file="chelation_events.jsonl")
+
+    def test_do_get_denies_api_without_token_by_default(self):
+        """AC3 (AEP-20260902-AUTH-01): token unset + no explicit open mode -> 401."""
+        dashboard_server.DASHBOARD_TOKEN = ""
+        dashboard_server.DASHBOARD_ALLOW_UNAUTHENTICATED = False
+        handler = self._make_handler()
+        handler.path = "/api/summary"
+        handler.handle_api_summary = MagicMock()
+        handler.send_error_response = MagicMock()
+
+        handler.do_GET()
+
+        handler.send_error_response.assert_called_once_with(401, "Unauthorized")
+        handler.handle_api_summary.assert_not_called()
+
+    def test_do_get_allows_api_in_explicit_open_mode(self):
+        """AC3 (AEP-20260902-AUTH-01): token unset + explicit open mode -> routed."""
+        dashboard_server.DASHBOARD_TOKEN = ""
+        dashboard_server.DASHBOARD_ALLOW_UNAUTHENTICATED = True
+        handler = self._make_handler()
+        handler.path = "/api/summary"
+        handler.handle_api_summary = MagicMock()
+        handler.send_error_response = MagicMock()
+
+        handler.do_GET()
+
+        handler.handle_api_summary.assert_called_once()
+        handler.send_error_response.assert_not_called()
 
 
 class TestDiskLLMEstimateIntegration(unittest.TestCase):
@@ -1140,7 +1190,8 @@ class TestDiskLLMEstimateIntegration(unittest.TestCase):
         handler = self._make_handler()
         handler.handle_api_disk_llm_estimate = MagicMock()
         handler.path = "/api/disk_llm_estimate"
-        handler.do_GET()
+        with _explicit_open_mode():
+            handler.do_GET()
         handler.handle_api_disk_llm_estimate.assert_called_once()
 
     def test_estimator_unexpected_exception_returns_500(self):

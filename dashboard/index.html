@@ -433,6 +433,41 @@
   </div>
 
   <script>
+    // AEP-20260902-AUTH-01: send Bearer token on same-origin /api/* calls.
+    // Token source: ?token= URL param (persisted to sessionStorage) wins, then
+    // sessionStorage, then localStorage. Set via console:
+    // localStorage.setItem('chelated_dashboard_token', '<token>').
+    // Only relative /api/ URLs are tagged, so the token never leaks to third
+    // parties (e.g. the Chart.js CDN script tag above uses <script src>, not fetch).
+    (function () {
+      function dashboardToken() {
+        try {
+          var q = new URLSearchParams(window.location.search).get('token');
+          if (q) { window.sessionStorage.setItem('chelated_dashboard_token', q); return q; }
+          return window.sessionStorage.getItem('chelated_dashboard_token')
+            || window.localStorage.getItem('chelated_dashboard_token') || '';
+        } catch (e) { return ''; }
+      }
+      var token = dashboardToken();
+      if (!token || typeof window.fetch !== 'function') return;
+      var rawFetch = window.fetch.bind(window);
+      window.fetch = function (url, opts) {
+        opts = opts || {};
+        if (typeof url === 'string' && url.indexOf('/api/') === 0) {
+          var headers = {};
+          if (opts.headers) {
+            if (typeof opts.headers.forEach === 'function') {
+              opts.headers.forEach(function (v, k) { headers[k] = v; });
+            } else {
+              for (var k in opts.headers) { headers[k] = opts.headers[k]; }
+            }
+          }
+          headers['Authorization'] = 'Bearer ' + token;
+          opts.headers = headers;
+        }
+        return rawFetch(url, opts);
+      };
+    })();
     let noiseChartInstance = null;
 
     function switchTab(tabId) {
