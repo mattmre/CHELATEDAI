@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ChelatedAI Control Center</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" integrity="sha384-9nhczxUqK87bcKHh20fSQcTGD4qq5GhayNYSYWqwBkINBhOfQLg/P5HG5lF1urn4" crossorigin="anonymous"></script>
   <style>
     :root {
       --primary: #4a6fa5;
@@ -55,11 +55,11 @@
   </header>
 
   <div class="tabs">
-    <div class="tab active" onclick="switchTab('analytics')">Analysis & Results</div>
-    <div class="tab" onclick="switchTab('tests')">Test Tracking</div>
-    <div class="tab" onclick="switchTab('beir')">BEIR Benchmarks</div>
-    <div class="tab" onclick="switchTab('campaigns')">Campaign History</div>
-    <div class="tab" onclick="switchTab('logs')">Live Events</div>
+    <div class="tab active" onclick="switchTab('analytics', this)">Analysis & Results</div>
+    <div class="tab" onclick="switchTab('tests', this)">Test Tracking</div>
+    <div class="tab" onclick="switchTab('beir', this)">BEIR Benchmarks</div>
+    <div class="tab" onclick="switchTab('campaigns', this)">Campaign History</div>
+    <div class="tab" onclick="switchTab('logs', this)">Live Events</div>
   </div>
 
   <!-- Analytics Tab -->
@@ -470,10 +470,12 @@
     })();
     let noiseChartInstance = null;
 
-    function switchTab(tabId) {
+    function switchTab(tabId, el) {
       document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
       document.querySelectorAll('.container').forEach(c => c.classList.remove('active'));
-      event.target.classList.add('active');
+      // Explicit element param (P1-06): the implicit global `event` is
+      // unreliable outside classic inline handlers.
+      (el || document.querySelector('.tab')).classList.add('active');
       document.getElementById(tabId).classList.add('active');
       if(tabId === 'analytics') loadSweepResults();
       if(tabId === 'logs') refreshLogs();
@@ -506,6 +508,24 @@
       return Array.isArray(value) ? value : [];
     }
 
+    // Safe number formatting: finite numbers only, '-' otherwise (P1-07, P2-05, P2-06).
+    function num(value, digits) {
+      return (typeof value === 'number' && isFinite(value)) ? value.toFixed(digits) : '-';
+    }
+
+    // Signed gain formatting ('+1.2345', '-0.1234', or '-' for garbage).
+    function signed(value, digits) {
+      if (typeof value !== 'number' || !isFinite(value)) return '-';
+      return (value > 0 ? '+' : '') + value.toFixed(digits);
+    }
+
+    // Auth-aware failure hint: 401s tell the operator to set the token (P2-08).
+    function authHint(e) {
+      var msg = String((e && e.message) || e);
+      return (/HTTP 401/.test(msg)) ?
+        ' (session expired or missing token: run sessionStorage.setItem(\'chelated_dashboard_token\', \'<token>\') in console and retry)' : '';
+    }
+
     function escapeHTML(value) {
       return String(value ?? '')
         .replace(/&/g, '&amp;')
@@ -518,8 +538,7 @@
     // --- TEST LOGIC ---
     async function loadTestResults() {
       try {
-        const res = await fetch('/api/test_results');
-        const data = await res.json();
+        const data = await fetchJson('/api/test_results');
         
         if (data.data_status === 'not_generated') {
           document.getElementById('test-rows').innerHTML =
@@ -535,7 +554,7 @@
         document.getElementById('test-total').textContent = data.summary.total ?? 0;
         document.getElementById('test-passed').textContent = data.summary.passed ?? 0;
         document.getElementById('test-failed').textContent = data.summary.failed ?? 0;
-        document.getElementById('test-duration').textContent = data.summary.duration ? data.summary.duration.toFixed(2) + 's' : '-';
+        document.getElementById('test-duration').textContent = (typeof data.summary.duration === 'number' && isFinite(data.summary.duration)) ? data.summary.duration.toFixed(2) + 's' : '-';
 
         const rows = document.getElementById('test-rows');
         rows.innerHTML = '';
@@ -546,29 +565,38 @@
            tr.innerHTML = `
              <td style="color: ${color}; font-weight: bold; text-transform: uppercase;">${escapeHTML(t.outcome)}</td>
              <td>${escapeHTML(t.nodeid)}</td>
-             <td>${escapeHTML(t.call ? t.call.duration.toFixed(3) + 's' : '-')}</td>
+             <td>${escapeHTML((t.call && typeof t.call.duration === 'number' && isFinite(t.call.duration)) ? t.call.duration.toFixed(3) + 's' : '-')}</td>
            `;
            rows.appendChild(tr);
         });
 
       } catch (e) {
         console.error('Error loading tests', e);
-        document.getElementById('test-rows').innerHTML = '<tr><td colspan="3">Error loading test data</td></tr>';
+        document.getElementById('test-rows').innerHTML = '<tr><td colspan="3">Error loading test data' + escapeHTML(authHint(e)) + '</td></tr>';
+        document.getElementById('test-total').textContent = '—';
+        document.getElementById('test-passed').textContent = '—';
+        document.getElementById('test-failed').textContent = '—';
+        document.getElementById('test-duration').textContent = '—';
       }
     }
 
     // --- LOGS LOGIC ---
     async function loadSummary() {
       try {
-        const res = await fetch('/api/summary');
-        const data = await res.json();
+        const data = await fetchJson('/api/summary');
         document.getElementById('total').textContent = data.total_events ?? 0;
         document.getElementById('queries').textContent = data.query_count ?? 0;
         document.getElementById('errors').textContent = data.error_count ?? 0;
         const entries = Object.entries(data.action_breakdown || {});
         entries.sort((a, b) => b[1] - a[1]);
         document.getElementById('top-action').textContent = entries.length ? entries[0][0] : '-';
-      } catch (e) { console.error('Error loading summary', e); }
+      } catch (e) {
+        console.error('Error loading summary', e);
+        document.getElementById('total').textContent = '—';
+        document.getElementById('queries').textContent = '—';
+        document.getElementById('errors').textContent = '—';
+        document.getElementById('top-action').textContent = 'error' + authHint(e);
+      }
     }
 
     async function loadEvents() {
@@ -578,8 +606,7 @@
         let url = `/api/events?limit=${encodeURIComponent(limit)}`;
         if (type) url += `&event_type=${encodeURIComponent(type)}`;
 
-        const res = await fetch(url);
-        const data = await res.json();
+        const data = await fetchJson(url);
         const rows = document.getElementById('rows');
         rows.replaceChildren();
         const events = data.events || [];
@@ -604,7 +631,10 @@
           }
           rows.appendChild(tr);
         }
-      } catch (e) { console.error('Error loading events', e); }
+      } catch (e) {
+        console.error('Error loading events', e);
+        document.getElementById('rows').innerHTML = '<tr><td colspan="5">Error loading events' + escapeHTML(authHint(e)) + '</td></tr>';
+      }
     }
 
     async function refreshLogs() {
@@ -924,8 +954,7 @@
     // --- SWEEP ANALYTICS LOGIC ---
     async function loadSweepResults() {
       try {
-        const res = await fetch('/api/sweep_results');
-        const data = await res.json();
+        const data = await fetchJson('/api/sweep_results');
 
         if (data.data_status === 'not_generated') {
           document.getElementById('sweep-status').textContent = 'Sweep Status: ⚠ Not generated — ' + (data.reason || 'run run_large_sweep.py');
@@ -933,8 +962,8 @@
           return;
         }
 
-        const results = data.results || [];
-        
+        const results = asArray(data.results).filter(r => r && r.metrics && r.config);
+
         document.getElementById('sweep-total').textContent = results.length;
         
         if (results.length === 0) {
@@ -950,12 +979,12 @@
           if (r.metrics.gain > best.metrics.gain) best = r;
         }
 
-        document.getElementById('sweep-best-gain').textContent = (best.metrics.gain > 0 ? '+' : '') + best.metrics.gain.toFixed(5);
-        document.getElementById('sweep-best-noise').textContent = best.config.noise_scale;
-        document.getElementById('sweep-best-lr').textContent = best.config.learning_rate;
+        document.getElementById('sweep-best-gain').textContent = signed(best.metrics.gain, 5);
+        document.getElementById('sweep-best-noise').textContent = best.config.noise_scale ?? '—';
+        document.getElementById('sweep-best-lr').textContent = best.config.learning_rate ?? '—';
 
         // Render Table of top 10
-        const sorted = [...results].sort((a, b) => b.metrics.gain - a.metrics.gain).slice(0, 10);
+        const sorted = [...results].sort((a, b) => (b.metrics.gain || 0) - (a.metrics.gain || 0)).slice(0, 10);
         const tbody = document.getElementById('top-configs');
         tbody.innerHTML = '';
         sorted.forEach((r, i) => {
@@ -967,10 +996,10 @@
             <td>${escapeHTML(r.config.threshold)}</td>
             <td>${escapeHTML(r.config.epochs)}</td>
             <td>${escapeHTML(r.config.push_magnitude)}</td>
-            <td>${escapeHTML(r.metrics.baseline_ndcg.toFixed(4))}</td>
-            <td>${escapeHTML(r.metrics.post_ndcg.toFixed(4))}</td>
+            <td>${escapeHTML(num(r.metrics.baseline_ndcg, 4))}</td>
+            <td>${escapeHTML(num(r.metrics.post_ndcg, 4))}</td>
             <td style="color: ${r.metrics.gain > 0 ? 'green' : 'red'}; font-weight: bold;">
-              ${r.metrics.gain > 0 ? '+' : ''}${escapeHTML(r.metrics.gain.toFixed(5))}
+              ${escapeHTML(signed(r.metrics.gain, 5))}
             </td>
           `;
           tbody.appendChild(tr);
@@ -981,20 +1010,31 @@
 
       } catch (e) {
         console.error('Error loading sweep results', e);
-        document.getElementById('sweep-status').textContent = 'Sweep Status: Offline';
+        document.getElementById('sweep-status').textContent = 'Sweep Status: Offline' + authHint(e);
+        document.getElementById('sweep-total').textContent = '—';
+        document.getElementById('sweep-best-gain').textContent = '—';
+        document.getElementById('sweep-best-noise').textContent = '—';
+        document.getElementById('sweep-best-lr').textContent = '—';
       }
     }
 
     function renderChart(results) {
-      // Group by noise scale
+      if (typeof Chart === 'undefined') {
+        document.getElementById('sweep-status').textContent += ' (charts unavailable offline)';
+        return;
+      }
+      // Group by noise scale; skip malformed rows (P3-08)
       const noiseGroups = {};
       results.forEach(r => {
-        const ns = r.config.noise_scale.toString();
+        if (!r || !r.config || !r.metrics) return;
+        const ns = String(r.config.noise_scale);
         if(!noiseGroups[ns]) noiseGroups[ns] = [];
-        noiseGroups[ns].push(r.metrics.gain);
+        const g = r.metrics.gain;
+        noiseGroups[ns].push((typeof g === 'number' && isFinite(g)) ? g : 0);
       });
 
       const labels = Object.keys(noiseGroups).sort((a,b) => parseFloat(a) - parseFloat(b));
+      if (!labels.length) return;
       
       // Calculate averages and maxes
       const averages = labels.map(l => {
@@ -1054,8 +1094,7 @@
 
     async function loadBeirResults() {
       try {
-        const res = await fetch('/api/beir_results');
-        const data = await res.json();
+        const data = await fetchJson('/api/beir_results');
 
         if (data.data_status === 'not_generated') {
           ['beir-datasets','beir-configs','beir-total','beir-best-config'].forEach(id => {
@@ -1080,8 +1119,9 @@
         let bestConfig = '-';
         let bestNdcg = -1;
         for (const [cfg, metrics] of Object.entries(aggByConfig)) {
-          if (metrics.mean_ndcg_at_10 > bestNdcg) {
-            bestNdcg = metrics.mean_ndcg_at_10;
+          const v = metrics ? Number(metrics.mean_ndcg_at_10) : NaN;
+          if (isFinite(v) && v > bestNdcg) {
+            bestNdcg = v;
             bestConfig = cfg;
           }
         }
@@ -1123,17 +1163,19 @@
 
             const row = matrix[i] || [];
             let rowSum = 0;
+            let rowValid = 0;
             row.forEach(val => {
               const td = document.createElement('td');
-              td.textContent = val.toFixed(4);
+              const n = (typeof val === 'number' && isFinite(val)) ? val : NaN;
+              td.textContent = isFinite(n) ? n.toFixed(4) : '-';
               // Color-code cells
-              const intensity = Math.min(val * 255 / BEIR_HEATMAP_MAX_NDCG, 255);
+              const intensity = isFinite(n) ? Math.min(n * 255 / BEIR_HEATMAP_MAX_NDCG, 255) : 0;
               td.style.background = `rgba(74, 111, 165, ${(intensity / 255 * 0.3).toFixed(2)})`;
               tr.appendChild(td);
-              rowSum += val;
+              if (isFinite(n)) { rowSum += n; rowValid += 1; }
             });
             const tdAvg = document.createElement('td');
-            tdAvg.textContent = row.length > 0 ? (rowSum / row.length).toFixed(4) : '-';
+            tdAvg.textContent = rowValid > 0 ? (rowSum / rowValid).toFixed(4) : '-';
             tdAvg.style.fontWeight = 'bold';
             tr.appendChild(tdAvg);
             tbody.appendChild(tr);
@@ -1151,14 +1193,15 @@
         } else {
           results.forEach(r => {
             const tr = document.createElement('tr');
+            const row = r || {};
             const cells = [
-              r.dataset_name,
-              r.config_name,
-              r.ndcg_at_10.toFixed(4),
-              r.map_at_10.toFixed(4),
-              r.mrr.toFixed(4),
-              r.recall_at_10.toFixed(4),
-              r.latency_ms.toFixed(1)
+              row.dataset_name || '-',
+              row.config_name || '-',
+              num(row.ndcg_at_10, 4),
+              num(row.map_at_10, 4),
+              num(row.mrr, 4),
+              num(row.recall_at_10, 4),
+              num(row.latency_ms, 1)
             ];
             cells.forEach(text => {
               const td = document.createElement('td');
@@ -1174,12 +1217,25 @@
 
       } catch (e) {
         console.error('Error loading BEIR results', e);
+        ['beir-datasets','beir-configs','beir-total','beir-best-config'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.textContent = '—';
+        });
+        const noticeEl = document.getElementById('beir-not-generated-notice');
+        if (noticeEl) {
+          noticeEl.textContent = '⚠ BEIR data unavailable' + authHint(e);
+          noticeEl.style.display = 'block';
+        }
       }
     }
 
     function renderBeirChart(aggByConfig) {
+      if (typeof Chart === 'undefined') return;
       const labels = Object.keys(aggByConfig).sort();
-      const values = labels.map(l => aggByConfig[l].mean_ndcg_at_10);
+      const values = labels.map(l => {
+        const v = (aggByConfig[l] && aggByConfig[l].mean_ndcg_at_10);
+        return (typeof v === 'number' && isFinite(v)) ? v : 0;
+      });
 
       const ctx = document.getElementById('beirChart').getContext('2d');
       if (beirChartInstance) beirChartInstance.destroy();
