@@ -39,6 +39,20 @@ for above; deletion predates it). Surviving sources: p1–p3 rounds,
 Recovery: attempted only on operator request — no content is reconstructed
 from memory in this file.
 
+## PR295-01: CLOSED as FALSE_POSITIVE (hammer + audit, 2026-09-03)
+
+Lock-scope audit of `adapter_router.py`: every shared-state access
+(`_routes`, `_last_route_outcome`, `_route_history`) is under
+`with self._lock` — `register` (:50), `select` snapshot (:57-58),
+`record_outcome` (:112-114), all getters (:124,128,132). `select` copies
+under lock then computes outside (safe pattern); no cross-call
+check-then-act exists. Threaded hammer (16 threads x 400 mixed
+select/record/register/getters, project venv numpy 2.5.2):
+0 errors, 0 stuck, history correctly capped at 256, 8/8 routes intact
+→ HAMMER_PASS (`/tmp/pr295_hammer.py`, re-runnable). The "race" premise is
+falsified both statically and empirically; no PR change needed. Demote-or-drop
+resolved as drop. PR #295 itself (lattice rung16) is unaffected by this verdict.
+
 ## Deferred for a free-Spark window (owner: operator, TTL: next window)
 
 - Browser-DOM-fire proof for XSS-class fixes (no harness installed).
