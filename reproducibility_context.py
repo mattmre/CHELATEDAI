@@ -27,11 +27,13 @@ def get_git_metadata() -> Dict[str, Any]:
             ["git", "rev-parse", "HEAD"],
             stderr=subprocess.DEVNULL,
             text=True,
+            timeout=10,
         ).strip()
         status = subprocess.check_output(
             ["git", "status", "--short"],
             stderr=subprocess.DEVNULL,
             text=True,
+            timeout=10,
         )
         metadata["commit"] = commit
         metadata["dirty"] = bool(status.strip())

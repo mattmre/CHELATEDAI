@@ -37,12 +37,16 @@ DASHBOARD_TOKEN = os.getenv("CHELATED_DASHBOARD_TOKEN", "").strip()
 # Default is fail-closed: with no token configured, API requests are denied (401)
 # unless CHELATED_DASHBOARD_ALLOW_UNAUTHENTICATED=1 is set. Rotation: replace the
 # CHELATED_DASHBOARD_TOKEN value and restart the server; browser clients pick up
-# the new token via ?token= (stored in sessionStorage) or localStorage.
+# the new token via console: sessionStorage.setItem('chelated_dashboard_token',
+# '<token>'). Tokens are never distributed via URL (P1-02).
 DASHBOARD_ALLOW_UNAUTHENTICATED = (
     os.getenv("CHELATED_DASHBOARD_ALLOW_UNAUTHENTICATED", "").strip().lower()
     in {"1", "true", "yes", "on"}
 )
 DASHBOARD_CORS_ORIGIN = os.getenv("CHELATED_DASHBOARD_CORS_ORIGIN", "").strip()
+# Upper bound for the /api/events ?limit= parameter (LIMIT-01): prevents
+# unbounded response sizes from huge or garbage input.
+_MAX_API_LIMIT = 5000
 CAMPAIGN_HISTORY_ROOT = "experiment_runs"
 VALIDATION_HISTORY_ROOT = "experiment_runs"
 PREFLIGHT_HISTORY_ROOT = "experiment_runs"
@@ -527,15 +531,14 @@ def get_inline_dashboard_html():
 
     <script>
         // AEP-20260902-AUTH-01: send Bearer token on same-origin /api/* calls.
-        // Token source: ?token= URL param (persisted to sessionStorage) wins, then
-        // sessionStorage, then localStorage. Only relative /api/ URLs are tagged.
+        // Token source: sessionStorage only (set via console). Tokens are never
+        // read from the URL (P1-02) nor from persistent localStorage (P1-02 AC3).
+        // Only relative /api/ URLs are tagged, so the token never leaks to third
+        // parties (e.g. the Chart.js CDN script tag uses <script src>, not fetch).
         (function () {
             function dashboardToken() {
                 try {
-                    var q = new URLSearchParams(window.location.search).get('token');
-                    if (q) { window.sessionStorage.setItem('chelated_dashboard_token', q); return q; }
-                    return window.sessionStorage.getItem('chelated_dashboard_token')
-                        || window.localStorage.getItem('chelated_dashboard_token') || '';
+                    return window.sessionStorage.getItem('chelated_dashboard_token') || '';
                 } catch (e) { return ''; }
             }
             var token = dashboardToken();
@@ -1125,9 +1128,9 @@ def filter_events(
         reverse=True
     )
     
-    # Apply limit (0 means no rows)
+    # Apply limit (0 means no rows; clamped above at _MAX_API_LIMIT)
     if limit is not None:
-        filtered = filtered[:max(0, limit)]
+        filtered = filtered[:min(max(0, limit), _MAX_API_LIMIT)]
     
     return filtered
 
@@ -1673,6 +1676,44 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             return
         super().do_HEAD()
 
+    def do_OPTIONS(self):
+        """CORS preflight scoped to the configured origin (P2-01)."""
+        if not self._is_api_authorized():
+            self.send_error_response(405, "Method not allowed")
+            return
+        self.send_response(204)
+        self.send_header("Content-Length", "0")
+        if DASHBOARD_CORS_ORIGIN:
+            self.send_header("Access-Control-Allow-Origin", DASHBOARD_CORS_ORIGIN)
+            self.send_header("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS")
+            self.send_header("Access-Control-Allow-Headers", "Authorization, Content-Type")
+        self.end_headers()
+
+    def _deny_unsupported_method(self):
+        """Explicit JSON deny for unimplemented methods (P2-01)."""
+        if not self._is_api_authorized():
+            self.send_error_response(401, "Unauthorized")
+            return
+        self.send_error_response(405, "Method not allowed")
+
+    def do_POST(self):
+        self._deny_unsupported_method()
+
+    def do_PUT(self):
+        self._deny_unsupported_method()
+
+    def do_DELETE(self):
+        self._deny_unsupported_method()
+
+    def do_PATCH(self):
+        self._deny_unsupported_method()
+
+    def end_headers(self):
+        """Emit hardening headers on every response incl. static files (P1-04)."""
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("Referrer-Policy", "no-referrer")
+        super().end_headers()
+
     def _is_api_authorized(self) -> bool:
         """Validate API access token. Fail-closed: with no token configured,
         only an explicit CHELATED_DASHBOARD_ALLOW_UNAUTHENTICATED=1 opts into
@@ -1715,14 +1756,14 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             
             # Filter events
             filtered = filter_events(events, event_type=event_type, limit=limit)
-            
+
             # Send response
             self.send_json_response({"events": filtered})
-        
-        except FileNotFoundError as e:
-            self.send_error_response(404, str(e))
-        except Exception as e:
-            self.send_error_response(500, f"Internal server error: {str(e)}")
+
+        except FileNotFoundError:
+            self.send_error_response(404, "Not found")
+        except Exception:
+            self.send_error_response(500, "Internal server error")
     
     def handle_api_summary(self):
         """Handle /api/summary endpoint."""
@@ -1730,11 +1771,11 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             events = load_events(LOG_FILE_PATH)
             summary = summarize_events(events)
             self.send_json_response(summary)
-        
-        except FileNotFoundError as e:
-            self.send_error_response(404, str(e))
-        except Exception as e:
-            self.send_error_response(500, f"Internal server error: {str(e)}")
+
+        except FileNotFoundError:
+            self.send_error_response(404, "Not found")
+        except Exception:
+            self.send_error_response(500, "Internal server error")
             
     def handle_api_sweep_results(self, query_params: Dict[str, List[str]]):
         """Handle /api/sweep_results endpoint by returning the large sweep JSON data."""
@@ -2109,8 +2150,8 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         self.send_header("Content-Length", str(len(response_bytes)))
         if DASHBOARD_CORS_ORIGIN:
             self.send_header("Access-Control-Allow-Origin", DASHBOARD_CORS_ORIGIN)
-        elif not DASHBOARD_TOKEN:
-            self.send_header("Access-Control-Allow-Origin", "*")
+        # Never emit a wildcard origin: without a configured origin the API is
+        # same-origin only (CORS-01, P1-05).
         self.end_headers()
         self.wfile.write(response_bytes)
     

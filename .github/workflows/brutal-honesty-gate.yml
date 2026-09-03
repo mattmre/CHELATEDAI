@@ -28,9 +28,10 @@
 name: Brutal Honesty Gate
 
 on:
+  # No branches filter: stacked PRs targeting feature branches must also pass
+  # the honesty gate (CI-01). This job is seconds-cheap (validators only).
   pull_request:
     types: [opened, edited, synchronize, reopened, labeled, unlabeled]
-    branches: [main]
 
 permissions:
   contents: read
