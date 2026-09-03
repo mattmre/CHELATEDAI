@@ -37,12 +37,16 @@ DASHBOARD_TOKEN = os.getenv("CHELATED_DASHBOARD_TOKEN", "").strip()
 # Default is fail-closed: with no token configured, API requests are denied (401)
 # unless CHELATED_DASHBOARD_ALLOW_UNAUTHENTICATED=1 is set. Rotation: replace the
 # CHELATED_DASHBOARD_TOKEN value and restart the server; browser clients pick up
-# the new token via ?token= (stored in sessionStorage) or localStorage.
+# the new token via console: sessionStorage.setItem('chelated_dashboard_token',
+# '<token>'). Tokens are never distributed via URL (P1-02).
 DASHBOARD_ALLOW_UNAUTHENTICATED = (
     os.getenv("CHELATED_DASHBOARD_ALLOW_UNAUTHENTICATED", "").strip().lower()
     in {"1", "true", "yes", "on"}
 )
 DASHBOARD_CORS_ORIGIN = os.getenv("CHELATED_DASHBOARD_CORS_ORIGIN", "").strip()
+# Upper bound for the /api/events ?limit= parameter (LIMIT-01): prevents
+# unbounded response sizes from huge or garbage input.
+_MAX_API_LIMIT = 5000
 CAMPAIGN_HISTORY_ROOT = "experiment_runs"
 VALIDATION_HISTORY_ROOT = "experiment_runs"
 PREFLIGHT_HISTORY_ROOT = "experiment_runs"
@@ -527,15 +531,14 @@ def get_inline_dashboard_html():
 
     <script>
         // AEP-20260902-AUTH-01: send Bearer token on same-origin /api/* calls.
-        // Token source: ?token= URL param (persisted to sessionStorage) wins, then
-        // sessionStorage, then localStorage. Only relative /api/ URLs are tagged.
+        // Token source: sessionStorage only (set via console). Tokens are never
+        // read from the URL (P1-02) nor from persistent localStorage (P1-02 AC3).
+        // Only relative /api/ URLs are tagged, so the token never leaks to third
+        // parties (e.g. the Chart.js CDN script tag uses <script src>, not fetch).
         (function () {
             function dashboardToken() {
                 try {
-                    var q = new URLSearchParams(window.location.search).get('token');
-                    if (q) { window.sessionStorage.setItem('chelated_dashboard_token', q); return q; }
-                    return window.sessionStorage.getItem('chelated_dashboard_token')
-                        || window.localStorage.getItem('chelated_dashboard_token') || '';
+                    return window.sessionStorage.getItem('chelated_dashboard_token') || '';
                 } catch (e) { return ''; }
             }
             var token = dashboardToken();
@@ -1125,9 +1128,9 @@ def filter_events(
         reverse=True
     )
     
-    # Apply limit (0 means no rows)
+    # Apply limit (0 means no rows; clamped above at _MAX_API_LIMIT)
     if limit is not None:
-        filtered = filtered[:max(0, limit)]
+        filtered = filtered[:min(max(0, limit), _MAX_API_LIMIT)]
     
     return filtered
 
@@ -1673,6 +1676,57 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             return
         super().do_HEAD()
 
+    def do_OPTIONS(self):
+        """CORS preflight scoped to the configured origin (P2-01)."""
+        if not self._is_api_authorized():
+            self.send_error_response(405, "Method not allowed")
+            return
+        self.send_response(204)
+        self.send_header("Content-Length", "0")
+        if DASHBOARD_CORS_ORIGIN:
+            self.send_header("Access-Control-Allow-Origin", DASHBOARD_CORS_ORIGIN)
+            self.send_header("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS")
+            self.send_header("Access-Control-Allow-Headers", "Authorization, Content-Type")
+        self.end_headers()
+
+    def _deny_unsupported_method(self):
+        """Explicit JSON deny for unimplemented methods (P2-01)."""
+        if not self._is_api_authorized():
+            self.send_error_response(401, "Unauthorized")
+            return
+        self.send_error_response(405, "Method not allowed")
+
+    def do_POST(self):
+        self._deny_unsupported_method()
+
+    def do_PUT(self):
+        self._deny_unsupported_method()
+
+    def do_DELETE(self):
+        self._deny_unsupported_method()
+
+    def do_PATCH(self):
+        self._deny_unsupported_method()
+
+    def end_headers(self):
+        """Emit hardening headers on every response incl. static files (P1-04)."""
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("Referrer-Policy", "no-referrer")
+        super().end_headers()
+
+    # Neutral server banner: stdlib version strings otherwise leak on every
+    # response line and error page (F2).
+    server_version = "Dashboard"
+    sys_version = ""
+
+    def send_error(self, code, message=None, explain=None):
+        """JSON envelope for stdlib-raised errors incl. unknown verbs (F2)."""
+        try:
+            short = self.responses.get(code, ("Unknown error", ""))[0]
+        except Exception:
+            short = "Unknown error"
+        self.send_error_response(code, message or short)
+
     def _is_api_authorized(self) -> bool:
         """Validate API access token. Fail-closed: with no token configured,
         only an explicit CHELATED_DASHBOARD_ALLOW_UNAUTHENTICATED=1 opts into
@@ -1703,6 +1757,7 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             if "limit" in query_params:
                 try:
                     limit = int(query_params["limit"][0])
+                    limit = min(limit, _MAX_API_LIMIT)
                 except (ValueError, IndexError):
                     limit = None
             
@@ -1715,14 +1770,14 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             
             # Filter events
             filtered = filter_events(events, event_type=event_type, limit=limit)
-            
+
             # Send response
             self.send_json_response({"events": filtered})
-        
-        except FileNotFoundError as e:
-            self.send_error_response(404, str(e))
-        except Exception as e:
-            self.send_error_response(500, f"Internal server error: {str(e)}")
+
+        except FileNotFoundError:
+            self.send_error_response(404, "Not found")
+        except Exception:
+            self.send_error_response(500, "Internal server error")
     
     def handle_api_summary(self):
         """Handle /api/summary endpoint."""
@@ -1730,11 +1785,11 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             events = load_events(LOG_FILE_PATH)
             summary = summarize_events(events)
             self.send_json_response(summary)
-        
-        except FileNotFoundError as e:
-            self.send_error_response(404, str(e))
-        except Exception as e:
-            self.send_error_response(500, f"Internal server error: {str(e)}")
+
+        except FileNotFoundError:
+            self.send_error_response(404, "Not found")
+        except Exception:
+            self.send_error_response(500, "Internal server error")
             
     def handle_api_sweep_results(self, query_params: Dict[str, List[str]]):
         """Handle /api/sweep_results endpoint by returning the large sweep JSON data."""
@@ -1755,8 +1810,8 @@ class DashboardHandler(SimpleHTTPRequestHandler):
                 self.send_json_response(results)
             else:
                 self.send_json_response({"data_status": "ok", "results": results})
-        except Exception as e:
-            self.send_error_response(500, f"Error reading sweep results: {str(e)}")
+        except Exception:
+            self.send_error_response(500, "Error reading sweep results")
 
     def handle_api_test_results(self):
         """Handle /api/test_results endpoint."""
@@ -1776,8 +1831,8 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             if isinstance(report, dict) and "data_status" not in report:
                 report["data_status"] = "ok"
             self.send_json_response(report)
-        except Exception as e:
-            self.send_error_response(500, f"Error reading test results: {str(e)}")
+        except Exception:
+            self.send_error_response(500, "Error reading test results")
 
     def handle_api_beir_results(self):
         """Handle /api/beir_results endpoint.
@@ -1803,8 +1858,8 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             if isinstance(data, dict) and "data_status" not in data:
                 data["data_status"] = "ok"
             self.send_json_response(data)
-        except Exception as e:
-            self.send_error_response(500, f"Error reading BEIR results: {str(e)}")
+        except Exception:
+            self.send_error_response(500, "Error reading BEIR results")
 
     def handle_api_campaign_history(self, query_params: Dict[str, List[str]]):
         """Handle /api/campaign_history endpoint."""
@@ -1812,12 +1867,13 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         if "limit" in query_params:
             try:
                 limit = int(query_params["limit"][0])
+                limit = min(limit, _MAX_API_LIMIT)
             except (ValueError, IndexError):
                 limit = 25
         try:
             self.send_json_response(load_campaign_history(CAMPAIGN_HISTORY_ROOT, limit=limit))
-        except Exception as e:
-            self.send_error_response(500, f"Error reading campaign history: {str(e)}")
+        except Exception:
+            self.send_error_response(500, "Error reading campaign history")
 
     def handle_api_validation_history(self, query_params: Dict[str, List[str]]):
         """Handle /api/validation_history endpoint."""
@@ -1825,12 +1881,13 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         if "limit" in query_params:
             try:
                 limit = int(query_params["limit"][0])
+                limit = min(limit, _MAX_API_LIMIT)
             except (ValueError, IndexError):
                 limit = 10
         try:
             self.send_json_response(load_validation_history(VALIDATION_HISTORY_ROOT, limit=limit))
-        except Exception as e:
-            self.send_error_response(500, f"Error reading validation history: {str(e)}")
+        except Exception:
+            self.send_error_response(500, "Error reading validation history")
 
     def handle_api_preflight_history(self, query_params: Dict[str, List[str]]):
         """Handle /api/preflight_history endpoint."""
@@ -1838,19 +1895,20 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         if "limit" in query_params:
             try:
                 limit = int(query_params["limit"][0])
+                limit = min(limit, _MAX_API_LIMIT)
             except (ValueError, IndexError):
                 limit = 10
         try:
             self.send_json_response(load_preflight_history(PREFLIGHT_HISTORY_ROOT, limit=limit))
-        except Exception as e:
-            self.send_error_response(500, f"Error reading preflight history: {str(e)}")
+        except Exception:
+            self.send_error_response(500, "Error reading preflight history")
 
     def handle_api_evidence_index(self):
         """Handle /api/evidence_index endpoint."""
         try:
             self.send_json_response(load_evidence_index(EVIDENCE_INDEX_PATH))
-        except Exception as e:
-            self.send_error_response(500, f"Error reading evidence index: {str(e)}")
+        except Exception:
+            self.send_error_response(500, "Error reading evidence index")
 
     def handle_api_evidence_chain_history(self, query_params: Dict[str, List[str]]):
         """Handle /api/evidence_chain_history endpoint."""
@@ -1858,12 +1916,13 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         if "limit" in query_params:
             try:
                 limit = int(query_params["limit"][0])
+                limit = min(limit, _MAX_API_LIMIT)
             except (ValueError, IndexError):
                 limit = 10
         try:
             self.send_json_response(load_evidence_chain_history(EVIDENCE_CHAIN_HISTORY_ROOT, limit=limit))
-        except Exception as e:
-            self.send_error_response(500, f"Error reading evidence-chain history: {str(e)}")
+        except Exception:
+            self.send_error_response(500, "Error reading evidence-chain history")
 
     def handle_api_evidence_cleanup_plan(self, query_params: Dict[str, List[str]]):
         """Handle /api/evidence_cleanup_plan endpoint."""
@@ -1875,22 +1934,22 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             if "limit" in query_params:
                 limit = max(0, int(query_params["limit"][0]))
             self.send_json_response(load_evidence_cleanup_plan(EVIDENCE_CLEANUP_ROOT, keep_latest=keep_latest, candidate_limit=limit))
-        except Exception as e:
-            self.send_error_response(500, f"Error reading evidence cleanup plan: {str(e)}")
+        except Exception:
+            self.send_error_response(500, "Error reading evidence cleanup plan")
 
     def handle_api_phase_c_results(self):
         """Handle /api/phase_c_results endpoint."""
         try:
             self.send_json_response(load_phase_c_results(PHASE_C_RESULTS_PATH))
-        except Exception as e:
-            self.send_error_response(500, f"Error reading Phase C results: {str(e)}")
+        except Exception:
+            self.send_error_response(500, "Error reading Phase C results")
 
     def handle_api_phase_c_analysis(self):
         """Handle /api/phase_c_analysis endpoint."""
         try:
             self.send_json_response(load_phase_c_analysis(PHASE_C_ANALYSIS_PATH))
-        except Exception as e:
-            self.send_error_response(500, f"Error reading Phase C analysis: {str(e)}")
+        except Exception:
+            self.send_error_response(500, "Error reading Phase C analysis")
 
     def handle_api_model_scope_events(self, query_params):
         """Handle /api/model_scope/events — lists recent activation event files."""
@@ -1904,8 +1963,8 @@ class DashboardHandler(SimpleHTTPRequestHandler):
                 try:
                     artifact = load_model_scope_artifact(p)
                     items.append({"path": str(p), "summary": summarize_model_scope_artifact(artifact)})
-                except Exception as e:
-                    items.append({"path": str(p), "error": str(e)})
+                except Exception:
+                    items.append({"path": str(p), "error": "unreadable"})
             self.send_json_response({
                 "status": "ok" if items else "not_generated",
                 "count": len(items),
@@ -1927,8 +1986,8 @@ class DashboardHandler(SimpleHTTPRequestHandler):
                 try:
                     raw = load_model_scope_artifact(p)
                     items.append(raw)
-                except Exception as e:
-                    items.append({"path": str(p), "error": str(e)})
+                except Exception:
+                    items.append({"path": str(p), "error": "unreadable"})
             self.send_json_response({
                 "status": "ok" if items else "not_generated",
                 "count": len(items),
@@ -1949,8 +2008,8 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             for p in reversed(paths):
                 try:
                     items.append(load_model_scope_artifact(p))
-                except Exception as e:
-                    items.append({"path": str(p), "error": str(e)})
+                except Exception:
+                    items.append({"path": str(p), "error": "unreadable"})
             self.send_json_response({
                 "status": "ok" if items else "not_generated",
                 "count": len(items),
@@ -2081,8 +2140,8 @@ class DashboardHandler(SimpleHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(content)
                 return
-            except Exception as e:
-                self.send_error_response(500, f"Error serving dashboard: {str(e)}")
+            except Exception:
+                self.send_error_response(500, "Error serving dashboard")
                 return
         
         # Fallback to inline HTML if file doesn't exist
@@ -2109,8 +2168,8 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         self.send_header("Content-Length", str(len(response_bytes)))
         if DASHBOARD_CORS_ORIGIN:
             self.send_header("Access-Control-Allow-Origin", DASHBOARD_CORS_ORIGIN)
-        elif not DASHBOARD_TOKEN:
-            self.send_header("Access-Control-Allow-Origin", "*")
+        # Never emit a wildcard origin: without a configured origin the API is
+        # same-origin only (CORS-01, P1-05).
         self.end_headers()
         self.wfile.write(response_bytes)
     
