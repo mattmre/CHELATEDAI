@@ -446,12 +446,15 @@
           return window.sessionStorage.getItem('chelated_dashboard_token') || '';
         } catch (e) { return ''; }
       }
-      var token = dashboardToken();
-      if (!token || typeof window.fetch !== 'function') return;
+      if (typeof window.fetch !== 'function') return;
       var rawFetch = window.fetch.bind(window);
       window.fetch = function (url, opts) {
         opts = opts || {};
         if (typeof url === 'string' && url.indexOf('/api/') === 0) {
+          // Read the token per request (D1): a token set after page load
+          // (e.g. via console) takes effect on the next retry, no reload.
+          var token = dashboardToken();
+          if (!token) return rawFetch(url, opts);
           var headers = {};
           if (opts.headers) {
             if (typeof opts.headers.forEach === 'function') {
@@ -619,7 +622,7 @@
             ts,
             e.event_type || (e.query_snippet ? 'query' : '-'),
             e.action || '-',
-            (typeof e.global_variance === 'number') ? e.global_variance.toFixed(6) : '-',
+            num(e.global_variance, 6),
             e.message || e.query_snippet || '-'
           ];
           for (const text of cells) {
@@ -882,7 +885,7 @@
           const tr = document.createElement('tr');
           [k, v].forEach((text, i) => {
             const td = document.createElement('td');
-            td.textContent = typeof text === 'number' ? Number(text).toFixed(3) : (text === null || text === undefined ? '-' : String(text));
+            td.textContent = typeof text === 'number' ? num(Number(text), 3) : (text === null || text === undefined ? '-' : String(text));
             if (i === 0) td.style.fontWeight = '500';
             tr.appendChild(td);
           });
@@ -1228,7 +1231,14 @@
     }
 
     function renderBeirChart(aggByConfig) {
-      if (typeof Chart === 'undefined') return;
+      if (typeof Chart === 'undefined') {
+        const noticeEl = document.getElementById('beir-not-generated-notice');
+        if (noticeEl) {
+          noticeEl.textContent = '⚠ Charts unavailable offline (Chart.js failed to load)';
+          noticeEl.style.display = 'block';
+        }
+        return;
+      }
       const labels = Object.keys(aggByConfig).sort();
       const values = labels.map(l => {
         const v = (aggByConfig[l] && aggByConfig[l].mean_ndcg_at_10);
