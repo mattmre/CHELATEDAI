@@ -1714,6 +1714,19 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         self.send_header("Referrer-Policy", "no-referrer")
         super().end_headers()
 
+    # Neutral server banner: stdlib version strings otherwise leak on every
+    # response line and error page (F2).
+    server_version = "Dashboard"
+    sys_version = ""
+
+    def send_error(self, code, message=None, explain=None):
+        """JSON envelope for stdlib-raised errors incl. unknown verbs (F2)."""
+        try:
+            short = self.responses.get(code, ("Unknown error", ""))[0]
+        except Exception:
+            short = "Unknown error"
+        self.send_error_response(code, message or short)
+
     def _is_api_authorized(self) -> bool:
         """Validate API access token. Fail-closed: with no token configured,
         only an explicit CHELATED_DASHBOARD_ALLOW_UNAUTHENTICATED=1 opts into
@@ -1744,6 +1757,7 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             if "limit" in query_params:
                 try:
                     limit = int(query_params["limit"][0])
+                    limit = min(limit, _MAX_API_LIMIT)
                 except (ValueError, IndexError):
                     limit = None
             
@@ -1797,7 +1811,7 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             else:
                 self.send_json_response({"data_status": "ok", "results": results})
         except Exception as e:
-            self.send_error_response(500, f"Error reading sweep results: {str(e)}")
+            self.send_error_response(500, "Error reading sweep results")
 
     def handle_api_test_results(self):
         """Handle /api/test_results endpoint."""
@@ -1818,7 +1832,7 @@ class DashboardHandler(SimpleHTTPRequestHandler):
                 report["data_status"] = "ok"
             self.send_json_response(report)
         except Exception as e:
-            self.send_error_response(500, f"Error reading test results: {str(e)}")
+            self.send_error_response(500, "Error reading test results")
 
     def handle_api_beir_results(self):
         """Handle /api/beir_results endpoint.
@@ -1845,7 +1859,7 @@ class DashboardHandler(SimpleHTTPRequestHandler):
                 data["data_status"] = "ok"
             self.send_json_response(data)
         except Exception as e:
-            self.send_error_response(500, f"Error reading BEIR results: {str(e)}")
+            self.send_error_response(500, "Error reading BEIR results")
 
     def handle_api_campaign_history(self, query_params: Dict[str, List[str]]):
         """Handle /api/campaign_history endpoint."""
@@ -1853,12 +1867,13 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         if "limit" in query_params:
             try:
                 limit = int(query_params["limit"][0])
+                limit = min(limit, _MAX_API_LIMIT)
             except (ValueError, IndexError):
                 limit = 25
         try:
             self.send_json_response(load_campaign_history(CAMPAIGN_HISTORY_ROOT, limit=limit))
         except Exception as e:
-            self.send_error_response(500, f"Error reading campaign history: {str(e)}")
+            self.send_error_response(500, "Error reading campaign history")
 
     def handle_api_validation_history(self, query_params: Dict[str, List[str]]):
         """Handle /api/validation_history endpoint."""
@@ -1866,12 +1881,13 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         if "limit" in query_params:
             try:
                 limit = int(query_params["limit"][0])
+                limit = min(limit, _MAX_API_LIMIT)
             except (ValueError, IndexError):
                 limit = 10
         try:
             self.send_json_response(load_validation_history(VALIDATION_HISTORY_ROOT, limit=limit))
         except Exception as e:
-            self.send_error_response(500, f"Error reading validation history: {str(e)}")
+            self.send_error_response(500, "Error reading validation history")
 
     def handle_api_preflight_history(self, query_params: Dict[str, List[str]]):
         """Handle /api/preflight_history endpoint."""
@@ -1879,19 +1895,20 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         if "limit" in query_params:
             try:
                 limit = int(query_params["limit"][0])
+                limit = min(limit, _MAX_API_LIMIT)
             except (ValueError, IndexError):
                 limit = 10
         try:
             self.send_json_response(load_preflight_history(PREFLIGHT_HISTORY_ROOT, limit=limit))
         except Exception as e:
-            self.send_error_response(500, f"Error reading preflight history: {str(e)}")
+            self.send_error_response(500, "Error reading preflight history")
 
     def handle_api_evidence_index(self):
         """Handle /api/evidence_index endpoint."""
         try:
             self.send_json_response(load_evidence_index(EVIDENCE_INDEX_PATH))
         except Exception as e:
-            self.send_error_response(500, f"Error reading evidence index: {str(e)}")
+            self.send_error_response(500, "Error reading evidence index")
 
     def handle_api_evidence_chain_history(self, query_params: Dict[str, List[str]]):
         """Handle /api/evidence_chain_history endpoint."""
@@ -1899,12 +1916,13 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         if "limit" in query_params:
             try:
                 limit = int(query_params["limit"][0])
+                limit = min(limit, _MAX_API_LIMIT)
             except (ValueError, IndexError):
                 limit = 10
         try:
             self.send_json_response(load_evidence_chain_history(EVIDENCE_CHAIN_HISTORY_ROOT, limit=limit))
         except Exception as e:
-            self.send_error_response(500, f"Error reading evidence-chain history: {str(e)}")
+            self.send_error_response(500, "Error reading evidence-chain history")
 
     def handle_api_evidence_cleanup_plan(self, query_params: Dict[str, List[str]]):
         """Handle /api/evidence_cleanup_plan endpoint."""
@@ -1917,21 +1935,21 @@ class DashboardHandler(SimpleHTTPRequestHandler):
                 limit = max(0, int(query_params["limit"][0]))
             self.send_json_response(load_evidence_cleanup_plan(EVIDENCE_CLEANUP_ROOT, keep_latest=keep_latest, candidate_limit=limit))
         except Exception as e:
-            self.send_error_response(500, f"Error reading evidence cleanup plan: {str(e)}")
+            self.send_error_response(500, "Error reading evidence cleanup plan")
 
     def handle_api_phase_c_results(self):
         """Handle /api/phase_c_results endpoint."""
         try:
             self.send_json_response(load_phase_c_results(PHASE_C_RESULTS_PATH))
         except Exception as e:
-            self.send_error_response(500, f"Error reading Phase C results: {str(e)}")
+            self.send_error_response(500, "Error reading Phase C results")
 
     def handle_api_phase_c_analysis(self):
         """Handle /api/phase_c_analysis endpoint."""
         try:
             self.send_json_response(load_phase_c_analysis(PHASE_C_ANALYSIS_PATH))
         except Exception as e:
-            self.send_error_response(500, f"Error reading Phase C analysis: {str(e)}")
+            self.send_error_response(500, "Error reading Phase C analysis")
 
     def handle_api_model_scope_events(self, query_params):
         """Handle /api/model_scope/events — lists recent activation event files."""
@@ -1946,7 +1964,7 @@ class DashboardHandler(SimpleHTTPRequestHandler):
                     artifact = load_model_scope_artifact(p)
                     items.append({"path": str(p), "summary": summarize_model_scope_artifact(artifact)})
                 except Exception as e:
-                    items.append({"path": str(p), "error": str(e)})
+                    items.append({"path": str(p), "error": "unreadable"})
             self.send_json_response({
                 "status": "ok" if items else "not_generated",
                 "count": len(items),
@@ -1969,7 +1987,7 @@ class DashboardHandler(SimpleHTTPRequestHandler):
                     raw = load_model_scope_artifact(p)
                     items.append(raw)
                 except Exception as e:
-                    items.append({"path": str(p), "error": str(e)})
+                    items.append({"path": str(p), "error": "unreadable"})
             self.send_json_response({
                 "status": "ok" if items else "not_generated",
                 "count": len(items),
@@ -1991,7 +2009,7 @@ class DashboardHandler(SimpleHTTPRequestHandler):
                 try:
                     items.append(load_model_scope_artifact(p))
                 except Exception as e:
-                    items.append({"path": str(p), "error": str(e)})
+                    items.append({"path": str(p), "error": "unreadable"})
             self.send_json_response({
                 "status": "ok" if items else "not_generated",
                 "count": len(items),
@@ -2123,7 +2141,7 @@ class DashboardHandler(SimpleHTTPRequestHandler):
                 self.wfile.write(content)
                 return
             except Exception as e:
-                self.send_error_response(500, f"Error serving dashboard: {str(e)}")
+                self.send_error_response(500, "Error serving dashboard")
                 return
         
         # Fallback to inline HTML if file doesn't exist
