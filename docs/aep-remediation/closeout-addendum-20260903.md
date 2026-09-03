@@ -49,14 +49,16 @@ under lock then computes outside (safe pattern); no cross-call
 check-then-act exists. Threaded hammer (16 threads x 400 mixed
 select/record/register/getters, project venv numpy 2.5.2):
 0 errors, 0 stuck, history correctly capped at 256, 8/8 routes intact
-→ HAMMER_PASS (`/tmp/pr295_hammer.py`, re-runnable). The "race" premise is
-falsified both statically and empirically; no PR change needed. Demote-or-drop
-resolved as drop. PR #295 itself (lattice rung16) is unaffected by this verdict.
+→ HAMMER_PASS. The "race" premise is falsified both statically and
+empirically; no product change needed. Locked in by regression test
+`test_adapter_router_concurrency.py` (8 threads x 100 ops, history-cap
+asserted — re-runnable in CI, no /tmp dependency). Demote-or-drop resolved as
+drop. PR #295 itself (lattice rung16) is unaffected by this verdict.
 
 ## Deferred for a free-Spark window (owner: operator, TTL: next window)
 
 - Browser-DOM-fire proof for XSS-class fixes (no harness installed).
 - BEIR/model transfer checks and torch-dependent validation (CI covers the
   mockable subset; EGV campaigns untouched).
-- PR295-01 hammer repro (locks verified present; concurrent repro unfinished).
+- PR295-01: resolved FALSE_POSITIVE (see above; regression test landed).
 - Full-suite combined-tree matrix post-merge (CI matrix is the gate).
