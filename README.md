@@ -126,7 +126,13 @@ python computational_storage_poc/emulation/validate_emulation_path.py
 ```bash
 python benchmark_beir.py --tier small --output benchmark_beir_small.json
 python benchmark_multitask.py --tasks small --epochs 5 --max-queries 100
+# Dashboard (fail-closed auth): export a token first, then set it in the
+# browser console via sessionStorage.setItem('chelated_dashboard_token', '<token>').
+# For loopback dev only you may instead allow unauthenticated mode explicitly.
+export CHELATED_DASHBOARD_TOKEN="$(python3 -c 'import secrets; print(secrets.token_hex(16))')"
 python dashboard_server.py --port 8080
+# Loopback-dev alternative (explicit open mode, never for shared hosts):
+# CHELATED_DASHBOARD_ALLOW_UNAUTHENTICATED=1 python dashboard_server.py --port 8080
 ```
 
 ## Information Flows
