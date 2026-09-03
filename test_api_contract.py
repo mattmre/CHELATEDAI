@@ -7,7 +7,6 @@ upper-bound limit clamp, and the JSON error envelope. Runtime header behavior
 
 import unittest
 from io import BytesIO
-from unittest.mock import MagicMock
 
 import dashboard_server
 

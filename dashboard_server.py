@@ -1810,7 +1810,7 @@ class DashboardHandler(SimpleHTTPRequestHandler):
                 self.send_json_response(results)
             else:
                 self.send_json_response({"data_status": "ok", "results": results})
-        except Exception as e:
+        except Exception:
             self.send_error_response(500, "Error reading sweep results")
 
     def handle_api_test_results(self):
@@ -1831,7 +1831,7 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             if isinstance(report, dict) and "data_status" not in report:
                 report["data_status"] = "ok"
             self.send_json_response(report)
-        except Exception as e:
+        except Exception:
             self.send_error_response(500, "Error reading test results")
 
     def handle_api_beir_results(self):
@@ -1858,7 +1858,7 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             if isinstance(data, dict) and "data_status" not in data:
                 data["data_status"] = "ok"
             self.send_json_response(data)
-        except Exception as e:
+        except Exception:
             self.send_error_response(500, "Error reading BEIR results")
 
     def handle_api_campaign_history(self, query_params: Dict[str, List[str]]):
@@ -1872,7 +1872,7 @@ class DashboardHandler(SimpleHTTPRequestHandler):
                 limit = 25
         try:
             self.send_json_response(load_campaign_history(CAMPAIGN_HISTORY_ROOT, limit=limit))
-        except Exception as e:
+        except Exception:
             self.send_error_response(500, "Error reading campaign history")
 
     def handle_api_validation_history(self, query_params: Dict[str, List[str]]):
@@ -1886,7 +1886,7 @@ class DashboardHandler(SimpleHTTPRequestHandler):
                 limit = 10
         try:
             self.send_json_response(load_validation_history(VALIDATION_HISTORY_ROOT, limit=limit))
-        except Exception as e:
+        except Exception:
             self.send_error_response(500, "Error reading validation history")
 
     def handle_api_preflight_history(self, query_params: Dict[str, List[str]]):
@@ -1900,14 +1900,14 @@ class DashboardHandler(SimpleHTTPRequestHandler):
                 limit = 10
         try:
             self.send_json_response(load_preflight_history(PREFLIGHT_HISTORY_ROOT, limit=limit))
-        except Exception as e:
+        except Exception:
             self.send_error_response(500, "Error reading preflight history")
 
     def handle_api_evidence_index(self):
         """Handle /api/evidence_index endpoint."""
         try:
             self.send_json_response(load_evidence_index(EVIDENCE_INDEX_PATH))
-        except Exception as e:
+        except Exception:
             self.send_error_response(500, "Error reading evidence index")
 
     def handle_api_evidence_chain_history(self, query_params: Dict[str, List[str]]):
@@ -1921,7 +1921,7 @@ class DashboardHandler(SimpleHTTPRequestHandler):
                 limit = 10
         try:
             self.send_json_response(load_evidence_chain_history(EVIDENCE_CHAIN_HISTORY_ROOT, limit=limit))
-        except Exception as e:
+        except Exception:
             self.send_error_response(500, "Error reading evidence-chain history")
 
     def handle_api_evidence_cleanup_plan(self, query_params: Dict[str, List[str]]):
@@ -1934,21 +1934,21 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             if "limit" in query_params:
                 limit = max(0, int(query_params["limit"][0]))
             self.send_json_response(load_evidence_cleanup_plan(EVIDENCE_CLEANUP_ROOT, keep_latest=keep_latest, candidate_limit=limit))
-        except Exception as e:
+        except Exception:
             self.send_error_response(500, "Error reading evidence cleanup plan")
 
     def handle_api_phase_c_results(self):
         """Handle /api/phase_c_results endpoint."""
         try:
             self.send_json_response(load_phase_c_results(PHASE_C_RESULTS_PATH))
-        except Exception as e:
+        except Exception:
             self.send_error_response(500, "Error reading Phase C results")
 
     def handle_api_phase_c_analysis(self):
         """Handle /api/phase_c_analysis endpoint."""
         try:
             self.send_json_response(load_phase_c_analysis(PHASE_C_ANALYSIS_PATH))
-        except Exception as e:
+        except Exception:
             self.send_error_response(500, "Error reading Phase C analysis")
 
     def handle_api_model_scope_events(self, query_params):
@@ -1963,7 +1963,7 @@ class DashboardHandler(SimpleHTTPRequestHandler):
                 try:
                     artifact = load_model_scope_artifact(p)
                     items.append({"path": str(p), "summary": summarize_model_scope_artifact(artifact)})
-                except Exception as e:
+                except Exception:
                     items.append({"path": str(p), "error": "unreadable"})
             self.send_json_response({
                 "status": "ok" if items else "not_generated",
@@ -1986,7 +1986,7 @@ class DashboardHandler(SimpleHTTPRequestHandler):
                 try:
                     raw = load_model_scope_artifact(p)
                     items.append(raw)
-                except Exception as e:
+                except Exception:
                     items.append({"path": str(p), "error": "unreadable"})
             self.send_json_response({
                 "status": "ok" if items else "not_generated",
@@ -2008,7 +2008,7 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             for p in reversed(paths):
                 try:
                     items.append(load_model_scope_artifact(p))
-                except Exception as e:
+                except Exception:
                     items.append({"path": str(p), "error": "unreadable"})
             self.send_json_response({
                 "status": "ok" if items else "not_generated",
@@ -2140,7 +2140,7 @@ class DashboardHandler(SimpleHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(content)
                 return
-            except Exception as e:
+            except Exception:
                 self.send_error_response(500, "Error serving dashboard")
                 return
         
