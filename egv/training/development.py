@@ -1,0 +1,1578 @@
+"""Private development-loss evaluation and signed receipt bindings.
+
+The development gateway owns its rows.  The trainer receives only a bounded
+loss and a receipt whose digests bind checkpoint, model, data, and protocol;
+raw development or held-out content never enters the receipt or public report.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+import base64
+import hashlib
+import json
+import math
+import os
+from pathlib import Path
+import shutil
+import stat
+import subprocess
+import sys
+import tempfile
+from types import MappingProxyType
+from typing import Any, Callable, Dict, Mapping, Sequence
+
+from ..canonical import GENESIS_HASH, canonical_bytes, canonical_json, collection_digest, content_id, digest_for, validate_sha256
+from ..receipts import ReceiptSigner, key_id_for_public_key, receipt_hash, verify_receipt
+from .protocol import (
+    TrainingConfigurationError,
+    TrainingDataManifest,
+    TrainingIntegrityError,
+    TrainingLeakageError,
+    TrainingProtocol,
+    TrainingRow,
+    TrainingDependencyError,
+    TrainingError,
+)
+
+
+CHECKPOINT_SCHEMA = "egv-training-checkpoint-v1"
+DEVELOPMENT_RECEIPT_SCHEMA = "egv-development-loss-receipt-v1"
+DEVELOPMENT_GATEWAY_SCHEMA = "egv-development-loss-gateway-v1"
+EXTERNAL_DEVELOPMENT_SERVICE_SCHEMA = "egv-external-development-service-v1"
+PRIVATE_DEVELOPMENT_RUNTIME_SCHEMA = "egv-private-development-runtime-v1"
+ADAPTER_TRANSFER_REQUEST_SCHEMA = "egv-adapter-transfer-request-v1"
+ADAPTER_TRANSFER_RESPONSE_SCHEMA = "egv-adapter-transfer-response-v1"
+ADAPTER_TRANSFER_LIMIT = 512 * 1024 * 1024
+
+
+def _external_directory_identity(value: os.stat_result, label: str) -> tuple[int, int]:
+    device = getattr(value, "st_dev", None)
+    inode = getattr(value, "st_ino", None)
+    if type(device) is not int or type(inode) is not int or inode == 0:
+        raise TrainingIntegrityError("{} has no stable filesystem identity".format(label))
+    return device, inode
+
+
+def _external_is_reparse(value: os.stat_result) -> bool:
+    reparse_flag = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400)
+    return bool(getattr(value, "st_file_attributes", 0) & reparse_flag)
+
+
+def _decode_external_signature(value: Any) -> bytes:
+    if not isinstance(value, str) or not value:
+        raise TrainingIntegrityError("external evaluator signature is missing")
+    try:
+        signature = base64.b64decode(
+            (value + "=" * (-len(value) % 4)).encode("ascii"), altchars=b"-_", validate=True
+        )
+    except (ValueError, UnicodeError) as exc:
+        raise TrainingIntegrityError("external evaluator signature is invalid base64url") from exc
+    if len(signature) != 64 or base64.urlsafe_b64encode(signature).decode("ascii").rstrip("=") != value:
+        raise TrainingIntegrityError("external evaluator signature is not canonical Ed25519 base64url")
+    return signature
+
+
+def build_private_development_runtime(corpus: Any) -> Mapping[str, Any]:
+    """Build the exact eight evaluator-owned development prompts and targets."""
+
+    from ..evaluation.dataset import EvaluationCorpus
+    from ..variation.generator import CandidateContext, render_candidate_prompt
+
+    if type(corpus) is not EvaluationCorpus:
+        raise TrainingConfigurationError("private development builder requires the exact EvaluationCorpus")
+    repositories = tuple(sorted(corpus.split("dev"), key=lambda repo: repo.template_id))
+    if len(repositories) != 8:
+        raise TrainingIntegrityError("private development runtime requires exactly eight dev repositories")
+    rows = []
+    for repo in repositories:
+        public = repo.public_manifest_record()
+        context = CandidateContext(
+            campaign_id="egv-training",
+            run_id="development-loss",
+            seed=0,
+            arm_id="B",
+            task_id=repo.template_id,
+            family_id=repo.family_id,
+            public_locus=repo.public_locus,
+            public_rule_id=repo.public_rule_id,
+            attempt_index=1,
+            parent_candidate_id=None,
+            retrieval_records=(),
+            retrieval_digest=digest_for([]),
+            model_digest=digest_for("development-runtime-model-bound-at-service-freeze"),
+            adapter_digest=None,
+            prompt_digest=digest_for(public),
+        )
+        prompt = render_candidate_prompt(context)
+        target = canonical_json({
+            "declared_locus": repo.public_locus,
+            "evidence_ids": [],
+            "requested_authority": "EXECUTE_CANDIDATE",
+            "source": repo.corrected_source.decode("utf-8"),
+        })
+        row = TrainingRow.create(
+            task_id=repo.template_id,
+            task_family=repo.family_id,
+            split="dev",
+            prompt=prompt,
+            target=target,
+        )
+        row.validate(expected_split="dev")
+        rows.append({
+            "row_id": row.row_id,
+            "task_id": row.task_id,
+            "task_family": row.task_family,
+            "prompt": row.prompt,
+            "target": row.target,
+        })
+    rows = sorted(rows, key=lambda row: row["row_id"])
+    public_digest = collection_digest({
+        "row_id": row["row_id"],
+        "task_id": row["task_id"],
+        "task_family": row["task_family"],
+        "prompt_digest": digest_for(row["prompt"]),
+        "target_digest": digest_for(row["target"]),
+    } for row in rows)
+    return {
+        "schema_version": PRIVATE_DEVELOPMENT_RUNTIME_SCHEMA,
+        "development_manifest_digest": public_digest,
+        "rows": rows,
+    }
+
+
+def build_external_development_service_manifest(
+    private_runtime: Mapping[str, Any],
+    *,
+    campaign_id: str,
+    model_digest: str,
+    protocol_digest: str,
+    public_key_path: Path,
+    command: Path,
+    transfer_command: Path,
+) -> Mapping[str, Any]:
+    """Freeze a path-free public manifest for one private dev runtime."""
+
+    if not isinstance(private_runtime, Mapping) or set(private_runtime) != {
+        "schema_version", "development_manifest_digest", "rows"
+    } or private_runtime.get("schema_version") != PRIVATE_DEVELOPMENT_RUNTIME_SCHEMA:
+        raise TrainingIntegrityError("private development runtime is not closed")
+    rows = private_runtime["rows"]
+    if not isinstance(rows, list) or len(rows) != 8:
+        raise TrainingIntegrityError("private development runtime must contain exactly eight rows")
+    row_ids = sorted(row.get("row_id") for row in rows if isinstance(row, Mapping))
+    if len(row_ids) != 8 or len(set(row_ids)) != 8 or any(not isinstance(item, str) or not item for item in row_ids):
+        raise TrainingIntegrityError("private development row identities are invalid")
+    key_path = Path(public_key_path)
+    command_path = Path(command)
+    transfer_path = Path(transfer_command)
+    if any(path.is_symlink() or not path.is_file() for path in (key_path, command_path, transfer_path)):
+        raise TrainingDependencyError("evaluator public key and commands must be regular files")
+    public_key = key_path.read_bytes()
+    unsigned = {
+        "schema_version": EXTERNAL_DEVELOPMENT_SERVICE_SCHEMA,
+        "campaign_id": str(campaign_id),
+        "evaluator_key_id": key_id_for_public_key(public_key),
+        "evaluator_public_key_digest": hashlib.sha256(public_key).hexdigest(),
+        "endpoint_digest": hashlib.sha256(command_path.read_bytes()).hexdigest(),
+        "transfer_endpoint_digest": hashlib.sha256(transfer_path.read_bytes()).hexdigest(),
+        "development_manifest_digest": _require_digest(
+            private_runtime["development_manifest_digest"], "development_manifest_digest"
+        ),
+        "development_task_count": 8,
+        "development_row_ids": row_ids,
+        "model_digest": _require_digest(model_digest, "model_digest"),
+        "protocol_digest": _require_digest(protocol_digest, "protocol_digest"),
+    }
+    if not unsigned["campaign_id"]:
+        raise TrainingConfigurationError("external evaluator campaign ID is missing")
+    return {**unsigned, "service_manifest_digest": digest_for(unsigned)}
+
+
+def freeze_external_development_service(
+    *,
+    corpus: Any,
+    campaign_id: str,
+    model_digest: str,
+    protocol_digest: str,
+    public_key_path: Path,
+    command: Path,
+    transfer_command: Path,
+    private_output: Path,
+    service_output: Path,
+) -> Mapping[str, Any]:
+    runtime = build_private_development_runtime(corpus)
+    service = build_external_development_service_manifest(
+        runtime,
+        campaign_id=campaign_id,
+        model_digest=model_digest,
+        protocol_digest=protocol_digest,
+        public_key_path=public_key_path,
+        command=command,
+        transfer_command=transfer_command,
+    )
+    destinations = (Path(private_output), Path(service_output))
+    resolved = tuple(path.resolve(strict=False) for path in destinations)
+    if (
+        resolved[0] == resolved[1]
+        or any(path.is_symlink() for path in destinations)
+        or (all(path.exists() for path in destinations) and os.path.samefile(*destinations))
+    ):
+        raise TrainingIntegrityError("private and public development outputs must be distinct non-aliased paths")
+    if any(path.exists() for path in destinations):
+        raise TrainingIntegrityError("development output already exists; refusing to overwrite frozen artifacts")
+
+    def publish_new(destination: Path, value: Mapping[str, Any]) -> None:
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        encoded = (canonical_json(value) + "\n").encode("utf-8")
+        descriptor, temporary_name = tempfile.mkstemp(prefix=".development-output-", dir=str(destination.parent))
+        temporary = Path(temporary_name)
+        try:
+            with os.fdopen(descriptor, "wb") as handle:
+                handle.write(encoded)
+                handle.flush()
+                os.fsync(handle.fileno())
+            os.link(str(temporary), str(destination))
+        finally:
+            temporary.unlink(missing_ok=True)
+
+    publish_new(destinations[0], runtime)
+    try:
+        publish_new(destinations[1], service)
+    except Exception:
+        destinations[0].unlink(missing_ok=True)
+        raise
+    return service
+
+
+def model_state_digest_for_training(model: Any) -> str:
+    """Hash a model state without serializing model objects or private paths."""
+
+    state_dict = getattr(model, "state_dict", None)
+    if not callable(state_dict):
+        raise TrainingDependencyError("training model must expose state_dict()")
+    try:
+        state = state_dict()
+    except Exception as exc:
+        raise TrainingDependencyError("training model state cannot be inspected") from exc
+    if not isinstance(state, Mapping) or not state:
+        raise TrainingDependencyError("training model state must be a non-empty mapping")
+    records = []
+    for name, value in sorted(state.items(), key=lambda item: str(item[0])):
+        if not isinstance(name, str) or not name:
+            raise TrainingDependencyError("training model state names must be non-empty strings")
+        try:
+            detached = value.detach().cpu()
+            try:
+                import torch
+
+                material = detached.contiguous().view(dtype=torch.uint8).numpy().tobytes()
+            except Exception:
+                material = detached.numpy().tobytes()
+            shape = tuple(int(item) for item in detached.shape)
+            dtype = str(detached.dtype)
+        except AttributeError:
+            if isinstance(value, bytes):
+                material = value
+                shape = ()
+                dtype = "bytes"
+            elif isinstance(value, (str, int, float, bool, list, tuple, dict)):
+                material = canonical_bytes(value)
+                shape = ()
+                dtype = type(value).__name__
+            else:
+                raise TrainingDependencyError("training model state contains an unsupported value")
+        records.append(
+            {
+                "name": name,
+                "shape": list(shape),
+                "dtype": dtype,
+                "digest": hashlib.sha256(material).hexdigest(),
+            }
+        )
+    return digest_for(records)
+
+
+def _require_digest(value: Any, name: str) -> str:
+    try:
+        return validate_sha256(value, name)
+    except Exception as exc:
+        raise TrainingIntegrityError(str(exc)) from exc
+
+
+@dataclass(frozen=True)
+class TrainingCheckpoint:
+    """An immutable, content-addressed checkpoint binding one epoch."""
+
+    checkpoint_id: str
+    epoch: int
+    global_step: int
+    model_digest: str
+    protocol_digest: str
+    data_manifest_digest: str
+    adapter_digest: str
+    state_digest: str
+    payload_digest: str
+    schema_version: str = CHECKPOINT_SCHEMA
+
+    def _body(self) -> Dict[str, Any]:
+        return {
+            "schema_version": self.schema_version,
+            "epoch": self.epoch,
+            "global_step": self.global_step,
+            "model_digest": self.model_digest,
+            "protocol_digest": self.protocol_digest,
+            "data_manifest_digest": self.data_manifest_digest,
+            "adapter_digest": self.adapter_digest,
+            "state_digest": self.state_digest,
+            "payload_digest": self.payload_digest,
+        }
+
+    def to_dict(self) -> Dict[str, Any]:
+        self.validate()
+        return {"checkpoint_id": self.checkpoint_id, **self._body()}
+
+    @property
+    def digest(self) -> str:
+        self.validate()
+        return digest_for(self.to_dict())
+
+    def validate(self) -> None:
+        if self.schema_version != CHECKPOINT_SCHEMA:
+            raise TrainingIntegrityError("unsupported Training checkpoint schema")
+        if not isinstance(self.epoch, int) or isinstance(self.epoch, bool) or self.epoch < 1:
+            raise TrainingIntegrityError("Training checkpoint epoch must be positive")
+        if not isinstance(self.global_step, int) or isinstance(self.global_step, bool) or self.global_step < 1:
+            raise TrainingIntegrityError("Training checkpoint global_step must be positive")
+        if not isinstance(self.checkpoint_id, str) or not self.checkpoint_id:
+            raise TrainingIntegrityError("Training checkpoint ID is missing")
+        for name in (
+            "model_digest",
+            "protocol_digest",
+            "data_manifest_digest",
+            "adapter_digest",
+            "state_digest",
+            "payload_digest",
+        ):
+            _require_digest(getattr(self, name), name)
+        expected_id = content_id("train-checkpoint", self._body())
+        if self.checkpoint_id != expected_id:
+            raise TrainingIntegrityError("Training checkpoint ID is not content-addressed")
+
+    @classmethod
+    def create(
+        cls,
+        *,
+        epoch: int,
+        global_step: int,
+        model_digest: str,
+        protocol_digest: str,
+        data_manifest_digest: str,
+        adapter_digest: str,
+        state_digest: str,
+        payload_digest: str,
+    ) -> "TrainingCheckpoint":
+        body = {
+            "schema_version": CHECKPOINT_SCHEMA,
+            "epoch": epoch,
+            "global_step": global_step,
+            "model_digest": model_digest,
+            "protocol_digest": protocol_digest,
+            "data_manifest_digest": data_manifest_digest,
+            "adapter_digest": adapter_digest,
+            "state_digest": state_digest,
+            "payload_digest": payload_digest,
+        }
+        result = cls(checkpoint_id=content_id("train-checkpoint", body), **body)
+        result.validate()
+        return result
+
+    @classmethod
+    def from_mapping(cls, value: Mapping[str, Any]) -> "TrainingCheckpoint":
+        required = {
+            "checkpoint_id",
+            "epoch",
+            "global_step",
+            "model_digest",
+            "protocol_digest",
+            "data_manifest_digest",
+            "adapter_digest",
+            "state_digest",
+            "payload_digest",
+            "schema_version",
+        }
+        if set(value) != required:
+            raise TrainingIntegrityError("Training checkpoint has an unexpected field set")
+        result = cls(**{key: value[key] for key in required})
+        result.validate()
+        return result
+
+
+@dataclass(frozen=True)
+class DevelopmentLossEvaluation:
+    """Loss plus the signed, content-only receipt returned by the gateway."""
+
+    checkpoint_digest: str
+    checkpoint_id: str
+    model_digest: str
+    data_manifest_digest: str
+    development_manifest_digest: str
+    protocol_digest: str
+    gateway_digest: str
+    loss: float
+    sample_count: int
+    receipt: Mapping[str, Any]
+    schema_version: str = DEVELOPMENT_RECEIPT_SCHEMA
+
+    def to_dict(self) -> Dict[str, Any]:
+        self.validate()
+        return {
+            "schema_version": self.schema_version,
+            "checkpoint_digest": self.checkpoint_digest,
+            "checkpoint_id": self.checkpoint_id,
+            "model_digest": self.model_digest,
+            "data_manifest_digest": self.data_manifest_digest,
+            "development_manifest_digest": self.development_manifest_digest,
+            "protocol_digest": self.protocol_digest,
+            "gateway_digest": self.gateway_digest,
+            "loss": self.loss,
+            "sample_count": self.sample_count,
+            "receipt": dict(self.receipt),
+        }
+
+    def validate(self) -> None:
+        if self.schema_version != DEVELOPMENT_RECEIPT_SCHEMA:
+            raise TrainingIntegrityError("unsupported development-loss evaluation schema")
+        for name in (
+            "checkpoint_digest",
+            "model_digest",
+            "data_manifest_digest",
+            "development_manifest_digest",
+            "protocol_digest",
+            "gateway_digest",
+        ):
+            _require_digest(getattr(self, name), name)
+        if not isinstance(self.checkpoint_id, str) or not self.checkpoint_id:
+            raise TrainingIntegrityError("development evaluation checkpoint ID is missing")
+        if not isinstance(self.loss, (int, float)) or isinstance(self.loss, bool) or not math.isfinite(float(self.loss)):
+            raise TrainingIntegrityError("development loss must be finite")
+        if self.loss < 0:
+            raise TrainingIntegrityError("development loss cannot be negative")
+        if not isinstance(self.sample_count, int) or isinstance(self.sample_count, bool) or self.sample_count <= 0:
+            raise TrainingIntegrityError("development sample count must be positive")
+        if not isinstance(self.receipt, Mapping):
+            raise TrainingIntegrityError("development evaluation receipt is missing")
+
+
+def _loss_output_digest(evaluation: Mapping[str, Any]) -> str:
+    return digest_for(
+        {
+            "checkpoint_digest": evaluation["checkpoint_digest"],
+            "model_digest": evaluation["model_digest"],
+            "data_manifest_digest": evaluation["data_manifest_digest"],
+            "protocol_digest": evaluation["protocol_digest"],
+            "loss": evaluation["loss"],
+            "sample_count": evaluation["sample_count"],
+        }
+    )
+
+
+def _closed_receipt_has_no_content(receipt: Mapping[str, Any]) -> None:
+    allowed_task = "DEVELOPMENT_LOSS"
+    if receipt.get("task_id") != allowed_task:
+        raise TrainingIntegrityError("development receipt task identity is outside the closed contract")
+    forbidden_fragments = ("prompt", "target", "heldout", "expected", "private", "source_event")
+    for key, value in receipt.items():
+        text = "{} {}".format(key, value).lower()
+        if any(fragment in text for fragment in forbidden_fragments):
+            raise TrainingLeakageError("development receipt contains private or held-out content")
+
+
+class DevelopmentLossGateway:
+    """Evaluator-owned development loss gateway with a signed receipt chain.
+
+    ``evaluator`` is the only callable allowed to inspect the private rows.
+    It receives ``(model, private_rows, protocol)`` and must return one finite
+    scalar loss.  The gateway never exposes those rows through its public
+    result, receipt, or digest fields.
+    """
+
+    def __init__(
+        self,
+        development_rows: Sequence[TrainingRow],
+        *,
+        data_manifest: TrainingDataManifest,
+        model_digest: str,
+        protocol: TrainingProtocol,
+        signer: ReceiptSigner,
+        evaluator: Callable[[Any, Sequence[TrainingRow], TrainingProtocol], float],
+        production: bool = True,
+    ) -> None:
+        if type(self) is not DevelopmentLossGateway:
+            raise TrainingDependencyError("production requires the exact DevelopmentLossGateway type")
+        protocol.validate()
+        data_manifest.validate()
+        rows = tuple(development_rows)
+        if not rows:
+            raise TrainingConfigurationError("development gateway requires at least one development row")
+        for row in rows:
+            if type(row) is not TrainingRow:
+                raise TrainingConfigurationError("development gateway requires exact TrainingRow values")
+            row.validate(expected_split="dev")
+        expected_ids = tuple(sorted(row.row_id for row in rows))
+        if expected_ids != data_manifest.development_row_ids:
+            raise TrainingIntegrityError("development rows do not match the immutable data manifest")
+        if data_manifest.development_digest != _development_digest(rows):
+            raise TrainingIntegrityError("development row content does not match the immutable data manifest")
+        if not callable(evaluator):
+            raise TrainingDependencyError("development gateway requires a callable evaluator")
+        if not isinstance(signer, ReceiptSigner):
+            raise TrainingDependencyError("development gateway requires an Ed25519 ReceiptSigner")
+        _require_digest(model_digest, "model_digest")
+        object.__setattr__(self, "_rows", rows)
+        object.__setattr__(self, "_data_manifest", data_manifest)
+        object.__setattr__(self, "_model_digest", model_digest)
+        object.__setattr__(self, "_protocol", protocol)
+        object.__setattr__(self, "_signer", signer)
+        object.__setattr__(self, "_evaluator", evaluator)
+        object.__setattr__(self, "_production", bool(production))
+        gateway_digest = digest_for(
+            {
+                "schema_version": DEVELOPMENT_GATEWAY_SCHEMA,
+                "model_digest": model_digest,
+                "data_manifest_digest": data_manifest.digest,
+                "development_manifest_digest": data_manifest.development_digest,
+                "protocol_digest": protocol.digest,
+                "signing_key_id": signer.key_id,
+            }
+        )
+        object.__setattr__(self, "_gateway_digest", gateway_digest)
+        object.__setattr__(self, "_receipts", {})
+        object.__setattr__(self, "_receipt_order", [])
+        object.__setattr__(self, "_frozen", True)
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        if getattr(self, "_frozen", False):
+            raise AttributeError("DevelopmentLossGateway is immutable")
+        object.__setattr__(self, name, value)
+
+    @property
+    def production(self) -> bool:
+        return self._production
+
+    @property
+    def model_digest(self) -> str:
+        return self._model_digest
+
+    @property
+    def data_manifest_digest(self) -> str:
+        return self._data_manifest.digest
+
+    @property
+    def development_manifest_digest(self) -> str:
+        return self._data_manifest.development_digest
+
+    @property
+    def protocol_digest(self) -> str:
+        return self._protocol.digest
+
+    @property
+    def gateway_digest(self) -> str:
+        return self._gateway_digest
+
+    @property
+    def public_key(self) -> Any:
+        return self._signer.public_key
+
+    @property
+    def row_count(self) -> int:
+        return len(self._rows)
+
+    def validate_production_boundary(self, *, expected_model_digest: str, expected_protocol_digest: str) -> None:
+        if type(self) is not DevelopmentLossGateway:
+            raise TrainingDependencyError("production development gateway type was changed")
+        if not self.production:
+            raise TrainingDependencyError("production training requires a production development gateway")
+        if self.model_digest != expected_model_digest:
+            raise TrainingIntegrityError("development gateway is bound to a different model")
+        if self.protocol_digest != expected_protocol_digest:
+            raise TrainingIntegrityError("development gateway is bound to a different protocol")
+        if self._gateway_digest != digest_for(
+            {
+                "schema_version": DEVELOPMENT_GATEWAY_SCHEMA,
+                "model_digest": self.model_digest,
+                "data_manifest_digest": self.data_manifest_digest,
+                "development_manifest_digest": self.development_manifest_digest,
+                "protocol_digest": self.protocol_digest,
+                "signing_key_id": self._signer.key_id,
+            }
+        ):
+            raise TrainingIntegrityError("development gateway digest changed")
+
+    def evaluate(self, checkpoint: TrainingCheckpoint, *, model: Any) -> DevelopmentLossEvaluation:
+        checkpoint.validate()
+        if checkpoint.model_digest != self.model_digest:
+            raise TrainingIntegrityError("development evaluation received a wrong-model checkpoint")
+        if checkpoint.protocol_digest != self.protocol_digest:
+            raise TrainingIntegrityError("development evaluation received a stale protocol checkpoint")
+        if checkpoint.data_manifest_digest != self.data_manifest_digest:
+            raise TrainingIntegrityError("development evaluation received a stale data checkpoint")
+        actual_state_digest = model_state_digest_for_training(model)
+        if actual_state_digest != checkpoint.state_digest:
+            raise TrainingIntegrityError("development evaluation model state does not match the checkpoint")
+        checkpoint_digest = checkpoint.digest
+        cached = self._receipts.get(checkpoint_digest)
+        if cached is not None:
+            return cached
+        try:
+            loss = self._evaluator(model, self._rows, self._protocol)
+        except TrainingError:
+            raise
+        except Exception as exc:
+            raise TrainingDependencyError("development evaluator failed") from exc
+        if not isinstance(loss, (int, float)) or isinstance(loss, bool) or not math.isfinite(float(loss)):
+            raise TrainingIntegrityError("development evaluator returned a non-finite loss")
+        loss = float(loss)
+        if loss < 0:
+            raise TrainingIntegrityError("development evaluator returned a negative loss")
+        output_digest = _loss_output_digest(
+            {
+                "checkpoint_digest": checkpoint_digest,
+                "model_digest": checkpoint.model_digest,
+                "data_manifest_digest": checkpoint.data_manifest_digest,
+                "protocol_digest": checkpoint.protocol_digest,
+                "loss": loss,
+                "sample_count": len(self._rows),
+            }
+        )
+        sequence = len(self._receipt_order) + 1
+        previous = GENESIS_HASH
+        if self._receipt_order:
+            previous = receipt_hash(self._receipt_order[-1])
+        receipt = self._signer.sign_receipt(
+            {
+                "receipt_type": "VERDICT",
+                "campaign_id": "egv-training",
+                "run_id": "development-loss",
+                "task_id": "DEVELOPMENT_LOSS",
+                "request_id": content_id("development-request", checkpoint_digest),
+                "candidate_id": checkpoint.checkpoint_id,
+                "candidate_artifact_digest": checkpoint_digest,
+                "protocol_digest": checkpoint.protocol_digest,
+                "evaluator_digest": self.gateway_digest,
+                "decision": "PASS",
+                "diagnostic_enum": "PASS",
+                "resource_bucket": "UNDER_25",
+                "exit_status_class": "SUCCESS",
+                "input_digest": self.development_manifest_digest,
+                "output_digest": output_digest,
+                "effect_kind": "DEVELOPMENT_LOSS",
+            },
+            sequence=sequence,
+            previous_receipt_hash=previous,
+            idempotency_key=content_id("development-idempotency", checkpoint_digest),
+        )
+        _closed_receipt_has_no_content(receipt)
+        result = DevelopmentLossEvaluation(
+            checkpoint_digest=checkpoint_digest,
+            checkpoint_id=checkpoint.checkpoint_id,
+            model_digest=checkpoint.model_digest,
+            data_manifest_digest=checkpoint.data_manifest_digest,
+            development_manifest_digest=self.development_manifest_digest,
+            protocol_digest=checkpoint.protocol_digest,
+            gateway_digest=self.gateway_digest,
+            loss=loss,
+            sample_count=len(self._rows),
+            receipt=receipt,
+        )
+        result.validate()
+        self._receipts[checkpoint_digest] = result
+        self._receipt_order.append(receipt)
+        return result
+
+    def verify_evaluation(
+        self,
+        evaluation: DevelopmentLossEvaluation,
+        *,
+        checkpoint: TrainingCheckpoint,
+        expected_model_digest: str,
+        expected_data_manifest_digest: str,
+        expected_protocol_digest: str,
+    ) -> None:
+        if type(evaluation) is not DevelopmentLossEvaluation:
+            raise TrainingIntegrityError("development evaluation type is not closed")
+        evaluation.validate()
+        checkpoint.validate()
+        if evaluation.checkpoint_digest != checkpoint.digest or evaluation.checkpoint_id != checkpoint.checkpoint_id:
+            raise TrainingIntegrityError("development receipt is bound to a different checkpoint")
+        if evaluation.model_digest != expected_model_digest or checkpoint.model_digest != expected_model_digest:
+            raise TrainingIntegrityError("development receipt is bound to a different model")
+        if evaluation.data_manifest_digest != expected_data_manifest_digest:
+            raise TrainingIntegrityError("development receipt is bound to a different data manifest")
+        if evaluation.protocol_digest != expected_protocol_digest:
+            raise TrainingIntegrityError("development receipt is bound to a different protocol")
+        if evaluation.gateway_digest != self.gateway_digest:
+            raise TrainingIntegrityError("development receipt is bound to a different gateway")
+        receipt = dict(evaluation.receipt)
+        _closed_receipt_has_no_content(receipt)
+        verify_receipt(receipt, self.public_key, expected_key_id=self._signer.key_id)
+        expected_output = _loss_output_digest(
+            {
+                "checkpoint_digest": evaluation.checkpoint_digest,
+                "model_digest": evaluation.model_digest,
+                "data_manifest_digest": evaluation.data_manifest_digest,
+                "protocol_digest": evaluation.protocol_digest,
+                "loss": evaluation.loss,
+                "sample_count": evaluation.sample_count,
+            }
+        )
+        if receipt.get("candidate_artifact_digest") != checkpoint.digest:
+            raise TrainingIntegrityError("development receipt checkpoint digest is wrong")
+        if receipt.get("protocol_digest") != expected_protocol_digest:
+            raise TrainingIntegrityError("development receipt protocol digest is wrong")
+        if receipt.get("evaluator_digest") != self.gateway_digest:
+            raise TrainingIntegrityError("development receipt gateway digest is wrong")
+        if receipt.get("input_digest") != self.development_manifest_digest:
+            raise TrainingIntegrityError("development receipt data digest is wrong")
+        if receipt.get("output_digest") != expected_output:
+            raise TrainingIntegrityError("development receipt loss digest is wrong")
+        if receipt.get("decision") != "PASS" or receipt.get("diagnostic_enum") != "PASS":
+            raise TrainingIntegrityError("development receipt is not a valid loss result")
+
+
+class ExternalDevelopmentLossGateway:
+    """Production-only client for an evaluator-owned signed loss service."""
+
+    _FIELDS = frozenset({
+        "schema_version", "campaign_id", "evaluator_key_id", "evaluator_public_key_digest",
+        "endpoint_digest", "transfer_endpoint_digest", "development_manifest_digest", "development_task_count",
+        "development_row_ids",
+        "model_digest", "protocol_digest", "service_manifest_digest",
+    })
+    __slots__ = (
+        "_manifest", "_public_key", "_command", "_command_bytes", "_endpoint_digest",
+        "_command_suffix", "_transfer_command", "_transfer_command_bytes",
+        "_transfer_endpoint_digest", "_transfer_command_suffix", "_scratch_root",
+        "_scratch_root_identity", "_scratch_validator", "_frozen_contract", "_frozen",
+    )
+
+    def __init__(
+        self,
+        manifest_path: Path,
+        *,
+        public_key_path: Path,
+        command: Path,
+        transfer_command: Path,
+        scratch_root: Path,
+        scratch_validator: Callable[[], Any],
+    ) -> None:
+        if not callable(scratch_validator):
+            raise TrainingDependencyError("external evaluator requires a private scratch validator")
+        scratch_root = Path(os.path.abspath(str(scratch_root)))
+        try:
+            scratch_validator()
+            scratch_stat = scratch_root.lstat()
+        except TrainingError:
+            raise
+        except OSError as exc:
+            raise TrainingConfigurationError("external evaluator private scratch root is unavailable") from exc
+        if (
+            stat.S_ISLNK(scratch_stat.st_mode)
+            or not stat.S_ISDIR(scratch_stat.st_mode)
+            or _external_is_reparse(scratch_stat)
+        ):
+            raise TrainingIntegrityError("external evaluator scratch root is not a regular directory")
+        scratch_identity = _external_directory_identity(
+            scratch_stat, "external evaluator scratch root"
+        )
+        paths = tuple(Path(item) for item in (manifest_path, public_key_path, command, transfer_command))
+        if any(path.is_symlink() or not path.is_file() for path in paths):
+            raise TrainingDependencyError("external evaluator manifest, key, and command must be regular files")
+        try:
+            value = json.loads(paths[0].read_text(encoding="utf-8"))
+        except (OSError, ValueError) as exc:
+            raise TrainingIntegrityError("external evaluator service manifest cannot be decoded") from exc
+        if not isinstance(value, Mapping) or set(value) != self._FIELDS:
+            raise TrainingIntegrityError("external evaluator service manifest is not closed")
+        unsigned = dict(value)
+        supplied = unsigned.pop("service_manifest_digest")
+        if value["schema_version"] != EXTERNAL_DEVELOPMENT_SERVICE_SCHEMA or digest_for(unsigned) != supplied:
+            raise TrainingIntegrityError("external evaluator service manifest digest is invalid")
+        if value["development_task_count"] != 8:
+            raise TrainingIntegrityError("external evaluator must bind exactly eight development tasks")
+        if (
+            not isinstance(value["development_row_ids"], list)
+            or len(value["development_row_ids"]) != 8
+            or value["development_row_ids"] != sorted(set(value["development_row_ids"]))
+            or any(not isinstance(item, str) or not item for item in value["development_row_ids"])
+        ):
+            raise TrainingIntegrityError("external evaluator development row IDs are not a sealed eight-row set")
+        public_key = paths[1].read_bytes()
+        if hashlib.sha256(public_key).hexdigest() != value["evaluator_public_key_digest"]:
+            raise TrainingIntegrityError("external evaluator public key differs from the frozen manifest")
+        if key_id_for_public_key(public_key) != value["evaluator_key_id"]:
+            raise TrainingIntegrityError("external evaluator key ID differs from its public key")
+        command_bytes = paths[2].read_bytes()
+        if hashlib.sha256(command_bytes).hexdigest() != value["endpoint_digest"]:
+            raise TrainingIntegrityError("external evaluator command identity differs from the frozen manifest")
+        transfer_bytes = paths[3].read_bytes()
+        if hashlib.sha256(transfer_bytes).hexdigest() != value["transfer_endpoint_digest"]:
+            raise TrainingIntegrityError("external adapter transfer command differs from the frozen manifest")
+        object.__setattr__(self, "_manifest", MappingProxyType(dict(value)))
+        object.__setattr__(self, "_public_key", public_key)
+        object.__setattr__(self, "_command", paths[2].resolve())
+        object.__setattr__(self, "_command_bytes", command_bytes)
+        object.__setattr__(self, "_endpoint_digest", value["endpoint_digest"])
+        object.__setattr__(self, "_command_suffix", paths[2].suffix.lower())
+        object.__setattr__(self, "_transfer_command", paths[3].resolve())
+        object.__setattr__(self, "_transfer_command_bytes", transfer_bytes)
+        object.__setattr__(self, "_transfer_endpoint_digest", value["transfer_endpoint_digest"])
+        object.__setattr__(self, "_transfer_command_suffix", paths[3].suffix.lower())
+        object.__setattr__(self, "_scratch_root", scratch_root)
+        object.__setattr__(self, "_scratch_root_identity", scratch_identity)
+        object.__setattr__(self, "_scratch_validator", scratch_validator)
+        object.__setattr__(self, "_frozen_contract", digest_for({
+            "manifest": supplied,
+            "key": hashlib.sha256(public_key).hexdigest(),
+            "command": hashlib.sha256(command_bytes).hexdigest(),
+            "transfer_command": hashlib.sha256(transfer_bytes).hexdigest(),
+            "scratch_root": str(scratch_root),
+            "scratch_root_identity": list(scratch_identity),
+            "scratch_validator_id": id(scratch_validator),
+        }))
+        object.__setattr__(self, "_frozen", True)
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        if getattr(self, "_frozen", False):
+            raise AttributeError("ExternalDevelopmentLossGateway is immutable")
+        object.__setattr__(self, name, value)
+
+    @property
+    def production(self) -> bool:
+        return True
+
+    @property
+    def model_digest(self) -> str:
+        return self._manifest["model_digest"]
+
+    @property
+    def protocol_digest(self) -> str:
+        return self._manifest["protocol_digest"]
+
+    @property
+    def gateway_digest(self) -> str:
+        return self._manifest["service_manifest_digest"]
+
+    @property
+    def development_manifest_digest(self) -> str:
+        return self._manifest["development_manifest_digest"]
+
+    @property
+    def development_row_ids(self) -> tuple:
+        return tuple(self._manifest["development_row_ids"])
+
+    def _verify_scratch_boundary(self) -> None:
+        try:
+            self._scratch_validator()
+            value = self._scratch_root.lstat()
+        except TrainingError:
+            raise
+        except OSError as exc:
+            raise TrainingIntegrityError("external evaluator scratch root changed") from exc
+        if (
+            stat.S_ISLNK(value.st_mode)
+            or not stat.S_ISDIR(value.st_mode)
+            or _external_is_reparse(value)
+            or _external_directory_identity(value, "external evaluator scratch root")
+            != self._scratch_root_identity
+        ):
+            raise TrainingIntegrityError("external evaluator scratch root identity changed")
+
+    def _create_scratch_directory(self, prefix: str) -> tuple[Path, tuple[int, int]]:
+        self._verify_scratch_boundary()
+        try:
+            root = Path(tempfile.mkdtemp(prefix=prefix, dir=str(self._scratch_root)))
+            if os.name != "nt":
+                os.chmod(root, 0o700)
+            value = root.lstat()
+        except OSError as exc:
+            raise TrainingDependencyError("external evaluator scratch directory could not be created") from exc
+        identity = _external_directory_identity(value, "external evaluator scratch directory")
+        self._verify_scratch_directory(root, identity)
+        return root, identity
+
+    def _verify_scratch_directory(self, root: Path, identity: tuple[int, int]) -> None:
+        self._verify_scratch_boundary()
+        root = Path(os.path.abspath(str(root)))
+        if root.parent != self._scratch_root:
+            raise TrainingIntegrityError("external evaluator scratch directory escaped its private root")
+        try:
+            value = root.lstat()
+        except OSError as exc:
+            raise TrainingIntegrityError("external evaluator scratch directory changed") from exc
+        if (
+            stat.S_ISLNK(value.st_mode)
+            or not stat.S_ISDIR(value.st_mode)
+            or _external_is_reparse(value)
+            or _external_directory_identity(value, "external evaluator scratch directory") != identity
+            or (os.name != "nt" and stat.S_IMODE(value.st_mode) & 0o077)
+        ):
+            raise TrainingIntegrityError("external evaluator scratch directory identity changed")
+
+    def validate_production_boundary(self, *, expected_model_digest: str, expected_protocol_digest: str) -> None:
+        if type(self) is not ExternalDevelopmentLossGateway:
+            raise TrainingDependencyError("production evaluator client type changed")
+        if (
+            type(self).evaluate is not _ORIGINAL_EXTERNAL_DEVELOPMENT_EVALUATE
+            or type(self).verify_evaluation is not _ORIGINAL_EXTERNAL_DEVELOPMENT_VERIFY
+            or type(self).validate_production_boundary is not _ORIGINAL_EXTERNAL_DEVELOPMENT_VALIDATE
+            or type(self)._invoke_pinned is not _ORIGINAL_EXTERNAL_DEVELOPMENT_INVOKE
+            or type(self)._transfer_adapter is not _ORIGINAL_EXTERNAL_DEVELOPMENT_TRANSFER
+            or type(self)._verify_scratch_boundary is not _ORIGINAL_EXTERNAL_SCRATCH_VERIFY
+            or type(self)._create_scratch_directory is not _ORIGINAL_EXTERNAL_SCRATCH_CREATE
+            or type(self)._verify_scratch_directory is not _ORIGINAL_EXTERNAL_SCRATCH_DIRECTORY_VERIFY
+        ):
+            raise TrainingDependencyError("external evaluator implementation changed")
+        if self.model_digest != expected_model_digest or self.protocol_digest != expected_protocol_digest:
+            raise TrainingIntegrityError("external evaluator is bound to a different model or protocol")
+        manifest = dict(self._manifest)
+        supplied = manifest.pop("service_manifest_digest", None)
+        if set(self._manifest) != self._FIELDS or supplied != digest_for(manifest):
+            raise TrainingIntegrityError("external evaluator manifest changed after construction")
+        try:
+            current_command = self._command.read_bytes()
+            current_transfer = self._transfer_command.read_bytes()
+        except OSError as exc:
+            raise TrainingIntegrityError("external evaluator frozen resources are unavailable") from exc
+        if (
+            current_command != self._command_bytes
+            or hashlib.sha256(current_command).hexdigest() != self._endpoint_digest
+            or self._endpoint_digest != self._manifest["endpoint_digest"]
+            or current_transfer != self._transfer_command_bytes
+            or hashlib.sha256(current_transfer).hexdigest() != self._transfer_endpoint_digest
+            or self._transfer_endpoint_digest != self._manifest["transfer_endpoint_digest"]
+            or hashlib.sha256(self._public_key).hexdigest() != self._manifest["evaluator_public_key_digest"]
+            or key_id_for_public_key(self._public_key) != self._manifest["evaluator_key_id"]
+        ):
+            raise TrainingIntegrityError("external evaluator frozen resources changed")
+        if digest_for({
+            "manifest": supplied,
+            "key": hashlib.sha256(self._public_key).hexdigest(),
+            "command": hashlib.sha256(current_command).hexdigest(),
+            "transfer_command": hashlib.sha256(current_transfer).hexdigest(),
+            "scratch_root": str(self._scratch_root),
+            "scratch_root_identity": list(self._scratch_root_identity),
+            "scratch_validator_id": id(self._scratch_validator),
+        }) != self._frozen_contract:
+            raise TrainingIntegrityError("external evaluator frozen contract changed")
+        self._verify_scratch_boundary()
+
+    def _invoke_pinned(
+        self, *, command: Path, command_bytes: bytes, endpoint_digest: str, suffix: str,
+        request: Mapping[str, Any], timeout: int,
+    ) -> Mapping[str, Any]:
+        current = command.read_bytes()
+        if current != command_bytes or hashlib.sha256(current).hexdigest() != endpoint_digest:
+            raise TrainingIntegrityError("external evaluator command changed before invocation")
+        endpoint_root, endpoint_identity = self._create_scratch_directory(
+            "pinned-endpoint-"
+        )
+        endpoint = endpoint_root / (endpoint_digest + suffix)
+        try:
+            with endpoint.open("xb") as handle:
+                handle.write(command_bytes)
+                handle.flush()
+                os.fsync(handle.fileno())
+            endpoint.chmod(0o500)
+            self._verify_scratch_directory(endpoint_root, endpoint_identity)
+            try:
+                endpoint_payload = endpoint.read_bytes()
+            except OSError as exc:
+                raise TrainingIntegrityError(
+                    "pinned external evaluator copy is unavailable before spawn"
+                ) from exc
+            if endpoint_payload != command_bytes or hashlib.sha256(endpoint_payload).hexdigest() != endpoint_digest:
+                raise TrainingIntegrityError("pinned external evaluator copy changed before spawn")
+            invocation = [sys.executable, str(endpoint)] if suffix == ".py" else [str(endpoint)]
+            environment = dict(os.environ)
+            environment.update({
+                "PYTHONDONTWRITEBYTECODE": "1",
+                "TMP": str(endpoint_root),
+                "TEMP": str(endpoint_root),
+                "TMPDIR": str(endpoint_root),
+            })
+            completed = subprocess.run(
+                invocation, input=canonical_json(request), text=True,
+                capture_output=True, timeout=timeout, check=False,
+                cwd=str(endpoint_root),
+                env=environment,
+            )
+        except TrainingError:
+            raise
+        except (OSError, subprocess.SubprocessError) as exc:
+            raise TrainingDependencyError("external evaluator command failed") from exc
+        finally:
+            self._verify_scratch_directory(endpoint_root, endpoint_identity)
+        try:
+            endpoint_payload = endpoint.read_bytes()
+        except OSError as exc:
+            raise TrainingIntegrityError(
+                "pinned external evaluator copy is unavailable after invocation"
+            ) from exc
+        if endpoint_payload != command_bytes or hashlib.sha256(endpoint_payload).hexdigest() != endpoint_digest:
+            raise TrainingIntegrityError("pinned external evaluator copy changed during invocation")
+        if completed.returncode != 0:
+            raise TrainingDependencyError("external evaluator command returned a nonzero exit status")
+        try:
+            response = json.loads(completed.stdout)
+        except ValueError as exc:
+            raise TrainingDependencyError("external evaluator command returned invalid JSON") from exc
+        if not isinstance(response, Mapping):
+            raise TrainingDependencyError("external evaluator command returned no result object")
+        return response
+
+    def _transfer_adapter(
+        self, artifact: Any, *, manifest: Mapping[str, Any], public_key: bytes,
+        command: Path, command_bytes: bytes, endpoint_digest: str, command_suffix: str,
+    ) -> str:
+        from ..variation.adapter import ADAPTER_MANIFEST_NAME
+
+        self.validate_production_boundary(
+            expected_model_digest=self.model_digest, expected_protocol_digest=self.protocol_digest
+        )
+        artifact.verify()
+        root = Path(artifact.root).resolve()
+        relative_paths = sorted(set(artifact.manifest.files) | {ADAPTER_MANIFEST_NAME})
+        files = []
+        total = 0
+        for relative in relative_paths:
+            path = (root / relative).resolve()
+            try:
+                path.relative_to(root)
+            except ValueError as exc:
+                raise TrainingIntegrityError("sealed adapter transfer path escapes its root") from exc
+            if path.is_symlink() or not path.is_file():
+                raise TrainingIntegrityError("sealed adapter transfer contains a non-regular file")
+            payload = path.read_bytes()
+            total += len(payload)
+            if total > ADAPTER_TRANSFER_LIMIT:
+                raise TrainingIntegrityError("sealed adapter exceeds the cross-host transfer limit")
+            files.append({
+                "path": relative,
+                "digest": hashlib.sha256(payload).hexdigest(),
+                "content_b64": base64.urlsafe_b64encode(payload).decode("ascii").rstrip("="),
+            })
+        body = {
+            "schema_version": ADAPTER_TRANSFER_REQUEST_SCHEMA,
+            "service_manifest_digest": manifest["service_manifest_digest"],
+            "adapter_digest": artifact.digest,
+            "files": files,
+        }
+        request = {**body, "request_digest": digest_for(body)}
+        response = dict(self._invoke_pinned(
+            command=command,
+            command_bytes=command_bytes,
+            endpoint_digest=endpoint_digest,
+            suffix=command_suffix,
+            request=request,
+            timeout=3600,
+        ))
+        required = {
+            "schema_version", "service_manifest_digest", "request_digest", "adapter_digest",
+            "adapter_reference", "signing_key_id", "signature",
+        }
+        if set(response) != required or response.get("schema_version") != ADAPTER_TRANSFER_RESPONSE_SCHEMA:
+            raise TrainingIntegrityError("external adapter transfer response is not closed")
+        if (
+            response.get("service_manifest_digest") != manifest["service_manifest_digest"]
+            or response.get("request_digest") != request["request_digest"]
+            or response.get("adapter_digest") != artifact.digest
+            or response.get("adapter_reference") != artifact.digest
+            or response.get("signing_key_id") != manifest["evaluator_key_id"]
+        ):
+            raise TrainingIntegrityError("external adapter transfer response binding is invalid")
+        unsigned = dict(response)
+        try:
+            signature = _decode_external_signature(unsigned.pop("signature"))
+            from ..receipts import load_public_key
+
+            load_public_key(public_key).verify(signature, canonical_bytes(unsigned))
+        except Exception as exc:
+            raise TrainingIntegrityError("external adapter transfer response signature is invalid") from exc
+        return str(response["adapter_reference"])
+
+    def evaluate(
+        self, checkpoint: TrainingCheckpoint, *, model: Any, checkpoint_artifact_digest: str
+    ) -> DevelopmentLossEvaluation:
+        checkpoint.validate()
+        self.validate_production_boundary(
+            expected_model_digest=checkpoint.model_digest, expected_protocol_digest=checkpoint.protocol_digest
+        )
+        manifest = dict(self._manifest)
+        public_key = bytes(self._public_key)
+        evaluator_command = self._command
+        evaluator_command_bytes = bytes(self._command_bytes)
+        evaluator_endpoint_digest = self._endpoint_digest
+        evaluator_command_suffix = self._command_suffix
+        transfer_command = self._transfer_command
+        transfer_command_bytes = bytes(self._transfer_command_bytes)
+        transfer_endpoint_digest = self._transfer_endpoint_digest
+        transfer_command_suffix = self._transfer_command_suffix
+        root, root_identity = self._create_scratch_directory("evaluation-adapter-")
+        try:
+            model.save_pretrained(str(root), safe_serialization=True)
+        except Exception as exc:
+            self._verify_scratch_directory(root, root_identity)
+            raise TrainingDependencyError("cannot stage sealed adapter for external evaluation") from exc
+        self._verify_scratch_directory(root, root_identity)
+        from ..variation.adapter import ADAPTER_MANIFEST_NAME, SealedAdapterArtifact, build_local_adapter_manifest
+
+        adapter_manifest = build_local_adapter_manifest(root)
+        (root / ADAPTER_MANIFEST_NAME).write_text(
+            canonical_json(adapter_manifest.to_dict()) + "\n", encoding="utf-8"
+        )
+        self._verify_scratch_directory(root, root_identity)
+        artifact = SealedAdapterArtifact(root)
+        artifact.verify()
+        self.validate_production_boundary(
+            expected_model_digest=checkpoint.model_digest, expected_protocol_digest=checkpoint.protocol_digest
+        )
+        adapter_reference = self._transfer_adapter(
+            artifact, manifest=manifest, public_key=public_key,
+            command=transfer_command, command_bytes=transfer_command_bytes,
+            endpoint_digest=transfer_endpoint_digest, command_suffix=transfer_command_suffix,
+        )
+        self._verify_scratch_directory(root, root_identity)
+        request = {
+            "schema_version": "egv-development-loss-request-v1",
+            "campaign_id": manifest["campaign_id"],
+            "checkpoint_digest": validate_sha256(checkpoint_artifact_digest, "checkpoint_artifact_digest"),
+            "adapter_digest": artifact.digest,
+            "adapter_reference": adapter_reference,
+            "model_digest": checkpoint.model_digest,
+            "protocol_digest": checkpoint.protocol_digest,
+            "development_manifest_digest": manifest["development_manifest_digest"],
+            "service_manifest_digest": manifest["service_manifest_digest"],
+        }
+        try:
+            response = self._invoke_pinned(
+                command=evaluator_command, command_bytes=evaluator_command_bytes,
+                endpoint_digest=evaluator_endpoint_digest, suffix=evaluator_command_suffix,
+                request=request, timeout=3600,
+            )
+        except TrainingError:
+            raise
+        except (OSError, subprocess.SubprocessError, ValueError) as exc:
+            raise TrainingDependencyError("external development evaluator failed") from exc
+        self._verify_scratch_directory(root, root_identity)
+        required = {"schema_version", "checkpoint_digest", "adapter_digest", "loss", "sample_count", "receipt"}
+        if set(response) != required or response["schema_version"] != "egv-development-loss-response-v1":
+            raise TrainingIntegrityError("external development response is not closed")
+        if response["checkpoint_digest"] != checkpoint_artifact_digest or response["adapter_digest"] != artifact.digest:
+            raise TrainingIntegrityError("external development response is bound to another artifact")
+        loss = float(response["loss"])
+        if not math.isfinite(loss) or loss < 0 or response["sample_count"] != 8:
+            raise TrainingIntegrityError("external development response has invalid aggregate metrics")
+        receipt = dict(response["receipt"])
+        verify_receipt(receipt, public_key, expected_key_id=manifest["evaluator_key_id"])
+        expected_output_digest = digest_for({
+            "checkpoint_digest": checkpoint_artifact_digest, "adapter_digest": artifact.digest,
+            "loss": loss, "sample_count": 8,
+        })
+        if (
+            receipt.get("candidate_artifact_digest") != artifact.digest
+            or receipt.get("protocol_digest") != checkpoint.protocol_digest
+            or receipt.get("evaluator_digest") != manifest["service_manifest_digest"]
+            or receipt.get("input_digest") != manifest["development_manifest_digest"]
+            or receipt.get("output_digest") != expected_output_digest
+            or receipt.get("decision") != "PASS"
+        ):
+            raise TrainingIntegrityError("external development receipt binding is invalid")
+        result = DevelopmentLossEvaluation(
+            checkpoint_artifact_digest, checkpoint.checkpoint_id, checkpoint.model_digest,
+            checkpoint.data_manifest_digest, manifest["development_manifest_digest"],
+            checkpoint.protocol_digest, manifest["service_manifest_digest"], loss, 8, receipt,
+        )
+        result.validate()
+        self.verify_evaluation(
+            result,
+            checkpoint=checkpoint,
+            expected_checkpoint_artifact_digest=checkpoint_artifact_digest,
+            expected_candidate_adapter_digest=artifact.digest,
+            expected_model_digest=checkpoint.model_digest,
+            expected_data_manifest_digest=checkpoint.data_manifest_digest,
+            expected_protocol_digest=checkpoint.protocol_digest,
+        )
+        self._verify_scratch_directory(root, root_identity)
+        return result
+
+    def verify_evaluation(
+        self, evaluation: DevelopmentLossEvaluation, *, checkpoint: TrainingCheckpoint,
+        expected_checkpoint_artifact_digest: str, expected_candidate_adapter_digest: str,
+        expected_model_digest: str, expected_data_manifest_digest: str,
+        expected_protocol_digest: str,
+    ) -> None:
+        if type(evaluation) is not DevelopmentLossEvaluation or type(checkpoint) is not TrainingCheckpoint:
+            raise TrainingIntegrityError("external development verification requires exact evidence types")
+        evaluation.validate()
+        checkpoint.validate()
+        try:
+            expected_checkpoint_artifact_digest = validate_sha256(
+                expected_checkpoint_artifact_digest, "checkpoint_artifact_digest"
+            )
+            expected_candidate_adapter_digest = validate_sha256(
+                expected_candidate_adapter_digest, "candidate_adapter_digest"
+            )
+            expected_model_digest = validate_sha256(expected_model_digest, "model_digest")
+            expected_data_manifest_digest = validate_sha256(
+                expected_data_manifest_digest, "data_manifest_digest"
+            )
+            expected_protocol_digest = validate_sha256(
+                expected_protocol_digest, "protocol_digest"
+            )
+            validate_sha256(checkpoint.digest, "checkpoint_digest")
+        except Exception as exc:
+            raise TrainingIntegrityError("external development verification digest is invalid") from exc
+        self.validate_production_boundary(
+            expected_model_digest=expected_model_digest, expected_protocol_digest=expected_protocol_digest
+        )
+        if (
+            checkpoint.model_digest != expected_model_digest
+            or checkpoint.data_manifest_digest != expected_data_manifest_digest
+            or checkpoint.protocol_digest != expected_protocol_digest
+            or evaluation.checkpoint_id != checkpoint.checkpoint_id
+            or evaluation.checkpoint_digest != expected_checkpoint_artifact_digest
+            or evaluation.model_digest != expected_model_digest
+            or evaluation.data_manifest_digest != expected_data_manifest_digest
+            or evaluation.protocol_digest != expected_protocol_digest
+            or evaluation.gateway_digest != self.gateway_digest
+            or evaluation.development_manifest_digest != self.development_manifest_digest
+            or not isinstance(evaluation.loss, (int, float))
+            or isinstance(evaluation.loss, bool)
+            or not math.isfinite(float(evaluation.loss))
+            or evaluation.loss < 0
+            or evaluation.sample_count != self._manifest["development_task_count"]
+        ):
+            raise TrainingIntegrityError("external development evaluation binding changed")
+        receipt = dict(evaluation.receipt)
+        required_receipt_fields = {
+            "schema_version", "receipt_type", "campaign_id", "run_id", "task_id",
+            "receipt_id", "request_id", "candidate_id", "candidate_artifact_digest",
+            "protocol_digest", "evaluator_digest", "decision", "diagnostic_enum",
+            "resource_bucket", "exit_status_class", "input_digest", "output_digest",
+            "effect_kind", "sequence", "previous_receipt_hash", "idempotency_key",
+            "signing_key_id", "signature",
+        }
+        if set(receipt) != required_receipt_fields:
+            raise TrainingIntegrityError("external development receipt field set changed")
+        candidate_digest = receipt.get("candidate_artifact_digest")
+        try:
+            candidate_digest = validate_sha256(candidate_digest, "candidate_adapter_digest")
+        except Exception as exc:
+            raise TrainingIntegrityError("external development candidate adapter digest is invalid") from exc
+        expected_output_digest = digest_for({
+            "checkpoint_digest": expected_checkpoint_artifact_digest,
+            "adapter_digest": expected_candidate_adapter_digest,
+            "loss": evaluation.loss,
+            "sample_count": evaluation.sample_count,
+        })
+        expected_receipt_values = {
+            "schema_version": "egv-receipt-v1",
+            "receipt_type": "VERDICT",
+            "campaign_id": self._manifest["campaign_id"],
+            "run_id": "development-loss",
+            "task_id": "DEVELOPMENT_LOSS",
+            "request_id": content_id(
+                "development-request", expected_checkpoint_artifact_digest
+            ),
+            "candidate_id": content_id(
+                "development-adapter", expected_candidate_adapter_digest
+            ),
+            "candidate_artifact_digest": expected_candidate_adapter_digest,
+            "protocol_digest": expected_protocol_digest,
+            "evaluator_digest": self.gateway_digest,
+            "decision": "PASS",
+            "diagnostic_enum": "PASS",
+            "resource_bucket": "UNDER_25",
+            "exit_status_class": "SUCCESS",
+            "input_digest": self.development_manifest_digest,
+            "output_digest": expected_output_digest,
+            "effect_kind": "DEVELOPMENT_LOSS",
+            "sequence": 1,
+            "previous_receipt_hash": GENESIS_HASH,
+            "idempotency_key": content_id(
+                "development-idempotency", expected_checkpoint_artifact_digest
+            ),
+            "signing_key_id": self._manifest["evaluator_key_id"],
+        }
+        if candidate_digest != expected_candidate_adapter_digest or any(
+            receipt.get(name) != value for name, value in expected_receipt_values.items()
+        ):
+            raise TrainingIntegrityError("external development receipt semantics changed")
+        _closed_receipt_has_no_content(receipt)
+        try:
+            verify_receipt(
+                receipt,
+                self._public_key,
+                expected_key_id=self._manifest["evaluator_key_id"],
+                expected_sequence=1,
+                expected_previous_hash=GENESIS_HASH,
+            )
+        except Exception as exc:
+            raise TrainingIntegrityError("external development receipt authorization failed") from exc
+
+
+_ORIGINAL_EXTERNAL_DEVELOPMENT_EVALUATE = ExternalDevelopmentLossGateway.evaluate
+_ORIGINAL_EXTERNAL_DEVELOPMENT_VERIFY = ExternalDevelopmentLossGateway.verify_evaluation
+_ORIGINAL_EXTERNAL_DEVELOPMENT_VALIDATE = ExternalDevelopmentLossGateway.validate_production_boundary
+_ORIGINAL_EXTERNAL_DEVELOPMENT_INVOKE = ExternalDevelopmentLossGateway._invoke_pinned
+_ORIGINAL_EXTERNAL_DEVELOPMENT_TRANSFER = ExternalDevelopmentLossGateway._transfer_adapter
+_ORIGINAL_EXTERNAL_SCRATCH_VERIFY = ExternalDevelopmentLossGateway._verify_scratch_boundary
+_ORIGINAL_EXTERNAL_SCRATCH_CREATE = ExternalDevelopmentLossGateway._create_scratch_directory
+_ORIGINAL_EXTERNAL_SCRATCH_DIRECTORY_VERIFY = ExternalDevelopmentLossGateway._verify_scratch_directory
+
+
+def receive_external_adapter(
+    request: Mapping[str, Any], *, service_manifest: Path, adapter_store: Path,
+    evaluator_private_key: Path,
+) -> Mapping[str, Any]:
+    """Receive one content-addressed adapter tree into evaluator-owned storage."""
+
+    required = {
+        "schema_version", "service_manifest_digest", "adapter_digest", "files", "request_digest"
+    }
+    if not isinstance(request, Mapping) or set(request) != required or request.get("schema_version") != ADAPTER_TRANSFER_REQUEST_SCHEMA:
+        raise TrainingIntegrityError("adapter transfer request is not closed")
+    body = dict(request)
+    supplied_request_digest = body.pop("request_digest")
+    if digest_for(body) != supplied_request_digest:
+        raise TrainingIntegrityError("adapter transfer request digest is invalid")
+    service_value = json.loads(Path(service_manifest).read_text(encoding="utf-8"))
+    if not isinstance(service_value, Mapping) or set(service_value) != ExternalDevelopmentLossGateway._FIELDS:
+        raise TrainingIntegrityError("adapter transfer service manifest is not closed")
+    unsigned_service = dict(service_value)
+    service_digest = unsigned_service.pop("service_manifest_digest")
+    if digest_for(unsigned_service) != service_digest or request["service_manifest_digest"] != service_digest:
+        raise TrainingIntegrityError("adapter transfer service binding is invalid")
+    signer = ReceiptSigner(Path(evaluator_private_key).read_bytes())
+    if signer.key_id != service_value["evaluator_key_id"]:
+        raise TrainingIntegrityError("adapter transfer signer differs from service authority")
+    files = request["files"]
+    if not isinstance(files, list) or not files:
+        raise TrainingIntegrityError("adapter transfer contains no files")
+    paths = []
+    total = 0
+    decoded = []
+    for record in files:
+        if not isinstance(record, Mapping) or set(record) != {"path", "digest", "content_b64"}:
+            raise TrainingIntegrityError("adapter transfer file record is not closed")
+        relative = record["path"]
+        encoded = record["content_b64"]
+        if (
+            not isinstance(relative, str) or not relative or "\\" in relative
+            or Path(relative).is_absolute() or ".." in Path(relative).parts
+            or relative in paths or not isinstance(encoded, str)
+        ):
+            raise TrainingIntegrityError("adapter transfer path or content is invalid")
+        if len(encoded) > ((ADAPTER_TRANSFER_LIMIT + 2) // 3) * 4:
+            raise TrainingIntegrityError("adapter transfer encoded file exceeds the limit")
+        try:
+            payload = base64.b64decode(encoded + "=" * (-len(encoded) % 4), altchars=b"-_", validate=True)
+        except (ValueError, UnicodeError) as exc:
+            raise TrainingIntegrityError("adapter transfer file is invalid base64url") from exc
+        total += len(payload)
+        if total > ADAPTER_TRANSFER_LIMIT or hashlib.sha256(payload).hexdigest() != record["digest"]:
+            raise TrainingIntegrityError("adapter transfer file digest or size is invalid")
+        paths.append(relative)
+        decoded.append((relative, payload))
+    store = Path(adapter_store).resolve()
+    store.mkdir(parents=True, exist_ok=True)
+    reference = validate_sha256(request["adapter_digest"], "adapter_digest")
+    destination = store / reference
+    if destination.exists():
+        from ..variation.adapter import SealedAdapterArtifact
+
+        existing = SealedAdapterArtifact(destination)
+        existing.verify()
+        if existing.digest != reference:
+            raise TrainingIntegrityError("content-addressed adapter store contains a conflicting artifact")
+    else:
+        temporary = Path(tempfile.mkdtemp(prefix=".incoming-adapter-", dir=str(store)))
+        try:
+            for relative, payload in decoded:
+                target = temporary / relative
+                target.parent.mkdir(parents=True, exist_ok=True)
+                with target.open("xb") as handle:
+                    handle.write(payload)
+                    handle.flush()
+                    os.fsync(handle.fileno())
+            from ..variation.adapter import SealedAdapterArtifact
+
+            incoming = SealedAdapterArtifact(temporary)
+            incoming.verify()
+            if incoming.digest != reference:
+                raise TrainingIntegrityError("transferred adapter differs from its content reference")
+            os.replace(str(temporary), str(destination))
+        finally:
+            if temporary.exists():
+                shutil.rmtree(temporary)
+    response_unsigned = {
+        "schema_version": ADAPTER_TRANSFER_RESPONSE_SCHEMA,
+        "service_manifest_digest": service_digest,
+        "request_digest": supplied_request_digest,
+        "adapter_digest": reference,
+        "adapter_reference": reference,
+        "signing_key_id": signer.key_id,
+    }
+    return {**response_unsigned, "signature": signer.sign_bytes(canonical_bytes(response_unsigned))}
+
+
+def run_external_evaluator_once(
+    request: Mapping[str, Any], *, service_manifest: Path, model_root: Path,
+    development_dataset: Path, evaluator_private_key: Path, adapter_store: Path, device: str = "cuda",
+) -> Mapping[str, Any]:
+    """Evaluator-side one-shot command; private rows and signing key stay here."""
+
+    if device != "cuda":
+        raise TrainingConfigurationError("external development evaluation is frozen to CUDA")
+
+    required_request = {
+        "schema_version", "campaign_id", "checkpoint_digest", "adapter_digest", "adapter_reference",
+        "model_digest", "protocol_digest", "development_manifest_digest", "service_manifest_digest",
+    }
+    if not isinstance(request, Mapping) or set(request) != required_request:
+        raise TrainingIntegrityError("development loss request is not closed")
+    service_value = json.loads(Path(service_manifest).read_text(encoding="utf-8"))
+    if not isinstance(service_value, Mapping) or set(service_value) != ExternalDevelopmentLossGateway._FIELDS:
+        raise TrainingIntegrityError("evaluator service manifest is not closed")
+    unsigned = dict(service_value)
+    service_digest = unsigned.pop("service_manifest_digest")
+    if digest_for(unsigned) != service_digest or request["service_manifest_digest"] != service_digest:
+        raise TrainingIntegrityError("development request service binding is invalid")
+    for field in ("campaign_id", "model_digest", "protocol_digest", "development_manifest_digest"):
+        if request[field] != service_value[field]:
+            raise TrainingIntegrityError("development request {} binding differs".format(field))
+    key_path = Path(evaluator_private_key)
+    if key_path.is_symlink() or not key_path.is_file():
+        raise TrainingDependencyError("evaluator private key must be a regular local file")
+    signer = ReceiptSigner(key_path.read_bytes())
+    if signer.key_id != service_value["evaluator_key_id"]:
+        raise TrainingIntegrityError("evaluator private key differs from the frozen authority")
+    from ..variation.adapter import SealedAdapterArtifact
+    from ..variation.model import PinnedModelLoader
+
+    adapter_reference = validate_sha256(request["adapter_reference"], "adapter_reference")
+    if adapter_reference != request["adapter_digest"]:
+        raise TrainingIntegrityError("development request adapter reference differs from its digest")
+    artifact = SealedAdapterArtifact(Path(adapter_store).resolve() / adapter_reference)
+    artifact.verify()
+    if artifact.digest != request["adapter_digest"]:
+        raise TrainingIntegrityError("development request adapter digest differs from its sealed tree")
+    try:
+        private_value = json.loads(Path(development_dataset).read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise TrainingIntegrityError("private development dataset cannot be decoded") from exc
+    if not isinstance(private_value, Mapping) or set(private_value) != {
+        "schema_version", "development_manifest_digest", "rows"
+    } or private_value["schema_version"] != "egv-private-development-runtime-v1":
+        raise TrainingIntegrityError("private development dataset is not closed")
+    rows = private_value["rows"]
+    if not isinstance(rows, list) or len(rows) != 8:
+        raise TrainingIntegrityError("private development dataset must contain exactly eight rows")
+    normalized = []
+    for row in rows:
+        if not isinstance(row, Mapping) or set(row) != {
+            "row_id", "task_id", "task_family", "prompt", "target"
+        } or any(not isinstance(row[field], str) or not row[field] for field in row):
+            raise TrainingIntegrityError("private development row is malformed")
+        normalized.append(dict(row))
+    row_ids = sorted(row["row_id"] for row in normalized)
+    if row_ids != service_value["development_row_ids"]:
+        raise TrainingIntegrityError("private development row identities differ from the frozen service")
+    public_digest = collection_digest({
+        "row_id": row["row_id"], "task_id": row["task_id"], "task_family": row["task_family"],
+        "prompt_digest": digest_for(row["prompt"]), "target_digest": digest_for(row["target"]),
+    } for row in sorted(normalized, key=lambda item: item["row_id"]))
+    if public_digest != private_value["development_manifest_digest"] or public_digest != service_value["development_manifest_digest"]:
+        raise TrainingIntegrityError("private development content differs from its frozen digest")
+    try:
+        import torch
+    except ImportError as exc:
+        raise TrainingDependencyError("external development evaluator requires torch") from exc
+    if not torch.cuda.is_available():
+        raise TrainingDependencyError("external development evaluator requires an available CUDA device")
+    loaded = PinnedModelLoader(model_root).load(
+        device=device, torch_dtype=torch.bfloat16, adapter_artifact=artifact
+    )
+    if loaded.manifest_digest != request["model_digest"]:
+        raise TrainingIntegrityError("development evaluator loaded a different pinned model")
+    model = loaded.model
+    model.eval()
+    losses = []
+    with torch.no_grad():
+        for row in normalized:
+            prompt_ids = loaded.tokenizer(row["prompt"], add_special_tokens=False, truncation=False)["input_ids"]
+            target_ids = loaded.tokenizer(row["target"], add_special_tokens=False, truncation=False)["input_ids"]
+            eos = getattr(loaded.tokenizer, "eos_token_id", None)
+            if isinstance(eos, int) and (not target_ids or target_ids[-1] != eos):
+                target_ids = list(target_ids) + [eos]
+            ids = list(prompt_ids) + list(target_ids)
+            if not ids or len(ids) > 4096:
+                raise TrainingIntegrityError("private development row exceeds the frozen token boundary")
+            device_value = next(model.parameters()).device
+            input_ids = torch.tensor([ids], dtype=torch.long, device=device_value)
+            labels = torch.tensor([[-100] * len(prompt_ids) + list(target_ids)], dtype=torch.long, device=device_value)
+            output = model(input_ids=input_ids, attention_mask=torch.ones_like(input_ids), labels=labels)
+            loss = float(output.loss.detach().float().cpu().item())
+            if not math.isfinite(loss) or loss < 0:
+                raise TrainingIntegrityError("development model returned invalid loss")
+            losses.append(loss)
+    aggregate = sum(losses) / len(losses)
+    output_digest = digest_for({
+        "checkpoint_digest": request["checkpoint_digest"], "adapter_digest": artifact.digest,
+        "loss": aggregate, "sample_count": 8,
+    })
+    receipt = signer.sign_receipt(
+        {
+            "receipt_type": "VERDICT", "campaign_id": request["campaign_id"],
+            "run_id": "development-loss", "task_id": "DEVELOPMENT_LOSS",
+            "request_id": content_id("development-request", request["checkpoint_digest"]),
+            "candidate_id": content_id("development-adapter", artifact.digest),
+            "candidate_artifact_digest": artifact.digest,
+            "protocol_digest": request["protocol_digest"], "evaluator_digest": service_digest,
+            "decision": "PASS", "diagnostic_enum": "PASS", "resource_bucket": "UNDER_25",
+            "exit_status_class": "SUCCESS", "input_digest": public_digest,
+            "output_digest": output_digest, "effect_kind": "DEVELOPMENT_LOSS",
+        },
+        sequence=1, previous_receipt_hash=GENESIS_HASH,
+        idempotency_key=content_id("development-idempotency", request["checkpoint_digest"]),
+    )
+    return {
+        "schema_version": "egv-development-loss-response-v1",
+        "checkpoint_digest": request["checkpoint_digest"], "adapter_digest": artifact.digest,
+        "loss": aggregate, "sample_count": 8, "receipt": receipt,
+    }
+
+
+def _development_digest(rows: Sequence[TrainingRow]) -> str:
+    ordered = sorted(rows, key=lambda row: row.row_id)
+    return collection_digest(row.public_binding() for row in ordered)
+
+
+__all__ = [
+    "CHECKPOINT_SCHEMA",
+    "DEVELOPMENT_GATEWAY_SCHEMA",
+    "DEVELOPMENT_RECEIPT_SCHEMA",
+    "DevelopmentLossEvaluation",
+    "DevelopmentLossGateway",
+    "EXTERNAL_DEVELOPMENT_SERVICE_SCHEMA",
+    "ExternalDevelopmentLossGateway",
+    "PRIVATE_DEVELOPMENT_RUNTIME_SCHEMA",
+    "build_external_development_service_manifest",
+    "build_private_development_runtime",
+    "freeze_external_development_service",
+    "receive_external_adapter",
+    "run_external_evaluator_once",
+    "TrainingCheckpoint",
+    "model_state_digest_for_training",
+]

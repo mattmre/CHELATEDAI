@@ -1,16 +1,28 @@
 # Evidence-Governed Variation: Dual-Spark Execution Runbook
 
+The executable independent-evaluator boundary is documented in
+`docs/egv-remote-variation-evaluator.md`. Spark 1 uses the sealed remote
+gateway; Spark 2 owns the seed, hidden inputs, expected outputs, private signing
+key, and Docker sandbox. Infrastructure-specific SSH/herdr details remain in
+protected operator configuration and are never committed or published.
+
 ## Purpose and current status
 
 This runbook defines how operators will stage, run, resume, and close the
 Evidence-Governed Variation (EGV) campaign described in
 [ADR-0001](../architecture/adr-0001-evidence-governed-variation-agent.md).
 
-> **Current Slice 2 status:** The bounded evidence-core floor is runnable in this
-> branch. Its smoke uses a deterministic synthetic fixture, an in-memory
-> projection, and CPU-only trainer/evaluator IPC; it does not exercise the real
-> campaign, Qdrant, service control, DeepSeek, or hosted models. Treat command
-> output as runtime evidence only when the output names its tier and limits.
+> **Current Slice 2 + Evaluation + Variation status:** The bounded evidence-core
+> floor, complete CPU-only Evaluation slice, and bounded Variation wiring are
+> runnable in this branch. The
+> Evaluation smoke freezes 36 deterministic split-disjoint micro-repositories,
+> runs a hidden held-out comparator through the pinned Docker isolation adapter,
+> and exercises spawned trainer/evaluator IPC. It does not exercise the real
+> campaign, Qdrant campaign projection, service control, DeepSeek, hosted
+> models, or dual-Spark infrastructure. Variation's default smoke is explicitly
+> `floor-fixture`: it exercises ledger/checkpoint/retrieval wiring with a
+> test-only CPU gateway and does not claim production authority. Treat command
+> output as runtime evidence only when it names its tier and gaps.
 
 The runbook intentionally contains no host addresses, local usernames,
 passwords, tokens, private keys, or private workspace paths. Operators provide
@@ -67,6 +79,10 @@ python -m egv replay
 python -m egv verify-public
 python -m egv smoke --json
 python -m egv smoke --json --two-process
+python -m egv evaluation freeze --output <new-empty-output-directory>
+python -m egv evaluation smoke --json
+python -m egv variation smoke --json
+python -m egv variation model-preflight --model-root <staged-model-root> --json
 ```
 
 `status` reads an authoritative ledger, `export` writes deterministic ledger
@@ -79,12 +95,76 @@ unsealed provisional projection.
 The smoke commands are the only bounded execution paths in this slice.
 `--two-process` starts the local CPU-only trainer/evaluator fixture and proves
 that the evaluator can use only the `ingest_receipt` IPC method while the
-trainer remains the single SQLite writer. These commands use synthetic,
-deterministic evidence and do not authorize a dual-Spark campaign.
+trainer remains the single SQLite writer. Evaluator startup installs an
+immutable `sqlite3.connect` audit denial; the production evaluator attempts
+to construct an `EvidenceLedger` and records the real denial, without a
+ledger path or lock file. These commands use synthetic, deterministic
+evidence and do not authorize a dual-Spark campaign.
+`evaluation freeze` creates separate `frozen/`, `trainer/`, `public/`, and
+`evaluator-private/` views. The public frozen view contains only the closed
+summary, prompt manifest, and protocol; the complete data manifest, evaluator-only seed, held-out
+expected outputs, golden patches, and generated candidate source stay in the
+evaluator-private view. The root artifact manifest lists only publishable
+frozen/trainer/public files and is scanned after finalization. `evaluation smoke`
+reports the literal `ceiling-docker-evaluation-fixture` tier and its
+no-model/no-network limitations. Production candidate isolation is Docker
+only: cached pinned image, network none, read-only root, cap-drop ALL,
+no-new-privileges, uid/gid 65534, pids 64, memory 128m, and bounded noexec
+tmpfs. `RESOURCE_BOUND` held-out tasks use a frozen 64m cgroup ceiling and
+report `RESOURCE_LIMIT` with `LIMIT_REACHED` on an actual OOM kill. Candidate
+execution has a frozen 2-second timeout and 65,536-byte stdout ceiling; an
+output-cap result uses the distinct closed `OUTPUT_LIMIT` status/bucket. The
+Docker seccomp profile is deny-default and the post-load candidate filter
+explicitly denies filesystem mutation, process/network escape, memfd,
+`userfaultfd`, and `bpf`. No logical port or network listener is opened. The
+controller also requires the production `pure-return-v1` AST
+admission/decision precondition before Docker execution. Docker return code,
+stdout, and probe output are untrusted evidence; Docker does not authenticate
+candidate results. The evaluator-private hidden oracle is the decision
+authority after that precondition. The two-process proof
+is a bounded local CPU fixture, not a claim that either Spark is available.
+The runner parent authenticates filter setup before candidate execution;
+candidate-controlled `os._exit(1)`, `os._exit(44)`, `SystemExit`, and unknown
+nonzero statuses are bounded candidate failures. Exit 44 and
+`INFRASTRUCTURE_LOSS` are reserved for a host-verified runner filter/setup
+sentinel. Every `INTERNAL_ERROR` receipt carries the canonical task-family,
+locus, and rule fields plus the exact incident-bound failure-family root.
+The local AST/subprocess helper is test-only and never counts as an enforcement
+backend. If the configured Docker image or pinned ID is absent/mismatched, the
+Evaluation path fails closed; it never pulls an image.
 
-The following later mutating, service-control, packaging, and model phases are
+`variation smoke` runs one bounded held-out fixture trajectory through the
+Evidence ledger: the first candidate is rejected, its failure is retrieved by
+the correction-aware policy, and the next candidate is promoted. It reports
+`runtime_tier=floor-fixture`, reports `campaign_path_exercised=false`, and keeps its evaluator seed, hidden records,
+receipts, ledger, checkpoints, and candidate source under private state. The
+production Variation path requires the exact local model manifest and the
+enforceable Docker Evaluation gateway; it has no fixture or network fallback.
+`variation model-preflight` only verifies local model bytes and manifest
+metadata; its `network` field is the scoped
+`offline-environment-scoped-preflight` claim, with the active offline
+environment variables returned as evidence. E-H require a sealed adapter from
+the later Training slice and a loader-issued adapter-application attestation
+binding the base and post-application model state. The loader, generator, and
+loop also require the applied object to be an actual local
+`peft.PeftModel`/`PeftModelForCausalLM` instance with one active LORA adapter
+whose runtime config matches the sealed `adapter_config.json`; an importable
+attestation sentinel or digest alone is not an adapter.
+
+The public `BoundedCandidateLoop(...)` constructor is a compatibility factory
+for distinct private production and fixture concrete classes. Their `run`
+methods are separate; the production method has no fixture early return and
+revalidates the exact Docker gateway, model generator, and authority before
+evaluation. This does not claim to defend against arbitrary Python already
+running in the trusted controller process: such code can inspect or rewrite
+host heap, frames, closures, classes, and registries. Candidate execution and
+hidden authority therefore rely on the separate Docker/evaluator process
+boundary, while fixture execution is structurally unavailable from a
+production loop object.
+
+The following later mutating, service-control, packaging, training, and campaign phases are
 recognized only so they fail closed with a nonzero `PhaseUnavailable` result;
-they are not available Slice 2 commands:
+they are not available Variation commands:
 
 ```text
 python -m egv preflight

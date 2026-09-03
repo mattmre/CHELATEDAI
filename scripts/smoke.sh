@@ -46,6 +46,7 @@
 # skipped — and even then, the script EXITS NON-ZERO so the skip is visible.
 
 set -u  # treat unset vars as errors; do NOT set -e (we handle errors explicitly)
+set -o pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
@@ -85,6 +86,11 @@ EGV_RESULT="NOT RUN"
 STAGE1_RESULT="NOT RUN"
 STAGE2_RESULT="NOT RUN"
 STAGE2_REASON=""
+EVALUATION_RESULT="NOT RUN"
+VARIATION_RESULT="NOT RUN"
+EVALUATION_JSON_FILE="$(mktemp "${TMPDIR:-/tmp}/egv-evaluation-smoke.XXXXXX.json")"
+VARIATION_JSON_FILE="$(mktemp "${TMPDIR:-/tmp}/egv-variation-smoke.XXXXXX.json")"
+trap 'rm -f "$EVALUATION_JSON_FILE" "$VARIATION_JSON_FILE"' EXIT
 
 echo "========================================================================="
 echo "Brutal Honesty Rulebook v3.3 Rule 5 smoke"
@@ -92,18 +98,109 @@ echo "Repo root: $REPO_ROOT"
 echo "Started:   $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 echo "========================================================================="
 
-# ----------------------------------------------------------------------------
-# Slice 2 EGV evidence-core smoke — explicit production path
-# ----------------------------------------------------------------------------
-echo
-echo "--- EGV evidence-core smoke (ledger + receipts + public replay) ---"
-if "$PYTHON_BIN" -m egv smoke --json --two-process; then
-    EGV_RESULT="PASS (floor-tier synthetic fixture; memory projection; Qdrant, real campaign, and service paths not exercised)"
-    echo "EGV evidence-core PASS"
+if [ "$API_ONLY" -eq 1 ]; then
+    # API-only is decided before either Slice 2 Docker path starts.  It is a
+    # partial Rule 5 check and remains non-zero so callers cannot mistake it
+    # for the full production smoke.
+    EGV_RESULT="SKIPPED (--api-only before Slice 2 execution)"
+    EVALUATION_RESULT="SKIPPED (--api-only before Docker evaluation)"
+    VARIATION_RESULT="SKIPPED (--api-only before Variation execution)"
+    echo
+    echo "--- Slice 2 execution: SKIPPED (--api-only selected before Docker) ---"
 else
-    EGV_RESULT="FAIL"
-    SMOKE_STATUS=1
-    echo "EGV evidence-core FAIL" >&2
+    # ----------------------------------------------------------------------------
+    # Slice 2 EGV evidence-core smoke — explicit production path
+    # ----------------------------------------------------------------------------
+    echo
+    echo "--- EGV evidence-core smoke (ledger + receipts + public replay) ---"
+    if "$PYTHON_BIN" -m egv smoke --json --two-process; then
+        EGV_RESULT="PASS (runtime output above; bounded fixture and declared gaps remain)"
+        echo "EGV evidence-core PASS"
+    else
+        EGV_RESULT="FAIL"
+        SMOKE_STATUS=1
+        echo "EGV evidence-core FAIL" >&2
+    fi
+
+    # ----------------------------------------------------------------------------
+    # Evaluation slice smoke — deterministic corpus, sandbox, receipts, and OS IPC
+    # ----------------------------------------------------------------------------
+    echo
+    echo "--- Evaluation slice smoke (corpus + hidden evaluator + two processes) ---"
+    if "$PYTHON_BIN" -m egv evaluation smoke --json | tee "$EVALUATION_JSON_FILE"; then
+        if EVALUATION_SUMMARY="$("$PYTHON_BIN" - "$EVALUATION_JSON_FILE" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as handle:
+    report = json.load(handle)
+if report.get("smoke") != "PASS":
+    raise SystemExit("evaluation smoke did not report PASS")
+runtime_tier = report.get("runtime_tier")
+receipts = report.get("receipts") or {}
+journal = receipts.get("journal") or {}
+ledger = receipts.get("ledger") or {}
+evaluation = report.get("evaluation") or {}
+fields = (
+    runtime_tier,
+    evaluation.get("receipt_count"),
+    journal.get("count"),
+    journal.get("chain_valid"),
+    ledger.get("receipt_count"),
+    ledger.get("chain_valid"),
+)
+if not fields[0] or any(value is None for value in fields[1:]):
+    raise SystemExit("evaluation smoke omitted derived runtime or receipt-chain fields")
+print("tier={}; evaluation_receipts={}; journal_count={}; journal_chain_valid={}; ledger_receipt_count={}; ledger_chain_valid={}".format(*fields))
+PY
+        )"; then
+            EVALUATION_RESULT="PASS (${EVALUATION_SUMMARY}; model/GPU/network/OpenShell/Qdrant-campaign/real-campaign/dual-Spark phases are not claimed)"
+            echo "Evaluation slice PASS (${EVALUATION_SUMMARY})"
+        else
+            EVALUATION_RESULT="FAIL (runtime report omitted verifiable fields)"
+            SMOKE_STATUS=1
+            echo "Evaluation slice FAIL — runtime report could not be verified" >&2
+        fi
+    else
+        EVALUATION_RESULT="FAIL"
+        SMOKE_STATUS=1
+        echo "Evaluation slice FAIL" >&2
+    fi
+
+    # ----------------------------------------------------------------------------
+    # Variation slice smoke — bounded ledger/retrieval/checkpoint trajectory
+    # ----------------------------------------------------------------------------
+    echo
+    echo "--- Variation slice smoke (fixture tier; production prerequisites remain explicit) ---"
+    if "$PYTHON_BIN" -m egv variation smoke --json | tee "$VARIATION_JSON_FILE"; then
+        if VARIATION_SUMMARY="$($PYTHON_BIN - "$VARIATION_JSON_FILE" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as handle:
+    report = json.load(handle)
+if report.get("smoke") != "PASS":
+    raise SystemExit("variation smoke did not report PASS")
+variation = report.get("variation") or {}
+attempts = variation.get("attempts") or []
+fields = (report.get("runtime_tier"), variation.get("terminal_status"), len(attempts), report.get("campaign_path_exercised"))
+if fields[0] != "floor-fixture" or fields[1] != "PROMOTED" or len(attempts) < 1 or fields[3] is not False:
+    raise SystemExit("variation smoke omitted a truthful tier, terminal status, or attempts")
+print("tier={}; terminal={}; attempts={}; campaign_path_exercised={}".format(*fields))
+PY
+        )"; then
+            VARIATION_RESULT="PASS (${VARIATION_SUMMARY}; fixture-only, no model/Docker/Spark/Campaign claim)"
+            echo "Variation slice PASS (${VARIATION_SUMMARY})"
+        else
+            VARIATION_RESULT="FAIL (runtime report omitted verifiable fields)"
+            SMOKE_STATUS=1
+            echo "Variation slice FAIL — runtime report could not be verified" >&2
+        fi
+    else
+        VARIATION_RESULT="FAIL"
+        SMOKE_STATUS=1
+        echo "Variation slice FAIL" >&2
+    fi
 fi
 
 # -----------------------------------------------------------------------------
@@ -150,13 +247,18 @@ elif [ "$STAGE1_RESULT" != "PASS" ]; then
     echo
     echo "--- Stage 2: SKIPPED (Stage 1 failed) ---"
 elif [ ! -f "$REPO_ROOT/scripts/smoke_pipeline.py" ]; then
-    STAGE2_RESULT="SKIPPED"
-    STAGE2_REASON="scripts/smoke_pipeline.py not present (copy the .template and fill it in)"
-    SMOKE_STATUS=1
-    echo
-    echo "--- Stage 2: SKIPPED (no smoke_pipeline.py) ---" >&2
-    echo "Copy the kit's scripts/smoke_pipeline.py.template to scripts/smoke_pipeline.py" >&2
-    echo "and fill in the production-module placeholders for your repo." >&2
+    if [[ "$EVALUATION_RESULT" == PASS* ]]; then
+        STAGE2_RESULT="PASS"
+        STAGE2_REASON="Evaluation slice is the current bounded CPU production path"
+        echo
+        echo "--- Stage 2: PASS (Evaluation slice production path) ---"
+    else
+        STAGE2_RESULT="FAIL"
+        STAGE2_REASON="Evaluation slice smoke failed and no scripts/smoke_pipeline.py is present"
+        SMOKE_STATUS=1
+        echo
+        echo "--- Stage 2: FAIL (no runnable production path) ---" >&2
+    fi
 else
     echo
     echo "--- Stage 2: production-pipeline smoke ---"
@@ -178,6 +280,8 @@ echo
 echo "========================================================================="
 echo "SMOKE SUMMARY"
 echo "  EGV evidence core:              $EGV_RESULT"
+echo "  Evaluation slice:              $EVALUATION_RESULT"
+echo "  Variation slice:               $VARIATION_RESULT"
 echo "  Stage 1 (surface boot):       $STAGE1_RESULT"
 echo "  Stage 2 (production pipeline): $STAGE2_RESULT${STAGE2_REASON:+ ($STAGE2_REASON)}"
 echo "  Overall exit code:            $SMOKE_STATUS"

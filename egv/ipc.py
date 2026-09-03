@@ -15,11 +15,12 @@ import secrets
 import socket
 import socketserver
 import threading
-from typing import Any, Dict, Mapping, Optional
+from typing import Any, Dict, Mapping, Optional, TYPE_CHECKING, Union
 
 from .canonical import canonical_json
 from .errors import LedgerError
-from .ledger import EvidenceLedger
+if TYPE_CHECKING:
+    from .ledger import EvidenceLedger
 
 
 _WRITER_METHODS = frozenset(
@@ -52,7 +53,7 @@ class LedgerWriterService:
     def __init__(
         self,
         ledger: EvidenceLedger,
-        socket_path: str | Path,
+        socket_path: Union[str, Path],
         auth_token: str,
         *,
         evaluator_auth_token: Optional[str] = None,
@@ -138,7 +139,7 @@ class LedgerWriterService:
 class LedgerClient:
     """Authenticated append-only client with no SQLite access."""
 
-    def __init__(self, socket_path: str | Path, auth_token: str, *, role: str = "trainer") -> None:
+    def __init__(self, socket_path: Union[str, Path], auth_token: str, *, role: str = "trainer") -> None:
         if role not in {"trainer", "evaluator"}:
             raise LedgerError("ledger client role must be 'trainer' or 'evaluator'")
         self.socket_path = str(socket_path)

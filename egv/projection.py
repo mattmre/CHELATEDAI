@@ -159,19 +159,75 @@ class InMemoryProjection:
             event_disposition = ledger.event_disposition(event["event_id"])
             if event_disposition in {RETRACTED, STALE_DEPENDENT}:
                 continue
-            payload = event.get("payload")
-            if payload is None:
+            raw_payload = event.get("payload")
+            if raw_payload is None:
                 # A large private blob cannot be embedded without its blob store;
                 # omitting it would hide data, so fail rather than silently project
                 # a partial view.
                 raise ProjectionError(f"event {event['event_id']} payload is unavailable for projection")
+            payload = raw_payload
+            # EvidenceLedger.ingest_receipt stores the authoritative receipt
+            # event as {receipt: <signed receipt>, receipt_hash: <digest>}.
+            # Projection must validate an INTERNAL_ERROR receipt's signed
+            # failure tuple, not the transport wrapper (which has no
+            # diagnostic fields and could otherwise make a dummy root look
+            # acceptable). Ordinary signed receipts repeat task-family,
+            # locus, and rule context for correlation; that common context is
+            # not a failure-root claim.
+            if event.get("event_type") == "RECEIPT":
+                if not isinstance(raw_payload, Mapping) or not isinstance(raw_payload.get("receipt"), Mapping):
+                    raise ProjectionError("RECEIPT events must contain a nested signed receipt")
+                payload = dict(raw_payload["receipt"])
+            if not isinstance(payload, Mapping):
+                raise ProjectionError(f"event {event['event_id']} payload is not an object")
             vector = _validate_vector(embedding_fn(payload))
             explicit_failure_root = payload.get("failure_family_root")
-            if explicit_failure_root is not None:
+            infrastructure_incident_id = payload.get("infrastructure_incident_id")
+            failure_root_key_present = "failure_family_root" in payload
+            incident_key_present = "infrastructure_incident_id" in payload
+            root_fields = ("task_family", "diagnostic_enum", "normalized_public_locus", "public_rule_id")
+            diagnostic = payload.get("diagnostic_enum")
+            # Signed receipts carry task-family/locus/rule context on every
+            # receipt.  Those common fields are not a failure-root claim:
+            # receipts reserve roots and incidents exclusively for
+            # INTERNAL_ERROR.  Treat any explicit non-internal claim as a
+            # malformed event instead of silently dropping it.
+            if diagnostic != "INTERNAL_ERROR":
+                if failure_root_key_present or incident_key_present:
+                    raise ProjectionError("failure roots and incidents are reserved for INTERNAL_ERROR")
+                root_is_claimed = False
+            else:
+                root_is_claimed = True
+            canonical_failure_root = None
+            if root_is_claimed:
+                missing = [
+                    key
+                    for key in root_fields + ("infrastructure_incident_id", "failure_family_root")
+                    if key not in payload
+                ]
+                if missing:
+                    raise ProjectionError(
+                        "failure-family projection fields are incomplete: {}".format(",".join(missing))
+                    )
+                if explicit_failure_root is None:
+                    raise ProjectionError("diagnostic events must carry an explicit failure_family_root")
                 try:
-                    explicit_failure_root = validate_sha256(explicit_failure_root, "failure_family_root")
+                    canonical_failure_root = failure_family_root(
+                        payload["task_family"],
+                        payload["diagnostic_enum"],
+                        payload["normalized_public_locus"],
+                        payload["public_rule_id"],
+                        infrastructure_incident_id=infrastructure_incident_id,
+                    )
                 except Exception as exc:
-                    raise ProjectionError("failure_family_root must be a full SHA-256 digest") from exc
+                    raise ProjectionError("failure-family projection fields are not canonical") from exc
+                if explicit_failure_root is not None:
+                    try:
+                        explicit_failure_root = validate_sha256(explicit_failure_root, "failure_family_root")
+                    except Exception as exc:
+                        raise ProjectionError("failure_family_root must be a full SHA-256 digest") from exc
+                    if explicit_failure_root != canonical_failure_root:
+                        raise ProjectionError("failure_family_root does not match the canonical public tuple")
             point_id = content_id(
                 "point",
                 {"event_id": event["event_id"], "payload_hash": event["payload_hash"], "embedding_model_revision": embedding_model_revision},
@@ -181,19 +237,7 @@ class InMemoryProjection:
                 "source_event_id": event["event_id"],
                 "source_payload_hash": event["payload_hash"],
                 "validity_state": event_disposition,
-                "failure_family_root": explicit_failure_root or (
-                    failure_family_root(
-                        payload["task_family"],
-                        payload["diagnostic_enum"],
-                        payload["normalized_public_locus"],
-                        payload["public_rule_id"],
-                    )
-                    if all(
-                        key in payload
-                        for key in ("task_family", "diagnostic_enum", "normalized_public_locus", "public_rule_id")
-                    )
-                    else None
-                ),
+                "failure_family_root": canonical_failure_root,
                 "projection_generation": None,
                 "embedding_model_revision": embedding_model_revision,
             }

@@ -21,7 +21,7 @@ from datetime import datetime
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, unquote, urlparse
 
 from plan_evidence_artifact_cleanup import plan_evidence_artifact_cleanup
 from computational_storage_poc.disk_llm_estimator import (
@@ -33,6 +33,15 @@ from computational_storage_poc.disk_llm_estimator import (
 # Global configuration
 LOG_FILE_PATH = "chelation_events.jsonl"
 DASHBOARD_TOKEN = os.getenv("CHELATED_DASHBOARD_TOKEN", "").strip()
+# AEP-20260902-AUTH-01: explicit opt-in open mode for loopback dev/test only.
+# Default is fail-closed: with no token configured, API requests are denied (401)
+# unless CHELATED_DASHBOARD_ALLOW_UNAUTHENTICATED=1 is set. Rotation: replace the
+# CHELATED_DASHBOARD_TOKEN value and restart the server; browser clients pick up
+# the new token via ?token= (stored in sessionStorage) or localStorage.
+DASHBOARD_ALLOW_UNAUTHENTICATED = (
+    os.getenv("CHELATED_DASHBOARD_ALLOW_UNAUTHENTICATED", "").strip().lower()
+    in {"1", "true", "yes", "on"}
+)
 DASHBOARD_CORS_ORIGIN = os.getenv("CHELATED_DASHBOARD_CORS_ORIGIN", "").strip()
 CAMPAIGN_HISTORY_ROOT = "experiment_runs"
 VALIDATION_HISTORY_ROOT = "experiment_runs"
@@ -517,6 +526,38 @@ def get_inline_dashboard_html():
     </div>
 
     <script>
+        // AEP-20260902-AUTH-01: send Bearer token on same-origin /api/* calls.
+        // Token source: ?token= URL param (persisted to sessionStorage) wins, then
+        // sessionStorage, then localStorage. Only relative /api/ URLs are tagged.
+        (function () {
+            function dashboardToken() {
+                try {
+                    var q = new URLSearchParams(window.location.search).get('token');
+                    if (q) { window.sessionStorage.setItem('chelated_dashboard_token', q); return q; }
+                    return window.sessionStorage.getItem('chelated_dashboard_token')
+                        || window.localStorage.getItem('chelated_dashboard_token') || '';
+                } catch (e) { return ''; }
+            }
+            var token = dashboardToken();
+            if (!token || typeof window.fetch !== 'function') return;
+            var rawFetch = window.fetch.bind(window);
+            window.fetch = function (url, opts) {
+                opts = opts || {};
+                if (typeof url === 'string' && url.indexOf('/api/') === 0) {
+                    var headers = {};
+                    if (opts.headers) {
+                        if (typeof opts.headers.forEach === 'function') {
+                            opts.headers.forEach(function (v, k) { headers[k] = v; });
+                        } else {
+                            for (var k in opts.headers) { headers[k] = opts.headers[k]; }
+                        }
+                    }
+                    headers['Authorization'] = 'Bearer ' + token;
+                    opts.headers = headers;
+                }
+                return rawFetch(url, opts);
+            };
+        })();
         let currentData = {
             summary: null,
             events: null
@@ -1531,14 +1572,37 @@ class DashboardHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         # Set the directory to serve static files from
         super().__init__(*args, directory=os.path.dirname(os.path.abspath(__file__)), **kwargs)
-    
+
+    # AEP-20260902-STATIC-01: the static fallback below is rooted at the repo
+    # root, so without confinement it serves the whole tree (incl. .git/HEAD
+    # and sources). Confine it to this allowlist; everything else 404s.
+    _STATIC_ALLOW_PREFIXES = ("/dashboard/",)
+
+    @staticmethod
+    def _is_static_path_allowed(raw_path: str) -> bool:
+        """True only for static paths the fallback is allowed to serve."""
+        no_query = raw_path.split("?", 1)[0].split("#", 1)[0]
+        try:
+            decoded = unquote(no_query)
+        except Exception:
+            return False
+        if "\x00" in decoded:
+            return False
+        decoded = decoded.replace("\\", "/")
+        if not decoded.startswith(DashboardHandler._STATIC_ALLOW_PREFIXES):
+            return False
+        for part in decoded.split("/"):
+            if part == ".." or part.startswith("."):
+                return False
+        return True
+
     def do_GET(self):
         """Handle GET requests for API endpoints and static files."""
         parsed_path = urlparse(self.path)
         path = parsed_path.path
         query_params = parse_qs(parsed_path.query)
 
-        if DASHBOARD_TOKEN and not self._is_api_authorized():
+        if not self._is_api_authorized():
             self.send_error_response(401, "Unauthorized")
             return
         
@@ -1585,13 +1649,36 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             # Redirect to dashboard page
             self.serve_dashboard()
         else:
-            # Serve static files
+            # AEP-20260902-STATIC-01: confine the static fallback (repo-root
+            # directory) to the /dashboard/ asset prefix; all other paths
+            # 404 with no bytes leaked (AC1/AC2). App routes above are
+            # unaffected (AC3).
+            if not self._is_static_path_allowed(path):
+                self.send_error_response(404, "Not found")
+                return
             super().do_GET()
 
+    def do_HEAD(self):
+        """Mirror do_GET guards for HEAD (same auth + static confinement)."""
+        path = urlparse(self.path).path
+        if not self._is_api_authorized():
+            self.send_error_response(401, "Unauthorized")
+            return
+        if path.startswith("/api/") or path in ("/", "/dashboard",
+                                                 "/dashboard/"):
+            self.send_error_response(405, "Method not allowed")
+            return
+        if not self._is_static_path_allowed(path):
+            self.send_error_response(404, "Not found")
+            return
+        super().do_HEAD()
+
     def _is_api_authorized(self) -> bool:
-        """Validate API access token when dashboard token auth is configured."""
+        """Validate API access token. Fail-closed: with no token configured,
+        only an explicit CHELATED_DASHBOARD_ALLOW_UNAUTHENTICATED=1 opts into
+        open mode (AEP-20260902-AUTH-01)."""
         if not DASHBOARD_TOKEN:
-            return True
+            return DASHBOARD_ALLOW_UNAUTHENTICATED
         auth_header = ""
         if hasattr(self, "headers") and self.headers is not None:
             auth_header = self.headers.get("Authorization", "")
@@ -2066,7 +2153,13 @@ def run_server(host: str = "127.0.0.1", port: int = 8080, log_file: str = LOG_FI
     print(f"  Host: {host}")
     print(f"  Port: {port}")
     print(f"  Log file: {log_file}")
-    print(f"  Token auth: {'enabled' if DASHBOARD_TOKEN else 'disabled'}")
+    if DASHBOARD_TOKEN:
+        auth_mode = "enabled"
+    elif DASHBOARD_ALLOW_UNAUTHENTICATED:
+        auth_mode = "open (explicit CHELATED_DASHBOARD_ALLOW_UNAUTHENTICATED=1)"
+    else:
+        auth_mode = "fail-closed (no token)"
+    print(f"  Token auth: {auth_mode}")
     print(f"  Dashboard URL: http://{host}:{port}/dashboard/")
     print("\nAPI Endpoints:")
     print(f"  GET http://{host}:{port}/api/events?limit=N")

@@ -13,7 +13,7 @@ from dataclasses import dataclass
 import ipaddress
 from pathlib import Path
 import re
-from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Set, Tuple
+from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Set, Tuple, Union
 
 from .canonical import (
     GENESIS_HASH,
@@ -22,6 +22,7 @@ from .canonical import (
     collection_digest,
     content_id,
     digest_for,
+    failure_family_root,
     parse_canonical_jsonl,
     validate_sha256,
     write_canonical_jsonl,
@@ -29,6 +30,7 @@ from .canonical import (
 from .errors import PublicReplayError, PublicSchemaError, ReceiptVerificationError
 from .receipts import (
     PUBLIC_RECEIPT_SCHEMA_VERSION,
+    PUBLIC_EXIT_STATUS_CLASSES,
     RECEIPT_DECISIONS,
     RECEIPT_TYPES,
     key_id_for_public_key,
@@ -56,8 +58,10 @@ PUBLIC_DIAGNOSTICS = frozenset(
         "INTERNAL_ERROR",
     }
 )
-RESOURCE_BUCKETS = frozenset({"UNDER_25", "25_TO_50", "50_TO_75", "75_TO_100", "LIMIT_REACHED"})
-EXIT_STATUS_CLASSES = frozenset({"NOT_APPLICABLE", "SUCCESS", "NONZERO", "TIMEOUT", "RESOURCE_LIMIT", "UNKNOWN"})
+RESOURCE_BUCKETS = frozenset(
+    {"UNDER_25", "25_TO_50", "50_TO_75", "75_TO_100", "LIMIT_REACHED", "OUTPUT_LIMIT"}
+)
+EXIT_STATUS_CLASSES = PUBLIC_EXIT_STATUS_CLASSES
 PUBLIC_REASONS = frozenset(
     {
         "EVALUATOR_RULE_CORRECTED",
@@ -91,6 +95,15 @@ _TOPOLOGY_SINGLE_LABELS = frozenset(
         "trainer",
     }
 )
+_TOPOLOGY_TOKENS = _TOPOLOGY_SINGLE_LABELS | frozenset(
+    {
+        "container",
+        "node",
+        "pod",
+        "service",
+        "worker",
+    }
+)
 
 
 def _require_safe_id(value: Any, field: str) -> str:
@@ -120,6 +133,11 @@ def _require_pseudonymous_id(value: Any, field: str) -> str:
         raise PublicSchemaError(f"{field} must be pseudonymous, not a hostname-shaped value")
     if lowered in _TOPOLOGY_SINGLE_LABELS:
         raise PublicSchemaError(f"{field} must be pseudonymous, not a topology label")
+    tokens = [token for token in re.split(r"[-_]", lowered) if token]
+    if any(token in _TOPOLOGY_TOKENS for token in tokens):
+        raise PublicSchemaError(f"{field} must be pseudonymous, not a topology-shaped value")
+    if re.fullmatch(r"(?:host|node|worker|spark|qdrant|evaluator|trainer|db|redis|postgres|service|container|pod|gateway|router)\d+", lowered):
+        raise PublicSchemaError(f"{field} must be pseudonymous, not a topology-shaped hostname")
     return value
 
 
@@ -174,8 +192,15 @@ def validate_public_candidate(record: Mapping[str, Any]) -> Dict[str, Any]:
         _require_pseudonymous_id(record["parent_candidate_id"], "parent_candidate_id")
     if not isinstance(record["attempt_index"], int) or isinstance(record["attempt_index"], bool) or record["attempt_index"] < 0:
         raise PublicSchemaError("attempt_index must be a nonnegative integer")
-    for field in ("candidate_artifact_digest", "model_digest", "adapter_digest"):
+    for field in ("candidate_artifact_digest", "model_digest"):
         _require_digest(record[field], field)
+    if record["arm"] in {"A", "B", "C", "D"}:
+        if record["adapter_digest"] is not None:
+            raise PublicSchemaError("base-model arms must project adapter_digest as null")
+    elif record["arm"] in {"E", "F", "G", "H"}:
+        _require_digest(record["adapter_digest"], "adapter_digest")
+    else:
+        raise PublicSchemaError("public candidate arm is outside the frozen A-H contract")
     if not isinstance(record["prompt_template_digests"], list) or not record["prompt_template_digests"]:
         raise PublicSchemaError("prompt_template_digests must be a non-empty array")
     for digest in record["prompt_template_digests"]:
@@ -247,6 +272,11 @@ PUBLIC_RECEIPT_OPTIONAL_FIELDS = {
     "input_digest",
     "output_digest",
     "environment_diff_digest",
+    "infrastructure_incident_id",
+    "failure_family_root",
+    "task_family",
+    "normalized_public_locus",
+    "public_rule_id",
 }
 PUBLIC_RECEIPT_FIELDS = {
     "schema_version",
@@ -270,6 +300,11 @@ PUBLIC_RECEIPT_FIELDS = {
     "input_digest",
     "output_digest",
     "environment_diff_digest",
+    "infrastructure_incident_id",
+    "failure_family_root",
+    "task_family",
+    "normalized_public_locus",
+    "public_rule_id",
     "public_sequence",
     "previous_public_receipt_digest",
     "signing_key_id",
@@ -318,6 +353,7 @@ def validate_public_receipt(receipt: Mapping[str, Any]) -> Dict[str, Any]:
         "input_digest",
         "output_digest",
         "environment_diff_digest",
+        "failure_family_root",
     ):
         if field in receipt:
             _require_digest(receipt[field], field)
@@ -332,6 +368,36 @@ def validate_public_receipt(receipt: Mapping[str, Any]) -> Dict[str, Any]:
         raise PublicSchemaError("unknown resource bucket")
     if "exit_status_class" in receipt and receipt["exit_status_class"] not in EXIT_STATUS_CLASSES:
         raise PublicSchemaError("unknown exit status class")
+    if "infrastructure_incident_id" in receipt:
+        _require_pseudonymous_id(receipt["infrastructure_incident_id"], "infrastructure_incident_id")
+    diagnostic = receipt.get("diagnostic_enum")
+    incident = receipt.get("infrastructure_incident_id")
+    root = receipt.get("failure_family_root")
+    if diagnostic == "INTERNAL_ERROR":
+        if not isinstance(incident, str) or not incident:
+            raise PublicSchemaError("INTERNAL_ERROR public receipts require infrastructure_incident_id")
+        if not isinstance(root, str) or not root:
+            raise PublicSchemaError("INTERNAL_ERROR public receipts require an incident-bound failure_family_root")
+        canonical_fields = ("task_family", "normalized_public_locus", "public_rule_id")
+        missing_canonical = [field for field in canonical_fields if not isinstance(receipt.get(field), str) or not receipt[field]]
+        if missing_canonical:
+            raise PublicSchemaError(
+                "INTERNAL_ERROR public receipts require canonical fields: {}".format(", ".join(missing_canonical))
+            )
+        _require_pseudonymous_id(receipt["task_family"], "task_family")
+        _require_safe_id(receipt["normalized_public_locus"], "normalized_public_locus")
+        _require_pseudonymous_id(receipt["public_rule_id"], "public_rule_id")
+        expected_root = failure_family_root(
+            receipt["task_family"],
+            diagnostic,
+            receipt["normalized_public_locus"],
+            receipt["public_rule_id"],
+            infrastructure_incident_id=incident,
+        )
+        if root != expected_root:
+            raise PublicSchemaError("failure_family_root is not the exact incident-bound canonical root")
+    elif incident is not None or root is not None:
+        raise PublicSchemaError("infrastructure incident and failure root are reserved for INTERNAL_ERROR")
     if not isinstance(receipt["signature"], str) or not receipt["signature"]:
         raise PublicSchemaError("signature must be non-empty")
     return dict(receipt)
@@ -1256,7 +1322,7 @@ class PublicProjection:
             raise PublicSchemaError("public key export must be non-empty PEM bytes")
         self.public_key_pem = public_key_pem
 
-    def export(self, directory: str | Path, *, source_ledger: Any = None) -> Path:
+    def export(self, directory: Union[str, Path], *, source_ledger: Any = None) -> Path:
         root = Path(directory)
         if source_ledger is not None:
             source_ledger.export_public_blobs(root)
@@ -1293,7 +1359,7 @@ class PublicProjection:
         return root
 
 
-def load_public_projection(directory: str | Path) -> PublicProjection:
+def load_public_projection(directory: Union[str, Path]) -> PublicProjection:
     root = Path(directory)
     projection = PublicProjection()
     candidate_path = root / "ledger" / "public-candidates.jsonl"
@@ -1321,7 +1387,7 @@ def load_public_projection(directory: str | Path) -> PublicProjection:
 
 
 def verify_public_projection(
-    projection: PublicProjection | str | Path,
+    projection: Union[PublicProjection, str, Path],
     public_key: Any,
     *,
     protocol_digest: str,

@@ -60,6 +60,33 @@ PROMOTED = "PROMOTED"
 REJECTED = "REJECTED"
 ABSTAINED = "ABSTAINED"
 
+_ACTIVE_WRITER_COUNT = 0
+_ACTIVE_WRITER_LOCK = threading.Lock()
+
+
+def active_writer_count() -> int:
+    """Return the number of writable ledger handles in this process.
+
+    Production evaluator construction uses this as a co-hosting guard.  The
+    count is process-local by design; the actual ledger writer remains a
+    separate OS process and is protected by the existing file lock.
+    """
+
+    with _ACTIVE_WRITER_LOCK:
+        return _ACTIVE_WRITER_COUNT
+
+
+def _register_writer() -> None:
+    global _ACTIVE_WRITER_COUNT
+    with _ACTIVE_WRITER_LOCK:
+        _ACTIVE_WRITER_COUNT += 1
+
+
+def _unregister_writer() -> None:
+    global _ACTIVE_WRITER_COUNT
+    with _ACTIVE_WRITER_LOCK:
+        _ACTIVE_WRITER_COUNT = max(0, _ACTIVE_WRITER_COUNT - 1)
+
 _EVENT_COLUMNS = (
     "sequence",
     "event_id",
@@ -402,15 +429,29 @@ class EvidenceLedger:
         else:
             self._conn.execute("PRAGMA query_only=ON")
         self.blob_store = BlobStore(blob_root) if blob_root is not None else None
+        self._writer_registered = False
+        if self._writable:
+            _register_writer()
+            self._writer_registered = True
 
     def _acquire_writer_lock(self, db_path: Path) -> None:
         lock_path = Path(str(db_path) + ".writer.lock")
         lock_path.parent.mkdir(parents=True, exist_ok=True)
         handle = lock_path.open("a+")
         try:
-            import fcntl
+            if os.name == "nt":
+                import msvcrt
 
-            fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                handle.seek(0, os.SEEK_END)
+                if handle.tell() == 0:
+                    handle.write("0")
+                    handle.flush()
+                handle.seek(0)
+                msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+            else:
+                import fcntl
+
+                fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
         except (ImportError, BlockingIOError, OSError) as exc:
             handle.close()
             raise LedgerBusyError(f"another process owns the ledger writer lock: {lock_path}") from exc
@@ -422,11 +463,20 @@ class EvidenceLedger:
         self._conn.close()
         if self._lock_handle is not None:
             try:
-                import fcntl
+                if os.name == "nt":
+                    import msvcrt
 
-                fcntl.flock(self._lock_handle.fileno(), fcntl.LOCK_UN)
+                    self._lock_handle.seek(0)
+                    msvcrt.locking(self._lock_handle.fileno(), msvcrt.LK_UNLCK, 1)
+                else:
+                    import fcntl
+
+                    fcntl.flock(self._lock_handle.fileno(), fcntl.LOCK_UN)
             finally:
                 self._lock_handle.close()
+        if self._writer_registered:
+            _unregister_writer()
+            self._writer_registered = False
         self._closed = True
 
     def __enter__(self) -> "EvidenceLedger":
@@ -1520,6 +1570,12 @@ class EvidenceLedger:
         row = self._conn.execute("SELECT receipt_hash FROM receipts ORDER BY sequence DESC LIMIT 1").fetchone()
         return row[0] if row is not None else GENESIS_HASH
 
+    def receipt_next_sequence(self) -> int:
+        """Return the authoritative next private-receipt chain position."""
+
+        row = self._conn.execute("SELECT sequence FROM receipts ORDER BY sequence DESC LIMIT 1").fetchone()
+        return int(row[0]) + 1 if row is not None else 1
+
     def _quarantine(self, reason_code: str, detail: str, subject_id: Optional[str] = None) -> None:
         self._require_writer()
         quarantine_id = content_id("quarantine", {"reason_code": reason_code, "detail": detail, "subject_id": subject_id})
@@ -1614,6 +1670,91 @@ class EvidenceLedger:
             if before is None:
                 count += 1
         return count
+
+    def ingest_receipts_atomic(self, receipts: Iterable[Mapping[str, Any]], public_key: Any) -> int:
+        """Verify and append a new receipt suffix in one transaction.
+
+        Unlike :meth:`ingest_receipts`, this boundary rejects already-present
+        receipts.  It is intended for an independently returned evaluator
+        response where replay must fail closed and partial chain admission is
+        not acceptable.
+        """
+
+        self._require_writer()
+        candidates = [dict(receipt) for receipt in receipts]
+        if not candidates:
+            raise ReceiptVerificationError("atomic receipt chain is empty")
+        supplied_key_id = key_id_for_public_key(public_key)
+        try:
+            with self._write_transaction() as conn:
+                pinned_row = conn.execute("SELECT value FROM meta WHERE key='evaluator_key_id'").fetchone()
+                pinned_key_id = pinned_row[0] if pinned_row is not None else None
+                if pinned_key_id is not None and pinned_key_id != supplied_key_id:
+                    raise ReceiptVerificationError("ledger is pinned to a different evaluator signing key")
+                last = conn.execute(
+                    "SELECT sequence,receipt_hash FROM receipts ORDER BY sequence DESC LIMIT 1"
+                ).fetchone()
+                expected_sequence = int(last[0]) + 1 if last is not None else 1
+                expected_previous = last[1] if last is not None else GENESIS_HASH
+                verified = []
+                for candidate in candidates:
+                    existing = conn.execute(
+                        "SELECT 1 FROM receipts WHERE receipt_id=? OR idempotency_key=?",
+                        (candidate.get("receipt_id"), candidate.get("idempotency_key")),
+                    ).fetchone()
+                    if existing is not None:
+                        raise ReceiptConflictError("remote evaluator receipt replay detected")
+                    complete_hash = verify_receipt(
+                        candidate,
+                        public_key,
+                        expected_key_id=supplied_key_id,
+                        expected_sequence=expected_sequence,
+                        expected_previous_hash=expected_previous,
+                    )
+                    verified.append((candidate, complete_hash))
+                    expected_sequence += 1
+                    expected_previous = complete_hash
+                if pinned_key_id is None:
+                    conn.execute(
+                        "INSERT OR IGNORE INTO meta(key,value) VALUES('evaluator_key_id',?)",
+                        (supplied_key_id,),
+                    )
+                for candidate, complete_hash in verified:
+                    payload = {"receipt": candidate, "receipt_hash": complete_hash}
+                    event = self._insert_event_tx(
+                        conn,
+                        event_type="RECEIPT",
+                        payload=payload,
+                        campaign_id=candidate["campaign_id"],
+                        run_id=candidate["run_id"],
+                        task_id=candidate["task_id"],
+                        subject_id=candidate["candidate_id"],
+                        source_class="FROZEN_EVALUATOR",
+                        disposition="VERIFIED",
+                        idempotency_key="receipt:{}".format(candidate["idempotency_key"]),
+                    )
+                    conn.execute(
+                        """INSERT INTO receipts(receipt_id,sequence,receipt_hash,receipt_type,campaign_id,run_id,task_id,
+                           candidate_id,idempotency_key,previous_receipt_hash,payload_json,event_id)
+                           VALUES(?,?,?,?,?,?,?,?,?,?,?,?)""",
+                        (
+                            candidate["receipt_id"],
+                            candidate["sequence"],
+                            complete_hash,
+                            candidate["receipt_type"],
+                            candidate["campaign_id"],
+                            candidate["run_id"],
+                            candidate["task_id"],
+                            candidate["candidate_id"],
+                            candidate["idempotency_key"],
+                            candidate["previous_receipt_hash"],
+                            canonical_json(candidate),
+                            event["event_id"],
+                        ),
+                    )
+                return len(verified)
+        except (ReceiptConflictError, ReceiptVerificationError, IntegrityError):
+            raise
 
     def verify_receipt_chain(self, public_key: Any) -> Dict[str, Any]:
         """Verify every ingested receipt against its Ed25519 key and chain."""
@@ -1812,7 +1953,12 @@ class EvidenceLedger:
                 expected_checkpoint_hash = durable_event[0]
             if checkpoint["ledger_hash"] != expected_checkpoint_hash:
                 raise IntegrityError(f"checkpoint {checkpoint['checkpoint_id']} ledger hash mismatch")
-        return {"event_count": len(events), "ledger_head_hash": previous, "receipt_count": self._conn.execute("SELECT COUNT(*) FROM receipts").fetchone()[0]}
+        return {
+            "event_count": len(events),
+            "ledger_head_hash": previous,
+            "receipt_count": self._conn.execute("SELECT COUNT(*) FROM receipts").fetchone()[0],
+            "chain_valid": True,
+        }
 
     # ---- deterministic export/replay -------------------------------------
     def export_jsonl(self, path: Optional[Union[str, Path]] = None) -> str:

@@ -1,10 +1,14 @@
 numpy>=1.24
 torch>=2.0
-transformers>=4.51
-sentence-transformers>=2.2
+transformers>=4.51,<5; python_version < "3.10"
+transformers>=5.5,<6; python_version >= "3.10"
+peft>=0.15.2,<1; python_version >= "3.10"
+sentence-transformers>=2.2; python_version < "3.10"
+sentence-transformers>=2.2; python_version >= "3.10"
 qdrant-client>=1.7
 requests>=2.28
-mteb>=1.0
+mteb>=1.0,<2; python_version < "3.10"
+mteb>=1.0; python_version >= "3.10"
 scikit-learn>=1.5
 jsonschema>=4.0
 PyYAML>=6.0

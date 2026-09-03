@@ -7,7 +7,15 @@ from pathlib import Path
 import os
 from typing import Any, Dict, Mapping, Optional, Union
 
-from .canonical import GENESIS_HASH, canonical_bytes, canonical_json, content_id, digest_for, validate_sha256
+from .canonical import (
+    GENESIS_HASH,
+    canonical_bytes,
+    canonical_json,
+    content_id,
+    digest_for,
+    failure_family_root,
+    validate_sha256,
+)
 from .errors import OptionalDependencyError, ReceiptConflictError, ReceiptVerificationError
 
 
@@ -19,6 +27,18 @@ RECEIPT_DECISIONS = {
     "VERDICT": frozenset({"PASS", "FAIL", "ERROR"}),
     "EFFECT": frozenset({"ALLOW", "DENY", "ERROR"}),
 }
+PUBLIC_EXIT_STATUS_CLASSES = frozenset(
+    {
+        "NOT_APPLICABLE",
+        "SUCCESS",
+        "NONZERO",
+        "TIMEOUT",
+        "SIGNAL",
+        "RESOURCE_LIMIT",
+        "OUTPUT_LIMIT",
+        "INFRASTRUCTURE_LOSS",
+    }
+)
 
 _RECEIPT_REQUIRED = frozenset(
     {
@@ -43,6 +63,7 @@ _RECEIPT_OPTIONAL = frozenset(
         "candidate_artifact_digest",
         "protocol_digest",
         "policy_digest",
+        "arm_policy_digest",
         "evaluator_digest",
         "diagnostic_enum",
         "resource_bucket",
@@ -56,6 +77,11 @@ _RECEIPT_OPTIONAL = frozenset(
         "finished_at",
         "exit_status",
         "effect_kind",
+        "infrastructure_incident_id",
+        "failure_family_root",
+        "task_family",
+        "normalized_public_locus",
+        "public_rule_id",
         "public_candidate_record_digest",
         "public_dependency_set_digest",
     }
@@ -86,9 +112,12 @@ def _b64_decode(value: Any, field: str = "signature") -> bytes:
         raise ReceiptVerificationError(f"{field} must be a non-empty base64url string")
     padded = value + "=" * (-len(value) % 4)
     try:
-        return base64.urlsafe_b64decode(padded.encode("ascii"))
+        decoded = base64.b64decode(padded.encode("ascii"), altchars=b"-_", validate=True)
     except (ValueError, UnicodeError) as exc:
         raise ReceiptVerificationError(f"{field} is not valid base64url") from exc
+    if len(decoded) != 64 or _b64_encode(decoded) != value:
+        raise ReceiptVerificationError(f"{field} is not canonical Ed25519 base64url")
+    return decoded
 
 
 def public_key_bytes(public_key: Any) -> bytes:
@@ -160,6 +189,8 @@ def _validate_common_receipt(receipt: Mapping[str, Any], *, public: bool = False
     decision = receipt.get("decision")
     if decision not in RECEIPT_DECISIONS[receipt_type]:
         raise ReceiptVerificationError(f"decision {decision!r} is invalid for {receipt_type}")
+    if "exit_status_class" in receipt and receipt["exit_status_class"] not in PUBLIC_EXIT_STATUS_CLASSES:
+        raise ReceiptVerificationError("exit_status_class is outside the closed public vocabulary")
     sequence = receipt.get("sequence")
     if not isinstance(sequence, int) or isinstance(sequence, bool) or sequence < 1:
         raise ReceiptVerificationError("receipt sequence must be a positive integer")
@@ -173,6 +204,7 @@ def _validate_common_receipt(receipt: Mapping[str, Any], *, public: bool = False
         "candidate_artifact_digest",
         "protocol_digest",
         "policy_digest",
+        "arm_policy_digest",
         "evaluator_digest",
         "input_digest",
         "output_digest",
@@ -180,6 +212,7 @@ def _validate_common_receipt(receipt: Mapping[str, Any], *, public: bool = False
         "normalized_action_hash",
         "public_candidate_record_digest",
         "public_dependency_set_digest",
+        "failure_family_root",
     ):
         if field in receipt and receipt[field] is not None:
             try:
@@ -192,6 +225,35 @@ def _validate_common_receipt(receipt: Mapping[str, Any], *, public: bool = False
         raise ReceiptVerificationError("signing_key_id must be non-empty")
     if not isinstance(receipt.get("receipt_id"), str) or not receipt["receipt_id"]:
         raise ReceiptVerificationError("receipt_id must be non-empty")
+    if "infrastructure_incident_id" in receipt and (
+        not isinstance(receipt["infrastructure_incident_id"], str) or not receipt["infrastructure_incident_id"]
+    ):
+        raise ReceiptVerificationError("infrastructure_incident_id must be a non-empty opaque ID")
+    diagnostic = receipt.get("diagnostic_enum")
+    incident = receipt.get("infrastructure_incident_id")
+    root = receipt.get("failure_family_root")
+    if diagnostic == "INTERNAL_ERROR":
+        if not isinstance(incident, str) or not incident:
+            raise ReceiptVerificationError("INTERNAL_ERROR receipts require infrastructure_incident_id")
+        if not isinstance(root, str) or not root:
+            raise ReceiptVerificationError("INTERNAL_ERROR receipts require an incident-bound failure_family_root")
+        canonical_fields = ("task_family", "normalized_public_locus", "public_rule_id")
+        missing_canonical = [field for field in canonical_fields if not isinstance(receipt.get(field), str) or not receipt[field]]
+        if missing_canonical:
+            raise ReceiptVerificationError(
+                "INTERNAL_ERROR receipts require canonical fields: {}".format(", ".join(missing_canonical))
+            )
+        expected_root = failure_family_root(
+            receipt["task_family"],
+            diagnostic,
+            receipt["normalized_public_locus"],
+            receipt["public_rule_id"],
+            infrastructure_incident_id=incident,
+        )
+        if root != expected_root:
+            raise ReceiptVerificationError("failure_family_root is not the exact incident-bound canonical root")
+    elif incident is not None or root is not None:
+        raise ReceiptVerificationError("infrastructure incident and failure root are reserved for INTERNAL_ERROR")
 
 
 class ReceiptSigner:
@@ -400,7 +462,15 @@ class ReceiptJournal:
     def verify(self) -> Dict[str, Any]:
         records = self.receipts()
         head = receipt_hash(records[-1]) if records else GENESIS_HASH
-        return {"count": len(records), "head": head, "receipt_ids": [r["receipt_id"] for r in records]}
+        # ``receipts()`` verifies every signature, sequence, and previous hash
+        # before this value is returned.  Expose that fact as derived evidence
+        # so callers do not synthesize a chain-valid flag.
+        return {
+            "count": len(records),
+            "head": head,
+            "receipt_ids": [r["receipt_id"] for r in records],
+            "chain_valid": True,
+        }
 
     def reconcile(self, ledger: Any) -> int:
         """Ingest all journal records into a ledger exactly once."""

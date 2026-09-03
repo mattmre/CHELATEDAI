@@ -40,6 +40,25 @@ Every unit of completed work must land in a PR **before moving to the next task*
 ### Rule 3 — No Placeholder Data or Fake Metrics
 Dashboards, frontends, and reporting surfaces must be wired to **real data pipelines**. Placeholder values, hard-coded demo numbers, mock metrics, and fake responses are forbidden in committed code. Every data field displayed to an operator must trace to an actual source artifact, live computation, or explicitly documented empty-state. The wiring from backend to frontend must be obvious and verifiable.
 
+## EGV Research Integrity Rules
+
+- A sealed freezer with zero eligible rows is a valid terminal research result.
+  Report `NO_ADMISSIBLE_TRAINING_SET`; do not fabricate rows, an adapter, or a
+  trained-versus-base comparison. Trained arms remain `UNEVALUATED`.
+- Production training must reject an ineligible or undersized dataset before
+  private staging, evaluator construction, CUDA checks, model loading, or output
+  creation. Tests must prove the ordering, not merely the final exception.
+- Keep private campaign seals distinct from public reproducer fields. Public
+  reports may summarize privately verified facts only when they explicitly say
+  which details are not independently reproduced by the public artifact.
+- Public evidence must use canonical closed-schema records with exact byte
+  pins, fail-closed semantic validation, and scans excluding prompts, generated
+  source, task identities, credentials, endpoints, paths, host labels, and
+  deployment topology.
+- A local or dual-host implementation test is not evidence of live cross-host
+  trainer/evaluator transport. Claim that boundary only after the exact route is
+  executed and its receipt/artifact chain is independently verified.
+
 ## What This Project Is
 
 ChelatedAI is a research prototype for adaptive vector search with self-correcting embeddings. It detects "semantic collapse" in RAG systems (where unrelated concepts get similar embeddings) and fixes it through dynamic dimension masking and neural adaptation.
@@ -173,6 +192,17 @@ Evaluation & Analysis Modules
 ## Git Workflow Notes
 
 - The repository branch policy may still show PRs as blocked even after all required checks are green. Session 23 required admin merges for `#80`, `#83`, and `#82`.
+- On Windows, update long GitHub PR bodies from a real UTF-8 body file and then
+  re-fetch and validate the live body. A PowerShell string pipeline can submit
+  an empty body even when `gh pr edit` reports success.
+- When a stacked base branch was deleted after merge, fetch `main` by itself
+  before rebasing. Including the deleted branch in the same fetch can leave the
+  local `origin/main` stale even though later commands continue.
+- Linux descendant-process tests inside an ephemeral container need an init
+  reaper so exited children do not remain visible as zombies. Mount the Docker
+  integrity inputs only for the reviewed nested-sandbox canary; keep source
+  read-only and do not classify a harness-misconfigured first run as a product
+  defect.
 - Session 27 required admin merges for `#90`, `#91`, `#92`, and `#93` even after all required checks passed.
 - `gh pr merge` can fail if a local worktree is holding `main`. Before merging stacked PRs, remove/prune merged worktrees or switch them off `main`.
 - The computational-storage split is complete on `main` as of 2026-03-06: `#86` landed the validation foundation, `#87` landed the payload transport path, and `#88` landed the session-wrap docs.
