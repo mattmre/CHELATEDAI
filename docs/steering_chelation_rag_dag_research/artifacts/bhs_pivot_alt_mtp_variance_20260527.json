@@ -1,0 +1,33 @@
+{
+  "cycle_id": "pivot_alt_mtp_variance_20260527",
+  "timestamp": "2026-05-27T14:16:07-04:00",
+  "activation_records": [
+    {
+      "shim_id": "alt_feature_derivation",
+      "before": {"hit_rate": 0.2, "precision_at_k": 0.2, "note": "historical constant-fake features across 16+ fires"},
+      "after": {"hit_rate": 0.3333, "precision_at_k": 0.3333, "evaluated_traces": 30, "note": "alt: MinMaxBlockRelevanceScorer-derived + outcome usage deltas (injected variance)"},
+      "delta": "measurable movement on L3 synthetic substrate (first non-flat result on this eval path)",
+      "rollback_proof": "git diff shows only research/artifacts/ harness + new loop_02/17_ md + this json; no prod changes; class call re-runnable"
+    }
+  ],
+  "bhs_evidence": {
+    "EVIDENCE": "direct class call + CHELATED_SHIM_RESEARCH=1 smoke produced 0.3333 vs historical 0.2; import OK post-edit; 0-prod grep passed (only pre-existing comments in tts/antigravity); block remains BLOCKED count:2 FAIL",
+    "SMOKE": "python -B -c 'import sys;sys.path.insert(0,\"docs/steering_chelation_rag_dag_research/artifacts\");from shim_collapse_benchmark_extension import Cycle011_MTPShimLookahead;print(Cycle011_MTPShimLookahead().synthetic_eval_on_gtraces(n_traces=30,top_k=2))'  --> 0.3333 (delta present)",
+    "repro_cmd": "CHELATED_SHIM_RESEARCH=1 python -B -c \"...\" (see loop_02/17 md)"
+  },
+  "block_state": {"flag": "BLOCKED", "carried_debt_rows": 2, "check_result": "FAIL"},
+  "carried_debt_count": 2,
+  "operator_override": "NONE",
+  "0_substrate_note": "0 real SIPs wired (tts:47-80, antigravity:2452-2600 etc all still Wired=NO per greps); 0 prod path evidence; 0 engine deltas; 0 SHIM-CD closures. Does not satisfy goal success def #1.",
+  "program_score": "10/100 flat",
+  "phase": "Pivot Mode advancing Phase 1 (harness) + Phase 5 (MTP synthetic) + Phase 2 (pivot usage); Phase 3 0% blocked by SHIM-CD-01",
+  "l_taxonomy": ["L1 (no real head)", "L3 (full synthetic mock)", "L4 (delta language while blocked + 0 SIPs; disclosed)", "L9 (pivot volume bounded by requiring actual harness delta this fire)"],
+  "4qs": {
+    "1_what_changed": "Feature fabrication in synthetic_eval_on_gtraces now derives varying min_max + usage from scorer + trace outcome instead of constants",
+    "2_why": "Attacked root cause of 16+ identical weak 0.2 fires (flat synthetic substrate) per user 'find alternative solutions and try them'",
+    "3_risk": "Still L3 research only; may not survive real data; no path to prod without OVERRIDE + debt clearance",
+    "4_next": "Scheduler or manual re-run of improved eval; future unblocked slices can target correlation / trace generator extensions for further deltas"
+  },
+  "research_guard": "CHELATED_SHIM_RESEARCH=1 or --research-mtp; 0 prod/SIP/substrate on real paths",
+  "scheduler": "019e6a78debf (active 3min)"
+}
