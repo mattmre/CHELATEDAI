@@ -2,6 +2,7 @@
 
 Arena: `query_encoder_swap` (encoder upgrade; the C2 re-embed oracle is defeated).
 Manifest: `experiment_runs/drift-recovery/swap-nfcorpus/swap-campaign-manifest-2026-06.json`.
+Per-run JSON files are not retained in git; the manifest rows are the retained record.
 Base model: `sentence-transformers/all-MiniLM-L6-v2`; swap model: `all-mpnet-base-v2`.
 Task NFCorpus, anchor_fraction 0.4, cycles 12, seeds [42, 1337, 7].
 
