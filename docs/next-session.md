@@ -69,10 +69,9 @@ the existing block-flag calculation.
 
 ## Block flag
 
-**Current**: `BLOCKED` — two one-cycle Carried Debt items from June remain open
-past their TTL. The operator has directed the active EGV campaign to continue,
-but this status must not be represented as `CLEAR` or used as evidence that the
-repository governance gate passed.
+**Current**: `CLEAR` — CD-305-01, CD-A2-01, and CD-H1-01 are closed in the
+table below. `scripts/check_block_flag.py` sees zero OPEN rows. This is not an
+extension of the PR #305/#306 operator override.
 
 When the flag is `BLOCKED`, no new feature work may merge until Carried Debt is
 empty unless a separately documented operator override satisfies the rulebook.
@@ -84,13 +83,14 @@ The flag is set automatically by `scripts/check_block_flag.py`:
 
 The script does not know cycle age — that is set by the operator at session-
 wrap by inspecting the TTL column. The `**Current**:` line above is the
-authoritative source; everything else is advisory.
+authoritative source; everything else is advisory. This mechanics paragraph
+still mentions `BLOCKED`. That word is not the current state.
 
 ## Carried Debt
 
 | ID | Item | Source | TTL | Blocking | Status |
 |----|------|--------|-----|----------|--------|
-| CD-305-01 | The operator-authorized BLOCKED-state exception is limited to PR #305 and its stacked PR #306; it must not be reused for later feature work, and CD-A2-01 plus CD-H1-01 remain unresolved. | PR #305 override (2026-08-25) | 1 cycle | YES — prevents silent reuse of the campaign-specific override | **OPEN — first cycle** — close only after PR #305/#306 disposition is recorded and the next feature cycle either clears CD-A2-01 plus CD-H1-01 or obtains a new separately scoped override. |
+| CD-305-01 | The operator-authorized BLOCKED-state exception is limited to PR #305 and its stacked PR #306; it must not be reused for later feature work, and CD-A2-01 plus CD-H1-01 remain unresolved. | PR #305 override (2026-08-25) | 1 cycle | NO — closed; the #305/#306 override is not extended | **CLOSED** — PR #305 merged as `88b4858471a59553d073cc6fac87a216c6e86260` and PR #306 merged as `3d94141e38114e1824f91e1b7a858352d2cbbddf` (disposition already recorded in the August 2026 EGV handoff). CD-A2-01 and CD-H1-01 are cleared in this file from the committed H2 manifests. The #305/#306 operator override is not extended to PR #292 or any later feature work. |
 | CD-001 | smoke_pipeline.py ceiling-tier not yet implemented; floor-tier only (`run_ceiling_smoke()` returns sentinel 2). Ceiling gap = no real end-to-end fixture exercise of AntigravityEngine | kit install 2026-05-10 | 1 cycle | NO — honestly disclosed per Rule 5 | **CLOSED** by PR <pending consolidation PR> — `run_ceiling_smoke()` now constructs `AntigravityEngine(qdrant_location=":memory:", model_name="all-MiniLM-L6-v2")`, ingests 4 docs, runs `get_chelated_vector()` + `embed()` against the production code path, asserts non-zero vector with `vector_size=384`; honest skip path retained for envs missing torch / sentence-transformers / qdrant; covered by `test_smoke_pipeline_ceiling.py` (8 tests) |
 | CD-002 | `scripts/smoke.sh` Stage 1 exits non-zero: `tests/test_e2e_smoke.py` does not exist; smoke.sh is the `bash`-mode entry point but the repo has no e2e smoke test file. The Python `smoke_pipeline.py` path (used by CI and operator) is unaffected. | kit v3.3 upgrade 2026-05-12 | 1 cycle | NO — CI uses `smoke_pipeline.py` directly; gap is only in the `bash scripts/smoke.sh` code path | **CLOSED** by PR <pending consolidation PR> — added `tests/test_e2e_smoke.py` (unittest surface-boot covering `antigravity_engine` + 8 load-bearing modules and the `AntigravityEngine` entry-point class); swapped `smoke.sh` Stage 1 invocation from `python -m pytest tests/test_e2e_smoke.py` to `python -m unittest -v tests.test_e2e_smoke` per CLAUDE.md (CI has no pytest) |
 | CD-244-01 | `scripts/bhs_validator.py:43-50` `validate_pr_brutal_honesty()` returns hardcoded `BHSResult(score=0.0)`; `:53-58` `run_smoke_pipeline()` always returns `True`. AEP orchestrator hooks call these so `summary["avg_bhs_score"]` is always `0.0`. L1 + L4. Violates Session Rule #1. | PR #244 (2026-05-16) | 1 cycle | YES — load-bearing stub | **CLOSED** by PR #245 |
@@ -136,7 +136,7 @@ not-in-scope items. They appear here so the next planner sees them.
 
 ## Disposition — living / annealed post-bank corrector (H5)
 
-**NON-PROMOTED.** The living-bank / annealed-post-bank corrector line is parked per its own
+**NON-PROMOTED.** This H5 verdict is on this branch (PR #292), not previously on main. Do not promote the living bank. Rung 13 detector-to-DAG prune, rung 15, rung 16, and rung 17 are not done. The living-bank / annealed-post-bank corrector line is parked per its own
 preregistered H5 gate: C5 (living) must beat **both** C5s (frozen static bank) and C5r (one-shot
 router). Frozen campaign means (query-encoder-swap arena, cycles 12, seeds [42,1337,7]):
 
@@ -181,6 +181,29 @@ entry; this log is the audit trail.
 
 ---
 
-**Last session**: 2026-08-25 — PR #305 merged; PR #306 reached terminal-negative research disposition, exact-head hosted and dual-Spark acceptance, and independent zero-finding review. Its final documentation and owner-authorized disposition are recorded by the PR #306 head and live PR record. CD-A2-01 and CD-H1-01 remain open and the block flag remains truthfully BLOCKED.
+**Last session**: 2026-09-22 — PR #292 rebased onto `3d1d620`. CD-H1-01, CD-A2-01, and CD-305-01 are closed from committed artifacts. The GPU campaign was not re-executed in this session. The #305/#306 operator override is not extended. Block flag `CLEAR`. Prior: 2026-08-25 PR #305/#306 terminal-negative EGV disposition under that bounded override.
 **2026-05-17**: PRs #249–#254 merged; 9 BHS Scope B audit Carried Debt rows (CD-MOD-001 through CD-TTS-002) closed.
 **Last validated by `check_block_flag.py`**: run after this commit
+
+## AEP-20260902 closeout handoff (2026-09-02; copied from `docs/aep-remediation/20260902-closeout/10-findings-matrix.md` §E)
+
+1. Merge gates: #311 → #310 → #309 (approvals + §4/§6.3 gates + Security
+   reviews); then the combined-tree matrix — never claim a merged result unrun.
+2. P1 medium queue: CORS-01 (post-AUTH) → LIMIT-01 → CDN-01 → PROV-01 →
+   CONTRACT-01 → CI-01 → WT-01; FM order FM-3 → FM-2 → FM-6 → FM-1/FM-4/FM-5.
+3. Open proofs: browser DOM-fire (XSS), `/.git/objects/*` re-rank bid (STATIC),
+   PR295 hammer repro + lock-scope audit (DEFER, demote-or-drop), PR-05 recovery.
+4. Standing evidence: prior-4 combined 11/11 + 67-passed; prior-8 Floor-A GREEN.
+   Traps: `/api/summary` 404 = missing data; pre-STATIC 200s = baseline —
+   check branch ancestry first; locks exist in `adapter_router.py`.
+
+## Session Evidence (2026-09-03; AEP remediation closeout + panel batches)
+- Commands: full sequence in session; merges `gh pr merge --admin --merge` #309/#310/#311/#317/#318/#319 (all MERGED, exit 0) under operator-authorized review override recorded per PR body
+- Tests: local `pytest test_dashboard_server.py test_api_contract.py` 77 passed 2 skipped; `unittest test_adapter_router_concurrency` OK; post-merge `main` CI (Tests) success on all six merge commits
+- Diff: main advanced through 6 merge commits to `3d1d620`; branches (local+remote) deleted; checkout back on `main`
+- OPEN debt: 0 new rows added. Pre-existing BLOCKED flag rows (CD-305-01, CD-A2-01-needs-Spark, CD-H1-01) untouched — Spark window + operator decision still required
+- Leftovers: lattice #292–#295 (dry-run clean, await merge orders), #278 (1 fail: §4 body), 4 DRAFTs (expected gate fails), docs-loss incident filed in `docs/aep-remediation/closeout-addendum-20260903.md` + `RECOVERY-LOG-20260903.md` (126 files restored)
+
+## Rebase note (2026-09-22, PR #292)
+
+The 2026-09-03 session-evidence block is a historical log of that session. It is not the current block flag. This rebase closed CD-305-01, CD-A2-01, and CD-H1-01 from committed manifests and set `**Current**:` to `CLEAR`. It does not reuse the #305/#306 operator override. Rung 13 detector-to-DAG prune (#293), rung 17 disk pool (#294), and rung 16 quant routing (#295) stay unmerged. The two sections above were not in commit `3d1d620`; they were uncommitted text on the dirty main worktree and are kept because this rebase was required to preserve them. They do not add carried-debt rows.

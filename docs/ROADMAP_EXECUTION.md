@@ -40,7 +40,7 @@ Merge gate: **CLEAR** for this sequence (`docs/next-session.md`). SHIM debts sta
 - No new doc-only shim cycles or 10-agent backlog slices.
 - No claiming SHIM-CD **CLOSED** without full substrate DoD.
 - No Model-Scope + full shim + EGGROLL at full throttle in parallel.
-- No GNN layer or disk-pool integration until Phase II steps 12–14 are honestly closed (schema **#277 DONE**; drift apparatus **DONE** with the H5 living-bank verdict a hard negative; disintegration **#279 PARTIAL** — do not start step 15 while claiming step 13 fully green without a chair re-scope).
+- No GNN layer or disk-pool integration while calling rung 13 done. Schema **#277** is on main. Drift apparatus is on main. The H5 living-bank verdict is on this branch (PR #292), not previously on main, and it is a hard negative — do not promote the living bank. Disintegration on main is **#279 PARTIAL** (post-bank prune/re-anneal only). Detector-to-DAG prune is open PR #293, not on main. Do not call rungs 13, 15, 16, or 17 done.
 
 ---
 
@@ -51,12 +51,12 @@ Merge gate: **CLEAR** for this sequence (`docs/next-session.md`). SHIM debts sta
 
 Same one-track rule: finish each step before starting the next. Phase II does not reopen parallel doc-only shim cycles.
 
-**Status snapshot (2026-07, git-verified):** rungs **9–12 DONE**; **13 PARTIAL** (post-bank
-prune/re-anneal lifecycle only — not isomer/convergence → Evidence-DAG prune); **14 apparatus DONE**
-with the **H5 living-bank question closed as a hard negative** (LIVING BANK WINS = False on SciFact +
-NFCorpus); **15–17 OPEN**. Lattice apparatus PRs: #260, #277, #279–#291. Next executable feature work
-is step **15** only after chair re-scopes or closes the step **13** remainder — or **16/17** if the
-quant plane / disk pool is prioritized over GNN.
+**Status snapshot (2026-09-22, rebased onto `origin/main` `3d1d620`):** rungs **9–12 DONE**
+and already on main. Rung **14 apparatus** is already on main; the **H5 living-bank verdict is on
+this branch, not previously on main** (hard negative — do not promote the living bank). Rung **13**
+is **PARTIAL**: post-bank prune/re-anneal is on main (#279); detector-to-DAG prune is **not on main**
+(open PR #293). Rungs **15, 16, and 17 are not done**. Rung 16 is open PR #295. Rung 17 is open PR
+#294. Do not call rungs 13, 15, 16, or 17 done. Historical SHIM-CD rows are not CLOSED.
 
 | Step | Track | Status | Exit criteria |
 |------|--------|--------|----------------|
@@ -64,11 +64,11 @@ quant plane / disk pool is prioritized over GNN.
 | 10 | **SHIM substrate DoD** | **DONE** (rung 10: #284 A1a / #285 A1b / #286 A1c; DoD honesty #289 — diagnostics observation-only; live routes overlap rung 16) | Promotable steering-route control plane, default-safe, with quant-survival + actionable rollback (`docs/rung10-shim-substrate-dod.md`). This is the rung-10 DoD, **not** a claim that historical SHIM-CD-01/02/06 rows are CLOSED. |
 | 11 | **Annealing controller** | **DONE** (#260 engine controller + #280 post-bank schedule; schedule ownership split across two modules) | Temperature schedule(s) drive explore ↔ stabilize; unit tests prove high-T vs low-T behavior; engine wires the controller into sedimentation temperature; post-bank path uses `annealing_schedule` in the C5 lifecycle |
 | 12 | **Evidence DAG schema** | **DONE** (#277 `evidence_dag.py` + validator + JSON schema; no GNN) | Typed graph contract over `build_attribution_pool.py` output (nodes: query/cluster/actuator; edges: retrieval/intervention links); JSON schema + validator; no GNN required yet |
-| 13 | **Disintegration loop** | **PARTIAL** — post-bank prune/re-anneal DONE (#279 H5a, wired #281–#283); **NOT** isomer/convergence → Evidence-DAG edge prune | Delivered: fitness-gated prune + re-anneal on `SteeringPostBank` with lifecycle artifacts. Original exit named `isomer_detector` / `convergence_monitor` triggers on DAG edges/pool entries — **not implemented**. Re-scope exit to the post-bank mechanism, or implement that trigger. |
-| 14 | **Concept-drift experiment** | **DONE apparatus** (#258–#266 harness, #267 track-0 hygiene; swap arena #268–#276; H3 #287/#288; H4 #291; H5 driver #290). **H5 living-bank VERDICT: FAIL / non-promoted** (SciFact + NFCorpus) | Injected drift + recovery campaigns under `docs/drift-recovery-*.md`. Living annealed post-bank (C5) does **not** beat the frozen static bank + one-shot router gate. Compounding (`compound_cycles=True`) is catastrophic on the single-seed H4 ablation. |
-| 15 | **GNN prototype** | **OPEN** (no merged PR; no PyG/DGL code — only a docstring forward-ref in `evidence_dag.py`) | Lightweight GNN over evidence DAG (PyG or DGL); only after steps 12–14 green; must beat flat-pool baseline on drift fixture or fail closed |
-| 16 | **Quant-aware shim routing** | **OPEN** (pieces exist: `adapter_router`, `QuantizationPromotionGate`, route gate #285 — **not** integrated as one retrieval-fitness steering plane) | `adapter_router.py` + `QuantizationPromotionGate` integrated as steering plane; promotion requires quant survival + retrieval fitness |
-| 17 | **Disk pool slice** | **OPEN** (no pool-shard parity via `block_graph`; the computational-storage POC is a different graph) | One precomputed pool shard readable via `computational_storage_poc/block_graph.py` with host parity check; documented in storage track docs |
+| 13 | **Disintegration loop** | **PARTIAL — not done.** Post-bank prune/re-anneal is on main (#279 H5a, wired #281–#283). Detector-to-DAG prune is **not on main** (open PR #293). | Delivered on main: fitness-gated prune + re-anneal on `SteeringPostBank`. The original `isomer_detector` / `convergence_monitor` → Evidence-DAG prune is the open PR, not a merged exit. Do not call rung 13 done. |
+| 14 | **Concept-drift experiment** | **DONE apparatus** already on main (#258–#266 harness, #267 track-0 hygiene; swap arena #268–#276; H3 #287/#288; H4 knob #291; H5 driver #290). **H5 living-bank verdict is on this branch, not previously on main: FAIL / non-promoted** (SciFact + NFCorpus). Do not promote the living bank. | Injected drift + recovery campaigns under `docs/drift-recovery-*.md`. Living annealed post-bank (C5) does **not** beat the frozen static bank + one-shot router gate. Compounding (`compound_cycles=True`) is a rejected single-seed H4 result. |
+| 15 | **GNN prototype** | **OPEN — not done.** No merged PR on main. | Lightweight GNN over evidence DAG (PyG or DGL); only after steps 12–14 are honestly closed; must beat flat-pool baseline on drift fixture or fail closed. Do not call rung 15 done. |
+| 16 | **Quant-aware shim routing** | **OPEN — not on main** (open PR #295). Not done. | `adapter_router.py` + `QuantizationPromotionGate` integrated as steering plane; promotion requires quant survival + retrieval fitness. Do not call rung 16 done. |
+| 17 | **Disk pool slice** | **OPEN — not on main** (open PR #294). Not done. | One precomputed pool shard readable via `computational_storage_poc/block_graph.py` with host parity check; documented in storage track docs. Do not call rung 17 done. |
 
 ### Phase II dependencies (do not skip)
 
