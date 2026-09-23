@@ -171,7 +171,7 @@ flowchart LR
 
 ## Status on this commit
 
-This commit is `49804ae3ddcebf4e4060fae95ba812331299f757` (`origin/main`). PR [#257](https://github.com/mattmre/CHELATEDAI/pull/257) (`feat/live-progress-tracker-20260606`) is open and is not this commit. Rows below were corrected only where a path or completion sentence was checked. This section does not say Phase I is complete.
+The text was checked against origin/main `49804ae3ddcebf4e4060fae95ba812331299f757`, and this file's commit is the correction, not that parent SHA. PR [#257](https://github.com/mattmre/CHELATEDAI/pull/257) (`feat/live-progress-tracker-20260606`) is open and is not this commit. Rows below were corrected only where a path or completion sentence was checked. This section does not say Phase I is complete.
 
 | Area | Status | Notes |
 |---|---|---|

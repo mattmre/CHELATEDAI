@@ -9,7 +9,7 @@ The old label `feat/live-progress-tracker-20260606` is PR #257, which is open an
 ### Added
 
 - **Liquified Lattice vision** — [docs/VISION_LIQUIFIED_LATTICE.md](docs/VISION_LIQUIFIED_LATTICE.md) names the north-star (self-annealing pools, shims, evidence DAG, disk scale) with claim boundaries and success metrics.
-- **Phase II execution program** — [docs/ROADMAP_EXECUTION.md](docs/ROADMAP_EXECUTION.md) steps 9–17. **Already on main, for merge commits ancestor-checked in [docs/status-corrections-2026-09-23.md](docs/status-corrections-2026-09-23.md):** #260, #277, #280, #284, #285, #286, #289, #290, and #291. Harness PRs #258–#276 were not re-checked in this pass. **On main via merged PR #292 (`c148f7b3c1e3858b461f6c08ddb3e58cd7e99a85`):** the H5 living-bank verdict (fail-closed negative; do not promote). Rung 13 post-bank prune/re-anneal remains on main, and detector-to-DAG prune is on main via merged PR #293 (`782ab62ddbaf6ab6c40085255e48ff9a21562d34`). Rung 17 is on main via merged PR #294 (`8e6e83b7c30bae34015ad12996314b5eea2d1c64`). Rung 15 is OPEN, not done, and not refused (no merged GNN-prototype PR in `gh pr list --state merged --search "GNN prototype"`). Rung 16 is not on this commit (PR #295 is open and not merged). The ROADMAP Status column is the source of truth for the table; its rung-17 cell is corrected on this commit.
+- **Phase II execution program** — [docs/ROADMAP_EXECUTION.md](docs/ROADMAP_EXECUTION.md) steps 9–17. **Already on main, for merge commits ancestor-checked in [docs/status-corrections-2026-09-23.md](docs/status-corrections-2026-09-23.md):** #260, #277, #280, #284, #285, #286, #289, #290, and #291. Harness PRs #258–#276 were not re-checked in this pass. **On main via merged PR #292 (`c148f7b3c1e3858b461f6c08ddb3e58cd7e99a85`):** the H5 living-bank verdict (fail-closed negative; do not promote). Rung 13 post-bank prune/re-anneal remains on main, and detector-to-DAG prune is on main via merged PR #293 (`782ab62ddbaf6ab6c40085255e48ff9a21562d34`). Rung 17 is on main via merged PR #294 (`8e6e83b7c30bae34015ad12996314b5eea2d1c64`). Rung 15 is OPEN, not done, and not refused (no merged GNN-prototype PR in `gh pr list --state merged --search "GNN prototype"`). Rung 16 is not on this commit (PR #295 is open and not merged). The ROADMAP Status column is the source of truth for the table. The corrected rung-17 cell is in this change and is not on `49804ae3ddcebf4e4060fae95ba812331299f757` until the change merges.
 - **Execution queue** — [docs/ROADMAP_EXECUTION.md](docs/ROADMAP_EXECUTION.md) Phase I defines core-first, single-track work (ML → infra → Model-Scope → E2E; SHIM deferred last).
 - **Phase development loop** — `scripts/phase_development_loop.py` is not in this commit. This bullet does not create it.
 - **BHS 10-minute loop tooling** — `scripts/run_10min_priority_bhs_loop.py`, `scripts/loop_core_10m.sh`, `scripts/loop_10m.sh`, `scripts/chelated_loop_timer.py`, and `docs/loop_workers/` are not in this commit.
@@ -63,12 +63,12 @@ These lines are the 2026-06-06 log. They were not re-run on this commit (`49804a
   - `tests/test_model_scope_runtime.py` is not in this commit. `test_model_scope_runtime.py` is at the repository root and was not re-run.
   - `test_model_scope_steering.py` is present and was not re-run.
 - `tests/test_learning_loop_e2e.py` is not in this commit, so the previous end-to-end learning-loop regression line is not a result for this tree. That test was not ported.
-- Kept SHIM rows open but on-hold per `docs/ROADMAP_EXECUTION.md`; no shim substrate resume until queue step 8 criteria are met and tracked.
+- The seven historical SHIM-CD names are not rows in `docs/next-session.md`. This note does not close them and does not add debt rows.
 
 ### Validation Notes
 
 - `python tests/test_model_scope_runtime.py` — that path is not in this commit. `test_model_scope_runtime.py` is at the repository root and was not re-run.
-- `python test_model_scope_steering.py` ✅
+- `python test_model_scope_steering.py` — the file is present and was not re-run.
 - `python tests/test_learning_loop_e2e.py` — not runnable on this commit; the file is absent.
 
 ## 2026-06-03 - AEP Remediation Turn-9 Track

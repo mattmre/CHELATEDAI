@@ -202,7 +202,7 @@ entry; this log is the audit trail.
 - Tests: local `pytest test_dashboard_server.py test_api_contract.py` 77 passed 2 skipped; `unittest test_adapter_router_concurrency` OK; post-merge `main` CI (Tests) success on all six merge commits
 - Diff: main advanced through 6 merge commits to `3d1d620`; branches (local+remote) deleted; checkout back on `main`
 - OPEN debt: 0 new rows added. Pre-existing BLOCKED flag rows (CD-305-01, CD-A2-01-needs-Spark, CD-H1-01) untouched — Spark window + operator decision still required
-- Leftovers: lattice #292–#295 (dry-run clean, await merge orders), #278 (1 fail: §4 body), 4 DRAFTs (expected gate fails), docs-loss incident filed in `docs/aep-remediation/closeout-addendum-20260903.md` + `RECOVERY-LOG-20260903.md` (126 files restored)
+- Historical as of 2026-09-03: Leftovers: lattice #292–#295 (dry-run clean, await merge orders), #278 (1 fail: §4 body), 4 DRAFTs (expected gate fails), docs-loss incident filed in `docs/aep-remediation/closeout-addendum-20260903.md` + `RECOVERY-LOG-20260903.md` (126 files restored). #292, #293, and #294 later merged and #295 did not.
 
 ## Rebase note (2026-09-22, PR #292)
 

@@ -231,3 +231,39 @@ Ancestor checks (all exit 0): `git merge-base --is-ancestor` of `c148f7b3c1e3858
 - False sentence: the paper is dated 2025; GPQA-Diamond +7.5%, Mathematics +3.6%, HumanEval +3.1%, BBH +1.7%, and MMLU +1.1% are percent; and "Only 1.25× additional training compute vs. baseline."
 - Replacement: Chen et al., Attention Residuals, 2026, arXiv:2603.15031. GPQA-Diamond 36.9 to 44.4 (+7.5 points), Math 53.5 to 57.1 (+3.6 points), HumanEval 59.1 to 62.2 (+3.1 points), BBH 76.3 to 78.0 (+1.7 points), MMLU 73.5 to 74.6 (+1.1 points). Separate scaling-law sentence: Block AttnRes matches the loss of a baseline trained with 1.25x more compute. That is not a claim that this run used 1.25x more training compute than the baseline. Benchmarks the file did not already list were not added.
 - Opened: that file's source line and the benchmark list (lines 5 and 20–26 before the edit). MoonshotAI Attention Residuals README, read 2026-09-23, https://github.com/MoonshotAI/Attention-Residuals and https://raw.githubusercontent.com/MoonshotAI/Attention-Residuals/master/README.md. Scaling Laws paragraph: "Block AttnRes matches the loss of a baseline trained with 1.25x more compute." Downstream table: MMLU 73.5 / 74.6, GPQA-Diamond 36.9 / 44.4, BBH 76.3 / 78.0, Math 53.5 / 57.1, HumanEval 59.1 / 62.2. Citation bibtex `year = {2026}` and `eprint = {2603.15031}`. README prose says "+7.5 on GPQA-Diamond" and "+3.1 on HumanEval" with no percent sign.
+
+### 36. `README.md` "Status on this commit" parent SHA
+
+- False sentence: `This commit is 49804ae3ddcebf4e4060fae95ba812331299f757 (origin/main).`
+- Replacement: The text was checked against origin/main `49804ae3ddcebf4e4060fae95ba812331299f757`, and this file's commit is the correction, not that parent SHA.
+- Opened: `git rev-parse HEAD` was `c669b31689b9c6026540fb1233e6f04517d88eba`. `git rev-parse origin/main` and `git merge-base HEAD origin/main` were `49804ae3ddcebf4e4060fae95ba812331299f757`. `README.md` line 174 before the edit.
+
+### 37. `CHANGELOG.md` Phase II rung-17 cell
+
+- False sentence: `its rung-17 cell is corrected on this commit` under the Unreleased heading that names `49804ae3ddcebf4e4060fae95ba812331299f757`.
+- Replacement: The corrected rung-17 cell is in this change and is not on `49804ae3ddcebf4e4060fae95ba812331299f757` until the change merges.
+- Opened: `git show 49804ae3ddcebf4e4060fae95ba812331299f757:docs/ROADMAP_EXECUTION.md` rung 17 status cell: `**IN THIS PR (#294), NOT ALREADY MERGED.**` `CHANGELOG.md` line 12 before the edit.
+
+### 38. `CHANGELOG.md` SHIM on-hold sentence
+
+- False sentence: `Kept SHIM rows open but on-hold`.
+- Replacement: The seven historical SHIM-CD names are not rows in `docs/next-session.md`. This note does not close them and does not add debt rows.
+- Opened: `rg SHIM-CD- docs/next-session.md` had no matches. `python3 scripts/check_block_flag.py` reported zero OPEN rows before the edit. The seven names are the ones already listed in `CHANGELOG.md` lines 35–39 (SHIM-CD-01, SHIM-CD-02, SHIM-CD-06, SHIM-CD-08, SHIM-CD-09, SHIM-CD-03, SHIM-CD-07). No Carried Debt status cell was edited.
+
+### 39. `CHANGELOG.md` steering validation pass mark
+
+- False sentence: `` `python test_model_scope_steering.py` ✅ ``
+- Replacement: the file is present and was not re-run. The pass mark is removed.
+- Opened: `test_model_scope_steering.py` exists at the repository root. The bullet above (`CHANGELOG.md` line 64 before the edit) already said it was not re-run. The file was not executed.
+
+### 40. `docs/next-session.md` 2026-09-03 leftovers
+
+- False sentence: `Leftovers: lattice #292–#295 (dry-run clean, await merge orders)` as a current status.
+- Replacement: the bullet is prefixed historical as of 2026-09-03. #292, #293, and #294 later merged and #295 did not.
+- Opened: `gh pr view` — #292, #293, and #294 `MERGED` (`c148f7b3c1e3858b461f6c08ddb3e58cd7e99a85`, `782ab62ddbaf6ab6c40085255e48ff9a21562d34`, `8e6e83b7c30bae34015ad12996314b5eea2d1c64`); #295 `OPEN` with `mergedAt: null`. No Carried Debt status cell was edited.
+
+### 41. `docs/ROADMAP_EXECUTION.md` rung 17 SHA256 count
+
+- False sentence: `three SHA256 comparisons at lines 297–301`.
+- Replacement: at lines 297–301, two `_sha256` calls and two `==` checks among three hash values (`manifest_hash == disk_hash` and `in_memory_hash == disk_hash`). Function lines 100, 241, 286, and 331 were not changed.
+- Opened: `computational_storage_poc/pool_shard.py` lines 297–301 (`in_memory_hash = _sha256(...)`, `disk_hash = _sha256(...)`, `manifest_hash == disk_hash`, `in_memory_hash == disk_hash`). `def write_pool_shard` line 100, `def read_pool_shard` line 241, `def verify_pool_shard_parity` line 286, `def retrieve_topk` line 331.
