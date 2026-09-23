@@ -2,7 +2,7 @@
 
 ## Source Paper
 
-MoonshotAI "Attention Residuals" (2025) — Block-AttnRes variant.  
+Chen et al., Attention Residuals, 2026, arXiv:2603.15031 — Block AttnRes variant.
 Repository: https://github.com/MoonshotAI/Attention-Residuals
 
 ## Core Concept
@@ -17,13 +17,14 @@ residuals within each block, and inserts cross-block attention aggregation betwe
 The final representation is a content-aware weighted sum of all block outputs — not just
 the last one.
 
-Benchmark results on Kimi Linear 48B / 1.4T tokens:
-- GPQA-Diamond: +7.5%
-- Mathematics: +3.6%
-- HumanEval: +3.1%
-- BBH: +1.7%
-- MMLU: +1.1%
-- Only 1.25× additional training compute vs. baseline
+Benchmark results on Kimi Linear 48B / 1.4T tokens (README downstream table; points, not percent):
+- GPQA-Diamond: 36.9 to 44.4 (+7.5 points)
+- Math: 53.5 to 57.1 (+3.6 points)
+- HumanEval: 59.1 to 62.2 (+3.1 points)
+- BBH: 76.3 to 78.0 (+1.7 points)
+- MMLU: 73.5 to 74.6 (+1.1 points)
+
+Scaling-law sentence, separate from those scores: Block AttnRes matches the loss of a baseline trained with 1.25x more compute. That is not a claim that this run used 1.25x more training compute than the baseline.
 
 ## Mapping to ChelatedAI
 

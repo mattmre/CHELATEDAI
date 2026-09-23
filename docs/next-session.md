@@ -136,7 +136,7 @@ not-in-scope items. They appear here so the next planner sees them.
 
 ## Disposition — living / annealed post-bank corrector (H5)
 
-**NON-PROMOTED.** This H5 verdict is on this branch (PR #292), not previously on main. Do not promote the living bank. Rung 13 detector-to-DAG prune, rung 15, rung 16, and rung 17 are not done. The living-bank / annealed-post-bank corrector line is parked per its own
+**NON-PROMOTED.** This H5 verdict is on main via merged PR #292 (`c148f7b3c1e3858b461f6c08ddb3e58cd7e99a85`). Do not promote the living bank. Rung 13's detector-to-DAG prune is on main via merged PR #293 (`782ab62ddbaf6ab6c40085255e48ff9a21562d34`). Rung 17 is on main via merged PR #294 (`8e6e83b7c30bae34015ad12996314b5eea2d1c64`). Rung 15 has no merged GNN-prototype PR in `gh pr list --state merged --search "GNN prototype"` (that search returned no rows): it is OPEN, not done, and not refused. Rung 16 is not on this commit. The living-bank / annealed-post-bank corrector line is parked per its own
 preregistered H5 gate: C5 (living) must beat **both** C5s (frozen static bank) and C5r (one-shot
 router). Frozen campaign means (query-encoder-swap arena, cycles 12, seeds [42,1337,7]):
 
@@ -202,8 +202,8 @@ entry; this log is the audit trail.
 - Tests: local `pytest test_dashboard_server.py test_api_contract.py` 77 passed 2 skipped; `unittest test_adapter_router_concurrency` OK; post-merge `main` CI (Tests) success on all six merge commits
 - Diff: main advanced through 6 merge commits to `3d1d620`; branches (local+remote) deleted; checkout back on `main`
 - OPEN debt: 0 new rows added. Pre-existing BLOCKED flag rows (CD-305-01, CD-A2-01-needs-Spark, CD-H1-01) untouched — Spark window + operator decision still required
-- Leftovers: lattice #292–#295 (dry-run clean, await merge orders), #278 (1 fail: §4 body), 4 DRAFTs (expected gate fails), docs-loss incident filed in `docs/aep-remediation/closeout-addendum-20260903.md` + `RECOVERY-LOG-20260903.md` (126 files restored)
+- Historical as of 2026-09-03: Leftovers: lattice #292–#295 (dry-run clean, await merge orders), #278 (1 fail: §4 body), 4 DRAFTs (expected gate fails), docs-loss incident filed in `docs/aep-remediation/closeout-addendum-20260903.md` + `RECOVERY-LOG-20260903.md` (126 files restored). #292, #293, and #294 later merged and #295 did not.
 
 ## Rebase note (2026-09-22, PR #292)
 
-The 2026-09-03 session-evidence block is a historical log of that session. It is not the current block flag. This rebase closed CD-305-01, CD-A2-01, and CD-H1-01 from committed manifests and set `**Current**:` to `CLEAR`. It does not reuse the #305/#306 operator override. Rung 13 detector-to-DAG prune (#293), rung 17 disk pool (#294), and rung 16 quant routing (#295) stay unmerged. The two sections above were not in commit `3d1d620`; they were uncommitted text on the dirty main worktree and are kept because this rebase was required to preserve them. They do not add carried-debt rows.
+The 2026-09-03 session-evidence block is a historical log of that session. It is not the current block flag. This rebase closed CD-305-01, CD-A2-01, and CD-H1-01 from committed manifests and set `**Current**:` to `CLEAR`. It does not reuse the #305/#306 operator override. Rung 13 detector-to-DAG prune (#293, merge `782ab62ddbaf6ab6c40085255e48ff9a21562d34`) and rung 17 disk pool (#294, merge `8e6e83b7c30bae34015ad12996314b5eea2d1c64`) are merged and are ancestors of this commit. Rung 16 (#295) is not merged and is not on this commit. The two sections above were not in commit `3d1d620`; they were uncommitted text on the dirty main worktree and are kept because this rebase was required to preserve them. They do not add carried-debt rows.
