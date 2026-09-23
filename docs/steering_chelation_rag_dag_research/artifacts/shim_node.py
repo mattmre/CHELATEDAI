@@ -454,17 +454,18 @@ class ShimRegistry:
     # Retrieval & lookup (simple embedding similarity, no external index)
     # ------------------------------------------------------------------
     def get(self, shim_id: str) -> Optional[ShimNode]:
-        """Retrieve live ShimNode or None.
+        """Return a detached ShimNode copy, or None when shim_id is absent.
 
         BHS EVIDENCE:
-        - Returns exactly the same object (identity) on repeated gets for the
-          same id while no intervening mutating call occurred.
         - Returned node.vectors contain independent np.ndarray copies of the
           stored data (caller can .copy() again safely).
         - Never raises KeyError; absence is expressed as None (consistent with
           soft lookup patterns in steering surfaces).
         """
-        return self._nodes.get(shim_id)
+        node = self._nodes.get(shim_id)
+        if node is None:
+            return None
+        return ShimNode.from_dict(node.to_dict())
 
     def lookup_by_context(
         self,
@@ -508,7 +509,7 @@ class ShimRegistry:
                 scored.append((node.shim_id, sim, node))
 
         scored.sort(key=lambda t: (-t[1], t[0]))  # desc sim, then id lexical
-        return [n for _, _, n in scored[:top_k]]
+        return [ShimNode.from_dict(n.to_dict()) for _, _, n in scored[:top_k]]
 
     # ------------------------------------------------------------------
     # Cascades (bounded compounding per nomenclature §4.2)

@@ -31,8 +31,9 @@ Run at your own risk. Monitor the log. Kill with pkill when done.
 """
 
 import argparse
-import time
 import json
+import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -45,7 +46,7 @@ def check_block_and_prod():
     import subprocess
     try:
         result = subprocess.run(
-            ["python", "scripts/check_block_flag.py"],
+            [sys.executable, "scripts/check_block_flag.py"],
             cwd=Path(__file__).parent.parent.parent.parent,  # adjust to CHELATEDAI root
             capture_output=True, text=True, timeout=10
         )
@@ -60,7 +61,7 @@ def check_override_and_pause():
     """Returns (override_active: bool, reason: str). Must be called before every auto-chain."""
     override_file = Path(__file__).parent / "OPERATOR_OVERRIDE.md"
     try:
-        content = override_file.read_text()
+        content = override_file.read_text(encoding="utf-8")
         if "OVERRIDE: ACTIVE" in content:
             return True, "OVERRIDE ACTIVE per operator file"
     except Exception:
@@ -70,6 +71,9 @@ def check_override_and_pause():
 def run_one_sustained_round(round_num: int, phase_plan_path: Path, driver_path: Path, timebox_min: int,
                                auto_continue: bool, max_wall_min: int) -> bool:
     round_start = time.time()
+    # artifacts -> steering_chelation_rag_dag_research -> docs -> repo.
+    # Do not anchor loop_02 on the process cwd.
+    repo_root = Path(__file__).resolve().parents[3]
     log(f"=== STARTING SUSTAINED ROUND {round_num} (timebox ~{timebox_min} min, auto_continue={auto_continue}) ===")
 
     # === PAUSE / OVERRIDE GATE (mandatory before any work or auto-chain) ===
@@ -88,9 +92,9 @@ def run_one_sustained_round(round_num: int, phase_plan_path: Path, driver_path: 
             "note": "0 substrate / does not satisfy goal success def #1 while BLOCKED + SHIM-CD-01. PAUSE gate enforced per DRIVER:24 + PROTOCOL §8. No agents dispatched.",
             "recommendation": "Edit OPERATOR_OVERRIDE.md to OVERRIDE: ACTIVE with reason + sign-off, or kill scheduler and scope-reduce."
         }
-        gate_path = Path("loop_02") / f"auto_gate_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M')}_round{round_num:02d}.md"
+        gate_path = repo_root / "loop_02" / f"auto_gate_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M')}_round{round_num:02d}.md"
         gate_path.parent.mkdir(parents=True, exist_ok=True)
-        gate_path.write_text(json.dumps(gate_report, indent=2))
+        gate_path.write_text(json.dumps(gate_report, indent=2), encoding="utf-8")
         log(f"PAUSE GATE EMITTED: {gate_path}. Sleeping safety interval ({max_wall_min}min) — no new round.")
         time.sleep(max_wall_min * 60)
         return True  # "success" from gate perspective; loop continues to re-check later
@@ -117,9 +121,9 @@ def run_one_sustained_round(round_num: int, phase_plan_path: Path, driver_path: 
             "l9_risk": "Doc volume while #1 0% remains a carried L9 per plan:83/85."
         }
     }
-    out_path = Path("loop_02") / f"sustained_round_{round_num:02d}_summary.json"
+    out_path = repo_root / "loop_02" / f"sustained_round_{round_num:02d}_summary.json"
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_text(json.dumps(artifact, indent=2))
+    out_path.write_text(json.dumps(artifact, indent=2), encoding="utf-8")
     log(f"Round {round_num} artifact + improvement note written: {out_path}")
     log(f"=== ROUND {round_num} COMPLETE in {round(wall_seconds,1)}s (stub) ===")
     return True
