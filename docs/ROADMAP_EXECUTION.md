@@ -47,7 +47,7 @@ Merge gate: **CLEAR** on this commit. `python3 scripts/check_block_flag.py` repo
 
 ## Phase II — Liquified Lattice program
 
-**Starts after:** Phase I step 8 exit criteria met (and step 7 Model-Scope pilot closed or explicitly carried with TTL). Step 8's test `tests/test_learning_loop_e2e.py` is not in this commit, so Phase I is not complete. The snapshot below records Phase II rungs that are already on main.  
+**Starts after:** Phase I step 8 exit criteria met (and step 7 Model-Scope pilot closed or explicitly carried with TTL). Step 8's test `tests/test_learning_loop_e2e.py` is added by this change. It fails when the ranked-id list does not change, and it does not use a production encoder. Phase I is not complete. The snapshot below records Phase II rungs that are already on main.  
 **Vision doc:** [VISION_LIQUIFIED_LATTICE.md](VISION_LIQUIFIED_LATTICE.md)
 
 Same one-track rule: finish each step before starting the next. Phase II does not reopen parallel doc-only shim cycles.
