@@ -87,7 +87,7 @@ Ancestor checks (all exit 0): `git merge-base --is-ancestor` of `c148f7b3c1e3858
 ### 14. `CHANGELOG.md` SHIM-CD findings
 
 - False sentence: `partial promoted SIP and registry probes exist` under the OPEN historical ids, read as files on this commit. The "8 open rows" count is not in this file; the seven names are.
-- Replacement: SHIM-CD-01/02/06/08/09 stay not-closed, and the promoted-probe clause is withdrawn because those two modules are absent. SHIM-CD-03 and SHIM-CD-07 keep their previous sentences. The seven names are not carried-debt table rows, so `check_block_flag.py` does not count them. SHIM-CD-05 stays the changelog's CLOSED id, with the note that `chelated_shim_research.py` is not in this commit. SHIM-CD-04 does not occur. No debt rows were added.
+- Replacement: SHIM-CD-01/02/06/08/09 stay not-closed, and the promoted-probe clause is withdrawn because those two modules are absent. SHIM-CD-03 and SHIM-CD-07 were left unchanged in that pass. Row 34 replaces them because those sentences were not re-opened. The seven names are not carried-debt table rows, so `check_block_flag.py` does not count them. SHIM-CD-05 stays the changelog's CLOSED id, with the note that `chelated_shim_research.py` is not in this commit. SHIM-CD-04 does not occur. No debt rows were added.
 - Opened: Carried Debt parse (0 not-closed). `rg SHIM-CD-04` no matches. `os.path.exists` for the two modules ABSENT. `rg "promoted_sip_apply|promoted_registry_probe|CHELATED_SHIM_RESEARCH"` hits only CHANGELOG and README.
 
 ### 15. `CHANGELOG.md` phase-loop turn bullet
@@ -161,7 +161,6 @@ Ancestor checks (all exit 0): `git merge-base --is-ancestor` of `c148f7b3c1e3858
 - PR #295's title, arena deltas, and body were not copied. Rung 16 is described only as not on this commit.
 - `CLAUDE.md` was not edited.
 - H5 and H4 numbers already printed in `CHANGELOG.md` and `docs/next-session.md` were not replaced and no new metrics were invented. The H4 ablation file `docs/drift-recovery-h4-compound-cycles-ablation-2026-07.md` exists; its figures were not re-derived in this pass beyond confirming the H5 source files exist for the numbers that were kept.
-- `CHANGELOG.md` Validation (2026-06-06) test counts (107 and 2684) were not re-run, so those dated lines were left as written.
 - `CHANGELOG.md` "Model-Scope stack ... hardened" was not re-opened.
 - `CHANGELOG.md` 2026-06-05 `CLAUDE.md` entrypoint sentence was not re-opened. `CLAUDE.md` was not edited.
 - Harness PR numbers #258–#276 were not re-checked. Sentences that used to treat that whole span as freshly git-verified now say they were not re-checked.
@@ -170,8 +169,8 @@ Ancestor checks (all exit 0): `git merge-base --is-ancestor` of `c148f7b3c1e3858
 ### 25. `CHANGELOG.md` Unreleased heading
 
 - False sentence: `## [Unreleased] — live progress branch feat/live-progress-tracker-20260606` as the identity of this commit.
-- Replacement: the section is checked on `49804ae3ddcebf4e4060fae95ba812331299f757`. PR #257 is open and is not this commit.
-- Opened: `git rev-parse HEAD` and `gh pr view 257` (`OPEN`, `mergedAt` null).
+- Replacement: the section discusses `49804ae3ddcebf4e4060fae95ba812331299f757`. PR #257 is open and is not this commit. Row 33 supersedes the earlier wording that the section was checked on that commit.
+- Opened: `git rev-parse HEAD` and `gh pr view 257` (`OPEN`, `mergedAt` null) in the prior pass. Follow-up `git rev-parse HEAD` is `081a5ccb781634dc8145427e9e0dc1e446852625`. `gh pr view 257` was not re-run.
 
 ### 26. `CHANGELOG.md` core engine seams
 
@@ -214,3 +213,21 @@ Ancestor checks (all exit 0): `git merge-base --is-ancestor` of `c148f7b3c1e3858
 - False sentence: `## Live Branch Status` as the name of this commit's status.
 - Replacement: `## Status on this commit`.
 - Opened: `git rev-parse HEAD` equals `49804ae3ddcebf4e4060fae95ba812331299f757`, which is `origin/main`.
+
+### 33. `CHANGELOG.md` Unreleased heading and Validation (2026-06-06)
+
+- False sentence: the Unreleased heading said the section was checked on `49804ae3ddcebf4e4060fae95ba812331299f757`. Under it, the Validation (2026-06-06) lines were `107 tests OK`, `2684 tests OK (10 skipped)`, and `python scripts/check_block_flag.py` PASS (CLEAR), readable as a run on that commit.
+- Replacement: the heading names that commit as `origin/main` and says it is not a check that every sentence in the section was opened or re-run on that commit. The validation block is prefixed: those three lines are the 2026-06-06 log and were not re-run on that commit. The historical numbers are unchanged. This supersedes row 25's "the section is checked" wording.
+- Opened: `CHANGELOG.md` line 5 and the validation command lines (lines 49–51 before the prefix). `git rev-parse origin/main` printed `49804ae3ddcebf4e4060fae95ba812331299f757`. `git merge-base --is-ancestor 49804ae3ddcebf4e4060fae95ba812331299f757 HEAD` exited 0 before this follow-up commit. The two unittest commands were not executed. After these edits, `python3 scripts/check_block_flag.py` printed CLEAR, carried-debt row count 0, and exited 0. That run is the PR gate. It is not the source of the dated PASS line.
+
+### 34. `CHANGELOG.md` SHIM-CD-03 and SHIM-CD-07
+
+- False sentence: the SHIM-CD-03 bullet stated a present-tense simulator claim, and the SHIM-CD-07 bullet stated a present-tense metric-lift claim. Those sentences were not re-opened.
+- Replacement: each bullet now reads "not re-verified on this commit (`49804ae3ddcebf4e4060fae95ba812331299f757`). This note does not close the id and does not add a debt row." The earlier simulator wording and the earlier metric-lift wording are not repeated. Row 14's "keep their previous sentences" clause is superseded for these two ids only.
+- Opened: `CHANGELOG.md` lines 37–38 before the rewrite. No simulator module and no metrics section were opened. `docs/next-session.md` Carried Debt status cells were not edited.
+
+### 35. `docs/attnres-adapter-implementation-2026-05-04.md` paper year, five scores, and 1.25x sentence
+
+- False sentence: the paper is dated 2025; GPQA-Diamond +7.5%, Mathematics +3.6%, HumanEval +3.1%, BBH +1.7%, and MMLU +1.1% are percent; and "Only 1.25× additional training compute vs. baseline."
+- Replacement: Chen et al., Attention Residuals, 2026, arXiv:2603.15031. GPQA-Diamond 36.9 to 44.4 (+7.5 points), Math 53.5 to 57.1 (+3.6 points), HumanEval 59.1 to 62.2 (+3.1 points), BBH 76.3 to 78.0 (+1.7 points), MMLU 73.5 to 74.6 (+1.1 points). Separate scaling-law sentence: Block AttnRes matches the loss of a baseline trained with 1.25x more compute. That is not a claim that this run used 1.25x more training compute than the baseline. Benchmarks the file did not already list were not added.
+- Opened: that file's source line and the benchmark list (lines 5 and 20–26 before the edit). MoonshotAI Attention Residuals README, read 2026-09-23, https://github.com/MoonshotAI/Attention-Residuals and https://raw.githubusercontent.com/MoonshotAI/Attention-Residuals/master/README.md. Scaling Laws paragraph: "Block AttnRes matches the loss of a baseline trained with 1.25x more compute." Downstream table: MMLU 73.5 / 74.6, GPQA-Diamond 36.9 / 44.4, BBH 76.3 / 78.0, Math 53.5 / 57.1, HumanEval 59.1 / 62.2. Citation bibtex `year = {2026}` and `eprint = {2603.15031}`. README prose says "+7.5 on GPQA-Diamond" and "+3.1 on HumanEval" with no percent sign.

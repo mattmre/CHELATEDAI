@@ -2,7 +2,7 @@
 
 All notable changes to ChelatedAI are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [Unreleased] — checked on this commit `49804ae3ddcebf4e4060fae95ba812331299f757` (`origin/main`)
+## [Unreleased] — `49804ae3ddcebf4e4060fae95ba812331299f757` (`origin/main`). This heading is not a check that every sentence in this section was opened or re-run on that commit.
 
 The old label `feat/live-progress-tracker-20260606` is PR #257, which is open and is not this commit.
 
@@ -34,8 +34,8 @@ The old label `feat/live-progress-tracker-20260606` is PR #257, which is open an
 - **Core queue steps 1–6 and 8** are not all shown on this commit. Step 8's test `tests/test_learning_loop_e2e.py` is absent, so the previous "implemented and regression-tested" claim is ahead of this tree for step 8. Steps 1–4 were not re-verified in this PR and are not declared done or not done. Step 7 was not re-verified in this PR. The `run_large_sweep` bounded-persistence and `py-modules` claims are ahead of this tree (`pyproject.toml` line 61 has no `run_large_sweep`; `run_large_sweep.py` lines 125–134 still read-modify-write the whole JSON). This bullet does not say Phase I is complete.
 - **SHIM-CD-05 CLOSED** — this changelog already marks that id CLOSED. `chelated_shim_research.py` is not in this commit. This edit does not re-open or re-close the id.
 - **SHIM-CD-01/02/06/08/09** — these five ids stay not-closed here. `chelated_shim_research.py` and `shim_node_promoted.py` are not in this commit, so this bullet does not say promoted SIP or registry probes exist on this tree.
-- **SHIM-CD-03 OPEN** — MTP lookahead remains simulation-only (MockMTP).
-- **SHIM-CD-07 OPEN** — BHS program score has not shown quantified lift on §77-83 metrics.
+- **SHIM-CD-03** — not re-verified on this commit (`49804ae3ddcebf4e4060fae95ba812331299f757`). This note does not close the id and does not add a debt row.
+- **SHIM-CD-07** — not re-verified on this commit (`49804ae3ddcebf4e4060fae95ba812331299f757`). This note does not close the id and does not add a debt row.
 - **Carried-debt count:** those seven historical ids (SHIM-CD-01, SHIM-CD-02, SHIM-CD-06, SHIM-CD-08, SHIM-CD-09, SHIM-CD-03, SHIM-CD-07) are not rows in the `docs/next-session.md` Carried Debt table. `python3 scripts/check_block_flag.py` reports CLEAR and zero OPEN rows, so it does not count them. SHIM-CD-05 is the CLOSED id in this list. SHIM-CD-04 does not occur. This note does not close the seven ids and does not add debt rows.
 - **Phase loop** — `scripts/phase_development_loop.py` is not in this commit, so the previous turn-3171+ / `SHIM-SLICE-SCHEDULER-06` note was not re-verified here. Block flag on this commit is `CLEAR` (`python3 scripts/check_block_flag.py`, zero OPEN rows).
 - **H5 living-bank VERDICT (closed negative, 2026-07):** on the query-encoder-swap arena the living/annealed post-bank (C5) fails its preregistered gate (C5 must beat **both** C5s frozen-static and C5r one-shot router). SciFact: C5 == C5s (0.131135, bit-identical) and C5r one-shot 0.180862 beats living. NFCorpus: C5 == C5s (0.046389), living edges C5r (0.045817) but does not clear the dual gate. **LIVING BANK WINS = False on both datasets** — the living/annealed lifecycle adds nothing over a frozen static bank; a one-shot router is competitive-or-better. Do not promote the living bank. Sources: [docs/drift-recovery-post-bank-headtohead-results-2026-06.md](docs/drift-recovery-post-bank-headtohead-results-2026-06.md), [docs/drift-recovery-post-bank-headtohead-nfcorpus-results-2026-06.md](docs/drift-recovery-post-bank-headtohead-nfcorpus-results-2026-06.md).
@@ -45,6 +45,8 @@ The old label `feat/live-progress-tracker-20260606` is PR #257, which is open an
 - **Placement on this commit (`49804ae3ddcebf4e4060fae95ba812331299f757`):** rung 13 detector-to-DAG prune is on main (merged PR #293, `782ab62ddbaf6ab6c40085255e48ff9a21562d34`). Rung 17 disk pool is on main (merged PR #294, `8e6e83b7c30bae34015ad12996314b5eea2d1c64`). Rung 15 is OPEN, not done, and not refused. Rung 16 is not on this commit (PR #295 is open and not merged). Do not call rung 15 done. Do not treat a rung 16 campaign result as on main.
 
 ### Validation (2026-06-06)
+
+These lines are the 2026-06-06 log. They were not re-run on this commit (`49804ae3ddcebf4e4060fae95ba812331299f757`).
 
 - `python -m unittest discover -s tests -p "test_*.py" -q` — 107 tests OK
 - `python -m unittest discover -s . -p "test_*.py" -q` — 2684 tests OK (10 skipped)
