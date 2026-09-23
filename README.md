@@ -2,7 +2,7 @@
 
 ChelatedAI is a Python research repository for adaptive retrieval, post-hoc embedding correction, multi-dataset evaluation, and computational-storage experiments.
 
-**Primary research path (2026-06):** the [**Liquified Lattice**](docs/VISION_LIQUIFIED_LATTICE.md) program — self-annealing retrieval pools steerable by quant-like shims, linked as a DAG/GNN evidence graph, with disk-scale precomputed pools as the endgame. Active execution is tracked in [docs/ROADMAP_EXECUTION.md](docs/ROADMAP_EXECUTION.md) (Phase I core queue now; Phase II lattice slices after step 8).
+**Primary research path (2026-06):** the [**Liquified Lattice**](docs/VISION_LIQUIFIED_LATTICE.md) program — self-annealing retrieval pools steerable by quant-like shims, linked as a DAG/GNN evidence graph, with disk-scale precomputed pools as the endgame. Active execution is tracked in [docs/ROADMAP_EXECUTION.md](docs/ROADMAP_EXECUTION.md). Phase I is not complete on this commit (`tests/test_learning_loop_e2e.py` is absent). Some Phase II rungs are already on main; see the status table below.
 
 The repo still carries substantial work on road-course tuning, learned gates, Model-Scope steering, computational storage, and agentic remediation. Those tracks remain on the books and are not abandoned; they are sequenced **after** or **alongside** the primary lattice milestones as capacity allows. See [Research baseline and queued work](#research-baseline-and-queued-work) below.
 
@@ -30,9 +30,9 @@ This is the **current focus**. It unifies retrieval correction, self-healing (SE
 
 | Phase | Scope | Status (2026-06-06) |
 |---|---|---|
-| **Phase I** (steps 1–8) | ML correctness, infra hygiene, Model-Scope shadow pilot, E2E learning loop | Steps 1–6 and 8 largely complete on live branch; **step 7 (Model-Scope) in progress** |
-| **Phase I defer** | SHIM substrate (production SIP wiring) | Open, env-guarded; resumes after step 8 |
-| **Phase II** (steps 9–17) | Annealing controller, evidence DAG, disintegration loop, drift experiment, GNN, quant shim routing, disk pool slice | Documented; starts after Phase I exit |
+| **Phase I** (steps 1–8) | ML correctness, infra hygiene, Model-Scope shadow pilot, E2E learning loop | Not complete on this commit. Step 8's test `tests/test_learning_loop_e2e.py` is absent, so the old "largely complete" claim is ahead of this tree. Steps 1–4 were not re-verified in this PR. Step 7 was not re-opened here. |
+| **Phase I defer** | SHIM substrate (production SIP wiring) | `chelated_shim_research.py` is not in this commit. Historical SHIM-CD ids are not closed here. The resume rule is unchanged: after step 8. |
+| **Phase II** (steps 9–17) | Annealing controller, evidence DAG, disintegration loop, drift experiment, GNN, quant shim routing, disk pool slice | Not a claim that Phase I is complete. Rungs 13 and 17 are on main (#293, #294). Rung 15 is OPEN, not done, not refused. Rung 16 is not on this commit. See [ROADMAP_EXECUTION.md](docs/ROADMAP_EXECUTION.md). |
 
 **Key docs:** [VISION_LIQUIFIED_LATTICE.md](docs/VISION_LIQUIFIED_LATTICE.md) · [ROADMAP_EXECUTION.md](docs/ROADMAP_EXECUTION.md) · [CHANGELOG.md](CHANGELOG.md)
 
@@ -40,19 +40,20 @@ This is the **current focus**. It unifies retrieval correction, self-healing (SE
 
 | Lattice piece | Repo surface today | Next milestone |
 |---|---|---|
-| Crystal pool | `vector_store.py`, sedimentation, adapters | Evidence DAG schema (Phase II #12) |
-| Laser / refraction | `antigravity_engine.py` chelation + masks | Annealing controller (Phase II #11) |
-| Annealing | sedimentation, `online_updater.py`, ES optimizer | Unified temperature schedule |
-| Disintegration | `isomer_detector.py`, masking | Drift-triggered prune loop (Phase II #13) |
-| Shims (quant-like) | adapters, `model_scope_steering.py`, `chelated_shim_research.py` | Production SHIM DoD (Phase I defer / II #10) |
-| Disk pools | `computational_storage_poc/block_graph.py` | One pool shard + parity (Phase II #17) |
+| Crystal pool | `vector_store.py`, sedimentation, adapters | Evidence DAG schema is on main via merged PR #277 (`81e3614bec7d5e5b9cce57af8e7126c6b97775dc`). This cell does not say Phase I is complete. |
+| Laser / refraction | `antigravity_engine.py` chelation + masks | Annealing controller is on main via merged PR #260 (`f0c643ae7bf5a7c7ca612ceaa878b7cb15412540`). |
+| Annealing | sedimentation, `online_updater.py`, ES optimizer | Post-bank temperature schedule is on main via merged PR #280 (`9db098ea0d2f7df91b54d29e5ee1c6eb9ea65bb8`). Whether one schedule object owns every path was not re-verified in this PR. |
+| Disintegration | `isomer_detector.py`, masking | Detector-to-DAG prune is on main via merged PR #293 (`782ab62ddbaf6ab6c40085255e48ff9a21562d34`). `evidence_dag.py` defines `prune_edges` (line 290). |
+| Shims (quant-like) | adapters, `model_scope_steering.py` (`chelated_shim_research.py` is not in this commit) | Rung 10 merges #284 (`efe6d1be55b5c702eb3a1cccde3169feb04b6c34`), #285 (`49b36046b6d59a554633f631924005130a05cd1f`), #286 (`d8181f64161522eb39f8b0e1fd9e48aa0fa536b2`), and #289 (`d1bfc0903d7de5c2b81d41a7d081e7da8502ad40`) are ancestors. That does not close historical SHIM-CD ids. |
+| Disk pools | `computational_storage_poc/block_graph.py` | `write_pool_shard` (line 100), `read_pool_shard` (line 241), and `verify_pool_shard_parity` (line 286) are on this commit in `computational_storage_poc/pool_shard.py` via merged PR #294 (`8e6e83b7c30bae34015ad12996314b5eea2d1c64`). |
 
 ```bash
-# Primary-path validation (live branch)
+# Primary-path commands that exist on this commit
 python -m unittest discover -s tests -p "test_*.py" -v
 python scripts/check_block_flag.py
-python scripts/phase_development_loop.py --once
 ```
+
+`scripts/phase_development_loop.py` is not in this commit, so it is not a validation step here. The unittest command above was not re-run in this PR. `python3 scripts/check_block_flag.py` was run and exited 0.
 
 ## Repository Tracks
 
@@ -60,7 +61,7 @@ All tracks below remain active parts of the portfolio. **Primary** = lattice pro
 
 | Priority | Track | What it covers | Main entrypoints |
 |---|---|---|---|
-| **Primary** | Liquified lattice | Self-annealing pools, shims, evidence DAG, disk-scale endgame | [VISION_LIQUIFIED_LATTICE.md](docs/VISION_LIQUIFIED_LATTICE.md), `self_healing_chelation.py`, `build_attribution_pool.py`, `chelated_shim_research.py` |
+| **Primary** | Liquified lattice | Self-annealing pools, shims, evidence DAG, disk-scale endgame | [VISION_LIQUIFIED_LATTICE.md](docs/VISION_LIQUIFIED_LATTICE.md), `self_healing_chelation.py`, `build_attribution_pool.py` (`chelated_shim_research.py` is not in this commit) |
 | Queued | Adaptive retrieval | Chelation, sedimentation, adapter-based correction, vector-store integration | `antigravity_engine.py`, `chelation_adapter.py`, `vector_store.py`, `config.py` |
 | Queued | Distillation and correction | Teacher guidance, cross-lingual routing, online updates, schedule tuning | `teacher_distillation.py`, `cross_lingual_distillation.py`, `teacher_weight_scheduler.py`, `online_updater.py` |
 | Queued | Evaluation and reporting | BEIR runs, comparative benchmarks, sweeps, and dashboards | `benchmark_beir.py`, `benchmark_comparative.py`, `benchmark_multitask.py`, `run_sweep.py`, `run_large_sweep.py`, `dashboard_server.py` |
@@ -168,21 +169,21 @@ flowchart LR
     G --> H[Host reader / evidence capture]
 ```
 
-## Live Branch Status
+## Status on this commit
 
-Progress branch: `feat/live-progress-tracker-20260606` · PR [#257](https://github.com/mattmre/CHELATEDAI/pull/257)
+This commit is `49804ae3ddcebf4e4060fae95ba812331299f757` (`origin/main`). PR [#257](https://github.com/mattmre/CHELATEDAI/pull/257) (`feat/live-progress-tracker-20260606`) is open and is not this commit. Rows below were corrected only where a path or completion sentence was checked. This section does not say Phase I is complete.
 
 | Area | Status | Notes |
 |---|---|---|
-| ML correctness (InfoNCE, projection, adapter isolation) | Done on branch | Regression tests guard against reversion |
-| Sweep / packaging / docs truth | Done on branch | `run_large_sweep` bounded; `pyproject.toml` py-modules updated |
+| ML correctness (InfoNCE, projection, adapter isolation) | Not re-verified in this PR | Steps 1–3 were not opened here, so this cell does not say they are done or not done |
+| Sweep / packaging / docs truth | Ahead of this tree where checked | `run_large_sweep.py` lines 125–134 still read-modify-write the whole JSON. `run_large_sweep` is absent from `pyproject.toml` `py-modules` (line 61). `test_run_large_sweep.py` is absent. Step 6 docs-truth was not re-verified in this PR |
 | Model-Scope pilot (Phase I #7) | **In progress** | Runtime, steering, bridge, and provenance paths tested on fixtures |
-| E2E learning loop (Phase I #8) | Done on branch | `tests/test_learning_loop_e2e.py` covers ingest → sedimentation → metric delta |
-| SHIM research (Phase I defer) | Partial, env-guarded | `chelated_shim_research.py`, promoted SIP probe, evidence recorders |
-| Phase / BHS loops | Running | `scripts/phase_development_loop.py`, `bash scripts/loop_core_10m.sh` |
+| E2E learning loop (Phase I #8) | Not on this commit | `tests/test_learning_loop_e2e.py` is absent. The completion claim is ahead of this tree. Phase I is not complete |
+| SHIM research (Phase I defer) | Named modules are not in this commit | `chelated_shim_research.py`, `shim_node_promoted.py`, and `scripts/record_shim_*_evidence.py` are absent. This cell does not close SHIM-CD ids |
+| Phase / BHS loops | Not runnable from the named paths | `scripts/phase_development_loop.py` and `scripts/loop_core_10m.sh` are not in this commit |
 | Liquified Lattice vision + Phase II plan | Documented | [VISION_LIQUIFIED_LATTICE.md](docs/VISION_LIQUIFIED_LATTICE.md), [ROADMAP_EXECUTION.md](docs/ROADMAP_EXECUTION.md) |
 
-**Block flag:** `CLEAR` (8 open SHIM carried-debt rows, non-blocking per operator queue). See [docs/next-session.md](docs/next-session.md).
+**Block flag:** `CLEAR`. `python3 scripts/check_block_flag.py` reports zero OPEN carried-debt rows in [docs/next-session.md](docs/next-session.md) (22 data rows, all status CLOSED). CHANGELOG names seven historical ids, not eight: SHIM-CD-01, SHIM-CD-02, SHIM-CD-06, SHIM-CD-08, SHIM-CD-09, SHIM-CD-03, and SHIM-CD-07. SHIM-CD-05 is marked CLOSED there. SHIM-CD-04 does not occur. Those seven names are not rows in the carried-debt table, so the checker does not count them. This sentence does not close them and does not add debt rows.
 
 **Progress log:** [CHANGELOG.md](CHANGELOG.md)
 
@@ -190,12 +191,12 @@ Progress branch: `feat/live-progress-tracker-20260606` · PR [#257](https://gith
 
 | Surface | Purpose |
 |---|---|
-| `chelated_shim_research.py` | Env-guarded (`CHELATED_SHIM_RESEARCH=1`) SIP preflight and promoted registry probe |
-| `shim_node_promoted.py` | Promoted shim registry copy (`CHELATED_SHIM_PROMOTED=1`) |
-| `scripts/record_shim_*_evidence.py` | Writes dated `artifacts/bhs_shim_evidence_*.json` from production seams |
-| `scripts/run_five_worker_shim_gate.py` | In-repo five-worker shim gate (SHIM-CD-06 partial) |
-| `scripts/phase_development_loop.py` | CORE-SLICE / SHIM-SLICE orchestrator with `artifacts/phase_loop/` state |
-| `reports/ARCH_AEP_REMEDIATION_FINDINGS*.md` | AEP remediation findings and merge-readiness notes |
+| `chelated_shim_research.py` | Not in this commit |
+| `shim_node_promoted.py` | Not in this commit |
+| `scripts/record_shim_*_evidence.py` | Not in this commit |
+| `scripts/run_five_worker_shim_gate.py` | Not in this commit |
+| `scripts/phase_development_loop.py` | Not in this commit |
+| `reports/ARCH_AEP_REMEDIATION_FINDINGS*.md` | Not in this commit (`reports/` is absent) |
 
 ## Research Baseline and Queued Work
 
