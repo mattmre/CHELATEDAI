@@ -14,7 +14,7 @@ Totals: 88 works; strong=77; supporting=11; structural_duplicates=4.
 - w11 (structural_duplicate): CRAG Corrective Retrieval Augmented Generation - arXiv:2401.15884 - Retrieval correction/rerank-when-unstable; direct structural cousin of chelation trigger loop
 - w12 (cousin): Adaptive-RAG - arXiv:2403.14403 - Query-complexity routing; fast/slow retrieval path selection analog
 - w26 (additive): OPSD Self-Distilled Reasoner - arXiv:2601.18734 - Dense privileged-teacher on-policy distillation; verified (siyan-zhao/OPSD)
-- w30 (additive): Attention Residuals AttnRes (MoonshotAI Kimi Linear) - https://github.com/MoonshotAI/Attention-Residuals - Source of BlockAttnRes adapters in repo; GPQA-Diamond +7.5% at 1.25x compute; ref is the repository URL already cited in docs/attnres-adapter-implementation-2026-05-04.md
+- w30 (additive): Attention Residuals AttnRes (MoonshotAI Kimi Linear) - https://github.com/MoonshotAI/Attention-Residuals - Source of BlockAttnRes adapters in repo; Chen et al., Attention Residuals, 2026, arXiv:2603.15031; downstream GPQA-Diamond 36.9 to 44.4 (+7.5 points, not percent); separately, Block AttnRes matches the loss of a baseline trained with 1.25x more compute (scaling-law result, not the GPQA result); ref is the repository URL already cited in docs/attnres-adapter-implementation-2026-05-04.md
 
 ### c02 [chelation] - Bounded corrections (~0.0078 INT8 quantization noise floor) keep adapters quantizable after training
 - w06 (relevant): Matryoshka Representation Learning - arXiv:2205.13147 - Per-dimension importance; basis for learned dimension mask predictor (REFERENCES.md)
