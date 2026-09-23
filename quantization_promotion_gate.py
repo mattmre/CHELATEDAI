@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from typing import Any, Dict, List
 
@@ -40,12 +41,14 @@ class QuantizationPromotionGate:
     """Reject candidates whose improvements disappear after quantization."""
 
     def __init__(self, retained_gain_threshold: float = 0.8, minimum_fp32_gain: float = 0.0, logger=None):
-        if retained_gain_threshold < 0:
-            raise ValueError("retained_gain_threshold must be non-negative")
-        if minimum_fp32_gain < 0:
-            raise ValueError("minimum_fp32_gain must be non-negative")
-        self.retained_gain_threshold = float(retained_gain_threshold)
-        self.minimum_fp32_gain = float(minimum_fp32_gain)
+        retained_threshold = float(retained_gain_threshold)
+        minimum_gain = float(minimum_fp32_gain)
+        if not math.isfinite(retained_threshold) or retained_threshold < 0:
+            raise ValueError("retained_gain_threshold must be finite and non-negative")
+        if not math.isfinite(minimum_gain) or minimum_gain < 0:
+            raise ValueError("minimum_fp32_gain must be finite and non-negative")
+        self.retained_gain_threshold = retained_threshold
+        self.minimum_fp32_gain = minimum_gain
         self.logger = logger or get_logger()
 
     def evaluate(
@@ -54,13 +57,25 @@ class QuantizationPromotionGate:
         quantized_fitness: float,
         baseline_fitness: float = 0.0,
     ) -> QuantizationGateResult:
-        fp32_gain = float(fp32_fitness) - float(baseline_fitness)
-        quantized_gain = float(quantized_fitness) - float(baseline_fitness)
+        fp32_value = float(fp32_fitness)
+        quantized_value = float(quantized_fitness)
+        baseline_value = float(baseline_fitness)
+        if not all(
+            math.isfinite(value)
+            for value in (fp32_value, quantized_value, baseline_value)
+        ):
+            raise ValueError("quantization promotion fitness values must be finite")
+        fp32_gain = fp32_value - baseline_value
+        quantized_gain = quantized_value - baseline_value
+        if not all(math.isfinite(value) for value in (fp32_gain, quantized_gain)):
+            raise ValueError("quantization promotion derived gains must be finite")
         if fp32_gain <= self.minimum_fp32_gain:
             retained_ratio = 1.0 if quantized_gain >= fp32_gain else 0.0
             passed = False
         else:
             retained_ratio = quantized_gain / fp32_gain
+            if not math.isfinite(retained_ratio):
+                raise ValueError("quantization promotion retained gain ratio must be finite")
             passed = retained_ratio >= self.retained_gain_threshold
         reasons = []
         if fp32_gain <= self.minimum_fp32_gain:
@@ -72,9 +87,9 @@ class QuantizationPromotionGate:
 
         result = QuantizationGateResult(
             passed=bool(passed),
-            fp32_fitness=float(fp32_fitness),
-            quantized_fitness=float(quantized_fitness),
-            baseline_fitness=float(baseline_fitness),
+            fp32_fitness=fp32_value,
+            quantized_fitness=quantized_value,
+            baseline_fitness=baseline_value,
             fp32_gain=float(fp32_gain),
             quantized_gain=float(quantized_gain),
             retained_gain_ratio=float(retained_ratio),
@@ -93,4 +108,3 @@ class QuantizationPromotionGate:
             reasons=result.reasons,
         )
         return result
-

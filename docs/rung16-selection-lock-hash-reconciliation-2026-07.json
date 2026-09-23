@@ -1,0 +1,30 @@
+{
+  "audit_parent_head": "7a79b0ec5b992d6150bda4f96139420748b484d9",
+  "audit_scope": "Read-only recomputation of the committed selection-lock and report-consumed marker bytes. The four historical evidence files are preserved unchanged.",
+  "records": [
+    {
+      "arena": "arena_a_default_swap",
+      "disposition": "The marker's selection_lock_sha256 claim is superseded for the current committed lock bytes and must not be used as integrity proof.",
+      "marker_claimed_selection_lock_sha256": "c81b72a12fe87e56fcb12974a152d28a249dca8550e9354af244fc97dabbc10c",
+      "marker_file_sha256": "90ea7c5167b8ce08b01bc7f6fe2a538c41154bb630ddebcea5223d2083e2cb76",
+      "marker_path": "docs/rung16-arena_a_default_swap-report-consumed-48bad48fe78b.json",
+      "match": false,
+      "selection_lock_actual_sha256": "13488c1133c906cd1483257b975bb568f4c245706a6120b012faca2c80729d39",
+      "selection_lock_path": "docs/rung16-arena_a_default_swap-selection-lock-2026-07.json"
+    },
+    {
+      "arena": "arena_b_multi_domain",
+      "disposition": "The marker's selection_lock_sha256 claim is superseded for the current committed lock bytes and must not be used as integrity proof.",
+      "marker_claimed_selection_lock_sha256": "3c30e8c110789342175b3261f61704c3e0943e496dd315efa8b9393c255e023d",
+      "marker_file_sha256": "cead481f67bc842d578bb5ae8fb3947d8b363988c05b0b594d8a2968abfade93",
+      "marker_path": "docs/rung16-arena_b_multi_domain-report-consumed-48bad48fe78b.json",
+      "match": false,
+      "selection_lock_actual_sha256": "96bc3ab13952c562cc6676843f750dc3172aef668f0102f85394012013b9e65d",
+      "selection_lock_path": "docs/rung16-arena_b_multi_domain-selection-lock-2026-07.json"
+    }
+  ],
+  "record_type": "rung16_selection_lock_hash_reconciliation",
+  "status": "FORENSIC_MISMATCH_DISCLOSED",
+  "summary": "Both committed report-consumed markers contain selection-lock hash claims that do not match the current committed selection-lock bytes. Git history first introduces each lock and marker together at 5a3fbcc2feea913c66e2445b7a4fac390b6c8ffa, so this audit cannot authenticate the claimed hashes to an earlier committed lock version. The markers remain preserved as historical records of the claimed one-shot consumption, but they are not valid byte-integrity proof for the committed locks.",
+  "verified_at_utc": "2026-07-27T13:46:55Z"
+}

@@ -158,6 +158,13 @@ class AntigravityEngine:
         self._model_scope_config = None
         self._last_model_scope_artifact = None
         self._model_scope_observation_active = False
+        # Rung 16: final promoted quant-aware planes are opt-in.  The legacy
+        # centroid router remains separate because it swaps query adapters,
+        # whereas the Rung 16 swap adapters serve route-specific document views.
+        self._quant_aware_routing_plane = None
+        self._quant_aware_query_vector_provider = None
+        self._quant_aware_serve_quantized = True
+        self._quant_aware_routing_provenance = None
 
     def embed(self, texts):
         """Get Embeddings via backend abstraction."""
@@ -1187,6 +1194,86 @@ class AntigravityEngine:
             "Adapter routing enabled",
             route_count=len(routes),
         )
+
+    def enable_quant_aware_routing(
+        self,
+        plane,
+        *,
+        query_vector_provider=None,
+        serve_quantized=True,
+    ):
+        """Enable a finalized Rung 16 promotion plane.
+
+        This surface is deliberately stricter than ``enable_adapter_routing``:
+        it accepts only a typed plane whose one-shot REPORT verdict is
+        ``PROMOTED``.  FAIL-CLOSED, unreported, and DEGENERATE candidates remain
+        disabled.  ``query_vector_provider`` may supply the serving coordinate
+        system (for example the frozen query-encoder-swap projection); otherwise
+        the raw embedding backend is used, never the engine's already-adapted
+        ``embed()`` result.
+        """
+
+        from quant_aware_routing import QuantAwareRoutingPlane
+
+        if not isinstance(plane, QuantAwareRoutingPlane):
+            raise TypeError("plane must be a QuantAwareRoutingPlane")
+        provenance = plane.provenance()
+        if not plane.promoted or provenance.get("verdict") != "PROMOTED":
+            self.logger.log_event(
+                "quant_aware_routing_rejected",
+                "Quant-aware routing plane was not enabled",
+                verdict=plane.verdict,
+                preregistration_sha256=provenance.get("preregistration_sha256"),
+            )
+            raise ValueError(f"quant-aware routing requires final PROMOTED verdict, got {plane.verdict}")
+        if not provenance.get("leakage_safe"):
+            raise ValueError("quant-aware routing provenance failed the leakage audit")
+        if query_vector_provider is not None and not callable(query_vector_provider):
+            raise TypeError("query_vector_provider must be callable")
+        prereg_models = getattr(plane, "preregistration", {}).get("models", {})
+        document_encoder = prereg_models.get("document_encoder")
+        query_encoder = prereg_models.get("swapped_query_encoder")
+        if query_vector_provider is None and query_encoder and query_encoder != document_encoder:
+            raise ValueError(
+                "a promoted encoder-swap plane requires query_vector_provider so serving queries "
+                "use the frozen swapped/projection coordinate system"
+            )
+        self._quant_aware_routing_plane = plane
+        self._quant_aware_query_vector_provider = query_vector_provider
+        self._quant_aware_serve_quantized = bool(serve_quantized)
+        self._quant_aware_routing_provenance = copy.deepcopy(self._runtime_json_safe(provenance))
+        self._quant_aware_routing_provenance["serving"] = {
+            "query_vector_source": (
+                "explicit_query_vector_provider"
+                if query_vector_provider is not None
+                else "raw_engine_embedding_backend"
+            ),
+            "serve_quantized": self._quant_aware_serve_quantized,
+            "document_encoder": document_encoder,
+            "query_encoder": query_encoder,
+        }
+        self.logger.log_event(
+            "quant_aware_routing_enabled",
+            "Final promoted quant-aware routing plane enabled",
+            serve_quantized=self._quant_aware_serve_quantized,
+            promotion_provenance=self._quant_aware_routing_provenance,
+        )
+        return copy.deepcopy(self._quant_aware_routing_provenance)
+
+    def disable_quant_aware_routing(self):
+        """Disable the opt-in Rung 16 plane without mutating its frozen state."""
+
+        self._quant_aware_routing_plane = None
+        self._quant_aware_query_vector_provider = None
+        self._quant_aware_routing_provenance = None
+        self.logger.log_event(
+            "quant_aware_routing_disabled",
+            "Quant-aware routing plane disabled",
+        )
+
+    def get_quant_aware_routing_provenance(self):
+        provenance = getattr(self, "_quant_aware_routing_provenance", None)
+        return copy.deepcopy(provenance) if provenance is not None else None
 
     @staticmethod
     def _runtime_json_safe(value):
@@ -2520,6 +2607,89 @@ class AntigravityEngine:
                 self._query_reformulation_active = False
 
         route_metadata = None
+
+        # Rung 16 promoted-plane intercept.  This precedes ``embed()`` because
+        # the plane's centroids and query provider must share one explicit raw
+        # coordinate system.  The plane owns its route-specific adapted document
+        # views and simulated-INT8 serving path.
+        quant_plane = getattr(self, "_quant_aware_routing_plane", None)
+        if quant_plane is not None:
+            try:
+                provider = getattr(self, "_quant_aware_query_vector_provider", None)
+                if provider is None:
+                    query_vector = np.asarray(self.embedding_backend.embed_raw([str(query_text)]), dtype=np.float32)
+                else:
+                    query_vector = np.asarray(provider(str(query_text)), dtype=np.float32)
+                if query_vector.ndim == 2 and query_vector.shape[0] == 1:
+                    query_vector = query_vector[0]
+                if (
+                    query_vector.ndim != 1
+                    or query_vector.shape[0] != self.vector_size
+                    or not np.all(np.isfinite(query_vector))
+                ):
+                    raise ValueError(
+                        "quant-aware query provider returned invalid vector "
+                        f"(shape={query_vector.shape}, expected ({self.vector_size},))"
+                    )
+                routed = quant_plane.retrieve(
+                    query_vector,
+                    k=10,
+                    quantized=bool(getattr(self, "_quant_aware_serve_quantized", True)),
+                    usage_scope="SERVE",
+                )
+                final_ids = list(routed["ids"])
+                route_metadata = routed["route"]
+                latency_ms = (time.time() - inference_start) * 1000.0
+                diagnostics = self._build_runtime_diagnostics(
+                    query_text,
+                    action="QUANT_AWARE_ROUTE",
+                    latency_ms=latency_ms,
+                    std_top=final_ids,
+                    final_top=final_ids,
+                    jaccard=1.0,
+                    route=route_metadata,
+                    status="ok",
+                    retrieval_policy={
+                        "policy": "quant_aware_routing_plane",
+                        "action": "QUANT_AWARE_ROUTE",
+                        "scout_limit": 10,
+                        "use_quantization": bool(routed["quantized"]),
+                        "use_centering": False,
+                        "variance": None,
+                        "active_threshold": None,
+                        "variance_above_threshold": False,
+                        "high_variance_fast_path": False,
+                    },
+                    model_scope=model_scope_summary,
+                )
+                diagnostics["quant_aware_promotion"] = {
+                    "verdict": routed["verdict"],
+                    "preregistration_sha256": (
+                        getattr(self, "_quant_aware_routing_provenance", {}) or {}
+                    ).get("preregistration_sha256"),
+                }
+                self._record_runtime_diagnostics(diagnostics)
+                return final_ids, final_ids, np.ones(self.vector_size), 1.0
+            except Exception as exc:
+                self.logger.log_error(
+                    "quant_aware_routing",
+                    "Promoted quant-aware routing failed during inference",
+                    exception=exc,
+                )
+                latency_ms = (time.time() - inference_start) * 1000.0
+                self._record_runtime_diagnostics(self._build_runtime_diagnostics(
+                    query_text,
+                    action="ERROR",
+                    latency_ms=latency_ms,
+                    std_top=[],
+                    final_top=[],
+                    jaccard=0.0,
+                    route=route_metadata,
+                    status="quant_aware_routing_error",
+                    error_type=type(exc).__name__,
+                    model_scope=model_scope_summary,
+                ))
+                return [], [], np.ones(self.vector_size), 0.0
 
         # A. Embed
         try:
