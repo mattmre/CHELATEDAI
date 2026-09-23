@@ -1,6 +1,7 @@
 # ChelatedAI Related Works - Human-Readable Catalog
 
 Auto-generated from `related_works.tsv` (source of truth).
+The w30 reference on this branch was hand-synced to that TSV. No catalog generator script is checked in.
 
 Totals: 88 works; strong=77; supporting=11; structural_duplicates=4.
 
@@ -13,7 +14,7 @@ Totals: 88 works; strong=77; supporting=11; structural_duplicates=4.
 - w11 (structural_duplicate): CRAG Corrective Retrieval Augmented Generation - arXiv:2401.15884 - Retrieval correction/rerank-when-unstable; direct structural cousin of chelation trigger loop
 - w12 (cousin): Adaptive-RAG - arXiv:2403.14403 - Query-complexity routing; fast/slow retrieval path selection analog
 - w26 (additive): OPSD Self-Distilled Reasoner - arXiv:2601.18734 - Dense privileged-teacher on-policy distillation; verified (siyan-zhao/OPSD)
-- w30 (additive): Attention Residuals AttnRes (MoonshotAI Kimi Linear) - as-cited-in-repo - Source of BlockAttnRes adapters in repo; GPQA-Diamond +7.5% at 1.25x compute
+- w30 (additive): Attention Residuals AttnRes (MoonshotAI Kimi Linear) - https://github.com/MoonshotAI/Attention-Residuals - Source of BlockAttnRes adapters in repo; GPQA-Diamond +7.5% at 1.25x compute; ref is the repository URL already cited in docs/attnres-adapter-implementation-2026-05-04.md
 
 ### c02 [chelation] - Bounded corrections (~0.0078 INT8 quantization noise floor) keep adapters quantizable after training
 - w06 (relevant): Matryoshka Representation Learning - arXiv:2205.13147 - Per-dimension importance; basis for learned dimension mask predictor (REFERENCES.md)
@@ -251,7 +252,7 @@ Totals: 88 works; strong=77; supporting=11; structural_duplicates=4.
 - w27 [strong]: SDPO Reinforcement Learning via Self-Distillation (arXiv:2601.20802)
 - w28 [strong]: MIS-PO filtered policy optimization (Step 3.5 Flash) (arXiv:2602.10604)
 - w29 [strong]: A Survey of Process Reward Models (arXiv:2510.08049)
-- w30 [strong]: Attention Residuals AttnRes (MoonshotAI Kimi Linear) (as-cited-in-repo)
+- w30 [strong]: Attention Residuals AttnRes (MoonshotAI Kimi Linear) (https://github.com/MoonshotAI/Attention-Residuals)
 - w31 [strong]: EGGROLL Evolution Strategies at the Hyperscale (https://eshyperspace.github.io/)
 - w32 [strong]: SEAL Self-Adapting Language Models (arXiv:2506.10943)
 - w38 [strong]: Exploratory Annealed Decoding (EAD) (arXiv:2510.05251)

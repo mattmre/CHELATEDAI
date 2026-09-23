@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 # ChelatedAI related-works research harness.
+# This script is a reporter. It checks that the research-plan files parse,
+# then prints METRIC lines for catalog size and claim coverage.
+# Exit 0 means the report was printed. Exit 0 does not mean a coverage gate passed.
 # Deterministically validates the research-plan artifacts and reports
 # coverage of the repo's core claims by catalogued related works.
 set -euo pipefail
@@ -29,9 +32,7 @@ done < "$PLAN_DIR/claims.tsv"
 
 # --- 3. Parse related-works catalog; validate + score ------------------------
 # Columns: id | category | strength | title | authors | ref | mapped_claim_ids | notes
-declare -A WORK_STRENGTH CAT_STRONG
 declare -a ALL_WORKS
-n_total=0 n_strong=0
 declare -i n_total=0
 declare -i n_strong=0
 while IFS=$'\t' read -r wid category strength title authors ref claims notes; do
