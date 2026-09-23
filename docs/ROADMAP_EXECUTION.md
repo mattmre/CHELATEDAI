@@ -40,7 +40,7 @@ Merge gate: **CLEAR** for this sequence (`docs/next-session.md`). SHIM debts sta
 - No new doc-only shim cycles or 10-agent backlog slices.
 - No claiming SHIM-CD **CLOSED** without full substrate DoD.
 - No Model-Scope + full shim + EGGROLL at full throttle in parallel.
-- No GNN layer or disk-pool integration while calling rungs 15, 16, or 17 done. Schema **#277** is on main. Drift apparatus is on main. The H5 living-bank verdict landed on main in PR #292 (it was not on main before that merge) and it is a hard negative — do not promote the living bank. Disintegration already on main is **#279 PARTIAL** (post-bank prune/re-anneal only). Rung 13's detector-to-DAG prune is in this PR (#293), not already done on main. Do not call rungs 15, 16, or 17 done.
+- No GNN layer or disk-pool integration while calling rungs 15, 16, or 17 done. Schema **#277** is on main. Drift apparatus is on main. The H5 living-bank verdict landed on main in PR #292 (it was not on main before that merge) and it is a hard negative — do not promote the living bank. Disintegration already on main is **#279 PARTIAL** (post-bank prune/re-anneal only). Rung 13's detector-to-DAG prune is on main via merged PR #293, not introduced by this PR. Rung 17's disk-pool slice is in this PR (#294), not already merged. Do not call rungs 15 or 16 done.
 
 ---
 
@@ -51,12 +51,13 @@ Merge gate: **CLEAR** for this sequence (`docs/next-session.md`). SHIM debts sta
 
 Same one-track rule: finish each step before starting the next. Phase II does not reopen parallel doc-only shim cycles.
 
-**Status snapshot (2026-09-22, rebased onto `origin/main` `c148f7b`):** rungs **9–12 DONE**
+**Status snapshot (2026-09-22, rebased onto `origin/main` `782ab62`):** rungs **9–12 DONE**
 and already on main. Rung **14 apparatus** is already on main; the **H5 living-bank verdict is on
 main via PR #292**, not introduced here (hard negative — do not promote the living bank). Rung **13**
-post-bank prune/re-anneal is on main (#279). Rung 13's detector-to-DAG prune is **in this PR (#293),
-not already done on main**. Rungs **15, 16, and 17 are not done**. Rung 16 is open PR #295. Rung 17
-is open PR #294. Do not call rungs 15, 16, or 17 done. Historical SHIM-CD rows are not CLOSED.
+post-bank prune/re-anneal is on main (#279). Rung 13's detector-to-DAG prune is on main via merged
+PR #293, not introduced by this PR. Rungs **15 and 16 are not done**. Rung 16 is open PR #295.
+Rung **17** (disk pool slice) is **in this PR (#294), not already merged**. Do not call rungs 15 or
+16 done. Do not call rung 17 already merged. Historical SHIM-CD rows are not CLOSED.
 
 | Step | Track | Status | Exit criteria |
 |------|--------|--------|----------------|
@@ -64,11 +65,11 @@ is open PR #294. Do not call rungs 15, 16, or 17 done. Historical SHIM-CD rows a
 | 10 | **SHIM substrate DoD** | **DONE** (rung 10: #284 A1a / #285 A1b / #286 A1c; DoD honesty #289 — diagnostics observation-only; live routes overlap rung 16) | Promotable steering-route control plane, default-safe, with quant-survival + actionable rollback (`docs/rung10-shim-substrate-dod.md`). This is the rung-10 DoD, **not** a claim that historical SHIM-CD-01/02/06 rows are CLOSED. |
 | 11 | **Annealing controller** | **DONE** (#260 engine controller + #280 post-bank schedule; schedule ownership split across two modules) | Temperature schedule(s) drive explore ↔ stabilize; unit tests prove high-T vs low-T behavior; engine wires the controller into sedimentation temperature; post-bank path uses `annealing_schedule` in the C5 lifecycle |
 | 12 | **Evidence DAG schema** | **DONE** (#277 `evidence_dag.py` + validator + JSON schema; no GNN) | Typed graph contract over `build_attribution_pool.py` output (nodes: query/cluster/actuator; edges: retrieval/intervention links); JSON schema + validator; no GNN required yet |
-| 13 | **Disintegration loop** | **IN THIS PR, NOT ALREADY DONE ON MAIN.** Post-bank prune/re-anneal is on main (#279 H5a, wired #281–#283). Detector-to-DAG prune (`evidence_dag_disintegration.py` + `EvidenceDAG.prune_edges` / `reanneal_edges`) is introduced in this PR (#293), not a merged exit and not a promotion. | This PR scores Evidence-DAG edges from `isomer_detector` (per-query strength) and `convergence_monitor` (per-cluster summary), with fitness-gated prune, transactional re-anneal, a before/after fitness artifact, and detector provenance. Fail-closed: missing/unmatched/immature signals → neutral fitness (never prunes); non-sedimentation isomer mode is rejected. Not already done on main. |
+| 13 | **Disintegration loop** | **ON MAIN via merged PR #293.** Post-bank prune/re-anneal is on main (#279 H5a, wired #281–#283). Detector-to-DAG prune (`evidence_dag_disintegration.py` + `EvidenceDAG.prune_edges` / `reanneal_edges`) landed in #293. Not introduced by this PR. | #293 scores Evidence-DAG edges from `isomer_detector` (per-query strength) and `convergence_monitor` (per-cluster summary), with fitness-gated prune, transactional re-anneal, a before/after fitness artifact, and detector provenance. Fail-closed: missing/unmatched/immature signals → neutral fitness (never prunes); non-sedimentation isomer mode is rejected. |
 | 14 | **Concept-drift experiment** | **DONE apparatus** already on main (#258–#266 harness, #267 track-0 hygiene; swap arena #268–#276; H3 #287/#288; H4 knob #291; H5 driver #290). **H5 living-bank verdict is on main via PR #292, not introduced by this PR: FAIL / non-promoted** (SciFact + NFCorpus). Do not promote the living bank. | Injected drift + recovery campaigns under `docs/drift-recovery-*.md`. Living annealed post-bank (C5) does **not** beat the frozen static bank + one-shot router gate. Compounding (`compound_cycles=True`) is a rejected single-seed H4 result. |
 | 15 | **GNN prototype** | **OPEN — not done.** No merged PR on main. | Lightweight GNN over evidence DAG (PyG or DGL); only after steps 12–14 are honestly closed; must beat flat-pool baseline on drift fixture or fail closed. Do not call rung 15 done. |
 | 16 | **Quant-aware shim routing** | **OPEN — not on main** (open PR #295). Not done. | `adapter_router.py` + `QuantizationPromotionGate` integrated as steering plane; promotion requires quant survival + retrieval fitness. Do not call rung 16 done. |
-| 17 | **Disk pool slice** | **OPEN — not on main** (open PR #294). Not done. | One precomputed pool shard readable via `computational_storage_poc/block_graph.py` with host parity check; documented in storage track docs. Do not call rung 17 done. |
+| 17 | **Disk pool slice** | **IN THIS PR (#294), NOT ALREADY MERGED.** Not on main before this PR. | One precomputed pool shard readable via `computational_storage_poc/block_graph.py` with host parity check; documented in `docs/rung17-disk-pool-slice.md`. This PR adds `write_pool_shard` / `read_pool_shard` (float32 bytes carried through the FP16-native block format via byte-lane encoding), `verify_pool_shard_parity` (three-way SHA256 plus byte-identical vector bytes, including NaN payloads, and ids, fail-closed), and `retrieve_topk`. POC/EXPERIMENTAL, not wired into live retrieval. Do not call rung 17 already merged. |
 
 ### Phase II dependencies (do not skip)
 
