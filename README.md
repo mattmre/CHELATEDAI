@@ -2,7 +2,7 @@
 
 ChelatedAI is a Python research repository for adaptive retrieval, post-hoc embedding correction, multi-dataset evaluation, and computational-storage experiments.
 
-**Primary research path (2026-06):** the [**Liquified Lattice**](docs/VISION_LIQUIFIED_LATTICE.md) program — self-annealing retrieval pools steerable by quant-like shims, linked as a DAG/GNN evidence graph, with disk-scale precomputed pools as the endgame. Active execution is tracked in [docs/ROADMAP_EXECUTION.md](docs/ROADMAP_EXECUTION.md). Phase I is not complete on this commit (`tests/test_learning_loop_e2e.py` is absent). Some Phase II rungs are already on main; see the status table below.
+**Primary research path (2026-06):** the [**Liquified Lattice**](docs/VISION_LIQUIFIED_LATTICE.md) program — self-annealing retrieval pools steerable by quant-like shims, linked as a DAG/GNN evidence graph, with disk-scale precomputed pools as the endgame. Active execution is tracked in [docs/ROADMAP_EXECUTION.md](docs/ROADMAP_EXECUTION.md). Phase I is not complete on this commit. `tests/test_learning_loop_e2e.py` is added by this change. It is a floor-tier dim-8 fixture. It is not MiniLM and not BEIR. It fails when the chelated ranked-id list does not change. Steps 1–4 were not re-verified. Some Phase II rungs are already on main; see the status table below.
 
 The repo still carries substantial work on road-course tuning, learned gates, Model-Scope steering, computational storage, and agentic remediation. Those tracks remain on the books and are not abandoned; they are sequenced **after** or **alongside** the primary lattice milestones as capacity allows. See [Research baseline and queued work](#research-baseline-and-queued-work) below.
 
@@ -30,7 +30,7 @@ This is the **current focus**. It unifies retrieval correction, self-healing (SE
 
 | Phase | Scope | Status (2026-06-06) |
 |---|---|---|
-| **Phase I** (steps 1–8) | ML correctness, infra hygiene, Model-Scope shadow pilot, E2E learning loop | Not complete on this commit. Step 8's test `tests/test_learning_loop_e2e.py` is absent, so the old "largely complete" claim is ahead of this tree. Steps 1–4 were not re-verified in this PR. Step 7 was not re-opened here. |
+| **Phase I** (steps 1–8) | ML correctness, infra hygiene, Model-Scope shadow pilot, E2E learning loop | Not complete on this commit. Step 8's test `tests/test_learning_loop_e2e.py` is added by this change. It is a floor-tier dim-8 fixture. It is not MiniLM and not BEIR. It fails when the chelated ranked-id list does not change. Phase I is not complete. Steps 1–4 were not re-verified in this PR. Step 7 was not re-opened here. |
 | **Phase I defer** | SHIM substrate (production SIP wiring) | `chelated_shim_research.py` is not in this commit. Historical SHIM-CD ids are not closed here. The resume rule is unchanged: after step 8. |
 | **Phase II** (steps 9–17) | Annealing controller, evidence DAG, disintegration loop, drift experiment, GNN, quant shim routing, disk pool slice | Not a claim that Phase I is complete. Rungs 13 and 17 are on main (#293, #294). Rung 15 is OPEN, not done, not refused. Rung 16 is not on this commit. See [ROADMAP_EXECUTION.md](docs/ROADMAP_EXECUTION.md). |
 
@@ -178,7 +178,7 @@ The text was checked against origin/main `49804ae3ddcebf4e4060fae95ba812331299f7
 | ML correctness (InfoNCE, projection, adapter isolation) | Not re-verified in this PR | Steps 1–3 were not opened here, so this cell does not say they are done or not done |
 | Sweep / packaging / docs truth | Ahead of this tree where checked | `run_large_sweep.py` lines 125–134 still read-modify-write the whole JSON. `run_large_sweep` is absent from `pyproject.toml` `py-modules` (line 61). `test_run_large_sweep.py` is absent. Step 6 docs-truth was not re-verified in this PR |
 | Model-Scope pilot (Phase I #7) | **In progress** | Runtime, steering, bridge, and provenance paths tested on fixtures |
-| E2E learning loop (Phase I #8) | Not on this commit | `tests/test_learning_loop_e2e.py` is absent. The completion claim is ahead of this tree. Phase I is not complete |
+| E2E learning loop (Phase I #8) | Floor-tier dim-8 fixture added by this change | `tests/test_learning_loop_e2e.py` is added by this change. It is a floor-tier dim-8 fixture. It is not MiniLM and not BEIR. It fails when the chelated ranked-id list does not change. Phase I is not complete. Steps 1–4 were not re-verified |
 | SHIM research (Phase I defer) | Named modules are not in this commit | `chelated_shim_research.py`, `shim_node_promoted.py`, and `scripts/record_shim_*_evidence.py` are absent. This cell does not close SHIM-CD ids |
 | Phase / BHS loops | Not runnable from the named paths | `scripts/phase_development_loop.py` and `scripts/loop_core_10m.sh` are not in this commit |
 | Liquified Lattice vision + Phase II plan | Documented | [VISION_LIQUIFIED_LATTICE.md](docs/VISION_LIQUIFIED_LATTICE.md), [ROADMAP_EXECUTION.md](docs/ROADMAP_EXECUTION.md) |

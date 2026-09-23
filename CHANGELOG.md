@@ -19,7 +19,7 @@ The old label `feat/live-progress-tracker-20260606` is PR #257, which is open an
 - **Shim verification script** — `scripts/verify_shim_development.sh` is not in this commit.
 - **Step runner** — `scripts/run_step_with_checks.sh` is not in this commit.
 - **AEP findings reports** — `reports/` is not in this commit (no `reports/ARCH_AEP_REMEDIATION_FINDINGS*.md` and no `reports/MERGE_READINESS_20260603.md`).
-- **Tests** — `tests/test_shim_*` has no matches, and `tests/test_learning_loop_e2e.py`, `tests/test_phase_development_loop_scheduler_handler.py`, and `tests/test_run_10min_priority_bhs_loop.py` are not in this commit. `test_model_scope_runtime.py` and `test_model_scope_steering.py` are present at the repository root and were not re-run in this PR. `tests/test_model_scope_runtime.py` is not in this commit.
+- **Tests** — `tests/test_shim_*` has no matches, and `tests/test_phase_development_loop_scheduler_handler.py` and `tests/test_run_10min_priority_bhs_loop.py` are not in this commit. `tests/test_learning_loop_e2e.py` is added by this change. It is a floor-tier dim-8 fixture. It is not MiniLM and not BEIR. It fails when the chelated ranked-id list does not change. Phase I is not complete. Steps 1–4 were not re-verified. `test_model_scope_runtime.py` and `test_model_scope_steering.py` are present at the repository root and were not re-run in this PR. `tests/test_model_scope_runtime.py` is not in this commit.
 
 ### Changed
 
@@ -31,7 +31,7 @@ The old label `feat/live-progress-tracker-20260606` is PR #257, which is open an
 
 ### Findings (honest status)
 
-- **Core queue steps 1–6 and 8** are not all shown on this commit. Step 8's test `tests/test_learning_loop_e2e.py` is absent, so the previous "implemented and regression-tested" claim is ahead of this tree for step 8. Steps 1–4 were not re-verified in this PR and are not declared done or not done. Step 7 was not re-verified in this PR. The `run_large_sweep` bounded-persistence and `py-modules` claims are ahead of this tree (`pyproject.toml` line 61 has no `run_large_sweep`; `run_large_sweep.py` lines 125–134 still read-modify-write the whole JSON). This bullet does not say Phase I is complete.
+- **Core queue steps 1–6 and 8** are not all shown on this commit. Step 8's test `tests/test_learning_loop_e2e.py` is added by this change. It is a floor-tier dim-8 fixture. It is not MiniLM and not BEIR. It fails when the chelated ranked-id list does not change. Phase I is not complete. Steps 1–4 were not re-verified in this PR and are not declared done or not done. Step 7 was not re-verified in this PR. The `run_large_sweep` bounded-persistence and `py-modules` claims are ahead of this tree (`pyproject.toml` line 61 has no `run_large_sweep`; `run_large_sweep.py` lines 125–134 still read-modify-write the whole JSON). This bullet does not say Phase I is complete.
 - **SHIM-CD-05 CLOSED** — this changelog already marks that id CLOSED. `chelated_shim_research.py` is not in this commit. This edit does not re-open or re-close the id.
 - **SHIM-CD-01/02/06/08/09** — these five ids stay not-closed here. `chelated_shim_research.py` and `shim_node_promoted.py` are not in this commit, so this bullet does not say promoted SIP or registry probes exist on this tree.
 - **SHIM-CD-03** — not re-verified on this commit (`49804ae3ddcebf4e4060fae95ba812331299f757`). This note does not close the id and does not add a debt row.
@@ -62,14 +62,14 @@ These lines are the 2026-06-06 log. They were not re-run on this commit (`49804a
 - Model-Scope pilot persistence was not re-run in this PR:
   - `tests/test_model_scope_runtime.py` is not in this commit. `test_model_scope_runtime.py` is at the repository root and was not re-run.
   - `test_model_scope_steering.py` is present and was not re-run.
-- `tests/test_learning_loop_e2e.py` is not in this commit, so the previous end-to-end learning-loop regression line is not a result for this tree. That test was not ported.
+- `tests/test_learning_loop_e2e.py` is added by this change. It is a floor-tier dim-8 fixture. It is not MiniLM and not BEIR. It fails when the chelated ranked-id list does not change. Phase I is not complete. Steps 1–4 were not re-verified. The previous end-to-end learning-loop regression line is not a production retrieval result.
 - The seven historical SHIM-CD names are not rows in `docs/next-session.md`. This note does not close them and does not add debt rows.
 
 ### Validation Notes
 
 - `python tests/test_model_scope_runtime.py` — that path is not in this commit. `test_model_scope_runtime.py` is at the repository root and was not re-run.
 - `python test_model_scope_steering.py` — the file is present and was not re-run.
-- `python tests/test_learning_loop_e2e.py` — not runnable on this commit; the file is absent.
+- `python tests/test_learning_loop_e2e.py` — `tests/test_learning_loop_e2e.py` is added by this change. It is a floor-tier dim-8 fixture. It is not MiniLM and not BEIR. It fails when the chelated ranked-id list does not change. Phase I is not complete. Steps 1–4 were not re-verified. This note does not record a production retrieval result.
 
 ## 2026-06-03 - AEP Remediation Turn-9 Track
 
