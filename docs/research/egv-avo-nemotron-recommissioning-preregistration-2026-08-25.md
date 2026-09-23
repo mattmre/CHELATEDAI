@@ -72,7 +72,8 @@ The study tests a model factor and a protocol factor before training.
   benefit is not assumed to be constant across model sizes.
 - **H4 — trainability:** verified successful Lightning trajectories provide a
   non-empty, diverse dataset that can train a LoRA adapter without altering the
-  base model.
+  base model; that dataset does not exist yet and must not be quoted as a
+  result.
 - **H5 — held-out improvement:** a frozen Lightning LoRA improves paired
   held-out semantic correctness over the unmodified Lightning AVO arm without
   evaluator-boundary or task-family regression.
