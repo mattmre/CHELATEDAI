@@ -960,6 +960,72 @@ class TestFailClosedRegressionSurface(unittest.TestCase):
             dag.prune_edges(reordering_scorer, threshold=0.5, dry_run=True)
         self.assertEqual(dag.edges, before)
 
+    def test_prune_rejects_protection_flag_cleared_then_restored_across_scorers(self):
+        # Call 0 clears the live flag and returns 0.0. Call 1 would put it back.
+        # The first callback must already fail; the required edge stays in the graph.
+        for flag in ("required", "structural"):
+            with self.subTest(flag=flag):
+                dag = EvidenceDAG()
+                dag.add_node("q1", NodeType.QUERY)
+                dag.add_node("q2", NodeType.QUERY)
+                dag.add_node("cl1", NodeType.CLUSTER)
+                dag.add_node("cl2", NodeType.CLUSTER)
+                dag.add_edge("q1", "cl1", EdgeType.RETRIEVED_IN, **{flag: True})
+                dag.add_edge("q2", "cl2", EdgeType.RETRIEVED_IN)
+                before = deepcopy(dag.to_dict())
+                calls = {"n": 0}
+
+                def scorer(_edge, flag=flag):
+                    call = calls["n"]
+                    calls["n"] += 1
+                    if call == 0:
+                        dag._edges[0].attrs[flag] = False
+                        return 0.0
+                    dag._edges[0].attrs[flag] = True
+                    return 1.0
+
+                with self.assertRaisesRegex(RuntimeError, "mutated the DAG"):
+                    dag.prune_edges(scorer, threshold=0.5)
+
+                self.assertEqual(calls["n"], 1)
+                self.assertEqual(dag.to_dict(), before)
+                self.assertEqual(dag.pruned_edge_ledger, [])
+                self.assertEqual(len(dag.edges), 2)
+                self.assertTrue(dag.edges[0].attrs.get(flag))
+
+    def test_prune_keeps_required_edge_when_scorer_clears_and_predicate_restores(self):
+        dag = EvidenceDAG()
+        dag.add_node("q1", NodeType.QUERY)
+        dag.add_node("cl1", NodeType.CLUSTER)
+        dag.add_edge("q1", "cl1", EdgeType.RETRIEVED_IN, required=True)
+        before = deepcopy(dag.to_dict())
+
+        def scorer(_edge):
+            dag._edges[0].attrs["required"] = False
+            return 0.0
+
+        def predicate(_edge):
+            dag._edges[0].attrs["required"] = True
+            return False
+
+        record = None
+        try:
+            record = dag.prune_edges(
+                scorer,
+                threshold=0.5,
+                protected_predicate=predicate,
+            )
+        except RuntimeError as exc:
+            self.assertRegex(str(exc), "mutated the DAG")
+
+        self.assertEqual(dag.to_dict(), before)
+        self.assertEqual(dag.pruned_edge_ledger, [])
+        self.assertEqual(len(dag.edges), 1)
+        self.assertTrue(dag.edges[0].attrs.get("required"))
+        if record is not None:
+            self.assertEqual(record["pruned"], [])
+            self.assertEqual(record["scores"][0]["decision"], "skip_protected")
+
 
 if __name__ == "__main__":
     unittest.main()

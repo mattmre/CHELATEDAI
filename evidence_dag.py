@@ -302,8 +302,10 @@ class EvidenceDAG:
         detached edge views. ``threshold`` must be an exact built-in int/float and
         ``dry_run`` an exact bool. Nodes are never removed. A dry run reports the
         same proposed decisions without mutating either the edge list or the
-        pruned-edge ledger. Mandatory structural/required protection is always
-        applied; a custom predicate can add protection but cannot weaken it.
+        pruned-edge ledger. Mandatory structural/required protection is decided
+        from the pre-loop edge snapshot before any callback and always applied; a
+        custom predicate can add protection but cannot weaken it. Each callback
+        must leave that snapshot unchanged or the prune is rejected and rolled back.
         """
         if type(dry_run) is not bool:
             raise TypeError("dry_run must be an exact bool")
@@ -322,29 +324,14 @@ class EvidenceDAG:
         # Preflight canonicalization is deliberately outside the callback boundary:
         # it rejects hostile pre-existing attrs without invoking arbitrary copy
         # hooks. Once callbacks begin, nodes, edges, and ledger are one transaction.
-        live_edges = list(self._edges)
-        try:
-            for edge in live_edges:
-                identity = (edge.src, edge.edge_type.value, edge.dst)
-                occurrence = occurrences.get(identity, 0)
-                occurrences[identity] = occurrence + 1
-                edge_id = self._edge_record_id(edge, occurrence)
-                fitness = float(scorer(self._clone_edge(edge)))
-                if fitness != fitness or not 0.0 <= fitness <= 1.0:
-                    raise ValueError(
-                        f"scorer returned non-finite/out-of-range fitness {fitness!r} " f"for edge {edge_id}"
-                    )
+        # Mandatory protection is fixed from this pre-loop snapshot. Reading
+        # self._edges after a callback would let that callback clear required or
+        # structural and a later callback put the flag back, pruning the edge
+        # with no error.
+        snapshot_edges = state_snapshot[1]
+        snapshot_protection = [self.default_protected_predicate(edge) for edge in snapshot_edges]
 
-                mandatory_protection = self.default_protected_predicate(edge)
-                custom_protection = (
-                    bool(protected_predicate(self._clone_edge(edge)))
-                    if protected_predicate is not None and not mandatory_protection
-                    else False
-                )
-                is_protected = mandatory_protection or custom_protection
-                would_prune = fitness < threshold and not is_protected
-                decisions.append((edge, edge_id, fitness, is_protected, would_prune))
-
+        def require_unchanged_snapshot() -> None:
             try:
                 state_unchanged = self._state_matches(state_snapshot)
             except (TypeError, ValueError) as exc:
@@ -357,6 +344,28 @@ class EvidenceDAG:
                     "set, or pruned ledger state during prune_edges; refusing to "
                     "apply a prune computed over a stale snapshot"
                 )
+
+        try:
+            for edge, mandatory_protection in zip(snapshot_edges, snapshot_protection):
+                identity = (edge.src, edge.edge_type.value, edge.dst)
+                occurrence = occurrences.get(identity, 0)
+                occurrences[identity] = occurrence + 1
+                edge_id = self._edge_record_id(edge, occurrence)
+                fitness = float(scorer(self._clone_edge(edge)))
+                require_unchanged_snapshot()
+                if fitness != fitness or not 0.0 <= fitness <= 1.0:
+                    raise ValueError(
+                        f"scorer returned non-finite/out-of-range fitness {fitness!r} " f"for edge {edge_id}"
+                    )
+
+                custom_protection = False
+                if protected_predicate is not None and not mandatory_protection:
+                    custom_protection = bool(protected_predicate(self._clone_edge(edge)))
+                    require_unchanged_snapshot()
+                is_protected = mandatory_protection or custom_protection
+                would_prune = fitness < threshold and not is_protected
+                decisions.append((edge, edge_id, fitness, is_protected, would_prune))
+            require_unchanged_snapshot()
         except Exception:
             self._restore_state(state_snapshot)
             raise
@@ -395,7 +404,7 @@ class EvidenceDAG:
             "record_type": "evidence_dag_prune",
             "threshold": threshold,
             "dry_run": dry_run,
-            "edges_before": len(live_edges),
+            "edges_before": len(snapshot_edges),
             "edges_after": len(retained),
             "scores": scores,
             "pruned": [entry["edge"].to_dict() for entry in proposed_ledger],
