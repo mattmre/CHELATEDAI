@@ -16,6 +16,7 @@ import argparse
 import hmac
 import json
 import os
+import re
 from collections import Counter
 from datetime import datetime
 from http.server import HTTPServer, SimpleHTTPRequestHandler
@@ -2178,9 +2179,23 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         self.send_json_response({"error": message}, status_code)
     
     def log_message(self, format, *args):
-        """Override to customize logging format."""
+        """Log the request line with query-string secrets removed."""
+        safe_args = tuple(
+            redact_url_credentials(arg) if isinstance(arg, str) else arg
+            for arg in args
+        )
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        print(f"[{timestamp}] {format % args}")
+        print(f"[{timestamp}] {format % safe_args}")
+
+
+_QUERY_SECRET_RE = re.compile(
+    r"(?i)(^|[?&\s])(token|access_token|auth)=([^&\s]*)"
+)
+
+
+def redact_url_credentials(value: str) -> str:
+    """Replace query-string secrets so request logs cannot keep them."""
+    return _QUERY_SECRET_RE.sub(r"\1\2=[redacted]", value)
 
 
 def _is_loopback_host(host: str) -> bool:

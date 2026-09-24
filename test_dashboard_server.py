@@ -9,7 +9,7 @@ import json
 import os
 import tempfile
 import unittest
-from io import BytesIO
+from io import BytesIO, StringIO
 from unittest.mock import MagicMock
 
 # Import the module under test
@@ -1051,6 +1051,34 @@ class TestDashboardSecurity(unittest.TestCase):
         handler.send_header = MagicMock()
         handler.end_headers = MagicMock()
         return handler
+
+    def test_query_token_is_not_accepted_as_authorization(self):
+        """A token in the URL does not authenticate."""
+        dashboard_server.DASHBOARD_TOKEN = "supersecret"
+        handler = self._make_handler()
+        handler.path = "/api/summary?token=supersecret&limit=1"
+        handler.handle_api_summary = MagicMock()
+        handler.send_error_response = MagicMock()
+
+        handler.do_GET()
+
+        handler.send_error_response.assert_called_once_with(401, "Unauthorized")
+        handler.handle_api_summary.assert_not_called()
+
+    def test_log_message_redacts_query_token(self):
+        handler = self._make_handler()
+        buffer = StringIO()
+        with contextlib.redirect_stdout(buffer):
+            handler.log_message(
+                '"%s" %s %s',
+                "GET /api/summary?token=supersecret&limit=1 HTTP/1.1",
+                "401",
+                "-",
+            )
+        logged = buffer.getvalue()
+        self.assertNotIn("supersecret", logged)
+        self.assertIn("token=[redacted]", logged)
+        self.assertIn("limit=1", logged)
 
     def test_do_get_blocks_api_without_token_header(self):
         """API requests should be blocked when token auth is enabled and header is missing."""
