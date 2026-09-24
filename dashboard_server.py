@@ -1154,18 +1154,34 @@ def filter_events(
             # Generic event_type field filter
             filtered = [e for e in filtered if e.get("event_type") == event_type]
     
-    # Sort by timestamp (most recent first)
-    filtered = sorted(
-        filtered,
-        key=lambda e: e.get("timestamp", 0),
-        reverse=True
-    )
+    # Sort by timestamp (most recent first). ISO strings and missing values
+    # must not be compared with each other as str and int.
+    filtered = sorted(filtered, key=_event_sort_value, reverse=True)
     
     # Apply limit (0 means no rows; clamped above at _MAX_API_LIMIT)
     if limit is not None:
         filtered = filtered[:min(max(0, limit), _MAX_API_LIMIT)]
     
     return filtered
+
+
+def _event_sort_value(event: Dict[str, Any]) -> float:
+    """Numeric sort key. Naive ISO datetimes are UTC. Missing values sort as 0."""
+    stamp = event.get("timestamp", None)
+    if isinstance(stamp, bool):
+        return 0.0
+    if isinstance(stamp, (int, float)):
+        return float(stamp)
+    if isinstance(stamp, str) and stamp:
+        text = stamp
+        if not (text.endswith("Z") or len(text) >= 6 and text[-6] in "+-" and text[-3] == ":"):
+            text = text + "Z"
+        try:
+            parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+        except ValueError:
+            return 0.0
+        return parsed.timestamp()
+    return 0.0
 
 
 def _first_present(payload: Dict[str, Any], keys: List[str]) -> Any:

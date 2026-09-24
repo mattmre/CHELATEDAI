@@ -57,11 +57,11 @@ class ChelationLogger:
         Initialize logger.
 
         Args:
-            log_path: Path to log file (default: chelation_debug.jsonl)
+            log_path: Path to log file (default: chelation_events.jsonl)
             console_level: Logging level for console output
             file_level: (Unused - kept for backward compatibility)
         """
-        self.log_path = log_path or Path("chelation_debug.jsonl")
+        self.log_path = log_path or Path("chelation_events.jsonl")
         self.start_time = time.time()
         self.operation_stack = []  # Track nested operations
 
