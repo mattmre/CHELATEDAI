@@ -45,7 +45,7 @@ DASHBOARD_ALLOW_UNAUTHENTICATED = (
 )
 DASHBOARD_CORS_ORIGIN = os.getenv("CHELATED_DASHBOARD_CORS_ORIGIN", "").strip()
 # Parsed integer limits are capped here. An omitted /api/events limit returns
-# the filtered file. A non-integer limit is HTTP 400, not an uncapped list.
+# the filtered file. A non-integer /api/events limit is HTTP 400, not an uncapped list.
 _MAX_API_LIMIT = 5000
 
 
@@ -55,6 +55,17 @@ def _nonnegative_limit(raw: str) -> int:
     if value <= 0:
         return 0
     return min(value, _MAX_API_LIMIT)
+
+
+def _limit_or_default(query_params: Dict[str, List[str]], default: int) -> int:
+    """Bounded ``limit`` query. A non-integer keeps ``default`` instead of failing the request."""
+    values = query_params.get("limit") if query_params else None
+    if not values:
+        return default
+    try:
+        return _nonnegative_limit(values[0])
+    except (TypeError, ValueError):
+        return default
 
 
 def _tail_paths(paths, limit: int):
@@ -1970,11 +1981,13 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         """Handle /api/evidence_cleanup_plan endpoint."""
         try:
             keep_latest = 1
-            limit = 25
-            if "keep_latest" in query_params:
-                keep_latest = max(0, int(query_params["keep_latest"][0]))
-            if "limit" in query_params:
-                limit = min(_MAX_API_LIMIT, max(0, int(query_params["limit"][0])))
+            raw_keep = query_params.get("keep_latest") if query_params else None
+            if raw_keep:
+                try:
+                    keep_latest = max(0, int(raw_keep[0]))
+                except (TypeError, ValueError):
+                    keep_latest = 1
+            limit = _limit_or_default(query_params, 25)
             self.send_json_response(load_evidence_cleanup_plan(EVIDENCE_CLEANUP_ROOT, keep_latest=keep_latest, candidate_limit=limit))
         except Exception:
             self.send_error_response(500, "Error reading evidence cleanup plan")
@@ -1997,7 +2010,7 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         """Handle /api/model_scope/events — lists recent activation event files."""
         from model_scope_artifacts import ArtifactStore, load_model_scope_artifact, summarize_model_scope_artifact
         try:
-            limit = _nonnegative_limit(query_params.get("limit", ["20"])[0])
+            limit = _limit_or_default(query_params, 20)
             store = ArtifactStore(base_dir=MODEL_SCOPE_ARTIFACT_ROOT)
             paths = _tail_paths(store.list_artifacts(pattern="feature_event_*.json"), limit)
             items = []
@@ -2020,7 +2033,7 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         """Handle /api/model_scope/features — lists recent sparse feature events."""
         from model_scope_artifacts import ArtifactStore, load_model_scope_artifact
         try:
-            limit = _nonnegative_limit(query_params.get("limit", ["20"])[0])
+            limit = _limit_or_default(query_params, 20)
             store = ArtifactStore(base_dir=MODEL_SCOPE_ARTIFACT_ROOT)
             paths = _tail_paths(store.list_artifacts(pattern="feature_event_*.json"), limit)
             items = []
@@ -2043,7 +2056,7 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         """Handle /api/model_scope/interventions — lists recent intervention records."""
         from model_scope_artifacts import ArtifactStore, load_model_scope_artifact
         try:
-            limit = _nonnegative_limit(query_params.get("limit", ["20"])[0])
+            limit = _limit_or_default(query_params, 20)
             store = ArtifactStore(base_dir=MODEL_SCOPE_ARTIFACT_ROOT)
             paths = _tail_paths(store.list_artifacts(pattern="intervention_*.json"), limit)
             items = []
