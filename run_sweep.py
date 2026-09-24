@@ -7,6 +7,8 @@ from antigravity_engine import AntigravityEngine
 import json
 from datetime import datetime
 
+from sweep_corpus_restore import restore_collection, snapshot_collection
+
 def run_parameter_sweep(task_name="SciFact", model_name="ollama:nomic-embed-text", output_file="sweep_results.json", max_queries=None, db_path=None):
     print(f"Starting parameter sweep on {task_name} using {model_name}")
     
@@ -74,13 +76,16 @@ def run_parameter_sweep(task_name="SciFact", model_name="ollama:nomic-embed-text
                 
     base_score = evaluate_ndcg(base_engine, queries, qrels, max_queries=max_queries)
     print(f"Baseline NDCG@10: {base_score:.5f}")
+    corpus_snapshot = snapshot_collection(base_engine.qdrant, base_engine.collection_name)
     
     # Run the sweep
     for i, (lr, thresh, noise, epochs) in enumerate(combinations):
         print(f"[{i+1}/{total_runs}] Testing LR={lr}, Threshold={thresh}, Noise={noise}, Epochs={epochs}")
         
-        # Reuse base engine to avoid Qdrant file lock issues
+        # One Qdrant client stays open. Restore the baseline corpus before
+        # this configuration's adapter reset and sedimentation upsert.
         engine = base_engine
+        restore_collection(engine.qdrant, engine.collection_name, corpus_snapshot)
         
         # Reset adapter to identity state
         import os

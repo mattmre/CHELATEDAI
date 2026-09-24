@@ -7,6 +7,7 @@ import csv
 import os
 from datetime import datetime
 
+from sweep_corpus_restore import restore_collection, snapshot_collection
 from sweep_result_store import (
     append_jsonl,
     materialize_json_array,
@@ -61,13 +62,16 @@ def run_large_parameter_sweep(task_name="SciFact", model_name="sentence-transfor
                 
     base_score = evaluate_ndcg(base_engine, queries, qrels, max_queries=max_queries)
     print(f"Baseline NDCG@10: {base_score:.5f}")
+    corpus_snapshot = snapshot_collection(base_engine.qdrant, base_engine.collection_name)
     
     # Run the sweep
     for i, (lr, thresh, noise, epochs, push_mag) in enumerate(combinations):
         print(f"[{i+1}/{total_runs}] Testing LR={lr}, Thresh={thresh}, Noise={noise}, Epochs={epochs}, Push={push_mag}")
         
-        # Reuse base engine to avoid Qdrant file lock issues
+        # One Qdrant client stays open. Sedimentation upserts adapted vectors,
+        # so each configuration starts from the baseline snapshot.
         engine = base_engine
+        restore_collection(engine.qdrant, engine.collection_name, corpus_snapshot)
         
         # Reset adapter to identity state
         from chelation_adapter import create_adapter
