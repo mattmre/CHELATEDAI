@@ -333,11 +333,11 @@ class TeacherDistillationHelper:
             if self._projection_enabled:
                 self._ensure_projection(current_embeddings.shape[1])
                 if self._projection is not None:
-                    # Use gradient-preserving projection so parameters
-                    # can be trained when included in an optimizer.
-                    teacher_tensor = torch.from_numpy(teacher_embeds).float()
-                    projected = self._projection.project_tensor(teacher_tensor)
-                    teacher_embeds = projected.detach().numpy()
+                    # Targets returned from this method are numpy arrays for
+                    # the adapter loss. project_numpy is the fixed preprocessor.
+                    # Callers that need the projection to train use
+                    # project_tensor and include it in their own loss.
+                    teacher_embeds = self._projection.project_numpy(teacher_embeds)
                 else:
                     return current_embeddings.copy()
             else:

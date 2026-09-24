@@ -5,6 +5,7 @@ Tests the TeacherDistillationHelper class with mocked models to avoid downloads.
 Fast, deterministic tests for distillation logic.
 """
 
+import inspect
 import unittest
 import numpy as np
 import torch
@@ -580,6 +581,30 @@ class TestDimensionProjection(unittest.TestCase):
             x = torch.randn(4, t_dim)
             out = proj(x)
             self.assertEqual(out.shape, (4, s_dim))
+
+    @patch("teacher_distillation.get_logger")
+    def test_mismatch_targets_do_not_train_the_projection(self, mock_logger):
+        """Numpy distillation targets are a fixed preprocessor.
+
+        Replacing project_numpy with project_tensor plus an immediate detach
+        would still leave gradients empty. This test fails if the call trains
+        the projection as a side effect of building targets.
+        """
+        mock_logger.return_value = MagicMock()
+        helper = TeacherDistillationHelper("test-model", projection_enabled=True)
+        helper.teacher_dim = 16
+        helper.get_teacher_embeddings = lambda texts: np.random.randn(len(texts), 16).astype(np.float32)
+        student = np.random.randn(3, 8).astype(np.float32)
+        helper.generate_distillation_targets(["a", "b", "c"], student, teacher_weight=1.0)
+        self.assertIsNotNone(helper._projection)
+        before = [parameter.detach().clone() for parameter in helper._projection.parameters()]
+        helper.generate_distillation_targets(["a", "b", "c"], student, teacher_weight=1.0)
+        for parameter, previous in zip(helper._projection.parameters(), before):
+            self.assertIsNone(parameter.grad)
+            self.assertTrue(torch.equal(parameter, previous))
+        source = inspect.getsource(TeacherDistillationHelper.generate_distillation_targets)
+        self.assertIn("project_numpy", source)
+        self.assertNotIn(".detach()", source)
 
     def test_projection_gradient_flow(self):
         """Test that gradients flow through the projection."""
