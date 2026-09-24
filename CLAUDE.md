@@ -59,6 +59,27 @@ Dashboards, frontends, and reporting surfaces must be wired to **real data pipel
   trainer/evaluator transport. Claim that boundary only after the exact route is
   executed and its receipt/artifact chain is independently verified.
 
+## Research Attribution Ethos (operating principle, no exceptions)
+
+- We don't steal — we credit. Every idea adapted from prior work is cited by
+  source (paper, author, year, link) in code comments where used, in PR bodies,
+  and in docs. Uncited adaptation is an integrity failure on par with a BHS
+  violation.
+- Thieves who don't reference those who came before discourage the rest of us
+  from making discoveries and sharing with the world. We do the opposite: we
+  entertain ideas, we research, we try to see if something from another angle
+  or study can open insights into our own work.
+- The goal is a novel publication that brings a productive return for humanity
+  — built on credited foundations, with our own contributions clearly separated
+  from what we borrowed.
+- Standing quote, included verbatim in every research PR body:
+
+  > "We don't steal — we give credit to the projects and people who came
+  > before us. We entertain ideas, we research, we try to see if something
+  > from another angle or study can open insights into our own work, and
+  > eventually we will publish something novel that brings a productive return
+  > for humanity."
+
 ## What This Project Is
 
 ChelatedAI is a research prototype for adaptive vector search with self-correcting embeddings. It detects "semantic collapse" in RAG systems (where unrelated concepts get similar embeddings) and fixes it through dynamic dimension masking and neural adaptation.
