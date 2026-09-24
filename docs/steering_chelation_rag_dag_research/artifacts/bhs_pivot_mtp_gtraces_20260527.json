@@ -1,0 +1,76 @@
+{
+  "pivot_fire_id": "2026-05-27T11:20",
+  "type": "phase2_pivot_demonstration",
+  "description": "First concrete usage of the Pivot Rule / Phase 2 mechanism: narrow L9 hygiene fix on research harness (unterminated string in old Cycle-011 coordination note) to unblock the existing Cycle011_MTPShimLookahead + G traces substrate. Followed by fresh synthetic eval runs + analysis. 0 functional change to MTP logic. 0 prod/SIP/substrate advance.",
+  "phase_plan_mapping": {
+    "primary": "Phase 2 (Pivot, Troubleshooting & Resilience Infrastructure) - first 'real usage' example of the pivot mechanism while Phase 3 remains core blocker",
+    "secondary": ["Phase 1 (Harness Maturity)", "Phase 5 (OPSD Trace Integration - synthetic G traces)"],
+    "blocked": "Phase 3 (First Real / Controlled SIP Prototypes) - 0% per plan; SHIM-CD-01 + BLOCKED + research guard"
+  },
+  "re_read_citations": {
+    "timestamp": "2026-05-27T11:20:12-04:00",
+    "goal_98": "FULL_SHIM_LOOP_PHASE_PLAN.md is the primary long-term planning artifact / north star; loop purpose = advance phases with intelligent pivoting when primary blocked",
+    "goal_104": "orchestrator must re-prioritize using Full Phase Plan + Pivot Rule",
+    "phase_plan_83": "Phase 2 status: 'Mechanism exists... Needs real usage'",
+    "phase_plan_91": "Phase 3 'Core Blocker' at 0%",
+    "protocol": "full §1 re-reads + §2 safe order (coordination note first)",
+    "block": "BLOCKED count:2 FAIL (unchanged)",
+    "0_prod": "exactly 2 research files (post fix + no new code)",
+    "override": "NONE"
+  },
+  "actions_taken": [
+    "Appended PIVOT FIRE coordination note to harness (safe order, L9 bounded as hygiene to enable pivot substrate)",
+    "Minimal comment-only string fix for syntax error at old ~160 (unterminated literal from prior insert)",
+    "Post-edit gates: block still FAIL, 0-prod holds, import now succeeds",
+    "Fresh runs of Cycle011_MTPShimLookahead.synthetic_eval_on_gtraces (120 + 50 traces)",
+    "New artifacts only: this json + loop_02/00_pivot md (no .py functional edits)"
+  ],
+  "fresh_eval_results": {
+    "120_traces_top2": {
+      "hit_rate": 0.2,
+      "precision_at_k": 0.2,
+      "evaluated_traces": 50,
+      "top_k": 2,
+      "note": "L3 mock / 0 real head; synthetic G traces only (backlog #4); no OPSD; no learned model; Cycle-011 Agent I research only",
+      "research_guard": "CHELATED_SHIM_RESEARCH or --research-mtp; 0 prod/SIP/substrate advance",
+      "cycle_tag": "Cycle-011-AgentI-MTP-Lookahead",
+      "wall_time_s": 0.004
+    },
+    "50_traces_top3": {
+      "hit_rate": 0.2,
+      "precision_at_k": 0.2,
+      "evaluated_traces": 50,
+      "top_k": 3,
+      "note": "L3 mock / 0 real head; synthetic G traces only (backlog #4); no OPSD; no learned model; Cycle-011 Agent I research only",
+      "research_guard": "CHELATED_SHIM_RESEARCH or --research-mtp; 0 prod/SIP/substrate advance",
+      "cycle_tag": "Cycle-011-AgentI-MTP-Lookahead",
+      "wall_time_s": 0.003
+    },
+    "correlation_note": "On this synthetic generator run, hit_rate and precision_at_k are constant/weak (0.2). No strong visible correlation between minmax_block_scores and prediction success in these limited mock traces. More varied synthetic data or real privileged traces would be required for meaningful correlation analysis. This is expected L3 mock behavior.",
+    "improvement_directions_proposed": [
+      "Vary the synthetic G trace generator to produce higher-variance min_max scores and usage patterns for better signal in future evals (Phase 5/8 work)",
+      "Add simple feature importance logging inside predict_next to surface which of (minmax, usage, context) drove the 'no cascade' decision",
+      "Parameter sweep on no_cascade_threshold vs hit_rate on held-out synthetic sets (still L3)"
+    ]
+  },
+  "bhs_evidence": {
+    "cycle_id": "pivot-2026-05-27",
+    "before_fix_state": "SyntaxError on import (unterminated string in comment from Cycle-011 Agent I note) - MTP/G substrate unrunnable",
+    "after_fix_state": "Parses cleanly; Cycle011_MTPShimLookahead imports and runs synthetic_eval_on_gtraces successfully",
+    "0_substrate_deltas": "Core MTP logic, G trace generator, MinMax scorer, and all numeric methods unchanged. Only a comment string was shortened for parser hygiene.",
+    "repro_commands": [
+      "CHELATED_SHIM_RESEARCH=1 python -B -c \"import sys;sys.path.insert(0,'docs/steering_chelation_rag_dag_research/artifacts');from shim_collapse_benchmark_extension import Cycle011_MTPShimLookahead;m=Cycle011_MTPShimLookahead();print(m.synthetic_eval_on_gtraces(120,top_k=2))\"",
+      "python docs/steering_chelation_rag_dag_research/artifacts/shim_collapse_benchmark_extension.py --research-mtp --family traces"
+    ],
+    "0_prod_check_post": "rg for class definitions still only the 2 research files; block script still BLOCKED count:2 FAIL",
+    "l_taxonomy": {
+      "L3": "MTP de-mock and all eval results (per SHIM-CD-03 and original I md)",
+      "L4": "This pivot fire itself is research scaffolding + hygiene (no new capability surfaced as production)",
+      "L9": "Explicitly bounded: the syntax fix remediates prior process debt that was blocking the Phase 2 pivot substrate; no claim this 'improved shim prediction'"
+    },
+    "does_not_satisfy_goal_1": true,
+    "program_score_impact": "flat 10/100 (process hygiene + Phase 2 mechanism usage demonstration only; 0 substrate)"
+  },
+  "pivot_value": "First documented execution of the new Pivot Rule + Phase 2 'real usage' requirement while the primary Phase 3 blocker (SHIM-CD-01) remains fully active. The loop produced a new runnable state for an existing research artifact and fresh evidence artifacts without violating any guardrails.",
+  "§128_note": "Human intervention per goal §128 and repeated D/J/E/plan recommendations remains mandatory for any path to Phase 3 or clean Phase 9 terminal state."
+}

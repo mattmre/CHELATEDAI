@@ -1,0 +1,21 @@
+{
+  "fire": "019e6a78debf",
+  "timestamp": "2026-05-27T13:29:11-04:00",
+  "mode": "Pivot Mode",
+  "declaration": "We are in Pivot Mode, advancing Phase 2 (real usage of pivot mechanism) + Phase 1/5 because Phase 3 is blocked by SHIM-CD-01 + BLOCKED flag + research-only guard.",
+  "slice": "MTP de-mock deepening + MinMax correlation analysis on G traces (Phase 2/1/5)",
+  "results": [
+    {"hit_rate": 0.2, "precision_at_k": 0.2},
+    {"hit_rate": 0.2, "precision_at_k": 0.2},
+    {"hit_rate": 0.2, "precision_at_k": 0.2},
+    {"hit_rate": 0.2, "precision_at_k": 0.2}
+  ],
+  "observation": "Flat low performance on current synthetic generator. Limited variance prevents strong minmax correlation signal. L3 mock as documented. Provides Phase 2 usage evidence.",
+  "bhs": {
+    "does_not_satisfy_1": true,
+    "0_substrate": true,
+    "research_guard": true,
+    "block": "BLOCKED count:2 FAIL"
+  },
+  "new_artifacts": ["bhs_fire_019e6a78debf_20260527_pivot2.json", "loop_02/02_fire_019e6a78debf_pivot_mtp.md"]
+}

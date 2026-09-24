@@ -1,0 +1,43 @@
+{
+  "fire_id": "019e6a78debf_20260527_pivot18",
+  "timestamp": "2026-05-27T14:20:17-04:00",
+  "scheduler": "019e6a78debf (3min recurring, only active task)",
+  "mode": "Pivot Mode (OVERRIDE: NONE, BLOCKED count:2, SHIM-CD-01 OPEN)",
+  "phase_advancement": "Phase 2 (real usage of Pivot Rule + 2nd concrete alt fire), Phase 1 (MTP eval harness stats + first post-alt delta 0.25 vs historical 0.2), Phase 5 (synthetic signal); Phase 3 0% unchanged",
+  "activation_records": [
+    {
+      "action": "4 runs of improved Cycle011_MTPShimLookahead.synthetic_eval_on_gtraces (post-17-alt variance features)",
+      "params": {"n_traces": 40, "top_k": 2, "guard": "CHELATED_SHIM_RESEARCH=1"},
+      "results": [
+        {"run": 1, "hit_rate": 0.25, "precision_at_k": 0.25, "evaluated_traces": 40},
+        {"run": 2, "hit_rate": 0.25, "precision_at_k": 0.25, "evaluated_traces": 40},
+        {"run": 3, "hit_rate": 0.25, "precision_at_k": 0.25, "evaluated_traces": 40},
+        {"run": 4, "hit_rate": 0.25, "precision_at_k": 0.25, "evaluated_traces": 40}
+      ],
+      "stats": {"hit_mean": 0.25, "hit_std": 0.0, "prec_mean": 0.25},
+      "delta_vs_historical": "historical 10-16_fire pivot fires: locked 0.2/0.2 (constant fakes); this + 17_alt: first movement to 0.25 (+0.05 on L3 synthetic substrate)",
+      "note": "variance injected by 17 alt (MinMaxBlockRelevanceScorer + outcome usage in features); generator still uniform (high forced success_rate) -> low std. First multi-run data point post-edit.",
+      "rollback": "no code change this fire; 17 alt change is the source (harness ~718-735 feature block); re-runnable on fresh checkout of research py only"
+    }
+  ],
+  "bhs_evidence": {
+    "EVIDENCE": "4 identical runs @14:20:17 produced 0.25/0.25 (moved from 0.2 flat in prior 16+ scheduler fires on same 019e6a78debf); 0-prod grep clean; block script FAIL count:2; all 9 re-reads with citations in 18_ md",
+    "SMOKE": "CHELATED_SHIM_RESEARCH=1 python -B -c 'import sys;sys.path.insert(0,\"docs/steering_chelation_rag_dag_research/artifacts\");from shim_collapse_benchmark_extension import Cycle011_MTPShimLookahead; [print(Cycle011_MTPShimLookahead().synthetic_eval_on_gtraces(n_traces=40,top_k=2)) for _ in range(2)]'  --> 0.25 hit/prec (reproducible post-17 alt)",
+    "repro_cmd": "see loop_02/18 md + the command above",
+    "0_prod_hash": "grep outside artifacts/ found 0 active Shim/MinMax/MTP code (only comments in tts/antigravity)"
+  },
+  "block_state": {"flag": "BLOCKED", "rows": 2, "script_result": "FAIL"},
+  "carried_debt": 2,
+  "operator_override": "NONE (11+ cycles documented)",
+  "0_substrate": "0 real SIPs (SHIM-CD-01 OPEN, next-session:61, phase plan:91, greps all Wired=NO on tts:47-80 + antigravity:2452-2600/2566-2600). 0 prod runtime evidence. 0 engine deltas. Does not satisfy goal success def #1-3 or phase plan success criteria 1-6. Program 10/100 flat.",
+  "program_score": "10/100 (no change; L3 harness numbers only)",
+  "l_taxonomy": ["L1 (no real OPSD/MTP head)", "L3 (full synthetic MTP eval + traces + stats; explicit)", "L4 (0.25 delta language while BLOCKED + SHIM-CD-01 + 0 SIPs; disclosed in 17+18 artifacts)", "L9 (pivot volume while Phase 3 0%; bounded by requiring runtime delta + unique artifacts + phase mapping)", "L13 avoided (no overclaim on real progress or SHIM-CD movement)"],
+  "4qs": {
+    "1_what": "4 runs of post-17-alt improved synthetic MTP eval gave stable 0.25/0.25 (historical pivot fires on this scheduler: 0.2/0.2 locked). First observable movement on the L3 substrate.",
+    "2_why": "17 alt replaced constant fake features with MinMax scorer + trace outcome usage; changed predict_next inputs. Generator uniformity caps further lift.",
+    "3_risk": "Still 100% synthetic L3; 0 evidence of value for real chelation/SE-RDAG; no reduction in any blocker or debt.",
+    "4_next": "Human: OVERRIDE or §128 decision. Loop (if no change): next pivot can vary G trace generator distributions for better correlation signal (Phase 5) or Phase 8 bounded lit-to-numpy experiment. Maintain Pivot Mode + full BHS."
+  },
+  "research_guard": "CHELATED_SHIM_RESEARCH=1 only; 0 prod/SIP/substrate on real paths",
+  "phase_plan_ref": "Phase 2 needs real usage (83) - now has 2 fires; Phase 1 harness (55); Phase 3 0% (91)"
+}

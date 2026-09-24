@@ -1,0 +1,48 @@
+{
+  "round_id": "Sustained-02",
+  "agent": "I (MTP Prototype)",
+  "timestamp": "2026-05-27T15:27:25-04:00",
+  "scheduler": "019e6ab0e6d0",
+  "governing": "SUSTAINED_PHASE_ROUND_DRIVER.md + 20_sustained_phase_round_02_agentA_research_mapping.md (ts 2026-05-27T15:27:25-04:00 + I role:87) + 20_sustained_phase_round_02_agentG_variance_sweeps.md + G bhs json + prior R01 I two mds + 10_AGENT_SAFE_MERGE_COORDINATION_PROTOCOL.md + FULL_SHIM_LOOP_PHASE_PLAN.md (Phase 1/5 + Phase 2) + BHS_5MIN_SHIM_LOOP_GOAL.md + harness shim_collapse_benchmark_extension.py:737+ (eval + R02 I) /1147+ (generator) /1615+ (sweep) /1640+ (sim) /1760+ (I R02 coord + verified) /3027+ (HARD REQ) + 19_ diagnosis",
+  "pivot_mode": "We are in Pivot Mode, working on Phase 2 (harness pivot machinery embedding audit support) + Phase 1/5 (variance sweeps 0.1-0.5 + training signal simulation on varied traces + MTP consumption for predictor win deltas) because Phase 3 is blocked by SHIM-CD-01 (0% per plan:102) + BLOCKED count:2 + research guard + OVERRIDE: NONE.",
+  "zero_substrate_explicit": "0 substrate / does not satisfy goal success def #1 while BLOCKED + SHIM-CD-01. No real (non-research) SIPs (tts:47-80 / antigravity:2452-2600/2566-2600 all Wired? NO placeholders only); 0 prod deltas; 0 SHIM-CD-01 closure; program 10/100 flat; 11+ cycles 0 SIPs/substrate. All L3/L4 synthetic harness only. Does NOT satisfy goal #1-3 or plan 20-30.",
+  "pre_R02_I_baseline_from_R01_G": {
+    "eval": "synthetic_eval_on_gtraces:737+; corr nan@0.0 -> |r|~0.06-0.29@0.25 (post G); succ_std 0->~0.008-0.014; ablation=0.0; L3 mock",
+    "no_training_consumption": "no multi-var matrix; no training_signal_simulator; no predictor_win MSE/rank; plan:145 unmet",
+    "n_stability": "unstable per prior C json / D/J"
+  },
+  "post_R02_I_deltas": {
+    "training_sim_consumption": {
+      "extension": "synthetic_eval_on_gtraces + sustained_round_i_stats now accept training_sim_consume=True + target/baseline; invoke G R02 generate_variance_swept_traces + training_signal_simulator",
+      "stats_fields": ["training_predictor_win", "multi_var_matrix_0_0_5", "training_signal_note"],
+      "multi_var_matrix_example": {"0.0": {"n":6, "succ_mean":1.0, "succ_std":0.0}, "0.25": {"n":6, "succ_mean":~0.996, "succ_std":~0.008-0.015}},
+      "predictor_win": {
+        "delta_mse_varied_vs_base_avg_across_5seeds_n30_60": "~0.0001-0.0002 (small positive in toy proxy; varied sometimes higher MSE)",
+        "rank_corr_proxy_robust": "~-0.75 (nonzero consistent signal across seeds/v/n; varied traces provide rank-order training signal vs fixed-0 degenerate)",
+        "note": "L3 stub (polyfit on toy mm/succ from G sweeps); varied yield nonzero rank signal vs flat baseline per Phase5 proxy. MSE small/unstable. 0 real training. Handoff C."
+      }
+    },
+    "corr_ablation_on_training_signals": "pearson from nan@0.0 -> nonzero ~-0.3 to -0.38 @var>0; ablation surface extended with training_signal_context; deltas=0 observed on toy heuristic",
+    "multi_seed_full_matrix": "5 seeds x n=30/60/100 x all v=[0.0,0.1,0.25,0.5]; hit/prec varies 0.33-0.53; succ_std scales with v; pw rank robust -0.75; runtime ~0.01s/call no regression",
+    "runtime_evidence_smoke": "CHELATED_SHIM_RESEARCH=1 python -B -c 'import sys;sys.path.insert(0,\"docs/steering_chelation_rag_dag_research/artifacts\");from shim_collapse_benchmark_extension import Cycle011_MTPShimLookahead; m=...; r=m.synthetic_eval_on_gtraces(n_traces=30, outcome_variance=0.25, training_sim_consume=True); print(r[\"sustained_round_i_stats\"][\"training_predictor_win\"], ...)' (exact pw deltas + matrix + rank signal captured; survives guard)",
+    "coord_note": "R02 I appended at harness ~1760+ (full re-reads ts + A R02 + G R02 + prior R01 I + gates); post-functional verified line appended",
+    "files_touched": "exactly 1 research py (shim_collapse_benchmark_extension.py); 0 prod; exactly 2 research files invariant (+ shim_node.py)"
+  },
+  "gates_post_edit": {
+    "block": "BLOCKED count:2 FAIL (scripts/check_block_flag.py; unchanged)",
+    "0_prod": "exactly 2 research files (shim_collapse...py + shim_node.py); 0 active in prod paths (tts/antigravity only placeholders 'Wired? NO')",
+    "scheduler_list": "No scheduled tasks",
+    "ls_loop_02": "20_sustained_phase_round_02_agentA... + 20_sustained_phase_round_02_agentG... + 20_sustained_phase_round_02_agentI_mtp_training.md + prior R01 20_* (10+ files post I)"
+  },
+  "l_tax": {
+    "L1": "0 real SIPs (SHIM-CD-01 critical OPEN)",
+    "L3": "All deltas synthetic harness mocks (eval 737+ / sweep 1615+ / sim 1640+)",
+    "L4": "Visibility of 'training signal' / 'predictor win deltas' / 'Phase2 support' without verified real utility (bounded by 0 substrate + plan:145 unmet beyond L3 proxy)",
+    "L9": "Meta volume (new md/note/json) while 0 SIPs + BLOCKED + SHIM-CD-01 (process risk per goal:157 + prior J); mitigated by protocol (coord pre-edit, gates, distinct artifacts)",
+    "L13": "Avoided via explicit L3 notes + '0 substrate...' verbatim + 'plan:145 unmet' + no overclaim on Phase5 win"
+  },
+  "handoff": "To C (Test & Evidence: persist bhs_sustained_round_02_mtp_training_*.json with full attribution 'Sustained-02-AgentI/G/B/A', SMOKE repro commands + hashes, rollback proofs, '0 substrate / does not satisfy...', Pivot decl, new pw deltas/matrix/corr; full gates post; distinct 20_ md). J/D for fidelity + Phase2 'real usage' (harness embedding L3 vs L9 theater) audit.",
+  "bhs_self_draft_capped": "~22/100 (synthetic pw deltas + multi-var matrix + protocol fidelity + runtime evidence + honest L-tax + plan:145 diagnosis; heavy caps BLOCKED/0-sub/5-vs-10/L9 theater/11+ cycles <60 per goal §73 + protocol §6)",
+  "visible_verified": "All via fresh tool calls (read_file, grep, list_dir, run_terminal on absolute paths, scheduler_list, block script, PYTHONPATH/CLI smokes under CHELATED_SHIM_RESEARCH=1 with training_sim_consume=True). Hashes via content + timestamps. Survives fresh checkout under guard on research paths. 0-prod + block gates re-enforced post. '0 substrate / does not satisfy goal success def #1' + 'Pivot Mode' + ts 2026-05-27T15:27:25-04:00 verbatim. Concrete deltas: rank ~-0.75 robust; MSE ~1e-4; matrix succ_std scales.",
+  "explicit_diagnosis_for_plan_145": "Phase5 'experiment showing that training on these traces produces better MTP predictors' remains unmet beyond L3 proxy (rank signal present but MSE small/unstable on toy; no real training loop/head/OPSD; ablation=0 on signal surface). 0 substrate."
+}
