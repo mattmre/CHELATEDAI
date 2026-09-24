@@ -217,8 +217,8 @@
     <div class="cards">
       <div class="card"><div class="label">Evidence Chains</div><div class="value" id="evidence-chain-total">-</div></div>
       <div class="card"><div class="label">Latest Chain</div><div class="value" id="evidence-chain-latest" style="font-size:20px;">-</div></div>
-      <div class="card"><div class="label">Chains Passed</div><div class="value" id="evidence-chain-passed">-</div></div>
-      <div class="card"><div class="label">Chains Failed</div><div class="value" id="evidence-chain-failed">-</div></div>
+      <div class="card"><div class="label">Chains passed</div><div class="value" id="evidence-chain-passed">-</div></div>
+      <div class="card"><div class="label">Chains failed</div><div class="value" id="evidence-chain-failed">-</div></div>
     </div>
 
     <div class="cards">
@@ -321,6 +321,7 @@
         <h2>Evidence Chains</h2>
         <button onclick="loadEvidenceChainHistory()">Refresh Chains</button>
       </div>
+      <div id="evidence-chain-window" style="margin:8px 0; font-size:13px; color:#666;"></div>
       <table>
         <thead>
           <tr>
@@ -346,9 +347,9 @@
       <div style="margin:8px 0; font-size:13px;">
         Hardware:
         <select id="disk-llm-hardware" onchange="loadDiskLlmEstimate()">
-          <option value="workstation_gen5">workstation_gen5</option>
-          <option value="server_gen4">server_gen4</option>
-          <option value="laptop_gen4">laptop_gen4</option>
+          <option value="consumer_gen4">consumer_gen4</option>
+          <option value="workstation_gen5" selected>workstation_gen5</option>
+          <option value="dual_nvme_workstation">dual_nvme_workstation</option>
         </select>
         Params (B):
         <input id="disk-llm-params" type="number" value="70" min="0.1" step="0.1" style="width:60px;" onchange="loadDiskLlmEstimate()">
@@ -536,26 +537,51 @@
         .replace(/'/g, '&#39;');
     }
 
+    function dashText(ids) {
+      ids.forEach(function (id) {
+        const el = document.getElementById(id);
+        if (el) el.textContent = '—';
+      });
+    }
+
+    function showSweepTerminal(statusText, rowText) {
+      document.getElementById('sweep-status').textContent = statusText;
+      dashText(['sweep-total', 'sweep-best-gain', 'sweep-best-noise', 'sweep-best-lr']);
+      const tbody = document.getElementById('top-configs');
+      if (tbody) {
+        tbody.innerHTML = '<tr><td colspan="9">' + escapeHTML(rowText) + '</td></tr>';
+      }
+      if (noiseChartInstance) {
+        noiseChartInstance.destroy();
+        noiseChartInstance = null;
+      }
+    }
+
     // --- TEST LOGIC ---
     async function loadTestResults() {
       try {
         const data = await fetchJson('/api/test_results');
         
         if (data.data_status === 'not_generated') {
+          dashText(['test-total', 'test-passed', 'test-failed', 'test-duration']);
           document.getElementById('test-rows').innerHTML =
-            `<tr><td colspan="3">⚠ ${escapeHTML(data.reason || 'Run tests to generate .report.json')}</td></tr>`;
+            `<tr><td colspan="3">⚠ ${escapeHTML(data.reason || '.report.json was not found')}</td></tr>`;
           return;
         }
 
         if (!data.summary) {
-           document.getElementById('test-rows').innerHTML = '<tr><td colspan="3">No test data available. Run: python -m unittest discover -v 2>&1 | python generate_report_json.py</td></tr>';
+           dashText(['test-total', 'test-passed', 'test-failed', 'test-duration']);
+           document.getElementById('test-rows').innerHTML = '<tr><td colspan="3">No test summary in .report.json.</td></tr>';
            return;
         }
 
         document.getElementById('test-total').textContent = data.summary.total ?? 0;
         document.getElementById('test-passed').textContent = data.summary.passed ?? 0;
         document.getElementById('test-failed').textContent = data.summary.failed ?? 0;
-        document.getElementById('test-duration').textContent = (typeof data.summary.duration === 'number' && isFinite(data.summary.duration)) ? data.summary.duration.toFixed(2) + 's' : '-';
+        const durationValue = (typeof data.summary.duration === 'number' && isFinite(data.summary.duration))
+          ? data.summary.duration
+          : data.duration;
+        document.getElementById('test-duration').textContent = (typeof durationValue === 'number' && isFinite(durationValue)) ? durationValue.toFixed(2) + 's' : '-';
 
         const rows = document.getElementById('test-rows');
         rows.innerHTML = '';
@@ -617,7 +643,16 @@
         }
         for (const e of events) {
           const tr = document.createElement('tr');
-          const ts = (e.timestamp !== undefined && e.timestamp !== null) ? new Date(e.timestamp * 1000).toLocaleString() : '-';
+          let ts = '-';
+          const stamp = e.timestamp;
+          if (typeof stamp === 'number' && isFinite(stamp)) {
+            const parsed = new Date(stamp * 1000);
+            ts = isNaN(parsed.getTime()) ? '-' : parsed.toLocaleString();
+          } else if (typeof stamp === 'string' && stamp) {
+            const zoned = /(?:Z|[+-]\d{2}:?\d{2})$/.test(stamp) ? stamp : (stamp + 'Z');
+            const parsed = new Date(zoned);
+            ts = isNaN(parsed.getTime()) ? '-' : parsed.toLocaleString();
+          }
           const cells = [
             ts,
             e.event_type || (e.query_snippet ? 'query' : '-'),
@@ -687,6 +722,7 @@
         });
       } catch (e) {
         console.error('Error loading campaign history', e);
+        dashText(['campaign-total', 'campaign-promoted', 'campaign-overlay-ready', 'campaign-root']);
         document.getElementById('campaign-rows').innerHTML = '<tr><td colspan="8">Error loading campaign history</td></tr>';
       }
     }
@@ -733,6 +769,7 @@
         });
       } catch (e) {
         console.error('Error loading validation history', e);
+        dashText(['validation-total', 'validation-latest', 'validation-passed', 'validation-failed']);
         document.getElementById('validation-rows').innerHTML = '<tr><td colspan="6">Error loading validation history</td></tr>';
       }
     }
@@ -775,6 +812,7 @@
         });
       } catch (e) {
         console.error('Error loading preflight history', e);
+        dashText(['preflight-total', 'preflight-latest', 'preflight-allowed', 'preflight-blocked']);
         document.getElementById('preflight-rows').innerHTML = '<tr><td colspan="5">Error loading preflight history</td></tr>';
       }
     }
@@ -787,12 +825,18 @@
         const countEntries = Object.entries(counts);
         document.getElementById('evidence-index-present').textContent = data.present ? 'present' : 'missing';
         document.getElementById('evidence-index-types').textContent = countEntries.length;
+        const chainFilesPresent = summary.evidence_chain_files_present;
+        const preflightFilesPresent = summary.preflight_files_present;
+        const chainWord = summary.latest_chain_passed === true ? 'passed' : (summary.latest_chain_passed === false ? 'failed' : '-');
+        const reviewWord = summary.latest_review_allowed === true ? 'allowed' : (summary.latest_review_allowed === false ? 'blocked' : '-');
         document.getElementById('evidence-index-chain').textContent =
-          summary.latest_chain_passed === true ? 'passed' : (summary.latest_chain_passed === false ? 'failed' : '-');
+          (chainWord !== '-' && chainFilesPresent === 0) ? (chainWord + ' (index only; chain file missing)') : chainWord;
         document.getElementById('evidence-index-review').textContent =
-          summary.latest_review_allowed === true ? 'allowed' : (summary.latest_review_allowed === false ? 'blocked' : '-');
+          (reviewWord !== '-' && preflightFilesPresent === 0) ? (reviewWord + ' (index only; chain file missing)') : reviewWord;
         document.getElementById('evidence-index-blockers').textContent =
-          'Latest blockers: ' + (asArray(summary.latest_preflight_blockers).join(', ') || '-');
+          'Latest blockers: ' + (asArray(summary.latest_preflight_blockers).join(', ') || '-')
+          + ' Chain files on disk: ' + (chainFilesPresent ?? '—')
+          + '. Preflight files on disk: ' + (preflightFilesPresent ?? '—') + '.';
         document.getElementById('evidence-index-path').textContent = data.path || '-';
 
         const rows = document.getElementById('evidence-index-rows');
@@ -812,6 +856,7 @@
         });
       } catch (e) {
         console.error('Error loading evidence index', e);
+        dashText(['evidence-index-present', 'evidence-index-types', 'evidence-index-chain', 'evidence-index-review', 'evidence-index-blockers', 'evidence-index-path']);
         document.getElementById('evidence-index-rows').innerHTML = '<tr><td colspan="2">Error loading evidence index</td></tr>';
       }
     }
@@ -829,8 +874,19 @@
         const rows = document.getElementById('evidence-chain-rows');
         rows.replaceChildren();
         const reports = asArray(data.reports);
+        const readableChains = (Number(summary.passed) || 0) + (Number(summary.failed) || 0);
+        const windowEl = document.getElementById('evidence-chain-window');
+        if (windowEl) {
+          windowEl.textContent = reports.length < readableChains
+            ? ('Showing ' + reports.length + ' of ' + readableChains + ' readable chains')
+            : '';
+        }
         if (!reports.length) {
-          rows.innerHTML = '<tr><td colspan="6">No evidence-chain summaries found</td></tr>';
+          if (summary.unreadable_reports > 0) {
+            rows.innerHTML = '<tr><td colspan="6">The evidence-chain files were unreadable</td></tr>';
+          } else {
+            rows.innerHTML = '<tr><td colspan="6">No evidence-chain summaries found</td></tr>';
+          }
           return;
         }
         reports.forEach(report => {
@@ -854,6 +910,9 @@
         });
       } catch (e) {
         console.error('Error loading evidence-chain history', e);
+        dashText(['evidence-chain-total', 'evidence-chain-latest', 'evidence-chain-passed', 'evidence-chain-failed']);
+        const windowEl = document.getElementById('evidence-chain-window');
+        if (windowEl) windowEl.textContent = '';
         document.getElementById('evidence-chain-rows').innerHTML = '<tr><td colspan="6">Error loading evidence-chain history</td></tr>';
       }
     }
@@ -948,6 +1007,7 @@
         });
       } catch (e) {
         console.error('Error loading evidence cleanup plan', e);
+        dashText(['cleanup-mode', 'cleanup-candidates', 'cleanup-retained', 'cleanup-bytes', 'cleanup-review', 'cleanup-types', 'cleanup-source-artifacts', 'cleanup-source-status', 'cleanup-blockers']);
         document.getElementById('cleanup-rows').innerHTML = '<tr><td colspan="4">Error loading cleanup plan</td></tr>';
       }
     }
@@ -958,21 +1018,20 @@
         const data = await fetchJson('/api/sweep_results');
 
         if (data.data_status === 'not_generated') {
-          document.getElementById('sweep-status').textContent = 'Sweep Status: ⚠ Not generated — ' + (data.reason || 'run run_large_sweep.py');
-          document.getElementById('sweep-total').textContent = '—';
+          const reason = data.reason || 'run run_large_sweep.py';
+          showSweepTerminal('Sweep Status: ⚠ Not generated — ' + reason, reason);
           return;
         }
 
         const results = asArray(data.results).filter(r => r && r.metrics && r.config);
 
-        document.getElementById('sweep-total').textContent = results.length;
-        
         if (results.length === 0) {
-          document.getElementById('sweep-status').textContent = 'Sweep Status: No results in file';
+          showSweepTerminal('Sweep Status: No results in file', 'No results in file');
           return;
         }
 
-        document.getElementById('sweep-status').textContent = `Sweep Status: Running (${results.length} / 7350 tests)`;
+        document.getElementById('sweep-status').textContent = `Sweep Status: Loaded (${results.length} rows)`;
+        document.getElementById('sweep-total').textContent = results.length;
 
         // Find Best
         let best = results[0];
@@ -1011,11 +1070,7 @@
 
       } catch (e) {
         console.error('Error loading sweep results', e);
-        document.getElementById('sweep-status').textContent = 'Sweep Status: Offline' + authHint(e);
-        document.getElementById('sweep-total').textContent = '—';
-        document.getElementById('sweep-best-gain').textContent = '—';
-        document.getElementById('sweep-best-noise').textContent = '—';
-        document.getElementById('sweep-best-lr').textContent = '—';
+        showSweepTerminal('Sweep Status: Offline' + authHint(e), 'Sweep results unavailable');
       }
     }
 
@@ -1102,12 +1157,28 @@
             const el = document.getElementById(id);
             if (el) el.textContent = '—';
           });
+          if (beirChartInstance) {
+            beirChartInstance.destroy();
+            beirChartInstance = null;
+          }
+          const heatHead = document.getElementById('beir-heatmap-head');
+          const heatBody = document.getElementById('beir-heatmap-body');
+          if (heatHead) heatHead.innerHTML = '<tr><th>No BEIR data available</th></tr>';
+          if (heatBody) heatBody.innerHTML = '<tr><td>No BEIR heatmap</td></tr>';
+          const detailRows = document.getElementById('beir-detail-rows');
+          if (detailRows) detailRows.innerHTML = '<tr><td colspan="7">No BEIR detail rows</td></tr>';
           const noticeEl = document.getElementById('beir-not-generated-notice');
           if (noticeEl) {
             noticeEl.textContent = '⚠ ' + (data.reason || 'Run benchmark_beir.py to populate');
             noticeEl.style.display = 'block';
           }
           return;
+        }
+
+        const beirNotice = document.getElementById('beir-not-generated-notice');
+        if (beirNotice) {
+          beirNotice.textContent = '';
+          beirNotice.style.display = 'none';
         }
 
         const summary = data.summary || {};
@@ -1222,6 +1293,16 @@
           const el = document.getElementById(id);
           if (el) el.textContent = '—';
         });
+        if (beirChartInstance) {
+          beirChartInstance.destroy();
+          beirChartInstance = null;
+        }
+        const heatHead = document.getElementById('beir-heatmap-head');
+        const heatBody = document.getElementById('beir-heatmap-body');
+        if (heatHead) heatHead.innerHTML = '';
+        if (heatBody) heatBody.innerHTML = '<tr><td>No BEIR heatmap</td></tr>';
+        const detailRows = document.getElementById('beir-detail-rows');
+        if (detailRows) detailRows.innerHTML = '<tr><td colspan="7">No BEIR detail rows</td></tr>';
         const noticeEl = document.getElementById('beir-not-generated-notice');
         if (noticeEl) {
           noticeEl.textContent = '⚠ BEIR data unavailable' + authHint(e);

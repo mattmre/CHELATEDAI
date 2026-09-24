@@ -1363,6 +1363,8 @@ def load_evidence_index(path: str = EVIDENCE_INDEX_PATH) -> Dict[str, Any]:
     artifacts = payload.get("artifacts")
     if not isinstance(artifacts, dict):
         artifacts = {}
+    chain_present, chain_missing = _count_artifact_files(artifacts, "evidence_chain_summaries")
+    preflight_present, preflight_missing = _count_artifact_files(artifacts, "default_promotion_preflights")
     stat = index_path.stat()
     return {
         "path": str(index_path),
@@ -1375,9 +1377,33 @@ def load_evidence_index(path: str = EVIDENCE_INDEX_PATH) -> Dict[str, Any]:
             "latest_review_allowed": summary.get("latest_review_allowed"),
             "latest_preflight_blockers": summary.get("latest_preflight_blockers", []),
             "latest_chain_passed": summary.get("latest_chain_passed"),
+            "evidence_chain_files_present": chain_present,
+            "evidence_chain_files_missing": chain_missing,
+            "preflight_files_present": preflight_present,
+            "preflight_files_missing": preflight_missing,
         },
         "artifacts": artifacts,
     }
+
+
+def _count_artifact_files(artifacts: Dict[str, Any], key: str) -> tuple:
+    """Count referenced artifact paths that exist on disk. Backslashes are normalized."""
+    items = artifacts.get(key, [])
+    if not isinstance(items, list):
+        return 0, 0
+    present = 0
+    missing = 0
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        raw = item.get("path")
+        if not isinstance(raw, str) or not raw.strip():
+            continue
+        if Path(raw.replace("\\", "/")).is_file():
+            present += 1
+        else:
+            missing += 1
+    return present, missing
 
 
 def _extract_evidence_chain_record(path: Path, root: Path) -> Dict[str, Any]:
@@ -1413,24 +1439,38 @@ def load_evidence_chain_history(root: str = EVIDENCE_CHAIN_HISTORY_ROOT, limit: 
         return {
             "root": root,
             "reports": [],
-            "summary": {"total_reports": 0, "passed": 0, "failed": 0, "latest_chain_passed": None},
+            "summary": {
+                "total_reports": 0,
+                "loaded_reports": 0,
+                "passed": 0,
+                "failed": 0,
+                "unreadable_reports": 0,
+                "latest_chain_passed": None,
+            },
         }
     report_paths = sorted(root_path.rglob("evidence_chain_summary.json"), key=lambda item: item.stat().st_mtime, reverse=True)
-    reports = []
-    for path in report_paths[: max(0, limit)]:
+    total_reports = len(report_paths)
+    parsed = []
+    for path in report_paths:
         try:
-            reports.append(_extract_evidence_chain_record(path, root_path))
+            parsed.append(_extract_evidence_chain_record(path, root_path))
         except (OSError, ValueError):
             continue
+    reports = parsed[: max(0, limit)]
+    loaded_reports = len(reports)
+    passed = sum(1 for report in parsed if report["chain_passed"])
+    failed = sum(1 for report in parsed if not report["chain_passed"])
+    unreadable_reports = len(report_paths) - len(parsed)
     latest = reports[0] if reports else {}
     return {
         "root": root,
         "reports": reports,
         "summary": {
-            "total_reports": len(report_paths),
-            "loaded_reports": len(reports),
-            "passed": sum(1 for report in reports if report["chain_passed"]),
-            "failed": sum(1 for report in reports if not report["chain_passed"]),
+            "total_reports": total_reports,
+            "loaded_reports": loaded_reports,
+            "passed": passed,
+            "failed": failed,
+            "unreadable_reports": unreadable_reports,
             "latest_chain_passed": latest.get("chain_passed") if reports else None,
             "latest_review_allowed": latest.get("review_allowed") if reports else None,
             "latest_preflight_blockers": latest.get("preflight_blockers", []) if reports else [],
@@ -1824,8 +1864,11 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             if not os.path.exists(test_file):
                 self.send_json_response({
                     "data_status": "not_generated",
-                    "reason": ".report.json not found — generate with: "
-                              "python -m unittest discover -v 2>&1 | python generate_report_json.py",
+                    "reason": (
+                        ".report.json is missing, the handler expects a JSON object "
+                        "with summary and tests in the server working directory, "
+                        "and no generator is shipped."
+                    ),
                     "summary": None,
                     "tests": [],
                 })
