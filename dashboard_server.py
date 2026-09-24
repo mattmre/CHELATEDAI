@@ -1364,6 +1364,8 @@ def load_evidence_index(path: str = EVIDENCE_INDEX_PATH) -> Dict[str, Any]:
     artifacts = payload.get("artifacts")
     if not isinstance(artifacts, dict):
         artifacts = {}
+    chain_present, chain_missing = _count_artifact_files(artifacts, "evidence_chain_summaries")
+    preflight_present, preflight_missing = _count_artifact_files(artifacts, "default_promotion_preflights")
     stat = index_path.stat()
     return {
         "path": str(index_path),
@@ -1376,9 +1378,33 @@ def load_evidence_index(path: str = EVIDENCE_INDEX_PATH) -> Dict[str, Any]:
             "latest_review_allowed": summary.get("latest_review_allowed"),
             "latest_preflight_blockers": summary.get("latest_preflight_blockers", []),
             "latest_chain_passed": summary.get("latest_chain_passed"),
+            "evidence_chain_files_present": chain_present,
+            "evidence_chain_files_missing": chain_missing,
+            "preflight_files_present": preflight_present,
+            "preflight_files_missing": preflight_missing,
         },
         "artifacts": artifacts,
     }
+
+
+def _count_artifact_files(artifacts: Dict[str, Any], key: str) -> tuple:
+    """Count referenced artifact paths that exist on disk. Backslashes are normalized."""
+    items = artifacts.get(key, [])
+    if not isinstance(items, list):
+        return 0, 0
+    present = 0
+    missing = 0
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        raw = item.get("path")
+        if not isinstance(raw, str) or not raw.strip():
+            continue
+        if Path(raw.replace("\\", "/")).is_file():
+            present += 1
+        else:
+            missing += 1
+    return present, missing
 
 
 def _extract_evidence_chain_record(path: Path, root: Path) -> Dict[str, Any]:
@@ -1821,8 +1847,7 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             if not os.path.exists(test_file):
                 self.send_json_response({
                     "data_status": "not_generated",
-                    "reason": ".report.json not found — generate with: "
-                              "python -m unittest discover -v 2>&1 | python generate_report_json.py",
+                    "reason": ".report.json not found. This repository does not include generate_report_json.py.",
                     "summary": None,
                     "tests": [],
                 })
