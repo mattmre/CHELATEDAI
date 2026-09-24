@@ -110,8 +110,10 @@ class CheckpointManager:
 
         Returns:
             Checkpoint ID. Returned only after the metadata index replace
-            succeeds. A failed save removes the new checkpoint directory and
-            raises, without printing or returning an id.
+            succeeds. A failed save removes the directory this call created
+            and raises, without printing or returning an id. An id already
+            on disk or in the index raises FileExistsError before mkdir or
+            copy, and nothing is deleted.
         """
         # Sanitize checkpoint name to prevent injection attacks
         name = sanitize_name(name)
@@ -122,9 +124,19 @@ class CheckpointManager:
         timestamp = datetime.now().isoformat()
         checkpoint_id = f"{name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
 
-        # Create checkpoint subdirectory
+        # One-second ids collide. Refuse before mkdir/copy2 so a failed save
+        # cannot overwrite or delete a checkpoint this call did not create.
         checkpoint_path = self.checkpoint_dir / checkpoint_id
-        checkpoint_path.mkdir(parents=True, exist_ok=True)
+        id_already_indexed = any(
+            entry["checkpoint_id"] == checkpoint_id
+            for entry in self.metadata["checkpoints"]
+        )
+        if checkpoint_path.exists() or id_already_indexed:
+            raise FileExistsError(f"checkpoint already exists: {checkpoint_id}")
+
+        created_directory = False
+        checkpoint_path.mkdir(parents=True, exist_ok=False)
+        created_directory = True
 
         # Copy adapter weights if they exist
         adapter_checkpoint = None
@@ -154,7 +166,7 @@ class CheckpointManager:
         try:
             self._save_metadata(staged_metadata)
         except BaseException as save_error:
-            if checkpoint_path.is_dir():
+            if created_directory and checkpoint_path.is_dir():
                 try:
                     shutil.rmtree(checkpoint_path)
                 except Exception as cleanup_error:

@@ -683,6 +683,38 @@ class TestCheckpointMetadataIndex(unittest.TestCase):
         reloaded = CheckpointManager(self.checkpoint_dir)
         self.assertEqual(reloaded.list_checkpoints(), [])
 
+    @patch("checkpoint_manager.datetime")
+    def test_same_second_id_is_not_reused_or_deleted(self, mock_dt):
+        """A second create in the same second must not replace or remove the first."""
+        mock_dt.now.return_value = datetime(2026, 1, 2, 3, 4, 5)
+        manager = CheckpointManager(self.checkpoint_dir)
+        other_adapter = self.temp_dir / "other_adapter.pt"
+        torch.save({"weight": torch.ones(4)}, other_adapter)
+
+        first_id = manager.create_checkpoint("same", self.adapter_path)
+        index_bytes = manager.metadata_path.read_bytes()
+        adapter_file = self.checkpoint_dir / first_id / "adapter_weights.pt"
+        adapter_bytes = adapter_file.read_bytes()
+        self.assertNotEqual(adapter_bytes, other_adapter.read_bytes())
+
+        stdout = io.StringIO()
+        with patch(
+            "checkpoint_manager.json.dump",
+            side_effect=OSError("simulated metadata dump failure"),
+        ), redirect_stdout(stdout):
+            with self.assertRaises(OSError):
+                manager.create_checkpoint("same", other_adapter)
+
+        self.assertTrue((self.checkpoint_dir / first_id).is_dir())
+        self.assertEqual(adapter_file.read_bytes(), adapter_bytes)
+        self.assertNotEqual(adapter_file.read_bytes(), other_adapter.read_bytes())
+        self.assertEqual(manager.metadata_path.read_bytes(), index_bytes)
+        self.assertEqual(
+            [entry["checkpoint_id"] for entry in manager.metadata["checkpoints"]],
+            [first_id],
+        )
+        self.assertNotIn("Created checkpoint", stdout.getvalue())
+
     def test_safe_training_enter_sees_metadata_save_failure(self):
         """SafeTrainingContext.__enter__ propagates a metadata save failure."""
         manager = CheckpointManager(self.checkpoint_dir)
