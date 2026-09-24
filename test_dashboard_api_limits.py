@@ -99,6 +99,18 @@ class TestApiLimits(unittest.TestCase):
             candidate_limit=25,
         )
 
+    def test_history_non_integer_limit_is_400(self):
+        handler = _handler()
+        for method in (
+            handler.handle_api_campaign_history,
+            handler.handle_api_validation_history,
+            handler.handle_api_preflight_history,
+            handler.handle_api_evidence_chain_history,
+        ):
+            handler.send_error_response.reset_mock()
+            method({"limit": ["nope"]})
+            handler.send_error_response.assert_called_once_with(400, "limit must be an integer")
+
     def test_options_preflight_does_not_require_a_bearer(self):
         old_token = dashboard_server.DASHBOARD_TOKEN
         old_origin = dashboard_server.DASHBOARD_CORS_ORIGIN
