@@ -26,9 +26,16 @@ class TestDashboardMarkup(unittest.TestCase):
         self.assertIn("consumer_gen4", self.html)
         self.assertIn("dual_nvme_workstation", self.html)
 
-    def test_chain_cards_say_they_are_page_local(self):
-        self.assertIn("Passed on this page", self.html)
-        self.assertIn("Failed on this page", self.html)
+    def test_chain_cards_count_every_parsed_file(self):
+        self.assertIn("Chains passed", self.html)
+        self.assertIn("Chains failed", self.html)
+        self.assertNotIn("Passed on this page", self.html)
+        script_open = self.html.rindex("<script>")
+        script_close = self.html.index("</script>", script_open)
+        script = self.html[script_open:script_close]
+        self.assertIn("Showing ", script)
+        self.assertIn("readable chains", script)
+        self.assertIn("unreadable_reports", script)
 
     def test_evidence_status_mentions_missing_files(self):
         start = self.html.index("async function loadEvidenceIndex")

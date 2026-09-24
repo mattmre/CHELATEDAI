@@ -517,6 +517,43 @@ class TestEvidenceChainHistory(unittest.TestCase):
         self.assertEqual(result["summary"]["total_reports"], 1)
         self.assertEqual(result["summary"]["loaded_reports"], 0)
         self.assertEqual(result["reports"], [])
+        self.assertEqual(result["summary"]["unreadable_reports"], 1)
+        self.assertEqual(result["summary"]["passed"], 0)
+        self.assertEqual(result["summary"]["failed"], 0)
+
+    def test_load_evidence_chain_history_counts_beyond_the_page(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = os.path.join(tmpdir, "experiment_runs")
+            base_mtime = 1_700_000_000
+            for index in range(12):
+                report_dir = os.path.join(root, "default-promotion-evidence-chain", "run-%02d" % index)
+                os.makedirs(report_dir)
+                report_path = os.path.join(report_dir, "evidence_chain_summary.json")
+                with open(report_path, "w", encoding="utf-8") as handle:
+                    json.dump(
+                        {
+                            "record_type": "default_promotion_evidence_chain",
+                            "chain_passed": index != 0,
+                            "review_allowed": False,
+                            "preflight_blockers": ["repeat_seed_evidence_does_not_support_default_promotion"],
+                            "artifacts": {"validation_summary": "validation_summary.json"},
+                        },
+                        handle,
+                    )
+                stamped = base_mtime + index
+                os.utime(report_path, (stamped, stamped))
+
+            result = dashboard_server.load_evidence_chain_history(root, limit=10)
+
+        summary = result["summary"]
+        self.assertEqual(summary["total_reports"], 12)
+        self.assertEqual(len(result["reports"]), 10)
+        self.assertEqual(summary["loaded_reports"], 10)
+        self.assertEqual(summary["passed"], 11)
+        self.assertEqual(summary["failed"], 1)
+        self.assertEqual(summary["unreadable_reports"], 0)
+        self.assertEqual(summary["passed"] + summary["failed"] + summary["unreadable_reports"], summary["total_reports"])
+        self.assertTrue(all(report["chain_passed"] for report in result["reports"]))
 
 
 class TestEvidenceCleanupPlan(unittest.TestCase):
@@ -960,6 +997,8 @@ class TestPhaseCHandlers(unittest.TestCase):
         self.assertIn("reason", data)
         self.assertIsNone(data["summary"])
         self.assertEqual(data["tests"], [])
+        self.assertNotIn("generate_report_json", data["reason"])
+        self.assertNotIn("|", data["reason"])
 
     def test_handle_api_beir_results_not_generated(self):
         """BEIR endpoint returns data_status=not_generated when file absent."""
@@ -1238,6 +1277,31 @@ class TestDiskLLMEstimateIntegration(unittest.TestCase):
         status, message = handler.send_error_response.call_args[0]
         self.assertEqual(status, 500)
         self.assertIn("simulated estimator failure", message)
+
+
+class TestDashboardIndexBeir(unittest.TestCase):
+    """Source contract for the BEIR tab notice and failure clears."""
+
+    def test_dashboard_beir_success_hides_notice(self):
+        path = os.path.join(os.path.dirname(__file__), "dashboard", "index.html")
+        with open(path, encoding="utf-8") as handle:
+            html = handle.read()
+        start = html.index("async function loadBeirResults")
+        end = html.index("function renderBeirChart", start)
+        function = html[start:end]
+        before_chart = function.split("renderBeirChart", 1)[0]
+        self.assertIn("beir-not-generated-notice", before_chart)
+        self.assertIn("display = 'none'", before_chart)
+
+        not_generated = function.split("data.data_status === 'not_generated'", 1)[1]
+        not_generated = not_generated.split("return;", 1)[0]
+        catch = function.split("} catch (e) {", 1)[1]
+        for branch in (not_generated, catch):
+            self.assertIn("beir-heatmap-body", branch)
+            self.assertIn("beirChartInstance", branch)
+            self.assertIn("No BEIR heatmap", branch)
+            self.assertIn("No BEIR detail rows", branch)
+            self.assertNotIn("Loading...", branch)
 
 
 if __name__ == "__main__":

@@ -1440,24 +1440,38 @@ def load_evidence_chain_history(root: str = EVIDENCE_CHAIN_HISTORY_ROOT, limit: 
         return {
             "root": root,
             "reports": [],
-            "summary": {"total_reports": 0, "passed": 0, "failed": 0, "latest_chain_passed": None},
+            "summary": {
+                "total_reports": 0,
+                "loaded_reports": 0,
+                "passed": 0,
+                "failed": 0,
+                "unreadable_reports": 0,
+                "latest_chain_passed": None,
+            },
         }
     report_paths = sorted(root_path.rglob("evidence_chain_summary.json"), key=lambda item: item.stat().st_mtime, reverse=True)
-    reports = []
-    for path in report_paths[: max(0, limit)]:
+    total_reports = len(report_paths)
+    parsed = []
+    for path in report_paths:
         try:
-            reports.append(_extract_evidence_chain_record(path, root_path))
+            parsed.append(_extract_evidence_chain_record(path, root_path))
         except (OSError, ValueError):
             continue
+    reports = parsed[: max(0, limit)]
+    loaded_reports = len(reports)
+    passed = sum(1 for report in parsed if report["chain_passed"])
+    failed = sum(1 for report in parsed if not report["chain_passed"])
+    unreadable_reports = len(report_paths) - len(parsed)
     latest = reports[0] if reports else {}
     return {
         "root": root,
         "reports": reports,
         "summary": {
-            "total_reports": len(report_paths),
-            "loaded_reports": len(reports),
-            "passed": sum(1 for report in reports if report["chain_passed"]),
-            "failed": sum(1 for report in reports if not report["chain_passed"]),
+            "total_reports": total_reports,
+            "loaded_reports": loaded_reports,
+            "passed": passed,
+            "failed": failed,
+            "unreadable_reports": unreadable_reports,
             "latest_chain_passed": latest.get("chain_passed") if reports else None,
             "latest_review_allowed": latest.get("review_allowed") if reports else None,
             "latest_preflight_blockers": latest.get("preflight_blockers", []) if reports else [],
@@ -1847,7 +1861,11 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             if not os.path.exists(test_file):
                 self.send_json_response({
                     "data_status": "not_generated",
-                    "reason": ".report.json not found. This repository does not include generate_report_json.py.",
+                    "reason": (
+                        ".report.json is missing, the handler expects a JSON object "
+                        "with summary and tests in the server working directory, "
+                        "and no generator is shipped."
+                    ),
                     "summary": None,
                     "tests": [],
                 })

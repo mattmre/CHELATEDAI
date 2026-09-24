@@ -217,8 +217,8 @@
     <div class="cards">
       <div class="card"><div class="label">Evidence Chains</div><div class="value" id="evidence-chain-total">-</div></div>
       <div class="card"><div class="label">Latest Chain</div><div class="value" id="evidence-chain-latest" style="font-size:20px;">-</div></div>
-      <div class="card"><div class="label">Passed on this page</div><div class="value" id="evidence-chain-passed">-</div></div>
-      <div class="card"><div class="label">Failed on this page</div><div class="value" id="evidence-chain-failed">-</div></div>
+      <div class="card"><div class="label">Chains passed</div><div class="value" id="evidence-chain-passed">-</div></div>
+      <div class="card"><div class="label">Chains failed</div><div class="value" id="evidence-chain-failed">-</div></div>
     </div>
 
     <div class="cards">
@@ -321,6 +321,7 @@
         <h2>Evidence Chains</h2>
         <button onclick="loadEvidenceChainHistory()">Refresh Chains</button>
       </div>
+      <div id="evidence-chain-window" style="margin:8px 0; font-size:13px; color:#666;"></div>
       <table>
         <thead>
           <tr>
@@ -873,8 +874,19 @@
         const rows = document.getElementById('evidence-chain-rows');
         rows.replaceChildren();
         const reports = asArray(data.reports);
+        const readableChains = (Number(summary.passed) || 0) + (Number(summary.failed) || 0);
+        const windowEl = document.getElementById('evidence-chain-window');
+        if (windowEl) {
+          windowEl.textContent = reports.length < readableChains
+            ? ('Showing ' + reports.length + ' of ' + readableChains + ' readable chains')
+            : '';
+        }
         if (!reports.length) {
-          rows.innerHTML = '<tr><td colspan="6">No evidence-chain summaries found</td></tr>';
+          if (summary.unreadable_reports > 0) {
+            rows.innerHTML = '<tr><td colspan="6">The evidence-chain files were unreadable</td></tr>';
+          } else {
+            rows.innerHTML = '<tr><td colspan="6">No evidence-chain summaries found</td></tr>';
+          }
           return;
         }
         reports.forEach(report => {
@@ -899,6 +911,8 @@
       } catch (e) {
         console.error('Error loading evidence-chain history', e);
         dashText(['evidence-chain-total', 'evidence-chain-latest', 'evidence-chain-passed', 'evidence-chain-failed']);
+        const windowEl = document.getElementById('evidence-chain-window');
+        if (windowEl) windowEl.textContent = '';
         document.getElementById('evidence-chain-rows').innerHTML = '<tr><td colspan="6">Error loading evidence-chain history</td></tr>';
       }
     }
@@ -1150,15 +1164,21 @@
           const heatHead = document.getElementById('beir-heatmap-head');
           const heatBody = document.getElementById('beir-heatmap-body');
           if (heatHead) heatHead.innerHTML = '<tr><th>No BEIR data available</th></tr>';
-          if (heatBody) heatBody.innerHTML = '';
+          if (heatBody) heatBody.innerHTML = '<tr><td>No BEIR heatmap</td></tr>';
           const detailRows = document.getElementById('beir-detail-rows');
-          if (detailRows) detailRows.innerHTML = '<tr><td colspan="7">No BEIR results.</td></tr>';
+          if (detailRows) detailRows.innerHTML = '<tr><td colspan="7">No BEIR detail rows</td></tr>';
           const noticeEl = document.getElementById('beir-not-generated-notice');
           if (noticeEl) {
             noticeEl.textContent = '⚠ ' + (data.reason || 'Run benchmark_beir.py to populate');
             noticeEl.style.display = 'block';
           }
           return;
+        }
+
+        const beirNotice = document.getElementById('beir-not-generated-notice');
+        if (beirNotice) {
+          beirNotice.textContent = '';
+          beirNotice.style.display = 'none';
         }
 
         const summary = data.summary || {};
@@ -1280,9 +1300,9 @@
         const heatHead = document.getElementById('beir-heatmap-head');
         const heatBody = document.getElementById('beir-heatmap-body');
         if (heatHead) heatHead.innerHTML = '';
-        if (heatBody) heatBody.innerHTML = '<tr><td>Error loading BEIR results</td></tr>';
+        if (heatBody) heatBody.innerHTML = '<tr><td>No BEIR heatmap</td></tr>';
         const detailRows = document.getElementById('beir-detail-rows');
-        if (detailRows) detailRows.innerHTML = '<tr><td colspan="7">Error loading BEIR results</td></tr>';
+        if (detailRows) detailRows.innerHTML = '<tr><td colspan="7">No BEIR detail rows</td></tr>';
         const noticeEl = document.getElementById('beir-not-generated-notice');
         if (noticeEl) {
           noticeEl.textContent = '⚠ BEIR data unavailable' + authHint(e);
