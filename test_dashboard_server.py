@@ -1113,6 +1113,33 @@ class TestDashboardSecurity(unittest.TestCase):
         with self.assertRaises(ValueError):
             dashboard_server.run_server(host="0.0.0.0", port=8080, log_file="chelation_events.jsonl")
 
+    def test_do_get_serves_dashboard_html_without_bearer_when_token_set(self):
+        """A navigation has no Authorization header, so the control page still loads."""
+        dashboard_server.DASHBOARD_TOKEN = "secret-token"
+        handler = self._make_handler()
+        handler.path = "/dashboard/"
+        handler.send_error_response = MagicMock()
+
+        handler.do_GET()
+
+        body = handler.wfile.getvalue().decode("utf-8")
+        self.assertIn("ChelatedAI Control Center", body)
+        handler.send_error_response.assert_not_called()
+
+    def test_do_get_serves_dashboard_html_when_token_unset_and_closed(self):
+        """Closed mode still serves the HTML document; only /api/* stays denied."""
+        dashboard_server.DASHBOARD_TOKEN = ""
+        dashboard_server.DASHBOARD_ALLOW_UNAUTHENTICATED = False
+        handler = self._make_handler()
+        handler.path = "/dashboard/"
+        handler.send_error_response = MagicMock()
+
+        handler.do_GET()
+
+        body = handler.wfile.getvalue().decode("utf-8")
+        self.assertIn("ChelatedAI Control Center", body)
+        handler.send_error_response.assert_not_called()
+
     def test_do_get_denies_api_without_token_by_default(self):
         """AC3 (AEP-20260902-AUTH-01): token unset + no explicit open mode -> 401."""
         dashboard_server.DASHBOARD_TOKEN = ""

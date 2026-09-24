@@ -34,12 +34,11 @@ from computational_storage_poc.disk_llm_estimator import (
 # Global configuration
 LOG_FILE_PATH = "chelation_events.jsonl"
 DASHBOARD_TOKEN = os.getenv("CHELATED_DASHBOARD_TOKEN", "").strip()
-# AEP-20260902-AUTH-01: explicit opt-in open mode for loopback dev/test only.
-# Default is fail-closed: with no token configured, API requests are denied (401)
-# unless CHELATED_DASHBOARD_ALLOW_UNAUTHENTICATED=1 is set. Rotation: replace the
-# CHELATED_DASHBOARD_TOKEN value and restart the server; browser clients pick up
-# the new token via console: sessionStorage.setItem('chelated_dashboard_token',
-# '<token>'). Tokens are never distributed via URL (P1-02).
+# AEP-20260902-AUTH-01 / AEP-20260924-FE002: the HTML document
+# (/, /dashboard, /dashboard/) loads without a bearer. /api/* still requires
+# Authorization: Bearer when a token is set, or
+# CHELATED_DASHBOARD_ALLOW_UNAUTHENTICATED when no token is set.
+# Tokens are never distributed via URL (P1-02).
 DASHBOARD_ALLOW_UNAUTHENTICATED = (
     os.getenv("CHELATED_DASHBOARD_ALLOW_UNAUTHENTICATED", "").strip().lower()
     in {"1", "true", "yes", "on"}
@@ -1606,6 +1605,13 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         path = parsed_path.path
         query_params = parse_qs(parsed_path.query)
 
+        # Navigation has no Authorization header. Serve the control page before
+        # the bearer check. A query-string token does not authorize, and /api/*
+        # stays behind _is_api_authorized.
+        if path in ("/", "/dashboard", "/dashboard/"):
+            self.serve_dashboard()
+            return
+
         if not self._is_api_authorized():
             self.send_error_response(401, "Unauthorized")
             return
@@ -1649,9 +1655,6 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             self.handle_api_tts_last_result()
         elif path == "/api/disk_llm_estimate":
             self.handle_api_disk_llm_estimate(query_params)
-        elif path == "/" or path == "/dashboard" or path == "/dashboard/":
-            # Redirect to dashboard page
-            self.serve_dashboard()
         else:
             # AEP-20260902-STATIC-01: confine the static fallback (repo-root
             # directory) to the /dashboard/ asset prefix; all other paths
