@@ -115,6 +115,7 @@ py-modules = [
     "run_drift_recovery_experiment",
     "run_drift_recovery_knob_sweep",
     "run_live_fire_diagnostics",
+    "run_sweep",
     "run_large_sweep",
     "run_model_scope_campaign",
     "run_default_promotion_evidence_chain",

@@ -9,6 +9,7 @@ from pathlib import Path
 class TestSweepPackaging(unittest.TestCase):
     def test_py_modules_lists_the_sweep_modules(self):
         text = Path("pyproject.toml").read_text(encoding="utf-8")
+        self.assertIn('"run_sweep"', text)
         self.assertIn('"run_large_sweep"', text)
         self.assertIn('"sweep_result_store"', text)
         self.assertIn('"sweep_corpus_restore"', text)
