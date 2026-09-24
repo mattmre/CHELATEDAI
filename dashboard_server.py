@@ -1920,9 +1920,10 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         if "limit" in query_params:
             try:
                 limit = int(query_params["limit"][0])
-                limit = min(limit, _MAX_API_LIMIT)
             except (ValueError, IndexError):
-                limit = 25
+                self.send_error_response(400, "limit must be an integer")
+                return
+            limit = min(limit, _MAX_API_LIMIT)
         try:
             self.send_json_response(load_campaign_history(CAMPAIGN_HISTORY_ROOT, limit=limit))
         except Exception:
@@ -1934,9 +1935,10 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         if "limit" in query_params:
             try:
                 limit = int(query_params["limit"][0])
-                limit = min(limit, _MAX_API_LIMIT)
             except (ValueError, IndexError):
-                limit = 10
+                self.send_error_response(400, "limit must be an integer")
+                return
+            limit = min(limit, _MAX_API_LIMIT)
         try:
             self.send_json_response(load_validation_history(VALIDATION_HISTORY_ROOT, limit=limit))
         except Exception:
@@ -1948,9 +1950,10 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         if "limit" in query_params:
             try:
                 limit = int(query_params["limit"][0])
-                limit = min(limit, _MAX_API_LIMIT)
             except (ValueError, IndexError):
-                limit = 10
+                self.send_error_response(400, "limit must be an integer")
+                return
+            limit = min(limit, _MAX_API_LIMIT)
         try:
             self.send_json_response(load_preflight_history(PREFLIGHT_HISTORY_ROOT, limit=limit))
         except Exception:
@@ -1969,9 +1972,10 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         if "limit" in query_params:
             try:
                 limit = int(query_params["limit"][0])
-                limit = min(limit, _MAX_API_LIMIT)
             except (ValueError, IndexError):
-                limit = 10
+                self.send_error_response(400, "limit must be an integer")
+                return
+            limit = min(limit, _MAX_API_LIMIT)
         try:
             self.send_json_response(load_evidence_chain_history(EVIDENCE_CHAIN_HISTORY_ROOT, limit=limit))
         except Exception:
