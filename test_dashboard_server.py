@@ -454,16 +454,14 @@ class TestEvidenceIndex(unittest.TestCase):
         self.assertFalse(result["summary"]["latest_review_allowed"])
         self.assertTrue(result["summary"]["latest_chain_passed"])
 
-    def test_load_evidence_index_returns_empty_for_malformed_json(self):
+    def test_load_evidence_index_rejects_malformed_json(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             path = os.path.join(tmpdir, "evidence_index.json")
             with open(path, "w", encoding="utf-8") as handle:
                 handle.write("[not-an-object]")
 
-            result = dashboard_server.load_evidence_index(path)
-
-        self.assertTrue(result["present"])
-        self.assertEqual(result["summary"]["artifact_counts"], {})
+            with self.assertRaises(ValueError):
+                dashboard_server.load_evidence_index(path)
 
 
 class TestEvidenceChainHistory(unittest.TestCase):
