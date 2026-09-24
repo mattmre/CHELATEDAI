@@ -44,9 +44,34 @@ DASHBOARD_ALLOW_UNAUTHENTICATED = (
     in {"1", "true", "yes", "on"}
 )
 DASHBOARD_CORS_ORIGIN = os.getenv("CHELATED_DASHBOARD_CORS_ORIGIN", "").strip()
-# Upper bound for the /api/events ?limit= parameter (LIMIT-01): prevents
-# unbounded response sizes from huge or garbage input.
+# Parsed integer limits are capped here. An omitted /api/events limit returns
+# the filtered file. A non-integer /api/events limit is HTTP 400, not an uncapped list.
 _MAX_API_LIMIT = 5000
+
+
+def _nonnegative_limit(raw: str) -> int:
+    """Parse a limit. Zero and negative select nothing. Above the cap is clamped."""
+    value = int(raw)
+    if value <= 0:
+        return 0
+    return min(value, _MAX_API_LIMIT)
+
+
+def _limit_or_default(query_params: Dict[str, List[str]], default: int) -> int:
+    """Bounded ``limit`` query. A non-integer keeps ``default`` instead of failing the request."""
+    values = query_params.get("limit") if query_params else None
+    if not values:
+        return default
+    try:
+        return _nonnegative_limit(values[0])
+    except (TypeError, ValueError):
+        return default
+
+
+def _tail_paths(paths, limit: int):
+    if limit <= 0:
+        return []
+    return list(paths)[-limit:]
 CAMPAIGN_HISTORY_ROOT = "experiment_runs"
 VALIDATION_HISTORY_ROOT = "experiment_runs"
 PREFLIGHT_HISTORY_ROOT = "experiment_runs"
@@ -1213,10 +1238,7 @@ def load_campaign_history(root: str = CAMPAIGN_HISTORY_ROOT, limit: int = 25) ->
     )
     reports = []
     for path in report_paths[: max(0, limit)]:
-        try:
-            reports.append(_extract_campaign_record(path, root_path))
-        except (OSError, ValueError):
-            continue
+        reports.append(_extract_campaign_record(path, root_path))
 
     return {
         "root": root,
@@ -1261,10 +1283,7 @@ def load_validation_history(root: str = VALIDATION_HISTORY_ROOT, limit: int = 10
     report_paths = sorted(root_path.rglob("validation_summary.json"), key=lambda item: item.stat().st_mtime, reverse=True)
     reports = []
     for path in report_paths[: max(0, limit)]:
-        try:
-            reports.append(_extract_validation_record(path, root_path))
-        except (OSError, ValueError):
-            continue
+        reports.append(_extract_validation_record(path, root_path))
     latest = reports[0] if reports else {}
     return {
         "root": root,
@@ -1312,18 +1331,12 @@ def load_preflight_history(root: str = PREFLIGHT_HISTORY_ROOT, limit: int = 10) 
 
     report_paths_with_mtime = []
     for path in root_path.rglob("*preflight*.json"):
-        try:
-            report_paths_with_mtime.append((path, path.stat().st_mtime))
-        except OSError:
-            continue
+        report_paths_with_mtime.append((path, path.stat().st_mtime))
     report_paths_with_mtime.sort(key=lambda item: item[1], reverse=True)
     report_paths = [path for path, _mtime in report_paths_with_mtime]
     reports = []
     for path in report_paths[: max(0, limit)]:
-        try:
-            reports.append(_extract_preflight_record(path, root_path))
-        except (OSError, ValueError):
-            continue
+        reports.append(_extract_preflight_record(path, root_path))
     latest = reports[0] if reports else {}
     return {
         "root": root,
@@ -1353,10 +1366,7 @@ def load_evidence_index(path: str = EVIDENCE_INDEX_PATH) -> Dict[str, Any]:
             },
             "artifacts": {},
         }
-    try:
-        payload = _load_json_object(index_path)
-    except (OSError, ValueError):
-        payload = {}
+    payload = _load_json_object(index_path)
     summary = payload.get("summary")
     if not isinstance(summary, dict):
         summary = {}
@@ -1721,10 +1731,7 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         super().do_HEAD()
 
     def do_OPTIONS(self):
-        """CORS preflight scoped to the configured origin (P2-01)."""
-        if not self._is_api_authorized():
-            self.send_error_response(405, "Method not allowed")
-            return
+        """CORS preflight. Browsers do not send Authorization on this request."""
         self.send_response(204)
         self.send_header("Content-Length", "0")
         if DASHBOARD_CORS_ORIGIN:
@@ -1793,17 +1800,16 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         - limit: Maximum number of events to return
         - event_type: Filter by event type (e.g., "query", "error")
         """
+        limit = None
+        if "limit" in query_params:
+            try:
+                limit = int(query_params["limit"][0])
+            except (ValueError, IndexError):
+                self.send_error_response(400, "limit must be an integer")
+                return
+            limit = min(limit, _MAX_API_LIMIT)
         try:
             events = load_events(LOG_FILE_PATH)
-            
-            # Extract query parameters
-            limit = None
-            if "limit" in query_params:
-                try:
-                    limit = int(query_params["limit"][0])
-                    limit = min(limit, _MAX_API_LIMIT)
-                except (ValueError, IndexError):
-                    limit = None
             
             event_type = None
             if "event_type" in query_params:
@@ -1975,11 +1981,13 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         """Handle /api/evidence_cleanup_plan endpoint."""
         try:
             keep_latest = 1
-            limit = 25
-            if "keep_latest" in query_params:
-                keep_latest = max(0, int(query_params["keep_latest"][0]))
-            if "limit" in query_params:
-                limit = max(0, int(query_params["limit"][0]))
+            raw_keep = query_params.get("keep_latest") if query_params else None
+            if raw_keep:
+                try:
+                    keep_latest = max(0, int(raw_keep[0]))
+                except (TypeError, ValueError):
+                    keep_latest = 1
+            limit = _limit_or_default(query_params, 25)
             self.send_json_response(load_evidence_cleanup_plan(EVIDENCE_CLEANUP_ROOT, keep_latest=keep_latest, candidate_limit=limit))
         except Exception:
             self.send_error_response(500, "Error reading evidence cleanup plan")
@@ -2002,9 +2010,9 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         """Handle /api/model_scope/events — lists recent activation event files."""
         from model_scope_artifacts import ArtifactStore, load_model_scope_artifact, summarize_model_scope_artifact
         try:
-            limit = int(query_params.get("limit", ["20"])[0])
+            limit = _limit_or_default(query_params, 20)
             store = ArtifactStore(base_dir=MODEL_SCOPE_ARTIFACT_ROOT)
-            paths = store.list_artifacts(pattern="feature_event_*.json")[-limit:]
+            paths = _tail_paths(store.list_artifacts(pattern="feature_event_*.json"), limit)
             items = []
             for p in reversed(paths):
                 try:
@@ -2018,16 +2026,16 @@ class DashboardHandler(SimpleHTTPRequestHandler):
                 "reason": None if items else "no_artifacts_found",
                 "items": items,
             })
-        except Exception as e:
-            self.send_error_response(500, f"Error reading model-scope events: {e}")
+        except Exception:
+            self.send_error_response(500, "Error reading model-scope events")
 
     def handle_api_model_scope_features(self, query_params):
         """Handle /api/model_scope/features — lists recent sparse feature events."""
         from model_scope_artifacts import ArtifactStore, load_model_scope_artifact
         try:
-            limit = int(query_params.get("limit", ["20"])[0])
+            limit = _limit_or_default(query_params, 20)
             store = ArtifactStore(base_dir=MODEL_SCOPE_ARTIFACT_ROOT)
-            paths = store.list_artifacts(pattern="feature_event_*.json")[-limit:]
+            paths = _tail_paths(store.list_artifacts(pattern="feature_event_*.json"), limit)
             items = []
             for p in reversed(paths):
                 try:
@@ -2041,16 +2049,16 @@ class DashboardHandler(SimpleHTTPRequestHandler):
                 "reason": None if items else "no_feature_events_found",
                 "items": items,
             })
-        except Exception as e:
-            self.send_error_response(500, f"Error reading model-scope features: {e}")
+        except Exception:
+            self.send_error_response(500, "Error reading model-scope features")
 
     def handle_api_model_scope_interventions(self, query_params):
         """Handle /api/model_scope/interventions — lists recent intervention records."""
         from model_scope_artifacts import ArtifactStore, load_model_scope_artifact
         try:
-            limit = int(query_params.get("limit", ["20"])[0])
+            limit = _limit_or_default(query_params, 20)
             store = ArtifactStore(base_dir=MODEL_SCOPE_ARTIFACT_ROOT)
-            paths = store.list_artifacts(pattern="intervention_*.json")[-limit:]
+            paths = _tail_paths(store.list_artifacts(pattern="intervention_*.json"), limit)
             items = []
             for p in reversed(paths):
                 try:
@@ -2063,8 +2071,8 @@ class DashboardHandler(SimpleHTTPRequestHandler):
                 "reason": None if items else "no_interventions_found",
                 "items": items,
             })
-        except Exception as e:
-            self.send_error_response(500, f"Error reading model-scope interventions: {e}")
+        except Exception:
+            self.send_error_response(500, "Error reading model-scope interventions")
 
     def handle_api_tts_status(self):
         """Handle /api/tts/status — returns TTS enable state, config, and last result summary."""
