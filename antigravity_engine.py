@@ -1903,6 +1903,8 @@ class AntigravityEngine:
         # --- TRAINING LOOP (wrapped in SafeTrainingContext for F-043) ---
         self.logger.log_training_start(num_samples=len(training_inputs), learning_rate=learning_rate, epochs=epochs, threshold=threshold)
 
+        failed_updates = 0
+        total_updates = 0
         with SafeTrainingContext(
             self.checkpoint_manager,
             self.adapter_path,
@@ -2066,7 +2068,8 @@ class AntigravityEngine:
             # Batch Update Logic using shared helper (F-031: pass cached payload_map)
             total_updates, failed_updates = sync_vectors_to_qdrant(
                 self.qdrant, self.collection_name, ordered_ids,
-                new_vectors_np, chunk_size, self.logger, payload_map
+                new_vectors_np, chunk_size, self.logger, payload_map,
+                original_vectors_np=input_tensor.detach().cpu().numpy(),
             )
 
             # Mark success only if no failed vector updates (F-043)
@@ -2077,16 +2080,19 @@ class AntigravityEngine:
                     f"Training cycle completed successfully. Updated {total_updates} vectors.",
                     vectors_updated=total_updates
                 )
+                self.chelation_log.clear()
             else:
                 self.logger.log_error(
                     "sedimentation_partial_failure",
-                    f"Training completed but {failed_updates} vector updates failed. Rolling back.",
+                    f"Training completed but {failed_updates} vector updates failed. "
+                    "Pre-cycle vectors were written back for the chunks that had already been stored.",
                     vectors_updated=total_updates,
                     vectors_failed=failed_updates
                 )
 
+        if failed_updates:
+            self.adapter.load(self.adapter_path)
         self.logger.log_training_complete(final_loss=final_loss, vectors_updated=total_updates, vectors_failed=failed_updates)
-        self.chelation_log.clear()
         _finish_annealing_cycle()
 
     def run_offline_distillation(self, batch_size: int = 100, learning_rate: float = None, epochs: int = None):
@@ -2375,50 +2381,25 @@ class AntigravityEngine:
         self.logger.log_event("offline_distillation_update", "Updating corpus vectors in Qdrant")
 
         with torch.no_grad():
+            original_vectors_np = input_tensor.detach().cpu().numpy()
             new_vectors_np = self.adapter(input_tensor).numpy()
 
         chunk_size = ChelationConfig.CHUNK_SIZE
-        total_updates = 0
-        failed_updates = 0
-
-        for i in range(0, len(ordered_ids), chunk_size):
-            chunk_ids = ordered_ids[i:i+chunk_size]
-            chunk_vectors = new_vectors_np[i:i+chunk_size]
-
-            try:
-                existing_points = self.qdrant.retrieve(
-                    collection_name=self.collection_name,
-                    ids=chunk_ids,
-                    with_vectors=False
-                )
-                payload_map = {p.id: p.payload for p in existing_points}
-
-                batch_points = []
-                for j, doc_id in enumerate(chunk_ids):
-                    vec = chunk_vectors[j].tolist()
-                    pay = payload_map.get(doc_id, {})
-
-                    batch_points.append(PointStruct(
-                        id=doc_id,
-                        vector=vec,
-                        payload=pay
-                    ))
-
-                if batch_points:
-                    self.qdrant.upsert(
-                        collection_name=self.collection_name,
-                        points=batch_points
-                    )
-                    total_updates += len(batch_points)
-            except Exception as e:
-                self.logger.log_error(
-                    "offline_distillation_update_failed",
-                    f"Failed to update batch {i//chunk_size}",
-                    exception=e,
-                    batch_num=i//chunk_size
-                )
-                failed_updates += len(chunk_ids)
-
+        prior_adapter = None
+        if self.adapter_path.exists():
+            prior_adapter = self.adapter_path.read_bytes()
+        total_updates, failed_updates = sync_vectors_to_qdrant(
+            self.qdrant, self.collection_name, ordered_ids,
+            new_vectors_np, chunk_size, self.logger, None,
+            original_vectors_np=original_vectors_np,
+        )
+        if failed_updates:
+            if prior_adapter is None:
+                if self.adapter_path.exists():
+                    self.adapter_path.unlink()
+            else:
+                self.adapter_path.write_bytes(prior_adapter)
+                self.adapter.load(self.adapter_path)
         self.logger.log_training_complete(
             final_loss=final_loss,
             vectors_updated=total_updates,

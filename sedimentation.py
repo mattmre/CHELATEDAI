@@ -126,6 +126,9 @@ class HierarchicalSedimentationEngine:
         # --- Phase 1 & 2: Training wrapped in SafeTrainingContext (F-043) ---
         print(f"Phase 1: Per-cluster training ({len(clusters)} clusters, {cluster_epochs} epochs)...")
         
+        failed_updates = 0
+        total_updates = 0
+        final_loss = 0.0
         with SafeTrainingContext(
             self.checkpoint_manager,
             self.engine.adapter_path,
@@ -189,7 +192,8 @@ class HierarchicalSedimentationEngine:
             # Use shared helper for Qdrant sync (F-031: pass cached payload_map)
             total_updates, failed_updates = sync_vectors_to_qdrant(
                 self.engine.qdrant, self.engine.collection_name, ordered_ids,
-                new_vectors_np, chunk_size, self.logger, payload_map
+                new_vectors_np, chunk_size, self.logger, payload_map,
+                original_vectors_np=input_tensor.detach().cpu().numpy(),
             )
             
             # Mark success only if no failed vector updates (F-043)
@@ -200,21 +204,23 @@ class HierarchicalSedimentationEngine:
                     f"Hierarchical training completed successfully. Updated {total_updates} vectors.",
                     vectors_updated=total_updates
                 )
+                self.engine.chelation_log.clear()
             else:
                 self.logger.log_error(
                     "hierarchical_sedimentation_partial_failure",
-                    f"Training completed but {failed_updates} vector updates failed. Rolling back.",
+                    f"Training completed but {failed_updates} vector updates failed. "
+                    "Pre-cycle vectors were written back for the chunks that had already been stored.",
                     vectors_updated=total_updates,
                     vectors_failed=failed_updates
                 )
 
+        if failed_updates:
+            self.engine.adapter.load(self.engine.adapter_path)
         self.logger.log_training_complete(
             final_loss=final_loss,
             vectors_updated=total_updates,
             vectors_failed=failed_updates,
         )
-
-        self.engine.chelation_log.clear()
         print(f"Hierarchical sedimentation complete. Updated {total_updates} vectors, {failed_updates} failed.")
         print("--- HIERARCHICAL SLEEP CYCLE COMPLETE ---")
 
