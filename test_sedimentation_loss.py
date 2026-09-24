@@ -107,6 +107,23 @@ class TestSedimentationInfoNCELoss(unittest.TestCase):
         with self.assertRaises(ValueError):
             SedimentationInfoNCELoss(temperature=-0.1)
 
+    def test_other_in_batch_targets_are_negatives(self):
+        """Phase I step 2 is not met: other targets in the batch are negatives.
+
+        A higher loss when the positive column is no longer the matching
+        target shows the off-diagonal entries participate. This test fails
+        if that coupling is removed without a replacement negative source.
+        """
+        loss_fn = SedimentationInfoNCELoss(temperature=0.07)
+        targets = torch.eye(4)
+        outputs = targets.clone()
+        matched = loss_fn(outputs, targets).item()
+        swapped = targets.clone()
+        swapped[0] = targets[1]
+        swapped[1] = targets[0]
+        mispaired = loss_fn(outputs, swapped).item()
+        self.assertGreater(mispaired, matched)
+
     def test_batch_size_one_works(self):
         """Loss should work with batch_size=1 (degenerate case)."""
         loss_fn = SedimentationInfoNCELoss(temperature=0.07)
