@@ -5,10 +5,14 @@ Tests CheckpointManager create/restore/delete/cleanup and SafeTrainingContext
 automatic rollback behavior without requiring external services.
 """
 
+import builtins
+import io
+import json
 import unittest
 import tempfile
 import shutil
 import torch
+from contextlib import redirect_stdout
 from pathlib import Path
 from unittest.mock import patch
 from datetime import datetime
@@ -491,6 +495,240 @@ class TestSafeTrainingContextRollbackExceptions(unittest.TestCase):
             self.assertIn("Simulated rollback failure", str(e))
         finally:
             self.manager.restore_checkpoint = original_restore
+
+
+class TestCheckpointMetadataIndex(unittest.TestCase):
+    """Atomic index replace: failed saves must not truncate or drop checkpoints."""
+
+    def setUp(self):
+        self.temp_dir = Path(tempfile.mkdtemp())
+        self.checkpoint_dir = self.temp_dir / "checkpoints"
+        self.adapter_path = self.temp_dir / "adapter_weights.pt"
+        torch.save({"weight": torch.zeros(4)}, self.adapter_path)
+
+    def tearDown(self):
+        shutil.rmtree(self.temp_dir)
+
+    def test_failed_third_save_keeps_earlier_index_and_removes_directory(self):
+        """AC1: a failed third create leaves the first two checkpoints and no third directory."""
+        manager = CheckpointManager(self.checkpoint_dir)
+        real_open = builtins.open
+        real_dump = json.dump
+        dump_calls = {"count": 0}
+
+        def guarding_open(file, mode="r", *args, **kwargs):
+            if isinstance(file, (str, Path)) and Path(file).name == "checkpoint_metadata.json":
+                if isinstance(mode, str) and "w" in mode:
+                    raise AssertionError(f"live index opened with mode {mode!r}")
+            return real_open(file, mode, *args, **kwargs)
+
+        def dump_or_fail(payload, handle, *args, **kwargs):
+            dump_calls["count"] += 1
+            if dump_calls["count"] == 3:
+                raise OSError("simulated metadata dump failure")
+            return real_dump(payload, handle, *args, **kwargs)
+
+        stdout = io.StringIO()
+        with patch("builtins.open", guarding_open), patch(
+            "checkpoint_manager.json.dump", side_effect=dump_or_fail
+        ), redirect_stdout(stdout):
+            id1 = manager.create_checkpoint("first", self.adapter_path)
+            id2 = manager.create_checkpoint("second", self.adapter_path)
+            before = manager.metadata_path.read_bytes()
+            with self.assertRaises(OSError) as caught:
+                manager.create_checkpoint("third", self.adapter_path)
+            after = manager.metadata_path.read_bytes()
+
+        self.assertIn("simulated metadata dump failure", str(caught.exception))
+        self.assertEqual(dump_calls["count"], 3)
+        self.assertEqual(after, before)
+        self.assertEqual(stdout.getvalue().count("Created checkpoint:"), 2)
+        persisted = json.loads(manager.metadata_path.read_text(encoding="utf-8"))
+        self.assertEqual([cp["name"] for cp in persisted["checkpoints"]], ["first", "second"])
+        self.assertEqual(
+            [cp["checkpoint_id"] for cp in manager.list_checkpoints()],
+            [id1, id2],
+        )
+        self.assertEqual(manager.metadata["latest_checkpoint"], id2)
+        directories = sorted(path.name for path in self.checkpoint_dir.iterdir() if path.is_dir())
+        self.assertEqual(directories, sorted([id1, id2]))
+        leftovers = [
+            path.name
+            for path in self.checkpoint_dir.iterdir()
+            if path.name.startswith(".checkpoint_metadata.")
+        ]
+        self.assertEqual(leftovers, [])
+
+        reloaded = CheckpointManager(self.checkpoint_dir)
+        self.assertEqual(
+            [cp["checkpoint_id"] for cp in reloaded.list_checkpoints()],
+            [id1, id2],
+        )
+        self.assertEqual(reloaded.metadata["latest_checkpoint"], id2)
+
+    def test_zero_byte_metadata_raises(self):
+        """AC2: an existing 0-byte index is invalid and must not become an empty list."""
+        self.checkpoint_dir.mkdir(parents=True)
+        metadata = self.checkpoint_dir / "checkpoint_metadata.json"
+        metadata.write_bytes(b"")
+        stdout = io.StringIO()
+        with redirect_stdout(stdout):
+            with self.assertRaises(json.JSONDecodeError):
+                CheckpointManager(self.checkpoint_dir)
+        self.assertEqual(metadata.read_bytes(), b"")
+        self.assertNotIn("WARNING", stdout.getvalue())
+
+    def test_missing_metadata_file_starts_empty(self):
+        """AC2: a directory with no metadata file constructs an empty checkpoint list."""
+        manager = CheckpointManager(self.checkpoint_dir)
+        self.assertEqual(manager.list_checkpoints(), [])
+        self.assertEqual(manager.metadata, {"checkpoints": []})
+        self.assertFalse(manager.metadata_path.exists())
+
+    def test_invalid_metadata_shape_raises(self):
+        """A present index that is not an object with a list 'checkpoints' raises."""
+        payloads = [
+            "[]",
+            "null",
+            "0",
+            '{"checkpoints": "no"}',
+            '{"other": []}',
+        ]
+        for payload in payloads:
+            with self.subTest(payload=payload):
+                shutil.rmtree(self.checkpoint_dir, ignore_errors=True)
+                self.checkpoint_dir.mkdir()
+                metadata = self.checkpoint_dir / "checkpoint_metadata.json"
+                metadata.write_text(payload, encoding="utf-8")
+                with self.assertRaises(ValueError):
+                    CheckpointManager(self.checkpoint_dir)
+                self.assertEqual(metadata.read_text(encoding="utf-8"), payload)
+
+    def test_empty_checkpoint_list_file_loads(self):
+        """A JSON object with an empty checkpoints list is a valid index."""
+        self.checkpoint_dir.mkdir()
+        metadata = self.checkpoint_dir / "checkpoint_metadata.json"
+        metadata.write_text('{"checkpoints": []}\n', encoding="utf-8")
+        manager = CheckpointManager(self.checkpoint_dir)
+        self.assertEqual(manager.list_checkpoints(), [])
+
+    def test_delete_replace_failure_keeps_directory_and_index_bytes(self):
+        """AC3: a failed index replace leaves the directory and the previous index bytes."""
+        manager = CheckpointManager(self.checkpoint_dir)
+        cp_id = manager.create_checkpoint("keep", self.adapter_path)
+        checkpoint_path = self.checkpoint_dir / cp_id
+        before = manager.metadata_path.read_bytes()
+        stdout = io.StringIO()
+        returned = None
+        with patch("checkpoint_manager.os.replace", side_effect=OSError("replace failed")):
+            with redirect_stdout(stdout):
+                with self.assertRaises(OSError) as caught:
+                    returned = manager.delete_checkpoint(cp_id)
+        self.assertIn("replace failed", str(caught.exception))
+        self.assertIsNone(returned)
+        self.assertNotIn("Deleted checkpoint", stdout.getvalue())
+        self.assertTrue(checkpoint_path.is_dir())
+        self.assertEqual(manager.metadata_path.read_bytes(), before)
+        self.assertEqual(
+            [cp["checkpoint_id"] for cp in manager.list_checkpoints()],
+            [cp_id],
+        )
+        self.assertEqual(manager.metadata["latest_checkpoint"], cp_id)
+        leftovers = [
+            path.name
+            for path in self.checkpoint_dir.iterdir()
+            if path.name.startswith(".checkpoint_metadata.")
+        ]
+        self.assertEqual(leftovers, [])
+
+        id2 = manager.create_checkpoint("after", self.adapter_path)
+        reloaded = CheckpointManager(self.checkpoint_dir)
+        self.assertEqual(
+            [cp["checkpoint_id"] for cp in reloaded.list_checkpoints()],
+            [cp_id, id2],
+        )
+
+    def test_successful_delete_returns_true_and_drops_id_from_new_manager(self):
+        """AC3: a successful delete returns True and a new manager does not list that id."""
+        manager = CheckpointManager(self.checkpoint_dir)
+        kept = manager.create_checkpoint("kept", self.adapter_path)
+        removed = manager.create_checkpoint("removed", self.adapter_path)
+        stdout = io.StringIO()
+        with redirect_stdout(stdout):
+            result = manager.delete_checkpoint(removed)
+        self.assertIs(result, True)
+        self.assertIn(f"Deleted checkpoint: {removed}", stdout.getvalue())
+        self.assertFalse((self.checkpoint_dir / removed).exists())
+        self.assertTrue((self.checkpoint_dir / kept).is_dir())
+        reloaded = CheckpointManager(self.checkpoint_dir)
+        self.assertEqual(
+            [cp["checkpoint_id"] for cp in reloaded.list_checkpoints()],
+            [kept],
+        )
+        self.assertEqual(reloaded.metadata["latest_checkpoint"], kept)
+
+    def test_delete_rmtree_failure_returns_false_without_success_line(self):
+        """A directory removal failure after a successful replace returns False."""
+        manager = CheckpointManager(self.checkpoint_dir)
+        cp_id = manager.create_checkpoint("stuck", self.adapter_path)
+        checkpoint_path = self.checkpoint_dir / cp_id
+        stdout = io.StringIO()
+        with patch("checkpoint_manager.shutil.rmtree", side_effect=OSError("busy")):
+            with redirect_stdout(stdout):
+                result = manager.delete_checkpoint(cp_id)
+        self.assertIs(result, False)
+        self.assertNotIn("Deleted checkpoint", stdout.getvalue())
+        self.assertTrue(checkpoint_path.is_dir())
+        self.assertEqual(manager.list_checkpoints(), [])
+        reloaded = CheckpointManager(self.checkpoint_dir)
+        self.assertEqual(reloaded.list_checkpoints(), [])
+
+    @patch("checkpoint_manager.datetime")
+    def test_same_second_id_is_not_reused_or_deleted(self, mock_dt):
+        """A second create in the same second must not replace or remove the first."""
+        mock_dt.now.return_value = datetime(2026, 1, 2, 3, 4, 5)
+        manager = CheckpointManager(self.checkpoint_dir)
+        other_adapter = self.temp_dir / "other_adapter.pt"
+        torch.save({"weight": torch.ones(4)}, other_adapter)
+
+        first_id = manager.create_checkpoint("same", self.adapter_path)
+        index_bytes = manager.metadata_path.read_bytes()
+        adapter_file = self.checkpoint_dir / first_id / "adapter_weights.pt"
+        adapter_bytes = adapter_file.read_bytes()
+        self.assertNotEqual(adapter_bytes, other_adapter.read_bytes())
+
+        stdout = io.StringIO()
+        with patch(
+            "checkpoint_manager.json.dump",
+            side_effect=OSError("simulated metadata dump failure"),
+        ), redirect_stdout(stdout):
+            with self.assertRaises(OSError):
+                manager.create_checkpoint("same", other_adapter)
+
+        self.assertTrue((self.checkpoint_dir / first_id).is_dir())
+        self.assertEqual(adapter_file.read_bytes(), adapter_bytes)
+        self.assertNotEqual(adapter_file.read_bytes(), other_adapter.read_bytes())
+        self.assertEqual(manager.metadata_path.read_bytes(), index_bytes)
+        self.assertEqual(
+            [entry["checkpoint_id"] for entry in manager.metadata["checkpoints"]],
+            [first_id],
+        )
+        self.assertNotIn("Created checkpoint", stdout.getvalue())
+
+    def test_safe_training_enter_sees_metadata_save_failure(self):
+        """SafeTrainingContext.__enter__ propagates a metadata save failure."""
+        manager = CheckpointManager(self.checkpoint_dir)
+        with patch("checkpoint_manager.json.dump", side_effect=OSError("dump failed")):
+            with self.assertRaises(OSError) as caught:
+                with SafeTrainingContext(manager, self.adapter_path, "explode"):
+                    self.fail("context body ran after a failed checkpoint create")
+        self.assertIn("dump failed", str(caught.exception))
+        self.assertEqual(manager.list_checkpoints(), [])
+        self.assertFalse(manager.metadata_path.exists())
+        self.assertEqual(
+            [path.name for path in self.checkpoint_dir.iterdir() if path.is_dir()],
+            [],
+        )
 
 
 if __name__ == "__main__":
