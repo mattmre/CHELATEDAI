@@ -3,10 +3,15 @@ import itertools
 from benchmark_evolution import load_mteb_data, evaluate_ndcg
 from config import ChelationConfig
 from antigravity_engine import AntigravityEngine
-import json
 import csv
 import os
 from datetime import datetime
+
+from sweep_result_store import (
+    append_jsonl,
+    materialize_json_array,
+    migrate_json_array_to_jsonl,
+)
 
 def run_large_parameter_sweep(task_name="SciFact", model_name="sentence-transformers/all-MiniLM-L6-v2", output_prefix="large_sweep", max_queries=None, db_path=None):
     print(f"Starting large parameter sweep on {task_name} using {model_name}")
@@ -27,6 +32,8 @@ def run_large_parameter_sweep(task_name="SciFact", model_name="sentence-transfor
     
     csv_file = f"{output_prefix}_results.csv"
     json_file = f"{output_prefix}_results.json"
+    jsonl_file = f"{output_prefix}_results.jsonl"
+    migrate_json_array_to_jsonl(json_file, jsonl_file)
     
     # Initialize CSV with headers if it doesn't exist
     if not os.path.exists(csv_file):
@@ -122,23 +129,18 @@ def run_large_parameter_sweep(task_name="SciFact", model_name="sentence-transfor
             }
         }
         
-        try:
-            with open(json_file, 'r') as f:
-                current_results = json.load(f)
-        except (FileNotFoundError, json.JSONDecodeError):
-            current_results = []
-            
-        current_results.append(result_entry)
-        
-        with open(json_file, 'w') as f:
-            json.dump(current_results, f, indent=2)
-            
+        append_jsonl(jsonl_file, result_entry)
+
         # Save to CSV table iteratively so no data is lost if interrupted
         with open(csv_file, 'a', newline='') as f:
             writer = csv.writer(f)
             writer.writerow([timestamp, lr, thresh, noise, epochs, push_mag, base_score, post_score, gain])
 
-    print(f"Sweep completed. Results saved to {json_file} and {csv_file}")
+    if os.path.exists(jsonl_file):
+        written = materialize_json_array(jsonl_file, json_file)
+    else:
+        written = 0
+    print(f"Sweep completed. {written} results saved to {jsonl_file}, {json_file}, and {csv_file}")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Large Parameter Sweep for Chelation Sedimentation")
