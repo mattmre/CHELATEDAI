@@ -31,6 +31,7 @@ from .protocol import (
     TrainingDependencyError,
     TrainingError,
     TrainingIntegrityError,
+    TrainingLeakageError,
     TrainingProtocol,
     TrainingRow,
     build_training_batch,
@@ -1832,7 +1833,7 @@ def _load_frozen_runtime_dataset(
 ) -> Any:
     """Load the private export of the canonical ``FrozenTrainingDataset``."""
 
-    from .contracts import FrozenTrainingDataset, LedgerCutoff, TrainingExample
+    from .contracts import MAX_TRAINING_TOKENS, FrozenTrainingDataset, LedgerCutoff, TrainingExample
 
     try:
         validate_sha256(expected_artifact_sha256, "sealed training artifact SHA-256")
@@ -1891,6 +1892,19 @@ def _load_frozen_runtime_dataset(
     tasks = sorted({row.task_id for row in dataset.examples})
     if len(tasks) != 20:
         raise TrainingIntegrityError("production selection requires exactly 20 frozen training tasks")
+    # Stop before private staging and PinnedModelLoader.load. Missing split stays legal.
+    for example in dataset.examples:
+        if "heldout" in example.task_id.lower():
+            raise TrainingLeakageError("held-out task identity is forbidden in Training inputs")
+        split = json.loads(example.sft_row_json).get("split")
+        if split is not None and split != "train":
+            raise TrainingLeakageError("non-train SFT split cannot enter production training")
+        if example.input_token_count > MAX_TRAINING_TOKENS:
+            raise TrainingIntegrityError(
+                "production selection rejects an input above the frozen {}-token ceiling".format(
+                    MAX_TRAINING_TOKENS
+                )
+            )
     return dataset
 
 
