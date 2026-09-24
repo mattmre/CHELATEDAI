@@ -1,6 +1,9 @@
 import copy
 import hashlib
+import os
+import tempfile
 import time
+from pathlib import Path
 
 import numpy as np
 from qdrant_client import QdrantClient
@@ -19,6 +22,40 @@ from sedimentation_trainer import compute_homeostatic_target, sync_vectors_to_qd
 from checkpoint_manager import CheckpointManager, SafeTrainingContext
 from embedding_backend import create_embedding_backend
 from vector_store import create_vector_store
+
+
+def _pre_cycle_adapter_bytes(adapter, adapter_path) -> bytes:
+    """Bytes of the adapter file from before this cycle's trained save.
+
+    When the file is missing, the current in-memory weights are that
+    pre-cycle state and are saved once so a later overwrite can be undone.
+    """
+    path = Path(adapter_path)
+    if not path.exists():
+        adapter.save(path)
+    return path.read_bytes()
+
+
+def _write_adapter_bytes(adapter_path, payload: bytes) -> None:
+    """Replace adapter_path with payload using a same-directory temp file."""
+    destination = Path(adapter_path)
+    descriptor, temporary_name = tempfile.mkstemp(
+        prefix="." + destination.name + ".",
+        suffix=".tmp",
+        dir=destination.parent,
+    )
+    temporary = Path(temporary_name)
+    try:
+        with os.fdopen(descriptor, "wb") as handle:
+            handle.write(payload)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary, destination)
+    except Exception:
+        if temporary.exists():
+            temporary.unlink()
+        raise
+
 
 class AntigravityEngine:
     def __init__(self, qdrant_location=":memory:", chelation_p=ChelationConfig.DEFAULT_CHELATION_P, model_name='ollama:nomic-embed-text', use_centering=False, use_quantization=False, training_mode: str = "baseline", teacher_model_name: Optional[str] = None, teacher_models=None, teacher_weight: float = 0.5, store_full_text_payload: Optional[bool] = None):
@@ -1905,6 +1942,11 @@ class AntigravityEngine:
 
         failed_updates = 0
         total_updates = 0
+        # create_checkpoint copies the file only when it already exists.
+        # Saving here when it does not records the pre-cycle weights. Saving
+        # when it does would replace that file with a later in-memory state.
+        if not Path(self.adapter_path).exists():
+            self.adapter.save(self.adapter_path)
         with SafeTrainingContext(
             self.checkpoint_manager,
             self.adapter_path,
@@ -2066,7 +2108,7 @@ class AntigravityEngine:
                  new_vectors_np = self.adapter(input_tensor).numpy()
 
             # Batch Update Logic using shared helper (F-031: pass cached payload_map)
-            total_updates, failed_updates = sync_vectors_to_qdrant(
+            total_updates, failed_updates, compensated = sync_vectors_to_qdrant(
                 self.qdrant, self.collection_name, ordered_ids,
                 new_vectors_np, chunk_size, self.logger, payload_map,
                 original_vectors_np=input_tensor.detach().cpu().numpy(),
@@ -2082,10 +2124,16 @@ class AntigravityEngine:
                 )
                 self.chelation_log.clear()
             else:
+                failure_message = (
+                    f"Training completed but {failed_updates} vector updates failed."
+                )
+                if compensated:
+                    failure_message += (
+                        " Pre-cycle vectors were written back for the chunks that had already been stored."
+                    )
                 self.logger.log_error(
                     "sedimentation_partial_failure",
-                    f"Training completed but {failed_updates} vector updates failed. "
-                    "Pre-cycle vectors were written back for the chunks that had already been stored.",
+                    failure_message,
                     vectors_updated=total_updates,
                     vectors_failed=failed_updates
                 )
@@ -2255,6 +2303,9 @@ class AntigravityEngine:
 
         self.adapter.train()
         final_loss = 0.0
+        # Snapshot before either trained save below. Reading the file after
+        # those saves would restore the weights this cycle just wrote.
+        prior_adapter = _pre_cycle_adapter_bytes(self.adapter, self.adapter_path)
 
         if getattr(self, '_sedimentation_optimizer_type', 'adam') == "eggroll_es":
             from evolution_strategies_optimizer import (
@@ -2385,21 +2436,14 @@ class AntigravityEngine:
             new_vectors_np = self.adapter(input_tensor).numpy()
 
         chunk_size = ChelationConfig.CHUNK_SIZE
-        prior_adapter = None
-        if self.adapter_path.exists():
-            prior_adapter = self.adapter_path.read_bytes()
-        total_updates, failed_updates = sync_vectors_to_qdrant(
+        total_updates, failed_updates, _compensated = sync_vectors_to_qdrant(
             self.qdrant, self.collection_name, ordered_ids,
             new_vectors_np, chunk_size, self.logger, None,
             original_vectors_np=original_vectors_np,
         )
         if failed_updates:
-            if prior_adapter is None:
-                if self.adapter_path.exists():
-                    self.adapter_path.unlink()
-            else:
-                self.adapter_path.write_bytes(prior_adapter)
-                self.adapter.load(self.adapter_path)
+            _write_adapter_bytes(self.adapter_path, prior_adapter)
+            self.adapter.load(self.adapter_path)
         self.logger.log_training_complete(
             final_loss=final_loss,
             vectors_updated=total_updates,

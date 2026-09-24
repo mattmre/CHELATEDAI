@@ -87,7 +87,12 @@ def sync_vectors_to_qdrant(qdrant: Any, collection_name: str, ordered_ids: List,
                     skips qdrant.retrieve for payload lookup (F-031 optimization)
     
     Returns:
-        Tuple of (total_updates, failed_updates) counts
+        Tuple of (total_updates, failed_updates, compensated).
+        compensated is True only when a chunk failed, at least one id from
+        this call was already written, and the compensating upsert returned.
+        It is False when nothing failed, when nothing was written, when the
+        pre-cycle vectors were not provided, or when the compensation
+        retrieve or upsert raised.
     """
     total_updates = 0
     failed_updates = 0
@@ -103,26 +108,29 @@ def sync_vectors_to_qdrant(qdrant: Any, collection_name: str, ordered_ids: List,
                 "Corpus was not restored because the pre-cycle vectors were not provided.",
             )
             return False
-        source_payloads = payload_map
-        if source_payloads is None:
-            existing = qdrant.retrieve(
-                collection_name=collection_name,
-                ids=written_ids,
-                with_vectors=False,
-            )
-            source_payloads = {point.id: point.payload for point in existing}
-        points = []
-        for doc_id in written_ids:
-            idx = id_to_index[doc_id]
-            pay = source_payloads.get(doc_id, {}) or {}
-            points.append(PointStruct(
-                id=doc_id,
-                vector=original_vectors_np[idx].tolist(),
-                payload=pay,
-            ))
         try:
-            if points:
-                qdrant.upsert(collection_name=collection_name, points=points)
+            # Payload retrieve stays in this try. An exception here must not
+            # escape, or the caller would skip the pre-cycle adapter reload.
+            source_payloads = payload_map
+            if source_payloads is None:
+                existing = qdrant.retrieve(
+                    collection_name=collection_name,
+                    ids=written_ids,
+                    with_vectors=False,
+                )
+                source_payloads = {point.id: point.payload for point in existing}
+            points = []
+            for doc_id in written_ids:
+                idx = id_to_index[doc_id]
+                pay = source_payloads.get(doc_id, {}) or {}
+                points.append(PointStruct(
+                    id=doc_id,
+                    vector=original_vectors_np[idx].tolist(),
+                    payload=pay,
+                ))
+            if not points:
+                return False
+            qdrant.upsert(collection_name=collection_name, points=points)
             return True
         except Exception as restore_error:
             logger.log_error(
@@ -171,7 +179,8 @@ def sync_vectors_to_qdrant(qdrant: Any, collection_name: str, ordered_ids: List,
                            f"Update batch {i//chunk_size} failed",
                            exception=e, batch_num=i//chunk_size)
             failed_updates += len(ordered_ids) - len(written_ids)
-            _restore_written()
-            return total_updates, failed_updates
+            restored = _restore_written()
+            compensated = bool(written_ids) and restored
+            return total_updates, failed_updates, compensated
 
-    return total_updates, failed_updates
+    return total_updates, failed_updates, False

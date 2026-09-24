@@ -187,13 +187,14 @@ class TestSyncVectorsToQdrant(unittest.TestCase):
         ordered_ids = ["doc1"]
         new_vectors = np.array([[0.1, 0.2, 0.3]])
         
-        total, failed = sync_vectors_to_qdrant(
+        total, failed, compensated = sync_vectors_to_qdrant(
             mock_qdrant, "test_collection", ordered_ids,
             new_vectors, chunk_size=10, logger=mock_logger
         )
         
         self.assertEqual(total, 1)
         self.assertEqual(failed, 0)
+        self.assertFalse(compensated)
         mock_qdrant.retrieve.assert_called_once()
         mock_qdrant.upsert.assert_called_once()
     
@@ -221,7 +222,7 @@ class TestSyncVectorsToQdrant(unittest.TestCase):
         mock_qdrant.upsert.return_value = None
         
         chunk_size = 10
-        total, failed = sync_vectors_to_qdrant(
+        total, failed, compensated = sync_vectors_to_qdrant(
             mock_qdrant, "test_collection", ordered_ids,
             new_vectors, chunk_size=chunk_size, logger=mock_logger
         )
@@ -231,6 +232,7 @@ class TestSyncVectorsToQdrant(unittest.TestCase):
         self.assertEqual(mock_qdrant.upsert.call_count, 3)
         self.assertEqual(total, n_docs)
         self.assertEqual(failed, 0)
+        self.assertFalse(compensated)
     
     def test_payload_preservation(self):
         """Test that existing payloads are preserved."""
@@ -272,17 +274,18 @@ class TestSyncVectorsToQdrant(unittest.TestCase):
         ordered_ids = ["doc1", "doc2"]
         new_vectors = np.array([[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]])
         
-        total, failed = sync_vectors_to_qdrant(
+        total, failed, compensated = sync_vectors_to_qdrant(
             mock_qdrant, "test_collection", ordered_ids,
             new_vectors, chunk_size=10, logger=mock_logger
         )
         
         self.assertEqual(total, 0)
         self.assertEqual(failed, 2)
+        self.assertFalse(compensated)
         mock_logger.log_error.assert_called_once()
         call_args = mock_logger.log_error.call_args
         self.assertEqual(call_args[0][0], "database_update")
-        self.assertIn("Invalid vector data", call_args[0][1])
+        self.assertEqual(call_args[0][1], "Update batch 0 failed")
     
     def test_generic_exception_handling(self):
         """Test that generic exceptions are caught and logged."""
@@ -299,13 +302,14 @@ class TestSyncVectorsToQdrant(unittest.TestCase):
         ordered_ids = ["doc1"]
         new_vectors = np.array([[0.1, 0.2, 0.3]])
         
-        total, failed = sync_vectors_to_qdrant(
+        total, failed, compensated = sync_vectors_to_qdrant(
             mock_qdrant, "test_collection", ordered_ids,
             new_vectors, chunk_size=10, logger=mock_logger
         )
         
         self.assertEqual(total, 0)
         self.assertEqual(failed, 1)
+        self.assertFalse(compensated)
         mock_logger.log_error.assert_called_once()
         call_args = mock_logger.log_error.call_args
         self.assertEqual(call_args[0][0], "database_update")
@@ -336,14 +340,17 @@ class TestSyncVectorsToQdrant(unittest.TestCase):
         ordered_ids = ["doc1", "doc2"]
         new_vectors = np.array([[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]])
         
-        total, failed = sync_vectors_to_qdrant(
+        total, failed, compensated = sync_vectors_to_qdrant(
             mock_qdrant, "test_collection", ordered_ids,
             new_vectors, chunk_size=1, logger=mock_logger
         )
         
         self.assertEqual(total, 1)  # First chunk succeeded
         self.assertEqual(failed, 1)  # Second chunk failed
-        self.assertEqual(mock_logger.log_error.call_count, 1)
+        self.assertFalse(compensated)
+        kinds = [call[0][0] for call in mock_logger.log_error.call_args_list]
+        self.assertIn("database_update", kinds)
+        self.assertIn("corpus_not_restored", kinds)
     
     def test_empty_batch(self):
         """Test handling of empty batches."""
@@ -353,13 +360,14 @@ class TestSyncVectorsToQdrant(unittest.TestCase):
         ordered_ids = []
         new_vectors = np.array([]).reshape(0, 384)
         
-        total, failed = sync_vectors_to_qdrant(
+        total, failed, compensated = sync_vectors_to_qdrant(
             mock_qdrant, "test_collection", ordered_ids,
             new_vectors, chunk_size=10, logger=mock_logger
         )
         
         self.assertEqual(total, 0)
         self.assertEqual(failed, 0)
+        self.assertFalse(compensated)
         mock_qdrant.retrieve.assert_not_called()
         mock_qdrant.upsert.assert_not_called()
     
@@ -382,7 +390,7 @@ class TestSyncVectorsToQdrant(unittest.TestCase):
             upserted_points.extend(points)
         mock_qdrant.upsert.side_effect = capture_upsert
         
-        total, failed = sync_vectors_to_qdrant(
+        total, failed, compensated = sync_vectors_to_qdrant(
             mock_qdrant, "test_collection", ordered_ids,
             new_vectors, chunk_size=10, logger=mock_logger,
             payload_map=payload_map
@@ -395,6 +403,7 @@ class TestSyncVectorsToQdrant(unittest.TestCase):
         self.assertEqual(mock_qdrant.upsert.call_count, 1)
         self.assertEqual(total, 2)
         self.assertEqual(failed, 0)
+        self.assertFalse(compensated)
         
         # Verify payloads from provided map were used
         self.assertEqual(len(upserted_points), 2)
@@ -423,7 +432,7 @@ class TestSyncVectorsToQdrant(unittest.TestCase):
         new_vectors = np.array([[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]])
         
         # Call WITHOUT payload_map
-        total, failed = sync_vectors_to_qdrant(
+        total, failed, compensated = sync_vectors_to_qdrant(
             mock_qdrant, "test_collection", ordered_ids,
             new_vectors, chunk_size=10, logger=mock_logger
         )
@@ -432,6 +441,7 @@ class TestSyncVectorsToQdrant(unittest.TestCase):
         mock_qdrant.retrieve.assert_called_once()
         self.assertEqual(total, 2)
         self.assertEqual(failed, 0)
+        self.assertFalse(compensated)
     
     def test_payload_map_chunking(self):
         """Test F-031: payload_map works correctly with multiple chunks."""
@@ -447,7 +457,7 @@ class TestSyncVectorsToQdrant(unittest.TestCase):
         mock_qdrant.upsert.return_value = None
         
         chunk_size = 10
-        total, failed = sync_vectors_to_qdrant(
+        total, failed, compensated = sync_vectors_to_qdrant(
             mock_qdrant, "test_collection", ordered_ids,
             new_vectors, chunk_size=chunk_size, logger=mock_logger,
             payload_map=payload_map
@@ -460,6 +470,7 @@ class TestSyncVectorsToQdrant(unittest.TestCase):
         self.assertEqual(mock_qdrant.upsert.call_count, 3)
         self.assertEqual(total, n_docs)
         self.assertEqual(failed, 0)
+        self.assertFalse(compensated)
 
 
 if __name__ == "__main__":
