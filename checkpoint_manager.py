@@ -5,7 +5,9 @@ Provides safe checkpoint/rollback functionality for training cycles.
 """
 
 import json
+import os
 import shutil
+import tempfile
 import torch
 from pathlib import Path
 from typing import Dict, Any, Optional
@@ -35,23 +37,49 @@ class CheckpointManager:
         self.metadata = self._load_metadata()
 
     def _load_metadata(self) -> Dict[str, Any]:
-        """Load checkpoint metadata."""
-        if self.metadata_path.exists():
-            try:
-                with open(self.metadata_path, 'r', encoding='utf-8') as f:
-                    return json.load(f)
-            except Exception as e:
-                print(f"WARNING: Failed to load checkpoint metadata: {e}")
-                return {"checkpoints": []}
-        return {"checkpoints": []}
+        """Load checkpoint metadata.
 
-    def _save_metadata(self):
-        """Save checkpoint metadata."""
+        A missing file is an empty index. A file that exists must be a JSON
+        object whose ``checkpoints`` value is a list; otherwise this raises.
+        """
+        if not self.metadata_path.exists():
+            return {"checkpoints": []}
+
+        with open(self.metadata_path, 'r', encoding='utf-8') as handle:
+            loaded = json.load(handle)
+        if not isinstance(loaded, dict) or not isinstance(loaded.get("checkpoints"), list):
+            raise ValueError(
+                "checkpoint metadata must be a JSON object with a list 'checkpoints' "
+                f"({self.metadata_path})"
+            )
+        return loaded
+
+    def _save_metadata(self, metadata: Optional[Dict[str, Any]] = None):
+        """Atomically replace ``checkpoint_metadata.json``.
+
+        Writes a temp file in the checkpoint directory, flushes and fsyncs it,
+        then ``os.replace`` onto the live index. On failure the temp file is
+        removed and the error propagates. The live index is never opened with
+        mode ``w``.
+        """
+        payload = self.metadata if metadata is None else metadata
+        descriptor, temp_name = tempfile.mkstemp(
+            prefix=".checkpoint_metadata.",
+            suffix=".tmp",
+            dir=str(self.checkpoint_dir),
+        )
+        temp_path = Path(temp_name)
+        replaced = False
         try:
-            with open(self.metadata_path, 'w', encoding='utf-8') as f:
-                json.dump(self.metadata, f, indent=2)
-        except Exception as e:
-            print(f"ERROR: Failed to save checkpoint metadata: {e}")
+            with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+                json.dump(payload, handle, indent=2)
+                handle.flush()
+                os.fsync(handle.fileno())
+            os.replace(temp_path, self.metadata_path)
+            replaced = True
+        finally:
+            if not replaced:
+                temp_path.unlink(missing_ok=True)
 
     def _compute_file_hash(self, file_path: Path) -> str:
         """Compute SHA256 hash of a file."""
@@ -81,7 +109,9 @@ class CheckpointManager:
             **extra_metadata: Additional metadata to store
 
         Returns:
-            Checkpoint ID
+            Checkpoint ID. Returned only after the metadata index replace
+            succeeds. A failed save removes the new checkpoint directory and
+            raises, without printing or returning an id.
         """
         # Sanitize checkpoint name to prevent injection attacks
         name = sanitize_name(name)
@@ -116,10 +146,24 @@ class CheckpointManager:
             **extra_metadata
         }
 
+        staged_checkpoints = list(self.metadata["checkpoints"])
+        staged_checkpoints.append(checkpoint_metadata)
+        staged_metadata = dict(self.metadata)
+        staged_metadata["checkpoints"] = staged_checkpoints
+        staged_metadata["latest_checkpoint"] = checkpoint_id
+        try:
+            self._save_metadata(staged_metadata)
+        except BaseException as save_error:
+            if checkpoint_path.is_dir():
+                try:
+                    shutil.rmtree(checkpoint_path)
+                except Exception as cleanup_error:
+                    raise save_error from cleanup_error
+            raise
+
+        # Commit the in-memory index only after os.replace returns.
         self.metadata["checkpoints"].append(checkpoint_metadata)
         self.metadata["latest_checkpoint"] = checkpoint_id
-        self._save_metadata()
-
         print(f"Created checkpoint: {checkpoint_id}")
         return checkpoint_id
 
@@ -207,17 +251,39 @@ class CheckpointManager:
         """
         # Find checkpoint
         checkpoint_meta = None
+        checkpoint_index = None
         for i, cp in enumerate(self.metadata["checkpoints"]):
             if cp["checkpoint_id"] == checkpoint_id:
                 checkpoint_meta = cp
-                del self.metadata["checkpoints"][i]
+                checkpoint_index = i
                 break
 
-        if not checkpoint_meta:
+        if checkpoint_meta is None:
             print(f"ERROR: Checkpoint '{checkpoint_id}' not found")
             return False
 
-        # Delete directory
+        original_checkpoints = list(self.metadata["checkpoints"])
+        had_latest = "latest_checkpoint" in self.metadata
+        original_latest = self.metadata.get("latest_checkpoint")
+        del self.metadata["checkpoints"][checkpoint_index]
+        if self.metadata.get("latest_checkpoint") == checkpoint_id:
+            if self.metadata["checkpoints"]:
+                self.metadata["latest_checkpoint"] = self.metadata["checkpoints"][-1]["checkpoint_id"]
+            else:
+                self.metadata["latest_checkpoint"] = None
+
+        # Replace the index before removing the directory. A failed replace
+        # restores the in-memory entry and leaves the directory in place.
+        try:
+            self._save_metadata()
+        except BaseException:
+            self.metadata["checkpoints"] = original_checkpoints
+            if had_latest:
+                self.metadata["latest_checkpoint"] = original_latest
+            else:
+                self.metadata.pop("latest_checkpoint", None)
+            raise
+
         checkpoint_path = self.checkpoint_dir / checkpoint_id
         if checkpoint_path.exists():
             try:
@@ -226,14 +292,6 @@ class CheckpointManager:
                 print(f"ERROR: Failed to delete checkpoint directory: {e}")
                 return False
 
-        # Update metadata
-        if self.metadata.get("latest_checkpoint") == checkpoint_id:
-            if self.metadata["checkpoints"]:
-                self.metadata["latest_checkpoint"] = self.metadata["checkpoints"][-1]["checkpoint_id"]
-            else:
-                self.metadata["latest_checkpoint"] = None
-
-        self._save_metadata()
         print(f"Deleted checkpoint: {checkpoint_id}")
         return True
 
@@ -335,7 +393,6 @@ class SafeTrainingContext:
 if __name__ == "__main__":
     # Demo usage
     from pathlib import Path
-    import tempfile
 
     temp_dir = Path(tempfile.mkdtemp())
     adapter_path = temp_dir / "adapter.pt"
