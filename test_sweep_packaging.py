@@ -11,6 +11,7 @@ class TestSweepPackaging(unittest.TestCase):
         text = Path("pyproject.toml").read_text(encoding="utf-8")
         self.assertIn('"run_large_sweep"', text)
         self.assertIn('"sweep_result_store"', text)
+        self.assertIn('"sweep_corpus_restore"', text)
 
     def test_result_store_imports_without_torch(self):
         import sweep_result_store

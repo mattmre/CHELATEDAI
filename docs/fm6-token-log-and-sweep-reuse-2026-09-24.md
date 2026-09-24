@@ -10,9 +10,9 @@ Authorization reads the `Authorization: Bearer` header only. `do_GET` does not a
 
 ## V-02 sweep engine reuse
 
-`run_large_sweep.py` and `run_sweep.py` still set `engine = base_engine` inside the config loop and say that reuse avoids a Qdrant file lock. Each iteration replaces `engine.adapter`, clears `chelation_log`, and restores the noise and push-magnitude config.
+`run_sedimentation_cycle` does write vectors back. After training it calls `sync_vectors_to_qdrant` (`antigravity_engine.py` just before `run_inference`), and `sedimentation_trainer.sync_vectors_to_qdrant` calls `qdrant.upsert`. The log line "Updating corpus vectors in Qdrant" belongs to `run_offline_distillation`. That is a second writer, not the only one. An earlier draft of this note said sedimentation does not upsert. That sentence was wrong.
 
-`run_sedimentation_cycle` does not upsert into Qdrant. The upsert under "Updating corpus vectors in Qdrant" is `run_offline_distillation` (`antigravity_engine.py` around the method that starts near line 2092). The sweep calls `run_sedimentation_cycle`, not that offline updater. Reuse therefore does not carry sedimentation-written vectors from one config to the next. This note does not change that reuse. Opening a second Qdrant client on the same path is the lock the comment is avoiding.
+The sweep still keeps one `AntigravityEngine` so it does not open a second Qdrant client on the same path. Before each configuration replaces the adapter, `restore_collection` upserts the snapshot taken after the baseline evaluation. The configuration's own post-score still sees the vectors that sedimentation just wrote. The next configuration starts from the snapshot again.
 
 ## Still open
 
