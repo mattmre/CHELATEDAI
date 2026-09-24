@@ -100,13 +100,19 @@ class TestApiLimits(unittest.TestCase):
         )
 
     def test_options_preflight_does_not_require_a_bearer(self):
+        old_token = dashboard_server.DASHBOARD_TOKEN
+        old_origin = dashboard_server.DASHBOARD_CORS_ORIGIN
         dashboard_server.DASHBOARD_TOKEN = "secret"
         dashboard_server.DASHBOARD_CORS_ORIGIN = "https://example.test"
-        handler = _handler()
-        handler.headers = {}
-        handler.do_OPTIONS()
-        handler.send_response.assert_called_with(204)
-        handler.send_error_response.assert_not_called()
+        try:
+            handler = _handler()
+            handler.headers = {}
+            handler.do_OPTIONS()
+            handler.send_response.assert_called_with(204)
+            handler.send_error_response.assert_not_called()
+        finally:
+            dashboard_server.DASHBOARD_TOKEN = old_token
+            dashboard_server.DASHBOARD_CORS_ORIGIN = old_origin
 
     def test_zero_model_scope_limit_is_empty(self):
         self.assertEqual(dashboard_server._nonnegative_limit("0"), 0)
