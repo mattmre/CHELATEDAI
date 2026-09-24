@@ -805,7 +805,7 @@ class TestHierarchicalSedimentationIntegration(unittest.TestCase):
             mock_stc_cls.return_value = mock_stc
             
             # Mock sync to return success (no failures)
-            mock_sync.return_value = (10, 0)
+            mock_sync.return_value = (10, 0, False)
             
             # Create mock engine with required attributes
             mock_engine = MagicMock()

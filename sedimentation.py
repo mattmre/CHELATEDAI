@@ -12,6 +12,7 @@ module organization and separation of concerns.
 import numpy as np
 import torch
 import torch.optim as optim
+from pathlib import Path
 from typing import List, Tuple
 
 from chelation_logger import get_logger
@@ -126,6 +127,14 @@ class HierarchicalSedimentationEngine:
         # --- Phase 1 & 2: Training wrapped in SafeTrainingContext (F-043) ---
         print(f"Phase 1: Per-cluster training ({len(clusters)} clusters, {cluster_epochs} epochs)...")
         
+        failed_updates = 0
+        total_updates = 0
+        final_loss = 0.0
+        # create_checkpoint copies the file only when it already exists.
+        # Saving here when it does not records the pre-cycle weights. Saving
+        # when it does would replace that file with a later in-memory state.
+        if not Path(self.engine.adapter_path).exists():
+            self.engine.adapter.save(self.engine.adapter_path)
         with SafeTrainingContext(
             self.checkpoint_manager,
             self.engine.adapter_path,
@@ -187,9 +196,10 @@ class HierarchicalSedimentationEngine:
                 new_vectors_np = self.engine.adapter(input_tensor).numpy()
 
             # Use shared helper for Qdrant sync (F-031: pass cached payload_map)
-            total_updates, failed_updates = sync_vectors_to_qdrant(
+            total_updates, failed_updates, compensated = sync_vectors_to_qdrant(
                 self.engine.qdrant, self.engine.collection_name, ordered_ids,
-                new_vectors_np, chunk_size, self.logger, payload_map
+                new_vectors_np, chunk_size, self.logger, payload_map,
+                original_vectors_np=input_tensor.detach().cpu().numpy(),
             )
             
             # Mark success only if no failed vector updates (F-043)
@@ -200,21 +210,29 @@ class HierarchicalSedimentationEngine:
                     f"Hierarchical training completed successfully. Updated {total_updates} vectors.",
                     vectors_updated=total_updates
                 )
+                self.engine.chelation_log.clear()
             else:
+                failure_message = (
+                    f"Training completed but {failed_updates} vector updates failed."
+                )
+                if compensated:
+                    failure_message += (
+                        " Pre-cycle vectors were written back for the chunks that had already been stored."
+                    )
                 self.logger.log_error(
                     "hierarchical_sedimentation_partial_failure",
-                    f"Training completed but {failed_updates} vector updates failed. Rolling back.",
+                    failure_message,
                     vectors_updated=total_updates,
                     vectors_failed=failed_updates
                 )
 
+        if failed_updates:
+            self.engine.adapter.load(self.engine.adapter_path)
         self.logger.log_training_complete(
             final_loss=final_loss,
             vectors_updated=total_updates,
             vectors_failed=failed_updates,
         )
-
-        self.engine.chelation_log.clear()
         print(f"Hierarchical sedimentation complete. Updated {total_updates} vectors, {failed_updates} failed.")
         print("--- HIERARCHICAL SLEEP CYCLE COMPLETE ---")
 

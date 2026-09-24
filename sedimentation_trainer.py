@@ -68,7 +68,8 @@ def compute_homeostatic_target(current_vec: np.ndarray, noise_vectors: List[np.n
 
 def sync_vectors_to_qdrant(qdrant: Any, collection_name: str, ordered_ids: List,
                            new_vectors_np: np.ndarray, chunk_size: int, logger: Any,
-                           payload_map: dict = None) -> tuple:
+                           payload_map: dict = None,
+                           original_vectors_np: np.ndarray = None) -> tuple:
     """
     Synchronize updated vectors to Qdrant in batches, preserving existing payloads.
     
@@ -86,11 +87,59 @@ def sync_vectors_to_qdrant(qdrant: Any, collection_name: str, ordered_ids: List,
                     skips qdrant.retrieve for payload lookup (F-031 optimization)
     
     Returns:
-        Tuple of (total_updates, failed_updates) counts
+        Tuple of (total_updates, failed_updates, compensated).
+        compensated is True only when a chunk failed, at least one id from
+        this call was already written, and the compensating upsert returned.
+        It is False when nothing failed, when nothing was written, when the
+        pre-cycle vectors were not provided, or when the compensation
+        retrieve or upsert raised.
     """
     total_updates = 0
     failed_updates = 0
-    
+    written_ids = []
+    id_to_index = {doc_id: idx for idx, doc_id in enumerate(ordered_ids)}
+
+    def _restore_written() -> bool:
+        if not written_ids:
+            return True
+        if original_vectors_np is None:
+            logger.log_error(
+                "corpus_not_restored",
+                "Corpus was not restored because the pre-cycle vectors were not provided.",
+            )
+            return False
+        try:
+            # Payload retrieve stays in this try. An exception here must not
+            # escape, or the caller would skip the pre-cycle adapter reload.
+            source_payloads = payload_map
+            if source_payloads is None:
+                existing = qdrant.retrieve(
+                    collection_name=collection_name,
+                    ids=written_ids,
+                    with_vectors=False,
+                )
+                source_payloads = {point.id: point.payload for point in existing}
+            points = []
+            for doc_id in written_ids:
+                idx = id_to_index[doc_id]
+                pay = source_payloads.get(doc_id, {}) or {}
+                points.append(PointStruct(
+                    id=doc_id,
+                    vector=original_vectors_np[idx].tolist(),
+                    payload=pay,
+                ))
+            if not points:
+                return False
+            qdrant.upsert(collection_name=collection_name, points=points)
+            return True
+        except Exception as restore_error:
+            logger.log_error(
+                "corpus_not_restored",
+                "Corpus was not restored.",
+                exception=restore_error,
+            )
+            return False
+
     for i in range(0, len(ordered_ids), chunk_size):
         chunk_ids = ordered_ids[i:i + chunk_size]
         chunk_vectors = new_vectors_np[i:i + chunk_size]
@@ -124,15 +173,14 @@ def sync_vectors_to_qdrant(qdrant: Any, collection_name: str, ordered_ids: List,
                     points=batch_points
                 )
                 total_updates += len(batch_points)
-        except ValueError as e:
-            logger.log_error("database_update", 
-                           f"Invalid vector data in batch {i//chunk_size}", 
-                           exception=e, batch_num=i//chunk_size)
-            failed_updates += len(chunk_ids)
+                written_ids.extend(chunk_ids)
         except Exception as e:
-            logger.log_error("database_update", 
-                           f"Update batch {i//chunk_size} failed", 
+            logger.log_error("database_update",
+                           f"Update batch {i//chunk_size} failed",
                            exception=e, batch_num=i//chunk_size)
-            failed_updates += len(chunk_ids)
-    
-    return total_updates, failed_updates
+            failed_updates += len(ordered_ids) - len(written_ids)
+            restored = _restore_written()
+            compensated = bool(written_ids) and restored
+            return total_updates, failed_updates, compensated
+
+    return total_updates, failed_updates, False

@@ -344,7 +344,7 @@ class TestAntigravityEngine(unittest.TestCase):
             mock_stc_cls.return_value = mock_stc
             
             # Mock sync to return success (no failures)
-            mock_sync.return_value = (5, 0)
+            mock_sync.return_value = (5, 0, False)
 
             engine = self._make_engine()
             train_param = torch.nn.Parameter(torch.tensor(1.0))
