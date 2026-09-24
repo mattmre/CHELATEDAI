@@ -592,9 +592,17 @@ def get_inline_dashboard_html():
         };
 
         function formatTimestamp(timestamp) {
-            if (!timestamp) return '-';
-            const date = new Date(timestamp * 1000);
-            return date.toLocaleString();
+            if (timestamp === null || timestamp === undefined || timestamp === '') return '-';
+            var date;
+            if (typeof timestamp === 'number' && isFinite(timestamp)) {
+                date = new Date(timestamp * 1000);
+            } else if (typeof timestamp === 'string') {
+                var zoned = /(?:Z|[+-]\d{2}:?\d{2})$/.test(timestamp) ? timestamp : (timestamp + 'Z');
+                date = new Date(zoned);
+            } else {
+                return '-';
+            }
+            return isNaN(date.getTime()) ? '-' : date.toLocaleString();
         }
 
         function formatNumber(num) {
