@@ -18,7 +18,7 @@ import unittest
 from unittest.mock import patch
 
 import egv.training.trainer as training_trainer
-from egv.canonical import GENESIS_HASH, canonical_json, content_id, digest_for
+from egv.canonical import GENESIS_HASH, canonical_json, content_id, digest_bytes, digest_for
 from egv.cli import main
 from egv.evaluation.dataset import EvaluationCorpus
 from egv.receipts import ReceiptSigner, key_id_for_public_key
@@ -45,7 +45,12 @@ from egv.training import (
     run_production_training,
     receive_external_adapter,
 )
-from egv.training.contracts import FrozenTrainingDataset, LedgerCutoff
+from egv.training.contracts import (
+    MAX_TRAINING_TOKENS,
+    FrozenTrainingDataset,
+    LedgerCutoff,
+    TrainingExample,
+)
 from egv.training.dataset import seal_runtime_dataset
 from egv.training.development import _decode_external_signature
 from egv.training.targets import (
@@ -157,6 +162,80 @@ def _initial_lora_state():
 
 def _clone_lora_state(state):
     return {name: value.clone() for name, value in state.items()}
+
+
+_OMIT_SFT_SPLIT = object()
+
+
+def _seal_twenty_example_runtime_dataset(
+    root,
+    *,
+    campaign_id,
+    task_id_pattern,
+    input_token_count,
+    split=_OMIT_SFT_SPLIT,
+):
+    """Seal 20 private rows the same way the zero-row freezer test seals a dataset.
+
+    Row identity matches the real-PEFT fixture shape: content-derived ids, canonical
+    ``egv-sft-row-v1`` JSON, and ``seal_runtime_dataset`` bytes.
+    """
+
+    cutoff = LedgerCutoff(
+        campaign_id,
+        1,
+        "event",
+        digest_for(campaign_id + "-event"),
+        digest_for(campaign_id + "-receipts"),
+        1,
+        "evaluator-key",
+    )
+    rows = []
+    for index in range(20):
+        task_id = task_id_pattern.format(index)
+        prompt = "repair task {}".format(index)
+        target = "return fixed"
+        source_digest = digest_for({"source": index, "campaign": campaign_id})
+        sft = {
+            "schema_version": "egv-sft-row-v1",
+            "task_id": task_id,
+            "task_family": "PURE_FUNCTION",
+            "arm": "B",
+            "attempt_index": 1,
+            "candidate_artifact_digest": source_digest,
+            "prompt_digest": digest_for({"context": index, "campaign": campaign_id}),
+            "diagnostic_enum": "PASS",
+            "promotion_disposition": "PROMOTED",
+        }
+        if split is not _OMIT_SFT_SPLIT:
+            sft["split"] = split
+        sft_row_json = canonical_json(sft)
+        values = {
+            "campaign_id": cutoff.campaign_id,
+            "run_id": "run-{:02d}".format(index),
+            "task_id": task_id,
+            "arm_id": "B",
+            "seed": 1,
+            "attempt_index": 1,
+            "candidate_id": "candidate-{:02d}".format(index),
+            "prompt_digest": digest_bytes(prompt.encode("utf-8")),
+            "target_digest": digest_bytes(target.encode("utf-8")),
+            "sft_row_digest": digest_bytes(sft_row_json.encode("utf-8")),
+            "prompt_context_digest": sft["prompt_digest"],
+            "source_digest": source_digest,
+            "verdict_receipt_digest": digest_for({"verdict": index, "campaign": campaign_id}),
+            "effect_receipt_digest": digest_for({"effect": index, "campaign": campaign_id}),
+            "cutoff_digest": cutoff.digest,
+            "input_token_count": input_token_count,
+        }
+        row_id = content_id("trainrow", {"schema_version": "egv-private-training-example-v1", **values})
+        rows.append(TrainingExample(
+            row_id=row_id, prompt=prompt, target=target, sft_row_json=sft_row_json, **values
+        ))
+    rows.sort(key=lambda row: (row.task_id, row.arm_id, row.seed, row.attempt_index, row.candidate_id))
+    dataset = FrozenTrainingDataset(cutoff, tuple(rows), {})
+    artifact = root / "sealed-training.json"
+    return artifact, seal_runtime_dataset(dataset, artifact), dataset
 
 
 class TrainingRuntimeTests(unittest.TestCase):
@@ -1484,6 +1563,137 @@ class TrainingRuntimeTests(unittest.TestCase):
                 )
             self.assertFalse(output.exists())
             self.assertEqual(list(root.glob(".egv-training-private-*")), [])
+
+    def _assert_ineligible_production_seal_rejected(self, root, artifact, freezer_report, error, pattern):
+        output = root / "output"
+        with (
+            patch(
+                "egv.training.trainer._create_private_training_tree",
+                side_effect=AssertionError("private staging reached"),
+            ),
+            patch(
+                "egv.training.development.ExternalDevelopmentLossGateway",
+                side_effect=AssertionError("development gateway reached"),
+            ),
+            patch(
+                "egv.training.trainer.ExternalDevelopmentLossGateway",
+                side_effect=AssertionError("development gateway reached"),
+            ),
+            patch(
+                "egv.variation.model.PinnedModelLoader.load",
+                side_effect=AssertionError("model load reached"),
+            ),
+            self.assertRaisesRegex(error, pattern),
+        ):
+            run_production_training(
+                model_root=root / "missing-model", training_dataset=artifact,
+                evaluator_manifest=root / "missing-service", evaluator_public_key=root / "missing-key",
+                evaluator_command=root / "missing-command",
+                evaluator_transfer_command=root / "missing-transfer-command",
+                output_root=output,
+                expected_training_artifact_sha256=freezer_report["output_digest"],
+                expected_training_dataset_digest=freezer_report["dataset_digest"], device="cuda",
+            )
+        self.assertFalse(output.exists())
+        self.assertEqual(list(root.glob(".egv-training-private-*")), [])
+
+    @requires_production_python
+    def test_heldout_task_id_seal_fails_before_model_or_output(self):
+        with tempfile.TemporaryDirectory(prefix="egv-training-heldout-task-") as temporary:
+            root = Path(temporary)
+            artifact, freezer_report, dataset = _seal_twenty_example_runtime_dataset(
+                root,
+                campaign_id="admission-heldout-task",
+                task_id_pattern="task-heldout-{:02d}",
+                input_token_count=5,
+            )
+            self.assertEqual(len({row.task_id for row in dataset.examples}), 20)
+            self.assertTrue(all("heldout" in row.task_id.lower() for row in dataset.examples))
+            self._assert_ineligible_production_seal_rejected(
+                root, artifact, freezer_report, TrainingLeakageError, "held-out task identity",
+            )
+
+    @requires_production_python
+    def test_heldout_sft_split_seal_fails_before_model_or_output(self):
+        with tempfile.TemporaryDirectory(prefix="egv-training-heldout-split-") as temporary:
+            root = Path(temporary)
+            artifact, freezer_report, dataset = _seal_twenty_example_runtime_dataset(
+                root,
+                campaign_id="admission-heldout-split",
+                task_id_pattern="task-{:02d}",
+                input_token_count=5,
+                split="heldout",
+            )
+            self.assertEqual(
+                [row.task_id for row in dataset.examples],
+                ["task-{:02d}".format(index) for index in range(20)],
+            )
+            self.assertTrue(all(
+                json.loads(row.sft_row_json).get("split") == "heldout" for row in dataset.examples
+            ))
+            self._assert_ineligible_production_seal_rejected(
+                root, artifact, freezer_report, TrainingLeakageError, "non-train SFT split",
+            )
+
+    @requires_production_python
+    def test_over_ceiling_token_count_seal_fails_before_model_or_output(self):
+        self.assertEqual(MAX_TRAINING_TOKENS, 4096)
+        with tempfile.TemporaryDirectory(prefix="egv-training-token-ceiling-") as temporary:
+            root = Path(temporary)
+            artifact, freezer_report, dataset = _seal_twenty_example_runtime_dataset(
+                root,
+                campaign_id="admission-token-ceiling",
+                task_id_pattern="task-{:02d}",
+                input_token_count=4097,
+            )
+            self.assertTrue(all(row.input_token_count == 4097 for row in dataset.examples))
+            self.assertTrue(all("split" not in json.loads(row.sft_row_json) for row in dataset.examples))
+            self._assert_ineligible_production_seal_rejected(
+                root, artifact, freezer_report, TrainingIntegrityError, "4096-token ceiling",
+            )
+
+    def test_load_frozen_runtime_dataset_accepts_omitted_split_and_token_count_five(self):
+        with tempfile.TemporaryDirectory(prefix="egv-training-admit-allow-") as temporary:
+            root = Path(temporary)
+            omitted_root = root / "omitted-split"
+            omitted_root.mkdir()
+            artifact, freezer_report, dataset = _seal_twenty_example_runtime_dataset(
+                omitted_root,
+                campaign_id="admission-omit-split",
+                task_id_pattern="task-{:02d}",
+                input_token_count=5,
+            )
+            self.assertTrue(all("split" not in json.loads(row.sft_row_json) for row in dataset.examples))
+            loaded = training_trainer._load_frozen_runtime_dataset(
+                artifact,
+                expected_artifact_sha256=freezer_report["output_digest"],
+                expected_dataset_digest=freezer_report["dataset_digest"],
+            )
+            self.assertEqual(len(loaded.examples), 20)
+            self.assertEqual({row.input_token_count for row in loaded.examples}, {5})
+            self.assertTrue(all("split" not in json.loads(row.sft_row_json) for row in loaded.examples))
+            self.assertEqual(list(root.glob(".egv-training-private-*")), [])
+
+            train_root = root / "train-split"
+            train_root.mkdir()
+            train_artifact, train_report, _train_dataset = _seal_twenty_example_runtime_dataset(
+                train_root,
+                campaign_id="admission-train-split",
+                task_id_pattern="task-{:02d}",
+                input_token_count=5,
+                split="train",
+            )
+            loaded_train = training_trainer._load_frozen_runtime_dataset(
+                train_artifact,
+                expected_artifact_sha256=train_report["output_digest"],
+                expected_dataset_digest=train_report["dataset_digest"],
+            )
+            self.assertEqual(len(loaded_train.examples), 20)
+            self.assertEqual(
+                {json.loads(row.sft_row_json).get("split") for row in loaded_train.examples},
+                {"train"},
+            )
+            self.assertEqual({row.input_token_count for row in loaded_train.examples}, {5})
 
     @requires_production_python
     def test_sealed_training_handoff_rejects_raw_and_semantic_substitution(self):
