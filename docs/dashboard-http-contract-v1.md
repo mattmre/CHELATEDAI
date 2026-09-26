@@ -27,20 +27,36 @@ authorize. The check reads only `Authorization: Bearer`.
 GET `/`, `/dashboard`, and `/dashboard/` call `serve_dashboard` before
 that check.
 
-HEAD of those three paths returns 200, `Content-Type: text/html`,
-`Content-Length: 0`, and an empty body, before the bearer check.
+HEAD of those three paths returns 200,
+`Content-Type: text/html; charset=utf-8`, `Content-Length: 0`, and an
+empty body, before the bearer check.
 
-GET or HEAD `/api/*` without a bearer is 401 `{"error": "Unauthorized"}`.
-POST, PUT, DELETE, and PATCH of any path without a bearer are 401.
-With a bearer, those four methods are 405 `{"error": "Method not allowed"}`.
+When `_is_api_authorized` is false, every other GET or HEAD path is 401
+`{"error": "Unauthorized"}` before the static check. That includes
+`/nope`, `/dashboard/../secret`, and `/api/*`. A missing event log is
+not consulted. `GET /api/summary` is 401 in that state, not the
+handler's file-not-found 404.
+
+When the token is empty and
+`CHELATED_DASHBOARD_ALLOW_UNAUTHENTICATED` is set, authorization is
+true. HEAD `/api/*` is then 405 `{"error": "Method not allowed"}`.
+GET `/api/summary` reaches `handle_api_summary`. A missing log file
+there is 404 `{"error": "Not found"}`. GET of a path that is not an
+API route and is not an allowed `/dashboard/` asset is 404 only after
+authorization. A `..` or dot-segment is rejected by
+`_is_static_path_allowed` at that point, also as 404.
+
+POST, PUT, DELETE, and PATCH are 401 until `_is_api_authorized` is
+true. An `Authorization: Bearer` header does not count when the
+configured token is empty, and a bearer that does not match the
+configured token is 401. Those four methods are 405
+`{"error": "Method not allowed"}` only after the bearer matches.
 
 OPTIONS does not require a bearer. The status is 204 and the body length
 is 0. `Access-Control-Allow-Origin` is sent only when
 `DASHBOARD_CORS_ORIGIN` is set. There is no wildcard origin.
 
-A path that is not an API route and is not under `/dashboard/` is 404.
-A static path with `..` or a dot segment is 404. This document does not
-claim a browser fetched `/.git/HEAD`.
+This document does not claim a browser fetched `/.git/HEAD`.
 
 ## Integer limit
 

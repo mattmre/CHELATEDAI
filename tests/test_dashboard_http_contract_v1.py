@@ -90,6 +90,49 @@ class TestDashboardHttpContractV1(unittest.TestCase):
             method({"limit": ["abc"]})
             self.assertEqual(handler._errors, [(400, "limit must be an integer")], method.__name__)
 
+    def test_unauthorized_paths_are_401_before_the_static_404(self):
+        text = SPEC.read_text(encoding="utf-8")
+        self.assertIn("text/html; charset=utf-8", text)
+        self.assertIn("before the static check", text)
+        self.assertIn("only after the bearer matches", text)
+        old_token = dashboard_server.DASHBOARD_TOKEN
+        old_open = dashboard_server.DASHBOARD_ALLOW_UNAUTHENTICATED
+        dashboard_server.DASHBOARD_TOKEN = ""
+        dashboard_server.DASHBOARD_ALLOW_UNAUTHENTICATED = False
+        try:
+            unknown = _handler()
+            unknown.path = "/nope"
+            unknown.do_GET()
+            self.assertEqual(unknown._errors, [(401, "Unauthorized")])
+            dotted = _handler()
+            dotted.path = "/dashboard/../secret"
+            dotted.do_GET()
+            self.assertEqual(dotted._errors, [(401, "Unauthorized")])
+            posted = _handler()
+            posted.path = "/api/events"
+            posted.headers = {"Authorization": "Bearer x"}
+            posted.do_POST()
+            self.assertEqual(posted._errors, [(401, "Unauthorized")])
+        finally:
+            dashboard_server.DASHBOARD_TOKEN = old_token
+            dashboard_server.DASHBOARD_ALLOW_UNAUTHENTICATED = old_open
+
+        dashboard_server.DASHBOARD_TOKEN = "secret"
+        try:
+            mismatch = _handler()
+            mismatch.path = "/api/events"
+            mismatch.headers = {"Authorization": "Bearer wrong"}
+            mismatch.do_POST()
+            self.assertEqual(mismatch._errors, [(401, "Unauthorized")])
+            matched = _handler()
+            matched.path = "/api/events"
+            matched.headers = {"Authorization": "Bearer secret"}
+            matched.do_POST()
+            self.assertEqual(matched._errors, [(405, "Method not allowed")])
+        finally:
+            dashboard_server.DASHBOARD_TOKEN = old_token
+            dashboard_server.DASHBOARD_ALLOW_UNAUTHENTICATED = old_open
+
     def test_head_control_page_is_empty_200_and_api_is_401(self):
         old = dashboard_server.DASHBOARD_TOKEN
         dashboard_server.DASHBOARD_TOKEN = "secret"
