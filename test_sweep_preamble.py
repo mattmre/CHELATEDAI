@@ -126,9 +126,14 @@ class TestSweepPreamble(unittest.TestCase):
         self.assertIs(seen["adapter"], engine.adapter)
         self.assertIsNot(seen["adapter"], engine.loaded_adapter)
         self.assertIsInstance(seen["adapter"], nn.Module)
-        self.assertEqual(engine.embedding_backend.calls, [])
+        self.assertEqual(engine.embedding_backend.calls, [list(CORPUS.values())])
         engine.embed.assert_not_called()
-        self.assertEqual(snapshot, [])
+        self.assertEqual(len(engine.qdrant.upserts), 1)
+        self.assertEqual(
+            [_as_list(point.vector) for point in engine.qdrant.upserts[0]],
+            _vectors(list(CORPUS.values())),
+        )
+        self.assertEqual(snapshot[0]["id"], 10)
         self.assertEqual(engine.qdrant.scrolls, 1)
 
     def test_short_collection_ingests_embed_raw_vectors_not_adapter_embed(self):

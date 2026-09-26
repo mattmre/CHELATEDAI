@@ -59,12 +59,20 @@ def prepare_sweep_baseline(
 
 
 def _ingest_raw_corpus_if_short(engine, corpus, batch_size):
-    """Upsert missing corpus rows with base vectors. Returns 1 on batch failure."""
+    """Upsert the corpus with base vectors. Returns 1 on batch failure.
+
+    A collection whose ``points_count`` is already at least the corpus
+    length is still rewritten. Those stored vectors can be adapter
+    outputs. Skipping them would publish that bake as the baseline.
+    """
     info = engine.qdrant.get_collection(engine.collection_name)
     if info.points_count >= len(corpus):
-        return 0
-
-    print(f"Collection empty. Ingesting {len(corpus)} documents...")
+        print(
+            f"Collection already holds {info.points_count} points. "
+            "Rewriting the corpus with raw vectors."
+        )
+    else:
+        print(f"Collection empty. Ingesting {len(corpus)} documents...")
     from qdrant_client.models import PointStruct
 
     keys = list(corpus.keys())

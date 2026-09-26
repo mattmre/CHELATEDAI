@@ -2436,7 +2436,7 @@ class AntigravityEngine:
             new_vectors_np = self.adapter(input_tensor).numpy()
 
         chunk_size = ChelationConfig.CHUNK_SIZE
-        total_updates, failed_updates, _compensated = sync_vectors_to_qdrant(
+        total_updates, failed_updates, compensated = sync_vectors_to_qdrant(
             self.qdrant, self.collection_name, ordered_ids,
             new_vectors_np, chunk_size, self.logger, None,
             original_vectors_np=original_vectors_np,
@@ -2444,6 +2444,20 @@ class AntigravityEngine:
         if failed_updates:
             _write_adapter_bytes(self.adapter_path, prior_adapter)
             self.adapter.load(self.adapter_path)
+        # A failed compensating upsert leaves the written ids in Qdrant and
+        # the reloaded adapter at the pre-cycle bytes. That mixed store is
+        # not a completed cycle. Do not upsert again and claim the corpus
+        # came back.
+        if failed_updates and not compensated and total_updates:
+            self.logger.log_error(
+                "offline_distillation_mixed_store",
+                "A corpus upsert wrote ids and the compensating upsert did not "
+                "restore them. The pre-cycle adapter was reloaded. Those ids "
+                "are still the new vectors.",
+                vectors_updated=total_updates,
+                vectors_failed=failed_updates,
+            )
+            return
         self.logger.log_training_complete(
             final_loss=final_loss,
             vectors_updated=total_updates,

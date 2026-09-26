@@ -57,6 +57,25 @@ def _nonnegative_limit(raw: str) -> int:
     return min(value, _MAX_API_LIMIT)
 
 
+def _non_integer_limit(query_params: Dict[str, List[str]]) -> bool:
+    """True when ``limit`` is present and not an integer.
+
+    History GET handlers answer that case with HTTP 400. Model-scope and
+    evidence-cleanup use the same rule. ``_limit_or_default`` still keeps
+    the default for callers that have not opted into the 400.
+    """
+    if not query_params or "limit" not in query_params:
+        return False
+    values = query_params.get("limit") or []
+    if not values:
+        return False
+    try:
+        int(values[0])
+    except (TypeError, ValueError):
+        return True
+    return False
+
+
 def _limit_or_default(query_params: Dict[str, List[str]], default: int) -> int:
     """Bounded ``limit`` query. A non-integer keeps ``default`` instead of failing the request."""
     values = query_params.get("limit") if query_params else None
@@ -1742,11 +1761,19 @@ class DashboardHandler(SimpleHTTPRequestHandler):
     def do_HEAD(self):
         """Mirror do_GET guards for HEAD (same auth + static confinement)."""
         path = urlparse(self.path).path
+        # The control page is served before the bearer check on GET. HEAD of
+        # those three paths follows that. /api/* stays unauthorized. A HEAD
+        # response has no body.
+        if path in ("/", "/dashboard", "/dashboard/"):
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+            return
         if not self._is_api_authorized():
             self.send_error_response(401, "Unauthorized")
             return
-        if path.startswith("/api/") or path in ("/", "/dashboard",
-                                                 "/dashboard/"):
+        if path.startswith("/api/"):
             self.send_error_response(405, "Method not allowed")
             return
         if not self._is_static_path_allowed(path):
@@ -2007,6 +2034,9 @@ class DashboardHandler(SimpleHTTPRequestHandler):
 
     def handle_api_evidence_cleanup_plan(self, query_params: Dict[str, List[str]]):
         """Handle /api/evidence_cleanup_plan endpoint."""
+        if _non_integer_limit(query_params):
+            self.send_error_response(400, "limit must be an integer")
+            return
         try:
             keep_latest = 1
             raw_keep = query_params.get("keep_latest") if query_params else None
@@ -2037,6 +2067,9 @@ class DashboardHandler(SimpleHTTPRequestHandler):
     def handle_api_model_scope_events(self, query_params):
         """Handle /api/model_scope/events — lists recent activation event files."""
         from model_scope_artifacts import ArtifactStore, load_model_scope_artifact, summarize_model_scope_artifact
+        if _non_integer_limit(query_params):
+            self.send_error_response(400, "limit must be an integer")
+            return
         try:
             limit = _limit_or_default(query_params, 20)
             store = ArtifactStore(base_dir=MODEL_SCOPE_ARTIFACT_ROOT)
@@ -2060,6 +2093,9 @@ class DashboardHandler(SimpleHTTPRequestHandler):
     def handle_api_model_scope_features(self, query_params):
         """Handle /api/model_scope/features — lists recent sparse feature events."""
         from model_scope_artifacts import ArtifactStore, load_model_scope_artifact
+        if _non_integer_limit(query_params):
+            self.send_error_response(400, "limit must be an integer")
+            return
         try:
             limit = _limit_or_default(query_params, 20)
             store = ArtifactStore(base_dir=MODEL_SCOPE_ARTIFACT_ROOT)
@@ -2083,6 +2119,9 @@ class DashboardHandler(SimpleHTTPRequestHandler):
     def handle_api_model_scope_interventions(self, query_params):
         """Handle /api/model_scope/interventions — lists recent intervention records."""
         from model_scope_artifacts import ArtifactStore, load_model_scope_artifact
+        if _non_integer_limit(query_params):
+            self.send_error_response(400, "limit must be an integer")
+            return
         try:
             limit = _limit_or_default(query_params, 20)
             store = ArtifactStore(base_dir=MODEL_SCOPE_ARTIFACT_ROOT)
