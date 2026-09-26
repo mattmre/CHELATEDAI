@@ -157,11 +157,15 @@ class LowRankEvolutionStrategyOptimizer:
         module: nn.Module,
         config: Optional[EvolutionStrategiesConfig] = None,
         logger: Optional[Any] = None,
+        extra_modules: Optional[List[nn.Module]] = None,
     ):
         self.module = module
+        self.extra_modules = [item for item in (extra_modules or []) if item is not None]
         self.config = config or EvolutionStrategiesConfig()
         self.logger = logger or get_logger()
         self.params = [p for p in module.parameters() if p.requires_grad]
+        for extra in self.extra_modules:
+            self.params.extend(p for p in extra.parameters() if p.requires_grad)
         if not self.params:
             raise ValueError("module has no trainable parameters")
 
@@ -283,6 +287,8 @@ class LowRankEvolutionStrategyOptimizer:
         """Run one ES generation and apply the weighted perturbation update."""
 
         self.module.eval()
+        for extra in self.extra_modules:
+            extra.eval()
         base = self._snapshot()
         sigma = self.current_sigma
         population_perturbations: List[List[torch.Tensor]] = []
@@ -400,15 +406,36 @@ def train_adapter_with_es(
     config: Optional[EvolutionStrategiesConfig] = None,
     logger: Optional[Any] = None,
     quantization_gate: Optional[QuantizationPromotionGate] = None,
+    projection: Optional[nn.Module] = None,
+    target_builder: Optional[Callable[[], torch.Tensor]] = None,
 ) -> Dict[str, Any]:
-    """Train an adapter against fixed targets using low-rank ES fitness."""
+    """Train an adapter against targets using low-rank ES fitness.
+
+    When ``projection`` and ``target_builder`` are set, fitness rebuilds the
+    targets from the projection's current weights. A fixed target tensor
+    cannot move those weights.
+    """
 
     es_config = config or EvolutionStrategiesConfig()
-    optimizer = LowRankEvolutionStrategyOptimizer(adapter, es_config, logger=logger)
+    extra_modules = [projection] if projection is not None else None
+    optimizer = LowRankEvolutionStrategyOptimizer(
+        adapter,
+        es_config,
+        logger=logger,
+        extra_modules=extra_modules,
+    )
+
+    def current_targets() -> torch.Tensor:
+        if target_builder is None:
+            return target_tensor
+        built = target_builder()
+        if built is None:
+            return target_tensor
+        return built
 
     with torch.no_grad():
         baseline_outputs = adapter(input_tensor)
-        baseline_loss = criterion(baseline_outputs, target_tensor)
+        baseline_loss = criterion(baseline_outputs, current_targets())
         baseline_fitness = -float(baseline_loss.item())
 
     def fitness_fn() -> float:
@@ -416,7 +443,8 @@ def train_adapter_with_es(
             outputs = adapter(input_tensor)
             if es_config.quantization_aware:
                 outputs = simulate_int8_quantization(outputs, levels=es_config.quantization_levels)
-            loss = criterion(outputs, target_tensor)
+            targets = current_targets()
+            loss = criterion(outputs, targets)
             reg_loss = getattr(adapter, "regularization_loss", lambda: 0.0)()
             if isinstance(reg_loss, torch.Tensor):
                 loss = loss + 0.01 * reg_loss
@@ -427,12 +455,13 @@ def train_adapter_with_es(
     result = optimizer.optimize(fitness_fn, generations=es_config.generations)
     with torch.no_grad():
         outputs = adapter(input_tensor)
-        fp32_loss = criterion(outputs, target_tensor)
+        targets = current_targets()
+        fp32_loss = criterion(outputs, targets)
         if es_config.quantization_aware:
             quantized_outputs = simulate_int8_quantization(outputs, levels=es_config.quantization_levels)
         else:
             quantized_outputs = outputs
-        final_loss = float(criterion(quantized_outputs, target_tensor).item())
+        final_loss = float(criterion(quantized_outputs, targets).item())
         fp32_fitness = -float(fp32_loss.item())
         quantized_fitness = -final_loss
     result["final_loss"] = final_loss
