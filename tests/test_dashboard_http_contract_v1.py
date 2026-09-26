@@ -6,7 +6,9 @@ call the shipped functions and read the route table in dashboard_server.py.
 
 from __future__ import annotations
 
+import os
 import subprocess
+import sys
 import unittest
 from io import BytesIO
 from pathlib import Path
@@ -129,6 +131,49 @@ class TestDashboardHttpContractV1(unittest.TestCase):
             matched.headers = {"Authorization": "Bearer secret"}
             matched.do_POST()
             self.assertEqual(matched._errors, [(405, "Method not allowed")])
+        finally:
+            dashboard_server.DASHBOARD_TOKEN = old_token
+            dashboard_server.DASHBOARD_ALLOW_UNAUTHENTICATED = old_open
+
+    def test_open_mode_is_four_words_and_skips_the_bearer_compare(self):
+        text = SPEC.read_text(encoding="utf-8")
+        source = (REPO / "dashboard_server.py").read_text(encoding="utf-8")
+        self.assertIn('{"1", "true", "yes", "on"}', source)
+        self.assertIn("no bearer is compared", text)
+        probe = (
+            "import dashboard_server; "
+            "print(dashboard_server.DASHBOARD_ALLOW_UNAUTHENTICATED)"
+        )
+        for value, expected in (
+            ("0", "False"),
+            ("false", "False"),
+            ("", "False"),
+            ("yes", "True"),
+            ("ON", "True"),
+            ("1", "True"),
+        ):
+            env = os.environ.copy()
+            if value == "":
+                env.pop("CHELATED_DASHBOARD_ALLOW_UNAUTHENTICATED", None)
+            else:
+                env["CHELATED_DASHBOARD_ALLOW_UNAUTHENTICATED"] = value
+            env["CHELATED_DASHBOARD_TOKEN"] = ""
+            out = subprocess.check_output(
+                [sys.executable, "-c", probe], cwd=REPO, env=env, text=True
+            )
+            self.assertIn(expected, out.splitlines()[-1])
+
+        old_token = dashboard_server.DASHBOARD_TOKEN
+        old_open = dashboard_server.DASHBOARD_ALLOW_UNAUTHENTICATED
+        dashboard_server.DASHBOARD_TOKEN = ""
+        dashboard_server.DASHBOARD_ALLOW_UNAUTHENTICATED = True
+        try:
+            for headers in ({}, {"Authorization": "Bearer x"}):
+                posted = _handler()
+                posted.path = "/api/events"
+                posted.headers = headers
+                posted.do_POST()
+                self.assertEqual(posted._errors, [(405, "Method not allowed")])
         finally:
             dashboard_server.DASHBOARD_TOKEN = old_token
             dashboard_server.DASHBOARD_ALLOW_UNAUTHENTICATED = old_open
