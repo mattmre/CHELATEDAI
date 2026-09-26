@@ -523,6 +523,115 @@ class EnsembleTeacherHelper:
         self._projection_enabled = True
         self._projections = {}  # teacher_idx -> DimensionProjection
         self.teacher_weight = 0.5
+        self._ensemble_rows = []
+        self._ensemble_batches = []
+        self._ensemble_student = None
+        self._live_alpha = None
+        self._live_parts = []
+        self._record_live = False
+        self._accumulate_live = False
+
+    def check_dimension_compatibility(self, student_dim: int) -> bool:
+        """Return False when a known member dim differs. Unknown dims do not raise.
+
+        ``run_offline_distillation`` reads ``teacher_dim`` only after False.
+        This helper keeps projection enabled, so that path logs and continues.
+        """
+        mismatched = None
+        for teacher in self.teachers:
+            dim = getattr(teacher, "teacher_dim", None)
+            if isinstance(dim, int) and dim != int(student_dim):
+                mismatched = dim
+                break
+        if mismatched is None:
+            return True
+        self.teacher_dim = mismatched
+        return False
+
+    def begin_live_distillation(self):
+        """Drop projection graphs retained by an earlier ensemble target build."""
+        self._ensemble_rows = []
+        self._ensemble_batches = []
+        self._ensemble_student = None
+        self._live_alpha = None
+        self._live_parts = []
+        self._accumulate_live = True
+
+    def _blend_recorded_rows(self, rows, student, alpha):
+        """Weighted in-graph blend for one batch. Hinton, Vinyals, and Dean, 2015."""
+        acc = None
+        for kind, index, tensor, weight in rows:
+            if kind == "proj":
+                term = self._projections[index].project_tensor(tensor) * weight
+            else:
+                term = tensor * weight
+            acc = term if acc is None else acc + term
+        if acc is None:
+            return student
+        blended = alpha * acc + (1.0 - alpha) * student
+        norms = torch.linalg.vector_norm(blended, dim=1, keepdim=True).clamp_min(1e-9)
+        return blended / norms
+
+    def _store_ensemble_batch(self, record):
+        """Keep one batch. A standalone generate replaces earlier batches."""
+        if not self._accumulate_live:
+            self._ensemble_batches = []
+            self._live_parts = []
+        self._ensemble_batches.append(record)
+        if record[0] == "const":
+            self._live_parts.append(record[1])
+            return
+        _kind, rows, student, alpha = record
+        self._live_parts.append(self._blend_recorded_rows(rows, student, alpha))
+
+    def _project_member(self, index, embs, target_dim):
+        """Project one teacher into ``target_dim``. Record a live map when asked."""
+        if target_dim is None or embs.shape[-1] == target_dim:
+            if self._record_live:
+                raw = torch.from_numpy(np.ascontiguousarray(embs, dtype=np.float32))
+                self._ensemble_rows.append(
+                    ("raw", index, raw.detach(), float(self.weights[index]))
+                )
+            return embs
+        if index not in self._projections:
+            self._projections[index] = DimensionProjection(embs.shape[-1], target_dim)
+        if self._record_live:
+            teacher_tensor = torch.from_numpy(np.ascontiguousarray(embs, dtype=np.float32))
+            live = self._projections[index].project_tensor(teacher_tensor)
+            self._ensemble_rows.append(
+                ("proj", index, teacher_tensor.detach(), float(self.weights[index]))
+            )
+            return live.detach().cpu().numpy()
+        return self._projections[index].project_numpy(embs)
+
+    def take_live_distillation_targets(self):
+        parts = self._live_parts
+        self._live_parts = []
+        if not parts:
+            return None
+        if len(parts) == 1:
+            return parts[0]
+        return torch.cat(parts, dim=0)
+
+    def recompute_live_targets(self):
+        """Rebuild every stored batch from the current projection weights.
+
+        Offline distillation generates one batch at a time. Summing those
+        rows onto the last student tensor would keep only the last batch
+        shape. Each batch is blended on its own, then concatenated.
+        """
+        if not self._ensemble_batches:
+            return None
+        parts = []
+        for record in self._ensemble_batches:
+            if record[0] == "const":
+                parts.append(record[1])
+                continue
+            _kind, rows, student, alpha = record
+            parts.append(self._blend_recorded_rows(rows, student, alpha))
+        if len(parts) == 1:
+            return parts[0]
+        return torch.cat(parts, dim=0)
 
     def _encode_single_teacher(self, args):
         """Encode texts for a single teacher. Used by parallel path.
@@ -563,12 +672,7 @@ class EnsembleTeacherHelper:
             embs = teacher.get_teacher_embeddings(texts)
             if len(embs) == 0:
                 continue
-            if target_dim is not None and embs.shape[-1] != target_dim:
-                if i not in self._projections:
-                    self._projections[i] = DimensionProjection(
-                        embs.shape[-1], target_dim,
-                    )
-                embs = self._projections[i].project_numpy(embs)
+            embs = self._project_member(i, embs, target_dim)
             all_embeddings.append(embs * self.weights[i])
         if not all_embeddings:
             return np.array([])
@@ -591,30 +695,69 @@ class EnsembleTeacherHelper:
             embs = results.get(i, np.array([]))
             if len(embs) == 0:
                 continue
-            if target_dim is not None and embs.shape[-1] != target_dim:
-                if i not in self._projections:
-                    self._projections[i] = DimensionProjection(
-                        embs.shape[-1], target_dim,
-                    )
-                embs = self._projections[i].project_numpy(embs)
+            embs = self._project_member(i, embs, target_dim)
             all_embeddings.append(embs * self.weights[i])
         if not all_embeddings:
             return np.array([])
         return sum(all_embeddings)
 
-    def generate_distillation_targets(self, texts, student_embeddings,
-                                      teacher_weight=None):
-        """Generate targets using weighted ensemble."""
+    def generate_distillation_targets(self, texts, student_embeddings=None,
+                                      teacher_weight=None, current_embeddings=None):
+        """Generate targets using weighted ensemble.
+
+        ``current_embeddings`` is the engine keyword. ``student_embeddings``
+        is the older positional name.
+
+        A dimension mismatch keeps a live projection tensor. The returned
+        array is a detached copy. Hinton, Vinyals, and Dean, 2015,
+        arXiv:1503.02531.
+        """
         if teacher_weight is None:
             teacher_weight = self.teacher_weight
+        if student_embeddings is None:
+            student_embeddings = current_embeddings
+        start = len(self._ensemble_rows)
         student_dim = student_embeddings.shape[-1]
-        teacher_embs = self.get_teacher_embeddings(texts, target_dim=student_dim)
+        self._record_live = True
+        try:
+            teacher_embs = self.get_teacher_embeddings(texts, target_dim=student_dim)
+        finally:
+            self._record_live = False
+        new_rows = list(self._ensemble_rows[start:])
         if len(teacher_embs) == 0:
+            self._ensemble_rows = self._ensemble_rows[:start]
+            if self._accumulate_live:
+                const = torch.from_numpy(
+                    np.ascontiguousarray(student_embeddings, dtype=np.float32)
+                ).detach()
+                self._store_ensemble_batch(("const", const))
             return student_embeddings.copy()
-        blended = teacher_weight * teacher_embs + (1 - teacher_weight) * student_embeddings
-        norms = np.linalg.norm(blended, axis=1, keepdims=True)
-        norms = np.maximum(norms, 1e-9)
-        return blended / norms
+        projected = any(kind == "proj" for kind, _, _, _ in new_rows)
+        if not projected:
+            if self._accumulate_live:
+                self._ensemble_rows = self._ensemble_rows[:start]
+            else:
+                self._ensemble_rows = []
+            blended = teacher_weight * teacher_embs + (1 - teacher_weight) * student_embeddings
+            norms = np.linalg.norm(blended, axis=1, keepdims=True)
+            norms = np.maximum(norms, 1e-9)
+            targets = blended / norms
+            if self._accumulate_live:
+                const = torch.from_numpy(
+                    np.ascontiguousarray(targets, dtype=np.float32)
+                ).detach()
+                self._store_ensemble_batch(("const", const))
+            return targets
+        if not self._accumulate_live:
+            self._ensemble_rows = new_rows
+        student_tensor = torch.from_numpy(
+            np.ascontiguousarray(student_embeddings, dtype=np.float32)
+        ).detach()
+        alpha = float(teacher_weight)
+        self._ensemble_student = student_tensor
+        self._live_alpha = alpha
+        self._store_ensemble_batch(("live", new_rows, student_tensor, alpha))
+        return self._live_parts[-1].detach().cpu().numpy()
 
     def compute_alignment_metric(self, student_embeds, teacher_embeds=None,
                                  texts=None):

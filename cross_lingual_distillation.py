@@ -7,6 +7,7 @@ and can drop into engine.teacher_helper with zero training loop changes.
 """
 
 import numpy as np
+import torch
 from typing import Dict, List, Optional, Tuple
 
 from chelation_logger import get_logger
@@ -111,7 +112,13 @@ class CrossLingualTeacherRouter:
         self._teachers: Dict[str, TeacherDistillationHelper] = {}
         # Projection layers: model_name -> DimensionProjection
         self._projections: Dict[str, DimensionProjection] = {}
-
+        self._xl_records = []
+        self._xl_batches = []
+        self._xl_student = None
+        self._live_alpha = None
+        self._live_parts = []
+        self._record_live = False
+        self._accumulate_live = False
         self.logger.log_event(
             "cross_lingual_router_init",
             "CrossLingualTeacherRouter initialized",
@@ -119,6 +126,89 @@ class CrossLingualTeacherRouter:
             default_teacher=language_mapping.default_teacher,
             projection_enabled=projection_enabled,
         )
+
+    def check_dimension_compatibility(self, student_dim: int) -> bool:
+        """Projection-enabled routing stays compatible. Unknown dims do not raise.
+
+        ``run_offline_distillation`` reads ``teacher_dim`` only after False.
+        Returning True while projection is enabled skips that read and
+        continues into ``generate_distillation_targets``.
+        """
+        if self._projection_enabled:
+            return True
+        mismatched = None
+        for teacher in self._teachers.values():
+            dim = getattr(teacher, "teacher_dim", None)
+            if isinstance(dim, int) and dim != int(student_dim):
+                mismatched = dim
+                break
+        if mismatched is None:
+            return True
+        self.teacher_dim = mismatched
+        return False
+
+    def begin_live_distillation(self):
+        """Drop projection graphs retained by an earlier routed target build."""
+        self._xl_records = []
+        self._xl_batches = []
+        self._xl_student = None
+        self._live_alpha = None
+        self._live_parts = []
+        self._accumulate_live = True
+
+    def _blend_xl_records(self, records, student, alpha):
+        """Scatter one batch through the current maps. Indices are batch-local."""
+        acc = torch.zeros_like(student)
+        for indices, kind, key, tensor in records:
+            if kind == "proj":
+                projected = self._projections[key].project_tensor(tensor)
+            else:
+                projected = tensor
+            index = torch.tensor(indices, dtype=torch.long)
+            acc[index] = projected
+        blended = alpha * acc + (1.0 - alpha) * student
+        norms = torch.linalg.vector_norm(blended, dim=1, keepdim=True).clamp_min(1e-9)
+        return blended / norms
+
+    def _store_xl_batch(self, record):
+        """Keep one routed batch. A standalone generate replaces earlier batches."""
+        if not self._accumulate_live:
+            self._xl_batches = []
+            self._live_parts = []
+        self._xl_batches.append(record)
+        if record[0] == "const":
+            self._live_parts.append(record[1])
+            return
+        _kind, records, student, alpha = record
+        self._live_parts.append(self._blend_xl_records(records, student, alpha))
+
+    def take_live_distillation_targets(self):
+        parts = self._live_parts
+        self._live_parts = []
+        if not parts:
+            return None
+        if len(parts) == 1:
+            return parts[0]
+        return torch.cat(parts, dim=0)
+
+    def recompute_live_targets(self):
+        """Rebuild each routed batch, then concatenate.
+
+        Record indices are local to the batch that produced them. Scattering
+        every batch into the last student tensor keeps only that batch's shape.
+        """
+        if not self._xl_batches:
+            return None
+        parts = []
+        for record in self._xl_batches:
+            if record[0] == "const":
+                parts.append(record[1])
+                continue
+            _kind, records, student, alpha = record
+            parts.append(self._blend_xl_records(records, student, alpha))
+        if len(parts) == 1:
+            return parts[0]
+        return torch.cat(parts, dim=0)
 
     def _get_or_create_teacher(self, model_name: str) -> TeacherDistillationHelper:
         """Get or lazily create a teacher helper for the given model name."""
@@ -204,7 +294,8 @@ class CrossLingualTeacherRouter:
             if len(group_embeddings) == 0:
                 continue
 
-            # Project to target_dim if needed
+            # Project to target_dim if needed. A live recording keeps the map
+            # in the graph for generate_distillation_targets.
             if (target_dim is not None
                     and group_embeddings.shape[-1] != target_dim
                     and self._projection_enabled):
@@ -212,7 +303,23 @@ class CrossLingualTeacherRouter:
                     model_name, group_embeddings.shape[-1], target_dim,
                 )
                 if proj is not None:
-                    group_embeddings = proj.project_numpy(group_embeddings)
+                    key = f"{model_name}_{group_embeddings.shape[-1]}_{target_dim}"
+                    if self._record_live:
+                        teacher_tensor = torch.from_numpy(
+                            np.ascontiguousarray(group_embeddings, dtype=np.float32)
+                        )
+                        live = proj.project_tensor(teacher_tensor)
+                        self._xl_records.append(
+                            (group_indices, "proj", key, teacher_tensor.detach())
+                        )
+                        group_embeddings = live.detach().cpu().numpy()
+                    else:
+                        group_embeddings = proj.project_numpy(group_embeddings)
+            elif self._record_live:
+                raw = torch.from_numpy(
+                    np.ascontiguousarray(group_embeddings, dtype=np.float32)
+                )
+                self._xl_records.append((group_indices, "raw", None, raw.detach()))
 
             # Place embeddings back in original order
             for i, idx in enumerate(group_indices):
@@ -245,8 +352,9 @@ class CrossLingualTeacherRouter:
         return output
 
     def generate_distillation_targets(self, texts: List[str],
-                                      student_embeddings: np.ndarray,
-                                      teacher_weight: Optional[float] = None
+                                      student_embeddings: np.ndarray = None,
+                                      teacher_weight: Optional[float] = None,
+                                      current_embeddings: np.ndarray = None,
                                       ) -> np.ndarray:
         """
         Generate distillation targets using language-aware teacher routing.
@@ -262,15 +370,54 @@ class CrossLingualTeacherRouter:
         """
         if teacher_weight is None:
             teacher_weight = self.teacher_weight
+        if student_embeddings is None:
+            student_embeddings = current_embeddings
 
         if teacher_weight == 0.0:
+            if self._accumulate_live and student_embeddings is not None:
+                const = torch.from_numpy(
+                    np.ascontiguousarray(student_embeddings, dtype=np.float32)
+                ).detach()
+                self._store_xl_batch(("const", const))
             return student_embeddings.copy()
 
+        start = len(self._xl_records)
         student_dim = student_embeddings.shape[-1]
-        teacher_embeds = self.get_teacher_embeddings(texts, target_dim=student_dim)
+        self._record_live = True
+        try:
+            teacher_embeds = self.get_teacher_embeddings(texts, target_dim=student_dim)
+        finally:
+            self._record_live = False
+        new_records = list(self._xl_records[start:])
 
         if len(teacher_embeds) == 0:
+            if self._accumulate_live:
+                self._xl_records = self._xl_records[:start]
+                const = torch.from_numpy(
+                    np.ascontiguousarray(student_embeddings, dtype=np.float32)
+                ).detach()
+                self._store_xl_batch(("const", const))
+            else:
+                self._xl_records = []
             return student_embeddings.copy()
+
+        projected = any(kind == "proj" for _, kind, _, _ in new_records)
+        if projected:
+            # Hinton, Vinyals, and Dean, 2015, arXiv:1503.02531.
+            if not self._accumulate_live:
+                self._xl_records = new_records
+            student_tensor = torch.from_numpy(
+                np.ascontiguousarray(student_embeddings, dtype=np.float32)
+            ).detach()
+            alpha = float(teacher_weight)
+            self._xl_student = student_tensor
+            self._live_alpha = alpha
+            self._store_xl_batch(("live", new_records, student_tensor, alpha))
+            return self._live_parts[-1].detach().cpu().numpy()
+        if self._accumulate_live:
+            self._xl_records = self._xl_records[:start]
+        else:
+            self._xl_records = []
 
         # Blend: target = (1 - alpha) * student + alpha * teacher
         alpha = teacher_weight
@@ -288,6 +435,11 @@ class CrossLingualTeacherRouter:
             num_targets=len(targets),
             teacher_weight=teacher_weight,
         )
+        if self._accumulate_live:
+            const = torch.from_numpy(
+                np.ascontiguousarray(targets, dtype=np.float32)
+            ).detach()
+            self._store_xl_batch(("const", const))
 
         return targets
 

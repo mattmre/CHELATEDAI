@@ -74,10 +74,51 @@ def _bind_distillation_target_tensor(engine, numpy_targets):
     return torch.tensor(array, dtype=torch.float32)
 
 
+def _batch_has_live_projection(batches) -> bool:
+    for item in batches or []:
+        if isinstance(item, tuple) and item and item[0] == "live":
+            return True
+    return False
+
+
+def _helper_has_projection_inputs(helper) -> bool:
+    """True when recompute can rebuild a projection graph for the stored corpus."""
+    if getattr(helper, "_teacher_parts", None):
+        return True
+    if _batch_has_live_projection(getattr(helper, "_ensemble_batches", None)):
+        return True
+    if _batch_has_live_projection(getattr(helper, "_xl_batches", None)):
+        return True
+    return False
+
+
+def _live_projection_modules(helper):
+    """Single-teacher map plus any ensemble or cross-lingual maps."""
+    if helper is None:
+        return []
+    found = []
+    seen = set()
+
+    def add(module):
+        if module is None or id(module) in seen:
+            return
+        seen.add(id(module))
+        found.append(module)
+
+    add(getattr(helper, "_projection", None))
+    multi = getattr(helper, "_projections", None)
+    if isinstance(multi, dict):
+        for module in multi.values():
+            add(module)
+    return found
+
+
 def _fresh_distillation_targets(engine, fallback):
     """Rebuild projection targets so each backward owns a new graph."""
     helper = getattr(engine, "teacher_helper", None)
-    if helper is None or not getattr(helper, "_teacher_parts", None):
+    if helper is None or not _helper_has_projection_inputs(helper):
+        return fallback
+    if not hasattr(helper, "recompute_live_targets"):
         return fallback
     rebuilt = helper.recompute_live_targets()
     if isinstance(rebuilt, torch.Tensor) and tuple(rebuilt.shape) == tuple(fallback.shape):
@@ -86,15 +127,14 @@ def _fresh_distillation_targets(engine, fallback):
 
 
 def _projection_es_bindings(engine):
-    """Projection module and a target rebuild for the ES fitness, or neither."""
+    """Projection modules and a target rebuild for the ES fitness."""
     helper = getattr(engine, "teacher_helper", None)
-    projection = getattr(helper, "_projection", None) if helper is not None else None
-    teacher_parts = getattr(helper, "_teacher_parts", None) if helper is not None else None
-    if projection is None or not teacher_parts:
-        return None, None
+    modules = _live_projection_modules(helper)
+    if not modules or not _helper_has_projection_inputs(helper):
+        return [], None
     if not hasattr(helper, "recompute_live_targets"):
-        return None, None
-    return projection, helper.recompute_live_targets
+        return [], None
+    return modules, helper.recompute_live_targets
 
 
 class AntigravityEngine:
@@ -1999,10 +2039,8 @@ class AntigravityEngine:
         ) as training_ctx:
             # Collect trainable parameters: adapter + projection (if present)
             params = list(self.adapter.parameters())
-            if (getattr(self, 'teacher_helper', None) is not None
-                    and hasattr(self.teacher_helper, '_projection')
-                    and self.teacher_helper._projection is not None):
-                params += list(self.teacher_helper._projection.parameters())
+            for module in _live_projection_modules(getattr(self, "teacher_helper", None)):
+                params += list(module.parameters())
             optimizer = optim.Adam(params, lr=learning_rate)
             from sedimentation_loss import create_sedimentation_loss
             _loss_type = getattr(self, '_sedimentation_loss_type', 'mse')
@@ -2043,7 +2081,7 @@ class AntigravityEngine:
                     quantization_gate = QuantizationPromotionGate(
                         retained_gain_threshold=es_kwargs.get("quantization_gate_threshold", 0.8)
                     )
-                projection, target_builder = _projection_es_bindings(self)
+                projection_modules, target_builder = _projection_es_bindings(self)
                 es_result = train_adapter_with_es(
                     self.adapter,
                     input_tensor,
@@ -2052,7 +2090,7 @@ class AntigravityEngine:
                     config=es_config,
                     logger=self.logger,
                     quantization_gate=quantization_gate,
-                    projection=projection,
+                    projections=projection_modules,
                     target_builder=target_builder,
                 )
                 self._last_es_result = es_result
@@ -2389,7 +2427,7 @@ class AntigravityEngine:
                 quantization_gate = QuantizationPromotionGate(
                     retained_gain_threshold=es_kwargs.get("quantization_gate_threshold", 0.8)
                 )
-            projection, target_builder = _projection_es_bindings(self)
+            projection_modules, target_builder = _projection_es_bindings(self)
             es_result = train_adapter_with_es(
                 self.adapter,
                 input_tensor,
@@ -2398,7 +2436,7 @@ class AntigravityEngine:
                 config=es_config,
                 logger=self.logger,
                 quantization_gate=quantization_gate,
-                projection=projection,
+                projections=projection_modules,
                 target_builder=target_builder,
             )
             self._last_es_result = es_result
@@ -2421,10 +2459,8 @@ class AntigravityEngine:
         else:
             # Collect trainable parameters: adapter + projection (if present)
             params = list(self.adapter.parameters())
-            if (getattr(self, 'teacher_helper', None) is not None
-                    and hasattr(self.teacher_helper, '_projection')
-                    and self.teacher_helper._projection is not None):
-                params += list(self.teacher_helper._projection.parameters())
+            for module in _live_projection_modules(getattr(self, "teacher_helper", None)):
+                params += list(module.parameters())
             optimizer = optim.Adam(params, lr=lr)
 
             # Phase 1: Optional convergence monitoring for early stopping
