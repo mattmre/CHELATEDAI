@@ -7,6 +7,7 @@ and can drop into engine.teacher_helper with zero training loop changes.
 """
 
 import numpy as np
+import torch
 from typing import Dict, List, Optional, Tuple
 
 from chelation_logger import get_logger
@@ -111,7 +112,11 @@ class CrossLingualTeacherRouter:
         self._teachers: Dict[str, TeacherDistillationHelper] = {}
         # Projection layers: model_name -> DimensionProjection
         self._projections: Dict[str, DimensionProjection] = {}
-
+        self._xl_records = []
+        self._xl_student = None
+        self._live_alpha = None
+        self._live_parts = []
+        self._record_live = False
         self.logger.log_event(
             "cross_lingual_router_init",
             "CrossLingualTeacherRouter initialized",
@@ -119,6 +124,39 @@ class CrossLingualTeacherRouter:
             default_teacher=language_mapping.default_teacher,
             projection_enabled=projection_enabled,
         )
+
+    def begin_live_distillation(self):
+        """Drop projection graphs retained by an earlier routed target build."""
+        self._xl_records = []
+        self._xl_student = None
+        self._live_alpha = None
+        self._live_parts = []
+
+    def take_live_distillation_targets(self):
+        parts = self._live_parts
+        self._live_parts = []
+        if not parts:
+            return None
+        if len(parts) == 1:
+            return parts[0]
+        return torch.cat(parts, dim=0)
+
+    def recompute_live_targets(self):
+        """Scatter routed teacher rows through the current projection weights."""
+        if not self._xl_records or self._xl_student is None:
+            return None
+        acc = torch.zeros_like(self._xl_student)
+        for indices, kind, key, tensor in self._xl_records:
+            if kind == "proj":
+                projected = self._projections[key].project_tensor(tensor)
+            else:
+                projected = tensor
+            index = torch.tensor(indices, dtype=torch.long)
+            acc[index] = projected
+        alpha = self._live_alpha
+        blended = alpha * acc + (1.0 - alpha) * self._xl_student
+        norms = torch.linalg.vector_norm(blended, dim=1, keepdim=True).clamp_min(1e-9)
+        return blended / norms
 
     def _get_or_create_teacher(self, model_name: str) -> TeacherDistillationHelper:
         """Get or lazily create a teacher helper for the given model name."""
@@ -204,7 +242,8 @@ class CrossLingualTeacherRouter:
             if len(group_embeddings) == 0:
                 continue
 
-            # Project to target_dim if needed
+            # Project to target_dim if needed. A live recording keeps the map
+            # in the graph for generate_distillation_targets.
             if (target_dim is not None
                     and group_embeddings.shape[-1] != target_dim
                     and self._projection_enabled):
@@ -212,7 +251,23 @@ class CrossLingualTeacherRouter:
                     model_name, group_embeddings.shape[-1], target_dim,
                 )
                 if proj is not None:
-                    group_embeddings = proj.project_numpy(group_embeddings)
+                    key = f"{model_name}_{group_embeddings.shape[-1]}_{target_dim}"
+                    if self._record_live:
+                        teacher_tensor = torch.from_numpy(
+                            np.ascontiguousarray(group_embeddings, dtype=np.float32)
+                        )
+                        live = proj.project_tensor(teacher_tensor)
+                        self._xl_records.append(
+                            (group_indices, "proj", key, teacher_tensor.detach())
+                        )
+                        group_embeddings = live.detach().cpu().numpy()
+                    else:
+                        group_embeddings = proj.project_numpy(group_embeddings)
+            elif self._record_live:
+                raw = torch.from_numpy(
+                    np.ascontiguousarray(group_embeddings, dtype=np.float32)
+                )
+                self._xl_records.append((group_indices, "raw", None, raw.detach()))
 
             # Place embeddings back in original order
             for i, idx in enumerate(group_indices):
@@ -245,8 +300,9 @@ class CrossLingualTeacherRouter:
         return output
 
     def generate_distillation_targets(self, texts: List[str],
-                                      student_embeddings: np.ndarray,
-                                      teacher_weight: Optional[float] = None
+                                      student_embeddings: np.ndarray = None,
+                                      teacher_weight: Optional[float] = None,
+                                      current_embeddings: np.ndarray = None,
                                       ) -> np.ndarray:
         """
         Generate distillation targets using language-aware teacher routing.
@@ -262,15 +318,34 @@ class CrossLingualTeacherRouter:
         """
         if teacher_weight is None:
             teacher_weight = self.teacher_weight
+        if student_embeddings is None:
+            student_embeddings = current_embeddings
 
         if teacher_weight == 0.0:
             return student_embeddings.copy()
 
+        self.begin_live_distillation()
         student_dim = student_embeddings.shape[-1]
-        teacher_embeds = self.get_teacher_embeddings(texts, target_dim=student_dim)
+        self._record_live = True
+        try:
+            teacher_embeds = self.get_teacher_embeddings(texts, target_dim=student_dim)
+        finally:
+            self._record_live = False
 
         if len(teacher_embeds) == 0:
             return student_embeddings.copy()
+
+        projected = any(kind == "proj" for _, kind, _, _ in self._xl_records)
+        if projected:
+            # Hinton, Vinyals, and Dean, 2015, arXiv:1503.02531.
+            self._xl_student = torch.from_numpy(
+                np.ascontiguousarray(student_embeddings, dtype=np.float32)
+            ).detach()
+            self._live_alpha = float(teacher_weight)
+            live = self.recompute_live_targets()
+            self._live_parts = [live]
+            return live.detach().cpu().numpy()
+        self._xl_records = []
 
         # Blend: target = (1 - alpha) * student + alpha * teacher
         alpha = teacher_weight

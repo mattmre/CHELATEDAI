@@ -408,16 +408,23 @@ def train_adapter_with_es(
     quantization_gate: Optional[QuantizationPromotionGate] = None,
     projection: Optional[nn.Module] = None,
     target_builder: Optional[Callable[[], torch.Tensor]] = None,
+    projections: Optional[List[nn.Module]] = None,
 ) -> Dict[str, Any]:
     """Train an adapter against targets using low-rank ES fitness.
 
-    When ``projection`` and ``target_builder`` are set, fitness rebuilds the
-    targets from the projection's current weights. A fixed target tensor
+    When projection modules and ``target_builder`` are set, fitness rebuilds
+    the targets from those modules' current weights. A fixed target tensor
     cannot move those weights.
     """
 
     es_config = config or EvolutionStrategiesConfig()
-    extra_modules = [projection] if projection is not None else None
+    extra_modules = []
+    if projection is not None:
+        extra_modules.append(projection)
+    for module in projections or []:
+        if module is not None and module not in extra_modules:
+            extra_modules.append(module)
+    extra_modules = extra_modules or None
     optimizer = LowRankEvolutionStrategyOptimizer(
         adapter,
         es_config,
