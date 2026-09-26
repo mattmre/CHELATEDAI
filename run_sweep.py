@@ -21,6 +21,35 @@ def remove_configured_adapter_weights():
         weights_path.unlink()
 
 
+def isolate_sweep_configuration(engine):
+    """Drop one configuration's trained state. Keep the open Qdrant client.
+
+    A second AntigravityEngine per grid row would open another client on the
+    same path. The leak across rows is the adapter object, the chelation log,
+    a trained projection, and the last evolution-strategy result.
+    """
+    remove_configured_adapter_weights()
+    engine.adapter = create_adapter(
+        adapter_type=ChelationConfig.ADAPTER_TYPE,
+        input_dim=engine.vector_size,
+        rank=ChelationConfig.LOW_RANK_ADAPTER_RANK,
+    )
+    log = getattr(engine, "chelation_log", None)
+    if log is not None and hasattr(log, "clear"):
+        log.clear()
+    helper = getattr(engine, "teacher_helper", None)
+    if helper is not None:
+        if hasattr(helper, "begin_live_distillation"):
+            helper.begin_live_distillation()
+        if hasattr(helper, "_projection"):
+            helper._projection = None
+        projections = getattr(helper, "_projections", None)
+        if isinstance(projections, dict):
+            projections.clear()
+    if hasattr(engine, "_last_es_result"):
+        engine._last_es_result = None
+
+
 def _snapshot_baseline_collection(client, collection_name):
     """Snapshot the baseline corpus. The sweep keeps this client open."""
     return snapshot_collection(client, collection_name)
@@ -155,17 +184,7 @@ def run_parameter_sweep(task_name="SciFact", model_name="ollama:nomic-embed-text
         # this configuration's adapter reset and sedimentation upsert.
         engine = base_engine
         restore_collection(engine.qdrant, engine.collection_name, corpus_snapshot)
-
-        # Reset adapter to identity state
-        remove_configured_adapter_weights()
-        engine.adapter = create_adapter(
-            adapter_type=ChelationConfig.ADAPTER_TYPE,
-            input_dim=engine.vector_size,
-            rank=ChelationConfig.LOW_RANK_ADAPTER_RANK
-        )
-
-        # Clear log and run an initial evaluation to populate the chelation log
-        engine.chelation_log.clear()
+        isolate_sweep_configuration(engine)
         evaluate_ndcg(engine, queries, qrels, max_queries=max_queries)
 
         # Enable noise injection temporarily via config patching
