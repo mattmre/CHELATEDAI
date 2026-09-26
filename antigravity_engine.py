@@ -57,6 +57,46 @@ def _write_adapter_bytes(adapter_path, payload: bytes) -> None:
         raise
 
 
+def _bind_distillation_target_tensor(engine, numpy_targets):
+    """Use the projection's live targets when their shape matches.
+
+    ``torch.tensor`` on the numpy copy would drop the graph. Callers that
+    did not build a projection keep the array path. This is a function so a
+    test can run the engine method on a stand-in that is not this class.
+    """
+    helper = getattr(engine, "teacher_helper", None)
+    live = None
+    if helper is not None and hasattr(helper, "take_live_distillation_targets"):
+        live = helper.take_live_distillation_targets()
+    array = np.asarray(numpy_targets)
+    if isinstance(live, torch.Tensor) and tuple(live.shape) == tuple(array.shape):
+        return live
+    return torch.tensor(array, dtype=torch.float32)
+
+
+def _fresh_distillation_targets(engine, fallback):
+    """Rebuild projection targets so each backward owns a new graph."""
+    helper = getattr(engine, "teacher_helper", None)
+    if helper is None or not getattr(helper, "_teacher_parts", None):
+        return fallback
+    rebuilt = helper.recompute_live_targets()
+    if isinstance(rebuilt, torch.Tensor) and tuple(rebuilt.shape) == tuple(fallback.shape):
+        return rebuilt
+    return fallback
+
+
+def _projection_es_bindings(engine):
+    """Projection module and a target rebuild for the ES fitness, or neither."""
+    helper = getattr(engine, "teacher_helper", None)
+    projection = getattr(helper, "_projection", None) if helper is not None else None
+    teacher_parts = getattr(helper, "_teacher_parts", None) if helper is not None else None
+    if projection is None or not teacher_parts:
+        return None, None
+    if not hasattr(helper, "recompute_live_targets"):
+        return None, None
+    return projection, helper.recompute_live_targets
+
+
 class AntigravityEngine:
     def __init__(self, qdrant_location=":memory:", chelation_p=ChelationConfig.DEFAULT_CHELATION_P, model_name='ollama:nomic-embed-text', use_centering=False, use_quantization=False, training_mode: str = "baseline", teacher_model_name: Optional[str] = None, teacher_models=None, teacher_weight: float = 0.5, store_full_text_payload: Optional[bool] = None):
         """
@@ -1874,6 +1914,8 @@ class AntigravityEngine:
         if self.training_mode == "offline" and self.teacher_helper:
             self.logger.log_event("distillation_teacher_targets", "Generating pure teacher targets")
             try:
+                if hasattr(self.teacher_helper, "begin_live_distillation"):
+                    self.teacher_helper.begin_live_distillation()
                 target_array = self.teacher_helper.generate_distillation_targets(
                     texts=training_texts,
                     current_embeddings=input_array,
@@ -1907,6 +1949,8 @@ class AntigravityEngine:
                 # projection internally (teacher 768-dim -> student 384-dim)
                 # and blends: (1 - alpha) * homeostatic + alpha * teacher.
                 homeostatic_targets = target_array.copy()
+                if hasattr(self.teacher_helper, "begin_live_distillation"):
+                    self.teacher_helper.begin_live_distillation()
                 target_array = self.teacher_helper.generate_distillation_targets(
                     training_texts,
                     homeostatic_targets,
@@ -1919,9 +1963,10 @@ class AntigravityEngine:
                     exception=e
                 )
 
-        # Normalize Data
+        # Normalize Data. A live projection target stays in the graph.
+        # Rebuilding it with torch.tensor on the numpy copy would detach it.
         input_tensor = torch.tensor(input_array, dtype=torch.float32)
-        target_tensor = torch.tensor(target_array, dtype=torch.float32)
+        target_tensor = _bind_distillation_target_tensor(self, target_array)
 
         # Noise injection setup
         if noise_injection is None:
@@ -1998,6 +2043,7 @@ class AntigravityEngine:
                     quantization_gate = QuantizationPromotionGate(
                         retained_gain_threshold=es_kwargs.get("quantization_gate_threshold", 0.8)
                     )
+                projection, target_builder = _projection_es_bindings(self)
                 es_result = train_adapter_with_es(
                     self.adapter,
                     input_tensor,
@@ -2006,6 +2052,8 @@ class AntigravityEngine:
                     config=es_config,
                     logger=self.logger,
                     quantization_gate=quantization_gate,
+                    projection=projection,
+                    target_builder=target_builder,
                 )
                 self._last_es_result = es_result
                 final_loss = es_result["final_loss"]
@@ -2053,6 +2101,7 @@ class AntigravityEngine:
 
                 for epoch in range(epochs):
                     optimizer.zero_grad()
+                    step_targets = _fresh_distillation_targets(self, target_tensor)
 
                     if noise_scales is not None:
                         noise = torch.randn_like(input_tensor) * noise_scales
@@ -2062,7 +2111,7 @@ class AntigravityEngine:
                     else:
                         outputs = self.adapter(input_tensor)
 
-                    loss = criterion(outputs, target_tensor)
+                    loss = criterion(outputs, step_targets)
 
                     # Frobenius-norm regularization (Procrustes: penalise skew-param
                     # magnitude to keep rotation angles small across cycles;
@@ -2236,6 +2285,8 @@ class AntigravityEngine:
         training_inputs = []
         training_targets = []
         ordered_ids = []
+        if hasattr(self.teacher_helper, "begin_live_distillation"):
+            self.teacher_helper.begin_live_distillation()
 
         for i in range(0, len(all_points), batch_size):
             batch_points = all_points[i:i+batch_size]
@@ -2284,9 +2335,9 @@ class AntigravityEngine:
             self.logger.log_event("offline_distillation_no_data", "No training data generated")
             return
 
-        # Convert to tensors
+        # Convert to tensors. Keep a live projection target in the graph.
         input_tensor = torch.tensor(np.array(training_inputs), dtype=torch.float32)
-        target_tensor = torch.tensor(np.array(training_targets), dtype=torch.float32)
+        target_tensor = _bind_distillation_target_tensor(self, training_targets)
 
         # Train adapter
         self.logger.log_training_start(
@@ -2338,6 +2389,7 @@ class AntigravityEngine:
                 quantization_gate = QuantizationPromotionGate(
                     retained_gain_threshold=es_kwargs.get("quantization_gate_threshold", 0.8)
                 )
+            projection, target_builder = _projection_es_bindings(self)
             es_result = train_adapter_with_es(
                 self.adapter,
                 input_tensor,
@@ -2346,6 +2398,8 @@ class AntigravityEngine:
                 config=es_config,
                 logger=self.logger,
                 quantization_gate=quantization_gate,
+                projection=projection,
+                target_builder=target_builder,
             )
             self._last_es_result = es_result
             final_loss = es_result["final_loss"]
@@ -2400,8 +2454,9 @@ class AntigravityEngine:
 
             for epoch in range(ep):
                 optimizer.zero_grad()
+                step_targets = _fresh_distillation_targets(self, target_tensor)
                 outputs = self.adapter(input_tensor)
-                loss = criterion(outputs, target_tensor)
+                loss = criterion(outputs, step_targets)
                 loss.backward()
                 optimizer.step()
                 final_loss = loss.item()
