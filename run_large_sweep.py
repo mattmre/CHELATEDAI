@@ -7,9 +7,8 @@ from datetime import datetime
 
 from antigravity_engine import AntigravityEngine
 from benchmark_evolution import evaluate_ndcg, load_mteb_data
-from chelation_adapter import create_adapter
 from config import ChelationConfig
-from run_sweep import prepare_sweep_baseline, remove_configured_adapter_weights
+from run_sweep import isolate_sweep_configuration, prepare_sweep_baseline
 from sweep_corpus_restore import restore_collection, snapshot_collection
 from sweep_result_store import (
     append_jsonl,
@@ -89,16 +88,7 @@ def run_large_parameter_sweep(task_name="SciFact", model_name="sentence-transfor
         # so each configuration starts from the baseline snapshot.
         engine = base_engine
         restore_collection(engine.qdrant, engine.collection_name, corpus_snapshot)
-
-        # Reset adapter to identity state
-        remove_configured_adapter_weights()
-        engine.adapter = create_adapter(
-            adapter_type=ChelationConfig.ADAPTER_TYPE,
-            input_dim=engine.vector_size,
-            rank=ChelationConfig.LOW_RANK_ADAPTER_RANK
-        )
-
-        engine.chelation_log.clear()
+        isolate_sweep_configuration(engine)
         evaluate_ndcg(engine, queries, qrels, max_queries=max_queries)
 
         # Patch Configs Temporarily

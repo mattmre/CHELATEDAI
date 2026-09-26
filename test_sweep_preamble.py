@@ -15,7 +15,7 @@ import torch.nn as nn
 
 from config import ChelationConfig
 from run_large_sweep import run_large_parameter_sweep
-from run_sweep import prepare_sweep_baseline, run_parameter_sweep
+from run_sweep import isolate_sweep_configuration, prepare_sweep_baseline, run_parameter_sweep
 from sweep_corpus_restore import snapshot_collection
 
 
@@ -293,14 +293,71 @@ class TestSweepPreamble(unittest.TestCase):
         engine.embed.assert_not_called()
         engine.run_sedimentation_cycle.assert_called_once()
 
+    def test_second_configuration_drops_the_first_adapter_and_projection(self):
+        engine = _Engine(points_count=len(CORPUS), embed_raw=_vectors)
+        engine.teacher_helper = type("Helper", (), {
+            "_projection": object(),
+            "_projections": {0: object()},
+        })()
+        engine._last_es_result = {"poison": True}
+        seen = []
+
+        def sediment(*_args, **_kwargs):
+            seen.append((
+                engine.adapter,
+                engine.teacher_helper._projection,
+                dict(engine.teacher_helper._projections),
+                engine._last_es_result,
+            ))
+            engine.teacher_helper._projection = "poison"
+            engine.teacher_helper._projections[0] = "poison"
+            engine._last_es_result = {"poison": True}
+
+        engine.run_sedimentation_cycle.side_effect = sediment
+        with self._cwd_and_weights() as (cwd, weights, _decoy):
+            with patch.object(ChelationConfig, "ADAPTER_WEIGHTS_PATH", weights), patch(
+                "run_large_sweep.load_mteb_data", return_value=(CORPUS, QUERIES, QRELS)
+            ), patch("run_large_sweep.AntigravityEngine", return_value=engine), patch(
+                "run_sweep.evaluate_ndcg", return_value=0.2
+            ), patch("run_large_sweep.evaluate_ndcg", return_value=0.3), patch(
+                "run_large_sweep.itertools.product",
+                return_value=[(0.01, 1, 0.0, 1, 0.05), (0.1, 1, 0.0, 1, 0.05)],
+            ):
+                run_large_parameter_sweep(task_name="NotSciFact", max_queries=1, db_path=str(cwd / "db"))
+
+        self.assertEqual(len(seen), 2)
+        self.assertIsNot(seen[0][0], seen[1][0])
+        self.assertIsNone(seen[0][1])
+        self.assertIsNone(seen[1][1])
+        self.assertEqual(seen[0][2], {})
+        self.assertEqual(seen[1][2], {})
+        self.assertIsNone(seen[0][3])
+        self.assertIsNone(seen[1][3])
+        self.assertIsInstance(seen[1][0], nn.Module)
+
+    def test_isolate_sweep_configuration_keeps_the_client(self):
+        engine = _Engine(points_count=1, embed_raw=_vectors)
+        client = engine.qdrant
+        engine.teacher_helper = type("Helper", (), {
+            "_projection": object(),
+            "_projections": {1: object()},
+            "begin_live_distillation": lambda self: None,
+        })()
+        isolate_sweep_configuration(engine)
+        self.assertIs(engine.qdrant, client)
+        self.assertIsNone(engine.teacher_helper._projection)
+        self.assertEqual(engine.teacher_helper._projections, {})
+
     def test_scripts_do_not_delete_a_cwd_relative_adapter_file(self):
-        for name in ("run_sweep.py", "run_large_sweep.py"):
-            source = Path(name).read_text(encoding="utf-8")
+        sweep = Path("run_sweep.py").read_text(encoding="utf-8")
+        large = Path("run_large_sweep.py").read_text(encoding="utf-8")
+        for source in (sweep, large):
             self.assertNotIn('os.remove("adapter_weights.pt")', source)
             self.assertNotIn("os.remove('adapter_weights.pt')", source)
             self.assertNotIn('os.path.exists("adapter_weights.pt")', source)
             self.assertIn("prepare_sweep_baseline(", source)
-            self.assertIn("remove_configured_adapter_weights(", source)
+            self.assertIn("isolate_sweep_configuration(", source)
+        self.assertIn("remove_configured_adapter_weights(", sweep)
 
 
 def _raise_ingest(_texts):
