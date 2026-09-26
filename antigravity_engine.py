@@ -74,12 +74,20 @@ def _bind_distillation_target_tensor(engine, numpy_targets):
     return torch.tensor(array, dtype=torch.float32)
 
 
+def _batch_has_live_projection(batches) -> bool:
+    for item in batches or []:
+        if isinstance(item, tuple) and item and item[0] == "live":
+            return True
+    return False
+
+
 def _helper_has_projection_inputs(helper) -> bool:
+    """True when recompute can rebuild a projection graph for the stored corpus."""
     if getattr(helper, "_teacher_parts", None):
         return True
-    if getattr(helper, "_ensemble_rows", None):
+    if _batch_has_live_projection(getattr(helper, "_ensemble_batches", None)):
         return True
-    if getattr(helper, "_xl_records", None):
+    if _batch_has_live_projection(getattr(helper, "_xl_batches", None)):
         return True
     return False
 

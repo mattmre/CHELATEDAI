@@ -224,6 +224,144 @@ class TestEnsembleAndCrossLingualProjection(unittest.TestCase):
         router._teachers["wide-teacher"] = _teacher(16)
         self._run_engine(router)
 
+    def test_ensemble_batches_recompute_to_the_full_corpus(self):
+        ensemble = EnsembleTeacherHelper(
+            [_teacher(16)],
+            weights=[1.0],
+            logger=MagicMock(),
+            parallel_encoding=False,
+        )
+        self.assertFalse(ensemble.check_dimension_compatibility(8))
+        self.assertEqual(ensemble.teacher_dim, 16)
+        ensemble.begin_live_distillation()
+        first = np.random.randn(2, 8).astype(np.float32)
+        second = np.random.randn(3, 8).astype(np.float32)
+        ensemble.generate_distillation_targets(["a", "b"], first, teacher_weight=1.0)
+        ensemble.generate_distillation_targets(["c", "d", "e"], second, teacher_weight=1.0)
+        rebuilt = ensemble.recompute_live_targets()
+        self.assertEqual(tuple(rebuilt.shape), (5, 8))
+        self.assertTrue(rebuilt.requires_grad)
+        loss = torch.nn.functional.mse_loss(rebuilt, torch.zeros_like(rebuilt))
+        loss.backward()
+        self.assertTrue(
+            any(
+                parameter.grad is not None and float(parameter.grad.abs().sum()) > 0
+                for parameter in ensemble._projections[0].parameters()
+            )
+        )
+
+    def test_cross_lingual_batches_recompute_to_the_full_corpus(self):
+        mapping = LanguageTeacherMapping({"en": "wide-teacher"}, default_teacher="wide-teacher")
+        router = CrossLingualTeacherRouter(
+            mapping, detector=MagicMock(), projection_enabled=True, teacher_weight=1.0
+        )
+        router.detector.detect_batch.return_value = ["en"] * 5
+        router._teachers["wide-teacher"] = _teacher(16)
+        self.assertTrue(router.check_dimension_compatibility(8))
+        router.begin_live_distillation()
+        first = np.random.randn(2, 8).astype(np.float32)
+        second = np.random.randn(3, 8).astype(np.float32)
+        router.generate_distillation_targets(["a", "b"], first, teacher_weight=1.0)
+        router.generate_distillation_targets(["c", "d", "e"], second, teacher_weight=1.0)
+        rebuilt = router.recompute_live_targets()
+        self.assertEqual(tuple(rebuilt.shape), (5, 8))
+        self.assertTrue(rebuilt.requires_grad)
+        loss = torch.nn.functional.mse_loss(rebuilt, torch.zeros_like(rebuilt))
+        loss.backward()
+        self.assertTrue(
+            any(
+                parameter.grad is not None and float(parameter.grad.abs().sum()) > 0
+                for parameter in next(iter(router._projections.values())).parameters()
+            )
+        )
+
+    def _offline_full_corpus(self, helper, optimizer="adam"):
+        with _offline_engine() as engine:
+            engine.teacher_helper = helper
+            if optimizer == "eggroll_es":
+                engine._sedimentation_optimizer_type = "eggroll_es"
+                engine._es_optimizer_kwargs = {
+                    "population_size": 4,
+                    "generations": 1,
+                    "sigma": 0.2,
+                    "learning_rate": 0.2,
+                    "seed": 2,
+                }
+            engine.ingest(["one", "two", "three", "four", "five"])
+            engine.run_offline_distillation(batch_size=2, learning_rate=0.5, epochs=1)
+            rebuilt = helper.recompute_live_targets()
+            self.assertEqual(tuple(rebuilt.shape), (5, 8))
+            self.assertTrue(rebuilt.requires_grad)
+            modules = list(helper._projections.values())
+            self.assertTrue(modules)
+            self.assertTrue(
+                any(
+                    parameter.grad is not None and float(parameter.grad.detach().abs().sum()) > 0
+                    for module in modules
+                    for parameter in module.parameters()
+                )
+            )
+
+    def test_offline_distillation_trains_the_full_ensemble_corpus(self):
+        ensemble = EnsembleTeacherHelper(
+            [_teacher(16)],
+            weights=[1.0],
+            logger=MagicMock(),
+            parallel_encoding=False,
+        )
+        self._offline_full_corpus(ensemble)
+
+    def test_offline_distillation_trains_the_full_cross_lingual_corpus(self):
+        mapping = LanguageTeacherMapping({"en": "wide-teacher"}, default_teacher="wide-teacher")
+        router = CrossLingualTeacherRouter(
+            mapping, detector=MagicMock(), projection_enabled=True, teacher_weight=1.0
+        )
+        router.detector.detect_batch.return_value = ["en"] * 5
+        router._teachers["wide-teacher"] = _teacher(16)
+        self._offline_full_corpus(router)
+
+    def test_offline_es_trains_the_full_ensemble_corpus(self):
+        from teacher_distillation import DimensionProjection
+
+        ensemble = EnsembleTeacherHelper(
+            [_teacher(16)],
+            weights=[1.0],
+            logger=MagicMock(),
+            parallel_encoding=False,
+        )
+        initial = []
+        original = DimensionProjection.__init__
+
+        def _init(module, *args, **kwargs):
+            original(module, *args, **kwargs)
+            initial.append([parameter.detach().clone() for parameter in module.parameters()])
+
+        DimensionProjection.__init__ = _init
+        try:
+            with _offline_engine() as engine:
+                engine.teacher_helper = ensemble
+                engine._sedimentation_optimizer_type = "eggroll_es"
+                engine._es_optimizer_kwargs = {
+                    "population_size": 4,
+                    "generations": 1,
+                    "sigma": 0.2,
+                    "learning_rate": 0.2,
+                    "seed": 2,
+                }
+                engine.ingest(["one", "two", "three", "four", "five"])
+                engine.run_offline_distillation(batch_size=2, learning_rate=0.2, epochs=1)
+                rebuilt = ensemble.recompute_live_targets()
+                self.assertEqual(tuple(rebuilt.shape), (5, 8))
+                module = ensemble._projections[0]
+                self.assertTrue(
+                    any(
+                        not torch.equal(old, parameter)
+                        for old, parameter in zip(initial[-1], module.parameters())
+                    )
+                )
+        finally:
+            DimensionProjection.__init__ = original
+
 
 if __name__ == "__main__":
     unittest.main()
