@@ -1,7 +1,7 @@
 """Exact paired perturbation evaluation for ChelatedAI method development.
 
 This module implements only the dependency-light sanity boundary frozen in
-``CHELATEDAI-PRW-ISI1-PAIRED-SANITY-v1``.  It scores nuisance-preserving and
+``CHELATEDAI-PRW-ISI1-PAIRED-SANITY-v3``.  It scores nuisance-preserving and
 material-answer-changing pairs together, then applies that evaluator to a
 small synthetic retrieval fixture through the existing production variance
 chelation method.
@@ -27,8 +27,20 @@ from typing import Dict, List, Mapping, Optional, Sequence, Tuple
 import numpy as np
 
 
-PAIRED_INTERVENTION_PROTOCOL_ID = "CHELATEDAI-PRW-ISI1-PAIRED-SANITY-v1"
+PAIRED_INTERVENTION_PROTOCOL_ID = "CHELATEDAI-PRW-ISI1-PAIRED-SANITY-v3"
 PAIRED_INTERVENTION_STAGE_ID = "PRW-ISI1-PAIRED-SANITY"
+PAIRED_INTERVENTION_PROTOCOL_PATH = Path(
+    "docs/research/paired-chelation-intervention-sanity-protocol-v3-2026-08.md"
+)
+PAIRED_INTERVENTION_PROTOCOL_SHA256 = (
+    "fd65790e3df13b6590af10e08ec46ef642d1b098a06f999fa4f6c9ddfe9e4634"
+)
+PAIRED_INTERVENTION_V1_PROTOCOL_SHA256 = (
+    "75aab66730a5d4ef4055ce66086705c6fd79c4b057807fdba20cd4181bd11ce9"
+)
+PAIRED_INTERVENTION_V2_PROTOCOL_SHA256 = (
+    "0e6938ec6b6b3f5ade0ea1e82cf38d60aece8850d3a2121339de5c28ce28bda1"
+)
 NUISANCE_PAIR = "NUISANCE_INVARIANCE"
 MATERIAL_PAIR = "MATERIAL_INTERVENTION"
 DEFAULT_MAX_DIMENSION = 64
@@ -37,6 +49,13 @@ DEFAULT_MAX_ESTIMATED_BYTES = 64 * 1024 * 1024
 DEFAULT_MAX_WORK_UNITS = 5_000_000
 DEFAULT_MAX_SECONDS = 30.0
 DEFAULT_MAX_OUTPUT_BYTES = 8 * 1024 * 1024
+PAIRED_INTERVENTION_LIMITATIONS = (
+    "frozen synthetic retrieval fixture only",
+    "oracle mask and production variance mask are expected to coincide on this fixture",
+    "declared changed-feature counts are metadata, not validated intervention order",
+    "no natural-language, model, corpus, RAG, training, or independent confirmation evidence",
+    "full PRW-ISI1 remains blocked on PRW-EK3",
+)
 
 
 class PairedInterventionValidationError(ValueError):
@@ -191,7 +210,7 @@ class PairedCase:
             raise PairedInterventionValidationError("material pairs must change the declared label")
 
     @property
-    def intervention_order(self) -> int:
+    def declared_changed_feature_count(self) -> int:
         return len(self.changed_features)
 
 
@@ -216,7 +235,7 @@ def score_paired_cases(cases: Sequence[PairedCase]) -> Dict[str, object]:
         raise PairedInterventionValidationError("both nuisance and material pairs are required")
 
     rows: List[Dict[str, object]] = []
-    order_buckets: Dict[int, Dict[str, int]] = {}
+    declared_count_buckets: Dict[int, Dict[str, int]] = {}
     for case in checked:
         canonical_correct = case.canonical_prediction == case.canonical_label
         perturbed_correct = case.perturbed_prediction == case.perturbed_label
@@ -232,7 +251,7 @@ def score_paired_cases(cases: Sequence[PairedCase]) -> Dict[str, object]:
             "canonical_prediction": case.canonical_prediction,
             "perturbed_prediction": case.perturbed_prediction,
             "changed_features": list(case.changed_features),
-            "intervention_order": case.intervention_order,
+            "declared_changed_feature_count": case.declared_changed_feature_count,
             "safety_critical": case.safety_critical,
             "canonical_correct": canonical_correct,
             "perturbed_correct": perturbed_correct,
@@ -242,8 +261,8 @@ def score_paired_cases(cases: Sequence[PairedCase]) -> Dict[str, object]:
             "strict_pair_correct": strict_pair_correct,
         }
         rows.append(row)
-        bucket = order_buckets.setdefault(
-            case.intervention_order,
+        bucket = declared_count_buckets.setdefault(
+            case.declared_changed_feature_count,
             {"count": 0, "strict_correct": 0, "relation_correct": 0},
         )
         bucket["count"] += 1
@@ -276,13 +295,13 @@ def score_paired_cases(cases: Sequence[PairedCase]) -> Dict[str, object]:
     critical_rows = [row for row in material_rows if row["safety_critical"]]
     safety_critical_miss_count = sum(not bool(row["strict_pair_correct"]) for row in critical_rows)
 
-    by_intervention_order = {
-        str(order): {
+    by_declared_changed_feature_count = {
+        str(declared_count): {
             "count": bucket["count"],
             "strict_accuracy": _rate(bucket["strict_correct"], bucket["count"]),
             "relation_accuracy": _rate(bucket["relation_correct"], bucket["count"]),
         }
-        for order, bucket in sorted(order_buckets.items())
+        for declared_count, bucket in sorted(declared_count_buckets.items())
     }
     return {
         "pair_count": len(rows),
@@ -307,7 +326,7 @@ def score_paired_cases(cases: Sequence[PairedCase]) -> Dict[str, object]:
         "safety_critical_material_count": len(critical_rows),
         "safety_critical_miss_count": safety_critical_miss_count,
         "all_safety_critical_detected": safety_critical_miss_count == 0,
-        "by_intervention_order": by_intervention_order,
+        "by_declared_changed_feature_count": by_declared_changed_feature_count,
         "rows": rows,
     }
 
@@ -560,12 +579,17 @@ def run_paired_chelation_sanity(
             and over_chelation["missed_intervention_rate"] == 1.0
         ),
         "balanced_score_rejects_over_chelation": over_chelation["balanced_joint_score"] == 0.0,
-        "second_order_intervention_is_scored": (
-            production["by_intervention_order"].get("2", {}).get("strict_accuracy") == 1.0
+        "additional_material_case_is_scored_as_material_only": (
+            next(
+                row
+                for row in production["rows"]
+                if row["case_id"] == "material_coalition_00"
+            )["strict_pair_correct"]
         ),
     }
     deadline.check("summary")
     return {
+        "status": "COMPLETE",
         "stage_id": PAIRED_INTERVENTION_STAGE_ID,
         "protocol_id": PAIRED_INTERVENTION_PROTOCOL_ID,
         "execution_mode": "bounded_cpu_synthetic_sanity",
@@ -610,6 +634,10 @@ class PairedInterventionArtifact:
     status: str
     evidence_state: str
     scientific_claim_status: str
+    novelty_claim_status: str
+    protocol_file_sha256: str
+    v1_protocol_sha256: str
+    v2_protocol_sha256: str
     budget: Dict[str, object]
     result: Dict[str, object]
     limitations: Tuple[str, ...]
@@ -623,15 +651,28 @@ class PairedInterventionArtifact:
         result: Mapping[str, object],
         limitations: Sequence[str],
     ) -> "PairedInterventionArtifact":
-        if result.get("stage_id") != PAIRED_INTERVENTION_STAGE_ID:
-            raise PairedInterventionValidationError("result stage does not match paired protocol")
+        if budget != PairedInterventionBudget():
+            raise PairedInterventionValidationError(
+                "v3 evidence artifacts require the exact frozen default budget"
+            )
+        expected_result = run_paired_chelation_sanity(budget=budget)
+        if _canonical_json(result) != _canonical_json(expected_result):
+            raise PairedInterventionValidationError(
+                "result does not exactly match regenerated frozen v3 semantics"
+            )
         checked_limitations = tuple(_nonempty_string(item, "limitation") for item in limitations)
+        if checked_limitations != PAIRED_INTERVENTION_LIMITATIONS:
+            raise PairedInterventionValidationError("limitations differ from frozen v3 boundaries")
         payload: Dict[str, object] = {
             "stage_id": PAIRED_INTERVENTION_STAGE_ID,
             "protocol_id": PAIRED_INTERVENTION_PROTOCOL_ID,
             "status": "COMPLETE",
             "evidence_state": result["evidence_state"],
             "scientific_claim_status": result["scientific_claim_status"],
+            "novelty_claim_status": result["novelty_claim_status"],
+            "protocol_file_sha256": PAIRED_INTERVENTION_PROTOCOL_SHA256,
+            "v1_protocol_sha256": PAIRED_INTERVENTION_V1_PROTOCOL_SHA256,
+            "v2_protocol_sha256": PAIRED_INTERVENTION_V2_PROTOCOL_SHA256,
             "budget": asdict(budget),
             "result": dict(result),
             "limitations": list(checked_limitations),
@@ -642,6 +683,10 @@ class PairedInterventionArtifact:
             status="COMPLETE",
             evidence_state=str(result["evidence_state"]),
             scientific_claim_status=str(result["scientific_claim_status"]),
+            novelty_claim_status=str(result["novelty_claim_status"]),
+            protocol_file_sha256=PAIRED_INTERVENTION_PROTOCOL_SHA256,
+            v1_protocol_sha256=PAIRED_INTERVENTION_V1_PROTOCOL_SHA256,
+            v2_protocol_sha256=PAIRED_INTERVENTION_V2_PROTOCOL_SHA256,
             budget=asdict(budget),
             result=dict(result),
             limitations=checked_limitations,
@@ -655,6 +700,10 @@ class PairedInterventionArtifact:
             "status": self.status,
             "evidence_state": self.evidence_state,
             "scientific_claim_status": self.scientific_claim_status,
+            "novelty_claim_status": self.novelty_claim_status,
+            "protocol_file_sha256": self.protocol_file_sha256,
+            "v1_protocol_sha256": self.v1_protocol_sha256,
+            "v2_protocol_sha256": self.v2_protocol_sha256,
             "budget": self.budget,
             "result": self.result,
             "limitations": list(self.limitations),
@@ -704,12 +753,7 @@ def make_paired_intervention_artifact(
     return PairedInterventionArtifact.create(
         budget=budget,
         result=result,
-        limitations=(
-            "frozen synthetic retrieval fixture only",
-            "oracle mask and production variance mask are expected to coincide on this fixture",
-            "no natural-language, model, corpus, RAG, training, or independent confirmation evidence",
-            "full PRW-ISI1 remains blocked on PRW-EK3",
-        ),
+        limitations=PAIRED_INTERVENTION_LIMITATIONS,
     )
 
 
@@ -717,6 +761,10 @@ __all__ = [
     "MATERIAL_PAIR",
     "NUISANCE_PAIR",
     "PAIRED_INTERVENTION_PROTOCOL_ID",
+    "PAIRED_INTERVENTION_PROTOCOL_PATH",
+    "PAIRED_INTERVENTION_PROTOCOL_SHA256",
+    "PAIRED_INTERVENTION_V1_PROTOCOL_SHA256",
+    "PAIRED_INTERVENTION_V2_PROTOCOL_SHA256",
     "PAIRED_INTERVENTION_STAGE_ID",
     "PairedCase",
     "PairedInterventionArtifact",

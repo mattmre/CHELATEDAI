@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fixed-Graph Orbit Compilation</title>
+  <style>
+    :root {
+      /* SIZING CONTROLS — adjust these first. */
+      --page-width: 8.5in;
+      --page-min-height: 11in;
+      --page-padding: 0.62in;
+      --title-size: 29px;
+      --body-size: 14.5px;
+      --formula-size: 18px;
+      --small-size: 11px;
+      --line-height: 1.4;
+      --section-gap: 15px;
+
+      --ink: #172026;
+      --muted: #53616a;
+      --accent: #087f8c;
+      --accent-soft: #e9f5f6;
+      --rule: #cbd7db;
+      --paper: #ffffff;
+      --canvas: #e8edef;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 28px;
+      background: var(--canvas);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont,
+        "Segoe UI", sans-serif;
+      font-size: var(--body-size);
+      line-height: var(--line-height);
+    }
+
+    main {
+      width: min(100%, var(--page-width));
+      min-height: var(--page-min-height);
+      margin: 0 auto;
+      padding: var(--page-padding);
+      background: var(--paper);
+      box-shadow: 0 16px 48px rgb(35 52 60 / 14%);
+    }
+
+    header {
+      padding-bottom: 14px;
+      border-bottom: 3px solid var(--accent);
+    }
+
+    .eyebrow {
+      margin: 0 0 5px;
+      color: var(--accent);
+      font-size: var(--small-size);
+      font-weight: 750;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: var(--title-size);
+      line-height: 1.08;
+      letter-spacing: -0.025em;
+    }
+
+    .question {
+      margin: 10px 0 0;
+      max-width: 68ch;
+      color: var(--muted);
+      font-size: calc(var(--body-size) * 1.06);
+    }
+
+    section { margin-top: var(--section-gap); }
+
+    h2 {
+      margin: 0 0 7px;
+      color: var(--accent);
+      font-size: calc(var(--body-size) * 0.92);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    p { margin: 0 0 8px; }
+
+    .formula-stack {
+      display: grid;
+      gap: 7px;
+      margin: 9px 0;
+    }
+
+    .formula {
+      padding: 8px 12px;
+      border-left: 3px solid var(--accent);
+      background: var(--accent-soft);
+      font-family: "Cambria Math", Cambria, "Times New Roman", serif;
+      font-size: var(--formula-size);
+      line-height: 1.25;
+      text-align: center;
+      overflow-wrap: anywhere;
+    }
+
+    .hypothesis {
+      margin-top: 10px;
+      padding: 10px 12px;
+      border: 1px solid var(--rule);
+      font-weight: 650;
+    }
+
+    .columns {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 22px;
+      align-items: start;
+    }
+
+    ul, ol {
+      margin: 6px 0 0;
+      padding-left: 20px;
+    }
+
+    li { margin: 0 0 4px; }
+
+    .decision {
+      padding: 11px 13px;
+      border: 1px solid var(--rule);
+      border-top: 3px solid var(--accent);
+      background: #fbfdfd;
+    }
+
+    footer {
+      margin-top: var(--section-gap);
+      padding-top: 9px;
+      border-top: 1px solid var(--rule);
+      color: var(--muted);
+      font-size: var(--small-size);
+    }
+
+    @media (max-width: 720px) {
+      body { padding: 0; }
+      main {
+        min-height: 100vh;
+        padding: 28px 22px;
+        box-shadow: none;
+      }
+      .columns { grid-template-columns: 1fr; gap: var(--section-gap); }
+    }
+
+    @media print {
+      @page { size: letter; margin: 0; }
+      body { padding: 0; background: white; }
+      main { box-shadow: none; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <p class="eyebrow">Technical note · review request</p>
+      <h1>Fixed-Graph Orbit Compilation</h1>
+      <p class="question">
+        Can symmetry-related stochastic programs reuse one embedding on a fixed,
+        sparse thermodynamic graph?
+      </p>
+    </header>
+
+    <section aria-labelledby="construction">
+      <h2 id="construction">Construction</h2>
+      <p>Let the hardware expose adjacency <i>A</i><sub>H</sub> and Ising energy:</p>
+      <div class="formula-stack">
+        <div class="formula">
+          E<sub>0</sub>(z) = h<sub>0</sub><sup>T</sup>z +
+          z<sup>T</sup>J<sub>0</sub>z,&nbsp;&nbsp;
+          z<sub>i</sub> ∈ {−1,+1}.
+        </div>
+        <div class="formula">
+          P<sub>g</sub><sup>T</sup>A<sub>H</sub>P<sub>g</sub> = A<sub>H</sub>,
+          &nbsp;&nbsp;
+          J<sub>g</sub> = P<sub>g</sub><sup>T</sup>J<sub>0</sub>P<sub>g</sub>,
+          &nbsp;&nbsp;
+          h<sub>g</sub> = P<sub>g</sub><sup>T</sup>h<sub>0</sub>.
+        </div>
+        <div class="formula">
+          p<sub>g</sub>(z | T<sub>g</sub>x) =
+          p<sub>0</sub>(P<sub>g</sub>z | x).
+        </div>
+      </div>
+      <p>
+        Each interface changes the logical frame and parameters while preserving
+        the physical edge set and target distribution up to the declared symmetry.
+      </p>
+
+      <p>For a cyclic family, one shared shift preserves relative phase:</p>
+      <div class="formula">
+        φ′<sub>ℓ</sub> = φ<sub>ℓ</sub> + s (mod p),
+        &nbsp;&nbsp;
+        φ′<sub>ℓ</sub> − φ′<sub>m</sub> = φ<sub>ℓ</sub> − φ<sub>m</sub> (mod p).
+      </div>
+
+      <div class="hypothesis">
+        Hypothesis: one embedded parent supports K related programs at
+        C<sub>shared</sub> ≈ C(F) + K·C<sub>params</sub>, rather than
+        C<sub>separate</sub> ≈ K·C(F), with no material loss in sampling or routing quality.
+      </div>
+    </section>
+
+    <section class="columns" aria-label="Experiment and measurements">
+      <div>
+        <h2>Minimal experiment</h2>
+        <ol>
+          <li>Build p = 7 or 11 cyclic factors on one degree-≤16 graph.</li>
+          <li>Implement at least four related, semantically distinct interfaces.</li>
+          <li>Fix the edge set; vary only P<sub>g</sub>, h<sub>g</sub>, and J<sub>g</sub>.</li>
+          <li>Run in Torx/THRML and compare with matched controls.</li>
+          <li>Remove views or edges and measure reconstruction degradation.</li>
+        </ol>
+      </div>
+
+      <div>
+        <h2>Controls and measures</h2>
+        <p><strong>Controls:</strong> separate embeddings, flat concatenation,
+          one global phase, independent rotations, and topology-matched random factors.</p>
+        <p><strong>Measures:</strong> distributional error, compilation and
+          reconfiguration cost, pbits, couplers, auxiliaries, mixing, held-out
+          routing accuracy, and partial-erasure recovery.</p>
+      </div>
+    </section>
+
+    <section class="decision" aria-labelledby="decision-rule">
+      <h2 id="decision-rule">Decision rule</h2>
+      <p>Continue only if the shared construction:</p>
+      <ol>
+        <li>preserves the target distribution within a declared bound;</li>
+        <li>improves embedding or reconfiguration cost at matched resources;</li>
+        <li>survives partial erasure better than flat controls; and</li>
+        <li>does not reduce to relabeling, one global phase, or an equivalent flat code.</li>
+      </ol>
+    </section>
+
+    <footer>
+      The phase coding and graph symmetries are established mathematics. The open
+      question is whether their composition enables useful reuse of a fixed
+      thermodynamic hardware embedding.
+    </footer>
+  </main>
+</body>
+</html>

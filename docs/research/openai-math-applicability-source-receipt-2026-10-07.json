@@ -1,0 +1,297 @@
+{
+  "review_date": "2026-10-07",
+  "source_repository": "https://github.com/openai/math",
+  "source_commit": "adc7f1241b42e322a6451854ab7e4b4c146bf78a",
+  "review_type": "catalogue screening and selected source/statement review",
+  "advertised_manuscripts": 722,
+  "catalogue_family_headers": 372,
+  "candidate_families": 22,
+  "family_scope_documents": 13,
+  "manuscript_source_families": [
+    "076",
+    "130",
+    "140",
+    "179",
+    "266",
+    "325"
+  ],
+  "challenge_configurations": 8,
+  "lean_toolchain": "leanprover/lean4:v4.34.1",
+  "recursive_tree_truncated": true,
+  "lean_or_comparator_replayed": false,
+  "numerical_exclusion_replayed": false,
+  "chelatedai_experiments_run": false,
+  "note": "Hashes identify downloaded review inputs; they do not certify proof validity or a successful build. Manuscript sources were also inspected but are not exhaustively listed in this selected-input receipt.",
+  "files": [
+    {
+      "source_path": "CONTENTS.md",
+      "source_url": "https://github.com/openai/math/blob/adc7f1241b42e322a6451854ab7e4b4c146bf78a/CONTENTS.md",
+      "bytes": 640371,
+      "sha256": "c492802b53fb4c4161e45fc678bb67bd526add72ca2635493a367ff7fb860bf9"
+    },
+    {
+      "source_path": "lean/ComparatorChallenges/AsymptoticallyMinimalLittlewood.json",
+      "source_url": "https://github.com/openai/math/blob/adc7f1241b42e322a6451854ab7e4b4c146bf78a/lean/ComparatorChallenges/AsymptoticallyMinimalLittlewood.json",
+      "bytes": 344,
+      "sha256": "0021e2cbecb32bf46c0ee9955f4241e518447f3019717304f2df794126331906"
+    },
+    {
+      "source_path": "lean/ComparatorChallenges/AsymptoticallyMinimalLittlewood.lean",
+      "source_url": "https://github.com/openai/math/blob/adc7f1241b42e322a6451854ab7e4b4c146bf78a/lean/ComparatorChallenges/AsymptoticallyMinimalLittlewood.lean",
+      "bytes": 625,
+      "sha256": "045e02714ed642444b9257f20f1ce65d68f00e63e914cc3aa7335f6ed5648a71"
+    },
+    {
+      "source_path": "lean/ComparatorChallenges/CirculantHadamard.json",
+      "source_url": "https://github.com/openai/math/blob/adc7f1241b42e322a6451854ab7e4b4c146bf78a/lean/ComparatorChallenges/CirculantHadamard.json",
+      "bytes": 352,
+      "sha256": "c1fe62023b2b218840c7389b00a97473b48f3a59ab1af453f0dd4558b9e6b4b1"
+    },
+    {
+      "source_path": "lean/ComparatorChallenges/CirculantHadamard.lean",
+      "source_url": "https://github.com/openai/math/blob/adc7f1241b42e322a6451854ab7e4b4c146bf78a/lean/ComparatorChallenges/CirculantHadamard.lean",
+      "bytes": 737,
+      "sha256": "397ec4f1ab8e02877f4a4d0b5a12d0c9b26a06bf768999479210b365c3acb647"
+    },
+    {
+      "source_path": "lean/ComparatorChallenges/CompleteCrouzeix.json",
+      "source_url": "https://github.com/openai/math/blob/adc7f1241b42e322a6451854ab7e4b4c146bf78a/lean/ComparatorChallenges/CompleteCrouzeix.json",
+      "bytes": 318,
+      "sha256": "458866285eca662c7e35786aef3332e44d4d46edee29a4c0c09a8a67a46fa22c"
+    },
+    {
+      "source_path": "lean/ComparatorChallenges/CompleteCrouzeix.lean",
+      "source_url": "https://github.com/openai/math/blob/adc7f1241b42e322a6451854ab7e4b4c146bf78a/lean/ComparatorChallenges/CompleteCrouzeix.lean",
+      "bytes": 1316,
+      "sha256": "6b63c6180f5507b341b323af4668050a32226526f56359563286efc509e8afbc"
+    },
+    {
+      "source_path": "lean/ComparatorChallenges/DirectCrouzeix.json",
+      "source_url": "https://github.com/openai/math/blob/adc7f1241b42e322a6451854ab7e4b4c146bf78a/lean/ComparatorChallenges/DirectCrouzeix.json",
+      "bytes": 371,
+      "sha256": "26346f0920c9862517f30c4c3a016a5aea03913cca5c151dd1a26eee3e7a9f82"
+    },
+    {
+      "source_path": "lean/ComparatorChallenges/DirectCrouzeix.lean",
+      "source_url": "https://github.com/openai/math/blob/adc7f1241b42e322a6451854ab7e4b4c146bf78a/lean/ComparatorChallenges/DirectCrouzeix.lean",
+      "bytes": 1353,
+      "sha256": "6aff79e03dee428cf5a677dba39da0fe14fe3d9a989a7e6d4bc0f3bf2a148d22"
+    },
+    {
+      "source_path": "lean/ComparatorChallenges/ExactFourier.json",
+      "source_url": "https://github.com/openai/math/blob/adc7f1241b42e322a6451854ab7e4b4c146bf78a/lean/ComparatorChallenges/ExactFourier.json",
+      "bytes": 323,
+      "sha256": "5c80971062c12f3ec364ae482fbd1e0d954c81c36437f3faa0b2c56562d1892c"
+    },
+    {
+      "source_path": "lean/ComparatorChallenges/ExactFourier.lean",
+      "source_url": "https://github.com/openai/math/blob/adc7f1241b42e322a6451854ab7e4b4c146bf78a/lean/ComparatorChallenges/ExactFourier.lean",
+      "bytes": 2005,
+      "sha256": "93b33a2b9f6543dd0b893c3a5a504df19a1a39476072c6d7ebe18133a820ef6d"
+    },
+    {
+      "source_path": "lean/ComparatorChallenges/LittlewoodFiniteFlatness.json",
+      "source_url": "https://github.com/openai/math/blob/adc7f1241b42e322a6451854ab7e4b4c146bf78a/lean/ComparatorChallenges/LittlewoodFiniteFlatness.json",
+      "bytes": 361,
+      "sha256": "66c7bd25834b7a32e762aa8132f66f8ef7735012c581bad5c0a6c1f83dde6f20"
+    },
+    {
+      "source_path": "lean/ComparatorChallenges/LittlewoodFiniteFlatness.lean",
+      "source_url": "https://github.com/openai/math/blob/adc7f1241b42e322a6451854ab7e4b4c146bf78a/lean/ComparatorChallenges/LittlewoodFiniteFlatness.lean",
+      "bytes": 1150,
+      "sha256": "06fc3e018ac481a8c7bcb5369bb67774ce717b318f20e2b82702f358a0f5f934"
+    },
+    {
+      "source_path": "lean/ComparatorChallenges/MUBSix.json",
+      "source_url": "https://github.com/openai/math/blob/adc7f1241b42e322a6451854ab7e4b4c146bf78a/lean/ComparatorChallenges/MUBSix.json",
+      "bytes": 318,
+      "sha256": "44b6a812682454988656f7c4cc85629d1cba5b3725f8cf3c03677c4f2535358f"
+    },
+    {
+      "source_path": "lean/ComparatorChallenges/MUBSix.lean",
+      "source_url": "https://github.com/openai/math/blob/adc7f1241b42e322a6451854ab7e4b4c146bf78a/lean/ComparatorChallenges/MUBSix.lean",
+      "bytes": 1924,
+      "sha256": "7a634ee492b54abe357901a69272c42aa8dfc85b7a3401eef723468bb0c6c355"
+    },
+    {
+      "source_path": "lean/ComparatorChallenges/NoiselessRegression.json",
+      "source_url": "https://github.com/openai/math/blob/adc7f1241b42e322a6451854ab7e4b4c146bf78a/lean/ComparatorChallenges/NoiselessRegression.json",
+      "bytes": 331,
+      "sha256": "b0de5570355bf6758071045179a4ca69bf8f721a044ebe60812387b617c19bd3"
+    },
+    {
+      "source_path": "lean/ComparatorChallenges/NoiselessRegression.lean",
+      "source_url": "https://github.com/openai/math/blob/adc7f1241b42e322a6451854ab7e4b4c146bf78a/lean/ComparatorChallenges/NoiselessRegression.lean",
+      "bytes": 4659,
+      "sha256": "ff97e11a2813481158c64b0d6bddad9fc9c2a39a0260a408842b4da2c07b2406"
+    },
+    {
+      "source_path": "lean/ComparatorChallenges/README.md",
+      "source_url": "https://github.com/openai/math/blob/adc7f1241b42e322a6451854ab7e4b4c146bf78a/lean/ComparatorChallenges/README.md",
+      "bytes": 287,
+      "sha256": "051459a45da1bedd1c0a6585a5b5e5425c7c40a369f2922d7b519e2fd02333b0"
+    },
+    {
+      "source_path": "lean/docs/076.md",
+      "source_url": "https://github.com/openai/math/blob/adc7f1241b42e322a6451854ab7e4b4c146bf78a/lean/docs/076.md",
+      "bytes": 1316,
+      "sha256": "7312cc588687637adba1db0343c62f03eece427bb61ddf90e1f100e3ed490cf5"
+    },
+    {
+      "source_path": "lean/docs/094.md",
+      "source_url": "https://github.com/openai/math/blob/adc7f1241b42e322a6451854ab7e4b4c146bf78a/lean/docs/094.md",
+      "bytes": 1058,
+      "sha256": "b775e2436e3f78fab16d8dc27e6fd55e537ce140b16e40157f86c746eabd0156"
+    },
+    {
+      "source_path": "lean/docs/098.md",
+      "source_url": "https://github.com/openai/math/blob/adc7f1241b42e322a6451854ab7e4b4c146bf78a/lean/docs/098.md",
+      "bytes": 1147,
+      "sha256": "d0961af63a6a2f393ccf0a2d818879a71613ac2b8998eecb64d306bc4cabb0e8"
+    },
+    {
+      "source_path": "lean/docs/107.md",
+      "source_url": "https://github.com/openai/math/blob/adc7f1241b42e322a6451854ab7e4b4c146bf78a/lean/docs/107.md",
+      "bytes": 2029,
+      "sha256": "7c7263cfecc5a16d20165952ac3010598c3770b441d7d8fe2c5ceb8eda1c3347"
+    },
+    {
+      "source_path": "lean/docs/130.md",
+      "source_url": "https://github.com/openai/math/blob/adc7f1241b42e322a6451854ab7e4b4c146bf78a/lean/docs/130.md",
+      "bytes": 1026,
+      "sha256": "4d28a5c6645d2d1bb188a55b4ad01904ce15378f1d60b6cf46e49b475b18c7d5"
+    },
+    {
+      "source_path": "lean/docs/139.md",
+      "source_url": "https://github.com/openai/math/blob/adc7f1241b42e322a6451854ab7e4b4c146bf78a/lean/docs/139.md",
+      "bytes": 1123,
+      "sha256": "01a80d3457fd2b8abf1a013c484a14dd7b52f4585a759f5aef3cfc9849d6ce27"
+    },
+    {
+      "source_path": "lean/docs/140.md",
+      "source_url": "https://github.com/openai/math/blob/adc7f1241b42e322a6451854ab7e4b4c146bf78a/lean/docs/140.md",
+      "bytes": 7886,
+      "sha256": "71f6b45431c698c92960574de306b727271ea53b7b9e6b6a099d22f5a2336dd3"
+    },
+    {
+      "source_path": "lean/docs/179.md",
+      "source_url": "https://github.com/openai/math/blob/adc7f1241b42e322a6451854ab7e4b4c146bf78a/lean/docs/179.md",
+      "bytes": 1160,
+      "sha256": "47cf8bcf69c2cdf41b6b03051d8ae6cf998773c8fd85b83f1b15c130f166ce60"
+    },
+    {
+      "source_path": "lean/docs/229.md",
+      "source_url": "https://github.com/openai/math/blob/adc7f1241b42e322a6451854ab7e4b4c146bf78a/lean/docs/229.md",
+      "bytes": 1429,
+      "sha256": "58030cb8b8a8b994f80e24a9d3f34788081ef8a1bcc90d7bb777ade0ba25d5bb"
+    },
+    {
+      "source_path": "lean/docs/251.md",
+      "source_url": "https://github.com/openai/math/blob/adc7f1241b42e322a6451854ab7e4b4c146bf78a/lean/docs/251.md",
+      "bytes": 1219,
+      "sha256": "4cbcf85a661e4983681d35c1282528eed810926c8011345d999e9eec415b0f8c"
+    },
+    {
+      "source_path": "lean/docs/266.md",
+      "source_url": "https://github.com/openai/math/blob/adc7f1241b42e322a6451854ab7e4b4c146bf78a/lean/docs/266.md",
+      "bytes": 2093,
+      "sha256": "3141714e25026b26a4028e27ee001e70295310bad4290b5a8f7c9fd546e8a174"
+    },
+    {
+      "source_path": "lean/docs/325.md",
+      "source_url": "https://github.com/openai/math/blob/adc7f1241b42e322a6451854ab7e4b4c146bf78a/lean/docs/325.md",
+      "bytes": 2508,
+      "sha256": "e44548f4f54b1e408506529aac102b3a2bfcf930ddb5145afb4b193a97dee54b"
+    },
+    {
+      "source_path": "lean/docs/328.md",
+      "source_url": "https://github.com/openai/math/blob/adc7f1241b42e322a6451854ab7e4b4c146bf78a/lean/docs/328.md",
+      "bytes": 967,
+      "sha256": "9f79d43bd015142bdc270e47722767be151f59742df8f77ae006fd89ab6ea098"
+    },
+    {
+      "source_path": "lean/formalization.yaml",
+      "source_url": "https://github.com/openai/math/blob/adc7f1241b42e322a6451854ab7e4b4c146bf78a/lean/formalization.yaml",
+      "bytes": 73925,
+      "sha256": "2dcbd0d6e6a22475f53d49bfdfcac9b6d2b470653c332a9f56522f5be166edb9"
+    },
+    {
+      "source_path": "lean/lean-toolchain",
+      "source_url": "https://github.com/openai/math/blob/adc7f1241b42e322a6451854ab7e4b4c146bf78a/lean/lean-toolchain",
+      "bytes": 25,
+      "sha256": "d5edba4e4b8faad9c1baeadb265716d20d03be4d1a2647dc5e35b0c0325bea7b"
+    },
+    {
+      "source_path": "lean/OAI/Analysis/DirectCrouzeix/CompleteBound.lean",
+      "source_url": "https://github.com/openai/math/blob/adc7f1241b42e322a6451854ab7e4b4c146bf78a/lean/OAI/Analysis/DirectCrouzeix/CompleteBound.lean",
+      "bytes": 2757,
+      "sha256": "c8f0706d92662aaca2d1a26fe7647b3719035f72177d68fbf5b490028f12e891"
+    },
+    {
+      "source_path": "lean/OAI/Analysis/DirectCrouzeix/Main.lean",
+      "source_url": "https://github.com/openai/math/blob/adc7f1241b42e322a6451854ab7e4b4c146bf78a/lean/OAI/Analysis/DirectCrouzeix/Main.lean",
+      "bytes": 2051,
+      "sha256": "0a259924198d24e07a91764943aa2623b0cde487747f7c74a863d15dd50d3e71"
+    },
+    {
+      "source_path": "lean/OAI/Analysis/Littlewood/FiniteFlatness.lean",
+      "source_url": "https://github.com/openai/math/blob/adc7f1241b42e322a6451854ab7e4b4c146bf78a/lean/OAI/Analysis/Littlewood/FiniteFlatness.lean",
+      "bytes": 1245,
+      "sha256": "08a4df5d4b2cebf82c685c321fa07dfb7a8368ab767f90edd1015c208f1d1056"
+    },
+    {
+      "source_path": "lean/OAI/Analysis/Littlewood/Main.lean",
+      "source_url": "https://github.com/openai/math/blob/adc7f1241b42e322a6451854ab7e4b4c146bf78a/lean/OAI/Analysis/Littlewood/Main.lean",
+      "bytes": 9827,
+      "sha256": "7c7d54dd82a881bf5df78d9ea15973142066a60135031ad47b8d37d7fb5ebe96"
+    },
+    {
+      "source_path": "lean/OAI/Analysis/MutuallyUnbiased/Main.lean",
+      "source_url": "https://github.com/openai/math/blob/adc7f1241b42e322a6451854ab7e4b4c146bf78a/lean/OAI/Analysis/MutuallyUnbiased/Main.lean",
+      "bytes": 1372,
+      "sha256": "13495f1c2248552ad2766a12b80e5593cf682dab271a24c7b9f7df7052f724d4"
+    },
+    {
+      "source_path": "lean/OAI/Analysis/NumericalRange/Main.lean",
+      "source_url": "https://github.com/openai/math/blob/adc7f1241b42e322a6451854ab7e4b4c146bf78a/lean/OAI/Analysis/NumericalRange/Main.lean",
+      "bytes": 3419,
+      "sha256": "fbbd1e3e5006b9a851b91899e9544793d6e426cf92ab8216a68e4136bf80a8b4"
+    },
+    {
+      "source_path": "lean/OAI/Computability/FourierCircuit/Main.lean",
+      "source_url": "https://github.com/openai/math/blob/adc7f1241b42e322a6451854ab7e4b4c146bf78a/lean/OAI/Computability/FourierCircuit/Main.lean",
+      "bytes": 15102,
+      "sha256": "ff1fb1bc4b5ec26f1722d41d9603898b3361844af1cb4a78e0233a6bc6de582b"
+    },
+    {
+      "source_path": "lean/OAI/LinearAlgebra/CirculantHadamard/Main.lean",
+      "source_url": "https://github.com/openai/math/blob/adc7f1241b42e322a6451854ab7e4b4c146bf78a/lean/OAI/LinearAlgebra/CirculantHadamard/Main.lean",
+      "bytes": 1293,
+      "sha256": "10ac97dc252ed99ef11e95b13a0b1e51f403c039cdd158f6a0ade4aa446c1c9a"
+    },
+    {
+      "source_path": "lean/OAI/Probability/GaussianRegression/Main.lean",
+      "source_url": "https://github.com/openai/math/blob/adc7f1241b42e322a6451854ab7e4b4c146bf78a/lean/OAI/Probability/GaussianRegression/Main.lean",
+      "bytes": 3926,
+      "sha256": "bc7d2adc7bc1cc72121ab2c9e4a6b291df8f551ef385c3ba251e4d7f9a4c7164"
+    },
+    {
+      "source_path": "lean/README.md",
+      "source_url": "https://github.com/openai/math/blob/adc7f1241b42e322a6451854ab7e4b4c146bf78a/lean/README.md",
+      "bytes": 650,
+      "sha256": "292ff9d539f494158dfbf68d989ba85a82782a4343b2fe43088f8fa62525bf1b"
+    },
+    {
+      "source_path": "overview.tex",
+      "source_url": "https://github.com/openai/math/blob/adc7f1241b42e322a6451854ab7e4b4c146bf78a/overview.tex",
+      "bytes": 322922,
+      "sha256": "98533a7bc976f44970153f036320932655d07488382e858c25bb6c9e1e029789"
+    },
+    {
+      "source_path": "README.md",
+      "source_url": "https://github.com/openai/math/blob/adc7f1241b42e322a6451854ab7e4b4c146bf78a/README.md",
+      "bytes": 4131,
+      "sha256": "af984f110f6583ba57ec1af907dc989bfce86713161e9c8b0543b052a138ff64"
+    }
+  ]
+}

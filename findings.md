@@ -1,5 +1,57 @@
 # Findings & Decisions
 
+<!-- innovation-test-queue-2026-09-12:start -->
+## 2026-09-12 — Innovation test-packet preparation
+
+- Scope is the six directions in the latest innovation/time assessment, integrated into the existing research portfolio rather than six launched campaigns. Existing QSCCI, EGV, BCC, and prime-ring dispositions remain in place.
+- CRSV/LIR/SRS remain distinct hypotheses, but the current protocol's formal confirmatory hierarchy is CRSV then LIR then SRS. A failed upstream gate does not logically disprove downstream ideas; it does stop that protocol's confirmatory sequence. Any independent follow-up needs its own reviewed design, not silent gate removal.
+- Test packets will distinguish mathematical identity, implementation correctness, method-development signal, held-out utility, independent replication, and novelty. None of these is interchangeable with another.
+- Current `BLOCKED` flag and expired debt remain unchanged. Protocol/fixture bytes, unrelated work, historical negatives, and the unrevised external fixed-graph pitch are preserved.
+- Refreshed primary abstracts for [SimMerge](https://arxiv.org/abs/2601.09473), [AlphaEdit](https://arxiv.org/abs/2410.02355), [KnOTS](https://arxiv.org/abs/2410.19735), and [PermDoRA](https://arxiv.org/abs/2606.11262). Merge prediction, null-space editing, and aligned LoRA merging are prior art. PermDoRA reports weak geometric predictors in its tested setting, not a universal impossibility result. Future baselines must distinguish checkpoint merging, sequential adapter application, and activation correction.
+- [GraphCON](https://proceedings.mlr.press/v162/rusch22a.html), [GRAND](https://proceedings.mlr.press/v139/chamberlain21a.html), [DataMUX](https://arxiv.org/abs/2202.09318), and [resonator networks](https://arxiv.org/abs/2007.03748) bound broad oscillator, diffusion, multiplexing, and factorization novelty. DataMUX packs separate inputs; it is not automatically the same task as inter-branch diffusion.
+- The publisher page for Linear Codes for Hyperdimensional Computing returned HTTP 403; located its [primary preprint](https://arxiv.org/abs/2403.03278) instead. Full algorithm/code audit remains a pre-freeze task; no external results were replicated.
+- Refreshed [Extropic's Z1T technical page](https://extropic.ai/writing/z1t/) for fixed sparse support and [Donto's systems report](https://donto.org/reports/donto-paper-2026-05-28) for append-only bitemporal/provenance semantics. These are vendor/author descriptions, not independently validated hardware or memory results. A [2009 dynamic truth-discovery paper](https://www.vldb.org/pvldb/vol2/vldb09-335.pdf) is a closer temporal/copy-aware comparator than plain recency alone.
+- Prepared [IQ-20260912](docs/research/innovation-test-queue-2026-09-12/README.md): six packets plus shared evidence requirements and an 18-entry primary-source register. Research outcomes remain unrun; literature reading depth and missing full-method/code reviews are explicit.
+- Plans separate checkpoint merging from ordered nonlinear applications, coordinate restriction from behavioral preservation, learned-bank compression from constructed route decoding, store rollback from hidden-state replay, branch diffusion from independent-input packing, and canonical relabeling from actual hardware advantage. Proposed numeric gates are prospective planning choices; source protocol gates were not changed.
+- Scoped recurrent correction and learned holographic composition have bounded tiny-model/learned-bank proposals rather than a foundation-model commitment. Temporal correction keeps all 15 EK7 predecessor dispositions and its 1 GiB cap. RHPC keeps route-disjoint training/development/selection/report planning and its original official execution prerequisites.
+<!-- innovation-test-queue-2026-09-12:end -->
+
+<!-- research-priority-update-2026-09-04:start -->
+## 2026-09-04 — Portfolio review: evidence before expansion
+
+**Scope:** Research prioritization and corrections to interpretation, not new experimental results. Preserve every earlier result and frozen protocol below. The dated research schedule will be the current ordering reference; it does not authorize execution.
+
+- The central research question is whether adaptation can be predictable, reversible, and beneficial on unseen tasks. Geometric representations and hardware mappings are candidate mechanisms, not separate discoveries by default.
+- Retrieval findings affected by metric lineage remain quarantined. Correcting the metric implementation does not retroactively validate old artifacts or fix experimental-design problems.
+- QSCCI follow-up is a small mechanistic discriminator, but its draft is not frozen or authorized. Oracle-signed interventions test controllability, not an autonomous correction policy; the already-used v4 fixture cannot confirm a new hypothesis.
+- CRSV, LIR, and SRS deserve high scientific priority, with explicit timing for every predictor. Pair/reversal measurements obtained from a held-out chain's outcomes cannot also serve as that chain's prospective predictors. This is a design risk to resolve, not a newly demonstrated implementation failure.
+- EGV-v1's evaluator-only hidden oracle made the affected benchmark unlearnable from available inputs. Those results are diagnostic, not evidence that a model lacked the targeted capability. The locally amended v2 design and draft PR #308 must be reconciled before relying on one as the execution contract.
+- Exact fixed-graph automorphism families are relabelings. Any useful compilation claim must beat compile-once caching plus input/output remapping and account for actual hardware topology and transfer costs. The current one-pager requires revision before external use.
+
+**Current ordering reference (completed 2026-09-12):** [Research priorities and testing schedule](docs/research/research-priorities-and-testing-schedule-2026-09-12.md). No research run has been started by this update.
+
+### 2026-09-12 addition — Recurrent-looped transformer design
+
+- The user-linked [RLT repository](https://github.com/yifanzhang-pro/recurrent-looped-tranformer/tree/1bee93a9b01c21bea0c7a50ce3f6619f24731e19) is currently a technical-report/site release, not a model implementation or replication package. Its author explicitly leaves reasoning, hardware, and RL gains unmeasured. The source review therefore becomes an architecture review, not a code-correctness certification.
+- Token-to-token state recurrence and extra refinement iterations before a token are different compute axes. RLT's temporal-depth claim concerns the former; adding the latter would be our additional design choice and must be costed separately.
+- The RLT report already includes gated feedback and a low-rank feedback option. Our candidate must therefore beat an ordinary gated/low-rank recurrent baseline; generic gating is not an addition missing from this design.
+- Recurrence and adaptive depth already have direct prior work: [Universal Transformers](https://arxiv.org/abs/1807.03819) and [recurrent-depth latent reasoning](https://arxiv.org/abs/2502.05171). [Titans](https://arxiv.org/abs/2501.00663) covers learned test-time memory; [Engram](https://arxiv.org/abs/2601.07372) covers complementary conditional lookup. These are baselines/related mechanisms, not categories we can dismiss as mere speech heuristics.
+- New, closely relevant prior work: [Think Shallow, Solve Deep](https://arxiv.org/abs/2608.18222) studies finite-time recurrent regimes, decoder-margin conditions, and fixed-point training. Broad claims that stability-guided recurrence itself is new are not supportable. Whether our scoped updates and reversible evidence handling add utility remains an open, narrower question.
+- Proposed priority: high for a design/equivalence review and bounded falsification plan; hold full new-model training. No evidence currently establishes that the proposed combination is better than ordinary gated recurrence plus versioned memory.
+
+### Portfolio dispositions applied to the schedule
+
+- CRSV/LIR/SRS are the scientific core, but remain separate hypotheses. The new recurrent-dynamics literature also expands SRS's comparator set; stability or transient-gain diagnostics alone cannot be presented as an untouched novelty avenue.
+- Temporal correction/evidence handling is the recommended practical flagship; EGV-v2 is the alternative to choose at the next task-planning step. Neither begins automatically, and the default is not two simultaneous compute campaigns.
+- RHPC constructed route recovery and RB-13/RB-14 mechanism/sanity checks are not learned-model or real-task utility evidence. Require same-information ordinary controls and component-level contributions before combination.
+- Preserve RB-15's tested negative, JO1/BIL1/SPU0 ordinary-equivalence boundaries, VAR1's scoped null, and BCC's current-family cut. Their artifacts are not deleted or relabeled as new confirmation data.
+- Prime-ring expansion remains behind the numerical tie contract, A1 conjugacy/semantic-cost check, and G2-H auxiliary-minimality discriminator. A larger mesh is not an answer to those questions.
+- Added a dated qualification to issue #106's historical readiness/novelty claims. Localized adaptation, event-triggered updates, and routing remain hypotheses; physics vocabulary does not supply a derivation. Prompt geometry cannot establish instruction authority, which must come from explicit trusted policy/provenance rules.
+- The new [architecture review](docs/research/recurrent-scoped-transformer-design-review-2026-09-12.md) separates a checkable one-step subspace restriction from unproved semantic safety, convergence, memory reversibility, and compute savings. Full training remains on hold pending a bounded matched-control result.
+
+These are evidence-interpretation and priority decisions, not fresh scientific outcomes. Frozen protocols, source artifacts, and existing worktree edits are preserved; the block flag remains unchanged.
+<!-- research-priority-update-2026-09-04:end -->
+
 ## 2026-08-14 paired chelation intervention sanity
 
 - The Sophontic video adds no new ChelatedAI mechanism. Its useful technical
@@ -2209,3 +2261,67 @@
   metaphor. It is a frozen real-model causal intervention using the proven
   Qwen/SAE path, with task-level quality, locality, collateral damage, latency,
   memory, and matched random/activation-magnitude controls.
+- PRW-ISI1 v3 establishes only an evaluator/evidence sanity boundary. Its
+  production variance mask matches the oracle on the constructed five-
+  dimensional fixture and its over-chelation control fails material response,
+  but scientific and novelty statuses remain `UNCONFIRMED`; full PRW-ISI1 is
+  still blocked on PRW-EK3.
+- The most defensible real-model hypothesis is now narrower: nuisance-
+  penalized SAE feature selection may improve held-out label-oracle steering
+  robustness over equally tuned contrastive and random controls. SAE steering
+  itself is Qwen-Scope prior art, and even a pass would be a small empirical
+  robustness ablation rather than a new general theory.
+
+## 2026-08-16 QSCCI v4 real-model result
+
+- The first valid committed QSCCI run is a preregistered **negative**:
+  `DOES_NOT_SURVIVE_SMALL_LABEL_ORACLE_FIXTURE`. Independent verification
+  reconstructed selections, endpoints, gates, artifact digest, manifest, and
+  commit receipt; model-produced leaves were not independently re-executed.
+- The selected direction is real and useful within the tiny fixed fixture. It
+  produced bidirectional contrast `0.604167`, correct-sign gain `+0.118056`,
+  wrong-sign gain `-0.486111`, unchanged accuracy `1.0`, mean/max KL
+  `0.000468882/0.00178674`, and zero outside-target collateral. It beat all six
+  random controls by `0.260417` to `0.538194` in causal contrast.
+- This signal is **not attributable to chelation**. Chelated and ordinary
+  contrastive selection chose the identical four SAE features
+  `[15620, 17083, 3067, 18817]` at the identical `k=4`, `alpha=4` operating
+  point. Their directions had cosine `1.0` and every REPORT endpoint was
+  identical, so chelated advantage over contrastive was exactly zero.
+- The nuisance penalty changed feature scores but did not change the selected
+  top four. It also failed the intended robustness boundary: canonical/nuisance
+  mismatch was `1/6`, worse than every random control (`1/24` to `7/48`), and
+  material response completeness was only `1/6` against the frozen `5/6`
+  threshold.
+- Passed gates: SELECT/REPORT task validity, correct-vs-wrong sign direction,
+  all six random-control advantages, relative material completeness, KL,
+  collateral, and separation from all random controls. Failed gates:
+  contrastive advantage, contrastive treatment separation,
+  mismatch-no-greater-than-controls, and absolute material completeness.
+- The evidence therefore falsifies the current additive chelation claim while
+  preserving a narrower lead: contrastive SAE steering on this fixture is
+  strong, low-collateral, and inexpensive. The next experiment must be a new
+  frozen selection-rule study that forces a meaningful nuisance-aware ranking
+  change; post-hoc REPORT retuning is prohibited. Scientific and novelty
+  statuses remain `UNCONFIRMED`.
+
+## 2026-08-16 QSCCI follow-up fixture boundary
+
+- A blind author created a wholly new 60-row logical-entailment fixture without
+  prior QSCCI fixture/result access or model, SAE, GPU, network, or service use.
+  DEVELOPMENT/SELECT/REPORT contain `12/24/24` rows with exact `6/6`, `12/12`,
+  and `12/12` label balance plus family/subtype/surface-signature controls.
+- The immutable authoring source remains review-custody evidence. A mechanical
+  transform emits three separately hash-bound canonical `FROZEN` inputs so a
+  SELECT worker cannot receive REPORT bytes. This closes a real phase-barrier
+  flaw found during exactness review of the first integrated draft.
+- The source validator and 24 hostile tests pass. Four additional integration
+  tests bind the physical split, YES/NO to numeric/target-token mapping, exact
+  partition hashes, and all 6,480 comparisons against the exhausted v4
+  fixture. Maximum multiset Dice similarity is exact `4/13`, safely below the
+  inclusive `0.86` rejection threshold.
+- This is experimental-design progress, not a model result. The nuisance-rank
+  follow-up remains `REVIEW-DRAFT / NOT FROZEN / NOT AUTHORIZED`; no
+  DEVELOPMENT, SELECT, or REPORT model execution is permitted until closed
+  artifact schemas, implementation, phase-barrier tests, and fresh Tier-B are
+  complete.

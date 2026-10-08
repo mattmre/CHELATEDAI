@@ -1,5 +1,13 @@
 # Evidence-kernel and masked-subplane METHOD_DEV queue
 
+<!-- innovation-test-queue-2026-09-12:start -->
+## 2026-09-12 — Temporal utility test packet added to the planning queue
+
+[IQ-04: temporal evidence correction](innovation-test-queue-2026-09-12/04-temporal-evidence-correction.md) prepares the practical utility follow-through: a current predecessor map, matched temporal/copy-aware controls, a proposed single primary endpoint, survivor-only ablations, and separate store-versus-model-state retraction boundaries. See the [six-direction queue](innovation-test-queue-2026-09-12/README.md) for priority and ownership roles.
+
+This is a planning cross-link, not a replacement protocol or an EK7 entry-gate waiver. All 15 named predecessor dispositions and the source card's memory/checkpoint limits remain required. The dated [portfolio disposition record](research-priorities-and-testing-schedule-2026-09-12.md) qualifies historical status summaries below, including preserved RB-15 negatives; earlier artifact bytes and mathematical/experimental definitions are unchanged. No new experiment is launched by this addition.
+<!-- innovation-test-queue-2026-09-12:end -->
+
 **Queue ID:** `RB-13`
 
 **Status:** `IMPLEMENTATION_IN_PROGRESS`; the RB-13 dependency queue remains

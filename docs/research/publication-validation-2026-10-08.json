@@ -1,0 +1,55 @@
+{
+  "date": "2026-10-08",
+  "scope": "draft publication validation; no new scientific campaign",
+  "integration": {
+    "tasks": 42,
+    "math_tasks": 8,
+    "specified_cases": 24,
+    "dependency_edges": 45,
+    "local_links_checked": 128,
+    "prior_bodies_preserved": 23,
+    "errors": []
+  },
+  "focused_unittest": {
+    "command": "python -m unittest tests.test_paired_intervention_experiments test_qscci_frozen_contract test_qscci_numerics test_qscci_selection_gates test_qscci_supervisor test_qscci_v4_archive",
+    "tests_run": 144,
+    "skipped": 4,
+    "failures": 0,
+    "exit_code": 0,
+    "seconds": 44.162
+  },
+  "public_safe_archive": {
+    "command": "python .codex-public-safe/validate_artifacts.py",
+    "status": "PASS",
+    "exact_hashes": true,
+    "canonical_json": true,
+    "closed_schema": true,
+    "forbidden_privacy_hits": 0,
+    "gitleaks_findings": 0
+  },
+  "staged_payload": {
+    "files_scanned": 167,
+    "source_files": 165,
+    "source_files_byte_exact": 164,
+    "metadata_line_endings_normalized": [
+      "docs/research/openai-math-applicability-source-receipt-2026-10-07.json"
+    ],
+    "secret_scan_exit_code": 0,
+    "secret_findings": 0,
+    "diff_check_exit_code": 0,
+    "errors": []
+  },
+  "repository_gate": {
+    "status": "BLOCKED",
+    "carried_debt_rows": 3,
+    "merge_admission": false,
+    "independent_tier_b": "NOT_RUN"
+  },
+  "laptop_audit": {
+    "status": "PENDING_SSH_AUTHENTICATION",
+    "remote_repository_diffs_read": false
+  },
+  "new_math_cases_implemented": false,
+  "new_math_cases_run": false,
+  "lean_comparator_replayed": false
+}
