@@ -1,5 +1,23 @@
 # Issue #106 — Localized Assimilation: Research Plan & Implementation Phases
 
+<!-- math-findings-integration-2026-10-08:start -->
+## 2026-10-08 — Virtual-expert and mathematical-test alignment
+
+The [posted speculative virtual-expert proposal](https://github.com/mattmre/CHELATEDAI/issues/106#issuecomment-6029945796) is now mapped to [MA0/MA2/MA4/MA7 in the existing test queue](../../../research/innovation-test-queue-2026-09-12/math-findings-integration-2026-10-07.md), with explicit future cases for same-input coefficient error, live-adapter bias/normalization, switching/cache divergence, output-verification contracts, retained bits, and numerical receipts. The [OpenAI math review](../../../research/openai-math-applicability-review-2026-10-07.md) supplies related theorem scope; none directly proves model utility or speculative acceleration.
+
+Compare ordinary low-rank/gated/aligned/conventional expert-bank controls at matched information, bytes, and total verification/replay work. The current router is hard top-one selection, so a virtual-mixture route remains a proposed extension. The original historical phases below do not become current implementation admission through this alignment. Case implementation and scientific execution retain their respective existing gates.
+
+The [2026-10-08 ResonanceDB comparison](../../../research/resonance-memory-prior-art-2026-10-08.md) identifies P4/RHPC/IQ-03 as the closest phase-representation lane and adds seven executed algebraic checks. Its retrieval score is exactly real-coordinate dot-product scoring with energy calibration. A future phase-enriched virtual-expert comparison must give ordinary controls identical phase/role information and account for encoder, norm calibration, storage, verification, rejection/replay, and rollback work. The paper does not establish learned expert compression or speculative acceleration; keep those endpoints separate.
+<!-- math-findings-integration-2026-10-08:end -->
+
+<!-- research-priority-update-2026-09-04:start -->
+## 2026-09-12 advisory — design review required
+
+The original text below is a historical proposal, preserved unchanged. Its “research complete, implementation ready” status and numerical novelty estimates are **not current scientific validation or implementation clearance**. Routed/localized adaptation remains a testable direction; the physics analogies and stronger geometry claims need explicit derivations and ordinary controls.
+
+Use the [current portfolio schedule](../../../research/research-priorities-and-testing-schedule-2026-09-12.md) and [recurrent scoped-state design review](../../../research/recurrent-scoped-transformer-design-review-2026-09-12.md) for current priority and claim boundaries. No original phase, experiment, or novelty claim is approved by this advisory.
+<!-- research-priority-update-2026-09-04:end -->
+
 **Session date:** 2026-04-08  
 **Origin:** GitHub Issue #106 (mattmre/CHELATEDAI)  
 **Panels run:** 6 expert panels (3 rounds) + 1 novelty identification panel  

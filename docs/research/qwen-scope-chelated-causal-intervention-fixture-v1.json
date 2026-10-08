@@ -1,0 +1,19 @@
+{
+  "prompt_template": "Review: The meal was wonderful.\nSentiment: positive\nReview: The meal was awful.\nSentiment: negative\nReview: {review}\nSentiment:",
+  "report": [
+    {"canonical": "The museum tour was fascinating and informative.", "id": "R01", "material": "The museum tour was tedious and uninformative.", "nuisance": "Informative and fascinating, the museum tour was.", "y": 1},
+    {"canonical": "The headphones sounded muddy and uncomfortable.", "id": "R02", "material": "The headphones sounded crisp and felt comfortable.", "nuisance": "Uncomfortable and muddy, the headphones sounded.", "y": -1},
+    {"canonical": "The support agent was patient and helpful.", "id": "R03", "material": "The support agent was impatient and unhelpful.", "nuisance": "Helpful and patient, the support agent was.", "y": 1},
+    {"canonical": "The course was disorganized and shallow.", "id": "R04", "material": "The course was structured and deeply informative.", "nuisance": "Shallow and disorganized, the course was.", "y": -1},
+    {"canonical": "The camera was sturdy and produced beautiful photos.", "id": "R05", "material": "The camera was flimsy and produced ugly photos.", "nuisance": "Sturdy, the camera produced beautiful photos.", "y": 1},
+    {"canonical": "The commute was exhausting and unpleasant.", "id": "R06", "material": "The commute was relaxing and pleasant.", "nuisance": "Unpleasant and exhausting, the commute was.", "y": -1}
+  ],
+  "select": [
+    {"canonical": "The service was excellent and the staff were kind.", "id": "S01", "material": "The service was terrible and the staff were rude.", "nuisance": "The staff were kind; the service was excellent.", "y": 1},
+    {"canonical": "The book was dull and painfully confusing.", "id": "S02", "material": "The book was engaging and wonderfully clear.", "nuisance": "Painfully confusing, the book was dull.", "y": -1},
+    {"canonical": "The hotel room was spotless and comfortable.", "id": "S03", "material": "The hotel room was filthy and uncomfortable.", "nuisance": "Comfortable and spotless: that was the hotel room.", "y": 1},
+    {"canonical": "The software was frustrating and unreliable.", "id": "S04", "material": "The software was dependable and easy to use.", "nuisance": "Unreliable and frustrating, the software was.", "y": -1},
+    {"canonical": "The concert was energetic and memorable.", "id": "S05", "material": "The concert was lifeless and forgettable.", "nuisance": "Memorable and energetic, the concert was.", "y": 1},
+    {"canonical": "The delivery was late and the package was damaged.", "id": "S06", "material": "The delivery was prompt and the package was perfect.", "nuisance": "The package was damaged, and the delivery was late.", "y": -1}
+  ]
+}

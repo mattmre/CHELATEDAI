@@ -1,0 +1,34 @@
+VER-AEP-20260829-BE002-001 deterministic stage-selection receipt
+Observed: 2026-08-29 approximately 15:36 America/New_York
+Working directory: D:\GITHUB\CHELATEDAI
+Exit code: 0
+
+Copy-paste command:
+$probe=@'
+import tempfile
+from dataclasses import replace
+from pathlib import Path
+from unittest import mock
+import qwen_scope_real_smoke as q
+from test_qwen_scope_real_smoke import FixtureBackend, fixture_config
+with tempfile.TemporaryDirectory() as parent:
+    target=Path(parent)/"result"
+    config=replace(fixture_config(target), max_wall_seconds=0.05)
+    original=q._check_deadline
+    def expire_before_promotion(started, cfg, context):
+        if context == "parent fsync immediately before promotion":
+            raise q.SmokeFailure("wall-time ceiling exceeded: deterministic pre-promotion probe")
+        return original(started, cfg, context)
+    with mock.patch("qwen_scope_real_smoke._check_deadline", side_effect=expire_before_promotion):
+        try: q.run_smoke(config, FixtureBackend())
+        except q.SmokeFailure as exc: print(f"failure={exc}")
+    print(f"target_is_dir={target.is_dir()}")
+    assert not target.is_dir()
+'@
+python -c $probe
+
+Raw output:
+failure=wall-time ceiling exceeded: deterministic pre-promotion probe
+target_is_dir=False
+
+Additional executed evidence: 20 isolated two-test runs all passed (40 tests, zero failures); the quiet full-suite receipt passed 3,633 tests. The earlier verbose full-run failure was observed but its raw stream was not preserved, so it is diagnostic context only. The controlling evidence is the replayable probe above: expiry at a legitimate pre-promotion checkpoint makes the current test's unconditional `target.is_dir()` postcondition false before the mocked delayed stage is reached.

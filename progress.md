@@ -1,5 +1,37 @@
 # Progress Log
 
+<!-- innovation-test-queue-2026-09-12:start -->
+## 2026-09-12 — Six research test packets and queue integration
+
+- User requested documentation, test plans, and queue entries; execution is outside this turn's scope.
+- Recovered branch `codex/prime-ring-onion-method-dev` at `65c9085cd048e8a7351a53e87666fdd5639e612b`; preserved the existing dirty tracked/untracked tree. Read root/documentation guidance, active schedule, and CRSV protocol; captured 14 preservation hashes before editing.
+- Using planning-with-files to maintain the scope/phase record, source findings, and validation receipt. The MLOps pipeline skill was inspected but not activated: no pipeline or deployment is being built.
+- Prepared nine new Markdown documents: the queue, shared contract, 18-entry source register, and six test packets. Added discoverability pointers to the portfolio schedule, RLT review, RB-13/RB-14 queue, and next-session record without replacing earlier bodies.
+- Packet drafting and local queue integration are complete. No experiment, model call, held-out fixture inspection, Spark/cloud access, or publication has occurred.
+- Output-budget issue: combined historical-document reads were truncated; required guidance was reread in bounded sections. No substantive result relies on truncated passages.
+- Validation: the scoped structural check covered 16 changed/new documentation surfaces (nine new Markdown files and seven marked insertion blocks), six packets, 28 unique future task IDs, 18 primary-source entries, 68 table rows, and 51 local-link references resolving to 18 existing file targets. No empty scope, missing packet field, malformed table, unclosed code fence, duplicate task ID, or trailing whitespace was found.
+- The explicit task graph contains 28 known nodes and 25 edges, with no cycle or unknown node. This checks the written ordering, not runtime admission enforcement. All 15 required EK7 predecessor names and its checkpoint guard are retained; external gates and scientific hierarchy were reviewed as prose requirements.
+- Preservation: all seven original document bodies matched their pre-edit normalized SHA-256 after removing only `innovation-test-queue-2026-09-12` insertions. All seven checked untouched files matched their pre-edit raw SHA-256: `.gitattributes`, three paired-intervention source/runner/test files, CRSV protocol, QSCCI follow-up protocol, and the old fixed-graph HTML pitch.
+- `git diff --check` on the seven edited existing documents exited 0. New-file whitespace/fence/table checks were performed separately because untracked files are not included by ordinary `git diff`.
+- `python scripts/check_block_flag.py` exited 1, reporting `BLOCKED` and three carried-debt rows. This is the expected preserved restriction, not a successful run/merge gate; no override or debt-bypass flag was used.
+- Validation catches amended during review: separated G0-BUILD from G0-RUN, made component selection pre-REPORT, and retained four route-disjoint RHPC data partitions. One malformed PowerShell inventory failed before producing results; its simple `rg` replacement succeeded. The MIT publisher's HTTP 403 was handled through the primary author-final preprint, not an unverified copy.
+- Evidence scope: documentation checks and local self-review only. No independent Tier B, full ML suite, full-paper/code replication, frozen experiment, scientific utility, novelty, or release acceptance. Changes remain local and uncommitted; public mutations retain their separate approval requirements.
+<!-- innovation-test-queue-2026-09-12:end -->
+
+<!-- research-priority-update-2026-09-04:start -->
+## 2026-09-04 — Research schedule reconciliation (documentation only)
+
+- Reviewed current workstream protocols and resumption records, including applicable block gates and the distinction between local EGV amendments and draft PR #308.
+- Used the planning-with-files skill to keep the active documentation plan, findings, and progress record aligned while preserving earlier campaign history.
+- Completed the dated portfolio schedule on 2026-09-12, including the user's added recurrent-looped-transformer design review. Detailed implementation tasks, resource commitments, and run dates are intentionally deferred to the next planning step.
+- Reviewed all 16 upstream report pages at pinned commit `1bee93a9b01c21bea0c7a50ce3f6619f24731e19`; the release contains no runnable model/benchmark package. Added a scoped-state hypothesis, its algebraic limits, ordinary gated/low-rank controls, and recent adaptive-recurrence/stability/memory prior work. No claimed quality or speed gain was independently replicated.
+- Priority outcome: validity/source repair first; small QSCCI discriminator and architecture specification; independent CRSV/LIR/SRS evidence; one practical utility flagship; bounded architecture/representation pilots only after their own gates. Full new-transformer training remains on hold.
+- Validation completed 2026-09-12: scoped `git diff --check` exited 0; local-link/table checks covered seven changed/new documentation files, 24 local links, and 55 table rows with no errors; all five earlier document bodies matched their pre-update SHA-256 after removing only the dated insertion and normalizing CRLF/LF; all 12 checked unrelated source/protocol/pitch files matched their original raw-byte SHA-256.
+- `python scripts/check_block_flag.py` exited 1 with `BLOCKED` and three carried-debt rows, as expected. This confirms the existing restriction was preserved, not that a research/merge gate passed. No bypass flag was used.
+- This is local documentation validation only, not a full test suite, independent Tier B review, scientific acceptance, or release readiness. Changes remain local and uncommitted.
+- No experiments, held-out fixture reads, Spark/cloud access, protocol edits/freezes, external writes, or independent acceptance review performed.
+<!-- research-priority-update-2026-09-04:end -->
+
 ## 2026-08-16 — Dual-Spark bounded campaign completed
 
 - Staged an isolated CHELATEDAI research checkout on both DGX Sparks and used
@@ -31,6 +63,26 @@
   statuses, phase/seed/stage identities, finite values, and narrow measured
   cross-platform float tolerances. Independent final review scored the Qwen,
   RB-15, and RB-13 archive slices BHS 100.
+- Completed and independently verified the first valid real QSCCI campaign.
+  V4 run 001 is a valid negative: the nuisance-aware and contrastive selectors
+  collapsed to the same four features/direction, so no chelation-specific
+  advantage survived. The shared direction nevertheless beat all six random
+  controls with low KL, zero collateral, and unchanged task accuracy. Exact
+  copied artifact/manifest/commit roots are retained under
+  `artifacts/method-dev/qscci-v4/run-001/` and the portable archive CLI verifies
+  them without claiming reexecution or current pinned-cache provenance.
+- Blind-authored the next study's wholly new 12/24/24
+  DEVELOPMENT/SELECT/REPORT fixture without target-model, SAE, service, or
+  prior-result access. The source validator and 24 hostile tests pass. A
+  mechanical freeze transform now emits three physically separate canonical
+  partition files, preventing SELECT from receiving REPORT bytes; four
+  integration tests verify exact hashes, label/token mapping, disjoint
+  capability files, and all 6,480 comparisons against the exhausted v4
+  fixture. The maximum cross-fixture Dice similarity is exact `4/13`, below
+  the inclusive `0.86` gate. The follow-up protocol remains review-only until
+  its complete artifact schemas and final exactness review are closed.
+- Current repository-wide discovery after these additions: `3,632` tests,
+  `16` platform/dependency skips, `OK` in `231.743s` on Windows.
 
 ## 2026-08-12 — nonlinear-neutraliser video/source review started
 
@@ -1879,3 +1931,58 @@
 | What's the goal? | Keep the remaining backlog narrow, explicit, and accurately documented |
 | What have I learned? | Hardware evidence is the only live engineering blocker; the rest of the Session 26 stack is merged and verified |
 | What have I done? | Merged PRs `#90`-`#94`, validated `main`, refreshed the cycle docs, and preserved the hardware blocker for the next session |
+
+## 2026-08-16 ISI v3 and Qwen protocol continuation
+
+- Preserved ISI v1 and v2 evidence and froze
+  `CHELATEDAI-PRW-ISI1-PAIRED-SANITY-v3` as the evidence-integrity correction.
+- Published and independently verified the v3 synthetic artifact on Windows
+  and GBA1 Linux with identical artifact SHA-256
+  `d4ebaf2ee4250c0ad7185e29b7201e3116a14a07b8b0068b8f6afd23bb491e0d`.
+- Closed Windows junction/stage laundering, protocol-lineage, explicit result
+  status, nondefault-budget construction, canonical verification, and
+  transactional publication gaps. Fresh Tier-B review: `100/none` for this
+  bounded synthetic slice.
+- Repository-wide Windows discovery passes: 3,486 tests, 12 intentional skips,
+  in 161.150 seconds on the current uncommitted tree.
+- The real Qwen-Scope causal-intervention protocol progressed from design to a
+  valid committed v4 run. V3 corrected cosine roundoff; v4 corrected the
+  CPU/CUDA norm-reduction invariant without changing the applied intervention.
+  Exact v4 hashes: core
+  `0659c40efa4866486f94a0c2470c0b0af7ba1064aba3d8c39206814914c1b4db`,
+  runner
+  `29d91881ca825b3bf37f37b81cc8702e4b6d9cb911a25056639fefa70361b9f0`,
+  erratum
+  `b28e978fc61238df9439348355da92d95329092794b12b754bcb6c990e8aa27e`,
+  and schema
+  `a30fee50976ebc1d04c04d9ca7c1f1cc2c37cb1caed06ac56aae77e1d2a5eb46`.
+  The exact Spark CUDA parity gate passed, followed by 83 Linux-applicable
+  focused tests and static checks.
+- The committed run verifies as
+  `DOES_NOT_SURVIVE_SMALL_LABEL_ORACLE_FIXTURE`. Chelated and contrastive both
+  chose `[15620, 17083, 3067, 18817]` at `k=4`, `alpha=4`, producing cosine
+  `1.0` and identical REPORT endpoints. The shared direction had causal
+  contrast `0.604167`, exceeded every random control by at least `0.260417`,
+  retained accuracy `1.0`, mean/max KL `0.000468882/0.00178674`, and collateral
+  `0`; however, chelation-specific advantage was exactly zero, material
+  completeness was only `1/6`, and mismatch `1/6` exceeded every random
+  control. This is useful falsification plus a shared steering signal, not a
+  chelation confirmation or novelty result.
+- The verified publication chain is artifact `043f5b395549f383b21f39c5fdbd16572ea78b763b423a0314d2d48d378dbad6`,
+  manifest `dd0cc08b5f3e3833b28a2ada70f0f78fe4d86ac099cc03fbdc38afb90538e991`,
+  and commit `c16438aeaeceee03d638f2eea6a3f5c14727937590160cdf6ebf63e976189c20`.
+  DeepSeek, its two-node identity, model/completion/idle probes, HERDR enable
+  flag, mask, and private-log postconditions were restored and verified.
+- Added a custody-only portable verifier for the copied v4 evidence. It pins
+  the exact three official file roots, rejects unsafe paths/coherent reseals,
+  reconstructs all version-stable selections/endpoints/gates/disposition, and
+  emits no generic live-verification claim. Torch-version-sensitive decoder,
+  direction, delta, and cosine replay remain live-verifier-only. The production
+  archive CLI passes locally without the pinned SAE cache; fresh Tier-B is
+  `100/none`, and the focused QSCCI suite is `119` passed with `4` platform
+  skips.
+- DeepSeek remained available on GBA1 throughout the Linux synthetic checks;
+  model identity and zero running/waiting requests were observed afterward.
+- The repository owner subsequently authorized research-only QSCCI
+  implementation and Spark execution under the still-`BLOCKED` state. This is
+  scoped execution authority only, not authority to clear debt, push, or merge.

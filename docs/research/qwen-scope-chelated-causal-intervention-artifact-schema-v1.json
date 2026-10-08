@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "CHELATEDAI-QSCCI-ARTIFACT-v1",
+  "additionalProperties": false,
+  "properties": {
+    "aggregates": {"type": "object"},
+    "artifact_digest": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+    "cells": {"items": {"type": "object"}, "type": "array"},
+    "choices": {"type": "object"},
+    "disposition": {"enum": ["SURVIVES_SMALL_LABEL_ORACLE_FIXTURE", "DOES_NOT_SURVIVE_SMALL_LABEL_ORACLE_FIXTURE", "INVALID_TASK", "INVALID_RUN"]},
+    "failures": {"items": {"type": "object"}, "type": "array"},
+    "feature_records": {"maxItems": 32768, "minItems": 32768, "type": "array"},
+    "fixture_sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+    "gates": {"type": "object"},
+    "model_identity": {"type": "object"},
+    "novelty_claim_status": {"const": "UNCONFIRMED"},
+    "prompt_records": {"items": {"type": "object"}, "type": "array"},
+    "protocol_file_sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+    "protocol_id": {"const": "CHELATEDAI-QSCCI-v1"},
+    "resources": {"type": "object"},
+    "schema_file_sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+    "scientific_claim_status": {"const": "UNCONFIRMED"},
+    "select_activation_rows": {"maxItems": 18, "minItems": 18, "type": "array"},
+    "service_lifecycle": {"type": "object"},
+    "status": {"const": "COMPLETE"}
+  },
+  "required": [
+    "protocol_id", "status", "scientific_claim_status", "novelty_claim_status",
+    "protocol_file_sha256", "fixture_sha256", "schema_file_sha256", "model_identity",
+    "service_lifecycle", "resources", "select_activation_rows", "feature_records",
+    "choices", "prompt_records", "cells", "aggregates", "gates", "disposition",
+    "failures", "artifact_digest"
+  ],
+  "title": "ChelatedAI Qwen-Scope causal-intervention artifact envelope",
+  "type": "object"
+}

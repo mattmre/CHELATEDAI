@@ -1,5 +1,41 @@
 # Next Session
 
+<!-- resonance-review-2026-10-08:start -->
+## 2026-10-08 — RHPC prior art and portable testing handoff
+
+The [ResonanceDB/RHPC comparison](research/resonance-memory-prior-art-2026-10-08.md), [byte-preserved Stage-A reference](research/references/rhpc-stage-a-method-dev-protocol-2026-08-25.md), and seven CPU-only reduction checks are published through [draft PR #344](https://github.com/mattmre/CHELATEDAI/pull/344). The pictured lane is P4/RHPC, with IQ-03 its future learned packet. Include the same-information real-coordinate score plus energy calibration in prospective retrieval comparisons; phase erasure is not a matched control.
+
+Use the [other-machine checkout/replay instructions](research/publication-handoff-2026-10-08.md). First research action: extend IQ-03 H0's observation/encoder ledger and carry the ordinary score into the proposed H2 control table, before requesting a separately admitted learned experiment. Seven constructed tests passed; the 24 MA cases remain specified/unimplemented, RHPC official run status remains unchanged, and laptop audit remains authentication-pending.
+<!-- resonance-review-2026-10-08:end -->
+
+<!-- math-findings-integration-2026-10-08:start -->
+## 2026-10-08 — Mathematical findings aligned with the test backlog
+
+Use the [OpenAI math applicability review](research/openai-math-applicability-review-2026-10-07.md), [MA0–MA7 integration packet](research/innovation-test-queue-2026-09-12/math-findings-integration-2026-10-07.md), and [24 specified test cases](research/innovation-test-queue-2026-09-12/math-test-cases-2026-10-07.csv). They are linked into the existing IQ packets, source register, and shared contract. Cases are not yet implemented or executed.
+
+First resume: MA0 source-to-operator admission ledger and MA7 numerical-receipt design, alongside C0/MA1's pre-outcome descriptor specification in the current portfolio order. Relevant hypotheses are fixed-linear amplification, same-state virtual-expert coefficient error, finite holographic code diagnostics, and complete memory/precision accounting. Live adapter normalization, switching/cache divergence, finite construction availability, and verification overhead are explicit falsifiers.
+
+No new theorem is labeled locally verified, and no existing endpoint, frozen artifact, block flag, debt row, or scientific negative is changed by this integration. The user separately requested publication of new material and a laptop-repository diff audit on 2026-10-08. [Draft PR #344](https://github.com/mattmre/CHELATEDAI/pull/344) publishes 168 changed files; the [publication handoff](research/publication-handoff-2026-10-08.md), [inventory](research/publication-inventory-2026-10-08.json), and [validation receipt](research/publication-validation-2026-10-08.json) record the exact scope. The laptop audit remains pending its required Tailscale SSH sign-in; no clean-laptop or merge-readiness finding is claimed.
+<!-- math-findings-integration-2026-10-08:end -->
+
+<!-- innovation-test-queue-2026-09-12:start -->
+## 2026-09-12 — Six innovation test plans queued locally
+
+Use [IQ-20260912: innovation test queue](research/innovation-test-queue-2026-09-12/README.md) for six prepared packets, the primary-source register, and the shared admission/evidence contract. It adds composition prediction, scoped recurrent correction, learned holographic composition, temporal evidence correction, wave/diffusion multiplexing, and fixed-graph congruence to the detailed planning queue, mapped to the existing portfolio lanes.
+
+Next work is validity/source disposition and packet-specific protocol/reduction review. Owners and compute slots remain unassigned; waves/rotations are queued for reduction review, not full campaigns. CRSV's confirmatory hierarchy, all 15 EK7 predecessor dispositions, RHPC official seal/restore gates, existing QSCCI/EGV lanes, and all preserved negatives remain binding.
+
+This completes preparation of the six local plans, not execution readiness. No experiments, REPORT access, model calls, Sparks/cloud jobs, freezes, public mutations, or block/debt changes were authorized or performed by this queue update. Earlier statements that detailed tasks come next are superseded only for these six packets; broader portfolio execution planning remains separate.
+<!-- innovation-test-queue-2026-09-12:end -->
+
+<!-- research-priority-update-2026-09-04:start -->
+## 2026-09-12 research priority update
+
+Use the [dated portfolio schedule](research/research-priorities-and-testing-schedule-2026-09-12.md) for the proposed order of outstanding research, and the [scoped recurrent-transformer design review](research/recurrent-scoped-transformer-design-review-2026-09-12.md) for the new architecture hypothesis. Sequence: validity/source repair; small QSCCI discriminator and architecture design; independent CRSV/LIR/SRS tests; one practical utility flagship; gated architecture/representation pilots.
+
+This is a documentation-only reprioritization, not run authorization or a replacement for any frozen protocol. The block flag, carried-debt tables, and existing evidence below are unchanged. Detailed completion tasks, budgets, and calendar commitments come next. No REPORT access or new campaign follows automatically from this pointer.
+<!-- research-priority-update-2026-09-04:end -->
+
 <!--
   This file is the Tier C (cross-PR / cross-session) state surface for the
   Brutal Honesty Rulebook v3.2. It is read by:
@@ -162,6 +198,80 @@ The next useful run is a small causal intervention preregistration with:
 4. frozen latency, peak RSS, peak CUDA, and failure gates; and
 5. no promotion unless SELECT and disjoint REPORT both beat the controls.
 
+The frozen research design,
+`CHELATEDAI-QSCCI-v1`, is retained at
+`docs/research/qwen-scope-chelated-causal-intervention-preregistration-2026-08-16.md`.
+Independent review returned successive drafts at `58`, `82`, `92`, and `96`,
+then approved the exact design at `100/100`. Final protocol SHA-256 is
+`f7417b022dd93b96d523f6e8ca4a12c8a915288b5b4621e9ef130ac4f52848f1`;
+fixture SHA-256 is
+`d9f873d5a0e00d0330b87e5ea053aaf0343d4c1636d7402020490719d1336f83`;
+artifact-envelope schema SHA-256 is
+`032f06fefc53aa04f13a410ce5aec93b7039c7c042bd0a2cedfe8f4745cb653a`.
+That v1 design was subsequently implemented and executed through two narrowly
+versioned numerical errata. V3 added only the reviewed cosine envelope; v4
+replaced a false CPU/CUDA exact-reduction invariant with one canonical CPU
+norm reduction after bitwise component parity. The intervention tensor itself
+remained unchanged. Exact v4 source/protocol/schema hashes are recorded in the
+2026-08-16 progress entry.
+
+The first valid committed run, `CHELATEDAI-QSCCI-v4` run `001`, independently
+verifies as `DOES_NOT_SURVIVE_SMALL_LABEL_ORACLE_FIXTURE`. The chelated and
+ordinary contrastive rules selected the same four features at `k=4`,
+`alpha=4`, with direction cosine `1.0` and identical held-out endpoints. The
+shared direction beat all six random controls in bidirectional contrast, kept
+accuracy at `1.0`, mean KL at `0.000468882`, and collateral at zero, but this
+is not a chelation-specific advantage. It failed contrastive advantage,
+contrastive treatment separation, mismatch-versus-controls, and absolute
+material-completeness gates. Artifact/manifest/commit SHA-256 values are
+`043f5b395549f383b21f39c5fdbd16572ea78b763b423a0314d2d48d378dbad6`,
+`dd0cc08b5f3e3833b28a2ada70f0f78fe4d86ac099cc03fbdc38afb90538e991`,
+and `c16438aeaeceee03d638f2eea6a3f5c14727937590160cdf6ebf63e976189c20`.
+The exact copied bytes are retained under
+`artifacts/method-dev/qscci-v4/run-001/`; live semantic verification was run on
+GBA1 because the Windows host lacks the pinned SAE cache. The portable archive
+verifier addendum is retained at
+`docs/research/qwen-scope-chelated-causal-intervention-v4-portable-archive-verifier-addendum-2026-08-16.md`.
+`python run_qscci.py --verify-v4-archive artifacts/method-dev/qscci-v4/run-001`
+verifies the copied custody roots and every version-stable retained-leaf
+semantic, while explicitly leaving current-target, reexecution, live-service,
+pinned-cache, and decoder floating-replay claims false. Fresh Tier-B is
+`100/none`; the focused QSCCI suite passes `119` tests with `4` platform skips.
+
+The next defensible lane is a new preregistered selection-rule study that tests
+whether a stronger or differently normalized nuisance term materially changes
+the chosen feature set while preserving the observed causal direction. Do not
+retune v4 on REPORT or describe the shared contrastive direction as evidence
+for chelation. The review draft is retained at
+`docs/research/qwen-scope-nuisance-rank-separation-preregistration-draft-2026-08-16.md`.
+It requires a wholly new blind-authored DEVELOPMENT/SELECT/REPORT fixture;
+the inspected v4 fixture is exhausted for confirmation. The general steering
+mechanism is Qwen-Scope prior art.
+
+The blind authoring boundary is now complete and separately reviewed at BHS
+`100/none`. Its immutable authoring source SHA-256 is
+`877e2a27ec42afeb2a0b3100f76576aa45fee1c435d08e4748c71efb6338820c`.
+A mechanical transform produces three separate `FROZEN` capability inputs:
+DEVELOPMENT `6ea3a5f927be266074a3875d5e793b1a801688970c3ce0cd6f7ca549422c88f5`,
+SELECT `18197b51af39d81639ab730675330507c2b78fb58f74c3ae7dc36096550a59df`,
+and REPORT `26263306fbcfedbe106d6335d434f960b6128c8e2b6894b31d188b0b505de64e`.
+The combined authoring source is custody evidence only and must never be given
+to a phase worker. The validator plus 28 blind/boundary tests pass, including
+exact label/token mapping and 6,480 cross-fixture comparisons; maximum Dice is
+`4/13`, below the inclusive `0.86` rejection gate. Do not implement or execute
+the follow-up yet: its integrated preregistration remains `REVIEW-DRAFT / NOT
+FROZEN / NOT AUTHORIZED` pending closed artifact schemas and a fresh exactness
+review. Current full discovery is `3,632` tests, `16` skips, `OK` in `231.743s`.
+
+On 2026-08-16 the repository owner explicitly authorized research-only QSCCI
+implementation and Spark execution while acknowledging that the administrative
+block remains paperwork debt (verbatim task instruction: “signed and approved.
+GET IT DONE!”). This authorization does **not** clear any Carried Debt row,
+change the `BLOCKED` flag, authorize a merge, or satisfy the rulebook's
+co-signer/out-of-band requirement for a future blocked-state PR merge.
+`OPERATOR_OVERRIDE` therefore remains empty unless and until an actual merge is
+separately authorized with the required reference.
+
 ### RB-13/RB-14 METHOD_DEV status
 
 RB-13 Wave 0A is complete under protocol v8; the broader dependency queue is
@@ -208,10 +318,19 @@ disjoint confirmation set.
   entry gate.
 
 Candidate-survival contrasts, disjoint confirmation sets, live corpus/model
-evaluation, and production integration are outstanding. The first full
+evaluation, and production integration are outstanding. An earlier full
 repository discovery attempt was stopped at roughly 709 MB RSS to honor the
-resource guard; it emitted no final summary, so full-suite status is
-unverified.
+resource guard and emitted no final summary. That stale local result is now
+superseded by hosted CI at exact PR #296 head `65c9085c`: full unit-test
+discovery passed on Python 3.9, 3.10, 3.11, and 3.12, with lint, Rule 5 smoke,
+honesty-schema, and computational-storage gates also passing. The only hosted
+failure is the intentionally truthful `BLOCKED` block-flag gate.
+
+After the local ISI v3/QSCCI and v2 archive-custody delta, full repository
+discovery on Windows passed `3,486` tests with `12` intentional skips in
+`161.150s`; targeted ISI
+Ruff, compilation, canonical artifact verification, and diff checks also pass.
+This is local uncommitted evidence, not hosted acceptance for a new PR head.
 
 The queue has independently disposed families and cross-cutting additions:
 
@@ -264,11 +383,44 @@ declared answer change. Established contrast-set and behavioral-testing work
 remains prior art for the broad evaluation idea.
 
 The dependency-light evaluator sanity protocol
-`CHELATEDAI-PRW-ISI1-PAIRED-SANITY-v1` is now implemented and executed. It
-invokes the existing production variance-chelation mask without constructing
-an engine, model, corpus, database, or learned predictor. The retained
-nine-pair/five-dimensional artifact and hash-bound manifest are under
-`artifacts/method-dev/isi1-paired-intervention-sanity/`.
+`CHELATEDAI-PRW-ISI1-PAIRED-SANITY-v1` was implemented and executed. It invokes
+the existing production variance-chelation mask without constructing an
+engine, model, corpus, database, or learned predictor. Its retained
+nine-pair/five-dimensional artifact and manifest remain byte-preserved in the
+single retained directory
+`artifacts/method-dev/isi1-paired-intervention-sanity/`. An empty local replay
+sibling is not evidence and is not claimed.
+Tier-B returned v1 at `70/critical`: it had no public verifier, trusted claimed
+result semantics, could overwrite a nonempty destination nontransactionally,
+and mislabeled a declaration-only changed-feature count as second-order causal
+evidence.
+
+V2 reconditioned evidence integrity and wording. Its frozen protocol is
+`docs/research/paired-chelation-intervention-sanity-protocol-v2-2026-08.md`
+and its separately preserved output is under
+`artifacts/method-dev/isi1-paired-intervention-sanity-v2/`. During v2
+construction, its then-current verifier regenerated the exact artifact, bound
+both protocol digests, checked canonical bytes/digests/claims and the exact
+two-file set, rejected coherent resealing, and published through an
+absent-target staging-directory transaction. That superseded implementation
+is not presented as the current semantic verifier. The retained
+`verify_paired_intervention_sanity_v2_archive.py` instead performs exact pinned
+custody, canonical-byte, digest, file-set, link/reparse, and manifest-crosslink
+verification and truthfully returns `semantic_regeneration=false` and
+`custody_only=true`. The declared changed-feature count is explicitly metadata
+only and no v2 gate claims second-order intervention handling. Tier-B returned v2 at
+`70/critical`: its public verifier accepted a hidden stage exposed through a
+Windows junction, its protocol required a result-level status that was absent,
+and its v1 provenance wording overstated the retained directory count.
+
+V3 preserves v1 and v2 bytes and corrects only those issues. Protocol
+`CHELATEDAI-PRW-ISI1-PAIRED-SANITY-v3` has SHA-256
+`fd65790e3df13b6590af10e08ec46ef642d1b098a06f999fa4f6c9ddfe9e4634`.
+Its result explicitly contains `status=COMPLETE`; artifact and manifest bind
+all three protocol digests; and the verifier rejects symlink/reparse roots and
+members plus resolved-path escapes. The separately published v3 output is
+`artifacts/method-dev/isi1-paired-intervention-sanity-v3/`, with artifact
+SHA-256 `d4ebaf2ee4250c0ad7185e29b7201e3116a14a07b8b0068b8f6afd23bb491e0d`.
 
 On the exact synthetic fixture, the production mask `[1,1,1,1,0]` matched the
 oracle nuisance mask. Both scored `1.0` on strict paired accuracy, balanced
@@ -278,10 +430,14 @@ but material relation accuracy and balanced joint score `0.0`, confirming that
 the evaluator rejects “stable because dead” behavior. These are fixture and
 metric semantics only; scientific and novelty statuses remain `UNCONFIRMED`.
 
-The initial draft 10-second ceiling failed on the cold production-engine
-import before any artifact was retained. The frozen retained protocol uses a
-30-second ceiling including cold import. Focused validation passes, but no
-independent Tier-B review has yet been performed for this new slice.
+The initial v1 draft 10-second ceiling failed on the cold production-engine
+import before any artifact was retained. V1 through v3 use a 30-second ceiling
+including cold import. The combined v2 custody/v3 focused suite passes 25 tests on Windows,
+including an actual junction-laundering regression, and its official artifact
+independently verifies. GBA1 Linux passes the same 25-test suite with only the
+Windows-only junction case skipped and reproduces the exact artifact SHA.
+Fresh post-remediation Tier-B approved the bounded v3 slice at `100/none`.
+This does not promote the parent scientific claim.
 
 Full `PRW-ISI1` remains `BLOCKED_ON_PRW-EK3`. Resume rules:
 
@@ -324,9 +480,10 @@ validate the Hugging Face TLS issuer when fetching `all-MiniLM-L6-v2`; do not
 disable certificate verification. Hosted CI subsequently passed Rule 5 smoke,
 full unit-test discovery on Python 3.9 through 3.12, lint, and all honesty and
 computational-storage gates. The draft PR still is **not merge-ready**: its
-159-file consolidation lacks aggregate adversarial scientific/evidence review,
-so its aggregate BHS is 90/important even though the exact repaired RB-15 slice
-received 100/none.
+exact head received aggregate adversarial BHS Tier B 100/none, but the Tier-C
+block flag remains `BLOCKED` because `CD-MLR-01`, `CD-R13-01`, and `CD-R16-01`
+expired. The passing research review does not authorize a merge or override
+those repository-level debts.
 
 The earlier descriptive self-grading lead did not survive as a robust matched
 factorial advantage. It may remain a local diagnostic, but it cannot support a
@@ -334,9 +491,12 @@ general attenuation, retrieval, or training claim.
 
 Resume order for RB-15:
 
-1. Preserve and verify both manifests under
-   `artifacts/method-dev/rb15-nonlinear-neutralizer/`; do not widen or rerun the
-   completed frozen grid as if it were confirmatory evidence.
+1. Preserve and verify the Stage-A artifacts under
+   `artifacts/method-dev/rb15-nonlinear-neutralizer/` and both factorial
+   manifests under
+   `artifacts/method-dev/rb15-distribution-nonlinearity-factorial/`; do not
+   widen or rerun the completed frozen grids as if they were confirmatory
+   evidence.
 2. Preserve the completed independent adversarial review and its phase/resource
    disclosures; do not relabel the v2 screens as enforced ceilings.
 3. Do not repeat the completed factorial without a materially different,

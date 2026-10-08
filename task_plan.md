@@ -1,5 +1,51 @@
 # Active METHOD_DEV Campaign: Prime-Ring Onion-Lattice Memory
 
+<!-- innovation-test-queue-2026-09-12:start -->
+## 2026-09-12 — Document and queue six innovation test plans
+
+**Goal:** Gather primary documentation and prepare dependency-ordered test packets for composition prediction, scoped recurrent correction, learned holographic composition, temporal evidence correction, wave/diffusion multiplexing, and fixed-graph congruence. Queue preparation only; no experiments, REPORT access, implementation, resource reservations, or public mutations.
+
+| Phase | Status | Completion condition |
+| --- | --- | --- |
+| Recover scope, current queue, protocols, and preservation baseline | complete | Current source and dirty worktree checked; existing BLOCKED state retained; baseline hashes captured. |
+| Gather primary sources and reconcile claim boundaries | complete | Source register distinguishes reviewed material, reported findings, and unresolved replication/novelty questions. |
+| Prepare six test packets and shared evidence contract | complete | Each has a precise hypothesis, matched controls, data/timing boundaries, staged tasks, metrics, stop/go rules, deliverables, and effort assumptions. |
+| Connect packets to the current portfolio and handoff queue | complete | Stable IDs, dependencies, owners by role, non-execution status, and next actions are discoverable without replacing existing lanes. |
+| Validate documentation and preserve original material | complete | Six packets/28 future tasks, 18 primary sources, local links, 25 dependency edges, tables, scoped whitespace, and preservation checks pass; block gate remains BLOCKED. |
+
+**Recovery:** planning-with-files session catchup returned no report. Current files and Git state are the recovery source. Initial combined reads exceeded the output budget; required guidance was reread in bounded sections. No source or evidence was changed by those reads.
+
+**Validation notes:** A PowerShell trailing-whitespace inventory had a mismatched brace and failed before reading/writing results; switched to a simple `rg` inventory. Review separated G0-BUILD from G0-RUN to avoid requiring a finished executable before construction, and made EK7's pre-REPORT component selection explicit.
+
+**Deliverable:** [IQ-20260912 test queue](docs/research/innovation-test-queue-2026-09-12/README.md). Six research packets are prepared; no execution task is claimed completed. Full-method/code audit, protocol review, resource profiling, and freeze remain explicit future admission tasks.
+
+**Closeout:** Local documentation preparation and queue integration only. Seven pre-existing document bodies remain intact after removing this update's marked insertions; seven checked unrelated source/protocol/pitch/config files retain their raw SHA-256. No independent Tier B or research efficacy/novelty acceptance is claimed. No push, PR, or commit was performed.
+<!-- innovation-test-queue-2026-09-12:end -->
+
+<!-- research-priority-update-2026-09-04:start -->
+## 2026-09-04 — Research priority and testing-schedule reconciliation
+
+**Scope:** Update the research order, evidence classifications, and resumption guidance. This is documentation work only; the detailed completion task list comes next. Earlier campaign entries below remain historical records, not the current portfolio order.
+
+**2026-09-12 scope addition:** Review the user-linked recurrent-looped transformer repository and primary prior work. Add a bounded architecture hypothesis and matched-compute falsification path to the current schedule; do not implement or train a new transformer. The finished portfolio schedule will be dated 2026-09-12.
+
+| Phase | Status | Completion condition |
+| --- | --- | --- |
+| Reconcile current evidence and source versions | complete | Active protocols, local amendments, negative results, and existing block gates identified. |
+| Review recurrent-looped design and research additions | complete | Pinned upstream report-only snapshot reviewed; architecture hypothesis, reductions, close prior work, and matched-control tests recorded. |
+| Publish a gate-based research/testing order locally | complete | Dated priority document distinguishes prerequisites, small discriminating tests, stop rules, and deferred work. |
+| Align findings and resumption records | complete | Findings, next-session pointer, and misleading historical readiness claims receive dated qualifications without replacing old evidence. |
+| Validate this documentation change | complete | Scoped diff/link/table checks pass; five prior document bodies and 12 checked unrelated source/protocol/pitch files match their baselines; the existing block gate correctly remains BLOCKED. |
+
+**Boundaries:** No experiments, Spark/cloud jobs, held-out fixture reads, protocol freezes, publication, commits, or changes to the existing `BLOCKED` state. Review of these edits is local and is not independent Tier B or release acceptance.
+
+**Encountered issue:** The first read-only GitHub status command passed an unquoted comma-separated field list through PowerShell; retry with a quoted `--json` argument.
+
+**2026-09-12 source-reading notes:** Browser extraction could not open the upstream PDF. The bundled PDF reader successfully read all 16 pages in memory from the pinned source after setting stdout to UTF-8; the initial console attempt failed on a mathematical Unicode character. No upstream code was executed or installed.
+
+**Deliverables:** [Portfolio schedule](docs/research/research-priorities-and-testing-schedule-2026-09-12.md) and [recurrent scoped-state design review](docs/research/recurrent-scoped-transformer-design-review-2026-09-12.md). These finish the prioritization/design scope only; research execution and the detailed completion task list remain outstanding by design.
+<!-- research-priority-update-2026-09-04:end -->
+
 ## 2026-08-16 Spark execution closeout
 
 **Status:** `EXECUTED_WITH_MIXED_NEGATIVE_AND_INTEGRATION_RESULTS`

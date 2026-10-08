@@ -1,0 +1,29 @@
+CHELATEDAI full-suite aggregate receipt
+Audit cycle: 20260829
+Terminal completion observed: 2026-08-29 approximately 15:19 America/New_York
+Working directory: D:\GITHUB\CHELATEDAI
+Command: python -m unittest discover -s . -p "test_*.py" -q
+Exit code: 0
+
+Raw unittest terminal summary:
+----------------------------------------------------------------------
+Ran 3633 tests in 262.471s
+
+OK (skipped=16)
+
+Post-summary runtime warnings emitted by the command:
+Warning: Failed to load adapter weights (Dimension Mismatch?): Error(s) in loading state_dict for ChelationAdapter:
+	size mismatch for correction_net.0.weight: copying a param with shape torch.Size([256, 512]) from checkpoint, the shape in current model is torch.Size([384, 768]).
+	size mismatch for correction_net.0.bias: copying a param with shape torch.Size([256]) from checkpoint, the shape in current model is torch.Size([384]).
+	size mismatch for correction_net.2.weight: copying a param with shape torch.Size([512, 256]) from checkpoint, the shape in current model is torch.Size([768, 384]).
+	size mismatch for correction_net.2.bias: copying a param with shape torch.Size([512]) from checkpoint, the shape in current model is torch.Size([768]).
+WARNING: chelation_p=150 out of range [0, 100], clamping.
+WARNING: chelation_p=-10 out of range [0, 100], clamping.
+WARNING: epochs=200 out of range [1, 100], clamping.
+WARNING: epochs=0 out of range [1, 100], clamping.
+WARNING: learning_rate=10.0 out of range [0.0001, 1.0], clamping.
+WARNING: learning_rate=1e-05 out of range [0.0001, 1.0], clamping.
+WARNING: max_depth=20 out of range [1, 10], clamping.
+WARNING: max_depth=0 out of range [1, 10], clamping.
+
+Evidence boundary: this is the exact aggregate/final terminal output returned by the quiet rerun. Intermediate diagnostic stdout was intentionally not copied into this receipt. The preceding verbose run on the same dirty tree failed 2 of 3,633 tests in 278.109s, while this rerun passed all 3,633; the contradiction is retained as BE002-001 and is not treated as deterministic release acceptance.

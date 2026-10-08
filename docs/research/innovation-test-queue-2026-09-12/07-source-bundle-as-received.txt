@@ -1,0 +1,450 @@
+PROVENANCE: verbatim chat paste received 2026-09-17, reviewed for the IQ-07 packet.
+STATUS: EXTERNAL_SOURCE / NOT_RUNNABLE / NOT_EXECUTED / NOT_A_REPO_ARTIFACT
+
+This is the `build_bundle.py` text as pasted into chat, preserved as .txt because
+it is source material under review, not repository code. It is NOT importable and
+was NOT executed. It cannot run as-is, for two independent reasons:
+
+  1. Nested triple quotes. Each `FILES[...] = """..."""` entry wraps file content
+     that itself opens a bare `"""` docstring, which ends the outer string literal
+     early. A minimal reduction of the same shape fails to compile
+     (IndentationError/SyntaxError).
+  2. Markdown mangling in transit. `__init__` became `**init**`, and
+     `__name__ == "__main__"` became `**name** == "**main**"`, throughout. The
+     embedded README's fenced code blocks are also unbalanced.
+
+The IQ-07 packet's numbers come from hand-repaired transcriptions of the three
+harnesses (07-review-evidence/), not from this text. Do not patch this file in
+place. The packet's Y0 step starts by getting a clean copy. The Google Doc export
+(07-source-conversation-gliner25-vs-jev.md) contains the same bundle, but the Docs
+exporter collapsed the code newlines, so this file is the copy that keeps the lines
+intact. The indentation inside the embedded files follows the chat rendering; the
+paste's own markdown fences were collapsed by the chat renderer and were
+re-indented here only where needed to keep the file readable.
+
+================================ BEGIN PASTE ================================
+"""
+Builds 'chelated_decision_engine.zip' containing all RFCs, test harnesses,
+model architectures, runtime orchestrators, and agent instructions.
+
+Run:
+    python build_bundle.py
+"""
+
+import os
+import zipfile
+
+FILES = {}
+
+# =====================================================================
+# 1. README.md / RFC SPECIFICATION
+# =====================================================================
+FILES["README.md"] = """# RFC: High-Speed Non-Autoregressive Decision Engine ("Local Jev")
+
+## 1. Executive Summary
+This archive provides the end-to-end implementation and validation harness for a local, sub-10ms non-autoregressive decision and token-grounding engine tailored for dual DGX Sparks (GB10 Grace Blackwell) and local testing loops.
+
+The engine integrates:
+* **Jev-Style Schema Evaluation:** Single-pass ($O(1)$) dynamic evaluation over discrete choices, booleans, and calibrated probability scores.
+* **Fastino/GLiNER Boundary Pointers:** Direct start/end token boundary prediction for DOM/Accessibility elements.
+* **CHELATEDAI Mechanics:**
+  * **Lane L-10 (RHPC):** Resonant Holographic Path Compression using circular convolution ($\circledast$) and orthogonal rotations to detect standing cycles and infinite loops.
+  * **Lane L-01 (Adaptive Chelation):** Dynamic soft-gating on embedding coordinates to attenuate volatile DOM session tokens and dynamic CSS hashes.
+  * **Lane L-04 (Evidence Kernels):** Bilinear interaction tensors to model multi-element UI coalitions (rank-2 pre-conditions).
+  * **Lane L-09 (Evidence-Governed Variation):** Append-only audit ledger and external signed verification boundary.
+
+---
+
+## 2. Directory Layout
+
+chelated_decision_engine/
+├── README.md                          # This RFC and instruction manual
+├── requirements.txt                   # Minimal environment dependencies
+├── run_phase0.py                      # Phase 0 validation runner & scorecard
+├── fixtures/
+│   ├── harness_rhpc.py                # Lane L-10: Trajectory compression & loop check
+│   ├── harness_chelation.py           # Lane L-01: Coordinate variance diagnostic
+│   └── harness_coalition.py           # Lane L-04: Rank-2 bilinear dependency probe
+├── models/
+│   └── chelated_model.py              # ModernBERT backbone + Chelation + Pointers
+└── orchestrator/
+└── runtime.py                     # Local execution driver with RHPC loop blocker
+
+---
+
+## 3. Phase 0 Go / No-Go Decision Scorecard
+
+Run `python run_phase0.py` to evaluate all three test batteries before provisioning training compute:
+
+| Metric Observed | Threshold / Condition | Action |
+| :--- | :--- | :--- |
+| **RHPC False Positives** | $= 0.0\%$ on valid sequential DAGs | **PROCEED** with RHPC trajectory compression. |
+| **RHPC Loop Detection** | Detects $k=2$ and $k=6$ cycles within 1 tick | **PROCEED** with phase-lock standing cycle rejection. |
+| **Noise Recovery** | Masking top variance dimensions recovers $\ge 95\%$ cosine similarity | **PROCEED** with learned chelation gate ($W_c$). |
+| **Coalition Accuracy** | Linear probe $< 80\%$, Bilinear probe $\ge 95\%$ | **PROCEED** with Bilinear Coalition Tensor. |
+
+---
+
+## 4. Agent Execution Instructions
+
+1. **Environment Setup:**
+   pip install -r requirements.txt
+
+2. **Execute Phase 0 Verification:**
+   python run_phase0.py
+
+3. **Verify Output:**
+   Inspect `phase0_report.json`. All tests must display `"status": "PASSED"`.
+4. **Cloud Training Preparation:**
+   Once Phase 0 passes, wire `models/chelated_model.py` to an 8x RTX 6000 Ada cluster using PyTorch DDP and train for 20 epochs across 350k synthetic/grounded interaction pairs.
+"""
+
+# =====================================================================
+# 2. requirements.txt
+# =====================================================================
+FILES["requirements.txt"] = """torch>=2.2.0
+numpy>=1.24.0
+transformers>=4.40.0
+"""
+
+# =====================================================================
+# 3. fixtures/harness_rhpc.py
+# =====================================================================
+FILES["fixtures/harness_rhpc.py"] = """import torch
+
+class TrajectoryFalsifier:
+"""
+Evaluates Resonant Holographic Path Compression (RHPC / Lane L-10)
+using Circular Convolution and orthogonal rotation against baseline EMA.
+"""
+def **init**(self, dim=2048, seed=42):
+torch.manual_seed(seed)
+self.dim = dim
+q, _ = torch.linalg.qr(torch.randn(dim, dim))
+self.R = q  # Fixed orthogonal permutation/rotation matrix
+
+def _circ_conv(self, x, y):
+    \"\"\"Circular convolution via 1D Fast Fourier Transform.\"\"\"
+    return torch.fft.ifft(torch.fft.fft(x) * torch.fft.fft(y)).real
+
+def run_trace_rhpc(self, trace_vectors, window=6, threshold=0.88):
+    history = []
+    H = torch.zeros(self.dim)
+    alarms = []
+
+    for t, a_t in enumerate(trace_vectors):
+        if t == 0:
+            H = a_t
+        else:
+            rotated_H = torch.matmul(self.R, H)
+            H = self._circ_conv(rotated_H, a_t)
+
+        for offset, prev_H in enumerate(reversed(history[-window:]), start=1):
+            sim = torch.cosine_similarity(H.unsqueeze(0), prev_H.unsqueeze(0)).item()
+            if sim > threshold:
+                alarms.append({"step": t, "period": offset, "similarity": round(sim, 4)})
+                break
+        history.append(H)
+    return alarms
+
+def run_trace_leaky(self, trace_vectors, alpha=0.7, window=6, threshold=0.95):
+    \"\"\"Baseline Exponential Moving Average.\"\"\"
+    history = []
+    v = torch.zeros(self.dim)
+    alarms = []
+
+    for t, a_t in enumerate(trace_vectors):
+        v = alpha * v + (1.0 - alpha) * a_t
+        for offset, prev_v in enumerate(reversed(history[-window:]), start=1):
+            sim = torch.cosine_similarity(v.unsqueeze(0), prev_v.unsqueeze(0)).item()
+            if sim > threshold:
+                alarms.append({"step": t, "period": offset, "similarity": round(sim, 4)})
+                break
+        history.append(v)
+    return alarms
+
+"""
+
+# =====================================================================
+# 4. fixtures/harness_chelation.py
+# =====================================================================
+FILES["fixtures/harness_chelation.py"] = """import torch
+
+def evaluate_chelation_bounds(clean_embeddings, noisy_embeddings, prune_rates=[0.0, 0.02, 0.05, 0.10]):
+"""
+Measures cosine recovery after soft-pruning high-variance noise coordinates (Lane L-01).
+"""
+dim = clean_embeddings.shape[1]
+var_clean = torch.var(clean_embeddings, dim=0) + 1e-8
+var_noisy = torch.var(noisy_embeddings, dim=0) + 1e-8
+variance_ratio = var_noisy / var_clean
+
+sweep = {}
+for rate in prune_rates:
+    k = int(dim * rate)
+    mask = torch.ones(dim, device=clean_embeddings.device)
+    if k > 0:
+        _, prune_idx = torch.topk(variance_ratio, k=k)
+        mask[prune_idx] = 0.0
+
+    f_clean = clean_embeddings * mask
+    f_noisy = noisy_embeddings * mask
+
+    n_clean = torch.nn.functional.normalize(f_clean, dim=1)
+    n_noisy = torch.nn.functional.normalize(f_noisy, dim=1)
+
+    cosine_rec = torch.sum(n_clean * n_noisy, dim=1).mean().item()
+    sweep[f"Prune_{int(rate*100)}%"] = round(cosine_rec, 4)
+return sweep
+
+"""
+
+# =====================================================================
+# 5. fixtures/harness_coalition.py
+# =====================================================================
+FILES["fixtures/harness_coalition.py"] = """import torch
+
+def run_coalition_probe(n_samples=2000, d_model=1024):
+"""
+Tests whether rank-2 interdependent DOM conditions require bilinear interaction tensors (Lane L-04).
+"""
+torch.manual_seed(42)
+h_field1 = torch.randn(n_samples, d_model)
+h_field2 = torch.randn(n_samples, d_model)
+
+# Boolean logic: valid iff both inputs have positive lead coordinate
+f1_valid = (h_field1[:, 0] > 0.0).float()
+f2_valid = (h_field2[:, 0] > 0.0).float()
+y = torch.logical_and(f1_valid == 1.0, f2_valid == 1.0).float().unsqueeze(-1)
+
+# Probe A: Linear Concatenation (Singleton Probe)
+X_lin = torch.cat([h_field1, h_field2], dim=-1)
+ridge_eye_lin = 1e-3 * torch.eye(X_lin.shape[1])
+w_lin = torch.linalg.solve(X_lin.T @ X_lin + ridge_eye_lin, X_lin.T @ y)
+preds_lin = (torch.sigmoid(X_lin @ w_lin) > 0.5).float()
+acc_lin = (preds_lin == y).float().mean().item()
+
+# Probe B: Bilinear Interaction Probe
+interaction = h_field1 * h_field2
+X_bi = torch.cat([h_field1, h_field2, interaction], dim=-1)
+ridge_eye_bi = 1e-3 * torch.eye(X_bi.shape[1])
+w_bi = torch.linalg.solve(X_bi.T @ X_bi + ridge_eye_bi, X_bi.T @ y)
+preds_bi = (torch.sigmoid(X_bi @ w_bi) > 0.5).float()
+acc_bi = (preds_bi == y).float().mean().item()
+
+return {
+    "linear_accuracy": round(acc_lin, 4),
+    "bilinear_accuracy": round(acc_bi, 4)
+}
+
+"""
+
+# =====================================================================
+# 6. models/chelated_model.py
+# =====================================================================
+FILES["models/chelated_model.py"] = """import torch
+import torch.nn as nn
+from transformers import ModernBertModel
+
+class ChelatedDecisionModel(nn.Module):
+"""
+Combines ModernBERT bidirectional representations with L-01 Chelation,
+GLiNER boundary pointers, Jev-style scalar scoring, and L-04 Coalition tensors.
+"""
+def **init**(self, base_checkpoint="answerdotai/ModernBERT-large"):
+super().**init**()
+self.encoder = ModernBertModel.from_pretrained(base_checkpoint)
+d_model = self.encoder.config.hidden_size  # 1024
+
+    # Lane L-01: Gated Coordinate Chelation
+    self.chelation_gate = nn.Sequential(
+        nn.Linear(d_model, d_model // 4),
+        nn.ReLU(),
+        nn.Linear(d_model // 4, d_model),
+        nn.Sigmoid()
+    )
+
+    # Token Boundary Pointers (DOM element localization)
+    self.start_pointer = nn.Linear(d_model, 1)
+    self.end_pointer = nn.Linear(d_model, 1)
+
+    # Dynamic Schema & Calibrated Decision Heads
+    self.schema_proj = nn.Linear(d_model, d_model)
+    self.scalar_head = nn.Sequential(
+        nn.Linear(d_model, 256),
+        nn.GELU(),
+        nn.Linear(256, 1)
+    )
+
+    # Lane L-04: Bilinear Coalition Tensor
+    self.coalition_bilinear = nn.Bilinear(d_model, d_model, 1)
+
+def forward(self, input_ids, attention_mask):
+    outputs = self.encoder(input_ids=input_ids, attention_mask=attention_mask)
+    h = outputs.last_hidden_state
+
+    # L-01 soft-gated coordinate filtering
+    gate = self.chelation_gate(h)
+    h_chelated = h * gate
+
+    start_logits = self.start_pointer(h_chelated).squeeze(-1)
+    end_logits = self.end_pointer(h_chelated).squeeze(-1)
+    scalar_pred = self.scalar_head(h_chelated[:, 0, :]).squeeze(-1)
+
+    return {
+        "h_chelated": h_chelated,
+        "gate": gate,
+        "start_logits": start_logits,
+        "end_logits": end_logits,
+        "scalar_pred": scalar_pred
+    }
+
+"""
+
+# =====================================================================
+# 7. orchestrator/runtime.py
+# =====================================================================
+FILES["orchestrator/runtime.py"] = """import torch
+
+class LocalDecisionOrchestrator:
+"""
+Local runtime execution driver with RHPC standing cycle detection (Lane L-10)
+and append-only EGV ledger integration (Lane L-09).
+"""
+def **init**(self, model_engine, dim=2048):
+self.model = model_engine
+self.dim = dim
+self.H = torch.zeros(dim)
+q, _ = torch.linalg.qr(torch.randn(dim, dim))
+self.R = q
+self.history = []
+
+def _circ_conv(self, x, y):
+    return torch.fft.ifft(torch.fft.fft(x) * torch.fft.fft(y)).real
+
+def step(self, dom_input, permitted_actions):
+    # 1. Model inference pass (sub-10ms)
+    preds = self.model.infer(dom_input, permitted_actions)
+    target_selector = preds["selector"]
+    action = preds["action"]
+    confidence = preds["confidence"]
+
+    # 2. RHPC Phase-Lock / Infinite Loop Check
+    action_vec = torch.nn.functional.normalize(torch.randn(self.dim), dim=0)
+    self.H = self._circ_conv(torch.matmul(self.R, self.H), action_vec)
+
+    for past_H in self.history[-6:]:
+        sim = torch.cosine_similarity(self.H.unsqueeze(0), past_H.unsqueeze(0)).item()
+        if sim > 0.88:
+            return {
+                "status": "CYCLE_BLOCKED",
+                "action": None,
+                "reason": "RHPC Standing refraction / infinite loop detected"
+            }
+
+    self.history.append(self.H)
+    return {
+        "status": "PROCEED",
+        "selector": target_selector,
+        "action": action,
+        "confidence": confidence
+    }
+
+"""
+
+# =====================================================================
+# 8. run_phase0.py (Unified Runner)
+# =====================================================================
+FILES["run_phase0.py"] = """import json
+import torch
+from fixtures.harness_rhpc import TrajectoryFalsifier
+from fixtures.harness_chelation import evaluate_chelation_bounds
+from fixtures.harness_coalition import run_coalition_probe
+
+def main():
+print("==")
+print("RUNNING PHASE 0: ZERO-TRAINING FALSIFICATION SUITE")
+print("==\n")
+
+report = {"status": "PASSED", "tests": {}}
+
+# 1. RHPC Test
+print("--> Evaluating Harness 1: RHPC Trajectory & Loops (L-10)...")
+rhpc = TrajectoryFalsifier(dim=2048)
+actions = {k: torch.nn.functional.normalize(torch.randn(2048), dim=0)
+           for k in ["A", "B", "C", "D", "E"]}
+
+valid_dag = [actions["A"], actions["B"], actions["C"], actions["D"], actions["E"]]
+loop_trace = [actions["A"], actions["B"], actions["C"], actions["A"], actions["B"], actions["C"]]
+
+valid_alarms = rhpc.run_trace_rhpc(valid_dag)
+loop_alarms = rhpc.run_trace_rhpc(loop_trace)
+
+rhpc_passed = (len(valid_alarms) == 0) and (len(loop_alarms) > 0)
+report["tests"]["rhpc_cycle_rejection"] = {
+    "status": "PASSED" if rhpc_passed else "FAILED",
+    "false_alarms": len(valid_alarms),
+    "loop_alarms_triggered": len(loop_alarms)
+}
+print(f"    Status: {'PASSED' if rhpc_passed else 'FAILED'}\n")
+
+# 2. Chelation Test
+print("--> Evaluating Harness 2: Gated Coordinate Chelation (L-01)...")
+N, D = 1000, 1024
+clean = torch.randn(N, D)
+corrupted = clean.clone()
+noise_dims = torch.randperm(D)[:50]
+corrupted[:, noise_dims] += torch.randn(N, 50) * 12.0
+
+chelation_results = evaluate_chelation_bounds(clean, corrupted)
+chelation_passed = chelation_results["Prune_5%"] >= 0.95
+report["tests"]["coordinate_chelation"] = {
+    "status": "PASSED" if chelation_passed else "FAILED",
+    "metrics": chelation_results
+}
+print(f"    Status: {'PASSED' if chelation_passed else 'FAILED'}")
+print(f"    Recovery at 5% prune: {chelation_results['Prune_5%']}\n")
+
+# 3. Coalition Test
+print("--> Evaluating Harness 3: Coalition Bilinear Tensor (L-04)...")
+coalition_results = run_coalition_probe(n_samples=2000, d_model=1024)
+coalition_passed = (coalition_results["linear_accuracy"] < 0.80) and (coalition_results["bilinear_accuracy"] >= 0.95)
+report["tests"]["coalition_bilinear_probe"] = {
+    "status": "PASSED" if coalition_passed else "FAILED",
+    "linear_accuracy": coalition_results["linear_accuracy"],
+    "bilinear_accuracy": coalition_results["bilinear_accuracy"]
+}
+print(f"    Status: {'PASSED' if coalition_passed else 'FAILED'}")
+print(f"    Linear Accuracy:   {coalition_results['linear_accuracy'] * 100}%")
+print(f"    Bilinear Accuracy: {coalition_results['bilinear_accuracy'] * 100}%\n")
+
+if not (rhpc_passed and chelation_passed and coalition_passed):
+    report["status"] = "FAILED"
+
+with open("phase0_report.json", "w") as f:
+    json.dump(report, f, indent=2)
+
+print("==================================================")
+print(f"FINAL SUITE OUTCOME: {report['status']}")
+print("Report written to 'phase0_report.json'")
+print("==================================================")
+
+if **name** == "**main**":
+main()
+"""
+
+# =====================================================================
+# ZIP PACKER EXECUTION
+# =====================================================================
+
+def create_zip(output_filename="chelated_decision_engine.zip"):
+print(f"Packaging {len(FILES)} files into {output_filename}...")
+with zipfile.ZipFile(output_filename, "w", zipfile.ZIP_DEFLATED) as zf:
+for filepath, content in FILES.items():
+zf.writestr(filepath, content.strip() + "\n")
+print(f"  + Added: {filepath}")
+print(f"\n[SUCCESS] Archive generated: {os.path.abspath(output_filename)}")
+
+if **name** == "**main**":
+create_zip()
+================================= END PASTE =================================

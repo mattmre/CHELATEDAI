@@ -1,0 +1,85 @@
+{
+  "date": "2026-10-08",
+  "scope": "paper/source reduction review, portable research references, and constructed CPU algebra checks only",
+  "publication_parent": "ae602e9839158acea79511f7c1666a68450527cf",
+  "test_command": "python -S -m unittest tests.test_resonance_score_reduction -v",
+  "unittest": {
+    "tests_run": 7,
+    "skips": 0,
+    "failures": 0,
+    "exit_code": 0,
+    "seconds": 0.028,
+    "site_packages_disabled": true
+  },
+  "integration": {
+    "tasks": 42,
+    "math_tasks": 8,
+    "cases": 24,
+    "dependency_edges": 45,
+    "local_links_checked": 134,
+    "prior_bodies_preserved": 23,
+    "errors": []
+  },
+  "preservation_interpretation": "23 prior bodies retained modulo two explicitly reviewed RHPC absolute-to-relative reference relocations; no frozen protocol bytes or gates changed",
+  "portable_local_links_checked": 10,
+  "rhpc_reference_sha256": "fa556285107fd74a202bfbb7140b24c4d29c0bc171a02615068e4ef8834b88d7",
+  "paper_pdf_sha256": "5730ec0c2772c44675578d9616b17a2e0a49727803bc4075b522fbf4dc0cfc27",
+  "upstream_source_commit": "3ee313c2d8311922a6428fcd398e8f82c23643c8",
+  "upstream_code_executed": false,
+  "paper_semantic_or_scaling_results_reproduced": false,
+  "ma_cases_implemented": false,
+  "official_rhpc_run_performed": false,
+  "scientific_admission_changed": false,
+  "secret_scan": {
+    "reviewed_content_files": 11,
+    "exit_code": 0,
+    "findings": 0
+  },
+  "reviewed_files": [
+    {
+      "path": ".gitattributes",
+      "sha256": "5af60a8fe4ba9e74112a623e37515e4f94fc69b94a50a69ebcc64277db97bed7"
+    },
+    {
+      "path": "docs/next-session.md",
+      "sha256": "24f99873df398d9997a272d26c25a6a7b52b3a25355e39c8228f009739ce7898"
+    },
+    {
+      "path": "docs/research/publication-handoff-2026-10-08.md",
+      "sha256": "dc38a547bd94d7c18acd327cbf8811874b371fe33b686d66ba57428420cc4e66"
+    },
+    {
+      "path": "docs/research/resonance-memory-prior-art-2026-10-08.md",
+      "sha256": "663b68a64c3260ac916a1afa8d8213e6a318a5f02ac1eddfca0cdc64213f2ea6"
+    },
+    {
+      "path": "docs/research/references/rhpc-stage-a-method-dev-protocol-2026-08-25.md",
+      "sha256": "fa556285107fd74a202bfbb7140b24c4d29c0bc171a02615068e4ef8834b88d7"
+    },
+    {
+      "path": "docs/ARCH AGENTIC ENGINEERING AND PLANNING/planning/2026-05-reconciliation/issue-106-localized-assimilation-research-plan.md",
+      "sha256": "aa37a7d0584419d317817e13caa52c66a03cecf5356ccae86e08eba1e211bcb3"
+    },
+    {
+      "path": "tests/test_resonance_score_reduction.py",
+      "sha256": "1f277b9f2d4dd4597bb45fb71d420ce14aabaef4221a545f6f920adec0de2b7c"
+    },
+    {
+      "path": "docs/research/innovation-test-queue-2026-09-12/03-learned-holographic-composition.md",
+      "sha256": "fb26a07a102f45aabf6b03648402b171bb4da5262dcd663e60a27cc1656d789f"
+    },
+    {
+      "path": "docs/research/innovation-test-queue-2026-09-12/sources.md",
+      "sha256": "083d5302848eda70eb12528c48883e19adae5bef8225ca205714ee6119259030"
+    },
+    {
+      "path": "docs/research/innovation-test-queue-2026-09-12/shared-test-contract.md",
+      "sha256": "227b162513b459c9827775137b788baacb415e4c3fa8d67109cbb9707529e1fe"
+    },
+    {
+      "path": "docs/research/innovation-test-queue-2026-09-12/README.md",
+      "sha256": "d0c7caede7192ee3e48ece296187df096fb4e2651493f6e9c2b51fd4f1a60efa"
+    }
+  ],
+  "errors": []
+}
