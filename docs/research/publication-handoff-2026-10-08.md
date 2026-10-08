@@ -4,7 +4,7 @@
 
 ## Publication scope
 
-The desktop checkout is `codex/prime-ring-onion-method-dev` at `65c9085cd048e8a7351a53e87666fdd5639e612b`. Its committed history is already published in draft [PR #296](https://github.com/mattmre/CHELATEDAI/pull/296). The new publication branch is `codex/publish-research-backlog-20261008`, based on that exact public tip. [Draft PR #344](https://github.com/mattmre/CHELATEDAI/pull/344) is open, stacked on the preservation branch, with 168 changed files. Its initial payload commit `7229efcc71a5cd205ee2fd8f0ca4d0df2969ed5d` was verified equal to GitHub's branch tip; a later documentation commit records this publication pointer without changing the retained payload.
+The desktop checkout is `codex/prime-ring-onion-method-dev` at `65c9085cd048e8a7351a53e87666fdd5639e612b`. Its committed history is already published in draft [PR #296](https://github.com/mattmre/CHELATEDAI/pull/296). The new publication branch is `codex/publish-research-backlog-20261008`, based on that exact public tip. [Draft PR #344](https://github.com/mattmre/CHELATEDAI/pull/344) is open, stacked on the preservation branch. Its initial 168-file payload commit `7229efcc71a5cd205ee2fd8f0ca4d0df2969ed5d` was verified equal to GitHub's branch tip; a later documentation commit records that publication pointer. The follow-up described below adds four files and updates the related planning pointers, bringing the PR to 172 changed files.
 
 The [inventory](publication-inventory-2026-10-08.json) accounts for 200 locally modified/untracked files at the preparation snapshot. The reviewed payload contains 165 of those files, approximately 15.1 MB, plus this handoff and its inventory:
 
@@ -25,6 +25,26 @@ The inventory includes a disposition and SHA-256 for every remaining file:
 - four fixture-boundary authoring/freezing/validation test tools whose complete fixture dependency remains private.
 
 The prospective fixture is described by its public review/draft contract and hash bindings; its texts/labels are not included in this publication payload. The user's broad publication request is recorded here without silently consuming the planned blind-evaluation boundary. Those fixtures are not deleted or changed. A later protocol decision can change their disclosure policy explicitly before any campaign uses them.
+
+## ResonanceDB/RHPC follow-up and other-machine replay
+
+The user subsequently requested review of the wave-semantic-memory paper, identification of the pictured RHPC lane, and publication of the resulting issue/test updates. The [comparison](resonance-memory-prior-art-2026-10-08.md) is linked into IQ-03 H0/H2, the source register, shared observation contract, issue #106 plan, and next-session. It includes an exact real-coordinate reduction with energy calibration and a required same-information control. The four new files are that comparison, the seven-test module, a portable Stage-A protocol reference, and the [follow-up validation receipt](resonance-review-validation-2026-10-08.json). The original publication inventory/receipt remain dated snapshots of their original payload.
+
+The Stage-A reference was previously an untracked file in the separate RHPC checkout. Its exact bytes and SHA-256 are now included for reading; its official status/gates and source remain unchanged. This does not publish or qualify the separate RHPC runner or establish learned compression/semantic utility.
+
+For a fresh directory on another machine, with GitHub CLI, Git, and Python 3 available:
+
+```powershell
+gh repo clone mattmre/CHELATEDAI CHELATEDAI-research-20261008 -- --branch codex/publish-research-backlog-20261008
+cd CHELATEDAI-research-20261008
+git rev-parse HEAD
+gh pr view 344 --json headRefOid
+python -m unittest tests.test_resonance_score_reduction -v
+```
+
+Compare the two HEAD values before recording evidence. The replay needs only Python's standard library. Read this comparison, IQ-03, the shared contract, and `docs/next-session.md` before further work. Seven constructed algebra tests passed; the 24 MA cases remain specified/unimplemented, and scientific campaigns, RHPC official runs, private fixtures, merge admission, and paid resources retain their existing boundaries. Publication is now explicitly authorized by the user's October 8 request; older queue-preparation statements describe their original session scope.
+
+First follow-up: complete IQ-03 H0's observation/phase-encoder ledger and add the real norm-calibrated score to prospective H2/issue #106 comparisons. Keep learned-bank compression, ordered-route decoding, and speculative throughput/quality as separate endpoints. The pictured proposal belongs to P4/RHPC; IQ-05 wave dynamics is a more distant connection.
 
 ## Fresh publication validation
 

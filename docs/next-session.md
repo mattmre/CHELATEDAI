@@ -1,5 +1,13 @@
 # Next Session
 
+<!-- resonance-review-2026-10-08:start -->
+## 2026-10-08 — RHPC prior art and portable testing handoff
+
+The [ResonanceDB/RHPC comparison](research/resonance-memory-prior-art-2026-10-08.md), [byte-preserved Stage-A reference](research/references/rhpc-stage-a-method-dev-protocol-2026-08-25.md), and seven CPU-only reduction checks are published through [draft PR #344](https://github.com/mattmre/CHELATEDAI/pull/344). The pictured lane is P4/RHPC, with IQ-03 its future learned packet. Include the same-information real-coordinate score plus energy calibration in prospective retrieval comparisons; phase erasure is not a matched control.
+
+Use the [other-machine checkout/replay instructions](research/publication-handoff-2026-10-08.md). First research action: extend IQ-03 H0's observation/encoder ledger and carry the ordinary score into the proposed H2 control table, before requesting a separately admitted learned experiment. Seven constructed tests passed; the 24 MA cases remain specified/unimplemented, RHPC official run status remains unchanged, and laptop audit remains authentication-pending.
+<!-- resonance-review-2026-10-08:end -->
+
 <!-- math-findings-integration-2026-10-08:start -->
 ## 2026-10-08 — Mathematical findings aligned with the test backlog
 

@@ -2,7 +2,7 @@
 
 **Status:** `QUEUED_DEPENDENCY_REVIEW / STAGE_B_DRAFT / NOT_FROZEN / NOT_RUN`.
 
-**Parent:** `P4-REPRESENTATION`; [RHPC Stage A](D:/GITHUB/CHELATEDAI-RHPC1/docs/research/rhpc-stage-a-method-dev-protocol-2026-08-25.md).
+**Parent:** `P4-REPRESENTATION`; [RHPC Stage A — byte-preserved reference](../references/rhpc-stage-a-method-dev-protocol-2026-08-25.md). Official implementation and execution admission remain in the separately governed RHPC worktree.
 
 **Owner/reviewer:** unassigned representation researcher / independent coding-and-ML reviewer. Follow [G0](shared-test-contract.md).
 
@@ -13,6 +13,8 @@ H1: a shared-basis/rotation/residual representation stores **learned** expert up
 H2: a recurrent decoder recovers useful compositions from **deployment-available observations** more efficiently than same-information conventional decoders.
 
 These are separate claims. A successful route decoder does not prove weight compression, and reconstructing a deliberately factorized matrix does not prove either learned-model claim. Read [resonator networks, linear HDC codes, and KnOTS](sources.md). Ordinary factorization and coordinate alignment are established.
+
+The [2026-10-08 ResonanceDB comparison](../resonance-memory-prior-art-2026-10-08.md) adds direct phase-aware retrieval prior art to H0 and an exact real-coordinate, energy-calibrated control to H2. Seven constructed reduction checks are available; they establish score equivalence only. Match encoder-supplied phase/role information and total bytes/work before attributing any retrieval advantage to holographic scoring. The pictured RHPC field note maps to this parent lane; the paper does not establish its ordered-route factorization or learned expert compression.
 
 Keep Stage A byte-unchanged: four stations, six experts, 1,296 constructed paths, 1,000-dimensional composite code, official IDs 7/11, and its existing gates. It constructs the observed code from the known route; that is a valid constructed sanity input, not evidence that a deployed encoder can obtain it. Its one-shot/smoothing controls lack that composite and therefore do not establish a same-information decoder advantage.
 

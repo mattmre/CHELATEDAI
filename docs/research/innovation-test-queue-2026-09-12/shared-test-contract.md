@@ -38,6 +38,8 @@ When query groups alone are disjoint but all use the same adapters, report **new
 
 Any candidate-only metadata or target-derived representation invalidates an information-matched utility claim. Intentional oracle and negative controls must be visibly labeled and cannot win the deployable method selection.
 
+For phase-aware retrieval and IQ-03/issue #106 comparisons, retain identical encoder-supplied phases, role annotations, training access, and inference observations in the ordinary control. The [ResonanceDB review and seven constructed reduction checks](../resonance-memory-prior-art-2026-10-08.md) establish the exact real-coordinate, energy-calibrated score to include. Equal-energy cosine rankings are equivalent even for arbitrary complex phases; unequal energies require the calibration. These CPU-only algebra checks are distinct from the unopened MA cases and future scientific campaigns.
+
 ## Evaluation and inference
 
 - Metric validity comes first. Retrieval uses the [metric-lineage protocol](../metric-lineage-repair-protocol-2026-07.md), complete qrels, canonical unique IDs, and frozen tie handling. No legacy quarantined score supplies a threshold.

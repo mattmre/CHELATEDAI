@@ -8,6 +8,8 @@
 
 Start with the [shared test contract](shared-test-contract.md) and [primary-source register](sources.md). Each linked packet contains the hypothesis, mathematical boundary, controls, proposed data design, work items, endpoints, stop rules, and handoff artifacts. Checkboxes describe future work and are intentionally unchecked.
 
+The [2026-10-08 ResonanceDB/RHPC comparison](../resonance-memory-prior-art-2026-10-08.md) maps the pictured RHPC proposal to P4/IQ-03, supplies a portable Stage-A reference, and adds seven executed constructed reduction checks plus the required same-information real-score control. Use the [publication and other-machine handoff](../publication-handoff-2026-10-08.md) for the posted branch and replay command; the MA scientific cases remain specified, not implemented.
+
 ## Authority and ownership
 
 The user's instruction authorizes gathering documentation, preparing test plans, and queueing them. No run, model download, protocol freeze, fixture creation/access, paid cloud allocation, new Codex task, scheduled automation, publication, push, or PR mutation is authorized here. The [current block/debt surface](../../next-session.md) remains authoritative. Resolve applicable gates; do not reinterpret a queue entry as permission.
