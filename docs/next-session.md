@@ -7,7 +7,7 @@ Use the [OpenAI math applicability review](research/openai-math-applicability-re
 
 First resume: MA0 source-to-operator admission ledger and MA7 numerical-receipt design, alongside C0/MA1's pre-outcome descriptor specification in the current portfolio order. Relevant hypotheses are fixed-linear amplification, same-state virtual-expert coefficient error, finite holographic code diagnostics, and complete memory/precision accounting. Live adapter normalization, switching/cache divergence, finite construction availability, and verification overhead are explicit falsifiers.
 
-No new theorem is labeled locally verified, and no existing endpoint, frozen artifact, block flag, debt row, or scientific negative is changed by this integration. The user separately requested publication of new material and a laptop-repository diff audit on 2026-10-08; the publication/audit receipt will identify the exact posted scope and remaining dispositions.
+No new theorem is labeled locally verified, and no existing endpoint, frozen artifact, block flag, debt row, or scientific negative is changed by this integration. The user separately requested publication of new material and a laptop-repository diff audit on 2026-10-08. [Draft PR #344](https://github.com/mattmre/CHELATEDAI/pull/344) publishes 168 changed files; the [publication handoff](research/publication-handoff-2026-10-08.md), [inventory](research/publication-inventory-2026-10-08.json), and [validation receipt](research/publication-validation-2026-10-08.json) record the exact scope. The laptop audit remains pending its required Tailscale SSH sign-in; no clean-laptop or merge-readiness finding is claimed.
 <!-- math-findings-integration-2026-10-08:end -->
 
 <!-- innovation-test-queue-2026-09-12:start -->

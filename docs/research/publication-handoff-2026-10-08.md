@@ -4,7 +4,7 @@
 
 ## Publication scope
 
-The desktop checkout is `codex/prime-ring-onion-method-dev` at `65c9085cd048e8a7351a53e87666fdd5639e612b`. Its committed history is already published in draft [PR #296](https://github.com/mattmre/CHELATEDAI/pull/296). The new publication branch is `codex/publish-research-backlog-20261008`, based on that exact public tip; the PR is a draft stacked on the preservation branch.
+The desktop checkout is `codex/prime-ring-onion-method-dev` at `65c9085cd048e8a7351a53e87666fdd5639e612b`. Its committed history is already published in draft [PR #296](https://github.com/mattmre/CHELATEDAI/pull/296). The new publication branch is `codex/publish-research-backlog-20261008`, based on that exact public tip. [Draft PR #344](https://github.com/mattmre/CHELATEDAI/pull/344) is open, stacked on the preservation branch, with 168 changed files. Its initial payload commit `7229efcc71a5cd205ee2fd8f0ca4d0df2969ed5d` was verified equal to GitHub's branch tip; a later documentation commit records this publication pointer without changing the retained payload.
 
 The [inventory](publication-inventory-2026-10-08.json) accounts for 200 locally modified/untracked files at the preparation snapshot. The reviewed payload contains 165 of those files, approximately 15.1 MB, plus this handoff and its inventory:
 
