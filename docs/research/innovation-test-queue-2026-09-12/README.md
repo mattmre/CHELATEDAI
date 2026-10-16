@@ -8,6 +8,8 @@
 
 Start with the [shared test contract](shared-test-contract.md) and [primary-source register](sources.md). Each linked packet contains the hypothesis, mathematical boundary, controls, proposed data design, work items, endpoints, stop rules, and handoff artifacts. Checkboxes describe future work and are intentionally unchecked.
 
+**2026-10-15 IQ-04 update:** the [ScaleMAS comparison](../scalemas-temporal-evidence-comparison-2026-10-15.md) makes ScaleMAS a required baseline in [IQ-04](04-temporal-evidence-correction.md), alongside its matched retrieval ablation and ordinary temporal/copy-aware controls. The packet adds prospective popularity-versus-validity, correction/retraction, source-copying, and selected-answer comparisons. These are documentation requirements only; baseline qualification, all existing predecessors, portfolio order, primary endpoint, resource ceilings, and G0-BUILD/G0-RUN remain unchanged. No experiment has started.
+
 The [2026-10-08 ResonanceDB/RHPC comparison](../resonance-memory-prior-art-2026-10-08.md) maps the pictured RHPC proposal to P4/IQ-03, supplies a portable Stage-A reference, and adds seven executed constructed reduction checks plus the required same-information real-score control. Use the [publication and other-machine handoff](../publication-handoff-2026-10-08.md) for the posted branch and replay command; the MA scientific cases remain specified, not implemented.
 
 ## Authority and ownership
