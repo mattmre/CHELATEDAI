@@ -1,5 +1,13 @@
 # Next Session
 
+<!-- scalemas-review-2026-10-15:start -->
+## 2026-10-15 — ScaleMAS comparison and IQ-04 required controls
+
+Read the [ScaleMAS analysis](research/scalemas-temporal-evidence-comparison-2026-10-15.md) and the dated addition to [IQ-04](research/innovation-test-queue-2026-09-12/04-temporal-evidence-correction.md). ScaleMAS is a required prospective baseline, with matched BM25-only, ordinary version/provenance/bitemporal/copy-aware controls, popularity-versus-validity stresses, and a common non-oracle answer selector. The existing EK7 primary endpoint and thresholds, all fifteen predecessor dispositions, resource ceilings, and portfolio order remain intact.
+
+The user authorized documentation updates and explicitly said not to start experiments. No harness, fixture, model call, protocol freeze, or campaign follows from this change. Within IQ-04's next planning step, complete T0's baseline source/fidelity and observation ledger before separately admitted construction or execution. Status remains `QUEUED_DEPENDENCY_REVIEW / NOT_FROZEN / NOT_RUN`; block/debt rows below are unchanged.
+<!-- scalemas-review-2026-10-15:end -->
+
 <!-- resonance-review-2026-10-08:start -->
 ## 2026-10-08 — RHPC prior art and portable testing handoff
 
