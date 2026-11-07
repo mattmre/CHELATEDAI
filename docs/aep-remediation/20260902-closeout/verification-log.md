@@ -95,4 +95,4 @@ re-score (deferred to fresh Tier-B agent per BHS v3.7.1; NEVER score own work).
 - Live matrix `/tmp/auth01_probe.py` (loopback, port 8931, seeded --log-file): AC1 no-header→401 PASS; AC2 valid-Bearer→200 PASS; wrong-Bearer→401 PASS; AC3a unset-default→401 PASS; AC3b unset+CHELATED_DASHBOARD_ALLOW_UNAUTHENTICATED=1→200 PASS → MATRIX_ALL_PASS
 - FE served check (port 8932, GET /dashboard): shim markers 4, Bearer assignment 1, /api/ guard 1; extracted shim `node --check` → SHIM_JS_OK
 - ruff: not installed in env, not run
-- Fix record: docs/aep-remediation/20260902-closeout/findings/AEP-20260902-AUTH-01|L9|High|dashboard_server.py:1541.md
+- Fix record: docs/aep-remediation/20260902-closeout/findings/AEP-20260902-AUTH-01-L9-High-dashboard_server.py-1541.md
