@@ -4,3 +4,14 @@
 # These evidence-bound Markdown files use intentional two-space hard breaks.
 docs/research/rb13-wave0a-method-dev-protocol-2026-08-15.md text eol=lf whitespace=-blank-at-eol
 docs/research/rb13-wave0a-portable-archive-verifier-addendum-2026-08-16.md text eol=lf whitespace=-blank-at-eol
+docs/research/paired-chelation-intervention-sanity-protocol-2026-08.md text eol=lf whitespace=-blank-at-eol
+docs/research/paired-chelation-intervention-sanity-protocol-v2-2026-08.md text eol=lf whitespace=-blank-at-eol
+docs/research/paired-chelation-intervention-sanity-protocol-v3-2026-08.md text eol=lf whitespace=-blank-at-eol
+docs/research/qwen-scope-chelated-causal-intervention-preregistration-2026-08-16.md text eol=lf whitespace=-blank-at-eol
+docs/research/qwen-scope-chelated-causal-intervention-fixture-v1.json text eol=lf
+docs/research/qwen-scope-chelated-causal-intervention-artifact-schema-v1.json text eol=lf
+# Retain verbatim imported sources and their source-review bytes.
+docs/research/innovation-test-queue-2026-09-12/07-source-conversation-gliner25-vs-jev.md -text whitespace=-blank-at-eol,-blank-at-eof
+docs/research/innovation-test-queue-2026-09-12/07-review-evidence/RESULTS.md -text whitespace=cr-at-eol,-blank-at-eof
+docs/research/references/rhpc-stage-a-method-dev-protocol-2026-08-25.md -text whitespace=cr-at-eol
+docs/research/qwen-scope-chelated-causal-intervention-v4-portable-archive-verifier-addendum-2026-08-16.md text eol=lf whitespace=-blank-at-eol

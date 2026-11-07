@@ -8,6 +8,10 @@ gravity, quantum behavior, or production utility.
 
 ## 1. Shared mathematical vocabulary
 
+### 2026-10-08 mathematical-source integration
+
+The [October 7 review](openai-math-applicability-review-2026-10-07.md) is attached through [MA0/MA3/MA7](innovation-test-queue-2026-09-12/math-findings-integration-2026-10-07.md) and its future code/receipt cases. Keep the existing exact-Hamming theorem and the direct/exact/FFT numerical-tie repair separate. The new Fourier circuit result supplies no finite-precision or practical crossover guarantee and is parked as an implementation shortcut. Littlewood/circulant findings are only scoped finite-code research inputs until a usable construction or admitted proof exists. They do not supersede the Legendre construction collision, specialist equivalence review, or preserved closed stacking result. Future parity evidence requires full expected midpoint coverage, an explicit tie policy, exact build/arithmetic provenance, and all fallback/resource dispositions.
+
 Let each node \(v\) carry a cyclic fiber \(x_v\in\mathbb R^p\). A common
 rotation acts diagonally:
 
