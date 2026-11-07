@@ -14,6 +14,7 @@ This document describes the main research themes in the repository and where eac
 | Computational storage and drive nodes | Can some model or control-plane work move toward storage-resident execution? | Mixed maturity: software proof is strong, hardware claim remains scope-locked |
 | Disk-first CPU and retrieval program | Can ChelatedAI become a CPU-native, disk-assisted, retrieval-augmented system for coding and retrieval workloads? | New active roadmap proposal; architecture and phase planning in progress |
 | Liquified lattice (self-annealing RAG/DAG) | Can retrieval pools self-anneal and disintegrate under drift while shims steer and disk shards scale? | Vision + Phase II queue documented; implementation starts after Phase I step 8 |
+| Resonant holographic path compression (RHPC) | Can rotated expert slices and sparse residual codes preserve ordered routes and achieve recurrent lock without smoothing over standing cycles? | Stage A deterministic fixture frozen and locally validated; official dual-Spark observations are waiting for EGV terminal evidence |
 | Agentic remediation process | Can repository changes be triaged and delivered through a durable AEP workflow? | Implemented and extensively documented |
 
 ## 1. Adaptive Retrieval And Chelation
@@ -222,6 +223,36 @@ The active program proposal is:
 - [disk-resident-llm-feasibility-2026-03-28.md](disk-resident-llm-feasibility-2026-03-28.md)
 - [disk-resident-llm-addendum-reap-turboquant-2026-03-28.md](disk-resident-llm-addendum-reap-turboquant-2026-03-28.md)
 
+## 9. Resonant Holographic Path Compression
+
+### Question
+
+Can common expert transformations be represented as shared bases plus rotated
+sub-dimensional slices, with sparse residual "holograms" preserving uncommon
+detail, while an ordered fixed-width route code recurrently converges to a
+stable phase lock and rejects standing cycles?
+
+### Main files
+
+- `rhpc/stage_a.py`
+- `rhpc/admission.py`
+- `rhpc/artifacts.py`
+- `run_rhpc_stage_a.py`
+- [research/rhpc-stage-a-method-dev-protocol-2026-08-25.md](research/rhpc-stage-a-method-dev-protocol-2026-08-25.md)
+- [runbooks/rhpc-stage-a-dual-spark-handoff.md](runbooks/rhpc-stage-a-dual-spark-handoff.md)
+
+### Current state
+
+Stage A is a frozen deterministic constructed-mechanism fixture. Development
+runs 7 and 11 survive its preregistered reconstruction, order-binding,
+recurrent-lock, dead-stability, and standing-cycle gates. Those observations
+are local engineering checks only, not official Spark evidence and not a
+learned-model result.
+
+Official execution is fail-closed until the preceding EGV public projection,
+terminal seal, and bound signed restoration receipt verify. The next learned
+small-MoE and Qwen micro-LoRA phases require separate protocols and data.
+
 ## Recent Storage-Track Milestones
 
 The most recent merged storage-track additions on `main` include:
@@ -239,5 +270,6 @@ The remaining practical follow-through is physical RP2040 evidence capture when 
 - [VISION_LIQUIFIED_LATTICE.md](VISION_LIQUIFIED_LATTICE.md)
 - [ROADMAP_EXECUTION.md](ROADMAP_EXECUTION.md)
 - [COMPUTATIONAL_STORAGE_DRIVE_NODES.md](COMPUTATIONAL_STORAGE_DRIVE_NODES.md)
+- [research/rhpc-stage-a-method-dev-protocol-2026-08-25.md](research/rhpc-stage-a-method-dev-protocol-2026-08-25.md)
 - [roadmap-audit-and-weight-refinement-plan-2026-03-06.md](roadmap-audit-and-weight-refinement-plan-2026-03-06.md)
 - [INDEX.md](INDEX.md)
