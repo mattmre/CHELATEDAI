@@ -72,6 +72,7 @@ class _ScriptedClient:
 class _Logger:
     def __init__(self):
         self.errors = []
+        self.completions = []
 
     def log_error(self, kind, message, **kwargs):
         self.errors.append((kind, message))
@@ -86,7 +87,7 @@ class _Logger:
         return None
 
     def log_training_complete(self, *args, **kwargs):
-        return None
+        self.completions.append(kwargs)
 
     def log_checkpoint(self, *args, **kwargs):
         return None
@@ -493,7 +494,10 @@ class TestProductionAdapterRollback(unittest.TestCase):
         client = _Corpus(self._rows(), path, fail_compensation_retrieve=True)
         self._run_offline(client, adapter, path, logger)
         messages = [message for _, message in logger.errors]
+        kinds = [kind for kind, _ in logger.errors]
         self.assertIn("Corpus was not restored.", messages)
+        self.assertIn("offline_distillation_mixed_store", kinds)
+        self.assertEqual(logger.completions, [])
         self.assertFalse(any("written back" in message for message in messages))
         self.assertEqual(path.read_bytes(), pre_bytes)
         _assert_adapter_state(self, adapter, pre_state)

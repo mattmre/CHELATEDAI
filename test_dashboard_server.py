@@ -1150,6 +1150,23 @@ class TestDashboardSecurity(unittest.TestCase):
         with self.assertRaises(ValueError):
             dashboard_server.run_server(host="0.0.0.0", port=8080, log_file="chelation_events.jsonl")
 
+    def test_do_head_follows_get_for_the_control_page(self):
+        """HEAD of the control page is not a 401. /api/* stays unauthorized."""
+        dashboard_server.DASHBOARD_TOKEN = "secret-token"
+        handler = self._make_handler()
+        handler.path = "/dashboard/"
+        handler.send_error_response = MagicMock()
+        handler.do_HEAD()
+        handler.send_response.assert_called_with(200)
+        handler.send_error_response.assert_not_called()
+        self.assertEqual(handler.wfile.getvalue(), b"")
+
+        api = self._make_handler()
+        api.path = "/api/summary"
+        api.send_error_response = MagicMock()
+        api.do_HEAD()
+        api.send_error_response.assert_called_once_with(401, "Unauthorized")
+
     def test_do_get_serves_dashboard_html_without_bearer_when_token_set(self):
         """A navigation has no Authorization header, so the control page still loads."""
         dashboard_server.DASHBOARD_TOKEN = "secret-token"
