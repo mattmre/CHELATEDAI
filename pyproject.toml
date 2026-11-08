@@ -142,7 +142,15 @@ py-modules = [
     "teacher_weight_scheduler",
     "vector_store",
 ]
-packages = ["egv", "egv.evaluation", "egv.variation", "egv.training", "egv.campaign", "egv.experiment"]
+packages = [
+    "egv",
+    "egv.evaluation",
+    "egv.variation",
+    "egv.training",
+    "egv.campaign",
+    "egv.experiment",
+    "egv.recommissioning",
+]
 
 [tool.ruff]
 target-version = "py39"

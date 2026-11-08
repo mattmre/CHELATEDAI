@@ -5,6 +5,17 @@ from .commissioning import CommissioningPlan, prepare_commissioning
 from .coordinator import CampaignCoordinator
 from .inventory import ProtectedRestoreInventory
 from .lifecycle import DeepSeekLifecycleController
+from .scheduler import (
+    CampaignScheduler,
+    CampaignSchedulerError,
+    Dispatch,
+    SchedulerControlAction,
+    SchedulerPlan,
+    SchedulerTask,
+    SchedulerWorker,
+    StallRecovery,
+    validate_public_scheduler_report,
+)
 from .state import CampaignState, CampaignStateStore
 from .transport import ArtifactStagingStore, TransferManifest
 from .trajectories import GenerationRequest, GenerationResponse, reconcile_responses
@@ -18,20 +29,29 @@ from .runner import (
 __all__ = [
     "ArtifactStagingStore",
     "CampaignCoordinator",
+    "CampaignScheduler",
+    "CampaignSchedulerError",
     "CommissioningPlan",
     "CommissioningTrainerInputs",
     "CommissioningTrainerSources",
     "CampaignState",
     "CampaignStateStore",
     "DeepSeekLifecycleController",
+    "Dispatch",
     "EvaluatorAuthority",
     "EvaluatorReceipt",
     "GenerationRequest",
     "GenerationResponse",
     "ProtectedRestoreInventory",
+    "SchedulerControlAction",
+    "SchedulerPlan",
+    "SchedulerTask",
+    "SchedulerWorker",
+    "StallRecovery",
     "TransferManifest",
     "prepare_commissioning",
     "freeze_commissioning_dataset",
     "reconcile_responses",
     "run_commissioning",
+    "validate_public_scheduler_report",
 ]
