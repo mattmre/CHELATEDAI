@@ -108,6 +108,10 @@ class TeacherDistillationHelper:
         self.batch_size = batch_size
         self.show_progress = show_progress
         self.max_corpus_chunk = max_corpus_chunk
+        self._live_parts = []
+        self._teacher_parts = []
+        self._student_parts = []
+        self._live_alpha = None
 
         self.logger.log_event(
             "distillation_init",
@@ -279,6 +283,57 @@ class TeacherDistillationHelper:
         
         return compatible
 
+    def begin_live_distillation(self):
+        """Drop projection graphs retained by an earlier target build."""
+        self._live_parts = []
+        self._teacher_parts = []
+        self._student_parts = []
+        self._live_alpha = None
+
+    def _blend_live(self, teacher_tensor, student_tensor, alpha):
+        """Project in-graph and blend. The returned tensor trains the map.
+
+        Distilling through a learned map is the dimension-mismatch case of
+        Hinton, Vinyals, and Dean, "Distilling the Knowledge in a Neural
+        Network", 2015, arXiv:1503.02531. The numpy return below is a
+        detached copy for callers that store arrays. The loss must consume
+        the tensor this method returns, not that copy.
+        """
+        projected = self._projection.project_tensor(teacher_tensor)
+        blended = (1.0 - alpha) * student_tensor + alpha * projected
+        norms = torch.linalg.vector_norm(blended, dim=1, keepdim=True).clamp_min(1e-9)
+        return blended / norms
+
+    def take_live_distillation_targets(self):
+        """Return the in-graph targets built since begin, then drop that graph."""
+        parts = self._live_parts
+        self._live_parts = []
+        if not parts:
+            return None
+        if len(parts) == 1:
+            return parts[0]
+        return torch.cat(parts, dim=0)
+
+    def recompute_live_targets(self):
+        """Rebuild targets from the current projection weights.
+
+        Evolution-strategy steps perturb those weights in place. A target
+        tensor captured before the perturbation would not move them.
+        """
+        if self._projection is None or not self._teacher_parts:
+            return None
+        teacher = (
+            self._teacher_parts[0]
+            if len(self._teacher_parts) == 1
+            else torch.cat(self._teacher_parts, dim=0)
+        )
+        student = (
+            self._student_parts[0]
+            if len(self._student_parts) == 1
+            else torch.cat(self._student_parts, dim=0)
+        )
+        return self._blend_live(teacher, student, self._live_alpha)
+
     def _ensure_projection(self, student_dim):
         """Create projection layer if dimensions mismatch."""
         if self._projection is None:
@@ -333,11 +388,30 @@ class TeacherDistillationHelper:
             if self._projection_enabled:
                 self._ensure_projection(current_embeddings.shape[1])
                 if self._projection is not None:
-                    # Targets returned from this method are numpy arrays for
-                    # the adapter loss. project_numpy is the fixed preprocessor.
-                    # Callers that need the projection to train use
-                    # project_tensor and include it in their own loss.
-                    teacher_embeds = self._projection.project_numpy(teacher_embeds)
+                    # Hinton, Vinyals, and Dean, 2015, arXiv:1503.02531.
+                    # The loss tensor stays attached to the projection.
+                    # The returned array is a detached copy for array callers.
+                    teacher_tensor = torch.from_numpy(
+                        np.ascontiguousarray(teacher_embeds, dtype=np.float32)
+                    )
+                    student_tensor = torch.from_numpy(
+                        np.ascontiguousarray(current_embeddings, dtype=np.float32)
+                    )
+                    alpha = float(teacher_weight)
+                    live = self._blend_live(teacher_tensor, student_tensor, alpha)
+                    self._live_parts.append(live)
+                    self._teacher_parts.append(teacher_tensor.detach())
+                    self._student_parts.append(student_tensor.detach())
+                    self._live_alpha = alpha
+                    targets = live.detach().cpu().numpy()
+                    self.logger.log_event(
+                        "distillation_targets_generated",
+                        f"Generated {len(targets)} distillation targets",
+                        level="DEBUG",
+                        num_targets=len(targets),
+                        teacher_weight=teacher_weight,
+                    )
+                    return targets
                 else:
                     return current_embeddings.copy()
             else:

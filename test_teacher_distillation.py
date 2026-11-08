@@ -5,7 +5,6 @@ Tests the TeacherDistillationHelper class with mocked models to avoid downloads.
 Fast, deterministic tests for distillation logic.
 """
 
-import inspect
 import unittest
 import numpy as np
 import torch
@@ -583,28 +582,40 @@ class TestDimensionProjection(unittest.TestCase):
             self.assertEqual(out.shape, (4, s_dim))
 
     @patch("teacher_distillation.get_logger")
-    def test_mismatch_targets_do_not_train_the_projection(self, mock_logger):
-        """Numpy distillation targets are a fixed preprocessor.
+    def test_mismatch_targets_keep_a_live_projection_tensor(self, mock_logger):
+        """The mismatch path keeps a tensor the loss can train.
 
-        Replacing project_numpy with project_tensor plus an immediate detach
-        would still leave gradients empty. This test fails if the call trains
-        the projection as a side effect of building targets.
+        Replaces the lock that required this call to leave the projection
+        untrained. A detach or numpy conversion of the stored tensor before
+        the loss leaves ``grad`` empty and fails this test. Building the
+        targets still does not step the weights by itself.
         """
         mock_logger.return_value = MagicMock()
         helper = TeacherDistillationHelper("test-model", projection_enabled=True)
         helper.teacher_dim = 16
         helper.get_teacher_embeddings = lambda texts: np.random.randn(len(texts), 16).astype(np.float32)
         student = np.random.randn(3, 8).astype(np.float32)
-        helper.generate_distillation_targets(["a", "b", "c"], student, teacher_weight=1.0)
+        numpy_targets = helper.generate_distillation_targets(
+            ["a", "b", "c"], student, teacher_weight=1.0
+        )
+        self.assertIsInstance(numpy_targets, np.ndarray)
         self.assertIsNotNone(helper._projection)
         before = [parameter.detach().clone() for parameter in helper._projection.parameters()]
-        helper.generate_distillation_targets(["a", "b", "c"], student, teacher_weight=1.0)
+        live = helper.take_live_distillation_targets()
+        self.assertIsInstance(live, torch.Tensor)
+        self.assertTrue(live.requires_grad)
+        self.assertIsNotNone(live.grad_fn)
+        self.assertEqual(tuple(live.shape), tuple(numpy_targets.shape))
         for parameter, previous in zip(helper._projection.parameters(), before):
-            self.assertIsNone(parameter.grad)
             self.assertTrue(torch.equal(parameter, previous))
-        source = inspect.getsource(TeacherDistillationHelper.generate_distillation_targets)
-        self.assertIn("project_numpy", source)
-        self.assertNotIn(".detach()", source)
+        loss = torch.nn.MSELoss()(torch.zeros_like(live), live)
+        loss.backward()
+        trained = False
+        for parameter in helper._projection.parameters():
+            self.assertIsNotNone(parameter.grad)
+            if float(parameter.grad.detach().abs().sum()) > 0:
+                trained = True
+        self.assertTrue(trained)
 
     def test_projection_gradient_flow(self):
         """Test that gradients flow through the projection."""
