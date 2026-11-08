@@ -25,6 +25,7 @@ dependencies = [
 
 [project.scripts]
 egv = "egv.cli:main"
+egv-recommissioning-gateway = "egv.recommissioning.gateway:main"
 chelatedai-live-fire = "run_live_fire_diagnostics:main"
 chelatedai-road-course = "run_road_course_campaign:main"
 chelatedai-drift-recovery = "run_drift_recovery_experiment:main"
@@ -142,7 +143,7 @@ py-modules = [
     "teacher_weight_scheduler",
     "vector_store",
 ]
-packages = ["egv", "egv.evaluation", "egv.variation", "egv.training", "egv.campaign", "egv.experiment"]
+packages = ["egv", "egv.evaluation", "egv.variation", "egv.training", "egv.campaign", "egv.experiment", "egv.recommissioning"]
 
 [tool.ruff]
 target-version = "py39"
