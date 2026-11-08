@@ -171,13 +171,13 @@ flowchart LR
 
 ## Status on this commit
 
-The text was checked against origin/main `49804ae3ddcebf4e4060fae95ba812331299f757`, and this file's commit is the correction, not that parent SHA. PR [#257](https://github.com/mattmre/CHELATEDAI/pull/257) (`feat/live-progress-tracker-20260606`) is open and is not this commit. Rows below were corrected only where a path or completion sentence was checked. This section does not say Phase I is complete.
+The text below was checked against ancestor `49804ae3ddcebf4e4060fae95ba812331299f757` (PR #308). That commit is not the tip of this branch. PR [#257](https://github.com/mattmre/CHELATEDAI/pull/257) (`feat/live-progress-tracker-20260606`) is open and is not this commit. Rows below were corrected only where a path or completion sentence was checked. This section does not say Phase I is complete.
 
 | Area | Status | Notes |
 |---|---|---|
 | ML correctness (InfoNCE, projection, adapter isolation) | Not re-verified in this PR | Steps 1–3 were not opened here, so this cell does not say they are done or not done |
 | Sweep / packaging / docs truth | JSONL path and py-modules are in; steps 1–2 are not closed | Each `run_large_sweep.py` result is one JSONL append. The JSON array is written once at the end. `run_large_sweep` and `sweep_result_store` are in `pyproject.toml` `py-modules`. A `--no-deps` install imports `sweep_result_store`. Importing `run_large_sweep` stops at missing `numpy`. CI torch install: `cache: pip` plus the CPU wheel URL, documented in `docs/phase-i-steps-1-3-reverify-2026-09-23.md`. No separate torch cache key. |
-| Model-Scope pilot (Phase I #7) | **In progress** | Runtime, steering, bridge, and provenance paths tested on fixtures |
+| Model-Scope pilot (Phase I #7) | Fixture path done (rung 9) | Not a loaded Qwen3.5-9B. Runtime, steering, bridge, and provenance paths were exercised on a fixture |
 | E2E learning loop (Phase I #8) | Floor-tier dim-8 fixture added by this change | `tests/test_learning_loop_e2e.py` is added by this change. It is a floor-tier dim-8 fixture. It is not MiniLM and not BEIR. It fails when the chelated ranked-id list does not change. Phase I is not complete. Steps 1–4 were not re-verified |
 | SHIM research (Phase I defer) | Named modules are not in this commit | `chelated_shim_research.py`, `shim_node_promoted.py`, and `scripts/record_shim_*_evidence.py` are absent. This cell does not close SHIM-CD ids |
 | Phase / BHS loops | Not runnable from the named paths | `scripts/phase_development_loop.py` and `scripts/loop_core_10m.sh` are not in this commit |
@@ -231,10 +231,10 @@ The sections below describe **established results on `main` and work still on th
 
 | Area | Status | When / how it returns |
 |---|---|---|
-| Road-course profile promotion | No global golden setting yet; learned/query-conditional gating is the lead | Ongoing campaigns; Phase II drift experiment (#14) |
+| Road-course profile promotion | No global golden setting yet; learned/query-conditional gating is the lead | Rung 14 drift apparatus is on main. Profile promotion is still open |
 | Learned gates and static masks | Tooling exists; first artifacts fail closed or hurt holdout | Attribution pool → evidence DAG (Phase II #12) |
 | SEAL/EGGROLL self-healing depth | Advisory + sandbox; cloned-adapter execution pending | Phase II annealing controller (#11) + [seal-eggroll doc](docs/seal-eggroll-multipanel-architecture-2026-04-28.md) |
-| Computational storage / RP2040 | Software transport proof strong; physical evidence capture pending | Phase II disk pool slice (#17); [storage track](docs/COMPUTATIONAL_STORAGE_DRIVE_NODES.md) |
+| Computational storage / RP2040 | Software transport proof strong; physical evidence capture pending | Rung 17 is a host-parity shard on main via #294. It is not a board and not a production retrieval path. Physical capture is still pending. [storage track](docs/COMPUTATIONAL_STORAGE_DRIVE_NODES.md) |
 | Disk-first CPU program | Architecture docs exist; not fully reflected in runtime | After evidence DAG + pool shard milestones |
 | Agentic remediation (AEP/BHS) | Active process layer | Continuous; see [docs/next-session.md](docs/next-session.md) |
 
