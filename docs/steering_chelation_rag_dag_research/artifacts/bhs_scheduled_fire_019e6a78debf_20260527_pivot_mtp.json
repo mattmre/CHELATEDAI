@@ -1,0 +1,29 @@
+{
+  "scheduled_fire_id": "019e6a78debf",
+  "fire_timestamp": "2026-05-27T13:26:30-04:00",
+  "mode": "Pivot Mode",
+  "phase_plan_progress": {
+    "advancing": ["Phase 2 (Pivot, Troubleshooting & Resilience - first real usage after hygiene)", "Phase 1 (Harness Maturity - substrate now runnable)", "Phase 5 (synthetic traces usage)"],
+    "blocked": "Phase 3 (Core Blocker at 0% - SHIM-CD-01 + BLOCKED + research guard)"
+  },
+  "slice_executed": "Deepen MTP de-mock + MinMax correlation analysis on G traces (builds on prior pivot hygiene fix that made Cycle011_MTPShimLookahead importable)",
+  "fresh_runs": [
+    {"batch": 1, "hit_rate": 0.2, "precision_at_k": 0.2, "n_traces": 80, "top_k": 2},
+    {"batch": 2, "hit_rate": 0.2, "precision_at_k": 0.2, "n_traces": 80, "top_k": 2},
+    {"batch": 3, "hit_rate": 0.2, "precision_at_k": 0.2, "n_traces": 80, "top_k": 2}
+  ],
+  "correlation_observation": "On the current synthetic G trace generator, hit_rate and precision remain flat at 0.2 across batches. Weak/limited variance means no strong visible correlation between minmax_block_scores and prediction success in these runs. Expected L3 mock behavior. Substrate is now usable post syntax hygiene.",
+  "bhs": {
+    "does_not_satisfy_goal_success_def_1": true,
+    "0_substrate_deltas": true,
+    "research_guard": "CHELATED_SHIM_RESEARCH=1 enforced",
+    "block_state": "BLOCKED count:2 FAIL (unchanged)",
+    "l_taxonomy": ["L3 (MTP prototype and all numbers)", "L4 (pivot scaffolding + hygiene usage demonstration)"],
+    "explicit_pivot_declaration": "We are in Pivot Mode, advancing Phase 2/1/5 because Phase 3 is blocked by SHIM-CD-01 + BLOCKED flag + research-only guard."
+  },
+  "new_artifacts": [
+    "artifacts/bhs_scheduled_fire_019e6a78debf_20260527_pivot_mtp.json",
+    "loop_02/01_scheduled_fire_019e6a78debf_pivot_mtp_correlation.md"
+  ],
+  "repro": "CHELATED_SHIM_RESEARCH=1 python -B -c \"import sys;sys.path.insert(0,'docs/steering_chelation_rag_dag_research/artifacts');from shim_collapse_benchmark_extension import Cycle011_MTPShimLookahead;m=Cycle011_MTPShimLookahead();print(m.synthetic_eval_on_gtraces(80,top_k=2))\""
+}

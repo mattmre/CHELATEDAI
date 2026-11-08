@@ -1,0 +1,53 @@
+{
+  "fire_id": "019e6a78debf_20260527_pivot19",
+  "timestamp": "2026-05-27T14:23:15-04:00",
+  "scheduler": "019e6a78debf (3min, only active)",
+  "mode": "Pivot Mode (OVERRIDE: NONE, BLOCKED count:2, SHIM-CD-01 OPEN)",
+  "phase_advancement": "Phase 2 (3rd documented pivot usage fire + J-audit), Phase 1 (MTP harness correlation analysis), Phase 5 (clear diagnosis + next experiment); Phase 3 0%",
+  "activation_records": [
+    {
+      "action": "Correlation analysis: 60 post-17-alt G traces + MinMaxBlockRelevanceScorer per-trace scores vs outcome success_rate",
+      "params": {"traces": 60, "scorer": "MinMaxBlockRelevanceScorer(floor=0.0078)", "generator": "post-17-alt generate_successful_synthetic_shim_cascade_traces"},
+      "results": {
+        "traces_analyzed": 60,
+        "mean_min_max": 0.8335,
+        "std_min_max": 0.1379,
+        "mean_success_rate": 1.0,
+        "high_vs_low_mm_success_delta": 0.0,
+        "diagnosis": "17 alt injected good min_max variance (0.83/0.14); generator forces success=1.0 by construction (harness:1024+ v0/v1 + outcome) leaving zero variance to correlate"
+      },
+      "subagent_j_audit": "019e6aad-c762-7a00-82d6-c6d8d8ac2470 (read-only): 'No — closer to L9 theater (doc volume while Phase 3 0%)' per plan:81-83. 'Actual substrate delta: +0.05 hit/prec (0.2 locked → 0.25/0.3333) in synthetic_eval only (survives fresh checkout under guard)'. '0 substrate on goal #1'. Next: 'vary G trace generator success/cost distributions (Phase 5)'",
+      "delta_vs_historical": "Pre-17: locked 0.2 flat (constant fakes). Post-17+18+19: min_max variance now measurable (0.83) + explicit zero-correlation diagnosis",
+      "rollback": "pure runtime (no code change this fire); 17 alt is source of variance; all repro on research py under CHELATED_SHIM_RESEARCH=1"
+    }
+  ],
+  "bhs_evidence": {
+    "EVIDENCE": "60-trace correlation run @14:23:15 produced mean min_max 0.8335 (std 0.1379) but 0.0 high/low success delta (generator forces 1.0); J-audit subagent verbatim included; 0-prod clean; block FAIL count:2; all 9 re-reads with citations in 19_ md",
+    "SMOKE": "CHELATED_SHIM_RESEARCH=1 python -B -c 'import sys,numpy as np,statistics; sys.path.insert(0,\"docs/steering_chelation_rag_dag_research/artifacts\"); from shim_collapse_benchmark_extension import MinMaxBlockRelevanceScorer, generate_successful_synthetic_shim_cascade_traces; ... (exact logic)' → 0.8335 mean min_max, 0.0 delta",
+    "repro_cmd": "see 19_ md for full one-liner version",
+    "0_prod": "only pre-existing comments in tts/antigravity reference scorer as research/artifacts/ only"
+  },
+  "block_state": {"flag": "BLOCKED", "rows": 2, "script_result": "FAIL"},
+  "carried_debt": 2,
+  "operator_override": "NONE (11+ cycles)",
+  "0_substrate": "0 real SIPs (SHIM-CD-01 OPEN, plan:102, greps Wired=NO on tts:47-80 + antigravity:2452-2600). 0 prod runtime. 0 engine deltas. 0 SHIM-CD closures. Does not satisfy goal #1-3 or phase plan success criteria. Program 10/100 flat. Synthetic L3 numbers + J-audit only.",
+  "program_score": "10/100 (no change)",
+  "l_taxonomy": ["L1 (no real OPSD/head)", "L3 (full synthetic correlation + generator diagnosis; explicit)", "L4 (delta/usage language while SHIM-CD-01 + BLOCKED + 0 SIPs; disclosed + J-audit included)", "L9 (J-audit flags sequence as L9 theater risk per plan:85; mitigated by verbatim inclusion + runtime numbers + phase mapping)", "L13 avoided (no real MTP or SHIM-CD claims)"],
+  "4qs": {
+    "1_what": "Correlation on 60 post-alt traces: min_max variance 0.83/0.14 present but success delta 0.0 (generator forces 1.0). J-audit: L9-risk pattern per plan:81-83.",
+    "2_why": "17 alt changed feature side (good); generator side unchanged (forces uniform high success) → no outcome variance for correlation.",
+    "3_risk": "Pure L3 synthetic; 0 value for real seams; J-audit labels as doc-volume risk while Phase 3 0%.",
+    "4_next": "Human: OVERRIDE or §128 decision. Loop (no change): follow J rec — vary generator success/cost distributions (Phase 5) for testable nonzero correlation."
+  },
+  "research_guard": "CHELATED_SHIM_RESEARCH=1 only; 0 prod/SIP on real paths",
+  "phase_plan_ref": "Phase 2:83 'Needs real usage' (3 pivot fires + J-audit); Phase 3:102 0%; J-audit cites plan:81-83/85 directly",
+  "sustained_round_01_agentG_attribution": {
+    "round": "Sustained Phase Round 01 (2026-05-27T14:31:47, scheduler 019e6ab0e6d0, driver SUSTAINED_PHASE_ROUND_DRIVER.md)",
+    "sub_slice": "Sub-slice 2 - Trace generator outcome variance injection (per Agent A 20_sustained..._agentA_research_mapping.md:100-106 + plan:145)",
+    "action": "Added optional outcome_variance (default=0 compat) + seeded bounded probabilistic jitter to success_rate/cost/quality in 'outcome' dict of generate_successful_synthetic_shim_cascade_traces (harness:1046+). Updated traces CLI path + 4-6 concrete variance samples in comments. Research/artifacts/ ONLY + CHELATED_SHIM_RESEARCH=1.",
+    "evidence": "Runtime SMOKE @2026-05-27T18:34: var=0 yields fixed success_rate=1.0/cost=3.5; var=0.25 yields success 0.9864-1.0 (std>0), costs 3.13-3.68, outcome_variance_applied field; rollback always true, filter passes. Before/after captured in Agent G md.",
+    "citations": "Full re-reads: round ts 2026-05-27T14:31:47 + SUSTAINED_PHASE_ROUND_DRIVER.md + FULL_SHIM_LOOP_PHASE_PLAN.md:145 (Phase 5 status) + harness generator 1022+ (now 1046+) + 19_fire_..._pivot_mtp_correlation.md diagnosis ('generator forces 1.0... zero outcome variance') + 20_agentA plan:50 + protocol + BHS_5MIN... + next-session:22 (BLOCKED count:2) + check_block_flag FAIL + 0-prod (exactly 2 research files).",
+    "bhs": "L3 (synthetic generator extension), L4 (while #1 0% + BLOCKED + SHIM-CD-01); explicit '0 substrate / does not satisfy goal #1'. Pivot Mode: We are in Pivot Mode, advancing Phase 2/5 because Phase 3 blocked by SHIM-CD-01 + BLOCKED. 4-6 new samples added. Independent artifact: loop_02/20_sustained_round_01_agentG_generator_variance.md",
+    "0_substrate": "0 substrate / does not satisfy goal #1. No prod paths touched. Variance now controllable in research harness only."
+  }
+}
