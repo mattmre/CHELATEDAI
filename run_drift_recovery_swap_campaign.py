@@ -219,11 +219,21 @@ def _select_best_budget(rows: Sequence[Mapping[str, Any]]) -> dict:
 
 
 def render_swap_report(manifest: Mapping[str, Any]) -> str:
+    raw_evidence_unavailable = any(
+        row.get("per_run_json") == "not_retained" or not row.get("path")
+        for group in ("main_rows", "budget_rows", "budget_confirm_rows")
+        for row in manifest.get(group, ())
+    )
     lines = [
         "# Drift Recovery — Query-Encoder-Swap Arena (PR-A4) — June 2026",
         "",
         f"Arena: `{manifest['arena']}` (encoder upgrade; the C2 re-embed oracle is defeated).",
         f"Manifest: `{manifest['config']['output_dir']}/swap-campaign-manifest-2026-06.json`.",
+        *([
+            "Per-run JSON evidence is unavailable for one or more manifest rows "
+            "(not retained or missing raw paths); values below are retained "
+            "manifest summaries, not reconstructed raw runs."
+        ] if raw_evidence_unavailable else []),
         f"Base model: `{manifest['config']['model']}`; swap model: `{manifest['config']['swap_model']}`.",
         f"Task {manifest['config']['task']}, anchor_fraction {manifest['config']['anchor_fraction']}, "
         f"cycles {manifest['config']['cycles']}, seeds {manifest['seeds']}.",
