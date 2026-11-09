@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import copy
 import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from run_drift_recovery_swap_campaign import (
     BUDGET_GRID,
@@ -11,6 +13,7 @@ from run_drift_recovery_swap_campaign import (
     SEEDS,
     SwapCampaignConfig,
     run_swap_campaign,
+    render_swap_report,
 )
 
 
@@ -126,6 +129,51 @@ class TestSwapCampaign(unittest.TestCase):
         for run_config in self.calls:
             self.assertEqual(run_config.drift, "query_encoder_swap")
             self.assertGreater(run_config.anchor_fraction, 0.0)
+
+
+    def _assert_disclosure_preserves_report(self, manifest, available_report):
+        original = copy.deepcopy(manifest)
+        with patch("builtins.open", side_effect=AssertionError("no raw fallback")), patch.object(
+            Path, "read_text", side_effect=AssertionError("no historical raw reload")
+        ):
+            report = render_swap_report(manifest)
+        self.assertEqual(manifest, original)
+        disclosure = [line for line in report.splitlines() if line.startswith("Per-run JSON evidence")]
+        self.assertEqual(len(disclosure), 1)
+        self.assertIn("not reconstructed raw runs", disclosure[0])
+        self.assertEqual(report.replace(disclosure[0] + "\n", ""), available_report)
+
+    def test_not_retained_marker_discloses_without_changing_summary(self):
+        manifest = run_swap_campaign(self._config(), runner=self._runner())
+        available_report = render_swap_report(manifest)
+        for group in ("main_rows", "budget_rows", "budget_confirm_rows"):
+            with self.subTest(group=group):
+                retained = copy.deepcopy(manifest)
+                retained[group][0]["per_run_json"] = "not_retained"
+                self._assert_disclosure_preserves_report(retained, available_report)
+
+    def test_missing_raw_paths_disclose_without_changing_summary(self):
+        manifest = run_swap_campaign(self._config(), runner=self._runner())
+        available_report = render_swap_report(manifest)
+        for group in ("main_rows", "budget_rows", "budget_confirm_rows"):
+            for state in ("absent", "null", "empty"):
+                with self.subTest(group=group, state=state):
+                    retained = copy.deepcopy(manifest)
+                    row = retained[group][0]
+                    row.pop("per_run_json", None)
+                    if state == "absent":
+                        row.pop("path", None)
+                    else:
+                        row["path"] = None if state == "null" else ""
+                    self._assert_disclosure_preserves_report(retained, available_report)
+
+    def test_available_path_metadata_does_not_claim_unavailable(self):
+        manifest = run_swap_campaign(self._config(), runner=self._runner())
+        with patch("builtins.open", side_effect=AssertionError("renderer must not load raw runs")), patch.object(
+            Path, "read_text", side_effect=AssertionError("renderer must not load raw runs")
+        ):
+            report = render_swap_report(manifest)
+        self.assertNotIn("Per-run JSON evidence is unavailable", report)
 
 
 if __name__ == "__main__":
