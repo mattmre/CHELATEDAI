@@ -100,5 +100,6 @@
 | Document | Description |
 |----------|-------------|
 | [RLM Analysis](rlm-analysis.md) | Detailed analysis of the RLM paper source code |
+| [Chelated AI × CRAM Energy Reasoning: What To Improve (2026-11-13)](chelated-ai-cram-energy-reasoning-improvements-2026-11-13.md) | Mapping of CRAM (arXiv 2611.17309) and the beach/footprint vision to CHELATEDAI on main @ e40c088, with evidence, gaps, and a prioritized implementation/test plan |
 
 ---

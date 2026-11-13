@@ -207,3 +207,26 @@ entry; this log is the audit trail.
 ## Rebase note (2026-09-22, PR #292)
 
 The 2026-09-03 session-evidence block is a historical log of that session. It is not the current block flag. This rebase closed CD-305-01, CD-A2-01, and CD-H1-01 from committed manifests and set `**Current**:` to `CLEAR`. It does not reuse the #305/#306 operator override. Rung 13 detector-to-DAG prune (#293, merge `782ab62ddbaf6ab6c40085255e48ff9a21562d34`) and rung 17 disk pool (#294, merge `8e6e83b7c30bae34015ad12996314b5eea2d1c64`) are merged and are ancestors of this commit. Rung 16 (#295) is not merged and is not on this commit. The two sections above were not in commit `3d1d620`; they were uncommitted text on the dirty main worktree and are kept because this rebase was required to preserve them. They do not add carried-debt rows.
+
+## 2026-11-13 - CRAM energy reasoning review (Fable 5.2 weigh-in)
+
+Matt asked for more analysis and thought on the CHELATEDAI × CRAM mapping, and for Fable 5.2 to weigh in at the next session.
+
+At the next session:
+
+1. Deeper analysis, plus a Fable 5.2 review, of the write-up: [`docs/chelated-ai-cram-energy-reasoning-improvements-2026-11-13.md`](chelated-ai-cram-energy-reasoning-improvements-2026-11-13.md) (source Page: [Chelated AI × CRAM energy reasoning: what to improve](https://cursor.com/canvas/store-78ce16e3-367f-4281-9424-10208f183fd0/8e47e5b4-0dcf-4019-ba22-300fd27d03eb)). Analysis is against `main` @ `e40c088`. CRAM is [arXiv 2611.17309](https://arxiv.org/abs/2611.17309); thread: https://x.com/Ben_Hoov/status/2121294692968993068
+2. Answer the open questions in that write-up, including:
+   - What “rewrites” means (LLM text / zone cards vs rewriting stored vectors). The evidence favors the first.
+   - Where footprint / usage data should come from (real query logs vs research-folder usage such as bookmarks and ledgers).
+   - Whether the target is retrieval quality (nDCG) or answer quality.
+   - Whether implementation should target `main` or `factory/c1`. `factory/c1` is not on the GitHub remote and must not be read or changed from the Sparks.
+   - Whether to fold this into issue #106 (Localized assimilation) or keep it separate.
+3. Then proceed with the implementation and test plan, in this order (each issue has a goal, implementation sketch, and nDCG / acceptance criteria vs plain dense and dense+BM25 hybrid):
+   1. [#355](https://github.com/mattmre/CHELATEDAI/issues/355) Hand-set 1–3 parameter floor before crediting learned mechanisms
+   2. [#356](https://github.com/mattmre/CHELATEDAI/issues/356) Learned settledness gate so chelation runs only on unsettled neighborhoods
+   3. [#357](https://github.com/mattmre/CHELATEDAI/issues/357) Consolidate by rewriting: re-embed from source and add canonical zone cards
+   4. [#358](https://github.com/mattmre/CHELATEDAI/issues/358) Footprint-weighted zones from usage, not just variance
+   5. [#359](https://github.com/mattmre/CHELATEDAI/issues/359) Contrastive energy training for adapters with one-step corruptions and L1 sparsity
+   6. [#360](https://github.com/mattmre/CHELATEDAI/issues/360) Zone-to-zone pairwise energy as a lightweight alternative to the GNN
+
+This section is a session agenda only. It does not add carried-debt rows or change the block flag.
