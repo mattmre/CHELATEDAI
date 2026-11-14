@@ -230,3 +230,18 @@ At the next session:
    6. [#360](https://github.com/mattmre/CHELATEDAI/issues/360) Zone-to-zone pairwise energy as a lightweight alternative to the GNN
 
 This section is a session agenda only. It does not add carried-debt rows or change the block flag.
+
+## 2026-11-14 - Byte-model distillation review (CrazyShyyt / arXiv 2609.12303)
+
+Matt asked to file the CrazyShyyt post on Meta's tokenizer-free byte-model paper into the CHELATEDAI research lane, adapt it to our research, and say how close or ahead we are.
+
+At the next session (this can share the 2026-11-13 CRAM slot; it does not replace the Fable 5.2 weigh-in):
+
+1. Review the write-up: [`docs/chelated-ai-byte-model-distillation-2026-11-14.md`](chelated-ai-byte-model-distillation-2026-11-14.md). Post: https://x.com/CrazyShyyt/status/2121570437297750499. Paper: [arXiv 2609.12303](https://arxiv.org/abs/2609.12303). Analysis is against `main` @ `e40c088`.
+2. Hold the post's headline numbers as **predicted asymptotes**, not measured wins over Llama 3.2 or Gemma (paper Tables 5 and 8). That is a #355 discipline item.
+3. Do **not** plan a 1B-parameter byte LM. The transferable work is already queued or scoped:
+   - [#357](https://github.com/mattmre/CHELATEDAI/issues/357) remains the primary "keep the raw source" implementation (C2O recovery 0.813 SciFact / 0.612 NFCorpus vs living bank 0.131 / 0.046).
+   - After the #355 floor and alongside or after #357, a retrieval-scale cross-granularity / surface-form student that must beat plain dense and the dense+BM25 hybrid (historical hybrid edge +0.065 nDCG@10). See the write-up's adaptation 3; an enhancement issue should be opened for that experiment if it is not already filed.
+4. Issues #356, #358, #359, and #360 are unchanged and should not be retargeted at byte LMs.
+
+This section is a session agenda only. It does not add carried-debt rows or change the block flag.
