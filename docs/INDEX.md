@@ -100,5 +100,7 @@
 | Document | Description |
 |----------|-------------|
 | [RLM Analysis](rlm-analysis.md) | Detailed analysis of the RLM paper source code |
+| [Chelated AI × CRAM Energy Reasoning: What To Improve (2026-11-13)](chelated-ai-cram-energy-reasoning-improvements-2026-11-13.md) | Mapping of CRAM (arXiv 2611.17309) and the beach/footprint vision to CHELATEDAI on main @ e40c088, with evidence, gaps, and a prioritized implementation/test plan |
+| [Chelated AI × Breaking the Token Ceiling (2026-11-14)](chelated-ai-byte-model-distillation-2026-11-14.md) | Mapping of Meta FAIR / UW byte-model distillation (arXiv 2609.12303; CrazyShyyt post) onto CHELATEDAI lanes, with a measured-vs-predicted claim check and a retrieval-scale adaptation plan |
 
 ---
