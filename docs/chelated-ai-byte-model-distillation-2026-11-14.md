@@ -114,7 +114,7 @@ This is the only new implementation item that is clearly distinct from #355–#3
 - Report cost (encode time, index size) next to nDCG, because the paper's own §10 warning is that finer units can win quality and lose inference cost.
 - Documentation and harness only until a result clears those bars. No production default change.
 
-A corresponding enhancement issue should be opened against this write-up with a **sprint: next** note, after the next-session review, and should not jump the existing #355 → #357 order. The floor (#355) and the source-text rewrite (#357) stay ahead of this experiment.
+This experiment is filed as [#362](https://github.com/mattmre/CHELATEDAI/issues/362) (`enhancement`, **sprint: next**). It should not jump the existing #355 → #357 order. The floor (#355) and the source-text rewrite (#357) stay ahead of this experiment.
 
 ### 4. Distillation-lane hygiene, no new stack
 
@@ -127,11 +127,12 @@ When the distillation lane is next touched, record explicitly whether teacher an
 | [#355](https://github.com/mattmre/CHELATEDAI/issues/355) Hand-set floor | Strengthened. This post is a worked example of crediting predicted ceilings. Keep the floor row on every new card, including any cross-granularity student. |
 | [#356](https://github.com/mattmre/CHELATEDAI/issues/356) Settledness gate | Unchanged. No byte-model work is required for a local energy gate. |
 | [#357](https://github.com/mattmre/CHELATEDAI/issues/357) Rewrite from source + zone cards | Strengthened. Closest existing issue. Raw text stays canonical; in-place patching stays a comparison arm only. |
+| [#362](https://github.com/mattmre/CHELATEDAI/issues/362) Cross-granularity retrieval student | New. The retrieval-scale experiment in adaptation 3. Comes after #355 and alongside or after #357. |
 | [#358](https://github.com/mattmre/CHELATEDAI/issues/358) Footprint-weighted zones | Unchanged. Usage-based zoning is independent of tokenizer choice. |
 | [#359](https://github.com/mattmre/CHELATEDAI/issues/359) Contrastive energy adapters | Unchanged. Do not recast adapter training as byte-LM distillation. |
 | [#360](https://github.com/mattmre/CHELATEDAI/issues/360) Pairwise zone energy | Unchanged. Still the cheap alternative to the rung-15 GNN. |
 
-Suggested implementation order is unchanged: #355, then #356, then #357, then #358–#360. The cross-granularity retrieval student comes after #355 and should be scheduled alongside or after #357, not in front of the floor or the source-text rewrite.
+Suggested implementation order is unchanged: #355, then #356, then #357, then #358–#360. [#362](https://github.com/mattmre/CHELATEDAI/issues/362) comes after #355 and should be scheduled alongside or after #357, not in front of the floor or the source-text rewrite.
 
 ## What does not fit
 
@@ -157,3 +158,4 @@ Suggested implementation order is unchanged: #355, then #356, then #357, then #3
 - [PR #361](https://github.com/mattmre/CHELATEDAI/pull/361) — open research-docs PR
 - [Issue #357: Consolidate by rewriting](https://github.com/mattmre/CHELATEDAI/issues/357)
 - [Issue #355: Hand-set 1–3 parameter floor](https://github.com/mattmre/CHELATEDAI/issues/355)
+- [Issue #362: Cross-granularity retrieval student](https://github.com/mattmre/CHELATEDAI/issues/362)

@@ -241,7 +241,7 @@ At the next session (this can share the 2026-11-13 CRAM slot; it does not replac
 2. Hold the post's headline numbers as **predicted asymptotes**, not measured wins over Llama 3.2 or Gemma (paper Tables 5 and 8). That is a #355 discipline item.
 3. Do **not** plan a 1B-parameter byte LM. The transferable work is already queued or scoped:
    - [#357](https://github.com/mattmre/CHELATEDAI/issues/357) remains the primary "keep the raw source" implementation (C2O recovery 0.813 SciFact / 0.612 NFCorpus vs living bank 0.131 / 0.046).
-   - After the #355 floor and alongside or after #357, a retrieval-scale cross-granularity / surface-form student that must beat plain dense and the dense+BM25 hybrid (historical hybrid edge +0.065 nDCG@10). See the write-up's adaptation 3; an enhancement issue should be opened for that experiment if it is not already filed.
+   - After the #355 floor and alongside or after #357: [#362](https://github.com/mattmre/CHELATEDAI/issues/362) retrieval-scale cross-granularity / surface-form student that must beat plain dense and the dense+BM25 hybrid (historical hybrid edge +0.065 nDCG@10).
 4. Issues #356, #358, #359, and #360 are unchanged and should not be retargeted at byte LMs.
 
 This section is a session agenda only. It does not add carried-debt rows or change the block flag.
