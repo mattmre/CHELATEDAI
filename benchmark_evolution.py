@@ -47,16 +47,12 @@ def evaluate_ndcg(engine, queries, qrels, k=10, max_queries=None):
             print(f"WARNING: ID mapping failed for query {q_id}: {e}, using raw IDs")
             mapped_preds = [str(pid) for pid in pred_ids]
              
-        # Boolean relevance array
-        relevance = [1 if pid in relevant_docs else 0 for pid in mapped_preds]
-        
         # DEBUG: Check first query
         if len(ndcg_scores) == 0:
              print(f"DEBUG: QID {q_id} Preds: {[str(p) for p in pred_ids[:5]]}...")
              print(f"DEBUG: QID {q_id} RelDocs: {list(relevant_docs.keys())}")
-             print(f"DEBUG: Relevance Vec: {relevance}")
         
-        score = ndcg_at_k(relevance, k)
+        score = ndcg_at_k(mapped_preds, relevant_docs, k, binary=True)
         ndcg_scores.append(score)
         
     return np.mean(ndcg_scores)

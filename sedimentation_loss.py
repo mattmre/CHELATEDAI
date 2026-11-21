@@ -223,8 +223,10 @@ class OPSDAymmetricPrivilegedLoss(nn.Module):
 
         delta = student_norm - base_norm
         delta_norm = torch.norm(delta, dim=1, keepdim=True)
-        clipped_delta = torch.clamp(delta_norm, max=self.clip_delta)
-        delta_reg = torch.mean(clipped_delta ** 2)
+        # Convex excess penalty: penalize moves exceeding clip_delta so large divergences
+        # receive a strictly nonzero restoring gradient.
+        excess_delta = torch.clamp(delta_norm - self.clip_delta, min=0.0)
+        delta_reg = torch.mean(excess_delta ** 2)
 
         total = (corr_loss +
                  self.lambda_ret * ret_loss +
@@ -242,6 +244,10 @@ class OPSDJSDSimilarityDistillLoss(nn.Module):
 
     def __init__(self, temperature: float = 0.07, beta: float = 0.5, lambda_ret: float = 0.2):
         super().__init__()
+        if temperature <= 0:
+            raise ValueError("temperature must be positive")
+        if not (0.0 <= beta <= 1.0):
+            raise ValueError("beta must be in [0, 1]")
         self.temperature = temperature
         self.beta = beta
         self.lambda_ret = lambda_ret
@@ -252,23 +258,38 @@ class OPSDJSDSimilarityDistillLoss(nn.Module):
         teacher_norm = F.normalize(teacher_targets.detach(), p=2, dim=1)
         base_norm = F.normalize(base_embs, p=2, dim=1)
 
-        # Similarity matrices (student view vs teacher view)
+        ret_loss = F.mse_loss(student_norm, base_norm)
+        batch_size = student_norm.size(0)
+        if batch_size < 2:
+            # No off-diagonal neighbors exist for singleton batches.
+            return self.lambda_ret * ret_loss
+
+        # Scale by temperature once and mask the self-similarity diagonal so neighbor
+        # structure (not the constant 1/T self-spike) defines the distribution.
         sim_s = torch.mm(student_norm, student_norm.t()) / self.temperature
         sim_t = torch.mm(teacher_norm, teacher_norm.t()) / self.temperature
+        diag_mask = torch.eye(batch_size, dtype=torch.bool, device=sim_s.device)
+        sim_s = sim_s.masked_fill(diag_mask, float("-inf"))
+        sim_t = sim_t.masked_fill(diag_mask, float("-inf"))
 
         log_p_s = F.log_softmax(sim_s, dim=1)
         log_p_t = F.log_softmax(sim_t, dim=1)
 
-        # Mixture for JSD
-        m = self.beta * sim_t + (1 - self.beta) * sim_s
-        log_m = F.log_softmax(m / self.temperature, dim=1)
+        # True probability-space mixture M = beta * P_t + (1 - beta) * P_s
+        # Compute KL strictly over off-diagonal entries so masked -inf diagonal
+        # terms never produce 0 * (-inf) = NaN.
+        off_diag = ~diag_mask
+        p_s = log_p_s.exp()
+        p_t = log_p_t.exp()
+        m_prob = (self.beta * p_t + (1.0 - self.beta) * p_s).clamp(min=1e-12)
+        log_m = m_prob.log()
 
-        jsd = 0.5 * (
-            F.kl_div(log_m, log_p_t, log_target=True, reduction='batchmean') +
-            F.kl_div(log_m, log_p_s, log_target=True, reduction='batchmean')
-        )
+        safe_log_p_t = log_p_t.clamp(min=-1e4)
+        safe_log_p_s = log_p_s.clamp(min=-1e4)
+        kl_t = torch.where(off_diag, p_t * (safe_log_p_t - log_m), torch.zeros_like(p_t)).sum(dim=1).mean()
+        kl_s = torch.where(off_diag, p_s * (safe_log_p_s - log_m), torch.zeros_like(p_s)).sum(dim=1).mean()
+        jsd = (self.beta * kl_t + (1.0 - self.beta) * kl_s).clamp(min=0.0)
 
-        ret_loss = F.mse_loss(student_norm, base_norm)
         return jsd + self.lambda_ret * ret_loss
 
 
@@ -280,9 +301,11 @@ class FilteredClippedDistillLoss(nn.Module):
     + small KL retention penalty.
     """
 
-    def __init__(self, r_min: float = 0.7, r_max: float = 1.4, tau: float = 2.0,
+    def __init__(self, r_min: float = 0.0, r_max: float = 10.0, tau: float = 2.0,
                  kl_beta: float = 0.05):
         super().__init__()
+        if r_min >= r_max:
+            raise ValueError("r_min must be strictly less than r_max")
         self.r_min = r_min
         self.r_max = r_max
         self.tau = tau
@@ -291,12 +314,18 @@ class FilteredClippedDistillLoss(nn.Module):
     def forward(self, student_embs: torch.Tensor, teacher_targets: torch.Tensor,
                 fitness_gains: torch.Tensor, delta_norms: torch.Tensor,
                 quant_survivals: torch.Tensor, base_embs: torch.Tensor, **extra) -> torch.Tensor:
-        ratios = torch.sigmoid((fitness_gains - 0.0) / (delta_norms.clamp(min=1e-6) + 1e-6))
+        # Use the raw gain-to-displacement ratio directly so (r_min, r_max) are meaningful bounds.
+        ratios = fitness_gains / delta_norms.clamp(min=1e-6)
         mask = ((ratios > self.r_min) & (ratios < self.r_max) & quant_survivals.bool()).float()
 
         raw_div = (F.normalize(student_embs, dim=1) - F.normalize(teacher_targets.detach(), dim=1)) ** 2
         clipped_div = torch.minimum(raw_div, torch.full_like(raw_div, self.tau))
-        filtered = (clipped_div * mask.unsqueeze(-1)).mean()
+        per_sample_div = clipped_div.mean(dim=1)
+        accepted = mask.sum()
+        if accepted.item() > 0:
+            filtered = (per_sample_div * mask).sum() / accepted.clamp(min=1.0)
+        else:
+            filtered = (per_sample_div * mask).sum()
 
         # Small retention KL proxy (output space)
         base_norm = F.normalize(base_embs, dim=1)

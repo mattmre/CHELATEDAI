@@ -405,7 +405,6 @@ def evaluate_phase_c_candidate(
                 elapsed = (time.perf_counter() - start) * 1000
 
                 retrieved = map_predicted_ids(engine, chel_top[:10])
-                r = [1 if d in relevant_set else 0 for d in retrieved]
 
                 results.append(
                     PhaseCResult(
@@ -413,7 +412,7 @@ def evaluate_phase_c_candidate(
                         dataset=dataset,
                         query_id=str(qid),
                         query_text=qtext,
-                        ndcg_at_10=ndcg_at_k(r, 10),
+                        ndcg_at_10=ndcg_at_k(retrieved, relevant_set, 10, binary=True),
                         map_at_10=mean_average_precision_at_k(retrieved, relevant_set, 10),
                         mrr=mean_reciprocal_rank(retrieved, relevant_set),
                         recall_at_10=recall_at_k(retrieved, relevant_set, 10),

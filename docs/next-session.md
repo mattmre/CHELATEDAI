@@ -70,7 +70,11 @@ the existing block-flag calculation.
 ## Block flag
 
 **Current**: `CLEAR` — CD-305-01, CD-A2-01, and CD-H1-01 are closed in the
-table below. `scripts/check_block_flag.py` sees zero OPEN rows. This is not an
+table below. `CD-MLR-01` is opened in its first cycle for complete-qrels
+supersession of the quarantined legacy drift-recovery lineage (`113/113 affected tracked artifacts`
+locked in `artifacts/legacy-ndcg-quarantine-index-v2.json` with fail-closed validator
+`scripts/validate_metric_lineage_quarantine.py`, deferred scope tracked as `DS-MLR-01`).
+Per §6.3, first-cycle items keep the block flag `CLEAR`. This is not an
 extension of the PR #305/#306 operator override.
 
 When the flag is `BLOCKED`, no new feature work may merge until Carried Debt is
@@ -112,6 +116,7 @@ still mentions `BLOCKED`. That word is not the current state.
 | CD-TTS-001 | TTS-2 audit: grep of all 17 `run_*.py` runners for `enable_tts` or `--enable-tts` returns zero matches. TTSPipeline is library-callable only; no campaign runner can populate the dashboard TTS panel without external glue code. Visible-without-evidence pattern: panel + API exist, but no operationally-reachable activation path. L4 + L5. | BHS Scope B audit 2026-05-16 | 1 cycle | NO — short fix; dashboard already shows honest "not enabled" empty state | **CLOSED**: PR #252 — `--enable-tts`, `--no-tts-translation`, and `--no-tts-transport` flags wired into `run_road_course_campaign.py`; CLI wiring tested through real `main()` in `TestRunRoadCourseCampaignCLIWiring` |
 | CD-TTS-002 | TTS-1 audit: REM-C2 (per-inference signal clearing in `tts_pipeline.py:213-218`) and REM-H2 (`FeatureDirectionBank` Gaussian unit vectors) are fixed in code but no test would fail if either were reverted. Two of the four bug classes that triggered the post-merge remediation wave can silently regress. L5. | BHS Scope B audit 2026-05-16 | 1 cycle | NO — code is fixed; regression coverage is the gap | **CLOSED**: PR #252 — regression tests added for REM-C2 (cross-inference signal-accumulation guard) and REM-H2 (Gaussian direction-bank distribution test); both tests would fail if the corresponding fixes were reverted |
 | CD-H1-01 | The committed swap-campaign result docs (`docs/drift-recovery-swap-results-2026-06.md`, `docs/drift-recovery-swap-nfcorpus-results-2026-06.md`) carry C3a baseline AND final NDCG (+ the C3a budget sweep) generated before the H1 fix (commit `5b2379b`), which removed a build-time bounded adapter that contaminated C3a's ingested vectors / pre-correction baseline. C3a's ingest, baseline, and trained-adapter snapshot all shift after the fix; C0/C2/C2O/C4a are unaffected. The stale C3a numbers are disclosed inline in both docs. L13 (stale-docs). | H1 (PR pending) | expired | NO — cleared from committed manifests on this branch; not a live block | **CLOSED** — read from the committed JSON, not the PR body; the GPU campaign was not re-executed in this session. SciFact seed 42 `baseline_ndcg` for C0/C2/C2O/C3a/C4a is `0.7934593935363062` in `experiment_runs/drift-recovery/swap/swap-campaign-manifest-2026-06.json`. NFCorpus seed 42 for those five conditions is `0.5550044219616403` in `experiment_runs/drift-recovery/swap-nfcorpus/swap-campaign-manifest-2026-06.json` (seeds 1337 and 7 also match across conditions: `0.5936171482249235` and `0.6443047069474342`). On origin/main before this branch, NFCorpus seed-42 C3a baseline was `0.5563402674063337` and did not match; SciFact seed-42 baselines already matched. |
+| CD-MLR-01 | Legacy drift-recovery nDCG artifacts (113/113 affected tracked artifacts indexed in `artifacts/legacy-ndcg-quarantine-index-v2.json` and gated by fail-closed validator `scripts/validate_metric_lineage_quarantine.py`) were computed under truncated top-k IDCG (`MLR-NDCG-001`) and await complete-qrels (`mlr-v1`) regeneration and hash-linked supersession. | Stage 0 metric-lineage remediation (2026-11-21) | 1 cycle | NO — quarantined and code-fixed (`mlr-v1`); awaits Night-1 regeneration | OPEN — canonical `benchmark_utils.ndcg_at_k` (`mlr-v1`) and fail-closed quarantine validator landed on `fix/stage0-metric-lineage-and-m1-ladder`; full regeneration tracked as `DS-MLR-01`. |
 
 **Schema**:
 - `ID`: stable identifier, prefix `CD-` + sequential number (CD-001, CD-002, ...).
@@ -132,7 +137,7 @@ not-in-scope items. They appear here so the next planner sees them.
 
 | ID | Item | Source PR | Why deferred |
 |----|------|-----------|--------------|
-| _none yet_ | _—_ | _—_ | _—_ |
+| DS-MLR-01 | Complete-qrels (`mlr-v1`) empirical regeneration superseding the 113 quarantined legacy drift-recovery artifacts (`artifacts/legacy-ndcg-quarantine-index-v2.json`). | Stage 0 metric-lineage remediation (2026-11-21) | Requires GPU BEIR benchmark regeneration after Stage 0 code & quarantine gate land. |
 
 ## Disposition — living / annealed post-bank corrector (H5)
 

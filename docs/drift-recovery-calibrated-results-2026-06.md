@@ -1,5 +1,15 @@
 # Drift Recovery Calibrated Severity Results - June 2026
 
+> [!WARNING]
+> **LEGACY_METRIC_LINEAGE_BLOCKED (2026-07-27; v2 blast-radius
+> reconditioning).** Every exact nDCG value, comparator ordering, severity
+> selection, recovery verdict, and H1/H2/H3 conclusion below is retained
+> historical diagnostic text, not accepted evidence. This surface was produced
+> directly or transitively from `drift_recovery_metrics.ndcg_at_k`, whose IDCG
+> omitted positive qrels outside the retrieved top-k. Do not use it for
+> scientific, promotion/rejection, paper, release, or roadmap claims until
+> qrels-complete regeneration and hash-linked supersession close `CD-MLR-01`.
+
 Manifest: `experiment_runs/drift-recovery/calibrated/calibration-manifest-2026-06.json`.
 Choice rule: Among scout cells, choose a setting inside the 8-20% baseline-drop zone closest to 12%; if none land in-zone, choose the closest overall and disclose that.
 

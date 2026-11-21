@@ -6,6 +6,7 @@ All notable changes to ChelatedAI are documented here. Format follows [Keep a Ch
 
 The old label `feat/live-progress-tracker-20260606` is PR #257, which is open and is not this commit.
 
+- **2026-11-21 Stage 0 Metric-Lineage Remediation & Quarantine (`MLR-NDCG-001`)** — Replaced truncated top-k IDCG `ndcg_at_k` across all callers with canonical complete-qrels `benchmark_utils.ndcg_at_k` (`mlr-v1`, rejecting duplicate IDs and failing closed on legacy 2-arg calls). Quarantined all 113 affected tracked artifacts (`LEGACY_METRIC_LINEAGE_BLOCKED`) in `artifacts/legacy-ndcg-quarantine-index-v2.json` with fail-closed CI validation (`scripts/validate_metric_lineage_quarantine.py`). Legacy H1–H5 / swap / living-bank numerical verdicts are quarantined and are **not a confirmed negative** (nor a confirmed positive) prior to corrected regeneration.
 - **2026-09-23 steps 1–3 re-check** — `docs/phase-i-steps-1-3-reverify-2026-09-23.md`. The distillation-target path uses `project_numpy` and does not train the projection. InfoNCE still treats other in-batch targets as negatives, so step 2 is not closed. `test_isolated_adapter_state.py` locks checkpoint restore. `.github/workflows/test.yml` uses `actions/setup-python` `cache: pip` and then installs the CPU torch wheel; there is no separate torch cache key.
 
 ### Added

@@ -102,9 +102,8 @@ class RetrievalFitnessEvaluator(FitnessFunctionInterface):
                 continue
             retrieved = [canonicalize_id(doc_id) for doc_id in rankings.get(query_id, [])]
             relevant_ids: Set[str] = set(relevant.keys())
-            relevance_by_rank = [relevant.get(doc_id, 0.0) for doc_id in retrieved[: self.k]]
 
-            ndcg_scores.append(float(ndcg_at_k(relevance_by_rank, self.k)))
+            ndcg_scores.append(float(ndcg_at_k(retrieved, relevant, self.k)))
             mrr_scores.append(float(mean_reciprocal_rank(retrieved, relevant_ids)))
             recall_scores.append(float(recall_at_k(retrieved, relevant_ids, self.k)))
 

@@ -25,7 +25,8 @@ import torch
 from antigravity_engine import AntigravityEngine
 from adaptive_gate_orchestrator import AdaptiveGateOrchestrator
 from benchmark_comparative import _temporary_config_overrides
-from benchmark_utils import isolated_adapter_state
+from benchmark_utils import dcg_at_k as dcg_at_k  # noqa: F401
+from benchmark_utils import isolated_adapter_state, ndcg_at_k
 from fitness_composition_orchestrator import FitnessCompositionOrchestrator
 from integrated_diagnostics_report import IntegratedDiagnosticsReport, extract_latest_storage_evaluation
 from quantization_promotion_gate import QuantizationPromotionGate
@@ -34,23 +35,9 @@ from retrieval_fitness_evaluator import RetrievalFitnessEvaluator
 
 
 # =============================================================================
-# Metric Calculation (NDCG@10)
+# Metric Calculation (Canonical Complete-Qrels Contract via benchmark_utils)
 # =============================================================================
-
-def dcg_at_k(r, k):
-    """Discounted Cumulative Gain at rank k."""
-    r = np.asarray(r, dtype=float)[:k]
-    if r.size:
-        return np.sum(r / np.log2(np.arange(2, r.size + 2)))
-    return 0.
-
-
-def ndcg_at_k(r, k):
-    """Normalized Discounted Cumulative Gain at rank k."""
-    dcg_max = dcg_at_k(sorted(r, reverse=True), k)
-    if not dcg_max:
-        return 0.
-    return dcg_at_k(r, k) / dcg_max
+# dcg_at_k and ndcg_at_k are imported from benchmark_utils.
 
 
 # =============================================================================
@@ -252,9 +239,8 @@ def evaluate_engine(engine: AntigravityEngine, queries: Dict, qrels: Dict, max_q
         # Map to original IDs
         mapped_ids = map_predicted_ids(engine, pred_ids)
         
-        # Calculate NDCG
-        relevances = [relevant_docs.get(did, 0) for did in mapped_ids]
-        ndcg = ndcg_at_k(relevances, 10)
+        # Calculate NDCG using complete qrels
+        ndcg = ndcg_at_k(mapped_ids, relevant_docs, 10)
         ndcg_scores.append(ndcg)
     
     avg_ndcg = np.mean(ndcg_scores) if ndcg_scores else 0.0

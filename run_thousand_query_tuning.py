@@ -346,14 +346,13 @@ def query_metric_row(
 
     relevant_ids = {doc_id for doc_id, score in relevance.items() if score > 0}
     retrieved = [canonicalize_id(doc_id) for doc_id in retrieved_ids[:k]]
-    relevance_by_rank = [1 if doc_id in relevant_ids else 0 for doc_id in retrieved]
     first_relevant_rank = next(
         (rank for rank, doc_id in enumerate(retrieved, start=1) if doc_id in relevant_ids),
         None,
     )
     return {
         "query_id": query_id,
-        "ndcg_at_10": float(ndcg_at_k(relevance_by_rank, k)),
+        "ndcg_at_10": float(ndcg_at_k(retrieved, relevant_ids, k, binary=True)),
         "map_at_10": float(mean_average_precision_at_k(retrieved, relevant_ids, k)),
         "mrr": float(mean_reciprocal_rank(retrieved, relevant_ids)),
         "recall_at_10": float(recall_at_k(retrieved, relevant_ids, k)),

@@ -61,38 +61,34 @@ class TestMetricCalculations(unittest.TestCase):
 
     def test_ndcg_at_k_perfect(self):
         """Test NDCG with perfect ranking."""
-        # Relevance in perfect order
-        r = [3, 2, 1, 0, 0]
-        
-        # NDCG should be 1.0 (perfect ranking)
-        ndcg = ndcg_at_k(r, 5)
+        ranked = ["d3", "d2", "d1", "x1", "x2"]
+        qrels = {"d3": 3, "d2": 2, "d1": 1}
+
+        ndcg = ndcg_at_k(ranked, qrels, 5)
         self.assertAlmostEqual(ndcg, 1.0, places=5)
 
     def test_ndcg_at_k_worst(self):
         """Test NDCG with worst ranking."""
-        # Relevance in worst order (relevant docs at bottom)
-        r = [0, 0, 0, 3, 2]
-        
-        # NDCG should be < 1.0
-        ndcg = ndcg_at_k(r, 5)
+        ranked = ["x1", "x2", "x3", "d3", "d2"]
+        qrels = {"d3": 3, "d2": 2}
+
+        ndcg = ndcg_at_k(ranked, qrels, 5)
         self.assertLess(ndcg, 1.0)
         self.assertGreater(ndcg, 0.0)
 
     def test_ndcg_at_k_no_relevant(self):
         """Test NDCG with no relevant documents."""
-        r = [0, 0, 0, 0, 0]
-        
-        # NDCG should be 0.0
-        ndcg = ndcg_at_k(r, 5)
+        ranked = ["x1", "x2", "x3", "x4", "x5"]
+
+        ndcg = ndcg_at_k(ranked, set(), 5)
         self.assertEqual(ndcg, 0.0)
 
     def test_ndcg_at_k_all_relevant(self):
         """Test NDCG with all relevant documents."""
-        # All equally relevant
-        r = [1, 1, 1, 1, 1]
-        
-        # Perfect ranking for uniform relevance
-        ndcg = ndcg_at_k(r, 5)
+        ranked = ["d1", "d2", "d3", "d4", "d5"]
+        qrels = {"d1", "d2", "d3", "d4", "d5"}
+
+        ndcg = ndcg_at_k(ranked, qrels, 5)
         self.assertAlmostEqual(ndcg, 1.0, places=5)
 
 

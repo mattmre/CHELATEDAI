@@ -564,7 +564,7 @@ class AntigravityEngine:
 
     def _chelate_toxicity(self, local_cluster):
         """Phase 2: The Antigravity Mechanism (Binding Toxic Dimensions)."""
-        if len(local_cluster) == 0:
+        if len(local_cluster) < 2:
             return np.ones(self.vector_size)
 
         # Phase 4: Use learned mask predictor if enabled
@@ -574,6 +574,10 @@ class AntigravityEngine:
 
         # Calculate Variance per dimension
         dim_variance = np.var(local_cluster, axis=0)
+        if dim_variance.size == 0 or np.allclose(dim_variance, dim_variance[0]):
+            # Guard degenerate / constant / isotropic variance clusters so strict
+            # percentile inequalities never collapse the mask to all zeros.
+            return np.ones(self.vector_size)
 
         if hasattr(self, 'invert_chelation') and self.invert_chelation:
             # INVERTED: Keep Top P% (High Variance), Mask Bottom (Noise)
@@ -584,6 +588,9 @@ class AntigravityEngine:
             # ORIGINAL: Keep Bottom P% (Stable), Mask Top (Toxic)
             threshold = np.percentile(dim_variance, self.chelation_p)
             mask = (dim_variance < threshold).astype(float)
+
+        if not np.any(mask):
+            return np.ones(self.vector_size)
 
         return mask
 
@@ -622,9 +629,12 @@ class AntigravityEngine:
             # 3. Chelate
             mask = self._chelate_toxicity(local_cluster_np)
 
-            # 4. Apply Mask
+            # 4. Apply Mask (preserve fallback and L2 norm if non-degenerate)
             q_chelated = q_vec * mask
-            return q_chelated
+            norm = float(np.linalg.norm(q_chelated))
+            if norm <= 1e-12:
+                return q_vec
+            return q_chelated / norm
         except (ResponseHandlingException, UnexpectedResponse) as e:
             self.logger.log_error("qdrant", f"Qdrant error in get_chelated_vector: {e}", exception=e)
             return q_vec
