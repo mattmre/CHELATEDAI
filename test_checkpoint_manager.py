@@ -33,6 +33,33 @@ class TestCheckpointManagerCreate(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.temp_dir)
 
+    def test_same_name_twice_in_same_second_gets_distinct_ids(self):
+        """Two same-name checkpoints created within one wall-clock second must
+        both exist with distinct ids. Time is frozen to a single second via a
+        patched ``checkpoint_manager.datetime`` (only the microsecond advances),
+        so second-resolution ids collide and the second save would raise
+        FileExistsError."""
+        import itertools
+
+        tick = itertools.count(1)
+
+        class _FrozenSecond(datetime):
+            @classmethod
+            def now(cls, tz=None):
+                return cls(2026, 1, 1, 0, 0, 0, next(tick))
+
+        with patch("checkpoint_manager.datetime", _FrozenSecond):
+            first = self.manager.create_checkpoint("same_name", self.adapter_path)
+            second = self.manager.create_checkpoint("same_name", self.adapter_path)
+
+        self.assertNotEqual(first, second)
+        self.assertTrue((self.checkpoint_dir / first).is_dir())
+        self.assertTrue((self.checkpoint_dir / second).is_dir())
+        ids = [m["checkpoint_id"] for m in self.manager.list_checkpoints()]
+        self.assertEqual(sorted(ids), sorted([first, second]))
+        self.assertEqual(self.manager.metadata["latest_checkpoint"], second)
+
+
     def test_create_checkpoint_returns_string_id(self):
         """create_checkpoint returns a non-empty string checkpoint ID."""
         cp_id = self.manager.create_checkpoint("test_cp", self.adapter_path)
