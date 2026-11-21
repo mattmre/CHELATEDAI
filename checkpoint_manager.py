@@ -122,7 +122,7 @@ class CheckpointManager:
         adapter_path = validate_safe_path(Path(adapter_path))
         
         timestamp = datetime.now().isoformat()
-        checkpoint_id = f"{name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        checkpoint_id = f"{name}_{datetime.now().strftime('%Y%m%d_%H%M%S_%f')}"
 
         # One-second ids collide. Refuse before mkdir/copy2 so a failed save
         # cannot overwrite or delete a checkpoint this call did not create.
