@@ -1,0 +1,7 @@
+{
+  "job": "night1_s1_m1_m3",
+  "m2_preflight_sha256": "7c4f002308b6ab927b5a52b8abcf9932161a0d13ee49b8babe99a44980ad0581",
+  "manifest_sha256": "920af9de9a6221af29915b21af6659fdcb38cfbc258111818994164eb638454e",
+  "selection_lock_sha256": "5fd9cbe44743b1be833f545e97d67f195382470de0bbc443ca392b4fe65b2df5",
+  "status": "COMPLETED"
+}

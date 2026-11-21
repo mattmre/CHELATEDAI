@@ -1,0 +1,27 @@
+{
+  "datasets": [
+    "SciFact",
+    "NFCorpus",
+    "FiQA2018",
+    "ArguAna",
+    "SCIDOCS",
+    "Quora"
+  ],
+  "git_sha": "0626dd1dcd7d8ede280695e9552a5a5f75f13c37",
+  "job": "flagship1_conformal_4hop",
+  "seeds": [
+    42,
+    137,
+    2718
+  ],
+  "telemetry": {
+    "cuda_available": true,
+    "cuda_device": "NVIDIA GB10",
+    "peak_rss_mib": 1305.2,
+    "peak_vram_mib": 0.0
+  },
+  "total_cells": 24,
+  "wall_seconds": 98.91,
+  "wins_vs_ridge": 24,
+  "wins_vs_unscaled": 20
+}

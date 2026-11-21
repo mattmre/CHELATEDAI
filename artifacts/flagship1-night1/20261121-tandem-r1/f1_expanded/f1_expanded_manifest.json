@@ -1,0 +1,75 @@
+{
+  "chain": [
+    "E0",
+    "E1",
+    "E2",
+    "E3",
+    "E4"
+  ],
+  "dataset_manifests": {
+    "ArguAna": {
+      "doc_count": 8674,
+      "metric_contract_sha256": "33f1f9fcba2bd8ab8a5305d4e78141165fddc6e7bc3f1b46db96cd93cfd70366",
+      "qrels_sha256": "0552e6708633bb867d1c1966b178f9045ffe16a69b333e3d38b96a31b4bfc25c",
+      "query_count": 1200,
+      "split_sha256": "aaeb84497db24cf45b14f034e8912d27ccbaaa94425b789cd3c51d0d2651103e"
+    },
+    "FiQA2018": {
+      "doc_count": 40000,
+      "metric_contract_sha256": "5295c6c332c2271e3179061eac50970e9bb2e9baaf82d7be2c775333db493860",
+      "qrels_sha256": "7cc346b00c8446af747c36ad4db03508f976986fdfe3a67b65cf33c1ad2f889f",
+      "query_count": 648,
+      "split_sha256": "ab8c54a8f517f68cc39f639616d8c6842a762cdefebd9a12630244be17d27afe"
+    },
+    "NFCorpus": {
+      "doc_count": 3633,
+      "metric_contract_sha256": "a99e8e386efa62b72b0c5bda64f6e98e1c8daa6cee01f8cd6c03f063786c7ce2",
+      "qrels_sha256": "7ae578d58e4936062e38b30bab89b576c14ea9fd4a43b39ffe0e90a3ba2eedac",
+      "query_count": 323,
+      "split_sha256": "82bda357665529c1c8716b1b6d6038bb91f65d47c1dd275c9878675d82e7d843"
+    },
+    "Quora": {
+      "doc_count": 40000,
+      "metric_contract_sha256": "4a0a563c788b904f2f75f0c931a2a023cd86c782ec456e3c0c7b75b24021316a",
+      "qrels_sha256": "d036c8f33f8c3769851a586227199f31fda72d3c7ce32792f19072f87cd8041b",
+      "query_count": 1200,
+      "split_sha256": "9fadc8580cebf4220c18d5b4c9d4d8d0ee714301c7a463a755a1ac7b11c0ff2a"
+    },
+    "SCIDOCS": {
+      "doc_count": 25657,
+      "metric_contract_sha256": "219f353ee790eca17f2aead085d965d14b115b16229d0ee1381d0d420c142806",
+      "qrels_sha256": "4db8cae0c4ad00c49a900060711e7ccb00411f6e0ec6f8e513455c32c9f2c915",
+      "query_count": 1000,
+      "split_sha256": "ed6ef7280b3153d1804e7097fbea706ed127f68aec08a17f866531898bf0e6f1"
+    },
+    "SciFact": {
+      "doc_count": 5183,
+      "metric_contract_sha256": "6dde547967de64fecf8d312158b923b197c516519fd4d617ad6c537700c1df5b",
+      "qrels_sha256": "2b6445e2db1b90e3ce277a9014cdbababbf85b54365c87ff838c7d70fe995c3b",
+      "query_count": 300,
+      "split_sha256": "4fe4a7be31aacfc354a94982f9fa46ec296cb59eea1e3df9adc45d4db9881fa8"
+    }
+  },
+  "datasets": [
+    "SciFact",
+    "NFCorpus",
+    "FiQA2018",
+    "ArguAna",
+    "SCIDOCS",
+    "Quora"
+  ],
+  "git_sha": "e9856b9168c46086dfd2d8f66dfcd1163cee1ebc",
+  "job": "flagship1_expanded_6beir_4hop",
+  "seeds": [
+    42,
+    137,
+    2718
+  ],
+  "telemetry": {
+    "cuda_available": true,
+    "cuda_device": "NVIDIA GB10",
+    "peak_rss_mib": 4357.93,
+    "peak_vram_mib": 4610.61
+  },
+  "wall_seconds": 1830.04
+}

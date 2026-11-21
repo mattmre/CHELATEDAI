@@ -1,0 +1,55 @@
+{
+  "arms": {
+    "C0_bm25_flat": {
+      "api_errors": 0,
+      "hard_clean_trap_accuracy": 1.0,
+      "mean_latency_ms": 908.6,
+      "mean_prompt_tokens": 312.2,
+      "overall_accuracy": 0.48,
+      "post_accuracy": 0.35,
+      "post_stale_or_false_rate": 0.65
+    },
+    "C1_scalemas_unsigned": {
+      "api_errors": 0,
+      "hard_clean_trap_accuracy": 1.0,
+      "mean_latency_ms": 816.8,
+      "mean_prompt_tokens": 312.2,
+      "overall_accuracy": 0.466667,
+      "post_accuracy": 0.333333,
+      "post_stale_or_false_rate": 0.666667
+    },
+    "C3_ordinary_bitemporal_tms": {
+      "api_errors": 0,
+      "hard_clean_trap_accuracy": 1.0,
+      "mean_latency_ms": 779.1,
+      "mean_prompt_tokens": 274.6,
+      "overall_accuracy": 0.56,
+      "post_accuracy": 0.45,
+      "post_stale_or_false_rate": 0.55
+    },
+    "C4_iq04_candidate": {
+      "api_errors": 0,
+      "hard_clean_trap_accuracy": 1.0,
+      "mean_latency_ms": 685.8,
+      "mean_prompt_tokens": 164.1,
+      "overall_accuracy": 1.0,
+      "post_accuracy": 1.0,
+      "post_stale_or_false_rate": 0.0
+    }
+  },
+  "git_sha": "0fe94a52d5aae466a725dd56a4487f7ddf237e5e",
+  "job": "flagship2_hard_adversarial_live",
+  "live_c4_vs_c3_abs_drop": 0.55,
+  "live_c4_vs_c3_lcb95": 0.458333,
+  "live_c4_vs_c3_rel_drop": 1.0,
+  "live_c4_vs_scalemas_abs_drop": 0.666667,
+  "live_c4_vs_scalemas_lcb95": 0.583333,
+  "model_id": "nemotron-lightning",
+  "telemetry": {
+    "cuda_available": true,
+    "cuda_device": "NVIDIA GB10",
+    "peak_rss_mib": 50.61,
+    "peak_vram_mib": 0.0
+  },
+  "wall_seconds": 60.01
+}

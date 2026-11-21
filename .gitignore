@@ -77,3 +77,7 @@ adapter_weights.benchmark-backup-*.pt
 
 # Experiment run output directories
 experiment_runs/
+
+# Raw per-query/per-row CSV dumps from Flagship Night-1/Tandem Spark runs (keep compact .md summaries & .json receipts)
+artifacts/flagship1-night1/**/*.csv
+artifacts/flagship1-night1/**/*.jsonl

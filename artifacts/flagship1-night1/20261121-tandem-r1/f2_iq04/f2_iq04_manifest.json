@@ -1,0 +1,157 @@
+{
+  "corpus_meta": {
+    "n_dev": 300,
+    "n_edges": 10510,
+    "n_events": 10317,
+    "n_queries": 2250,
+    "n_report": 800,
+    "n_select": 400,
+    "seed": 42
+  },
+  "deterministic_arms": {
+    "C0_bm25_flat": {
+      "clean_recall": 1.0,
+      "mean_latency_ms": 0.0523,
+      "n_clean_control": 500,
+      "n_post_correction": 700,
+      "p95_latency_ms": 0.0529,
+      "post_abstain_rate": 0.0,
+      "post_accuracy": 0.142857,
+      "post_stale_or_false_rate": 0.857143
+    },
+    "C1_scalemas_unsigned": {
+      "clean_recall": 1.0,
+      "mean_latency_ms": 0.0448,
+      "n_clean_control": 500,
+      "n_post_correction": 700,
+      "p95_latency_ms": 0.0578,
+      "post_abstain_rate": 0.0,
+      "post_accuracy": 0.142857,
+      "post_stale_or_false_rate": 0.857143
+    },
+    "C2_recency_version_rag": {
+      "clean_recall": 1.0,
+      "mean_latency_ms": 0.0426,
+      "n_clean_control": 500,
+      "n_post_correction": 700,
+      "p95_latency_ms": 0.0539,
+      "post_abstain_rate": 0.0,
+      "post_accuracy": 0.142857,
+      "post_stale_or_false_rate": 0.857143
+    },
+    "C3_ordinary_bitemporal_tms": {
+      "clean_recall": 1.0,
+      "mean_latency_ms": 0.0538,
+      "n_clean_control": 500,
+      "n_post_correction": 700,
+      "p95_latency_ms": 0.0672,
+      "post_abstain_rate": 0.0,
+      "post_accuracy": 0.857143,
+      "post_stale_or_false_rate": 0.142857
+    },
+    "C4_iq04_candidate": {
+      "clean_recall": 1.0,
+      "mean_latency_ms": 0.0604,
+      "n_clean_control": 500,
+      "n_post_correction": 700,
+      "p95_latency_ms": 0.0964,
+      "post_abstain_rate": 0.0,
+      "post_accuracy": 1.0,
+      "post_stale_or_false_rate": 0.0
+    },
+    "C5_oracle_upper_bound": {
+      "clean_recall": 1.0,
+      "mean_latency_ms": 0.0416,
+      "n_clean_control": 500,
+      "n_post_correction": 700,
+      "p95_latency_ms": 0.0512,
+      "post_abstain_rate": 0.0,
+      "post_accuracy": 1.0,
+      "post_stale_or_false_rate": 0.0
+    }
+  },
+  "ek5_summary": {
+    "exact_full_recompute_parity": true,
+    "max_sparse_work_ratio": 0.049655,
+    "mean_sparse_work_ratio": 0.025523,
+    "passes_ek5_gate": true,
+    "trials": 12
+  },
+  "ek7_gate": {
+    "abs_error_reduction_vs_c3": 0.142857,
+    "abs_error_reduction_vs_c3_lcb95": 0.117143,
+    "abs_error_reduction_vs_scalemas": 0.857143,
+    "abs_error_reduction_vs_scalemas_lcb95": 0.83,
+    "c3_ordinary_post_stale_error": 0.142857,
+    "c4_iq04_post_stale_error": 0.0,
+    "clean_recall_loss_pp": 0.0,
+    "ek7_surrogate_verdict": "PASS",
+    "p95_latency_ratio_vs_c3": 1.4345,
+    "passes_25pct_rel_reduction": true,
+    "passes_ci_gt_zero": true,
+    "passes_clean_recall_2pp": true,
+    "passes_p95_1p5x": true,
+    "rel_error_reduction_vs_c3": 1.0
+  },
+  "git_sha": "f03cc5e53f319609e6273d7f57f951c341d5a8e0",
+  "job": "flagship2_iq04_vs_scalemas_live",
+  "live_nemotron_summary": {
+    "api_base": "http://127.0.0.1:8890/v1",
+    "arms": {
+      "C0_bm25_flat": {
+        "api_errors": 0,
+        "clean_accuracy": 1.0,
+        "mean_latency_ms": 840.91,
+        "mean_prompt_tokens": 355.12,
+        "n_total": 120,
+        "overall_accuracy": 0.783333,
+        "post_accuracy": 0.752381,
+        "post_stale_or_false_rate": 0.247619
+      },
+      "C1_scalemas_unsigned": {
+        "api_errors": 0,
+        "clean_accuracy": 1.0,
+        "mean_latency_ms": 828.37,
+        "mean_prompt_tokens": 355.12,
+        "n_total": 120,
+        "overall_accuracy": 0.833333,
+        "post_accuracy": 0.809524,
+        "post_stale_or_false_rate": 0.095238
+      },
+      "C3_ordinary_bitemporal_tms": {
+        "api_errors": 0,
+        "clean_accuracy": 1.0,
+        "mean_latency_ms": 766.47,
+        "mean_prompt_tokens": 243.22,
+        "n_total": 120,
+        "overall_accuracy": 1.0,
+        "post_accuracy": 1.0,
+        "post_stale_or_false_rate": 0.0
+      },
+      "C4_iq04_candidate": {
+        "api_errors": 0,
+        "clean_accuracy": 1.0,
+        "mean_latency_ms": 703.09,
+        "mean_prompt_tokens": 211.1,
+        "n_total": 120,
+        "overall_accuracy": 1.0,
+        "post_accuracy": 1.0,
+        "post_stale_or_false_rate": 0.0
+      }
+    },
+    "enabled": true,
+    "model_id": "nemotron-lightning",
+    "vs_c3_abs_err_drop": 0.0,
+    "vs_c3_lcb95": 0.0,
+    "vs_c3_rel_err_drop": 0.0,
+    "vs_scalemas_abs_err_drop": 0.095238,
+    "vs_scalemas_lcb95": 0.038095
+  },
+  "telemetry": {
+    "cuda_available": true,
+    "cuda_device": "NVIDIA GB10",
+    "peak_rss_mib": 80.44,
+    "peak_vram_mib": 0.0
+  },
+  "wall_seconds": 47.93
+}
