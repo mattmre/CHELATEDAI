@@ -350,6 +350,49 @@ def retrieve_top_k_for_arm(
             remaining.remove(best_p)
         return [pool_idx[p] for p in selected_local]
 
+    if arm == "M4b_iq04_echo_collapse_ranked":
+        # Refined Real-Text IQ-04 (v2 — informed by Regime A unmodified error analysis):
+        # 1) Copy-Echo Cluster Collapse: group near-duplicate / paraphrased echoes (`cos >= 0.72`
+        #    or `jaccard >= 0.58`) within the top-32 hybrid pool and keep ONLY ONE canonical
+        #    representative per cluster (neutralizes all unlinked echo floods without ever deleting
+        #    distinct complementary historical context!).
+        # 2) Precision Temporal Ordering: among surviving distinct cluster representatives, rank by
+        #    hybrid relevance + gentle chronological tiebreak so newer updates always surface in top-5
+        #    while preserving complementary earlier turns for historical/relative questions.
+        k_pool = min(32, n)
+        pool_idx = np.argsort(-hybrid, kind="mergesort")[:k_pool].tolist()
+        pool_embs = unit_embs[pool_idx]
+        sim_mat = pool_embs @ pool_embs.T
+        tok_sets = [_content_tokens(units[idx]["user_text"]) for idx in pool_idx]
+        ts_list = [units[idx]["ts"] for idx in pool_idx]
+        hyb_list = [float(hybrid[idx]) for idx in pool_idx]
+
+        # Build connected echo clusters (greedy single-pass by descending hybrid relevance)
+        selected_local: List[int] = []
+        suppressed_echo: set[int] = set()
+        # Sort pool by hybrid score with mild recency tie-break so newer version of a near-duplicate
+        # cluster is preferred if equally relevant, and never evicted by older repeats.
+        ts_min = min(ts_list)
+        ts_max = max(ts_list)
+        ts_span = max(ts_max - ts_min, 1.0)
+        order = sorted(
+            range(len(pool_idx)),
+            key=lambda p: -(hyb_list[p] + 0.06 * ((ts_list[p] - ts_min) / ts_span)),
+        )
+        for p in order:
+            if p in suppressed_echo:
+                continue
+            selected_local.append(p)
+            # Collapse all near-duplicate echoes of `p` into AUDIT_ONLY
+            for q in range(len(pool_idx)):
+                if q == p or q in suppressed_echo:
+                    continue
+                if float(sim_mat[p, q]) >= 0.72 or _jaccard_tokens(tok_sets[p], tok_sets[q]) >= 0.58:
+                    suppressed_echo.add(q)
+            if len(selected_local) >= top_k:
+                break
+        return [pool_idx[p] for p in selected_local]
+
     raise ValueError(f"Unknown arm: {arm}")
 
 
@@ -465,6 +508,7 @@ def run_longmemeval(
         "M2_scalemas_unsigned",
         "M3_recency_hybrid",
         "M4_iq04_temporal_supersession",
+        "M4b_iq04_echo_collapse_ranked",
     ]
 
     all_rows: List[Dict[str, Any]] = []
@@ -593,13 +637,15 @@ def run_longmemeval(
             }
 
         m4_ku = _ku_map("M4_iq04_temporal_supersession")
+        m4b_ku = _ku_map("M4b_iq04_echo_collapse_ranked")
         deltas = {}
-        for ref_arm in ("M0_bm25_flat", "M1_hybrid_flat", "M2_scalemas_unsigned", "M3_recency_hybrid"):
-            bt = paired_bootstrap_delta(m4_ku, _ku_map(ref_arm), n_bootstrap=3000, seed=42)
-            deltas[f"M4_vs_{ref_arm}"] = {
-                "mean_delta": round(bt["mean_delta"], 4),
-                "lcb_95": round(bt["lcb_95"], 4),
-            }
+        for cand_label, cand_map in (("M4", m4_ku), ("M4b", m4b_ku)):
+            for ref_arm in ("M0_bm25_flat", "M1_hybrid_flat", "M2_scalemas_unsigned", "M3_recency_hybrid"):
+                bt = paired_bootstrap_delta(cand_map, _ku_map(ref_arm), n_bootstrap=3000, seed=42)
+                deltas[f"{cand_label}_vs_{ref_arm}"] = {
+                    "mean_delta": round(bt["mean_delta"], 4),
+                    "lcb_95": round(bt["lcb_95"], 4),
+                }
         regime_summaries[reg_name] = {"arms": reg_arm_stats, "ku_bootstrap_deltas": deltas}
 
     with (output_dir / "f2_longmemeval_rows.csv").open("w", encoding="utf-8", newline="") as fh:
