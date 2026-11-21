@@ -142,16 +142,21 @@ def select_kcenter_anchors(
 # ---------------------------------------------------------------------------
 @dataclass(frozen=True)
 class CenteredProcrustesBridge:
-    """1st-order centered + 2nd-order orthogonal spherical map (`A2`).
+    """1st-order centered + conformal orthogonal spherical map (`A2` / `A2c`).
 
-    For any same-dim or cross-dim pair, `Q` has all nonzero singular values equal
-    to 1.0 (`cond(Q) = 1.0`), preventing multi-hop spectral collapse.
+    Applies `y = scale * ((x - mu_x) @ Q) + mu_y` before optional L2 projection.
+    When `match_radius=True` (default), `scale = ||Y_c||_F / ||X_c||_F` matches
+    source and target spherical-cap radii (crucial when bridging narrow-cone
+    encoders like E5/BGE to isotropic encoders like MiniLM/MPNet) while keeping
+    all nonzero singular values of `scale * Q` identical (`cond = 1.00`) across
+    arbitrary multi-hop chains.
     """
 
     mu_x: np.ndarray  # [1, d_in]
     mu_y: np.ndarray  # [1, d_out]
     Q: np.ndarray     # [d_in, d_out]
     fit_count: int
+    scale: float = 1.0
 
     @classmethod
     def fit(
@@ -160,6 +165,7 @@ class CenteredProcrustesBridge:
         y_tgt: np.ndarray,
         *,
         fit_idx: Optional[Sequence[int]] = None,
+        match_radius: bool = True,
     ) -> "CenteredProcrustesBridge":
         xs = np.asarray(x_src if fit_idx is None else x_src[np.asarray(fit_idx)], dtype=np.float64)
         yt = np.asarray(y_tgt if fit_idx is None else y_tgt[np.asarray(fit_idx)], dtype=np.float64)
@@ -167,46 +173,57 @@ class CenteredProcrustesBridge:
             raise ValueError("fit requires matched anchor arrays with at least 2 rows")
         mu_x = xs.mean(axis=0, keepdims=True)
         mu_y = yt.mean(axis=0, keepdims=True)
-        u, _, vt = np.linalg.svd((xs - mu_x).T @ (yt - mu_y), full_matrices=False)
+        xc = xs - mu_x
+        yc = yt - mu_y
+        u, _, vt = np.linalg.svd(xc.T @ yc, full_matrices=False)
         q = u @ vt
-        return cls(mu_x=mu_x, mu_y=mu_y, Q=q, fit_count=int(xs.shape[0]))
+        if match_radius:
+            rad_x = float(np.linalg.norm(xc))
+            rad_y = float(np.linalg.norm(yc))
+            scale = rad_y / max(rad_x, 1e-12)
+        else:
+            scale = 1.0
+        return cls(mu_x=mu_x, mu_y=mu_y, Q=q, fit_count=int(xs.shape[0]), scale=float(scale))
 
     def transform(self, x: np.ndarray, *, normalize: bool = True) -> np.ndarray:
-        out = (np.asarray(x, dtype=np.float64) - self.mu_x) @ self.Q + self.mu_y
+        out = self.scale * ((np.asarray(x, dtype=np.float64) - self.mu_x) @ self.Q) + self.mu_y
         return l2_normalize(out) if normalize else out
 
     @property
     def condition_number(self) -> float:
-        sv = np.linalg.svd(self.Q, compute_uv=False)
+        sv = np.linalg.svd(self.Q * self.scale, compute_uv=False)
         return float(sv[0] / max(sv[-1], 1e-12))
 
     @property
     def weights_sha256(self) -> str:
-        return _sha256_arrays(self.mu_x, self.mu_y, self.Q)
+        return _sha256_arrays(self.mu_x, self.mu_y, self.Q, np.asarray([self.scale], dtype=np.float64))
 
 
 def compose_centered_bridges(
     bridges: Sequence[CenteredProcrustesBridge],
 ) -> CenteredProcrustesBridge:
-    """Compose a chain `[B_{m->m-1}, ..., B_{1->0}]` into one exact affine-orthogonal map.
+    """Compose a chain `[B_{m->m-1}, ..., B_{1->0}]` into one exact conformal-orthogonal map.
 
-    Each hop applies `y = (x - mu_x) @ Q + mu_y` in tangent/ambient coordinates
-    (final normalization applied once at query time), preserving `cond(Q_comp) == 1.0`
-    for equal-dimension chains and avoiding intermediate spherical clipping distortion.
+    Each hop applies `y = s * ((x - mu_x) @ Q) + mu_y` in ambient coordinates
+    (final L2 normalization applied once at query time), preserving exact
+    `cond(s_comp * Q_comp) == 1.0` for equal-dimension chains while matching
+    cone radii across narrow-cone and isotropic encoders.
     """
     if not bridges:
         raise ValueError("bridges sequence must be non-empty")
     cur = bridges[0]
     for nxt in bridges[1:]:
-        # ((x - mu_x1) @ Q1 + mu_y1 - mu_x2) @ Q2 + mu_y2
-        # = (x - mu_x1) @ (Q1 @ Q2) + ((mu_y1 - mu_x2) @ Q2 + mu_y2)
+        # s2 * ((s1 * (x - mu_x1) @ Q1 + mu_y1 - mu_x2) @ Q2) + mu_y2
+        # = (s1 * s2) * ((x - mu_x1) @ (Q1 @ Q2)) + (s2 * (mu_y1 - mu_x2) @ Q2 + mu_y2)
         q_comp = cur.Q @ nxt.Q
-        mu_y_comp = (cur.mu_y - nxt.mu_x) @ nxt.Q + nxt.mu_y
+        s_comp = float(cur.scale * nxt.scale)
+        mu_y_comp = nxt.scale * ((cur.mu_y - nxt.mu_x) @ nxt.Q) + nxt.mu_y
         cur = CenteredProcrustesBridge(
             mu_x=cur.mu_x,
             mu_y=mu_y_comp,
             Q=q_comp,
             fit_count=min(cur.fit_count, nxt.fit_count),
+            scale=s_comp,
         )
     return cur
 

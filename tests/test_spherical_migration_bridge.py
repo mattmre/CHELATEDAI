@@ -86,6 +86,25 @@ class TestSphericalMigrationBridge(unittest.TestCase):
         pred = b_comp.transform(x_cone, normalize=False)
         self.assertLess(float(np.max(np.abs(pred - y_end))), 1e-10)
 
+    def test_conformal_radius_scaling_recovers_narrow_cone_to_isotropic_multihop(self):
+        rng = np.random.default_rng(13)
+        # Simulate extreme narrow cone (radius 0.4) -> medium cone (0.65) -> isotropic (1.0)
+        z = rng.normal(size=(160, 16))
+        x_narrow = 0.4 * z + np.array([[2.0] + [0.0] * 15])
+        q1, _ = np.linalg.qr(rng.normal(size=(16, 16)))
+        q2, _ = np.linalg.qr(rng.normal(size=(16, 16)))
+        y_mid = 0.65 * (z @ q1) + np.array([[0.0, 1.5] + [0.0] * 14])
+        y_iso = 1.0 * ((z @ q1) @ q2) + np.array([[0.0, 0.0, 0.4] + [0.0] * 13])
+
+        b1 = CenteredProcrustesBridge.fit(x_narrow, y_mid, match_radius=True)
+        b2 = CenteredProcrustesBridge.fit(y_mid, y_iso, match_radius=True)
+        b_comp = compose_centered_bridges([b1, b2])
+
+        self.assertAlmostEqual(b_comp.condition_number, 1.0, places=8)
+        self.assertAlmostEqual(b_comp.scale, 1.0 / 0.4, places=5)
+        pred = b_comp.transform(x_narrow, normalize=False)
+        self.assertLess(float(np.max(np.abs(pred - y_iso))), 1e-10)
+
     def test_whitened_spherical_procrustes_recovers_anisotropic_stretch(self):
         rng = np.random.default_rng(11)
         z = rng.normal(size=(256, 12))
