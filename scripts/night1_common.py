@@ -24,18 +24,22 @@ from m1_baseline_ladder import (
     split_query_ids,
 )
 
-# Canonical Night-1 encoders
+# Canonical Night-1 & Expanded Flagship-1 encoders
 ENCODERS: Dict[str, str] = {
     "E0": "sentence-transformers/all-MiniLM-L6-v2",      # 384-d
     "E1": "BAAI/bge-small-en-v1.5",                      # 384-d
     "E2": "intfloat/e5-small-v2",                        # 384-d
     "E3": "sentence-transformers/all-mpnet-base-v2",     # 768-d
+    "E4": "BAAI/bge-base-en-v1.5",                       # 768-d
 }
 
 BEIR_HF_DATASETS: Dict[str, Tuple[str, str]] = {
     "SciFact": ("BeIR/scifact", "BeIR/scifact-qrels"),
     "NFCorpus": ("BeIR/nfcorpus", "BeIR/nfcorpus-qrels"),
     "FiQA2018": ("BeIR/fiqa", "BeIR/fiqa-qrels"),
+    "ArguAna": ("BeIR/arguana", "BeIR/arguana-qrels"),
+    "SCIDOCS": ("BeIR/scidocs", "BeIR/scidocs-qrels"),
+    "Quora": ("BeIR/quora", "BeIR/quora-qrels"),
 }
 
 _TOKEN_RE = re.compile(r"[a-z0-9]+")
@@ -146,7 +150,14 @@ def load_beir_dataset(
             import zipfile
             import requests
 
-            beir_slug = {"SciFact": "scifact", "NFCorpus": "nfcorpus", "FiQA2018": "fiqa"}[dataset_name]
+            beir_slug = {
+                "SciFact": "scifact",
+                "NFCorpus": "nfcorpus",
+                "FiQA2018": "fiqa",
+                "ArguAna": "arguana",
+                "SCIDOCS": "scidocs",
+                "Quora": "quora",
+            }[dataset_name]
             cache_root = Path(os.environ.get("CHELATED_BEIR_CACHE", Path.home() / ".cache" / "chelated_beir"))
             ds_dir = cache_root / beir_slug
             if not (ds_dir / "corpus.jsonl").is_file():
