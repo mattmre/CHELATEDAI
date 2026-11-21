@@ -432,7 +432,7 @@ def run_flagship2_campaign(
         "# Flagship #2 (`IQ-04` / `EK7` / `EK5`) vs. ScaleMAS Surrogate + Live Nemotron 3.5 Verdict",
         "",
         f"- **Git SHA:** `{current_git_sha(REPO_ROOT)}`",
-        f"- **Honest Comparator Label:** `C1_scalemas_unsigned` = `SCALEMAS_ADAPTED_SURROGATE` (BM25 + decaying unsigned citation boost).",
+        "- **Honest Comparator Label:** `C1_scalemas_unsigned` = `SCALEMAS_ADAPTED_SURROGATE` (BM25 + decaying unsigned citation boost).",
         f"- **EK5 Sparse Invalidation Gate:** `exact_parity={ek5_summary['exact_full_recompute_parity']}`, `max_work_ratio={ek5_summary['max_sparse_work_ratio']:.4f}` (`<= 0.25`) → **`{'PASS' if ek5_summary['passes_ek5_gate'] else 'FAIL'}`**",
         f"- **EK7 Surrogate Gate (800 REPORT lifecycles):** `C4` vs `C3` rel. stale-error reduction = **`{ek7_gate['rel_error_reduction_vs_c3']*100:.1f}%`** (`LCB95={ek7_gate['abs_error_reduction_vs_c3_lcb95']:+.4f}`), clean-recall loss = `{ek7_gate['clean_recall_loss_pp']:+.2f} pp`, p95 ratio = `{ek7_gate['p95_latency_ratio_vs_c3']:.2f}x` → **`{ek7_gate['ek7_surrogate_verdict']}`**",
         "",
