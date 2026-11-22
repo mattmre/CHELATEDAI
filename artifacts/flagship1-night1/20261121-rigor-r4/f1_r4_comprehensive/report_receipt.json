@@ -1,0 +1,12 @@
+{
+  "artifact_hashes": {
+    "f1_r4_manifest.json": "266ee0f902dadcf69d451ba4188967860b2e739b636b9ab53c796a5f9449e8da",
+    "f1_r4_per_query.csv": "ba4033f87174e1db667a53b8c9c48c32180795aca270441759dad683de600f23",
+    "f1_r4_summary.csv": "86b13adc78055ff56b985513fb1f395ce0854f422760862a7ad3022f3cc4e093"
+  },
+  "git_sha": "18973789615ecab1268a77ebd3c69a283607241c",
+  "manifest_path": "f1_r4_manifest.json",
+  "manifest_sha256": "266ee0f902dadcf69d451ba4188967860b2e739b636b9ab53c796a5f9449e8da",
+  "schema_version": "r4_report_receipt_v1",
+  "wall_seconds": 1352.92
+}

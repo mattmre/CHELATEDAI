@@ -1,0 +1,97 @@
+{
+  "tag": "baseline/pre-fix-pristine-2026-11-21",
+  "commit": "b37e6a5523f8647c0d682178628db1f1545dc1ed",
+  "file_count": 15,
+  "files": {
+    "benchmark_utils.py": {
+      "sha256": "98cab69b41a0fd2d5de6725b4847086a65f924c8d2d4b48aa98ec5d68a4dfa2b",
+      "bytes": 17671,
+      "lines": 514,
+      "damaged_copy_sha256": "0b9ac6aec0a4522536235d8c801f21f67c4d24f6b32ebb4adfcb0396c4aa4830"
+    },
+    "iq04_temporal_evidence.py": {
+      "sha256": "8ae89f47599f29a3f5a0a10e11c8d09006638ac5a2b2f9968ea064d27dcc1e46",
+      "bytes": 43721,
+      "lines": 956,
+      "damaged_copy_sha256": "3b0421e2019ce3da459fbbc9c859ecfd1dbab97745347c78de2a85f24f23de80"
+    },
+    "m1_baseline_ladder.py": {
+      "sha256": "20ad2cf5240f89b0cc5dd625c3f0a8ecd3ff94c22f520004d0c24853171c1fdd",
+      "bytes": 19671,
+      "lines": 489,
+      "damaged_copy_sha256": "81ebb33f8790fda99d85bd79cdb1e391d94f33f2d85a0cc0da7d91e3ced66d02"
+    },
+    "representation_space.py": {
+      "sha256": "b84b77d1fa08c60b4904730a2115928cdf553fa437afee683b7d9df5c03ff5b2",
+      "bytes": 34846,
+      "lines": 832,
+      "damaged_copy_sha256": "52a90d48089b89a81f21d0a6ce1ee017e98453513431c494c4ed219807d6e442"
+    },
+    "scripts/night1_common.py": {
+      "sha256": "02b537dbc5ee3dc8df03304b8971040d4a507acec10723c0c618aa20621757e8",
+      "bytes": 18849,
+      "lines": 473,
+      "damaged_copy_sha256": "fab80eb89a8fec759a186ca00d6d87d8f67fcf88d055586e428a31e32cc9d2a2"
+    },
+    "scripts/run_flagship1_conformal_4hop.py": {
+      "sha256": "5f06d086597e044bd0002a7227707a2ced71e940e8c4293cc2801aea60f502d2",
+      "bytes": 12679,
+      "lines": 295,
+      "damaged_copy_sha256": "946cebfbd5ccf219b56f15dd7033ae2c12d402726acda71ed7bfaf71976a3ecb"
+    },
+    "scripts/run_flagship2_hard_stress.py": {
+      "sha256": "87e2f2dcc7e2ccb23ecac87373562ef6a2c7667aea694434fcee4ff0aa7d589e",
+      "bytes": 22005,
+      "lines": 480,
+      "damaged_copy_sha256": "fa788248deebe985c0d0276e5e8055a7ff01345de622dfe42b8b2e31d25ef623"
+    },
+    "scripts/run_flagship2_iq04_vs_scalemas.py": {
+      "sha256": "dd14f9b8fdebf854bb7bf24451eddb291c6f39158e02c0cd5e8ec1d70e268866",
+      "bytes": 24925,
+      "lines": 528,
+      "damaged_copy_sha256": "b3dfc9dd08a19f75faf6e5d4fc501f2e70044e97b85b7e09b34a3ac298b29085"
+    },
+    "scripts/run_flagship2_longmemeval.py": {
+      "sha256": "57349224f1d9b3ae13aaacddd8b18bb2f90b8f98b18607cac50f8fc324156165",
+      "bytes": 33042,
+      "lines": 730,
+      "damaged_copy_sha256": "4f7e0c8d92ce82d397d8d63c083e2f8e58aa483aefa2cc69899443fb30af9da8"
+    },
+    "scripts/run_iq01_commutator_falsifier.py": {
+      "sha256": "a0254e2a9d67fbbd2f9b3927ecd379fe52dc512d0984e6393c76090b5325d069",
+      "bytes": 13658,
+      "lines": 294,
+      "damaged_copy_sha256": "accf5eef66de182dc3becd6f5ccf5c66229ba555043b9910377e0a8731dd3a77"
+    },
+    "scripts/run_night1_flagship1_expanded.py": {
+      "sha256": "f05e30caa6720c984bda249ff8cab08792093eff8a6d049f312317e1c02e5a19",
+      "bytes": 21815,
+      "lines": 458,
+      "damaged_copy_sha256": "1605c8be49aee5203d68f25297105cd43fc33361f29480bd28ab772f5d840c5b"
+    },
+    "semantic_cache_resolver.py": {
+      "sha256": "a0038e3d4bb748c7bb513769a87f2cf08983abe2effa9b9952f652abe6235341",
+      "bytes": 78307,
+      "lines": 1710,
+      "damaged_copy_sha256": "a73babc2db77980c762620907ad40341f09c3a2e649f307170ad247ddc5824b6"
+    },
+    "spherical_migration_bridge.py": {
+      "sha256": "b72a1f8adeb82038697a4d7b155b8968e93bc03702e6df930c7a9d7cd424fbd5",
+      "bytes": 20318,
+      "lines": 516,
+      "damaged_copy_sha256": "6ab30f6a2aa0b3596f3970cc983964a34712b73bc4b3c3561184c69e124f9c3a"
+    },
+    "tests/test_iq04_temporal_evidence.py": {
+      "sha256": "eb506a1b42fe9bf35d65ff89245d0b14cfcad529fc9fad56a89e23b5acc10f30",
+      "bytes": 4808,
+      "lines": 94,
+      "damaged_copy_sha256": "18658ae61553914a19d5548e3a975839427d05a0beb380f2f92eb79886b4340a"
+    },
+    "tests/test_spherical_migration_bridge.py": {
+      "sha256": "2ebc8f7a604a000cd9129b488d02c17c2293d48f2c639ddfb30a878f69358efc",
+      "bytes": 9084,
+      "lines": 217,
+      "damaged_copy_sha256": "44a3c4ae9ba86a6601463f80e68a0a76d40ae2b8973d14967adf70f008a1e908"
+    }
+  }
+}

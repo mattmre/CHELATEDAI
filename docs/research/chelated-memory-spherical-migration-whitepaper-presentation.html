@@ -1,0 +1,1040 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Representation-Safe &amp; Epistemically-Bounded AI Memory — Doctoral Whitepaper v2 Presentation</title>
+  <style>
+    :root {
+      --ink: #132026;
+      --ink-soft: #2e434d;
+      --muted: #50646e;
+      --accent: #066e7a;
+      --accent-dark: #044e57;
+      --accent-soft: #e8f5f6;
+      /* Locked R3 WCAG AAA contrast: 8.36:1 on #fdf2ec, 9.20:1 on #ffffff */
+      --warm: #7d2f0a;
+      --warm-soft: #fdf2ec;
+      --ok: #136239;
+      --ok-soft: #e9f6ee;
+      --warn: #7a4f00;
+      --warn-soft: #fef6df;
+      --rule: #cbd8dd;
+      --paper: #ffffff;
+      --canvas: #eaf0f2;
+      --code-bg: #f3f7f8;
+      --max-w: 1120px;
+      --radius: 10px;
+      --font-sans: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --font-serif: Georgia, Cambria, "Times New Roman", serif;
+      --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--canvas);
+      color: var(--ink);
+      font-family: var(--font-sans);
+      font-size: 15px;
+      line-height: 1.58;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: var(--accent-dark); }
+    a:focus-visible, button:focus-visible {
+      outline: 3px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 30;
+      background: rgba(255, 255, 255, 0.96);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--rule);
+    }
+    .topbar-inner {
+      max-width: var(--max-w);
+      margin: 0 auto;
+      padding: 10px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .brand {
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.11em;
+      text-transform: uppercase;
+      color: var(--accent-dark);
+    }
+    .nav {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .nav a {
+      color: var(--ink-soft);
+      text-decoration: none;
+      font-size: 12.5px;
+      font-weight: 600;
+      padding: 4px 8px;
+      border-radius: 6px;
+    }
+    .nav a:hover { background: var(--accent-soft); color: var(--accent-dark); }
+
+    main {
+      max-width: var(--max-w);
+      margin: 22px auto 48px;
+      background: var(--paper);
+      border: 1px solid var(--rule);
+      border-radius: 14px;
+      box-shadow: 0 18px 46px rgba(19, 32, 38, 0.08);
+      padding: 40px 46px;
+    }
+
+    header.hero {
+      padding-bottom: 24px;
+      border-bottom: 3px solid var(--accent);
+    }
+    .release-status-banner {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 12px 15px;
+      margin-bottom: 18px;
+      border-radius: 8px;
+      background: var(--warm-soft);
+      border: 1.5px solid var(--warm);
+      color: var(--warm);
+      font-size: 13px;
+      font-weight: 600;
+      line-height: 1.45;
+    }
+    .release-badge {
+      flex-shrink: 0;
+      background: var(--warm);
+      color: #ffffff;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 3px 8px;
+      border-radius: 5px;
+      margin-top: 1px;
+    }
+    .eyebrow {
+      margin: 0 0 8px;
+      font-size: 11.5px;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--accent-dark);
+    }
+    h1 {
+      margin: 0;
+      font-size: clamp(24px, 3vw, 34px);
+      line-height: 1.15;
+      letter-spacing: -0.025em;
+    }
+    .subtitle {
+      margin: 12px 0 0;
+      max-width: 82ch;
+      font-size: 15.5px;
+      color: var(--ink-soft);
+    }
+    .meta-strip {
+      margin-top: 16px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 18px;
+      font-size: 12px;
+      color: var(--muted);
+      font-family: var(--font-mono);
+    }
+
+    .kpi-grid {
+      margin-top: 24px;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+    }
+    .kpi-card {
+      background: var(--code-bg);
+      border: 1px solid var(--rule);
+      border-top: 3px solid var(--accent);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+    }
+    .kpi-card.warm { border-top-color: var(--warm); background: var(--warm-soft); }
+    .kpi-card.ok { border-top-color: var(--ok); background: var(--ok-soft); }
+    .kpi-label {
+      font-size: 11px;
+      font-weight: 750;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+    }
+    .kpi-card.warm .kpi-label { color: var(--warm); }
+    .kpi-card.ok .kpi-label { color: var(--ok); }
+    .kpi-value {
+      margin: 4px 0 2px;
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: var(--ink);
+    }
+    .kpi-sub { font-size: 12px; color: var(--ink-soft); }
+
+    section { margin-top: 36px; }
+    h2 {
+      margin: 0 0 12px;
+      padding-bottom: 8px;
+      border-bottom: 1.5px solid var(--rule);
+      font-size: 21px;
+      letter-spacing: -0.015em;
+      color: var(--ink);
+    }
+    h3 {
+      margin: 22px 0 8px;
+      font-size: 16px;
+      color: var(--accent-dark);
+    }
+    p { margin: 8px 0 12px; }
+
+    .callout {
+      padding: 14px 16px;
+      border-radius: var(--radius);
+      border-left: 4px solid var(--accent);
+      background: var(--accent-soft);
+      margin: 14px 0;
+      font-size: 14px;
+    }
+    .callout.warm {
+      border-left-color: var(--warm);
+      background: var(--warm-soft);
+      color: var(--warm);
+    }
+    .callout.ok {
+      border-left-color: var(--ok);
+      background: var(--ok-soft);
+    }
+
+    .eq-box {
+      background: var(--code-bg);
+      border: 1px solid var(--rule);
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin: 12px 0;
+      overflow-x: auto;
+      font-family: var(--font-serif);
+      font-size: 15.5px;
+    }
+
+    .figure-card {
+      margin: 18px 0;
+      border: 1px solid var(--rule);
+      border-radius: var(--radius);
+      padding: 16px;
+      background: #fafcfd;
+    }
+    .figure-title {
+      font-size: 13.5px;
+      font-weight: 750;
+      color: var(--ink);
+      margin: 0 0 10px;
+    }
+    .figure-caption {
+      font-size: 12.5px;
+      color: var(--muted);
+      margin: 8px 0 0;
+    }
+    .figure-card svg {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    .table-scroll {
+      width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      margin: 14px 0;
+      border: 1px solid var(--rule);
+      border-radius: 8px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      background: #ffffff;
+    }
+    th, td {
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--rule);
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      background: var(--code-bg);
+      font-weight: 750;
+      color: var(--ink);
+      white-space: nowrap;
+    }
+    td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; font-family: var(--font-mono); font-size: 12.5px; }
+    tr:last-child td { border-bottom: none; }
+    .best { font-weight: 800; color: var(--ok); }
+    .warn-cell { font-weight: 700; color: var(--warm); }
+    code {
+      font-family: var(--font-mono);
+      font-size: 12.5px;
+      background: var(--code-bg);
+      padding: 1px 5px;
+      border-radius: 4px;
+    }
+
+    /* ARIA Progressive-Enhancement Tabs (zero-JS shows all panels cleanly!) */
+    .tablist {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin: 14px 0 12px;
+      border-bottom: 1.5px solid var(--rule);
+      padding-bottom: 8px;
+    }
+    .tablist button[role="tab"] {
+      appearance: none;
+      border: 1px solid var(--rule);
+      background: var(--code-bg);
+      color: var(--ink-soft);
+      font-family: var(--font-sans);
+      font-size: 13px;
+      font-weight: 700;
+      padding: 6px 12px;
+      border-radius: 7px;
+      cursor: pointer;
+    }
+    .tablist button[role="tab"][aria-selected="true"] {
+      background: var(--accent-dark);
+      border-color: var(--accent-dark);
+      color: #ffffff;
+    }
+    .js-tabs-active [role="tabpanel"][hidden] { display: none; }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 750;
+      font-family: var(--font-mono);
+    }
+    .badge.pass { background: var(--ok-soft); color: var(--ok); border: 1px solid #9bd1b2; }
+    .badge.open { background: var(--warm-soft); color: var(--warm); border: 1px solid #dfb49e; }
+    .badge.partial { background: var(--warn-soft); color: var(--warn); border: 1px solid #e2c574; }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    footer {
+      margin-top: 40px;
+      padding-top: 16px;
+      border-top: 1px solid var(--rule);
+      font-size: 12.5px;
+      color: var(--muted);
+    }
+
+    @media (max-width: 820px) {
+      main { padding: 24px 18px; margin: 10px; }
+      .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .grid-2 { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 480px) {
+      main { padding: 18px 14px; margin: 0; border-radius: 0; border: none; }
+      .kpi-grid { grid-template-columns: 1fr; }
+      .topbar-inner { padding: 8px 12px; }
+      .release-status-banner { flex-direction: column; gap: 6px; }
+    }
+    @media print {
+      body { background: #ffffff; font-size: 11.5pt; }
+      .topbar { display: none; }
+      main { box-shadow: none; border: none; margin: 0; padding: 0; max-width: 100%; }
+      /* R3 Lock: release-status-banner MUST remain visible in print! */
+      .release-status-banner { display: flex !important; break-inside: avoid; }
+      .js-tabs-active [role="tabpanel"][hidden] { display: block !important; }
+      .figure-card, .callout { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <nav class="topbar" aria-label="Primary navigation">
+    <div class="topbar-inner">
+      <div class="brand">ChelatedAI Research &middot; Whitepaper v2</div>
+      <div class="nav">
+        <a href="#flagship1">Flagship #1</a>
+        <a href="#flagship2">Flagship #2</a>
+        <a href="#forensics">Emergent Forensics</a>
+        <a href="#gates">PM-1..PM-5 Gates</a>
+        <a href="#ledger">18-Bundle Ledger</a>
+      </div>
+    </div>
+  </nav>
+
+  <main>
+    <header class="hero">
+      <div class="release-status-banner" role="status">
+        <span class="release-badge">PRE-RELEASE / GATES PENDING</span>
+        <span>
+          Draft v2 (Post-Tri-Model Council R3 3/3 Sign-Off &amp; Post-Fix Dual-Spark Rigor-R4 Verification).
+          Public production release remains <strong>BLOCKED</strong> until gates <code>PM-1b</code>, <code>PM-2</code>,
+          <code>PM-3</code>, and <code>PM-4</code> pass on verified receipts. Registry SHA-256: <code>bd1577d750bd</code>.
+        </span>
+      </div>
+      <p class="eyebrow">Doctoral Technical Monograph &middot; Dual NVIDIA DGX Spark Validation</p>
+      <h1>Representation-Safe &amp; Epistemically-Bounded Long-Horizon Memory for Compound AI Systems</h1>
+      <p class="subtitle">
+        Conformal, Geodesic Polar, &amp; Subtractive-Centroid Spherical Migration Bridges (<code>Flagship #1</code> + <code>TRA-1</code>)
+        unified with Stratified <em>K</em>=4 Well-Founded Evidence Maintenance, Non-Blocking Epistemic Telemetry, &amp; Minimal-Pair Contradiction Splitting (<code>Flagship #2</code> / <code>EK5 v3</code> / <code>EM-1 M4e</code>).
+      </p>
+      <div class="meta-strip">
+        <span>DATE: 2026-11-21</span>
+        <span>COUNCIL: 15 Reviews / 5 Stages (Carbon + Neon XHigh + Astra 6.2 XHigh &mdash; 3/3 GO)</span>
+        <span>BUNDLES: 18/18 SHA-256 Verified</span>
+        <span>PRISTINE MIRROR: 15/15 Byte-Exact (b37e6a55)</span>
+      </div>
+
+      <div class="kpi-grid">
+        <div class="kpi-card ok">
+          <div class="kpi-label">EM-2 Zero-Shot OOD</div>
+          <div class="kpi-value">16 / 18 Wins</div>
+          <div class="kpi-sub"><code>A2-ZeroMu-DualAdap</code> up to <strong>51.2&times;</strong> CAR (<code>0.2559</code> vs <code>0.0050</code>) &amp; <strong>12/12</strong> 4096-d 3-hop sweep.</div>
+        </div>
+        <div class="kpi-card ok">
+          <div class="kpi-label">EK5 v3 Formal Parity</div>
+          <div class="kpi-value">0 / 381,497</div>
+          <div class="kpi-sub">Zero WFS oracle mismatches (incl. all <code>262,144</code> 3-node graphs &amp; <code>65,536</code> jumps); <code>10k</code> hubs <code>|D|=0</code>.</div>
+        </div>
+        <div class="kpi-card ok">
+          <div class="kpi-label">PM-5 Service Latency</div>
+          <div class="kpi-value">0.904 ms</div>
+          <div class="kpi-sub"><code>100k</code> persistent service p95 (<strong>27.6&times;</strong> under <code>25 ms</code> SLO); <code>1M</code> power-law p95 <code>7.94 ms</code>.</div>
+        </div>
+        <div class="kpi-card warm">
+          <div class="kpi-label">Honest Release Gate</div>
+          <div class="kpi-value">1 / 6 Cleared</div>
+          <div class="kpi-sub"><code>PM-5</code> PASS; <code>PM-1b</code> (<code>-1.33 pp</code> LoCoMo clean), <code>PM-2/3/4</code> OPEN &rarr; <strong>PRE-RELEASE</strong>.</div>
+        </div>
+      </div>
+    </header>
+
+    <!-- ================================================================== -->
+    <!-- SECTION 1: FLAGSHIP #1 -->
+    <!-- ================================================================== -->
+    <section id="flagship1">
+      <h2>1. Flagship #1 &mdash; Conformal, Geodesic Polar, &amp; Subtractive-Centroid Spherical Migration</h2>
+      <p>
+        We preserve all pristine historical baselines (<code>Uncentered Ridge</code>, <code>Centered Affine Ridge</code>, <code>A2</code>,
+        ambient <code>A2c</code>, <code>A3_Full</code>, <code>BF20</code>) directly beside every council-refined and emergent bridge.
+        All Flagship #1 metrics use complete-qrels canonical <code>mlr-v1</code> linear-gain <code>nDCG@10</code> (identical to
+        <code>2<sup>r</sup>&minus;1</code> on binary qrels, with dual linear/exponential reporting on graded corpora) and fail-closed
+        <code>TRA-1</code> contracts. <strong>Honest <code>s3</code> Disclosure:</strong> while <code>TRA-1</code> blocked
+        <strong>8/8</strong> hostile wrong-space mutations, bundle <code>s3</code>'s overall machine verdict was
+        <code>TRA1_OR_M4_NEEDS_REVIEW</code> due to <code>NFCorpus</code> cross-dimensional <code>LCB97.5 = -0.045658</code>.
+      </p>
+
+      <div class="grid-2">
+        <div class="eq-box" aria-label="EM-2 Zero-Reindex 1-Float Identity">
+          <strong>EM-2 (<code>A2-ZeroMu-DualFit</code>) Zero-Reindex 1-Float Identity:</strong><br>
+          <math xmlns="http://www.w3.org/1998/Math/MathML" display="block">
+            <mrow>
+              <mi>cos</mi>
+              <mo>(</mo><mover><mi>q</mi><mo>^</mo></mover><mo>,</mo><msub><mi>d</mi><mi>j</mi></msub><mo>&minus;</mo><msub><mi>&mu;</mi><mi>y</mi></msub><mo>)</mo>
+              <mo>=</mo>
+              <mfrac>
+                <mrow>
+                  <mo>&langle;</mo><mover><mi>q</mi><mo>^</mo></mover><mo>,</mo><msub><mi>d</mi><mi>j</mi></msub><mo>&rangle;</mo>
+                  <mo>&minus;</mo>
+                  <mo>&langle;</mo><mover><mi>q</mi><mo>^</mo></mover><mo>,</mo><msub><mi>&mu;</mi><mi>y</mi></msub><mo>&rangle;</mo>
+                </mrow>
+                <msqrt>
+                  <mn>1</mn><mo>+</mo><msup><mrow><mo>&Vert;</mo><msub><mi>&mu;</mi><mi>y</mi></msub><mo>&Vert;</mo></mrow><mn>2</mn></msup>
+                  <mo>&minus;</mo><mn>2</mn><mo>&langle;</mo><msub><mi>d</mi><mi>j</mi></msub><mo>,</mo><msub><mi>&mu;</mi><mi>y</mi></msub><mo>&rangle;</mo>
+                </msqrt>
+              </mfrac>
+            </mrow>
+          </math>
+        </div>
+        <div class="eq-box" aria-label="A2g Carbon C1 Soft-Collar Formula">
+          <strong>A2g (<code>GeodesicPolarBridge</code>) Carbon <em>C</em><sup>1</sup> Soft-Collar:</strong><br>
+          <math xmlns="http://www.w3.org/1998/Math/MathML" display="block">
+            <mrow>
+              <msub><mi>r</mi><mtext>eff</mtext></msub><mo>(</mo><mi>r</mi><mo>)</mo>
+              <mo>=</mo>
+              <mrow>
+                <mo>{</mo>
+                <mtable columnalign="left">
+                  <mtr><mtd><mi>r</mi><mo>,</mo></mtd><mtd><mi>r</mi><mo>&le;</mo><msub><mi>r</mi><mn>0</mn></msub><mo>=</mo><mi>&pi;</mi><mo>&minus;</mo><mn>0.10</mn></mtd></mtr>
+                  <mtr><mtd><msub><mi>r</mi><mn>0</mn></msub><mo>+</mo><mi>&delta;</mi><mi>tanh</mi><mo>(</mo><mfrac><mrow><mi>r</mi><mo>&minus;</mo><msub><mi>r</mi><mn>0</mn></msub></mrow><mi>&delta;</mi></mfrac><mo>)</mo><mo>,</mo></mtd><mtd><mi>r</mi><mo>&gt;</mo><msub><mi>r</mi><mn>0</mn></msub><mo>,</mo><mspace width="0.4em"/><mi>&delta;</mi><mo>=</mo><mn>0.05</mn></mtd></mtr>
+                </mtable>
+              </mrow>
+            </mrow>
+          </math>
+        </div>
+      </div>
+
+      <!-- FIGURE 1: 18-Cell OOD Static Inline SVG -->
+      <figure class="figure-card">
+        <div class="figure-title">Figure 1 &mdash; Zero-Shot Cross-Domain OOD Transfer (R4 <code>f1_r4_comprehensive</code>, 3 Seeds): <code>EM-2</code> &amp; <code>A2g</code> vs. <code>CAR</code> &amp; <code>A2c</code></div>
+        <svg viewBox="0 0 860 270" role="img" aria-label="Grouped bar chart comparing CAR, A2c, A2g, EM-2 ZeroMu-Query, and EM-2 ZeroMu-DualAdap across six representative cross-domain 4096-d OOD transfers">
+          <rect x="0" y="0" width="860" height="270" fill="#ffffff"/>
+          <!-- Gridlines -->
+          <g stroke="#dce5e9" stroke-width="1">
+            <line x1="65" y1="215" x2="835" y2="215"/>
+            <line x1="65" y1="165" x2="835" y2="165"/>
+            <line x1="65" y1="115" x2="835" y2="115"/>
+            <line x1="65" y1="65" x2="835" y2="65"/>
+            <line x1="65" y1="25" x2="835" y2="25"/>
+          </g>
+          <g font-family="monospace" font-size="11" fill="#50646e" text-anchor="end">
+            <text x="58" y="219">0.00</text><text x="58" y="169">0.16</text><text x="58" y="119">0.32</text><text x="58" y="69">0.48</text><text x="58" y="29">0.60</text>
+          </g>
+          <!-- Legend -->
+          <g font-family="sans-serif" font-size="11" font-weight="600">
+            <rect x="70" y="8" width="11" height="11" fill="#9fb2bc"/><text x="85" y="17" fill="#2e434d">CAR</text>
+            <rect x="135" y="8" width="11" height="11" fill="#5c8a97"/><text x="150" y="17" fill="#2e434d">A2c Amb</text>
+            <rect x="220" y="8" width="11" height="11" fill="#7d2f0a"/><text x="235" y="17" fill="#7d2f0a">A2g C1Soft</text>
+            <rect x="320" y="8" width="11" height="11" fill="#066e7a"/><text x="335" y="17" fill="#044e57">ZM-Query (0-write)</text>
+            <rect x="465" y="8" width="11" height="11" fill="#136239"/><text x="480" y="17" fill="#136239">ZM-DualAdap (16/18 wins)</text>
+          </g>
+          <!-- Scale: y = 215 - val * 316.7 (0.60 -> 25) -->
+          <!-- Group 1: CoSQA->LegalC 1024->4096: CAR 0.237, A2c 0.331, A2g 0.362, ZMQ 0.485, ZMDA 0.565 -->
+          <g transform="translate(82,0)">
+            <rect x="0" y="140" width="16" height="75" fill="#9fb2bc"/>
+            <rect x="18" y="110" width="16" height="105" fill="#5c8a97"/>
+            <rect x="36" y="100" width="16" height="115" fill="#7d2f0a"/>
+            <rect x="54" y="61" width="16" height="154" fill="#066e7a"/>
+            <rect x="72" y="36" width="16" height="179" fill="#136239"/>
+            <text x="44" y="233" text-anchor="middle" font-size="10.5" fill="#132026" font-weight="700">Code&rarr;LegalC</text>
+            <text x="44" y="247" text-anchor="middle" font-size="10" fill="#50646e">1024&rarr;4096</text>
+          </g>
+          <!-- Group 2: CoSQA->LegalC 384->4096: 0.217, 0.315, 0.422, 0.424, 0.505 -->
+          <g transform="translate(208,0)">
+            <rect x="0" y="146" width="16" height="69" fill="#9fb2bc"/>
+            <rect x="18" y="115" width="16" height="100" fill="#5c8a97"/>
+            <rect x="36" y="81" width="16" height="134" fill="#7d2f0a"/>
+            <rect x="54" y="81" width="16" height="134" fill="#066e7a"/>
+            <rect x="72" y="55" width="16" height="160" fill="#136239"/>
+            <text x="44" y="233" text-anchor="middle" font-size="10.5" fill="#132026" font-weight="700">Code&rarr;LegalC</text>
+            <text x="44" y="247" text-anchor="middle" font-size="10" fill="#50646e">384&rarr;4096</text>
+          </g>
+          <!-- Group 3: SciFact->LegalC 1024->4096: 0.287, 0.363, 0.404, 0.437, 0.544 -->
+          <g transform="translate(334,0)">
+            <rect x="0" y="124" width="16" height="91" fill="#9fb2bc"/>
+            <rect x="18" y="100" width="16" height="115" fill="#5c8a97"/>
+            <rect x="36" y="87" width="16" height="128" fill="#7d2f0a"/>
+            <rect x="54" y="77" width="16" height="138" fill="#066e7a"/>
+            <rect x="72" y="43" width="16" height="172" fill="#136239"/>
+            <text x="44" y="233" text-anchor="middle" font-size="10.5" fill="#132026" font-weight="700">Sci&rarr;LegalC</text>
+            <text x="44" y="247" text-anchor="middle" font-size="10" fill="#50646e">1024&rarr;4096</text>
+          </g>
+          <!-- Group 4: SciFact->LegalC 384->4096: 0.204, 0.277, 0.374, 0.389, 0.479 -->
+          <g transform="translate(460,0)">
+            <rect x="0" y="150" width="16" height="65" fill="#9fb2bc"/>
+            <rect x="18" y="127" width="16" height="88" fill="#5c8a97"/>
+            <rect x="36" y="97" width="16" height="118" fill="#7d2f0a"/>
+            <rect x="54" y="92" width="16" height="123" fill="#066e7a"/>
+            <rect x="72" y="63" width="16" height="152" fill="#136239"/>
+            <text x="44" y="233" text-anchor="middle" font-size="10.5" fill="#132026" font-weight="700">Sci&rarr;LegalC</text>
+            <text x="44" y="247" text-anchor="middle" font-size="10" fill="#50646e">384&rarr;4096</text>
+          </g>
+          <!-- Group 5: CoSQA->SciFact 1024->4096: 0.005, 0.035, 0.084, 0.206, 0.256 -->
+          <g transform="translate(586,0)">
+            <rect x="0" y="213" width="16" height="2" fill="#9fb2bc"/>
+            <rect x="18" y="204" width="16" height="11" fill="#5c8a97"/>
+            <rect x="36" y="188" width="16" height="27" fill="#7d2f0a"/>
+            <rect x="54" y="150" width="16" height="65" fill="#066e7a"/>
+            <rect x="72" y="134" width="16" height="81" fill="#136239"/>
+            <text x="44" y="233" text-anchor="middle" font-size="10.5" fill="#132026" font-weight="700">Code&rarr;SciFact</text>
+            <text x="44" y="247" text-anchor="middle" font-size="10" fill="#50646e">1024&rarr;4096 (51&times;)</text>
+          </g>
+          <!-- Group 6: SciFact->CoSQA 1024->4096: 0.020, 0.050, 0.105, 0.154, 0.191 -->
+          <g transform="translate(712,0)">
+            <rect x="0" y="209" width="16" height="6" fill="#9fb2bc"/>
+            <rect x="18" y="199" width="16" height="16" fill="#5c8a97"/>
+            <rect x="36" y="182" width="16" height="33" fill="#7d2f0a"/>
+            <rect x="54" y="166" width="16" height="49" fill="#066e7a"/>
+            <rect x="72" y="154" width="16" height="61" fill="#136239"/>
+            <text x="44" y="233" text-anchor="middle" font-size="10.5" fill="#132026" font-weight="700">Sci&rarr;Code</text>
+            <text x="44" y="247" text-anchor="middle" font-size="10" fill="#50646e">1024&rarr;4096 (9.5&times;)</text>
+          </g>
+        </svg>
+        <figcaption class="figure-caption">
+          Removing the source-domain target centroid <code>&mu;_y</code> (<code>EM-2</code>) eliminates OOD centroid collapse:
+          <code>ZM-Query</code> (true zero-write) sweeps 12/12 up-projection OOD cells and <code>ZM-DualAdap</code> wins 16/18 overall.
+        </figcaption>
+      </figure>
+
+      <!-- ARIA Interactive Tabs (Zero-JS static fallback shows all 3 tables cleanly!) -->
+      <div class="tablist" role="tablist" aria-label="Flagship 1 empirical tables">
+        <button role="tab" id="tab-ood" aria-selected="true" aria-controls="panel-ood">18-Cell OOD Transfer</button>
+        <button role="tab" id="tab-chains" aria-selected="false" aria-controls="panel-chains">3-Hop 4096-d &amp; 6-BEIR 4-Hop</button>
+        <button role="tab" id="tab-peaks-b4" aria-selected="false" aria-controls="panel-peaks-b4">Theorem 1 Peaks &amp; B4 Backfill</button>
+      </div>
+
+      <div id="panel-ood" role="tabpanel" aria-labelledby="tab-ood">
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>OOD Transfer Cell</th>
+                <th class="num">CAR</th>
+                <th class="num">A2c Amb</th>
+                <th class="num">A2g C1Soft</th>
+                <th class="num">ZM-Query (0-wr)</th>
+                <th class="num">ZM-DualFit</th>
+                <th class="num">ZM-DualAdap</th>
+                <th class="num">A3 Full</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td><code>CoSQA &rarr; Legal_Contracts (1024&rarr;4096)</code></td><td class="num">0.2372</td><td class="num">0.3305</td><td class="num">0.3621</td><td class="num">0.4849</td><td class="num">0.4634</td><td class="num best">0.5646</td><td class="num">0.2594</td></tr>
+              <tr><td><code>CoSQA &rarr; Legal_Contracts (384&rarr;4096)</code></td><td class="num">0.2166</td><td class="num">0.3148</td><td class="num">0.4217</td><td class="num">0.4241</td><td class="num">0.4187</td><td class="num best">0.5045</td><td class="num">0.2274</td></tr>
+              <tr><td><code>CoSQA &rarr; Legal_Contracts (4096&rarr;384)</code></td><td class="num">0.4236</td><td class="num">0.4104</td><td class="num">0.3617</td><td class="num">0.3919</td><td class="num">0.4082</td><td class="num best">0.5069</td><td class="num">0.4505</td></tr>
+              <tr><td><code>CoSQA &rarr; SciFact (1024&rarr;4096)</code></td><td class="num warn-cell">0.0050</td><td class="num">0.0349</td><td class="num">0.0839</td><td class="num">0.2064</td><td class="num">0.1972</td><td class="num best">0.2559</td><td class="num">0.0115</td></tr>
+              <tr><td><code>CoSQA &rarr; SciFact (384&rarr;4096)</code></td><td class="num warn-cell">0.0069</td><td class="num">0.0382</td><td class="num">0.1126</td><td class="num">0.1220</td><td class="num">0.1219</td><td class="num best">0.1559</td><td class="num">0.0097</td></tr>
+              <tr><td><code>SciFact &rarr; CoSQA (1024&rarr;4096)</code></td><td class="num warn-cell">0.0201</td><td class="num">0.0500</td><td class="num">0.1051</td><td class="num">0.1539</td><td class="num">0.1405</td><td class="num best">0.1910</td><td class="num">0.0259</td></tr>
+              <tr><td><code>SciFact &rarr; CoSQA (384&rarr;4096)</code></td><td class="num warn-cell">0.0136</td><td class="num">0.0286</td><td class="num">0.0887</td><td class="num">0.1057</td><td class="num">0.1029</td><td class="num best">0.1461</td><td class="num">0.0114</td></tr>
+              <tr><td><code>SciFact &rarr; Legal_Contracts (1024&rarr;4096)</code></td><td class="num">0.2874</td><td class="num">0.3629</td><td class="num">0.4037</td><td class="num">0.4370</td><td class="num">0.4300</td><td class="num best">0.5442</td><td class="num">0.3064</td></tr>
+              <tr><td><code>SciFact &rarr; Legal_Contracts (384&rarr;4096)</code></td><td class="num">0.2042</td><td class="num">0.2767</td><td class="num">0.3736</td><td class="num">0.3890</td><td class="num">0.3828</td><td class="num best">0.4790</td><td class="num">0.2028</td></tr>
+              <tr><td><code>SciFact &rarr; Legal_QuAD (4096&rarr;384)</code></td><td class="num">0.0429</td><td class="num">0.0349</td><td class="num">0.0361</td><td class="num">0.0315</td><td class="num">0.0309</td><td class="num">0.0389</td><td class="num best">0.0458</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="panel-chains" role="tabpanel" aria-labelledby="tab-chains">
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Multi-Hop Chain Suite</th>
+                <th class="num">Composed CAR</th>
+                <th class="num">Composed A2c-OOS</th>
+                <th class="num">A2g C1Soft</th>
+                <th class="num">EM-2 ZeroMu (Best)</th>
+                <th class="num">&Delta; vs CAR</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td><code>SciFact 3-Hop 4096&rarr;384 (n=1000, Hop 2)</code></td><td class="num">0.4813</td><td class="num">0.5007</td><td class="num">&mdash;</td><td class="num best">0.5254 (DualFit)</td><td class="num best">+0.0441</td></tr>
+              <tr><td><code>SciFact 3-Hop 4096&rarr;384 (n=2000, Hop 3)</code></td><td class="num">0.5063</td><td class="num">0.5718</td><td class="num">&mdash;</td><td class="num best">0.5886 (DualFit)</td><td class="num best">+0.0823</td></tr>
+              <tr><td><code>CoSQA 3-Hop 4096&rarr;384 (n=2000, Hop 3)</code></td><td class="num">0.2166</td><td class="num">0.2254</td><td class="num">&mdash;</td><td class="num best">0.2340 (DualFit)</td><td class="num best">+0.0174</td></tr>
+              <tr><td><code>BEIR ArguAna 4-Hop (E4&rarr;E0)</code></td><td class="num">0.1790</td><td class="num">0.2010</td><td class="num">0.2045</td><td class="num best">0.2291 (DualAdap)</td><td class="num best">+0.0501</td></tr>
+              <tr><td><code>BEIR FiQA2018 4-Hop (E4&rarr;E0)</code></td><td class="num">0.0527</td><td class="num">0.0512</td><td class="num">0.0514</td><td class="num best">0.0692 (DualAdap)</td><td class="num best">+0.0165</td></tr>
+              <tr><td><code>BEIR NFCorpus 4-Hop (E4&rarr;E0)</code></td><td class="num">0.1233</td><td class="num">0.1367</td><td class="num">0.1443</td><td class="num best">0.1474 (DualAdap)</td><td class="num best">+0.0241</td></tr>
+              <tr><td><code>BEIR Quora 4-Hop (E4&rarr;E0)</code></td><td class="num">0.3361</td><td class="num">0.3412</td><td class="num">0.3669</td><td class="num best">0.3998 (Query)</td><td class="num best">+0.0637</td></tr>
+              <tr><td><code>BEIR SCIDOCS 4-Hop (E4&rarr;E0)</code></td><td class="num">0.0595</td><td class="num">0.0553</td><td class="num">0.0568</td><td class="num best">0.0666 (DualAdap)</td><td class="num best">+0.0071</td></tr>
+              <tr><td><code>BEIR SciFact 4-Hop (E4&rarr;E0)</code></td><td class="num">0.2431</td><td class="num">0.2569</td><td class="num">0.2506</td><td class="num best">0.2632 (DualAdap)</td><td class="num best">+0.0201</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="panel-peaks-b4" role="tabpanel" aria-labelledby="tab-peaks-b4">
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Suite / Dataset</th>
+                <th class="num">Raw Peak &kappa;</th>
+                <th class="num">Polar &kappa;</th>
+                <th class="num">BF20 Legacy</th>
+                <th class="num">B4 SmoothTail</th>
+                <th class="num">B4 + CSLS10 (Full)</th>
+                <th class="num">B4 + CSLS10 (B2-OldSpace 0-Enc)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td><code>ArguAna (E0&rarr;E3&rarr;E1 / E3&rarr;E0 BF20)</code></td><td class="num warn-cell">74.81</td><td class="num best">1.0000</td><td class="num">0.3211</td><td class="num">0.3211</td><td class="num">0.3508</td><td class="num best">0.3510</td></tr>
+              <tr><td><code>SciFact (E0&rarr;E3&rarr;E1 / E3&rarr;E0 BF20)</code></td><td class="num warn-cell">155.27</td><td class="num best">1.0000</td><td class="num">0.5577</td><td class="num">0.5622</td><td class="num best">0.5699</td><td class="num">0.5450</td></tr>
+              <tr><td><code>NFCorpus (E0&rarr;E3&rarr;E1 / E3&rarr;E0 BF20)</code></td><td class="num warn-cell">368.64</td><td class="num best">1.0000</td><td class="num">0.2305</td><td class="num best">0.2306</td><td class="num">0.2223</td><td class="num">0.2142</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- FIGURE 2 & FIGURE 3 side-by-side -->
+      <div class="grid-2">
+        <figure class="figure-card">
+          <div class="figure-title">Figure 2 &mdash; Multi-Hop 4-Hop BEIR &amp; 3-Hop 4096-d Sweep (18/18 Wins by <code>EM-2</code>)</div>
+          <svg viewBox="0 0 420 215" role="img" aria-label="Comparison of Composed CAR, A2c-OOS, and EM-2 ZeroMu on 4096-d 3-hop and BEIR 4-hop chains">
+            <rect x="0" y="0" width="420" height="215" fill="#ffffff"/>
+            <g stroke="#dce5e9"><line x1="45" y1="175" x2="405" y2="175"/><line x1="45" y1="125" x2="405" y2="125"/><line x1="45" y1="75" x2="405" y2="75"/><line x1="45" y1="25" x2="405" y2="25"/></g>
+            <g font-family="monospace" font-size="10" fill="#50646e" text-anchor="end"><text x="40" y="179">0.0</text><text x="40" y="129">0.2</text><text x="40" y="79">0.4</text><text x="40" y="29">0.6</text></g>
+            <!-- Scale: y = 175 - val*250 -->
+            <g transform="translate(55,0)">
+              <rect x="0" y="48" width="18" height="127" fill="#9fb2bc"/><rect x="20" y="32" width="18" height="143" fill="#5c8a97"/><rect x="40" y="28" width="18" height="147" fill="#136239"/>
+              <text x="29" y="193" text-anchor="middle" font-size="9.5" font-weight="700" fill="#132026">Sci 3H (2k)</text>
+            </g>
+            <g transform="translate(142,0)">
+              <rect x="0" y="55" width="18" height="120" fill="#9fb2bc"/><rect x="20" y="50" width="18" height="125" fill="#5c8a97"/><rect x="40" y="44" width="18" height="131" fill="#136239"/>
+              <text x="29" y="193" text-anchor="middle" font-size="9.5" font-weight="700" fill="#132026">Sci 3H H2</text>
+            </g>
+            <g transform="translate(229,0)">
+              <rect x="0" y="91" width="18" height="84" fill="#9fb2bc"/><rect x="20" y="90" width="18" height="85" fill="#5c8a97"/><rect x="40" y="75" width="18" height="100" fill="#136239"/>
+              <text x="29" y="193" text-anchor="middle" font-size="9.5" font-weight="700" fill="#132026">Quora 4H</text>
+            </g>
+            <g transform="translate(316,0)">
+              <rect x="0" y="130" width="18" height="45" fill="#9fb2bc"/><rect x="20" y="125" width="18" height="50" fill="#5c8a97"/><rect x="40" y="118" width="18" height="57" fill="#136239"/>
+              <text x="29" y="193" text-anchor="middle" font-size="9.5" font-weight="700" fill="#132026">ArguAna 4H</text>
+            </g>
+            <g font-size="9.5" font-weight="700">
+              <rect x="55" y="6" width="10" height="10" fill="#9fb2bc"/><text x="68" y="14" fill="#2e434d">CAR</text>
+              <rect x="115" y="6" width="10" height="10" fill="#5c8a97"/><text x="128" y="14" fill="#2e434d">A2c-OOS</text>
+              <rect x="200" y="6" width="10" height="10" fill="#136239"/><text x="213" y="14" fill="#136239">EM-2 ZeroMu</text>
+            </g>
+          </svg>
+        </figure>
+
+        <figure class="figure-card">
+          <div class="figure-title">Figure 3 &mdash; Theorem 1 Peak Spectral Repair (<code>A2c-Polar</code>) &amp; <code>B4</code> Backfill (<code>ArguAna</code>)</div>
+          <svg viewBox="0 0 420 215" role="img" aria-label="Condition number repair on interior peak chains and B4 smooth-tail plus B2-OldSpace backfill gain on ArguAna">
+            <rect x="0" y="0" width="420" height="215" fill="#ffffff"/>
+            <!-- Left half: Log10 cond number repair -->
+            <text x="105" y="18" text-anchor="middle" font-size="11" font-weight="750" fill="#044e57">Peak E0&rarr;E3&rarr;E1 &kappa; (log10)</text>
+            <g font-family="monospace" font-size="9.5" fill="#2e434d">
+              <text x="10" y="55">NFCorpus</text><rect x="68" y="44" width="115" height="12" fill="#7d2f0a"/><text x="187" y="54" fill="#7d2f0a" font-weight="700">368.6</text>
+              <text x="10" y="80">FiQA2018</text><rect x="68" y="69" width="112" height="12" fill="#7d2f0a"/><text x="184" y="79" fill="#7d2f0a" font-weight="700">323.0</text>
+              <text x="10" y="105">SciFact</text><rect x="68" y="94" width="98" height="12" fill="#7d2f0a"/><text x="170" y="104" fill="#7d2f0a" font-weight="700">155.3</text>
+              <text x="10" y="130">ArguAna</text><rect x="68" y="119" width="84" height="12" fill="#7d2f0a"/><text x="156" y="129" fill="#7d2f0a" font-weight="700">74.8</text>
+              <text x="10" y="160" font-weight="700" fill="#136239">A2c-Polar</text><rect x="68" y="149" width="8" height="12" fill="#136239"/><text x="80" y="159" fill="#136239" font-weight="700">1.0000 (6/6)</text>
+            </g>
+            <line x1="224" y1="15" x2="224" y2="195" stroke="#cbd8dd" stroke-dasharray="4 3"/>
+            <!-- Right half: ArguAna B4 Backfill -->
+            <text x="322" y="18" text-anchor="middle" font-size="11" font-weight="750" fill="#044e57">ArguAna BF20 nDCG@10</text>
+            <g font-family="monospace" font-size="9.5" fill="#2e434d">
+              <text x="234" y="58">BF0 Bridge</text><rect x="234" y="63" width="102" height="13" fill="#9fb2bc"/><text x="341" y="73">0.3079</text>
+              <text x="234" y="96">BF20 Legacy</text><rect x="234" y="101" width="110" height="13" fill="#5c8a97"/><text x="349" y="111">0.3211</text>
+              <text x="234" y="134">B4+CSLS Full</text><rect x="234" y="139" width="126" height="13" fill="#066e7a"/><text x="365" y="149">0.3508</text>
+              <text x="234" y="172" font-weight="700" fill="#136239">B4+OldSpace</text><rect x="234" y="177" width="128" height="13" fill="#136239"/><text x="367" y="187" font-weight="700" fill="#136239">0.3510</text>
+            </g>
+          </svg>
+        </figure>
+      </div>
+    </section>
+
+    <!-- ================================================================== -->
+    <!-- SECTION 2: FLAGSHIP #2 -->
+    <!-- ================================================================== -->
+    <section id="flagship2">
+      <h2>2. Flagship #2 &mdash; <code>EK5 v3</code> Stratified <em>K</em>=4 Evidence Engine &amp; <code>EM-1</code> (<code>M4e</code>)</h2>
+      <p>
+        <code>EK5 v3</code> (<code>ek5_v3_stratified.py</code>) replaces heuristic retraction with a four-stratum formal engine
+        (<em>K</em>=2 logical core, <strong><em>K</em>=4 production store</strong>, <em>K</em>=8 architectural unification with
+        <code>TRA-1</code> and bounded continuous scoring strictly inside <code>ADMIT</code>).
+      </p>
+
+      <div class="grid-2">
+        <div class="eq-box" aria-label="Stratum 1 Anti-Laundering Ceiling">
+          <strong>Stratum 1 Capability-Scoped Anti-Laundering Ceiling:</strong><br>
+          <math xmlns="http://www.w3.org/1998/Math/MathML" display="block">
+            <mrow>
+              <msub><mover><mi>&alpha;</mi><mo>~</mo></mover><mi>q</mi></msub><mo>(</mo><mi>v</mi><mo>,</mo><mi>c</mi><mo>)</mo>
+              <mo>=</mo>
+              <mi>min</mi>
+              <mo>(</mo>
+                <msub><mi>&alpha;</mi><mrow><mtext>raw</mtext><mo>,</mo><mi>q</mi></mrow></msub><mo>(</mo><mi>v</mi><mo>,</mo><mi>c</mi><mo>)</mo>
+                <mo>,</mo>
+                <munder><mi>min</mi><mrow><mi>d</mi><mo>&isin;</mo><msubsup><mi>D</mi><mi>V</mi><mi>q</mi></msubsup><mo>(</mo><mi>v</mi><mo>)</mo></mrow></munder>
+                <msub><mover><mi>&alpha;</mi><mo>~</mo></mover><mi>q</mi></msub><mo>(</mo><mi>d</mi><mo>,</mo><mi>c</mi><mo>)</mo>
+              <mo>)</mo>
+            </mrow>
+          </math>
+        </div>
+        <div class="eq-box" aria-label="Stratum 2 Exact WFS Alternating Fixpoint">
+          <strong>Stratum 2 Exact Alternating-Reduct WFS (Option 1A):</strong><br>
+          <math xmlns="http://www.w3.org/1998/Math/MathML" display="block">
+            <mrow>
+              <msup><mi>T</mi><mo>*</mo></msup><mo>=</mo><mi>lfp</mi><mo>(</mo><msup><mi>&Gamma;</mi><mn>2</mn></msup><mo>)</mo>
+              <mo>,</mo><mspace width="0.8em"/>
+              <msup><mi>F</mi><mo>*</mo></msup><mo>=</mo><mi>V</mi><mo>&setminus;</mo><mi>&Gamma;</mi><mo>(</mo><msup><mi>T</mi><mo>*</mo></msup><mo>)</mo>
+              <mo>,</mo><mspace width="0.8em"/>
+              <msup><mi>U</mi><mo>*</mo></msup><mo>=</mo><mi>&Gamma;</mi><mo>(</mo><msup><mi>T</mi><mo>*</mo></msup><mo>)</mo><mo>&setminus;</mo><msup><mi>T</mi><mo>*</mo></msup>
+            </mrow>
+          </math>
+        </div>
+      </div>
+
+      <!-- FIGURE 4: EK5 v3 Architecture Flow SVG -->
+      <figure class="figure-card">
+        <div class="figure-title">Figure 4 &mdash; <code>EK5 v3</code> Stratified <em>K</em>=4 Pipeline &amp; Passive Non-Blocking <code>EM-3</code> Telemetry Channel</div>
+        <svg viewBox="0 0 860 155" role="img" aria-label="Four-stratum lexicographic pipeline from Stratum 0 Bitemporal Visibility to Stratum 1 Anti-Laundering Authority Ceiling, Stratum 2 Option 1A Epistemic WFS, and Stratum 3 Temporal Currency, feeding passive EM-3 Telemetry">
+          <rect x="0" y="0" width="860" height="155" fill="#ffffff"/>
+          <defs>
+            <marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 1 L 10 5 L 0 9 z" fill="#044e57"/>
+            </marker>
+          </defs>
+          <rect x="12" y="18" width="185" height="72" rx="8" fill="#e8f5f6" stroke="#066e7a" stroke-width="1.5"/>
+          <text x="104" y="38" text-anchor="middle" font-size="11.5" font-weight="800" fill="#044e57">Stratum 0: Visibility</text>
+          <text x="104" y="56" text-anchor="middle" font-size="10" fill="#2e434d">as_of(vt, tx) + Multiplicity</text>
+          <text x="104" y="72" text-anchor="middle" font-size="10" fill="#2e434d">Missing parent &rarr; &alpha;=0, V=F</text>
+
+          <line x1="197" y1="54" x2="225" y2="54" stroke="#044e57" stroke-width="2" marker-end="url(#arr)"/>
+          <rect x="227" y="18" width="192" height="72" rx="8" fill="#e8f5f6" stroke="#066e7a" stroke-width="1.5"/>
+          <text x="323" y="38" text-anchor="middle" font-size="11.5" font-weight="800" fill="#044e57">Stratum 1: Authority &alpha;~</text>
+          <text x="323" y="56" text-anchor="middle" font-size="10" fill="#2e434d">Anti-Laundering min over D_V</text>
+          <text x="323" y="72" text-anchor="middle" font-size="10" fill="#2e434d">CITES_AUDIT exempt from D_V</text>
+
+          <line x1="419" y1="54" x2="447" y2="54" stroke="#044e57" stroke-width="2" marker-end="url(#arr)"/>
+          <rect x="449" y="18" width="190" height="72" rx="8" fill="#e9f6ee" stroke="#136239" stroke-width="1.5"/>
+          <text x="544" y="38" text-anchor="middle" font-size="11.5" font-weight="800" fill="#136239">Stratum 2: Option 1A WFS</text>
+          <text x="544" y="56" text-anchor="middle" font-size="10" fill="#2e434d">Tarjan Pos-SCC + Plain-FIFO</text>
+          <text x="544" y="72" text-anchor="middle" font-size="10" fill="#2e434d">Pitfall A/B + 0/381,497 parity</text>
+
+          <line x1="639" y1="54" x2="667" y2="54" stroke="#044e57" stroke-width="2" marker-end="url(#arr)"/>
+          <rect x="669" y="18" width="178" height="72" rx="8" fill="#e9f6ee" stroke="#136239" stroke-width="1.5"/>
+          <text x="758" y="38" text-anchor="middle" font-size="11.5" font-weight="800" fill="#136239">Stratum 3: Currency</text>
+          <text x="758" y="56" text-anchor="middle" font-size="10" fill="#2e434d">Direct-B_i + Lineage DAG</text>
+          <text x="758" y="72" text-anchor="middle" font-size="10" fill="#2e434d">D_C vs AMENDS + Cyc Cap</text>
+
+          <!-- Passive EM-3 Telemetry Bar -->
+          <rect x="70" y="112" width="720" height="32" rx="6" fill="#fdf2ec" stroke="#7d2f0a" stroke-dasharray="5 3" stroke-width="1.4"/>
+          <text x="430" y="132" text-anchor="middle" font-size="10.5" font-weight="700" fill="#7d2f0a">
+            EM-3 Passive Telemetry (Zero WFS Feedback): unfounded_cycle_nodes | blocked_auth | quarantined_sup_cycles
+          </text>
+          <line x1="323" y1="90" x2="323" y2="110" stroke="#7d2f0a" stroke-dasharray="3 2" marker-end="url(#arr)"/>
+          <line x1="544" y1="90" x2="544" y2="110" stroke="#7d2f0a" stroke-dasharray="3 2" marker-end="url(#arr)"/>
+          <line x1="758" y1="90" x2="700" y2="110" stroke="#7d2f0a" stroke-dasharray="3 2" marker-end="url(#arr)"/>
+        </svg>
+      </figure>
+
+      <!-- FIGURE 5 & FIGURE 6 side-by-side -->
+      <div class="grid-2">
+        <figure class="figure-card">
+          <div class="figure-title">Figure 5 &mdash; <code>EK5 v3</code> 100k Service (<code>PM-5</code>) &amp; 1M-Node Kernel Scaling</div>
+          <svg viewBox="0 0 420 215" role="img" aria-label="Latency comparison showing 100k service p95 at 0.904 ms versus 25 ms SLO, and 1M sparse and power-law p95 at 7.95 ms and 7.94 ms">
+            <rect x="0" y="0" width="420" height="215" fill="#ffffff"/>
+            <line x1="150" y1="25" x2="150" y2="180" stroke="#cbd8dd"/>
+            <!-- 25 ms SLO line at x = 150 + 25*9.5 = 387.5 -->
+            <line x1="387" y1="22" x2="387" y2="182" stroke="#7d2f0a" stroke-width="1.8" stroke-dasharray="5 3"/>
+            <text x="384" y="16" text-anchor="end" font-size="10" font-weight="800" fill="#7d2f0a">PM-5 SLO: 25.0 ms</text>
+            <g font-family="monospace" font-size="10.5" fill="#132026">
+              <text x="142" y="54" text-anchor="end">100k Query p95</text>
+              <rect x="150" y="42" width="3" height="16" fill="#136239"/><text x="158" y="54" fill="#136239" font-weight="700">0.0054 ms</text>
+
+              <text x="142" y="88" text-anchor="end">100k Mut p95</text>
+              <rect x="150" y="76" width="9" height="16" fill="#136239"/><text x="164" y="88" fill="#136239" font-weight="700">0.904 ms (27.6&times; margin)</text>
+
+              <text x="142" y="122" text-anchor="end">1M Sparse p95</text>
+              <rect x="150" y="110" width="76" height="16" fill="#066e7a"/><text x="231" y="122" fill="#044e57" font-weight="700">7.95 ms (0 scans)</text>
+
+              <text x="142" y="156" text-anchor="end">1M PwrLaw p95</text>
+              <rect x="150" y="144" width="75" height="16" fill="#066e7a"/><text x="230" y="156" fill="#044e57" font-weight="700">7.94 ms (10k hubs |D|=0)</text>
+            </g>
+            <text x="15" y="200" font-size="10" fill="#7d2f0a">Honest tail: 1M power-law giant-SCC p99 = 2,622.6 ms (max 3,242.5 ms).</text>
+          </svg>
+        </figure>
+
+        <figure class="figure-card">
+          <div class="figure-title">Figure 6 &mdash; Balanced 10-Conv <code>LoCoMo N=300</code> (Regime A Clean vs. B Blind Echo)</div>
+          <svg viewBox="0 0 420 215" role="img" aria-label="LoCoMo 300-item accuracy across M1, M1c, M2, M4b, M4c, and EM-1 M4e for both unmodified clean and blind neutral echo regimes">
+            <rect x="0" y="0" width="420" height="215" fill="#ffffff"/>
+            <g stroke="#dce5e9"><line x1="42" y1="175" x2="405" y2="175"/><line x1="42" y1="115" x2="405" y2="115"/><line x1="42" y1="55" x2="405" y2="55"/></g>
+            <g font-family="monospace" font-size="9.5" fill="#50646e" text-anchor="end"><text x="38" y="179">0.20</text><text x="38" y="119">0.32</text><text x="38" y="59">0.44</text></g>
+            <!-- Scale: y = 175 - (val - 0.20)*500 -->
+            <g font-size="9.5" font-weight="700">
+              <rect x="55" y="7" width="10" height="10" fill="#5c8a97"/><text x="69" y="15" fill="#2e434d">Reg A Clean</text>
+              <rect x="155" y="7" width="10" height="10" fill="#136239"/><text x="169" y="15" fill="#136239">Reg B Blind Echo</text>
+            </g>
+            <!-- M1: 0.383, 0.383 -->
+            <g transform="translate(52,0)"><rect x="0" y="83" width="18" height="92" fill="#5c8a97"/><rect x="20" y="83" width="18" height="92" fill="#136239"/><text x="19" y="193" text-anchor="middle" font-size="9.5" font-weight="700">M1</text></g>
+            <!-- M1c: 0.383, 0.393 -->
+            <g transform="translate(110,0)"><rect x="0" y="83" width="18" height="92" fill="#5c8a97"/><rect x="20" y="78" width="18" height="97" fill="#136239"/><text x="19" y="193" text-anchor="middle" font-size="9.5" font-weight="700">M1c</text></g>
+            <!-- M2: 0.363, 0.357 -->
+            <g transform="translate(168,0)"><rect x="0" y="93" width="18" height="82" fill="#5c8a97"/><rect x="20" y="97" width="18" height="78" fill="#7d2f0a"/><text x="19" y="193" text-anchor="middle" font-size="9.5" font-weight="700">M2</text></g>
+            <!-- M4b: 0.340, 0.350 -->
+            <g transform="translate(226,0)"><rect x="0" y="105" width="18" height="70" fill="#5c8a97"/><rect x="20" y="100" width="18" height="75" fill="#7d2f0a"/><text x="19" y="193" text-anchor="middle" font-size="9.5" font-weight="700">M4b</text></g>
+            <!-- M4c: 0.350, 0.367 -->
+            <g transform="translate(284,0)"><rect x="0" y="100" width="18" height="75" fill="#5c8a97"/><rect x="20" y="92" width="18" height="83" fill="#066e7a"/><text x="19" y="193" text-anchor="middle" font-size="9.5" font-weight="700">M4c</text></g>
+            <!-- M4e: 0.370, 0.393 -->
+            <g transform="translate(342,0)"><rect x="0" y="90" width="18" height="85" fill="#066e7a"/><rect x="20" y="78" width="18" height="97" fill="#136239"/><text x="19" y="193" text-anchor="middle" font-size="9.5" font-weight="800" fill="#136239">M4e*</text></g>
+          </svg>
+        </figure>
+      </div>
+
+      <div class="callout warm">
+        <strong>Mandatory Historical &amp; Pre-Fix Audit Disclosures:</strong>
+        (1) On ICLR 2025 <code>LongMemEval-S</code> (<code>f2_longmemeval_v2</code>), <code>M4b</code> beat every baseline by
+        <code>+25.64</code> to <code>+41.03 pp</code> under Regime B echo stress, <strong>but</strong> regressed on Regime A
+        <code>single-session-user</code> clean controls (<strong><code>42/50</code> vs. <code>46/50</code></strong> for <code>M1_hybrid_flat</code>).
+        (2) Pre-fix R3 LoCoMo (<code>f2_unified_zs_locomo</code>) suffered <code>117/3</code> conversation skew and a <code>3-key</code> / <code>25-row</code>
+        judge race; R4 remediated all four bugs across all 10 conversations (<code>N=300</code>, <code>0</code> inconsistent keys), where
+        <code>EM-1 M4e</code> cut <code>M4c</code>'s clean loss by 60% (<code>-3.33 &rarr; -1.33 pp</code>) and beat <code>M4b</code> by
+        <code>+4.33 pp</code> under blind echoes while tying <code>M1c_hybrid_jaccard</code> (<code>0.3933</code>), keeping <code>PM-1b</code> honestly open.
+      </div>
+
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Suite &amp; Arm</th>
+              <th class="num">Metric / Overall</th>
+              <th class="num">Clean / Baseline</th>
+              <th class="num">Stress / K=4 Hard</th>
+              <th>Key Verified Margin &amp; Honest Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td><strong>ZS v2 (N=240): <code>C4_v3_ek5_v3_k4</code></strong></td><td class="num best">1.0000</td><td class="num">150.2 toks</td><td class="num best">8/8 fams 100%</td><td><strong>+37.50 pp</strong> vs <code>C4_v2</code> (<code>0.6250</code>), <strong>+12.50 pp</strong> vs <code>C2c</code>/<code>C3</code> (<code>0.8750</code>), <strong>+24.17 pp</strong> vs <code>C2b</code> (<code>0.7583</code>). <em>Note:</em> <code>C0/C1/C2</code> hit <code>1.0000</code> at <code>246&ndash;249</code> toks on <code>&le;top_k</code> items.</td></tr>
+            <tr><td><strong>LoCoMo-300: <code>M4e_minimal_pair_split</code></strong></td><td class="num best">0.3933 (Reg B)</td><td class="num">0.3700 (Reg A)</td><td class="num best">0.5600 Fact</td><td><strong>+4.33 pp</strong> vs <code>M4b</code> (<code>cluster CI95=[+1.33, +7.67 pp]</code>); <code>-1.33 pp</code> clean vs <code>M1</code> (<code>0.3833</code>); tied <code>M1c_hybrid_jaccard</code> (<code>0.3933</code>).</td></tr>
+            <tr><td><strong>LongMemEval-S (v2): <code>M4b</code></strong></td><td class="num">0.7812 (Reg B)</td><td class="num warn-cell">42/50 vs 46/50</td><td class="num best">0.7436 KU</td><td><strong>+28.21 pp</strong> vs <code>M1</code> &amp; <strong>+41.03 pp</strong> vs <code>M2</code> under 6-echo stress; intra-session clean loss motivated <code>M4e</code>.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ================================================================== -->
+    <!-- SECTION 3: CAUSAL BUG-IMPACT & EMERGENT FORENSICS -->
+    <!-- ================================================================== -->
+    <section id="forensics">
+      <h2>3. Causal Bug-Impact &amp; Emergent-Mechanism Forensics</h2>
+      <p>
+        Auditing all 16 R0&ndash;R2 bugs for downstream chain-of-logic impact classified each defect as a
+        <code>PURE_FIX</code>, <code>EMERGENT_ADDITIVE</code>, or <code>EMERGENT_SUBTRACTIVE</code> discovery&mdash;yielding
+        four concrete mechanisms verified on DGX Spark in R4:
+      </p>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Causal Mechanism</th>
+              <th>Class</th>
+              <th>R4 Verified Empirical Outcome</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td><code>EM-1</code></td><td><code>M4e</code> Minimal-Pair Contradiction vs. Echo Split (from <code>M4b</code> clean loss)</td><td><code>EMERGENT_ADDITIVE</code></td><td>Preserves 100% minimal pairs; cuts <code>M4c</code> LoCoMo clean loss <strong>60%</strong> (<code>-3.33 &rarr; -1.33 pp</code>); <strong>+4.33 pp</strong> vs <code>M4b</code> stress.</td></tr>
+            <tr><td><code>EM-2</code></td><td><code>A2-ZeroMu</code> Subtractive Centroid Removal (from OOD <code>+&mu;_y</code> collapse)</td><td><code>EMERGENT_SUBTRACTIVE</code></td><td><strong>16/18</strong> OOD wins (up to <strong>51.2&times;</strong> CAR), <strong>12/12</strong> 4096-d 3-hop wins, <strong>6/6</strong> BEIR 4-hop wins (incl. zero-write &amp; 1-float modes).</td></tr>
+            <tr><td><code>EM-3</code></td><td>Non-Blocking Epistemic Telemetry (from silent positive-cycle collapse)</td><td><code>EMERGENT_ADDITIVE</code></td><td>Passive <code>certificate_based=True</code> stream + <code>full_structural_scc_audit()</code>; zero WFS feedback (<code>0/381,497</code> mismatches).</td></tr>
+            <tr><td><code>EM-5b</code></td><td><code>A2c-SoftSpec</code> Empirical-Bayes Shrinkage (from <code>n=1000 &lt; 1024</code> Hop-2 dip)</td><td><code>EMERGENT_ADDITIVE</code></td><td>Implemented &amp; tested; R4 showed OOS+<code>EM-2</code> cured Hop-2 while small-DEV (<code>86</code> q) tuning slightly overfit &rarr; gated on <code>n_dev &ge; 250</code>.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ================================================================== -->
+    <!-- SECTION 4: PRE-RELEASE GATES -->
+    <!-- ================================================================== -->
+    <section id="gates">
+      <h2>4. Harmonized Pre-Release Gates (<code>PM-1..PM-5</code>)</h2>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Gate</th>
+              <th>Scope &amp; Pre-Registered Threshold</th>
+              <th>Status</th>
+              <th>Verified R4 Evidence</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td><code>PM-1a</code></td><td><code>Zero-Shortcut v2</code> (<code>&ge;98%</code>, <code>LCB95 &gt; +15 pp</code>) + Exhaustive WFS Oracle Proofs</td><td><span class="badge partial">PARTIAL / OPEN</span></td><td><code>0/381,497</code> oracle mismatches &amp; <code>C4_v3=100%</code> (<code>+37.5 pp</code> vs <code>C4_v2</code>); needs <code>&gt;top_k</code> $K=4$ flood follow-up.</td></tr>
+            <tr><td><code>PM-1b</code></td><td>Full <code>LongMemEval-S N=500</code> &amp; <code>LoCoMo-300</code> clean (<code>&ge;-1.0 / -3.0 pp</code>) + blind stress (<code>&gt;M1c</code>)</td><td><span class="badge open">OPEN / BLOCKING</span></td><td><code>LoCoMo-300</code> <code>M4e</code> clean <code>-1.33 pp</code> (vs <code>-1.00 pp</code>) &amp; tied <code>M1c</code> (<code>0.3933</code>); <code>LongMemEval-S N=500</code> pending.</td></tr>
+            <tr><td><code>PM-2</code></td><td>Coupled service (simultaneous <code>384&harr;4096</code> + peak + <code>TRA-1</code> + temporal echoes)</td><td><span class="badge open">OPEN / PENDING</span></td><td>Independent subsystems verified in R4; joint coupled service integration run pending.</td></tr>
+            <tr><td><code>PM-3</code></td><td>Direct pinned upstream <code>mem0ai</code> / <code>graphiti-core</code> / <code>ScaleMAS</code> comparators</td><td><span class="badge open">OPEN / PENDING</span></td><td>Retires <code>SCALEMAS_ADAPTED_SURROGATE</code> caveat; upstream harness pending.</td></tr>
+            <tr><td><code>PM-4</code></td><td><code>2&times;2</code> multi-family judge (<code>&kappa; &ge; 0.85</code>) + 100-item human audit + lock-free <code>0</code>-race grading</td><td><span class="badge partial">PARTIAL / OPEN</span></td><td>Lock-free <code>0</code>-conflict grading &amp; strict ID pairing passed in R4; multi-family cross-judge pending.</td></tr>
+            <tr><td><code>PM-5</code></td><td><code>100k</code> service <code>p95 &le; 25.0 ms</code> + <code>1M</code> power-law/hubs + <code>0</code> spurious scans + <code>100%</code> R4 SHA-256</td><td><span class="badge pass">CLEARED (PASS)</span></td><td><code>0.904 ms</code> p95 (<code>27.6&times;</code> margin), <code>1M</code> sparse <code>7.95 ms</code> / power-law <code>7.94 ms</code>, <code>10k</code> hubs <code>|D|=0</code>, <code>18/18</code> verified!</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ================================================================== -->
+    <!-- SECTION 5: 18-BUNDLE CRYPTOGRAPHIC LEDGER -->
+    <!-- ================================================================== -->
+    <section id="ledger">
+      <h2>5. Single-Source 3-Part Cryptographic Ledger (<code>18/18</code> Verified Bundles)</h2>
+      <p>
+        Generated and gated by <code>python scripts/build_whitepaper_assets.py --check</code> against
+        <code>docs/research/verified_registry.json</code> (<code>registry_content_sha256: bd1577d750bd</code>).
+        All <code>15/15</code> pristine pre-fix mirror files in <code>archive/pristine-b37e6a55-exact/</code> match git tag
+        <code>baseline/pre-fix-pristine-2026-11-21</code> (<code>b37e6a55</code>). Twenty raw historical CSV/JSONL files
+        predating side-artifact hashing are transparently logged as <code>UNHASHED_IN_HISTORICAL_RECEIPT</code> without
+        retroactive receipt mutation.
+      </p>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Part</th>
+              <th>Bundle ID</th>
+              <th>Role</th>
+              <th>Verified <code>manifest_sha256</code> (Prefix)</th>
+              <th class="num">Wall (s)</th>
+              <th class="num">Side Hashes</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>Part I</td><td><code>s1</code></td><td><code>HISTORICAL_PRIMARY</code></td><td><code>920af9de9a62</code></td><td class="num">1226.40</td><td class="num">2 / 2 JSON</td></tr>
+            <tr><td>Part I</td><td><code>s2</code> / <code>s3</code></td><td><code>HISTORICAL_PRIMARY</code> (<code>s3</code>: <code>TRA1_OR_M4_NEEDS_REVIEW</code>)</td><td><code>19d8c5898c6a</code> / <code>b07e2dd27bcd</code></td><td class="num">1143.8 / 160.7</td><td class="num">0</td></tr>
+            <tr><td>Part I</td><td><code>spherical</code> / <code>precipitated</code></td><td><code>HISTORICAL_PRIMARY</code></td><td><code>5dcc0b7685ea</code> / <code>53e7cb6f7f91</code></td><td class="num">274.3 / 689.0</td><td class="num">0</td></tr>
+            <tr><td>Part I</td><td><code>f1_expanded</code> / <code>f1_conformal_4hop</code></td><td><code>HISTORICAL_PRIMARY</code></td><td><code>281ce6eab455</code> / <code>78da59866ad6</code></td><td class="num">1830.0 / 98.9</td><td class="num">0</td></tr>
+            <tr><td>Part I</td><td><code>f2_iq04</code> / <code>f2_hard</code> / <code>iq01</code></td><td><code>HISTORICAL_PRIMARY</code> / <code>FALSIFIER</code></td><td><code>148d80bf3faa</code> / <code>f7960dd626f7</code> / <code>7467ab068125</code></td><td class="num">47.9 / 60.0 / 39.3</td><td class="num">0</td></tr>
+            <tr><td>Part I</td><td><code>f2_longmemeval</code> / <code>f2_longmemeval_v2</code></td><td><code>SUPERSEDED</code> / <code>HISTORICAL_PRIMARY</code></td><td><code>d7245073f2a4</code> / <code>c14845a78c6f</code></td><td class="num">446.4 / 362.4</td><td class="num">0</td></tr>
+            <tr><td>Part II</td><td><code>f2_ek5_v2_1m</code> / <code>f2_unified_zs_locomo</code></td><td><code>PRE_FIX_AUDIT_BASELINE</code></td><td><code>7f306adb7a55</code> / <code>caf58b0f40f6</code></td><td class="num">14.8 / 244.0</td><td class="num">6 / 6</td></tr>
+            <tr><td>Part II</td><td><code>f1_4096_ood</code></td><td><code>MANIFEST_AGGREGATE_ONLY</code></td><td><code>ce81b9303150</code></td><td class="num">3479.66</td><td class="num">0</td></tr>
+            <tr><td><strong>Part III</strong></td><td><strong><code>f1_r4_comprehensive</code></strong></td><td><strong><code>R4_VERIFIED_PRIMARY</code></strong></td><td><code>266ee0f902da</code></td><td class="num">1352.92</td><td class="num best">2 / 2 (100%)</td></tr>
+            <tr><td><strong>Part III</strong></td><td><strong><code>f2_ek5_v3_1m_powerlaw</code></strong></td><td><strong><code>R4_VERIFIED_PRIMARY</code></strong></td><td><code>2941048ccbe3</code></td><td class="num">106.11</td><td class="num best">Manifest</td></tr>
+            <tr><td><strong>Part III</strong></td><td><strong><code>f2_r4_zero_shortcut_v2_and_locomo</code></strong></td><td><strong><code>R4_VERIFIED_PRIMARY</code></strong></td><td><code>2a3f4368366b</code></td><td class="num">264.03</td><td class="num best">2 / 2 (100%)</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <footer>
+      <strong>ChelatedAI Research &middot; Doctoral Whitepaper v2 Presentation</strong> &middot;
+      Verified Registry <code>bd1577d750bd</code> &middot; WCAG AAA Accent Palette (<code>--warm: #7d2f0a</code>, 8.36:1) &middot;
+      Zero-JS Static Tables &amp; SVGs + Progressive ARIA Tabs + Print-Visible Pre-Release Banner.
+    </footer>
+  </main>
+
+  <script>
+    (function () {
+      const tablist = document.querySelector('[role="tablist"]');
+      if (!tablist) return;
+      const tabs = Array.from(tablist.querySelectorAll('[role="tab"]'));
+      const panels = tabs.map((t) => document.getElementById(t.getAttribute('aria-controls')));
+      document.documentElement.classList.add('js-tabs-active');
+      function activate(idx, focusTab) {
+        tabs.forEach((t, i) => {
+          const sel = i === idx;
+          t.setAttribute('aria-selected', sel ? 'true' : 'false');
+          t.setAttribute('tabindex', sel ? '0' : '-1');
+          if (panels[i]) panels[i].hidden = !sel;
+        });
+        if (focusTab) tabs[idx].focus();
+      }
+      tabs.forEach((t, i) => {
+        t.addEventListener('click', () => activate(i, false));
+        t.addEventListener('keydown', (e) => {
+          if (e.key === 'ArrowRight') { e.preventDefault(); activate((i + 1) % tabs.length, true); }
+          else if (e.key === 'ArrowLeft') { e.preventDefault(); activate((i - 1 + tabs.length) % tabs.length, true); }
+          else if (e.key === 'Home') { e.preventDefault(); activate(0, true); }
+          else if (e.key === 'End') { e.preventDefault(); activate(tabs.length - 1, true); }
+        });
+      });
+      activate(0, false);
+    })();
+  </script>
+</body>
+</html>

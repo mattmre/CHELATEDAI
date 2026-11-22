@@ -140,10 +140,42 @@ def fit_closed_form_ridge(
     if src.shape[0] != tgt.shape[0] or src.shape[0] == 0:
         raise ValueError("source and target must have identical non-zero row counts")
     dim = src.shape[1]
+    if src.shape[0] < dim and regularization > 0.0:
+        # Exact O(n^2 d) Woodbury identity: X^T (X X^T + lam I)^{-1} Y
+        gram = src @ src.T + float(regularization) * np.eye(src.shape[0], dtype=np.float64)
+        return src.T @ np.linalg.solve(gram, tgt)
     return np.linalg.solve(
         src.T @ src + float(regularization) * np.eye(dim, dtype=np.float64),
         src.T @ tgt,
     )
+
+
+def fit_closed_form_centered_ridge(
+    source: np.ndarray,
+    target: np.ndarray,
+    fit_idx: Optional[np.ndarray] = None,
+    *,
+    regularization: float = 1e-2,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Centered Affine Ridge with exact intercept: y = (x - mu_x) @ W + mu_y.
+
+    Uses exact O(n^2 d) Woodbury solve when n < d (avoids d^3 blowup at d=4096).
+    """
+    if regularization < 0.0 or not math.isfinite(regularization):
+        raise ValueError("regularization must be finite and >= 0")
+    src = np.asarray(source, dtype=np.float64)
+    tgt = np.asarray(target, dtype=np.float64)
+    if fit_idx is not None:
+        src = src[fit_idx]
+        tgt = tgt[fit_idx]
+    if src.shape[0] != tgt.shape[0] or src.shape[0] < 2:
+        raise ValueError("source and target must have identical row counts >= 2")
+    mu_x = src.mean(axis=0, keepdims=True)
+    mu_y = tgt.mean(axis=0, keepdims=True)
+    xc = src - mu_x
+    yc = tgt - mu_y
+    w = fit_closed_form_ridge(xc, yc, regularization=regularization)
+    return mu_x, mu_y, w
 
 
 def score_dense_rankings(
@@ -306,7 +338,8 @@ def score_map_plus_backfill(
     for row_idx, qid in enumerate(query_ids):
         row = combined[row_idx]
         if n_docs > max(k_eff * 4, 64):
-            cand_idx = np.argpartition(-row, k_eff - 1)[: min(n_docs, max(k_eff * 4, 64))]
+            kth_val = float(np.partition(row, n_docs - k_eff)[n_docs - k_eff])
+            cand_idx = np.flatnonzero(row >= kth_val)
             ordered_idx = sorted(cand_idx.tolist(), key=lambda j: (-float(row[j]), canonical_docs[j]))[:k_eff]
         else:
             ordered_idx = sorted(range(n_docs), key=lambda j: (-float(row[j]), canonical_docs[j]))[:k_eff]

@@ -1,0 +1,173 @@
+{
+  "schema_version": "bundle_registry_spec_v2",
+  "release_status": "PRE-RELEASE / GATES PENDING",
+  "pristine_mirror_manifest": "archive/pristine-b37e6a55-exact/PRISTINE_MANIFEST.json",
+  "bundles": [
+    {
+      "id": "s1",
+      "part": "PART_I_HISTORICAL",
+      "role": "HISTORICAL_PRIMARY",
+      "dir": "artifacts/flagship1-night1/20261121-flagship1-r1/s1",
+      "manifest": "s1_m1_m3_manifest.json",
+      "receipt": "report_receipt.json",
+      "ancillary_json_hashes": ["s1_m2_preflight.json", "selection_lock.json"],
+      "notes": "Stage-0 M1-M3 frontier; 2/2 ancillary JSON hashes verified; historical CSV/JSONL unhashed in receipt."
+    },
+    {
+      "id": "s2",
+      "part": "PART_I_HISTORICAL",
+      "role": "HISTORICAL_PRIMARY",
+      "dir": "artifacts/flagship1-night1/20261121-flagship1-r1/s2",
+      "manifest": "s2_multihop_manifest.json",
+      "receipt": "report_receipt.json",
+      "notes": "3-hop spectral condition blow-up vs Procrustes; historical CSV unhashed in receipt."
+    },
+    {
+      "id": "s3",
+      "part": "PART_I_HISTORICAL",
+      "role": "HISTORICAL_PRIMARY",
+      "dir": "artifacts/flagship1-night1/20261121-flagship1-r1/s3",
+      "manifest": "s3_tra1_m4_manifest.json",
+      "receipt": "report_receipt.json",
+      "notes": "Machine verdict TRA1_OR_M4_NEEDS_REVIEW (NFCorpus crossdim LCB97.5=-0.045658); separate 8/8 hostile blocks."
+    },
+    {
+      "id": "spherical",
+      "part": "PART_I_HISTORICAL",
+      "role": "HISTORICAL_PRIMARY",
+      "dir": "artifacts/flagship1-night1/20261121-spherical-r1/spherical",
+      "manifest": "spherical_ablation_manifest.json",
+      "receipt": "report_receipt.json",
+      "notes": "2x2 spherical centering/whitening ablation & B1-B3 backfill study."
+    },
+    {
+      "id": "precipitated",
+      "part": "PART_I_HISTORICAL",
+      "role": "HISTORICAL_PRIMARY",
+      "dir": "artifacts/flagship1-night1/20261121-precipitated-r1/precipitated",
+      "manifest": "precipitated_manifest.json",
+      "receipt": "report_receipt.json",
+      "notes": "P4/P6 manifold-precipitated anchor selection study."
+    },
+    {
+      "id": "f1_expanded",
+      "part": "PART_I_HISTORICAL",
+      "role": "HISTORICAL_PRIMARY",
+      "dir": "artifacts/flagship1-night1/20261121-tandem-r1/f1_expanded",
+      "manifest": "f1_expanded_manifest.json",
+      "receipt": "report_receipt.json",
+      "notes": "6-BEIR expanded Flagship #1 single-hop, low-anchor, and 4-hop suite."
+    },
+    {
+      "id": "f1_conformal_4hop",
+      "part": "PART_I_HISTORICAL",
+      "role": "HISTORICAL_PRIMARY",
+      "dir": "artifacts/flagship1-night1/20261121-tandem-r2/f1_conformal_4hop",
+      "manifest": "f1_conformal_4hop_manifest.json",
+      "receipt": "report_receipt.json",
+      "notes": "6-BEIR 4-hop conformal radius-matching validation."
+    },
+    {
+      "id": "f2_iq04",
+      "part": "PART_I_HISTORICAL",
+      "role": "HISTORICAL_PRIMARY",
+      "dir": "artifacts/flagship1-night1/20261121-tandem-r1/f2_iq04",
+      "manifest": "f2_iq04_manifest.json",
+      "receipt": "report_receipt.json",
+      "notes": "IQ-04 1,500-lifecycle synthetic temporal evidence suite + ScaleMAS surrogate."
+    },
+    {
+      "id": "f2_hard",
+      "part": "PART_I_HISTORICAL",
+      "role": "HISTORICAL_PRIMARY",
+      "dir": "artifacts/flagship1-night1/20261121-tandem-r1/f2_hard",
+      "manifest": "f2_hard_manifest.json",
+      "receipt": "report_receipt.json",
+      "notes": "Hard stress suite (5 families, Nemotron-3.5-Lightning)."
+    },
+    {
+      "id": "iq01",
+      "part": "PART_I_HISTORICAL",
+      "role": "FALSIFIER",
+      "dir": "artifacts/flagship1-night1/20261121-tandem-r1/iq01",
+      "manifest": "iq01_manifest.json",
+      "receipt": "report_receipt.json",
+      "notes": "Negative control falsifier confirming IQ-01 order-commutator null result."
+    },
+    {
+      "id": "f2_longmemeval",
+      "part": "PART_I_HISTORICAL",
+      "role": "SUPERSEDED_BY:f2_longmemeval_v2",
+      "dir": "artifacts/flagship1-night1/20261121-tandem-r2/f2_longmemeval",
+      "manifest": "f2_longmemeval_manifest.json",
+      "receipt": "report_receipt.json",
+      "notes": "Initial LongMemEval run; superseded by f2_longmemeval_v2."
+    },
+    {
+      "id": "f2_longmemeval_v2",
+      "part": "PART_I_HISTORICAL",
+      "role": "HISTORICAL_PRIMARY",
+      "dir": "artifacts/flagship1-night1/20261121-tandem-r2/f2_longmemeval_v2",
+      "manifest": "f2_longmemeval_manifest.json",
+      "receipt": "report_receipt.json",
+      "notes": "LongMemEval-S N=50 KU subset; MUST disclose Regime A clean 42/50 M4b vs 46/50 M1 beside Regime B stress."
+    },
+    {
+      "id": "f2_ek5_v2_1m",
+      "part": "PART_II_RIGOR_R3",
+      "role": "PRE_FIX_AUDIT_BASELINE",
+      "dir": "artifacts/flagship1-night1/20261121-rigor-r3/f2_ek5_v2_1m",
+      "manifest": "ek5_v2_manifest.json",
+      "receipt": "report_receipt.json",
+      "notes": "Pre-fix EK5 v2 1M scaling baseline (3/3 side-artifact hashes verified); superseded by f2_ek5_v3_1m_powerlaw."
+    },
+    {
+      "id": "f2_unified_zs_locomo",
+      "part": "PART_II_RIGOR_R3",
+      "role": "PRE_FIX_AUDIT_BASELINE",
+      "dir": "artifacts/flagship1-night1/20261121-rigor-r3/f2_unified_zs_locomo",
+      "manifest": "f2_unified_manifest.json",
+      "receipt": "report_receipt.json",
+      "notes": "Pre-fix audit baseline (117/3 conv skew & 3-key/25-row judge race disclosed); remediated in f2_r4_zero_shortcut_v2_and_locomo."
+    },
+    {
+      "id": "f1_4096_ood",
+      "part": "PART_II_RIGOR_R3",
+      "role": "MANIFEST_AGGREGATE_ONLY",
+      "dir": "artifacts/flagship1-night1/20261121-rigor-r3/f1_4096_ood",
+      "manifest": "f1_4096_ood_manifest.json",
+      "receipt": "report_receipt.json",
+      "notes": "Pre-fix pristine 4096-d OOD probe (1,000 chain anchors, 2,000 direct anchors, 86 SciFact REPORT vs 300 OOD)."
+    },
+    {
+      "id": "f1_r4_comprehensive",
+      "part": "PART_III_RIGOR_R4",
+      "role": "R4_VERIFIED_PRIMARY",
+      "dir": "artifacts/flagship1-night1/20261121-rigor-r4/f1_r4_comprehensive",
+      "manifest": "f1_r4_manifest.json",
+      "receipt": "report_receipt.json",
+      "optional_until_run": true,
+      "notes": "Post-council Flagship #1 side-by-side matrix (all original baselines + OOS/EM-2/EM-5b/A2g/Polar/A3-2x2/B4; 100% SHA-256)."
+    },
+    {
+      "id": "f2_ek5_v3_1m_powerlaw",
+      "part": "PART_III_RIGOR_R4",
+      "role": "R4_VERIFIED_PRIMARY",
+      "dir": "artifacts/flagship1-night1/20261121-rigor-r4/f2_ek5_v3_1m_powerlaw",
+      "manifest": "f2_ek5_v3_1m_manifest.json",
+      "receipt": "report_receipt.json",
+      "optional_until_run": true,
+      "notes": "Post-council EK5 v3 K=4 differential oracle proofs (256+65,536+262,144+28,561+25,000), 1M power-law/hubs, & 100k service."
+    },
+    {
+      "id": "f2_r4_zero_shortcut_v2_and_locomo",
+      "part": "PART_III_RIGOR_R4",
+      "role": "R4_VERIFIED_PRIMARY",
+      "dir": "artifacts/flagship1-night1/20261121-rigor-r4/f2_r4_zero_shortcut_v2_and_locomo",
+      "manifest": "f2_r4_suites_manifest.json",
+      "receipt": "report_receipt.json",
+      "optional_until_run": true,
+      "notes": "Post-council Zero-Shortcut v2 (N=240=8x30, EK5 v3 K=4 + Astra 4-line) + 10-conv balanced LoCoMo (N=300=10x30, blind echoes, 0 judge races, EM-1 M4e)."
+    }
+  ]
+}

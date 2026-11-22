@@ -1,0 +1,10 @@
+{
+  "artifact_sha256": {
+    "ek5_v2_dense_phase_transition.csv": "01ace78b104a840862645ef4d5b3f2d58c8cb0a933b385df667ad04fc48cc5e4",
+    "ek5_v2_million_scale_summary.md": "97458c9c07ce72ce9d624b0a14245d59cd5d2664c92cb01000149af8c9b606e2",
+    "ek5_v2_sparse_scaling.csv": "b8b5a50d013ea60f752439f0f0c204b0b6d494f5063399bdf122b6dc0ebc6abf"
+  },
+  "job": "flagship2_ek5_v2_million_scale",
+  "manifest_sha256": "7f306adb7a558626d7293b2d70185185b8160f2017a496d1aaa160f21809a308",
+  "status": "COMPLETED"
+}

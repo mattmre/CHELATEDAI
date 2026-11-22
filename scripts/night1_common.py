@@ -7,7 +7,10 @@ import json
 import math
 import os
 import re
-import resource
+try:
+    import resource
+except ImportError:  # Windows portability
+    resource = None  # type: ignore[assignment]
 import subprocess
 import time
 from collections import Counter
@@ -73,9 +76,19 @@ def current_git_sha(repo_root: Path) -> str:
 
 
 def process_telemetry() -> Dict[str, Any]:
-    rss_kb = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+    rss_mib = 0.0
+    if resource is not None:
+        rss_kb = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+        rss_mib = float(rss_kb) / 1024.0
+    else:
+        try:
+            import psutil
+
+            rss_mib = float(psutil.Process(os.getpid()).memory_info().rss) / (1024.0 ** 2)
+        except Exception:
+            rss_mib = 0.0
     info: Dict[str, Any] = {
-        "peak_rss_mib": round(float(rss_kb) / 1024.0, 2),
+        "peak_rss_mib": round(rss_mib, 2),
         "cuda_available": False,
         "peak_vram_mib": 0.0,
     }
@@ -396,12 +409,145 @@ class FastBM25Index:
             d_norm = (dense_row - float(dense_row.mean())) / (d_std if d_std > 1e-9 else 1.0)
             comb = (1.0 - alpha) * d_norm + alpha * b_norm
             if self.n_docs > max(k_eff * 4, 64):
-                cand = np.argpartition(-comb, k_eff - 1)[: min(self.n_docs, max(k_eff * 4, 64))]
+                kth_val = float(np.partition(comb, self.n_docs - k_eff)[self.n_docs - k_eff])
+                cand = np.flatnonzero(comb >= kth_val)
                 ordered = sorted(cand.tolist(), key=lambda j: (-float(comb[j]), self.doc_ids[j]))[:k_eff]
             else:
                 ordered = sorted(range(self.n_docs), key=lambda j: (-float(comb[j]), self.doc_ids[j]))[:k_eff]
             rankings[canonicalize_id(qid)] = [self.doc_ids[j] for j in ordered]
         return rankings
+
+
+def _clopper_pearson_two_sided(k: int, n: int, alpha: float) -> Tuple[float, float]:
+    """Exact two-sided (1 - alpha) Clopper-Pearson binomial CI via regularized beta / bisection."""
+    if n <= 0:
+        raise ValueError("n must be positive")
+    if k < 0 or k > n:
+        raise ValueError("k must be in [0, n]")
+    # Exact binomial tail via stable log-comb sum (stdlib-only, zero SciPy dependency)
+    def binom_cdf(up_to: int, p: float) -> float:
+        if p <= 0.0:
+            return 1.0
+        if p >= 1.0:
+            return 1.0 if up_to >= n else 0.0
+        lp = math.log(p)
+        lq = math.log(1.0 - p)
+        lg_n = math.lgamma(n + 1)
+        total = 0.0
+        for i in range(0, up_to + 1):
+            total += math.exp(lg_n - math.lgamma(i + 1) - math.lgamma(n - i + 1) + i * lp + (n - i) * lq)
+        return min(1.0, total)
+
+    def binom_sf(from_k: int, p: float) -> float:
+        if from_k <= 0:
+            return 1.0
+        if p <= 0.0:
+            return 0.0
+        if p >= 1.0:
+            return 1.0
+        lp = math.log(p)
+        lq = math.log(1.0 - p)
+        lg_n = math.lgamma(n + 1)
+        total = 0.0
+        for i in range(from_k, n + 1):
+            total += math.exp(lg_n - math.lgamma(i + 1) - math.lgamma(n - i + 1) + i * lp + (n - i) * lq)
+        return min(1.0, total)
+
+    target = alpha / 2.0
+    if k == 0:
+        low = 0.0
+    else:
+        lo, hi = 0.0, k / float(n)
+        for _ in range(60):
+            mid = 0.5 * (lo + hi)
+            if binom_sf(k, mid) > target:
+                hi = mid
+            else:
+                lo = mid
+        low = lo
+
+    if k == n:
+        high = 1.0
+    else:
+        lo, hi = k / float(n), 1.0
+        for _ in range(60):
+            mid = 0.5 * (lo + hi)
+            if binom_cdf(k, mid) > target:
+                lo = mid
+            else:
+                hi = mid
+        high = hi
+    return float(low), float(high)
+
+
+def exact_paired_binary_ci(
+    a_vals: Sequence[int],
+    b_vals: Sequence[int],
+    *,
+    z: float = 1.959963984540054,
+) -> Dict[str, float]:
+    """Exact conservative Clopper-Pearson Bonferroni AND Tango (1998) matched-pair score CI.
+
+    Valid even at zero discordance (never collapses to degenerate [0.0, 0.0]).
+    """
+    if len(a_vals) != len(b_vals) or len(a_vals) == 0:
+        raise ValueError("a_vals and b_vals must be non-empty and equal length")
+    n = len(a_vals)
+    n10 = sum(1 for a, b in zip(a_vals, b_vals) if int(a) == 1 and int(b) == 0)
+    n01 = sum(1 for a, b in zip(a_vals, b_vals) if int(a) == 0 and int(b) == 1)
+    delta = (n10 - n01) / float(n)
+
+    # 1. Exact conservative 95% Bonferroni Clopper-Pearson (two 97.5% intervals, alpha=0.025 each)
+    lw, uw = _clopper_pearson_two_sided(n10, n, alpha=0.025)
+    ll, ul = _clopper_pearson_two_sided(n01, n, alpha=0.025)
+    cp_low = max(-1.0, lw - ul)
+    cp_high = min(1.0, uw - ll)
+
+    # 2. Tango (1998) asymptotic matched-pair score CI (valid at n10=n01=0)
+    p10 = n10 / float(n)
+    p01 = n01 / float(n)
+    z2 = z * z
+
+    def tango_stat(d: float) -> float:
+        # Exact closed-form Tango (1998) constrained MLE q01(d) under H0: p10 - p01 = d
+        a_coef = 2.0 * n
+        b_coef = (2.0 * n - n10 + n01) * d - (n10 + n01)
+        c_coef = -n01 * d * (1.0 - d)
+        disc = max(0.0, b_coef * b_coef - 4.0 * a_coef * c_coef)
+        q01 = (-b_coef + math.sqrt(disc)) / (2.0 * a_coef)
+        q01 = max(max(0.0, -d), min(0.5 * (1.0 - d), q01))
+        var_num = max(2.0 * q01 + d * (1.0 - d), 1e-15)
+        return ((p10 - p01 - d) ** 2) * n / var_num
+
+    # Bisect lower bound in [-1, delta] and upper bound in [delta, 1]
+    lo, hi = -1.0 + 1e-12, delta
+    for _ in range(60):
+        mid = 0.5 * (lo + hi)
+        if tango_stat(mid) > z2:
+            lo = mid
+        else:
+            hi = mid
+    tango_low = lo
+
+    lo, hi = delta, 1.0 - 1e-12
+    for _ in range(60):
+        mid = 0.5 * (lo + hi)
+        if tango_stat(mid) > z2:
+            hi = mid
+        else:
+            lo = mid
+    tango_high = hi
+
+    return {
+        "n": int(n),
+        "n10": int(n10),
+        "n01": int(n01),
+        "delta": float(delta),
+        "clopper_pearson_low": float(cp_low),
+        "clopper_pearson_high": float(cp_high),
+        "tango_score_low": float(tango_low),
+        "tango_score_high": float(tango_high),
+    }
 
 
 def paired_bootstrap_delta(
@@ -410,12 +556,42 @@ def paired_bootstrap_delta(
     *,
     n_bootstrap: int = 10_000,
     seed: int = 42,
+    expected_ids: Optional[Sequence[str]] = None,
+    strict_ids: bool = True,
 ) -> Dict[str, float]:
-    """Paired bootstrap of mean(a - b) over common query IDs."""
-    qids = sorted(set(scores_a.keys()) & set(scores_b.keys()))
+    """Paired two-sided 95% percentile bootstrap of mean(a - b) (2.5th / 97.5th quantiles).
+
+    Fails closed (`ValueError`) on missing/extra/non-finite IDs when `strict_ids=True`.
+    When all values are binary {0, 1}, also attaches exact Clopper-Pearson & Tango (1998)
+    matched-pair intervals so zero-discordance ties never collapse to misleading [0, 0].
+    """
+    keys_a = set(scores_a.keys())
+    keys_b = set(scores_b.keys())
+    if strict_ids and keys_a != keys_b:
+        raise ValueError(
+            f"Paired bootstrap ID mismatch: only_in_a={len(keys_a - keys_b)}, only_in_b={len(keys_b - keys_a)}"
+        )
+    if expected_ids is not None:
+        if len(set(expected_ids)) != len(expected_ids):
+            raise ValueError("expected_ids contains duplicate IDs")
+        exp_set = set(expected_ids)
+        if strict_ids and (keys_a != exp_set or keys_b != exp_set):
+            raise ValueError(
+                f"Paired bootstrap IDs do not match expected_ids: expected={len(exp_set)}, "
+                f"a={len(keys_a)}, b={len(keys_b)}"
+            )
+        qids = sorted(exp_set & keys_a & keys_b)
+    else:
+        qids = sorted(keys_a & keys_b)
     if not qids:
         raise ValueError("No overlapping query IDs for paired bootstrap")
-    diffs = np.asarray([float(scores_a[q]) - float(scores_b[q]) for q in qids], dtype=np.float64)
+
+    vals_a = np.asarray([float(scores_a[q]) for q in qids], dtype=np.float64)
+    vals_b = np.asarray([float(scores_b[q]) for q in qids], dtype=np.float64)
+    if not (np.all(np.isfinite(vals_a)) and np.all(np.isfinite(vals_b))):
+        raise ValueError("Non-finite score encountered in paired_bootstrap_delta")
+
+    diffs = vals_a - vals_b
     rng = np.random.default_rng(seed)
     n_q = len(qids)
     boot = np.empty(n_bootstrap, dtype=np.float64)
@@ -424,13 +600,22 @@ def paired_bootstrap_delta(
         end = min(n_bootstrap, start + chunk)
         idx = rng.integers(0, n_q, size=(end - start, n_q))
         boot[start:end] = diffs[idx].mean(axis=1)
-    return {
+    out: Dict[str, float] = {
         "n_queries": int(n_q),
         "mean_delta": float(diffs.mean()),
         "lcb_95": float(np.quantile(boot, 0.025)),
         "ucb_95": float(np.quantile(boot, 0.975)),
         "lcb_975": float(np.quantile(boot, 0.025)),
     }
+    if np.all(np.isin(vals_a, (0.0, 1.0))) and np.all(np.isin(vals_b, (0.0, 1.0))):
+        exact = exact_paired_binary_ci(vals_a.astype(int).tolist(), vals_b.astype(int).tolist())
+        out["n10"] = float(exact["n10"])
+        out["n01"] = float(exact["n01"])
+        out["clopper_pearson_lcb95"] = exact["clopper_pearson_low"]
+        out["clopper_pearson_ucb95"] = exact["clopper_pearson_high"]
+        out["tango_score_lcb95"] = exact["tango_score_low"]
+        out["tango_score_ucb95"] = exact["tango_score_high"]
+    return out
 
 
 def write_json_atomic(path: Path, payload: Any) -> str:

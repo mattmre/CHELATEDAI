@@ -1191,17 +1191,47 @@ def evaluate_arm_on_query(
     }
 
 
+from ek5_v3_stratified import (  # noqa: E402
+    DEP_ALL_TYPES,
+    DEP_CUR_TYPES,
+    DEP_EP_ONLY_TYPES,
+    EdgeAttestation,
+    EpistemicTelemetry,
+    MutationDelta,
+    StratifiedEvent,
+    StratifiedEvidenceStore,
+    SupersedeCycleError,
+    V3_VALID_EDGE_TYPES,
+    classify_high_similarity_pair,
+    compute_alternating_wfs_oracle,
+    strip_boilerplate_headers,
+)
+
+
 __all__ = [
     "CASE_FAMILIES",
+    "DEP_ALL_TYPES",
+    "DEP_CUR_TYPES",
+    "DEP_EP_ONLY_TYPES",
+    "EdgeAttestation",
+    "EpistemicTelemetry",
     "EvidenceEdge",
     "EvidenceEvent",
     "IncrementalEvidenceStore",
     "LifecycleCorpus",
     "LifecycleQuery",
+    "MutationDelta",
     "ScopedBM25",
+    "StratifiedEvent",
+    "StratifiedEvidenceStore",
+    "SupersedeCycleError",
+    "V3_VALID_EDGE_TYPES",
+    "classify_high_similarity_pair",
+    "compute_alternating_wfs_oracle",
     "compute_full_recompute_eligibility",
     "compute_well_founded_eligibility",
     "evaluate_arm_on_query",
     "generate_iq04_lifecycle_corpus",
     "sparse_invalidate_incremental",
+    "strip_boilerplate_headers",
 ]
