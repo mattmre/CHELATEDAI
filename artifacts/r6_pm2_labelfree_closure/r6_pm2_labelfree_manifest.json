@@ -1,0 +1,53 @@
+{
+  "arm_accuracy_n200": {
+    "QA_Hybrid_Native_E1_EK5v3": 1.0,
+    "QA_Hybrid_Peak_Composed_CAR_EK5v3": 0.635,
+    "QA_Hybrid_Peak_ZeroMu_CausalEMA_EK5v3": 0.975,
+    "QA_Hybrid_Peak_ZeroMu_DualAdap_EK5v3": 0.975,
+    "QA_Hybrid_Peak_ZeroMu_Flat_No_EK5": 0.125,
+    "QA_Hybrid_Peak_ZeroMu_Query0W_CenteredTarget_EK5v3": 0.93
+  },
+  "calibration_scifact_qrels_sha256": "2b6445e2db1b90e3ce277a9014cdbababbf85b54365c87ff838c7d70fe995c3b",
+  "full_3200_record_hybrid_causal_query_latency_ms": {
+    "max_ms": 8.717,
+    "n_queries": 200,
+    "p50_ms": 5.388,
+    "p95_ms": 7.589
+  },
+  "gate_checks": {
+    "causal_bridged_minus_car_lcb95_gt_0": true,
+    "causal_bridged_minus_native_bootstrap_lcb95_ge_minus_5pp": true,
+    "causal_bridged_minus_native_point_ge_minus_3pp": true,
+    "ek5_echo_stress_gain_ge_20pp": true,
+    "full_hybrid_3200rec_query_p95_le_25ms": true,
+    "strictly_causal_online_ema_mu_q": true,
+    "zero_family_labels_used": true
+  },
+  "git_sha": "f1ecb05264667195cba3ea5c8c83448248351c0c",
+  "paired_comparisons": {
+    "CausalEMA_EK5_vs_Flat_No_EK5": {
+      "bootstrap_lcb95": 0.8,
+      "mean_delta": 0.85
+    },
+    "CausalEMA_vs_Composed_CAR": {
+      "bootstrap_lcb95": 0.265,
+      "mean_delta": 0.34,
+      "tango_lcb95": 0.2678
+    },
+    "CausalEMA_vs_Native_E1": {
+      "bootstrap_lcb95": -0.05,
+      "mean_delta": -0.025,
+      "tango_lcb95": -0.0572
+    }
+  },
+  "pm2_labelfree_gate_passed": true,
+  "rows_csv_sha256": "d99cd138b30c510ead0f7dfc9260831f6ec6c80c18384f7f68a64628a82d4bc6",
+  "schema_version": "r6_pm2_labelfree_causal_closure_v1",
+  "telemetry": {
+    "cuda_available": true,
+    "cuda_device": "NVIDIA GeForce RTX 3090",
+    "peak_rss_mib": 1310.49,
+    "peak_vram_mib": 4388.45
+  },
+  "wall_seconds": 100.64
+}

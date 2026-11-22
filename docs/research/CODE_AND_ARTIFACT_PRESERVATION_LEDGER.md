@@ -59,3 +59,13 @@ Because Part IV runs were synced via `scp` onto DGX Spark worktrees whose base g
   - Seals `37,767` files (`17.942 GiB` uncompressed -> `5,587.06 MiB` WinZip/7-Zip AES-256): `293`-ref `--all` Git bundle, all `21` `CHELATEDAI*` directories + nested `.claude/worktrees`, remote DGX Spark `gx10-37c3` & `gx10-6724` `out/` tarballs, `27/27` receipt bundles, Phase-2 D1 4-node fleet proof, and `CHELATEDAI` logs across T3 (`statev2.sqlite` + logs), Antigravity/Gemini (`19` brains), Claude Code (`3` project trees), OpenAI Codex (`25` sessions), and 4-Model Frontier Panel reviews. Verified via `7z t` (`Everything is Ok`).
 - **Additive Phase-2 Demo D1 Modules (Zero Mutation of R1–R5b Files):**
   - `chelated_raw_text_exocortex.py`, `prospective_realworld_drift_corpus.py`, `scripts/run_phase2_d1_local_fleet_proof.py`, `tests/test_chelated_raw_text_exocortex.py`, and `artifacts/phase2_d1_4node_local_fleet_proof/phase2_d1_4node_fleet_manifest.json` (`rows_csv_sha256: c908d82f2a45bd0a666f7d5e118ab3f4fdf00772380ffe5b54b70b1de7abc3b5`).
+
+
+---
+
+## 5. Stage R6 (`PM-2` Label-Free Closure) & Phase-2 Wave 2 (`D1 v2` Full `N=60` + `D2` `1M`-Vector Migration) (`2026-11-22`)
+
+- **Stage R6 `PM-2` Label-Free & Causal Streaming Closure:**
+  - `scripts/run_r6_pm2_labelfree_closure.py` & `artifacts/r6_pm2_labelfree_closure/r6_pm2_labelfree_manifest.json` (`rows_csv_sha256: d99cd138b30c510ead0f7dfc9260831f6ec6c80c18384f7f68a64628a82d4bc6`, `7/7` gate checks passed, `0` `c["family"]` labels, causal EMA `mu_q = 0.9750` vs `Native = 1.0000`, `p95 = 7.589 ms` on the full 3,200-record hybrid workload).
+- **Phase-2 Wave 2 (`D1 v2` Full `N=60` 4-Node Fleet Proof + `D2` `1,000,000`-Vector `Drift-Adapter` vs `ZeroMu` + Semantic Smear):**
+  - `chelated_epistemic_proposer_v2.py`, `tests/test_chelated_epistemic_proposer_v2.py`, `scripts/run_phase2_d1_v2_and_d2_1m_scale.py`, `docs/research/phase2-wave2-results-dashboard.html`, and `artifacts/phase2_wave2_d1v2_and_d2_1m/phase2_wave2_d1v2_and_d2_1m_manifest.json` (`rows_csv_sha256: 3fcbab523376d14e806c9d65e9abddd02ff9e2dd700138809e1fc846937e769c`).
