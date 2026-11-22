@@ -1,0 +1,272 @@
+{
+  "arm_summaries": {
+    "Arm1_Small3B_Bare_HybridRAG": {
+      "accuracy": 0.6833,
+      "api_errors": 0,
+      "by_domain": {
+        "cloud_sre": 0.7,
+        "cybersec_cve": 0.55,
+        "sec_financial": 0.8
+      },
+      "by_regime": {
+        "multihop_version_lineage_drift": 0.9333,
+        "mutual_peer_conflict_abstain": 0.4667,
+        "rumor_laundering_and_audit_trap": 0.3333,
+        "supersession_under_echo_flood": 1.0
+      },
+      "mean_completion_tokens": 0.0,
+      "mean_prompt_tokens": 451.6,
+      "mean_reader_latency_ms": 107.9,
+      "n_cases": 60
+    },
+    "Arm2_Nemotron30B_Bare_HybridRAG": {
+      "accuracy": 0.7167,
+      "api_errors": 0,
+      "by_domain": {
+        "cloud_sre": 0.65,
+        "cybersec_cve": 0.6,
+        "sec_financial": 0.9
+      },
+      "by_regime": {
+        "multihop_version_lineage_drift": 1.0,
+        "mutual_peer_conflict_abstain": 0.2667,
+        "rumor_laundering_and_audit_trap": 0.6,
+        "supersession_under_echo_flood": 1.0
+      },
+      "mean_completion_tokens": 10.0,
+      "mean_prompt_tokens": 477.0,
+      "mean_reader_latency_ms": 3366.4,
+      "n_cases": 60
+    },
+    "Arm3_Nemotron30B_ThinkingMode_Bare_HybridRAG": {
+      "accuracy": 0.5833,
+      "api_errors": 0,
+      "by_domain": {
+        "cloud_sre": 0.65,
+        "cybersec_cve": 0.6,
+        "sec_financial": 0.5
+      },
+      "by_regime": {
+        "multihop_version_lineage_drift": 0.8,
+        "mutual_peer_conflict_abstain": 0.0667,
+        "rumor_laundering_and_audit_trap": 0.6,
+        "supersession_under_echo_flood": 0.8667
+      },
+      "mean_completion_tokens": 871.7,
+      "mean_prompt_tokens": 477.0,
+      "mean_reader_latency_ms": 37735.3,
+      "n_cases": 60
+    },
+    "Arm4a_Nemotron30B_Mem0_RawQdrant": {
+      "accuracy": 0.45,
+      "api_errors": 0,
+      "by_domain": {
+        "cloud_sre": 0.4,
+        "cybersec_cve": 0.4,
+        "sec_financial": 0.55
+      },
+      "by_regime": {
+        "multihop_version_lineage_drift": 0.4667,
+        "mutual_peer_conflict_abstain": 0.1333,
+        "rumor_laundering_and_audit_trap": 0.2,
+        "supersession_under_echo_flood": 1.0
+      },
+      "mean_completion_tokens": 9.6,
+      "mean_prompt_tokens": 482.1,
+      "mean_reader_latency_ms": 3233.0,
+      "n_cases": 60
+    },
+    "Arm4b_Nemotron30B_Mem0_LiveInfer_N24": {
+      "accuracy": 0.875,
+      "api_errors": 0,
+      "by_domain": {
+        "cloud_sre": 0.75,
+        "cybersec_cve": 0.875,
+        "sec_financial": 1.0
+      },
+      "by_regime": {
+        "multihop_version_lineage_drift": 1.0,
+        "mutual_peer_conflict_abstain": 0.5,
+        "rumor_laundering_and_audit_trap": 1.0,
+        "supersession_under_echo_flood": 1.0
+      },
+      "mean_completion_tokens": 9.7,
+      "mean_prompt_tokens": 392.3,
+      "mean_reader_latency_ms": 2303.6,
+      "n_cases": 24
+    },
+    "Arm5_Small3B_Chelated_RawText_EK5v3": {
+      "accuracy": 0.8333,
+      "api_errors": 0,
+      "by_domain": {
+        "cloud_sre": 0.75,
+        "cybersec_cve": 0.85,
+        "sec_financial": 0.9
+      },
+      "by_regime": {
+        "multihop_version_lineage_drift": 0.8667,
+        "mutual_peer_conflict_abstain": 0.6,
+        "rumor_laundering_and_audit_trap": 0.9333,
+        "supersession_under_echo_flood": 0.9333
+      },
+      "mean_completion_tokens": 0.0,
+      "mean_prompt_tokens": 439.7,
+      "mean_reader_latency_ms": 99.9,
+      "n_cases": 60
+    },
+    "Arm6a_Heterogeneous_3090toSpark_ZeroMu_EK5v3_Nemotron30B": {
+      "accuracy": 0.8333,
+      "api_errors": 0,
+      "by_domain": {
+        "cloud_sre": 0.7,
+        "cybersec_cve": 0.85,
+        "sec_financial": 0.95
+      },
+      "by_regime": {
+        "multihop_version_lineage_drift": 0.9333,
+        "mutual_peer_conflict_abstain": 0.5333,
+        "rumor_laundering_and_audit_trap": 0.9333,
+        "supersession_under_echo_flood": 0.9333
+      },
+      "mean_completion_tokens": 9.3,
+      "mean_prompt_tokens": 460.6,
+      "mean_reader_latency_ms": 1577.1,
+      "n_cases": 60
+    },
+    "Arm6b_Heterogeneous_Composed_CAR_EK5v3_Nemotron30B": {
+      "accuracy": 0.7,
+      "api_errors": 0,
+      "by_domain": {
+        "cloud_sre": 0.6,
+        "cybersec_cve": 0.8,
+        "sec_financial": 0.7
+      },
+      "by_regime": {
+        "multihop_version_lineage_drift": 0.9333,
+        "mutual_peer_conflict_abstain": 0.4,
+        "rumor_laundering_and_audit_trap": 0.6,
+        "supersession_under_echo_flood": 0.8667
+      },
+      "mean_completion_tokens": 8.7,
+      "mean_prompt_tokens": 492.4,
+      "mean_reader_latency_ms": 1754.6,
+      "n_cases": 60
+    },
+    "Arm7_Native_BGEM3_EK5v3_Nemotron30B": {
+      "accuracy": 0.85,
+      "api_errors": 0,
+      "by_domain": {
+        "cloud_sre": 0.75,
+        "cybersec_cve": 0.85,
+        "sec_financial": 0.95
+      },
+      "by_regime": {
+        "multihop_version_lineage_drift": 1.0,
+        "mutual_peer_conflict_abstain": 0.5333,
+        "rumor_laundering_and_audit_trap": 0.9333,
+        "supersession_under_echo_flood": 0.9333
+      },
+      "mean_completion_tokens": 9.3,
+      "mean_prompt_tokens": 465.4,
+      "mean_reader_latency_ms": 2602.9,
+      "n_cases": 60
+    }
+  },
+  "corpus": {
+    "calibration_scifact_qrels_sha256": "2b6445e2db1b90e3ce277a9014cdbababbf85b54365c87ff838c7d70fe995c3b",
+    "causal_streaming_ema_mu_q": true,
+    "corpus_sha256": "cb6bc0082b5850f4edfea668d1ecb2a73fe6f898b7476e34ed11036cb378765b",
+    "domains": [
+      "cybersec_cve",
+      "sec_financial",
+      "cloud_sre"
+    ],
+    "n_cases": 60,
+    "n_global_raw_docs": 1020,
+    "osv_live_cve_seeded": true,
+    "regimes": [
+      "supersession_under_echo_flood",
+      "rumor_laundering_and_audit_trap",
+      "multihop_version_lineage_drift",
+      "mutual_peer_conflict_abstain"
+    ],
+    "zero_family_labels_at_query_time": true,
+    "zero_pre_extracted_edges": true
+  },
+  "git_sha": "0972b09f764873ec943b9fdd86382528881b8d04",
+  "hardware_fleet": {
+    "edge_node": "Local Desktop NVIDIA RTX 3090 (24 GB VRAM)",
+    "spark_1": "gx10-37c3 (10.0.0.49, 128 GB, Nemotron-3.5-30B-A3B + mem0ai 2.2.1)",
+    "spark_2": "gx10-6724 (10.0.0.194, 128 GB, BAAI/bge-m3 1024-d + Nemotron-3.5-30B Thinking)",
+    "spark_3": "gx10-eba1 (10.0.0.24, 128 GB, Bridged ZeroMu + EK5 v3 + Nemotron-3.5-30B)"
+  },
+  "paired_bootstrap_comparisons": {
+    "Hetero_3090toSpark_ZeroMu_EK5v3_vs_Large30B_Bare": {
+      "lcb_95": -0.0167,
+      "mean_delta": 0.1167,
+      "tango_score_lcb95": -0.0108,
+      "ucb_95": 0.25
+    },
+    "Hetero_3090toSpark_ZeroMu_vs_Composed_CAR": {
+      "lcb_95": 0.05,
+      "mean_delta": 0.1333,
+      "tango_score_lcb95": 0.0373,
+      "ucb_95": 0.2333
+    },
+    "Hetero_3090toSpark_ZeroMu_vs_Mem0_LiveInfer_N24": {
+      "lcb_95": -0.1667,
+      "mean_delta": -0.0417,
+      "tango_score_lcb95": -0.2278,
+      "ucb_95": 0.0833
+    },
+    "Hetero_3090toSpark_ZeroMu_vs_Native_1024d_BGEM3": {
+      "lcb_95": -0.05,
+      "mean_delta": -0.0167,
+      "tango_score_lcb95": -0.0886,
+      "ucb_95": 0.0
+    },
+    "Small3B_Chelated_RTX3090_vs_Large30B_Bare_Spark": {
+      "lcb_95": -0.0167,
+      "mean_delta": 0.1167,
+      "tango_score_lcb95": -0.0195,
+      "ucb_95": 0.25
+    },
+    "Small3B_Chelated_RTX3090_vs_Large30B_ThinkingMode_Spark": {
+      "lcb_95": 0.0833,
+      "mean_delta": 0.25,
+      "tango_score_lcb95": 0.093,
+      "ucb_95": 0.4
+    },
+    "Small3B_Chelated_vs_Small3B_Bare": {
+      "lcb_95": 0.0,
+      "mean_delta": 0.15,
+      "tango_score_lcb95": -0.007,
+      "ucb_95": 0.3
+    }
+  },
+  "pipeline_telemetry": {
+    "causal_bridged_query_p50_ms": 0.937,
+    "causal_bridged_query_p95_ms": 1.396,
+    "ek5_v3_global_compile_ms": 115.35,
+    "local_process": {
+      "cuda_available": true,
+      "cuda_device": "NVIDIA GeForce RTX 3090",
+      "peak_rss_mib": 1627.84,
+      "peak_vram_mib": 7714.74
+    },
+    "mem0_live_infer_mean_write_ms_per_case": 4401.61,
+    "mem0_raw_qdrant_mean_write_ms_per_case": 101.92,
+    "rtx3090_raw_extraction": {
+      "batch_extract_sec": 132.03,
+      "device": "cuda",
+      "extractor_model": "Qwen/Qwen2.5-3B-Instruct",
+      "model_load_sec": 179.73,
+      "ms_per_doc": 129.44,
+      "n_docs": 1020,
+      "peak_vram_mib": 7776.6
+    }
+  },
+  "rows_csv_sha256": "c908d82f2a45bd0a666f7d5e118ab3f4fdf00772380ffe5b54b70b1de7abc3b5",
+  "schema_version": "phase2_d1_4node_local_fleet_proof_v1",
+  "wall_seconds": 219.36
+}

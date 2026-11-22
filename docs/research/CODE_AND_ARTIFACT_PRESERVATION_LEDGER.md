@@ -46,3 +46,16 @@ Because Part IV runs were synced via `scp` onto DGX Spark worktrees whose base g
 - `scripts/run_r5b_spark6724_completion.py`: `d4239fe2be2a2a865b3e1730a33043cb6f20d74a0a500128cb350d8dcdf2607e` (`23,464` bytes)
 - `scripts/run_r5b_spark37c3_part2_and_hybrid_pm2.py`: `76ebe7da47ee06cdfd294480cf3ff573503309a4846a1efadda6b1f0328d1832` (`31,089` bytes)
 - `scripts/run_r5b_steelmanned_mem0_pm3.py`: `3d2f0ff4334a78a630b47f8c974f904ff74dd78092fc504b6a5703eddc12fda0` (`20,200` bytes)
+
+
+---
+
+## 4. Phase-2 Demo D1 (`4-Node Fleet Proof`) & Encrypted Google Drive Master Vault (`2026-11-22`)
+
+- **Encrypted Google Drive Master Vault (`O:\backups\CHELATEDAI-COMPLETE-VAULT-2026-11-22\`):**
+  - `CHELATEDAI-COMPLETE-VAULT-2026-11-22.zip.001`: `1,992,294,400` bytes (`SHA-256: d4c8fb8b46644c4aa1509eb1c59d7b3c82a028c9931fea2459397b970ddf7530`)
+  - `CHELATEDAI-COMPLETE-VAULT-2026-11-22.zip.002`: `1,992,294,400` bytes (`SHA-256: 304111a9f4186fe595107aa72c52d9d974d7967cd81dc7a648ad1527ab34b6e0`)
+  - `CHELATEDAI-COMPLETE-VAULT-2026-11-22.zip.003`: `1,873,870,726` bytes (`SHA-256: d809d263f991cc7c8878f4e62579a4d5f2dc4cc9d525d34336dfa492e961e76e`)
+  - Seals `37,767` files (`17.942 GiB` uncompressed -> `5,587.06 MiB` WinZip/7-Zip AES-256): `293`-ref `--all` Git bundle, all `21` `CHELATEDAI*` directories + nested `.claude/worktrees`, remote DGX Spark `gx10-37c3` & `gx10-6724` `out/` tarballs, `27/27` receipt bundles, Phase-2 D1 4-node fleet proof, and `CHELATEDAI` logs across T3 (`statev2.sqlite` + logs), Antigravity/Gemini (`19` brains), Claude Code (`3` project trees), OpenAI Codex (`25` sessions), and 4-Model Frontier Panel reviews. Verified via `7z t` (`Everything is Ok`).
+- **Additive Phase-2 Demo D1 Modules (Zero Mutation of R1–R5b Files):**
+  - `chelated_raw_text_exocortex.py`, `prospective_realworld_drift_corpus.py`, `scripts/run_phase2_d1_local_fleet_proof.py`, `tests/test_chelated_raw_text_exocortex.py`, and `artifacts/phase2_d1_4node_local_fleet_proof/phase2_d1_4node_fleet_manifest.json` (`rows_csv_sha256: c908d82f2a45bd0a666f7d5e118ab3f4fdf00772380ffe5b54b70b1de7abc3b5`).
