@@ -30,7 +30,7 @@ No historical baseline, code version, whitepaper revision, or experimental artif
 | `archive/r5-r5b-complete-vault-2026-11-22/` | `39` | Consolidated master vault of all R5 + R5b CSVs, manifests, receipts, and sealed audit keys. |
 | `archive/r5-exact-code-snapshot-2026-11-22/` | `10` | **Exact Python modules & scripts (`R5_EXACT_CODE_MANIFEST.json`)** as executed during R5 & R5b prior to 4-Model Panel edge-case fixes (`em4_soft_telemetry_routing.py` `761fdcc41115...`, `ek5_v3_stratified.py` `b54dadb51e1f...`, `spherical_migration_bridge.py` `437b4db73431...`, and all 6 R5/R5b runners). |
 | `archive/whitepaper-v2-pre-r5-update-backup/` | `5` | Exact v2 `bundle_registry_spec.json`, `verified_registry.json`, Whitepaper v2, HTML v2, and `build_whitepaper_assets.py` prior to Draft v3 update. |
-| `archive/whitepaper-v3-pre-panel-edits-backup/` | `8` | Exact Draft v3 (`b57b05660edf`) files as audited by the 4-Model Frontier Panel (`GPT-6.2 Astra Ultra`, `Claude Opus 5.5 Ultrathink`, `Grok 4.7 XHigh`, `Gemini 4 Neon XHigh`) prior to post-panel refinements. |
+| `archive/whitepaper-v3-pre-panel-edits-backup/` | `9` | Exact Draft v3 (`b57b05660edf`) files as audited by the 4-Model Frontier Panel (`GPT-6.2 Astra Ultra`, `Claude Opus 5.5 Ultrathink`, `Grok 4.7 XHigh`, `Gemini 4 Neon XHigh`) prior to post-panel refinements, plus `phase2-roadmap-6week-v1.md` (`SHA-256: 4f620d90b75a0c40e933cb944170c0d821be6e8508c15b92c6737676cdd8f7b0`) prior to 10-day sprint acceleration. |
 
 ---
 
