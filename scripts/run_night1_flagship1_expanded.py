@@ -185,7 +185,7 @@ def run_expanded_flagship1(
                 w_unc = fit_closed_form_svd_procrustes(d_new, d_old, fit_idx=anc_50)
                 w_rid = _tune_ridge(d_new, d_old, q_new[dev_idx], splits["DEVELOPMENT"], doc_ids, qrels, anc_50)
                 # Packaged stack: A2 Centered Procrustes + A3 Whitened CORAL Procrustes
-                b_a2 = CenteredProcrustesBridge.fit(d_new, d_old, fit_idx=anc_50)
+                b_a2 = CenteredProcrustesBridge.fit(d_new, d_old, fit_idx=anc_50, match_radius=False)
                 b_a3 = _tune_whitened(d_new, d_old, q_new[dev_idx], splits["DEVELOPMENT"], doc_ids, qrels, anc_50)
 
                 q_dev_r = q_new[dev_idx] @ w_rid
@@ -264,8 +264,8 @@ def run_expanded_flagship1(
                 idx_u = np.sort(rng_u.choice(len(doc_ids), size=n_low, replace=False))
                 idx_km = select_spherical_kmeanspp_anchors(d_new, n_low, seed=seed)
 
-                b_u = CenteredProcrustesBridge.fit(d_new, d_old, fit_idx=idx_u)
-                b_km = CenteredProcrustesBridge.fit(d_new, d_old, fit_idx=idx_km)
+                b_u = CenteredProcrustesBridge.fit(d_new, d_old, fit_idx=idx_u, match_radius=False)
+                b_km = CenteredProcrustesBridge.fit(d_new, d_old, fit_idx=idx_km, match_radius=False)
                 pq_u = evaluate_rankings_mlr(
                     score_dense_rankings(b_u.transform(q_new[rep_idx]), d_old, splits["REPORT"], doc_ids, k=10)[0],
                     qrels, splits["REPORT"], k=10,
@@ -308,8 +308,12 @@ def run_expanded_flagship1(
                     splits["DEVELOPMENT"], doc_ids, qrels, idx_u,
                 )
                 hop_ridge.append(wr)
-                hop_cent_u.append(CenteredProcrustesBridge.fit(enc[sk]["docs"], enc[tk]["docs"], fit_idx=idx_u))
-                hop_cent_km.append(CenteredProcrustesBridge.fit(enc[sk]["docs"], enc[tk]["docs"], fit_idx=idx_km))
+                hop_cent_u.append(
+                    CenteredProcrustesBridge.fit(enc[sk]["docs"], enc[tk]["docs"], fit_idx=idx_u, match_radius=False)
+                )
+                hop_cent_km.append(
+                    CenteredProcrustesBridge.fit(enc[sk]["docs"], enc[tk]["docs"], fit_idx=idx_km, match_radius=False)
+                )
 
             for hop_m in range(1, len(chain)):
                 sk = chain[hop_m]

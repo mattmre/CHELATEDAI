@@ -76,8 +76,9 @@ def select_spherical_kmeanspp_anchors(
     if k <= 0:
         raise ValueError("n_anchors must be positive")
     rng = np.random.default_rng(seed + 303)
-    if n > candidate_pool_cap:
-        pool = np.sort(rng.choice(n, size=candidate_pool_cap, replace=False))
+    eff_cap = max(int(candidate_pool_cap), k)
+    if n > eff_cap:
+        pool = np.sort(rng.choice(n, size=eff_cap, replace=False))
     else:
         pool = np.arange(n, dtype=np.int64)
     vp = vn[pool]
@@ -120,8 +121,9 @@ def select_kcenter_anchors(
     if eligible.size < k:
         eligible = np.arange(n, dtype=np.int64)
     rng = np.random.default_rng(seed + 101)
-    if eligible.size > candidate_pool_cap:
-        pool = np.sort(rng.choice(eligible, size=candidate_pool_cap, replace=False))
+    eff_cap = max(int(candidate_pool_cap), k)
+    if eligible.size > eff_cap:
+        pool = np.sort(rng.choice(eligible, size=eff_cap, replace=False))
     else:
         pool = eligible
     vp = vn[pool]
@@ -191,8 +193,12 @@ class CenteredProcrustesBridge:
 
     @property
     def condition_number(self) -> float:
+        if abs(self.scale) <= 1e-12:
+            return float("inf")
         sv = np.linalg.svd(self.Q * self.scale, compute_uv=False)
-        return float(sv[0] / max(sv[-1], 1e-12))
+        if sv.size == 0 or sv[-1] <= 1e-12:
+            return float("inf")
+        return float(sv[0] / sv[-1])
 
     @property
     def weights_sha256(self) -> str:
@@ -422,7 +428,8 @@ def score_quantile_calibrated_backfill(
     for row_idx, qid in enumerate(query_ids):
         row = combined[row_idx]
         if n_docs > max(k_eff * 4, 64):
-            cand = np.argpartition(-row, k_eff - 1)[: min(n_docs, max(k_eff * 4, 64))]
+            kth_val = float(np.partition(row, n_docs - k_eff)[n_docs - k_eff])
+            cand = np.flatnonzero(row >= kth_val)
             ordered = sorted(cand.tolist(), key=lambda j: (-float(row[j]), doc_ids[j]))[:k_eff]
         else:
             ordered = sorted(range(n_docs), key=lambda j: (-float(row[j]), doc_ids[j]))[:k_eff]

@@ -187,9 +187,10 @@ def score_dense_rankings(
 
     for row_idx, qid in enumerate(query_ids):
         row = sims[row_idx]
-        # Deterministic canonical tie-break: (-score, doc_id)
+        # Deterministic exact global canonical tie-break: (-score, doc_id), safe under arbitrary ties at cutoff
         if n_docs > max(k_eff * 4, 64):
-            cand_idx = np.argpartition(-row, k_eff - 1)[: min(n_docs, max(k_eff * 4, 64))]
+            kth_val = float(np.partition(row, n_docs - k_eff)[n_docs - k_eff])
+            cand_idx = np.flatnonzero(row >= kth_val)
             ordered_idx = sorted(cand_idx.tolist(), key=lambda j: (-float(row[j]), canonical_docs[j]))[:k_eff]
         else:
             ordered_idx = sorted(range(n_docs), key=lambda j: (-float(row[j]), canonical_docs[j]))[:k_eff]

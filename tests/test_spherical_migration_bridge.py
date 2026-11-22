@@ -212,6 +212,41 @@ class TestSphericalMigrationBridge(unittest.TestCase):
         self.assertEqual(dec_weak.mode, ResolutionMode.ABSTAIN)
         self.assertFalse(dec_weak.can_search)
 
+    def test_audit_edge_cases_constant_target_ties_and_pool_cap(self):
+        # 1. Constant target -> scale=0 -> condition_number must be inf (never 0.0)
+        rng = np.random.default_rng(77)
+        x = l2_normalize(rng.normal(size=(32, 8)))
+        y_const = np.tile(np.array([[1.0] + [0.0] * 7]), (32, 1))
+        b_const = CenteredProcrustesBridge.fit(x, y_const, match_radius=True)
+        self.assertEqual(b_const.scale, 0.0)
+        self.assertEqual(b_const.condition_number, float("inf"))
+
+        # 2. Requesting n_anchors > candidate_pool_cap returns exact unique count without error
+        vecs = l2_normalize(rng.normal(size=(120, 8)))
+        km = select_spherical_kmeanspp_anchors(vecs, 80, seed=5, candidate_pool_cap=32)
+        kc = select_kcenter_anchors(vecs, 80, seed=5, candidate_pool_cap=32)
+        self.assertEqual(len(km), 80)
+        self.assertEqual(len(set(km.tolist())), 80)
+        self.assertEqual(len(kc), 80)
+        self.assertEqual(len(set(kc.tolist())), 80)
+
+        # 3. 160 equal-score docs in reverse ID order must return lexicographically first "000" at rank 1
+        from m1_baseline_ladder import score_dense_rankings
+
+        d_eq = np.tile(np.array([[1.0] + [0.0] * 7]), (160, 1))
+        q_eq = np.array([[1.0] + [0.0] * 7])
+        rev_ids = [f"{i:03d}" for i in reversed(range(160))]
+        rk_dense, _ = score_dense_rankings(q_eq, d_eq, ["q0"], rev_ids, k=10)
+        self.assertEqual(rk_dense["q0"][0], "000")
+        self.assertEqual(rk_dense["q0"][:5], ["000", "001", "002", "003", "004"])
+
+        rk_quant = score_quantile_calibrated_backfill(
+            q_eq, q_eq, d_eq, d_eq, backfill_indices=[0, 1, 2],
+            query_ids=["q0"], doc_ids=rev_ids, dev_queries_new=q_eq, dev_queries_mapped=q_eq, k=10,
+        )
+        self.assertEqual(rk_quant["q0"][0], "000")
+        self.assertEqual(rk_quant["q0"][:5], ["000", "001", "002", "003", "004"])
+
 
 if __name__ == "__main__":
     unittest.main()

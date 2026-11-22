@@ -716,6 +716,255 @@ def sparse_invalidate_incremental(
 
 
 # ---------------------------------------------------------------------------
+# EK5 v2: Exact 3-Valued Well-Founded Semantics (WFS) & Persistent O(|D|+|E(D)|) Store
+# ---------------------------------------------------------------------------
+def _wfs_propagate_local(
+    dirty_nodes: Set[str],
+    attackers: Mapping[str, Set[str]],
+    attacked_by: Mapping[str, Set[str]],
+    deps_of: Mapping[str, Set[str]],
+    dependents_of: Mapping[str, Set[str]],
+    frozen_state: Mapping[str, str],
+) -> Tuple[Dict[str, str], int]:
+    """Exact queue-driven 3-valued Well-Founded Semantics on `dirty_nodes` with frozen boundary.
+
+    States: `"ADMIT"` (grounded true), `"AUDIT_ONLY"` (grounded refuted/invalidated),
+    `"CONTESTED"` (ungrounded / unresolved mutual refutation or circular dependency).
+    Guaranteed monotone, cycle-safe, horizon-free, and linear O(|D| + |E(D)|) in dirty cone size.
+    """
+    non_f_att: Dict[str, int] = {}
+    non_t_dep: Dict[str, int] = {}
+    loc_state: Dict[str, str] = {}
+    q: deque[Tuple[str, str]] = deque()
+    touched_edges = 0
+
+    for v in dirty_nodes:
+        has_t_att = False
+        has_f_dep = False
+        nf_att = 0
+        for u in attackers.get(v, ()):
+            touched_edges += 1
+            if u in dirty_nodes:
+                nf_att += 1
+            else:
+                st_u = frozen_state[u]
+                if st_u == "ADMIT":
+                    has_t_att = True
+                if st_u != "AUDIT_ONLY":
+                    nf_att += 1
+        nt_dep = 0
+        for u in deps_of.get(v, ()):
+            touched_edges += 1
+            if u in dirty_nodes:
+                nt_dep += 1
+            else:
+                st_u = frozen_state[u]
+                if st_u == "AUDIT_ONLY":
+                    has_f_dep = True
+                if st_u != "ADMIT":
+                    nt_dep += 1
+
+        non_f_att[v] = nf_att
+        non_t_dep[v] = nt_dep
+        if has_t_att or has_f_dep:
+            q.append((v, "AUDIT_ONLY"))
+        elif nf_att == 0 and nt_dep == 0:
+            q.append((v, "ADMIT"))
+
+    while q:
+        u, st = q.popleft()
+        if u in loc_state:
+            continue
+        loc_state[u] = st
+        if st == "ADMIT":
+            for w in attacked_by.get(u, ()):
+                touched_edges += 1
+                if w in dirty_nodes and w not in loc_state:
+                    q.append((w, "AUDIT_ONLY"))
+            for w in dependents_of.get(u, ()):
+                touched_edges += 1
+                if w in dirty_nodes and w not in loc_state:
+                    non_t_dep[w] -= 1
+                    if non_f_att[w] == 0 and non_t_dep[w] == 0:
+                        q.append((w, "ADMIT"))
+        else:  # st == "AUDIT_ONLY"
+            for w in dependents_of.get(u, ()):
+                touched_edges += 1
+                if w in dirty_nodes and w not in loc_state:
+                    q.append((w, "AUDIT_ONLY"))
+            for w in attacked_by.get(u, ()):
+                touched_edges += 1
+                if w in dirty_nodes and w not in loc_state:
+                    non_f_att[w] -= 1
+                    if non_f_att[w] == 0 and non_t_dep[w] == 0:
+                        q.append((w, "ADMIT"))
+
+    for v in dirty_nodes:
+        if v not in loc_state:
+            loc_state[v] = "CONTESTED"
+    return loc_state, touched_edges
+
+
+def compute_well_founded_eligibility(
+    events: Mapping[str, EvidenceEvent],
+    edges: Sequence[EvidenceEdge],
+    *,
+    valid_cutoff: int,
+    tx_cutoff: int,
+) -> Dict[str, str]:
+    """Global 3-valued Well-Founded Semantics (`ADMIT` | `AUDIT_ONLY` | `CONTESTED`).
+
+    Eliminates finite-horizon H cutoffs and odd/even parity oscillation on mutual refutation cycles.
+    """
+    visible_ids = {
+        eid
+        for eid, ev in events.items()
+        if ev.transaction_time <= tx_cutoff and ev.valid_time <= valid_cutoff
+    }
+    attackers: Dict[str, Set[str]] = defaultdict(set)
+    attacked_by: Dict[str, Set[str]] = defaultdict(set)
+    deps_of: Dict[str, Set[str]] = defaultdict(set)
+    dependents_of: Dict[str, Set[str]] = defaultdict(set)
+
+    for e in edges:
+        if e.transaction_time <= tx_cutoff and e.src_id in visible_ids and e.dst_id in visible_ids:
+            if e.edge_type in ("REFUTE", "SUPERSEDE"):
+                attackers[e.dst_id].add(e.src_id)
+                attacked_by[e.src_id].add(e.dst_id)
+            elif e.edge_type in ("DERIVES_FROM", "COPY_OF"):
+                deps_of[e.src_id].add(e.dst_id)
+                dependents_of[e.dst_id].add(e.src_id)
+
+    states, _ = _wfs_propagate_local(
+        visible_ids, attackers, attacked_by, deps_of, dependents_of, frozen_state={}
+    )
+    return states
+
+
+class IncrementalEvidenceStore:
+    """EK5 v2 Persistent O(|D| + |E(D)|) Incremental Well-Founded Evidence Store.
+
+    Maintains persistent deduplicated adjacency sets and 3-valued WFS eligibility states
+    (`ADMIT` | `AUDIT_ONLY` | `CONTESTED`). Each incremental mutation traverses ONLY the
+    forward-reachable dirty cone D from inserted nodes/edge targets using frozen boundary
+    states for V \\ D — zero full-graph scans per update, exact bitwise parity with global
+    `compute_well_founded_eligibility` on ALL directed graphs (including multi-refuters,
+    arbitrary-depth chains, and mutual-refutation cycles).
+    """
+
+    def __init__(self) -> None:
+        self.nodes: Set[str] = set()
+        self.attackers: Dict[str, Set[str]] = defaultdict(set)
+        self.attacked_by: Dict[str, Set[str]] = defaultdict(set)
+        self.deps_of: Dict[str, Set[str]] = defaultdict(set)
+        self.dependents_of: Dict[str, Set[str]] = defaultdict(set)
+        self.state: Dict[str, str] = {}
+        self.edge_count: int = 0
+
+    def apply_mutation(
+        self,
+        new_node_ids: Sequence[str] = (),
+        new_edges: Sequence[Tuple[str, str, str]] = (),
+        *,
+        dense_fallback_ratio: Optional[float] = None,
+    ) -> Tuple[Dict[str, str], Dict[str, Any]]:
+        """Insert nodes and `(src_id, dst_id, edge_type)` edges and update WFS incrementally.
+
+        Returns `(changed_states, work_stats)` measuring real wall-clock latency (`wall_ms`),
+        dirty-cone size, and whether the optional dense-cascade circuit breaker fired.
+        """
+        t0 = time.perf_counter()
+        seeds: Set[str] = set()
+        for nid in new_node_ids:
+            if nid not in self.nodes:
+                self.nodes.add(nid)
+                self.state[nid] = "ADMIT"
+                seeds.add(nid)
+
+        for src, dst, etype in new_edges:
+            if src not in self.nodes or dst not in self.nodes:
+                continue
+            if etype in ("REFUTE", "SUPERSEDE"):
+                if src not in self.attackers[dst]:
+                    self.attackers[dst].add(src)
+                    self.attacked_by[src].add(dst)
+                    self.edge_count += 1
+                    seeds.add(dst)
+            elif etype in ("DERIVES_FROM", "COPY_OF"):
+                if dst not in self.deps_of[src]:
+                    self.deps_of[src].add(dst)
+                    self.dependents_of[dst].add(src)
+                    self.edge_count += 1
+                    seeds.add(src)
+
+        if not seeds:
+            return {}, {
+                "dirty_nodes": 0,
+                "dirty_edges": 0,
+                "total_nodes": len(self.nodes),
+                "total_edges": self.edge_count,
+                "dirty_node_ratio": 0.0,
+                "used_dense_fallback": False,
+                "wall_ms": round((time.perf_counter() - t0) * 1000.0, 4),
+            }
+
+        # Step 1: Forward-reachable dirty cone D from seeds along attacked_by U dependents_of
+        dirty: Set[str] = set(seeds)
+        bfs = deque(seeds)
+        bfs_edges = 0
+        used_fallback = False
+        max_dirty = (
+            int(dense_fallback_ratio * len(self.nodes))
+            if dense_fallback_ratio is not None and len(self.nodes) > 0
+            else None
+        )
+        while bfs:
+            u = bfs.popleft()
+            for w in self.attacked_by.get(u, ()):
+                bfs_edges += 1
+                if w not in dirty:
+                    dirty.add(w)
+                    bfs.append(w)
+            for w in self.dependents_of.get(u, ()):
+                bfs_edges += 1
+                if w not in dirty:
+                    dirty.add(w)
+                    bfs.append(w)
+            if max_dirty is not None and len(dirty) > max_dirty:
+                used_fallback = True
+                dirty = set(self.nodes)
+                break
+
+        # Step 2: Boundary-exact local WFS strictly on `dirty`
+        loc_states, prop_edges = _wfs_propagate_local(
+            dirty, self.attackers, self.attacked_by, self.deps_of, self.dependents_of, self.state
+        )
+        changed: Dict[str, str] = {}
+        for v, new_st in loc_states.items():
+            if self.state.get(v) != new_st:
+                self.state[v] = new_st
+                changed[v] = new_st
+        wall_ms = (time.perf_counter() - t0) * 1000.0
+        return changed, {
+            "dirty_nodes": len(dirty),
+            "dirty_edges": bfs_edges + prop_edges,
+            "total_nodes": len(self.nodes),
+            "total_edges": self.edge_count,
+            "dirty_node_ratio": len(dirty) / float(max(len(self.nodes), 1)),
+            "used_dense_fallback": used_fallback,
+            "wall_ms": round(wall_ms, 4),
+        }
+
+    def full_recompute_all(self) -> Tuple[Dict[str, str], float]:
+        """Reference full-graph WFS recomputation for parity & wall-clock speedup benchmarking."""
+        t0 = time.perf_counter()
+        states, _ = _wfs_propagate_local(
+            self.nodes, self.attackers, self.attacked_by, self.deps_of, self.dependents_of, {}
+        )
+        return states, (time.perf_counter() - t0) * 1000.0
+
+
+# ---------------------------------------------------------------------------
 # Six Comparators + Frozen Common Deterministic Answer Selector
 # ---------------------------------------------------------------------------
 def _select_answer_weighted_vote(
@@ -946,10 +1195,12 @@ __all__ = [
     "CASE_FAMILIES",
     "EvidenceEdge",
     "EvidenceEvent",
+    "IncrementalEvidenceStore",
     "LifecycleCorpus",
     "LifecycleQuery",
     "ScopedBM25",
     "compute_full_recompute_eligibility",
+    "compute_well_founded_eligibility",
     "evaluate_arm_on_query",
     "generate_iq04_lifecycle_corpus",
     "sparse_invalidate_incremental",

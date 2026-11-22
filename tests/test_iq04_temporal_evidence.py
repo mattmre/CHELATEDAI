@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
+import random
 import unittest
 
 from iq04_temporal_evidence import (
     EvidenceEdge,
     EvidenceEvent,
+    IncrementalEvidenceStore,
     ScopedBM25,
     compute_full_recompute_eligibility,
+    compute_well_founded_eligibility,
     evaluate_arm_on_query,
     generate_iq04_lifecycle_corpus,
     sparse_invalidate_incremental,
@@ -88,6 +91,80 @@ class TestIQ04TemporalEvidence(unittest.TestCase):
         self.assertTrue(res_c3["is_stale_or_false"])
         self.assertTrue(res_c4["is_correct"])
         self.assertFalse(res_c4["is_stale_or_false"])
+
+    def test_ek5_v2_wfs_passes_all_astra62_counterexamples_and_500_random_tangled_graphs(self):
+        # Counterexample 1: A and B independently refute X; later C refutes A -> X MUST remain AUDIT_ONLY!
+        store = IncrementalEvidenceStore()
+        store.apply_mutation(["X", "A", "B"], [("A", "X", "REFUTE"), ("B", "X", "REFUTE")])
+        self.assertEqual(store.state["X"], "AUDIT_ONLY")
+        store.apply_mutation(["C"], [("C", "A", "REFUTE")])
+        self.assertEqual(store.state["A"], "AUDIT_ONLY")
+        self.assertEqual(store.state["B"], "ADMIT")
+        self.assertEqual(store.state["X"], "AUDIT_ONLY")  # B still actively refutes X!
+        ref_full, _ = store.full_recompute_all()
+        self.assertEqual(store.state, ref_full)
+
+        # Counterexample 2: Refutation followed by 12 COPY_OF hops (no finite-horizon truncation bug!)
+        store2 = IncrementalEvidenceStore()
+        chain_nodes = ["X"] + [f"c{i}" for i in range(1, 13)]
+        chain_edges = [(f"c{i}", "X" if i == 1 else f"c{i - 1}", "COPY_OF") for i in range(1, 13)]
+        store2.apply_mutation(chain_nodes, chain_edges)
+        self.assertTrue(all(store2.state[n] == "ADMIT" for n in chain_nodes))
+        store2.apply_mutation(["R"], [("R", "X", "REFUTE")])
+        self.assertEqual(store2.state["R"], "ADMIT")
+        self.assertTrue(all(store2.state[n] == "AUDIT_ONLY" for n in chain_nodes))
+        ref_full2, _ = store2.full_recompute_all()
+        self.assertEqual(store2.state, ref_full2)
+
+        # Counterexample 3: Mutual refutation cycle A <-> B deterministically resolves to CONTESTED (no parity oscillation!)
+        store3 = IncrementalEvidenceStore()
+        store3.apply_mutation(["A", "B", "D"], [("A", "B", "REFUTE"), ("B", "A", "REFUTE"), ("D", "A", "DERIVES_FROM")])
+        self.assertEqual(store3.state["A"], "CONTESTED")
+        self.assertEqual(store3.state["B"], "CONTESTED")
+        self.assertEqual(store3.state["D"], "CONTESTED")
+        # External refuter E refutes A -> resolves cycle deterministically: A=AUDIT_ONLY, D=AUDIT_ONLY, B=ADMIT!
+        store3.apply_mutation(["E"], [("E", "A", "REFUTE")])
+        self.assertEqual(store3.state["E"], "ADMIT")
+        self.assertEqual(store3.state["A"], "AUDIT_ONLY")
+        self.assertEqual(store3.state["D"], "AUDIT_ONLY")
+        self.assertEqual(store3.state["B"], "ADMIT")
+        ref_full3, _ = store3.full_recompute_all()
+        self.assertEqual(store3.state, ref_full3)
+
+        # 500-graph adversarial tangled-graph fuzzer: 100.0% exact bitwise parity vs global WFS!
+        rng = random.Random(20261121)
+        for _ in range(500):
+            n = rng.randint(5, 18)
+            evs = {
+                f"e{i}": EvidenceEvent(f"e{i}", "lc", "ent", "s", "v", f"t{i}", i, i, f"s{i}")
+                for i in range(n)
+            }
+            all_edges = []
+            for i in range(n):
+                for _ in range(rng.randint(0, 3)):
+                    j = rng.randrange(n)
+                    if j == i:
+                        continue
+                    et = rng.choice(["REFUTE", "SUPERSEDE", "DERIVES_FROM", "COPY_OF", "SUPPORT"])
+                    all_edges.append(EvidenceEdge(f"e{i}", f"e{j}", et, max(i, j)))
+
+            # Stream incrementally in 3 batches into IncrementalEvidenceStore
+            st = IncrementalEvidenceStore()
+            b1 = n // 2
+            b2 = max(b1 + 1, (3 * n) // 4)
+            for lo, hi in ((0, b1), (b1, b2), (b2, n)):
+                new_n = [f"e{i}" for i in range(lo, hi)]
+                cur_set = set(st.nodes) | set(new_n)
+                batch_e = [
+                    (e.src_id, e.dst_id, e.edge_type)
+                    for e in all_edges
+                    if e.src_id in cur_set and e.dst_id in cur_set
+                    and (e.src_id in new_n or e.dst_id in new_n)
+                ]
+                st.apply_mutation(new_n, batch_e)
+
+            expected = compute_well_founded_eligibility(evs, all_edges, valid_cutoff=n, tx_cutoff=n)
+            self.assertEqual(st.state, expected)
 
 
 if __name__ == "__main__":
