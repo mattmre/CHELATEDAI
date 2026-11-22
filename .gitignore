@@ -81,3 +81,5 @@ experiment_runs/
 # Raw per-query/per-row CSV dumps from Flagship Night-1/Tandem Spark runs (keep compact .md summaries & .json receipts)
 artifacts/flagship1-night1/**/*.csv
 artifacts/flagship1-night1/**/*.jsonl
+# Keep sealed human-audit answer keys off public git commits (preserve SHA-256 commitments in receipts/manifests only)
+artifacts/flagship1-night1/**/pm4_human_audit_100_sealed_key*.json

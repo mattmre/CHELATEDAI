@@ -1,0 +1,29 @@
+{
+  "stages": {
+    "stage1_zs_v3_flooded": {
+      "status": "COMPLETED",
+      "wall_seconds": 91.89
+    },
+    "stage2_locomo_300_em4": {
+      "status": "COMPLETED",
+      "wall_seconds": 181.82
+    },
+    "stage3_longmemeval_n500": {
+      "status": "COMPLETED",
+      "wall_seconds": 557.35
+    },
+    "stage4_pm4_2x2_and_audit": {
+      "error": "Using a `device_map`, `tp_plan`, `torch.device` context manager or setting `torch.set_default_device(device)` requires `accelerate`. You can install it with `pip install accelerate`",
+      "status": "ERROR",
+      "traceback": "Traceback (most recent call last):\n  File \"/home/mattmre/chelated-night1/src/scripts/run_overnight_r5_spark6724.py\", line 1434, in main\n    res = fn()\n          ^^^^\n  File \"/home/mattmre/chelated-night1/src/scripts/run_overnight_r5_spark6724.py\", line 1430, in <lambda>\n    (\"stage4_pm4_2x2_and_audit\", lambda: run_stage4_pm4_cross_family_and_audit_packet(args.endpoint, args.model_id, args.output_root, args.second_hf_model)),\n                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/mattmre/chelated-night1/src/scripts/run_overnight_r5_spark6724.py\", line 1252, in run_stage4_pm4_cross_family_and_audit_packet\n    mdl = AutoModelForCausalLM.from_pretrained(\n          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/mattmre/chelated-night1/.venv/lib/python3.12/site-packages/transformers/models/auto/auto_factory.py\", line 406, in from_pretrained\n    return model_class.from_pretrained(\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/mattmre/chelated-night1/.venv/lib/python3.12/site-packages/transformers/modeling_utils.py\", line 4274, in from_pretrained\n    device_map = check_and_set_device_map(device_map)  # warn, error and fix the device map\n                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/mattmre/chelated-night1/.venv/lib/python3.12/site-packages/transformers/integrations/accelerate.py\", line 139, in check_and_set_device_map\n    raise ValueError(\nValueError: Using a `device_map`, `tp_plan`, `torch.device` context manager or setting `torch.set_default_device(device)` requires `accelerate`. You can install it with `pip install accelerate`\n"
+    }
+  },
+  "started_at": "2026-11-22T00:33:55.613096",
+  "telemetry": {
+    "cuda_available": true,
+    "cuda_device": "NVIDIA GB10",
+    "peak_rss_mib": 4091.85,
+    "peak_vram_mib": 704.34
+  },
+  "total_wall_seconds": 833.9
+}

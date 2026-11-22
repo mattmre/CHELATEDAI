@@ -1,0 +1,48 @@
+{
+  "arm_accuracy": {
+    "C1_scalemas_bounded": 0.1125,
+    "C3_ordinary_bitemporal_tms": 0.0125,
+    "C4_v3_ek5_v3_k4": 0.8375,
+    "C4_v4_ek5_v3_blocked_telemetry": 0.95,
+    "U1_mem0ai_live": 0.0
+  },
+  "c4v4_vs_c1_scalemas_bounded": {
+    "lcb_95": 0.75,
+    "mean_delta": 0.8375
+  },
+  "c4v4_vs_mem0ai_live": {
+    "lcb_95": 0.9,
+    "mean_delta": 0.95,
+    "stretch_subgate_gt_10pp_met": true,
+    "tango_ci95_low": 0.8607
+  },
+  "csv_path": "r5b_s2_pm3_mem0ai_rows.csv",
+  "csv_sha256": "7822a8930943a224274e1eb87141e603ec5cb66d2f2e18ba657a4495a3010435",
+  "git_sha": "18973789615ecab1268a77ebd3c69a283607241c",
+  "graphiti_core_provenance": {
+    "package": "graphiti-core",
+    "reason": "graphiti-core requires a live Bolt Neo4j >=5.26 or FalkorDB server daemon; spinning up new database containers is prohibited by our container-safety boundary.",
+    "status": "REQUIRES_EXTERNAL_GRAPH_DAEMON",
+    "version": "0.31.2"
+  },
+  "ingestion_latency_comparison_ms": {
+    "ek5_v3_mean_case_ms": 0.477,
+    "ek5_v3_speedup_factor": 12644.2,
+    "mem0ai_mean_case_ms": 6034.2,
+    "mem0ai_p95_case_ms": 6681.89
+  },
+  "mem0ai_version": "2.2.1",
+  "n_cases": 80,
+  "pip_freeze_file": "venv_pm3_pip_freeze.txt",
+  "pip_freeze_sha256": "9c1eef5df93189dea979937a56c41d1422da101395760252301bf16f983aa920",
+  "qdrant_client_version": "1.20.0",
+  "scalemas_provenance": {
+    "checked_date": "2026-11-22",
+    "comparator": "ScaleMAS (arXiv:2610.16120v1)",
+    "reason": "No official public PyPI package or reference GitHub repository exists upstream; evaluated via C1_scalemas_bounded & M2_scalemas_unsigned per Council R3 PM-3 specification.",
+    "status": "UNAVAILABLE_UPSTREAM_ARCHIVE"
+  },
+  "schema_version": "r5b_s2_pm3_live_upstream_comparators_v1",
+  "total_stage_wall_seconds": 560.14,
+  "wall_seconds": 556.48
+}

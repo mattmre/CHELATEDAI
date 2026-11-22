@@ -1,7 +1,22 @@
 {
-  "schema_version": "bundle_registry_spec_v2",
-  "release_status": "PRE-RELEASE / GATES PENDING",
+  "schema_version": "bundle_registry_spec_v3_1",
+  "release_status": "PRE-RELEASE / HUMAN AUDIT & CLEAN-RERUN GATES PENDING",
   "pristine_mirror_manifest": "archive/pristine-b37e6a55-exact/PRISTINE_MANIFEST.json",
+  "part_iv_code_provenance": {
+    "remote_spark_base_git_sha": "18973789615ecab1268a77ebd3c69a283607241c",
+    "local_r5_pre_run_git_sha": "13943aae30acb4331644b7ea85887047974dae43",
+    "note": "Part IV Spark runs executed via scp overlay onto remote base HEAD 18973789615ecab1268a77ebd3c69a283607241c; exact execution script & module SHA-256s are locked below and preserved byte-for-byte in archive/r5-exact-code-snapshot-2026-11-22/.",
+    "r5_execution_file_sha256": {
+      "ek5_v3_stratified.py": "b54dadb51e1f54576f39e22808fa9c7cd9209fe3de86bf62139eded10b13dfd0",
+      "em4_soft_telemetry_routing.py": "761fdcc4111503b223157f4ceb19bfc1fe03ae72229ed43fb7f9c7933da3b7eb",
+      "scripts/run_overnight_r5_spark37c3.py": "6c3b9450f06f6c6b609aa66966ab6470569137c512af36bb1dceef050b66359b",
+      "scripts/run_overnight_r5_spark6724.py": "10a19831d385534a605a5fb8a2bda05e5d0d8b2772ea54070f417fd02acf7995",
+      "scripts/run_r5b_spark37c3_part2_and_hybrid_pm2.py": "76ebe7da47ee06cdfd294480cf3ff573503309a4846a1efadda6b1f0328d1832",
+      "scripts/run_r5b_spark6724_completion.py": "d4239fe2be2a2a865b3e1730a33043cb6f20d74a0a500128cb350d8dcdf2607e",
+      "scripts/run_r5b_steelmanned_mem0_pm3.py": "3d2f0ff4334a78a630b47f8c974f904ff74dd78092fc504b6a5703eddc12fda0",
+      "spherical_migration_bridge.py": "437b4db7343176c75300c1a4c31855ea7d6e5a5f703857e92858cafbbe855948"
+    }
+  },
   "bundles": [
     {
       "id": "s1",
@@ -146,7 +161,6 @@
       "dir": "artifacts/flagship1-night1/20261121-rigor-r4/f1_r4_comprehensive",
       "manifest": "f1_r4_manifest.json",
       "receipt": "report_receipt.json",
-      "optional_until_run": true,
       "notes": "Post-council Flagship #1 side-by-side matrix (all original baselines + OOS/EM-2/EM-5b/A2g/Polar/A3-2x2/B4; 100% SHA-256)."
     },
     {
@@ -156,8 +170,7 @@
       "dir": "artifacts/flagship1-night1/20261121-rigor-r4/f2_ek5_v3_1m_powerlaw",
       "manifest": "f2_ek5_v3_1m_manifest.json",
       "receipt": "report_receipt.json",
-      "optional_until_run": true,
-      "notes": "Post-council EK5 v3 K=4 differential oracle proofs (256+65,536+262,144+28,561+25,000), 1M power-law/hubs, & 100k service."
+      "notes": "Post-council EK5 v3 K=4 differential oracle proofs (353,105 independent checks: 256+65,536+262,144+169 bitemporal snapshots+25,000 random ops, plus 28,561 cached pair checks), 1M power-law/hubs, & 100k service."
     },
     {
       "id": "f2_r4_zero_shortcut_v2_and_locomo",
@@ -166,8 +179,88 @@
       "dir": "artifacts/flagship1-night1/20261121-rigor-r4/f2_r4_zero_shortcut_v2_and_locomo",
       "manifest": "f2_r4_suites_manifest.json",
       "receipt": "report_receipt.json",
-      "optional_until_run": true,
       "notes": "Post-council Zero-Shortcut v2 (N=240=8x30, EK5 v3 K=4 + Astra 4-line) + 10-conv balanced LoCoMo (N=300=10x30, blind echoes, 0 judge races, EM-1 M4e)."
+    },
+    {
+      "id": "r5_s1_zs_v3_pre_c4v4",
+      "part": "PART_IV_R5_GATE_CLOSURE",
+      "role": "R5_DIAGNOSTIC_BASELINE",
+      "dir": "artifacts/flagship1-night1/20261122-overnight-r5/spark6724/r5_s1_zero_shortcut_v3_flooded",
+      "manifest": "r5_s1_manifest.json",
+      "receipt": "report_receipt.json",
+      "notes": "Flooded Zero-Shortcut v3 (N=240=8x30, 16.0 events/case > top_k=5) pre-C4_v4 probe: C4_v3=0.8750 (7/8 families 1.000, authority_laundering=0.000 before EM-3 blocked-attacker demotion) vs C0=0.0208, C3=0.0375, C1=0.1208, C2/C2c=0.1625, C2b=0.3417, C4_v2=0.5000."
+    },
+    {
+      "id": "r5b_s1_zs_v3_pm1a_closure",
+      "part": "PART_IV_R5_GATE_CLOSURE",
+      "role": "R5B_VERIFIED_PRIMARY",
+      "dir": "artifacts/flagship1-night1/20261122-r5b-completion/spark6724/r5b_s1_zero_shortcut_v3_pm1a_closure",
+      "manifest": "r5b_s1_manifest.json",
+      "receipt": "report_receipt.json",
+      "notes": "PM-1a closure on flooded Zero-Shortcut v3 (N=240=8x30, 16.0 events/case > top_k=5): C4_v4_ek5_v3_blocked_telemetry=1.0000 (240/240, 8/8 families 100%) at 162.1 tokens; LCB95 = +0.4375 vs C4_v2, +0.6041 vs C2b, +0.7875 vs C2/C2c, +0.9375 vs C3, +0.9583 vs C0."
+    },
+    {
+      "id": "r5_s2_locomo_300_em4",
+      "part": "PART_IV_R5_GATE_CLOSURE",
+      "role": "R5_VERIFIED_PRIMARY",
+      "dir": "artifacts/flagship1-night1/20261122-overnight-r5/spark6724/r5_s2_locomo_300_em4",
+      "manifest": "r5_s2_manifest.json",
+      "receipt": "report_receipt.json",
+      "notes": "EM-4 soft telemetry routing on 10-conv balanced LoCoMo (N=300=10x30): Clean Recall@5 restored 0.610->0.630 (100% M1 parity); Clean acc M4f=0.3867 (+0.0000 vs M1, Tango -0.0126), M4g=0.4000 (+0.0133 vs M1); Blind Echo acc M4e=0.4133, M4g=0.4100, M4f=0.4000 vs M1=0.3933, M1c=0.4000, M4b=0.3733."
+    },
+    {
+      "id": "r5_s3_longmemeval_n500",
+      "part": "PART_IV_R5_GATE_CLOSURE",
+      "role": "R5_VERIFIED_PRIMARY",
+      "dir": "artifacts/flagship1-night1/20261122-overnight-r5/spark6724/r5_s3_longmemeval_s_full_n500",
+      "manifest": "r5_s3_manifest.json",
+      "receipt": "report_receipt.json",
+      "notes": "Full unmodified ICLR 2025 LongMemEval-S (N=500) + 78-item KU echo stress: Clean M4f=0.5480 (+0.0000 vs M1, Tango -0.0076; single-session-user N=70 0.9143 == M1), M4g=0.5580 (+0.0100 vs M1, SSU 0.9429), M4b=0.5140 (-0.0340); Stress M4g=0.7564 (+0.2436 vs M1=0.5128, LCB95=+0.1282), M4f=0.7436, M1c=0.7692 (verbatim-echo Jaccard disclosed)."
+    },
+    {
+      "id": "r5_s1_pm2_dense_oov_probe",
+      "part": "PART_IV_R5_GATE_CLOSURE",
+      "role": "R5_DIAGNOSTIC_BASELINE",
+      "dir": "artifacts/flagship1-night1/20261122-r5b-completion/spark37c3/r5_s1_pm2_coupled_service",
+      "manifest": "r5_s1_pm2_manifest.json",
+      "receipt": "report_receipt.json",
+      "notes": "PM-2 coupled dense 384<->4096 + 3-hop + TRA-1 + EK5 v3 service: 12/12 hostile TRA-1 probes blocked (0 leaks); S2_EM2_ZeroMu_DualAdap_EK5v3 beats Composed CAR in 12/12 cells (+0.3056 to +0.5959, LCB95=+0.2263 to +0.5155) and No_EK5 echo stress (+0.1657 to +0.2275); uncached 4096-d norm p95=36.55ms & pure-dense OOV QA=0.37 native remediated in r5b_s1b."
+    },
+    {
+      "id": "r5b_s1b_pm2_hybrid_coupled",
+      "part": "PART_IV_R5_GATE_CLOSURE",
+      "role": "R5B_VERIFIED_PRIMARY",
+      "dir": "artifacts/flagship1-night1/20261122-r5b-completion/spark37c3/r5b_s1b_pm2_hybrid_coupled_service",
+      "manifest": "r5b_s1b_pm2_manifest.json",
+      "receipt": "report_receipt.json",
+      "notes": "PM-2 closure on resident-cached coupled 384->4096 + E0->E3->E1 peak + TRA-1 + EK5 v3 hybrid service: query p95=0.7181ms (max 0.7968ms <= 25ms SLO); QA_Hybrid_Peak_ZeroMu_DualAdap_EK5v3=0.9650 vs Native=0.9850 (delta=-0.0200 >= -0.03, LCB95=-0.0450 >= -0.05), +0.2700 over Composed CAR (0.6950), +0.7950 over Flat_No_EK5 (0.1700)."
+    },
+    {
+      "id": "r5b_s2_pm3_mem0_default_probe",
+      "part": "PART_IV_R5_GATE_CLOSURE",
+      "role": "R5B_DIAGNOSTIC_BASELINE",
+      "dir": "artifacts/flagship1-night1/20261122-r5b-completion/spark37c3/r5b_s2_pm3_live_upstream_comparators",
+      "manifest": "r5b_s2_pm3_manifest.json",
+      "receipt": "report_receipt.json",
+      "notes": "Out-of-the-box pinned mem0ai 2.2.1 + qdrant-client 1.20.0 live probe (N=80 ZS v3): U1_mem0ai_live=0.0000 (6,034.2 ms/case; biographical-only prompt + <think> JSON drop) vs C4_v4=0.9500 (0.477 ms/case); documents graphiti-core 0.31.2 Bolt daemon boundary & ScaleMAS upstream archive status."
+    },
+    {
+      "id": "r5b_s2b_pm3_steelmanned_mem0",
+      "part": "PART_IV_R5_GATE_CLOSURE",
+      "role": "R5B_VERIFIED_PRIMARY",
+      "dir": "artifacts/flagship1-night1/20261122-r5b-completion/spark37c3/r5b_s2b_pm3_steelmanned_mem0ai",
+      "manifest": "r5b_s2b_pm3_steelmanned_manifest.json",
+      "receipt": "report_receipt.json",
+      "notes": "PM-3 steelmanned mem0ai 2.2.1 (enable_thinking=False, 80/80 non-empty extractions): Suite A ZS v3 (N=80) C4_v4=0.9750 (0.48ms) vs U1c_steelmanned_infer=0.4750 (2,987.95ms; +0.5000, LCB95=+0.3875) & U1b_direct_qdrant=0.1125 (+0.8625); Suite B biographical LongMemEval KU echo stress (N=30) M4g=0.7000 & M4f=0.6667 vs U1c_biographical=0.6000 (6,399.0ms; +0.1000 point, LCB95=-0.0333 at N=30) & M1=0.4000."
+    },
+    {
+      "id": "r5b_s4_pm4_cross_family_2x2",
+      "part": "PART_IV_R5_GATE_CLOSURE",
+      "role": "R5B_VERIFIED_PRIMARY",
+      "dir": "artifacts/flagship1-night1/20261122-r5b-completion/spark6724/r5b_s4_pm4_cross_family_2x2",
+      "manifest": "r5b_s4_manifest.json",
+      "receipt": "report_receipt.json",
+      "notes": "PM-4a 2x2 cross-family {Nemotron-3.5-30B, Qwen2.5-7B-Instruct} generator x judge matrix: C4_v4=1.0000 in all 4 cells; ZS 800-row Cohen kappa=0.9847, combined 900-row kappa=0.9570 (CI95=[0.9376, 0.9751] >= 0.85 PASS), open-ended 100-item real-conv sub-slice kappa=0.7414 (87.0% raw agreement) disclosed; 100-item human audit sheet prepared (PM-4b human grading pending)."
     }
   ]
 }

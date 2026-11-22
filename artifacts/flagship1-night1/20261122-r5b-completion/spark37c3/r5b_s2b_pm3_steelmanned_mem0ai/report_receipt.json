@@ -1,0 +1,12 @@
+{
+  "artifact_hashes": {
+    "r5b_s2b_pm3_steelmanned_lme_ku_rows.csv": "7cdc5b6223bfbeacaf114e5c8f0a7c8ba3205729dff28de1fd8f4221e26bf847",
+    "r5b_s2b_pm3_steelmanned_manifest.json": "123bf2e023bd7b22b8c9f31571416971447d83e107a66080087fce1ebeb7c7c5",
+    "r5b_s2b_pm3_steelmanned_zs_rows.csv": "8a6128a31df02f447cf507a08c96b30e8dd25f27e84b6555e45f48aa2961a2c7"
+  },
+  "git_sha": "18973789615ecab1268a77ebd3c69a283607241c",
+  "manifest_path": "r5b_s2b_pm3_steelmanned_manifest.json",
+  "manifest_sha256": "123bf2e023bd7b22b8c9f31571416971447d83e107a66080087fce1ebeb7c7c5",
+  "schema_version": "r5b_report_receipt_v1",
+  "wall_seconds": 580.83
+}

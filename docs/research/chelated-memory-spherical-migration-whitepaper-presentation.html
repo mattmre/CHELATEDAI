@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Representation-Safe &amp; Epistemically-Bounded AI Memory — Doctoral Whitepaper v2 Presentation</title>
+  <title>Representation-Safe &amp; Epistemically-Bounded AI Memory — Doctoral Whitepaper v3 Presentation</title>
   <style>
     :root {
       --ink: #132026;
@@ -377,13 +377,14 @@
 <body>
   <nav class="topbar" aria-label="Primary navigation">
     <div class="topbar-inner">
-      <div class="brand">ChelatedAI Research &middot; Whitepaper v2</div>
+      <div class="brand">ChelatedAI Research &middot; Whitepaper v3</div>
       <div class="nav">
         <a href="#flagship1">Flagship #1</a>
         <a href="#flagship2">Flagship #2</a>
+        <a href="#r5closure">R5/R5b Closure</a>
         <a href="#forensics">Emergent Forensics</a>
         <a href="#gates">PM-1..PM-5 Gates</a>
-        <a href="#ledger">18-Bundle Ledger</a>
+        <a href="#ledger">27-Bundle Ledger</a>
       </div>
     </div>
   </nav>
@@ -391,46 +392,48 @@
   <main>
     <header class="hero">
       <div class="release-status-banner" role="status">
-        <span class="release-badge">PRE-RELEASE / GATES PENDING</span>
+        <span class="release-badge">PRE-RELEASE / HUMAN AUDIT &amp; GATES PENDING</span>
         <span>
-          Draft v2 (Post-Tri-Model Council R3 3/3 Sign-Off &amp; Post-Fix Dual-Spark Rigor-R4 Verification).
-          Public production release remains <strong>BLOCKED</strong> until gates <code>PM-1b</code>, <code>PM-2</code>,
-          <code>PM-3</code>, and <code>PM-4</code> pass on verified receipts. Registry SHA-256: <code>bd1577d750bd</code>.
+          Draft v3.1 (Post-Overnight R5/R5b &amp; 4-Model Highest-Reasoning Frontier Panel Audit; <code>27/27</code> SHA-256 Receipt Bundles).
+          <code>PM-5</code>, structured <code>PM-1a</code>, <code>PM-4a</code> pooled (<code>&kappa;=0.9570</code>; conv <code>&kappa;=0.7414</code>),
+          <code>PM-3</code> Suite A, and <code>PM-1b</code> Clean passed; remains <strong>PRE-RELEASE</strong> pending
+          <code>PM-4b</code> human audit, <code>PM-1b</code> stress sub-gate (unmet), &amp; label-free <code>PM-2</code> rerun.
+          Registry SHA-256: <code>5bff6a809b2a</code>.
         </span>
       </div>
       <p class="eyebrow">Doctoral Technical Monograph &middot; Dual NVIDIA DGX Spark Validation</p>
       <h1>Representation-Safe &amp; Epistemically-Bounded Long-Horizon Memory for Compound AI Systems</h1>
       <p class="subtitle">
         Conformal, Geodesic Polar, &amp; Subtractive-Centroid Spherical Migration Bridges (<code>Flagship #1</code> + <code>TRA-1</code>)
-        unified with Stratified <em>K</em>=4 Well-Founded Evidence Maintenance, Non-Blocking Epistemic Telemetry, &amp; Minimal-Pair Contradiction Splitting (<code>Flagship #2</code> / <code>EK5 v3</code> / <code>EM-1 M4e</code>).
+        unified with Stratified <em>K</em>=4 Well-Founded Evidence Maintenance, Soft Telemetry Routing, &amp; Minimal-Pair Contradiction Splitting (<code>Flagship #2</code> / <code>EK5 v3</code> / <code>EM-1 M4e</code> / <code>EM-4 M4f,M4g</code> + <code>C4_v4</code>).
       </p>
       <div class="meta-strip">
-        <span>DATE: 2026-11-21</span>
-        <span>COUNCIL: 15 Reviews / 5 Stages (Carbon + Neon XHigh + Astra 6.2 XHigh &mdash; 3/3 GO)</span>
-        <span>BUNDLES: 18/18 SHA-256 Verified</span>
+        <span>DATE: 2026-11-22</span>
+        <span>AUDITS: 15 Tri-Model Council + 4-Model Frontier Panel (Astra Ultra, Claude Ultrathink, Grok XHigh, Neon XHigh)</span>
+        <span>BUNDLES: 27/27 SHA-256 Consistent (25/25 Side Hashes)</span>
         <span>PRISTINE MIRROR: 15/15 Byte-Exact (b37e6a55)</span>
       </div>
 
       <div class="kpi-grid">
         <div class="kpi-card ok">
-          <div class="kpi-label">EM-2 Zero-Shot OOD</div>
-          <div class="kpi-value">16 / 18 Wins</div>
-          <div class="kpi-sub"><code>A2-ZeroMu-DualAdap</code> up to <strong>51.2&times;</strong> CAR (<code>0.2559</code> vs <code>0.0050</code>) &amp; <strong>12/12</strong> 4096-d 3-hop sweep.</div>
+          <div class="kpi-label">EM-2 OOD &amp; Multi-Hop</div>
+          <div class="kpi-value">16 / 18 OOD</div>
+          <div class="kpi-sub"><code>ZM-DualAdap</code> up to <strong>51.2&times;</strong> CAR; <code>12/12</code> 3-hop &amp; <code>6/6</code> BEIR 4-hop sweeps; <code>DualAdap</code> QA <code>0.965</code> (<code>Query0W=0.695</code>).</div>
         </div>
         <div class="kpi-card ok">
-          <div class="kpi-label">EK5 v3 Formal Parity</div>
-          <div class="kpi-value">0 / 381,497</div>
-          <div class="kpi-sub">Zero WFS oracle mismatches (incl. all <code>262,144</code> 3-node graphs &amp; <code>65,536</code> jumps); <code>10k</code> hubs <code>|D|=0</code>.</div>
+          <div class="kpi-label">EK5 v3 WFS &amp; Structured ZS</div>
+          <div class="kpi-value">0 / 353,105</div>
+          <div class="kpi-sub">Zero independent WFS oracle mismatches; structured <code>C4_v4</code> <code>240/240</code> (<code>0.950&ndash;1.000</code> across <code>N=80</code> draws).</div>
         </div>
         <div class="kpi-card ok">
-          <div class="kpi-label">PM-5 Service Latency</div>
-          <div class="kpi-value">0.904 ms</div>
-          <div class="kpi-sub"><code>100k</code> persistent service p95 (<strong>27.6&times;</strong> under <code>25 ms</code> SLO); <code>1M</code> power-law p95 <code>7.94 ms</code>.</div>
+          <div class="kpi-label">PM-5 &amp; PM-3 Suite A</div>
+          <div class="kpi-value">0.904 ms &middot; +50 pp</div>
+          <div class="kpi-sub"><code>100k</code> mut p95 <code>0.904 ms</code> (<code>1M</code> <code>7.94 ms</code>); structured <code>C4_v4</code> <code>0.975</code> vs steelmanned <code>mem0ai</code> <code>0.475</code> (<code>N=80</code>).</div>
         </div>
         <div class="kpi-card warm">
-          <div class="kpi-label">Honest Release Gate</div>
-          <div class="kpi-value">1 / 6 Cleared</div>
-          <div class="kpi-sub"><code>PM-5</code> PASS; <code>PM-1b</code> (<code>-1.33 pp</code> LoCoMo clean), <code>PM-2/3/4</code> OPEN &rarr; <strong>PRE-RELEASE</strong>.</div>
+          <div class="kpi-label">Honest Gate Status</div>
+          <div class="kpi-value">PRE-RELEASE</div>
+          <div class="kpi-sub"><code>PM-4b</code> human sheet pending (conv <code>&kappa;=0.7414</code>); <code>PM-1b</code> stress unmet (<code>M1c=0.7692</code>); <code>PM-2</code> label-free rerun open.</div>
         </div>
       </div>
     </header>
@@ -798,7 +801,7 @@
           <rect x="449" y="18" width="190" height="72" rx="8" fill="#e9f6ee" stroke="#136239" stroke-width="1.5"/>
           <text x="544" y="38" text-anchor="middle" font-size="11.5" font-weight="800" fill="#136239">Stratum 2: Option 1A WFS</text>
           <text x="544" y="56" text-anchor="middle" font-size="10" fill="#2e434d">Tarjan Pos-SCC + Plain-FIFO</text>
-          <text x="544" y="72" text-anchor="middle" font-size="10" fill="#2e434d">Pitfall A/B + 0/381,497 parity</text>
+          <text x="544" y="72" text-anchor="middle" font-size="10" fill="#2e434d">Pitfall A/B + 0/353,105 parity</text>
 
           <line x1="639" y1="54" x2="667" y2="54" stroke="#044e57" stroke-width="2" marker-end="url(#arr)"/>
           <rect x="669" y="18" width="178" height="72" rx="8" fill="#e9f6ee" stroke="#136239" stroke-width="1.5"/>
@@ -828,19 +831,19 @@
             <line x1="387" y1="22" x2="387" y2="182" stroke="#7d2f0a" stroke-width="1.8" stroke-dasharray="5 3"/>
             <text x="384" y="16" text-anchor="end" font-size="10" font-weight="800" fill="#7d2f0a">PM-5 SLO: 25.0 ms</text>
             <g font-family="monospace" font-size="10.5" fill="#132026">
-              <text x="142" y="54" text-anchor="end">100k Query p95</text>
+              <text x="142" y="54" text-anchor="end">100k SlotIdx p95</text>
               <rect x="150" y="42" width="3" height="16" fill="#136239"/><text x="158" y="54" fill="#136239" font-weight="700">0.0054 ms</text>
 
               <text x="142" y="88" text-anchor="end">100k Mut p95</text>
               <rect x="150" y="76" width="9" height="16" fill="#136239"/><text x="164" y="88" fill="#136239" font-weight="700">0.904 ms (27.6&times; margin)</text>
 
               <text x="142" y="122" text-anchor="end">1M Sparse p95</text>
-              <rect x="150" y="110" width="76" height="16" fill="#066e7a"/><text x="231" y="122" fill="#044e57" font-weight="700">7.95 ms (0 scans)</text>
+              <rect x="150" y="110" width="76" height="16" fill="#066e7a"/><text x="231" y="122" fill="#044e57" font-weight="700">7.95 ms (0 fallbacks)</text>
 
               <text x="142" y="156" text-anchor="end">1M PwrLaw p95</text>
               <rect x="150" y="144" width="75" height="16" fill="#066e7a"/><text x="230" y="156" fill="#044e57" font-weight="700">7.94 ms (10k hubs |D|=0)</text>
             </g>
-            <text x="15" y="200" font-size="10" fill="#7d2f0a">Honest tail: 1M power-law giant-SCC p99 = 2,622.6 ms (max 3,242.5 ms).</text>
+            <text x="15" y="200" font-size="10" fill="#7d2f0a">Honest tail: Stratum-1 giant-cone Tarjan p99 = 2,622.6 ms (max 3,242.5 ms).</text>
           </svg>
         </figure>
 
@@ -873,20 +876,19 @@
 
       <div class="callout warm">
         <strong>Mandatory Historical &amp; Pre-Fix Audit Disclosures:</strong>
-        (1) On ICLR 2025 <code>LongMemEval-S</code> (<code>f2_longmemeval_v2</code>), <code>M4b</code> beat every baseline by
+        (1) On ICLR 2025 <code>LongMemEval-S</code> v2 (<code>f2_longmemeval_v2</code>), <code>M4b</code> beat every baseline by
         <code>+25.64</code> to <code>+41.03 pp</code> under Regime B echo stress, <strong>but</strong> regressed on Regime A
         <code>single-session-user</code> clean controls (<strong><code>42/50</code> vs. <code>46/50</code></strong> for <code>M1_hybrid_flat</code>).
         (2) Pre-fix R3 LoCoMo (<code>f2_unified_zs_locomo</code>) suffered <code>117/3</code> conversation skew and a <code>3-key</code> / <code>25-row</code>
         judge race; R4 remediated all four bugs across all 10 conversations (<code>N=300</code>, <code>0</code> inconsistent keys), where
-        <code>EM-1 M4e</code> cut <code>M4c</code>'s clean loss by 60% (<code>-3.33 &rarr; -1.33 pp</code>) and beat <code>M4b</code> by
-        <code>+4.33 pp</code> under blind echoes while tying <code>M1c_hybrid_jaccard</code> (<code>0.3933</code>), keeping <code>PM-1b</code> honestly open.
+        <code>EM-1 M4e</code> cut <code>M4c</code>'s clean loss by 60% (<code>-3.33 &rarr; -1.33 pp</code>), directly motivating <code>EM-4</code> below.
       </div>
 
       <div class="table-scroll">
         <table>
           <thead>
             <tr>
-              <th>Suite &amp; Arm</th>
+              <th>R4 Suite &amp; Arm</th>
               <th class="num">Metric / Overall</th>
               <th class="num">Clean / Baseline</th>
               <th class="num">Stress / K=4 Hard</th>
@@ -894,9 +896,101 @@
             </tr>
           </thead>
           <tbody>
-            <tr><td><strong>ZS v2 (N=240): <code>C4_v3_ek5_v3_k4</code></strong></td><td class="num best">1.0000</td><td class="num">150.2 toks</td><td class="num best">8/8 fams 100%</td><td><strong>+37.50 pp</strong> vs <code>C4_v2</code> (<code>0.6250</code>), <strong>+12.50 pp</strong> vs <code>C2c</code>/<code>C3</code> (<code>0.8750</code>), <strong>+24.17 pp</strong> vs <code>C2b</code> (<code>0.7583</code>). <em>Note:</em> <code>C0/C1/C2</code> hit <code>1.0000</code> at <code>246&ndash;249</code> toks on <code>&le;top_k</code> items.</td></tr>
-            <tr><td><strong>LoCoMo-300: <code>M4e_minimal_pair_split</code></strong></td><td class="num best">0.3933 (Reg B)</td><td class="num">0.3700 (Reg A)</td><td class="num best">0.5600 Fact</td><td><strong>+4.33 pp</strong> vs <code>M4b</code> (<code>cluster CI95=[+1.33, +7.67 pp]</code>); <code>-1.33 pp</code> clean vs <code>M1</code> (<code>0.3833</code>); tied <code>M1c_hybrid_jaccard</code> (<code>0.3933</code>).</td></tr>
-            <tr><td><strong>LongMemEval-S (v2): <code>M4b</code></strong></td><td class="num">0.7812 (Reg B)</td><td class="num warn-cell">42/50 vs 46/50</td><td class="num best">0.7436 KU</td><td><strong>+28.21 pp</strong> vs <code>M1</code> &amp; <strong>+41.03 pp</strong> vs <code>M2</code> under 6-echo stress; intra-session clean loss motivated <code>M4e</code>.</td></tr>
+            <tr><td><strong>ZS v2 (N=240): <code>C4_v3_ek5_v3_k4</code></strong></td><td class="num best">1.0000</td><td class="num">150.2 toks</td><td class="num best">8/8 fams 100%</td><td><strong>+37.50 pp</strong> vs <code>C4_v2</code> (<code>0.6250</code>), <strong>+12.50 pp</strong> vs <code>C2c</code>/<code>C3</code> (<code>0.8750</code>), <strong>+24.17 pp</strong> vs <code>C2b</code> (<code>0.7583</code>). <em>Note:</em> <code>C0/C1/C2</code> hit <code>1.0000</code> on <code>&le;top_k</code> items &rarr; hardened in R5b <code>ZS v3</code>.</td></tr>
+            <tr><td><strong>LoCoMo-300 (R4): <code>M4e_minimal_pair_split</code></strong></td><td class="num best">0.3933 (Reg B)</td><td class="num">0.3700 (Reg A)</td><td class="num best">0.5600 Fact</td><td><strong>+4.33 pp</strong> vs <code>M4b</code> (<code>cluster CI95=[+1.33, +7.67 pp]</code>); <code>-1.33 pp</code> clean vs <code>M1</code> (<code>0.3833</code>) &rarr; matched <code>M1</code> (<code>+0.00 pp</code>) in R5 <code>M4f</code>.</td></tr>
+            <tr><td><strong>LongMemEval-S (v2): <code>M4b</code></strong></td><td class="num">0.7812 (78 KU + 50 SSU)</td><td class="num warn-cell">42/50 vs 46/50</td><td class="num best">0.7436 KU</td><td><strong>+28.21 pp</strong> vs <code>M1</code> &amp; <strong>+41.03 pp</strong> vs <code>M2</code> under 6-echo stress; intra-session clean loss fixed on full <code>N=500</code> by <code>EM-4</code>.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ================================================================== -->
+    <!-- SECTION 2B: OVERNIGHT R5 & R5B GATE-CLOSURE RESULTS -->
+    <!-- ================================================================== -->
+    <section id="r5closure">
+      <h2>2B. Overnight R5 &amp; R5b Evidence &amp; 4-Model Panel Disclosures</h2>
+      <p>
+        Across nine additive DGX Spark bundles (<code>20261122-overnight-r5</code> &amp; <code>20261122-r5b-completion</code>),
+        we evaluated <code>EM-4</code> heuristic soft telemetry routing (<code>em4_soft_telemetry_routing.py</code>: <code>M4f</code>,
+        <code>M4g</code>) and structured blocked-authority routing (<code>C4_v4</code> in <code>scripts/run_r5b_spark6724_completion.py</code>),
+        audited end-to-end by <code>GPT-6.2 Astra Ultra</code>, <code>Claude Opus 5.5 Ultrathink</code>, <code>Grok 4.7 XHigh</code>,
+        and <code>Gemini 4 Neon XHigh</code>.
+      </p>
+
+      <div class="grid-2">
+        <figure class="figure-card">
+          <div class="figure-title">Figure 7 &mdash; Flooded Structured <code>ZS v3</code> (<code>N=240</code>) &amp; Steelmanned <code>mem0ai 2.2.1</code> (<code>N=80</code>)</div>
+          <svg viewBox="0 0 420 215" role="img" aria-label="Flooded Zero-Shortcut v3 accuracy comparing C0, C3, C2c, C2b Jaccard, Steelmanned mem0ai 2.2.1 on N=80, C4_v3, and C4_v4">
+            <rect x="0" y="0" width="420" height="215" fill="#ffffff"/>
+            <line x1="145" y1="18" x2="145" y2="188" stroke="#cbd8dd"/>
+            <g font-family="monospace" font-size="10" fill="#132026">
+              <text x="139" y="36" text-anchor="end">C0 BM25 (N=240)</text>
+              <rect x="145" y="25" width="5" height="14" fill="#9fb2bc"/><text x="155" y="36" fill="#50646e">0.0208</text>
+
+              <text x="139" y="60" text-anchor="end">C3 TMS (N=240)</text>
+              <rect x="145" y="49" width="8" height="14" fill="#9fb2bc"/><text x="158" y="60" fill="#50646e">0.0375</text>
+
+              <text x="139" y="84" text-anchor="end">C2 / C2c (N=240)</text>
+              <rect x="145" y="73" width="34" height="14" fill="#5c8a97"/><text x="184" y="84" fill="#2e434d">0.1625</text>
+
+              <text x="139" y="108" text-anchor="end">C2b All-8 (N=240)</text>
+              <rect x="145" y="97" width="71" height="14" fill="#5c8a97"/><text x="221" y="108" fill="#2e434d">0.3375 (0.9667 echo)</text>
+
+              <text x="139" y="132" text-anchor="end">Mem0 Steel (N=80)</text>
+              <rect x="145" y="121" width="100" height="14" fill="#7d2f0a"/><text x="250" y="132" fill="#7d2f0a" font-weight="700">0.475 vs 0.975 C4v4</text>
+
+              <text x="139" y="156" text-anchor="end">C4_v3 (N=240)</text>
+              <rect x="145" y="145" width="184" height="14" fill="#066e7a"/><text x="334" y="156" fill="#044e57" font-weight="700">0.8750</text>
+
+              <text x="139" y="180" text-anchor="end" font-weight="800" fill="#136239">C4_v4 (N=240)</text>
+              <rect x="145" y="169" width="210" height="14" fill="#136239"/><text x="360" y="180" fill="#136239" font-weight="800">1.000 (0.95-1.0)</text>
+            </g>
+            <text x="14" y="204" font-size="9.5" fill="#136239" font-weight="700">Structured graph edges supplied to C4; 80/80 in 4 PM-4a cells (conv &kappa;=0.7414).</text>
+          </svg>
+        </figure>
+
+        <figure class="figure-card">
+          <div class="figure-title">Figure 8 &mdash; Full <code>LongMemEval-S N=500</code> Clean &amp; <code>PM-2</code> Hybrid Peak QA Arms</div>
+          <svg viewBox="0 0 420 215" role="img" aria-label="Full LongMemEval N=500 clean accuracy and PM-2 hybrid E0 to E3 to E1 peak QA arms including Query0W at 0.695 and DualAdap at 0.965">
+            <rect x="0" y="0" width="420" height="215" fill="#ffffff"/>
+            <text x="105" y="18" text-anchor="middle" font-size="10.5" font-weight="750" fill="#044e57">LME-S N=500 Clean</text>
+            <g font-family="monospace" font-size="9.5" fill="#2e434d">
+              <text x="10" y="52">M4b Old</text><rect x="68" y="41" width="102" height="13" fill="#7d2f0a"/><text x="174" y="52" fill="#7d2f0a">0.5140</text>
+              <text x="10" y="86">M1 Flat</text><rect x="68" y="75" width="110" height="13" fill="#5c8a97"/><text x="182" y="86">0.5480</text>
+              <text x="10" y="120" font-weight="700" fill="#044e57">M4f EM4</text><rect x="68" y="109" width="110" height="13" fill="#066e7a"/><text x="182" y="120" fill="#044e57" font-weight="700">0.5480</text>
+              <text x="10" y="154" font-weight="700" fill="#136239">M4g EM4</text><rect x="68" y="143" width="114" height="13" fill="#136239"/><text x="186" y="154" fill="#136239" font-weight="700">0.5580</text>
+            </g>
+            <line x1="226" y1="14" x2="226" y2="185" stroke="#cbd8dd" stroke-dasharray="4 3"/>
+            <text x="324" y="18" text-anchor="middle" font-size="10.5" font-weight="750" fill="#044e57">PM-2 Peak QA (N=200)</text>
+            <g font-family="monospace" font-size="9.5" fill="#2e434d">
+              <text x="232" y="44">No EK5v3</text><rect x="292" y="34" width="14" height="12" fill="#7d2f0a"/><text x="310" y="44" fill="#7d2f0a">0.170</text>
+              <text x="232" y="76">CAR / Q0W</text><rect x="292" y="66" width="58" height="12" fill="#5c8a97"/><text x="354" y="76">0.695</text>
+              <text x="232" y="108" font-weight="700" fill="#136239">DualAdap</text><rect x="292" y="98" width="81" height="12" fill="#136239"/><text x="377" y="108" fill="#136239" font-weight="700">0.965</text>
+              <text x="232" y="140">Native E1</text><rect x="292" y="130" width="83" height="12" fill="#066e7a"/><text x="379" y="140">0.985</text>
+            </g>
+            <text x="12" y="203" font-size="9.2" fill="#7d2f0a">SciFact n=86 scorer p95=0.718ms (36.55ms uncached); QA family-guard rerun open.</text>
+          </svg>
+        </figure>
+      </div>
+
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>R5 / R5b Evaluation Suite</th>
+              <th class="num">Primary Arm</th>
+              <th class="num">Key Comparator(s)</th>
+              <th class="num">Verified Margin / CI95</th>
+              <th>4-Model Panel Scope &amp; Diagnostic Disclosures</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td><strong><code>PM-1a</code> Structured <code>ZS v3</code> (N=240)</strong></td><td class="num best">1.0000 (<code>C4_v4</code>)</td><td class="num"><code>C2b</code> 0.3375 / <code>C4_v3</code> 0.8750</td><td class="num best">LCB95 +60.4 pp vs C2b</td><td>Consumes fixture edges post-hoc after <code>r5_s1</code> (<code>0.950&ndash;1.000</code> on <code>N=80</code> draws); <code>C2b=0.9667</code> on paraphrase flood, <code>0.000</code> on 5 graph families.</td></tr>
+            <tr><td><strong><code>PM-1b</code> <code>LoCoMo-300</code> + <code>EM-4</code></strong></td><td class="num best">0.3867 / 0.4000</td><td class="num"><code>M1</code> 0.3867 / <code>M3</code> 0.4133 clean</td><td class="num">M4f Tango -1.26 / M4g LCB -1.00 pp</td><td><code>M4f</code> matched <code>M1</code> (<code>297/300</code> identical prompts, <code>0.630</code> Rec@5); tuned post-R4 error inspection; blind echo <code>M4e=0.4133</code> vs <code>M1c=0.4000</code> (LCB <code>-1.33 pp</code>).</td></tr>
+            <tr><td><strong><code>PM-1b</code> Full <code>LongMemEval-S N=500</code></strong></td><td class="num best">0.5480 / 0.5580</td><td class="num"><code>M1</code> 0.5480 / unstripped <code>M1c</code> 0.7692</td><td class="num warn-cell">KU +24.36 pp (LCB +12.82)</td><td>Clean parity passed (<code>SSU=0.9143</code> Tango <code>-5.20 pp</code>); <strong>stress sub-gate UNMET</strong> (<code>&lt;+25/+15 pp</code>, <code>0.7564 &lt; 0.7692</code> <code>M1c</code>; 6 synthetic prefixes matched).</td></tr>
+            <tr><td><strong><code>PM-2</code> Coupled Peak QA &amp; Scorer</strong></td><td class="num">0.9650 DualAdap / 0.6950 Query0W</td><td class="num">Native 0.9850 / CAR 0.6950 / NoEK5 0.1700</td><td class="num warn-cell">-2.0 pp (Boot -4.5, Tango -5.29)</td><td><code>12/12</code> ABI blocks &amp; dense wins vs CAR; <code>0.7181 ms</code> timed <code>n=86</code> cached SciFact scorer (<code>36.55 ms</code> uncached); QA <code>c["family"]</code> guard &amp; batch <code>&mu;_q</code> &rarr; rerun open.</td></tr>
+            <tr><td><strong><code>PM-3</code> Steelmanned <code>mem0ai 2.2.1</code></strong></td><td class="num best">0.9750 (ZS) / 0.7000 (KU)</td><td class="num"><code>mem0ai</code> 0.4750 (ZS) / 0.6000 (LME KU)</td><td class="num">ZS LCB +38.8 / KU LCB -3.3 pp</td><td><code>0.48 ms</code> structured graph routing vs <code>2,988 ms</code> raw-text <code>Memory.add</code> (<code>80/80</code> nonempty searches); Suite B <code>N=30</code> (<code>top20_chron</code>) non-significant.</td></tr>
+            <tr><td><strong><code>PM-4a</code> <code>2&times;2</code> Nemotron-30B &times; Qwen2.5-7B</strong></td><td class="num best">80/80 (4/4 cells)</td><td class="num">Conv &kappa;=0.7414 (87%) / Pooled &kappa;=0.9570</td><td class="num">Pooled CI95 [0.9376, 0.9751]</td><td>Reuses 80 ZS cases across 4 cells (<code>ZS &kappa;=0.9847</code>); sealed key gitignored so <code>PM-4b</code> 100-item human sheet remains blind.</td></tr>
           </tbody>
         </table>
       </div>
@@ -908,9 +1002,9 @@
     <section id="forensics">
       <h2>3. Causal Bug-Impact &amp; Emergent-Mechanism Forensics</h2>
       <p>
-        Auditing all 16 R0&ndash;R2 bugs for downstream chain-of-logic impact classified each defect as a
+        Auditing all R0&ndash;R5 defects for downstream chain-of-logic impact classified each defect as a
         <code>PURE_FIX</code>, <code>EMERGENT_ADDITIVE</code>, or <code>EMERGENT_SUBTRACTIVE</code> discovery&mdash;yielding
-        four concrete mechanisms verified on DGX Spark in R4:
+        five concrete mechanisms verified on DGX Spark across R4 and R5/R5b:
       </p>
       <div class="table-scroll">
         <table>
@@ -919,13 +1013,14 @@
               <th>ID</th>
               <th>Causal Mechanism</th>
               <th>Class</th>
-              <th>R4 Verified Empirical Outcome</th>
+              <th>R4 &amp; R5/R5b Verified Empirical Outcome</th>
             </tr>
           </thead>
           <tbody>
-            <tr><td><code>EM-1</code></td><td><code>M4e</code> Minimal-Pair Contradiction vs. Echo Split (from <code>M4b</code> clean loss)</td><td><code>EMERGENT_ADDITIVE</code></td><td>Preserves 100% minimal pairs; cuts <code>M4c</code> LoCoMo clean loss <strong>60%</strong> (<code>-3.33 &rarr; -1.33 pp</code>); <strong>+4.33 pp</strong> vs <code>M4b</code> stress.</td></tr>
-            <tr><td><code>EM-2</code></td><td><code>A2-ZeroMu</code> Subtractive Centroid Removal (from OOD <code>+&mu;_y</code> collapse)</td><td><code>EMERGENT_SUBTRACTIVE</code></td><td><strong>16/18</strong> OOD wins (up to <strong>51.2&times;</strong> CAR), <strong>12/12</strong> 4096-d 3-hop wins, <strong>6/6</strong> BEIR 4-hop wins (incl. zero-write &amp; 1-float modes).</td></tr>
-            <tr><td><code>EM-3</code></td><td>Non-Blocking Epistemic Telemetry (from silent positive-cycle collapse)</td><td><code>EMERGENT_ADDITIVE</code></td><td>Passive <code>certificate_based=True</code> stream + <code>full_structural_scc_audit()</code>; zero WFS feedback (<code>0/381,497</code> mismatches).</td></tr>
+            <tr><td><code>EM-1</code></td><td><code>M4e</code> Minimal-Pair Contradiction vs. Echo Split (from <code>M4b</code> clean loss)</td><td><code>EMERGENT_ADDITIVE</code></td><td>Rule-verified conflict guard cuts <code>M4c</code> LoCoMo clean loss <strong>60%</strong>; reaches <code>0.4133</code> vs <code>0.4000</code> <code>M1c</code> (LCB <code>-1.33 pp</code>) on R5 blind echoes.</td></tr>
+            <tr><td><code>EM-2</code></td><td><code>A2-ZeroMu</code> Subtractive Centroid Removal (from OOD <code>+&mu;_y</code> collapse)</td><td><code>EMERGENT_SUBTRACTIVE</code></td><td><strong>16/18</strong> OOD wins (up to <strong>51.2&times;</strong> CAR), <strong>12/12</strong> 4096-d 3-hop wins, <strong>6/6</strong> BEIR 4-hop wins, <strong>12/12</strong> coupled dense wins over CAR.</td></tr>
+            <tr><td><code>EM-3</code></td><td>Non-Blocking Epistemic Telemetry + <code>C4_v4</code> Blocked-Attack Demotion</td><td><code>EMERGENT_ADDITIVE</code></td><td>Zero WFS feedback (<code>0/353,105</code> mismatches); post-hoc <code>blocked_authority_edges</code> demotion lifts structured <code>ZS v3</code> <code>0.875 &rarr; 1.000</code> (<code>0.950&ndash;1.000</code> across draws).</td></tr>
+            <tr><td><code>EM-4</code></td><td>Soft Telemetry Fallback &amp; De-Spoofed Origin Routing (<code>M4f</code> / <code>M4g</code>)</td><td><code>EMERGENT_ADDITIVE</code></td><td>Matches <code>M1</code> (<strong>+0.00 pp</strong>) across 800 clean queries (<code>LoCoMo-300</code> + <code>LME N=500</code>); post-panel complete-linkage &amp; tiebreak guards added.</td></tr>
             <tr><td><code>EM-5b</code></td><td><code>A2c-SoftSpec</code> Empirical-Bayes Shrinkage (from <code>n=1000 &lt; 1024</code> Hop-2 dip)</td><td><code>EMERGENT_ADDITIVE</code></td><td>Implemented &amp; tested; R4 showed OOS+<code>EM-2</code> cured Hop-2 while small-DEV (<code>86</code> q) tuning slightly overfit &rarr; gated on <code>n_dev &ge; 250</code>.</td></tr>
           </tbody>
         </table>
@@ -936,7 +1031,7 @@
     <!-- SECTION 4: PRE-RELEASE GATES -->
     <!-- ================================================================== -->
     <section id="gates">
-      <h2>4. Harmonized Pre-Release Gates (<code>PM-1..PM-5</code>)</h2>
+      <h2>4. Harmonized Pre-Release Gates (<code>PM-1..PM-5</code>) &mdash; Post-Panel Status</h2>
       <div class="table-scroll">
         <table>
           <thead>
@@ -944,33 +1039,34 @@
               <th>Gate</th>
               <th>Scope &amp; Pre-Registered Threshold</th>
               <th>Status</th>
-              <th>Verified R4 Evidence</th>
+              <th>Verified Post-Panel Evidence &amp; Open Scope</th>
             </tr>
           </thead>
           <tbody>
-            <tr><td><code>PM-1a</code></td><td><code>Zero-Shortcut v2</code> (<code>&ge;98%</code>, <code>LCB95 &gt; +15 pp</code>) + Exhaustive WFS Oracle Proofs</td><td><span class="badge partial">PARTIAL / OPEN</span></td><td><code>0/381,497</code> oracle mismatches &amp; <code>C4_v3=100%</code> (<code>+37.5 pp</code> vs <code>C4_v2</code>); needs <code>&gt;top_k</code> $K=4$ flood follow-up.</td></tr>
-            <tr><td><code>PM-1b</code></td><td>Full <code>LongMemEval-S N=500</code> &amp; <code>LoCoMo-300</code> clean (<code>&ge;-1.0 / -3.0 pp</code>) + blind stress (<code>&gt;M1c</code>)</td><td><span class="badge open">OPEN / BLOCKING</span></td><td><code>LoCoMo-300</code> <code>M4e</code> clean <code>-1.33 pp</code> (vs <code>-1.00 pp</code>) &amp; tied <code>M1c</code> (<code>0.3933</code>); <code>LongMemEval-S N=500</code> pending.</td></tr>
-            <tr><td><code>PM-2</code></td><td>Coupled service (simultaneous <code>384&harr;4096</code> + peak + <code>TRA-1</code> + temporal echoes)</td><td><span class="badge open">OPEN / PENDING</span></td><td>Independent subsystems verified in R4; joint coupled service integration run pending.</td></tr>
-            <tr><td><code>PM-3</code></td><td>Direct pinned upstream <code>mem0ai</code> / <code>graphiti-core</code> / <code>ScaleMAS</code> comparators</td><td><span class="badge open">OPEN / PENDING</span></td><td>Retires <code>SCALEMAS_ADAPTED_SURROGATE</code> caveat; upstream harness pending.</td></tr>
-            <tr><td><code>PM-4</code></td><td><code>2&times;2</code> multi-family judge (<code>&kappa; &ge; 0.85</code>) + 100-item human audit + lock-free <code>0</code>-race grading</td><td><span class="badge partial">PARTIAL / OPEN</span></td><td>Lock-free <code>0</code>-conflict grading &amp; strict ID pairing passed in R4; multi-family cross-judge pending.</td></tr>
-            <tr><td><code>PM-5</code></td><td><code>100k</code> service <code>p95 &le; 25.0 ms</code> + <code>1M</code> power-law/hubs + <code>0</code> spurious scans + <code>100%</code> R4 SHA-256</td><td><span class="badge pass">CLEARED (PASS)</span></td><td><code>0.904 ms</code> p95 (<code>27.6&times;</code> margin), <code>1M</code> sparse <code>7.95 ms</code> / power-law <code>7.94 ms</code>, <code>10k</code> hubs <code>|D|=0</code>, <code>18/18</code> verified!</td></tr>
+            <tr><td><code>PM-1a</code></td><td>Flooded <code>Zero-Shortcut v3</code> (<code>&ge;98%</code>, <code>LCB95 &gt; +15 pp</code>) + <code>353,105</code> Independent WFS Oracle Proofs</td><td><span class="badge partial">STRUCTURED PASS</span></td><td><code>0/353,105</code> oracle mismatches; structured <code>C4_v4=100.0%</code> (<code>240/240</code>; <code>0.950&ndash;1.000</code> on <code>N=80</code> draws), <code>LCB95 +43.8..+95.8 pp</code> vs <code>C0..C4_v2</code> (<code>C2b=0.9667</code> on paraphrase flood); raw-text edge extraction pending.</td></tr>
+            <tr><td><code>PM-1b</code></td><td>Full <code>LongMemEval-S N=500</code> &amp; <code>LoCoMo-300</code> clean (<code>&ge;-1.0 / -3.0 pp</code>) + echo stress</td><td><span class="badge open">CLEAN PASS / STRESS UNMET</span></td><td><strong>Clean passed:</strong> <code>M4f</code> <code>+0.00 pp</code> (Tango <code>-1.26/-0.76 pp</code>). <strong>Stress FAILED:</strong> <code>M4g</code> <code>+24.36 pp</code> (<code>&lt;+25</code>), LCB <code>+12.82 pp</code> (<code>&lt;+15</code>), <code>0.7564 &lt; 0.7692</code> unstripped <code>M1c</code>.</td></tr>
+            <tr><td><code>PM-2</code></td><td>Coupled service (simultaneous <code>384&harr;4096</code> + peak + <code>TRA-1</code> + temporal echoes)</td><td><span class="badge open">PARTIAL / RERUN OPEN</span></td><td><code>12/12</code> ABI blocks &amp; dense wins vs CAR; <code>DualAdap=0.9650</code> vs <code>0.9850</code> Native (Boot <code>-4.5</code>, Tango <code>-5.29 pp</code>; <code>Query0W=0.6950</code>); <code>n=86</code> cached scorer <code>0.7181 ms</code>; label-free rerun without <code>c["family"]</code> guard open.</td></tr>
+            <tr><td><code>PM-3</code></td><td>Direct pinned upstream <code>mem0ai 2.2.1</code> (default &amp; steelmanned) + <code>graphiti</code> / <code>ScaleMAS</code></td><td><span class="badge partial">SUITE A PASS / B INCONCL.</span></td><td>Structured <code>C4_v4=0.9750</code> (<code>0.48 ms</code>) vs raw-text steelmanned <code>mem0ai=0.4750</code> (<code>2,988 ms</code>, <code>+50.0 pp</code>, <code>LCB95=+38.75 pp</code>); Suite B <code>N=30</code> <code>0.700</code> vs <code>0.600</code> (<code>LCB95=-3.33 pp</code>, non-significant).</td></tr>
+            <tr><td><code>PM-4</code></td><td><code>2&times;2</code> multi-family judge (<code>&kappa; &ge; 0.85</code>) + 100-item human audit + lock-free <code>0</code>-race grading</td><td><span class="badge open">CONV &kappa;=0.7414 / HUMAN OPEN</span></td><td><code>80/80</code> across 4 cells reusing 80 cases; conversational <code>100</code>-item <code>&kappa;=0.7414</code> (<code>87%</code>), pooled <code>900</code>-row <code>&kappa;=0.9570</code>; sealed key off-git, <code>PM-4b</code> human sheet pending.</td></tr>
+            <tr><td><code>PM-5</code></td><td><code>100k</code> service <code>p95 &le; 25.0 ms</code> + <code>1M</code> power-law/hubs + <code>0</code> dense fallbacks + <code>100%</code> SHA-256</td><td><span class="badge pass">CLEARED (PASS)</span></td><td><code>0.904 ms</code> mut p95 (<code>27.6&times;</code> margin), <code>1M</code> sparse <code>7.95 ms</code> / power-law <code>7.94 ms</code> (<code>p99=2.62s</code> Stratum-1 tail), <code>10k</code> hubs <code>|D|=0</code>, <code>27/27</code> bundles &amp; <code>25/25</code> side hashes verified!</td></tr>
           </tbody>
         </table>
       </div>
     </section>
 
     <!-- ================================================================== -->
-    <!-- SECTION 5: 18-BUNDLE CRYPTOGRAPHIC LEDGER -->
+    <!-- SECTION 5: 27-BUNDLE CRYPTOGRAPHIC LEDGER -->
     <!-- ================================================================== -->
     <section id="ledger">
-      <h2>5. Single-Source 3-Part Cryptographic Ledger (<code>18/18</code> Verified Bundles)</h2>
+      <h2>5. Single-Source 4-Part SHA-256 Receipt Ledger (<code>27/27</code> Bundles)</h2>
       <p>
         Generated and gated by <code>python scripts/build_whitepaper_assets.py --check</code> against
-        <code>docs/research/verified_registry.json</code> (<code>registry_content_sha256: bd1577d750bd</code>).
-        All <code>15/15</code> pristine pre-fix mirror files in <code>archive/pristine-b37e6a55-exact/</code> match git tag
-        <code>baseline/pre-fix-pristine-2026-11-21</code> (<code>b37e6a55</code>). Twenty raw historical CSV/JSONL files
-        predating side-artifact hashing are transparently logged as <code>UNHASHED_IN_HISTORICAL_RECEIPT</code> without
-        retroactive receipt mutation.
+        <code>docs/research/verified_registry.json</code> (<code>registry_content_sha256: 5bff6a809b2a</code>; integrity check over
+        manifests, side hashes, and mandatory disclosure tokens). All <code>15/15</code> pristine pre-fix mirror files in
+        <code>archive/pristine-b37e6a55-exact/</code> match git tag <code>baseline/pre-fix-pristine-2026-11-21</code> (<code>b37e6a55</code>).
+        All <code>25/25</code> receipt-bound side-artifact SHA-256 digests in Parts I&ndash;IV (<code>2 + 6 + 4 + 13</code>) verify
+        byte-for-byte; Part IV exact execution module/runner SHA-256s are bound in <code>part_iv_code_provenance</code> alongside remote
+        base <code>18973789</code>.
       </p>
       <div class="table-scroll">
         <table>
@@ -996,15 +1092,20 @@
             <tr><td><strong>Part III</strong></td><td><strong><code>f1_r4_comprehensive</code></strong></td><td><strong><code>R4_VERIFIED_PRIMARY</code></strong></td><td><code>266ee0f902da</code></td><td class="num">1352.92</td><td class="num best">2 / 2 (100%)</td></tr>
             <tr><td><strong>Part III</strong></td><td><strong><code>f2_ek5_v3_1m_powerlaw</code></strong></td><td><strong><code>R4_VERIFIED_PRIMARY</code></strong></td><td><code>2941048ccbe3</code></td><td class="num">106.11</td><td class="num best">Manifest</td></tr>
             <tr><td><strong>Part III</strong></td><td><strong><code>f2_r4_zero_shortcut_v2_and_locomo</code></strong></td><td><strong><code>R4_VERIFIED_PRIMARY</code></strong></td><td><code>2a3f4368366b</code></td><td class="num">264.03</td><td class="num best">2 / 2 (100%)</td></tr>
+            <tr><td><strong>Part IV</strong></td><td><code>r5_s1_zs_v3_pre_c4v4</code> / <strong><code>r5b_s1_zs_v3_pm1a_closure</code></strong></td><td><code>DIAGNOSTIC</code> / <strong><code>R5B_VERIFIED_PRIMARY</code> (<code>PM-1a</code>)</strong></td><td><code>c686357e459a</code> / <code>f6fdabf529c4</code></td><td class="num">91.9 / 98.6</td><td class="num best">2 / 2 (100%)</td></tr>
+            <tr><td><strong>Part IV</strong></td><td><strong><code>r5_s2_locomo_300_em4</code></strong> / <strong><code>r5_s3_longmemeval_n500</code></strong></td><td><strong><code>R5_VERIFIED_PRIMARY</code> (<code>PM-1b</code> Clean + KU)</strong></td><td><code>b8702cc1dda3</code> / <code>94f75e051e37</code></td><td class="num">181.8 / 557.4</td><td class="num best">2 / 2 (100%)</td></tr>
+            <tr><td><strong>Part IV</strong></td><td><code>r5_s1_pm2_dense_oov_probe</code> / <code>r5b_s1b_pm2_hybrid_coupled</code></td><td><code>DIAGNOSTIC</code> / <code>R5B_PARTIAL_PRIMARY</code> (<code>PM-2</code>)</td><td><code>80503ba8eb98</code> / <code>bfb921755911</code></td><td class="num">113.1 / 83.8</td><td class="num best">3 / 3 (100%)</td></tr>
+            <tr><td><strong>Part IV</strong></td><td><code>r5b_s2_pm3_mem0_default_probe</code> / <strong><code>r5b_s2b_pm3_steelmanned_mem0</code></strong></td><td><code>DIAGNOSTIC</code> / <strong><code>R5B_VERIFIED_PRIMARY</code> (<code>PM-3</code>)</strong></td><td><code>0e1c10b7429f</code> / <code>123bf2e023bd</code></td><td class="num">556.5 / 580.8</td><td class="num best">4 / 4 (100%)</td></tr>
+            <tr><td><strong>Part IV</strong></td><td><strong><code>r5b_s4_pm4_cross_family_2x2</code></strong></td><td><strong><code>R5B_VERIFIED_PRIMARY</code> (<code>PM-4a</code> conv <code>&kappa;=0.7414</code>)</strong></td><td><code>86739124c579</code></td><td class="num">1761.93</td><td class="num best">2 / 2 (100%)</td></tr>
           </tbody>
         </table>
       </div>
     </section>
 
     <footer>
-      <strong>ChelatedAI Research &middot; Doctoral Whitepaper v2 Presentation</strong> &middot;
-      Verified Registry <code>bd1577d750bd</code> &middot; WCAG AAA Accent Palette (<code>--warm: #7d2f0a</code>, 8.36:1) &middot;
-      Zero-JS Static Tables &amp; SVGs + Progressive ARIA Tabs + Print-Visible Pre-Release Banner.
+      <strong>ChelatedAI Research &middot; Doctoral Whitepaper v3.1 Presentation</strong> &middot;
+      Verified Registry <code>5bff6a809b2a</code> (<code>27/27</code> Bundles) &middot; WCAG AAA Accent Palette (<code>--warm: #7d2f0a</code>, 8.36:1) &middot;
+      Zero-JS Static Tables &amp; 8 Inline SVGs + Progressive ARIA Tabs + Print-Visible Pre-Release Banner.
     </footer>
   </main>
 

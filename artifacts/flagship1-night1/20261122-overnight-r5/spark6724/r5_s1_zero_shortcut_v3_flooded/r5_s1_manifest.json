@@ -1,0 +1,178 @@
+{
+  "arms": {
+    "C0_bm25_flat": {
+      "api_errors": 0,
+      "by_family": {
+        "amends_vs_copy_of_currency_split": 0.0,
+        "authority_laundering_rumor_attack": 0.0,
+        "flood_12_unlinked_paraphrase_copies": 0.0,
+        "mutual_refutation_contested_abstain": 0.0,
+        "repeated_valid_truth_vs_late_false_rumor": 0.0,
+        "stale_newest_echo_after_correction": 0.1667,
+        "unlinked_downstream_synthesis_from_retracted": 0.0,
+        "version_lineage_refuted_middle_v3_v2_v1": 0.0
+      },
+      "mean_prompt_tokens": 303.9,
+      "overall_acc": 0.0208
+    },
+    "C1_scalemas_bounded": {
+      "api_errors": 0,
+      "by_family": {
+        "amends_vs_copy_of_currency_split": 0.0,
+        "authority_laundering_rumor_attack": 0.0,
+        "flood_12_unlinked_paraphrase_copies": 0.0,
+        "mutual_refutation_contested_abstain": 0.0,
+        "repeated_valid_truth_vs_late_false_rumor": 0.9667,
+        "stale_newest_echo_after_correction": 0.0,
+        "unlinked_downstream_synthesis_from_retracted": 0.0,
+        "version_lineage_refuted_middle_v3_v2_v1": 0.0
+      },
+      "mean_prompt_tokens": 296.1,
+      "overall_acc": 0.1208
+    },
+    "C2_latest_timestamp": {
+      "api_errors": 0,
+      "by_family": {
+        "amends_vs_copy_of_currency_split": 0.0,
+        "authority_laundering_rumor_attack": 0.0,
+        "flood_12_unlinked_paraphrase_copies": 1.0,
+        "mutual_refutation_contested_abstain": 0.0,
+        "repeated_valid_truth_vs_late_false_rumor": 0.0,
+        "stale_newest_echo_after_correction": 0.0,
+        "unlinked_downstream_synthesis_from_retracted": 0.3,
+        "version_lineage_refuted_middle_v3_v2_v1": 0.0
+      },
+      "mean_prompt_tokens": 304.5,
+      "overall_acc": 0.1625
+    },
+    "C2b_bm25_jaccard_dedup": {
+      "api_errors": 0,
+      "by_family": {
+        "amends_vs_copy_of_currency_split": 0.0,
+        "authority_laundering_rumor_attack": 0.0,
+        "flood_12_unlinked_paraphrase_copies": 0.9667,
+        "mutual_refutation_contested_abstain": 0.0,
+        "repeated_valid_truth_vs_late_false_rumor": 1.0,
+        "stale_newest_echo_after_correction": 0.0,
+        "unlinked_downstream_synthesis_from_retracted": 0.7667,
+        "version_lineage_refuted_middle_v3_v2_v1": 0.0
+      },
+      "mean_prompt_tokens": 273.9,
+      "overall_acc": 0.3417
+    },
+    "C2c_astra_4line_rule": {
+      "api_errors": 0,
+      "by_family": {
+        "amends_vs_copy_of_currency_split": 0.0,
+        "authority_laundering_rumor_attack": 0.0,
+        "flood_12_unlinked_paraphrase_copies": 1.0,
+        "mutual_refutation_contested_abstain": 0.0,
+        "repeated_valid_truth_vs_late_false_rumor": 0.0,
+        "stale_newest_echo_after_correction": 0.0,
+        "unlinked_downstream_synthesis_from_retracted": 0.3,
+        "version_lineage_refuted_middle_v3_v2_v1": 0.0
+      },
+      "mean_prompt_tokens": 304.5,
+      "overall_acc": 0.1625
+    },
+    "C3_ordinary_bitemporal_tms": {
+      "api_errors": 0,
+      "by_family": {
+        "amends_vs_copy_of_currency_split": 0.0,
+        "authority_laundering_rumor_attack": 0.0,
+        "flood_12_unlinked_paraphrase_copies": 0.3,
+        "mutual_refutation_contested_abstain": 0.0,
+        "repeated_valid_truth_vs_late_false_rumor": 0.0,
+        "stale_newest_echo_after_correction": 0.0,
+        "unlinked_downstream_synthesis_from_retracted": 0.0,
+        "version_lineage_refuted_middle_v3_v2_v1": 0.0
+      },
+      "mean_prompt_tokens": 304.2,
+      "overall_acc": 0.0375
+    },
+    "C4_v2_ek5_v2": {
+      "api_errors": 0,
+      "by_family": {
+        "amends_vs_copy_of_currency_split": 0.0,
+        "authority_laundering_rumor_attack": 0.0,
+        "flood_12_unlinked_paraphrase_copies": 1.0,
+        "mutual_refutation_contested_abstain": 1.0,
+        "repeated_valid_truth_vs_late_false_rumor": 0.0,
+        "stale_newest_echo_after_correction": 1.0,
+        "unlinked_downstream_synthesis_from_retracted": 1.0,
+        "version_lineage_refuted_middle_v3_v2_v1": 0.0
+      },
+      "mean_prompt_tokens": 246.6,
+      "overall_acc": 0.5
+    },
+    "C4_v3_ek5_v3_k4": {
+      "api_errors": 0,
+      "by_family": {
+        "amends_vs_copy_of_currency_split": 1.0,
+        "authority_laundering_rumor_attack": 0.0,
+        "flood_12_unlinked_paraphrase_copies": 1.0,
+        "mutual_refutation_contested_abstain": 1.0,
+        "repeated_valid_truth_vs_late_false_rumor": 1.0,
+        "stale_newest_echo_after_correction": 1.0,
+        "unlinked_downstream_synthesis_from_retracted": 1.0,
+        "version_lineage_refuted_middle_v3_v2_v1": 1.0
+      },
+      "mean_prompt_tokens": 176.9,
+      "overall_acc": 0.875
+    }
+  },
+  "bootstrap": {
+    "C4v3_vs_C0_bm25_flat": {
+      "clopper_pearson_ci95_low": 0.7774,
+      "lcb_95": 0.8083,
+      "mean_delta": 0.8542,
+      "tango_ci95_low": 0.8039
+    },
+    "C4v3_vs_C1_scalemas_bounded": {
+      "clopper_pearson_ci95_low": 0.668,
+      "lcb_95": 0.7,
+      "mean_delta": 0.7542,
+      "tango_ci95_low": 0.696
+    },
+    "C4v3_vs_C2_latest_timestamp": {
+      "clopper_pearson_ci95_low": 0.6239,
+      "lcb_95": 0.6542,
+      "mean_delta": 0.7125,
+      "tango_ci95_low": 0.6522
+    },
+    "C4v3_vs_C2b_bm25_jaccard_dedup": {
+      "clopper_pearson_ci95_low": 0.4409,
+      "lcb_95": 0.4667,
+      "mean_delta": 0.5333,
+      "tango_ci95_low": 0.4702
+    },
+    "C4v3_vs_C2c_astra_4line_rule": {
+      "clopper_pearson_ci95_low": 0.6239,
+      "lcb_95": 0.6542,
+      "mean_delta": 0.7125,
+      "tango_ci95_low": 0.6522
+    },
+    "C4v3_vs_C3_ordinary_bitemporal_tms": {
+      "clopper_pearson_ci95_low": 0.7588,
+      "lcb_95": 0.7875,
+      "mean_delta": 0.8375,
+      "tango_ci95_low": 0.7856
+    },
+    "C4v3_vs_C4_v2_ek5_v2": {
+      "clopper_pearson_ci95_low": 0.2872,
+      "lcb_95": 0.3125,
+      "mean_delta": 0.375,
+      "tango_ci95_low": 0.3162
+    }
+  },
+  "csv_path": "r5_s1_zero_shortcut_v3_rows.csv",
+  "csv_sha256": "165689b520a947985a310cd6a43b90d36eb35e80d61b2c9dad569ae6f1ddf08b",
+  "git_sha": "18973789615ecab1268a77ebd3c69a283607241c",
+  "mean_events_per_case": 16.0,
+  "model_id": "nemotron-lightning",
+  "n_cases": 240,
+  "pm1a_all_comparators_lcb95_gt_15pp_pass": false,
+  "schema_version": "r5_s1_zero_shortcut_v3_flooded_v1",
+  "top_k": 5,
+  "wall_seconds": 91.89
+}

@@ -1,0 +1,11 @@
+{
+  "artifact_hashes": {
+    "r5_s2_locomo_300_em4_rows.csv": "5d05745516dafc8bf85abda6a7bbce0d793c9f8cf8aeaa6a971b9271d5f323fb",
+    "r5_s2_manifest.json": "b8702cc1dda3cb70bb21a329b18a25e4a027f6566a9f67213d0b5f0140e608ef"
+  },
+  "git_sha": "18973789615ecab1268a77ebd3c69a283607241c",
+  "manifest_path": "r5_s2_manifest.json",
+  "manifest_sha256": "b8702cc1dda3cb70bb21a329b18a25e4a027f6566a9f67213d0b5f0140e608ef",
+  "schema_version": "r5_report_receipt_v1",
+  "wall_seconds": 181.82
+}

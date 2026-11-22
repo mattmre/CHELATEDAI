@@ -1,0 +1,21 @@
+{
+  "stages": {
+    "stage1_pm2_coupled_service": {
+      "status": "COMPLETED",
+      "wall_seconds": 113.07
+    },
+    "stage2_pm3_live_upstream_comparators": {
+      "error": "Command '['/home/mattmre/chelated-night1/.venv-pm3/bin/python', '/home/mattmre/chelated-night1/out/20261122-r5b-completion/spark37c3/r5_s2_pm3_live_upstream_comparators/_pm3_mem0_worker.py', '/home/mattmre/chelated-night1/src', '/home/mattmre/chelated-night1/out/20261122-r5b-completion/spark37c3/r5_s2_pm3_live_upstream_comparators', 'http://127.0.0.1:8891/v1', 'nemotron-lightning']' returned non-zero exit status 1.",
+      "status": "ERROR",
+      "traceback": "Traceback (most recent call last):\n  File \"/home/mattmre/chelated-night1/src/scripts/run_overnight_r5_spark37c3.py\", line 943, in main\n    res = fn()\n          ^^^^\n  File \"/home/mattmre/chelated-night1/src/scripts/run_overnight_r5_spark37c3.py\", line 939, in <lambda>\n    (\"stage2_pm3_live_upstream_comparators\", lambda: run_stage2_pm3_live_upstream_comparators(args.endpoint, args.model_id, args.output_root)),\n                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/mattmre/chelated-night1/src/scripts/run_overnight_r5_spark37c3.py\", line 889, in run_stage2_pm3_live_upstream_comparators\n    subprocess.run([pm3_py, str(worker_script), str(REPO_ROOT), str(out_dir), endpoint, model_id], check=True)\n  File \"/usr/lib/python3.12/subprocess.py\", line 571, in run\n    raise CalledProcessError(retcode, process.args,\nsubprocess.CalledProcessError: Command '['/home/mattmre/chelated-night1/.venv-pm3/bin/python', '/home/mattmre/chelated-night1/out/20261122-r5b-completion/spark37c3/r5_s2_pm3_live_upstream_comparators/_pm3_mem0_worker.py', '/home/mattmre/chelated-night1/src', '/home/mattmre/chelated-night1/out/20261122-r5b-completion/spark37c3/r5_s2_pm3_live_upstream_comparators', 'http://127.0.0.1:8891/v1', 'nemotron-lightning']' returned non-zero exit status 1.\n"
+    }
+  },
+  "started_at": "2026-11-22T09:39:39.175110",
+  "telemetry": {
+    "cuda_available": true,
+    "cuda_device": "NVIDIA GB10",
+    "peak_rss_mib": 3050.52,
+    "peak_vram_mib": 4482.51
+  },
+  "total_wall_seconds": 125.82
+}

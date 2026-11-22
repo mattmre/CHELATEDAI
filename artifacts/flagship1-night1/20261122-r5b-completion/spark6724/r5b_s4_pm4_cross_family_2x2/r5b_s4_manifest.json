@@ -1,0 +1,54 @@
+{
+  "enriched_sealed_key_json": "pm4_human_audit_100_sealed_key_with_qwen.json",
+  "enriched_sealed_key_sha256": "415c6f4c2dd8859eed766c4ab38229c70367f8c47a01e41d1ef0ec38ce6a8560",
+  "git_sha": "18973789615ecab1268a77ebd3c69a283607241c",
+  "inter_judge_agreement": {
+    "combined_900_cohens_kappa": 0.957,
+    "combined_kappa_ci95": [
+      0.9376,
+      0.9751
+    ],
+    "pm4a_kappa_ge_085_pass": true,
+    "real_conv_100_cohens_kappa": 0.7414,
+    "real_conv_100_raw_agreement": 0.87,
+    "zs_2x2_800_cohens_kappa": 0.9847
+  },
+  "matrix_2x2_accuracy_by_arm": {
+    "Nemotron_30B_x_Nemotron_Judge": {
+      "C0_bm25_flat": 0.0,
+      "C2c_astra_4line_rule": 0.15,
+      "C3_ordinary_bitemporal_tms": 0.025,
+      "C4_v3_ek5_v3_k4": 0.875,
+      "C4_v4_ek5_v3_blocked_telemetry": 1.0
+    },
+    "Nemotron_30B_x_Qwen2.5_Judge": {
+      "C0_bm25_flat": 0.0,
+      "C2c_astra_4line_rule": 0.15,
+      "C3_ordinary_bitemporal_tms": 0.025,
+      "C4_v3_ek5_v3_k4": 0.875,
+      "C4_v4_ek5_v3_blocked_telemetry": 1.0
+    },
+    "Qwen2.5_7B_x_Nemotron_Judge": {
+      "C0_bm25_flat": 0.0125,
+      "C2c_astra_4line_rule": 0.25,
+      "C3_ordinary_bitemporal_tms": 0.125,
+      "C4_v3_ek5_v3_k4": 0.8,
+      "C4_v4_ek5_v3_blocked_telemetry": 1.0
+    },
+    "Qwen2.5_7B_x_Qwen2.5_Judge": {
+      "C0_bm25_flat": 0.0125,
+      "C2c_astra_4line_rule": 0.25,
+      "C3_ordinary_bitemporal_tms": 0.125,
+      "C4_v3_ek5_v3_k4": 0.875,
+      "C4_v4_ek5_v3_blocked_telemetry": 1.0
+    }
+  },
+  "matrix_csv": "r5b_s4_pm4_2x2_matrix_rows.csv",
+  "matrix_csv_sha256": "1b71ff4f0ea633c51fa9d42738c06225c1bb3ded68fea7d3ff8b9fa93ef4acc7",
+  "models_crossed": {
+    "family_1": "nemotron-lightning",
+    "family_2": "Qwen/Qwen2.5-7B-Instruct"
+  },
+  "schema_version": "r5b_s4_pm4_cross_family_2x2_v1",
+  "wall_seconds": 1761.93
+}

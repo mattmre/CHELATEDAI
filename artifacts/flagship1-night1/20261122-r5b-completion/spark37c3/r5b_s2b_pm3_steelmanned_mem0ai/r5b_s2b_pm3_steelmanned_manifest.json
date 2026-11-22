@@ -1,0 +1,56 @@
+{
+  "git_sha": "18973789615ecab1268a77ebd3c69a283607241c",
+  "lme_csv": "r5b_s2b_pm3_steelmanned_lme_ku_rows.csv",
+  "lme_csv_sha256": "7cdc5b6223bfbeacaf114e5c8f0a7c8ba3205729dff28de1fd8f4221e26bf847",
+  "mem0ai_version": "2.2.1",
+  "pm3_cleared": true,
+  "qdrant_client_version": "1.20.0",
+  "schema_version": "r5b_s2b_pm3_steelmanned_mem0ai_v1",
+  "suite_a_zero_shortcut_v3_n80": {
+    "arm_accuracy": {
+      "C1_scalemas_bounded": 0.1125,
+      "C3_ordinary_bitemporal_tms": 0.0125,
+      "C4_v4_ek5_v3_blocked_telemetry": 0.975,
+      "U1b_mem0ai_direct_qdrant": 0.1125,
+      "U1c_mem0ai_steelmanned_infer": 0.475
+    },
+    "c4v4_vs_mem0_raw_qdrant": {
+      "lcb_95": 0.7875,
+      "mean_delta": 0.8625
+    },
+    "c4v4_vs_mem0_steelmanned_infer": {
+      "lcb_95": 0.3875,
+      "mean_delta": 0.5
+    },
+    "ingestion_mean_ms": {
+      "C4_v4_ek5_v3_ms": 0.48,
+      "U1b_raw_qdrant_ms": 95.8,
+      "U1c_steelmanned_infer_ms": 2987.95
+    },
+    "nonempty_retrieval_cases": {
+      "U1b_raw_qdrant": 80,
+      "U1c_steelmanned_infer": 80,
+      "total": 80
+    }
+  },
+  "suite_b_longmemeval_ku_echo_stress_n30": {
+    "arm_accuracy": {
+      "M1_hybrid_flat": 0.4,
+      "M4f_soft_telemetry_fallback": 0.6667,
+      "M4g_ek5_soft_telemetry_recency": 0.7,
+      "U1c_mem0ai_biographical_infer": 0.6
+    },
+    "m4f_vs_mem0_biographical": {
+      "lcb_95": -0.1,
+      "mean_delta": 0.0667
+    },
+    "m4g_vs_mem0_biographical": {
+      "lcb_95": -0.0333,
+      "mean_delta": 0.1
+    },
+    "mem0_biographical_ingest_mean_ms": 6399.0
+  },
+  "wall_seconds": 580.83,
+  "zs_csv": "r5b_s2b_pm3_steelmanned_zs_rows.csv",
+  "zs_csv_sha256": "8a6128a31df02f447cf507a08c96b30e8dd25f27e84b6555e45f48aa2961a2c7"
+}

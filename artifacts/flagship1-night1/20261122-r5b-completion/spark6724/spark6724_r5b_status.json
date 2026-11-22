@@ -1,0 +1,20 @@
+{
+  "stages": {
+    "part1_zs_v3_pm1a_closure": {
+      "status": "COMPLETED",
+      "wall_seconds": 98.63
+    },
+    "part2_pm4_cross_family_2x2": {
+      "status": "COMPLETED",
+      "wall_seconds": 1761.93
+    }
+  },
+  "started_at": "2026-11-22T09:39:28.999280",
+  "telemetry": {
+    "cuda_available": true,
+    "cuda_device": "NVIDIA GB10",
+    "peak_rss_mib": 6248.91,
+    "peak_vram_mib": 14662.86
+  },
+  "total_wall_seconds": 1860.61
+}

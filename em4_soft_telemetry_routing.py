@@ -43,7 +43,23 @@ from ek5_v3_stratified import (
 )
 
 _TOK_RE = re.compile(r"[a-z0-9]+")
+# Post-R5 Panel Fix: exclude plain `update` from archival recap prefixes so genuine user updates
+# (`"Update: I moved to Denver"`) are never penalized as archival recaps. Exact R5 regex preserved
+# in `archive/r5-exact-code-snapshot-2026-11-22/em4_soft_telemetry_routing.py` and `legacy_r5_compat=True`.
 _EXTENDED_RECAP_RE = re.compile(
+    r"^\s*(?:"
+    r"session\s+recap\s+note[^:]*:|"
+    r"memory\s+summary\s+log[^:]*:|"
+    r"background\s+context\s+carried\s+forward\s*:|"
+    r"follow-up\s+note\s+recalling\s+earlier\s+detail\s*:|"
+    r"periodic\s+assistant\s+digest[^:]*:|"
+    r"stored\s+profile\s+reminder[^:]*:|"
+    r"(?:briefing|session|memo|note|turn|entry|memory\s+recap|recap|digest|log|report|reminder|summary)"
+    r"\s*(?:#?\d+)?\s*(?:\([^)]*\))?\s*[:\-–—]"
+    r")\s*",
+    re.IGNORECASE,
+)
+_LEGACY_R5_RECAP_RE = re.compile(
     r"^\s*(?:"
     r"session\s+recap\s+note[^:]*:|"
     r"memory\s+summary\s+log[^:]*:|"
@@ -75,22 +91,24 @@ class SoftTelemetryRoutingResult:
     low_rank_fallback_indices: Tuple[int, ...]
 
 
-def is_recap_framed(text: str) -> bool:
+def is_recap_framed(text: str, *, legacy_r5_compat: bool = False) -> bool:
     """Return True if `text` begins with an archival/recap/digest wrapper header."""
     s = text.strip()
     if s.lower().startswith("user:"):
         s = s[5:].strip()
-    return bool(_EXTENDED_RECAP_RE.match(s))
+    pat = _LEGACY_R5_RECAP_RE if legacy_r5_compat else _EXTENDED_RECAP_RE
+    return bool(pat.match(s))
 
 
-def strip_recap_and_speaker(text: str) -> str:
+def strip_recap_and_speaker(text: str, *, legacy_r5_compat: bool = False) -> str:
     """Strip outer `User:`/speaker prefixes and recurring recap/digest boilerplate headers."""
+    pat = _LEGACY_R5_RECAP_RE if legacy_r5_compat else _EXTENDED_RECAP_RE
     cur = strip_boilerplate_headers(text.strip())
     for _ in range(4):
         nxt = cur
         if nxt.lower().startswith("user:"):
             nxt = nxt[5:].strip()
-        nxt = _EXTENDED_RECAP_RE.sub("", nxt, count=1).strip()
+        nxt = pat.sub("", nxt, count=1).strip()
         nxt = strip_boilerplate_headers(nxt)
         if nxt == cur:
             break
@@ -98,13 +116,13 @@ def strip_recap_and_speaker(text: str) -> str:
     # Strip single leading speaker label (`Caroline: ...`) for speaker-normalized body comparison
     cur_no_spk = _SPEAKER_PREFIX_RE.sub("", cur, count=1).strip()
     # Strip a nested recap header if speaker label preceded or followed `Briefing N:`
-    cur_no_spk = _EXTENDED_RECAP_RE.sub("", cur_no_spk, count=1).strip()
+    cur_no_spk = pat.sub("", cur_no_spk, count=1).strip()
     cur_no_spk = _SPEAKER_PREFIX_RE.sub("", cur_no_spk, count=1).strip()
     return cur_no_spk if cur_no_spk else cur
 
 
-def content_tokens_stripped(text: str) -> Set[str]:
-    body = strip_recap_and_speaker(text)
+def content_tokens_stripped(text: str, *, legacy_r5_compat: bool = False) -> Set[str]:
+    body = strip_recap_and_speaker(text, legacy_r5_compat=legacy_r5_compat)
     if " | Assistant:" in body:
         body = body.split(" | Assistant:", 1)[0]
     return {t for t in _TOK_RE.findall(body.lower()) if t not in _STOPWORDS and len(t) > 1}
@@ -135,6 +153,7 @@ def route_soft_telemetry_top_k(
     echo_cosine_threshold: float = 0.86,
     backfill_rel_floor: float = 0.58,
     token_budget_chars: int = 2200,
+    legacy_r5_compat: bool = False,
 ) -> SoftTelemetryRoutingResult:
     """Route memory candidates using `EK5 v3` explicit refutations + `EM-4` soft telemetry fallback.
 
@@ -143,6 +162,8 @@ def route_soft_telemetry_top_k(
         de-spoofed origin timestamps + `EM-3` chronological update tags + budget-gated soft fallback.
       - `M4g_ek5_soft_telemetry_recency`: Adds gentle de-spoofed origin-timestamp tie-breaking
         (`+0.07 * origin_recency`) for multi-session knowledge-update streams.
+      - Set `legacy_r5_compat=True` to reproduce the exact R5 overnight tiebreak/single-linkage behavior
+        (also archived byte-for-byte in `archive/r5-exact-code-snapshot-2026-11-22/`).
     """
     if mode not in ("M4f_soft_telemetry_fallback", "M4g_ek5_soft_telemetry_recency"):
         raise ValueError(f"Unsupported EM-4 mode: {mode}")
@@ -150,6 +171,12 @@ def route_soft_telemetry_top_k(
     n = len(units)
     if n == 0:
         return SoftTelemetryRoutingResult((), {}, {}, (), ())
+
+    # Validate explicit numeric timestamps up front unless `legacy_r5_compat=True`
+    if not legacy_r5_compat:
+        for idx_u, u in enumerate(units):
+            if "ts" not in u or u["ts"] is None:
+                raise ValueError(f"Unit at index {idx_u} ({u.get('unit_id', '?')}) missing explicit numeric 'ts'")
 
     dense = unit_embs @ query_emb
     hyb = 0.50 * _minmax(bm25_scores) + 0.50 * _minmax(dense)
@@ -172,66 +199,101 @@ def route_soft_telemetry_top_k(
     pe = unit_embs[cand_indices]
     sim = pe @ pe.T
     raw_bodies = [
-        strip_recap_and_speaker(str(units[idx].get("raw_text") or units[idx].get("user_text") or units[idx].get("text", "")))
+        strip_recap_and_speaker(
+            str(units[idx].get("raw_text") or units[idx].get("user_text") or units[idx].get("text", "")),
+            legacy_r5_compat=legacy_r5_compat,
+        )
         for idx in cand_indices
     ]
-    tsets = [content_tokens_stripped(b) for b in raw_bodies]
+    tsets = [content_tokens_stripped(b, legacy_r5_compat=legacy_r5_compat) for b in raw_bodies]
     recap_flags = [
-        is_recap_framed(str(units[idx].get("raw_text") or units[idx].get("user_text") or units[idx].get("text", "")))
+        is_recap_framed(
+            str(units[idx].get("raw_text") or units[idx].get("user_text") or units[idx].get("text", "")),
+            legacy_r5_compat=legacy_r5_compat,
+        )
         for idx in cand_indices
     ]
     ts_raw = [float(units[idx].get("ts", 0.0)) for idx in cand_indices]
-    sess_ids = [str(units[idx].get("session_id", idx)) for idx in cand_indices]
+    sess_ids = [str(units[idx].get("session_id", f"__anon_session_{idx}")) for idx in cand_indices]
 
     # Step 2: Build verified cross-session duplicate-echo clusters & de-spoof origin timestamps!
-    # A pair `(p, q)` across sessions merges ONLY if `stripped_jaccard >= 0.58` or `cos >= 0.86`
-    # AND `classify_high_similarity_pair` returns `"ECHO_COLLAPSE"` (never `"PRESERVE_CONFLICT"`).
-    parent = list(range(k_len))
-
-    def _find(x: int) -> int:
-        while parent[x] != x:
-            parent[x] = parent[parent[x]]
-            x = parent[x]
-        return x
-
-    def _union(x: int, y: int) -> None:
-        rx, ry = _find(x), _find(y)
-        if rx != ry:
-            parent[ry] = rx
-
-    for a in range(k_len):
-        for b in range(a + 1, k_len):
-            if sess_ids[a] == sess_ids[b]:
-                continue
-            s_jac = jaccard_similarity(tsets[a], tsets[b])
-            c_ab = float(sim[a, b])
-            if s_jac >= echo_jaccard_threshold or c_ab >= echo_cosine_threshold:
-                act, _ = classify_high_similarity_pair(raw_bodies[a], raw_bodies[b])
-                if act == "ECHO_COLLAPSE":
-                    _union(a, b)
+    # Post-R5 Panel Fix: Default uses complete-linkage cluster admission so `A~B` and `B~C` cannot
+    # transitively merge divergent `A` and `C` (e.g., `50 mg` vs `100 mg`).
+    def _is_verified_echo_pair(a: int, b: int) -> bool:
+        if sess_ids[a] == sess_ids[b]:
+            return False
+        s_jac = jaccard_similarity(tsets[a], tsets[b])
+        c_ab = float(sim[a, b])
+        if s_jac >= echo_jaccard_threshold or c_ab >= echo_cosine_threshold:
+            act, _ = classify_high_similarity_pair(raw_bodies[a], raw_bodies[b])
+            return act == "ECHO_COLLAPSE"
+        return False
 
     clusters: Dict[int, List[int]] = {}
-    for loc_i in range(k_len):
-        clusters.setdefault(_find(loc_i), []).append(loc_i)
+    if legacy_r5_compat:
+        parent = list(range(k_len))
+
+        def _find(x: int) -> int:
+            while parent[x] != x:
+                parent[x] = parent[parent[x]]
+                x = parent[x]
+            return x
+
+        for a in range(k_len):
+            for b in range(a + 1, k_len):
+                if _is_verified_echo_pair(a, b):
+                    ra, rb = _find(a), _find(b)
+                    if ra != rb:
+                        parent[rb] = ra
+        for loc_i in range(k_len):
+            clusters.setdefault(_find(loc_i), []).append(loc_i)
+    else:
+        cluster_list: List[List[int]] = []
+        for loc_i in range(k_len):
+            placed = False
+            for cl in cluster_list:
+                # Complete-linkage check against all existing members prevents transitive chaining drift
+                if all(_is_verified_echo_pair(m, loc_i) and classify_high_similarity_pair(raw_bodies[m], raw_bodies[loc_i])[0] == "ECHO_COLLAPSE" for m in cl):
+                    cl.append(loc_i)
+                    placed = True
+                    break
+            if not placed:
+                cluster_list.append([loc_i])
+        clusters = {cid: mems for cid, mems in enumerate(cluster_list)}
 
     # Choose 1 canonical representative per verified echo cluster:
-    # Prefer non-recap original turn with highest hybrid relevance; anchor `origin_ts = min(ts in cluster)`!
+    # Prefer non-recap original turn when within 0.08 hybrid score of top cluster member; otherwise highest hybrid!
     rep_to_members: Dict[int, List[int]] = {}
     origin_ts_local: Dict[int, float] = {}
     suppressed_echo_local: Set[int] = set()
     for members in clusters.values():
         orig_ts = min(ts_raw[m] for m in members)
-        # Prefer non-recap member if within 0.08 hybrid score of top cluster member; otherwise highest hybrid
         top_m_hyb = max(float(hyb[cand_indices[m]]) for m in members)
-        best_m = sorted(
-            members,
-            key=lambda m: (
-                1 if (recap_flags[m] and (top_m_hyb - float(hyb[cand_indices[m]])) < 0.08) else 0,
-                -float(hyb[cand_indices[m]]),
-                ts_raw[m],
-                m,
-            ),
-        )[0]
+        if legacy_r5_compat:
+            best_m = sorted(
+                members,
+                key=lambda m: (
+                    1 if (recap_flags[m] and (top_m_hyb - float(hyb[cand_indices[m]])) < 0.08) else 0,
+                    -float(hyb[cand_indices[m]]),
+                    ts_raw[m],
+                    m,
+                ),
+            )[0]
+        else:
+            has_close_non_recap = any(
+                (not recap_flags[m]) and (top_m_hyb - float(hyb[cand_indices[m]])) < 0.08 for m in members
+            )
+            best_m = sorted(
+                members,
+                key=lambda m: (
+                    (0 if (not recap_flags[m] and (top_m_hyb - float(hyb[cand_indices[m]])) < 0.08) else 1)
+                    if has_close_non_recap
+                    else 0,
+                    -float(hyb[cand_indices[m]]),
+                    ts_raw[m],
+                    m,
+                ),
+            )[0]
         rep_to_members[best_m] = members
         origin_ts_local[best_m] = orig_ts
         for m in members:
@@ -246,13 +308,11 @@ def route_soft_telemetry_top_k(
     top_hyb = max(float(hyb[cand_indices[r]]) for r in surv_reps)
 
     if mode == "M4f_soft_telemetry_fallback":
-        # Pure hybrid order (exact match with M1_hybrid_flat on clean distinct turns; tiny -0.02 recap tiebreak)
         ordered_reps = sorted(
             surv_reps,
             key=lambda r: (-(float(hyb[cand_indices[r]]) - (0.02 if recap_flags[r] else 0.0)), r),
         )
     else:
-        # M4g: De-spoofed origin-timestamp recency tie-break (+0.07 * origin_recency)
         ordered_reps = sorted(
             surv_reps,
             key=lambda r: (
@@ -274,28 +334,17 @@ def route_soft_telemetry_top_k(
         if len(selected_local) >= top_k:
             break
         r_hyb = float(hyb[cand_indices[r]])
-        # If `r` was NOT in the natural top_k (i.e. it is backfilling a slot freed by echo collapse),
-        # require `r_hyb >= backfill_rel_floor * top_hyb` so noisy tail turns aren't stuffed into prompts!
         if r not in natural_top_k and len(selected_local) > 0 and r_hyb < backfill_rel_floor * top_hyb:
             demoted_soft_local.append(r)
             continue
         selected_local.append(r)
 
-    # Soft telemetry fallback: if echo collapse left `< top_k` items AND a natural top_k echo or borderline
-    # witness exists within character budget, surface at most 1 status-tagged `[EM-3 LOW-RANK FALLBACK]` item
-    # ONLY when no newer conflicting update already superseded it!
     status_tags: Dict[int, str] = {}
     fallback_added: List[int] = []
 
     # Step 5: Attach `EM-3` non-blocking chronological & echo-multiplicity telemetry tags
-    # Detect cross-session update pairs inside `selected_local`:
-    # `(a, b)` where `origin_ts[b] > origin_ts[a]`, distinct sessions, topical coupling `cos >= 0.50`,
-    # and divergent factual content (`PRESERVE_CONFLICT` or `stripped_jaccard < 0.78`).
     older_flagged: Set[int] = set()
     newer_flagged: Set[int] = set()
-    for i_pos, a in enumerate(selected_local):
-        for b in selected_local[i_pos + 1 :]:
-            pass  # Check all ordered pairs below
     for a in selected_local:
         for b in selected_local:
             if a == b or sess_ids[a] == sess_ids[b]:
@@ -306,12 +355,6 @@ def route_soft_telemetry_top_k(
             s_jac = jaccard_similarity(tsets[a], tsets[b])
             act, _ = classify_high_similarity_pair(raw_bodies[a], raw_bodies[b])
             is_echoed_stale = len(rep_to_members.get(a, [a])) >= 2 or recap_flags[a]
-            # Trigger explicit temporal-update tags ONLY when:
-            #   (i) `a` is a multi-copy/recap echo cluster (`echo_count >= 2` or recap-framed) co-occurring
-            #       with a newer topically-coupled (`cos >= 0.50`, `s_jac < 0.78`) session turn `b`, OR
-            #   (ii) `(a, b)` is a high-similarity (`cos >= 0.66` AND `s_jac >= 0.40`) minimal-pair conflict
-            #        sharing a common predicate frame (`act == "PRESERVE_CONFLICT"`).
-            # This guarantees clean complementary multi-session turns on LoCoMo are NEVER noisily tagged!
             if (is_echoed_stale and c_ab >= 0.50 and s_jac < 0.78) or (
                 act == "PRESERVE_CONFLICT" and c_ab >= 0.66 and s_jac >= 0.40
             ):
@@ -334,12 +377,13 @@ def route_soft_telemetry_top_k(
         elif n_copies >= 3 and recap_flags[loc_i]:
             status_tags[u_idx] = f"[EM-3 TELEMETRY: ARCHIVED RECAP (echoed {n_copies}x)] "
 
-    # Optional soft fallback slot when token budget allows and `< top_k` items were selected
+    # Optional soft fallback slot when character budget allows and `< top_k` items were selected
     cur_chars = sum(len(str(units[cand_indices[r]].get("text", ""))) for r in selected_local)
-    if len(selected_local) < top_k and demoted_soft_local and cur_chars + 280 <= token_budget_chars:
+    if len(selected_local) < top_k and demoted_soft_local:
         fb_loc = demoted_soft_local[0]
-        if float(hyb[cand_indices[fb_loc]]) >= 0.48 * top_hyb:
-            fb_u = cand_indices[fb_loc]
+        fb_u = cand_indices[fb_loc]
+        fb_len = 280 if legacy_r5_compat else max(len(str(units[fb_u].get("text", ""))), 1)
+        if cur_chars + fb_len <= token_budget_chars and float(hyb[fb_u]) >= 0.48 * top_hyb:
             selected_local.append(fb_loc)
             fallback_added.append(fb_u)
             status_tags[fb_u] = "[EM-3 TELEMETRY: LOW-RANK FALLBACK CONTEXT] "

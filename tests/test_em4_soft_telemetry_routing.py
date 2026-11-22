@@ -104,3 +104,46 @@ def test_explicit_ek5_v3_refutation_triggers_hard_drop() -> None:
     res = route_soft_telemetry_top_k(units, embs, q_emb, bm25, top_k=5, ek5_store=st)
     assert res.selected_indices == (1,)
     assert res.explicit_ek5_dropped == (0,)
+
+
+def test_panel_r5_fixes_update_prefix_rep_tiebreak_complete_linkage_and_ts_guard() -> None:
+    """Covers all 4 code issues flagged by the 4-Model Frontier Panel (Claude/Grok/Neon/Astra)."""
+    import pytest
+
+    # 1. Genuine user statement starting with `Update:` must NOT be flagged as an archival recap
+    assert not is_recap_framed("User: Update: I moved to Denver yesterday.")
+    assert is_recap_framed("User: Update: I moved to Denver yesterday.", legacy_r5_compat=True)
+
+    # 2. Missing `ts` raises ValueError instead of silently defaulting to 0.0
+    with pytest.raises(ValueError, match="missing explicit numeric 'ts'"):
+        route_soft_telemetry_top_k(
+            [{"unit_id": "bad", "session_id": "s1", "text": "No timestamp"}],
+            np.array([[1.0, 0.0]], dtype=np.float32),
+            np.array([1.0, 0.0], dtype=np.float32),
+            np.array([1.0], dtype=np.float64),
+        )
+
+    # 3. Non-inverted representative selection on all-recap and mixed clusters:
+    # High-hybrid recap (0.95) must beat low-hybrid recap (0.10), and non-recap within 0.08 beats recap!
+    units_rep = [
+        {"unit_id": "r_hi", "session_id": "s1", "ts": 100.0, "text": "Briefing 1: Alice lives in Boston."},
+        {"unit_id": "r_lo", "session_id": "s2", "ts": 200.0, "text": "Briefing 2: Alice lives in Boston."},
+    ]
+    embs_rep = np.array([[1.0, 0.0], [1.0, 0.0]], dtype=np.float32)
+    q_rep = np.array([1.0, 0.0], dtype=np.float32)
+    bm25_rep = np.array([10.0, 1.0], dtype=np.float64)
+    res_rep = route_soft_telemetry_top_k(units_rep, embs_rep, q_rep, bm25_rep, top_k=2)
+    assert res_rep.selected_indices == (0,)
+
+    # 4. Complete-linkage prevents transitive A~B, B~C merging when A and C conflict (`50 mg` vs `100 mg`)
+    units_chain = [
+        {"unit_id": "a", "session_id": "s1", "ts": 10.0, "text": "Daily dosage prescribed is 50 mg."},
+        {"unit_id": "b", "session_id": "s2", "ts": 20.0, "text": "Daily dosage prescribed is current."},
+        {"unit_id": "c", "session_id": "s3", "ts": 30.0, "text": "Daily dosage prescribed is 100 mg."},
+    ]
+    embs_chain = np.array([[1.0, 0.0], [0.95, np.sqrt(1.0 - 0.95**2)], [0.90, np.sqrt(1.0 - 0.81)]], dtype=np.float32)
+    q_chain = np.array([1.0, 0.0], dtype=np.float32)
+    bm25_chain = np.array([5.0, 4.8, 4.6], dtype=np.float64)
+    res_chain = route_soft_telemetry_top_k(units_chain, embs_chain, q_chain, bm25_chain, top_k=3)
+    # `a` (0) and `c` (2) are a minimal-pair dosage conflict and MUST BOTH survive!
+    assert 0 in res_chain.selected_indices and 2 in res_chain.selected_indices

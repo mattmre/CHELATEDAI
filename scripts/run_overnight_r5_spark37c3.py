@@ -273,7 +273,8 @@ def run_stage1_pm2_coupled_service(endpoint: str, model_id: str, cache_dir: Path
         dids_base = list(ev_ds["doc_ids"])
         qids_all = list(ev_ds["query_ids"])
         qrels_base = ev_ds["qrels"]
-        _, eval_qids = split_query_ids(qids_all, seed=42)
+        sp_q = split_query_ids(qids_all)
+        eval_qids = sp_q["REPORT"]
         q_idx_map = {q: i for i, q in enumerate(qids_all)}
         eval_q_indices = [q_idx_map[q] for q in eval_qids]
 
@@ -481,7 +482,16 @@ def run_stage1_pm2_coupled_service(endpoint: str, model_id: str, cache_dir: Path
     import torch
     torch.cuda.empty_cache()
 
-    # Build retracted-value suppression map from active EK5 v3 attestations (strictly observable!)
+    # Build retracted-value & EM-3 blocked-attacker suppression sets from active EK5 v3 state (strictly observable!)
+    telem_global = st_global.get_telemetry()
+    blocked_global: set[str] = set()
+    for u_b, w_b, _et_b in telem_global.blocked_authority_edges:
+        if st_global.eligibility.get(w_b) == "ADMIT":
+            blocked_global.add(u_b)
+            for d_b in st_global.deps_v.get(u_b, ()):
+                if st_global.eff_auth.get(d_b, 0) < st_global.eff_auth.get(w_b, 0) and global_events[d_b].claim_value == global_events[u_b].claim_value:
+                    blocked_global.add(d_b)
+
     ret_tx_by_ent_val: Dict[Tuple[str, str], int] = {}
     for att in global_atts:
         if att.edge_type in ("REFUTE", "SUPERSEDE", "VERSION_LINEAGE_SUPERSEDE"):
@@ -499,6 +509,7 @@ def run_stage1_pm2_coupled_service(endpoint: str, model_id: str, cache_dir: Path
     active_idx = [
         i for i, gid in enumerate(global_eids)
         if st_global.eligibility.get(gid) == "ADMIT"
+        and gid not in blocked_global
         and global_events[gid].claim_value
         and not (
             (global_events[gid].entity, global_events[gid].claim_value) in ret_tx_by_ent_val
@@ -664,7 +675,7 @@ sys.path.insert(0, str(REPO_ROOT))
 
 from mem0 import Memory
 from scripts.night1_common import paired_bootstrap_delta, write_json_atomic
-from scripts.run_overnight_r5_spark6724 import build_zero_shortcut_v3_flooded_cases, retrieve_zs_v3_arm
+from scripts.run_r5b_spark6724_completion import build_zero_shortcut_v3_flooded_cases, retrieve_any_zs_arm
 
 t0 = time.perf_counter()
 mem0_ver = importlib.metadata.version("mem0ai")
@@ -773,12 +784,12 @@ for idx_c, case in enumerate(cases):
     ctx_mem0 = "\n".join(m_lines) if m_lines else "(No memories found.)"
     pred_mem0, pt_mem0 = call_llm(sys_p, f"Records:\n{ctx_mem0}\n\nQuestion: {case['query_text']}\nAnswer:")
 
-    # 2) Compare against C1_scalemas_bounded, C3_ordinary_bitemporal_tms, and C4_v3_ek5_v3_k4!
+    # 2) Compare against C1_scalemas_bounded, C3_ordinary_bitemporal_tms, C4_v3_ek5_v3_k4, and C4_v4_ek5_v3_blocked_telemetry!
     arm_contexts = {"U1_mem0ai_live": (pred_mem0, pt_mem0)}
-    for arm in ("C1_scalemas_bounded", "C3_ordinary_bitemporal_tms", "C4_v3_ek5_v3_k4"):
+    for arm in ("C1_scalemas_bounded", "C3_ordinary_bitemporal_tms", "C4_v3_ek5_v3_k4", "C4_v4_ek5_v3_blocked_telemetry"):
         t_e0 = time.perf_counter()
-        sel_ids, st_flag = retrieve_zs_v3_arm(arm, case, top_k=5)
-        if arm == "C4_v3_ek5_v3_k4":
+        sel_ids, st_flag = retrieve_any_zs_arm(arm, case, top_k=5)
+        if arm == "C4_v4_ek5_v3_blocked_telemetry":
             ek5_ingest_ms.append((time.perf_counter() - t_e0) * 1000.0)
         if st_flag == "CONTESTED_ABSTAIN" or not sel_ids:
             ctx = "(No admitted records — conflicting claims are epistemically CONTESTED.)"
@@ -809,11 +820,11 @@ with csv_path.open("w", encoding="utf-8", newline="") as fh:
     w.writeheader()
     w.writerows(rows)
 
-arms_all = ["U1_mem0ai_live", "C1_scalemas_bounded", "C3_ordinary_bitemporal_tms", "C4_v3_ek5_v3_k4"]
+arms_all = ["U1_mem0ai_live", "C1_scalemas_bounded", "C3_ordinary_bitemporal_tms", "C4_v3_ek5_v3_k4", "C4_v4_ek5_v3_blocked_telemetry"]
 cids = [c["case_id"] for c in cases]
 by_a = {a: {r["case_id"]: float(r["is_correct"]) for r in rows if r["arm"] == a} for a in arms_all}
-bt_vs_mem0 = paired_bootstrap_delta(by_a["C4_v3_ek5_v3_k4"], by_a["U1_mem0ai_live"], n_bootstrap=3000, seed=42, expected_ids=cids)
-bt_vs_c1 = paired_bootstrap_delta(by_a["C4_v3_ek5_v3_k4"], by_a["C1_scalemas_bounded"], n_bootstrap=3000, seed=42, expected_ids=cids)
+bt_vs_mem0 = paired_bootstrap_delta(by_a["C4_v4_ek5_v3_blocked_telemetry"], by_a["U1_mem0ai_live"], n_bootstrap=3000, seed=42, expected_ids=cids)
+bt_vs_c1 = paired_bootstrap_delta(by_a["C4_v4_ek5_v3_blocked_telemetry"], by_a["C1_scalemas_bounded"], n_bootstrap=3000, seed=42, expected_ids=cids)
 
 out_summary = {
     "mem0ai_version": mem0_ver,
@@ -859,7 +870,11 @@ def run_stage2_pm3_live_upstream_comparators(endpoint: str, model_id: str, root_
 
     pm3_pip = str(venv_pm3 / "bin" / "pip")
     pm3_py = str(venv_pm3 / "bin" / "python")
-    print("[R5-37c3-PM3] Installing pinned mem0ai, qdrant-client, openai (and probing graphiti-core) in .venv-pm3...", flush=True)
+    # Inherit base `.venv` site-packages inside `.venv-pm3` via `.pth` so torch, sentence-transformers, & huggingface_hub work with zero duplicate wheel downloads!
+    base_sp = subprocess.run([base_py, "-c", "import site; print(site.getsitepackages()[0])"], capture_output=True, text=True, check=True).stdout.strip()
+    pm3_sp = subprocess.run([pm3_py, "-c", "import site; print(site.getsitepackages()[0])"], capture_output=True, text=True, check=True).stdout.strip()
+    (Path(pm3_sp) / "chelated_base_venv.pth").write_text(base_sp + "\n", encoding="utf-8")
+    print("[R5-37c3-PM3] Installing pinned mem0ai, qdrant-client, openai in .venv-pm3 (sharing base .venv torch/hf)...", flush=True)
     subprocess.run([pm3_pip, "install", "--quiet", "mem0ai", "qdrant-client", "openai"], check=True)
     # Non-fatal probe install of graphiti-core so its exact metadata & daemon requirements are pinned!
     subprocess.run([pm3_pip, "install", "--quiet", "graphiti-core"], check=False)
