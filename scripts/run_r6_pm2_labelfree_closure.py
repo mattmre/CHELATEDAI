@@ -104,12 +104,14 @@ def _query_tokens(text: str) -> Set[str]:
 class IndexedSimpleBM25:
     """Exact inverted-index compilation of `SimpleBM25` (zero score drift, O(nnz) instead of O(N) Python dict scan)."""
 
+    _TOK_RE = re.compile(r"[a-z0-9][a-z0-9_.\-/]*")
+
     def __init__(self, base_bm25: SimpleBM25) -> None:
         self.n = base_bm25.n
         self.postings: Dict[str, Tuple[np.ndarray, np.ndarray]] = {}
         by_tok: Dict[str, Tuple[List[int], List[float]]] = defaultdict(lambda: ([], []))
-        for doc_i, tf_map in enumerate(base_bm25.tfs):
-            dl = float(base_bm25.dls[doc_i])
+        for doc_i, tf_map in enumerate(base_bm25.doc_tfs):
+            dl = float(base_bm25.doc_lens[doc_i])
             for tok, tf in tf_map.items():
                 idf = base_bm25.idf.get(tok)
                 if idf is None or tf <= 0:
@@ -123,7 +125,7 @@ class IndexedSimpleBM25:
 
     def score(self, query: str) -> np.ndarray:
         out = np.zeros(self.n, dtype=np.float32)
-        for qt in re.findall(r"[a-z0-9][a-z0-9_\-]*", query.lower()):
+        for qt in self._TOK_RE.findall(query.lower()):
             post = self.postings.get(qt)
             if post is not None:
                 out[post[0]] += post[1]
