@@ -1,0 +1,12 @@
+{
+  "artifact_hashes": {
+    "wave6_d4_d1_prose_transfer_n60_rows.csv": "3d68798d445576ab36bb0bfd3beaa7576d2e834ecfb0bef546d2650d81e86ab7",
+    "wave6_d4_epistemic_grpo_manifest.json": "f20433dce33cde8b47c303ddf834046e9374d04b3a77288a8fb81f586135f28a",
+    "wave6_d4_wfs_eval_n120_rows.csv": "8144463d93b09df10335345fd3d56d18f60b2c31401219e36d1df80321b9714c"
+  },
+  "bundle_id": "wave6_d4_trained_epistemic_grpo",
+  "git_sha": "5a9bd46f2eeae2522a4a8d81017edb3c2407f936",
+  "manifest_file": "wave6_d4_epistemic_grpo_manifest.json",
+  "manifest_sha256": "f20433dce33cde8b47c303ddf834046e9374d04b3a77288a8fb81f586135f28a",
+  "schema_version": "report_receipt_v4_0"
+}

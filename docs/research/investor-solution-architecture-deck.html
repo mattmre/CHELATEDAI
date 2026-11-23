@@ -1,0 +1,472 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chelated AI — Investor &amp; Enterprise Solution Architecture Deck (Post-Wave-8 Audited)</title>
+  <style>
+    :root {
+      --ink: #111e24;
+      --ink-soft: #2c424c;
+      --muted: #546a74;
+      --accent: #066e7a;
+      --accent-dark: #044e57;
+      --accent-soft: #e6f4f6;
+      --warm: #7d2f0a;
+      --warm-soft: #fdf2ec;
+      --ok: #136239;
+      --ok-soft: #e9f6ee;
+      --rule: #cbd8dd;
+      --paper: #ffffff;
+      --canvas: #e9eff2;
+      --code-bg: #f3f7f9;
+      --radius: 12px;
+      --font-sans: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--canvas);
+      color: var(--ink);
+      font-family: var(--font-sans);
+      line-height: 1.55;
+      font-size: 15px;
+    }
+    header.topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      background: rgba(255, 255, 255, 0.96);
+      border-bottom: 1px solid var(--rule);
+      backdrop-filter: blur(8px);
+    }
+    .topbar-inner {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .brand {
+      font-weight: 800;
+      font-size: 13px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--accent-dark);
+    }
+    .slide-nav { display: flex; gap: 6px; flex-wrap: wrap; }
+    .slide-nav button {
+      border: 1px solid var(--rule);
+      background: var(--paper);
+      color: var(--ink-soft);
+      padding: 6px 11px;
+      border-radius: 7px;
+      font-size: 12.5px;
+      font-weight: 650;
+      cursor: pointer;
+    }
+    main { max-width: 1180px; margin: 24px auto 56px; padding: 0 20px; }
+    .prerelease-banner {
+      background: var(--warm-soft);
+      border: 1.5px solid var(--warm);
+      color: var(--warm);
+      padding: 12px 16px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 20px;
+    }
+    section.slide {
+      background: var(--paper);
+      border: 1px solid var(--rule);
+      border-radius: 16px;
+      padding: 32px 38px;
+      margin-bottom: 24px;
+      box-shadow: 0 14px 36px rgba(17, 30, 36, 0.07);
+    }
+    .eyebrow {
+      font-size: 11.5px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--accent-dark);
+      margin: 0 0 6px;
+    }
+    h1, h2 { margin: 0 0 12px; letter-spacing: -0.02em; line-height: 1.2; }
+    h1 { font-size: clamp(23px, 2.7vw, 32px); }
+    h2 { font-size: 22px; }
+    .kpi-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(225px, 1fr));
+      gap: 14px;
+      margin: 20px 0;
+    }
+    .kpi {
+      background: var(--code-bg);
+      border: 1px solid var(--rule);
+      border-top: 3px solid var(--accent);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+    }
+    .kpi.ok { border-top-color: var(--ok); background: var(--ok-soft); }
+    .kpi.warm { border-top-color: var(--warm); background: var(--warm-soft); }
+    .kpi .val { font-size: 23px; font-weight: 800; font-family: var(--font-mono); margin: 4px 0; }
+    .kpi .lbl {
+      font-size: 11px;
+      font-weight: 750;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--muted);
+    }
+    .table-wrap { overflow-x: auto; margin: 16px 0; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { padding: 8px 10px; border-bottom: 1px solid var(--rule); text-align: left; vertical-align: top; }
+    th { background: var(--code-bg); font-weight: 750; color: var(--ink-soft); }
+    td.num, th.num { text-align: right; font-family: var(--font-mono); }
+    td.best { color: var(--ok); font-weight: 750; }
+    td.warn { color: var(--warm); font-weight: 700; }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+      gap: 18px;
+      margin-top: 16px;
+    }
+    .card { border: 1px solid var(--rule); border-radius: var(--radius); padding: 16px 18px; background: #fafcfd; }
+    .calc-controls {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(195px, 1fr));
+      gap: 12px;
+      margin: 14px 0 18px;
+      background: var(--code-bg);
+      padding: 16px;
+      border-radius: var(--radius);
+      border: 1px solid var(--rule);
+    }
+    .calc-controls label { display: flex; flex-direction: column; font-size: 12px; font-weight: 700; color: var(--ink-soft); gap: 4px; }
+    .calc-controls input, .calc-controls select { padding: 7px 9px; border: 1px solid var(--rule); border-radius: 6px; font-family: var(--font-mono); font-size: 13px; }
+    .fineprint { font-size: 12.5px; color: var(--muted); margin-top: 10px; }
+    code { font-family: var(--font-mono); font-size: 12px; background: var(--code-bg); padding: 1px 5px; border-radius: 4px; }
+    @media print { header.topbar { position: static; } section.slide { break-inside: avoid; box-shadow: none; } }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">Chelated AI &middot; Audited Architecture &amp; Shareholder Economics Deck</div>
+      <nav class="slide-nav" aria-label="Deck navigation">
+        <a href="#s1"><button type="button">1. Executive Wedge</button></a>
+        <a href="#s2"><button type="button">2. gRPC Gateway (Qdrant :16334)</button></a>
+        <a href="#s3"><button type="button">3. 4-Way Competitor Arena</button></a>
+        <a href="#s4"><button type="button">4. 3-BEIR &amp; 7B Post-Training</button></a>
+        <a href="#s5"><button type="button">5. Audited 100M TCO Model</button></a>
+        <a href="#s6"><button type="button">6. Live Workbench &amp; Moat</button></a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <div class="prerelease-banner">
+      <strong>PRE-RELEASE / WAVE-8 CROSS-JUDGMENT (M1&ndash;M5) DISCLOSURE:</strong> Bound to SHA-256 receipts in
+      <code>CHELATEDAI-STAGE0-NIGHT1</code> (<code>40/40</code> bundles). <code>mem0ai 2.2.1</code> runs live PyPI code; <code>Vectorize Hindsight</code> and
+      <code>AWS OpenSearch Memory</code> are <code>emulation (ours)</code> (never attributed as audited vendor production behavior). <code>Demo D5</code> runs
+      project-defined <code>SearchService.KnnQuery</code> Protobuf over live containerized <code>Qdrant :16334</code> (<code>live_opensearch_java_cluster_claimed: false</code>).
+      <code>PM-1b</code> (<code>assignment_gates_pass=false</code>) and human spot-check <code>PM-4b</code> (100 rows) remain open.
+    </div>
+
+    <!-- SLIDE 1 -->
+    <section class="slide" id="s1">
+      <p class="eyebrow">Slide 01 &middot; Category Wedge &amp; Receipt-Bound Summary</p>
+      <h1>Wire-Protocol Speed (&ldquo;OpenSearch gRPC&rdquo;) Solves Float Transport, Not Mixed-Shard Drift or Epistemic Contradictions</h1>
+      <p>
+        Enterprises upgrading embeddings (<code>384-d &rarr; 1024-d &rarr; 4096-d</code>) or ingesting mutable policies, CVEs, and financial restatements
+        need geometric calibration and 3-valued epistemic admissibility above binary gRPC transport:
+      </p>
+      <div class="kpi-row">
+        <div class="kpi ok">
+          <div class="lbl">Regulated Drift Arena (N=60, 05442a849c19)</div>
+          <div class="val">96.67% (58/60)</div>
+          <div><code>+15.0 to +35.0 pp</code> vs all 4 arms (Bootstrap <code>LCB97.5 &gt; 0</code> &amp; Tango <code>LCB95 &gt; 0</code>; exact CP95 crosses 0 on 3/4 arms)</div>
+        </div>
+        <div class="kpi ok">
+          <div class="lbl">gRPC Gateway over Qdrant (cba30b931812)</div>
+          <div class="val">7.90 / 21.19 ms</div>
+          <div><code>250 Hz</code> LAN service RTT p50/p95 (scheduled e2e p95 <code>153.8 ms</code>; same-dim overhead <code>+18.0 ms &le; 25 ms</code>; <code>0.00%</code> fenced leak)</div>
+        </div>
+        <div class="kpi ok">
+          <div class="lbl">3-BEIR Mode B @ 20% (dcb84026a15c)</div>
+          <div class="val">+2.69 / +5.42 pp</div>
+          <div>Pooled <code>CSLS</code> beats <code>z-score</code> &amp; <code>RRF</code> (<code>p=5e-5</code>, FiQA-carried) at <code>n=500</code> anchors (<code>0.87%&ndash;13.76%</code>)</div>
+        </div>
+        <div class="kpi warm">
+          <div class="lbl">Suite B Token Ratios (05442a849c19)</div>
+          <div class="val">1.56&times; &amp; 70&ndash;207&times;</div>
+          <div><code>0</code> write LLM tokens (<code>1.56&times;</code> vs <code>Mem0 False</code>; <code>70.0&times;/135.6&times;/207.4&times;</code> vs LLM-write arms; accuracy <code>LCB &le; 0</code>)</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 2 -->
+    <section class="slide" id="s2">
+      <p class="eyebrow">Slide 02 &middot; Bidirectional gRPC Control Plane (Demo D5 &middot; cba30b931812)</p>
+      <h2>Project-Defined <code>SearchService.KnnQuery</code> Protobuf Gateway Tested Over Live Containerized Qdrant (<code>:16334</code>)</h2>
+      <p>
+        <strong>Explicit Backend &amp; Latency Scope (<code>M2</code>):</strong> <code>Demo D5</code> executes compiled binary <code>SearchService.KnnQuery</code>
+        Protobuf over live containerized <code>Qdrant</code> gRPC (<code>qdrant/qdrant@sha256:d277592721d2...</code>; <strong>no live Java OpenSearch 3.9 cluster is claimed</strong>).
+        At <code>250 Hz</code> LAN dispatch (<code>Desktop &rarr; 10.0.0.24</code>), direct <code>4096-d</code> Qdrant saturated at <code>218.79 Hz</code> (<code>3,309 ms</code> e2e p50);
+        across unsaturated matched-dimension cells, gateway worst-case incremental service p95 is <strong><code>+18.00 ms</code> (&le; 25 ms gate)</strong>.
+      </p>
+      <svg viewBox="0 0 980 230" width="100%" role="img" aria-label="Chelated Bidirectional gRPC Gateway architecture diagram">
+        <rect x="0" y="0" width="980" height="230" rx="10" fill="#f5f9fb" stroke="#cbd8dd"/>
+        <rect x="22" y="58" width="185" height="114" rx="8" fill="#ffffff" stroke="#066e7a" stroke-width="2"/>
+        <text x="114" y="86" text-anchor="middle" font-size="12" font-weight="800" fill="#044e57">Client / Edge Agent</text>
+        <text x="114" y="108" text-anchor="middle" font-size="11" fill="#2c424c">384-d &rarr; 4096-d Query</text>
+        <text x="114" y="126" text-anchor="middle" font-size="10.5" font-family="monospace" fill="#136239">1,888 B vs 16,435 B (8.71x)</text>
+        <text x="114" y="146" text-anchor="middle" font-size="10" fill="#546a74">Epoch Pin + Tenant Token</text>
+
+        <line x1="207" y1="98" x2="282" y2="98" stroke="#066e7a" stroke-width="2.2"/>
+        <polygon points="282,98 274,93 274,103" fill="#066e7a"/>
+        <line x1="282" y1="134" x2="207" y2="134" stroke="#136239" stroke-width="2.2"/>
+        <polygon points="207,134 215,129 215,139" fill="#136239"/>
+
+        <rect x="285" y="20" width="415" height="190" rx="10" fill="#e9f6ee" stroke="#136239" stroke-width="2.4"/>
+        <text x="492" y="44" text-anchor="middle" font-size="12.5" font-weight="800" fill="#136239">Chelated Bidirectional gRPC Gateway (:16335)</text>
+        <text x="300" y="68" font-size="10.8" fill="#111e24">1. Ingress: TRA-1 Guard + ZeroMu q_hat = norm((q - mu_q)W)</text>
+        <text x="300" y="89" font-size="10.8" fill="#111e24">2. Pre-Filter: Adaptive ef_eff (90% density triggers 100% exact fallback)</text>
+        <text x="300" y="110" font-size="10.8" fill="#111e24">3. Sidecar (8 B/doc + 16 KB mu_d, 0 B vector egress): ||d_j-mu_d||_2 + CSLS r_d</text>
+        <text x="300" y="131" font-size="10.8" fill="#111e24">4. Exact-Prefix Stop: 100% @ k_os=64 (k_os=10: 88.7%; 50% retr: 99.42% &lt; 99.5%)</text>
+        <text x="300" y="152" font-size="10.8" font-weight="700" fill="#7d2f0a">5. EK5 v3 Epoch Fence: 0.00% Observed Leak @ 0/10/50/90% (vs 95.35% unfenced)</text>
+        <text x="300" y="173" font-size="10.3" font-family="monospace" fill="#044e57">Service RTT p50/p95/p99: 7.90/21.19/115.8 ms | Open-Loop E2E p95: 153.8 ms</text>
+        <text x="300" y="193" font-size="10" font-family="monospace" fill="#546a74">Tested over live Qdrant :16334 (Java OpenSearch cluster unverified)</text>
+
+        <line x1="700" y1="88" x2="762" y2="68" stroke="#066e7a" stroke-width="2"/>
+        <line x1="700" y1="142" x2="762" y2="162" stroke="#066e7a" stroke-width="2"/>
+
+        <rect x="764" y="30" width="194" height="76" rx="8" fill="#ffffff" stroke="#546a74" stroke-width="1.8"/>
+        <text x="861" y="55" text-anchor="middle" font-size="11.5" font-weight="750" fill="#111e24">Legacy Shard (384-d)</text>
+        <text x="861" y="74" text-anchor="middle" font-size="10.5" fill="#546a74">80% Unmigrated Vectors</text>
+        <text x="861" y="92" text-anchor="middle" font-size="10" font-family="monospace" fill="#066e7a">Live Qdrant gRPC :16334</text>
+
+        <rect x="764" y="124" width="194" height="76" rx="8" fill="#ffffff" stroke="#066e7a" stroke-width="1.8"/>
+        <text x="861" y="149" text-anchor="middle" font-size="11.5" font-weight="750" fill="#111e24">Frontier Shard (4096-d)</text>
+        <text x="861" y="168" text-anchor="middle" font-size="10.5" fill="#546a74">20% Backfilled Vectors</text>
+        <text x="861" y="186" text-anchor="middle" font-size="10" font-family="monospace" fill="#136239">Live Qdrant gRPC :16334</text>
+      </svg>
+    </section>
+
+    <!-- SLIDE 3 -->
+    <section class="slide" id="s3">
+      <p class="eyebrow">Slide 03 &middot; 4-Way Competitor Arena (Manifest 05442a849c19)</p>
+      <h2>Audited Comparison vs. Live <code>mem0ai 2.2.1</code> &amp; Architectural Emulations</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>System &amp; Provenance</th>
+              <th class="num">Suite A Acc (N=60)</th>
+              <th class="num">Conflict Abstain (N=15)</th>
+              <th class="num">Suite A Boot LCB97.5 / Exact CP95</th>
+              <th class="num">Suite B Acc (N=40)</th>
+              <th class="num">Suite B Read p50</th>
+              <th class="num">Suite B Write + Read Toks</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong><code>Chelated v4</code></strong> (native GPU)</td>
+              <td class="num best">96.67%</td>
+              <td class="num best">93.33%</td>
+              <td class="num best">Reference Arm</td>
+              <td class="num best">62.50%</td>
+              <td class="num warn">521.1 ms</td>
+              <td class="num best">0 + 1,756 (1.00&times;)</td>
+            </tr>
+            <tr>
+              <td><code>mem0ai 2.2.1 (infer=True)</code> (live PyPI)</td>
+              <td class="num">81.67%</td>
+              <td class="num warn">33.33%</td>
+              <td class="num">+5.00 pp / <span style="color:var(--warm);">&minus;2.74 pp</span></td>
+              <td class="num">52.50%</td>
+              <td class="num">5.8 ms</td>
+              <td class="num warn">363,716 + 507 (207.4&times;)</td>
+            </tr>
+            <tr>
+              <td><code>OpenSearch Memory</code> (<code>emulation (ours)</code>)</td>
+              <td class="num">80.00% (100% det)</td>
+              <td class="num warn">20.00%</td>
+              <td class="num">+6.67 pp / <span style="color:var(--warm);">&minus;1.57 pp</span></td>
+              <td class="num">45.00%</td>
+              <td class="num">13.7 ms</td>
+              <td class="num warn">235,988 + 2,179 (135.6&times;)</td>
+            </tr>
+            <tr>
+              <td><code>Vectorize Hindsight 4-Net</code> (<code>emulation (ours)</code>)</td>
+              <td class="num">78.33% (73.3% &Delta;=0s)</td>
+              <td class="num warn">20.00%</td>
+              <td class="num">+8.33 pp / <span style="color:var(--warm);">&minus;0.38 pp</span></td>
+              <td class="num">55.00%</td>
+              <td class="num">13.9 ms</td>
+              <td class="num warn">120,822 + 2,087 (70.0&times;)</td>
+            </tr>
+            <tr>
+              <td><code>mem0ai 2.2.1 (infer=False)</code> (live PyPI)</td>
+              <td class="num">61.67%</td>
+              <td class="num warn">26.67%</td>
+              <td class="num best">+23.33 pp / +20.55 pp</td>
+              <td class="num">57.50%</td>
+              <td class="num">4.6 ms</td>
+              <td class="num">0 + 2,743 (1.56&times;)</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="fineprint">
+        <strong>Mandatory Suite A &amp; Suite B Footnotes (<code>M1/M4</code>):</strong> On Suite A raw prose, <code>Chelated</code> runs <code>9.69 s</code> mean synchronous pre-ack claim extraction
+        (<code>6,882.7</code> write prompt tokens/case) and retains <code>[SUPERSEDED]</code> provenance notes in <code>formatted_context</code> (<code>0.7833</code> raw context-substring scan vs <code>96.67%</code> reader accuracy).
+        Suite A superiority holds on paired bootstrap <code>LCB97.5 &gt; 0</code> and Tango <code>LCB95 &gt; 0</code> across all 4 arms while conservative exact Clopper&ndash;Pearson crosses 0 on 3/4 arms.
+        On Suite B (<code>ChelatedConversationalV3</code> + inline reranker, <code>521.1 ms</code> read p50), all accuracy CIs include zero (<code>LCB97.5 &le; 0</code>).
+      </p>
+    </section>
+
+    <!-- SLIDE 4 -->
+    <section class="slide" id="s4">
+      <p class="eyebrow">Slide 04 &middot; 3-Domain 4096-d BEIR (dcb84026a15c) &amp; 7B SFT+GRPO (f20433dce33c)</p>
+      <h2>Mode B Dual-Shard Migration &amp; SFT-Driven 7B Epistemic Post-Training</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3>Primary Mode B (<code>4096 &rarr; 384</code>) &amp; Secondary Mode A</h3>
+          <ul>
+            <li><strong>Anchor Scope:</strong> Fixed <code>n = 500</code> qrels-blind anchors represent <strong><code>0.87%</code> of <code>FiQA2018</code>, <code>9.65%</code> of <code>SciFact</code>, and <code>13.76%</code> of <code>NFCorpus</code></strong> (<code>bf16</code> self-cosine minima <code>0.99947&ndash;0.99976 &lt; 0.9999</code>).</li>
+            <li><strong>Mode B @ 20% Qdrant gRPC:</strong> Pooled <code>Causal_DEV_CSLS = 0.3779</code> beats <code>DEV_ZScore = 0.3510</code> (<code>+2.69 pp</code>, <code>LCB97.5 +1.32 pp</code>, <code>p=5e-5</code>) and <code>RRF = 0.3237</code> (<code>+5.42 pp</code>); per-domain <code>CSLS &minus; ZScore</code> is <code>FiQA</code>-carried (<code>SciFact/NFCorpus</code> n.s.; disable <code>CSLS</code> at <code>100%</code>).</li>
+            <li><strong>Mode A (<code>384 &rarr; 4096</code>):</strong> Beats <code>QueryAffine</code> on <code>FiQA</code> (<code>+12.36 pp</code>), misses Look #2 on <code>NFCorpus</code> (<code>p0125 = &minus;0.19 pp</code>), is null on <code>SciFact</code> (<code>p=0.89</code>), and trails <code>Procrustes</code> by <code>&minus;2.08 pp</code> on <code>FiQA</code> positive-excluded sensitivity (<code>16/18</code> OOD wins in <code>266ee0f902da</code>).</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Track D (<code>f20433dce33c</code>) &amp; Track A (<code>5fcfab2b4c1c</code>)</h3>
+          <ul>
+            <li><strong>SFT-Driven 7B Lift (<code>max_new_tokens=272</code>):</strong> <code>SFT+GRPO 7B</code> beats <code>Bare 30B</code> on <code>EVAL</code> (<code>44.72%</code> vs <code>30.00%</code>, <code>Holm p=0.0218</code>; 30B <code>valid_format=0%</code>) and disjoint-entity <code>D1</code> prose (<code>99.44%</code> vs <code>38.33%</code>, <code>Holm p=0.0003</code>). <strong>SFT (<code>42.50%</code> EVAL, <code>100%</code> D1) carries the lift</strong>; <code>GRPO &minus; SFT</code> is inconclusive (<code>+2.22 pp</code>, <code>Holm p=0.45</code>) and <code>EVAL false_commit_on_u = 87.5%</code>.</li>
+            <li><strong>Track A (<code>PM-1b SCOPED/OPEN</code>):</strong> <code>Virgin-120</code> <code>v4 = 95.00%</code> at <code>1,028</code> toks (vs <code>NoEK5 = 95.83%</code>, <code>Flat_BGEM3 = 91.67%</code> @ <code>2,488</code> toks; vs <code>MiniLM</code> Holm <code>p=0.0766</code> n.s.; <code>KU +41.67 pp</code> matched by <code>Flat_BGEM3</code>). Secondary DEV-inclusive <code>LME-500</code> uses <code>2,191</code> toks vs <code>6,088</code> in <code>J4</code> (<code>54a9fc475fb9</code>).</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 5 -->
+    <section class="slide" id="s5">
+      <p class="eyebrow">Slide 05 &middot; Audited Council K6 / M4 Sensitivity Simulator</p>
+      <h2>Parameterized 100M-Event TCO Model (<code>MEASURED</code> vs. <code>ASSUMPTION</code> Tagged)</h2>
+      <p>
+        Uses measured <code>Suite B</code> <code>Mem0 infer=True</code> read tokens (<strong><code>506.65</code></strong>, showing where batched-write <code>Mem0</code> beats
+        <code>Chelated</code> Regime I on 5:1 read-heavy chat!) alongside unbatched <code>Suite B</code> writes (<code>4,546.4</code>), Regime II Raw Prose (<code>170.5</code> read),
+        and equal-offset base infra (<code>$86.4k</code> default):
+      </p>
+      <div class="calc-controls">
+        <label>Annual Event Writes (ASSUMPTION)
+          <input type="number" id="inWrites" value="100000000" step="10000000">
+        </label>
+        <label>Annual Queries / Reads (ASSUMPTION)
+          <input type="number" id="inReads" value="500000000" step="50000000">
+        </label>
+        <label>Corpus Vectors 4096-d (ASSUMPTION)
+          <input type="number" id="inCorpus" value="10000000" step="1000000">
+        </label>
+        <label>LLM Input ($ / 1M Toks, ASSUMPTION)
+          <input type="number" id="inLlmPrice" value="0.60" step="0.10">
+        </label>
+        <label>OpenSearch Read Mode
+          <select id="inOsmMode">
+            <option value="2178.6" selected>Compact Parity (2,178.6 MEASURED)</option>
+            <option value="13500">Long Context (13,500 ASSUMPTION)</option>
+          </select>
+        </label>
+      </div>
+      <div class="table-wrap">
+        <table id="tcoTable">
+          <thead>
+            <tr>
+              <th>Architecture &amp; Coefficient Provenance</th>
+              <th class="num">Write LLM ($)</th>
+              <th class="num">Read LLM ($)</th>
+              <th class="num">Mig + Sidecar ($)</th>
+              <th class="num">Audit Ops + Base Infra ($)</th>
+              <th class="num">Total Annual COGS ($)</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- SLIDE 6 -->
+    <section class="slide" id="s6">
+      <p class="eyebrow">Slide 06 &middot; Workable Live Solution &amp; Scoped Strategic Moat</p>
+      <h2>Live Solution Workbench (<code>demo_workbench/server.py</code>) &amp; Hyperscaler Risk</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3>Run the Live Solution Locally</h3>
+          <p><code>python demo_workbench/server.py --port 8787</code></p>
+          <ul>
+            <li><code>POST /api/v1/epistemic/evaluate</code> &mdash; Live <code>EK5 v3</code> 3-valued <code>WFS</code> + bitemporal <code>as_of</code> + alternating-fixpoint oracle check.</li>
+            <li><code>POST /api/v1/migration/evaluate</code> &mdash; Synthetic NumPy <code>Mode B</code> Stiefel + legacy-shard exact-prefix shortlist certifier.</li>
+            <li><code>POST /api/v1/tco/model</code> &amp; <code>GET /api/v1/wave6/summary</code> &mdash; Unified M4 TCO identity &amp; live on-disk SHA-256 receipt verifier.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Explicit Replication Horizon &amp; Defensible Wedge</h3>
+          <ul>
+            <li><strong>Hyperscaler Risk:</strong> Point features (<code>CSLS</code> scalars or tombstone bitsets) can be copied in <strong>1&ndash;2 quarters</strong>.</li>
+            <li><strong>Defensible Stack:</strong> Coupled <code>TRA-1</code> (<code>b07e2dd27bcd</code>, <code>80503ba8eb98</code>) + <code>Mode B/A ZeroMu+CSLS</code> (<code>dcb84026a15c</code>) + <code>353,105</code>-verified <code>K=4</code> <code>WFS</code> &amp; <code>CITES_AUDIT</code> (<code>2941048ccbe3</code>, <code>fce71a605f64</code>) + determinate-slot <code>EK5</code> SFT supervision (<code>f20433dce33c</code>), sold via BYO-LLM VPC licensing or bundled regulated RAG.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    (function () {
+      const fmt = (n) => '$' + Math.round(n).toLocaleString('en-US');
+      function recalc() {
+        const w = Math.max(0, Number(document.getElementById('inWrites').value) || 0);
+        const r = Math.max(0, Number(document.getElementById('inReads').value) || 0);
+        const c = Math.max(0, Number(document.getElementById('inCorpus').value) || 0);
+        const p = Math.max(0, Number(document.getElementById('inLlmPrice').value) || 0);
+        const osmRead = Number(document.getElementById('inOsmMode').value) || 2178.6;
+        const sidecarRam = ((c * 8 + 16384) / Math.pow(1024, 3)) * 6.5 * 12;
+        const baseInfra = ((w + r) / 1e6) * 0.02 + 36000 + ((r * 32) / 1e6) * 2.4;
+        const migModeB = (500 / 1e6) * 18 + (c * 0.20 / 1e6) * 18 + sidecarRam;
+        const migFull = (c / 1e6) * 18;
+        const rows = [
+          ['Chelated Regime I (Mode B 20% BF, Conv: 0 w / 1,756.4 r MEASURED)', 0, 1756.4, migModeB, 50000 * 0.02 * 25 + baseInfra, false],
+          ['Chelated Regime II (Mode B 20% BF, Raw Prose: 404.9 w / 170.5 r MEASURED)', 404.86, 170.5, migModeB, 50000 * 0.02 * 25 + baseInfra, true],
+          ['mem0ai 2.2.1 (infer=True: 620 Batched ASSUMPTION / 506.65 r MEASURED)', 620, 506.65, migFull, 50000 * 0.15 * 25 + baseInfra, false],
+          ['mem0ai 2.2.1 (infer=True: 4,546.4 Unbatched MEASURED / 506.65 r MEASURED)', 4546.4, 506.65, migFull, 50000 * 0.15 * 25 + baseInfra, false],
+          ['Hindsight 4-Net emulation (740 ASSUMPTION / 2,086.7 r MEASURED)', 740, 2086.7, migFull, 50000 * 0.15 * 25 + baseInfra, false],
+          ['OpenSearch Memory emulation (580 ASSUMPTION / ' + osmRead + ' r)', 580, osmRead, migFull, 50000 * 0.10 * 25 + baseInfra, false]
+        ];
+        const tbody = document.querySelector('#tcoTable tbody');
+        tbody.innerHTML = rows.map(([name, wt, rt, mig, opsBase, highlight]) => {
+          const wUsd = (w * wt / 1e6) * p;
+          const rUsd = (r * rt / 1e6) * p;
+          const tot = wUsd + rUsd + mig + opsBase;
+          return `<tr>
+            <td><strong>${name}</strong></td>
+            <td class="num">${fmt(wUsd)}</td>
+            <td class="num">${fmt(rUsd)}</td>
+            <td class="num">${fmt(mig)}</td>
+            <td class="num">${fmt(opsBase)}</td>
+            <td class="num ${highlight ? 'best' : ''}">${fmt(tot)}</td>
+          </tr>`;
+        }).join('');
+      }
+      ['inWrites', 'inReads', 'inCorpus', 'inLlmPrice', 'inOsmMode'].forEach((id) => {
+        document.getElementById(id).addEventListener('input', recalc);
+        document.getElementById(id).addEventListener('change', recalc);
+      });
+      recalc();
+    })();
+  </script>
+</body>
+</html>

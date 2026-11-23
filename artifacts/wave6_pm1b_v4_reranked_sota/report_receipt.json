@@ -1,0 +1,14 @@
+{
+  "artifact_hashes": {
+    "frozen_dev_config.json": "14584387933effbf2de9828bcaa5e315053a1ef9551b0a6794cb7423fec110e6",
+    "wave6_pm1b_v4_look2_rows.csv": "1570b2a4b36d5122fc9b404e2bc857221b423230ba47db31880290db71056b55",
+    "wave6_pm1b_v4_manifest.json": "5fcfab2b4c1c62e7babe4d8225f16b745ec61112efc1218eaeb0fc555957f6f3",
+    "wave6_virgin_blind_judge_audit.json": "6bc48432b8ddfe0d4aff4a4e0a76c1e5ccd8155912f43ff6f47bc9710c5feb15",
+    "wave6_virgin_holdout_rows.csv": "20e54e1c12bef8a01c4b7990b1b9bee2fbb582a02b488abe8b97f45c2aae3791"
+  },
+  "bundle_id": "wave6_pm1b_v4_reranked_sota",
+  "git_sha": "5a9bd46f2eeae2522a4a8d81017edb3c2407f936",
+  "manifest_file": "wave6_pm1b_v4_manifest.json",
+  "manifest_sha256": "5fcfab2b4c1c62e7babe4d8225f16b745ec61112efc1218eaeb0fc555957f6f3",
+  "schema_version": "report_receipt_v4_0"
+}

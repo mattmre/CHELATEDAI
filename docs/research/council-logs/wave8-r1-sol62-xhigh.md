@@ -1,0 +1,35 @@
+# Wave 8 Round 1 audit memo
+
+**Hold v5.0 sealing for corrections.** All five Wave 6 manifests and all eight receipt-listed side files matched their SHA-256 digests. Track A’s six source hashes also matched. The Round 0 brief misprints Track B’s digest (`…d3c0087c…` on disk) and gives an abbreviated erroneous Track E digest before the correct one. This was a source and receipt audit. No benchmarks were rerun. [Round 0 brief](wave8-r0-brief.md) · [K1–K6 contract](wave5-r2-synthesis.md)
+
+## W8-Q1 · K1 gateway and K3 migration
+
+D5 records 43,040 queries with zero errors, 0 vector B/doc on egress, an 8 B/doc scoring sidecar, and zero observed stale returns at 0/10/50/90% under the tested epoch pins and simulated replica lag. The designated k=64/ef=64 recall is 1.0. At 50% retraction, admitted recall is 99.42%, below 99.5%. The 21.19 ms LAN p95 measures service RTT with certified stopping disabled. Scheduled end-to-end p95 is 153.75 ms. Direct Qdrant achieved 218.79 Hz at the shared 250 Hz target. The 99.611% D1 number divides two reader means and cannot isolate decode. [D5 receipt](../../../artifacts/wave6_d5_grpc_interceptor_gateway/wave6_d5_grpc_gateway_manifest.json)
+
+The project-defined OpenSearch-style Protobuf fronts live Qdrant. Native OpenSearch compatibility remains unverified. The gateway applies its authoritative bitset during rescoring, and backend calls use the replica prefilter. Historical pins are accepted, and fast batches share the first item’s epoch. The ANN stop bound assumes an exact dot prefix; D5 permits an approximate prefix. Scope the fence and certificate claims to the observed configuration and exact-prefix conditions. [Gateway](../../../chelated_grpc_gateway.py)
+
+Mode B at 20% physical backfill gives pooled REPORT nDCG@10 of 0.3779/0.3510/0.3237 for CSLS/z-score/RRF (N=371). Paired lower bounds are +1.32/+3.81 pp, with raw p=.00005 each. The 500 anchors represent 0.87% only on FiQA. Live Qdrant measurements cover 0% and 20%. At 20%, observed top-10 recall is 100% and p50 is 4.38–7.21 ms. Other fractions use offline scoring. All three 4096-d document minima (0.999467–0.999764) miss K3’s 0.9999 floor. The runner uses 0.9990, and its duplicate-aware top-1 metric can credit cosine agreement despite a different neighbor. Mode A’s unadjusted QueryAffine CIs are [+9.33,+15.54] pp FiQA and [+0.21,+5.93] NFCorpus, with a null SciFact result. Positive-excluded FiQA trails Procrustes by 2.08 pp (CI [−3.67,−0.56]). [Track B](../../../artifacts/wave6_d2_4096d_3beir_complete/wave6_d2_3beir_manifest.json) · [Runner](../../../scripts/run_wave6_d2_4096d_both_modes_3beir.py)
+
+## W8-Q2 · K2 conversational holdouts
+
+Keep PM-1b **SCOPED / OPEN**. R5/J4 clean-delta and KU requirements leave `assignment_gates_pass=false`. The frozen DEV config precedes evaluation. Code implements pre-budget echo collapse, chronological supersession and KU cap removal. Look #2 retains exploratory α=.025 and historical J4 results. Distinct percentile calculations are present, but 34/101 positive-variance item contrasts have ties including 16 Look #2 contrasts. The compliance flag checks only the primary Flat BGE-M3 comparison. Report discrete ties and narrow the flag. LME-500 averages 2,191 tokens versus 6,088 on historical J4 TEST N=251. Name both denominators.
+
+The 24 authored conversations pass the specified lineage checks. Blind Qwen grading gives 95.00% versus 95.83% NoEK5 and 91.67% Flat BGE-M3 (2,488 versus 1,028 tokens, so the nominal token control is loose). The overall +8.33 pp gain over MiniLM has Holm p=.0766. The +41.67 pp KU advantage over MiniLM has raw p=.00005 and sits outside the four-test Holm family. NoEK5 scores 100% on KU. [Track A](../../../artifacts/wave6_pm1b_v4_reranked_sota/wave6_pm1b_v4_manifest.json) · [Bootstrap](../../../wave6_common.py#L133)
+
+## W8-Q3 · K4 trained transfer
+
+Four splits include hashed noise retractors and zero D1 entity/value overlap. Completion-only SFT reports zero unmasked prompt tokens and zero oracle leakage. SFT merge, disabled-adapter KL reference and disk reload report 0.0 logit differences (<1e−4). The three seed means pass .80 (aggregate .1667), with logged maxima of 1.0. K4 requires 256 completion tokens and the thesis advertises 256. Train, evaluation and transfer use 272. The local receipt binds result rows, with checkpoint hashes and reload parity reported by the run.
+
+Final-step EVAL (N=120, 44.72%) beats Base 19.17% and Bare 30B 30.00% (Holm p=.0014/.02175). D1 k=17 (N=60, 99.44%) beats Base 8.33% and Bare 38.33% (both Holm p=.0003). Incremental GRPO versus SFT is inconclusive on both (+2.22/−0.56 pp, p=.4495/.73305). Attribute the observed lift primarily to SFT. The k=5 transfer is secondary and both trained arms score 71.67%. [Track D](../../../artifacts/wave6_d4_trained_epistemic_grpo/wave6_d4_epistemic_grpo_manifest.json)
+
+## W8-Q4 · K5 arena and K6 economics
+
+Suite A’s 58/60 (96.67%) beats all four arms by paired bootstrap and Tango bounds (+15–35 pp). Three conservative Clopper–Pearson intervals include zero. The .7833 `ch_ctx` substring match includes superseded provenance. Raw prose costs 6,882.7 extraction prompt tokens/case and 9.69 s mean synchronous pre-ack extraction, excluded from 123.1 ms median ack. Disclose live Mem0’s MiniLM encoder, wrapper repairs and uncounted retry failures. Hindsight/OpenSearch are emulations. Visibility clocks cover immediate and post-consolidation states, with no intermediate checkpoints. Suite B’s 25/40 (62.50%) uses zero write prompt tokens and 70.0–207.4× fewer measured tokens against the three LLM-write arms (1.56× versus infer=False). All paired 95% intervals include zero (lower bounds −12.5 to −2.5 pp). Equivalence was untested. [Arena runner](../../../scripts/run_wave6_pm3_v2_4way_arena.py)
+
+The thesis’s 13,500-token OpenSearch total is $4,209,980, implying −133.9% margin. The larger defect is scope. Competitor batching, manual-audit shares and prices are assumptions. Fit anchors and 20% backfill are different costs. Recurring embedding, ANN, base storage, output tokens and bridge fitting are omitted. [Thesis](../investor-thesis-and-competitive-moat-2026-11-23.md)
+
+## W8-Q5 · Required edits
+
+- **Thesis/deck:** Publish the corrected intervals, timing boundaries and backend labels beside headlines. Label prices and projections as sensitivity inputs and remove production margin and drop-in guarantees.
+- **Workbench:** Align calculator regimes across API, deck and offline UI. The API omits raw prose and defaults to 13,500 OpenSearch read tokens. The deck includes raw prose and defaults to 2,178.6. Rehash before showing “verified.” Label the NumPy migration simulator and its legacy-shard-only stop check explicitly.
+- **Whitepaper/HTML/registry:** Add five Part VI entries to the current 35, bind side hashes, and update document checks. Keep PM-1b/PM-4b open. Record K1–K5 deviations and obtain a documented variance or compliant evidence before sealing. [Registry builder](../../../scripts/build_whitepaper_assets.py)

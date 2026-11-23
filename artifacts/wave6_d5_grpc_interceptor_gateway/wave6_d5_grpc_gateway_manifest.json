@@ -1,0 +1,3163 @@
+{
+  "acceptance_gates": {
+    "desktop_client_cpu_only_cuda_hidden": true,
+    "egress_ships_zero_vectors": true,
+    "incremental_gateway_p95_ms_le_25_0": true,
+    "open_loop_queries_ge_10000": true,
+    "opensearch_knn_wire_over_live_qdrant_grpc_disclosed": true,
+    "real_grpcio_binary_protobuf_compiled_via_protoc": true,
+    "rescored_recall_at_10_ge_0_995": true,
+    "resident_sidecar_exact_8_bytes_per_doc": true,
+    "spark3_protected_containers_untouched": true,
+    "zero_stale_resurrection_0_10_50_90_and_replica_lag": true
+  },
+  "algebraic_egress_certified_stop_and_dual_shard": {
+    "algebraic_mode_comparison_scifact_384_to_4096": {
+      "exact_numpy_reference": {
+        "Exact_ZeroMu_CausalEMA_ndcg_at_10": 0.525219,
+        "QueryAffine_plus_mu_y_ndcg_at_10": 0.487926,
+        "RequestOnly_RawDOT_no_mu_y_ndcg_at_10": 0.504543,
+        "Uncentered_Procrustes_ndcg_at_10": 0.531786,
+        "ZeroMu_minus_QueryAffine": {
+          "boot_std": 0.02586736457940514,
+          "lcb_95": -0.0036411469136468284,
+          "lcb_975": -0.011352740326426667,
+          "mean_delta": 0.03729313528319498,
+          "median_delta": 0.03667029486830847,
+          "n_queries": 86,
+          "p0125_bonf2": -0.017446009820138074,
+          "p9875_bonf2": 0.09870092171792774,
+          "p_value_two_sided": 0.13465,
+          "ucb_95_one_sided": 0.08119899626897426,
+          "ucb_975": 0.0901786280967616
+        },
+        "ZeroMu_minus_RequestOnly_RawDOT": {
+          "boot_std": 0.011626906336528525,
+          "lcb_95": 0.002205346569938668,
+          "lcb_975": -0.0009623200090789745,
+          "mean_delta": 0.020676213680173503,
+          "median_delta": 0.020374467502514426,
+          "n_queries": 86,
+          "p0125_bonf2": -0.0038527948461743434,
+          "p9875_bonf2": 0.04834607298936579,
+          "p_value_two_sided": 0.06255,
+          "ucb_95_one_sided": 0.04044024218908727,
+          "ucb_975": 0.04437212370902339
+        }
+      },
+      "historical_1m_cone_context_disclosure": {
+        "QueryAffine_masked_recall_at_10": 0.38,
+        "Uncentered_Procrustes_masked_recall_at_10": 0.54,
+        "ZeroMu_4ByteSidecar_masked_recall_at_10": 0.55,
+        "disclosure": "Request-only q_hat without +mu_y omits only per-doc 1/||d_j - mu_d||_2 (since q_hat\u00b7mu_d is constant per query), ranking like Procrustes (0.54 vs 0.55 at 1M, 99.48%-synthetic background, CI includes 0), whereas adding +mu_y collapses to QueryAffine (0.38).",
+        "source_manifest": "artifacts/phase2_wave2_d1v2_and_d2_1m/phase2_wave2_d1v2_and_d2_1m_manifest.json"
+      },
+      "live_ZeroMu_minus_QueryAffine": {
+        "boot_std": 0.02586736457940514,
+        "lcb_95": -0.0036411469136468284,
+        "lcb_975": -0.011352740326426667,
+        "mean_delta": 0.03729313528319498,
+        "median_delta": 0.03667029486830847,
+        "n_queries": 86,
+        "p0125_bonf2": -0.017446009820138074,
+        "p9875_bonf2": 0.09870092171792774,
+        "p_value_two_sided": 0.13465,
+        "ucb_95_one_sided": 0.08119899626897426,
+        "ucb_975": 0.0901786280967616
+      },
+      "live_ZeroMu_minus_RequestOnly_RawDOT": {
+        "boot_std": 0.011626906336528525,
+        "lcb_95": 0.002205346569938668,
+        "lcb_975": -0.0009623200090789745,
+        "mean_delta": 0.020676213680173503,
+        "median_delta": 0.020374467502514426,
+        "n_queries": 86,
+        "p0125_bonf2": -0.0038527948461743434,
+        "p9875_bonf2": 0.04834607298936579,
+        "p_value_two_sided": 0.06255,
+        "ucb_95_one_sided": 0.04044024218908727,
+        "ucb_975": 0.04437212370902339
+      },
+      "live_gateway_wire_executed": {
+        "bidirectional_zeromu": {
+          "certified_stop_rate": 1.0,
+          "exact_fallback_rate": 0.0,
+          "mean_ndcg_at_10": 0.525219,
+          "mean_recall_at_10_vs_exact_target": 1.0,
+          "mean_refill_rounds": 0.0
+        },
+        "bidirectional_zeromu_csls": {
+          "certified_stop_rate": 1.0,
+          "exact_fallback_rate": 0.0,
+          "mean_ndcg_at_10": 0.51923,
+          "mean_recall_at_10_vs_exact_target": 1.0,
+          "mean_refill_rounds": 0.6279
+        },
+        "query_affine": {
+          "certified_stop_rate": 1.0,
+          "exact_fallback_rate": 0.0,
+          "mean_ndcg_at_10": 0.487926,
+          "mean_recall_at_10_vs_exact_target": 0.604651,
+          "mean_refill_rounds": 0.0
+        },
+        "request_only_raw_dot": {
+          "certified_stop_rate": 1.0,
+          "exact_fallback_rate": 0.0,
+          "mean_ndcg_at_10": 0.504543,
+          "mean_recall_at_10_vs_exact_target": 0.880233,
+          "mean_refill_rounds": 0.0
+        }
+      }
+    },
+    "decoupled_k_os_x_hnsw_ef_grid": [
+      {
+        "hnsw_ef": 32,
+        "k_os": 10,
+        "lan_rtt_p50_ms": 6.4962,
+        "lan_rtt_p95_ms": 8.5028,
+        "meets_recall_995_gate": false,
+        "rescored_zeromu_mean_recall_at_10": 0.887209,
+        "rescored_zeromu_min_recall_at_10": 0.7,
+        "unrescored_top10_dot_recall_at_10": 0.887209
+      },
+      {
+        "hnsw_ef": 64,
+        "k_os": 10,
+        "lan_rtt_p50_ms": 6.9956,
+        "lan_rtt_p95_ms": 9.1743,
+        "meets_recall_995_gate": false,
+        "rescored_zeromu_mean_recall_at_10": 0.887209,
+        "rescored_zeromu_min_recall_at_10": 0.7,
+        "unrescored_top10_dot_recall_at_10": 0.887209
+      },
+      {
+        "hnsw_ef": 128,
+        "k_os": 10,
+        "lan_rtt_p50_ms": 7.0704,
+        "lan_rtt_p95_ms": 9.2193,
+        "meets_recall_995_gate": false,
+        "rescored_zeromu_mean_recall_at_10": 0.887209,
+        "rescored_zeromu_min_recall_at_10": 0.7,
+        "unrescored_top10_dot_recall_at_10": 0.887209
+      },
+      {
+        "hnsw_ef": 256,
+        "k_os": 10,
+        "lan_rtt_p50_ms": 6.7919,
+        "lan_rtt_p95_ms": 8.5768,
+        "meets_recall_995_gate": false,
+        "rescored_zeromu_mean_recall_at_10": 0.887209,
+        "rescored_zeromu_min_recall_at_10": 0.7,
+        "unrescored_top10_dot_recall_at_10": 0.887209
+      },
+      {
+        "hnsw_ef": 32,
+        "k_os": 32,
+        "lan_rtt_p50_ms": 6.2639,
+        "lan_rtt_p95_ms": 8.2664,
+        "meets_recall_995_gate": true,
+        "rescored_zeromu_mean_recall_at_10": 1.0,
+        "rescored_zeromu_min_recall_at_10": 1.0,
+        "unrescored_top10_dot_recall_at_10": 1.0
+      },
+      {
+        "hnsw_ef": 64,
+        "k_os": 32,
+        "lan_rtt_p50_ms": 6.8395,
+        "lan_rtt_p95_ms": 9.2446,
+        "meets_recall_995_gate": true,
+        "rescored_zeromu_mean_recall_at_10": 1.0,
+        "rescored_zeromu_min_recall_at_10": 1.0,
+        "unrescored_top10_dot_recall_at_10": 1.0
+      },
+      {
+        "hnsw_ef": 128,
+        "k_os": 32,
+        "lan_rtt_p50_ms": 7.2743,
+        "lan_rtt_p95_ms": 9.8487,
+        "meets_recall_995_gate": true,
+        "rescored_zeromu_mean_recall_at_10": 1.0,
+        "rescored_zeromu_min_recall_at_10": 1.0,
+        "unrescored_top10_dot_recall_at_10": 1.0
+      },
+      {
+        "hnsw_ef": 256,
+        "k_os": 32,
+        "lan_rtt_p50_ms": 7.719,
+        "lan_rtt_p95_ms": 10.8658,
+        "meets_recall_995_gate": true,
+        "rescored_zeromu_mean_recall_at_10": 1.0,
+        "rescored_zeromu_min_recall_at_10": 1.0,
+        "unrescored_top10_dot_recall_at_10": 1.0
+      },
+      {
+        "hnsw_ef": 32,
+        "k_os": 64,
+        "lan_rtt_p50_ms": 6.8079,
+        "lan_rtt_p95_ms": 8.6194,
+        "meets_recall_995_gate": true,
+        "rescored_zeromu_mean_recall_at_10": 1.0,
+        "rescored_zeromu_min_recall_at_10": 1.0,
+        "unrescored_top10_dot_recall_at_10": 1.0
+      },
+      {
+        "hnsw_ef": 64,
+        "k_os": 64,
+        "lan_rtt_p50_ms": 6.9984,
+        "lan_rtt_p95_ms": 9.6405,
+        "meets_recall_995_gate": true,
+        "rescored_zeromu_mean_recall_at_10": 1.0,
+        "rescored_zeromu_min_recall_at_10": 1.0,
+        "unrescored_top10_dot_recall_at_10": 1.0
+      },
+      {
+        "hnsw_ef": 128,
+        "k_os": 64,
+        "lan_rtt_p50_ms": 7.2535,
+        "lan_rtt_p95_ms": 9.0463,
+        "meets_recall_995_gate": true,
+        "rescored_zeromu_mean_recall_at_10": 1.0,
+        "rescored_zeromu_min_recall_at_10": 1.0,
+        "unrescored_top10_dot_recall_at_10": 1.0
+      },
+      {
+        "hnsw_ef": 256,
+        "k_os": 64,
+        "lan_rtt_p50_ms": 7.3925,
+        "lan_rtt_p95_ms": 9.2413,
+        "meets_recall_995_gate": true,
+        "rescored_zeromu_mean_recall_at_10": 1.0,
+        "rescored_zeromu_min_recall_at_10": 1.0,
+        "unrescored_top10_dot_recall_at_10": 1.0
+      }
+    ],
+    "dual_shard_http2_fanout_p20_backfill": {
+      "mode_a_384to4096_bridged_plus_native_4096_p20_reproduction": {
+        "bidirectional_zeromu_csls_mean_ndcg_at_10": 0.598357,
+        "csls_minus_uncalibrated": {
+          "boot_std": 0.044761194427723666,
+          "lcb_95": 0.18607255355325297,
+          "lcb_975": 0.17346424076173775,
+          "mean_delta": 0.25929368603294517,
+          "median_delta": 0.2595244127112074,
+          "n_queries": 86,
+          "p0125_bonf2": 0.16146400599379807,
+          "p9875_bonf2": 0.3615704536729773,
+          "p_value_two_sided": 5e-05,
+          "ucb_95_one_sided": 0.33389368738076797,
+          "ucb_975": 0.3485038533220623
+        },
+        "uncalibrated_merge_mean_ndcg_at_10": 0.339064
+      },
+      "mode_b_4096_to_384_plus_native_4096_n500_anchors": {
+        "bidirectional_zeromu_csls_mean_ndcg_at_10": 0.605907,
+        "csls_minus_uncalibrated": {
+          "boot_std": 0.044742139994156646,
+          "lcb_95": 0.14886021591772822,
+          "lcb_975": 0.13489269509524024,
+          "mean_delta": 0.22138905564446193,
+          "median_delta": 0.22155090248698356,
+          "n_queries": 86,
+          "p0125_bonf2": 0.1219376706098343,
+          "p9875_bonf2": 0.32333943246593794,
+          "p_value_two_sided": 5e-05,
+          "ucb_95_one_sided": 0.29589707980823915,
+          "ucb_975": 0.31063832200271135
+        },
+        "n_legacy_384d_docs": 4146,
+        "n_native_4096d_docs": 1037,
+        "uncalibrated_merge_mean_ndcg_at_10": 0.384518
+      }
+    },
+    "sidecar_contract": {
+      "csls_rd_bytes_per_doc": 4,
+      "doc_centered_norm_bytes_per_doc": 4,
+      "egress_vector_bytes_per_doc": 0,
+      "n_max_4096d": 0.95041,
+      "n_min_4096d": 0.710937,
+      "r_d_min_4096d": 0.072987,
+      "shared_centroid_bytes_4096d": 16384,
+      "sidecar_bytes_per_doc": 8
+    }
+  },
+  "backend_execution_disclosure": {
+    "backend_execution_label": "OpenSearch_3x_SearchService_KnnQuery_Protobuf_wire_executed_over_live_Qdrant_HNSW_gRPC",
+    "desktop_grpc_version": "1.76.0",
+    "desktop_protobuf_version": "7.35.0",
+    "frozen_bridges_npz_sha256": "edb59997d4018b7802729f16f694c9e203f875414508bead578279b5c10e6831",
+    "live_opensearch_java_cluster_claimed": false,
+    "live_qdrant_hnsw_grpc_backend_executed": true,
+    "ports": {
+      "chelated_bidirectional_grpc_gateway": 16335,
+      "qdrant_grpc": 16334,
+      "qdrant_rest_json": 16333
+    },
+    "proto_sha256": "7600fdbc57767d307a329809776e4f2eee4a4d7918d4e265f903434cd4b09546",
+    "qdrant_docker_image": "qdrant/qdrant:latest",
+    "spark3_grpc_version": "1.85.3",
+    "spark3_host": "10.0.0.24",
+    "spark3_protobuf_version": "6.33.6",
+    "wire_contract": "OpenSearch 3.x SearchService.Search (KnnQuery binary packed float32 Protobuf)"
+  },
+  "cache_provenance": {
+    "1024": {
+      "docs_shape": [
+        5183,
+        1024
+      ],
+      "queries_shape": [
+        300,
+        1024
+      ],
+      "sha256": "3e1cf4feb98e94561469db7e8076fb225e83c3c72f955666aa273a83014ce6b0"
+    },
+    "384": {
+      "docs_shape": [
+        5183,
+        384
+      ],
+      "queries_shape": [
+        300,
+        384
+      ],
+      "sha256": "78c0ccb04b3538a82da3b8dd8f98799f8fbf70ac804cbe50f309e598f77942f7"
+    },
+    "4096": {
+      "docs_shape": [
+        5183,
+        4096
+      ],
+      "queries_shape": [
+        300,
+        4096
+      ],
+      "sha256": "4c99c602a0c0189966139b411fb9a632efe22cf67d3d449776cbe7e333b13722"
+    }
+  },
+  "d1_v2_reader_decode_latency_attribution": {
+    "Hetero_3090toSpark_ZeroMu_Chelated_V2_Nemotron30B_mean_ms": 2290.8,
+    "Mid7B_Chelated_V2_RTX3090_local_mean_ms": 152.3,
+    "Native_1024d_BGEM3_Chelated_V2_Nemotron30B_mean_ms": 2281.9,
+    "Small3B_Chelated_V2_RTX3090_local_mean_ms": 95.6,
+    "cross_node_bridge_delta_ms": 8.9,
+    "disclosure": "D1 v2's 2,290.8 ms vs 2,281.9 ms (+8.9 ms delta) is 99.611% Nemotron-30B reader LLM decode (whereas 95.6 ms was batched local Qwen2.5-3B on RTX 3090). Demo D5 isolates transport + ANN + bidirectional gateway overhead with the reader LLM strictly off the timer.",
+    "measured_d5_lan_gateway_384to4096_service_p50_ms": 7.8987,
+    "measured_d5_lan_gateway_384to4096_service_p95_ms": 21.1863,
+    "nemotron_30b_reader_decode_share_pct": 99.611,
+    "source_manifest": "artifacts/phase2_wave2_d1v2_and_d2_1m/phase2_wave2_d1v2_and_d2_1m_manifest.json"
+  },
+  "demo": "D5",
+  "ek5_v3_retraction_and_epoch_pinned_fence": {
+    "by_retraction_density": [
+      {
+        "chelated_contested_hits_surfaced_count": 18,
+        "chelated_contested_leaked_as_admitted_rate": 0.0,
+        "chelated_epoch_fenced_admitted_recall_at_10": 1.0,
+        "chelated_epoch_fenced_stale_resurrection_rate": 0.0,
+        "effective_ef_mean": 65.0,
+        "epoch_pin": 5,
+        "exact_fallback_trigger_rate": 0.0,
+        "lagged_replica_without_egress_fence_stale_rate": 0.0,
+        "n_contested_docs": 12,
+        "n_lagged_unmasked_in_replica": 0,
+        "n_retracted_audit_only": 0,
+        "naive_postfilter_k32_ef32_admitted_recall_at_10": 0.997674,
+        "p_admit": 0.9977,
+        "retraction_density": 0.0,
+        "unmasked_stale_resurrection_rate": 0.0
+      },
+      {
+        "chelated_contested_hits_surfaced_count": 24,
+        "chelated_contested_leaked_as_admitted_rate": 0.0,
+        "chelated_epoch_fenced_admitted_recall_at_10": 1.0,
+        "chelated_epoch_fenced_stale_resurrection_rate": 0.0,
+        "effective_ef_mean": 72.0,
+        "epoch_pin": 2,
+        "exact_fallback_trigger_rate": 0.0,
+        "lagged_replica_without_egress_fence_stale_rate": 0.3721,
+        "n_contested_docs": 20,
+        "n_lagged_unmasked_in_replica": 259,
+        "n_retracted_audit_only": 518,
+        "naive_postfilter_k32_ef32_admitted_recall_at_10": 0.997674,
+        "p_admit": 0.8962,
+        "retraction_density": 0.1,
+        "unmasked_stale_resurrection_rate": 0.5814
+      },
+      {
+        "chelated_contested_hits_surfaced_count": 46,
+        "chelated_contested_leaked_as_admitted_rate": 0.0,
+        "chelated_epoch_fenced_admitted_recall_at_10": 0.994186,
+        "chelated_epoch_fenced_stale_resurrection_rate": 0.0,
+        "effective_ef_mean": 130.0,
+        "epoch_pin": 3,
+        "exact_fallback_trigger_rate": 0.0,
+        "lagged_replica_without_egress_fence_stale_rate": 0.5581,
+        "n_contested_docs": 20,
+        "n_lagged_unmasked_in_replica": 259,
+        "n_retracted_audit_only": 2592,
+        "naive_postfilter_k32_ef32_admitted_recall_at_10": 0.981395,
+        "p_admit": 0.496,
+        "retraction_density": 0.5,
+        "unmasked_stale_resurrection_rate": 1.0
+      },
+      {
+        "chelated_contested_hits_surfaced_count": 166,
+        "chelated_contested_leaked_as_admitted_rate": 0.0,
+        "chelated_epoch_fenced_admitted_recall_at_10": 1.0,
+        "chelated_epoch_fenced_stale_resurrection_rate": 0.0,
+        "effective_ef_mean": 256.0,
+        "epoch_pin": 4,
+        "exact_fallback_trigger_rate": 1.0,
+        "lagged_replica_without_egress_fence_stale_rate": 0.9535,
+        "n_contested_docs": 20,
+        "n_lagged_unmasked_in_replica": 259,
+        "n_retracted_audit_only": 4665,
+        "naive_postfilter_k32_ef32_admitted_recall_at_10": 0.333721,
+        "p_admit": 0.0961,
+        "retraction_density": 0.9,
+        "unmasked_stale_resurrection_rate": 1.0
+      }
+    ],
+    "tri_valued_states": [
+      "ADMITTED",
+      "CONTESTED",
+      "AUDIT_ONLY"
+    ],
+    "wait_for_epoch_enforced": true,
+    "zero_stale_resurrection_all_densities": true
+  },
+  "flagship_10k_per_arm_open_loop_lan_tail_proof": {
+    "Chelated_Gateway_384to4096_ZeroMu_CSLS_16335": {
+      "achieved_dispatch_rate_hz": 250.78,
+      "egress_rescore_ms": {
+        "max": 4.1804,
+        "mean": 0.3891,
+        "p50": 0.2245,
+        "p95": 1.1458,
+        "p99": 1.9107
+      },
+      "error_count": 0,
+      "error_samples": [],
+      "mean_request_wire_bytes": 1887.9,
+      "mean_response_wire_bytes": 688.8,
+      "n_dispatches": 10000,
+      "open_loop_e2e_ms": {
+        "max": 319.4605,
+        "mean": 24.7608,
+        "p50": 8.2107,
+        "p95": 153.748,
+        "p99": 251.8594
+      },
+      "rtt_plus_ann_ms": {
+        "max": 250.8123,
+        "mean": 11.6985,
+        "p50": 7.5053,
+        "p95": 20.0724,
+        "p99": 115.4385
+      },
+      "serialize_cpu_ms": {
+        "max": 0.2534,
+        "mean": 0.0311,
+        "p50": 0.0283,
+        "p95": 0.0522,
+        "p99": 0.0728
+      },
+      "service_rtt_ms": {
+        "max": 251.0918,
+        "mean": 12.1285,
+        "p50": 7.8987,
+        "p95": 21.1863,
+        "p99": 115.823
+      },
+      "target_rate_hz": 250.0,
+      "total_wire_bytes": 25766638,
+      "wall_seconds": 39.8762
+    },
+    "Qdrant_gRPC_4096d_16334": {
+      "achieved_dispatch_rate_hz": 218.79,
+      "egress_rescore_ms": {
+        "max": 0.0,
+        "mean": 0.0,
+        "p50": 0.0,
+        "p95": 0.0,
+        "p99": 0.0
+      },
+      "error_count": 0,
+      "error_samples": [],
+      "mean_request_wire_bytes": 16435.0,
+      "mean_response_wire_bytes": 903.5,
+      "n_dispatches": 10000,
+      "open_loop_e2e_ms": {
+        "max": 5723.3993,
+        "mean": 3351.8136,
+        "p50": 3309.5257,
+        "p95": 5541.5048,
+        "p99": 5660.8001
+      },
+      "rtt_plus_ann_ms": {
+        "max": 313.8017,
+        "mean": 45.5175,
+        "p50": 43.4428,
+        "p95": 53.0956,
+        "p99": 117.3325
+      },
+      "serialize_cpu_ms": {
+        "max": 0.3184,
+        "mean": 0.1017,
+        "p50": 0.0976,
+        "p95": 0.138,
+        "p99": 0.1642
+      },
+      "service_rtt_ms": {
+        "max": 313.9533,
+        "mean": 45.6303,
+        "p50": 43.5542,
+        "p95": 53.1967,
+        "p99": 117.4333
+      },
+      "target_rate_hz": 250.0,
+      "total_wire_bytes": 173384740,
+      "wall_seconds": 45.7049
+    },
+    "description": "Single-stream N=10,000 open-loop batch=1 LAN tail proof (Desktop -> 10.0.0.24): 384->4096 Chelated Bidirectional gRPC Gateway (:16335) vs 4096-d Qdrant gRPC (:16334)",
+    "incremental_open_loop_p95_ms": -5387.7568,
+    "incremental_service_p95_ms": -32.0104,
+    "ingress_wire_compression_ratio_4096_vs_384": 8.705,
+    "n_queries_per_arm": 10000
+  },
+  "generated_at_utc": "2026-11-23T06:05:48.591964+00:00",
+  "git_sha": "5a9bd46f2eeae2522a4a8d81017edb3c2407f936",
+  "guardrail": "K1",
+  "headline_metrics": {
+    "egress_vector_bytes_per_doc": 0,
+    "flagship_10k_lan_gateway_service_p50_ms": 7.8987,
+    "flagship_10k_lan_gateway_service_p95_ms": 21.1863,
+    "flagship_10k_lan_gateway_service_p99_ms": 115.823,
+    "flagship_10k_lan_incremental_gateway_service_p95_ms": -32.0104,
+    "max_grid_incremental_gateway_service_p95_ms": 18.003,
+    "rescored_zeromu_recall_at_10_k64_ef64": 1.0,
+    "sidecar_bytes_per_doc": 8,
+    "stale_resurrection_rate_across_0_10_50_90_pct": 0.0,
+    "total_open_loop_queries_executed": 43040
+  },
+  "open_loop_transport_sweep_desktop_to_spark3_lan": {
+    "cells": [
+      {
+        "achieved_dispatch_rate_hz": 59.75,
+        "batch_size": 1,
+        "dimension": 384,
+        "egress_rescore_ms": {
+          "max": 0.0,
+          "mean": 0.0,
+          "p50": 0.0,
+          "p95": 0.0,
+          "p99": 0.0
+        },
+        "error_count": 0,
+        "error_samples": [],
+        "mean_request_wire_bytes": 8147.1,
+        "mean_response_wire_bytes": 2807.5,
+        "n_dispatches": 320,
+        "n_queries_evaluated": 320,
+        "open_loop_e2e_ms": {
+          "max": 507.8816,
+          "mean": 44.2146,
+          "p50": 27.7978,
+          "p95": 141.6383,
+          "p99": 423.9992
+        },
+        "per_query_mean_request_wire_bytes": 8147.1,
+        "per_query_mean_response_wire_bytes": 2807.5,
+        "protocol": "REST_JSON_Unpooled",
+        "rtt_plus_ann_ms": {
+          "max": 507.2187,
+          "mean": 39.0277,
+          "p50": 26.9449,
+          "p95": 104.4845,
+          "p99": 414.2256
+        },
+        "serialize_cpu_ms": {
+          "max": 0.3874,
+          "mean": 0.2437,
+          "p50": 0.2358,
+          "p95": 0.3198,
+          "p99": 0.3453
+        },
+        "service_rtt_ms": {
+          "max": 507.5665,
+          "mean": 39.3427,
+          "p50": 27.3415,
+          "p95": 104.8436,
+          "p99": 414.4928
+        },
+        "target_rate_hz": 65.0,
+        "topology": "desktop_to_spark3_direct_lan_10_0_0_24",
+        "total_wire_bytes": 3505484,
+        "wall_seconds": 5.3555
+      },
+      {
+        "achieved_dispatch_rate_hz": 119.48,
+        "batch_size": 1,
+        "dimension": 384,
+        "egress_rescore_ms": {
+          "max": 0.0,
+          "mean": 0.0,
+          "p50": 0.0,
+          "p95": 0.0,
+          "p99": 0.0
+        },
+        "error_count": 0,
+        "error_samples": [],
+        "mean_request_wire_bytes": 8147.1,
+        "mean_response_wire_bytes": 2807.5,
+        "n_dispatches": 320,
+        "n_queries_evaluated": 320,
+        "open_loop_e2e_ms": {
+          "max": 39.2559,
+          "mean": 9.0492,
+          "p50": 8.303,
+          "p95": 14.2391,
+          "p99": 17.8654
+        },
+        "per_query_mean_request_wire_bytes": 8147.1,
+        "per_query_mean_response_wire_bytes": 2807.5,
+        "protocol": "REST_JSON_Pooled",
+        "rtt_plus_ann_ms": {
+          "max": 38.6699,
+          "mean": 8.4333,
+          "p50": 7.7046,
+          "p95": 13.8157,
+          "p99": 17.0
+        },
+        "serialize_cpu_ms": {
+          "max": 0.4762,
+          "mean": 0.2397,
+          "p50": 0.2267,
+          "p95": 0.3342,
+          "p99": 0.3802
+        },
+        "service_rtt_ms": {
+          "max": 39.0695,
+          "mean": 8.733,
+          "p50": 7.9835,
+          "p95": 14.0498,
+          "p99": 17.3214
+        },
+        "target_rate_hz": 120.0,
+        "topology": "desktop_to_spark3_direct_lan_10_0_0_24",
+        "total_wire_bytes": 3505486,
+        "wall_seconds": 2.6783
+      },
+      {
+        "achieved_dispatch_rate_hz": 149.02,
+        "batch_size": 1,
+        "dimension": 384,
+        "egress_rescore_ms": {
+          "max": 0.0,
+          "mean": 0.0,
+          "p50": 0.0,
+          "p95": 0.0,
+          "p99": 0.0
+        },
+        "error_count": 0,
+        "error_samples": [],
+        "mean_request_wire_bytes": 1582.0,
+        "mean_response_wire_bytes": 903.6,
+        "n_dispatches": 320,
+        "n_queries_evaluated": 320,
+        "open_loop_e2e_ms": {
+          "max": 12.5639,
+          "mean": 5.6301,
+          "p50": 5.2653,
+          "p95": 8.5401,
+          "p99": 11.3272
+        },
+        "per_query_mean_request_wire_bytes": 1582.0,
+        "per_query_mean_response_wire_bytes": 903.6,
+        "protocol": "Qdrant_gRPC_16334",
+        "rtt_plus_ann_ms": {
+          "max": 12.17,
+          "mean": 5.2833,
+          "p50": 4.9079,
+          "p95": 8.1555,
+          "p99": 10.8678
+        },
+        "serialize_cpu_ms": {
+          "max": 0.082,
+          "mean": 0.0381,
+          "p50": 0.0357,
+          "p95": 0.0632,
+          "p99": 0.0726
+        },
+        "service_rtt_ms": {
+          "max": 12.2325,
+          "mean": 5.333,
+          "p50": 4.9451,
+          "p95": 8.2117,
+          "p99": 10.9021
+        },
+        "target_rate_hz": 150.0,
+        "topology": "desktop_to_spark3_direct_lan_10_0_0_24",
+        "total_wire_bytes": 795380,
+        "wall_seconds": 2.1473
+      },
+      {
+        "achieved_dispatch_rate_hz": 149.23,
+        "batch_size": 1,
+        "dimension": 384,
+        "egress_rescore_ms": {
+          "max": 0.7467,
+          "mean": 0.1571,
+          "p50": 0.131,
+          "p95": 0.2935,
+          "p99": 0.564
+        },
+        "error_count": 0,
+        "error_samples": [],
+        "incremental_open_loop_p95_ms_vs_qdrant_grpc": -0.0271,
+        "incremental_rpc_service_p95_ms_vs_qdrant_grpc": -0.0235,
+        "incremental_service_p95_ms_vs_qdrant_grpc": -0.0235,
+        "mean_request_wire_bytes": 1871.7,
+        "mean_response_wire_bytes": 658.3,
+        "n_dispatches": 320,
+        "n_queries_evaluated": 320,
+        "open_loop_e2e_ms": {
+          "max": 19.4001,
+          "mean": 6.2443,
+          "p50": 6.0225,
+          "p95": 8.513,
+          "p99": 9.6769
+        },
+        "per_query_mean_request_wire_bytes": 1871.7,
+        "per_query_mean_response_wire_bytes": 658.3,
+        "protocol": "Chelated_Bidirectional_gRPC_Gateway_16335",
+        "rtt_plus_ann_ms": {
+          "max": 19.0274,
+          "mean": 5.7423,
+          "p50": 5.5111,
+          "p95": 7.8465,
+          "p99": 8.9527
+        },
+        "serialize_cpu_ms": {
+          "max": 0.0979,
+          "mean": 0.0334,
+          "p50": 0.0308,
+          "p95": 0.0551,
+          "p99": 0.0663
+        },
+        "service_rtt_ms": {
+          "max": 19.2402,
+          "mean": 5.9432,
+          "p50": 5.7269,
+          "p95": 8.1882,
+          "p99": 9.2894
+        },
+        "target_rate_hz": 150.0,
+        "topology": "desktop_to_spark3_direct_lan_10_0_0_24",
+        "total_wire_bytes": 809576,
+        "wall_seconds": 2.1444
+      },
+      {
+        "achieved_dispatch_rate_hz": 10.41,
+        "batch_size": 32,
+        "dimension": 384,
+        "egress_rescore_ms": {
+          "max": 0.0,
+          "mean": 0.0,
+          "p50": 0.0,
+          "p95": 0.0,
+          "p99": 0.0
+        },
+        "error_count": 0,
+        "error_samples": [],
+        "mean_request_wire_bytes": 260755.6,
+        "mean_response_wire_bytes": 88511.1,
+        "n_dispatches": 20,
+        "n_queries_evaluated": 640,
+        "open_loop_e2e_ms": {
+          "max": 856.8491,
+          "mean": 544.6631,
+          "p50": 580.0818,
+          "p95": 758.8352,
+          "p99": 837.2463
+        },
+        "per_query_mean_request_wire_bytes": 8148.6,
+        "per_query_mean_response_wire_bytes": 2766.0,
+        "protocol": "REST_JSON_Unpooled",
+        "rtt_plus_ann_ms": {
+          "max": 364.6179,
+          "mean": 263.4766,
+          "p50": 253.4947,
+          "p95": 360.0415,
+          "p99": 363.7026
+        },
+        "serialize_cpu_ms": {
+          "max": 11.5783,
+          "mean": 5.6697,
+          "p50": 5.094,
+          "p95": 7.9565,
+          "p99": 10.8539
+        },
+        "service_rtt_ms": {
+          "max": 371.2289,
+          "mean": 270.3326,
+          "p50": 259.4218,
+          "p95": 366.7553,
+          "p99": 370.3342
+        },
+        "target_rate_hz": 18.0,
+        "topology": "desktop_to_spark3_direct_lan_10_0_0_24",
+        "total_wire_bytes": 6985336,
+        "wall_seconds": 1.9222
+      },
+      {
+        "achieved_dispatch_rate_hz": 13.86,
+        "batch_size": 32,
+        "dimension": 384,
+        "egress_rescore_ms": {
+          "max": 0.0,
+          "mean": 0.0,
+          "p50": 0.0,
+          "p95": 0.0,
+          "p99": 0.0
+        },
+        "error_count": 0,
+        "error_samples": [],
+        "mean_request_wire_bytes": 260755.6,
+        "mean_response_wire_bytes": 88511.1,
+        "n_dispatches": 20,
+        "n_queries_evaluated": 640,
+        "open_loop_e2e_ms": {
+          "max": 347.0872,
+          "mean": 212.3599,
+          "p50": 218.431,
+          "p95": 345.9342,
+          "p99": 346.8566
+        },
+        "per_query_mean_request_wire_bytes": 8148.6,
+        "per_query_mean_response_wire_bytes": 2766.0,
+        "protocol": "REST_JSON_Pooled",
+        "rtt_plus_ann_ms": {
+          "max": 296.3639,
+          "mean": 165.1149,
+          "p50": 167.25,
+          "p95": 273.3814,
+          "p99": 291.7674
+        },
+        "serialize_cpu_ms": {
+          "max": 7.886,
+          "mean": 5.5856,
+          "p50": 5.2151,
+          "p95": 7.6657,
+          "p99": 7.8419
+        },
+        "service_rtt_ms": {
+          "max": 305.8929,
+          "mean": 171.8526,
+          "p50": 173.5149,
+          "p95": 281.6524,
+          "p99": 301.0448
+        },
+        "target_rate_hz": 18.0,
+        "topology": "desktop_to_spark3_direct_lan_10_0_0_24",
+        "total_wire_bytes": 6985335,
+        "wall_seconds": 1.4432
+      },
+      {
+        "achieved_dispatch_rate_hz": 16.67,
+        "batch_size": 32,
+        "dimension": 384,
+        "egress_rescore_ms": {
+          "max": 0.0,
+          "mean": 0.0,
+          "p50": 0.0,
+          "p95": 0.0,
+          "p99": 0.0
+        },
+        "error_count": 0,
+        "error_samples": [],
+        "mean_request_wire_bytes": 50736.0,
+        "mean_response_wire_bytes": 28730.4,
+        "n_dispatches": 20,
+        "n_queries_evaluated": 640,
+        "open_loop_e2e_ms": {
+          "max": 274.9047,
+          "mean": 72.3847,
+          "p50": 44.4366,
+          "p95": 212.1479,
+          "p99": 262.3533
+        },
+        "per_query_mean_request_wire_bytes": 1585.5,
+        "per_query_mean_response_wire_bytes": 897.8,
+        "protocol": "Qdrant_gRPC_16334",
+        "rtt_plus_ann_ms": {
+          "max": 273.4797,
+          "mean": 64.4798,
+          "p50": 43.264,
+          "p95": 210.6752,
+          "p99": 260.9188
+        },
+        "serialize_cpu_ms": {
+          "max": 0.9066,
+          "mean": 0.6652,
+          "p50": 0.6457,
+          "p95": 0.8874,
+          "p99": 0.9028
+        },
+        "service_rtt_ms": {
+          "max": 274.4263,
+          "mean": 65.3586,
+          "p50": 44.0556,
+          "p95": 211.7542,
+          "p99": 261.8919
+        },
+        "target_rate_hz": 18.0,
+        "topology": "desktop_to_spark3_direct_lan_10_0_0_24",
+        "total_wire_bytes": 1589328,
+        "wall_seconds": 1.1997
+      },
+      {
+        "achieved_dispatch_rate_hz": 16.5,
+        "batch_size": 32,
+        "dimension": 384,
+        "egress_rescore_ms": {
+          "max": 6.9692,
+          "mean": 3.5705,
+          "p50": 2.3058,
+          "p95": 6.5327,
+          "p99": 6.8819
+        },
+        "error_count": 0,
+        "error_samples": [],
+        "incremental_open_loop_p95_ms_vs_qdrant_grpc": -4.9733,
+        "incremental_rpc_service_p95_ms_vs_qdrant_grpc": -160.4927,
+        "incremental_service_p95_ms_vs_qdrant_grpc": -5.0154,
+        "mean_request_wire_bytes": 50550.0,
+        "mean_response_wire_bytes": 19088.5,
+        "n_dispatches": 20,
+        "n_queries_evaluated": 640,
+        "open_loop_e2e_ms": {
+          "max": 59.5753,
+          "mean": 40.6426,
+          "p50": 38.3484,
+          "p95": 53.0028,
+          "p99": 58.2608
+        },
+        "per_query_mean_request_wire_bytes": 1579.7,
+        "per_query_mean_response_wire_bytes": 596.5,
+        "protocol": "Chelated_Bidirectional_gRPC_Gateway_16335",
+        "rtt_plus_ann_ms": {
+          "max": 48.2084,
+          "mean": 35.6747,
+          "p50": 33.9095,
+          "p95": 47.1905,
+          "p99": 48.0048
+        },
+        "serialize_cpu_ms": {
+          "max": 0.5539,
+          "mean": 0.4095,
+          "p50": 0.4051,
+          "p95": 0.521,
+          "p99": 0.5473
+        },
+        "service_rtt_ms": {
+          "max": 52.1032,
+          "mean": 39.7565,
+          "p50": 38.0381,
+          "p95": 51.2615,
+          "p99": 51.9349
+        },
+        "target_rate_hz": 18.0,
+        "topology": "desktop_to_spark3_direct_lan_10_0_0_24",
+        "total_wire_bytes": 1392769,
+        "wall_seconds": 1.2119
+      },
+      {
+        "achieved_dispatch_rate_hz": 69.13,
+        "batch_size": 1,
+        "dimension": 1024,
+        "egress_rescore_ms": {
+          "max": 0.0,
+          "mean": 0.0,
+          "p50": 0.0,
+          "p95": 0.0,
+          "p99": 0.0
+        },
+        "error_count": 0,
+        "error_samples": [],
+        "mean_request_wire_bytes": 21776.6,
+        "mean_response_wire_bytes": 2787.5,
+        "n_dispatches": 320,
+        "n_queries_evaluated": 320,
+        "open_loop_e2e_ms": {
+          "max": 87.8748,
+          "mean": 37.5915,
+          "p50": 37.7381,
+          "p95": 56.9712,
+          "p99": 67.4143
+        },
+        "per_query_mean_request_wire_bytes": 21776.6,
+        "per_query_mean_response_wire_bytes": 2787.5,
+        "protocol": "REST_JSON_Unpooled",
+        "rtt_plus_ann_ms": {
+          "max": 87.1166,
+          "mean": 36.6719,
+          "p50": 36.606,
+          "p95": 55.9513,
+          "p99": 66.332
+        },
+        "serialize_cpu_ms": {
+          "max": 0.946,
+          "mean": 0.539,
+          "p50": 0.5061,
+          "p95": 0.7239,
+          "p99": 0.7977
+        },
+        "service_rtt_ms": {
+          "max": 87.7567,
+          "mean": 37.2822,
+          "p50": 37.2719,
+          "p95": 56.5003,
+          "p99": 66.9708
+        },
+        "target_rate_hz": 65.0,
+        "topology": "desktop_to_spark3_direct_lan_10_0_0_24",
+        "total_wire_bytes": 7860517,
+        "wall_seconds": 4.629
+      },
+      {
+        "achieved_dispatch_rate_hz": 127.46,
+        "batch_size": 1,
+        "dimension": 1024,
+        "egress_rescore_ms": {
+          "max": 0.0,
+          "mean": 0.0,
+          "p50": 0.0,
+          "p95": 0.0,
+          "p99": 0.0
+        },
+        "error_count": 0,
+        "error_samples": [],
+        "mean_request_wire_bytes": 21776.6,
+        "mean_response_wire_bytes": 2787.5,
+        "n_dispatches": 320,
+        "n_queries_evaluated": 320,
+        "open_loop_e2e_ms": {
+          "max": 517.4433,
+          "mean": 201.7494,
+          "p50": 125.8305,
+          "p95": 443.9639,
+          "p99": 451.0513
+        },
+        "per_query_mean_request_wire_bytes": 21776.6,
+        "per_query_mean_response_wire_bytes": 2787.5,
+        "protocol": "REST_JSON_Pooled",
+        "rtt_plus_ann_ms": {
+          "max": 274.3429,
+          "mean": 43.0986,
+          "p50": 42.7473,
+          "p95": 62.3069,
+          "p99": 148.299
+        },
+        "serialize_cpu_ms": {
+          "max": 0.9951,
+          "mean": 0.5587,
+          "p50": 0.5191,
+          "p95": 0.7578,
+          "p99": 0.8631
+        },
+        "service_rtt_ms": {
+          "max": 274.9204,
+          "mean": 43.7195,
+          "p50": 43.3927,
+          "p95": 63.0791,
+          "p99": 149.0516
+        },
+        "target_rate_hz": 120.0,
+        "topology": "desktop_to_spark3_direct_lan_10_0_0_24",
+        "total_wire_bytes": 7860511,
+        "wall_seconds": 2.5105
+      },
+      {
+        "achieved_dispatch_rate_hz": 159.88,
+        "batch_size": 1,
+        "dimension": 1024,
+        "egress_rescore_ms": {
+          "max": 0.0,
+          "mean": 0.0,
+          "p50": 0.0,
+          "p95": 0.0,
+          "p99": 0.0
+        },
+        "error_count": 0,
+        "error_samples": [],
+        "mean_request_wire_bytes": 4143.0,
+        "mean_response_wire_bytes": 903.6,
+        "n_dispatches": 320,
+        "n_queries_evaluated": 320,
+        "open_loop_e2e_ms": {
+          "max": 14.5844,
+          "mean": 6.2226,
+          "p50": 5.7751,
+          "p95": 9.2022,
+          "p99": 11.0021
+        },
+        "per_query_mean_request_wire_bytes": 4143.0,
+        "per_query_mean_response_wire_bytes": 903.6,
+        "protocol": "Qdrant_gRPC_16334",
+        "rtt_plus_ann_ms": {
+          "max": 13.9172,
+          "mean": 5.8688,
+          "p50": 5.451,
+          "p95": 8.7987,
+          "p99": 10.6593
+        },
+        "serialize_cpu_ms": {
+          "max": 0.1465,
+          "mean": 0.055,
+          "p50": 0.0525,
+          "p95": 0.0855,
+          "p99": 0.1109
+        },
+        "service_rtt_ms": {
+          "max": 13.9884,
+          "mean": 5.9354,
+          "p50": 5.5124,
+          "p95": 8.8539,
+          "p99": 10.7277
+        },
+        "target_rate_hz": 150.0,
+        "topology": "desktop_to_spark3_direct_lan_10_0_0_24",
+        "total_wire_bytes": 1614909,
+        "wall_seconds": 2.0015
+      },
+      {
+        "achieved_dispatch_rate_hz": 159.84,
+        "batch_size": 1,
+        "dimension": 1024,
+        "egress_rescore_ms": {
+          "max": 0.982,
+          "mean": 0.1989,
+          "p50": 0.1616,
+          "p95": 0.4813,
+          "p99": 0.7034
+        },
+        "error_count": 0,
+        "error_samples": [],
+        "incremental_open_loop_p95_ms_vs_qdrant_grpc": 0.8688,
+        "incremental_rpc_service_p95_ms_vs_qdrant_grpc": 0.9,
+        "incremental_service_p95_ms_vs_qdrant_grpc": 0.9,
+        "mean_request_wire_bytes": 4433.7,
+        "mean_response_wire_bytes": 666.8,
+        "n_dispatches": 320,
+        "n_queries_evaluated": 320,
+        "open_loop_e2e_ms": {
+          "max": 14.6584,
+          "mean": 7.4677,
+          "p50": 7.1545,
+          "p95": 10.071,
+          "p99": 12.2659
+        },
+        "per_query_mean_request_wire_bytes": 4433.7,
+        "per_query_mean_response_wire_bytes": 666.8,
+        "protocol": "Chelated_Bidirectional_gRPC_Gateway_16335",
+        "rtt_plus_ann_ms": {
+          "max": 14.123,
+          "mean": 6.9303,
+          "p50": 6.5355,
+          "p95": 9.5266,
+          "p99": 11.6587
+        },
+        "serialize_cpu_ms": {
+          "max": 0.0867,
+          "mean": 0.0442,
+          "p50": 0.0428,
+          "p95": 0.0641,
+          "p99": 0.0765
+        },
+        "service_rtt_ms": {
+          "max": 14.3624,
+          "mean": 7.183,
+          "p50": 6.8304,
+          "p95": 9.7539,
+          "p99": 11.9799
+        },
+        "target_rate_hz": 150.0,
+        "topology": "desktop_to_spark3_direct_lan_10_0_0_24",
+        "total_wire_bytes": 1632144,
+        "wall_seconds": 2.002
+      },
+      {
+        "achieved_dispatch_rate_hz": 5.62,
+        "batch_size": 32,
+        "dimension": 1024,
+        "egress_rescore_ms": {
+          "max": 0.0,
+          "mean": 0.0,
+          "p50": 0.0,
+          "p95": 0.0,
+          "p99": 0.0
+        },
+        "error_count": 0,
+        "error_samples": [],
+        "mean_request_wire_bytes": 696909.1,
+        "mean_response_wire_bytes": 87869.1,
+        "n_dispatches": 20,
+        "n_queries_evaluated": 640,
+        "open_loop_e2e_ms": {
+          "max": 2500.2147,
+          "mean": 1478.9919,
+          "p50": 1450.9022,
+          "p95": 2429.4559,
+          "p99": 2486.0629
+        },
+        "per_query_mean_request_wire_bytes": 21778.4,
+        "per_query_mean_response_wire_bytes": 2745.9,
+        "protocol": "REST_JSON_Unpooled",
+        "rtt_plus_ann_ms": {
+          "max": 558.3035,
+          "mean": 495.0602,
+          "p50": 504.5033,
+          "p95": 552.1413,
+          "p99": 557.0711
+        },
+        "serialize_cpu_ms": {
+          "max": 21.6333,
+          "mean": 15.5495,
+          "p50": 14.5545,
+          "p95": 20.7256,
+          "p99": 21.4518
+        },
+        "service_rtt_ms": {
+          "max": 573.4034,
+          "mean": 512.152,
+          "p50": 519.7675,
+          "p95": 567.4308,
+          "p99": 572.2089
+        },
+        "target_rate_hz": 18.0,
+        "topology": "desktop_to_spark3_direct_lan_10_0_0_24",
+        "total_wire_bytes": 15695565,
+        "wall_seconds": 3.5614
+      },
+      {
+        "achieved_dispatch_rate_hz": 5.53,
+        "batch_size": 32,
+        "dimension": 1024,
+        "egress_rescore_ms": {
+          "max": 0.0,
+          "mean": 0.0,
+          "p50": 0.0,
+          "p95": 0.0,
+          "p99": 0.0
+        },
+        "error_count": 0,
+        "error_samples": [],
+        "mean_request_wire_bytes": 696909.1,
+        "mean_response_wire_bytes": 87869.2,
+        "n_dispatches": 20,
+        "n_queries_evaluated": 640,
+        "open_loop_e2e_ms": {
+          "max": 2552.5825,
+          "mean": 1550.3191,
+          "p50": 1446.7224,
+          "p95": 2545.6229,
+          "p99": 2551.1906
+        },
+        "per_query_mean_request_wire_bytes": 21778.4,
+        "per_query_mean_response_wire_bytes": 2745.9,
+        "protocol": "REST_JSON_Pooled",
+        "rtt_plus_ann_ms": {
+          "max": 758.6138,
+          "mean": 516.1142,
+          "p50": 530.0723,
+          "p95": 711.4199,
+          "p99": 749.175
+        },
+        "serialize_cpu_ms": {
+          "max": 15.9161,
+          "mean": 13.3477,
+          "p50": 12.8931,
+          "p95": 15.8152,
+          "p99": 15.8959
+        },
+        "service_rtt_ms": {
+          "max": 772.5909,
+          "mean": 530.8459,
+          "p50": 544.7554,
+          "p95": 726.1979,
+          "p99": 763.3123
+        },
+        "target_rate_hz": 18.0,
+        "topology": "desktop_to_spark3_direct_lan_10_0_0_24",
+        "total_wire_bytes": 15695566,
+        "wall_seconds": 3.6138
+      },
+      {
+        "achieved_dispatch_rate_hz": 15.19,
+        "batch_size": 32,
+        "dimension": 1024,
+        "egress_rescore_ms": {
+          "max": 0.0,
+          "mean": 0.0,
+          "p50": 0.0,
+          "p95": 0.0,
+          "p99": 0.0
+        },
+        "error_count": 0,
+        "error_samples": [],
+        "mean_request_wire_bytes": 132689.0,
+        "mean_response_wire_bytes": 28731.5,
+        "n_dispatches": 20,
+        "n_queries_evaluated": 640,
+        "open_loop_e2e_ms": {
+          "max": 391.8689,
+          "mean": 223.948,
+          "p50": 268.4716,
+          "p95": 389.1121,
+          "p99": 391.3175
+        },
+        "per_query_mean_request_wire_bytes": 4146.5,
+        "per_query_mean_response_wire_bytes": 897.9,
+        "protocol": "Qdrant_gRPC_16334",
+        "rtt_plus_ann_ms": {
+          "max": 369.2281,
+          "mean": 135.3331,
+          "p50": 105.279,
+          "p95": 312.3902,
+          "p99": 357.8605
+        },
+        "serialize_cpu_ms": {
+          "max": 1.5068,
+          "mean": 1.1519,
+          "p50": 1.0727,
+          "p95": 1.4545,
+          "p99": 1.4964
+        },
+        "service_rtt_ms": {
+          "max": 370.3256,
+          "mean": 136.6994,
+          "p50": 106.6955,
+          "p95": 313.6204,
+          "p99": 358.9846
+        },
+        "target_rate_hz": 18.0,
+        "topology": "desktop_to_spark3_direct_lan_10_0_0_24",
+        "total_wire_bytes": 3228409,
+        "wall_seconds": 1.3167
+      },
+      {
+        "achieved_dispatch_rate_hz": 17.65,
+        "batch_size": 32,
+        "dimension": 1024,
+        "egress_rescore_ms": {
+          "max": 5.5088,
+          "mean": 3.7095,
+          "p50": 3.6303,
+          "p95": 5.2183,
+          "p99": 5.4507
+        },
+        "error_count": 0,
+        "error_samples": [],
+        "incremental_open_loop_p95_ms_vs_qdrant_grpc": -8.8398,
+        "incremental_rpc_service_p95_ms_vs_qdrant_grpc": -208.2934,
+        "incremental_service_p95_ms_vs_qdrant_grpc": -6.5092,
+        "mean_request_wire_bytes": 132472.0,
+        "mean_response_wire_bytes": 19347.9,
+        "n_dispatches": 20,
+        "n_queries_evaluated": 640,
+        "open_loop_e2e_ms": {
+          "max": 108.0714,
+          "mean": 86.2096,
+          "p50": 86.3437,
+          "p95": 106.2386,
+          "p99": 107.7048
+        },
+        "per_query_mean_request_wire_bytes": 4139.8,
+        "per_query_mean_response_wire_bytes": 604.6,
+        "protocol": "Chelated_Bidirectional_gRPC_Gateway_16335",
+        "rtt_plus_ann_ms": {
+          "max": 99.3284,
+          "mean": 77.4385,
+          "p50": 78.227,
+          "p95": 99.2963,
+          "p99": 99.322
+        },
+        "serialize_cpu_ms": {
+          "max": 1.3288,
+          "mean": 1.004,
+          "p50": 0.9839,
+          "p95": 1.2881,
+          "p99": 1.3207
+        },
+        "service_rtt_ms": {
+          "max": 105.5503,
+          "mean": 82.2718,
+          "p50": 81.6377,
+          "p95": 105.327,
+          "p99": 105.5056
+        },
+        "target_rate_hz": 18.0,
+        "topology": "desktop_to_spark3_direct_lan_10_0_0_24",
+        "total_wire_bytes": 3036398,
+        "wall_seconds": 1.1332
+      },
+      {
+        "achieved_dispatch_rate_hz": 43.01,
+        "batch_size": 1,
+        "dimension": 4096,
+        "egress_rescore_ms": {
+          "max": 0.0,
+          "mean": 0.0,
+          "p50": 0.0,
+          "p95": 0.0,
+          "p99": 0.0
+        },
+        "error_count": 0,
+        "error_samples": [],
+        "mean_request_wire_bytes": 69483.0,
+        "mean_response_wire_bytes": 2794.9,
+        "n_dispatches": 320,
+        "n_queries_evaluated": 320,
+        "open_loop_e2e_ms": {
+          "max": 230.6957,
+          "mean": 94.3076,
+          "p50": 84.9635,
+          "p95": 180.3886,
+          "p99": 223.3683
+        },
+        "per_query_mean_request_wire_bytes": 69483.0,
+        "per_query_mean_response_wire_bytes": 2794.9,
+        "protocol": "REST_JSON_Unpooled",
+        "rtt_plus_ann_ms": {
+          "max": 102.5326,
+          "mean": 67.9937,
+          "p50": 69.3014,
+          "p95": 89.792,
+          "p99": 97.0884
+        },
+        "serialize_cpu_ms": {
+          "max": 6.1172,
+          "mean": 1.9469,
+          "p50": 1.8039,
+          "p95": 2.5901,
+          "p99": 2.9514
+        },
+        "service_rtt_ms": {
+          "max": 104.5317,
+          "mean": 70.0279,
+          "p50": 71.1403,
+          "p95": 91.5015,
+          "p99": 98.8401
+        },
+        "target_rate_hz": 45.0,
+        "topology": "desktop_to_spark3_direct_lan_10_0_0_24",
+        "total_wire_bytes": 23128923,
+        "wall_seconds": 7.4398
+      },
+      {
+        "achieved_dispatch_rate_hz": 51.39,
+        "batch_size": 1,
+        "dimension": 4096,
+        "egress_rescore_ms": {
+          "max": 0.0,
+          "mean": 0.0,
+          "p50": 0.0,
+          "p95": 0.0,
+          "p99": 0.0
+        },
+        "error_count": 0,
+        "error_samples": [],
+        "mean_request_wire_bytes": 69483.0,
+        "mean_response_wire_bytes": 2794.9,
+        "n_dispatches": 320,
+        "n_queries_evaluated": 320,
+        "open_loop_e2e_ms": {
+          "max": 401.7007,
+          "mean": 156.0671,
+          "p50": 163.7837,
+          "p95": 349.2498,
+          "p99": 378.3808
+        },
+        "per_query_mean_request_wire_bytes": 69483.0,
+        "per_query_mean_response_wire_bytes": 2794.9,
+        "protocol": "REST_JSON_Pooled",
+        "rtt_plus_ann_ms": {
+          "max": 173.3126,
+          "mean": 65.7967,
+          "p50": 67.6212,
+          "p95": 83.8522,
+          "p99": 166.3142
+        },
+        "serialize_cpu_ms": {
+          "max": 3.1481,
+          "mean": 1.9445,
+          "p50": 1.8993,
+          "p95": 2.4912,
+          "p99": 2.9433
+        },
+        "service_rtt_ms": {
+          "max": 174.9377,
+          "mean": 67.8176,
+          "p50": 69.5036,
+          "p95": 86.2312,
+          "p99": 167.9671
+        },
+        "target_rate_hz": 55.0,
+        "topology": "desktop_to_spark3_direct_lan_10_0_0_24",
+        "total_wire_bytes": 23128930,
+        "wall_seconds": 6.2263
+      },
+      {
+        "achieved_dispatch_rate_hz": 72.35,
+        "batch_size": 1,
+        "dimension": 4096,
+        "egress_rescore_ms": {
+          "max": 0.0,
+          "mean": 0.0,
+          "p50": 0.0,
+          "p95": 0.0,
+          "p99": 0.0
+        },
+        "error_count": 0,
+        "error_samples": [],
+        "mean_request_wire_bytes": 16435.0,
+        "mean_response_wire_bytes": 903.5,
+        "n_dispatches": 320,
+        "n_queries_evaluated": 320,
+        "open_loop_e2e_ms": {
+          "max": 79.3759,
+          "mean": 15.298,
+          "p50": 11.9005,
+          "p95": 30.0925,
+          "p99": 71.3567
+        },
+        "per_query_mean_request_wire_bytes": 16435.0,
+        "per_query_mean_response_wire_bytes": 903.5,
+        "protocol": "Qdrant_gRPC_16334",
+        "rtt_plus_ann_ms": {
+          "max": 78.5595,
+          "mean": 14.0658,
+          "p50": 11.615,
+          "p95": 25.9093,
+          "p99": 63.851
+        },
+        "serialize_cpu_ms": {
+          "max": 0.2163,
+          "mean": 0.1195,
+          "p50": 0.1183,
+          "p95": 0.1617,
+          "p99": 0.1827
+        },
+        "service_rtt_ms": {
+          "max": 78.7095,
+          "mean": 14.2004,
+          "p50": 11.7579,
+          "p95": 26.0318,
+          "p99": 63.9569
+        },
+        "target_rate_hz": 75.0,
+        "topology": "desktop_to_spark3_direct_lan_10_0_0_24",
+        "total_wire_bytes": 5548320,
+        "wall_seconds": 4.4231
+      },
+      {
+        "achieved_dispatch_rate_hz": 72.24,
+        "batch_size": 1,
+        "dimension": 4096,
+        "egress_rescore_ms": {
+          "max": 1.4855,
+          "mean": 0.2441,
+          "p50": 0.1928,
+          "p95": 0.6974,
+          "p99": 1.0784
+        },
+        "error_count": 0,
+        "error_samples": [],
+        "incremental_open_loop_p95_ms_vs_qdrant_grpc": 115.3071,
+        "incremental_rpc_service_p95_ms_vs_qdrant_grpc": 18.003,
+        "incremental_service_p95_ms_vs_qdrant_grpc": 18.003,
+        "mean_request_wire_bytes": 16723.7,
+        "mean_response_wire_bytes": 673.9,
+        "n_dispatches": 320,
+        "n_queries_evaluated": 320,
+        "open_loop_e2e_ms": {
+          "max": 259.5264,
+          "mean": 29.6081,
+          "p50": 15.8448,
+          "p95": 145.3996,
+          "p99": 218.6083
+        },
+        "per_query_mean_request_wire_bytes": 16723.7,
+        "per_query_mean_response_wire_bytes": 673.9,
+        "protocol": "Chelated_Bidirectional_gRPC_Gateway_16335",
+        "rtt_plus_ann_ms": {
+          "max": 188.9968,
+          "mean": 20.6165,
+          "p50": 15.0579,
+          "p95": 42.7648,
+          "p99": 159.7837
+        },
+        "serialize_cpu_ms": {
+          "max": 0.3533,
+          "mean": 0.1296,
+          "p50": 0.1289,
+          "p95": 0.1672,
+          "p99": 0.2556
+        },
+        "service_rtt_ms": {
+          "max": 189.7387,
+          "mean": 21.0075,
+          "p50": 15.3991,
+          "p95": 44.0348,
+          "p99": 160.1145
+        },
+        "target_rate_hz": 75.0,
+        "topology": "desktop_to_spark3_direct_lan_10_0_0_24",
+        "total_wire_bytes": 5567212,
+        "wall_seconds": 4.4296
+      },
+      {
+        "achieved_dispatch_rate_hz": 1.57,
+        "batch_size": 32,
+        "dimension": 4096,
+        "egress_rescore_ms": {
+          "max": 0.0,
+          "mean": 0.0,
+          "p50": 0.0,
+          "p95": 0.0,
+          "p99": 0.0
+        },
+        "error_count": 0,
+        "error_samples": [],
+        "mean_request_wire_bytes": 2223370.9,
+        "mean_response_wire_bytes": 88104.1,
+        "n_dispatches": 20,
+        "n_queries_evaluated": 640,
+        "open_loop_e2e_ms": {
+          "max": 11005.3988,
+          "mean": 5818.5106,
+          "p50": 5713.3775,
+          "p95": 10272.8748,
+          "p99": 10858.894
+        },
+        "per_query_mean_request_wire_bytes": 69480.3,
+        "per_query_mean_response_wire_bytes": 2753.3,
+        "protocol": "REST_JSON_Unpooled",
+        "rtt_plus_ann_ms": {
+          "max": 2328.2021,
+          "mean": 1670.7503,
+          "p50": 1607.083,
+          "p95": 2263.1233,
+          "p99": 2315.1863
+        },
+        "serialize_cpu_ms": {
+          "max": 155.7102,
+          "mean": 99.4959,
+          "p50": 88.1181,
+          "p95": 146.3688,
+          "p99": 153.8419
+        },
+        "service_rtt_ms": {
+          "max": 2404.7515,
+          "mean": 1772.4337,
+          "p50": 1739.6674,
+          "p95": 2344.5744,
+          "p99": 2392.7161
+        },
+        "target_rate_hz": 8.0,
+        "topology": "desktop_to_spark3_direct_lan_10_0_0_24",
+        "total_wire_bytes": 46229498,
+        "wall_seconds": 12.7602
+      },
+      {
+        "achieved_dispatch_rate_hz": 1.76,
+        "batch_size": 32,
+        "dimension": 4096,
+        "egress_rescore_ms": {
+          "max": 0.0,
+          "mean": 0.0,
+          "p50": 0.0,
+          "p95": 0.0,
+          "p99": 0.0
+        },
+        "error_count": 0,
+        "error_samples": [],
+        "mean_request_wire_bytes": 2223370.9,
+        "mean_response_wire_bytes": 88104.1,
+        "n_dispatches": 20,
+        "n_queries_evaluated": 640,
+        "open_loop_e2e_ms": {
+          "max": 9860.6848,
+          "mean": 5825.3396,
+          "p50": 5829.927,
+          "p95": 9627.2736,
+          "p99": 9814.0026
+        },
+        "per_query_mean_request_wire_bytes": 69480.3,
+        "per_query_mean_response_wire_bytes": 2753.3,
+        "protocol": "REST_JSON_Pooled",
+        "rtt_plus_ann_ms": {
+          "max": 2900.8706,
+          "mean": 1589.3872,
+          "p50": 1413.4822,
+          "p95": 2506.6774,
+          "p99": 2822.032
+        },
+        "serialize_cpu_ms": {
+          "max": 77.9445,
+          "mean": 63.9097,
+          "p50": 62.2693,
+          "p95": 76.6199,
+          "p99": 77.6796
+        },
+        "service_rtt_ms": {
+          "max": 2976.3071,
+          "mean": 1654.9154,
+          "p50": 1474.435,
+          "p95": 2584.9474,
+          "p99": 2898.0352
+        },
+        "target_rate_hz": 8.0,
+        "topology": "desktop_to_spark3_direct_lan_10_0_0_24",
+        "total_wire_bytes": 46229499,
+        "wall_seconds": 11.3698
+      },
+      {
+        "achieved_dispatch_rate_hz": 7.54,
+        "batch_size": 32,
+        "dimension": 4096,
+        "egress_rescore_ms": {
+          "max": 0.0,
+          "mean": 0.0,
+          "p50": 0.0,
+          "p95": 0.0,
+          "p99": 0.0
+        },
+        "error_count": 0,
+        "error_samples": [],
+        "mean_request_wire_bytes": 526065.0,
+        "mean_response_wire_bytes": 28728.0,
+        "n_dispatches": 20,
+        "n_queries_evaluated": 640,
+        "open_loop_e2e_ms": {
+          "max": 960.7355,
+          "mean": 650.9927,
+          "p50": 690.2486,
+          "p95": 952.66,
+          "p99": 959.1204
+        },
+        "per_query_mean_request_wire_bytes": 16439.5,
+        "per_query_mean_response_wire_bytes": 897.8,
+        "protocol": "Qdrant_gRPC_16334",
+        "rtt_plus_ann_ms": {
+          "max": 510.0886,
+          "mean": 351.8578,
+          "p50": 381.2365,
+          "p95": 480.1314,
+          "p99": 504.0972
+        },
+        "serialize_cpu_ms": {
+          "max": 4.9442,
+          "mean": 3.8194,
+          "p50": 3.7568,
+          "p95": 4.4893,
+          "p99": 4.8532
+        },
+        "service_rtt_ms": {
+          "max": 514.0434,
+          "mean": 356.0638,
+          "p50": 385.6286,
+          "p95": 484.17,
+          "p99": 508.0687
+        },
+        "target_rate_hz": 8.0,
+        "topology": "desktop_to_spark3_direct_lan_10_0_0_24",
+        "total_wire_bytes": 11095861,
+        "wall_seconds": 2.6523
+      },
+      {
+        "achieved_dispatch_rate_hz": 6.53,
+        "batch_size": 32,
+        "dimension": 4096,
+        "egress_rescore_ms": {
+          "max": 5.1461,
+          "mean": 3.3171,
+          "p50": 2.3887,
+          "p95": 5.1272,
+          "p99": 5.1423
+        },
+        "error_count": 0,
+        "error_samples": [],
+        "incremental_open_loop_p95_ms_vs_qdrant_grpc": 11.1321,
+        "incremental_rpc_service_p95_ms_vs_qdrant_grpc": 147.8167,
+        "incremental_service_p95_ms_vs_qdrant_grpc": 4.6193,
+        "mean_request_wire_bytes": 525752.0,
+        "mean_response_wire_bytes": 19698.3,
+        "n_dispatches": 20,
+        "n_queries_evaluated": 640,
+        "open_loop_e2e_ms": {
+          "max": 1311.1778,
+          "mean": 807.4927,
+          "p50": 759.3816,
+          "p95": 1308.8856,
+          "p99": 1310.7194
+        },
+        "per_query_mean_request_wire_bytes": 16429.8,
+        "per_query_mean_response_wire_bytes": 615.6,
+        "protocol": "Chelated_Bidirectional_gRPC_Gateway_16335",
+        "rtt_plus_ann_ms": {
+          "max": 678.7727,
+          "mean": 410.5257,
+          "p50": 395.2294,
+          "p95": 625.9169,
+          "p99": 668.2016
+        },
+        "serialize_cpu_ms": {
+          "max": 4.0642,
+          "mean": 3.1794,
+          "p50": 3.2831,
+          "p95": 3.8048,
+          "p99": 4.0123
+        },
+        "service_rtt_ms": {
+          "max": 687.4945,
+          "mean": 417.1483,
+          "p50": 402.4496,
+          "p95": 631.9867,
+          "p99": 676.3929
+        },
+        "target_rate_hz": 8.0,
+        "topology": "desktop_to_spark3_direct_lan_10_0_0_24",
+        "total_wire_bytes": 10909007,
+        "wall_seconds": 3.0636
+      }
+    ],
+    "reader_llm_on_timer": false,
+    "ssh_tunnel_on_timed_path": false,
+    "target_host": "10.0.0.24",
+    "topology": "desktop_to_spark3_direct_lan_10_0_0_24",
+    "total_open_loop_queries": 11520
+  },
+  "open_loop_transport_sweep_spark3_local": {
+    "cells": [
+      {
+        "achieved_dispatch_rate_hz": 64.87,
+        "batch_size": 1,
+        "dimension": 384,
+        "egress_rescore_ms": {
+          "max": 0.0,
+          "mean": 0.0,
+          "p50": 0.0,
+          "p95": 0.0,
+          "p99": 0.0
+        },
+        "error_count": 0,
+        "error_samples": [],
+        "mean_request_wire_bytes": 8147.1,
+        "mean_response_wire_bytes": 2807.5,
+        "n_dispatches": 320,
+        "n_queries_evaluated": 320,
+        "open_loop_e2e_ms": {
+          "max": 3.8776,
+          "mean": 1.745,
+          "p50": 1.6877,
+          "p95": 2.3118,
+          "p99": 2.7179
+        },
+        "per_query_mean_request_wire_bytes": 8147.1,
+        "per_query_mean_response_wire_bytes": 2807.5,
+        "protocol": "REST_JSON_Unpooled",
+        "rtt_plus_ann_ms": {
+          "max": 3.2899,
+          "mean": 1.4486,
+          "p50": 1.3994,
+          "p95": 1.9588,
+          "p99": 2.4004
+        },
+        "serialize_cpu_ms": {
+          "max": 0.2435,
+          "mean": 0.1623,
+          "p50": 0.1427,
+          "p95": 0.2183,
+          "p99": 0.2366
+        },
+        "service_rtt_ms": {
+          "max": 3.4754,
+          "mean": 1.6597,
+          "p50": 1.6135,
+          "p95": 2.1843,
+          "p99": 2.6021
+        },
+        "target_rate_hz": 65.0,
+        "topology": "spark3_local_loopback_127_0_0_1",
+        "total_wire_bytes": 3505482,
+        "wall_seconds": 4.9332
+      },
+      {
+        "achieved_dispatch_rate_hz": 119.71,
+        "batch_size": 1,
+        "dimension": 384,
+        "egress_rescore_ms": {
+          "max": 0.0,
+          "mean": 0.0,
+          "p50": 0.0,
+          "p95": 0.0,
+          "p99": 0.0
+        },
+        "error_count": 0,
+        "error_samples": [],
+        "mean_request_wire_bytes": 8147.1,
+        "mean_response_wire_bytes": 2807.5,
+        "n_dispatches": 320,
+        "n_queries_evaluated": 320,
+        "open_loop_e2e_ms": {
+          "max": 21.0426,
+          "mean": 2.0847,
+          "p50": 1.9179,
+          "p95": 2.6283,
+          "p99": 3.4921
+        },
+        "per_query_mean_request_wire_bytes": 8147.1,
+        "per_query_mean_response_wire_bytes": 2807.5,
+        "protocol": "REST_JSON_Pooled",
+        "rtt_plus_ann_ms": {
+          "max": 20.2625,
+          "mean": 1.6818,
+          "p50": 1.6113,
+          "p95": 2.2681,
+          "p99": 2.6117
+        },
+        "serialize_cpu_ms": {
+          "max": 0.2437,
+          "mean": 0.1595,
+          "p50": 0.1388,
+          "p95": 0.2152,
+          "p99": 0.2298
+        },
+        "service_rtt_ms": {
+          "max": 20.5139,
+          "mean": 1.8874,
+          "p50": 1.8171,
+          "p95": 2.4601,
+          "p99": 2.8644
+        },
+        "target_rate_hz": 120.0,
+        "topology": "spark3_local_loopback_127_0_0_1",
+        "total_wire_bytes": 3505480,
+        "wall_seconds": 2.6732
+      },
+      {
+        "achieved_dispatch_rate_hz": 149.61,
+        "batch_size": 1,
+        "dimension": 384,
+        "egress_rescore_ms": {
+          "max": 0.0,
+          "mean": 0.0,
+          "p50": 0.0,
+          "p95": 0.0,
+          "p99": 0.0
+        },
+        "error_count": 0,
+        "error_samples": [],
+        "mean_request_wire_bytes": 1582.0,
+        "mean_response_wire_bytes": 903.6,
+        "n_dispatches": 320,
+        "n_queries_evaluated": 320,
+        "open_loop_e2e_ms": {
+          "max": 2.5225,
+          "mean": 1.3185,
+          "p50": 1.2809,
+          "p95": 1.8257,
+          "p99": 2.1136
+        },
+        "per_query_mean_request_wire_bytes": 1582.0,
+        "per_query_mean_response_wire_bytes": 903.6,
+        "protocol": "Qdrant_gRPC_16334",
+        "rtt_plus_ann_ms": {
+          "max": 2.1521,
+          "mean": 1.1999,
+          "p50": 1.1634,
+          "p95": 1.6501,
+          "p99": 1.9024
+        },
+        "serialize_cpu_ms": {
+          "max": 0.0669,
+          "mean": 0.0338,
+          "p50": 0.0332,
+          "p95": 0.0501,
+          "p99": 0.0549
+        },
+        "service_rtt_ms": {
+          "max": 2.2069,
+          "mean": 1.2432,
+          "p50": 1.2117,
+          "p95": 1.6907,
+          "p99": 1.9544
+        },
+        "target_rate_hz": 150.0,
+        "topology": "spark3_local_loopback_127_0_0_1",
+        "total_wire_bytes": 795380,
+        "wall_seconds": 2.1389
+      },
+      {
+        "achieved_dispatch_rate_hz": 149.55,
+        "batch_size": 1,
+        "dimension": 384,
+        "egress_rescore_ms": {
+          "max": 1.4099,
+          "mean": 0.1553,
+          "p50": 0.1225,
+          "p95": 0.3292,
+          "p99": 0.5489
+        },
+        "error_count": 0,
+        "error_samples": [],
+        "incremental_open_loop_p95_ms_vs_qdrant_grpc": 1.7551,
+        "incremental_rpc_service_p95_ms_vs_qdrant_grpc": 1.7794,
+        "incremental_service_p95_ms_vs_qdrant_grpc": 1.7794,
+        "mean_request_wire_bytes": 1871.7,
+        "mean_response_wire_bytes": 658.3,
+        "n_dispatches": 320,
+        "n_queries_evaluated": 320,
+        "open_loop_e2e_ms": {
+          "max": 4.0758,
+          "mean": 2.8256,
+          "p50": 2.817,
+          "p95": 3.5808,
+          "p99": 3.8383
+        },
+        "per_query_mean_request_wire_bytes": 1871.7,
+        "per_query_mean_response_wire_bytes": 658.3,
+        "protocol": "Chelated_Bidirectional_gRPC_Gateway_16335",
+        "rtt_plus_ann_ms": {
+          "max": 3.6736,
+          "mean": 2.5405,
+          "p50": 2.5392,
+          "p95": 3.2435,
+          "p99": 3.3805
+        },
+        "serialize_cpu_ms": {
+          "max": 0.0627,
+          "mean": 0.0333,
+          "p50": 0.0332,
+          "p95": 0.0447,
+          "p99": 0.0529
+        },
+        "service_rtt_ms": {
+          "max": 4.0092,
+          "mean": 2.7385,
+          "p50": 2.7314,
+          "p95": 3.4701,
+          "p99": 3.7257
+        },
+        "target_rate_hz": 150.0,
+        "topology": "spark3_local_loopback_127_0_0_1",
+        "total_wire_bytes": 809576,
+        "wall_seconds": 2.1397
+      },
+      {
+        "achieved_dispatch_rate_hz": 16.97,
+        "batch_size": 32,
+        "dimension": 384,
+        "egress_rescore_ms": {
+          "max": 0.0,
+          "mean": 0.0,
+          "p50": 0.0,
+          "p95": 0.0,
+          "p99": 0.0
+        },
+        "error_count": 0,
+        "error_samples": [],
+        "mean_request_wire_bytes": 260755.6,
+        "mean_response_wire_bytes": 88511.2,
+        "n_dispatches": 20,
+        "n_queries_evaluated": 640,
+        "open_loop_e2e_ms": {
+          "max": 19.2596,
+          "mean": 14.1751,
+          "p50": 13.8895,
+          "p95": 18.9089,
+          "p99": 19.1895
+        },
+        "per_query_mean_request_wire_bytes": 8148.6,
+        "per_query_mean_response_wire_bytes": 2766.0,
+        "protocol": "REST_JSON_Unpooled",
+        "rtt_plus_ann_ms": {
+          "max": 12.5193,
+          "mean": 7.7661,
+          "p50": 7.1265,
+          "p95": 12.4089,
+          "p99": 12.4972
+        },
+        "serialize_cpu_ms": {
+          "max": 5.8681,
+          "mean": 4.7063,
+          "p50": 5.1978,
+          "p95": 5.4306,
+          "p99": 5.7806
+        },
+        "service_rtt_ms": {
+          "max": 19.1887,
+          "mean": 13.5122,
+          "p50": 13.2497,
+          "p95": 18.8336,
+          "p99": 19.1177
+        },
+        "target_rate_hz": 18.0,
+        "topology": "spark3_local_loopback_127_0_0_1",
+        "total_wire_bytes": 6985337,
+        "wall_seconds": 1.1787
+      },
+      {
+        "achieved_dispatch_rate_hz": 16.95,
+        "batch_size": 32,
+        "dimension": 384,
+        "egress_rescore_ms": {
+          "max": 0.0,
+          "mean": 0.0,
+          "p50": 0.0,
+          "p95": 0.0,
+          "p99": 0.0
+        },
+        "error_count": 0,
+        "error_samples": [],
+        "mean_request_wire_bytes": 260755.6,
+        "mean_response_wire_bytes": 88511.2,
+        "n_dispatches": 20,
+        "n_queries_evaluated": 640,
+        "open_loop_e2e_ms": {
+          "max": 18.9952,
+          "mean": 12.8682,
+          "p50": 11.7208,
+          "p95": 18.7494,
+          "p99": 18.946
+        },
+        "per_query_mean_request_wire_bytes": 8148.6,
+        "per_query_mean_response_wire_bytes": 2766.0,
+        "protocol": "REST_JSON_Pooled",
+        "rtt_plus_ann_ms": {
+          "max": 12.8319,
+          "mean": 6.8455,
+          "p50": 5.7946,
+          "p95": 12.1573,
+          "p99": 12.697
+        },
+        "serialize_cpu_ms": {
+          "max": 8.4632,
+          "mean": 4.4013,
+          "p50": 4.2152,
+          "p95": 5.7255,
+          "p99": 7.9156
+        },
+        "service_rtt_ms": {
+          "max": 18.9243,
+          "mean": 12.1592,
+          "p50": 11.3798,
+          "p95": 18.6786,
+          "p99": 18.8752
+        },
+        "target_rate_hz": 18.0,
+        "topology": "spark3_local_loopback_127_0_0_1",
+        "total_wire_bytes": 6985337,
+        "wall_seconds": 1.1801
+      },
+      {
+        "achieved_dispatch_rate_hz": 17.04,
+        "batch_size": 32,
+        "dimension": 384,
+        "egress_rescore_ms": {
+          "max": 0.0,
+          "mean": 0.0,
+          "p50": 0.0,
+          "p95": 0.0,
+          "p99": 0.0
+        },
+        "error_count": 0,
+        "error_samples": [],
+        "mean_request_wire_bytes": 50736.0,
+        "mean_response_wire_bytes": 28730.4,
+        "n_dispatches": 20,
+        "n_queries_evaluated": 640,
+        "open_loop_e2e_ms": {
+          "max": 8.6294,
+          "mean": 6.043,
+          "p50": 5.7951,
+          "p95": 7.3866,
+          "p99": 8.3808
+        },
+        "per_query_mean_request_wire_bytes": 1585.5,
+        "per_query_mean_response_wire_bytes": 897.8,
+        "protocol": "Qdrant_gRPC_16334",
+        "rtt_plus_ann_ms": {
+          "max": 7.8007,
+          "mean": 5.4884,
+          "p50": 5.2942,
+          "p95": 6.9077,
+          "p99": 7.6221
+        },
+        "serialize_cpu_ms": {
+          "max": 0.6174,
+          "mean": 0.374,
+          "p50": 0.3169,
+          "p95": 0.5182,
+          "p99": 0.5975
+        },
+        "service_rtt_ms": {
+          "max": 8.5608,
+          "mean": 5.9489,
+          "p50": 5.7124,
+          "p95": 7.3191,
+          "p99": 8.3125
+        },
+        "target_rate_hz": 18.0,
+        "topology": "spark3_local_loopback_127_0_0_1",
+        "total_wire_bytes": 1589328,
+        "wall_seconds": 1.1734
+      },
+      {
+        "achieved_dispatch_rate_hz": 16.84,
+        "batch_size": 32,
+        "dimension": 384,
+        "egress_rescore_ms": {
+          "max": 11.4509,
+          "mean": 5.0354,
+          "p50": 4.9897,
+          "p95": 10.1769,
+          "p99": 11.1961
+        },
+        "error_count": 0,
+        "error_samples": [],
+        "incremental_open_loop_p95_ms_vs_qdrant_grpc": 0.5136,
+        "incremental_rpc_service_p95_ms_vs_qdrant_grpc": 16.4357,
+        "incremental_service_p95_ms_vs_qdrant_grpc": 0.5136,
+        "mean_request_wire_bytes": 50550.0,
+        "mean_response_wire_bytes": 19088.5,
+        "n_dispatches": 20,
+        "n_queries_evaluated": 640,
+        "open_loop_e2e_ms": {
+          "max": 24.2775,
+          "mean": 16.6471,
+          "p50": 17.3238,
+          "p95": 23.8224,
+          "p99": 24.1864
+        },
+        "per_query_mean_request_wire_bytes": 1579.7,
+        "per_query_mean_response_wire_bytes": 596.5,
+        "protocol": "Chelated_Bidirectional_gRPC_Gateway_16335",
+        "rtt_plus_ann_ms": {
+          "max": 14.8127,
+          "mean": 11.2069,
+          "p50": 11.0327,
+          "p95": 13.8283,
+          "p99": 14.6158
+        },
+        "serialize_cpu_ms": {
+          "max": 0.814,
+          "mean": 0.2763,
+          "p50": 0.2095,
+          "p95": 0.3664,
+          "p99": 0.7245
+        },
+        "service_rtt_ms": {
+          "max": 24.107,
+          "mean": 16.5537,
+          "p50": 17.2601,
+          "p95": 23.7548,
+          "p99": 24.0366
+        },
+        "target_rate_hz": 18.0,
+        "topology": "spark3_local_loopback_127_0_0_1",
+        "total_wire_bytes": 1392769,
+        "wall_seconds": 1.1873
+      },
+      {
+        "achieved_dispatch_rate_hz": 69.45,
+        "batch_size": 1,
+        "dimension": 1024,
+        "egress_rescore_ms": {
+          "max": 0.0,
+          "mean": 0.0,
+          "p50": 0.0,
+          "p95": 0.0,
+          "p99": 0.0
+        },
+        "error_count": 0,
+        "error_samples": [],
+        "mean_request_wire_bytes": 21776.6,
+        "mean_response_wire_bytes": 2787.5,
+        "n_dispatches": 320,
+        "n_queries_evaluated": 320,
+        "open_loop_e2e_ms": {
+          "max": 9.9523,
+          "mean": 2.1203,
+          "p50": 2.1037,
+          "p95": 2.6514,
+          "p99": 3.1367
+        },
+        "per_query_mean_request_wire_bytes": 21776.6,
+        "per_query_mean_response_wire_bytes": 2787.5,
+        "protocol": "REST_JSON_Unpooled",
+        "rtt_plus_ann_ms": {
+          "max": 9.4177,
+          "mean": 1.6134,
+          "p50": 1.5738,
+          "p95": 2.0765,
+          "p99": 2.6208
+        },
+        "serialize_cpu_ms": {
+          "max": 0.5184,
+          "mean": 0.3694,
+          "p50": 0.298,
+          "p95": 0.4903,
+          "p99": 0.5056
+        },
+        "service_rtt_ms": {
+          "max": 9.7632,
+          "mean": 2.0338,
+          "p50": 2.007,
+          "p95": 2.5268,
+          "p99": 3.0577
+        },
+        "target_rate_hz": 65.0,
+        "topology": "spark3_local_loopback_127_0_0_1",
+        "total_wire_bytes": 7860508,
+        "wall_seconds": 4.6074
+      },
+      {
+        "achieved_dispatch_rate_hz": 128.17,
+        "batch_size": 1,
+        "dimension": 1024,
+        "egress_rescore_ms": {
+          "max": 0.0,
+          "mean": 0.0,
+          "p50": 0.0,
+          "p95": 0.0,
+          "p99": 0.0
+        },
+        "error_count": 0,
+        "error_samples": [],
+        "mean_request_wire_bytes": 21776.6,
+        "mean_response_wire_bytes": 2787.5,
+        "n_dispatches": 320,
+        "n_queries_evaluated": 320,
+        "open_loop_e2e_ms": {
+          "max": 4.674,
+          "mean": 2.4436,
+          "p50": 2.3619,
+          "p95": 3.4803,
+          "p99": 4.3159
+        },
+        "per_query_mean_request_wire_bytes": 21776.6,
+        "per_query_mean_response_wire_bytes": 2787.5,
+        "protocol": "REST_JSON_Pooled",
+        "rtt_plus_ann_ms": {
+          "max": 3.9207,
+          "mean": 1.9154,
+          "p50": 1.8041,
+          "p95": 2.8407,
+          "p99": 3.5003
+        },
+        "serialize_cpu_ms": {
+          "max": 0.5054,
+          "mean": 0.3639,
+          "p50": 0.2963,
+          "p95": 0.4901,
+          "p99": 0.5031
+        },
+        "service_rtt_ms": {
+          "max": 4.4401,
+          "mean": 2.3287,
+          "p50": 2.2667,
+          "p95": 3.2946,
+          "p99": 3.9186
+        },
+        "target_rate_hz": 120.0,
+        "topology": "spark3_local_loopback_127_0_0_1",
+        "total_wire_bytes": 7860505,
+        "wall_seconds": 2.4967
+      },
+      {
+        "achieved_dispatch_rate_hz": 160.25,
+        "batch_size": 1,
+        "dimension": 1024,
+        "egress_rescore_ms": {
+          "max": 0.0,
+          "mean": 0.0,
+          "p50": 0.0,
+          "p95": 0.0,
+          "p99": 0.0
+        },
+        "error_count": 0,
+        "error_samples": [],
+        "mean_request_wire_bytes": 4143.0,
+        "mean_response_wire_bytes": 903.6,
+        "n_dispatches": 320,
+        "n_queries_evaluated": 320,
+        "open_loop_e2e_ms": {
+          "max": 2.4772,
+          "mean": 1.6607,
+          "p50": 1.6396,
+          "p95": 2.1341,
+          "p99": 2.3367
+        },
+        "per_query_mean_request_wire_bytes": 4143.0,
+        "per_query_mean_response_wire_bytes": 903.6,
+        "protocol": "Qdrant_gRPC_16334",
+        "rtt_plus_ann_ms": {
+          "max": 2.2956,
+          "mean": 1.5176,
+          "p50": 1.5039,
+          "p95": 1.9685,
+          "p99": 2.1521
+        },
+        "serialize_cpu_ms": {
+          "max": 0.0758,
+          "mean": 0.0443,
+          "p50": 0.0439,
+          "p95": 0.059,
+          "p99": 0.0647
+        },
+        "service_rtt_ms": {
+          "max": 2.3656,
+          "mean": 1.5722,
+          "p50": 1.5578,
+          "p95": 2.0124,
+          "p99": 2.2188
+        },
+        "target_rate_hz": 150.0,
+        "topology": "spark3_local_loopback_127_0_0_1",
+        "total_wire_bytes": 1614909,
+        "wall_seconds": 1.9969
+      },
+      {
+        "achieved_dispatch_rate_hz": 160.14,
+        "batch_size": 1,
+        "dimension": 1024,
+        "egress_rescore_ms": {
+          "max": 0.7979,
+          "mean": 0.1923,
+          "p50": 0.155,
+          "p95": 0.456,
+          "p99": 0.6265
+        },
+        "error_count": 0,
+        "error_samples": [],
+        "incremental_open_loop_p95_ms_vs_qdrant_grpc": 2.0264,
+        "incremental_rpc_service_p95_ms_vs_qdrant_grpc": 2.0845,
+        "incremental_service_p95_ms_vs_qdrant_grpc": 2.0845,
+        "mean_request_wire_bytes": 4433.7,
+        "mean_response_wire_bytes": 666.8,
+        "n_dispatches": 320,
+        "n_queries_evaluated": 320,
+        "open_loop_e2e_ms": {
+          "max": 4.9399,
+          "mean": 3.1781,
+          "p50": 3.139,
+          "p95": 4.1605,
+          "p99": 4.645
+        },
+        "per_query_mean_request_wire_bytes": 4433.7,
+        "per_query_mean_response_wire_bytes": 666.8,
+        "protocol": "Chelated_Bidirectional_gRPC_Gateway_16335",
+        "rtt_plus_ann_ms": {
+          "max": 4.6494,
+          "mean": 2.859,
+          "p50": 2.8341,
+          "p95": 3.7422,
+          "p99": 4.203
+        },
+        "serialize_cpu_ms": {
+          "max": 0.067,
+          "mean": 0.0399,
+          "p50": 0.0404,
+          "p95": 0.0556,
+          "p99": 0.0623
+        },
+        "service_rtt_ms": {
+          "max": 4.8807,
+          "mean": 3.1003,
+          "p50": 3.0665,
+          "p95": 4.0969,
+          "p99": 4.4983
+        },
+        "target_rate_hz": 150.0,
+        "topology": "spark3_local_loopback_127_0_0_1",
+        "total_wire_bytes": 1632144,
+        "wall_seconds": 1.9983
+      },
+      {
+        "achieved_dispatch_rate_hz": 18.52,
+        "batch_size": 32,
+        "dimension": 1024,
+        "egress_rescore_ms": {
+          "max": 0.0,
+          "mean": 0.0,
+          "p50": 0.0,
+          "p95": 0.0,
+          "p99": 0.0
+        },
+        "error_count": 0,
+        "error_samples": [],
+        "mean_request_wire_bytes": 696909.1,
+        "mean_response_wire_bytes": 87869.2,
+        "n_dispatches": 20,
+        "n_queries_evaluated": 640,
+        "open_loop_e2e_ms": {
+          "max": 45.5343,
+          "mean": 27.4636,
+          "p50": 24.5805,
+          "p95": 40.0873,
+          "p99": 44.4449
+        },
+        "per_query_mean_request_wire_bytes": 21778.4,
+        "per_query_mean_response_wire_bytes": 2745.9,
+        "protocol": "REST_JSON_Unpooled",
+        "rtt_plus_ann_ms": {
+          "max": 30.4169,
+          "mean": 13.2742,
+          "p50": 11.0669,
+          "p95": 23.3431,
+          "p99": 29.0021
+        },
+        "serialize_cpu_ms": {
+          "max": 21.8662,
+          "mean": 12.0006,
+          "p50": 11.1691,
+          "p95": 21.6181,
+          "p99": 21.8166
+        },
+        "service_rtt_ms": {
+          "max": 45.4667,
+          "mean": 26.2449,
+          "p50": 23.4725,
+          "p95": 39.913,
+          "p99": 44.356
+        },
+        "target_rate_hz": 18.0,
+        "topology": "spark3_local_loopback_127_0_0_1",
+        "total_wire_bytes": 15695566,
+        "wall_seconds": 1.0801
+      },
+      {
+        "achieved_dispatch_rate_hz": 18.46,
+        "batch_size": 32,
+        "dimension": 1024,
+        "egress_rescore_ms": {
+          "max": 0.0,
+          "mean": 0.0,
+          "p50": 0.0,
+          "p95": 0.0,
+          "p99": 0.0
+        },
+        "error_count": 0,
+        "error_samples": [],
+        "mean_request_wire_bytes": 696909.1,
+        "mean_response_wire_bytes": 87869.2,
+        "n_dispatches": 20,
+        "n_queries_evaluated": 640,
+        "open_loop_e2e_ms": {
+          "max": 51.3976,
+          "mean": 30.4531,
+          "p50": 27.7974,
+          "p95": 43.214,
+          "p99": 49.7608
+        },
+        "per_query_mean_request_wire_bytes": 21778.4,
+        "per_query_mean_response_wire_bytes": 2745.9,
+        "protocol": "REST_JSON_Pooled",
+        "rtt_plus_ann_ms": {
+          "max": 25.2366,
+          "mean": 14.3709,
+          "p50": 12.6733,
+          "p95": 23.2477,
+          "p99": 24.8388
+        },
+        "serialize_cpu_ms": {
+          "max": 27.5878,
+          "mean": 13.0182,
+          "p50": 13.7947,
+          "p95": 21.9295,
+          "p99": 26.4561
+        },
+        "service_rtt_ms": {
+          "max": 42.7201,
+          "mean": 28.5106,
+          "p50": 26.9563,
+          "p95": 40.6078,
+          "p99": 42.2976
+        },
+        "target_rate_hz": 18.0,
+        "topology": "spark3_local_loopback_127_0_0_1",
+        "total_wire_bytes": 15695567,
+        "wall_seconds": 1.0833
+      },
+      {
+        "achieved_dispatch_rate_hz": 18.66,
+        "batch_size": 32,
+        "dimension": 1024,
+        "egress_rescore_ms": {
+          "max": 0.0,
+          "mean": 0.0,
+          "p50": 0.0,
+          "p95": 0.0,
+          "p99": 0.0
+        },
+        "error_count": 0,
+        "error_samples": [],
+        "mean_request_wire_bytes": 132689.0,
+        "mean_response_wire_bytes": 28731.5,
+        "n_dispatches": 20,
+        "n_queries_evaluated": 640,
+        "open_loop_e2e_ms": {
+          "max": 14.7842,
+          "mean": 11.124,
+          "p50": 10.4882,
+          "p95": 14.6461,
+          "p99": 14.7566
+        },
+        "per_query_mean_request_wire_bytes": 4146.5,
+        "per_query_mean_response_wire_bytes": 897.9,
+        "protocol": "Qdrant_gRPC_16334",
+        "rtt_plus_ann_ms": {
+          "max": 13.5762,
+          "mean": 10.2094,
+          "p50": 9.224,
+          "p95": 13.4001,
+          "p99": 13.541
+        },
+        "serialize_cpu_ms": {
+          "max": 1.3669,
+          "mean": 0.68,
+          "p50": 0.5034,
+          "p95": 1.0447,
+          "p99": 1.3025
+        },
+        "service_rtt_ms": {
+          "max": 14.5684,
+          "mean": 10.9844,
+          "p50": 10.4176,
+          "p95": 14.1234,
+          "p99": 14.4794
+        },
+        "target_rate_hz": 18.0,
+        "topology": "spark3_local_loopback_127_0_0_1",
+        "total_wire_bytes": 3228409,
+        "wall_seconds": 1.072
+      },
+      {
+        "achieved_dispatch_rate_hz": 18.57,
+        "batch_size": 32,
+        "dimension": 1024,
+        "egress_rescore_ms": {
+          "max": 16.3173,
+          "mean": 6.048,
+          "p50": 5.2628,
+          "p95": 15.4721,
+          "p99": 16.1482
+        },
+        "error_count": 0,
+        "error_samples": [],
+        "incremental_open_loop_p95_ms_vs_qdrant_grpc": 0.6248,
+        "incremental_rpc_service_p95_ms_vs_qdrant_grpc": 20.4489,
+        "incremental_service_p95_ms_vs_qdrant_grpc": 0.639,
+        "mean_request_wire_bytes": 132472.0,
+        "mean_response_wire_bytes": 19347.9,
+        "n_dispatches": 20,
+        "n_queries_evaluated": 640,
+        "open_loop_e2e_ms": {
+          "max": 39.9948,
+          "mean": 23.953,
+          "p50": 23.5546,
+          "p95": 34.6386,
+          "p99": 38.9235
+        },
+        "per_query_mean_request_wire_bytes": 4139.8,
+        "per_query_mean_response_wire_bytes": 604.6,
+        "protocol": "Chelated_Bidirectional_gRPC_Gateway_16335",
+        "rtt_plus_ann_ms": {
+          "max": 22.8004,
+          "mean": 17.2614,
+          "p50": 17.6289,
+          "p95": 21.863,
+          "p99": 22.6129
+        },
+        "serialize_cpu_ms": {
+          "max": 0.8298,
+          "mean": 0.4996,
+          "p50": 0.3897,
+          "p95": 0.7193,
+          "p99": 0.8077
+        },
+        "service_rtt_ms": {
+          "max": 39.8086,
+          "mean": 23.8403,
+          "p50": 23.4429,
+          "p95": 34.5723,
+          "p99": 38.7613
+        },
+        "target_rate_hz": 18.0,
+        "topology": "spark3_local_loopback_127_0_0_1",
+        "total_wire_bytes": 3036398,
+        "wall_seconds": 1.0768
+      },
+      {
+        "achieved_dispatch_rate_hz": 43.51,
+        "batch_size": 1,
+        "dimension": 4096,
+        "egress_rescore_ms": {
+          "max": 0.0,
+          "mean": 0.0,
+          "p50": 0.0,
+          "p95": 0.0,
+          "p99": 0.0
+        },
+        "error_count": 0,
+        "error_samples": [],
+        "mean_request_wire_bytes": 69483.0,
+        "mean_response_wire_bytes": 2794.9,
+        "n_dispatches": 320,
+        "n_queries_evaluated": 320,
+        "open_loop_e2e_ms": {
+          "max": 9.373,
+          "mean": 3.9676,
+          "p50": 3.8728,
+          "p95": 5.1449,
+          "p99": 7.1899
+        },
+        "per_query_mean_request_wire_bytes": 69483.0,
+        "per_query_mean_response_wire_bytes": 2794.9,
+        "protocol": "REST_JSON_Unpooled",
+        "rtt_plus_ann_ms": {
+          "max": 8.2213,
+          "mean": 2.6556,
+          "p50": 2.5572,
+          "p95": 3.5296,
+          "p99": 5.0167
+        },
+        "serialize_cpu_ms": {
+          "max": 1.7529,
+          "mean": 1.1164,
+          "p50": 0.8634,
+          "p95": 1.4834,
+          "p99": 1.5151
+        },
+        "service_rtt_ms": {
+          "max": 9.1642,
+          "mean": 3.8315,
+          "p50": 3.7608,
+          "p95": 4.8926,
+          "p99": 6.4897
+        },
+        "target_rate_hz": 45.0,
+        "topology": "spark3_local_loopback_127_0_0_1",
+        "total_wire_bytes": 23128931,
+        "wall_seconds": 7.3548
+      },
+      {
+        "achieved_dispatch_rate_hz": 53.17,
+        "batch_size": 1,
+        "dimension": 4096,
+        "egress_rescore_ms": {
+          "max": 0.0,
+          "mean": 0.0,
+          "p50": 0.0,
+          "p95": 0.0,
+          "p99": 0.0
+        },
+        "error_count": 0,
+        "error_samples": [],
+        "mean_request_wire_bytes": 69483.0,
+        "mean_response_wire_bytes": 2794.9,
+        "n_dispatches": 320,
+        "n_queries_evaluated": 320,
+        "open_loop_e2e_ms": {
+          "max": 8.9453,
+          "mean": 4.4174,
+          "p50": 4.2592,
+          "p95": 6.6453,
+          "p99": 7.6559
+        },
+        "per_query_mean_request_wire_bytes": 69483.0,
+        "per_query_mean_response_wire_bytes": 2794.9,
+        "protocol": "REST_JSON_Pooled",
+        "rtt_plus_ann_ms": {
+          "max": 7.3037,
+          "mean": 3.0313,
+          "p50": 2.8032,
+          "p95": 4.8852,
+          "p99": 5.9704
+        },
+        "serialize_cpu_ms": {
+          "max": 1.6306,
+          "mean": 1.1611,
+          "p50": 1.4385,
+          "p95": 1.478,
+          "p99": 1.5059
+        },
+        "service_rtt_ms": {
+          "max": 8.8629,
+          "mean": 4.2473,
+          "p50": 4.1255,
+          "p95": 6.2735,
+          "p99": 7.4341
+        },
+        "target_rate_hz": 55.0,
+        "topology": "spark3_local_loopback_127_0_0_1",
+        "total_wire_bytes": 23128936,
+        "wall_seconds": 6.0183
+      },
+      {
+        "achieved_dispatch_rate_hz": 72.5,
+        "batch_size": 1,
+        "dimension": 4096,
+        "egress_rescore_ms": {
+          "max": 0.0,
+          "mean": 0.0,
+          "p50": 0.0,
+          "p95": 0.0,
+          "p99": 0.0
+        },
+        "error_count": 0,
+        "error_samples": [],
+        "mean_request_wire_bytes": 16435.0,
+        "mean_response_wire_bytes": 903.5,
+        "n_dispatches": 320,
+        "n_queries_evaluated": 320,
+        "open_loop_e2e_ms": {
+          "max": 3.6933,
+          "mean": 2.4375,
+          "p50": 2.404,
+          "p95": 3.089,
+          "p99": 3.3715
+        },
+        "per_query_mean_request_wire_bytes": 16435.0,
+        "per_query_mean_response_wire_bytes": 903.5,
+        "protocol": "Qdrant_gRPC_16334",
+        "rtt_plus_ann_ms": {
+          "max": 3.5442,
+          "mean": 2.2508,
+          "p50": 2.2172,
+          "p95": 2.8498,
+          "p99": 3.1451
+        },
+        "serialize_cpu_ms": {
+          "max": 0.1514,
+          "mean": 0.0913,
+          "p50": 0.0905,
+          "p95": 0.1208,
+          "p99": 0.1362
+        },
+        "service_rtt_ms": {
+          "max": 3.6284,
+          "mean": 2.3541,
+          "p50": 2.3166,
+          "p95": 2.9589,
+          "p99": 3.2745
+        },
+        "target_rate_hz": 75.0,
+        "topology": "spark3_local_loopback_127_0_0_1",
+        "total_wire_bytes": 5548320,
+        "wall_seconds": 4.4135
+      },
+      {
+        "achieved_dispatch_rate_hz": 72.45,
+        "batch_size": 1,
+        "dimension": 4096,
+        "egress_rescore_ms": {
+          "max": 1.1899,
+          "mean": 0.2172,
+          "p50": 0.1801,
+          "p95": 0.5186,
+          "p99": 0.9843
+        },
+        "error_count": 0,
+        "error_samples": [],
+        "incremental_open_loop_p95_ms_vs_qdrant_grpc": 4.6408,
+        "incremental_rpc_service_p95_ms_vs_qdrant_grpc": 4.6863,
+        "incremental_service_p95_ms_vs_qdrant_grpc": 4.6863,
+        "mean_request_wire_bytes": 16723.7,
+        "mean_response_wire_bytes": 673.9,
+        "n_dispatches": 320,
+        "n_queries_evaluated": 320,
+        "open_loop_e2e_ms": {
+          "max": 8.9844,
+          "mean": 6.4723,
+          "p50": 6.4315,
+          "p95": 7.7298,
+          "p99": 8.2916
+        },
+        "per_query_mean_request_wire_bytes": 16723.7,
+        "per_query_mean_response_wire_bytes": 673.9,
+        "protocol": "Chelated_Bidirectional_gRPC_Gateway_16335",
+        "rtt_plus_ann_ms": {
+          "max": 8.6329,
+          "mean": 6.068,
+          "p50": 6.0351,
+          "p95": 7.149,
+          "p99": 7.6376
+        },
+        "serialize_cpu_ms": {
+          "max": 0.1581,
+          "mean": 0.085,
+          "p50": 0.0897,
+          "p95": 0.1111,
+          "p99": 0.1299
+        },
+        "service_rtt_ms": {
+          "max": 8.9201,
+          "mean": 6.3862,
+          "p50": 6.318,
+          "p95": 7.6452,
+          "p99": 8.1326
+        },
+        "target_rate_hz": 75.0,
+        "topology": "spark3_local_loopback_127_0_0_1",
+        "total_wire_bytes": 5567212,
+        "wall_seconds": 4.4168
+      },
+      {
+        "achieved_dispatch_rate_hz": 10.94,
+        "batch_size": 32,
+        "dimension": 4096,
+        "egress_rescore_ms": {
+          "max": 0.0,
+          "mean": 0.0,
+          "p50": 0.0,
+          "p95": 0.0,
+          "p99": 0.0
+        },
+        "error_count": 0,
+        "error_samples": [],
+        "mean_request_wire_bytes": 2223370.9,
+        "mean_response_wire_bytes": 88104.2,
+        "n_dispatches": 20,
+        "n_queries_evaluated": 640,
+        "open_loop_e2e_ms": {
+          "max": 209.7096,
+          "mean": 98.2066,
+          "p50": 84.6613,
+          "p95": 186.405,
+          "p99": 205.0487
+        },
+        "per_query_mean_request_wire_bytes": 69480.3,
+        "per_query_mean_response_wire_bytes": 2753.3,
+        "protocol": "REST_JSON_Unpooled",
+        "rtt_plus_ann_ms": {
+          "max": 119.9112,
+          "mean": 45.0261,
+          "p50": 35.424,
+          "p95": 95.4594,
+          "p99": 115.0208
+        },
+        "serialize_cpu_ms": {
+          "max": 90.1474,
+          "mean": 41.3374,
+          "p50": 35.3111,
+          "p95": 72.8966,
+          "p99": 86.6972
+        },
+        "service_rtt_ms": {
+          "max": 185.111,
+          "mean": 87.2724,
+          "p50": 73.8674,
+          "p95": 167.1781,
+          "p99": 181.5244
+        },
+        "target_rate_hz": 8.0,
+        "topology": "spark3_local_loopback_127_0_0_1",
+        "total_wire_bytes": 46229502,
+        "wall_seconds": 1.8279
+      },
+      {
+        "achieved_dispatch_rate_hz": 10.94,
+        "batch_size": 32,
+        "dimension": 4096,
+        "egress_rescore_ms": {
+          "max": 0.0,
+          "mean": 0.0,
+          "p50": 0.0,
+          "p95": 0.0,
+          "p99": 0.0
+        },
+        "error_count": 0,
+        "error_samples": [],
+        "mean_request_wire_bytes": 2223370.9,
+        "mean_response_wire_bytes": 88104.2,
+        "n_dispatches": 20,
+        "n_queries_evaluated": 640,
+        "open_loop_e2e_ms": {
+          "max": 156.8255,
+          "mean": 91.1042,
+          "p50": 93.0668,
+          "p95": 124.5401,
+          "p99": 150.3685
+        },
+        "per_query_mean_request_wire_bytes": 69480.3,
+        "per_query_mean_response_wire_bytes": 2753.3,
+        "protocol": "REST_JSON_Pooled",
+        "rtt_plus_ann_ms": {
+          "max": 70.4252,
+          "mean": 41.0514,
+          "p50": 40.1751,
+          "p95": 66.7057,
+          "p99": 69.6813
+        },
+        "serialize_cpu_ms": {
+          "max": 89.4993,
+          "mean": 43.0901,
+          "p50": 44.8743,
+          "p95": 71.6292,
+          "p99": 85.9252
+        },
+        "service_rtt_ms": {
+          "max": 156.6379,
+          "mean": 85.1979,
+          "p50": 77.4896,
+          "p95": 119.3826,
+          "p99": 149.1869
+        },
+        "target_rate_hz": 8.0,
+        "topology": "spark3_local_loopback_127_0_0_1",
+        "total_wire_bytes": 46229502,
+        "wall_seconds": 1.8274
+      },
+      {
+        "achieved_dispatch_rate_hz": 11.23,
+        "batch_size": 32,
+        "dimension": 4096,
+        "egress_rescore_ms": {
+          "max": 0.0,
+          "mean": 0.0,
+          "p50": 0.0,
+          "p95": 0.0,
+          "p99": 0.0
+        },
+        "error_count": 0,
+        "error_samples": [],
+        "mean_request_wire_bytes": 526065.0,
+        "mean_response_wire_bytes": 28728.0,
+        "n_dispatches": 20,
+        "n_queries_evaluated": 640,
+        "open_loop_e2e_ms": {
+          "max": 40.0549,
+          "mean": 29.5112,
+          "p50": 27.9584,
+          "p95": 38.7413,
+          "p99": 39.7922
+        },
+        "per_query_mean_request_wire_bytes": 16439.5,
+        "per_query_mean_response_wire_bytes": 897.8,
+        "protocol": "Qdrant_gRPC_16334",
+        "rtt_plus_ann_ms": {
+          "max": 35.8688,
+          "mean": 26.3187,
+          "p50": 25.4428,
+          "p95": 35.5213,
+          "p99": 35.7993
+        },
+        "serialize_cpu_ms": {
+          "max": 8.976,
+          "mean": 2.8716,
+          "p50": 2.5661,
+          "p95": 4.4848,
+          "p99": 8.0778
+        },
+        "service_rtt_ms": {
+          "max": 38.587,
+          "mean": 29.3184,
+          "p50": 27.8309,
+          "p95": 38.4311,
+          "p99": 38.5558
+        },
+        "target_rate_hz": 8.0,
+        "topology": "spark3_local_loopback_127_0_0_1",
+        "total_wire_bytes": 11095861,
+        "wall_seconds": 1.7816
+      },
+      {
+        "achieved_dispatch_rate_hz": 10.89,
+        "batch_size": 32,
+        "dimension": 4096,
+        "egress_rescore_ms": {
+          "max": 10.6743,
+          "mean": 5.0844,
+          "p50": 5.1751,
+          "p95": 10.4506,
+          "p99": 10.6296
+        },
+        "error_count": 0,
+        "error_samples": [],
+        "incremental_open_loop_p95_ms_vs_qdrant_grpc": 1.5761,
+        "incremental_rpc_service_p95_ms_vs_qdrant_grpc": 50.6779,
+        "incremental_service_p95_ms_vs_qdrant_grpc": 1.5837,
+        "mean_request_wire_bytes": 525752.0,
+        "mean_response_wire_bytes": 19698.3,
+        "n_dispatches": 20,
+        "n_queries_evaluated": 640,
+        "open_loop_e2e_ms": {
+          "max": 91.9,
+          "mean": 68.6759,
+          "p50": 71.1393,
+          "p95": 89.1757,
+          "p99": 91.3551
+        },
+        "per_query_mean_request_wire_bytes": 16429.8,
+        "per_query_mean_response_wire_bytes": 615.6,
+        "protocol": "Chelated_Bidirectional_gRPC_Gateway_16335",
+        "rtt_plus_ann_ms": {
+          "max": 86.7176,
+          "mean": 61.6343,
+          "p50": 63.9465,
+          "p95": 78.4656,
+          "p99": 85.0672
+        },
+        "serialize_cpu_ms": {
+          "max": 2.5584,
+          "mean": 1.769,
+          "p50": 2.1112,
+          "p95": 2.2048,
+          "p99": 2.4877
+        },
+        "service_rtt_ms": {
+          "max": 91.8285,
+          "mean": 68.5287,
+          "p50": 70.4583,
+          "p95": 89.109,
+          "p99": 91.2846
+        },
+        "target_rate_hz": 8.0,
+        "topology": "spark3_local_loopback_127_0_0_1",
+        "total_wire_bytes": 10909007,
+        "wall_seconds": 1.8358
+      }
+    ],
+    "reader_llm_on_timer": false,
+    "ssh_tunnel_on_timed_path": false,
+    "target_host": "127.0.0.1",
+    "topology": "spark3_local_loopback_127_0_0_1",
+    "total_open_loop_queries": 11520
+  },
+  "safety_and_cleanup_verification": {
+    "desktop_cuda_visible_devices": "",
+    "ephemeral_wave6_d5_qdrant_removed": true,
+    "protected_containers_after": [
+      "d564dec4a32ada8d912cc0bd83deaf63c00152bbe34c08ced92b25298af2e876\t/nemotron-eba1\trunning\t2026-11-21T13:10:33.893552958Z\t0",
+      "96baccda9c8f7a64ae37ef591d515fee9a2344a0f4e9c2c1de0be6c63e5fed6a\t/nemotron-eba1-before-seq16-3396445ab2764020af36\texited\t2026-10-14T00:53:35.618697328Z\t0",
+      "2fd1b889f5a0aab669a62563a47e513910b6fa52a21ec0c65ae78edfee2316f0\t/nemotron-eba1-before-seq20-88e1566a13dd4c1dae69\texited\t2026-11-05T07:09:42.833323397Z\t0",
+      "47c8ae4c0de489da3a2e09eeecbf8e49a17c42ddace7bc86b97f7eccb1af892d\t/nemotron-eba1-before-seq24-efbe3e24c49042698a2f\texited\t2026-11-05T07:45:33.457521786Z\t0",
+      "202ff2043f3005d838c03d171cc47e829c0b1401077ff2603bb31bf55083e617\t/nemotron-eba1-before-seq64-33198e87fd654e528401\texited\t2026-11-05T08:33:34.146503868Z\t0",
+      "d92bdf43b11bbc0e968e22b8c6c44647313ce35bfca7b3ac2057361361bab088\t/nemotron-lb\trunning\t2026-11-21T13:10:31.863582208Z\t1"
+    ],
+    "protected_containers_before": [
+      "d564dec4a32ada8d912cc0bd83deaf63c00152bbe34c08ced92b25298af2e876\t/nemotron-eba1\trunning\t2026-11-21T13:10:33.893552958Z\t0",
+      "96baccda9c8f7a64ae37ef591d515fee9a2344a0f4e9c2c1de0be6c63e5fed6a\t/nemotron-eba1-before-seq16-3396445ab2764020af36\texited\t2026-10-14T00:53:35.618697328Z\t0",
+      "2fd1b889f5a0aab669a62563a47e513910b6fa52a21ec0c65ae78edfee2316f0\t/nemotron-eba1-before-seq20-88e1566a13dd4c1dae69\texited\t2026-11-05T07:09:42.833323397Z\t0",
+      "47c8ae4c0de489da3a2e09eeecbf8e49a17c42ddace7bc86b97f7eccb1af892d\t/nemotron-eba1-before-seq24-efbe3e24c49042698a2f\texited\t2026-11-05T07:45:33.457521786Z\t0",
+      "202ff2043f3005d838c03d171cc47e829c0b1401077ff2603bb31bf55083e617\t/nemotron-eba1-before-seq64-33198e87fd654e528401\texited\t2026-11-05T08:33:34.146503868Z\t0",
+      "d92bdf43b11bbc0e968e22b8c6c44647313ce35bfca7b3ac2057361361bab088\t/nemotron-lb\trunning\t2026-11-21T13:10:31.863582208Z\t1"
+    ]
+  },
+  "schema_version": "wave6_d5_grpc_interceptor_gateway_v1",
+  "wall_seconds": 460.06
+}

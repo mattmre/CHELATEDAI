@@ -1,5 +1,5 @@
 {
-  "schema_version": "bundle_registry_spec_v4_0",
+  "schema_version": "bundle_registry_spec_v5_0",
   "release_status": "PRE-RELEASE / HUMAN AUDIT & CLEAN-RERUN GATES PENDING",
   "pristine_mirror_manifest": "archive/pristine-b37e6a55-exact/PRISTINE_MANIFEST.json",
   "part_iv_code_provenance": {
@@ -15,6 +15,29 @@
       "scripts/run_r5b_spark6724_completion.py": "d4239fe2be2a2a865b3e1730a33043cb6f20d74a0a500128cb350d8dcdf2607e",
       "scripts/run_r5b_steelmanned_mem0_pm3.py": "3d2f0ff4334a78a630b47f8c974f904ff74dd78092fc504b6a5703eddc12fda0",
       "spherical_migration_bridge.py": "437b4db7343176c75300c1a4c31855ea7d6e5a5f703857e92858cafbbe855948"
+    }
+  },
+  "part_vi_code_provenance": {
+    "pre_run_base_git_sha": "5a9bd46f2eeae2522a4a8d81017edb3c2407f936",
+    "qdrant_container_image_digest": "qdrant/qdrant@sha256:d277592721d2e3b73f9b797b53cf05e6a5bb2134f6d13fdbda4ca51782afbcac",
+    "note": "Part VI (Wave 6) runs executed from base HEAD 5a9bd46f2eeae2522a4a8d81017edb3c2407f936 before committing the new additive Wave-6 producer modules; all producer modules below are committed in v5.0 and cryptographically bound by SHA-256 alongside documented Wave-8 M1-M5 council variances.",
+    "documented_council_variances_m1_m5": {
+      "K1_d5_50pct_retraction_recall": "Admitted Recall@10 at 50% retraction density is 0.994186 (0.08 pp below K1 0.995 floor); 90% density uses 100% exact fallback; OpenSearch wire uses project-defined SearchService.KnnQuery Protobuf over live Qdrant :16334 (live_opensearch_java_cluster_claimed=false).",
+      "K2_bootstrap_ties_and_pm1b_status": "34/101 positive-variance binary contrasts exhibit discrete 1/N percentile ties; PM-1b remains SCOPED/OPEN (assignment_gates_pass=false).",
+      "K3_bf16_self_cosine_minima": "4096-d Qwen3-8B bf16 document self-cosine minima are 0.999467/0.999680/0.999764 (<0.9999 floor, >=0.9990 runner threshold; mean >=0.999885, duplicate_aware_nn_top1=1.0).",
+      "K4_max_new_tokens_and_sft_attribution": "All D4 arms ran with matched max_new_tokens=272 (vs 256 in K4 brief); gains over Base 7B and Bare 30B are carried by completion-only SFT (GRPO-SFT non-significant; EVAL false_commit_on_u=0.875).",
+      "K5_suite_a_context_substring_and_clocks": "Suite A stale_resurrection_delta0s_immediate (0.7833) scans formatted_context including [SUPERSEDED] audit notes (actual reader accuracy=96.67%); visibility clocks measure Delta=0s and post-consolidation states."
+    },
+    "wave6_execution_file_sha256": {
+      "chelated_conversational_v4.py": "8534c485dbb35e30789f6d1e44e4fb098436d26c09cc1f51a8cb1a7a1c70f1f4",
+      "chelated_grpc_gateway.py": "901008c848ce70a3a6e486cb817ff67e896b6400ebc743332def373a1c7d58e9",
+      "scripts/run_wave6_d2_4096d_both_modes_3beir.py": "0b74c7fa318361db817785e0f185094ed4021f8be249c9040f7ffcf0a774d6e0",
+      "scripts/run_wave6_d4_trained_epistemic_grpo.py": "5fd78fb5967535c8306742e66b23564db95bd979fdcad6ff5e0cb410c94e7691",
+      "scripts/run_wave6_d5_grpc_interceptor_gateway.py": "b68468f16fb51c41e04be177c716d24d69b897bbedda1fbb738e1965c9868121",
+      "scripts/run_wave6_pm1b_v4_and_virgin_holdout.py": "f926a5b355501203d114e63d9f78340d83ef3d41e328f73896ac9c5deed13e1b",
+      "scripts/run_wave6_pm3_v2_4way_arena.py": "93c3edc3b6b83957efd3f7d5997b361082ab5901910e95972eadd78678910154",
+      "virgin_conversational_holdout.py": "a804140c537a538fe1d6cf53430e0dfd2b461306b0863b78bf26fbb8d66c56af",
+      "wave6_common.py": "238352f8b802787d587a52cbdc4139aaa5f978ea5cf237f08a9034271dc4aef3"
     }
   },
   "bundles": [
@@ -333,6 +356,51 @@
       "manifest": "phase2_d3_manifest.json",
       "receipt": "report_receipt.json",
       "notes": "Wave-4 J6 Demo D3 controlled co-designed 4-agent (384d+768d) anti-poisoning bus (N=80=4x20, trusted signed tiers) + offline 1,000-episode (10,827-node) EK5-WFS-RLVR verifier audit: B4 ASR=0.0 (0/80, Clopper-Pearson UCB95=4.51% overall, 16.84% per N=20 family), task acc=77/80 (96.25%) vs paired unbridged B3=56/80 (70.00%), F4 auditor survival=20/20 vs 0/20 strict IFC (B2), B0 ASR=67.5%, B1 ASR=52.5%; includes disjoint-template complete- vs single-linkage ablation + offline WFS verifier (0/10,827 mismatches; no trained GRPO checkpoint yet)."
+    },
+    {
+      "id": "wave6_pm1b_v4_reranked_sota",
+      "part": "PART_VI_WAVE6_CLOSURE_AND_GATEWAY",
+      "role": "WAVE8_ADJUDICATED_PRIMARY",
+      "dir": "artifacts/wave6_pm1b_v4_reranked_sota",
+      "manifest": "wave6_pm1b_v4_manifest.json",
+      "receipt": "report_receipt.json",
+      "notes": "Wave-6 Track A (M1: PM-1b remains SCOPED/OPEN, assignment_gates_pass=false): Virgin-Conversational-120 (24 disjoint convs, Qwen2.5-7B blind judge) Chelated_v4=95.00% at 1,028 tokens (2.42x compaction vs Flat_BGEM3_TM=91.67% at 2,488 toks, Holm p=0.772; trails DualGran_NoEK5=95.83%; +8.33 pp vs Legacy_MiniLM=86.67%, Holm p=0.0766 n.s.; KU +41.67 pp raw p=5e-5 matched by Flat_BGEM3_TM=95.83%); secondary DEV-inclusive LME-500 60.60% at 2,190.9 tokens (vs 6,088 in J4 N=251); R5 KU stress n=78 +29.49 pp vs MiniLM (Holm p=0.00025; +5.13 pp vs NoEK5 p=0.3025 n.s.)."
+    },
+    {
+      "id": "wave6_d2_4096d_3beir_complete",
+      "part": "PART_VI_WAVE6_CLOSURE_AND_GATEWAY",
+      "role": "WAVE8_ADJUDICATED_PRIMARY",
+      "dir": "artifacts/wave6_d2_4096d_3beir_complete",
+      "manifest": "wave6_d2_3beir_manifest.json",
+      "receipt": "report_receipt.json",
+      "notes": "Wave-6 Track B (M2): 0 MISSING_4096 across SciFact (5,183), NFCorpus (3,633), and FiQA2018 (57,638) (duplicate_aware_nn_top1=1.0; bf16 doc self-cosine minima 0.99947-0.99976 < 0.9999 floor). Primary Mode B (4096->384, n=500 anchors = 0.87% FiQA / 9.65% SciFact / 13.76% NFCorpus, physical dual-shard Qdrant gRPC @ 20% backfill, n=371 pooled REPORT): Causal_DEV_CSLS=0.3779 beats DEV_ZScore=0.3510 (+2.69 pp, lcb_975=+1.32 pp, p=5e-5, FiQA-carried; SciFact/NFCorpus per-domain n.s.) and RRF=0.3237 (+5.42 pp, lcb_975=+3.81 pp, p=5e-5). Secondary Mode A (384->4096): FiQA +12.36 pp vs QueryAffine (p=5e-5), NFCorpus +3.07 pp (Look #2 p0125=-0.19 pp), SciFact null (+0.29 pp, p=0.892), FiQA pos-excluded -2.08 pp vs Procrustes."
+    },
+    {
+      "id": "wave6_pm3_v2_competitor_arena",
+      "part": "PART_VI_WAVE6_CLOSURE_AND_GATEWAY",
+      "role": "WAVE8_ADJUDICATED_PRIMARY",
+      "dir": "artifacts/wave6_pm3_v2_competitor_arena",
+      "manifest": "wave6_pm3_v2_arena_manifest.json",
+      "receipt": "report_receipt.json",
+      "notes": "Wave-6 Track C (M1/M4, Qwen2.5-7B blind judge): Suite A Regulated Drift (N=60; 9.69s pre-ack extraction, 6,882.7 write toks; 0.7833 [SUPERSEDED] context-substring scan): Chelated_v4=96.67% (93.33% conflict abstention) beats live mem0ai 2.2.1 infer=True=81.67% (+15.00 pp, boot lcb_975=+5.00 pp, Tango=+5.11 pp, exact CP95=-2.74 pp), OpenSearch Memory emulation=80.00% (+16.67 pp, boot +6.67 pp, CP95=-1.57 pp; 100% det), Hindsight 4-Net emulation=78.33% (+18.33 pp, boot +8.33 pp, CP95=-0.38 pp), and mem0ai infer=False=61.67% (+35.00 pp, CP95=+20.55 pp). Suite B Live LME-S (N=40; Chelated read p50=521.1 ms vs 4.6-13.9 ms): Chelated=62.50% at 0 write LLM tokens (1,756.4 total) vs mem0 infer=False (1.56x), Hindsight emulation (70.0x), OpenSearch emulation (135.6x), and mem0 infer=True (207.4x; 506.65 read toks); all Suite B accuracy LCB97.5 <= 0."
+    },
+    {
+      "id": "wave6_d4_trained_epistemic_grpo",
+      "part": "PART_VI_WAVE6_CLOSURE_AND_GATEWAY",
+      "role": "WAVE8_ADJUDICATED_PRIMARY",
+      "dir": "artifacts/wave6_d4_trained_epistemic_grpo",
+      "manifest": "wave6_d4_epistemic_grpo_manifest.json",
+      "receipt": "report_receipt.json",
+      "notes": "Wave-6 Track D (M3, Spark #2 GB10, 25.375 GiB peak <= 34 GiB, 4-way disjoint splits w/ noise-retractor hashed, 0 unmasked prompt tokens, merge_and_unload KL diff 0.0, reload logit diff 0.0, matched max_new_tokens=272): Qwen2.5-7B SFT (42.50% EVAL, 100.0% D1) + 3-seed 16-step GRPO (44.72%+-1.42% EVAL, 99.44%+-0.79% disjoint-entity D1 k=17) beats Bare Nemotron-30B (30.00% EVAL w/ 0% valid_format, Holm p=0.02175; 38.33% D1, Holm p=0.0003) and Base 7B (19.17% EVAL, Holm p=0.0014; 8.33% D1); lift is SFT-carried (GRPO-SFT +2.22 pp EVAL Holm p=0.4495, -0.56 pp D1 Holm p=0.733; EVAL false_commit_on_u=0.875, max_frac_zero_std=1.0 vs mean=0.1667)."
+    },
+    {
+      "id": "wave6_d5_grpc_interceptor_gateway",
+      "part": "PART_VI_WAVE6_CLOSURE_AND_GATEWAY",
+      "role": "WAVE8_ADJUDICATED_PRIMARY",
+      "dir": "artifacts/wave6_d5_grpc_interceptor_gateway",
+      "manifest": "wave6_d5_grpc_gateway_manifest.json",
+      "receipt": "report_receipt.json",
+      "notes": "Wave-6 Track E (M2, 43,040 open-loop queries, 0 errors, project-defined SearchService.KnnQuery Protobuf over live containerized Qdrant :16334 sha256:d277592721d2..., live_opensearch_java_cluster_claimed=false): 250 Hz LAN dispatch (Desktop->10.0.0.24) service RTT p50/p95/p99 = 7.90/21.19/115.82 ms, scheduled open_loop_e2e p95/p99 = 153.75/251.86 ms (direct 4096-d saturated @ 218.79 Hz; matched-dim max incremental service p95 = +18.00 ms <= 25 ms), 8.71x smaller ingress (1,888 vs 16,435 B), 0 B/doc vector egress, 8 B/doc sidecar + 16 KB centroid, 0.00% observed fenced stale leak @ 0/10/50/90% (50% Recall@10=0.994186 < 0.995 floor; 90% uses 100% exact fallback)."
     }
   ]
 }

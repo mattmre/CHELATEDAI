@@ -1,7 +1,7 @@
 # Code, Baseline, & Experimental Artifact Preservation Ledger
 
 **Non-Destructive Engineering Policy:**  
-No historical baseline, code version, whitepaper revision, or experimental artifact in `CHELATEDAI-STAGE0-NIGHT1` is ever deleted or overwritten without first locking a byte-exact SHA-256 backup snapshot. Every experimental result in `docs/research/verified_registry.json` (`27/27` bundles) maps back to an exact retrievable code snapshot below.
+No historical baseline, code version, whitepaper revision, or experimental artifact in `CHELATEDAI-STAGE0-NIGHT1` is ever deleted or overwritten without first locking a byte-exact SHA-256 backup snapshot. Every experimental result in `docs/research/verified_registry.json` (`40/40` bundles across Parts I–VI, `49/49` receipt-bound side-artifact SHA-256 digests) maps back to an exact retrievable code snapshot below.
 
 ---
 
@@ -78,5 +78,33 @@ Because Part IV runs were synced via `scp` onto DGX Spark worktrees whose base g
 - `archive/r6-pm1b-v1-spark6724-backup/`: Exact v1 `PM-1b` (`3,534` rows) snapshot before DualGran v2 (`3,768` rows) and Wave-4 `J4` held-out architectural split.
 - `archive/r6-pm3-v1-aborted-seq-3rows/`: Archived 3-row sequential `PM-3` pilot before `ChelatedConversationalV3` sharded `N=40` execution.
 - `archive/wave4-pre-adjudication-v1-backups/`: Complete SHA-256 vault (`BACKUP_MANIFEST.json`) preserving exact v1 manifests, CSVs, and JSONL logs across `r6_pm1b_conversational_sota`, `r6_pm2_labelfree_closure`, `r6_pm4_conversational_kappa_n200`, `phase2_d2_qdrant_hnsw_csls_backfill`, `phase2_d3_multiagent_poisoning`, and `phase2_wave2_d1v2_and_d2_1m`, plus `docs_v3_1/` byte-exact pre-Wave-4 `v3.1` copies of `bundle_registry_spec.json`, `verified_registry.json`, `doctoral-whitepaper-chelated-memory-and-spherical-migration-2026-11-21.md`, and `chelated-memory-spherical-migration-whitepaper-presentation.html`, prior to executing Wave-4 unanimous cross-judgment (`J1–J7`) updates and compiling v4.0.
+
+---
+
+## 7. Waves 5–9 (`Part VI` Closure & Gateway, Investor Package, Live Solution Workbench, & `v5.0` Vault — `2026-11-23`)
+
+- **Pre-`v5.0` Byte-Exact Snapshot (`archive/whitepaper-v4.0-pre-v5-backup/BACKUP_MANIFEST.json`, `6/6` Files Verified):**
+  - Preserves exact Draft `v4.0` (`5a9bd46f2eeae2522a4a8d81017edb3c2407f936`) copies of `bundle_registry_spec.json`, `verified_registry.json` (`5603e923c5e3...`, `35/35` bundles), `doctoral-whitepaper-chelated-memory-and-spherical-migration-2026-11-21.md`, `chelated-memory-spherical-migration-whitepaper-presentation.html`, `build_whitepaper_assets.py`, and `CODE_AND_ARTIFACT_PRESERVATION_LEDGER.md` prior to `v5.0` synthesis.
+- **Additive `Part VI` Experimental Receipt Bundles (`5/5` New Bundles -> `40/40` Total, Zero Mutation of `35/35` `v4.0` Bundles):**
+  1. `artifacts/wave6_pm1b_v4_reranked_sota/` (`manifest_sha256: 5fcfab2b4c1c62e7babe4d8225f16b745ec61112efc1218eaeb0fc555957f6f3`, `4/4` side hashes)
+  2. `artifacts/wave6_d2_4096d_3beir_complete/` (`manifest_sha256: dcb84026a15c4863fb4c2a0028cd14387c3ffe0d3c0087c581f28d717943f547`, `1/1` side hash)
+  3. `artifacts/wave6_pm3_v2_competitor_arena/` (`manifest_sha256: 05442a849c199ad32955ce2145c1540b7bf0f78c3e56bb6392a69100894c5773`, `1/1` side hash)
+  4. `artifacts/wave6_d4_trained_epistemic_grpo/` (`manifest_sha256: f20433dce33cde8b47c303ddf834046e9374d04b3a77288a8fb81f586135f28a`, `2/2` side hashes)
+  5. `artifacts/wave6_d5_grpc_interceptor_gateway/` (`manifest_sha256: cba30b931812ae3f13133ff2def304cb81d363a0a7adb8ce8cba481d457bc743`, manifest-complete; `qdrant/qdrant@sha256:d277592721d2e3b73f9b797b53cf05e6a5bb2134f6d13fdbda4ca51782afbcac`)
+- **Exact `Part VI` Producer Modules & Scripts (Committed to Git & SHA-256 Locked in `bundle_registry_spec.json`):**
+  - `wave6_common.py`: `238352f8b802787d587a52cbdc4139aaa5f978ea5cf237f08a9034271dc4aef3`
+  - `chelated_conversational_v4.py`: `8534c485dbb35e30789f6d1e44e4fb098436d26c09cc1f51a8cb1a7a1c70f1f4`
+  - `virgin_conversational_holdout.py`: `a804140c537a538fe1d6cf53430e0dfd2b461306b0863b78bf26fbb8d66c56af`
+  - `chelated_grpc_gateway.py`: `901008c848ce70a3a6e486cb817ff67e896b6400ebc743332def373a1c7d58e9`
+  - `scripts/run_wave6_pm1b_v4_and_virgin_holdout.py`: `f926a5b355501203d114e63d9f78340d83ef3d41e328f73896ac9c5deed13e1b`
+  - `scripts/run_wave6_d2_4096d_both_modes_3beir.py`: `0b74c7fa318361db817785e0f185094ed4021f8be249c9040f7ffcf0a774d6e0`
+  - `scripts/run_wave6_pm3_v2_4way_arena.py`: `93c3edc3b6b83957efd3f7d5997b361082ab5901910e95972eadd78678910154`
+  - `scripts/run_wave6_d4_trained_epistemic_grpo.py`: `5fd78fb5967535c8306742e66b23564db95bd979fdcad6ff5e0cb410c94e7691`
+  - `scripts/run_wave6_d5_grpc_interceptor_gateway.py`: `b68468f16fb51c41e04be177c716d24d69b897bbedda1fbb738e1965c9868121`
+- **16-Memo Frontier Council Audit Trail (`Waves 5 & 8`) & Wave-7 Investor / Solution Workbench Package:**
+  - `docs/research/council-logs/wave5-*.md` (`K1–K6`) & `docs/research/council-logs/wave8-*.md` (`M1–M5`)
+  - `docs/research/investor-thesis-and-competitive-moat-2026-11-23.md`, `docs/research/investor-solution-architecture-deck.html`, `demo_workbench/server.py`, `demo_workbench/index.html`, and `tests/test_workbench_server.py`.
+  - Encrypted Google Drive vault addendum: `O:\backups\CHELATEDAI-COMPLETE-VAULT-2026-11-22\WAVE5-V5-OVERNIGHT-COMPLETE-ADDENDUM-2026-11-23.7z` (AES-256 + `-mhe=on`, `7z t` verified).
+
 
 

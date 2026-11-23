@@ -622,7 +622,7 @@ def write_json_atomic(path: Path, payload: Any) -> str:
     path.parent.mkdir(parents=True, exist_ok=True)
     text = json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=True)
     tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_text(text + "\n", encoding="utf-8")
+    tmp.write_text(text + "\n", encoding="utf-8", newline="\n")
     os.replace(tmp, path)
     return hashlib.sha256((text + "\n").encode("utf-8")).hexdigest()
 

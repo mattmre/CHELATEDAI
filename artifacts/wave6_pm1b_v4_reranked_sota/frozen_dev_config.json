@@ -1,0 +1,126 @@
+{
+  "dev_grid_evaluations": [
+    {
+      "candidate_id": "v4_cand_A_compact_r0",
+      "dev_composite_score": 0.469441,
+      "in_target_token_band_1400_2200": false,
+      "lme_dev_ku_stress_n39": {
+        "delta_vs_flat_bgem3_tm": -0.051282,
+        "flat_bgem3_tm_accuracy": 0.794872,
+        "v4_accuracy": 0.74359
+      },
+      "lme_dev_n249": {
+        "delta_vs_flat_bgem3_tm": 0.028112,
+        "flat_bgem3_tm_accuracy": 0.590361,
+        "flat_bgem3_tm_mean_prompt_tokens": 1610.81,
+        "v4_accuracy": 0.618474,
+        "v4_evidence_all_recall": 0.84322,
+        "v4_mean_prompt_tokens": 1820.78
+      },
+      "locomo_dev_n150": {
+        "delta_vs_flat_bgem3_tm": 0.073333,
+        "flat_bgem3_tm_accuracy": 0.36,
+        "flat_bgem3_tm_mean_prompt_tokens": 1546.09,
+        "v4_accuracy": 0.433333,
+        "v4_evidence_all_recall": 0.79,
+        "v4_mean_prompt_tokens": 693.53
+      },
+      "weighted_dev_mean_prompt_tokens": 1397.0
+    },
+    {
+      "candidate_id": "v4_cand_B_balanced_r1",
+      "dev_composite_score": 0.54722,
+      "in_target_token_band_1400_2200": true,
+      "lme_dev_ku_stress_n39": {
+        "delta_vs_flat_bgem3_tm": -0.051282,
+        "flat_bgem3_tm_accuracy": 0.769231,
+        "v4_accuracy": 0.717949
+      },
+      "lme_dev_n249": {
+        "delta_vs_flat_bgem3_tm": 0.004016,
+        "flat_bgem3_tm_accuracy": 0.598394,
+        "flat_bgem3_tm_mean_prompt_tokens": 1877.26,
+        "v4_accuracy": 0.60241,
+        "v4_evidence_all_recall": 0.860169,
+        "v4_mean_prompt_tokens": 2011.55
+      },
+      "locomo_dev_n150": {
+        "delta_vs_flat_bgem3_tm": 0.033333,
+        "flat_bgem3_tm_accuracy": 0.373333,
+        "flat_bgem3_tm_mean_prompt_tokens": 1720.35,
+        "v4_accuracy": 0.406667,
+        "v4_evidence_all_recall": 0.84,
+        "v4_mean_prompt_tokens": 1367.79
+      },
+      "weighted_dev_mean_prompt_tokens": 1769.53
+    },
+    {
+      "candidate_id": "v4_cand_C_wider_r1",
+      "dev_composite_score": 0.555561,
+      "in_target_token_band_1400_2200": true,
+      "lme_dev_ku_stress_n39": {
+        "delta_vs_flat_bgem3_tm": 0.0,
+        "flat_bgem3_tm_accuracy": 0.74359,
+        "v4_accuracy": 0.74359
+      },
+      "lme_dev_n249": {
+        "delta_vs_flat_bgem3_tm": 0.02008,
+        "flat_bgem3_tm_accuracy": 0.590361,
+        "flat_bgem3_tm_mean_prompt_tokens": 1999.19,
+        "v4_accuracy": 0.610442,
+        "v4_evidence_all_recall": 0.860169,
+        "v4_mean_prompt_tokens": 2199.86
+      },
+      "locomo_dev_n150": {
+        "delta_vs_flat_bgem3_tm": 0.02,
+        "flat_bgem3_tm_accuracy": 0.386667,
+        "flat_bgem3_tm_mean_prompt_tokens": 1895.47,
+        "v4_accuracy": 0.406667,
+        "v4_evidence_all_recall": 0.85,
+        "v4_mean_prompt_tokens": 1647.29
+      },
+      "weighted_dev_mean_prompt_tokens": 1992.12
+    }
+  ],
+  "frozen_at_utc": "2026-11-23T05:22:46.955330Z",
+  "holdout_touched_prior_to_freeze": false,
+  "j4_split_seed": "pm1b_j4_holdout_split_v1",
+  "schema_version": "wave6_pm1b_v4_frozen_dev_config_v1",
+  "selected_candidate_id": "v4_cand_C_wider_r1",
+  "selected_config": {
+    "LoCoMo-300": {
+      "anchor_count": 10,
+      "context_chars": 6000,
+      "neighbor_max_chars": 600,
+      "speaker_anchor_reserve": 1,
+      "speaker_attribution_header": true,
+      "turn_max_chars": 1300,
+      "window_radius": 1
+    },
+    "LongMemEval-S": {
+      "anchor_count": 10,
+      "context_chars": 8400,
+      "neighbor_max_chars": 600,
+      "speaker_anchor_reserve": 0,
+      "speaker_attribution_header": false,
+      "turn_max_chars": 1450,
+      "window_radius": 1
+    },
+    "Virgin-Conversational-120": {
+      "anchor_count": 9,
+      "context_chars": 6200,
+      "neighbor_max_chars": 600,
+      "speaker_anchor_reserve": 1,
+      "speaker_attribution_header": true,
+      "turn_max_chars": 1300,
+      "window_radius": 1
+    },
+    "candidate_id": "v4_cand_C_wider_r1",
+    "pool_size": 36,
+    "rerank_alpha": 0.8,
+    "rerank_max_chars": 1200,
+    "rerank_prev_turn": true
+  },
+  "tuning_split": "STRICTLY DEV ONLY: LoCoMo conversations 0..4 (N=150) + LongMemEval-S frozen SHA-256 DEV half (N=249, KU=39)",
+  "virgin_holdout_touched_prior_to_freeze": false
+}

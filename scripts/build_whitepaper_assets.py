@@ -306,6 +306,63 @@ def extract_key_metrics(bundles_by_id: Dict[str, Dict[str, Any]]) -> Dict[str, A
             },
         }
 
+    if "wave6_pm1b_v4_reranked_sota" in bundles_by_id and bundles_by_id["wave6_pm1b_v4_reranked_sota"]["present"]:
+        m = bundles_by_id["wave6_pm1b_v4_reranked_sota"]["_manifest_obj"]
+        obs["wave6_pm1b_v4_reranked_sota"] = {
+            "wall_seconds": m.get("wall_seconds"),
+            "k2_compliance_flags": m.get("k2_compliance_flags"),
+            "primary_confirmatory_virgin_holdout": m.get("primary_confirmatory_virgin_holdout"),
+            "secondary_pooled_full_dataset": m.get("secondary_pooled_full_dataset"),
+        }
+
+    if "wave6_d2_4096d_3beir_complete" in bundles_by_id and bundles_by_id["wave6_d2_4096d_3beir_complete"]["present"]:
+        m = bundles_by_id["wave6_d2_4096d_3beir_complete"]["_manifest_obj"]
+        obs["wave6_d2_4096d_3beir_complete"] = {
+            "wall_seconds": m.get("wall_seconds"),
+            "k3_guardrails": m.get("k3_guardrails"),
+            "primary_endpoint": m.get("primary_endpoint"),
+            "secondary_mode_a_summary": m.get("secondary_mode_a_summary"),
+        }
+
+    if "wave6_pm3_v2_competitor_arena" in bundles_by_id and bundles_by_id["wave6_pm3_v2_competitor_arena"]["present"]:
+        m = bundles_by_id["wave6_pm3_v2_competitor_arena"]["_manifest_obj"]
+        obs["wave6_pm3_v2_competitor_arena"] = {
+            "wall_seconds": m.get("wall_seconds"),
+            "system_provenance_labels": m.get("system_provenance_labels"),
+            "suite_a_enterprise_n60": m.get("suite_a_enterprise_n60"),
+            "suite_b_conversational_n40": m.get("suite_b_conversational_n40"),
+        }
+
+    if "wave6_d4_trained_epistemic_grpo" in bundles_by_id and bundles_by_id["wave6_d4_trained_epistemic_grpo"]["present"]:
+        m = bundles_by_id["wave6_d4_trained_epistemic_grpo"]["_manifest_obj"]
+        obs["wave6_d4_trained_epistemic_grpo"] = {
+            "pipeline_wall_seconds": m.get("pipeline_wall_seconds"),
+            "k4_guardrail_audit": m.get("k4_guardrail_audit"),
+            "holm_bonferroni_multiplicity_family": m.get("holm_bonferroni_multiplicity_family"),
+            "heldout_wfs_eval_n120_summary": {
+                k: v
+                for k, v in m.get("heldout_wfs_eval_n120", {}).items()
+                if k in (
+                    "Base_Qwen2.5_7B",
+                    "Bare_Nemotron_30B",
+                    "SFT_Qwen2.5_7B",
+                    "SFT_plus_Epistemic_GRPO_7B_3SeedMean_primary",
+                )
+            },
+            "d1_prose_k17_summary": m.get("d1_zero_shot_enterprise_prose_transfer_n60", {}).get(
+                "primary_matched_evidence_k17"
+            ),
+        }
+
+    if "wave6_d5_grpc_interceptor_gateway" in bundles_by_id and bundles_by_id["wave6_d5_grpc_interceptor_gateway"]["present"]:
+        m = bundles_by_id["wave6_d5_grpc_interceptor_gateway"]["_manifest_obj"]
+        obs["wave6_d5_grpc_interceptor_gateway"] = {
+            "wall_seconds": m.get("wall_seconds"),
+            "headline_metrics": m.get("headline_metrics"),
+            "flagship_10k_per_arm_open_loop_lan_tail_proof": m.get("flagship_10k_per_arm_open_loop_lan_tail_proof"),
+            "ek5_v3_retraction_and_epoch_pinned_fence": m.get("ek5_v3_retraction_and_epoch_pinned_fence"),
+        }
+
     return obs
 
 
@@ -329,10 +386,11 @@ def build_registry(*, allow_gitignored_raw_missing: bool = False) -> Dict[str, A
     observations = extract_key_metrics(bundles_by_id)
     present_count = sum(1 for b in verified_bundles if b["present"])
     payload: Dict[str, Any] = {
-        "schema_version": "verified_registry_v4_0",
+        "schema_version": "verified_registry_v5_0",
         "release_status": spec["release_status"],
         "pristine_mirror": pristine,
         "part_iv_code_provenance": spec.get("part_iv_code_provenance", {}),
+        "part_vi_code_provenance": spec.get("part_vi_code_provenance", {}),
         "counts": {
             "bundles_total_spec": len(verified_bundles),
             "bundles_present_verified": present_count,
@@ -396,9 +454,17 @@ def validate_publication_documents(registry: Dict[str, Any]) -> Tuple[bool, List
             "-0.0572",
             "0.8400",
             "16.84%",
+            # Wave-8 M1-M5 Part VI mandatory scope/variance tokens
+            "0.9942",
+            "153.75",
+            "13.76%",
+            "87.5%",
+            "272",
+            "emulation (ours)",
+            "live_opensearch_java_cluster_claimed",
         ):
             if req_tok not in doc:
-                errors.append(f"{label} missing Wave-4 J7 mandatory citation/disclosure token '{req_tok}'")
+                errors.append(f"{label} missing Wave-4/Wave-8 mandatory citation/disclosure token '{req_tok}'")
         # Check every present bundle manifest SHA prefix appears in BOTH Whitepaper and HTML ledgers
         for b in registry["bundles"]:
             if b["present"] and b["manifest_sha256"][:12] not in doc:
@@ -458,7 +524,7 @@ def main() -> None:
         )
         return
 
-    REGISTRY_PATH.write_text(rendered, encoding="utf-8")
+    REGISTRY_PATH.write_text(rendered, encoding="utf-8", newline="\n")
     print(
         f"WROTE {REGISTRY_PATH} "
         f"(bundles={reg['counts']['bundles_present_verified']}/{reg['counts']['bundles_total_spec']}, "
