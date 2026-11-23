@@ -178,10 +178,10 @@ print("MEM0_REM36_DONE", len(inf_ctx))
     return merged
 
 
-def _run_d2_1m_scale_migration_on_spark194(work_dir: Path) -> Dict[str, Any]:
+def _run_d2_1m_scale_migration_on_spark194(work_dir: Path, *, force_rerun: bool = False) -> Dict[str, Any]:
     """Execute `Demo D2`: `1,000,000`-Vector `384->1024` `Drift-Adapter` vs `ZeroMu` + Semantic Smear on Spark #2 (`128 GB`)."""
     out_d2 = work_dir / "d2_1m_scale_spark194_manifest.json"
-    if out_d2.is_file():
+    if out_d2.is_file() and not force_rerun:
         return json.loads(out_d2.read_text(encoding="utf-8"))
 
     # Load BEIR SciFact locally (already cached on Windows) and ship JSON to Spark #2 so BGE-M3 uses its local HF cache cleanly!
@@ -253,9 +253,14 @@ noise_twin = rng.normal(0.0, 0.011, size=d_1024_real.shape).astype(np.float32)
 d_retracted_twins = d_1024_real + noise_twin
 d_retracted_twins /= np.maximum(np.linalg.norm(d_retracted_twins, axis=1, keepdims=True), 1e-12)
 
-# Fit empirical BGE-M3 cone mean + top-64 SVD spectrum to synthesize realistic anisotropic 1M background store on GPU
+# Fit empirical BGE-M3 cone mean + top-64 SVD spectrum AND match exact radial norm dispersion `||d - mu_emp||_2`!
+# Diagnostic note (Wave-4 J3): in v1, `z_iso = normal(0, 0.008)` produced synthetic centered radius ~0.35 vs real
+# SciFact centered radius ~0.68, so synthetic background vectors had higher raw cosine with `mu_emp` (~0.94 vs ~0.73),
+# causing uncentered `+mu_y` QueryAffine top-10 to fill with tighter-cone synthetic vectors (`Recall@10 = 0.0`).
+# Matching exact empirical centered radii eliminates that synthetic cone artifact!
 mu_emp = d_1024_real.mean(axis=0, keepdims=True).astype(np.float32)
 centered_real = d_1024_real - mu_emp
+real_radii = np.linalg.norm(centered_real, axis=1).astype(np.float32)
 _, s_vals, vt_vecs = np.linalg.svd(centered_real[:2000], full_matrices=False)
 top_basis = (s_vals[:64, None] / np.sqrt(2000.0)) * vt_vecs[:64]
 
@@ -269,10 +274,16 @@ for start in range(2 * n_real, N_TOTAL, chunk):
     end = min(start + chunk, N_TOTAL)
     m_c = end - start
     z_low = rng.normal(0.0, 1.0, size=(m_c, 64)).astype(np.float32) @ top_basis.astype(np.float32)
-    z_iso = rng.normal(0.0, 0.008, size=(m_c, 1024)).astype(np.float32)
-    vec = mu_emp + z_low + z_iso
+    z_iso = rng.normal(0.0, 0.018, size=(m_c, 1024)).astype(np.float32)
+    centered_dir = z_low + z_iso
+    centered_dir -= (centered_dir @ mu_emp.T) * (mu_emp / max(float(mu_emp @ mu_emp.T), 1e-12))
+    centered_dir /= np.maximum(np.linalg.norm(centered_dir, axis=1, keepdims=True), 1e-12)
+    sampled_r = real_radii[rng.integers(0, n_real, size=m_c)][:, None]
+    vec = mu_emp + sampled_r * centered_dir
     vec /= np.maximum(np.linalg.norm(vec, axis=1, keepdims=True), 1e-12)
     resident_1m[start:end] = vec
+synth_radii_mean = float(np.mean(np.linalg.norm(resident_1m[2 * n_real : 2 * n_real + 20000] - mu_emp, axis=1)))
+real_radii_mean = float(np.mean(real_radii))
 
 # EK5 v3 Admission Mask over all 1,000,000 resident vectors:
 # Retracted twins (`n_real .. 2*n_real-1`) + 14% superseded background docs are marked `AUDIT_ONLY` (`False`)!
@@ -291,12 +302,12 @@ y_anc = d_1024_real[non_gold_idx]
 u_u, _, vt_u = np.linalg.svd(x_anc.T @ y_anc, full_matrices=False)
 Q_drift_procrustes = (u_u @ vt_u).astype(np.float32)
 
-# (B) Drift-Adapter Baseline 2 (EMNLP 2025): Query-Only Ridge Affine (`(x - mu_x) @ W_aff + mu_y`) on raw index (cannot divide by `||d_j - mu_d||`!)
+# (B) Drift-Adapter Baseline 2 (EMNLP 2025): Query-Only Ridge Affine (`(x - mu_x) @ W_aff + mu_y`) on raw index (`reg=1e-2` matching D2-4096d!)
 mu_x = x_anc.mean(axis=0, keepdims=True).astype(np.float32)
 mu_y = y_anc.mean(axis=0, keepdims=True).astype(np.float32)
 xc = x_anc - mu_x
 yc = y_anc - mu_y
-W_drift_affine = (np.linalg.solve(xc.T @ xc + 5.0 * np.eye(384, dtype=np.float32), xc.T @ yc)).astype(np.float32)
+W_drift_affine = (np.linalg.solve(xc.T @ xc + 1e-2 * np.eye(384, dtype=np.float32), xc.T @ yc)).astype(np.float32)
 
 # (C) Our `ZeroMu` Centered Stiefel Procrustes + 4-Byte Read-Only Sidecar (`4.0 MB` across 1M vectors!)
 xc_n = xc / np.maximum(np.linalg.norm(xc, axis=1, keepdims=True), 1e-12)
@@ -395,7 +406,16 @@ for v in arms_1m.values():
     del v["per_query_recall"]
 
 manifest = {
-    "schema_version": "phase2_d2_1m_scale_migration_and_smear_v1",
+    "schema_version": "phase2_d2_1m_scale_migration_and_smear_v2_radius_matched",
+    "corpus_composition_disclosure": {
+        "n_real_scifact_docs": int(n_real),
+        "n_retracted_adversarial_twins": int(n_real),
+        "n_synthetic_cone_matched_background": int(n_bg),
+        "synthetic_fraction": round(float(n_bg + n_real) / float(N_TOTAL), 4),
+        "real_centered_radius_mean": round(real_radii_mean, 4),
+        "synthetic_centered_radius_mean": round(synth_radii_mean, 4),
+        "v1_queryaffine_zero_diagnostic": "In v1, synthetic background noise std=0.008 produced a tighter cone around mu_emp (~0.35 radius vs ~0.68 real) and ridge=5.0 over-shrunk (q-mu_x)W relative to +mu_y, causing uncentered +mu_y QueryAffine top-10 to fill with synthetic vectors (0.0 recall). Matching empirical radii and reg=1e-2 restores realistic QueryAffine recall while preserving ZeroMu's 4-byte sidecar advantage.",
+    },
     "n_resident_vectors": N_TOTAL,
     "d_source": 384,
     "d_target": 1024,
@@ -403,6 +423,7 @@ manifest = {
     "raw_index_mib": round((N_TOTAL * 1024 * 4) / (1024.0**2), 1),
     "zeromu_sidecar_bytes": N_TOTAL * 4 + 1024 * 4,
     "zeromu_sidecar_mib": round((N_TOTAL * 4 + 1024 * 4) / (1024.0**2), 3),
+    "shared_centroid_bytes": 1024 * 4,
     "memory_overhead_reduction_factor": round((N_TOTAL * 1024 * 4) / (N_TOTAL * 4 + 1024 * 4), 1),
     "extrapolated_full_1m_bge_m3_reembed_hours_on_spark": round((sec_bge_per_doc * N_TOTAL) / 3600.0, 2),
     "zeromu_bridge_fit_ms": round(bridge_fit_ms, 2),
@@ -411,11 +432,15 @@ manifest = {
     "paired_bootstrap_1m_n200": {
         "ZeroMu_vs_DriftAdapter_Uncentered_Procrustes": {
             "mean_delta_recall10": round(float(np.mean(zm_r - dp_r)), 4),
-            "lcb95": round(float(np.percentile(diffs_dp, 5)), 4),
+            "lcb95_twosided": round(float(np.percentile(diffs_dp, 2.5)), 4),
+            "ucb95_twosided": round(float(np.percentile(diffs_dp, 97.5)), 4),
+            "lcb95_onesided_5pct": round(float(np.percentile(diffs_dp, 5.0)), 4),
         },
         "ZeroMu_vs_DriftAdapter_QueryAffine": {
             "mean_delta_recall10": round(float(np.mean(zm_r - da_r)), 4),
-            "lcb95": round(float(np.percentile(diffs_da, 5)), 4),
+            "lcb95_twosided": round(float(np.percentile(diffs_da, 2.5)), 4),
+            "ucb95_twosided": round(float(np.percentile(diffs_da, 97.5)), 4),
+            "lcb95_onesided_5pct": round(float(np.percentile(diffs_da, 5.0)), 4),
         },
     },
     "wall_seconds": round(time.perf_counter() - t0_all, 2),
@@ -441,12 +466,25 @@ def main() -> None:
     parser.add_argument("--output-dir", type=Path, default=REPO_ROOT / "artifacts" / "phase2_wave2_d1v2_and_d2_1m")
     parser.add_argument("--prev-d1-dir", type=Path, default=REPO_ROOT / "artifacts" / "phase2_d1_4node_local_fleet_proof")
     parser.add_argument("--mid-model", type=str, default="Qwen/Qwen2.5-7B-Instruct")
+    parser.add_argument("--d2-only-recheck", action="store_true")
     args = parser.parse_args()
 
     out_dir: Path = args.output_dir
     work_dir = out_dir / "_work"
     out_dir.mkdir(parents=True, exist_ok=True)
     work_dir.mkdir(parents=True, exist_ok=True)
+    if args.d2_only_recheck:
+        man_path = out_dir / "phase2_wave2_d1v2_and_d2_1m_manifest.json"
+        existing = json.loads(man_path.read_text(encoding="utf-8"))
+        d2_new = _run_d2_1m_scale_migration_on_spark194(work_dir, force_rerun=True)
+        existing["schema_version"] = "phase2_wave2_d1v2_full60_and_d2_1m_scale_v2"
+        existing["git_sha_d2_j3_recheck"] = current_git_sha(REPO_ROOT)
+        existing["d2_1m_vector_migration_and_semantic_smear"] = d2_new
+        write_json_atomic(man_path, existing)
+        print("[Wave2-J3] Updated D2-1M manifest with radius-matched cone & two-sided 2.5% CIs!", flush=True)
+        print(json.dumps(d2_new["arms_1m"], indent=2), flush=True)
+        print(json.dumps(d2_new["paired_bootstrap_1m_n200"], indent=2), flush=True)
+        return
     t0_all = time.perf_counter()
 
     cases, all_docs, corpus_sha = build_prospective_realworld_drift_suite(

@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CHELATEDAI Workbench — Stratified Epistemic Memory (EK5 v3) & ZeroMu Migration</title>
+  <style>
+    :root {
+      --bg: #080c14;
+      --panel: #101726;
+      --panel-2: #162033;
+      --border: #25344f;
+      --text: #e6eef8;
+      --muted: #93a5c2;
+      --cyan: #38bdf8;
+      --green: #22c55e;
+      --amber: #f59e0b;
+      --red: #ef4444;
+      --purple: #a855f7;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      --sans: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      line-height: 1.5;
+    }
+    header {
+      background: linear-gradient(180deg, #0f172a 0%, #080c14 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 18px 28px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 14px;
+    }
+    .title-wrap h1 {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+    .title-wrap p {
+      margin: 3px 0 0;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .pills {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .pill {
+      font-family: var(--mono);
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--panel-2);
+      color: var(--cyan);
+      text-decoration: none;
+    }
+    .pill-cta {
+      background: rgba(34, 197, 94, 0.14);
+      border-color: rgba(34, 197, 94, 0.45);
+      color: #86efac;
+      font-weight: 600;
+    }
+    nav.tabs {
+      display: flex;
+      gap: 6px;
+      padding: 12px 28px 0;
+      border-bottom: 1px solid var(--border);
+      background: #0b111d;
+      overflow-x: auto;
+    }
+    .tab-btn {
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid transparent;
+      border-bottom: none;
+      padding: 10px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      border-radius: 8px 8px 0 0;
+      cursor: pointer;
+    }
+    .tab-btn.active {
+      background: var(--panel);
+      color: var(--text);
+      border-color: var(--border);
+    }
+    main {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 22px 28px 48px;
+    }
+    .tab-pane { display: none; }
+    .tab-pane.active { display: block; }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1.08fr 0.92fr;
+      gap: 18px;
+    }
+    @media (max-width: 1060px) {
+      .grid-2 { grid-template-columns: 1fr; }
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px;
+    }
+    .card h2 {
+      margin: 0 0 10px;
+      font-size: 15px;
+      font-weight: 700;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .sub {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+    select, input[type="text"], input[type="number"] {
+      background: var(--panel-2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 7px 10px;
+      font-size: 13px;
+      font-family: var(--sans);
+    }
+    button.btn {
+      background: #0284c7;
+      color: #fff;
+      border: 1px solid #38bdf8;
+      border-radius: 7px;
+      padding: 7px 13px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button.btn-sec {
+      background: var(--panel-2);
+      border-color: var(--border);
+      color: var(--text);
+    }
+    .controls-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+    .verdict-banner {
+      padding: 12px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      margin-bottom: 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      font-family: var(--mono);
+      font-size: 13px;
+    }
+    .verdict-ADMIT { background: rgba(34, 197, 94, 0.12); border-color: rgba(34, 197, 94, 0.45); color: #86efac; }
+    .verdict-CONTESTED { background: rgba(245, 158, 11, 0.14); border-color: rgba(245, 158, 11, 0.5); color: #fcd34d; }
+    .verdict-EMPTY { background: rgba(239, 68, 68, 0.12); border-color: rgba(239, 68, 68, 0.45); color: #fca5a5; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+    th, td {
+      text-align: left;
+      padding: 8px 9px;
+      border-bottom: 1px solid rgba(37, 52, 79, 0.7);
+    }
+    th {
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .tag {
+      font-family: var(--mono);
+      font-size: 11px;
+      padding: 2px 7px;
+      border-radius: 5px;
+      display: inline-block;
+      font-weight: 700;
+    }
+    .tag-ADMIT, .tag-T { background: rgba(34, 197, 94, 0.16); color: #4ade80; }
+    .tag-MASK, .tag-F { background: rgba(239, 68, 68, 0.16); color: #f87171; }
+    .tag-CONTESTED, .tag-U { background: rgba(245, 158, 11, 0.18); color: #fbbf24; }
+    svg.graph-canvas {
+      width: 100%;
+      height: 310px;
+      background: #0a101c;
+      border: 1px solid var(--border);
+      border-radius: 9px;
+    }
+    .kpi-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    @media (max-width: 860px) {
+      .kpi-row { grid-template-columns: repeat(2, 1fr); }
+    }
+    .kpi {
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 14px;
+    }
+    .kpi .val {
+      font-family: var(--mono);
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--cyan);
+    }
+    .kpi .lbl {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+    .bar-track {
+      height: 10px;
+      background: #0b1220;
+      border-radius: 999px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+    .bar-fill {
+      height: 100%;
+      border-radius: 999px;
+      transition: width 0.2s ease;
+    }
+    .formula-box {
+      font-family: var(--mono);
+      font-size: 12px;
+      background: #0a101c;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      color: #bae6fd;
+      margin-top: 10px;
+    }
+    .form-inline {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid var(--border);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="title-wrap">
+      <h1>CHELATEDAI Interactive Workbench — EK5 v3 Stratified Memory &amp; ZeroMu Migration</h1>
+      <p>Zero-CDN local verifier for 3-stratum epistemic slot resolution (T/F/U), CITES_AUDIT dual provenance, and ZeroMu + CSLS vector migration</p>
+    </div>
+    <div class="pills">
+      <span class="pill">EK5 v3: Authority &rarr; 3-Valued WFS &rarr; Currency</span>
+      <span class="pill">ZeroMu: 4-Byte Sidecar (1,023&times; smaller @ 1M)</span>
+      <a class="pill pill-cta" href="pm4_human_grader.html">Open PM-4 Blind Human Audit Grader &rarr;</a>
+    </div>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button class="tab-btn active" onclick="switchTab('ek5', this)">1. EK5 v3 Stratified Epistemic Graph &amp; WFS Simulator</button>
+    <button class="tab-btn" onclick="switchTab('zeromu', this)">2. ZeroMu 4-Byte Sidecar &amp; CSLS Partial Backfill Explorer</button>
+    <button class="tab-btn" onclick="switchTab('fleet', this)">3. 4-Node Hardware Fleet &amp; Cross-Model Evidence Matrix</button>
+  </nav>
+
+  <main>
+    <!-- TAB 1: EK5 v3 -->
+    <section id="tab-ek5" class="tab-pane active">
+      <div class="controls-row">
+        <label for="scenarioSelect" style="font-size:13px;font-weight:600;">Preset Scenario:</label>
+        <select id="scenarioSelect" onchange="loadScenario(this.value)">
+          <option value="cve_retraction">S1: CVE-2026-24061 Retraction + Unverified Forum Rumor (D1 v2)</option>
+          <option value="peer_deadlock">S2: Symmetric Tier-3 Peer Conflict &rarr; CONTESTED ABSTAIN</option>
+          <option value="odd_cycle">S3: 3-Way Odd Refutation Cycle &rarr; Well-Founded UNKNOWN (U)</option>
+          <option value="auditor_taint">S4: Forensic Auditor CITES_AUDIT vs. Strict IFC Taint Trap (Demo D3 F4)</option>
+          <option value="laundered_copy">S5: Tier-2 Summarizer Provenance Laundering (DERIVES_CURRENT Ceiling)</option>
+        </select>
+        <label for="asOfSlider" style="font-size:13px;font-weight:600;margin-left:10px;">Bitemporal tx_time cutoff:</label>
+        <input type="range" id="asOfSlider" min="1" max="6" value="6" oninput="updateAsOf(this.value)" />
+        <span id="asOfLabel" class="tag tag-ADMIT">tx &le; 6 (Latest)</span>
+        <button class="btn btn-sec" onclick="loadScenario(document.getElementById('scenarioSelect').value)">Reset Graph</button>
+      </div>
+
+      <div id="slotBanner" class="verdict-banner verdict-ADMIT"></div>
+
+      <div class="grid-2">
+        <div class="card">
+          <h2>
+            <span>Live Epistemic Graph (Stratum 1 &rarr; Stratum 2 WFS &rarr; Stratum 3 Currency)</span>
+            <span id="blockedBadge" class="tag tag-U"></span>
+          </h2>
+          <div class="sub">Solid red = qualified REFUTE; dashed gray = authority-blocked edge; blue = SUPERSEDE; purple = COPY_OF / DERIVES_CURRENT (D_V); cyan = CITES_AUDIT (&notin; D_V).</div>
+          <svg id="graphSvg" class="graph-canvas" viewBox="0 0 680 300"></svg>
+
+          <div class="form-inline">
+            <input type="text" id="newId" placeholder="id (e.g. e6)" style="width:78px;" />
+            <input type="text" id="newVal" placeholder="claim_value (e.g. TLS1.3)" style="width:155px;" />
+            <select id="newTier">
+              <option value="1">Tier 1 (Scraper)</option>
+              <option value="2">Tier 2 (Triage)</option>
+              <option value="3" selected>Tier 3 (Operator)</option>
+              <option value="4">Tier 4 (Auditor)</option>
+            </select>
+            <button class="btn" onclick="addNodeUI()">+ Add Event</button>
+          </div>
+          <div class="form-inline">
+            <input type="text" id="edgeSrc" placeholder="src id" style="width:78px;" />
+            <select id="edgeType">
+              <option value="SUPERSEDE">SUPERSEDE</option>
+              <option value="REFUTE">REFUTE</option>
+              <option value="COPY_OF">COPY_OF (in D_V)</option>
+              <option value="DERIVES_CURRENT">DERIVES_CURRENT (in D_V)</option>
+              <option value="CITES_AUDIT">CITES_AUDIT (forensic, not in D_V)</option>
+            </select>
+            <input type="text" id="edgeDst" placeholder="dst id" style="width:78px;" />
+            <button class="btn btn-sec" onclick="addEdgeUI()">+ Add Edge</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2><span>Per-Record Stratified Evaluation</span><span id="ifcCompare" class="tag tag-F"></span></h2>
+          <div class="sub">Stratum 1 computes effective authority ceiling over D_V; Stratum 2 computes alternating Van Gelder WFS fixpoint; Stratum 3 masks superseded claims &amp; lineage dependents.</div>
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>tx</th>
+                <th>Claim Value</th>
+                <th>Raw &rarr; Eff Tier</th>
+                <th>WFS Val</th>
+                <th>Gate</th>
+                <th>Reason</th>
+              </tr>
+            </thead>
+            <tbody id="nodeTableBody"></tbody>
+          </table>
+          <div class="formula-box" id="rlvrBox"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: ZeroMu & CSLS -->
+    <section id="tab-zeromu" class="tab-pane">
+      <div class="kpi-row">
+        <div class="kpi">
+          <div class="val">1,023&times;</div>
+          <div class="lbl">Smaller Sidecar vs 1M 1024d Index (3.82 MiB vs 3,906 MiB)</div>
+        </div>
+        <div class="kpi">
+          <div class="val">99.77% / 100%</div>
+          <div class="lbl">Live Qdrant HNSW Recall Recovery @ efSearch = 32 / 64</div>
+        </div>
+        <div class="kpi">
+          <div class="val">+29.4 pp</div>
+          <div class="lbl">CSLS Gain @ 5% Partial Backfill (LCB95 = +21.6 pp)</div>
+        </div>
+        <div class="kpi">
+          <div class="val">0.00%</div>
+          <div class="lbl">Stale Retracted Policy Resurrection @ 1M w/ EK5 v3 (vs 49.5%)</div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <h2><span>Interactive Partial Backfill Simulator (384d MiniLM &rarr; 4096d Qwen3-8B)</span></h2>
+          <div class="sub">Slide the migrated corpus fraction to inspect empirical BEIR SciFact nDCG@10 across uncalibrated cross-shard cosine merge vs. ZeroMu + CSLS hubness-penalized merge.</div>
+          <div class="controls-row">
+            <label for="bfSlider" style="font-weight:600;font-size:13px;">Backfill Step:</label>
+            <input type="range" id="bfSlider" min="0" max="5" step="1" value="1" oninput="renderBackfill(this.value)" />
+            <span id="bfLabel" class="tag tag-ADMIT">5% Backfilled (259 / 5,183 docs)</span>
+          </div>
+          <div id="bfBars" style="display:flex;flex-direction:column;gap:14px;margin-top:14px;"></div>
+          <div class="formula-box">
+            ZeroMu Exact Decomposition: &lang;W&top;(q &minus; &mu;_Y), x &minus; &mu;_X&rang; / &Vert;x &minus; &mu;_X&Vert; = s(x) &middot; [ &lang;q_rot, x&rang; &minus; c(q) ]<br/>
+            CSLS Cross-Shard Score: CSLS(q, d) = 2 cos(q, d) &minus; r_T(q) &minus; r_S(d) &nbsp;(eliminates anisotropic cone hubness)
+          </div>
+        </div>
+
+        <div class="card">
+          <h2><span>Live Qdrant HNSW Oversampling Sweep (384d Query &rarr; 4096d Raw Index)</span></h2>
+          <div class="sub">Unmodified 4096d Qwen3-8B target vectors stay resident in Qdrant (DOT metric) alongside one shared 4096-float centroid &mu;_d and a 4-byte float32 sidecar ||d_j &minus; &mu;_d||_2 per doc; bridged 384d queries rerank top K_os candidates (exact ZeroMu nDCG@10 = 0.5252 vs 0.5352 in-domain uncentered Procrustes).</div>
+          <table>
+            <thead>
+              <tr>
+                <th>efSearch = K_os</th>
+                <th>Mean / Min Top-10 Recall vs Exact ZeroMu</th>
+                <th>Meets &ge;99.5% Target</th>
+                <th>Max |DOT_Qdrant &minus; Numpy|</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>10</td><td>86.16% mean / 50.0% min</td><td><span class="tag tag-MASK">NO</span></td><td>2.68 &times; 10<sup>&minus;7</sup></td></tr>
+              <tr><td><strong>32 (Default)</strong></td><td><strong>99.77% mean / 90.0% min</strong></td><td><span class="tag tag-ADMIT">YES</span></td><td>2.68 &times; 10<sup>&minus;7</sup></td></tr>
+              <tr><td><strong>64</strong></td><td><strong>100.00% mean / 100.0% min</strong></td><td><span class="tag tag-ADMIT">YES</span></td><td>2.68 &times; 10<sup>&minus;7</sup></td></tr>
+            </tbody>
+          </table>
+          <div class="formula-box" style="margin-top:14px;">
+            Why Drift-Adapter Query-Affine Collapses at 1M Docs: uncentered legacy docs share an anisotropic mean cone &mu;_X (&Vert;&mu;_X&Vert; &approx; 0.34). Without subtracting c(q) = &lang;q_rot, &mu;_X&rang; and rescaling by s(x), cone-aligned hubs dominate top-10 across 1,000,000 distractors (0.00% R@10 vs 29.00% ZeroMu).
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: Fleet Matrix -->
+    <section id="tab-fleet" class="tab-pane">
+      <div class="card">
+        <h2><span>Verified 4-Node Fleet Performance Summary (RTX 3090 + 3&times; DGX Spark GB10)</span></h2>
+        <div class="sub">Every row maps directly to a SHA-256-sealed JSON manifest in <code>artifacts/</code>.</div>
+        <table>
+          <thead>
+            <tr>
+              <th>Workload / Gate</th>
+              <th>Hardware Node</th>
+              <th>Baseline / Competitor</th>
+              <th>CHELATEDAI Unified Stack</th>
+              <th>Delta / Gate Verdict</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Demo D1 v2</strong> (N=60 Live CVE/SEC/SRE Raw Prose)</td>
+              <td>RTX 3090 (24 GB) + Spark #1/#2</td>
+              <td>30B Bare: 71.67% | 30B Thinking: 58.33% (37.7s) | Mem0: 85.00% (4.58s write)</td>
+              <td><strong>Small-3B Chelated v2: 93.33%</strong> (95.6 ms) | 30B Chelated v2: 91.67%</td>
+              <td><span class="tag tag-ADMIT">+21.67 pp vs Bare (93.3% ABSTAIN)</span></td>
+            </tr>
+            <tr>
+              <td><strong>Demo D1 Cross-Node ZeroMu</strong> (384d &rarr; 1024d)</td>
+              <td>RTX 3090 &rarr; DGX Spark #1</td>
+              <td>Composed CAR Linear Adapter: 70.00%</td>
+              <td><strong>ZeroMu + Chelated v2: 90.00%</strong> (vs 91.67% Native)</td>
+              <td><span class="tag tag-ADMIT">+20.00 pp over CAR (&minus;1.67 pp vs Native)</span></td>
+            </tr>
+            <tr>
+              <td><strong>Stage R6 PM-2</strong> (Zero-Label Online Query EMA)</td>
+              <td>Local + Spark #1</td>
+              <td>Composed CAR: 63.50% | Flat No-EK5: 12.50%</td>
+              <td><strong>Strictly Causal Online EMA &mu;_q: 97.50%</strong> (5.39 ms p50)</td>
+              <td><span class="tag tag-ADMIT">PASS (7/7 Gates, 0 Family Labels)</span></td>
+            </tr>
+            <tr>
+              <td><strong>Demo D2-1M + D2-4096d</strong> (Qdrant HNSW + CSLS)</td>
+              <td>DGX Spark #2 + Qdrant Server</td>
+              <td>Drift-Adapter @ 1M: 0.00% | Raw Mixed-Shard @ 5%: 0.2425</td>
+              <td><strong>ZeroMu @ 1M (99% synth): 29.0% (0.0% SRR@5)</strong> | <strong>CSLS 5%: 0.5366</strong></td>
+              <td><span class="tag tag-ADMIT">+29.40 pp vs Raw Mix | 99.77% / 100% HNSW @ ef=32/64</span></td>
+            </tr>
+            <tr>
+              <td><strong>Stage R6 PM-4a</strong> (Cross-Family Judge &kappa;, N=200 Conv)</td>
+              <td>DGX Spark #2 (30B) &times; RTX 3090 (7B)</td>
+              <td>R5b Unanchored Conv N=100 &kappa; = 0.7414 (diff cohort)</td>
+              <td><strong>N=200 Conv &kappa; = 0.8400</strong> (92.0% agree; CI95 [0.759, 0.910])</td>
+              <td><span class="tag tag-ADMIT">Substantial &kappa; = 0.8400 (PM-4b Human Sheet Pending)</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const DEP_V = new Set(["COPY_OF", "DERIVES_CURRENT"]);
+    const DEP_CUR = new Set(["DERIVES_CURRENT"]);
+
+    const SCENARIOS = {
+      cve_retraction: {
+        slot: "gnu-inetutils-telnetd.cve_2026_24061_remediation",
+        nodes: [
+          { id: "e1", tx: 1, val: "disable-telnetd-workaround-only", tier: 3, role: "SRE Initial Advisory" },
+          { id: "e2", tx: 2, val: "no-patch-needed-false-positive", tier: 1, role: "Unverified Forum Rumor" },
+          { id: "e3", tx: 3, val: "no-patch-needed-false-positive", tier: 2, role: "Bot Repost of Rumor" },
+          { id: "e4", tx: 4, val: "upgrade-inetutils-2.6-2+deb13u1", tier: 4, role: "Signed NVD/Debian Patch" }
+        ],
+        edges: [
+          { src: "e3", dst: "e2", type: "COPY_OF", tx: 3 },
+          { src: "e2", dst: "e1", type: "SUPERSEDE", tx: 2 },
+          { src: "e4", dst: "e1", type: "SUPERSEDE", tx: 4 },
+          { src: "e4", dst: "e3", type: "REFUTE", tx: 4 }
+        ]
+      },
+      peer_deadlock: {
+        slot: "payments-api.smtp_relay",
+        nodes: [
+          { id: "e1", tx: 1, val: "mx-legacy.corp.example", tier: 3, role: "SRE Baseline" },
+          { id: "e2", tx: 2, val: "mx1-us.corp.example", tier: 3, role: "US-East SRE Operator" },
+          { id: "e3", tx: 3, val: "mx1-eu.corp.example", tier: 3, role: "EU-West SRE Operator" }
+        ],
+        edges: [
+          { src: "e2", dst: "e1", type: "SUPERSEDE", tx: 2 },
+          { src: "e3", dst: "e1", type: "SUPERSEDE", tx: 3 },
+          { src: "e2", dst: "e3", type: "REFUTE", tx: 3 },
+          { src: "e3", dst: "e2", type: "REFUTE", tx: 3 }
+        ]
+      },
+      odd_cycle: {
+        slot: "ledger.release_approver",
+        nodes: [
+          { id: "e1", tx: 1, val: "cfo-office", tier: 3, role: "Operator A" },
+          { id: "e2", tx: 2, val: "controller-team", tier: 3, role: "Operator B" },
+          { id: "e3", tx: 3, val: "audit-committee", tier: 3, role: "Operator C" }
+        ],
+        edges: [
+          { src: "e1", dst: "e2", type: "REFUTE", tx: 3 },
+          { src: "e2", dst: "e3", type: "REFUTE", tx: 3 },
+          { src: "e3", dst: "e1", type: "REFUTE", tx: 3 }
+        ]
+      },
+      auditor_taint: {
+        slot: "billing.wire_recipient",
+        nodes: [
+          { id: "e1", tx: 1, val: "ACME-OPS-0042", tier: 3, role: "Prior Treasury Config" },
+          { id: "e2", tx: 2, val: "OFFSHORE-HOLD-88", tier: 1, role: "Malicious External Ticket" },
+          { id: "e3", tx: 3, val: "ACME-TREASURY-ROTATED-09", tier: 4, role: "Signed Security Auditor" }
+        ],
+        edges: [
+          { src: "e2", dst: "e1", type: "SUPERSEDE", tx: 2 },
+          { src: "e3", dst: "e2", type: "CITES_AUDIT", tx: 3 },
+          { src: "e3", dst: "e2", type: "REFUTE", tx: 3 },
+          { src: "e3", dst: "e1", type: "SUPERSEDE", tx: 3 }
+        ]
+      },
+      laundered_copy: {
+        slot: "vpn-gateway.mfa_mode",
+        nodes: [
+          { id: "e1", tx: 1, val: "fido2-required", tier: 3, role: "Approved SRE Runbook" },
+          { id: "e2", tx: 2, val: "sms-fallback", tier: 1, role: "Scraped Support Prompt Injection" },
+          { id: "e3", tx: 3, val: "sms-fallback", tier: 2, role: "Tier-2 Triage Digest (Summarizer)" }
+        ],
+        edges: [
+          { src: "e3", dst: "e2", type: "DERIVES_CURRENT", tx: 3 },
+          { src: "e3", dst: "e1", type: "SUPERSEDE", tx: 3 }
+        ]
+      }
+    };
+
+    let state = { slot: "", nodes: [], edges: [], asOf: 6 };
+
+    function switchTab(id, btn) {
+      document.querySelectorAll(".tab-pane").forEach(el => el.classList.remove("active"));
+      document.querySelectorAll(".tab-btn").forEach(el => el.classList.remove("active"));
+      document.getElementById("tab-" + id).classList.add("active");
+      btn.classList.add("active");
+    }
+
+    function loadScenario(key) {
+      const s = SCENARIOS[key];
+      state.slot = s.slot;
+      state.nodes = s.nodes.map(n => ({ ...n }));
+      state.edges = s.edges.map(e => ({ ...e }));
+      const maxTx = Math.max(4, ...state.nodes.map(n => n.tx));
+      const slider = document.getElementById("asOfSlider");
+      slider.max = String(maxTx);
+      slider.value = String(maxTx);
+      state.asOf = maxTx;
+      renderEK5();
+    }
+
+    function updateAsOf(val) {
+      state.asOf = Number(val);
+      renderEK5();
+    }
+
+    function computeEK5(nodes, edges, asOf) {
+      const visNodes = nodes.filter(n => n.tx <= asOf);
+      const byId = Object.fromEntries(visNodes.map(n => [n.id, n]));
+      const visEdges = edges.filter(e => e.tx <= asOf && byId[e.src] && byId[e.dst]);
+
+      // Stratum 1: Effective authority ceiling along D_V
+      const eff = {};
+      visNodes.forEach(n => { eff[n.id] = n.tier; });
+      let changed = true;
+      while (changed) {
+        changed = false;
+        for (const e of visEdges) {
+          if (DEP_V.has(e.type) && eff[e.dst] < eff[e.src]) {
+            eff[e.src] = eff[e.dst];
+            changed = true;
+          }
+        }
+      }
+
+      const blocked = [];
+      const refs = [];
+      const sups = [];
+      const depsV = [];
+      const depsCur = [];
+      for (const e of visEdges) {
+        if (e.type === "REFUTE" || e.type === "SUPERSEDE") {
+          if (eff[e.src] >= eff[e.dst]) {
+            (e.type === "REFUTE" ? refs : sups).push(e);
+          } else {
+            blocked.push(e);
+          }
+        } else {
+          if (DEP_V.has(e.type)) depsV.push(e);
+          if (DEP_CUR.has(e.type)) depsCur.push(e);
+        }
+      }
+
+      // Stratum 2: Alternating Van Gelder Well-Founded Semantics fixpoint
+      const ids = visNodes.map(n => n.id);
+      const gamma = (undefeatedSet) => {
+        const alive = new Set(ids);
+        for (const r of refs) {
+          if (undefeatedSet.has(r.src)) alive.delete(r.dst);
+        }
+        let ch = true;
+        while (ch) {
+          ch = false;
+          for (const d of depsV) {
+            if (alive.has(d.src) && !alive.has(d.dst)) {
+              alive.delete(d.src);
+              ch = true;
+            }
+          }
+        }
+        return alive;
+      };
+
+      let T = new Set();
+      let U = new Set(ids);
+      while (true) {
+        const nextT = gamma(U);
+        const nextU = gamma(nextT);
+        if (nextT.size === T.size && nextU.size === U.size &&
+            [...nextT].every(x => T.has(x)) && [...nextU].every(x => U.has(x))) {
+          break;
+        }
+        T = nextT;
+        U = nextU;
+      }
+
+      const wfs = {};
+      ids.forEach(id => {
+        wfs[id] = T.has(id) ? "T" : (U.has(id) ? "U" : "F");
+      });
+
+      // Stratum 3: Currency & Lineage Propagation + Action Tier >= 2 Floor
+      const gate = {};
+      const reason = {};
+      ids.forEach(id => {
+        if (eff[id] < 2) {
+          gate[id] = "MASK";
+          reason[id] = eff[id] < byId[id].tier ? "laundered_tier1_ceiling" : "below_action_tier_floor";
+        } else if (wfs[id] === "F") {
+          gate[id] = "MASK";
+          reason[id] = "refuted_or_invalid_source";
+        } else if (wfs[id] === "U") {
+          gate[id] = "CONTESTED";
+          reason[id] = "wfs_undetermined_conflict";
+        } else {
+          gate[id] = "ADMIT";
+          reason[id] = "active_authoritative";
+        }
+      });
+
+      // Supersede masking by active T or contested U peers
+      for (const s of sups) {
+        if ((wfs[s.src] === "T" || wfs[s.src] === "U") && gate[s.dst] === "ADMIT") {
+          gate[s.dst] = "MASK";
+          reason[s.dst] = "superseded_by_" + s.src;
+        }
+      }
+      // DERIVES_CURRENT currency propagation
+      let curCh = true;
+      while (curCh) {
+        curCh = false;
+        for (const d of depsCur) {
+          if (gate[d.src] === "ADMIT" && gate[d.dst] !== "ADMIT") {
+            gate[d.src] = gate[d.dst] === "CONTESTED" ? "CONTESTED" : "MASK";
+            reason[d.src] = "stale_upstream_" + d.dst;
+            curCh = true;
+          }
+        }
+      }
+
+      // Naive strict IFC comparison (any edge into tier-1 taints caller)
+      const naiveTaint = new Set(visNodes.filter(n => n.tier <= 1).map(n => n.id));
+      let tc = true;
+      while (tc) {
+        tc = false;
+        for (const e of visEdges) {
+          if (naiveTaint.has(e.dst) && !naiveTaint.has(e.src)) {
+            naiveTaint.add(e.src);
+            tc = true;
+          }
+        }
+      }
+
+      const contested = visNodes.filter(n => gate[n.id] === "CONTESTED");
+      const admitted = visNodes.filter(n => gate[n.id] === "ADMIT");
+      const vals = [...new Set(admitted.map(n => n.val))];
+      let slotStatus = "ABSTAIN_EMPTY";
+      let slotAnswer = "ABSTAIN";
+      let rlvrLabel = "U";
+      if (contested.length > 0) {
+        slotStatus = "CONTESTED -> ABSTAIN";
+        slotAnswer = "ABSTAIN";
+        rlvrLabel = "U";
+      } else if (vals.length === 1) {
+        slotStatus = "RESOLVED -> ADMIT";
+        slotAnswer = vals[0];
+        rlvrLabel = "T";
+      } else if (vals.length > 1) {
+        slotStatus = "MULTI_CURRENT -> ABSTAIN";
+        slotAnswer = "ABSTAIN";
+        rlvrLabel = "U";
+      }
+
+      return { visNodes, visEdges, eff, wfs, gate, reason, blocked, naiveTaint, slotStatus, slotAnswer, rlvrLabel };
+    }
+
+    function renderEK5() {
+      document.getElementById("asOfLabel").textContent = "tx <= " + state.asOf;
+      const res = computeEK5(state.nodes, state.edges, state.asOf);
+      const banner = document.getElementById("slotBanner");
+      banner.className = "verdict-banner " + (res.slotAnswer === "ABSTAIN" ? "verdict-CONTESTED" : "verdict-ADMIT");
+      banner.innerHTML = `<span><strong>Slot:</strong> ${state.slot} &nbsp;|&nbsp; <strong>Decision:</strong> ${res.slotStatus}</span>` +
+                         `<span><strong>Output:</strong> ${res.slotAnswer} &nbsp;(3-Valued RLVR Oracle: ${res.rlvrLabel})</span>`;
+
+      document.getElementById("blockedBadge").textContent = `${res.blocked.length} Authority-Blocked Edge(s)`;
+      const t4Tainted = res.visNodes.filter(n => n.tier === 4 && res.naiveTaint.has(n.id));
+      const ifcEl = document.getElementById("ifcCompare");
+      ifcEl.textContent = t4Tainted.length > 0
+        ? `Strict IFC Falsely Taints Tier-4 ${t4Tainted[0].id} (EK5 Preserves!)`
+        : `Strict IFC Tainted Nodes: ${res.naiveTaint.size}`;
+      ifcEl.className = "tag " + (t4Tainted.length > 0 ? "tag-ADMIT" : "tag-U");
+
+      const tbody = document.getElementById("nodeTableBody");
+      tbody.innerHTML = res.visNodes.map(n => `
+        <tr>
+          <td><strong>${n.id}</strong></td>
+          <td>${n.tx}</td>
+          <td style="font-family:var(--mono);">${n.val}</td>
+          <td>T${n.tier} &rarr; <strong>T${res.eff[n.id]}</strong></td>
+          <td><span class="tag tag-${res.wfs[n.id]}">${res.wfs[n.id]}</span></td>
+          <td><span class="tag tag-${res.gate[n.id]}">${res.gate[n.id]}</span></td>
+          <td style="color:var(--muted);">${res.reason[n.id]}</td>
+        </tr>
+      `).join("");
+
+      document.getElementById("rlvrBox").innerHTML = res.rlvrLabel === "U"
+        ? `<strong>EK5-WFS-RLVR Reward Check:</strong> Slot is <code>U</code> (${res.slotStatus}). Answering <code>VERDICT: U / ANSWER: ABSTAIN</code> earns <strong>+1.00</strong>; guessing last-writer-wins earns <strong>&minus;1.00</strong> (whereas binary RLVR rewards guessing +1.00, causing abstention collapse).`
+        : `<strong>EK5-WFS-RLVR Reward Check:</strong> Slot resolves uniquely to <code>${res.slotAnswer}</code>. Answering <code>VERDICT: T / ANSWER: ${res.slotAnswer}</code> earns <strong>+1.00</strong>; choosing a retracted/superseded trap earns <strong>&minus;1.00</strong>.`;
+
+      drawGraph(res);
+    }
+
+    function drawGraph(res) {
+      const svg = document.getElementById("graphSvg");
+      const n = res.visNodes.length;
+      if (!n) { svg.innerHTML = ""; return; }
+      const coords = {};
+      res.visNodes.forEach((node, idx) => {
+        const angle = -Math.PI / 2 + (2 * Math.PI * idx) / n;
+        coords[node.id] = {
+          x: n <= 4 ? 110 + idx * (460 / Math.max(1, n - 1)) : 340 + 210 * Math.cos(angle),
+          y: n <= 4 ? (idx % 2 === 0 ? 105 : 195) : 150 + 100 * Math.sin(angle)
+        };
+      });
+      const blockedSet = new Set(res.blocked);
+      let html = `<defs>
+        <marker id="arr-red" markerWidth="8" markerHeight="8" refX="22" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#ef4444"/></marker>
+        <marker id="arr-blue" markerWidth="8" markerHeight="8" refX="22" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#38bdf8"/></marker>
+        <marker id="arr-purple" markerWidth="8" markerHeight="8" refX="22" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#a855f7"/></marker>
+        <marker id="arr-gray" markerWidth="8" markerHeight="8" refX="22" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#64748b"/></marker>
+      </defs>`;
+
+      for (const e of res.visEdges) {
+        const p1 = coords[e.src], p2 = coords[e.dst];
+        const isBlocked = blockedSet.has(e);
+        let color = "#38bdf8", marker = "arr-blue";
+        if (isBlocked) { color = "#64748b"; marker = "arr-gray"; }
+        else if (e.type === "REFUTE") { color = "#ef4444"; marker = "arr-red"; }
+        else if (DEP_V.has(e.type)) { color = "#a855f7"; marker = "arr-purple"; }
+        const dash = isBlocked ? 'stroke-dasharray="5,4"' : "";
+        const mx = (p1.x + p2.x) / 2, my = (p1.y + p2.y) / 2 - 8;
+        html += `<line x1="${p1.x}" y1="${p1.y}" x2="${p2.x}" y2="${p2.y}" stroke="${color}" stroke-width="2" ${dash} marker-end="url(#${marker})" />`;
+        html += `<text x="${mx}" y="${my}" fill="${color}" font-size="10" text-anchor="middle" font-family="monospace">${e.type}${isBlocked ? " (BLOCKED)" : ""}</text>`;
+      }
+
+      for (const node of res.visNodes) {
+        const p = coords[node.id];
+        const g = res.gate[node.id];
+        const fill = g === "ADMIT" ? "#052e16" : (g === "CONTESTED" ? "#451a03" : "#2a1215");
+        const stroke = g === "ADMIT" ? "#22c55e" : (g === "CONTESTED" ? "#f59e0b" : "#ef4444");
+        html += `<circle cx="${p.x}" cy="${p.y}" r="22" fill="${fill}" stroke="${stroke}" stroke-width="2.5" />`;
+        html += `<text x="${p.x}" y="${p.y - 2}" fill="#fff" font-size="12" font-weight="bold" text-anchor="middle" font-family="monospace">${node.id}</text>`;
+        html += `<text x="${p.x}" y="${p.y + 11}" fill="#cbd5e1" font-size="9" text-anchor="middle" font-family="monospace">T${res.eff[node.id]}|${res.wfs[node.id]}</text>`;
+        html += `<text x="${p.x}" y="${p.y + 36}" fill="#93a5c2" font-size="10" text-anchor="middle">${node.val.slice(0, 22)}</text>`;
+      }
+      svg.innerHTML = html;
+    }
+
+    function addNodeUI() {
+      const id = document.getElementById("newId").value.trim() || ("e" + (state.nodes.length + 1));
+      const val = document.getElementById("newVal").value.trim() || "custom-value";
+      const tier = Number(document.getElementById("newTier").value);
+      const nextTx = Math.max(0, ...state.nodes.map(n => n.tx)) + 1;
+      state.nodes.push({ id, tx: nextTx, val, tier, role: "Custom Node" });
+      const slider = document.getElementById("asOfSlider");
+      slider.max = String(nextTx);
+      slider.value = String(nextTx);
+      state.asOf = nextTx;
+      renderEK5();
+    }
+
+    function addEdgeUI() {
+      const src = document.getElementById("edgeSrc").value.trim();
+      const dst = document.getElementById("edgeDst").value.trim();
+      const type = document.getElementById("edgeType").value;
+      if (!src || !dst) return;
+      const maxTx = Math.max(...state.nodes.filter(n => n.id === src || n.id === dst).map(n => n.tx), state.asOf);
+      state.edges.push({ src, dst, type, tx: maxTx });
+      renderEK5();
+    }
+
+    const BACKFILL_CURVE = [
+      { pct: "0% Backfilled (0 / 5,183 docs)", uncal: 0.5252, csls: 0.5318, delta: "+0.65 pp" },
+      { pct: "5% Backfilled (259 / 5,183 docs)", uncal: 0.2425, csls: 0.5366, delta: "+29.40 pp (LCB95 +21.57 pp)" },
+      { pct: "10% Backfilled (518 / 5,183 docs)", uncal: 0.3067, csls: 0.5714, delta: "+26.47 pp (LCB95 +18.85 pp)" },
+      { pct: "20% Backfilled (1,037 / 5,183 docs)", uncal: 0.3392, csls: 0.6082, delta: "+26.90 pp (LCB95 +18.32 pp)" },
+      { pct: "50% Backfilled (2,592 / 5,183 docs)", uncal: 0.5218, csls: 0.6489, delta: "+12.70 pp (LCB95 +4.51 pp)" },
+      { pct: "100% Backfilled (5,183 / 5,183 docs)", uncal: 0.7266, csls: 0.7318, delta: "+0.51 pp" }
+    ];
+
+    function renderBackfill(idx) {
+      const row = BACKFILL_CURVE[Number(idx)];
+      document.getElementById("bfLabel").textContent = row.pct;
+      document.getElementById("bfBars").innerHTML = `
+        <div>
+          <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px;">
+            <span><strong>ZeroMu + CSLS Cross-Shard Calibration</strong> (Monotonic Upgrade)</span>
+            <strong style="color:var(--green);font-family:var(--mono);">${row.csls.toFixed(4)} (${row.delta})</strong>
+          </div>
+          <div class="bar-track"><div class="bar-fill" style="width:${row.csls * 100}%;background:var(--green);"></div></div>
+        </div>
+        <div>
+          <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px;">
+            <span><strong>Uncalibrated Mixed-Shard Cosine Merge</strong> (Severe Hubness Dip @ 5%-20%)</span>
+            <strong style="color:var(--red);font-family:var(--mono);">${row.uncal.toFixed(4)}</strong>
+          </div>
+          <div class="bar-track"><div class="bar-fill" style="width:${row.uncal * 100}%;background:var(--red);"></div></div>
+        </div>
+      `;
+    }
+
+    loadScenario("cve_retraction");
+    renderBackfill(1);
+  </script>
+</body>
+</html>

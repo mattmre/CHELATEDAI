@@ -31,6 +31,7 @@ No historical baseline, code version, whitepaper revision, or experimental artif
 | `archive/r5-exact-code-snapshot-2026-11-22/` | `10` | **Exact Python modules & scripts (`R5_EXACT_CODE_MANIFEST.json`)** as executed during R5 & R5b prior to 4-Model Panel edge-case fixes (`em4_soft_telemetry_routing.py` `761fdcc41115...`, `ek5_v3_stratified.py` `b54dadb51e1f...`, `spherical_migration_bridge.py` `437b4db73431...`, and all 6 R5/R5b runners). |
 | `archive/whitepaper-v2-pre-r5-update-backup/` | `5` | Exact v2 `bundle_registry_spec.json`, `verified_registry.json`, Whitepaper v2, HTML v2, and `build_whitepaper_assets.py` prior to Draft v3 update. |
 | `archive/whitepaper-v3-pre-panel-edits-backup/` | `9` | Exact Draft v3 (`b57b05660edf`) files as audited by the 4-Model Frontier Panel (`GPT-6.2 Astra Ultra`, `Claude Opus 5.5 Ultrathink`, `Grok 4.7 XHigh`, `Gemini 4 Neon XHigh`) prior to post-panel refinements, plus `phase2-roadmap-6week-v1.md` (`SHA-256: 4f620d90b75a0c40e933cb944170c0d821be6e8508c15b92c6737676cdd8f7b0`) prior to 10-day sprint acceleration. |
+| `archive/whitepaper-v3.1-pre-v4-backup/` | `6` | Exact Draft v3.1 (`BACKUP_MANIFEST.json`) before Draft v4.0 integration: Whitepaper v3.1 (`ecadaa26c03f...`), Presentation HTML v3.1 (`acbebb5e6ca9...`), `bundle_registry_spec.json` (`74398a5dd458...`), `verified_registry.json` (`3fef4bb716af...`), and `build_whitepaper_assets.py` (`65f38a9f7d03...`). |
 
 ---
 
@@ -69,3 +70,12 @@ Because Part IV runs were synced via `scp` onto DGX Spark worktrees whose base g
   - `scripts/run_r6_pm2_labelfree_closure.py` & `artifacts/r6_pm2_labelfree_closure/r6_pm2_labelfree_manifest.json` (`rows_csv_sha256: d99cd138b30c510ead0f7dfc9260831f6ec6c80c18384f7f68a64628a82d4bc6`, `7/7` gate checks passed, `0` `c["family"]` labels, causal EMA `mu_q = 0.9750` vs `Native = 1.0000`, `p95 = 7.589 ms` on the full 3,200-record hybrid workload).
 - **Phase-2 Wave 2 (`D1 v2` Full `N=60` 4-Node Fleet Proof + `D2` `1,000,000`-Vector `Drift-Adapter` vs `ZeroMu` + Semantic Smear):**
   - `chelated_epistemic_proposer_v2.py`, `tests/test_chelated_epistemic_proposer_v2.py`, `scripts/run_phase2_d1_v2_and_d2_1m_scale.py`, `docs/research/phase2-wave2-results-dashboard.html`, and `artifacts/phase2_wave2_d1v2_and_d2_1m/phase2_wave2_d1v2_and_d2_1m_manifest.json` (`rows_csv_sha256: 3fcbab523376d14e806c9d65e9abddd02ff9e2dd700138809e1fc846937e769c`).
+
+---
+
+## 6. Wave-4 Frontier Cross-Judgment Pre-Adjudication Vaults (`2026-11-22`)
+
+- `archive/r6-pm1b-v1-spark6724-backup/`: Exact v1 `PM-1b` (`3,534` rows) snapshot before DualGran v2 (`3,768` rows) and Wave-4 `J4` held-out architectural split.
+- `archive/r6-pm3-v1-aborted-seq-3rows/`: Archived 3-row sequential `PM-3` pilot before `ChelatedConversationalV3` sharded `N=40` execution.
+- `archive/wave4-pre-adjudication-v1-backups/`: Complete 30-file SHA-256 vault (`BACKUP_MANIFEST.json`) preserving exact v1 manifests, CSVs, and JSONL logs across `r6_pm1b_conversational_sota`, `r6_pm2_labelfree_closure`, `r6_pm4_conversational_kappa_n200`, `phase2_d2_qdrant_hnsw_csls_backfill`, `phase2_d3_multiagent_poisoning`, and `phase2_wave2_d1v2_and_d2_1m` prior to executing Wave-4 unanimous cross-judgment (`J1–J7`) updates.
+
