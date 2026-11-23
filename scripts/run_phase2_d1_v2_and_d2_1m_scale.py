@@ -276,7 +276,7 @@ for start in range(2 * n_real, N_TOTAL, chunk):
     z_low = rng.normal(0.0, 1.0, size=(m_c, 64)).astype(np.float32) @ top_basis.astype(np.float32)
     z_iso = rng.normal(0.0, 0.018, size=(m_c, 1024)).astype(np.float32)
     centered_dir = z_low + z_iso
-    centered_dir -= (centered_dir @ mu_emp.T) * (mu_emp / max(float(mu_emp @ mu_emp.T), 1e-12))
+    centered_dir -= (centered_dir @ mu_emp.T) * (mu_emp / max(float(np.sum(mu_emp * mu_emp)), 1e-12))
     centered_dir /= np.maximum(np.linalg.norm(centered_dir, axis=1, keepdims=True), 1e-12)
     sampled_r = real_radii[rng.integers(0, n_real, size=m_c)][:, None]
     vec = mu_emp + sampled_r * centered_dir

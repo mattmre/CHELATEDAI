@@ -101,6 +101,35 @@ def _query_tokens(text: str) -> Set[str]:
     return {t for t in _WORD_RE.findall((text or "").lower()) if len(t) > 1}
 
 
+class IndexedSimpleBM25:
+    """Exact inverted-index compilation of `SimpleBM25` (zero score drift, O(nnz) instead of O(N) Python dict scan)."""
+
+    def __init__(self, base_bm25: SimpleBM25) -> None:
+        self.n = base_bm25.n
+        self.postings: Dict[str, Tuple[np.ndarray, np.ndarray]] = {}
+        by_tok: Dict[str, Tuple[List[int], List[float]]] = defaultdict(lambda: ([], []))
+        for doc_i, tf_map in enumerate(base_bm25.tfs):
+            dl = float(base_bm25.dls[doc_i])
+            for tok, tf in tf_map.items():
+                idf = base_bm25.idf.get(tok)
+                if idf is None or tf <= 0:
+                    continue
+                denom = tf + base_bm25.k1 * (1.0 - base_bm25.b + base_bm25.b * (dl / base_bm25.avgdl))
+                w = float(idf * ((tf * (base_bm25.k1 + 1.0)) / denom))
+                by_tok[tok][0].append(doc_i)
+                by_tok[tok][1].append(w)
+        for tok, (idxs, ws) in by_tok.items():
+            self.postings[tok] = (np.asarray(idxs, dtype=np.int32), np.asarray(ws, dtype=np.float32))
+
+    def score(self, query: str) -> np.ndarray:
+        out = np.zeros(self.n, dtype=np.float32)
+        for qt in re.findall(r"[a-z0-9][a-z0-9_\-]*", query.lower()):
+            post = self.postings.get(qt)
+            if post is not None:
+                out[post[0]] += post[1]
+        return out
+
+
 def infer_slot_from_retrieval(
     query_text: str,
     request_tenant: str,
@@ -147,6 +176,7 @@ def select_context_unified_labelfree(
     global_eids: Sequence[str],
     global_events: Mapping[str, StratifiedEvent],
     slot_index: Mapping[Tuple[str, str, str], Sequence[str]],
+    tenant_masks: Mapping[str, np.ndarray],
     *,
     use_ek5: bool,
     ek5_active_mask: np.ndarray,
@@ -171,8 +201,10 @@ def select_context_unified_labelfree(
             "formatted_context": "(No unambiguous records retrieved for query — reply ABSTAIN.)",
         }
 
-    # Filter candidate ranking to the request tenant; EK5 arms apply `ek5_active_mask` + observable CONTESTED check
-    tenant_mask = np.array([global_events[gid].tenant == req_tenant for gid in global_eids], dtype=bool)
+    # Filter candidate ranking to the request tenant bitmap; EK5 arms apply `ek5_active_mask` + observable CONTESTED check
+    tenant_mask = tenant_masks.get(req_tenant)
+    if tenant_mask is None:
+        tenant_mask = np.zeros(len(global_eids), dtype=bool)
     if use_ek5:
         s_gids = slot_index.get(inferred_slot, ())
         act_admit = [g for g in s_gids if g in gid_set_active]
@@ -379,7 +411,13 @@ def main() -> None:
     ek5_active_mask = np.array([_is_active_admit(gid) for gid in global_eids], dtype=bool)
     gid_set_active = {gid for gid, ok in zip(global_eids, ek5_active_mask) if ok}
 
-    bm25_global = SimpleBM25(global_txts)
+    bm25_ref = SimpleBM25(global_txts)
+    bm25_global = IndexedSimpleBM25(bm25_ref)
+    assert np.allclose(bm25_global.score(redacted_queries[0]["query_text"]), bm25_ref.score(redacted_queries[0]["query_text"]), atol=1e-5)
+    tenant_masks = {
+        ten: np.array([global_events[gid].tenant == ten for gid in global_eids], dtype=bool)
+        for ten in sorted({ev.tenant for ev in global_events.values()})
+    }
     bm_cache = [bm25_global.score(qc["query_text"]) for qc in redacted_queries]
     mu_d_e1 = doc_e1.mean(axis=0, keepdims=True).astype(np.float32)
     d_e1_norms = np.maximum(np.linalg.norm(doc_e1 - mu_d_e1, axis=1).astype(np.float32), 1e-12)
@@ -409,7 +447,7 @@ def main() -> None:
         bm_v = bm25_global.score(qc["query_text"])
         d_zm_causal = causal_stream.score_single_query(q_e0[i_q])
         sel_causal = select_context_unified_labelfree(
-            qc, bm_v, d_zm_causal, global_eids, global_events, slot_index,
+            qc, bm_v, d_zm_causal, global_eids, global_events, slot_index, tenant_masks,
             use_ek5=True, ek5_active_mask=ek5_active_mask, gid_set_active=gid_set_active,
             st_global=st_global, blocked_global=blocked_global, top_k=5,
         )
@@ -434,7 +472,7 @@ def main() -> None:
             ("QA_Hybrid_Peak_ZeroMu_Flat_No_EK5", d_zm_causal, False),
         ):
             selections[arm_name][cid] = select_context_unified_labelfree(
-                qc, bm_v, d_vec, global_eids, global_events, slot_index,
+                qc, bm_v, d_vec, global_eids, global_events, slot_index, tenant_masks,
                 use_ek5=ek5_flag, ek5_active_mask=ek5_active_mask, gid_set_active=gid_set_active,
                 st_global=st_global, blocked_global=blocked_global, top_k=5,
             )
@@ -451,7 +489,7 @@ def main() -> None:
             qc = redacted_queries[i_int]
             d_sh = sh_stream.score_single_query(q_e0[i_int])
             sh_map[qc["case_id"]] = select_context_unified_labelfree(
-                qc, bm_cache[i_int], d_sh, global_eids, global_events, slot_index,
+                qc, bm_cache[i_int], d_sh, global_eids, global_events, slot_index, tenant_masks,
                 use_ek5=True, ek5_active_mask=ek5_active_mask, gid_set_active=gid_set_active,
                 st_global=st_global, blocked_global=blocked_global, top_k=5,
             )
