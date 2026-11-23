@@ -577,19 +577,26 @@ def verify_d384_cache_row_identity(
     }
     if not verify_encoder:
         return info
+    import torch
     from sentence_transformers import SentenceTransformer
 
-    enc = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2", device="cpu")
+    dev = "cuda" if torch.cuda.is_available() else "cpu"
+    enc = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2", device=dev)
+    enc.max_seq_length = 384
     regen_docs = np.asarray(
-        enc.encode(list(doc_texts), batch_size=128, normalize_embeddings=True, convert_to_numpy=True, show_progress_bar=False),
+        enc.encode(list(doc_texts), batch_size=256, normalize_embeddings=True, convert_to_numpy=True, show_progress_bar=False),
         dtype=np.float32,
     )
     regen_queries = np.asarray(
-        enc.encode(list(query_texts), batch_size=128, normalize_embeddings=True, convert_to_numpy=True, show_progress_bar=False),
+        enc.encode(list(query_texts), batch_size=256, normalize_embeddings=True, convert_to_numpy=True, show_progress_bar=False),
         dtype=np.float32,
     )
-    doc_cos = np.sum(l2_normalize(docs_low) * l2_normalize(regen_docs), axis=1)
+    docs_low_u = l2_normalize(docs_low)
+    regen_docs_u = l2_normalize(regen_docs)
+    doc_cos = np.sum(docs_low_u * regen_docs_u, axis=1)
     q_cos = np.sum(l2_normalize(queries_low) * l2_normalize(regen_queries), axis=1)
+    nn_idx = np.argmax(regen_docs_u @ docs_low_u.T, axis=1)
+    nn_exact_rate = float(np.mean(nn_idx == np.arange(docs_low.shape[0])))
     min_doc_cos = float(np.min(doc_cos))
     min_q_cos = float(np.min(q_cos))
     passed = bool(docs_finite and queries_finite and min_doc_cos >= (1.0 - eps) and min_q_cos >= (1.0 - eps))
@@ -600,10 +607,12 @@ def verify_d384_cache_row_identity(
     info.update({
         "encoder_row_check_executed": True,
         "encoder_model": "sentence-transformers/all-MiniLM-L6-v2",
+        "encoder_max_seq_length": 384,
         "min_doc_row_cosine": min_doc_cos,
         "mean_doc_row_cosine": float(np.mean(doc_cos)),
         "min_query_row_cosine": min_q_cos,
         "mean_query_row_cosine": float(np.mean(q_cos)),
+        "nn_top1_exact_row_match_rate": nn_exact_rate,
         "all_rows_cosine_ge_1_minus_1e5": passed,
     })
     return info
