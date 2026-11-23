@@ -391,7 +391,7 @@ def main() -> None:
 
     causal_stream = CausalStreamingZeroMuBridge(br_peak_polar, doc_e1, ema_alpha=0.05)
     causal_trace_steps = 0
-    causal_step0_matches_mux = bool(np.allclose(causal_stream.mu_q, br_peak_polar.mu_x, atol=1e-7))
+    causal_step0_matches_mux = bool(np.allclose(causal_stream.mu_q_ema, br_peak_polar.mu_x.reshape(1, -1), atol=1e-7))
     causal_all_updates_post_score = True
 
     cids_qa = [qc["case_id"] for qc in redacted_queries]
@@ -400,7 +400,7 @@ def main() -> None:
 
     for i_q, qc in enumerate(redacted_queries):
         cid = qc["case_id"]
-        mu_before = causal_stream.mu_q.copy()
+        mu_before = causal_stream.mu_q_ema.copy()
         # Verify score_single_query matches manual projection with pre-update `mu_before`!
         q_expected_pre = l2_normalize((q_e0[i_q : i_q + 1] - mu_before) @ br_peak_polar.Q)[0]
         expected_dense = ((doc_e1 @ q_expected_pre) - float(mu_d_e1[0] @ q_expected_pre)) / d_e1_norms
@@ -414,7 +414,7 @@ def main() -> None:
             st_global=st_global, blocked_global=blocked_global, top_k=5,
         )
         full_hybrid_causal_lat_ms.append((time.perf_counter() - t_hq0) * 1000.0)
-        mu_after = causal_stream.mu_q.copy()
+        mu_after = causal_stream.mu_q_ema.copy()
         if not np.allclose(d_zm_causal, expected_dense, atol=1e-5) or np.allclose(mu_after, mu_before, atol=1e-12):
             causal_all_updates_post_score = False
         causal_trace_steps += 1
