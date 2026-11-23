@@ -1,0 +1,440 @@
+{
+  "baseline_comparison_vs_r5b": {
+    "cohort_disclosure": "Cross-cohort comparison (R5b N=100 vs R6 N=200 stratified sample); with balanced ~0.50 YES marginals, kappa closely tracks 2*p_o - 1.",
+    "r5b_real_conv_n100_kappa": 0.7414,
+    "r5b_real_conv_n100_raw_agreement": 0.87,
+    "r6_conv_n200_kappa_delta_vs_r5b": 0.0986
+  },
+  "by_stratum": {
+    "LoCoMo-300::cat_1": {
+      "ci95": [
+        0.7368,
+        1.0
+      ],
+      "cohens_kappa": 0.9196,
+      "degenerate_marginals": false,
+      "n_items": 25,
+      "raw_agreement": 0.96
+    },
+    "LoCoMo-300::cat_2": {
+      "ci95": [
+        0.6032,
+        1.0
+      ],
+      "cohens_kappa": 0.8837,
+      "degenerate_marginals": false,
+      "n_items": 25,
+      "raw_agreement": 0.96
+    },
+    "LoCoMo-300::cat_4": {
+      "ci95": [
+        0.4444,
+        1.0
+      ],
+      "cohens_kappa": 0.7458,
+      "degenerate_marginals": false,
+      "n_items": 25,
+      "raw_agreement": 0.88
+    },
+    "LoCoMo-300::cat_5_abstention": {
+      "ci95": [
+        1.0,
+        1.0
+      ],
+      "cohens_kappa": 1.0,
+      "degenerate_marginals": false,
+      "n_items": 25,
+      "raw_agreement": 1.0
+    },
+    "LongMemEval-S::knowledge-update": {
+      "ci95": [
+        0.0,
+        1.0
+      ],
+      "cohens_kappa": 0.7671,
+      "degenerate_marginals": false,
+      "n_items": 17,
+      "raw_agreement": 0.9412
+    },
+    "LongMemEval-S::multi-session": {
+      "ci95": [
+        0.3885,
+        1.0
+      ],
+      "cohens_kappa": 0.7463,
+      "degenerate_marginals": false,
+      "n_items": 17,
+      "raw_agreement": 0.8824
+    },
+    "LongMemEval-S::single-session-assistant": {
+      "ci95": [
+        0.3307,
+        1.0
+      ],
+      "cohens_kappa": 0.7424,
+      "degenerate_marginals": false,
+      "n_items": 17,
+      "raw_agreement": 0.8824
+    },
+    "LongMemEval-S::single-session-preference": {
+      "ci95": [
+        0.6047,
+        1.0
+      ],
+      "cohens_kappa": 0.8811,
+      "degenerate_marginals": false,
+      "n_items": 17,
+      "raw_agreement": 0.9412
+    },
+    "LongMemEval-S::single-session-user": {
+      "ci95": [
+        0.0,
+        1.0
+      ],
+      "cohens_kappa": 0.4783,
+      "degenerate_marginals": false,
+      "n_items": 16,
+      "raw_agreement": 0.8125
+    },
+    "LongMemEval-S::temporal-reasoning": {
+      "ci95": [
+        0.2308,
+        1.0
+      ],
+      "cohens_kappa": 0.7091,
+      "degenerate_marginals": false,
+      "n_items": 16,
+      "raw_agreement": 0.875
+    }
+  },
+  "conversational_n200": {
+    "ci95": [
+      0.7587,
+      0.9099
+    ],
+    "cluster_stratified_ci95": [
+      0.7535,
+      0.9122
+    ],
+    "cohens_kappa": 0.84,
+    "confusion": {
+      "both_no": 92,
+      "both_yes": 92,
+      "judge_a_no_judge_b_yes": 8,
+      "judge_a_yes_judge_b_no": 8
+    },
+    "degenerate_marginals": false,
+    "judge_a_yes_rate": 0.5,
+    "judge_b_yes_rate": 0.5,
+    "n_agree": 184,
+    "n_bootstrap": 3000,
+    "n_disagree": 16,
+    "n_items": 200,
+    "raw_agreement": 0.92
+  },
+  "disagreements_count": 16,
+  "disagreements_preview": [
+    {
+      "candidate": "last weekend",
+      "dataset": "LoCoMo-300",
+      "gold": "The weekend before 22 July 2023",
+      "item_id": "LOC_loc_2_46_M4f_soft_telemetry_fallback",
+      "nemotron_grade": 0,
+      "qwen_grade": 1,
+      "stratum": "cat_2"
+    },
+    {
+      "candidate": "The photo is from a forest near my hometown.",
+      "dataset": "LoCoMo-300",
+      "gold": "near his hometown",
+      "item_id": "LOC_loc_4_145_M4g_ek5_soft_telemetry_recency",
+      "nemotron_grade": 1,
+      "qwen_grade": 0,
+      "stratum": "cat_4"
+    },
+    {
+      "candidate": "John participated in a marching event for veterans' rights.",
+      "dataset": "LoCoMo-300",
+      "gold": "Petition, march, party, visiting veterans hospital, 5K charity run",
+      "item_id": "LOC_loc_2_37_M4f_soft_telemetry_fallback",
+      "nemotron_grade": 0,
+      "qwen_grade": 1,
+      "stratum": "cat_1"
+    },
+    {
+      "candidate": "nature really chilled me out",
+      "dataset": "LoCoMo-300",
+      "gold": "fresh air, peacefulness, cozy cabin surrounded by mountains and forests",
+      "item_id": "LOC_loc_8_88_M4f_soft_telemetry_fallback",
+      "nemotron_grade": 0,
+      "qwen_grade": 1,
+      "stratum": "cat_4"
+    },
+    {
+      "candidate": "Dave and Calvin agree on the value of pursuing their passions and supporting each other's creative endeavors.",
+      "dataset": "LoCoMo-300",
+      "gold": "It's fulfilling and motivating",
+      "item_id": "LOC_loc_9_140_M4e_minimal_pair_split",
+      "nemotron_grade": 1,
+      "qwen_grade": 0,
+      "stratum": "cat_4"
+    },
+    {
+      "candidate": "Yellow dress and a pair of matching earrings.",
+      "dataset": "LongMemEval-S",
+      "gold": "a yellow dress",
+      "item_id": "LME_66f24dbb_M1_hybrid_flat",
+      "nemotron_grade": 1,
+      "qwen_grade": 0,
+      "stratum": "single-session-user"
+    },
+    {
+      "candidate": "You initially planted 5 tomato plants. I don't have information about chili pepper plants in the conversation.",
+      "dataset": "LongMemEval-S",
+      "gold": "The information provided is not enough. You mentioned planting 5 plants for tomatoes but you did not mention chili peppe",
+      "item_id": "LME_6456829e_abs_M1_hybrid_flat",
+      "nemotron_grade": 0,
+      "qwen_grade": 1,
+      "stratum": "multi-session"
+    },
+    {
+      "candidate": "The conversation does not provide information about a 30-gallon tank.",
+      "dataset": "LongMemEval-S",
+      "gold": "The information provided is not enough. You did not mention that you have a 30-gallon tank.",
+      "item_id": "LME_eeda8a6d_abs_M4g_ek5_soft_telemetry_recency",
+      "nemotron_grade": 0,
+      "qwen_grade": 1,
+      "stratum": "multi-session"
+    },
+    {
+      "candidate": "I currently use a lavender scented shampoo from Trader Joe's.",
+      "dataset": "LongMemEval-S",
+      "gold": "Trader Joe's",
+      "item_id": "LME_c14c00dd_M4g_ek5_soft_telemetry_recency",
+      "nemotron_grade": 1,
+      "qwen_grade": 0,
+      "stratum": "single-session-user"
+    },
+    {
+      "candidate": "To improve your slow cooker results, ensure you don't overfill the pot (leave 1-2 inches of space), avoid lifting the lid during cooking (it",
+      "dataset": "LongMemEval-S",
+      "gold": "The user would prefer responses that provide tips and advice specifically tailored to their slow cooker experiences, uti",
+      "item_id": "LME_caf03d32_M1_hybrid_flat",
+      "nemotron_grade": 1,
+      "qwen_grade": 0,
+      "stratum": "single-session-preference"
+    },
+    {
+      "candidate": "You got your guitar serviced at Rhythm Central on Main St.",
+      "dataset": "LongMemEval-S",
+      "gold": "The music shop on Main St.",
+      "item_id": "LME_22d2cb42_M4g_ek5_soft_telemetry_recency",
+      "nemotron_grade": 0,
+      "qwen_grade": 1,
+      "stratum": "knowledge-update"
+    },
+    {
+      "candidate": "Your post about vegan chili recipe (2023/03/10) happened first.",
+      "dataset": "LongMemEval-S",
+      "gold": "You posted a recipe for vegan chili on Instagram using the hashtag #FoodieAdventures first.",
+      "item_id": "LME_gpt4_68e94287_M4f_soft_telemetry_fallback",
+      "nemotron_grade": 1,
+      "qwen_grade": 0,
+      "stratum": "temporal-reasoning"
+    },
+    {
+      "candidate": "Patagonia and another company (name not specified in the excerpt).",
+      "dataset": "LongMemEval-S",
+      "gold": "Patagonia and Southwest Airlines.",
+      "item_id": "LME_a40e080f_M4f_soft_telemetry_fallback",
+      "nemotron_grade": 0,
+      "qwen_grade": 1,
+      "stratum": "single-session-assistant"
+    },
+    {
+      "candidate": "Atmospheric distillation is the primary process at the Lake Charles Refinery.",
+      "dataset": "LongMemEval-S",
+      "gold": "Atmospheric distillation, fluid catalytic cracking (FCC), alkylation, and hydrotreating.",
+      "item_id": "LME_6ae235be_M4f_soft_telemetry_fallback",
+      "nemotron_grade": 1,
+      "qwen_grade": 0,
+      "stratum": "single-session-assistant"
+    },
+    {
+      "candidate": "University of Melbourne",
+      "dataset": "LongMemEval-S",
+      "gold": "University of Melbourne in Australia",
+      "item_id": "LME_3b6f954b_M4e_minimal_pair_split",
+      "nemotron_grade": 1,
+      "qwen_grade": 0,
+      "stratum": "single-session-user"
+    },
+    {
+      "candidate": "Fixing the fence",
+      "dataset": "LongMemEval-S",
+      "gold": "The information provided is not enough. You mentioned fixing the fence but did not mention purchasing cows from Peter.",
+      "item_id": "LME_gpt4_70e84552_abs_M4g_ek5_soft_telemetry_recency",
+      "nemotron_grade": 0,
+      "qwen_grade": 1,
+      "stratum": "temporal-reasoning"
+    }
+  ],
+  "gate_checks": {
+    "all_200_strict_unambiguous_parses": true,
+    "conv_n200_cluster_ci95_lcb_ge_080": false,
+    "conv_n200_iid_ci95_lcb_ge_080": false,
+    "conv_n200_point_kappa_ge_080": true,
+    "symmetric_identical_prompt": true,
+    "zero_api_errors": true
+  },
+  "git_sha": "4dbc98bf92359f386f4b6dc523da6f63db659ebc",
+  "historical_r5b_structured_separate_rubric_do_not_pool": {
+    "note": "R5b structured Zero-Shortcut items were graded under the R5b structured rubric, NOT rubric v8; reported separately and excluded from conversational PM-4 gates.",
+    "structured_n320": {
+      "ci95": [
+        0.9803,
+        1.0
+      ],
+      "cohens_kappa": 0.9936,
+      "confusion": {
+        "both_no": 183,
+        "both_yes": 136,
+        "judge_a_no_judge_b_yes": 1,
+        "judge_a_yes_judge_b_no": 0
+      },
+      "degenerate_marginals": false,
+      "judge_a_yes_rate": 0.425,
+      "judge_b_yes_rate": 0.4281,
+      "n_agree": 319,
+      "n_bootstrap": 3000,
+      "n_disagree": 1,
+      "n_items": 320,
+      "raw_agreement": 0.9969
+    },
+    "structured_n800": {
+      "ci95": [
+        0.9718,
+        0.9949
+      ],
+      "cohens_kappa": 0.9847,
+      "confusion": {
+        "both_no": 455,
+        "both_yes": 339,
+        "judge_a_no_judge_b_yes": 6,
+        "judge_a_yes_judge_b_no": 0
+      },
+      "degenerate_marginals": false,
+      "judge_a_yes_rate": 0.4238,
+      "judge_b_yes_rate": 0.4313,
+      "n_agree": 794,
+      "n_bootstrap": 3000,
+      "n_disagree": 6,
+      "n_items": 800,
+      "raw_agreement": 0.9925
+    }
+  },
+  "judges": {
+    "judge_a_api_errors": 0,
+    "judge_a_clean_parses": "200/200",
+    "judge_a_family": "NVIDIA Nemotron-3.5-Lightning-30B-A3B-NVFP4",
+    "judge_a_host": "10.0.0.24:8801",
+    "judge_a_model_id": "nemotron-lightning",
+    "judge_a_wall_seconds": 26.4,
+    "judge_b_clean_parses": "200/200",
+    "judge_b_family": "Alibaba Qwen2.5-7B-Instruct (local RTX 3090 bfloat16)",
+    "judge_b_gen_seconds": 28.67,
+    "judge_b_load_seconds": 9.91,
+    "judge_b_model_id": "Qwen/Qwen2.5-7B-Instruct",
+    "self_judge_caveat": "Nemotron-30B also generated the R5 conversational candidate answers; Qwen2.5-7B provides the independent cross-family check, and human PM-4b remains required."
+  },
+  "locomo_n100": {
+    "ci95": [
+      0.8019,
+      0.9794
+    ],
+    "cohens_kappa": 0.8983,
+    "confusion": {
+      "both_no": 54,
+      "both_yes": 41,
+      "judge_a_no_judge_b_yes": 3,
+      "judge_a_yes_judge_b_no": 2
+    },
+    "conv_cluster_ci95": [
+      0.7891,
+      0.9788
+    ],
+    "degenerate_marginals": false,
+    "judge_a_yes_rate": 0.43,
+    "judge_b_yes_rate": 0.44,
+    "n_agree": 95,
+    "n_bootstrap": 3000,
+    "n_conversation_clusters": 10,
+    "n_disagree": 5,
+    "n_items": 100,
+    "raw_agreement": 0.95
+  },
+  "longmemeval_n100": {
+    "ci95": [
+      0.6401,
+      0.8973
+    ],
+    "cohens_kappa": 0.7762,
+    "confusion": {
+      "both_no": 38,
+      "both_yes": 51,
+      "judge_a_no_judge_b_yes": 5,
+      "judge_a_yes_judge_b_no": 6
+    },
+    "degenerate_marginals": false,
+    "judge_a_yes_rate": 0.57,
+    "judge_b_yes_rate": 0.56,
+    "n_agree": 89,
+    "n_bootstrap": 3000,
+    "n_disagree": 11,
+    "n_items": 100,
+    "raw_agreement": 0.89,
+    "stratified_ci95": [
+      0.6396,
+      0.8977
+    ]
+  },
+  "recompute_wall_seconds": 0.777,
+  "rows_csv": "r6_pm4_conversational_kappa_n200_rows.csv",
+  "rows_csv_sha256": "d5bc67e605992c22d997adf687ce18a2623fd486253116c2f4f7fed5f264d9c4",
+  "rubric_system_prompt_sha256": "ee339e13fe1d18a73c191b3e80fbb6dc61eeb0a69ab14e7532aa93242b191b0f",
+  "rubric_version": "pm4_symmetric_question_grounded_rubric_v8",
+  "sampling_distribution": {
+    "locomo_strata": {
+      "cat_1": 25,
+      "cat_2": 25,
+      "cat_4": 25,
+      "cat_5_abstention": 25
+    },
+    "longmemeval_strata": {
+      "knowledge-update": 17,
+      "multi-session": 17,
+      "single-session-assistant": 17,
+      "single-session-preference": 17,
+      "single-session-user": 16,
+      "temporal-reasoning": 16
+    }
+  },
+  "sampling_seed": "r6_pm4_conversational_kappa_n200_v1",
+  "schema_version": "r6_pm4_conversational_kappa_n200_v2_isolated",
+  "source_inputs": {
+    "locomo_csv": "artifacts/flagship1-night1/20261122-overnight-r5/spark6724/r5_s2_locomo_300_em4/r5_s2_locomo_300_em4_rows.csv",
+    "locomo_csv_sha256": "5d05745516dafc8bf85abda6a7bbce0d793c9f8cf8aeaa6a971b9271d5f323fb",
+    "longmemeval_csv": "artifacts/flagship1-night1/20261122-overnight-r5/spark6724/r5_s3_longmemeval_s_full_n500/r5_s3_longmemeval_n500_rows.csv",
+    "longmemeval_csv_sha256": "f916b357b8d479af878e54daa7a8ce14591c6c3ca4bd1791825a1de7ac579b15",
+    "structured_r5b_csv": "artifacts/flagship1-night1/20261122-r5b-completion/spark6724/r5b_s4_pm4_cross_family_2x2/r5b_s4_pm4_2x2_matrix_rows.csv",
+    "structured_r5b_csv_sha256": "1b71ff4f0ea633c51fa9d42738c06225c1bb3ded68fea7d3ff8b9fa93ef4acc7"
+  },
+  "telemetry": {
+    "cuda_available": true,
+    "cuda_device": "NVIDIA GeForce RTX 3090",
+    "peak_rss_mib": 710.16,
+    "peak_vram_mib": 0.0
+  },
+  "timestamp": "2026-11-22T21:00:37.107902",
+  "wall_seconds": 70.0
+}

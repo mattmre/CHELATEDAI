@@ -1,0 +1,12 @@
+{
+  "artifact_hashes": {
+    "lme_n40_checkpoint.jsonl": "2686f20f006dedec8c10ba5bcac06f4357d8aef7bbd6788311084eef3f666208",
+    "lme_n40_stages.jsonl": "d1fb17702be0fff6debf889c3e7f259658b2589f66b708a3cdbd0ae58a49c386",
+    "r6_pm3_manifest.json": "168c48e7153702ae3d683f275ae1c1b1909cf9c2bebf8cea7af1de913a4039ad"
+  },
+  "bundle_id": "r6_pm3_fair_rawtext_n100",
+  "git_sha": "",
+  "manifest_file": "r6_pm3_manifest.json",
+  "manifest_sha256": "168c48e7153702ae3d683f275ae1c1b1909cf9c2bebf8cea7af1de913a4039ad",
+  "schema_version": "report_receipt_v4_0"
+}

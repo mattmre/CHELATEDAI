@@ -233,6 +233,79 @@ def extract_key_metrics(bundles_by_id: Dict[str, Dict[str, Any]]) -> Dict[str, A
             m = bundles_by_id[r5_id]["_manifest_obj"]
             obs[r5_id] = {k: v for k, v in m.items() if k != "coupled_retrieval_cells"}
 
+    if "r6_pm1b_conversational_sota" in bundles_by_id and bundles_by_id["r6_pm1b_conversational_sota"]["present"]:
+        m = bundles_by_id["r6_pm1b_conversational_sota"]["_manifest_obj"]
+        obs["r6_pm1b_conversational_sota"] = {
+            "wall_seconds": m.get("wall_seconds"),
+            "n_rows": m.get("n_rows"),
+            "assignment_gates_pass": m.get("assignment_gates_pass"),
+            "checks": m.get("checks"),
+            "j4_heldout_checks": m.get("primary_held_out_confirmatory", {}).get("j4_heldout_checks"),
+            "frozen_j4_config": m.get("primary_held_out_confirmatory", {}).get("frozen_j4_config"),
+            "j4_attribution_and_shortcut_disclosure": m.get("j4_attribution_and_shortcut_disclosure"),
+        }
+
+    if "r6_pm2_labelfree_closure" in bundles_by_id and bundles_by_id["r6_pm2_labelfree_closure"]["present"]:
+        m = bundles_by_id["r6_pm2_labelfree_closure"]["_manifest_obj"]
+        obs["r6_pm2_labelfree_closure"] = m
+
+    if "r6_pm3_fair_rawtext_n100" in bundles_by_id and bundles_by_id["r6_pm3_fair_rawtext_n100"]["present"]:
+        m = bundles_by_id["r6_pm3_fair_rawtext_n100"]["_manifest_obj"]
+        obs["r6_pm3_fair_rawtext_n100"] = {
+            "live_n40_executed": m.get("live_n40_executed"),
+            "pm3_closed_lcb95_gt_0": m.get("pm3_closed_lcb95_gt_0"),
+            "n100": m.get("n100"),
+            "n60_arms": m.get("n60", {}).get("arms"),
+        }
+
+    if "r6_pm4_conversational_kappa_n200" in bundles_by_id and bundles_by_id["r6_pm4_conversational_kappa_n200"]["present"]:
+        m = bundles_by_id["r6_pm4_conversational_kappa_n200"]["_manifest_obj"]
+        obs["r6_pm4_conversational_kappa_n200"] = {
+            "conversational_n200": m.get("conversational_n200"),
+            "baseline_comparison_vs_r5b": m.get("baseline_comparison_vs_r5b"),
+            "by_stratum": m.get("by_stratum"),
+        }
+
+    if "phase2_d1_4node_local_fleet_proof" in bundles_by_id and bundles_by_id["phase2_d1_4node_local_fleet_proof"]["present"]:
+        m = bundles_by_id["phase2_d1_4node_local_fleet_proof"]["_manifest_obj"]
+        obs["phase2_d1_4node_local_fleet_proof"] = {
+            "wall_seconds": m.get("wall_seconds"),
+            "arm_summaries": m.get("arm_summaries"),
+        }
+
+    if "phase2_wave2_d1v2_and_d2_1m" in bundles_by_id and bundles_by_id["phase2_wave2_d1v2_and_d2_1m"]["present"]:
+        m = bundles_by_id["phase2_wave2_d1v2_and_d2_1m"]["_manifest_obj"]
+        obs["phase2_wave2_d1v2_and_d2_1m"] = m
+
+    if "phase2_d2_qdrant_hnsw_csls_backfill" in bundles_by_id and bundles_by_id["phase2_d2_qdrant_hnsw_csls_backfill"]["present"]:
+        m = bundles_by_id["phase2_d2_qdrant_hnsw_csls_backfill"]["_manifest_obj"]
+        doms = []
+        for d in m.get("domains", []):
+            doms.append({k: v for k, v in d.items() if k != "per_query_ndcg"})
+        obs["phase2_d2_qdrant_hnsw_csls_backfill"] = {
+            "encoder_4096": m.get("encoder_4096"),
+            "requested_domains": m.get("requested_domains"),
+            "domains": doms,
+        }
+
+    if "phase2_d3_multiagent_poisoning" in bundles_by_id and bundles_by_id["phase2_d3_multiagent_poisoning"]["present"]:
+        m = bundles_by_id["phase2_d3_multiagent_poisoning"]["_manifest_obj"]
+        obs["phase2_d3_multiagent_poisoning"] = {
+            "wall_s": m.get("wall_s"),
+            "honesty": m.get("honesty"),
+            "j6_disjoint_template_and_complete_linkage_ablation": m.get("j6_disjoint_template_and_complete_linkage_ablation"),
+            "B3_summary": {
+                k: v
+                for k, v in m.get("metrics", {}).get("per_defense", {}).get("B3_Unbridged_CrossSpace_EK5v3", {}).items()
+                if k != "per_family"
+            },
+            "B4_summary": {
+                k: v
+                for k, v in m.get("metrics", {}).get("per_defense", {}).get("B4_Chelated_ZeroMu_EK5v3_DualProvenance", {}).items()
+                if k != "per_family"
+            },
+        }
+
     return obs
 
 
@@ -256,7 +329,7 @@ def build_registry(*, allow_gitignored_raw_missing: bool = False) -> Dict[str, A
     observations = extract_key_metrics(bundles_by_id)
     present_count = sum(1 for b in verified_bundles if b["present"])
     payload: Dict[str, Any] = {
-        "schema_version": "verified_registry_v3_1",
+        "schema_version": "verified_registry_v4_0",
         "release_status": spec["release_status"],
         "pristine_mirror": pristine,
         "part_iv_code_provenance": spec.get("part_iv_code_provenance", {}),
@@ -308,6 +381,24 @@ def validate_publication_documents(registry: Dict[str, Any]) -> Tuple[bool, List
             errors.append(f"{label} missing 4-Model Panel verified independent WFS oracle count 353,105")
         if "0.9667" not in doc or "0.695" not in doc:
             errors.append(f"{label} missing 4-Model Panel disclosures (C2b paraphrase 0.9667 & PM-2 Query0W/CAR 0.695)")
+        # Wave-4 J7 mandatory 2025-2026 comparator & scope-boundary checks
+        for req_tok in (
+            "2509.23471",
+            "2510.13406",
+            "2606.24322",
+            "2611.25361",
+            "2606.26511",
+            "2604.17073",
+            "2506.09038",
+            "2609.27517",
+            "2505.12540",
+            "assignment_gates_pass",
+            "-0.0572",
+            "0.8400",
+            "16.84%",
+        ):
+            if req_tok not in doc:
+                errors.append(f"{label} missing Wave-4 J7 mandatory citation/disclosure token '{req_tok}'")
         # Check every present bundle manifest SHA prefix appears in BOTH Whitepaper and HTML ledgers
         for b in registry["bundles"]:
             if b["present"] and b["manifest_sha256"][:12] not in doc:

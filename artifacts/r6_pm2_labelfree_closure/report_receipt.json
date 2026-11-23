@@ -1,0 +1,11 @@
+{
+  "artifact_hashes": {
+    "r6_pm2_labelfree_manifest.json": "eaf3fbad25d07f761fdbdea74a6bf8fef7fdab576ca9056b5b8b15d2e6e945c2",
+    "r6_pm2_labelfree_qa_rows.csv": "90c0b3f55a699dfd003bbea09d6baadd328480a9fd6ab68d2ebe151ff423601e"
+  },
+  "bundle_id": "r6_pm2_labelfree_closure",
+  "git_sha": "4e9ef117088255c4f9b77140fc31d1b8019ecb2f",
+  "manifest_file": "r6_pm2_labelfree_manifest.json",
+  "manifest_sha256": "eaf3fbad25d07f761fdbdea74a6bf8fef7fdab576ca9056b5b8b15d2e6e945c2",
+  "schema_version": "report_receipt_v4_0"
+}

@@ -1,0 +1,13 @@
+{
+  "artifact_hashes": {
+    "d2_4096d_per_query_ndcg.csv": "516d6f8b20a2284a48b1eeb7bf3638dff3614ada5c21dd09c943c5b49d3faecb",
+    "d2_4096d_per_query_ndcg_local_exact.csv": "516d6f8b20a2284a48b1eeb7bf3638dff3614ada5c21dd09c943c5b49d3faecb",
+    "d2_4096d_qdrant_manifest.json": "8edbc4df0e76b0703d37b169fa9098cb159f1acd7bab4f7d82ff0c667983e087",
+    "d2_4096d_qdrant_manifest_local_exact.json": "b04547dc762dcfcbe536ce41a384cfab8d583155003d8e13fc73a878d77f37dc"
+  },
+  "bundle_id": "phase2_d2_qdrant_hnsw_csls_backfill",
+  "git_sha": "",
+  "manifest_file": "d2_4096d_qdrant_manifest.json",
+  "manifest_sha256": "8edbc4df0e76b0703d37b169fa9098cb159f1acd7bab4f7d82ff0c667983e087",
+  "schema_version": "report_receipt_v4_0"
+}

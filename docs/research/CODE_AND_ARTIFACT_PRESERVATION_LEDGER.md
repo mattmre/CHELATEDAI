@@ -77,5 +77,6 @@ Because Part IV runs were synced via `scp` onto DGX Spark worktrees whose base g
 
 - `archive/r6-pm1b-v1-spark6724-backup/`: Exact v1 `PM-1b` (`3,534` rows) snapshot before DualGran v2 (`3,768` rows) and Wave-4 `J4` held-out architectural split.
 - `archive/r6-pm3-v1-aborted-seq-3rows/`: Archived 3-row sequential `PM-3` pilot before `ChelatedConversationalV3` sharded `N=40` execution.
-- `archive/wave4-pre-adjudication-v1-backups/`: Complete 30-file SHA-256 vault (`BACKUP_MANIFEST.json`) preserving exact v1 manifests, CSVs, and JSONL logs across `r6_pm1b_conversational_sota`, `r6_pm2_labelfree_closure`, `r6_pm4_conversational_kappa_n200`, `phase2_d2_qdrant_hnsw_csls_backfill`, `phase2_d3_multiagent_poisoning`, and `phase2_wave2_d1v2_and_d2_1m` prior to executing Wave-4 unanimous cross-judgment (`J1–J7`) updates.
+- `archive/wave4-pre-adjudication-v1-backups/`: Complete SHA-256 vault (`BACKUP_MANIFEST.json`) preserving exact v1 manifests, CSVs, and JSONL logs across `r6_pm1b_conversational_sota`, `r6_pm2_labelfree_closure`, `r6_pm4_conversational_kappa_n200`, `phase2_d2_qdrant_hnsw_csls_backfill`, `phase2_d3_multiagent_poisoning`, and `phase2_wave2_d1v2_and_d2_1m`, plus `docs_v3_1/` byte-exact pre-Wave-4 `v3.1` copies of `bundle_registry_spec.json`, `verified_registry.json`, `doctoral-whitepaper-chelated-memory-and-spherical-migration-2026-11-21.md`, and `chelated-memory-spherical-migration-whitepaper-presentation.html`, prior to executing Wave-4 unanimous cross-judgment (`J1–J7`) updates and compiling v4.0.
+
 

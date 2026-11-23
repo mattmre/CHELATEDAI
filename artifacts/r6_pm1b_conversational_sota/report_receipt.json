@@ -1,0 +1,12 @@
+{
+  "artifact_hashes": {
+    "r6_pm1b_ku_echo_fixture.json": "86b5b6d7ae2f00e09100698193fd81f63f1774304e2e6853944c565e3446864c",
+    "r6_pm1b_manifest.json": "54a9fc475fb90b29dacd33e5bfe4471ee7c50e5bf94b99686fdf617122f8c150",
+    "r6_pm1b_rows.csv": "18ace29b298a96e15fb6b5125ab6cb20e480f1b24b826a709a9bc124ad5e822d"
+  },
+  "bundle_id": "r6_pm1b_conversational_sota",
+  "git_sha": "",
+  "manifest_file": "r6_pm1b_manifest.json",
+  "manifest_sha256": "54a9fc475fb90b29dacd33e5bfe4471ee7c50e5bf94b99686fdf617122f8c150",
+  "schema_version": "report_receipt_v4_0"
+}

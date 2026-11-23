@@ -1,5 +1,5 @@
 {
-  "schema_version": "bundle_registry_spec_v3_1",
+  "schema_version": "bundle_registry_spec_v4_0",
   "release_status": "PRE-RELEASE / HUMAN AUDIT & CLEAN-RERUN GATES PENDING",
   "pristine_mirror_manifest": "archive/pristine-b37e6a55-exact/PRISTINE_MANIFEST.json",
   "part_iv_code_provenance": {
@@ -261,6 +261,78 @@
       "manifest": "r5b_s4_manifest.json",
       "receipt": "report_receipt.json",
       "notes": "PM-4a 2x2 cross-family {Nemotron-3.5-30B, Qwen2.5-7B-Instruct} generator x judge matrix: C4_v4=1.0000 in all 4 cells; ZS 800-row Cohen kappa=0.9847, combined 900-row kappa=0.9570 (CI95=[0.9376, 0.9751] >= 0.85 PASS), open-ended 100-item real-conv sub-slice kappa=0.7414 (87.0% raw agreement) disclosed; 100-item human audit sheet prepared (PM-4b human grading pending)."
+    },
+    {
+      "id": "r6_pm1b_conversational_sota",
+      "part": "PART_V_PHASE2_AND_WAVE4_ADJUDICATION",
+      "role": "WAVE4_ADJUDICATED_PRIMARY",
+      "dir": "artifacts/r6_pm1b_conversational_sota",
+      "manifest": "r6_pm1b_manifest.json",
+      "receipt": "report_receipt.json",
+      "notes": "Wave-4 J4 single frozen held-out shot (LoCoMo convs 5..9 N=150 + LME SHA-256 test half N=251, 7,080 total rows, 0 API errors): held-out LoCoMo clean J4_Arch=0.4400 (+6.00 pp vs Chelated_v3=0.3800, +4.00 pp vs Legacy_MiniLM=0.4000, +7.33 pp vs Flat_BGEM3_TokenMatched=0.3667; stress 0.4267 vs 0.4133 Legacy_MiniLM); held-out LME clean J4_Arch=0.5777 vs Legacy_MiniLM=0.5139 (+6.37 pp, Tango LCB95=+0.33 pp; EK5 clean delta=0.00 pp, gain from DualGran BGE-M3); held-out KU R5 stress Chelated_v3=0.7949 vs J4_Arch=0.7179; assignment_gates_pass=false disclosed."
+    },
+    {
+      "id": "r6_pm2_labelfree_closure",
+      "part": "PART_V_PHASE2_AND_WAVE4_ADJUDICATION",
+      "role": "WAVE4_ADJUDICATED_PRIMARY",
+      "dir": "artifacts/r6_pm2_labelfree_closure",
+      "manifest": "r6_pm2_labelfree_manifest.json",
+      "receipt": "report_receipt.json",
+      "notes": "Wave-4 J2 zero-oracle causal coupled PM-2 (N=200, 3,200 records, 0 oracle metadata reads verified from runtime trace, unified selector across all arms): CausalEMA_EK5v3=0.9750 (5-seed shuffle mean=0.9750, std=0.0; full-hybrid p95=1.672 ms <= 25 ms) vs Native_E1=1.0000 (mean_delta=-0.0250, bootstrap LCB95=-0.0500 PASS, Tango LCB95=-0.0572 disclosed), +0.3500 over Composed_CAR=0.6250 (LCB95=+0.2750), +0.8400 over Flat_No_EK5=0.1350 (LCB95=+0.7899), DualFit_1Float_FixedMuX=0.9300."
+    },
+    {
+      "id": "r6_pm3_fair_rawtext_n100",
+      "part": "PART_V_PHASE2_AND_WAVE4_ADJUDICATION",
+      "role": "WAVE4_ADJUDICATED_PRIMARY",
+      "dir": "artifacts/r6_pm3_fair_rawtext_n100",
+      "manifest": "r6_pm3_manifest.json",
+      "receipt": "report_receipt.json",
+      "notes": "Stage R6 PM-3 fair identical-raw-text N=100 (60 enterprise raw-prose + 40 live LongMemEval-S full-timeline items): Chelated=0.7300 (73/100; N=60 0.9000, N=40 0.4750 at 4,311 tokens) vs mem0ai 2.2.1 infer=True=0.6900 (69/100; N=60 0.8500, N=40 0.4500 at 307,574 tokens = 71.3x more tokens; +4.00 pp, bootstrap LCB95=-6.00 pp, Tango LCB95=-6.60 pp -> pm3_closed_lcb95_gt_0=false) and mem0ai infer=False=0.4400 (+29.00 pp, bootstrap LCB95=+18.00 pp, Tango LCB95=+17.53 pp)."
+    },
+    {
+      "id": "r6_pm4_conversational_kappa_n200",
+      "part": "PART_V_PHASE2_AND_WAVE4_ADJUDICATION",
+      "role": "WAVE4_ADJUDICATED_PRIMARY",
+      "dir": "artifacts/r6_pm4_conversational_kappa_n200",
+      "manifest": "r6_pm4_conversational_kappa_manifest.json",
+      "receipt": "report_receipt.json",
+      "notes": "Wave-4 J5 isolated N=200 conversational cross-family Cohen kappa (Nemotron-3.5-30B vs Qwen2.5-7B-Instruct under v8 rubric, dual YES+NO rejected, 200/200 clean parses): kappa=0.8400 (raw agreement 92.0%, iid CI95=[0.7587, 0.9099], 10-conv LoCoMo cluster + stratified CI95=[0.7535, 0.9122] crossing 0.80 disclosed; PM-4b human sheet pending)."
+    },
+    {
+      "id": "phase2_d1_4node_local_fleet_proof",
+      "part": "PART_V_PHASE2_AND_WAVE4_ADJUDICATION",
+      "role": "PHASE2_FLEET_BASELINE",
+      "dir": "artifacts/phase2_d1_4node_local_fleet_proof",
+      "manifest": "phase2_d1_4node_fleet_manifest.json",
+      "receipt": "report_receipt.json",
+      "notes": "Phase-2 Wave-1 4-node fleet proof (N=60 CVE/SEC/SRE raw prose across RTX 3090 + 3x DGX Spark GB10): Small-3B Chelated v1=0.8333 & Hetero 384->1024 ZeroMu Chelated v1=0.8333 vs 30B Bare=0.7167, 30B Thinking=0.5833 (37.7s), Mem0 RawQdrant=0.4500."
+    },
+    {
+      "id": "phase2_wave2_d1v2_and_d2_1m",
+      "part": "PART_V_PHASE2_AND_WAVE4_ADJUDICATION",
+      "role": "WAVE4_ADJUDICATED_PRIMARY",
+      "dir": "artifacts/phase2_wave2_d1v2_and_d2_1m",
+      "manifest": "phase2_wave2_d1v2_and_d2_1m_manifest.json",
+      "receipt": "report_receipt.json",
+      "notes": "Wave-2 D1 v2 N=60 4-node fleet (Small-3B Chelated v2=0.9333 at 95.6 ms, Mid-7B=0.9167, Hetero ZeroMu=0.9000 vs 30B Bare=0.7167 [LCB95=+8.33 pp] & Mem0 LiveInfer FullN60=0.8500 [non-significant LCB95=-6.67/-5.00 pp]) + Wave-4 J3 radius-matched 1M-vector (99.5% synthetic) D2-1M migration & semantic-smear suite (ZeroMu+EK5v3 Recall@10=0.5500 vs QueryAffine=0.3800 [two-sided CI95=+0.100..+0.240] & Uncentered Procrustes=0.5400 [CI95=-0.030..+0.055], 0.0% stale resurrection vs 60.0-76.5% unmasked, 1,023x smaller 3.82 MiB sidecar + shared centroid alongside 3,906 MiB raw index)."
+    },
+    {
+      "id": "phase2_d2_qdrant_hnsw_csls_backfill",
+      "part": "PART_V_PHASE2_AND_WAVE4_ADJUDICATION",
+      "role": "WAVE4_ADJUDICATED_PRIMARY",
+      "dir": "artifacts/phase2_d2_qdrant_hnsw_csls_backfill",
+      "manifest": "d2_4096d_qdrant_manifest.json",
+      "receipt": "report_receipt.json",
+      "notes": "Wave-4 J3 D2-4096d SciFact 384->4096 Qwen3-8B live Qdrant HNSW-DOT + calibrated backfill (FiQA/NFCorpus MISSING_4096; row identity verified min_doc_cos=0.99999994, min_q_cos=1.0, nn_top1=1.0): in-domain ZeroMu=0.5252 (qrels-blind hash-anchor fit=0.5270) vs Uncentered Procrustes=0.5352 (-1.0 pp, LCB95=-3.43 pp at std=0.038) & QueryAffine=0.4881; HNSW-DOT exact-top-10 recall 99.77% mean / 90% min @ ef=32 & 100.0% @ ef=64; CSLS beats uncalibrated, DEV z-score, AND RRF(k=60) with two-sided LCB95>0 at 10%, 20% (+6.83 pp vs z-score, +10.18 pp vs RRF, +26.90 pp vs raw), and 50% backfill."
+    },
+    {
+      "id": "phase2_d3_multiagent_poisoning",
+      "part": "PART_V_PHASE2_AND_WAVE4_ADJUDICATION",
+      "role": "WAVE4_ADJUDICATED_PRIMARY",
+      "dir": "artifacts/phase2_d3_multiagent_poisoning",
+      "manifest": "phase2_d3_manifest.json",
+      "receipt": "report_receipt.json",
+      "notes": "Wave-4 J6 Demo D3 controlled co-designed 4-agent (384d+768d) anti-poisoning bus (N=80=4x20, trusted signed tiers) + offline 1,000-episode (10,827-node) EK5-WFS-RLVR verifier audit: B4 ASR=0.0 (0/80, Clopper-Pearson UCB95=4.51% overall, 16.84% per N=20 family), task acc=77/80 (96.25%) vs paired unbridged B3=56/80 (70.00%), F4 auditor survival=20/20 vs 0/20 strict IFC (B2), B0 ASR=67.5%, B1 ASR=52.5%; includes disjoint-template complete- vs single-linkage ablation + offline WFS verifier (0/10,827 mismatches; no trained GRPO checkpoint yet)."
     }
   ]
 }

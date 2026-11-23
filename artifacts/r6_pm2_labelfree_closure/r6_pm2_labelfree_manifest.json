@@ -1,53 +1,99 @@
 {
   "arm_accuracy_n200": {
     "QA_Hybrid_Native_E1_EK5v3": 1.0,
-    "QA_Hybrid_Peak_Composed_CAR_EK5v3": 0.635,
+    "QA_Hybrid_Peak_Composed_CAR_EK5v3": 0.625,
     "QA_Hybrid_Peak_ZeroMu_CausalEMA_EK5v3": 0.975,
-    "QA_Hybrid_Peak_ZeroMu_DualAdap_EK5v3": 0.975,
-    "QA_Hybrid_Peak_ZeroMu_Flat_No_EK5": 0.125,
-    "QA_Hybrid_Peak_ZeroMu_Query0W_CenteredTarget_EK5v3": 0.93
+    "QA_Hybrid_Peak_ZeroMu_DualAdap_BatchDiagnostic_EK5v3": 0.975,
+    "QA_Hybrid_Peak_ZeroMu_DualFit_1Float_FixedMuX_EK5v3": 0.93,
+    "QA_Hybrid_Peak_ZeroMu_Flat_No_EK5": 0.135
   },
   "calibration_scifact_qrels_sha256": "2b6445e2db1b90e3ce277a9014cdbababbf85b54365c87ff838c7d70fe995c3b",
+  "ema_query_order_5seed_shuffle": {
+    "max": 0.975,
+    "mean": 0.975,
+    "min": 0.975,
+    "per_seed_accuracy": {
+      "seed_11": 0.975,
+      "seed_22": 0.975,
+      "seed_33": 0.975,
+      "seed_44": 0.975,
+      "seed_55": 0.975
+    },
+    "std": 0.0
+  },
   "full_3200_record_hybrid_causal_query_latency_ms": {
-    "max_ms": 8.717,
+    "max_ms": 2.111,
     "n_queries": 200,
-    "p50_ms": 5.388,
-    "p95_ms": 7.589
+    "p50_ms": 1.25,
+    "p95_ms": 1.672
   },
   "gate_checks": {
     "causal_bridged_minus_car_lcb95_gt_0": true,
     "causal_bridged_minus_native_bootstrap_lcb95_ge_minus_5pp": true,
     "causal_bridged_minus_native_point_ge_minus_3pp": true,
+    "causal_bridged_minus_native_tango_lcb95_ge_minus_5pp": false,
     "ek5_echo_stress_gain_ge_20pp": true,
     "full_hybrid_3200rec_query_p95_le_25ms": true,
-    "strictly_causal_online_ema_mu_q": true,
-    "zero_family_labels_used": true
+    "strictly_causal_online_ema_mu_q_verified_from_trace": true,
+    "unified_selector_across_all_arms_including_flat": true,
+    "zero_api_errors": true,
+    "zero_oracle_metadata_reads_verified_from_trace": true
   },
-  "git_sha": "f1ecb05264667195cba3ea5c8c83448248351c0c",
+  "git_sha": "4e9ef117088255c4f9b77140fc31d1b8019ecb2f",
   "paired_comparisons": {
     "CausalEMA_EK5_vs_Flat_No_EK5": {
-      "bootstrap_lcb95": 0.8,
-      "mean_delta": 0.85
+      "bootstrap_lcb95": 0.7899,
+      "bootstrap_ucb95": 0.89,
+      "mean_delta": 0.84,
+      "tango_lcb95": 0.7829
     },
     "CausalEMA_vs_Composed_CAR": {
-      "bootstrap_lcb95": 0.265,
-      "mean_delta": 0.34,
-      "tango_lcb95": 0.2678
+      "bootstrap_lcb95": 0.275,
+      "bootstrap_ucb95": 0.42,
+      "mean_delta": 0.35,
+      "tango_lcb95": 0.2772
     },
     "CausalEMA_vs_Native_E1": {
       "bootstrap_lcb95": -0.05,
+      "bootstrap_ucb95": -0.005,
       "mean_delta": -0.025,
-      "tango_lcb95": -0.0572
+      "tango_lcb95": -0.0572,
+      "tango_ucb95": -0.0057
     }
   },
-  "pm2_labelfree_gate_passed": true,
-  "rows_csv_sha256": "d99cd138b30c510ead0f7dfc9260831f6ec6c80c18384f7f68a64628a82d4bc6",
-  "schema_version": "r6_pm2_labelfree_causal_closure_v1",
+  "pm2_bootstrap_gate_passed": true,
+  "pm2_strict_all_checks_passed": false,
+  "rows_csv_sha256": "90c0b3f55a699dfd003bbea09d6baadd328480a9fd6ab68d2ebe151ff423601e",
+  "runtime_provenance_audit": {
+    "causal_all_200_steps_scored_before_ema_update": true,
+    "causal_step0_equals_anchor_mu_x": true,
+    "ceiling_and_tango_disclosure": "Native_E1_EK5v3 sits at or near the 1.000 ceiling on this structured corpus; check both bootstrap_lcb95 and exact Tango score LCB95.",
+    "forbidden_oracle_key_attempts": 0,
+    "non_causal_diagnostic_arms": [
+      "QA_Hybrid_Peak_ZeroMu_DualAdap_BatchDiagnostic_EK5v3"
+    ],
+    "redacted_guard_self_test_passed": true,
+    "redacted_query_allowed_keys_accessed": [
+      "case_id",
+      "query_text",
+      "request_tenant"
+    ],
+    "sidecar_disclosure": "DualFit_1Float_FixedMuX and CausalEMA both use the 4-byte per-doc ||d_j - mu_d||_2 sidecar plus shared D-float mu_d.",
+    "slot_inference_exact_rate_by_arm": {
+      "QA_Hybrid_Native_E1_EK5v3": 1.0,
+      "QA_Hybrid_Peak_Composed_CAR_EK5v3": 0.575,
+      "QA_Hybrid_Peak_ZeroMu_CausalEMA_EK5v3": 1.0,
+      "QA_Hybrid_Peak_ZeroMu_DualAdap_BatchDiagnostic_EK5v3": 1.0,
+      "QA_Hybrid_Peak_ZeroMu_DualFit_1Float_FixedMuX_EK5v3": 0.995,
+      "QA_Hybrid_Peak_ZeroMu_Flat_No_EK5": 1.0
+    }
+  },
+  "schema_version": "r6_pm2_zero_oracle_causal_closure_v2",
   "telemetry": {
     "cuda_available": true,
     "cuda_device": "NVIDIA GeForce RTX 3090",
-    "peak_rss_mib": 1310.49,
+    "peak_rss_mib": 1270.48,
     "peak_vram_mib": 4388.45
   },
-  "wall_seconds": 100.64
+  "wall_seconds": 89.42
 }

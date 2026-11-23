@@ -414,13 +414,13 @@
               </tr>
             </thead>
             <tbody>
-              <tr><td>10</td><td>86.16% mean / 50.0% min</td><td><span class="tag tag-MASK">NO</span></td><td>2.68 &times; 10<sup>&minus;7</sup></td></tr>
-              <tr><td><strong>32 (Default)</strong></td><td><strong>99.77% mean / 90.0% min</strong></td><td><span class="tag tag-ADMIT">YES</span></td><td>2.68 &times; 10<sup>&minus;7</sup></td></tr>
-              <tr><td><strong>64</strong></td><td><strong>100.00% mean / 100.0% min</strong></td><td><span class="tag tag-ADMIT">YES</span></td><td>2.68 &times; 10<sup>&minus;7</sup></td></tr>
+              <tr><td>10</td><td>86.40% mean / 60.0% min (nDCG@10 = 0.5160)</td><td><span class="tag tag-MASK">NO</span></td><td>2.68 &times; 10<sup>&minus;7</sup></td></tr>
+              <tr><td><strong>32 (Default)</strong></td><td><strong>99.88% (Wave-3: 99.77%) mean / 90.0% min (nDCG@10 = 0.5252)</strong></td><td><span class="tag tag-ADMIT">YES</span></td><td>2.68 &times; 10<sup>&minus;7</sup></td></tr>
+              <tr><td><strong>64</strong></td><td><strong>100.00% mean / 100.0% min (nDCG@10 = 0.5252)</strong></td><td><span class="tag tag-ADMIT">YES</span></td><td>2.68 &times; 10<sup>&minus;7</sup></td></tr>
             </tbody>
           </table>
           <div class="formula-box" style="margin-top:14px;">
-            Why Drift-Adapter Query-Affine Collapses at 1M Docs: uncentered legacy docs share an anisotropic mean cone &mu;_X (&Vert;&mu;_X&Vert; &approx; 0.34). Without subtracting c(q) = &lang;q_rot, &mu;_X&rang; and rescaling by s(x), cone-aligned hubs dominate top-10 across 1,000,000 distractors (0.00% R@10 vs 29.00% ZeroMu).
+            Radius-Matched 1M Migration &amp; Smear (99.5% synthetic cone, 3.82 MiB sidecar + 4 KB shared centroid alongside 3,906 MiB raw index): ZeroMu + EK5 v3 reaches <strong>55.00% Recall@10</strong> (0.00% SRR@5) vs <strong>38.00% Drift-Adapter Query-Affine</strong> (+17.0 pp, two-sided CI95 [+10.0, +24.0 pp]) and 54.00% Uncentered Procrustes (CI95 [&minus;3.0, +5.5 pp]).
           </div>
         </div>
       </div>
@@ -447,35 +447,35 @@
               <td>RTX 3090 (24 GB) + Spark #1/#2</td>
               <td>30B Bare: 71.67% | 30B Thinking: 58.33% (37.7s) | Mem0: 85.00% (4.58s write)</td>
               <td><strong>Small-3B Chelated v2: 93.33%</strong> (95.6 ms) | 30B Chelated v2: 91.67%</td>
-              <td><span class="tag tag-ADMIT">+21.67 pp vs Bare (93.3% ABSTAIN)</span></td>
+              <td><span class="tag tag-ADMIT">+21.67 pp vs Bare (vs Mem0 LCB95 &minus;5.0 pp)</span></td>
             </tr>
             <tr>
-              <td><strong>Demo D1 Cross-Node ZeroMu</strong> (384d &rarr; 1024d)</td>
-              <td>RTX 3090 &rarr; DGX Spark #1</td>
-              <td>Composed CAR Linear Adapter: 70.00%</td>
-              <td><strong>ZeroMu + Chelated v2: 90.00%</strong> (vs 91.67% Native)</td>
-              <td><span class="tag tag-ADMIT">+20.00 pp over CAR (&minus;1.67 pp vs Native)</span></td>
+              <td><strong>Stage R6 PM-3</strong> (Fair Identical Raw-Text N=100)</td>
+              <td>Spark #1 + Spark #3 + Qdrant</td>
+              <td>Mem0 infer=True: 69.00% (307.6k tok/LME) | infer=False: 44.00%</td>
+              <td><strong>Chelated v2/v3: 73.00%</strong> (4.3k tok/LME = 71.3&times; fewer tokens)</td>
+              <td><span class="tag tag-U">+4.0 pp vs infer=True (LCB &minus;6.0 pp); +29.0 pp vs False</span></td>
             </tr>
             <tr>
-              <td><strong>Stage R6 PM-2</strong> (Zero-Label Online Query EMA)</td>
-              <td>Local + Spark #1</td>
-              <td>Composed CAR: 63.50% | Flat No-EK5: 12.50%</td>
-              <td><strong>Strictly Causal Online EMA &mu;_q: 97.50%</strong> (5.39 ms p50)</td>
-              <td><span class="tag tag-ADMIT">PASS (7/7 Gates, 0 Family Labels)</span></td>
+              <td><strong>Stage R6 PM-2</strong> (Zero-Oracle Online Query EMA)</td>
+              <td>RTX 3090 + Spark #2</td>
+              <td>Native E1: 100.0% (ceiling) | CAR: 62.50% | Flat No-EK5: 13.50%</td>
+              <td><strong>Strictly Causal Online EMA &mu;_q: 97.50%</strong> (1.67 ms p95)</td>
+              <td><span class="tag tag-U">Boot LCB &minus;5.0 pp PASS (Tango &minus;5.72 pp); +35.0 pp vs CAR</span></td>
             </tr>
             <tr>
               <td><strong>Demo D2-1M + D2-4096d</strong> (Qdrant HNSW + CSLS)</td>
-              <td>DGX Spark #2 + Qdrant Server</td>
-              <td>Drift-Adapter @ 1M: 0.00% | Raw Mixed-Shard @ 5%: 0.2425</td>
-              <td><strong>ZeroMu @ 1M (99% synth): 29.0% (0.0% SRR@5)</strong> | <strong>CSLS 5%: 0.5366</strong></td>
-              <td><span class="tag tag-ADMIT">+29.40 pp vs Raw Mix | 99.77% / 100% HNSW @ ef=32/64</span></td>
+              <td>RTX 3090 + Spark #1 Qdrant</td>
+              <td>QueryAffine @ 1M: 38.0% | DEV z-score @ 20%: 0.5399 | RRF: 0.5064</td>
+              <td><strong>ZeroMu @ 1M (99.5% synth): 55.0% (0.0% SRR@5)</strong> | <strong>CSLS 20%: 0.6082</strong></td>
+              <td><span class="tag tag-ADMIT">+6.83 pp vs z-score (LCB +3.29) | +10.18 pp vs RRF</span></td>
             </tr>
             <tr>
               <td><strong>Stage R6 PM-4a</strong> (Cross-Family Judge &kappa;, N=200 Conv)</td>
               <td>DGX Spark #2 (30B) &times; RTX 3090 (7B)</td>
-              <td>R5b Unanchored Conv N=100 &kappa; = 0.7414 (diff cohort)</td>
-              <td><strong>N=200 Conv &kappa; = 0.8400</strong> (92.0% agree; CI95 [0.759, 0.910])</td>
-              <td><span class="tag tag-ADMIT">Substantial &kappa; = 0.8400 (PM-4b Human Sheet Pending)</span></td>
+              <td>R5b Conv N=100 &kappa; = 0.7414 (cross-cohort)</td>
+              <td><strong>N=200 Conv &kappa; = 0.8400</strong> (92.0% agree; Cluster CI95 [0.7535, 0.9122])</td>
+              <td><span class="tag tag-U">&kappa; = 0.8400 (CI crosses 0.80; PM-4b Human Sheet Pending)</span></td>
             </tr>
           </tbody>
         </table>

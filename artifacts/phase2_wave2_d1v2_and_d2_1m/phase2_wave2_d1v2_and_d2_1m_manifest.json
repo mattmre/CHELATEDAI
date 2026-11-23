@@ -224,85 +224,100 @@
   "d2_1m_vector_migration_and_semantic_smear": {
     "arms_1m": {
       "DriftAdapter_QueryAffine_EK5v3_Masked": {
-        "active_recall_at_10": 0.0,
-        "query_p50_ms": 16.726,
-        "query_p95_ms": 17.668,
+        "active_recall_at_10": 0.38,
+        "query_p50_ms": 16.777,
+        "query_p95_ms": 17.761,
         "stale_resurrection_rate_at_5": 0.0
       },
       "DriftAdapter_QueryAffine_Unmasked": {
-        "active_recall_at_10": 0.0,
-        "query_p50_ms": 16.643,
-        "query_p95_ms": 17.658,
-        "stale_resurrection_rate_at_5": 0.0
+        "active_recall_at_10": 0.37,
+        "query_p50_ms": 16.734,
+        "query_p95_ms": 17.661,
+        "stale_resurrection_rate_at_5": 0.2
       },
       "DriftAdapter_Uncentered_Procrustes_EK5v3_Masked": {
-        "active_recall_at_10": 0.3,
-        "query_p50_ms": 16.725,
-        "query_p95_ms": 17.695,
+        "active_recall_at_10": 0.54,
+        "query_p50_ms": 16.782,
+        "query_p95_ms": 17.918,
         "stale_resurrection_rate_at_5": 0.0
       },
       "DriftAdapter_Uncentered_Procrustes_Unmasked": {
-        "active_recall_at_10": 0.295,
-        "query_p50_ms": 16.659,
-        "query_p95_ms": 17.61,
-        "stale_resurrection_rate_at_5": 0.285
+        "active_recall_at_10": 0.49,
+        "query_p50_ms": 16.731,
+        "query_p95_ms": 17.898,
+        "stale_resurrection_rate_at_5": 0.6
       },
       "Native_1024d_BGEM3_EK5v3_Masked": {
-        "active_recall_at_10": 0.59,
-        "query_p50_ms": 16.722,
-        "query_p95_ms": 17.707,
+        "active_recall_at_10": 0.795,
+        "query_p50_ms": 16.786,
+        "query_p95_ms": 17.734,
         "stale_resurrection_rate_at_5": 0.0
       },
       "Native_1024d_BGEM3_Unmasked": {
-        "active_recall_at_10": 0.575,
-        "query_p50_ms": 16.682,
-        "query_p95_ms": 17.794,
-        "stale_resurrection_rate_at_5": 0.495
+        "active_recall_at_10": 0.78,
+        "query_p50_ms": 16.732,
+        "query_p95_ms": 17.804,
+        "stale_resurrection_rate_at_5": 0.765
       },
       "ZeroMu_4ByteSidecar_CausalEMA_EK5v3_Masked": {
-        "active_recall_at_10": 0.29,
-        "query_p50_ms": 16.87,
-        "query_p95_ms": 17.866,
+        "active_recall_at_10": 0.55,
+        "query_p50_ms": 16.861,
+        "query_p95_ms": 17.857,
         "stale_resurrection_rate_at_5": 0.0
       },
       "ZeroMu_4ByteSidecar_CausalEMA_Unmasked": {
-        "active_recall_at_10": 0.265,
-        "query_p50_ms": 16.792,
-        "query_p95_ms": 17.744,
-        "stale_resurrection_rate_at_5": 0.195
+        "active_recall_at_10": 0.51,
+        "query_p50_ms": 16.805,
+        "query_p95_ms": 17.807,
+        "stale_resurrection_rate_at_5": 0.6
       }
+    },
+    "corpus_composition_disclosure": {
+      "n_real_scifact_docs": 5183,
+      "n_retracted_adversarial_twins": 5183,
+      "n_synthetic_cone_matched_background": 989634,
+      "real_centered_radius_mean": 0.7465,
+      "synthetic_centered_radius_mean": 0.7465,
+      "synthetic_fraction": 0.9948,
+      "v1_queryaffine_zero_diagnostic": "In v1, synthetic background noise std=0.008 produced a tighter cone around mu_emp (~0.35 radius vs ~0.68 real) and ridge=5.0 over-shrunk (q-mu_x)W relative to +mu_y, causing uncentered +mu_y QueryAffine top-10 to fill with synthetic vectors (0.0 recall). Matching empirical radii and reg=1e-2 restores realistic QueryAffine recall while preserving ZeroMu's 4-byte sidecar advantage."
     },
     "d_source": 384,
     "d_target": 1024,
-    "extrapolated_full_1m_bge_m3_reembed_hours_on_spark": 9.1,
+    "extrapolated_full_1m_bge_m3_reembed_hours_on_spark": 9.08,
     "memory_overhead_reduction_factor": 1023.0,
     "n_resident_vectors": 1000000,
     "paired_bootstrap_1m_n200": {
       "ZeroMu_vs_DriftAdapter_QueryAffine": {
-        "lcb95": 0.24,
-        "mean_delta_recall10": 0.29
+        "lcb95_onesided_5pct": 0.11,
+        "lcb95_twosided": 0.1,
+        "mean_delta_recall10": 0.17,
+        "ucb95_twosided": 0.24
       },
       "ZeroMu_vs_DriftAdapter_Uncentered_Procrustes": {
-        "lcb95": -0.035,
-        "mean_delta_recall10": -0.01
+        "lcb95_onesided_5pct": -0.025,
+        "lcb95_twosided": -0.03,
+        "mean_delta_recall10": 0.01,
+        "ucb95_twosided": 0.055
       }
     },
     "raw_index_bytes": 4096000000,
     "raw_index_mib": 3906.2,
-    "schema_version": "phase2_d2_1m_scale_migration_and_smear_v1",
-    "wall_seconds": 297.5,
-    "zeromu_1m_sidecar_scan_sec": 1.675,
-    "zeromu_bridge_fit_ms": 67.35,
+    "schema_version": "phase2_d2_1m_scale_migration_and_smear_v2_radius_matched",
+    "shared_centroid_bytes": 4096,
+    "wall_seconds": 228.02,
+    "zeromu_1m_sidecar_scan_sec": 1.267,
+    "zeromu_bridge_fit_ms": 64.11,
     "zeromu_sidecar_bytes": 4004096,
     "zeromu_sidecar_mib": 3.819
   },
   "git_sha": "f1ecb05264667195cba3ea5c8c83448248351c0c",
+  "git_sha_d2_j3_recheck": "4e9ef117088255c4f9b77140fc31d1b8019ecb2f",
   "local_telemetry": {
     "cuda_available": true,
     "cuda_device": "NVIDIA GeForce RTX 3090",
     "peak_rss_mib": 1647.41,
     "peak_vram_mib": 16571.34
   },
-  "schema_version": "phase2_wave2_d1v2_full60_and_d2_1m_scale_v1",
+  "schema_version": "phase2_wave2_d1v2_full60_and_d2_1m_scale_v2",
   "wall_seconds": 310.15
 }
