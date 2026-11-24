@@ -25,7 +25,7 @@ import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 
 import numpy as np
 
@@ -34,6 +34,13 @@ REPO_ROOT = WORKBENCH_DIR.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
+from demo_workbench.compliance_copilot_engine import (  # noqa: E402
+    CopilotService,
+    handle_copilot_get,
+    handle_copilot_post,
+    is_copilot_path,
+    set_service,
+)
 from ek5_v3_stratified import (  # noqa: E402
     EdgeAttestation,
     StratifiedEvent,
@@ -584,9 +591,29 @@ def get_wave6_summary() -> Dict[str, Any]:
     }
 
 
-def dispatch_api_request(method: str, path: str, body_bytes: bytes = b"") -> Tuple[int, str, bytes]:
+def dispatch_api_request(
+    method: str,
+    path: str,
+    body_bytes: bytes = b"",
+    *,
+    headers: Optional[Mapping[str, Any]] = None,
+    public_only: bool = False,
+) -> Tuple[int, str, bytes]:
     """Pure-function HTTP router testable directly in pytest without opening sockets."""
-    clean_path = urlparse(path).path
+    parsed = urlparse(path)
+    clean_path = parsed.path
+    query_params = parse_qs(parsed.query)
+
+    if is_copilot_path(clean_path):
+        if method == "GET":
+            return handle_copilot_get(clean_path, query_params, headers)
+        if method == "POST":
+            return handle_copilot_post(clean_path, query_params, headers, body_bytes)
+        return 405, "application/json", json.dumps({"error": "method_not_allowed", "message": "Method not allowed."}).encode("utf-8")
+
+    if public_only:
+        return 404, "application/json", json.dumps({"error": "not_found", "message": "Not found."}).encode("utf-8")
+
     if method == "GET" and clean_path in ("/", "/index.html"):
         idx_file = WORKBENCH_DIR / "index.html"
         return 200, "text/html; charset=utf-8", idx_file.read_bytes()
@@ -617,15 +644,29 @@ def dispatch_api_request(method: str, path: str, body_bytes: bytes = b"") -> Tup
 
 
 class WorkbenchRequestHandler(BaseHTTPRequestHandler):
+    public_only: bool = False
+
     def _handle(self, method: str) -> None:
+        clean_path = urlparse(self.path).path
+        copilot_req = is_copilot_path(clean_path)
         length = int(self.headers.get("Content-Length", "0") or "0")
         body = self.rfile.read(length) if length > 0 else b""
-        status, ctype, data = dispatch_api_request(method, self.path, body)
+        status, ctype, data = dispatch_api_request(
+            method,
+            self.path,
+            body,
+            headers=dict(self.headers.items()),
+            public_only=bool(self.public_only),
+        )
         self.send_response(status)
         self.send_header("Content-Type", ctype)
         self.send_header("Content-Length", str(len(data)))
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        if copilot_req:
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("X-Content-Type-Options", "nosniff")
+        else:
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Access-Control-Allow-Headers", "Content-Type")
         self.end_headers()
         self.wfile.write(data)
 
@@ -636,6 +677,15 @@ class WorkbenchRequestHandler(BaseHTTPRequestHandler):
         self._handle("POST")
 
     def do_OPTIONS(self) -> None:  # noqa: N802
+        clean_path = urlparse(self.path).path
+        if is_copilot_path(clean_path):
+            err_bytes = json.dumps({"error": "same_origin_only", "message": "Cross-origin requests are not supported."}).encode("utf-8")
+            self.send_response(405)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Content-Length", str(len(err_bytes)))
+            self.end_headers()
+            self.wfile.write(err_bytes)
+            return
         self.send_response(204)
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
@@ -647,9 +697,14 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Run Chelated AI Live Solution Workbench Server")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8787)
+    parser.add_argument("--public", action="store_true", help="Serve ONLY Non-NDA /copilot routes (404s internal /api/v1/*)")
+    parser.add_argument("--nda-token", default="", help="Optional NDA unlock token for /copilot NDA mode")
     args = parser.parse_args()
-    srv = ThreadingHTTPServer((args.host, args.port), WorkbenchRequestHandler)
-    print(f"Chelated Live Solution Workbench listening on http://{args.host}:{args.port}", flush=True)
+    if args.nda_token:
+        set_service(CopilotService(nda_token=args.nda_token))
+    handler_cls = type("ConfiguredWorkbenchHandler", (WorkbenchRequestHandler,), {"public_only": bool(args.public)})
+    srv = ThreadingHTTPServer((args.host, args.port), handler_cls)
+    print(f"Chelated Live Solution Workbench listening on http://{args.host}:{args.port} (public_only={args.public})", flush=True)
     srv.serve_forever()
 
 

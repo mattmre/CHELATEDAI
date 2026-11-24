@@ -1,0 +1,12 @@
+{
+  "artifact_hashes": {
+    "wave11_d6_multibackend_manifest.json": "0578d56b715d44dfa71d499217e61ccece91c291d60eefdbf9ff5bd59393612b"
+  },
+  "bundle_id": "wave11_d6_opensearch_pgvector_qdrant",
+  "generated_at_utc": "2026-11-23T20:28:17.354790+00:00",
+  "git_sha": "4fae0b77c6ae59213e24a12e89f5dd7b28405ca8",
+  "manifest_file": "wave11_d6_multibackend_manifest.json",
+  "manifest_sha256": "0578d56b715d44dfa71d499217e61ccece91c291d60eefdbf9ff5bd59393612b",
+  "schema_version": "report_receipt_v4_0",
+  "status": "COMPLETED"
+}

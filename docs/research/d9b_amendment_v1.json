@@ -1,0 +1,158 @@
+{
+  "schema_version": "wave11_d9b_amendment_v1",
+  "amendment_id": "d9b_protocol_v2_prelaunch_amendment_2026_11_24",
+  "created_date": "2026-11-24",
+  "council_consensus_record": "docs/research/council-logs/wave14-r3-final-consensus-master-plan.md",
+  "base_git_sha": "4fae0b77c6ae59213e24a12e89f5dd7b28405ca8",
+  "target_script": "scripts/run_wave11_d9_fast_extractor_and_u_grpo.py",
+  "part_a_retained_status": {
+    "status": "RETAINED_SEALED_RUN",
+    "suite_a_semantic_accuracy": 0.9667,
+    "suite_a_strict_exact_match": 0.9667,
+    "json_valid_rate": 1.0,
+    "json_valid_docs": "1020/1020",
+    "mean_ms_per_case": 2104.0,
+    "latency_gate_ms": 1500.0,
+    "latency_gate_met": false,
+    "latency_status": "latency_gate_not_met",
+    "speedup_vs_wave6_30b_extractor": 4.6,
+    "disclosure": "latency gate not met (2,104 ms vs 1,500 ms gate; 4.6x faster than 30B)"
+  },
+  "presealed_holdout_digests": {
+    "EVAL_VIRGIN_V2_sha256": "b605b4db28a677c5e75340375c41823f16e41641e99d9666e850067979b6d1a6",
+    "EVAL_WAVE6_LOOK2_sha256": "6b08233ce70b69fdd3ec5e1fabfbda8b0934e37acc48b4db96ccb89df078a4a3",
+    "eval_virgin_v2_scope": "virgin_for_grpo_arm_only",
+    "prior_baseline_exposure_note": "Always_Abstain_Baseline, Base_Qwen2.5_7B, and SFT_Qwen2.5_7B (50.00% on EVAL_VIRGIN_V2, 61.67% on EVAL_WAVE6_LOOK2) were scored in R0 Stage 1 prior to Protocol v2; zero GRPO checkpoints have ever been evaluated on EVAL_VIRGIN_V2."
+  },
+  "prior_r0_run_and_abort_forensics": {
+    "r0_hyperparameters": {
+      "seeds": [42, 137, 2026],
+      "grpo_steps": 160,
+      "learning_rate": 2e-5,
+      "beta": 0.02,
+      "lora_r": 32,
+      "lora_alpha": 64,
+      "per_device_train_batch_size": 8,
+      "gradient_accumulation_steps": 2,
+      "num_generations": 8,
+      "prompt_groups_per_step": 2,
+      "scale_rewards": "group",
+      "loss_type": "dapo",
+      "false_abstain_reward": -0.55,
+      "wrong_determinate_reward": -1.0,
+      "false_commit_on_u_reward": -1.15,
+      "expected_always_abstain_reward_balanced": -0.016667,
+      "dev_eval_steps": [40, 80, 120, 160]
+    },
+    "seed_42_dev_only_4point_history": {
+      "retired_as": "DEV_diagnostic_seed_only",
+      "eval_steps_scheduled": [40, 80, 120, 160],
+      "step_40_first_look_peak": {
+        "dev_exact_match": 0.7,
+        "dev_determinate_exact_match": 0.6852,
+        "dev_u_abstention_exact_match": 0.7308
+      },
+      "step_80_and_step_120_note": "Intermediate DEV checkpoints on the 4-point R0 schedule were observed live on Spark #2 showing progressive over-abstention drift; exact per-step JSON scalars were not persisted because seed_42 aborted prior to checkpoint write.",
+      "step_160_final": {
+        "dev_abstain_rate": 0.85,
+        "observation": "Over-abstention collapse driven structurally by FALSE_ABSTAIN_REWARD (-0.55) > WRONG_DETERMINATE_REWARD (-1.00) under group-std advantage normalization plus small prompt-group batch (2/step) and aggressive LR/KL."
+      }
+    },
+    "abort_location_and_cause": {
+      "abort_line": 2628,
+      "eval_virgin_v2_line": 2640,
+      "aborted_before_eval_virgin_v2": true,
+      "observed_diff": 0.002645,
+      "threshold": 0.0001,
+      "root_cause": "LoRA adapter weights saved in bf16 were loaded with autocast_adapter_dtype=False onto an fp32 base without casting peft_fp32.float(), causing bf16-vs-fp32 rounding difference (0.002645 >= 1e-4) in _verify_fp32_merge_and_unload_parity before line 2640 could execute."
+    }
+  },
+  "protocol_v2_bundled_specification": {
+    "protocol_version": "d9b_protocol_v2",
+    "protocol_v2_single_knob_attribution_claimed": false,
+    "attribution_disclaimer": "Protocol v2 ships 7 bundled stability, reward, parity, and holdout-hygiene fixes simultaneously; no single knob is credited causally with curing collapse.",
+    "bundled_knobs": {
+      "false_abstain_reward": -1.0,
+      "wrong_determinate_reward": -1.0,
+      "false_commit_on_u_reward": -1.15,
+      "exact_core_reward": 1.0,
+      "format_bonus_reward": 0.05,
+      "partial_verdict_mismatch_reward": 0.75,
+      "expected_always_abstain_reward_balanced": -0.316667,
+      "zero_correct_tf_group_tie_reward": -1.0,
+      "scale_rewards": "none",
+      "loss_type": "dr_grpo",
+      "trl_runtime_verified_on_spark2": "1.18.2",
+      "grpo_steps": 60,
+      "learning_rate": 5e-6,
+      "beta": 0.05,
+      "lora_r": 16,
+      "lora_alpha": 32,
+      "per_device_train_batch_size": 8,
+      "gradient_accumulation_steps": 8,
+      "num_generations": 8,
+      "prompt_groups_seen_per_seed": 480,
+      "dev_eval_steps": [10, 20, 30, 40, 50, 60]
+    },
+    "parity_and_resume_hardening": {
+      "fp32_merge_parity_cast": "peft_fp32 = peft_fp32.float()",
+      "fp32_merge_parity_min_probes": 8,
+      "fp32_merge_parity_gate": "math.isfinite(diff) and diff < 1e-4",
+      "bf16_reload_diff_policy": "ungated_telemetry_finite_only",
+      "resume_config_digest_fields": [
+        "seed",
+        "run_steps",
+        "lr",
+        "beta",
+        "lora_r",
+        "lora_alpha",
+        "grad_accum",
+        "scale_rewards",
+        "loss_type",
+        "false_abstain_reward",
+        "script_sha256",
+        "merged_sft_sha256",
+        "amendment_sha256",
+        "grpo_split_sha256",
+        "dev_split_sha256"
+      ],
+      "stage1_sft_reuse_policy": "Reuse existing merged_sft_dir weights ONLY if double-reload parity < 1e-4 and shift vs base > 1e-4; recompute Stage-1 DEV-only checkpoint without touching EVAL_VIRGIN_V2."
+    }
+  },
+  "confirmatory_experimental_protocol": {
+    "retired_dev_diagnostic_seed": 42,
+    "confirmatory_seeds": [137, 2026, 31415],
+    "two_seed_sensitivity_subset": [137, 2026],
+    "out_of_loop_holdout_lock": {
+      "in_loop_splits_allowed": ["SFT_WARMUP", "GRPO_RL", "DEV"],
+      "post_freeze_only_splits": [
+        "EVAL_VIRGIN_V2",
+        "EVAL_WAVE6_LOOK2",
+        "d1_user_prompts_k17",
+        "d1_user_prompts_k5"
+      ],
+      "freeze_artifact": "selection_frozen.json",
+      "freeze_verification_rule": "Verify byte-for-byte SHA-256 of merged_sft_dir, all final_step and eligible best_dev adapters, script, and d9b_amendment_v1.json immediately before Stage 3 one-shot scoring; refuse to score on any mismatch."
+    },
+    "primary_endpoint": {
+      "checkpoint": "final_step@60",
+      "aggregation": "3-seed mean across (137, 2026, 31415) with 2-seed (137, 2026) mean reported alongside",
+      "holdout_split": "EVAL_VIRGIN_V2 (N=120)",
+      "metric": "exact_match",
+      "primary_contrast": "GRPO_3SeedMean_minus_SFT_7B_exact",
+      "statistical_test": "paired_bootstrap_wave6 (10000 resamples, two-sided p-value) + holm_bonferroni_stepdown across {vs SFT_7B, vs Base_7B, vs Bare_Nemotron_30B} at alpha=0.05",
+      "determinate_non_inferiority_margin": 0.03,
+      "alpha": 0.05
+    },
+    "secondary_endpoint": {
+      "checkpoint": "best_dev",
+      "role": "descriptive_secondary_only",
+      "selection_rule": "Evaluate DEV every 10 steps (10..60) alongside step=0 SFT baseline. A step>0 checkpoint is eligible ONLY if dev_determinate_exact_match >= sft_dev_det_em - 0.03. Pick highest eligible dev_exact_match (tie-break dev_mean_total_reward) strictly outperforming step=0 SFT; if no step>0 is eligible, record best_dev_status='none_eligible_fell_back_to_step0_sft' and fell_back_to_step0_sft=true using merged_sft_dir (never copy final_step into best_dev_dir)."
+    },
+    "null_result_and_retune_precommitment": {
+      "null_verdict_text": "K4 stands under Protocol v2",
+      "null_blocks_receipt_completion": false,
+      "subsequent_retune_rule": "One-shot holdout evaluation. Any further hyperparameter, reward, or selection change after scoring EVAL_VIRGIN_V2 requires minting EVAL_VIRGIN_V3 with a fresh generator seed and disjoint slot pool."
+    }
+  }
+}

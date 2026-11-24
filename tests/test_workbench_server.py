@@ -124,3 +124,27 @@ def test_live_migration_and_tco_arithmetic_identity() -> None:
     assert st_idx == 200
     assert "text/html" in ct_idx
     assert b"SearchService.KnnQuery" in raw_idx
+    assert b"/copilot" in raw_idx
+
+
+def test_copilot_forwarder_and_public_only_isolation() -> None:
+    from scripts.verify_non_nda_ip_clean import scan_text_for_ip_leaks
+
+    st_page, ct_page, raw_page = dispatch_api_request("GET", "/copilot")
+    assert st_page == 200
+    assert "text/html" in ct_page
+    assert scan_text_for_ip_leaks(raw_page.decode("utf-8"), "copilot_html") == []
+
+    st_sc, _, raw_sc = dispatch_api_request("GET", "/api/v2/copilot/scenarios?mode=non_nda")
+    assert st_sc == 200
+    assert scan_text_for_ip_leaks(raw_sc.decode("utf-8"), "copilot_scenarios") == []
+    sc_body = json.loads(raw_sc.decode("utf-8"))
+    assert len(sc_body["scenarios"]) == 3
+
+    # In --public mode, internal / and /api/v1/* must 404 while /copilot remains 200
+    st_priv, _, _ = dispatch_api_request("GET", "/api/v1/wave6/summary", public_only=True)
+    assert st_priv == 404
+    st_root, _, _ = dispatch_api_request("GET", "/", public_only=True)
+    assert st_root == 404
+    st_pub, _, _ = dispatch_api_request("GET", "/api/v2/copilot/health", public_only=True)
+    assert st_pub == 200
