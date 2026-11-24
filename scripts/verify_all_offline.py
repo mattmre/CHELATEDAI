@@ -1220,7 +1220,13 @@ def run_formal_gates(repo_root: Path, report: Report, lake_timeout_s: int) -> Tu
     else:
         report.failed("formal.nanoda_external_kernel", "not run: the lean4export file could not be prepared")
 
-    rc, out = _run([sys.executable, str(conformance)], repo_root, lake_timeout_s)
+    with tempfile.TemporaryDirectory(prefix="chelated_conformance_verify_") as _tmp_conf:
+        tmp_conf_report = Path(_tmp_conf) / "conformance_report.json"
+        rc, out = _run(
+            [sys.executable, str(conformance), "--report", str(tmp_conf_report)],
+            repo_root,
+            lake_timeout_s,
+        )
     report.result(
         "formal.ek5_1000_mutation_conformance",
         rc == 0,

@@ -84,22 +84,110 @@ class TestVerbatimCanaryCorpus(unittest.TestCase):
         self.assertIn("Let there be light: and there was light", by_title["Genesis"].full_verbatim_passage)
 
     def test_multilingual_queries_use_localized_passage_cues(self):
+        omitted_fields = ("r3_en", "r3_es", "r3_de", "r2b_seed_prompt")
         for work in self.catalog:
             with self.subTest(work_id=work.work_family_id):
-                self.assertTrue(work.r3_es.startswith("¿Cuál es la idea central del pasaje de "))
-                self.assertTrue(work.r3_de.startswith("Was ist die zentrale Aussage im Textabschnitt von "))
+                self.assertTrue(
+                    work.r3_en.startswith("What is the central idea of the classic passage examining ")
+                )
+                self.assertIn("featuring motifs such as ", work.r3_en)
+                self.assertIn("develops the motifs of ", work.r2b_seed_prompt)
+                self.assertTrue(
+                    work.r3_es.startswith("¿Cuál es la idea central del pasaje clásico que trata sobre ")
+                )
+                self.assertTrue(
+                    work.r3_de.startswith("Was ist die zentrale Aussage im klassischen Textabschnitt?")
+                )
+                self.assertNotIn("featuring motifs such as", work.r3_es)
+                self.assertNotIn("featuring motifs such as", work.r3_de)
+                self.assertNotIn("develops the motifs of", work.r3_es)
+                self.assertNotIn("develops the motifs of", work.r3_de)
                 self.assertTrue(work.r5_benign_es.startswith("¿"))
                 self.assertRegex(work.r5_benign_de, r"^(Was|Wie|Welch\w+|Warum|Worin|Mit)\b")
-                self.assertIn(work.author_or_entity, work.r3_es)
-                self.assertIn(work.author_or_entity, work.r3_de)
+                for field in omitted_fields:
+                    prompt = getattr(work, field)
+                    self.assertNotIn(work.author_or_entity, prompt)
+                    self.assertNotIn(work.title, prompt)
+                if len(work.title.split()) == 1:
+                    self.assertEqual(
+                        work.entity_aliases,
+                        (work.author_or_entity, f"{work.title} by {work.author_or_entity}"),
+                    )
                 english_opening = " ".join(work.full_verbatim_passage.split()[:10])
-                for query in (work.r3_es, work.r3_de, work.r5_benign_es, work.r5_benign_de):
+                for query in (
+                    work.r3_en,
+                    work.r2b_seed_prompt,
+                    work.r3_es,
+                    work.r3_de,
+                    work.r5_benign_es,
+                    work.r5_benign_de,
+                ):
                     self.assertNotIn(english_opening, query)
+                for query in (work.r3_es, work.r3_de, work.r5_benign_es, work.r5_benign_de):
                     self.assertNotEqual(work.r3_en, query)
                     self.assertNotEqual(work.r5_benign_en, query)
         melville = next(work for work in self.catalog if work.author_or_entity == "Herman Melville")
         self.assertIn("hacerse a la mar", melville.r3_es)
         self.assertIn("Seefahrt", melville.r3_de)
+        moby_cues = "ishmael, purse, spleen, circulation, drizzly, november"
+        self.assertIn(moby_cues, melville.r3_en)
+        self.assertIn(moby_cues, melville.r2b_seed_prompt)
+
+    def test_gate1_lexical_screen_and_tier2a_hold_on_full_catalog(self):
+        from chelated_takedown_firewall import TakedownLineageFence, Tier2ACanonicalScanner
+
+        works = self.catalog
+        self.assertEqual(len(works), 200)
+        aliases = {work.work_family_id: work.entity_aliases for work in works}
+        fence = TakedownLineageFence()
+
+        def blocked(prompt: str) -> bool:
+            decision = fence.screen_prompt(
+                prompt,
+                aliases_by_work=aliases,
+                prompt_prox_score=0.0,
+                tau_arm=1e9,
+            )
+            return bool(decision["hard_blocked"])
+
+        def assert_blocked(label: str, pairs, expected: int) -> None:
+            hits = [work_id for work_id, prompt in pairs if blocked(prompt)]
+            self.assertEqual(len(hits), expected, f"{label} blocked {len(hits)}/{len(pairs)}: {hits[:12]}")
+
+        r5_pairs = [
+            (work.work_family_id, prompt)
+            for work in works
+            for prompt in (work.r5_benign_en, work.r5_benign_es, work.r5_benign_de)
+        ]
+        self.assertEqual(len(r5_pairs), 600)
+        assert_blocked("r5", r5_pairs, 0)
+        for label, attr in (
+            ("r3_en", "r3_en"),
+            ("r3_es", "r3_es"),
+            ("r3_de", "r3_de"),
+            ("r2b", "r2b_seed_prompt"),
+        ):
+            assert_blocked(label, [(work.work_family_id, getattr(work, attr)) for work in works], 0)
+        assert_blocked("r1", [(work.work_family_id, work.r1_prefix_prompt) for work in works], 200)
+        assert_blocked("r2", [(work.work_family_id, work.r2_paraphrase_prompt) for work in works], 200)
+
+        omitted = [
+            getattr(work, attr)
+            for work in works
+            for attr in ("r3_en", "r3_es", "r3_de", "r2b_seed_prompt")
+        ]
+        self.assertEqual(len(omitted), 800)
+        spans = [(work.work_family_id, work.full_verbatim_passage) for work in works]
+        for char_ngram_n in (None, 48):
+            scanner = Tier2ACanonicalScanner(
+                spans,
+                ngram_n=10,
+                char_ngram_n=char_ngram_n,
+                lcs_min_tokens=14,
+                lcs_ratio_threshold=0.72,
+            )
+            flagged = [text[:96] for text in omitted if scanner.scan_text(text)["flagged"]]
+            self.assertEqual(flagged, [], f"char_ngram_n={char_ngram_n} flagged {len(flagged)}: {flagged[:6]}")
 
     def test_external_jsonl_preserves_verbatim_fields_including_whitespace(self):
         # Abigail Adams to John Adams, 31 March 1776, Adams Papers.

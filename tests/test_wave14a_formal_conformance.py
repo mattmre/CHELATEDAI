@@ -247,9 +247,11 @@ class TestDifferentialConformance(unittest.TestCase):
         self.assertLessEqual(set(d["nonsemantic_differences_lean_vs_inc"]), {"pos_cyc", "reason"})
 
     def test_report_serialises_with_lf_endings(self):
-        out = FORMAL / "conformance_report.json"
-        rc.write_report(self.report, out)
-        raw = out.read_bytes()
+        # Write outside formal/ so a test run cannot refresh elapsed_seconds in the sealed report.
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / "conformance_report.json"
+            rc.write_report(self.report, out)
+            raw = out.read_bytes()
         self.assertNotIn(b"\r", raw)
         self.assertEqual(json.loads(raw.decode("utf-8"))["schema_version"], rc.SCHEMA_VERSION)
 
@@ -388,7 +390,7 @@ class TestBinaryResolutionAndNanodaParsing(unittest.TestCase):
         with self._env(), mock.patch.object(Path, "home", return_value=self.home):
             err = io.StringIO()
             with contextlib.redirect_stderr(err):
-                code = rc.main(["--run-nanoda"])
+                code = rc.main(["--run-nanoda", "--report", str(self.home / "not-the-sealed-report.json")])
             self.assertEqual(code, 2)
             self.assertIn("NOT_RUN", err.getvalue())
 
