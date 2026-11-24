@@ -235,12 +235,29 @@ class MeteredVllmOpenAIGenericClient(OpenAIGenericClient):
         props = schema.get("properties")
         return isinstance(props, dict) and len(props) == 0 and not schema.get("$defs")
 
+    @classmethod
+    def _cap_unbounded_arrays(cls, node: Any, max_items: int = 24) -> Any:
+        if isinstance(node, dict):
+            out = {k: cls._cap_unbounded_arrays(v, max_items) for k, v in node.items()}
+            if out.get("type") == "array" and "maxItems" not in out:
+                out["maxItems"] = max_items
+            return out
+        if isinstance(node, list):
+            return [cls._cap_unbounded_arrays(item, max_items) for item in node]
+        return node
+
     def _build_response_format(self, response_model: Optional[type[BaseModel]]) -> Dict[str, Any]:
         if response_model is None or self.structured_output_mode == "json_object":
             return {"type": "json_object"}
         if self._is_empty_object_model(response_model):
             return {"type": "json_object"}
-        return super()._build_response_format(response_model)
+        fmt = super()._build_response_format(response_model)
+        if fmt.get("type") == "json_schema" and isinstance(fmt.get("json_schema"), dict):
+            js = dict(fmt["json_schema"])
+            if "schema" in js:
+                js["schema"] = self._cap_unbounded_arrays(js["schema"], max_items=24)
+            return {**fmt, "json_schema": js}
+        return fmt
 
     def _append_schema(self, messages: Sequence[Message], response_model: Optional[type[BaseModel]]) -> None:
         if response_model is None or not messages:
@@ -337,6 +354,7 @@ class MeteredVllmOpenAIGenericClient(OpenAIGenericClient):
         retry_messages = self._copied_messages(openai_messages)
         retry_messages[-1] = {"role": retry_messages[-1]["role"], "content": content}
         request_model = model or self.model or VLLM_MODEL
+        retry_extra = {"repetition_penalty": 1.05}
         try:
             retry_resp = await self.client.chat.completions.create(
                 model=request_model,
@@ -344,6 +362,7 @@ class MeteredVllmOpenAIGenericClient(OpenAIGenericClient):
                 temperature=0.0,
                 max_tokens=max_tokens,
                 response_format=retry_format,
+                extra_body=retry_extra,
             )
         except Exception as exc:
             if (
@@ -362,6 +381,7 @@ class MeteredVllmOpenAIGenericClient(OpenAIGenericClient):
                     temperature=0.0,
                     max_tokens=max_tokens,
                     response_format=retry_format,
+                    extra_body=retry_extra,
                 )
             else:
                 raise
@@ -373,7 +393,8 @@ class MeteredVllmOpenAIGenericClient(OpenAIGenericClient):
         parsed = json.loads(retry_repaired)
         if not isinstance(parsed, dict):
             raise RuntimeError(f"vLLM retry JSON object required, got {type(parsed).__name__}")
-        response_model.model_validate(parsed)
+        if not self._is_empty_object_model(response_model):
+            response_model.model_validate(parsed)
         return parsed
 
     async def _generate_response(
@@ -439,57 +460,32 @@ class MeteredVllmOpenAIGenericClient(OpenAIGenericClient):
         except json.JSONDecodeError as exc:
             parse_error = exc
         object_ok = parse_error is None and isinstance(parsed, dict)
-        saw_schema_problem = (not object_ok) or n_rep > 0
         needs_validation_retry = False
-        if (
-            saw_schema_problem
-            and self.structured_output_mode == "json_schema"
-            and not self._schema_fallback_locked
-        ):
-            if object_ok:
-                self.schema_fallback_count += 1
-                self.structured_output_mode = "json_object"
-                if response_model is not None and not self._is_empty_object_model(response_model):
-                    try:
-                        response_model.model_validate(parsed)
-                    except ValidationError:
-                        logger.warning(
-                            "graphiti vLLM repaired JSON failed validation; retrying as json_object "
-                            "(schema_fallback_count=%s, json_repair_count=%s)",
-                            self.schema_fallback_count,
-                            self.json_repair_count,
-                        )
-                        needs_validation_retry = True
-                    else:
-                        logger.warning(
-                            "graphiti vLLM kept repaired JSON and locked json_object "
-                            "(schema_fallback_count=%s, json_repair_count=%s)",
-                            self.schema_fallback_count,
-                            self.json_repair_count,
-                        )
-                        return parsed
-                else:
-                    logger.warning(
-                        "graphiti vLLM kept repaired JSON and locked json_object "
-                        "(schema_fallback_count=%s, json_repair_count=%s)",
-                        self.schema_fallback_count,
-                        self.json_repair_count,
-                    )
-                    return parsed
-            else:
-                return await self._switch_to_json_object(
-                    messages, response_model, effective_max_tokens, model_size, model
+        if not object_ok:
+            if response_model is not None:
+                logger.warning(
+                    "graphiti vLLM output failed JSON object parse; retrying without dropping structured mode "
+                    "(mode=%s, length_truncation_count=%s, json_repair_count=%s)",
+                    self.structured_output_mode,
+                    self.length_truncation_count,
+                    self.json_repair_count,
                 )
-        if not needs_validation_retry:
-            if parse_error is not None:
+                needs_validation_retry = True
+            elif parse_error is not None:
                 raise parse_error
-            if not isinstance(parsed, dict):
+            else:
                 raise RuntimeError(f"vLLM JSON object required, got {type(parsed).__name__}")
-            if response_model is not None and not self._is_empty_object_model(response_model):
-                try:
-                    response_model.model_validate(parsed)
-                except ValidationError:
-                    needs_validation_retry = True
+        elif response_model is not None and not self._is_empty_object_model(response_model):
+            try:
+                response_model.model_validate(parsed)
+            except ValidationError:
+                logger.warning(
+                    "graphiti vLLM parsed JSON failed Pydantic validation; retrying "
+                    "(mode=%s, json_repair_count=%s)",
+                    self.structured_output_mode,
+                    self.json_repair_count,
+                )
+                needs_validation_retry = True
         if needs_validation_retry and response_model is not None:
             parsed = await self._retry_after_validation_error(
                 openai_messages,
