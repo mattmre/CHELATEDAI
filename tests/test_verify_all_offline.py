@@ -9,12 +9,14 @@ import hashlib
 import importlib.util
 import io
 import json
+import os
 import shutil
 import sys
 import tempfile
 import unittest
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
+from unittest import mock
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 MODULE_PATH = REPO_ROOT / "scripts" / "verify_all_offline.py"
@@ -292,6 +294,233 @@ class TestFullFormal(SyntheticRepoCase):
     def _run_full(self) -> Tuple[int, Dict[str, Any]]:
         rc, _ = run_main(["--full-formal", "--no-d8-replay", "--repo-root", str(self.root), "--json-out", str(self.json_out)])
         return rc, json.loads(self.json_out.read_text(encoding="utf-8"))
+
+
+class TestFormalFailClosed(SyntheticRepoCase):
+    """--full-formal must be NOT_RUN rc=2 (never PASS / PASS_PARTIAL) when the external kernel or conformance is missing."""
+
+    DECLS = ["ChelatedFormal.a", "ChelatedFormal.b", "ChelatedFormal.c"]
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.home = Path(self._tmp.name) / "home"
+        self.home.mkdir()
+        make_repo(self.root)
+        self.formal = self.root / "formal"
+        (self.formal / "ChelatedFormal").mkdir(parents=True)
+        (self.formal / "lakefile.lean").write_text("package chelated\n", encoding="utf-8", newline="\n")
+        (self.formal / "ChelatedFormal" / "A.lean").write_text("theorem a : True := trivial\n", encoding="utf-8", newline="\n")
+        write_json(
+            self.formal / "nanoda_manifest.json",
+            {
+                "nanoda_bin": "nanoda_bin",
+                "nanoda_args": [".lake/nanoda/nanoda_config.json"],
+                "lean4export_bin": "lean4export",
+                "export_file": ".lake/nanoda/chelated_formal_all.export",
+                "export_declarations": self.DECLS,
+            },
+        )
+        (self.formal / "run_conformance.py").write_text("raise SystemExit(0)\n", encoding="utf-8", newline="\n")
+
+    def write_export(self, age_s: float) -> Path:
+        """Create the export file with mtime = (newest source mtime) + age_s."""
+        export = self.formal / ".lake" / "nanoda" / "chelated_formal_all.export"
+        export.parent.mkdir(parents=True, exist_ok=True)
+        export.write_bytes(b"{}\n")
+        newest = max(f.stat().st_mtime for f in (self.formal / "ChelatedFormal" / "A.lean", self.formal / "nanoda_manifest.json"))
+        os.utime(str(export), (newest + age_s, newest + age_s))
+        return export
+
+    def fake_exe(self, name: str) -> str:
+        p = Path(self._tmp.name) / "bin" / (name + (".exe" if os.name == "nt" else ""))
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_bytes(b"x")
+        return str(p)
+
+    def env(self, **extra: str) -> "contextlib.ExitStack":
+        stack = contextlib.ExitStack()
+        stack.enter_context(mock.patch.dict(os.environ, {"HOME": str(self.home), "USERPROFILE": str(self.home)}))
+        for key in ("NANODA_BIN", "LEAN4EXPORT_BIN"):
+            os.environ.pop(key, None)
+        os.environ.update(extra)
+        stack.enter_context(mock.patch.object(V.Path, "home", return_value=self.home))
+        stack.enter_context(mock.patch.object(V.shutil, "which", side_effect=lambda n, *a, **k: "lake" if n == "lake" else None))
+        return stack
+
+    def run_full(self) -> Tuple[int, Dict[str, Any]]:
+        rc, _ = run_main(["--full-formal", "--no-d8-replay", "--repo-root", str(self.root), "--json-out", str(self.json_out)])
+        return rc, json.loads(self.json_out.read_text(encoding="utf-8"))
+
+    def status(self, report: "V.Report", name: str) -> str:
+        return [c["status"] for c in report.checks if c["name"] == name][0]
+
+    def test_missing_nanoda_bin_is_not_run_rc2(self) -> None:
+        self.write_export(+5)
+        with self.env():
+            reasons = V.formal_prerequisites(self.root)
+            rc, payload = self.run_full()
+        self.assertTrue(any("nanoda_bin not found" in r for r in reasons), reasons)
+        self.assertEqual(rc, 2)
+        self.assertEqual(payload["formal_tier"], "NOT_RUN")
+        self.assertEqual(payload["overall"], "NOT_RUN")
+
+    def test_missing_run_conformance_is_not_run_rc2(self) -> None:
+        self.write_export(+5)
+        (self.formal / "run_conformance.py").unlink()
+        with self.env(NANODA_BIN=self.fake_exe("nanoda_bin")):
+            reasons = V.formal_prerequisites(self.root)
+            rc, payload = self.run_full()
+        self.assertTrue(any("run_conformance.py absent" in r for r in reasons), reasons)
+        self.assertEqual((rc, payload["formal_tier"]), (2, "NOT_RUN"))
+
+    def test_unconfigured_manifest_is_not_run_rc2(self) -> None:
+        (self.formal / "nanoda_manifest.json").unlink()
+        with self.env(NANODA_BIN=self.fake_exe("nanoda_bin")):
+            reasons = V.formal_prerequisites(self.root)
+            rc, payload = self.run_full()
+        self.assertTrue(any("nanoda_manifest.json" in r for r in reasons), reasons)
+        self.assertEqual((rc, payload["formal_tier"]), (2, "NOT_RUN"))
+
+    def test_stale_or_missing_export_without_lean4export_is_not_run_rc2(self) -> None:
+        with self.env(NANODA_BIN=self.fake_exe("nanoda_bin")):
+            reasons_missing = V.formal_prerequisites(self.root)
+            self.write_export(-100)
+            reasons_stale = V.formal_prerequisites(self.root)
+            rc, payload = self.run_full()
+        for reasons in (reasons_missing, reasons_stale):
+            self.assertTrue(any("lean4export" in r for r in reasons), reasons)
+        self.assertEqual((rc, payload["formal_tier"]), (2, "NOT_RUN"))
+
+    def test_fresh_export_needs_no_lean4export(self) -> None:
+        self.write_export(+5)
+        with self.env(NANODA_BIN=self.fake_exe("nanoda_bin")):
+            self.assertEqual(V.formal_prerequisites(self.root), [])
+
+    def test_export_staleness_tracks_lean_sources_and_manifest(self) -> None:
+        manifest = V.load_nanoda_manifest(self.formal)
+        self.assertTrue(V.export_is_stale(self.formal, manifest))
+        export = self.write_export(+5)
+        self.assertFalse(V.export_is_stale(self.formal, manifest))
+        later = export.stat().st_mtime + 50
+        os.utime(str(self.formal / "ChelatedFormal" / "A.lean"), (later, later))
+        self.assertTrue(V.export_is_stale(self.formal, manifest))
+        self.write_export(+100)
+        self.assertFalse(V.export_is_stale(self.formal, manifest))
+        latest = later + 500
+        os.utime(str(self.formal / "nanoda_manifest.json"), (latest, latest))
+        self.assertTrue(V.export_is_stale(self.formal, manifest))
+
+    def test_run_formal_gates_returns_not_run_when_nanoda_unresolved(self) -> None:
+        self.write_export(+5)
+        report = V.Report()
+        with self.env(), mock.patch.object(V, "_run", return_value=(0, "")):
+            tier, _ = V.run_formal_gates(self.root, report, 5)
+        self.assertEqual(tier, "NOT_RUN")
+        self.assertEqual(self.status(report, "formal.nanoda_external_kernel"), "NOT_RUN")
+        self.assertFalse(any(c["status"] == "SKIP" for c in report.checks))
+
+    def gates_with_nanoda(self, out: str, rc_nanoda: int = 0) -> Tuple[str, "V.Report"]:
+        self.write_export(+5)
+        nanoda = self.fake_exe("nanoda_bin")
+
+        def fake_run(cmd: List[str], cwd: Path, timeout_s: int) -> Tuple[int, str]:
+            if cmd[0] == nanoda:
+                return rc_nanoda, out
+            return 0, ""
+
+        report = V.Report()
+        with self.env(NANODA_BIN=nanoda), mock.patch.object(V, "_run", side_effect=fake_run):
+            tier, _ = V.run_formal_gates(self.root, report, 5)
+        return tier, report
+
+    def test_nanoda_accepts_rc0_with_enough_declarations(self) -> None:
+        for out in (
+            "Checked 3 declarations with no typechecker errors\n",
+            "Checked 40 declarations with no typechecker errors\n",
+        ):
+            _, report = self.gates_with_nanoda(out)
+            self.assertEqual(self.status(report, "formal.nanoda_external_kernel"), "PASS", out)
+
+    def test_nanoda_rejects_zero_short_missing_line_and_nonzero_rc(self) -> None:
+        for out, rc_n in (
+            ("Checked 0 declarations with no typechecker errors\n", 0),
+            ("Checked 2 declarations with no typechecker errors\n", 0),
+            ("", 0),
+            ("Checked 3 declarations with no typechecker errors\n", 1),
+        ):
+            tier, report = self.gates_with_nanoda(out, rc_n)
+            self.assertEqual(self.status(report, "formal.nanoda_external_kernel"), "FAIL", (out, rc_n))
+            self.assertEqual(tier, "FAIL")
+
+    def test_stale_export_is_regenerated_via_prepare_nanoda(self) -> None:
+        export = self.write_export(-100)
+        nanoda = self.fake_exe("nanoda_bin")
+        l4e = self.fake_exe("lean4export")
+        calls: List[List[str]] = []
+
+        def fake_run(cmd: List[str], cwd: Path, timeout_s: int) -> Tuple[int, str]:
+            calls.append(list(cmd))
+            if "--prepare-nanoda" in cmd:
+                export.write_bytes(b"{}\n")
+                newest = max(f.stat().st_mtime for f in (self.formal / "ChelatedFormal" / "A.lean", self.formal / "nanoda_manifest.json"))
+                os.utime(str(export), (newest + 5, newest + 5))
+                return 0, ""
+            if cmd[0] == nanoda:
+                return 0, "Checked 3 declarations with no typechecker errors\n"
+            return 0, ""
+
+        report = V.Report()
+        with self.env(NANODA_BIN=nanoda, LEAN4EXPORT_BIN=l4e), mock.patch.object(V, "_run", side_effect=fake_run):
+            V.run_formal_gates(self.root, report, 5)
+        self.assertTrue(any("--prepare-nanoda" in c for c in calls))
+        self.assertEqual(self.status(report, "formal.lean4export_prepare"), "PASS")
+        self.assertEqual(self.status(report, "formal.nanoda_external_kernel"), "PASS")
+
+
+class TestNanodaOutputAndResolvers(unittest.TestCase):
+    def test_parse_nanoda_output(self) -> None:
+        ok = "Checked 27 declarations with no typechecker errors"
+        self.assertTrue(V.parse_nanoda_output(0, ok, 27)["accepted"])
+        self.assertFalse(V.parse_nanoda_output(0, ok, 28)["accepted"])
+        self.assertFalse(V.parse_nanoda_output(2, ok, 27)["accepted"])
+        self.assertFalse(V.parse_nanoda_output(0, "", 1)["accepted"])
+        self.assertFalse(V.parse_nanoda_output(0, "Checked 0 declarations with no typechecker errors", 0)["accepted"])
+
+    def test_resolver_order(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            exe_n, exe_l = V._exe_name("nanoda_bin"), V._exe_name("lean4export")
+
+            def touch(*parts: str) -> str:
+                p = home.joinpath(*parts)
+                p.parent.mkdir(parents=True, exist_ok=True)
+                p.write_bytes(b"x")
+                return str(p)
+
+            with mock.patch.dict(os.environ), mock.patch.object(V.Path, "home", return_value=home), mock.patch.object(
+                V.shutil, "which", return_value=None
+            ):
+                os.environ.pop("NANODA_BIN", None)
+                os.environ.pop("LEAN4EXPORT_BIN", None)
+                self.assertIsNone(V.resolve_nanoda_bin())
+                self.assertIsNone(V.resolve_lean4export_bin())
+                n_cargo = touch(".cargo", "bin", exe_n)
+                l_cargo = touch(".cargo", "bin", exe_l)
+                self.assertEqual(V.resolve_nanoda_bin(), n_cargo)
+                self.assertEqual(V.resolve_lean4export_bin(), l_cargo)
+                n_target = touch(".cargo", "nanoda_target", "release", exe_n)
+                l_elan = touch(".elan", "bin", exe_l)
+                self.assertEqual(V.resolve_nanoda_bin(), n_target)
+                self.assertEqual(V.resolve_lean4export_bin(), l_elan)
+                n_path, l_path = touch("p", exe_n), touch("q", exe_l)
+                with mock.patch.object(V.shutil, "which", side_effect=lambda n, *a, **k: n_path if n == "nanoda_bin" else l_path):
+                    self.assertEqual(V.resolve_nanoda_bin(), n_path)
+                    self.assertEqual(V.resolve_lean4export_bin(), l_path)
+                    n_env, l_env = touch("e", exe_n), touch("f", exe_l)
+                    os.environ["NANODA_BIN"] = n_env
+                    os.environ["LEAN4EXPORT_BIN"] = l_env
+                    self.assertEqual(V.resolve_nanoda_bin(), n_env)
+                    self.assertEqual(V.resolve_lean4export_bin(), l_env)
 
 
 class TestAxiomAllowlist(unittest.TestCase):

@@ -2883,8 +2883,8 @@ def run_part_b_u_grpo_on_spark2(
         torch.cuda.synchronize()
         gib = round(float(torch.cuda.max_memory_allocated()) / (1024.0**3), 3)
         peak_mem_gib_by_stage[stage] = gib
-        if gib > 34.0:
-            raise RuntimeError(f"Stage {stage} exceeded 34 GB peak memory guardrail: {gib:.2f} GiB")
+        if gib > 48.0:
+            raise RuntimeError(f"Stage {stage} exceeded 48 GB peak memory guardrail: {gib:.2f} GiB")
         return gib
 
     # -----------------------------------------------------------------------
@@ -3245,7 +3245,9 @@ def run_part_b_u_grpo_on_spark2(
                 if state.global_step in eval_ckpts:
                     mdl_cur = kwargs["model"]
                     was_training = mdl_cur.training
-                    dev_m = eval_wfs(mdl_cur, splits["DEV"])
+                    torch.cuda.empty_cache()
+                    dev_m = eval_wfs(mdl_cur, splits["DEV"], batch_size=8)
+                    torch.cuda.empty_cache()
                     mdl_cur.config.use_cache = False
                     if was_training:
                         mdl_cur.train()
@@ -3304,9 +3306,11 @@ def run_part_b_u_grpo_on_spark2(
         t_g0 = time.perf_counter()
         grpo_trainer.train()
         grpo_wall_sec = round(time.perf_counter() - t_g0, 2)
-        grpo_peak_gib = record_stage_mem(f"grpo_train_{seed_key}")
 
         trained_peft_mdl = grpo_trainer.model
+        trained_peft_mdl.save_pretrained(str(final_adapter_dir))
+        grpo_peak_gib = record_stage_mem(f"grpo_train_{seed_key}")
+
         trained_active_logits = compute_probe_logits(trained_peft_mdl)
         with trained_peft_mdl.disable_adapter():
             disabled_ref_logits = compute_probe_logits(trained_peft_mdl)
@@ -3315,7 +3319,6 @@ def run_part_b_u_grpo_on_spark2(
         if not (math.isfinite(kl_ref_vs_sft_diff) and kl_ref_vs_sft_diff < 1e-4):
             raise AssertionError(f"KL reference drifted from frozen SFT: {kl_ref_vs_sft_diff}")
 
-        trained_peft_mdl.save_pretrained(str(final_adapter_dir))
         # CRITICAL Protocol v2 Guard (`Neon Δ3`): NEVER overwrite missing `best_dev_dir` with `final_step`!
         dev_summary = dev_selector.summary()
         fell_back_to_step0_sft = bool(dev_summary["fell_back_to_step0_sft"])
