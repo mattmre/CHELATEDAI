@@ -1099,6 +1099,29 @@ def test_validation_retry_http_400_switches_to_json_object_with_schema() -> None
     assert "never output '$defs'" in fallback
 
 
+def test_suite_b_session_episode_grouping_preserves_all_turns_and_timestamps() -> None:
+    prior = [
+        {"session_id": "s1", "role": "user", "content": "hello there", "ts": 1700000000.0},
+        {"session_id": "s1", "role": "assistant", "content": "hi user", "ts": 1700000000.001},
+        {"session_id": "echo_sess_0", "role": "user", "content": "echo fact", "ts": 1700003600.0},
+        {"session_id": "s2", "role": "user", "content": "a" * 300, "ts": 1700086400.0},
+        {"session_id": "s2", "role": "assistant", "content": "b" * 300, "ts": 1700086400.001},
+    ]
+    grouped = runner.group_prior_messages_into_session_episodes(prior, max_chars=450)
+    # s1 grouped into 1 episode; echo_sess_0 stays separate; s2 splits cleanly across 2 parts (< 450 chars)
+    assert [g["session_id"] for g in grouped] == ["s1", "echo_sess_0", "s2", "s2"]
+    assert grouped[0]["ts"] == 1700000000.0
+    assert grouped[1]["ts"] == 1700003600.0
+    assert grouped[2]["ts"] == 1700086400.0
+    reconstructed = "\n".join(g["body"] for g in grouped)
+    expected_lines = [runner._message_episode_parts(m)[1] for m in prior]
+    assert reconstructed == "\n".join(expected_lines)
+
+    chunks = runner.chunk_prior_message_lines(expected_lines, max_chars=500)
+    assert "\n".join(chunks) == "\n".join(expected_lines)
+    assert len(chunks) == 2
+
+
 def test_owned_sources_have_no_silent_except_pass() -> None:
     paths = [
         REPO / "chelated_graphiti_arena_v1.py",

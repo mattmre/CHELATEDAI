@@ -371,6 +371,7 @@ def build_manifest(
         "suite_a_n": SUITE_A_N,
         "suite_b_n": SUITE_B_N,
         "suite_b_pooled": False,
+        "suite_b_episode_granularity": "per_session_graphiti_8k_mem0_16k_standalone_retraction",
         "horizons": ["delta0", "settled"],
         "primary_score": "settled_accuracy",
         "n_bootstrap": N_BOOTSTRAP,
@@ -727,6 +728,87 @@ def _message_episode_parts(message: Mapping[str, Any]) -> Tuple[str, str, str, f
     return (f"{message['session_id']}:{stamp}", body, "longmemeval", ts)
 
 
+def group_prior_messages_into_session_episodes(
+    prior: Sequence[Mapping[str, Any]],
+    *,
+    max_chars: int = 8000,
+) -> List[Dict[str, Any]]:
+    """Group ordered conversational turns by contiguous ``session_id`` (capped at ``max_chars``).
+
+    Preserves 100% of turns in chronological order and exact per-session ``reference_time``
+    without exploding a 50-session haystack into ~500 isolated single-turn episodes.
+    """
+    if max_chars < 256:
+        raise ValueError("max_chars must be >= 256")
+    episodes: List[Dict[str, Any]] = []
+    cur_sid: Optional[str] = None
+    cur_ts: float = 0.0
+    cur_lines: List[str] = []
+    cur_chars = 0
+    part_idx = 0
+
+    def _flush() -> None:
+        nonlocal cur_lines, cur_chars, part_idx
+        if not cur_lines or cur_sid is None:
+            return
+        from datetime import datetime, timezone
+
+        stamp = datetime.fromtimestamp(cur_ts, tz=timezone.utc).strftime("%Y/%m/%d %H:%M")
+        episodes.append(
+            {
+                "name": f"{cur_sid}:p{part_idx}:{stamp}",
+                "body": "\n".join(cur_lines),
+                "source": "longmemeval",
+                "ts": cur_ts,
+                "session_id": cur_sid,
+            }
+        )
+        cur_lines = []
+        cur_chars = 0
+        part_idx += 1
+
+    for message in prior:
+        sid = str(message["session_id"])
+        _name, line, _src, ts = _message_episode_parts(message)
+        if cur_sid is not None and sid != cur_sid:
+            _flush()
+            cur_sid = None
+            part_idx = 0
+        if cur_sid is None:
+            cur_sid = sid
+            cur_ts = ts
+        elif cur_lines and cur_chars + len(line) + 1 > max_chars:
+            _flush()
+            cur_ts = ts
+        cur_lines.append(line)
+        cur_chars += len(line) + (1 if len(cur_lines) > 1 else 0)
+    _flush()
+    return episodes
+
+
+def chunk_prior_message_lines(lines: Sequence[str], *, max_chars: int = 16000) -> List[str]:
+    """Pack dated conversational lines into chronological chunks without dropping or splitting turns."""
+    if max_chars < 256:
+        raise ValueError("max_chars must be >= 256")
+    chunks: List[str] = []
+    cur: List[str] = []
+    cur_len = 0
+    for line in lines:
+        if cur and cur_len + len(line) + 1 > max_chars:
+            chunks.append("\n".join(cur))
+            cur = []
+            cur_len = 0
+        cur.append(line)
+        cur_len += len(line) + (1 if len(cur) > 1 else 0)
+    if cur:
+        chunks.append("\n".join(cur))
+    return chunks
+
+
+def _session_episode_parts(ep: Mapping[str, Any]) -> Tuple[str, str, str, float]:
+    return (str(ep["name"]), str(ep["body"]), str(ep["source"]), float(ep["ts"]))
+
+
 async def run_suite_a_case(
     stack: Mapping[str, Any],
     case: Mapping[str, Any],
@@ -845,6 +927,9 @@ async def run_suite_b_case(
     except Exception as exc:
         _mark_arm_failure(slot, exc)
     arms[ARM_CHELATED] = slot
+    prior_session_episodes = group_prior_messages_into_session_episodes(prior, max_chars=8000)
+    ret_name, ret_body, ret_src, ret_ts = _message_episode_parts(retraction)
+    retraction_episode = {"name": ret_name, "body": ret_body, "source": ret_src, "ts": ret_ts, "session_id": str(retraction["session_id"])}
     arms[ARM_GRAPHITI] = await _graphiti_documents_slot(
         stack["graphiti"],
         stack["driver"],
@@ -852,19 +937,20 @@ async def run_suite_b_case(
         gid=gid,
         query=query,
         stale_values=[],
-        prior=prior,
-        retraction=retraction,
-        body_of=_message_episode_parts,
+        prior=prior_session_episodes,
+        retraction=retraction_episode,
+        body_of=_session_episode_parts,
         endpoint=endpoint,
         model=model,
         reader_system=CONVERSATIONAL_READER_SYSTEM,
     )
-    retraction_body = _message_episode_parts(retraction)[1]
+    retraction_body = ret_body
+    prior_mem0_chunks = chunk_prior_message_lines([_message_episode_parts(message)[1] for message in prior], max_chars=16000)
     arms[ARM_MEM0] = await _mem0_texts_slot(
         gid=gid,
         query=query,
         stale_values=[],
-        prior_texts=[_message_episode_parts(message)[1] for message in prior],
+        prior_texts=prior_mem0_chunks,
         retraction_text=retraction_body,
         scratch_dir=scratch_dir,
         endpoint=endpoint,
