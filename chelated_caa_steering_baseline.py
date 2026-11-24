@@ -18,6 +18,7 @@ import hashlib
 import math
 import time
 from collections import Counter
+from contextvars import ContextVar
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Sequence, Set, Tuple
 
@@ -28,6 +29,25 @@ from torch import nn
 CAA_SCOPE_DISCLOSURE = "untuned_lightweight_literature_reference_qwen25_7b_only"
 DEFAULT_ALPHA_GRID: Tuple[float, ...] = (0.5, 1.0, 1.5, 2.0, 3.0)
 DEFAULT_QWEN25_7B_LAYERS: Tuple[int, ...] = (14, 15, 16, 17, 18, 19, 20)
+
+# Carry the sweep deadline into each generation in the runner's alpha evaluator.
+_CALIBRATION_DEADLINE: ContextVar[Optional[float]] = ContextVar(
+    "_CALIBRATION_DEADLINE", default=None
+)
+
+
+class _CalibrationDeadlineExceeded(TimeoutError):
+    """The current DEV candidate could not be evaluated in full."""
+
+
+def _calibration_time_remaining() -> Optional[float]:
+    deadline = _CALIBRATION_DEADLINE.get()
+    if deadline is None:
+        return None
+    remaining = deadline - time.perf_counter()
+    if remaining <= 0:
+        raise _CalibrationDeadlineExceeded("CAA DEV calibration deadline reached")
+    return remaining
 
 
 def _sha256_str(text: str) -> str:
@@ -120,6 +140,15 @@ def _tokenize_batch(
     max_length: int,
     device: torch.device,
 ) -> Dict[str, torch.Tensor]:
+    if getattr(tokenizer, "pad_token", None) is None and getattr(tokenizer, "pad_token_id", None) is None:
+        eos_token = getattr(tokenizer, "eos_token", None)
+        eos_id = getattr(tokenizer, "eos_token_id", None)
+        if eos_token is not None:
+            tokenizer.pad_token = eos_token
+        elif eos_id is not None:
+            tokenizer.pad_token_id = eos_id
+        else:
+            raise ValueError("CAA batching requires a pad token or an EOS token to use as padding")
     encoded = tokenizer(
         list(texts),
         return_tensors="pt",
@@ -145,9 +174,11 @@ def _pool_last_valid_token(hidden: torch.Tensor, attention_mask: torch.Tensor) -
     if hidden.ndim != 3:
         raise ValueError(f"Expected 3D hidden tensor [B, T, H], got shape {tuple(hidden.shape)}")
     mask = attention_mask.to(device=hidden.device)
-    lengths = mask.long().sum(dim=1).clamp(min=1) - 1
+    positions = torch.arange(mask.shape[1], device=mask.device).unsqueeze(0)
+    # Keep index zero as the fallback for an entirely masked row.
+    last_indices = torch.where(mask > 0, positions, 0).amax(dim=1)
     batch_idx = torch.arange(hidden.shape[0], device=hidden.device)
-    pooled = hidden[batch_idx, lengths, :]
+    pooled = hidden[batch_idx, last_indices, :]
     return pooled.detach().to(dtype=torch.float32, device="cpu")
 
 
@@ -490,8 +521,8 @@ class CAACalibrationResult:
     selected_alpha: float
     target_fpr: float
     met_target_fpr: bool
-    selected_r1_r3_suppression_rate: float
-    selected_r5_benign_fpr: float
+    selected_r1_r3_suppression_rate: Optional[float]
+    selected_r5_benign_fpr: Optional[float]
     wall_clock_s: float
     timebox_s: float
     timebox_exceeded: bool
@@ -504,8 +535,8 @@ class CAACalibrationResult:
             "selected_alpha": float(self.selected_alpha),
             "target_fpr": float(self.target_fpr),
             "met_target_fpr": bool(self.met_target_fpr),
-            "selected_r1_r3_suppression_rate": float(self.selected_r1_r3_suppression_rate),
-            "selected_r5_benign_fpr": float(self.selected_r5_benign_fpr),
+            "selected_r1_r3_suppression_rate": self.selected_r1_r3_suppression_rate,
+            "selected_r5_benign_fpr": self.selected_r5_benign_fpr,
             "wall_clock_s": round(float(self.wall_clock_s), 4),
             "timebox_s": float(self.timebox_s),
             "timebox_exceeded": bool(self.timebox_exceeded),
@@ -530,7 +561,9 @@ def calibrate_caa_multiplier_on_dev(
       - `r1_r3_suppression_rate`: float in [0, 1]
       - `r5_benign_fpr`: float in [0, 1]
     Optional extra fields (`r1_suppression_rate`, `r3_suppression_rate`, `r5_coherence_pass_rate`)
-    are preserved in `sweep_results`.
+    are preserved in `sweep_results`. CAA generation checks the deadline per call.
+    Only fully evaluated candidates are eligible. If the sweep finds no feasible
+    candidate, alpha zero is selected and its rates are null unless it was measured.
     """
     assert_zero_test_overlap(
         dev_family_ids,
@@ -540,58 +573,60 @@ def calibrate_caa_multiplier_on_dev(
     if not alpha_grid:
         raise ValueError("alpha_grid must be non-empty")
 
+    timebox = float(timebox_s)
+    if not math.isfinite(timebox) or timebox < 0:
+        raise ValueError("timebox_s must be finite and nonnegative")
+
     t0 = time.perf_counter()
     dev_ids_sha = _sha256_str("|".join(sorted({str(x) for x in dev_family_ids})))
     sweep_rows: List[Dict[str, Any]] = []
+    deadline = t0 + timebox
+    parent_deadline = _CALIBRATION_DEADLINE.get()
+    if parent_deadline is not None:
+        deadline = min(deadline, parent_deadline)
+    deadline_token = _CALIBRATION_DEADLINE.set(deadline)
     timebox_exceeded = False
 
-    for alpha in alpha_grid:
-        elapsed = time.perf_counter() - t0
-        if sweep_rows and elapsed >= float(timebox_s):
-            timebox_exceeded = True
-            break
-        step_t0 = time.perf_counter()
-        metrics = dict(evaluate_alpha_fn(float(alpha)))
-        if "r1_r3_suppression_rate" not in metrics or "r5_benign_fpr" not in metrics:
-            raise KeyError("evaluate_alpha_fn must return 'r1_r3_suppression_rate' and 'r5_benign_fpr'")
-        supp = float(metrics["r1_r3_suppression_rate"])
-        fpr = float(metrics["r5_benign_fpr"])
-        row = {
-            "alpha": float(alpha),
-            "r1_r3_suppression_rate": supp,
-            "r5_benign_fpr": fpr,
-            "meets_target_fpr": bool(fpr <= float(target_fpr) + 1e-12),
-            "eval_wall_s": round(time.perf_counter() - step_t0, 4),
-            **{
-                k: v
-                for k, v in metrics.items()
-                if k not in ("r1_r3_suppression_rate", "r5_benign_fpr", "alpha")
-            },
-        }
-        sweep_rows.append(row)
-
-    total_wall = time.perf_counter() - t0
-    if total_wall > float(timebox_s):
+    try:
+        for alpha in alpha_grid:
+            _calibration_time_remaining()
+            step_t0 = time.perf_counter()
+            metrics = dict(evaluate_alpha_fn(float(alpha)))
+            _calibration_time_remaining()
+            if "r1_r3_suppression_rate" not in metrics or "r5_benign_fpr" not in metrics:
+                raise KeyError("evaluate_alpha_fn must return 'r1_r3_suppression_rate' and 'r5_benign_fpr'")
+            supp = float(metrics["r1_r3_suppression_rate"])
+            fpr = float(metrics["r5_benign_fpr"])
+            if not (0.0 <= supp <= 1.0 and 0.0 <= fpr <= 1.0):
+                raise ValueError("CAA suppression and benign FPR must be finite rates in [0, 1]")
+            sweep_rows.append({
+                **metrics,
+                "alpha": float(alpha),
+                "r1_r3_suppression_rate": supp,
+                "r5_benign_fpr": fpr,
+                "meets_target_fpr": fpr <= float(target_fpr) + 1e-12,
+                "eval_wall_s": round(time.perf_counter() - step_t0, 4),
+            })
+    except _CalibrationDeadlineExceeded:
         timebox_exceeded = True
+    finally:
+        _CALIBRATION_DEADLINE.reset(deadline_token)
 
     feasible = [r for r in sweep_rows if r["meets_target_fpr"]]
     if feasible:
-        # Maximize suppression, tie-break by lower benign FPR, then smaller alpha (less perturbation)
+        # Maximize suppression, tie-break by lower benign FPR, then smaller alpha.
         best = max(feasible, key=lambda r: (r["r1_r3_suppression_rate"], -r["r5_benign_fpr"], -r["alpha"]))
-        met = True
     else:
-        # Fallback: lowest benign FPR first, then highest suppression
-        best = min(sweep_rows, key=lambda r: (r["r5_benign_fpr"], -r["r1_r3_suppression_rate"], r["alpha"]))
-        met = False
+        best = next((r for r in sweep_rows if r["alpha"] == 0.0), None)
 
     return CAACalibrationResult(
-        selected_alpha=float(best["alpha"]),
+        selected_alpha=float(best["alpha"]) if best is not None else 0.0,
         target_fpr=float(target_fpr),
-        met_target_fpr=met,
-        selected_r1_r3_suppression_rate=float(best["r1_r3_suppression_rate"]),
-        selected_r5_benign_fpr=float(best["r5_benign_fpr"]),
-        wall_clock_s=total_wall,
-        timebox_s=float(timebox_s),
+        met_target_fpr=bool(feasible),
+        selected_r1_r3_suppression_rate=float(best["r1_r3_suppression_rate"]) if best is not None else None,
+        selected_r5_benign_fpr=float(best["r5_benign_fpr"]) if best is not None else None,
+        wall_clock_s=time.perf_counter() - t0,
+        timebox_s=timebox,
         timebox_exceeded=timebox_exceeded,
         dev_ids_sha256=dev_ids_sha,
         sweep_results=sweep_rows,
@@ -613,6 +648,7 @@ def generate_text_with_caa(
     device: Optional[torch.device] = None,
 ) -> Tuple[str, Dict[str, Any]]:
     """Run deterministic greedy generation under active CAA hooks (works on HF and tiny nn.Modules)."""
+    _calibration_time_remaining()
     run_device = device if device is not None else _model_device(model)
     enc = _tokenize_batch(tokenizer, [prompt], max_length=max_input_length, device=run_device)
     prompt_len = int(enc["input_ids"].shape[1])
@@ -651,6 +687,9 @@ def generate_text_with_caa(
                             gen_kwargs["logits_processor"] = LogitsProcessorList([scaled_lp])
                         except ImportError:
                             gen_kwargs["logits_processor"] = [scaled_lp]
+                    remaining = _calibration_time_remaining()
+                    if remaining is not None:
+                        gen_kwargs["max_time"] = remaining
                     out_ids = model.generate(**gen_kwargs)
                     gen_tokens = out_ids[0, prompt_len:].tolist()
                 else:
@@ -660,6 +699,7 @@ def generate_text_with_caa(
                     eos_id = getattr(tokenizer, "eos_token_id", None)
                     gen_tokens = []
                     for _ in range(int(max_new_tokens)):
+                        _calibration_time_remaining()
                         outputs = model(input_ids=cur_ids, attention_mask=cur_mask)
                         logits = outputs.logits if hasattr(outputs, "logits") else outputs
                         next_logits = logits[:, -1, :]
@@ -678,6 +718,7 @@ def generate_text_with_caa(
         if was_training:
             model.train()
 
+    _calibration_time_remaining()
     if hasattr(tokenizer, "decode"):
         text = str(tokenizer.decode(gen_tokens, skip_special_tokens=True))
     else:

@@ -32,8 +32,11 @@ Modes
     Runs everything above, then the formal gates (``lake build``, 0 ``sorry`` /
     ``native_decide``, ``#print axioms`` allowlist with negative control, optional external
     kernel, EK5 conformance).  If ``formal/`` (``lakefile.lean`` / ``lakefile.toml``),
-    ``lake`` or the Mathlib ``.olean`` cache is missing the formal tier is reported as
-    ``NOT_RUN`` and the exit code is 2.  A missing toolchain is never reported as PASS.
+    ``lake``, the Mathlib ``.olean`` cache, ``nanoda_bin``, ``formal/run_conformance.py`` or
+    (when the export is missing/stale) ``lean4export`` is missing, the formal tier is reported
+    as ``NOT_RUN`` and the exit code is 2.  A missing toolchain is never reported as PASS or
+    PASS_PARTIAL.  The external kernel must exit 0 AND print ``Checked N declarations with no
+    typechecker errors`` with ``N > 0`` and ``N >= len(export_declarations)``.
 
 Exit codes: 0 = everything requested passed, 1 = at least one check failed, 2 = the
 requested formal tier could not run (and nothing else failed).
@@ -963,6 +966,100 @@ def list_lean_files(formal_dir: Path) -> List[Path]:
     return files
 
 
+NANODA_OK_RE = re.compile(r"Checked\s+(\d+)\s+declarations?\s+with\s+no\s+typechecker\s+errors")
+NANODA_PP_RE = re.compile(r"(\d+)\s+pretty[- ]printer\s+errors?", re.I)
+
+
+def _exe_name(name: str) -> str:
+    return name + ".exe" if os.name == "nt" else name
+
+
+def _first_file(candidates: Sequence[Optional[str]]) -> Optional[str]:
+    for cand in candidates:
+        if cand and Path(cand).is_file():
+            return str(cand)
+    return None
+
+
+def resolve_nanoda_bin(name: str = "nanoda_bin") -> Optional[str]:
+    """``$NANODA_BIN`` -> ``PATH`` -> ``~/.cargo/nanoda_target/release`` -> ``~/.cargo/bin``; ``None`` if unresolved."""
+    exe = _exe_name("nanoda_bin")
+    return _first_file(
+        [
+            os.environ.get("NANODA_BIN"),
+            shutil.which(name),
+            str(Path.home() / ".cargo" / "nanoda_target" / "release" / exe),
+            str(Path.home() / ".cargo" / "bin" / exe),
+        ]
+    )
+
+
+def resolve_lean4export_bin(name: str = "lean4export") -> Optional[str]:
+    """``$LEAN4EXPORT_BIN`` -> ``PATH`` -> ``~/.elan/bin`` -> ``~/.cargo/bin``; ``None`` if unresolved."""
+    exe = _exe_name("lean4export")
+    return _first_file(
+        [
+            os.environ.get("LEAN4EXPORT_BIN"),
+            shutil.which(name),
+            str(Path.home() / ".elan" / "bin" / exe),
+            str(Path.home() / ".cargo" / "bin" / exe),
+        ]
+    )
+
+
+def resolve_lake_bin(name: str = "lake") -> Optional[str]:
+    """``$LAKE_BIN`` -> ``PATH`` -> ``~/.elan/bin``; ``None`` if unresolved."""
+    env_lake = os.environ.get("LAKE_BIN")
+    if env_lake and Path(env_lake).is_file():
+        return str(env_lake)
+    found = shutil.which(name)
+    if found:
+        return found
+    elan_cand = Path.home() / ".elan" / "bin" / _exe_name("lake")
+    if elan_cand.is_file():
+        return str(elan_cand)
+    return None
+
+
+def parse_nanoda_output(rc: int, out: str, expected_declarations: int) -> Dict[str, Any]:
+    """Accept only rc == 0 AND ``Checked N declarations with no typechecker errors`` with N > 0 and
+    N >= ``expected_declarations``.  A bare rc 0 with no success line is rejected."""
+    ok = NANODA_OK_RE.search(out)
+    pp = NANODA_PP_RE.search(out)
+    checked = int(ok.group(1)) if ok else None
+    accepted = rc == 0 and checked is not None and checked > 0 and checked >= expected_declarations
+    return {
+        "accepted": accepted,
+        "declarations_checked": checked,
+        "pretty_printer_errors": int(pp.group(1)) if pp else 0,
+    }
+
+
+def load_nanoda_manifest(formal: Path) -> Optional[Dict[str, Any]]:
+    path = formal / "nanoda_manifest.json"
+    if not path.is_file():
+        return None
+    try:
+        data = load_json(path)
+    except VerifyError:
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def export_is_stale(formal: Path, manifest: Optional[Dict[str, Any]]) -> bool:
+    """True when the export file is missing or older than any formal/**/*.lean or nanoda_manifest.json."""
+    rel = str((manifest or {}).get("export_file") or ".lake/nanoda/chelated_formal_all.export")
+    export = formal / rel
+    if not export.is_file():
+        return True
+    export_mtime = export.stat().st_mtime
+    sources = list_lean_files(formal)
+    manifest_path = formal / "nanoda_manifest.json"
+    if manifest_path.is_file():
+        sources.append(manifest_path)
+    return any(src.stat().st_mtime > export_mtime for src in sources)
+
+
 def formal_prerequisites(repo_root: Path) -> List[str]:
     """Return reasons the formal tier cannot run (empty list = runnable)."""
     missing: List[str] = []
@@ -973,8 +1070,8 @@ def formal_prerequisites(repo_root: Path) -> List[str]:
     lakefile_toml = formal / "lakefile.toml"
     if not lakefile.is_file() and not lakefile_toml.is_file():
         missing.append("formal/lakefile.lean or lakefile.toml absent")
-    if shutil.which("lake") is None:
-        missing.append("`lake` not on PATH")
+    if resolve_lake_bin() is None:
+        missing.append("`lake` not on PATH or in ~/.elan/bin")
     lake_text = ""
     for lf in (lakefile, lakefile_toml):
         if lf.is_file():
@@ -986,6 +1083,21 @@ def formal_prerequisites(repo_root: Path) -> List[str]:
         )
         if not any(c.is_file() for c in candidates):
             missing.append("Mathlib .olean cache absent under formal/.lake/packages/mathlib")
+    manifest = load_nanoda_manifest(formal)
+    if manifest is None:
+        missing.append("formal/nanoda_manifest.json absent or unreadable (external kernel unconfigured)")
+    else:
+        decls = manifest.get("export_declarations")
+        if not manifest.get("nanoda_args") or not isinstance(decls, list) or not decls:
+            missing.append("formal/nanoda_manifest.json lacks nanoda_args / export_declarations (external kernel unconfigured)")
+        if resolve_nanoda_bin(str(manifest.get("nanoda_bin") or "nanoda_bin")) is None:
+            missing.append("nanoda_bin not found ($NANODA_BIN, PATH, ~/.cargo/nanoda_target/release, ~/.cargo/bin)")
+        if export_is_stale(formal, manifest) and resolve_lean4export_bin(str(manifest.get("lean4export_bin") or "lean4export")) is None:
+            missing.append(
+                "lean4export file missing/stale and lean4export not found ($LEAN4EXPORT_BIN, PATH, ~/.elan/bin, ~/.cargo/bin)"
+            )
+    if not (formal / "run_conformance.py").is_file():
+        missing.append("formal/run_conformance.py absent (EK5 conformance unconfigured)")
     return missing
 
 
@@ -1002,8 +1114,9 @@ def run_formal_gates(repo_root: Path, report: Report, lake_timeout_s: int) -> Tu
     formal = repo_root / "formal"
     skipped: List[str] = []
     ok = True
+    lake_bin = resolve_lake_bin() or "lake"
 
-    rc, out = _run(["lake", "build"], formal, lake_timeout_s)
+    rc, out = _run([lake_bin, "build"], formal, lake_timeout_s)
     report.result("formal.lake_build", rc == 0, "lake build succeeded", f"lake build rc={rc}: {out.strip()[-300:]}")
     ok &= rc == 0
 
@@ -1030,7 +1143,7 @@ def run_formal_gates(repo_root: Path, report: Report, lake_timeout_s: int) -> Tu
         audit = Path(tmp) / "AxiomAudit.lean"
         lines = [f"import {m}" for m in sorted(modules)] + [f"#print axioms {t}" for t in theorems]
         audit.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
-        rc, out = _run(["lake", "env", "lean", str(audit)], formal, lake_timeout_s)
+        rc, out = _run([lake_bin, "env", "lean", str(audit)], formal, lake_timeout_s)
         verdict = evaluate_axiom_report(out, expected=theorems)
         axiom_ok = rc == 0 and verdict["ok"] and bool(theorems)
         report.result(
@@ -1051,7 +1164,7 @@ def run_formal_gates(repo_root: Path, report: Report, lake_timeout_s: int) -> Tu
             encoding="utf-8",
             newline="\n",
         )
-        rc_c, out_c = _run(["lake", "env", "lean", str(control)], formal, lake_timeout_s)
+        rc_c, out_c = _run([lake_bin, "env", "lean", str(control)], formal, lake_timeout_s)
         neg = evaluate_axiom_report(out_c)
         rejected = len(neg["violations"]) == 3
         report.result(
@@ -1062,46 +1175,63 @@ def run_formal_gates(repo_root: Path, report: Report, lake_timeout_s: int) -> Tu
         )
         ok &= rejected
 
-    nanoda_manifest = formal / "nanoda_manifest.json"
-    nanoda_bin: Optional[str] = None
-    nanoda_args: List[str] = []
-    if nanoda_manifest.is_file():
-        try:
-            cfg = load_json(nanoda_manifest)
-        except VerifyError as exc:
-            report.failed("formal.nanoda_external_kernel", str(exc))
-            ok = False
-            cfg = {}
-        if isinstance(cfg, dict) and cfg.get("nanoda_bin"):
-            nanoda_bin = str(cfg["nanoda_bin"])
-            nanoda_args = [str(a) for a in cfg.get("nanoda_args", [])]
-    if nanoda_bin:
-        rc, out = _run([nanoda_bin, *nanoda_args], formal, lake_timeout_s)
-        report.result(
-            "formal.nanoda_external_kernel", rc == 0, "external kernel accepted the export", f"nanoda rc={rc}: {out.strip()[-300:]}"
-        )
-        ok &= rc == 0
-    else:
-        skipped.append("nanoda_external_kernel")
-        report.add("formal.nanoda_external_kernel", "SKIP", "nanoda_bin not configured in formal/nanoda_manifest.json")
-
+    manifest = load_nanoda_manifest(formal)
     conformance = formal / "run_conformance.py"
-    if conformance.is_file():
-        rc, out = _run([sys.executable, str(conformance)], repo_root, lake_timeout_s)
-        report.result(
-            "formal.ek5_1000_mutation_conformance",
-            rc == 0,
-            "1,000-sequence EK5 conformance passed",
-            f"run_conformance.py rc={rc}: {out.strip()[-300:]}",
+    declarations = [str(d) for d in (manifest or {}).get("export_declarations", [])]
+    nanoda_args = [str(a) for a in (manifest or {}).get("nanoda_args", [])]
+    nanoda_bin = resolve_nanoda_bin(str((manifest or {}).get("nanoda_bin") or "nanoda_bin"))
+    if manifest is None or nanoda_bin is None or not conformance.is_file() or not declarations or not nanoda_args:
+        # Fail closed: an unconfigured external kernel or conformance gate is never a PASS or PASS_PARTIAL.
+        report.add(
+            "formal.nanoda_external_kernel",
+            "NOT_RUN",
+            "nanoda_bin / formal/run_conformance.py / formal/nanoda_manifest.json unresolved or unconfigured",
         )
-        ok &= rc == 0
+        return FORMAL_TIER_NOT_RUN, ["nanoda_external_kernel", "ek5_1000_mutation_conformance"]
+
+    prepared = True
+    if export_is_stale(formal, manifest):
+        if resolve_lean4export_bin(str(manifest.get("lean4export_bin") or "lean4export")) is None:
+            report.add("formal.lean4export_prepare", "NOT_RUN", "export missing/stale and lean4export not found")
+            return FORMAL_TIER_NOT_RUN, ["nanoda_external_kernel"]
+        rc, out = _run([sys.executable, str(conformance), "--prepare-nanoda"], repo_root, lake_timeout_s)
+        prepared = rc == 0 and not export_is_stale(formal, manifest)
+        report.result(
+            "formal.lean4export_prepare",
+            prepared,
+            "regenerated the lean4export file (it was missing or stale)",
+            f"run_conformance.py --prepare-nanoda rc={rc}: {out.strip()[-300:]}",
+        )
+        ok &= prepared
     else:
-        skipped.append("ek5_1000_mutation_conformance")
-        report.add("formal.ek5_1000_mutation_conformance", "SKIP", "formal/run_conformance.py absent")
+        report.add("formal.lean4export_prepare", "PASS", "export is newer than every formal/**/*.lean and the manifest")
+
+    if prepared:
+        rc, out = _run([nanoda_bin, *nanoda_args], formal, lake_timeout_s)
+        verdict = parse_nanoda_output(rc, out, len(declarations))
+        report.result(
+            "formal.nanoda_external_kernel",
+            bool(verdict["accepted"]),
+            f"external kernel checked {verdict['declarations_checked']} declarations "
+            f"(>= {len(declarations)} exported) with no typechecker errors",
+            f"nanoda rc={rc} checked={verdict['declarations_checked']} expected>={len(declarations)}: {out.strip()[-300:]}",
+        )
+        ok &= bool(verdict["accepted"])
+    else:
+        report.failed("formal.nanoda_external_kernel", "not run: the lean4export file could not be prepared")
+
+    rc, out = _run([sys.executable, str(conformance)], repo_root, lake_timeout_s)
+    report.result(
+        "formal.ek5_1000_mutation_conformance",
+        rc == 0,
+        "1,000-sequence EK5 conformance passed",
+        f"run_conformance.py rc={rc}: {out.strip()[-300:]}",
+    )
+    ok &= rc == 0
 
     if not ok:
         return FORMAL_TIER_FAIL, skipped
-    return (FORMAL_TIER_PASS_PARTIAL if skipped else FORMAL_TIER_PASS), skipped
+    return FORMAL_TIER_PASS, skipped
 
 
 # --------------------------------------------------------------------------------------

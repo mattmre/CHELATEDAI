@@ -58,6 +58,13 @@ MIN_ASOF_MISSING_PARENT = 50
 MAX_NODES = 11
 PHANTOM = "__missing_mandatory_parent__"
 
+INCREMENTAL_STATUS = "conformance_tested_unproven_in_lean"
+PITFALL_B_EXPLANATION = (
+    "The incremental store prunes Pitfall-B shielded nodes (ek5_v3_stratified.py:665: an already-F node with a "
+    "positive-cycle or sigma shield is skipped instead of re-solved), so its telemetry fields pos_cyc and reason can "
+    "legitimately differ from a from-scratch evaluation. eff_auth, val, cur, eligibility and node_set never diverge."
+)
+
 MANIFEST_PATH = FORMAL_DIR / "nanoda_manifest.json"
 REPORT_PATH = FORMAL_DIR / "conformance_report.json"
 
@@ -84,16 +91,23 @@ _EDGE_CUM: Tuple[int, ...] = tuple(sum(w for _, w in EDGE_WEIGHTS[: i + 1]) for 
 # Generation model (tracks which attestations are active so generated batches are always legal)
 # ---------------------------------------------------------------------------------------------------------------
 class _Model:
-    """Mirror of the attestation log, used only to keep generated mutations legal (no hidden state shared with the store)."""
+    """Independent record of the mutation history (events, attestations, withdrawals, removals).
+
+    The model shares no state with ``StratifiedEvidenceStore``.  It is the single source of the Stratum-0 snapshot
+    that is sent to the Lean CLI, the oracle and the from-scratch rebuild; the incremental store's own tables are
+    only *compared against* that snapshot (gate ``inc_stratum0_materialization_matches_model``).
+    """
 
     def __init__(self, strict: bool) -> None:
         self.strict = strict
         self.nodes: List[str] = []
         self.entity: Dict[str, str] = {}
+        self.events: Dict[str, Any] = {}  # event id -> StratifiedEvent, insertion ordered
         self.node_seq = 0
         self.att_seq = 0
         self.order: List[str] = []  # insertion order of every attestation id ever used (Python dict order)
         self.att: Dict[str, Tuple[str, str, str, Optional[str]]] = {}  # id -> (src, dst, type, lineage)
+        self.att_obj: Dict[str, Any] = {}  # id -> latest EdgeAttestation (times matter for as_of visibility)
         self.active: Dict[str, bool] = {}
         self.dup_triples_seen = 0
 
@@ -128,6 +142,7 @@ class _Model:
         if att.attestation_id not in self.att:
             self.order.append(att.attestation_id)
         self.att[att.attestation_id] = (att.src_id, att.dst_id, att.edge_type, att.lineage_id)
+        self.att_obj[att.attestation_id] = att
         if self.mult((att.src_id, att.dst_id, att.edge_type)) >= 1:
             self.dup_triples_seen += 1
         self.active[att.attestation_id] = True
@@ -161,20 +176,20 @@ def _gen_batch(rng: random.Random, model: _Model, step: int) -> Dict[str, Any]:
         ent = rng.choice(("e0", "e1"))
         vt = rng.randint(0, 4)
         ve = None if rng.random() < 0.7 else vt + rng.randint(1, 4)
-        new_events.append(
-            ek5.StratifiedEvent(
-                event_id=nid,
-                entity=ent,
-                slot="s0",
-                claim_value="v%d" % rng.randint(0, 2),
-                valid_time=vt,
-                tx_time=rng.randint(0, 4),
-                valid_end=ve,
-                tenant="t0",
-                domain=rng.choice(DOMAINS),
-                authority_tier=rng.randint(0, 4),
-            )
+        event = ek5.StratifiedEvent(
+            event_id=nid,
+            entity=ent,
+            slot="s0",
+            claim_value="v%d" % rng.randint(0, 2),
+            valid_time=vt,
+            tx_time=rng.randint(0, 4),
+            valid_end=ve,
+            tenant="t0",
+            domain=rng.choice(DOMAINS),
+            authority_tier=rng.randint(0, 4),
         )
+        new_events.append(event)
+        model.events[nid] = event
         model.nodes.append(nid)
         model.entity[nid] = ent
 
@@ -264,7 +279,93 @@ def active_triples(store: "ek5.StratifiedEvidenceStore") -> List[Tuple[str, str,
     return sorted(k for k, v in store._edge_mult.items() if v > 0)
 
 
+def model_visible(
+    model: "_Model", cutoff: Optional[Tuple[int, int]] = None
+) -> Tuple[List[Any], List[Any], Set[str]]:
+    """Visible events, one active attestation per (src, dst, type) triple, and missing-mandatory-parent nodes.
+
+    Derived ONLY from ``model``'s recorded mutation history (``cutoff=None`` is the live graph; ``(valid, tx)`` is the
+    bitemporal ``as_of`` view: an event is visible iff ``tx <= tc and valid <= vc and (valid_end is None or vc <
+    valid_end)``; an attestation iff it is active, ``tx <= tc`` and ``valid <= vc``, and both endpoints are visible;
+    a visible node with a ``DEP_ALL_TYPES`` edge to an invisible parent is *missing*).
+    """
+    if cutoff is None:
+        vis_events = list(model.events.values())
+    else:
+        vc, tc = cutoff
+        vis_events = [
+            ev
+            for ev in model.events.values()
+            if ev.tx_time <= tc and ev.valid_time <= vc and (ev.valid_end is None or vc < ev.valid_end)
+        ]
+    vis_ids = {ev.event_id for ev in vis_events}
+    atts: List[Any] = []
+    seen: Set[Tuple[str, str, str]] = set()
+    missing: Set[str] = set()
+    for aid in model.order:
+        if not model.active.get(aid):
+            continue
+        att = model.att_obj[aid]
+        if cutoff is not None and not (att.tx_time <= cutoff[1] and att.valid_time <= cutoff[0]):
+            continue
+        if att.src_id in vis_ids and att.dst_id in vis_ids:
+            key = (att.src_id, att.dst_id, att.edge_type)
+            if key not in seen:
+                seen.add(key)
+                atts.append(att)
+        elif att.edge_type in ek5.DEP_ALL_TYPES and att.src_id in vis_ids and att.dst_id not in vis_ids:
+            missing.add(att.src_id)
+    return vis_events, atts, missing
+
+
+def model_snapshot(model: "_Model", snapshot_id: str, cutoff: Optional[Tuple[int, int]] = None) -> Dict[str, Any]:
+    """The Stratum-0 snapshot (nodes, active edges, missing parents) derived from the model, not from the store."""
+    events, atts, missing = model_visible(model, cutoff)
+    return {
+        "snapshot_id": snapshot_id,
+        "strict_dag_supersede": bool(model.strict) if cutoff is None else False,
+        "nodes": [{"id": ev.event_id, "tier": ev.authority_tier, "domain": ev.domain} for ev in sorted(events, key=lambda e: e.event_id)],
+        "missing": sorted(missing),
+        "edges": [{"src": s, "dst": d, "type": t} for s, d, t in sorted((a.src_id, a.dst_id, a.edge_type) for a in atts)],
+    }
+
+
+def snapshots_equal(a: Mapping[str, Any], b: Mapping[str, Any]) -> bool:
+    """Structural equality of two snapshots, ignoring only the ``snapshot_id`` label."""
+    keys = ("strict_dag_supersede", "nodes", "missing", "edges")
+    return all(a[k] == b[k] for k in keys)
+
+
+def inject_snapshot_fault(snapshot: Mapping[str, Any], kind: int) -> Optional[Dict[str, Any]]:
+    """Deterministic corruption of a snapshot (comparator-liveness for the Stratum-0 materialization gate)."""
+    out = {
+        "snapshot_id": snapshot["snapshot_id"],
+        "strict_dag_supersede": snapshot["strict_dag_supersede"],
+        "nodes": [dict(n) for n in snapshot["nodes"]],
+        "missing": list(snapshot["missing"]),
+        "edges": [dict(e) for e in snapshot["edges"]],
+    }
+    if not out["nodes"]:
+        return None
+    k = kind % 5
+    if k == 0:
+        out["strict_dag_supersede"] = not out["strict_dag_supersede"]
+    elif k == 1:
+        out["nodes"][0]["tier"] = out["nodes"][0]["tier"] + 1
+    elif k == 2:
+        out["nodes"][0]["domain"] = out["nodes"][0]["domain"] + "_x"
+    elif k == 3:
+        out["missing"] = out["missing"] + [PHANTOM]
+    else:
+        if out["edges"]:
+            out["edges"] = out["edges"][1:]
+        else:
+            out["edges"] = [{"src": out["nodes"][0]["id"], "dst": out["nodes"][0]["id"], "type": "REFUTE"}]
+    return out
+
+
 def materialize(store: "ek5.StratifiedEvidenceStore", snapshot_id: str) -> Dict[str, Any]:
+    """The *incremental store's own* view of Stratum 0 (compared against ``model_snapshot``; never fed to Lean)."""
     nodes = [
         {"id": nid, "tier": ev.authority_tier, "domain": ev.domain} for nid, ev in sorted(store.events.items())
     ]
@@ -308,35 +409,92 @@ def lean_state(result: Mapping[str, Any]) -> Dict[str, Any]:
     }
 
 
-def fresh_from(store: "ek5.StratifiedEvidenceStore", rng: random.Random) -> "ek5.StratifiedEvidenceStore":
-    """Rebuild the visible graph from scratch (shuffled insertion order) with the same strictness and missing set."""
-    fresh = ek5.StratifiedEvidenceStore(strict_dag_supersede=store.strict_dag_supersede)
-    fresh._missing_dep_nodes = set(store._missing_dep_nodes)
-    events = list(store.events.values())
+def fresh_from_model(
+    model: "_Model", snapshot: Mapping[str, Any], rng: random.Random, cutoff: Optional[Tuple[int, int]] = None
+) -> "ek5.StratifiedEvidenceStore":
+    """Rebuild the visible graph from scratch (shuffled insertion order) from the MODEL's history, not the store."""
+    fresh = ek5.StratifiedEvidenceStore(strict_dag_supersede=bool(snapshot["strict_dag_supersede"]))
+    fresh._missing_dep_nodes = set(snapshot["missing"])
+    events, atts, _ = model_visible(model, cutoff)
     rng.shuffle(events)
-    seen: Set[Tuple[str, str, str]] = set()
-    atts: List[Any] = []
-    for att in store.attestations.values():
-        key = (att.src_id, att.dst_id, att.edge_type)
-        if att.active and key not in seen and store._edge_mult.get(key, 0) > 0:
-            seen.add(key)
-            atts.append(att)
     rng.shuffle(atts)
     fresh.apply_mutation(events, atts)
     return fresh
 
 
-def oracle_vals(store: "ek5.StratifiedEvidenceStore", snapshot: Mapping[str, Any]) -> Dict[str, str]:
-    """Textbook alternating-fixpoint WFS over the *snapshot's* dependency edges and the store's active refutes."""
-    ids = [n["id"] for n in snapshot["nodes"]]
-    deps_of: Dict[str, Set[str]] = {i: set() for i in ids}
+def snapshot_deps(snapshot: Mapping[str, Any]) -> Dict[str, Set[str]]:
+    """``D_V`` dependency sets (``DEP_ALL_TYPES`` edges) taken straight from the raw snapshot."""
+    deps_of: Dict[str, Set[str]] = {n["id"]: set() for n in snapshot["nodes"]}
     for e in snapshot["edges"]:
         if e["type"] in ek5.DEP_ALL_TYPES:
             deps_of[e["src"]].add(e["dst"])
+    return deps_of
+
+
+def snapshot_eff_auth(snapshot: Mapping[str, Any]) -> Dict[str, int]:
+    """Foundation authority ceiling from the raw snapshot: 0 on a ``D_V`` cycle or a missing parent, else
+    ``min(tier, eff_auth of every dependency)``.  Independent of the store's incremental cone recomputation."""
+    tier = {n["id"]: int(n["tier"]) for n in snapshot["nodes"]}
+    deps_of = snapshot_deps(snapshot)
+    missing = set(snapshot["missing"])
+    cyclic: Set[str] = set()
+    for start in deps_of:
+        seen: Set[str] = set()
+        stack = list(deps_of[start])
+        while stack:
+            u = stack.pop()
+            if u == start:
+                cyclic.add(start)
+                break
+            if u in seen:
+                continue
+            seen.add(u)
+            stack.extend(deps_of.get(u, ()))
+    memo: Dict[str, int] = {}
+
+    def eff(u: str) -> int:
+        if u in memo:
+            return memo[u]
+        if u in cyclic or u in missing:
+            memo[u] = 0
+            return 0
+        best = tier[u]
+        for d in deps_of[u]:
+            best = min(best, eff(d))
+        memo[u] = best
+        return best
+
+    return {u: eff(u) for u in tier}
+
+
+def snapshot_refs(snapshot: Mapping[str, Any]) -> Dict[str, Set[str]]:
+    """Authority-qualified ``refs`` (``w -> {u : u REFUTE w}``) computed from the raw snapshot.
+
+    An active REFUTE ``u -> w`` counts iff ``scopedAuth(u, domain(w)) >= eff_auth(w)`` where ``scopedAuth`` is 0 when
+    ``u`` and ``w`` live in two different non-``general`` domains and ``eff_auth(u)`` otherwise.
+    """
+    eff = snapshot_eff_auth(snapshot)
+    domain = {n["id"]: n["domain"] for n in snapshot["nodes"]}
+    refs: Dict[str, Set[str]] = {n["id"]: set() for n in snapshot["nodes"]}
+    for e in snapshot["edges"]:
+        if e["type"] != "REFUTE":
+            continue
+        u, w = e["src"], e["dst"]
+        cross = domain[u] != "general" and domain[w] != "general" and domain[u] != domain[w]
+        scoped = 0 if cross else eff[u]
+        if scoped >= eff[w]:
+            refs[w].add(u)
+    return refs
+
+
+def oracle_vals(snapshot: Mapping[str, Any]) -> Dict[str, str]:
+    """Textbook alternating-fixpoint WFS computed purely from the raw snapshot (no store tables are read)."""
+    ids = [n["id"] for n in snapshot["nodes"]]
+    deps_of = snapshot_deps(snapshot)
     for m in snapshot["missing"]:
         deps_of[m].add(PHANTOM)
     deps_of[PHANTOM] = {PHANTOM}  # unsupportable atom: anything depending on it is unfounded
-    refs_in = {w: set(store.refs.get(w, ())) for w in ids}
+    refs_in = snapshot_refs(snapshot)
     out = ek5.compute_alternating_wfs_oracle(ids + [PHANTOM], refs_in, deps_of)
     return {i: out[i] for i in ids}
 
@@ -395,32 +553,30 @@ def inject_fault(state: Mapping[str, Any], kind: int) -> Optional[Dict[str, Any]
 # ---------------------------------------------------------------------------------------------------------------
 # Sequence driver
 # ---------------------------------------------------------------------------------------------------------------
-def _visible_missing(store: "ek5.StratifiedEvidenceStore", vc: int, tc: int) -> Set[str]:
-    vis = {
-        ev.event_id
-        for ev in store.events.values()
-        if ev.tx_time <= tc and ev.valid_time <= vc and (ev.valid_end is None or vc < ev.valid_end)
-    }
-    miss: Set[str] = set()
-    for att in store.attestations.values():
-        if att.active and att.tx_time <= tc and att.valid_time <= vc:
-            if att.edge_type in ek5.DEP_ALL_TYPES and att.src_id in vis and att.dst_id not in vis:
-                miss.add(att.src_id)
-    return miss
-
-
 def _checkpoint(
-    kind: str, seq_seed: int, step: int, store: "ek5.StratifiedEvidenceStore", rng: random.Random
+    kind: str,
+    seq_seed: int,
+    step: int,
+    store: "ek5.StratifiedEvidenceStore",
+    model: "_Model",
+    rng: random.Random,
+    cutoff: Optional[Tuple[int, int]] = None,
 ) -> Dict[str, Any]:
-    snapshot = materialize(store, "%d:%d:%s" % (seq_seed, step, kind))
-    fresh = fresh_from(store, rng)
+    """One checkpoint.  The snapshot, the from-scratch rebuild and the oracle all derive from ``model`` (the recorded
+    mutation history); ``store`` (the incremental store, or its ``as_of`` view) is only compared against them."""
+    snapshot = model_snapshot(model, "%d:%d:%s" % (seq_seed, step, kind), cutoff)
+    inc_snapshot = materialize(store, snapshot["snapshot_id"])
+    matches = snapshots_equal(inc_snapshot, snapshot)
+    fresh = fresh_from_model(model, snapshot, rng, cutoff)
     return {
         "id": snapshot["snapshot_id"],
         "kind": kind,
         "snapshot": snapshot,
+        "inc_snapshot_matches_model": matches,
+        "inc_snapshot": None if matches else inc_snapshot,
         "inc": store_state(store),
         "fresh": store_state(fresh),
-        "oracle": {"python_inc": oracle_vals(store, snapshot), "python_fresh": oracle_vals(fresh, snapshot)},
+        "oracle": oracle_vals(snapshot),
     }
 
 
@@ -434,16 +590,16 @@ def run_sequence(seed: int, steps: int = DEFAULT_STEPS) -> Tuple[List[Dict[str, 
     for step in range(steps):
         batch = _gen_batch(rng, model, step)
         store.apply_mutation(batch["events"], batch["atts"], batch["withdraw"], remove_edges=batch["remove"])
-        cps.append(_checkpoint("mutation", seed, step, store, rng))
+        cps.append(_checkpoint("mutation", seed, step, store, model, rng))
     grid = [(vc, tc) for vc in range(0, 8) for tc in range(0, 8)]
-    missing_grid = [g for g in grid if _visible_missing(store, g[0], g[1])]
+    missing_grid = [g for g in grid if model_visible(model, g)[2]]
     picks: List[Tuple[int, int]] = []
     if missing_grid:
         picks.append(rng.choice(missing_grid))
     picks.append(rng.choice(grid))
     for j, (vc, tc) in enumerate(picks):
         snap = store.as_of(vc, tc)
-        cps.append(_checkpoint("as_of", seed, steps + j, snap, rng))
+        cps.append(_checkpoint("as_of", seed, steps + j, snap, model, rng, cutoff=(vc, tc)))
     stats = {
         "strict": 1 if strict else 0,
         "duplicate_triples": model.dup_triples_seen,
@@ -608,10 +764,16 @@ def run_conformance(
     kinds = {"mutation": 0, "as_of": 0}
     asof_missing = 0
     lean_states: List[Optional[Dict[str, Any]]] = []
+    mat_mismatch = 0
+    mat_samples: List[Dict[str, Any]] = []
 
     for cp, res in zip(checkpoints, results):
         kinds[cp["kind"]] += 1
         snap = cp["snapshot"]
+        if not cp["inc_snapshot_matches_model"]:
+            mat_mismatch += 1
+            if len(mat_samples) < sample_limit:
+                mat_samples.append({"snapshot": cp["id"], "model": snap, "inc": cp["inc_snapshot"]})
         if cp["kind"] == "as_of" and snap["missing"]:
             asof_missing += 1
         if not res.get("ok"):
@@ -628,9 +790,9 @@ def run_conformance(
                     samples[pair].append(dict(d, snapshot=cp["id"]))
         # textbook alternating fixpoint vs each implementation's three-valued ``val``
         for who, vals, oracle in (
-            ("lean", {n: v["val"] for n, v in lean["nodes"].items()}, cp["oracle"]["python_inc"]),
-            ("python_inc", {n: v["val"] for n, v in cp["inc"]["nodes"].items()}, cp["oracle"]["python_inc"]),
-            ("python_fresh", {n: v["val"] for n, v in cp["fresh"]["nodes"].items()}, cp["oracle"]["python_fresh"]),
+            ("lean", {n: v["val"] for n, v in lean["nodes"].items()}, cp["oracle"]),
+            ("python_inc", {n: v["val"] for n, v in cp["inc"]["nodes"].items()}, cp["oracle"]),
+            ("python_fresh", {n: v["val"] for n, v in cp["fresh"]["nodes"].items()}, cp["oracle"]),
         ):
             if vals != oracle:
                 oracle_mismatch[who] += 1
@@ -662,10 +824,30 @@ def run_conformance(
         if compare_states(bad, cp["fresh"]):
             detected += 1
 
+    # comparator liveness for the Stratum-0 materialization gate: corrupt the model snapshot, require inequality
+    mat_injected = mat_detected = 0
+    for idx, cp in enumerate(checkpoints):
+        if idx % 5 != 0:
+            continue
+        bad_snap = inject_snapshot_fault(cp["snapshot"], idx // 5)
+        if bad_snap is None:
+            continue
+        mat_injected += 1
+        if not snapshots_equal(bad_snap, cp["snapshot"]):
+            mat_detected += 1
+
     semantic_div = {
         p: sum(c for f, c in pair_counts[p].items() if f in SEMANTIC_FIELDS or f == "node_set") for p in pair_counts
     }
     total_div = {p: sum(pair_counts[p].values()) for p in pair_counts}
+    inc_nonsemantic = {
+        f: pair_counts["lean_vs_inc"].get(f, 0) for f in ("pos_cyc", "reason")
+    }
+    inc_fresh_nonsemantic = {f: pair_counts["inc_vs_fresh"].get(f, 0) for f in ("pos_cyc", "reason")}
+    inc_semantic_by_field = {
+        f: pair_counts["lean_vs_inc"].get(f, 0) + pair_counts["inc_vs_fresh"].get(f, 0)
+        for f in ("eff_auth", "val", "cur", "eligibility", "node_set")
+    }
     spec_lock = verify_spec_lock()
     ema_burst = run_anchored_clipped_ema_burst_test(seed=seed)
     gates: Dict[str, bool] = {
@@ -680,6 +862,8 @@ def run_conformance(
         "inc_vs_fresh_semantic": semantic_div["inc_vs_fresh"] == 0,
         "oracle_agrees_val": sum(oracle_mismatch.values()) == 0,
         "comparator_detects_all_injected_faults": injected > 0 and detected == injected,
+        "inc_stratum0_materialization_matches_model": len(checkpoints) > 0 and mat_mismatch == 0,
+        "materialization_comparator_detects_all_injected_faults": mat_injected > 0 and mat_detected == mat_injected,
         "coverage_three_valued": all(cov.get(k, 0) > 0 for k in ("val_T", "val_F", "val_U", "cur_T", "cur_F", "cur_U")),
         "coverage_structural": all(
             cov.get(k, 0) > 0 for k in ("pos_cyc_nodes", "blocked_authority_edges", "quarantined_supersede_cycles", "missing_parent_nodes")
@@ -702,8 +886,34 @@ def run_conformance(
             for p in pair_counts
         },
         "divergence_samples": samples,
-        "oracle": {"mismatch_counts": oracle_mismatch, "samples": oracle_samples},
-        "comparator_liveness": {"faults_injected": injected, "faults_detected": detected},
+        "oracle": {
+            "derivation": "val, eff_auth and authority-qualified refs are derived from the raw model snapshot only (no store tables)",
+            "mismatch_counts": oracle_mismatch,
+            "samples": oracle_samples,
+        },
+        "stratum0_materialization": {
+            "source": "snapshots are derived from _Model's recorded mutation history; the incremental store's materialization is compared against them",
+            "checkpoints_checked": len(checkpoints),
+            "mismatches": mat_mismatch,
+            "samples": mat_samples,
+        },
+        "comparator_liveness": {
+            "faults_injected": injected,
+            "faults_detected": detected,
+            "materialization_faults_injected": mat_injected,
+            "materialization_faults_detected": mat_detected,
+        },
+        "incremental_with_deletions_status": INCREMENTAL_STATUS,
+        "incremental_pitfall_b_pruning_disclosure": {
+            "status": INCREMENTAL_STATUS,
+            "scope": "incremental-with-deletions: conformance-tested across %d deletion/cycle sequences, unproven in Lean" % sequences,
+            "explanation": PITFALL_B_EXPLANATION,
+            "nonsemantic_differences_lean_vs_inc": inc_nonsemantic,
+            "nonsemantic_differences_inc_vs_fresh": inc_fresh_nonsemantic,
+            "nonsemantic_total": sum(inc_nonsemantic.values()) + sum(inc_fresh_nonsemantic.values()),
+            "semantic_divergences_by_field": inc_semantic_by_field,
+            "semantic_divergences_total": sum(inc_semantic_by_field.values()),
+        },
         "coverage": dict(sorted(cov.items())),
         "gates": gates,
         "ok": all(gates.values()),
@@ -721,6 +931,43 @@ def load_manifest(path: Path = MANIFEST_PATH) -> Dict[str, Any]:
     if not isinstance(data, dict) or not data.get("nanoda_bin") or not isinstance(data.get("nanoda_args"), list):
         raise ValueError("nanoda_manifest.json must define nanoda_bin and nanoda_args")
     return data
+
+
+def _exe_name(name: str) -> str:
+    return name + ".exe" if os.name == "nt" else name
+
+
+def _first_file(candidates: Sequence[Optional[str]]) -> Optional[str]:
+    for cand in candidates:
+        if cand and Path(cand).is_file():
+            return str(cand)
+    return None
+
+
+def resolve_nanoda_bin(name: str = "nanoda_bin") -> Optional[str]:
+    """``$NANODA_BIN`` -> ``PATH`` -> ``~/.cargo/nanoda_target/release`` -> ``~/.cargo/bin``; ``None`` if unresolved."""
+    exe = _exe_name("nanoda_bin")
+    return _first_file(
+        [
+            os.environ.get("NANODA_BIN"),
+            shutil.which(name),
+            str(Path.home() / ".cargo" / "nanoda_target" / "release" / exe),
+            str(Path.home() / ".cargo" / "bin" / exe),
+        ]
+    )
+
+
+def resolve_lean4export_bin(name: str = "lean4export") -> Optional[str]:
+    """``$LEAN4EXPORT_BIN`` -> ``PATH`` -> ``~/.elan/bin`` -> ``~/.cargo/bin``; ``None`` if unresolved."""
+    exe = _exe_name("lean4export")
+    return _first_file(
+        [
+            os.environ.get("LEAN4EXPORT_BIN"),
+            shutil.which(name),
+            str(Path.home() / ".elan" / "bin" / exe),
+            str(Path.home() / ".cargo" / "bin" / exe),
+        ]
+    )
 
 
 def theorem_declarations(lean_file: Optional[Path] = None, namespace: str = "ChelatedFormal") -> List[str]:
@@ -742,7 +989,12 @@ def prepare_nanoda(manifest: Optional[Mapping[str, Any]] = None) -> Dict[str, An
     m = dict(manifest or load_manifest())
     export_path = FORMAL_DIR / str(m["export_file"])
     config_path = FORMAL_DIR / str(m["nanoda_args"][0])
-    l4e = os.environ.get("LEAN4EXPORT_BIN") or str(m["lean4export_bin"])
+    l4e = resolve_lean4export_bin(str(m.get("lean4export_bin") or "lean4export"))
+    if l4e is None:
+        raise FileNotFoundError(
+            "lean4export not found (set LEAN4EXPORT_BIN, or put it on PATH / ~/.elan/bin / ~/.cargo/bin; "
+            "build from %s @ %s)" % (m.get("lean4export_upstream_repo"), m.get("lean4export_git_rev"))
+        )
     lake = _find_lake()
     if lake is None:
         raise FileNotFoundError("lake not found on PATH or in ~/.elan/bin")
@@ -770,17 +1022,31 @@ _NANODA_PP = re.compile(r"(\d+) pretty printer errors")
 
 def run_nanoda(manifest: Optional[Mapping[str, Any]] = None, timeout: int = 1800) -> Dict[str, Any]:
     m = dict(manifest or load_manifest())
-    cmd = [str(m["nanoda_bin"])] + [str(a) for a in m["nanoda_args"]]
+    nanoda = resolve_nanoda_bin(str(m.get("nanoda_bin") or "nanoda_bin"))
+    if nanoda is None:
+        raise FileNotFoundError(
+            "nanoda_bin not found (set NANODA_BIN, or put it on PATH / ~/.cargo/nanoda_target/release / ~/.cargo/bin; "
+            "build from %s @ %s)" % (m.get("nanoda_upstream_repo"), m.get("nanoda_git_rev"))
+        )
+    cmd = [nanoda] + [str(a) for a in m["nanoda_args"]]
     proc = subprocess.run(cmd, cwd=str(FORMAL_DIR), stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=timeout, check=False)
     out = proc.stdout.decode("utf-8", "replace")
+    expected = len(m.get("export_declarations") or [])
+    verdict = parse_nanoda_output(proc.returncode, out, expected)
+    return dict(verdict, rc=proc.returncode, declarations_expected=expected, output_tail=out.strip()[-400:])
+
+
+def parse_nanoda_output(rc: int, out: str, expected_declarations: int) -> Dict[str, Any]:
+    """Accept only ``rc == 0`` AND ``Checked N declarations with no typechecker errors`` with ``N > 0`` and
+    ``N >= expected_declarations``.  Anything else (including a bare rc 0) is rejected."""
     ok = _NANODA_OK.search(out)
     pp = _NANODA_PP.search(out)
+    checked = int(ok.group(1)) if ok else None
+    accepted = rc == 0 and checked is not None and checked > 0 and checked >= expected_declarations
     return {
-        "rc": proc.returncode,
-        "accepted": proc.returncode == 0 and ok is not None,
-        "declarations_checked": int(ok.group(1)) if ok else None,
+        "accepted": accepted,
+        "declarations_checked": checked,
         "pretty_printer_errors": int(pp.group(1)) if pp else 0,
-        "output_tail": out.strip()[-400:],
     }
 
 
@@ -805,12 +1071,16 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     if args.prepare_nanoda or args.run_nanoda:
         rc = 0
-        if args.prepare_nanoda:
-            print(json.dumps(prepare_nanoda(), indent=2))
-        if args.run_nanoda:
-            res = run_nanoda()
-            print(json.dumps(res, indent=2))
-            rc = 0 if res["accepted"] else 1
+        try:
+            if args.prepare_nanoda:
+                print(json.dumps(prepare_nanoda(), indent=2))
+            if args.run_nanoda:
+                res = run_nanoda()
+                print(json.dumps(res, indent=2))
+                rc = 0 if res["accepted"] else 1
+        except FileNotFoundError as exc:
+            print("NOT_RUN: %s" % exc, file=sys.stderr)
+            return 2
         return rc
 
     report = run_conformance(sequences=args.sequences, steps=args.steps, seed=args.seed, cli=args.cli)

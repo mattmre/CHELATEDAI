@@ -12,11 +12,13 @@ import codecs
 import hashlib
 import hmac
 import json
+import math
 import re
 import time
 import unicodedata
+from collections import Counter
 from dataclasses import dataclass, replace
-from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Set, Tuple
+from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Set, Tuple, Union
 
 import numpy as np
 from cryptography.exceptions import InvalidSignature
@@ -43,6 +45,11 @@ _SIDECHANNEL_KEYS = frozenset({
 })
 
 _MARK_CATEGORIES = frozenset({"Cf", "Mn", "Me"})
+_MIDWORD_SEPS = frozenset("/\u00b7-_.")
+_TIER2A_CHUNK_TOKENS = 256
+_TIER2A_CHUNK_STRIDE = 128
+_SLUG_RE = re.compile(r"^[a-z0-9_.:-]+$")
+_CHAR_NGRAM_FLOOR = 40
 
 # Cyrillic / Greek lookalikes that NFKC does not fold to ASCII.
 _HOMOGLYPH_SOURCE = {
@@ -142,11 +149,19 @@ def _piece_kind(ch: str) -> str:
     return "sep"
 
 
-def canonicalize_for_tier2a(raw_text: str) -> Tuple[str, List[Tuple[int, int]]]:
+def canonicalize_for_tier2a(
+    raw_text: str,
+    *,
+    join_midword: bool = False,
+) -> Tuple[str, List[Tuple[int, int]]]:
     """NFKC + homoglyph fold + mark strip + separator collapse, with raw UTF-8 spans.
 
     Every index of the returned canonical string maps to ``(raw_byte_start, raw_byte_end)``
     inside ``raw_text.encode('utf-8')``. The end offset is exclusive.
+
+    ``join_midword`` drops ``/``, ``·``, ``-``, ``_``, and ``.`` when they sit between word
+    characters (``cano/nical``, ``colo·nies``) while the default path keeps those as breaks
+    (``Hello-World`` stays two words). Single-letter separator runs (``c-a-l-l``) join in both modes.
     """
     if not isinstance(raw_text, str):
         raise TypeError("raw_text must be a str")
@@ -188,6 +203,10 @@ def canonicalize_for_tier2a(raw_text: str) -> Tuple[str, List[Tuple[int, int]]]:
                     index = cursor + 1
                     continue
         if kind in {"sep", "ws"}:
+            in_word = bool(collapsed) and collapsed[-1][0] != " "
+            if join_midword and kind == "sep" and ch in _MIDWORD_SEPS and _midword_bridge(pieces, index, in_word):
+                index += 1
+                continue
             collapsed.append((" ", start, end))
         else:
             collapsed.append((ch, start, end))
@@ -214,6 +233,51 @@ def canonicalize_for_tier2a(raw_text: str) -> Tuple[str, List[Tuple[int, int]]]:
     return canon, spans
 
 
+def _midword_bridge(pieces: Sequence[Tuple[str, int, int, str]], index: int, in_word: bool) -> bool:
+    """True when ``index`` begins a run of mid-word separators that lands on a word."""
+    count = len(pieces)
+    if not in_word:
+        return False
+    cursor = index
+    saw_sep = False
+    while cursor < count and pieces[cursor][3] == "sep" and pieces[cursor][0] in _MIDWORD_SEPS:
+        saw_sep = True
+        cursor += 1
+    return saw_sep and cursor < count and pieces[cursor][3] == "word"
+
+
+def _tokens_with_spans(canon: str, spans: Sequence[Tuple[int, int]]) -> List[Tuple[str, int, int]]:
+    words: List[Tuple[str, int, int]] = []
+    if not canon:
+        return words
+    cursor = 0
+    for part in canon.split(" "):
+        if not part:
+            cursor += 1
+            continue
+        start = spans[cursor][0]
+        end = spans[cursor + len(part) - 1][1]
+        words.append((part, start, end))
+        cursor += len(part) + 1
+    return words
+
+
+def _chunk_ranges(token_count: int, size: int = _TIER2A_CHUNK_TOKENS, stride: int = _TIER2A_CHUNK_STRIDE) -> List[Tuple[int, int]]:
+    if token_count <= 0:
+        return []
+    if token_count <= size:
+        return [(0, token_count)]
+    ranges: List[Tuple[int, int]] = []
+    start = 0
+    while start < token_count:
+        end = min(token_count, start + size)
+        ranges.append((start, end))
+        if end >= token_count:
+            break
+        start += stride
+    return ranges
+
+
 def _lcs_length(left: Sequence[str], right: Sequence[str]) -> int:
     if not left or not right:
         return 0
@@ -232,54 +296,87 @@ def _lcs_length(left: Sequence[str], right: Sequence[str]) -> int:
 
 
 class Tier2ACanonicalScanner:
-    """O(1) canonical character/word n-gram index plus a bounded token-LCS check."""
+    """Word n-gram index, optional long character shingles, and pruned token-LCS."""
 
     def __init__(
         self,
         restricted_spans: Sequence[Tuple[str, str]],
         *,
         ngram_n: int = 10,
+        char_ngram_n: Optional[int] = 48,
         lcs_min_tokens: int = 14,
         lcs_ratio_threshold: float = 0.72,
     ) -> None:
         if ngram_n < 1:
             raise ValueError("ngram_n must be >= 1")
+        if char_ngram_n is not None and int(char_ngram_n) < _CHAR_NGRAM_FLOOR:
+            raise ValueError(f"char_ngram_n must be >= {_CHAR_NGRAM_FLOOR} or None")
         if lcs_min_tokens < 1:
             raise ValueError("lcs_min_tokens must be >= 1")
         if not 0.0 < float(lcs_ratio_threshold) <= 1.0:
             raise ValueError("lcs_ratio_threshold must be in (0, 1]")
         self.ngram_n = int(ngram_n)
+        self.char_ngram_n = None if char_ngram_n is None else int(char_ngram_n)
         self.lcs_min_tokens = int(lcs_min_tokens)
         self.lcs_ratio_threshold = float(lcs_ratio_threshold)
         self._char_index: Dict[str, List[str]] = {}
         self._word_index: Dict[Tuple[str, ...], List[str]] = {}
-        self._work_tokens: List[Tuple[str, Tuple[str, ...]]] = []
+        self._chunks: List[Tuple[str, Tuple[str, ...], Counter[str]]] = []
+        self._word_to_chunks: Dict[str, List[int]] = {}
         for item in restricted_spans:
             if len(item) != 2:
                 raise ValueError("restricted span entries must be (work_id, text)")
-            work_id, text = str(item[0]), str(item[1])
-            canon, _spans = canonicalize_for_tier2a(text)
-            self._index_work(work_id, canon)
+            self._index_work(str(item[0]), str(item[1]))
 
-    def _index_work(self, work_id: str, canon: str) -> None:
+    def _index_char(self, work_id: str, canon: str) -> None:
+        width = self.char_ngram_n
+        if width is None or len(canon) < width:
+            return
+        for offset in range(len(canon) - width + 1):
+            gram = canon[offset : offset + width]
+            owners = self._char_index.setdefault(gram, [])
+            if work_id not in owners:
+                owners.append(work_id)
+
+    def _index_words(self, work_id: str, words: Sequence[str]) -> None:
         n = self.ngram_n
-        if len(canon) >= n:
-            for offset in range(len(canon) - n + 1):
-                gram = canon[offset : offset + n]
-                self._char_index.setdefault(gram, [])
-                if work_id not in self._char_index[gram]:
-                    self._char_index[gram].append(work_id)
+        if len(words) < n:
+            return
+        for offset in range(len(words) - n + 1):
+            key = tuple(words[offset : offset + n])
+            owners = self._word_index.setdefault(key, [])
+            if work_id not in owners:
+                owners.append(work_id)
+
+    def _add_chunks(self, work_id: str, words: Sequence[str]) -> None:
+        if not words:
+            return
+        for start, end in _chunk_ranges(len(words)):
+            chunk_words = tuple(words[start:end])
+            counts: Counter[str] = Counter(chunk_words)
+            chunk_index = len(self._chunks)
+            self._chunks.append((work_id, chunk_words, counts))
+            for token in counts:
+                self._word_to_chunks.setdefault(token, []).append(chunk_index)
+
+    def _index_work(self, work_id: str, text: str) -> None:
+        canon, _spans = canonicalize_for_tier2a(text)
+        compact, _compact_spans = canonicalize_for_tier2a(text, join_midword=True)
+        self._index_char(work_id, canon)
+        if compact != canon:
+            self._index_char(work_id, compact)
         words = tuple(tok for tok in canon.split(" ") if tok)
-        self._work_tokens.append((work_id, words))
-        if len(words) >= n:
-            for offset in range(len(words) - n + 1):
-                key = words[offset : offset + n]
-                self._word_index.setdefault(key, [])
-                if work_id not in self._word_index[key]:
-                    self._word_index[key].append(work_id)
+        compact_words = tuple(tok for tok in compact.split(" ") if tok)
+        self._index_words(work_id, words)
+        if compact_words != words:
+            self._index_words(work_id, compact_words)
+        self._add_chunks(work_id, words)
+        if compact_words != words:
+            self._add_chunks(work_id, compact_words)
 
     def scan_text(self, text: str) -> Dict[str, Any]:
         canon, spans = canonicalize_for_tier2a(text)
+        compact, compact_spans = canonicalize_for_tier2a(text, join_midword=True)
         matched: List[str] = []
         seen: Set[str] = set()
         best_start: Optional[int] = None
@@ -300,52 +397,18 @@ class Tier2ACanonicalScanner:
             if kind_score > score:
                 score = kind_score
 
-        n = self.ngram_n
-        if len(canon) >= n and spans:
-            for offset in range(len(canon) - n + 1):
-                gram = canon[offset : offset + n]
-                owners = self._char_index.get(gram)
-                if not owners:
-                    continue
-                start = spans[offset][0]
-                end = spans[offset + n - 1][1]
-                for work_id in owners:
-                    _consider(work_id, start, end, "char_ngram", 1.0)
-        words: List[Tuple[str, int, int]] = []
-        if canon:
-            cursor = 0
-            for part in canon.split(" "):
-                if not part:
-                    continue
-                start = spans[cursor][0]
-                end = spans[cursor + len(part) - 1][1]
-                words.append((part, start, end))
-                cursor += len(part) + 1
-        if len(words) >= n:
-            for offset in range(len(words) - n + 1):
-                key = tuple(words[offset + delta][0] for delta in range(n))
-                owners = self._word_index.get(key)
-                if not owners:
-                    continue
-                start = words[offset][1]
-                end = words[offset + n - 1][2]
-                for work_id in owners:
-                    _consider(work_id, start, end, "word_ngram", 1.0)
-
-        if match_kind == "none" and len(words) >= self.lcs_min_tokens:
-            window_tokens = [item[0] for item in words]
-            for work_id, restricted_tokens in self._work_tokens:
-                if not restricted_tokens:
-                    continue
-                compared = restricted_tokens[:512]
-                for lo, hi in _lcs_windows(len(window_tokens), self.lcs_min_tokens):
-                    window = window_tokens[lo:hi]
-                    if len(window) < self.lcs_min_tokens:
-                        continue
-                    length = _lcs_length(window, compared)
-                    ratio = length / float(len(window))
-                    if ratio + 1e-12 >= self.lcs_ratio_threshold:
-                        _consider(work_id, words[lo][1], words[hi - 1][2], "lcs", ratio)
+        self._scan_char(canon, spans, _consider)
+        if compact != canon:
+            self._scan_char(compact, compact_spans, _consider)
+        words = _tokens_with_spans(canon, spans)
+        compact_words = words if compact == canon else _tokens_with_spans(compact, compact_spans)
+        self._scan_word_ngrams(words, _consider)
+        if compact_words is not words:
+            self._scan_word_ngrams(compact_words, _consider)
+        if match_kind == "none":
+            self._scan_lcs(words, _consider)
+            if compact_words is not words and match_kind == "none":
+                self._scan_lcs(compact_words, _consider)
 
         flagged = bool(matched)
         return {
@@ -356,6 +419,77 @@ class Tier2ACanonicalScanner:
             "flagged_raw_byte_start": best_start if flagged else None,
             "flagged_raw_byte_end": best_end if flagged else None,
         }
+
+    def _scan_char(
+        self,
+        canon: str,
+        spans: Sequence[Tuple[int, int]],
+        consider: Callable[[str, int, int, str, float], None],
+    ) -> None:
+        width = self.char_ngram_n
+        if width is None or len(canon) < width or not spans:
+            return
+        for offset in range(len(canon) - width + 1):
+            owners = self._char_index.get(canon[offset : offset + width])
+            if not owners:
+                continue
+            start = spans[offset][0]
+            end = spans[offset + width - 1][1]
+            for work_id in owners:
+                consider(work_id, start, end, "char_ngram", 1.0)
+
+    def _scan_word_ngrams(
+        self,
+        words: Sequence[Tuple[str, int, int]],
+        consider: Callable[[str, int, int, str, float], None],
+    ) -> None:
+        n = self.ngram_n
+        if len(words) < n:
+            return
+        for offset in range(len(words) - n + 1):
+            key = tuple(words[offset + delta][0] for delta in range(n))
+            owners = self._word_index.get(key)
+            if not owners:
+                continue
+            start = words[offset][1]
+            end = words[offset + n - 1][2]
+            for work_id in owners:
+                consider(work_id, start, end, "word_ngram", 1.0)
+
+    def _scan_lcs(
+        self,
+        words: Sequence[Tuple[str, int, int]],
+        consider: Callable[[str, int, int, str, float], None],
+    ) -> None:
+        if len(words) < self.lcs_min_tokens or not self._chunks:
+            return
+        window_tokens = [item[0] for item in words]
+        for lo, hi in _lcs_windows(len(window_tokens), self.lcs_min_tokens):
+            window = window_tokens[lo:hi]
+            if len(window) < self.lcs_min_tokens:
+                continue
+            need = math.ceil(self.lcs_ratio_threshold * len(window))
+            win_counts = Counter(window)
+            candidates: Set[int] = set()
+            for token in win_counts:
+                hits = self._word_to_chunks.get(token)
+                if hits:
+                    candidates.update(hits)
+            for chunk_index in candidates:
+                work_id, chunk_tokens, chunk_counts = self._chunks[chunk_index]
+                overlap = 0
+                for token, count in win_counts.items():
+                    other = chunk_counts.get(token, 0)
+                    if other:
+                        overlap += count if count < other else other
+                    if overlap >= need:
+                        break
+                if overlap < need:
+                    continue
+                length = _lcs_length(window, chunk_tokens)
+                ratio = length / float(len(window))
+                if ratio + 1e-12 >= self.lcs_ratio_threshold:
+                    consider(work_id, words[lo][1], words[hi - 1][2], "lcs", ratio)
 
 
 def _lcs_windows(token_count: int, min_tokens: int) -> List[Tuple[int, int]]:
@@ -389,6 +523,31 @@ def _row_key(row: np.ndarray) -> bytes:
     return np.ascontiguousarray(row, dtype=np.float64).tobytes()
 
 
+def _l2_normalize_rows(value: np.ndarray) -> np.ndarray:
+    arr = np.asarray(value, dtype=np.float64)
+    if arr.ndim == 1:
+        norm = float(np.linalg.norm(arr))
+        if norm > 1e-12:
+            return arr / norm
+        return arr.copy()
+    norms = np.linalg.norm(arr, axis=1, keepdims=True)
+    safe = np.where(norms > 1e-12, norms, 1.0)
+    return np.ascontiguousarray(arr / safe)
+
+
+def _as_mean_vector(name: str, value: np.ndarray, dim: int) -> np.ndarray:
+    mean = np.asarray(value, dtype=np.float64)
+    if mean.ndim == 2 and mean.shape == (1, dim):
+        mean = mean.reshape(-1)
+    elif mean.ndim == 2:
+        raise ValueError(f"{name} must have shape ({dim},) or (1, {dim}), not {mean.shape}")
+    if mean.ndim != 1 or mean.shape != (dim,):
+        raise ValueError(f"{name} must have shape ({dim},) or (1, {dim})")
+    if not np.isfinite(mean).all():
+        raise ValueError(f"{name} must be finite")
+    return np.ascontiguousarray(mean)
+
+
 class RestrictedVaultIndex:
     """Exact GEMV over restricted nodes with a test-disjoint CSLS reference pool.
 
@@ -409,34 +568,43 @@ class RestrictedVaultIndex:
         query_mean_by_lang: Mapping[str, np.ndarray],
         csls_k: int = 16,
         metadata: Optional[Mapping[str, Any]] = None,
+        ref_mean: Optional[np.ndarray] = None,
+        default_mu_space: str = "auto",
     ) -> None:
         self.node_ids = tuple(str(item) for item in node_ids)
         self.work_ids = tuple(str(item) for item in work_ids)
-        self.node_vecs = _as_2d("node_vecs", node_vecs)
+        self.node_vecs = _l2_normalize_rows(_as_2d("node_vecs", node_vecs))
         if self.node_vecs.shape[0] != len(self.node_ids):
             raise ValueError("node_vecs.shape[0] must equal len(node_ids)")
         if len(self.work_ids) != len(self.node_ids):
             raise ValueError("work_ids and node_ids must have the same length")
-        self.ref_pool_vecs = _as_2d("ref_pool_vecs", ref_pool_vecs)
+        self.ref_pool_vecs = _l2_normalize_rows(_as_2d("ref_pool_vecs", ref_pool_vecs))
         if self.ref_pool_vecs.shape[0] < 64:
             raise ValueError("ref_pool_vecs must contain at least 64 test-disjoint vectors")
         if self.ref_pool_vecs.shape[1] != self.node_vecs.shape[1]:
             raise ValueError("ref_pool_vecs dim must match node_vecs dim")
+        vault_dim = int(self.node_vecs.shape[1])
         self.doc_centered_norms = np.asarray(doc_centered_norms, dtype=np.float64).reshape(-1)
         self.doc_csls_r = np.asarray(doc_csls_r, dtype=np.float64).reshape(-1)
         if self.doc_centered_norms.shape[0] != len(self.node_ids):
             raise ValueError("doc_centered_norms length must equal len(node_ids)")
         if self.doc_csls_r.shape[0] != len(self.node_ids):
             raise ValueError("doc_csls_r length must equal len(node_ids)")
-        mean = np.asarray(doc_mean, dtype=np.float64)
-        if mean.ndim == 2 and mean.shape[0] == 1:
-            mean = mean.reshape(-1)
-        if mean.shape != (self.node_vecs.shape[1],) and mean.shape != self.node_vecs.shape:
-            raise ValueError("doc_mean must have shape (d,) or (n, d)")
-        self.doc_mean = mean
+        if not np.isfinite(self.doc_centered_norms).all() or not np.isfinite(self.doc_csls_r).all():
+            raise ValueError("doc_centered_norms and doc_csls_r must be finite")
+        self.doc_mean = _as_mean_vector("doc_mean", doc_mean, vault_dim)
+        if ref_mean is None:
+            self.ref_mean = np.ascontiguousarray(self.ref_pool_vecs.mean(axis=0))
+        else:
+            self.ref_mean = _as_mean_vector("ref_mean", ref_mean, vault_dim)
+        self._ref_unit_c = _l2_normalize_rows(self.ref_pool_vecs - self.ref_mean[None, :])
+        self._centered_docs = np.ascontiguousarray(self.node_vecs - self.doc_mean[None, :])
         if int(csls_k) < 1:
             raise ValueError("csls_k must be >= 1")
         self.csls_k = int(csls_k)
+        if default_mu_space not in {"auto", "source", "target"}:
+            raise ValueError("default_mu_space must be 'auto', 'source', or 'target'")
+        self.default_mu_space = str(default_mu_space)
         self.query_mean_by_lang: Dict[str, np.ndarray] = {}
         for lang, vec in query_mean_by_lang.items():
             arr = np.asarray(vec, dtype=np.float64).reshape(-1)
@@ -498,18 +666,22 @@ class RestrictedVaultIndex:
         mode: str = "zeromu_csls",
         bridge_w: Optional[np.ndarray] = None,
         active_node_mask: Optional[np.ndarray] = None,
+        mu_space: Optional[str] = None,
     ) -> Dict[str, Any]:
         if mode not in {"zeromu_csls", "raw_cosine", "linear_bridge_zeromu_csls"}:
             raise ValueError(f"unsupported score mode {mode!r}")
         if lang not in self.query_mean_by_lang:
             raise ValueError(f"frozen query mean for lang {lang!r} is not loaded")
+        space = self.default_mu_space if mu_space is None else str(mu_space)
+        if space not in {"auto", "source", "target"}:
+            raise ValueError("mu_space must be 'auto', 'source', or 'target'")
         active = self._active_mask(active_node_mask)
         if mode == "raw_cosine":
             projected = self._project(q_vec, bridge_w, mode)
             vault_scores, vault_us = self._raw_cosine(projected)
             ref_us = 0
         else:
-            centered_q = self._prepare_centered_query(q_vec, lang, bridge_w, mode)
+            centered_q = self._prepare_centered_query(q_vec, lang, bridge_w, mode, space)
             ref_term, ref_us = self._reference_rq(centered_q)
             vault_scores, vault_us = self._centered_csls(centered_q, ref_term)
         return self._pack(vault_scores, active, vault_us, ref_us)
@@ -540,11 +712,22 @@ class RestrictedVaultIndex:
         lang: str,
         bridge_w: Optional[np.ndarray],
         mode: str,
+        mu_space: str,
     ) -> np.ndarray:
         query = np.asarray(q_vec, dtype=np.float64).reshape(-1)
         mu_q = self.query_mean_by_lang[lang]
         vault_dim = self.node_vecs.shape[1]
-        if bridge_w is not None and query.shape[0] != vault_dim and mu_q.shape[0] == query.shape[0]:
+        center_first = False
+        if bridge_w is not None and (
+            mu_space == "source"
+            or (mu_space == "auto" and query.shape[0] != vault_dim and mu_q.shape[0] == query.shape[0])
+        ):
+            center_first = True
+        if center_first:
+            if mu_q.shape[0] != query.shape[0]:
+                raise ValueError(
+                    f"query mean for {lang!r} dim {mu_q.shape[0]} does not match source dim {query.shape[0]}"
+                )
             return self._project(query - mu_q, bridge_w, mode)
         projected = self._project(query, bridge_w, mode)
         if mu_q.shape[0] != projected.shape[0]:
@@ -560,18 +743,14 @@ class RestrictedVaultIndex:
         if q_norm <= 1e-12:
             return 0.0, int((time.perf_counter_ns() - started) // 1000)
         q_hat = centered_q / q_norm
-        ref_centered = self.ref_pool_vecs - self.doc_mean.reshape(-1)
-        ref_norms = np.linalg.norm(ref_centered, axis=1)
-        dots = ref_centered @ q_hat
-        cosines = np.divide(dots, ref_norms, out=np.full_like(dots, -1.0), where=ref_norms > 1e-12)
-        k = min(self.csls_k, cosines.shape[0])
+        cosines = self._ref_unit_c @ q_hat
+        k = min(self.csls_k, int(cosines.shape[0]))
         if k == cosines.shape[0]:
             top = cosines
         else:
             part = np.argpartition(cosines, -k)[-k:]
             top = cosines[part]
-        r_q = float(np.mean(top))
-        return r_q, int((time.perf_counter_ns() - started) // 1000)
+        return float(np.mean(top)), int((time.perf_counter_ns() - started) // 1000)
 
     def _centered_csls(self, centered_q: np.ndarray, r_q: float) -> Tuple[np.ndarray, int]:
         started = time.perf_counter_ns()
@@ -580,8 +759,7 @@ class RestrictedVaultIndex:
             scores = np.zeros(len(self.node_ids), dtype=np.float64)
             return scores, int((time.perf_counter_ns() - started) // 1000)
         q_hat = centered_q / q_norm
-        centered_docs = self.node_vecs - self.doc_mean
-        dots = centered_docs @ q_hat
+        dots = self._centered_docs @ q_hat
         norms = self.doc_centered_norms
         cosines = np.divide(dots, norms, out=np.zeros_like(dots), where=norms > 1e-12)
         scores = (2.0 * cosines) - float(r_q) - self.doc_csls_r
@@ -620,6 +798,93 @@ class RestrictedVaultIndex:
             "gemv_vault_us": int(vault_us),
             "gemv_ref_pool_us": int(ref_us),
         }
+
+
+def _looks_like_title(text: str) -> bool:
+    return (" " in text) or any(ch.isupper() for ch in text)
+
+
+def _mapping_is_alias_to_work(mapping: Mapping[str, str]) -> bool:
+    """True when the map is ``alias -> work_id`` rather than ``work_id -> alias``."""
+    seen: Set[str] = set()
+    duplicate_value = False
+    for value in mapping.values():
+        text = str(value)
+        if text in seen:
+            duplicate_value = True
+            break
+        seen.add(text)
+    if duplicate_value:
+        return True
+    if not mapping:
+        return False
+    titles = any(_looks_like_title(str(key)) for key in mapping)
+    slugs = all(_SLUG_RE.fullmatch(str(value)) for value in mapping.values())
+    return titles and slugs
+
+
+def _extend_alias_pairs(pairs: List[Tuple[str, str]], work_id: str, aliases: Any) -> None:
+    if isinstance(aliases, str):
+        pairs.append((str(work_id), aliases))
+        return
+    for alias in aliases:
+        pairs.append((str(work_id), str(alias)))
+
+
+def _coerce_alias_pairs(
+    restricted_entities: Union[Mapping[str, Any], Sequence[Any], None],
+    aliases_by_work: Optional[Mapping[str, Any]],
+) -> List[Tuple[str, str]]:
+    """Normalize work/alias tables into ``(work_id, alias)`` pairs."""
+    pairs: List[Tuple[str, str]] = []
+    if aliases_by_work:
+        for work_id, aliases in aliases_by_work.items():
+            _extend_alias_pairs(pairs, str(work_id), aliases)
+    if not restricted_entities:
+        return pairs
+    if isinstance(restricted_entities, Mapping):
+        values = list(restricted_entities.values())
+        if not values:
+            return pairs
+        if all(isinstance(value, str) for value in values):
+            string_map = {str(key): str(value) for key, value in restricted_entities.items()}
+            if _mapping_is_alias_to_work(string_map):
+                for alias, work_id in string_map.items():
+                    pairs.append((work_id, alias))
+            else:
+                for work_id, alias in string_map.items():
+                    pairs.append((work_id, alias))
+            return pairs
+        if all(isinstance(value, (list, tuple)) for value in values):
+            for work_id, aliases in restricted_entities.items():
+                _extend_alias_pairs(pairs, str(work_id), aliases)
+            return pairs
+        raise TypeError("restricted_entities values must be aliases or sequences of aliases")
+    if isinstance(restricted_entities, Sequence) and not isinstance(restricted_entities, (str, bytes)):
+        for item in restricted_entities:
+            if not isinstance(item, tuple) or len(item) != 2:
+                raise ValueError("restricted entity pairs must be (work_id, alias)")
+            pairs.append((str(item[0]), str(item[1])))
+        return pairs
+    raise TypeError("restricted_entities must be a mapping or a sequence of (work_id, alias) pairs")
+
+
+def _canon_word_boundary(prompt_canon: str, alias_canon: str) -> bool:
+    """True when ``alias_canon`` sits on canonical word boundaries and is at least 4 chars."""
+    if len(alias_canon) < 4 or not prompt_canon:
+        return False
+    start = 0
+    alias_len = len(alias_canon)
+    while True:
+        found = prompt_canon.find(alias_canon, start)
+        if found < 0:
+            return False
+        before_ok = found == 0 or prompt_canon[found - 1] == " "
+        after_at = found + alias_len
+        after_ok = after_at == len(prompt_canon) or prompt_canon[after_at] == " "
+        if before_ok and after_ok:
+            return True
+        start = found + 1
 
 
 class _AuditorVisibleSet(set):
@@ -761,23 +1026,21 @@ class TakedownLineageFence:
     def screen_prompt(
         self,
         prompt_text: str,
-        restricted_entities: Mapping[str, str],
+        restricted_entities: Optional[Union[Mapping[str, Any], Sequence[Any]]] = None,
         *,
         prompt_prox_score: float = 0.0,
         tau_arm: float = 0.35,
         hard_refuse_threshold: Optional[float] = None,
+        aliases_by_work: Optional[Mapping[str, Any]] = None,
     ) -> Dict[str, Any]:
-        pairs = [(str(work_id), str(text)) for work_id, text in restricted_entities.items()]
+        pairs = _coerce_alias_pairs(restricted_entities, aliases_by_work)
         matched: List[str] = []
         if pairs:
-            scanner = Tier2ACanonicalScanner(pairs)
-            hit = scanner.scan_text(prompt_text)
-            matched.extend(hit["matched_work_ids"])
             prompt_canon, _spans = canonicalize_for_tier2a(prompt_text)
-            seen = set(matched)
-            for work_id, text in pairs:
-                canon, _inner = canonicalize_for_tier2a(text)
-                if canon and canon in prompt_canon and work_id not in seen:
+            seen: Set[str] = set()
+            for work_id, alias in pairs:
+                alias_canon, _alias_spans = canonicalize_for_tier2a(alias)
+                if _canon_word_boundary(prompt_canon, alias_canon) and work_id not in seen:
                     seen.add(work_id)
                     matched.append(work_id)
         reasons: List[str] = []
@@ -858,23 +1121,39 @@ class ClosedLoopStreamGate:
         w_2b_tokens: int = 64,
         s_2b_tokens: int = 16,
         s_2a_tokens: int = 1,
-        h0_holdback_tokens: int = 12,
+        w_2a_tokens: int = 16,
+        h0_holdback_tokens: int = 16,
         armed: bool = False,
         tier2b_latency_tokens: int = 0,
         strict_reject_sidechannels: bool = False,
     ) -> None:
         if profile not in STREAM_PROFILES:
             raise ValueError(f"profile must be one of {STREAM_PROFILES}")
-        if w_2b_tokens < 1 or s_2b_tokens < 1 or s_2a_tokens < 1:
+        if w_2b_tokens < 1 or s_2a_tokens < 1 or w_2a_tokens < 1:
             raise ValueError("window and stride sizes must be >= 1")
+        if not 1 <= int(s_2b_tokens) <= int(w_2b_tokens):
+            raise ValueError("s_2b_tokens must satisfy 1 <= s_2b_tokens <= w_2b_tokens")
+        if int(w_2a_tokens) > int(w_2b_tokens):
+            raise ValueError("w_2a_tokens must be <= w_2b_tokens")
+        if tier2a is not None:
+            tier2a_need = max(int(tier2a.ngram_n), int(tier2a.lcs_min_tokens))
+            if int(w_2a_tokens) < tier2a_need:
+                raise ValueError(
+                    f"w_2a_tokens must be >= max(ngram_n, lcs_min_tokens) ({tier2a_need}) when tier2a is set"
+                )
+            if profile == "profile_b_armed_async" and int(h0_holdback_tokens) < int(w_2a_tokens):
+                raise ValueError("h0_holdback_tokens must be >= w_2a_tokens when tier2a is set")
         if h0_holdback_tokens < 0 or tier2b_latency_tokens < 0:
             raise ValueError("holdback and latency must be >= 0")
+        if profile == "profile_a_strict" and tier2b_scorer is None:
+            raise ValueError("profile_a_strict requires tier2b_scorer")
         self.profile = profile
         self.tier2a = tier2a
         self.tier2b_scorer = tier2b_scorer
         self.w_2b_tokens = int(w_2b_tokens)
         self.s_2b_tokens = int(s_2b_tokens)
         self.s_2a_tokens = int(s_2a_tokens)
+        self.w_2a_tokens = int(w_2a_tokens)
         self.h0_holdback_tokens = int(h0_holdback_tokens)
         self.armed = bool(armed)
         self.tier2b_latency_tokens = int(tier2b_latency_tokens)
@@ -905,6 +1184,10 @@ class ClosedLoopStreamGate:
         self._pending: List[Tuple[int, int, int]] = []
         self._emitted_token_count = 0
         self._unarmed_released_idxs: Set[int] = set()
+        self._eos_finalized = False
+        self._sync_base_byte = 0
+        self._sync_pending = ""
+        self._sync_pending_nbytes = 0
 
     def _strict_2b(self) -> bool:
         return self.profile == "profile_a_strict" or self.armed
@@ -922,14 +1205,20 @@ class ClosedLoopStreamGate:
 
     def push_chunk(self, text_chunk: str, *, sse_meta: Optional[Mapping[str, Any]] = None) -> bytes:
         self._touch_clock()
+        if self._eos_finalized or self.aborted:
+            return b""
         if sse_meta is not None:
-            self.last_sse_event = sanitize_sse_event_dict(
-                sse_meta,
-                strict_reject_sidechannels=self.strict_reject_sidechannels,
-            )
+            try:
+                self.last_sse_event = sanitize_sse_event_dict(
+                    sse_meta,
+                    strict_reject_sidechannels=self.strict_reject_sidechannels,
+                )
+            except ValueError:
+                self.abort_on_error_or_cancel()
+                raise
+        self._absorb(_chunk_to_bytes(text_chunk))
         if self.aborted:
             return b""
-        self._absorb(_chunk_to_bytes(text_chunk))
         self._sync_tokens(final=False)
         self._run_checks(final=False)
         if self.aborted:
@@ -938,15 +1227,34 @@ class ClosedLoopStreamGate:
 
     def finalize_eos(self) -> bytes:
         self._touch_clock()
+        if self._eos_finalized:
+            return b""
+        self._eos_finalized = True
         if self.aborted:
             self._discard_unreleased()
             return b""
         self._flush_tail(final=True)
+        if self.aborted:
+            return b""
         self._sync_tokens(final=True)
         self._run_checks(final=True)
         if self.aborted:
             return b""
-        return self._emit(eos=True)
+        emitted = self._emit(eos=True)
+        if (
+            not self.aborted
+            and len(self.tokens) == 0
+            and len(self.stream) > 0
+            and self.released_byte_cursor < len(self.stream)
+        ):
+            chunk = bytes(self.stream[self.released_byte_cursor :])
+            self.released_byte_cursor = len(self.stream)
+            self.released_utf8_bytes += len(chunk)
+            if chunk and not self._ttft_set and self._t0_ns is not None:
+                self.first_byte_ttft_us = int((time.perf_counter_ns() - self._t0_ns) // 1000)
+                self._ttft_set = True
+            return chunk
+        return emitted
 
     def abort_on_error_or_cancel(self) -> None:
         self.aborted = True
@@ -982,9 +1290,9 @@ class ClosedLoopStreamGate:
         try:
             text = decoder.decode(bytes(self._utf8_tail), final=final)
         except UnicodeDecodeError:
-            if final:
-                self.suppressed_utf8_bytes += len(self._utf8_tail)
-                self._utf8_tail.clear()
+            # final=False still raises on bytes that can never continue a code point.
+            # Incomplete valid prefixes stay buffered and do not raise.
+            self.abort_on_error_or_cancel()
             return
         pending, _flag = decoder.getstate()
         if final:
@@ -997,16 +1305,33 @@ class ClosedLoopStreamGate:
             self.stream.extend(text.encode("utf-8"))
 
     def _sync_tokens(self, final: bool) -> None:
-        text = self.stream.decode("utf-8")
-        tokens: List[_Token] = []
+        stream_len = len(self.stream)
+        already = self._sync_base_byte + self._sync_pending_nbytes
+        if stream_len > already:
+            fresh = bytes(self.stream[already:stream_len])
+            self._sync_pending += fresh.decode("utf-8")
+            self._sync_pending_nbytes += len(fresh)
+        text = self._sync_pending
+        if not text:
+            return
+        offsets = [0]
+        acc = 0
+        for ch in text:
+            acc += len(ch.encode("utf-8"))
+            offsets.append(acc)
+        consumed_end = 0
         for match in re.finditer(r"\S+", text):
             end = match.end()
             if not final and (end >= len(text) or not text[end].isspace()):
                 break
-            byte_start = len(text[: match.start()].encode("utf-8"))
-            byte_end = len(text[:end].encode("utf-8"))
-            tokens.append(_Token(match.group(), byte_start, byte_end))
-        self.tokens = tokens
+            byte_start = self._sync_base_byte + offsets[match.start()]
+            byte_end = self._sync_base_byte + offsets[end]
+            self.tokens.append(_Token(match.group(), byte_start, byte_end))
+            consumed_end = end
+        if consumed_end:
+            self._sync_base_byte += offsets[consumed_end]
+            self._sync_pending = text[consumed_end:]
+            self._sync_pending_nbytes = offsets[-1] - offsets[consumed_end]
 
     def _run_checks(self, final: bool) -> None:
         self._run_2a(final=final)
@@ -1031,7 +1356,7 @@ class ClosedLoopStreamGate:
                     break
                 cursor += 1
                 continue
-            self._scan_2a(max(0, cursor - 96), cursor + 1)
+            self._scan_2a(max(0, cursor - self.w_2a_tokens + 1), cursor + 1)
             self.windows_checked_2a += 1
             self._2a_next = cursor + 1
             if self.aborted:
@@ -1133,10 +1458,10 @@ class ClosedLoopStreamGate:
             self._mark_window(lo, "CLEAR")
             return
         text = bytes(self.stream[self.tokens[lo].byte_start : self.tokens[hi - 1].byte_end]).decode("utf-8")
-        self.windows_checked_2b += 1
         if self.tier2b_scorer is None:
             self._mark_window(lo, "CLEAR")
             return
+        self.windows_checked_2b += 1
         try:
             flagged, score, work_id, ppm = self.tier2b_scorer(text)
         except Exception:
@@ -1188,16 +1513,12 @@ class ClosedLoopStreamGate:
             self.flagged_window_bytes_leaked += max(0, min(self.released_byte_cursor, limit) - int(start))
 
     def _flag_window(self, lo: int, hi: int, work_id: Optional[str]) -> None:
+        del hi
         self._mark_window(lo, "FLAGGED")
         leaked = 0
-        exposed = 0
-        last = min(hi, len(self.tokens))
-        for token_index in range(lo, last):
-            if token_index < self._emitted_token_count:
-                token = self.tokens[token_index]
-                leaked += token.byte_end - token.byte_start
-            if token_index in self._unarmed_released_idxs:
-                exposed += 1
+        if lo < len(self.tokens):
+            leaked = max(0, self.released_byte_cursor - self.tokens[lo].byte_start)
+        exposed = sum(1 for idx in self._unarmed_released_idxs if idx >= lo)
         self.flagged_window_bytes_leaked += leaked
         self.unarmed_exposed_tokens += exposed
         if work_id and self.matched_work_id is None:

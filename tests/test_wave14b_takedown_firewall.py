@@ -126,9 +126,10 @@ class CanonicalAndScannerTests(unittest.TestCase):
         self.assertEqual(len(zw), len(zw_spans))
 
     def test_tier2a_char_ngram_raw_byte_offset(self) -> None:
-        phrase = "please \u0441all me tonight now"
+        body = "please call me tonight now before the historical archives close tightly"
+        phrase = body.replace("call", "\u0441all", 1)
         prefix = "HEAD "
-        scanner = fw.Tier2ACanonicalScanner([("work-call", "please call me tonight now")])
+        scanner = fw.Tier2ACanonicalScanner([("work-call", body)])
         hit = scanner.scan_text(prefix + phrase)
         self.assertTrue(hit["flagged"])
         self.assertEqual(hit["match_kind"], "char_ngram")
@@ -138,6 +139,55 @@ class CanonicalAndScannerTests(unittest.TestCase):
         self.assertGreater(hit["flagged_raw_byte_end"], hit["flagged_raw_byte_start"])
         raw = (prefix + phrase).encode("utf-8")
         self.assertLess(hit["flagged_raw_byte_end"], len(raw) + 1)
+
+    def test_tier2a_sixty_works_zero_benign_fpr_under_2ms(self) -> None:
+        works = []
+        for index in range(60):
+            tokens = [f"w{index:02d}t{token:03d}" for token in range(300)]
+            tokens[20] = "historical"
+            tokens[21] = "analytical"
+            works.append((f"work-{index:02d}", " ".join(tokens)))
+        scanner = fw.Tier2ACanonicalScanner(works)
+        benign = [
+            (
+                f"sentence {index:02d} the historical and analytical notes stay "
+                "benign under ordinary review today clearly"
+            )
+            for index in range(60)
+        ]
+        started = time.perf_counter()
+        flagged = [sentence for sentence in benign if scanner.scan_text(sentence)["flagged"]]
+        mean_ms = (time.perf_counter() - started) * 1000.0 / float(len(benign))
+        self.assertEqual(flagged, [])
+        self.assertLess(mean_ms, 2.0)
+        copied = " ".join(works[0][1].split()[:10])
+        positive = scanner.scan_text("note " + copied)
+        self.assertTrue(positive["flagged"])
+        self.assertEqual(positive["matched_work_ids"], ["work-00"])
+        word_only = fw.Tier2ACanonicalScanner([works[0]], char_ngram_n=None)
+        word_hit = word_only.scan_text("note " + copied)
+        self.assertEqual(word_hit["match_kind"], "word_ngram")
+        self.assertEqual(word_hit["matched_work_ids"], ["work-00"])
+
+    def test_tier2a_tail_lcs_and_midword_separators(self) -> None:
+        long_tokens = [f"long{token:04d}" for token in range(600)]
+        scanner = fw.Tier2ACanonicalScanner([("work-long", " ".join(long_tokens))])
+        query_tokens = long_tokens[520:548:2]
+        self.assertEqual(len(query_tokens), 14)
+        hit = scanner.scan_text(" ".join(query_tokens))
+        self.assertTrue(hit["flagged"])
+        self.assertEqual(hit["match_kind"], "lcs")
+        self.assertEqual(hit["matched_work_ids"], ["work-long"])
+
+        phrase = "alpha beta canonical colonies gamma delta epsilon zeta eta theta"
+        compact = fw.Tier2ACanonicalScanner([("work-mid", phrase)], char_ngram_n=None)
+        joined, _spans = fw.canonicalize_for_tier2a("cano/nical colo\u00b7nies", join_midword=True)
+        self.assertEqual(joined, "canonical colonies")
+        obfuscated = "alpha beta cano/nical colo\u00b7nies gamma delta epsilon zeta eta theta"
+        mid = compact.scan_text(obfuscated)
+        self.assertTrue(mid["flagged"])
+        self.assertEqual(mid["match_kind"], "word_ngram")
+        self.assertEqual(mid["matched_work_ids"], ["work-mid"])
 
     def test_tier2a_lcs_paraphrase_without_contiguous_ngram(self) -> None:
         scanner = fw.Tier2ACanonicalScanner([("work-lcs", " ".join(LCS_WORDS))])
@@ -157,21 +207,21 @@ class CanonicalAndScannerTests(unittest.TestCase):
 
 class VaultAndLineageTests(unittest.TestCase):
     def _handcrafted(self) -> fw.RestrictedVaultIndex:
-        doc_mean = np.array([10.0, 0.0, 0.0, 0.0])
+        doc_mean = np.zeros(4)
         nodes = np.array(
             [
-                [10.0, 1.0, 0.0, 0.0],
-                [10.0, 0.2, 0.0, 0.0],
+                [0.0, 1.0, 0.0, 0.0],
+                [0.0, 0.8, 0.6, 0.0],
                 [1.0, 0.0, 0.0, 0.0],
-                [11.0, 0.05, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 1.0],
             ],
             dtype=np.float64,
         )
-        norms = np.linalg.norm(nodes - doc_mean, axis=1)
-        refs = np.array([[0.0, 0.0, 1.0, float(i + 1)] for i in range(64)])
+        norms = np.ones(4)
+        refs = np.array([[0.1, 1.0, 0.01 * float(i + 1), 0.2] for i in range(64)])
         means = {
             "en": np.array([1.0, -1.0, 0.0, 0.0]),
-            "es": np.zeros(4),
+            "es": np.array([1.0, 0.0, 0.0, -1.0]),
             "de": np.array([0.0, 0.0, 1.0, 0.0]),
         }
         return fw.RestrictedVaultIndex(
@@ -398,6 +448,107 @@ class VaultAndLineageTests(unittest.TestCase):
         self.assertFalse(clear["hard_blocked"])
         self.assertFalse(clear["armed"])
         self.assertEqual(clear["reason"], "clear")
+
+    def test_screen_prompt_alias_orientation_and_word_boundary(self) -> None:
+        fence = fw.TakedownLineageFence()
+        alias_to_work = fence.screen_prompt(
+            "Please discuss Edmund Burke today",
+            {"Edmund Burke": "hist_burke_conciliation"},
+        )
+        self.assertEqual(alias_to_work["matched_work_ids"], ["hist_burke_conciliation"])
+        self.assertTrue(alias_to_work["hard_blocked"])
+        slug_only = fence.screen_prompt(
+            "the hist_burke_conciliation slug is not the title",
+            {"Edmund Burke": "hist_burke_conciliation"},
+        )
+        self.assertEqual(slug_only["matched_work_ids"], [])
+        listed = fence.screen_prompt("read eyre now", {"hist_eyre": ["Jane Eyre", "Eyre"]})
+        self.assertEqual(listed["matched_work_ids"], ["hist_eyre"])
+        embedded = fence.screen_prompt("read eyrehorn now", {"hist_eyre": ["Eyre"]})
+        self.assertEqual(embedded["matched_work_ids"], [])
+        caller = fence.screen_prompt("the caller left", {"work-1": "call"})
+        self.assertEqual(caller["matched_work_ids"], [])
+        whole_word = fence.screen_prompt("please call me", {"work-1": "call"})
+        self.assertEqual(whole_word["matched_work_ids"], ["work-1"])
+        short_alias = fence.screen_prompt("the cat sat", {"work-1": "cat"})
+        self.assertEqual(short_alias["matched_work_ids"], [])
+        shared = fence.screen_prompt(
+            "Jane Eyre remains",
+            {"Jane Eyre": "hist_eyre", "Eyre novel": "hist_eyre"},
+        )
+        self.assertEqual(shared["matched_work_ids"], ["hist_eyre"])
+        via_keyword = fence.screen_prompt(
+            "see Edmund Burke now",
+            {},
+            aliases_by_work={"hist_burke_conciliation": ["Edmund Burke"]},
+        )
+        self.assertEqual(via_keyword["matched_work_ids"], ["hist_burke_conciliation"])
+        via_pairs = fence.screen_prompt(
+            "see Edmund Burke now",
+            [("hist_burke_conciliation", "Edmund Burke")],
+        )
+        self.assertEqual(via_pairs["matched_work_ids"], ["hist_burke_conciliation"])
+
+    def test_vault_ref_mean_symmetry_and_source_mu_space(self) -> None:
+        index = self._handcrafted()
+        self.assertTrue(np.allclose(index.ref_mean, index.ref_pool_vecs.mean(axis=0)))
+        centered = np.array([0.0, 1.0, 0.0, 0.0])
+        r_q, _elapsed = index._reference_rq(centered)
+        q_hat = centered / np.linalg.norm(centered)
+        ref_unit = fw._l2_normalize_rows(index.ref_pool_vecs - index.ref_mean)
+        cosines = ref_unit @ q_hat
+        top = np.partition(cosines, -index.csls_k)[-index.csls_k :]
+        self.assertAlmostEqual(r_q, float(top.mean()), places=8)
+        bug_unit = fw._l2_normalize_rows(index.ref_pool_vecs - index.doc_mean)
+        bug_top = np.partition(bug_unit @ q_hat, -index.csls_k)[-index.csls_k :]
+        self.assertGreater(abs(r_q - float(bug_top.mean())), 0.1)
+        with self.assertRaises(ValueError):
+            fw.RestrictedVaultIndex(
+                index.node_ids,
+                index.work_ids,
+                index.node_vecs,
+                doc_mean=np.zeros((len(index.node_ids), index.node_vecs.shape[1])),
+                doc_centered_norms=index.doc_centered_norms,
+                doc_csls_r=index.doc_csls_r,
+                ref_pool_vecs=index.ref_pool_vecs,
+                query_mean_by_lang=index.query_mean_by_lang,
+            )
+        reshaped = fw.RestrictedVaultIndex(
+            index.node_ids,
+            index.work_ids,
+            index.node_vecs,
+            doc_mean=index.doc_mean.reshape(1, -1),
+            doc_centered_norms=index.doc_centered_norms,
+            doc_csls_r=index.doc_csls_r,
+            ref_pool_vecs=index.ref_pool_vecs,
+            query_mean_by_lang=index.query_mean_by_lang,
+        )
+        self.assertEqual(reshaped.doc_mean.shape, (4,))
+
+        dim = 8
+        rng = np.random.default_rng(3)
+        nodes = rng.normal(size=(2, dim))
+        refs = rng.normal(size=(64, dim)) + 3.0
+        mu = np.linspace(0.5, 1.5, dim)
+        weight = np.eye(dim)[::-1].copy()
+        query = np.linspace(-1.0, 2.0, dim)
+        bridged = fw.RestrictedVaultIndex(
+            ["a", "b"],
+            ["wa", "wb"],
+            nodes,
+            doc_mean=np.zeros(dim),
+            doc_centered_norms=np.linalg.norm(nodes, axis=1),
+            doc_csls_r=np.zeros(2),
+            ref_pool_vecs=refs,
+            query_mean_by_lang={"en": mu, "es": np.zeros(dim), "de": np.zeros(dim)},
+        )
+        source = bridged._prepare_centered_query(query, "en", weight, "zeromu_csls", "source")
+        auto = bridged._prepare_centered_query(query, "en", weight, "zeromu_csls", "auto")
+        self.assertTrue(np.allclose(source, (query - mu) @ weight))
+        self.assertTrue(np.allclose(auto, (query @ weight) - mu))
+        self.assertGreater(float(np.max(np.abs(source - auto))), 1e-6)
+        scored = bridged.score_window_vec(query, lang="en", mode="zeromu_csls", bridge_w=weight, mu_space="source")
+        self.assertIn(scored["best_node_id"], {"a", "b"})
 
 
 class StreamGateTests(unittest.TestCase):
@@ -628,13 +779,13 @@ class StreamGateTests(unittest.TestCase):
         self.assertNotIn(b"TAILUNIQUE", out)
 
     def test_profile_b_tier2a_ngram_leak_is_zero(self) -> None:
-        phrase = "please call me tonight now"
+        phrase = "please call me tonight now before the archives finally close"
         scanner = fw.Tier2ACanonicalScanner([("work-phrase", phrase)])
         gate = fw.ClosedLoopStreamGate(
             "profile_b_armed_async",
             tier2a=scanner,
             tier2b_scorer=_clear_scorer,
-            h0_holdback_tokens=12,
+            h0_holdback_tokens=16,
             armed=False,
         )
         out = _push_words(gate, [f"ok{i:03d}" for i in range(30)])
@@ -647,6 +798,106 @@ class StreamGateTests(unittest.TestCase):
         self.assertIn(b"ok000", out)
         self.assertNotIn(b"tonight", out)
         self.assertNotIn(b"TAILUNIQUE", out)
+
+    def test_zero_width_inside_tokens_emits_no_flagged_bytes(self) -> None:
+        phrase = "please call me tonight now before the archives finally close".split()
+        zw_phrase = ["\u200b".join(word) for word in phrase]
+        scanner = fw.Tier2ACanonicalScanner([("work-zw", " ".join(phrase))])
+        benign = [f"pad{i:02d}" for i in range(70)]
+        for profile in ("profile_a_strict", "profile_b_armed_async"):
+            gate = fw.ClosedLoopStreamGate(
+                profile,
+                tier2a=scanner,
+                tier2b_scorer=_clear_scorer,
+                h0_holdback_tokens=16,
+                armed=False,
+            )
+            out = _push_words(gate, benign)
+            out += _push_words(gate, zw_phrase)
+            out += gate.push_chunk("TAILUNIQUE ")
+            out += gate.finalize_eos()
+            summary = gate.summary()
+            self.assertTrue(summary["aborted"], msg=profile)
+            self.assertEqual(summary["flagged_window_bytes_leaked"], 0, msg=profile)
+            self.assertEqual(summary["matched_work_id"], "work-zw", msg=profile)
+            for word in zw_phrase:
+                self.assertNotIn(word.encode("utf-8"), out, msg=profile)
+            self.assertNotIn(b"TAILUNIQUE", out, msg=profile)
+
+    def test_profile_b_lcs_probe_emits_zero_bytes(self) -> None:
+        scanner = fw.Tier2ACanonicalScanner([("work-lcs", " ".join(LCS_WORDS))])
+        gate = fw.ClosedLoopStreamGate(
+            "profile_b_armed_async",
+            tier2a=scanner,
+            tier2b_scorer=_clear_scorer,
+            h0_holdback_tokens=16,
+            armed=False,
+        )
+        out = _push_words(gate, _lcs_query().split())
+        out += gate.finalize_eos()
+        self.assertEqual(out, b"")
+        summary = gate.summary()
+        self.assertTrue(summary["aborted"])
+        self.assertEqual(summary["flagged_window_bytes_leaked"], 0)
+        self.assertEqual(summary["released_utf8_bytes"], 0)
+        self.assertEqual(summary["matched_work_id"], "work-lcs")
+
+    def test_profile_b_latency_tail_counts_unarmed_tokens_past_window(self) -> None:
+        def scorer(_text: str) -> tuple[bool, float, str, int]:
+            return (True, 0.9, "work-tail", 900000)
+
+        gate = fw.ClosedLoopStreamGate(
+            "profile_b_armed_async",
+            tier2b_scorer=scorer,
+            w_2b_tokens=64,
+            s_2b_tokens=16,
+            tier2b_latency_tokens=20,
+            h0_holdback_tokens=0,
+            armed=False,
+        )
+        _push_words(gate, [f"t{i:03d}" for i in range(84)])
+        summary = gate.summary()
+        self.assertTrue(summary["aborted"])
+        self.assertEqual(summary["unarmed_exposed_tokens"], 83)
+
+    def test_invalid_utf8_and_strict_sse_abort_before_eos(self) -> None:
+        gate = fw.ClosedLoopStreamGate("profile_a_strict", tier2b_scorer=_clear_scorer)
+        self.assertEqual(gate.push_chunk(b"\xff"), b"")
+        self.assertTrue(gate.aborted)
+        self.assertEqual(gate.push_chunk("more text "), b"")
+        self.assertEqual(gate.finalize_eos(), b"")
+        self.assertEqual(gate.summary()["released_utf8_bytes"], 0)
+
+        strict = fw.ClosedLoopStreamGate(
+            "profile_a_strict",
+            tier2b_scorer=_clear_scorer,
+            strict_reject_sidechannels=True,
+        )
+        self.assertEqual(strict.push_chunk("held token "), b"")
+        with self.assertRaises(ValueError):
+            strict.push_chunk("next ", sse_meta={"thinking": "secret"})
+        self.assertTrue(strict.aborted)
+        self.assertEqual(strict.finalize_eos(), b"")
+        self.assertEqual(strict.finalize_eos(), b"")
+        self.assertEqual(strict.released_utf8_bytes, 0)
+
+    def test_whitespace_only_eos_roundtrip_and_profile_a_requires_scorer(self) -> None:
+        gate = fw.ClosedLoopStreamGate("profile_a_strict", tier2b_scorer=_clear_scorer)
+        raw = "   \n\t "
+        self.assertEqual(gate.push_chunk(raw), b"")
+        self.assertEqual(len(gate.tokens), 0)
+        self.assertEqual(gate.finalize_eos(), raw.encode("utf-8"))
+        self.assertEqual(gate.finalize_eos(), b"")
+        self.assertFalse(gate.aborted)
+        with self.assertRaises(ValueError):
+            fw.ClosedLoopStreamGate("profile_a_strict", tier2b_scorer=None)
+        with self.assertRaises(ValueError):
+            fw.ClosedLoopStreamGate(
+                "profile_b_armed_async",
+                tier2b_scorer=_clear_scorer,
+                s_2b_tokens=32,
+                w_2b_tokens=16,
+            )
 
 
 class ReceiptTests(unittest.TestCase):

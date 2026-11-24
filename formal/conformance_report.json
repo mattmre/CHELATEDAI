@@ -7,7 +7,9 @@
   },
   "comparator_liveness": {
     "faults_detected": 1531,
-    "faults_injected": 1531
+    "faults_injected": 1531,
+    "materialization_faults_detected": 1531,
+    "materialization_faults_injected": 1531
   },
   "coverage": {
     "blocked_authority_edges": 10482,
@@ -235,7 +237,7 @@
       "total": 153
     }
   },
-  "elapsed_seconds": 3.57,
+  "elapsed_seconds": 3.93,
   "ema_100_query_burst": {
     "clipped_within_rho": true,
     "dim": 384,
@@ -250,10 +252,12 @@
     "coverage_structural": true,
     "coverage_three_valued": true,
     "ema_100_query_burst_bounded": true,
+    "inc_stratum0_materialization_matches_model": true,
     "inc_vs_fresh_semantic": true,
     "lean_cli_all_snapshots_ok": true,
     "lean_vs_fresh_exact": true,
     "lean_vs_inc_semantic": true,
+    "materialization_comparator_detects_all_injected_faults": true,
     "min_asof_missing_parent": true,
     "min_checkpoints": true,
     "min_sequences": true,
@@ -267,6 +271,29 @@
     "strict_sequences": 589,
     "withdrawn": 2656
   },
+  "incremental_pitfall_b_pruning_disclosure": {
+    "explanation": "The incremental store prunes Pitfall-B shielded nodes (ek5_v3_stratified.py:665: an already-F node with a positive-cycle or sigma shield is skipped instead of re-solved), so its telemetry fields pos_cyc and reason can legitimately differ from a from-scratch evaluation. eff_auth, val, cur, eligibility and node_set never diverge.",
+    "nonsemantic_differences_inc_vs_fresh": {
+      "pos_cyc": 104,
+      "reason": 49
+    },
+    "nonsemantic_differences_lean_vs_inc": {
+      "pos_cyc": 104,
+      "reason": 49
+    },
+    "nonsemantic_total": 306,
+    "scope": "incremental-with-deletions: conformance-tested across 1000 deletion/cycle sequences, unproven in Lean",
+    "semantic_divergences_by_field": {
+      "cur": 0,
+      "eff_auth": 0,
+      "eligibility": 0,
+      "node_set": 0,
+      "val": 0
+    },
+    "semantic_divergences_total": 0,
+    "status": "conformance_tested_unproven_in_lean"
+  },
+  "incremental_with_deletions_status": "conformance_tested_unproven_in_lean",
   "lean_cli": {
     "not_ok": 0,
     "path": "ek5_ref_cli.exe",
@@ -275,6 +302,7 @@
   },
   "ok": true,
   "oracle": {
+    "derivation": "val, eff_auth and authority-qualified refs are derived from the raw model snapshot only (no store tables)",
     "mismatch_counts": {
       "lean": 0,
       "python_fresh": 0,
@@ -292,6 +320,12 @@
     "ok": true
   },
   "steps_per_sequence": 6,
+  "stratum0_materialization": {
+    "checkpoints_checked": 7722,
+    "mismatches": 0,
+    "samples": [],
+    "source": "snapshots are derived from _Model's recorded mutation history; the incremental store's materialization is compared against them"
+  },
   "tier": "ceiling-tier differential against the production ek5_v3_stratified.StratifiedEvidenceStore",
   "tool": "formal/run_conformance.py"
 }
