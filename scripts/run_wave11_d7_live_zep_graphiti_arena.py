@@ -417,10 +417,17 @@ def emit_wave11_artifacts(output_dir: Path, manifest: Mapping[str, Any]) -> Dict
     output_dir.mkdir(parents=True, exist_ok=True)
     manifest_path = output_dir / "wave11_d7_zep_graphiti_manifest.json"
     digest = write_json_atomic(manifest_path, dict(manifest))
+    artifact_hashes: Dict[str, str] = {manifest_path.name: digest}
+    for sidecar_name in ("suite_a.jsonl", "suite_b.jsonl"):
+        sidecar_path = output_dir / sidecar_name
+        if sidecar_path.is_file():
+            artifact_hashes[sidecar_name] = hashlib.sha256(sidecar_path.read_bytes()).hexdigest()
     receipt = {
         "schema_version": "wave11_d7_live_zep_graphiti_receipt_v1",
+        "manifest_file": manifest_path.name,
         "manifest_path": str(manifest_path),
         "manifest_sha256": digest,
+        "artifact_hashes": artifact_hashes,
         "suite_a_n": SUITE_A_N,
         "suite_b_n": SUITE_B_N,
         "horizons": ["delta0", "settled"],

@@ -1,10 +1,16 @@
 {
+  "artifact_hashes": {
+    "suite_a.jsonl": "35bf134f52d69da8d45efc095271039bf0757b1775f61ee86e05df309c306ee3",
+    "suite_b.jsonl": "151e90c3a85df176628831913dc7356e28cc8e677aa76c5571c12dd400b1e7ac",
+    "wave11_d7_zep_graphiti_manifest.json": "d6a12534fa7c0dd456ee2717220ec3b49c0ee7887989e5c5a001fd2b2a761440"
+  },
   "evidence_tier": "spark1-live",
   "horizons": [
     "delta0",
     "settled"
   ],
   "local_check_is_not_evidence": true,
+  "manifest_file": "wave11_d7_zep_graphiti_manifest.json",
   "manifest_path": "/home/mattmre/chelated-night1/artifacts/wave11_d7_live_zep_graphiti_arena/wave11_d7_zep_graphiti_manifest.json",
   "manifest_sha256": "d6a12534fa7c0dd456ee2717220ec3b49c0ee7887989e5c5a001fd2b2a761440",
   "primary_score": "settled_accuracy",
