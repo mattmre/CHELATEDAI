@@ -3905,7 +3905,7 @@ def run_part_b_u_grpo_on_spark2(
         }
     )
 
-    primary_diff = float(virgin_block["paired_bootstrap_wave6"]["GRPO_3SeedMean_minus_SFT_7B_exact"]["diff"])
+    primary_diff = float(virgin_block["paired_bootstrap_wave6"]["GRPO_3SeedMean_minus_SFT_7B_exact"]["mean_delta"])
     primary_p_raw = float(virgin_block["paired_bootstrap_wave6"]["GRPO_3SeedMean_minus_SFT_7B_exact"]["p_value_two_sided"])
     primary_holm_entry = holm_primary_virgin["VIRGIN_V2_GRPO_vs_SFT_7B"]
     primary_p_holm = float(
