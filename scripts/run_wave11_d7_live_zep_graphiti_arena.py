@@ -116,6 +116,14 @@ def docker_run_argv() -> List[str]:
     ]
 
 
+def redacted_docker_run_argv() -> List[str]:
+    """Redact ephemeral loopback Neo4j benchmark password before writing public manifests."""
+    return [
+        f"NEO4J_AUTH={NEO4J_USER}/<REDACTED>" if item.startswith("NEO4J_AUTH=") else item
+        for item in docker_run_argv()
+    ]
+
+
 def assert_docker_argv_safe(argv: Sequence[str]) -> None:
     if not argv or argv[0] != "docker":
         raise RuntimeError("refusing a non-docker argv")
@@ -368,7 +376,7 @@ def build_manifest(
         "http_publish": f"127.0.0.1:{NEO4J_HTTP_PORT}",
         "neo4j_image": NEO4J_IMAGE,
         "neo4j_database": COMMUNITY_DATABASE,
-        "docker_run_argv": docker_run_argv(),
+        "docker_run_argv": redacted_docker_run_argv(),
         "docker_rm_argv": list(DOCKER_RM_ARGV),
         "graphiti_core": GRAPHITI_VERSION,
         "mem0ai": MEM0_VERSION,

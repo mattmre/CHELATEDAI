@@ -1,0 +1,15 @@
+{
+  "evidence_tier": "spark1-live",
+  "horizons": [
+    "delta0",
+    "settled"
+  ],
+  "local_check_is_not_evidence": true,
+  "manifest_path": "/home/mattmre/chelated-night1/artifacts/wave11_d7_live_zep_graphiti_arena/wave11_d7_zep_graphiti_manifest.json",
+  "manifest_sha256": "d6a12534fa7c0dd456ee2717220ec3b49c0ee7887989e5c5a001fd2b2a761440",
+  "primary_score": "settled_accuracy",
+  "schema_version": "wave11_d7_live_zep_graphiti_receipt_v1",
+  "suite_a_n": 60,
+  "suite_b_n": 20,
+  "suite_b_pooled": false
+}
