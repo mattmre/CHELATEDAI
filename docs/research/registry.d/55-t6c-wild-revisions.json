@@ -1,0 +1,16 @@
+{
+  "id": 55,
+  "status": "protocol-ready",
+  "spine_digest": "32693f54e0ce7ad3d401ceb752ae4723b0eee251f6d49b95cdfb26a6201971e9",
+  "depends_on": [],
+  "wave": 18,
+  "item": "6C",
+  "track": "wild revision streams and tra1 weight sha",
+  "cohort_rule": "frozen_wild_snapshots requires 240 families and 60 per stratum; otherwise deterministic_schema_drycheck",
+  "retirement_trigger": "Retire EK5 proprietary superiority if SQL ties accuracy and sits within 1.25x cost, or if the preregistered superiority rule is missed.",
+  "synthetic_labeled_wild": 0,
+  "registry_mutation": false,
+  "superiority_is_wild_evidence": false,
+  "llm_write_tokens": 0,
+  "authored_prompts": 0
+}

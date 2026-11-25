@@ -1,0 +1,35 @@
+
+{
+  "id": 48,
+  "wave": 17,
+  "item": "6A",
+  "tier": "T2",
+  "additional_tiers": ["T0"],
+  "track": "HNSW Pre-Filter Pushdown + Lazy EK5 Reason Canonicalizer",
+  "status": "protocol-ready",
+  "spine_bundle_id": 47,
+  "spine_commit": "d4454e2d9fca146ccdc3d18db22ac6c0b5d3e802",
+  "spine_digest": "32693f54e0ce7ad3d401ceb752ae4723b0eee251f6d49b95cdfb26a6201971e9",
+  "spine_digest_method": "claim_registry_sha256()",
+  "runner_path": "scripts/run_pv7_w17_6a_engine_closure.py",
+  "verifier_path": "scripts/verifiers.d/48_verifier.py",
+  "live_protocol": {
+    "fixture": "pv7-b48-synthetic-gaussian-v1",
+    "engines": {
+      "qdrant": "1.20.x",
+      "opensearch": "3.9.x FAISS",
+      "pgvector": "0.8.7 on PostgreSQL 17"
+    },
+    "retraction_percentages": [0, 10, 50, 90],
+    "paired_requests_per_engine_cell": 10000,
+    "p95_ms_exclusive_upper_bound": 35.0,
+    "max_recall_at_10_gap_from_exact": 0.01
+  },
+  "ek5_protocol": {
+    "sequences": 1000,
+    "mutation_steps_per_sequence": 12,
+    "semantic_diffs": 0,
+    "reason_export_diffs": 0,
+    "pos_cyc_export_diffs": 0
+  }
+}

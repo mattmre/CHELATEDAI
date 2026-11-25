@@ -1,0 +1,59 @@
+{
+  "id": 62,
+  "wave": 20,
+  "item": "4",
+  "demo_id": "D13",
+  "track": "Demo D13 Pooled-Agent Loops Under Encoder Change & Withdrawal",
+  "branch": "pv7/t4-pooled-workers",
+  "tier": "T2",
+  "status": "protocol-ready",
+  "spine_digest": "32693f54e0ce7ad3d401ceb752ae4723b0eee251f6d49b95cdfb26a6201971e9",
+  "depends_on": [],
+  "runtime_file": "chelated_pooled_agent_runtime.py",
+  "runner_file": "scripts/run_pv7_w20_d13_pooled_agent_loops.py",
+  "verifier_file": "scripts/verifiers.d/62_verifier.py",
+  "test_file": "tests/test_pv7_w20_d13_pooled_agent_loops.py",
+  "primary_endpoint": "Single primary paired 2x2 interaction contrast on on-time cited correct jobs/minute at pool size 4, retaining every eligible job including late or timed-out jobs in denominator",
+  "design": {
+    "matter_templates": 24,
+    "arrival_schedules": [
+      "S1_steady",
+      "S2_bursty_front",
+      "S3_wave_bimodal",
+      "S4_withdrawal_surge"
+    ],
+    "pool_sizes": [1, 2, 4, 8],
+    "primary_pool_size": 4,
+    "twin_branches": [
+      "A_derivative_only",
+      "B_independent_corroboration"
+    ],
+    "system_factorial": {
+      "retrievers": [
+        "Conventional_Retriever",
+        "ZeroMu_Pinned_Bridge"
+      ],
+      "ledgers": [
+        "SQLiteChallengerLedger",
+        "EK5_v3"
+      ]
+    },
+    "event_regimes": [
+      "no_change",
+      "encoder_change_only",
+      "withdrawal_only",
+      "both",
+      "sham_subtask_reopen_interrupt"
+    ],
+    "comparators": [
+      "full_restart_rebuild"
+    ],
+    "controls": [
+      "KEEP_2_sham_subtask_reopen_interrupt"
+    ],
+    "execution_stages": {
+      "stage1": "stage1-controlled-replay (CPU-only deterministic recorded-worker attribution replay)",
+      "stage2_3": "run-live-workers (Spark #3 live vLLM worker pool)"
+    }
+  }
+}

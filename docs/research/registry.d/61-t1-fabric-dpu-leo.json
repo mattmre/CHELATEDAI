@@ -1,0 +1,58 @@
+{
+  "id": 61,
+  "wave": 20,
+  "item": "1",
+  "demo_id": "D12",
+  "track": "Demo D12 /fabric Autonomous DPU/Switch and Multi-Tranche LEO Control Plane (software emulation)",
+  "branch": "pv7/t1-fabric-dpu-leo",
+  "tier": "T2",
+  "status": "protocol-ready",
+  "spine_digest": "32693f54e0ce7ad3d401ceb752ae4723b0eee251f6d49b95cdfb26a6201971e9",
+  "depends_on": [],
+  "runtime_file": "demo_workbench/network_orbital_engine.py",
+  "runner_file": "scripts/run_pv7_w20_d12_network_orbital_fabric.py",
+  "verifier_file": "scripts/verifiers.d/61_verifier.py",
+  "test_file": "tests/test_pv7_w20_d12_network_orbital.py",
+  "primary_endpoint": "Zero disagreements between the control plane and an independent state-transition prefix oracle across every prefix of Scenario A (6 steps), Scenario B (5 steps) and at least 250 randomized traces, with per-hop retrieval recall and scale-factor deviation below 1e-5 reported for the bridged paths; software emulation only",
+  "design": {
+    "hardware_asic_p4_silicon_in_loop_claimed": false,
+    "orbital_flight_hardware_claimed": false,
+    "arms": [
+      "uncalibrated_fleet_rag",
+      "chained_ridge_zscore",
+      "unsigned_popularity_correlator",
+      "overwrite_last_arrival",
+      "spine_bitemporal_ledger_raw",
+      "procrustes_csls_plus_spine_ledger",
+      "chelated_fabric_control"
+    ],
+    "scenarios": {
+      "A": 6,
+      "B": 5
+    },
+    "fuzz_traces_min": 250,
+    "register_codes": {
+      "01": "FORWARD",
+      "00": "DROP",
+      "10": "DEFER_INSPECT",
+      "11": "INVALID_FAIL_CLOSED_RESERVED"
+    },
+    "encoder_chain_dims": [
+      384,
+      384,
+      768,
+      1024,
+      4096
+    ],
+    "sidecar_bytes_per_flow": 8,
+    "tranches": 3,
+    "modes": {
+      "local_drycheck": "deterministic text-derived stand-in encoders, CPU only",
+      "run_live_encoders": "cached local checkpoints loaded offline on CPU; missing encoders degrade to stand-ins and are reported"
+    },
+    "synthetic_inputs": [
+      "TLS flow features in the public CESNET-TLS / CIC-IDS schema",
+      "two-line element sets propagated two-body Keplerian"
+    ]
+  }
+}
