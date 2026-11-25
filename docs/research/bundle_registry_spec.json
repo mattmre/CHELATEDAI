@@ -1,5 +1,5 @@
 {
-  "schema_version": "bundle_registry_spec_v5_0",
+  "schema_version": "bundle_registry_spec_v6_0",
   "release_status": "PRE-RELEASE / HUMAN AUDIT & CLEAN-RERUN GATES PENDING",
   "pristine_mirror_manifest": "archive/pristine-b37e6a55-exact/PRISTINE_MANIFEST.json",
   "part_iv_code_provenance": {
@@ -401,6 +401,51 @@
       "manifest": "wave6_d5_grpc_gateway_manifest.json",
       "receipt": "report_receipt.json",
       "notes": "Wave-6 Track E (M2, 43,040 open-loop queries, 0 errors, project-defined SearchService.KnnQuery Protobuf over live containerized Qdrant :16334 sha256:d277592721d2..., live_opensearch_java_cluster_claimed=false): 250 Hz LAN dispatch (Desktop->10.0.0.24) service RTT p50/p95/p99 = 7.90/21.19/115.82 ms, scheduled open_loop_e2e p95/p99 = 153.75/251.86 ms (direct 4096-d saturated @ 218.79 Hz; matched-dim max incremental service p95 = +18.00 ms <= 25 ms), 8.71x smaller ingress (1,888 vs 16,435 B), 0 B/doc vector egress, 8 B/doc sidecar + 16 KB centroid, 0.00% observed fenced stale leak @ 0/10/50/90% (50% Recall@10=0.994186 < 0.995 floor; 90% uses 100% exact fallback)."
+    },
+    {
+      "id": "wave11_d6_opensearch_pgvector_qdrant",
+      "part": "PART_VII_TIER1_AND_TIER2_FLAGSHIPS",
+      "role": "WAVE12_ADJUDICATED_PRIMARY",
+      "dir": "artifacts/wave11_d6_opensearch_pgvector_qdrant",
+      "manifest": "wave11_d6_multibackend_manifest.json",
+      "receipt": "report_receipt.json",
+      "notes": "Wave-11 Tier-1 Demo D6 (L1, Spark #1 live Docker OpenSearch 3.9.0 :19200 + pgvector 0.8.7/PG17 :15432 + Qdrant 1.20.2 :16334 across SciFact 5,183 & FiQA2018 57,638): identical cross-engine nDCG@10 at 0% retraction (FiQA 4096->384 CSLS=0.3068 vs DEV_ZScore=0.2563 [+5.05 pp] & Raw=0.1962 [+11.06 pp]), and on SciFact 1.0000 admitted Recall@10 + 0.00% stale resurrection across 0/10/50/90% simulated stale-replica sweeps (vs 5-36% unmasked stale hits; raw-engine 0% stale is zero by allowlist construction). Mandatory Wave-12 disclosures: ANN produced initial shortlists only; certificate policy triggered exact_fallback_fraction=1.0 in 62/70 cells plus 8/70 pgvector_exact_vector4096 cells by design (70/70 exact scans, single-host single-run with no replicates -> no pure ANN latency claim), pgvector halfvec canary uses 2e-3 tolerance, FiQA has 0% retraction only (no oracle recall), and nDCG under >0% retraction is not recorded."
+    },
+    {
+      "id": "wave11_d7_live_zep_graphiti_arena",
+      "part": "PART_VII_TIER1_AND_TIER2_FLAGSHIPS",
+      "role": "WAVE12_ADJUDICATED_PRIMARY",
+      "dir": "artifacts/wave11_d7_live_zep_graphiti_arena",
+      "manifest": "wave11_d7_zep_graphiti_manifest.json",
+      "receipt": "report_receipt.json",
+      "notes": "Wave-11 Tier-1 Demo D7 (L2, Spark #1 live Neo4j 5.26 + graphiti-core 0.31.2 + mem0ai 2.2.1, single seed=42, single Nemotron reader, single Qwen2.5-7B blind cross-family judge): Primary settled Suite A (N=60) Chelated_v4=96.67% beats Live Graphiti=46.67% (+50.00 pp, Tango LCB95=+35.78 pp, Bonferroni-binomial CP95=+26.50 pp, Holm p<1e-4 [20k-resample floor]) and Live Mem0 infer=True=45.00% (+51.67 pp, Tango LCB95=+39.31 pp, Bonferroni-binomial CP95=+29.63 pp, Holm p<1e-4); delta0 secondary (96.67% vs 3.33%/10.00% pre-consolidation). Mandatory Wave-12 disclosures: Chelated end-to-end write+bg mean is slowest at 10,373 ms (synchronous 30B extraction + 144.6 ms EK5 ack) vs 7,524 ms Graphiti and 2,755 ms Mem0; Suite B (N=20 LME-S KU: 90% vs 60% Graphiti / 55% Mem0 settled, exact McNemar p=0.039 vs Mem0) is descriptive-only (inferential_claim=false, 0 LLM write tokens on raw messages with has_answer-selected retractions, not write-cost comparable); committed manifest lacks implementation_sha256 and was sealed post-run after Neo4j credential redaction."
+    },
+    {
+      "id": "wave11_d8_compliance_copilot",
+      "part": "PART_VII_TIER1_AND_TIER2_FLAGSHIPS",
+      "role": "WAVE12_ADJUDICATED_PRIMARY",
+      "dir": "artifacts/wave11_d8_compliance_copilot",
+      "manifest": "wave11_d8_copilot_manifest.json",
+      "receipt": "report_receipt.json",
+      "notes": "Wave-11 Tier-1 Demo D8 (L3, Compliance Copilot + Non-NDA Black-Box Mode, re-sealed at git_sha 4b1520cd after closing Sol 6.2 High's seal_receipts & --public NDA-routing blockers): 38/38 deterministic & loopback HTTP checks pass, 3/3 Ed25519-signed SHA-256 hash-chained retraction receipts replay byte-for-byte (head 820705ef47fc), 0/178 independent WFS oracle mismatches, 0/56 forbidden-pattern hits across HTML and all 20 scenario/step/role Non-NDA responses, and --public hard-blocks mode=nda (403) even when an NDA token is configured (manifest stubs_L1 string retains legacy slice wording). Mandatory Wave-12 disclosures: floor-tier synthetic fixture using FastBM25 + hashed signed 512-d char-3gram vectors + RRF(k=60), Arm-2 overwrite emulation, fixed public runner test key (ephemeral per-process key in live server), Copilot-layer audience filtering, and oracle-only custom injection."
+    },
+    {
+      "id": "wave11_d9_fast_extractor_and_u_grpo",
+      "part": "PART_VII_TIER1_AND_TIER2_FLAGSHIPS",
+      "role": "WAVE12_ADJUDICATED_PRIMARY",
+      "dir": "artifacts/wave11_d9_fast_extractor_and_u_grpo",
+      "manifest": "wave11_d9_extractor_grpo_manifest.json",
+      "receipt": "report_receipt.json",
+      "notes": "Wave-11 Tier-2 Demo D9 (L4, Spark #2 GB10): Part A DEV-selected Qwen2.5-0.5B-Instruct LoRA (1.35 GiB VRAM) achieves 96.67% (58/60) Suite A semantic accuracy & strict EM (+0.00 pp vs 30B extractor; +15.00 pp vs live Mem0 infer=True, boot LCB97.5=+6.67 pp, Tango LCB95=+8.08 pp, Holm p=0.0003, exact CP95=-0.74 pp; 100% JSON parse includes salvage/coercion) at 2,104.0 ms/case (4.60x faster than 30B 9,688.9 ms; 1,500 ms target missed -> latency_gate_not_met). Part B Protocol v2 (dr_grpo, 60 steps, seeds 137/2026/31415 w/ seed 42 retired as DEV-diagnostic, pre-eval selection_frozen.json 967dac7f24f1 procedural one-shot freeze, 10/10 5-way disjoint splits, eval_virgin_v2_scope=virgin_for_grpo_arm_only, fp32 merge GEMM logit diff 2.3e-3..4.2e-3 > 1e-4 amendment string w/ 100% argmax parity): primary EVAL_VIRGIN_V2 (N=120) 3-seed final@60 = 48.61% (u_fc=41.67%) vs SFT 7B = 50.00% (u_fc=42.50%), delta=-1.39 pp, CI95=[-7.50, +4.72 pp], Holm p=0.61825 (20k resamples vs 10k in amendment -> p=0.61450) -> honest null verdict 'K4 stands under Protocol v2' (lift is SFT-carried; any retune requires fresh Virgin V3); secondary Look #2 = 60.56% (u_fc=81.67% vs 85.00% SFT, det NI missed 81.67% vs 85.00%) and retrieval-conditioned D1 k=17 = 99.44%."
+    },
+    {
+      "id": "wave11_d10_5m_real_cutover_and_70b_scale",
+      "part": "PART_VII_TIER1_AND_TIER2_FLAGSHIPS",
+      "role": "WAVE12_ADJUDICATED_PRIMARY",
+      "dir": "artifacts/wave11_d10_5m_real_cutover_and_70b_scale",
+      "manifest": "wave11_d10_scale_manifest.json",
+      "receipt": "report_receipt.json",
+      "notes": "Wave-11 Tier-2 Demo D10 (L5, Spark #1 + Spark #2): Part A evaluates 9,465,539 merged 7-BEIR real vectors (1,891,457 = 19.98% upgraded 1024-d shard + 7,574,082 legacy 384-d shard; standalone 8,841,823 MSMARCO evaluated via admission mask on the shared 9.47M graph over the same 500 queries; 0.0% synthetic, 72.22 MiB 8 B/doc sidecar = 512.0x/2,048.0x smaller than 1024d/4096d f32, IndexHNSWSQ QT_fp16 M=32 efSearch=512, 0.984 50-query Flat-oracle recall@10, 3.64/4.46 ms dual-shard p50/p95, 0.0% fenced vs 100.0% unmasked stale leak on 200 retractions, 0.944 fenced admitted recall@10 on n=25); across 24 Holm contrasts: 9 significant wins at Holm p<=0.0012 (20k-resample floor), 12 n.s. positive (merged MSMARCO vs RRF +1.69 pp Holm p=0.0553 n.s.), 2 n.s. negative, and 1 statistically significant loss (merged_9_47m_quora vs RRF_k60: -6.92 pp, CI95=[-9.14, -4.75 pp], Holm p<=0.0012 floor) plus 6 Recall@10 point losses (not multiplicity-tested). Part B live Llama-3.3-70B-Instruct-bnb-4bit (4-bit NF4, 38.08 GiB) sweep on Suite A (N=60, fixed Nemotron-30B extractor 24.61s/case -> 24.75-26.60s/case e2e vs 3.26s Bare-70B k=5, 14 gate-decided / 46 reader-decided): Mid-7B+Chelated (14.28 GiB, 538 ms reader, 25.15s e2e) reaches 100.0% Nemotron judge / 98.33% strict EM, matching Chelated-70B (100%/98.33%, 26.60s e2e) and Bare-70B k=5 (100%/96.67%, 3.26s) & k=17 (100%/98.33%, 5.36s) at 0.00 pp delta (Tango CI95=[-6.02, +6.02 pp], Holm p=1.0; descriptive leads over Bare-30B 71.67% & Bare-7B 90.00% outside 2-contrast Holm family); Small-1.5B+Chelated (2.94 GiB, 148 ms reader, 24.75s e2e) hits 95.00% judge / 91.67% EM (-5.00 pp vs 70B k=5, Holm p=0.1929 n.s.); 176/180 (97.78%) inter-judge agreement (kappa=0.0 ceiling artifact)."
     }
   ]
 }
