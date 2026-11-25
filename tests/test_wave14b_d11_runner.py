@@ -1428,6 +1428,23 @@ class TestTransportContracts(_PM6TestCase):
 # 5. White-Box CAA Forward Hooks & Linear Bridge Parity
 # ---------------------------------------------------------------------------
 class TestCaaAndBridge(_PM6TestCase):
+    def test_drycheck_caa_timebox_scales_with_measured_cost_under_contention(self) -> None:
+        floor, cap = pm6.DRYCHECK_CAA_TIMEBOX_FLOOR_S, pm6.DRYCHECK_CAA_TIMEBOX_CAP_S
+        # Uncontended host: tiny projected cost stays at the floor.
+        self.assertEqual(pm6.drycheck_caa_sweep_timebox_s(0.002, 1500), floor)
+        # B5 regression: a 30x contention slowdown whose projected sweep exceeds the old fixed 120 s
+        # wall clock must get a budget covering that projected cost (with slack), not be truncated.
+        slow_per_call, n_calls = 0.06, 1500  # 90 s projected sweep
+        budget = pm6.drycheck_caa_sweep_timebox_s(slow_per_call, n_calls)
+        self.assertGreater(budget, floor)
+        self.assertGreaterEqual(budget, slow_per_call * n_calls * 2.0)
+        self.assertAlmostEqual(budget, slow_per_call * n_calls * pm6.DRYCHECK_CAA_TIMEBOX_SLACK)
+        # Pathological cost is capped so the timebox stays finite.
+        self.assertEqual(pm6.drycheck_caa_sweep_timebox_s(10.0, 1500), cap)
+        for bad in ((float("nan"), 10), (float("inf"), 10), (-1.0, 10), (0.1, -1)):
+            with self.assertRaises(ValueError):
+                pm6.drycheck_caa_sweep_timebox_s(*bad)
+
     def test_caa_extract_directions_steering_hooks_and_cleanup(self) -> None:
         torch.manual_seed(42)
         vocab = [
@@ -1622,6 +1639,12 @@ class TestLocalDrycheckEndToEnd(_SharedDrycheckRunCase):
         self.assertEqual(set(freeze["dev_ids_sha256_by_generator"]), {"nemotron_30b", "qwen25_7b"})
         self.assertEqual(set(freeze["test_ids_sha256_by_generator"]), {"nemotron_30b", "qwen25_7b"})
         self.assertEqual(freeze["caa_alphas_evaluated"], len(caa.DEFAULT_ALPHA_GRID))
+        # B5: the drycheck sweep timebox is sized from measured cost (>= floor), never silently truncated.
+        caa_cal = self.manifest["arm7_caa_qwen25_7b_reference"]["calibration"]
+        self.assertGreaterEqual(caa_cal["timebox_s"], pm6.DRYCHECK_CAA_TIMEBOX_FLOOR_S)
+        self.assertLessEqual(caa_cal["timebox_s"], pm6.DRYCHECK_CAA_TIMEBOX_CAP_S)
+        self.assertIs(caa_cal["timebox_exceeded"], False)
+        self.assertEqual(len(caa_cal["sweep_results"]), len(caa.DEFAULT_ALPHA_GRID))
 
     def test_bridge_diagnostics_full_rank_and_per_generator_arm7_applicability(self) -> None:
         bd = self.manifest["bridge_diagnostics"]

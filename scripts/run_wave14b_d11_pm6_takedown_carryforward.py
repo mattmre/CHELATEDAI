@@ -402,6 +402,26 @@ def memorization_ngram6_diagnostic(candidate: str, reference: str) -> float:
     return compute_ngram_block_recall(candidate, reference, n=6)
 
 
+DRYCHECK_CAA_TIMEBOX_FLOOR_S = 120.0
+DRYCHECK_CAA_TIMEBOX_CAP_S = 3600.0
+DRYCHECK_CAA_TIMEBOX_SLACK = 2.5
+
+
+def drycheck_caa_sweep_timebox_s(per_call_s: float, calls_per_sweep: int) -> float:
+    """Local-drycheck CAA sweep timebox sized from a measured per-generation cost (mirrors live N1).
+
+    A fixed wall clock made `caa_sweep_completed_all_alphas` depend on host CPU contention; scaling the
+    budget by the warmup-measured cost keeps that gate strict (every alpha must still finish) while
+    the floor/cap keep the timebox finite. Raises on non-finite/negative inputs rather than guessing.
+    """
+    per_call = float(per_call_s)
+    n_calls = int(calls_per_sweep)
+    if not math.isfinite(per_call) or per_call < 0.0 or n_calls < 0:
+        raise ValueError("per_call_s must be finite and nonnegative and calls_per_sweep nonnegative")
+    projected = per_call * n_calls * DRYCHECK_CAA_TIMEBOX_SLACK
+    return float(max(DRYCHECK_CAA_TIMEBOX_FLOOR_S, min(DRYCHECK_CAA_TIMEBOX_CAP_S, projected)))
+
+
 def is_output_refusal(text: str) -> bool:
     """Detect explicit model refusal or degenerate empty output collapse."""
     stripped = text.strip()
@@ -5141,13 +5161,28 @@ def execute_pm6_pipeline(
                 "dev_benign_negatives_evaluated": len(caa_dev_neg_fams),
             }
 
+        # Timed warmup (mirrors live N1): size the sweep timebox from the measured per-call cost on THIS
+        # host instead of a fixed 120 s wall clock, so CPU contention from concurrent workloads cannot
+        # truncate the grid. Greedy decode (no RNG), so warmup calls do not perturb downstream outputs.
+        _dry_warm_alpha = float(DEFAULT_ALPHA_GRID[len(DEFAULT_ALPHA_GRID) // 2])
+        _dry_warm_recs = list(caa_dev_fams[: min(4, len(caa_dev_fams))])
+        _t_dry_warm0 = time.perf_counter()
+        for _rec in _dry_warm_recs:
+            qwen_backend.generate_caa_drycheck(
+                user_prompt=_rec.r1_prompt, work_context=_rec, r4_context_docs=None, r4_fixture=None,
+                task_kind="r1", caa_dirs=caa_dirs, alpha=_dry_warm_alpha, logit_penalty=caa_logit_pen,
+            )
+        _dry_per_call_s = max(1e-4, (time.perf_counter() - _t_dry_warm0) / max(1, len(_dry_warm_recs)))
+        _dry_calls_per_sweep = (2 * len(caa_dev_fams) + len(caa_dev_neg_fams)) * len(DEFAULT_ALPHA_GRID)
+        drycheck_timebox_s = drycheck_caa_sweep_timebox_s(_dry_per_call_s, _dry_calls_per_sweep)
+
         caa_cal = calibrate_caa_multiplier_on_dev(
             _eval_caa_dev_dry,
             dev_family_ids=caa_dev_all_fids,
             test_family_ids=[r.work_family_id for r in all_test_recs],
             alpha_grid=DEFAULT_ALPHA_GRID,
             target_fpr=TARGET_BENIGN_FPR,
-            timebox_s=120.0,
+            timebox_s=drycheck_timebox_s,
         )
         caa_metadata = {
             "directions": caa_dirs.to_metadata(),

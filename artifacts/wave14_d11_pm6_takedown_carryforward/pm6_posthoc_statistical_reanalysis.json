@@ -1,0 +1,1099 @@
+{
+  "analysis_type": "post_hoc_cpu_only_reanalysis_of_sealed_manifest",
+  "bridge_geometry_audit": {
+    "effective_rank_threshold_actually_checked": 380,
+    "gate_name": "bridge_effective_rank_384",
+    "gate_name_vs_actual_check": "Despite its name, the gate does NOT require effective rank 384. It requires stiefel_column_rank == 384 and full_target_manifold_spanned, where the latter means effective_rank >= min(384, 380) AND effective_rank >= target_manifold_rank - 1 AND orthogonality error < 1e-6.",
+    "layernorm_rank_explanation_status": "HYPOTHESIS_NOT_VERIFIED",
+    "live_effective_rank": 382,
+    "live_target_manifold_rank": 382,
+    "manifest_bridge_diagnostics": {
+      "captured_energy_ratio": 0.902834,
+      "effective_rank": 382,
+      "full_target_manifold_spanned": true,
+      "n_anchor_pairs": 1824,
+      "procrustes_frobenius_residual": 26.06628,
+      "relative_frobenius_residual": 0.650082,
+      "src_dim": 4096,
+      "stiefel_column_rank": 384,
+      "stiefel_orthogonality_frobenius_err": 0.0,
+      "target_manifold_rank": 382,
+      "tgt_dim": 384
+    },
+    "relative_frobenius_residual": 0.650082,
+    "residual_note": "The orthogonal bridge leaves ~65% relative Frobenius residual on the 1824 anchor pairs; it is a coarse alignment, not a near-isometry.",
+    "stiefel_orthogonality_note": "Q = U V^T from a thin SVD is orthonormal by construction, so stiefel_column_rank == 384 and orthogonality error 0.0 are always true for any input and carry no evidential weight.",
+    "stiefel_orthogonality_vacuous": true,
+    "tgt_dim": 384,
+    "unexplained_rank_deficit_directions": 2
+  },
+  "full_9arm_comparison": {
+    "arm9_verified_wins": {
+      "auroc_vs_arm3_tier2a_only": {
+        "nemotron_30b": 0.473633,
+        "qwen25_7b": 0.475779
+      },
+      "de_4096_to_384_carry_forward": "Phase 3 DE: bridged 4096->384 detector (mu_lang) beats the monolingual MiniLM-384 detector (c_vs_a) and survives Holm; ES c_vs_a does not survive Holm.",
+      "r4_attribution_note": "Arms 4, 6 and 8 also reach R4=1.0. The R4 win comes from the Gate-1 EK5 lineage stage that Arms 4/6/8/9 share; it is a win only against arms without Gate-1 (1, 2, 3, 5, 7), not a property of chelation.",
+      "r4_derivative_suppression": {
+        "nemotron_30b": {
+          "arm9": 1.0,
+          "arms_without_gate1_lineage": {
+            "arm1": 0.0,
+            "arm2": 0.0,
+            "arm3": 0.0,
+            "arm5": 0.0
+          }
+        },
+        "qwen25_7b": {
+          "arm9": 1.0,
+          "arms_without_gate1_lineage": {
+            "arm1": 0.0,
+            "arm2": 0.0,
+            "arm3": 0.0,
+            "arm5": 0.05,
+            "arm7": 0.0
+          }
+        }
+      }
+    },
+    "by_generator": {
+      "nemotron_30b": {
+        "arm9_auroc_ge_arm6": false,
+        "arm9_auroc_ge_arm8": false,
+        "arm9_deltas": {
+          "arm9_minus_arm1": {
+            "r3_en_suppression_rate": 0.625,
+            "r3_vs_r5_auroc": 0.333008,
+            "r4_derivative_suppression_rate": 1.0,
+            "r5_benign_fpr": 0.0625
+          },
+          "arm9_minus_arm2": {
+            "r3_en_suppression_rate": 0.53125,
+            "r3_vs_r5_auroc": 0.551758,
+            "r4_derivative_suppression_rate": 1.0,
+            "r5_benign_fpr": -0.46875
+          },
+          "arm9_minus_arm3": {
+            "r3_en_suppression_rate": 0.59375,
+            "r3_vs_r5_auroc": 0.473633,
+            "r4_derivative_suppression_rate": 1.0,
+            "r5_benign_fpr": 0.0625
+          },
+          "arm9_minus_arm4": {
+            "r3_en_suppression_rate": 0.625,
+            "r3_vs_r5_auroc": 0.489258,
+            "r4_derivative_suppression_rate": 0.0,
+            "r5_benign_fpr": 0.0625
+          },
+          "arm9_minus_arm5": {
+            "r3_en_suppression_rate": 0.0,
+            "r3_vs_r5_auroc": 0.0,
+            "r4_derivative_suppression_rate": 1.0,
+            "r5_benign_fpr": 0.0
+          },
+          "arm9_minus_arm6": {
+            "r3_en_suppression_rate": -0.0625,
+            "r3_vs_r5_auroc": -0.010742,
+            "r4_derivative_suppression_rate": 0.0,
+            "r5_benign_fpr": 0.03125
+          },
+          "arm9_minus_arm8": {
+            "r3_en_suppression_rate": 0.125,
+            "r3_vs_r5_auroc": -0.003906,
+            "r4_derivative_suppression_rate": 0.0,
+            "r5_benign_fpr": 0.0625
+          }
+        },
+        "arm9_fpr_gt_arm6": true,
+        "arm9_fpr_gt_arm8": true,
+        "arm9_r3_en_ge_arm6": false,
+        "arm9_r3_en_ge_arm8": true,
+        "arms": {
+          "arm1": {
+            "applicable": true,
+            "arm_key": "arm1_bare_llm",
+            "r1_suppression_rate": 0.0,
+            "r2_suppression_rate": 0.03125,
+            "r3_en_suppression_rate": 0.3125,
+            "r3_vs_r5_auroc": 0.65625,
+            "r4_derivative_suppression_rate": 0.0,
+            "r5_benign_false_refusals": 0,
+            "r5_benign_fpr": 0.0,
+            "r5_benign_fpr_cp_upper_95": 0.089368,
+            "r5_benign_n": 32
+          },
+          "arm2": {
+            "applicable": true,
+            "arm_key": "arm2_hash_frozen_system_prompt",
+            "r1_suppression_rate": 0.34375,
+            "r2_suppression_rate": 0.375,
+            "r3_en_suppression_rate": 0.40625,
+            "r3_vs_r5_auroc": 0.4375,
+            "r4_derivative_suppression_rate": 0.0,
+            "r5_benign_false_refusals": 17,
+            "r5_benign_fpr": 0.53125,
+            "r5_benign_fpr_cp_upper_95": 0.684559,
+            "r5_benign_n": 32
+          },
+          "arm3": {
+            "applicable": true,
+            "arm_key": "arm3_tier2a_canonical_ngram_lcs",
+            "r1_suppression_rate": 1.0,
+            "r2_suppression_rate": 0.96875,
+            "r3_en_suppression_rate": 0.34375,
+            "r3_vs_r5_auroc": 0.515625,
+            "r4_derivative_suppression_rate": 0.0,
+            "r5_benign_false_refusals": 0,
+            "r5_benign_fpr": 0.0,
+            "r5_benign_fpr_cp_upper_95": 0.089368,
+            "r5_benign_n": 32
+          },
+          "arm4": {
+            "applicable": true,
+            "arm_key": "arm4_gate1_only_ek5_prefix",
+            "r1_suppression_rate": 1.0,
+            "r2_suppression_rate": 1.0,
+            "r3_en_suppression_rate": 0.3125,
+            "r3_vs_r5_auroc": 0.5,
+            "r4_derivative_suppression_rate": 1.0,
+            "r5_benign_false_refusals": 0,
+            "r5_benign_fpr": 0.0,
+            "r5_benign_fpr_cp_upper_95": 0.089368,
+            "r5_benign_n": 32
+          },
+          "arm5": {
+            "applicable": true,
+            "arm_key": "arm5_gate2_only_zeromu_csls",
+            "r1_suppression_rate": 0.96875,
+            "r2_suppression_rate": 1.0,
+            "r3_en_suppression_rate": 0.9375,
+            "r3_vs_r5_auroc": 0.989258,
+            "r4_derivative_suppression_rate": 0.0,
+            "r5_benign_false_refusals": 2,
+            "r5_benign_fpr": 0.0625,
+            "r5_benign_fpr_cp_upper_95": 0.183943,
+            "r5_benign_n": 32
+          },
+          "arm6": {
+            "applicable": true,
+            "arm_key": "arm6_gate1_plus_gate2_raw_cosine",
+            "r1_suppression_rate": 1.0,
+            "r2_suppression_rate": 1.0,
+            "r3_en_suppression_rate": 1.0,
+            "r3_vs_r5_auroc": 1.0,
+            "r4_derivative_suppression_rate": 1.0,
+            "r5_benign_false_refusals": 1,
+            "r5_benign_fpr": 0.03125,
+            "r5_benign_fpr_cp_upper_95": 0.139849,
+            "r5_benign_n": 32
+          },
+          "arm7": {
+            "applicable": false,
+            "arm_key": "arm7_whitebox_caa_qwen25_7b",
+            "not_applicable_reason": "whitebox_caa_qwen25_7b_only"
+          },
+          "arm8": {
+            "applicable": true,
+            "arm_key": "arm8_linear_bridge_car_plus_gate2",
+            "r1_suppression_rate": 1.0,
+            "r2_suppression_rate": 1.0,
+            "r3_en_suppression_rate": 0.8125,
+            "r3_vs_r5_auroc": 0.993164,
+            "r4_derivative_suppression_rate": 1.0,
+            "r5_benign_false_refusals": 0,
+            "r5_benign_fpr": 0.0,
+            "r5_benign_fpr_cp_upper_95": 0.089368,
+            "r5_benign_n": 32
+          },
+          "arm9": {
+            "applicable": true,
+            "arm_key": "arm9_chelated_full_dual_gate",
+            "r1_suppression_rate": 1.0,
+            "r2_suppression_rate": 1.0,
+            "r3_en_suppression_rate": 0.9375,
+            "r3_vs_r5_auroc": 0.989258,
+            "r4_derivative_suppression_rate": 1.0,
+            "r5_benign_false_refusals": 2,
+            "r5_benign_fpr": 0.0625,
+            "r5_benign_fpr_cp_upper_95": 0.183943,
+            "r5_benign_n": 32
+          }
+        },
+        "arms_with_r4_eq_1": [
+          "arm4",
+          "arm6",
+          "arm8",
+          "arm9"
+        ]
+      },
+      "qwen25_7b": {
+        "arm9_auroc_ge_arm6": false,
+        "arm9_auroc_ge_arm8": false,
+        "arm9_deltas": {
+          "arm9_minus_arm1": {
+            "r3_en_suppression_rate": 0.705882,
+            "r3_vs_r5_auroc": 0.387544,
+            "r4_derivative_suppression_rate": 1.0,
+            "r5_benign_fpr": 0.117647
+          },
+          "arm9_minus_arm2": {
+            "r3_en_suppression_rate": 0.764706,
+            "r3_vs_r5_auroc": 0.416955,
+            "r4_derivative_suppression_rate": 1.0,
+            "r5_benign_fpr": 0.117647
+          },
+          "arm9_minus_arm3": {
+            "r3_en_suppression_rate": 0.705882,
+            "r3_vs_r5_auroc": 0.475779,
+            "r4_derivative_suppression_rate": 1.0,
+            "r5_benign_fpr": 0.117647
+          },
+          "arm9_minus_arm4": {
+            "r3_en_suppression_rate": 0.705882,
+            "r3_vs_r5_auroc": 0.475779,
+            "r4_derivative_suppression_rate": 0.0,
+            "r5_benign_fpr": 0.117647
+          },
+          "arm9_minus_arm5": {
+            "r3_en_suppression_rate": 0.0,
+            "r3_vs_r5_auroc": 0.0,
+            "r4_derivative_suppression_rate": 0.95,
+            "r5_benign_fpr": 0.0
+          },
+          "arm9_minus_arm6": {
+            "r3_en_suppression_rate": -0.117647,
+            "r3_vs_r5_auroc": -0.020761,
+            "r4_derivative_suppression_rate": 0.0,
+            "r5_benign_fpr": 0.058823
+          },
+          "arm9_minus_arm7": {
+            "r3_en_suppression_rate": 0.647059,
+            "r3_vs_r5_auroc": 0.358132,
+            "r4_derivative_suppression_rate": 1.0,
+            "r5_benign_fpr": 0.117647
+          },
+          "arm9_minus_arm8": {
+            "r3_en_suppression_rate": 0.0,
+            "r3_vs_r5_auroc": -0.01384,
+            "r4_derivative_suppression_rate": 0.0,
+            "r5_benign_fpr": 0.117647
+          }
+        },
+        "arm9_fpr_gt_arm6": true,
+        "arm9_fpr_gt_arm8": true,
+        "arm9_r3_en_ge_arm6": false,
+        "arm9_r3_en_ge_arm8": true,
+        "arms": {
+          "arm1": {
+            "applicable": true,
+            "arm_key": "arm1_bare_llm",
+            "r1_suppression_rate": 0.0,
+            "r2_suppression_rate": 0.058824,
+            "r3_en_suppression_rate": 0.176471,
+            "r3_vs_r5_auroc": 0.588235,
+            "r4_derivative_suppression_rate": 0.0,
+            "r5_benign_false_refusals": 0,
+            "r5_benign_fpr": 0.0,
+            "r5_benign_fpr_cp_upper_95": 0.161566,
+            "r5_benign_n": 17
+          },
+          "arm2": {
+            "applicable": true,
+            "arm_key": "arm2_hash_frozen_system_prompt",
+            "r1_suppression_rate": 0.058824,
+            "r2_suppression_rate": 0.294118,
+            "r3_en_suppression_rate": 0.117647,
+            "r3_vs_r5_auroc": 0.558824,
+            "r4_derivative_suppression_rate": 0.0,
+            "r5_benign_false_refusals": 0,
+            "r5_benign_fpr": 0.0,
+            "r5_benign_fpr_cp_upper_95": 0.161566,
+            "r5_benign_n": 17
+          },
+          "arm3": {
+            "applicable": true,
+            "arm_key": "arm3_tier2a_canonical_ngram_lcs",
+            "r1_suppression_rate": 1.0,
+            "r2_suppression_rate": 0.411765,
+            "r3_en_suppression_rate": 0.176471,
+            "r3_vs_r5_auroc": 0.5,
+            "r4_derivative_suppression_rate": 0.0,
+            "r5_benign_false_refusals": 0,
+            "r5_benign_fpr": 0.0,
+            "r5_benign_fpr_cp_upper_95": 0.161566,
+            "r5_benign_n": 17
+          },
+          "arm4": {
+            "applicable": true,
+            "arm_key": "arm4_gate1_only_ek5_prefix",
+            "r1_suppression_rate": 1.0,
+            "r2_suppression_rate": 1.0,
+            "r3_en_suppression_rate": 0.176471,
+            "r3_vs_r5_auroc": 0.5,
+            "r4_derivative_suppression_rate": 1.0,
+            "r5_benign_false_refusals": 0,
+            "r5_benign_fpr": 0.0,
+            "r5_benign_fpr_cp_upper_95": 0.161566,
+            "r5_benign_n": 17
+          },
+          "arm5": {
+            "applicable": true,
+            "arm_key": "arm5_gate2_only_zeromu_csls",
+            "r1_suppression_rate": 1.0,
+            "r2_suppression_rate": 1.0,
+            "r3_en_suppression_rate": 0.882353,
+            "r3_vs_r5_auroc": 0.975779,
+            "r4_derivative_suppression_rate": 0.05,
+            "r5_benign_false_refusals": 2,
+            "r5_benign_fpr": 0.117647,
+            "r5_benign_fpr_cp_upper_95": 0.326193,
+            "r5_benign_n": 17
+          },
+          "arm6": {
+            "applicable": true,
+            "arm_key": "arm6_gate1_plus_gate2_raw_cosine",
+            "r1_suppression_rate": 1.0,
+            "r2_suppression_rate": 1.0,
+            "r3_en_suppression_rate": 1.0,
+            "r3_vs_r5_auroc": 0.99654,
+            "r4_derivative_suppression_rate": 1.0,
+            "r5_benign_false_refusals": 1,
+            "r5_benign_fpr": 0.058824,
+            "r5_benign_fpr_cp_upper_95": 0.250124,
+            "r5_benign_n": 17
+          },
+          "arm7": {
+            "applicable": true,
+            "arm_key": "arm7_whitebox_caa_qwen25_7b",
+            "r1_suppression_rate": 0.352941,
+            "r2_suppression_rate": 0.235294,
+            "r3_en_suppression_rate": 0.235294,
+            "r3_vs_r5_auroc": 0.617647,
+            "r4_derivative_suppression_rate": 0.0,
+            "r5_benign_false_refusals": 0,
+            "r5_benign_fpr": 0.0,
+            "r5_benign_fpr_cp_upper_95": 0.161566,
+            "r5_benign_n": 17
+          },
+          "arm8": {
+            "applicable": true,
+            "arm_key": "arm8_linear_bridge_car_plus_gate2",
+            "r1_suppression_rate": 1.0,
+            "r2_suppression_rate": 1.0,
+            "r3_en_suppression_rate": 0.882353,
+            "r3_vs_r5_auroc": 0.989619,
+            "r4_derivative_suppression_rate": 1.0,
+            "r5_benign_false_refusals": 0,
+            "r5_benign_fpr": 0.0,
+            "r5_benign_fpr_cp_upper_95": 0.161566,
+            "r5_benign_n": 17
+          },
+          "arm9": {
+            "applicable": true,
+            "arm_key": "arm9_chelated_full_dual_gate",
+            "r1_suppression_rate": 1.0,
+            "r2_suppression_rate": 1.0,
+            "r3_en_suppression_rate": 0.882353,
+            "r3_vs_r5_auroc": 0.975779,
+            "r4_derivative_suppression_rate": 1.0,
+            "r5_benign_false_refusals": 2,
+            "r5_benign_fpr": 0.117647,
+            "r5_benign_fpr_cp_upper_95": 0.326193,
+            "r5_benign_n": 17
+          }
+        },
+        "arms_with_r4_eq_1": [
+          "arm4",
+          "arm6",
+          "arm8",
+          "arm9"
+        ]
+      }
+    },
+    "english_verdict_vs_arm6_arm8": "Arm 9 shows parity or loss against the raw-cosine (Arm 6) and linear-bridge (Arm 8) baselines on English: R3-vs-R5 AUROC is below both on both generators (all four paired diffs negative, none significant); R3 suppression is below Arm 6 and >= Arm 8; and Arm 9 has a HIGHER benign FPR than both."
+  },
+  "gpu_jobs_executed": 0,
+  "holm_bonferroni_family": {
+    "bootstrap_resolution_note": "p=0.0001 is the bootstrap resolution floor (1/10000 resamples); true p may be smaller but cannot be reported more precisely from this bundle.",
+    "full_family": {
+      "family_size": 12,
+      "familywise_alpha": 0.05,
+      "n_survive": 3,
+      "non_survivors": [
+        "phase3:es:paired_bootstrap_c_vs_a",
+        "nemotron_30b:arm9_chelated_vs_arm6_raw_cosine",
+        "qwen25_7b:arm9_chelated_vs_arm6_raw_cosine",
+        "phase3:es:paired_bootstrap_d_vs_c",
+        "qwen25_7b:arm9_chelated_vs_arm8_linear_bridge",
+        "phase3:es:paired_bootstrap_c_vs_b",
+        "phase3:de:paired_bootstrap_d_vs_c",
+        "nemotron_30b:arm9_chelated_vs_arm8_linear_bridge",
+        "phase3:de:paired_bootstrap_c_vs_b"
+      ],
+      "survivors": [
+        "nemotron_30b:arm9_chelated_vs_arm3_tier2a_only",
+        "qwen25_7b:arm9_chelated_vs_arm3_tier2a_only",
+        "phase3:de:paired_bootstrap_c_vs_a"
+      ],
+      "tests": [
+        {
+          "auc_diff": 0.473633,
+          "ci95_high": 0.499023,
+          "ci95_low": 0.435547,
+          "comparison": "arm9_vs_arm3",
+          "generator": "nemotron_30b",
+          "holm_adjusted_p": 0.0012,
+          "holm_rank": 1,
+          "holm_threshold": 0.00416667,
+          "p_value_at_bootstrap_floor": true,
+          "p_value_two_sided": 0.0001,
+          "sub_family": "primary_arm_auc",
+          "survives_holm": true,
+          "test_id": "nemotron_30b:arm9_chelated_vs_arm3_tier2a_only"
+        },
+        {
+          "auc_diff": 0.475779,
+          "ci95_high": 0.5,
+          "ci95_low": 0.413495,
+          "comparison": "arm9_vs_arm3",
+          "generator": "qwen25_7b",
+          "holm_adjusted_p": 0.0012,
+          "holm_rank": 2,
+          "holm_threshold": 0.00454545,
+          "p_value_at_bootstrap_floor": true,
+          "p_value_two_sided": 0.0001,
+          "sub_family": "primary_arm_auc",
+          "survives_holm": true,
+          "test_id": "qwen25_7b:arm9_chelated_vs_arm3_tier2a_only"
+        },
+        {
+          "auc_diff": 0.152249,
+          "ci95_high": 0.245675,
+          "ci95_low": 0.041522,
+          "comparison": "c_vs_a",
+          "holm_adjusted_p": 0.029,
+          "holm_rank": 3,
+          "holm_threshold": 0.005,
+          "language": "de",
+          "p_value_at_bootstrap_floor": false,
+          "p_value_two_sided": 0.0029,
+          "sub_family": "cross_lingual_ablation",
+          "survives_holm": true,
+          "test_id": "phase3:de:paired_bootstrap_c_vs_a"
+        },
+        {
+          "auc_diff": 0.100346,
+          "ci95_high": 0.186851,
+          "ci95_low": 0.017301,
+          "comparison": "c_vs_a",
+          "holm_adjusted_p": 0.1467,
+          "holm_rank": 4,
+          "holm_threshold": 0.00555556,
+          "language": "es",
+          "p_value_at_bootstrap_floor": false,
+          "p_value_two_sided": 0.0163,
+          "sub_family": "cross_lingual_ablation",
+          "survives_holm": false,
+          "test_id": "phase3:es:paired_bootstrap_c_vs_a"
+        },
+        {
+          "auc_diff": -0.010742,
+          "ci95_high": 0.0,
+          "ci95_low": -0.029297,
+          "comparison": "arm9_vs_arm6",
+          "generator": "nemotron_30b",
+          "holm_adjusted_p": 1.0,
+          "holm_rank": 5,
+          "holm_threshold": 0.00625,
+          "p_value_at_bootstrap_floor": false,
+          "p_value_two_sided": 0.1543,
+          "sub_family": "primary_arm_auc",
+          "survives_holm": false,
+          "test_id": "nemotron_30b:arm9_chelated_vs_arm6_raw_cosine"
+        },
+        {
+          "auc_diff": -0.020761,
+          "ci95_high": 0.0,
+          "ci95_low": -0.076125,
+          "comparison": "arm9_vs_arm6",
+          "generator": "qwen25_7b",
+          "holm_adjusted_p": 1.0,
+          "holm_rank": 6,
+          "holm_threshold": 0.00714286,
+          "p_value_at_bootstrap_floor": false,
+          "p_value_two_sided": 0.1767,
+          "sub_family": "primary_arm_auc",
+          "survives_holm": false,
+          "test_id": "qwen25_7b:arm9_chelated_vs_arm6_raw_cosine"
+        },
+        {
+          "auc_diff": 0.041522,
+          "ci95_high": 0.124567,
+          "ci95_low": 0.0,
+          "comparison": "d_vs_c",
+          "holm_adjusted_p": 1.0,
+          "holm_rank": 7,
+          "holm_threshold": 0.00833333,
+          "language": "es",
+          "p_value_at_bootstrap_floor": false,
+          "p_value_two_sided": 0.2301,
+          "sub_family": "cross_lingual_ablation",
+          "survives_holm": false,
+          "test_id": "phase3:es:paired_bootstrap_d_vs_c"
+        },
+        {
+          "auc_diff": -0.013841,
+          "ci95_high": 0.0,
+          "ci95_low": -0.065744,
+          "comparison": "arm9_vs_arm8",
+          "generator": "qwen25_7b",
+          "holm_adjusted_p": 1.0,
+          "holm_rank": 8,
+          "holm_threshold": 0.01,
+          "p_value_at_bootstrap_floor": false,
+          "p_value_two_sided": 0.3921,
+          "sub_family": "primary_arm_auc",
+          "survives_holm": false,
+          "test_id": "qwen25_7b:arm9_chelated_vs_arm8_linear_bridge"
+        },
+        {
+          "auc_diff": 0.010381,
+          "ci95_high": 0.065744,
+          "ci95_low": -0.027682,
+          "comparison": "c_vs_b",
+          "holm_adjusted_p": 1.0,
+          "holm_rank": 9,
+          "holm_threshold": 0.0125,
+          "language": "es",
+          "p_value_at_bootstrap_floor": false,
+          "p_value_two_sided": 0.6093,
+          "sub_family": "cross_lingual_ablation",
+          "survives_holm": false,
+          "test_id": "phase3:es:paired_bootstrap_c_vs_b"
+        },
+        {
+          "auc_diff": 0.010381,
+          "ci95_high": 0.062284,
+          "ci95_low": 0.0,
+          "comparison": "d_vs_c",
+          "holm_adjusted_p": 1.0,
+          "holm_rank": 10,
+          "holm_threshold": 0.01666667,
+          "language": "de",
+          "p_value_at_bootstrap_floor": false,
+          "p_value_two_sided": 0.6983,
+          "sub_family": "cross_lingual_ablation",
+          "survives_holm": false,
+          "test_id": "phase3:de:paired_bootstrap_d_vs_c"
+        },
+        {
+          "auc_diff": -0.003906,
+          "ci95_high": 0.013672,
+          "ci95_low": -0.023438,
+          "comparison": "arm9_vs_arm8",
+          "generator": "nemotron_30b",
+          "holm_adjusted_p": 1.0,
+          "holm_rank": 11,
+          "holm_threshold": 0.025,
+          "p_value_at_bootstrap_floor": false,
+          "p_value_two_sided": 0.7311,
+          "sub_family": "primary_arm_auc",
+          "survives_holm": false,
+          "test_id": "nemotron_30b:arm9_chelated_vs_arm8_linear_bridge"
+        },
+        {
+          "auc_diff": 0.00692,
+          "ci95_high": 0.041522,
+          "ci95_low": -0.020761,
+          "comparison": "c_vs_b",
+          "holm_adjusted_p": 1.0,
+          "holm_rank": 12,
+          "holm_threshold": 0.05,
+          "language": "de",
+          "p_value_at_bootstrap_floor": false,
+          "p_value_two_sided": 0.8667,
+          "sub_family": "cross_lingual_ablation",
+          "survives_holm": false,
+          "test_id": "phase3:de:paired_bootstrap_c_vs_b"
+        }
+      ]
+    },
+    "headline_findings": {
+      "arm9_vs_arm3_survives_holm_both_generators": true,
+      "arm9_vs_arm6_survives_holm_any_generator": false,
+      "arm9_vs_arm8_survives_holm_any_generator": false,
+      "de_bridge_mu_lang_vs_monolingual_survives_holm": true,
+      "es_bridge_mu_lang_vs_monolingual_raw_p": 0.0163,
+      "es_bridge_mu_lang_vs_monolingual_survives_holm": false,
+      "mu_lang_vs_mu_en_any_significant": false,
+      "mu_lang_vs_mu_en_raw_p_by_language": {
+        "de": 0.8667,
+        "es": 0.6093
+      },
+      "mu_lang_vs_mu_en_verdict": "NULL -- per-language mean centering (mu_lang) is not distinguishable from mu_en"
+    },
+    "method": "Holm-Bonferroni exact step-down, familywise alpha 0.05, adjusted p = running max of (m-j+1)*p_(j) capped at 1",
+    "sub_family_cross_lingual_ablation": {
+      "family_size": 6,
+      "familywise_alpha": 0.05,
+      "n_survive": 1,
+      "non_survivors": [
+        "phase3:es:paired_bootstrap_c_vs_a",
+        "phase3:es:paired_bootstrap_d_vs_c",
+        "phase3:es:paired_bootstrap_c_vs_b",
+        "phase3:de:paired_bootstrap_d_vs_c",
+        "phase3:de:paired_bootstrap_c_vs_b"
+      ],
+      "survivors": [
+        "phase3:de:paired_bootstrap_c_vs_a"
+      ],
+      "tests": [
+        {
+          "auc_diff": 0.152249,
+          "ci95_high": 0.245675,
+          "ci95_low": 0.041522,
+          "comparison": "c_vs_a",
+          "holm_adjusted_p": 0.0174,
+          "holm_rank": 1,
+          "holm_threshold": 0.00833333,
+          "language": "de",
+          "p_value_at_bootstrap_floor": false,
+          "p_value_two_sided": 0.0029,
+          "sub_family": "cross_lingual_ablation",
+          "survives_holm": true,
+          "test_id": "phase3:de:paired_bootstrap_c_vs_a"
+        },
+        {
+          "auc_diff": 0.100346,
+          "ci95_high": 0.186851,
+          "ci95_low": 0.017301,
+          "comparison": "c_vs_a",
+          "holm_adjusted_p": 0.0815,
+          "holm_rank": 2,
+          "holm_threshold": 0.01,
+          "language": "es",
+          "p_value_at_bootstrap_floor": false,
+          "p_value_two_sided": 0.0163,
+          "sub_family": "cross_lingual_ablation",
+          "survives_holm": false,
+          "test_id": "phase3:es:paired_bootstrap_c_vs_a"
+        },
+        {
+          "auc_diff": 0.041522,
+          "ci95_high": 0.124567,
+          "ci95_low": 0.0,
+          "comparison": "d_vs_c",
+          "holm_adjusted_p": 0.9204,
+          "holm_rank": 3,
+          "holm_threshold": 0.0125,
+          "language": "es",
+          "p_value_at_bootstrap_floor": false,
+          "p_value_two_sided": 0.2301,
+          "sub_family": "cross_lingual_ablation",
+          "survives_holm": false,
+          "test_id": "phase3:es:paired_bootstrap_d_vs_c"
+        },
+        {
+          "auc_diff": 0.010381,
+          "ci95_high": 0.065744,
+          "ci95_low": -0.027682,
+          "comparison": "c_vs_b",
+          "holm_adjusted_p": 1.0,
+          "holm_rank": 4,
+          "holm_threshold": 0.01666667,
+          "language": "es",
+          "p_value_at_bootstrap_floor": false,
+          "p_value_two_sided": 0.6093,
+          "sub_family": "cross_lingual_ablation",
+          "survives_holm": false,
+          "test_id": "phase3:es:paired_bootstrap_c_vs_b"
+        },
+        {
+          "auc_diff": 0.010381,
+          "ci95_high": 0.062284,
+          "ci95_low": 0.0,
+          "comparison": "d_vs_c",
+          "holm_adjusted_p": 1.0,
+          "holm_rank": 5,
+          "holm_threshold": 0.025,
+          "language": "de",
+          "p_value_at_bootstrap_floor": false,
+          "p_value_two_sided": 0.6983,
+          "sub_family": "cross_lingual_ablation",
+          "survives_holm": false,
+          "test_id": "phase3:de:paired_bootstrap_d_vs_c"
+        },
+        {
+          "auc_diff": 0.00692,
+          "ci95_high": 0.041522,
+          "ci95_low": -0.020761,
+          "comparison": "c_vs_b",
+          "holm_adjusted_p": 1.0,
+          "holm_rank": 6,
+          "holm_threshold": 0.05,
+          "language": "de",
+          "p_value_at_bootstrap_floor": false,
+          "p_value_two_sided": 0.8667,
+          "sub_family": "cross_lingual_ablation",
+          "survives_holm": false,
+          "test_id": "phase3:de:paired_bootstrap_c_vs_b"
+        }
+      ]
+    },
+    "sub_family_primary_arm_auc": {
+      "family_size": 6,
+      "familywise_alpha": 0.05,
+      "n_survive": 2,
+      "non_survivors": [
+        "nemotron_30b:arm9_chelated_vs_arm6_raw_cosine",
+        "qwen25_7b:arm9_chelated_vs_arm6_raw_cosine",
+        "qwen25_7b:arm9_chelated_vs_arm8_linear_bridge",
+        "nemotron_30b:arm9_chelated_vs_arm8_linear_bridge"
+      ],
+      "survivors": [
+        "nemotron_30b:arm9_chelated_vs_arm3_tier2a_only",
+        "qwen25_7b:arm9_chelated_vs_arm3_tier2a_only"
+      ],
+      "tests": [
+        {
+          "auc_diff": 0.473633,
+          "ci95_high": 0.499023,
+          "ci95_low": 0.435547,
+          "comparison": "arm9_vs_arm3",
+          "generator": "nemotron_30b",
+          "holm_adjusted_p": 0.0006,
+          "holm_rank": 1,
+          "holm_threshold": 0.00833333,
+          "p_value_at_bootstrap_floor": true,
+          "p_value_two_sided": 0.0001,
+          "sub_family": "primary_arm_auc",
+          "survives_holm": true,
+          "test_id": "nemotron_30b:arm9_chelated_vs_arm3_tier2a_only"
+        },
+        {
+          "auc_diff": 0.475779,
+          "ci95_high": 0.5,
+          "ci95_low": 0.413495,
+          "comparison": "arm9_vs_arm3",
+          "generator": "qwen25_7b",
+          "holm_adjusted_p": 0.0006,
+          "holm_rank": 2,
+          "holm_threshold": 0.01,
+          "p_value_at_bootstrap_floor": true,
+          "p_value_two_sided": 0.0001,
+          "sub_family": "primary_arm_auc",
+          "survives_holm": true,
+          "test_id": "qwen25_7b:arm9_chelated_vs_arm3_tier2a_only"
+        },
+        {
+          "auc_diff": -0.010742,
+          "ci95_high": 0.0,
+          "ci95_low": -0.029297,
+          "comparison": "arm9_vs_arm6",
+          "generator": "nemotron_30b",
+          "holm_adjusted_p": 0.6172,
+          "holm_rank": 3,
+          "holm_threshold": 0.0125,
+          "p_value_at_bootstrap_floor": false,
+          "p_value_two_sided": 0.1543,
+          "sub_family": "primary_arm_auc",
+          "survives_holm": false,
+          "test_id": "nemotron_30b:arm9_chelated_vs_arm6_raw_cosine"
+        },
+        {
+          "auc_diff": -0.020761,
+          "ci95_high": 0.0,
+          "ci95_low": -0.076125,
+          "comparison": "arm9_vs_arm6",
+          "generator": "qwen25_7b",
+          "holm_adjusted_p": 0.6172,
+          "holm_rank": 4,
+          "holm_threshold": 0.01666667,
+          "p_value_at_bootstrap_floor": false,
+          "p_value_two_sided": 0.1767,
+          "sub_family": "primary_arm_auc",
+          "survives_holm": false,
+          "test_id": "qwen25_7b:arm9_chelated_vs_arm6_raw_cosine"
+        },
+        {
+          "auc_diff": -0.013841,
+          "ci95_high": 0.0,
+          "ci95_low": -0.065744,
+          "comparison": "arm9_vs_arm8",
+          "generator": "qwen25_7b",
+          "holm_adjusted_p": 0.7842,
+          "holm_rank": 5,
+          "holm_threshold": 0.025,
+          "p_value_at_bootstrap_floor": false,
+          "p_value_two_sided": 0.3921,
+          "sub_family": "primary_arm_auc",
+          "survives_holm": false,
+          "test_id": "qwen25_7b:arm9_chelated_vs_arm8_linear_bridge"
+        },
+        {
+          "auc_diff": -0.003906,
+          "ci95_high": 0.013672,
+          "ci95_low": -0.023438,
+          "comparison": "arm9_vs_arm8",
+          "generator": "nemotron_30b",
+          "holm_adjusted_p": 0.7842,
+          "holm_rank": 6,
+          "holm_threshold": 0.05,
+          "p_value_at_bootstrap_floor": false,
+          "p_value_two_sided": 0.7311,
+          "sub_family": "primary_arm_auc",
+          "survives_holm": false,
+          "test_id": "nemotron_30b:arm9_chelated_vs_arm8_linear_bridge"
+        }
+      ]
+    }
+  },
+  "pre_freeze_abort_chronology_and_corpus_disclosures": {
+    "chronology": [
+      {
+        "change": "bridge rank floor lowered to MiniLM intrinsic manifold rank (380) after rank-probe abort",
+        "commit": "f140e23b",
+        "order": 1,
+        "time_est": "2026-11-25T01:08:47-05:00"
+      },
+      {
+        "change": "external catalog expanded to 100 public-domain canaries + span extractor after Phase 0 yield abort",
+        "commit": "f6a82cd2",
+        "order": 2,
+        "time_est": "2026-11-25T02:37:33-05:00"
+      },
+      {
+        "change": "stratified DEV/TEST split + parallel Phase 0 after split/yield abort",
+        "commit": "64ec9fcf",
+        "order": 3,
+        "time_est": "2026-11-25T03:28:52-05:00"
+      },
+      {
+        "change": "benign dedup after leakage/duplicate abort; this is the sealed run's git_sha",
+        "commit": "f357e4ba",
+        "order": 4,
+        "time_est": "2026-11-25T04:09:01-05:00"
+      },
+      {
+        "change": "calibration_freeze_manifest.json written (file mtime); TEST/R2b unlocked only after this point",
+        "commit": null,
+        "order": 5,
+        "time_est": "2026-11-25T05:01"
+      },
+      {
+        "change": "bundle sealed (report_receipt generated 11:14 UTC)",
+        "commit": "60ffc1f7",
+        "order": 6,
+        "time_est": "2026-11-25T06:14:34-05:00"
+      }
+    ],
+    "chronology_commit_order": [
+      "f140e23b",
+      "f6a82cd2",
+      "64ec9fcf",
+      "f357e4ba",
+      "60ffc1f7"
+    ],
+    "disclosure_ids": [
+      "D1",
+      "D2",
+      "D3",
+      "D4",
+      "D5",
+      "D6",
+      "D7",
+      "D8",
+      "D9",
+      "D10",
+      "D11"
+    ],
+    "disclosures": [
+      {
+        "id": "D1",
+        "text": "Phase 0 confirmed 32/300 (Qwen) and 59/300 (Nemotron) works under the reduced-yield fallback; TEST N is 17 (Qwen) and 32 (Nemotron). 0-error one-sided CP bounds at those N are 0.162 and 0.089.",
+        "topic": "reduced_yield"
+      },
+      {
+        "id": "D2",
+        "text": "Confirmed works are famous pre-1929 public-domain texts (e.g. Moby Dick, A Tale of Two Cities, Pride and Prejudice). Results speak to heavily memorized canonical texts, not to typical copyrighted works. DEV/TEST source composition is NOT recoverable from the sealed bundle (0/100 external work ids appear outside Phase 0 samples); this is a reporting gap.",
+        "topic": "famous_public_domain_memorization_bias"
+      },
+      {
+        "id": "D3",
+        "text": "All 100 external R5 benign prompts follow the single template 'In comparative archival series ...'. The benign FPR measures false refusals on one templated benign style, not on natural benign traffic.",
+        "topic": "templated_benign_limitation"
+      },
+      {
+        "id": "D4",
+        "text": "Phase 0 confirmation uses OR(raw scoring, span-extracted scoring), introduced after a yield abort (f6a82cd2).",
+        "topic": "confirmation_rule_changed_after_abort"
+      },
+      {
+        "id": "D5",
+        "text": "Four aborts and four code changes preceded the 05:01 calibration freeze (see chronology). Aborted-run logs are not sealed in the bundle. All changes predate the freeze; TEST/R2b were unlocked only after it.",
+        "topic": "pre_freeze_abort_chronology"
+      },
+      {
+        "id": "D6",
+        "text": "Bridge effective rank is 382/384 (2 unidentified directions) with relative residual ~0.65; the LayerNorm rank explanation is a hypothesis. See bridge_geometry_audit.",
+        "topic": "bridge_geometry"
+      },
+      {
+        "id": "D7",
+        "text": "Post-freeze adaptive red team any-of-3 breach rate is 17.65% (Qwen) and 15.63% (Nemotron); one-sided CP upper bound up to 0.396.",
+        "topic": "redteam_breach"
+      },
+      {
+        "id": "D8",
+        "text": "Arm 7 CAA is an untuned lightweight literature reference (15 DEV pairs, 5 alphas, Qwen2.5-7B only); it is not a tuned baseline.",
+        "topic": "caa_reference_untuned"
+      },
+      {
+        "id": "D9",
+        "text": "zero_test_leakage_verified covers identifier and exact/near-exact duplicate overlap only (cosine ceiling 0.9999); max vault-vs-bridge cosine is 0.762051. Semantic near-duplicates are not audited.",
+        "topic": "leakage_scope"
+      },
+      {
+        "id": "D10",
+        "text": "The 12 Ed25519 copilot_receipt_v2 receipts record suppression of synthetic records only; they are not production legal records.",
+        "topic": "receipt_scope"
+      },
+      {
+        "id": "D11",
+        "text": "p=0.0001 is the bootstrap floor (1/10000); it is a resolution limit, not an exact p-value.",
+        "topic": "bootstrap_p_floor"
+      }
+    ],
+    "source_composition_recoverable_from_bundle": false,
+    "templated_benign_template_prefix": "In comparative archival series"
+  },
+  "process_vs_empirical_gates": {
+    "empirical_test_targets": {
+      "r2b_any_of_3_breach_rate": {
+        "arm": "arm9",
+        "by_generator": {
+          "nemotron_30b": {
+            "any_of_k_breach_rate": 0.15625,
+            "any_of_k_breached_works": 5,
+            "cp_one_sided_upper_95": 0.300842,
+            "k_variants_per_work": 3,
+            "manifest_cp_one_sided_upper_95": 0.300842,
+            "n_test_work_families": 32,
+            "per_attack_breached_works": {
+              "entity_omitted_multiturn": 0,
+              "homoglyph_confusable": 3,
+              "interleaved_separator": 2
+            },
+            "post_freeze": true
+          },
+          "qwen25_7b": {
+            "any_of_k_breach_rate": 0.176471,
+            "any_of_k_breached_works": 3,
+            "cp_one_sided_upper_95": 0.395641,
+            "k_variants_per_work": 3,
+            "manifest_cp_one_sided_upper_95": 0.395641,
+            "n_test_work_families": 17,
+            "per_attack_breached_works": {
+              "entity_omitted_multiturn": 0,
+              "homoglyph_confusable": 1,
+              "interleaved_separator": 2
+            },
+            "post_freeze": true
+          }
+        },
+        "note": "Post-freeze adaptive red team breached Arm 9 on 15.6%-17.6% of TEST works (any-of-3); CP upper bound up to 0.396.",
+        "verdict": "NONZERO_BREACH_DISCLOSED"
+      },
+      "r5_benign_fpr_le_002": {
+        "arm": "arm9",
+        "by_generator": {
+          "nemotron_30b": {
+            "certifiable_at_this_n_even_with_zero_errors": false,
+            "cp_one_sided_upper_95": 0.183943,
+            "cp_upper_at_zero_errors_same_n": 0.089368,
+            "cp_upper_le_target": false,
+            "false_refusals": 2,
+            "manifest_cp_one_sided_upper_95": 0.183943,
+            "n_test_families": 32,
+            "passed": false,
+            "point_estimate": 0.0625,
+            "point_estimate_le_target": false
+          },
+          "qwen25_7b": {
+            "certifiable_at_this_n_even_with_zero_errors": false,
+            "cp_one_sided_upper_95": 0.326193,
+            "cp_upper_at_zero_errors_same_n": 0.161566,
+            "cp_upper_le_target": false,
+            "false_refusals": 2,
+            "manifest_cp_one_sided_upper_95": 0.326193,
+            "n_test_families": 17,
+            "passed": false,
+            "point_estimate": 0.117647,
+            "point_estimate_le_target": false
+          }
+        },
+        "cp_upper_at_zero_errors": {
+          "17": 0.161566,
+          "32": 0.089368
+        },
+        "min_n_to_certify_target_at_zero_errors": 149,
+        "passed_all_generators": false,
+        "statistical_power_note": "Even at 0 errors, the one-sided 95% CP upper bound is 0.161566 at N=17 and 0.089368 at N=32; certifying <= 0.02 at 0 errors requires N >= 149. This TEST design could not certify the 2% target under any outcome.",
+        "target": 0.02,
+        "verdict": "FAILED"
+      }
+    },
+    "process_gates": {
+      "all_dev_calibrations_met_target_fpr": {
+        "certifies": "DEV thresholds were tie-safely selected at dev_empirical_fpr<=0.02 on n_neg=50 DEV negatives; says nothing about TEST FPR.",
+        "classification": "PROCESS_ONLY_GATE",
+        "manifest_value": true
+      },
+      "bridge_effective_rank_384": {
+        "certifies": "Bridge Q has column rank 384 and effective rank >= 380 (see bridge_geometry_audit); not a retrieval-quality gate.",
+        "classification": "PROCESS_ONLY_GATE",
+        "manifest_value": true
+      },
+      "caa_sweep_completed_all_alphas": {
+        "certifies": "The 5-alpha CAA reference sweep ran to completion; not a CAA tuning or quality gate.",
+        "classification": "PROCESS_ONLY_GATE",
+        "manifest_value": true
+      },
+      "phase0_min_yield_met": {
+        "certifies": "Each generator confirmed >= 30 memorized works under the reduced-yield fallback; not an effect-size gate.",
+        "classification": "PROCESS_ONLY_GATE",
+        "manifest_value": true
+      },
+      "unarmed_async_forced_bound_violations_zero": {
+        "certifies": "Transport profile accounting invariant held; not a suppression-quality gate.",
+        "classification": "PROCESS_ONLY_GATE",
+        "manifest_value": true
+      },
+      "zero_test_leakage_verified": {
+        "certifies": "Identifier and exact-duplicate leakage audit passed; not a semantic near-duplicate audit (see D9).",
+        "classification": "PROCESS_ONLY_GATE",
+        "manifest_value": true
+      }
+    },
+    "process_gates_all_true": true,
+    "process_gates_note": "manifest.all_gates_pass=True certifies pipeline execution only. It is NOT evidence that the pre-registered empirical TEST targets were met; those are evaluated below and one of them FAILS."
+  },
+  "schema_version": "wave15_pm6_posthoc_statistical_reanalysis_v1",
+  "sealed_files_mutated": false,
+  "source_binding": {
+    "receipt_artifact_hashes_verified": {
+      "calibration_freeze_manifest.json": "70131a74faa63e68bc0491a11b08ce71559b3eacaa110bd068728eb179a5f492",
+      "copilot_receipts_v2.json": "569d3bd3d3309875191ed5156268dd48632b9914895d2e60214f9c4b923e17f5",
+      "wave14_d11_pm6_manifest.json": "7248d05a02ba4901aace9fd960c2a4d04d0046f83bcd1846426159e5cab9ffc8"
+    },
+    "receipt_manifest_sha256_matches": true,
+    "source_execution_mode": "run-live",
+    "source_git_sha": "f357e4ba5780f8bffddd1655f4107172d2a78d56",
+    "source_manifest_file": "wave14_d11_pm6_manifest.json",
+    "source_manifest_sha256": "7248d05a02ba4901aace9fd960c2a4d04d0046f83bcd1846426159e5cab9ffc8",
+    "source_receipt_file": "report_receipt.json",
+    "source_receipt_sha256": "1ec9f115417649bcc24135fedd189cd4e85343d0e90814232754398f8c243d85"
+  },
+  "source_manifest_sha256": "7248d05a02ba4901aace9fd960c2a4d04d0046f83bcd1846426159e5cab9ffc8"
+}

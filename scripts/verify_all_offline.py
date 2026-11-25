@@ -15,11 +15,25 @@ Modes
        ancillary JSON and ``artifact_hashes`` / ``artifact_sha256`` sidecars exist and match;
        gitignored raw ``.csv`` / ``.jsonl`` are optional offline but hashed when present;
        ``*sealed_key*`` files are never opened (existence only).  The standalone Part VII
-       bundles D6 / D8 are always required; D7 / D9 / D10 / D11 are verified whenever their
-       ``report_receipt.json`` exists.
+       bundles D6 / D8 are always required; ``wave11_d7_`` / ``wave11_d9_`` / ``wave11_d10_``
+       and ``wave14_d11_`` (the Wave 14b PM6 takedown carry-forward) are verified whenever
+       their ``report_receipt.json`` exists.
     c. D8 Compliance Copilot receipts: Ed25519 signature over every ``entry_hash`` plus the
        SHA-256 hash chain from the manifest, then a live deterministic replay of the engine
        (in a subprocess) that must reproduce the sealed entry hashes byte for byte.
+    c2. D11 (when ``artifacts/wave14_d11_*`` exists): all 12 ``copilot_receipt_v2`` entries
+       re-verified from first principles (``entry_hash`` recomputed from
+       ``prev_hash || canonical_json(payload)``, Ed25519 signature, ``seq`` / ``prev_hash``
+       linkage, integer-only payloads, head == ``report_receipt.receipts_head_hash`` ==
+       manifest ref, ``non_nda_leak_hits == 0`` plus a live scanner rescan).  ``metrics.d11``
+       recomputes the headline-arm ``r5_benign_fpr_le_002`` TEST target and the 12-test Holm
+       step-down straight from the sealed manifest and fails unless
+       ``pm6_posthoc_statistical_reanalysis.json`` binds the manifest sha256, discloses the
+       target as FAILED, matches Holm, and carries disclosures D1-D11; the addendum must also
+       be byte-identical to a fresh CPU recomputation.
+    c3. Formal spec lock (when ``formal/spec_sha256.json`` exists): ``Spec.lean`` sha256 equals
+       the pinned lock and ``conformance_report.json`` keeps
+       ``incremental_with_deletions_status == "conformance_tested_unproven_in_lean"``.
     d. The 56-pattern Non-NDA scanner over the teaser markdown, the teaser deck HTML and the
        Compliance Copilot page: 0 hits each.
     e. Headline-metric cross-checks straight from the committed manifests (D6 cross-engine
@@ -95,7 +109,47 @@ NON_NDA_TARGETS: Tuple[str, ...] = (
 )
 
 PART7_REQUIRED_PREFIXES: Tuple[str, ...] = ("wave11_d6_", "wave11_d8_")
-PART7_OPTIONAL_PREFIXES: Tuple[str, ...] = ("wave11_d7_", "wave11_d9_", "wave11_d10_", "wave11_d11_")
+PART7_OPTIONAL_PREFIXES: Tuple[str, ...] = ("wave11_d7_", "wave11_d9_", "wave11_d10_", "wave14_d11_")
+
+# Wave 14b D11 PM6 takedown carry-forward bundle (verified whenever its directory exists).
+D11_PREFIX = "wave14_d11_"
+D11_MANIFEST_SCHEMA = "wave14_d11_pm6_manifest_v2"
+D11_REANALYSIS_NAME = "pm6_posthoc_statistical_reanalysis.json"
+D11_REANALYSIS_SCHEMA = "wave15_pm6_posthoc_statistical_reanalysis_v1"
+D11_REANALYSIS_SCRIPT_REL = "scripts/compute_wave14b_pm6_posthoc_reanalysis.py"
+D11_RECEIPT_SCHEMA = "copilot_receipt_v2"
+D11_EXPECTED_RECEIPTS = 12
+D11_RECEIPT_ALGORITHM = "Ed25519 over the ASCII hex of SHA-256(prev_hash || canonical_json(payload))"
+D11_TARGET_BENIGN_FPR = 0.02
+D11_HOLM_ALPHA = 0.05
+D11_HEADLINE_ARM = "arm9_chelated_full_dual_gate"
+D11_PRIMARY_COMPARISONS: Tuple[str, ...] = (
+    "arm9_chelated_vs_arm3_tier2a_only",
+    "arm9_chelated_vs_arm6_raw_cosine",
+    "arm9_chelated_vs_arm8_linear_bridge",
+)
+D11_CROSS_LINGUAL_COMPARISONS: Tuple[str, ...] = (
+    "paired_bootstrap_c_vs_a",
+    "paired_bootstrap_c_vs_b",
+    "paired_bootstrap_d_vs_c",
+)
+D11_PROCESS_GATES: Tuple[str, ...] = (
+    "all_dev_calibrations_met_target_fpr",
+    "bridge_effective_rank_384",
+    "caa_sweep_completed_all_alphas",
+    "phase0_min_yield_met",
+    "unarmed_async_forced_bound_violations_zero",
+    "zero_test_leakage_verified",
+)
+D11_DISCLOSURE_IDS: Tuple[str, ...] = tuple(f"D{i}" for i in range(1, 12))
+D11_PRE_FREEZE_COMMITS: Tuple[str, ...] = ("f140e23b", "f6a82cd2", "64ec9fcf", "f357e4ba", "60ffc1f7")
+D11_BRIDGE_RANK_FLOOR_ACTUALLY_CHECKED = 380
+
+# Formal spec lock: Spec.lean is frozen before proofs; any edit must update this pin deliberately.
+SPEC_LOCK_REL = "formal/spec_sha256.json"
+EXPECTED_SPEC_SHA256 = "63fe3e644bdef93160c5d612bfc7d7086af03c3d15cf34417402a89a86cdc6eb"
+CONFORMANCE_REPORT_REL = "formal/conformance_report.json"
+EXPECTED_INCREMENTAL_DELETIONS_STATUS = "conformance_tested_unproven_in_lean"
 
 RAW_SUFFIXES = (".csv", ".jsonl")
 ANCILLARY_RECEIPT_KEYS = {
@@ -591,6 +645,408 @@ def verify_d8(repo_root: Path, report: Report, replay_enabled: bool) -> Dict[str
         "; ".join(rfaults),
     )
     return info
+
+
+# --------------------------------------------------------------------------------------
+# (c2) D11 PM6 receipts: Ed25519 + payload-recomputed SHA-256 chain + Non-NDA rescan
+# --------------------------------------------------------------------------------------
+def _d11_canonical(payload: Any) -> bytes:
+    """Integer-only canonical JSON matching ``chelated_takedown_firewall.canonical_json``."""
+    return json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode("utf-8")
+
+
+def _contains_float(obj: Any) -> bool:
+    if isinstance(obj, float):
+        return True
+    if isinstance(obj, dict):
+        return any(_contains_float(v) for v in obj.values())
+    if isinstance(obj, (list, tuple)):
+        return any(_contains_float(v) for v in obj)
+    return False
+
+
+def verify_d11_receipt_crypto(
+    receipts_doc: Any,
+    report_receipt: Dict[str, Any],
+    manifest: Optional[Dict[str, Any]] = None,
+    scanner: Any = None,
+) -> List[str]:
+    """Re-verify the sealed D11 ``copilot_receipt_v2`` ledger from first principles.
+
+    Unlike D8, every entry carries its payload, so each ``entry_hash`` is recomputed as
+    ``SHA-256(prev_hash || canonical_json(payload))`` instead of being trusted. Returns faults (empty = OK).
+    """
+    faults: List[str] = []
+    try:
+        from cryptography.exceptions import InvalidSignature
+        from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+    except ImportError as exc:
+        return [f"cryptography package unavailable: {exc}"]
+    if not isinstance(receipts_doc, dict):
+        return ["receipts document is not a JSON object"]
+    if receipts_doc.get("schema_version") != D11_RECEIPT_SCHEMA:
+        faults.append(f"schema_version={receipts_doc.get('schema_version')!r}")
+    if receipts_doc.get("mode") != "non_nda":
+        faults.append(f"mode={receipts_doc.get('mode')!r}, expected 'non_nda'")
+    entries = receipts_doc.get("entries")
+    if not isinstance(entries, list) or not entries:
+        return faults + ["no receipt entries"]
+    if len(entries) != D11_EXPECTED_RECEIPTS:
+        faults.append(f"{len(entries)} entries, expected {D11_EXPECTED_RECEIPTS}")
+    if receipts_doc.get("count") != len(entries):
+        faults.append(f"count={receipts_doc.get('count')!r} != {len(entries)} entries")
+    if report_receipt.get("receipts_entries_verified") != len(entries):
+        faults.append("report_receipt.receipts_entries_verified does not equal the entry count")
+
+    pub_b64 = str(receipts_doc.get("public_key_b64") or "")
+    try:
+        raw_pub = base64.b64decode(pub_b64, validate=True)
+        pub = Ed25519PublicKey.from_public_bytes(raw_pub)
+    except (ValueError, binascii.Error) as exc:
+        return faults + [f"public key undecodable: {exc}"]
+    key_id = hashlib.sha256(raw_pub).hexdigest()[:16]
+    if receipts_doc.get("key_id") != key_id:
+        faults.append("key_id is not sha256(public key)[:16]")
+
+    prev = GENESIS_HASH
+    for index, entry in enumerate(entries, 1):
+        if not isinstance(entry, dict) or not isinstance(entry.get("payload"), dict):
+            faults.append(f"entry {index}: malformed")
+            continue
+        payload = entry["payload"]
+        if entry.get("algorithm") != D11_RECEIPT_ALGORITHM:
+            faults.append(f"entry {index}: algorithm={entry.get('algorithm')!r}")
+        if _contains_float(payload):
+            faults.append(f"entry {index}: float in integer-only payload")
+        if payload.get("seq") != index:
+            faults.append(f"entry {index}: payload.seq={payload.get('seq')!r}")
+        if entry.get("prev_hash") != prev or payload.get("prev_hash") != prev:
+            faults.append(f"entry {index}: prev_hash does not link to the previous entry_hash")
+        if payload.get("key_id") != key_id or entry.get("public_key_b64") != pub_b64:
+            faults.append(f"entry {index}: not signed under the ledger key")
+        if payload.get("mode") != "non_nda":
+            faults.append(f"entry {index}: payload.mode={payload.get('mode')!r}")
+        entry_hash = entry.get("entry_hash")
+        if not isinstance(entry_hash, str) or not re.fullmatch(r"[0-9a-f]{64}", entry_hash):
+            faults.append(f"entry {index}: malformed entry_hash")
+            continue
+        try:
+            recomputed = sha256_bytes(str(entry.get("prev_hash")).encode("ascii") + _d11_canonical(payload))
+        except (TypeError, ValueError, UnicodeEncodeError) as exc:
+            recomputed = f"uncomputable: {exc}"
+        if recomputed != entry_hash:
+            faults.append(f"entry {index}: entry_hash does not recompute from prev_hash || canonical_json(payload)")
+        try:
+            pub.verify(base64.b64decode(str(entry.get("signature_b64")), validate=True), entry_hash.encode("ascii"))
+        except (ValueError, binascii.Error):
+            faults.append(f"entry {index}: signature undecodable")
+        except InvalidSignature:
+            faults.append(f"entry {index}: Ed25519 signature INVALID")
+        prev = entry_hash
+
+    chain = receipts_doc.get("chain_detail")
+    if (
+        not isinstance(chain, dict)
+        or chain.get("intact") is not True
+        or chain.get("length") != len(entries)
+        or chain.get("head_hash") != prev
+    ):
+        faults.append("chain_detail inconsistent with the recomputed chain")
+    if report_receipt.get("receipts_head_hash") != prev:
+        faults.append("recomputed head_hash does not equal report_receipt.receipts_head_hash")
+    if manifest is not None:
+        ref = manifest.get("copilot_receipts_v2_ref")
+        if not isinstance(ref, dict) or ref.get("head_hash") != prev or ref.get("entries_verified") != len(entries):
+            faults.append("manifest.copilot_receipts_v2_ref does not bind the recomputed head / entry count")
+    for flag in ("all_entries_valid", "chain_verified", "zero_floats_verified"):
+        if receipts_doc.get(flag) is not True:
+            faults.append(f"{flag} is not True")
+    if receipts_doc.get("non_nda_leak_hits") != 0 or report_receipt.get("non_nda_leak_hits") != 0:
+        faults.append("non_nda_leak_hits != 0")
+    if scanner is not None:
+        if report_receipt.get("non_nda_pattern_count") != len(scanner.FORBIDDEN_METHOD_PATTERNS):
+            faults.append("report_receipt.non_nda_pattern_count differs from the live scanner")
+        leaks = scanner.scan_text_for_ip_leaks(json.dumps(entries, sort_keys=True), source_label="d11_receipts")
+        if leaks:
+            faults.append(f"Non-NDA rescan of receipt entries found {len(leaks)} hits")
+    return faults
+
+
+def d11_holm(tests: Sequence[Tuple[str, float]], alpha: float = D11_HOLM_ALPHA) -> Dict[str, Tuple[bool, float]]:
+    """Independent Holm-Bonferroni step-down: test_id -> (survives, adjusted_p)."""
+    m = len(tests)
+    out: Dict[str, Tuple[bool, float]] = {}
+    running, rejecting = 0.0, True
+    for rank, (tid, p) in enumerate(sorted(tests, key=lambda t: (t[1], t[0])), 1):
+        mult = m - rank + 1
+        running = max(running, min(1.0, mult * p))
+        rejecting = rejecting and p <= alpha / mult
+        out[tid] = (rejecting, running)
+    return out
+
+
+def d11_manifest_tests(manifest: Dict[str, Any]) -> List[Tuple[str, float]]:
+    """The 12-test family (6 primary arm-AUC + 6 cross-lingual) read straight from the sealed manifest."""
+    tests: List[Tuple[str, float]] = []
+    for gen, comps in sorted(manifest.get("paired_arm_auc_comparisons_by_generator", {}).items()):
+        for key in D11_PRIMARY_COMPARISONS:
+            tests.append((f"{gen}:{key}", float(comps[key]["p_value_two_sided"])))
+    langs = manifest.get("phase3_cross_lingual_4way_ablation", {}).get("languages", {})
+    for lang in sorted(langs):
+        for key in D11_CROSS_LINGUAL_COMPARISONS:
+            tests.append((f"phase3:{lang}:{key}", float(langs[lang][key]["p_value_two_sided"])))
+    return tests
+
+
+def check_d11_headlines(manifest: Dict[str, Any], manifest_sha256: str, reanalysis: Optional[Dict[str, Any]]) -> List[str]:
+    """Cross-check the sealed D11 manifest and its post-hoc addendum; every claim is recomputed here."""
+    faults: List[str] = []
+    if manifest.get("schema_version") != D11_MANIFEST_SCHEMA:
+        faults.append(f"schema_version={manifest.get('schema_version')!r}")
+    if manifest.get("status") != "COMPLETED" or manifest.get("seal_eligible") is not True:
+        faults.append("manifest is not COMPLETED / seal_eligible")
+    if manifest.get("execution_mode") != "run-live":
+        faults.append(f"execution_mode={manifest.get('execution_mode')!r}")
+    gates = manifest.get("gates")
+    if not isinstance(gates, dict) or sorted(gates) != sorted(D11_PROCESS_GATES):
+        faults.append("process gate set differs from the 6 sealed gates")
+    elif not all(v is True for v in gates.values()) or manifest.get("all_gates_pass") is not True:
+        faults.append("a sealed process gate is not True")
+    gov = manifest.get("governance_header", {})
+    if not isinstance(gov, dict) or gov.get("unlearning_claimed") is not False \
+            or gov.get("parametric_recall_neutering_claimed") is not False:
+        faults.append("governance header claims unlearning / parametric neutering")
+
+    # Empirical TEST target r5_benign_fpr_le_002, recomputed from the headline arm's raw counts.
+    r5_pass: Dict[str, bool] = {}
+    for gen, arms in sorted(manifest.get("nine_arm_matrix_by_generator", {}).items()):
+        fpr = arms.get(D11_HEADLINE_ARM, {}).get("r5_benign_fpr", {}) if isinstance(arms, dict) else {}
+        try:
+            k, n = int(fpr["false_refusals"]), int(fpr["n_families"])
+        except (KeyError, TypeError, ValueError):
+            faults.append(f"{gen}: headline-arm r5_benign_fpr counts missing")
+            continue
+        r5_pass[gen] = n > 0 and k / n <= D11_TARGET_BENIGN_FPR
+    if not r5_pass:
+        faults.append("no generator carries headline-arm R5 counts")
+
+    if reanalysis is None:
+        faults.append(f"{D11_REANALYSIS_NAME} missing: the post-hoc statistical/scope disclosure is mandatory")
+        return faults
+    if reanalysis.get("schema_version") != D11_REANALYSIS_SCHEMA:
+        faults.append(f"reanalysis schema_version={reanalysis.get('schema_version')!r}")
+    if reanalysis.get("source_manifest_sha256") != manifest_sha256:
+        faults.append("reanalysis.source_manifest_sha256 does not bind the sealed manifest")
+    if reanalysis.get("gpu_jobs_executed") != 0 or reanalysis.get("sealed_files_mutated") is not False:
+        faults.append("reanalysis does not attest gpu_jobs_executed=0 / sealed_files_mutated=false")
+
+    target = (
+        reanalysis.get("process_vs_empirical_gates", {})
+        .get("empirical_test_targets", {})
+        .get("r5_benign_fpr_le_002", {})
+    )
+    by_gen = target.get("by_generator", {})
+    for gen, ok in r5_pass.items():
+        if by_gen.get(gen, {}).get("passed") is not ok:
+            faults.append(f"reanalysis r5_benign_fpr_le_002[{gen}].passed misreports the recomputed value {ok}")
+    all_ok = bool(r5_pass) and all(r5_pass.values())
+    if target.get("passed_all_generators") is not all_ok:
+        faults.append(f"reanalysis r5_benign_fpr_le_002.passed_all_generators != recomputed {all_ok}")
+    if not all_ok and target.get("verdict") != "FAILED":
+        faults.append("r5_benign_fpr_le_002 failed but the reanalysis does not disclose verdict FAILED")
+
+    holm = reanalysis.get("holm_bonferroni_family", {}).get("full_family", {})
+    try:
+        expected = d11_holm(d11_manifest_tests(manifest))
+    except (KeyError, TypeError, ValueError) as exc:
+        faults.append(f"manifest Holm inputs unreadable: {exc}")
+        expected = {}
+    got = {t.get("test_id"): t for t in holm.get("tests", []) if isinstance(t, dict)}
+    if not expected or set(got) != set(expected):
+        faults.append(f"Holm family membership differs: {sorted(set(got) ^ set(expected))[:4]}")
+    else:
+        for tid, (survives, adj) in expected.items():
+            row = got[tid]
+            try:
+                adj_got = float(row.get("holm_adjusted_p"))
+            except (TypeError, ValueError):
+                adj_got = -1.0
+            if row.get("survives_holm") is not survives or abs(adj_got - adj) > 1e-6:
+                faults.append(f"Holm step-down misreported for {tid}")
+    if sorted(holm.get("survivors", [])) != sorted(t for t, (s, _) in expected.items() if s):
+        faults.append("Holm survivor list differs from the recomputation")
+
+    bridge = reanalysis.get("bridge_geometry_audit", {})
+    live_rank = manifest.get("bridge_diagnostics", {}).get("effective_rank")
+    if (
+        bridge.get("effective_rank_threshold_actually_checked") != D11_BRIDGE_RANK_FLOOR_ACTUALLY_CHECKED
+        or bridge.get("live_effective_rank") != live_rank
+        or bridge.get("stiefel_orthogonality_vacuous") is not True
+    ):
+        faults.append("bridge_geometry_audit does not disclose the >=380 floor / live rank / vacuous orthogonality")
+
+    disc = reanalysis.get("pre_freeze_abort_chronology_and_corpus_disclosures", {})
+    if list(disc.get("disclosure_ids", [])) != list(D11_DISCLOSURE_IDS):
+        faults.append("disclosures D1-D11 missing or out of order")
+    if list(disc.get("chronology_commit_order", [])) != list(D11_PRE_FREEZE_COMMITS):
+        faults.append("pre-freeze abort chronology commit order differs")
+    if not isinstance(reanalysis.get("full_9arm_comparison"), dict):
+        faults.append("reanalysis section full_9arm_comparison missing")
+    return faults
+
+
+def find_d11_dir(repo_root: Path) -> Optional[Path]:
+    arts = repo_root / "artifacts"
+    if not arts.is_dir():
+        return None
+    cands = sorted(p for p in arts.glob(D11_PREFIX + "*") if p.is_dir() and (p / "report_receipt.json").is_file())
+    return cands[0] if cands else None
+
+
+def verify_d11(repo_root: Path, report: Report) -> Dict[str, Any]:
+    """Verify the D11 bundle's receipts, headline metrics and post-hoc addendum whenever it exists."""
+    info: Dict[str, Any] = {"present": False}
+    ddir = find_d11_dir(repo_root)
+    if ddir is None:
+        for name in ("d11.ed25519_and_hash_chain", "metrics.d11"):
+            report.add(name, "SKIP", f"no artifacts/{D11_PREFIX}* bundle with report_receipt.json")
+        return info
+    info["present"] = True
+    info["dir"] = ddir.name
+    try:
+        receipt = load_json(ddir / "report_receipt.json")
+        mname = str(receipt.get("manifest_file", ""))
+        if not mname or not safe_relative(mname):
+            raise VerifyError(f"unsafe or missing manifest_file {mname!r}")
+        mpath = ddir / mname
+        manifest = load_json(mpath)
+        manifest_sha = sha256_file(mpath)
+        if not isinstance(manifest, dict):
+            raise VerifyError("D11 manifest is not a JSON object")
+    except (VerifyError, AttributeError) as exc:
+        report.failed("d11.ed25519_and_hash_chain", str(exc))
+        report.failed("metrics.d11", str(exc))
+        return info
+
+    ref = manifest.get("copilot_receipts_v2_ref")
+    rname = str(ref.get("file", "")) if isinstance(ref, dict) else ""
+    try:
+        scanner: Any = load_scanner(repo_root)
+    except VerifyError:
+        scanner = None
+    if not rname or not safe_relative(rname) or not (ddir / rname).is_file():
+        report.failed("d11.ed25519_and_hash_chain", "manifest.copilot_receipts_v2_ref.file missing or absent on disk")
+    else:
+        try:
+            faults = verify_d11_receipt_crypto(load_json(ddir / rname), receipt, manifest, scanner)
+        except VerifyError as exc:
+            faults = [str(exc)]
+        if scanner is None:
+            faults.append("Non-NDA scanner unavailable for the receipt rescan")
+        report.result(
+            "d11.ed25519_and_hash_chain",
+            not faults,
+            f"{D11_EXPECTED_RECEIPTS} receipts: payload-recomputed SHA-256 chain + Ed25519 signatures; head == "
+            "report_receipt.receipts_head_hash; zero floats; 0 Non-NDA hits on rescan",
+            "; ".join(faults[:6]),
+        )
+
+    rpath = ddir / D11_REANALYSIS_NAME
+    try:
+        reanalysis = load_json(rpath) if rpath.is_file() else None
+    except VerifyError as exc:
+        report.failed("metrics.d11", str(exc))
+        return info
+    if reanalysis is not None and not isinstance(reanalysis, dict):
+        report.failed("metrics.d11", f"{D11_REANALYSIS_NAME} is not a JSON object")
+        return info
+    faults = check_d11_headlines(manifest, manifest_sha, reanalysis)
+    report.result(
+        "metrics.d11",
+        not faults,
+        "6 sealed gates are process-only; r5_benign_fpr_le_002 recomputed and honestly disclosed FAILED; "
+        "12-test Holm step-down recomputed; D1-D11 disclosures bound to the manifest sha256",
+        "; ".join(faults[:6]),
+    )
+
+    script = repo_root / D11_REANALYSIS_SCRIPT_REL
+    if script.is_file() and reanalysis is not None:
+        ok, bad = False, ""
+        try:
+            spec = importlib.util.spec_from_file_location("_d11_posthoc_under_verify", script)
+            if spec is None or spec.loader is None:
+                raise VerifyError("cannot build import spec for the reanalysis script")
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            ok = module.render(module.build_reanalysis(ddir)) == rpath.read_bytes()
+            bad = f"{D11_REANALYSIS_NAME} is not byte-identical to a fresh CPU recomputation"
+        except Exception as exc:  # noqa: BLE001 - any recompute failure is a reported FAIL, never swallowed
+            bad = f"recompute raised {type(exc).__name__}: {exc}"
+        report.result(
+            "d11.reanalysis_recompute",
+            ok,
+            f"{D11_REANALYSIS_NAME} byte-identical to a fresh recomputation from the sealed manifest",
+            bad,
+        )
+    return info
+
+
+# --------------------------------------------------------------------------------------
+# (c3) Formal spec lock
+# --------------------------------------------------------------------------------------
+def check_spec_lock(repo_root: Path) -> Optional[List[str]]:
+    """Faults for the formal spec lock, or None when ``formal/spec_sha256.json`` is absent."""
+    lock_path = repo_root / SPEC_LOCK_REL
+    if not lock_path.is_file():
+        return None
+    try:
+        lock = load_json(lock_path)
+    except VerifyError as exc:
+        return [str(exc)]
+    if not isinstance(lock, dict):
+        return [f"{SPEC_LOCK_REL} is not a JSON object"]
+    faults: List[str] = []
+    rel = str(lock.get("spec_relpath") or "")
+    claimed = str(lock.get("spec_sha256") or "")
+    if claimed != EXPECTED_SPEC_SHA256:
+        faults.append(f"spec_sha256.json claims {claimed[:12]!r}, pinned lock is {EXPECTED_SPEC_SHA256[:12]}")
+    spec_path = repo_root / rel
+    if not rel or not safe_relative(rel) or not spec_path.is_file():
+        faults.append(f"locked spec file missing: {rel!r}")
+    else:
+        actual = sha256_file(spec_path)
+        if actual != EXPECTED_SPEC_SHA256:
+            faults.append(f"sha256({rel})={actual[:12]} != pinned {EXPECTED_SPEC_SHA256[:12]}")
+    if lock.get("locked_before_proofs") is not True:
+        faults.append("locked_before_proofs is not True")
+    conf_path = repo_root / CONFORMANCE_REPORT_REL
+    if not conf_path.is_file():
+        faults.append(f"{CONFORMANCE_REPORT_REL} missing")
+    else:
+        try:
+            conf = load_json(conf_path)
+            status = conf.get("incremental_with_deletions_status") if isinstance(conf, dict) else None
+        except VerifyError as exc:
+            status = f"unreadable: {exc}"
+        if status != EXPECTED_INCREMENTAL_DELETIONS_STATUS:
+            faults.append(
+                f"incremental_with_deletions_status={status!r}, expected {EXPECTED_INCREMENTAL_DELETIONS_STATUS!r}"
+            )
+    return faults
+
+
+def verify_spec_lock(repo_root: Path, report: Report) -> None:
+    faults = check_spec_lock(repo_root)
+    if faults is None:
+        report.add("formal.spec_sha256_lock", "SKIP", f"{SPEC_LOCK_REL} not present")
+        return
+    report.result(
+        "formal.spec_sha256_lock",
+        not faults,
+        f"Spec.lean sha256 {EXPECTED_SPEC_SHA256[:12]} matches the pinned lock; incremental-with-deletions "
+        "disclosed as conformance-tested, unproven in Lean",
+        "; ".join(faults),
+    )
 
 
 # --------------------------------------------------------------------------------------
@@ -1262,6 +1718,8 @@ def run_fast_checks(repo_root: Path, report: Report, d8_replay: bool) -> Dict[st
     summary["bundles_failed"] = stats["failed"]
     summary["part7_standalone_verified"] = verify_part7(repo_root, stats["dirs"], report)
     summary["d8"] = verify_d8(repo_root, report, d8_replay)
+    summary["d11"] = verify_d11(repo_root, report)
+    verify_spec_lock(repo_root, report)
     verify_non_nda(repo_root, report)
     verify_headline_metrics(repo_root, report)
     verify_registry_file(repo_root, spec, report)
