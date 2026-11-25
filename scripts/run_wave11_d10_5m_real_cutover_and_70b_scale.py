@@ -1606,6 +1606,13 @@ def cmd_run_part_b_70b_sweep(args: argparse.Namespace) -> None:
                 )
                 for arm, grade in grades.items():
                     scores[arm][cid] = float(grade["correct"])
+        judge_qwen = None
+        _qwen_judge_fn = None
+        model = None
+        tok = None
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        release_native_heap()
 
     # Finish and grade the smaller arms before risking the 70B CUDA context.
     _grade_arms(
@@ -1616,13 +1623,78 @@ def cmd_run_part_b_70b_sweep(args: argparse.Namespace) -> None:
     torch.cuda.empty_cache()
 
     def _eval_70b_readers() -> Tuple[Dict[str, Dict[str, str]], Dict[str, Any]]:
+        dmap = _resolve_hf_device_map(42.0)
+        if dmap != "auto" and os.environ.get("CHELATED_70B_SUBPROCESS", "1") == "1":
+            import subprocess as _sp
+            import tempfile as _tf_mod
+
+            with _tf_mod.TemporaryDirectory(prefix="d10_70b_sub_") as sub_dir:
+                in_json = Path(sub_dir) / "in.json"
+                out_json = Path(sub_dir) / "out.json"
+                in_json.write_text(
+                    json.dumps(
+                        {
+                            "model_id": LOCKED_70B_MODEL_ID,
+                            "cases": list(cases),
+                            "bare_k5_ctx": dict(bare_k5_ctx),
+                            "bare_k17_ctx": dict(bare_k17_ctx),
+                            "chelated_ctx": dict(chelated_ctx),
+                            "chelated_decisions": dict(chelated_decisions),
+                            "nemotron_extract_mean_ms_per_case": float(nemotron_extract_mean_ms_per_case),
+                        }
+                    ),
+                    encoding="utf-8",
+                )
+                worker_code = (
+                    "import json, os, sys, time, numpy as np, torch, transformers as tf\n"
+                    "os.environ['HF_DEACTIVATE_ASYNC_LOAD'] = '1'\n"
+                    "sys.path.insert(0, os.getcwd())\n"
+                    "from scripts.run_wave11_d10_5m_real_cutover_and_70b_scale import _suite_a_reader_predictions, GIB, "
+                    "BARE_70B_K5_ARM, BARE_70B_K17_ARM, CHELATED_70B_ARM\n"
+                    "from transformers import AutoModelForCausalLM, AutoTokenizer\n"
+                    "d = json.loads(open(sys.argv[1], encoding='utf-8').read())\n"
+                    "torch.cuda.reset_peak_memory_stats()\n"
+                    "tok = AutoTokenizer.from_pretrained(d['model_id'])\n"
+                    "if tok.pad_token_id is None: tok.pad_token = tok.eos_token\n"
+                    "t0 = time.perf_counter()\n"
+                    "dt_kw = {'dtype': torch.bfloat16} if int(str(tf.__version__).split('.')[0]) >= 5 else {'torch_dtype': torch.bfloat16}\n"
+                    "mdl = AutoModelForCausalLM.from_pretrained(d['model_id'], device_map={'': 0}, low_cpu_mem_usage=True, **dt_kw)\n"
+                    "mdl.eval()\n"
+                    "load_s = time.perf_counter() - t0\n"
+                    "preds, mean_lat = {}, {}\n"
+                    "for arm, cmap, dec in ((BARE_70B_K5_ARM, d['bare_k5_ctx'], None), "
+                    "(BARE_70B_K17_ARM, d['bare_k17_ctx'], None), (CHELATED_70B_ARM, d['chelated_ctx'], d['chelated_decisions'])):\n"
+                    "    print(f'[D10-B-sub] Evaluating {arm}...', flush=True)\n"
+                    "    p, lms = _suite_a_reader_predictions(d['cases'], cmap, tok, mdl, torch.inference_mode, gated_decisions=dec)\n"
+                    "    preds[arm] = p; mean_lat[arm] = float(np.mean(lms))\n"
+                    "peak_gib = float(torch.cuda.max_memory_allocated()) / GIB\n"
+                    "open(sys.argv[2], 'w', encoding='utf-8').write(json.dumps({'preds': preds, 'meta': {"
+                    "'load_seconds': round(load_s, 2), 'peak_cuda_allocated_gib': round(peak_gib, 3), "
+                    "'mean_query_ms_k5': round(mean_lat[BARE_70B_K5_ARM], 2), "
+                    "'mean_query_ms_k17': round(mean_lat[BARE_70B_K17_ARM], 2), "
+                    "'mean_query_ms_chelated': round(mean_lat[CHELATED_70B_ARM], 2), "
+                    "'mean_reader_plus_extraction_ms_per_case_chelated': round(mean_lat[CHELATED_70B_ARM] + d['nemotron_extract_mean_ms_per_case'], 2)}}))\n"
+                )
+                proc = _sp.run([sys.executable, "-u", "-c", worker_code, str(in_json), str(out_json)], check=False)
+                if proc.returncode != 0 or not out_json.is_file():
+                    raise MemoryError(
+                        f"CUDA out of memory / Linux UMA OOM killer (subprocess rc={proc.returncode}) loading {LOCKED_70B_MODEL_ID}"
+                    )
+                res_obj = json.loads(out_json.read_text(encoding="utf-8"))
+                return res_obj["preds"], res_obj["meta"]
+
         if torch.cuda.is_available():
             torch.cuda.reset_peak_memory_stats()
         tok = AutoTokenizer.from_pretrained(LOCKED_70B_MODEL_ID)
         if tok.pad_token_id is None:
             tok.pad_token = tok.eos_token
         t_load = time.perf_counter()
-        model = AutoModelForCausalLM.from_pretrained(LOCKED_70B_MODEL_ID, device_map=_resolve_hf_device_map(44.0))
+        _70b_kw: Dict[str, Any] = {"device_map": dmap}
+        if dmap != "auto":
+            os.environ.setdefault("HF_DEACTIVATE_ASYNC_LOAD", "1")
+            _70b_kw["low_cpu_mem_usage"] = True
+            _70b_kw.update({"dtype": torch.bfloat16} if _tf_major >= 5 else {"torch_dtype": torch.bfloat16})
+        model = AutoModelForCausalLM.from_pretrained(LOCKED_70B_MODEL_ID, **_70b_kw)
         model.eval()
         load_seconds = time.perf_counter() - t_load
         preds = {}
@@ -1638,6 +1710,10 @@ def cmd_run_part_b_70b_sweep(args: argparse.Namespace) -> None:
             )
             mean_lat_ms[arm] = float(np.mean(lat_ms))
         peak_cuda_gib = float(torch.cuda.max_memory_allocated()) / GIB if torch.cuda.is_available() else 0.0
+        del model, tok
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        release_native_heap()
         return preds, {
             "load_seconds": round(load_seconds, 2),
             "peak_cuda_allocated_gib": round(peak_cuda_gib, 3),
