@@ -305,6 +305,13 @@ def load_beir_slice_from_zip(
                     if qid in qrels_all and txt:
                         queries_raw[qid] = txt
 
+            # Cap per-query positive docs kept in slice to top-8 by relevance grade so dense NIST pools
+            # (like trec-covid with ~500 positives/query) stay strictly within max_docs!
+            capped_qrels: Dict[str, Dict[str, float]] = {}
+            for qid, dmap in qrels_all.items():
+                top_dids = sorted(dmap.items(), key=lambda kv: (-kv[1], kv[0]))[:8]
+                capped_qrels[qid] = dict(top_dids)
+            qrels_all = capped_qrels
             needed_pos_docs = {did for qid in queries_raw for did in qrels_all.get(qid, {})}
             reservoir: List[Tuple[str, str, str]] = []
             with zf.open(f"{eff_prefix}corpus.jsonl") as fh:
