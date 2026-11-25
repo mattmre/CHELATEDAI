@@ -235,6 +235,24 @@ def mem_available_gib() -> float:
     raise RuntimeError("MemAvailable is missing from /proc/meminfo")
 
 
+def _resolve_hf_device_map(required_gib: float) -> Any:
+    """Place directly on `cuda:0` on Linux UMA (DGX Spark GB10) when `/proc/meminfo` `MemAvailable`
+    suffices, avoiding `accelerate` `device_map='auto'` false disk offload caused by file page cache.
+    """
+    meminfo = Path("/proc/meminfo")
+    if sys.platform.startswith("linux") and meminfo.is_file():
+        try:
+            for line in meminfo.read_text(encoding="utf-8").splitlines():
+                if line.startswith("MemAvailable:"):
+                    kib = int(line.split()[1])
+                    if (kib / (1024 ** 2)) >= float(required_gib):
+                        return {"": 0}
+                    break
+        except OSError:
+            pass
+    return "auto"
+
+
 def rss_gib() -> float:
     """Return current process RSS in binary `GiB`."""
     if sys.platform.startswith("linux"):
@@ -983,14 +1001,14 @@ def cmd_run_part_a_cutover(args: argparse.Namespace) -> None:
     nat_mu_d, nat_norms_f32, nat_rd_f32 = compute_chunked_zeromu_csls_sidecar(nat_mm, q_dev_1024)
     sidecar_build_s = time.perf_counter() - t_sc
 
-    # 6. Build FAISS `IndexHNSWSQ(d, QT_fp16, M=16, METRIC_INNER_PRODUCT)` on BOTH standalone 8.84M MSMARCO & 9.47M Merged!
+    # 6. Build FAISS `IndexHNSWSQ(d, QT_fp16, M=32, METRIC_INNER_PRODUCT)` on BOTH standalone 8.84M MSMARCO & 9.47M Merged!
     faiss.omp_set_num_threads(min(16, os.cpu_count() or 8))
-    faiss_factory_desc = "IndexHNSWSQ(QT_fp16, M=16, efConstruction=64, efSearch=128, METRIC_INNER_PRODUCT)"
+    faiss_factory_desc = "IndexHNSWSQ(QT_fp16, M=32, efConstruction=128, efSearch=512, METRIC_INNER_PRODUCT)"
 
     def _build_hnsw_sq_fp16(mm_src: np.ndarray, n_rows: int, dim: int) -> Any:
-        idx = faiss.IndexHNSWSQ(dim, faiss.ScalarQuantizer.QT_fp16, 16, faiss.METRIC_INNER_PRODUCT)
-        idx.hnsw.efConstruction = 64
-        idx.hnsw.efSearch = 128
+        idx = faiss.IndexHNSWSQ(dim, faiss.ScalarQuantizer.QT_fp16, 32, faiss.METRIC_INNER_PRODUCT)
+        idx.hnsw.efConstruction = 128
+        idx.hnsw.efSearch = 512
         # Train SQ fp16 (trivial min/max) on first chunk
         train_slice = np.asarray(mm_src[: min(n_rows, CHUNK_ROWS)], dtype=np.float32)
         idx.train(train_slice)
@@ -1222,7 +1240,9 @@ def cmd_run_part_a_cutover(args: argparse.Namespace) -> None:
         require_fenced_top10(oracle_hits, qid)
         admitted_recalls.append(len(set(fnc).intersection(oracle_hits)) / 10.0)
     fenced_admitted_recall_at_10 = float(np.mean(admitted_recalls))
-    assert fenced_admitted_recall_at_10 > 0.0, "Fenced ANN returned no exact admitted top-10 hits in the oracle sample"
+    assert fenced_admitted_recall_at_10 >= FLAT_ORACLE_RECALL_FLOOR, (
+        f"Fenced ANN recall@10 {fenced_admitted_recall_at_10:.4f} is below {FLAT_ORACLE_RECALL_FLOOR}"
+    )
 
     # Release FAISS native heap (`L5`)
     del idx_leg, idx_nat, leg_mm, nat_mm
@@ -1466,7 +1486,7 @@ def cmd_run_part_b_70b_sweep(args: argparse.Namespace) -> None:
         if tok.pad_token_id is None:
             tok.pad_token = tok.eos_token
         _dt_kw = {"dtype": torch.bfloat16} if _tf_major >= 5 else {"torch_dtype": torch.bfloat16}
-        mdl = AutoModelForCausalLM.from_pretrained(model_repo, device_map="auto", **_dt_kw)
+        mdl = AutoModelForCausalLM.from_pretrained(model_repo, device_map=_resolve_hf_device_map(18.0), **_dt_kw)
         mdl.eval()
         n_params = sum(int(p.numel()) for p in mdl.parameters())
         preds, lat_ms = _suite_a_reader_predictions(
@@ -1533,7 +1553,7 @@ def cmd_run_part_b_70b_sweep(args: argparse.Namespace) -> None:
         )
         tok = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-7B-Instruct")
         dtype_kw = {"dtype": torch.bfloat16} if _tf_major >= 5 else {"torch_dtype": torch.bfloat16}
-        model = AutoModelForCausalLM.from_pretrained("Qwen/Qwen2.5-7B-Instruct", device_map="auto", **dtype_kw)
+        model = AutoModelForCausalLM.from_pretrained("Qwen/Qwen2.5-7B-Instruct", device_map=_resolve_hf_device_map(18.0), **dtype_kw)
         model.eval()
 
         def _qwen_judge_fn(system_prompt: str, user_prompt: str) -> str:
@@ -1602,7 +1622,7 @@ def cmd_run_part_b_70b_sweep(args: argparse.Namespace) -> None:
         if tok.pad_token_id is None:
             tok.pad_token = tok.eos_token
         t_load = time.perf_counter()
-        model = AutoModelForCausalLM.from_pretrained(LOCKED_70B_MODEL_ID, device_map="auto")
+        model = AutoModelForCausalLM.from_pretrained(LOCKED_70B_MODEL_ID, device_map=_resolve_hf_device_map(44.0))
         model.eval()
         load_seconds = time.perf_counter() - t_load
         preds = {}
@@ -1804,14 +1824,63 @@ def _write_summary_bytes_atomic(path: Path, data: bytes) -> None:
             tmp_path.unlink(missing_ok=True)
 
 
+def compute_part_a_multiplicity_and_loss_disclosure(part_a: Mapping[str, Any]) -> Dict[str, Any]:
+    """Compute Holm-Bonferroni step-down across all Part A domain x challenger contrasts and surface all Chelated losses."""
+    raw_p: Dict[str, float] = {}
+    losses: List[Dict[str, Any]] = []
+    dom_res = part_a.get("domain_evaluation_results") or {}
+    for dom_name, dom_block in sorted(dom_res.items()):
+        contrasts = (dom_block or {}).get("contrasts") or {}
+        for cname, cstats in sorted(contrasts.items()):
+            key = f"{dom_name}::{cname}"
+            if isinstance(cstats, Mapping) and "p_value_two_sided" in cstats:
+                raw_p[key] = float(cstats["p_value_two_sided"])
+                delta = float(cstats.get("mean_delta", 0.0))
+                ci_hi = float(cstats.get("ci95_high", 0.0))
+                if delta < 0.0:
+                    losses.append(
+                        {
+                            "contrast": key,
+                            "mean_delta_ndcg_at_10": round(delta, 5),
+                            "ci95_low": round(float(cstats.get("ci95_low", 0.0)), 5),
+                            "ci95_high": round(ci_hi, 5),
+                            "statistically_significant_loss": bool(ci_hi < 0.0),
+                        }
+                    )
+        rec = (dom_block or {}).get("means_recall_at_10") or {}
+        chel_r = rec.get("Chelated_ZeroMu_CSLS_8B")
+        if chel_r is not None:
+            for other_arm, other_r in sorted(rec.items()):
+                if other_arm != "Chelated_ZeroMu_CSLS_8B" and float(other_r) > float(chel_r):
+                    losses.append(
+                        {
+                            "contrast": f"{dom_name}::recall_at_10_vs_{other_arm}",
+                            "chelated_recall_at_10": round(float(chel_r), 5),
+                            "challenger_recall_at_10": round(float(other_r), 5),
+                            "mean_delta_recall_at_10": round(float(chel_r) - float(other_r), 5),
+                        }
+                    )
+    holm = holm_bonferroni_stepdown(raw_p) if raw_p else {}
+    return {
+        "n_contrasts_in_family": len(raw_p),
+        "holm_bonferroni_24_contrasts": holm,
+        "disclosed_chelated_point_or_ci_losses": losses,
+    }
+
+
 def cmd_assemble_manifest(args: argparse.Namespace) -> None:
     out_dir = Path(args.output_dir)
-    part_a_path = Path(args.part_a_json)
-    part_b_path = Path(args.part_b_json)
+    part_a_path = Path(args.part_a_json) if args.part_a_json else (out_dir / PART_A_SUMMARY)
+    part_b_path = Path(args.part_b_json) if args.part_b_json else (out_dir / PART_B_SUMMARY)
     part_a_bytes = part_a_path.read_bytes()
     part_b_bytes = part_b_path.read_bytes()
     part_a = json.loads(part_a_bytes)
     part_b = json.loads(part_b_bytes)
+    if "ek5_retraction_fence_9_47m" in part_a:
+        fenced_rec = float((part_a.get("ek5_retraction_fence_9_47m") or {}).get("fenced_admitted_recall_at_10", 0.0))
+        if fenced_rec < FLAT_ORACLE_RECALL_FLOOR:
+            raise RuntimeError(f"Part A fenced_admitted_recall_at_10 {fenced_rec:.4f} < {FLAT_ORACLE_RECALL_FLOOR}")
+    part_a_multiplicity = compute_part_a_multiplicity_and_loss_disclosure(part_a)
     input_part_a_sha256 = sha256_bytes(part_a_bytes)
     input_part_b_sha256 = sha256_bytes(part_b_bytes)
     input_hashes = {
@@ -1843,6 +1912,7 @@ def cmd_assemble_manifest(args: argparse.Namespace) -> None:
             "quantization_disclosure": LOCKED_70B_QUANT_DISCLOSURE,
         },
         **input_hashes,
+        "part_a_multiplicity_and_loss_disclosure": part_a_multiplicity,
         "part_a_real_corpus_cutover": part_a,
         "part_b_70b_frontier_scale_sweep": part_b,
     }

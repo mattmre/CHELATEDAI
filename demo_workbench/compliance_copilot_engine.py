@@ -1236,7 +1236,11 @@ class CopilotService:
         self.public_key_b64 = base64.b64encode(raw).decode("ascii")
         self.key_id = hashlib.sha256(raw).hexdigest()[:16]
         self._lock = threading.Lock()
-        self.ledger: List[Dict[str, Any]] = []
+        self._ledgers: Dict[str, List[Dict[str, Any]]] = {"non_nda": [], "nda": []}
+
+    @property
+    def ledger(self) -> List[Dict[str, Any]]:
+        return self._ledgers["non_nda"]
 
     # -- NDA gate -------------------------------------------------------
     def check_mode(self, requested: Any, headers: Mapping[str, str]) -> str:
@@ -1290,8 +1294,9 @@ class CopilotService:
                 "eligibility_raw": {i: lin.eligibility(i) for i in sorted(lin.docs)},
             }
         with self._lock:
-            prev = self.ledger[-1]["entry_hash"] if self.ledger else GENESIS_HASH
-            payload["seq"] = len(self.ledger) + 1
+            chain_list = self._ledgers[mode]
+            prev = chain_list[-1]["entry_hash"] if chain_list else GENESIS_HASH
+            payload["seq"] = len(chain_list) + 1
             payload["prev_hash"] = prev
             payload["issued_at_us"] = int(self._clock_us())
             entry_hash = hashlib.sha256(prev.encode("ascii") + canonical_json(payload)).hexdigest()
@@ -1304,7 +1309,7 @@ class CopilotService:
                 "public_key_b64": self.public_key_b64,
                 "algorithm": "Ed25519 over the ASCII hex of SHA-256(prev_hash || canonical_json(payload))",
             }
-            self.ledger.append(entry)
+            chain_list.append(entry)
         return entry
 
     def verify_receipt(self, entry: Any) -> Dict[str, Any]:
@@ -1338,14 +1343,17 @@ class CopilotService:
         if not checks["chain_link_ok"]:
             reasons.append("payload prev_hash differs from entry prev_hash")
         with self._lock:
-            if isinstance(payload, dict) and isinstance(payload.get("seq"), int) and 1 <= payload["seq"] <= len(self.ledger):
-                in_ledger = self.ledger[payload["seq"] - 1]["entry_hash"] == claimed_hash
+            seq_val = payload.get("seq") if isinstance(payload, dict) else None
+            rec_mode = str(payload.get("mode", "non_nda")) if isinstance(payload, dict) else "non_nda"
+            chain_list = self._ledgers.get(rec_mode, self._ledgers["non_nda"])
+            if isinstance(seq_val, int) and not isinstance(seq_val, bool) and 1 <= seq_val <= len(chain_list):
+                in_ledger = chain_list[seq_val - 1]["entry_hash"] == claimed_hash
         valid = all(checks.values())
         return {"valid": valid, "checks": checks, "in_ledger": in_ledger, "reasons": reasons}
 
-    def verify_ledger(self) -> Dict[str, Any]:
+    def verify_ledger(self, mode: str = "non_nda") -> Dict[str, Any]:
         with self._lock:
-            entries = list(self.ledger)
+            entries = list(self._ledgers.get(mode, self._ledgers["non_nda"]))
         prev = GENESIS_HASH
         for i, e in enumerate(entries, start=1):
             res = self.verify_receipt(e)
@@ -1471,7 +1479,7 @@ def handle_copilot_get(
             return _json_response(200, {"algorithm": "Ed25519", "public_key_b64": svc.public_key_b64, "key_id": svc.key_id,
                                         "disclosure": KEY_DISCLOSURE}, mode)
         if sub == "/ledger":
-            return _json_response(200, {"entries": svc.ledger, "chain": svc.verify_ledger()}, mode)
+            return _json_response(200, {"entries": list(svc._ledgers[mode]), "chain": svc.verify_ledger(mode)}, mode)
         if sub == "/benchmark":
             try:
                 reps = int(_qp(query_params, "repeats", "30") or "30")

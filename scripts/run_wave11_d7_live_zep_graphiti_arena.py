@@ -237,6 +237,28 @@ def _apply_stale(slot: Dict[str, Any], stale_values: Sequence[str], horizon: str
         slot["stale_answer_settled"] = flags["stale_answer"]
 
 
+def _read_pair_per_horizon(
+    endpoint: str,
+    model: str,
+    system: str,
+    question: str,
+    delta0_context: str,
+    settled_context: str,
+) -> Tuple[str, str, int, int, int, int]:
+    user_delta0 = f"Records:\n{delta0_context}\n\nQuestion: {question}\nAnswer:"
+    user_settled = f"Records:\n{settled_context}\n\nQuestion: {question}\nAnswer:"
+    if delta0_context == settled_context:
+        answer, prompt, completion, _wall = call_nemotron_reader(endpoint, model, system, user_delta0, max_tokens=128)
+        return answer, answer, int(prompt), int(completion), int(prompt), int(completion)
+    answer_d, prompt_d, completion_d, _wall_d = call_nemotron_reader(
+        endpoint, model, system, user_delta0, max_tokens=128
+    )
+    answer_s, prompt_s, completion_s, _wall_s = call_nemotron_reader(
+        endpoint, model, system, user_settled, max_tokens=128
+    )
+    return answer_d, answer_s, int(prompt_d), int(completion_d), int(prompt_s), int(completion_s)
+
+
 def _read_pair(
     endpoint: str,
     model: str,
@@ -245,18 +267,10 @@ def _read_pair(
     delta0_context: str,
     settled_context: str,
 ) -> Tuple[str, str, int, int]:
-    user_delta0 = f"Records:\n{delta0_context}\n\nQuestion: {question}\nAnswer:"
-    user_settled = f"Records:\n{settled_context}\n\nQuestion: {question}\nAnswer:"
-    if delta0_context == settled_context:
-        answer, prompt, completion, _wall = call_nemotron_reader(endpoint, model, system, user_delta0, max_tokens=128)
-        return answer, answer, int(prompt), int(completion)
-    answer_d, prompt_d, completion_d, _wall_d = call_nemotron_reader(
-        endpoint, model, system, user_delta0, max_tokens=128
+    ans_d, ans_s, _pd, _cd, ps, cs = _read_pair_per_horizon(
+        endpoint, model, system, question, delta0_context, settled_context
     )
-    answer_s, prompt_s, completion_s, _wall_s = call_nemotron_reader(
-        endpoint, model, system, user_settled, max_tokens=128
-    )
-    return answer_d, answer_s, int(prompt_d) + int(prompt_s), int(completion_d) + int(completion_s)
+    return ans_d, ans_s, ps, cs
 
 
 def load_jsonl_rows(path: Path) -> List[Dict[str, Any]]:
@@ -627,15 +641,19 @@ async def _graphiti_documents_slot(
     snap = llm.token_snapshot()
     delta0_ctx = str(raced["delta0"]["context"])
     settled_ctx = str(raced["settled"]["context"])
-    answer_d, answer_s, read_prompt, read_completion = _read_pair(
+    answer_d, answer_s, pd0, cd0, ps, cs = _read_pair_per_horizon(
         endpoint, model, reader_system, query, delta0_ctx, settled_ctx
     )
     slot["pred_delta0s"] = answer_d
     slot["pred"] = answer_s
     slot["write_prompt_tokens"] = int(snap["write_prompt_tokens"])
     slot["write_completion_tokens"] = int(snap["write_completion_tokens"])
-    slot["read_prompt_tokens"] = read_prompt
-    slot["read_completion_tokens"] = read_completion
+    slot["read_prompt_tokens"] = ps
+    slot["read_completion_tokens"] = cs
+    slot["read_prompt_tokens_delta0s"] = pd0
+    slot["read_completion_tokens_delta0s"] = cd0
+    slot["read_prompt_tokens_settled"] = ps
+    slot["read_completion_tokens_settled"] = cs
     slot["write_ack_ms"] = float(raced["write_ack_ms"])
     slot["consolidation_bg_ms"] = float(raced["consolidation_bg_ms"])
     slot["task_done_at_delta0"] = bool(raced["task_done_at_delta0"])
@@ -697,15 +715,19 @@ async def _mem0_texts_slot(
             close_live_mem0(memory, qpath)
     delta0_ctx = str(raced["delta0"])
     settled_ctx = str(raced["settled"])
-    answer_d, answer_s, read_prompt, read_completion = _read_pair(
+    answer_d, answer_s, pd0, cd0, ps, cs = _read_pair_per_horizon(
         endpoint, model, reader_system, query, delta0_ctx, settled_ctx
     )
     slot["pred_delta0s"] = answer_d
     slot["pred"] = answer_s
     slot["write_prompt_tokens"] = int(usage["write_prompt_tokens"])
     slot["write_completion_tokens"] = int(usage["write_completion_tokens"])
-    slot["read_prompt_tokens"] = read_prompt
-    slot["read_completion_tokens"] = read_completion
+    slot["read_prompt_tokens"] = ps
+    slot["read_completion_tokens"] = cs
+    slot["read_prompt_tokens_delta0s"] = pd0
+    slot["read_completion_tokens_delta0s"] = cd0
+    slot["read_prompt_tokens_settled"] = ps
+    slot["read_completion_tokens_settled"] = cs
     slot["write_ack_ms"] = float(raced["write_ack_ms"])
     slot["consolidation_bg_ms"] = float(raced["consolidation_bg_ms"])
     slot["task_done_at_delta0"] = bool(raced["task_done_at_delta0"])

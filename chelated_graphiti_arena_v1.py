@@ -334,6 +334,46 @@ class MeteredVllmOpenAIGenericClient(OpenAIGenericClient):
     def _copied_messages(messages: List[Dict[str, str]]) -> List[Dict[str, str]]:
         return [{"role": item["role"], "content": item["content"]} for item in messages]
 
+    @staticmethod
+    def _is_context_length_400(exc: BaseException) -> bool:
+        msg = str(exc).lower()
+        return any(
+            pat in msg
+            for pat in (
+                "maximum context length",
+                "context_length_exceeded",
+                "reduce the length",
+                "input_tokens",
+                "longer than the model",
+                "max_model_len",
+            )
+        )
+
+    @staticmethod
+    def _is_schema_unsupported_400(exc: BaseException) -> bool:
+        msg = str(exc).lower()
+        if MeteredVllmOpenAIGenericClient._is_context_length_400(exc):
+            return False
+        return any(
+            pat in msg
+            for pat in ("json_schema", "response_format", "guided_json", "structured", "grammar", "schema")
+        )
+
+    @staticmethod
+    def _trim_messages_for_context_overflow(
+        openai_messages: List[Dict[str, str]], target_char_reduction: int = 8000
+    ) -> List[Dict[str, str]]:
+        trimmed = MeteredVllmOpenAIGenericClient._copied_messages(openai_messages)
+        if not trimmed:
+            return trimmed
+        longest_idx = max(range(len(trimmed)), key=lambda i: len(trimmed[i]["content"]))
+        body = trimmed[longest_idx]["content"]
+        if len(body) > target_char_reduction + 2000:
+            keep_head = (len(body) - target_char_reduction) // 2
+            keep_tail = len(body) - target_char_reduction - keep_head
+            trimmed[longest_idx]["content"] = f"{body[:keep_head]}\n...[context-window-trimmed]...\n{body[-keep_tail:]}"
+        return trimmed
+
     async def _retry_after_validation_error(
         self,
         openai_messages: List[Dict[str, str]],
@@ -365,10 +405,22 @@ class MeteredVllmOpenAIGenericClient(OpenAIGenericClient):
                 extra_body=retry_extra,
             )
         except Exception as exc:
-            if (
+            if http_status(exc) == 400 and self._is_context_length_400(exc):
+                shrunk_tokens = max(512, min(max_tokens // 2, 1024))
+                shrunk_msgs = self._trim_messages_for_context_overflow(retry_messages, 8000)
+                retry_resp = await self.client.chat.completions.create(
+                    model=request_model,
+                    messages=shrunk_msgs,
+                    temperature=0.0,
+                    max_tokens=shrunk_tokens,
+                    response_format=retry_format,
+                    extra_body=retry_extra,
+                )
+            elif (
                 http_status(exc) == 400
                 and retry_format.get("type") == "json_schema"
                 and not self._schema_fallback_locked
+                and self._is_schema_unsupported_400(exc)
             ):
                 self.schema_fallback_count += 1
                 self.structured_output_mode = "json_object"
@@ -437,15 +489,39 @@ class MeteredVllmOpenAIGenericClient(OpenAIGenericClient):
                 response_format=req_format,
             )
         except Exception as exc:
-            if (
+            if http_status(exc) == 400 and self._is_context_length_400(exc):
+                shrunk_tokens = max(512, min(effective_max_tokens // 2, 1024))
+                try:
+                    response = await self.client.chat.completions.create(
+                        model=model or self.model or VLLM_MODEL,
+                        messages=openai_messages,
+                        temperature=0.0,
+                        max_tokens=shrunk_tokens,
+                        response_format=req_format,
+                    )
+                except Exception as exc2:
+                    if http_status(exc2) == 400 and self._is_context_length_400(exc2):
+                        shrunk_msgs = self._trim_messages_for_context_overflow(openai_messages, 8000)
+                        response = await self.client.chat.completions.create(
+                            model=model or self.model or VLLM_MODEL,
+                            messages=shrunk_msgs,
+                            temperature=0.0,
+                            max_tokens=shrunk_tokens,
+                            response_format=req_format,
+                        )
+                    else:
+                        raise
+            elif (
                 http_status(exc) == 400
                 and self.structured_output_mode == "json_schema"
                 and not self._schema_fallback_locked
+                and self._is_schema_unsupported_400(exc)
             ):
                 return await self._switch_to_json_object(
                     messages, response_model, effective_max_tokens, model_size, model
                 )
-            raise
+            else:
+                raise
         self._record_length_truncation(response)
         content = response.choices[0].message.content or ""
         if not str(content).strip():
@@ -1013,18 +1089,23 @@ def apply_horizon_grades(
     graded_settled: Mapping[str, Mapping[str, Any]],
     graded_delta0: Mapping[str, Mapping[str, Any]],
 ) -> Dict[str, Any]:
+    pre_existing_arm_failure = {arm: bool(slot.get("arm_failure")) for arm, slot in row["arms"].items()}
     for arm, grade in graded_settled.items():
         slot = row["arms"][arm]
         slot["judge_settled"] = dict(grade)
         slot["correct_settled"] = bool(grade.get("correct"))
         audit = slot.get("graph_audit_settled") or {}
-        if audit.get("status") == "ARM_FAILURE" or slot.get("arm_failure"):
+        if audit.get("status") == "ARM_FAILURE" or pre_existing_arm_failure.get(arm):
             slot["arm_failure"] = True
             slot["correct_settled"] = False
     for arm, grade in graded_delta0.items():
         slot = row["arms"][arm]
         slot["judge_delta0s"] = dict(grade)
         slot["correct_delta0s"] = bool(grade.get("correct"))
+        audit_d0 = slot.get("graph_audit_delta0") or {}
+        if audit_d0.get("status") == "ARM_FAILURE" or pre_existing_arm_failure.get(arm):
+            slot["arm_failure"] = True
+            slot["correct_delta0s"] = False
     return row
 
 
@@ -1040,18 +1121,30 @@ def _quantile(values: Sequence[float], q: float) -> Optional[float]:
     return float(np.quantile(np.asarray(values, dtype=np.float64), q))
 
 
+def _horizon_read_tokens(slot: Mapping[str, Any], horizon: str, kind: str) -> float:
+    key = f"read_{kind}_tokens_{'delta0s' if horizon == 'delta0' else 'settled'}"
+    if key in slot and slot[key] is not None:
+        return float(slot[key])
+    return float(slot.get(f"read_{kind}_tokens", 0.0))
+
+
 def summarize_suite_b(rows: Sequence[Mapping[str, Any]]) -> Dict[str, Any]:
     """Descriptive temporal accuracy and token burn. Not pooled with Suite A and not a Holm family."""
     arms: Dict[str, Any] = {}
     for arm in ARENA_ARMS:
+        failed_ids = [str(row.get("item_id", "")) for row in rows if row["arms"][arm].get("arm_failure")]
         arms[arm] = {
             "n": len(rows),
+            "arm_failure_count": len(failed_ids),
+            "arm_failure_item_ids": failed_ids,
             "temporal_accuracy_settled": _mean([1.0 if row["arms"][arm]["correct_settled"] else 0.0 for row in rows]),
             "temporal_accuracy_delta0s": _mean([1.0 if row["arms"][arm]["correct_delta0s"] else 0.0 for row in rows]),
             "mean_write_prompt_tokens": _mean([float(row["arms"][arm]["write_prompt_tokens"]) for row in rows]),
             "mean_write_completion_tokens": _mean([float(row["arms"][arm]["write_completion_tokens"]) for row in rows]),
-            "mean_read_prompt_tokens": _mean([float(row["arms"][arm]["read_prompt_tokens"]) for row in rows]),
-            "mean_read_completion_tokens": _mean([float(row["arms"][arm]["read_completion_tokens"]) for row in rows]),
+            "mean_read_prompt_tokens": _mean([_horizon_read_tokens(row["arms"][arm], "settled", "prompt") for row in rows]),
+            "mean_read_completion_tokens": _mean([_horizon_read_tokens(row["arms"][arm], "settled", "completion") for row in rows]),
+            "mean_read_prompt_tokens_delta0s": _mean([_horizon_read_tokens(row["arms"][arm], "delta0", "prompt") for row in rows]),
+            "mean_read_completion_tokens_delta0s": _mean([_horizon_read_tokens(row["arms"][arm], "delta0", "completion") for row in rows]),
         }
     return {
         "suite": "Suite_B_LongMemEval_S_Knowledge_Update_N20",
@@ -1144,10 +1237,18 @@ def suite_a_horizon_inference(
             "accuracy": _mean(list(score_maps[arm].values())),
             "write_ack_p50_ms": _quantile([float(row["arms"][arm]["write_ack_ms"]) for row in rows], 0.50),
             "consolidation_bg_mean_ms": _mean([float(row["arms"][arm]["consolidation_bg_ms"]) for row in rows]),
+            "end_to_end_write_plus_bg_mean_ms": _mean(
+                [float(row["arms"][arm]["write_ack_ms"]) + float(row["arms"][arm]["consolidation_bg_ms"]) for row in rows]
+            ),
+            "write_clock_disclosure": (
+                "write_ack_p50_ms measures post-extraction EK5+index ack; synchronous LLM claim extraction is reported in consolidation_bg_mean_ms and summed in end_to_end_write_plus_bg_mean_ms"
+                if arm == ARM_CHELATED
+                else "write_ack_p50_ms measures ingestion call return; consolidation_bg_mean_ms measures post-write settle wait"
+            ),
             "mean_write_prompt_tokens": _mean([float(row["arms"][arm]["write_prompt_tokens"]) for row in rows]),
             "mean_write_completion_tokens": _mean([float(row["arms"][arm]["write_completion_tokens"]) for row in rows]),
-            "mean_read_prompt_tokens": _mean([float(row["arms"][arm]["read_prompt_tokens"]) for row in rows]),
-            "mean_read_completion_tokens": _mean([float(row["arms"][arm]["read_completion_tokens"]) for row in rows]),
+            "mean_read_prompt_tokens": _mean([_horizon_read_tokens(row["arms"][arm], horizon, "prompt") for row in rows]),
+            "mean_read_completion_tokens": _mean([_horizon_read_tokens(row["arms"][arm], horizon, "completion") for row in rows]),
             "arm_failure_count": int(sum(1 for row in rows if row["arms"][arm].get("arm_failure"))),
         }
     return {
