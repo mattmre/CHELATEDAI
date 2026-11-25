@@ -1,0 +1,723 @@
+"""Disk IVF retrieval, immutable EK5 admission, and a matched SQ8 challenger."""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import mmap
+import os
+import re
+import shutil
+import threading
+import time
+from dataclasses import dataclass
+from pathlib import Path
+from urllib.parse import urlencode
+from urllib.request import Request, urlopen
+
+import numpy as np
+
+from chelated_pv7_spine.bridge_merge_harness import l2_normalize
+from chelated_pv7_spine.cpu_io_cage import ONE_GIB_BYTES, diff_block_stat, parse_sys_block_stat
+from chelated_pv7_spine.ek5_reason_canonicalizer import export_canonical_ek5_audit_trace
+from ek5_v3_stratified import EdgeAttestation, StratifiedEvent, StratifiedEvidenceStore
+
+MIB = 1024 ** 2
+MEMORY_MAX = 4 * ONE_GIB_BYTES
+TRACE_PAIRS = 30
+TOP_K = 10
+LIVE_DOC_MIN = 9_465_000
+LIVE_DOC_MAX = 9_475_000
+READ_BATCH = 4096
+_RESTRICTED_INPUT = re.compile(r"sealed_key|blind-followup|pm4_human_audit_100_blind_sheet\.csv", re.I)
+
+
+def input_path(root, relative):
+    candidate = Path(relative)
+    if candidate.is_absolute() or _RESTRICTED_INPUT.search(candidate.as_posix()):
+        raise ValueError("Invalid input path in the staged corpus manifest")
+    resolved = (root / candidate).resolve()
+    if not resolved.is_relative_to(root) or _RESTRICTED_INPUT.search(resolved.as_posix()):
+        raise ValueError("Corpus input must resolve inside the staging directory")
+    return resolved
+
+
+def digest_file(path):
+    with path.open("rb") as source:
+        digest = hashlib.sha256()
+        for block in iter(lambda: source.read(MIB), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def normalized(array):
+    rows = np.asarray(array, dtype=np.float32)
+    norms = np.linalg.norm(rows, axis=-1)
+    if not np.all(np.isfinite(norms)) or np.any(norms <= 0):
+        raise ValueError("Vectors must have finite, positive norms")
+    return l2_normalize(rows).astype(np.float32, copy=False)
+
+
+class VectorCorpus:
+    """Read one consistent ordered ID space from memory-mapped floating-point NPY shards."""
+
+    def __init__(self, shards):
+        self.shards = tuple(shards)
+        if not self.shards or any(x.ndim != 2 or len(x) == 0 or x.dtype.kind != "f" for x in self.shards):
+            raise ValueError("Expected nonempty floating-point matrix shards")
+        self.dimension = self.shards[0].shape[1]
+        if self.dimension < 2 or any(x.shape[1] != self.dimension for x in self.shards):
+            raise ValueError("Shard dimensions differ")
+        self.ends = np.cumsum([len(shard) for shard in self.shards])
+        self.count = int(self.ends[-1])
+        if self.count >= 2 ** 32:
+            raise ValueError("The extent format supports fewer than 2^32 document IDs")
+
+    def batches(self):
+        base = 0
+        for shard in self.shards:
+            for start in range(0, len(shard), READ_BATCH):
+                block = normalized(shard[start:start + READ_BATCH])
+                yield base + start, block
+            base += len(shard)
+
+    def get(self, ids):
+        ids = np.asarray(ids, dtype=np.int64)
+        result = np.empty((len(ids), self.dimension), dtype=np.float32)
+        for shard_idx in np.unique(np.searchsorted(self.ends, ids, side="right")):
+            start = int(self.ends[shard_idx - 1]) if shard_idx else 0
+            matches = (ids >= start) & (ids < self.ends[shard_idx])
+            result[matches] = self.shards[shard_idx][ids[matches] - start]
+        return normalized(result)
+
+    def exact_top(self, queries, depth):
+        """Use the original float vectors as the common ground truth for all arms."""
+        labels = [np.empty(0, dtype=np.uint32) for _ in queries]
+        scores = [np.empty(0, dtype=np.float32) for _ in queries]
+        for start, block in self.batches():
+            ids = np.arange(start, start + len(block), dtype=np.uint32)
+            similarities = block @ queries.T
+            for idx, result in enumerate(similarities.T):
+                labels[idx], scores[idx] = top_scores(labels[idx], scores[idx], ids, result, depth)
+        return labels
+
+
+def top_scores(old_ids, old_scores, new_ids, new_scores, k):
+    ids = np.concatenate((old_ids, new_ids))
+    scores = np.concatenate((old_scores, new_scores))
+    if len(ids) > k:
+        threshold = np.partition(scores, len(scores) - k)[len(scores) - k]
+        eligible = np.flatnonzero(scores >= threshold)
+    else:
+        eligible = np.arange(len(ids))
+    order = eligible[np.lexsort((ids[eligible], -scores[eligible]))][:k]
+    return ids[order], scores[order]
+
+
+@dataclass(frozen=True)
+class ExtentGeometry:
+    path: Path
+    extent_bytes: int
+    slots: int
+    counts: np.ndarray
+    extent_clusters: np.ndarray
+    centroids: np.ndarray
+    locations: np.ndarray
+    mean: np.ndarray
+    sidecar: np.ndarray
+    row_type: np.dtype
+
+    def probed_extents(self, query, nprobe):
+        scores = self.centroids @ query
+        cluster_ids = np.arange(len(self.centroids))
+        order = np.lexsort((cluster_ids, -scores))[:nprobe]
+        return np.flatnonzero(np.isin(self.extent_clusters, order))
+
+
+def build_extents(corpus, centroids, dev_queries, directory, extent_bytes, *, csls_k=10):
+    """Materialize fixed-sized sequential extents and two float32 sidecar values per physical ID."""
+    if type(extent_bytes) is not int or not 2 * MIB <= extent_bytes <= 8 * MIB:
+        raise ValueError("Extent size must be between 2 MiB and 8 MiB inclusive")
+    centroids = normalized(centroids)
+    dev_queries = normalized(dev_queries)
+    if centroids.ndim != 2 or not len(centroids) or centroids.shape[1] != corpus.dimension:
+        raise ValueError("Malformed IVF centroids")
+    if not 1 <= csls_k <= len(dev_queries) or dev_queries.shape[1] != corpus.dimension:
+        raise ValueError("Insufficient or invalid DEV CSLS calibration vectors")
+    dtype = np.dtype([("id", "<u4"), ("vec", "i1", (corpus.dimension,))])
+    slots = extent_bytes // dtype.itemsize
+    if not slots:
+        raise ValueError("A vector does not fit in the configured extent")
+    assigned = np.empty(corpus.count, np.int32)
+    mean = np.zeros(corpus.dimension, np.float64)
+    for start, block in corpus.batches():
+        assigned[start:start + len(block)] = np.argmax(block @ centroids.T, axis=1)
+        mean += np.sum(block, axis=0, dtype=np.float64)
+    mean = (mean / corpus.count).astype(np.float32)
+    dev_centered = normalized(dev_queries - mean)
+    counts = np.bincount(assigned, minlength=len(centroids))
+    extent_counts = (counts + slots - 1) // slots
+    total_extents = int(extent_counts.sum())
+    if total_extents * slots >= 2 ** 32:
+        raise ValueError("Padded extent slots exceed the addressable ID space")
+    extent_clusters = np.repeat(np.arange(len(centroids), dtype=np.int32), extent_counts)
+    extent_sizes = np.concatenate([
+        np.full(number, slots, dtype=np.int32) for number in extent_counts if number
+    ])
+    extent_ends = np.cumsum(extent_counts)
+    has_tail = (counts % slots) > 0
+    extent_sizes[extent_ends[has_tail] - 1] = counts[has_tail] % slots
+    next_location = (extent_ends - extent_counts) * slots
+    locations = np.empty(corpus.count, dtype=np.uint32)
+    sidecar = np.empty((corpus.count, 2), dtype=np.float32)
+    path = Path(directory) / "ivf-flat-int8.extents"
+    with path.open("x+b") as target:
+        target.truncate(total_extents * extent_bytes)
+        with mmap.mmap(target.fileno(), 0, access=mmap.ACCESS_WRITE) as mapping:
+            storage = np.ndarray(
+                (total_extents, slots), dtype=dtype, buffer=mapping, strides=(extent_bytes, dtype.itemsize),
+            )
+            for start, block in corpus.batches():
+                stop = start + len(block)
+                centered = block - mean
+                center_norms = np.linalg.norm(centered, axis=1)
+                if np.any(center_norms <= 0):
+                    raise ValueError("Zero norm after corpus centering")
+                similarities = (centered / center_norms[:, None]) @ dev_centered.T
+                cutoff = similarities.shape[1] - csls_k
+                sidecar[start:stop, 0] = center_norms
+                sidecar[start:stop, 1] = np.partition(similarities, cutoff, axis=1)[:, cutoff:].mean(axis=1)
+                quantized = np.rint(block * 127).astype(np.int8)
+                labels = assigned[start:stop]
+                for cluster in np.unique(labels):
+                    selected = np.flatnonzero(labels == cluster)
+                    addresses = np.arange(next_location[cluster], next_location[cluster] + len(selected))
+                    next_location[cluster] += len(selected)
+                    locations[start + selected] = addresses
+                    extent, slot = np.divmod(addresses, slots)
+                    storage["id"][extent, slot] = start + selected
+                    storage["vec"][extent, slot] = quantized[selected]
+            del storage
+            mapping.flush()
+        os.fsync(target.fileno())
+    return ExtentGeometry(path, extent_bytes, slots, extent_sizes, extent_clusters,
+                          centroids, locations, mean, sidecar, dtype)
+
+
+class PackedFence:
+    """One denial bit per extent/slot, addressed by the immutable ID-to-slot map."""
+
+    def __init__(self, geometry):
+        self.locations = geometry.locations
+        self.bits = np.zeros((len(geometry.counts) * geometry.slots + 7) // 8, dtype=np.uint8)
+        self.epoch = 0
+
+    def allowed(self, ids):
+        pos = self.locations[ids]
+        return (self.bits[pos >> 3] & (1 << (pos & 7))) == 0
+
+    def publish(self, ids, admitted):
+        pos = self.locations[ids]
+        mask = (1 << (pos & 7)).astype(np.uint8)
+        if admitted:
+            np.bitwise_and.at(self.bits, pos >> 3, ~mask)
+        else:
+            np.bitwise_or.at(self.bits, pos >> 3, mask)
+        self.epoch += 1
+
+
+def doc_event_id(doc_id):
+    return f"doc-{doc_id}"
+
+
+class EK5ExtentFence(PackedFence):
+    """Publish an epoch from EK5 v3 authority/refutation decisions over changed documents."""
+
+    def __init__(self, geometry):
+        super().__init__(geometry)
+        self.store = None
+        self.active_ids = set()
+
+    def withdraw(self, ids):
+        if self.active_ids:
+            raise RuntimeError("Reinstate the current trace before starting another")
+        self.store = StratifiedEvidenceStore()
+        events = []
+        edges = []
+        for doc_id in ids:
+            event_id = doc_event_id(doc_id)
+            events.extend([
+                StratifiedEvent(event_id, entity=event_id, claim_value="indexed", authority_tier=1),
+                StratifiedEvent(f"refute-{doc_id}", entity=event_id, authority_tier=2, valid_time=1, tx_time=1),
+            ])
+            edges.append(EdgeAttestation(f"edge-{doc_id}", f"refute-{doc_id}", event_id, "REFUTE", 1, 1))
+        self.store.apply_mutation(events, edges)
+        rejected = [doc_id for doc_id in ids if self.store.eligibility[doc_event_id(doc_id)] != "ADMIT"]
+        self.publish(rejected, False)
+        self.active_ids = set(ids)
+
+    def reinstate(self, ids):
+        if not self.active_ids or set(ids) != self.active_ids:
+            raise ValueError("Reinstatement must exactly close the active trace")
+        self.store.apply_mutation(withdraw_attestation_ids=[f"edge-{doc_id}" for doc_id in ids])
+        restored = [doc_id for doc_id in ids if self.store.eligibility[doc_event_id(doc_id)] == "ADMIT"]
+        self.publish(restored, True)
+        self.active_ids.clear()
+
+    def audit_digest(self):
+        return export_canonical_ek5_audit_trace(self.store).digest()
+
+
+class IVFReader:
+    def __init__(self, geometry, path, fence, nprobe, *, chelated):
+        if not 1 <= nprobe <= len(geometry.centroids):
+            raise ValueError("nprobe must be within the IVF centroid count")
+        self.geometry = geometry
+        self.path = path
+        self.fence = fence
+        self.nprobe = nprobe
+        self.chelated = chelated
+        self.counts = geometry.counts.copy()
+        self.written = 0
+        self.lock = threading.RLock()
+
+    def search(self, query, k=TOP_K):
+        g = self.geometry
+        ids = np.empty(0, dtype=np.uint32)
+        scores = np.empty(0, dtype=np.float32)
+        query = normalized(np.asarray(query)[None])[0]
+        centered = normalized((query - g.mean)[None])[0] if self.chelated else query
+        center_shift = float(g.mean @ centered) if self.chelated else 0.0
+        # For a single score space r_q is a query-wide constant and cancels from top-k ordering.
+        with self.lock, self.path.open("rb", buffering=0) as source:
+            for extent in g.probed_extents(query, self.nprobe):
+                source.seek(int(extent) * g.extent_bytes)
+                occupied = int(self.counts[extent])
+                raw = source.read(occupied * g.row_type.itemsize)
+                if len(raw) != occupied * g.row_type.itemsize:
+                    raise OSError(f"Short read in extent {extent}")
+                records = np.frombuffer(raw, dtype=g.row_type)
+                for start in range(0, occupied, READ_BATCH):
+                    batch = records[start:start + READ_BATCH]
+                    batch = batch[self.fence.allowed(batch["id"])]
+                    if not len(batch):
+                        continue
+                    vectors = batch["vec"].astype(np.float32) / 127
+                    sim = vectors @ centered
+                    if self.chelated:
+                        norm, density = g.sidecar[batch["id"]].T
+                        sim = 2 * (sim - center_shift) / norm - density
+                    else:
+                        sim /= np.maximum(np.linalg.norm(vectors, axis=1), np.finfo(np.float32).tiny)
+                    ids, scores = top_scores(ids, scores, batch["id"], sim, k)
+        return ids.tolist()
+
+    def quiescent(self):
+        return True
+
+    def visible(self, ids):
+        with self.lock:
+            return self.fence.allowed(ids).tolist()
+
+
+class ColdOSD(IVFReader):
+    def __init__(self, geometry, nprobe):
+        super().__init__(geometry, geometry.path, EK5ExtentFence(geometry), nprobe, chelated=True)
+
+    def withdraw(self, ids):
+        with self.lock:
+            self.fence.withdraw(ids)
+
+    def reinstate(self, ids):
+        with self.lock:
+            self.fence.reinstate(ids)
+
+    def audit_digest(self):
+        return self.fence.audit_digest()
+
+
+class MatchedIVFSQ8(IVFReader):
+    """On-disk SQ8 tombstone WAL plus synchronous, extent-bounded compaction."""
+
+    def __init__(self, geometry, nprobe, directory, *, compact_fraction=0.2):
+        if not 0 < compact_fraction <= 1:
+            raise ValueError('Invalid SQ8 compaction threshold')
+        self.compact_fraction = compact_fraction
+        path = Path(directory) / "ivf-sq8.extents"
+        self.wal = Path(directory) / "ivf-sq8.tombstones"
+        with geometry.path.open("rb") as source, path.open("xb") as target:
+            shutil.copyfileobj(source, target, length=8 * MIB)
+        with self.wal.open("xb"):
+            pass
+        super().__init__(geometry, path, PackedFence(geometry), nprobe, chelated=False)
+        self.pending = None
+        self.compacted = set()
+        self.active_ids = None
+
+    def _write(self, file, data):
+        actual = file.write(data)
+        self.written += actual
+        if actual != len(data):
+            raise OSError("Short on-disk SQ8 write")
+
+    def _journal(self, kind, ids):
+        with self.wal.open("ab", buffering=0) as wal:
+            self._write(wal, kind + len(ids).to_bytes(4, "little") + np.asarray(ids, dtype="<u4").tobytes())
+            os.fsync(wal.fileno())
+
+    def withdraw(self, ids):
+        with self.lock:
+            if self.active_ids is not None:
+                raise RuntimeError("Previous SQ8 withdrawal is still open")
+            self._journal(b"W", ids)
+            self.fence.publish(ids, False)
+            affected, removed = np.unique(self.geometry.locations[ids] // self.geometry.slots, return_counts=True)
+            self.pending = affected[removed / self.counts[affected] >= self.compact_fraction]
+            self.compacted = set(self.pending.tolist())
+            self.active_ids = set(ids)
+
+    def quiescent(self):
+        with self.lock:
+            if self.pending is None:
+                return True
+            if not len(self.pending):
+                self.pending = None
+                return True
+            g = self.geometry
+            with self.path.open("r+b", buffering=0) as file:
+                for extent in self.pending:
+                    offset = int(extent) * g.extent_bytes
+                    occupied = int(self.counts[extent])
+                    file.seek(offset)
+                    raw = file.read(occupied * g.row_type.itemsize)
+                    if len(raw) != occupied * g.row_type.itemsize:
+                        raise OSError("Short SQ8 compaction read")
+                    records = np.frombuffer(raw, dtype=g.row_type)
+                    surviving = records[self.fence.allowed(records["id"])]
+                    file.seek(offset)
+                    self._write(file, surviving.tobytes())
+                    self.counts[extent] = len(surviving)
+                os.fsync(file.fileno())
+            self._journal(b"C", sorted(self.active_ids))
+            self.pending = None
+            return True
+
+    def reinstate(self, ids):
+        with self.lock:
+            if self.pending is not None or self.active_ids != set(ids):
+                raise ValueError("SQ8 reinstatement requires the compacted active trace")
+            self._journal(b"R", ids)
+            g = self.geometry
+            # Append the withdrawn vectors after the compacted survivors; unchanged survivors stay in place.
+            affected, slots = np.divmod(g.locations[ids], g.slots)
+            by_extent = {int(extent): sorted(slots[affected == extent]) for extent in self.compacted}
+            with g.path.open("rb", buffering=0) as source, self.path.open("r+b", buffering=0) as target:
+                for extent, slot_ids in by_extent.items():
+                    nbytes = g.row_type.itemsize
+                    offset = extent * g.extent_bytes
+                    source.seek(offset)
+                    raw = source.read(int(g.counts[extent]) * nbytes)
+                    if len(raw) != int(g.counts[extent]) * nbytes:
+                        raise OSError("Short immutable source read on reinstatement")
+                    missing = np.frombuffer(raw, dtype=g.row_type)[slot_ids]
+                    target.seek(offset + int(self.counts[extent]) * nbytes)
+                    self._write(target, missing.tobytes())
+                    self.counts[extent] += len(missing)
+                os.fsync(target.fileno())
+            self.fence.publish(ids, True)
+            self.active_ids = None
+            self.compacted.clear()
+ 
+
+class QdrantOnDisk:
+    """Live cosine collection, using server-side delete/upsert and optimizer status."""
+
+    def __init__(self, url, collection, corpus, *, api_key=None, hnsw_m=16, ef_construct=100, timeout=120):
+        if not re.fullmatch(r"[a-zA-Z0-9_-]+", collection):
+            raise ValueError("Invalid Qdrant collection name")
+        self.url = url.rstrip("/")
+        self.collection = f"/collections/{collection}"
+        self.corpus = corpus
+        self.timeout = timeout
+        self.headers = {"Content-Type": "application/json"}
+        if api_key:
+            self.headers["api-key"] = api_key
+        self.written = None
+        self.hnsw_ef = 64
+        self._request("PUT", self.collection, {
+            "vectors": {"size": corpus.dimension, "distance": "Cosine", "on_disk": True},
+            "on_disk_payload": True,
+            "hnsw_config": {"on_disk": True, "m": hnsw_m, "ef_construct": ef_construct},
+        })
+        config = self.info()["config"]
+        self.flush_interval = int(config["optimizer_config"]["flush_interval_sec"])
+        if (
+            config["params"]["vectors"].get("on_disk") is not True
+            or config["hnsw_config"].get("on_disk") is not True
+        ):
+            raise RuntimeError("Qdrant did not enable on-disk vectors and HNSW")
+
+    def _request(self, method, route, body=None, **params):
+        path = f"{route}?{urlencode(params)}" if params else route
+        data = json.dumps(body, separators=(",", ":")).encode() if body is not None else None
+        request = Request(self.url + path, data=data, headers=self.headers, method=method)
+        with urlopen(request, timeout=self.timeout) as response:
+            value = json.load(response)
+        if value.get("status") != "ok":
+            raise RuntimeError(f"Qdrant returned an unsuccessful status for {method} {route}")
+        return value["result"]
+
+    def info(self):
+        return self._request("GET", self.collection)
+
+    def quiescent(self):
+        info = self.info()
+        status = info["optimizer_status"]
+        if isinstance(status, dict) and "error" in status:
+            raise RuntimeError(f"Qdrant optimizer failed: {status['error']}")
+        return info["status"] == "green" and status == "ok"
+
+    def count(self):
+        return self._request("POST", f"{self.collection}/points/count", {"exact": True})["count"]
+
+    def _put_vectors(self, ids, vectors):
+        self._request(
+            "PUT", f"{self.collection}/points",
+            {"batch": {"ids": list(ids), "vectors": vectors.tolist()}}, wait="true", ordering="strong",
+        )
+
+    def populate(self):
+        for start, vectors in self.corpus.batches():
+            for offset in range(0, len(vectors), 512):
+                block = vectors[offset:offset + 512]
+                self._put_vectors(range(start + offset, start + offset + len(block)), block)
+
+    def search(self, query, k=TOP_K):
+        result = self._request("POST", f"{self.collection}/points/query", {
+            "query": np.asarray(query, dtype=np.float32).tolist(),
+            "limit": k, "with_payload": False, "with_vector": False, "params": {"hnsw_ef": self.hnsw_ef},
+        })
+        return [int(point["id"]) for point in result["points"]]
+
+    def withdraw(self, ids):
+        for start in range(0, len(ids), 512):
+            self._request(
+                "POST", f"{self.collection}/points/delete", {"points": ids[start:start + 512]},
+                wait="true", ordering="strong",
+            )
+
+    def reinstate(self, ids):
+        for start in range(0, len(ids), 512):
+            batch = ids[start:start + 512]
+            self._put_vectors(batch, self.corpus.get(batch))
+
+    def visible(self, ids):
+        found = set()
+        for start in range(0, len(ids), 512):
+            values = self._request("POST", f"{self.collection}/points", {
+                "ids": ids[start:start + 512], "with_vector": False, "with_payload": False,
+            })
+            found.update(int(point["id"]) for point in values)
+        return [doc_id in found for doc_id in ids]
+
+
+class BlockWriteProbe:
+    """Capture total device writes, including asynchronous optimizer and kernel I/O."""
+
+    def __init__(self, stat_path, *, quiet_samples=3, interval=1, timeout=600):
+        if min(quiet_samples, interval, timeout) <= 0:
+            raise ValueError("Invalid quiet-window parameters")
+        self.path = stat_path
+        self.quiet_samples = quiet_samples
+        self.interval = interval
+        self.timeout = timeout
+
+    def snapshot(self):
+        # Linux diskstats sector counters use 512-byte units independent of physical sector size.
+        return parse_sys_block_stat(self.path.read_text())
+
+    def wait(self, ready):
+        deadline = time.monotonic() + self.timeout
+        previous = self.snapshot()
+        quiet = 0
+        while time.monotonic() < deadline:
+            ok = ready()
+            current = self.snapshot()
+            unchanged = current.write_sectors == previous.write_sectors
+            quiet = quiet + 1 if ok and unchanged and current.in_flight == 0 else 0
+            if quiet >= self.quiet_samples:
+                return current
+            previous = current
+            time.sleep(self.interval)
+        raise TimeoutError("Optimizer and block-device writes did not reach quiescence")
+
+    def bytes_since(self, before, after):
+        return diff_block_stat(before, after).write_bytes
+
+
+def withdrawal_pairs(geometry, count, *, seed=58):
+    """Generate 30 equal-cardinality clustered/scattered pairs by physical slot."""
+    locations = geometry.locations
+    if not 0 < count <= len(locations) - TOP_K:
+        raise ValueError("Trace size must leave at least ten live documents")
+    ordered = np.argsort(locations)
+    rng = np.random.default_rng(seed)
+    for pair in range(TRACE_PAIRS):
+        beginning = int(rng.integers(len(locations) - count + 1))
+        clustered = ordered[beginning:beginning + count].tolist()
+        scattered = rng.choice(len(locations), size=count, replace=False).tolist()
+        yield pair, "clustered", sorted(clustered)
+        yield pair, "scattered", sorted(scattered)
+
+
+def score_queries(engine, queries, candidates, denied=()):
+    denied = set(denied)
+    hits = total = stale = returned = 0
+    for query, reference in zip(queries, candidates):
+        expected = {int(i) for i in [i for i in reference if i not in denied][:TOP_K]}
+        answers = engine.search(query, TOP_K)
+        if len(answers) > TOP_K or len(answers) != len(set(answers)):
+            raise RuntimeError("An engine returned an invalid top-10 result")
+        hits += len(set(answers) & expected)
+        total += len(expected)
+        stale += len(set(answers) & denied)
+        returned += len(answers)
+    return {"hits": hits, "reference_total": total, "stale": stale, "returned": returned}
+
+
+def run_trace(engine, queries, candidates, ids, probe=None):
+    def snapshot():
+        if probe:
+            return probe.wait(engine.quiescent)
+        if not engine.quiescent():
+            raise RuntimeError("The local file-backed engine did not reach quiescence")
+        return engine.written
+
+    def writes(before, after):
+        return probe.bytes_since(before, after) if probe else after - before
+
+    before = snapshot()
+    engine.withdraw(ids)
+    immediate = score_queries(engine, queries, candidates, ids)
+    immediate_hidden = not any(engine.visible(ids))
+    withdrawn = snapshot()
+    after_quiet = score_queries(engine, queries, candidates, ids)
+    quiet_hidden = not any(engine.visible(ids))
+    # Capture query-induced background I/O as part of the trace as well.
+    withdrawn = snapshot()
+    audit_withdraw = engine.audit_digest() if isinstance(engine, ColdOSD) else None
+
+    engine.reinstate(ids)
+    restored_immediate = score_queries(engine, queries, candidates)
+    immediate_restored = all(engine.visible(ids))
+    snapshot()
+    restored_quiet = score_queries(engine, queries, candidates)
+    quiet_restored = all(engine.visible(ids))
+    restored = snapshot()
+    audit_restore = engine.audit_digest() if isinstance(engine, ColdOSD) else None
+    return {
+        "withdraw_write_bytes": writes(before, withdrawn),
+        "reinstate_write_bytes": writes(withdrawn, restored),
+        "total_write_bytes": writes(before, restored),
+        "withdraw_immediate": immediate,
+        "withdraw_quiet": after_quiet,
+        "reinstate_immediate": restored_immediate,
+        "reinstate_quiet": restored_quiet,
+        "all_withdrawn_ids_hidden": immediate_hidden and quiet_hidden,
+        "all_reinstated_ids_visible": immediate_restored and quiet_restored,
+        "ek5_withdraw_sha256": audit_withdraw,
+        "ek5_reinstate_sha256": audit_restore,
+    }
+
+
+def summarize_traces(rows):
+    checkpoints = ("withdraw_immediate", "withdraw_quiet", "reinstate_immediate", "reinstate_quiet")
+    report = {}
+    for layout in ("clustered", "scattered"):
+        group = [row for row in rows if row["layout"] == layout]
+        if len(group) != TRACE_PAIRS or {row["pair"] for row in group} != set(range(TRACE_PAIRS)):
+            raise ValueError(f"Expected {TRACE_PAIRS} distinct traces for {layout}")
+        stats = {}
+        for name in checkpoints:
+            count = sum(row[name]["reference_total"] for row in group)
+            stats[name] = {
+                "recall_at_10": sum(row[name]["hits"] for row in group) / count,
+                "stale_resurrections": sum(row[name]["stale"] for row in group),
+                "stale_rate": sum(row[name]["stale"] for row in group) / max(1, sum(row[name]["returned"] for row in group)),
+                "returned": sum(row[name]["returned"] for row in group),
+            }
+        report[layout] = {
+            "total_write_bytes": sum(row["total_write_bytes"] for row in group),
+            "withdraw_write_bytes": sum(row["withdraw_write_bytes"] for row in group),
+            "reinstate_write_bytes": sum(row["reinstate_write_bytes"] for row in group),
+            "visibility_passed": all(row["all_withdrawn_ids_hidden"] and row["all_reinstated_ids_visible"] for row in group),
+            "checkpoints": stats,
+        }
+    return report
+
+
+def compare_traces(reports):
+    candidate = reports["cold_osd"]
+    comparisons = {}
+    for name, challenger in reports.items():
+        if name == "cold_osd":
+            continue
+        layouts = {}
+        for layout, cells in candidate.items():
+            other = challenger[layout]
+            gaps = {stage: cells["checkpoints"][stage]["recall_at_10"] - baseline["recall_at_10"]
+                    for stage, baseline in other["checkpoints"].items()}
+            zero_stale = all(
+                checkpoint["stale_resurrections"] == 0
+                for arm in (cells, other) for checkpoint in arm["checkpoints"].values()
+            )
+            saved = other["total_write_bytes"] - cells["total_write_bytes"]
+            layouts[layout] = {
+                "recall_at_10_gaps": gaps, "matched_recall": max(map(abs, gaps.values())) <= 0.01 + 1e-12,
+                "zero_stale_resurrection": zero_stale,
+                "write_bytes_saved": saved,
+                "passed": saved > 0 and max(map(abs, gaps.values())) <= 0.01 + 1e-12 and zero_stale
+                and cells["visibility_passed"] and other["visibility_passed"],
+            }
+        comparisons[name] = layouts
+    return comparisons
+
+
+def drycheck(directory):
+    axes = np.eye(8, dtype=np.float32)
+    centroids = np.array([axes[0], -axes[0], axes[1], -axes[1]])
+    angles = np.concatenate((0.32 + 0.028 * np.arange(28), np.linspace(1.12, 1.52, 32)))
+    clusters = [np.cos(angles)[:, None] * center + np.sin(angles)[:, None] * direction
+                for center, direction in zip(centroids, [axes[2], -axes[2], axes[3], -axes[3]])]
+    corpus = VectorCorpus([np.vstack(clusters).astype(np.float32)])
+    # Paired calibration isolates layout and withdrawal parity in the small fixture.
+    dev = np.vstack((axes[2:], -axes[2:]))
+    queries = centroids
+    geometry = build_extents(corpus, centroids, dev, directory, 2 * MIB, csls_k=len(dev))
+    exact = corpus.exact_top(queries, TOP_K + 16)
+    digest = digest_file(geometry.path)
+    engines = {"cold_osd": ColdOSD(geometry, 4), "matched_ivf_sq8": MatchedIVFSQ8(geometry, 4, directory)}
+    traces = list(withdrawal_pairs(geometry, 16))
+    rows = {
+        name: [
+            {"pair": pair, "layout": layout, "affected_extents": int(np.unique(geometry.locations[ids] // geometry.slots).size),
+             **run_trace(engine, queries, exact, ids)}
+            for pair, layout, ids in traces
+        ] for name, engine in engines.items()
+    }
+    summary = {name: summarize_traces(results) for name, results in rows.items()}
+    comparisons = compare_traces(summary)
+    immutable = digest == digest_file(geometry.path)
+    passed = immutable and all(report["visibility_passed"] for arms in summary.values() for report in arms.values())
+    passed = passed and all(
+        cells["passed"]
+        for layouts in comparisons.values() for cells in layouts.values()
+    )
+    return {
+        "mode": "local-drycheck", "docs": corpus.count, "trace_pairs": TRACE_PAIRS,
+        "extent_bytes": geometry.extent_bytes, "extent_count": len(geometry.counts),
+        "fence_bytes": engines["cold_osd"].fence.bits.nbytes, "sidecar_bytes": geometry.sidecar.nbytes,
+        "immutable_extent_sha256": digest, "extents_unchanged": immutable,
+        "write_accounting": "logical_bytes_returned_by_file_writes_fsynced", "traces": rows,
+        "summaries": summary, "comparisons": comparisons, "passed": passed,
+    }

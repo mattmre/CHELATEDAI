@@ -1,0 +1,40 @@
+{
+  "id": 52,
+  "wave": 18,
+  "item": "3C",
+  "track": "QSCCI Planted Positive Control + k=1 Native Neuron vs. SAE Latent",
+  "branch": "pv7/t3c-qscci-singleton",
+  "tier": "T3",
+  "status": "protocol-ready",
+  "spine_digest": "32693f54e0ce7ad3d401ceb752ae4723b0eee251f6d49b95cdfb26a6201971e9",
+  "depends_on": [],
+  "runtime_file": "chelated_qscci_singleton_probe.py",
+  "runner_file": "scripts/run_pv7_w18_3c_qscci_singleton.py",
+  "verifier_file": "scripts/verifiers.d/52_verifier.py",
+  "test_file": "tests/test_pv7_w18_3c_3d_probes.py",
+  "primary_endpoint": "Planted nuisance-correlated positive control followed by the norm-matched k=1 write-vector contrast on one fresh REPORT split",
+  "named_comparator": "Native neuron vs SAE latent at matched write-vector norm",
+  "sampling_unit": "Paired observations on a single fresh REPORT split",
+  "retirement_trigger": "Retire the probe if the planted control fails or the preregistered contrast ties or misses its threshold.",
+  "design": {
+    "qwen_report_split_executed": false,
+    "live_weights_loaded": false,
+    "positive_control_cosine_min": 0.99,
+    "separation_cosine_max": 0.95,
+    "dose_l2": 0.5,
+    "layer_index": 11,
+    "hook_site": "layers[11].mlp.down_proj",
+    "arms": [
+      "k1_native_mlp_write_site",
+      "k1_topk_sae_latent",
+      "ordinary_contrastive_caa_direction",
+      "matched_norm_random_orthogonal_sham",
+      "ifeval_collateral_retention_probe"
+    ],
+    "splits": ["control", "dev", "select", "report"],
+    "modes": {
+      "local_drycheck": "CPU planted MLP hook. Correlation prefers the nuisance. QSCCI recovers the causal write.",
+      "run_live_gpu": "Accepts Qwen2.5-1.5B or Qwen3.5-2B-Base and refuses to load weights while CUDA is isolated."
+    }
+  }
+}

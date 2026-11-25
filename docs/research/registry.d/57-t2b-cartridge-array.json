@@ -1,0 +1,34 @@
+{
+  "id": 57,
+  "wave": 19,
+  "item": "2B",
+  "track": "250-Payload (1,000-Catalog) Cartridge Array + EK5 v3 Revocation",
+  "branch": "pv7/t2b-cartridge-array",
+  "tier": "T2",
+  "status": "protocol-ready",
+  "spine_digest": "32693f54e0ce7ad3d401ceb752ae4723b0eee251f6d49b95cdfb26a6201971e9",
+  "depends_on": [],
+  "runtime_file": "chelated_cartridge_array.py",
+  "runner_file": "scripts/run_pv7_w19_2b_cartridges.py",
+  "verifier_file": "scripts/verifiers.d/57_verifier.py",
+  "test_file": "tests/test_pv7_w19_2b_2d_2e_appliances.py",
+  "primary_endpoint": "Time to first usable inference within the 6 GiB cgroup against the physical payload_bytes/measured_bandwidth bound, and zero post-enforcement executions across concurrent queued and in-flight EK5 revocation races with an exact one-sided Clopper-Pearson 95% upper bound",
+  "design": {
+    "materialized_payload_count": 250,
+    "catalog_entry_count": 1000,
+    "separation_rule": "materialized_payload_count (real .cspg files) is never conflated with catalog_entry_count (manifest slots); catalog lookup is timed separately from payload swap",
+    "memory_max_bytes": 6442450944,
+    "memory_swap_max_bytes": 0,
+    "revocation": {
+      "request_classes": ["queued", "in_flight"],
+      "enforcement": "EK5 SUPERSEDE attestation checked and committed atomically under one lock",
+      "bound": "exact one-sided Clopper-Pearson 95% upper bound (0 events in n -> 1 - 0.05^(1/n))",
+      "controls": ["unguarded_commit_control_shows_race_is_real"]
+    },
+    "comparator": "physical bandwidth bound and queued/in-flight revocation fence",
+    "tiers": {
+      "local-drycheck": "floor: synthetic .cspg payloads, page-cache-warm bandwidth tier on Windows, no cgroup enforcement",
+      "run-live": "fail-closed: requires a cgroup-enforced host"
+    }
+  }
+}

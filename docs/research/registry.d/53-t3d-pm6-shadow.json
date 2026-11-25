@@ -1,0 +1,33 @@
+{
+  "id": 53,
+  "wave": 18,
+  "item": "3D",
+  "track": "Post-W14B PM-6 Observational Shadow Probe",
+  "branch": "pv7/t3d-pm6-shadow",
+  "tier": "T3",
+  "status": "protocol-ready",
+  "spine_digest": "32693f54e0ce7ad3d401ceb752ae4723b0eee251f6d49b95cdfb26a6201971e9",
+  "depends_on": [],
+  "runtime_file": "chelated_pm6_shadow_probe.py",
+  "runner_file": "scripts/run_pv7_w18_3d_pm6_shadow.py",
+  "verifier_file": "scripts/verifiers.d/53_verifier.py",
+  "test_file": "tests/test_pv7_w18_3c_3d_probes.py",
+  "primary_endpoint": "Holm-adjusted false-alert upper bound <2% across the 1-unit and 4-unit one-way shadow probe, with separate sensitivity and lead time",
+  "named_comparator": "Benign family labels on the strict one-way shadow copy across both unit settings",
+  "sampling_unit": "At least 300 independent benign families",
+  "retirement_trigger": "Retire the false-alert claim if the adjusted upper bound ties or exceeds 2%, or the shadow design is breached.",
+  "design": {
+    "live_pm6_gateway_executed": false,
+    "report_families": 320,
+    "false_alert_upper_limit": 0.02,
+    "holm_confidence": 0.975,
+    "units": [1, 4],
+    "comparison": ["incumbent_pm6_alone", "incumbent_pm6_plus_shadow"],
+    "shadow_return": null,
+    "r3_confirmatory": false,
+    "modes": {
+      "local_drycheck": "CPU scratch benign families through ClosedLoopStreamGate with a one-way shadow copy.",
+      "run_live_shadow": "Requires a manifest path, refuses protected names before opening, and does not invent a live gateway result."
+    }
+  }
+}

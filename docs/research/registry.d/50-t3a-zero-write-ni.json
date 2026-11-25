@@ -1,0 +1,33 @@
+{
+  "id": 50,
+  "wave": 18,
+  "item": "3A",
+  "tier": "T1",
+  "track": "gBench LOFT SciFact Pilot + Disjoint Corpus PM-2 Exact Tango NI",
+  "branch": "pv7/t3a-zero-write-ni",
+  "status": "protocol-ready",
+  "spine_digest": "32693f54e0ce7ad3d401ceb752ae4723b0eee251f6d49b95cdfb26a6201971e9",
+  "depends_on": [],
+  "module_file": "chelated_loft_and_zero_write_ni.py",
+  "runner_file": "scripts/run_pv7_w18_3a_zero_write_ni.py",
+  "verifier_file": "scripts/verifiers.d/50_verifier.py",
+  "test_file": "tests/test_pv7_w18_3a_3b_6b_generalization.py",
+  "primary_endpoint": "One-shot exact Tango asymptotic score 95% LCB > -0.0500 on a power-sized (N >= 1,000) burn-ledger-clean disjoint corpus, strictly separated from the canonical gBench LOFT SciFact pilot",
+  "design": {
+    "gbench_canonical_commit": "d3e42831",
+    "loft_scifact_pilot_docs": 357,
+    "loft_scifact_pilot_queries": 100,
+    "derived_pilot_bridges": [
+      "Rank1QueryResidual",
+      "ZeroMuPolarBridge"
+    ],
+    "ni_margin": -0.05,
+    "min_disjoint_paired_queries": 1000,
+    "historical_pm2_tango_lcb_preserved": -0.0572,
+    "underpowered_policy": "emit status=underpowered; never loosen -0.0500",
+    "modes": [
+      "local-drycheck",
+      "run-live-gpu"
+    ]
+  }
+}

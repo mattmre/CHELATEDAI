@@ -1,0 +1,14 @@
+{
+  "id": 49,
+  "wave": 17,
+  "item": "6D",
+  "tier": "T1",
+  "track": "Standalone Zero-Services chelated-kernel Wheel + Cold-Start Isolation Gate",
+  "branch": "pv7/t6d-sdk-coldstart",
+  "status": "protocol-ready",
+  "spine_digest": "32693f54e0ce7ad3d401ceb752ae4723b0eee251f6d49b95cdfb26a6201971e9",
+  "depends_on": [47],
+  "runner_file": "scripts/run_pv7_w17_6d_sdk_coldstart_gate.py",
+  "verifier_file": "scripts/verifiers.d/49_verifier.py",
+  "test_file": "tests/test_pv7_w17_6d_chelated_kernel_sdk.py"
+}

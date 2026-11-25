@@ -1,0 +1,67 @@
+{
+  "id": 54,
+  "wave": 18,
+  "item": "6B",
+  "tier": "T1",
+  "track": "Zero-Retune 12-Domain + 4-Hop + Prompt-Shift & Anchor-Poisoning Gauntlet",
+  "branch": "pv7/t6b-12domain-4hop",
+  "status": "protocol-ready",
+  "spine_digest": "32693f54e0ce7ad3d401ceb752ae4723b0eee251f6d49b95cdfb26a6201971e9",
+  "depends_on": [],
+  "module_file": "chelated_12domain_4hop_gauntlet.py",
+  "runner_file": "scripts/run_pv7_w18_6b_12domain_4hop.py",
+  "verifier_file": "scripts/verifiers.d/54_verifier.py",
+  "test_file": "tests/test_pv7_w18_3a_3b_6b_generalization.py",
+  "primary_endpoint": "Zero-retune 12-domain 5x3 factorial testing H6B_merge (CSLS > CalibratedZScore, LCB > 0 and >=10/12 positive), H6B_bridge_static (ZeroMu+CSLS NI LCB > -0.010 vs UncenteredProcrustes+CSLS with -0.005 tight equivalence and CenteredProcrustes+CSLS contrast), and H6B_bridge_shift_and_4hop (prompt shift + 5-encoder/4-hop v1->v5)",
+  "design": {
+    "retuned_on_eval": false,
+    "locked_12_domains": [
+      "TREC-COVID",
+      "BioASQ-TaskB",
+      "LitSearch",
+      "MIRACL-en/multi",
+      "CoIR-Apps",
+      "Touche-2020",
+      "TREC-CAR",
+      "DBPedia-Entity-v2",
+      "Robust04",
+      "Signal-1M",
+      "CQADupStack-Android",
+      "FEVER"
+    ],
+    "encoder_chain_v1_to_v5": [
+      "MiniLM-384",
+      "bge-small-384",
+      "mpnet-768",
+      "bge-m3-1024",
+      "Qwen3-4096"
+    ],
+    "factorial_bridges": [
+      "UncenteredProcrustes",
+      "CenteredProcrustes",
+      "RidgeDriftAdapter",
+      "Rank1QueryResidual",
+      "ZeroMuPolarBridge"
+    ],
+    "factorial_merges": [
+      "RawCosineMerge",
+      "CalibratedZScoreMerge",
+      "CSLSMerge"
+    ],
+    "anchor_draws_per_domain": 20,
+    "anchors_per_draw": 500,
+    "poisoning_rates": [
+      0.0,
+      0.01,
+      0.05,
+      0.1,
+      0.2
+    ],
+    "static_retirement_floor": -0.01,
+    "static_tight_equivalence_floor": -0.005,
+    "modes": [
+      "local-drycheck",
+      "run-live-gpu"
+    ]
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "id": 60,
+  "wave": 19,
+  "item": "2E",
+  "track": "Prefix-Bound TRA-1 + EK5 SSD KV/Prefix Cache",
+  "branch": "pv7/t2e-ssd-kv-repos",
+  "tier": "T2",
+  "status": "protocol-ready",
+  "spine_digest": "32693f54e0ce7ad3d401ceb752ae4723b0eee251f6d49b95cdfb26a6201971e9",
+  "depends_on": [],
+  "runtime_file": "chelated_ssd_kv_repo_cache.py",
+  "runner_file": "scripts/run_pv7_w19_2e_ssd_kv_repos.py",
+  "verifier_file": "scripts/verifiers.d/60_verifier.py",
+  "test_file": "tests/test_pv7_w19_2b_2d_2e_appliances.py",
+  "primary_endpoint": "Logit-equivalent KV reuse (max_abs_logit_diff < 1e-4 and identical greedy tokens versus full prefill) bound to the complete causal prefix token ids, exact positions, attention-mask hash, base and adapter weight SHA-256, config, tokenizer, KV dtype and RoPE scaling hash, with EK5 invalidation of blocks whose causal prefix contains a retracted file or commit",
+  "design": {
+    "repositories": 20,
+    "commits_per_repo": 50,
+    "repo_selection": "hash-ranked from 40 candidates",
+    "cluster_unit": "repository (paired bootstrap, n=20)",
+    "binding_fields": [
+      "causal_prefix_token_ids",
+      "token_positions",
+      "attention_mask_hash",
+      "base_weights_sha256",
+      "adapter_weights_sha256",
+      "config_sha256",
+      "tokenizer_sha256",
+      "kv_dtype",
+      "rope_scaling_hash"
+    ],
+    "stale_weight_probe": {
+      "error": "StaleWeightRevisionError",
+      "scenario": "weights or adapters change while config and tokenizer stay identical",
+      "memt_reference": "MemT-1.0 modeling_memt.py:876 _state_identity() omits base and adapter weights"
+    },
+    "comparators": {
+      "parity": "full prefill",
+      "performance": "stable-files-first deterministic exact-prefix prefix-LRU (RAM-bounded)"
+    },
+    "retirement_note": "claim registry retires the bundle when the cache performance threshold ties or is missed; the runtime reports retirement_trigger_fired separately from mechanism gates",
+    "tiers": {
+      "local-drycheck": "floor: synthetic git histories and a tiny deterministic numpy causal model",
+      "run-live": "fail-closed: real LLM KV path and real clones not wired"
+    }
+  }
+}

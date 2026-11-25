@@ -1,0 +1,13 @@
+{
+  "id": 47,
+  "wave": 16,
+  "item": "W16-Core",
+  "tier": "T0",
+  "track": "Core Spine + Claim Registry + burn_ledger + Challenger Ledger + Bridge/Merge Harness + A/A Null Calibration",
+  "branch": "pv7/w16-core",
+  "status": "verified-pass",
+  "spine_digest": "32693f54e0ce7ad3d401ceb752ae4723b0eee251f6d49b95cdfb26a6201971e9",
+  "depends_on": [],
+  "verifier_file": "scripts/verifiers.d/47_verifier.py",
+  "test_file": "tests/test_pv7_w16_spine_fragments_and_burn.py"
+}
