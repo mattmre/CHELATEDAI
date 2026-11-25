@@ -1904,7 +1904,7 @@ def compute_part_a_multiplicity_and_loss_disclosure(part_a: Mapping[str, Any]) -
     """Compute Holm-Bonferroni step-down across all Part A domain x challenger contrasts and surface all Chelated losses."""
     raw_p: Dict[str, float] = {}
     losses: List[Dict[str, Any]] = []
-    dom_res = part_a.get("domain_evaluation_results") or {}
+    dom_res = part_a.get("evaluations_by_corpus") or part_a.get("domain_evaluation_results") or {}
     for dom_name, dom_block in sorted(dom_res.items()):
         contrasts = (dom_block or {}).get("contrasts") or {}
         for cname, cstats in sorted(contrasts.items()):
@@ -1912,13 +1912,14 @@ def compute_part_a_multiplicity_and_loss_disclosure(part_a: Mapping[str, Any]) -
             if isinstance(cstats, Mapping) and "p_value_two_sided" in cstats:
                 raw_p[key] = float(cstats["p_value_two_sided"])
                 delta = float(cstats.get("mean_delta", 0.0))
-                ci_hi = float(cstats.get("ci95_high", 0.0))
+                ci_lo = float(cstats.get("lcb_975", cstats.get("ci95_low", 0.0)))
+                ci_hi = float(cstats.get("ucb_975", cstats.get("ci95_high", 0.0)))
                 if delta < 0.0:
                     losses.append(
                         {
                             "contrast": key,
                             "mean_delta_ndcg_at_10": round(delta, 5),
-                            "ci95_low": round(float(cstats.get("ci95_low", 0.0)), 5),
+                            "ci95_low": round(ci_lo, 5),
                             "ci95_high": round(ci_hi, 5),
                             "statistically_significant_loss": bool(ci_hi < 0.0),
                         }
@@ -1952,8 +1953,9 @@ def cmd_assemble_manifest(args: argparse.Namespace) -> None:
     part_b_bytes = part_b_path.read_bytes()
     part_a = json.loads(part_a_bytes)
     part_b = json.loads(part_b_bytes)
-    if "ek5_retraction_fence_9_47m" in part_a:
-        fenced_rec = float((part_a.get("ek5_retraction_fence_9_47m") or {}).get("fenced_admitted_recall_at_10", 0.0))
+    fence_block = part_a.get("retraction_fence_9_47m_proof") or part_a.get("ek5_retraction_fence_9_47m")
+    if isinstance(fence_block, Mapping) and "fenced_admitted_recall_at_10" in fence_block:
+        fenced_rec = float(fence_block.get("fenced_admitted_recall_at_10", 0.0))
         if fenced_rec < FLAT_ORACLE_RECALL_FLOOR:
             raise RuntimeError(f"Part A fenced_admitted_recall_at_10 {fenced_rec:.4f} < {FLAT_ORACLE_RECALL_FLOOR}")
     part_a_multiplicity = compute_part_a_multiplicity_and_loss_disclosure(part_a)
@@ -1996,6 +1998,8 @@ def cmd_assemble_manifest(args: argparse.Namespace) -> None:
     m_sha = write_json_atomic(mpath, manifest)
 
     receipt = {
+        "schema_version": "report_receipt_v4_0",
+        "status": "COMPLETED",
         "bundle_id": "wave11_d10_5m_real_cutover_and_70b_scale",
         "manifest_file": mpath.name,
         "manifest_sha256": m_sha,
