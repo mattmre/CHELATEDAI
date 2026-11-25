@@ -68,18 +68,18 @@ ENCODER_SPECS: Tuple[Tuple[str, str, int, int], ...] = (
     ("MiniLM-384", "sentence-transformers/all-MiniLM-L6-v2", 384, 256),
     ("bge-small-384", "BAAI/bge-small-en-v1.5", 384, 256),
     ("mpnet-768", "sentence-transformers/all-mpnet-base-v2", 768, 128),
-    ("bge-m3-1024", "BAAI/bge-m3", 1024, 64),
-    ("Qwen3-4096", "Qwen/Qwen3-Embedding-8B", 4096, 32),
+    ("bge-m3-1024", "BAAI/bge-m3", 1024, 96),
+    ("Qwen3-4096", "Qwen/Qwen3-Embedding-8B", 4096, 64),
 )
 
 UNBURNED_DOMAIN_PLAN: Tuple[Dict[str, Any], ...] = (
-    {"domain_id": "trec-covid", "hf_repo": "mteb/trec-covid", "max_docs": 1400, "max_eval_q": 35, "max_dev_q": 15},
-    {"domain_id": "touche-2020", "hf_repo": "mteb/touche2020", "max_docs": 1400, "max_eval_q": 34, "max_dev_q": 15},
-    {"domain_id": "cqadupstack-android", "hf_repo": "mteb/cqadupstack-android", "max_docs": 1300, "max_eval_q": 240, "max_dev_q": 80},
-    {"domain_id": "cqadupstack-physics", "hf_repo": "mteb/cqadupstack-physics", "max_docs": 1300, "max_eval_q": 240, "max_dev_q": 80},
-    {"domain_id": "cqadupstack-programmers", "hf_repo": "mteb/cqadupstack-programmers", "max_docs": 1300, "max_eval_q": 240, "max_dev_q": 80},
-    {"domain_id": "cqadupstack-stats", "hf_repo": "mteb/cqadupstack-stats", "max_docs": 1300, "max_eval_q": 220, "max_dev_q": 80},
-    {"domain_id": "cqadupstack-unix", "hf_repo": "mteb/cqadupstack-unix", "max_docs": 1300, "max_eval_q": 240, "max_dev_q": 80},
+    {"domain_id": "trec-covid", "hf_repo": "mteb/trec-covid", "max_docs": 750, "max_eval_q": 35, "max_dev_q": 15},
+    {"domain_id": "touche-2020", "hf_repo": "mteb/touche2020", "max_docs": 750, "max_eval_q": 34, "max_dev_q": 15},
+    {"domain_id": "cqadupstack-android", "hf_repo": "mteb/cqadupstack-android", "max_docs": 750, "max_eval_q": 240, "max_dev_q": 80},
+    {"domain_id": "cqadupstack-physics", "hf_repo": "mteb/cqadupstack-physics", "max_docs": 750, "max_eval_q": 240, "max_dev_q": 80},
+    {"domain_id": "cqadupstack-programmers", "hf_repo": "mteb/cqadupstack-programmers", "max_docs": 750, "max_eval_q": 240, "max_dev_q": 80},
+    {"domain_id": "cqadupstack-stats", "hf_repo": "mteb/cqadupstack-stats", "max_docs": 750, "max_eval_q": 220, "max_dev_q": 80},
+    {"domain_id": "cqadupstack-unix", "hf_repo": "mteb/cqadupstack-unix", "max_docs": 750, "max_eval_q": 240, "max_dev_q": 80},
 )
 
 
@@ -313,25 +313,33 @@ def load_beir_slice_from_hf(
         eval_doc_ids.append(did)
         cursor += 1
 
-    # Strictly disjoint bridge anchor docs (500) and dev reference docs (300)
+    # Strictly disjoint bridge anchor docs (280) and dev reference docs (160) with unique text fingerprints
+    seen_doc_fps = {text_fingerprint(corpus_raw[d]) for d in eval_doc_ids}
     anchor_doc_ids: List[str] = []
     anchor_doc_texts: List[str] = []
-    while len(anchor_doc_ids) < 500 and cursor < len(extra_pool):
+    while len(anchor_doc_ids) < 280 and cursor < len(extra_pool):
         did, txt = extra_pool[cursor]
+        cursor += 1
+        fp = text_fingerprint(txt)
+        if fp in seen_doc_fps:
+            continue
+        seen_doc_fps.add(fp)
         anchor_doc_ids.append(did)
         anchor_doc_texts.append(txt)
-        cursor += 1
 
     dev_ref_doc_ids: List[str] = []
     dev_ref_doc_texts: List[str] = []
-    while len(dev_ref_doc_ids) < 300 and cursor < len(extra_pool):
+    while len(dev_ref_doc_ids) < 160 and cursor < len(extra_pool):
         did, txt = extra_pool[cursor]
+        cursor += 1
+        fp = text_fingerprint(txt)
+        if fp in seen_doc_fps:
+            continue
+        seen_doc_fps.add(fp)
         dev_ref_doc_ids.append(did)
         dev_ref_doc_texts.append(txt)
-        cursor += 1
 
-    # If a small BEIR corpus (unlikely here) ran short of extra_pool, split eval_doc_ids distractors cleanly
-    if len(anchor_doc_ids) < 200 or len(dev_ref_doc_ids) < 100:
+    if len(anchor_doc_ids) < 120 or len(dev_ref_doc_ids) < 80:
         raise RuntimeError(f"Domain {domain_id} had insufficient background docs for disjoint anchor/dev_ref split")
 
     eval_qrels = {
@@ -379,7 +387,7 @@ def encode_all_texts_on_gpu(
         model_kwargs["torch_dtype"] = torch.float16
 
     model = SentenceTransformer(model_id, device=device, model_kwargs=model_kwargs)
-    model.max_seq_length = 384
+    model.max_seq_length = 256
 
     # Record HF cache revision / safetensors digest metadata without reading whole 16GB twice if unnecessary
     hf_info: Dict[str, Any] = {"model_id": model_id, "max_seq_length": int(model.max_seq_length)}
@@ -846,6 +854,92 @@ def run_pv7_public_corpus_graduation(domain_bundles: Sequence[Dict[str, Any]]) -
     }
 
 
+def scrub_embedding_row_collisions_globally(domain_bundles: List[Dict[str, Any]]) -> Dict[str, int]:
+    """Guarantee zero float64 row collisions across eval_docs, anchor_docs, dev_ref_docs, and eval/dev queries.
+
+    Real corpora (e.g. StackExchange CQADupStack and PubMed abstracts) occasionally contain distinct document IDs
+    whose first 256 tokens tokenize identically, yielding bit-equal embedding rows across matrices and tripping
+    `ZeroMuPolarBridge.score_matrix` / `CSLSMerge`'s `_matrices_share_rows` guard. Scrubbing auxiliary rows globally
+    across all encoders eliminates every post-truncation row collision without altering `eval_docs` or `eval_queries`.
+    """
+    enc_names = [e for e in domain_bundles[0]["emb"].keys()]
+    forbidden_by_enc: Dict[str, set] = {e: set() for e in enc_names}
+
+    for dom in domain_bundles:
+        for e in enc_names:
+            for mat_key in ("eval_docs", "eval_queries"):
+                mat = np.ascontiguousarray(np.asarray(dom["emb"][e][mat_key], dtype=np.float64))
+                for row in mat:
+                    forbidden_by_enc[e].add(row.tobytes())
+
+    removed = {"dev_queries": 0, "anchor_docs": 0, "dev_ref_docs": 0}
+
+    # 1. Scrub dev_queries that collide with any eval_queries / eval_docs row
+    for dom in domain_bundles:
+        n_dq = len(dom["dev_query_ids"])
+        keep_dq = []
+        for i in range(n_dq):
+            if any(
+                np.ascontiguousarray(np.asarray(dom["emb"][e]["dev_queries"][i], dtype=np.float64)).tobytes()
+                in forbidden_by_enc[e]
+                for e in enc_names
+            ):
+                removed["dev_queries"] += 1
+                continue
+            keep_dq.append(i)
+            for e in enc_names:
+                forbidden_by_enc[e].add(
+                    np.ascontiguousarray(np.asarray(dom["emb"][e]["dev_queries"][i], dtype=np.float64)).tobytes()
+                )
+        dom["dev_query_ids"] = [dom["dev_query_ids"][i] for i in keep_dq]
+        for e in enc_names:
+            dom["emb"][e]["dev_queries"] = dom["emb"][e]["dev_queries"][keep_dq]
+
+    # 2. Scrub anchor_docs globally across all domains, then add kept anchor rows to forbidden_by_enc
+    for dom in domain_bundles:
+        n_a = len(dom["anchor_doc_ids"])
+        keep_a = []
+        for i in range(n_a):
+            if any(
+                np.ascontiguousarray(np.asarray(dom["emb"][e]["anchor_docs"][i], dtype=np.float64)).tobytes()
+                in forbidden_by_enc[e]
+                for e in enc_names
+            ):
+                removed["anchor_docs"] += 1
+                continue
+            keep_a.append(i)
+            for e in enc_names:
+                forbidden_by_enc[e].add(
+                    np.ascontiguousarray(np.asarray(dom["emb"][e]["anchor_docs"][i], dtype=np.float64)).tobytes()
+                )
+        dom["anchor_doc_ids"] = [dom["anchor_doc_ids"][i] for i in keep_a]
+        for e in enc_names:
+            dom["emb"][e]["anchor_docs"] = dom["emb"][e]["anchor_docs"][keep_a]
+
+    # 3. Scrub dev_ref_docs globally against (eval_docs U queries U anchor_docs)
+    for dom in domain_bundles:
+        n_r = len(dom["dev_ref_doc_ids"])
+        keep_r = []
+        for i in range(n_r):
+            if any(
+                np.ascontiguousarray(np.asarray(dom["emb"][e]["dev_ref_docs"][i], dtype=np.float64)).tobytes()
+                in forbidden_by_enc[e]
+                for e in enc_names
+            ):
+                removed["dev_ref_docs"] += 1
+                continue
+            keep_r.append(i)
+            for e in enc_names:
+                forbidden_by_enc[e].add(
+                    np.ascontiguousarray(np.asarray(dom["emb"][e]["dev_ref_docs"][i], dtype=np.float64)).tobytes()
+                )
+        dom["dev_ref_doc_ids"] = [dom["dev_ref_doc_ids"][i] for i in keep_r]
+        for e in enc_names:
+            dom["emb"][e]["dev_ref_docs"] = dom["emb"][e]["dev_ref_docs"][keep_r]
+
+    return removed
+
+
 def run_self_test() -> Dict[str, Any]:
     """Fast (< 5s) deterministic CPU self-test verifying all math, burn checks, RCPS, factorial, 4-hop, and Tango NI."""
     rng = np.random.default_rng(77)
@@ -894,9 +988,23 @@ def run_self_test() -> Dict[str, Any]:
             }
         )
 
+    # Deliberately plant bit-identical row collisions across roles & domains to prove scrubbing works
+    for enc_name, _mid, _dim, _bs in ENCODER_SPECS:
+        fake_bundles[0]["emb"][enc_name]["anchor_docs"][0] = fake_bundles[0]["emb"][enc_name]["eval_docs"][0]
+        fake_bundles[1]["emb"][enc_name]["dev_ref_docs"][0] = fake_bundles[0]["emb"][enc_name]["anchor_docs"][1]
+        fake_bundles[2]["emb"][enc_name]["dev_queries"][0] = fake_bundles[0]["emb"][enc_name]["eval_queries"][0]
+
+    scrubbed = scrub_embedding_row_collisions_globally(fake_bundles)
+    assert scrubbed["anchor_docs"] >= 1 and scrubbed["dev_ref_docs"] >= 1 and scrubbed["dev_queries"] >= 1
+
     pm6_res = run_pm6_calibration_closure(fake_bundles)
     pv7_res = run_pv7_public_corpus_graduation(fake_bundles)
-    return {"self_test": "PASS", "pm6_arms": list(pm6_res["arms"].keys()), "pv7_queries": pv7_res["total_pooled_eval_queries"]}
+    return {
+        "self_test": "PASS",
+        "scrubbed": scrubbed,
+        "pm6_arms": list(pm6_res["arms"].keys()),
+        "pv7_queries": pv7_res["total_pooled_eval_queries"],
+    }
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
@@ -982,6 +1090,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             flush=True,
         )
 
+    # Scrub any post-truncation identical embedding rows across roles/domains before Track A & Track B
+    scrubbed_counts = scrub_embedding_row_collisions_globally(domain_bundles)
+    print(f"[scrub] Post-encode row collisions scrubbed: {scrubbed_counts}", flush=True)
+
     # Drop raw strings before serialization, run Track A & Track B
     print("[eval] Running Track A: PM-6 Benign False-Refusal Calibration Closure ...", flush=True)
     track_a = run_pm6_calibration_closure(domain_bundles)
@@ -1009,6 +1121,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             "cli_argv": list(sys.argv),
             "hf_dataset_file_sha256": hf_dataset_digests,
             "verified_query_text_fingerprints": text_fp_count,
+            "row_collisions_scrubbed": scrubbed_counts,
             "encoders": encoder_provenance,
             "wall_seconds_total": wall_total,
         },
