@@ -715,15 +715,77 @@ def check_d8_headlines(manifest: Dict[str, Any]) -> List[str]:
     return faults
 
 
+def check_d7_headlines(manifest: Dict[str, Any]) -> List[str]:
+    faults: List[str] = []
+    raw_txt = json.dumps(manifest, sort_keys=True)
+    if "NEO4J_AUTH=neo4j/<REDACTED>" not in raw_txt:
+        faults.append("NEO4J_AUTH=<REDACTED> missing in D7 manifest")
+    if manifest.get("suite_a_n") != 60 or manifest.get("suite_b_n") != 20:
+        faults.append(f"unexpected suite sizes ({manifest.get('suite_a_n')}, {manifest.get('suite_b_n')})")
+    if manifest.get("suite_b_pooled") is not False:
+        faults.append("suite_b_pooled must be False")
+    sb = manifest.get("suite_b_descriptive") or {}
+    if sb.get("inferential_claim") is not False:
+        faults.append("suite_b_descriptive.inferential_claim must be False")
+    settled = (manifest.get("suite_a_inference") or {}).get("settled") or {}
+    chel_acc = float(((settled.get("arms") or {}).get("Chelated_v4_Stratified_WFS") or {}).get("accuracy", 0.0))
+    if chel_acc < 0.90:
+        faults.append(f"D7 settled Chelated accuracy={chel_acc}")
+    holm = settled.get("holm_bonferroni") or {}
+    if len(holm) != 2 or not all(bool((v or {}).get("reject_null_at_alpha")) for v in holm.values()):
+        faults.append("D7 settled Holm-Bonferroni family did not reject null on both arms")
+    return faults
+
+
+def check_d9_headlines(manifest: Dict[str, Any]) -> List[str]:
+    faults: List[str] = []
+    pa = ((manifest.get("part_a_fast_edge_extractor") or {}).get("suite_a_evaluation_n60") or {})
+    if float(pa.get("semantic_accuracy", 0.0)) < 0.95:
+        faults.append(f"D9 Part A semantic_accuracy={pa.get('semantic_accuracy')}")
+    l4 = pa.get("l4_gates") or {}
+    if l4.get("ms_per_case_below_1500") is not False:
+        faults.append("D9 Part A honest latency gate miss (ms_per_case_below_1500=False) missing")
+    pb_sum = manifest.get("part_b_hypothesis_summary") or {}
+    if pb_sum.get("verdict") != "K4 stands under Protocol v2":
+        faults.append(f"D9 Part B verdict={pb_sum.get('verdict')!r}")
+    return faults
+
+
+def check_d10_headlines(manifest: Dict[str, Any]) -> List[str]:
+    faults: List[str] = []
+    pa = manifest.get("part_a_real_corpus_cutover") or {}
+    if pa.get("total_real_documents_merged") != 9_465_539:
+        faults.append(f"D10 total_real_documents_merged={pa.get('total_real_documents_merged')}")
+    if float(pa.get("synthetic_vector_fraction", 1.0)) != 0.0:
+        faults.append(f"D10 synthetic_vector_fraction={pa.get('synthetic_vector_fraction')}")
+    fence = pa.get("retraction_fence_9_47m_proof") or {}
+    if float(fence.get("chelated_fenced_stale_resurrection_rate", 1.0)) != 0.0:
+        faults.append("D10 fenced stale resurrection rate != 0.0")
+    mult = manifest.get("part_a_multiplicity_and_loss_disclosure") or {}
+    if mult.get("n_contrasts_in_family") != 24:
+        faults.append(f"D10 n_contrasts_in_family={mult.get('n_contrasts_in_family')!r} != 24")
+    losses = mult.get("disclosed_chelated_point_or_ci_losses") or []
+    if not any(bool(row.get("statistically_significant_loss")) for row in losses if isinstance(row, dict)):
+        faults.append("D10 loss disclosure missing statistically_significant_loss entry (Quora vs RRF)")
+    pb = manifest.get("part_b_70b_frontier_scale_sweep") or {}
+    if pb.get("status") not in ("COMPLETED", "NOT_RUN"):
+        faults.append(f"D10 Part B status={pb.get('status')!r}")
+    return faults
+
+
 def verify_headline_metrics(repo_root: Path, report: Report) -> None:
     arts = repo_root / "artifacts"
-    for tag, prefix, checker in (
-        ("d6", "wave11_d6_", check_d6_headlines),
-        ("d8", "wave11_d8_", check_d8_headlines),
+    for tag, prefix, checker, required, ok_msg in (
+        ("d6", "wave11_d6_", check_d6_headlines, True, "cross-engine nDCG@10 parity + 0.00% stale resurrection at 0/10/50/90"),
+        ("d8", "wave11_d8_", check_d8_headlines, True, f"{EXPECTED_D8_CHECKS}/{EXPECTED_D8_CHECKS} checks, 0/{EXPECTED_PATTERN_COUNT} Non-NDA hits"),
+        ("d7", "wave11_d7_", check_d7_headlines, False, "redacted Neo4j auth, settled Suite A Holm reject + descriptive Suite B"),
+        ("d9", "wave11_d9_", check_d9_headlines, False, "0.5B FastEdge 96.67% + latency gate miss + Protocol v2 K4 null disclosed"),
+        ("d10", "wave11_d10_", check_d10_headlines, False, "9.47M real cutover (0% synthetic/stale, 24-contrast Holm + Quora loss) + Part B status"),
     ):
         cands = sorted(p for p in arts.glob(prefix + "*") if p.is_dir()) if arts.is_dir() else []
-        if not cands:
-            report.failed(f"metrics.{tag}", f"{prefix}* bundle directory missing")
+        if not cands or not (cands[0] / "report_receipt.json").is_file():
+            if required:
+                report.failed(f"metrics.{tag}", f"{prefix}* bundle directory missing")
             continue
         try:
             receipt = load_json(cands[0] / "report_receipt.json")
@@ -732,11 +794,6 @@ def verify_headline_metrics(repo_root: Path, report: Report) -> None:
             report.failed(f"metrics.{tag}", str(exc))
             continue
         faults = checker(manifest)
-        ok_msg = (
-            "cross-engine nDCG@10 parity + 0.00% stale resurrection at 0/10/50/90"
-            if tag == "d6"
-            else f"{EXPECTED_D8_CHECKS}/{EXPECTED_D8_CHECKS} checks, 0/{EXPECTED_PATTERN_COUNT} Non-NDA hits"
-        )
         report.result(f"metrics.{tag}", not faults, ok_msg, "; ".join(faults[:6]))
 
 

@@ -476,3 +476,43 @@ def test_part_b_70b_gate_judges_and_not_run_fallback(
     assert set(summary["descriptive_contrasts"]) >= {"Chelated_70B_minus_Bare_70B_k5", "Chelated_70B_minus_Bare_70B_k17"}
     assert len(summary["holm_bonferroni_family"]) == 2
     assert all(key.endswith("_k5") for key in summary["holm_bonferroni_family"])
+
+
+def test_part_a_multiplicity_and_loss_disclosure_real_schema() -> None:
+    part_a_mock = {
+        "evaluations_by_corpus": {
+            "merged_9_47m_msmarco": {
+                "contrasts": {
+                    "chelated_minus_dev_zscore": {
+                        "mean_delta": 0.01164,
+                        "lcb_975": 0.00303,
+                        "ucb_975": 0.02066,
+                        "p_value_two_sided": 0.00695,
+                    }
+                },
+                "means_recall_at_10": {"Chelated_ZeroMu_CSLS_8B": 0.23333, "RRF_k60_ZeroMu": 0.22733},
+            },
+            "merged_9_47m_quora": {
+                "contrasts": {
+                    "chelated_minus_rrf_k60": {
+                        "mean_delta": -0.06919,
+                        "lcb_975": -0.09138,
+                        "ucb_975": -0.0475,
+                        "p_value_two_sided": 5e-05,
+                    }
+                },
+                "means_recall_at_10": {"Chelated_ZeroMu_CSLS_8B": 0.70716, "RRF_k60_ZeroMu": 0.73676},
+            },
+        }
+    }
+    res = d10.compute_part_a_multiplicity_and_loss_disclosure(part_a_mock)
+    assert res["n_contrasts_in_family"] == 2
+    ndcg_losses = [r for r in res["disclosed_chelated_point_or_ci_losses"] if "mean_delta_ndcg_at_10" in r]
+    rec_losses = [r for r in res["disclosed_chelated_point_or_ci_losses"] if "mean_delta_recall_at_10" in r]
+    assert len(ndcg_losses) == 1
+    assert ndcg_losses[0]["contrast"] == "merged_9_47m_quora::chelated_minus_rrf_k60"
+    assert ndcg_losses[0]["statistically_significant_loss"] is True
+    assert ndcg_losses[0]["statistically_significant_holm_005_loss"] is True
+    assert len(rec_losses) == 1
+    assert rec_losses[0]["contrast"] == "merged_9_47m_quora::recall_at_10_vs_RRF_k60_ZeroMu"
+

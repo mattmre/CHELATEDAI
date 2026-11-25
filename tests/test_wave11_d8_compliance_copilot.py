@@ -648,6 +648,17 @@ class TestHttpSmoke(unittest.TestCase):
         self.assertFalse(E.is_copilot_path("/api/v1/status"))
         self.assertEqual(urlparse("/copilot").path, "/copilot")
 
+    def test_runner_seal_receipts_reproducible(self):
+        from scripts import run_wave11_d8_compliance_copilot as R
+
+        svc = R.make_runner_service()
+        checks = R.Checks()
+        sealed = R.seal_receipts(svc, checks)
+        self.assertTrue(checks.all_pass)
+        self.assertEqual(len(sealed["receipts"]), 3)
+        self.assertTrue(sealed["ledger"]["intact"])
+
+
 
 if __name__ == "__main__":
     unittest.main()

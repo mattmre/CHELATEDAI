@@ -14,7 +14,7 @@ Enforces every Wave-10 Panel-of-Experts `L5` guardrail (`Fable 5.2`, `Carbon 4`,
        chunks (`0` full-matrix float64 allocation!).
      - Exact binary ratios: `8 B/doc` sidecar vs `1024-d` float32 (`4,096 B/doc` = `512.0x` exact)
        and `4096-d` float32 (`16,384 B/doc` = `2,048.0x` exact).
-     - Explicit FAISS index factory disclosure (`IndexHNSWSQ` `QT_fp16` `M=16` `METRIC_INNER_PRODUCT`),
+     - Explicit FAISS index factory disclosure (`IndexHNSWSQ` `QT_fp16` `M=32` `efSearch=512` `METRIC_INNER_PRODUCT`),
        sampled exact-Flat recall verification, peak RSS gate (`<= 44 GiB`), `EK5 v3` packed epoch
        admission fence (`0.00%` stale resurrection), and `del` + `malloc_trim(0)` cleanup.
   3. Single-Locked `unsloth/Llama-3.3-70B-Instruct-bnb-4bit` (`4-bit NF4` Disclosed Everywhere):
@@ -1938,6 +1938,11 @@ def compute_part_a_multiplicity_and_loss_disclosure(part_a: Mapping[str, Any]) -
                         }
                     )
     holm = holm_bonferroni_stepdown(raw_p) if raw_p else {}
+    for row in losses:
+        cname = row.get("contrast", "")
+        if cname in holm and row.get("mean_delta_ndcg_at_10", 0.0) < 0.0:
+            row["holm_adjusted_p"] = float(holm[cname]["holm_adjusted_p"])
+            row["statistically_significant_holm_005_loss"] = bool(holm[cname]["reject_null_at_alpha"])
     return {
         "n_contrasts_in_family": len(raw_p),
         "holm_bonferroni_24_contrasts": holm,
