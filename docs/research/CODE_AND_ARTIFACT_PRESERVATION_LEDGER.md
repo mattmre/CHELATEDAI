@@ -106,5 +106,22 @@ Because Part IV runs were synced via `scp` onto DGX Spark worktrees whose base g
   - `docs/research/investor-thesis-and-competitive-moat-2026-11-23.md`, `docs/research/investor-solution-architecture-deck.html`, `demo_workbench/server.py`, `demo_workbench/index.html`, and `tests/test_workbench_server.py`.
   - Encrypted Google Drive vault addendum: `O:\backups\CHELATEDAI-COMPLETE-VAULT-2026-11-22\WAVE5-V5-OVERNIGHT-COMPLETE-ADDENDUM-2026-11-23.7z` (AES-256 + `-mhe=on`, `7z t` verified).
 
+---
+
+## 8. Waves 10–15 (`Part VII` `v6.0` `45/45` Seal + `Part VIII` `v7.0` `/formal` & `Demo D11 / PM-6` `46/46` Seal — `2026-11-25`)
+
+- **Pre-`v6.0` (`archive/whitepaper-v5.0-pre-v6-backup/`) & Pre-`v7.0` (`archive/whitepaper-v6.0-pre-v7-backup/`) Byte-Exact Snapshots (`10/10` Files Verified Each):**
+  - `archive/whitepaper-v5.0-pre-v6-backup/BACKUP_MANIFEST.json` preserves Draft `v5.0` (`4fae0b77`) prior to `v6.0`.
+  - `archive/whitepaper-v6.0-pre-v7-backup/BACKUP_MANIFEST.json` preserves sealed `v6.0` (`7aefda2f`, tag `v6.0-wave13-sealed-20261125`, `verified_registry.json` `01738dbf94e63b683881a6b5dc67933a3449b9a1cfb5fb9cfef7f4c4452bd795`, `45/45` bundles, `59/59` side hashes) prior to `v7.0`.
+  - Encrypted Google Drive `v6.0` vault addendum: `O:\backups\CHELATEDAI-COMPLETE-VAULT-2026-11-22\WAVE10-V6-DEMOS-D6-D10-COMPLETE-2026-11-25.7z` (`SHA-256: 062e6a9d4ddfa42ef01b5b16f64a03332a580782c1d830a9a3d767ed91f24f03`, `7z t` verified).
+- **Additive `Part VII` (`41–45`) & `Part VIII` (`46` + `/formal`) Bundles (`46/46` Total, `61/61` Side Hashes, `registry_sha = 6ef7eba4f414`):**
+  1. `wave11_d6_opensearch_pgvector_qdrant` (`0578d56b715d...`)
+  2. `wave11_d7_live_zep_graphiti_arena` (`d6a12534fa7c...`, `2/2` side hashes)
+  3. `wave11_d8_compliance_copilot` (`7395d687c54f...`, `3/3` Ed25519 receipts)
+  4. `wave11_d9_fast_extractor_and_u_grpo` (`c41fae097f76...`, `6/6` side hashes)
+  5. `wave11_d10_5m_real_cutover_and_70b_scale` (`e50b87460387...`, `2/2` side hashes)
+  6. `wave14_d11_pm6_takedown_carryforward` (`7248d05a02ba...`, `2/2` side hashes + CPU-recomputable `pm6_posthoc_statistical_reanalysis.json`) + `formal/` (`Spec.lean` `63fe3e644bdef93160c5d612bfc7d7086af03c3d15cf34417402a89a86cdc6eb`, `nanoda_bin 0.4.32`, `conformance_report.json` `7,722` checkpoints).
+
+
 
 

@@ -126,6 +126,11 @@ class TestLiveRepo(unittest.TestCase):
         self.assertEqual(payload["overall"], "PASS")
         self.assertEqual(check_status(payload, "d8.live_replay"), "PASS")
         self.assertEqual(check_status(payload, "d8.ed25519_and_hash_chain"), "PASS")
+        if V.find_d11_dir(V.DEFAULT_REPO_ROOT) is not None:
+            for name in ("d11.ed25519_and_hash_chain", "metrics.d11", "d11.reanalysis_recompute"):
+                self.assertEqual(check_status(payload, name), "PASS", name)
+        if (V.DEFAULT_REPO_ROOT / V.SPEC_LOCK_REL).is_file():
+            self.assertEqual(check_status(payload, "formal.spec_sha256_lock"), "PASS")
         self.assertEqual(payload["summary"]["bundles_failed"], 0)
         self.assertEqual(payload["summary"]["bundles_verified"], payload["summary"]["bundles_total"])
         for key in ("platform", "python", "wall_clock_seconds"):
@@ -638,6 +643,253 @@ class TestCryptoAndRelease(unittest.TestCase):
         self.assertEqual(
             V.evaluate_release_status("RELEASED", {"status": "COMPLETE", "human_grader_receipt": "r.json"}), []
         )
+
+
+D11_REL = "artifacts/wave14_d11_pm6_takedown_carryforward"
+D11_DIR = REPO_ROOT / D11_REL
+HAS_D11 = (D11_DIR / "report_receipt.json").is_file()
+
+
+def load_d11() -> Tuple[Dict[str, Any], Dict[str, Any], Dict[str, Any], str, Dict[str, Any]]:
+    receipt = json.loads((D11_DIR / "report_receipt.json").read_text(encoding="utf-8"))
+    mpath = D11_DIR / receipt["manifest_file"]
+    manifest = json.loads(mpath.read_text(encoding="utf-8"))
+    receipts = json.loads((D11_DIR / manifest["copilot_receipts_v2_ref"]["file"]).read_text(encoding="utf-8"))
+    reanalysis = json.loads((D11_DIR / V.D11_REANALYSIS_NAME).read_text(encoding="utf-8"))
+    return receipts, receipt, manifest, sha(mpath), reanalysis
+
+
+@unittest.skipUnless(HAS_D11, "wave14_d11 bundle not present in this checkout")
+class TestD11ReceiptCrypto(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.receipts, cls.receipt, cls.manifest, _, _ = load_d11()
+        cls.scanner = V.load_scanner(REPO_ROOT)
+
+    def faults(self, receipts: Dict[str, Any], receipt: Optional[Dict[str, Any]] = None) -> List[str]:
+        return V.verify_d11_receipt_crypto(receipts, receipt or self.receipt, self.manifest, self.scanner)
+
+    def test_real_d11_crypto_ok(self) -> None:
+        self.assertEqual(self.faults(self.receipts), [])
+        self.assertEqual(len(self.receipts["entries"]), V.D11_EXPECTED_RECEIPTS)
+
+    def test_bad_signature_detected(self) -> None:
+        r = copy.deepcopy(self.receipts)
+        sig = bytearray(base64.b64decode(r["entries"][4]["signature_b64"]))
+        sig[0] ^= 0x01
+        r["entries"][4]["signature_b64"] = base64.b64encode(bytes(sig)).decode("ascii")
+        self.assertTrue(any("signature INVALID" in f for f in self.faults(r)))
+
+    def test_broken_chain_detected(self) -> None:
+        r = copy.deepcopy(self.receipts)
+        r["entries"][3]["prev_hash"] = "0" * 64
+        self.assertTrue(any("prev_hash" in f for f in self.faults(r)))
+
+    def test_wrong_head_detected(self) -> None:
+        bad = dict(self.receipt, receipts_head_hash="a" * 64)
+        self.assertTrue(any("receipts_head_hash" in f for f in self.faults(self.receipts, bad)))
+
+    def test_tampered_payload_detected(self) -> None:
+        r = copy.deepcopy(self.receipts)
+        r["entries"][0]["payload"]["suppressed_bytes"] = int(r["entries"][0]["payload"]["suppressed_bytes"]) + 1
+        self.assertTrue(any("does not recompute" in f for f in self.faults(r)))
+
+    def test_float_in_payload_detected(self) -> None:
+        r = copy.deepcopy(self.receipts)
+        r["entries"][2]["payload"]["score_ppm"] = float(r["entries"][2]["payload"]["score_ppm"]) + 0.5
+        faults = self.faults(r)
+        self.assertTrue(any("float" in f for f in faults), faults)
+
+    def test_dropped_entry_and_leak_flag_detected(self) -> None:
+        r = copy.deepcopy(self.receipts)
+        r["entries"] = r["entries"][:-1]
+        r["non_nda_leak_hits"] = 1
+        faults = self.faults(r)
+        self.assertTrue(any("expected 12" in f for f in faults), faults)
+        self.assertTrue(any("non_nda_leak_hits" in f for f in faults), faults)
+
+    def test_manifest_ref_mismatch_detected(self) -> None:
+        m = copy.deepcopy(self.manifest)
+        m["copilot_receipts_v2_ref"]["head_hash"] = "c" * 64
+        faults = V.verify_d11_receipt_crypto(self.receipts, self.receipt, m, self.scanner)
+        self.assertTrue(any("copilot_receipts_v2_ref" in f for f in faults), faults)
+
+
+class TestD11Holm(unittest.TestCase):
+    def test_textbook_step_down(self) -> None:
+        # Holm (1979) style example: m=4, alpha=0.05.
+        out = V.d11_holm([("a", 0.01), ("b", 0.04), ("c", 0.03), ("d", 0.005)])
+        self.assertEqual({k: v[0] for k, v in out.items()}, {"d": True, "a": True, "c": False, "b": False})
+        self.assertAlmostEqual(out["d"][1], 0.02)
+        self.assertAlmostEqual(out["a"][1], 0.03)
+        self.assertAlmostEqual(out["c"][1], 0.06)
+        self.assertAlmostEqual(out["b"][1], 0.06)  # running max keeps adjusted p monotone
+
+    def test_rejection_stops_at_first_failure(self) -> None:
+        out = V.d11_holm([("x", 0.001), ("y", 0.2), ("z", 0.024)])
+        self.assertEqual({k: v[0] for k, v in out.items()}, {"x": True, "z": True, "y": False})
+
+
+@unittest.skipUnless(HAS_D11, "wave14_d11 bundle not present in this checkout")
+class TestD11Headlines(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        _, _, cls.manifest, cls.msha, cls.reanalysis = load_d11()
+
+    def faults(self, reanalysis: Optional[Dict[str, Any]], manifest: Optional[Dict[str, Any]] = None) -> List[str]:
+        return V.check_d11_headlines(manifest or self.manifest, self.msha, reanalysis)
+
+    def test_real_headlines_ok(self) -> None:
+        self.assertEqual(self.faults(self.reanalysis), [])
+
+    def test_r5_target_is_honestly_failed(self) -> None:
+        target = self.reanalysis["process_vs_empirical_gates"]["empirical_test_targets"]["r5_benign_fpr_le_002"]
+        self.assertIs(target["passed_all_generators"], False)
+        self.assertEqual(target["verdict"], "FAILED")
+
+    def test_missing_reanalysis_fails(self) -> None:
+        self.assertTrue(any("missing" in f for f in self.faults(None)))
+
+    def test_wrong_source_manifest_sha_fails(self) -> None:
+        r = copy.deepcopy(self.reanalysis)
+        r["source_manifest_sha256"] = "0" * 64
+        self.assertTrue(any("source_manifest_sha256" in f for f in self.faults(r)))
+
+    def test_flipped_fpr_disclosure_fails(self) -> None:
+        r = copy.deepcopy(self.reanalysis)
+        target = r["process_vs_empirical_gates"]["empirical_test_targets"]["r5_benign_fpr_le_002"]
+        target["passed_all_generators"] = True
+        target["verdict"] = "PASSED"
+        for row in target["by_generator"].values():
+            row["passed"] = True
+        faults = self.faults(r)
+        self.assertTrue(any("passed_all_generators" in f for f in faults), faults)
+        self.assertTrue(any("verdict FAILED" in f for f in faults), faults)
+        self.assertTrue(any("misreports" in f for f in faults), faults)
+
+    def test_tampered_holm_survivors_fail(self) -> None:
+        r = copy.deepcopy(self.reanalysis)
+        fam = r["holm_bonferroni_family"]["full_family"]
+        promoted = fam["non_survivors"][0]
+        fam["survivors"] = fam["survivors"] + [promoted]
+        for row in fam["tests"]:
+            if row["test_id"] == promoted:
+                row["survives_holm"] = True
+        faults = self.faults(r)
+        self.assertTrue(any(promoted in f for f in faults), faults)
+        self.assertTrue(any("survivor list" in f for f in faults), faults)
+
+    def test_manifest_p_value_drift_breaks_holm(self) -> None:
+        m = copy.deepcopy(self.manifest)
+        gen = sorted(m["paired_arm_auc_comparisons_by_generator"])[0]
+        m["paired_arm_auc_comparisons_by_generator"][gen]["arm9_chelated_vs_arm6_raw_cosine"]["p_value_two_sided"] = 1e-4
+        self.assertTrue(any("Holm" in f for f in self.faults(self.reanalysis, m)))
+
+    def test_missing_disclosure_and_chronology_fail(self) -> None:
+        r = copy.deepcopy(self.reanalysis)
+        disc = r["pre_freeze_abort_chronology_and_corpus_disclosures"]
+        disc["disclosure_ids"] = disc["disclosure_ids"][:-1]
+        disc["chronology_commit_order"] = list(reversed(disc["chronology_commit_order"]))
+        faults = self.faults(r)
+        self.assertTrue(any("D1-D11" in f for f in faults), faults)
+        self.assertTrue(any("chronology" in f for f in faults), faults)
+
+    def test_bridge_audit_must_disclose_380_floor(self) -> None:
+        r = copy.deepcopy(self.reanalysis)
+        r["bridge_geometry_audit"]["effective_rank_threshold_actually_checked"] = 384
+        self.assertTrue(any("bridge_geometry_audit" in f for f in self.faults(r)))
+
+    def test_process_gate_flip_fails(self) -> None:
+        m = copy.deepcopy(self.manifest)
+        m["gates"]["zero_test_leakage_verified"] = False
+        self.assertTrue(any("process gate" in f for f in self.faults(self.reanalysis, m)))
+
+
+class TestD11SyntheticRepo(SyntheticRepoCase):
+    def test_absent_d11_and_spec_lock_skip_without_failing(self) -> None:
+        make_repo(self.root)
+        rc, payload = self.run_fast()
+        self.assertEqual(rc, 0)
+        for name in ("d11.ed25519_and_hash_chain", "metrics.d11", "formal.spec_sha256_lock"):
+            self.assertEqual(check_status(payload, name), "SKIP")
+        self.assertFalse(payload["summary"]["d11"]["present"])
+
+    @unittest.skipUnless(HAS_D11, "wave14_d11 bundle not present in this checkout")
+    def test_wave14_d11_discovered_verified_and_tamper_detected(self) -> None:
+        make_repo(self.root)
+        shutil.copytree(D11_DIR, self.root / D11_REL)
+        script_dst = self.root / V.D11_REANALYSIS_SCRIPT_REL
+        script_dst.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(REPO_ROOT / V.D11_REANALYSIS_SCRIPT_REL, script_dst)
+        found, missing = V.discover_part7_dirs(self.root, [])
+        self.assertIn(self.root / D11_REL, found)
+        self.assertEqual(missing, [])
+
+        rc, payload = self.run_fast()
+        self.assertEqual(rc, 0, [c for c in payload["checks"] if c["status"] == "FAIL"])
+        for name in (
+            "part7.wave14_d11_pm6_takedown_carryforward",
+            "d11.ed25519_and_hash_chain",
+            "metrics.d11",
+            "d11.reanalysis_recompute",
+        ):
+            self.assertEqual(check_status(payload, name), "PASS", name)
+
+        rpath = self.root / D11_REL / V.D11_REANALYSIS_NAME
+        doc = json.loads(rpath.read_text(encoding="utf-8"))
+        doc["process_vs_empirical_gates"]["empirical_test_targets"]["r5_benign_fpr_le_002"]["verdict"] = "PASSED"
+        rpath.write_text(json.dumps(doc, indent=2, sort_keys=True) + "\n", encoding="utf-8", newline="\n")
+        rc, payload = self.run_fast()
+        self.assertEqual(rc, 1)
+        self.assertEqual(check_status(payload, "metrics.d11"), "FAIL")
+        self.assertEqual(check_status(payload, "d11.reanalysis_recompute"), "FAIL")
+
+
+class TestSpecLock(SyntheticRepoCase):
+    FILES = ("formal/spec_sha256.json", "formal/ChelatedFormal/Spec.lean", "formal/conformance_report.json")
+
+    def setUp(self) -> None:
+        super().setUp()
+        for rel in self.FILES:
+            dst = self.root / rel
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(REPO_ROOT / rel, dst)
+
+    def test_real_lock_ok(self) -> None:
+        self.assertEqual(V.check_spec_lock(self.root), [])
+        self.assertEqual(V.check_spec_lock(REPO_ROOT), [])
+
+    def test_absent_lock_returns_none(self) -> None:
+        (self.root / V.SPEC_LOCK_REL).unlink()
+        self.assertIsNone(V.check_spec_lock(self.root))
+
+    def test_tampered_spec_fails(self) -> None:
+        spec = self.root / "formal/ChelatedFormal/Spec.lean"
+        spec.write_bytes(spec.read_bytes() + b"\n-- drift\n")
+        self.assertTrue(any("Spec.lean" in f for f in V.check_spec_lock(self.root) or []))
+
+    def test_wrong_conformance_status_fails(self) -> None:
+        conf = self.root / V.CONFORMANCE_REPORT_REL
+        doc = json.loads(conf.read_text(encoding="utf-8"))
+        doc["incremental_with_deletions_status"] = "proven_in_lean"
+        write_json(conf, doc)
+        self.assertTrue(any("incremental_with_deletions_status" in f for f in V.check_spec_lock(self.root) or []))
+
+    def test_relocked_pin_and_unlocked_flag_fail(self) -> None:
+        lock = self.root / V.SPEC_LOCK_REL
+        doc = json.loads(lock.read_text(encoding="utf-8"))
+        doc["spec_sha256"] = "f" * 64
+        doc["locked_before_proofs"] = False
+        write_json(lock, doc)
+        faults = V.check_spec_lock(self.root) or []
+        self.assertTrue(any("claims" in f for f in faults), faults)
+        self.assertTrue(any("locked_before_proofs" in f for f in faults), faults)
+
+    def test_fast_mode_reports_lock_pass(self) -> None:
+        make_repo(self.root)
+        rc, payload = self.run_fast()
+        self.assertEqual(rc, 0)
+        self.assertEqual(check_status(payload, "formal.spec_sha256_lock"), "PASS")
 
 
 if __name__ == "__main__":

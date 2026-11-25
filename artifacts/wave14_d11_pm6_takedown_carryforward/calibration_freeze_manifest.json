@@ -1,0 +1,206 @@
+{
+  "all_dev_calibrations_met_target_fpr": true,
+  "arm2_system_prompt_sha256": "118855886ad4519fd607558e7fb9997bed91b7de670f8c8e86c809a21bf9453f",
+  "background_family_count": 212,
+  "background_ids_sha256": "862416e486ca19fadaff8df042353db454ff88a8a221998a1a8f2491b844ce21",
+  "bridge_anchor_count": 1824,
+  "bridge_linear_w_sha256": "f74ff8c14944c0703694a46fe160da6666caa787e6019542c07b72e2edec5885",
+  "bridge_stiefel_w_sha256": "c22c129b5fa759cd2b438ecaf92999ff2e998f4002d670acfbc1eae741403c0f",
+  "bundle_id": "wave14_d11_pm6_takedown_carryforward",
+  "caa_alphas_evaluated": 5,
+  "caa_met_target_fpr": true,
+  "caa_selected_alpha": 3.0,
+  "dev_author_groups_sha256": "f7ebfa21c6fba974c3caf09f8e0ab2e79de85f2662a56311db6921a39580d73b",
+  "dev_family_count": 15,
+  "dev_ids_sha256": "4754d48a206f343c9f0faa3eeaa8ee6b9572b901604c1a77bfcffcbabc221998",
+  "dev_ids_sha256_by_generator": {
+    "nemotron_30b": "925a0e1c8518f90720f773e214b0bbf38787f8d959750e30b1085ae379638495",
+    "qwen25_7b": "4754d48a206f343c9f0faa3eeaa8ee6b9572b901604c1a77bfcffcbabc221998"
+  },
+  "dev_vault_nodes_matched_to_test": 136,
+  "execution_mode": "run-live",
+  "freeze_manifest_sha256": "5ed7c0ce82334421f004708c587b2a0cfb66aca016d43c6bac3d12dacbeaa88c",
+  "frozen_thresholds_by_arm": {
+    "arm5_zeromu_csls": {
+      "dev_empirical_fpr": 0.02,
+      "dev_empirical_tpr": 0.8666666666666667,
+      "dev_met_target_fpr": true,
+      "dev_n_neg": 50,
+      "dev_n_pos": 15,
+      "dev_pre_triggered_neg_count": 0,
+      "target_fpr": 0.02,
+      "threshold": 0.4627838706292536
+    },
+    "arm6_raw_cosine": {
+      "dev_empirical_fpr": 0.02,
+      "dev_empirical_tpr": 0.9333333333333333,
+      "dev_met_target_fpr": true,
+      "dev_n_neg": 50,
+      "dev_n_pos": 15,
+      "dev_pre_triggered_neg_count": 0,
+      "target_fpr": 0.02,
+      "threshold": 0.33549270629101985
+    },
+    "arm8_linear_bridge": {
+      "dev_empirical_fpr": 0.02,
+      "dev_empirical_tpr": 0.6666666666666666,
+      "dev_met_target_fpr": true,
+      "dev_n_neg": 50,
+      "dev_n_pos": 15,
+      "dev_pre_triggered_neg_count": 0,
+      "target_fpr": 0.02,
+      "threshold": 0.5715742429279859
+    },
+    "arm9_zeromu_csls": {
+      "dev_empirical_fpr": 0.02,
+      "dev_empirical_tpr": 0.8666666666666667,
+      "dev_met_target_fpr": true,
+      "dev_n_neg": 50,
+      "dev_n_pos": 15,
+      "dev_pre_triggered_neg_count": 0,
+      "target_fpr": 0.02,
+      "threshold": 0.4627838706292536
+    },
+    "tau_arm": {
+      "dev_empirical_fpr": 0.1,
+      "dev_empirical_tpr": 1.0,
+      "dev_met_target_fpr": true,
+      "dev_n_neg": 50,
+      "dev_n_pos": 15,
+      "dev_pre_triggered_neg_count": 0,
+      "target_fpr": 0.1,
+      "threshold": 0.39694132155573264
+    }
+  },
+  "frozen_thresholds_by_generator": {
+    "nemotron_30b": {
+      "arm5_zeromu_csls": {
+        "dev_empirical_fpr": 0.02,
+        "dev_empirical_tpr": 0.8888888888888888,
+        "dev_met_target_fpr": true,
+        "dev_n_neg": 50,
+        "dev_n_pos": 27,
+        "dev_pre_triggered_neg_count": 0,
+        "target_fpr": 0.02,
+        "threshold": 0.5056178025355609
+      },
+      "arm6_raw_cosine": {
+        "dev_empirical_fpr": 0.02,
+        "dev_empirical_tpr": 1.0,
+        "dev_met_target_fpr": true,
+        "dev_n_neg": 50,
+        "dev_n_pos": 27,
+        "dev_pre_triggered_neg_count": 0,
+        "target_fpr": 0.02,
+        "threshold": 0.32534989677649806
+      },
+      "arm8_linear_bridge": {
+        "dev_empirical_fpr": 0.02,
+        "dev_empirical_tpr": 0.6296296296296297,
+        "dev_met_target_fpr": true,
+        "dev_n_neg": 50,
+        "dev_n_pos": 27,
+        "dev_pre_triggered_neg_count": 0,
+        "target_fpr": 0.02,
+        "threshold": 0.6745610755091695
+      },
+      "arm9_zeromu_csls": {
+        "dev_empirical_fpr": 0.02,
+        "dev_empirical_tpr": 0.8888888888888888,
+        "dev_met_target_fpr": true,
+        "dev_n_neg": 50,
+        "dev_n_pos": 27,
+        "dev_pre_triggered_neg_count": 0,
+        "target_fpr": 0.02,
+        "threshold": 0.5056178025355609
+      },
+      "tau_arm": {
+        "dev_empirical_fpr": 0.1,
+        "dev_empirical_tpr": 0.9259259259259259,
+        "dev_met_target_fpr": true,
+        "dev_n_neg": 50,
+        "dev_n_pos": 27,
+        "dev_pre_triggered_neg_count": 0,
+        "target_fpr": 0.1,
+        "threshold": 0.4642628271382445
+      }
+    },
+    "qwen25_7b": {
+      "arm5_zeromu_csls": {
+        "dev_empirical_fpr": 0.02,
+        "dev_empirical_tpr": 0.8666666666666667,
+        "dev_met_target_fpr": true,
+        "dev_n_neg": 50,
+        "dev_n_pos": 15,
+        "dev_pre_triggered_neg_count": 0,
+        "target_fpr": 0.02,
+        "threshold": 0.4627838706292536
+      },
+      "arm6_raw_cosine": {
+        "dev_empirical_fpr": 0.02,
+        "dev_empirical_tpr": 0.9333333333333333,
+        "dev_met_target_fpr": true,
+        "dev_n_neg": 50,
+        "dev_n_pos": 15,
+        "dev_pre_triggered_neg_count": 0,
+        "target_fpr": 0.02,
+        "threshold": 0.33549270629101985
+      },
+      "arm8_linear_bridge": {
+        "dev_empirical_fpr": 0.02,
+        "dev_empirical_tpr": 0.6666666666666666,
+        "dev_met_target_fpr": true,
+        "dev_n_neg": 50,
+        "dev_n_pos": 15,
+        "dev_pre_triggered_neg_count": 0,
+        "target_fpr": 0.02,
+        "threshold": 0.5715742429279859
+      },
+      "arm9_zeromu_csls": {
+        "dev_empirical_fpr": 0.02,
+        "dev_empirical_tpr": 0.8666666666666667,
+        "dev_met_target_fpr": true,
+        "dev_n_neg": 50,
+        "dev_n_pos": 15,
+        "dev_pre_triggered_neg_count": 0,
+        "target_fpr": 0.02,
+        "threshold": 0.4627838706292536
+      },
+      "tau_arm": {
+        "dev_empirical_fpr": 0.1,
+        "dev_empirical_tpr": 1.0,
+        "dev_met_target_fpr": true,
+        "dev_n_neg": 50,
+        "dev_n_pos": 15,
+        "dev_pre_triggered_neg_count": 0,
+        "target_fpr": 0.1,
+        "threshold": 0.39694132155573264
+      }
+    }
+  },
+  "mu_384_de_sha256": "07430ce92f87ebc59898325c01b8ac0aeb5fbd5a4fa9ad15157e64ca862a513c",
+  "mu_384_en_sha256": "405c0abcc9252486ad79e6352c3e78013e834f813fc5f9a1ade16128789aabd1",
+  "mu_384_es_sha256": "e603e13bc9abce830997ad59eb3c811beb6f41bc687b3cfbc575fb59fae22be6",
+  "mu_de_sha256": "367f4f5b99fe0c63dd71e75f74538cc475fd8da838a4c7b8541bf597c18b7fae",
+  "mu_en_sha256": "042c5869ea9104ef92750188dea4819bed6617b25002c0d00d80baf4aa632d3a",
+  "mu_es_sha256": "4250d9cba0e438f78588b7becf2d6222926aef00b2741694ee9823bdb2028fef",
+  "phase0_confirmed_by_generator": {
+    "nemotron_30b": 59,
+    "qwen25_7b": 32
+  },
+  "r2b_unlocked_only_after_freeze": true,
+  "ref_mean_384_sha256": "987aa621607df43abcba5e8eb65e52190199df5661169f8bdb66eb9a7d697865",
+  "ref_mean_4096_sha256": "d577090fe445842e828ecb07e0ca4a4d4f240be3e868464892bb3a97b1ba0f47",
+  "ref_pool_384_sha256": "2dcc2285735a093aa3b510ca8330452331614bd3d3910670c86ce688cba5e846",
+  "ref_pool_4096_sha256": "5dec6a4901226b5a79d3dda48b695f74c7eb61667cf8ff6a18bb3aaf4f17c625",
+  "schema_version": "pm6_calibration_freeze_v2",
+  "split_salt": "chelated-wave14b-pm6-entity-series-v1-20261124",
+  "test_author_groups_sha256": "c2e02a16ff031758182446619a369f9c71545228731ee9e0e4e3e447cc62d544",
+  "test_family_count": 17,
+  "test_ids_sha256": "c746f7b846d8aa00aa1f29ecedccef00d6ca887f2f34a1c74cad5c34824159a0",
+  "test_ids_sha256_by_generator": {
+    "nemotron_30b": "096398c9161a919042969594f00a260a11443597b69e1476fcc78c33173020c1",
+    "qwen25_7b": "c746f7b846d8aa00aa1f29ecedccef00d6ca887f2f34a1c74cad5c34824159a0"
+  },
+  "zero_test_leakage_verified": true
+}

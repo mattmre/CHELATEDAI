@@ -1,5 +1,5 @@
 {
-  "schema_version": "bundle_registry_spec_v6_0",
+  "schema_version": "bundle_registry_spec_v7_0",
   "release_status": "PRE-RELEASE / HUMAN AUDIT & CLEAN-RERUN GATES PENDING",
   "pristine_mirror_manifest": "archive/pristine-b37e6a55-exact/PRISTINE_MANIFEST.json",
   "part_iv_code_provenance": {
@@ -446,6 +446,15 @@
       "manifest": "wave11_d10_scale_manifest.json",
       "receipt": "report_receipt.json",
       "notes": "Wave-11 Tier-2 Demo D10 (L5, Spark #1 + Spark #2): Part A evaluates 9,465,539 merged 7-BEIR real vectors (1,891,457 = 19.98% upgraded 1024-d shard + 7,574,082 legacy 384-d shard; standalone 8,841,823 MSMARCO evaluated via admission mask on the shared 9.47M graph over the same 500 queries; 0.0% synthetic, 72.22 MiB 8 B/doc sidecar = 512.0x/2,048.0x smaller than 1024d/4096d f32, IndexHNSWSQ QT_fp16 M=32 efSearch=512, 0.984 50-query Flat-oracle recall@10, 3.64/4.46 ms dual-shard p50/p95, 0.0% fenced vs 100.0% unmasked stale leak on 200 retractions, 0.944 fenced admitted recall@10 on n=25); across 24 Holm contrasts: 9 significant wins at Holm p<=0.0012 (20k-resample floor), 12 n.s. positive (merged MSMARCO vs RRF +1.69 pp Holm p=0.0553 n.s.), 2 n.s. negative, and 1 statistically significant loss (merged_9_47m_quora vs RRF_k60: -6.92 pp, CI95=[-9.14, -4.75 pp], Holm p<=0.0012 floor) plus 6 Recall@10 point losses (not multiplicity-tested). Part B live Llama-3.3-70B-Instruct-bnb-4bit (4-bit NF4, 38.08 GiB) sweep on Suite A (N=60, fixed Nemotron-30B extractor 24.61s/case -> 24.75-26.60s/case e2e vs 3.26s Bare-70B k=5, 14 gate-decided / 46 reader-decided): Mid-7B+Chelated (14.28 GiB, 538 ms reader, 25.15s e2e) reaches 100.0% Nemotron judge / 98.33% strict EM, matching Chelated-70B (100%/98.33%, 26.60s e2e) and Bare-70B k=5 (100%/96.67%, 3.26s) & k=17 (100%/98.33%, 5.36s) at 0.00 pp delta (Tango CI95=[-6.02, +6.02 pp], Holm p=1.0; descriptive leads over Bare-30B 71.67% & Bare-7B 90.00% outside 2-contrast Holm family); Small-1.5B+Chelated (2.94 GiB, 148 ms reader, 24.75s e2e) hits 95.00% judge / 91.67% EM (-5.00 pp vs 70B k=5, Holm p=0.1929 n.s.); 176/180 (97.78%) inter-judge agreement (kappa=0.0 ceiling artifact)."
+    },
+    {
+      "id": "wave14_d11_pm6_takedown_carryforward",
+      "part": "PART_VIII_FORMAL_AND_PM6_TAKEDOWN",
+      "role": "WAVE15_ADJUDICATED_PRIMARY",
+      "dir": "artifacts/wave14_d11_pm6_takedown_carryforward",
+      "manifest": "wave14_d11_pm6_manifest.json",
+      "receipt": "report_receipt.json",
+      "notes": "Wave-14B Demo D11 / PM-6 (live Nemotron-30B + Qwen2.5-7B 9-arm inference-time takedown & 4096->384 governance carry-forward firewall; git_sha f357e4ba, 12 Ed25519 copilot_receipt_v2 entries head b214649ccadd, 0/56 Non-NDA hits, paired with post-hoc CPU addendum pm6_posthoc_statistical_reanalysis.json & NDA /formal Lean 4 Spec.lean 63fe3e64 + nanoda_bin 0.4.32 25,473 decls + 7,722-checkpoint conformance w/ 0 semantic diffs & 153 Pitfall-B pruning telemetry diffs): Empirically MIXED — manifest all_gates_pass=true checks 6 process-only gates, while empirical TEST r5_benign_fpr_le_002 FAILS on Arm 9 (6.25% [2/32, CP95<=18.39%] on Nemotron-30B & 11.76% [2/17, CP95<=32.62%] on Qwen2.5-7B; certifying <=2% at 0 errors requires N>=149). Verified Holm survivors (3/12 familywise alpha=0.05): Arm 9 beats lexical Arm 3 on R3-vs-R5 AUROC (+0.4736 Nemotron / +0.4758 Qwen, Holm p=0.0012 at 1e-4 bootstrap floor; Qwen R2 100% vs 41.18%), Gate-1 EK5 arms (4, 6, 8, 9) hit 100% (60/60) R4 enterprise derivative suppression vs 0-5% without Gate-1, and Phase-3 DE bridged 4096->384 detector beats monolingual MiniLM-384 (+0.1522 AUROC, Holm p=0.0290; ES +0.1003 raw p=0.0163 fails Holm p=0.1467; mu_lang vs mu_en null p=0.867/0.609). On English R3, Arm 9 shows parity/loss vs Arm 6 raw cosine (-0.0107/-0.0208 AUROC, -6.25/-11.76 pp R3) & Arm 8 linear bridge (-0.0039/-0.0138 AUROC) with higher R5 FPR. Mandatory D1-D11 disclosures: reduced-yield TEST N=17/32 on famous pre-1929 public-domain texts, single-template R5 benign prompts, OR(raw,span) Phase-0 confirmation & 4 pre-freeze aborts (f140e23b..f357e4ba) prior to 05:01 calibration freeze, bridge rank 382/384 (rel. residual 0.650, >=380 floor), R2b any-of-3 adaptive breach 15.63%/17.65% (CP95<=30.1%/39.6%), untuned Qwen-only CAA reference (Arm 7), hosted-gateway scope only (no unlearning/open-weights erasure), and MemT-1.0 (arXiv:2610.26825v5) cited accurately as an active recurrent-memory paper whose superposed state precludes selective retraction and whose _state_identity() omits weight hashes."
     }
   ]
 }

@@ -417,6 +417,19 @@ def extract_key_metrics(bundles_by_id: Dict[str, Dict[str, Any]]) -> Dict[str, A
             "part_b_holm_bonferroni_family": pb.get("holm_bonferroni_family"),
         }
 
+    if "wave14_d11_pm6_takedown_carryforward" in bundles_by_id and bundles_by_id["wave14_d11_pm6_takedown_carryforward"]["present"]:
+        m = bundles_by_id["wave14_d11_pm6_takedown_carryforward"]["_manifest_obj"]
+        reanalysis_path = REPO_ROOT / "artifacts/wave14_d11_pm6_takedown_carryforward/pm6_posthoc_statistical_reanalysis.json"
+        reanalysis = json.loads(reanalysis_path.read_text(encoding="utf-8")) if reanalysis_path.is_file() else {}
+        obs["wave14_d11_pm6_takedown_carryforward"] = {
+            "execution_mode": m.get("execution_mode"),
+            "process_gates": m.get("gates"),
+            "empirical_test_targets": reanalysis.get("process_vs_empirical_gates", {}).get("empirical_test_targets"),
+            "holm_headline_findings": reanalysis.get("holm_bonferroni_family", {}).get("headline_findings"),
+            "copilot_receipts_v2_ref": m.get("copilot_receipts_v2_ref"),
+            "reanalysis_sha256": sha256_file(reanalysis_path) if reanalysis_path.is_file() else None,
+        }
+
     return obs
 
 
@@ -440,7 +453,7 @@ def build_registry(*, allow_gitignored_raw_missing: bool = False) -> Dict[str, A
     observations = extract_key_metrics(bundles_by_id)
     present_count = sum(1 for b in verified_bundles if b["present"])
     payload: Dict[str, Any] = {
-        "schema_version": "verified_registry_v6_0",
+        "schema_version": "verified_registry_v7_0",
         "release_status": spec["release_status"],
         "pristine_mirror": pristine,
         "part_iv_code_provenance": spec.get("part_iv_code_provenance", {}),
@@ -516,6 +529,9 @@ def validate_publication_documents(registry: Dict[str, Any]) -> Tuple[bool, List
             "272",
             "emulation (ours)",
             "live_opensearch_java_cluster_claimed",
+            "2610.26825",
+            "pm6_posthoc_statistical_reanalysis.json",
+            "63fe3e64",
         ):
             if req_tok not in doc:
                 errors.append(f"{label} missing Wave-4/Wave-8 mandatory citation/disclosure token '{req_tok}'")

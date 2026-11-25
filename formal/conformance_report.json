@@ -1,0 +1,331 @@
+{
+  "checkpoints": {
+    "as_of": 1722,
+    "as_of_missing_parent": 951,
+    "mutation": 6000,
+    "total": 7722
+  },
+  "comparator_liveness": {
+    "faults_detected": 1531,
+    "faults_injected": 1531,
+    "materialization_faults_detected": 1531,
+    "materialization_faults_injected": 1531
+  },
+  "coverage": {
+    "blocked_authority_edges": 10482,
+    "cur_F": 12428,
+    "cur_T": 32789,
+    "cur_U": 1750,
+    "edges_total": 41709,
+    "elig_ADMIT": 32789,
+    "elig_AUDIT_ONLY": 12428,
+    "elig_CONTESTED": 1750,
+    "missing_parent_nodes": 1073,
+    "nodes_total": 46967,
+    "nonstrict_snapshots": 4188,
+    "pos_cyc_nodes": 1570,
+    "quarantined_supersede_cycles": 229,
+    "reason_CURRENT": 32789,
+    "reason_EPISTEMIC_CONTESTED": 1277,
+    "reason_MISSING_MANDATORY_PARENT": 1061,
+    "reason_REFUTED": 5844,
+    "reason_SUPERSEDED": 3600,
+    "reason_SUPERSEDED_ANCESTOR": 359,
+    "reason_TEMPORAL_ANCESTOR_CONTESTED": 27,
+    "reason_TEMPORAL_CONTESTED": 446,
+    "reason_UNFOUNDED_CYCLE": 1564,
+    "strict_snapshots": 3534,
+    "val_F": 8469,
+    "val_T": 36967,
+    "val_U": 1531
+  },
+  "divergence_samples": {
+    "inc_vs_fresh": [
+      {
+        "a": "REFUTED",
+        "b": "UNFOUNDED_CYCLE",
+        "field": "reason",
+        "node": "n03",
+        "snapshot": "2026173183379:5:mutation"
+      },
+      {
+        "a": false,
+        "b": true,
+        "field": "pos_cyc",
+        "node": "n03",
+        "snapshot": "2026173183379:5:mutation"
+      },
+      {
+        "a": "REFUTED",
+        "b": "UNFOUNDED_CYCLE",
+        "field": "reason",
+        "node": "n02",
+        "snapshot": "2026173183411:2:mutation"
+      },
+      {
+        "a": false,
+        "b": true,
+        "field": "pos_cyc",
+        "node": "n02",
+        "snapshot": "2026173183411:2:mutation"
+      },
+      {
+        "a": "REFUTED",
+        "b": "UNFOUNDED_CYCLE",
+        "field": "reason",
+        "node": "n03",
+        "snapshot": "2026173183411:2:mutation"
+      },
+      {
+        "a": false,
+        "b": true,
+        "field": "pos_cyc",
+        "node": "n03",
+        "snapshot": "2026173183411:2:mutation"
+      },
+      {
+        "a": "REFUTED",
+        "b": "UNFOUNDED_CYCLE",
+        "field": "reason",
+        "node": "n02",
+        "snapshot": "2026173183411:3:mutation"
+      },
+      {
+        "a": false,
+        "b": true,
+        "field": "pos_cyc",
+        "node": "n02",
+        "snapshot": "2026173183411:3:mutation"
+      },
+      {
+        "a": "REFUTED",
+        "b": "UNFOUNDED_CYCLE",
+        "field": "reason",
+        "node": "n03",
+        "snapshot": "2026173183411:3:mutation"
+      },
+      {
+        "a": false,
+        "b": true,
+        "field": "pos_cyc",
+        "node": "n03",
+        "snapshot": "2026173183411:3:mutation"
+      },
+      {
+        "a": "REFUTED",
+        "b": "UNFOUNDED_CYCLE",
+        "field": "reason",
+        "node": "n02",
+        "snapshot": "2026173183411:4:mutation"
+      },
+      {
+        "a": false,
+        "b": true,
+        "field": "pos_cyc",
+        "node": "n02",
+        "snapshot": "2026173183411:4:mutation"
+      }
+    ],
+    "lean_vs_fresh": [],
+    "lean_vs_inc": [
+      {
+        "a": "UNFOUNDED_CYCLE",
+        "b": "REFUTED",
+        "field": "reason",
+        "node": "n03",
+        "snapshot": "2026173183379:5:mutation"
+      },
+      {
+        "a": true,
+        "b": false,
+        "field": "pos_cyc",
+        "node": "n03",
+        "snapshot": "2026173183379:5:mutation"
+      },
+      {
+        "a": "UNFOUNDED_CYCLE",
+        "b": "REFUTED",
+        "field": "reason",
+        "node": "n02",
+        "snapshot": "2026173183411:2:mutation"
+      },
+      {
+        "a": true,
+        "b": false,
+        "field": "pos_cyc",
+        "node": "n02",
+        "snapshot": "2026173183411:2:mutation"
+      },
+      {
+        "a": "UNFOUNDED_CYCLE",
+        "b": "REFUTED",
+        "field": "reason",
+        "node": "n03",
+        "snapshot": "2026173183411:2:mutation"
+      },
+      {
+        "a": true,
+        "b": false,
+        "field": "pos_cyc",
+        "node": "n03",
+        "snapshot": "2026173183411:2:mutation"
+      },
+      {
+        "a": "UNFOUNDED_CYCLE",
+        "b": "REFUTED",
+        "field": "reason",
+        "node": "n02",
+        "snapshot": "2026173183411:3:mutation"
+      },
+      {
+        "a": true,
+        "b": false,
+        "field": "pos_cyc",
+        "node": "n02",
+        "snapshot": "2026173183411:3:mutation"
+      },
+      {
+        "a": "UNFOUNDED_CYCLE",
+        "b": "REFUTED",
+        "field": "reason",
+        "node": "n03",
+        "snapshot": "2026173183411:3:mutation"
+      },
+      {
+        "a": true,
+        "b": false,
+        "field": "pos_cyc",
+        "node": "n03",
+        "snapshot": "2026173183411:3:mutation"
+      },
+      {
+        "a": "UNFOUNDED_CYCLE",
+        "b": "REFUTED",
+        "field": "reason",
+        "node": "n02",
+        "snapshot": "2026173183411:4:mutation"
+      },
+      {
+        "a": true,
+        "b": false,
+        "field": "pos_cyc",
+        "node": "n02",
+        "snapshot": "2026173183411:4:mutation"
+      }
+    ]
+  },
+  "divergences": {
+    "inc_vs_fresh": {
+      "by_field": {
+        "pos_cyc": 104,
+        "reason": 49
+      },
+      "semantic_fields": 0,
+      "total": 153
+    },
+    "lean_vs_fresh": {
+      "by_field": {},
+      "semantic_fields": 0,
+      "total": 0
+    },
+    "lean_vs_inc": {
+      "by_field": {
+        "pos_cyc": 104,
+        "reason": 49
+      },
+      "semantic_fields": 0,
+      "total": 153
+    }
+  },
+  "elapsed_seconds": 3.93,
+  "ema_100_query_burst": {
+    "clipped_within_rho": true,
+    "dim": 384,
+    "max_clipped_drift": 0.05,
+    "max_unclipped_drift": 0.9997607881,
+    "rho": 0.05,
+    "steps": 100,
+    "unclipped_breached_rho": true
+  },
+  "gates": {
+    "comparator_detects_all_injected_faults": true,
+    "coverage_structural": true,
+    "coverage_three_valued": true,
+    "ema_100_query_burst_bounded": true,
+    "inc_stratum0_materialization_matches_model": true,
+    "inc_vs_fresh_semantic": true,
+    "lean_cli_all_snapshots_ok": true,
+    "lean_vs_fresh_exact": true,
+    "lean_vs_inc_semantic": true,
+    "materialization_comparator_detects_all_injected_faults": true,
+    "min_asof_missing_parent": true,
+    "min_checkpoints": true,
+    "min_sequences": true,
+    "oracle_agrees_val": true,
+    "spec_sha256_locked": true
+  },
+  "generation": {
+    "attestations": 12149,
+    "duplicate_triples": 495,
+    "nonstrict_sequences": 411,
+    "strict_sequences": 589,
+    "withdrawn": 2656
+  },
+  "incremental_pitfall_b_pruning_disclosure": {
+    "explanation": "The incremental store prunes Pitfall-B shielded nodes (ek5_v3_stratified.py:665: an already-F node with a positive-cycle or sigma shield is skipped instead of re-solved), so its telemetry fields pos_cyc and reason can legitimately differ from a from-scratch evaluation. eff_auth, val, cur, eligibility and node_set never diverge.",
+    "nonsemantic_differences_inc_vs_fresh": {
+      "pos_cyc": 104,
+      "reason": 49
+    },
+    "nonsemantic_differences_lean_vs_inc": {
+      "pos_cyc": 104,
+      "reason": 49
+    },
+    "nonsemantic_total": 306,
+    "scope": "incremental-with-deletions: conformance-tested across 1000 deletion/cycle sequences, unproven in Lean",
+    "semantic_divergences_by_field": {
+      "cur": 0,
+      "eff_auth": 0,
+      "eligibility": 0,
+      "node_set": 0,
+      "val": 0
+    },
+    "semantic_divergences_total": 0,
+    "status": "conformance_tested_unproven_in_lean"
+  },
+  "incremental_with_deletions_status": "conformance_tested_unproven_in_lean",
+  "lean_cli": {
+    "not_ok": 0,
+    "path": "ek5_ref_cli.exe",
+    "sha256": "76be283f8ab7e4f174f6a945b183c64514228465e131dbcdf9fd25c93791d189",
+    "snapshots_evaluated": 7722
+  },
+  "ok": true,
+  "oracle": {
+    "derivation": "val, eff_auth and authority-qualified refs are derived from the raw model snapshot only (no store tables)",
+    "mismatch_counts": {
+      "lean": 0,
+      "python_fresh": 0,
+      "python_inc": 0
+    },
+    "samples": []
+  },
+  "schema_version": 1,
+  "seed": 20261124,
+  "sequences": 1000,
+  "spec_lock": {
+    "actual_sha256": "63fe3e644bdef93160c5d612bfc7d7086af03c3d15cf34417402a89a86cdc6eb",
+    "claimed_sha256": "63fe3e644bdef93160c5d612bfc7d7086af03c3d15cf34417402a89a86cdc6eb",
+    "locked_before_proofs": true,
+    "ok": true
+  },
+  "steps_per_sequence": 6,
+  "stratum0_materialization": {
+    "checkpoints_checked": 7722,
+    "mismatches": 0,
+    "samples": [],
+    "source": "snapshots are derived from _Model's recorded mutation history; the incremental store's materialization is compared against them"
+  },
+  "tier": "ceiling-tier differential against the production ek5_v3_stratified.StratifiedEvidenceStore",
+  "tool": "formal/run_conformance.py"
+}
