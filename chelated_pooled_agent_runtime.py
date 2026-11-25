@@ -1273,6 +1273,7 @@ class LiveVLLMWorkerBackend(WorkerBackend):
                 "model": self.model,
                 "temperature": 0.0,
                 "max_tokens": 96,
+                "chat_template_kwargs": {"enable_thinking": False},
                 "messages": [
                     {"role": "system", "content": system_msg},
                     {"role": "user", "content": user_msg},

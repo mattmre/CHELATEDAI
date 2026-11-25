@@ -1,7 +1,7 @@
 {
   "bundle_id": 62,
   "demo_id": "D13",
-  "deterministic_sha256": "94be9c0ea4fe068a28b640023d802dba530dd902113de4542aaf6118973eb141",
+  "deterministic_sha256": "f6e6677e65a9975646f76d539c556b58dd282d56f7fa9a6d0b723ad720b4b8b9",
   "gates": {
     "all_eligible_jobs_accounted": true,
     "beats_full_restart_rebuild_jpm": true,
@@ -12,22 +12,22 @@
     "sqlite_reopen_symmetric_with_ek5": true,
     "zero_stale_commits_on_zeromu_ek5": true
   },
-  "generated_utc": "2026-11-25T11:32:22.412763+00:00",
+  "generated_utc": "2026-11-25T12:32:20.772923+00:00",
   "item": "4",
   "manifest_file": "pv7_w20_d13_manifest.json",
-  "manifest_sha256": "df5a9fc2482e67577ac389fae21cf100214f0250db3298cbcbc8533c39bb4f1c",
+  "manifest_sha256": "0a1d971fbbcc1dd8fecf763028c8d409df76631f3fac44cf8f4fcb0492352ba8",
   "mode": "stage1-controlled-replay",
   "overall_pass": true,
   "requested_model": null,
   "runtime": {
     "cuda_visible_devices": "",
-    "platform": "Linux-6.17.0-1029-nvidia-aarch64-with-glibc2.39",
-    "python_version": "3.12.3"
+    "platform": "Windows-10-10.0.26300-SP0",
+    "python_version": "3.11.9"
   },
   "schema_version": "pv7_report_receipt_v1",
   "served_model": null,
   "source_file_sha256": {
-    "chelated_pooled_agent_runtime.py": "7451ac47684e2a50a5ed4c86ed95d5c39ef826bcb014eabdd499f20715981ebb",
+    "chelated_pooled_agent_runtime.py": "5a6ceced76259adbcc0dd8b1d9e03ee9a98f1725b6bf02d8dc00b71abdd819c6",
     "scripts/run_pv7_w20_d13_pooled_agent_loops.py": "9c2ebc3381e81f8c4ef1b0145733241ebd6fe28419e344a6ec4675a3bd67dbcf"
   },
   "spine_digest": "32693f54e0ce7ad3d401ceb752ae4723b0eee251f6d49b95cdfb26a6201971e9",
