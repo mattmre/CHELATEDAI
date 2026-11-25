@@ -36,7 +36,7 @@
   "evidence_disclosure": {
     "scope": "Live run against three real engines (qdrant, opensearch, pgvector) on a deterministic synthetic fixture; 48_verifier recomputes hashes and per-cell pass flags from the committed receipt without contacting any server.",
     "synthetic": "Fixture pv7-b48-synthetic-gaussian-v1 (12000 x 128 Gaussian, 10000 queries, fixed seed); is_wild_corpus is false. Not a wild-corpus or production-distribution result.",
-    "tuning": "recall/p95 limits (recall gap and 35 ms p95) are preregistered constants; engine index parameters were not swept per engine.",
+    "tuning": "recall/p95 limits (0.01 recall gap and 35 ms p95) are preregistered constants; engine index parameters were not swept per engine within the live script, HOWEVER commit 25ae2067 (which first committed the live receipt) simultaneously raised BASE_EF from 100 to 220, Qdrant HNSW m from 16 to 64, ef_construct from 128 to 512, and full_scan_threshold from 1 to 10, and added the OpenSearch exact-search lock and pgvector max_scan_tuples/scan_mem_multiplier scan knobs; the receipt records none of these knobs and stamps spine_commit d4454e2d (which predates hnsw_prefilter_pushdown.py), so knob tuning against the synthetic evaluation fixture is NOT excluded.",
     "sla": "Recorded latencies are from one host and one run and are only range-checked offline; the verifier cannot reproduce them.",
     "not_verified": "Server-side behaviour at scale, other engines/versions, and wild data."
   }

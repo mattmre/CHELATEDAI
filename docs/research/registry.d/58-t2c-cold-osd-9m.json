@@ -39,7 +39,7 @@
   },
   "evidence_tier": "verified-mixed",
   "evidence_disclosure": {
-    "scope": "Cold-OSD 9M scanner with a symmetric WAL codec shared by the incumbent and challenger paths; mixed verified/drycheck evidence.",
+    "scope": "Cold-OSD 9M scanner with a symmetric WAL codec shared by the incumbent and challenger paths; mixed local-drycheck floor evidence ONLY — no live 9.47M hardware or live Qdrant measurement exists (live_measurement=false).",
     "codec_symmetry": "Under the shared codec the clustered cases save +19,899 / +18,855 / +22,503 bytes; the scattered case is a 0-byte tie. Versus the floor row the scattered case is a verified -720 B loss; the as-built delta is +1,200 B.",
     "sector": "Costs are modelled on 512 B sectors; other sector sizes are not measured.",
     "statistics": "Zero-variance LCB is labelled as such: a zero-variance bound is not a confidence interval.",

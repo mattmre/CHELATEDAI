@@ -1,5 +1,5 @@
 {
-  "anti_l4_governance_note": "Passing an offline verifier (exit 0) or carrying registry status 'protocol-ready' does NOT make a Post-v7.0 bundle live confirmatory evidence. Among #47-#64: 3 are live-pass on synthetic/emulated fixtures (#48 synthetic 12k Gaussian across live Qdrant/OpenSearch/pgvector; #57 synthetic .cspg cartridges in Spark #3 6GiB cgroup; #61 CPU software emulation with 3/5 live encoders & 2 dry stand-ins), 1 is observational live-shadow-pass (#53, live_pm6_gateway_executed=false), 1 is verified-mixed (#58 symmetric WAL: clustered +18.9k..+22.5k B saved, scattered 0 B tie / -720 B loss vs floor), 1 is stage1-replay-pass whose live vLLM worker run FAILED (#62 overall_pass=false, 0/1680 on-time jobs under 560 ms SLA), 10 are local-drycheck-pass synthetic/smoke fixtures (#47, #49, #50, #51, #52, #54 [H6B_merge 6/12 false], #55 [superiority_is_wild_evidence=false], #56, #59, #60), and 2 are protocol-ready open DEV scorers (#63, #64, 0 partner runs).",
+  "anti_l4_governance_note": "Passing an offline verifier (exit 0) or carrying registry status 'protocol-ready' does NOT make a Post-v7.0 bundle live confirmatory evidence. Among #47-#64: 3 are live-pass on synthetic/emulated fixtures (#48 synthetic 12k Gaussian across live Qdrant/OpenSearch/pgvector, where commit 25ae2067 raised BASE_EF/m/ef_construct/scan knobs alongside the receipt so eval-fixture knob tuning is not excluded; #57 synthetic .cspg cartridges in a Linux aarch64 6GiB cgroup host [host name not recorded in receipt]; #61 CPU software emulation with 3/5 live encoders & 2 dry stand-ins), 1 is observational live-shadow-pass (#53, live_pm6_gateway_executed=false), 1 is verified-mixed (#58 symmetric WAL deterministic drycheck floor only, no live measurement: clustered +18.9k..+22.5k B saved, scattered 0 B tie / -720 B loss vs floor), 1 is stage1-replay-pass whose live vLLM worker run FAILED (#62 overall_pass=false, 0/1680 on-time jobs under 560 ms SLA), 10 are local-drycheck-pass synthetic/smoke fixtures (#47, #49, #50, #51, #52, #54 [H6B_merge endpoint NOT met: passed=false, 6/12 positive vs 11/12 required, LCB95=-0.0090], #55 [superiority_is_wild_evidence=false], #56, #59, #60), and 2 are protocol-ready open DEV scorers (#63, #64, 0 partner runs).",
   "base_verified_registry_sha256": "6ef7eba4f4147de1ea7e51f0ee5ade00711227f3e2a8d4b0c77e5ba7c0511542",
   "bundles": [
     {
@@ -580,7 +580,7 @@
         "scope": "Live run against three real engines (qdrant, opensearch, pgvector) on a deterministic synthetic fixture; 48_verifier recomputes hashes and per-cell pass flags from the committed receipt without contacting any server.",
         "sla": "Recorded latencies are from one host and one run and are only range-checked offline; the verifier cannot reproduce them.",
         "synthetic": "Fixture pv7-b48-synthetic-gaussian-v1 (12000 x 128 Gaussian, 10000 queries, fixed seed); is_wild_corpus is false. Not a wild-corpus or production-distribution result.",
-        "tuning": "recall/p95 limits (recall gap and 35 ms p95) are preregistered constants; engine index parameters were not swept per engine."
+        "tuning": "recall/p95 limits (0.01 recall gap and 35 ms p95) are preregistered constants; engine index parameters were not swept per engine within the live script, HOWEVER commit 25ae2067 (which first committed the live receipt) simultaneously raised BASE_EF from 100 to 220, Qdrant HNSW m from 16 to 64, ef_construct from 128 to 512, and full_scan_threshold from 1 to 10, and added the OpenSearch exact-search lock and pgvector max_scan_tuples/scan_mem_multiplier scan knobs; the receipt records none of these knobs and stamps spine_commit d4454e2d (which predates hnsw_prefilter_pushdown.py), so knob tuning against the synthetic evaluation fixture is NOT excluded."
       },
       "evidence_tier": "live-pass",
       "fragment_file": "docs/research/registry.d/48-t6a-engine-closure.json",
@@ -692,6 +692,7 @@
       "bundle_id": "pv7_54-t6b-12domain-4hop",
       "evidence_disclosure": {
         "burn_clean_scope": "local_drycheck_smoke_partial_inventory (confirmatory_eligible=false).",
+        "failed_endpoint": "H6B_merge primary merge endpoint NOT met on the committed drycheck fixture (H6B_merge.passed=false: 6/12 positive domains vs 11/12 required in code / >=10/12 in registry prose, LCB95=-0.0090); the passing gate h6b_merge_evaluated verifies only that the statistic was computed, NOT that H6B_merge passed.",
         "scope": "Local drycheck of the 12-domain 4-hop gauntlet.",
         "sla": "No latency or SLA claim.",
         "synthetic": "Synthetic domain fixtures; domain names are labels.",
@@ -767,7 +768,7 @@
       "bundle_id": "pv7_58-t2c-cold-osd-9m",
       "evidence_disclosure": {
         "codec_symmetry": "Under the shared codec the clustered cases save +19,899 / +18,855 / +22,503 bytes; the scattered case is a 0-byte tie. Versus the floor row the scattered case is a verified -720 B loss; the as-built delta is +1,200 B.",
-        "scope": "Cold-OSD 9M scanner with a symmetric WAL codec shared by the incumbent and challenger paths; mixed verified/drycheck evidence.",
+        "scope": "Cold-OSD 9M scanner with a symmetric WAL codec shared by the incumbent and challenger paths; mixed local-drycheck floor evidence ONLY \u2014 no live 9.47M hardware or live Qdrant measurement exists (live_measurement=false).",
         "sector": "Costs are modelled on 512 B sectors; other sector sizes are not measured.",
         "sla": "No latency or SLA claim.",
         "statistics": "Zero-variance LCB is labelled as such: a zero-variance bound is not a confidence interval.",
@@ -902,7 +903,7 @@
   "pv7_spine_digest": "32693f54e0ce7ad3d401ceb752ae4723b0eee251f6d49b95cdfb26a6201971e9",
   "release_status": "PRE-RELEASE / HUMAN AUDIT & CLEAN-RERUN GATES PENDING",
   "schema_version": "complete_64_bundle_evidence_scorecard_v1",
-  "scorecard_sha256": "6a2a254b49e6683b0f5b186d0f862df41871f249c8d54c968b38c9493f68a512",
+  "scorecard_sha256": "192855cdfd2d1400ef8d4adea28a607d941e5281cd59f01e5a81bd01454abffe",
   "totals": {
     "base_v7_bundles_1_to_46": 46,
     "by_honest_evidence_classification": {

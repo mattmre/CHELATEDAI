@@ -132,13 +132,17 @@ def build_scorecard() -> Dict[str, Any]:
         "anti_l4_governance_note": (
             "Passing an offline verifier (exit 0) or carrying registry status 'protocol-ready' does NOT make a "
             "Post-v7.0 bundle live confirmatory evidence. Among #47-#64: 3 are live-pass on synthetic/emulated "
-            "fixtures (#48 synthetic 12k Gaussian across live Qdrant/OpenSearch/pgvector; #57 synthetic .cspg "
-            "cartridges in Spark #3 6GiB cgroup; #61 CPU software emulation with 3/5 live encoders & 2 dry stand-ins), "
+            "fixtures (#48 synthetic 12k Gaussian across live Qdrant/OpenSearch/pgvector, where commit 25ae2067 raised "
+            "BASE_EF/m/ef_construct/scan knobs alongside the receipt so eval-fixture knob tuning is not excluded; #57 "
+            "synthetic .cspg cartridges in a Linux aarch64 6GiB cgroup host [host name not recorded in receipt]; #61 "
+            "CPU software emulation with 3/5 live encoders & 2 dry stand-ins), "
             "1 is observational live-shadow-pass (#53, live_pm6_gateway_executed=false), 1 is verified-mixed (#58 "
-            "symmetric WAL: clustered +18.9k..+22.5k B saved, scattered 0 B tie / -720 B loss vs floor), 1 is "
+            "symmetric WAL deterministic drycheck floor only, no live measurement: clustered +18.9k..+22.5k B saved, "
+            "scattered 0 B tie / -720 B loss vs floor), 1 is "
             "stage1-replay-pass whose live vLLM worker run FAILED (#62 overall_pass=false, 0/1680 on-time jobs under "
             "560 ms SLA), 10 are local-drycheck-pass synthetic/smoke fixtures (#47, #49, #50, #51, #52, #54 [H6B_merge "
-            "6/12 false], #55 [superiority_is_wild_evidence=false], #56, #59, #60), and 2 are protocol-ready open DEV "
+            "endpoint NOT met: passed=false, 6/12 positive vs 11/12 required, LCB95=-0.0090], #55 "
+            "[superiority_is_wild_evidence=false], #56, #59, #60), and 2 are protocol-ready open DEV "
             "scorers (#63, #64, 0 partner runs)."
         ),
         "bundles": rows,

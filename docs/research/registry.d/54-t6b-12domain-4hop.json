@@ -67,6 +67,7 @@
   "evidence_tier": "local-drycheck-pass",
   "evidence_disclosure": {
     "scope": "Local drycheck of the 12-domain 4-hop gauntlet.",
+    "failed_endpoint": "H6B_merge primary merge endpoint NOT met on the committed drycheck fixture (H6B_merge.passed=false: 6/12 positive domains vs 11/12 required in code / >=10/12 in registry prose, LCB95=-0.0090); the passing gate h6b_merge_evaluated verifies only that the statistic was computed, NOT that H6B_merge passed.",
     "synthetic": "Synthetic domain fixtures; domain names are labels.",
     "tuning": "Preregistered constants; no wild-corpus validation.",
     "sla": "No latency or SLA claim.",
