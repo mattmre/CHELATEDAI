@@ -54,6 +54,10 @@ SPINE_DIGEST = "32693f54e0ce7ad3d401ceb752ae4723b0eee251f6d49b95cdfb26a6201971e9
 RECEIPT_NAME = "48-t6a-engine-closure.json"
 FIXTURE_ID = "pv7-b48-synthetic-gaussian-v1"
 FIXTURE_SEED = 480017
+# The fixture is a synthetic Gaussian route probe, never a wild corpus; stamped at the
+# receipt top level in both modes so it cannot be read as wild-corpus evidence.
+FIXTURE_ORIGIN = "synthetic_engine_route_probe"
+IS_WILD_CORPUS = False
 RETRACTION_PERCENTAGES = (0, 10, 50, 90)
 LIVE_REQUESTS = 10_000
 LIVE_POPULATION = 12_000
@@ -262,7 +266,24 @@ def run_cell(backend, queries, epochs, density, admission, *, live):
         route_passed = route_passed and qdrant_evidence["exact_fallback_triggered"] is False
     if isinstance(backend, PgvectorPrefilter):
         route_passed = route_passed and all(profile["route"] == "iterative_hnsw" for profile in profiles)
-    graph_telemetry_complete = len(visits) == len(queries) if qdrant or not live else None
+    per_query_visits = len(visits) == len(queries)
+    graph_telemetry_basis = "per_query_visit_counts" if per_query_visits else None
+    if qdrant and not per_query_visits:
+        # Stock Qdrant (e.g. 1.20.2) /telemetry exposes the filtered-HNSW route and the
+        # exact-fallback counters but no per-query visited_graph_candidates. The measured
+        # route/fallback delta over every paired request plus every plan probe is the
+        # graph-telemetry evidence there; visit counts are recorded as unavailable.
+        stock_route_verified = (
+            qdrant_evidence["route"] == "filtered_hnsw"
+            and qdrant_evidence["exact_fallback_triggered"] is False
+            and all(profile.get("route") == "filtered_hnsw" and profile["exact_fallback_triggered"] is False
+                    for profile in profiles)
+        )
+        graph_telemetry_basis = "qdrant_route_and_fallback_counters" if stock_route_verified else None
+    if qdrant or not live:
+        graph_telemetry_complete = graph_telemetry_basis is not None
+    else:
+        graph_telemetry_complete = None
     telemetry_passed = route_passed and graph_telemetry_complete is not False
     recall_passed = sum(recalls) >= math.ceil((1 - RECALL_GAP_LIMIT) * expected * len(queries))
     performance_passed = candidate_latency["p95_ms"] < P95_LIMIT_MS and recall_passed if live else None
@@ -275,6 +296,7 @@ def run_cell(backend, queries, epochs, density, admission, *, live):
         "plan_probes": profiles, "probed_exact_fallback_count": fallback_count,
         "route_evidence_passed": route_passed, "qdrant_measured_route": qdrant_evidence,
         "graph_candidate_sample_count": len(visits), "graph_telemetry_complete": graph_telemetry_complete,
+        "graph_telemetry_basis": graph_telemetry_basis, "per_query_visit_counts_available": bool(visits),
         "visited_graph_candidates": sum(visits) if visits else None,
         "telemetry_passed": telemetry_passed, "performance_passed": performance_passed,
         "passed": not invalid and telemetry_passed and (performance_passed if live else counters["timeouts"] == 0),
@@ -343,10 +365,12 @@ def execute(mode, args=None):
         }]
     return {
         "schema": 1, "bundle_id": BUNDLE_ID, "mode": mode,
+        "fixture_origin": FIXTURE_ORIGIN, "is_wild_corpus": IS_WILD_CORPUS,
         "spine_commit": SPINE_COMMIT, "spine_digest": SPINE_DIGEST,
         "fixture": {
             "id": FIXTURE_ID, "population": shape[0], "dimension": shape[1], "seed": FIXTURE_SEED,
-            "queries": len(queries), "synthetic": True, "digest": _json_sha256({
+            "queries": len(queries), "synthetic": True, "origin": FIXTURE_ORIGIN,
+            "is_wild_corpus": IS_WILD_CORPUS, "digest": _json_sha256({
                 "vectors": hashlib.sha256(vectors.astype("<f4", copy=False).tobytes()).hexdigest(),
                 "queries": hashlib.sha256(queries.astype("<f4", copy=False).tobytes()).hexdigest(),
                 "epochs": epochs.tolist(), "counts": {density: cell.admitted_count for density, cell in cells.items()},

@@ -266,7 +266,21 @@ async function init(){
   }catch(e){setStatus(e.message,true);}
 }
 $("scenario").addEventListener("change",function(){S.sid=this.value;S.step=1;load();});
-$("mode").addEventListener("change",function(){$("token").hidden=this.value!=="nda";load();loadScore();});
+function refresh(){load();loadScore();}
+$("mode").addEventListener("change",function(){
+  var nda=this.value==="nda";$("token").hidden=!nda;
+  if(nda&&!$("token").value){setStatus("Enter the internal token to load the internal view.",false);return;}
+  refresh();
+});
+// B61-4: re-fetch once a token is entered/changed while the internal view is selected (change fires on blur/enter; input on every edit)
+var tokTimer=null;
+function onToken(){
+  if($("mode").value!=="nda"||!$("token").value){return;}
+  if(tokTimer){clearTimeout(tokTimer);}
+  tokTimer=setTimeout(refresh,300);
+}
+$("token").addEventListener("change",onToken);
+$("token").addEventListener("input",onToken);
 $("ask").addEventListener("click",function(){act(async function(){
   var v=$("custom").value.trim();if(!v){throw new Error("Type a flow description first.");}
   var d=await call("POST","/query",{scenario:S.sid,step:S.step,mode:mode(),text:v});

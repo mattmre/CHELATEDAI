@@ -42,6 +42,7 @@ from chelated_pv7_spine.ek5_reason_canonicalizer import (
 from chelated_pv7_spine.tra1_weight_sha_guard import (
     EMPTY_ADAPTER_SHA256,
     TRA1StateIdentityContract,
+    StaleWeightRevisionError,
     sha256_digest,
 )
 from ek5_v3_stratified import EdgeAttestation, StratifiedEvent, StratifiedEvidenceStore
@@ -60,6 +61,125 @@ BEAM_CONTEXT_TOKENS = 131_072
 def _sha256_json(payload: Mapping[str, Any]) -> str:
     raw = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode("utf-8")
     return hashlib.sha256(raw).hexdigest()
+
+
+_UNAUTHENTICATED_SUFFIXES = {".json", ".npz"}
+
+
+def _manifest_signature_ok(manifest: Mapping[str, Any]) -> bool:
+    digests = manifest.get("weight_file_digests")
+    payload = manifest.get("payload_sha256")
+    signature = manifest.get("signature_sha256")
+    if not isinstance(digests, Mapping) or not digests:
+        return False
+    if not isinstance(payload, str) or len(payload) != 64:
+        return False
+    if not isinstance(signature, str) or len(signature) != 64:
+        return False
+    body = {
+        "payload_sha256": payload,
+        "weight_file_digests": {str(key): str(value) for key, value in sorted(digests.items())},
+    }
+    expected = sha256_digest(json.dumps(body, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode("utf-8"))
+    return signature == expected
+
+
+def resolve_weight_provenance(
+    *,
+    is_live: bool,
+    weight_bytes: Optional[bytes] = None,
+    weight_paths: Optional[Sequence[str]] = None,
+    provenance_manifest: Optional[Mapping[str, Any]] = None,
+    content_bytes: bytes = b"",
+) -> Dict[str, Any]:
+    """Require real weight bytes or a signed manifest before a live stamp."""
+    file_digests: Dict[str, str] = {}
+    saw_unauth = False
+    for raw_path in weight_paths or ():
+        path = Path(str(raw_path))
+        if not path.is_file():
+            continue
+        if path.suffix.lower() in _UNAUTHENTICATED_SUFFIXES:
+            saw_unauth = True
+            continue
+        file_digests[str(path)] = sha256_digest(path.read_bytes())
+    if file_digests:
+        blob = json.dumps(file_digests, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode("utf-8")
+        return {
+            "authenticated": True,
+            "reason": "weight-file-digests",
+            "base_weights_sha256": sha256_digest(blob),
+            "weight_file_digests": file_digests,
+        }
+    if weight_bytes:
+        return {
+            "authenticated": True,
+            "reason": "weight-bytes",
+            "base_weights_sha256": sha256_digest(bytes(weight_bytes)),
+            "weight_file_digests": {},
+        }
+    if provenance_manifest is not None and _manifest_signature_ok(provenance_manifest):
+        return {
+            "authenticated": True,
+            "reason": "signed-provenance-manifest",
+            "base_weights_sha256": str(provenance_manifest["payload_sha256"]),
+            "weight_file_digests": {str(k): str(v) for k, v in provenance_manifest["weight_file_digests"].items()},
+        }
+    content_sha = sha256_digest(content_bytes)
+    if not is_live:
+        return {
+            "authenticated": False,
+            "reason": "drycheck-content-bytes",
+            "base_weights_sha256": content_sha,
+            "weight_file_digests": {},
+        }
+    reason = "unauthenticated-json-or-npz" if saw_unauth or weight_paths else "refused-unauthenticated-weights"
+    return {
+        "authenticated": False,
+        "reason": reason,
+        "base_weights_sha256": content_sha,
+        "weight_file_digests": {},
+    }
+
+
+def _checkpoint_identity(
+    *,
+    conversation_id: str,
+    branch_name: str,
+    prefix_step: int,
+    events_snapshot: Sequence[Mapping[str, Any]],
+    attestations_snapshot: Sequence[Mapping[str, Any]],
+) -> TRA1StateIdentityContract:
+    """Bind TRA-1 to the checkpoint snapshot bytes, not to a label string."""
+    snapshot_bytes = json.dumps(
+        {
+            "attestations": [dict(row) for row in attestations_snapshot],
+            "branch_name": branch_name,
+            "conversation_id": conversation_id,
+            "events": [dict(row) for row in events_snapshot],
+            "prefix_step": int(prefix_step),
+        },
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=True,
+    ).encode("utf-8")
+    base = sha256_digest(snapshot_bytes)
+    return TRA1StateIdentityContract(
+        base_weights_sha256=base,
+        adapter_weights_sha256=EMPTY_ADAPTER_SHA256,
+        config_sha256=_sha256_json(
+            {
+                "branch_name": branch_name,
+                "bundle_id": BUNDLE_ID,
+                "conversation_id": conversation_id,
+                "prefix_step": int(prefix_step),
+            }
+        ),
+        tokenizer_sha256=sha256_digest(base.encode("utf-8")),
+        kv_or_state_dtype="float16",
+        rope_freq_base=1_000_000.0,
+        rope_scaling_hash=sha256_digest(snapshot_bytes[:64] or snapshot_bytes),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -369,8 +489,9 @@ def ingest_beam_128k_conversations(
         doc_texts = [t.text for c in convs for t in c.derivative_turns if t.text]
         query_texts = [q.query_text for c in convs for q in c.questions if q.query_text]
         active_ledger = build_burn_ledger() if ledger is None else ledger
+        burn_id = "pv7-b51-schema-drycheck" if source_path is None else "pv7-b51-live-caller"
         assert_corpus_unburned(
-            "beam-128k-gbench",
+            burn_id,
             doc_texts=doc_texts,
             query_texts=query_texts,
             historical_fingerprints=historical_fingerprints,
@@ -378,9 +499,37 @@ def ingest_beam_128k_conversations(
         )
         burn_verified = True
 
+    content_bytes = "\n".join(t.text for c in convs for t in c.derivative_turns).encode("utf-8")
+    manifest = None
+    weight_paths: Optional[Sequence[str]] = None
+    weight_bytes = None
+    if source_path is not None:
+        raw_payload = json.loads(Path(source_path).read_text(encoding="utf-8"))
+        if isinstance(raw_payload, dict):
+            manifest = raw_payload.get("provenance_manifest")
+            weight_paths = raw_payload.get("weight_paths")
+            weight_hex = raw_payload.get("weight_bytes_hex")
+            if isinstance(weight_hex, str) and weight_hex:
+                weight_bytes = bytes.fromhex(weight_hex)
+        sibling = Path(source_path).parent / "provenance_manifest.json"
+        if manifest is None and sibling.is_file():
+            manifest = json.loads(sibling.read_text(encoding="utf-8"))
+        if not weight_paths:
+            weight_paths = [str(item) for item in Path(source_path).parent.glob("*.safetensors")]
+    provenance = resolve_weight_provenance(
+        is_live=source_path is not None,
+        weight_bytes=weight_bytes,
+        weight_paths=weight_paths,
+        provenance_manifest=manifest if isinstance(manifest, Mapping) else None,
+        content_bytes=content_bytes,
+    )
     receipt = {
         "source_kind": source_kind,
-        "gbench_commit": GBENCH_CANONICAL_COMMIT,
+        "dataset_origin": (
+            "synthetic_schema_drycheck_fixture" if source_path is None else "live-caller-supplied"
+        ),
+        "gbench_commit": "",
+        "weight_provenance": provenance,
         "conversation_clusters": n_convs,
         "total_questions": n_questions,
         "questions_per_conversation": sorted({len(c.questions) for c in convs}),
@@ -596,14 +745,12 @@ def _snapshot_checkpoint(
         for att in sorted(store.attestations.values(), key=lambda a: a.attestation_id)
         if att.active
     )
-    contract = TRA1StateIdentityContract(
-        base_weights_sha256=sha256_digest(f"beam128k:{conversation_id}:{branch_name}".encode("utf-8")),
-        adapter_weights_sha256=EMPTY_ADAPTER_SHA256,
-        config_sha256=_sha256_json({"bundle_id": BUNDLE_ID, "prefix_step": prefix_step}),
-        tokenizer_sha256=sha256_digest(b"beam128k-tokenizer-v1"),
-        kv_or_state_dtype="float16",
-        rope_freq_base=1_000_000.0,
-        rope_scaling_hash=sha256_digest(b"yarn-128k"),
+    contract = _checkpoint_identity(
+        conversation_id=conversation_id,
+        branch_name=branch_name,
+        prefix_step=prefix_step,
+        events_snapshot=ev_rows,
+        attestations_snapshot=att_rows,
     )
     return ReplayCheckpoint(
         checkpoint_id=f"{conversation_id}:{branch_name}:ckpt_{prefix_step:02d}",
@@ -624,6 +771,17 @@ def restore_store_from_checkpoint(checkpoint: ReplayCheckpoint) -> StratifiedEvi
     restored = StratifiedEvidenceStore(strict_dag_supersede=False, buffer_pending=False)
     events = [StratifiedEvent(**row) for row in checkpoint.events_snapshot]
     atts = [EdgeAttestation(**row) for row in checkpoint.attestations_snapshot]
+    rebuilt = _checkpoint_identity(
+        conversation_id=checkpoint.conversation_id,
+        branch_name=checkpoint.branch_name,
+        prefix_step=checkpoint.prefix_step,
+        events_snapshot=checkpoint.events_snapshot,
+        attestations_snapshot=checkpoint.attestations_snapshot,
+    )
+    if rebuilt.digest() != checkpoint.tra1_state_digest:
+        raise StaleWeightRevisionError(
+            f"checkpoint {checkpoint.checkpoint_id} tra1_state_digest does not match the restored snapshot"
+        )
     restored.apply_mutation(events, atts)
     return restored
 
@@ -889,6 +1047,51 @@ def _evaluate_recency_baseline_branch(
     return scores
 
 
+def _evaluate_withdrawal_aware_recency_branch(
+    conversation: BeamConversation,
+    turns: Sequence[BeamMemoryTurn],
+    branch_name: str,
+) -> List[float]:
+    """Recency baseline that retracts a slot when a later withdrawal is visible."""
+    scores: List[float] = []
+    for question in conversation.questions:
+        visible = [
+            turn
+            for turn in turns
+            if turn.entity == question.entity
+            and turn.slot == question.slot
+            and turn.tx_time <= question.target_tx_time
+            and turn.valid_time <= question.target_valid_time
+        ]
+        claims = [turn for turn in visible if turn.role != "withdrawal"]
+        withdrawals = [turn for turn in visible if turn.role == "withdrawal"]
+        if not claims:
+            pred_status, pred_val = "RETRACTED", None
+        else:
+            latest = max(claims, key=lambda turn: (turn.tx_time, turn.turn_index))
+            later_withdrawal = any(turn.tx_time >= latest.tx_time for turn in withdrawals)
+            if later_withdrawal:
+                pred_status, pred_val = "RETRACTED", None
+            else:
+                pred_status, pred_val = "ADMIT", latest.claim_value
+        expected_status = (
+            question.expected_derivative_status
+            if branch_name == "derivative_only"
+            else question.expected_independent_status
+        )
+        if expected_status == "RETRACTED":
+            ok = pred_status == "RETRACTED"
+        else:
+            ok = pred_status == expected_status and pred_val == question.expected_claim_value
+        scores.append(1.0 if ok else 0.0)
+    return scores
+
+
+def _clears_live_ni(boot: ClusterBootstrapResult) -> bool:
+    """Superiority or non-inferiority at the -0.010 floor. A tied LCB of 0 clears."""
+    return float(boot.mean) >= 0.0 and float(boot.lcb_95) > -0.010
+
+
 def run_beam_128k_paired_replay(
     conversations: Sequence[BeamConversation],
     *,
@@ -904,6 +1107,7 @@ def run_beam_128k_paired_replay(
     ek5_joint_by_conv: Dict[str, List[float]] = {}
     sql_joint_by_conv: Dict[str, List[float]] = {}
     recency_joint_by_conv: Dict[str, List[float]] = {}
+    aware_joint_by_conv: Dict[str, List[float]] = {}
 
     total_prefixes = 0
     exact_parity_prefixes = 0
@@ -919,6 +1123,10 @@ def run_beam_128k_paired_replay(
         sql_indep = _evaluate_sql_challenger_branch(conv, conv.independent_turns, "independent_corroboration")
         rec_deriv = _evaluate_recency_baseline_branch(conv, conv.derivative_turns, "derivative_only")
         rec_indep = _evaluate_recency_baseline_branch(conv, conv.independent_turns, "independent_corroboration")
+        aware_deriv = _evaluate_withdrawal_aware_recency_branch(conv, conv.derivative_turns, "derivative_only")
+        aware_indep = _evaluate_withdrawal_aware_recency_branch(
+            conv, conv.independent_turns, "independent_corroboration"
+        )
 
         total_prefixes += deriv_res["total_prefixes"] + indep_res["total_prefixes"]
         exact_parity_prefixes += deriv_res["exact_parity_prefixes"] + indep_res["exact_parity_prefixes"]
@@ -938,6 +1146,10 @@ def run_beam_128k_paired_replay(
         recency_joint_by_conv[conv.conversation_id] = [
             1.0 if (d == 1.0 and i == 1.0) else 0.0
             for d, i in zip(rec_deriv, rec_indep)
+        ]
+        aware_joint_by_conv[conv.conversation_id] = [
+            1.0 if (d == 1.0 and i == 1.0) else 0.0
+            for d, i in zip(aware_deriv, aware_indep)
         ]
 
         per_conversation_summaries.append(
@@ -969,6 +1181,9 @@ def run_beam_128k_paired_replay(
     ek5_vs_sql_boot = paired_conversation_cluster_bootstrap(
         ek5_joint_by_conv, sql_joint_by_conv, n_resamples=n_bootstrap, seed=seed + 4
     )
+    ek5_vs_aware_boot = paired_conversation_cluster_bootstrap(
+        ek5_joint_by_conv, aware_joint_by_conv, n_resamples=n_bootstrap, seed=seed + 5
+    )
 
     parity_rate = exact_parity_prefixes / float(max(total_prefixes, 1))
     summary_payload = {
@@ -988,7 +1203,10 @@ def run_beam_128k_paired_replay(
             "paired_joint": joint_boot.to_dict(),
             "ek5_minus_recency_baseline": ek5_vs_recency_boot.to_dict(),
             "ek5_minus_sql_challenger": ek5_vs_sql_boot.to_dict(),
+            "ek5_minus_withdrawal_aware_recency": ek5_vs_aware_boot.to_dict(),
         },
+        "ek5_ni_vs_sql": _clears_live_ni(ek5_vs_sql_boot),
+        "ek5_ni_vs_withdrawal_aware_recency": _clears_live_ni(ek5_vs_aware_boot),
         "conversations": per_conversation_summaries,
     }
     summary_payload["replay_sha256"] = _sha256_json(

@@ -611,6 +611,168 @@ class KernelSdkTests(unittest.TestCase):
         self.assertNotIn(CANARY_A, (PKG / "README.md").read_text(encoding="utf-8"))
         self.assertNotIn(CANARY_B, (PKG / "README.md").read_text(encoding="utf-8"))
 
+    def test_high_dim_64_with_200_orthogonal_anchors(self) -> None:
+        rng = np.random.default_rng(6401)
+        q_mat = np.linalg.qr(rng.normal(size=(64, 64)))[0]
+        old = rng.normal(size=(200, 64))
+        new = old @ q_mat.T
+        anchors = [(old[i].tolist(), new[i].tolist()) for i in range(200)]
+        docs = {f"d{i}": (np.eye(64)[i] * 5.0).tolist() for i in range(6)}
+        wrapped = wrap_index(
+            docs,
+            old_dim=64,
+            new_dim=64,
+            unlabeled_anchors=anchors,
+            tenant_id="tenant-dim64",
+        )
+        self.assertEqual(wrapped.contract.fit_count + wrapped.contract.validation_count, 200)
+        self.assertGreater(wrapped.contract.fit_count, 64)
+        self.assertGreater(wrapped.contract.confidence, 0.99)
+        self.assertLess(wrapped.contract.ortho_error, 1e-5)
+        query = (np.eye(64)[0] * 5.0) @ q_mat.T
+        hits = wrapped.search(query.tolist(), k=3)
+        self.assertEqual(hits[0].doc_id, "d0")
+
+    def test_stream_guard_overlapping_prefix_kmp_shift(self) -> None:
+        for profile in ("async_armed", "strict_holdback"):
+            ledger = EventLedger(policy="sec_audit", tenant_id="kmp-tenant")
+            guard = wrap_stream(
+                iter(["NO", "NO", "LEAK", "tail"]),
+                ledger=ledger,
+                restricted_spans=[("NO", "LEAK")],
+                profile=profile,
+                tenant_id="kmp-tenant",
+            )
+            emitted = list(guard)
+            self.assertEqual(emitted, ["NO", "tail"], profile)
+            self.assertEqual(guard.suppressed_spans, 1, profile)
+        multi_ledger = EventLedger(policy="sec_audit", tenant_id="kmp-multi")
+        multi_guard = wrap_stream(
+            iter(["A", "B", "C", "E"]),
+            ledger=multi_ledger,
+            restricted_spans=[("A", "B", "D"), ("B", "C")],
+            profile="async_armed",
+            tenant_id="kmp-multi",
+        )
+        self.assertEqual(list(multi_guard), ["A", "E"])
+        self.assertEqual(multi_guard.suppressed_spans, 1)
+
+    def test_wfs_mutual_refutation_conflict_resolution_and_multiparent_all(self) -> None:
+        for extra_nodes in (0, 1, 2):
+            ledger = EventLedger(policy="sec_audit", tenant_id=f"wfs-{extra_nodes}")
+            ledger.ingest(
+                {
+                    "specversion": "1.0",
+                    "type": "com.chelated.agent.assertion",
+                    "id": "claim-a",
+                    "source": "s1",
+                    "time": 1,
+                    "data": {"refutes": "claim-b", "statement": "A"},
+                }
+            )
+            ledger.ingest(
+                {
+                    "specversion": "1.0",
+                    "type": "com.chelated.agent.assertion",
+                    "id": "claim-b",
+                    "source": "s2",
+                    "time": 2,
+                    "data": {"refutes": "claim-a", "statement": "B"},
+                }
+            )
+            for idx in range(extra_nodes):
+                ledger.ingest(
+                    {
+                        "specversion": "1.0",
+                        "type": "com.chelated.agent.assertion",
+                        "id": f"bystander-{idx}",
+                        "source": "s3",
+                        "time": 3 + idx,
+                        "data": {"statement": f"ok-{idx}"},
+                    }
+                )
+            rows = {row["claim_id"]: row["truth"] for row in ledger.as_of(10, 10)}
+            self.assertEqual(rows["claim-a"], "disputed", extra_nodes)
+            self.assertEqual(rows["claim-b"], "disputed", extra_nodes)
+
+        resolved = EventLedger(policy="cve_vex", tenant_id="vex-resolve")
+        resolved.ingest({"id": "OSV-99", "affected": [{"package": {"name": "pkg"}}], "authority": 70, "time": 1})
+        resolved.ingest(
+            {
+                "document": {"title": "vex", "category": "csaf_vex"},
+                "vulnerabilities": [{"cve": "OSV-99", "product_status": {"known_not_affected": ["pkg"]}}],
+                "authority": 70,
+                "time": 2,
+            }
+        )
+        before = {row["claim_id"]: row["truth"] for row in resolved.as_of(10, 10)}
+        self.assertEqual(before["OSV-99"], "disputed")
+        self.assertEqual(before["OSV-99#2"], "disputed")
+        resolved.ingest(
+            {
+                "specversion": "1.0",
+                "type": "com.chelated.sec.8k",
+                "id": "override-high",
+                "source": "regulator",
+                "authority": 95,
+                "time": 3,
+                "data": {"refutes": "OSV-99#2"},
+            }
+        )
+        after = {row["claim_id"]: row["truth"] for row in resolved.as_of(10, 10)}
+        self.assertEqual(after["override-high"], "current")
+        self.assertEqual(after["OSV-99#2"], "withdrawn")
+        self.assertEqual(after["OSV-99"], "current")
+
+        multi = EventLedger(policy="sec_audit", tenant_id="multi-sup")
+        multi.ingest({"prov:entity": [{"id": "p1", "base": True}, {"id": "p2", "base": True}], "time": 1})
+        multi.ingest(
+            {
+                "prov:entity": {"id": "derived", "base": False},
+                "wasDerivedFrom": [
+                    {"generatedEntity": "derived", "usedEntity": "p1"},
+                    {"generatedEntity": "derived", "usedEntity": "p2"},
+                ],
+                "time": 2,
+            }
+        )
+        both_live = {row["claim_id"]: row["truth"] for row in multi.as_of(10, 10)}
+        self.assertEqual(both_live["derived"], "current")
+        multi.ingest(
+            {
+                "specversion": "1.0",
+                "type": "com.chelated.sec.8k",
+                "id": "kill-p2",
+                "source": "issuer",
+                "authority": 90,
+                "time": 3,
+                "data": {"refutes": "p2"},
+            }
+        )
+        one_dead = {row["claim_id"]: row["truth"] for row in multi.as_of(10, 10)}
+        self.assertEqual(one_dead["p1"], "current")
+        self.assertEqual(one_dead["p2"], "withdrawn")
+        self.assertEqual(one_dead["derived"], "withdrawn")
+
+    def test_ephemeral_ed25519_key_and_optional_private_key(self) -> None:
+        from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+
+        first = EventLedger(policy="sec_audit", tenant_id="same-tenant", disclosure="non_nda")
+        second = EventLedger(policy="sec_audit", tenant_id="same-tenant", disclosure="non_nda")
+        first.ingest({"specversion": "1.0", "type": "com.chelated.sec.filing", "id": "a", "source": "s", "time": 1, "data": {}})
+        second.ingest({"specversion": "1.0", "type": "com.chelated.sec.filing", "id": "a", "source": "s", "time": 1, "data": {}})
+        self.assertNotEqual(first.receipts[0].public_key, second.receipts[0].public_key)
+
+        fixed_key = Ed25519PrivateKey.from_private_bytes(bytes(range(32)))
+        det_a = EventLedger(policy="sec_audit", tenant_id="same-tenant", private_key=fixed_key)
+        det_b = EventLedger(policy="sec_audit", tenant_id="same-tenant", private_key=fixed_key)
+        det_a.ingest({"specversion": "1.0", "type": "com.chelated.sec.filing", "id": "a", "source": "s", "time": 1, "data": {}})
+        det_b.ingest({"specversion": "1.0", "type": "com.chelated.sec.filing", "id": "a", "source": "s", "time": 1, "data": {}})
+        self.assertEqual(det_a.receipts[0].public_key, det_b.receipts[0].public_key)
+        self.assertEqual(det_a.verify_chain(), 1)
+        with self.assertRaises(EnvelopeError):
+            EventLedger(policy="sec_audit", tenant_id="same-tenant", private_key="not-a-key")  # type: ignore[arg-type]
+
 
 class GateTests(unittest.TestCase):
     def test_coldstart_gate(self) -> None:
@@ -646,6 +808,13 @@ class GateTests(unittest.TestCase):
         self.assertEqual(report["canary"]["accuracy"], 1.0)
         self.assertTrue(report["wheel"]["deterministic"])
         self.assertTrue(report["wheel"]["members_ok"])
+        self.assertTrue(report["wheel"]["coldstart_verified"])
+        self.assertTrue(report["negative_control"]["passed"])
+        self.assertTrue(report["negative_control"]["tenant_filter_disabled_canary_readable"])
+        self.assertTrue(report["negative_control"]["tenant_filter_enabled_canary_blocked"])
+        self.assertTrue(all(row["functional_ok"] for row in report["session_records"]))
+        self.assertEqual(report["package_loc"], report["loc"])
+        self.assertEqual(report["wheel_sha256"], report["wheel"]["sha256"])
         self.assertEqual(report["license_problems"], [])
         self.assertLess(report["loc"], 2500)
 

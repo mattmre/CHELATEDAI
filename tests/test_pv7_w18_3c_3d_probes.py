@@ -19,19 +19,29 @@ from chelated_pm6_shadow_probe import (  # noqa: E402
     ShadowTapEnvelope,
     _hidden_from_text,
     execute as execute_shadow,
+    main as main_shadow,
     pm6_release_bytes,
     run_shadow_drycheck,
 )
+from chelated_pv7_spine.burn_ledger import text_fingerprint  # noqa: E402
 from chelated_pv7_spine.fragment_compiler import compile_repo_fragments  # noqa: E402
-from chelated_pv7_spine.claim_registry import claim_registry_sha256  # noqa: E402
+from chelated_pv7_spine.claim_registry import HOLM_FAMILY, claim_registry_sha256  # noqa: E402
 from chelated_qscci_singleton_probe import (  # noqa: E402
     ARM_NAMES,
     DOSE_NORM,
     execute as execute_qscci,
+    main as main_qscci,
     run_qscci_experiment,
+    sae_decoder_direction,
 )
-from scripts.run_pv7_w18_3c_qscci_singleton import execute as runner_qscci  # noqa: E402
-from scripts.run_pv7_w18_3d_pm6_shadow import execute as runner_shadow  # noqa: E402
+from scripts.run_pv7_w18_3c_qscci_singleton import (  # noqa: E402
+    execute as runner_qscci,
+    main as runner_qscci_main,
+)
+from scripts.run_pv7_w18_3d_pm6_shadow import (  # noqa: E402
+    execute as runner_shadow,
+    main as runner_shadow_main,
+)
 
 SPINE_DIGEST = "32693f54e0ce7ad3d401ceb752ae4723b0eee251f6d49b95cdfb26a6201971e9"
 
@@ -58,11 +68,30 @@ class QscciProbeTests(unittest.TestCase):
         self.assertLess(report["selection_cosine_qscci_caa"], 0.95)
         self.assertTrue(report["nuisance_invariance_win"])
         self.assertLess(report["restoration_max_abs_error"], 1e-4)
+        self.assertGreater(report["restoration_corrupt_baseline_mae"], 0.1)
+        self.assertGreater(report["restoration_fraction"], 0.99)
+        self.assertGreater(report["sham_restoration_max_abs_error"], 0.1)
+        self.assertLess(report["sham_restoration_fraction"], 0.25)
         self.assertTrue(report["native_beats_sham"])
+        self.assertEqual(report["burn_inventory_scope"], "local_drycheck_sentinel")
         native = report["arms"][0]
         self.assertGreater(native["removal_mean_abs_delta_y"], 0.0)
+        self.assertTrue(native["restoration_two_pass_patched"])
+        for arm in report["arms"]:
+            self.assertEqual(arm["sampling_unit"], "family")
+            self.assertEqual(arm["n_families"], 32)
+            self.assertEqual(arm["bootstrap_resamples"], 2000)
         collateral = report["arms"][4]
         self.assertGreater(collateral["native_intervention_collateral_retention"], 0.99)
+
+        # Deterministic SAE direction & scoreboard hash across repeated runs.
+        second = execute_qscci("local-drycheck")
+        first = execute_qscci("local-drycheck")
+        self.assertEqual(first["scoreboard_sha256"], second["scoreboard_sha256"])
+        import numpy as np
+
+        sample = np.random.default_rng(7).normal(size=(16, 32))
+        self.assertEqual(sae_decoder_direction(sample).tolist(), sae_decoder_direction(sample).tolist())
 
     def test_fail_closed_before_report(self) -> None:
         opened = {"report": False}
@@ -80,11 +109,17 @@ class QscciProbeTests(unittest.TestCase):
     def test_live_gpu_refuses_weight_load(self) -> None:
         report = runner_qscci("run-live-gpu", "Qwen/Qwen3.5-2B-Base")
         self.assertFalse(report["executed"])
+        self.assertFalse(report["passed"])
         self.assertFalse(report["report_emitted"])
         self.assertFalse(report["live_weights_loaded"])
         self.assertFalse(report["qwen_report_split_executed"])
+        self.assertTrue(report["requires_real_weight_file_sha256"])
+        self.assertTrue(report["requires_historical_burn_inventory"])
         self.assertEqual(report["reason"], "cuda-isolated-live-weights-not-loaded")
+        self.assertEqual(main_qscci(["--mode", "run-live-gpu"]), 2)
+        self.assertEqual(runner_qscci_main(["--mode", "run-live-gpu"]), 2)
         unknown = execute_qscci("run-live-gpu", "not-a-preregistered-model")
+        self.assertFalse(unknown["passed"])
         self.assertEqual(unknown["reason"], "model-not-in-preregistered-set")
 
 
@@ -125,12 +160,21 @@ class ShadowProbeTests(unittest.TestCase):
             self.assertLess(record["holm_adjusted_cp95_upper"], 0.02)
             self.assertLess(record["holm_adjusted_p_value"], 0.05)
             self.assertEqual(record["false_alerts"], 0)
+            self.assertGreater(record["report_max_score"], 0.0)
+            self.assertGreaterEqual(record["threshold"], 4.5)
+        self.assertEqual(report["burn_inventory_scope"], "local_drycheck_sentinel")
+        holm = report["holm_family_disclosure"]
+        self.assertFalse(holm["included_in_t1_confirmatory_holm_family"])
+        self.assertEqual(tuple(holm["t1_claim_registry_holm_family"]), HOLM_FAMILY)
         telemetry = report["telemetry"]
         self.assertFalse(telemetry["counted_in_false_alert_denominator"])
         self.assertFalse(telemetry["r3_confirmatory"])
         self.assertEqual(telemetry["r3_tier"], "T3")
-        self.assertGreater(telemetry["r3_lead_min"], 0)
+        self.assertEqual(telemetry["r3_lead_time_status"], "not_measured_in_local_drycheck")
+        self.assertIsNone(telemetry["r3_lead_min"])
+        self.assertEqual(telemetry["r3_lead_times"], [])
         self.assertEqual(telemetry["singleton_hits"], telemetry["sensitivity_n"])
+        self.assertEqual(telemetry["sparse_hits"], telemetry["sensitivity_n"])
         seen = set()
         for rows in report["family_ids"].values():
             self.assertFalse(seen.intersection(rows))
@@ -139,17 +183,42 @@ class ShadowProbeTests(unittest.TestCase):
     def test_live_shadow_refuses_protected_name_without_opening(self) -> None:
         refused = runner_shadow("run-live-shadow", str(REPO_ROOT / "not-created" / "sealed_key.json"))
         self.assertFalse(refused["executed"])
+        self.assertFalse(refused["passed"])
         self.assertFalse(refused["opened"])
         self.assertEqual(refused["reason"], "protected-path-refused")
+        traversal = runner_shadow("run-live-shadow", str(REPO_ROOT / "scripts" / ".." / "sealed_key.json"))
+        self.assertFalse(traversal["executed"])
+        self.assertFalse(traversal["passed"])
+        self.assertEqual(traversal["reason"], "protected-path-refused")
         missing = execute_shadow("run-live-shadow", str(REPO_ROOT / "not-created" / "ordinary-manifest.json"))
+        self.assertFalse(missing["executed"])
+        self.assertFalse(missing["passed"])
         self.assertEqual(missing["reason"], "manifest-absent")
+        self.assertEqual(main_shadow(["--mode", "run-live-shadow"]), 2)
+        self.assertEqual(runner_shadow_main(["--mode", "run-live-shadow"]), 2)
         with tempfile.TemporaryDirectory() as folder:
             path = Path(folder) / "shadow-manifest.json"
             path.write_text(json.dumps({"prompts": ["alpha beta gamma delta epsilon zeta"]}), encoding="utf-8")
-            observed = execute_shadow("run-live-shadow", str(path))
+            # Without historical burn inventory, run-live-shadow must fail closed (rc=2).
+            no_burn = execute_shadow("run-live-shadow", str(path))
+            self.assertFalse(no_burn["executed"])
+            self.assertFalse(no_burn["passed"])
+            self.assertEqual(no_burn["reason"], "historical-burn-inventory-required")
+            self.assertEqual(len(no_burn["manifest_sha256"]), 64)
+            self.assertEqual(runner_shadow_main(["--mode", "run-live-shadow", "--pm6-manifest", str(path)]), 2)
+
+            # With real historical burn inventory, observational manifest executes cleanly.
+            hist = {
+                "documents": [text_fingerprint("historical doc shadow test")],
+                "queries": [text_fingerprint("historical query shadow test")],
+            }
+            observed = execute_shadow("run-live-shadow", str(path), historical_fingerprints=hist)
         self.assertTrue(observed["executed"])
+        self.assertTrue(observed["passed"])
         self.assertFalse(observed["report_emitted"])
         self.assertFalse(observed["live_pm6_gateway_executed"])
+        self.assertEqual(len(observed["manifest_sha256"]), 64)
+        self.assertEqual(observed["burn_inventory_scope"], "supplied_historical_inventory")
         self.assertEqual(observed["byte_identical_families"], 1)
 
 

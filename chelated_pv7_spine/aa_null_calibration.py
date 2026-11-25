@@ -1,4 +1,13 @@
-"""Paired identical-arm calibration with exact binomial acceptance bounds."""
+"""Paired identical-arm (A/A) calibration with a one-sided exact binomial acceptance rule.
+
+Under the null hypothesis that both arms are identical, each disjoint split's
+test rejects with probability at most ``ALPHA``. Conservative calibration (few
+or zero rejections) therefore passes; only anti-conservative inflation fails:
+the exact upper-tail binomial p-value of the rejection count against
+``H0: rate <= ALPHA`` must not fall below ``INFLATION_P`` (equivalently the
+one-sided ``1 - INFLATION_P`` Clopper-Pearson lower bound must not exceed
+``ALPHA``). Splits are disjoint, so the trial outcomes are independent.
+"""
 
 import argparse
 import hashlib
@@ -13,7 +22,8 @@ from . import _canonical_json, _json_sha256, _read_json
 
 ALPHA = 0.05
 CONFIDENCE = 0.95
-SCHEMA_VERSION = "pv7_aa_calibration_v1"
+INFLATION_P = 0.01
+SCHEMA_VERSION = "pv7_aa_calibration_v2"
 
 
 def _number(value, *, maximum=math.inf):
@@ -52,10 +62,30 @@ def ndcg_at_10(relevance, ideal_relevance):
     return min(1.0, dcg(ranked) / dcg(ideal))
 
 
+def ndcg_at_10_from_qrels(ranked_doc_ids, qrels):
+    """Compute nDCG@10 with the IDCG taken from every judged document in ``qrels``.
+
+    ``ranked_doc_ids`` is the system ranking; unjudged documents have grade 0.
+    The ideal ranking uses the full qrels, not only the retrieved documents, so a
+    run cannot inflate nDCG by omitting relevant documents from its candidates.
+    """
+    if not isinstance(qrels, Mapping) or not qrels:
+        raise ValueError("Full-qrels nDCG requires a non-empty qrels mapping")
+    if isinstance(ranked_doc_ids, (str, bytes, Mapping)):
+        raise ValueError("ranked_doc_ids must be a sequence of document IDs")
+    ranked = list(ranked_doc_ids)
+    if len(set(ranked)) != len(ranked):
+        raise ValueError("ranked_doc_ids contains duplicate documents")
+    grades = {doc: _number(grade) for doc, grade in qrels.items()}
+    return ndcg_at_10([grades.get(doc, 0.0) for doc in ranked], list(grades.values()))
+
+
 def _retrieval_observation(value):
     if isinstance(value, Mapping):
+        if value.keys() == {"ranked_doc_ids", "qrels"}:
+            return ndcg_at_10_from_qrels(value["ranked_doc_ids"], value["qrels"])
         if value.keys() != {"relevance", "ideal_relevance"}:
-            raise ValueError("Ranked observations require relevance and ideal_relevance")
+            raise ValueError("Ranked observations require ranked_doc_ids and qrels, or relevance and ideal_relevance")
         return ndcg_at_10(value["relevance"], value["ideal_relevance"])
     return _number(value, maximum=1)
 
@@ -125,6 +155,24 @@ def clopper_pearson(rejections, trials, confidence=CONFIDENCE):
     return low, high
 
 
+def binomial_upper_tail_p(rejections, trials, rate=ALPHA):
+    """Exact one-sided p-value P(X >= rejections) for X ~ Binomial(trials, rate)."""
+    if type(trials) is not int or type(rejections) is not int or not 0 <= rejections <= trials or trials < 1:
+        raise ValueError("Expected integer counts with 0 <= rejections <= trials and trials > 0")
+    if type(rate) not in (int, float) or not 0 < rate < 1:
+        raise ValueError("rate must be in (0, 1)")
+    return max(0.0, min(1.0, 1.0 - _binomial_cdf(rejections - 1, trials, rate)))
+
+
+def clopper_pearson_lower_one_sided(rejections, trials, level=1 - INFLATION_P):
+    """One-sided exact lower confidence bound for the binomial rate."""
+    if type(trials) is not int or type(rejections) is not int or not 0 <= rejections <= trials or trials < 1:
+        raise ValueError("Expected integer counts with 0 <= rejections <= trials and trials > 0")
+    if type(level) not in (int, float) or not 0 < level < 1:
+        raise ValueError("level must be in (0, 1)")
+    return _invert_binomial_cdf(rejections - 1, trials, level) if rejections else 0.0
+
+
 def mcnemar_exact(pairs):
     """Calculate the two-sided exact McNemar p-value from paired binary outcomes."""
     wins = losses = 0
@@ -167,27 +215,42 @@ def _paired_randomization_p(pairs, statistic, permutations, randomizer):
 
 
 def _calibrate_metric(pairs, statistic, split_size, trials, permutations, seed):
-    # Sample independently from the fixed same-harness pool. Keep observed
-    # arm labels so drift between identical configurations is still detectable.
-    split_rng = random.Random(seed)
+    # One seeded shuffle, then `trials` pairwise-disjoint splits: no sampling
+    # unit appears in two trials, so trial outcomes are independent and the
+    # rejection count is Binomial(trials, rate) under the null. Observed arm
+    # labels are kept so drift between identical configurations is detectable.
+    order = list(range(len(pairs)))
+    random.Random(seed).shuffle(order)
     test_rng = random.Random(f"{seed}:permutations")
     rejections = 0
-    for _ in range(trials):
-        split = split_rng.sample(pairs, split_size)
+    for trial in range(trials):
+        split = [pairs[index] for index in order[trial * split_size:(trial + 1) * split_size]]
         p_value = (
             mcnemar_exact(split) if statistic is None
             else _paired_randomization_p(split, statistic, permutations, test_rng)
         )
         rejections += p_value <= ALPHA
     lower, upper = clopper_pearson(rejections, trials)
+    inflation_p = binomial_upper_tail_p(rejections, trials, ALPHA)
+    one_sided_lower = clopper_pearson_lower_one_sided(rejections, trials, 1 - INFLATION_P)
+    identical = sum(a == b for a, b in pairs)
+    anti_conservative = inflation_p < INFLATION_P
+    degenerate = identical == len(pairs)
     return {
         "source_pairs": len(pairs),
-        "identical_measured_pairs": sum(a == b for a, b in pairs),
+        "identical_measured_pairs": identical,
         "split_size": split_size,
+        "disjoint_splits": True,
+        "pairs_used": trials * split_size,
         "rejections": rejections,
         "false_rejection_rate": rejections / trials,
         "clopper_pearson_interval": [lower, upper],
-        "alpha_inside_interval": lower <= ALPHA <= upper,
+        "clopper_pearson_lower_one_sided": one_sided_lower,
+        "one_sided_confidence": 1 - INFLATION_P,
+        "inflation_p_value": inflation_p,
+        "anti_conservative": anti_conservative,
+        "degenerate_identical_measurements": degenerate,
+        "passed": not anti_conservative and not degenerate,
     }
 
 
@@ -197,9 +260,16 @@ def run_aa_calibration(
 ):
     """Calibrate four metrics using independently measured pairs from identical arm configurations.
 
-    Retrieval arms accept nDCG@10 values or graded relevance objects. Latency and
-    storage use paired nearest-rank p95, and disposition uses exact McNemar.
-    Inference is conditional on the supplied host/harness pool.
+    Retrieval arms accept nDCG@10 values, ``{"ranked_doc_ids", "qrels"}``
+    objects (full-qrels IDCG) or graded relevance objects. Latency and storage
+    use paired nearest-rank p95, and disposition uses exact McNemar. Each of
+    the ``trials`` splits is disjoint, so every pool needs at least
+    ``trials * split_size`` pairs (``split_size`` defaults to
+    ``len(pool) // trials``). A metric passes unless its rejection count is
+    anti-conservative (exact one-sided binomial p < ``INFLATION_P`` against
+    ``rate <= ALPHA``) or every measured pair is identical (a duplicated arm,
+    not an independent re-measurement). Inference is conditional on the
+    supplied host/harness pool.
     """
     if not isinstance(host_id, str) or not host_id.strip():
         raise ValueError("host_id is required")
@@ -223,9 +293,12 @@ def run_aa_calibration(
     statistics = (_mean_difference, _p95_difference, _p95_difference, None)
     metrics = {}
     for (metric, pairs), statistic in zip(pools.items(), statistics, strict=True):
-        size = max(2, len(pairs) // 2) if split_size is None else split_size
-        if size > len(pairs):
-            raise ValueError(f"split_size exceeds the paired pool for {metric}")
+        size = len(pairs) // trials if split_size is None else split_size
+        if size < 2 or size * trials > len(pairs):
+            raise ValueError(
+                f"{metric} needs {trials} disjoint splits of at least two pairs "
+                f"({trials * max(size, 2)} pairs); got {len(pairs)}"
+            )
         metrics[metric] = _calibrate_metric(pairs, statistic, size, trials, permutations, f"{seed}:{metric}")
 
     body = {
@@ -234,16 +307,56 @@ def run_aa_calibration(
         "input_sha256": _json_sha256(pools),
         "nominal_alpha": ALPHA,
         "confidence": CONFIDENCE,
+        "acceptance_rule": "fail iff exact upper-tail binomial p(rejections | trials, alpha) < inflation_p",
+        "inflation_p": INFLATION_P,
         "trials": trials,
         "monte_carlo_permutations": permutations,
         "seed": seed,
         "metrics": metrics,
-        "passed": all(metric["alpha_inside_interval"] for metric in metrics.values()),
+        "passed": all(metric["passed"] for metric in metrics.values()),
     }
     receipt = {**body, "receipt_sha256": _json_sha256(body)}
     if signing_key is not None:
         receipt["hmac_sha256"] = hmac.new(signing_key, _canonical_json(receipt), hashlib.sha256).hexdigest()
     return receipt
+
+
+DRYCHECK_HOST_ID = "pv7-w16-local-drycheck-synthetic-identical-arms"
+
+
+def deterministic_drycheck_pools(seed=47, *, trials=200, split_size=10):
+    """Build seeded synthetic identical-arm pools (both arms drawn from one distribution).
+
+    This is a local drycheck of the calibration machinery, not a host
+    measurement: retrieval uses full-qrels nDCG@10 over independently shuffled
+    candidate rankings, latency/storage independent exponential draws, and
+    disposition independent Bernoulli(0.3) outcomes.
+    """
+    rng = random.Random(f"aa-drycheck:{seed}")
+    count = trials * split_size
+    retrieval = []
+    for query in range(count):
+        qrels = {f"q{query}-d{doc}": rng.choice((1, 2, 3)) for doc in range(rng.randint(1, 4))}
+        candidates = [*qrels, *(f"q{query}-n{doc}" for doc in range(16))]
+        arms = []
+        for _ in range(2):
+            ranking = candidates[:]
+            rng.shuffle(ranking)
+            arms.append({"ranked_doc_ids": ranking[:10], "qrels": qrels})
+        retrieval.append(tuple(arms))
+    latency = [(100 * rng.expovariate(1), 100 * rng.expovariate(1)) for _ in range(count)]
+    storage = [(4096 * rng.expovariate(1), 4096 * rng.expovariate(1)) for _ in range(count)]
+    disposition = [(int(rng.random() < 0.3), int(rng.random() < 0.3)) for _ in range(count)]
+    return retrieval, latency, storage, disposition
+
+
+def run_deterministic_drycheck(seed=47, *, trials=200, split_size=10, permutations=99):
+    """Run the A/A calibration on the deterministic synthetic pools; returns the hashed receipt."""
+    pools = deterministic_drycheck_pools(seed, trials=trials, split_size=split_size)
+    return run_aa_calibration(
+        *pools, host_id=DRYCHECK_HOST_ID, trials=trials, split_size=split_size,
+        permutations=permutations, seed=seed,
+    )
 
 
 def verify_aa_calibration_receipt(receipt, *, signing_key=None):

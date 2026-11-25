@@ -1,7 +1,17 @@
-"""Offline verifier fragment for Bundle #47 (Wave 16-Core Spine)."""
+"""Offline verifier fragment for Bundle #47 (Wave 16-Core Spine).
+
+Checks, all deterministic and CPU-only:
+1. the frozen claim-registry ``SPINE_DIGEST``;
+2. ``compile_repo_fragments`` over every registry/route/verifier drop-in;
+3. every canonical burned corpus is BURNED in the live burn ledger;
+4. the deterministic synthetic A/A null calibration passes its one-sided
+   anti-conservatism rule and its receipt hash verifies.
+"""
 
 from __future__ import annotations
 
+import json
+import sys
 from pathlib import Path
 
 SPINE_DIGEST = "32693f54e0ce7ad3d401ceb752ae4723b0eee251f6d49b95cdfb26a6201971e9"
@@ -11,16 +21,64 @@ DEPENDS_ON = ()
 
 def verify_bundle(repo_root: Path | str | None = None) -> dict:
     root = Path(repo_root).resolve() if repo_root is not None else Path(__file__).resolve().parents[2]
-    from chelated_pv7_spine.burn_ledger import HISTORICAL_DATASETS, build_burn_ledger
+    if str(root) not in sys.path:
+        sys.path.insert(0, str(root))
+    from chelated_pv7_spine.aa_null_calibration import (
+        run_deterministic_drycheck,
+        verify_aa_calibration_receipt,
+    )
+    from chelated_pv7_spine.burn_ledger import BURNED_CORPORA, build_burn_ledger
     from chelated_pv7_spine.claim_registry import claim_registry_sha256
+    from chelated_pv7_spine.fragment_compiler import FragmentCompileError, compile_repo_fragments
 
     actual_sha = claim_registry_sha256()
+    digest_ok = actual_sha == SPINE_DIGEST
+
+    try:
+        compiled = compile_repo_fragments(root, SPINE_DIGEST)
+        compiled_sha = compiled["compiled_sha256"]
+        fragments_ok = BUNDLE_ID in compiled["dependency_order"]
+        fragment_error = None
+    except FragmentCompileError as exc:
+        compiled_sha, fragments_ok, fragment_error = None, False, str(exc)
+
     ledger = build_burn_ledger(root)
-    burned_ok = all(ledger.to_dict()["datasets"][name]["status"] == "BURNED" for name in HISTORICAL_DATASETS)
-    passed = actual_sha == SPINE_DIGEST and burned_ok
+    datasets = ledger.to_dict()["datasets"]
+    burned_missing = [name for name in BURNED_CORPORA if datasets.get(name, {}).get("status") != "BURNED"]
+
+    aa_receipt = run_deterministic_drycheck()
+    aa_ok = bool(aa_receipt["passed"]) and verify_aa_calibration_receipt(aa_receipt)
+
+    passed = digest_ok and fragments_ok and not burned_missing and aa_ok
     return {
         "bundle_id": BUNDLE_ID,
         "passed": passed,
+        "status": "local-drycheck-pass" if passed else "local-drycheck-fail",
         "spine_digest": actual_sha,
+        "spine_digest_ok": digest_ok,
+        "compiled_sha256": compiled_sha,
+        "fragments_ok": fragments_ok,
+        "fragment_error": fragment_error,
         "burn_ledger_sha256": ledger.sha256,
+        "burned_corpora_checked": list(BURNED_CORPORA),
+        "burned_corpora_missing": burned_missing,
+        "aa_null_calibration": {
+            "passed": aa_ok,
+            "receipt_sha256": aa_receipt["receipt_sha256"],
+            "host_id": aa_receipt["host_id"],
+            "rejections": {name: metric["rejections"] for name, metric in aa_receipt["metrics"].items()},
+            "inflation_p_values": {
+                name: metric["inflation_p_value"] for name, metric in aa_receipt["metrics"].items()
+            },
+        },
     }
+
+
+def main() -> int:
+    result = verify_bundle()
+    print(json.dumps(result, indent=2, sort_keys=True))
+    return 0 if result["passed"] else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

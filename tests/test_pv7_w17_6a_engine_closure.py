@@ -5,6 +5,7 @@ import json
 import os
 import unittest
 from pathlib import Path
+import unittest.mock
 from unittest.mock import MagicMock
 
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
@@ -257,6 +258,77 @@ class TestOfflineBundle(unittest.TestCase):
         self.assertEqual(cell["timeouts"], 2)
         self.assertEqual(cell["exact_timeouts"], 0)
         self.assertEqual(cell["recall_at_10"], 0.0)
+        self.assertFalse(cell["passed"])
+
+    def test_receipt_stamps_synthetic_fixture_origin(self):
+        self.assertEqual(self.report["fixture_origin"], "synthetic_engine_route_probe")
+        self.assertIs(self.report["is_wild_corpus"], False)
+        self.assertEqual(self.report["fixture"]["origin"], "synthetic_engine_route_probe")
+        self.assertIs(self.report["fixture"]["is_wild_corpus"], False)
+        for cell in self.report["engines"][0]["cells"]:
+            self.assertEqual(cell["graph_telemetry_basis"], "per_query_visit_counts")
+            self.assertTrue(cell["per_query_visit_counts_available"])
+
+    def test_run_live_receipt_stamps_synthetic_fixture_origin(self):
+        import scripts.run_pv7_w17_6a_engine_closure as closure
+
+        with unittest.mock.patch.object(closure, "_run_live", return_value=[]), \
+                unittest.mock.patch.object(closure, "run_audit_parity",
+                                           return_value={"parity_passed": True}), \
+                unittest.mock.patch.object(closure, "build_fixture",
+                                           side_effect=lambda *shape: build_fixture(DRY_POPULATION, DRY_DIMENSION, 2)):
+            report = closure.execute("run-live", object())
+        self.assertEqual(report["mode"], "run-live")
+        self.assertEqual(report["fixture_origin"], "synthetic_engine_route_probe")
+        self.assertIs(report["is_wild_corpus"], False)
+
+    def stock_qdrant(self, *, route_counters=True):
+        vectors, queries, epochs, admissions = build_fixture(DRY_POPULATION, DRY_DIMENSION, 6)
+
+        class StockQdrant(QdrantPrefilter):
+            """Qdrant 1.20.2 shape: route/fallback counters, no per-query visit counts."""
+
+            def __init__(self):
+                self.simulator = SimulatedHnsw(vectors, epochs)
+                self.counts = dict.fromkeys(("filtered_plain", "filtered_small_cardinality",
+                                             "filtered_large_cardinality", "filtered_acorn",
+                                             "filtered_exact"), 0)
+
+            def search(self, query, admission, *, exact=False, limit=10):
+                result = self.simulator.search(query, admission, exact=exact, limit=limit)
+                self.counts["filtered_exact" if exact else "filtered_large_cardinality"] += 1
+                return SearchResult(result.ids, None)
+
+            def route_snapshot(self):
+                return {"indexes": 1, **self.counts} if route_counters else None
+
+            def profile(self, query, admission):
+                before = self.route_snapshot()
+                self.search(query, admission)
+                evidence = qdrant_route_evidence(before, self.route_snapshot(), 1)
+                return {**evidence, "visited_graph_candidates": None}
+
+        return StockQdrant(), queries, epochs, admissions
+
+    def test_stock_qdrant_route_and_fallback_counters_complete_graph_telemetry(self):
+        backend, queries, epochs, admissions = self.stock_qdrant()
+        cell = run_cell(backend, queries, epochs, 0, admissions[0], live=True)
+        self.assertEqual(cell["qdrant_measured_route"]["route"], "filtered_hnsw")
+        self.assertIs(cell["qdrant_measured_route"]["exact_fallback_triggered"], False)
+        self.assertEqual(cell["graph_candidate_sample_count"], 0)
+        self.assertIsNone(cell["visited_graph_candidates"])
+        self.assertIs(cell["per_query_visit_counts_available"], False)
+        self.assertTrue(cell["graph_telemetry_complete"])
+        self.assertEqual(cell["graph_telemetry_basis"], "qdrant_route_and_fallback_counters")
+        self.assertTrue(cell["telemetry_passed"])
+
+    def test_stock_qdrant_without_verified_route_stays_incomplete(self):
+        backend, queries, epochs, admissions = self.stock_qdrant(route_counters=False)
+        cell = run_cell(backend, queries, epochs, 0, admissions[0], live=True)
+        self.assertEqual(cell["qdrant_measured_route"]["route"], "unknown")
+        self.assertIs(cell["graph_telemetry_complete"], False)
+        self.assertIsNone(cell["graph_telemetry_basis"])
+        self.assertFalse(cell["telemetry_passed"])
         self.assertFalse(cell["passed"])
 
     def test_fragments_use_compiler_discovery_names(self):

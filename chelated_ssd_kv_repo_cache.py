@@ -24,6 +24,7 @@ that omission and shows TRA-1 failing closed.
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 import os
@@ -734,6 +735,9 @@ def _run(mode: str, root: Path, repo_count: int, commits_per_repo: int, seed: in
                         last_c, _ = serve_chelated(model, cache, old_blocks, pst)
                         probe_logit_diff = max(probe_logit_diff, float(np.max(np.abs(last_c - last_ref))))
                         probe_stale_chelated += pst.stale_served_blocks + (st_ch.stale_served_blocks - before)
+                        # B60-1: refusals that happened on the replay probe are the headline evidence; they were
+                        # previously dropped with the throwaway ``pst`` so the report said 0 refused blocks.
+                        st_ch.refused_retracted_blocks += pst.refused_retracted_blocks
                         lst = CacheStats()
                         serve_challenger(model, challenger, old_blocks, lst, store)
                         probe_stale_challenger += lst.stale_served_blocks
@@ -772,14 +776,24 @@ def _run(mode: str, root: Path, repo_count: int, commits_per_repo: int, seed: in
     binding = positional_binding_control(model)
     comparison = compare_with_fresh_rebuild(store, export_canonical_ek5_audit_trace(store))
     block_files = len(cache.written_paths)
+    primary_snapshot = sorted((k, v["file_sha"]) for k, v in cache.index.items())
+    primary_files_before = sorted(p.name for p in cache.root.iterdir())
     wrong_contract_cache = SSDKVCache(root / "kv_wrongw", contract_for(model.patched_base()), store)
-    wrong_contract_cache.index = dict(cache.index)  # same index, different identity
-    wrong_contract_cache.root = cache.root
-    wrong_contract_cache.bound = cache.bound
+    for _key in cache.index:  # private COPY of every block: a miss/put here can never touch cache.root
+        shutil.copyfile(cache._path(_key), wrong_contract_cache._path(_key))
+    wrong_contract_cache.index = {k: dict(v) for k, v in cache.index.items()}  # same index, different identity
+    wrong_contract_cache.bound = copy.deepcopy(cache.bound)  # private seal table, not shared with the primary cache
     wrong_stats = CacheStats()
     probe_blocks = repos[0].commits[3].files
     serve_chelated(model, wrong_contract_cache, probe_blocks, wrong_stats, contract=contract_for(model.patched_base()))
+    primary_isolated = (
+        sorted((k, v["file_sha"]) for k, v in cache.index.items()) == primary_snapshot
+        and sorted(p.name for p in cache.root.iterdir()) == primary_files_before
+        and wrong_contract_cache.root != cache.root
+    )
     gates = {
+        "wrong_contract_probe_isolated_from_primary_cache": primary_isolated,
+        "replay_probe_refusals_accumulated_into_chelated_stats": st_ch.refused_retracted_blocks > 0,
         "repo_and_commit_counts_match_request": len(names) == repo_count and commits_checked == repo_count * commits_per_repo,
         "repos_hash_selected_distinct": len(set(names)) == len(names),
         "chelated_max_abs_logit_diff_lt_1e-4": max_logit_diff_ch < LOGIT_TOL,

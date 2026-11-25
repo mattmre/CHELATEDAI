@@ -18,8 +18,10 @@ import math
 import os
 import re
 import shutil
+import sqlite3
 import subprocess
 import sys
+import tempfile
 import traceback
 import zipfile
 from importlib.abc import MetaPathFinder
@@ -85,7 +87,11 @@ def synthetic_pair_anchors(
     else:
         mapping = np.linalg.qr(rng.normal(size=(old_dim, new_dim)))[0].T
     old = rng.normal(size=(n_anchors, old_dim))
-    fit_count = 32
+    min_full_rank = min(old_dim, new_dim) + 1
+    preferred_val = max(16, n_anchors // 5)
+    max_val = n_anchors - max(32, min_full_rank)
+    val_count = min(preferred_val, max_val) if max_val >= 16 else 16
+    fit_count = n_anchors - val_count
     if n_anchors < fit_count or fit_count <= old_dim:
         raise ValueError("synthetic fit prefix must be taller than old_dim")
     fit = old[:fit_count]
@@ -125,7 +131,9 @@ def _ensure_kernel_path(repo_root: Path) -> None:
 
 def count_loc(repo_root: Path) -> int:
     total = 0
-    for path in sorted((_package_dir(repo_root) / "chelated_kernel").glob("*.py")):
+    for path in sorted((_package_dir(repo_root) / "chelated_kernel").rglob("*.py")):
+        if "__pycache__" in path.parts:
+            continue
         total += len(path.read_text(encoding="utf-8").splitlines())
     return total
 
@@ -176,8 +184,12 @@ def install_import_guard(repo_root: Path) -> _RepoImportGuard:
 
 def _ast_violations(repo_root: Path) -> list[str]:
     blocked = _repo_internal_modules(repo_root)
+    pkg_root = _package_dir(repo_root) / "chelated_kernel"
     found: list[str] = []
-    for path in sorted((_package_dir(repo_root) / "chelated_kernel").glob("*.py")):
+    for path in sorted(pkg_root.rglob("*.py")):
+        if "__pycache__" in path.parts:
+            continue
+        rel = path.relative_to(pkg_root).as_posix()
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
         for node in ast.walk(tree):
             names: list[str] = []
@@ -191,12 +203,12 @@ def _ast_violations(repo_root: Path) -> list[str]:
                     names.extend(f"{module}.{alias.name}" for alias in node.names if alias.name.startswith("_"))
             for name in names:
                 if name.startswith("chelated_kernel._") or ". _" in name:
-                    found.append(f"{path.name}:{name}")
+                    found.append(f"{rel}:{name}")
                 if any(part.startswith("_") for part in name.split(".")) and name.startswith("chelated_kernel."):
-                    found.append(f"{path.name}:{name}")
+                    found.append(f"{rel}:{name}")
                 root = name.split(".")[0]
                 if root in blocked:
-                    found.append(f"{path.name}:{name}")
+                    found.append(f"{rel}:{name}")
     return sorted(set(found))
 
 
@@ -205,10 +217,16 @@ def _stage_package(repo_root: Path, dest: Path) -> Path:
     dest.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(source / "pyproject.toml", dest / "pyproject.toml")
     shutil.copyfile(source / "README.md", dest / "README.md")
+    pkg_src = source / "chelated_kernel"
     package = dest / "chelated_kernel"
     package.mkdir()
-    for path in sorted((source / "chelated_kernel").glob("*.py")):
-        shutil.copyfile(path, package / path.name)
+    for path in sorted(pkg_src.rglob("*.py")):
+        if "__pycache__" in path.parts:
+            continue
+        rel = path.relative_to(pkg_src)
+        target = package / rel
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(path, target)
     return dest
 
 
@@ -245,6 +263,101 @@ def _build_wheel(staged: Path, dest: Path) -> tuple[Path | None, str]:
         tail = (completed.stderr or completed.stdout or "wheel build failed")[-4000:]
         return None, tail
     return wheels[0], ""
+
+
+def _coldstart_wheel_probe(wheel_path: Path, repo_root: Path) -> dict[str, object]:
+    """Install built wheel into an isolated --target dir and verify cold-start outside repo."""
+    with tempfile.TemporaryDirectory(prefix="chelated-whl-target-") as target_tmp, tempfile.TemporaryDirectory(
+        prefix="chelated-whl-cwd-"
+    ) as cwd_tmp:
+        target_dir = Path(target_tmp).resolve()
+        cwd_dir = Path(cwd_tmp).resolve()
+        install_env = os.environ.copy()
+        install_env["CUDA_VISIBLE_DEVICES"] = ""
+        install_env["PYTHONDONTWRITEBYTECODE"] = "1"
+        install_cmd = [
+            sys.executable,
+            "-m",
+            "pip",
+            "install",
+            "--no-deps",
+            "--no-compile",
+            "--target",
+            str(target_dir),
+            str(wheel_path),
+        ]
+        installed = subprocess.run(install_cmd, cwd=str(cwd_dir), env=install_env, capture_output=True, text=True, check=False)
+        if installed.returncode != 0:
+            return {
+                "coldstart_verified": False,
+                "coldstart_origin": "",
+                "coldstart_error": (installed.stderr or installed.stdout or "wheel install failed")[-2000:],
+            }
+        probe_script = (
+            "import json, sys\n"
+            "from pathlib import Path\n"
+            "import numpy as np\n"
+            "import chelated_kernel\n"
+            "from chelated_kernel import EventLedger, negotiate_capability, wrap_index, wrap_stream\n"
+            "target = Path(sys.argv[1]).resolve()\n"
+            "repo = Path(sys.argv[2]).resolve()\n"
+            "origin = Path(chelated_kernel.__file__).resolve()\n"
+            "assert origin.is_relative_to(target), f'imported outside target: {origin}'\n"
+            "assert not any(Path(p).resolve() == repo for p in sys.path if p), 'repo root on sys.path'\n"
+            "rng = np.random.default_rng(64)\n"
+            "q = np.linalg.qr(rng.normal(size=(64, 64)))[0]\n"
+            "old = rng.normal(size=(200, 64))\n"
+            "new = old @ q.T\n"
+            "anchors = [(old[i].tolist(), new[i].tolist()) for i in range(200)]\n"
+            "docs = {f'd{i}': np.eye(64)[i].tolist() for i in range(4)}\n"
+            "wrapped = wrap_index(docs, old_dim=64, new_dim=64, unlabeled_anchors=anchors, tenant_id='cold')\n"
+            "hits = wrapped.search((np.eye(64)[0] @ q.T).tolist(), k=2)\n"
+            "assert hits and hits[0].doc_id == 'd0' and wrapped.contract.fit_count + wrapped.contract.validation_count == 200\n"
+            "ledger = EventLedger(policy='sec_audit', tenant_id='cold')\n"
+            "ledger.ingest({'specversion': '1.0', 'type': 'com.chelated.sec.filing', 'id': 'f1', 'source': 'cold', 'time': 1, 'data': {'v': 1}})\n"
+            "assert ledger.verify_chain() == 1\n"
+            "guard = wrap_stream(iter(['NO', 'NO', 'LEAK', 'tail']), ledger=ledger, restricted_spans=[('NO', 'LEAK')], profile='async_armed', tenant_id='cold')\n"
+            "emitted = list(guard)\n"
+            "assert emitted == ['NO', 'tail'] and guard.suppressed_spans == 1\n"
+            "blocked = False\n"
+            "try:\n"
+            "    negotiate_capability('cross_tenant_raw_join')\n"
+            "except negotiate_capability.UnsupportedCapabilityError:\n"
+            "    blocked = True\n"
+            "assert blocked\n"
+            "print(json.dumps({'verified': True, 'origin': str(origin), 'fit_count': wrapped.contract.fit_count}))\n"
+        )
+        clean_env: dict[str, str] = {
+            key: value
+            for key, value in os.environ.items()
+            if key.upper()
+            not in {
+                "PYTHONPATH",
+                "PYTHONHOME",
+                "PYTHONSTARTUP",
+                "CUDA_VISIBLE_DEVICES",
+                "HIP_VISIBLE_DEVICES",
+                "ROCR_VISIBLE_DEVICES",
+                "NVIDIA_VISIBLE_DEVICES",
+            }
+        }
+        clean_env["PYTHONPATH"] = str(target_dir)
+        clean_env["CUDA_VISIBLE_DEVICES"] = ""
+        clean_env["PYTHONDONTWRITEBYTECODE"] = "1"
+        run_cmd = [sys.executable, "-c", probe_script, str(target_dir), str(repo_root.resolve())]
+        completed = subprocess.run(run_cmd, cwd=str(cwd_dir), env=clean_env, capture_output=True, text=True, check=False)
+        if completed.returncode != 0:
+            return {
+                "coldstart_verified": False,
+                "coldstart_origin": "",
+                "coldstart_error": (completed.stderr or completed.stdout or "coldstart probe failed")[-2000:],
+            }
+        parsed = json.loads(completed.stdout.strip().splitlines()[-1])
+        return {
+            "coldstart_verified": bool(parsed.get("verified")),
+            "coldstart_origin": str(parsed.get("origin", "")),
+            "coldstart_error": "",
+        }
 
 
 def _wheel_members(path: Path) -> list[str]:
@@ -534,12 +647,37 @@ def _isolation_probe(repo_root: Path) -> dict[str, object]:
     from scripts.verify_non_nda_ip_clean import scan_text_for_ip_leaks
 
     ip_leaks = scan_text_for_ip_leaks(certificate, source_label="isolation-certificate")
+    # Negative control: with tenant filtering disabled, CANARY_B IS readable from the shared store.
+    neg_conn = sqlite3.connect(":memory:")
+    try:
+        neg_conn.execute("CREATE TABLE chelated_vectors (id TEXT, embedding BLOB, tenant_id TEXT)")
+        neg_conn.execute(
+            "INSERT INTO chelated_vectors (id, embedding, tenant_id) VALUES (?, ?, ?)",
+            ("d0", np.asarray(docs[0], dtype="<f8").tobytes(), "tenant-a"),
+        )
+        neg_conn.execute(
+            "INSERT INTO chelated_vectors (id, embedding, tenant_id) VALUES (?, ?, ?)",
+            (CANARY_B, np.asarray(foreign_doc, dtype="<f8").tobytes(), "tenant-b"),
+        )
+        unfiltered_ids = [row[0] for row in neg_conn.execute("SELECT id FROM chelated_vectors ORDER BY id")]
+        filtered_ids = [
+            row[0] for row in neg_conn.execute("SELECT id FROM chelated_vectors WHERE tenant_id = ? ORDER BY id", ("tenant-a",))
+        ]
+    finally:
+        neg_conn.close()
+    neg_ctrl_unfiltered_reads_canary = (CANARY_B in backend_a) and (CANARY_B in unfiltered_ids)
+    neg_ctrl_filtered_blocks_canary = (CANARY_B not in hit_ids) and (CANARY_B not in filtered_ids)
     return {
         "unauthorized_reads": unauthorized,
         "cross_tenant_leaks": leaks,
         "ip_leaks": ip_leaks,
         "stream_a": emitted_a,
         "stream_b_suppressed": CANARY_B not in emitted_b,
+        "negative_control": {
+            "tenant_filter_disabled_canary_readable": neg_ctrl_unfiltered_reads_canary,
+            "tenant_filter_enabled_canary_blocked": neg_ctrl_filtered_blocks_canary,
+            "passed": bool(neg_ctrl_unfiltered_reads_canary and neg_ctrl_filtered_blocks_canary),
+        },
     }
 
 
@@ -635,7 +773,7 @@ def _session_index(seed: int, family: str, tenant: str, foreign: str) -> dict[st
         raise RuntimeError("sidecar width")
     if _contains_magic(wrapped._docs.tolist()):
         leaks += 1
-    return {"cross_tenant_leaks": leaks, "confidence": wrapped.contract.confidence}
+    return {"cross_tenant_leaks": leaks, "confidence": wrapped.contract.confidence, "functional_ok": True}
 
 
 def _session_sec(seed: int, tenant: str) -> dict[str, object]:
@@ -671,7 +809,7 @@ def _session_sec(seed: int, tenant: str) -> dict[str, object]:
         raise RuntimeError(f"late snapshot {late}")
     if ledger.llm_write_tokens != 0 or ledger.verify_chain() != 2:
         raise RuntimeError("receipt chain")
-    return {"cross_tenant_leaks": ledger.unauthorized_reads}
+    return {"cross_tenant_leaks": ledger.unauthorized_reads, "functional_ok": True}
 
 
 def _session_vex(seed: int, tenant: str) -> dict[str, object]:
@@ -696,7 +834,7 @@ def _session_vex(seed: int, tenant: str) -> dict[str, object]:
         raise RuntimeError(f"vex truth {[row['truth'] for row in rows]}")
     if not any(row["collapsed"] for row in rows):
         raise RuntimeError("echo member was not marked collapsed")
-    return {"cross_tenant_leaks": ledger.unauthorized_reads}
+    return {"cross_tenant_leaks": ledger.unauthorized_reads, "functional_ok": True}
 
 
 def _session_stream(seed: int, tenant: str) -> dict[str, object]:
@@ -716,12 +854,22 @@ def _session_stream(seed: int, tenant: str) -> dict[str, object]:
         raise RuntimeError(f"span leaked {emitted}")
     if "safe" not in emitted or "tail" not in emitted:
         raise RuntimeError(f"safe tokens dropped {emitted}")
+    overlap_guard = wrap_stream(
+        iter(["NO", "NO", "LEAK", "tail"]),
+        ledger=ledger,
+        restricted_spans=[("NO", "LEAK")],
+        profile=profile,
+        tenant_id=tenant,
+    )
+    overlap_emitted = list(overlap_guard)
+    if overlap_emitted != ["NO", "tail"] or overlap_guard.suppressed_spans != 1:
+        raise RuntimeError(f"overlap span leak {overlap_emitted} suppressed={overlap_guard.suppressed_spans}")
     dump = json.dumps(ledger.as_of(100, 10))
     if "NO" in dump or "LEAK" in dump:
         raise RuntimeError("raw span stored in the ledger")
-    if ledger.verify_chain() < 1 or ledger.llm_write_tokens != 0:
+    if ledger.verify_chain() < 2 or ledger.llm_write_tokens != 0:
         raise RuntimeError("stream receipt")
-    return {"cross_tenant_leaks": ledger.unauthorized_reads, "profile": profile}
+    return {"cross_tenant_leaks": ledger.unauthorized_reads, "profile": profile, "functional_ok": True}
 
 
 def _run_session(repo_root: Path, family: str, vertical: str, seed: int) -> dict[str, object]:
@@ -736,6 +884,7 @@ def _run_session(repo_root: Path, family: str, vertical: str, seed: int) -> dict
         "vertical": vertical,
         "seed": seed,
         "passed": False,
+        "functional_ok": False,
         "detail": "",
         "canary_blocked": False,
         "private_import_blocked": False,
@@ -754,13 +903,19 @@ def _run_session(repo_root: Path, family: str, vertical: str, seed: int) -> dict
         else:
             raise RuntimeError(f"unknown vertical {vertical}")
         record["cross_tenant_leaks"] = int(outcome["cross_tenant_leaks"])
+        record["functional_ok"] = bool(outcome.get("functional_ok", False))
         canary = UNSUPPORTED[seed % len(UNSUPPORTED)]
         try:
             negotiate_capability(canary)
         except negotiate_capability.UnsupportedCapabilityError as exc:
             record["canary_blocked"] = exc.capability_name == canary
         record["private_import_blocked"] = _private_import_blocked()
-        record["passed"] = bool(record["canary_blocked"] and record["private_import_blocked"] and record["cross_tenant_leaks"] == 0)
+        record["passed"] = bool(
+            record["functional_ok"]
+            and record["canary_blocked"]
+            and record["private_import_blocked"]
+            and record["cross_tenant_leaks"] == 0
+        )
     except Exception as exc:
         record["detail"] = f"{type(exc).__name__}: {exc}\n{traceback.format_exc(limit=4)}"
         record["passed"] = False
@@ -780,10 +935,20 @@ def wilson_upper(failures: int, total: int, z: float = 1.959963984540054) -> flo
     return (centre + margin) / denominator
 
 
-def run_gate(repo_root: Path | str, work_dir: Path | str, build_wheel: bool = True) -> dict[str, object]:
+def run_gate(
+    repo_root: Path | str,
+    work_dir: Path | str | None = None,
+    build_wheel: bool = True,
+    *,
+    mode: str = "local-drycheck",
+) -> dict[str, object]:
     os.environ["CUDA_VISIBLE_DEVICES"] = ""
-    repo = Path(repo_root).resolve()
-    work = Path(work_dir).resolve()
+    if work_dir is None:
+        work = Path(repo_root).resolve()
+        repo = Path(__file__).resolve().parents[1]
+    else:
+        repo = Path(repo_root).resolve()
+        work = Path(work_dir).resolve()
     work.mkdir(parents=True, exist_ok=True)
     _ensure_kernel_path(repo)
     install_import_guard(repo)
@@ -804,7 +969,16 @@ def run_gate(repo_root: Path | str, work_dir: Path | str, build_wheel: bool = Tr
     private_successes = sum(1 for session in sessions if not session["private_import_blocked"])
     session_leaks = sum(int(session["cross_tenant_leaks"]) for session in sessions)
     leaks = int(isolation["cross_tenant_leaks"]) + session_leaks
-    wheel_info: dict[str, object] = {"built": False, "deterministic": False, "sha256": "", "members_ok": False, "error": ""}
+    wheel_info: dict[str, object] = {
+        "built": False,
+        "deterministic": False,
+        "sha256": "",
+        "members_ok": False,
+        "coldstart_verified": False,
+        "coldstart_origin": "",
+        "coldstart_error": "",
+        "error": "",
+    }
     sbom: dict[str, object] = {"components": [], "license_problems": ["wheel not built"]}
     if build_wheel:
         first = _build_wheel(_stage_package(repo, work / "stage-a"), work / "wheel-a")
@@ -819,6 +993,7 @@ def run_gate(repo_root: Path | str, work_dir: Path | str, build_wheel: bool = Tr
             members = _wheel_members(wheel_path)
             members_ok = all("scripts/" not in name and "test_" not in Path(name).name for name in members)
             members_ok = members_ok and any(name.endswith("chelated_kernel/__init__.py") for name in members)
+            coldstart = _coldstart_wheel_probe(wheel_path, repo)
             wheel_info = {
                 "built": True,
                 "deterministic": digest_a == digest_b,
@@ -826,12 +1001,17 @@ def run_gate(repo_root: Path | str, work_dir: Path | str, build_wheel: bool = Tr
                 "sha256_repeat": digest_b,
                 "members_ok": members_ok,
                 "member_count": len(members),
+                "coldstart_verified": coldstart["coldstart_verified"],
+                "coldstart_origin": coldstart["coldstart_origin"],
+                "coldstart_error": coldstart["coldstart_error"],
                 "error": "",
             }
             sbom = build_sbom(wheel_path)
             (work / "sbom.cdx.json").write_text(json.dumps(sbom, indent=2, sort_keys=True), encoding="utf-8")
     family_ok = all(count >= 8 for count in by_family.values())
     license_ok = not sbom.get("license_problems")
+    neg_ctrl = isolation["negative_control"]
+    neg_ctrl_ok = bool(isinstance(neg_ctrl, dict) and neg_ctrl.get("passed"))
     gate_pass = bool(
         loc < LOC_LIMIT
         and not readme_canary
@@ -840,25 +1020,39 @@ def run_gate(repo_root: Path | str, work_dir: Path | str, build_wheel: bool = Tr
         and repo_blocked
         and int(isolation["unauthorized_reads"]) == 0
         and leaks == 0
+        and neg_ctrl_ok
         and not isolation["ip_leaks"]
         and float(canaries["accuracy"]) == 1.0
         and passed >= 30
         and family_ok
         and private_successes == 0
-        and (not build_wheel or (wheel_info["built"] and wheel_info["deterministic"] and wheel_info["members_ok"] and license_ok))
+        and (
+            not build_wheel
+            or (
+                wheel_info["built"]
+                and wheel_info["deterministic"]
+                and wheel_info["members_ok"]
+                and wheel_info["coldstart_verified"]
+                and license_ok
+            )
+        )
     )
     report: dict[str, object] = {
         "bundle": 49,
+        "mode": mode,
         "execution": "deterministic-local-smoke",
         "live_model_calls": 0,
         "loc": loc,
+        "package_loc": loc,
         "loc_limit": LOC_LIMIT,
         "readme_canary": readme_canary,
         "wheel": wheel_info,
+        "wheel_sha256": wheel_info["sha256"],
         "sbom_components": len(sbom.get("components", [])),
         "license_problems": sbom.get("license_problems", []),
         "unauthorized_reads": isolation["unauthorized_reads"],
         "cross_tenant_leaks": leaks,
+        "negative_control": neg_ctrl,
         "ip_leaks": isolation["ip_leaks"],
         "canary": canaries,
         "private_import_blocked": private_blocked,

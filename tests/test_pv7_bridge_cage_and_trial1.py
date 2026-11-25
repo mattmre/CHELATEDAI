@@ -32,6 +32,7 @@ Covers:
 
 from __future__ import annotations
 
+import hashlib
 import json
 import math
 import tempfile
@@ -409,7 +410,15 @@ class TestBridgeMergeHarness(unittest.TestCase):
             prefix_displacement_norms_by_domain={d: 0.18 for d in domains},
             direct_v1_v5_delta_by_domain={d: 0.005 for d in domains},
         )
-        self.assertEqual(rep_pass.overall_verdict, "verified-pass")
+        self.assertEqual(rep_pass.item6b_local_diagnostic_verdict, "local-diagnostic-support")
+        self.assertEqual(rep_pass.overall_verdict, "local-diagnostic-support")
+        self.assertNotIn(
+            rep_pass.overall_verdict,
+            {"verified-pass", "verified-loss", "unsupported", "protocol-ready", "reserved-pending"},
+        )
+        self.assertEqual(rep_pass.h6b_merge["sign_test_count"], "11/12")
+        self.assertEqual(rep_pass.h6b_merge["holm_m_local"], 4)
+        self.assertGreater(rep_pass.h6b_bridge_static["bootstrap_ni_p"], 0.0)
         self.assertTrue(rep_pass.h6b_merge["passed"])
         self.assertTrue(rep_pass.h6b_bridge_static["clears_retirement_floor"])
         self.assertTrue(rep_pass.h6b_bridge_static["clears_tight_equivalence_floor"])
@@ -428,7 +437,9 @@ class TestBridgeMergeHarness(unittest.TestCase):
         )
         self.assertTrue(rep_retire.h6b_bridge_static["clears_retirement_floor"])
         self.assertFalse(rep_retire.h6b_bridge_static["clears_tight_equivalence_floor"])
-        self.assertEqual(rep_retire.overall_verdict, "credit-csls-retire-zeromu-premium")
+        self.assertEqual(rep_retire.h6b_merge["sign_test_count"], "12/12")
+        self.assertEqual(rep_retire.item6b_local_diagnostic_verdict, "local-diagnostic-credit-csls-retire-zeromu")
+        self.assertEqual(rep_retire.overall_verdict, "local-diagnostic-credit-csls-retire-zeromu")
 
     def test_request_span_profiler_keeps_timeouts_in_denominator_as_zero_ndcg(self) -> None:
         profiler = RequestSpanProfiler()
@@ -796,8 +807,24 @@ class TestTrial1SearchMigrationKitAndCharter(unittest.TestCase):
 
             loaded = load_rows_jsonl(jsonl_path)
             self.assertEqual(len(loaded), len(rows))
-            rc = trial1_main(["--rows-jsonl", str(jsonl_path), "--bills-json", str(bills_path), "--output", str(out_path)])
+            refused = trial1_main(["--rows-jsonl", str(jsonl_path), "--output", str(out_path)])
+            self.assertNotEqual(refused, 0)
+            attestation = hashlib.sha256(bills_path.read_bytes()).hexdigest()
+            rc = trial1_main(
+                [
+                    "--rows-jsonl",
+                    str(jsonl_path),
+                    "--bills-json",
+                    str(bills_path),
+                    "--buyer-attestation-sha256",
+                    attestation,
+                    "--output",
+                    str(out_path),
+                ]
+            )
             self.assertEqual(rc, 0)
+            with self.assertRaises(ValueError):
+                score_trial1_rows(rows + [rows[0]], bills)
             scored = json.loads(out_path.read_text(encoding="utf-8"))
             self.assertTrue(scored["decision"]["zeromu_bridge_premium_retired"])
             # Also confirm direct programmatic call matches protocol-ready default

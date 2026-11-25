@@ -447,7 +447,7 @@ def _witness(
         supers = sorted(j for j in store.sup.get(v, ()) if val.get(j) == _T and j not in q_sup_nodes)
         if supers:
             return (supers[0],)
-        lineage = sorted(j for j in store.lsup.get(v, ()))
+        lineage = sorted(j for j in store.lsup.get(v, ()) if val.get(j) != _F)
         return (lineage[0],) if lineage else ()
     if reason == "SUPERSEDED_ANCESTOR":
         parents = sorted(d for d in store.deps_c.get(v, ()) if cur.get(d) == _F)

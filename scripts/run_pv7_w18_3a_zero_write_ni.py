@@ -81,6 +81,8 @@ def _run_live_gpu(
 
     payload = json.loads(Path(disjoint_input_json).read_text(encoding="utf-8"))
     hist_fps = json.loads(Path(historical_fingerprints_json).read_text(encoding="utf-8"))
+    weight_hex = payload.get("weight_bytes_hex")
+    weight_bytes = bytes.fromhex(weight_hex) if isinstance(weight_hex, str) and weight_hex else None
     sizing = size_disjoint_ni_sample(
         assumed_p10=float(payload.get("assumed_p10", 0.032)),
         assumed_p01=float(payload.get("assumed_p01", 0.030)),
@@ -99,6 +101,9 @@ def _run_live_gpu(
         ledger=ledger,
         ni_margin=PREREGISTERED_NI_MARGIN,
         is_live_confirmatory=True,
+        weight_bytes=weight_bytes,
+        weight_paths=payload.get("weight_paths"),
+        provenance_manifest=payload.get("provenance_manifest"),
     )
     return {
         "bundle_id": BUNDLE_ID,

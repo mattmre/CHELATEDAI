@@ -188,8 +188,8 @@ def physical_lookup(path):
     return lookup
 
 
-def cold_pages(pager):
-    """Read mincore residency for every expert page without faulting in model bytes."""
+def expert_page_residency(pager):
+    """Return ``(expert_pages, resident_pages)`` from mincore without faulting in model bytes."""
     page_size = mmap.PAGESIZE
     page_count = (os.fstat(pager.fd).st_size + page_size - 1) // page_size
     states = (ctypes.c_ubyte * page_count)()
@@ -210,9 +210,45 @@ def cold_pages(pager):
         stop = (extent.offset + extent.size + page_size - 1) // page_size
         pages += stop - start
         resident += sum(value & 1 for value in states[start:stop])
+    return pages, resident
+
+
+def cold_pages(pager):
+    """Read mincore residency for every expert page and fail if any is resident."""
+    pages, resident = expert_page_residency(pager)
     if resident:
         raise RuntimeError(f"Cold-run expert cache still has {resident} of {pages} page references resident")
     return resident
+
+
+def verify_cold_cache(pager, rung, *, residency=expert_page_residency):
+    """Prove the page cache is cold before a cold timing cell, on every rung 1..6.
+
+    ``pager.reset(cold=True)`` drops the in-process LRU/pin state and issues
+    ``POSIX_FADV_DONTNEED``; that is advisory, so the kernel's mincore residency is
+    re-read and any resident expert page fails the cell instead of timing a warm read.
+    """
+    pages, resident = residency(pager)
+    if pages <= 0:
+        raise RuntimeError(f"R{rung} cold verification covered no expert pages")
+    if resident:
+        raise RuntimeError(f"R{rung} cold-run expert cache still has {resident} of {pages} page references resident")
+    return {"rung": rung, "method": "mincore", "expert_pages_checked": pages,
+            "expert_pages_resident": resident, "verified_cold": True}
+
+
+def prepare_cache_cell(pager, rung, temperature, *, residency=expert_page_residency):
+    """Reset the pager for one timing cell; every cold cell on every rung is mincore-verified."""
+    cold = temperature == "cold"
+    pager.reset(cold=cold)
+    return verify_cold_cache(pager, rung, residency=residency) if cold else None
+
+
+def summarize_cold_verification(rung, cells):
+    cold = [cell for cell in cells if cell["cache"] == "cold"]
+    verified = [cell for cell in cold if (cell.get("cold_cache_verification") or {}).get("verified_cold") is True]
+    return {"rung": rung, "method": "mincore", "cold_cells": len(cold), "verified_cold_cells": len(verified),
+            "all_cold_cells_verified": bool(cold) and len(verified) == len(cold)}
 
 
 def checked_lease(verifier, before, after):
@@ -292,9 +328,8 @@ def run_worker(args):
             reference = tokenizer.encode(row.get("reference", ""), add_special_tokens=False)
             for trial in range(1 if args.worker_phase == "dev" else TRIALS):
                 for temperature in ("cold", "warm"):
-                    cold = temperature == "cold"
-                    target.pager.reset(cold=cold)
-                    cached = cold_pages(target.pager) if cold and rung == 1 else None
+                    cold_check = prepare_cache_cell(target.pager, rung, temperature)
+                    cached = cold_check["expert_pages_resident"] if cold_check else None
                     io_before = read_proc_io(os.getpid())
                     device_before = parse_sys_block_stat(stat.read_text())
                     if device_before.in_flight:
@@ -316,6 +351,7 @@ def run_worker(args):
                     cell = {
                         "id": json_digest([row["suite"], row["id"]]), "suite": row["suite"], "trial": trial,
                         "cache": temperature, "cold_expert_pages_resident": cached,
+                        "cold_cache_verification": cold_check,
                         "seconds": elapsed, "tokens": len(tokens), "token_sha256": json_digest(tokens),
                         "disk_read_bytes": device_delta.read_bytes, "requested_expert_bytes": target.pager.bytes_read,
                         "expert_read_calls": target.pager.read_calls, "proposed": proposed, "accepted": accepted,
@@ -333,6 +369,7 @@ def run_worker(args):
         "tokenizer_sha256": tokenizer_sha, "model_signature": signature,
         "cylinder_ordering_exercised": lookup is not None, "budget": asdict(budget), "budget_total": budget.total,
         "memory": mem, "resident_lease": asdict(lease), "cells": cells,
+        "cold_cache_verification": summarize_cold_verification(rung, cells),
     }
 
 
@@ -390,8 +427,17 @@ def run_live(args, argv):
     if {row["tokenizer_sha256"] for row in (*dev.values(), *holdout.values())} != {prompt_hashes[3]}:
         raise RuntimeError("Caged workers loaded different tokenizer bytes")
     lossless = compare_lossless(holdout[1]["cells"], holdout[best]["cells"], holdout[6]["cells"])
+    cold_verification = {
+        phase: {RUNGS[i - 1]: summarize_cold_verification(i, report["cells"]) for i, report in rows.items()}
+        for phase, rows in (("dev", dev), ("holdout", holdout))
+    }
+    all_cold_verified = all(
+        summary["all_cold_cells_verified"] for rows in cold_verification.values() for summary in rows.values()
+    )
     return {
-        "mode": "run-live-spark2", "passed": lossless["passed"], "dev_best": RUNGS[best - 1],
+        "mode": "run-live-spark2", "passed": lossless["passed"] and all_cold_verified,
+        "cold_cache_verification_by_rung": cold_verification, "all_cold_cells_verified": all_cold_verified,
+        "dev_best": RUNGS[best - 1],
         "hardware": holdout[6]["media"], "lossless_q4_endpoint": lossless,
         "separate_reference_continuation_quality": {
             "method": "exact_match_and_token_similarity_against_staged_references",

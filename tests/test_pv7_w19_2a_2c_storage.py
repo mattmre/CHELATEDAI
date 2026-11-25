@@ -22,7 +22,12 @@ from chelated_pv7_spine.challenger_ledger import (  # noqa: E402
 )
 from chelated_pv7_spine.claim_registry import claim_registry_sha256  # noqa: E402
 from chelated_pv7_spine.fragment_compiler import compile_fragments  # noqa: E402
-from scripts.run_pv7_w19_2a_disk_moe import checked_lease  # noqa: E402
+from scripts.run_pv7_w19_2a_disk_moe import (  # noqa: E402
+    checked_lease,
+    prepare_cache_cell,
+    summarize_cold_verification,
+    verify_cold_cache,
+)
 from chelated_pv7_spine.cpu_io_cage import ResidentIdleLeaseVerifier  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -98,7 +103,169 @@ class DiskMoETests(unittest.TestCase):
             checked_lease(verifier, start, after)
 
 
+class ColdCacheVerificationTests(unittest.TestCase):
+    class FakePager:
+        def __init__(self):
+            self.resets = []
+
+        def reset(self, cold):
+            self.resets.append(cold)
+
+    def test_verify_cold_cache_rejects_resident_or_empty_residency(self):
+        receipt = verify_cold_cache(object(), 4, residency=lambda pager: (12, 0))
+        self.assertEqual(receipt, {"rung": 4, "method": "mincore", "expert_pages_checked": 12,
+                                   "expert_pages_resident": 0, "verified_cold": True})
+        with self.assertRaisesRegex(RuntimeError, "R5 cold-run expert cache still has 3 of 12"):
+            verify_cold_cache(object(), 5, residency=lambda pager: (12, 3))
+        with self.assertRaisesRegex(RuntimeError, "R6 cold verification covered no expert pages"):
+            verify_cold_cache(object(), 6, residency=lambda pager: (0, 0))
+
+    def test_every_rung_runs_the_mincore_check_before_each_cold_cell(self):
+        for rung in range(1, 7):
+            with self.subTest(rung=rung):
+                pager = self.FakePager()
+                probes = []
+
+                def residency(target, probes=probes, pager=pager):
+                    # The cold reset must already have happened when residency is read.
+                    probes.append(list(pager.resets))
+                    return 8, 0
+
+                cold = prepare_cache_cell(pager, rung, "cold", residency=residency)
+                warm = prepare_cache_cell(pager, rung, "warm", residency=residency)
+                self.assertEqual(pager.resets, [True, False])
+                self.assertEqual(probes, [[True]])
+                self.assertEqual(cold["rung"], rung)
+                self.assertTrue(cold["verified_cold"])
+                self.assertIsNone(warm)
+                with self.assertRaises(RuntimeError):
+                    prepare_cache_cell(self.FakePager(), rung, "cold", residency=lambda target: (8, 1))
+
+    def test_rung_summary_requires_every_cold_cell_verified(self):
+        verified = {"verified_cold": True}
+        cells = [{"cache": "cold", "cold_cache_verification": verified},
+                 {"cache": "warm", "cold_cache_verification": None},
+                 {"cache": "cold", "cold_cache_verification": verified}]
+        self.assertEqual(summarize_cold_verification(3, cells), {
+            "rung": 3, "method": "mincore", "cold_cells": 2, "verified_cold_cells": 2,
+            "all_cold_cells_verified": True,
+        })
+        cells[2] = {"cache": "cold"}
+        self.assertFalse(summarize_cold_verification(3, cells)["all_cold_cells_verified"])
+        self.assertFalse(summarize_cold_verification(3, [{"cache": "warm"}])["all_cold_cells_verified"])
+
+
 class ColdOSDTests(unittest.TestCase):
+    def fixture(self, directory):
+        vectors = np.array([[1, 0.1], [1, 0.2], [0.1, 1], [0.2, 1], [0.7, 0.7]], dtype=np.float32)
+        queries = np.eye(2, dtype=np.float32)
+        return osd.build_extents(osd.VectorCorpus([vectors]), queries, queries, directory, 2 * osd.MIB, csls_k=2)
+
+    def test_fence_wal_is_fsynced_counted_and_replays_after_a_crash(self):
+        with tempfile.TemporaryDirectory(prefix=".pv7-58-test-", dir=ROOT) as directory:
+            geom = self.fixture(directory)
+            wal = Path(directory) / "fence.wal"
+            index = osd.ColdOSD(geom, 2, wal_path=wal)
+            header = len(osd.FENCE_WAL_MAGIC)
+            self.assertEqual(index.written, header)
+            with patch.object(osd.os, "fsync", wraps=os.fsync) as fsync:
+                index.withdraw([3, 0])
+            self.assertEqual(fsync.call_count, 1)
+            withdraw_bytes = 17 + 4 * 2
+            self.assertEqual(index.written, header + withdraw_bytes)
+            self.assertEqual(wal.stat().st_size, index.written)
+            index.reinstate([0, 3])
+            index.withdraw([1])
+            self.assertEqual(index.written, header + withdraw_bytes + 17 + 21)
+            self.assertEqual(wal.stat().st_size, index.fence.wal_bytes)
+
+            # Simulated crash: a fresh process replays the WAL with the trace still open.
+            recovered = osd.ColdOSD.recover(geom, 2, wal)
+            self.assertEqual(recovered.fence.recovery, {
+                "records_replayed": 3, "epoch": 3, "torn_tail_bytes": 0,
+                "active_trace_open": True, "durable_bytes": wal.stat().st_size,
+            })
+            self.assertTrue(np.array_equal(recovered.fence.bits, index.fence.bits))
+            self.assertEqual(recovered.visible([0, 1, 3]), [True, False, True])
+            self.assertEqual(recovered.audit_digest(), index.audit_digest())
+            self.assertEqual(recovered.written, 0)
+            recovered.reinstate([1])
+            self.assertEqual(recovered.written, 17)
+            self.assertEqual(osd.EK5ExtentFence.recover_from_wal(geom, wal).recovery["epoch"], 4)
+            with self.assertRaises(FileExistsError):
+                osd.ColdOSD(geom, 2, wal_path=wal)
+
+    def test_fence_wal_truncates_a_torn_tail_and_rejects_interior_damage(self):
+        with tempfile.TemporaryDirectory(prefix=".pv7-58-test-", dir=ROOT) as directory:
+            geom = self.fixture(directory)
+            wal = Path(directory) / "fence.wal"
+            index = osd.ColdOSD(geom, 2, wal_path=wal)
+            index.withdraw([2])
+            durable = wal.stat().st_size
+            for torn in (b"R", osd._fence_wal_record(b"R", 2)[:-1],
+                         osd._fence_wal_record(b"R", 2)[:-1] + b"\x00"):
+                with self.subTest(torn=torn):
+                    with wal.open("ab") as handle:
+                        handle.write(torn)
+                    fence = osd.EK5ExtentFence.recover_from_wal(geom, wal)
+                    self.assertEqual(fence.recovery["torn_tail_bytes"], len(torn))
+                    self.assertEqual((fence.epoch, wal.stat().st_size), (1, durable))
+                    self.assertEqual(fence.active_ids, {2})
+                    self.assertFalse(fence.allowed([2])[0])
+            # Continuing after a torn-tail recovery appends a clean, replayable epoch.
+            fence = osd.EK5ExtentFence.recover_from_wal(geom, wal)
+            fence.reinstate([2])
+            self.assertEqual(osd.EK5ExtentFence.recover_from_wal(geom, wal).epoch, 2)
+
+            raw = bytearray(wal.read_bytes())
+            raw[len(osd.FENCE_WAL_MAGIC) + 1] ^= 0xFF
+            wal.write_bytes(bytes(raw))
+            with self.assertRaisesRegex(osd.FenceWALError, "fails its CRC before end of log"):
+                osd.EK5ExtentFence.recover_from_wal(geom, wal)
+            skipped = Path(directory) / "skipped.wal"
+            skipped.write_bytes(osd.FENCE_WAL_MAGIC + osd._fence_wal_record(b"W", 2, [1]))
+            with self.assertRaisesRegex(osd.FenceWALError, "epoch 2 does not follow epoch 0"):
+                osd.EK5ExtentFence.recover_from_wal(geom, skipped)
+            skipped.write_bytes(b"NOTAWAL!")
+            with self.assertRaisesRegex(osd.FenceWALError, "Not an EK5 fence WAL"):
+                osd.EK5ExtentFence.recover_from_wal(geom, skipped)
+
+    def test_paired_bootstrap_lcb_gates_the_write_comparison(self):
+        self.assertEqual(osd.paired_bootstrap_lcb95([40] * 30), 1200)
+        mixed = [100] * 20 + [-150] * 10
+        self.assertEqual(sum(mixed), 500)
+        lcb = osd.paired_bootstrap_lcb95(mixed)
+        self.assertLess(lcb, 0)
+        self.assertEqual(lcb, osd.paired_bootstrap_lcb95(mixed))
+        with self.assertRaisesRegex(ValueError, "at least two"):
+            osd.paired_bootstrap_lcb95([5])
+        with self.assertRaisesRegex(ValueError, "1000"):
+            osd.paired_bootstrap_lcb95([5, 6], resamples=999)
+
+        stages = ("withdraw_immediate", "withdraw_quiet", "reinstate_immediate", "reinstate_quiet")
+
+        def arm(per_pair):
+            checkpoint = {"recall_at_10": 1.0, "stale_resurrections": 0, "stale_rate": 0.0, "returned": 10}
+            return {"total_write_bytes": sum(per_pair), "per_pair_total_write_bytes": list(per_pair),
+                    "visibility_passed": True, "checkpoints": {stage: dict(checkpoint) for stage in stages}}
+
+        # A positive total saving that rests on a minority of pairs must not pass.
+        challenger = [200] * 30
+        candidate = [100] * 20 + [350] * 10
+        result = osd.compare_traces({"cold_osd": {"clustered": arm(candidate)},
+                                     "other": {"clustered": arm(challenger)}})["other"]["clustered"]
+        self.assertEqual(result["write_bytes_saved"], 500)
+        self.assertLess(result["saved_bytes_lcb95"], 0)
+        self.assertFalse(result["passed"])
+        self.assertEqual(result["lcb_method"]["pairs"], 30)
+        steady = osd.compare_traces({"cold_osd": {"clustered": arm([100] * 30)},
+                                     "other": {"clustered": arm(challenger)}})["other"]["clustered"]
+        self.assertEqual(steady["saved_bytes_lcb95"], 3000)
+        self.assertTrue(steady["passed"])
+        with self.assertRaisesRegex(ValueError, "30 paired traces"):
+            osd.compare_traces({"cold_osd": {"clustered": arm([100] * 29)},
+                                "other": {"clustered": arm([200] * 29)}})
+
     def test_drycheck_compares_30_pairs_with_no_rewrites_at_matched_recall(self):
         with tempfile.TemporaryDirectory(prefix=".pv7-58-test-", dir=ROOT) as directory:
             report = osd.drycheck(directory)
@@ -114,7 +281,18 @@ class ColdOSDTests(unittest.TestCase):
             self.assertTrue(result["matched_recall"])
             self.assertTrue(result["zero_stale_resurrection"])
             self.assertGreater(result["write_bytes_saved"], 0)
-            self.assertEqual(report["summaries"]["cold_osd"][layout]["total_write_bytes"], 0)
+            self.assertGreater(result["saved_bytes_lcb95"], 0)
+            self.assertEqual(len(result["paired_write_bytes_saved"]), 30)
+            # Chelated now pays for its fsynced fence WAL: one W and one R record per trace.
+            cold = report["summaries"]["cold_osd"][layout]
+            self.assertEqual(cold["per_pair_total_write_bytes"], [(17 + 4 * 16) + 17] * 30)
+            self.assertGreater(cold["total_write_bytes"], 0)
+        self.assertEqual(report["cold_osd_write_source"], "fsynced_ek5_fence_wal")
+        self.assertEqual(report["fence_wal_records"], 120)
+        self.assertEqual(report["fence_wal_bytes"], len(osd.FENCE_WAL_MAGIC) + 60 * (17 + 4 * 16 + 17))
+        self.assertTrue(report["fence_wal_replay"]["bits_match"])
+        self.assertTrue(report["fence_wal_replay"]["epoch_matches"])
+        self.assertEqual(report["fence_wal_replay"]["records_replayed"], 120)
         self.assertGreater(
             report["summaries"]["matched_ivf_sq8"]["clustered"]["total_write_bytes"],
             report["summaries"]["matched_ivf_sq8"]["scattered"]["total_write_bytes"],

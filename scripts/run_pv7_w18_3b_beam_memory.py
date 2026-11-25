@@ -74,16 +74,28 @@ def _run_live_gpu(
         beam_source_json, historical_fingerprints=hist_fps, ledger=ledger
     )
     replay = run_beam_128k_paired_replay(convs, n_bootstrap=2000, seed=5102)
-    passed = (
+    provenance = ingest_receipt.get("weight_provenance") or {}
+    parity = (
         replay["ek5_prefix_parity_rate"] == 1.0
         and replay["ek5_prefix_mismatches"] == 0
         and replay["checkpoint_replay_all_exact"] is True
     )
+    authenticated = bool(provenance.get("authenticated"))
+    superior = bool(replay.get("ek5_ni_vs_sql")) and bool(replay.get("ek5_ni_vs_withdrawal_aware_recency"))
+    if not authenticated:
+        status = "refused-unauthenticated-weights"
+        passed = False
+    elif parity and superior:
+        status = "verified-pass"
+        passed = True
+    else:
+        status = "verified-loss"
+        passed = False
     return {
         "bundle_id": BUNDLE_ID,
         "item": ITEM_ID,
         "mode": "run-live-gpu",
-        "status": "verified-pass" if passed else "verified-loss",
+        "status": status,
         "passed": passed,
         "ingestion": ingest_receipt,
         "replay": replay,

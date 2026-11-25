@@ -289,26 +289,53 @@ def _injection_effect(model: nn.Module, hidden: np.ndarray, delta: np.ndarray) -
     return hooked - baseline
 
 
-def _removal_restoration(model: nn.Module, hidden: np.ndarray, direction: np.ndarray) -> Dict[str, float]:
+def _removal_restoration(model: nn.Module, hidden: np.ndarray, direction: np.ndarray) -> Dict[str, Any]:
+    """Two-forward-pass causal activation-patching restoration check.
+
+    Pass 1 (clean source): cache layer-11 write-site activations `a_clean` and readout `y_clean`.
+    Removal pass: ablate the 1-D `direction` projection from clean activations.
+    Pass 2 (corrupted target): run family-shifted counterfactual inputs `hidden_corrupt` unhooked
+    (`y_corrupt`) and then patch ONLY the 1-D `direction` coordinate from Pass 1's cached
+    `a_clean` into Pass 2's forward activations (`y_patched`).
+    """
     unit = torch.tensor(_unit(direction), dtype=torch.float32)
-    baseline = _predict(model, hidden)
+    cached_clean: Dict[str, torch.Tensor] = {}
+
+    def capture_clean(module: nn.Module, inputs: object, output: torch.Tensor) -> torch.Tensor:
+        del module, inputs
+        cached_clean["act"] = output.detach().clone()
+        return output
+
+    y_clean = _hooked_mean(model, hidden, capture_clean)
+    clean_coeff = cached_clean["act"].matmul(unit).unsqueeze(1)
 
     def removal(module: nn.Module, inputs: object, output: torch.Tensor) -> torch.Tensor:
         del module, inputs
         coeff = output.matmul(unit)
         return output - coeff.unsqueeze(1) * unit
 
-    def restoration(module: nn.Module, inputs: object, output: torch.Tensor) -> torch.Tensor:
-        del module, inputs
-        coeff = output.matmul(unit)
-        removed = output - coeff.unsqueeze(1) * unit
-        return removed + coeff.unsqueeze(1) * unit
+    y_removed = _hooked_mean(model, hidden, removal)
 
-    removed = _hooked_mean(model, hidden, removal)
-    restored = _hooked_mean(model, hidden, restoration)
+    shift_rows = ROWS_PER_FAMILY if hidden.shape[0] > ROWS_PER_FAMILY else 1
+    hidden_corrupt = np.roll(np.asarray(hidden, dtype=np.float64), shift=shift_rows, axis=0)
+    y_corrupt = _predict(model, hidden_corrupt)
+
+    def patch_from_clean(module: nn.Module, inputs: object, output: torch.Tensor) -> torch.Tensor:
+        del module, inputs
+        corrupt_coeff = output.matmul(unit).unsqueeze(1)
+        return output - corrupt_coeff * unit + clean_coeff * unit
+
+    y_patched = _hooked_mean(model, hidden_corrupt, patch_from_clean)
+    corrupt_mae = float(np.mean(np.abs(y_corrupt - y_clean)))
+    patched_mae = float(np.mean(np.abs(y_patched - y_clean)))
+    restoration_fraction = 1.0 - patched_mae / max(corrupt_mae, 1e-12)
     return {
-        "removal_mean_abs_delta_y": float(np.mean(np.abs(removed - baseline))),
-        "restoration_max_abs_error": float(np.max(np.abs(restored - baseline))),
+        "removal_mean_abs_delta_y": float(np.mean(np.abs(y_removed - y_clean))),
+        "restoration_max_abs_error": float(np.max(np.abs(y_patched - y_clean))),
+        "restoration_corrupt_baseline_mae": corrupt_mae,
+        "restoration_patched_mae": patched_mae,
+        "restoration_fraction": float(restoration_fraction),
+        "restoration_two_pass_patched": True,
     }
 
 
@@ -327,25 +354,27 @@ class _Top1SAE(nn.Module):
         return self.decoder(latent)
 
 
-def sae_decoder_direction(hidden: np.ndarray, steps: int = 40) -> np.ndarray:
-    """Train a tiny k=1 SAE on DEV activations and return its busiest decoder column."""
-    model = _Top1SAE(hidden.shape[1], 8)
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-2)
-    batch = _as_batch(hidden)
-    for _ in range(steps):
-        optimizer.zero_grad(set_to_none=True)
-        recon = model(batch)
-        loss = torch.mean((recon - batch) ** 2)
-        loss.backward()
-        optimizer.step()
+def sae_decoder_direction(hidden: np.ndarray, steps: int = 40, seed: int = 5200) -> np.ndarray:
+    """Train a deterministic k=1 SAE on DEV activations and return its busiest decoder column."""
+    with torch.random.fork_rng(devices=[]):
+        torch.manual_seed(int(seed))
+        model = _Top1SAE(hidden.shape[1], 8)
+        optimizer = torch.optim.Adam(model.parameters(), lr=1e-2)
+        batch = _as_batch(hidden)
+        for _ in range(steps):
+            optimizer.zero_grad(set_to_none=True)
+            recon = model(batch)
+            loss = torch.mean((recon - batch) ** 2)
+            loss.backward()
+            optimizer.step()
+            with torch.no_grad():
+                columns = model.decoder.weight
+                model.decoder.weight.copy_(columns / columns.norm(dim=0, keepdim=True).clamp_min(1e-8))
         with torch.no_grad():
-            columns = model.decoder.weight
-            model.decoder.weight.copy_(columns / columns.norm(dim=0, keepdim=True).clamp_min(1e-8))
-    with torch.no_grad():
-        preact = model.encoder(batch)
-        usage = torch.relu(preact).mean(dim=0)
-        chosen = int(torch.argmax(usage).item())
-        column = model.decoder.weight[:, chosen].detach().cpu().numpy()
+            preact = model.encoder(batch)
+            usage = torch.relu(preact).mean(dim=0)
+            chosen = int(torch.argmax(usage).item())
+            column = model.decoder.weight[:, chosen].detach().cpu().numpy()
     return _unit(column)
 
 
@@ -428,13 +457,21 @@ def _freeze_select(direction: np.ndarray, sign: int) -> Dict[str, Any]:
 
 
 def _arm_record(name: str, delta: np.ndarray, effect: np.ndarray, **extra: Any) -> Dict[str, Any]:
-    mean_effect, low, high = paired_bootstrap_ci(effect.tolist(), n_resamples=200, seed=52)
+    arr = np.asarray(effect, dtype=np.float64).reshape(-1)
+    if arr.size % ROWS_PER_FAMILY == 0 and arr.size >= ROWS_PER_FAMILY:
+        family_means = arr.reshape(-1, ROWS_PER_FAMILY).mean(axis=1)
+    else:
+        family_means = arr
+    mean_effect, low, high = paired_bootstrap_ci(family_means.tolist(), n_resamples=2000, seed=52)
     return {
         "name": name,
         "delta_h_l2": float(np.linalg.norm(delta)),
         "injection_mean_delta_y": mean_effect,
         "injection_lcb": low,
         "injection_ucb": high,
+        "sampling_unit": "family",
+        "n_families": int(family_means.size),
+        "bootstrap_resamples": 2000,
         **extra,
     }
 
@@ -466,6 +503,8 @@ def run_qscci_experiment(
         "qwen_report_split_executed": False,
         "live_weights_loaded": False,
         "burn_ledger_sha256": burn_sha,
+        "burn_inventory_scope": "local_drycheck_sentinel",
+        "tra1_weights_scope": "local_drycheck_stub",
         "tra1_digest": contract.digest(),
         "family_ids": {name: [row["family_id"] for row in rows] for name, rows in splits.items()},
     }
@@ -499,7 +538,7 @@ def run_qscci_experiment(
         delta = _matched_delta(directions[name])
         effect = _injection_effect(model, report_hidden, delta)
         extra: Dict[str, Any] = {"cosine_to_w_true": _cosine(directions[name], basis["w_true"])}
-        if name == "k1_native_mlp_write_site":
+        if name in {"k1_native_mlp_write_site", "matched_norm_random_orthogonal_sham"}:
             extra.update(_removal_restoration(model, report_hidden, directions[name]))
         if name == "ifeval_collateral_retention_probe":
             native_delta = _matched_delta(native)
@@ -523,6 +562,10 @@ def run_qscci_experiment(
             "native_beats_sham": native_arm["injection_mean_delta_y"] > sham_arm["injection_mean_delta_y"] + 0.2,
             "nuisance_invariance_win": native_arm["injection_mean_delta_y"] > caa_arm["injection_mean_delta_y"],
             "restoration_max_abs_error": native_arm["restoration_max_abs_error"],
+            "restoration_corrupt_baseline_mae": native_arm["restoration_corrupt_baseline_mae"],
+            "restoration_fraction": native_arm["restoration_fraction"],
+            "sham_restoration_max_abs_error": sham_arm["restoration_max_abs_error"],
+            "sham_restoration_fraction": sham_arm["restoration_fraction"],
             "layer_index": LAYER_INDEX,
             "hook_site": "layers[11].mlp.down_proj",
         }
@@ -551,7 +594,13 @@ def _gates(report: Mapping[str, Any]) -> List[Dict[str, Any]]:
         ("norm_match", bool(report["report_emitted"]) and report.get("norm_spread", 1.0) < 1e-8, f"spread={report.get('norm_spread')}"),
         ("separation_cosine", bool(report["report_emitted"]) and report.get("selection_cosine_qscci_caa", 1.0) < SEPARATION_COSINE_MAX, f"cos={report.get('selection_cosine_qscci_caa')}"),
         ("nuisance_invariance", bool(report.get("nuisance_invariance_win")), "QSCCI effect exceeds CAA"),
-        ("restoration_error", report.get("restoration_max_abs_error", 1.0) < 1e-4, f"error={report.get('restoration_max_abs_error')}"),
+        (
+            "restoration_error",
+            report.get("restoration_max_abs_error", 1.0) < 1e-4
+            and report.get("restoration_corrupt_baseline_mae", 0.0) > 0.1
+            and report.get("sham_restoration_max_abs_error", 0.0) > 0.1,
+            f"error={report.get('restoration_max_abs_error')} sham_error={report.get('sham_restoration_max_abs_error')}",
+        ),
         ("native_beats_sham", bool(report.get("native_beats_sham")), "native injection exceeds orthogonal sham"),
         ("splits_disjoint", _splits_disjoint(report["family_ids"]), "four splits"),
         ("cuda_isolated", bool(report["cuda_isolation"]["passed"]), "CPU lease"),
@@ -572,29 +621,73 @@ def _splits_disjoint(family_ids: Mapping[str, Sequence[str]]) -> bool:
     return set(family_ids) == {"control", "dev", "select", "report"}
 
 
-def execute(mode: str, model_name: str = "Qwen/Qwen3.5-2B-Base") -> Dict[str, Any]:
-    """`local-drycheck` runs the planted hook. `run-live-gpu` refuses weight loading."""
+def _file_sha256(path: Path) -> str:
+    hasher = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1 << 20), b""):
+            hasher.update(chunk)
+    return hasher.hexdigest()
+
+
+def execute(
+    mode: str,
+    model_name: str = "Qwen/Qwen3.5-2B-Base",
+    *,
+    weights_path: Optional[str] = None,
+    historical_fingerprints: Optional[Mapping[str, Sequence[str]]] = None,
+) -> Dict[str, Any]:
+    """`local-drycheck` runs the planted hook. `run-live-gpu` fails closed without GPU, weight SHA, and burn inventory."""
     if mode not in {"local-drycheck", "run-live-gpu"}:
         raise ValueError("mode must be local-drycheck or run-live-gpu")
     isolation = cpu_isolation_receipt()
     if mode == "run-live-gpu":
         allowed = model_name in ALLOWED_LIVE_MODELS
+        weight_sha = ""
+        weight_file_present = False
+        if weights_path:
+            wpath = Path(weights_path).resolve(strict=False)
+            if wpath.is_file():
+                weight_sha = _file_sha256(wpath)
+                weight_file_present = True
+        hist_present = (
+            isinstance(historical_fingerprints, Mapping)
+            and set(historical_fingerprints.keys()) == {"documents", "queries"}
+            and bool(historical_fingerprints.get("documents"))
+            and bool(historical_fingerprints.get("queries"))
+        )
+        if not allowed:
+            reason = "model-not-in-preregistered-set"
+        elif isolation["passed"]:
+            reason = "cuda-isolated-live-weights-not-loaded"
+        elif not weight_file_present:
+            reason = "model-weight-file-sha256-required"
+        elif not hist_present:
+            reason = "historical-burn-inventory-required"
+        else:
+            reason = "live-gpu-runner-not-attached"
         report = {
             "bundle_id": BUNDLE_ID,
             "item": ITEM,
             "mode": mode,
             "executed": False,
+            "passed": False,
             "report_emitted": False,
-            "reason": "cuda-isolated-live-weights-not-loaded" if allowed else "model-not-in-preregistered-set",
+            "reason": reason,
             "model": model_name,
             "hook_site": "layers[11].mlp.down_proj",
             "qwen_report_split_executed": False,
             "live_weights_loaded": False,
+            "requires_real_weight_file_sha256": True,
+            "requires_historical_burn_inventory": True,
+            "weight_file_sha256": weight_sha,
+            "burn_inventory_scope": "supplied_historical_inventory" if hist_present else "missing_historical_inventory",
             "cuda_isolation": isolation,
             "claim_level": "not-executed",
             "gates": [
-                {"name": "live_mode_refused", "passed": True, "detail": "no weights loaded and no REPORT claim"},
+                {"name": "live_gpu_executed", "passed": False, "detail": reason},
                 {"name": "model_name_checked", "passed": allowed, "detail": model_name},
+                {"name": "real_weight_file_sha256_present", "passed": weight_file_present, "detail": weight_sha or "missing"},
+                {"name": "historical_burn_inventory_present", "passed": hist_present, "detail": "supplied" if hist_present else "missing"},
             ],
         }
         report["scoreboard_sha256"] = _json_sha256({key: value for key, value in report.items() if key != "scoreboard_sha256"})
@@ -627,10 +720,22 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--mode", required=True, choices=("local-drycheck", "run-live-gpu"))
     parser.add_argument("--model", default="Qwen/Qwen3.5-2B-Base")
+    parser.add_argument("--weights-path", default=None)
+    parser.add_argument("--historical-fingerprints", default=None)
     args = parser.parse_args(list(argv) if argv is not None else None)
-    report = execute(args.mode, args.model)
+    hist_fp = None
+    if args.historical_fingerprints:
+        hist_fp = json.loads(Path(args.historical_fingerprints).read_text(encoding="utf-8"))
+    report = execute(
+        args.mode,
+        args.model,
+        weights_path=args.weights_path,
+        historical_fingerprints=hist_fp,
+    )
     print(json.dumps(report, indent=2, sort_keys=True))
-    return 0 if report.get("passed", report.get("executed") is False) else 1
+    if not report.get("executed", False):
+        return 2
+    return 0 if report.get("passed") else 1
 
 
 if __name__ == "__main__":

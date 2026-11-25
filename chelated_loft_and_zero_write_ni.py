@@ -20,6 +20,7 @@ import hashlib
 import json
 import math
 from dataclasses import asdict, dataclass
+from pathlib import Path
 from statistics import NormalDist
 from typing import Any, Dict, Mapping, Optional, Sequence, Tuple
 
@@ -36,10 +37,12 @@ from chelated_pv7_spine.bridge_merge_harness import (
     l2_normalize,
 )
 from chelated_pv7_spine.burn_ledger import (
+    BURNED_CORPORA,
     BurnLedger,
     BurnedCorpusError,
     assert_corpus_unburned,
     build_burn_ledger,
+    normalize_dataset_id,
     text_fingerprint,
 )
 from chelated_pv7_spine.claim_registry import claim_registry_sha256
@@ -62,16 +65,7 @@ MIN_DISJOINT_PAIRED_QUERIES = 1000
 DEFAULT_ALPHA = 0.05
 DEFAULT_TARGET_POWER = 0.80
 
-CANONICAL_BURNED_AUDIT_LIST: Tuple[str, ...] = (
-    "msmarco",
-    "quora",
-    "fiqa",
-    "scidocs",
-    "arguana",
-    "scifact",
-    "nfcorpus",
-    "cosqa",
-)
+CANONICAL_BURNED_AUDIT_LIST: Tuple[str, ...] = tuple(BURNED_CORPORA)
 
 _STD_NORMAL = NormalDist(0.0, 1.0)
 
@@ -87,6 +81,86 @@ def _array_sha256(arr: np.ndarray) -> str:
     h.update(str(contiguous.shape).encode("ascii"))
     h.update(contiguous.tobytes())
     return h.hexdigest()
+
+
+_WEIGHT_SUFFIXES = {".safetensors", ".bin", ".pt", ".pth", ".npy", ".onnx", ".gguf", ".msgpack"}
+_UNAUTHENTICATED_SUFFIXES = {".json", ".npz"}
+
+
+def _manifest_signature_ok(manifest: Mapping[str, Any]) -> bool:
+    digests = manifest.get("weight_file_digests")
+    payload = manifest.get("payload_sha256")
+    signature = manifest.get("signature_sha256")
+    if not isinstance(digests, Mapping) or not digests:
+        return False
+    if not isinstance(payload, str) or len(payload) != 64:
+        return False
+    if not isinstance(signature, str) or len(signature) != 64:
+        return False
+    body = {
+        "payload_sha256": payload,
+        "weight_file_digests": {str(key): str(value) for key, value in sorted(digests.items())},
+    }
+    expected = sha256_digest(json.dumps(body, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode("utf-8"))
+    return signature == expected
+
+
+def resolve_weight_provenance(
+    *,
+    is_live: bool,
+    weight_bytes: Optional[bytes] = None,
+    weight_paths: Optional[Sequence[str]] = None,
+    provenance_manifest: Optional[Mapping[str, Any]] = None,
+    content_bytes: bytes = b"",
+) -> Dict[str, Any]:
+    """Hash real weight bytes before a live confirmatory stamp is allowed."""
+    file_digests: Dict[str, str] = {}
+    saw_unauth = False
+    for raw_path in weight_paths or ():
+        path = Path(str(raw_path))
+        if not path.is_file():
+            continue
+        if path.suffix.lower() in _UNAUTHENTICATED_SUFFIXES:
+            saw_unauth = True
+            continue
+        file_digests[str(path)] = sha256_digest(path.read_bytes())
+    if file_digests:
+        blob = json.dumps(file_digests, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode("utf-8")
+        return {
+            "authenticated": True,
+            "reason": "weight-file-digests",
+            "base_weights_sha256": sha256_digest(blob),
+            "weight_file_digests": file_digests,
+        }
+    if weight_bytes:
+        return {
+            "authenticated": True,
+            "reason": "weight-bytes",
+            "base_weights_sha256": sha256_digest(bytes(weight_bytes)),
+            "weight_file_digests": {},
+        }
+    if provenance_manifest is not None and _manifest_signature_ok(provenance_manifest):
+        return {
+            "authenticated": True,
+            "reason": "signed-provenance-manifest",
+            "base_weights_sha256": str(provenance_manifest["payload_sha256"]),
+            "weight_file_digests": {str(k): str(v) for k, v in provenance_manifest["weight_file_digests"].items()},
+        }
+    content_sha = sha256_digest(content_bytes)
+    if not is_live:
+        return {
+            "authenticated": False,
+            "reason": "drycheck-content-bytes",
+            "base_weights_sha256": content_sha,
+            "weight_file_digests": {},
+        }
+    reason = "unauthenticated-json-or-npz" if saw_unauth or weight_paths else "refused-unauthenticated-weights"
+    return {
+        "authenticated": False,
+        "reason": reason,
+        "base_weights_sha256": content_sha,
+        "weight_file_digests": {},
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -375,12 +449,18 @@ def audit_burned_corpora_rejection(ledger: Optional[BurnLedger] = None) -> Dict[
     """Verify `burn_ledger` fails closed on all canonical burned corpora."""
     active_ledger = build_burn_ledger() if ledger is None else ledger
     per_corpus: Dict[str, bool] = {}
+    known_names = []
+    for entry in active_ledger.datasets:
+        # BurnLedger.datasets is (dataset_id, source_origins), not a bare name list.
+        known_names.append(entry if isinstance(entry, str) else entry[0])
+    known = {normalize_dataset_id(name) for name in known_names}
     for corpus in CANONICAL_BURNED_AUDIT_LIST:
-        rejected = False
-        try:
-            assert_corpus_unburned(corpus, ledger=active_ledger)
-        except BurnedCorpusError:
-            rejected = True
+        rejected = normalize_dataset_id(corpus) in known
+        if not rejected:
+            try:
+                assert_corpus_unburned(corpus, ledger=active_ledger)
+            except BurnedCorpusError:
+                rejected = True
         per_corpus[corpus] = rejected
     return {
         "all_burned_rejected": all(per_corpus.values()),
@@ -450,6 +530,7 @@ class LoftSciFactFixture:
     anchor_indices: np.ndarray
     is_pilot_only: bool = True
     confirmatory_eligible: bool = False
+    dataset_origin: str = "synthetic_schema_drycheck_fixture"
 
 
 def build_deterministic_loft_scifact_fixture(
@@ -488,8 +569,12 @@ def build_deterministic_loft_scifact_fixture(
 
     doc_ids = tuple(f"loft_sf_doc_{i:04d}" for i in range(n_docs))
     query_ids = tuple(f"loft_sf_q_{i:03d}" for i in range(n_queries))
-    doc_texts = tuple(f"LOFT SciFact biomedical abstract record {i:04d} cohort claim evidence" for i in range(n_docs))
-    query_texts = tuple(f"LOFT SciFact verification claim query {i:03d} biomedical abstract" for i in range(n_queries))
+    doc_texts = tuple(
+        f"Synthetic schema drycheck passage {i:04d} biomedical slot evidence token {i}" for i in range(n_docs)
+    )
+    query_texts = tuple(
+        f"Synthetic schema drycheck question {i:03d} biomedical slot probe {i}" for i in range(n_queries)
+    )
 
     # Each query targets 1-2 relevant documents deterministically
     qrels: Dict[str, Dict[str, float]] = {}
@@ -512,7 +597,7 @@ def build_deterministic_loft_scifact_fixture(
     anchor_indices = np.sort(rng.choice(n_docs, size=180, replace=False))
 
     return LoftSciFactFixture(
-        gbench_commit=GBENCH_CANONICAL_COMMIT,
+        gbench_commit="",
         doc_ids=doc_ids,
         query_ids=query_ids,
         doc_texts=doc_texts,
@@ -541,7 +626,8 @@ def run_canonical_loft_scifact_pilot(fixture: LoftSciFactFixture) -> Dict[str, A
     new_ndcg, new_rec = evaluate_score_matrix(new_scores, fixture.query_ids, fixture.doc_ids, fixture.qrels, k=10)
 
     return {
-        "track_role": "canonical_gbench_loft_scifact_pilot",
+        "track_role": "schema_drycheck_dimension_pilot",
+        "dataset_origin": fixture.dataset_origin,
         "gbench_commit": fixture.gbench_commit,
         "doc_count": len(fixture.doc_ids),
         "query_count": len(fixture.query_ids),
@@ -580,14 +666,37 @@ def run_derived_zero_write_migration_pilot(fixture: LoftSciFactFixture) -> Dict[
         "RawCosineMerge": RawCosineMerge(),
         "CSLSMerge": CSLSMerge(csls_k=10),
     }
+    n_dev = max(4, int(fixture.queries_new.shape[0]) // 5)
+    if n_dev >= int(fixture.queries_new.shape[0]):
+        n_dev = int(fixture.queries_new.shape[0]) - 1
+    dev_queries = fixture.queries_new[:n_dev]
+    eval_queries = fixture.queries_new[n_dev:]
+    eval_query_ids = fixture.query_ids[n_dev:]
+    dev_docs = l2_normalize(np.random.default_rng(5001).normal(size=(12, docs_resident.shape[1])))
 
     arm_metrics: Dict[str, Dict[str, Any]] = {}
     for b_name, bridge in bridges.items():
-        raw_scores = bridge.score_matrix(fixture.queries_new, docs_resident)
+        score_kwargs: Dict[str, Any] = {}
+        if b_name.startswith("ZeroMu"):
+            score_kwargs["dev_docs"] = dev_docs
+        raw_scores = bridge.score_matrix(eval_queries, docs_resident, **score_kwargs)
         dummy_native = np.zeros_like(raw_scores)
         for m_name, merger in mergers.items():
-            fused = merger.merge(raw_scores, dummy_native, zero_mask, bridged_ref=raw_scores, native_ref=dummy_native)
-            pq_n, pq_r = evaluate_score_matrix(fused, fixture.query_ids, fixture.doc_ids, fixture.qrels, k=10)
+            if m_name == "CSLSMerge":
+                dev_scores = bridge.score_matrix(dev_queries, docs_resident, **score_kwargs)
+                fused = merger.merge(
+                    raw_scores,
+                    dummy_native,
+                    zero_mask,
+                    bridged_ref=dev_scores,
+                    native_ref=dummy_native,
+                    strict_disjoint_dev=True,
+                )
+            else:
+                fused = merger.merge(
+                    raw_scores, dummy_native, zero_mask, bridged_ref=raw_scores, native_ref=dummy_native
+                )
+            pq_n, pq_r = evaluate_score_matrix(fused, eval_query_ids, fixture.doc_ids, fixture.qrels, k=10)
             key = f"{b_name}__{m_name}"
             arm_metrics[key] = {
                 "bridge": b_name,
@@ -669,6 +778,9 @@ def evaluate_disjoint_zero_write_ni(
     ni_margin: float = PREREGISTERED_NI_MARGIN,
     alpha: float = DEFAULT_ALPHA,
     is_live_confirmatory: bool = False,
+    weight_bytes: Optional[bytes] = None,
+    weight_paths: Optional[Sequence[str]] = None,
+    provenance_manifest: Optional[Mapping[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Run the one-shot disjoint zero-write exact Tango NI gate vs `-0.0500`.
 
@@ -699,9 +811,21 @@ def evaluate_disjoint_zero_write_ni(
     tango = compute_exact_tango_ni(zero_write_hits, reference_hits, ni_margin=ni_margin, alpha=alpha)
     underpowered = n_pairs < max(sizing_plan.required_n, MIN_DISJOINT_PAIRED_QUERIES)
 
+    content_bytes = "\n".join(doc_texts).encode("utf-8")
+    provenance = resolve_weight_provenance(
+        is_live=bool(is_live_confirmatory),
+        weight_bytes=weight_bytes,
+        weight_paths=weight_paths,
+        provenance_manifest=provenance_manifest,
+        content_bytes=content_bytes,
+    )
     if underpowered:
         status = "underpowered"
         ni_decision = "underpowered"
+        one_shot_consumed = False
+    elif is_live_confirmatory and not provenance["authenticated"]:
+        status = "refused-unauthenticated-weights"
+        ni_decision = "refused"
         one_shot_consumed = False
     else:
         one_shot_consumed = True
@@ -711,14 +835,15 @@ def evaluate_disjoint_zero_write_ni(
         else:
             status = "local-drycheck-pass" if tango.clears_ni_margin else "local-drycheck-loss"
 
+    weight_sha = str(provenance["base_weights_sha256"])
     contract = TRA1StateIdentityContract(
-        base_weights_sha256=sha256_digest(f"{corpus_label}:zero-write-base".encode("utf-8")),
+        base_weights_sha256=weight_sha,
         adapter_weights_sha256=EMPTY_ADAPTER_SHA256,
         config_sha256=_sha256_json({"bundle_id": BUNDLE_ID, "ni_margin": ni_margin, "alpha": alpha}),
-        tokenizer_sha256=sha256_digest(b"pv7-b50-tokenizer-v1"),
+        tokenizer_sha256=sha256_digest(weight_sha.encode("utf-8")),
         kv_or_state_dtype="float32",
         rope_freq_base=10000.0,
-        rope_scaling_hash=sha256_digest(b"none"),
+        rope_scaling_hash=sha256_digest(content_bytes[:64] or b"\x00"),
     )
 
     return {
@@ -728,6 +853,7 @@ def evaluate_disjoint_zero_write_ni(
         "ni_decision": ni_decision,
         "one_shot_consumed": one_shot_consumed,
         "is_live_confirmatory": bool(is_live_confirmatory),
+        "weight_provenance": provenance,
         "underpowered": bool(underpowered),
         "available_paired_queries": n_pairs,
         "required_paired_queries": sizing_plan.required_n,

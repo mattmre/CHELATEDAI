@@ -578,6 +578,191 @@ class TestRunnerAndFragments(unittest.TestCase):
             self.assertEqual(disposition, "retracted")
             self.assertEqual(lineage, ())
 
+    def test_oracle_at_cut_four_reproducers_and_frozen_adjudication(self):
+        streams = _streams()
+        cut = streams.CutSpec("t_withdrawal_or_402", 30, 30)
+
+        # 1. Cross-tenant WITHDRAW must not withdraw victim tenant's record.
+        cross_tenant_family = streams.AdjudicatedFamily(
+            family_id="repro-cross-tenant",
+            stratum="unlinked_cross_mirror_echo",
+            tenant_id="tenant-good",
+            entity_key="ent-1",
+            synthetic=True,
+            records=(
+                streams.StreamRecord("r1", "tenant-good", "ent-1", "affected", 5, 10, None, 10, "ASSERT", "orig", "ghsa"),
+                streams.StreamRecord("w-evil", "tenant-evil", "ent-1", "", 10, 20, None, 20, "WITHDRAW", "", "status", target_id="r1"),
+            ),
+            cuts=(cut,),
+        )
+        res_ct = streams.oracle_at_cut(cross_tenant_family, cut)
+        self.assertEqual(res_ct.disposition, "affected")
+        self.assertEqual(res_ct.independent_lineage_ids, ("r1",))
+
+        # 2. Authority rank precedence BEFORE timestamp recency: rank-1 REINSTATE never overrides rank-5 WITHDRAW.
+        rank_family = streams.AdjudicatedFamily(
+            family_id="repro-rank-precedence",
+            stratum="unlinked_cross_mirror_echo",
+            tenant_id="t1",
+            entity_key="ent-2",
+            synthetic=True,
+            records=(
+                streams.StreamRecord("r1", "t1", "ent-2", "affected", 1, 10, None, 10, "ASSERT", "orig", "ghsa"),
+                streams.StreamRecord("w-hi", "t1", "ent-2", "", 5, 20, None, 20, "WITHDRAW", "", "status", target_id="r1"),
+                streams.StreamRecord("ri-lo", "t1", "ent-2", "", 1, 25, None, 25, "REINSTATE", "", "status", target_id="r1"),
+            ),
+            cuts=(cut,),
+        )
+        res_rank = streams.oracle_at_cut(rank_family, cut)
+        self.assertEqual(res_rank.disposition, "retracted")
+        self.assertEqual(res_rank.independent_lineage_ids, ())
+
+        # 3a. Low-authority supersedes_ids must not supersede higher-authority assertion.
+        low_sup_family = streams.AdjudicatedFamily(
+            family_id="repro-low-sup",
+            stratum="sec_item_402_nonreliance",
+            tenant_id="t1",
+            entity_key="ent-3",
+            synthetic=True,
+            records=(
+                streams.StreamRecord("hi", "t1", "ent-3", "reliance_unchanged", 5, 10, None, 10, "ASSERT", "10k", "sec"),
+                streams.StreamRecord("lo", "t1", "ent-3", "non_reliance", 1, 20, None, 20, "ASSERT", "rumor", "blog", supersedes_ids=("hi",)),
+            ),
+            cuts=(cut,),
+        )
+        res_low_sup = streams.oracle_at_cut(low_sup_family, cut)
+        self.assertEqual(res_low_sup.disposition, "reliance_unchanged")
+        self.assertEqual(res_low_sup.independent_lineage_ids, ("hi",))
+
+        # 3b. Mutual supersede cycle is cycle-safe and order-independent -> disputed.
+        rec_a = streams.StreamRecord("sup-a", "t1", "ent-4", "v1", 5, 10, None, 10, "ASSERT", "A", "s", supersedes_ids=("sup-b",))
+        rec_b = streams.StreamRecord("sup-b", "t1", "ent-4", "v1", 5, 10, None, 10, "ASSERT", "B", "s", supersedes_ids=("sup-a",))
+        cyc_ab = streams.oracle_at_cut(
+            streams.AdjudicatedFamily("cyc-ab", "sec_item_402_nonreliance", "t1", "ent-4", (rec_a, rec_b), (cut,), synthetic=True),
+            cut,
+        )
+        cyc_ba = streams.oracle_at_cut(
+            streams.AdjudicatedFamily("cyc-ba", "sec_item_402_nonreliance", "t1", "ent-4", (rec_b, rec_a), (cut,), synthetic=True),
+            cut,
+        )
+        self.assertEqual(cyc_ab.disposition, "disputed")
+        self.assertEqual(cyc_ba.disposition, "disputed")
+        self.assertEqual(cyc_ab.independent_lineage_ids, cyc_ba.independent_lineage_ids)
+
+        # 4. Frozen adjudicated expected_admitted_ids / expected_disposition honored directly.
+        env = _envelope("frozen-wild-1", "sec_item_402_nonreliance", synthetic=False)
+        env["cuts"][0]["expected_disposition"] = "adjudicated_label"
+        env["cuts"][0]["expected_admitted_ids"] = ["frozen-wild-1-r"]
+        parsed = streams.parse_family_envelope(env)
+        assert parsed is not None
+        frozen_oracle = streams.oracle_at_cut(parsed, parsed.cuts[0])
+        self.assertEqual(frozen_oracle.adjudication_source, "frozen_envelope")
+        self.assertEqual(frozen_oracle.disposition, "adjudicated_label")
+        self.assertEqual(frozen_oracle.independent_lineage_ids, ("frozen-wild-1-r",))
+
+    def test_ek5_does_not_leak_echo_of_and_symmetric_inputs(self):
+        streams = _streams()
+        runner = self.runner
+        # Unrelated text with ground-truth echo_of set: EK5 must NOT cheat by reading echo_of!
+        family = streams.AdjudicatedFamily(
+            family_id="no-echo-cheat",
+            stratum="unlinked_cross_mirror_echo",
+            tenant_id="t1",
+            entity_key="e1",
+            synthetic=True,
+            records=(
+                streams.StreamRecord("r-orig", "t1", "e1", "affected", 5, 10, None, 10, "ASSERT", "Alpha widget kernel flaw.", "ghsa"),
+                streams.StreamRecord(
+                    "r-unmatched-echo",
+                    "t1",
+                    "e1",
+                    "affected",
+                    5,
+                    20,
+                    None,
+                    20,
+                    "ASSERT",
+                    "Completely dissimilar unrelated sentence about maritime weather.",
+                    "nvd",
+                    echo_of="r-orig",
+                ),
+                streams.StreamRecord(
+                    "r-explicit-child",
+                    "t1",
+                    "e1",
+                    "affected",
+                    5,
+                    20,
+                    None,
+                    20,
+                    "ASSERT",
+                    "Derived summary.",
+                    "distro",
+                    explicit_parent_ids=("r-orig",),
+                ),
+            ),
+            cuts=(streams.CutSpec("t_initial", 20, 20),),
+        )
+        _events, copy_edges, _withdraws = runner.project_ek5(family)
+        copy_pairs = {(edge.src_id, edge.dst_id) for edge in copy_edges}
+        self.assertNotIn(("r-unmatched-echo", "r-orig"), copy_pairs)
+        self.assertIn(("r-explicit-child", "r-orig"), copy_pairs)
+        sql_ops = runner.sql_envelopes(family)
+        sql_edges = {(env.src_id, env.dst_id) for kind, env in sql_ops if kind == "edge"}
+        self.assertNotIn(("r-unmatched-echo", "r-orig"), sql_edges)
+        self.assertIn(("r-explicit-child", "r-orig"), sql_edges)
+        roots = runner._lineage_roots(family, ["r-orig", "r-unmatched-echo", "r-explicit-child"])
+        self.assertIn("r-unmatched-echo", roots)
+        self.assertNotIn("r-explicit-child", roots)
+
+    def test_cluster_bootstrap_dedup_burn_and_live_wild_exit_codes(self):
+        streams = _streams()
+        runner = self.runner
+        retirement = self.report["retirement"]
+        self.assertEqual(retirement["sampling_unit"], "family_id")
+        self.assertEqual(retirement["family_cluster_count"], 4)
+        self.assertEqual(retirement["bootstrap_resamples"], 2000)
+        self.assertEqual(len(retirement["family_deltas_ek5_minus_sql"]), 4)
+        self.assertEqual(self.report["burn"]["burn_inventory_scope"], "local_drycheck_smoke")
+
+        # Duplicate family_ids cannot inflate wild quota.
+        dupes = tuple(
+            streams.AdjudicatedFamily(
+                family_id="dup-same",
+                stratum=streams.STRATA[0],
+                tenant_id="t",
+                entity_key="e",
+                records=(),
+                cuts=(),
+                adjudicated=True,
+                synthetic=False,
+            )
+            for _ in range(300)
+        )
+        census = streams.count_adjudicated_families(dupes)
+        self.assertEqual(census["total"], 1)
+        self.assertEqual(census["duplicate_family_ids_dropped"], 299)
+        self.assertFalse(census["meets_wild_gate"])
+
+        # Live wild mode without meeting wild gate must exit non-zero (rc = 2).
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp)
+            (folder / "one.json").write_text(
+                json.dumps(_envelope("real-only-one", "sec_item_402_nonreliance")),
+                encoding="utf-8",
+            )
+            rc = runner.main(["--mode", "run-wild", "--wild-snapshot-dir", str(folder)])
+            rep = runner.run_wild_revision_comparison(mode="run-wild", wild_snapshot_dir=folder)
+        self.assertEqual(rc, 2)
+        self.assertFalse(rep["passed"])
+        self.assertEqual(len(rep["snapshot_sha256"]), 64)
+
+        # Invalid mode rejected by argparse and run_wild_revision_comparison.
+        with self.assertRaises(ValueError):
+            runner.run_wild_revision_comparison(mode="bogus-mode")
+        with self.assertRaises(SystemExit):
+            runner.main(["--mode", "bogus-mode"])
+
 
 if __name__ == "__main__":
     unittest.main()

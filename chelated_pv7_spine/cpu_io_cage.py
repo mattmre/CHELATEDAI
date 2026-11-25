@@ -24,8 +24,10 @@ from __future__ import annotations
 import datetime
 import hashlib
 import json
+import math
 import os
 import re
+import sys
 import urllib.request
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -782,16 +784,24 @@ class ResidentIdleLeaseVerifier:
                 continue
             delta = float(after.counter_totals[name] - before.counter_totals[name])
             deltas[name] = delta
+            if not math.isfinite(delta):
+                violations.append(f"NONFINITE_COUNTER_DELTA:{name}={delta}")
+                continue
             if delta < 0.0:
                 violations.append(f"COUNTER_RESET_DETECTED:{name}={delta}")
             elif delta > 0.0:
                 violations.append(f"RESIDENT_REQUEST_DELTA_NONZERO:{name}=+{delta}")
 
-        max_before = max((float(v) for v in before.active_gauges.values()), default=0.0)
-        max_after = max((float(v) for v in after.active_gauges.values()), default=0.0)
+        finite_before = [float(v) for v in before.active_gauges.values() if math.isfinite(float(v))]
+        finite_after = [float(v) for v in after.active_gauges.values() if math.isfinite(float(v))]
+        max_before = max(finite_before, default=0.0)
+        max_after = max(finite_after, default=0.0)
         for name in all_gauges:
             vb = float(before.active_gauges.get(name, 0.0))
             va = float(after.active_gauges.get(name, 0.0))
+            if not math.isfinite(vb) or not math.isfinite(va):
+                violations.append(f"NONFINITE_ACTIVE_GAUGE:{name}")
+                continue
             if vb > 0.0:
                 violations.append(f"ACTIVE_REQUESTS_AT_LEASE_START:{name}={vb}")
             if va > 0.0:
@@ -833,6 +843,13 @@ def build_cage_preflight_receipt(
     """Assemble a content-addressed preflight receipt for Items 2A-2E."""
     wrapped_cmd = build_systemd_run_command(command, config)
     passed = bool(cuda_receipt.passed and idle_lease.valid)
+    skipped_non_linux_checks: List[str] = []
+    if sys.platform != "linux":
+        skipped_non_linux_checks = [
+            "proc_pid_io",
+            "sys_block_stat",
+            "cgroup_v2_systemd_scope",
+        ]
     payload = {
         "preflight_passed": passed,
         "systemd_command": wrapped_cmd,
@@ -842,6 +859,8 @@ def build_cage_preflight_receipt(
         "storage_tier": asdict(storage),
         "cuda_isolation": asdict(cuda_receipt),
         "idle_lease": idle_lease.to_dict(),
+        "platform": sys.platform,
+        "skipped_non_linux_checks": skipped_non_linux_checks,
     }
     payload["receipt_sha256"] = _sha256_json(payload)
     return payload

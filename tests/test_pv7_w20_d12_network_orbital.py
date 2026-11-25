@@ -12,9 +12,11 @@ import json
 import os
 import struct
 import sys
+import types
 import unittest
 from pathlib import Path
 from typing import Any, Dict, Tuple
+from unittest import mock
 
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
@@ -130,6 +132,7 @@ class ScoreboardTests(unittest.TestCase):
         for hop, row in side.items():
             self.assertEqual(row["bytes_per_flow"], 8, hop)
             self.assertTrue(row["argmax_identical"], hop)
+            self.assertIs(row["top5_identical"], True, hop)  # B61-3: full ordered top-5, not just argmax
 
     def test_degenerate_anchor_set_refused(self) -> None:
         bh = self.sb["retrieval"]["bridge_health"]
@@ -388,6 +391,155 @@ class ReceiptTests(unittest.TestCase):
     def test_nda_receipt_has_internal_block_only_in_nda(self) -> None:
         self.assertNotIn("internal", self.svc.issue_receipt("A", 1, "non_nda")["payload"])
         self.assertIn("internal", self.svc.issue_receipt("A", 1, "nda")["payload"])
+
+
+class Batch4RemediationTests(unittest.TestCase):
+    """B61-1 (per-mode ledger), B61-2 (audit retention), B61-3 (fail-closed live encoders), B61-4 (forbidden input)."""
+
+    def setUp(self) -> None:
+        self.svc = eng.FabricService(nda_token=NDA_TOKEN)
+
+    def _get(self, path: str, params: Dict[str, Any] = None, headers: Dict[str, str] = None) -> Response:
+        return eng.handle_fabric_get(path, params or {}, headers or {}, self.svc)
+
+    def _post(self, path: str, body: Any, headers: Dict[str, str] = None) -> Response:
+        return eng.handle_fabric_post(path, {}, headers or {}, json.dumps(body).encode("utf-8"), self.svc)
+
+    # ---- B61-1: NDA receipts can never be listed through a non_nda ledger read ---------------------
+    def test_nda_receipt_never_appears_in_non_nda_ledger_read(self) -> None:
+        nda = self.svc.issue_receipt("A", 1, "nda")
+        self.assertIn("internal", nda["payload"])
+        self.svc.issue_receipt("A", 2, "non_nda")
+        resp = self._get("/api/v2/fabric/ledger", {"mode": "non_nda"})
+        self.assertEqual(resp[0], 200)
+        text = resp[2].decode("utf-8")
+        body = json.loads(text)
+        self.assertEqual(len(body["entries"]), 1)
+        self.assertEqual({e["payload"]["mode"] for e in body["entries"]}, {"non_nda"})
+        self.assertNotIn("internal", text)
+        self.assertNotIn("eligibility_raw", text)
+        self.assertTrue(body["chain"]["intact"])
+        self.assertEqual(body["chain"]["length"], 1)
+
+    def test_default_ledger_read_is_the_non_nda_partition(self) -> None:
+        self.svc.issue_receipt("A", 1, "nda")
+        body = _json(self._get("/api/v2/fabric/ledger"))
+        self.assertEqual(body["entries"], [])
+        self.assertEqual(body["mode"], "non_nda")
+
+    def test_nda_ledger_is_token_gated_and_carries_only_nda_entries(self) -> None:
+        self.svc.issue_receipt("A", 1, "nda")
+        self.svc.issue_receipt("A", 2, "non_nda")
+        self.assertEqual(self._get("/api/v2/fabric/ledger", {"mode": "nda"})[0], 403)
+        ok = self._get("/api/v2/fabric/ledger", {"mode": "nda"}, {"X-Copilot-Nda-Token": NDA_TOKEN})
+        self.assertEqual(ok[0], 200)
+        body = _json(ok)
+        self.assertEqual({e["payload"]["mode"] for e in body["entries"]}, {"nda"})
+        self.assertEqual(len(body["entries"]), 1)
+
+    def test_each_mode_chain_is_independently_hash_linked_from_genesis(self) -> None:
+        a = self.svc.issue_receipt("A", 1, "nda")
+        b = self.svc.issue_receipt("A", 1, "non_nda")
+        self.assertEqual(a["prev_hash"], "0" * 64)
+        self.assertEqual(b["prev_hash"], "0" * 64)  # not chained behind the NDA receipt
+        self.assertEqual((a["payload"]["seq"], b["payload"]["seq"]), (1, 1))
+        self.assertTrue(self.svc.verify_ledger("nda")["intact"])
+        self.assertTrue(self.svc.verify_ledger("non_nda")["intact"])
+        self.assertTrue(self.svc.verify_receipt(a)["in_ledger"])
+        self.assertTrue(self.svc.verify_receipt(b)["in_ledger"])
+        with self.assertRaises(eng.FabricError):
+            self.svc.ledger_for("bogus")
+
+    # ---- B61-2: audit retention counts only ADMIT / AUDIT_ONLY memos ------------------------------
+    def test_retained_eligibility_set(self) -> None:
+        self.assertEqual(tuple(eng.FabricArm._RETAINED_ELIGIBILITY), ("ADMIT", "AUDIT_ONLY"))
+
+    def _fake_arm(self, eligibility: Dict[str, str]):
+        events = {e: types.SimpleNamespace(kind=eng.KIND_AUDIT) for e in eligibility}
+        events["d_not_audit"] = types.SimpleNamespace(kind=eng.KIND_DERIVED)
+        store = types.SimpleNamespace(events=dict(events), eligibility=dict(eligibility, d_not_audit="ADMIT"))
+        return types.SimpleNamespace(events=events, store=store, _RETAINED_ELIGIBILITY=eng.FabricArm._RETAINED_ELIGIBILITY)
+
+    def test_audit_retained_excludes_contested_memos(self) -> None:
+        arm = self._fake_arm({"a_ok": "ADMIT", "a_cited_gone": "AUDIT_ONLY", "a_contested": "CONTESTED"})
+        self.assertEqual(eng.FabricArm.audit_retained(arm), {"a_ok", "a_cited_gone"})
+
+    def test_audit_in_trace_requires_trace_and_store_to_agree(self) -> None:
+        arm = self._fake_arm({"a_ok": "ADMIT", "a_only": "AUDIT_ONLY", "a_contested": "CONTESTED", "a_disagree": "ADMIT"})
+        nodes = {
+            "a_ok": types.SimpleNamespace(eligibility="ADMIT"),
+            "a_only": types.SimpleNamespace(eligibility="AUDIT_ONLY"),
+            "a_contested": types.SimpleNamespace(eligibility="CONTESTED"),
+            "a_disagree": types.SimpleNamespace(eligibility="AUDIT_ONLY"),  # trace disagrees with the store
+        }
+        trace = types.SimpleNamespace(by_id=lambda: nodes)
+        with mock.patch.object(eng, "export_canonical_ek5_audit_trace", lambda store: trace):
+            self.assertEqual(eng.FabricArm.audit_in_trace(arm), {"a_ok", "a_only"})
+
+    # ---- B61-3: a requested-live encoder that cannot load must fail closed -------------------------
+    def test_requested_live_encoders_that_fall_back_are_recorded(self) -> None:
+        with mock.patch.object(eng, "live_encoder_available", lambda i: (False, "no checkpoint")):
+            es = eng.EncoderSet("run-live-encoders")
+        self.assertEqual(es.dry_fallbacks, [eid for eid, _n, _d in eng.ENCODER_CHAIN])
+        self.assertTrue(all(v.startswith("stand_in") for v in es.status.values()))
+
+    def test_local_drycheck_requests_no_live_encoder_so_records_no_fallback(self) -> None:
+        self.assertEqual(eng.EncoderSet("local-drycheck").dry_fallbacks, [])
+
+    def test_runner_fails_closed_on_dry_fallback_unless_explicitly_allowed(self) -> None:
+        import copy
+
+        import scripts.run_pv7_w20_d12_network_orbital_fabric as runner
+
+        base = eng.get_eval("local-drycheck")
+        fr = copy.copy(base["fr"])
+        fr.enc = copy.copy(base["fr"].enc)
+        fr.enc.dry_fallbacks = ["enc_e"]  # what a live request on a CPU-only host records
+        fake_ev = dict(base, fr=fr)
+        self.addCleanup(eng.set_encoder_mode, "local-drycheck")
+        clean_probe = {"patterns": 1, "responses_scanned": 0, "hits": 0, "page_hits": 0, "http_errors": [],
+                       "forbidden_input_rejected_without_echo": True, "nda_ledger_isolated": True}
+        # the live-HTTP probe is exercised by test_runner_gates_all_pass; stub it so this stays a pure gate-logic test
+        with mock.patch.object(eng, "get_eval", lambda mode="local-drycheck": fake_ev),                 mock.patch.object(runner, "_http_probe", lambda: clean_probe):
+            strict = runner.execute("run-live-encoders")
+            allowed = runner.execute("run-live-encoders", allow_dry_standin=True)
+        gate = {g["name"]: g for g in strict["gates"]}["live_encoders_fail_closed_on_dry_fallback"]
+        self.assertFalse(gate["passed"])
+        self.assertFalse(strict["passed"])
+        self.assertIn("FAIL CLOSED", gate["detail"])
+        self.assertEqual(strict["dry_standin_fallbacks"], ["enc_e"])
+        gate2 = {g["name"]: g for g in allowed["gates"]}["live_encoders_fail_closed_on_dry_fallback"]
+        self.assertTrue(gate2["passed"])
+        self.assertIn("--allow-dry-standin", gate2["detail"])
+
+    # ---- B61-4: forbidden input is refused outright and never echoed ------------------------------
+    def test_forbidden_input_is_422_and_not_echoed(self) -> None:
+        probe = "stiefel"
+        resp = self._post("/api/v2/fabric/query", {"scenario": "A", "step": 1, "mode": "non_nda", "text": probe})
+        self.assertEqual(resp[0], 422)
+        self.assertNotIn(probe, resp[2].decode("utf-8").lower())
+        self.assertEqual(_json(resp)["error"], "forbidden_input")
+
+    def test_forbidden_input_is_caught_in_nested_values_and_keys(self) -> None:
+        for body in ({"scenario": "A", "step": 1, "extra": {"deep": ["x", "stiefel"]}},
+                     {"scenario": "A", "step": 1, "stiefel": "k"}):
+            resp = self._post("/api/v2/fabric/query", body)
+            self.assertEqual(resp[0], 422, body)
+            self.assertNotIn("stiefel", resp[2].decode("utf-8").lower())
+
+    def test_clean_input_still_served_and_verify_receipt_is_exempt(self) -> None:
+        self.assertEqual(self._post("/api/v2/fabric/query", {"scenario": "A", "step": 1, "text": "ordinary question"})[0], 200)
+        entry = self.svc.issue_receipt("A", 1, "non_nda")
+        tampered = json.loads(json.dumps(entry))
+        tampered["payload"]["step_title"] = "stiefel"
+        resp = self._post("/api/v2/fabric/verify-receipt", {"receipt": tampered})
+        self.assertEqual(resp[0], 200)  # a verifier must be able to reject a hostile receipt, not 422 on it
+        self.assertFalse(_json(resp)["valid"])
+
+    def test_nda_mode_is_not_subject_to_the_non_nda_input_policy(self) -> None:
+        resp = self._post("/api/v2/fabric/query", {"scenario": "A", "step": 1, "mode": "nda", "text": "stiefel"},
+                          {"X-Copilot-Nda-Token": NDA_TOKEN})
+        self.assertEqual(resp[0], 200)
 
 
 class ScheduleAndTcoTests(unittest.TestCase):

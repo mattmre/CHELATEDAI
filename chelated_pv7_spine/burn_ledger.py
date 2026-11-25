@@ -7,6 +7,7 @@ import json
 import re
 import tokenize
 import unicodedata
+import warnings
 from collections import defaultdict
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -29,7 +30,15 @@ HISTORICAL_DATASETS = {
     "longmemeval": "Flagship 2 PM-1b and PM-4",
     "locomo": "Flagship 2 PM-1a and PM-4",
     "osv_cve_seeds": "Phase 2 D1 and Wave 11 D9",
+    "cosqa": "Flagship 1 R4 comprehensive CoIR run",
 }
+# Every canonical corpus a historical fingerprint inventory must cover before a
+# candidate admission is confirmatory-eligible.
+BURNED_CORPORA = tuple(HISTORICAL_DATASETS)
+INVENTORY_SCOPE_COMPLETE = "complete_historical_inventory"
+INVENTORY_SCOPE_SMOKE = "local_drycheck_smoke"
+INVENTORY_SCOPE_PARTIAL = "partial_inventory"
+INVENTORY_SCOPE_NONE = "no_inventory"
 _ALIAS_PATTERNS = {
     "msmarco": r"ms[-_. ]?marco",
     "quora": r"quora(?:[-_. ]?(?:qp|question[-_. ]pairs))?",
@@ -41,7 +50,14 @@ _ALIAS_PATTERNS = {
     "longmemeval": r"long[-_. ]?mem[-_. ]?eval(?:[-_. ](?:s|m)(?:[-_. ]cleaned)?|[-_. ]cleaned)?",
     "locomo": r"lo[-_. ]?co[-_. ]?mo(?:(?:[-_. ](?:mc)?\d+)|\d+)?",
     "osv_cve_seeds": r"osv[-_. ]cve[-_. ]seeds",
+    "cosqa": r"co[-_. ]?sqa",
 }
+# Release, split and role variants that still name the same burned corpus, e.g.
+# msmarco-v2, ms_marco_passage, quora-duplicates and scifact-v2.
+_VARIANT_SUFFIX = (
+    r"(?:[-_. ](?:v\d+(?:[-_.]\d+)*|passages?|docs?|documents?|duplicates?|dups?|pairs|corpus|queries"
+    r"|qrels|test|dev|train|valid(?:ation)?|full|small|mini|subset|beir|mteb|hf))*"
+)
 _ALIAS_RE = {
     key: re.compile(r"(?<![a-z0-9])(?:" + value + r")(?![a-z0-9])", re.IGNORECASE)
     for key, value in _ALIAS_PATTERNS.items()
@@ -74,6 +90,45 @@ class BurnLedger:
     document_fingerprints: frozenset[str]
     query_fingerprints: frozenset[str]
     fingerprint_inventory_complete: bool = False
+    inventory_corpora: frozenset[str] = frozenset()
+    allow_local_drycheck_smoke: bool = False
+    inventory_scope: str = ""
+
+    def __post_init__(self):
+        """Derive completeness from inventory coverage, never from a bare claim.
+
+        ``fingerprint_inventory_complete`` ends up ``True`` only when
+        ``inventory_corpora`` covers every corpus in ``BURNED_CORPORA`` with a
+        non-empty two-role inventory. A bare ``True`` claim (the legacy
+        sentinel-ledger shape) or an explicit smoke opt-in is stamped
+        ``local_drycheck_smoke`` and is never confirmatory-eligible.
+        """
+        if isinstance(self.inventory_corpora, (str, bytes)):
+            raise ValueError("inventory_corpora must be an iterable of dataset IDs")
+        corpora = frozenset(normalize_dataset_id(name) for name in self.inventory_corpora)
+        has_inventory = bool(self.document_fingerprints and self.query_fingerprints)
+        covered = has_inventory and set(BURNED_CORPORA) <= corpora
+        claimed = bool(self.fingerprint_inventory_complete)
+        if covered:
+            scope = INVENTORY_SCOPE_COMPLETE
+        elif self.allow_local_drycheck_smoke or claimed:
+            scope = INVENTORY_SCOPE_SMOKE
+        elif self.inventory_scope == INVENTORY_SCOPE_PARTIAL or (corpora and has_inventory):
+            scope = INVENTORY_SCOPE_PARTIAL
+        else:
+            scope = INVENTORY_SCOPE_NONE
+        object.__setattr__(self, "inventory_corpora", corpora)
+        object.__setattr__(self, "fingerprint_inventory_complete", covered)
+        object.__setattr__(self, "allow_local_drycheck_smoke", scope == INVENTORY_SCOPE_SMOKE)
+        object.__setattr__(self, "inventory_scope", scope)
+
+    @property
+    def confirmatory_eligible(self):
+        return self.inventory_scope == INVENTORY_SCOPE_COMPLETE and self.fingerprint_inventory_complete
+
+    @property
+    def missing_burned_corpora(self):
+        return tuple(name for name in BURNED_CORPORA if name not in self.inventory_corpora)
 
     def to_dict(self):
         return {
@@ -84,6 +139,10 @@ class BurnLedger:
             "document_fingerprints": sorted(self.document_fingerprints),
             "query_fingerprints": sorted(self.query_fingerprints),
             "fingerprint_inventory_complete": self.fingerprint_inventory_complete,
+            "inventory_corpora": sorted(self.inventory_corpora),
+            "missing_burned_corpora": list(self.missing_burned_corpora),
+            "inventory_scope": self.inventory_scope,
+            "confirmatory_eligible": self.confirmatory_eligible,
         }
 
     @property
@@ -106,7 +165,7 @@ def normalize_dataset_id(dataset_id):
     basename = value.rsplit("/", 1)[-1]
     basename = re.sub(r"[-_.]qrels$|\.(?:jsonl?|zip|parquet)$", "", basename)
     for canonical, pattern in _ALIAS_PATTERNS.items():
-        if re.fullmatch(pattern, basename):
+        if re.fullmatch(pattern + _VARIANT_SUFFIX, basename):
             return canonical
     return basename
 
@@ -223,17 +282,33 @@ def _record_aliases(source, body, exposure):
 
 
 def _historical_inventories(fingerprints):
-    if not isinstance(fingerprints, Mapping) or fingerprints.keys() != {"documents", "queries"}:
+    """Split a supplied index into document digests, query digests and covered corpora.
+
+    The optional ``corpora`` key names the burned corpora whose full document
+    and query text the inventory fingerprints. Without it nothing is covered.
+    """
+    keys = set(fingerprints.keys()) if isinstance(fingerprints, Mapping) else None
+    if keys not in ({"documents", "queries"}, {"documents", "queries", "corpora"}):
         raise ValueError("Historical fingerprint index requires documents and queries inventories")
-    return set(_digests(fingerprints["documents"])), set(_digests(fingerprints["queries"]))
+    corpora = fingerprints.get("corpora", ())
+    if isinstance(corpora, (str, bytes, Mapping)):
+        raise ValueError("Historical inventory corpora must be an iterable of dataset IDs")
+    return (
+        set(_digests(fingerprints["documents"])),
+        set(_digests(fingerprints["queries"])),
+        frozenset(normalize_dataset_id(name) for name in corpora),
+    )
 
 
-def build_burn_ledger(repo_root=REPO_ROOT, *, historical_fingerprints=None):
-    """Read historical sources and optionally attach a supplied complete digest inventory.
+def build_burn_ledger(repo_root=REPO_ROOT, *, historical_fingerprints=None, allow_local_drycheck_smoke=False):
+    """Read historical sources and optionally attach a supplied digest inventory.
 
     An inventory maps documents and queries to their normalized SHA-256
-    fingerprints. Its supplier attests that it covers historical exposures.
-    Script and registry references alone cannot establish inventory completeness.
+    fingerprints and lists the ``corpora`` it covers. The ledger is complete
+    (and confirmatory-eligible) only when every corpus in ``BURNED_CORPORA`` is
+    covered by a non-empty two-role inventory. Script and registry references
+    alone cannot establish completeness. ``allow_local_drycheck_smoke`` stamps a
+    partial inventory ``local_drycheck_smoke`` (never confirmatory-eligible).
     """
     root = Path(repo_root).resolve(strict=True)
     scripts = root / "scripts"
@@ -260,23 +335,47 @@ def build_burn_ledger(repo_root=REPO_ROOT, *, historical_fingerprints=None):
         _scan_script(ast.parse(body, filename=source), source, exposure, fingerprints)
         _record_aliases(source, body, exposure)
     documents, queries = fingerprints["documents"], fingerprints["queries"]
-    complete = False
+    corpora = frozenset()
+    scope = INVENTORY_SCOPE_NONE
     if historical_fingerprints is not None:
-        supplied_documents, supplied_queries = _historical_inventories(historical_fingerprints)
-        complete = bool(supplied_documents and supplied_queries)
+        supplied_documents, supplied_queries, corpora = _historical_inventories(historical_fingerprints)
+        if supplied_documents and supplied_queries:
+            scope = INVENTORY_SCOPE_PARTIAL
+        else:
+            corpora = frozenset()
         documents.update(supplied_documents)
         queries.update(supplied_queries)
     datasets = tuple((name, tuple(sorted(sources))) for name, sources in sorted(exposure.items()))
-    return BurnLedger(datasets, frozenset(documents), frozenset(queries), complete)
+    return BurnLedger(
+        datasets, frozenset(documents), frozenset(queries),
+        inventory_corpora=corpora,
+        allow_local_drycheck_smoke=bool(allow_local_drycheck_smoke) and scope != INVENTORY_SCOPE_NONE,
+        inventory_scope=scope,
+    )
 
 
-def assert_corpus_unburned(dataset_id, doc_texts=None, query_texts=None, historical_fingerprints=None, *, ledger=None):
+def assert_corpus_unburned(
+    dataset_id, doc_texts=None, query_texts=None, historical_fingerprints=None, *,
+    ledger=None, allow_local_drycheck_smoke=None,
+):
     """Reject known IDs and digest collisions, including across text roles.
 
-    For admission, supply a complete historical digest index as a mapping with
-    explicit documents and queries inventories, or pass a ledger built with
-    that inventory. An unlabelled digest iterable can establish a collision.
+    Admission needs candidate document and query texts plus a historical digest
+    index. It is confirmatory-eligible only when the index (a supplied mapping
+    with ``corpora`` and/or the ``ledger`` inventory) covers every corpus in
+    ``BURNED_CORPORA``. For an incomplete index:
+
+    * ``allow_local_drycheck_smoke=True`` admits as ``local_drycheck_smoke``
+      with ``confirmatory_eligible=False``;
+    * ``allow_local_drycheck_smoke=False`` fails closed;
+    * ``None`` (callers that predate the flag) keeps the pre-flag admission of a
+      non-empty two-role inventory, stamped ``local_drycheck_smoke`` and never
+      confirmatory-eligible, and emits a ``DeprecationWarning``.
+
+    Returns an admission receipt.
     """
+    if allow_local_drycheck_smoke not in (None, True, False):
+        raise BurnedCorpusError("Cannot establish corpus disjointness: allow_local_drycheck_smoke must be bool or None")
     try:
         name = normalize_dataset_id(dataset_id)
         ledger = build_burn_ledger() if ledger is None else ledger
@@ -285,11 +384,14 @@ def assert_corpus_unburned(dataset_id, doc_texts=None, query_texts=None, histori
             raise BurnedCorpusError(f"Dataset {dataset_id!r} is BURNED as {name}: {', '.join(sources[name])}")
 
         historical = set()
-        complete = ledger.fingerprint_inventory_complete
+        has_inventory = ledger.inventory_scope != INVENTORY_SCOPE_NONE
+        coverage = set(ledger.inventory_corpora) if has_inventory else set()
         if isinstance(historical_fingerprints, Mapping):
-            supplied_documents, supplied_queries = _historical_inventories(historical_fingerprints)
-            complete = complete or bool(supplied_documents and supplied_queries)
+            supplied_documents, supplied_queries, supplied_corpora = _historical_inventories(historical_fingerprints)
             historical = supplied_documents | supplied_queries
+            if supplied_documents and supplied_queries:
+                has_inventory = True
+                coverage |= supplied_corpora
         elif historical_fingerprints is not None:
             historical.update(_digests(historical_fingerprints))
 
@@ -309,8 +411,38 @@ def assert_corpus_unburned(dataset_id, doc_texts=None, query_texts=None, histori
                     raise BurnedCorpusError(f"BURNED {role} #{index}: exact normalized SHA-256 collision {fingerprint}")
             if index == 0:
                 raise ValueError(f"Candidate {role} inventory is empty")
-        if doc_texts is None or query_texts is None or not complete:
+        if doc_texts is None or query_texts is None:
             raise ValueError("Candidate document/query texts and a complete historical fingerprint index are required")
+
+        missing = tuple(corpus for corpus in BURNED_CORPORA if corpus not in coverage)
+        complete = has_inventory and not missing
+        if complete:
+            scope, opt_in = INVENTORY_SCOPE_COMPLETE, None
+        elif allow_local_drycheck_smoke is True:
+            scope, opt_in = INVENTORY_SCOPE_SMOKE, "explicit"
+        elif allow_local_drycheck_smoke is None and has_inventory:
+            warnings.warn(
+                "assert_corpus_unburned admitted a partial historical inventory without "
+                "allow_local_drycheck_smoke; stamped local_drycheck_smoke (not confirmatory-eligible)",
+                DeprecationWarning, stacklevel=2,
+            )
+            scope, opt_in = INVENTORY_SCOPE_SMOKE, "legacy_implicit"
+        else:
+            raise ValueError(
+                "Candidate document/query texts and a complete historical fingerprint index are required "
+                f"(missing burned corpora: {', '.join(missing) or 'none'}; inventory supplied: {has_inventory})"
+            )
+        return {
+            "dataset_id": name,
+            "admitted_unburned": True,
+            "inventory_scope": scope,
+            "fingerprint_inventory_complete": complete,
+            "confirmatory_eligible": complete,
+            "smoke_opt_in": opt_in,
+            "inventory_corpora_covered": sorted(coverage & set(BURNED_CORPORA)),
+            "missing_burned_corpora": list(missing),
+            "burn_ledger_sha256": ledger.sha256,
+        }
     except BurnedCorpusError:
         raise
     except (OSError, SyntaxError, TypeError, ValueError) as exc:

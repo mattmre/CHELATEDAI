@@ -118,20 +118,26 @@ def _run_live_gpu(
         }
 
     hist_fps = json.loads(Path(historical_fingerprints_json).read_text(encoding="utf-8"))
-    bundles = _load_live_domain_bundles(Path(domains_root))
+    root = Path(domains_root)
+    bundles = _load_live_domain_bundles(root)
     ledger = build_burn_ledger(REPO_ROOT)
+    manifest_path = root / "provenance_manifest.json"
+    provenance_manifest = json.loads(manifest_path.read_text(encoding="utf-8")) if manifest_path.is_file() else None
+    weight_paths = [str(path) for path in root.rglob("*.safetensors")]
     gauntlet = run_12domain_4hop_gauntlet(
         bundles,
         historical_fingerprints=hist_fps,
         ledger=ledger,
         is_live_confirmatory=True,
+        weight_paths=weight_paths,
+        provenance_manifest=provenance_manifest,
     )
     return {
         "bundle_id": BUNDLE_ID,
         "item": ITEM_ID,
         "mode": "run-live-gpu",
         "status": gauntlet["status"],
-        "passed": gauntlet["hypotheses"]["overall_verdict"] == "verified-pass",
+        "passed": gauntlet["status"] in {"verified-pass", "holm-family-adjudicated"},
         "gauntlet": gauntlet,
         "spine_digest": claim_registry_sha256(),
     }

@@ -28,13 +28,24 @@ Pre-registered, locked before any matter is unblinded
   confidence bound of mean per-matter loss advantage >= margin in both passes; plus
   non-inferior faithfulness against the ChallengerLedger).  Otherwise the premium is
   retired.
+* **Scoring cohort = ALL enrolled matters (B64-1).**  Timeout rates, both loss passes and the
+  faithfulness comparison are computed over every consecutive enrolled matter -- the
+  non-conflict cohort included -- never over the natural-conflict subset alone (restricting
+  to conflicts would hide an arm that harms the ordinary matters).  Natural conflicts still
+  drive the sizing rule.  Every enrolled matter must carry a blinded rubric covering all
+  three arms.
+* **Confidence bounds use the exact Student-t critical value (B64-2)** ``t_{n-1, 0.95}``,
+  not the normal 1.645, and faithfulness non-inferiority is a one-sided 95% lower bound of
+  the paired per-matter difference >= -0.05 (B64-3), not a point-estimate comparison.
 
 Evidence tier
 -------------
 This module is the *protocol and scorer*.  Output on the built-in open DEV fixtures is
 synthetic, labelled ``data_origin = "open_dev_fixture"``, and says nothing about real
 records.  Stage-1 deliverables seal strictly as ``"status": "protocol-ready"`` until a
-partner supplies real matter rows.
+partner supplies real matter rows.  A partner run that carries an explicit, well-formed
+attestation (``partner_attestation``) seals as ``"partner-run-scored"`` instead; the
+attestation is SELF-DECLARED by the partner and is recorded, not independently verified.
 """
 
 from __future__ import annotations
@@ -53,6 +64,13 @@ BUNDLE_ID = 64
 TRACK_ID = "item_5_2_trial2_records_governance"
 CLAIM_TIER = "T4"
 STAGE1_STATUS = "protocol-ready"
+#: Status of a partner-supplied run that carries an explicit attestation (B64-4/B64-5).  DEV fixtures never get it.
+PARTNER_RUN_STATUS = "partner-run-scored"
+PARTNER_ATTESTATION_FIELDS: Tuple[str, ...] = ("partner_org", "attested_by")
+PARTNER_ATTESTATION_TRUE_FLAGS: Tuple[str, ...] = (
+    "matters_consecutive_and_unselected",
+    "rubric_scored_before_unblinding",
+)
 
 ARM_EK5_ON = "ek5_on"
 ARM_EK5_OFF = "ek5_off"
@@ -92,9 +110,9 @@ LABOR_COST_PER_MINUTE: Mapping[str, float] = {"extraction": 0.05, "review": 0.20
 #: Required lower-confidence-bound advantage (loss units per natural-conflict matter).
 PREMIUM_MARGIN_ATTRIBUTION = 0.25
 PREMIUM_MARGIN_OPERATIONAL = 0.25
-#: One-sided 95% normal quantile used for the lower confidence bound.
-Z_ONE_SIDED_95 = 1.645
-#: Explanation-faithfulness non-inferiority tolerance vs the ChallengerLedger.
+#: Confidence level of the one-sided lower bounds; the critical value is the exact Student-t_{n-1} quantile.
+LCB_CONFIDENCE = 0.95
+#: Explanation-faithfulness non-inferiority tolerance vs the ChallengerLedger (one-sided 95% LCB >= -tolerance).
 FAITHFULNESS_NONINFERIORITY = 0.05
 #: An arm whose timeout rate exceeds this cannot support a premium claim.
 MAX_TIMEOUT_RATE = 0.10
@@ -128,8 +146,11 @@ def locked_protocol() -> Dict[str, Any]:
         "labor_cost_per_minute": dict(LABOR_COST_PER_MINUTE),
         "premium_margin_attribution": PREMIUM_MARGIN_ATTRIBUTION,
         "premium_margin_operational": PREMIUM_MARGIN_OPERATIONAL,
-        "z_one_sided_95": Z_ONE_SIDED_95,
+        "lcb_confidence": LCB_CONFIDENCE,
+        "lcb_critical_value": "student_t_n_minus_1_one_sided_exact",
+        "scoring_cohort": "all_enrolled_matters",
         "faithfulness_noninferiority": FAITHFULNESS_NONINFERIORITY,
+        "faithfulness_noninferiority_rule": "one_sided_95_lcb_of_paired_per_matter_difference_ge_minus_tolerance",
         "max_timeout_rate": MAX_TIMEOUT_RATE,
         "rubric_criteria": list(RUBRIC_CRITERIA),
         "arms": list(MANDATORY_ARMS),
@@ -146,6 +167,8 @@ def required_consecutive_matters(base_rate: float) -> int:
     """``ceil(30 / base_rate)`` computed exactly (no float rounding at the boundary)."""
     if isinstance(base_rate, bool) or not isinstance(base_rate, (int, float, Fraction)):
         raise TrialProtocolError(f"base_rate must be numeric, got {type(base_rate).__name__}")
+    if isinstance(base_rate, float) and not math.isfinite(base_rate):
+        raise TrialProtocolError(f"base_rate must be finite, got {base_rate!r}")
     frac = base_rate if isinstance(base_rate, Fraction) else Fraction(str(base_rate))
     if not (0 < frac <= 1):
         raise TrialProtocolError(f"base_rate must satisfy 0 < b <= 1, got {base_rate!r}")
@@ -166,8 +189,13 @@ class ArmResult:
             raise TrialProtocolError(f"outcome must be one of {OUTCOMES}, got {self.outcome!r}")
         for name in ("extraction_minutes", "review_minutes"):
             value = getattr(self, name)
-            if isinstance(value, bool) or not isinstance(value, (int, float)) or value < 0 or math.isnan(value):
-                raise TrialProtocolError(f"{name} must be a non-negative number, got {value!r}")
+            if (
+                isinstance(value, bool)
+                or not isinstance(value, (int, float))
+                or not math.isfinite(value)
+                or value < 0
+            ):
+                raise TrialProtocolError(f"{name} must be a finite non-negative number, got {value!r}")
 
     def attribution_loss(self) -> float:
         return float(OWNER_LOSS_WEIGHTS[self.outcome])
@@ -193,11 +221,21 @@ class MatterRow:
     def __post_init__(self) -> None:
         if isinstance(self.matter_seq, bool) or not isinstance(self.matter_seq, int):
             raise TrialProtocolError("matter_seq must be an int")
-        if not self.matter_id:
-            raise TrialProtocolError("matter_id must be non-empty")
+        if not isinstance(self.matter_id, str) or not self.matter_id:
+            raise TrialProtocolError("matter_id must be a non-empty string")
+        if not isinstance(self.natural_conflict, bool):
+            raise TrialProtocolError(
+                f"natural_conflict must be a strict bool, got {type(self.natural_conflict).__name__} "
+                f"{self.natural_conflict!r} (truthy strings such as 'false' are NOT coerced)"
+            )
         if set(self.arms) != set(MANDATORY_ARMS):
             raise TrialProtocolError(
                 f"matter {self.matter_id!r} must carry exactly the arms {MANDATORY_ARMS}, got {sorted(self.arms)}"
+            )
+        if self.rubric and len(self.rubric) != len(MANDATORY_ARMS):
+            raise TrialProtocolError(
+                f"matter {self.matter_id!r} rubric must carry exactly {len(MANDATORY_ARMS)} blind codes "
+                f"(one per arm), got {len(self.rubric)}"
             )
         for code, scores in self.rubric.items():
             if not _BLIND_CODE_RE.match(code):
@@ -210,11 +248,21 @@ class MatterRow:
 
     @classmethod
     def from_dict(cls, raw: Mapping[str, Any]) -> "MatterRow":
-        arms = {name: ArmResult(**spec) for name, spec in raw["arms"].items()}
+        required = ("matter_seq", "matter_id", "natural_conflict", "arms")
+        missing = [k for k in required if k not in raw]
+        if missing:
+            raise TrialProtocolError(f"matter row is missing required field(s) {missing}")
+        arm_fields = {"outcome", "extraction_minutes", "review_minutes"}
+        arms: Dict[str, ArmResult] = {}
+        for name, spec in raw["arms"].items():
+            if not isinstance(spec, Mapping) or not set(spec) <= arm_fields or "outcome" not in spec:
+                raise TrialProtocolError(f"arm {name!r} must be a mapping over {sorted(arm_fields)} with an outcome")
+            arms[name] = ArmResult(**spec)
+        # strict typing: NO int()/bool()/str() coercion (bool("false") is True; int(1.9) silently truncates).
         return cls(
-            matter_seq=int(raw["matter_seq"]),
-            matter_id=str(raw["matter_id"]),
-            natural_conflict=bool(raw["natural_conflict"]),
+            matter_seq=raw["matter_seq"],
+            matter_id=raw["matter_id"],
+            natural_conflict=raw["natural_conflict"],
             arms=arms,
             rubric={code: dict(scores) for code, scores in raw.get("rubric", {}).items()},
         )
@@ -238,14 +286,86 @@ def _mean(values: Sequence[float]) -> float:
     return sum(values) / len(values)
 
 
+def _betacf(a: float, b: float, x: float) -> float:
+    """Continued fraction for the regularized incomplete beta (modified Lentz)."""
+    tiny = 1e-300
+    qab, qap, qam = a + b, a + 1.0, a - 1.0
+    c = 1.0
+    d = 1.0 - qab * x / qap
+    d = 1.0 / (d if abs(d) > tiny else tiny)
+    h = d
+    for m in range(1, 10000):
+        m2 = 2 * m
+        aa = m * (b - m) * x / ((qam + m2) * (a + m2))
+        d = 1.0 + aa * d
+        d = 1.0 / (d if abs(d) > tiny else tiny)
+        c = 1.0 + aa / c
+        c = c if abs(c) > tiny else tiny
+        h *= d * c
+        aa = -(a + m) * (qab + m) * x / ((a + m2) * (qap + m2))
+        d = 1.0 + aa * d
+        d = 1.0 / (d if abs(d) > tiny else tiny)
+        c = 1.0 + aa / c
+        c = c if abs(c) > tiny else tiny
+        delta = d * c
+        h *= delta
+        if abs(delta - 1.0) < 1e-15:
+            break
+    return h
+
+
+def _regularized_incomplete_beta(a: float, b: float, x: float) -> float:
+    if x <= 0.0:
+        return 0.0
+    if x >= 1.0:
+        return 1.0
+    ln_front = math.lgamma(a + b) - math.lgamma(a) - math.lgamma(b) + a * math.log(x) + b * math.log1p(-x)
+    front = math.exp(ln_front)
+    if x < (a + 1.0) / (a + b + 2.0):
+        return front * _betacf(a, b, x) / a
+    return 1.0 - front * _betacf(b, a, 1.0 - x) / b
+
+
+def student_t_cdf(t: float, df: float) -> float:
+    """CDF of Student's t with ``df`` degrees of freedom (exact, via the regularized incomplete beta)."""
+    if df <= 0:
+        raise TrialProtocolError("degrees of freedom must be positive")
+    tail = 0.5 * _regularized_incomplete_beta(df / 2.0, 0.5, df / (df + t * t))
+    return 1.0 - tail if t > 0 else tail
+
+
+_T_CRITICAL_CACHE: Dict[int, float] = {}
+
+
+def student_t_critical_95(df: int) -> float:
+    """Exact one-sided 95% critical value ``t_{df, 0.95}`` (bisection on the exact CDF, rounded to 1e-10)."""
+    if isinstance(df, bool) or not isinstance(df, int) or df < 1:
+        raise TrialProtocolError(f"df must be a positive int, got {df!r}")
+    cached = _T_CRITICAL_CACHE.get(df)
+    if cached is not None:
+        return cached
+    lo, hi = 0.0, 1000.0
+    for _ in range(200):
+        mid = 0.5 * (lo + hi)
+        if student_t_cdf(mid, df) < LCB_CONFIDENCE:
+            lo = mid
+        else:
+            hi = mid
+        if hi - lo < 1e-13:
+            break
+    value = round(0.5 * (lo + hi), 10)
+    _T_CRITICAL_CACHE[df] = value
+    return value
+
+
 def lower_confidence_bound(diffs: Sequence[float]) -> float:
-    """One-sided 95% normal lower bound of the mean of paired per-matter advantages."""
+    """One-sided 95% lower bound of the mean of paired per-matter values, using the exact t_{n-1,0.95} quantile."""
     n = len(diffs)
     if n < 2:
         raise TrialProtocolError("need at least 2 paired matters for a confidence bound")
     mu = _mean(diffs)
     var = sum((d - mu) ** 2 for d in diffs) / (n - 1)
-    return mu - Z_ONE_SIDED_95 * math.sqrt(var / n)
+    return mu - student_t_critical_95(n - 1) * math.sqrt(var / n)
 
 
 def _row_loss(row: MatterRow, arm: str, pass_name: str) -> float:
@@ -258,6 +378,8 @@ def _paired(rows: Sequence[MatterRow], better: str, worse: str, pass_name: str) 
     margin = PREMIUM_MARGIN_ATTRIBUTION if pass_name == "attribution" else PREMIUM_MARGIN_OPERATIONAL
     lcb = lower_confidence_bound(diffs)
     return {
+        "n_matters": len(diffs),
+        "t_critical": student_t_critical_95(len(diffs) - 1),
         "mean_advantage": round(_mean(diffs), 6),
         "lower_confidence_bound": round(lcb, 6),
         "margin": margin,
@@ -267,24 +389,46 @@ def _paired(rows: Sequence[MatterRow], better: str, worse: str, pass_name: str) 
 
 def _faithfulness(
     rows: Sequence[MatterRow], unblinding_key: Mapping[str, Mapping[str, str]]
-) -> Dict[str, float]:
-    per_arm: Dict[str, List[float]] = {arm: [] for arm in MANDATORY_ARMS}
+) -> Dict[str, Dict[str, float]]:
+    """``{matter_id: {arm: rubric score in [0,1]}}`` for EVERY enrolled matter (blinded codes resolved here)."""
+    per_matter: Dict[str, Dict[str, float]] = {}
     for row in rows:
         key = unblinding_key.get(row.matter_id)
         if key is None:
             raise TrialProtocolError(f"unblinding key missing matter {row.matter_id!r}")
-        if not row.rubric:
-            raise TrialProtocolError(f"natural-conflict matter {row.matter_id!r} has no blinded rubric scores")
-        seen = set()
+        if len(row.rubric) != len(MANDATORY_ARMS):
+            raise TrialProtocolError(
+                f"matter {row.matter_id!r} must carry blinded rubric scores for all {len(MANDATORY_ARMS)} arms "
+                f"(got {len(row.rubric)}); every enrolled matter is scored, conflict or not"
+            )
+        scores_by_arm: Dict[str, float] = {}
         for code, scores in row.rubric.items():
             arm = key.get(code)
-            if arm not in per_arm:
+            if arm not in MANDATORY_ARMS:
                 raise TrialProtocolError(f"blind code {code!r} of {row.matter_id!r} maps to no arm")
-            seen.add(arm)
-            per_arm[arm].append(sum(scores.values()) / len(RUBRIC_CRITERIA))
-        if seen != set(MANDATORY_ARMS):
+            if arm in scores_by_arm:
+                raise TrialProtocolError(f"matter {row.matter_id!r} rubric maps two codes to arm {arm!r}")
+            scores_by_arm[arm] = sum(scores.values()) / len(RUBRIC_CRITERIA)
+        if set(scores_by_arm) != set(MANDATORY_ARMS):
             raise TrialProtocolError(f"matter {row.matter_id!r} rubric must cover all three arms exactly once")
-    return {arm: round(_mean(vals), 6) for arm, vals in per_arm.items()}
+        per_matter[row.matter_id] = scores_by_arm
+    return per_matter
+
+
+def _validate_partner_attestation(attestation: Mapping[str, Any]) -> Dict[str, Any]:
+    if not isinstance(attestation, Mapping):
+        raise TrialProtocolError("partner_attestation must be a mapping")
+    for field in PARTNER_ATTESTATION_FIELDS:
+        value = attestation.get(field)
+        if not isinstance(value, str) or not value.strip():
+            raise TrialProtocolError(f"partner_attestation.{field} must be a non-empty string")
+    for flag in PARTNER_ATTESTATION_TRUE_FLAGS:
+        if attestation.get(flag) is not True:
+            raise TrialProtocolError(f"partner_attestation.{flag} must be explicitly true")
+    out = {f: attestation[f].strip() for f in PARTNER_ATTESTATION_FIELDS}
+    out.update({f: True for f in PARTNER_ATTESTATION_TRUE_FLAGS})
+    out["self_declared_not_independently_verified"] = True
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -297,10 +441,19 @@ def score_trial2_rows(
     unblinding_key: Mapping[str, Mapping[str, str]],
     data_origin: str,
     fixture_label: str = "",
+    partner_attestation: Optional[Mapping[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """Score closed-matter rows under the locked protocol.  Pure and deterministic."""
+    """Score closed-matter rows under the locked protocol.  Pure and deterministic.
+
+    ``partner_attestation`` (partner data only) is the partner's explicit, self-declared statement that the matters
+    were consecutive/unselected and the rubric was scored before unblinding; with it a scored partner run seals as
+    ``"partner-run-scored"``.  Without it (or on DEV fixtures) the status stays ``"protocol-ready"``.
+    """
     if data_origin not in ("open_dev_fixture", "partner"):
         raise TrialProtocolError("data_origin must be 'open_dev_fixture' or 'partner'")
+    if partner_attestation is not None and data_origin != "partner":
+        raise TrialProtocolError("partner_attestation is only valid for data_origin='partner'")
+    attestation = _validate_partner_attestation(partner_attestation) if partner_attestation is not None else None
     ordered = sorted(rows, key=lambda r: r.matter_seq)
     if not ordered:
         raise TrialProtocolError("no matters supplied")
@@ -331,6 +484,8 @@ def score_trial2_rows(
         "data_origin": data_origin,
         "fixture_label": fixture_label,
         "protocol_digest": PROTOCOL_DIGEST,
+        "scoring_cohort": "all_enrolled_matters",
+        "scored_matters": len(ordered),
         "sizing": sizing,
     }
 
@@ -348,24 +503,43 @@ def score_trial2_rows(
                 ),
             }
         )
+        if attestation is not None:
+            report["partner_attestation"] = attestation  # recorded, but nothing was scored => status stays protocol-ready
         report["report_sha256"] = _sha256_json(report)
         return report
 
+    # B64-1: every statistic below is over ALL enrolled matters (conflict and non-conflict cohorts alike).
     timeout_rates = {
-        arm: round(sum(1 for r in natural if r.arms[arm].outcome == OUTCOME_TIMEOUT) / len(natural), 6)
+        arm: round(sum(1 for r in ordered if r.arms[arm].outcome == OUTCOME_TIMEOUT) / len(ordered), 6)
         for arm in MANDATORY_ARMS
     }
-    faith = _faithfulness(natural, unblinding_key)
+    faith_per_matter = _faithfulness(ordered, unblinding_key)
+    faith = {
+        arm: round(_mean([faith_per_matter[r.matter_id][arm] for r in ordered]), 6) for arm in MANDATORY_ARMS
+    }
+    faith_diffs = [
+        faith_per_matter[r.matter_id][ARM_EK5_ON] - faith_per_matter[r.matter_id][ARM_CHALLENGER] for r in ordered
+    ]
+    faith_lcb = lower_confidence_bound(faith_diffs)
+    faith_ok = bool(faith_lcb >= -FAITHFULNESS_NONINFERIORITY)
+    faith_noninferiority = {
+        "rule": "one-sided 95% LCB of paired per-matter (ek5_on - challenger_ledger) faithfulness >= -tolerance",
+        "n_matters": len(faith_diffs),
+        "paired_mean_difference": round(_mean(faith_diffs), 6),
+        "lower_confidence_bound": round(faith_lcb, 6),
+        "t_critical": student_t_critical_95(len(faith_diffs) - 1),
+        "tolerance": FAITHFULNESS_NONINFERIORITY,
+        "noninferior": faith_ok,
+    }
     passes = {}
     for label, (better, worse) in {
         "ek5_on_vs_challenger": (ARM_EK5_ON, ARM_CHALLENGER),
         "ek5_on_vs_ek5_off": (ARM_EK5_ON, ARM_EK5_OFF),
     }.items():
         passes[label] = {
-            "attribution_pass": _paired(natural, better, worse, "attribution"),
-            "operational_pass": _paired(natural, better, worse, "operational"),
+            "attribution_pass": _paired(ordered, better, worse, "attribution"),
+            "operational_pass": _paired(ordered, better, worse, "operational"),
         }
-    faith_ok = faith[ARM_EK5_ON] >= faith[ARM_CHALLENGER] - FAITHFULNESS_NONINFERIORITY
 
     causes: List[str] = []
     if timeout_rates[ARM_EK5_ON] > MAX_TIMEOUT_RATE:
@@ -398,6 +572,7 @@ def score_trial2_rows(
             "comparisons": passes,
             "timeout_rate_by_arm": timeout_rates,
             "faithfulness_by_arm": faith,
+            "faithfulness_noninferiority": faith_noninferiority,
             "faithfulness_noninferior_to_challenger": faith_ok,
             "rationale": (
                 "Both EK5-on vs ChallengerLedger and EK5-on vs EK5-off cleared the pre-registered margins."
@@ -406,6 +581,9 @@ def score_trial2_rows(
             ),
         }
     )
+    if attestation is not None:
+        report["partner_attestation"] = attestation
+        report["status"] = PARTNER_RUN_STATUS
     report["report_sha256"] = _sha256_json(report)
     return report
 
@@ -431,7 +609,8 @@ def _pattern(scenario: str, arm: str, i: int) -> str:
         return OUTCOME_WRONG if i % 5 == 0 else OUTCOME_CORRECT
     if scenario == "timeout":
         if arm == ARM_EK5_ON:
-            return OUTCOME_TIMEOUT if i % 4 == 0 else OUTCOME_CORRECT
+            # 15 of 30 conflicts => 15% of ALL 100 enrolled matters, still above MAX_TIMEOUT_RATE after B64-1 dilution
+            return OUTCOME_TIMEOUT if i % 2 == 0 else OUTCOME_CORRECT
         return OUTCOME_WRONG if i % 2 == 0 else OUTCOME_ABSTAIN
     return OUTCOME_CORRECT  # insufficient_natural_conflicts: outcomes are irrelevant
 
@@ -459,7 +638,9 @@ def build_open_dev_fixture(scenario: str) -> Tuple[List[MatterRow], float, Dict[
     Matters ``seq % 10 in (0, 3, 6)`` are natural conflicts: a declared 30% base rate gives
     ``ceil(30 / 0.3) = 100`` consecutive matters containing exactly 30 natural conflicts
     (the minimum).  The ``insufficient_natural_conflicts`` fixture has the same 100 matters
-    but only 20 natural conflicts (``seq % 10 in (0, 5)``).
+    but only 20 natural conflicts (``seq % 10 in (0, 5)``).  The remaining matters are the
+    ordinary (non-conflict) cohort: every arm is correct and every blinded rubric is full marks
+    (synthetic).  They are scored too (B64-1), diluting every conflict-cohort effect by the base rate.
     """
     if scenario not in DEV_FIXTURE_SCENARIOS:
         raise ValueError(f"Unknown DEV fixture scenario={scenario!r}; expected one of {DEV_FIXTURE_SCENARIOS}")
@@ -480,6 +661,7 @@ def build_open_dev_fixture(scenario: str) -> Tuple[List[MatterRow], float, Dict[
                 rubric[codes[arm]] = _rubric_scores(scenario, arm, nat_index)
             else:
                 arms[arm] = ArmResult(OUTCOME_CORRECT, 1.0, 0.0)
+                rubric[codes[arm]] = {c: 1 for c in RUBRIC_CRITERIA}  # synthetic: every enrolled matter is rubric-scored
         if natural:
             nat_index += 1
         rows.append(MatterRow(seq, matter_id, natural, arms, rubric))
@@ -532,6 +714,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser.add_argument("--rows-jsonl", type=Path, default=None, help="Partner closed-matter row log (JSONL)")
     parser.add_argument("--unblinding-key-json", type=Path, default=None, help="{matter_id: {code: arm}} JSON")
     parser.add_argument("--declared-base-rate", type=float, default=None, help="Pre-registered natural base rate")
+    parser.add_argument(
+        "--partner-attestation-json",
+        type=Path,
+        default=None,
+        help="Partner's explicit attestation JSON (partner_org, attested_by, matters_consecutive_and_unselected, "
+        "rubric_scored_before_unblinding); with it a partner run seals as 'partner-run-scored'",
+    )
     parser.add_argument("--output", type=Path, default=None, help="Optional output JSON report path")
     args = parser.parse_args(argv)
 
@@ -544,6 +733,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             unblinding_key=json.loads(args.unblinding_key_json.read_text(encoding="utf-8")),
             data_origin="partner",
             fixture_label=args.rows_jsonl.name,
+            partner_attestation=(
+                json.loads(args.partner_attestation_json.read_text(encoding="utf-8"))
+                if args.partner_attestation_json is not None
+                else None
+            ),
         )
     else:
         payload = run_offline_dev_fixture_suite()
@@ -570,6 +764,7 @@ __all__ = [
     "MIN_NATURAL_CONFLICTS",
     "MatterRow",
     "OWNER_LOSS_WEIGHTS",
+    "PARTNER_RUN_STATUS",
     "PROTOCOL_DIGEST",
     "RUBRIC_CRITERIA",
     "STAGE1_STATUS",
@@ -584,6 +779,7 @@ __all__ = [
     "required_consecutive_matters",
     "run_offline_dev_fixture_suite",
     "score_trial2_rows",
+    "student_t_critical_95",
 ]
 
 

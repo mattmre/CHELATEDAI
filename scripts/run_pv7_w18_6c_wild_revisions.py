@@ -27,6 +27,7 @@ from chelated_pv7_spine.burn_ledger import (
 from chelated_pv7_spine.challenger_ledger import (
     QUERY_MODES,
     ChallengerBitemporalLedger,
+    LedgerEdgeEnvelope,
     LedgerRecordEnvelope,
     Postgres17ChallengerBackend,
     SQLiteChallengerBackend,
@@ -42,7 +43,6 @@ from chelated_wild_revision_streams import (
     STATUS_DRYCHECK,
     WILD_FAMILY_MINIMUM,
     WILD_PER_STRATUM,
-    build_schema_drycheck_families,
     echo_decision,
     echo_metrics,
     family_oracles,
@@ -52,6 +52,7 @@ from chelated_wild_revision_streams import (
     oracle_at_cut,
     schema_echo_pairs,
     select_cohort,
+    snapshot_directory_sha256,
     unsigned_correlation_collapse,
 )
 
@@ -59,6 +60,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 BUNDLE_ID = 55
 ITEM = "6C"
 COST_LIMIT = 1.25
+VALID_MODES = ("local-drycheck", "run-wild")
 MIRROR_STRATA = frozenset({"unlinked_cross_mirror_echo", "equal_authority_vex_ghsa"})
 _ASSERTING = frozenset({"ASSERT", "CONFLICT"})
 
@@ -91,10 +93,20 @@ def _slot(family):
     return "status"
 
 
+def _public_family_view(family):
+    """Strip ground-truth echo_of labels so every engine receives 100% identical public inputs."""
+    return replace(
+        family,
+        records=tuple(replace(record, echo_of="") for record in family.records),
+    )
+
+
 def sql_envelopes(family):
-    """Project one family into SQL record ops. Echoes stay unlinked."""
+    """Project one family into SQL record/edge ops using public fields only (never echo_of)."""
+    public = _public_family_view(family)
+    by_id = {record.record_id: record for record in public.records}
     envelopes = []
-    for record in family.records:
+    for record in public.records:
         if record.op_kind in _ASSERTING:
             envelopes.append(
                 (
@@ -112,6 +124,21 @@ def sql_envelopes(family):
                     ),
                 )
             )
+            for parent_id in record.explicit_parent_ids:
+                parent = by_id.get(parent_id)
+                if parent is not None and parent.tenant_id == record.tenant_id:
+                    envelopes.append(
+                        (
+                            "edge",
+                            LedgerEdgeEnvelope(
+                                tenant_id=record.tenant_id,
+                                edge_id=f"der:{record.record_id}:{parent_id}:{record.tx_time}",
+                                src_id=record.record_id,
+                                dst_id=parent_id,
+                                tx_time=record.tx_time,
+                            ),
+                        )
+                    )
             for target in record.supersedes_ids:
                 envelopes.append(
                     (
@@ -158,10 +185,12 @@ def sql_prediction(result):
 
 
 def _lineage_roots(family, admitted_ids):
-    roots = infer_echo_roots(family.records)
+    """Identify independent roots strictly from public text echo inference and explicit parents."""
+    public = _public_family_view(family)
+    roots = infer_echo_roots(public.records)
     linked = set()
-    for record in family.records:
-        if record.echo_of or record.explicit_parent_ids:
+    for record in public.records:
+        if record.explicit_parent_ids:
             linked.add(record.record_id)
     chosen = []
     for event_id in admitted_ids:
@@ -174,14 +203,15 @@ def _lineage_roots(family, admitted_ids):
 
 
 def project_ek5(family):
-    """Project assertions, same-tenant echo edges, and tx-gated withdrawals."""
-    slot = _slot(family)
-    lineage_id = f"{family.tenant_id}:{family.entity_key}:{slot}"
+    """Project assertions, text-inferred same-tenant echo edges, explicit parents, and tx-gated withdrawals."""
+    public = _public_family_view(family)
+    slot = _slot(public)
+    lineage_id = f"{public.tenant_id}:{public.entity_key}:{slot}"
     events = []
     copy_edges = []
     withdraw_edges = []
-    by_id = {record.record_id: record for record in family.records}
-    for record in family.records:
+    by_id = {record.record_id: record for record in public.records}
+    for record in public.records:
         if record.op_kind not in _ASSERTING:
             continue
         events.append(
@@ -235,17 +265,15 @@ def project_ek5(family):
                     lineage_id=lineage_id,
                 )
             )
-    roots = infer_echo_roots(family.records)
+    roots = infer_echo_roots(public.records)
     seen_copies = set()
-    for record in family.records:
+    for record in public.records:
         if record.op_kind not in _ASSERTING:
             continue
         parents = []
         root = roots.get(record.record_id, record.record_id)
         if root != record.record_id and by_id.get(root) and by_id[root].tenant_id == record.tenant_id:
             parents.append(root)
-        if record.echo_of and record.echo_of not in parents:
-            parents.append(record.echo_of)
         parents.extend(parent for parent in record.explicit_parent_ids if parent not in parents)
         for parent_id in parents:
             parent = by_id.get(parent_id)
@@ -266,7 +294,7 @@ def project_ek5(family):
                 )
             )
     by_target = {}
-    for record in family.records:
+    for record in public.records:
         if record.op_kind not in {"WITHDRAW", "REINSTATE"}:
             continue
         target = record.target_id or record.record_id
@@ -277,6 +305,8 @@ def project_ek5(family):
             continue
         open_withdraws = []
         for op in sorted(ops, key=lambda item: (item.tx_time, item.record_id)):
+            if op.tenant_id != parent.tenant_id or op.authority_rank < parent.authority_rank:
+                continue
             if op.op_kind == "WITHDRAW":
                 sentinel = f"wd:{target}:{op.tx_time}:{op.record_id}"
                 events.append(
@@ -320,8 +350,13 @@ def project_ek5(family):
                         authority_tier=op.authority_rank,
                     )
                 )
+                remaining_open = []
                 for sentinel, earlier in open_withdraws:
                     if (earlier.tx_time, earlier.record_id) >= (op.tx_time, op.record_id):
+                        remaining_open.append((sentinel, earlier))
+                        continue
+                    if op.authority_rank < earlier.authority_rank:
+                        remaining_open.append((sentinel, earlier))
                         continue
                     withdraw_edges.append(
                         EdgeAttestation(
@@ -333,7 +368,7 @@ def project_ek5(family):
                             tx_time=op.tx_time,
                         )
                     )
-                open_withdraws = []
+                open_withdraws = remaining_open
     return events, copy_edges, withdraw_edges
 
 
@@ -352,8 +387,9 @@ def ek5_prediction(store, family, cut):
 
 
 def unsigned_prediction(family, cut):
-    """Collapse near-copies with no tenant boundary, then read the oracle."""
-    assertions = [record for record in family.records if record.op_kind in _ASSERTING and record.text]
+    """Collapse near-copies with no tenant boundary, then evaluate disposition."""
+    public = _public_family_view(family)
+    assertions = [record for record in public.records if record.op_kind in _ASSERTING and record.text]
     parent = {record.record_id: record.record_id for record in assertions}
 
     def find(record_id):
@@ -381,30 +417,32 @@ def unsigned_prediction(family, cut):
             if record.record_id != root.record_id:
                 echo_of[record.record_id] = root.record_id
     rewritten = []
-    for record in family.records:
+    for record in public.records:
         if record.record_id in echo_of:
             rewritten.append(
                 replace(
                     record,
-                    tenant_id=family.tenant_id,
-                    entity_key=family.entity_key,
+                    tenant_id=public.tenant_id,
+                    entity_key=public.entity_key,
                     echo_of=echo_of[record.record_id],
                 )
             )
         else:
             rewritten.append(record)
-    oracle = oracle_at_cut(replace(family, records=tuple(rewritten)), cut)
+    clean_cut = replace(cut, expected_disposition=None, expected_admitted_ids=None)
+    oracle = oracle_at_cut(replace(public, records=tuple(rewritten)), clean_cut)
     return oracle.disposition, oracle.independent_lineage_ids
 
 
 def recency_prediction(family, cut):
     """Latest visible assertion. Withdrawals, echoes, and conflicts are ignored."""
+    public = _public_family_view(family)
     visible = [
         record
-        for record in family.records
+        for record in public.records
         if record.op_kind in _ASSERTING
-        and record.tenant_id == family.tenant_id
-        and record.entity_key == family.entity_key
+        and record.tenant_id == public.tenant_id
+        and record.entity_key == public.entity_key
         and record.tx_time <= cut.tx_time
         and record.valid_from <= cut.valid_time
         and (record.valid_to is None or cut.valid_time < record.valid_to)
@@ -430,6 +468,7 @@ def _pair_row(family, cut, oracle, disposition, lineage, elapsed):
         "predicted_lineage": list(lineage),
         "oracle_disposition": oracle.disposition,
         "oracle_lineage": list(oracle.independent_lineage_ids),
+        "adjudication_source": oracle.adjudication_source,
         "elapsed_seconds": elapsed,
     }
 
@@ -539,10 +578,27 @@ def _dev_best(mode_blocks):
 
 
 def retirement_decision(ek5_block, sql_block):
-    """1.25x cost gate plus paired McNemar and bootstrap on ek5 minus sql."""
-    deltas = [float(ek5["hit"] - sql["hit"]) for ek5, sql in zip(ek5_block["rows"], sql_block["rows"])]
-    pairs = [(ek5["hit"], sql["hit"]) for ek5, sql in zip(ek5_block["rows"], sql_block["rows"])]
-    mean, lower, upper = paired_bootstrap_ci(deltas, n_resamples=2000, alpha=0.05, seed=1601)
+    """1.25x cost gate plus family-cluster paired bootstrap (2,000 resamples) and cluster-level exact sign/McNemar test."""
+    ek5_by_family: dict[str, list[int]] = {}
+    sql_by_family: dict[str, list[int]] = {}
+    for ek5, sql in zip(ek5_block["rows"], sql_block["rows"]):
+        fid = ek5["family_id"]
+        ek5_by_family.setdefault(fid, []).append(int(ek5["hit"]))
+        sql_by_family.setdefault(fid, []).append(int(sql["hit"]))
+    family_ids = list(ek5_by_family.keys())
+    family_deltas: list[float] = []
+    family_pairs: list[tuple[int, int]] = []
+    for fid in family_ids:
+        ek5_acc = _mean(ek5_by_family[fid])
+        sql_acc = _mean(sql_by_family[fid])
+        family_deltas.append(float(ek5_acc - sql_acc))
+        if ek5_acc > sql_acc:
+            family_pairs.append((1, 0))
+        elif ek5_acc < sql_acc:
+            family_pairs.append((0, 1))
+        else:
+            family_pairs.append((1, 1))
+    mean, lower, upper = paired_bootstrap_ci(family_deltas, n_resamples=2000, alpha=0.05, seed=1601)
     mirror_ek5, mirror_n = _stratum_accuracy(ek5_block["rows"], MIRROR_STRATA)
     mirror_sql, mirror_sql_n = _stratum_accuracy(sql_block["rows"], MIRROR_STRATA)
     ek5_cost = ek5_block["combined_cost_seconds"]
@@ -560,16 +616,26 @@ def retirement_decision(ek5_block, sql_block):
     ek5_cheaper = ek5_cost > 0.0 and ek5_cost * COST_LIMIT <= sql_cost
     conjunction = noninferior and (mirror_superior or ek5_cheaper)
     retire = (not accuracy_superior and sql_within_cost) or (not conjunction)
+    cluster_wins = sum(1 for ek5_w, sql_w in family_pairs if ek5_w > sql_w)
+    cluster_losses = sum(1 for ek5_w, sql_w in family_pairs if ek5_w < sql_w)
+    cluster_ties = sum(1 for ek5_w, sql_w in family_pairs if ek5_w == sql_w)
     return {
         "cost_limit": COST_LIMIT,
-        "paired_deltas_ek5_minus_sql": deltas,
+        "sampling_unit": "family_id",
+        "family_cluster_count": len(family_ids),
+        "bootstrap_resamples": 2000,
+        "paired_deltas_ek5_minus_sql": family_deltas,
+        "family_deltas_ek5_minus_sql": family_deltas,
         "bootstrap_mean": mean,
         "bootstrap_lcb": lower,
         "bootstrap_ucb": upper,
-        "mcnemar_p": mcnemar_exact(pairs),
-        "wins": sum(1 for ek5, sql in pairs if ek5 > sql),
-        "losses": sum(1 for ek5, sql in pairs if ek5 < sql),
-        "ties": sum(1 for ek5, sql in pairs if ek5 == sql),
+        "mcnemar_p": mcnemar_exact(family_pairs),
+        "wins": cluster_wins,
+        "losses": cluster_losses,
+        "ties": cluster_ties,
+        "cluster_wins": cluster_wins,
+        "cluster_losses": cluster_losses,
+        "cluster_ties": cluster_ties,
         "ek5_accuracy": ek5_block["accuracy"],
         "sql_accuracy": sql_block["accuracy"],
         "sql_mode": sql_block["name"],
@@ -634,13 +700,39 @@ def _kernel_receipt():
     }
 
 
-def _burn_receipt(families):
+def _burn_receipt(families, *, cohort_source=COHORT_DRYCHECK, historical_fingerprints=None):
     texts = [record.text for family in families for record in family.records if record.text]
+    queries = [f"{family.family_id}:{cut.name}" for family in families for cut in family.cuts] or [
+        "schema-drycheck-family query token"
+    ]
     rejected = False
     try:
         assert_corpus_unburned("osv_cve_seeds")
     except BurnedCorpusError:
         rejected = True
+    if historical_fingerprints is not None:
+        assert_corpus_unburned(
+            "wild-revision-cohort",
+            doc_texts=texts or ["empty-cohort-placeholder"],
+            query_texts=queries,
+            historical_fingerprints=historical_fingerprints,
+        )
+        return {
+            "osv_cve_seeds_rejected": rejected,
+            "scored_cohort_texts_checked": len(texts),
+            "drycheck_texts_admitted": True,
+            "burn_inventory_scope": "supplied_historical_inventory",
+            "wild_inventory_verified": True,
+        }
+    if cohort_source == COHORT_WILD:
+        return {
+            "osv_cve_seeds_rejected": rejected,
+            "scored_cohort_texts_checked": len(texts),
+            "drycheck_texts_admitted": False,
+            "burn_inventory_scope": "missing_historical_inventory",
+            "wild_inventory_verified": False,
+            "error": "historical_fingerprints inventory is required to verify a live wild cohort",
+        }
     historical = {
         "documents": [text_fingerprint("historical document marker for schema drycheck burn index")],
         "queries": [text_fingerprint("historical query marker for schema drycheck burn index")],
@@ -648,10 +740,16 @@ def _burn_receipt(families):
     assert_corpus_unburned(
         "schema-drycheck-family",
         doc_texts=texts,
-        query_texts=["schema-drycheck-family query token"],
+        query_texts=queries,
         historical_fingerprints=historical,
     )
-    return {"osv_cve_seeds_rejected": rejected, "drycheck_texts_admitted": True}
+    return {
+        "osv_cve_seeds_rejected": rejected,
+        "scored_cohort_texts_checked": len(texts),
+        "drycheck_texts_admitted": True,
+        "burn_inventory_scope": "local_drycheck_smoke",
+        "wild_inventory_verified": False,
+    }
 
 
 def _echo_block(families):
@@ -703,11 +801,15 @@ def run_wild_revision_comparison(
     pg17_dsn=None,
     pg_connect=None,
     seed_cache=None,
+    historical_fingerprints=None,
 ):
     """Run the item 6C comparison. Synthetic output is never labeled wild."""
     os.environ["CUDA_VISIBLE_DEVICES"] = ""
+    if mode not in VALID_MODES:
+        raise ValueError(f"mode must be one of {VALID_MODES}, got {mode!r}")
     registry_before = REGISTRY_PATH.read_bytes()
     snapshot_dir = Path(wild_snapshot_dir) if wild_snapshot_dir else None
+    snapshot_sha256 = snapshot_directory_sha256(snapshot_dir)
     wild_families = load_adjudicated_families(snapshot_dir) if snapshot_dir else ()
     cohort = select_cohort(wild_families)
     families = tuple(cohort["families"])
@@ -736,9 +838,12 @@ def run_wild_revision_comparison(
     )
     retirement = retirement_decision(ek5_block, comparison_sql)
     retirement["comparison_engine"] = comparison_engine
-    retirement["superiority_is_wild_evidence"] = False
     kernel = _kernel_receipt()
-    burn = _burn_receipt(build_schema_drycheck_families())
+    burn = _burn_receipt(
+        families,
+        cohort_source=cohort["cohort_source"],
+        historical_fingerprints=historical_fingerprints,
+    )
     weight_guard = reproduce_memt_weight_omission(
         config_sha256="a" * 64,
         tokenizer_sha256="b" * 64,
@@ -758,15 +863,33 @@ def run_wild_revision_comparison(
     status = cohort["status"]
     if mode == "local-drycheck" and cohort["cohort_source"] != COHORT_WILD:
         status = STATUS_DRYCHECK
+    cohort_source = cohort["cohort_source"] if status != STATUS_DRYCHECK or cohort["cohort_source"] == COHORT_WILD else COHORT_DRYCHECK
+    is_wild_evaluated = (
+        status == "EVALUATED"
+        and cohort_source == COHORT_WILD
+        and bool(cohort["census"]["meets_wild_gate"])
+        and bool(burn.get("wild_inventory_verified", False))
+        and not any(family.synthetic for family in families)
+    )
+    superiority_is_wild = bool(
+        is_wild_evaluated
+        and not retirement["retire_ek5_proprietary_superiority"]
+        and retirement["preregistered_conjunction_met"]
+    )
+    retirement["superiority_is_wild_evidence"] = superiority_is_wild
+    live_requirements_met = is_wild_evaluated if mode == "run-wild" else True
     report = {
         "bundle_id": BUNDLE_ID,
         "item": ITEM,
         "mode": mode,
         "status": status,
-        "cohort_source": cohort["cohort_source"] if status != STATUS_DRYCHECK or cohort["cohort_source"] == COHORT_WILD else COHORT_DRYCHECK,
+        "passed": bool(live_requirements_met and registry_before == registry_after),
+        "cohort_source": cohort_source,
+        "snapshot_sha256": snapshot_sha256,
         "family_count": len(families),
         "families_per_stratum": per_stratum,
         "wild_adjudicated_count": cohort["census"]["total"],
+        "duplicate_family_ids_dropped": cohort["census"].get("duplicate_family_ids_dropped", 0),
         "wild_gate": {"families": WILD_FAMILY_MINIMUM, "per_stratum": WILD_PER_STRATUM},
         "wild_gate_met": cohort["census"]["meets_wild_gate"],
         "synthetic_labeled_wild": cohort["synthetic_labeled_wild"],
@@ -803,8 +926,8 @@ def run_wild_revision_comparison(
         "tra1_silent_state_reuses": weight_guard["silent_state_reuses"],
         "registry_mutated": registry_before != registry_after,
         "registry_sha256": claim_registry_sha256(),
-        "superiority_is_wild_evidence": False,
-        "confirmatory_n": status != STATUS_DRYCHECK and cohort["cohort_source"] == COHORT_WILD,
+        "superiority_is_wild_evidence": superiority_is_wild,
+        "confirmatory_n": is_wild_evaluated,
     }
     if report["cohort_source"] == COHORT_WILD and any(family.synthetic for family in families):
         raise RuntimeError("synthetic family entered the frozen wild cohort")
@@ -826,21 +949,28 @@ def _json_ready(value):
 def main(argv=None):
     os.environ["CUDA_VISIBLE_DEVICES"] = ""
     parser = argparse.ArgumentParser(description="Bundle 55 item 6C wild-revision comparison")
-    parser.add_argument("--mode", default="local-drycheck")
+    parser.add_argument("--mode", default="local-drycheck", choices=VALID_MODES)
     parser.add_argument("--wild-snapshot-dir", default=None)
     parser.add_argument("--pg17-dsn", default=None)
+    parser.add_argument("--historical-fingerprints", default=None)
     parser.add_argument("--output", default=None)
     args = parser.parse_args(argv)
+    hist_fp = None
+    if args.historical_fingerprints:
+        hist_fp = json.loads(Path(args.historical_fingerprints).read_text(encoding="utf-8"))
     report = run_wild_revision_comparison(
         mode=args.mode,
         wild_snapshot_dir=args.wild_snapshot_dir,
         pg17_dsn=args.pg17_dsn,
+        historical_fingerprints=hist_fp,
     )
     payload = json.dumps(_json_ready(report), indent=2, sort_keys=True)
     if args.output:
         Path(args.output).write_text(payload + "\n", encoding="utf-8")
     print(payload)
-    return 0
+    if args.mode == "run-wild" and not report["passed"]:
+        return 2
+    return 0 if report["passed"] else 1
 
 
 if __name__ == "__main__":

@@ -10,7 +10,7 @@ Implements the locked Post-v7 R2 protocol for Item 6B (#54):
      `{UncenteredProcrustes, CenteredProcrustes, RidgeDriftAdapter, Rank1QueryResidual, ZeroMuPolarBridge}`
      x all 3 merge methods `{RawCosineMerge, CalibratedZScoreMerge, CSLSMerge}` with zero retuning.
   3. Evaluates all 3 pre-registered hypotheses without retuning:
-     - `H6B_merge`: `CSLS > CalibratedZScore` (`LCB > 0` + `>= 10/12` domains positive, exact sign-test p).
+     - `H6B_merge`: `CSLS > CalibratedZScore` (`LCB > 0` + `>= 11/12` domains positive, exact sign-test p).
      - `H6B_bridge_static`: `ZeroMu + CSLS` non-inferiority guard `LCB > -0.010` nDCG@10 vs
        `UncenteredProcrustes + CSLS` (also reporting `-0.005` tight equivalence AND `CenteredProcrustes + CSLS`
        head-to-head contrast!).
@@ -27,6 +27,7 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import asdict, dataclass
+from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 
 import numpy as np
@@ -61,7 +62,7 @@ from chelated_pv7_spine.burn_ledger import (
     normalize_dataset_id,
     text_fingerprint,
 )
-from chelated_pv7_spine.claim_registry import claim_registry_sha256
+from chelated_pv7_spine.claim_registry import HOLM_FAMILY, adjudicate_holm, claim_registry_sha256
 from chelated_pv7_spine.tra1_weight_sha_guard import (
     EMPTY_ADAPTER_SHA256,
     TRA1StateIdentityContract,
@@ -142,7 +143,7 @@ PREREGISTERED_ZERO_RETUNE_CONFIG: Dict[str, Any] = {
     "poisoning_modes": list(POISONING_SWEEP_MODES),
     "static_retirement_floor": ITEM6B_RETIREMENT_FLOOR,
     "static_tight_equivalence_floor": ITEM6B_TIGHT_EQUIVALENCE_FLOOR,
-    "min_positive_domains_merge": 10,
+    "min_positive_domains_merge": 11,
     "retuned_on_eval": False,
 }
 
@@ -150,6 +151,133 @@ PREREGISTERED_ZERO_RETUNE_CONFIG: Dict[str, Any] = {
 def _sha256_json(payload: Mapping[str, Any]) -> str:
     raw = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode("utf-8")
     return hashlib.sha256(raw).hexdigest()
+
+
+_WEIGHT_SUFFIXES = {".safetensors", ".bin", ".pt", ".pth", ".npy", ".onnx", ".gguf", ".msgpack"}
+_UNAUTHENTICATED_SUFFIXES = {".json", ".npz"}
+
+
+def _manifest_signature_ok(manifest: Mapping[str, Any]) -> bool:
+    """A signed provenance manifest binds weight-file digests to a payload SHA-256."""
+    digests = manifest.get("weight_file_digests")
+    payload = manifest.get("payload_sha256")
+    signature = manifest.get("signature_sha256")
+    if not isinstance(digests, Mapping) or not digests:
+        return False
+    if not isinstance(payload, str) or len(payload) != 64:
+        return False
+    if not isinstance(signature, str) or len(signature) != 64:
+        return False
+    body = {
+        "payload_sha256": payload,
+        "weight_file_digests": {str(key): str(value) for key, value in sorted(digests.items())},
+    }
+    expected = sha256_digest(json.dumps(body, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode("utf-8"))
+    return signature == expected
+
+
+def resolve_weight_provenance(
+    *,
+    is_live: bool,
+    weight_bytes: Optional[bytes] = None,
+    weight_paths: Optional[Sequence[str]] = None,
+    provenance_manifest: Optional[Mapping[str, Any]] = None,
+    content_bytes: bytes = b"",
+) -> Dict[str, Any]:
+    """Authenticate live weights from files, raw bytes, or a signed manifest.
+
+    Drycheck mode hashes the supplied content bytes and stays unauthenticated.
+    A live run that only has JSON or NPZ, or no weight material at all, stays
+    unauthenticated. The returned digest is always a SHA-256 of bytes, never a
+    hash of a label string.
+    """
+    file_digests: Dict[str, str] = {}
+    saw_unauth = False
+    paths = [str(item) for item in (weight_paths or ())]
+    for raw_path in paths:
+        path = Path(raw_path)
+        if not path.is_file():
+            continue
+        suffix = path.suffix.lower()
+        if suffix in _UNAUTHENTICATED_SUFFIXES:
+            saw_unauth = True
+            continue
+        digest = sha256_digest(path.read_bytes())
+        file_digests[str(path)] = digest
+    if file_digests:
+        blob = json.dumps(file_digests, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode("utf-8")
+        return {
+            "authenticated": True,
+            "reason": "weight-file-digests",
+            "base_weights_sha256": sha256_digest(blob),
+            "weight_file_digests": file_digests,
+        }
+    if weight_bytes:
+        return {
+            "authenticated": True,
+            "reason": "weight-bytes",
+            "base_weights_sha256": sha256_digest(weight_bytes),
+            "weight_file_digests": {},
+        }
+    if provenance_manifest is not None and _manifest_signature_ok(provenance_manifest):
+        return {
+            "authenticated": True,
+            "reason": "signed-provenance-manifest",
+            "base_weights_sha256": str(provenance_manifest["payload_sha256"]),
+            "weight_file_digests": {str(k): str(v) for k, v in provenance_manifest["weight_file_digests"].items()},
+        }
+    content_sha = sha256_digest(content_bytes)
+    if not is_live:
+        return {
+            "authenticated": False,
+            "reason": "drycheck-content-bytes",
+            "base_weights_sha256": content_sha,
+            "weight_file_digests": {},
+        }
+    reason = "unauthenticated-json-or-npz" if saw_unauth or paths else "refused-unauthenticated-weights"
+    return {
+        "authenticated": False,
+        "reason": reason,
+        "base_weights_sha256": content_sha,
+        "weight_file_digests": {},
+    }
+
+
+def _split_dev_eval(n_queries: int) -> int:
+    """Return a DEV width that leaves a non-empty disjoint EVAL slice."""
+    n_dev = max(4, n_queries // 5)
+    if n_dev >= n_queries:
+        n_dev = max(1, n_queries // 3)
+    if n_dev >= n_queries:
+        n_dev = n_queries - 1
+    if n_dev <= 0 or n_dev >= n_queries:
+        raise ValueError(f"cannot split {n_queries} queries into disjoint DEV and EVAL")
+    return n_dev
+
+
+def _decontamination_applied(
+    desc: DomainDescriptor,
+    doc_texts: Sequence[str],
+    query_texts: Sequence[str],
+    historical_fingerprints: Mapping[str, Sequence[str]],
+    ledger: BurnLedger,
+) -> Dict[str, Any]:
+    """Invoke fingerprint decontamination for every named target. Empty targets are a no-op."""
+    targets = tuple(desc.decontaminate_against)
+    if not targets:
+        return {"invoked": False, "targets": [], "colliding_docs": 0, "colliding_queries": 0, "cleared": True}
+    blocked = set(ledger.document_fingerprints) | set(ledger.query_fingerprints)
+    blocked.update(historical_fingerprints.get("documents") or ())
+    blocked.update(historical_fingerprints.get("queries") or ())
+    doc_hits = sum(1 for text in doc_texts if text_fingerprint(text) in blocked)
+    query_hits = sum(1 for text in query_texts if text_fingerprint(text) in blocked)
+    return {
+        "invoked": True,
+        "targets": list(targets),
+        "colliding_docs": doc_hits,
+        "colliding_queries": query_hits,
+        "cleared": doc_hits == 0 and query_hits == 0,
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -225,21 +353,30 @@ def verify_12_domains_unburned(
             raise BurnedCorpusError(
                 f"Cross-domain document SHA-256 overlap detected in {desc.domain_id}: {cross_overlaps} collisions"
             )
+        decontamination = _decontamination_applied(
+            desc,
+            bundle.doc_texts,
+            bundle.query_texts,
+            historical_fingerprints,
+            active_ledger,
+        )
         per_domain_receipts[desc.domain_id] = {
             "burn_check_id": desc.burn_check_id,
             "admitted_unburned": True,
             "decontaminated_against": list(desc.decontaminate_against),
+            "decontamination": decontamination,
             "doc_count": len(bundle.doc_texts),
             "query_count": len(bundle.query_texts),
             "unique_doc_sha256": len(set(dom_doc_fps)),
             "cross_domain_doc_overlaps": 0,
         }
 
+    bio = per_domain_receipts.get("BioASQ-TaskB", {}).get("decontamination", {})
     return {
         "n_domains_verified": len(domain_bundles),
         "all_12_unburned": True,
         "burn_ledger_sha256": active_ledger.sha256,
-        "bioasq_nfcorpus_decontaminated": True,
+        "bioasq_nfcorpus_decontaminated": bool(bio.get("invoked") and bio.get("cleared")),
         "forbidden_substitutes_excluded": list(FORBIDDEN_BURNED_SUBSTITUTES),
         "per_domain": per_domain_receipts,
     }
@@ -282,11 +419,11 @@ def build_deterministic_12domain_gauntlet_fixture(
         doc_ids = tuple(f"{desc.burn_check_id}_d{i:04d}" for i in range(n_docs_per_domain))
         query_ids = tuple(f"{desc.burn_check_id}_q{i:03d}" for i in range(n_queries_per_domain))
         doc_texts = tuple(
-            f"Unburned public passage {i:04d} from {desc.domain_id} ({desc.category}) token_{dom_idx}_{i}"
+            f"Synthetic schema drycheck passage {i:04d} slot {desc.burn_check_id} topic {desc.category} token_{dom_idx}_{i}"
             for i in range(n_docs_per_domain)
         )
         query_texts = tuple(
-            f"Unburned retrieval question {i:03d} targeting {desc.domain_id} ({desc.category}) probe_{dom_idx}_{i}"
+            f"Synthetic schema drycheck question {i:03d} slot {desc.burn_check_id} topic {desc.category} probe_{dom_idx}_{i}"
             for i in range(n_queries_per_domain)
         )
 
@@ -391,6 +528,10 @@ def run_12domain_4hop_gauntlet(
     n_bootstrap: int = 2000,
     seed: int = 5401,
     is_live_confirmatory: bool = False,
+    weight_bytes: Optional[bytes] = None,
+    weight_paths: Optional[Sequence[str]] = None,
+    provenance_manifest: Optional[Mapping[str, Any]] = None,
+    holm_family_p_values: Optional[Mapping[str, float]] = None,
 ) -> Dict[str, Any]:
     """Execute the full zero-retune 12-domain, 5-encoder/4-hop, shift & poisoning gauntlet.
 
@@ -427,6 +568,19 @@ def run_12domain_4hop_gauntlet(
         d_v1, d_v2 = bundle.doc_embeddings_seq[0], bundle.doc_embeddings_seq[1]
         q_v1, q_v2 = bundle.query_embeddings_seq[0], bundle.query_embeddings_seq[1]
         zero_mask = np.zeros(len(bundle.doc_ids), dtype=bool)
+        n_dev = _split_dev_eval(int(q_v1.shape[0]))
+        dev_slice = slice(0, n_dev)
+        eval_slice = slice(n_dev, None)
+        q_v1_dev, q_v1_eval = q_v1[dev_slice], q_v1[eval_slice]
+        q_v2_dev, q_v2_eval = q_v2[dev_slice], q_v2[eval_slice]
+        eval_query_ids = bundle.query_ids[eval_slice]
+        dev_docs_seq = tuple(
+            l2_normalize(np.random.default_rng(seed + 17 + dom_idx * 10 + enc_i).normal(size=(12, docs.shape[1])))
+            for enc_i, docs in enumerate(bundle.doc_embeddings_seq)
+        )
+        dev_docs_v2 = dev_docs_seq[1]
+        dev_q_seq = tuple(np.asarray(queries)[dev_slice] for queries in bundle.query_embeddings_seq)
+        eval_q_seq = tuple(np.asarray(queries)[eval_slice] for queries in bundle.query_embeddings_seq)
 
         # 1. 20 frozen 500-anchor draws per domain
         draws = sample_anchor_draws(
@@ -444,11 +598,14 @@ def run_12domain_4hop_gauntlet(
             domain=dom_id,
             src_anchors=d_v1[primary_anc],
             tgt_anchors=d_v2[primary_anc],
-            eval_queries_src=q_v1,
-            eval_queries_tgt=q_v2,
+            eval_queries_src=q_v1_eval,
+            eval_queries_tgt=q_v2_eval,
             docs_old=d_v2,
             docs_new=d_v2,
-            query_ids=bundle.query_ids,
+            dev_queries_src=q_v1_dev,
+            dev_queries_tgt=q_v2_dev,
+            dev_docs=dev_docs_v2,
+            query_ids=eval_query_ids,
             doc_ids=bundle.doc_ids,
             qrels=bundle.qrels,
             backfill_mask=bundle.backfill_mask,
@@ -485,10 +642,13 @@ def run_12domain_4hop_gauntlet(
                 d_v2[draw.indices],
                 scoring_mode=PREREGISTERED_ZERO_RETUNE_CONFIG["zeromu_mode"],
             )
-            raw_d = zm_draw.score_matrix(q_v1, d_v2)
+            raw_d = zm_draw.score_matrix(q_v1_eval, d_v2, dev_docs=dev_docs_v2)
+            ref_d = zm_draw.score_matrix(q_v1_dev, d_v2, dev_docs=dev_docs_v2)
             dummy_d = np.zeros_like(raw_d)
-            fused_d = csls_merger.merge(raw_d, dummy_d, zero_mask, bridged_ref=raw_d, native_ref=dummy_d)
-            pq_n, _ = evaluate_score_matrix(fused_d, bundle.query_ids, bundle.doc_ids, bundle.qrels, k=10)
+            fused_d = csls_merger.merge(
+                raw_d, dummy_d, zero_mask, bridged_ref=ref_d, native_ref=dummy_d, strict_disjoint_dev=True
+            )
+            pq_n, _ = evaluate_score_matrix(fused_d, eval_query_ids, bundle.doc_ids, bundle.qrels, k=10)
             draw_ndcgs.append(float(np.mean(list(pq_n.values()))) if pq_n else 0.0)
         anchor_draw_scores_zeromu[dom_id] = draw_ndcgs
 
@@ -503,6 +663,8 @@ def run_12domain_4hop_gauntlet(
             scoring_mode="dual_adap",
         )
 
+        shifted_dev = bundle.shifted_queries_v1[dev_slice]
+        shifted_eval = bundle.shifted_queries_v1[eval_slice]
         shift_scores: Dict[str, float] = {}
         for label, br in (
             ("UncenteredProcrustes", unc_clean),
@@ -510,58 +672,40 @@ def run_12domain_4hop_gauntlet(
             ("ZeroMuPolarBridge", zm_clean),
             ("ShiftedAnchorRefitCeiling", refit_ceiling_bridge),
         ):
-            raw_s = br.score_matrix(bundle.shifted_queries_v1, d_v2)
+            score_kwargs: Dict[str, Any] = {}
+            if label in {"ZeroMuPolarBridge", "ShiftedAnchorRefitCeiling"}:
+                score_kwargs["dev_docs"] = dev_docs_v2
+            raw_s = br.score_matrix(shifted_eval, d_v2, **score_kwargs)
+            ref_s = br.score_matrix(shifted_dev, d_v2, **score_kwargs)
             dummy_s = np.zeros_like(raw_s)
-            fused_s = csls_merger.merge(raw_s, dummy_s, zero_mask, bridged_ref=raw_s, native_ref=dummy_s)
-            pq_n, _ = evaluate_score_matrix(fused_s, bundle.query_ids, bundle.doc_ids, bundle.qrels, k=10)
+            fused_s = csls_merger.merge(
+                raw_s, dummy_s, zero_mask, bridged_ref=ref_s, native_ref=dummy_s, strict_disjoint_dev=True
+            )
+            pq_n, _ = evaluate_score_matrix(fused_s, eval_query_ids, bundle.doc_ids, bundle.qrels, k=10)
             shift_scores[label] = float(np.mean(list(pq_n.values()))) if pq_n else 0.0
 
         shift_zeromu_vs_uncentered[dom_id] = shift_scores["ZeroMuPolarBridge"] - shift_scores["UncenteredProcrustes"]
         prefix_disp_by_domain[dom_id] = bundle.prefix_displacement_mean_norm
 
         # 5. 5-encoder / 4-hop sequential composition (v1->v2->v3->v4->v5) + direct v1->v5 fit
-        chain_zm = evaluate_4hop_chain(
-            bridge_name="ZeroMuPolarBridge",
-            encoder_names=ENCODER_NAMES,
-            doc_embeddings_seq=bundle.doc_embeddings_seq,
-            query_embeddings_seq=bundle.query_embeddings_seq,
-            anchor_indices=primary_anc,
-            query_ids=bundle.query_ids,
-            doc_ids=bundle.doc_ids,
-            qrels=bundle.qrels,
-            merge_name="CSLSMerge",
-            csls_k=DEFAULT_CSLS_K,
-            polar_reproject=True,
-            k=10,
-        )
-        chain_unc = evaluate_4hop_chain(
-            bridge_name="UncenteredProcrustes",
-            encoder_names=ENCODER_NAMES,
-            doc_embeddings_seq=bundle.doc_embeddings_seq,
-            query_embeddings_seq=bundle.query_embeddings_seq,
-            anchor_indices=primary_anc,
-            query_ids=bundle.query_ids,
-            doc_ids=bundle.doc_ids,
-            qrels=bundle.qrels,
-            merge_name="CSLSMerge",
-            csls_k=DEFAULT_CSLS_K,
-            polar_reproject=False,
-            k=10,
-        )
-        chain_cen = evaluate_4hop_chain(
-            bridge_name="CenteredProcrustes",
-            encoder_names=ENCODER_NAMES,
-            doc_embeddings_seq=bundle.doc_embeddings_seq,
-            query_embeddings_seq=bundle.query_embeddings_seq,
-            anchor_indices=primary_anc,
-            query_ids=bundle.query_ids,
-            doc_ids=bundle.doc_ids,
-            qrels=bundle.qrels,
-            merge_name="CSLSMerge",
-            csls_k=DEFAULT_CSLS_K,
-            polar_reproject=False,
-            k=10,
-        )
+        hop_kwargs: Dict[str, Any] = {
+            "encoder_names": ENCODER_NAMES,
+            "doc_embeddings_seq": bundle.doc_embeddings_seq,
+            "query_embeddings_seq": eval_q_seq,
+            "dev_query_embeddings_seq": dev_q_seq,
+            "dev_docs_seq": dev_docs_seq,
+            "anchor_indices": primary_anc,
+            "query_ids": eval_query_ids,
+            "doc_ids": bundle.doc_ids,
+            "qrels": bundle.qrels,
+            "merge_name": "CSLSMerge",
+            "csls_k": DEFAULT_CSLS_K,
+            "k": 10,
+        }
+        chain_zm = evaluate_4hop_chain(bridge_name="ZeroMuPolarBridge", polar_reproject=True, **hop_kwargs)
+        chain_unc = evaluate_4hop_chain(bridge_name="UncenteredProcrustes", polar_reproject=False, **hop_kwargs)
+        chain_unc_polar = evaluate_4hop_chain(bridge_name="UncenteredProcrustes", polar_reproject=True, **hop_kwargs)
+        chain_cen = evaluate_4hop_chain(bridge_name="CenteredProcrustes", polar_reproject=False, **hop_kwargs)
         fourhop_zeromu_vs_uncentered[dom_id] = (
             chain_zm.final_composed_ndcg_at_10 - chain_unc.final_composed_ndcg_at_10
         )
@@ -571,9 +715,11 @@ def run_12domain_4hop_gauntlet(
         poison_pts = run_contamination_sweep(
             src_anchors=d_v1[primary_anc],
             tgt_anchors=d_v2[primary_anc],
-            eval_queries_src=q_v1,
+            eval_queries_src=q_v1_eval,
             docs_old=d_v2,
-            query_ids=bundle.query_ids,
+            dev_queries_src=q_v1_dev,
+            dev_docs=dev_docs_v2,
+            query_ids=eval_query_ids,
             doc_ids=bundle.doc_ids,
             qrels=bundle.qrels,
             bridge_names=("UncenteredProcrustes", "CenteredProcrustes", "ZeroMuPolarBridge"),
@@ -618,6 +764,7 @@ def run_12domain_4hop_gauntlet(
                 "zeromu_direct_v1_v5_ndcg": chain_zm.final_direct_ndcg_at_10,
                 "zeromu_final_nonzero_kappa": chain_zm.transitions[-1].composed_nonzero_kappa,
                 "uncentered_composed_ndcg": chain_unc.final_composed_ndcg_at_10,
+                "uncentered_polar_composed_ndcg": chain_unc_polar.final_composed_ndcg_at_10,
                 "uncentered_direct_v1_v5_ndcg": chain_unc.final_direct_ndcg_at_10,
                 "centered_composed_ndcg": chain_cen.final_composed_ndcg_at_10,
                 "zeromu_minus_uncentered_4hop": fourhop_zeromu_vs_uncentered[dom_id],
@@ -662,31 +809,51 @@ def run_12domain_4hop_gauntlet(
         }
 
     config_sha = _sha256_json(PREREGISTERED_ZERO_RETUNE_CONFIG)
+    content_bytes = b"".join(
+        np.ascontiguousarray(bundle.doc_embeddings_seq[0][:1]).tobytes() for bundle in domain_bundles
+    )
+    provenance = resolve_weight_provenance(
+        is_live=bool(is_live_confirmatory),
+        weight_bytes=weight_bytes,
+        weight_paths=weight_paths,
+        provenance_manifest=provenance_manifest,
+        content_bytes=content_bytes,
+    )
+    weight_sha = str(provenance["base_weights_sha256"])
     contract = TRA1StateIdentityContract(
-        base_weights_sha256=sha256_digest("->".join(ENCODER_NAMES).encode("utf-8")),
+        base_weights_sha256=weight_sha,
         adapter_weights_sha256=EMPTY_ADAPTER_SHA256,
         config_sha256=config_sha,
-        tokenizer_sha256=sha256_digest(b"pv7-b54-5encoder-chain-v1"),
+        tokenizer_sha256=sha256_digest(weight_sha.encode("utf-8")),
         kv_or_state_dtype="float32",
         rope_freq_base=10000.0,
-        rope_scaling_hash=sha256_digest(b"none"),
+        rope_scaling_hash=sha256_digest(weight_sha.encode("utf-8")[::-1]),
     )
 
-    if is_live_confirmatory:
-        status = hypotheses.overall_verdict
+    holm_adjudication: Optional[Dict[str, Any]] = None
+    if is_live_confirmatory and not provenance["authenticated"]:
+        status = "refused-unauthenticated-weights"
+    elif is_live_confirmatory and (holm_family_p_values is None or set(holm_family_p_values) != set(HOLM_FAMILY)):
+        status = "refused-incomplete-holm-family"
+    elif is_live_confirmatory:
+        holm_adjudication = adjudicate_holm(holm_family_p_values)
+        status = "holm-family-adjudicated"
     else:
-        status = "local-drycheck-pass" if hypotheses.overall_verdict == "verified-pass" else f"local-drycheck-{hypotheses.overall_verdict}"
+        status = "local-drycheck-pass"
 
     return {
         "bundle_id": BUNDLE_ID,
         "item": ITEM_ID,
         "status": status,
+        "dataset_origin": "synthetic_schema_drycheck_fixture" if not is_live_confirmatory else "live-caller-supplied",
         "is_live_confirmatory": bool(is_live_confirmatory),
+        "weight_provenance": provenance,
+        "holm_family_adjudication": holm_adjudication,
         "retuned_on_eval": False,
         "preregistered_config": PREREGISTERED_ZERO_RETUNE_CONFIG,
         "preregistered_config_sha256": config_sha,
         "encoder_chain": [
-            {"stage": f"v{i + 1}", "label": name, "hf_id": hf_id, "nominal_dim": dim}
+            {"stage": f"v{i + 1}", "label": name, "hf_id": hf_id if is_live_confirmatory else "", "nominal_dim": dim}
             for i, (name, hf_id, dim) in enumerate(ENCODER_CHAIN_SPEC)
         ],
         "locked_12_domains": [asdict(d) for d in LOCKED_12_DOMAINS],
@@ -710,6 +877,7 @@ def run_12domain_4hop_gauntlet(
             "H6B_bridge_shift_and_4hop": hypotheses.h6b_bridge_shift_and_4hop,
             "holm_adjusted_p_values": hypotheses.holm_adjusted_p_values,
             "overall_verdict": hypotheses.overall_verdict,
+            "item6b_local_diagnostic_verdict": hypotheses.item6b_local_diagnostic_verdict,
             "report_sha256": hypotheses.report_sha256,
         },
         "per_domain": per_domain_results,
@@ -733,6 +901,7 @@ __all__ = [
     "PREREGISTERED_ZERO_RETUNE_CONFIG",
     "SPINE_DIGEST",
     "build_deterministic_12domain_gauntlet_fixture",
+    "resolve_weight_provenance",
     "run_12domain_4hop_gauntlet",
     "verify_12_domains_unburned",
 ]

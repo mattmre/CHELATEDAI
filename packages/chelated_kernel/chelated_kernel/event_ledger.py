@@ -205,7 +205,14 @@ def _tombstone() -> dict[str, object]:
 class EventLedger:
     """One tenant, one policy, zero model write tokens."""
 
-    def __init__(self, *, policy: str = "sec_audit", tenant_id: str = "default", disclosure: str = "non_nda") -> None:
+    def __init__(
+        self,
+        *,
+        policy: str = "sec_audit",
+        tenant_id: str = "default",
+        disclosure: str = "non_nda",
+        private_key: Ed25519PrivateKey | None = None,
+    ) -> None:
         self.policy: LedgerPolicy = get_ledger_policy(policy)
         self.tenant_id = require_tenant_id(tenant_id)
         if disclosure not in {"non_nda", "internal"}:
@@ -220,10 +227,12 @@ class EventLedger:
         self._receipts: list[AuditReceipt] = []
         self._ingress = {"ce": 0, "prov": 0, "osv": 0, "csaf": 0, "git": 0, "cdc": 0, "stream": 0}
         self._reserved_hits = 0
-        seed = hashlib.sha256(
-            f"chelated-kernel-ed25519-v1|{self.tenant_id}|{self.policy.name}|{self.disclosure}".encode("utf-8")
-        ).digest()
-        self._private = Ed25519PrivateKey.from_private_bytes(seed)
+        if private_key is not None:
+            if not isinstance(private_key, Ed25519PrivateKey):
+                raise EnvelopeError("private_key", "private_key must be an Ed25519PrivateKey")
+            self._private = private_key
+        else:
+            self._private = Ed25519PrivateKey.generate()
         self._public = self._private.public_key()
         self._public_bytes = self._public.public_bytes_raw()
 
@@ -424,12 +433,17 @@ class EventLedger:
         by_id = {claim.claim_id: claim for claim in claims}
         attacks: dict[str, list[Edge]] = {claim.claim_id: [] for claim in claims}
         supports: dict[str, list[Edge]] = {claim.claim_id: [] for claim in claims}
+        missing_support: set[str] = set()
         ceiling = 0
         collapsed_ignored = 0
         for edge in edges:
-            if edge.src not in by_id or edge.dst not in by_id:
-                continue
             if not edge.in_dv or edge.kind == "audit_citation":
+                continue
+            if edge.dst not in by_id:
+                continue
+            if edge.src not in by_id:
+                if edge.kind == "supports":
+                    missing_support.add(edge.dst)
                 continue
             if edge.src in representatives:
                 collapsed_ignored += 1
@@ -445,53 +459,65 @@ class EventLedger:
                 attacks[edge.dst].append(edge)
             elif edge.kind == "supports":
                 supports[edge.dst].append(edge)
-        conflicted = set()
-        for claim in claims:
-            if claim.reserved_disputed:
-                conflicted.add(claim.claim_id)
-            for edge in attacks[claim.claim_id]:
-                if edge.kind == "conflicts":
-                    conflicted.add(claim.claim_id)
-                    conflicted.add(edge.src)
-        state = {claim.claim_id: "undefined" for claim in claims if claim.claim_id not in representatives}
-        rounds = 0
-        for _round in range(len(state) + 2):
-            rounds += 1
-            nxt: dict[str, str] = {}
-            for claim_id, current in state.items():
-                claim = by_id[claim_id]
-                if claim_id in conflicted:
-                    nxt[claim_id] = "disputed"
-                    continue
+        active_ids = [claim.claim_id for claim in claims if claim.claim_id not in representatives]
+
+        def _gamma(blocked: set[str]) -> set[str]:
+            derived: set[str] = set()
+            for cid in active_ids:
+                claim = by_id[cid]
                 if claim.audit_only:
-                    nxt[claim_id] = "current"
+                    derived.add(cid)
                     continue
-                defeated = False
-                for edge in attacks[claim_id]:
-                    if edge.kind in {"supersede", "refute", "erases"} and state.get(edge.src) == "current":
-                        defeated = True
-                if defeated:
-                    nxt[claim_id] = "withdrawn"
+                if claim.reserved_disputed and cid in blocked:
+                    continue
+                if any(edge.src in blocked for edge in attacks[cid]):
                     continue
                 if claim.base:
-                    nxt[claim_id] = "current"
-                    continue
-                support_states = [state.get(edge.src, "undefined") for edge in supports[claim_id]]
-                if any(item == "current" for item in support_states):
-                    nxt[claim_id] = "current"
-                elif any(item == "undefined" for item in support_states):
-                    nxt[claim_id] = "undefined"
-                else:
-                    nxt[claim_id] = "withdrawn"
-            if nxt == state:
+                    derived.add(cid)
+            changed = True
+            while changed:
+                changed = False
+                for cid in active_ids:
+                    if cid in derived:
+                        continue
+                    claim = by_id[cid]
+                    if claim.base or cid in missing_support:
+                        continue
+                    if claim.reserved_disputed and cid in blocked:
+                        continue
+                    if any(edge.src in blocked for edge in attacks[cid]):
+                        continue
+                    sup = supports[cid]
+                    if sup and all(edge.src in derived for edge in sup):
+                        derived.add(cid)
+                        changed = True
+            return derived
+
+        true_set: set[str] = set()
+        rounds = 0
+        while True:
+            rounds += 1
+            upper = _gamma(true_set)
+            next_true = _gamma(upper)
+            if next_true == true_set:
                 break
-            state = nxt
-        unfounded = 0
-        for claim_id, value in list(state.items()):
-            if value == "undefined":
-                state[claim_id] = "withdrawn"
-                if not by_id[claim_id].base:
-                    unfounded += 1
+            true_set = next_true
+        upper = _gamma(true_set)
+        state: dict[str, str] = {}
+        for cid in active_ids:
+            if cid in true_set:
+                state[cid] = "current"
+            elif cid in upper:
+                state[cid] = "disputed"
+            else:
+                state[cid] = "withdrawn"
+        unfounded = sum(
+            1
+            for cid, value in state.items()
+            if value == "withdrawn"
+            and not by_id[cid].base
+            and not any(state.get(edge.src) == "current" for edge in attacks[cid])
+        )
         truth: dict[str, str] = {}
         for claim in claims:
             root = representatives.get(claim.claim_id, claim.claim_id)

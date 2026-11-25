@@ -489,10 +489,19 @@ def wrap_index(
             "fit_count",
             f"need {need} unlabeled anchors ({spec.min_fit_count} fit + {spec.min_validation_count} validation)",
         )
-    fit_old = old_anchors[: spec.min_fit_count]
-    fit_new = new_anchors[: spec.min_fit_count]
-    val_old = old_anchors[spec.min_fit_count : spec.min_fit_count + spec.min_validation_count]
-    val_new = new_anchors[spec.min_fit_count : spec.min_fit_count + spec.min_validation_count]
+    n_total = old_anchors.shape[0]
+    min_full_rank = min(old_dim, new_dim) + 1
+    preferred_val = max(spec.min_validation_count, n_total // 5)
+    max_val = n_total - max(spec.min_fit_count, min_full_rank)
+    if max_val >= spec.min_validation_count:
+        val_count = min(preferred_val, max_val)
+    else:
+        val_count = spec.min_validation_count
+    fit_count = n_total - val_count
+    fit_old = old_anchors[:fit_count]
+    fit_new = new_anchors[:fit_count]
+    val_old = old_anchors[fit_count:]
+    val_new = new_anchors[fit_count:]
     mapping, mu_old, mu_new, sigma_min = _fit_map(fit_old, fit_new)
     ortho_error = _ortho_error(mapping, old_dim, new_dim)
     if ortho_error > 1e-5:
@@ -535,8 +544,8 @@ def wrap_index(
         tenant_id=tenant,
         old_dim=old_dim,
         new_dim=new_dim,
-        fit_count=spec.min_fit_count,
-        validation_count=spec.min_validation_count,
+        fit_count=fit_count,
+        validation_count=val_count,
         mapping=mapping,
         mu_old=mu_old,
         mu_new=mu_new,
@@ -548,8 +557,8 @@ def wrap_index(
         old_dim=old_dim,
         new_dim=new_dim,
         rectangular=old_dim != new_dim,
-        fit_count=spec.min_fit_count,
-        validation_count=spec.min_validation_count,
+        fit_count=fit_count,
+        validation_count=val_count,
         confidence=confidence,
         confidence_lcb=confidence_lcb,
         sigma_min=sigma_min,

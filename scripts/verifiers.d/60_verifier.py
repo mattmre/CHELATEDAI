@@ -59,7 +59,7 @@ def verify_bundle(repo_root: Optional[Path | str] = None) -> Dict[str, Any]:
         {"name": "fragment_compiler_validation", "passed": reg_ok, "detail": f"compiled_sha256={compiled_sha}"}
     )
 
-    manifest = run_ssd_kv_experiment(mode="local-drycheck", repo_count=3, commits_per_repo=50)
+    manifest = run_ssd_kv_experiment(mode="local-drycheck", repo_count=20, commits_per_repo=50)
     for gate_name, gate_ok in sorted(manifest["gates"].items()):
         checks.append({"name": f"gate_{gate_name}", "passed": bool(gate_ok), "detail": f"mode={manifest['mode']}"})
 

@@ -96,6 +96,7 @@ class _MockVLLMHandler(http.server.BaseHTTPRequestHandler):
 
         resp = {
             "id": "cmpl-mock-1",
+            "model": body.get("model"),
             "choices": [
                 {
                     "index": 0,
@@ -332,18 +333,25 @@ class PooledAgentLoopsTests(unittest.TestCase):
             event_regimes=EVENT_REGIMES,
         )
         self.assertTrue(manifest_1["overall_pass"], msg=f"Gates failed: {manifest_1['gates']}")
+        self.assertEqual(manifest_1["status"], "stage1-replay-pass")
         self.assertEqual(manifest_1["live_model_calls"], 0)
         self.assertEqual(manifest_1["zeromu_ek5_stale_commits_total"], 0)
         self.assertEqual(manifest_1["ek5_parity_failures_total"], 0)
-        self.assertEqual(manifest_1["total_cells_executed"], 4 * 4 * 2 * 5 * 5)
-        self.assertEqual(manifest_1["total_eligible_jobs_executed"], 4 * 4 * 2 * 5 * 5 * 24)
+        self.assertEqual(manifest_1["total_cells_executed"], 4 * 4 * 2 * 5 * 7)
+        self.assertEqual(manifest_1["total_eligible_jobs_executed"], 4 * 4 * 2 * 5 * 7 * 24)
         self.assertEqual(manifest_1["deterministic_sha256"], manifest_2["deterministic_sha256"])
 
         p_int = manifest_1["primary_2x2_interaction"]
         self.assertEqual(p_int["pool_size"], PRIMARY_POOL_SIZE)
+        self.assertEqual(p_int["primary_metric"], "on_time_cited_correct_rate")
         self.assertTrue(p_int["late_and_failed_kept_in_denominator"])
-        self.assertTrue(p_int["jpm_interaction_per_job_bootstrap"]["strictly_positive_lcb"])
-        self.assertGreater(p_int["jpm_interaction_per_job_bootstrap"]["mean_delta_jpm"], 0.0)
+        cluster = p_int["rate_interaction_matter_cluster_bootstrap"]
+        self.assertEqual(cluster["sampling_unit"], "matter")
+        self.assertEqual(cluster["n_clusters"], 24)
+        self.assertIn("mean_delta_jpm", p_int["jpm_interaction_per_job_bootstrap"])
+        self.assertTrue(manifest_1["gates"]["primary_metric_is_ontime_cited_correct_rate"])
+        self.assertTrue(manifest_1["gates"]["conventional_migration_stall_equalized"])
+        self.assertTrue(manifest_1["gates"]["sqlite_reopen_symmetric_with_ek5"])
 
         sham = manifest_1["sham_reopen_isolation"]
         self.assertTrue(sham["control_valid"])
@@ -389,6 +397,7 @@ class PooledAgentLoopsTests(unittest.TestCase):
                 self.assertFalse(m02.on_time_cited_correct)
                 self.assertGreaterEqual(cell.late_or_timed_out_jobs, 1)
                 self.assertEqual(cell.on_time_jobs + cell.late_or_timed_out_jobs, cell.eligible_jobs)
+                self.assertEqual(backend.served_model, "mock-vllm")
             finally:
                 httpd.shutdown()
                 _MockVLLMHandler.fail_matter = ""
@@ -422,10 +431,13 @@ class PooledAgentLoopsTests(unittest.TestCase):
 
     def test_fragment_compiler_validates_registry_and_verifier_fragments(self) -> None:
         reg_rel = "docs/research/registry.d/62-t4-pooled-workers.json"
+        reg_47_rel = "docs/research/registry.d/47-w16-core-spine.json"
         ver_rel = "scripts/verifiers.d/62_verifier.py"
         reg_path = REPO_ROOT / reg_rel
+        reg_47_path = REPO_ROOT / reg_47_rel
         ver_path = REPO_ROOT / ver_rel
         self.assertTrue(reg_path.is_file())
+        self.assertTrue(reg_47_path.is_file())
         self.assertTrue(ver_path.is_file())
 
         spine_digest = claim_registry_sha256()
@@ -434,7 +446,7 @@ class PooledAgentLoopsTests(unittest.TestCase):
         meta = _verifier_metadata(REPO_ROOT, ver_text, ver_rel)
         self.assertEqual(meta["id"], BUNDLE_ID)
         self.assertEqual(meta["spine_digest"], spine_digest)
-        self.assertEqual(meta["depends_on"], ())
+        self.assertEqual(meta["depends_on"], (47,))
         ast.parse(ver_text, filename=ver_rel)
 
         # Full compile_fragments check binding registry fragment + verifier fragment bytes
@@ -443,12 +455,14 @@ class PooledAgentLoopsTests(unittest.TestCase):
             spine_digest,
             {
                 reg_rel: reg_path.read_bytes(),
+                reg_47_rel: reg_47_path.read_bytes(),
                 "scripts/verifiers.d/62_verifier.py": ver_path.read_bytes(),
             },
         )
-        self.assertEqual(compiled["dependency_order"], [BUNDLE_ID])
-        self.assertEqual(compiled["registry"][0]["id"], BUNDLE_ID)
-        self.assertEqual(compiled["registry"][0]["status"], "protocol-ready")
+        self.assertEqual(compiled["dependency_order"], [47, BUNDLE_ID])
+        self.assertEqual(len(compiled["registry"]), 2)
+        reg62 = next(item for item in compiled["registry"] if item["id"] == BUNDLE_ID)
+        self.assertEqual(reg62["status"], "protocol-ready")
         self.assertEqual(compiled["verifiers"][0]["bundle_id"], BUNDLE_ID)
 
         # Dynamically import and execute v62_t4_pooled_verifier.verify_bundle
@@ -458,6 +472,7 @@ class PooledAgentLoopsTests(unittest.TestCase):
         spec.loader.exec_module(mod)
         verdict: Dict[str, Any] = mod.verify_bundle(REPO_ROOT)
         self.assertTrue(verdict["passed"], msg=f"Verifier checks failed: {verdict['checks']}")
+        self.assertEqual(verdict["status"], "stage1-replay-pass")
 
 
 if __name__ == "__main__":

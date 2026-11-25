@@ -47,6 +47,7 @@ for _p in (str(_KERNEL_PKG), str(_ROOT)):
 
 from chelated_kernel import wrap_index  # noqa: E402  (public SDK boundary only)
 
+from chelated_cpu_memory_appliance import verify_cgroup_v2_enforced  # noqa: E402  (read-back of live cgroup v2 limits)
 from chelated_pv7_spine.cpu_io_cage import (  # noqa: E402
     ONE_GIB_BYTES,
     CgroupCageConfig,
@@ -320,15 +321,22 @@ def run_revocation_races(
 ) -> Dict[str, Any]:
     need = queued + inflight + 1
     workers = max(threads, need)
-    guarded_fence = RevocationFence(payload_ids)
-    control_fence = RevocationFence(payload_ids)
+    if not payload_ids:
+        raise ValueError("payload_ids must be non-empty")
+    # B57: every trial races a FRESHLY ENROLLED, ADMIT-eligible logical payload (a per-trial instance of a
+    # materialized slot), so trial t never lands on a payload already revoked by an earlier trial. The previous
+    # ``payload_ids[t % len(payload_ids)]`` wrapped after 250 trials onto revoked payloads, so those trials raced
+    # nothing (admission was already denied) and the zero-violation count was inflated by vacuous trials.
+    trial_ids = [f"{payload_ids[t % len(payload_ids)]}::trial{t:06d}" for t in range(trials)]
+    if len(set(trial_ids)) != trials:
+        raise ValueError("trial payload ids must be distinct")
+    guarded_fence = RevocationFence(trial_ids)
+    control_fence = RevocationFence(trial_ids)
     with ThreadPoolExecutor(max_workers=workers) as pool:
-        for t in range(trials):
-            pid = payload_ids[t % len(payload_ids)]
+        for pid in trial_ids:
             _race_trial(guarded_fence, pid, queued, inflight, True, pool)
-        control_trials = min(trials, len(payload_ids))
-        for t in range(control_trials):
-            pid = payload_ids[t % len(payload_ids)]
+        control_trials = trials
+        for pid in trial_ids:
             _race_trial(control_fence, pid, queued, inflight, False, pool)
     requests_total = trials * (queued + inflight)
     violations = guarded_fence.post_enforcement_commits()
@@ -347,6 +355,7 @@ def run_revocation_races(
         "cp_zero_event_closed_form": 1.0 - CLOPPER_ALPHA ** (1.0 / requests_total),
         "unguarded_control_trials": control_trials,
         "unguarded_control_post_enforcement_executions": control_violations,
+        "distinct_payloads_raced": len(trial_ids),
         "revoked_payloads": len(revoked_payloads),
         "revoked_payloads_not_admitted": not_admitted,
         "ek5_semantic_diffs": len(comparison.semantic_diffs),
@@ -509,14 +518,30 @@ def run_cartridge_array_experiment(
         if tmp_ctx is not None:
             tmp_ctx.cleanup()
 
-    contract = TRA1StateIdentityContract(
-        base_weights_sha256=hashlib.sha256(b"cartridge-base").hexdigest(),
-        adapter_weights_sha256=EMPTY_ADAPTER_SHA256,
-        config_sha256=hashlib.sha256(b"cartridge-config").hexdigest(),
-        tokenizer_sha256=hashlib.sha256(b"cartridge-tok").hexdigest(),
-        kv_or_state_dtype="float16",
-        rope_freq_base=10000,
-        rope_scaling_hash=hashlib.sha256(b"rope-none").hexdigest(),
+    # B57: the state-identity contract is bound PER payload: adapter_weights_sha256 is that .cspg body's SHA-256,
+    # so swapping/corrupting any one payload changes exactly its own contract digest (a single shared
+    # EMPTY_ADAPTER_SHA256 contract identified no payload at all).
+    contracts = {
+        _slot_id(s): TRA1StateIdentityContract(
+            base_weights_sha256=hashlib.sha256(b"cartridge-base").hexdigest(),
+            adapter_weights_sha256=shas[s],
+            config_sha256=hashlib.sha256(b"cartridge-config").hexdigest(),
+            tokenizer_sha256=hashlib.sha256(b"cartridge-tok").hexdigest(),
+            kv_or_state_dtype="float16",
+            rope_freq_base=10000,
+            rope_scaling_hash=hashlib.sha256(b"rope-none").hexdigest(),
+        )
+        for s in slots
+    }
+    contract_digests = {sid: c.digest() for sid, c in contracts.items()}
+    contract_bound_per_body = (
+        len(set(contract_digests.values())) == len(slots)
+        and all(contracts[_slot_id(s)].adapter_weights_sha256 == shas[s] != EMPTY_ADAPTER_SHA256 for s in slots)
+    )
+    cgroup_check = (
+        verify_cgroup_v2_enforced(cage.memory_max_bytes, cage.memory_swap_max_bytes)
+        if mode == "run-live"
+        else {"enforced": False, "reason": "local-drycheck: no cage is applied"}
     )
     gates = {
         "materialized_count_is_250": len(files_on_disk) == materialized_count == len(slots),
@@ -530,6 +555,8 @@ def run_cartridge_array_experiment(
         "cp_matches_zero_event_closed_form": abs(races["cp_one_sided_95_upper_bound"] - races["cp_zero_event_closed_form"]) < 1e-12,
         "unguarded_control_shows_race_is_real": races["unguarded_control_post_enforcement_executions"] > 0,
         "all_revoked_payloads_not_admitted": races["revoked_payloads_not_admitted"] == races["revoked_payloads"] > 0,
+        "revocation_trials_each_race_a_distinct_fresh_payload": races["distinct_payloads_raced"] == races["trials"],
+        "tra1_contract_bound_to_each_cspg_body_sha": contract_bound_per_body,
         "ek5_fresh_rebuild_parity": (
             races["ek5_semantic_diffs"] == 0
             and races["ek5_canonical_reason_diffs"] == 0
@@ -556,7 +583,8 @@ def run_cartridge_array_experiment(
             "post_enforcement_executions": races["post_enforcement_executions"],
             "cp_zero_event_closed_form": races["cp_zero_event_closed_form"],
         },
-        "contract_digest": contract.digest(),
+        "contract_digest": _canonical_digest(contract_digests),
+        "per_payload_contract_digests": contract_digests,
         "memory_max_bytes": cage.memory_max_bytes,
         "gate_names": sorted(gates),
     }
@@ -580,7 +608,8 @@ def run_cartridge_array_experiment(
             "memory_max_bytes": cage.memory_max_bytes,
             "memory_swap_max_bytes": cage.memory_swap_max_bytes,
             "systemd_run_command": cage_cmd,
-            "enforced_on_this_host": mode == "run-live",
+            "enforced_on_this_host": bool(cgroup_check["enforced"]),
+            "enforcement_check": cgroup_check,
         },
         "traced_peak_bytes": int(peak_traced),
         "gates": gates,

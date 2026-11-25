@@ -8,8 +8,10 @@ import mmap
 import os
 import re
 import shutil
+import struct
 import threading
 import time
+import zlib
 from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import urlencode
@@ -29,6 +31,11 @@ TOP_K = 10
 LIVE_DOC_MIN = 9_465_000
 LIVE_DOC_MAX = 9_475_000
 READ_BATCH = 4096
+FENCE_WAL_MAGIC = b"EK5FWAL1"
+_WAL_HEAD = struct.Struct("<cQI")
+_WAL_CRC = struct.Struct("<I")
+BOOTSTRAP_RESAMPLES = 10_000
+BOOTSTRAP_SEED = 58
 _RESTRICTED_INPUT = re.compile(r"sealed_key|blind-followup|pm4_human_audit_100_blind_sheet\.csv", re.I)
 
 
@@ -230,18 +237,67 @@ def doc_event_id(doc_id):
     return f"doc-{doc_id}"
 
 
-class EK5ExtentFence(PackedFence):
-    """Publish an epoch from EK5 v3 authority/refutation decisions over changed documents."""
+class FenceWALError(RuntimeError):
+    """The fence write-ahead log is corrupt before its final record."""
 
-    def __init__(self, geometry):
+
+def _fence_wal_record(kind, epoch, ids=()):
+    ids = np.asarray(ids, dtype="<u4")
+    body = _WAL_HEAD.pack(kind, epoch, len(ids)) + ids.tobytes()
+    return body + _WAL_CRC.pack(zlib.crc32(body))
+
+
+def _fsync_parent(path):
+    # Make a newly created WAL name durable as well; Windows cannot open directories for fsync.
+    if os.name == "posix":
+        handle = os.open(path.parent, os.O_RDONLY)
+        try:
+            os.fsync(handle)
+        finally:
+            os.close(handle)
+
+
+class EK5ExtentFence(PackedFence):
+    """Publish an epoch from EK5 v3 authority/refutation decisions over changed documents.
+
+    With ``wal_path`` every epoch is first appended to a binary write-ahead log and fsynced, then
+    published to the in-memory denial bits.  A ``W`` record carries the epoch and the withdrawn IDs;
+    an ``R`` record carries only the epoch because reinstatement must exactly close the active
+    trace.  Each record is ``kind | epoch:u64 | count:u32 | ids:u32[count] | crc32``.
+    ``wal_bytes`` counts every fsynced byte, including the 8-byte file header.
+    """
+
+    def __init__(self, geometry, *, wal_path=None):
         super().__init__(geometry)
         self.store = None
         self.active_ids = set()
+        self.wal_path = None if wal_path is None else Path(wal_path)
+        self.wal_bytes = 0
+        self.wal_records = 0
+        self.recovery = None
+        if self.wal_path is not None:
+            with self.wal_path.open("xb", buffering=0) as wal:
+                self._append(wal, FENCE_WAL_MAGIC)
+            _fsync_parent(self.wal_path)
+
+    def _append(self, wal, data):
+        written = wal.write(data)
+        if written != len(data):
+            raise OSError("Short fence WAL write")
+        os.fsync(wal.fileno())
+        self.wal_bytes += written
+
+    def _log(self, kind, ids=()):
+        if self.wal_path is None:
+            return
+        with self.wal_path.open("ab", buffering=0) as wal:
+            self._append(wal, _fence_wal_record(kind, self.epoch + 1, ids))
+        self.wal_records += 1
 
     def withdraw(self, ids):
         if self.active_ids:
             raise RuntimeError("Reinstate the current trace before starting another")
-        self.store = StratifiedEvidenceStore()
+        store = StratifiedEvidenceStore()
         events = []
         edges = []
         for doc_id in ids:
@@ -251,8 +307,11 @@ class EK5ExtentFence(PackedFence):
                 StratifiedEvent(f"refute-{doc_id}", entity=event_id, authority_tier=2, valid_time=1, tx_time=1),
             ])
             edges.append(EdgeAttestation(f"edge-{doc_id}", f"refute-{doc_id}", event_id, "REFUTE", 1, 1))
-        self.store.apply_mutation(events, edges)
-        rejected = [doc_id for doc_id in ids if self.store.eligibility[doc_event_id(doc_id)] != "ADMIT"]
+        store.apply_mutation(events, edges)
+        rejected = [doc_id for doc_id in ids if store.eligibility[doc_event_id(doc_id)] != "ADMIT"]
+        # Durable before visible: the epoch reaches stable storage before readers observe it.
+        self._log(b"W", sorted(int(doc_id) for doc_id in ids))
+        self.store = store
         self.publish(rejected, False)
         self.active_ids = set(ids)
 
@@ -261,11 +320,71 @@ class EK5ExtentFence(PackedFence):
             raise ValueError("Reinstatement must exactly close the active trace")
         self.store.apply_mutation(withdraw_attestation_ids=[f"edge-{doc_id}" for doc_id in ids])
         restored = [doc_id for doc_id in ids if self.store.eligibility[doc_event_id(doc_id)] == "ADMIT"]
+        self._log(b"R")
         self.publish(restored, True)
         self.active_ids.clear()
 
     def audit_digest(self):
         return export_canonical_ek5_audit_trace(self.store).digest()
+
+    @classmethod
+    def recover_from_wal(cls, geometry, wal_path):
+        """Rebuild the fence, EK5 store and active trace by replaying a fence WAL.
+
+        A torn final record (short or failing its CRC at end of file) is an epoch that was never
+        published, so it is truncated away and reported.  Damage followed by further bytes, an
+        unknown record kind, or a non-consecutive epoch raises ``FenceWALError``.
+        """
+        path = Path(wal_path)
+        raw = path.read_bytes()
+        if raw[:len(FENCE_WAL_MAGIC)] != FENCE_WAL_MAGIC:
+            if len(raw) < len(FENCE_WAL_MAGIC) and FENCE_WAL_MAGIC.startswith(raw):
+                raise FenceWALError("The fence WAL header itself is torn; no epoch was ever durable")
+            raise FenceWALError("Not an EK5 fence WAL")
+        # Replay with logging detached; the log is reattached only after the durable prefix is fixed.
+        fence = cls(geometry)
+        offset = len(FENCE_WAL_MAGIC)
+        records = 0
+        torn = 0
+        while offset < len(raw):
+            head_end = offset + _WAL_HEAD.size
+            if head_end > len(raw):
+                torn = len(raw) - offset
+                break
+            kind, epoch, count = _WAL_HEAD.unpack_from(raw, offset)
+            end = head_end + 4 * count + _WAL_CRC.size
+            if end > len(raw):
+                torn = len(raw) - offset
+                break
+            (crc,) = _WAL_CRC.unpack_from(raw, end - _WAL_CRC.size)
+            if crc != zlib.crc32(raw[offset:end - _WAL_CRC.size]):
+                if end == len(raw):
+                    torn = len(raw) - offset
+                    break
+                raise FenceWALError(f"Fence WAL record at byte {offset} fails its CRC before end of log")
+            if epoch != fence.epoch + 1:
+                raise FenceWALError(f"Fence WAL epoch {epoch} does not follow epoch {fence.epoch}")
+            ids = np.frombuffer(raw, dtype="<u4", count=count, offset=head_end).astype(np.int64).tolist()
+            if kind == b"W":
+                fence.withdraw(ids)
+            elif kind == b"R" and not count:
+                fence.reinstate(sorted(fence.active_ids))
+            else:
+                raise FenceWALError(f"Unknown fence WAL record at byte {offset}")
+            records += 1
+            offset = end
+        if torn:
+            with path.open("r+b", buffering=0) as wal:
+                wal.truncate(offset)
+                os.fsync(wal.fileno())
+        fence.wal_path = path
+        fence.wal_bytes = offset
+        fence.wal_records = records
+        fence.recovery = {
+            "records_replayed": records, "epoch": fence.epoch, "torn_tail_bytes": torn,
+            "active_trace_open": bool(fence.active_ids), "durable_bytes": offset,
+        }
+        return fence
 
 
 class IVFReader:
@@ -321,16 +440,33 @@ class IVFReader:
 
 
 class ColdOSD(IVFReader):
-    def __init__(self, geometry, nprobe):
-        super().__init__(geometry, geometry.path, EK5ExtentFence(geometry), nprobe, chelated=True)
+    """Immutable extents plus an EK5 fence; ``written`` counts the fence's fsynced WAL bytes."""
+
+    def __init__(self, geometry, nprobe, *, wal_path=None, fence=None):
+        if fence is not None and wal_path is not None:
+            raise ValueError("Pass either a recovered fence or a new WAL path, not both")
+        fence = fence if fence is not None else EK5ExtentFence(geometry, wal_path=wal_path)
+        super().__init__(geometry, geometry.path, fence, nprobe, chelated=True)
+        # A new WAL header is a real durable write made when the engine is opened; a recovered
+        # log's existing prefix was written by an earlier process and is not charged again.
+        self.written = 0 if fence.recovery is not None else fence.wal_bytes
+
+    @classmethod
+    def recover(cls, geometry, nprobe, wal_path):
+        return cls(geometry, nprobe, fence=EK5ExtentFence.recover_from_wal(geometry, wal_path))
+
+    def _durable(self, action, ids):
+        before = self.fence.wal_bytes
+        action(ids)
+        self.written += self.fence.wal_bytes - before
 
     def withdraw(self, ids):
         with self.lock:
-            self.fence.withdraw(ids)
+            self._durable(self.fence.withdraw, ids)
 
     def reinstate(self, ids):
         with self.lock:
-            self.fence.reinstate(ids)
+            self._durable(self.fence.reinstate, ids)
 
     def audit_digest(self):
         return self.fence.audit_digest()
@@ -646,8 +782,10 @@ def summarize_traces(rows):
                 "stale_rate": sum(row[name]["stale"] for row in group) / max(1, sum(row[name]["returned"] for row in group)),
                 "returned": sum(row[name]["returned"] for row in group),
             }
+        by_pair = sorted(group, key=lambda row: row["pair"])
         report[layout] = {
             "total_write_bytes": sum(row["total_write_bytes"] for row in group),
+            "per_pair_total_write_bytes": [row["total_write_bytes"] for row in by_pair],
             "withdraw_write_bytes": sum(row["withdraw_write_bytes"] for row in group),
             "reinstate_write_bytes": sum(row["reinstate_write_bytes"] for row in group),
             "visibility_passed": all(row["all_withdrawn_ids_hidden"] and row["all_reinstated_ids_visible"] for row in group),
@@ -656,7 +794,25 @@ def summarize_traces(rows):
     return report
 
 
-def compare_traces(reports):
+def paired_bootstrap_lcb95(differences, *, resamples=BOOTSTRAP_RESAMPLES, seed=BOOTSTRAP_SEED):
+    """One-sided 95% percentile-bootstrap lower bound on the summed paired difference.
+
+    Pairs are resampled with replacement (the pair is the unit), the resampled mean is scaled to
+    the number of pairs, and the 5th percentile is returned, so the bound is on the same total-byte
+    scale as ``write_bytes_saved``.  The generator is seeded, so the bound is deterministic.
+    """
+    values = np.asarray(differences, dtype=np.float64)
+    if values.ndim != 1 or len(values) < 2 or not np.all(np.isfinite(values)):
+        raise ValueError("A paired bootstrap needs at least two finite paired differences")
+    if resamples < 1000:
+        raise ValueError("Use at least 1000 bootstrap resamples")
+    rng = np.random.default_rng(seed)
+    draws = rng.integers(len(values), size=(resamples, len(values)))
+    totals = values[draws].mean(axis=1) * len(values)
+    return float(np.quantile(totals, 0.05))
+
+
+def compare_traces(reports, *, bootstrap_resamples=BOOTSTRAP_RESAMPLES, bootstrap_seed=BOOTSTRAP_SEED):
     candidate = reports["cold_osd"]
     comparisons = {}
     for name, challenger in reports.items():
@@ -672,11 +828,23 @@ def compare_traces(reports):
                 for arm in (cells, other) for checkpoint in arm["checkpoints"].values()
             )
             saved = other["total_write_bytes"] - cells["total_write_bytes"]
+            mine, theirs = cells["per_pair_total_write_bytes"], other["per_pair_total_write_bytes"]
+            if len(mine) != TRACE_PAIRS or len(theirs) != TRACE_PAIRS:
+                raise ValueError(f"Expected {TRACE_PAIRS} paired traces per arm for {layout}")
+            paired = [their - own for own, their in zip(mine, theirs)]
+            lcb = paired_bootstrap_lcb95(paired, resamples=bootstrap_resamples, seed=bootstrap_seed)
+            matched = max(map(abs, gaps.values())) <= 0.01 + 1e-12
             layouts[layout] = {
-                "recall_at_10_gaps": gaps, "matched_recall": max(map(abs, gaps.values())) <= 0.01 + 1e-12,
+                "recall_at_10_gaps": gaps, "matched_recall": matched,
                 "zero_stale_resurrection": zero_stale,
                 "write_bytes_saved": saved,
-                "passed": saved > 0 and max(map(abs, gaps.values())) <= 0.01 + 1e-12 and zero_stale
+                "paired_write_bytes_saved": paired,
+                "saved_bytes_lcb95": lcb,
+                "lcb_method": {
+                    "statistic": "sum_of_paired_saved_bytes", "bootstrap": "percentile_one_sided_95",
+                    "pairs": len(paired), "resamples": bootstrap_resamples, "seed": bootstrap_seed,
+                },
+                "passed": saved > 0 and lcb > 0 and matched and zero_stale
                 and cells["visibility_passed"] and other["visibility_passed"],
             }
         comparisons[name] = layouts
@@ -696,7 +864,11 @@ def drycheck(directory):
     geometry = build_extents(corpus, centroids, dev, directory, 2 * MIB, csls_k=len(dev))
     exact = corpus.exact_top(queries, TOP_K + 16)
     digest = digest_file(geometry.path)
-    engines = {"cold_osd": ColdOSD(geometry, 4), "matched_ivf_sq8": MatchedIVFSQ8(geometry, 4, directory)}
+    wal_path = Path(directory) / "cold-osd-fence.wal"
+    engines = {
+        "cold_osd": ColdOSD(geometry, 4, wal_path=wal_path),
+        "matched_ivf_sq8": MatchedIVFSQ8(geometry, 4, directory),
+    }
     traces = list(withdrawal_pairs(geometry, 16))
     rows = {
         name: [
@@ -708,7 +880,15 @@ def drycheck(directory):
     summary = {name: summarize_traces(results) for name, results in rows.items()}
     comparisons = compare_traces(summary)
     immutable = digest == digest_file(geometry.path)
-    passed = immutable and all(report["visibility_passed"] for arms in summary.values() for report in arms.values())
+    fence = engines["cold_osd"].fence
+    recovered = EK5ExtentFence.recover_from_wal(geometry, wal_path)
+    wal_replay = {
+        **recovered.recovery,
+        "bits_match": bool(np.array_equal(recovered.bits, fence.bits)),
+        "epoch_matches": recovered.epoch == fence.epoch,
+    }
+    passed = immutable and wal_replay["bits_match"] and wal_replay["epoch_matches"]
+    passed = passed and all(report["visibility_passed"] for arms in summary.values() for report in arms.values())
     passed = passed and all(
         cells["passed"]
         for layouts in comparisons.values() for cells in layouts.values()
@@ -718,6 +898,8 @@ def drycheck(directory):
         "extent_bytes": geometry.extent_bytes, "extent_count": len(geometry.counts),
         "fence_bytes": engines["cold_osd"].fence.bits.nbytes, "sidecar_bytes": geometry.sidecar.nbytes,
         "immutable_extent_sha256": digest, "extents_unchanged": immutable,
-        "write_accounting": "logical_bytes_returned_by_file_writes_fsynced", "traces": rows,
+        "write_accounting": "logical_bytes_returned_by_file_writes_fsynced",
+        "cold_osd_write_source": "fsynced_ek5_fence_wal", "fence_wal_bytes": fence.wal_bytes,
+        "fence_wal_records": fence.wal_records, "fence_wal_replay": wal_replay, "traces": rows,
         "summaries": summary, "comparisons": comparisons, "passed": passed,
     }

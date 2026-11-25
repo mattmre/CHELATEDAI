@@ -88,12 +88,16 @@ def write_receipt_bound_bundle(
         "item": "4",
         "demo_id": "D13",
         "mode": manifest["mode"],
+        "status": manifest.get("status"),
         "spine_digest": claim_registry_sha256(),
         "manifest_file": manifest_name,
         "manifest_sha256": manifest_sha,
         "deterministic_sha256": manifest["deterministic_sha256"],
         "overall_pass": bool(manifest["overall_pass"]),
         "gates": manifest["gates"],
+        "vllm_url": manifest.get("vllm_url"),
+        "requested_model": manifest.get("requested_model"),
+        "served_model": manifest.get("served_model"),
         "generated_utc": datetime.now(timezone.utc).isoformat(),
         "runtime": {
             "python_version": platform.python_version(),
@@ -220,12 +224,18 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     summary = {
         "bundle_id": manifest["bundle_id"],
         "mode": manifest["mode"],
+        "status": manifest.get("status"),
         "overall_pass": manifest["overall_pass"],
         "total_cells_executed": manifest["total_cells_executed"],
         "total_eligible_jobs_executed": manifest["total_eligible_jobs_executed"],
         "zeromu_ek5_stale_commits_total": manifest["zeromu_ek5_stale_commits_total"],
         "ek5_parity_failures_total": manifest["ek5_parity_failures_total"],
-        "primary_2x2_interaction": manifest["primary_2x2_interaction"]["jpm_interaction_per_job_bootstrap"],
+        "primary_2x2_interaction": manifest["primary_2x2_interaction"][
+            "rate_interaction_matter_cluster_bootstrap"
+        ],
+        "jpm_interaction_per_job_bootstrap": manifest["primary_2x2_interaction"][
+            "jpm_interaction_per_job_bootstrap"
+        ],
         "sham_reopen_isolation": manifest["sham_reopen_isolation"],
         "full_restart_comparator": manifest["full_restart_comparator"],
         "gates": manifest["gates"],

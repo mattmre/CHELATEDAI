@@ -167,6 +167,7 @@ def run_live(args):
         TRACE_PAIRS,
         BlockWriteProbe,
         ColdOSD,
+        EK5ExtentFence,
         MatchedIVFSQ8,
         QdrantOnDisk,
         build_extents,
@@ -191,7 +192,9 @@ def run_live(args):
     collection = f"pv7_58_{uuid.uuid4().hex}"
     with tempfile.TemporaryDirectory(prefix=".pv7-58-", dir=args.scratch_dir) as directory:
         geometry = build_extents(corpus, centers, dev, directory, args.extent_mib * MIB)
-        candidate = ColdOSD(geometry, 1)
+        # The fence WAL lives on the measured device, so its fsynced epochs count in device writes.
+        wal_path = Path(directory) / "cold-osd-fence.wal"
+        candidate = ColdOSD(geometry, 1, wal_path=wal_path)
         sq8 = MatchedIVFSQ8(geometry, 1, directory, compact_fraction=args.sq8_compact_fraction)
         qdrant_engine = QdrantOnDisk(
             args.qdrant_url, collection, corpus, api_key=os.getenv("QDRANT_API_KEY"),
@@ -230,13 +233,21 @@ def run_live(args):
         if qdrant_engine.count() != corpus.count:
             raise RuntimeError("Qdrant reinstatement did not restore the fixed corpus cardinality")
         immutable = immutable_before == digest_file(geometry.path)
+        recovered = EK5ExtentFence.recover_from_wal(geometry, wal_path)
+        wal_replay = {
+            **recovered.recovery,
+            "bits_match": bool(np.array_equal(recovered.bits, candidate.fence.bits)),
+            "epoch_matches": recovered.epoch == candidate.fence.epoch,
+        }
         summaries = {name: summarize_traces(rows) for name, rows in results.items()}
         comparisons = compare_traces(summaries)
         _, worker_memory = memory_cage(os.getpid(), MEMORY_MAX)
         _, qdrant_memory = memory_cage(args.qdrant_pid, MEMORY_MAX)
         assert_zero_cuda_context()
         assert_zero_cuda_context(target_pid=args.qdrant_pid)
-        passed = immutable and all(cells["passed"] for layouts in comparisons.values() for cells in layouts.values())
+        passed = immutable and wal_replay["bits_match"] and wal_replay["epoch_matches"] and all(
+            cells["passed"] for layouts in comparisons.values() for cells in layouts.values()
+        )
         return {
             "mode": "run-live-spark1", "passed": passed,
             "docs": corpus.count, "dimensions": corpus.dimension, "dev_queries": len(dev),
@@ -248,6 +259,9 @@ def run_live(args):
             "sq8_compaction_fraction": args.sq8_compact_fraction,
             "qdrant_hnsw": {"m": args.qdrant_m, "ef_construct": args.qdrant_ef_construct, "on_disk": True},
             "write_accounting": "512_byte_device_sectors_through_optimizer_and_device_quiescence",
+            "cold_osd_write_source": "fsynced_ek5_fence_wal",
+            "fence_wal_bytes": candidate.fence.wal_bytes, "fence_wal_records": candidate.fence.wal_records,
+            "fence_wal_replay": wal_replay,
             "quiet_interval_seconds": args.quiet_interval, "quiet_samples": quiet_samples,
             "qdrant_flush_interval_seconds": qdrant_engine.flush_interval,
             "query_tuning": tuning, "worker_memory": worker_memory, "qdrant_memory": qdrant_memory,

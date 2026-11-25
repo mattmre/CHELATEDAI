@@ -7,21 +7,35 @@ import math
 import random
 import tokenize
 import unittest
+import warnings
 from copy import deepcopy
 from pathlib import Path
 from unittest.mock import patch
 
 from chelated_pv7_spine.aa_null_calibration import (
+    ALPHA,
+    INFLATION_P,
+    binomial_upper_tail_p,
     clopper_pearson,
+    clopper_pearson_lower_one_sided,
+    deterministic_drycheck_pools,
     mcnemar_exact,
     ndcg_at_10,
+    ndcg_at_10_from_qrels,
     run_aa_calibration,
+    run_deterministic_drycheck,
     verify_aa_calibration_receipt,
 )
 from chelated_pv7_spine.burn_ledger import (
+    BURNED_CORPORA,
     HISTORICAL_DATASETS,
+    INVENTORY_SCOPE_COMPLETE,
+    INVENTORY_SCOPE_NONE,
+    INVENTORY_SCOPE_PARTIAL,
+    INVENTORY_SCOPE_SMOKE,
     REGISTRY_SPEC,
     BurnedCorpusError,
+    BurnLedger,
     assert_corpus_unburned,
     build_burn_ledger,
     normalize_dataset_id,
@@ -139,11 +153,28 @@ class BurnLedgerTests(unittest.TestCase):
             ("xiaowu0162/longmemeval-cleaned", "longmemeval"),
             ("Percena/LoCoMo-MC10", "locomo"),
             ("osv_cve_seeds.json", "osv_cve_seeds"),
+            ("msmarco-v2", "msmarco"),
+            ("ms_marco_passage", "msmarco"),
+            ("BeIR/msmarco-v2.1", "msmarco"),
+            ("quora-duplicates", "quora"),
+            ("scifact-v2", "scifact"),
+            ("CoIR-Retrieval/cosqa", "cosqa"),
         ):
             with self.subTest(dataset=dataset):
                 self.assertEqual(normalize_dataset_id(dataset), canonical)
                 with self.assertRaisesRegex(BurnedCorpusError, f"is BURNED as {canonical}"):
                     assert_corpus_unburned(dataset, ledger=self.ledger)
+        for distinct in ("scifact-open", "bioasq", "quoradataset"):
+            with self.subTest(distinct=distinct):
+                self.assertNotIn(normalize_dataset_id(distinct), BURNED_CORPORA)
+
+    def test_burned_corpora_is_the_eleven_canonical_corpora(self):
+        self.assertEqual(len(BURNED_CORPORA), 11)
+        self.assertEqual(set(BURNED_CORPORA), set(HISTORICAL_DATASETS))
+        self.assertIn("cosqa", BURNED_CORPORA)
+        self.assertEqual(set(self.ledger.missing_burned_corpora), set(BURNED_CORPORA))
+        self.assertEqual(self.ledger.inventory_scope, INVENTORY_SCOPE_NONE)
+        self.assertFalse(self.ledger.confirmatory_eligible)
 
     def test_known_text_collision_even_under_a_distinct_corpus_label(self):
         abstract = "A CAFÉ  abstract with a ﬁnding."
@@ -156,8 +187,11 @@ class BurnLedgerTests(unittest.TestCase):
         with self.assertRaisesRegex(BurnedCorpusError, "query #1.*collision"):
             assert_corpus_unburned("BioASQ-TaskB", query_texts=[abstract], ledger=self.ledger,
                                    historical_fingerprints=historical)
-        assert_corpus_unburned("BioASQ-TaskB", ["A separate abstract"], ["A new question"],
-                               historical_fingerprints=historical, ledger=self.ledger)
+        receipt = assert_corpus_unburned("BioASQ-TaskB", ["A separate abstract"], ["A new question"],
+                                         historical_fingerprints=historical, ledger=self.ledger,
+                                         allow_local_drycheck_smoke=True)
+        self.assertEqual(receipt["inventory_scope"], INVENTORY_SCOPE_SMOKE)
+        self.assertFalse(receipt["confirmatory_eligible"])
 
     def test_fingerprint_coverage_and_input_validation_fail_closed(self):
         for historical in (None, [], {"documents": [], "queries": []}, {"documents": []}):
@@ -189,9 +223,20 @@ class BurnLedgerTests(unittest.TestCase):
                 "queries": [text_fingerprint("another historical query")],
             })
         self.assertFalse(ledger.fingerprint_inventory_complete)
-        self.assertTrue(complete.fingerprint_inventory_complete)
+        # A non-empty but corpus-unattributed inventory is partial, never complete (X2 / M-47c).
+        self.assertFalse(complete.fingerprint_inventory_complete)
+        self.assertEqual(complete.inventory_scope, INVENTORY_SCOPE_PARTIAL)
+        self.assertFalse(complete.confirmatory_eligible)
         self.assertNotEqual(ledger.sha256, complete.sha256)
-        assert_corpus_unburned("new-test-set", ["separate new document"], ["new question"], ledger=complete)
+        with self.assertWarns(DeprecationWarning):
+            legacy = assert_corpus_unburned("new-test-set", ["separate new document"], ["new question"],
+                                            ledger=complete)
+        self.assertEqual((legacy["inventory_scope"], legacy["smoke_opt_in"]),
+                         (INVENTORY_SCOPE_SMOKE, "legacy_implicit"))
+        self.assertFalse(legacy["confirmatory_eligible"])
+        with self.assertRaisesRegex(BurnedCorpusError, "Cannot establish"):
+            assert_corpus_unburned("new-test-set", ["separate new document"], ["new question"],
+                                   ledger=complete, allow_local_drycheck_smoke=False)
         with self.assertRaisesRegex(BurnedCorpusError, "document #1.*collision"):
             assert_corpus_unburned("new-test-set", ["another historical document"], ledger=complete)
         self.assertEqual(dict(ledger.datasets)["open-tests"], (REGISTRY_SPEC,))
@@ -199,6 +244,60 @@ class BurnLedgerTests(unittest.TestCase):
         self.assertIn(text_fingerprint(known_query), ledger.query_fingerprints)
         with self.assertRaisesRegex(BurnedCorpusError, "query #1.*collision"):
             assert_corpus_unburned("new-test-set", query_texts=[known_query], ledger=ledger)
+
+    def test_completeness_requires_all_eleven_burned_corpora(self):
+        inventory = {
+            "documents": [text_fingerprint("covered historical document")],
+            "queries": [text_fingerprint("covered historical query")],
+        }
+        full = build_burn_ledger(ROOT, historical_fingerprints={**inventory, "corpora": list(BURNED_CORPORA)})
+        self.assertTrue(full.fingerprint_inventory_complete)
+        self.assertEqual(full.inventory_scope, INVENTORY_SCOPE_COMPLETE)
+        self.assertTrue(full.confirmatory_eligible)
+        self.assertEqual(full.missing_burned_corpora, ())
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            receipt = assert_corpus_unburned("fresh-corpus", ["new document"], ["new question"], ledger=full,
+                                             allow_local_drycheck_smoke=False)
+        self.assertTrue(receipt["admitted_unburned"])
+        self.assertTrue(receipt["fingerprint_inventory_complete"])
+        self.assertTrue(receipt["confirmatory_eligible"])
+        self.assertEqual(receipt["burn_ledger_sha256"], full.sha256)
+
+        aliased = list(BURNED_CORPORA[:-1]) + ["CoIR-Retrieval/cosqa"]
+        self.assertTrue(build_burn_ledger(ROOT, historical_fingerprints={**inventory, "corpora": aliased})
+                        .fingerprint_inventory_complete)
+        missing_one = build_burn_ledger(ROOT, historical_fingerprints={**inventory, "corpora": BURNED_CORPORA[:-1]})
+        self.assertFalse(missing_one.fingerprint_inventory_complete)
+        self.assertEqual(missing_one.inventory_scope, INVENTORY_SCOPE_PARTIAL)
+        self.assertEqual(missing_one.missing_burned_corpora, ("cosqa",))
+        with self.assertRaisesRegex(BurnedCorpusError, "Cannot establish"):
+            assert_corpus_unburned("fresh-corpus", ["new document"], ["new question"], ledger=missing_one,
+                                   allow_local_drycheck_smoke=False)
+        smoke = assert_corpus_unburned("fresh-corpus", ["new document"], ["new question"], ledger=missing_one,
+                                       allow_local_drycheck_smoke=True)
+        self.assertEqual((smoke["inventory_scope"], smoke["smoke_opt_in"], smoke["confirmatory_eligible"]),
+                         (INVENTORY_SCOPE_SMOKE, "explicit", False))
+        self.assertEqual(list(smoke["missing_burned_corpora"]), ["cosqa"])
+        # Corpora claimed with no two-role inventory never count as coverage.
+        hollow = BurnLedger((), frozenset({"a" * 64}), frozenset(), inventory_corpora=BURNED_CORPORA)
+        self.assertFalse(hollow.fingerprint_inventory_complete)
+
+    def test_bare_complete_claim_is_downgraded_to_local_drycheck_smoke(self):
+        sentinel = BurnLedger(
+            tuple((name, ("sentinel",)) for name in HISTORICAL_DATASETS),
+            frozenset({"a" * 64}),
+            frozenset({"b" * 64}),
+            fingerprint_inventory_complete=True,
+        )
+        self.assertFalse(sentinel.fingerprint_inventory_complete)
+        self.assertEqual(sentinel.inventory_scope, INVENTORY_SCOPE_SMOKE)
+        self.assertFalse(sentinel.confirmatory_eligible)
+        data = sentinel.to_dict()
+        self.assertEqual((data["inventory_scope"], data["confirmatory_eligible"]), (INVENTORY_SCOPE_SMOKE, False))
+        explicit = BurnLedger((), frozenset({"a" * 64}), frozenset({"b" * 64}), allow_local_drycheck_smoke=True)
+        self.assertEqual(explicit.inventory_scope, INVENTORY_SCOPE_SMOKE)
+        self.assertFalse(explicit.fingerprint_inventory_complete)
 
 
 class FragmentCompilerTests(unittest.TestCase):
@@ -289,6 +388,8 @@ class FragmentCompilerTests(unittest.TestCase):
 
 
 class AaCalibrationTests(unittest.TestCase):
+    OPTIONS = {"host_id": "unit-test fixture", "permutations": 99, "split_size": 10}
+
     def test_metrics_and_exact_binomial_bounds(self):
         self.assertAlmostEqual(ndcg_at_10([0, 3, 1], [3, 1]),
                                (7 / math.log2(3) + 1 / math.log2(4)) / (7 + 1 / math.log2(3)))
@@ -305,20 +406,49 @@ class AaCalibrationTests(unittest.TestCase):
         self.assertAlmostEqual(sum(math.comb(200, k) * high ** k * (1 - high) ** (200 - k)
                                    for k in range(11)), 0.025, places=12)
 
+    def test_ndcg_idcg_uses_full_qrels_not_retrieved_list(self):
+        qrels = {"d1": 3, "d2": 2, "d3": 1, "d_missing": 3}
+        observed = ndcg_at_10_from_qrels(["d2", "x", "d1"], qrels)
+        dcg = 3 / math.log2(2) + 7 / math.log2(4)
+        idcg = 7 / math.log2(2) + 7 / math.log2(3) + 3 / math.log2(4) + 1 / math.log2(5)
+        self.assertAlmostEqual(observed, dcg / idcg)
+        # Retrieved-list IDCG would have scored this ranking higher.
+        self.assertLess(observed, ndcg_at_10([2, 0, 3], [3, 2]))
+        self.assertAlmostEqual(ndcg_at_10_from_qrels(["d1", "d_missing", "d2", "d3"], qrels), 1)
+        self.assertEqual(ndcg_at_10_from_qrels(["x"], {"d1": 0, "d2": 1}), 0)
+        with self.assertRaisesRegex(ValueError, "non-empty qrels"):
+            ndcg_at_10_from_qrels(["x"], {})
+        with self.assertRaisesRegex(ValueError, "[Dd]uplicate"):
+            ndcg_at_10_from_qrels(["d1", "d1"], qrels)
+
+    def test_one_sided_inflation_boundary(self):
+        self.assertEqual((ALPHA, INFLATION_P), (0.05, 0.01))
+        self.assertAlmostEqual(binomial_upper_tail_p(0, 200), 1.0)
+        self.assertGreaterEqual(binomial_upper_tail_p(18, 200), INFLATION_P)
+        self.assertLess(binomial_upper_tail_p(19, 200), INFLATION_P)
+        self.assertLessEqual(clopper_pearson_lower_one_sided(18, 200), ALPHA)
+        self.assertGreater(clopper_pearson_lower_one_sided(19, 200), ALPHA)
+        self.assertAlmostEqual(binomial_upper_tail_p(19, 200),
+                               sum(math.comb(200, k) * 0.05 ** k * 0.95 ** (200 - k) for k in range(19, 201)),
+                               places=12)
+
     def test_null_calibration_hash_reproducibility_and_authentication(self):
         rng = random.Random(164)
-        retrieval = [(rng.random(), rng.random()) for _ in range(4000)]
-        latency = [(100 * rng.expovariate(1), 100 * rng.expovariate(1)) for _ in range(4000)]
-        storage = [(1000 * rng.expovariate(1), 1000 * rng.expovariate(1)) for _ in range(4000)]
-        disposition = [(rng.getrandbits(1), rng.getrandbits(1)) for _ in range(4000)]
+        retrieval = [(rng.random(), rng.random()) for _ in range(2000)]
+        latency = [(100 * rng.expovariate(1), 100 * rng.expovariate(1)) for _ in range(2000)]
+        storage = [(1000 * rng.expovariate(1), 1000 * rng.expovariate(1)) for _ in range(2000)]
+        disposition = [(rng.getrandbits(1), rng.getrandbits(1)) for _ in range(2000)]
         samples = retrieval, latency, storage, disposition
-        options = {"host_id": "unit-test fixture", "permutations": 99, "split_size": 120}
         key = b"test-only-signing-key"
-        receipt = run_aa_calibration(*samples, **options, signing_key=key)
-        repeated = run_aa_calibration(*samples, **options)
+        receipt = run_aa_calibration(*samples, **self.OPTIONS, signing_key=key)
+        repeated = run_aa_calibration(*samples, **self.OPTIONS)
         self.assertTrue(receipt["passed"])
         self.assertEqual(receipt["trials"], 200)
-        self.assertEqual([metric["rejections"] for metric in receipt["metrics"].values()], [11, 8, 8, 11])
+        for metric in receipt["metrics"].values():
+            self.assertTrue(metric["disjoint_splits"])
+            self.assertEqual(metric["pairs_used"], 2000)
+            self.assertLessEqual(metric["rejections"], 18)
+            self.assertFalse(metric["anti_conservative"])
         self.assertEqual(receipt["receipt_sha256"], repeated["receipt_sha256"])
         self.assertTrue(verify_aa_calibration_receipt(repeated))
         self.assertFalse(verify_aa_calibration_receipt(receipt))
@@ -328,19 +458,88 @@ class AaCalibrationTests(unittest.TestCase):
         tampered["metrics"]["latency_p95"]["rejections"] += 1
         self.assertFalse(verify_aa_calibration_receipt(tampered, signing_key=key))
 
-    def test_detects_systematic_bias_and_degenerate_identical_measurements(self):
-        biased = [(0, 1)] * 40
-        same = [(1, 1)] * 40
-        options = {"host_id": "unit-test fixture", "permutations": 99, "split_size": 20}
-        receipt = run_aa_calibration(biased, biased, biased, biased, **options)
+    def test_disjoint_splits_need_enough_pairs(self):
+        rng = random.Random(7)
+        pool = [(rng.random(), rng.random()) for _ in range(1999)]
+        with self.assertRaisesRegex(ValueError, "disjoint"):
+            run_aa_calibration(pool, pool, pool, [(1, 0)] * 1999, **self.OPTIONS)
+        with self.assertRaisesRegex(ValueError, "at least 200"):
+            run_aa_calibration(pool, pool, pool, pool, **self.OPTIONS, trials=199)
+
+    def test_conservative_zero_rejections_pass(self):
+        # Mostly identical pairs with sparse, sign-balanced differences: the tests never reject,
+        # and a conservative calibration must PASS rather than fail for "alpha outside the CI".
+        rng = random.Random(11)
+        numeric = [(5.0, 5.0)] * 1950 + [(5.0, 6.0)] * 25 + [(6.0, 5.0)] * 25
+        unit = [(a / 10, b / 10) for a, b in numeric]
+        binary = [(1, 1)] * 1950 + [(1, 0)] * 25 + [(0, 1)] * 25
+        for pool in (numeric, unit, binary):
+            rng.shuffle(pool)
+        receipt = run_aa_calibration(unit, numeric, numeric, binary, **self.OPTIONS)
+        self.assertEqual([metric["rejections"] for metric in receipt["metrics"].values()], [0] * 4)
+        for metric in receipt["metrics"].values():
+            self.assertFalse(metric["degenerate_identical_measurements"])
+            self.assertAlmostEqual(metric["inflation_p_value"], 1.0)
+            self.assertTrue(metric["passed"])
+        self.assertTrue(receipt["passed"])
+
+    def test_detects_anti_conservative_inflation(self):
+        rng = random.Random(23)
+        shifted = [(0.6 * rng.random(), 0.6 * rng.random() + 0.25) for _ in range(2000)]
+        latency = [(100 * rng.expovariate(1), 100 * rng.expovariate(1)) for _ in range(2000)]
+        storage = [(1000 * rng.expovariate(1), 1000 * rng.expovariate(1)) for _ in range(2000)]
+        disposition = [(rng.getrandbits(1), rng.getrandbits(1)) for _ in range(2000)]
+        receipt = run_aa_calibration(shifted, latency, storage, disposition, **self.OPTIONS)
+        retrieval = receipt["metrics"]["retrieval_ndcg_at_10"]
+        self.assertGreater(retrieval["rejections"], 18)
+        self.assertTrue(retrieval["anti_conservative"])
+        self.assertLess(retrieval["inflation_p_value"], INFLATION_P)
+        self.assertGreater(retrieval["clopper_pearson_lower_one_sided"], ALPHA)
+        self.assertFalse(retrieval["passed"])
         self.assertFalse(receipt["passed"])
-        self.assertEqual([metric["rejections"] for metric in receipt["metrics"].values()], [200] * 4)
-        receipt = run_aa_calibration(same, same, same, same, **options)
+
+    def test_detects_systematic_bias_and_degenerate_identical_measurements(self):
+        biased = [(0, 1)] * 2000
+        same = [(1, 1)] * 2000
+        receipt = run_aa_calibration(biased, biased, biased, biased, **self.OPTIONS)
+        self.assertFalse(receipt["passed"])
+        self.assertTrue(all(metric["anti_conservative"] for metric in receipt["metrics"].values()))
+        self.assertTrue(all(metric["rejections"] > 18 for metric in receipt["metrics"].values()))
+        receipt = run_aa_calibration(same, same, same, same, **self.OPTIONS)
         self.assertFalse(receipt["passed"])
         self.assertEqual([metric["rejections"] for metric in receipt["metrics"].values()], [0] * 4)
-        self.assertEqual(receipt["metrics"]["storage_p95"]["identical_measured_pairs"], 40)
-        with self.assertRaisesRegex(ValueError, "at least 200"):
-            run_aa_calibration(same, same, same, same, **options, trials=199)
+        self.assertTrue(all(metric["degenerate_identical_measurements"] for metric in receipt["metrics"].values()))
+        self.assertEqual(receipt["metrics"]["storage_p95"]["identical_measured_pairs"], 2000)
+
+    def test_deterministic_drycheck_and_47_verifier(self):
+        pools = deterministic_drycheck_pools()
+        self.assertEqual([len(pool) for pool in pools], [2000] * 4)
+        self.assertIn("qrels", pools[0][0][0])
+        receipt = run_deterministic_drycheck()
+        self.assertTrue(receipt["passed"])
+        self.assertTrue(verify_aa_calibration_receipt(receipt))
+        self.assertEqual(receipt["receipt_sha256"], run_deterministic_drycheck()["receipt_sha256"])
+
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location("pv7_w16_47_verifier",
+                                                      ROOT / "scripts" / "verifiers.d" / "47_verifier.py")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        result = module.verify_bundle(ROOT)
+        self.assertTrue(result["passed"], result)
+        self.assertEqual(result["status"], "local-drycheck-pass")
+        self.assertEqual(result["spine_digest"], module.SPINE_DIGEST)
+        self.assertTrue(result["fragments_ok"])
+        self.assertRegex(result["compiled_sha256"], "^[0-9a-f]{64}$")
+        self.assertEqual(result["burned_corpora_missing"], [])
+        self.assertEqual(result["aa_null_calibration"]["receipt_sha256"], receipt["receipt_sha256"])
+        self.assertTrue(result["aa_null_calibration"]["passed"])
+        with patch("chelated_pv7_spine.aa_null_calibration.run_deterministic_drycheck",
+                   return_value={**receipt, "passed": False}):
+            failed = module.verify_bundle(ROOT)
+        self.assertFalse(failed["passed"])
+        self.assertEqual(failed["status"], "local-drycheck-fail")
 
 
 if __name__ == "__main__":

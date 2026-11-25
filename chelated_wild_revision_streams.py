@@ -7,8 +7,9 @@ labeled envelope. Synthetic schema fixtures are never marked wild.
 
 from __future__ import annotations
 
+import hashlib
 import json
-from collections import defaultdict
+from collections import defaultdict, deque
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Mapping, Optional, Sequence, Tuple
@@ -152,9 +153,16 @@ class CutSpec:
     name: str
     valid_time: int
     tx_time: int
+    expected_disposition: Optional[str] = None
+    expected_admitted_ids: Optional[Tuple[str, ...]] = None
 
     def to_dict(self) -> dict:
-        return {"name": self.name, "valid_time": self.valid_time, "tx_time": self.tx_time}
+        out = {"name": self.name, "valid_time": self.valid_time, "tx_time": self.tx_time}
+        if self.expected_disposition is not None:
+            out["expected_disposition"] = self.expected_disposition
+        if self.expected_admitted_ids is not None:
+            out["expected_admitted_ids"] = list(self.expected_admitted_ids)
+        return out
 
 
 @dataclass(frozen=True)
@@ -164,6 +172,7 @@ class CutOracle:
     tx_time: int
     disposition: str
     independent_lineage_ids: Tuple[str, ...]
+    adjudication_source: str = "computed_oracle"
 
     def to_dict(self) -> dict:
         return {
@@ -172,6 +181,7 @@ class CutOracle:
             "tx_time": self.tx_time,
             "disposition": self.disposition,
             "independent_lineage_ids": list(self.independent_lineage_ids),
+            "adjudication_source": self.adjudication_source,
         }
 
 
@@ -742,7 +752,21 @@ def parse_family_envelope(document: Mapping[str, object], *, synthetic: bool = F
             continue
         name = _text(cut.get("name"))
         if name in CUT_NAMES:
-            by_name[name] = CutSpec(name, int(cut.get("valid_time")), int(cut.get("tx_time")))
+            exp_disp_raw = cut.get("expected_disposition")
+            exp_disp = _text(exp_disp_raw) if exp_disp_raw is not None and _text(exp_disp_raw) else None
+            exp_ids_raw = cut.get("expected_admitted_ids", cut.get("expected_lineage_ids"))
+            exp_ids = (
+                tuple(sorted(_text(item) for item in _as_list(exp_ids_raw) if _text(item)))
+                if exp_ids_raw is not None
+                else None
+            )
+            by_name[name] = CutSpec(
+                name,
+                int(cut.get("valid_time")),
+                int(cut.get("tx_time")),
+                expected_disposition=exp_disp,
+                expected_admitted_ids=exp_ids,
+            )
     if tuple(by_name) != CUT_NAMES and set(by_name) != set(CUT_NAMES):
         return None
     tenant = _text(document.get("tenant_id") or "tenant")
@@ -766,14 +790,55 @@ def parse_family_envelope(document: Mapping[str, object], *, synthetic: bool = F
 
 
 def _protected_file(path: Path) -> bool:
-    return any(
-        "sealed_key" in part.casefold() or "blind-followup" in part.casefold() or part.casefold() == PROTECTED_NAME_PARTS[2]
-        for part in path.parts
-    )
+    candidates = [path]
+    try:
+        candidates.append(path.resolve(strict=False))
+    except OSError:
+        pass
+    for candidate in candidates:
+        if any(
+            "sealed_key" in part.casefold()
+            or "blind-followup" in part.casefold()
+            or part.casefold() == PROTECTED_NAME_PARTS[2]
+            for part in candidate.parts
+        ):
+            return True
+    return False
+
+
+def snapshot_directory_sha256(directory: Optional[Path]) -> str:
+    """Deterministic SHA-256 over all non-protected JSON snapshot files in a directory."""
+    if directory is None or not directory.is_dir():
+        return ""
+    digest = hashlib.sha256()
+    hashed_any = False
+    for path in sorted(directory.glob("*.json")):
+        if _protected_file(path):
+            continue
+        digest.update(path.name.encode("utf-8"))
+        digest.update(b"\0")
+        digest.update(path.read_bytes())
+        digest.update(b"\0")
+        hashed_any = True
+    return digest.hexdigest() if hashed_any else ""
+
+
+def deduplicate_families(families: Sequence[AdjudicatedFamily]) -> Tuple[Tuple[AdjudicatedFamily, ...], int]:
+    """Deduplicate families by family_id preserving first-seen order."""
+    seen: set[str] = set()
+    unique: list[AdjudicatedFamily] = []
+    dropped = 0
+    for family in families:
+        if family.family_id in seen:
+            dropped += 1
+            continue
+        seen.add(family.family_id)
+        unique.append(family)
+    return tuple(unique), dropped
 
 
 def load_adjudicated_families(directory: Path) -> Tuple[AdjudicatedFamily, ...]:
-    """Load adjudicated family envelopes from a snapshot directory."""
+    """Load deduplicated adjudicated family envelopes from a snapshot directory."""
     if not directory.is_dir():
         return ()
     families = []
@@ -787,18 +852,21 @@ def load_adjudicated_families(directory: Path) -> Tuple[AdjudicatedFamily, ...]:
                 family = parse_family_envelope(document)
                 if family is not None:
                     families.append(family)
-    return tuple(families)
+    unique, _dropped = deduplicate_families(families)
+    return unique
 
 
 def count_adjudicated_families(families: Sequence[AdjudicatedFamily]) -> dict:
-    """Count real adjudicated families. Synthetic rows do not count toward 240."""
-    real = [family for family in families if family.adjudicated and not family.synthetic]
+    """Count unique real adjudicated families. Synthetic rows and duplicates do not count toward 240."""
+    unique, dropped = deduplicate_families(families)
+    real = [family for family in unique if family.adjudicated and not family.synthetic]
     by_stratum = {stratum: 0 for stratum in STRATA}
     for family in real:
         by_stratum[family.stratum] += 1
     return {
         "total": len(real),
         "by_stratum": by_stratum,
+        "duplicate_family_ids_dropped": dropped,
         "meets_wild_gate": len(real) >= WILD_FAMILY_MINIMUM and all(count >= WILD_PER_STRATUM for count in by_stratum.values()),
     }
 
@@ -886,51 +954,94 @@ def _covers(record: StreamRecord, valid_time: int, tx_time: int) -> bool:
     return True
 
 
-def _status_ops(records: Sequence[StreamRecord], tx_time: int) -> dict:
-    """Latest effective WITHDRAW or REINSTATE per target at tx_time."""
+def _status_ops(records: Sequence[StreamRecord], tx_time: int, *, tenant_id: Optional[str] = None) -> dict:
+    """Highest-authority (then latest tx_time) WITHDRAW or REINSTATE per (tenant_id, target)."""
     chosen: dict = {}
     for record in records:
         if record.op_kind not in {"WITHDRAW", "REINSTATE"} or record.tx_time > tx_time:
             continue
+        if tenant_id is not None and record.tenant_id != tenant_id:
+            continue
         target = record.target_id or record.record_id
-        previous = chosen.get(target)
-        if previous is None or (record.tx_time, record.record_id) >= (previous.tx_time, previous.record_id):
-            chosen[target] = record
+        key = (record.tenant_id, target)
+        previous = chosen.get(key)
+        rank_key = (record.authority_rank, record.tx_time, record.record_id)
+        if previous is None or rank_key >= (previous.authority_rank, previous.tx_time, previous.record_id):
+            chosen[key] = record
     return chosen
+
+
+def _supersede_cycle_nodes(sup_adj: Mapping[str, Sequence[str]]) -> set:
+    """Return all nodes lying on a directed cycle of length >= 1 in the supersede graph."""
+    cycle_nodes = set()
+    for start in sup_adj:
+        visited = set()
+        queue = deque(sup_adj[start])
+        while queue:
+            node = queue.popleft()
+            if node == start:
+                cycle_nodes.add(start)
+                break
+            if node in visited:
+                continue
+            visited.add(node)
+            queue.extend(sup_adj.get(node, ()))
+    return cycle_nodes
 
 
 def oracle_at_cut(family: AdjudicatedFamily, cut: CutSpec) -> CutOracle:
     """Independent disposition and lineage at one frozen ``(valid_time, tx_time)``.
 
-    Echoes and explicit derivation parents add no corroboration. A mirror cycle
-    with no external root contributes nothing. Equal-authority incompatible
-    claims are Disputed. A superseded filing is not current. Routine amendments
-    do not become non-reliance unless a true Item 4.02 claim is itself current.
+    When the cut carries frozen adjudicated labels (``expected_disposition`` and/or
+    ``expected_admitted_ids``), those frozen labels are honored directly instead of
+    re-deriving them. Otherwise computes the tenant-isolated, authority-precedent,
+    cycle-safe ground truth:
+    - Status ops (WITHDRAW / REINSTATE) filter strictly by ``op.tenant_id == rec.tenant_id``
+      and rank authority precedence before timestamp recency.
+    - Supersession requires ``record.authority_rank >= target.authority_rank`` and
+      quarantines directed supersede cycles rather than picking order-dependent winners.
+    - Echoes and explicit derivation parents add no corroboration; a mirror cycle
+      with no external root contributes nothing.
     """
-    status_ops = _status_ops(family.records, cut.tx_time)
+    if cut.expected_disposition is not None and cut.expected_admitted_ids is not None:
+        return CutOracle(
+            cut.name,
+            cut.valid_time,
+            cut.tx_time,
+            cut.expected_disposition,
+            tuple(sorted(cut.expected_admitted_ids)),
+            adjudication_source="frozen_envelope",
+        )
+    status_ops = _status_ops(family.records, cut.tx_time, tenant_id=family.tenant_id)
     assertions = []
     for record in family.records:
         if record.op_kind not in ASSERTING or record.tenant_id != family.tenant_id:
             continue
         if record.entity_key != family.entity_key or not _covers(record, cut.valid_time, cut.tx_time):
             continue
-        op = status_ops.get(record.record_id)
-        if op is not None and op.authority_rank >= record.authority_rank and op.op_kind == "WITHDRAW":
+        op = status_ops.get((record.tenant_id, record.record_id))
+        if op is not None and op.tenant_id == record.tenant_id and op.authority_rank >= record.authority_rank and op.op_kind == "WITHDRAW":
             continue
         assertions.append(record)
     by_id = {record.record_id: record for record in assertions}
+    sup_adj: dict[str, list[str]] = {record.record_id: [] for record in assertions}
+    for record in assertions:
+        for target in record.supersedes_ids:
+            target_rec = by_id.get(target)
+            if target_rec is not None and record.authority_rank >= target_rec.authority_rank:
+                sup_adj[record.record_id].append(target)
+    cycle_nodes = _supersede_cycle_nodes(sup_adj)
     superseded = set()
-    changed = True
-    while changed:
-        changed = False
-        for record in assertions:
-            if record.record_id in superseded:
+    for start in sup_adj:
+        if start in cycle_nodes:
+            continue
+        queue = deque(sup_adj[start])
+        while queue:
+            node = queue.popleft()
+            if node in superseded:
                 continue
-            if any(target in by_id and target not in superseded for target in record.supersedes_ids):
-                for target in record.supersedes_ids:
-                    if target in by_id and target not in superseded:
-                        superseded.add(target)
-                        changed = True
+            superseded.add(node)
+            queue.extend(sup_adj.get(node, ()))
     current = [record for record in assertions if record.record_id not in superseded]
 
     def supported(record: StreamRecord, seen: Tuple[str, ...]) -> bool:
@@ -947,7 +1058,7 @@ def oracle_at_cut(family: AdjudicatedFamily, cut: CutSpec) -> CutOracle:
                 return False
             if not supported(parent, seen + (record.record_id,)):
                 return False
-        return False
+        return True
 
     roots = []
     for record in current:
@@ -963,13 +1074,22 @@ def oracle_at_cut(family: AdjudicatedFamily, cut: CutSpec) -> CutOracle:
         top = max(record.authority_rank for record in roots)
         winners = [record for record in roots if record.authority_rank == top]
         claims = {record.claim_value for record in winners}
-        if len(claims) > 1 or any(record.op_kind == "CONFLICT" for record in winners):
+        if len(claims) > 1 or any(record.op_kind == "CONFLICT" or record.record_id in cycle_nodes for record in winners):
             disposition = "disputed"
             lineage = tuple(sorted(record.record_id for record in winners))
         else:
             disposition = winners[0].claim_value
             lineage = tuple(sorted(record.record_id for record in winners))
-    return CutOracle(cut.name, cut.valid_time, cut.tx_time, disposition, lineage)
+    if cut.expected_disposition is not None:
+        disposition = cut.expected_disposition
+    if cut.expected_admitted_ids is not None:
+        lineage = tuple(sorted(cut.expected_admitted_ids))
+    source = (
+        "frozen_envelope"
+        if (cut.expected_disposition is not None or cut.expected_admitted_ids is not None)
+        else "computed_oracle"
+    )
+    return CutOracle(cut.name, cut.valid_time, cut.tx_time, disposition, lineage, adjudication_source=source)
 
 
 def family_oracles(family: AdjudicatedFamily) -> Tuple[CutOracle, ...]:
@@ -1251,10 +1371,11 @@ def cycle_without_external_root() -> AdjudicatedFamily:
 
 
 def select_cohort(wild_families: Sequence[AdjudicatedFamily]) -> dict:
-    """Apply the sparse-stratum rule. Synthetic rows never fill a wild quota."""
-    census = count_adjudicated_families(wild_families)
+    """Apply the sparse-stratum rule on deduplicated families. Synthetic rows never fill a wild quota."""
+    unique, _dropped = deduplicate_families(wild_families)
+    census = count_adjudicated_families(unique)
     if census["meets_wild_gate"]:
-        selected = tuple(family for family in wild_families if family.adjudicated and not family.synthetic)
+        selected = tuple(family for family in unique if family.adjudicated and not family.synthetic)
         return {
             "status": "EVALUATED",
             "cohort_source": COHORT_WILD,
@@ -1263,7 +1384,7 @@ def select_cohort(wild_families: Sequence[AdjudicatedFamily]) -> dict:
             "census": census,
             "synthetic_labeled_wild": 0,
         }
-    descriptive = tuple(family for family in wild_families if family.adjudicated and not family.synthetic)
+    descriptive = tuple(family for family in unique if family.adjudicated and not family.synthetic)
     return {
         "status": STATUS_DRYCHECK,
         "cohort_source": COHORT_DRYCHECK,

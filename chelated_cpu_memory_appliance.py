@@ -58,6 +58,40 @@ from chelated_pv7_spine.cpu_io_cage import (  # noqa: E402
 )
 
 BUNDLE_ID = 59
+
+
+def verify_cgroup_v2_enforced(memory_max_bytes: int, swap_max_bytes: int = 0,
+                              cgroup_root: Path = Path("/sys/fs/cgroup")) -> Dict[str, Any]:
+    """Read back the live cgroup v2 limits of THIS process; True only when they match the claimed cage.
+
+    Never infers enforcement from the mode flag. Non-Linux hosts and hosts without cgroup v2 return
+    ``enforced: False`` with the reason.
+    """
+    out: Dict[str, Any] = {"enforced": False, "reason": "", "memory_max": None, "memory_swap_max": None}
+    if not sys.platform.startswith("linux"):
+        out["reason"] = f"not linux ({sys.platform}); cgroup v2 limits cannot be read"
+        return out
+    try:
+        rel = ""
+        for line in Path("/proc/self/cgroup").read_text(encoding="utf-8").splitlines():
+            if line.startswith("0::"):
+                rel = line[3:].strip()
+                break
+        else:
+            out["reason"] = "no cgroup v2 unified hierarchy entry in /proc/self/cgroup"
+            return out
+        base = Path(cgroup_root) / rel.lstrip("/")
+        mem = (base / "memory.max").read_text(encoding="utf-8").strip()
+        swp = (base / "memory.swap.max").read_text(encoding="utf-8").strip()
+    except OSError as exc:
+        out["reason"] = f"cgroup v2 limit files unreadable: {type(exc).__name__}"
+        return out
+    out["memory_max"], out["memory_swap_max"] = mem, swp
+    mem_ok = mem.isdigit() and int(mem) <= memory_max_bytes
+    swp_ok = swp.isdigit() and int(swp) <= swap_max_bytes
+    out["enforced"] = bool(mem_ok and swp_ok)
+    out["reason"] = "limits match" if out["enforced"] else f"memory.max={mem} memory.swap.max={swp} exceed claimed cage"
+    return out
 MODES: Tuple[str, ...] = ("local-drycheck", "run-live")
 MEMORY_MAX_BYTES = 960 * 1024 * 1024
 FAMILY_COUNT = 200
@@ -108,7 +142,14 @@ class Record:
     source: str
     authority: int
     tx_time: int
-    derived_from: Optional[str] = None  # provenance root record_id (copies/paraphrases)
+    # GROUND-TRUTH provenance root (copies/paraphrases). Used ONLY by the corpus generator and by the
+    # post-hoc lineage-inference scorer. Arms receive ``arm_view(rec)`` with this field stripped (B59-2).
+    derived_from: Optional[str] = None
+
+    def arm_view(self) -> "Record":
+        """The identical, label-free schema every arm ingests: ground-truth ``derived_from`` removed."""
+        return Record(self.record_id, self.family, self.entity, self.text, self.source, self.authority,
+                      self.tx_time, None)
 
     @property
     def value(self) -> str:
@@ -176,6 +217,52 @@ def build_families(seed: int = 5901, count: int = FAMILY_COUNT) -> Tuple[List[Re
 
 def family_query(entity: str) -> str:
     return f"what is the audited reading of {entity}"
+
+
+# ---------------------------------------------------------------------------
+# surface-text lineage inference (B59-2): no ground-truth labels, text + value only
+# ---------------------------------------------------------------------------
+_BACKREF_RE = re.compile(
+    r"\b(as summarized earlier|recap of the earlier|per the prior summary|earlier note|prior summary|as noted before)\b",
+    re.IGNORECASE,
+)
+SHINGLE_N = 3
+SHINGLE_JACCARD_MIN = 0.6
+
+
+def _shingles(text: str, n: int = SHINGLE_N) -> frozenset:
+    toks = _tokens(text)
+    if len(toks) < n:
+        return frozenset([tuple(toks)])
+    return frozenset(tuple(toks[i:i + n]) for i in range(len(toks) - n + 1))
+
+
+def infer_parent(rec: Record, prior: Sequence[Record]) -> Optional[str]:
+    """Infer the provenance parent of ``rec`` from surface text alone.
+
+    A prior same-entity record with the SAME claimed value is the parent when ``rec`` is (a) a verbatim copy
+    (normalized-token-identical), (b) a near-copy (word-3-gram Jaccard >= 0.6) or (c) carries an explicit
+    back-reference cue ("as summarized earlier", ...). The earliest qualifying prior record wins. Records that
+    merely agree on the value ("Independent audit: ... measured at ...") match none of (a)-(c). No ``source``
+    field, authority, or ground-truth label is consulted. LIMIT: a paraphrase with neither overlap nor a cue
+    phrase is NOT detected (the cue lexicon above is authored alongside this corpus).
+    """
+    if not rec.value:
+        return None
+    mine = _shingles(rec.text)
+    mine_norm = " ".join(_tokens(rec.text))
+    for cand in sorted(prior, key=lambda r: (r.tx_time, r.record_id)):
+        if cand.value != rec.value or cand.record_id == rec.record_id:
+            continue
+        if " ".join(_tokens(cand.text)) == mine_norm:
+            return cand.record_id
+        theirs = _shingles(cand.text)
+        union = len(mine | theirs)
+        if union and len(mine & theirs) / union >= SHINGLE_JACCARD_MIN:
+            return cand.record_id
+        if _BACKREF_RE.search(rec.text):
+            return cand.record_id
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -348,7 +435,8 @@ class Mem0Arm(_OfflineContractAdapter):
 
     def ingest(self, rec: Record) -> None:
         if self._upstream is not None:
-            self._upstream.add(rec.text, user_id=rec.entity, infer=False)
+            # B59-1: infer=True -> upstream mem0 runs its real fact-extraction / ADD-UPDATE-DELETE-NOOP pipeline.
+            self._upstream.add(rec.text, user_id=rec.entity, infer=True)
             self._by_text[rec.text] = rec
             return
         cur = self._store.get(rec.entity)
@@ -428,8 +516,10 @@ class ChelatedIQ04Arm(MemoryArm):
         self.authority = SQLiteC3ChallengerArm(cache_mib=cache_mib)
         self._by_entity: Dict[str, List[Record]] = {}
         self._records: Dict[str, Record] = {}
+        self.inferred_parent: Dict[str, Optional[str]] = {}
 
     def ingest(self, rec: Record) -> None:
+        self.inferred_parent[rec.record_id] = infer_parent(rec, self._by_entity.get(rec.entity, []))
         self.kernel.ingest(
             {
                 "specversion": "1.0",
@@ -448,10 +538,12 @@ class ChelatedIQ04Arm(MemoryArm):
     def lineage_root(self, rec: Record) -> str:
         seen = {rec.record_id}
         cur = rec
-        while cur.derived_from and cur.derived_from in self._records and cur.derived_from not in seen:
-            cur = self._records[cur.derived_from]
+        while True:
+            parent = self.inferred_parent.get(cur.record_id)
+            if not parent or parent not in self._records or parent in seen:
+                return cur.record_id
+            cur = self._records[parent]
             seen.add(cur.record_id)
-        return cur.record_id
 
     def candidates(self, entity: str) -> List[Record]:
         res = self.authority.resolve(entity)
@@ -563,6 +655,8 @@ def run_iq04_experiment(
     cage_cmd = build_systemd_run_command([sys.executable, "scripts/run_pv7_w19_2d_sub1gib_iq04.py", "--mode", mode], cage)
     cuda_env = build_cpu_only_env()
     live = mode == "run-live"
+    cgroup_check = (verify_cgroup_v2_enforced(cage.memory_max_bytes, cage.memory_swap_max_bytes)
+                    if live else {"enforced": False, "reason": "local-drycheck: no cage is applied"})
     if live and historical_inventory is None:
         raise LiveAdapterUnavailableError("run-live requires --historical-inventory (full historical fingerprint index)")
     inventory = historical_inventory if historical_inventory is not None else worktree_local_inventory(root)
@@ -575,8 +669,9 @@ def run_iq04_experiment(
     arms = build_arms(live)
     try:
         for rec in sorted(records, key=lambda r: r.tx_time):
+            view = rec.arm_view()  # identical label-free input for EVERY arm
             for arm in arms:
-                arm.ingest(rec)
+                arm.ingest(view)
         per_arm: Dict[str, Dict[str, Any]] = {}
         per_family: Dict[str, Dict[str, int]] = {}
         for arm in arms:
@@ -602,6 +697,29 @@ def run_iq04_experiment(
                 "max_reader_tokens_used": max(tokens_used),
             }
         chel = next(a for a in arms if isinstance(a, ChelatedIQ04Arm))
+        by_id = {r.record_id: r for r in records}
+
+        def _root(rid: str, parents: Mapping[str, Optional[str]]) -> str:
+            seen_ids = {rid}
+            while parents.get(rid) and parents[rid] in by_id and parents[rid] not in seen_ids:
+                rid = parents[rid]
+                seen_ids.add(rid)
+            return rid
+
+        truth_parent = {r.record_id: r.derived_from for r in records}
+        truth_echo = {rid for rid, p in truth_parent.items() if p}
+        inferred_echo = {rid for rid, p in chel.inferred_parent.items() if p}
+        lineage_root_agree = sum(
+            1 for r in records if _root(r.record_id, truth_parent) == _root(r.record_id, chel.inferred_parent)
+        )
+        lineage_scoring = {
+            "echo_records_truth": len(truth_echo),
+            "echo_records_inferred": len(inferred_echo),
+            "true_positive": len(truth_echo & inferred_echo),
+            "false_positive": len(inferred_echo - truth_echo),
+            "false_negative": len(truth_echo - inferred_echo),
+            "root_agreement": lineage_root_agree / len(records),
+        }
         audit_rows = chel.audit_rows()
         kernel_llm_tokens = chel.kernel_llm_write_tokens()
         memos_arm = next(a for a in arms if isinstance(a, MemosArm))
@@ -642,6 +760,9 @@ def run_iq04_experiment(
             > per_arm["raw_append_rag"]["accuracy_by_kind"]["paraphrase_echo_vs_independent"]
         ),
         "kernel_audit_rows_match_ingest": audit_rows == len(records),
+        "lineage_inferred_from_surface_text_no_oracle": (
+            lineage_scoring["false_positive"] == 0 and lineage_scoring["false_negative"] == 0
+        ),
         "kernel_zero_llm_write_tokens": kernel_llm_tokens == 0,
         "memt_1_0_model_runs_zero": True,
         "mode_label_fail_closed": (
@@ -671,18 +792,23 @@ def run_iq04_experiment(
         "tier_disclosure": (
             "local-drycheck: synthetic deterministic families with a deterministic lexical read path (no LLM reader); "
             "mem0/memos arms are labeled offline contract adapters; burn inventory is worktree-local, not the full "
-            "historical BEIR/LongMemEval/LoCoMo index"
+            "historical BEIR/LongMemEval/LoCoMo index; INPUT SYMMETRY: every arm ingests the identical Record schema "
+            "with the ground-truth `derived_from` label stripped (Record.arm_view); only the chelated arm runs lineage "
+            "inference (surface-text word-3-gram overlap / back-reference cue, scored vs ground truth post hoc), the "
+            "SQLite C3 challenger is lineage-free by definition (authority+recency) and gets no such pass"
             if not live
             else "run-live: upstream mem0 + memos imported; full historical inventory supplied by the operator"
         ),
         "memt_reference": {"arxiv": "2610.26825v5", "model_runs": 0, "correction": "symmetric reranker/top_k/reader budget"},
         "burn": burn,
+        "lineage_inference": {"method": "surface_text_shingle_overlap_and_backref_cue", **lineage_scoring},
         "cage": {
             "memory_max_bytes": cage.memory_max_bytes,
             "memory_swap_max_bytes": cage.memory_swap_max_bytes,
             "strictly_under_one_gib": cage.memory_max_bytes < ONE_GIB_BYTES,
             "systemd_run_command": cage_cmd,
-            "enforced_on_this_host": live,
+            "enforced_on_this_host": bool(cgroup_check["enforced"]),
+            "enforcement_check": cgroup_check,
         },
         "traced_peak_bytes": int(peak),
         "arms": per_arm,

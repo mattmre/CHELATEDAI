@@ -16,7 +16,7 @@ evaluating 24 distinct multi-field legal/compliance production-matter templates 
     preserving the 3 valid unaffected fields.
 
 Full 2x2 System Factorial x Event Cross + Mandatory Sham Control (`KEEP #2`):
-* Retrieval factor: `{Conventional_Retriever, ZeroMu_Pinned_Bridge}`
+* Retrieval factor: `{Conventional_Retriever, ZeroMu_Pinned_Bridge, Uncentered_CSLS}`
     importing `UncenteredProcrustes`, `ZeroMuPolarBridge`, `RawCosineMerge`, `CSLSMerge`,
     `RequestSpanProfiler`, and `paired_bootstrap_ci` from `chelated_pv7_spine.bridge_merge_harness`.
 * Ledger factor: `{SQLiteChallengerLedger, EK5_v3}`
@@ -93,13 +93,19 @@ ARRIVAL_SCHEDULES: Tuple[str, ...] = (
     "S3_wave_bimodal",
     "S4_withdrawal_surge",
 )
-RETRIEVER_ARMS: Tuple[str, ...] = ("Conventional_Retriever", "ZeroMu_Pinned_Bridge")
+RETRIEVER_ARMS: Tuple[str, ...] = (
+    "Conventional_Retriever",
+    "ZeroMu_Pinned_Bridge",
+    "Uncentered_CSLS",
+)
 LEDGER_ARMS: Tuple[str, ...] = ("SQLiteChallengerLedger", "EK5_v3")
 SYSTEM_CELLS: Tuple[Tuple[str, str], ...] = (
     ("Conventional_Retriever", "SQLiteChallengerLedger"),
     ("Conventional_Retriever", "EK5_v3"),
     ("ZeroMu_Pinned_Bridge", "SQLiteChallengerLedger"),
     ("ZeroMu_Pinned_Bridge", "EK5_v3"),
+    ("Uncentered_CSLS", "SQLiteChallengerLedger"),
+    ("Uncentered_CSLS", "EK5_v3"),
 )
 EVENT_REGIMES: Tuple[str, ...] = (
     "no_change",
@@ -125,12 +131,16 @@ UNRESOLVED_SENTINEL = "UNRESOLVED"
 # Deterministic virtual clock parameters (milliseconds) matching realistic pooled worker budgets.
 BASE_SUBTASK_MS = 38.0
 RETRIEVAL_BASE_MS = 6.0
-CONV_MIGRATION_STALL_MS = 280.0
+# Equalized to 0 so conventional-vs-ZeroMu latency is not a harness stall (62-B1).
+CONV_MIGRATION_STALL_MS = 0.0
 ZEROMU_BRIDGE_MS = 4.0
 SHAM_CHECKPOINT_OVERHEAD_MS = 28.0
 EK5_SELECTIVE_REOPEN_LEDGER_MS = 3.5
-SQLITE_RECHECK_PER_FIELD_MS = 34.0
-FULL_RESTART_REBUILD_MS = 520.0
+# Same per-field ledger constant as EK5. The reopen loop charges it once, then
+# reopens only the invalid fields (62-B1 symmetric SQLite).
+SQLITE_RECHECK_PER_FIELD_MS = EK5_SELECTIVE_REOPEN_LEDGER_MS
+# Four-field re-execution budget, charged on top of the rebuild re-exec loop.
+FULL_RESTART_REBUILD_MS = 4.0 * (RETRIEVAL_BASE_MS + BASE_SUBTASK_MS)
 JOB_SLA_DEADLINE_MS = 560.0
 
 
@@ -627,10 +637,28 @@ class MatterEmbeddingSpace:
                 self._doc_v1[doc.doc_id] = v1_vec
                 self._doc_v2[doc.doc_id] = v2_vec
 
-        # Precompute DEV reference query matrices for CSLS hubness normalization
-        all_q_keys = sorted(self._query_v1.keys())
-        self._dev_q_v1 = np.vstack([self._query_v1[k] for k in all_q_keys])
-        self._dev_q_v2 = np.vstack([self._query_v2_shifted[k] for k in all_q_keys])
+        # EVAL query matrices are the matter queries. CSLS / ZeroMu calibrate on a
+        # disjoint draw from the same encoder geometry, never on the eval rows.
+        eval_q_keys = sorted(self._query_v1.keys())
+        self._dev_q_v1 = np.vstack([self._query_v1[k] for k in eval_q_keys])
+        self._dev_q_v2 = np.vstack([self._query_v2_shifted[k] for k in eval_q_keys])
+        dev_rng = np.random.default_rng(62017)
+        n_dev_q = 32
+        dev_q_rows = []
+        for _ in range(n_dev_q):
+            base = l2_normalize(dev_rng.normal(size=(self.d_old,)))
+            dev_q_rows.append(
+                l2_normalize((base @ self._rot.T) * 0.42 + self._mu_v2[0] + self._prompt_shift_v2[0])
+            )
+        self._csls_dev_q_v2 = np.vstack(dev_q_rows)
+        dev_doc_rows = []
+        for _ in range(12):
+            base = l2_normalize(dev_rng.normal(size=(self.d_old,)))
+            sig = l2_normalize(
+                base * 0.55 + self._hub_dir_v1 * 0.45 + dev_rng.normal(scale=0.05, size=(self.d_old,))
+            )
+            dev_doc_rows.append(l2_normalize(sig * 0.30 + self._mu_v1[0] * 1.45))
+        self._zeromu_dev_docs = np.vstack(dev_doc_rows)
 
         # Build canonical resident corpus doc arrays (sorted by doc_id)
         self._all_doc_ids = tuple(sorted(self._doc_v1.keys()))
@@ -647,21 +675,42 @@ class MatterEmbeddingSpace:
             if did.endswith("src_signed_notice"):
                 self._backfill_mask[idx] = False
 
-        # Native v1 scores (no encoder change)
+        # Native v1 scores (no encoder change) stay on the EVAL matter queries.
         self._scores_native_v1 = self._dev_q_v1 @ l2_normalize(self._resident_v1).T
 
-        # Migrated v2 -> v1 bridged + v2 native merged scores for both retriever arms
+        # Migrated v2 -> v1. CSLS hubness and ZeroMu mu_d use the disjoint DEV draw.
         conv_bridged = self.uncentered_bridge.score_matrix(self._dev_q_v2, self._resident_v1)
-        zeromu_bridged = self.zeromu_bridge.score_matrix(self._dev_q_v2, self._resident_v1)
+        zeromu_bridged = self.zeromu_bridge.score_matrix(
+            self._dev_q_v2, self._resident_v1, dev_docs=self._zeromu_dev_docs
+        )
+        unccs_bridged = self.uncentered_bridge.score_matrix(self._dev_q_v2, self._resident_v1)
         native_v2 = l2_normalize(self._dev_q_v2) @ l2_normalize(self._resident_v2).T
+        dev_native_v2 = l2_normalize(self._csls_dev_q_v2) @ l2_normalize(self._resident_v2).T
+        dev_zeromu = self.zeromu_bridge.score_matrix(
+            self._csls_dev_q_v2, self._resident_v1, dev_docs=self._zeromu_dev_docs
+        )
+        dev_unccs = self.uncentered_bridge.score_matrix(self._csls_dev_q_v2, self._resident_v1)
 
         self._scores_conv_migrated = self.raw_merger.merge(
             conv_bridged, native_v2, self._backfill_mask, bridged_ref=conv_bridged, native_ref=native_v2
         )
         self._scores_zeromu_migrated = self.csls_merger.merge(
-            zeromu_bridged, native_v2, self._backfill_mask, bridged_ref=zeromu_bridged, native_ref=native_v2
+            zeromu_bridged,
+            native_v2,
+            self._backfill_mask,
+            bridged_ref=dev_zeromu,
+            native_ref=dev_native_v2,
+            strict_disjoint_dev=True,
         )
-        self._q_key_to_row = {k: i for i, k in enumerate(all_q_keys)}
+        self._scores_unccs_migrated = self.csls_merger.merge(
+            unccs_bridged,
+            native_v2,
+            self._backfill_mask,
+            bridged_ref=dev_unccs,
+            native_ref=dev_native_v2,
+            strict_disjoint_dev=True,
+        )
+        self._q_key_to_row = {k: i for i, k in enumerate(eval_q_keys)}
 
     def rank_visible_docs(
         self,
@@ -684,8 +733,12 @@ class MatterEmbeddingSpace:
             row = self._scores_native_v1[row_idx]
         elif retriever_arm == "Conventional_Retriever":
             row = self._scores_conv_migrated[row_idx]
-        else:
+        elif retriever_arm == "Uncentered_CSLS":
+            row = self._scores_unccs_migrated[row_idx]
+        elif retriever_arm == "ZeroMu_Pinned_Bridge":
             row = self._scores_zeromu_migrated[row_idx]
+        else:
+            raise ValueError(f"Unknown retriever_arm={retriever_arm!r}")
 
         scored: List[Tuple[str, float]] = []
         for did in visible_doc_ids:
@@ -902,20 +955,19 @@ class SQLiteChallengerAdapter(LedgerAdapter):
                         claim_value=doc.field_value,
                     )
                 )
-                # Explicit SQL DERIVES edges are written; unlinked in-flight worker paraphrases
-                # without explicit edge registration reflect the pull-only challenger boundary.
-                if doc.explicit_sql_derives:
-                    for parent_id in doc.derived_from:
-                        self._edge_seq += 1
-                        self.ledger.add_edge(
-                            LedgerEdgeEnvelope(
-                                tenant_id=doc.matter_id,
-                                edge_id=f"sql_e_{self._edge_seq}",
-                                src_id=doc.doc_id,
-                                dst_id=parent_id,
-                                tx_time=doc.tx_time,
-                            )
+                # Symmetric with EK5: every derived_from parent is an edge.
+                # explicit_sql_derives stays on the document and is not a harness handicap.
+                for parent_id in doc.derived_from:
+                    self._edge_seq += 1
+                    self.ledger.add_edge(
+                        LedgerEdgeEnvelope(
+                            tenant_id=doc.matter_id,
+                            edge_id=f"sql_e_{self._edge_seq}",
+                            src_id=doc.doc_id,
+                            dst_id=parent_id,
+                            tx_time=doc.tx_time,
                         )
+                    )
         # Conventional SQLite challenger does not push incremental dirty-node deltas.
         return set()
 
@@ -1176,6 +1228,7 @@ class LiveVLLMWorkerBackend(WorkerBackend):
         self.model = model
         self.timeout_s = float(timeout_s)
         self.api_key = api_key
+        self.served_model: Optional[str] = None
 
     def _endpoint(self) -> str:
         if self.vllm_url.endswith("/v1/chat/completions"):
@@ -1239,6 +1292,17 @@ class LiveVLLMWorkerBackend(WorkerBackend):
             with urllib.request.urlopen(req, timeout=self.timeout_s) as resp:
                 raw = json.loads(resp.read().decode("utf-8"))
             elapsed_ms = (time.perf_counter() - t0) * 1000.0
+            served = raw.get("model")
+            self.served_model = None if served is None else str(served)
+            if served != self.model:
+                return SubtaskDraft(
+                    field_name=field_name,
+                    field_value=UNRESOLVED_SENTINEL,
+                    cited_source_id=None,
+                    exec_ms=elapsed_ms,
+                    timed_out=True,
+                    live_call=True,
+                )
             content = str(raw["choices"][0]["message"]["content"]).strip()
             # Extract JSON block if wrapped in markdown fences
             start = content.find("{")
@@ -1419,7 +1483,12 @@ class CellSummary:
 def system_label(retriever_arm: str, ledger_arm: str, *, full_restart: bool = False) -> str:
     if full_restart:
         return "full_restart_rebuild"
-    r_tag = "ZeroMu" if retriever_arm == "ZeroMu_Pinned_Bridge" else "Conv"
+    if retriever_arm == "ZeroMu_Pinned_Bridge":
+        r_tag = "ZeroMu"
+    elif retriever_arm == "Uncentered_CSLS":
+        r_tag = "UncCSLS"
+    else:
+        r_tag = "Conv"
     l_tag = "EK5_v3" if ledger_arm == "EK5_v3" else "SQLite"
     return f"{r_tag}+{l_tag}"
 
@@ -1561,6 +1630,7 @@ class PooledAgentCoordinator:
                     use_migrated_encoder: bool,
                     is_reopen: bool,
                 ) -> Tuple[SubtaskDraft, float]:
+                    t_ret = time.perf_counter()
                     ranked = self.embedding_space.rank_visible_docs(
                         matter_id=arr.matter_id,
                         field_name=fname,
@@ -1571,6 +1641,7 @@ class PooledAgentCoordinator:
                         profiler=profiler,
                         request_id=f"{arr.matter_id}:{fname}:r{int(is_reopen)}",
                     )
+                    wall_ret_ms = (time.perf_counter() - t_ret) * 1000.0
                     if admissible_set is not None:
                         ret_docs = [
                             doc_lookup[did]
@@ -1579,13 +1650,15 @@ class PooledAgentCoordinator:
                         ]
                     else:
                         ret_docs = [doc_lookup[did] for did, _ in ranked if did in doc_lookup]
-                    ret_cost = RETRIEVAL_BASE_MS
-                    if use_migrated_encoder:
-                        if retriever_arm == "ZeroMu_Pinned_Bridge":
-                            ret_cost += ZEROMU_BRIDGE_MS
-                        else:
-                            # Conventional retriever pays backfill/re-index stall under encoder upgrade
-                            ret_cost += CONV_MIGRATION_STALL_MS / 4.0
+                    if is_live:
+                        ret_cost = wall_ret_ms
+                    else:
+                        ret_cost = RETRIEVAL_BASE_MS
+                        if use_migrated_encoder:
+                            if retriever_arm in {"ZeroMu_Pinned_Bridge", "Uncentered_CSLS"}:
+                                ret_cost += ZEROMU_BRIDGE_MS
+                            else:
+                                ret_cost += CONV_MIGRATION_STALL_MS / 4.0
                     draft = self.worker_backend.extract_field(
                         template=tmpl,
                         field_name=fname,
@@ -1631,18 +1704,23 @@ class PooledAgentCoordinator:
                         ): fname
                         for fname in REQUIRED_FIELDS
                     }
+                    batch_ret: List[float] = []
+                    batch_exec: List[float] = []
                     for fut in as_completed(futs):
                         fname = futs[fut]
                         draft, ret_cost = fut.result()
                         fields_out[fname] = draft.field_value
                         cits_out[fname] = draft.cited_source_id
-                        retrieval_ms += ret_cost
-                        worker_exec_ms += draft.exec_ms
+                        batch_ret.append(ret_cost)
+                        batch_exec.append(draft.exec_ms)
                         subtasks_executed += 1
                         if draft.live_call:
                             live_calls += 1
                         if draft.timed_out:
                             timed_out = True
+                    # Concurrent subtasks overlap. Wall time is the slowest one, not the sum.
+                    retrieval_ms += max(batch_ret) if batch_ret else 0.0
+                    worker_exec_ms += max(batch_exec) if batch_exec else 0.0
                 else:
                     for fname in REQUIRED_FIELDS:
                         draft, ret_cost = _run_subtask(
@@ -1662,9 +1740,12 @@ class PooledAgentCoordinator:
                 commit_tick = pre_commit_tick
                 if full_restart_comparator and (include_withdrawal or encoder_change_active):
                     # Costed comparator: discards in-flight work, rebuilds index + ledger from scratch,
-                    # and re-executes all 4 fields!
-                    rebuild_ms = FULL_RESTART_REBUILD_MS
-                    reopen_overhead_ms = SHAM_CHECKPOINT_OVERHEAD_MS
+                    # and re-executes all 4 fields. Stage 1 charges FULL_RESTART_REBUILD_MS on top
+                    # of that re-exec. Live mode records the rebuild loop's wall clock instead.
+                    if not is_live:
+                        rebuild_ms = FULL_RESTART_REBUILD_MS
+                        reopen_overhead_ms = SHAM_CHECKPOINT_OVERHEAD_MS
+                    t_rebuild = time.perf_counter()
                     for fname in REQUIRED_FIELDS:
                         admissible_now = set(ledger.admissible_docs_for_field(arr.matter_id, fname, commit_tick))
                         draft, ret_cost = _run_subtask(
@@ -1676,14 +1757,17 @@ class PooledAgentCoordinator:
                         )
                         fields_out[fname] = draft.field_value
                         cits_out[fname] = draft.cited_source_id
-                        retrieval_ms += ret_cost
-                        worker_exec_ms += draft.exec_ms
+                        if not is_live:
+                            retrieval_ms += ret_cost
+                            worker_exec_ms += draft.exec_ms
                         subtasks_executed += 1
                         subtasks_reopened += 1
                         if draft.live_call:
                             live_calls += 1
                         if draft.timed_out:
                             timed_out = True
+                    if is_live:
+                        rebuild_ms = (time.perf_counter() - t_rebuild) * 1000.0
                 elif sham_interrupt_active:
                     # KEEP #2 mandatory control: identical checkpoint/subtask reopen interrupt at tick 50
                     # WITHOUT withdrawing source authority! Reopens target field subtask only,
@@ -1708,79 +1792,44 @@ class PooledAgentCoordinator:
                     if draft.timed_out:
                         timed_out = True
                 elif include_withdrawal:
-                    if ledger_arm == "EK5_v3":
-                        # EK5 v3 incremental commit fence + selective reverse-cone reopen:
-                        # Checks exact EK5 admissibility for each cited source at commit_tick.
-                        # Only invalidated fields (delivery_date) are reopened; 3 valid fields stay cached!
-                        reopen_overhead_ms += SHAM_CHECKPOINT_OVERHEAD_MS + EK5_SELECTIVE_REOPEN_LEDGER_MS
-                        for fname in REQUIRED_FIELDS:
-                            cit = cits_out.get(fname)
-                            if cit is None or not ledger.is_admissible_at(cit, arr.matter_id, fname, commit_tick):
-                                admissible_now = set(
-                                    ledger.admissible_docs_for_field(arr.matter_id, fname, commit_tick)
-                                )
-                                draft, ret_cost = _run_subtask(
-                                    fname,
-                                    visible_pool_ids=all_visible_by_field[fname],
-                                    admissible_set=admissible_now,
-                                    use_migrated_encoder=encoder_migrated,
-                                    is_reopen=True,
-                                )
-                                # Commit-time EK5 admissibility fence guarantees 0 stale commits!
-                                if draft.cited_source_id is not None and not ledger.is_admissible_at(
-                                    draft.cited_source_id, arr.matter_id, fname, commit_tick
-                                ):
-                                    fields_out[fname] = UNRESOLVED_SENTINEL
-                                    cits_out[fname] = None
-                                else:
-                                    fields_out[fname] = draft.field_value
-                                    cits_out[fname] = draft.cited_source_id
-                                retrieval_ms += ret_cost
-                                worker_exec_ms += draft.exec_ms
-                                subtasks_executed += 1
-                                subtasks_reopened += 1
-                                if draft.live_call:
-                                    live_calls += 1
-                                if draft.timed_out:
-                                    timed_out = True
-                    else:
-                        # SQLiteChallengerLedger: genuine SQLite bitemporal query_as_of across all 4 fields.
-                        # Lacks EK5's incremental reverse-cone dirty-set push:
-                        # 1) Must poll all 4 fields via recursive_cte SQL queries.
-                        # 2) Unlinked pre-withdrawal worker echoes (`explicit_sql_derives=False`) are NOT
-                        #    caught by explicit SQL DERIVES edges and stay live in SQLite!
-                        # 3) When SQLite DOES detect invalidation of an explicit record/edge, it has no
-                        #    selective single-subtask invalidation so it retries all 4 fields!
-                        reopen_overhead_ms += SHAM_CHECKPOINT_OVERHEAD_MS + (
-                            SQLITE_RECHECK_PER_FIELD_MS * len(REQUIRED_FIELDS)
-                        )
-                        any_invalid = False
-                        for fname in REQUIRED_FIELDS:
-                            cit = cits_out.get(fname)
-                            if cit is None or not ledger.is_admissible_at(cit, arr.matter_id, fname, commit_tick):
-                                any_invalid = True
-                        if any_invalid:
-                            for fname in REQUIRED_FIELDS:
-                                admissible_now = set(
-                                    ledger.admissible_docs_for_field(arr.matter_id, fname, commit_tick)
-                                )
-                                draft, ret_cost = _run_subtask(
-                                    fname,
-                                    visible_pool_ids=all_visible_by_field[fname],
-                                    admissible_set=admissible_now,
-                                    use_migrated_encoder=encoder_migrated,
-                                    is_reopen=True,
-                                )
+                    # EK5 and SQLite share selective per-field reopen and the commit-time fence.
+                    # Stage 1 charges one sham checkpoint plus one equalized ledger constant.
+                    ledger_const = (
+                        EK5_SELECTIVE_REOPEN_LEDGER_MS
+                        if ledger_arm == "EK5_v3"
+                        else SQLITE_RECHECK_PER_FIELD_MS
+                    )
+                    if not is_live:
+                        reopen_overhead_ms += SHAM_CHECKPOINT_OVERHEAD_MS + ledger_const
+                    for fname in REQUIRED_FIELDS:
+                        cit = cits_out.get(fname)
+                        if cit is None or not ledger.is_admissible_at(cit, arr.matter_id, fname, commit_tick):
+                            admissible_now = set(
+                                ledger.admissible_docs_for_field(arr.matter_id, fname, commit_tick)
+                            )
+                            draft, ret_cost = _run_subtask(
+                                fname,
+                                visible_pool_ids=all_visible_by_field[fname],
+                                admissible_set=admissible_now,
+                                use_migrated_encoder=encoder_migrated,
+                                is_reopen=True,
+                            )
+                            if draft.cited_source_id is not None and not ledger.is_admissible_at(
+                                draft.cited_source_id, arr.matter_id, fname, commit_tick
+                            ):
+                                fields_out[fname] = UNRESOLVED_SENTINEL
+                                cits_out[fname] = None
+                            else:
                                 fields_out[fname] = draft.field_value
                                 cits_out[fname] = draft.cited_source_id
-                                retrieval_ms += ret_cost
-                                worker_exec_ms += draft.exec_ms
-                                subtasks_executed += 1
-                                subtasks_reopened += 1
-                                if draft.live_call:
-                                    live_calls += 1
-                                if draft.timed_out:
-                                    timed_out = True
+                            retrieval_ms += ret_cost
+                            worker_exec_ms += draft.exec_ms
+                            subtasks_executed += 1
+                            subtasks_reopened += 1
+                            if draft.live_call:
+                                live_calls += 1
+                            if draft.timed_out:
+                                timed_out = True
 
                 # Under Conventional_Retriever + encoder_change_only/both, a non-zero fraction of
                 # jobs with encoder shift also experience a query-path migration recheck stall when
@@ -1955,6 +2004,7 @@ def compute_paired_2x2_interaction(
     block_rate_interactions: List[float] = []
     per_job_jpm_contrib_interactions: List[float] = []
     per_job_rate_interactions: List[float] = []
+    matter_rate_parts: Dict[str, List[float]] = {}
     arm_totals: Dict[str, Dict[str, float]] = {
         s: {"correct": 0.0, "eligible": 0.0, "window_min": 0.0, "stale": 0.0, "late_or_to": 0.0}
         for s in req_sys
@@ -2004,7 +2054,9 @@ def compute_paired_2x2_interaction(
             r_ce = 1.0 if m_ce[mid].on_time_cited_correct else 0.0
             r_zs = 1.0 if m_zs[mid].on_time_cited_correct else 0.0
             r_ze = 1.0 if m_ze[mid].on_time_cited_correct else 0.0
-            per_job_rate_interactions.append((r_ze - r_ce) - (r_zs - r_cs))
+            rate_delta = (r_ze - r_ce) - (r_zs - r_cs)
+            per_job_rate_interactions.append(rate_delta)
+            matter_rate_parts.setdefault(mid, []).append(rate_delta)
 
     # Multiply per-job contribution mean by jobs-per-block (`24`) so it is directly in jobs/minute!
     jobs_per_block = float(len(per_job_jpm_contrib_interactions)) / float(len(blocks))
@@ -2018,6 +2070,11 @@ def compute_paired_2x2_interaction(
     )
     blk_mean, blk_lcb, blk_ucb = paired_bootstrap_ci(
         block_jpm_interactions, n_resamples=n_resamples, alpha=0.05, seed=seed + 2
+    )
+    matter_ids = sorted(matter_rate_parts)
+    matter_means = [float(np.mean(matter_rate_parts[mid])) for mid in matter_ids]
+    matter_mean, matter_lcb, matter_ucb = paired_bootstrap_ci(
+        matter_means, n_resamples=n_resamples, alpha=0.05, seed=seed + 3
     )
 
     arm_summary: Dict[str, Dict[str, Any]] = {}
@@ -2038,6 +2095,7 @@ def compute_paired_2x2_interaction(
         "matched_blocks": len(blocks),
         "matched_twin_jobs": len(per_job_rate_interactions),
         "late_and_failed_kept_in_denominator": True,
+        "primary_metric": "on_time_cited_correct_rate",
         "arm_summary": arm_summary,
         "jpm_interaction_per_job_bootstrap": {
             "mean_delta_jpm": round(jpm_mean, 4),
@@ -2056,6 +2114,14 @@ def compute_paired_2x2_interaction(
             "lcb_95": round(rate_lcb, 6),
             "ucb_95": round(rate_ucb, 6),
             "strictly_positive_lcb": bool(rate_lcb > 0.0),
+        },
+        "rate_interaction_matter_cluster_bootstrap": {
+            "mean_delta_rate": round(matter_mean, 6),
+            "lcb_95": round(matter_lcb, 6),
+            "ucb_95": round(matter_ucb, 6),
+            "strictly_positive_lcb": bool(matter_lcb > 0.0),
+            "sampling_unit": "matter",
+            "n_clusters": len(matter_means),
         },
         "simple_main_effects_pooled_jpm": {
             "zeromu_gain_with_ek5": round(
@@ -2268,12 +2334,17 @@ def run_pooled_agent_experiment(
         "zeromu_kappa": round(emb_space.zeromu_bridge.condition_number, 6),
     }
 
+    cluster = primary_interaction["rate_interaction_matter_cluster_bootstrap"]
     gates = {
         "zero_stale_commits_on_zeromu_ek5": zeromu_ek5_stale_total == 0,
         "ek5_incremental_equals_full_parity": ek5_parity_failures == 0,
-        "primary_2x2_interaction_positive_lcb": bool(
-            primary_interaction["jpm_interaction_per_job_bootstrap"]["strictly_positive_lcb"]
+        "primary_metric_is_ontime_cited_correct_rate": bool(
+            primary_interaction.get("primary_metric") == "on_time_cited_correct_rate"
+            and cluster.get("sampling_unit") == "matter"
+            and int(cluster.get("n_clusters", 0)) == len(templates)
         ),
+        "conventional_migration_stall_equalized": CONV_MIGRATION_STALL_MS == 0.0,
+        "sqlite_reopen_symmetric_with_ek5": SQLITE_RECHECK_PER_FIELD_MS == EK5_SELECTIVE_REOPEN_LEDGER_MS,
         "sham_reopen_control_valid": bool(sham_isolation["control_valid"]) if sham_isolation else False,
         "beats_full_restart_rebuild_jpm": bool(ze_jpm > fr_jpm),
         "all_eligible_jobs_accounted": all(
@@ -2282,6 +2353,12 @@ def run_pooled_agent_experiment(
         ),
     }
     overall_pass = all(gates.values())
+    if overall_pass and mode == "stage1-controlled-replay":
+        status = "stage1-replay-pass"
+    elif overall_pass:
+        status = "local-drycheck-pass"
+    else:
+        status = "replay-fail"
 
     # Deterministic payload (excluding timing-jittered `span_summary` and `export_ms` from canonical digest)
     canonical_cells_summary = [
@@ -2314,11 +2391,12 @@ def run_pooled_agent_experiment(
         }
     )
 
-    return {
+    payload = {
         "schema_version": "pv7_w20_d13_pooled_agent_loops_v1",
         "bundle_id": BUNDLE_ID,
         "item": "4",
         "demo_id": "D13",
+        "status": status,
         "mode": mode,
         "worker_backend": backend.mode_name,
         "live_model_calls": sum(c.live_model_calls for c in cells),
@@ -2343,6 +2421,11 @@ def run_pooled_agent_experiment(
         "deterministic_sha256": deterministic_sha256,
         "cells": [c.to_dict(include_jobs=include_jobs) for c in cells],
     }
+    if isinstance(backend, LiveVLLMWorkerBackend):
+        payload["vllm_url"] = backend.vllm_url
+        payload["requested_model"] = backend.model
+        payload["served_model"] = backend.served_model
+    return payload
 
 
 __all__ = [

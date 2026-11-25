@@ -559,15 +559,36 @@ class ZeroMuPolarBridge(BaseBridge):
         docs_tgt: np.ndarray,
         *,
         causal_ema_alpha: Optional[float] = None,
+        dev_docs: Optional[np.ndarray] = None,
     ) -> np.ndarray:
-        """Compute exact ZeroMu cosine scores on unmodified raw target vectors."""
+        """Compute exact ZeroMu cosine scores on unmodified raw target vectors.
+
+        When ``dev_docs`` is supplied, ``mu_d`` is estimated only on that disjoint
+        development corpus. Overlap with the documents being scored is refused.
+        """
         docs_norm = l2_normalize(docs_tgt)
+        if dev_docs is not None:
+            dev_arr = np.asarray(dev_docs, dtype=np.float64)
+            tgt_arr = np.asarray(docs_tgt, dtype=np.float64)
+            if dev_arr.ndim == 1:
+                dev_arr = dev_arr.reshape(1, -1)
+            if tgt_arr.ndim == 1:
+                tgt_arr = tgt_arr.reshape(1, -1)
+            if dev_arr.shape[1] != tgt_arr.shape[1]:
+                raise ValueError(
+                    f"ZeroMu dev_docs width {dev_arr.shape[1]} does not match scored documents width {tgt_arr.shape[1]}"
+                )
+            if _matrices_share_rows(dev_arr, tgt_arr):
+                raise ValueError("ZeroMu dev_docs overlap the documents being scored")
+            mu_from_dev = l2_normalize(dev_arr).mean(axis=0, keepdims=True)
+        else:
+            mu_from_dev = None
         if self.scoring_mode == "dual_adap":
             q_hats, _ = self.causal_q_hats(queries_src, ema_alpha=causal_ema_alpha)
-            mu_d = docs_norm.mean(axis=0, keepdims=True)
+            mu_d = docs_norm.mean(axis=0, keepdims=True) if mu_from_dev is None else mu_from_dev
         elif self.scoring_mode == "dual_fit":
             q_hats = self.transform(queries_src, normalize=True)
-            mu_d = self.mu_y
+            mu_d = self.mu_y if mu_from_dev is None else mu_from_dev
         else:
             q_hats = self.transform(queries_src, normalize=True)
             return q_hats @ docs_norm.T
@@ -676,12 +697,19 @@ class CalibratedZScoreMerge(BaseMerge):
         *,
         bridged_ref: Optional[np.ndarray] = None,
         native_ref: Optional[np.ndarray] = None,
+        strict_disjoint_dev: bool = False,
     ) -> np.ndarray:
         bridged = np.asarray(bridged_scores, dtype=np.float64)
         native = np.asarray(native_scores, dtype=np.float64)
         mask = np.asarray(backfill_mask, dtype=bool)
         if bridged.shape != native.shape or mask.shape != (bridged.shape[1],):
             raise ValueError("Score matrices and backfill_mask shapes must align")
+        if strict_disjoint_dev and (bridged_ref is None or native_ref is None):
+            raise ValueError("CalibratedZScoreMerge requires disjoint DEV references when strict_disjoint_dev is set")
+        if strict_disjoint_dev and (~mask).any() and bridged_ref is not None and _matrices_share_rows(bridged_ref, bridged):
+            raise ValueError("CalibratedZScoreMerge DEV reference overlaps EVAL bridged scores")
+        if strict_disjoint_dev and mask.any() and native_ref is not None and _matrices_share_rows(native_ref, native):
+            raise ValueError("CalibratedZScoreMerge DEV reference overlaps EVAL native scores")
         b_ref = bridged if bridged_ref is None else np.asarray(bridged_ref, dtype=np.float64)
         n_ref = native if native_ref is None else np.asarray(native_ref, dtype=np.float64)
         out = np.empty_like(bridged)
@@ -713,12 +741,19 @@ class CSLSMerge(BaseMerge):
         *,
         bridged_ref: Optional[np.ndarray] = None,
         native_ref: Optional[np.ndarray] = None,
+        strict_disjoint_dev: bool = False,
     ) -> np.ndarray:
         bridged = np.asarray(bridged_scores, dtype=np.float64)
         native = np.asarray(native_scores, dtype=np.float64)
         mask = np.asarray(backfill_mask, dtype=bool)
         if bridged.shape != native.shape or mask.shape != (bridged.shape[1],):
             raise ValueError("Score matrices and backfill_mask shapes must align")
+        if strict_disjoint_dev and (bridged_ref is None or native_ref is None):
+            raise ValueError("CSLSMerge requires disjoint DEV references when strict_disjoint_dev is set")
+        if strict_disjoint_dev and (~mask).any() and bridged_ref is not None and _matrices_share_rows(bridged_ref, bridged):
+            raise ValueError("CSLSMerge DEV reference overlaps EVAL bridged scores")
+        if strict_disjoint_dev and mask.any() and native_ref is not None and _matrices_share_rows(native_ref, native):
+            raise ValueError("CSLSMerge DEV reference overlaps EVAL native scores")
         b_ref = bridged if bridged_ref is None else np.asarray(bridged_ref, dtype=np.float64)
         n_ref = native if native_ref is None else np.asarray(native_ref, dtype=np.float64)
         out = np.empty_like(bridged)
@@ -740,6 +775,21 @@ MERGE_NAMES: Tuple[str, ...] = tuple(MERGE_REGISTRY.keys())
 # ---------------------------------------------------------------------------
 # 3. Retrieval Scoring & Full 5x3 Factorial Runner
 # ---------------------------------------------------------------------------
+
+
+def _matrix_row_keys(arr: np.ndarray) -> set:
+    mat = np.ascontiguousarray(np.asarray(arr, dtype=np.float64))
+    if mat.ndim == 1:
+        mat = mat.reshape(1, -1)
+    if mat.size == 0:
+        return set()
+    return {row.tobytes() for row in mat}
+
+
+def _matrices_share_rows(left: np.ndarray, right: np.ndarray) -> bool:
+    if left is right:
+        return True
+    return bool(_matrix_row_keys(left) & _matrix_row_keys(right))
 
 
 def evaluate_score_matrix(
@@ -798,6 +848,7 @@ def run_factorial_5x3(
     qrels: Mapping[str, Mapping[str, float]],
     dev_queries_src: Optional[np.ndarray] = None,
     dev_queries_tgt: Optional[np.ndarray] = None,
+    dev_docs: Optional[np.ndarray] = None,
     backfill_mask: Optional[np.ndarray] = None,
     k: int = 10,
     csls_k: int = DEFAULT_CSLS_K,
@@ -816,8 +867,17 @@ def run_factorial_5x3(
     if mask.shape != (n_docs,):
         raise ValueError("backfill_mask length must equal len(doc_ids)")
 
+    dev_supplied = dev_queries_src is not None or dev_queries_tgt is not None or dev_docs is not None
+    if dev_supplied and (dev_queries_src is None or dev_queries_tgt is None):
+        raise ValueError("DEV calibration requires both dev_queries_src and dev_queries_tgt")
     dev_src = eval_queries_src if dev_queries_src is None else dev_queries_src
     dev_tgt = eval_queries_tgt if dev_queries_tgt is None else dev_queries_tgt
+    if dev_queries_src is not None and (
+        _matrices_share_rows(dev_src, eval_queries_src) or _matrices_share_rows(dev_tgt, eval_queries_tgt)
+    ):
+        raise ValueError("DEV calibration queries overlap EVAL queries")
+    if dev_docs is not None and _matrices_share_rows(dev_docs, docs_old):
+        raise ValueError("DEV calibration documents overlap the documents being scored")
 
     docs_new_norm = l2_normalize(docs_new)
     native_eval_scores = l2_normalize(eval_queries_tgt) @ docs_new_norm.T
@@ -843,16 +903,25 @@ def run_factorial_5x3(
             fit_kwargs["scoring_mode"] = zeromu_mode
         bridge = bridge_cls.fit(src_anchors, tgt_anchors, **fit_kwargs)
 
-        bridged_eval = bridge.score_matrix(eval_queries_src, docs_old)
-        bridged_dev = bridge.score_matrix(dev_src, docs_old)
+        if b_name == "ZeroMuPolarBridge" and dev_docs is not None:
+            bridged_eval = bridge.score_matrix(eval_queries_src, docs_old, dev_docs=dev_docs)
+            bridged_dev = bridge.score_matrix(dev_src, docs_old, dev_docs=dev_docs)
+        else:
+            bridged_eval = bridge.score_matrix(eval_queries_src, docs_old)
+            bridged_dev = bridge.score_matrix(dev_src, docs_old)
 
         for m_name, merger in mergers.items():
+            merge_kwargs: Dict[str, Any] = {
+                "bridged_ref": bridged_dev,
+                "native_ref": native_dev_scores,
+            }
+            if dev_supplied and m_name in {"CSLSMerge", "CalibratedZScoreMerge"}:
+                merge_kwargs["strict_disjoint_dev"] = True
             fused = merger.merge(
                 bridged_eval,
                 native_eval_scores,
                 mask,
-                bridged_ref=bridged_dev,
-                native_ref=native_dev_scores,
+                **merge_kwargs,
             )
             pq_ndcg, pq_recall = evaluate_score_matrix(fused, query_ids, doc_ids, qrels, k=k)
             mean_ndcg = float(np.mean(list(pq_ndcg.values()))) if pq_ndcg else 0.0
@@ -1154,6 +1223,44 @@ class MultiHopChainReport:
     final_composition_gap_ndcg: float
 
 
+def _resolve_hop_dev_docs(
+    *,
+    bridge_name: str,
+    hop_idx: int,
+    curr_docs: np.ndarray,
+    dev_docs: Optional[np.ndarray],
+    dev_docs_seq: Optional[Sequence[Optional[np.ndarray]]],
+) -> Optional[np.ndarray]:
+    """Pick the disjoint DEV corpus for one 4-hop target encoder.
+
+    ``dev_docs_seq`` wins per hop when both are supplied. A width mismatch on
+    ZeroMu is an error. Other bridges ignore a mismatched single matrix because
+    they do not estimate ``mu_d``.
+    """
+    target_width = int(curr_docs.shape[1])
+    candidate: Optional[np.ndarray] = None
+    if dev_docs_seq is not None:
+        raw = dev_docs_seq[hop_idx]
+        if raw is None:
+            return None
+        candidate = np.asarray(raw, dtype=np.float64)
+    elif dev_docs is not None:
+        candidate = np.asarray(dev_docs, dtype=np.float64)
+    else:
+        return None
+    if candidate.ndim == 1:
+        candidate = candidate.reshape(1, -1)
+    if int(candidate.shape[1]) != target_width:
+        if bridge_name == "ZeroMuPolarBridge":
+            raise ValueError(
+                f"4-hop DEV documents width {int(candidate.shape[1])} does not match hop {hop_idx} width {target_width}"
+            )
+        return None
+    if _matrices_share_rows(candidate, curr_docs):
+        raise ValueError("4-hop DEV documents overlap the documents being scored")
+    return candidate
+
+
 def evaluate_4hop_chain(
     *,
     bridge_name: str,
@@ -1167,6 +1274,9 @@ def evaluate_4hop_chain(
     merge_name: str = "CSLSMerge",
     csls_k: int = DEFAULT_CSLS_K,
     polar_reproject: Optional[bool] = None,
+    dev_query_embeddings_seq: Optional[Sequence[np.ndarray]] = None,
+    dev_docs: Optional[np.ndarray] = None,
+    dev_docs_seq: Optional[Sequence[Optional[np.ndarray]]] = None,
     k: int = 10,
 ) -> MultiHopChainReport:
     """Evaluate sequential `v1 -> v2 -> v3 -> v4 -> v5` composition vs direct `v1 -> v_t` fit.
@@ -1183,6 +1293,22 @@ def evaluate_4hop_chain(
         raise ValueError(f"Unknown bridge_name={bridge_name!r}")
     if merge_name not in MERGE_REGISTRY:
         raise ValueError(f"Unknown merge_name={merge_name!r}")
+    if dev_query_embeddings_seq is not None and len(dev_query_embeddings_seq) != n_enc:
+        raise ValueError("dev_query_embeddings_seq length must match the encoder chain")
+    if dev_query_embeddings_seq is not None:
+        for hop_idx, dev_q in enumerate(dev_query_embeddings_seq):
+            if _matrices_share_rows(dev_q, query_embeddings_seq[hop_idx]):
+                raise ValueError("4-hop DEV queries overlap EVAL queries")
+        dev_q_v1 = np.asarray(dev_query_embeddings_seq[0], dtype=np.float64)
+        q_v1_width = int(np.asarray(query_embeddings_seq[0]).shape[1])
+        if dev_q_v1.ndim != 2 or int(dev_q_v1.shape[1]) != q_v1_width:
+            raise ValueError("4-hop DEV queries must live in the v1 encoder width")
+    if dev_docs_seq is not None and len(dev_docs_seq) != n_enc:
+        raise ValueError("dev_docs_seq length must match the encoder chain")
+    if dev_docs_seq is None and dev_docs is not None:
+        for docs in doc_embeddings_seq:
+            if _matrices_share_rows(dev_docs, docs):
+                raise ValueError("4-hop DEV documents overlap the documents being scored")
 
     bridge_cls = BRIDGE_REGISTRY[bridge_name]
     merger = CSLSMerge(csls_k=csls_k) if merge_name == "CSLSMerge" else MERGE_REGISTRY[merge_name]()
@@ -1208,12 +1334,39 @@ def evaluate_4hop_chain(
         composed_b = compose_bridge_chain(step_bridges, polar_reproject=use_polar)
         direct_b = bridge_cls.fit(d_v1_anc, curr_anc)
 
-        comp_raw = composed_b.score_matrix(q_v1, curr_docs)
-        dir_raw = direct_b.score_matrix(q_v1, curr_docs)
+        hop_dev_docs = _resolve_hop_dev_docs(
+            bridge_name=bridge_name,
+            hop_idx=hop_idx,
+            curr_docs=curr_docs,
+            dev_docs=dev_docs,
+            dev_docs_seq=dev_docs_seq,
+        )
+        score_dev = {}
+        if bridge_name == "ZeroMuPolarBridge" and hop_dev_docs is not None:
+            score_dev["dev_docs"] = hop_dev_docs
+        comp_raw = composed_b.score_matrix(q_v1, curr_docs, **score_dev)
+        dir_raw = direct_b.score_matrix(q_v1, curr_docs, **score_dev)
         native_dummy = np.zeros_like(comp_raw)
+        if dev_query_embeddings_seq is not None:
+            dev_q = np.asarray(dev_query_embeddings_seq[0], dtype=np.float64)
+            comp_ref = composed_b.score_matrix(dev_q, curr_docs, **score_dev)
+            dir_ref = direct_b.score_matrix(dev_q, curr_docs, **score_dev)
+            strict_dev = merge_name in {"CSLSMerge", "CalibratedZScoreMerge"}
+        else:
+            comp_ref = comp_raw
+            dir_ref = dir_raw
+            strict_dev = False
 
-        comp_scores = merger.merge(comp_raw, native_dummy, zero_mask, bridged_ref=comp_raw, native_ref=native_dummy)
-        dir_scores = merger.merge(dir_raw, native_dummy, zero_mask, bridged_ref=dir_raw, native_ref=native_dummy)
+        comp_scores = merger.merge(
+            comp_raw, native_dummy, zero_mask, bridged_ref=comp_ref, native_ref=native_dummy, strict_disjoint_dev=strict_dev
+        ) if strict_dev or merge_name in {"CSLSMerge", "CalibratedZScoreMerge"} else merger.merge(
+            comp_raw, native_dummy, zero_mask, bridged_ref=comp_ref, native_ref=native_dummy
+        )
+        dir_scores = merger.merge(
+            dir_raw, native_dummy, zero_mask, bridged_ref=dir_ref, native_ref=native_dummy, strict_disjoint_dev=strict_dev
+        ) if strict_dev or merge_name in {"CSLSMerge", "CalibratedZScoreMerge"} else merger.merge(
+            dir_raw, native_dummy, zero_mask, bridged_ref=dir_ref, native_ref=native_dummy
+        )
 
         c_ndcg_map, c_rec_map = evaluate_score_matrix(comp_scores, query_ids, doc_ids, qrels, k=k)
         d_ndcg_map, d_rec_map = evaluate_score_matrix(dir_scores, query_ids, doc_ids, qrels, k=k)
@@ -1459,12 +1612,33 @@ def run_contamination_sweep(
     seed: int = 42,
     csls_k: int = DEFAULT_CSLS_K,
     k: int = 10,
+    dev_queries_src: Optional[np.ndarray] = None,
+    dev_docs: Optional[np.ndarray] = None,
 ) -> List[ContaminationSweepPoint]:
-    """Sweep progressive anchor contamination `(0%, 1%, 5%, 10%, 20%)` with TRA-1 diagnostics."""
+    """Sweep progressive anchor contamination `(0%, 1%, 5%, 10%, 20%)` with TRA-1 diagnostics.
+
+    When ``dev_queries_src`` is supplied, CSLS and z-score calibration use that
+    disjoint query set. ``dev_docs`` calibrates ZeroMu ``mu_d`` only. Omitting
+    both preserves the historical eval-as-reference path.
+    """
     if merge_name not in MERGE_REGISTRY:
         raise ValueError(f"Unknown merge_name={merge_name!r}")
     merger = CSLSMerge(csls_k=csls_k) if merge_name == "CSLSMerge" else MERGE_REGISTRY[merge_name]()
     zero_mask = np.zeros(len(doc_ids), dtype=bool)
+    strict_dev = dev_queries_src is not None and merge_name in {"CSLSMerge", "CalibratedZScoreMerge"}
+    if dev_queries_src is not None and _matrices_share_rows(dev_queries_src, eval_queries_src):
+        raise ValueError("contamination DEV queries overlap EVAL queries")
+    if dev_docs is not None and _matrices_share_rows(dev_docs, docs_old):
+        raise ValueError("contamination DEV documents overlap the documents being scored")
+    if (
+        dev_docs is not None
+        and "ZeroMuPolarBridge" in tuple(bridge_names)
+        and int(np.asarray(dev_docs).shape[1]) != int(np.asarray(docs_old).shape[1])
+    ):
+        raise ValueError(
+            "contamination dev_docs width "
+            f"{int(np.asarray(dev_docs).shape[1])} does not match docs_old width {int(np.asarray(docs_old).shape[1])}"
+        )
     points: List[ContaminationSweepPoint] = []
 
     for mode in modes:
@@ -1474,9 +1648,18 @@ def run_contamination_sweep(
             )
             for b_name in bridge_names:
                 bridge = BRIDGE_REGISTRY[b_name].fit(c_src, c_tgt)
-                raw = bridge.score_matrix(eval_queries_src, docs_old)
+                score_kwargs: Dict[str, Any] = {}
+                if b_name == "ZeroMuPolarBridge" and dev_docs is not None:
+                    score_kwargs["dev_docs"] = dev_docs
+                raw = bridge.score_matrix(eval_queries_src, docs_old, **score_kwargs)
                 dummy = np.zeros_like(raw)
-                scores = merger.merge(raw, dummy, zero_mask, bridged_ref=raw, native_ref=dummy)
+                if strict_dev:
+                    ref = bridge.score_matrix(dev_queries_src, docs_old, **score_kwargs)
+                    scores = merger.merge(
+                        raw, dummy, zero_mask, bridged_ref=ref, native_ref=dummy, strict_disjoint_dev=True
+                    )
+                else:
+                    scores = merger.merge(raw, dummy, zero_mask, bridged_ref=raw, native_ref=dummy)
                 pq_n, pq_r = evaluate_score_matrix(scores, query_ids, doc_ids, qrels, k=k)
                 tra1 = compute_tra1_anchor_diagnostics(c_src, c_tgt, bridge)
                 points.append(
@@ -1557,6 +1740,7 @@ class Item6BHypothesisReport:
     h6b_bridge_shift_and_4hop: Dict[str, Any]
     holm_adjusted_p_values: Dict[str, float]
     overall_verdict: str
+    item6b_local_diagnostic_verdict: str
     report_sha256: str
 
 
@@ -1579,7 +1763,9 @@ def evaluate_item6b_hypotheses(
     """Evaluate the three decomposed pre-registered Item 6B (#54) hypotheses.
 
     1. `H6B_merge` (Superiority): `CSLS` > `CalibratedZScore` on clean 1-hop `nDCG@10`
-       (`LCB > 0` AND `>= 10/12` domains positive, exact binomial test).
+       (`LCB > 0` AND `>= 11/12` domains positive, exact binomial test).
+       The local 4-test Holm summary is a diagnostic. It does not stamp a
+       registry status. Registry adjudication is the 5-claim family at m=5.
     2. `H6B_bridge_static` (Non-Inferiority Guard): At fixed `CSLS` on unshifted
        1-hop queries, `ZeroMuPolarBridge` vs `UncenteredProcrustes`, reporting BOTH
        the `-0.010` retirement floor AND `-0.005` tight equivalence floor, plus
@@ -1604,7 +1790,7 @@ def evaluate_item6b_hypotheses(
     req_pos_merge = (
         int(min_positive_domains_merge)
         if min_positive_domains_merge is not None
-        else (10 if n_dom == 12 else max(1, math.ceil(n_dom * (10.0 / 12.0))))
+        else (11 if n_dom == 12 else max(1, math.ceil(n_dom * (11.0 / 12.0))))
     )
 
     # 1. H6B_merge
@@ -1624,7 +1810,8 @@ def evaluate_item6b_hypotheses(
     rng_ni = np.random.default_rng(seed + 3)
     arr_su = np.asarray(st_unc, dtype=np.float64)
     boot_su = arr_su[rng_ni.integers(0, arr_su.size, size=(n_resamples, arr_su.size))].mean(axis=1)
-    ni_p = float(np.mean(boot_su <= float(retirement_floor)))
+    raw_ni_p = float(np.mean(boot_su <= float(retirement_floor)))
+    ni_p = min(1.0, raw_ni_p + (1.0 / (int(n_resamples) + 1)))
 
     # 3. H6B_bridge_shift_and_4hop
     sh_deltas = [float(shift_zeromu_vs_uncentered_at_csls_by_domain[d]) for d in domains]
@@ -1652,11 +1839,21 @@ def evaluate_item6b_hypotheses(
     h6b_shift_4hop_pass = bool(h6b_shift_pass and h6b_4hop_pass)
 
     if h6b_merge_pass and h6b_static_pass and h6b_shift_4hop_pass:
-        verdict = "verified-pass"
+        local_verdict = "local-diagnostic-support"
     elif h6b_merge_pass and not h6b_shift_4hop_pass:
-        verdict = "credit-csls-retire-zeromu-premium"
+        local_verdict = "local-diagnostic-credit-csls-retire-zeromu"
     else:
-        verdict = "verified-loss"
+        local_verdict = "local-diagnostic-not-supported"
+    registry_statuses = {
+        "verified-pass",
+        "verified-loss",
+        "unsupported",
+        "protocol-ready",
+        "reserved-pending",
+    }
+    if local_verdict in registry_statuses:
+        raise RuntimeError("Item 6B local diagnostic collided with a registry status")
+    verdict = local_verdict
 
     h6b_merge = {
         "hypothesis": "CSLS > CalibratedZScore on clean 1-hop nDCG@10",
@@ -1665,10 +1862,15 @@ def evaluate_item6b_hypotheses(
         "ucb_95": m_ucb,
         "positive_domains": m_pos,
         "required_positive_domains": req_pos_merge,
+        "sign_test_count": f"{m_pos}/{n_dom}",
+        "sign_test_required": "11/12" if n_dom == 12 else f"{req_pos_merge}/{n_dom}",
+        "holm_m_local": 4,
+        "holm_m_registry": 5,
         "n_domains": n_dom,
         "exact_binomial_p": m_p,
         "holm_adjusted_p": holm["H6B_merge"],
         "passed": h6b_merge_pass,
+        "registry_status_stamped": False,
     }
     h6b_bridge_static = {
         "hypothesis": "ZeroMuPolarBridge+CSLS non-inferior to UncenteredProcrustes+CSLS on static 1-hop",
@@ -1686,6 +1888,7 @@ def evaluate_item6b_hypotheses(
             "note": "Explicit separation of simple centering (CenteredProcrustes+CSLS) vs ZeroMu+CSLS",
         },
         "bootstrap_ni_p": ni_p,
+        "bootstrap_ni_p_floor": 1.0 / (int(n_resamples) + 1),
         "holm_adjusted_p": holm["H6B_bridge_static_ni"],
         "passed": h6b_static_pass,
     }
@@ -1726,6 +1929,10 @@ def evaluate_item6b_hypotheses(
         {
             "n_domains": n_dom,
             "overall_verdict": verdict,
+            "item6b_local_diagnostic_verdict": local_verdict,
+            "holm_m_local": 4,
+            "holm_m_registry": 5,
+            "sign_test_required": "11/12" if n_dom == 12 else f"{req_pos_merge}/{n_dom}",
             "holm": holm,
             "h6b_merge_pass": h6b_merge_pass,
             "h6b_static_pass": h6b_static_pass,
@@ -1740,6 +1947,7 @@ def evaluate_item6b_hypotheses(
         h6b_bridge_shift_and_4hop=h6b_bridge_shift_and_4hop,
         holm_adjusted_p_values=holm,
         overall_verdict=verdict,
+        item6b_local_diagnostic_verdict=local_verdict,
         report_sha256=digest,
     )
 

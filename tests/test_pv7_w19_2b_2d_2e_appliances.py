@@ -8,8 +8,10 @@ import os
 import shutil
 import sys
 import tempfile
+import types
 import unittest
 from pathlib import Path
+from unittest import mock
 
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
@@ -101,6 +103,36 @@ class CartridgeArrayTests(unittest.TestCase):
         self.assertEqual(self.manifest["cage"]["memory_max_bytes"], 6 * 1024**3)
         self.assertEqual(self.manifest["cage"]["memory_swap_max_bytes"], 0)
 
+    def test_every_revocation_trial_races_a_distinct_fresh_payload(self) -> None:
+        # B57-1: trial t used payload_ids[t % 250] so trial 251+ raced an already-revoked payload (vacuous).
+        rev = self.manifest["revocation"]
+        self.assertEqual(rev["distinct_payloads_raced"], rev["trials"])
+        self.assertTrue(self.manifest["gates"]["revocation_trials_each_race_a_distinct_fresh_payload"])
+
+    def test_revocation_trials_beyond_payload_count_still_distinct(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            man = cart.run_cartridge_array_experiment(
+                mode="local-drycheck", workdir=Path(tmp), payload_bytes=4 * 1024, revocation_trials=260, threads=8
+            )
+            rev = man["revocation"]
+            self.assertEqual(rev["trials"], 260)  # > 250 materialized payloads: the old modulo would wrap here
+            self.assertEqual(rev["distinct_payloads_raced"], 260)
+            self.assertEqual(rev["post_enforcement_executions"], 0)
+            self.assertGreater(rev["unguarded_control_post_enforcement_executions"], 0)
+
+    def test_tra1_contract_is_bound_per_cspg_body(self) -> None:
+        # B57-2: one shared EMPTY_ADAPTER_SHA256 contract identified no payload at all.
+        digests = self.manifest["deterministic_view"]["per_payload_contract_digests"]
+        self.assertEqual(len(digests), 250)
+        self.assertEqual(len(set(digests.values())), 250)
+        self.assertTrue(self.manifest["gates"]["tra1_contract_bound_to_each_cspg_body_sha"])
+
+    def test_enforcement_claim_is_read_back_not_inferred_from_mode(self) -> None:
+        check = self.manifest["cage"]["enforcement_check"]
+        self.assertFalse(self.manifest["cage"]["enforced_on_this_host"])  # local-drycheck applies no cage
+        self.assertFalse(check["enforced"])
+        self.assertIn("local-drycheck", check["reason"])
+
     def test_run_live_fails_closed(self) -> None:
         with self.assertRaises(cart.LiveModeUnavailableError):
             cart.run_cartridge_array_experiment(mode="run-live")
@@ -166,6 +198,116 @@ class IQ04ApplianceTests(unittest.TestCase):
         with self.assertRaises(iq04.LiveAdapterUnavailableError):
             iq04.run_iq04_experiment(mode="run-live", repo_root=REPO_ROOT)
 
+    # ---- B59-1: upstream mem0 must run its real inference pipeline --------------------------------
+    def test_live_mem0_adds_with_infer_true(self) -> None:
+        calls = []
+
+        class _FakeMemory:
+            def add(self, text, **kwargs):
+                calls.append((text, kwargs))
+
+            def search(self, query, **kwargs):
+                return {"results": []}
+
+        fake = types.ModuleType("mem0")
+        fake.Memory = _FakeMemory  # type: ignore[attr-defined]
+        with mock.patch.dict(sys.modules, {"mem0": fake}):
+            arm = iq04.Mem0Arm(live=True)
+            rec = iq04.Record("r1", "f", "entX", "Session note: the audited reading of entX is val_00000001.", "s", 2, 1)
+            arm.ingest(rec)
+        self.assertEqual(arm.adapter_kind, "upstream_mem0")
+        self.assertEqual(len(calls), 1)
+        self.assertIs(calls[0][1].get("infer"), True)
+        self.assertEqual(calls[0][1].get("user_id"), "entX")
+
+    # ---- B59-2: arms never see the ground-truth derived_from label --------------------------------
+    def test_arm_view_strips_derived_from_and_keeps_everything_else(self) -> None:
+        rec = iq04.Record("r2", "f", "e", "text val_00000002", "src", 3, 7, derived_from="r1")
+        view = rec.arm_view()
+        self.assertIsNone(view.derived_from)
+        self.assertEqual(
+            (view.record_id, view.family, view.entity, view.text, view.source, view.authority, view.tx_time),
+            (rec.record_id, rec.family, rec.entity, rec.text, rec.source, rec.authority, rec.tx_time),
+        )
+        self.assertEqual(rec.derived_from, "r1")  # the original keeps the label for post-hoc scoring
+
+    def test_infer_parent_ignores_poisoned_derived_from_labels(self) -> None:
+        records, _ = iq04.build_families(count=8)
+        poisoned = [
+            iq04.Record(r.record_id, r.family, r.entity, r.text, r.source, r.authority, r.tx_time, "poison-label")
+            for r in records
+        ]
+        for clean_rec, dirty_rec in zip(records, poisoned):
+            prior_clean = [r for r in records if r.entity == clean_rec.entity and r.tx_time < clean_rec.tx_time]
+            prior_dirty = [r for r in poisoned if r.entity == dirty_rec.entity and r.tx_time < dirty_rec.tx_time]
+            self.assertEqual(iq04.infer_parent(clean_rec, prior_clean), iq04.infer_parent(dirty_rec, prior_dirty))
+
+    def test_lineage_inference_detects_copies_and_paraphrases_but_not_independent_agreement(self) -> None:
+        a = iq04.Record("a", "f", "entX", "Session note: the audited reading of entX is val_0000000a.", "s", 2, 1)
+        copy = iq04.Record("c", "f", "entX", "Session note: the audited reading of entX is val_0000000a.", "s", 2, 2)
+        para = iq04.Record("p", "f", "entX", "Per the prior summary, entX is reported as val_0000000a.", "s", 2, 3)
+        indep = iq04.Record("i", "f", "entX", "Independent audit: entX measured at val_0000000a on our side.", "t", 2, 4)
+        other_val = iq04.Record("o", "f", "entX", "Per the prior summary, entX is reported as val_0000000b.", "s", 2, 5)
+        self.assertEqual(iq04.infer_parent(copy, [a]), "a")
+        self.assertEqual(iq04.infer_parent(para, [a]), "a")  # back-reference cue
+        self.assertIsNone(iq04.infer_parent(indep, [a]))  # independent corroboration is NOT an echo
+        self.assertIsNone(iq04.infer_parent(other_val, [a]))  # different value => no lineage
+        self.assertIsNone(iq04.infer_parent(a, []))
+
+    def test_manifest_lineage_is_scored_against_truth_post_hoc(self) -> None:
+        lin = self.manifest["lineage_inference"]
+        self.assertEqual(lin["false_positive"], 0)
+        self.assertEqual(lin["false_negative"], 0)
+        self.assertGreater(lin["echo_records_truth"], 0)
+        self.assertEqual(lin["true_positive"], lin["echo_records_truth"])
+        self.assertTrue(self.manifest["gates"]["lineage_inferred_from_surface_text_no_oracle"])
+
+    # ---- B59-3 / cgroup read-back ---------------------------------------------------------------
+    def test_cgroup_readback_is_false_off_linux(self) -> None:
+        with mock.patch.object(iq04.sys, "platform", "win32"):
+            out = iq04.verify_cgroup_v2_enforced(iq04.MEMORY_MAX_BYTES, 0)
+        self.assertFalse(out["enforced"])
+        self.assertIn("not linux", out["reason"])
+
+    def _fake_cgroup(self, mem: str, swap: str):
+        tmp = tempfile.mkdtemp(prefix="pv7_cg_")
+        self.addCleanup(shutil.rmtree, tmp, True)  # the single tmp dir created above
+        sub = Path(tmp) / "sub"
+        sub.mkdir()
+        (sub / "memory.max").write_text(mem + "\n", encoding="utf-8")
+        (sub / "memory.swap.max").write_text(swap + "\n", encoding="utf-8")
+        real_read = Path.read_text
+
+        def _read(self_path, *a, **k):
+            if self_path.as_posix().endswith("/proc/self/cgroup"):
+                return "0::/sub\n"
+            return real_read(self_path, *a, **k)
+
+        return Path(tmp), _read
+
+    def test_cgroup_readback_matches_only_when_limits_are_at_or_below_the_claim(self) -> None:
+        for mem, swap, expected in (
+            (str(iq04.MEMORY_MAX_BYTES), "0", True),
+            (str(iq04.MEMORY_MAX_BYTES - 1), "0", True),
+            ("max", "0", False),  # unlimited memory is not a cage
+            (str(iq04.MEMORY_MAX_BYTES + 1), "0", False),
+            (str(iq04.MEMORY_MAX_BYTES), "max", False),  # swap not disabled
+            (str(iq04.MEMORY_MAX_BYTES), "1024", False),
+        ):
+            root, reader = self._fake_cgroup(mem, swap)
+            with mock.patch.object(iq04.sys, "platform", "linux"), mock.patch.object(Path, "read_text", reader):
+                out = iq04.verify_cgroup_v2_enforced(iq04.MEMORY_MAX_BYTES, 0, cgroup_root=root)
+            self.assertEqual(out["enforced"], expected, (mem, swap, out))
+            self.assertEqual((out["memory_max"], out["memory_swap_max"]), (mem, swap))
+
+    def test_cgroup_readback_missing_files_fail_closed(self) -> None:
+        root, reader = self._fake_cgroup("max", "max")
+        (root / "sub" / "memory.max").unlink()
+        with mock.patch.object(iq04.sys, "platform", "linux"), mock.patch.object(Path, "read_text", reader):
+            out = iq04.verify_cgroup_v2_enforced(iq04.MEMORY_MAX_BYTES, 0, cgroup_root=root)
+        self.assertFalse(out["enforced"])
+        self.assertIn("unreadable", out["reason"])
+
     def test_burn_inventory_must_be_complete(self) -> None:
         records, truth = iq04.build_families(count=8)
         burned = iq04.assert_families_burn_clean(
@@ -228,6 +370,14 @@ class SSDKVTests(unittest.TestCase):
         self.assertEqual(len(names), 20)
         self.assertEqual(len(set(names)), 20)
         self.assertEqual(names, kvc.select_repo_names(6001))
+
+    def test_replay_probe_refusals_are_counted_in_the_chelated_arm(self) -> None:
+        # B60-1: refusals on the replay probe used to be dropped with a throwaway stats object (reported 0).
+        self.assertTrue(self.manifest["gates"]["replay_probe_refusals_accumulated_into_chelated_stats"])
+        self.assertGreater(self.manifest["retraction"]["chelated_refused_retracted_blocks"], 0)
+
+    def test_wrong_contract_probe_cannot_touch_the_primary_cache(self) -> None:
+        self.assertTrue(self.manifest["gates"]["wrong_contract_probe_isolated_from_primary_cache"])
 
     def test_performance_tie_is_reported_not_hidden(self) -> None:
         self.assertIn("performance_claim_supported", self.manifest)

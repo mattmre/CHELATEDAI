@@ -22,9 +22,11 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
+import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Set, Tuple
 
 import numpy as np
 
@@ -238,10 +240,18 @@ def score_trial1_rows(
     if not rows:
         raise ValueError("rows must be non-empty")
 
+    seen_queries: Set[Tuple[str, str]] = set()
     by_arm: Dict[str, List[Trial1RowRecord]] = {}
     for row in rows:
+        key = (row.arm_id, row.query_id)
+        if key in seen_queries:
+            raise ValueError(f"Duplicate query_id {row.query_id!r} in arm {row.arm_id!r}")
+        seen_queries.add(key)
         by_arm.setdefault(row.arm_id, []).append(row)
 
+    missing_arms = [arm for arm in MANDATORY_ARMS if arm not in by_arm]
+    if missing_arms:
+        raise ValueError(f"Missing mandatory arms: {missing_arms}")
     if incumbent_arm not in by_arm:
         raise ValueError(f"Incumbent arm {incumbent_arm!r} missing from rows")
 
@@ -333,7 +343,17 @@ def score_trial1_rows(
             span_summary=span,
         )
 
-    decision = _apply_retirement_rule(arm_summaries, sla=sla)
+    pair_lcb = float("-inf")
+    if ARM_ZEROMU_CSLS in per_arm_ndcg and ARM_UNCENTERED_CSLS in per_arm_ndcg:
+        zm_map = per_arm_ndcg[ARM_ZEROMU_CSLS]
+        unc_map = per_arm_ndcg[ARM_UNCENTERED_CSLS]
+        pair_qids = sorted(set(zm_map) & set(unc_map))
+        if pair_qids:
+            pair_deltas = [zm_map[qid] - unc_map[qid] for qid in pair_qids]
+            _, pair_lcb, _ = paired_bootstrap_ci(
+                pair_deltas, n_resamples=n_bootstrap, alpha=0.05, seed=seed + 7
+            )
+    decision = _apply_retirement_rule(arm_summaries, sla=sla, pair_lcb=pair_lcb)
     report: Dict[str, Any] = {
         "bundle_id": BUNDLE_ID,
         "track_id": TRACK_ID,
@@ -352,6 +372,7 @@ def _apply_retirement_rule(
     arms: Mapping[str, ArmEvaluationSummary],
     *,
     sla: Trial1SLATargets,
+    pair_lcb: float = float("-inf"),
 ) -> Dict[str, Any]:
     """Enforce the pre-registered `+-0.010` nDCG@10 + SLA retirement rule.
 
@@ -393,29 +414,45 @@ def _apply_retirement_rule(
                     "and p95/p99 SLA targets at <= total migration bill vs ZeroMu+CSLS; "
                     "ZeroMu bridge premium is explicitly retired while CSLS calibration is credited."
                 )
-            else:
+            elif pair_lcb > float(sla.equivalence_band_ndcg10):
                 recommended_arm = ARM_ZEROMU_CSLS
                 outcome = "win_zeromu_csls"
                 rationale = (
-                    "ZeroMu+CSLS cleared all targets and exceeded UncenteredProcrustes+CSLS "
-                    "beyond the +0.010 equivalence margin."
+                    "ZeroMu+CSLS cleared all targets and its paired LCB versus "
+                    "UncenteredProcrustes+CSLS exceeded +0.010."
                 )
-        elif zm_csls.clears_all_targets and not unc_csls.clears_all_targets:
+            else:
+                zeromu_retired = True
+                recommended_arm = ARM_UNCENTERED_CSLS
+                outcome = "tie_retire_zeromu_credit_csls"
+                rationale = (
+                    "The mean nDCG gap exceeded the band, but the paired LCB did not clear +0.010. "
+                    "The ZeroMu bridge premium stays retired."
+                )
+        elif (
+            zm_csls.clears_all_targets
+            and not unc_csls.clears_all_targets
+            and pair_lcb > float(sla.equivalence_band_ndcg10)
+        ):
             recommended_arm = ARM_ZEROMU_CSLS
             outcome = "win_zeromu_csls"
             rationale = (
                 "ZeroMu+CSLS cleared both the +-0.010 nDCG@10 equivalence band and p95/p99 SLA "
-                "targets while UncenteredProcrustes+CSLS missed."
+                "targets, and its paired LCB versus UncenteredProcrustes+CSLS exceeded +0.010."
             )
         elif unc_csls.clears_all_targets:
             zeromu_retired = True
             recommended_arm = ARM_UNCENTERED_CSLS
             outcome = "tie_retire_zeromu_credit_csls"
             rationale = "UncenteredProcrustes+CSLS cleared all targets; ZeroMu bridge premium retired."
-    elif zm_csls is not None and zm_csls.clears_all_targets:
+    elif (
+        zm_csls is not None
+        and zm_csls.clears_all_targets
+        and pair_lcb > float(sla.equivalence_band_ndcg10)
+    ):
         recommended_arm = ARM_ZEROMU_CSLS
         outcome = "win_zeromu_csls"
-        rationale = "ZeroMu+CSLS cleared all accuracy and SLA targets."
+        rationale = "ZeroMu+CSLS cleared all accuracy and SLA targets with paired LCB above +0.010."
 
     inc_bill = inc.total_bill_usd if inc is not None else 0.0
     rec_bill = arms[recommended_arm].total_bill_usd if recommended_arm in arms else inc_bill
@@ -426,6 +463,9 @@ def _apply_retirement_rule(
         "csls_credited": credit_csls,
         "csls_ndcg_gain_over_zscore": round(csls_gain_over_zscore, 6),
         "zeromu_ndcg_gain_over_uncentered_at_csls": round(zeromu_gain_over_unc_at_csls, 6),
+        "zeromu_vs_uncentered_csls_lcb95": (
+            None if not math.isfinite(pair_lcb) else round(float(pair_lcb), 6)
+        ),
         "recommended_bill_usd": rec_bill,
         "incumbent_bill_usd": inc_bill,
         "estimated_bill_savings_usd": round(inc_bill - rec_bill, 4),
@@ -659,16 +699,29 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser.add_argument("--run-dev-fixtures", action="store_true", help="Run all 5 open DEV fixtures")
     parser.add_argument("--rows-jsonl", type=Path, default=None, help="Path to partner row-level JSONL log")
     parser.add_argument("--bills-json", type=Path, default=None, help="Path to partner migration bills JSON")
+    parser.add_argument(
+        "--buyer-attestation-sha256",
+        default="",
+        help="SHA-256 of the --bills-json file bytes. Required for --rows-jsonl buyer runs.",
+    )
     parser.add_argument("--output", type=Path, default=None, help="Optional output JSON report path")
     args = parser.parse_args(argv)
 
     if args.rows_jsonl is not None:
+        if args.bills_json is None or not str(args.buyer_attestation_sha256).strip():
+            print(
+                "buyer runs require --bills-json and --buyer-attestation-sha256",
+                file=sys.stderr,
+            )
+            return 1
+        bill_bytes = args.bills_json.read_bytes()
+        actual_attestation = hashlib.sha256(bill_bytes).hexdigest()
+        if actual_attestation != str(args.buyer_attestation_sha256).strip().lower():
+            print("buyer attestation sha256 does not match --bills-json", file=sys.stderr)
+            return 1
         rows = load_rows_jsonl(args.rows_jsonl)
-        if args.bills_json is not None:
-            raw_bills = json.loads(args.bills_json.read_text(encoding="utf-8"))
-            bills = {k: MigrationBillInputs(**v) for k, v in raw_bills.items()}
-        else:
-            bills = _default_bills()
+        raw_bills = json.loads(bill_bytes.decode("utf-8"))
+        bills = {k: MigrationBillInputs(**v) for k, v in raw_bills.items()}
         payload = score_trial1_rows(rows, bills, fixture_label=args.rows_jsonl.name, is_live_buyer_run=True)
     else:
         payload = run_offline_dev_fixture_suite()

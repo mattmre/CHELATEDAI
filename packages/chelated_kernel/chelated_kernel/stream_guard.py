@@ -49,6 +49,8 @@ class StreamGuard:
         self._source = iter(token_iter)  # type: ignore[arg-type]
         self._ledger = ledger
         self._spans = spans
+        self._span_set = frozenset(spans)
+        self._prefixes = frozenset(span[:i] for span in spans for i in range(1, len(span)))
         self._mode = mode
         self._profile_code = int(profile_code)
         self._tenant_id = tenant_id
@@ -83,14 +85,24 @@ class StreamGuard:
         self._buf.append(token)
         if self._mode != "async_armed":
             return
-        current = tuple(self._buf)
-        for span in self._spans:
-            if current == span:
-                self._suppress(self._buf)
+        if not self._span_set:
+            self._ready.extend(self._buf)
+            self._buf.clear()
+            return
+        buf_len = len(self._buf)
+        for start in range(buf_len):
+            if tuple(self._buf[start:]) in self._span_set:
+                if start:
+                    self._ready.extend(self._buf[:start])
+                self._suppress(self._buf[start:])
                 self._buf.clear()
                 return
-        if any(span[: len(current)] == current for span in self._spans):
-            return
+        for shift in range(buf_len):
+            if tuple(self._buf[shift:]) in self._prefixes:
+                if shift:
+                    self._ready.extend(self._buf[:shift])
+                    del self._buf[:shift]
+                return
         self._ready.extend(self._buf)
         self._buf.clear()
 

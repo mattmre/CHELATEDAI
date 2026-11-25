@@ -978,8 +978,14 @@ END
 $fn$"""
 
     def closure_rebuild_sql(self) -> str:
-        """Full closure recompute with a cycle-safe recursive walk."""
-        return """INSERT INTO edge_closure (tenant_id, src_id, dst_id, min_tx)
+        """Full closure recompute with a cycle-safe recursive walk.
+
+        The ``DELETE`` comes first so stale rows (edges/paths that no longer exist in the edge log) cannot
+        survive: the ``LEAST``-upsert alone only ever LOWERS ``min_tx`` and never removes a row, so a rebuild
+        without the DELETE is not a rebuild (mirrors SQLite ``rebuild_closure``'s DELETE-then-INSERT).
+        """
+        return """DELETE FROM edge_closure;
+INSERT INTO edge_closure (tenant_id, src_id, dst_id, min_tx)
 SELECT w.tenant_id, w.src_id, w.dst_id, MIN(w.tx_max)
 FROM (
   WITH RECURSIVE walk(tenant_id, src_id, dst_id, tx_max) AS (

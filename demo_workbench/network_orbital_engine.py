@@ -920,11 +920,15 @@ class EncoderSet:
         self.mode = mode
         self.status: Dict[str, str] = {}
         self._live: Dict[int, bool] = {}
+        # B61-3: encoders requested live that silently fell back to the deterministic stand-in.
+        self.dry_fallbacks: List[str] = []
         for i, (eid, name, dim) in enumerate(ENCODER_CHAIN):
             if mode == "run-live-encoders":
                 ok, why = live_encoder_available(i)
                 self._live[i] = ok
                 self.status[eid] = ("live:" + name) if ok else ("stand_in (" + why + ")")
+                if not ok:
+                    self.dry_fallbacks.append(eid)
             else:
                 self._live[i] = False
                 self.status[eid] = "stand_in (deterministic text-derived)"
@@ -1057,6 +1061,9 @@ class FleetRetrieval:
             self.hops["zeromu"][hop] = self._classify(harness_final, hop, src, float(zc.nonzero_condition_number))
             parity = float(np.max(np.abs(side_final - harness_final)))
             argmax_same = bool(np.all(np.argmax(side_final, axis=1) == np.argmax(harness_final, axis=1)))
+            # B61-3: full top-5 ranking parity (ordered), not just the argmax
+            top5_same = bool(np.array_equal(np.argsort(-side_final, axis=1, kind="stable")[:, :5],
+                                            np.argsort(-harness_final, axis=1, kind="stable")[:, :5]))
             if hop == 1:
                 direct = self.bridges["zeromu"][3].score_matrix(q, docs)
                 direct_parity = float(np.max(np.abs(direct - zs)))
@@ -1064,6 +1071,7 @@ class FleetRetrieval:
                 direct_parity = -1.0
             self.sidecar[str(hop)] = {"bytes_per_flow": len(blob) // docs.shape[0], "total_bytes": len(blob),
                                       "max_abs_parity_ppm": int(parity * 1e6), "argmax_identical": argmax_same,
+                                      "top5_identical": top5_same,
                                       "direct_harness_parity_ppm": int(direct_parity * 1e6) if direct_parity >= 0 else -1}
 
     def _native_ceiling(self) -> Dict[str, int]:
@@ -1393,13 +1401,24 @@ class FabricArm:
     def derived_served(self) -> Set[str]:
         return {e for e, ev in self.events.items() if ev.kind == KIND_DERIVED and self.store.eligibility[e] == "ADMIT"}
 
+    # B61-2: an audit memo is *retained* only while the store holds it as ADMIT (live) or AUDIT_ONLY
+    # (cited record gone, kept for the audit trail). A CONTESTED memo is neither served nor retained.
+    _RETAINED_ELIGIBILITY = ("ADMIT", "AUDIT_ONLY")
+
     def audit_retained(self) -> Set[str]:
-        return {e for e, ev in self.events.items() if ev.kind == KIND_AUDIT and e in self.store.events}
+        return {e for e, ev in self.events.items()
+                if ev.kind == KIND_AUDIT and e in self.store.events
+                and self.store.eligibility.get(e) in self._RETAINED_ELIGIBILITY}
 
     def audit_in_trace(self) -> Set[str]:
+        """Audit memos whose *canonical-trace* node (independently derived) is ADMIT/AUDIT_ONLY and
+        agrees with the store's eligibility."""
         trace = export_canonical_ek5_audit_trace(self.store)
-        ids = set(trace.by_id())
-        return {e for e, ev in self.events.items() if ev.kind == KIND_AUDIT and e in ids}
+        nodes = trace.by_id()
+        return {e for e, ev in self.events.items()
+                if ev.kind == KIND_AUDIT and e in nodes
+                and nodes[e].eligibility in self._RETAINED_ELIGIBILITY
+                and nodes[e].eligibility == self.store.eligibility.get(e)}
 
     def echo_collapse(self) -> Dict[str, int]:
         n_echo = len(self.echo_root)
@@ -2033,6 +2052,7 @@ def retrieval_report(fr: FleetRetrieval, mode: str) -> Dict[str, Any]:
                            for k, v in fr.enc.status.items()},
         "sidecar": {h: {"bytes_per_flow": int(s["bytes_per_flow"]), "total_bytes": int(s["total_bytes"]),
                         "max_abs_parity_ppm": int(s["max_abs_parity_ppm"]), "argmax_identical": bool(s["argmax_identical"]),
+                        "top5_identical": bool(s["top5_identical"]),
                         "direct_harness_parity_ppm": int(s["direct_harness_parity_ppm"])} for h, s in fr.sidecar.items()},
         "bridge_health": bridge_policy(fr.tra1),
         "burn_check": {"checked": bool(fr.burn_check.get("checked")), "burned": bool(fr.burn_check.get("burned")),
@@ -2386,7 +2406,18 @@ class FabricService:
         self.public_key_b64 = base64.b64encode(raw).decode("ascii")
         self.key_id = hashlib.sha256(raw).hexdigest()[:16]
         self._lock = threading.Lock()
-        self.ledger: List[Dict[str, Any]] = []
+        # B61-1: one hash-chained ledger PER mode so NDA receipts (which carry payload["internal"])
+        # can never be listed through a non_nda ledger read.
+        self._ledgers: Dict[str, List[Dict[str, Any]]] = {"non_nda": [], "nda": []}
+
+    @property
+    def ledger(self) -> List[Dict[str, Any]]:
+        return self._ledgers["non_nda"]
+
+    def ledger_for(self, mode: str) -> List[Dict[str, Any]]:
+        if mode not in self._ledgers:
+            raise FabricError(422, "bad_mode", "Unknown mode.")
+        return self._ledgers[mode]
 
     def check_mode(self, requested: Any, headers: Mapping[str, str]) -> str:
         mode = "non_nda" if requested in (None, "") else str(requested)
@@ -2429,8 +2460,9 @@ class FabricService:
         if mode == "nda":
             payload["internal"] = {"eligibility_raw": {e: fab.store.eligibility[e] for e in sorted(fab.events)}}
         with self._lock:
-            prev = self.ledger[-1]["entry_hash"] if self.ledger else GENESIS_HASH
-            payload["seq"] = len(self.ledger) + 1
+            chain = self.ledger_for(mode)
+            prev = chain[-1]["entry_hash"] if chain else GENESIS_HASH
+            payload["seq"] = len(chain) + 1
             payload["prev_hash"] = prev
             payload["issued_at_us"] = int(self._clock_us())
             entry_hash = hashlib.sha256(prev.encode("ascii") + canonical_json(payload)).hexdigest()
@@ -2439,7 +2471,7 @@ class FabricService:
                      "signature_b64": base64.b64encode(signature).decode("ascii"),
                      "public_key_b64": self.public_key_b64,
                      "algorithm": "Ed25519 over the ASCII hex of SHA-256(prev_hash || canonical_json(payload))"}
-            self.ledger.append(entry)
+            chain.append(entry)
         return entry
 
     def verify_receipt(self, entry: Any) -> Dict[str, Any]:
@@ -2473,13 +2505,16 @@ class FabricService:
         if not checks["chain_link_ok"]:
             reasons.append("payload prev_hash differs from entry prev_hash")
         with self._lock:
-            if isinstance(payload, dict) and isinstance(payload.get("seq"), int) and 1 <= payload["seq"] <= len(self.ledger):
-                in_ledger = self.ledger[payload["seq"] - 1]["entry_hash"] == claimed_hash
+            rmode = payload.get("mode") if isinstance(payload, dict) else None
+            chain = self._ledgers.get(rmode) if isinstance(rmode, str) else None
+            if (chain is not None and isinstance(payload, dict) and isinstance(payload.get("seq"), int)
+                    and 1 <= payload["seq"] <= len(chain)):
+                in_ledger = chain[payload["seq"] - 1]["entry_hash"] == claimed_hash
         return {"valid": all(checks.values()), "checks": checks, "in_ledger": in_ledger, "reasons": reasons}
 
-    def verify_ledger(self) -> Dict[str, Any]:
+    def verify_ledger(self, mode: str = "non_nda") -> Dict[str, Any]:
         with self._lock:
-            entries = list(self.ledger)
+            entries = list(self.ledger_for(mode))
         prev = GENESIS_HASH
         for i, e in enumerate(entries, start=1):
             res = self.verify_receipt(e)
@@ -2607,7 +2642,9 @@ def handle_fabric_get(path: str, query_params: Optional[Mapping[str, Any]] = Non
             return _json_response(200, {"algorithm": "Ed25519", "public_key_b64": svc.public_key_b64, "key_id": svc.key_id,
                                         "disclosure": KEY_DISCLOSURE}, mode)
         if sub == "/ledger":
-            return _json_response(200, {"entries": svc.ledger, "chain": svc.verify_ledger()}, mode)
+            with svc._lock:
+                entries = list(svc.ledger_for(mode))
+            return _json_response(200, {"entries": entries, "chain": svc.verify_ledger(mode), "mode": mode}, mode)
         if sub == "/benchmark":
             try:
                 reps = int(_qp(query_params, "repeats", "30") or "30")
@@ -2617,6 +2654,17 @@ def handle_fabric_get(path: str, query_params: Optional[Mapping[str, Any]] = Non
         raise FabricError(404, "not_found", "Not found.")
     except FabricError as err:
         return _error_response(err)
+
+
+def _strings_hit_forbidden(value: Any) -> bool:
+    """True when any string (key or value, at any depth) of a request body matches a forbidden method pattern."""
+    if isinstance(value, str):
+        return bool(scan_text_for_ip_leaks(value, "request"))
+    if isinstance(value, Mapping):
+        return any(_strings_hit_forbidden(k) or _strings_hit_forbidden(v) for k, v in value.items())
+    if isinstance(value, (list, tuple)):
+        return any(_strings_hit_forbidden(v) for v in value)
+    return False
 
 
 def handle_fabric_post(path: str, query_params: Optional[Mapping[str, Any]] = None,
@@ -2638,6 +2686,9 @@ def handle_fabric_post(path: str, query_params: Optional[Mapping[str, Any]] = No
             raise FabricError(400, "invalid_json", "Request body must be a JSON object.")
         sub = clean[len(API_PREFIX):].rstrip("/")
         mode = svc.check_mode(data.get("mode", _qp(query_params, "mode")), hdr)
+        if mode == "non_nda" and sub != "/verify-receipt" and _strings_hit_forbidden(data):
+            # B61-4: refuse forbidden-pattern input outright; the message is fixed and never echoes the input.
+            raise FabricError(422, "forbidden_input", "Input rejected by the non_nda projection policy.")
         if sub == "/query":
             return _json_response(200, evaluate_step(str(data.get("scenario", "")), data.get("step", 1), mode,
                                                      custom_query=str(data.get("text", ""))), mode)

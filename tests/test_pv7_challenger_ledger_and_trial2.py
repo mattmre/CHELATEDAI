@@ -552,6 +552,14 @@ class TestPostgres17Dialect(unittest.TestCase):
         trg_idx = next(i for i, s in enumerate(stmts) if s.startswith("CREATE TRIGGER"))
         self.assertLess(fn_idx, trg_idx)
 
+    def test_closure_rebuild_deletes_stale_rows_before_the_upsert(self) -> None:
+        # #47: the LEAST-upsert only ever lowers min_tx and never removes a row, so a rebuild without a
+        # preceding DELETE keeps closure rows whose edges no longer exist.
+        sql = self.d.closure_rebuild_sql()
+        self.assertTrue(sql.lstrip().startswith("DELETE FROM edge_closure;"), sql[:60])
+        self.assertLess(sql.index("DELETE FROM edge_closure"), sql.index("INSERT INTO edge_closure"))
+        self.assertEqual(sql.count("DELETE FROM edge_closure"), 1)
+
     def test_placeholders_are_psycopg_style_and_have_no_casts(self) -> None:
         for mode in MODES:
             sql = self.d.as_of_sql(mode)
@@ -881,6 +889,19 @@ class TestReasonCanonicalizer(unittest.TestCase):
         four = {canonical_cause(r) for r in ("SUPERSEDED", "REFUTED", "UNFOUNDED_CYCLE", "EPISTEMIC_CONTESTED")}
         self.assertEqual(len(four), 4)
 
+    def test_superseded_fallback_witness_skips_refuted_lineage_members(self) -> None:
+        from types import SimpleNamespace
+
+        from chelated_pv7_spine import ek5_reason_canonicalizer as canon
+
+        store = SimpleNamespace(sup={"v": set()}, lsup={"v": {"a", "b", "c"}}, refs={}, deps_v={}, deps_c={})
+        val = {"a": canon._F, "b": canon._T, "c": canon._U, "v": canon._F}
+        wit = canon._witness(store, "v", "SUPERSEDED", val, {}, set(), {})
+        self.assertNotIn("a", wit)  # 'a' sorts first but is FALSE (refuted): it cannot witness supersession
+        self.assertTrue(set(wit) <= {"b", "c"})
+        only_false = SimpleNamespace(sup={"v": set()}, lsup={"v": {"a"}}, refs={}, deps_v={}, deps_c={})
+        self.assertNotIn("a", canon._witness(only_false, "v", "SUPERSEDED", {"a": canon._F}, {}, set(), {}))
+
     def test_canonicalizer_does_not_mutate_store(self) -> None:
         st = run_random_ek5_sequence(11, strict=False, dense=False)
         assert st is not None
@@ -897,6 +918,14 @@ class TestReasonCanonicalizer(unittest.TestCase):
 def _score(scenario: str) -> Dict[str, Any]:
     rows, base_rate, key = t2.build_open_dev_fixture(scenario)
     return t2.score_trial2_rows(rows, declared_base_rate=base_rate, unblinding_key=key, data_origin="open_dev_fixture", fixture_label=scenario)
+
+
+_ATTESTATION: Dict[str, Any] = {
+    "partner_org": "Example Records Office",
+    "attested_by": "records.owner@example.invalid",
+    "matters_consecutive_and_unselected": True,
+    "rubric_scored_before_unblinding": True,
+}
 
 
 class TestTrial2Kit(unittest.TestCase):
@@ -1044,6 +1073,208 @@ class TestTrial2Kit(unittest.TestCase):
         bad = t2.score_trial2_rows(rows, declared_base_rate=base_rate, unblinding_key=bad_key, data_origin="open_dev_fixture")
         self.assertNotEqual(good["faithfulness_by_arm"], bad["faithfulness_by_arm"])
 
+    # ---- B64-1: the non-conflict cohort is scored too -------------------------------------------
+    def test_scoring_cohort_is_all_enrolled_matters_not_just_natural_conflicts(self) -> None:
+        r = _score("win")
+        self.assertEqual(r["scoring_cohort"], "all_enrolled_matters")
+        self.assertEqual(r["scored_matters"], 100)
+        for comp in r["comparisons"].values():
+            for p in ("attribution_pass", "operational_pass"):
+                self.assertEqual(comp[p]["n_matters"], 100)  # not 30
+        self.assertEqual(r["faithfulness_noninferiority"]["n_matters"], 100)
+
+    def test_timeout_rate_is_over_all_enrolled_matters(self) -> None:
+        r = _score("timeout")
+        # 15 timeouts / 100 enrolled = 0.15 (it would be 0.5 if computed over the 30 conflicts only)
+        self.assertAlmostEqual(r["timeout_rate_by_arm"]["ek5_on"], 0.15)
+
+    def test_harm_confined_to_non_conflict_matters_is_not_hidden(self) -> None:
+        rows, base_rate, key = t2.build_open_dev_fixture("win")
+        patched: List[t2.MatterRow] = []
+        for row in rows:
+            arms = dict(row.arms)
+            if not row.natural_conflict:  # EK5-on mis-resolves every ordinary matter
+                arms[t2.ARM_EK5_ON] = t2.ArmResult("wrong", 1.0, 0.0)
+            patched.append(t2.MatterRow(row.matter_seq, row.matter_id, row.natural_conflict, arms, row.rubric))
+        r = t2.score_trial2_rows(patched, declared_base_rate=base_rate, unblinding_key=key, data_origin="open_dev_fixture")
+        self.assertEqual(r["ek5_premium"], "retired")
+        self.assertIn("VS_CHALLENGER_ATTRIBUTION_MARGIN_NOT_CLEARED", r["retirement_causes"])
+
+    def test_every_enrolled_matter_needs_a_full_blinded_rubric(self) -> None:
+        rows, base_rate, key = t2.build_open_dev_fixture("win")
+        clean = next(r for r in rows if not r.natural_conflict)
+        stripped = [
+            t2.MatterRow(r.matter_seq, r.matter_id, r.natural_conflict, r.arms, {} if r is clean else r.rubric)
+            for r in rows
+        ]
+        with self.assertRaises(t2.TrialProtocolError):
+            t2.score_trial2_rows(stripped, declared_base_rate=base_rate, unblinding_key=key, data_origin="open_dev_fixture")
+
+    def test_rubric_must_carry_exactly_one_code_per_arm(self) -> None:
+        good = {a: t2.ArmResult("correct") for a in t2.MANDATORY_ARMS}
+        one_code = {"X1": {c: 1 for c in t2.RUBRIC_CRITERIA}}
+        with self.assertRaises(t2.TrialProtocolError):
+            t2.MatterRow(0, "m", True, good, one_code)
+        four_codes = {f"X{i}": {c: 1 for c in t2.RUBRIC_CRITERIA} for i in range(1, 5)}
+        with self.assertRaises(t2.TrialProtocolError):
+            t2.MatterRow(0, "m", True, good, four_codes)
+
+    # ---- B64-2: exact Student-t critical value ----------------------------------------------------
+    def test_student_t_critical_values_match_published_quantiles(self) -> None:
+        # t_{df,0.95} one-sided: standard table values
+        for df, expected in {1: 6.3138, 2: 2.9200, 5: 2.0150, 9: 1.8331, 29: 1.6991, 99: 1.6604}.items():
+            self.assertAlmostEqual(t2.student_t_critical_95(df), expected, places=3, msg=f"df={df}")
+        self.assertGreater(t2.student_t_critical_95(1), t2.student_t_critical_95(2))  # strictly decreasing in df
+        self.assertGreater(t2.student_t_critical_95(99), 1.645)  # never below the normal quantile
+        self.assertAlmostEqual(t2.student_t_critical_95(100000), 1.6449, places=3)
+
+    def test_report_records_the_t_critical_actually_used(self) -> None:
+        r = _score("win")
+        self.assertEqual(
+            r["comparisons"]["ek5_on_vs_challenger"]["attribution_pass"]["t_critical"], t2.student_t_critical_95(99)
+        )
+        self.assertNotIn("z_one_sided_95", t2.locked_protocol())
+        self.assertEqual(t2.locked_protocol()["lcb_critical_value"], "student_t_n_minus_1_one_sided_exact")
+
+    # ---- B64-3: faithfulness non-inferiority via a one-sided LCB ----------------------------------
+    def _faithfulness_patched(self, harmed_seqs: Tuple[int, ...]) -> Dict[str, Any]:
+        rows, base_rate, key = t2.build_open_dev_fixture("win")
+        patched: List[t2.MatterRow] = []
+        for row in rows:
+            codes = t2.blind_codes(row.matter_id, t2._FIXTURE_SALT)
+            rubric = {codes[a]: {c: 1 for c in t2.RUBRIC_CRITERIA} for a in t2.MANDATORY_ARMS}
+            if row.matter_seq in harmed_seqs:
+                rubric[codes[t2.ARM_EK5_ON]] = {c: 0 for c in t2.RUBRIC_CRITERIA}
+            patched.append(t2.MatterRow(row.matter_seq, row.matter_id, row.natural_conflict, row.arms, rubric))
+        return t2.score_trial2_rows(patched, declared_base_rate=base_rate, unblinding_key=key, data_origin="open_dev_fixture")
+
+    def test_faithfulness_noninferiority_is_an_lcb_not_a_point_estimate(self) -> None:
+        r = self._faithfulness_patched(tuple(range(12)))  # EK5-on scores 0 on 12 of 100 matters
+        fn = r["faithfulness_noninferiority"]
+        self.assertAlmostEqual(fn["paired_mean_difference"], -0.12)
+        self.assertLess(fn["lower_confidence_bound"], fn["paired_mean_difference"])  # LCB strictly more pessimistic
+        self.assertFalse(fn["noninferior"])
+        self.assertIn("FAITHFULNESS_INFERIOR_TO_CHALLENGER", r["retirement_causes"])
+
+    def test_point_estimate_within_tolerance_but_lcb_below_still_fails(self) -> None:
+        r = self._faithfulness_patched((0, 1, 2, 3))  # mean diff -0.04 passes the OLD point test (>= -0.05)
+        fn = r["faithfulness_noninferiority"]
+        self.assertGreaterEqual(fn["paired_mean_difference"], -t2.FAITHFULNESS_NONINFERIORITY)
+        self.assertLess(fn["lower_confidence_bound"], -t2.FAITHFULNESS_NONINFERIORITY)
+        self.assertFalse(fn["noninferior"])
+
+    def test_no_harm_is_noninferior(self) -> None:
+        fn = self._faithfulness_patched(())["faithfulness_noninferiority"]
+        self.assertTrue(fn["noninferior"])
+        self.assertEqual(fn["paired_mean_difference"], 0.0)
+
+    # ---- finiteness / strict parsing ---------------------------------------------------------------
+    def test_non_finite_numbers_are_rejected(self) -> None:
+        for bad in (float("inf"), float("-inf"), float("nan")):
+            with self.assertRaises(t2.TrialProtocolError):
+                t2.ArmResult("correct", extraction_minutes=bad)
+            with self.assertRaises(t2.TrialProtocolError):
+                t2.ArmResult("correct", review_minutes=bad)
+            with self.assertRaises(t2.TrialProtocolError):
+                t2.required_consecutive_matters(bad)
+
+    def test_natural_conflict_must_be_a_strict_bool(self) -> None:
+        good = {a: t2.ArmResult("correct") for a in t2.MANDATORY_ARMS}
+        for bad in ("false", "true", 1, 0, None, "no"):
+            with self.assertRaises(t2.TrialProtocolError, msg=repr(bad)):
+                t2.MatterRow(0, "m", bad, good, {})  # type: ignore[arg-type]
+        raw: Dict[str, Any] = {
+            "matter_seq": 0,
+            "matter_id": "m",
+            "natural_conflict": "false",  # bool("false") is True: must NOT be coerced into a natural conflict
+            "arms": {a: {"outcome": "correct"} for a in t2.MANDATORY_ARMS},
+        }
+        with self.assertRaises(t2.TrialProtocolError):
+            t2.MatterRow.from_dict(raw)
+        raw["natural_conflict"] = False
+        self.assertFalse(t2.MatterRow.from_dict(raw).natural_conflict)
+
+    def test_from_dict_rejects_coercible_but_malformed_fields(self) -> None:
+        arms = {a: {"outcome": "correct"} for a in t2.MANDATORY_ARMS}
+        base: Dict[str, Any] = {"matter_seq": 0, "matter_id": "m", "natural_conflict": False, "arms": arms}
+        for patch in ({"matter_seq": 1.9}, {"matter_seq": "3"}, {"matter_seq": True}, {"matter_id": 7}, {"matter_id": ""}):
+            with self.assertRaises(t2.TrialProtocolError, msg=repr(patch)):
+                t2.MatterRow.from_dict({**base, **patch})
+        with self.assertRaises(t2.TrialProtocolError):
+            t2.MatterRow.from_dict({k: v for k, v in base.items() if k != "natural_conflict"})
+        with self.assertRaises(t2.TrialProtocolError):
+            t2.MatterRow.from_dict(
+                {**base, "arms": {a: {"outcome": "correct", "bonus": 1} for a in t2.MANDATORY_ARMS}}
+            )
+
+    # ---- B64-4/B64-5: distinct partner status only with an explicit attestation ---------------------
+    def test_partner_run_with_attestation_gets_distinct_status(self) -> None:
+        rows, base_rate, key = t2.build_open_dev_fixture("win")
+        plain = t2.score_trial2_rows(rows, declared_base_rate=base_rate, unblinding_key=key, data_origin="partner")
+        attested = t2.score_trial2_rows(
+            rows, declared_base_rate=base_rate, unblinding_key=key, data_origin="partner", partner_attestation=_ATTESTATION
+        )
+        self.assertEqual(plain["status"], "protocol-ready")
+        self.assertNotIn("partner_attestation", plain)
+        self.assertEqual(attested["status"], "partner-run-scored")
+        self.assertEqual(attested["status"], t2.PARTNER_RUN_STATUS)
+        self.assertEqual(attested["partner_attestation"]["attested_by"], _ATTESTATION["attested_by"])
+        self.assertTrue(attested["partner_attestation"]["self_declared_not_independently_verified"])
+        self.assertEqual(attested["outcome"], plain["outcome"])  # attestation never changes the scoring
+
+    def test_attestation_is_validated_and_never_valid_for_dev_fixtures(self) -> None:
+        rows, base_rate, key = t2.build_open_dev_fixture("win")
+        with self.assertRaises(t2.TrialProtocolError):  # DEV fixtures can never be promoted
+            t2.score_trial2_rows(
+                rows,
+                declared_base_rate=base_rate,
+                unblinding_key=key,
+                data_origin="open_dev_fixture",
+                partner_attestation=_ATTESTATION,
+            )
+        for broken in (
+            {**_ATTESTATION, "partner_org": ""},
+            {**_ATTESTATION, "attested_by": "  "},
+            {**_ATTESTATION, "matters_consecutive_and_unselected": False},
+            {**_ATTESTATION, "rubric_scored_before_unblinding": "yes"},
+            {k: v for k, v in _ATTESTATION.items() if k != "attested_by"},
+        ):
+            with self.assertRaises(t2.TrialProtocolError, msg=repr(broken)):
+                t2.score_trial2_rows(
+                    rows,
+                    declared_base_rate=base_rate,
+                    unblinding_key=key,
+                    data_origin="partner",
+                    partner_attestation=broken,
+                )
+
+    def test_insufficient_partner_run_is_not_promoted_even_with_attestation(self) -> None:
+        rows, base_rate, key = t2.build_open_dev_fixture("insufficient_natural_conflicts")
+        r = t2.score_trial2_rows(
+            rows,
+            declared_base_rate=base_rate,
+            unblinding_key=key,
+            data_origin="partner",
+            partner_attestation=_ATTESTATION,
+        )
+        self.assertEqual(r["verdict"], "INSUFFICIENT_EVIDENCE")
+        self.assertEqual(r["status"], "protocol-ready")  # nothing was scored => nothing to promote
+
+    def test_verifier_64_passes_offline(self) -> None:
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location(
+            "verifier_64", REPO_ROOT / "scripts" / "verifiers.d" / "64_verifier.py"
+        )
+        assert spec is not None and spec.loader is not None
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        result = mod.verify_bundle(REPO_ROOT)
+        self.assertTrue(result["passed"], [c for c in result["checks"] if not c["passed"]])
+        names = {c["name"] for c in result["checks"]}
+        self.assertIn("compile_repo_fragments", names)
+        self.assertIn("spine_digest_match", names)
+
     def test_missing_rubric_on_natural_conflict_is_protocol_error(self) -> None:
         rows, base_rate, key = t2.build_open_dev_fixture("win")
         first_nat = next(r for r in rows if r.natural_conflict)
@@ -1061,8 +1292,8 @@ class TestTrial2Kit(unittest.TestCase):
         self.assertAlmostEqual(t2.ArmResult("wrong", 10, 5).operational_loss(), 10 + 0.5 + 1.0)
         self.assertAlmostEqual(t2.ArmResult("abstain").attribution_loss(), 2.0)
         self.assertAlmostEqual(t2.lower_confidence_bound([1.0, 1.0, 1.0]), 1.0)  # zero variance => mean
-        lcb = t2.lower_confidence_bound([0.0, 2.0, 4.0])  # mean 2, sd 2, n 3
-        self.assertAlmostEqual(lcb, 2 - 1.645 * 2 / 3**0.5)
+        lcb = t2.lower_confidence_bound([0.0, 2.0, 4.0])  # mean 2, sd 2, n 3 => t_{2,0.95} = 2.919986 (NOT z=1.645)
+        self.assertAlmostEqual(lcb, 2 - 2.9199855804 * 2 / 3**0.5, places=6)
         with self.assertRaises(t2.TrialProtocolError):
             t2.lower_confidence_bound([1.0])
 
@@ -1123,8 +1354,25 @@ class TestTrial2Kit(unittest.TestCase):
             self.assertEqual(code, 0)
             report = json.loads(out.read_text(encoding="utf-8"))
             self.assertEqual(report["data_origin"], "partner")
-            self.assertEqual(report["status"], "protocol-ready")  # scorer never self-promotes past T4 protocol-ready
+            self.assertEqual(report["status"], "protocol-ready")  # no attestation => never promoted
             self.assertEqual(report["outcome"], "win")
+
+            att_path = Path(tmp) / "attestation.json"
+            att_path.write_text(json.dumps(_ATTESTATION), encoding="utf-8")
+            out2 = Path(tmp) / "report_attested.json"
+            code = t2.main(
+                [
+                    "--rows-jsonl", str(rows_path),
+                    "--unblinding-key-json", str(key_path),
+                    "--declared-base-rate", str(base_rate),
+                    "--partner-attestation-json", str(att_path),
+                    "--output", str(out2),
+                ]
+            )
+            self.assertEqual(code, 0)
+            attested = json.loads(out2.read_text(encoding="utf-8"))
+            self.assertEqual(attested["status"], "partner-run-scored")
+            self.assertTrue(attested["partner_attestation"]["self_declared_not_independently_verified"])
 
 
 if __name__ == "__main__":
