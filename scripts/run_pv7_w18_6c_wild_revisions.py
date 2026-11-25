@@ -17,14 +17,18 @@ from collections import defaultdict
 from dataclasses import replace
 from pathlib import Path
 
-from chelated_pv7_spine.aa_null_calibration import mcnemar_exact
-from chelated_pv7_spine.bridge_merge_harness import paired_bootstrap_ci
-from chelated_pv7_spine.burn_ledger import (
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+
+from chelated_pv7_spine.aa_null_calibration import mcnemar_exact  # noqa: E402
+from chelated_pv7_spine.bridge_merge_harness import paired_bootstrap_ci  # noqa: E402
+from chelated_pv7_spine.burn_ledger import (  # noqa: E402
     BurnedCorpusError,
     assert_corpus_unburned,
     text_fingerprint,
 )
-from chelated_pv7_spine.challenger_ledger import (
+from chelated_pv7_spine.challenger_ledger import (  # noqa: E402
     QUERY_MODES,
     ChallengerBitemporalLedger,
     LedgerEdgeEnvelope,
@@ -32,12 +36,12 @@ from chelated_pv7_spine.challenger_ledger import (
     Postgres17ChallengerBackend,
     SQLiteChallengerBackend,
 )
-from chelated_pv7_spine.claim_registry import REGISTRY_PATH, claim_registry_sha256
-from chelated_pv7_spine.ek5_reason_canonicalizer import export_canonical_ek5_audit_trace
-from chelated_pv7_spine.tra1_weight_sha_guard import reproduce_memt_weight_omission
-from ek5_v3_stratified import EdgeAttestation, StratifiedEvent, StratifiedEvidenceStore
+from chelated_pv7_spine.claim_registry import REGISTRY_PATH, claim_registry_sha256  # noqa: E402
+from chelated_pv7_spine.ek5_reason_canonicalizer import export_canonical_ek5_audit_trace  # noqa: E402
+from chelated_pv7_spine.tra1_weight_sha_guard import reproduce_memt_weight_omission  # noqa: E402
+from ek5_v3_stratified import EdgeAttestation, StratifiedEvent, StratifiedEvidenceStore  # noqa: E402
 
-from chelated_wild_revision_streams import (
+from chelated_wild_revision_streams import (  # noqa: E402
     COHORT_DRYCHECK,
     COHORT_WILD,
     STATUS_DRYCHECK,
