@@ -180,6 +180,7 @@ def execute(
         n_bootstrap=2000,
         seed=5401,
         is_live_confirmatory=False,
+        allow_local_drycheck_smoke=True,  # synthetic CPU drycheck inventory is partial by construction
     )
     registry_after = REGISTRY_PATH.read_bytes()
     actual_spine = claim_registry_sha256()

@@ -212,7 +212,9 @@ class ShadowProbeTests(unittest.TestCase):
                 "documents": [text_fingerprint("historical doc shadow test")],
                 "queries": [text_fingerprint("historical query shadow test")],
             }
-            observed = execute_shadow("run-live-shadow", str(path), historical_fingerprints=hist)
+            observed = execute_shadow(
+                "run-live-shadow", str(path), historical_fingerprints=hist, allow_local_drycheck_smoke=True
+            )
         self.assertTrue(observed["executed"])
         self.assertTrue(observed["passed"])
         self.assertFalse(observed["report_emitted"])

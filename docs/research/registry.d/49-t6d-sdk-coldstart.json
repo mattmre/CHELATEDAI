@@ -10,5 +10,13 @@
   "depends_on": [47],
   "runner_file": "scripts/run_pv7_w17_6d_sdk_coldstart_gate.py",
   "verifier_file": "scripts/verifiers.d/49_verifier.py",
-  "test_file": "tests/test_pv7_w17_6d_chelated_kernel_sdk.py"
+  "test_file": "tests/test_pv7_w17_6d_chelated_kernel_sdk.py",
+  "evidence_tier": "local-drycheck-pass",
+  "evidence_disclosure": {
+    "scope": "Local deterministic smoke of the SDK cold-start gate (36/36 sessions); gate_report.json records mode=local-drycheck, execution=deterministic-local-smoke, live_model_calls=0.",
+    "synthetic": "Family names are labels on deterministic fixtures, not live models.",
+    "tuning": "Pass rule is preregistered; the Wilson upper bound 0.0964 is an uncertainty interval on 0/36 failures, not a measured failure rate.",
+    "sla": "No latency or SLA claim.",
+    "label_deviation": "Orchestrator label map listed #49 as live-pass; the committed evidence is a local drycheck with zero live model calls, so the tier is local-drycheck-pass."
+  }
 }

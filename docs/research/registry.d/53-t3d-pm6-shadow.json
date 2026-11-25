@@ -29,5 +29,14 @@
       "local_drycheck": "CPU scratch benign families through ClosedLoopStreamGate with a one-way shadow copy.",
       "run_live_shadow": "Requires a manifest path, refuses protected names before opening, and does not invent a live gateway result."
     }
+  },
+  "evidence_tier": "live-shadow-pass",
+  "evidence_disclosure": {
+    "scope": "Observational run-live-shadow manifest (100 families, 100 byte-identical, 0 shadow flags) replayed from a committed public-domain shadow input.",
+    "observational": "claim_level=observational-manifest; live_pm6_gateway_executed=false and report_emitted=false: the PM6 gateway itself was NOT executed, so this is not a live gateway pass.",
+    "synthetic": "Public-domain shadow input; family and domain names are labels on that fixture.",
+    "tuning": "No tuning; zero shadow flags is an observation, not a powered equivalence test.",
+    "sla": "No latency or SLA claim.",
+    "label_deviation": "Tier live-shadow-pass is kept per the label map but scoped strictly as observational; it must not be cited as a live PM6 gateway pass."
   }
 }

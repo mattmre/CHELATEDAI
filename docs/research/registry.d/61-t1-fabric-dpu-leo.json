@@ -54,5 +54,15 @@
       "TLS flow features in the public CESNET-TLS / CIC-IDS schema",
       "two-line element sets propagated two-body Keplerian"
     ]
+  },
+  "evidence_tier": "live-pass",
+  "evidence_disclosure": {
+    "scope": "Live-encoder fabric report (mode run-live-encoders) verified by recomputing receipt hashes, scoreboard/schedule digests, 16 gates and outcomes from the committed report.",
+    "emulation": "Software emulation only; no P4/ASIC silicon in the loop and no orbital flight hardware (both flags false).",
+    "encoders": "3 of 5 encoders are live; 2 (enc_d, enc_e) are dry stand-ins (allow_dry_standin=true).",
+    "synthetic": "Authored scenarios and authored arms 3/4; outcomes are informational, not a market comparison.",
+    "tuning": "Gate thresholds are preregistered engine constants.",
+    "sla": "No latency or SLA claim.",
+    "source_drift": "network_orbital_engine.py has changed since the report was generated (reported by the verifier, not a failure)."
   }
 }

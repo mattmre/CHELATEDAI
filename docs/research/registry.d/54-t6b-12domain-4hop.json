@@ -63,5 +63,13 @@
       "local-drycheck",
       "run-live-gpu"
     ]
+  },
+  "evidence_tier": "local-drycheck-pass",
+  "evidence_disclosure": {
+    "scope": "Local drycheck of the 12-domain 4-hop gauntlet.",
+    "synthetic": "Synthetic domain fixtures; domain names are labels.",
+    "tuning": "Preregistered constants; no wild-corpus validation.",
+    "sla": "No latency or SLA claim.",
+    "burn_clean_scope": "local_drycheck_smoke_partial_inventory (confirmatory_eligible=false)."
   }
 }

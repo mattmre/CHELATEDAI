@@ -174,6 +174,7 @@ def execute(
         ledger=ledger,
         ni_margin=PREREGISTERED_NI_MARGIN,
         is_live_confirmatory=False,
+        allow_local_drycheck_smoke=True,  # synthetic CPU drycheck inventory is partial by construction
     )
 
     # 6. Power-sized disjoint corpus (N = 1,024 >= 1,000) one-shot exact Tango 95% LCB vs -0.0500
@@ -194,6 +195,7 @@ def execute(
         ledger=ledger,
         ni_margin=PREREGISTERED_NI_MARGIN,
         is_live_confirmatory=False,
+        allow_local_drycheck_smoke=True,  # synthetic CPU drycheck inventory is partial by construction
     )
 
     registry_after = REGISTRY_PATH.read_bytes()

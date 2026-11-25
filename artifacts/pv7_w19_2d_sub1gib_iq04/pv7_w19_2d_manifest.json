@@ -123,9 +123,24 @@
   "bundle_id": 59,
   "burn": {
     "burn_clean": true,
+    "burn_clean_scope": "local_drycheck_smoke_partial_inventory",
+    "confirmatory_eligible": false,
     "documents_checked": 750,
     "inventory_documents": 85,
     "inventory_queries": 10,
+    "missing_burned_corpora": [
+      "msmarco",
+      "quora",
+      "fiqa",
+      "scidocs",
+      "arguana",
+      "scifact",
+      "nfcorpus",
+      "longmemeval",
+      "locomo",
+      "osv_cve_seeds",
+      "cosqa"
+    ],
     "queries_checked": 200
   },
   "cage": {
@@ -285,5 +300,5 @@
   },
   "tier": "floor",
   "tier_disclosure": "local-drycheck: synthetic deterministic families with a deterministic lexical read path (no LLM reader); mem0/memos arms are labeled offline contract adapters; burn inventory is worktree-local, not the full historical BEIR/LongMemEval/LoCoMo index; INPUT SYMMETRY: every arm ingests the identical Record schema with the ground-truth `derived_from` label stripped (Record.arm_view); only the chelated arm runs lineage inference (surface-text word-3-gram overlap / back-reference cue, scored vs ground truth post hoc), the SQLite C3 challenger is lineage-free by definition (authority+recency) and gets no such pass",
-  "traced_peak_bytes": 3198845
+  "traced_peak_bytes": 3198645
 }

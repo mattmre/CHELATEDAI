@@ -257,6 +257,14 @@ def run_live(args):
             "withdrawals_per_trace": args.withdrawals, "extents_unchanged": immutable,
             "immutable_extent_sha256": immutable_before, "provenance": provenance,
             "sq8_compaction_fraction": args.sq8_compact_fraction,
+            "sq8_journal_codec": sq8.journal_codec,
+            "journal_codec_disclosure": (
+                "Cold-OSD and the SQ8 challenger write the same shared journal record codec (journal_record), "
+                "so live device cost differs by record count, not by record format. Live accounting is in "
+                "512-byte sectors: every fsynced journal record costs at least one sector."
+            ),
+            "journal_records": {name: engine.journal_stats()[0] for name, engine in engines.items()
+                                if name != "qdrant_on_disk"},
             "qdrant_hnsw": {"m": args.qdrant_m, "ef_construct": args.qdrant_ef_construct, "on_disk": True},
             "write_accounting": "512_byte_device_sectors_through_optimizer_and_device_quiescence",
             "cold_osd_write_source": "fsynced_ek5_fence_wal",

@@ -10,6 +10,7 @@ import sys
 import tempfile
 import types
 import unittest
+import warnings
 from pathlib import Path
 from unittest import mock
 
@@ -27,7 +28,11 @@ import chelated_cpu_memory_appliance as iq04  # noqa: E402
 import chelated_ssd_kv_repo_cache as kvc  # noqa: E402
 from chelated_pv7_spine.claim_registry import claim_registry_sha256  # noqa: E402
 from chelated_pv7_spine.fragment_compiler import compile_repo_fragments  # noqa: E402
-from chelated_pv7_spine.tra1_weight_sha_guard import StaleWeightRevisionError  # noqa: E402
+from chelated_pv7_spine.tra1_weight_sha_guard import (  # noqa: E402
+    StaleWeightRevisionError,
+    TRA1StateIdentityContract,
+)
+from ek5_v3_stratified import StratifiedEvidenceStore  # noqa: E402
 
 SPINE_DIGEST = "32693f54e0ce7ad3d401ceb752ae4723b0eee251f6d49b95cdfb26a6201971e9"
 
@@ -191,8 +196,12 @@ class IQ04ApplianceTests(unittest.TestCase):
         inventory = {"documents": ["a" * 64], "queries": ["b" * 64]}
         if importlib.util.find_spec("memos") is not None and importlib.util.find_spec("mem0") is not None:
             self.skipTest("upstream packages installed; live path would run")
-        with self.assertRaises(iq04.LiveAdapterUnavailableError):
-            iq04.run_iq04_experiment(mode="run-live", repo_root=REPO_ROOT, historical_inventory=inventory)
+        # The toy inventory is deliberately partial; the live path keeps the legacy (visible) warning for that and
+        # this test only asserts the missing-upstream fail-closed behaviour, so the warning is scoped out here.
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", message="assert_corpus_unburned admitted a partial", category=DeprecationWarning)
+            with self.assertRaises(iq04.LiveAdapterUnavailableError):
+                iq04.run_iq04_experiment(mode="run-live", repo_root=REPO_ROOT, historical_inventory=inventory)
 
     def test_run_live_requires_inventory(self) -> None:
         with self.assertRaises(iq04.LiveAdapterUnavailableError):
@@ -311,7 +320,8 @@ class IQ04ApplianceTests(unittest.TestCase):
     def test_burn_inventory_must_be_complete(self) -> None:
         records, truth = iq04.build_families(count=8)
         burned = iq04.assert_families_burn_clean(
-            records, truth, {"documents": [iq04.text_fingerprint(records[0].text)], "queries": ["c" * 64]}, REPO_ROOT
+            records, truth, {"documents": [iq04.text_fingerprint(records[0].text)], "queries": ["c" * 64]}, REPO_ROOT,
+            allow_local_drycheck_smoke=True,
         )
         self.assertFalse(burned["burn_clean"])
 
@@ -386,6 +396,114 @@ class SSDKVTests(unittest.TestCase):
     def test_run_live_fails_closed(self) -> None:
         with self.assertRaises(kvc.LiveModeUnavailableError):
             kvc.run_ssd_kv_experiment(mode="run-live")
+
+
+class PersistedKVReloadTests(unittest.TestCase):
+    """B60: a persisted KV/prefix entry with no weight-bound identity must be refused on reload.
+
+    MemT-1.0 (``modeling_memt.py:876``) persists a config + tokenizer + shape identity with no weights, so a
+    fine-tuned model silently reloads stale KV. ``SSDKVCache.reload_persisted`` is the fail-closed reload path.
+    """
+
+    KEY = "ab" * 32
+
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.model = kvc.build_model()
+        self.contract = kvc.contract_for(self.model)
+        self.cache = kvc.SSDKVCache(Path(self._tmp.name) / "kv", self.contract, StratifiedEvidenceStore())
+        self.tokens = np.arange(6, dtype=np.int64)
+        _, kv = self.model.forward(self.tokens)
+        self.cache.put(self.KEY, self.tokens, 0, 6, kv, ["v1"])
+        self.path = self.cache._path(self.KEY)
+        self.kv = kv
+
+    def _rewrite_header(self, mutate) -> None:
+        raw = self.path.read_bytes()
+        head_raw, body = raw.split(b"\n", 1)
+        header = json.loads(head_raw)
+        mutate(header)
+        self.path.write_bytes(json.dumps(header, sort_keys=True).encode() + b"\n" + body)
+
+    def test_positive_control_reload_matches_original_kv(self) -> None:
+        reloaded = self.cache.reload_persisted(self.KEY, self.tokens, self.contract)
+        for (k0, v0), (k1, v1) in zip(self.kv, reloaded):
+            np.testing.assert_array_equal(k0, k1)
+            np.testing.assert_array_equal(v0, v1)
+
+    def test_reload_ignores_in_memory_state(self) -> None:
+        fresh = kvc.SSDKVCache(Path(self._tmp.name) / "kv", self.contract, StratifiedEvidenceStore())
+        self.assertNotIn(self.KEY, fresh.index)
+        self.assertEqual(len(fresh.reload_persisted(self.KEY, self.tokens, self.contract)), kvc.N_LAYERS)
+
+    def test_entry_missing_weight_identity_is_rejected_fail_closed(self) -> None:
+        self._rewrite_header(lambda h: h.pop("contract_digest"))
+        with self.assertRaisesRegex(StaleWeightRevisionError, "config-only identity refused"):
+            self.cache.reload_persisted(self.KEY, self.tokens, self.contract)
+
+    def test_blank_or_non_string_digest_is_rejected(self) -> None:
+        for bad in ("", None, 0, []):
+            self._rewrite_header(lambda h, bad=bad: h.__setitem__("contract_digest", bad))
+            with self.assertRaises(StaleWeightRevisionError, msg=repr(bad)):
+                self.cache.reload_persisted(self.KEY, self.tokens, self.contract)
+
+    def test_missing_or_blank_literal_model_weights_sha256_is_rejected(self) -> None:
+        # A header that declares the literal field must declare it correctly.
+        for bad in ("", None, "0" * 64):
+            self._rewrite_header(lambda h, bad=bad: h.__setitem__("model_weights_sha256", bad))
+            with self.assertRaises(StaleWeightRevisionError, msg=repr(bad)):
+                self.cache.reload_persisted(self.KEY, self.tokens, self.contract)
+        self._rewrite_header(lambda h: h.__setitem__("model_weights_sha256", self.contract.base_weights_sha256))
+        self.assertEqual(len(self.cache.reload_persisted(self.KEY, self.tokens, self.contract)), kvc.N_LAYERS)
+
+    def test_patched_weights_and_adapter_revisions_are_rejected_on_reload(self) -> None:
+        for other in (self.model.patched_base(), self.model.with_adapter(77)):
+            with self.assertRaises(StaleWeightRevisionError):
+                self.cache.reload_persisted(self.KEY, self.tokens, kvc.contract_for(other))
+
+    def test_config_only_identity_cannot_stand_in_for_the_contract(self) -> None:
+        memt_identity = kvc.config_only_state_identity(
+            kvc.CONFIG_SHA256, kvc.TOKENIZER_SHA256, (kvc.N_LAYERS, kvc.D_MODEL)
+        )
+        self._rewrite_header(lambda h: h.__setitem__("contract_digest", memt_identity))
+        with self.assertRaises(StaleWeightRevisionError):
+            self.cache.reload_persisted(self.KEY, self.tokens, self.contract)
+
+    def test_prefix_dtype_shape_and_truncation_are_rejected(self) -> None:
+        with self.assertRaises(StaleWeightRevisionError):
+            self.cache.reload_persisted(self.KEY, self.tokens + 1, self.contract)
+        self._rewrite_header(lambda h: h.__setitem__("kv_dtype", "float16"))
+        with self.assertRaises(StaleWeightRevisionError):
+            self.cache.reload_persisted(self.KEY, self.tokens, self.contract)
+        self._rewrite_header(lambda h: h.__setitem__("kv_dtype", kvc.KV_DTYPE))
+        self.path.write_bytes(self.path.read_bytes()[:-8])
+        with self.assertRaises(StaleWeightRevisionError):
+            self.cache.reload_persisted(self.KEY, self.tokens, self.contract)
+
+    def test_missing_unreadable_and_non_object_headers_are_rejected(self) -> None:
+        with self.assertRaises(StaleWeightRevisionError):
+            self.cache.reload_persisted("cd" * 32, self.tokens, self.contract)
+        self.path.write_bytes(b"not-json\nxx")
+        with self.assertRaises(StaleWeightRevisionError):
+            self.cache.reload_persisted(self.KEY, self.tokens, self.contract)
+        self.path.write_bytes(b"[1,2]\nxx")
+        with self.assertRaises(StaleWeightRevisionError):
+            self.cache.reload_persisted(self.KEY, self.tokens, self.contract)
+        with self.assertRaises(StaleWeightRevisionError):
+            self.cache.reload_persisted(self.KEY, self.tokens, object())  # type: ignore[arg-type]
+
+    def test_blank_weights_sha_cannot_build_a_contract(self) -> None:
+        with self.assertRaises(StaleWeightRevisionError):
+            TRA1StateIdentityContract(
+                base_weights_sha256="",
+                adapter_weights_sha256=self.contract.adapter_weights_sha256,
+                config_sha256=self.contract.config_sha256,
+                tokenizer_sha256=self.contract.tokenizer_sha256,
+                kv_or_state_dtype=kvc.KV_DTYPE,
+                rope_freq_base=1000.0,
+                rope_scaling_hash=self.contract.rope_scaling_hash,
+            )
 
 
 class RunnerTests(unittest.TestCase):

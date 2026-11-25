@@ -496,6 +496,9 @@ def ingest_beam_128k_conversations(
             query_texts=query_texts,
             historical_fingerprints=historical_fingerprints,
             ledger=active_ledger,
+            # Only the deterministic schema drycheck (no source_path) may be admitted as non-confirmatory smoke;
+            # a live caller leaves the flag unset so a partial inventory stays visible (DeprecationWarning).
+            allow_local_drycheck_smoke=True if source_path is None else None,
         )
         burn_verified = True
 

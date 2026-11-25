@@ -30,5 +30,13 @@
       "local-drycheck",
       "run-live-gpu"
     ]
+  },
+  "evidence_tier": "local-drycheck-pass",
+  "evidence_disclosure": {
+    "scope": "Local drycheck of the 128k beam-memory replay.",
+    "synthetic": "Synthetic replay fixtures; token_length_est near 131072 is a label on a fixture, not a measured 128k-token run.",
+    "tuning": "Preregistered constants; no wild-corpus validation.",
+    "sla": "No latency or SLA claim.",
+    "burn_clean_scope": "local_drycheck_smoke_partial_inventory (confirmatory_eligible=false)."
   }
 }

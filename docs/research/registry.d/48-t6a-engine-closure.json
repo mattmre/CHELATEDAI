@@ -31,5 +31,13 @@
     "semantic_diffs": 0,
     "reason_export_diffs": 0,
     "pos_cyc_export_diffs": 0
+  },
+  "evidence_tier": "live-pass",
+  "evidence_disclosure": {
+    "scope": "Live run against three real engines (qdrant, opensearch, pgvector) on a deterministic synthetic fixture; 48_verifier recomputes hashes and per-cell pass flags from the committed receipt without contacting any server.",
+    "synthetic": "Fixture pv7-b48-synthetic-gaussian-v1 (12000 x 128 Gaussian, 10000 queries, fixed seed); is_wild_corpus is false. Not a wild-corpus or production-distribution result.",
+    "tuning": "recall/p95 limits (recall gap and 35 ms p95) are preregistered constants; engine index parameters were not swept per engine.",
+    "sla": "Recorded latencies are from one host and one run and are only range-checked offline; the verifier cannot reproduce them.",
+    "not_verified": "Server-side behaviour at scale, other engines/versions, and wild data."
   }
 }

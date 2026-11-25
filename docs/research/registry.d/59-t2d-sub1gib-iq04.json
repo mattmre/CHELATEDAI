@@ -46,5 +46,13 @@
       "local-drycheck": "labeled memos_offline_contract_adapter and mem0_offline_contract_adapter only"
     },
     "burn_ledger": "text fingerprints checked against a complete historical inventory (worktree-local in drycheck; operator supplied in run-live)"
+  },
+  "evidence_tier": "local-drycheck-pass",
+  "evidence_disclosure": {
+    "scope": "Local drycheck of the sub-1GiB IQ04 appliance.",
+    "burn_clean_scope": "local_drycheck_smoke_partial_inventory (confirmatory_eligible=false); regenerated receipts now record this scope.",
+    "synthetic": "Synthetic fixtures only.",
+    "tuning": "Preregistered constants; traced_peak_bytes varies run to run.",
+    "sla": "No latency or SLA claim."
   }
 }

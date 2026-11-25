@@ -609,22 +609,30 @@ def assert_families_burn_clean(
     truth: Mapping[str, Mapping[str, Any]],
     inventory: Mapping[str, Sequence[str]],
     repo_root: Path,
+    allow_local_drycheck_smoke: Optional[bool] = None,
 ) -> Dict[str, Any]:
     ledger = build_burn_ledger(repo_root)
     doc_texts = [r.text for r in records]
     query_texts = [family_query(t["entity"]) for t in truth.values()]
     try:
-        assert_corpus_unburned(
+        admission = assert_corpus_unburned(
             "iq04_synthetic_source_families_v1",
             doc_texts,
             query_texts,
             historical_fingerprints={"documents": list(inventory["documents"]), "queries": list(inventory["queries"])},
             ledger=ledger,
+            allow_local_drycheck_smoke=allow_local_drycheck_smoke,
         )
     except BurnedCorpusError as exc:
         return {"burn_clean": False, "detail": str(exc)}
+    smoke = not admission["confirmatory_eligible"]
     return {
         "burn_clean": True,
+        # "burn_clean" here means: no exact-text collision against the inventory that was supplied. When that
+        # inventory is partial the receipt says so explicitly instead of letting `burn_clean` read as complete.
+        "burn_clean_scope": "local_drycheck_smoke_partial_inventory" if smoke else "complete_historical_inventory",
+        "confirmatory_eligible": bool(admission["confirmatory_eligible"]),
+        "missing_burned_corpora": list(admission["missing_burned_corpora"]),
         "documents_checked": len(doc_texts),
         "queries_checked": len(query_texts),
         "inventory_documents": len(inventory["documents"]),
@@ -662,7 +670,9 @@ def run_iq04_experiment(
     inventory = historical_inventory if historical_inventory is not None else worktree_local_inventory(root)
 
     records, truth = build_families(seed, family_count)
-    burn = assert_families_burn_clean(records, truth, inventory, root)
+    burn = assert_families_burn_clean(
+        records, truth, inventory, root, allow_local_drycheck_smoke=True if mode == "local-drycheck" else None
+    )
     budget = SymmetricBudget()
 
     tracemalloc.start()

@@ -146,6 +146,7 @@ class TestBundle50Item3AZeroWriteNI(unittest.TestCase):
                 sizing_plan=sizing,
                 historical_fingerprints=_baseline_hist_fps(),
                 ledger=ledger,
+                allow_local_drycheck_smoke=True,
             )
 
         # Exact SHA-256 text collision under an innocent corpus label must also fail closed
@@ -162,6 +163,7 @@ class TestBundle50Item3AZeroWriteNI(unittest.TestCase):
                 sizing_plan=sizing,
                 historical_fingerprints=_baseline_hist_fps(),
                 ledger=ledger,
+                allow_local_drycheck_smoke=True,
             )
 
     def test_underpowered_pool_emits_underpowered_and_refuses_margin_loosening(self):
@@ -177,6 +179,7 @@ class TestBundle50Item3AZeroWriteNI(unittest.TestCase):
             sizing_plan=sizing,
             historical_fingerprints=_baseline_hist_fps(),
             ledger=ledger,
+            allow_local_drycheck_smoke=True,
         )
         self.assertEqual(report["status"], "underpowered")
         self.assertTrue(report["underpowered"])
@@ -195,6 +198,7 @@ class TestBundle50Item3AZeroWriteNI(unittest.TestCase):
                 sizing_plan=sizing,
                 historical_fingerprints=_baseline_hist_fps(),
                 ledger=ledger,
+                allow_local_drycheck_smoke=True,
                 ni_margin=-0.0600,
             )
 
@@ -282,7 +286,9 @@ class TestBundle54Item6B12Domain4HopGauntlet(unittest.TestCase):
             seed=5400, n_docs_per_domain=40, n_queries_per_domain=12, encoder_dims=(16, 16, 20, 24, 28)
         )
         ledger = build_burn_ledger(REPO_ROOT)
-        receipt = verify_12_domains_unburned(bundles, historical_fingerprints=_baseline_hist_fps(), ledger=ledger)
+        receipt = verify_12_domains_unburned(
+            bundles, historical_fingerprints=_baseline_hist_fps(), ledger=ledger, allow_local_drycheck_smoke=True
+        )
         self.assertTrue(receipt["all_12_unburned"])
         self.assertEqual(receipt["n_domains_verified"], 12)
 
@@ -297,6 +303,7 @@ class TestBundle54Item6B12Domain4HopGauntlet(unittest.TestCase):
                 tampered,
                 historical_fingerprints=_baseline_hist_fps(),
                 ledger=ledger,
+                allow_local_drycheck_smoke=True,
                 n_anchor_draws=2,
                 anchors_per_draw=20,
                 poisoning_rates=(0.0, 0.10),

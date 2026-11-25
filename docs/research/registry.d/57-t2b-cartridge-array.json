@@ -30,5 +30,13 @@
       "local-drycheck": "floor: synthetic .cspg payloads, page-cache-warm bandwidth tier on Windows, no cgroup enforcement",
       "run-live": "fail-closed: requires a cgroup-enforced host"
     }
+  },
+  "evidence_tier": "live-pass",
+  "evidence_disclosure": {
+    "scope": "Live cartridge-array run on a Linux cgroup host (6 GiB memory cage, swap 0); 57_verifier recomputes manifest/deterministic hashes, gate set and the zero-event Clopper-Pearson bound from the committed receipt.",
+    "tier_note": "Physical cold-read tier as disclosed in the manifest (tier_disclosure); catalog of 1000 entries with 250 materialised payloads.",
+    "synthetic": "Cartridge payloads and the revocation race workload are synthetic.",
+    "tuning": "Race trial count (300) and the cage size are preregistered; the unguarded control shows the race is real.",
+    "sla": "Swap/first-inference times and cgroup facts are recorded measurements range-checked only; not reproducible off the Spark host."
   }
 }

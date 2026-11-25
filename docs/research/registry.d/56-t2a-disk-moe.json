@@ -45,5 +45,13 @@
         "holdout": "JSONL objects with id, suite, prompt and reference"
       }
     }
+  },
+  "evidence_tier": "local-drycheck-pass",
+  "evidence_disclosure": {
+    "scope": "Local drycheck of the disk-resident MoE appliance.",
+    "ledger_admission": "The drycheck performs NO ledger admission: burn_clean_scope is local_drycheck_smoke_partial_inventory and nothing here is a confirmatory burn-ledger claim.",
+    "synthetic": "Synthetic fixtures only.",
+    "tuning": "Preregistered constants; no wild-corpus validation.",
+    "sla": "No latency or SLA claim."
   }
 }

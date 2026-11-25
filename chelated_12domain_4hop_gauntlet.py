@@ -315,8 +315,13 @@ def verify_12_domains_unburned(
     *,
     historical_fingerprints: Mapping[str, Sequence[str]],
     ledger: Optional[BurnLedger] = None,
+    allow_local_drycheck_smoke: Optional[bool] = None,
 ) -> Dict[str, Any]:
-    """Fail-closed `burn_ledger` + document/query SHA-256 overlap verification BEFORE any scoring."""
+    """Fail-closed `burn_ledger` + document/query SHA-256 overlap verification BEFORE any scoring.
+
+    ``allow_local_drycheck_smoke=True`` is for the CPU local-drycheck only: it admits a partial historical
+    inventory as ``local_drycheck_smoke`` (never confirmatory-eligible). Live callers leave it ``None``.
+    """
     expected_ids = [d.domain_id for d in LOCKED_12_DOMAINS]
     provided_ids = [b.descriptor.domain_id for b in domain_bundles]
     if provided_ids != expected_ids:
@@ -340,6 +345,7 @@ def verify_12_domains_unburned(
             query_texts=bundle.query_texts,
             historical_fingerprints=historical_fingerprints,
             ledger=active_ledger,
+            allow_local_drycheck_smoke=allow_local_drycheck_smoke,
         )
         # Check cross-domain document SHA-256 disjointness as well
         dom_doc_fps = [text_fingerprint(t) for t in bundle.doc_texts]
@@ -532,6 +538,7 @@ def run_12domain_4hop_gauntlet(
     weight_paths: Optional[Sequence[str]] = None,
     provenance_manifest: Optional[Mapping[str, Any]] = None,
     holm_family_p_values: Optional[Mapping[str, float]] = None,
+    allow_local_drycheck_smoke: Optional[bool] = None,
 ) -> Dict[str, Any]:
     """Execute the full zero-retune 12-domain, 5-encoder/4-hop, shift & poisoning gauntlet.
 
@@ -539,7 +546,10 @@ def run_12domain_4hop_gauntlet(
     """
     # 0. Pre-scoring mechanical burn_ledger + SHA-256 gate
     burn_receipt = verify_12_domains_unburned(
-        domain_bundles, historical_fingerprints=historical_fingerprints, ledger=ledger
+        domain_bundles,
+        historical_fingerprints=historical_fingerprints,
+        ledger=ledger,
+        allow_local_drycheck_smoke=allow_local_drycheck_smoke,
     )
 
     csls_merger = CSLSMerge(csls_k=DEFAULT_CSLS_K)

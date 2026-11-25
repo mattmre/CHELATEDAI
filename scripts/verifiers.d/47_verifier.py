@@ -49,7 +49,25 @@ def verify_bundle(repo_root: Path | str | None = None) -> dict:
     aa_receipt = run_deterministic_drycheck()
     aa_ok = bool(aa_receipt["passed"]) and verify_aa_calibration_receipt(aa_receipt)
 
-    passed = digest_ok and fragments_ok and not burned_missing and aa_ok
+    host_cal_rels = (
+        "artifacts/pv7_w16_core_spine/aa_null_calibration_desktop_rtx3090.json",
+        "artifacts/pv7_w16_core_spine/aa_null_calibration_spark3_gb10.json",
+    )
+    host_cal_checks = {}
+    host_cals_ok = True
+    for rel in host_cal_rels:
+        p = root / rel
+        if p.is_file():
+            doc = json.loads(p.read_text(encoding="utf-8"))
+            ok_doc = bool(doc.get("passed")) and verify_aa_calibration_receipt(doc)
+            host_cal_checks[rel] = {
+                "passed": ok_doc,
+                "host_id": doc.get("host_id"),
+                "receipt_sha256": doc.get("receipt_sha256"),
+            }
+            host_cals_ok = host_cals_ok and ok_doc
+
+    passed = digest_ok and fragments_ok and not burned_missing and aa_ok and host_cals_ok
     return {
         "bundle_id": BUNDLE_ID,
         "passed": passed,
@@ -71,6 +89,7 @@ def verify_bundle(repo_root: Path | str | None = None) -> dict:
                 name: metric["inflation_p_value"] for name, metric in aa_receipt["metrics"].items()
             },
         },
+        "committed_host_calibrations": host_cal_checks,
     }
 
 

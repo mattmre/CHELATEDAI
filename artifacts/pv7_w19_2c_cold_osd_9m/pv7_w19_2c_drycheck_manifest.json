@@ -1,47 +1,131 @@
 {
+  "bundle_outcome": "verified-mixed",
+  "codec_symmetry": {
+    "gating_row": "shared_symmetric_codec",
+    "journal_codec_module": "chelated_cold_osd_scanner.journal_record",
+    "open_write_bytes": {
+      "as_built_asymmetric": 0,
+      "cold_osd": 8,
+      "matched_ivf_sq8": 8,
+      "no_durability_floor": 0
+    },
+    "record_format": "kind:1 | epoch:u64 | count:u32 | ids:u32[count] | crc32; ids only on W; 8-byte EK5FWAL1 header charged by the creating process on both arms",
+    "rows": {
+      "as_built_asymmetric": {
+        "clustered": {
+          "matched_recall": true,
+          "outcome": "win",
+          "passed": true,
+          "saved_bytes_lcb95": 20136.0,
+          "write_bytes_saved": 22503,
+          "zero_sampling_variance": false,
+          "zero_stale_resurrection": true
+        },
+        "scattered": {
+          "matched_recall": true,
+          "outcome": "win",
+          "passed": true,
+          "saved_bytes_lcb95": 1200.0,
+          "write_bytes_saved": 1200,
+          "zero_sampling_variance": true,
+          "zero_stale_resurrection": true
+        }
+      },
+      "no_durability_floor": {
+        "clustered": {
+          "matched_recall": true,
+          "outcome": "win",
+          "passed": true,
+          "saved_bytes_lcb95": 16680.0,
+          "write_bytes_saved": 18855,
+          "zero_sampling_variance": false,
+          "zero_stale_resurrection": true
+        },
+        "scattered": {
+          "matched_recall": true,
+          "outcome": "loss",
+          "passed": false,
+          "saved_bytes_lcb95": -720.0,
+          "write_bytes_saved": -720,
+          "zero_sampling_variance": true,
+          "zero_stale_resurrection": true
+        }
+      },
+      "shared_symmetric_codec": {
+        "clustered": {
+          "matched_recall": true,
+          "outcome": "win",
+          "passed": true,
+          "saved_bytes_lcb95": 17688.0,
+          "write_bytes_saved": 19899,
+          "zero_sampling_variance": false,
+          "zero_stale_resurrection": true
+        },
+        "scattered": {
+          "matched_recall": true,
+          "outcome": "tie",
+          "passed": false,
+          "saved_bytes_lcb95": 0.0,
+          "write_bytes_saved": 0,
+          "zero_sampling_variance": true,
+          "zero_stale_resurrection": true
+        }
+      }
+    },
+    "sq8_journal_replay": {
+      "durable_bytes": 6347,
+      "epoch": 147,
+      "records_match_counter": true,
+      "records_replayed": 147,
+      "torn_tail_bytes": 0,
+      "verifiable": true
+    }
+  },
   "cold_osd_write_source": "fsynced_ek5_fence_wal",
   "comparisons": {
     "matched_ivf_sq8": {
       "clustered": {
         "lcb_method": {
           "bootstrap": "percentile_one_sided_95",
+          "label": "paired percentile bootstrap LCB95",
           "pairs": 30,
           "resamples": 10000,
           "seed": 58,
-          "statistic": "sum_of_paired_saved_bytes"
+          "statistic": "sum_of_paired_saved_bytes",
+          "zero_sampling_variance": false
         },
         "matched_recall": true,
         "paired_write_bytes_saved": [
-          40,
-          829,
-          829,
-          40,
-          829,
-          829,
-          829,
-          829,
-          829,
-          829,
-          829,
-          829,
-          829,
-          829,
-          829,
-          829,
-          829,
-          829,
-          829,
-          829,
-          829,
-          829,
-          829,
-          829,
-          829,
-          829,
-          829,
-          829,
-          829,
-          40
+          0,
+          737,
+          737,
+          0,
+          737,
+          737,
+          737,
+          737,
+          737,
+          737,
+          737,
+          737,
+          737,
+          737,
+          737,
+          737,
+          737,
+          737,
+          737,
+          737,
+          737,
+          737,
+          737,
+          737,
+          737,
+          737,
+          737,
+          737,
+          737,
+          0
         ],
         "passed": true,
         "recall_at_10_gaps": {
@@ -50,60 +134,62 @@
           "withdraw_immediate": 0.0,
           "withdraw_quiet": 0.0
         },
-        "saved_bytes_lcb95": 20136.0,
-        "write_bytes_saved": 22503,
+        "saved_bytes_lcb95": 17688.0,
+        "write_bytes_saved": 19899,
         "zero_stale_resurrection": true
       },
       "scattered": {
         "lcb_method": {
           "bootstrap": "percentile_one_sided_95",
+          "label": "deterministic margin, no sampling variance (LCB95 equals the point estimate)",
           "pairs": 30,
           "resamples": 10000,
           "seed": 58,
-          "statistic": "sum_of_paired_saved_bytes"
+          "statistic": "sum_of_paired_saved_bytes",
+          "zero_sampling_variance": true
         },
         "matched_recall": true,
         "paired_write_bytes_saved": [
-          40,
-          40,
-          40,
-          40,
-          40,
-          40,
-          40,
-          40,
-          40,
-          40,
-          40,
-          40,
-          40,
-          40,
-          40,
-          40,
-          40,
-          40,
-          40,
-          40,
-          40,
-          40,
-          40,
-          40,
-          40,
-          40,
-          40,
-          40,
-          40,
-          40
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
         ],
-        "passed": true,
+        "passed": false,
         "recall_at_10_gaps": {
           "reinstate_immediate": 0.0,
           "reinstate_quiet": 0.0,
           "withdraw_immediate": 0.0,
           "withdraw_quiet": 0.0
         },
-        "saved_bytes_lcb95": 1200.0,
-        "write_bytes_saved": 1200,
+        "saved_bytes_lcb95": 0.0,
+        "write_bytes_saved": 0,
         "zero_stale_resurrection": true
       }
     }
@@ -124,9 +210,84 @@
     "records_replayed": 120,
     "torn_tail_bytes": 0
   },
+  "gate": {
+    "layout": "clustered",
+    "passed": true,
+    "rows": [
+      "shared_symmetric_codec",
+      "no_durability_floor"
+    ]
+  },
   "immutable_extent_sha256": "bfdbac421b10e151a1abf8a9503ee8c7e9375f0f3d342812f2ad68f58b6a4a2f",
   "mode": "local-drycheck",
   "passed": true,
+  "scattered_layout_disclosure": {
+    "gated": false,
+    "per_codec_row": {
+      "as_built_asymmetric": {
+        "outcome": "win",
+        "saved_bytes_lcb95": 1200.0,
+        "write_bytes_saved": 1200
+      },
+      "no_durability_floor": {
+        "outcome": "loss",
+        "saved_bytes_lcb95": -720.0,
+        "write_bytes_saved": -720
+      },
+      "shared_symmetric_codec": {
+        "outcome": "tie",
+        "saved_bytes_lcb95": 0.0,
+        "write_bytes_saved": 0
+      }
+    },
+    "statement": "Scattered layout is recorded, not gated: write_bytes_saved is 0 B under shared_symmetric_codec, 1200 B under as_built_asymmetric, -720 B under no_durability_floor; a negative value is a verified loss to the challenger and zero is a tie."
+  },
+  "sector_quantization_disclosure": {
+    "journal_rows": {
+      "as_built_asymmetric": {
+        "clustered": {
+          "journal_records": 87,
+          "journal_sector_bytes": 44544
+        },
+        "scattered": {
+          "journal_records": 60,
+          "journal_sector_bytes": 30720
+        }
+      },
+      "cold_osd": {
+        "clustered": {
+          "journal_records": 60,
+          "journal_sector_bytes": 30720
+        },
+        "scattered": {
+          "journal_records": 60,
+          "journal_sector_bytes": 30720
+        }
+      },
+      "no_durability_floor": {
+        "clustered": {
+          "journal_records": 87,
+          "journal_sector_bytes": 44544
+        },
+        "scattered": {
+          "journal_records": 60,
+          "journal_sector_bytes": 30720
+        }
+      },
+      "shared_symmetric_codec": {
+        "clustered": {
+          "journal_records": 87,
+          "journal_sector_bytes": 44544
+        },
+        "scattered": {
+          "journal_records": 60,
+          "journal_sector_bytes": 30720
+        }
+      }
+    },
+    "note": "Live mode accounts writes in 512-byte device sectors, so every fsynced journal record is charged at least one whole sector; the per-record byte differences that decide the drycheck scattered margin are quantised away and the live journal cost is decided by record count. Drycheck byte margins must not be extrapolated to live.",
+    "unit": "512_byte_device_sectors"
+  },
   "sidecar_bytes": 1920,
   "summaries": {
     "cold_osd": {
@@ -157,6 +318,8 @@
             "stale_resurrections": 0
           }
         },
+        "journal_records": 60,
+        "journal_sector_bytes": 30720,
         "per_pair_total_write_bytes": [
           98,
           98,
@@ -221,6 +384,8 @@
             "stale_resurrections": 0
           }
         },
+        "journal_records": 60,
+        "journal_sector_bytes": 30720,
         "per_pair_total_write_bytes": [
           98,
           98,
@@ -287,6 +452,142 @@
             "stale_resurrections": 0
           }
         },
+        "journal_records": 87,
+        "journal_sector_bytes": 44544,
+        "per_pair_total_write_bytes": [
+          98,
+          835,
+          835,
+          98,
+          835,
+          835,
+          835,
+          835,
+          835,
+          835,
+          835,
+          835,
+          835,
+          835,
+          835,
+          835,
+          835,
+          835,
+          835,
+          835,
+          835,
+          835,
+          835,
+          835,
+          835,
+          835,
+          835,
+          835,
+          835,
+          98
+        ],
+        "reinstate_write_bytes": 5562,
+        "total_write_bytes": 22839,
+        "visibility_passed": true,
+        "withdraw_write_bytes": 17277
+      },
+      "scattered": {
+        "checkpoints": {
+          "reinstate_immediate": {
+            "recall_at_10": 1.0,
+            "returned": 1200,
+            "stale_rate": 0.0,
+            "stale_resurrections": 0
+          },
+          "reinstate_quiet": {
+            "recall_at_10": 1.0,
+            "returned": 1200,
+            "stale_rate": 0.0,
+            "stale_resurrections": 0
+          },
+          "withdraw_immediate": {
+            "recall_at_10": 1.0,
+            "returned": 1200,
+            "stale_rate": 0.0,
+            "stale_resurrections": 0
+          },
+          "withdraw_quiet": {
+            "recall_at_10": 1.0,
+            "returned": 1200,
+            "stale_rate": 0.0,
+            "stale_resurrections": 0
+          }
+        },
+        "journal_records": 60,
+        "journal_sector_bytes": 30720,
+        "per_pair_total_write_bytes": [
+          98,
+          98,
+          98,
+          98,
+          98,
+          98,
+          98,
+          98,
+          98,
+          98,
+          98,
+          98,
+          98,
+          98,
+          98,
+          98,
+          98,
+          98,
+          98,
+          98,
+          98,
+          98,
+          98,
+          98,
+          98,
+          98,
+          98,
+          98,
+          98,
+          98
+        ],
+        "reinstate_write_bytes": 510,
+        "total_write_bytes": 2940,
+        "visibility_passed": true,
+        "withdraw_write_bytes": 2430
+      }
+    },
+    "matched_ivf_sq8[as_built_asymmetric]": {
+      "clustered": {
+        "checkpoints": {
+          "reinstate_immediate": {
+            "recall_at_10": 1.0,
+            "returned": 1200,
+            "stale_rate": 0.0,
+            "stale_resurrections": 0
+          },
+          "reinstate_quiet": {
+            "recall_at_10": 1.0,
+            "returned": 1200,
+            "stale_rate": 0.0,
+            "stale_resurrections": 0
+          },
+          "withdraw_immediate": {
+            "recall_at_10": 1.0,
+            "returned": 1200,
+            "stale_rate": 0.0,
+            "stale_resurrections": 0
+          },
+          "withdraw_quiet": {
+            "recall_at_10": 1.0,
+            "returned": 1200,
+            "stale_rate": 0.0,
+            "stale_resurrections": 0
+          }
+        },
+        "journal_records": 87,
+        "journal_sector_bytes": 44544,
         "per_pair_total_write_bytes": [
           138,
           927,
@@ -351,6 +652,8 @@
             "stale_resurrections": 0
           }
         },
+        "journal_records": 60,
+        "journal_sector_bytes": 30720,
         "per_pair_total_write_bytes": [
           138,
           138,
@@ -388,8 +691,366 @@
         "visibility_passed": true,
         "withdraw_write_bytes": 2070
       }
+    },
+    "matched_ivf_sq8[no_durability_floor]": {
+      "clustered": {
+        "checkpoints": {
+          "reinstate_immediate": {
+            "recall_at_10": 1.0,
+            "returned": 1200,
+            "stale_rate": 0.0,
+            "stale_resurrections": 0
+          },
+          "reinstate_quiet": {
+            "recall_at_10": 1.0,
+            "returned": 1200,
+            "stale_rate": 0.0,
+            "stale_resurrections": 0
+          },
+          "withdraw_immediate": {
+            "recall_at_10": 1.0,
+            "returned": 1200,
+            "stale_rate": 0.0,
+            "stale_resurrections": 0
+          },
+          "withdraw_quiet": {
+            "recall_at_10": 1.0,
+            "returned": 1200,
+            "stale_rate": 0.0,
+            "stale_resurrections": 0
+          }
+        },
+        "journal_records": 87,
+        "journal_sector_bytes": 44544,
+        "per_pair_total_write_bytes": [
+          74,
+          799,
+          799,
+          74,
+          799,
+          799,
+          799,
+          799,
+          799,
+          799,
+          799,
+          799,
+          799,
+          799,
+          799,
+          799,
+          799,
+          799,
+          799,
+          799,
+          799,
+          799,
+          799,
+          799,
+          799,
+          799,
+          799,
+          799,
+          799,
+          74
+        ],
+        "reinstate_write_bytes": 5202,
+        "total_write_bytes": 21795,
+        "visibility_passed": true,
+        "withdraw_write_bytes": 16593
+      },
+      "scattered": {
+        "checkpoints": {
+          "reinstate_immediate": {
+            "recall_at_10": 1.0,
+            "returned": 1200,
+            "stale_rate": 0.0,
+            "stale_resurrections": 0
+          },
+          "reinstate_quiet": {
+            "recall_at_10": 1.0,
+            "returned": 1200,
+            "stale_rate": 0.0,
+            "stale_resurrections": 0
+          },
+          "withdraw_immediate": {
+            "recall_at_10": 1.0,
+            "returned": 1200,
+            "stale_rate": 0.0,
+            "stale_resurrections": 0
+          },
+          "withdraw_quiet": {
+            "recall_at_10": 1.0,
+            "returned": 1200,
+            "stale_rate": 0.0,
+            "stale_resurrections": 0
+          }
+        },
+        "journal_records": 60,
+        "journal_sector_bytes": 30720,
+        "per_pair_total_write_bytes": [
+          74,
+          74,
+          74,
+          74,
+          74,
+          74,
+          74,
+          74,
+          74,
+          74,
+          74,
+          74,
+          74,
+          74,
+          74,
+          74,
+          74,
+          74,
+          74,
+          74,
+          74,
+          74,
+          74,
+          74,
+          74,
+          74,
+          74,
+          74,
+          74,
+          74
+        ],
+        "reinstate_write_bytes": 150,
+        "total_write_bytes": 2220,
+        "visibility_passed": true,
+        "withdraw_write_bytes": 2070
+      }
     }
   },
+  "supplementary_comparisons": {
+    "as_built_asymmetric": {
+      "clustered": {
+        "lcb_method": {
+          "bootstrap": "percentile_one_sided_95",
+          "label": "paired percentile bootstrap LCB95",
+          "pairs": 30,
+          "resamples": 10000,
+          "seed": 58,
+          "statistic": "sum_of_paired_saved_bytes",
+          "zero_sampling_variance": false
+        },
+        "matched_recall": true,
+        "paired_write_bytes_saved": [
+          40,
+          829,
+          829,
+          40,
+          829,
+          829,
+          829,
+          829,
+          829,
+          829,
+          829,
+          829,
+          829,
+          829,
+          829,
+          829,
+          829,
+          829,
+          829,
+          829,
+          829,
+          829,
+          829,
+          829,
+          829,
+          829,
+          829,
+          829,
+          829,
+          40
+        ],
+        "passed": true,
+        "recall_at_10_gaps": {
+          "reinstate_immediate": 0.0,
+          "reinstate_quiet": 0.0,
+          "withdraw_immediate": 0.0,
+          "withdraw_quiet": 0.0
+        },
+        "saved_bytes_lcb95": 20136.0,
+        "write_bytes_saved": 22503,
+        "zero_stale_resurrection": true
+      },
+      "scattered": {
+        "lcb_method": {
+          "bootstrap": "percentile_one_sided_95",
+          "label": "deterministic margin, no sampling variance (LCB95 equals the point estimate)",
+          "pairs": 30,
+          "resamples": 10000,
+          "seed": 58,
+          "statistic": "sum_of_paired_saved_bytes",
+          "zero_sampling_variance": true
+        },
+        "matched_recall": true,
+        "paired_write_bytes_saved": [
+          40,
+          40,
+          40,
+          40,
+          40,
+          40,
+          40,
+          40,
+          40,
+          40,
+          40,
+          40,
+          40,
+          40,
+          40,
+          40,
+          40,
+          40,
+          40,
+          40,
+          40,
+          40,
+          40,
+          40,
+          40,
+          40,
+          40,
+          40,
+          40,
+          40
+        ],
+        "passed": true,
+        "recall_at_10_gaps": {
+          "reinstate_immediate": 0.0,
+          "reinstate_quiet": 0.0,
+          "withdraw_immediate": 0.0,
+          "withdraw_quiet": 0.0
+        },
+        "saved_bytes_lcb95": 1200.0,
+        "write_bytes_saved": 1200,
+        "zero_stale_resurrection": true
+      }
+    },
+    "no_durability_floor": {
+      "clustered": {
+        "lcb_method": {
+          "bootstrap": "percentile_one_sided_95",
+          "label": "paired percentile bootstrap LCB95",
+          "pairs": 30,
+          "resamples": 10000,
+          "seed": 58,
+          "statistic": "sum_of_paired_saved_bytes",
+          "zero_sampling_variance": false
+        },
+        "matched_recall": true,
+        "paired_write_bytes_saved": [
+          -24,
+          701,
+          701,
+          -24,
+          701,
+          701,
+          701,
+          701,
+          701,
+          701,
+          701,
+          701,
+          701,
+          701,
+          701,
+          701,
+          701,
+          701,
+          701,
+          701,
+          701,
+          701,
+          701,
+          701,
+          701,
+          701,
+          701,
+          701,
+          701,
+          -24
+        ],
+        "passed": true,
+        "recall_at_10_gaps": {
+          "reinstate_immediate": 0.0,
+          "reinstate_quiet": 0.0,
+          "withdraw_immediate": 0.0,
+          "withdraw_quiet": 0.0
+        },
+        "saved_bytes_lcb95": 16680.0,
+        "write_bytes_saved": 18855,
+        "zero_stale_resurrection": true
+      },
+      "scattered": {
+        "lcb_method": {
+          "bootstrap": "percentile_one_sided_95",
+          "label": "deterministic margin, no sampling variance (LCB95 equals the point estimate)",
+          "pairs": 30,
+          "resamples": 10000,
+          "seed": 58,
+          "statistic": "sum_of_paired_saved_bytes",
+          "zero_sampling_variance": true
+        },
+        "matched_recall": true,
+        "paired_write_bytes_saved": [
+          -24,
+          -24,
+          -24,
+          -24,
+          -24,
+          -24,
+          -24,
+          -24,
+          -24,
+          -24,
+          -24,
+          -24,
+          -24,
+          -24,
+          -24,
+          -24,
+          -24,
+          -24,
+          -24,
+          -24,
+          -24,
+          -24,
+          -24,
+          -24,
+          -24,
+          -24,
+          -24,
+          -24,
+          -24,
+          -24
+        ],
+        "passed": false,
+        "recall_at_10_gaps": {
+          "reinstate_immediate": 0.0,
+          "reinstate_quiet": 0.0,
+          "withdraw_immediate": 0.0,
+          "withdraw_quiet": 0.0
+        },
+        "saved_bytes_lcb95": -720.0,
+        "write_bytes_saved": -720,
+        "zero_stale_resurrection": true
+      }
+    }
+  },
+  "tier": "floor",
+  "tier_disclosure": "Local-drycheck on a 240-document synthetic fixture with 30 deterministic 16-id withdrawal pairs; byte counts are logical fsynced write bytes, not 512-byte device sectors, and are not a live measurement. Cold-OSD and the SQ8 challenger share one journal record codec (journal_record); the gate is the clustered layout under that shared codec and under the challenger's no-durability floor.",
   "trace_pairs": 30,
   "traces": {
     "cold_osd": [
@@ -399,6 +1060,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": "6bd7f1997bf7e7b43052a368e0927e065b69b3a8f0c3f5bc48218b45b0306398",
         "ek5_withdraw_sha256": "29e2ab0590bfba3c21390310d1b63471d788c61e7f61935d9ae3b40263d7023b",
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "clustered",
         "pair": 0,
         "reinstate_immediate": {
@@ -435,6 +1098,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": "b5a41bc455efac27ec19e90311ed5cccf5e56de15d785fc07b048d498193d9b3",
         "ek5_withdraw_sha256": "915f1adfa735474d2b93b4c4d390e391a6d105c04a727a8f1c24c64cce5874ac",
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "scattered",
         "pair": 0,
         "reinstate_immediate": {
@@ -471,6 +1136,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": "585aecd705388aa21f87d3ba487b8c4cd66dff85fb448265876bae20e61430e9",
         "ek5_withdraw_sha256": "939c379dacb68845d3c729af6bad89cad6b6662a42329da1a1336275b92e5940",
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "clustered",
         "pair": 1,
         "reinstate_immediate": {
@@ -507,6 +1174,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": "7aa52b6765acd42868bab98bf0a3771e3aaec5b7cd6859f85e2e21b7fe4c9c49",
         "ek5_withdraw_sha256": "750d7170c0e9de56a4c1a6749cc97b581e401b1b1dc462d976ecb882372b72e9",
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "scattered",
         "pair": 1,
         "reinstate_immediate": {
@@ -543,6 +1212,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": "d28f1e296c8e08048d4d818bb37f09b8d4fa3002196db5e68ba9d7f2d5b73c4d",
         "ek5_withdraw_sha256": "e706923e73d06e2a826f5aeb290908d46d62fff5ae0edb014c24c7dd36818cc9",
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "clustered",
         "pair": 2,
         "reinstate_immediate": {
@@ -579,6 +1250,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": "abdea02a26fb3dcf681de645cb9078f17fbfe0c956c02468c0052f0e62032c6e",
         "ek5_withdraw_sha256": "ee3f90dd68e91ab06256b63212c18123dd83c499793aad403541d55448b28b28",
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "scattered",
         "pair": 2,
         "reinstate_immediate": {
@@ -615,6 +1288,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": "d70c27fc91ade29cae4da38046f95ddbf09a908c476186c64ffd392dc8534ca2",
         "ek5_withdraw_sha256": "8fd69a6d2c5e5903e6744d16cfe1a799fdfc1e05719ef24db2baa6bb7b14f0f9",
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "clustered",
         "pair": 3,
         "reinstate_immediate": {
@@ -651,6 +1326,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": "30c66577b3b9a4f92082e7af688d00ed71f32801320fc459d6db644b8b61a151",
         "ek5_withdraw_sha256": "664dadb66fe86470e96f971c6d0626bc534c6625163ef590db462ca5145315a2",
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "scattered",
         "pair": 3,
         "reinstate_immediate": {
@@ -687,6 +1364,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": "1b35f42edef38de4bab46aa7140b616ca2fc01c2d9f81f1c054388f7479d6129",
         "ek5_withdraw_sha256": "6fa3863573a2d7e2f2394cdceda32b4f88a6c51bd24346ac077b1e0e7abed814",
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "clustered",
         "pair": 4,
         "reinstate_immediate": {
@@ -723,6 +1402,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": "fb0ddb0369fd5601b0c422e381f0ceef22dd2451836e55f8157dec2f07b08389",
         "ek5_withdraw_sha256": "5147a3d44ec733f91ca38719131066d6723ccb7d79540897abaa8cd7bb5b77fe",
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "scattered",
         "pair": 4,
         "reinstate_immediate": {
@@ -759,6 +1440,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": "92bfb4795a4769ac52baf5cd20857dbe496b68ee55f8965c9ffedd80735e363c",
         "ek5_withdraw_sha256": "4759518f8c1329715191d0d9c5803efdd4b37dde8b26faae92d746c68f33b3ae",
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "clustered",
         "pair": 5,
         "reinstate_immediate": {
@@ -795,6 +1478,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": "a6dc28224d28bb3c7ed2caec6276f72645fddbad994c8d8f37d1b026df798daa",
         "ek5_withdraw_sha256": "e5c28154b5df8fd6c45808e8d8b8e5eb4d01b0fafeb58a0d591bd43ca4dc74ad",
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "scattered",
         "pair": 5,
         "reinstate_immediate": {
@@ -831,6 +1516,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": "7554b92063b7232d551278ba0d985632e27f3a34ecb3570f64471a83352edf8f",
         "ek5_withdraw_sha256": "89723b7c549a3df27de5059a7730327482257f6e1c34058fad4b624666f11e77",
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "clustered",
         "pair": 6,
         "reinstate_immediate": {
@@ -867,6 +1554,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": "a0e869ae32f592387ede3fa004dc70010624e9ae724418eb63b62dabf595e9d0",
         "ek5_withdraw_sha256": "db3e9406a406d83995d0b522ac18255b45e6140a7b73916eebc07fd708adff75",
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "scattered",
         "pair": 6,
         "reinstate_immediate": {
@@ -903,6 +1592,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": "19ec13e8f2eb1f4148fc53cffe8128fed39a176d777348f49c56d6ba3d40d17e",
         "ek5_withdraw_sha256": "8ba210b46975c6c847756cac779a6416d53b3d687e66b382e42f2205577b8fee",
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "clustered",
         "pair": 7,
         "reinstate_immediate": {
@@ -939,6 +1630,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": "bd1077edb8ab9c9c498ff7ffa2a8838ab20944bee8d213b2e21c7dbc6ec80bcd",
         "ek5_withdraw_sha256": "49c4adbc8d02ef3856a0b4c33a66116969109ef126b586eba0e435186b35bcbf",
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "scattered",
         "pair": 7,
         "reinstate_immediate": {
@@ -975,6 +1668,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": "b4367f3ca215c9d7ae163c23ca569592c4dedd579e79712ecf217f7be805e4d0",
         "ek5_withdraw_sha256": "e167a5d3bf49dc3e74de2df201d40bf700b5e8512cc05812cbc0aff3049e362e",
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "clustered",
         "pair": 8,
         "reinstate_immediate": {
@@ -1011,6 +1706,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": "b48ecd8d2306c62e7168a73d25c607222b719ba72079b7e68386f3e7c09f0470",
         "ek5_withdraw_sha256": "f11b57f51a35896b9f32dd6798254d4919c7b88856b7e1c1b71687e9df479df7",
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "scattered",
         "pair": 8,
         "reinstate_immediate": {
@@ -1047,6 +1744,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": "d20cba458e43b278e247bd2ef24785db5438e0f7056f01e91a228d006f888d8a",
         "ek5_withdraw_sha256": "988752ea019e26ba0c387b1f662024e6ef798445be7084ab5630c4dc917bb12c",
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "clustered",
         "pair": 9,
         "reinstate_immediate": {
@@ -1083,6 +1782,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": "92a068e23ba7fc36bac462e7bb62421f7d9941ca43f4f6e30b8708c748ad00b4",
         "ek5_withdraw_sha256": "75b1262b02f1d549ae507ec02cce44973534874daf53a26da5c9e667a4253295",
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "scattered",
         "pair": 9,
         "reinstate_immediate": {
@@ -1119,6 +1820,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": "c03e28d24b9c471944039611081352e7834a2e37e59441e69fb25fe717d0c8dc",
         "ek5_withdraw_sha256": "dbce1e24e64299909c0e6c21d839eab3624b99ea991e4d1eb0402a9709554ccd",
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "clustered",
         "pair": 10,
         "reinstate_immediate": {
@@ -1155,6 +1858,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": "b42ce49ca2e17b3114fa22b008e6b41b66bba1a1e451461b003a85c55e3a9ad6",
         "ek5_withdraw_sha256": "89d879dc1fcbde24e9e647d2ccc73b190f2dcc724c2212cc9a4772ebf7062d1f",
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "scattered",
         "pair": 10,
         "reinstate_immediate": {
@@ -1191,6 +1896,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": "18df16c8c0a41c56d282e27c0ecfc75c4900e07844acd80dfc54c40bdfac65b5",
         "ek5_withdraw_sha256": "9135271af36be960211cc549d2b4ed7960af3124de0e82c4abeefac278857d57",
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "clustered",
         "pair": 11,
         "reinstate_immediate": {
@@ -1227,6 +1934,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": "f8fbd720b0470bdaeba84b5d223ea9d1bc9b080e80f06726ac6387f478883104",
         "ek5_withdraw_sha256": "f2b850d6863b5087222551e620dc8cae26a0af1dfe5a6f17868e80bd38ecd3b4",
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "scattered",
         "pair": 11,
         "reinstate_immediate": {
@@ -1263,6 +1972,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": "56ce25dc7ec95fb9d43b6415a0ac77225f88587d6ea7cf9824eaae1b7cb7569d",
         "ek5_withdraw_sha256": "c77adf73aee83f4aa5836fdb9a11461d0f17b3a3407d0f5a06ccb9fbf014f3f0",
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "clustered",
         "pair": 12,
         "reinstate_immediate": {
@@ -1299,6 +2010,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": "f13d3e2acddb01c5ef6e4d43ac34b93c86b598f874a4cfd588022cb13f62558c",
         "ek5_withdraw_sha256": "a179a049449b35c8ef04626b49edcfe95a14967af83d62470f8212d7d69c6b55",
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "scattered",
         "pair": 12,
         "reinstate_immediate": {
@@ -1335,6 +2048,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": "0a269e3e6ae359c5092dedf413279d50466e13c052a07a65523ef32d706dc406",
         "ek5_withdraw_sha256": "1a4e6d37ef89a2c8fab0364cfa784f458411065a1392e63097508ed126cd5e5d",
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "clustered",
         "pair": 13,
         "reinstate_immediate": {
@@ -1371,6 +2086,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": "0505804561e921041a024fedd62ffcb6ed9f310c535f1124efcfbe9e1435fab5",
         "ek5_withdraw_sha256": "9ebc40fd51d3588b050e81dc880057f2751eb8397c910165fad5ee21360c680d",
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "scattered",
         "pair": 13,
         "reinstate_immediate": {
@@ -1407,6 +2124,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": "d2e4a20cc48ba60301e1f61d626aa5c970a2316d6ca245eadf7eaf87d5f7700b",
         "ek5_withdraw_sha256": "3309b45d8046ece5d146b69770ccfee025666f860a7c38934f7178efe261c938",
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "clustered",
         "pair": 14,
         "reinstate_immediate": {
@@ -1443,6 +2162,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": "bb17c1d5843c9127b675cc56c430b76dd263bef0788af2ebdd972a41e6d0a68b",
         "ek5_withdraw_sha256": "71bffb629f226cb4f16505d488eafacd74b83a719e97e7d59ecfbd49890d688c",
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "scattered",
         "pair": 14,
         "reinstate_immediate": {
@@ -1479,6 +2200,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": "5184426fc025519f78df3e61d7765d6711eb19456d0fdb71219ed708080b83b5",
         "ek5_withdraw_sha256": "46ea425c3f88ae87861c8c0ccbaf6336ea54c6a844213c436826c236bd3a6cb1",
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "clustered",
         "pair": 15,
         "reinstate_immediate": {
@@ -1515,6 +2238,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": "4c5e9a0f32058443d395e44d751354a627e8dc80dc1af2ea5759ae5378aa29b3",
         "ek5_withdraw_sha256": "66996fdc496b290f93724d102f7baad69b91c74578050c4d10f444f56937c1a4",
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "scattered",
         "pair": 15,
         "reinstate_immediate": {
@@ -1551,6 +2276,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": "e778067673253924464e1ff881f7109cdb0504a30cf4c331a0e6558959ffc367",
         "ek5_withdraw_sha256": "8562d6285c888f6d0b111ac70d8811affa267d07c937a68d71d4f949faaa0159",
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "clustered",
         "pair": 16,
         "reinstate_immediate": {
@@ -1587,6 +2314,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": "edbe16b14f0d8b97ca01efe29f4741168bf284b54c64a0998d448e5612f0e320",
         "ek5_withdraw_sha256": "e64ec05f66b04095f02e88b7c8eb94923847ea822ebffaf79157fc31673e6402",
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "scattered",
         "pair": 16,
         "reinstate_immediate": {
@@ -1623,6 +2352,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": "d08b9e369a0718421768e0b540c3e6dc5a340f03151e19514cc815f4824b70db",
         "ek5_withdraw_sha256": "f67a1954005e203a1bcbac6115db724b6c0f1ec7912a54553590c755fc1e7ffc",
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "clustered",
         "pair": 17,
         "reinstate_immediate": {
@@ -1659,6 +2390,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": "d8526d6f32efeb5d5126a885d2c112d1911233ab7318c23b449c5e1d7c382bbf",
         "ek5_withdraw_sha256": "fdf199d3b6fd2c68498aa50b2cc751c62fb31daf98937c994971cc9676192ebd",
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "scattered",
         "pair": 17,
         "reinstate_immediate": {
@@ -1695,6 +2428,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": "7554b92063b7232d551278ba0d985632e27f3a34ecb3570f64471a83352edf8f",
         "ek5_withdraw_sha256": "89723b7c549a3df27de5059a7730327482257f6e1c34058fad4b624666f11e77",
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "clustered",
         "pair": 18,
         "reinstate_immediate": {
@@ -1731,6 +2466,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": "61ae5a3d94f2be776c7f69f5c28b87871a7a766c90b4f2ed0b9aeb5c28c7f793",
         "ek5_withdraw_sha256": "ea75a57d8eaf37c5425c13fd3635626043569c4466cc93e0cb5f6f8efb4f943b",
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "scattered",
         "pair": 18,
         "reinstate_immediate": {
@@ -1767,6 +2504,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": "18c850956a2a94f5e27477fe3f59381bfc050f3d1e23d8ef0cb6eda3c45043bf",
         "ek5_withdraw_sha256": "0a8c70a487edd5f745e3154e48d87ad9d3a6ed7929248b71d607be4c3261942e",
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "clustered",
         "pair": 19,
         "reinstate_immediate": {
@@ -1803,6 +2542,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": "e5141fdfd02d667547f0d0c17e2ea6df8b64763310c43f8d88bfdd71a4fc06b1",
         "ek5_withdraw_sha256": "d61851a76fa3973a622692a0c7b3ee5e75afac4d8d5ae294fb2ff0e850220df7",
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "scattered",
         "pair": 19,
         "reinstate_immediate": {
@@ -1839,6 +2580,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": "ce602646607b5f55a42dc6bb2ff35a95bee3b61897c9487a9dfd4e4a7f57f9ff",
         "ek5_withdraw_sha256": "1f22bcfc16bd37008a20c4045aa07f5545b3776603d8feb90cb5e24e6ef9e7a6",
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "clustered",
         "pair": 20,
         "reinstate_immediate": {
@@ -1875,6 +2618,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": "9f537806a08d564499cf1b981517122c6c931c3fcc6f727b954c47bffa3d0d05",
         "ek5_withdraw_sha256": "b6084a5bcb3dd51cc46dab460380427061f14a7c6e59600eda828b93fcf22bd1",
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "scattered",
         "pair": 20,
         "reinstate_immediate": {
@@ -1911,6 +2656,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": "f0fa0fd5e0380278e5fdbaf8b7d33b9e56e2c1c11da64372e67bb7b860621674",
         "ek5_withdraw_sha256": "aaf8909583c822066bd900468954233ce104ed8651e91117a8c3f6e5bfcec0ba",
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "clustered",
         "pair": 21,
         "reinstate_immediate": {
@@ -1947,6 +2694,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": "2a8a300ee4757473ac2383a834d861f0ef7f7180ae0d07c5cfca597a727e588d",
         "ek5_withdraw_sha256": "cc72ee8ac1727b91ae3d7ba17e0b1ac806be0b3d2f6441f1ecde1b7f4572eb70",
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "scattered",
         "pair": 21,
         "reinstate_immediate": {
@@ -1983,6 +2732,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": "ab85f9b866aa713f90f72b7d8b11e08926387c9a616840e66f778650bfa9fc04",
         "ek5_withdraw_sha256": "5fafff6c0cb71cfaeddd2b0ba9b1dbdffec8573930d3c49855cb2bc5c8893147",
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "clustered",
         "pair": 22,
         "reinstate_immediate": {
@@ -2019,6 +2770,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": "823bd6f5377e445f4b78b5d3f7296ad45e8a814abe0712880b4abb329033652e",
         "ek5_withdraw_sha256": "9b3af248ca1bcee263480ba9d062d93be31e49e90bc99f7bcce7030df7765ae5",
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "scattered",
         "pair": 22,
         "reinstate_immediate": {
@@ -2055,6 +2808,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": "4d7303d7c46c100d6ca47994a88e90e1747102a8bc5d9247570fc7cc982dc8b0",
         "ek5_withdraw_sha256": "2d2ef1c88b9b3c3b76f751b6b633be8991185195f363ea8df2669c6a3d42345e",
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "clustered",
         "pair": 23,
         "reinstate_immediate": {
@@ -2091,6 +2846,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": "69f99007b6dd0ed573ec8b3bb16d8aeaca281eda069c07f11654bb3f4f1230ac",
         "ek5_withdraw_sha256": "223ac84deb39ff2f46f607be79bcf0765342e2f3c3215ffd8dd93f19df132313",
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "scattered",
         "pair": 23,
         "reinstate_immediate": {
@@ -2127,6 +2884,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": "1482a9d6493c760880627142fdb617f8acade9c184ebd5343c1b620be441a9eb",
         "ek5_withdraw_sha256": "4d747f7766e58c0ca087eb6a534ac41d02cf3a77001145c753ec1b7fd47ca957",
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "clustered",
         "pair": 24,
         "reinstate_immediate": {
@@ -2163,6 +2922,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": "9f9faa3a9c1b0803df471d344c06bf620962182038835d08a04746d44dcefd35",
         "ek5_withdraw_sha256": "3a057adaa36d0643456836d5f12bd1801d449c88c3d5fe58ec6406c72203ba12",
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "scattered",
         "pair": 24,
         "reinstate_immediate": {
@@ -2199,6 +2960,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": "dc0401dbf12c70aa5008f9822a22f5bb7eb8ce5eda02e416e0073a3efda6c99f",
         "ek5_withdraw_sha256": "210f2c5d8d7db171e18b0b6f660850daa2ead71ce62fac0cde75201d6242985f",
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "clustered",
         "pair": 25,
         "reinstate_immediate": {
@@ -2235,6 +2998,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": "ee1442e414d4ee32276591a05582bb140d453671dd01d5bb72106264f27200be",
         "ek5_withdraw_sha256": "3dae95b12ea126ae1f7731e8ebd94ad9c126fff0013c6fdc69f709492a3fd7e6",
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "scattered",
         "pair": 25,
         "reinstate_immediate": {
@@ -2271,6 +3036,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": "585aecd705388aa21f87d3ba487b8c4cd66dff85fb448265876bae20e61430e9",
         "ek5_withdraw_sha256": "939c379dacb68845d3c729af6bad89cad6b6662a42329da1a1336275b92e5940",
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "clustered",
         "pair": 26,
         "reinstate_immediate": {
@@ -2307,6 +3074,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": "c5d9e5c99fd9acb43ddcf25401e22272c315c30b4c2bdc30a295526c1175a4b0",
         "ek5_withdraw_sha256": "5324b05ecc431c82c36387734a0ca27f64a411a8ac5dcb707a88cc26c01797da",
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "scattered",
         "pair": 26,
         "reinstate_immediate": {
@@ -2343,6 +3112,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": "2d7d00e90c5cc736b6ea65849fbadd104ff2c539d9cccab03aefa9e23e761acb",
         "ek5_withdraw_sha256": "c496cac28249faf73ef279af0bdacc02e041fa038de7d6dcc1025740b11473dd",
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "clustered",
         "pair": 27,
         "reinstate_immediate": {
@@ -2379,6 +3150,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": "2788efed1144fe22781d790a2e070837bc2d66b8be78da7d46cf2812b023629f",
         "ek5_withdraw_sha256": "39501bd720ae8de3c77d4efbacf79e0a5bd8d808fcbb41a2435df736fc4066b0",
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "scattered",
         "pair": 27,
         "reinstate_immediate": {
@@ -2415,6 +3188,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": "b719efe623617a6c2df35c0ac29331ae6d71f370df2a0265a3f619b60090fe53",
         "ek5_withdraw_sha256": "c12188e39066091b5147fe20974fd1074b81fa5cb9676628483f395cb56b88d1",
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "clustered",
         "pair": 28,
         "reinstate_immediate": {
@@ -2451,6 +3226,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": "97898e864cb6fc74f283e2252cf9dff6daf12f205518d9a61a714ba0f8a4d2fe",
         "ek5_withdraw_sha256": "57202c330294a622fb497a61cf929534c5a9cfb90ddaea6ee5cd33e1dbaaf5ad",
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "scattered",
         "pair": 28,
         "reinstate_immediate": {
@@ -2487,6 +3264,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": "98e601495ded85820c1dbfdd94d76de3377ff3c6b1c93f31ecc160aeafa672f7",
         "ek5_withdraw_sha256": "bc0ddfbacb18f700bfcbccf8dc0672468972e4807a3ec9aaa77899aacf0d7259",
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "clustered",
         "pair": 29,
         "reinstate_immediate": {
@@ -2523,6 +3302,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": "3a10730d15b420a27c9d0fb0607dd3d7ce32abe610c20f75134c59e82d6e10be",
         "ek5_withdraw_sha256": "b6f742df1721650e2903a8a530eae6edac682636241950b9057799f6bdfe5c41",
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "scattered",
         "pair": 29,
         "reinstate_immediate": {
@@ -2561,6 +3342,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": null,
         "ek5_withdraw_sha256": null,
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "clustered",
         "pair": 0,
         "reinstate_immediate": {
@@ -2575,8 +3358,8 @@
           "returned": 40,
           "stale": 0
         },
-        "reinstate_write_bytes": 69,
-        "total_write_bytes": 138,
+        "reinstate_write_bytes": 17,
+        "total_write_bytes": 98,
         "withdraw_immediate": {
           "hits": 40,
           "reference_total": 40,
@@ -2589,7 +3372,7 @@
           "returned": 40,
           "stale": 0
         },
-        "withdraw_write_bytes": 69
+        "withdraw_write_bytes": 81
       },
       {
         "affected_extents": 4,
@@ -2597,6 +3380,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": null,
         "ek5_withdraw_sha256": null,
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "scattered",
         "pair": 0,
         "reinstate_immediate": {
@@ -2611,8 +3396,8 @@
           "returned": 40,
           "stale": 0
         },
-        "reinstate_write_bytes": 69,
-        "total_write_bytes": 138,
+        "reinstate_write_bytes": 17,
+        "total_write_bytes": 98,
         "withdraw_immediate": {
           "hits": 40,
           "reference_total": 40,
@@ -2625,7 +3410,7 @@
           "returned": 40,
           "stale": 0
         },
-        "withdraw_write_bytes": 69
+        "withdraw_write_bytes": 81
       },
       {
         "affected_extents": 1,
@@ -2633,6 +3418,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": null,
         "ek5_withdraw_sha256": null,
+        "journal_records": 3,
+        "journal_sector_bytes": 1536,
         "layout": "clustered",
         "pair": 1,
         "reinstate_immediate": {
@@ -2647,8 +3434,8 @@
           "returned": 40,
           "stale": 0
         },
-        "reinstate_write_bytes": 261,
-        "total_write_bytes": 927,
+        "reinstate_write_bytes": 209,
+        "total_write_bytes": 835,
         "withdraw_immediate": {
           "hits": 40,
           "reference_total": 40,
@@ -2661,7 +3448,7 @@
           "returned": 40,
           "stale": 0
         },
-        "withdraw_write_bytes": 666
+        "withdraw_write_bytes": 626
       },
       {
         "affected_extents": 4,
@@ -2669,6 +3456,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": null,
         "ek5_withdraw_sha256": null,
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "scattered",
         "pair": 1,
         "reinstate_immediate": {
@@ -2683,8 +3472,8 @@
           "returned": 40,
           "stale": 0
         },
-        "reinstate_write_bytes": 69,
-        "total_write_bytes": 138,
+        "reinstate_write_bytes": 17,
+        "total_write_bytes": 98,
         "withdraw_immediate": {
           "hits": 40,
           "reference_total": 40,
@@ -2697,7 +3486,7 @@
           "returned": 40,
           "stale": 0
         },
-        "withdraw_write_bytes": 69
+        "withdraw_write_bytes": 81
       },
       {
         "affected_extents": 1,
@@ -2705,6 +3494,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": null,
         "ek5_withdraw_sha256": null,
+        "journal_records": 3,
+        "journal_sector_bytes": 1536,
         "layout": "clustered",
         "pair": 2,
         "reinstate_immediate": {
@@ -2719,8 +3510,8 @@
           "returned": 40,
           "stale": 0
         },
-        "reinstate_write_bytes": 261,
-        "total_write_bytes": 927,
+        "reinstate_write_bytes": 209,
+        "total_write_bytes": 835,
         "withdraw_immediate": {
           "hits": 40,
           "reference_total": 40,
@@ -2733,7 +3524,7 @@
           "returned": 40,
           "stale": 0
         },
-        "withdraw_write_bytes": 666
+        "withdraw_write_bytes": 626
       },
       {
         "affected_extents": 4,
@@ -2741,6 +3532,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": null,
         "ek5_withdraw_sha256": null,
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "scattered",
         "pair": 2,
         "reinstate_immediate": {
@@ -2755,8 +3548,8 @@
           "returned": 40,
           "stale": 0
         },
-        "reinstate_write_bytes": 69,
-        "total_write_bytes": 138,
+        "reinstate_write_bytes": 17,
+        "total_write_bytes": 98,
         "withdraw_immediate": {
           "hits": 40,
           "reference_total": 40,
@@ -2769,7 +3562,7 @@
           "returned": 40,
           "stale": 0
         },
-        "withdraw_write_bytes": 69
+        "withdraw_write_bytes": 81
       },
       {
         "affected_extents": 2,
@@ -2777,6 +3570,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": null,
         "ek5_withdraw_sha256": null,
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "clustered",
         "pair": 3,
         "reinstate_immediate": {
@@ -2791,8 +3586,8 @@
           "returned": 40,
           "stale": 0
         },
-        "reinstate_write_bytes": 69,
-        "total_write_bytes": 138,
+        "reinstate_write_bytes": 17,
+        "total_write_bytes": 98,
         "withdraw_immediate": {
           "hits": 40,
           "reference_total": 40,
@@ -2805,7 +3600,7 @@
           "returned": 40,
           "stale": 0
         },
-        "withdraw_write_bytes": 69
+        "withdraw_write_bytes": 81
       },
       {
         "affected_extents": 4,
@@ -2813,6 +3608,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": null,
         "ek5_withdraw_sha256": null,
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "scattered",
         "pair": 3,
         "reinstate_immediate": {
@@ -2827,8 +3624,8 @@
           "returned": 40,
           "stale": 0
         },
-        "reinstate_write_bytes": 69,
-        "total_write_bytes": 138,
+        "reinstate_write_bytes": 17,
+        "total_write_bytes": 98,
         "withdraw_immediate": {
           "hits": 40,
           "reference_total": 40,
@@ -2841,7 +3638,7 @@
           "returned": 40,
           "stale": 0
         },
-        "withdraw_write_bytes": 69
+        "withdraw_write_bytes": 81
       },
       {
         "affected_extents": 1,
@@ -2849,6 +3646,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": null,
         "ek5_withdraw_sha256": null,
+        "journal_records": 3,
+        "journal_sector_bytes": 1536,
         "layout": "clustered",
         "pair": 4,
         "reinstate_immediate": {
@@ -2863,8 +3662,8 @@
           "returned": 40,
           "stale": 0
         },
-        "reinstate_write_bytes": 261,
-        "total_write_bytes": 927,
+        "reinstate_write_bytes": 209,
+        "total_write_bytes": 835,
         "withdraw_immediate": {
           "hits": 40,
           "reference_total": 40,
@@ -2877,7 +3676,7 @@
           "returned": 40,
           "stale": 0
         },
-        "withdraw_write_bytes": 666
+        "withdraw_write_bytes": 626
       },
       {
         "affected_extents": 4,
@@ -2885,6 +3684,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": null,
         "ek5_withdraw_sha256": null,
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "scattered",
         "pair": 4,
         "reinstate_immediate": {
@@ -2899,8 +3700,8 @@
           "returned": 40,
           "stale": 0
         },
-        "reinstate_write_bytes": 69,
-        "total_write_bytes": 138,
+        "reinstate_write_bytes": 17,
+        "total_write_bytes": 98,
         "withdraw_immediate": {
           "hits": 40,
           "reference_total": 40,
@@ -2913,7 +3714,7 @@
           "returned": 40,
           "stale": 0
         },
-        "withdraw_write_bytes": 69
+        "withdraw_write_bytes": 81
       },
       {
         "affected_extents": 1,
@@ -2921,6 +3722,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": null,
         "ek5_withdraw_sha256": null,
+        "journal_records": 3,
+        "journal_sector_bytes": 1536,
         "layout": "clustered",
         "pair": 5,
         "reinstate_immediate": {
@@ -2935,8 +3738,8 @@
           "returned": 40,
           "stale": 0
         },
-        "reinstate_write_bytes": 261,
-        "total_write_bytes": 927,
+        "reinstate_write_bytes": 209,
+        "total_write_bytes": 835,
         "withdraw_immediate": {
           "hits": 40,
           "reference_total": 40,
@@ -2949,7 +3752,7 @@
           "returned": 40,
           "stale": 0
         },
-        "withdraw_write_bytes": 666
+        "withdraw_write_bytes": 626
       },
       {
         "affected_extents": 4,
@@ -2957,6 +3760,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": null,
         "ek5_withdraw_sha256": null,
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "scattered",
         "pair": 5,
         "reinstate_immediate": {
@@ -2971,8 +3776,8 @@
           "returned": 40,
           "stale": 0
         },
-        "reinstate_write_bytes": 69,
-        "total_write_bytes": 138,
+        "reinstate_write_bytes": 17,
+        "total_write_bytes": 98,
         "withdraw_immediate": {
           "hits": 40,
           "reference_total": 40,
@@ -2985,7 +3790,7 @@
           "returned": 40,
           "stale": 0
         },
-        "withdraw_write_bytes": 69
+        "withdraw_write_bytes": 81
       },
       {
         "affected_extents": 1,
@@ -2993,6 +3798,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": null,
         "ek5_withdraw_sha256": null,
+        "journal_records": 3,
+        "journal_sector_bytes": 1536,
         "layout": "clustered",
         "pair": 6,
         "reinstate_immediate": {
@@ -3007,8 +3814,8 @@
           "returned": 40,
           "stale": 0
         },
-        "reinstate_write_bytes": 261,
-        "total_write_bytes": 927,
+        "reinstate_write_bytes": 209,
+        "total_write_bytes": 835,
         "withdraw_immediate": {
           "hits": 40,
           "reference_total": 40,
@@ -3021,7 +3828,7 @@
           "returned": 40,
           "stale": 0
         },
-        "withdraw_write_bytes": 666
+        "withdraw_write_bytes": 626
       },
       {
         "affected_extents": 4,
@@ -3029,6 +3836,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": null,
         "ek5_withdraw_sha256": null,
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "scattered",
         "pair": 6,
         "reinstate_immediate": {
@@ -3043,8 +3852,8 @@
           "returned": 40,
           "stale": 0
         },
-        "reinstate_write_bytes": 69,
-        "total_write_bytes": 138,
+        "reinstate_write_bytes": 17,
+        "total_write_bytes": 98,
         "withdraw_immediate": {
           "hits": 40,
           "reference_total": 40,
@@ -3057,7 +3866,7 @@
           "returned": 40,
           "stale": 0
         },
-        "withdraw_write_bytes": 69
+        "withdraw_write_bytes": 81
       },
       {
         "affected_extents": 1,
@@ -3065,6 +3874,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": null,
         "ek5_withdraw_sha256": null,
+        "journal_records": 3,
+        "journal_sector_bytes": 1536,
         "layout": "clustered",
         "pair": 7,
         "reinstate_immediate": {
@@ -3079,8 +3890,8 @@
           "returned": 40,
           "stale": 0
         },
-        "reinstate_write_bytes": 261,
-        "total_write_bytes": 927,
+        "reinstate_write_bytes": 209,
+        "total_write_bytes": 835,
         "withdraw_immediate": {
           "hits": 40,
           "reference_total": 40,
@@ -3093,7 +3904,7 @@
           "returned": 40,
           "stale": 0
         },
-        "withdraw_write_bytes": 666
+        "withdraw_write_bytes": 626
       },
       {
         "affected_extents": 4,
@@ -3101,6 +3912,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": null,
         "ek5_withdraw_sha256": null,
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "scattered",
         "pair": 7,
         "reinstate_immediate": {
@@ -3115,8 +3928,8 @@
           "returned": 40,
           "stale": 0
         },
-        "reinstate_write_bytes": 69,
-        "total_write_bytes": 138,
+        "reinstate_write_bytes": 17,
+        "total_write_bytes": 98,
         "withdraw_immediate": {
           "hits": 40,
           "reference_total": 40,
@@ -3129,7 +3942,7 @@
           "returned": 40,
           "stale": 0
         },
-        "withdraw_write_bytes": 69
+        "withdraw_write_bytes": 81
       },
       {
         "affected_extents": 1,
@@ -3137,6 +3950,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": null,
         "ek5_withdraw_sha256": null,
+        "journal_records": 3,
+        "journal_sector_bytes": 1536,
         "layout": "clustered",
         "pair": 8,
         "reinstate_immediate": {
@@ -3151,8 +3966,8 @@
           "returned": 40,
           "stale": 0
         },
-        "reinstate_write_bytes": 261,
-        "total_write_bytes": 927,
+        "reinstate_write_bytes": 209,
+        "total_write_bytes": 835,
         "withdraw_immediate": {
           "hits": 40,
           "reference_total": 40,
@@ -3165,7 +3980,7 @@
           "returned": 40,
           "stale": 0
         },
-        "withdraw_write_bytes": 666
+        "withdraw_write_bytes": 626
       },
       {
         "affected_extents": 4,
@@ -3173,6 +3988,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": null,
         "ek5_withdraw_sha256": null,
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "scattered",
         "pair": 8,
         "reinstate_immediate": {
@@ -3187,8 +4004,8 @@
           "returned": 40,
           "stale": 0
         },
-        "reinstate_write_bytes": 69,
-        "total_write_bytes": 138,
+        "reinstate_write_bytes": 17,
+        "total_write_bytes": 98,
         "withdraw_immediate": {
           "hits": 40,
           "reference_total": 40,
@@ -3201,7 +4018,7 @@
           "returned": 40,
           "stale": 0
         },
-        "withdraw_write_bytes": 69
+        "withdraw_write_bytes": 81
       },
       {
         "affected_extents": 1,
@@ -3209,6 +4026,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": null,
         "ek5_withdraw_sha256": null,
+        "journal_records": 3,
+        "journal_sector_bytes": 1536,
         "layout": "clustered",
         "pair": 9,
         "reinstate_immediate": {
@@ -3223,8 +4042,8 @@
           "returned": 40,
           "stale": 0
         },
-        "reinstate_write_bytes": 261,
-        "total_write_bytes": 927,
+        "reinstate_write_bytes": 209,
+        "total_write_bytes": 835,
         "withdraw_immediate": {
           "hits": 40,
           "reference_total": 40,
@@ -3237,7 +4056,7 @@
           "returned": 40,
           "stale": 0
         },
-        "withdraw_write_bytes": 666
+        "withdraw_write_bytes": 626
       },
       {
         "affected_extents": 4,
@@ -3245,6 +4064,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": null,
         "ek5_withdraw_sha256": null,
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "scattered",
         "pair": 9,
         "reinstate_immediate": {
@@ -3259,8 +4080,8 @@
           "returned": 40,
           "stale": 0
         },
-        "reinstate_write_bytes": 69,
-        "total_write_bytes": 138,
+        "reinstate_write_bytes": 17,
+        "total_write_bytes": 98,
         "withdraw_immediate": {
           "hits": 40,
           "reference_total": 40,
@@ -3273,7 +4094,7 @@
           "returned": 40,
           "stale": 0
         },
-        "withdraw_write_bytes": 69
+        "withdraw_write_bytes": 81
       },
       {
         "affected_extents": 1,
@@ -3281,6 +4102,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": null,
         "ek5_withdraw_sha256": null,
+        "journal_records": 3,
+        "journal_sector_bytes": 1536,
         "layout": "clustered",
         "pair": 10,
         "reinstate_immediate": {
@@ -3295,8 +4118,8 @@
           "returned": 40,
           "stale": 0
         },
-        "reinstate_write_bytes": 261,
-        "total_write_bytes": 927,
+        "reinstate_write_bytes": 209,
+        "total_write_bytes": 835,
         "withdraw_immediate": {
           "hits": 40,
           "reference_total": 40,
@@ -3309,7 +4132,7 @@
           "returned": 40,
           "stale": 0
         },
-        "withdraw_write_bytes": 666
+        "withdraw_write_bytes": 626
       },
       {
         "affected_extents": 4,
@@ -3317,6 +4140,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": null,
         "ek5_withdraw_sha256": null,
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "scattered",
         "pair": 10,
         "reinstate_immediate": {
@@ -3331,8 +4156,8 @@
           "returned": 40,
           "stale": 0
         },
-        "reinstate_write_bytes": 69,
-        "total_write_bytes": 138,
+        "reinstate_write_bytes": 17,
+        "total_write_bytes": 98,
         "withdraw_immediate": {
           "hits": 40,
           "reference_total": 40,
@@ -3345,7 +4170,7 @@
           "returned": 40,
           "stale": 0
         },
-        "withdraw_write_bytes": 69
+        "withdraw_write_bytes": 81
       },
       {
         "affected_extents": 1,
@@ -3353,6 +4178,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": null,
         "ek5_withdraw_sha256": null,
+        "journal_records": 3,
+        "journal_sector_bytes": 1536,
         "layout": "clustered",
         "pair": 11,
         "reinstate_immediate": {
@@ -3367,8 +4194,8 @@
           "returned": 40,
           "stale": 0
         },
-        "reinstate_write_bytes": 261,
-        "total_write_bytes": 927,
+        "reinstate_write_bytes": 209,
+        "total_write_bytes": 835,
         "withdraw_immediate": {
           "hits": 40,
           "reference_total": 40,
@@ -3381,7 +4208,7 @@
           "returned": 40,
           "stale": 0
         },
-        "withdraw_write_bytes": 666
+        "withdraw_write_bytes": 626
       },
       {
         "affected_extents": 4,
@@ -3389,6 +4216,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": null,
         "ek5_withdraw_sha256": null,
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "scattered",
         "pair": 11,
         "reinstate_immediate": {
@@ -3403,8 +4232,8 @@
           "returned": 40,
           "stale": 0
         },
-        "reinstate_write_bytes": 69,
-        "total_write_bytes": 138,
+        "reinstate_write_bytes": 17,
+        "total_write_bytes": 98,
         "withdraw_immediate": {
           "hits": 40,
           "reference_total": 40,
@@ -3417,7 +4246,7 @@
           "returned": 40,
           "stale": 0
         },
-        "withdraw_write_bytes": 69
+        "withdraw_write_bytes": 81
       },
       {
         "affected_extents": 1,
@@ -3425,6 +4254,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": null,
         "ek5_withdraw_sha256": null,
+        "journal_records": 3,
+        "journal_sector_bytes": 1536,
         "layout": "clustered",
         "pair": 12,
         "reinstate_immediate": {
@@ -3439,8 +4270,8 @@
           "returned": 40,
           "stale": 0
         },
-        "reinstate_write_bytes": 261,
-        "total_write_bytes": 927,
+        "reinstate_write_bytes": 209,
+        "total_write_bytes": 835,
         "withdraw_immediate": {
           "hits": 40,
           "reference_total": 40,
@@ -3453,7 +4284,7 @@
           "returned": 40,
           "stale": 0
         },
-        "withdraw_write_bytes": 666
+        "withdraw_write_bytes": 626
       },
       {
         "affected_extents": 4,
@@ -3461,6 +4292,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": null,
         "ek5_withdraw_sha256": null,
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "scattered",
         "pair": 12,
         "reinstate_immediate": {
@@ -3475,8 +4308,8 @@
           "returned": 40,
           "stale": 0
         },
-        "reinstate_write_bytes": 69,
-        "total_write_bytes": 138,
+        "reinstate_write_bytes": 17,
+        "total_write_bytes": 98,
         "withdraw_immediate": {
           "hits": 40,
           "reference_total": 40,
@@ -3489,7 +4322,7 @@
           "returned": 40,
           "stale": 0
         },
-        "withdraw_write_bytes": 69
+        "withdraw_write_bytes": 81
       },
       {
         "affected_extents": 1,
@@ -3497,6 +4330,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": null,
         "ek5_withdraw_sha256": null,
+        "journal_records": 3,
+        "journal_sector_bytes": 1536,
         "layout": "clustered",
         "pair": 13,
         "reinstate_immediate": {
@@ -3511,8 +4346,8 @@
           "returned": 40,
           "stale": 0
         },
-        "reinstate_write_bytes": 261,
-        "total_write_bytes": 927,
+        "reinstate_write_bytes": 209,
+        "total_write_bytes": 835,
         "withdraw_immediate": {
           "hits": 40,
           "reference_total": 40,
@@ -3525,7 +4360,7 @@
           "returned": 40,
           "stale": 0
         },
-        "withdraw_write_bytes": 666
+        "withdraw_write_bytes": 626
       },
       {
         "affected_extents": 4,
@@ -3533,6 +4368,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": null,
         "ek5_withdraw_sha256": null,
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "scattered",
         "pair": 13,
         "reinstate_immediate": {
@@ -3547,8 +4384,8 @@
           "returned": 40,
           "stale": 0
         },
-        "reinstate_write_bytes": 69,
-        "total_write_bytes": 138,
+        "reinstate_write_bytes": 17,
+        "total_write_bytes": 98,
         "withdraw_immediate": {
           "hits": 40,
           "reference_total": 40,
@@ -3561,7 +4398,7 @@
           "returned": 40,
           "stale": 0
         },
-        "withdraw_write_bytes": 69
+        "withdraw_write_bytes": 81
       },
       {
         "affected_extents": 1,
@@ -3569,6 +4406,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": null,
         "ek5_withdraw_sha256": null,
+        "journal_records": 3,
+        "journal_sector_bytes": 1536,
         "layout": "clustered",
         "pair": 14,
         "reinstate_immediate": {
@@ -3583,8 +4422,8 @@
           "returned": 40,
           "stale": 0
         },
-        "reinstate_write_bytes": 261,
-        "total_write_bytes": 927,
+        "reinstate_write_bytes": 209,
+        "total_write_bytes": 835,
         "withdraw_immediate": {
           "hits": 40,
           "reference_total": 40,
@@ -3597,7 +4436,7 @@
           "returned": 40,
           "stale": 0
         },
-        "withdraw_write_bytes": 666
+        "withdraw_write_bytes": 626
       },
       {
         "affected_extents": 4,
@@ -3605,6 +4444,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": null,
         "ek5_withdraw_sha256": null,
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "scattered",
         "pair": 14,
         "reinstate_immediate": {
@@ -3619,8 +4460,8 @@
           "returned": 40,
           "stale": 0
         },
-        "reinstate_write_bytes": 69,
-        "total_write_bytes": 138,
+        "reinstate_write_bytes": 17,
+        "total_write_bytes": 98,
         "withdraw_immediate": {
           "hits": 40,
           "reference_total": 40,
@@ -3633,7 +4474,7 @@
           "returned": 40,
           "stale": 0
         },
-        "withdraw_write_bytes": 69
+        "withdraw_write_bytes": 81
       },
       {
         "affected_extents": 1,
@@ -3641,6 +4482,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": null,
         "ek5_withdraw_sha256": null,
+        "journal_records": 3,
+        "journal_sector_bytes": 1536,
         "layout": "clustered",
         "pair": 15,
         "reinstate_immediate": {
@@ -3655,8 +4498,8 @@
           "returned": 40,
           "stale": 0
         },
-        "reinstate_write_bytes": 261,
-        "total_write_bytes": 927,
+        "reinstate_write_bytes": 209,
+        "total_write_bytes": 835,
         "withdraw_immediate": {
           "hits": 40,
           "reference_total": 40,
@@ -3669,7 +4512,7 @@
           "returned": 40,
           "stale": 0
         },
-        "withdraw_write_bytes": 666
+        "withdraw_write_bytes": 626
       },
       {
         "affected_extents": 4,
@@ -3677,6 +4520,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": null,
         "ek5_withdraw_sha256": null,
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "scattered",
         "pair": 15,
         "reinstate_immediate": {
@@ -3691,8 +4536,8 @@
           "returned": 40,
           "stale": 0
         },
-        "reinstate_write_bytes": 69,
-        "total_write_bytes": 138,
+        "reinstate_write_bytes": 17,
+        "total_write_bytes": 98,
         "withdraw_immediate": {
           "hits": 40,
           "reference_total": 40,
@@ -3705,7 +4550,7 @@
           "returned": 40,
           "stale": 0
         },
-        "withdraw_write_bytes": 69
+        "withdraw_write_bytes": 81
       },
       {
         "affected_extents": 2,
@@ -3713,6 +4558,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": null,
         "ek5_withdraw_sha256": null,
+        "journal_records": 3,
+        "journal_sector_bytes": 1536,
         "layout": "clustered",
         "pair": 16,
         "reinstate_immediate": {
@@ -3727,8 +4574,8 @@
           "returned": 40,
           "stale": 0
         },
-        "reinstate_write_bytes": 213,
-        "total_write_bytes": 927,
+        "reinstate_write_bytes": 161,
+        "total_write_bytes": 835,
         "withdraw_immediate": {
           "hits": 40,
           "reference_total": 40,
@@ -3741,7 +4588,7 @@
           "returned": 40,
           "stale": 0
         },
-        "withdraw_write_bytes": 714
+        "withdraw_write_bytes": 674
       },
       {
         "affected_extents": 4,
@@ -3749,6 +4596,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": null,
         "ek5_withdraw_sha256": null,
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "scattered",
         "pair": 16,
         "reinstate_immediate": {
@@ -3763,8 +4612,8 @@
           "returned": 40,
           "stale": 0
         },
-        "reinstate_write_bytes": 69,
-        "total_write_bytes": 138,
+        "reinstate_write_bytes": 17,
+        "total_write_bytes": 98,
         "withdraw_immediate": {
           "hits": 40,
           "reference_total": 40,
@@ -3777,7 +4626,7 @@
           "returned": 40,
           "stale": 0
         },
-        "withdraw_write_bytes": 69
+        "withdraw_write_bytes": 81
       },
       {
         "affected_extents": 1,
@@ -3785,6 +4634,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": null,
         "ek5_withdraw_sha256": null,
+        "journal_records": 3,
+        "journal_sector_bytes": 1536,
         "layout": "clustered",
         "pair": 17,
         "reinstate_immediate": {
@@ -3799,8 +4650,8 @@
           "returned": 40,
           "stale": 0
         },
-        "reinstate_write_bytes": 261,
-        "total_write_bytes": 927,
+        "reinstate_write_bytes": 209,
+        "total_write_bytes": 835,
         "withdraw_immediate": {
           "hits": 40,
           "reference_total": 40,
@@ -3813,7 +4664,7 @@
           "returned": 40,
           "stale": 0
         },
-        "withdraw_write_bytes": 666
+        "withdraw_write_bytes": 626
       },
       {
         "affected_extents": 4,
@@ -3821,6 +4672,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": null,
         "ek5_withdraw_sha256": null,
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "scattered",
         "pair": 17,
         "reinstate_immediate": {
@@ -3835,8 +4688,8 @@
           "returned": 40,
           "stale": 0
         },
-        "reinstate_write_bytes": 69,
-        "total_write_bytes": 138,
+        "reinstate_write_bytes": 17,
+        "total_write_bytes": 98,
         "withdraw_immediate": {
           "hits": 40,
           "reference_total": 40,
@@ -3849,7 +4702,7 @@
           "returned": 40,
           "stale": 0
         },
-        "withdraw_write_bytes": 69
+        "withdraw_write_bytes": 81
       },
       {
         "affected_extents": 1,
@@ -3857,6 +4710,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": null,
         "ek5_withdraw_sha256": null,
+        "journal_records": 3,
+        "journal_sector_bytes": 1536,
         "layout": "clustered",
         "pair": 18,
         "reinstate_immediate": {
@@ -3871,8 +4726,8 @@
           "returned": 40,
           "stale": 0
         },
-        "reinstate_write_bytes": 261,
-        "total_write_bytes": 927,
+        "reinstate_write_bytes": 209,
+        "total_write_bytes": 835,
         "withdraw_immediate": {
           "hits": 40,
           "reference_total": 40,
@@ -3885,7 +4740,7 @@
           "returned": 40,
           "stale": 0
         },
-        "withdraw_write_bytes": 666
+        "withdraw_write_bytes": 626
       },
       {
         "affected_extents": 4,
@@ -3893,6 +4748,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": null,
         "ek5_withdraw_sha256": null,
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "scattered",
         "pair": 18,
         "reinstate_immediate": {
@@ -3907,8 +4764,8 @@
           "returned": 40,
           "stale": 0
         },
-        "reinstate_write_bytes": 69,
-        "total_write_bytes": 138,
+        "reinstate_write_bytes": 17,
+        "total_write_bytes": 98,
         "withdraw_immediate": {
           "hits": 40,
           "reference_total": 40,
@@ -3921,7 +4778,7 @@
           "returned": 40,
           "stale": 0
         },
-        "withdraw_write_bytes": 69
+        "withdraw_write_bytes": 81
       },
       {
         "affected_extents": 1,
@@ -3929,6 +4786,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": null,
         "ek5_withdraw_sha256": null,
+        "journal_records": 3,
+        "journal_sector_bytes": 1536,
         "layout": "clustered",
         "pair": 19,
         "reinstate_immediate": {
@@ -3943,8 +4802,8 @@
           "returned": 40,
           "stale": 0
         },
-        "reinstate_write_bytes": 261,
-        "total_write_bytes": 927,
+        "reinstate_write_bytes": 209,
+        "total_write_bytes": 835,
         "withdraw_immediate": {
           "hits": 40,
           "reference_total": 40,
@@ -3957,7 +4816,7 @@
           "returned": 40,
           "stale": 0
         },
-        "withdraw_write_bytes": 666
+        "withdraw_write_bytes": 626
       },
       {
         "affected_extents": 4,
@@ -3965,6 +4824,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": null,
         "ek5_withdraw_sha256": null,
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "scattered",
         "pair": 19,
         "reinstate_immediate": {
@@ -3979,8 +4840,8 @@
           "returned": 40,
           "stale": 0
         },
-        "reinstate_write_bytes": 69,
-        "total_write_bytes": 138,
+        "reinstate_write_bytes": 17,
+        "total_write_bytes": 98,
         "withdraw_immediate": {
           "hits": 40,
           "reference_total": 40,
@@ -3993,7 +4854,7 @@
           "returned": 40,
           "stale": 0
         },
-        "withdraw_write_bytes": 69
+        "withdraw_write_bytes": 81
       },
       {
         "affected_extents": 1,
@@ -4001,6 +4862,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": null,
         "ek5_withdraw_sha256": null,
+        "journal_records": 3,
+        "journal_sector_bytes": 1536,
         "layout": "clustered",
         "pair": 20,
         "reinstate_immediate": {
@@ -4015,8 +4878,8 @@
           "returned": 40,
           "stale": 0
         },
-        "reinstate_write_bytes": 261,
-        "total_write_bytes": 927,
+        "reinstate_write_bytes": 209,
+        "total_write_bytes": 835,
         "withdraw_immediate": {
           "hits": 40,
           "reference_total": 40,
@@ -4029,7 +4892,7 @@
           "returned": 40,
           "stale": 0
         },
-        "withdraw_write_bytes": 666
+        "withdraw_write_bytes": 626
       },
       {
         "affected_extents": 4,
@@ -4037,6 +4900,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": null,
         "ek5_withdraw_sha256": null,
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "scattered",
         "pair": 20,
         "reinstate_immediate": {
@@ -4051,8 +4916,8 @@
           "returned": 40,
           "stale": 0
         },
-        "reinstate_write_bytes": 69,
-        "total_write_bytes": 138,
+        "reinstate_write_bytes": 17,
+        "total_write_bytes": 98,
         "withdraw_immediate": {
           "hits": 40,
           "reference_total": 40,
@@ -4065,7 +4930,7 @@
           "returned": 40,
           "stale": 0
         },
-        "withdraw_write_bytes": 69
+        "withdraw_write_bytes": 81
       },
       {
         "affected_extents": 1,
@@ -4073,6 +4938,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": null,
         "ek5_withdraw_sha256": null,
+        "journal_records": 3,
+        "journal_sector_bytes": 1536,
         "layout": "clustered",
         "pair": 21,
         "reinstate_immediate": {
@@ -4087,8 +4954,8 @@
           "returned": 40,
           "stale": 0
         },
-        "reinstate_write_bytes": 261,
-        "total_write_bytes": 927,
+        "reinstate_write_bytes": 209,
+        "total_write_bytes": 835,
         "withdraw_immediate": {
           "hits": 40,
           "reference_total": 40,
@@ -4101,7 +4968,7 @@
           "returned": 40,
           "stale": 0
         },
-        "withdraw_write_bytes": 666
+        "withdraw_write_bytes": 626
       },
       {
         "affected_extents": 4,
@@ -4109,6 +4976,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": null,
         "ek5_withdraw_sha256": null,
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "scattered",
         "pair": 21,
         "reinstate_immediate": {
@@ -4123,8 +4992,8 @@
           "returned": 40,
           "stale": 0
         },
-        "reinstate_write_bytes": 69,
-        "total_write_bytes": 138,
+        "reinstate_write_bytes": 17,
+        "total_write_bytes": 98,
         "withdraw_immediate": {
           "hits": 40,
           "reference_total": 40,
@@ -4137,7 +5006,7 @@
           "returned": 40,
           "stale": 0
         },
-        "withdraw_write_bytes": 69
+        "withdraw_write_bytes": 81
       },
       {
         "affected_extents": 1,
@@ -4145,6 +5014,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": null,
         "ek5_withdraw_sha256": null,
+        "journal_records": 3,
+        "journal_sector_bytes": 1536,
         "layout": "clustered",
         "pair": 22,
         "reinstate_immediate": {
@@ -4159,8 +5030,8 @@
           "returned": 40,
           "stale": 0
         },
-        "reinstate_write_bytes": 261,
-        "total_write_bytes": 927,
+        "reinstate_write_bytes": 209,
+        "total_write_bytes": 835,
         "withdraw_immediate": {
           "hits": 40,
           "reference_total": 40,
@@ -4173,7 +5044,7 @@
           "returned": 40,
           "stale": 0
         },
-        "withdraw_write_bytes": 666
+        "withdraw_write_bytes": 626
       },
       {
         "affected_extents": 4,
@@ -4181,6 +5052,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": null,
         "ek5_withdraw_sha256": null,
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "scattered",
         "pair": 22,
         "reinstate_immediate": {
@@ -4195,8 +5068,8 @@
           "returned": 40,
           "stale": 0
         },
-        "reinstate_write_bytes": 69,
-        "total_write_bytes": 138,
+        "reinstate_write_bytes": 17,
+        "total_write_bytes": 98,
         "withdraw_immediate": {
           "hits": 40,
           "reference_total": 40,
@@ -4209,7 +5082,7 @@
           "returned": 40,
           "stale": 0
         },
-        "withdraw_write_bytes": 69
+        "withdraw_write_bytes": 81
       },
       {
         "affected_extents": 2,
@@ -4217,6 +5090,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": null,
         "ek5_withdraw_sha256": null,
+        "journal_records": 3,
+        "journal_sector_bytes": 1536,
         "layout": "clustered",
         "pair": 23,
         "reinstate_immediate": {
@@ -4231,8 +5106,8 @@
           "returned": 40,
           "stale": 0
         },
-        "reinstate_write_bytes": 225,
-        "total_write_bytes": 927,
+        "reinstate_write_bytes": 173,
+        "total_write_bytes": 835,
         "withdraw_immediate": {
           "hits": 40,
           "reference_total": 40,
@@ -4245,7 +5120,7 @@
           "returned": 40,
           "stale": 0
         },
-        "withdraw_write_bytes": 702
+        "withdraw_write_bytes": 662
       },
       {
         "affected_extents": 4,
@@ -4253,6 +5128,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": null,
         "ek5_withdraw_sha256": null,
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "scattered",
         "pair": 23,
         "reinstate_immediate": {
@@ -4267,8 +5144,8 @@
           "returned": 40,
           "stale": 0
         },
-        "reinstate_write_bytes": 69,
-        "total_write_bytes": 138,
+        "reinstate_write_bytes": 17,
+        "total_write_bytes": 98,
         "withdraw_immediate": {
           "hits": 40,
           "reference_total": 40,
@@ -4281,7 +5158,7 @@
           "returned": 40,
           "stale": 0
         },
-        "withdraw_write_bytes": 69
+        "withdraw_write_bytes": 81
       },
       {
         "affected_extents": 1,
@@ -4289,6 +5166,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": null,
         "ek5_withdraw_sha256": null,
+        "journal_records": 3,
+        "journal_sector_bytes": 1536,
         "layout": "clustered",
         "pair": 24,
         "reinstate_immediate": {
@@ -4303,8 +5182,8 @@
           "returned": 40,
           "stale": 0
         },
-        "reinstate_write_bytes": 261,
-        "total_write_bytes": 927,
+        "reinstate_write_bytes": 209,
+        "total_write_bytes": 835,
         "withdraw_immediate": {
           "hits": 40,
           "reference_total": 40,
@@ -4317,7 +5196,7 @@
           "returned": 40,
           "stale": 0
         },
-        "withdraw_write_bytes": 666
+        "withdraw_write_bytes": 626
       },
       {
         "affected_extents": 4,
@@ -4325,6 +5204,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": null,
         "ek5_withdraw_sha256": null,
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "scattered",
         "pair": 24,
         "reinstate_immediate": {
@@ -4339,8 +5220,8 @@
           "returned": 40,
           "stale": 0
         },
-        "reinstate_write_bytes": 69,
-        "total_write_bytes": 138,
+        "reinstate_write_bytes": 17,
+        "total_write_bytes": 98,
         "withdraw_immediate": {
           "hits": 40,
           "reference_total": 40,
@@ -4353,7 +5234,7 @@
           "returned": 40,
           "stale": 0
         },
-        "withdraw_write_bytes": 69
+        "withdraw_write_bytes": 81
       },
       {
         "affected_extents": 1,
@@ -4361,6 +5242,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": null,
         "ek5_withdraw_sha256": null,
+        "journal_records": 3,
+        "journal_sector_bytes": 1536,
         "layout": "clustered",
         "pair": 25,
         "reinstate_immediate": {
@@ -4375,8 +5258,8 @@
           "returned": 40,
           "stale": 0
         },
-        "reinstate_write_bytes": 261,
-        "total_write_bytes": 927,
+        "reinstate_write_bytes": 209,
+        "total_write_bytes": 835,
         "withdraw_immediate": {
           "hits": 40,
           "reference_total": 40,
@@ -4389,7 +5272,7 @@
           "returned": 40,
           "stale": 0
         },
-        "withdraw_write_bytes": 666
+        "withdraw_write_bytes": 626
       },
       {
         "affected_extents": 4,
@@ -4397,6 +5280,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": null,
         "ek5_withdraw_sha256": null,
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "scattered",
         "pair": 25,
         "reinstate_immediate": {
@@ -4411,8 +5296,8 @@
           "returned": 40,
           "stale": 0
         },
-        "reinstate_write_bytes": 69,
-        "total_write_bytes": 138,
+        "reinstate_write_bytes": 17,
+        "total_write_bytes": 98,
         "withdraw_immediate": {
           "hits": 40,
           "reference_total": 40,
@@ -4425,7 +5310,7 @@
           "returned": 40,
           "stale": 0
         },
-        "withdraw_write_bytes": 69
+        "withdraw_write_bytes": 81
       },
       {
         "affected_extents": 1,
@@ -4433,6 +5318,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": null,
         "ek5_withdraw_sha256": null,
+        "journal_records": 3,
+        "journal_sector_bytes": 1536,
         "layout": "clustered",
         "pair": 26,
         "reinstate_immediate": {
@@ -4447,8 +5334,8 @@
           "returned": 40,
           "stale": 0
         },
-        "reinstate_write_bytes": 261,
-        "total_write_bytes": 927,
+        "reinstate_write_bytes": 209,
+        "total_write_bytes": 835,
         "withdraw_immediate": {
           "hits": 40,
           "reference_total": 40,
@@ -4461,7 +5348,7 @@
           "returned": 40,
           "stale": 0
         },
-        "withdraw_write_bytes": 666
+        "withdraw_write_bytes": 626
       },
       {
         "affected_extents": 4,
@@ -4469,6 +5356,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": null,
         "ek5_withdraw_sha256": null,
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "scattered",
         "pair": 26,
         "reinstate_immediate": {
@@ -4483,8 +5372,8 @@
           "returned": 40,
           "stale": 0
         },
-        "reinstate_write_bytes": 69,
-        "total_write_bytes": 138,
+        "reinstate_write_bytes": 17,
+        "total_write_bytes": 98,
         "withdraw_immediate": {
           "hits": 40,
           "reference_total": 40,
@@ -4497,7 +5386,7 @@
           "returned": 40,
           "stale": 0
         },
-        "withdraw_write_bytes": 69
+        "withdraw_write_bytes": 81
       },
       {
         "affected_extents": 1,
@@ -4505,6 +5394,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": null,
         "ek5_withdraw_sha256": null,
+        "journal_records": 3,
+        "journal_sector_bytes": 1536,
         "layout": "clustered",
         "pair": 27,
         "reinstate_immediate": {
@@ -4519,8 +5410,8 @@
           "returned": 40,
           "stale": 0
         },
-        "reinstate_write_bytes": 261,
-        "total_write_bytes": 927,
+        "reinstate_write_bytes": 209,
+        "total_write_bytes": 835,
         "withdraw_immediate": {
           "hits": 40,
           "reference_total": 40,
@@ -4533,7 +5424,7 @@
           "returned": 40,
           "stale": 0
         },
-        "withdraw_write_bytes": 666
+        "withdraw_write_bytes": 626
       },
       {
         "affected_extents": 4,
@@ -4541,6 +5432,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": null,
         "ek5_withdraw_sha256": null,
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "scattered",
         "pair": 27,
         "reinstate_immediate": {
@@ -4555,8 +5448,8 @@
           "returned": 40,
           "stale": 0
         },
-        "reinstate_write_bytes": 69,
-        "total_write_bytes": 138,
+        "reinstate_write_bytes": 17,
+        "total_write_bytes": 98,
         "withdraw_immediate": {
           "hits": 40,
           "reference_total": 40,
@@ -4569,7 +5462,7 @@
           "returned": 40,
           "stale": 0
         },
-        "withdraw_write_bytes": 69
+        "withdraw_write_bytes": 81
       },
       {
         "affected_extents": 2,
@@ -4577,6 +5470,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": null,
         "ek5_withdraw_sha256": null,
+        "journal_records": 3,
+        "journal_sector_bytes": 1536,
         "layout": "clustered",
         "pair": 28,
         "reinstate_immediate": {
@@ -4591,8 +5486,8 @@
           "returned": 40,
           "stale": 0
         },
-        "reinstate_write_bytes": 213,
-        "total_write_bytes": 927,
+        "reinstate_write_bytes": 161,
+        "total_write_bytes": 835,
         "withdraw_immediate": {
           "hits": 40,
           "reference_total": 40,
@@ -4605,7 +5500,7 @@
           "returned": 40,
           "stale": 0
         },
-        "withdraw_write_bytes": 714
+        "withdraw_write_bytes": 674
       },
       {
         "affected_extents": 4,
@@ -4613,6 +5508,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": null,
         "ek5_withdraw_sha256": null,
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "scattered",
         "pair": 28,
         "reinstate_immediate": {
@@ -4627,8 +5524,8 @@
           "returned": 40,
           "stale": 0
         },
-        "reinstate_write_bytes": 69,
-        "total_write_bytes": 138,
+        "reinstate_write_bytes": 17,
+        "total_write_bytes": 98,
         "withdraw_immediate": {
           "hits": 40,
           "reference_total": 40,
@@ -4641,7 +5538,7 @@
           "returned": 40,
           "stale": 0
         },
-        "withdraw_write_bytes": 69
+        "withdraw_write_bytes": 81
       },
       {
         "affected_extents": 2,
@@ -4649,6 +5546,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": null,
         "ek5_withdraw_sha256": null,
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "clustered",
         "pair": 29,
         "reinstate_immediate": {
@@ -4663,8 +5562,8 @@
           "returned": 40,
           "stale": 0
         },
-        "reinstate_write_bytes": 69,
-        "total_write_bytes": 138,
+        "reinstate_write_bytes": 17,
+        "total_write_bytes": 98,
         "withdraw_immediate": {
           "hits": 40,
           "reference_total": 40,
@@ -4677,7 +5576,7 @@
           "returned": 40,
           "stale": 0
         },
-        "withdraw_write_bytes": 69
+        "withdraw_write_bytes": 81
       },
       {
         "affected_extents": 4,
@@ -4685,6 +5584,8 @@
         "all_withdrawn_ids_hidden": true,
         "ek5_reinstate_sha256": null,
         "ek5_withdraw_sha256": null,
+        "journal_records": 2,
+        "journal_sector_bytes": 1024,
         "layout": "scattered",
         "pair": 29,
         "reinstate_immediate": {
@@ -4699,8 +5600,8 @@
           "returned": 40,
           "stale": 0
         },
-        "reinstate_write_bytes": 69,
-        "total_write_bytes": 138,
+        "reinstate_write_bytes": 17,
+        "total_write_bytes": 98,
         "withdraw_immediate": {
           "hits": 40,
           "reference_total": 40,
@@ -4713,7 +5614,7 @@
           "returned": 40,
           "stale": 0
         },
-        "withdraw_write_bytes": 69
+        "withdraw_write_bytes": 81
       }
     ]
   },

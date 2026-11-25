@@ -44,6 +44,30 @@ def verify_bundle(repo_root: Optional[Path | str] = None) -> Dict[str, Any]:
             "detail": "shadow return is None and no live gateway is claimed",
         }
     )
+    live_shadow_rel = "artifacts/pv7_w18_3d_pm6_shadow/pv7_w18_3d_live_shadow_manifest.json"
+    live_receipt_rel = "artifacts/pv7_w18_3d_pm6_shadow/report_receipt.json"
+    ls_path = root / live_shadow_rel
+    lr_path = root / live_receipt_rel
+    if ls_path.is_file() and lr_path.is_file():
+        import hashlib
+
+        ls_bytes = ls_path.read_bytes()
+        ls_doc = json.loads(ls_bytes)
+        lr_doc = json.loads(lr_path.read_bytes())
+        ls_ok = (
+            lr_doc.get("manifest_sha256") == hashlib.sha256(ls_bytes).hexdigest()
+            and ls_doc.get("mode") == "run-live-shadow"
+            and ls_doc.get("claim_level") == "observational-manifest"
+            and ls_doc.get("live_pm6_gateway_executed") is False
+            and ls_doc.get("passed") is True
+        )
+        checks.append(
+            {
+                "name": "committed_observational_shadow_receipt",
+                "passed": ls_ok,
+                "detail": f"claim_level={ls_doc.get('claim_level')} live_gateway={ls_doc.get('live_pm6_gateway_executed')}",
+            }
+        )
     passed = all(item["passed"] for item in checks)
     return {
         "bundle_id": BUNDLE_ID,

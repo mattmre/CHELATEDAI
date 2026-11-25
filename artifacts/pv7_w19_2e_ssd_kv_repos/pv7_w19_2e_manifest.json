@@ -170,7 +170,7 @@
   },
   "tier": "floor",
   "tier_disclosure": "synthetic git histories and a tiny deterministic 2-layer numpy model, not an LLM on real repos; this checks the binding/invalidation mechanism, not production speedup",
-  "traced_peak_bytes": 12037771,
+  "traced_peak_bytes": 11749611,
   "weight_revision": {
     "adapter_changed": true,
     "base_weights_changed": true,

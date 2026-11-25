@@ -29,5 +29,13 @@
       "local-drycheck",
       "run-live-gpu"
     ]
+  },
+  "evidence_tier": "local-drycheck-pass",
+  "evidence_disclosure": {
+    "scope": "Local drycheck of the loft / zero-write non-interference probe; burn-ledger admission is the non-confirmatory local_drycheck_smoke path.",
+    "synthetic": "Synthetic fixtures only.",
+    "tuning": "Thresholds preregistered in the fragment; no wild-corpus validation.",
+    "sla": "No latency or SLA claim.",
+    "burn_clean_scope": "local_drycheck_smoke_partial_inventory (confirmatory_eligible=false)."
   }
 }

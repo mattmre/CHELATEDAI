@@ -36,5 +36,13 @@
       "local_drycheck": "CPU planted MLP hook. Correlation prefers the nuisance. QSCCI recovers the causal write.",
       "run_live_gpu": "Accepts Qwen2.5-1.5B or Qwen3.5-2B-Base and refuses to load weights while CUDA is isolated."
     }
+  },
+  "evidence_tier": "local-drycheck-pass",
+  "evidence_disclosure": {
+    "scope": "Local drycheck of the QSCCI singleton probe.",
+    "synthetic": "Synthetic fixtures only.",
+    "tuning": "Preregistered constants; no wild-corpus validation.",
+    "sla": "No latency or SLA claim.",
+    "burn_clean_scope": "local_drycheck_smoke_partial_inventory (confirmatory_eligible=false)."
   }
 }

@@ -408,6 +408,55 @@ class SSDKVCache:
         arrs = np.frombuffer(body, dtype=np.float64).reshape(N_LAYERS * 2, n, D_MODEL)
         return [(arrs[2 * i].copy(), arrs[2 * i + 1].copy()) for i in range(N_LAYERS)]
 
+    def reload_persisted(self, key: str, prefix_tokens: np.ndarray, contract: TRA1StateIdentityContract) -> List:
+        """Fail-closed reload of a PERSISTED block straight from disk.
+
+        Models a process restart: the in-memory ``index`` and ``TRA1BoundStateCache`` are not consulted, so the
+        only weight-revision evidence is what the block carries. A block whose header has no ``contract_digest``
+        (the digest binds ``base_weights_sha256`` and ``adapter_weights_sha256``) is a config-only identity
+        entry of the kind MemT-1.0 persists (``modeling_memt.py:876`` hashes config, tokenizer and shape and
+        omits the weights); it is refused rather than reused. A header that additionally carries a literal
+        ``model_weights_sha256`` must match the contract's ``base_weights_sha256``.
+        Raises ``StaleWeightRevisionError`` on every refusal; never returns a partial or unverified block.
+        """
+        if not isinstance(contract, TRA1StateIdentityContract):
+            raise StaleWeightRevisionError("reload_persisted requires a TRA1StateIdentityContract")
+        path = self._path(key)
+        if not path.is_file():
+            raise StaleWeightRevisionError("persisted KV block is missing")
+        raw = path.read_bytes()
+        try:
+            head_raw, body = raw.split(b"\n", 1)
+            header = json.loads(head_raw)
+        except ValueError as exc:
+            raise StaleWeightRevisionError("persisted KV block header is unreadable") from exc
+        if not isinstance(header, dict):
+            raise StaleWeightRevisionError("persisted KV block header is not an object")
+        stored_digest = header.get("contract_digest")
+        if not isinstance(stored_digest, str) or not stored_digest:
+            raise StaleWeightRevisionError(
+                "persisted KV block carries no weight-bound identity (contract_digest / model_weights_sha256 "
+                "missing): config-only identity refused"
+            )
+        if "model_weights_sha256" in header:
+            declared = header["model_weights_sha256"]
+            if not isinstance(declared, str) or not declared or declared != contract.base_weights_sha256:
+                raise StaleWeightRevisionError("persisted model_weights_sha256 does not match the active weights")
+        if stored_digest != contract.digest():
+            raise StaleWeightRevisionError("persisted KV block was written under a different weight revision")
+        if header.get("kv_dtype") != KV_DTYPE:
+            raise StaleWeightRevisionError("persisted KV block dtype does not match the contract")
+        if header.get("prefix_tokens") != [int(t) for t in prefix_tokens]:
+            raise StaleWeightRevisionError("causal prefix token ids do not match cached block")
+        shape = header.get("shape")
+        if not (isinstance(shape, list) and len(shape) == 2 and shape[1] == D_MODEL and isinstance(shape[0], int) and shape[0] > 0):
+            raise StaleWeightRevisionError("persisted KV block shape is invalid")
+        n = shape[0]
+        if len(body) != N_LAYERS * 2 * n * D_MODEL * 8:
+            raise StaleWeightRevisionError("persisted KV block body length does not match its header")
+        arrs = np.frombuffer(body, dtype=np.float64).reshape(N_LAYERS * 2, n, D_MODEL)
+        return [(arrs[2 * i].copy(), arrs[2 * i + 1].copy()) for i in range(N_LAYERS)]
+
     def sources_admit(self, key: str) -> bool:
         return all(self.store.eligibility.get(s) == "ADMIT" for s in self.index[key]["sources"])
 

@@ -75,3 +75,15 @@ def verify_bundle(repo_root: Optional[Path | str] = None) -> Dict[str, Any]:
         "compile_detail": compile_detail,
         "suite_status": suite_status,
     }
+
+
+def main() -> int:
+    import json
+
+    result = verify_bundle()
+    print(json.dumps(result, indent=2, sort_keys=True))
+    return 0 if result["passed"] else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

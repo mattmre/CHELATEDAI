@@ -25,10 +25,10 @@
     "stale_weight_revision_refused_all_trials": true,
     "wrong_contract_probe_isolated_from_primary_cache": true
   },
-  "generated_utc": "2026-11-25T11:33:48.026464+00:00",
+  "generated_utc": "2026-11-25T17:06:23.044191+00:00",
   "item": "2E",
   "manifest_file": "pv7_w19_2e_manifest.json",
-  "manifest_sha256": "379b5a7d33497d9037693caf3a7a941c600a6fad2dcd6e732b2c3a891e5eac6f",
+  "manifest_sha256": "efe8a1f6f79b0b245f2caa60cec2520c26022fe3731dc7b58822ec0c61c8f650",
   "mode": "local-drycheck",
   "overall_pass": true,
   "performance_claim_supported": false,
@@ -40,7 +40,7 @@
   },
   "schema_version": "pv7_report_receipt_v1",
   "source_file_sha256": {
-    "chelated_ssd_kv_repo_cache.py": "589a29b6f5b8acf03ef2bcf50ed570a4405663017aa94d1ed91d3f33d201217e",
+    "chelated_ssd_kv_repo_cache.py": "598635eb1d178fb58a831c30d37fd20f37c203d731234023092b26335b38c402",
     "scripts/run_pv7_w19_2e_ssd_kv_repos.py": "273583e1bd850f42dd5b4b6b8202e3880cb68fd727df5f36874ab1f814e9071d"
   },
   "spine_digest": "32693f54e0ce7ad3d401ceb752ae4723b0eee251f6d49b95cdfb26a6201971e9",

@@ -55,5 +55,14 @@
       "stage1": "stage1-controlled-replay (CPU-only deterministic recorded-worker attribution replay)",
       "stage2_3": "run-live-workers (Spark #3 live vLLM worker pool)"
     }
+  },
+  "evidence_tier": "stage1-replay-pass",
+  "evidence_disclosure": {
+    "scope": "Stage-1 controlled replay passes offline (deterministic, 4 schedules x 24 templates at pool size 4).",
+    "live_worker_outcome": "FAILED. The committed run-live-workers receipt (nemotron-lightning, 7842 live calls, 70 cells, 1680 jobs) has overall_pass=false and status=replay-fail: gates beats_full_restart_rebuild_jpm and sham_reopen_control_valid are false.",
+    "sla": "All 1680 eligible jobs missed the 560 ms SLA (live worker latency ~3.7-7.9 s): on_time_cited_correct_jobs=0, so the full-restart comparator ties at 0.0 JPM and the primary interaction LCB is 0.",
+    "label_deviation": "Orchestrator label map: stage1-replay-and-live-worker-pass. The live worker did NOT pass, so only stage1-replay-pass is claimed.",
+    "synthetic": "Matter templates and arrival schedules are synthetic.",
+    "tuning": "The 560 ms deadline and stall constants are preregistered; they were not retuned to rescue the live run."
   }
 }

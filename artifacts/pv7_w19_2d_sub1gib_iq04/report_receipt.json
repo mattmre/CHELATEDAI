@@ -20,10 +20,10 @@
     "symmetric_reranker_topk_budget_across_arms": true,
     "traced_peak_under_memory_max": true
   },
-  "generated_utc": "2026-11-25T11:38:40.913528+00:00",
+  "generated_utc": "2026-11-25T16:56:04.791661+00:00",
   "item": "2D",
   "manifest_file": "pv7_w19_2d_manifest.json",
-  "manifest_sha256": "8143e2cd2c5398b388ab9aece077a4e8a47e1bca4856f748b77906c9b7212484",
+  "manifest_sha256": "74b919dcb2513b0224859465475b41b032af3dc7f3f4b56edcff345c9cb7b083",
   "mode": "local-drycheck",
   "overall_pass": true,
   "runtime": {
@@ -33,7 +33,7 @@
   },
   "schema_version": "pv7_report_receipt_v1",
   "source_file_sha256": {
-    "chelated_cpu_memory_appliance.py": "b57da32518d6529184a110773c2d80e8fe638b86f146886150edcf68f4ec3f6e",
+    "chelated_cpu_memory_appliance.py": "348f2bf5e7591aa566d2a6e4e06d3ebd201316e9c9cf973ccd101129a7d375c9",
     "scripts/run_pv7_w19_2d_sub1gib_iq04.py": "6390fe8c990899ce36671cfa0c0f512c4fb81a6e4753a94674d502f29c0b5359"
   },
   "spine_digest": "32693f54e0ce7ad3d401ceb752ae4723b0eee251f6d49b95cdfb26a6201971e9",

@@ -208,6 +208,7 @@ def admit_scratch_prompts(families: Sequence[Mapping[str, str]]) -> str:
         doc_texts=[f"scratch document {row['family_id']}" for row in families],
         query_texts=[row["prompt"] for row in families],
         ledger=sentinel,
+        allow_local_drycheck_smoke=True,  # sentinel inventory is a local drycheck stand-in, never confirmatory
     )
     return scanned.sha256
 
@@ -534,6 +535,7 @@ def execute_live_shadow(
     manifest: Optional[str],
     *,
     historical_fingerprints: Optional[Mapping[str, Sequence[str]]] = None,
+    allow_local_drycheck_smoke: Optional[bool] = None,
 ) -> Dict[str, Any]:
     """Refuse protected/symlinked paths before opening; require real manifest SHA and historical burn inventory."""
     if not manifest:
@@ -609,6 +611,7 @@ def execute_live_shadow(
             doc_texts=docs,
             query_texts=prompts,
             historical_fingerprints=supplied_hist,
+            allow_local_drycheck_smoke=allow_local_drycheck_smoke,
         )
     except BurnedCorpusError as exc:
         return {
@@ -648,12 +651,17 @@ def execute(
     pm6_manifest: Optional[str] = None,
     *,
     historical_fingerprints: Optional[Mapping[str, Sequence[str]]] = None,
+    allow_local_drycheck_smoke: Optional[bool] = None,
 ) -> Dict[str, Any]:
     if mode not in {"local-drycheck", "run-live-shadow"}:
         raise ValueError("mode must be local-drycheck or run-live-shadow")
     isolation = cpu_isolation_receipt()
     if mode == "run-live-shadow":
-        report = execute_live_shadow(pm6_manifest, historical_fingerprints=historical_fingerprints)
+        report = execute_live_shadow(
+            pm6_manifest,
+            historical_fingerprints=historical_fingerprints,
+            allow_local_drycheck_smoke=allow_local_drycheck_smoke,
+        )
         report.update(
             {
                 "bundle_id": BUNDLE_ID,

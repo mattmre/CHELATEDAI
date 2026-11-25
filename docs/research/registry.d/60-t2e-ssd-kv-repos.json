@@ -43,5 +43,13 @@
       "local-drycheck": "floor: synthetic git histories and a tiny deterministic numpy causal model",
       "run-live": "fail-closed: real LLM KV path and real clones not wired"
     }
+  },
+  "evidence_tier": "local-drycheck-pass",
+  "evidence_disclosure": {
+    "scope": "Local drycheck of the SSD KV-repo cache, plus a fail-closed SSDKVCache.reload_persisted guard with negative unit tests.",
+    "guard": "reload_persisted refuses a persisted block with no weight-bound contract_digest and a literal model_weights_sha256 that mismatches the active weights; it verifies contract_digest (which binds the weights SHA) rather than requiring a literal model_weights_sha256 key, and put() is unchanged.",
+    "synthetic": "Synthetic tiny model and KV blocks.",
+    "tuning": "No tuning.",
+    "sla": "No latency or SLA claim."
   }
 }

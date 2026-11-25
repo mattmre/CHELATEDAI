@@ -280,8 +280,6 @@ class ColdOSDTests(unittest.TestCase):
             result = report["comparisons"]["matched_ivf_sq8"][layout]
             self.assertTrue(result["matched_recall"])
             self.assertTrue(result["zero_stale_resurrection"])
-            self.assertGreater(result["write_bytes_saved"], 0)
-            self.assertGreater(result["saved_bytes_lcb95"], 0)
             self.assertEqual(len(result["paired_write_bytes_saved"]), 30)
             # Chelated now pays for its fsynced fence WAL: one W and one R record per trace.
             cold = report["summaries"]["cold_osd"][layout]
@@ -297,6 +295,102 @@ class ColdOSDTests(unittest.TestCase):
             report["summaries"]["matched_ivf_sq8"]["clustered"]["total_write_bytes"],
             report["summaries"]["matched_ivf_sq8"]["scattered"]["total_write_bytes"],
         )
+
+    def test_drycheck_is_verified_mixed_with_a_symmetric_codec_and_a_transparent_scattered_loss(self):
+        with tempfile.TemporaryDirectory(prefix=".pv7-58-test-", dir=ROOT) as directory:
+            report = osd.drycheck(directory)
+        self.assertTrue(report["passed"])
+        self.assertEqual(report["bundle_outcome"], "verified-mixed")
+        self.assertEqual(report["tier"], "floor")
+        self.assertIn("not a live measurement", report["tier_disclosure"])
+        rows = report["codec_symmetry"]["rows"]
+        self.assertEqual(report["codec_symmetry"]["gating_row"], "shared_symmetric_codec")
+        self.assertEqual(set(rows), {"shared_symmetric_codec", "as_built_asymmetric", "no_durability_floor"})
+        # Gate: the clustered layout wins under the shared codec and against the cheapest challenger journal.
+        self.assertTrue(report["gate"]["passed"])
+        shared, floor = rows["shared_symmetric_codec"], rows["no_durability_floor"]
+        for row in (shared, floor):
+            self.assertTrue(row["clustered"]["passed"])
+            self.assertGreater(row["clustered"]["write_bytes_saved"], 0)
+            self.assertFalse(row["clustered"]["zero_sampling_variance"])
+            self.assertFalse(row["scattered"]["passed"])
+            self.assertTrue(row["scattered"]["zero_sampling_variance"])
+        # Scattered is never gated away: a tie under the shared codec, a verified -720 B loss vs the floor.
+        self.assertEqual(shared["scattered"]["outcome"], "tie")
+        self.assertEqual(shared["scattered"]["write_bytes_saved"], 0)
+        self.assertEqual(floor["scattered"]["outcome"], "loss")
+        self.assertEqual(floor["scattered"]["write_bytes_saved"], -720)
+        self.assertEqual(floor["clustered"]["write_bytes_saved"], 18855)
+        # The asymmetric as-built row is supplementary, never the gate.
+        self.assertEqual(rows["as_built_asymmetric"]["scattered"]["write_bytes_saved"], 1200)
+        self.assertFalse(report["scattered_layout_disclosure"]["gated"])
+        self.assertIn("-720 B under no_durability_floor", report["scattered_layout_disclosure"]["statement"])
+        cell = report["comparisons"]["matched_ivf_sq8"]["scattered"]["lcb_method"]
+        self.assertTrue(cell["zero_sampling_variance"])
+        self.assertIn("no sampling variance", cell["label"])
+        # Live 512 B accounting quantises record sizes away: cost follows record count.
+        disclosure = report["sector_quantization_disclosure"]
+        self.assertEqual(disclosure["unit"], "512_byte_device_sectors")
+        journal = disclosure["journal_rows"]
+        self.assertEqual(journal["cold_osd"]["scattered"]["journal_sector_bytes"],
+                         journal["cold_osd"]["scattered"]["journal_records"] * 512)
+        self.assertEqual(journal["cold_osd"]["scattered"], journal["shared_symmetric_codec"]["scattered"])
+        replay = report["codec_symmetry"]["sq8_journal_replay"]
+        self.assertTrue(replay["verifiable"] and replay["records_match_counter"])
+        self.assertEqual(replay["torn_tail_bytes"], 0)
+
+    def test_both_arms_write_byte_identical_shared_codec_records(self):
+        with tempfile.TemporaryDirectory(prefix=".pv7-58-test-", dir=ROOT) as directory:
+            geom = self.fixture(directory)
+            wal = Path(directory) / "fence.wal"
+            cold = osd.ColdOSD(geom, 2, wal_path=wal)
+            sq8 = osd.MatchedIVFSQ8(geom, 2, directory)
+            self.assertEqual(sq8.journal_codec, "shared")
+            # One header rule: the creating process charges the 8-byte header on both arms.
+            self.assertEqual((cold.written, sq8.written), (len(osd.FENCE_WAL_MAGIC),) * 2)
+            for engine in (cold, sq8):
+                engine.withdraw([3, 0])
+                if engine is sq8:
+                    self.assertTrue(engine.quiescent())
+                engine.reinstate([0, 3])
+            # Same bytes for the same events: Cold-OSD logs W then R; the challenger also logs its C
+            # (compaction) record, which under the shared codec carries no ids either.
+            withdraw = osd.journal_record(b"W", 1, [0, 3])
+            self.assertEqual(wal.read_bytes(), osd.FENCE_WAL_MAGIC + withdraw + osd.journal_record(b"R", 2))
+            self.assertEqual(sq8.wal.read_bytes(), osd.FENCE_WAL_MAGIC + withdraw
+                             + osd.journal_record(b"C", 2) + osd.journal_record(b"R", 3))
+            self.assertEqual(osd.journal_record(b"R", 2), osd._fence_wal_record(b"R", 2))
+            self.assertEqual(cold.journal_stats(), (2, 2 * 512))
+            self.assertEqual(sq8.journal_stats(), (3, 3 * 512))
+            self.assertEqual(sq8.verify_journal()["records_replayed"], 3)
+
+    def test_non_shared_sq8_journal_codecs_are_labelled_unverifiable_and_unknown_codecs_rejected(self):
+        with tempfile.TemporaryDirectory(prefix=".pv7-58-test-", dir=ROOT) as directory:
+            geom = self.fixture(directory)
+            floor = osd.MatchedIVFSQ8(geom, 2, directory, journal_codec="no_durability_floor")
+            as_built = osd.MatchedIVFSQ8(geom, 2, directory, journal_codec="as_built_asymmetric")
+            self.assertEqual((floor.written, as_built.written), (0, 0))
+            for engine in (floor, as_built):
+                engine.withdraw([3, 0])
+                engine.quiescent()
+                engine.reinstate([0, 3])
+                self.assertFalse(engine.verify_journal()["verifiable"])
+            # W carries ids on both; C/R carry ids only in the as-built asymmetric codec.
+            self.assertEqual(floor.wal.stat().st_size, (5 + 8) + 5 + 5)
+            self.assertEqual(as_built.wal.stat().st_size, 3 * (5 + 8))
+            with self.assertRaisesRegex(ValueError, "journal_codec"):
+                osd.MatchedIVFSQ8(geom, 2, directory, journal_codec="bogus")
+
+    def test_scan_journal_is_the_shared_replay_primitive(self):
+        raw = osd.FENCE_WAL_MAGIC + osd.journal_record(b"W", 1, [4, 2]) + osd.journal_record(b"R", 2)
+        records, durable, torn = osd.scan_journal(raw)
+        self.assertEqual([(kind, epoch, ids) for kind, epoch, ids, *_ in records],
+                         [(b"W", 1, [4, 2]), (b"R", 2, [])])
+        self.assertEqual((durable, torn), (len(raw), 0))
+        records, durable, torn = osd.scan_journal(raw + b"R")
+        self.assertEqual((len(records), durable, torn), (2, len(raw), 1))
+        with self.assertRaisesRegex(osd.FenceWALError, "epoch 3 does not follow epoch 1"):
+            osd.scan_journal(osd.FENCE_WAL_MAGIC + osd.journal_record(b"W", 1, [1]) + osd.journal_record(b"R", 3))
 
     def test_ek5_fence_and_bitemporal_challenger_agree_across_a_single_epoch_replay(self):
         vectors = np.array([[1, 0.1], [1, 0.2], [0.1, 1], [0.2, 1]], dtype=np.float32)

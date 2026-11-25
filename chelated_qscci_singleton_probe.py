@@ -138,7 +138,10 @@ def admit_scratch_prompts(families: Sequence[Mapping[str, str]]) -> str:
         query_fingerprints=frozenset({text_fingerprint("pv7 historical sentinel query 3c")}),
         fingerprint_inventory_complete=True,
     )
-    assert_corpus_unburned(DATASET_ID, doc_texts=documents, query_texts=queries, ledger=sentinel_ledger)
+    assert_corpus_unburned(
+        DATASET_ID, doc_texts=documents, query_texts=queries, ledger=sentinel_ledger,
+        allow_local_drycheck_smoke=True,  # sentinel inventory is a local drycheck stand-in, never confirmatory
+    )
     return scanned.sha256
 
 

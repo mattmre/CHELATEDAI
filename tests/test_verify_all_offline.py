@@ -115,7 +115,9 @@ class TestLiveRepo(unittest.TestCase):
     def test_fast_mode_against_real_repo(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             out = Path(tmp) / "live.json"
-            rc, text = run_main(["--fast", "--json-out", str(out)])
+            # --skip-verifiers: the PV7 verifier subprocesses take minutes (#61 alone ~10 min); fragment
+            # compile/static checks still run here and the verifiers run in tests/test_pv7_w21_loaders.py.
+            rc, text = run_main(["--fast", "--skip-verifiers", "--json-out", str(out)])
             payload = json.loads(out.read_text(encoding="utf-8"))
         failures = [c for c in payload["checks"] if c["status"] == "FAIL"]
         self.assertEqual(rc, 0, f"failures: {failures}\n{text[-2000:]}")

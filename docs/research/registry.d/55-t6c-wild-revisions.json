@@ -12,5 +12,12 @@
   "registry_mutation": false,
   "superiority_is_wild_evidence": false,
   "llm_write_tokens": 0,
-  "authored_prompts": 0
+  "authored_prompts": 0,
+  "evidence_tier": "local-drycheck-pass",
+  "evidence_disclosure": {
+    "scope": "Schema/local drycheck of the wild-revisions cohort rule.",
+    "synthetic": "synthetic_labeled_wild: the fixture is labelled wild but is synthetic; superiority_is_wild_evidence is false.",
+    "tuning": "Cohort rule and retirement trigger are preregistered; not validated on real revisions.",
+    "sla": "No latency or SLA claim."
+  }
 }

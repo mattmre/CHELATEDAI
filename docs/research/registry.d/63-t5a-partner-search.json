@@ -11,5 +11,12 @@
   "kit_file": "partner_kits/trial1_search_migration_kit.py",
   "charter_file": "docs/research/partner_charter_trial1_search_operator.md",
   "verifier_file": "scripts/verifiers.d/63_verifier.py",
-  "test_file": "tests/test_pv7_bridge_cage_and_trial1.py"
+  "test_file": "tests/test_pv7_bridge_cage_and_trial1.py",
+  "evidence_tier": "protocol-ready",
+  "evidence_disclosure": {
+    "scope": "Partner search trial kit and charter are ready; no partner trial has been executed.",
+    "synthetic": "Open DEV fixture only; no partner data.",
+    "tuning": "None.",
+    "sla": "No latency or SLA claim."
+  }
 }

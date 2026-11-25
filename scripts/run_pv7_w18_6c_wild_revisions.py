@@ -746,6 +746,7 @@ def _burn_receipt(families, *, cohort_source=COHORT_DRYCHECK, historical_fingerp
         doc_texts=texts,
         query_texts=queries,
         historical_fingerprints=historical,
+        allow_local_drycheck_smoke=True,  # two-marker schema-drycheck inventory, never confirmatory
     )
     return {
         "osv_cve_seeds_rejected": rejected,

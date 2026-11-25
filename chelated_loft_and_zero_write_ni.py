@@ -476,8 +476,12 @@ def verify_disjoint_corpus_admission(
     *,
     historical_fingerprints: Mapping[str, Sequence[str]],
     ledger: Optional[BurnLedger] = None,
+    allow_local_drycheck_smoke: Optional[bool] = None,
 ) -> Dict[str, Any]:
-    """Fail-closed `burn_ledger` + SHA-256 overlap gate for candidate disjoint NI corpora."""
+    """Fail-closed `burn_ledger` + SHA-256 overlap gate for candidate disjoint NI corpora.
+
+    ``allow_local_drycheck_smoke=True`` admits a partial inventory as non-confirmatory local-drycheck smoke.
+    """
     active_ledger = build_burn_ledger() if ledger is None else ledger
     assert_corpus_unburned(
         corpus_label,
@@ -485,6 +489,7 @@ def verify_disjoint_corpus_admission(
         query_texts=query_texts,
         historical_fingerprints=historical_fingerprints,
         ledger=active_ledger,
+        allow_local_drycheck_smoke=allow_local_drycheck_smoke,
     )
     doc_hashes = sorted({text_fingerprint(t) for t in doc_texts})
     query_hashes = sorted({text_fingerprint(t) for t in query_texts})
@@ -781,6 +786,7 @@ def evaluate_disjoint_zero_write_ni(
     weight_bytes: Optional[bytes] = None,
     weight_paths: Optional[Sequence[str]] = None,
     provenance_manifest: Optional[Mapping[str, Any]] = None,
+    allow_local_drycheck_smoke: Optional[bool] = None,
 ) -> Dict[str, Any]:
     """Run the one-shot disjoint zero-write exact Tango NI gate vs `-0.0500`.
 
@@ -802,6 +808,7 @@ def evaluate_disjoint_zero_write_ni(
         query_texts,
         historical_fingerprints=historical_fingerprints,
         ledger=ledger,
+        allow_local_drycheck_smoke=allow_local_drycheck_smoke,
     )
 
     if len(zero_write_hits) != len(query_texts) or len(reference_hits) != len(query_texts):
