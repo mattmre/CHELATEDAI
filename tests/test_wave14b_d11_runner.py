@@ -1442,6 +1442,25 @@ class TestCaaAndBridge(_PM6TestCase):
         w_primal = np.linalg.solve(xc.T @ xc + lam * np.eye(64), xc.T @ yc)
         self.assertTrue(np.allclose(w_dual, w_primal, atol=1e-9))
 
+    def test_procrustes_diagnostics_accepts_minilm_layernorm_381_manifold_and_rejects_underspanned(self) -> None:
+        rng = np.random.default_rng(2026)
+        x_src = rng.standard_normal((512, 512))
+        # Simulate real MiniLM-L6-v2 intrinsic rank 381 (3 zero-variance LayerNorm/distillation axes in 384-d)
+        y_tgt = rng.standard_normal((512, 384))
+        y_tgt[:, -3:] = 0.0
+        bridge_ok = pm6.CenteredProcrustesBridge.fit(x_src, y_tgt, scale_mode="unit")
+        diag_ok = pm6.compute_procrustes_diagnostics(bridge_ok, x_src, y_tgt)
+        self.assertEqual(diag_ok["stiefel_column_rank"], 384)
+        self.assertEqual(diag_ok["target_manifold_rank"], 381)
+        self.assertEqual(diag_ok["effective_rank"], 381)
+        self.assertIs(diag_ok["full_target_manifold_spanned"], True)
+
+        # Underspanned anchor count (60 << 380) MUST fail full_target_manifold_spanned!
+        bridge_bad = pm6.CenteredProcrustesBridge.fit(x_src[:60], y_tgt[:60], scale_mode="unit")
+        diag_bad = pm6.compute_procrustes_diagnostics(bridge_bad, x_src[:60], y_tgt[:60])
+        self.assertLess(diag_bad["effective_rank"], pm6.MIN_MINILM_INTRINSIC_MANIFOLD_RANK)
+        self.assertIs(diag_bad["full_target_manifold_spanned"], False)
+
 
 # ---------------------------------------------------------------------------
 # 6. Pipeline Guards: Production-Dir Protection, Phase-0 Yield Gate, Asymmetric Reduced Yield
